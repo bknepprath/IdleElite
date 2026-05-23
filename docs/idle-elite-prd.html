@@ -1,0 +1,1257 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite Rebuild PRD</title>
+  <style>
+    :root {
+      --ink: #171615;
+      --paper: #fbf8ef;
+      --panel: #ffffff;
+      --line: #d8d0bd;
+      --muted: #6d6658;
+      --gold: #d99b28;
+      --red: #a83c38;
+      --green: #367a52;
+      --blue: #2772a8;
+      --purple: #774d9b;
+      --shadow: 0 18px 42px rgba(32, 26, 18, 0.14);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(217, 155, 40, 0.18), transparent 32rem),
+        linear-gradient(135deg, #fbf8ef 0%, #eef7f5 48%, #f6f0fb 100%);
+      line-height: 1.45;
+    }
+
+    img {
+      max-width: 100%;
+      display: block;
+    }
+
+    a {
+      color: inherit;
+    }
+
+    .page {
+      width: min(1180px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 28px 0 56px;
+    }
+
+    .hero {
+      min-height: 520px;
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(300px, 0.95fr);
+      gap: 36px;
+      align-items: center;
+      padding: 44px 0 32px;
+    }
+
+    .eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 10px;
+      border: 1px solid rgba(23, 22, 21, 0.14);
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.62);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    h1, h2, h3, p {
+      margin-top: 0;
+    }
+
+    h1 {
+      margin: 18px 0 16px;
+      font-size: clamp(46px, 8vw, 92px);
+      line-height: 0.92;
+      letter-spacing: 0;
+      max-width: 8ch;
+    }
+
+    .hero-copy {
+      max-width: 680px;
+      color: #302c26;
+      font-size: 20px;
+    }
+
+    .tagline {
+      width: fit-content;
+      margin-top: 26px;
+      padding: 12px 16px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #fff2a8;
+      font-weight: 900;
+      text-transform: uppercase;
+      box-shadow: 6px 6px 0 #171615;
+    }
+
+    .hero-board {
+      position: relative;
+      border: 3px solid var(--ink);
+      border-radius: 8px;
+      background: #ffffff;
+      box-shadow: var(--shadow), 8px 8px 0 #171615;
+      overflow: hidden;
+    }
+
+    .hero-board-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 14px 16px;
+      border-bottom: 3px solid var(--ink);
+      background: linear-gradient(90deg, #f4cf5c, #bfe0d8);
+      font-weight: 900;
+    }
+
+    .icon-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      padding: 16px;
+      background:
+        linear-gradient(rgba(23, 22, 21, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(23, 22, 21, 0.05) 1px, transparent 1px);
+      background-size: 22px 22px;
+    }
+
+    .icon-tile {
+      min-width: 0;
+      padding: 10px;
+      border: 2px solid rgba(23, 22, 21, 0.16);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.82);
+    }
+
+    .icon-tile span {
+      display: block;
+      margin-top: 6px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+      color: var(--muted);
+    }
+
+    .section {
+      margin-top: 38px;
+      padding: 28px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: var(--shadow);
+    }
+
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 20px;
+      margin-bottom: 22px;
+    }
+
+    h2 {
+      margin-bottom: 8px;
+      font-size: clamp(28px, 4vw, 46px);
+      line-height: 1;
+      letter-spacing: 0;
+    }
+
+    .section-header p {
+      max-width: 720px;
+      color: var(--muted);
+      font-size: 17px;
+    }
+
+    .pill {
+      flex: 0 0 auto;
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: #171615;
+      color: #fff;
+      font-weight: 800;
+      font-size: 13px;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      min-height: 36px;
+      padding: 8px 11px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fffdf8;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 950;
+      text-decoration: none;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .nav-link:hover,
+    .nav-link:focus-visible {
+      background: #fff2a8;
+    }
+
+    .loop {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .loop-step {
+      padding: 16px;
+      border-left: 5px solid var(--gold);
+      border-radius: 8px;
+      background: #fff;
+      min-height: 128px;
+    }
+
+    .loop-step strong {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 18px;
+    }
+
+    .loop-step p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .phone-wrap {
+      display: grid;
+      grid-template-columns: minmax(290px, 360px) minmax(0, 1fr);
+      gap: 28px;
+      align-items: start;
+    }
+
+    .phone {
+      border: 8px solid #171615;
+      border-radius: 32px;
+      background: #f7f2e7;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+    }
+
+    .phone-top {
+      padding: 16px;
+      background: linear-gradient(135deg, #24211d, #473b31);
+      color: #fff;
+    }
+
+    .phone-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-weight: 900;
+    }
+
+    .goal {
+      margin-top: 14px;
+      padding: 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      font-size: 13px;
+    }
+
+    .bar {
+      height: 8px;
+      margin-top: 7px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.24);
+    }
+
+    .bar > i {
+      display: block;
+      height: 100%;
+      border-radius: inherit;
+      background: #f4cf5c;
+    }
+
+    .skill-list {
+      padding: 14px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .skill-row {
+      display: grid;
+      grid-template-columns: 48px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .skill-row img {
+      width: 48px;
+      height: 48px;
+      object-fit: contain;
+    }
+
+    .skill-row strong,
+    .activity strong,
+    .identity strong {
+      display: block;
+    }
+
+    .skill-row small {
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .phone-tabs {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      border-top: 1px solid var(--line);
+      background: #fff;
+    }
+
+    .phone-tabs span {
+      padding: 12px 4px;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .mockup-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+      align-items: start;
+    }
+
+    .screen-card {
+      min-width: 0;
+      width: 100%;
+      aspect-ratio: 9 / 16;
+      border: 5px solid #171615;
+      border-radius: 28px;
+      background: #f8f1e5;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 12px 28px rgba(32, 26, 18, 0.18);
+    }
+
+    .screen-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 12px 14px;
+      color: #fff;
+      background: linear-gradient(135deg, #24211d, #4c3b2c);
+      font-weight: 900;
+      font-size: 14px;
+    }
+
+    .screen-head small {
+      color: #f2d982;
+      font-weight: 900;
+    }
+
+    .screen-body {
+      padding: 12px;
+      display: grid;
+      align-content: start;
+      gap: 10px;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    .mini-tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-top: 1px solid var(--line);
+      background: #fff;
+      margin-top: auto;
+    }
+
+    .mini-tabs span {
+      padding: 9px 2px;
+      text-align: center;
+      font-size: 10px;
+      font-weight: 900;
+      color: var(--muted);
+    }
+
+    .mini-tabs .active {
+      color: #171615;
+      background: #fff2a8;
+    }
+
+    .stat-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+    }
+
+    .stat-chip {
+      padding: 8px 6px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+      text-align: center;
+    }
+
+    .stat-chip strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .stat-chip small {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .compact-skill {
+      display: grid;
+      grid-template-columns: 38px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+    }
+
+    .compact-skill img {
+      width: 38px;
+      height: 38px;
+      object-fit: contain;
+    }
+
+    .compact-skill strong,
+    .activity-card strong,
+    .shop-row strong,
+    .goal-row strong,
+    .hero-stat strong {
+      display: block;
+      font-size: 13px;
+    }
+
+    .compact-skill small,
+    .activity-card small,
+    .shop-row small,
+    .goal-row small,
+    .hero-stat small {
+      display: block;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 800;
+    }
+
+    .tiny-bar {
+      height: 7px;
+      margin-top: 5px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e7decc;
+    }
+
+    .tiny-bar i {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: var(--green);
+    }
+
+    .activity-card {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .activity-card.locked {
+      opacity: 0.58;
+      background: #f2eadc;
+    }
+
+    .activity-card .row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 6px;
+      margin-top: 9px;
+    }
+
+    .button-row.two {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .button-row.one {
+      grid-template-columns: 1fr;
+    }
+
+    .fake-btn {
+      padding: 8px 5px;
+      border: 2px solid #171615;
+      border-radius: 7px;
+      background: #fff2a8;
+      text-align: center;
+      font-size: 11px;
+      font-weight: 900;
+      box-shadow: 2px 2px 0 #171615;
+    }
+
+    .fake-btn.secondary {
+      background: #e8f4ff;
+    }
+
+    .fake-btn.ad {
+      background: #dff4ca;
+    }
+
+    .result-feed {
+      padding: 9px;
+      border-radius: 7px;
+      background: #27231e;
+      color: #fff;
+      font-size: 11px;
+    }
+
+    .shop-row,
+    .goal-row,
+    .hero-stat {
+      display: grid;
+      grid-template-columns: 38px 1fr auto;
+      gap: 8px;
+      align-items: center;
+      padding: 9px;
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      background: #fff;
+    }
+
+    .shop-row img,
+    .goal-row img,
+    .hero-stat img {
+      width: 38px;
+      height: 38px;
+      object-fit: contain;
+    }
+
+    .badge {
+      padding: 5px 7px;
+      border-radius: 999px;
+      background: #171615;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    .flow-map {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+
+    .flow-node {
+      padding: 10px 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+      text-align: center;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .rules-list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 18px;
+    }
+
+    .rule-card {
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .rule-card h3 {
+      margin-bottom: 6px;
+      font-size: 17px;
+    }
+
+    .rule-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .wire-notes {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .note {
+      padding: 16px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .note h3 {
+      margin-bottom: 6px;
+      font-size: 18px;
+    }
+
+    .note p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .identity-grid {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .identity {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-width: 0;
+      padding: 14px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .identity img {
+      width: 82px;
+      height: 82px;
+      object-fit: contain;
+    }
+
+    .identity ul {
+      margin: 0;
+      padding-left: 18px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .activity-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .activity {
+      display: grid;
+      grid-template-columns: 76px 1fr;
+      gap: 14px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .activity img {
+      width: 76px;
+      height: 76px;
+      object-fit: contain;
+    }
+
+    .activity h3 {
+      margin-bottom: 8px;
+      font-size: 24px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      padding: 9px 8px;
+      border-bottom: 1px solid #ece5d9;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      color: #4c453b;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0;
+    }
+
+    .systems {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+    }
+
+    .system-card {
+      padding: 18px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .system-card h3 {
+      margin-bottom: 8px;
+    }
+
+    .system-card p {
+      margin-bottom: 0;
+      color: var(--muted);
+    }
+
+    .asset-strip {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 24px;
+      align-items: center;
+    }
+
+    .asset-card {
+      padding: 18px;
+      border-radius: 8px;
+      background: #fff;
+      border: 1px solid var(--line);
+    }
+
+    .file-list {
+      display: grid;
+      gap: 8px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 13px;
+      color: #3d372f;
+    }
+
+    .file-list li {
+      padding: 8px 10px;
+      border-radius: 6px;
+      background: #f6f1e7;
+      overflow-wrap: anywhere;
+    }
+
+    .footer {
+      margin-top: 34px;
+      padding: 22px 0 0;
+      color: var(--muted);
+      font-size: 14px;
+      text-align: center;
+    }
+
+    @media (max-width: 980px) {
+      .hero,
+      .phone-wrap,
+      .asset-strip {
+        grid-template-columns: 1fr;
+      }
+
+      .identity-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .loop,
+      .systems {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .mockup-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .flow-map,
+      .rules-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
+      .page {
+        width: min(100% - 20px, 1180px);
+      }
+
+      .section {
+        padding: 18px;
+      }
+
+      .section-header {
+        display: block;
+      }
+
+      .pill {
+        display: inline-block;
+        margin-top: 6px;
+      }
+
+      .loop,
+      .wire-notes,
+      .identity-grid,
+      .activity-grid,
+      .systems,
+      .mockup-grid,
+      .flow-map,
+      .rules-list {
+        grid-template-columns: 1fr;
+      }
+
+      .activity {
+        grid-template-columns: 58px 1fr;
+      }
+
+      .activity img {
+        width: 58px;
+        height: 58px;
+      }
+
+      th, td {
+        padding: 8px 6px;
+        font-size: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Godot mobile idle RPG PRD</span>
+        <h1>Idle Elite Rebuild</h1>
+        <p class="hero-copy">A stamina-swapping idle RPG where every skill has its own mechanical identity. Players rotate between fighting, thieving, building, woodcutting, and fishing to become an all-around Idle Elitist.</p>
+      <div class="tagline">I must become an Idle Elitist!</div>
+        <nav class="nav-links" aria-label="Mockup pages">
+          <a class="nav-link" href="idle-elite-prd.html">PRD</a>
+          <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
+          <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
+          <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
+        </nav>
+      </div>
+      <aside class="hero-board" aria-label="Generated icon board">
+        <div class="hero-board-header">
+          <span>Reusable Icon Set</span>
+          <span>2x3 sprite sheet</span>
+        </div>
+        <div class="icon-grid">
+          <div class="icon-tile"><img src="assets/icons/fight.png" alt="Fight icon"><span>Fight</span></div>
+          <div class="icon-tile"><img src="assets/icons/thieving.png" alt="Thieving icon"><span>Thieving</span></div>
+          <div class="icon-tile"><img src="assets/icons/build.png" alt="Build icon"><span>Build</span></div>
+          <div class="icon-tile"><img src="assets/icons/woodcutting.png" alt="Woodcutting icon"><span>Woodcut</span></div>
+          <div class="icon-tile"><img src="assets/icons/fishing.png" alt="Fishing icon"><span>Fishing</span></div>
+          <div class="icon-tile"><img src="assets/icons/gear.png" alt="Gear icon"><span>Gear</span></div>
+        </div>
+      </aside>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Core Loop</h2>
+          <p>Skill-specific stamina creates natural movement. The player drains one activity pool, pivots to another, buys upgrades, and returns after regeneration or offline progress.</p>
+        </div>
+        <span class="pill">30 sec to 5 min sessions</span>
+      </div>
+      <div class="loop">
+        <div class="loop-step"><strong>1. Pick Skill</strong><p>Choose the stamina pool that is ready or needed for a goal.</p></div>
+        <div class="loop-step"><strong>2. Run Activity</strong><p>Spend stamina on a skill-specific action with unique timing, mastery, and success tuning.</p></div>
+        <div class="loop-step"><strong>3. Grow Mastery</strong><p>Gain skill XP and per-activity mastery. Mastery makes that exact action faster and cheaper.</p></div>
+        <div class="loop-step"><strong>4. Rotate</strong><p>When stamina is low, hop to another skill and keep momentum alive.</p></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Activity Button Rules</h2>
+          <p>The current prototype treats the activity button as the main game object. It must show title, reusable art, reusable background art, stamina, time, success, mastery progress, and the running progress rail without instructional clutter.</p>
+        </div>
+        <span class="pill">125 action review</span>
+      </div>
+      <div class="systems">
+        <div class="system-card"><h3>Base Time</h3><p><code>base_seconds = (1.0 + stamina * 0.75 + unlock_level * 0.06) * skill_time_scale * time_mod</code>. Each action owns a <code>time_mod</code>, so level 1 actions across different skills do not take the same time.</p></div>
+        <div class="system-card"><h3>Mastery</h3><p>Each activity has its own mastery level. <code>mastery_speed</code> lowers action time and <code>stamina_cut</code> lowers stamina cost, both tuned per action.</p></div>
+        <div class="system-card"><h3>Skill Level</h3><p>Skill level improves success chance after unlock. <code>success_growth</code> is per action, so some actions become reliable faster than others.</p></div>
+        <div class="system-card"><h3>Motivation Star</h3><p>The hero randomly becomes motivated to do one accessible action for 5 completions. Motivated actions show a star and grant +15% XP plus 10% faster cycles until the charges are spent, then motivation rerolls.</p></div>
+      </div>
+    </section>
+
+    <section class="section" id="exact-menu-mockups">
+      <div class="section-header">
+        <div>
+          <h2>Exact Menu Mockups</h2>
+          <p>These are closer to implementation screens. Each mockup shows what the player sees, which elements are tappable, and how the menus support frequent skill rotation.</p>
+        </div>
+        <span class="pill">Screen-by-screen flow</span>
+      </div>
+
+      <div class="flow-map" aria-label="Menu flow map">
+        <div class="flow-node">Home</div>
+        <div class="flow-node">Skills Drawer</div>
+        <div class="flow-node">Skill Actions</div>
+        <div class="flow-node">Running Action</div>
+        <div class="flow-node">Ad XP Boost</div>
+        <div class="flow-node">Hero Tab</div>
+      </div>
+
+      <div class="mockup-grid">
+        <article class="screen-card">
+          <div class="screen-head"><span>Home Screen</span><small>Skills drawer down</small></div>
+          <div class="screen-body">
+            <div class="activity-card">
+              <div class="row"><strong>Idle Elite</strong><span class="badge">Global Lv 5</span></div>
+              <small>Scrollable phone surface. The gray-headed hero stands in the home scene and changes pose every couple of minutes.</small>
+            </div>
+            <div class="hero-stat">
+              <img src="assets/icons/gear.png" alt="">
+              <div><strong>Gray-headed hero</strong><small>CSS pose set: idle, stretch, inspect, celebrate</small></div>
+              <span class="badge">2 min</span>
+            </div>
+            <div class="shop-row">
+              <img src="assets/ui/ad-reward.png" alt="">
+              <div><strong>Ad boost button</strong><small>Floats at the lower-right of the hero scene, roughly 66% down.</small></div>
+              <span class="badge">+10%</span>
+            </div>
+          </div>
+          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
+        </article>
+
+        <article class="screen-card">
+          <div class="screen-head"><span>Skills Drawer</span><small>Skills tab behavior</small></div>
+          <div class="screen-body">
+            <div class="activity-card">
+              <div class="row"><strong>Tap Skills</strong><span class="badge">drawer</span></div>
+              <small>On the skills menu, tapping the Skills tab rolls the rounded skill-button list down to reveal the home scene. Tapping it again brings the list back.</small>
+            </div>
+            <div class="compact-skill">
+              <img src="assets/icons/fight.png" alt="">
+              <div><strong>Fight</strong><small>Lv 1 - XP 0 / 300</small><div class="tiny-bar"><i style="width: 0%"></i></div></div>
+              <span class="badge">Open</span>
+            </div>
+            <div class="compact-skill">
+              <img src="assets/icons/fishing.png" alt="">
+              <div><strong>Fishing</strong><small>Lv 1 - XP 0 / 300</small><div class="tiny-bar"><i style="width: 0%"></i></div></div>
+              <span class="badge">Open</span>
+            </div>
+          </div>
+          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
+        </article>
+
+        <article class="screen-card">
+          <div class="screen-head"><span>Skill Actions</span><small>Fight example</small></div>
+          <div class="screen-body">
+            <div class="compact-skill">
+              <img src="assets/icons/fight.png" alt="">
+              <div><strong>Fight</strong><small>Lv 1 - XP 0 / 300</small><div class="tiny-bar"><i style="width: 0%"></i></div></div>
+              <span class="badge">top</span>
+            </div>
+            <div class="activity-card">
+              <div class="row"><strong>Top summary is not a card</strong><span class="badge">rule</span></div>
+              <small>The skill summary is an unboxed header with the icon, title, XP text, and thick black outlined XP bar.</small>
+            </div>
+            <div class="activity-card">
+              <div class="row"><strong>Shove Wobbly Hay Bale</strong><span class="badge">tap</span></div>
+              <small>Each action button shows generated art, background art, XP, stamina, time, success, mastery level/progress, and a full-width bottom progress rail.</small>
+            </div>
+          </div>
+          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
+        </article>
+
+        <article class="screen-card">
+          <div class="screen-head"><span>Action Button</span><small>Current components</small></div>
+          <div class="screen-body">
+            <div class="activity-card">
+              <div class="row"><strong>Generated action art</strong><span class="badge">125</span></div>
+              <small>All five skills use consistent thick black outline action art in <code>assets/{skill}/actions</code>. Fight is the reference style.</small>
+            </div>
+            <div class="stat-strip">
+              <div class="stat-chip"><strong>+23</strong><small>XP</small></div>
+              <div class="stat-chip"><strong>1</strong><small>Stamina</small></div>
+              <div class="stat-chip"><strong>1.6s</strong><small>Time</small></div>
+            </div>
+            <div class="result-feed">
+              No top-right green arrow.<br>
+              No "Mst" label.<br>
+              Mastery starts at Lv 0, so no medal until Lv 1.
+            </div>
+          </div>
+          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
+        </article>
+
+        <article class="screen-card">
+          <div class="screen-head"><span>Running Action</span><small>Progress rail</small></div>
+          <div class="screen-body">
+            <div class="activity-card">
+              <div class="row"><strong>RUNNING pill</strong><span class="badge">active</span></div>
+              <small>Only locked or running actions show the top-right pill. Idle unlocked actions have no arrow or extra text.</small>
+              <div class="tiny-bar"><i style="width: 62%"></i></div>
+            </div>
+            <div class="result-feed">
+              Bottom rail fills across the entire action button.<br>
+              Completion grants skill XP and action mastery XP.<br>
+              The action restarts automatically in the mock loop.
+            </div>
+          </div>
+          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
+        </article>
+
+        <article class="screen-card">
+          <div class="screen-head"><span>Ad XP Boost</span><small>Home button</small></div>
+          <div class="screen-body">
+            <div class="shop-row">
+              <img src="assets/ui/ad-reward.png" alt="">
+              <div><strong>Watch ad</strong><small>Adds +10% XP for 2 hours. Time stacks up to 6 hours and persists in local storage.</small></div>
+              <span class="badge">2h</span>
+            </div>
+            <div class="activity-card">
+              <div class="row"><strong>Button timer</strong><span class="badge">6h max</span></div>
+              <small>Button text shows +10% when inactive, then remaining time like 2h 00m or 6h 00m.</small>
+            </div>
+          </div>
+          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
+        </article>
+
+        <article class="screen-card">
+          <div class="screen-head"><span>Motivation / Mastery</span><small>Action badges</small></div>
+          <div class="screen-body">
+            <div class="activity-card">
+              <div class="row"><strong>Motivation star</strong><span class="badge">5 uses</span></div>
+              <small>One accessible action is randomly selected. It gets a star, +15% XP, and 10% faster cycle for 5 completions, then rerolls.</small>
+            </div>
+            <div class="activity-card">
+              <div class="row"><strong>Mastery medals</strong><span class="badge">Lv 1-20</span></div>
+              <small>No medal at Lv 0. Every mastery level after that shows a simplified medal on the action art.</small>
+            </div>
+          </div>
+          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
+        </article>
+
+        <article class="screen-card">
+          <div class="screen-head"><span>Hero Tab</span><small>Direct home</small></div>
+          <div class="screen-body">
+            <div class="activity-card">
+              <div class="row"><strong>Hero tab</strong><span class="badge">home</span></div>
+              <small>The Hero tab shows the same home screen directly, without the skills drawer covering it.</small>
+            </div>
+            <div class="hero-stat">
+              <img src="assets/icons/gear.png" alt="">
+              <div><strong>Future hero surface</strong><small>Stats, titles, prestige, and cosmetics can attach here after the core loop is stable.</small></div>
+              <span class="badge">later</span>
+            </div>
+          </div>
+          <div class="mini-tabs"><span>Skills</span><span class="active">Hero</span></div>
+        </article>
+      </div>
+
+      <div class="rules-list">
+        <div class="rule-card"><h3>Tap Targets</h3><p>Skill rows are rounded buttons. Action rows are large click targets. The ad boost is a distinct floating home button.</p></div>
+        <div class="rule-card"><h3>Phone Behavior</h3><p>The phone content scrolls like an actual device. The bottom tabs stay fixed while the app surface moves.</p></div>
+        <div class="rule-card"><h3>Current Source Of Truth</h3><p>The live mock pages define the visual behavior. The PRD records principles and screen intent, not stale alternate menus.</p></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Skill Identity</h2>
+          <p>Each skill needs a different math personality. If two skills can swap names and still play the same, one needs a stronger rule.</p>
+        </div>
+        <span class="pill">No reskins</span>
+      </div>
+      <div class="identity-grid">
+        <article class="identity">
+          <img src="assets/icons/fight.png" alt="Fight icon">
+          <strong>Fight</strong>
+          <ul><li>Risky bursts</li><li>Crit wins</li><li>Streak XP</li></ul>
+        </article>
+        <article class="identity">
+          <img src="assets/icons/thieving.png" alt="Thieving icon">
+          <strong>Thieving</strong>
+          <ul><li>Escalating heists</li><li>Heat meter</li><li>Success growth</li></ul>
+        </article>
+        <article class="identity">
+          <img src="assets/icons/build.png" alt="Build icon">
+          <strong>Build</strong>
+          <ul><li>Project bars</li><li>Steady XP</li><li>Permanent bonuses</li></ul>
+        </article>
+        <article class="identity">
+          <img src="assets/icons/woodcutting.png" alt="Woodcutting icon">
+          <strong>Woodcutting</strong>
+          <ul><li>Reliable output</li><li>Tree durability</li><li>Predictable wood grades</li></ul>
+        </article>
+        <article class="identity">
+          <img src="assets/icons/fishing.png" alt="Fishing icon">
+          <strong>Fishing</strong>
+          <ul><li>Catch quality</li><li>Bait choices</li><li>Stamina food</li></ul>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Activity Ladders</h2>
+          <p>Each starter skill now has a 25-action ladder in the action review page. The PRD keeps the high-level direction here, while the review page is the human-readable balancing surface for every action's stamina, time, success, mastery speed, stamina cut, and skill-level success growth.</p>
+        </div>
+        <span class="pill">25 actions per skill</span>
+      </div>
+      <p><a class="nav-link" href="idle-elite-action-review.html">Open full action review</a></p>
+      <div class="activity-grid">
+        <article class="activity">
+          <img src="assets/icons/fight.png" alt="Fight icon">
+          <div>
+            <h3>Fight</h3>
+            <table>
+              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
+              <tr><td>1</td><td>Shove Wobbly Hay Bale</td><td>Farm chores get personal</td></tr>
+              <tr><td>30</td><td>Defeat The Tractor That Would Not Start</td><td>Still on the farm, somehow epic</td></tr>
+              <tr><td>50</td><td>Rematch The Same Hay Bale, Somehow Stronger</td><td>Comedy escalation loop</td></tr>
+            </table>
+          </div>
+        </article>
+        <article class="activity">
+          <img src="assets/icons/thieving.png" alt="Thieving icon">
+          <div>
+            <h3>Thieving</h3>
+            <table>
+              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
+              <tr><td>1</td><td>Pocket A Penny Nobody Wanted</td><td>Small-time nonsense</td></tr>
+              <tr><td>28</td><td>Rob The Alien Spaceship's Bank</td><td>Big-time impossible heists</td></tr>
+              <tr><td>50</td><td>Steal The Alibi You Used To Do It</td><td>Reality-theft finale</td></tr>
+            </table>
+          </div>
+        </article>
+        <article class="activity">
+          <img src="assets/icons/build.png" alt="Build icon">
+          <div>
+            <h3>Build</h3>
+            <table>
+              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
+              <tr><td>1</td><td>Stack Bricks</td><td>Basic practical construction</td></tr>
+              <tr><td>30</td><td>Add Second Elite Tower On Top</td><td>Infrastructure gets ridiculous</td></tr>
+              <tr><td>50</td><td>Build The Building That Builds You</td><td>Architecture becomes the boss</td></tr>
+            </table>
+          </div>
+        </article>
+        <article class="activity">
+          <img src="assets/icons/woodcutting.png" alt="Woodcutting icon">
+          <div>
+            <h3>Woodcutting</h3>
+            <table>
+              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
+              <tr><td>1</td><td>Gather Fallen Branches</td><td>Reliable starter gathering</td></tr>
+              <tr><td>30</td><td>Clear The Forest's Legal Department</td><td>Mythic timber bureaucracy</td></tr>
+              <tr><td>50</td><td>Clear The Infinite Lumberyard</td><td>Endless chopping joke</td></tr>
+            </table>
+          </div>
+        </article>
+        <article class="activity">
+          <img src="assets/icons/fishing.png" alt="Fishing icon">
+          <div>
+            <h3>Fishing</h3>
+            <table>
+              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
+              <tr><td>1</td><td>Scoop Pond Minnows</td><td>Hands-on tiny catch</td></tr>
+              <tr><td>20</td><td>Use Sonar In The Farm Pond</td><td>Method changes often</td></tr>
+              <tr><td>50</td><td>Catch The Fishing Mechanic Itself</td><td>Fishing becomes meta</td></tr>
+            </table>
+          </div>
+        </article>
+        <article class="activity">
+          <img src="assets/icons/gear.png" alt="Gear icon">
+          <div>
+            <h3>Gear</h3>
+            <table>
+              <tr><th>Type</th><th>Example</th><th>Effect</th></tr>
+              <tr><td>Tool</td><td>Sharper Axe</td><td>Wood yield</td></tr>
+              <tr><td>Utility</td><td>Snack Bag</td><td>Max stamina</td></tr>
+              <tr><td>Town</td><td>Camp Kitchen</td><td>Cook fish into stamina</td></tr>
+            </table>
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Systems</h2>
+          <p>The rebuild keeps the old game's bones: global level from skill levels, passive cash, and activity stamina. The new version adds identity rules, offline progress, and monetization-friendly reward boosts.</p>
+        </div>
+      </div>
+      <div class="systems">
+        <div class="system-card"><h3>Global Level</h3><p>Sum of all skill levels. Unlocks the activity log, titles, upgrade collections, offline multipliers, and prestige.</p></div>
+        <div class="system-card"><h3>Stamina</h3><p>Each skill has its own pool. Players rotate often because Fight being tired does not stop Fishing or Build.</p></div>
+        <div class="system-card"><h3>Activity Mastery</h3><p>Every individual action has its own mastery level. Repeating a specific action makes that action faster and lowers its stamina cost.</p></div>
+        <div class="system-card"><h3>Rewarded Ads</h3><p>Optional boosts: double offline earnings, refill one selected stamina pool, temporary success buff, or daily goal reroll.</p></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-header">
+        <div>
+          <h2>Asset Kit</h2>
+          <p>The icons below were generated for this presentation and saved as reusable project assets. They can be imported into Godot now as first-pass UI icons.</p>
+        </div>
+        <span class="pill">Generated bitmap assets</span>
+      </div>
+      <div class="asset-strip">
+        <div class="asset-card">
+          <img src="assets/icons/idle-elite-icon-sheet.png" alt="Idle Elite icon sprite sheet">
+        </div>
+        <ul class="file-list">
+          <li>docs/assets/icons/idle-elite-icon-sheet.png</li>
+          <li>docs/assets/icons/fight.png</li>
+          <li>docs/assets/icons/thieving.png</li>
+          <li>docs/assets/icons/build.png</li>
+          <li>docs/assets/icons/woodcutting.png</li>
+          <li>docs/assets/icons/fishing.png</li>
+          <li>docs/assets/icons/gear.png</li>
+        </ul>
+      </div>
+    </section>
+
+    <div class="footer">Idle Elite Rebuild PRD HTML presentation. Generated icons use the imagegen built-in tool and were saved into this workspace.</div>
+  </main>
+</body>
+</html>

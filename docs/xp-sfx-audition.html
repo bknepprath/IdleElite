@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>XP Sound Audition</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #171816;
+      --panel: #22251f;
+      --panel-2: #2b3028;
+      --text: #f4f1db;
+      --muted: #bfc2a6;
+      --gold: #f4c84f;
+      --green: #7bd36a;
+      --blue: #7eb8ff;
+      --line: #3e4438;
+      --shadow: rgba(0, 0, 0, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Fredoka", "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 20% 8%, rgba(244, 200, 79, 0.16), transparent 28rem),
+        linear-gradient(135deg, #11130f 0%, var(--bg) 45%, #1d261d 100%);
+      color: var(--text);
+    }
+
+    main {
+      width: min(1120px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 32px 0 48px;
+    }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--line);
+      padding-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 4vw, 3.7rem);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 1rem;
+      line-height: 1.45;
+      max-width: 640px;
+    }
+
+    .meter {
+      flex: 0 0 auto;
+      display: grid;
+      gap: 8px;
+      min-width: 220px;
+      padding: 14px;
+      background: rgba(34, 37, 31, 0.72);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 16px 42px var(--shadow);
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--gold);
+    }
+
+    .section-label {
+      margin: 26px 0 12px;
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .section-label h2 {
+      margin: 0;
+      font-size: 1.24rem;
+      line-height: 1.1;
+    }
+
+    .section-label p {
+      font-size: 0.92rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 14px;
+    }
+
+    .sound {
+      min-height: 190px;
+      display: grid;
+      align-content: space-between;
+      gap: 16px;
+      padding: 18px;
+      background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: 0 12px 30px var(--shadow);
+    }
+
+    .sound[data-active="true"] {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(244, 200, 79, 0.18), 0 18px 42px var(--shadow);
+    }
+
+    .sound-top {
+      display: grid;
+      gap: 8px;
+    }
+
+    .sound-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 1.12rem;
+      line-height: 1.1;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      flex: 0 0 auto;
+      border: 1px solid rgba(244, 200, 79, 0.5);
+      border-radius: 999px;
+      padding: 4px 8px;
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .notes {
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    .scope {
+      height: 42px;
+      display: grid;
+      grid-template-columns: repeat(12, 1fr);
+      align-items: end;
+      gap: 3px;
+    }
+
+    .bar {
+      height: calc(var(--h) * 1%);
+      min-height: 5px;
+      border-radius: 4px 4px 0 0;
+      background: linear-gradient(180deg, var(--blue), var(--green));
+      opacity: 0.74;
+      transform-origin: bottom;
+    }
+
+    .sound[data-active="true"] .bar {
+      animation: pulse 340ms ease-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scaleY(0.45); opacity: 0.48; }
+      45% { transform: scaleY(1.18); opacity: 1; }
+      100% { transform: scaleY(1); opacity: 0.74; }
+    }
+
+    button {
+      width: 100%;
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #ffe27a, #e5a927);
+      color: #241b05;
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.4), 0 6px 0 #8d6718;
+      transform: translateY(0);
+    }
+
+    button:active {
+      transform: translateY(4px);
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.35), 0 2px 0 #8d6718;
+    }
+
+    .footer {
+      margin-top: 20px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .footer button {
+      width: auto;
+      min-width: 160px;
+      padding: 0 16px;
+      background: linear-gradient(180deg, #9ee990, #52b848);
+      box-shadow: inset 0 1px rgba(255, 255, 255, 0.34), 0 6px 0 #2e6f2a;
+    }
+
+    @media (max-width: 720px) {
+      header {
+        display: grid;
+        align-items: start;
+      }
+
+      .meter {
+        width: 100%;
+        min-width: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>XP Sound Audition</h1>
+        <p>Short synthesized UI sounds for repeated activity feedback. The first row preserves the XP success auditions; the second row explores gentle failure cues.</p>
+      </div>
+      <div class="meter">
+        <label for="volume">Audition volume</label>
+        <input id="volume" type="range" min="0" max="1" value="0.42" step="0.01">
+      </div>
+    </header>
+
+    <div class="section-label">
+      <h2>XP Success Options</h2>
+      <p>Glass Pip, Coinlet Ding, and Magic Droplet are now written into the project WAVs.</p>
+    </div>
+    <section class="grid" id="soundGrid" aria-label="XP success sound options"></section>
+
+    <div class="section-label">
+      <h2>Activity Failure Options</h2>
+      <p>Soft misses for “not enough stamina,” bad roll, or blocked action states.</p>
+    </div>
+    <section class="grid" id="failureGrid" aria-label="Activity failure sound options"></section>
+
+    <div class="footer">
+      <button id="playAll" type="button">Play all in sequence</button>
+      <button id="quickBurst" type="button">Test rapid XP taps</button>
+      <button id="failureBurst" type="button">Test rapid failures</button>
+    </div>
+  </main>
+
+  <script>
+    const sounds = [
+      {
+        id: "glass-pip",
+        name: "Glass Pip",
+        tag: "tiny ding",
+        notes: "Bright plink with a small rounded tail. Crisp and very repeatable.",
+        bars: [18, 72, 100, 58, 32, 22, 16, 12, 9, 7, 5, 4],
+        play: (ctx, out, t) => {
+          ping(ctx, out, t, 1046.5, 0.1, "sine", 0.72);
+          ping(ctx, out, t + 0.022, 1318.5, 0.085, "triangle", 0.34);
+          noisePop(ctx, out, t, 0.026, 0.035, 2600);
+        }
+      },
+      {
+        id: "bubble-boop",
+        name: "Bubble Boop",
+        tag: "soft pop",
+        notes: "Rounded upward pitch scoop. Friendly, gummy, and easy on the ear.",
+        bars: [44, 74, 98, 82, 56, 34, 24, 18, 14, 11, 8, 6],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 392, 523.25, 0.16, "sine", 0.68);
+          ping(ctx, out, t + 0.018, 784, 0.09, "triangle", 0.18);
+          noisePop(ctx, out, t, 0.018, 0.03, 1200);
+        }
+      },
+      {
+        id: "coinlet-ding",
+        name: "Coinlet Ding",
+        tag: "shimmer",
+        notes: "Mini metallic reward tick. Reads as valuable without becoming coin spam.",
+        bars: [20, 86, 74, 92, 58, 42, 31, 24, 18, 14, 10, 8],
+        play: (ctx, out, t) => {
+          ping(ctx, out, t, 880, 0.18, "triangle", 0.48);
+          ping(ctx, out, t + 0.014, 1760, 0.12, "sine", 0.2);
+          ping(ctx, out, t + 0.034, 1320, 0.11, "sine", 0.14);
+          noisePop(ctx, out, t, 0.014, 0.018, 5200);
+        }
+      },
+      {
+        id: "soft-arcade-pop",
+        name: "Soft Arcade Pop",
+        tag: "retro",
+        notes: "A polished arcade chirp with a small transient bite.",
+        bars: [58, 100, 76, 45, 30, 22, 16, 12, 9, 7, 5, 4],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 329.63, 392, 0.11, "square", 0.24);
+          sweep(ctx, out, t, 329.63, 392, 0.11, "sine", 0.46);
+          noisePop(ctx, out, t, 0.012, 0.028, 1800);
+        }
+      },
+      {
+        id: "magic-droplet",
+        name: "Magic Droplet",
+        tag: "sparkle",
+        notes: "Quick three-note droplet with a soft air tail. More magical than UI-standard.",
+        bars: [12, 34, 78, 100, 66, 52, 34, 24, 18, 13, 9, 6],
+        play: (ctx, out, t) => {
+          ping(ctx, out, t, 587.33, 0.1, "sine", 0.25);
+          ping(ctx, out, t + 0.042, 698.46, 0.12, "triangle", 0.34);
+          ping(ctx, out, t + 0.086, 880, 0.16, "sine", 0.4);
+          airTail(ctx, out, t + 0.06, 0.16, 0.05);
+        }
+      },
+      {
+        id: "rubber-button-boop",
+        name: "Rubber Button Boop",
+        tag: "tactile",
+        notes: "Low-mid bounce, like a satisfying button returning under your thumb.",
+        bars: [70, 96, 86, 62, 44, 30, 22, 16, 12, 9, 7, 5],
+        play: (ctx, out, t) => {
+          scoop(ctx, out, t, [261.63, 220, 329.63], [0, 0.045, 0.145], "sine", 0.68);
+          ping(ctx, out, t + 0.028, 523.25, 0.08, "triangle", 0.12);
+          noisePop(ctx, out, t, 0.024, 0.034, 900);
+        }
+      },
+      {
+        id: "xp-spark",
+        name: "XP Spark",
+        tag: "di-ding",
+        notes: "Two fast notes with a brighter second hit. Good for slightly larger XP chunks.",
+        bars: [14, 56, 84, 48, 28, 62, 100, 58, 32, 20, 13, 8],
+        play: (ctx, out, t) => {
+          ping(ctx, out, t, 493.88, 0.09, "triangle", 0.42);
+          ping(ctx, out, t + 0.09, 659.25, 0.12, "sine", 0.54);
+          ping(ctx, out, t + 0.096, 1318.5, 0.08, "sine", 0.13);
+          noisePop(ctx, out, t + 0.086, 0.012, 0.018, 3800);
+        }
+      },
+      {
+        id: "tiny-level-glint",
+        name: "Tiny Level Glint",
+        tag: "premium",
+        notes: "Short pop plus bell sparkle. A little fancier, but still under a quarter second.",
+        bars: [36, 88, 100, 64, 48, 38, 28, 20, 15, 11, 8, 6],
+        play: (ctx, out, t) => {
+          noisePop(ctx, out, t, 0.018, 0.03, 2200);
+          ping(ctx, out, t + 0.008, 783.99, 0.2, "sine", 0.42);
+          ping(ctx, out, t + 0.03, 1174.66, 0.12, "triangle", 0.2);
+          ping(ctx, out, t + 0.052, 1567.98, 0.09, "sine", 0.12);
+        }
+      }
+    ];
+
+    const failureSounds = [
+      {
+        id: "felt-dud",
+        name: "Felt Dud",
+        tag: "soft miss",
+        notes: "A padded low pop that says no without feeling harsh.",
+        bars: [86, 68, 44, 30, 22, 16, 12, 9, 7, 5, 4, 3],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 220, 146.83, 0.14, "sine", 0.54);
+          noisePop(ctx, out, t, 0.014, 0.04, 520);
+        }
+      },
+      {
+        id: "hollow-tock",
+        name: "Hollow Tock",
+        tag: "blocked",
+        notes: "Dry wooden tock with a small falling body. Good for unavailable actions.",
+        bars: [72, 94, 54, 34, 24, 17, 12, 9, 6, 5, 4, 3],
+        play: (ctx, out, t) => {
+          ping(ctx, out, t, 246.94, 0.11, "triangle", 0.38);
+          sweep(ctx, out, t + 0.012, 392, 220, 0.09, "sine", 0.22);
+          noisePop(ctx, out, t, 0.006, 0.028, 740);
+        }
+      },
+      {
+        id: "tiny-womp",
+        name: "Tiny Womp",
+        tag: "comic",
+        notes: "A short downward boop. Playful enough for idle-game failure loops.",
+        bars: [64, 80, 94, 70, 48, 32, 22, 16, 12, 8, 6, 4],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 330, 196, 0.19, "sine", 0.58);
+          ping(ctx, out, t + 0.03, 165, 0.13, "triangle", 0.22);
+        }
+      },
+      {
+        id: "dry-click-fall",
+        name: "Dry Click Fall",
+        tag: "snappy",
+        notes: "A clean click with a little pitch sag. Clear, fast, and low-fatigue.",
+        bars: [96, 58, 36, 24, 18, 14, 10, 8, 6, 5, 4, 3],
+        play: (ctx, out, t) => {
+          noisePop(ctx, out, t, 0.004, 0.018, 1500);
+          sweep(ctx, out, t + 0.006, 440, 277.18, 0.1, "triangle", 0.25);
+        }
+      },
+      {
+        id: "stamina-sigh",
+        name: "Stamina Sigh",
+        tag: "empty",
+        notes: "A tiny airy drop for depleted stamina or too-soon tapping.",
+        bars: [26, 56, 82, 100, 74, 52, 36, 24, 16, 11, 8, 5],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 523.25, 329.63, 0.16, "sine", 0.26);
+          airTail(ctx, out, t + 0.012, 0.18, 0.075);
+        }
+      },
+      {
+        id: "rubber-nope",
+        name: "Rubber Nope",
+        tag: "bounce",
+        notes: "Tactile down-up wobble. Failure that still feels gamey and responsive.",
+        bars: [54, 86, 72, 90, 58, 38, 26, 18, 13, 9, 6, 4],
+        play: (ctx, out, t) => {
+          scoop(ctx, out, t, [293.66, 207.65, 246.94], [0, 0.055, 0.15], "sine", 0.52);
+          noisePop(ctx, out, t, 0.016, 0.032, 650);
+        }
+      },
+      {
+        id: "velvet-err",
+        name: "Velvet Err",
+        tag: "err err",
+        notes: "Two low, soft buzz pulses with rounded edges. Clearly denied, not abrasive.",
+        bars: [64, 88, 54, 24, 12, 56, 82, 48, 22, 10, 6, 4],
+        play: (ctx, out, t) => {
+          softBuzz(ctx, out, t, 176, 0.082, 0.35, -0.04);
+          softBuzz(ctx, out, t + 0.112, 164.81, 0.09, 0.31, 0.04);
+        }
+      },
+      {
+        id: "pillow-buzzer",
+        name: "Pillow Buzzer",
+        tag: "muffled",
+        notes: "A cushioned mini-buzzer pair with a darker second pulse.",
+        bars: [78, 96, 62, 28, 14, 68, 90, 52, 24, 12, 7, 4],
+        play: (ctx, out, t) => {
+          softBuzz(ctx, out, t, 220, 0.074, 0.28, -0.1);
+          softBuzz(ctx, out, t + 0.102, 196, 0.086, 0.32, 0.08);
+          ping(ctx, out, t + 0.006, 110, 0.15, "sine", 0.16);
+        }
+      },
+      {
+        id: "terminal-nope",
+        name: "Terminal Nope",
+        tag: "digital",
+        notes: "A UI-ish two-beep error, softened with sine support under the buzz.",
+        bars: [58, 82, 74, 34, 16, 52, 86, 70, 30, 14, 8, 5],
+        play: (ctx, out, t) => {
+          softBuzz(ctx, out, t, 246.94, 0.068, 0.24, -0.06);
+          softBuzz(ctx, out, t + 0.092, 233.08, 0.082, 0.25, 0.06);
+          ping(ctx, out, t, 493.88, 0.055, "sine", 0.08);
+          ping(ctx, out, t + 0.092, 466.16, 0.06, "sine", 0.07);
+        }
+      },
+      {
+        id: "warm-reject",
+        name: "Warm Reject",
+        tag: "low err",
+        notes: "A softer, lower ERR ERR with a slight pitch sag. Best for stamina gating.",
+        bars: [72, 84, 46, 20, 10, 62, 74, 40, 18, 9, 6, 4],
+        play: (ctx, out, t) => {
+          softBuzz(ctx, out, t, 146.83, 0.095, 0.34, -0.08);
+          sweep(ctx, out, t, 146.83, 138.59, 0.095, "sine", 0.18);
+          softBuzz(ctx, out, t + 0.124, 138.59, 0.1, 0.3, 0.08);
+          sweep(ctx, out, t + 0.124, 138.59, 130.81, 0.1, "sine", 0.16);
+        }
+      }
+    ];
+
+    let audioContext;
+    let masterGain;
+    const volume = document.querySelector("#volume");
+    const grid = document.querySelector("#soundGrid");
+    const failureGrid = document.querySelector("#failureGrid");
+
+    function ensureAudio() {
+      if (!audioContext) {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioContext.createGain();
+        masterGain.gain.value = Number(volume.value);
+        masterGain.connect(audioContext.destination);
+      }
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+      return audioContext;
+    }
+
+    function envGain(ctx, out, t, duration, level) {
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(level, t + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+      g.connect(out);
+      return g;
+    }
+
+    function ping(ctx, out, t, hz, duration, type, level) {
+      const osc = ctx.createOscillator();
+      const g = envGain(ctx, out, t, duration, level);
+      osc.type = type;
+      osc.frequency.setValueAtTime(hz, t);
+      osc.frequency.exponentialRampToValueAtTime(hz * 1.006, t + duration);
+      osc.connect(g);
+      osc.start(t);
+      osc.stop(t + duration + 0.01);
+    }
+
+    function sweep(ctx, out, t, from, to, duration, type, level) {
+      const osc = ctx.createOscillator();
+      const g = envGain(ctx, out, t, duration, level);
+      osc.type = type;
+      osc.frequency.setValueAtTime(from, t);
+      osc.frequency.exponentialRampToValueAtTime(to, t + duration * 0.72);
+      osc.frequency.exponentialRampToValueAtTime(to * 0.996, t + duration);
+      osc.connect(g);
+      osc.start(t);
+      osc.stop(t + duration + 0.01);
+    }
+
+    function scoop(ctx, out, t, freqs, offsets, type, level) {
+      const osc = ctx.createOscillator();
+      const g = envGain(ctx, out, t, 0.17, level);
+      osc.type = type;
+      freqs.forEach((freq, index) => {
+        const when = t + offsets[index];
+        if (index === 0) {
+          osc.frequency.setValueAtTime(freq, when);
+        } else {
+          osc.frequency.exponentialRampToValueAtTime(freq, when);
+        }
+      });
+      osc.connect(g);
+      osc.start(t);
+      osc.stop(t + 0.19);
+    }
+
+    function softBuzz(ctx, out, t, hz, duration, level, pan) {
+      const osc = ctx.createOscillator();
+      const shaper = ctx.createWaveShaper();
+      const filter = ctx.createBiquadFilter();
+      const g = envGain(ctx, out, t, duration, level);
+      const curve = new Float32Array(256);
+      for (let i = 0; i < curve.length; i += 1) {
+        const x = i / 127.5 - 1;
+        curve[i] = Math.tanh(x * 1.8) * 0.72;
+      }
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(hz, t);
+      osc.frequency.exponentialRampToValueAtTime(hz * 0.985, t + duration);
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(780, t);
+      filter.frequency.exponentialRampToValueAtTime(520, t + duration);
+      filter.Q.value = 0.7;
+      const panNode = ctx.createStereoPanner();
+      panNode.pan.value = pan;
+      shaper.curve = curve;
+      osc.connect(shaper);
+      shaper.connect(filter);
+      filter.connect(panNode);
+      panNode.connect(g);
+      osc.start(t);
+      osc.stop(t + duration + 0.01);
+    }
+
+    function noisePop(ctx, out, t, attack, duration, cutoff) {
+      const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
+      const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i += 1) {
+        const fade = 1 - i / bufferSize;
+        data[i] = (Math.random() * 2 - 1) * fade * fade;
+      }
+
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const g = ctx.createGain();
+      source.buffer = buffer;
+      filter.type = "bandpass";
+      filter.frequency.value = cutoff;
+      filter.Q.value = 0.9;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.12, t + attack);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + duration);
+      source.connect(filter);
+      filter.connect(g);
+      g.connect(out);
+      source.start(t);
+      source.stop(t + duration + 0.01);
+    }
+
+    function airTail(ctx, out, t, duration, level) {
+      const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) {
+        data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+      }
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const g = envGain(ctx, out, t, duration, level);
+      source.buffer = buffer;
+      filter.type = "highpass";
+      filter.frequency.value = 2600;
+      source.connect(filter);
+      filter.connect(g);
+      source.start(t);
+      source.stop(t + duration + 0.01);
+    }
+
+    function markActive(id) {
+      document.querySelectorAll(".sound").forEach((card) => {
+        card.dataset.active = String(card.id === id);
+      });
+      window.setTimeout(() => {
+        const card = document.getElementById(id);
+        if (card) card.dataset.active = "false";
+      }, 420);
+    }
+
+    function playSound(sound, delay = 0) {
+      const ctx = ensureAudio();
+      const t = ctx.currentTime + delay;
+      sound.play(ctx, masterGain, t);
+      window.setTimeout(() => markActive(sound.id), delay * 1000);
+    }
+
+    function renderGrid(target, items) {
+      target.innerHTML = items.map((sound) => `
+        <article class="sound" id="${sound.id}" data-active="false">
+          <div class="sound-top">
+            <div class="sound-title">
+              <h3>${sound.name}</h3>
+              <span class="tag">${sound.tag}</span>
+            </div>
+            <p class="notes">${sound.notes}</p>
+          </div>
+          <div class="scope" aria-hidden="true">
+            ${sound.bars.map((h) => `<span class="bar" style="--h:${h}"></span>`).join("")}
+          </div>
+          <button type="button" data-sound="${sound.id}">Play</button>
+        </article>
+      `).join("");
+    }
+
+    function render() {
+      renderGrid(grid, sounds);
+      renderGrid(failureGrid, failureSounds);
+    }
+
+    volume.addEventListener("input", () => {
+      if (masterGain) {
+        masterGain.gain.value = Number(volume.value);
+      }
+    });
+
+    function handleGridClick(event, items) {
+      const button = event.target.closest("button[data-sound]");
+      if (!button) return;
+      const sound = items.find((item) => item.id === button.dataset.sound);
+      playSound(sound);
+    }
+
+    grid.addEventListener("click", (event) => handleGridClick(event, sounds));
+    failureGrid.addEventListener("click", (event) => handleGridClick(event, failureSounds));
+
+    document.querySelector("#playAll").addEventListener("click", () => {
+      sounds.forEach((sound, index) => playSound(sound, index * 0.42));
+    });
+
+    document.querySelector("#quickBurst").addEventListener("click", () => {
+      const picks = [sounds[1], sounds[0], sounds[3], sounds[1], sounds[6], sounds[0]];
+      picks.forEach((sound, index) => playSound(sound, index * 0.14));
+    });
+
+    document.querySelector("#failureBurst").addEventListener("click", () => {
+      const picks = [failureSounds[6], failureSounds[7], failureSounds[9], failureSounds[6], failureSounds[8], failureSounds[7]];
+      picks.forEach((sound, index) => playSound(sound, index * 0.15));
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+# Idle Elite Final Google Play Upload Checklist
+
+Use this after the real AdMob IDs are available.
+
+## Before Rebuilding
+
+- Create or open the Idle Elite app in AdMob.
+- Create an Android rewarded ad unit in AdMob.
+- Run `.\scripts\set-admob-ids.ps1 -AdMobAppId "ca-app-pub-...~..." -RewardedUnitId "ca-app-pub-.../..."`
+- Run `.\scripts\check-project.ps1`.
+
+## Build And Local Test
+
+- Run `.\scripts\build-android-release.ps1`.
+- Verify `builds/android/idle-elite-release.aab` exists.
+- Run `jarsigner -verify builds\android\idle-elite-release.aab`.
+- Run `.\scripts\test-release-aab.ps1 -UninstallExisting` with an emulator or phone connected.
+- Launch the app and confirm the release build no longer says `Ad Not Configured`.
+
+## Real Device Ad Test
+
+- Install on a physical Android phone through local bundletool testing or Play internal testing.
+- Open the rewarded ad prompt.
+- Confirm the ad loads.
+- Confirm backing out or closing the ad does not grant the boost.
+- Confirm finishing the ad grants the +10% XP boost.
+- Watch logcat for crashes or repeated AdMob errors.
+
+## Play Console
+
+- Create the app as `Idle Elite`.
+- Confirm package name is `com.idleelite.game`.
+- Enroll in Play App Signing.
+- Upload `builds/android/idle-elite-release.aab`.
+- Add the 512x512 icon from `docs/play-store/assets/app-icon-512.png`.
+- Add the feature graphic from `docs/play-store/assets/feature-graphic-1024x500.png`.
+- Add phone screenshots from `docs/play-store/assets/screenshot-*.png`.
+- Paste listing copy from `docs/play-store/google-play-store-listing.md`.
+- Host the privacy policy and paste its URL.
+- Complete the Ads declaration.
+- Complete Data Safety using `docs/play-store/app-content-notes.md`.
+- Complete Content Rating, Target Audience, and Store Settings.
+- Publish to Internal testing first.
+
+## Keep Safe
+
+- Preserve `release/idle-elite-upload.keystore`.
+- Preserve `release/local-release-notes.md`.
+- Do not commit `release/` or `builds/`.

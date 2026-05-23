@@ -1,0 +1,20 @@
+.godot/
+.codex-tools/
+*.tmp
+*.translation
+__pycache__/
+*.pyc
+export/
+builds/
+release/
+android/build/.gradle/
+android/build/build/
+android/build/assetPack*/
+android/build/libs/debug/
+android/build/libs/release/
+google key downloads/
+*.keystore
+*.jks
+*.p12
+*.pem
+local-release-notes.md
