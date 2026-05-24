@@ -1,24 +1,24 @@
-# Idle Elite Play Store Readiness - 2026-05-23
+# Idle Elite Play Store Readiness - 2026-05-24
 
 ## Automated Checks Run
 
 - `.\scripts\check-project.ps1`: passed. Godot 4.5.1 loaded the project headlessly.
-- `.\scripts\build-android-release.ps1`: passed after fixing a false failure when Godot returns a blank process exit code while still producing the bundle.
-- `jarsigner -verify builds\android\idle-elite-release.aab`: passed with expected self-signed upload-key warnings.
-- `bundletool dump manifest --bundle=builds\android\idle-elite-release.aab`: passed.
-- `.\scripts\test-release-aab.ps1 -UninstallExisting`: passed after adding native command exit-code checks and waiting for a connected Android device.
-- Emulator launch smoke: passed. Android reported `Displayed com.idleelite.game/com.godot.game.GodotApp`, and no crash was visible in the recent launch log.
+- `.\scripts\build-android-release.ps1`: passed after updating it to inject the release keystore password temporarily from `IDLE_ELITE_KEYSTORE_PASSWORD`.
+- `jarsigner -verify builds\android\idle-elite-release-v0.1.2-code3.aab`: passed with expected self-signed upload-key warnings.
+- `bundletool dump manifest --bundle=builds\android\idle-elite-release-v0.1.2-code3.aab`: passed.
+- `bundletool build-apks --mode=universal`: passed and produced `builds/android/idle-elite-release-v0.1.2-code3.apks`.
 
 ## Current Release Artifact
 
-- Bundle: `builds/android/idle-elite-release.aab`
-- APK set for local testing: `builds/android/idle-elite-release.apks`
+- Bundle: `builds/android/idle-elite-release-v0.1.2-code3.aab`
+- APK set for local testing: `builds/android/idle-elite-release-v0.1.2-code3.apks`
 - Package: `com.idleelite.game`
-- Version: `0.1.0`
-- Version code: `1`
+- Version: `0.1.1`
+- Version code: `2`
 - Min SDK: `24`
 - Target SDK: `35`
-- Primary ABI installed in emulator test: `arm64-v8a`
+- Bundle size: `125878503` bytes
+- Universal APK set size: `175368325` bytes
 
 ## Store Assets Verified
 

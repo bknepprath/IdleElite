@@ -2,8 +2,8 @@
 
 ## Current Build Artifacts
 
-- Play upload bundle: `builds/android/idle-elite-release.aab`
-- Bundletool test package: `builds/android/idle-elite-release.apks`
+- Play upload bundle: `builds/android/idle-elite-release-v0.1.2-code3.aab`
+- Bundletool test package: `builds/android/idle-elite-release-v0.1.2-code3.apks`
 - Debug APK used for emulator testing: `builds/android/idle-elite-debug.apk`
 - Upload keystore: `release/idle-elite-upload.keystore`
 - Local keystore details: `release/local-release-notes.md`
@@ -52,7 +52,7 @@ Use this helper when the real AdMob IDs are available:
 1. Create a Google Play app named `Idle Elite`.
 2. Package name must be `com.idleelite.game`.
 3. Enroll in Play App Signing.
-4. Upload `builds/android/idle-elite-release.aab`.
+4. Upload `builds/android/idle-elite-release-v0.1.2-code3.aab`.
 5. Store listing:
    - App icon: `docs/play-store/assets/app-icon-512.png`
    - Feature graphic: `docs/play-store/assets/feature-graphic-1024x500.png`
@@ -64,6 +64,7 @@ Use this helper when the real AdMob IDs are available:
 ## Rebuild Commands
 
 ```powershell
+$env:IDLE_ELITE_KEYSTORE_PASSWORD = "<upload keystore password>"
 .\scripts\check-project.ps1
 .\scripts\build-android-release.ps1
 ```

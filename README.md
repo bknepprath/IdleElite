@@ -69,4 +69,4 @@ Current status:
 - Debug builds use Google's rewarded test ad unit ID.
 - Release builds require real AdMob IDs before rewarded ads are enabled.
 - The in-game ad button grants the +10% XP boost only from the rewarded callback on device.
-- The latest release App Bundle is generated at `builds/android/idle-elite-release.aab`.
+- The latest release App Bundle is generated with a versioned filename, for example `builds/android/idle-elite-release-v0.1.2-code3.aab`.

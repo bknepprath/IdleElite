@@ -6,8 +6,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $bundletool = Join-Path $projectRoot ".codex-tools\bundletool-all-1.18.3.jar"
-$aab = Join-Path $projectRoot "builds\android\idle-elite-release.aab"
-$apks = Join-Path $projectRoot "builds\android\idle-elite-release.apks"
+$exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $keystore = Join-Path $projectRoot "release\idle-elite-upload.keystore"
 $adb = Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb.exe"
 $java = Join-Path "C:\Program Files\Android\Android Studio\jbr\bin" "java.exe"
@@ -23,6 +22,22 @@ function Assert-NativeCommandSucceeded {
         throw "$Action failed with exit code $LASTEXITCODE"
     }
 }
+
+if (-not (Test-Path -LiteralPath $exportPresetsPath)) {
+    throw "Required file not found: $exportPresetsPath"
+}
+$exportPresets = Get-Content -Raw -LiteralPath $exportPresetsPath
+if ($exportPresets -notmatch '(?m)^version/name="([^"]+)"') {
+    throw "Could not read Android version name from $exportPresetsPath"
+}
+$versionName = $Matches[1]
+if ($exportPresets -notmatch '(?m)^version/code=(\d+)') {
+    throw "Could not read Android version code from $exportPresetsPath"
+}
+$versionCode = $Matches[1]
+$artifactBaseName = "idle-elite-release-v$versionName-code$versionCode"
+$aab = Join-Path $projectRoot "builds\android\$artifactBaseName.aab"
+$apks = Join-Path $projectRoot "builds\android\$artifactBaseName.apks"
 
 foreach ($path in @($bundletool, $aab, $keystore, $adb, $java)) {
     if (-not (Test-Path -LiteralPath $path)) {

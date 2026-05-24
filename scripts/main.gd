@@ -12,8 +12,10 @@ class RegenCircle:
 	var theme_color := Color("#36b8e8")
 	var value_initialized := false
 	var stamina_initialized := false
+	var readout_font: Font
 
 	func _ready() -> void:
+		_load_readout_font()
 		set_process(true)
 
 	func set_value(next_value: float, instant := false) -> void:
@@ -29,17 +31,17 @@ class RegenCircle:
 		theme_color = next_color
 		queue_redraw()
 
-	func set_stamina(next_current: int, next_maximum: int, instant := false) -> void:
+	func set_stamina(next_current: int, next_maximum: int, instant := false, regen_fraction := 0.0) -> void:
 		current = maxi(0, next_current)
 		maximum = maxi(1, next_maximum)
-		target_current = clampf(float(current), 0.0, float(maximum))
+		target_current = clampf(float(current) + clampf(regen_fraction, 0.0, 1.0), 0.0, float(maximum))
 		if instant or not stamina_initialized:
 			displayed_current = target_current
 			stamina_initialized = true
 		queue_redraw()
 
 	func _process(delta: float) -> void:
-		var next_value := _ease_to(value, target_value, 8.0, delta)
+		var next_value := _ease_to(value, target_value, 18.0, delta)
 		var next_current := _ease_to(displayed_current, target_current, 9.0, delta)
 		if absf(next_value - value) > 0.0005 or absf(next_current - displayed_current) > 0.01:
 			value = next_value
@@ -94,22 +96,62 @@ class RegenCircle:
 			y += step
 
 	func _draw_center_text(center: Vector2) -> void:
-		var font := ThemeDB.fallback_font
-		var large := maxi(32, int(minf(size.x, size.y) * 0.155))
-		var shown_current := clampi(int(round(displayed_current)), 0, maximum)
-		var text := "Tired!" if shown_current <= 0 else "%s/%s" % [shown_current, maximum]
-		var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, large)
-		var text_pos := center + Vector2(-text_size.x * 0.5, text_size.y * 0.32)
-		_draw_stroked_text(font, text, text_pos, large)
+		var font := readout_font if readout_font != null else ThemeDB.fallback_font
+		var min_size := minf(size.x, size.y)
+		var scale := min_size / 552.0
+		var max_text_width := min_size * 0.58
+		var large := _fit_font_size(font, str(clampi(current, 0, maximum)), maxi(54, int(min_size * 0.275)), 42, max_text_width)
+		var small_text := "%s STAMINA" % maximum
+		var small := _fit_font_size(font, small_text, maxi(24, int(min_size * 0.092)), 18, max_text_width)
+		var shown_current := clampi(current, 0, maximum)
+		var divider_y := center.y + 36.0 * scale
+		var current_center_y := center.y - 34.0 * scale
+		var max_center_y := center.y + 78.0 * scale
+		_draw_stroked_text_centered(font, str(shown_current), Vector2(center.x, current_center_y), large, Color.WHITE, maxi(5, int(round(8.0 * scale))))
+		_draw_center_divider(center, divider_y, 106.0 * scale, scale)
+		_draw_stroked_text_centered(font, small_text, Vector2(center.x, max_center_y), small, Color("#fff2a8"), maxi(4, int(round(5.0 * scale))))
 
-	func _draw_stroked_text(font: Font, text: String, position: Vector2, font_size: int) -> void:
-		for offset in [
-			Vector2(-3, -3), Vector2(0, -3), Vector2(3, -3),
-			Vector2(-3, 0), Vector2(3, 0),
-			Vector2(-3, 3), Vector2(0, 3), Vector2(3, 3)
-		]:
-			draw_string(font, position + offset, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("#171615"))
-		draw_string(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color.WHITE)
+	func _load_readout_font() -> void:
+		if ResourceLoader.exists("res://assets/fonts/Fredoka.ttf"):
+			var loaded := load("res://assets/fonts/Fredoka.ttf")
+			if loaded is Font:
+				var bold := FontVariation.new()
+				bold.base_font = loaded
+				bold.variation_embolden = 1.05
+				readout_font = bold
+		if readout_font == null:
+			readout_font = ThemeDB.fallback_font
+
+	func _fit_font_size(font: Font, text: String, desired_size: int, minimum_size: int, max_width: float) -> int:
+		var fitted := desired_size
+		while fitted > minimum_size and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
+			fitted -= 2
+		return fitted
+
+	func _draw_center_divider(center: Vector2, y: float, width: float, scale: float) -> void:
+		var start := Vector2(center.x - width * 0.5, y)
+		var finish := Vector2(center.x + width * 0.5, y)
+		var stroke_width := maxf(6.0, 12.0 * scale)
+		var fill_width := maxf(2.0, 4.5 * scale)
+		draw_line(start, finish, Color("#171615"), stroke_width, true)
+		draw_circle(start, stroke_width * 0.5, Color("#171615"))
+		draw_circle(finish, stroke_width * 0.5, Color("#171615"))
+		draw_line(start, finish, Color.WHITE, fill_width, true)
+		draw_circle(start, fill_width * 0.5, Color.WHITE)
+		draw_circle(finish, fill_width * 0.5, Color.WHITE)
+
+	func _draw_stroked_text_centered(font: Font, text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
+		var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+		var baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
+		var position := Vector2(center.x - text_size.x * 0.5, baseline)
+		for x in range(-stroke_size, stroke_size + 1):
+			for y in range(-stroke_size, stroke_size + 1):
+				if x == 0 and y == 0:
+					continue
+				var offset := Vector2(x, y)
+				if offset.length() <= float(stroke_size) + 0.25:
+					draw_string(font, position + offset, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("#171615"))
+		draw_string(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
 
 
 class CleanProgressBar:
@@ -119,7 +161,8 @@ class CleanProgressBar:
 	var fill_color := Color.WHITE
 	var track_color := Color("#fff1c8")
 	var border_color := Color("#171615")
-	var border_width := 9.0
+	var border_width := 12.0
+	var easing_speed := 12.0
 
 	func set_value(next_value: float) -> void:
 		value = clampf(next_value, 0.0, 100.0)
@@ -165,14 +208,20 @@ class ActivityProgressRail:
 	extends Control
 
 	var value := 0.0
+	var easing_speed := 24.0
 	var fill_color := Color("#35d86d")
 	var empty_color := Color("#fff1c8")
 	var top_lip_color := Color("#171615")
 	var top_lip_height := 16.0
 	var bottom_radius := 66.0
+	var fill_style := StyleBoxFlat.new()
+	var empty_style := StyleBoxFlat.new()
 
 	func set_value(next_value: float) -> void:
-		value = clampf(next_value, 0.0, 100.0)
+		var clamped := clampf(next_value, 0.0, 100.0)
+		if absf(value - clamped) <= 0.001:
+			return
+		value = clamped
 		queue_redraw()
 
 	func _draw() -> void:
@@ -180,31 +229,24 @@ class ActivityProgressRail:
 			return
 		draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, top_lip_height)), top_lip_color)
 		var track_rect := Rect2(Vector2(0, top_lip_height), Vector2(size.x, maxf(0.0, size.y - top_lip_height)))
-		_draw_bottom_round_fill(track_rect, empty_color, 1.0)
-		_draw_bottom_round_fill(track_rect, fill_color, value / 100.0)
+		_draw_bottom_round_fill(track_rect, empty_style, empty_color, 1.0)
+		_draw_bottom_round_fill(track_rect, fill_style, fill_color, value / 100.0)
 
-	func _draw_bottom_round_fill(rect: Rect2, color: Color, fill_pct: float) -> void:
+	func _draw_bottom_round_fill(rect: Rect2, style: StyleBoxFlat, color: Color, fill_pct: float) -> void:
 		var pct := clampf(fill_pct, 0.0, 1.0)
 		if pct <= 0.0 or rect.size.y <= 0.0:
 			return
 		var radius := minf(bottom_radius, minf(rect.size.x * 0.5, rect.size.y))
-		var fill_right := rect.position.x + rect.size.x * pct
-		var bottom := rect.end.y
-		var arc_start := bottom - radius
-		var center_y := arc_start
-		var y := rect.position.y
-		while y <= bottom:
-			var left_bound := rect.position.x
-			var right_bound := rect.end.x
-			if y > arc_start and radius > 0.0:
-				var dy := y - center_y
-				var chord := sqrt(maxf(0.0, radius * radius - dy * dy))
-				left_bound = rect.position.x + radius - chord
-				right_bound = rect.end.x - radius + chord
-			var line_right := minf(right_bound, fill_right)
-			if line_right > left_bound:
-				draw_line(Vector2(left_bound, y), Vector2(line_right, y), color, 2.0, false)
-			y += 2.0
+		var fill_rect := Rect2(rect.position, Vector2(rect.size.x * pct, rect.size.y))
+		if fill_rect.size.x <= 0.0:
+			return
+		style.bg_color = color
+		var left_radius := int(minf(radius, fill_rect.size.x * 0.5))
+		style.corner_radius_bottom_left = left_radius
+		style.corner_radius_bottom_right = 0
+		if pct >= 0.999:
+			style.corner_radius_bottom_right = int(radius)
+		draw_style_box(style, fill_rect)
 
 
 class AchievementMedalSlotStrip:
@@ -341,6 +383,10 @@ class MobileScrollContainer:
 	extends ScrollContainer
 
 	const DRAG_DEADZONE := 18.0
+	const FLICK_SAMPLE_SECONDS := 0.14
+	const FLICK_MIN_VELOCITY := 90.0
+	const FLICK_MAX_VELOCITY := 4200.0
+	const INERTIA_DECAY := 5.4
 	const PULL_RESISTANCE_MAX := 210.0
 	const PULL_SNAP_SECONDS := 0.34
 
@@ -348,6 +394,9 @@ class MobileScrollContainer:
 	var drag_scrolling := false
 	var drag_start := Vector2.ZERO
 	var drag_last := Vector2.ZERO
+	var drag_touch_index := -1
+	var drag_scroll_position := 0.0
+	var drag_velocity_samples := []
 	var velocity := 0.0
 	var pull_resistance_enabled := false
 	var pull_raw_offset := 0.0
@@ -384,13 +433,18 @@ class MobileScrollContainer:
 					drag_scrolling = false
 					drag_start = event.global_position
 					drag_last = event.global_position
+					drag_touch_index = -1
+					drag_scroll_position = float(scroll_vertical)
+					_reset_drag_velocity_samples(event.global_position)
 					velocity = 0.0
 			elif drag_tracking:
 				if drag_scrolling:
 					child_click_suppressed = true
+					_apply_release_velocity(event.global_position)
 					get_viewport().set_input_as_handled()
 				drag_tracking = false
 				drag_scrolling = false
+				drag_touch_index = -1
 				_snap_pull_offset()
 				if child_click_suppressed:
 					call_deferred("_clear_child_click_suppression")
@@ -405,13 +459,9 @@ class MobileScrollContainer:
 			if drag_scrolling:
 				child_click_suppressed = true
 				var delta_y: float = event.global_position.y - drag_last.y
-				if pull_resistance_enabled and (pull_raw_offset > 0.0 or (scroll_vertical <= 0 and delta_y > 0.0)):
-					_set_pull_raw_offset(maxf(0.0, pull_raw_offset + delta_y))
-					velocity = 0.0
-				else:
-					scroll_vertical = clampi(scroll_vertical - int(round(delta_y)), 0, _max_scroll_vertical())
-					velocity = -delta_y * 60.0
+				_apply_drag_delta(delta_y)
 				drag_last = event.global_position
+				_record_drag_velocity_sample(event.global_position)
 				get_viewport().set_input_as_handled()
 		if event is InputEventScreenTouch:
 			if event.pressed:
@@ -422,20 +472,25 @@ class MobileScrollContainer:
 					drag_scrolling = false
 					drag_start = event.position
 					drag_last = event.position
+					drag_touch_index = event.index
+					drag_scroll_position = float(scroll_vertical)
+					_reset_drag_velocity_samples(event.position)
 					velocity = 0.0
-			elif drag_tracking:
+			elif drag_tracking and event.index == drag_touch_index:
 				if drag_scrolling:
 					child_click_suppressed = true
+					_apply_release_velocity(event.position)
 					get_viewport().set_input_as_handled()
 				drag_tracking = false
 				drag_scrolling = false
+				drag_touch_index = -1
 				_snap_pull_offset()
 				if child_click_suppressed:
 					call_deferred("_clear_child_click_suppression")
 			elif child_click_suppressed:
 				call_deferred("_clear_child_click_suppression")
 			return
-		if event is InputEventScreenDrag and drag_tracking:
+		if event is InputEventScreenDrag and drag_tracking and event.index == drag_touch_index:
 			var distance: float = event.position.distance_to(drag_start)
 			var drag_offset: Vector2 = event.position - drag_start
 			if distance >= DRAG_DEADZONE and absf(drag_offset.y) > absf(drag_offset.x) * 1.15:
@@ -443,26 +498,76 @@ class MobileScrollContainer:
 			if drag_scrolling:
 				child_click_suppressed = true
 				var delta_y: float = event.position.y - drag_last.y
-				if pull_resistance_enabled and (pull_raw_offset > 0.0 or (scroll_vertical <= 0 and delta_y > 0.0)):
-					_set_pull_raw_offset(maxf(0.0, pull_raw_offset + delta_y))
-					velocity = 0.0
-				else:
-					scroll_vertical = clampi(scroll_vertical - int(round(delta_y)), 0, _max_scroll_vertical())
-					velocity = -delta_y * 60.0
+				_apply_drag_delta(delta_y)
 				drag_last = event.position
+				_record_drag_velocity_sample(event.position)
 				get_viewport().set_input_as_handled()
 
 	func _process(delta: float) -> void:
 		if _modal_blocks_this_scroll():
 			velocity = 0.0
 			return
-		if drag_tracking or pull_offset > 0.0 or absf(velocity) < 4.0:
+		if drag_tracking or absf(pull_offset) > 0.0 or absf(velocity) < 4.0:
 			return
-		scroll_vertical = clampi(scroll_vertical + int(round(velocity * delta)), 0, _max_scroll_vertical())
-		velocity = lerpf(velocity, 0.0, 1.0 - exp(-9.0 * delta))
+		_set_scroll_vertical_float(drag_scroll_position + velocity * delta)
+		velocity = lerpf(velocity, 0.0, 1.0 - exp(-INERTIA_DECAY * delta))
+
+	func _apply_drag_delta(delta_y: float) -> void:
+		if pull_resistance_enabled:
+			if absf(pull_raw_offset) > 0.0:
+				var next_pull_raw_offset := pull_raw_offset + delta_y
+				if pull_raw_offset > 0.0 and next_pull_raw_offset < 0.0:
+					next_pull_raw_offset = 0.0
+				elif pull_raw_offset < 0.0 and next_pull_raw_offset > 0.0:
+					next_pull_raw_offset = 0.0
+				_set_pull_raw_offset(next_pull_raw_offset)
+				velocity = 0.0
+				return
+			var max_scroll := float(_max_scroll_vertical())
+			var requested_scroll := drag_scroll_position - delta_y
+			if requested_scroll < 0.0:
+				_set_scroll_vertical_float(0.0)
+				_set_pull_raw_offset(-requested_scroll)
+				velocity = 0.0
+				return
+			if requested_scroll > max_scroll:
+				_set_scroll_vertical_float(max_scroll)
+				_set_pull_raw_offset(max_scroll - requested_scroll)
+				velocity = 0.0
+				return
+		_set_scroll_vertical_float(drag_scroll_position - delta_y)
+		velocity = -delta_y * 60.0
+
+	func _set_scroll_vertical_float(next_value: float) -> void:
+		drag_scroll_position = clampf(next_value, 0.0, float(_max_scroll_vertical()))
+		scroll_vertical = int(round(drag_scroll_position))
 
 	func _contains_global_point(point: Vector2) -> bool:
 		return Rect2(global_position, size).has_point(point)
+
+	func _reset_drag_velocity_samples(position: Vector2) -> void:
+		drag_velocity_samples.clear()
+		_record_drag_velocity_sample(position)
+
+	func _record_drag_velocity_sample(position: Vector2) -> void:
+		var now := Time.get_ticks_msec() / 1000.0
+		drag_velocity_samples.append({"position": position, "time": now})
+		while drag_velocity_samples.size() > 2 and now - float(drag_velocity_samples[0]["time"]) > FLICK_SAMPLE_SECONDS:
+			drag_velocity_samples.pop_front()
+
+	func _apply_release_velocity(position: Vector2) -> void:
+		if absf(pull_raw_offset) > 0.0 or drag_velocity_samples.is_empty():
+			velocity = 0.0
+			return
+		_record_drag_velocity_sample(position)
+		var newest: Dictionary = drag_velocity_samples[drag_velocity_samples.size() - 1]
+		var oldest: Dictionary = drag_velocity_samples[0]
+		var elapsed := float(newest["time"]) - float(oldest["time"])
+		if elapsed <= 0.0:
+			return
+		var delta_y := (newest["position"] as Vector2).y - (oldest["position"] as Vector2).y
+		var release_velocity := clampf(-delta_y / elapsed, -FLICK_MAX_VELOCITY, FLICK_MAX_VELOCITY)
+		velocity = release_velocity if absf(release_velocity) >= FLICK_MIN_VELOCITY else 0.0
 
 	func _modal_blocks_this_scroll() -> bool:
 		var tree := get_tree()
@@ -498,6 +603,7 @@ class MobileScrollContainer:
 		velocity = 0.0
 		var clamped_target := clampi(target, 0, _max_scroll_vertical())
 		if duration <= 0.0:
+			drag_scroll_position = float(clamped_target)
 			scroll_vertical = clamped_target
 			return
 		scroll_tween = create_tween()
@@ -515,16 +621,17 @@ class MobileScrollContainer:
 		scroll_tween = null
 
 	func _set_pull_raw_offset(next_raw_offset: float) -> void:
-		pull_raw_offset = maxf(0.0, next_raw_offset)
-		pull_offset = PULL_RESISTANCE_MAX * (1.0 - exp(-pull_raw_offset / PULL_RESISTANCE_MAX))
+		pull_raw_offset = next_raw_offset
+		var direction := signf(pull_raw_offset)
+		pull_offset = direction * PULL_RESISTANCE_MAX * (1.0 - exp(-absf(pull_raw_offset) / PULL_RESISTANCE_MAX))
 		position.y = pull_offset
 
 	func _snap_pull_offset() -> void:
-		if not pull_resistance_enabled and pull_offset <= 0.0:
+		if not pull_resistance_enabled and absf(pull_offset) <= 0.0:
 			pull_raw_offset = 0.0
 			pull_offset = 0.0
 			return
-		if pull_offset <= 0.0:
+		if absf(pull_offset) <= 0.0:
 			_set_pull_raw_offset(0.0)
 			return
 		_cancel_pull_tween()
@@ -541,9 +648,9 @@ class MobileScrollContainer:
 	func _cancel_pull_tween() -> void:
 		if pull_tween != null and pull_tween.is_valid():
 			pull_tween.kill()
-			pull_offset = maxf(0.0, position.y)
-			var pull_pct := clampf(pull_offset / PULL_RESISTANCE_MAX, 0.0, 0.98)
-			pull_raw_offset = -PULL_RESISTANCE_MAX * log(1.0 - pull_pct)
+			pull_offset = position.y
+			var pull_pct := clampf(absf(pull_offset) / PULL_RESISTANCE_MAX, 0.0, 0.98)
+			pull_raw_offset = signf(pull_offset) * -PULL_RESISTANCE_MAX * log(1.0 - pull_pct)
 		pull_tween = null
 
 
@@ -620,15 +727,19 @@ const AD_BONUS_MAX_SECONDS := 6 * 60 * 60
 const AD_BONUS_XP_MULT := 0.10
 const AD_BONUS_SPEED_MULT := 0.10
 const MODAL_OVERLAY_Z := 4096
+const TARGET_FRAME_RATE := 120
 const ACHIEVEMENTS_MODAL_SIZE := Vector2(1760, 3000)
+const ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN := Vector2(64, 80)
 const ACHIEVEMENTS_MODAL_SCROLL_HEIGHT := 2220.0
 const ACHIEVEMENT_TOAST_SIZE := Vector2(1500, 360)
 const ACHIEVEMENT_TOAST_GAP := 28.0
+const ACHIEVEMENT_TOAST_VIEWPORT_MARGIN := Vector2(36, 36)
 const GLOBAL_BUFFS_MODAL_MIN_HEIGHT := 1440.0
 const GLOBAL_BUFFS_MODAL_BASE_HEIGHT := 1260.0
 const GLOBAL_BUFFS_MODAL_ROW_HEIGHT := 120.0
 const GLOBAL_BUFFS_MODAL_MAX_HEIGHT := 2740.0
 const GLOBAL_BUFFS_MODAL_SCROLL_CHROME := 760.0
+const ACTION_PROGRESS_RAIL_INSET := 16
 
 const COLOR_INK := Color("#171615")
 const COLOR_PAPER := Color("#f8f1e5")
@@ -769,6 +880,7 @@ var skill_swipe_tracking := false
 var skill_swipe_horizontal := false
 var skill_swipe_start := Vector2.ZERO
 var skill_swipe_last := Vector2.ZERO
+var skill_swipe_touch_index := -1
 var skill_swipe_tween: Tween
 var skill_swipe_frame: Control
 var skill_swipe_page: Control
@@ -778,6 +890,7 @@ var skill_swipe_animating := false
 var settings_overlay: Control
 var settings_panel: PanelContainer
 var achievements_overlay: Control
+var achievements_panel_frame: Control
 var achievements_panel: PanelContainer
 var achievements_scroll: ScrollContainer
 var achievements_list_stack: VBoxContainer
@@ -792,9 +905,14 @@ var failure_player: AudioStreamPlayer
 var level_player: AudioStreamPlayer
 var medal_player: AudioStreamPlayer
 var audio_unlocked_by_input := false
+var max_stamina_cache_valid := false
+var cached_max_stamina := BASE_MAX_STAMINA
 
 
 func _ready() -> void:
+	OS.low_processor_usage_mode = false
+	OS.low_processor_usage_mode_sleep_usec = 0
+	Engine.max_fps = TARGET_FRAME_RATE
 	_load_font()
 	_load_action_data()
 	_init_state()
@@ -833,6 +951,7 @@ func _input(event: InputEvent) -> void:
 				skill_swipe_horizontal = false
 				skill_swipe_start = event.global_position
 				skill_swipe_last = event.global_position
+				skill_swipe_touch_index = -1
 		elif skill_swipe_tracking:
 			_finish_skill_swipe(event.global_position)
 		return
@@ -845,10 +964,11 @@ func _input(event: InputEvent) -> void:
 			skill_swipe_horizontal = false
 			skill_swipe_start = event.position
 			skill_swipe_last = event.position
-		elif skill_swipe_tracking:
+			skill_swipe_touch_index = event.index
+		elif skill_swipe_tracking and event.index == skill_swipe_touch_index:
 			_finish_skill_swipe(event.position)
 		return
-	if event is InputEventScreenDrag and skill_swipe_tracking:
+	if event is InputEventScreenDrag and skill_swipe_tracking and event.index == skill_swipe_touch_index:
 		_update_skill_swipe_feedback(event.position)
 
 
@@ -974,12 +1094,12 @@ func _build_elite_summary() -> Control:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 6)
 	var copy := VBoxContainer.new()
-	copy.custom_minimum_size = Vector2(860, 0)
+	copy.custom_minimum_size = Vector2(660, 0)
 	copy.add_theme_constant_override("separation", 12)
 	row.add_child(copy)
 	achievement_elite_label = _label("", 112, Color("#f4bf35"), HORIZONTAL_ALIGNMENT_CENTER)
 	achievement_elite_label.add_theme_color_override("font_outline_color", COLOR_INK)
-	achievement_elite_label.add_theme_constant_override("outline_size", 12)
+	achievement_elite_label.add_theme_constant_override("outline_size", 18)
 	copy.add_child(achievement_elite_label)
 	achievement_total_bar = _progress(Color("#f4bf35"), 58)
 	copy.add_child(achievement_total_bar)
@@ -1271,10 +1391,15 @@ func _build_achievements_overlay() -> void:
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	achievements_overlay.add_child(center)
+	var frame := Control.new()
+	frame.custom_minimum_size = ACHIEVEMENTS_MODAL_SIZE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(frame)
+	achievements_panel_frame = frame
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = ACHIEVEMENTS_MODAL_SIZE
 	panel.add_theme_stylebox_override("panel", _panel_style(COLOR_PANEL, 16, CARD_RADIUS))
-	center.add_child(panel)
+	frame.add_child(panel)
 	achievements_panel = panel
 	var outer := MarginContainer.new()
 	outer.add_theme_constant_override("margin_left", 54)
@@ -1613,15 +1738,24 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page.add_child(divider)
 
+	var actions_clip := Control.new()
+	actions_clip.custom_minimum_size.x = content_width
+	actions_clip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions_clip.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	actions_clip.clip_contents = true
+	page.add_child(actions_clip)
+
 	var actions_scroll := MobileScrollContainer.new()
 	detail_actions_scroll = actions_scroll
 	detail_action_card_nodes.clear()
 	detail_rendered_action_ids.clear()
+	actions_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	actions_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actions_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	actions_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	actions_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	page.add_child(actions_scroll)
+	actions_scroll.set_pull_resistance_enabled(true)
+	actions_clip.add_child(actions_scroll)
 	var stack := VBoxContainer.new()
 	stack.custom_minimum_size.x = content_width
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1743,6 +1877,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		medal.z_index = 21
 		art_panel.add_child(medal)
 		var mastery_progress := _progress(Color("#f4bf35"), 56)
+		mastery_progress.easing_speed = 5.0
 		mastery_progress.z_index = 20
 		copy.add_child(mastery_progress)
 
@@ -1755,10 +1890,10 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		progress.anchor_right = 1.0
 		progress.anchor_top = 1.0
 		progress.anchor_bottom = 1.0
-		progress.offset_left = 0
-		progress.offset_right = 0
+		progress.offset_left = ACTION_PROGRESS_RAIL_INSET
+		progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
 		progress.offset_top = -126
-		progress.offset_bottom = 0
+		progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
 		progress.z_index = 152
 		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(progress)
@@ -1821,30 +1956,37 @@ func _update_page_visibility() -> void:
 func _update_ui(delta: float, instant := false) -> void:
 	if _skill_detail_needs_action_list_refresh():
 		_render_screen(false, detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1)
-	if home_total_label != null:
+	if current_screen == "home" and home_total_label != null:
 		home_total_label.text = "Total Lv %s" % _global_level()
-	for skill_id in home_skill_labels.keys():
-		(home_skill_labels[skill_id] as Label).text = "%s Lvl %s" % [_skill_name(str(skill_id)), _skill_level(str(skill_id))]
-	_update_achievements_ui(delta, instant)
-	for skill_id in skill_cards.keys():
-		var xp := _xp_progress(str(skill_id))
-		var card: Dictionary = skill_cards[skill_id]
-		(card["title"] as Label).text = "%s" % _skill_name(str(skill_id))
-		(card["meta"] as Label).text = "Lv %s  XP %s / %s" % [
-			_skill_level(str(skill_id)),
-			int(xp["current"]),
-			int(xp["needed"])
-		]
-		(card["xp"] as CleanProgressBar).fill_color = _skill_theme_color(str(skill_id))
-		_set_bar(card["xp"], float(xp["pct"]), delta, instant)
-		var stamina_gauge := card["stamina"] as RegenCircle
-		if stamina_gauge != null:
-			var circle_value := 1.0
-			if _stamina(str(skill_id)) < _max_stamina():
-				circle_value = float(stamina_bank.get(str(skill_id), 0.0)) / STAMINA_REGEN_SECONDS
-			stamina_gauge.set_theme_color(_skill_theme_color(str(skill_id)))
-			stamina_gauge.set_stamina(_stamina(str(skill_id)), _max_stamina(), instant)
-			stamina_gauge.set_value(_regen_ring_ease(circle_value), instant)
+		for skill_id in home_skill_labels.keys():
+			var skill_id_text := str(skill_id)
+			(home_skill_labels[skill_id] as Label).text = "%s Lvl %s" % [_skill_name(skill_id_text), _skill_level(skill_id_text)]
+	var achievements_visible := current_screen == "home" or (achievements_overlay != null and achievements_overlay.visible)
+	if achievements_visible:
+		_update_achievements_ui(delta, instant)
+	if current_screen == "menu":
+		for skill_id in skill_cards.keys():
+			var skill_id_text := str(skill_id)
+			var xp := _xp_progress(skill_id_text)
+			var card: Dictionary = skill_cards[skill_id]
+			(card["title"] as Label).text = "%s" % _skill_name(skill_id_text)
+			(card["meta"] as Label).text = "Lv %s  XP %s / %s" % [
+				_skill_level(skill_id_text),
+				int(xp["current"]),
+				int(xp["needed"])
+			]
+			(card["xp"] as CleanProgressBar).fill_color = _skill_theme_color(skill_id_text)
+			_set_bar(card["xp"], float(xp["pct"]), delta, instant)
+			var stamina_gauge := card["stamina"] as RegenCircle
+			if stamina_gauge != null:
+				var max_stamina := _max_stamina()
+				var stamina_value := _stamina(skill_id_text)
+				var circle_value := 1.0
+				if stamina_value < max_stamina:
+					circle_value = float(stamina_bank.get(skill_id_text, 0.0)) / STAMINA_REGEN_SECONDS
+				stamina_gauge.set_theme_color(_skill_theme_color(skill_id_text))
+				stamina_gauge.set_stamina(stamina_value, max_stamina, instant, circle_value)
+				stamina_gauge.set_value(_regen_ring_ease(circle_value), instant)
 	if current_screen == "skill":
 		var detail_xp := _xp_progress(selected_skill_id)
 		if detail_xp_label != null:
@@ -1853,11 +1995,13 @@ func _update_ui(delta: float, instant := false) -> void:
 			detail_xp_bar.fill_color = _skill_theme_color(selected_skill_id)
 			_set_bar(detail_xp_bar, float(detail_xp["pct"]), delta, instant)
 		if detail_regen_circle != null:
+			var max_stamina := _max_stamina()
+			var stamina_value := _stamina(selected_skill_id)
 			var circle_value := 1.0
-			if _stamina(selected_skill_id) < _max_stamina():
+			if stamina_value < max_stamina:
 				circle_value = float(stamina_bank.get(selected_skill_id, 0.0)) / STAMINA_REGEN_SECONDS
 			detail_regen_circle.set_theme_color(_skill_theme_color(selected_skill_id))
-			detail_regen_circle.set_stamina(_stamina(selected_skill_id), _max_stamina(), instant)
+			detail_regen_circle.set_stamina(stamina_value, max_stamina, instant, circle_value)
 			detail_regen_circle.set_value(_regen_ring_ease(circle_value), instant)
 	for key in action_cards.keys():
 		var parts := str(key).split(":")
@@ -1867,31 +2011,69 @@ func _update_ui(delta: float, instant := false) -> void:
 		var unlocked := _skill_level(skill_id) >= int(action.get("unlock", 1))
 		var running := running_skill_id == skill_id and running_action_id == action_id
 		var card: Dictionary = action_cards[key]
-		(card["button"] as Button).disabled = not unlocked
-		(card["button"] as Button).modulate = Color(1, 1, 1, 0)
-		(card["bg"] as CanvasItem).modulate = Color.WHITE
-		var shade := card["shade"] as Panel
-		shade.visible = not unlocked
-		shade.add_theme_stylebox_override("panel", _activity_shade_style(0.58))
-		(card["art_panel"] as CanvasItem).modulate = Color.WHITE if unlocked else Color(1, 1, 1, 0.62)
-		(card["xp"] as Label).text = "+%s\nXP" % _effective_xp(action)
-		(card["stamina"] as Label).text = "%s\nSTAM" % _effective_stamina(action)
-		(card["time"] as Label).text = "%ss\nTIME" % _format_seconds(_effective_seconds(skill_id, action))
-		(card["success"] as Label).text = "%s%%\nRATE" % int(_success_chance(skill_id, action))
+		_update_action_card_static_state(card, skill_id, action, unlocked)
 		var status := card["status"] as Label
 		status.text = ""
 		var medal := card["medal"] as TextureRect
 		var mastery_level := _mastery_level(skill_id, action_id)
-		medal.visible = mastery_level > 0
-		medal.texture = _mastery_medal_texture(mastery_level) if mastery_level > 0 else null
-		medal.modulate = Color.WHITE
+		if int(card.get("last_mastery_level", -1)) != mastery_level:
+			medal.visible = mastery_level > 0
+			medal.texture = _mastery_medal_texture(mastery_level) if mastery_level > 0 else null
+			medal.modulate = Color.WHITE
+			card["last_mastery_level"] = mastery_level
 		_set_bar(card["mastery"], _mastery_progress_pct(skill_id, action_id), delta, instant)
-		(card["progress"] as ActivityProgressRail).fill_color = _skill_theme_color(skill_id)
-		_set_bar(card["progress"], action_progress * 100.0 if running else 0.0, delta, instant)
+		var progress_rail := card["progress"] as ActivityProgressRail
+		progress_rail.fill_color = _skill_theme_color(skill_id)
+		var progress_target := action_progress * 100.0 if running else 0.0
+		var progress_instant := instant
+		if running and progress_target + 6.0 < progress_rail.value:
+			progress_instant = true
+		_set_bar(progress_rail, progress_target, delta, progress_instant)
 	if mute_button != null:
 		mute_button.text = "Unmute" if is_muted else "Mute"
 	if shop_bonus_label != null:
 		shop_bonus_label.text = _shop_bonus_status_text()
+
+
+func _update_action_card_static_state(card: Dictionary, skill_id: String, action: Dictionary, unlocked: bool) -> void:
+	var xp_text := "+%s\nXP" % _effective_xp(action)
+	var stamina_text := "%s\nSTAM" % _effective_stamina(action)
+	var time_text := "%ss\nTIME" % _format_seconds(_effective_seconds(skill_id, action))
+	var success_text := "%s%%\nRATE" % int(_success_chance(skill_id, action))
+	if card.get("last_xp_text", "") != xp_text:
+		_set_label_text_if_changed(card["xp"] as Label, xp_text)
+		card["last_xp_text"] = xp_text
+	if card.get("last_stamina_text", "") != stamina_text:
+		_set_label_text_if_changed(card["stamina"] as Label, stamina_text)
+		card["last_stamina_text"] = stamina_text
+	if card.get("last_time_text", "") != time_text:
+		_set_label_text_if_changed(card["time"] as Label, time_text)
+		card["last_time_text"] = time_text
+	if card.get("last_success_text", "") != success_text:
+		_set_label_text_if_changed(card["success"] as Label, success_text)
+		card["last_success_text"] = success_text
+	if card.get("last_unlocked", null) == unlocked:
+		return
+	var button := card["button"] as Button
+	if button != null:
+		button.disabled = not unlocked
+		button.modulate = Color(1, 1, 1, 0)
+	var bg := card["bg"] as CanvasItem
+	if bg != null:
+		bg.modulate = Color.WHITE
+	var shade := card["shade"] as Panel
+	if shade != null:
+		shade.visible = not unlocked
+		shade.add_theme_stylebox_override("panel", _activity_shade_style(0.58))
+	var art_panel := card["art_panel"] as CanvasItem
+	if art_panel != null:
+		art_panel.modulate = Color.WHITE if unlocked else Color(1, 1, 1, 0.62)
+	card["last_unlocked"] = unlocked
+
+
+func _set_label_text_if_changed(label: Label, next_text: String) -> void:
+	if label != null and label.text != next_text:
+		label.text = next_text
 
 
 func _update_achievements_ui(delta: float, instant: bool) -> void:
@@ -2371,6 +2553,8 @@ func _visible_actions_for_skill(skill_id: String) -> Array:
 func _skill_detail_needs_action_list_refresh() -> bool:
 	if current_screen != "skill":
 		return false
+	if skill_swipe_animating:
+		return false
 	var expected_action_ids := []
 	for action in _visible_actions_for_skill(selected_skill_id):
 		expected_action_ids.append(str(action["id"]))
@@ -2421,6 +2605,10 @@ func _update_skill_swipe_feedback(position: Vector2) -> void:
 	var abs_x := absf(delta.x)
 	var abs_y := absf(delta.y)
 	if not skill_swipe_horizontal:
+		if abs_y >= SKILL_SWIPE_FEEDBACK_DEADZONE and abs_y > abs_x * 1.15:
+			skill_swipe_tracking = false
+			skill_swipe_touch_index = -1
+			return
 		if abs_x < SKILL_SWIPE_FEEDBACK_DEADZONE:
 			return
 		if abs_x < abs_y * 1.25:
@@ -2444,7 +2632,7 @@ func _skill_swipe_visual_target() -> Control:
 
 func _skill_swipe_visual_distance(abs_x: float) -> float:
 	var drag_distance := clampf(abs_x - SKILL_SWIPE_FEEDBACK_DEADZONE, 0.0, SKILL_SWIPE_MAX_DRAG)
-	return minf(SKILL_SWIPE_MAX_DRAG, drag_distance * 0.92)
+	return minf(_skill_swipe_page_span() * 0.86, drag_distance)
 
 
 func _skill_swipe_page_span() -> float:
@@ -2476,6 +2664,7 @@ func _clear_skill_swipe_preview() -> void:
 func _cancel_skill_swipe_feedback(animated := true) -> void:
 	skill_swipe_tracking = false
 	skill_swipe_horizontal = false
+	skill_swipe_touch_index = -1
 	var target := _skill_swipe_visual_target()
 	if target == null:
 		_clear_skill_swipe_preview()
@@ -2501,6 +2690,7 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 func _finish_skill_swipe(end_position: Vector2) -> void:
 	var delta: Vector2 = end_position - skill_swipe_start
 	skill_swipe_tracking = false
+	skill_swipe_touch_index = -1
 	if absf(delta.x) < SKILL_SWIPE_THRESHOLD or absf(delta.x) < absf(delta.y) * 1.35:
 		_cancel_skill_swipe_feedback(true)
 		return
@@ -2511,18 +2701,26 @@ func _finish_skill_swipe(end_position: Vector2) -> void:
 func _commit_skill_swipe(offset: int) -> void:
 	skill_swipe_horizontal = false
 	var target := _skill_swipe_visual_target()
-	if target == null:
+	if target == null or skill_swipe_preview_page == null or not is_instance_valid(skill_swipe_preview_page):
 		_navigate_skill_page(offset)
 		return
 	_kill_skill_swipe_tween()
-	var entry_x := target.position.x + signi(offset) * _skill_swipe_page_span()
-	if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page):
-		entry_x = skill_swipe_preview_page.position.x
-	_clear_skill_swipe_preview()
-	_navigate_skill_page(offset, entry_x)
+	var span := _skill_swipe_page_span()
+	var exit_x := -signi(offset) * span
+	skill_swipe_animating = true
+	skill_swipe_tween = create_tween()
+	skill_swipe_tween.set_parallel(true)
+	skill_swipe_tween.tween_property(target, "position:x", exit_x, SKILL_SWIPE_SETTLE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	skill_swipe_tween.tween_property(skill_swipe_preview_page, "position:x", 0.0, SKILL_SWIPE_SETTLE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_play(click_player)
+	skill_swipe_tween.finished.connect(func():
+		skill_swipe_animating = false
+		skill_swipe_tween = null
+		_navigate_skill_page(offset, 0.0, false, false)
+	)
 
 
-func _navigate_skill_page(offset: int, entry_x := 0.0) -> void:
+func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, play_click := true) -> void:
 	var current_index := _skill_index(selected_skill_id)
 	if current_index < 0:
 		return
@@ -2535,12 +2733,13 @@ func _navigate_skill_page(offset: int, entry_x := 0.0) -> void:
 	var next_skill_id := str(skill_defs[next_index]["id"])
 	selected_skill_id = next_skill_id
 	current_screen = "skill"
-	_play(click_player)
+	if play_click:
+		_play(click_player)
 	_render_screen(true)
 	_update_ui(0.0, true)
 	var target := _skill_swipe_visual_target()
 	if target != null:
-		if absf(entry_x) > 1.0:
+		if animate_entry and absf(entry_x) > 1.0:
 			target.position.x = entry_x
 			_kill_skill_swipe_tween()
 			skill_swipe_animating = true
@@ -2763,10 +2962,10 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	progress.anchor_right = 1.0
 	progress.anchor_top = 1.0
 	progress.anchor_bottom = 1.0
-	progress.offset_left = 0
-	progress.offset_right = 0
+	progress.offset_left = ACTION_PROGRESS_RAIL_INSET
+	progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
 	progress.offset_top = -126
-	progress.offset_bottom = 0
+	progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
 	progress.z_index = 152
 	progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.add_child(progress)
@@ -2873,14 +3072,7 @@ func _regen_stamina(delta: float) -> void:
 
 
 func _regen_ring_ease(raw_value: float) -> float:
-	var t := clampf(raw_value, 0.0, 1.0)
-	if t <= 0.0 or t >= 1.0:
-		return t
-	if t < 0.9:
-		var u := t / 0.9
-		return 0.9 * pow(u, 1.7)
-	var finish := (t - 0.9) / 0.1
-	return 0.9 + 0.1 * (1.0 - pow(1.0 - finish, 2.4))
+	return clampf(raw_value, 0.0, 1.0)
 
 
 func _start_action(skill_id: String, action_id: String) -> void:
@@ -2982,7 +3174,7 @@ func _on_settings_overlay_gui_input(event: InputEvent) -> void:
 
 
 func _on_achievements_overlay_gui_input(event: InputEvent) -> void:
-	if _event_is_outside_panel_press(event, achievements_panel):
+	if _event_is_outside_panel_press(event, achievements_panel_frame):
 		_close_achievements_overlay()
 
 
@@ -3032,7 +3224,10 @@ func _rebuild_achievements_overlay() -> void:
 	for key in achievements_tab_buttons.keys():
 		var button := achievements_tab_buttons[key] as Button
 		if button != null:
-			button.add_theme_stylebox_override("normal", _panel_style(COLOR_GOLD if str(key) == achievements_modal_tab else COLOR_PANEL, 12, 48))
+			var active := str(key) == achievements_modal_tab
+			button.add_theme_stylebox_override("normal", _panel_style(COLOR_GOLD if active else COLOR_PANEL, 16, 48))
+			button.add_theme_stylebox_override("hover", _panel_style(COLOR_GOLD, 16, 48))
+			button.add_theme_stylebox_override("pressed", _panel_style(COLOR_GOLD.darkened(0.08), 16, 48))
 	if achievements_hide_completed != null:
 		achievements_hide_completed.visible = achievements_modal_tab == "achievements"
 	if achievements_modal_tab == "buffs":
@@ -3044,9 +3239,11 @@ func _rebuild_achievements_overlay() -> void:
 func _apply_achievements_modal_layout(buff_count: int) -> void:
 	if achievements_panel == null or achievements_scroll == null:
 		return
+	var modal_size := ACHIEVEMENTS_MODAL_SIZE
+	var scroll_height := ACHIEVEMENTS_MODAL_SCROLL_HEIGHT
 	if achievements_modal_tab != "buffs":
-		achievements_panel.custom_minimum_size = ACHIEVEMENTS_MODAL_SIZE
-		achievements_scroll.custom_minimum_size = Vector2(0, ACHIEVEMENTS_MODAL_SCROLL_HEIGHT)
+		_fit_achievements_modal(modal_size)
+		achievements_scroll.custom_minimum_size = Vector2(0, scroll_height)
 		return
 	var visible_rows := maxi(1, buff_count)
 	var modal_height := clampf(
@@ -3054,8 +3251,42 @@ func _apply_achievements_modal_layout(buff_count: int) -> void:
 		GLOBAL_BUFFS_MODAL_MIN_HEIGHT,
 		GLOBAL_BUFFS_MODAL_MAX_HEIGHT
 	)
-	achievements_panel.custom_minimum_size = Vector2(ACHIEVEMENTS_MODAL_SIZE.x, modal_height)
-	achievements_scroll.custom_minimum_size = Vector2(0, maxf(520.0, modal_height - GLOBAL_BUFFS_MODAL_SCROLL_CHROME))
+	modal_size = Vector2(ACHIEVEMENTS_MODAL_SIZE.x, modal_height)
+	scroll_height = maxf(520.0, modal_height - GLOBAL_BUFFS_MODAL_SCROLL_CHROME)
+	_fit_achievements_modal(modal_size)
+	achievements_scroll.custom_minimum_size = Vector2(0, scroll_height)
+
+
+func _fit_achievements_modal(modal_size: Vector2) -> void:
+	var fitted_scale := _fit_scale_to_canvas(modal_size, ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN)
+	var fitted_size := modal_size * fitted_scale
+	if achievements_panel_frame != null:
+		achievements_panel_frame.custom_minimum_size = fitted_size
+		achievements_panel_frame.size = fitted_size
+	achievements_panel.custom_minimum_size = modal_size
+	achievements_panel.size = modal_size
+	achievements_panel.position = Vector2.ZERO
+	achievements_panel.scale = Vector2(fitted_scale, fitted_scale)
+
+
+func _fit_scale_to_canvas(base_size: Vector2, margin: Vector2) -> float:
+	var canvas_size := _current_canvas_size()
+	var available := Vector2(
+		maxf(1.0, canvas_size.x - margin.x * 2.0),
+		maxf(1.0, canvas_size.y - margin.y * 2.0)
+	)
+	return clampf(minf(available.x / base_size.x, available.y / base_size.y), 0.1, 1.0)
+
+
+func _current_canvas_size() -> Vector2:
+	var canvas_size := size
+	if canvas_size.x <= 1.0 or canvas_size.y <= 1.0:
+		var viewport := get_viewport()
+		if viewport != null:
+			canvas_size = viewport.get_visible_rect().size
+	if canvas_size.x <= 1.0 or canvas_size.y <= 1.0:
+		canvas_size = BASE_CANVAS
+	return canvas_size
 
 
 func _rebuild_achievement_log_tab() -> void:
@@ -3374,7 +3605,9 @@ func _float_reward(parent: Control, anchor: Control, text: String, font_size: in
 
 func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	_prune_achievement_toasts()
-	var presentation_size := ACHIEVEMENT_TOAST_SIZE
+	var canvas_size := _current_canvas_size()
+	var fitted_scale := _fit_scale_to_canvas(ACHIEVEMENT_TOAST_SIZE, ACHIEVEMENT_TOAST_VIEWPORT_MARGIN)
+	var presentation_size := ACHIEVEMENT_TOAST_SIZE * fitted_scale
 	var banner_data := achievement.duplicate()
 	banner_data["completed"] = true
 	var banner := Control.new()
@@ -3386,17 +3619,28 @@ func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	add_child(banner)
 	achievement_toasts.append(banner)
 	var card := _achievement_toast_card(banner_data)
-	card.set_anchors_preset(Control.PRESET_FULL_RECT)
-	card.size = presentation_size
+	card.custom_minimum_size = ACHIEVEMENT_TOAST_SIZE
+	card.size = ACHIEVEMENT_TOAST_SIZE
+	card.scale = Vector2(fitted_scale, fitted_scale)
 	banner.add_child(card)
 
 	var toast_index := achievement_toasts.size() - 1
+	var bottom_inset := minf(BOTTOM_NAV_HEIGHT, canvas_size.y * 0.22)
 	var target_position := Vector2(
-		(size.x - presentation_size.x) * 0.5,
-		size.y - BOTTOM_NAV_HEIGHT - presentation_size.y - 36.0 - float(toast_index) * (presentation_size.y + ACHIEVEMENT_TOAST_GAP)
+		(canvas_size.x - presentation_size.x) * 0.5,
+		canvas_size.y - bottom_inset - presentation_size.y - ACHIEVEMENT_TOAST_VIEWPORT_MARGIN.y - float(toast_index) * (presentation_size.y + ACHIEVEMENT_TOAST_GAP * fitted_scale)
 	)
-	target_position.y = maxf(32.0, target_position.y)
-	banner.position = target_position + Vector2(0, 90)
+	target_position.x = clampf(
+		target_position.x,
+		ACHIEVEMENT_TOAST_VIEWPORT_MARGIN.x,
+		maxf(ACHIEVEMENT_TOAST_VIEWPORT_MARGIN.x, canvas_size.x - presentation_size.x - ACHIEVEMENT_TOAST_VIEWPORT_MARGIN.x)
+	)
+	target_position.y = clampf(
+		target_position.y,
+		ACHIEVEMENT_TOAST_VIEWPORT_MARGIN.y,
+		maxf(ACHIEVEMENT_TOAST_VIEWPORT_MARGIN.y, canvas_size.y - presentation_size.y - ACHIEVEMENT_TOAST_VIEWPORT_MARGIN.y)
+	)
+	banner.position = target_position + Vector2(0, 90.0 * fitted_scale)
 	banner.modulate = Color(1, 1, 1, 0)
 	banner.scale = Vector2(0.92, 0.92)
 	banner.pivot_offset = presentation_size * 0.5
@@ -3408,7 +3652,7 @@ func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	tween.tween_property(banner, "scale", Vector2.ONE, 0.24).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(banner, "scale", Vector2(1.03, 1.03), 0.14).set_delay(0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(banner, "scale", Vector2.ONE, 0.16).set_delay(0.48).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.tween_property(banner, "position", target_position + Vector2(0, 110), 0.24).set_delay(2.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.tween_property(banner, "position", target_position + Vector2(0, 110.0 * fitted_scale), 0.24).set_delay(2.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.tween_property(banner, "modulate:a", 0.0, 0.16).set_delay(2.32)
 	tween.chain().tween_callback(func():
 		achievement_toasts.erase(banner)
@@ -3599,6 +3843,7 @@ func _background_for_action(skill_id: String, index: int) -> String:
 
 
 func _init_state() -> void:
+	_invalidate_stat_caches()
 	skills.clear()
 	mastery.clear()
 	stamina.clear()
@@ -3611,9 +3856,11 @@ func _init_state() -> void:
 		stamina_bank[skill_id] = 0.0
 		for action in actions_by_skill.get(skill_id, []):
 			mastery[_action_key(skill_id, str(action["id"]))] = {"xp": 0, "level": 0}
+	_invalidate_stat_caches()
 
 
 func _validate_state() -> void:
+	_invalidate_stat_caches()
 	for def in skill_defs:
 		var skill_id := str(def["id"])
 		if not skills.has(skill_id):
@@ -3630,6 +3877,7 @@ func _validate_state() -> void:
 		_recalculate_level(skill_id)
 	if not skills.has(selected_skill_id):
 		selected_skill_id = "fight"
+	_invalidate_stat_caches()
 
 
 func save_game() -> void:
@@ -3678,6 +3926,7 @@ func load_game() -> void:
 				_recalculate_mastery(str(key))
 	for skill_id in skills.keys():
 		_recalculate_level(str(skill_id))
+	_invalidate_stat_caches()
 	var loaded_stamina = data.get("stamina", {})
 	if typeof(loaded_stamina) == TYPE_DICTIONARY:
 		for skill_id in loaded_stamina.keys():
@@ -3726,11 +3975,19 @@ func _global_level() -> int:
 
 
 func _max_stamina() -> int:
-	return BASE_MAX_STAMINA + int(floor(float(_global_level()) / 10.0)) + int(round(_global_medal_bonus("max_stamina"))) + int(round(_achievement_reward_bonus("max_stamina")))
+	if not max_stamina_cache_valid:
+		cached_max_stamina = BASE_MAX_STAMINA + int(floor(float(_global_level()) / 10.0)) + int(round(_global_medal_bonus("max_stamina"))) + int(round(_achievement_reward_bonus("max_stamina")))
+		max_stamina_cache_valid = true
+	return cached_max_stamina
+
+
+func _invalidate_stat_caches() -> void:
+	max_stamina_cache_valid = false
 
 
 func _stamina(skill_id: String) -> int:
-	return clampi(int(stamina.get(skill_id, _max_stamina())), 0, _max_stamina())
+	var maximum := _max_stamina()
+	return clampi(int(stamina.get(skill_id, maximum)), 0, maximum)
 
 
 func _xp_for_level(level: int) -> int:
@@ -3757,6 +4014,7 @@ func _recalculate_level(skill_id: String) -> void:
 		level += 1
 	skills[skill_id]["level"] = level
 	if level > old_level:
+		_invalidate_stat_caches()
 		_play(level_player)
 
 
@@ -3980,10 +4238,13 @@ func _recalculate_mastery(key: String) -> void:
 	if not mastery.has(key):
 		return
 	var xp_total := float(mastery[key].get("xp", 0))
+	var old_level := int(mastery[key].get("level", 0))
 	var level := 0
 	while level < MASTERY_MAX_LEVEL and xp_total >= _mastery_xp_for_level(level + 1):
 		level += 1
 	mastery[key]["level"] = level
+	if level != old_level:
+		_invalidate_stat_caches()
 
 
 func _effective_stamina(action: Dictionary) -> int:
@@ -4286,12 +4547,21 @@ func _set_bar(bar, target: float, delta: float, instant: bool) -> void:
 	elif progress is ActivityProgressRail:
 		current_value = float((progress as ActivityProgressRail).value)
 	if instant:
-		progress.call("set_value", target)
+		if absf(current_value - target) > 0.001:
+			progress.call("set_value", target)
 	else:
+		if absf(current_value - target) <= 0.01:
+			if absf(current_value - target) > 0.001:
+				progress.call("set_value", target)
+			return
 		var step_delta := maxf(delta, 1.0 / 60.0)
 		var speed := 12.0
-		if progress is ActivityProgressRail and target < current_value:
-			speed = 5.5
+		if progress is CleanProgressBar:
+			speed = float((progress as CleanProgressBar).easing_speed)
+		elif progress is ActivityProgressRail:
+			speed = float((progress as ActivityProgressRail).easing_speed)
+			if target < current_value:
+				speed = 5.5
 		progress.call("set_value", lerpf(current_value, target, 1.0 - exp(-speed * step_delta)))
 
 
@@ -4347,10 +4617,10 @@ func _achievement_card_style(color: Color, radius: int, margin: int) -> StyleBox
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
 	style.border_color = COLOR_INK
-	style.border_width_left = 8
-	style.border_width_right = 8
-	style.border_width_top = 8
-	style.border_width_bottom = 8
+	style.border_width_left = 16
+	style.border_width_right = 16
+	style.border_width_top = 16
+	style.border_width_bottom = 16
 	style.corner_radius_top_left = radius
 	style.corner_radius_top_right = radius
 	style.corner_radius_bottom_left = radius
@@ -4366,10 +4636,10 @@ func _achievement_slot_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#fff6d6")
 	style.border_color = Color("#d2c3a0")
-	style.border_width_left = 4
-	style.border_width_right = 4
-	style.border_width_top = 4
-	style.border_width_bottom = 4
+	style.border_width_left = 10
+	style.border_width_right = 10
+	style.border_width_top = 10
+	style.border_width_bottom = 10
 	style.corner_radius_top_left = 10
 	style.corner_radius_top_right = 10
 	style.corner_radius_bottom_left = 10
@@ -4385,10 +4655,10 @@ func _featured_activity_art_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#fffaf0")
 	style.border_color = COLOR_INK
-	style.border_width_left = 6
-	style.border_width_right = 6
-	style.border_width_top = 6
-	style.border_width_bottom = 6
+	style.border_width_left = 14
+	style.border_width_right = 14
+	style.border_width_top = 14
+	style.border_width_bottom = 14
 	style.corner_radius_top_left = 24
 	style.corner_radius_top_right = 24
 	style.corner_radius_bottom_left = 24

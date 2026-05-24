@@ -4,9 +4,10 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $androidSdk = Join-Path $env:LOCALAPPDATA "Android\Sdk"
 $javaHome = "C:\Program Files\Android\Android Studio\jbr"
-$output = Join-Path $projectRoot "builds\android\idle-elite-release.aab"
 $stdoutLogPath = Join-Path $projectRoot "builds\android\last-release-build.stdout.log"
 $stderrLogPath = Join-Path $projectRoot "builds\android\last-release-build.stderr.log"
+$exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
+$keystorePassword = $env:IDLE_ELITE_KEYSTORE_PASSWORD
 
 if (-not (Test-Path -LiteralPath $runner)) {
     throw "Godot runner was not found at $runner"
@@ -17,6 +18,24 @@ if (-not (Test-Path -LiteralPath $androidSdk)) {
 if (-not (Test-Path -LiteralPath $javaHome)) {
     throw "Java home not found at $javaHome"
 }
+if (-not (Test-Path -LiteralPath $exportPresetsPath)) {
+    throw "Export presets file not found at $exportPresetsPath"
+}
+if ([string]::IsNullOrWhiteSpace($keystorePassword)) {
+    throw "Set IDLE_ELITE_KEYSTORE_PASSWORD before running this script."
+}
+
+$originalExportPresets = Get-Content -Raw -LiteralPath $exportPresetsPath
+if ($originalExportPresets -notmatch '(?m)^version/name="([^"]+)"') {
+    throw "Could not read Android version name from $exportPresetsPath"
+}
+$versionName = $Matches[1]
+if ($originalExportPresets -notmatch '(?m)^version/code=(\d+)') {
+    throw "Could not read Android version code from $exportPresetsPath"
+}
+$versionCode = $Matches[1]
+$artifactBaseName = "idle-elite-release-v$versionName-code$versionCode"
+$output = Join-Path $projectRoot "builds\android\$artifactBaseName.aab"
 
 $env:ANDROID_HOME = $androidSdk
 $env:ANDROID_SDK_ROOT = $androidSdk
@@ -28,6 +47,15 @@ foreach ($logPath in @($stdoutLogPath, $stderrLogPath)) {
     if (Test-Path -LiteralPath $logPath) {
         Remove-Item -LiteralPath $logPath -Force
     }
+}
+if (Test-Path -LiteralPath $output) {
+    Remove-Item -LiteralPath $output -Force
+}
+
+$escapedKeystorePassword = $keystorePassword.Replace("\", "\\").Replace('"', '\"')
+$patchedExportPresets = $originalExportPresets -replace '(?m)^keystore/release_password=".*"$', "keystore/release_password=`"$escapedKeystorePassword`""
+if ($patchedExportPresets -eq $originalExportPresets) {
+    throw "Could not inject release keystore password into $exportPresetsPath"
 }
 
 $arguments = @(
@@ -42,9 +70,11 @@ $arguments = @(
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $env:GODOT_RUN_TIMEOUT_SECONDS = "1200"
 try {
+    Set-Content -LiteralPath $exportPresetsPath -Value $patchedExportPresets -NoNewline
     & $runner @arguments > $stdoutLogPath 2> $stderrLogPath
     $godotExitCode = $LASTEXITCODE
 } finally {
+    Set-Content -LiteralPath $exportPresetsPath -Value $originalExportPresets -NoNewline
     $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
 }
 

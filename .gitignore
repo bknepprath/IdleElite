@@ -1,5 +1,6 @@
 .godot/
 .codex-tools/
+.codex-tmp/
 *.tmp
 *.translation
 __pycache__/
