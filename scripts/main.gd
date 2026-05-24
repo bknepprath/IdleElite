@@ -352,6 +352,7 @@ class MobileScrollContainer:
 	var pull_resistance_enabled := false
 	var pull_raw_offset := 0.0
 	var pull_offset := 0.0
+	var child_click_suppressed := false
 	var scroll_tween: Tween
 	var pull_tween: Tween
 
@@ -386,10 +387,15 @@ class MobileScrollContainer:
 					velocity = 0.0
 			elif drag_tracking:
 				if drag_scrolling:
+					child_click_suppressed = true
 					get_viewport().set_input_as_handled()
 				drag_tracking = false
 				drag_scrolling = false
 				_snap_pull_offset()
+				if child_click_suppressed:
+					call_deferred("_clear_child_click_suppression")
+			elif child_click_suppressed:
+				call_deferred("_clear_child_click_suppression")
 			return
 		if event is InputEventMouseMotion and drag_tracking:
 			var distance: float = event.global_position.distance_to(drag_start)
@@ -397,6 +403,7 @@ class MobileScrollContainer:
 			if distance >= DRAG_DEADZONE and absf(drag_offset.y) > absf(drag_offset.x) * 1.15:
 				drag_scrolling = true
 			if drag_scrolling:
+				child_click_suppressed = true
 				var delta_y: float = event.global_position.y - drag_last.y
 				if pull_resistance_enabled and (pull_raw_offset > 0.0 or (scroll_vertical <= 0 and delta_y > 0.0)):
 					_set_pull_raw_offset(maxf(0.0, pull_raw_offset + delta_y))
@@ -418,10 +425,15 @@ class MobileScrollContainer:
 					velocity = 0.0
 			elif drag_tracking:
 				if drag_scrolling:
+					child_click_suppressed = true
 					get_viewport().set_input_as_handled()
 				drag_tracking = false
 				drag_scrolling = false
 				_snap_pull_offset()
+				if child_click_suppressed:
+					call_deferred("_clear_child_click_suppression")
+			elif child_click_suppressed:
+				call_deferred("_clear_child_click_suppression")
 			return
 		if event is InputEventScreenDrag and drag_tracking:
 			var distance: float = event.position.distance_to(drag_start)
@@ -429,6 +441,7 @@ class MobileScrollContainer:
 			if distance >= DRAG_DEADZONE and absf(drag_offset.y) > absf(drag_offset.x) * 1.15:
 				drag_scrolling = true
 			if drag_scrolling:
+				child_click_suppressed = true
 				var delta_y: float = event.position.y - drag_last.y
 				if pull_resistance_enabled and (pull_raw_offset > 0.0 or (scroll_vertical <= 0 and delta_y > 0.0)):
 					_set_pull_raw_offset(maxf(0.0, pull_raw_offset + delta_y))
@@ -490,6 +503,12 @@ class MobileScrollContainer:
 		scroll_tween = create_tween()
 		scroll_tween.tween_property(self, "scroll_vertical", clamped_target, duration).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
+	func is_child_click_suppressed() -> bool:
+		return child_click_suppressed or drag_scrolling or absf(velocity) >= 4.0
+
+	func _clear_child_click_suppression() -> void:
+		child_click_suppressed = false
+
 	func _cancel_scroll_tween() -> void:
 		if scroll_tween != null and scroll_tween.is_valid():
 			scroll_tween.kill()
@@ -501,6 +520,10 @@ class MobileScrollContainer:
 		position.y = pull_offset
 
 	func _snap_pull_offset() -> void:
+		if not pull_resistance_enabled and pull_offset <= 0.0:
+			pull_raw_offset = 0.0
+			pull_offset = 0.0
+			return
 		if pull_offset <= 0.0:
 			_set_pull_raw_offset(0.0)
 			return
@@ -539,6 +562,7 @@ const ACHIEVEMENT_MEDAL_SLOT_COUNT := 25
 const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(62, 62)
 const ACHIEVEMENT_MEDAL_SLOT_STEP := 36.0
 const TOTAL_LEVEL_ACHIEVEMENT_TARGETS := [25, 50, 100, 150, 250, 375, 495]
+const TIER_COUNT_ACHIEVEMENT_STEP := 5
 const MASTERY_MEDAL_NAMES := [
 	"Bronze",
 	"Silver",
@@ -550,6 +574,18 @@ const MASTERY_MEDAL_NAMES := [
 	"Diamond",
 	"Demonic",
 	"Heavenly"
+]
+const MASTERY_MEDAL_ACCENTS := [
+	Color("#b77938"),
+	Color("#a9adb7"),
+	Color("#f4bf35"),
+	Color("#a7d6e8"),
+	Color("#3aa0ff"),
+	Color("#35d86d"),
+	Color("#e84d4d"),
+	Color("#8fdcff"),
+	Color("#9b54ff"),
+	Color("#fff2a8")
 ]
 const GLOBAL_MEDAL_BUFFS := [
 	{"level": 1, "stat": "max_stamina", "amount": 1.0},
@@ -570,17 +606,24 @@ const PAGE_PAD := 96
 const CARD_RADIUS := 64
 const ACTION_CARD_HEIGHT := 720
 const ACTION_CARD_POP_GUTTER := 44
-const SKILL_MENU_CARD_SIDE_INSET := 36
-const SKILL_MENU_COPY_WIDTH := 820
+const SKILL_MENU_CARD_SIDE_INSET := 130
+const SKILL_MENU_COPY_WIDTH := 660
 const SKILL_SWIPE_THRESHOLD := 230.0
 const SKILL_SWIPE_FEEDBACK_DEADZONE := 46.0
 const SKILL_SWIPE_MAX_DRAG := 1120.0
 const SKILL_SWIPE_PAGE_GAP := 82.0
 const SKILL_SWIPE_SETTLE_SECONDS := 0.46
 const SKILL_SWIPE_CANCEL_SECONDS := 0.22
+const AD_BONUS_SECONDS := 2 * 60 * 60
+const AD_BONUS_WARN_THRESHOLD_SECONDS := 4 * 60 * 60
+const AD_BONUS_MAX_SECONDS := 6 * 60 * 60
+const AD_BONUS_XP_MULT := 0.10
+const AD_BONUS_SPEED_MULT := 0.10
 const MODAL_OVERLAY_Z := 4096
 const ACHIEVEMENTS_MODAL_SIZE := Vector2(1760, 3000)
 const ACHIEVEMENTS_MODAL_SCROLL_HEIGHT := 2220.0
+const ACHIEVEMENT_TOAST_SIZE := Vector2(1500, 360)
+const ACHIEVEMENT_TOAST_GAP := 28.0
 const GLOBAL_BUFFS_MODAL_MIN_HEIGHT := 1440.0
 const GLOBAL_BUFFS_MODAL_BASE_HEIGHT := 1260.0
 const GLOBAL_BUFFS_MODAL_ROW_HEIGHT := 120.0
@@ -673,6 +716,7 @@ var action_progress := 0.0
 var mastery := {}
 var stamina := {}
 var stamina_bank := {}
+var ad_bonus_seconds_remaining := 0.0
 var last_result := "Pick a skill and start training."
 var is_muted := false
 
@@ -708,7 +752,9 @@ var achievement_medal_slot_panels := {}
 var achievement_medal_slot_icons := {}
 var skills_tab: Button
 var hero_tab: Button
+var shop_tab: Button
 var settings_tab: Button
+var shop_bonus_label: Label
 var skill_cards := {}
 var action_cards := {}
 var action_pop_tweens := {}
@@ -730,6 +776,7 @@ var skill_swipe_preview_page: Control
 var skill_swipe_preview_offset := 0
 var skill_swipe_animating := false
 var settings_overlay: Control
+var settings_panel: PanelContainer
 var achievements_overlay: Control
 var achievements_panel: PanelContainer
 var achievements_scroll: ScrollContainer
@@ -737,6 +784,7 @@ var achievements_list_stack: VBoxContainer
 var achievements_tab_buttons := {}
 var achievements_hide_completed: CheckBox
 var achievements_modal_tab := "achievements"
+var achievement_toasts := []
 var mute_button: Button
 var click_player: AudioStreamPlayer
 var success_player: AudioStreamPlayer
@@ -764,6 +812,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_process_ad_bonus(delta)
 	_regen_stamina(delta)
 	_process_action(delta)
 	_update_ui(delta)
@@ -1114,9 +1163,6 @@ func _build_hero(parent: PanelContainer) -> void:
 	tools.alignment = BoxContainer.ALIGNMENT_CENTER
 	tools.add_theme_constant_override("separation", 58)
 	stage.add_child(tools)
-	var ad := _icon_button("res://docs/assets/ui/ad-simple.png")
-	ad.pressed.connect(func(): _set_result("Rewarded ads are enabled in Android builds."))
-	tools.add_child(ad)
 	var settings := _icon_button("res://docs/assets/ui/settings-gear-simple.png")
 	settings.pressed.connect(_open_settings)
 	tools.add_child(settings)
@@ -1161,6 +1207,9 @@ func _build_nav_bar() -> void:
 	settings_tab = _nav_button("res://docs/assets/ui/settings-gear-simple.png")
 	settings_tab.pressed.connect(_show_settings)
 	row.add_child(settings_tab)
+	shop_tab = _nav_button("res://docs/assets/ui/shop.png")
+	shop_tab.pressed.connect(_show_shop)
+	row.add_child(shop_tab)
 
 
 func _build_settings_overlay() -> void:
@@ -1172,6 +1221,7 @@ func _build_settings_overlay() -> void:
 	settings_overlay.visible = false
 	settings_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	settings_overlay.add_to_group("modal_overlay")
+	settings_overlay.gui_input.connect(_on_settings_overlay_gui_input)
 	add_child(settings_overlay)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1180,16 +1230,24 @@ func _build_settings_overlay() -> void:
 	panel.custom_minimum_size = Vector2(1300, 0)
 	panel.add_theme_stylebox_override("panel", _panel_style(COLOR_PANEL, 16, CARD_RADIUS))
 	center.add_child(panel)
+	settings_panel = panel
 	var stack := VBoxContainer.new()
 	stack.add_theme_constant_override("separation", 46)
 	panel.add_child(stack)
-	stack.add_child(_label("Settings", 124, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	var header := HBoxContainer.new()
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	header.add_theme_constant_override("separation", 24)
+	stack.add_child(header)
+	var title := _label("Settings", 124, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var close := _menu_button("X")
+	close.custom_minimum_size = Vector2(170, 150)
+	close.pressed.connect(_close_settings)
+	header.add_child(close)
 	mute_button = _menu_button("")
 	mute_button.pressed.connect(_toggle_mute)
 	stack.add_child(mute_button)
-	var ad := _menu_button("Ad")
-	ad.pressed.connect(_settings_ad_pressed)
-	stack.add_child(ad)
 	var discord := _menu_button("Discord")
 	discord.pressed.connect(_settings_discord_pressed)
 	stack.add_child(discord)
@@ -1197,9 +1255,6 @@ func _build_settings_overlay() -> void:
 	reset.add_theme_stylebox_override("normal", _panel_style(Color("#ffe2e2"), 12, 48))
 	reset.pressed.connect(_reset_data)
 	stack.add_child(reset)
-	var close := _menu_button("Close")
-	close.pressed.connect(_close_settings)
-	stack.add_child(close)
 
 
 func _build_achievements_overlay() -> void:
@@ -1211,6 +1266,7 @@ func _build_achievements_overlay() -> void:
 	achievements_overlay.visible = false
 	achievements_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	achievements_overlay.add_to_group("modal_overlay")
+	achievements_overlay.gui_input.connect(_on_achievements_overlay_gui_input)
 	add_child(achievements_overlay)
 	var center := CenterContainer.new()
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1238,8 +1294,8 @@ func _build_achievements_overlay() -> void:
 	var title := _label("Achievements", 112, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	var close := _menu_button("Close")
-	close.custom_minimum_size = Vector2(340, 160)
+	var close := _menu_button("X")
+	close.custom_minimum_size = Vector2(170, 160)
 	close.pressed.connect(_close_achievements_overlay)
 	header.add_child(close)
 
@@ -1310,6 +1366,8 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 		_render_skill_detail(scroll_latest_activity, restore_detail_scroll)
 	elif current_screen == "settings":
 		_render_settings_page()
+	elif current_screen == "shop":
+		_render_shop_page()
 	else:
 		content_scroll = MobileScrollContainer.new()
 		content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1361,12 +1419,6 @@ func _render_settings_page() -> void:
 	mute_button = _settings_page_button("", "", 940, 128, 236)
 	mute_button.pressed.connect(_toggle_mute)
 	stack.add_child(mute_button)
-	var ad := _settings_page_button("Ad for +10% XP", "res://docs/assets/ui/ad-reward.png", 1320, 318, 370)
-	ad.add_theme_stylebox_override("normal", _panel_style(Color("#fff5c7"), 14, 54))
-	ad.add_theme_stylebox_override("hover", _panel_style(COLOR_GOLD, 14, 54))
-	ad.add_theme_stylebox_override("pressed", _panel_style(COLOR_GOLD.darkened(0.08), 14, 54))
-	ad.pressed.connect(_settings_ad_pressed)
-	stack.add_child(ad)
 	var discord := _settings_page_button("Contact the dev", "res://docs/assets/ui/discord-simple.png", 1320, 220, 286)
 	discord.add_theme_stylebox_override("normal", _panel_style(Color("#eaf6ff"), 14, 54))
 	discord.add_theme_stylebox_override("hover", _panel_style(Color("#d9efff"), 14, 54))
@@ -1384,9 +1436,38 @@ func _render_settings_page() -> void:
 	stack.add_child(bottom_spacer)
 
 
+func _render_shop_page() -> void:
+	shop_bonus_label = null
+	content_scroll = MobileScrollContainer.new()
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	_add_centered_skill_column(content_scroll)
+	var stack := VBoxContainer.new()
+	stack.custom_minimum_size.x = _skill_content_width()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 42)
+	content_scroll.add_child(stack)
+	var top_spacer := Control.new()
+	top_spacer.custom_minimum_size = Vector2(0, 106)
+	stack.add_child(top_spacer)
+	stack.add_child(_label("Shop", 132, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	stack.add_child(_image("res://docs/assets/ui/shop.png", Vector2(300, 300)))
+	var offer := _shop_ad_offer_button()
+	offer.pressed.connect(_shop_ad_pressed)
+	stack.add_child(offer)
+	shop_bonus_label = _label("", 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	shop_bonus_label.custom_minimum_size = Vector2(1320, 0)
+	shop_bonus_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stack.add_child(shop_bonus_label)
+	var bottom_spacer := Control.new()
+	bottom_spacer.custom_minimum_size = Vector2(0, 220)
+	stack.add_child(bottom_spacer)
+
+
 func _render_skill_menu(stack: VBoxContainer) -> void:
 	var total_level_header := MarginContainer.new()
-	total_level_header.add_theme_constant_override("margin_top", 42)
+	total_level_header.add_theme_constant_override("margin_top", 150)
 	total_level_header.add_theme_constant_override("margin_bottom", 12)
 	stack.add_child(total_level_header)
 	var total_row := HBoxContainer.new()
@@ -1433,7 +1514,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 44)
+		row.add_theme_constant_override("separation", 34)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margin.add_child(row)
 		row.add_child(_image("res://docs/assets/icons/%s.png" % skill_id, Vector2(258, 258)))
@@ -1733,6 +1814,7 @@ func _update_page_visibility() -> void:
 	skills_page.visible = current_screen != "home"
 	_apply_nav_style(hero_tab, current_screen == "home")
 	_apply_nav_style(skills_tab, current_screen == "menu" or current_screen == "skill")
+	_apply_nav_style(shop_tab, current_screen == "shop")
 	_apply_nav_style(settings_tab, current_screen == "settings")
 
 
@@ -1748,11 +1830,10 @@ func _update_ui(delta: float, instant := false) -> void:
 		var xp := _xp_progress(str(skill_id))
 		var card: Dictionary = skill_cards[skill_id]
 		(card["title"] as Label).text = "%s" % _skill_name(str(skill_id))
-		(card["meta"] as Label).text = "Lv %s  XP %s / %s%s" % [
+		(card["meta"] as Label).text = "Lv %s  XP %s / %s" % [
 			_skill_level(str(skill_id)),
 			int(xp["current"]),
-			int(xp["needed"]),
-			"  Training" if running_skill_id == str(skill_id) else ""
+			int(xp["needed"])
 		]
 		(card["xp"] as CleanProgressBar).fill_color = _skill_theme_color(str(skill_id))
 		_set_bar(card["xp"], float(xp["pct"]), delta, instant)
@@ -1809,6 +1890,8 @@ func _update_ui(delta: float, instant := false) -> void:
 		_set_bar(card["progress"], action_progress * 100.0 if running else 0.0, delta, instant)
 	if mute_button != null:
 		mute_button.text = "Unmute" if is_muted else "Mute"
+	if shop_bonus_label != null:
+		shop_bonus_label.text = _shop_bonus_status_text()
 
 
 func _update_achievements_ui(delta: float, instant: bool) -> void:
@@ -2004,8 +2087,6 @@ func _achievement_milestones() -> Array:
 	var total_counts := _all_medal_counts()
 	var cumulative := int(total_counts["earned"])
 	var cumulative_possible := int(total_counts["possible"])
-	var tier_counts := _all_medal_tier_counts()
-	var activity_count := _total_activity_count()
 	var total_level := _global_level()
 	var max_total_level := _max_total_level()
 	for def in skill_defs:
@@ -2048,71 +2129,31 @@ func _achievement_milestones() -> Array:
 			"medal_level": _total_level_milestone_medal(int(target), max_total_level),
 			"accent": "#f4bf35"
 			})
-	for def in skill_defs:
-		var skill_id := str(def["id"])
-		var skill_name := _skill_name(skill_id)
-		var actions: Array = actions_by_skill.get(skill_id, [])
-		for target in _medal_stamina_achievement_targets():
-			for action in actions:
-				var action_id := str(action.get("id", ""))
-				var action_name := str(action.get("name", ""))
-				var medal_level := _mastery_level(skill_id, action_id)
-				var medal_name := str(MASTERY_MEDAL_NAMES[int(target) - 1])
-				milestones.append({
-					"id": "action-medal-%s-%s-%s" % [skill_id, action_id, target],
-					"chain_key": "action-medal-%s" % skill_id,
-					"kind": "action_medal",
-					"skill_id": skill_id,
-					"action_id": action_id,
-					"art": str(action.get("art", "")),
-					"title": "%s %s Medal" % [action_name, medal_name],
-					"subtitle": "%s %s medal %s of %s" % [skill_name, medal_name, mini(medal_level, int(target)), target],
-					"reward": "Reward: +1 max stamina",
-					"reward_stat": "max_stamina",
-					"reward_amount": 1,
-					"current": medal_level,
-					"target": int(target),
-					"completed": medal_level >= int(target),
-					"medal_level": int(target),
-					"accent": "#" + _skill_theme_color(skill_id).to_html(false)
-				})
-	for tier in range(1, MASTERY_MAX_LEVEL + 1):
-		var count := int(tier_counts[tier - 1])
-		var tier_name := str(MASTERY_MEDAL_NAMES[tier - 1])
-		var reward := "Reward: %s" % _global_medal_tier_bonus_text(tier)
+	var tier_counts := _all_medal_tier_counts()
+	var total_activity_count := _total_activity_count()
+	for tier_index in range(mini(MASTERY_MAX_LEVEL, tier_counts.size())):
+		var tier := tier_index + 1
+		var target := _tier_count_achievement_target(tier)
+		var current := int(tier_counts[tier_index])
+		if total_activity_count < target and current < target:
+			continue
+		var medal_name := str(MASTERY_MEDAL_NAMES[tier_index])
 		milestones.append({
-			"id": "first-tier-%s" % tier,
-			"chain_key": "tier-%s" % tier,
+			"id": "tier-count-%s-%s" % [tier, target],
+			"chain_key": "tier-count-medals",
 			"kind": "tier_count",
 			"tier": tier,
-			"title": "First %s Medal" % tier_name,
-			"subtitle": "%s of 1 %s medals" % [mini(count, 1), tier_name],
-			"reward": reward,
-			"current": count,
-			"target": 1,
-			"completed": count >= 1,
+			"title": "%s Medals" % medal_name,
+			"subtitle": "%s of %s %s medals earned" % [mini(current, target), target, medal_name],
+			"reward": _tier_count_achievement_reward_text(tier),
+			"reward_stat": "max_stamina",
+			"reward_amount": _tier_count_achievement_stamina_reward(tier),
+			"current": current,
+			"target": target,
+			"completed": current >= target,
 			"medal_level": tier,
-			"accent": "#f4bf35"
+			"accent": "#" + _mastery_medal_accent(tier).to_html(false)
 		})
-		for target in [10, 25, 50, 100]:
-			if activity_count < target and count < target:
-				continue
-			milestones.append({
-				"id": "tier-%s-count-%s" % [tier, target],
-				"chain_key": "tier-%s" % tier,
-				"kind": "tier_count",
-				"tier": tier,
-				"title": "%s %s Medals" % [target, tier_name],
-				"subtitle": "%s of %s %s medals" % [mini(count, target), target, tier_name],
-				"reward": _tier_count_achievement_reward_text(tier_name, int(target)),
-				"reward_stat": "max_stamina",
-				"reward_amount": _tier_count_achievement_stamina_reward(int(target)),
-				"current": count,
-				"target": int(target),
-				"completed": count >= target,
-				"medal_level": tier,
-				"accent": "#f4bf35"
-			})
 	for target in [10, 25, 50, 100, 250, 500, 1000]:
 		if cumulative_possible < target and cumulative < target:
 			continue
@@ -2120,8 +2161,8 @@ func _achievement_milestones() -> Array:
 			"id": "cumulative-%s" % target,
 			"chain_key": "cumulative-medals",
 			"kind": "cumulative_medals",
-			"title": "%s Cumulative Medals" % target,
-			"subtitle": "%s of %s total medal tiers" % [mini(cumulative, target), target],
+			"title": "Cumulative Medals",
+			"subtitle": "%s of %s total medals earned" % [mini(cumulative, target), target],
 			"reward": _cumulative_medal_achievement_reward_text(int(target)),
 			"reward_stat": "max_stamina",
 			"reward_amount": _cumulative_medal_achievement_stamina_reward(int(target)),
@@ -2180,13 +2221,6 @@ func _visible_achievement_milestones(hide_completed: bool) -> Array:
 	return visible
 
 
-func _medal_stamina_achievement_targets() -> Array:
-	var targets := []
-	for level in range(2, MASTERY_MAX_LEVEL + 1, 2):
-		targets.append(level)
-	return targets
-
-
 func _skill_level_achievement_targets() -> Array:
 	var targets := []
 	for level in range(2, 100):
@@ -2212,16 +2246,6 @@ func _total_level_achievement_stamina_reward(target: int) -> int:
 	return 1
 
 
-func _tier_count_achievement_stamina_reward(target: int) -> int:
-	if target >= 100:
-		return 4
-	if target >= 50:
-		return 3
-	if target >= 25:
-		return 2
-	return 1
-
-
 func _cumulative_medal_achievement_stamina_reward(target: int) -> int:
 	if target >= 500:
 		return 5
@@ -2230,6 +2254,23 @@ func _cumulative_medal_achievement_stamina_reward(target: int) -> int:
 	if target >= 25:
 		return 2
 	return 1
+
+
+func _tier_count_achievement_target(tier: int) -> int:
+	return maxi(1, tier) * TIER_COUNT_ACHIEVEMENT_STEP
+
+
+func _tier_count_achievement_stamina_reward(tier: int) -> int:
+	if tier >= 9:
+		return 3
+	if tier >= 5:
+		return 2
+	return 1
+
+
+func _mastery_medal_accent(tier: int) -> Color:
+	var index := clampi(tier - 1, 0, MASTERY_MEDAL_ACCENTS.size() - 1)
+	return MASTERY_MEDAL_ACCENTS[index]
 
 
 func _stamina_reward_text(amount: int) -> String:
@@ -2247,12 +2288,12 @@ func _total_level_achievement_reward_text(target: int) -> String:
 	return "Reward: %s" % _stamina_reward_text(_total_level_achievement_stamina_reward(target))
 
 
-func _tier_count_achievement_reward_text(_tier_name: String, target: int) -> String:
-	return "Reward: %s" % _stamina_reward_text(_tier_count_achievement_stamina_reward(target))
-
-
 func _cumulative_medal_achievement_reward_text(target: int) -> String:
 	return "Reward: %s" % _stamina_reward_text(_cumulative_medal_achievement_stamina_reward(target))
+
+
+func _tier_count_achievement_reward_text(tier: int) -> String:
+	return "Reward: %s" % _stamina_reward_text(_tier_count_achievement_stamina_reward(tier))
 
 
 func _achievement_reward_bonus(stat: String, skill_id := "") -> float:
@@ -2279,8 +2320,8 @@ func _global_medal_buff_lines() -> String:
 func _active_global_buff_lines() -> Array:
 	var lines := []
 	var stamina_bonus := int(round(_global_medal_bonus("max_stamina")))
-	var xp_bonus := int(round(_global_medal_bonus("xp_mult") * 100.0))
-	var speed_bonus := int(round(_global_medal_bonus("speed_mult") * 100.0))
+	var xp_bonus := int(round((_global_medal_bonus("xp_mult") + _ad_bonus_xp_mult()) * 100.0))
+	var speed_bonus := int(round((_global_medal_bonus("speed_mult") + _ad_bonus_speed_mult()) * 100.0))
 	var success_bonus := int(round(_global_medal_bonus("success_bonus")))
 	if stamina_bonus > 0:
 		lines.append("+%s max stamina" % stamina_bonus)
@@ -2291,6 +2332,20 @@ func _active_global_buff_lines() -> Array:
 	if success_bonus > 0:
 		lines.append("+%s%% success" % success_bonus)
 	return lines
+
+
+func _ad_bonus_xp_mult() -> float:
+	return AD_BONUS_XP_MULT if ad_bonus_seconds_remaining > 0.0 else 0.0
+
+
+func _ad_bonus_speed_mult() -> float:
+	return AD_BONUS_SPEED_MULT if ad_bonus_seconds_remaining > 0.0 else 0.0
+
+
+func _shop_bonus_status_text() -> String:
+	if ad_bonus_seconds_remaining <= 0.0:
+		return "No shop bonus active."
+	return "Shop bonus remaining: %s" % _format_duration(ad_bonus_seconds_remaining)
 
 
 func _on_stamina_gauge_input(event: InputEvent) -> void:
@@ -2731,6 +2786,13 @@ func _skill_index(skill_id: String) -> int:
 	return -1
 
 
+func _process_ad_bonus(delta: float) -> void:
+	if ad_bonus_seconds_remaining <= 0.0:
+		ad_bonus_seconds_remaining = 0.0
+		return
+	ad_bonus_seconds_remaining = maxf(0.0, ad_bonus_seconds_remaining - delta)
+
+
 func _process_action(delta: float) -> void:
 	if running_skill_id.is_empty():
 		return
@@ -2822,6 +2884,8 @@ func _regen_ring_ease(raw_value: float) -> float:
 
 
 func _start_action(skill_id: String, action_id: String) -> void:
+	if detail_actions_scroll != null and detail_actions_scroll.is_child_click_suppressed():
+		return
 	var action := _action_data(skill_id, action_id)
 	if action.is_empty() or _skill_level(skill_id) < int(action["unlock"]):
 		return
@@ -2890,6 +2954,12 @@ func _show_skills() -> void:
 	_render_screen()
 
 
+func _show_shop() -> void:
+	current_screen = "shop"
+	_play(click_player)
+	_render_screen()
+
+
 func _show_settings() -> void:
 	current_screen = "settings"
 	_play(click_player)
@@ -2906,8 +2976,31 @@ func _open_settings() -> void:
 	_show_settings()
 
 
+func _on_settings_overlay_gui_input(event: InputEvent) -> void:
+	if _event_is_outside_panel_press(event, settings_panel):
+		_close_settings()
+
+
+func _on_achievements_overlay_gui_input(event: InputEvent) -> void:
+	if _event_is_outside_panel_press(event, achievements_panel):
+		_close_achievements_overlay()
+
+
+func _event_is_outside_panel_press(event: InputEvent, panel: Control) -> bool:
+	if panel == null or not is_instance_valid(panel):
+		return false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		return not Rect2(panel.global_position, panel.size).has_point(event.global_position)
+	if event is InputEventScreenTouch and event.pressed:
+		return not Rect2(panel.global_position, panel.size).has_point(event.position)
+	return false
+
+
 func _close_settings() -> void:
-	_show_home()
+	if settings_overlay != null and settings_overlay.visible:
+		settings_overlay.visible = false
+	else:
+		_show_home()
 
 
 func _open_achievements_overlay() -> void:
@@ -3002,22 +3095,25 @@ func _global_buff_list_row(text: String) -> Control:
 
 func _achievement_art(achievement: Dictionary) -> Control:
 	var art := Control.new()
-	art.custom_minimum_size = Vector2(178, 144)
+	art.custom_minimum_size = Vector2(188, 152)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	match str(achievement.get("kind", "")):
 		"skill_level":
 			var skill_id := str(achievement.get("skill_id", ""))
-			_add_achievement_art_image(art, _texture(_skill_icon_path(skill_id)), Vector2(17, 0), Vector2(144, 144), 1)
+			_add_achievement_art_image(art, _texture(_skill_icon_path(skill_id)), Vector2(6, -7), Vector2(166, 166), 1)
 		"action_medal":
 			_add_achievement_art_image(art, _texture(str(achievement.get("art", ""))), Vector2(0, 6), Vector2(132, 132), 1)
 			_add_achievement_art_image(art, _achievement_medal_texture(int(achievement.get("medal_level", 1))), Vector2(96, 58), Vector2(86, 86), 2)
 		"total_level":
-			_add_achievement_art_image(art, _texture(ACHIEVEMENT_TOTAL_LEVEL_ART), Vector2(16, 0), Vector2(144, 144), 1)
+			_add_achievement_art_image(art, _texture(ACHIEVEMENT_TOTAL_LEVEL_ART), Vector2(6, -7), Vector2(166, 166), 1)
 		"tier_count":
 			var tier := int(achievement.get("tier", achievement.get("medal_level", 1)))
-			_add_achievement_art_image(art, _achievement_medal_texture(tier), Vector2(17, 0), Vector2(144, 144), 1)
+			var levels := []
+			for _i in range(_same_tier_achievement_medal_count(int(achievement.get("target", 1)))):
+				levels.append(tier)
+			_populate_achievement_medal_cluster(art, levels)
 		"cumulative_medals":
-			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CUMULATIVE_MEDALS_ART), Vector2(17, 0), Vector2(144, 144), 1)
+			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CUMULATIVE_MEDALS_ART), Vector2(6, -7), Vector2(166, 166), 1)
 		_:
 			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CREDIT_ART), Vector2(12, 0), Vector2(154, 144), 1)
 	return art
@@ -3143,9 +3239,16 @@ func _toggle_mute() -> void:
 	_update_ui(0.0, true)
 
 
-func _settings_ad_pressed() -> void:
-	_set_result("Rewarded ads are enabled in Android builds.")
-	_play(click_player)
+func _shop_ad_pressed() -> void:
+	if ad_bonus_seconds_remaining > float(AD_BONUS_WARN_THRESHOLD_SECONDS):
+		_set_result("Max stackable bonus time is 6 hours.")
+		if shop_bonus_label != null:
+			shop_bonus_label.text = _shop_bonus_status_text()
+		return
+	ad_bonus_seconds_remaining = minf(float(AD_BONUS_MAX_SECONDS), ad_bonus_seconds_remaining + float(AD_BONUS_SECONDS))
+	_set_result("Ad bonus active: +10% XP, +10% speed for 2 hours.")
+	if shop_bonus_label != null:
+		shop_bonus_label.text = _shop_bonus_status_text()
 
 
 func _settings_discord_pressed() -> void:
@@ -3270,7 +3373,8 @@ func _float_reward(parent: Control, anchor: Control, text: String, font_size: in
 
 
 func _show_achievement_unlocked(achievement: Dictionary) -> void:
-	var presentation_size := Vector2(1500, 360)
+	_prune_achievement_toasts()
+	var presentation_size := ACHIEVEMENT_TOAST_SIZE
 	var banner_data := achievement.duplicate()
 	banner_data["completed"] = true
 	var banner := Control.new()
@@ -3280,14 +3384,16 @@ func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	banner.custom_minimum_size = presentation_size
 	banner.size = presentation_size
 	add_child(banner)
-	var card := _achievement_log_card(banner_data)
+	achievement_toasts.append(banner)
+	var card := _achievement_toast_card(banner_data)
 	card.set_anchors_preset(Control.PRESET_FULL_RECT)
 	card.size = presentation_size
 	banner.add_child(card)
 
+	var toast_index := achievement_toasts.size() - 1
 	var target_position := Vector2(
 		(size.x - presentation_size.x) * 0.5,
-		size.y - BOTTOM_NAV_HEIGHT - presentation_size.y - 36.0
+		size.y - BOTTOM_NAV_HEIGHT - presentation_size.y - 36.0 - float(toast_index) * (presentation_size.y + ACHIEVEMENT_TOAST_GAP)
 	)
 	target_position.y = maxf(32.0, target_position.y)
 	banner.position = target_position + Vector2(0, 90)
@@ -3304,7 +3410,81 @@ func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	tween.tween_property(banner, "scale", Vector2.ONE, 0.16).set_delay(0.48).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.tween_property(banner, "position", target_position + Vector2(0, 110), 0.24).set_delay(2.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.tween_property(banner, "modulate:a", 0.0, 0.16).set_delay(2.32)
-	tween.chain().tween_callback(banner.queue_free)
+	tween.chain().tween_callback(func():
+		achievement_toasts.erase(banner)
+		banner.queue_free()
+	)
+
+
+func _prune_achievement_toasts() -> void:
+	for i in range(achievement_toasts.size() - 1, -1, -1):
+		var toast := achievement_toasts[i] as Control
+		if toast == null or not is_instance_valid(toast):
+			achievement_toasts.remove_at(i)
+
+
+func _achievement_toast_card(achievement: Dictionary) -> Control:
+	var completed := bool(achievement.get("completed", true))
+	var accent := Color(str(achievement.get("accent", "#f4bf35")))
+	var card := PanelContainer.new()
+	card.clip_contents = true
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_theme_stylebox_override("panel", _achievement_card_style(Color("#fffdf8") if completed else Color("#fff6e1"), 34, 28))
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 34)
+	margin.add_theme_constant_override("margin_right", 38)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	card.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 30)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(row)
+
+	var art_holder := CenterContainer.new()
+	art_holder.custom_minimum_size = Vector2(230, 252)
+	art_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(art_holder)
+	art_holder.add_child(_achievement_art(achievement))
+
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.alignment = BoxContainer.ALIGNMENT_CENTER
+	copy.add_theme_constant_override("separation", 8)
+	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(copy)
+
+	var eyebrow := _label("ACHIEVEMENT UNLOCKED", 36, accent, HORIZONTAL_ALIGNMENT_LEFT)
+	eyebrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(eyebrow)
+
+	var title_label := _label(str(achievement.get("title", "Achievement")), 60, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(title_label)
+
+	var subtitle_label := _label(str(achievement.get("subtitle", "")), 42, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	subtitle_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	subtitle_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	subtitle_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(subtitle_label)
+
+	var reward_label := _label(str(achievement.get("reward", "")), 38, accent, HORIZONTAL_ALIGNMENT_LEFT)
+	reward_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	reward_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	reward_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(reward_label)
+
+	return card
 
 
 func _load_action_data() -> void:
@@ -3423,6 +3603,7 @@ func _init_state() -> void:
 	mastery.clear()
 	stamina.clear()
 	stamina_bank.clear()
+	ad_bonus_seconds_remaining = 0.0
 	for def in skill_defs:
 		var skill_id := str(def["id"])
 		skills[skill_id] = {"xp": 0, "level": 1}
@@ -3460,6 +3641,7 @@ func save_game() -> void:
 		"mastery": mastery,
 		"stamina": stamina,
 		"stamina_bank": stamina_bank,
+		"ad_bonus_seconds_remaining": ad_bonus_seconds_remaining,
 		"selected_skill_id": selected_skill_id,
 		"running_skill_id": running_skill_id,
 		"running_action_id": running_action_id,
@@ -3494,6 +3676,8 @@ func load_game() -> void:
 			if mastery.has(key) and typeof(loaded_mastery[key]) == TYPE_DICTIONARY:
 				mastery[key]["xp"] = int(loaded_mastery[key].get("xp", 0))
 				_recalculate_mastery(str(key))
+	for skill_id in skills.keys():
+		_recalculate_level(str(skill_id))
 	var loaded_stamina = data.get("stamina", {})
 	if typeof(loaded_stamina) == TYPE_DICTIONARY:
 		for skill_id in loaded_stamina.keys():
@@ -3504,6 +3688,7 @@ func load_game() -> void:
 		for skill_id in loaded_bank.keys():
 			if stamina_bank.has(skill_id):
 				stamina_bank[skill_id] = float(loaded_bank[skill_id])
+	ad_bonus_seconds_remaining = clampf(float(data.get("ad_bonus_seconds_remaining", 0.0)), 0.0, float(AD_BONUS_MAX_SECONDS))
 	selected_skill_id = str(data.get("selected_skill_id", selected_skill_id))
 	running_skill_id = str(data.get("running_skill_id", ""))
 	running_action_id = str(data.get("running_action_id", ""))
@@ -3513,6 +3698,7 @@ func load_game() -> void:
 	AudioServer.set_bus_mute(0, is_muted)
 	var offline := int(clamp(Time.get_unix_time_from_system() - int(data.get("saved_at", Time.get_unix_time_from_system())), 0, MAX_OFFLINE_SECONDS))
 	if offline > 0:
+		ad_bonus_seconds_remaining = maxf(0.0, ad_bonus_seconds_remaining - float(offline))
 		for skill_id in stamina.keys():
 			stamina[skill_id] = mini(_max_stamina(), _stamina(str(skill_id)) + int(floor(float(offline) / STAMINA_REGEN_SECONDS)))
 
@@ -3604,6 +3790,22 @@ func _would_mastery_reward_medal_up(skill_id: String, action_id: String, amount:
 		return false
 	var xp_total := float(mastery.get(_action_key(skill_id, action_id), {}).get("xp", 0))
 	return xp_total + amount >= float(_mastery_xp_for_level(level + 1))
+
+
+func _mastery_color(level: int) -> Color:
+	var colors := [
+		Color("#b8793f"),
+		Color("#c8d0d8"),
+		Color("#f4bf35"),
+		Color("#b9d3ff"),
+		Color("#4aa7ff"),
+		Color("#35d86d"),
+		Color("#e84d4d"),
+		Color("#f2fbff"),
+		Color("#9c4dff"),
+		Color("#fff2a8")
+	]
+	return colors[clampi(maxi(level, 1) - 1, 0, colors.size() - 1)]
 
 
 func _mastery_medal_texture(level: int) -> Texture2D:
@@ -3790,14 +3992,14 @@ func _effective_stamina(action: Dictionary) -> int:
 
 func _effective_seconds(skill_id: String, action: Dictionary) -> float:
 	var base_seconds := maxf(0.1, float(action.get("seconds", 1.0)))
-	var speed_bonus := clampf(_global_medal_bonus("speed_mult"), 0.0, 0.75)
+	var speed_bonus := clampf(_global_medal_bonus("speed_mult") + _ad_bonus_speed_mult(), 0.0, 0.75)
 	var skill_timer_reduction := clampf(_skill_level_timer_reduction(skill_id), 0.0, 0.85)
 	var total_reduction := clampf(speed_bonus + skill_timer_reduction, 0.0, 0.9)
 	return maxf(0.1, base_seconds * (1.0 - total_reduction))
 
 
 func _effective_xp(action: Dictionary) -> int:
-	var xp_bonus := _global_medal_bonus("xp_mult")
+	var xp_bonus := _global_medal_bonus("xp_mult") + _ad_bonus_xp_mult()
 	return maxi(1, int(round(float(action.get("xp", 1)) * (1.0 + xp_bonus))))
 
 
@@ -3838,6 +4040,15 @@ func _slug(text: String) -> String:
 
 func _format_seconds(seconds: float) -> String:
 	return "%.1f" % seconds if seconds < 10.0 else "%.0f" % seconds
+
+
+func _format_duration(seconds: float) -> String:
+	var total_seconds := maxi(0, int(ceil(seconds)))
+	var hours := int(total_seconds / 3600)
+	var minutes := int((total_seconds % 3600) / 60)
+	if hours > 0:
+		return "%sh %sm" % [hours, minutes]
+	return "%sm" % maxi(1, minutes)
 
 
 func _format_percent(value: float) -> String:
@@ -3974,6 +4185,43 @@ func _settings_page_button(text: String, icon_path := "", min_width := 900, icon
 		var label := _label(text, 70, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(label)
+	return button
+
+
+func _shop_ad_offer_button() -> Button:
+	var button := _menu_button("")
+	button.custom_minimum_size = Vector2(1480, 520)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.add_theme_stylebox_override("normal", _panel_style(Color("#fff5c7"), 16, 58))
+	button.add_theme_stylebox_override("hover", _panel_style(COLOR_GOLD, 16, 58))
+	button.add_theme_stylebox_override("pressed", _panel_style(COLOR_GOLD.darkened(0.08), 16, 58))
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 70)
+	margin.add_theme_constant_override("margin_right", 70)
+	margin.add_theme_constant_override("margin_top", 40)
+	margin.add_theme_constant_override("margin_bottom", 40)
+	button.add_child(margin)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 54)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(row)
+	row.add_child(_image("res://docs/assets/ui/ad-reward.png", Vector2(300, 300)))
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.alignment = BoxContainer.ALIGNMENT_CENTER
+	copy.add_theme_constant_override("separation", 12)
+	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(copy)
+	var title := _label("Play Ad", 84, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(title)
+	var details := _label("+10% XP\n+10% Speed\nFor 2 hours\n(Stackable)", 58, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	details.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(details)
 	return button
 
 
