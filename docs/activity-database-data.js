@@ -1,4 +1,6 @@
-{
+// Generated from activity-database.json for file:// HTML previews.
+// Edit activity-database.json first, then regenerate this bridge.
+globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
   "schema_version": 1,
   "updated": "2026-05-23",
   "source_of_truth": "Edit this JSON first. The Godot game and HTML activity database both read this file.",
@@ -48,7 +50,7 @@
     "mastery_level_up_effects": [
       "Each activity mastery level awards that tier medal for that activity, from Bronze through Heavenly only.",
       "Mastery is presented as visual progress on the action card: medal state plus progress bar.",
-      "The first globally earned medal of each tier unlocks a permanent global buff. Bronze, Sapphire, and Demonic increase max stamina; Silver, Emerald, and Heavenly increase XP; Gold and Ruby increase action speed; Platinum and Diamond increase success rate."
+      "Mastery does not change XP, stamina cost, action time, or success rate in the current mock."
     ]
   },
   "skills": [
@@ -2393,4 +2395,4 @@
       ]
     }
   ]
-}
+};

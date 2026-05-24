@@ -20,9 +20,9 @@ window/size/viewport_width=2160
 window/size/viewport_height=3840
 window/size/window_width_override=475
 window/size/window_height_override=845
-window/handheld/orientation=1
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/handheld/orientation=1
 
 [editor_plugins]
 

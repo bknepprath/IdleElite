@@ -1,15 +1,15 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$godotConsole = Join-Path $env:TEMP "godot-console-run\Godot_v4.5.1-stable_win64_console.exe"
+$runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $androidSdk = Join-Path $env:LOCALAPPDATA "Android\Sdk"
 $javaHome = "C:\Program Files\Android\Android Studio\jbr"
 $output = Join-Path $projectRoot "builds\android\idle-elite-release.aab"
 $stdoutLogPath = Join-Path $projectRoot "builds\android\last-release-build.stdout.log"
 $stderrLogPath = Join-Path $projectRoot "builds\android\last-release-build.stderr.log"
 
-if (-not (Test-Path -LiteralPath $godotConsole)) {
-    throw "Godot console executable not found at $godotConsole"
+if (-not (Test-Path -LiteralPath $runner)) {
+    throw "Godot runner was not found at $runner"
 }
 if (-not (Test-Path -LiteralPath $androidSdk)) {
     throw "Android SDK not found at $androidSdk"
@@ -33,23 +33,26 @@ foreach ($logPath in @($stdoutLogPath, $stderrLogPath)) {
 $arguments = @(
     "--headless",
     "--path",
-    "`"$projectRoot`"",
+    $projectRoot,
     "--export-release",
-    "`"Android Release`"",
-    "`"$output`""
-) -join " "
-$process = Start-Process -FilePath $godotConsole -ArgumentList $arguments -PassThru -WindowStyle Hidden -RedirectStandardOutput $stdoutLogPath -RedirectStandardError $stderrLogPath
-if (-not $process.WaitForExit(1200000)) {
-    if (Test-Path -LiteralPath $output) {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+    "Android Release",
+    $output
+)
+
+$previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
+$env:GODOT_RUN_TIMEOUT_SECONDS = "1200"
+try {
+    & $runner @arguments > $stdoutLogPath 2> $stderrLogPath
+    $godotExitCode = $LASTEXITCODE
+} finally {
+    $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
+}
+
+if ($godotExitCode -ne 0) {
+    if ($godotExitCode -eq 124 -and (Test-Path -LiteralPath $output)) {
+        Write-Warning "Godot export timed out after producing an AAB. Continuing with the generated artifact."
     } else {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-        throw "Godot export did not finish before timeout and no release AAB was created."
-    }
-} else {
-    $process.Refresh()
-    if ($null -ne $process.ExitCode -and $process.ExitCode -ne 0) {
-        throw "Godot export failed with exit code $($process.ExitCode). See $stdoutLogPath and $stderrLogPath"
+        throw "Godot export failed with exit code $godotExitCode. See $stdoutLogPath and $stderrLogPath"
     }
 }
 

@@ -1,6 +1,6 @@
 # Idle Elite Google Play Store Listing Pack
 
-Generated on 2026-05-22 for the current Godot prototype.
+Generated on 2026-05-23 for the current Godot prototype.
 
 ## Upload Asset Checklist
 
@@ -9,11 +9,12 @@ Generated on 2026-05-22 for the current Godot prototype.
 | App icon / game thumbnail | Required | 512 x 512 PNG with alpha, max 1024 KB | `assets/app-icon-512.png` |
 | Feature graphic | Required for many placements and preview video cover | 1024 x 500 JPG or 24-bit PNG, no alpha | `assets/feature-graphic-1024x500.png` |
 | Phone screenshots | Required: at least 2 for supported phone listing. Recommended for games: at least 3 portrait or 3 landscape screenshots. | Generated at 1080 x 1920 portrait PNG | `assets/screenshot-01` through `assets/screenshot-05` |
-| Google Ads landscape image | Optional ad creative | 1200 x 628, 1.91:1 | `assets/ad-landscape-1200x628.png` |
-| Google Ads square image | Optional ad creative | 1200 x 1200, 1:1 | `assets/ad-square-1200x1200.png` |
-| Google Ads portrait image | Optional ad creative | 1200 x 1500, 4:5 | `assets/ad-portrait-1200x1500.png` |
+| Full vertical ad creative 1 | Optional marketing / screenshot-style ad creative | 1080 x 1920 PNG | `assets/ad-vertical-01-train-five-skills-1080x1920.png` |
+| Full vertical ad creative 2 | Optional marketing / screenshot-style ad creative | 1080 x 1920 PNG | `assets/ad-vertical-02-progress-while-away-1080x1920.png` |
+| Full vertical ad creative 3 | Optional marketing / screenshot-style ad creative | 1080 x 1920 PNG | `assets/ad-vertical-03-tap-level-repeat-1080x1920.png` |
+| Full vertical ad creative 4 | Optional marketing / screenshot-style ad creative | 1080 x 1920 PNG | `assets/ad-vertical-04-become-idle-elite-1080x1920.png` |
 
-Important: Google Play screenshots can use restrained marketing taglines when they still show the game experience. Google Ads app campaign image assets are stricter: use images without marketing text except logos, so the generated ad images are art-only.
+Important: Google Play screenshots can use restrained marketing taglines when they still show the game experience. The generated vertical ads are full-screen promotional creatives intended for store, social, and vertical campaign testing. If you need static Google Ads app-campaign image assets, create separate text-safe 1.91:1, 1:1, and 4:5 exports from this direction.
 
 ## Store Listing Copy
 
@@ -81,6 +82,26 @@ Idle Elite
 Train every skill. Become absurdly elite.
 
 Fight  Fish  Build  Sneak  Chop
+
+## Vertical Ad Creative Sequence
+
+Use these as full-screen mobile ad concepts in this order:
+
+1. `ad-vertical-01-train-five-skills-1080x1920.png`
+   - Hook: Train 5 Idle Skills
+   - Message: Shows the core menu, five skill icons, and quick-session promise.
+
+2. `ad-vertical-02-progress-while-away-1080x1920.png`
+   - Hook: Progress While Away
+   - Message: Leads with idle rewards and return-session payoff.
+
+3. `ad-vertical-03-tap-level-repeat-1080x1920.png`
+   - Hook: Tap. Level. Repeat.
+   - Message: Shows action variety and the one-more-level loop.
+
+4. `ad-vertical-04-become-idle-elite-1080x1920.png`
+   - Hook: Become Idle Elite
+   - Message: Brand-forward summary of skills, jobs, and offline gains.
 
 ## Google Ads Text Asset Ideas
 

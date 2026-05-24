@@ -1,0 +1,435 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite Gauge Mock</title>
+  <style>
+    :root {
+      --ink: #171615;
+      --paper: #f8f1e5;
+      --panel: #fffdf8;
+      --line: #d9cfbc;
+      --muted: #625b50;
+      --gold: #fff2a8;
+      --blue: #36b8e8;
+      --green: #35d86d;
+      --red: #e84d4d;
+      --shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      background:
+        linear-gradient(135deg, #fbf8ef 0%, #edf7f4 52%, #f5eef9 100%);
+    }
+
+    button,
+    input {
+      font: inherit;
+      color: inherit;
+    }
+
+    .stage {
+      width: min(1120px, calc(100% - 28px));
+      display: grid;
+      grid-template-columns: minmax(320px, 430px) minmax(320px, 1fr);
+      gap: 34px;
+      align-items: center;
+      padding: 28px 0;
+    }
+
+    .phone {
+      width: min(430px, 100%);
+      aspect-ratio: 9 / 16;
+      margin: 0 auto;
+      border: 7px solid var(--ink);
+      border-radius: 34px;
+      background: var(--paper);
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      box-shadow: 0 26px 58px rgba(28, 24, 18, 0.22);
+    }
+
+    .topbar {
+      padding: 16px 14px 12px;
+      border-bottom: 3px solid var(--ink);
+      background: var(--panel);
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 25px;
+      line-height: 1;
+      text-align: center;
+    }
+
+    .topbar small {
+      display: block;
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      text-align: center;
+    }
+
+    .phone-body {
+      display: grid;
+      place-items: center;
+      padding: 20px;
+    }
+
+    .gauge-shell {
+      width: min(330px, 90%);
+      display: grid;
+      gap: 18px;
+      justify-items: center;
+    }
+
+    .stamina-gauge {
+      --stamina: 72;
+      --regen: 42;
+      position: relative;
+      width: min(300px, 78vw);
+      aspect-ratio: 1;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        conic-gradient(from -90deg, var(--blue) calc(var(--regen) * 1%), #fff2a8 0),
+        #fff2a8;
+      border: 6px solid var(--ink);
+      box-shadow: 5px 7px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .stamina-gauge::before {
+      content: "";
+      position: absolute;
+      inset: 20px;
+      border-radius: 50%;
+      background: var(--ink);
+      box-shadow: inset 0 0 0 3px rgba(255, 255, 255, 0.18);
+    }
+
+    .stamina-core {
+      position: relative;
+      width: calc(100% - 68px);
+      aspect-ratio: 1;
+      overflow: hidden;
+      border: 5px solid var(--ink);
+      border-radius: 50%;
+      background: #fffaf0;
+      box-shadow: inset 0 0 0 4px #fffdf8;
+    }
+
+    .stamina-fill {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: calc(var(--stamina) * 1%);
+      background:
+        radial-gradient(circle at 32% 18%, rgba(255, 255, 255, 0.54), transparent 0 16%, transparent 17%),
+        linear-gradient(180deg, #75dcff 0%, #36b8e8 44%, #226fd8 100%);
+      transition: height 220ms ease;
+    }
+
+    .stamina-fill::before {
+      content: "";
+      position: absolute;
+      top: -13px;
+      left: -8%;
+      width: 116%;
+      height: 26px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .stamina-readout {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      text-align: center;
+    }
+
+    .stamina-readout b {
+      display: block;
+      font-size: 52px;
+      line-height: 0.9;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .stroke-text {
+      position: relative;
+      display: inline-block;
+      color: #fff;
+      letter-spacing: 0;
+      isolation: isolate;
+    }
+
+    .stroke-text::before {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      color: var(--ink);
+      text-shadow:
+        -3px -3px 0 var(--ink),
+        0 -3px 0 var(--ink),
+        3px -3px 0 var(--ink),
+        -3px 0 0 var(--ink),
+        3px 0 0 var(--ink),
+        -3px 3px 0 var(--ink),
+        0 3px 0 var(--ink),
+        3px 3px 0 var(--ink),
+        3px 5px 0 rgba(23, 22, 21, 0.42);
+      -webkit-text-stroke: 5px var(--ink);
+    }
+
+    .stamina-gauge.tired {
+      background:
+        conic-gradient(from -90deg, var(--red) calc(var(--regen) * 1%), #fff2a8 0),
+        #fff2a8;
+    }
+
+    .stamina-gauge.tired .stamina-fill {
+      height: 0;
+      background: linear-gradient(180deg, #ffaaa0, #e84d4d);
+    }
+
+    .stamina-gauge.tired .stamina-readout b {
+      color: #fff;
+      font-size: 45px;
+      letter-spacing: 0;
+      text-transform: uppercase;
+    }
+
+    .gauge-caption {
+      width: 100%;
+      min-height: 54px;
+      padding: 10px 12px;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      color: #2d271f;
+      font-size: 15px;
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .controls {
+      display: grid;
+      gap: 12px;
+      padding: 16px;
+      border-top: 3px solid var(--ink);
+      background: var(--panel);
+    }
+
+    .meter-control {
+      display: grid;
+      gap: 6px;
+    }
+
+    .meter-control label {
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--blue);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .button-row button,
+    .nav-link {
+      min-height: 38px;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      background: #fffdf8;
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 12px;
+      font-weight: 950;
+      cursor: pointer;
+    }
+
+    .button-row button:active,
+    .nav-link:active {
+      transform: translate(1px, 1px);
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+
+    .aside h1 {
+      margin: 0 0 12px;
+      font-size: clamp(36px, 6vw, 64px);
+      line-height: 0.95;
+    }
+
+    .aside p {
+      margin: 0 0 16px;
+      color: #3a352e;
+      font-size: 18px;
+      line-height: 1.45;
+    }
+
+    .nav-links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 20px;
+    }
+
+    .nav-link {
+      display: inline-flex;
+      align-items: center;
+      padding: 8px 10px;
+      color: var(--ink);
+      text-decoration: none;
+    }
+
+    @media (max-width: 860px) {
+      .stage {
+        grid-template-columns: 1fr;
+        width: min(100% - 20px, 430px);
+      }
+
+      .aside {
+        order: -1;
+      }
+
+    }
+  </style>
+</head>
+<body>
+  <main class="stage">
+    <section class="phone" aria-label="Stamina gauge mock">
+      <div class="topbar">
+        <h1>Woodcutting</h1>
+        <small>Lv 12 - Max 34</small>
+      </div>
+
+      <div class="phone-body">
+        <div class="gauge-shell">
+          <div class="stamina-gauge" id="gauge" style="--stamina: 72; --regen: 42">
+            <div class="stamina-core">
+              <div class="stamina-fill"></div>
+              <div class="stamina-readout">
+                <div>
+                  <b id="readout" class="stroke-text" data-text="24/34">24/34</b>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="gauge-caption" id="caption">Outer ring fills clockwise until the next point returns.</div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <div class="meter-control">
+          <label for="stamina"><span>Current</span><output id="staminaOut">24</output></label>
+          <input id="stamina" type="range" min="0" max="34" value="24">
+        </div>
+        <div class="meter-control">
+          <label for="regen"><span>Regen progress</span><output id="regenOut">42%</output></label>
+          <input id="regen" type="range" min="0" max="100" value="42">
+        </div>
+        <div class="button-row">
+          <button type="button" data-preset="full">Full</button>
+          <button type="button" data-preset="spend">Spend</button>
+          <button type="button" data-preset="empty">Empty</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="aside">
+      <h1>Gauge Mock</h1>
+      <p>A single circular status piece for skill pages: the outer ring shows recovery progress, while the center drains as points are spent.</p>
+      <nav class="nav-links" aria-label="Docs pages">
+        <a class="nav-link" href="idle-elite-prd.html">PRD</a>
+        <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
+        <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
+        <a class="nav-link" href="activity-database.html">Activity Database</a>
+        <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
+      </nav>
+    </aside>
+  </main>
+
+  <script>
+    const maxStamina = 34;
+    const gauge = document.getElementById("gauge");
+    const stamina = document.getElementById("stamina");
+    const regen = document.getElementById("regen");
+    const staminaOut = document.getElementById("staminaOut");
+    const regenOut = document.getElementById("regenOut");
+    const readout = document.getElementById("readout");
+    const caption = document.getElementById("caption");
+
+    function render() {
+      const staminaValue = Number(stamina.value);
+      const regenValue = Number(regen.value);
+      const staminaPct = Math.round(staminaValue / maxStamina * 100);
+      gauge.style.setProperty("--stamina", staminaPct);
+      gauge.style.setProperty("--regen", regenValue);
+      gauge.classList.toggle("tired", staminaValue <= 0);
+      staminaOut.value = staminaValue;
+      regenOut.value = regenValue + "%";
+      const readoutText = staminaValue + "/" + maxStamina;
+      readout.textContent = readoutText;
+      readout.dataset.text = readoutText;
+      if (staminaValue <= 0) {
+        caption.textContent = "Empty state keeps the center numeric while the ring shows recovery progress.";
+      } else if (staminaValue >= maxStamina) {
+        caption.textContent = "Full state keeps the center filled and the outer ring complete.";
+      } else {
+        caption.textContent = "Outer ring fills clockwise until the next point returns.";
+      }
+    }
+
+    stamina.addEventListener("input", render);
+    regen.addEventListener("input", render);
+
+    document.addEventListener("click", event => {
+      const button = event.target.closest("button[data-preset]");
+      if (!button) return;
+      if (button.dataset.preset === "full") {
+        stamina.value = maxStamina;
+        regen.value = 100;
+      }
+      if (button.dataset.preset === "spend") {
+        stamina.value = Math.max(0, Number(stamina.value) - 5);
+        regen.value = 18;
+      }
+      if (button.dataset.preset === "empty") {
+        stamina.value = 0;
+        regen.value = 18;
+      }
+      render();
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ksywncb6tfq"
-path="res://.godot/imported/ad-square-1200x1200.png-274d2e30ecc3b6240aa4268f59997049.ctex"
+uid="uid://b0fae5u4oxu6k"
+path="res://.godot/imported/achievement-type-icons-source.png-e4be27c0ea7eb204364e51902ad8fabf.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/play-store/assets/ad-square-1200x1200.png"
-dest_files=["res://.godot/imported/ad-square-1200x1200.png-274d2e30ecc3b6240aa4268f59997049.ctex"]
+source_file="res://docs/assets/achievements/achievement-type-icons-source.png"
+dest_files=["res://.godot/imported/achievement-type-icons-source.png-e4be27c0ea7eb204364e51902ad8fabf.ctex"]
 
 [params]
 

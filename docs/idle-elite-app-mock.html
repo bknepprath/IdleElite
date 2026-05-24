@@ -101,12 +101,20 @@
     }
 
     .skill-summary {
-      margin: -2px -2px 4px;
-      padding: 0 2px 12px;
+      position: sticky;
+      top: 0;
+      z-index: 6;
+      margin: -16px -12px 16px;
+      padding: 16px 12px 12px;
       border: 0;
       border-radius: 0;
       border-bottom: 4px solid var(--ink);
-      background: transparent;
+      background: linear-gradient(180deg, var(--paper) 0%, rgba(248, 241, 229, 0.96) 100%);
+      box-shadow: 0 6px 0 rgba(248, 241, 229, 0.86), 0 12px 16px rgba(23, 22, 21, 0.08);
+    }
+
+    .skill-summary + .scroll {
+      padding-top: 8px;
     }
 
     .skill,
@@ -121,8 +129,8 @@
     }
 
     .skill {
-      grid-template-columns: 58px minmax(0, 1fr);
-      gap: 12px;
+      grid-template-columns: 58px minmax(0, 1fr) 56px;
+      gap: 10px;
       min-height: 108px;
       padding: 10px;
       border: 3px solid var(--ink);
@@ -144,6 +152,70 @@
 
     .skill-copy {
       min-width: 0;
+    }
+
+    .skill-list-gauge {
+      --stamina: 100;
+      position: relative;
+      width: 54px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      align-self: center;
+      border: 3px solid var(--ink);
+      border-radius: 50%;
+      background: #fff2a8;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .skill-list-gauge::before {
+      content: "";
+      position: absolute;
+      inset: 5px;
+      border-radius: 50%;
+      background: var(--ink);
+    }
+
+    .skill-list-gauge-core {
+      position: relative;
+      width: 36px;
+      aspect-ratio: 1;
+      overflow: hidden;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: #fffaf0;
+      z-index: 1;
+    }
+
+    .skill-list-gauge-fill {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: calc(var(--stamina) * 1%);
+      background: linear-gradient(180deg, #75dcff 0%, #36b8e8 52%, #226fd8 100%);
+    }
+
+    .skill-list-gauge-readout {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 950;
+      line-height: 1;
+      text-align: center;
+      text-shadow:
+        -1px -1px 0 var(--ink),
+        0 -1px 0 var(--ink),
+        1px -1px 0 var(--ink),
+        -1px 0 0 var(--ink),
+        1px 0 0 var(--ink),
+        -1px 1px 0 var(--ink),
+        0 1px 0 var(--ink),
+        1px 1px 0 var(--ink);
     }
 
     .skill img {
@@ -186,7 +258,6 @@
 
     .skill-bars {
       display: grid;
-      gap: 6px;
       margin-top: 9px;
     }
 
@@ -201,15 +272,6 @@
 
     .skill .bar i {
       background: linear-gradient(90deg, #35d86d, #8bff9f);
-    }
-
-    .skill .stamina-bar {
-      background: #e8f4ff;
-    }
-
-    .skill .stamina-bar i,
-    .skill-stamina-bar i {
-      background: linear-gradient(90deg, #3aa0ff, #9edcff);
     }
 
     .badge {
@@ -257,8 +319,17 @@
     }
 
     .skill-summary .skill-head {
-      grid-template-columns: 62px 1fr;
+      grid-template-columns: minmax(0, 1fr) 96px;
+      gap: 12px;
       padding: 4px 0 8px;
+      align-items: center;
+    }
+
+    .skill-summary-left {
+      display: grid;
+      grid-template-columns: 62px minmax(0, 1fr);
+      gap: 10px;
+      align-items: center;
     }
 
     .skill-head img {
@@ -307,17 +378,85 @@
       background: linear-gradient(90deg, #35d86d, #8bff9f);
     }
 
-    .skill-stamina-bar {
-      height: 14px;
-      margin: 8px 0 0;
+    .stamina-gauge {
+      --stamina: 100;
+      --regen: 100;
+      position: relative;
+      width: 92px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
       border: 3px solid var(--ink);
-      border-radius: 999px;
-      background: #e8f4ff;
-      box-shadow: 2px 2px 0 var(--ink), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+      border-radius: 50%;
+      background:
+        conic-gradient(from -90deg, #36b8e8 calc(var(--regen) * 1%), #fff2a8 0);
+      box-shadow: 2px 3px 0 var(--ink);
     }
 
-    .skill-stamina-bar i {
-      background: linear-gradient(90deg, #3aa0ff, #9edcff);
+    .stamina-gauge::before {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      background: var(--ink);
+    }
+
+    .stamina-gauge-core {
+      position: relative;
+      width: 62px;
+      aspect-ratio: 1;
+      overflow: hidden;
+      border: 3px solid var(--ink);
+      border-radius: 50%;
+      background: #fffaf0;
+      z-index: 1;
+    }
+
+    .stamina-gauge-fill {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      height: calc(var(--stamina) * 1%);
+      background: linear-gradient(180deg, #75dcff 0%, #36b8e8 50%, #226fd8 100%);
+    }
+
+    .stamina-gauge-fill::before {
+      content: "";
+      position: absolute;
+      top: -6px;
+      left: -10%;
+      width: 120%;
+      height: 12px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.45);
+    }
+
+    .stamina-gauge-readout {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 950;
+      line-height: 0.9;
+      text-align: center;
+      text-shadow:
+        -2px -2px 0 var(--ink),
+        0 -2px 0 var(--ink),
+        2px -2px 0 var(--ink),
+        -2px 0 0 var(--ink),
+        2px 0 0 var(--ink),
+        -2px 2px 0 var(--ink),
+        0 2px 0 var(--ink),
+        2px 2px 0 var(--ink);
+    }
+
+    .stamina-gauge.tired .stamina-gauge-readout {
+      font-size: 14px;
+      text-transform: uppercase;
     }
 
     .skills-home-shell {
@@ -327,87 +466,147 @@
     }
 
     .home-stage {
-      min-height: 360px;
+      min-height: 610px;
       display: grid;
-      grid-template-rows: auto 1fr;
+      grid-template-rows: auto auto minmax(252px, 1fr);
       gap: 12px;
-      padding: 2px 0 18px;
+      padding: 2px 2px 0;
+      background: linear-gradient(180deg, #f8f1e5 0%, #fff3c6 100%);
     }
 
     .home-head {
+      display: grid;
+      place-items: center;
+      gap: 6px;
+      padding-top: 12px;
       text-align: center;
     }
 
-    .home-head h1 {
-      margin: 0;
-      color: #2d271f;
-      font-size: 30px;
+    .home-logo {
+      width: min(226px, 82%);
+      height: 62px;
+      object-fit: contain;
+      filter: drop-shadow(1px 2px 0 rgba(23, 22, 21, 0.2));
+    }
+
+    .home-levels {
+      display: grid;
+      gap: 7px;
+      justify-self: center;
+      width: min(250px, 82%);
+    }
+
+    .home-level-row {
+      display: grid;
+      grid-template-columns: 36px minmax(0, 1fr);
+      align-items: center;
+      gap: 9px;
+      color: #2a2928;
+      font-size: 19px;
+      font-weight: 950;
       line-height: 1;
     }
 
-    .home-head small {
-      display: block;
-      margin-top: 5px;
-      color: #4c4439;
-      font-size: 12px;
-      font-weight: 950;
+    .home-level-row img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      border-radius: 6px;
+    }
+
+    .home-level-row.total {
+      grid-template-columns: 42px minmax(0, 1fr);
+      margin-bottom: 7px;
+      font-size: 25px;
+    }
+
+    .home-level-row.total img {
+      width: 40px;
+      height: 40px;
     }
 
     .hero-scene {
       position: relative;
-      display: grid;
-      place-items: center;
-      min-height: 278px;
-      border-bottom: 4px solid var(--ink);
-      background:
-        linear-gradient(180deg, rgba(255, 253, 248, 0.55), rgba(255, 241, 200, 0.36)),
-        repeating-linear-gradient(0deg, rgba(23, 22, 21, 0.05) 0 1px, transparent 1px 18px);
+      min-height: 270px;
       overflow: hidden;
     }
 
-    .ad-button {
+    .hero-speech {
       position: absolute;
-      top: 66%;
-      right: 10px;
-      z-index: 4;
-      width: 70px;
-      min-height: 78px;
-      padding: 5px 4px 6px;
+      top: 5px;
+      left: 7px;
+      z-index: 3;
+      width: min(286px, calc(100% - 82px));
+      height: 106px;
+      display: grid;
+      place-items: start center;
+      padding-top: 28px;
+    }
+
+    .hero-speech img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: fill;
+    }
+
+    .hero-speech span {
+      position: relative;
+      z-index: 1;
+      width: 78%;
+      color: #2a2928;
+      font-size: 13px;
+      font-weight: 950;
+      line-height: 1.15;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .hero-tools {
+      position: absolute;
+      top: 18px;
+      right: 8px;
+      z-index: 5;
+      display: grid;
+      gap: 13px;
+    }
+
+    .ad-button,
+    .settings-button,
+    .discord-button {
+      width: 62px;
+      height: 62px;
+      padding: 4px;
       border: 3px solid var(--ink);
-      border-radius: 15px;
-      background: #fff1a8;
+      border-radius: 50%;
+      background: #fff2a8;
       box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
       cursor: pointer;
-      transform: translateY(-50%);
     }
 
     .ad-button:hover,
-    .ad-button:focus-visible {
+    .ad-button:focus-visible,
+    .settings-button:hover,
+    .settings-button:focus-visible,
+    .discord-button:hover,
+    .discord-button:focus-visible {
       background: #fff7c9;
       box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9), inset 0 0 0 2px rgba(47, 226, 117, 0.22);
     }
 
-    .ad-button:active {
+    .ad-button:active,
+    .settings-button:active,
+    .discord-button:active {
       box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.9);
     }
 
-    .ad-button img {
-      display: block;
-      width: 54px;
-      height: 46px;
-      margin: 0 auto;
+    .ad-button img,
+    .settings-button img,
+    .discord-button img {
+      width: 100%;
+      height: 100%;
       object-fit: contain;
-    }
-
-    .ad-button span {
-      display: block;
-      margin-top: 2px;
-      color: #171615;
-      font-size: 10px;
-      font-weight: 950;
-      line-height: 1;
-      text-align: center;
-      white-space: nowrap;
     }
 
     .ad-button.capped {
@@ -415,34 +614,11 @@
     }
 
     .settings-button {
-      position: absolute;
-      top: 12px;
-      right: 10px;
-      z-index: 4;
-      width: 48px;
-      height: 48px;
-      padding: 4px;
-      border: 3px solid var(--ink);
-      border-radius: 13px;
       background: #e8f4ff;
-      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
-      cursor: pointer;
     }
 
-    .settings-button:hover,
-    .settings-button:focus-visible {
-      background: #fff7c9;
-      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9), inset 0 0 0 2px rgba(47, 226, 117, 0.22);
-    }
-
-    .settings-button:active {
-      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.9);
-    }
-
-    .settings-button img {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
+    .discord-button {
+      background: #4f8fff;
     }
 
     .settings-sheet {
@@ -485,22 +661,12 @@
       box-shadow: 2px 2px 0 var(--ink);
     }
 
-    .hero-scene::after {
-      content: "";
-      position: absolute;
-      right: 24px;
-      bottom: 24px;
-      left: 24px;
-      height: 10px;
-      border: 3px solid var(--ink);
-      border-radius: 999px;
-      background: rgba(23, 22, 21, 0.08);
-    }
-
     .hero-pose {
-      position: relative;
-      z-index: 1;
-      width: min(210px, 64%);
+      position: absolute;
+      z-index: 2;
+      left: 34px;
+      bottom: -22px;
+      width: 212px;
       height: 238px;
       object-fit: contain;
       image-rendering: auto;
@@ -652,6 +818,11 @@
       pointer-events: none;
     }
 
+    .mastery-medal.dim {
+      opacity: 0.42;
+      filter: grayscale(0.35) drop-shadow(1px 2px 0 rgba(23, 22, 21, 0.8));
+    }
+
     .activity-main {
       min-width: 0;
       display: grid;
@@ -668,22 +839,8 @@
     .activity-title-row strong {
       font-size: 15px;
       line-height: 1.05;
-    }
-
-    .running-pill {
-      display: grid;
-      place-items: center;
-      min-width: 34px;
-      min-height: 22px;
-      padding: 4px 6px;
-      border: 2px solid var(--ink);
-      border-radius: 999px;
-      background: #3ee27a;
-      color: #102416;
-      font-size: 9px;
-      font-weight: 950;
-      line-height: 1;
-      box-shadow: 1px 1px 0 var(--ink);
+      overflow: hidden;
+      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
@@ -695,11 +852,16 @@
 
     .stat-chip {
       min-width: 0;
+      display: grid;
+      place-items: center;
+      min-height: 40px;
       padding: 5px 5px 4px;
-      border: 1px solid rgba(23, 22, 21, 0.28);
+      border: 3px solid var(--ink);
       border-radius: 7px;
-      background: rgba(255, 255, 255, 0.76);
+      background: #ffffff;
+      text-align: center;
       line-height: 1.05;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.75);
     }
 
     .stat-chip b {
@@ -724,8 +886,8 @@
 
     .meter-line {
       display: grid;
-      grid-template-columns: 54px 1fr auto;
-      gap: 6px;
+      grid-template-columns: 1fr;
+      gap: 0;
       align-items: center;
       color: #29241f;
       font-size: 10px;
@@ -803,6 +965,10 @@
 
     .tab {
       min-height: 42px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
       border: 0;
       background: transparent;
       color: var(--muted);
@@ -811,9 +977,20 @@
       cursor: pointer;
     }
 
+    .tab img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      filter: grayscale(0.45);
+    }
+
     .tab.active {
       color: var(--ink);
       background: var(--gold);
+    }
+
+    .tab.active img {
+      filter: none;
     }
 
     .aside h1 {
@@ -901,10 +1078,12 @@
         grid-template-columns: 1fr;
         width: min(100% - 20px, 390px);
         margin: 0 auto;
+        gap: 20px;
+        padding: 16px 0 22px;
       }
 
       .aside {
-        order: -1;
+        order: 1;
       }
     }
   </style>
@@ -914,8 +1093,8 @@
     <section class="phone" aria-label="Idle Elite phone mock">
       <div class="content" id="app"></div>
       <nav class="tabs" aria-label="App tabs">
-        <button class="tab active" data-tab="skills">Skills</button>
-        <button class="tab" data-tab="hero">Hero</button>
+        <button class="tab active" data-tab="skills"><img src="assets/ui/total-lv-bargraph.png" alt="">Skills</button>
+        <button class="tab" data-tab="hero"><img src="assets/ui/nav-hero.png" alt="">Hero</button>
       </nav>
     </section>
 
@@ -934,281 +1113,17 @@
         <a class="nav-link" href="idle-elite-prd.html">PRD</a>
         <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
         <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
+        <a class="nav-link" href="activity-database.html">Activity Database</a>
+        <a class="nav-link" href="stamina-gauge-mock.html">Stamina Gauge</a>
         <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
       </nav>
     </aside>
   </main>
 
+  <script src="activity-database-data.js"></script>
+  <script src="activity-docs.js"></script>
   <script>
-    const icons = {
-      fight: "assets/icons/fight.png",
-      thieving: "assets/icons/thieving.png",
-      build: "assets/icons/build.png",
-      woodcutting: "assets/icons/woodcutting.png",
-      fishing: "assets/icons/fishing.png"
-    };
-
-    const activityAssets = {
-      fight: {
-        art: "assets/icons/fight.png",
-        bg: "assets/backgrounds/action-background-sheet.png"
-      },
-      thieving: {
-        art: "assets/icons/thieving.png",
-        bg: "assets/backgrounds/action-background-sheet.png"
-      },
-      build: {
-        art: "assets/icons/build.png",
-        bg: "assets/backgrounds/action-background-sheet.png"
-      },
-      woodcutting: {
-        art: "assets/icons/woodcutting.png",
-        bg: "assets/backgrounds/action-background-sheet.png"
-      },
-      fishing: {
-        art: "assets/fishing/poses/03-rod-cast.png",
-        bg: "assets/fishing/backgrounds/01-pond-dock.png"
-      }
-    };
-
-    const skillTuning = {
-      fight: { timeScale: 0.88, masteryBase: 0.014, staminaBase: 0.007, successBase: 0.42 },
-      thieving: { timeScale: 0.72, masteryBase: 0.018, staminaBase: 0.006, successBase: 0.66 },
-      build: { timeScale: 1.28, masteryBase: 0.011, staminaBase: 0.010, successBase: 0.50 },
-      woodcutting: { timeScale: 1.08, masteryBase: 0.013, staminaBase: 0.012, successBase: 0.45 },
-      fishing: { timeScale: 0.94, masteryBase: 0.016, staminaBase: 0.008, successBase: 0.56 }
-    };
-
-    const timeModPattern = [0.78, 1.08, 0.92, 1.24, 0.86, 1.16, 1.34, 0.97, 1.42, 1.05];
-    const masteryPattern = [1.25, 0.95, 1.1, 0.82, 1.35, 1.0, 0.9, 1.18];
-    const staminaPattern = [0.75, 1.15, 0.9, 1.3, 0.82, 1.05, 1.22];
-    const successPattern = [1.3, 0.85, 1.05, 0.7, 1.18, 0.92, 1.38, 0.78];
-    const backgroundTierLabels = ["early", "rising", "mid", "late", "finale"];
-
-    const skills = [
-      {
-        id: "fight",
-        name: "Fight",
-        identity: "Farm-only escalation. The fights begin with chores getting personal and somehow end with the farm itself demanding a rematch.",
-        actions: [
-          { level: 1, name: "Shove Wobbly Hay Bale", stamina: 1, success: "95%" },
-          { level: 2, name: "Kick Mud Off Boot", stamina: 1, success: "93%" },
-          { level: 3, name: "Wrestle Stuck Gate Latch", stamina: 1, success: "91%" },
-          { level: 4, name: "Box Suspicious Feed Sack", stamina: 2, success: "89%" },
-          { level: 5, name: "Duel Leaning Fence Post", stamina: 2, success: "87%" },
-          { level: 6, name: "Outmuscle Angry Wheelbarrow", stamina: 2, success: "85%" },
-          { level: 7, name: "Brawl With Kicking Milk Pail", stamina: 3, success: "82%" },
-          { level: 8, name: "Square Up With Rake In Grass", stamina: 3, success: "80%" },
-          { level: 9, name: "Grapple Overfull Compost Bin", stamina: 3, success: "78%" },
-          { level: 10, name: "Parry Windmill Shadow", stamina: 4, success: "76%" },
-          { level: 12, name: "Tackle Runaway Water Trough", stamina: 4, success: "73%" },
-          { level: 14, name: "Fight The Barn Door At Midnight", stamina: 5, success: "70%" },
-          { level: 16, name: "Challenge The Silo Echo", stamina: 5, success: "68%" },
-          { level: 18, name: "Survive The Hayloft Ambush", stamina: 6, success: "65%" },
-          { level: 20, name: "Punch Through Corn Maze Panic", stamina: 6, success: "62%" },
-          { level: 22, name: "Body Slam The Root Cellar Door", stamina: 7, success: "60%" },
-          { level: 24, name: "Trade Blows With The Weather Vane", stamina: 7, success: "57%" },
-          { level: 26, name: "Dodge The Irrigation Betrayal", stamina: 8, success: "55%" },
-          { level: 28, name: "Enter The Scarecrow Circle", stamina: 8, success: "52%" },
-          { level: 30, name: "Defeat The Tractor That Would Not Start", stamina: 9, success: "50%" },
-          { level: 33, name: "Hold The Line At The Pumpkin Patch", stamina: 10, success: "48%" },
-          { level: 36, name: "Storm The Forbidden Tool Shed", stamina: 11, success: "45%" },
-          { level: 40, name: "Win The Great Barn Rafters Melee", stamina: 12, success: "42%" },
-          { level: 45, name: "Face The Entire Farm At Once", stamina: 14, success: "38%" },
-          { level: 50, name: "Rematch The Same Hay Bale, Somehow Stronger", stamina: 16, success: "34%" }
-        ]
-      },
-      {
-        id: "thieving",
-        name: "Thieving",
-        identity: "Small-time theft snowballs into impossible heists. Heat, nerve, and audacity matter most on this review sheet.",
-        actions: [
-          { level: 1, name: "Pocket A Penny Nobody Wanted", stamina: 1, success: "96%" },
-          { level: 2, name: "Borrow A Cookie Permanently", stamina: 1, success: "94%" },
-          { level: 3, name: "Sneak Past Tip Jar Eye Contact", stamina: 1, success: "92%" },
-          { level: 4, name: "Lift Loose Coins From Couch Cushions", stamina: 2, success: "90%" },
-          { level: 5, name: "Distract Fruit Stand With Jazz Hands", stamina: 2, success: "87%" },
-          { level: 6, name: "Pick The World's Friendliest Lock", stamina: 2, success: "85%" },
-          { level: 7, name: "Swap Price Tags At The Broom Store", stamina: 3, success: "82%" },
-          { level: 8, name: "Steal A Wallet From A Mannequin", stamina: 3, success: "80%" },
-          { level: 9, name: "Rob The Tiny Bank Desk", stamina: 3, success: "77%" },
-          { level: 10, name: "Crack The Breakroom Snack Safe", stamina: 4, success: "74%" },
-          { level: 12, name: "Lift The Mayor's Ceremonial Purse", stamina: 4, success: "71%" },
-          { level: 14, name: "Heist The Museum Gift Shop", stamina: 5, success: "68%" },
-          { level: 16, name: "Swipe The Bank's Practice Vault", stamina: 5, success: "65%" },
-          { level: 18, name: "Rob The Bank During A Robbery Drill", stamina: 6, success: "62%" },
-          { level: 20, name: "Empty The Bank's Backup Bank", stamina: 6, success: "59%" },
-          { level: 22, name: "Steal A Password From A Fortune Cookie", stamina: 7, success: "56%" },
-          { level: 24, name: "Pickpocket The Security Camera", stamina: 7, success: "53%" },
-          { level: 26, name: "Hotwire A Parked Alien Spaceship", stamina: 8, success: "50%" },
-          { level: 28, name: "Rob The Alien Spaceship's Bank", stamina: 8, success: "47%" },
-          { level: 30, name: "Forge A Receipt For The Moon", stamina: 9, success: "44%" },
-          { level: 33, name: "Burgle The Dream Of A Sleeping Wizard", stamina: 10, success: "41%" },
-          { level: 36, name: "Shoplift From The Concept Of Money", stamina: 11, success: "38%" },
-          { level: 40, name: "Crack The Vault Between Dimensions", stamina: 12, success: "35%" },
-          { level: 45, name: "Pickpocket An Interdimensional God", stamina: 14, success: "31%" },
-          { level: 50, name: "Steal The Alibi You Used To Do It", stamina: 16, success: "27%" }
-        ]
-      },
-      {
-        id: "build",
-        name: "Build",
-        identity: "Permanent progress escalating from honest repairs to architecture that makes inspectors whisper.",
-        actions: [
-          { level: 1, name: "Stack Bricks", stamina: 1, success: "86%" },
-          { level: 2, name: "Patch Fence With Confidence", stamina: 1, success: "84%" },
-          { level: 3, name: "Hammer One Suspicious Nail", stamina: 1, success: "82%" },
-          { level: 4, name: "Repair Small Shack", stamina: 2, success: "80%" },
-          { level: 5, name: "Install Door That Mostly Opens", stamina: 2, success: "78%" },
-          { level: 6, name: "Build Market Stall", stamina: 2, success: "76%" },
-          { level: 7, name: "Add Roof To Something Roofless", stamina: 3, success: "74%" },
-          { level: 8, name: "Pour Questionable Foundation", stamina: 3, success: "72%" },
-          { level: 9, name: "Upgrade Training Yard", stamina: 3, success: "70%" },
-          { level: 10, name: "Construct Fishing Pier", stamina: 4, success: "68%" },
-          { level: 12, name: "Raise A Two-Story Barn", stamina: 4, success: "65%" },
-          { level: 14, name: "Build Town Notice Board", stamina: 5, success: "62%" },
-          { level: 16, name: "Assemble Windmill That Judges You", stamina: 5, success: "59%" },
-          { level: 18, name: "Dig Emergency Basement", stamina: 6, success: "56%" },
-          { level: 20, name: "Raise Guild Hall", stamina: 6, success: "53%" },
-          { level: 22, name: "Build Bridge Over Tiny Puddle", stamina: 7, success: "50%" },
-          { level: 24, name: "Construct Suspiciously Tall Silo", stamina: 7, success: "47%" },
-          { level: 26, name: "Install Elevator In The Shack", stamina: 8, success: "44%" },
-          { level: 28, name: "Build Elite Tower", stamina: 8, success: "41%" },
-          { level: 30, name: "Add Second Elite Tower On Top", stamina: 9, success: "38%" },
-          { level: 33, name: "Construct Underground Town", stamina: 10, success: "35%" },
-          { level: 36, name: "Build Weatherproof Weather", stamina: 11, success: "32%" },
-          { level: 40, name: "Renovate The Horizon", stamina: 12, success: "29%" },
-          { level: 45, name: "Permit The Impossible Megastructure", stamina: 14, success: "25%" },
-          { level: 50, name: "Build The Building That Builds You", stamina: 16, success: "21%" }
-        ]
-      },
-      {
-        id: "woodcutting",
-        name: "Woodcutting",
-        identity: "Reliable chopping that escalates from loose branches to arguing with mythic forests about zoning.",
-        actions: [
-          { level: 1, name: "Gather Fallen Branches", stamina: 1, success: "90%" },
-          { level: 2, name: "Snap A Twig With Purpose", stamina: 1, success: "88%" },
-          { level: 3, name: "Trim Overconfident Shrub", stamina: 1, success: "86%" },
-          { level: 4, name: "Chop Softwood Tree", stamina: 2, success: "84%" },
-          { level: 5, name: "Split Firewood", stamina: 2, success: "82%" },
-          { level: 6, name: "Fell Skinny Pine", stamina: 2, success: "79%" },
-          { level: 7, name: "Prune Orchard Row", stamina: 3, success: "76%" },
-          { level: 8, name: "Chop Knotty Maple", stamina: 3, success: "73%" },
-          { level: 9, name: "Fell Oak Tree", stamina: 3, success: "70%" },
-          { level: 10, name: "Clear Dense Grove", stamina: 4, success: "67%" },
-          { level: 12, name: "Harvest Ironwood", stamina: 4, success: "64%" },
-          { level: 14, name: "Carve Through Fallen Giant", stamina: 5, success: "61%" },
-          { level: 16, name: "Chop Ancient Tree", stamina: 5, success: "58%" },
-          { level: 18, name: "Negotiate With Angry Stump", stamina: 6, success: "55%" },
-          { level: 20, name: "Clear Mystic Timberland", stamina: 6, success: "52%" },
-          { level: 22, name: "Split Lightning-Struck Cedar", stamina: 7, success: "49%" },
-          { level: 24, name: "Fell Tree That Remembers You", stamina: 7, success: "46%" },
-          { level: 26, name: "Chop Invisible Windwood", stamina: 8, success: "43%" },
-          { level: 28, name: "Harvest Moonlit Silverwood", stamina: 8, success: "40%" },
-          { level: 30, name: "Clear The Forest's Legal Department", stamina: 9, success: "37%" },
-          { level: 33, name: "Axe The World Tree's Paperwork", stamina: 10, success: "34%" },
-          { level: 36, name: "Chop A Tree In Four Timelines", stamina: 11, success: "31%" },
-          { level: 40, name: "Fell The Wooden Concept Of Height", stamina: 12, success: "28%" },
-          { level: 45, name: "Harvest The First Tree's Apology", stamina: 14, success: "24%" },
-          { level: 50, name: "Clear The Infinite Lumberyard", stamina: 16, success: "20%" }
-        ]
-      },
-      {
-        id: "fishing",
-        name: "Fishing",
-        identity: "Variable catch quality with changing methods: hands, rods, nets, traps, spears, boats, sonar, rituals, and worse ideas.",
-        actions: [
-          { level: 1, name: "Scoop Pond Minnows", stamina: 1, success: "90%" },
-          { level: 2, name: "Dangle String From Dock", stamina: 1, success: "88%" },
-          { level: 3, name: "Cast Bamboo Rod", stamina: 1, success: "86%" },
-          { level: 4, name: "Drag Net Through Creek", stamina: 2, success: "84%" },
-          { level: 5, name: "Set Tiny Crab Pot", stamina: 2, success: "81%" },
-          { level: 6, name: "Fly Fish At River Bend", stamina: 2, success: "78%" },
-          { level: 7, name: "Hand Grab Muddy Catfish", stamina: 3, success: "75%" },
-          { level: 8, name: "Ice Fish Through Nervous Hole", stamina: 3, success: "72%" },
-          { level: 9, name: "Spear Fish In Shallows", stamina: 3, success: "69%" },
-          { level: 10, name: "Cast From Rowboat", stamina: 4, success: "66%" },
-          { level: 12, name: "Drop Lobster Cage", stamina: 4, success: "63%" },
-          { level: 14, name: "Trawl From Tiny Boat", stamina: 5, success: "60%" },
-          { level: 16, name: "Night Fish With Lantern", stamina: 5, success: "57%" },
-          { level: 18, name: "Harpoon Suspicious Ripple", stamina: 6, success: "54%" },
-          { level: 20, name: "Use Sonar In The Farm Pond", stamina: 6, success: "51%" },
-          { level: 22, name: "Chum Open Water", stamina: 7, success: "48%" },
-          { level: 24, name: "Cast Storm Kite Line", stamina: 7, success: "45%" },
-          { level: 26, name: "Dive For Pearl Oysters", stamina: 8, success: "42%" },
-          { level: 28, name: "Fish With Magnetic Hook", stamina: 8, success: "39%" },
-          { level: 30, name: "Bait A Tiny Leviathan", stamina: 9, success: "36%" },
-          { level: 33, name: "Open Deep Sea Mailbox Trap", stamina: 10, success: "33%" },
-          { level: 36, name: "Angle In Cosmic Dream Sea", stamina: 11, success: "30%" },
-          { level: 40, name: "Net The Reflection Of A Fish", stamina: 12, success: "27%" },
-          { level: 45, name: "Negotiate With The Ocean's Manager", stamina: 14, success: "23%" },
-          { level: 50, name: "Catch The Fishing Mechanic Itself", stamina: 16, success: "19%" }
-        ]
-      }
-    ];
-
-
-    const skillVerbs = {
-      fight: "Fighting",
-      thieving: "Sneaking",
-      build: "Building",
-      woodcutting: "Chopping",
-      fishing: "Fishing"
-    };
-
-    function slugifyAction(name) {
-      return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    }
-
-    function tunedAction(skill, action, index) {
-      const tuning = skillTuning[skill.id];
-      const tierDrag = Math.min(0.34, index * 0.012);
-      return {
-        ...action,
-        timeMod: +(timeModPattern[index % timeModPattern.length] + tierDrag).toFixed(2),
-        masterySpeed: +(tuning.masteryBase * masteryPattern[index % masteryPattern.length]).toFixed(3),
-        staminaCut: +(tuning.staminaBase * staminaPattern[index % staminaPattern.length]).toFixed(3),
-        successGrowth: +(tuning.successBase * successPattern[index % successPattern.length]).toFixed(2)
-      };
-    }
-
-    function baseSuccess(action) {
-      return Number.parseFloat(action.success);
-    }
-
-    function baseSeconds(skill, action) {
-      return (1.0 + action.stamina * 0.75 + action.level * 0.06) * skillTuning[skill.id].timeScale * action.timeMod;
-    }
-
-    function tunedXp(action) {
-      return Math.max(8, Math.round(12 + action.level * 3.8 + action.stamina * 7));
-    }
-
-    const skillData = skills.map(skill => ({
-      id: skill.id,
-      name: skill.name,
-      verb: skillVerbs[skill.id],
-      identity: skill.identity,
-      actions: skill.actions.map((rawAction, index) => {
-        const action = tunedAction(skill, rawAction, index);
-        return {
-          id: slugifyAction(action.name),
-          name: action.name,
-          unlock: action.level,
-          seconds: baseSeconds(skill, action),
-          xp: tunedXp(action),
-          stamina: action.stamina,
-          success: baseSuccess(action),
-          masterySpeed: action.masterySpeed,
-          staminaCut: action.staminaCut,
-          successGrowth: action.successGrowth,
-          timeMod: action.timeMod,
-          art: `assets/${skill.id}/actions/${String(index + 1).padStart(2, "0")}-${slugifyAction(action.name)}.png`,
-          bg: `assets/${skill.id}/backgrounds/${String(Math.floor(index / 5) + 1).padStart(2, "0")}-${backgroundTierLabels[Math.floor(index / 5)]}.png`
-        };
-      })
-    }));
+    let skillData = [];
 
     const MASTER_MAX_LEVEL = 20;
     const MOTIVATION_ACTIONS = 5;
@@ -1218,20 +1133,17 @@
     const AD_BOOST_MS = 2 * 60 * 60 * 1000;
     const AD_BOOST_CAP_MS = 6 * 60 * 60 * 1000;
     const AD_BOOST_STORAGE_KEY = "idleEliteAdBoostUntil";
-    const BASE_MAX_STAMINA = 100;
+    let baseMaxStamina = 30;
 
     const heroPoseAssets = [
-      "assets/characters/stick-hero-poses/01-idle.png",
-      "assets/characters/stick-hero-poses/02-stretch.png",
-      "assets/characters/stick-hero-poses/03-inspect.png",
-      "assets/characters/stick-hero-poses/04-celebrate.png"
+      "assets/characters/stick-hero-transparent.png"
     ];
 
     const clickSfx = new Audio("../assets/sfx/click.wav");
     clickSfx.preload = "auto";
 
     function freshSkillState() {
-      return { xp: 0, level: 1, stamina: BASE_MAX_STAMINA, maxStamina: BASE_MAX_STAMINA };
+      return { xp: 0, level: 1, stamina: baseMaxStamina, maxStamina: baseMaxStamina };
     }
     const masteryMedals = [
       "Bronze",
@@ -1243,17 +1155,7 @@
       "Ruby",
       "Diamond",
       "Demonic",
-      "Heavenly",
-      "Enhanced Bronze",
-      "Enhanced Silver",
-      "Enhanced Gold",
-      "Enhanced Platinum",
-      "Enhanced Sapphire",
-      "Enhanced Emerald",
-      "Enhanced Ruby",
-      "Enhanced Diamond",
-      "Enhanced Demonic",
-      "Enhanced Heavenly"
+      "Heavenly"
     ].map((label, index) => ({
       label,
       level: index + 1,
@@ -1273,14 +1175,12 @@
       actionPulseUntil: 0,
       adBoostUntil: Number(localStorage.getItem(AD_BOOST_STORAGE_KEY)) || 0,
       lastResult: "Pick a skill, then pick an action.",
-      skills: Object.fromEntries(skillData.map(skill => [skill.id, freshSkillState()])),
-      mastery: Object.fromEntries(skillData.flatMap(skill => skill.actions.map(action => [
-        skill.id + ":" + action.id,
-        { xp: 0, level: 0 }
-      ])))
+      skills: ActivityDocs.createSkillState(skillData, freshSkillState),
+      mastery: ActivityDocs.createMasteryState(skillData)
     };
 
     const app = document.getElementById("app");
+    let lastAdBoostLabel = "";
 
     function playClick() {
       const sfx = clickSfx.cloneNode();
@@ -1304,7 +1204,7 @@
     }
 
     function ensureSkillStamina(skill) {
-      if (typeof skill.maxStamina !== "number") skill.maxStamina = BASE_MAX_STAMINA;
+      if (typeof skill.maxStamina !== "number") skill.maxStamina = baseMaxStamina;
       if (typeof skill.stamina !== "number") skill.stamina = skill.maxStamina;
       skill.stamina = Math.min(skill.maxStamina, Math.max(0, skill.stamina));
       return skill;
@@ -1321,6 +1221,28 @@
         needed,
         pct: Math.min(100, Math.max(0, current / needed * 100))
       };
+    }
+
+    function formatCompactNumber(value) {
+      const number = Math.max(0, Math.floor(value));
+      if (number < 1000) return String(number);
+      const units = [
+        { value: 1_000_000_000, suffix: "b" },
+        { value: 1_000_000, suffix: "m" },
+        { value: 1_000, suffix: "k" }
+      ];
+      let unit = units.find(item => number >= item.value);
+      const scaled = number / unit.value;
+      let decimals = scaled >= 100 ? 0 : scaled >= 10 ? 1 : 2;
+      let rounded = Number(scaled.toFixed(decimals));
+      const unitIndex = units.indexOf(unit);
+      if (rounded >= 1000 && unitIndex > 0) {
+        unit = units[unitIndex - 1];
+        const promoted = number / unit.value;
+        decimals = promoted >= 100 ? 0 : promoted >= 10 ? 1 : 2;
+        rounded = Number(promoted.toFixed(decimals));
+      }
+      return rounded.toFixed(decimals).replace(/\.0+$/, "").replace(/(\.\d*[1-9])0+$/, "$1") + unit.suffix;
     }
 
     function staminaProgress(skillId) {
@@ -1360,47 +1282,53 @@
     }
 
     function actionAssets(skillId, action) {
-      const defaults = activityAssets[skillId];
+      const skill = findSkill(skillId) || {};
       return {
-        art: action.art || defaults.art,
-        bg: action.bg || defaults.bg
+        art: action.art || skill.icon || "",
+        bg: action.bg || ""
       };
     }
 
     function medalForMastery(level) {
-      if (level <= 0) return null;
       return masteryMedals[Math.min(MASTER_MAX_LEVEL, Math.max(1, level)) - 1];
     }
 
-    function effectiveSeconds(action, mastery) {
-      return effectiveSecondsFor(action, mastery, false);
+    function effectiveSeconds(action) {
+      return effectiveSecondsFor(action, false);
     }
 
-    function effectiveSecondsFor(action, mastery, motivated) {
-      const masterySeconds = Math.max(action.seconds * 0.35, action.seconds * (1 - mastery.level * action.masterySpeed));
-      return motivated ? masterySeconds * (1 - MOTIVATION_SPEED_BONUS) : masterySeconds;
+    function effectiveSecondsFor(action, motivated) {
+      return motivated ? action.seconds * (1 - MOTIVATION_SPEED_BONUS) : action.seconds;
     }
 
-    function effectiveXp(action, mastery) {
-      return effectiveXpFor(action, mastery, false);
+    function effectiveXp(action) {
+      return effectiveXpFor(action, false);
     }
 
-    function effectiveXpFor(action, mastery, motivated) {
-      const xpBoost = mastery.level * 0.01;
+    function effectiveXpFor(action, motivated) {
       const adBoost = adBoostRemaining() > 0 ? 1 + AD_XP_BONUS : 1;
-      return Math.round(action.xp * (1 + xpBoost) * (motivated ? 1 + MOTIVATION_XP_BONUS : 1) * adBoost);
+      return Math.round(action.xp * (motivated ? 1 + MOTIVATION_XP_BONUS : 1) * adBoost);
     }
 
-    function effectiveStamina(action, mastery) {
-      return Math.max(1, Math.ceil(action.stamina * (1 - mastery.level * action.staminaCut)));
+    function effectiveStamina(action) {
+      return action.stamina;
     }
 
     function effectiveSuccess(skillLevel, action) {
-      return Math.min(98, action.success + Math.max(0, skillLevel - action.unlock) * action.successGrowth);
+      const baseSuccess = typeof action.success === "string" ? parseFloat(action.success) : Number(action.success);
+      return Math.min(98, Number.isFinite(baseSuccess) ? baseSuccess : 0);
     }
 
     function formatSeconds(seconds) {
       return seconds.toFixed(seconds < 10 ? 1 : 0) + "s";
+    }
+
+    function regenProgress(skillId) {
+      const skill = staminaProgress(skillId);
+      if (skill.current >= skill.max) return 100;
+      const running = state.running && state.running.skillId === skillId;
+      if (!running) return 62;
+      return Math.min(99, Math.max(10, actionProgress(state.running.skillId, state.running.actionId)));
     }
 
     function adBoostRemaining() {
@@ -1445,12 +1373,30 @@
       state.adBoostUntil = 0;
       state.lastResult = "Data reset.";
       localStorage.removeItem(AD_BOOST_STORAGE_KEY);
-      state.skills = Object.fromEntries(skillData.map(skill => [skill.id, freshSkillState()]));
-      state.mastery = Object.fromEntries(skillData.flatMap(skill => skill.actions.map(action => [
-        skill.id + ":" + action.id,
-        { xp: 0, level: 0 }
-      ])));
+      state.skills = ActivityDocs.createSkillState(skillData, freshSkillState);
+      state.mastery = ActivityDocs.createMasteryState(skillData);
       render();
+    }
+
+    function resetActivityState() {
+      state.skills = ActivityDocs.createSkillState(skillData, freshSkillState);
+      state.mastery = ActivityDocs.createMasteryState(skillData);
+      if (!skillData.some(skill => skill.id === state.selectedSkillId)) {
+        state.selectedSkillId = skillData[0]?.id || "fight";
+      }
+    }
+
+    async function loadSharedActivityDatabase() {
+      try {
+        const database = await ActivityDocs.loadDatabase();
+        baseMaxStamina = database.global_rules?.base_max_stamina || baseMaxStamina;
+        skillData = ActivityDocs.databaseSkillData(database);
+        resetActivityState();
+        return true;
+      } catch (error) {
+        ActivityDocs.renderError(app, error);
+        return false;
+      }
     }
 
     function findSkill(skillId) {
@@ -1510,10 +1456,7 @@
     }
 
     const heroPoses = [
-      "Waiting with heroic patience",
-      "Stretching before farm destiny",
-      "Inspecting the next questionable task",
-      "Celebrating absolutely nothing yet"
+      "Declaring elite idle ambitions"
     ];
 
     function currentHeroPose() {
@@ -1557,7 +1500,7 @@
       const action = findAction(skillId, actionId);
       if (skill.level < action.unlock) return;
       const mastery = masteryState(skillId, actionId);
-      const staminaCost = effectiveStamina(action, mastery);
+      const staminaCost = effectiveStamina(action);
       if (ensureSkillStamina(skill).stamina < staminaCost) {
         state.lastResult = "Not enough stamina for " + action.name + ".";
         render();
@@ -1581,7 +1524,7 @@
       if (!state.running || state.running.skillId !== skillId || state.running.actionId !== actionId) return 0;
       const action = findAction(skillId, actionId);
       const mastery = masteryState(skillId, actionId);
-      return Math.min(100, (Date.now() - state.running.startedAt) / (effectiveSecondsFor(action, mastery, isMotivated(skillId, actionId)) * 1000) * 100);
+      return Math.min(100, (Date.now() - state.running.startedAt) / (effectiveSecondsFor(action, isMotivated(skillId, actionId)) * 1000) * 100);
     }
 
     function completeAction() {
@@ -1592,8 +1535,8 @@
       const skill = state.skills[state.running.skillId];
       const mastery = masteryState(state.running.skillId, state.running.actionId);
       const motivated = isMotivated(state.running.skillId, state.running.actionId);
-      const xpReward = effectiveXpFor(action, mastery, motivated);
-      const staminaCost = effectiveStamina(action, mastery);
+      const xpReward = effectiveXpFor(action, motivated);
+      const staminaCost = effectiveStamina(action);
       const oldLevel = skill.level;
       if (ensureSkillStamina(skill).stamina < staminaCost) {
         state.lastResult = "Not enough stamina for " + action.name + ".";
@@ -1631,18 +1574,37 @@
       return `
         <section class="home-stage" aria-label="Hero home screen">
           <div class="home-head">
-            <h1>Idle Elite</h1>
-            <small>Global Lv ${globalLevel()}</small>
+            <img class="home-logo" src="assets/logo/idle-elite-logo-cutout.png" alt="Idle Elite">
+          </div>
+          <div class="home-levels" aria-label="Hero skill levels">
+            <div class="home-level-row total">
+              <img src="assets/ui/total-lv-bargraph.png" alt="">
+              <span>Total Lv ${globalLevel()}</span>
+            </div>
+            ${skillData.map(skill => `
+              <div class="home-level-row">
+                <img src="${skill.icon}" alt="">
+                <span>${skill.name} Lvl ${state.skills[skill.id]?.level || 1}</span>
+              </div>
+            `).join("")}
           </div>
           <div class="hero-scene">
+            <div class="hero-speech" aria-label="Hero speech">
+              <img src="assets/ui/speech-bubble-down.png" alt="">
+              <span>I must become an idle elitist!</span>
+            </div>
             <img class="hero-pose" src="${heroPoseAssets[pose]}" alt="${heroPoses[pose]}">
-            <button type="button" class="ad-button ${capped ? "capped" : ""}" data-ad-boost title="+10% XP for 2h, stacks to 6h">
-              <img src="assets/ui/ad-reward.png" alt="">
-              <span>${formatBoostTime(boostRemaining)}</span>
-            </button>
-            <button type="button" class="settings-button" data-settings-toggle title="Settings">
-              <img src="assets/ui/settings.png" alt="">
-            </button>
+            <div class="hero-tools" aria-label="Hero actions">
+              <button type="button" class="ad-button ${capped ? "capped" : ""}" data-ad-boost aria-label="+10% XP boost for 2 hours" title="+10% XP for 2h, stacks to 6h">
+                <img src="assets/ui/ad-simple.png" alt="">
+              </button>
+              <button type="button" class="settings-button" data-settings-toggle aria-label="Settings" title="Settings">
+                <img src="assets/ui/settings-gear-simple.png" alt="">
+              </button>
+              <button type="button" class="discord-button" data-discord aria-label="Discord" title="Discord">
+                <img src="assets/ui/discord-simple.png" alt="">
+              </button>
+            </div>
             ${state.settingsOpen ? `
               <div class="settings-sheet" role="dialog" aria-label="Settings">
                 <h3>Settings</h3>
@@ -1672,13 +1634,18 @@
                 const running = state.running && state.running.skillId === skill.id;
                 return `
                   <button type="button" class="skill" data-skill-id="${skill.id}">
-                    <img src="${icons[skill.id]}" alt="">
+                    <img src="${skill.icon}" alt="">
                     <span class="skill-copy">
                       <strong>${skill.name}</strong>
-                      <small>Lv ${stateSkill.level} - XP ${Math.floor(xp.current)} / ${xp.needed}${running ? " - running" : ""}</small>
+                      <small>Lv ${stateSkill.level} - XP ${formatCompactNumber(xp.current)} / ${formatCompactNumber(xp.needed)}${running ? " - running" : ""}</small>
                       <span class="skill-bars">
                         <span class="bar xp-bar"><i style="width:${xp.pct}%"></i></span>
-                        <span class="bar stamina-bar"><i style="width:${stamina.pct}%"></i></span>
+                      </span>
+                    </span>
+                    <span class="skill-list-gauge" style="--stamina:${stamina.pct}" aria-label="Stamina ${Math.floor(stamina.current)} of ${stamina.max}">
+                      <span class="skill-list-gauge-core">
+                        <span class="skill-list-gauge-fill"></span>
+                        <span class="skill-list-gauge-readout">${Math.floor(stamina.current)}</span>
                       </span>
                     </span>
                   </button>
@@ -1695,17 +1662,27 @@
       const stateSkill = state.skills[skill.id];
       const xp = xpProgress(skill.id);
       const staminaState = staminaProgress(skill.id);
+      const staminaPct = Math.min(100, Math.max(0, staminaState.current / staminaState.max * 100));
+      const regenPct = regenProgress(skill.id);
+      const tired = staminaState.current <= 0;
       return `
         <div class="skill-summary">
           <div class="skill-head">
-            <img src="${icons[skill.id]}" alt="">
-            <div>
-              <h2>${skill.name}</h2>
-              <small>Lv ${stateSkill.level} - XP ${Math.floor(xp.current)} / ${xp.needed} - Stamina ${Math.floor(staminaState.current)} / ${staminaState.max}</small>
+            <div class="skill-summary-left">
+              <img src="${skill.icon}" alt="">
+              <div>
+                <h2>${skill.name}</h2>
+                <small>Lv ${stateSkill.level} - XP ${formatCompactNumber(xp.current)} / ${formatCompactNumber(xp.needed)}</small>
+                <div class="bar skill-xp-bar"><i style="width:${xp.pct}%"></i></div>
+              </div>
+            </div>
+            <div class="stamina-gauge ${tired ? "tired" : ""}" style="--stamina:${staminaPct}; --regen:${regenPct}" aria-label="Current points ${Math.floor(staminaState.current)} of ${staminaState.max}">
+              <div class="stamina-gauge-core">
+                <span class="stamina-gauge-fill"></span>
+                <span class="stamina-gauge-readout">${tired ? "Tired!" : `${Math.floor(staminaState.current)} / ${staminaState.max}`}</span>
+              </div>
             </div>
           </div>
-          <div class="bar skill-xp-bar"><i style="width:${xp.pct}%"></i></div>
-          <div class="bar skill-stamina-bar"><i style="width:${staminaState.pct}%"></i></div>
         </div>
         <div class="scroll">
           ${skill.actions.map(action => {
@@ -1716,29 +1693,28 @@
             const medal = medalForMastery(mastery.level);
             const assets = actionAssets(skill.id, action);
             const motivated = isMotivated(skill.id, action.id);
-            const reward = effectiveXpFor(action, mastery, motivated);
-            const stamina = effectiveStamina(action, mastery);
-            const seconds = effectiveSecondsFor(action, mastery, motivated);
+            const reward = effectiveXpFor(action, motivated);
+            const stamina = effectiveStamina(action);
+            const seconds = effectiveSecondsFor(action, motivated);
             const success = effectiveSuccess(stateSkill.level, action);
             const pulsing = state.actionPulseKey === masteryKey(skill.id, action.id) && Date.now() < state.actionPulseUntil;
             return `
               <button type="button" class="action activity ${running ? "running" : ""} ${locked ? "locked" : ""} ${motivated ? "motivated" : ""} ${pulsing ? "pulse" : ""}" style="--activity-bg: url('${assets.bg}'); --progress: ${progress}%" ${locked ? "disabled" : ""} data-action-skill-id="${skill.id}" data-action-id="${action.id}">
                 ${motivated ? `<span class="motivation-star" title="Motivated: +15% XP, 10% faster"><span class="motivation-count">${state.motivation.charges}</span></span>` : ""}
                 <span class="activity-inner">
-                  <span class="activity-art"><img src="${assets.art}" alt="">${medal ? `<span class="mastery-medal" style="--medal-col:${medal.col}; --medal-row:${medal.row}" title="${medal.label} Mastery Lv ${mastery.level}"></span>` : ""}</span>
+                  <span class="activity-art"><img src="${assets.art}" alt=""><span class="mastery-medal ${mastery.level <= 0 ? "dim" : ""}" style="--medal-col:${medal.col}; --medal-row:${medal.row}"></span></span>
                   <span class="activity-main">
                     <span class="activity-title-row">
                       <strong>${action.name}</strong>
-                      ${locked || running ? `<span class="running-pill">${locked ? "LV " + action.unlock : "RUNNING"}</span>` : ""}
                     </span>
                     <span class="activity-stats" aria-label="Activity rewards and costs">
-                      <span class="stat-chip"><b>+${reward}</b><small>XP</small></span>
-                      <span class="stat-chip"><b>${stamina}</b><small>Stamina</small></span>
+                      <span class="stat-chip"><b>+${formatCompactNumber(reward)}</b><small>XP</small></span>
+                      <span class="stat-chip"><b>${stamina}</b><small>Stam</small></span>
                       <span class="stat-chip"><b>${formatSeconds(seconds)}</b><small>Time</small></span>
-                      <span class="stat-chip"><b>${success.toFixed(0)}%</b><small>Success</small></span>
+                      <span class="stat-chip"><b>${success.toFixed(0)}%</b><small>Rate</small></span>
                     </span>
                     <span class="activity-bars">
-                      <span class="meter-line mastery-meter"><span>${mastery.level}/${MASTER_MAX_LEVEL}</span><span class="bar"><i style="width:${mastery.pct}%"></i></span><span>${Math.floor(mastery.current)}/${mastery.needed}</span></span>
+                      <span class="meter-line mastery-meter"><span class="bar"><i style="width:${mastery.pct}%"></i></span></span>
                     </span>
                   </span>
                 </span>
@@ -1765,6 +1741,24 @@
         return;
       }
       app.innerHTML = state.screen === "menu" ? renderSkillMenu() : renderSkillPage();
+    }
+
+    function adBoostTimerVisible() {
+      return state.tab === "hero" || state.screen === "menu";
+    }
+
+    function idleTickNeedsRender() {
+      const remaining = adBoostRemaining();
+      if (remaining <= 0) {
+        if (!lastAdBoostLabel) return false;
+        lastAdBoostLabel = "";
+        return adBoostTimerVisible();
+      }
+      if (!adBoostTimerVisible()) return false;
+      const label = formatBoostTime(remaining);
+      if (label === lastAdBoostLabel) return false;
+      lastAdBoostLabel = label;
+      return true;
     }
 
     Object.assign(window, {
@@ -1803,6 +1797,12 @@
         return;
       }
 
+      if (button.matches("[data-discord]")) {
+        state.lastResult = "Discord button tapped.";
+        render();
+        return;
+      }
+
       if (button.matches("[data-reset-data]")) {
         resetData();
       }
@@ -1815,27 +1815,39 @@
       });
     });
 
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("view") === "activity-buttons") {
-      state.tab = "skills";
-      state.screen = "skill";
-      state.selectedSkillId = params.get("skill") || "fight";
-      state.lastResult = "Activity button mock.";
-      Object.values(state.skills).forEach(skill => {
-        skill.xp = xpForLevel(50);
-        skill.level = 50;
-        skill.stamina = skill.maxStamina || BASE_MAX_STAMINA;
-        skill.maxStamina = skill.maxStamina || BASE_MAX_STAMINA;
-      });
-      chooseMotivation("", state.selectedSkillId);
+    async function boot() {
+      if (!(await loadSharedActivityDatabase())) return;
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("view") === "activity-buttons") {
+        state.tab = "skills";
+        state.screen = "skill";
+        state.selectedSkillId = params.get("skill") || "fight";
+        state.lastResult = "Activity button mock.";
+        Object.values(state.skills).forEach(skill => {
+          skill.xp = xpForLevel(50);
+          skill.level = 50;
+          skill.stamina = skill.maxStamina || baseMaxStamina;
+          skill.maxStamina = skill.maxStamina || baseMaxStamina;
+        });
+        chooseMotivation("", state.selectedSkillId);
+      } else if (params.get("tab") === "hero") {
+        state.tab = "hero";
+        state.screen = "menu";
+        state.homeRevealed = false;
+      }
+
+      setInterval(() => {
+        const hadRunningAction = Boolean(state.running);
+        completeAction();
+        if (hadRunningAction || state.running || Date.now() < state.actionPulseUntil || idleTickNeedsRender()) {
+          render();
+        }
+      }, 100);
+
+      render();
     }
 
-    setInterval(() => {
-      completeAction();
-      render();
-    }, 100);
-
-    render();
+    boot();
   </script>
 </body>
 </html>

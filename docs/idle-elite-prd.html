@@ -140,6 +140,22 @@
       background: rgba(255, 255, 255, 0.82);
     }
 
+    .icon-tile.wide {
+      grid-column: span 2;
+    }
+
+    .icon-tile img {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+    }
+
+    .icon-tile.wide img {
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      border-radius: 6px;
+    }
+
     .icon-tile span {
       display: block;
       margin-top: 6px;
@@ -241,42 +257,6 @@
       color: var(--muted);
     }
 
-    .phone-wrap {
-      display: grid;
-      grid-template-columns: minmax(290px, 360px) minmax(0, 1fr);
-      gap: 28px;
-      align-items: start;
-    }
-
-    .phone {
-      border: 8px solid #171615;
-      border-radius: 32px;
-      background: #f7f2e7;
-      overflow: hidden;
-      box-shadow: var(--shadow);
-    }
-
-    .phone-top {
-      padding: 16px;
-      background: linear-gradient(135deg, #24211d, #473b31);
-      color: #fff;
-    }
-
-    .phone-title {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      font-weight: 900;
-    }
-
-    .goal {
-      margin-top: 14px;
-      padding: 10px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.1);
-      font-size: 13px;
-    }
-
     .bar {
       height: 8px;
       margin-top: 7px;
@@ -292,307 +272,37 @@
       background: #f4cf5c;
     }
 
-    .skill-list {
-      padding: 14px;
+    .live-mock-grid {
       display: grid;
-      gap: 10px;
-    }
-
-    .skill-row {
-      display: grid;
-      grid-template-columns: 48px 1fr auto;
-      gap: 10px;
-      align-items: center;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-    }
-
-    .skill-row img {
-      width: 48px;
-      height: 48px;
-      object-fit: contain;
-    }
-
-    .skill-row strong,
-    .activity strong,
-    .identity strong {
-      display: block;
-    }
-
-    .skill-row small {
-      color: var(--muted);
-      font-weight: 700;
-    }
-
-    .phone-tabs {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      border-top: 1px solid var(--line);
-      background: #fff;
-    }
-
-    .phone-tabs span {
-      padding: 12px 4px;
-      text-align: center;
-      font-size: 12px;
-      font-weight: 900;
-      color: var(--muted);
-    }
-
-    .mockup-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 18px;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 22px;
       align-items: start;
     }
 
-    .screen-card {
+    .live-mock {
       min-width: 0;
-      width: 100%;
-      aspect-ratio: 9 / 16;
-      border: 5px solid #171615;
-      border-radius: 28px;
-      background: #f8f1e5;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      box-shadow: 0 12px 28px rgba(32, 26, 18, 0.18);
+      display: grid;
+      gap: 12px;
     }
 
-    .screen-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-      padding: 12px 14px;
-      color: #fff;
-      background: linear-gradient(135deg, #24211d, #4c3b2c);
-      font-weight: 900;
+    .live-mock h3 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .live-mock p {
+      margin: 0;
+      color: var(--muted);
       font-size: 14px;
     }
 
-    .screen-head small {
-      color: #f2d982;
-      font-weight: 900;
-    }
-
-    .screen-body {
-      padding: 12px;
-      display: grid;
-      align-content: start;
-      gap: 10px;
-      flex: 1;
-      min-height: 0;
-      overflow: hidden;
-    }
-
-    .mini-tabs {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      border-top: 1px solid var(--line);
-      background: #fff;
-      margin-top: auto;
-    }
-
-    .mini-tabs span {
-      padding: 9px 2px;
-      text-align: center;
-      font-size: 10px;
-      font-weight: 900;
-      color: var(--muted);
-    }
-
-    .mini-tabs .active {
-      color: #171615;
-      background: #fff2a8;
-    }
-
-    .stat-strip {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-    }
-
-    .stat-chip {
-      padding: 8px 6px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      background: #fff;
-      text-align: center;
-    }
-
-    .stat-chip strong {
-      display: block;
-      font-size: 13px;
-    }
-
-    .stat-chip small {
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 800;
-    }
-
-    .compact-skill {
-      display: grid;
-      grid-template-columns: 38px 1fr auto;
-      gap: 8px;
-      align-items: center;
-      padding: 8px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      background: #fff;
-    }
-
-    .compact-skill img {
-      width: 38px;
-      height: 38px;
-      object-fit: contain;
-    }
-
-    .compact-skill strong,
-    .activity-card strong,
-    .shop-row strong,
-    .goal-row strong,
-    .hero-stat strong {
-      display: block;
-      font-size: 13px;
-    }
-
-    .compact-skill small,
-    .activity-card small,
-    .shop-row small,
-    .goal-row small,
-    .hero-stat small {
-      display: block;
-      color: var(--muted);
-      font-size: 10px;
-      font-weight: 800;
-    }
-
-    .tiny-bar {
-      height: 7px;
-      margin-top: 5px;
-      overflow: hidden;
-      border-radius: 999px;
-      background: #e7decc;
-    }
-
-    .tiny-bar i {
-      display: block;
-      height: 100%;
-      border-radius: 999px;
-      background: var(--green);
-    }
-
-    .activity-card {
-      padding: 10px;
-      border: 1px solid var(--line);
+    .live-frame {
+      width: 100%;
+      height: min(760px, 72vh);
+      border: 3px solid var(--ink);
       border-radius: 8px;
-      background: #fff;
-    }
-
-    .activity-card.locked {
-      opacity: 0.58;
-      background: #f2eadc;
-    }
-
-    .activity-card .row {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: center;
-    }
-
-    .button-row {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin-top: 9px;
-    }
-
-    .button-row.two {
-      grid-template-columns: 1fr 1fr;
-    }
-
-    .button-row.one {
-      grid-template-columns: 1fr;
-    }
-
-    .fake-btn {
-      padding: 8px 5px;
-      border: 2px solid #171615;
-      border-radius: 7px;
-      background: #fff2a8;
-      text-align: center;
-      font-size: 11px;
-      font-weight: 900;
-      box-shadow: 2px 2px 0 #171615;
-    }
-
-    .fake-btn.secondary {
-      background: #e8f4ff;
-    }
-
-    .fake-btn.ad {
-      background: #dff4ca;
-    }
-
-    .result-feed {
-      padding: 9px;
-      border-radius: 7px;
-      background: #27231e;
-      color: #fff;
-      font-size: 11px;
-    }
-
-    .shop-row,
-    .goal-row,
-    .hero-stat {
-      display: grid;
-      grid-template-columns: 38px 1fr auto;
-      gap: 8px;
-      align-items: center;
-      padding: 9px;
-      border: 1px solid var(--line);
-      border-radius: 7px;
-      background: #fff;
-    }
-
-    .shop-row img,
-    .goal-row img,
-    .hero-stat img {
-      width: 38px;
-      height: 38px;
-      object-fit: contain;
-    }
-
-    .badge {
-      padding: 5px 7px;
-      border-radius: 999px;
-      background: #171615;
-      color: #fff;
-      font-size: 10px;
-      font-weight: 900;
-      white-space: nowrap;
-    }
-
-    .flow-map {
-      display: grid;
-      grid-template-columns: repeat(6, minmax(0, 1fr));
-      gap: 8px;
-      margin-bottom: 18px;
-    }
-
-    .flow-node {
-      padding: 10px 8px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-      text-align: center;
-      font-size: 12px;
-      font-weight: 900;
+      background: #eef7f5;
+      box-shadow: var(--shadow);
     }
 
     .rules-list {
@@ -618,106 +328,6 @@
       margin: 0;
       color: var(--muted);
       font-size: 14px;
-    }
-
-    .wire-notes {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 12px;
-    }
-
-    .note {
-      padding: 16px;
-      border-radius: 8px;
-      background: #fff;
-      border: 1px solid var(--line);
-    }
-
-    .note h3 {
-      margin-bottom: 6px;
-      font-size: 18px;
-    }
-
-    .note p {
-      margin: 0;
-      color: var(--muted);
-    }
-
-    .identity-grid {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
-      gap: 14px;
-    }
-
-    .identity {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      min-width: 0;
-      padding: 14px;
-      border-radius: 8px;
-      background: #fff;
-      border: 1px solid var(--line);
-    }
-
-    .identity img {
-      width: 82px;
-      height: 82px;
-      object-fit: contain;
-    }
-
-    .identity ul {
-      margin: 0;
-      padding-left: 18px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .activity-grid {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 16px;
-    }
-
-    .activity {
-      display: grid;
-      grid-template-columns: 76px 1fr;
-      gap: 14px;
-      padding: 16px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: #fff;
-    }
-
-    .activity img {
-      width: 76px;
-      height: 76px;
-      object-fit: contain;
-    }
-
-    .activity h3 {
-      margin-bottom: 8px;
-      font-size: 24px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14px;
-    }
-
-    th, td {
-      padding: 9px 8px;
-      border-bottom: 1px solid #ece5d9;
-      text-align: left;
-      vertical-align: top;
-    }
-
-    th {
-      color: #4c453b;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 0;
     }
 
     .systems {
@@ -756,6 +366,53 @@
       border: 1px solid var(--line);
     }
 
+    .asset-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .asset-preview {
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+
+    .asset-preview img {
+      width: 100%;
+      border-radius: 6px;
+      object-fit: cover;
+      background: #f6f1e7;
+    }
+
+    .asset-preview.icon img {
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+    }
+
+    .asset-preview.feature img,
+    .asset-preview.landscape img {
+      aspect-ratio: 16 / 9;
+    }
+
+    .asset-preview.portrait img {
+      aspect-ratio: 9 / 16;
+    }
+
+    .asset-preview strong {
+      display: block;
+      font-size: 14px;
+    }
+
+    .asset-preview small {
+      color: var(--muted);
+      font-weight: 800;
+    }
+
     .file-list {
       display: grid;
       gap: 8px;
@@ -784,13 +441,8 @@
 
     @media (max-width: 980px) {
       .hero,
-      .phone-wrap,
       .asset-strip {
         grid-template-columns: 1fr;
-      }
-
-      .identity-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
       .loop,
@@ -798,11 +450,10 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .mockup-grid {
+      .live-mock-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .flow-map,
       .rules-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
@@ -827,28 +478,14 @@
       }
 
       .loop,
-      .wire-notes,
-      .identity-grid,
-      .activity-grid,
       .systems,
-      .mockup-grid,
-      .flow-map,
+      .live-mock-grid,
       .rules-list {
         grid-template-columns: 1fr;
       }
 
-      .activity {
-        grid-template-columns: 58px 1fr;
-      }
-
-      .activity img {
-        width: 58px;
-        height: 58px;
-      }
-
-      th, td {
-        padding: 8px 6px;
-        font-size: 12px;
+      .live-frame {
+        height: 700px;
       }
     }
   </style>
@@ -859,27 +496,28 @@
       <div>
         <span class="eyebrow">Godot mobile idle RPG PRD</span>
         <h1>Idle Elite Rebuild</h1>
-        <p class="hero-copy">A stamina-swapping idle RPG where every skill has its own mechanical identity. Players rotate between fighting, thieving, building, woodcutting, and fishing to become an all-around Idle Elitist.</p>
+        <p class="hero-copy">A phone-first idle RPG about short sessions, readable progress, and five skill stamina pools. The player picks a ready skill, runs an activity, earns XP and mastery, then rotates before the session goes stale.</p>
       <div class="tagline">I must become an Idle Elitist!</div>
         <nav class="nav-links" aria-label="Mockup pages">
           <a class="nav-link" href="idle-elite-prd.html">PRD</a>
           <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
           <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
+          <a class="nav-link" href="activity-database.html">Activity Database</a>
+          <a class="nav-link" href="stamina-gauge-mock.html">Stamina Gauge</a>
           <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
         </nav>
       </div>
-      <aside class="hero-board" aria-label="Generated icon board">
+      <aside class="hero-board" aria-label="Launch asset board">
         <div class="hero-board-header">
-          <span>Reusable Icon Set</span>
-          <span>2x3 sprite sheet</span>
+          <span>Current Launch Assets</span>
+          <span>Store + Ads</span>
         </div>
         <div class="icon-grid">
-          <div class="icon-tile"><img src="assets/icons/fight.png" alt="Fight icon"><span>Fight</span></div>
-          <div class="icon-tile"><img src="assets/icons/thieving.png" alt="Thieving icon"><span>Thieving</span></div>
-          <div class="icon-tile"><img src="assets/icons/build.png" alt="Build icon"><span>Build</span></div>
-          <div class="icon-tile"><img src="assets/icons/woodcutting.png" alt="Woodcutting icon"><span>Woodcut</span></div>
-          <div class="icon-tile"><img src="assets/icons/fishing.png" alt="Fishing icon"><span>Fishing</span></div>
-          <div class="icon-tile"><img src="assets/icons/gear.png" alt="Gear icon"><span>Gear</span></div>
+          <div class="icon-tile"><img src="play-store/assets/app-icon-512.png" alt="Idle Elite app icon"><span>App Icon</span></div>
+          <div class="icon-tile wide"><img src="play-store/assets/feature-graphic-1024x500.png" alt="Idle Elite feature graphic"><span>Feature Graphic</span></div>
+          <div class="icon-tile"><img src="play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png" alt="Vertical train skills ad creative"><span>Vertical Ad</span></div>
+          <div class="icon-tile"><img src="play-store/assets/screenshot-01-train-five-skills-1080x1920.png" alt="Train five skills screenshot"><span>Screenshot</span></div>
+          <div class="icon-tile"><img src="play-store/assets/ad-vertical-04-become-idle-elite-1080x1920.png" alt="Vertical brand ad creative"><span>Brand Ad</span></div>
         </div>
       </aside>
     </section>
@@ -888,15 +526,15 @@
       <div class="section-header">
         <div>
           <h2>Core Loop</h2>
-          <p>Skill-specific stamina creates natural movement. The player drains one activity pool, pivots to another, buys upgrades, and returns after regeneration or offline progress.</p>
+          <p>The app is built for quick checks: choose a ready skill, spend stamina, bank progress, and leave with a clear next action.</p>
         </div>
         <span class="pill">30 sec to 5 min sessions</span>
       </div>
       <div class="loop">
-        <div class="loop-step"><strong>1. Pick Skill</strong><p>Choose the stamina pool that is ready or needed for a goal.</p></div>
-        <div class="loop-step"><strong>2. Run Activity</strong><p>Spend stamina on a skill-specific action with unique timing, mastery, and success tuning.</p></div>
-        <div class="loop-step"><strong>3. Grow Mastery</strong><p>Gain skill XP and per-activity mastery. Mastery makes that exact action faster and cheaper.</p></div>
-        <div class="loop-step"><strong>4. Rotate</strong><p>When stamina is low, hop to another skill and keep momentum alive.</p></div>
+        <div class="loop-step"><strong>1. Pick Skill</strong><p>Open a skill with stamina available or a goal worth pushing.</p></div>
+        <div class="loop-step"><strong>2. Run Activity</strong><p>Tap one large activity button. The button owns cost, reward, time, rate, art, and progress.</p></div>
+        <div class="loop-step"><strong>3. Read Progress</strong><p>Skill XP, stamina, mastery, and action completion are visible without extra explanation copy.</p></div>
+        <div class="loop-step"><strong>4. Rotate</strong><p>When a pool is tired, swap skills or leave and return to offline progress.</p></div>
       </div>
     </section>
 
@@ -904,311 +542,49 @@
       <div class="section-header">
         <div>
           <h2>Activity Button Rules</h2>
-          <p>The current prototype treats the activity button as the main game object. It must show title, reusable art, reusable background art, stamina, time, success, mastery progress, and the running progress rail without instructional clutter.</p>
+          <p>The activity button is the main game object. Keep it dense, tappable, and consistent with the Activity Database.</p>
         </div>
         <span class="pill">125 action review</span>
       </div>
       <div class="systems">
-        <div class="system-card"><h3>Base Time</h3><p><code>base_seconds = (1.0 + stamina * 0.75 + unlock_level * 0.06) * skill_time_scale * time_mod</code>. Each action owns a <code>time_mod</code>, so level 1 actions across different skills do not take the same time.</p></div>
-        <div class="system-card"><h3>Mastery</h3><p>Each activity has its own mastery level. <code>mastery_speed</code> lowers action time and <code>stamina_cut</code> lowers stamina cost, both tuned per action.</p></div>
-        <div class="system-card"><h3>Skill Level</h3><p>Skill level improves success chance after unlock. <code>success_growth</code> is per action, so some actions become reliable faster than others.</p></div>
-        <div class="system-card"><h3>Motivation Star</h3><p>The hero randomly becomes motivated to do one accessible action for 5 completions. Motivated actions show a star and grant +15% XP plus 10% faster cycles until the charges are spent, then motivation rerolls.</p></div>
+        <div class="system-card"><h3>Source Data</h3><p><code>activity-database.json</code> owns names, unlocks, XP, stamina, seconds, rate, and art paths. The PRD should not duplicate the action list.</p></div>
+        <div class="system-card"><h3>Card Contents</h3><p>Show title, action art, background art, XP, stam, time, rate, mastery bar, medal state, and the running progress rail.</p></div>
+        <div class="system-card"><h3>Copy Rules</h3><p>Use terse labels: <code>XP</code>, <code>Stam</code>, <code>Time</code>, <code>Rate</code>. Avoid instructional text inside the phone UI.</p></div>
+        <div class="system-card"><h3>Boost States</h3><p>Motivation and ad boosts should be visible as small state badges, not separate menus.</p></div>
       </div>
     </section>
 
     <section class="section" id="exact-menu-mockups">
       <div class="section-header">
         <div>
-          <h2>Exact Menu Mockups</h2>
-          <p>These are closer to implementation screens. Each mockup shows what the player sees, which elements are tappable, and how the menus support frequent skill rotation.</p>
+          <h2>Phone Experience Screens</h2>
+          <p>This section reuses the live phone mock instead of maintaining separate PRD-only screen sketches. The embedded views below are the references for the next full HTML phone pass.</p>
         </div>
-        <span class="pill">Screen-by-screen flow</span>
+        <span class="pill">Live mock reused</span>
       </div>
 
-      <div class="flow-map" aria-label="Menu flow map">
-        <div class="flow-node">Home</div>
-        <div class="flow-node">Skills Drawer</div>
-        <div class="flow-node">Skill Actions</div>
-        <div class="flow-node">Running Action</div>
-        <div class="flow-node">Ad XP Boost</div>
-        <div class="flow-node">Hero Tab</div>
-      </div>
-
-      <div class="mockup-grid">
-        <article class="screen-card">
-          <div class="screen-head"><span>Home Screen</span><small>Skills drawer down</small></div>
-          <div class="screen-body">
-            <div class="activity-card">
-              <div class="row"><strong>Idle Elite</strong><span class="badge">Global Lv 5</span></div>
-              <small>Scrollable phone surface. The gray-headed hero stands in the home scene and changes pose every couple of minutes.</small>
-            </div>
-            <div class="hero-stat">
-              <img src="assets/icons/gear.png" alt="">
-              <div><strong>Gray-headed hero</strong><small>CSS pose set: idle, stretch, inspect, celebrate</small></div>
-              <span class="badge">2 min</span>
-            </div>
-            <div class="shop-row">
-              <img src="assets/ui/ad-reward.png" alt="">
-              <div><strong>Ad boost button</strong><small>Floats at the lower-right of the hero scene, roughly 66% down.</small></div>
-              <span class="badge">+10%</span>
-            </div>
+      <div class="live-mock-grid">
+        <article class="live-mock">
+          <div>
+            <h3>Phone Mock</h3>
+            <p>Use this for the live shell, tabs, skill menu, home reveal, ad boost state, and general interaction behavior.</p>
           </div>
-          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
+          <iframe class="live-frame" title="Idle Elite phone mock" src="idle-elite-app-mock.html"></iframe>
         </article>
 
-        <article class="screen-card">
-          <div class="screen-head"><span>Skills Drawer</span><small>Skills tab behavior</small></div>
-          <div class="screen-body">
-            <div class="activity-card">
-              <div class="row"><strong>Tap Skills</strong><span class="badge">drawer</span></div>
-              <small>On the skills menu, tapping the Skills tab rolls the rounded skill-button list down to reveal the home scene. Tapping it again brings the list back.</small>
-            </div>
-            <div class="compact-skill">
-              <img src="assets/icons/fight.png" alt="">
-              <div><strong>Fight</strong><small>Lv 1 - XP 0 / 300</small><div class="tiny-bar"><i style="width: 0%"></i></div></div>
-              <span class="badge">Open</span>
-            </div>
-            <div class="compact-skill">
-              <img src="assets/icons/fishing.png" alt="">
-              <div><strong>Fishing</strong><small>Lv 1 - XP 0 / 300</small><div class="tiny-bar"><i style="width: 0%"></i></div></div>
-              <span class="badge">Open</span>
-            </div>
+        <article class="live-mock">
+          <div>
+            <h3>Action Button Mock</h3>
+            <p>Use this for action card layout, stamina gauge, generated activity art, stat chips, mastery medals, and progress rails.</p>
           </div>
-          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
-        </article>
-
-        <article class="screen-card">
-          <div class="screen-head"><span>Skill Actions</span><small>Fight example</small></div>
-          <div class="screen-body">
-            <div class="compact-skill">
-              <img src="assets/icons/fight.png" alt="">
-              <div><strong>Fight</strong><small>Lv 1 - XP 0 / 300</small><div class="tiny-bar"><i style="width: 0%"></i></div></div>
-              <span class="badge">top</span>
-            </div>
-            <div class="activity-card">
-              <div class="row"><strong>Top summary is not a card</strong><span class="badge">rule</span></div>
-              <small>The skill summary is an unboxed header with the icon, title, XP text, and thick black outlined XP bar.</small>
-            </div>
-            <div class="activity-card">
-              <div class="row"><strong>Shove Wobbly Hay Bale</strong><span class="badge">tap</span></div>
-              <small>Each action button shows generated art, background art, XP, stamina, time, success, mastery level/progress, and a full-width bottom progress rail.</small>
-            </div>
-          </div>
-          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
-        </article>
-
-        <article class="screen-card">
-          <div class="screen-head"><span>Action Button</span><small>Current components</small></div>
-          <div class="screen-body">
-            <div class="activity-card">
-              <div class="row"><strong>Generated action art</strong><span class="badge">125</span></div>
-              <small>All five skills use consistent thick black outline action art in <code>assets/{skill}/actions</code>. Fight is the reference style.</small>
-            </div>
-            <div class="stat-strip">
-              <div class="stat-chip"><strong>+23</strong><small>XP</small></div>
-              <div class="stat-chip"><strong>1</strong><small>Stamina</small></div>
-              <div class="stat-chip"><strong>1.6s</strong><small>Time</small></div>
-            </div>
-            <div class="result-feed">
-              No top-right green arrow.<br>
-              No "Mst" label.<br>
-              Mastery starts at Lv 0, so no medal until Lv 1.
-            </div>
-          </div>
-          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
-        </article>
-
-        <article class="screen-card">
-          <div class="screen-head"><span>Running Action</span><small>Progress rail</small></div>
-          <div class="screen-body">
-            <div class="activity-card">
-              <div class="row"><strong>RUNNING pill</strong><span class="badge">active</span></div>
-              <small>Only locked or running actions show the top-right pill. Idle unlocked actions have no arrow or extra text.</small>
-              <div class="tiny-bar"><i style="width: 62%"></i></div>
-            </div>
-            <div class="result-feed">
-              Bottom rail fills across the entire action button.<br>
-              Completion grants skill XP and action mastery XP.<br>
-              The action restarts automatically in the mock loop.
-            </div>
-          </div>
-          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
-        </article>
-
-        <article class="screen-card">
-          <div class="screen-head"><span>Ad XP Boost</span><small>Home button</small></div>
-          <div class="screen-body">
-            <div class="shop-row">
-              <img src="assets/ui/ad-reward.png" alt="">
-              <div><strong>Watch ad</strong><small>Adds +10% XP for 2 hours. Time stacks up to 6 hours and persists in local storage.</small></div>
-              <span class="badge">2h</span>
-            </div>
-            <div class="activity-card">
-              <div class="row"><strong>Button timer</strong><span class="badge">6h max</span></div>
-              <small>Button text shows +10% when inactive, then remaining time like 2h 00m or 6h 00m.</small>
-            </div>
-          </div>
-          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
-        </article>
-
-        <article class="screen-card">
-          <div class="screen-head"><span>Motivation / Mastery</span><small>Action badges</small></div>
-          <div class="screen-body">
-            <div class="activity-card">
-              <div class="row"><strong>Motivation star</strong><span class="badge">5 uses</span></div>
-              <small>One accessible action is randomly selected. It gets a star, +15% XP, and 10% faster cycle for 5 completions, then rerolls.</small>
-            </div>
-            <div class="activity-card">
-              <div class="row"><strong>Mastery medals</strong><span class="badge">Lv 1-20</span></div>
-              <small>No medal at Lv 0. Every mastery level after that shows a simplified medal on the action art.</small>
-            </div>
-          </div>
-          <div class="mini-tabs"><span class="active">Skills</span><span>Hero</span></div>
-        </article>
-
-        <article class="screen-card">
-          <div class="screen-head"><span>Hero Tab</span><small>Direct home</small></div>
-          <div class="screen-body">
-            <div class="activity-card">
-              <div class="row"><strong>Hero tab</strong><span class="badge">home</span></div>
-              <small>The Hero tab shows the same home screen directly, without the skills drawer covering it.</small>
-            </div>
-            <div class="hero-stat">
-              <img src="assets/icons/gear.png" alt="">
-              <div><strong>Future hero surface</strong><small>Stats, titles, prestige, and cosmetics can attach here after the core loop is stable.</small></div>
-              <span class="badge">later</span>
-            </div>
-          </div>
-          <div class="mini-tabs"><span>Skills</span><span class="active">Hero</span></div>
+          <iframe class="live-frame" title="Idle Elite action button mock" src="idle-elite-app-mock.html?view=activity-buttons&amp;skill=fight"></iframe>
         </article>
       </div>
 
       <div class="rules-list">
-        <div class="rule-card"><h3>Tap Targets</h3><p>Skill rows are rounded buttons. Action rows are large click targets. The ad boost is a distinct floating home button.</p></div>
-        <div class="rule-card"><h3>Phone Behavior</h3><p>The phone content scrolls like an actual device. The bottom tabs stay fixed while the app surface moves.</p></div>
-        <div class="rule-card"><h3>Current Source Of Truth</h3><p>The live mock pages define the visual behavior. The PRD records principles and screen intent, not stale alternate menus.</p></div>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-header">
-        <div>
-          <h2>Skill Identity</h2>
-          <p>Each skill needs a different math personality. If two skills can swap names and still play the same, one needs a stronger rule.</p>
-        </div>
-        <span class="pill">No reskins</span>
-      </div>
-      <div class="identity-grid">
-        <article class="identity">
-          <img src="assets/icons/fight.png" alt="Fight icon">
-          <strong>Fight</strong>
-          <ul><li>Risky bursts</li><li>Crit wins</li><li>Streak XP</li></ul>
-        </article>
-        <article class="identity">
-          <img src="assets/icons/thieving.png" alt="Thieving icon">
-          <strong>Thieving</strong>
-          <ul><li>Escalating heists</li><li>Heat meter</li><li>Success growth</li></ul>
-        </article>
-        <article class="identity">
-          <img src="assets/icons/build.png" alt="Build icon">
-          <strong>Build</strong>
-          <ul><li>Project bars</li><li>Steady XP</li><li>Permanent bonuses</li></ul>
-        </article>
-        <article class="identity">
-          <img src="assets/icons/woodcutting.png" alt="Woodcutting icon">
-          <strong>Woodcutting</strong>
-          <ul><li>Reliable output</li><li>Tree durability</li><li>Predictable wood grades</li></ul>
-        </article>
-        <article class="identity">
-          <img src="assets/icons/fishing.png" alt="Fishing icon">
-          <strong>Fishing</strong>
-          <ul><li>Catch quality</li><li>Bait choices</li><li>Stamina food</li></ul>
-        </article>
-      </div>
-    </section>
-
-    <section class="section">
-      <div class="section-header">
-        <div>
-          <h2>Activity Ladders</h2>
-          <p>Each starter skill now has a 25-action ladder in the action review page. The PRD keeps the high-level direction here, while the review page is the human-readable balancing surface for every action's stamina, time, success, mastery speed, stamina cut, and skill-level success growth.</p>
-        </div>
-        <span class="pill">25 actions per skill</span>
-      </div>
-      <p><a class="nav-link" href="idle-elite-action-review.html">Open full action review</a></p>
-      <div class="activity-grid">
-        <article class="activity">
-          <img src="assets/icons/fight.png" alt="Fight icon">
-          <div>
-            <h3>Fight</h3>
-            <table>
-              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
-              <tr><td>1</td><td>Shove Wobbly Hay Bale</td><td>Farm chores get personal</td></tr>
-              <tr><td>30</td><td>Defeat The Tractor That Would Not Start</td><td>Still on the farm, somehow epic</td></tr>
-              <tr><td>50</td><td>Rematch The Same Hay Bale, Somehow Stronger</td><td>Comedy escalation loop</td></tr>
-            </table>
-          </div>
-        </article>
-        <article class="activity">
-          <img src="assets/icons/thieving.png" alt="Thieving icon">
-          <div>
-            <h3>Thieving</h3>
-            <table>
-              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
-              <tr><td>1</td><td>Pocket A Penny Nobody Wanted</td><td>Small-time nonsense</td></tr>
-              <tr><td>28</td><td>Rob The Alien Spaceship's Bank</td><td>Big-time impossible heists</td></tr>
-              <tr><td>50</td><td>Steal The Alibi You Used To Do It</td><td>Reality-theft finale</td></tr>
-            </table>
-          </div>
-        </article>
-        <article class="activity">
-          <img src="assets/icons/build.png" alt="Build icon">
-          <div>
-            <h3>Build</h3>
-            <table>
-              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
-              <tr><td>1</td><td>Stack Bricks</td><td>Basic practical construction</td></tr>
-              <tr><td>30</td><td>Add Second Elite Tower On Top</td><td>Infrastructure gets ridiculous</td></tr>
-              <tr><td>50</td><td>Build The Building That Builds You</td><td>Architecture becomes the boss</td></tr>
-            </table>
-          </div>
-        </article>
-        <article class="activity">
-          <img src="assets/icons/woodcutting.png" alt="Woodcutting icon">
-          <div>
-            <h3>Woodcutting</h3>
-            <table>
-              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
-              <tr><td>1</td><td>Gather Fallen Branches</td><td>Reliable starter gathering</td></tr>
-              <tr><td>30</td><td>Clear The Forest's Legal Department</td><td>Mythic timber bureaucracy</td></tr>
-              <tr><td>50</td><td>Clear The Infinite Lumberyard</td><td>Endless chopping joke</td></tr>
-            </table>
-          </div>
-        </article>
-        <article class="activity">
-          <img src="assets/icons/fishing.png" alt="Fishing icon">
-          <div>
-            <h3>Fishing</h3>
-            <table>
-              <tr><th>Lv</th><th>Activity</th><th>Direction</th></tr>
-              <tr><td>1</td><td>Scoop Pond Minnows</td><td>Hands-on tiny catch</td></tr>
-              <tr><td>20</td><td>Use Sonar In The Farm Pond</td><td>Method changes often</td></tr>
-              <tr><td>50</td><td>Catch The Fishing Mechanic Itself</td><td>Fishing becomes meta</td></tr>
-            </table>
-          </div>
-        </article>
-        <article class="activity">
-          <img src="assets/icons/gear.png" alt="Gear icon">
-          <div>
-            <h3>Gear</h3>
-            <table>
-              <tr><th>Type</th><th>Example</th><th>Effect</th></tr>
-              <tr><td>Tool</td><td>Sharper Axe</td><td>Wood yield</td></tr>
-              <tr><td>Utility</td><td>Snack Bag</td><td>Max stamina</td></tr>
-              <tr><td>Town</td><td>Camp Kitchen</td><td>Cook fish into stamina</td></tr>
-            </table>
-          </div>
-        </article>
+        <div class="rule-card"><h3>Do Not Redraw</h3><p>When the phone mock changes, the PRD should reflect it by embedding or linking it, not by creating a second approximate mockup.</p></div>
+        <div class="rule-card"><h3>Build Target</h3><p>The next HTML pass should evolve <code>idle-elite-app-mock.html</code> directly into the full phone experience.</p></div>
+        <div class="rule-card"><h3>Data Source</h3><p>Activity values still come from the Activity Database. The PRD should describe scope, not duplicate tables.</p></div>
       </div>
     </section>
 
@@ -1216,42 +592,61 @@
       <div class="section-header">
         <div>
           <h2>Systems</h2>
-          <p>The rebuild keeps the old game's bones: global level from skill levels, passive cash, and activity stamina. The new version adds identity rules, offline progress, and monetization-friendly reward boosts.</p>
+          <p>Keep this page focused on app-level behavior. Activity names, numbers, and art paths live in the Activity Database.</p>
         </div>
       </div>
       <div class="systems">
-        <div class="system-card"><h3>Global Level</h3><p>Sum of all skill levels. Unlocks the activity log, titles, upgrade collections, offline multipliers, and prestige.</p></div>
-        <div class="system-card"><h3>Stamina</h3><p>Each skill has its own pool. Players rotate often because Fight being tired does not stop Fishing or Build.</p></div>
-        <div class="system-card"><h3>Activity Mastery</h3><p>Every individual action has its own mastery level. Repeating a specific action makes that action faster and lowers its stamina cost.</p></div>
-        <div class="system-card"><h3>Rewarded Ads</h3><p>Optional boosts: double offline earnings, refill one selected stamina pool, temporary success buff, or daily goal reroll.</p></div>
+        <div class="system-card"><h3>Global Level</h3><p>Sum skill levels into one account-scale number for profile goals, store copy, and long-term progression.</p></div>
+        <div class="system-card"><h3>Stamina</h3><p>Each skill has its own pool. The UI should make ready, low, and empty states obvious before the player taps.</p></div>
+        <div class="system-card"><h3>Mastery</h3><p>Every activity has mastery progress. Present it as a bar and medal state on the action card.</p></div>
+        <div class="system-card"><h3>Rewarded Ads</h3><p>Current scope: optional +10% XP timer, capped at 6 hours. Production still needs real AdMob wiring.</p></div>
       </div>
     </section>
 
     <section class="section">
       <div class="section-header">
         <div>
-          <h2>Asset Kit</h2>
-          <p>The icons below were generated for this presentation and saved as reusable project assets. They can be imported into Godot now as first-pass UI icons.</p>
+          <h2>Launch Assets</h2>
+          <p>Use the current app and store assets when presenting the product. Skill icons are implementation assets; this section is for app identity, Google Play, and ad creative.</p>
         </div>
-        <span class="pill">Generated bitmap assets</span>
+        <span class="pill">Store-ready set</span>
       </div>
       <div class="asset-strip">
-        <div class="asset-card">
-          <img src="assets/icons/idle-elite-icon-sheet.png" alt="Idle Elite icon sprite sheet">
+        <div class="asset-grid">
+          <article class="asset-preview icon">
+            <img src="play-store/assets/app-icon-512.png" alt="Idle Elite app icon">
+            <div><strong>App Icon</strong><small>512 x 512 PNG</small></div>
+          </article>
+          <article class="asset-preview feature">
+            <img src="play-store/assets/feature-graphic-1024x500.png" alt="Idle Elite feature graphic">
+            <div><strong>Feature Graphic</strong><small>1024 x 500 PNG</small></div>
+          </article>
+          <article class="asset-preview portrait">
+            <img src="play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png" alt="Idle Elite vertical ad">
+            <div><strong>Vertical Ad</strong><small>1080 x 1920 PNG</small></div>
+          </article>
+          <article class="asset-preview portrait">
+            <img src="play-store/assets/screenshot-01-train-five-skills-1080x1920.png" alt="Idle Elite phone screenshot">
+            <div><strong>Phone Screenshot</strong><small>1080 x 1920 PNG</small></div>
+          </article>
         </div>
         <ul class="file-list">
-          <li>docs/assets/icons/idle-elite-icon-sheet.png</li>
-          <li>docs/assets/icons/fight.png</li>
-          <li>docs/assets/icons/thieving.png</li>
-          <li>docs/assets/icons/build.png</li>
-          <li>docs/assets/icons/woodcutting.png</li>
-          <li>docs/assets/icons/fishing.png</li>
-          <li>docs/assets/icons/gear.png</li>
+          <li>docs/play-store/assets/app-icon-512.png</li>
+          <li>docs/play-store/assets/feature-graphic-1024x500.png</li>
+          <li>docs/play-store/assets/screenshot-01-train-five-skills-1080x1920.png</li>
+          <li>docs/play-store/assets/screenshot-02-stamina-choices-1080x1920.png</li>
+          <li>docs/play-store/assets/screenshot-03-level-up-1080x1920.png</li>
+          <li>docs/play-store/assets/screenshot-04-offline-progress-1080x1920.png</li>
+          <li>docs/play-store/assets/screenshot-05-idle-elitist-1080x1920.png</li>
+          <li>docs/play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png</li>
+          <li>docs/play-store/assets/ad-vertical-02-progress-while-away-1080x1920.png</li>
+          <li>docs/play-store/assets/ad-vertical-03-tap-level-repeat-1080x1920.png</li>
+          <li>docs/play-store/assets/ad-vertical-04-become-idle-elite-1080x1920.png</li>
         </ul>
       </div>
     </section>
 
-    <div class="footer">Idle Elite Rebuild PRD HTML presentation. Generated icons use the imagegen built-in tool and were saved into this workspace.</div>
+    <div class="footer">Idle Elite PRD. Activity tuning lives in the Activity Database; launch copy and store asset notes live in docs/play-store.</div>
   </main>
 </body>
 </html>

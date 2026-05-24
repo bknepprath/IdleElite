@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dfqn10yswuy2h"
-path="res://.godot/imported/ad-portrait-1200x1500.png-a3c863d0c9e5d357fc96a89f73ddcaf5.ctex"
+uid="uid://b0h2tcmrw1ykb"
+path="res://.godot/imported/achievement-credit.png-d0bed316db57a8e4b70e14a611a58e83.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/play-store/assets/ad-portrait-1200x1500.png"
-dest_files=["res://.godot/imported/ad-portrait-1200x1500.png-a3c863d0c9e5d357fc96a89f73ddcaf5.ctex"]
+source_file="res://docs/assets/achievements/achievement-credit.png"
+dest_files=["res://.godot/imported/achievement-credit.png-d0bed316db57a8e4b70e14a611a58e83.ctex"]
 
 [params]
 

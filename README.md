@@ -4,13 +4,15 @@ A small Godot 4 idle RPG prototype built for a mobile-first loop.
 
 ## Codex Loop
 
+Agent and automation rules live in `AGENTS.md`. In short: never call `Godot.exe` directly; use `.\run-godot-safe.ps1` or scripts that delegate to it.
+
 Run a quick headless smoke test:
 
 ```powershell
 .\scripts\check-project.ps1
 ```
 
-Launch the game directly, without opening the Godot editor:
+Run a one-shot headless launch through the shared Godot safety wrapper:
 
 ```powershell
 .\scripts\run-game.ps1

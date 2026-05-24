@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dkusr36fcele2"
-path="res://.godot/imported/ad-landscape-1200x628.png-ae5e1cd61eb3a02c5da290d15309af59.ctex"
+uid="uid://dyecnxai14kio"
+path="res://.godot/imported/achievement-cumulative-medals.png-782a28333d47b04c1d19da33d5a474f4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://docs/play-store/assets/ad-landscape-1200x628.png"
-dest_files=["res://.godot/imported/ad-landscape-1200x628.png-ae5e1cd61eb3a02c5da290d15309af59.ctex"]
+source_file="res://docs/assets/achievements/achievement-cumulative-medals.png"
+dest_files=["res://.godot/imported/achievement-cumulative-medals.png-782a28333d47b04c1d19da33d5a474f4.ctex"]
 
 [params]
 

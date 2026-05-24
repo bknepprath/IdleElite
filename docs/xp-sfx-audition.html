@@ -222,6 +222,37 @@
       box-shadow: inset 0 1px rgba(255, 255, 255, 0.34), 0 6px 0 #2e6f2a;
     }
 
+    .candidate-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .candidate {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(240px, 420px);
+      gap: 16px;
+      align-items: center;
+      padding: 14px 16px;
+      background: rgba(34, 37, 31, 0.78);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+    }
+
+    .candidate h3 {
+      margin: 0 0 5px;
+    }
+
+    .candidate a {
+      color: var(--gold);
+      font-weight: 800;
+      text-decoration: none;
+    }
+
+    audio {
+      width: 100%;
+      min-width: 0;
+    }
+
     @media (max-width: 720px) {
       header {
         display: grid;
@@ -231,6 +262,10 @@
       .meter {
         width: 100%;
         min-width: 0;
+      }
+
+      .candidate {
+        grid-template-columns: 1fr;
       }
     }
   </style>
@@ -260,10 +295,66 @@
     </div>
     <section class="grid" id="failureGrid" aria-label="Activity failure sound options"></section>
 
+    <div class="section-label">
+      <h2>Medal Replacement Options</h2>
+      <p>Metallic swoops for a new medal sliding in and seating over the old one.</p>
+    </div>
+    <section class="grid" id="medalGrid" aria-label="Medal replacement sound options"></section>
+
+    <div class="section-label">
+      <h2>Fetched Clang Candidates</h2>
+      <p>Real Mixkit recordings/previews to audition as the clang layer.</p>
+    </div>
+    <section class="candidate-list" aria-label="Fetched clang candidates">
+      <article class="candidate">
+        <div>
+          <h3>Metal Button Radio Ping</h3>
+          <p class="notes">Best first listen for a medal UI clang: short, bright, and not too violent. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
+        </div>
+        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-metal-button-radio-ping.mp3"></audio>
+      </article>
+      <article class="candidate">
+        <div>
+          <h3>Gear Metallic Lock Sound</h3>
+          <p class="notes">Good “seated into place” energy, more mechanical than celebratory. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
+        </div>
+        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-gear-metallic-lock-sound.mp3"></audio>
+      </article>
+      <article class="candidate">
+        <div>
+          <h3>Gear Fast Lock Tap</h3>
+          <p class="notes">Compact lock/clink. Could layer under a swoop without hogging the moment. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
+        </div>
+        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-gear-fast-lock-tap.mp3"></audio>
+      </article>
+      <article class="candidate">
+        <div>
+          <h3>Glass Hitting A Metal</h3>
+          <p class="notes">Brighter, thinner hit. Nice if the medal should feel shiny instead of heavy. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
+        </div>
+        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-glass-hitting-a-metal.mp3"></audio>
+      </article>
+      <article class="candidate">
+        <div>
+          <h3>Whoosh Resonating Metallic Hit</h3>
+          <p class="notes">Already contains motion plus impact. Useful reference, probably needs trimming. <a href="https://mixkit.co/free-sound-effects/woosh/">Source</a></p>
+        </div>
+        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-whoosh-resonating-metallic-hit.mp3"></audio>
+      </article>
+      <article class="candidate">
+        <div>
+          <h3>Metal Hammer Hit</h3>
+          <p class="notes">Harder clang. Might work if we soften/shorten it for medal replacement. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
+        </div>
+        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-metal-hammer-hit.mp3"></audio>
+      </article>
+    </section>
+
     <div class="footer">
       <button id="playAll" type="button">Play all in sequence</button>
       <button id="quickBurst" type="button">Test rapid XP taps</button>
       <button id="failureBurst" type="button">Test rapid failures</button>
+      <button id="medalBurst" type="button">Test medal swaps</button>
     </div>
   </main>
 
@@ -490,11 +581,114 @@
       }
     ];
 
+    const medalSounds = [
+      {
+        id: "silver-seat",
+        name: "Silver Seat",
+        tag: "clean swoop",
+        notes: "A bright metal glide into a neat socket click. Elegant and compact.",
+        bars: [12, 18, 32, 58, 82, 100, 72, 44, 30, 20, 14, 10],
+        play: (ctx, out, t) => {
+          metalSwoop(ctx, out, t, 720, 1180, 0.2, 0.18, -0.1);
+          ping(ctx, out, t + 0.16, 1568, 0.13, "triangle", 0.28);
+          noisePop(ctx, out, t + 0.17, 0.006, 0.018, 4200);
+        }
+      },
+      {
+        id: "bronze-snap",
+        name: "Bronze Snap",
+        tag: "chunky",
+        notes: "Warmer swoop with a tiny clack at the end. Good for heavier medals.",
+        bars: [18, 24, 46, 74, 96, 84, 58, 38, 46, 30, 18, 12],
+        play: (ctx, out, t) => {
+          metalSwoop(ctx, out, t, 440, 820, 0.18, 0.2, 0.0);
+          ping(ctx, out, t + 0.148, 392, 0.085, "triangle", 0.24);
+          ping(ctx, out, t + 0.156, 1174.66, 0.095, "sine", 0.18);
+          noisePop(ctx, out, t + 0.145, 0.005, 0.024, 1800);
+        }
+      },
+      {
+        id: "badge-whisk",
+        name: "Badge Whisk",
+        tag: "fast pass",
+        notes: "A quick left-to-right metallic pass ending with a tidy glint.",
+        bars: [10, 28, 70, 100, 78, 42, 24, 18, 38, 66, 34, 18],
+        play: (ctx, out, t) => {
+          metalSwoop(ctx, out, t, 980, 1320, 0.14, 0.15, -0.55);
+          metalSwoop(ctx, out, t + 0.028, 1240, 880, 0.13, 0.1, 0.55);
+          ping(ctx, out, t + 0.135, 1760, 0.1, "sine", 0.22);
+        }
+      },
+      {
+        id: "medal-lock",
+        name: "Medal Lock",
+        tag: "replace",
+        notes: "Swoop, tiny scrape, then a satisfying metal lock-in.",
+        bars: [16, 22, 36, 64, 90, 76, 44, 30, 18, 58, 84, 28],
+        play: (ctx, out, t) => {
+          metalSwoop(ctx, out, t, 560, 1046.5, 0.19, 0.18, -0.2);
+          scrape(ctx, out, t + 0.09, 0.08, 0.045);
+          ping(ctx, out, t + 0.182, 523.25, 0.08, "triangle", 0.24);
+          ping(ctx, out, t + 0.188, 2093, 0.075, "sine", 0.16);
+          noisePop(ctx, out, t + 0.18, 0.006, 0.019, 3000);
+        }
+      },
+      {
+        id: "arc-then-clang",
+        name: "Arc Then Clang",
+        tag: "split",
+        notes: "Readable two-part move: airy medal arc first, clean clang after it lands.",
+        bars: [8, 16, 28, 54, 86, 70, 32, 16, 12, 92, 64, 22],
+        play: (ctx, out, t) => {
+          medalWhoosh(ctx, out, t, 0.18, 0.13, -0.48, 920, 1520);
+          medalClang(ctx, out, t + 0.205, 740, 0.24, 0.42);
+        }
+      },
+      {
+        id: "slide-and-seat",
+        name: "Slide And Seat",
+        tag: "socket",
+        notes: "A lower sliding swoop followed by a heavier medal seating clang.",
+        bars: [12, 24, 42, 66, 94, 58, 24, 14, 10, 100, 72, 30],
+        play: (ctx, out, t) => {
+          medalWhoosh(ctx, out, t, 0.2, 0.15, -0.28, 520, 940);
+          scrape(ctx, out, t + 0.11, 0.085, 0.035);
+          medalClang(ctx, out, t + 0.225, 420, 0.26, 0.5);
+        }
+      },
+      {
+        id: "glint-drop",
+        name: "Glint Drop",
+        tag: "bright",
+        notes: "Fast bright swoop, then a crisp high clang with a little shimmer tail.",
+        bars: [6, 18, 46, 96, 78, 34, 16, 10, 8, 76, 100, 48],
+        play: (ctx, out, t) => {
+          medalWhoosh(ctx, out, t, 0.145, 0.12, -0.62, 1180, 1900);
+          medalClang(ctx, out, t + 0.165, 980, 0.2, 0.34);
+          ping(ctx, out, t + 0.182, 2349.32, 0.13, "sine", 0.12);
+        }
+      },
+      {
+        id: "swap-clack",
+        name: "Swap Clack",
+        tag: "layered",
+        notes: "The old medal slips away, the new one swoops in, then a compact metal clack.",
+        bars: [28, 44, 30, 18, 36, 68, 92, 54, 20, 82, 60, 24],
+        play: (ctx, out, t) => {
+          medalWhoosh(ctx, out, t, 0.105, 0.08, 0.45, 760, 430);
+          medalWhoosh(ctx, out, t + 0.085, 0.16, 0.13, -0.45, 620, 1280);
+          medalClang(ctx, out, t + 0.245, 560, 0.19, 0.44);
+          noisePop(ctx, out, t + 0.245, 0.004, 0.018, 2400);
+        }
+      }
+    ];
+
     let audioContext;
     let masterGain;
     const volume = document.querySelector("#volume");
     const grid = document.querySelector("#soundGrid");
     const failureGrid = document.querySelector("#failureGrid");
+    const medalGrid = document.querySelector("#medalGrid");
 
     function ensureAudio() {
       if (!audioContext) {
@@ -586,6 +780,77 @@
       osc.stop(t + duration + 0.01);
     }
 
+    function metalSwoop(ctx, out, t, from, to, duration, level, pan) {
+      const osc = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const panNode = ctx.createStereoPanner();
+      const g = envGain(ctx, out, t, duration, level);
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(from, t);
+      osc.frequency.exponentialRampToValueAtTime(to, t + duration * 0.86);
+      osc.frequency.exponentialRampToValueAtTime(to * 0.995, t + duration);
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(from * 1.2, t);
+      filter.frequency.exponentialRampToValueAtTime(to * 1.38, t + duration);
+      filter.Q.value = 5.2;
+      panNode.pan.setValueAtTime(pan, t);
+      panNode.pan.linearRampToValueAtTime(-pan * 0.45, t + duration);
+      osc.connect(filter);
+      filter.connect(panNode);
+      panNode.connect(g);
+      osc.start(t);
+      osc.stop(t + duration + 0.01);
+    }
+
+    function medalWhoosh(ctx, out, t, duration, level, pan, from, to) {
+      const osc = ctx.createOscillator();
+      const filter = ctx.createBiquadFilter();
+      const panNode = ctx.createStereoPanner();
+      const g = envGain(ctx, out, t, duration, level);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(from, t);
+      osc.frequency.exponentialRampToValueAtTime(to, t + duration);
+      filter.type = "bandpass";
+      filter.frequency.setValueAtTime(from * 1.1, t);
+      filter.frequency.exponentialRampToValueAtTime(to * 1.15, t + duration);
+      filter.Q.value = 3.6;
+      panNode.pan.setValueAtTime(pan, t);
+      panNode.pan.linearRampToValueAtTime(-pan, t + duration);
+      osc.connect(filter);
+      filter.connect(panNode);
+      panNode.connect(g);
+      osc.start(t);
+      osc.stop(t + duration + 0.01);
+      scrape(ctx, out, t + duration * 0.18, duration * 0.55, level * 0.18);
+    }
+
+    function medalClang(ctx, out, t, baseHz, duration, level) {
+      ping(ctx, out, t, baseHz, duration, "triangle", level);
+      ping(ctx, out, t + 0.006, baseHz * 1.505, duration * 0.72, "sine", level * 0.36);
+      ping(ctx, out, t + 0.012, baseHz * 2.18, duration * 0.48, "sine", level * 0.2);
+      noisePop(ctx, out, t, 0.004, 0.022, baseHz * 4.4);
+    }
+
+    function scrape(ctx, out, t, duration, level) {
+      const buffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * duration), ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < data.length; i += 1) {
+        const u = i / data.length;
+        data[i] = (Math.random() * 2 - 1) * (1 - u) * (0.45 + Math.sin(u * 80) * 0.18);
+      }
+      const source = ctx.createBufferSource();
+      const filter = ctx.createBiquadFilter();
+      const g = envGain(ctx, out, t, duration, level);
+      source.buffer = buffer;
+      filter.type = "bandpass";
+      filter.frequency.value = 2600;
+      filter.Q.value = 1.8;
+      source.connect(filter);
+      filter.connect(g);
+      source.start(t);
+      source.stop(t + duration + 0.01);
+    }
+
     function noisePop(ctx, out, t, attack, duration, cutoff) {
       const bufferSize = Math.max(1, Math.floor(ctx.sampleRate * duration));
       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
@@ -668,6 +933,7 @@
     function render() {
       renderGrid(grid, sounds);
       renderGrid(failureGrid, failureSounds);
+      renderGrid(medalGrid, medalSounds);
     }
 
     volume.addEventListener("input", () => {
@@ -685,6 +951,7 @@
 
     grid.addEventListener("click", (event) => handleGridClick(event, sounds));
     failureGrid.addEventListener("click", (event) => handleGridClick(event, failureSounds));
+    medalGrid.addEventListener("click", (event) => handleGridClick(event, medalSounds));
 
     document.querySelector("#playAll").addEventListener("click", () => {
       sounds.forEach((sound, index) => playSound(sound, index * 0.42));
@@ -698,6 +965,10 @@
     document.querySelector("#failureBurst").addEventListener("click", () => {
       const picks = [failureSounds[6], failureSounds[7], failureSounds[9], failureSounds[6], failureSounds[8], failureSounds[7]];
       picks.forEach((sound, index) => playSound(sound, index * 0.15));
+    });
+
+    document.querySelector("#medalBurst").addEventListener("click", () => {
+      medalSounds.forEach((sound, index) => playSound(sound, index * 0.34));
     });
 
     render();
