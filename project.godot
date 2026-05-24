@@ -18,8 +18,8 @@ config/features=PackedStringArray("4.5")
 
 window/size/viewport_width=2160
 window/size/viewport_height=3840
-window/size/window_width_override=360
-window/size/window_height_override=640
+window/size/window_width_override=475
+window/size/window_height_override=845
 window/handheld/orientation=1
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
@@ -27,6 +27,10 @@ window/stretch/aspect="expand"
 [editor_plugins]
 
 enabled=PackedStringArray("res://addons/admob/plugin.cfg")
+
+[input_devices]
+
+pointing/emulate_touch_from_mouse=true
 
 [rendering]
 

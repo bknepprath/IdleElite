@@ -1,0 +1,2396 @@
+{
+  "schema_version": 1,
+  "updated": "2026-05-23",
+  "source_of_truth": "Edit this JSON first. The Godot game and HTML activity database both read this file.",
+  "global_rules": {
+    "base_max_stamina": 30,
+    "stamina_regen_seconds": 12,
+    "max_offline_seconds": 28800,
+    "unlock_levels": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      12,
+      14,
+      16,
+      18,
+      20,
+      22,
+      24,
+      26,
+      28,
+      30,
+      33,
+      36,
+      40,
+      45,
+      50
+    ],
+    "xp_formula": "round(pow(action_index_1_based, 1.35) * skill.xp_scale)",
+    "seconds_formula": "(1 + stamina * 0.75 + unlock * 0.06) * skill.time_scale",
+    "success_formula": "max(20, skill.success_start - action_index_0_based * 2)",
+    "skill_level_xp_formula": "skill_xp_required(level) = round(22 * pow(level - 1, 2.08)); level starts at 1",
+    "max_stamina_formula": "max_stamina = base_max_stamina + floor(cumulative_skill_levels / 10)",
+    "mastery_xp_formula": "mastery_xp_required(level) = round(18 * pow(level, 2.05)); mastery starts at 0 and caps at 10",
+    "mastery_xp_reward_formula": "mastery_xp_reward = 7 + ceil(base_seconds * 1.5) on successful action completion",
+    "level_up_effects": [
+      "Skill level unlocks activities whose unlock level is now met.",
+      "Every skill level contributes to cumulative skill levels.",
+      "Every 10 cumulative skill levels adds +1 max stamina to every skill."
+    ],
+    "mastery_level_up_effects": [
+      "Each activity mastery level awards that tier medal for that activity, from Bronze through Heavenly only.",
+      "Mastery is presented as visual progress on the action card: medal state plus progress bar.",
+      "The first globally earned medal of each tier unlocks a permanent global buff. Bronze, Sapphire, and Demonic increase max stamina; Silver, Emerald, and Heavenly increase XP; Gold and Ruby increase action speed; Platinum and Diamond increase success rate."
+    ]
+  },
+  "skills": [
+    {
+      "id": "fight",
+      "name": "Fight",
+      "verb": "Fighting",
+      "identity": "Farm-only escalation. The fights begin with chores getting personal and end with the farm itself demanding a rematch.",
+      "tuning": {
+        "time_scale": 0.88,
+        "xp_scale": 1,
+        "success_start": 95
+      },
+      "rewards": {
+        "primary": "Skill XP",
+        "secondary": "Combat mastery"
+      },
+      "icon": "docs/assets/icons/fight.png",
+      "actions": [
+        {
+          "id": "shove-wobbly-hay-bale",
+          "tier": 1,
+          "name": "Shove Wobbly Hay Bale",
+          "unlock": 1,
+          "stamina": 1,
+          "seconds": 1.59,
+          "xp": 1,
+          "success": 95,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/fight/actions/01-shove-wobbly-hay-bale.png",
+          "background": "docs/assets/fight/backgrounds/01-early.png"
+        },
+        {
+          "id": "kick-mud-off-boot",
+          "tier": 2,
+          "name": "Kick Mud Off Boot",
+          "unlock": 2,
+          "stamina": 1,
+          "seconds": 1.65,
+          "xp": 3,
+          "success": 93,
+          "rewards": {
+            "xp": 3
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/fight/actions/02-kick-mud-off-boot.png",
+          "background": "docs/assets/fight/backgrounds/01-early.png"
+        },
+        {
+          "id": "wrestle-stuck-gate-latch",
+          "tier": 3,
+          "name": "Wrestle Stuck Gate Latch",
+          "unlock": 3,
+          "stamina": 1,
+          "seconds": 1.7,
+          "xp": 4,
+          "success": 91,
+          "rewards": {
+            "xp": 4
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/fight/actions/03-wrestle-stuck-gate-latch.png",
+          "background": "docs/assets/fight/backgrounds/01-early.png"
+        },
+        {
+          "id": "box-suspicious-feed-sack",
+          "tier": 4,
+          "name": "Box Suspicious Feed Sack",
+          "unlock": 4,
+          "stamina": 2,
+          "seconds": 2.41,
+          "xp": 6,
+          "success": 89,
+          "rewards": {
+            "xp": 6
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/fight/actions/04-box-suspicious-feed-sack.png",
+          "background": "docs/assets/fight/backgrounds/01-early.png"
+        },
+        {
+          "id": "duel-leaning-fence-post",
+          "tier": 5,
+          "name": "Duel Leaning Fence Post",
+          "unlock": 5,
+          "stamina": 2,
+          "seconds": 2.46,
+          "xp": 9,
+          "success": 87,
+          "rewards": {
+            "xp": 9
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/fight/actions/05-duel-leaning-fence-post.png",
+          "background": "docs/assets/fight/backgrounds/01-early.png"
+        },
+        {
+          "id": "outmuscle-angry-wheelbarrow",
+          "tier": 6,
+          "name": "Outmuscle Angry Wheelbarrow",
+          "unlock": 6,
+          "stamina": 2,
+          "seconds": 2.52,
+          "xp": 11,
+          "success": 85,
+          "rewards": {
+            "xp": 11
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/fight/actions/06-outmuscle-angry-wheelbarrow.png",
+          "background": "docs/assets/fight/backgrounds/02-rising.png"
+        },
+        {
+          "id": "brawl-with-kicking-milk-pail",
+          "tier": 7,
+          "name": "Brawl With Kicking Milk Pail",
+          "unlock": 7,
+          "stamina": 3,
+          "seconds": 3.23,
+          "xp": 14,
+          "success": 83,
+          "rewards": {
+            "xp": 14
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/fight/actions/07-brawl-with-kicking-milk-pail.png",
+          "background": "docs/assets/fight/backgrounds/02-rising.png"
+        },
+        {
+          "id": "square-up-with-rake-in-grass",
+          "tier": 8,
+          "name": "Square Up With Rake In Grass",
+          "unlock": 8,
+          "stamina": 3,
+          "seconds": 3.28,
+          "xp": 17,
+          "success": 81,
+          "rewards": {
+            "xp": 17
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/fight/actions/08-square-up-with-rake-in-grass.png",
+          "background": "docs/assets/fight/backgrounds/02-rising.png"
+        },
+        {
+          "id": "grapple-overfull-compost-bin",
+          "tier": 9,
+          "name": "Grapple Overfull Compost Bin",
+          "unlock": 9,
+          "stamina": 3,
+          "seconds": 3.34,
+          "xp": 19,
+          "success": 79,
+          "rewards": {
+            "xp": 19
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/fight/actions/09-grapple-overfull-compost-bin.png",
+          "background": "docs/assets/fight/backgrounds/02-rising.png"
+        },
+        {
+          "id": "parry-windmill-shadow",
+          "tier": 10,
+          "name": "Parry Windmill Shadow",
+          "unlock": 10,
+          "stamina": 4,
+          "seconds": 4.05,
+          "xp": 22,
+          "success": 77,
+          "rewards": {
+            "xp": 22
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/fight/actions/10-parry-windmill-shadow.png",
+          "background": "docs/assets/fight/backgrounds/02-rising.png"
+        },
+        {
+          "id": "tackle-runaway-water-trough",
+          "tier": 11,
+          "name": "Tackle Runaway Water Trough",
+          "unlock": 12,
+          "stamina": 4,
+          "seconds": 4.15,
+          "xp": 25,
+          "success": 75,
+          "rewards": {
+            "xp": 25
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/fight/actions/11-tackle-runaway-water-trough.png",
+          "background": "docs/assets/fight/backgrounds/03-mid.png"
+        },
+        {
+          "id": "fight-the-barn-door-at-midnight",
+          "tier": 12,
+          "name": "Fight The Barn Door At Midnight",
+          "unlock": 14,
+          "stamina": 4,
+          "seconds": 4.26,
+          "xp": 29,
+          "success": 73,
+          "rewards": {
+            "xp": 29
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/fight/actions/12-fight-the-barn-door-at-midnight.png",
+          "background": "docs/assets/fight/backgrounds/03-mid.png"
+        },
+        {
+          "id": "challenge-the-silo-echo",
+          "tier": 13,
+          "name": "Challenge The Silo Echo",
+          "unlock": 16,
+          "stamina": 5,
+          "seconds": 5.02,
+          "xp": 32,
+          "success": 71,
+          "rewards": {
+            "xp": 32
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/fight/actions/13-challenge-the-silo-echo.png",
+          "background": "docs/assets/fight/backgrounds/03-mid.png"
+        },
+        {
+          "id": "survive-the-hayloft-ambush",
+          "tier": 14,
+          "name": "Survive The Hayloft Ambush",
+          "unlock": 18,
+          "stamina": 5,
+          "seconds": 5.13,
+          "xp": 35,
+          "success": 69,
+          "rewards": {
+            "xp": 35
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/fight/actions/14-survive-the-hayloft-ambush.png",
+          "background": "docs/assets/fight/backgrounds/03-mid.png"
+        },
+        {
+          "id": "punch-through-corn-maze-panic",
+          "tier": 15,
+          "name": "Punch Through Corn Maze Panic",
+          "unlock": 20,
+          "stamina": 5,
+          "seconds": 5.24,
+          "xp": 39,
+          "success": 67,
+          "rewards": {
+            "xp": 39
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/fight/actions/15-punch-through-corn-maze-panic.png",
+          "background": "docs/assets/fight/backgrounds/03-mid.png"
+        },
+        {
+          "id": "body-slam-the-root-cellar-door",
+          "tier": 16,
+          "name": "Body Slam The Root Cellar Door",
+          "unlock": 22,
+          "stamina": 6,
+          "seconds": 6,
+          "xp": 42,
+          "success": 65,
+          "rewards": {
+            "xp": 42
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/fight/actions/16-body-slam-the-root-cellar-door.png",
+          "background": "docs/assets/fight/backgrounds/04-late.png"
+        },
+        {
+          "id": "trade-blows-with-the-weather-vane",
+          "tier": 17,
+          "name": "Trade Blows With The Weather Vane",
+          "unlock": 24,
+          "stamina": 6,
+          "seconds": 6.11,
+          "xp": 46,
+          "success": 63,
+          "rewards": {
+            "xp": 46
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/fight/actions/17-trade-blows-with-the-weather-vane.png",
+          "background": "docs/assets/fight/backgrounds/04-late.png"
+        },
+        {
+          "id": "dodge-the-irrigation-betrayal",
+          "tier": 18,
+          "name": "Dodge The Irrigation Betrayal",
+          "unlock": 26,
+          "stamina": 6,
+          "seconds": 6.21,
+          "xp": 50,
+          "success": 61,
+          "rewards": {
+            "xp": 50
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/fight/actions/18-dodge-the-irrigation-betrayal.png",
+          "background": "docs/assets/fight/backgrounds/04-late.png"
+        },
+        {
+          "id": "enter-the-scarecrow-circle",
+          "tier": 19,
+          "name": "Enter The Scarecrow Circle",
+          "unlock": 28,
+          "stamina": 7,
+          "seconds": 6.98,
+          "xp": 53,
+          "success": 59,
+          "rewards": {
+            "xp": 53
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/fight/actions/19-enter-the-scarecrow-circle.png",
+          "background": "docs/assets/fight/backgrounds/04-late.png"
+        },
+        {
+          "id": "defeat-the-tractor-that-would-not-start",
+          "tier": 20,
+          "name": "Defeat The Tractor That Would Not Start",
+          "unlock": 30,
+          "stamina": 7,
+          "seconds": 7.08,
+          "xp": 57,
+          "success": 57,
+          "rewards": {
+            "xp": 57
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/fight/actions/20-defeat-the-tractor-that-would-not-start.png",
+          "background": "docs/assets/fight/backgrounds/04-late.png"
+        },
+        {
+          "id": "hold-the-line-at-the-pumpkin-patch",
+          "tier": 21,
+          "name": "Hold The Line At The Pumpkin Patch",
+          "unlock": 33,
+          "stamina": 7,
+          "seconds": 7.24,
+          "xp": 61,
+          "success": 55,
+          "rewards": {
+            "xp": 61
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/fight/actions/21-hold-the-line-at-the-pumpkin-patch.png",
+          "background": "docs/assets/fight/backgrounds/05-finale.png"
+        },
+        {
+          "id": "storm-the-forbidden-tool-shed",
+          "tier": 22,
+          "name": "Storm The Forbidden Tool Shed",
+          "unlock": 36,
+          "stamina": 8,
+          "seconds": 8.06,
+          "xp": 65,
+          "success": 53,
+          "rewards": {
+            "xp": 65
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/fight/actions/22-storm-the-forbidden-tool-shed.png",
+          "background": "docs/assets/fight/backgrounds/05-finale.png"
+        },
+        {
+          "id": "win-the-great-barn-rafters-melee",
+          "tier": 23,
+          "name": "Win The Great Barn Rafters Melee",
+          "unlock": 40,
+          "stamina": 8,
+          "seconds": 8.27,
+          "xp": 69,
+          "success": 51,
+          "rewards": {
+            "xp": 69
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/fight/actions/23-win-the-great-barn-rafters-melee.png",
+          "background": "docs/assets/fight/backgrounds/05-finale.png"
+        },
+        {
+          "id": "face-the-entire-farm-at-once",
+          "tier": 24,
+          "name": "Face The Entire Farm At Once",
+          "unlock": 45,
+          "stamina": 8,
+          "seconds": 8.54,
+          "xp": 73,
+          "success": 49,
+          "rewards": {
+            "xp": 73
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/fight/actions/24-face-the-entire-farm-at-once.png",
+          "background": "docs/assets/fight/backgrounds/05-finale.png"
+        },
+        {
+          "id": "rematch-the-same-hay-bale-somehow-stronger",
+          "tier": 25,
+          "name": "Rematch The Same Hay Bale Somehow Stronger",
+          "unlock": 50,
+          "stamina": 9,
+          "seconds": 9.46,
+          "xp": 77,
+          "success": 47,
+          "rewards": {
+            "xp": 77
+          },
+          "costs": {
+            "stamina": 9
+          },
+          "art": "docs/assets/fight/actions/25-rematch-the-same-hay-bale-somehow-stronger.png",
+          "background": "docs/assets/fight/backgrounds/05-finale.png"
+        }
+      ]
+    },
+    {
+      "id": "thieving",
+      "name": "Thieving",
+      "verb": "Sneaking",
+      "identity": "Small-time theft snowballs into impossible heists built around speed, nerve, and risk.",
+      "tuning": {
+        "time_scale": 0.72,
+        "xp_scale": 1,
+        "success_start": 96
+      },
+      "rewards": {
+        "primary": "Skill XP",
+        "secondary": "Nerve and audacity"
+      },
+      "icon": "docs/assets/icons/thieving.png",
+      "actions": [
+        {
+          "id": "pocket-a-penny-nobody-wanted",
+          "tier": 1,
+          "name": "Pocket A Penny Nobody Wanted",
+          "unlock": 1,
+          "stamina": 1,
+          "seconds": 1.3,
+          "xp": 1,
+          "success": 96,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/thieving/actions/01-pocket-a-penny-nobody-wanted.png",
+          "background": "docs/assets/thieving/backgrounds/01-early.png"
+        },
+        {
+          "id": "borrow-a-cookie-permanently",
+          "tier": 2,
+          "name": "Borrow A Cookie Permanently",
+          "unlock": 2,
+          "stamina": 1,
+          "seconds": 1.35,
+          "xp": 3,
+          "success": 94,
+          "rewards": {
+            "xp": 3
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/thieving/actions/02-borrow-a-cookie-permanently.png",
+          "background": "docs/assets/thieving/backgrounds/01-early.png"
+        },
+        {
+          "id": "sneak-past-tip-jar-eye-contact",
+          "tier": 3,
+          "name": "Sneak Past Tip Jar Eye Contact",
+          "unlock": 3,
+          "stamina": 1,
+          "seconds": 1.39,
+          "xp": 4,
+          "success": 92,
+          "rewards": {
+            "xp": 4
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/thieving/actions/03-sneak-past-tip-jar-eye-contact.png",
+          "background": "docs/assets/thieving/backgrounds/01-early.png"
+        },
+        {
+          "id": "lift-loose-coins-from-couch-cushions",
+          "tier": 4,
+          "name": "Lift Loose Coins From Couch Cushions",
+          "unlock": 4,
+          "stamina": 2,
+          "seconds": 1.97,
+          "xp": 6,
+          "success": 90,
+          "rewards": {
+            "xp": 6
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/thieving/actions/04-lift-loose-coins-from-couch-cushions.png",
+          "background": "docs/assets/thieving/backgrounds/01-early.png"
+        },
+        {
+          "id": "distract-fruit-stand-with-jazz-hands",
+          "tier": 5,
+          "name": "Distract Fruit Stand With Jazz Hands",
+          "unlock": 5,
+          "stamina": 2,
+          "seconds": 2.02,
+          "xp": 9,
+          "success": 88,
+          "rewards": {
+            "xp": 9
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/thieving/actions/05-distract-fruit-stand-with-jazz-hands.png",
+          "background": "docs/assets/thieving/backgrounds/01-early.png"
+        },
+        {
+          "id": "pick-the-worlds-friendliest-lock",
+          "tier": 6,
+          "name": "Pick The World's Friendliest Lock",
+          "unlock": 6,
+          "stamina": 2,
+          "seconds": 2.06,
+          "xp": 11,
+          "success": 86,
+          "rewards": {
+            "xp": 11
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/thieving/actions/06-pick-the-world-s-friendliest-lock.png",
+          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+        },
+        {
+          "id": "swap-price-tags-at-the-broom-store",
+          "tier": 7,
+          "name": "Swap Price Tags At The Broom Store",
+          "unlock": 7,
+          "stamina": 3,
+          "seconds": 2.64,
+          "xp": 14,
+          "success": 84,
+          "rewards": {
+            "xp": 14
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/thieving/actions/07-swap-price-tags-at-the-broom-store.png",
+          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+        },
+        {
+          "id": "steal-a-wallet-from-a-mannequin",
+          "tier": 8,
+          "name": "Steal A Wallet From A Mannequin",
+          "unlock": 8,
+          "stamina": 3,
+          "seconds": 2.69,
+          "xp": 17,
+          "success": 82,
+          "rewards": {
+            "xp": 17
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/thieving/actions/08-steal-a-wallet-from-a-mannequin.png",
+          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+        },
+        {
+          "id": "rob-the-tiny-bank-desk",
+          "tier": 9,
+          "name": "Rob The Tiny Bank Desk",
+          "unlock": 9,
+          "stamina": 3,
+          "seconds": 2.73,
+          "xp": 19,
+          "success": 80,
+          "rewards": {
+            "xp": 19
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/thieving/actions/09-rob-the-tiny-bank-desk.png",
+          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+        },
+        {
+          "id": "crack-the-breakroom-snack-safe",
+          "tier": 10,
+          "name": "Crack The Breakroom Snack Safe",
+          "unlock": 10,
+          "stamina": 4,
+          "seconds": 3.31,
+          "xp": 22,
+          "success": 78,
+          "rewards": {
+            "xp": 22
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/thieving/actions/10-crack-the-breakroom-snack-safe.png",
+          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+        },
+        {
+          "id": "lift-the-mayors-ceremonial-purse",
+          "tier": 11,
+          "name": "Lift The Mayor's Ceremonial Purse",
+          "unlock": 12,
+          "stamina": 4,
+          "seconds": 3.4,
+          "xp": 25,
+          "success": 76,
+          "rewards": {
+            "xp": 25
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/thieving/actions/11-lift-the-mayor-s-ceremonial-purse.png",
+          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+        },
+        {
+          "id": "heist-the-museum-gift-shop",
+          "tier": 12,
+          "name": "Heist The Museum Gift Shop",
+          "unlock": 14,
+          "stamina": 4,
+          "seconds": 3.48,
+          "xp": 29,
+          "success": 74,
+          "rewards": {
+            "xp": 29
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/thieving/actions/12-heist-the-museum-gift-shop.png",
+          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+        },
+        {
+          "id": "swipe-the-banks-practice-vault",
+          "tier": 13,
+          "name": "Swipe The Bank's Practice Vault",
+          "unlock": 16,
+          "stamina": 5,
+          "seconds": 4.11,
+          "xp": 32,
+          "success": 72,
+          "rewards": {
+            "xp": 32
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/thieving/actions/13-swipe-the-bank-s-practice-vault.png",
+          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+        },
+        {
+          "id": "rob-the-bank-during-a-robbery-drill",
+          "tier": 14,
+          "name": "Rob The Bank During A Robbery Drill",
+          "unlock": 18,
+          "stamina": 5,
+          "seconds": 4.2,
+          "xp": 35,
+          "success": 70,
+          "rewards": {
+            "xp": 35
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/thieving/actions/14-rob-the-bank-during-a-robbery-drill.png",
+          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+        },
+        {
+          "id": "empty-the-banks-backup-bank",
+          "tier": 15,
+          "name": "Empty The Bank's Backup Bank",
+          "unlock": 20,
+          "stamina": 5,
+          "seconds": 4.28,
+          "xp": 39,
+          "success": 68,
+          "rewards": {
+            "xp": 39
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/thieving/actions/15-empty-the-bank-s-backup-bank.png",
+          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+        },
+        {
+          "id": "steal-a-password-from-a-fortune-cookie",
+          "tier": 16,
+          "name": "Steal A Password From A Fortune Cookie",
+          "unlock": 22,
+          "stamina": 6,
+          "seconds": 4.91,
+          "xp": 42,
+          "success": 66,
+          "rewards": {
+            "xp": 42
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/thieving/actions/16-steal-a-password-from-a-fortune-cookie.png",
+          "background": "docs/assets/thieving/backgrounds/04-late.png"
+        },
+        {
+          "id": "pickpocket-the-security-camera",
+          "tier": 17,
+          "name": "Pickpocket The Security Camera",
+          "unlock": 24,
+          "stamina": 6,
+          "seconds": 5,
+          "xp": 46,
+          "success": 64,
+          "rewards": {
+            "xp": 46
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/thieving/actions/17-pickpocket-the-security-camera.png",
+          "background": "docs/assets/thieving/backgrounds/04-late.png"
+        },
+        {
+          "id": "hotwire-a-parked-alien-spaceship",
+          "tier": 18,
+          "name": "Hotwire A Parked Alien Spaceship",
+          "unlock": 26,
+          "stamina": 6,
+          "seconds": 5.08,
+          "xp": 50,
+          "success": 62,
+          "rewards": {
+            "xp": 50
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/thieving/actions/18-hotwire-a-parked-alien-spaceship.png",
+          "background": "docs/assets/thieving/backgrounds/04-late.png"
+        },
+        {
+          "id": "rob-the-alien-spaceships-bank",
+          "tier": 19,
+          "name": "Rob The Alien Spaceship's Bank",
+          "unlock": 28,
+          "stamina": 7,
+          "seconds": 5.71,
+          "xp": 53,
+          "success": 60,
+          "rewards": {
+            "xp": 53
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/thieving/actions/19-rob-the-alien-spaceship-s-bank.png",
+          "background": "docs/assets/thieving/backgrounds/04-late.png"
+        },
+        {
+          "id": "forge-a-receipt-for-the-moon",
+          "tier": 20,
+          "name": "Forge A Receipt For The Moon",
+          "unlock": 30,
+          "stamina": 7,
+          "seconds": 5.8,
+          "xp": 57,
+          "success": 58,
+          "rewards": {
+            "xp": 57
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/thieving/actions/20-forge-a-receipt-for-the-moon.png",
+          "background": "docs/assets/thieving/backgrounds/04-late.png"
+        },
+        {
+          "id": "burgle-the-dream-of-a-sleeping-wizard",
+          "tier": 21,
+          "name": "Burgle The Dream Of A Sleeping Wizard",
+          "unlock": 33,
+          "stamina": 7,
+          "seconds": 5.93,
+          "xp": 61,
+          "success": 56,
+          "rewards": {
+            "xp": 61
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/thieving/actions/21-burgle-the-dream-of-a-sleeping-wizard.png",
+          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+        },
+        {
+          "id": "shoplift-from-the-concept-of-money",
+          "tier": 22,
+          "name": "Shoplift From The Concept Of Money",
+          "unlock": 36,
+          "stamina": 8,
+          "seconds": 6.6,
+          "xp": 65,
+          "success": 54,
+          "rewards": {
+            "xp": 65
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/thieving/actions/22-shoplift-from-the-concept-of-money.png",
+          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+        },
+        {
+          "id": "crack-the-vault-between-dimensions",
+          "tier": 23,
+          "name": "Crack The Vault Between Dimensions",
+          "unlock": 40,
+          "stamina": 8,
+          "seconds": 6.77,
+          "xp": 69,
+          "success": 52,
+          "rewards": {
+            "xp": 69
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/thieving/actions/23-crack-the-vault-between-dimensions.png",
+          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+        },
+        {
+          "id": "pickpocket-an-interdimensional-god",
+          "tier": 24,
+          "name": "Pickpocket An Interdimensional God",
+          "unlock": 45,
+          "stamina": 8,
+          "seconds": 6.98,
+          "xp": 73,
+          "success": 50,
+          "rewards": {
+            "xp": 73
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/thieving/actions/24-pickpocket-an-interdimensional-god.png",
+          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+        },
+        {
+          "id": "steal-the-alibi-you-used-to-do-it",
+          "tier": 25,
+          "name": "Steal The Alibi You Used To Do It",
+          "unlock": 50,
+          "stamina": 9,
+          "seconds": 7.74,
+          "xp": 77,
+          "success": 48,
+          "rewards": {
+            "xp": 77
+          },
+          "costs": {
+            "stamina": 9
+          },
+          "art": "docs/assets/thieving/actions/25-steal-the-alibi-you-used-to-do-it.png",
+          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+        }
+      ]
+    },
+    {
+      "id": "build",
+      "name": "Build",
+      "verb": "Building",
+      "identity": "Permanent progress escalating from honest repairs to architecture that makes inspectors whisper.",
+      "tuning": {
+        "time_scale": 1.28,
+        "xp_scale": 1,
+        "success_start": 86
+      },
+      "rewards": {
+        "primary": "Skill XP",
+        "secondary": "Construction progress"
+      },
+      "icon": "docs/assets/icons/build.png",
+      "actions": [
+        {
+          "id": "stack-bricks",
+          "tier": 1,
+          "name": "Stack Bricks",
+          "unlock": 1,
+          "stamina": 1,
+          "seconds": 2.32,
+          "xp": 1,
+          "success": 86,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/build/actions/01-stack-bricks.png",
+          "background": "docs/assets/build/backgrounds/01-early.png"
+        },
+        {
+          "id": "patch-fence-with-confidence",
+          "tier": 2,
+          "name": "Patch Fence With Confidence",
+          "unlock": 2,
+          "stamina": 1,
+          "seconds": 2.39,
+          "xp": 3,
+          "success": 84,
+          "rewards": {
+            "xp": 3
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/build/actions/02-patch-fence-with-confidence.png",
+          "background": "docs/assets/build/backgrounds/01-early.png"
+        },
+        {
+          "id": "hammer-one-suspicious-nail",
+          "tier": 3,
+          "name": "Hammer One Suspicious Nail",
+          "unlock": 3,
+          "stamina": 1,
+          "seconds": 2.47,
+          "xp": 4,
+          "success": 82,
+          "rewards": {
+            "xp": 4
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/build/actions/03-hammer-one-suspicious-nail.png",
+          "background": "docs/assets/build/backgrounds/01-early.png"
+        },
+        {
+          "id": "repair-small-shack",
+          "tier": 4,
+          "name": "Repair Small Shack",
+          "unlock": 4,
+          "stamina": 2,
+          "seconds": 3.51,
+          "xp": 6,
+          "success": 80,
+          "rewards": {
+            "xp": 6
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/build/actions/04-repair-small-shack.png",
+          "background": "docs/assets/build/backgrounds/01-early.png"
+        },
+        {
+          "id": "install-door-that-mostly-opens",
+          "tier": 5,
+          "name": "Install Door That Mostly Opens",
+          "unlock": 5,
+          "stamina": 2,
+          "seconds": 3.58,
+          "xp": 9,
+          "success": 78,
+          "rewards": {
+            "xp": 9
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/build/actions/05-install-door-that-mostly-opens.png",
+          "background": "docs/assets/build/backgrounds/01-early.png"
+        },
+        {
+          "id": "build-market-stall",
+          "tier": 6,
+          "name": "Build Market Stall",
+          "unlock": 6,
+          "stamina": 2,
+          "seconds": 3.66,
+          "xp": 11,
+          "success": 76,
+          "rewards": {
+            "xp": 11
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/build/actions/06-build-market-stall.png",
+          "background": "docs/assets/build/backgrounds/02-rising.png"
+        },
+        {
+          "id": "add-roof-to-something-roofless",
+          "tier": 7,
+          "name": "Add Roof To Something Roofless",
+          "unlock": 7,
+          "stamina": 3,
+          "seconds": 4.7,
+          "xp": 14,
+          "success": 74,
+          "rewards": {
+            "xp": 14
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/build/actions/07-add-roof-to-something-roofless.png",
+          "background": "docs/assets/build/backgrounds/02-rising.png"
+        },
+        {
+          "id": "pour-questionable-foundation",
+          "tier": 8,
+          "name": "Pour Questionable Foundation",
+          "unlock": 8,
+          "stamina": 3,
+          "seconds": 4.77,
+          "xp": 17,
+          "success": 72,
+          "rewards": {
+            "xp": 17
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/build/actions/08-pour-questionable-foundation.png",
+          "background": "docs/assets/build/backgrounds/02-rising.png"
+        },
+        {
+          "id": "upgrade-training-yard",
+          "tier": 9,
+          "name": "Upgrade Training Yard",
+          "unlock": 9,
+          "stamina": 3,
+          "seconds": 4.85,
+          "xp": 19,
+          "success": 70,
+          "rewards": {
+            "xp": 19
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/build/actions/09-upgrade-training-yard.png",
+          "background": "docs/assets/build/backgrounds/02-rising.png"
+        },
+        {
+          "id": "construct-fishing-pier",
+          "tier": 10,
+          "name": "Construct Fishing Pier",
+          "unlock": 10,
+          "stamina": 4,
+          "seconds": 5.89,
+          "xp": 22,
+          "success": 68,
+          "rewards": {
+            "xp": 22
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/build/actions/10-construct-fishing-pier.png",
+          "background": "docs/assets/build/backgrounds/02-rising.png"
+        },
+        {
+          "id": "raise-a-two-story-barn",
+          "tier": 11,
+          "name": "Raise A Two Story Barn",
+          "unlock": 12,
+          "stamina": 4,
+          "seconds": 6.04,
+          "xp": 25,
+          "success": 66,
+          "rewards": {
+            "xp": 25
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/build/actions/11-raise-a-two-story-barn.png",
+          "background": "docs/assets/build/backgrounds/03-mid.png"
+        },
+        {
+          "id": "build-town-notice-board",
+          "tier": 12,
+          "name": "Build Town Notice Board",
+          "unlock": 14,
+          "stamina": 4,
+          "seconds": 6.2,
+          "xp": 29,
+          "success": 64,
+          "rewards": {
+            "xp": 29
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/build/actions/12-build-town-notice-board.png",
+          "background": "docs/assets/build/backgrounds/03-mid.png"
+        },
+        {
+          "id": "assemble-windmill-that-judges-you",
+          "tier": 13,
+          "name": "Assemble Windmill That Judges You",
+          "unlock": 16,
+          "stamina": 5,
+          "seconds": 7.31,
+          "xp": 32,
+          "success": 62,
+          "rewards": {
+            "xp": 32
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/build/actions/13-assemble-windmill-that-judges-you.png",
+          "background": "docs/assets/build/backgrounds/03-mid.png"
+        },
+        {
+          "id": "dig-emergency-basement",
+          "tier": 14,
+          "name": "Dig Emergency Basement",
+          "unlock": 18,
+          "stamina": 5,
+          "seconds": 7.46,
+          "xp": 35,
+          "success": 60,
+          "rewards": {
+            "xp": 35
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/build/actions/14-dig-emergency-basement.png",
+          "background": "docs/assets/build/backgrounds/03-mid.png"
+        },
+        {
+          "id": "raise-guild-hall",
+          "tier": 15,
+          "name": "Raise Guild Hall",
+          "unlock": 20,
+          "stamina": 5,
+          "seconds": 7.62,
+          "xp": 39,
+          "success": 58,
+          "rewards": {
+            "xp": 39
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/build/actions/15-raise-guild-hall.png",
+          "background": "docs/assets/build/backgrounds/03-mid.png"
+        },
+        {
+          "id": "build-bridge-over-tiny-puddle",
+          "tier": 16,
+          "name": "Build Bridge Over Tiny Puddle",
+          "unlock": 22,
+          "stamina": 6,
+          "seconds": 8.73,
+          "xp": 42,
+          "success": 56,
+          "rewards": {
+            "xp": 42
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/build/actions/16-build-bridge-over-tiny-puddle.png",
+          "background": "docs/assets/build/backgrounds/04-late.png"
+        },
+        {
+          "id": "construct-suspiciously-tall-silo",
+          "tier": 17,
+          "name": "Construct Suspiciously Tall Silo",
+          "unlock": 24,
+          "stamina": 6,
+          "seconds": 8.88,
+          "xp": 46,
+          "success": 54,
+          "rewards": {
+            "xp": 46
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/build/actions/17-construct-suspiciously-tall-silo.png",
+          "background": "docs/assets/build/backgrounds/04-late.png"
+        },
+        {
+          "id": "install-elevator-in-the-shack",
+          "tier": 18,
+          "name": "Install Elevator In The Shack",
+          "unlock": 26,
+          "stamina": 6,
+          "seconds": 9.04,
+          "xp": 50,
+          "success": 52,
+          "rewards": {
+            "xp": 50
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/build/actions/18-install-elevator-in-the-shack.png",
+          "background": "docs/assets/build/backgrounds/04-late.png"
+        },
+        {
+          "id": "build-elite-tower",
+          "tier": 19,
+          "name": "Build Elite Tower",
+          "unlock": 28,
+          "stamina": 7,
+          "seconds": 10.15,
+          "xp": 53,
+          "success": 50,
+          "rewards": {
+            "xp": 53
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/build/actions/19-build-elite-tower.png",
+          "background": "docs/assets/build/backgrounds/04-late.png"
+        },
+        {
+          "id": "add-second-elite-tower-on-top",
+          "tier": 20,
+          "name": "Add Second Elite Tower On Top",
+          "unlock": 30,
+          "stamina": 7,
+          "seconds": 10.3,
+          "xp": 57,
+          "success": 48,
+          "rewards": {
+            "xp": 57
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/build/actions/20-add-second-elite-tower-on-top.png",
+          "background": "docs/assets/build/backgrounds/04-late.png"
+        },
+        {
+          "id": "construct-underground-town",
+          "tier": 21,
+          "name": "Construct Underground Town",
+          "unlock": 33,
+          "stamina": 7,
+          "seconds": 10.53,
+          "xp": 61,
+          "success": 46,
+          "rewards": {
+            "xp": 61
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/build/actions/21-construct-underground-town.png",
+          "background": "docs/assets/build/backgrounds/05-finale.png"
+        },
+        {
+          "id": "build-weatherproof-weather",
+          "tier": 22,
+          "name": "Build Weatherproof Weather",
+          "unlock": 36,
+          "stamina": 8,
+          "seconds": 11.72,
+          "xp": 65,
+          "success": 44,
+          "rewards": {
+            "xp": 65
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/build/actions/22-build-weatherproof-weather.png",
+          "background": "docs/assets/build/backgrounds/05-finale.png"
+        },
+        {
+          "id": "renovate-the-horizon",
+          "tier": 23,
+          "name": "Renovate The Horizon",
+          "unlock": 40,
+          "stamina": 8,
+          "seconds": 12.03,
+          "xp": 69,
+          "success": 42,
+          "rewards": {
+            "xp": 69
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/build/actions/23-renovate-the-horizon.png",
+          "background": "docs/assets/build/backgrounds/05-finale.png"
+        },
+        {
+          "id": "permit-the-impossible-megastructure",
+          "tier": 24,
+          "name": "Permit The Impossible Megastructure",
+          "unlock": 45,
+          "stamina": 8,
+          "seconds": 12.42,
+          "xp": 73,
+          "success": 40,
+          "rewards": {
+            "xp": 73
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/build/actions/24-permit-the-impossible-megastructure.png",
+          "background": "docs/assets/build/backgrounds/05-finale.png"
+        },
+        {
+          "id": "build-the-building-that-builds-you",
+          "tier": 25,
+          "name": "Build The Building That Builds You",
+          "unlock": 50,
+          "stamina": 9,
+          "seconds": 13.76,
+          "xp": 77,
+          "success": 38,
+          "rewards": {
+            "xp": 77
+          },
+          "costs": {
+            "stamina": 9
+          },
+          "art": "docs/assets/build/actions/25-build-the-building-that-builds-you.png",
+          "background": "docs/assets/build/backgrounds/05-finale.png"
+        }
+      ]
+    },
+    {
+      "id": "woodcutting",
+      "name": "Woodcutting",
+      "verb": "Chopping",
+      "identity": "Reliable chopping that escalates from loose branches to mythic forest work.",
+      "tuning": {
+        "time_scale": 1.08,
+        "xp_scale": 1,
+        "success_start": 90
+      },
+      "rewards": {
+        "primary": "Skill XP",
+        "secondary": "Wood supplies"
+      },
+      "icon": "docs/assets/icons/woodcutting.png",
+      "actions": [
+        {
+          "id": "gather-fallen-branches",
+          "tier": 1,
+          "name": "Gather Fallen Branches",
+          "unlock": 1,
+          "stamina": 1,
+          "seconds": 1.95,
+          "xp": 1,
+          "success": 90,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/woodcutting/actions/01-gather-fallen-branches.png",
+          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+        },
+        {
+          "id": "snap-a-twig-with-purpose",
+          "tier": 2,
+          "name": "Snap A Twig With Purpose",
+          "unlock": 2,
+          "stamina": 1,
+          "seconds": 2.02,
+          "xp": 3,
+          "success": 88,
+          "rewards": {
+            "xp": 3
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/woodcutting/actions/02-snap-a-twig-with-purpose.png",
+          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+        },
+        {
+          "id": "trim-overconfident-shrub",
+          "tier": 3,
+          "name": "Trim Overconfident Shrub",
+          "unlock": 3,
+          "stamina": 1,
+          "seconds": 2.08,
+          "xp": 4,
+          "success": 86,
+          "rewards": {
+            "xp": 4
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/woodcutting/actions/03-trim-overconfident-shrub.png",
+          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+        },
+        {
+          "id": "chop-softwood-tree",
+          "tier": 4,
+          "name": "Chop Softwood Tree",
+          "unlock": 4,
+          "stamina": 2,
+          "seconds": 2.96,
+          "xp": 6,
+          "success": 84,
+          "rewards": {
+            "xp": 6
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/woodcutting/actions/04-chop-softwood-tree.png",
+          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+        },
+        {
+          "id": "split-firewood",
+          "tier": 5,
+          "name": "Split Firewood",
+          "unlock": 5,
+          "stamina": 2,
+          "seconds": 3.02,
+          "xp": 9,
+          "success": 82,
+          "rewards": {
+            "xp": 9
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/woodcutting/actions/05-split-firewood.png",
+          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+        },
+        {
+          "id": "fell-skinny-pine",
+          "tier": 6,
+          "name": "Fell Skinny Pine",
+          "unlock": 6,
+          "stamina": 2,
+          "seconds": 3.09,
+          "xp": 11,
+          "success": 80,
+          "rewards": {
+            "xp": 11
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/woodcutting/actions/06-fell-skinny-pine.png",
+          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+        },
+        {
+          "id": "prune-orchard-row",
+          "tier": 7,
+          "name": "Prune Orchard Row",
+          "unlock": 7,
+          "stamina": 3,
+          "seconds": 3.96,
+          "xp": 14,
+          "success": 78,
+          "rewards": {
+            "xp": 14
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/woodcutting/actions/07-prune-orchard-row.png",
+          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+        },
+        {
+          "id": "chop-knotty-maple",
+          "tier": 8,
+          "name": "Chop Knotty Maple",
+          "unlock": 8,
+          "stamina": 3,
+          "seconds": 4.03,
+          "xp": 17,
+          "success": 76,
+          "rewards": {
+            "xp": 17
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/woodcutting/actions/08-chop-knotty-maple.png",
+          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+        },
+        {
+          "id": "fell-oak-tree",
+          "tier": 9,
+          "name": "Fell Oak Tree",
+          "unlock": 9,
+          "stamina": 3,
+          "seconds": 4.09,
+          "xp": 19,
+          "success": 74,
+          "rewards": {
+            "xp": 19
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/woodcutting/actions/09-fell-oak-tree.png",
+          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+        },
+        {
+          "id": "clear-dense-grove",
+          "tier": 10,
+          "name": "Clear Dense Grove",
+          "unlock": 10,
+          "stamina": 4,
+          "seconds": 4.97,
+          "xp": 22,
+          "success": 72,
+          "rewards": {
+            "xp": 22
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/woodcutting/actions/10-clear-dense-grove.png",
+          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+        },
+        {
+          "id": "harvest-ironwood",
+          "tier": 11,
+          "name": "Harvest Ironwood",
+          "unlock": 12,
+          "stamina": 4,
+          "seconds": 5.1,
+          "xp": 25,
+          "success": 70,
+          "rewards": {
+            "xp": 25
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/woodcutting/actions/11-harvest-ironwood.png",
+          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+        },
+        {
+          "id": "carve-through-fallen-giant",
+          "tier": 12,
+          "name": "Carve Through Fallen Giant",
+          "unlock": 14,
+          "stamina": 4,
+          "seconds": 5.23,
+          "xp": 29,
+          "success": 68,
+          "rewards": {
+            "xp": 29
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/woodcutting/actions/12-carve-through-fallen-giant.png",
+          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+        },
+        {
+          "id": "chop-ancient-tree",
+          "tier": 13,
+          "name": "Chop Ancient Tree",
+          "unlock": 16,
+          "stamina": 5,
+          "seconds": 6.17,
+          "xp": 32,
+          "success": 66,
+          "rewards": {
+            "xp": 32
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/woodcutting/actions/13-chop-ancient-tree.png",
+          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+        },
+        {
+          "id": "negotiate-with-angry-stump",
+          "tier": 14,
+          "name": "Negotiate With Angry Stump",
+          "unlock": 18,
+          "stamina": 5,
+          "seconds": 6.3,
+          "xp": 35,
+          "success": 64,
+          "rewards": {
+            "xp": 35
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/woodcutting/actions/14-negotiate-with-angry-stump.png",
+          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+        },
+        {
+          "id": "clear-mystic-timberland",
+          "tier": 15,
+          "name": "Clear Mystic Timberland",
+          "unlock": 20,
+          "stamina": 5,
+          "seconds": 6.43,
+          "xp": 39,
+          "success": 62,
+          "rewards": {
+            "xp": 39
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/woodcutting/actions/15-clear-mystic-timberland.png",
+          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+        },
+        {
+          "id": "split-lightning-struck-cedar",
+          "tier": 16,
+          "name": "Split Lightning Struck Cedar",
+          "unlock": 22,
+          "stamina": 6,
+          "seconds": 7.37,
+          "xp": 42,
+          "success": 60,
+          "rewards": {
+            "xp": 42
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/woodcutting/actions/16-split-lightning-struck-cedar.png",
+          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "fell-tree-that-remembers-you",
+          "tier": 17,
+          "name": "Fell Tree That Remembers You",
+          "unlock": 24,
+          "stamina": 6,
+          "seconds": 7.5,
+          "xp": 46,
+          "success": 58,
+          "rewards": {
+            "xp": 46
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/woodcutting/actions/17-fell-tree-that-remembers-you.png",
+          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "chop-invisible-windwood",
+          "tier": 18,
+          "name": "Chop Invisible Windwood",
+          "unlock": 26,
+          "stamina": 6,
+          "seconds": 7.62,
+          "xp": 50,
+          "success": 56,
+          "rewards": {
+            "xp": 50
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/woodcutting/actions/18-chop-invisible-windwood.png",
+          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "harvest-moonlit-silverwood",
+          "tier": 19,
+          "name": "Harvest Moonlit Silverwood",
+          "unlock": 28,
+          "stamina": 7,
+          "seconds": 8.56,
+          "xp": 53,
+          "success": 54,
+          "rewards": {
+            "xp": 53
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/woodcutting/actions/19-harvest-moonlit-silverwood.png",
+          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "clear-the-forests-legal-department",
+          "tier": 20,
+          "name": "Clear The Forest's Legal Department",
+          "unlock": 30,
+          "stamina": 7,
+          "seconds": 8.69,
+          "xp": 57,
+          "success": 52,
+          "rewards": {
+            "xp": 57
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/woodcutting/actions/20-clear-the-forest-s-legal-department.png",
+          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "axe-the-world-trees-paperwork",
+          "tier": 21,
+          "name": "Axe The World Tree's Paperwork",
+          "unlock": 33,
+          "stamina": 7,
+          "seconds": 8.89,
+          "xp": 61,
+          "success": 50,
+          "rewards": {
+            "xp": 61
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/woodcutting/actions/21-axe-the-world-tree-s-paperwork.png",
+          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+        },
+        {
+          "id": "chop-a-tree-in-four-timelines",
+          "tier": 22,
+          "name": "Chop A Tree In Four Timelines",
+          "unlock": 36,
+          "stamina": 8,
+          "seconds": 9.89,
+          "xp": 65,
+          "success": 48,
+          "rewards": {
+            "xp": 65
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/woodcutting/actions/22-chop-a-tree-in-four-timelines.png",
+          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+        },
+        {
+          "id": "fell-the-wooden-concept-of-height",
+          "tier": 23,
+          "name": "Fell The Wooden Concept Of Height",
+          "unlock": 40,
+          "stamina": 8,
+          "seconds": 10.15,
+          "xp": 69,
+          "success": 46,
+          "rewards": {
+            "xp": 69
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/woodcutting/actions/23-fell-the-wooden-concept-of-height.png",
+          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+        },
+        {
+          "id": "harvest-the-first-trees-apology",
+          "tier": 24,
+          "name": "Harvest The First Tree's Apology",
+          "unlock": 45,
+          "stamina": 8,
+          "seconds": 10.48,
+          "xp": 73,
+          "success": 44,
+          "rewards": {
+            "xp": 73
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
+          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+        },
+        {
+          "id": "clear-the-infinite-lumberyard",
+          "tier": 25,
+          "name": "Clear The Infinite Lumberyard",
+          "unlock": 50,
+          "stamina": 9,
+          "seconds": 11.61,
+          "xp": 77,
+          "success": 42,
+          "rewards": {
+            "xp": 77
+          },
+          "costs": {
+            "stamina": 9
+          },
+          "art": "docs/assets/woodcutting/actions/25-clear-the-infinite-lumberyard.png",
+          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+        }
+      ]
+    },
+    {
+      "id": "fishing",
+      "name": "Fishing",
+      "verb": "Fishing",
+      "identity": "Slower, higher-XP activity chain with changing methods, water types, and catches.",
+      "tuning": {
+        "time_scale": 1.58,
+        "xp_scale": 1.72,
+        "success_start": 90
+      },
+      "rewards": {
+        "primary": "Skill XP",
+        "secondary": "Fish and catch quality"
+      },
+      "icon": "docs/assets/icons/fishing.png",
+      "actions": [
+        {
+          "id": "scoop-pond-minnows",
+          "tier": 1,
+          "name": "Scoop Pond Minnows",
+          "unlock": 1,
+          "stamina": 1,
+          "seconds": 2.86,
+          "xp": 2,
+          "success": 90,
+          "rewards": {
+            "xp": 2
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/fishing/actions/01-scoop-pond-minnows.png",
+          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png"
+        },
+        {
+          "id": "dangle-string-from-dock",
+          "tier": 2,
+          "name": "Dangle String From Dock",
+          "unlock": 2,
+          "stamina": 1,
+          "seconds": 2.95,
+          "xp": 4,
+          "success": 88,
+          "rewards": {
+            "xp": 4
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/fishing/actions/02-dangle-string-from-dock.png",
+          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png"
+        },
+        {
+          "id": "cast-bamboo-rod",
+          "tier": 3,
+          "name": "Cast Bamboo Rod",
+          "unlock": 3,
+          "stamina": 1,
+          "seconds": 3.05,
+          "xp": 8,
+          "success": 86,
+          "rewards": {
+            "xp": 8
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/fishing/actions/03-cast-bamboo-rod.png",
+          "background": "docs/assets/fishing/backgrounds/01-early.png"
+        },
+        {
+          "id": "drag-net-through-creek",
+          "tier": 4,
+          "name": "Drag Net Through Creek",
+          "unlock": 4,
+          "stamina": 2,
+          "seconds": 4.33,
+          "xp": 11,
+          "success": 84,
+          "rewards": {
+            "xp": 11
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/fishing/actions/04-drag-net-through-creek.png",
+          "background": "docs/assets/fishing/backgrounds/01-early.png"
+        },
+        {
+          "id": "set-tiny-crab-pot",
+          "tier": 5,
+          "name": "Set Tiny Crab Pot",
+          "unlock": 5,
+          "stamina": 2,
+          "seconds": 4.42,
+          "xp": 15,
+          "success": 82,
+          "rewards": {
+            "xp": 15
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/fishing/actions/05-set-tiny-crab-pot.png",
+          "background": "docs/assets/fishing/backgrounds/02-rising.png"
+        },
+        {
+          "id": "fly-fish-at-river-bend",
+          "tier": 6,
+          "name": "Fly Fish At River Bend",
+          "unlock": 6,
+          "stamina": 2,
+          "seconds": 4.52,
+          "xp": 19,
+          "success": 80,
+          "rewards": {
+            "xp": 19
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/fishing/actions/06-fly-fish-at-river-bend.png",
+          "background": "docs/assets/fishing/backgrounds/02-rising.png"
+        },
+        {
+          "id": "hand-grab-muddy-catfish",
+          "tier": 7,
+          "name": "Hand Grab Muddy Catfish",
+          "unlock": 7,
+          "stamina": 3,
+          "seconds": 5.8,
+          "xp": 24,
+          "success": 78,
+          "rewards": {
+            "xp": 24
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/fishing/actions/07-hand-grab-muddy-catfish.png",
+          "background": "docs/assets/fishing/backgrounds/03-crab-pier.png"
+        },
+        {
+          "id": "ice-fish-through-nervous-hole",
+          "tier": 8,
+          "name": "Ice Fish Through Nervous Hole",
+          "unlock": 8,
+          "stamina": 3,
+          "seconds": 5.89,
+          "xp": 28,
+          "success": 76,
+          "rewards": {
+            "xp": 28
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/fishing/actions/08-ice-fish-through-nervous-hole.png",
+          "background": "docs/assets/fishing/backgrounds/03-crab-pier.png"
+        },
+        {
+          "id": "spear-fish-in-shallows",
+          "tier": 9,
+          "name": "Spear Fish In Shallows",
+          "unlock": 9,
+          "stamina": 3,
+          "seconds": 5.99,
+          "xp": 33,
+          "success": 74,
+          "rewards": {
+            "xp": 33
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/fishing/actions/09-spear-fish-in-shallows.png",
+          "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png"
+        },
+        {
+          "id": "cast-from-rowboat",
+          "tier": 10,
+          "name": "Cast From Rowboat",
+          "unlock": 10,
+          "stamina": 4,
+          "seconds": 7.27,
+          "xp": 39,
+          "success": 72,
+          "rewards": {
+            "xp": 39
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/fishing/actions/10-cast-from-rowboat.png",
+          "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png"
+        },
+        {
+          "id": "drop-lobster-cage",
+          "tier": 11,
+          "name": "Drop Lobster Cage",
+          "unlock": 12,
+          "stamina": 4,
+          "seconds": 7.46,
+          "xp": 44,
+          "success": 70,
+          "rewards": {
+            "xp": 44
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/fishing/actions/11-drop-lobster-cage.png",
+          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png"
+        },
+        {
+          "id": "trawl-from-tiny-boat",
+          "tier": 12,
+          "name": "Trawl From Tiny Boat",
+          "unlock": 14,
+          "stamina": 4,
+          "seconds": 7.65,
+          "xp": 49,
+          "success": 68,
+          "rewards": {
+            "xp": 49
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/fishing/actions/12-trawl-from-tiny-boat.png",
+          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png"
+        },
+        {
+          "id": "night-fish-with-lantern",
+          "tier": 13,
+          "name": "Night Fish With Lantern",
+          "unlock": 16,
+          "stamina": 5,
+          "seconds": 9.02,
+          "xp": 55,
+          "success": 66,
+          "rewards": {
+            "xp": 55
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/fishing/actions/13-night-fish-with-lantern.png",
+          "background": "docs/assets/fishing/backgrounds/06-shark-open-water.png"
+        },
+        {
+          "id": "harpoon-suspicious-ripple",
+          "tier": 14,
+          "name": "Harpoon Suspicious Ripple",
+          "unlock": 18,
+          "stamina": 5,
+          "seconds": 9.21,
+          "xp": 61,
+          "success": 64,
+          "rewards": {
+            "xp": 61
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/fishing/actions/14-harpoon-suspicious-ripple.png",
+          "background": "docs/assets/fishing/backgrounds/06-shark-open-water.png"
+        },
+        {
+          "id": "use-sonar-in-the-farm-pond",
+          "tier": 15,
+          "name": "Use Sonar In The Farm Pond",
+          "unlock": 20,
+          "stamina": 5,
+          "seconds": 9.4,
+          "xp": 67,
+          "success": 62,
+          "rewards": {
+            "xp": 67
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "art": "docs/assets/fishing/actions/15-use-sonar-in-the-farm-pond.png",
+          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png"
+        },
+        {
+          "id": "chum-open-water",
+          "tier": 16,
+          "name": "Chum Open Water",
+          "unlock": 22,
+          "stamina": 6,
+          "seconds": 10.78,
+          "xp": 73,
+          "success": 60,
+          "rewards": {
+            "xp": 73
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/fishing/actions/16-chum-open-water.png",
+          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png"
+        },
+        {
+          "id": "cast-storm-kite-line",
+          "tier": 17,
+          "name": "Cast Storm Kite Line",
+          "unlock": 24,
+          "stamina": 6,
+          "seconds": 10.97,
+          "xp": 79,
+          "success": 58,
+          "rewards": {
+            "xp": 79
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/fishing/actions/17-cast-storm-kite-line.png",
+          "background": "docs/assets/fishing/backgrounds/08-trawler-deck.png"
+        },
+        {
+          "id": "dive-for-pearl-oysters",
+          "tier": 18,
+          "name": "Dive For Pearl Oysters",
+          "unlock": 26,
+          "stamina": 6,
+          "seconds": 11.15,
+          "xp": 85,
+          "success": 56,
+          "rewards": {
+            "xp": 85
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/fishing/actions/18-dive-for-pearl-oysters.png",
+          "background": "docs/assets/fishing/backgrounds/08-trawler-deck.png"
+        },
+        {
+          "id": "fish-with-magnetic-hook",
+          "tier": 19,
+          "name": "Fish With Magnetic Hook",
+          "unlock": 28,
+          "stamina": 7,
+          "seconds": 12.53,
+          "xp": 92,
+          "success": 54,
+          "rewards": {
+            "xp": 92
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/fishing/actions/19-fish-with-magnetic-hook.png",
+          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png"
+        },
+        {
+          "id": "bait-a-tiny-leviathan",
+          "tier": 20,
+          "name": "Bait A Tiny Leviathan",
+          "unlock": 30,
+          "stamina": 7,
+          "seconds": 12.72,
+          "xp": 98,
+          "success": 52,
+          "rewards": {
+            "xp": 98
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/fishing/actions/20-bait-a-tiny-leviathan.png",
+          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png"
+        },
+        {
+          "id": "open-deep-sea-mailbox-trap",
+          "tier": 21,
+          "name": "Open Deep Sea Mailbox Trap",
+          "unlock": 33,
+          "stamina": 7,
+          "seconds": 13,
+          "xp": 105,
+          "success": 50,
+          "rewards": {
+            "xp": 105
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "art": "docs/assets/fishing/actions/21-open-deep-sea-mailbox-trap.png",
+          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png"
+        },
+        {
+          "id": "angle-in-cosmic-dream-sea",
+          "tier": 22,
+          "name": "Angle In Cosmic Dream Sea",
+          "unlock": 36,
+          "stamina": 8,
+          "seconds": 14.47,
+          "xp": 112,
+          "success": 48,
+          "rewards": {
+            "xp": 112
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/fishing/actions/22-angle-in-cosmic-dream-sea.png",
+          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png"
+        },
+        {
+          "id": "net-the-reflection-of-a-fish",
+          "tier": 23,
+          "name": "Net The Reflection Of A Fish",
+          "unlock": 40,
+          "stamina": 8,
+          "seconds": 14.85,
+          "xp": 119,
+          "success": 46,
+          "rewards": {
+            "xp": 119
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/fishing/actions/23-net-the-reflection-of-a-fish.png",
+          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png"
+        },
+        {
+          "id": "negotiate-with-the-oceans-manager",
+          "tier": 24,
+          "name": "Negotiate With The Ocean's Manager",
+          "unlock": 45,
+          "stamina": 8,
+          "seconds": 15.33,
+          "xp": 126,
+          "success": 44,
+          "rewards": {
+            "xp": 126
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "art": "docs/assets/fishing/actions/24-negotiate-with-the-ocean-s-manager.png",
+          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png"
+        },
+        {
+          "id": "catch-the-fishing-mechanic-itself",
+          "tier": 25,
+          "name": "Catch The Fishing Mechanic Itself",
+          "unlock": 50,
+          "stamina": 9,
+          "seconds": 16.98,
+          "xp": 133,
+          "success": 42,
+          "rewards": {
+            "xp": 133
+          },
+          "costs": {
+            "stamina": 9
+          },
+          "art": "docs/assets/fishing/actions/25-catch-the-fishing-mechanic-itself.png",
+          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png"
+        }
+      ]
+    }
+  ]
+}
