@@ -1,20 +1,18 @@
 # Idle Elite Final Google Play Upload Checklist
 
-Use this after the real AdMob IDs are available.
+Use this for the current public release candidate.
 
 ## Before Rebuilding
 
-- Create or open the Idle Elite app in AdMob.
-- Create an Android rewarded ad unit in AdMob.
-- Run `.\scripts\set-admob-ids.ps1 -AdMobAppId "ca-app-pub-...~..." -RewardedUnitId "ca-app-pub-.../..."`
-- Set `IDLE_ELITE_KEYSTORE_PASSWORD` in the shell that will run the release build.
+- Confirm the configured AdMob app ID and rewarded ad unit are the intended production IDs.
+- Set `IDLE_ELITE_KEYSTORE_PASSWORD` in the shell that will run the release build if rebuilding.
 - Run `.\scripts\check-project.ps1`.
 
 ## Build And Local Test
 
-- Run `.\scripts\build-android-release.ps1`.
-- Verify `builds/android/idle-elite-release-v0.1.2-code3.aab` exists.
-- Run `jarsigner -verify builds\android\idle-elite-release-v0.1.2-code3.aab`.
+- Run `.\scripts\build-android-release.ps1` if rebuilding.
+- Verify `builds/android/idle-elite-release-v0.1.4-code5.aab` exists.
+- Run `jarsigner -verify builds\android\idle-elite-release-v0.1.4-code5.aab`.
 - Run `.\scripts\test-release-aab.ps1 -UninstallExisting` with an emulator or phone connected.
 - Launch the app and confirm the release build no longer says `Ad Not Configured`.
 
@@ -32,7 +30,7 @@ Use this after the real AdMob IDs are available.
 - Create the app as `Idle Elite`.
 - Confirm package name is `com.idleelite.game`.
 - Enroll in Play App Signing.
-- Upload `builds/android/idle-elite-release-v0.1.2-code3.aab`.
+- Upload `builds/android/idle-elite-release-v0.1.4-code5.aab`.
 - Add the 512x512 icon from `docs/play-store/assets/app-icon-512.png`.
 - Add the feature graphic from `docs/play-store/assets/feature-graphic-1024x500.png`.
 - Add phone screenshots from `docs/play-store/assets/screenshot-*.png`.

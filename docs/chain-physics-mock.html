@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Swaying Chain Physics Mock</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #171512;
+      --panel: #26221c;
+      --panel-2: #312b23;
+      --text: #f7ead7;
+      --muted: #bba88d;
+      --accent: #77c8b2;
+      --line: #4c4236;
+      --button: #b88948;
+      --button-text: #20170d;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 12%, rgba(119, 200, 178, 0.13), transparent 22rem),
+        linear-gradient(145deg, #171512 0%, #211c17 54%, #11100e 100%);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 310px;
+      width: 100vw;
+      height: 100vh;
+    }
+
+    .stage {
+      position: relative;
+      min-width: 0;
+      border-right: 1px solid rgba(247, 234, 215, 0.1);
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    canvas:active {
+      cursor: grabbing;
+    }
+
+    .hud {
+      position: absolute;
+      left: 18px;
+      top: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      color: rgba(247, 234, 215, 0.82);
+      font-size: 13px;
+      pointer-events: none;
+      text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7);
+    }
+
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 18px rgba(119, 200, 178, 0.7);
+    }
+
+    aside {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 20px;
+      background: linear-gradient(180deg, rgba(49, 43, 35, 0.96), rgba(32, 28, 23, 0.98));
+      box-shadow: -20px 0 60px rgba(0, 0, 0, 0.24);
+      overflow: auto;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.12;
+      font-weight: 800;
+      letter-spacing: 0;
+    }
+
+    .lede {
+      margin: -8px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
+    .controls {
+      display: grid;
+      gap: 14px;
+    }
+
+    label {
+      display: grid;
+      gap: 7px;
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .readout {
+      color: var(--muted);
+      font-weight: 600;
+      float: right;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    button {
+      min-height: 42px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--button);
+      color: var(--button-text);
+      font: inherit;
+      font-weight: 800;
+      cursor: pointer;
+      box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.22), 0 10px 28px rgba(0, 0, 0, 0.18);
+    }
+
+    button.secondary {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid var(--line);
+    }
+
+    .notes {
+      display: grid;
+      gap: 10px;
+      padding-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .stat {
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(23, 21, 18, 0.44);
+    }
+
+    .stat strong {
+      display: block;
+      color: var(--text);
+      font-size: 18px;
+      line-height: 1.1;
+    }
+
+    .stat span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        overflow: auto;
+      }
+
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: minmax(420px, 64vh) auto;
+        height: auto;
+        min-height: 100vh;
+      }
+
+      .stage {
+        border-right: 0;
+        border-bottom: 1px solid rgba(247, 234, 215, 0.1);
+      }
+
+      aside {
+        overflow: visible;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="stage" aria-label="Chain simulation stage">
+      <canvas id="chainCanvas"></canvas>
+      <div class="hud"><span class="dot"></span><span>Drag the bottom link or push the chain with wind</span></div>
+    </section>
+
+    <aside>
+      <h1>2D Chain Physics Mock</h1>
+      <p class="lede">A lightweight Verlet chain drives the motion. Each link hangs vertically, then the renderer splits the loop into left and right sides so the next link can pass through it.</p>
+
+      <div class="stat-grid">
+        <div class="stat"><strong id="linkStat">14</strong><span>visual links</span></div>
+        <div class="stat"><strong id="fpsStat">60</strong><span>live fps</span></div>
+      </div>
+
+      <div class="controls">
+        <label>
+          Links <span class="readout" id="linkReadout">14</span>
+          <input id="links" type="range" min="6" max="26" value="14">
+        </label>
+        <label>
+          Gravity <span class="readout" id="gravityReadout">0.52</span>
+          <input id="gravity" type="range" min="0.12" max="1.05" value="0.52" step="0.01">
+        </label>
+        <label>
+          Damping <span class="readout" id="dampingReadout">0.988</span>
+          <input id="damping" type="range" min="0.950" max="0.998" value="0.988" step="0.001">
+        </label>
+        <label>
+          Stiffness Passes <span class="readout" id="passReadout">8</span>
+          <input id="passes" type="range" min="2" max="14" value="8">
+        </label>
+      </div>
+
+      <div class="button-row">
+        <button id="gust">Wind Push</button>
+        <button id="reset" class="secondary">Reset</button>
+      </div>
+
+      <div class="notes">
+        <p>The top particle is pinned. Each frame integrates gravity and inertia, then repeatedly corrects neighboring points back to their fixed spacing.</p>
+        <p>This is the version I would prototype before moving the same idea into Godot: simulate the spine, render the links.</p>
+      </div>
+    </aside>
+  </main>
+
+  <script>
+    const canvas = document.getElementById("chainCanvas");
+    const ctx = canvas.getContext("2d");
+    const inputs = {
+      links: document.getElementById("links"),
+      gravity: document.getElementById("gravity"),
+      damping: document.getElementById("damping"),
+      passes: document.getElementById("passes"),
+    };
+    const readouts = {
+      links: document.getElementById("linkReadout"),
+      gravity: document.getElementById("gravityReadout"),
+      damping: document.getElementById("dampingReadout"),
+      passes: document.getElementById("passReadout"),
+      linkStat: document.getElementById("linkStat"),
+      fpsStat: document.getElementById("fpsStat"),
+    };
+    const gustButton = document.getElementById("gust");
+    const resetButton = document.getElementById("reset");
+
+    const state = {
+      points: [],
+      linkCount: Number(inputs.links.value),
+      gravity: Number(inputs.gravity.value),
+      damping: Number(inputs.damping.value),
+      passes: Number(inputs.passes.value),
+      segmentLength: 38,
+      anchor: { x: 0, y: 0 },
+      pointer: { down: false, x: 0, y: 0 },
+      draggedIndex: -1,
+      lastFrame: performance.now(),
+      fps: 60,
+      gust: 0,
+    };
+
+    function resize() {
+      const rect = canvas.getBoundingClientRect();
+      const ratio = Math.max(1, window.devicePixelRatio || 1);
+      canvas.width = Math.round(rect.width * ratio);
+      canvas.height = Math.round(rect.height * ratio);
+      ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      state.anchor.x = rect.width * 0.5;
+      state.anchor.y = Math.min(94, rect.height * 0.16);
+      if (state.points.length === 0) resetChain();
+    }
+
+    function resetChain() {
+      const count = state.linkCount + 1;
+      state.points = [];
+      for (let i = 0; i < count; i += 1) {
+        const sway = Math.sin(i * 0.72) * 7;
+        const x = state.anchor.x + sway;
+        const y = state.anchor.y + i * state.segmentLength;
+        state.points.push({ x, y, px: x - 2.5, py: y, pinned: i === 0 });
+      }
+      state.gust = 0;
+    }
+
+    function syncControls() {
+      state.linkCount = Number(inputs.links.value);
+      state.gravity = Number(inputs.gravity.value);
+      state.damping = Number(inputs.damping.value);
+      state.passes = Number(inputs.passes.value);
+      readouts.links.textContent = String(state.linkCount);
+      readouts.gravity.textContent = state.gravity.toFixed(2);
+      readouts.damping.textContent = state.damping.toFixed(3);
+      readouts.passes.textContent = String(state.passes);
+      readouts.linkStat.textContent = String(state.linkCount);
+    }
+
+    function integrate() {
+      const wind = Math.sin(performance.now() * 0.0015) * 0.035 + state.gust;
+      state.gust *= 0.965;
+
+      for (const point of state.points) {
+        if (point.pinned) {
+          point.x = state.anchor.x;
+          point.y = state.anchor.y;
+          point.px = point.x;
+          point.py = point.y;
+          continue;
+        }
+
+        const vx = (point.x - point.px) * state.damping;
+        const vy = (point.y - point.py) * state.damping;
+        point.px = point.x;
+        point.py = point.y;
+        point.x += vx + wind;
+        point.y += vy + state.gravity;
+      }
+
+      if (state.pointer.down && state.draggedIndex > 0) {
+        const point = state.points[state.draggedIndex];
+        point.x += (state.pointer.x - point.x) * 0.42;
+        point.y += (state.pointer.y - point.y) * 0.42;
+      }
+    }
+
+    function solveConstraints() {
+      for (let pass = 0; pass < state.passes; pass += 1) {
+        state.points[0].x = state.anchor.x;
+        state.points[0].y = state.anchor.y;
+
+        for (let i = 0; i < state.points.length - 1; i += 1) {
+          const a = state.points[i];
+          const b = state.points[i + 1];
+          const dx = b.x - a.x;
+          const dy = b.y - a.y;
+          const distance = Math.max(0.001, Math.hypot(dx, dy));
+          const error = (distance - state.segmentLength) / distance;
+          const offsetX = dx * error * 0.5;
+          const offsetY = dy * error * 0.5;
+
+          if (!a.pinned) {
+            a.x += offsetX;
+            a.y += offsetY;
+          }
+          if (!b.pinned) {
+            b.x -= offsetX;
+            b.y -= offsetY;
+          }
+        }
+      }
+    }
+
+    function drawBackground(width, height) {
+      ctx.clearRect(0, 0, width, height);
+      ctx.save();
+      ctx.fillStyle = "#171512";
+      ctx.fillRect(0, 0, width, height);
+
+      ctx.strokeStyle = "rgba(247, 234, 215, 0.05)";
+      ctx.lineWidth = 1;
+      for (let x = -height; x < width + height; x += 42) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x + height, height);
+        ctx.stroke();
+      }
+
+      const floor = Math.min(height - 46, state.anchor.y + state.segmentLength * (state.linkCount + 1) + 42);
+      ctx.fillStyle = "rgba(184, 137, 72, 0.16)";
+      ctx.fillRect(0, floor, width, 2);
+      ctx.restore();
+    }
+
+    function roundedBar(x, y, width, height, radius) {
+      ctx.beginPath();
+      ctx.moveTo(x + radius, y);
+      ctx.lineTo(x + width - radius, y);
+      ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+      ctx.lineTo(x + width, y + height - radius);
+      ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+      ctx.lineTo(x + radius, y + height);
+      ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+      ctx.lineTo(x, y + radius);
+      ctx.quadraticCurveTo(x, y, x + radius, y);
+      ctx.closePath();
+    }
+
+    function getVisualLinks() {
+      const links = [];
+      for (let i = 0; i < state.points.length - 1; i += 1) {
+        const a = state.points[i];
+        const b = state.points[i + 1];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        links.push({
+          x: (a.x + b.x) * 0.5,
+          y: (a.y + b.y) * 0.5,
+          angle: Math.atan2(dy, dx) - Math.PI * 0.5,
+          index: i,
+        });
+      }
+      return links;
+    }
+
+    function drawChainLinkPart(link, side) {
+      const length = state.segmentLength * 1.48;
+      const width = state.segmentLength * 0.68;
+      const tube = Math.max(5.4, state.segmentLength * 0.16);
+      const isBack = side === "left";
+      const isFront = side === "right";
+      const start = isBack ? Math.PI * 0.5 : -Math.PI * 0.5;
+      const end = isBack ? Math.PI * 1.5 : Math.PI * 0.5;
+
+      ctx.save();
+      ctx.translate(link.x, link.y);
+      ctx.rotate(link.angle);
+
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if (isBack) {
+        ctx.save();
+        ctx.translate(1.8, 2.8);
+        ctx.lineWidth = tube + 5.5;
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.46)";
+        drawLinkArc(length, width, start, end);
+        ctx.restore();
+      }
+
+      ctx.lineWidth = tube + 4.5;
+      ctx.strokeStyle = "#15100b";
+      drawLinkArc(length, width, start, end);
+
+      const metal = ctx.createLinearGradient(-width * 0.7, -length * 0.5, width * 0.78, length * 0.5);
+      metal.addColorStop(0, "#fff0b4");
+      metal.addColorStop(0.18, "#d39b53");
+      metal.addColorStop(0.48, "#7a4f28");
+      metal.addColorStop(0.72, "#3a2a1c");
+      metal.addColorStop(1, "#f0c474");
+      ctx.lineWidth = tube;
+      ctx.strokeStyle = metal;
+      drawLinkArc(length, width, start, end);
+
+      ctx.lineWidth = Math.max(1.5, tube * 0.27);
+      ctx.strokeStyle = isFront ? "rgba(255, 241, 192, 0.7)" : "rgba(255, 232, 177, 0.2)";
+      drawLinkArc(length - tube * 0.2, width - tube * 0.16, isBack ? Math.PI * 0.6 : -Math.PI * 0.4, isBack ? Math.PI * 0.98 : -Math.PI * 0.02);
+
+      ctx.restore();
+    }
+
+    function drawLinkArc(length, width, start, end) {
+      ctx.beginPath();
+      ctx.ellipse(0, 0, width * 0.5, length * 0.5, 0, start, end);
+      ctx.stroke();
+    }
+
+    function drawLinksInterlocked(links) {
+      drawInterlockedLink(links, 0);
+    }
+
+    function drawInterlockedLink(links, index) {
+      if (index >= links.length) return;
+
+      drawChainLinkPart(links[index], "left");
+      drawInterlockedLink(links, index + 1);
+      drawChainLinkPart(links[index], "right");
+    }
+
+    function draw(width, height) {
+      drawBackground(width, height);
+
+      const links = getVisualLinks();
+      drawLinksInterlocked(links);
+
+      ctx.save();
+      ctx.fillStyle = "#403121";
+      ctx.strokeStyle = "#caa66d";
+      ctx.lineWidth = 3;
+      roundedBar(state.anchor.x - 62, state.anchor.y - 34, 124, 22, 8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#f0d59b";
+      ctx.beginPath();
+      ctx.arc(state.anchor.x, state.anchor.y, 8, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      if (state.pointer.down && state.draggedIndex > 0) {
+        const point = state.points[state.draggedIndex];
+        ctx.save();
+        ctx.strokeStyle = "rgba(119, 200, 178, 0.38)";
+        ctx.lineWidth = 2;
+        ctx.setLineDash([7, 7]);
+        ctx.beginPath();
+        ctx.moveTo(point.x, point.y);
+        ctx.lineTo(state.pointer.x, state.pointer.y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function frame(now) {
+      const width = canvas.clientWidth;
+      const height = canvas.clientHeight;
+      const dt = Math.max(1, now - state.lastFrame);
+      state.lastFrame = now;
+      state.fps = state.fps * 0.92 + (1000 / dt) * 0.08;
+      readouts.fpsStat.textContent = String(Math.round(state.fps));
+
+      integrate();
+      solveConstraints();
+      draw(width, height);
+      requestAnimationFrame(frame);
+    }
+
+    function pointerPosition(event) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
+    }
+
+    function nearestPoint(x, y) {
+      let bestIndex = state.points.length - 1;
+      let bestDistance = Infinity;
+      for (let i = 1; i < state.points.length; i += 1) {
+        const point = state.points[i];
+        const distance = Math.hypot(point.x - x, point.y - y);
+        if (distance < bestDistance) {
+          bestDistance = distance;
+          bestIndex = i;
+        }
+      }
+      return bestDistance < 92 ? bestIndex : state.points.length - 1;
+    }
+
+    canvas.addEventListener("pointerdown", (event) => {
+      const pos = pointerPosition(event);
+      state.pointer.down = true;
+      state.pointer.x = pos.x;
+      state.pointer.y = pos.y;
+      state.draggedIndex = nearestPoint(pos.x, pos.y);
+      canvas.setPointerCapture(event.pointerId);
+    });
+
+    canvas.addEventListener("pointermove", (event) => {
+      const pos = pointerPosition(event);
+      state.pointer.x = pos.x;
+      state.pointer.y = pos.y;
+    });
+
+    canvas.addEventListener("pointerup", () => {
+      state.pointer.down = false;
+      state.draggedIndex = -1;
+    });
+
+    canvas.addEventListener("pointercancel", () => {
+      state.pointer.down = false;
+      state.draggedIndex = -1;
+    });
+
+    inputs.links.addEventListener("input", () => {
+      syncControls();
+      resetChain();
+    });
+    inputs.gravity.addEventListener("input", syncControls);
+    inputs.damping.addEventListener("input", syncControls);
+    inputs.passes.addEventListener("input", syncControls);
+
+    gustButton.addEventListener("click", () => {
+      state.gust += Math.random() > 0.5 ? 1.65 : -1.65;
+    });
+
+    resetButton.addEventListener("click", resetChain);
+
+    window.addEventListener("resize", () => {
+      resize();
+      resetChain();
+    });
+
+    syncControls();
+    resize();
+    requestAnimationFrame(frame);
+  </script>
+</body>
+</html>

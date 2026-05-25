@@ -29,6 +29,9 @@ if (-not (Test-Path -LiteralPath $mainPath)) {
 }
 
 $configText = Get-Content -LiteralPath $configPath -Raw
+if ($configText -notmatch 'const APPLICATION_ID := "ca-app-pub-\d+~\d+"') {
+    throw "Could not find Android APPLICATION_ID constant in $configPath"
+}
 $configText = [regex]::Replace(
     $configText,
     'const APPLICATION_ID := "ca-app-pub-\d+~\d+"',
@@ -38,6 +41,9 @@ $configText = [regex]::Replace(
 Set-Content -LiteralPath $configPath -Value $configText -NoNewline
 
 $mainText = Get-Content -LiteralPath $mainPath -Raw
+if ($mainText -notmatch 'const AD_LIVE_UNIT_ANDROID_REWARDED := "[^"]*"') {
+    throw "Could not find AD_LIVE_UNIT_ANDROID_REWARDED constant in $mainPath"
+}
 $mainText = [regex]::Replace(
     $mainText,
     'const AD_LIVE_UNIT_ANDROID_REWARDED := "[^"]*"',
