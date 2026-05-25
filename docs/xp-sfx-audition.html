@@ -284,6 +284,18 @@
     </header>
 
     <div class="section-label">
+      <h2>Activity Boop Options</h2>
+      <p>Four soft boops for replacing the activity button sound with something rounder and friendlier.</p>
+    </div>
+    <section class="grid" id="boopGrid" aria-label="Activity boop sound options"></section>
+
+    <div class="section-label">
+      <h2>Quick Wind Down Options</h2>
+      <p>Four short descending cues for stopping, cooling off, or easing an active loop back to idle.</p>
+    </div>
+    <section class="grid" id="windDownGrid" aria-label="Quick wind down sound options"></section>
+
+    <div class="section-label">
       <h2>XP Success Options</h2>
       <p>Glass Pip, Coinlet Ding, and Magic Droplet are now written into the project WAVs.</p>
     </div>
@@ -383,10 +395,113 @@
       <button id="metalBurst" type="button">Test metal rattles</button>
       <button id="layeredGlassMetalBurst" type="button">Test layered glass metal</button>
       <button id="jingleChainsBurst" type="button">Test jingle chains</button>
+      <button id="boopBurst" type="button">Test boops</button>
+      <button id="windDownBurst" type="button">Test wind downs</button>
     </div>
   </main>
 
   <script>
+    const boopSounds = [
+      {
+        id: "soft-bubble-boop",
+        name: "Soft Bubble Boop",
+        tag: "round",
+        notes: "A gentle upward bubble with a soft landing. Friendly and very low-stress.",
+        bars: [32, 66, 100, 84, 58, 38, 25, 17, 11, 8, 5, 3],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 330, 523.25, 0.14, "sine", 0.52);
+          ping(ctx, out, t + 0.03, 659.25, 0.075, "triangle", 0.11);
+          noisePop(ctx, out, t, 0.014, 0.026, 900);
+        }
+      },
+      {
+        id: "low-rubber-boop",
+        name: "Low Rubber Boop",
+        tag: "bouncy",
+        notes: "A small rubbery down-up boop with a touch more body under the tap.",
+        bars: [72, 92, 78, 64, 42, 28, 19, 13, 9, 6, 4, 3],
+        play: (ctx, out, t) => {
+          scoop(ctx, out, t, [261.63, 220, 329.63], [0, 0.04, 0.13], "sine", 0.5);
+          ping(ctx, out, t + 0.024, 440, 0.07, "triangle", 0.1);
+          noisePop(ctx, out, t, 0.018, 0.028, 760);
+        }
+      },
+      {
+        id: "tiny-arcade-boop",
+        name: "Tiny Arcade Boop",
+        tag: "bright",
+        notes: "A cleaner game-menu boop: brighter than rubber, but still softer than a ding.",
+        bars: [38, 86, 96, 70, 46, 30, 21, 14, 10, 7, 5, 3],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 392, 587.33, 0.1, "sine", 0.42);
+          sweep(ctx, out, t, 392, 587.33, 0.1, "triangle", 0.18);
+          ping(ctx, out, t + 0.052, 783.99, 0.06, "sine", 0.08);
+        }
+      },
+      {
+        id: "pillow-boop",
+        name: "Pillow Boop",
+        tag: "mellow",
+        notes: "The softest option: a short padded boop that should survive heavy repetition.",
+        bars: [54, 82, 88, 70, 48, 32, 22, 15, 10, 7, 5, 3],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 293.66, 392, 0.16, "sine", 0.38);
+          ping(ctx, out, t + 0.018, 196, 0.1, "sine", 0.12);
+          airTail(ctx, out, t + 0.028, 0.09, 0.018);
+        }
+      }
+    ];
+
+    const windDownSounds = [
+      {
+        id: "soft-tape-stop",
+        name: "Soft Tape Stop",
+        tag: "smooth",
+        notes: "A tiny rounded pitch fall, like motion gently losing momentum.",
+        bars: [90, 100, 82, 58, 38, 24, 15, 10, 7, 5, 3, 2],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 620, 247, 0.18, "sine", 0.42);
+          airTail(ctx, out, t + 0.035, 0.13, 0.028);
+        }
+      },
+      {
+        id: "arcade-power-down",
+        name: "Arcade Power Down",
+        tag: "gamey",
+        notes: "A compact descending arcade cue with a small soft tick at the end.",
+        bars: [76, 98, 88, 70, 52, 36, 23, 14, 24, 10, 5, 3],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 784, 330, 0.145, "triangle", 0.34);
+          sweep(ctx, out, t + 0.01, 523.25, 220, 0.155, "sine", 0.22);
+          noisePop(ctx, out, t + 0.135, 0.006, 0.018, 900);
+        }
+      },
+      {
+        id: "warm-gear-settle",
+        name: "Warm Gear Settle",
+        tag: "settle",
+        notes: "A lower mechanical unwind with a mild padded landing.",
+        bars: [68, 86, 96, 72, 50, 32, 21, 14, 9, 6, 4, 3],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 440, 196, 0.19, "triangle", 0.4);
+          ping(ctx, out, t + 0.128, 164.81, 0.075, "sine", 0.13);
+          noisePop(ctx, out, t + 0.012, 0.016, 0.032, 620);
+        }
+      },
+      {
+        id: "breathy-mini-fall",
+        name: "Breathy Mini Fall",
+        tag: "airy",
+        notes: "A quick soft whoop downward with a little air, quieter and less mechanical.",
+        bars: [42, 70, 96, 100, 74, 48, 30, 19, 12, 8, 5, 3],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 698.46, 293.66, 0.16, "sine", 0.3);
+          sweep(ctx, out, t + 0.026, 523.25, 261.63, 0.13, "sine", 0.16);
+          airTail(ctx, out, t + 0.018, 0.16, 0.045);
+        }
+      }
+    ];
+
     const sounds = [
       {
         id: "glass-pip",
@@ -939,6 +1054,8 @@
     let masterGain;
     const sampleCache = new Map();
     const volume = document.querySelector("#volume");
+    const boopGrid = document.querySelector("#boopGrid");
+    const windDownGrid = document.querySelector("#windDownGrid");
     const grid = document.querySelector("#soundGrid");
     const glassPipGrid = document.querySelector("#glassPipGrid");
     const failureGrid = document.querySelector("#failureGrid");
@@ -1316,6 +1433,8 @@
     }
 
     function render() {
+      renderGrid(boopGrid, boopSounds);
+      renderGrid(windDownGrid, windDownSounds);
       renderGrid(grid, sounds);
       renderGrid(glassPipGrid, glassPipSounds);
       renderGrid(failureGrid, failureSounds);
@@ -1339,6 +1458,8 @@
     }
 
     grid.addEventListener("click", (event) => handleGridClick(event, sounds));
+    boopGrid.addEventListener("click", (event) => handleGridClick(event, boopSounds));
+    windDownGrid.addEventListener("click", (event) => handleGridClick(event, windDownSounds));
     glassPipGrid.addEventListener("click", (event) => handleGridClick(event, glassPipSounds));
     failureGrid.addEventListener("click", (event) => handleGridClick(event, failureSounds));
     medalGrid.addEventListener("click", (event) => handleGridClick(event, medalSounds));
@@ -1353,6 +1474,14 @@
     document.querySelector("#quickBurst").addEventListener("click", () => {
       const picks = [sounds[1], sounds[0], sounds[3], sounds[1], sounds[6], sounds[0]];
       picks.forEach((sound, index) => playSound(sound, index * 0.14));
+    });
+
+    document.querySelector("#boopBurst").addEventListener("click", () => {
+      boopSounds.forEach((sound, index) => playSound(sound, index * 0.24));
+    });
+
+    document.querySelector("#windDownBurst").addEventListener("click", () => {
+      windDownSounds.forEach((sound, index) => playSound(sound, index * 0.28));
     });
 
     document.querySelector("#glassPipBurst").addEventListener("click", () => {

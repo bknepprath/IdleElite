@@ -1303,6 +1303,8 @@ class MobileScrollContainer:
 
 
 const SAVE_PATH := "user://idle_elite_save.json"
+const DISCORD_INVITE_URL := "https://discord.gg/WRHGBPH"
+const RESET_DATA_CONFIRM_SECONDS := 8.0
 const ACTIVITY_DATABASE_PATH := "res://docs/activity-database.json"
 const MASTERY_MEDALS_TEXTURE := "res://docs/assets/ui/mastery-medals-20.png"
 const UNLOCK_LOCK_CHAINS_TEXTURE := "res://docs/assets/ui/unlock-lock-chains.png"
@@ -1380,7 +1382,9 @@ const SKILL_SWIPE_SETTLE_SECONDS := 0.46
 const SKILL_SWIPE_CANCEL_SECONDS := 0.22
 const ACTIVITY_JUMP_TOP_TEXTURE := "res://docs/assets/ui/jump-top-circle.png"
 const ACTIVITY_JUMP_BOTTOM_TEXTURE := "res://docs/assets/ui/jump-bottom-circle.png"
+const ACTIVITY_BACK_TEXTURE := "res://docs/assets/ui/back-arrow.png"
 const ACTIVITY_JUMP_ARROW_SIZE := Vector2(296, 296)
+const ACTIVITY_BACK_BUTTON_SIZE := Vector2(460, 140)
 const ACTIVITY_JUMP_ARROW_EDGE_INSET := 28.0
 const ACTIVITY_JUMP_ARROW_LINGER_SECONDS := 1.2
 const ACTIVITY_JUMP_ARROW_FADE_IN_SECONDS := 0.10
@@ -1415,7 +1419,34 @@ const CHAIN_JINGLE_TOTAL_SECONDS := 1.5
 const CHAIN_JINGLE_FADE_SECONDS := 0.34
 const CHAIN_CLICK_JINGLE_TOTAL_SECONDS := 0.48
 const CHAIN_CLICK_JINGLE_FADE_SECONDS := 0.24
+const CHAIN_OFFSCREEN_GAIN := 0.25
+const CHAIN_SCROLL_TOWARD_GAIN := 0.74
+const CHAIN_SCROLL_TOWARD_SECONDS := 0.62
+const CHAIN_SCROLL_AUDITION_DISTANCE := 1.35
 const PADLOCK_CLUSTER_SFX_PATH := "res://assets/sfx/padlock_cluster.wav"
+const MUSIC_BUS_NAME := "Music"
+const SFX_BUS_NAME := "SFX"
+const MUSIC_TRACKS := [
+	{"name": "base", "path": "res://assets/music/base_loop.ogg"},
+	{"name": "heavy", "path": "res://assets/music/heavy_loop.ogg"},
+	{"name": "ultimate", "path": "res://assets/music/ultimate_loop.ogg"},
+]
+const MUSIC_SILENCE_DB := -80.0
+const MUSIC_BASE_ACTION_THRESHOLD := 8
+const MUSIC_LAUNCH_START_CHANCE := 0.25
+const MUSIC_COMPLETION_START_CHANCE := 0.10
+const MUSIC_QUIET_BREAK_CHANCE := 0.01
+const MUSIC_QUIET_BREAK_STAMINA_CEILING := 5
+const MUSIC_QUIET_BREAK_FADE_SECONDS := 8.0
+const MUSIC_QUIET_BREAK_LOCKOUT_SECONDS := 30.0
+const MUSIC_FLOW_IDLE_FADE_SECONDS := 26.0
+const MUSIC_FLOW_DEAD_SECONDS := 54.0
+const MUSIC_BASE_FADE_SECONDS := 1.6
+const MUSIC_LAYER_FADE_SECONDS := 4.5
+const MUSIC_ULTIMATE_FADE_SECONDS := 2.8
+const MUSIC_LAYER_VOLUME_BOOST_DB := [0.0, -6.0, 0.0]
+const MUSIC_OUTPUT_GAIN := 0.25
+const AUDIO_SETTINGS_VERSION := 2
 const ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS := 1.15
 const ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS := 0.85
 const ACTIVITY_UNLOCK_CHAIN_FADE_DELAY := 1.05
@@ -1547,6 +1578,27 @@ var ad_show_after_load := false
 var ad_reward_earned_for_show := false
 var last_result := "Pick a skill and start training."
 var is_muted := false
+var music_volume := 0.7
+var sfx_volume := 0.7
+var music_muted := false
+var sfx_muted := false
+var flow_actions_taken := 0
+var flow_heat := 0.0
+var flow_idle_seconds := MUSIC_FLOW_DEAD_SECONDS
+var flow_active_action_seconds := 0.0
+var flow_failure_drag := 0.0
+var music_ultimate_boost_seconds := 0.0
+var music_players: Array[AudioStreamPlayer] = []
+var music_layer_gains := [0.0, 0.0, 0.0]
+var music_layer_target_gains := [0.0, 0.0, 0.0]
+var music_started := false
+var music_cycle_active := false
+var music_start_chance_unlocked := false
+var music_lockout_seconds := 0.0
+var music_quiet_fade_remaining := 0.0
+var music_quiet_fade_start_gains := [0.0, 0.0, 0.0]
+var reset_data_confirm_until := 0.0
+var reset_data_buttons := []
 
 var app_font: Font
 var app_bold_font: Font
@@ -1557,6 +1609,7 @@ var home_page: Control
 var skills_page: Control
 var nav_bar: PanelContainer
 var content_scroll: ScrollContainer
+var home_scroll: MobileScrollContainer
 var skills_content: Control
 var home_total_label: Label
 var home_skill_labels := {}
@@ -1582,6 +1635,7 @@ var skills_tab: Button
 var hero_tab: Button
 var shop_tab: Button
 var settings_tab: Button
+var nav_pop_tweens := {}
 var shop_bonus_label: Label
 var skill_cards := {}
 var action_cards := {}
@@ -1602,6 +1656,8 @@ var detail_jump_top_hold := 0.0
 var detail_jump_bottom_hold := 0.0
 var detail_jump_top_hovered := false
 var detail_jump_bottom_hovered := false
+var chain_audio_scroll_direction := 0
+var chain_audio_scroll_focus_seconds := 0.0
 var detail_action_card_nodes := {}
 var detail_rendered_action_ids := []
 var skill_swipe_tracking := false
@@ -1635,8 +1691,20 @@ var achievements_modal_tab := "achievements"
 var achievement_toast_layer: CanvasLayer
 var achievement_toast_root: Control
 var achievement_toasts := []
-var mute_button: Button
+var music_volume_sliders := []
+var music_volume_labels := []
+var music_mute_toggles := []
+var music_mute_labels := []
+var sfx_volume_sliders := []
+var sfx_volume_labels := []
+var sfx_mute_toggles := []
+var sfx_mute_labels := []
+var audio_slider_grabber_texture: Texture2D
+var active_audio_slider: HSlider
+var active_audio_slider_is_music := false
+var active_audio_slider_touch_index := -1
 var click_player: AudioStreamPlayer
+var activity_start_player: AudioStreamPlayer
 var success_players: Array[AudioStreamPlayer] = []
 var failure_player: AudioStreamPlayer
 var level_player: AudioStreamPlayer
@@ -1662,6 +1730,7 @@ func _ready() -> void:
 	_init_ads()
 	_build_ui()
 	load_game()
+	_maybe_start_music_cycle_on_launch()
 	_validate_state()
 	_render_screen(current_screen == "skill")
 	_update_ui(0.0, true)
@@ -1677,12 +1746,17 @@ func _process(delta: float) -> void:
 	_process_stamina_gauge_regen_boost(delta)
 	_regen_stamina(delta)
 	_process_action(delta)
+	_process_music_flow(delta)
 	_update_ui(delta)
+	_process_chain_proximity_audio(delta)
 	_process_detail_jump_arrows(delta)
 
 
 func _input(event: InputEvent) -> void:
 	_note_player_input(event)
+	if _route_audio_slider_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	if _is_stamina_gauge_release_event(event):
 		_set_stamina_gauge_pressed(false)
 		get_viewport().set_input_as_handled()
@@ -1771,6 +1845,9 @@ func _set_activity_lock_page_scrolling_disabled(disabled: bool) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
 		save_game()
+	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		music_started = false
+		_ensure_music_playing()
 
 
 func _build_ui() -> void:
@@ -1829,6 +1906,7 @@ func _build_home_page() -> void:
 	achievement_best_medal = null
 	hero_message = null
 	var scroll := MobileScrollContainer.new()
+	home_scroll = scroll
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
@@ -2096,7 +2174,7 @@ func _build_hero(parent: PanelContainer) -> void:
 	settings.pressed.connect(_open_settings)
 	tools.add_child(settings)
 	var discord := _icon_button("res://docs/assets/ui/discord-simple.png")
-	discord.pressed.connect(func(): _set_result("Discord button tapped."))
+	discord.pressed.connect(_settings_discord_pressed)
 	tools.add_child(discord)
 
 
@@ -2131,6 +2209,8 @@ func _build_nav_bar() -> void:
 	skills_tab.pressed.connect(_show_skills)
 	row.add_child(skills_tab)
 	hero_tab = _nav_button("res://docs/assets/ui/motivation-star.png")
+	hero_tab.custom_minimum_size = Vector2(318, 318)
+	hero_tab.add_theme_constant_override("icon_max_width", 244)
 	hero_tab.pressed.connect(_show_home)
 	row.add_child(hero_tab)
 	settings_tab = _nav_button("res://docs/assets/ui/settings-gear-simple.png")
@@ -2174,15 +2254,14 @@ func _build_settings_overlay() -> void:
 	close.custom_minimum_size = Vector2(170, 150)
 	close.pressed.connect(_close_settings)
 	header.add_child(close)
-	mute_button = _menu_button("")
-	mute_button.pressed.connect(_toggle_mute)
-	stack.add_child(mute_button)
+	stack.add_child(_audio_volume_control("Music", true, 1120))
+	stack.add_child(_audio_volume_control("SFX", false, 1120))
 	var discord := _menu_button("Discord")
 	discord.pressed.connect(_settings_discord_pressed)
 	stack.add_child(discord)
 	var reset := _menu_button("Reset Data")
 	reset.add_theme_stylebox_override("normal", _button_style(Color("#ffe2e2"), BUTTON_BORDER, 48))
-	reset.pressed.connect(_reset_data)
+	_register_reset_button(reset, "Reset Data")
 	stack.add_child(reset)
 
 
@@ -2299,6 +2378,8 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	detail_jump_bottom_hold = 0.0
 	detail_jump_top_hovered = false
 	detail_jump_bottom_hovered = false
+	chain_audio_scroll_direction = 0
+	chain_audio_scroll_focus_seconds = 0.0
 	
 	if current_screen == "skill":
 		_render_skill_detail(scroll_latest_activity, restore_detail_scroll)
@@ -2354,9 +2435,8 @@ func _render_settings_page() -> void:
 	top_spacer.custom_minimum_size = Vector2(0, 106)
 	stack.add_child(top_spacer)
 	stack.add_child(_label("Settings", 132, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
-	mute_button = _settings_page_button("", "", 940, 128, 236)
-	mute_button.pressed.connect(_toggle_mute)
-	stack.add_child(mute_button)
+	stack.add_child(_audio_volume_control("Music", true, 1480))
+	stack.add_child(_audio_volume_control("SFX", false, 1480, 128))
 	var discord := _settings_page_button("Contact the dev", "res://docs/assets/ui/discord-simple.png", 1320, 220, 286)
 	discord.add_theme_stylebox_override("normal", _button_style(Color("#eaf6ff"), BUTTON_BORDER, 54))
 	discord.add_theme_stylebox_override("hover", _button_style(Color("#d9efff"), BUTTON_BORDER, 54))
@@ -2367,7 +2447,7 @@ func _render_settings_page() -> void:
 	reset.add_theme_stylebox_override("normal", _button_style(Color("#ffb8b8"), BUTTON_BORDER, 48))
 	reset.add_theme_stylebox_override("hover", _button_style(Color("#ff9f9f"), BUTTON_BORDER, 48))
 	reset.add_theme_stylebox_override("pressed", _button_style(Color("#ff8080"), BUTTON_BORDER, 48))
-	reset.pressed.connect(_reset_data)
+	_register_reset_button(reset, "Hard Reset")
 	stack.add_child(reset)
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = Vector2(0, 220)
@@ -2480,6 +2560,34 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		skill_cards[skill_id] = {"title": title, "meta": meta, "xp": xp_bar, "stamina": stamina_gauge}
 
 
+func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
+	var back_button := Button.new()
+	back_button.text = ""
+	back_button.icon = _texture(ACTIVITY_BACK_TEXTURE)
+	back_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	back_button.expand_icon = true
+	back_button.custom_minimum_size = ACTIVITY_BACK_BUTTON_SIZE
+	back_button.focus_mode = Control.FOCUS_NONE
+	back_button.tooltip_text = "Back"
+	back_button.add_theme_constant_override("icon_max_width", 238)
+	back_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	back_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	back_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	back_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	back_button.modulate = Color(1, 1, 1, 0.6)
+	back_button.offset_left = 24
+	back_button.offset_top = 26
+	back_button.offset_right = back_button.offset_left + ACTIVITY_BACK_BUTTON_SIZE.x
+	back_button.offset_bottom = back_button.offset_top + ACTIVITY_BACK_BUTTON_SIZE.y
+	back_button.z_index = 80
+	if interactive:
+		back_button.pressed.connect(_back_to_skills)
+	else:
+		back_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(back_button)
+	return back_button
+
+
 func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll := -1) -> void:
 	var content_width := _skill_content_width()
 	var frame := Control.new()
@@ -2501,12 +2609,17 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_theme_stylebox_override("panel", _summary_style())
 	page.add_child(header)
+	var header_body := Control.new()
+	header_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	header.add_child(header_body)
+	_add_activity_back_arrow(header_body)
 	var header_margin := MarginContainer.new()
+	header_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	header_margin.add_theme_constant_override("margin_left", 66)
 	header_margin.add_theme_constant_override("margin_right", 46)
 	header_margin.add_theme_constant_override("margin_top", 88)
 	header_margin.add_theme_constant_override("margin_bottom", 74)
-	header.add_child(header_margin)
+	header_body.add_child(header_margin)
 	var header_row := HBoxContainer.new()
 	header_row.add_theme_constant_override("separation", 66)
 	header_margin.add_child(header_row)
@@ -2827,6 +2940,8 @@ func _activity_jump_button(path: String, top: bool) -> TextureButton:
 func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 	if current_screen != "skill":
 		return
+	chain_audio_scroll_direction = 1 if direction > 0 else -1
+	chain_audio_scroll_focus_seconds = CHAIN_SCROLL_TOWARD_SECONDS
 	_reveal_detail_jump_arrow(direction)
 
 
@@ -2885,6 +3000,16 @@ func _process_detail_jump_arrows(delta: float) -> void:
 	var can_jump_bottom := max_scroll > ACTIVITY_JUMP_ARROW_EDGE_EPSILON and scroll < max_scroll - ACTIVITY_JUMP_ARROW_EDGE_EPSILON
 	_process_detail_jump_arrow(detail_jump_top_button, true, can_jump_top, delta)
 	_process_detail_jump_arrow(detail_jump_bottom_button, false, can_jump_bottom, delta)
+
+
+func _process_chain_proximity_audio(delta: float) -> void:
+	if chain_audio_scroll_focus_seconds <= 0.0:
+		chain_audio_scroll_focus_seconds = 0.0
+		chain_audio_scroll_direction = 0
+		return
+	chain_audio_scroll_focus_seconds = maxf(0.0, chain_audio_scroll_focus_seconds - delta)
+	if chain_audio_scroll_focus_seconds <= 0.0:
+		chain_audio_scroll_direction = 0
 
 
 func _process_detail_jump_arrow(button: TextureButton, top: bool, can_use: bool, delta: float) -> void:
@@ -3001,10 +3126,10 @@ func _update_ui(delta: float, instant := false) -> void:
 			progress_instant = true
 		_set_bar(progress_rail, progress_target, delta, progress_instant)
 	_play_pending_activity_unlock_ceremony()
-	if mute_button != null:
-		mute_button.text = "Unmute" if is_muted else "Mute"
+	_refresh_audio_volume_controls()
 	if shop_bonus_label != null:
 		shop_bonus_label.text = _shop_bonus_status_text()
+	_expire_reset_data_confirm_if_needed()
 
 
 func _set_action_card_medal(card: Dictionary, medal: TextureRect, mastery_level: int, instant: bool) -> void:
@@ -4153,13 +4278,20 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(header)
 
+	var header_body := Control.new()
+	header_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	header_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(header_body)
+	_add_activity_back_arrow(header_body, false)
+
 	var header_margin := MarginContainer.new()
+	header_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	header_margin.add_theme_constant_override("margin_left", 66)
 	header_margin.add_theme_constant_override("margin_right", 46)
 	header_margin.add_theme_constant_override("margin_top", 88)
 	header_margin.add_theme_constant_override("margin_bottom", 74)
 	header_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	header.add_child(header_margin)
+	header_body.add_child(header_margin)
 
 	var header_row := HBoxContainer.new()
 	header_row.add_theme_constant_override("separation", 66)
@@ -4424,7 +4556,7 @@ func _activity_lock_overlay(parent: Control, unlock_level: int) -> Dictionary:
 	group.setup(_texture(UNLOCK_CHAIN_LINK_TEXTURE), _texture(UNLOCK_PADLOCK_TEXTURE), unlock_level, app_bold_font, app_font)
 	group.set_anchors_preset(Control.PRESET_FULL_RECT)
 	group.clip_contents = false
-	group.chain_moved.connect(_play_chain_move_jingle_mix)
+	group.chain_moved.connect(_play_chain_move_jingle_mix.bind(group))
 	group.padlock_clicked.connect(_play_padlock_cluster_sfx)
 	overlay.add_child(group)
 
@@ -4563,7 +4695,7 @@ func _play_activity_unlock_ceremony(card: Dictionary) -> void:
 	if group is ActivityLockRig:
 		(group as ActivityLockRig).play_unlock_drop_animation()
 
-	_play_chain_fall_sfx_sequence()
+	_play_chain_fall_sfx_sequence(group)
 	var tween := create_tween()
 	tween.tween_interval(ACTIVITY_UNLOCK_CHAIN_FADE_DELAY)
 	tween.tween_property(group, "modulate:a", 0.0, ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS)
@@ -4583,13 +4715,20 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	var root := card.get("root") as Control
 	if root == null:
 		return
-	var target_y := root.position.y
-	root.position.y = target_y + 34.0
+	var pop := card.get("pop") as Control
 	root.modulate = Color(1, 1, 1, 0)
+	if pop != null:
+		pop.position.y = 34.0
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(root, "modulate:a", 1.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(root, "position:y", target_y, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if pop != null:
+		tween.tween_property(pop, "position:y", 0.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		root.modulate = Color.WHITE
+		if pop != null and is_instance_valid(pop):
+			pop.position.y = 0.0
+	)
 
 
 func _refresh_skill_detail_after_activity_unlock_ceremony() -> void:
@@ -4646,6 +4785,7 @@ func _process_action(delta: float) -> void:
 		running_skill_id = ""
 		running_action_id = ""
 		action_progress = 0.0
+		_nudge_music_flow_down(1.2)
 		_update_ui(0.0, false)
 		return
 	action_progress += delta / _effective_seconds(running_skill_id, action)
@@ -4684,6 +4824,7 @@ func _process_action(delta: float) -> void:
 		for achievement in _newly_completed_achievements(completed_achievements_before):
 			_show_achievement_unlocked(achievement)
 		_play_activity_success_sound(streak_step, new_mastery_level > old_mastery_level, streak_bonus)
+		_record_music_flow_action(true, streak_step, streak_bonus, new_mastery_level > old_mastery_level, new_skill_level > old_skill_level, cost)
 	else:
 		_reset_activity_completion_streak()
 		var failure_mastery_reward := 0.0 if _would_mastery_reward_medal_up(running_skill_id, running_action_id, mastery_reward) else mastery_reward
@@ -4700,6 +4841,7 @@ func _process_action(delta: float) -> void:
 		for achievement in _newly_completed_achievements(completed_achievements_before):
 			_show_achievement_unlocked(achievement)
 		_play(failure_player)
+		_record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, cost)
 	if _stamina(running_skill_id) < cost:
 		running_skill_id = ""
 		running_action_id = ""
@@ -4748,10 +4890,12 @@ func _start_action(skill_id: String, action_id: String) -> void:
 	var action := _action_data(skill_id, action_id)
 	if action.is_empty() or _skill_level(skill_id) < int(action["unlock"]):
 		return
+	_unlock_audio_for_gameplay()
 	if running_skill_id == skill_id and running_action_id == action_id:
 		running_skill_id = ""
 		running_action_id = ""
 		action_progress = 0.0
+		_nudge_music_flow_down(0.4)
 		_set_result("%s stopped." % action["name"])
 		_update_ui(0.0, false)
 		return
@@ -4763,6 +4907,10 @@ func _start_action(skill_id: String, action_id: String) -> void:
 	running_skill_id = skill_id
 	running_action_id = action_id
 	action_progress = 0.0
+	if music_cycle_active:
+		flow_idle_seconds = 0.0
+		_record_music_flow_start()
+	_play(activity_start_player)
 	_pop_activity_button(_action_key(skill_id, action_id))
 	_set_result("%s started." % action["name"])
 
@@ -4794,6 +4942,23 @@ func _clear_action_pop_tweens() -> void:
 	action_pop_tweens.clear()
 
 
+func _pop_nav_button(button: Button) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	var key := button.get_instance_id()
+	if nav_pop_tweens.has(key):
+		var existing := nav_pop_tweens[key] as Tween
+		if existing != null and existing.is_valid():
+			existing.kill()
+	button.scale = Vector2.ONE
+	button.pivot_offset = button.size * 0.5
+	var tween := create_tween()
+	nav_pop_tweens[key] = tween
+	tween.tween_property(button, "scale", Vector2(1.08, 1.08), 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func(): nav_pop_tweens.erase(key))
+
+
 func _select_skill(skill_id: String) -> void:
 	selected_skill_id = skill_id
 	current_screen = "skill"
@@ -4805,6 +4970,7 @@ func _show_home() -> void:
 	current_screen = "home"
 	_play(click_player)
 	_render_screen()
+	_scroll_home_to_top()
 
 
 func _show_skills() -> void:
@@ -4825,6 +4991,13 @@ func _show_settings() -> void:
 	current_screen = "settings"
 	_play(click_player)
 	_render_screen()
+
+
+func _scroll_home_to_top() -> void:
+	if home_scroll == null or not is_instance_valid(home_scroll):
+		return
+	home_scroll.drag_scroll_position = 0.0
+	home_scroll.scroll_vertical = 0
 
 
 func _back_to_skills() -> void:
@@ -5135,10 +5308,159 @@ func _achievement_log_card(achievement: Dictionary) -> Control:
 	return card
 
 
-func _toggle_mute() -> void:
-	is_muted = not is_muted
-	AudioServer.set_bus_mute(0, is_muted)
-	_update_ui(0.0, true)
+func _set_music_volume_from_slider(value: float) -> void:
+	music_volume = clampf(value / 100.0, 0.0, 1.0)
+	_apply_audio_bus_volumes()
+	_refresh_audio_volume_controls()
+	save_game()
+
+
+func _set_sfx_volume_from_slider(value: float) -> void:
+	sfx_volume = clampf(value / 100.0, 0.0, 1.0)
+	_apply_audio_bus_volumes()
+	_refresh_audio_volume_controls()
+	save_game()
+
+
+func _set_music_muted_from_toggle(pressed: bool) -> void:
+	music_muted = pressed
+	_apply_audio_bus_volumes()
+	_refresh_audio_volume_controls()
+	save_game()
+
+
+func _set_sfx_muted_from_toggle(pressed: bool) -> void:
+	sfx_muted = pressed
+	_apply_audio_bus_volumes()
+	_refresh_audio_volume_controls()
+	save_game()
+
+
+func _on_audio_slider_gui_input(event: InputEvent, slider: HSlider, music: bool) -> void:
+	if slider == null or not is_instance_valid(slider):
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		active_audio_slider = slider if event.pressed else active_audio_slider
+		active_audio_slider_is_music = music
+		active_audio_slider_touch_index = -1
+		_update_active_audio_slider(event.global_position)
+		if not event.pressed:
+			_clear_active_audio_slider()
+		get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and active_audio_slider == slider:
+		_update_active_audio_slider(event.global_position)
+		get_viewport().set_input_as_handled()
+	elif event is InputEventScreenTouch:
+		if event.pressed:
+			active_audio_slider = slider
+			active_audio_slider_is_music = music
+			active_audio_slider_touch_index = event.index
+			_update_active_audio_slider(event.position)
+		elif active_audio_slider == slider and event.index == active_audio_slider_touch_index:
+			_update_active_audio_slider(event.position)
+			_clear_active_audio_slider()
+		get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag and active_audio_slider == slider and event.index == active_audio_slider_touch_index:
+		_update_active_audio_slider(event.position)
+		get_viewport().set_input_as_handled()
+
+
+func _route_audio_slider_input(event: InputEvent) -> bool:
+	if active_audio_slider == null or not is_instance_valid(active_audio_slider):
+		_clear_active_audio_slider()
+		return false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_update_active_audio_slider(event.global_position)
+		if not event.pressed:
+			_clear_active_audio_slider()
+		return true
+	if event is InputEventMouseMotion:
+		_update_active_audio_slider(event.global_position)
+		return true
+	if event is InputEventScreenTouch and event.index == active_audio_slider_touch_index:
+		_update_active_audio_slider(event.position)
+		if not event.pressed:
+			_clear_active_audio_slider()
+		return true
+	if event is InputEventScreenDrag and event.index == active_audio_slider_touch_index:
+		_update_active_audio_slider(event.position)
+		return true
+	return false
+
+
+func _update_active_audio_slider(global_point: Vector2) -> void:
+	if active_audio_slider == null or not is_instance_valid(active_audio_slider):
+		return
+	var rect := active_audio_slider.get_global_rect()
+	if rect.size.x <= 1.0:
+		return
+	var pct := clampf((global_point.x - rect.position.x) / rect.size.x, 0.0, 1.0)
+	var next_value: float = round(lerpf(float(active_audio_slider.min_value), float(active_audio_slider.max_value), pct))
+	active_audio_slider.set_value_no_signal(next_value)
+	if active_audio_slider_is_music:
+		_set_music_volume_from_slider(next_value)
+	else:
+		_set_sfx_volume_from_slider(next_value)
+
+
+func _clear_active_audio_slider() -> void:
+	active_audio_slider = null
+	active_audio_slider_touch_index = -1
+
+
+func _refresh_audio_volume_controls() -> void:
+	music_volume_sliders = _sync_volume_sliders(music_volume_sliders, music_volume)
+	sfx_volume_sliders = _sync_volume_sliders(sfx_volume_sliders, sfx_volume)
+	music_volume_labels = _sync_volume_labels(music_volume_labels, music_volume)
+	sfx_volume_labels = _sync_volume_labels(sfx_volume_labels, sfx_volume)
+	music_mute_toggles = _sync_mute_toggles(music_mute_toggles, music_muted)
+	sfx_mute_toggles = _sync_mute_toggles(sfx_mute_toggles, sfx_muted)
+	music_mute_labels = _sync_mute_labels(music_mute_labels, music_muted)
+	sfx_mute_labels = _sync_mute_labels(sfx_mute_labels, sfx_muted)
+
+
+func _sync_volume_sliders(sliders: Array, volume: float) -> Array:
+	var live := []
+	for raw_slider in sliders:
+		var slider := raw_slider as HSlider
+		if slider == null or not is_instance_valid(slider):
+			continue
+		slider.set_value_no_signal(round(clampf(volume, 0.0, 1.0) * 100.0))
+		live.append(slider)
+	return live
+
+
+func _sync_mute_labels(labels: Array, muted: bool) -> Array:
+	var live := []
+	for raw_label in labels:
+		var label := raw_label as Label
+		if label == null or not is_instance_valid(label):
+			continue
+		label.text = "✓" if muted else ""
+		live.append(label)
+	return live
+
+
+func _sync_volume_labels(labels: Array, volume: float) -> Array:
+	var live := []
+	for raw_label in labels:
+		var label := raw_label as Label
+		if label == null or not is_instance_valid(label):
+			continue
+		label.text = "%s%%" % int(round(clampf(volume, 0.0, 1.0) * 100.0))
+		live.append(label)
+	return live
+
+
+func _sync_mute_toggles(toggles: Array, muted: bool) -> Array:
+	var live := []
+	for raw_toggle in toggles:
+		var toggle := raw_toggle as Button
+		if toggle == null or not is_instance_valid(toggle):
+			continue
+		toggle.set_pressed_no_signal(muted)
+		live.append(toggle)
+	return live
 
 
 func _init_ads() -> void:
@@ -5271,11 +5593,55 @@ func _shop_ad_pressed() -> void:
 
 
 func _settings_discord_pressed() -> void:
-	_set_result("Discord button tapped.")
-	_play(click_player)
+	var err := OS.shell_open(DISCORD_INVITE_URL)
+	if err == OK:
+		_set_result("Opening Discord invite.")
+	else:
+		_set_result("Couldn't open Discord invite.")
+
+
+func _register_reset_button(button: Button, default_text: String) -> void:
+	button.set_meta("reset_default_text", default_text)
+	button.pressed.connect(_confirm_reset_data.bind(button))
+	reset_data_buttons.append(button)
+	_refresh_reset_data_buttons()
+
+
+func _confirm_reset_data(_button: Button) -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	if reset_data_confirm_until > now:
+		reset_data_confirm_until = 0.0
+		_reset_data()
+		return
+	reset_data_confirm_until = now + RESET_DATA_CONFIRM_SECONDS
+	_set_result("Tap again to permanently reset progress.")
+	_refresh_reset_data_buttons()
+
+
+func _refresh_reset_data_buttons() -> void:
+	var now := Time.get_ticks_msec() / 1000.0
+	var armed := reset_data_confirm_until > now
+	var live_buttons := []
+	for raw_button in reset_data_buttons:
+		var button := raw_button as Button
+		if button == null or not is_instance_valid(button):
+			continue
+		button.text = "Are You Sure?" if armed else str(button.get_meta("reset_default_text", "Hard Reset"))
+		live_buttons.append(button)
+	reset_data_buttons = live_buttons
+
+
+func _expire_reset_data_confirm_if_needed() -> void:
+	if reset_data_confirm_until <= 0.0:
+		return
+	if Time.get_ticks_msec() / 1000.0 < reset_data_confirm_until:
+		return
+	reset_data_confirm_until = 0.0
+	_refresh_reset_data_buttons()
 
 
 func _reset_data() -> void:
+	reset_data_confirm_until = 0.0
 	_init_state()
 	running_skill_id = ""
 	running_action_id = ""
@@ -5744,6 +6110,14 @@ func save_game() -> void:
 		"running_action_id": running_action_id,
 		"action_progress": action_progress,
 		"is_muted": is_muted,
+		"audio_settings_version": AUDIO_SETTINGS_VERSION,
+		"music_volume": music_volume,
+		"sfx_volume": sfx_volume,
+		"music_muted": music_muted,
+		"sfx_muted": sfx_muted,
+		"music_start_chance_unlocked": music_start_chance_unlocked,
+		"flow_heat": flow_heat,
+		"flow_active_action_seconds": flow_active_action_seconds,
 		"last_result": last_result,
 		"saved_at": Time.get_unix_time_from_system()
 	}))
@@ -5791,9 +6165,21 @@ func load_game() -> void:
 	running_skill_id = str(data.get("running_skill_id", ""))
 	running_action_id = str(data.get("running_action_id", ""))
 	action_progress = float(data.get("action_progress", 0.0))
-	is_muted = bool(data.get("is_muted", false))
+	var audio_settings_version := int(data.get("audio_settings_version", 0))
+	music_volume = clampf(float(data.get("music_volume", music_volume)), 0.0, 1.0)
+	sfx_volume = clampf(float(data.get("sfx_volume", sfx_volume)), 0.0, 1.0)
+	if audio_settings_version < AUDIO_SETTINGS_VERSION:
+		music_volume = 0.7
+		sfx_volume = 0.7
+	music_muted = bool(data.get("music_muted", false))
+	sfx_muted = bool(data.get("sfx_muted", false))
+	is_muted = false
+	flow_actions_taken = 0
+	music_start_chance_unlocked = bool(data.get("music_start_chance_unlocked", false)) or _saved_music_groove_floor() >= MUSIC_BASE_ACTION_THRESHOLD
+	flow_heat = clampf(float(data.get("flow_heat", flow_heat)), 0.0, 36.0)
+	flow_active_action_seconds = maxf(0.0, float(data.get("flow_active_action_seconds", flow_active_action_seconds)))
 	last_result = str(data.get("last_result", last_result))
-	AudioServer.set_bus_mute(0, is_muted)
+	_apply_audio_bus_volumes()
 	var offline := int(clamp(Time.get_unix_time_from_system() - int(data.get("saved_at", Time.get_unix_time_from_system())), 0, MAX_OFFLINE_SECONDS))
 	if offline > 0:
 		ad_bonus_seconds_remaining = maxf(0.0, ad_bonus_seconds_remaining - float(offline))
@@ -5951,7 +6337,7 @@ func _mastery_medal_region(index: int, sheet_size: Vector2i) -> Rect2i:
 		Rect2i(0, 19, 278, 278),
 		Rect2i(267, 19, 278, 278),
 		Rect2i(536, 19, 278, 278),
-		Rect2i(804, 19, 278, 278),
+		Rect2i(804, 19, 278, 276),
 		Rect2i(1073, 18, 278, 278),
 		Rect2i(2, 296, 279, 279),
 		Rect2i(266, 296, 279, 279),
@@ -6254,6 +6640,8 @@ func _nav_button(path: String) -> Button:
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.expand_icon = true
 	button.add_theme_constant_override("icon_max_width", 184)
+	button.resized.connect(func(): button.pivot_offset = button.size * 0.5)
+	button.pressed.connect(_pop_nav_button.bind(button))
 	return button
 
 
@@ -6275,6 +6663,135 @@ func _menu_button(text: String) -> Button:
 	button.add_theme_stylebox_override("pressed", _button_style(COLOR_GOLD.darkened(0.08), BUTTON_BORDER, 48))
 	button.add_theme_stylebox_override("disabled", _button_style(Color("#fffaf0"), SECONDARY_BUTTON_BORDER, 48))
 	return button
+
+
+func _audio_volume_control(title: String, music: bool, min_width := 1120, bottom_padding := 0) -> Control:
+	var mute_size := 142
+	var control_gap := 34
+	var stack := VBoxContainer.new()
+	stack.custom_minimum_size = Vector2(min_width, 268 + bottom_padding)
+	stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	stack.add_theme_constant_override("separation", 14)
+	var label_row := HBoxContainer.new()
+	label_row.add_theme_constant_override("separation", 18)
+	stack.add_child(label_row)
+	var label_indent := Control.new()
+	label_indent.custom_minimum_size = Vector2(mute_size + control_gap, 1)
+	label_row.add_child(label_indent)
+	var name_label := _label(title, 54, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	if app_bold_font != null:
+		name_label.add_theme_font_override("font", app_bold_font)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label_row.add_child(name_label)
+	var value_label := _label("", 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	value_label.custom_minimum_size = Vector2(180, 72)
+	label_row.add_child(value_label)
+	var control_padding := MarginContainer.new()
+	control_padding.add_theme_constant_override("margin_top", 8)
+	control_padding.add_theme_constant_override("margin_bottom", 14)
+	stack.add_child(control_padding)
+	var control_row := HBoxContainer.new()
+	control_row.add_theme_constant_override("separation", control_gap)
+	control_padding.add_child(control_row)
+	var mute_toggle := Button.new()
+	mute_toggle.text = ""
+	mute_toggle.custom_minimum_size = Vector2(mute_size, mute_size)
+	mute_toggle.focus_mode = Control.FOCUS_NONE
+	mute_toggle.tooltip_text = "Mute %s" % title
+	mute_toggle.toggle_mode = true
+	mute_toggle.button_pressed = music_muted if music else sfx_muted
+	mute_toggle.add_theme_stylebox_override("normal", _audio_mute_toggle_style(false, false))
+	mute_toggle.add_theme_stylebox_override("hover", _audio_mute_toggle_style(false, true))
+	mute_toggle.add_theme_stylebox_override("pressed", _audio_mute_toggle_style(true, false))
+	mute_toggle.add_theme_stylebox_override("hover_pressed", _audio_mute_toggle_style(true, true))
+	mute_toggle.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	control_row.add_child(mute_toggle)
+	var mute_mark := _label("", 84, COLOR_GREEN, HORIZONTAL_ALIGNMENT_CENTER)
+	mute_mark.set_anchors_preset(Control.PRESET_FULL_RECT)
+	mute_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mute_toggle.add_child(mute_mark)
+	var slider := HSlider.new()
+	slider.custom_minimum_size = Vector2(maxi(320, min_width - mute_size - control_gap), 142)
+	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	slider.min_value = 0.0
+	slider.max_value = 100.0
+	slider.step = 1.0
+	slider.focus_mode = Control.FOCUS_NONE
+	slider.value = round((music_volume if music else sfx_volume) * 100.0)
+	_style_audio_slider(slider)
+	slider.gui_input.connect(_on_audio_slider_gui_input.bind(slider, music))
+	control_row.add_child(slider)
+	if bottom_padding > 0:
+		var spacer := Control.new()
+		spacer.custom_minimum_size = Vector2(0, bottom_padding)
+		stack.add_child(spacer)
+	if music:
+		music_mute_toggles.append(mute_toggle)
+		music_mute_labels.append(mute_mark)
+		music_volume_sliders.append(slider)
+		music_volume_labels.append(value_label)
+		mute_toggle.toggled.connect(_set_music_muted_from_toggle)
+		slider.value_changed.connect(_set_music_volume_from_slider)
+	else:
+		sfx_mute_toggles.append(mute_toggle)
+		sfx_mute_labels.append(mute_mark)
+		sfx_volume_sliders.append(slider)
+		sfx_volume_labels.append(value_label)
+		mute_toggle.toggled.connect(_set_sfx_muted_from_toggle)
+		slider.value_changed.connect(_set_sfx_volume_from_slider)
+	_refresh_audio_volume_controls()
+	return stack
+
+
+func _style_audio_slider(slider: HSlider) -> void:
+	slider.add_theme_icon_override("grabber", _audio_slider_grabber())
+	slider.add_theme_icon_override("grabber_highlight", _audio_slider_grabber())
+	slider.add_theme_icon_override("grabber_disabled", _audio_slider_grabber())
+	var track := StyleBoxFlat.new()
+	track.bg_color = COLOR_INK
+	track.corner_radius_top_left = 7
+	track.corner_radius_top_right = 7
+	track.corner_radius_bottom_left = 7
+	track.corner_radius_bottom_right = 7
+	track.content_margin_top = 9
+	track.content_margin_bottom = 9
+	slider.add_theme_stylebox_override("slider", track)
+
+
+func _audio_mute_toggle_style(pressed: bool, hovered: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#f5fff3") if pressed else (Color("#fffdf8") if not hovered else COLOR_GOLD)
+	style.border_color = COLOR_INK
+	style.border_width_left = 14
+	style.border_width_right = 14
+	style.border_width_top = 14
+	style.border_width_bottom = 14
+	style.corner_radius_top_left = 16
+	style.corner_radius_top_right = 16
+	style.corner_radius_bottom_left = 16
+	style.corner_radius_bottom_right = 16
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	return style
+
+
+func _audio_slider_grabber() -> Texture2D:
+	if audio_slider_grabber_texture != null:
+		return audio_slider_grabber_texture
+	var diameter := 96
+	var radius := float(diameter) * 0.5
+	var border := 14.0
+	var image := Image.create(diameter, diameter, false, Image.FORMAT_RGBA8)
+	for y in range(diameter):
+		for x in range(diameter):
+			var point := Vector2(float(x) + 0.5, float(y) + 0.5)
+			var distance := point.distance_to(Vector2(radius, radius))
+			if distance <= radius - 1.0:
+				image.set_pixel(x, y, COLOR_INK if distance >= radius - border else COLOR_PANEL)
+	audio_slider_grabber_texture = ImageTexture.create_from_image(image)
+	return audio_slider_grabber_texture
 
 
 func _settings_page_button(text: String, icon_path := "", min_width := 900, icon_max_width := 128, min_height := 250) -> Button:
@@ -6659,29 +7176,15 @@ func _progress_style(color: Color) -> StyleBoxFlat:
 	return style
 
 
-func _apply_nav_style(button: Button, active: bool) -> void:
-	button.add_theme_stylebox_override("normal", _nav_tab_style(active))
-	button.add_theme_stylebox_override("hover", _nav_tab_style(true))
-	button.add_theme_stylebox_override("pressed", _nav_tab_style(true))
+func _apply_nav_style(button: Button, _active: bool) -> void:
+	button.add_theme_stylebox_override("normal", _nav_tab_style())
+	button.add_theme_stylebox_override("hover", _nav_tab_style())
+	button.add_theme_stylebox_override("pressed", _nav_tab_style())
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 
-func _nav_tab_style(active: bool) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0, 0, 0, 0)
-	style.border_color = COLOR_GOLD
-	var border := 16 if active else 0
-	style.border_width_left = border
-	style.border_width_right = border
-	style.border_width_top = border
-	style.border_width_bottom = border
-	style.corner_radius_top_left = 46
-	style.corner_radius_top_right = 46
-	style.corner_radius_bottom_left = 46
-	style.corner_radius_bottom_right = 46
-	style.content_margin_left = 28
-	style.content_margin_right = 28
-	style.content_margin_top = 24
-	style.content_margin_bottom = 24
+func _nav_tab_style() -> StyleBoxEmpty:
+	var style := StyleBoxEmpty.new()
 	return style
 
 
@@ -6741,7 +7244,9 @@ func _hero_chroma_material() -> ShaderMaterial:
 
 
 func _build_audio() -> void:
+	_ensure_audio_buses()
 	click_player = _sfx("res://assets/sfx/click.wav")
+	activity_start_player = _sfx("res://assets/sfx/activity_start_badge_whisk.wav")
 	success_players.clear()
 	for path in ACTIVITY_SUCCESS_SFX_PATHS:
 		success_players.append(_sfx(path))
@@ -6762,36 +7267,160 @@ func _build_audio() -> void:
 	bonus_jingle_player.volume_db = -7.0
 	bonus_jingle_echo_player = _sfx("res://assets/sfx/xp_spark.wav")
 	bonus_jingle_echo_player.volume_db = -10.0
+	_build_music_players()
+	_apply_audio_bus_volumes()
+
+
+func _ensure_audio_buses() -> void:
+	_ensure_audio_bus(MUSIC_BUS_NAME)
+	_ensure_audio_bus(SFX_BUS_NAME)
+
+
+func _ensure_audio_bus(bus_name: String) -> void:
+	if AudioServer.get_bus_index(bus_name) >= 0:
+		AudioServer.set_bus_send(AudioServer.get_bus_index(bus_name), "Master")
+		return
+	AudioServer.add_bus(AudioServer.bus_count)
+	AudioServer.set_bus_name(AudioServer.bus_count - 1, bus_name)
+	AudioServer.set_bus_send(AudioServer.bus_count - 1, "Master")
+
+
+func _build_music_players() -> void:
+	music_players.clear()
+	music_layer_gains = []
+	music_layer_target_gains = []
+	for track in MUSIC_TRACKS:
+		var stream := load(str(track["path"]))
+		if stream == null:
+			push_warning("Music loop missing: %s" % str(track["path"]))
+			continue
+		var player := AudioStreamPlayer.new()
+		if stream is AudioStreamWAV:
+			(stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+		elif stream is AudioStreamOggVorbis:
+			(stream as AudioStreamOggVorbis).loop = true
+		player.stream = stream
+		player.bus = MUSIC_BUS_NAME
+		player.volume_db = MUSIC_SILENCE_DB
+		add_child(player)
+		music_players.append(player)
+		music_layer_gains.append(0.0)
+		music_layer_target_gains.append(0.0)
+	music_started = false
+
+
+func _apply_audio_bus_volumes() -> void:
+	_set_audio_bus_volume(MUSIC_BUS_NAME, 0.0 if music_muted else music_volume * MUSIC_OUTPUT_GAIN)
+	_set_audio_bus_volume(SFX_BUS_NAME, 0.0 if sfx_muted else sfx_volume)
+	AudioServer.set_bus_mute(0, false)
+
+
+func _set_audio_bus_volume(bus_name: String, volume: float) -> void:
+	var bus_index := AudioServer.get_bus_index(bus_name)
+	if bus_index < 0:
+		return
+	var clamped := clampf(volume, 0.0, 1.0)
+	AudioServer.set_bus_volume_db(bus_index, linear_to_db(maxf(0.0001, clamped)) if clamped > 0.0 else MUSIC_SILENCE_DB)
 
 
 func _sfx(path: String) -> AudioStreamPlayer:
 	var player := AudioStreamPlayer.new()
 	player.stream = load(path)
+	player.bus = SFX_BUS_NAME
 	add_child(player)
 	return player
 
 
 func _play(player: AudioStreamPlayer) -> void:
-	if player != null and _can_play_audio():
+	if player != null and player.is_inside_tree() and _can_play_audio():
 		player.stop()
 		player.pitch_scale = 1.0
 		player.play()
 
 
 func _play_with_pitch(player: AudioStreamPlayer, pitch: float) -> void:
-	if player != null and _can_play_audio():
+	if player != null and player.is_inside_tree() and _can_play_audio():
 		player.stop()
 		player.pitch_scale = pitch
 		player.play()
 
 
-func _play_random_chain_move_sfx() -> void:
-	_play_chain_impact_cluster(1, 0.75, "fall")
+func _chain_proximity_gain(source: Control = null) -> float:
+	if current_screen != "skill":
+		return CHAIN_OFFSCREEN_GAIN
+	var rig := source
+	if rig == null or not is_instance_valid(rig) or not rig.is_visible_in_tree():
+		rig = _nearest_activity_lock_rig()
+	if rig == null or not is_instance_valid(rig) or not rig.is_visible_in_tree():
+		return CHAIN_OFFSCREEN_GAIN
+	var viewport_rect := _chain_audio_viewport_rect()
+	var chain_rect := rig.get_global_rect()
+	if viewport_rect.size.y <= 1.0 or chain_rect.size.y <= 1.0:
+		return 1.0
+	var visible_overlap := maxf(0.0, minf(chain_rect.end.y, viewport_rect.end.y) - maxf(chain_rect.position.y, viewport_rect.position.y))
+	var visible_ratio := clampf(visible_overlap / minf(chain_rect.size.y, viewport_rect.size.y), 0.0, 1.0)
+	var visible_gain := lerpf(CHAIN_OFFSCREEN_GAIN, 1.0, smoothstep(0.06, 0.62, visible_ratio))
+	var direction_to_chain := 0
+	var offscreen_distance := 0.0
+	if chain_rect.end.y < viewport_rect.position.y:
+		direction_to_chain = -1
+		offscreen_distance = viewport_rect.position.y - chain_rect.end.y
+	elif chain_rect.position.y > viewport_rect.end.y:
+		direction_to_chain = 1
+		offscreen_distance = chain_rect.position.y - viewport_rect.end.y
+	var toward_gain := CHAIN_OFFSCREEN_GAIN
+	if direction_to_chain != 0 and chain_audio_scroll_direction == direction_to_chain and chain_audio_scroll_focus_seconds > 0.0:
+		var focus := clampf(chain_audio_scroll_focus_seconds / CHAIN_SCROLL_TOWARD_SECONDS, 0.0, 1.0)
+		var distance := 1.0 - clampf(offscreen_distance / maxf(1.0, viewport_rect.size.y * CHAIN_SCROLL_AUDITION_DISTANCE), 0.0, 1.0)
+		var approach := smoothstep(0.0, 1.0, focus) * smoothstep(0.0, 1.0, distance)
+		toward_gain = lerpf(CHAIN_OFFSCREEN_GAIN, CHAIN_SCROLL_TOWARD_GAIN, approach)
+	return clampf(maxf(visible_gain, toward_gain), CHAIN_OFFSCREEN_GAIN, 1.0)
 
 
-func _play_chain_move_jingle_mix(kind := "drag", intensity := 0.55) -> void:
+func _nearest_activity_lock_rig() -> Control:
+	if action_cards.is_empty():
+		return null
+	var viewport_rect := _chain_audio_viewport_rect()
+	var viewport_center_y := viewport_rect.position.y + viewport_rect.size.y * 0.5
+	var best_rig: Control = null
+	var best_distance := INF
+	for raw_card in action_cards.values():
+		var card := raw_card as Dictionary
+		var overlay := card.get("lock_overlay", {}) as Dictionary
+		var overlay_root := overlay.get("root") as Control
+		var rig := overlay.get("group") as Control
+		if overlay_root == null or rig == null or not overlay_root.visible or not rig.is_visible_in_tree():
+			continue
+		var rect := rig.get_global_rect()
+		var distance := 0.0
+		if rect.end.y < viewport_rect.position.y:
+			distance = viewport_rect.position.y - rect.end.y
+		elif rect.position.y > viewport_rect.end.y:
+			distance = rect.position.y - viewport_rect.end.y
+		else:
+			distance = absf((rect.position.y + rect.size.y * 0.5) - viewport_center_y) * 0.1
+		if distance < best_distance:
+			best_distance = distance
+			best_rig = rig
+	return best_rig
+
+
+func _chain_audio_viewport_rect() -> Rect2:
+	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll) and detail_actions_scroll.is_visible_in_tree():
+		return detail_actions_scroll.get_global_rect()
+	if skills_page != null and is_instance_valid(skills_page):
+		return skills_page.get_global_rect()
+	return Rect2(Vector2.ZERO, get_viewport_rect().size)
+
+
+func _play_random_chain_move_sfx(source: Control = null) -> void:
+	_play_chain_impact_cluster(1, 0.75, "fall", _chain_proximity_gain(source))
+
+
+func _play_chain_move_jingle_mix(kind := "drag", intensity := 0.55, source: Control = null) -> void:
 	if not _can_play_audio():
 		return
+	var proximity_gain := _chain_proximity_gain(source)
 	var hit_count := 1
 	var impact_kind := str(kind)
 	if impact_kind == "click":
@@ -6800,30 +7429,31 @@ func _play_chain_move_jingle_mix(kind := "drag", intensity := 0.55) -> void:
 		hit_count = 2
 	elif randf() < CHAIN_DRAG_EXTRA_HIT_CHANCE:
 		hit_count = 2
-	_play_chain_impact_cluster(hit_count, intensity, impact_kind)
+	_play_chain_impact_cluster(hit_count, intensity, impact_kind, proximity_gain)
 	if impact_kind == "click":
-		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.78, 0.95), CHAIN_CLICK_JINGLE_TOTAL_SECONDS, CHAIN_CLICK_JINGLE_FADE_SECONDS)
+		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.78, 0.95) * proximity_gain, CHAIN_CLICK_JINGLE_TOTAL_SECONDS, CHAIN_CLICK_JINGLE_FADE_SECONDS)
 	elif impact_kind == "drag_start" and randf() < CHAIN_DRAG_JINGLE_CHANCE * 1.8:
-		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.42, 0.58))
+		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.42, 0.58) * proximity_gain)
 	elif impact_kind == "drag" and randf() < CHAIN_DRAG_JINGLE_CHANCE:
-		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.28, 0.46))
+		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.28, 0.46) * proximity_gain)
 
 
-func _play_chain_impact_cluster(hit_count: int, intensity: float, kind := "drag") -> void:
+func _play_chain_impact_cluster(hit_count: int, intensity: float, kind := "drag", proximity_gain := 1.0) -> void:
 	if chain_move_players.is_empty() or not _can_play_audio():
 		return
 	var clamped_intensity := clampf(intensity, 0.15, 1.0)
+	var clamped_proximity_gain := clampf(proximity_gain, CHAIN_OFFSCREEN_GAIN, 1.0)
 	for i in range(maxi(1, hit_count)):
 		var delay := randf_range(0.015, 0.075) * float(i)
 		if delay <= 0.0:
-			_play_chain_impact_hit(clamped_intensity, kind, i)
+			_play_chain_impact_hit(clamped_intensity, kind, i, clamped_proximity_gain)
 		else:
 			var tween := create_tween()
 			tween.tween_interval(delay)
-			tween.tween_callback(_play_chain_impact_hit.bind(clamped_intensity, kind, i))
+			tween.tween_callback(_play_chain_impact_hit.bind(clamped_intensity, kind, i, clamped_proximity_gain))
 
 
-func _play_chain_impact_hit(intensity: float, kind: String, index: int) -> void:
+func _play_chain_impact_hit(intensity: float, kind: String, index: int, proximity_gain := 1.0) -> void:
 	var player := _chain_move_player_for_hit()
 	if player == null:
 		return
@@ -6832,6 +7462,7 @@ func _play_chain_impact_hit(intensity: float, kind: String, index: int) -> void:
 		loudness += 1.6
 	elif kind == "drag":
 		loudness -= 2.2
+	loudness += linear_to_db(clampf(proximity_gain, CHAIN_OFFSCREEN_GAIN, 1.0))
 	player.volume_db = loudness - float(index) * randf_range(1.2, 3.4) + randf_range(-1.5, 1.2)
 	player.pitch_scale = randf_range(0.88, 1.14) + (intensity - 0.5) * 0.08
 	var start_offset := 0.0 if kind == "click" else randf_range(0.0, 0.045)
@@ -6855,15 +7486,16 @@ func _play_padlock_cluster_sfx() -> void:
 	_play(padlock_cluster_player)
 
 
-func _play_chain_fall_sfx_sequence() -> void:
-	_play_chain_jingle_mix()
+func _play_chain_fall_sfx_sequence(source: Control = null) -> void:
+	var proximity_gain := _chain_proximity_gain(source)
+	_play_chain_jingle_mix(0, proximity_gain)
 	var tween := create_tween()
 	tween.tween_interval(ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS * 0.28)
-	tween.tween_callback(_play_random_chain_move_sfx)
+	tween.tween_callback(_play_random_chain_move_sfx.bind(source))
 	tween.tween_interval(ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS * 0.26)
-	tween.tween_callback(_play_chain_jingle_mix.bind(1))
+	tween.tween_callback(_play_chain_jingle_mix.bind(1, proximity_gain))
 	tween.tween_interval(ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS * 0.24)
-	tween.tween_callback(_play_random_chain_move_sfx)
+	tween.tween_callback(_play_random_chain_move_sfx.bind(source))
 
 
 func _play_chain_jingle_mix(variant := 0, gain := 1.0, total_seconds := CHAIN_JINGLE_TOTAL_SECONDS, fade_seconds := CHAIN_JINGLE_FADE_SECONDS) -> void:
@@ -6918,19 +7550,244 @@ func _play_bonus_jingle() -> void:
 	tween.tween_callback(func(): _play_with_pitch(bonus_jingle_echo_player, 1.42))
 
 
+func _process_music_flow(delta: float) -> void:
+	if music_lockout_seconds > 0.0:
+		music_lockout_seconds = maxf(0.0, music_lockout_seconds - delta)
+	if music_ultimate_boost_seconds > 0.0:
+		music_ultimate_boost_seconds = maxf(0.0, music_ultimate_boost_seconds - delta)
+	if flow_failure_drag > 0.0:
+		flow_failure_drag = maxf(0.0, flow_failure_drag - delta * 0.22)
+	flow_idle_seconds = minf(MUSIC_FLOW_DEAD_SECONDS, flow_idle_seconds + delta)
+	var heat_decay := 0.04 if not running_action_id.is_empty() else 0.38
+	flow_heat = maxf(0.0, flow_heat - delta * heat_decay)
+	if not running_action_id.is_empty():
+		flow_active_action_seconds += delta
+	if music_cycle_active:
+		_ensure_music_playing()
+	var target_intensity := _music_flow_target_intensity()
+	music_layer_target_gains = _music_targets_for_intensity(target_intensity)
+	_apply_music_layer_fades(delta)
+	if music_cycle_active and target_intensity == 0 and _music_layers_are_silent():
+		music_cycle_active = false
+
+
+func _ensure_music_playing() -> void:
+	if not audio_unlocked_by_input or music_players.is_empty() or not is_inside_tree():
+		return
+	if music_started:
+		return
+	var started_count := 0
+	for player in music_players:
+		if player == null or not player.is_inside_tree():
+			continue
+		player.stream_paused = false
+		player.volume_db = MUSIC_SILENCE_DB
+		player.play(0.0)
+		started_count += 1
+	music_started = started_count > 0
+	if music_started:
+		print("music players started; volume=", music_volume, " muted=", music_muted, " players=", started_count)
+
+
+func _record_music_flow_start() -> void:
+	flow_idle_seconds = 0.0
+	flow_active_action_seconds = maxf(flow_active_action_seconds, 1.0)
+	flow_heat = clampf(flow_heat + 2.5, 0.0, 36.0)
+
+
+func _record_music_flow_action(success: bool, streak_step: int, streak_bonus: bool, medal_unlocked: bool, skill_level_up: bool, stamina_cost: int) -> void:
+	flow_actions_taken += 1
+	if music_cycle_active:
+		flow_idle_seconds = 0.0
+	var heat_gain := 0.7
+	if success:
+		heat_gain += 0.55 + float(clampi(streak_step, 1, ACTIVITY_STREAK_BONUS_STEP)) * 0.22
+	else:
+		heat_gain = 0.28
+		flow_failure_drag = minf(4.0, flow_failure_drag + 1.0)
+	if streak_bonus:
+		heat_gain += 2.25
+		music_ultimate_boost_seconds = maxf(music_ultimate_boost_seconds, 7.0)
+	if medal_unlocked:
+		heat_gain += 1.35
+		music_ultimate_boost_seconds = maxf(music_ultimate_boost_seconds, 4.5)
+	if skill_level_up:
+		heat_gain += 1.7
+		music_ultimate_boost_seconds = maxf(music_ultimate_boost_seconds, 5.5)
+	if success and flow_actions_taken >= MUSIC_BASE_ACTION_THRESHOLD and flow_heat >= 18.0 and randf() < 0.09:
+		music_ultimate_boost_seconds = maxf(music_ultimate_boost_seconds, 3.8)
+	flow_heat = clampf(flow_heat + heat_gain, 0.0, 36.0)
+	if flow_actions_taken >= MUSIC_BASE_ACTION_THRESHOLD:
+		music_start_chance_unlocked = true
+	if _maybe_trigger_music_quiet_break(stamina_cost):
+		return
+	if music_start_chance_unlocked and not music_cycle_active and music_lockout_seconds <= 0.0 and randf() < MUSIC_COMPLETION_START_CHANCE:
+		_start_music_cycle()
+
+
+func _maybe_trigger_music_quiet_break(stamina_cost: int) -> bool:
+	if stamina_cost >= MUSIC_QUIET_BREAK_STAMINA_CEILING or music_lockout_seconds > 0.0:
+		return false
+	if not music_cycle_active and _music_layers_are_silent():
+		return false
+	if randf() >= MUSIC_QUIET_BREAK_CHANCE:
+		return false
+	_trigger_music_quiet_break()
+	return true
+
+
+func _trigger_music_quiet_break() -> void:
+	music_cycle_active = false
+	music_lockout_seconds = MUSIC_QUIET_BREAK_LOCKOUT_SECONDS
+	music_quiet_fade_remaining = MUSIC_QUIET_BREAK_FADE_SECONDS
+	music_quiet_fade_start_gains = music_layer_gains.duplicate()
+	music_layer_target_gains = _music_targets_for_intensity(0)
+	music_ultimate_boost_seconds = 0.0
+	flow_idle_seconds = MUSIC_FLOW_DEAD_SECONDS
+	print("music quiet break started; lockout=", music_lockout_seconds, " fade=", music_quiet_fade_remaining)
+
+
+func _nudge_music_flow_down(amount: float) -> void:
+	flow_failure_drag = minf(4.0, flow_failure_drag + amount)
+	flow_heat = maxf(0.0, flow_heat - amount * 1.8)
+
+
+func _start_music_cycle() -> void:
+	if music_lockout_seconds > 0.0:
+		return
+	music_cycle_active = true
+	flow_idle_seconds = 0.0
+	flow_active_action_seconds = maxf(flow_active_action_seconds, 1.0)
+	flow_heat = maxf(flow_heat, 6.0)
+	_ensure_music_playing()
+	print("music cycle started; actions=", flow_actions_taken, " heat=", flow_heat)
+
+
+func _maybe_start_music_cycle_on_launch() -> void:
+	if not music_start_chance_unlocked or music_cycle_active or music_muted or music_lockout_seconds > 0.0:
+		return
+	if randf() >= MUSIC_LAUNCH_START_CHANCE:
+		return
+	audio_unlocked_by_input = true
+	flow_actions_taken = maxi(flow_actions_taken, MUSIC_BASE_ACTION_THRESHOLD)
+	_start_music_cycle()
+
+
+func _saved_music_groove_floor() -> int:
+	var estimated := 0
+	for skill_id in skills.keys():
+		estimated += int(floor(float(skills.get(skill_id, {}).get("xp", 0)) / 4.0))
+	for key in mastery.keys():
+		estimated += int(floor(float(mastery.get(key, {}).get("xp", 0)) / 3.0))
+	return clampi(estimated, 0, MUSIC_BASE_ACTION_THRESHOLD)
+
+
+func _music_flow_target_intensity() -> int:
+	if not audio_unlocked_by_input or not music_cycle_active or music_lockout_seconds > 0.0:
+		return 0
+	if running_action_id.is_empty() and flow_idle_seconds >= MUSIC_FLOW_DEAD_SECONDS:
+		return 0
+	var effective_heat := flow_heat + float(activity_streak_count) * 0.72 - flow_failure_drag
+	var intensity := 1
+	if effective_heat >= 15.0 or activity_streak_count >= ACTIVITY_STREAK_BONUS_STEP or _active_action_stamina_cost() >= 4:
+		intensity = 2
+	if music_ultimate_boost_seconds > 0.0 and effective_heat >= 11.0:
+		intensity = 3
+	if running_action_id.is_empty() and flow_idle_seconds > MUSIC_FLOW_IDLE_FADE_SECONDS:
+		intensity = mini(intensity, 1)
+	if flow_failure_drag >= 2.7:
+		intensity = maxi(0, intensity - 1)
+	return intensity
+
+
+func _active_action_stamina_cost() -> int:
+	if running_skill_id.is_empty() or running_action_id.is_empty():
+		return 0
+	var action := _action_data(running_skill_id, running_action_id)
+	return 0 if action.is_empty() else _effective_stamina(action)
+
+
+func _music_targets_for_intensity(intensity: int) -> Array:
+	match intensity:
+		0:
+			return [0.0, 0.0, 0.0]
+		1:
+			return [1.0, 0.0, 0.0]
+		2:
+			return [0.70, 1.0, 0.0]
+		_:
+			return [0.56, 0.82, 1.0]
+
+
+func _music_layers_are_silent() -> bool:
+	for gain in music_layer_gains:
+		if float(gain) > 0.01:
+			return false
+	return true
+
+
+func _apply_music_layer_fades(delta: float) -> void:
+	if music_players.is_empty():
+		return
+	if music_quiet_fade_remaining > 0.0:
+		music_quiet_fade_remaining = maxf(0.0, music_quiet_fade_remaining - delta)
+		var fade_ratio := music_quiet_fade_remaining / maxf(0.001, MUSIC_QUIET_BREAK_FADE_SECONDS)
+		for i in range(music_players.size()):
+			var player := music_players[i] as AudioStreamPlayer
+			if player == null:
+				continue
+			var start_gain := float(music_quiet_fade_start_gains[i]) if i < music_quiet_fade_start_gains.size() else 0.0
+			var next_gain := start_gain * fade_ratio
+			if music_quiet_fade_remaining <= 0.0 or next_gain < 0.002:
+				next_gain = 0.0
+			music_layer_gains[i] = next_gain
+			var layer_boost := float(MUSIC_LAYER_VOLUME_BOOST_DB[i]) if i < MUSIC_LAYER_VOLUME_BOOST_DB.size() else 0.0
+			player.volume_db = linear_to_db(maxf(0.0001, next_gain)) + layer_boost if next_gain > 0.0 else MUSIC_SILENCE_DB
+		return
+	for i in range(music_players.size()):
+		var player := music_players[i] as AudioStreamPlayer
+		if player == null:
+			continue
+		var current := float(music_layer_gains[i]) if i < music_layer_gains.size() else 0.0
+		var target := float(music_layer_target_gains[i]) if i < music_layer_target_gains.size() else 0.0
+		var fade_seconds := MUSIC_BASE_FADE_SECONDS if i == 0 else MUSIC_LAYER_FADE_SECONDS
+		if i == 2:
+			fade_seconds = MUSIC_ULTIMATE_FADE_SECONDS
+		if target < current:
+			fade_seconds += 1.8
+		var blend := 1.0 if delta <= 0.0 else 1.0 - exp(-delta / maxf(0.001, fade_seconds))
+		var next_gain := lerpf(current, target, blend)
+		if absf(next_gain - target) < 0.002:
+			next_gain = target
+		music_layer_gains[i] = next_gain
+		var layer_boost := float(MUSIC_LAYER_VOLUME_BOOST_DB[i]) if i < MUSIC_LAYER_VOLUME_BOOST_DB.size() else 0.0
+		player.volume_db = linear_to_db(maxf(0.0001, next_gain)) + layer_boost if next_gain > 0.0 else MUSIC_SILENCE_DB
+	if music_started and music_layer_target_gains.size() > 0 and float(music_layer_target_gains[0]) > 0.0 and music_layer_gains.size() > 0 and float(music_layer_gains[0]) > 0.12:
+		if not bool(get_meta("music_audible_logged", false)):
+			set_meta("music_audible_logged", true)
+			print("music base audible; gain=", music_layer_gains[0], " layer_db=", music_players[0].volume_db, " bus_volume=", music_volume, " muted=", music_muted)
+
+
 func _can_play_audio() -> bool:
-	return audio_unlocked_by_input and not is_muted
+	return audio_unlocked_by_input
+
+
+func _unlock_audio_for_gameplay() -> void:
+	if audio_unlocked_by_input:
+		return
+	audio_unlocked_by_input = true
+	_ensure_music_playing()
 
 
 func _note_player_input(event: InputEvent) -> void:
 	if audio_unlocked_by_input:
 		return
 	if event is InputEventMouseButton and event.pressed:
-		audio_unlocked_by_input = true
+		_unlock_audio_for_gameplay()
 	elif event is InputEventScreenTouch and event.pressed:
-		audio_unlocked_by_input = true
+		_unlock_audio_for_gameplay()
 	elif event is InputEventKey and event.pressed and not event.echo:
-		audio_unlocked_by_input = true
+		_unlock_audio_for_gameplay()
 
 
 func _clear(node: Node) -> void:
