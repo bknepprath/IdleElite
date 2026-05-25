@@ -431,18 +431,20 @@ class ActivityLockNumber:
 class ActivityLockRig:
 	extends Control
 
-	signal chain_moved
+	signal chain_moved(kind: String, intensity: float)
 	signal padlock_clicked
 
 	const LINKS_PER_SIDE := 6
 	const CENTER_CHAIN_LINKS := 3
 	const LINK_SIZE := Vector2(188, 116)
 	const PADLOCK_SIZE := Vector2(540, 590)
+	const PADLOCK_SHADOW_OFFSET := Vector2(0, 16)
 	const CONSTRAINT_PASSES := 7
 	const LOCK_DRAG_DEADZONE := 14.0
 	const CHAIN_SFX_COOLDOWN_MSEC := 170
 	const CHAIN_SFX_MOVE_DISTANCE := 38.0
 	const LOCK_CLICK_SHAKE_SECONDS := 0.26
+	const UNLOCK_DROP_SECONDS := 1.15
 
 	var link_texture: Texture2D
 	var padlock_texture: Texture2D
@@ -467,6 +469,9 @@ class ActivityLockRig:
 	var last_chain_sound_offset := Vector2.ZERO
 	var click_shake_remaining := 0.0
 	var click_shake_direction := 1.0
+	var unlock_drop_active := false
+	var unlock_drop_progress := 0.0
+	var unlock_drop_tween: Tween
 	var rng := RandomNumberGenerator.new()
 
 	func setup(next_link_texture: Texture2D, next_padlock_texture: Texture2D, unlock_level: int, font: Font, fallback_font: Font) -> void:
@@ -485,6 +490,35 @@ class ActivityLockRig:
 
 	func unlock_impulse() -> void:
 		_rattle_lock()
+
+	func reset_unlock_drop_animation() -> void:
+		if unlock_drop_tween != null and unlock_drop_tween.is_valid():
+			unlock_drop_tween.kill()
+		unlock_drop_tween = null
+		unlock_drop_active = false
+		unlock_drop_progress = 0.0
+		lock_offset = Vector2.ZERO
+		lock_rotation = 0.0
+		_place_padlock(lock_offset, lock_rotation)
+		queue_redraw()
+
+	func play_unlock_drop_animation() -> void:
+		reset_unlock_drop_animation()
+		unlock_drop_active = true
+		click_shake_direction = -1.0 if rng.randf() < 0.5 else 1.0
+		_pull_chains_from_lock(Vector2(0.2 * click_shake_direction, 1.0), 58.0)
+		unlock_drop_tween = create_tween()
+		unlock_drop_tween.tween_method(_set_unlock_drop_progress, 0.0, 1.0, UNLOCK_DROP_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+
+	func _set_unlock_drop_progress(progress: float) -> void:
+		unlock_drop_progress = clampf(progress, 0.0, 1.0)
+		var gravity := unlock_drop_progress * unlock_drop_progress
+		var fallover := smoothstep(0.28, 1.0, unlock_drop_progress)
+		var settling_wobble := sin(unlock_drop_progress * PI * 2.25) * 0.08 * (1.0 - unlock_drop_progress)
+		lock_offset = Vector2(click_shake_direction * 26.0 * unlock_drop_progress, size.y * 0.66 * gravity)
+		lock_rotation = (1.38 * click_shake_direction * fallover) + settling_wobble
+		_place_padlock(lock_offset, lock_rotation)
+		queue_redraw()
 
 	func _build(font: Font, fallback_font: Font) -> void:
 		_clear_children()
@@ -562,13 +596,15 @@ class ActivityLockRig:
 	func _process(delta: float) -> void:
 		if size.x <= 1.0 or size.y <= 1.0:
 			return
+		if unlock_drop_active:
+			return
 		if pressing_lock and dragging_lock:
 			var target := get_local_mouse_position() - press_position + drag_start_lock_offset
 			var next_offset := lock_offset.lerp(target, 1.0 - exp(-30.0 * delta))
 			lock_velocity = (next_offset - lock_offset) / maxf(delta, 0.001)
 			lock_offset = next_offset
 			physics_active = true
-			_emit_chain_moved_if_ready()
+			_emit_chain_moved_if_ready(false, "drag")
 		elif physics_active:
 			lock_velocity += -lock_offset * 72.0 * delta
 			lock_velocity *= exp(-9.5 * delta)
@@ -720,7 +756,7 @@ class ActivityLockRig:
 				physics_active = true
 				if started_dragging:
 					last_chain_sound_offset = lock_offset
-					_emit_chain_moved_if_ready(true)
+					_emit_chain_moved_if_ready(true, "drag_start")
 				accept_event()
 		elif event is InputEventScreenTouch:
 			if event.pressed:
@@ -745,10 +781,10 @@ class ActivityLockRig:
 				physics_active = true
 				if started_dragging:
 					last_chain_sound_offset = lock_offset
-					_emit_chain_moved_if_ready(true)
+					_emit_chain_moved_if_ready(true, "drag_start")
 				accept_event()
 
-	func _emit_chain_moved_if_ready(force := false) -> void:
+	func _emit_chain_moved_if_ready(force := false, kind := "drag") -> void:
 		var now := Time.get_ticks_msec()
 		if not force and now - last_chain_sound_msec < CHAIN_SFX_COOLDOWN_MSEC:
 			return
@@ -756,14 +792,15 @@ class ActivityLockRig:
 			return
 		last_chain_sound_msec = now
 		last_chain_sound_offset = lock_offset
-		chain_moved.emit()
+		var intensity := clampf(lock_velocity.length() / 620.0, 0.25, 1.0)
+		chain_moved.emit(kind, intensity)
 
 	func _click_rattle_lock() -> void:
 		click_shake_remaining = LOCK_CLICK_SHAKE_SECONDS
 		click_shake_direction = -1.0 if rng.randf() < 0.5 else 1.0
 		lock_velocity += Vector2(220.0 * click_shake_direction, rng.randf_range(-60.0, 70.0))
 		_pull_chains_from_lock(Vector2(1.0 * click_shake_direction, 0.18), 44.0)
-		_emit_chain_moved_if_ready(true)
+		_emit_chain_moved_if_ready(true, "click")
 		physics_active = true
 
 	func _pull_chains_from_lock(direction: Vector2, force: float) -> void:
@@ -797,6 +834,11 @@ class ActivityLockRig:
 		physics_active = true
 
 	func _draw() -> void:
+		if unlock_drop_active and unlock_drop_progress >= 0.08:
+			for side in [-1, 1]:
+				var dropped_links := _chain_render_links_from_points(_dropped_chain_path_points(side), 100 if side > 0 else 0)
+				_draw_interlocked_chain(dropped_links, 0)
+			return
 		var render_links := _chain_render_links()
 		_draw_interlocked_chain(render_links, 0)
 
@@ -821,7 +863,9 @@ class ActivityLockRig:
 		return points
 
 	func _chain_render_links() -> Array:
-		var points := _chain_path_points()
+		return _chain_render_links_from_points(_chain_path_points(), 0)
+
+	func _chain_render_links_from_points(points: Array, first_index := 0) -> Array:
 		var render_links := []
 		for i in range(points.size()):
 			var previous_index := maxi(i - 1, 0)
@@ -832,14 +876,34 @@ class ActivityLockRig:
 			var rotation := clampf(atan2(tangent.y, maxf(tangent.x, 1.0)), -0.45, 0.45)
 			var weave := -1.0 if i % 2 == 0 else 1.0
 			rotation += weave * 0.035
+			var link_index := first_index + i
 			render_links.append({
 				"center": points[i] as Vector2,
 				"rotation": rotation,
 				"size": LINK_SIZE,
-				"index": i,
-				"front_side": 1 if i % 2 == 0 else -1
+				"index": link_index,
+				"front_side": 1 if link_index % 2 == 0 else -1
 			})
 		return render_links
+
+	func _dropped_chain_path_points(side: int) -> Array:
+		var points := []
+		var drop := unlock_drop_progress * unlock_drop_progress
+		var rest := smoothstep(0.68, 1.0, unlock_drop_progress)
+		var outer_anchor := _outer_chain_anchor(side)
+		var inner_start := _lock_chain_anchor(side, Vector2.ZERO)
+		var ground_y := size.y * 0.91
+		var inner_ground := Vector2(size.x * 0.5 + float(side) * LINK_SIZE.x * 0.62, ground_y)
+		var inner_anchor := inner_start.lerp(inner_ground, drop)
+		for i in range(LINKS_PER_SIDE + 1):
+			var t := float(i) / float(LINKS_PER_SIDE)
+			var point := outer_anchor.lerp(inner_anchor, t)
+			point.y += sin(t * PI) * (size.y * 0.07 + drop * size.y * 0.16)
+			if t > 0.38:
+				var laid_y := ground_y - sin((1.0 - t) * PI) * 22.0
+				point.y = lerpf(point.y, laid_y, rest)
+			points.append(point)
+		return points
 
 	func _draw_interlocked_chain(render_links: Array, index := 0) -> void:
 		if index >= render_links.size():
@@ -911,7 +975,7 @@ class ActivityLockRig:
 		var lock_position := base_lock_position + offset
 		if padlock_shadow != null:
 			padlock_shadow.size = PADLOCK_SIZE
-			padlock_shadow.position = lock_position + Vector2(12, 16)
+			padlock_shadow.position = lock_position + PADLOCK_SHADOW_OFFSET
 			padlock_shadow.pivot_offset = PADLOCK_SIZE * 0.5
 			padlock_shadow.rotation = rotation
 		if padlock != null:
@@ -955,6 +1019,7 @@ class MobileScrollContainer:
 	var pull_raw_offset := 0.0
 	var pull_offset := 0.0
 	var child_click_suppressed := false
+	var input_locked_by_activity_lock := false
 	var scroll_tween: Tween
 	var pull_tween: Tween
 
@@ -968,10 +1033,21 @@ class MobileScrollContainer:
 			_set_pull_raw_offset(0.0)
 			_cancel_pull_tween()
 
+	func set_input_locked_by_activity_lock(locked: bool) -> void:
+		input_locked_by_activity_lock = locked
+		if locked:
+			drag_tracking = false
+			drag_scrolling = false
+			drag_touch_index = -1
+			velocity = 0.0
+			child_click_suppressed = false
+			_cancel_scroll_tween()
+			_cancel_pull_tween()
+
 	func _input(event: InputEvent) -> void:
 		if not is_visible_in_tree():
 			return
-		if _modal_blocks_this_scroll():
+		if input_locked_by_activity_lock or _modal_blocks_this_scroll():
 			drag_tracking = false
 			drag_scrolling = false
 			velocity = 0.0
@@ -1062,7 +1138,7 @@ class MobileScrollContainer:
 				user_scroll_direction.emit(-1)
 
 	func _process(delta: float) -> void:
-		if _modal_blocks_this_scroll():
+		if input_locked_by_activity_lock or _modal_blocks_this_scroll():
 			velocity = 0.0
 			return
 		if drag_tracking or absf(pull_offset) > 0.0 or absf(velocity) < 4.0:
@@ -1329,15 +1405,26 @@ const CHAIN_MOVE_SFX_PATHS := [
 	"res://assets/sfx/chain_move_distant_chain.wav",
 	"res://assets/sfx/chain_move_tight_ui.wav",
 ]
+const CHAIN_MOVE_PLAYER_COPIES := 3
+const CHAIN_DRAG_EXTRA_HIT_CHANCE := 0.32
+const CHAIN_DRAG_JINGLE_CHANCE := 0.12
+const CHAIN_CLICK_EXTRA_HIT_CHANCE := 0.72
 const CHAIN_JINGLE_SFX_PATH := "res://assets/sfx/Jingle Chains.wav"
+const CHAIN_JINGLE_MIX_LAYER_COUNT := 2
+const CHAIN_JINGLE_TOTAL_SECONDS := 1.5
+const CHAIN_JINGLE_FADE_SECONDS := 0.34
+const CHAIN_CLICK_JINGLE_TOTAL_SECONDS := 0.48
+const CHAIN_CLICK_JINGLE_FADE_SECONDS := 0.24
 const PADLOCK_CLUSTER_SFX_PATH := "res://assets/sfx/padlock_cluster.wav"
-const ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS := 4.92
-const ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS := 2.04
-const ACTIVITY_UNLOCK_CHAIN_FADE_DELAY := 2.76
+const ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS := 1.15
+const ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS := 0.85
+const ACTIVITY_UNLOCK_CHAIN_FADE_DELAY := 1.05
+const ACTIVITY_PREVIEW_FADE_IN_SECONDS := 1.18
 const ACTIVITY_BONUS_JINGLE_DELAY := 0.08
 const AD_TEST_UNIT_ANDROID_REWARDED := "ca-app-pub-3940256099942544/5224354917"
 const AD_LIVE_UNIT_ANDROID_REWARDED := "ca-app-pub-3570919669688101/7376748559"
 const MODAL_OVERLAY_Z := 4096
+const ACHIEVEMENT_TOAST_CANVAS_LAYER := 128
 const TARGET_FRAME_RATE := 120
 const ACHIEVEMENTS_MODAL_SIZE := Vector2(1760, 3000)
 const ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN := Vector2(64, 80)
@@ -1346,6 +1433,7 @@ const ACHIEVEMENT_TOAST_SIZE := Vector2(1500, 360)
 const ACHIEVEMENT_TOAST_GAP := 28.0
 const ACHIEVEMENT_TOAST_VIEWPORT_MARGIN := Vector2(36, 36)
 const ACHIEVEMENT_TOAST_EXIT_DELAY := 4.0
+const ACHIEVEMENT_TOAST_DISMISS_GRACE_SECONDS := 0.35
 const GLOBAL_BUFFS_MODAL_MIN_HEIGHT := 1440.0
 const GLOBAL_BUFFS_MODAL_BASE_HEIGHT := 1260.0
 const GLOBAL_BUFFS_MODAL_ROW_HEIGHT := 120.0
@@ -1533,6 +1621,7 @@ var skill_swipe_animation_mode := ""
 var skill_swipe_drag_base_x := 0.0
 var skill_swipe_child_click_suppressed := false
 var skill_swipe_handoff_cover: Control
+var activity_lock_input_active := false
 var settings_overlay: Control
 var settings_panel: PanelContainer
 var achievements_overlay: Control
@@ -1543,6 +1632,8 @@ var achievements_list_stack: VBoxContainer
 var achievements_tab_buttons := {}
 var achievements_hide_completed: CheckBox
 var achievements_modal_tab := "achievements"
+var achievement_toast_layer: CanvasLayer
+var achievement_toast_root: Control
 var achievement_toasts := []
 var mute_button: Button
 var click_player: AudioStreamPlayer
@@ -1601,7 +1692,6 @@ func _input(event: InputEvent) -> void:
 		_cancel_skill_swipe_feedback()
 		return
 	if _route_activity_lock_input(event):
-		_cancel_skill_swipe_feedback()
 		get_viewport().set_input_as_handled()
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -1654,8 +1744,28 @@ func _route_activity_lock_input(event: InputEvent) -> bool:
 		if overlay_root == null or rig == null or not overlay_root.visible or not rig.visible:
 			continue
 		if rig.handle_pointer_event(event):
+			activity_lock_input_active = not _activity_lock_input_released(event)
+			_set_activity_lock_page_scrolling_disabled(activity_lock_input_active)
+			_cancel_skill_swipe_feedback(false)
 			return true
 	return false
+
+
+func _activity_lock_input_released(event: InputEvent) -> bool:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		return not event.pressed
+	if event is InputEventScreenTouch:
+		return not event.pressed
+	return false
+
+
+func _set_activity_lock_page_scrolling_disabled(disabled: bool) -> void:
+	if detail_actions_scroll != null:
+		detail_actions_scroll.set_input_locked_by_activity_lock(disabled)
+	if disabled:
+		skill_swipe_tracking = false
+		skill_swipe_horizontal = false
+		skill_swipe_touch_index = -1
 
 
 func _notification(what: int) -> void:
@@ -1685,6 +1795,18 @@ func _build_ui() -> void:
 	_build_nav_bar()
 	_build_settings_overlay()
 	_build_achievements_overlay()
+	_build_achievement_toast_layer()
+
+
+func _build_achievement_toast_layer() -> void:
+	achievement_toast_layer = CanvasLayer.new()
+	achievement_toast_layer.layer = ACHIEVEMENT_TOAST_CANVAS_LAYER
+	add_child(achievement_toast_layer)
+
+	achievement_toast_root = Control.new()
+	achievement_toast_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	achievement_toast_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	achievement_toast_layer.add_child(achievement_toast_root)
 
 
 func _build_home_page() -> void:
@@ -4294,14 +4416,14 @@ func _activity_lock_overlay(parent: Control, unlock_level: int) -> Dictionary:
 	var overlay := Control.new()
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_PASS
-	overlay.clip_contents = true
+	overlay.clip_contents = false
 	overlay.z_index = 225
 	parent.add_child(overlay)
 
 	var group := ActivityLockRig.new()
 	group.setup(_texture(UNLOCK_CHAIN_LINK_TEXTURE), _texture(UNLOCK_PADLOCK_TEXTURE), unlock_level, app_bold_font, app_font)
 	group.set_anchors_preset(Control.PRESET_FULL_RECT)
-	group.clip_contents = true
+	group.clip_contents = false
 	group.chain_moved.connect(_play_chain_move_jingle_mix)
 	group.padlock_clicked.connect(_play_padlock_cluster_sfx)
 	overlay.add_child(group)
@@ -4347,6 +4469,8 @@ func _reset_activity_lock_overlay_pieces(card: Dictionary) -> void:
 		piece.scale = Vector2.ONE
 		piece.rotation = 0.0
 		piece.pivot_offset = piece.size * 0.5
+		if piece is ActivityLockRig:
+			(piece as ActivityLockRig).reset_unlock_drop_animation()
 
 
 func _queue_activity_unlock_ceremony(skill_id: String, old_level: int, new_level: int) -> void:
@@ -4437,14 +4561,12 @@ func _play_activity_unlock_ceremony(card: Dictionary) -> void:
 	if button != null:
 		button.disabled = true
 	if group is ActivityLockRig:
-		(group as ActivityLockRig).unlock_impulse()
+		(group as ActivityLockRig).play_unlock_drop_animation()
 
 	_play_chain_fall_sfx_sequence()
 	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(group, "position", group.position + Vector2(0, 650), ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.tween_property(group, "rotation", 0.12, ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.tween_property(group, "modulate:a", 0.0, ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS).set_delay(ACTIVITY_UNLOCK_CHAIN_FADE_DELAY)
+	tween.tween_interval(ACTIVITY_UNLOCK_CHAIN_FADE_DELAY)
+	tween.tween_property(group, "modulate:a", 0.0, ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS)
 	tween.finished.connect(func():
 		overlay_root.visible = false
 		card["unlock_ceremony_active"] = false
@@ -4466,8 +4588,8 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	root.modulate = Color(1, 1, 1, 0)
 	var tween := create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(root, "modulate:a", 1.0, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_property(root, "position:y", target_y, 0.38).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(root, "modulate:a", 1.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(root, "position:y", target_y, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 
 func _refresh_skill_detail_after_activity_unlock_ceremony() -> void:
@@ -4491,8 +4613,7 @@ func _play_activity_preview_fade_in_by_id(action_id: String) -> void:
 		activity_unlock_preview_after_ceremony_id = ""
 		return
 	var card := action_cards[key] as Dictionary
-	if bool(card.get("fade_in_pending", false)):
-		_play_activity_preview_fade_in(card)
+	_play_activity_preview_fade_in(card)
 	activity_unlock_preview_after_ceremony_id = ""
 
 
@@ -4687,6 +4808,8 @@ func _show_home() -> void:
 
 
 func _show_skills() -> void:
+	if current_screen == "menu":
+		return
 	current_screen = "menu"
 	_play(click_player)
 	_render_screen()
@@ -5281,7 +5404,8 @@ func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	banner.mouse_filter = Control.MOUSE_FILTER_STOP
 	banner.custom_minimum_size = presentation_size
 	banner.size = presentation_size
-	add_child(banner)
+	var toast_parent := achievement_toast_root if achievement_toast_root != null and is_instance_valid(achievement_toast_root) else self
+	toast_parent.add_child(banner)
 	achievement_toasts.append(banner)
 	var card := _achievement_toast_card(banner_data)
 	card.custom_minimum_size = ACHIEVEMENT_TOAST_SIZE
@@ -5310,6 +5434,7 @@ func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	banner.scale = Vector2(0.92, 0.92)
 	banner.pivot_offset = presentation_size * 0.5
 	var exit_offset := Vector2(0, 110.0 * fitted_scale)
+	banner.set_meta("achievement_dismiss_after_msec", Time.get_ticks_msec() + int(ACHIEVEMENT_TOAST_DISMISS_GRACE_SECONDS * 1000.0))
 	banner.gui_input.connect(_on_achievement_toast_gui_input.bind(banner, exit_offset))
 
 	var tween := create_tween()
@@ -5321,16 +5446,35 @@ func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	tween.tween_property(banner, "scale", Vector2(1.03, 1.03), 0.14).set_delay(0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(banner, "scale", Vector2.ONE, 0.16).set_delay(0.48).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.chain().tween_interval(ACHIEVEMENT_TOAST_EXIT_DELAY)
-	tween.tween_callback(_dismiss_achievement_toast.bind(banner, exit_offset))
+	tween.chain().tween_callback(_dismiss_achievement_toast.bind(banner, exit_offset))
 
 
 func _on_achievement_toast_gui_input(event: InputEvent, banner: Control, exit_offset: Vector2) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+	if _achievement_toast_accepts_dismiss_event(event, banner):
 		_dismiss_achievement_toast(banner, exit_offset)
 		get_viewport().set_input_as_handled()
-	elif event is InputEventScreenTouch and event.pressed:
-		_dismiss_achievement_toast(banner, exit_offset)
-		get_viewport().set_input_as_handled()
+
+
+func _achievement_toast_accepts_dismiss_event(event: InputEvent, banner: Control) -> bool:
+	if banner == null or not is_instance_valid(banner):
+		return false
+	if Time.get_ticks_msec() < int(banner.get_meta("achievement_dismiss_after_msec", 0)):
+		return false
+	if event is InputEventMouseButton:
+		if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
+			return false
+		return _achievement_toast_contains_canvas_press(banner, event.global_position)
+	if event is InputEventScreenTouch:
+		if not event.pressed:
+			return false
+		return _achievement_toast_contains_canvas_press(banner, event.position)
+	return false
+
+
+func _achievement_toast_contains_canvas_press(banner: Control, press_position: Vector2) -> bool:
+	var toast_rect := Rect2(Vector2.ZERO, banner.size)
+	var canvas_local := banner.get_global_transform_with_canvas().affine_inverse() * press_position
+	return toast_rect.has_point(canvas_local)
 
 
 func _dismiss_achievement_toast(banner: Control, exit_offset: Vector2) -> void:
@@ -6603,7 +6747,8 @@ func _build_audio() -> void:
 		success_players.append(_sfx(path))
 	chain_move_players.clear()
 	for path in CHAIN_MOVE_SFX_PATHS:
-		chain_move_players.append(_sfx(path))
+		for i in range(CHAIN_MOVE_PLAYER_COPIES):
+			chain_move_players.append(_sfx(path))
 	chain_jingle_players.clear()
 	for i in range(3):
 		var player := _sfx(CHAIN_JINGLE_SFX_PATH)
@@ -6641,24 +6786,69 @@ func _play_with_pitch(player: AudioStreamPlayer, pitch: float) -> void:
 
 
 func _play_random_chain_move_sfx() -> void:
-	if chain_move_players.is_empty() or not _can_play_audio():
-		return
-	var player := chain_move_players.pick_random() as AudioStreamPlayer
-	_play_with_pitch(player, randf_range(0.96, 1.04))
+	_play_chain_impact_cluster(1, 0.75, "fall")
 
 
-func _play_chain_move_jingle_mix() -> void:
+func _play_chain_move_jingle_mix(kind := "drag", intensity := 0.55) -> void:
 	if not _can_play_audio():
 		return
-	var shuffled_move_players := chain_move_players.duplicate()
-	shuffled_move_players.shuffle()
-	var move_count := mini(2, shuffled_move_players.size())
-	for i in range(move_count):
-		var player := shuffled_move_players[i] as AudioStreamPlayer
-		player.volume_db = -3.0 - float(i) * 2.5
-		_play_with_pitch(player, randf_range(0.94, 1.08))
-	var variant := randi_range(0, 3)
-	_play_chain_jingle_mix(variant)
+	var hit_count := 1
+	var impact_kind := str(kind)
+	if impact_kind == "click":
+		hit_count = 2 + (1 if randf() < CHAIN_CLICK_EXTRA_HIT_CHANCE else 0)
+	elif impact_kind == "drag_start":
+		hit_count = 2
+	elif randf() < CHAIN_DRAG_EXTRA_HIT_CHANCE:
+		hit_count = 2
+	_play_chain_impact_cluster(hit_count, intensity, impact_kind)
+	if impact_kind == "click":
+		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.78, 0.95), CHAIN_CLICK_JINGLE_TOTAL_SECONDS, CHAIN_CLICK_JINGLE_FADE_SECONDS)
+	elif impact_kind == "drag_start" and randf() < CHAIN_DRAG_JINGLE_CHANCE * 1.8:
+		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.42, 0.58))
+	elif impact_kind == "drag" and randf() < CHAIN_DRAG_JINGLE_CHANCE:
+		_play_chain_jingle_mix(randi_range(0, 3), randf_range(0.28, 0.46))
+
+
+func _play_chain_impact_cluster(hit_count: int, intensity: float, kind := "drag") -> void:
+	if chain_move_players.is_empty() or not _can_play_audio():
+		return
+	var clamped_intensity := clampf(intensity, 0.15, 1.0)
+	for i in range(maxi(1, hit_count)):
+		var delay := randf_range(0.015, 0.075) * float(i)
+		if delay <= 0.0:
+			_play_chain_impact_hit(clamped_intensity, kind, i)
+		else:
+			var tween := create_tween()
+			tween.tween_interval(delay)
+			tween.tween_callback(_play_chain_impact_hit.bind(clamped_intensity, kind, i))
+
+
+func _play_chain_impact_hit(intensity: float, kind: String, index: int) -> void:
+	var player := _chain_move_player_for_hit()
+	if player == null:
+		return
+	var loudness := lerpf(-12.0, -2.5, intensity)
+	if kind == "click":
+		loudness += 1.6
+	elif kind == "drag":
+		loudness -= 2.2
+	player.volume_db = loudness - float(index) * randf_range(1.2, 3.4) + randf_range(-1.5, 1.2)
+	player.pitch_scale = randf_range(0.88, 1.14) + (intensity - 0.5) * 0.08
+	var start_offset := 0.0 if kind == "click" else randf_range(0.0, 0.045)
+	player.play(start_offset)
+
+
+func _chain_move_player_for_hit() -> AudioStreamPlayer:
+	var available := []
+	for player in chain_move_players:
+		if player != null and not player.playing:
+			available.append(player)
+	if not available.is_empty():
+		return available.pick_random() as AudioStreamPlayer
+	var fallback := chain_move_players.pick_random() as AudioStreamPlayer
+	if fallback != null:
+		fallback.stop()
+	return fallback
 
 
 func _play_padlock_cluster_sfx() -> void:
@@ -6676,16 +6866,37 @@ func _play_chain_fall_sfx_sequence() -> void:
 	tween.tween_callback(_play_random_chain_move_sfx)
 
 
-func _play_chain_jingle_mix(variant := 0) -> void:
+func _play_chain_jingle_mix(variant := 0, gain := 1.0, total_seconds := CHAIN_JINGLE_TOTAL_SECONDS, fade_seconds := CHAIN_JINGLE_FADE_SECONDS) -> void:
 	if chain_jingle_players.is_empty() or not _can_play_audio():
 		return
 	var pitches := [0.90, 0.98, 1.07]
-	var player_count := mini(chain_jingle_players.size(), pitches.size())
+	var player_count := mini(CHAIN_JINGLE_MIX_LAYER_COUNT, mini(chain_jingle_players.size(), pitches.size()))
 	for i in range(player_count):
 		var player := chain_jingle_players[i] as AudioStreamPlayer
-		player.volume_db = -10.0 - float(i) * 3.0
+		var volume_db := -10.0 - float(i) * 3.0 + linear_to_db(maxf(0.05, gain))
 		var pitch := float(pitches[i]) + float(variant) * 0.025
-		_play_with_pitch(player, pitch)
+		_play_capped_chain_jingle(player, pitch, volume_db, total_seconds, fade_seconds)
+
+
+func _play_capped_chain_jingle(player: AudioStreamPlayer, pitch: float, volume_db: float, total_seconds := CHAIN_JINGLE_TOTAL_SECONDS, fade_seconds := CHAIN_JINGLE_FADE_SECONDS) -> void:
+	if player == null or not _can_play_audio():
+		return
+	var active_tween := player.get_meta("chain_jingle_fade_tween", null) as Tween
+	if active_tween != null and active_tween.is_valid():
+		active_tween.kill()
+	player.stop()
+	player.pitch_scale = pitch
+	player.volume_db = volume_db
+	player.play()
+	var fade_tween := create_tween()
+	player.set_meta("chain_jingle_fade_tween", fade_tween)
+	fade_tween.tween_interval(maxf(0.0, total_seconds - fade_seconds))
+	fade_tween.tween_property(player, "volume_db", -48.0, fade_seconds).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	fade_tween.tween_callback(func():
+		if player != null:
+			player.stop()
+			player.volume_db = volume_db
+	)
 
 
 func _play_activity_success_sound(streak_step: int, medal_unlocked: bool, streak_bonus: bool) -> void:
