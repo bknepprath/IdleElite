@@ -284,6 +284,12 @@
     </header>
 
     <div class="section-label">
+      <h2>XP Crit Options</h2>
+      <p>Six subtle blue-spark success accents for the rare 3x XP crit.</p>
+    </div>
+    <section class="grid" id="critGrid" aria-label="XP crit sound options"></section>
+
+    <div class="section-label">
       <h2>Activity Boop Options</h2>
       <p>Four soft boops for replacing the activity button sound with something rounder and friendlier.</p>
     </div>
@@ -395,12 +401,100 @@
       <button id="metalBurst" type="button">Test metal rattles</button>
       <button id="layeredGlassMetalBurst" type="button">Test layered glass metal</button>
       <button id="jingleChainsBurst" type="button">Test jingle chains</button>
+      <button id="critBurst" type="button">Test XP crits</button>
       <button id="boopBurst" type="button">Test boops</button>
       <button id="windDownBurst" type="button">Test wind downs</button>
     </div>
   </main>
 
   <script>
+    const critSounds = [
+      {
+        id: "blue-glass-lift",
+        name: "Blue Glass Fanfare",
+        tag: "bright",
+        gain: 0.48,
+        notes: "A rising glass fanfare with a crisp top sparkle and a short blue tail.",
+        bars: [18, 38, 62, 88, 100, 92, 72, 54, 38, 24, 14, 7],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 392, 783.99, 0.32, "sine", 0.34);
+          ping(ctx, out, t + 0.08, 659.25, 0.26, "triangle", 0.18);
+          ping(ctx, out, t + 0.22, 1046.5, 0.32, "triangle", 0.2);
+          ping(ctx, out, t + 0.42, 1567.98, 0.34, "sine", 0.12);
+        }
+      },
+      {
+        id: "cool-coin-spark",
+        name: "Cool Coin Flourish",
+        tag: "coin",
+        gain: 0.48,
+        notes: "A stronger coin reward cue with a climbing flourish and shimmer decay.",
+        bars: [46, 84, 100, 94, 76, 58, 42, 30, 20, 13, 8, 4],
+        play: (ctx, out, t) => {
+          ping(ctx, out, t, 587.33, 0.22, "triangle", 0.2);
+          ping(ctx, out, t + 0.08, 987.77, 0.34, "triangle", 0.28);
+          ping(ctx, out, t + 0.18, 1481.66, 0.34, "sine", 0.12);
+          sweep(ctx, out, t + 0.30, 880, 1318.51, 0.28, "sine", 0.16);
+          ping(ctx, out, t + 0.54, 1975.53, 0.22, "triangle", 0.08);
+        }
+      },
+      {
+        id: "triple-star-tick",
+        name: "Triple Star Fanfare",
+        tag: "triple",
+        gain: 0.48,
+        notes: "Three pronounced star hits that step upward into a little victory tail.",
+        bars: [32, 62, 92, 58, 78, 100, 84, 60, 42, 26, 15, 8],
+        play: (ctx, out, t) => {
+          ping(ctx, out, t, 659.25, 0.18, "triangle", 0.2);
+          ping(ctx, out, t + 0.16, 987.77, 0.2, "triangle", 0.24);
+          ping(ctx, out, t + 0.32, 1567.98, 0.26, "triangle", 0.22);
+          sweep(ctx, out, t + 0.40, 783.99, 1174.66, 0.26, "sine", 0.11);
+        }
+      },
+      {
+        id: "soft-critical-bloom",
+        name: "Critical Bloom Fanfare",
+        tag: "wide",
+        gain: 0.48,
+        notes: "A warmer swell with more body, then a bright reward note at the crest.",
+        bars: [12, 26, 48, 72, 96, 100, 88, 68, 48, 30, 17, 8],
+        play: (ctx, out, t) => {
+          sweep(ctx, out, t, 261.63, 523.25, 0.42, "sine", 0.3);
+          sweep(ctx, out, t + 0.06, 392, 783.99, 0.4, "triangle", 0.16);
+          ping(ctx, out, t + 0.34, 1046.5, 0.32, "triangle", 0.17);
+          ping(ctx, out, t + 0.48, 1567.98, 0.22, "sine", 0.08);
+        }
+      },
+      {
+        id: "crystal-thumbprint",
+        name: "Crystal Victory Mark",
+        tag: "crisp",
+        gain: 0.48,
+        notes: "The most immediate option: sharper crystal attack, then a confident fanfare tail.",
+        bars: [88, 100, 82, 58, 72, 94, 78, 52, 34, 21, 12, 6],
+        play: (ctx, out, t) => {
+          ping(ctx, out, t, 1174.66, 0.16, "triangle", 0.3);
+          ping(ctx, out, t + 0.012, 1760, 0.11, "sine", 0.13);
+          sweep(ctx, out, t + 0.12, 698.46, 1396.91, 0.34, "triangle", 0.2);
+          ping(ctx, out, t + 0.42, 2093, 0.26, "sine", 0.09);
+        }
+      },
+      {
+        id: "lucky-blue-drop",
+        name: "Lucky Blue Fanfare",
+        tag: "lucky",
+        gain: 0.48,
+        notes: "A playful up-chirp that turns into a fuller lucky reward fanfare.",
+        bars: [24, 46, 86, 100, 86, 66, 78, 58, 38, 24, 14, 7],
+        play: (ctx, out, t) => {
+          scoop(ctx, out, t, [349.23, 523.25, 880, 1318.51], [0, 0.10, 0.26, 0.46], "sine", 0.34);
+          ping(ctx, out, t + 0.18, 659.25, 0.28, "triangle", 0.14);
+          ping(ctx, out, t + 0.46, 1760, 0.22, "triangle", 0.1);
+        }
+      }
+    ];
+
     const boopSounds = [
       {
         id: "soft-bubble-boop",
@@ -1407,10 +1501,14 @@
     function playSound(sound, delay = 0) {
       const ctx = ensureAudio();
       const t = ctx.currentTime + delay;
-      const result = sound.play(ctx, masterGain, t);
+      const soundGain = ctx.createGain();
+      soundGain.gain.value = sound.gain ?? 1;
+      soundGain.connect(masterGain);
+      const result = sound.play(ctx, soundGain, t);
       if (result && typeof result.catch === "function") {
         result.catch(() => {});
       }
+      window.setTimeout(() => soundGain.disconnect(), (delay + 1.4) * 1000);
       window.setTimeout(() => markActive(sound.id), delay * 1000);
     }
 
@@ -1433,6 +1531,7 @@
     }
 
     function render() {
+      renderGrid(critGrid, critSounds);
       renderGrid(boopGrid, boopSounds);
       renderGrid(windDownGrid, windDownSounds);
       renderGrid(grid, sounds);
@@ -1458,6 +1557,7 @@
     }
 
     grid.addEventListener("click", (event) => handleGridClick(event, sounds));
+    critGrid.addEventListener("click", (event) => handleGridClick(event, critSounds));
     boopGrid.addEventListener("click", (event) => handleGridClick(event, boopSounds));
     windDownGrid.addEventListener("click", (event) => handleGridClick(event, windDownSounds));
     glassPipGrid.addEventListener("click", (event) => handleGridClick(event, glassPipSounds));
@@ -1507,6 +1607,10 @@
 
     document.querySelector("#jingleChainsBurst").addEventListener("click", () => {
       jingleChainSounds.forEach((sound, index) => playSound(sound, index * 0.5));
+    });
+
+    document.querySelector("#critBurst").addEventListener("click", () => {
+      critSounds.forEach((sound, index) => playSound(sound, index * 0.28));
     });
 
     render();

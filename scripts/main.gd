@@ -331,6 +331,9 @@ class RoundedTextureRect:
 	var radius := 66.0
 	var crop_left := 0.0
 	var crop_right := 0.0
+	var art_height := 0.0
+	var feather_height := 150.0
+	var fallback_color := Color("#3aa0ff")
 
 	func _ready() -> void:
 		_ensure_mask_material()
@@ -349,6 +352,9 @@ uniform vec2 control_size = vec2(1.0, 1.0);
 uniform float radius_px = 64.0;
 uniform float crop_left = 0.0;
 uniform float crop_right = 0.0;
+uniform float art_height_px = 0.0;
+uniform float feather_px = 150.0;
+uniform vec4 fallback_color : source_color = vec4(0.2, 0.55, 0.9, 1.0);
 
 void fragment() {
 	vec2 p = UV * control_size;
@@ -359,8 +365,15 @@ void fragment() {
 	float alpha = 1.0 - smoothstep(0.0, 2.0, distance);
 	vec4 tint = COLOR;
 	float crop_width = max(0.001, 1.0 - crop_left - crop_right);
-	vec2 source_uv = vec2(crop_left + UV.x * crop_width, UV.y);
-	vec4 color = texture(TEXTURE, source_uv) * tint;
+	float art_h = art_height_px <= 1.0 ? control_size.y : min(art_height_px, control_size.y);
+	vec2 source_uv = vec2(crop_left + UV.x * crop_width, clamp(p.y / max(1.0, art_h), 0.0, 1.0));
+	vec4 art_color = texture(TEXTURE, source_uv) * tint;
+	vec4 fill_color = vec4(fallback_color.rgb * tint.rgb, fallback_color.a * tint.a);
+	float art_mix = 1.0;
+	if (control_size.y > art_h + 1.0) {
+		art_mix = 1.0 - smoothstep(max(0.0, art_h - feather_px), art_h, p.y);
+	}
+	vec4 color = mix(fill_color, art_color, art_mix);
 	color.a *= alpha;
 	COLOR = color;
 }
@@ -378,6 +391,9 @@ void fragment() {
 		shader_material.set_shader_parameter("radius_px", radius)
 		shader_material.set_shader_parameter("crop_left", crop_left)
 		shader_material.set_shader_parameter("crop_right", crop_right)
+		shader_material.set_shader_parameter("art_height_px", art_height)
+		shader_material.set_shader_parameter("feather_px", feather_height)
+		shader_material.set_shader_parameter("fallback_color", fallback_color)
 
 
 class ActivityChainLink:
@@ -434,12 +450,26 @@ class ActivityLockRig:
 	signal chain_moved(kind: String, intensity: float)
 	signal padlock_clicked
 
-	const LINKS_PER_SIDE := 6
-	const CENTER_CHAIN_LINKS := 3
-	const LINK_SIZE := Vector2(188, 116)
+	const LINKS_PER_SIDE := 5
+	const LINK_SIZE := Vector2(210, 130)
 	const PADLOCK_SIZE := Vector2(540, 590)
+	const PADLOCK_SOURCE_CROP_RIGHT := 3.0
 	const PADLOCK_SHADOW_OFFSET := Vector2(0, 16)
-	const CONSTRAINT_PASSES := 7
+	const CONSTRAINT_PASSES := 14
+	const LOCK_CHAIN_TAUT_RATIO := 1.16
+	const LOCK_CHAIN_TAUT_SLACK_PIXELS := 18.0
+	const LOCK_CHAIN_LIMIT_PASSES := 5
+	const CHAIN_METAL_TINT := Color("#b9c0c3")
+	const CHAIN_STROKE_TINT := Color(0.02, 0.018, 0.016, 0.82)
+	const CHAIN_LINK_SHADE_TINT := Color(0.05, 0.052, 0.054, 0.18)
+	const CHAIN_LINK_SHADE_START := 0.62
+	const CHAIN_SHADOW_OFFSET := Vector2(0, 12)
+	const CHAIN_SLACK_SAG_PIXELS := 66.0
+	const CHAIN_SLACK_PULL_RANGE_RATIO := 0.22
+	const CHAIN_SLACK_GRAVITY_PIXELS := 620.0
+	const CHAIN_SLACK_REST_PULL_MIN := 0.18
+	const CHAIN_SLACK_REST_PULL_MAX := 0.52
+	const CHAIN_EDGE_ANCHOR_INSET_RATIO := 0.30
 	const LOCK_DRAG_DEADZONE := 14.0
 	const CHAIN_SFX_COOLDOWN_MSEC := 170
 	const CHAIN_SFX_MOVE_DISTANCE := 38.0
@@ -476,7 +506,7 @@ class ActivityLockRig:
 
 	func setup(next_link_texture: Texture2D, next_padlock_texture: Texture2D, unlock_level: int, font: Font, fallback_font: Font) -> void:
 		link_texture = next_link_texture
-		padlock_texture = next_padlock_texture
+		padlock_texture = _cropped_padlock_texture(next_padlock_texture)
 		level = unlock_level
 		mouse_filter = Control.MOUSE_FILTER_PASS
 		rng.randomize()
@@ -552,6 +582,17 @@ class ActivityLockRig:
 		piece.modulate = color
 		return piece
 
+	func _cropped_padlock_texture(source: Texture2D) -> Texture2D:
+		if source == null:
+			return null
+		var source_size := source.get_size()
+		if source_size.x <= PADLOCK_SOURCE_CROP_RIGHT + 1.0:
+			return source
+		var cropped := AtlasTexture.new()
+		cropped.atlas = source
+		cropped.region = Rect2(Vector2.ZERO, Vector2(source_size.x - PADLOCK_SOURCE_CROP_RIGHT, source_size.y))
+		return cropped
+
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
 			_layout_base()
@@ -599,8 +640,9 @@ class ActivityLockRig:
 		if unlock_drop_active:
 			return
 		if pressing_lock and dragging_lock:
-			var target := get_local_mouse_position() - press_position + drag_start_lock_offset
+			var target := _limit_lock_offset(get_local_mouse_position() - press_position + drag_start_lock_offset)
 			var next_offset := lock_offset.lerp(target, 1.0 - exp(-30.0 * delta))
+			next_offset = _limit_lock_offset(next_offset)
 			lock_velocity = (next_offset - lock_offset) / maxf(delta, 0.001)
 			lock_offset = next_offset
 			physics_active = true
@@ -608,7 +650,9 @@ class ActivityLockRig:
 		elif physics_active:
 			lock_velocity += -lock_offset * 72.0 * delta
 			lock_velocity *= exp(-9.5 * delta)
-			lock_offset += lock_velocity * delta
+			var next_offset := _limit_lock_offset(lock_offset + lock_velocity * delta)
+			lock_velocity = (next_offset - lock_offset) / maxf(delta, 0.001)
+			lock_offset = next_offset
 			if lock_offset.length() <= 0.35 and lock_velocity.length() <= 3.0 and _chains_settled() and click_shake_remaining <= 0.0:
 				lock_offset = Vector2.ZERO
 				lock_velocity = Vector2.ZERO
@@ -646,6 +690,7 @@ class ActivityLockRig:
 			var previous := []
 			var base_points := []
 			var rest_lengths := []
+			chain_rest_lengths[side] = []
 			for i in range(LINKS_PER_SIDE):
 				var point := _base_chain_point(side, i, lock_offset)
 				points.append(point)
@@ -663,15 +708,70 @@ class ActivityLockRig:
 		var outer_anchor := _outer_chain_anchor(side)
 		var inner_anchor := _lock_chain_anchor(side, offset)
 		var point := outer_anchor.lerp(inner_anchor, t)
-		point.y += sin(t * PI) * size.y * 0.085
+		var slack := _chain_slack_amount(side, offset)
+		point.y += sin(t * PI) * _chain_target_sag(side, outer_anchor, inner_anchor, slack)
 		return point
 
+	func _chain_slack_amount(side: int, offset: Vector2) -> float:
+		if size.x <= 1.0:
+			return 0.0
+		var pull_range := maxf(1.0, size.x * CHAIN_SLACK_PULL_RANGE_RATIO)
+		return clampf(float(side) * offset.x / pull_range, 0.0, 1.0)
+
+	func _chain_target_sag(side: int, outer_anchor: Vector2, inner_anchor: Vector2, slack: float) -> float:
+		var visual_sag := size.y * lerpf(0.04, 0.09, slack) + CHAIN_SLACK_SAG_PIXELS * slack
+		var rest_length := _chain_total_rest_length(side)
+		var chord := outer_anchor.distance_to(inner_anchor)
+		if rest_length <= chord + 1.0:
+			return visual_sag
+		var length_fit := _chain_sag_for_curve_length(outer_anchor, inner_anchor, rest_length)
+		return maxf(visual_sag, length_fit)
+
+	func _chain_total_rest_length(side: int) -> float:
+		var rest_lengths := chain_rest_lengths[side] as Array
+		var total := 0.0
+		for length_value in rest_lengths:
+			total += float(length_value)
+		if total > 0.0:
+			return total
+		var outer_anchor := _outer_chain_anchor(side)
+		var inner_anchor := _lock_chain_anchor(side, Vector2.ZERO)
+		var neutral_sag := size.y * 0.04
+		return _chain_curve_length(outer_anchor, inner_anchor, neutral_sag)
+
+	func _chain_sag_for_curve_length(start: Vector2, end: Vector2, target_length: float) -> float:
+		var chord := start.distance_to(end)
+		if target_length <= chord + 1.0:
+			return 0.0
+		var high := maxf(32.0, size.y * 0.12)
+		while _chain_curve_length(start, end, high) < target_length and high < size.y * 1.5:
+			high *= 1.6
+		var low := 0.0
+		for iteration in range(12):
+			var mid := (low + high) * 0.5
+			if _chain_curve_length(start, end, mid) < target_length:
+				low = mid
+			else:
+				high = mid
+		return high
+
+	func _chain_curve_length(start: Vector2, end: Vector2, sag: float) -> float:
+		var length := 0.0
+		var previous := start
+		for sample in range(1, 17):
+			var t := float(sample) / 16.0
+			var point := start.lerp(end, t)
+			point.y += sin(t * PI) * sag
+			length += previous.distance_to(point)
+			previous = point
+		return length
+
 	func _outer_chain_anchor(side: int) -> Vector2:
-		var margin := LINK_SIZE.x * 0.48
+		var margin := LINK_SIZE.x * CHAIN_EDGE_ANCHOR_INSET_RATIO
 		return Vector2(margin if side < 0 else size.x - margin, size.y * 0.28)
 
 	func _lock_chain_anchor(side: int, offset: Vector2) -> Vector2:
-		return base_lock_position + offset + Vector2(PADLOCK_SIZE.x * 0.5 + float(side) * PADLOCK_SIZE.x * 0.38, PADLOCK_SIZE.y * 0.35)
+		return base_lock_position + offset + Vector2(PADLOCK_SIZE.x * 0.5 + float(side) * PADLOCK_SIZE.x * 0.34, PADLOCK_SIZE.y * 0.34)
 
 	func _simulate_chains(delta: float) -> void:
 		var damping := exp(-10.0 * delta)
@@ -679,7 +779,6 @@ class ActivityLockRig:
 		for side in [-1, 1]:
 			var points := chain_points[side] as Array
 			var previous := chain_prev_points[side] as Array
-			var base_points := chain_base_points[side] as Array
 			if points.is_empty():
 				continue
 			for i in range(points.size()):
@@ -688,16 +787,19 @@ class ActivityLockRig:
 				var velocity := (point - last) * damping
 				previous[i] = point
 				point += velocity
-				var base_point := base_points[i] as Vector2
 				if i > 0 and i < points.size() - 1:
-					point = point.lerp(base_point + lock_offset * (float(i) / float(points.size() - 1)) * 0.25, rest_pull * 0.22)
+					var target_point := _base_chain_point(side, i, lock_offset)
+					var slack := _chain_slack_amount(side, lock_offset)
+					var arc_weight := sin(float(i) / float(points.size() - 1) * PI)
+					point.y += CHAIN_SLACK_GRAVITY_PIXELS * slack * arc_weight * delta * delta
+					point = point.lerp(target_point, rest_pull * lerpf(CHAIN_SLACK_REST_PULL_MIN, CHAIN_SLACK_REST_PULL_MAX, slack))
 				points[i] = point
 			for pass_index in range(CONSTRAINT_PASSES):
 				points[0] = _outer_chain_anchor(side)
-				points[points.size() - 1] = (points[points.size() - 1] as Vector2).lerp(_lock_chain_anchor(side, lock_offset), 0.58)
+				points[points.size() - 1] = _lock_chain_anchor(side, lock_offset)
 				_apply_chain_constraints(side)
 			points[0] = _outer_chain_anchor(side)
-			points[points.size() - 1] = (points[points.size() - 1] as Vector2).lerp(_lock_chain_anchor(side, lock_offset), 0.72)
+			points[points.size() - 1] = _lock_chain_anchor(side, lock_offset)
 			chain_points[side] = points
 			chain_prev_points[side] = previous
 
@@ -714,13 +816,32 @@ class ActivityLockRig:
 			if i == 0:
 				b -= correction
 			elif i == points.size() - 2:
-				a += correction * 0.45
-				b -= correction * 0.55
+				a += correction
 			else:
 				a += correction * 0.5
 				b -= correction * 0.5
 			points[i] = a
 			points[i + 1] = b
+
+	func _limit_lock_offset(candidate: Vector2) -> Vector2:
+		var limited := candidate
+		for pass_index in range(LOCK_CHAIN_LIMIT_PASSES):
+			for side in [-1, 1]:
+				var outer_anchor := _outer_chain_anchor(side)
+				var lock_anchor := _lock_chain_anchor(side, limited)
+				var span := lock_anchor - outer_anchor
+				var distance := span.length()
+				var max_distance := _chain_taut_distance(side)
+				if distance <= max_distance:
+					continue
+				var direction := span / maxf(distance, 0.001)
+				var clamped_anchor := outer_anchor + direction * max_distance
+				limited += clamped_anchor - lock_anchor
+		return limited
+
+	func _chain_taut_distance(side: int) -> float:
+		var total := _chain_total_rest_length(side)
+		return total * LOCK_CHAIN_TAUT_RATIO + LOCK_CHAIN_TAUT_SLACK_PIXELS
 
 	func _chains_settled() -> bool:
 		for side in [-1, 1]:
@@ -837,54 +958,76 @@ class ActivityLockRig:
 		if unlock_drop_active and unlock_drop_progress >= 0.08:
 			for side in [-1, 1]:
 				var dropped_links := _chain_render_links_from_points(_dropped_chain_path_points(side), 100 if side > 0 else 0)
-				_draw_interlocked_chain(dropped_links, 0)
+				_draw_chain_with_depth(dropped_links)
 			return
-		var render_links := _chain_render_links()
-		_draw_interlocked_chain(render_links, 0)
+		for side in [-1, 1]:
+			_draw_chain_with_depth(_chain_render_links_for_side(side))
 
-	func _chain_path_points() -> Array:
-		var left_points := chain_points[-1] as Array
-		var right_points := chain_points[1] as Array
-		var points := []
-		if left_points.is_empty() or right_points.is_empty():
-			return points
-		for point in left_points:
-			points.append(point)
-		var left_anchor := left_points[left_points.size() - 1] as Vector2
-		var right_anchor := right_points[right_points.size() - 1] as Vector2
-		var hidden_dip := maxf(left_anchor.y, right_anchor.y) + size.y * 0.018
-		for i in range(CENTER_CHAIN_LINKS):
-			var t := float(i + 1) / float(CENTER_CHAIN_LINKS + 1)
-			var point := left_anchor.lerp(right_anchor, t)
-			point.y = lerpf(point.y, hidden_dip, sin(t * PI))
-			points.append(point)
-		for i in range(right_points.size() - 1, -1, -1):
-			points.append(right_points[i])
-		return points
-
-	func _chain_render_links() -> Array:
-		return _chain_render_links_from_points(_chain_path_points(), 0)
+	func _chain_render_links_for_side(side: int) -> Array:
+		var points := chain_points[side] as Array
+		if points.is_empty():
+			return []
+		var render_points := []
+		if side > 0:
+			for i in range(points.size() - 1, -1, -1):
+				render_points.append(points[i])
+		else:
+			render_points = points.duplicate()
+		return _chain_render_links_from_points(render_points, 0 if side < 0 else 100)
 
 	func _chain_render_links_from_points(points: Array, first_index := 0) -> Array:
 		var render_links := []
-		for i in range(points.size()):
+		var render_points := _chain_evenly_spaced_points(points, points.size())
+		for i in range(render_points.size()):
 			var previous_index := maxi(i - 1, 0)
-			var next_index := mini(i + 1, points.size() - 1)
-			var previous_point := points[previous_index] as Vector2
-			var next_point := points[next_index] as Vector2
+			var next_index := mini(i + 1, render_points.size() - 1)
+			var previous_point := render_points[previous_index] as Vector2
+			var next_point := render_points[next_index] as Vector2
 			var tangent := next_point - previous_point
-			var rotation := clampf(atan2(tangent.y, maxf(tangent.x, 1.0)), -0.45, 0.45)
+			var rotation := _chain_link_rotation(tangent)
 			var weave := -1.0 if i % 2 == 0 else 1.0
-			rotation += weave * 0.035
+			rotation += weave * 0.02
 			var link_index := first_index + i
 			render_links.append({
-				"center": points[i] as Vector2,
+				"center": render_points[i] as Vector2,
 				"rotation": rotation,
 				"size": LINK_SIZE,
 				"index": link_index,
 				"front_side": 1 if link_index % 2 == 0 else -1
 			})
 		return render_links
+
+	func _chain_evenly_spaced_points(points: Array, point_count: int) -> Array:
+		if point_count <= 2 or points.size() <= 2:
+			return points.duplicate()
+		var segment_lengths := []
+		var total_length := 0.0
+		for i in range(points.size() - 1):
+			var length := (points[i] as Vector2).distance_to(points[i + 1] as Vector2)
+			segment_lengths.append(length)
+			total_length += length
+		if total_length <= 0.001:
+			return points.duplicate()
+		var spaced := []
+		var segment_index := 0
+		var segment_start_length := 0.0
+		for i in range(point_count):
+			var target_length := total_length * float(i) / float(point_count - 1)
+			while segment_index < segment_lengths.size() - 1 and segment_start_length + float(segment_lengths[segment_index]) < target_length:
+				segment_start_length += float(segment_lengths[segment_index])
+				segment_index += 1
+			var segment_length := maxf(float(segment_lengths[segment_index]), 0.001)
+			var local_t := clampf((target_length - segment_start_length) / segment_length, 0.0, 1.0)
+			spaced.append((points[segment_index] as Vector2).lerp(points[segment_index + 1] as Vector2, local_t))
+		return spaced
+
+	func _chain_link_rotation(tangent: Vector2) -> float:
+		var rotation := atan2(tangent.y, tangent.x)
+		if rotation > PI * 0.5:
+			rotation -= PI
+		elif rotation < -PI * 0.5:
+			rotation += PI
+		return clampf(rotation, -0.24, 0.24)
 
 	func _dropped_chain_path_points(side: int) -> Array:
 		var points := []
@@ -905,24 +1048,58 @@ class ActivityLockRig:
 			points.append(point)
 		return points
 
-	func _draw_interlocked_chain(render_links: Array, index := 0) -> void:
+	func _draw_chain_with_depth(render_links: Array) -> void:
+		for layer in _chain_shadow_layers():
+			_draw_interlocked_chain(render_links, 0, layer["tint"] as Color, layer["offset"] as Vector2, layer["inflate"] as Vector2)
+		for offset in _chain_stroke_offsets():
+			_draw_interlocked_chain(render_links, 0, CHAIN_STROKE_TINT, offset, Vector2.ZERO)
+		_draw_interlocked_chain_metal(render_links)
+
+	func _chain_shadow_layers() -> Array:
+		return [
+			{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 7), "inflate": Vector2(20, 20), "tint": Color(0, 0, 0, 0.045)},
+			{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 3), "inflate": Vector2(12, 12), "tint": Color(0, 0, 0, 0.075)},
+			{"offset": CHAIN_SHADOW_OFFSET, "inflate": Vector2(6, 6), "tint": Color(0, 0, 0, 0.09)},
+		]
+
+	func _chain_stroke_offsets() -> Array:
+		var stroke := 5.0
+		return [
+			Vector2(-stroke, 0),
+			Vector2(stroke, 0),
+			Vector2(0, -stroke),
+			Vector2(0, stroke),
+		]
+
+	func _draw_interlocked_chain(render_links: Array, index := 0, fill_override := Color.TRANSPARENT, center_offset := Vector2.ZERO, size_inflate := Vector2.ZERO) -> void:
 		if index >= render_links.size():
 			return
 		var link := render_links[index] as Dictionary
-		_draw_link_half(link, false, _link_front_side(link))
-		_draw_interlocked_chain(render_links, index + 1)
-		_draw_link_half(link, true, _link_front_side(link))
+		_draw_link_half(link, false, _link_front_side(link), fill_override, true, center_offset, size_inflate)
+		_draw_interlocked_chain(render_links, index + 1, fill_override, center_offset, size_inflate)
+		_draw_link_half(link, true, _link_front_side(link), fill_override, true, center_offset, size_inflate)
+
+	func _draw_interlocked_chain_metal(render_links: Array, index := 0) -> void:
+		if index >= render_links.size():
+			return
+		var link := render_links[index] as Dictionary
+		var front_side := _link_front_side(link)
+		_draw_link_half(link, false, front_side, CHAIN_METAL_TINT)
+		_draw_link_half_shade(link, false, front_side)
+		_draw_interlocked_chain_metal(render_links, index + 1)
+		_draw_link_half(link, true, front_side, CHAIN_METAL_TINT)
+		_draw_link_half_shade(link, true, front_side)
 
 	func _link_front_side(link: Dictionary) -> int:
 		return int(link.get("front_side", 1))
 
-	func _draw_link_half(link: Dictionary, front: bool, front_side := 1, fill_override := Color.TRANSPARENT, draw_detail := true) -> void:
+	func _draw_link_half(link: Dictionary, front: bool, front_side := 1, fill_override := Color.TRANSPARENT, draw_detail := true, center_offset := Vector2.ZERO, size_inflate := Vector2.ZERO) -> void:
 		if link_texture != null:
-			_draw_textured_link_half(link, front, front_side, fill_override)
+			_draw_textured_link_half(link, front, front_side, fill_override, center_offset, size_inflate)
 			return
-		var center := link["center"] as Vector2
+		var center := (link["center"] as Vector2) + center_offset
 		var rotation := float(link["rotation"])
-		var link_size := link["size"] as Vector2
+		var link_size := (link["size"] as Vector2) + size_inflate
 		var rx := link_size.x * 0.5
 		var ry := link_size.y * 0.5
 		var metal := link_size.y * 0.30
@@ -938,10 +1115,35 @@ class ActivityLockRig:
 			polygon.append(point)
 		for point in inner:
 			polygon.append(point)
-		var fill := fill_override if fill_override.a > 0.0 else Color("#d99b35")
+		var fill := fill_override if fill_override.a > 0.0 else CHAIN_METAL_TINT
 		draw_colored_polygon(polygon, fill)
 
-	func _draw_textured_link_half(link: Dictionary, front: bool, front_side := 1, fill_override := Color.TRANSPARENT) -> void:
+	func _draw_link_half_shade(link: Dictionary, front: bool, front_side := 1) -> void:
+		if link_texture != null:
+			_draw_textured_link_half_shade(link, front, front_side)
+			return
+		_draw_link_half(link, front, front_side, CHAIN_LINK_SHADE_TINT, true, Vector2(0, LINK_SIZE.y * 0.08), Vector2.ZERO)
+
+	func _draw_textured_link_half(link: Dictionary, front: bool, front_side := 1, fill_override := Color.TRANSPARENT, center_offset := Vector2.ZERO, size_inflate := Vector2.ZERO) -> void:
+		var center := (link["center"] as Vector2) + center_offset
+		var rotation := float(link["rotation"])
+		var link_size := (link["size"] as Vector2) + size_inflate
+		var texture_size := link_texture.get_size()
+		var half_width := texture_size.x * 0.5
+		var draw_right_side := front == (front_side > 0)
+		var source_x := half_width if draw_right_side else 0.0
+		var dest_x := 0.0 if draw_right_side else -link_size.x * 0.5
+		var tint := fill_override if fill_override.a > 0.0 else CHAIN_METAL_TINT
+		draw_set_transform(center, rotation, Vector2.ONE)
+		draw_texture_rect_region(
+			link_texture,
+			Rect2(Vector2(dest_x, -link_size.y * 0.5), Vector2(link_size.x * 0.5, link_size.y)),
+			Rect2(Vector2(source_x, 0), Vector2(half_width, texture_size.y)),
+			tint
+		)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	func _draw_textured_link_half_shade(link: Dictionary, front: bool, front_side := 1) -> void:
 		var center := link["center"] as Vector2
 		var rotation := float(link["rotation"])
 		var link_size := link["size"] as Vector2
@@ -950,13 +1152,17 @@ class ActivityLockRig:
 		var draw_right_side := front == (front_side > 0)
 		var source_x := half_width if draw_right_side else 0.0
 		var dest_x := 0.0 if draw_right_side else -link_size.x * 0.5
-		var tint := fill_override if fill_override.a > 0.0 else Color("#d99b35")
+		var shade_y := clampf(CHAIN_LINK_SHADE_START, 0.0, 0.95)
+		var source_y := texture_size.y * shade_y
+		var dest_y := -link_size.y * 0.5 + link_size.y * shade_y
+		var source_height := texture_size.y - source_y
+		var dest_height := link_size.y * (1.0 - shade_y)
 		draw_set_transform(center, rotation, Vector2.ONE)
 		draw_texture_rect_region(
 			link_texture,
-			Rect2(Vector2(dest_x, -link_size.y * 0.5), Vector2(link_size.x * 0.5, link_size.y)),
-			Rect2(Vector2(source_x, 0), Vector2(half_width, texture_size.y)),
-			tint
+			Rect2(Vector2(dest_x, dest_y), Vector2(link_size.x * 0.5, dest_height)),
+			Rect2(Vector2(source_x, source_y), Vector2(half_width, source_height)),
+			CHAIN_LINK_SHADE_TINT
 		)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -1254,6 +1460,12 @@ class MobileScrollContainer:
 	func is_child_click_suppressed() -> bool:
 		return child_click_suppressed or drag_scrolling or absf(velocity) >= 4.0
 
+	func prepare_child_tap() -> void:
+		child_click_suppressed = false
+		drag_scrolling = false
+		velocity = 0.0
+		_cancel_scroll_tween()
+
 	func _clear_child_click_suppression() -> void:
 		child_click_suppressed = false
 
@@ -1303,7 +1515,9 @@ class MobileScrollContainer:
 
 
 const SAVE_PATH := "user://idle_elite_save.json"
-const DISCORD_INVITE_URL := "https://discord.gg/WRHGBPH"
+const PENDING_CRASH_REPORT_PATH := "user://pending-crash-report.json"
+const DISCORD_INVITE_URL := "https://discord.com/invite/NHvsGdGfVW"
+const MAX_CRASH_REPORT_CLIPBOARD_CHARS := 12000
 const RESET_DATA_CONFIRM_SECONDS := 8.0
 const ACTIVITY_DATABASE_PATH := "res://docs/activity-database.json"
 const MASTERY_MEDALS_TEXTURE := "res://docs/assets/ui/mastery-medals-20.png"
@@ -1315,9 +1529,22 @@ const UNLOCK_PADLOCK_TEXTURE := "res://docs/assets/ui/unlock-padlock.png"
 const ACHIEVEMENT_TOTAL_LEVEL_ART := "res://docs/assets/achievements/achievement-total-level.png"
 const ACHIEVEMENT_CREDIT_ART := "res://docs/assets/achievements/achievement-credit.png"
 const ACHIEVEMENT_CUMULATIVE_MEDALS_ART := "res://docs/assets/achievements/achievement-cumulative-medals.png"
+const PASSIVE_LOG_CURRENCY_TEXTURE := "res://assets/passive/log-currency.png"
+const PASSIVE_PLANK_TEXTURE := "res://assets/passive/plank.png"
+const PASSIVE_UPGRADE_ARROW_TEXTURE := "res://assets/passive/upgrade-arrow.png"
+const WOODCUTTING_LOG_MODULE_ID := "stack-logs-1"
+const WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL := 2
+const WOODCUTTING_LOG_MODULE_INFO := "Click to collect logs. Upgrades cost logs. Plank toggle consumes logs for bonus XP while building."
+const PLANK_BUILD_XP_MULT := 0.05
+const PASSIVE_TIME_START := 240
+const PASSIVE_TIME_MAX := 30
+const PASSIVE_YIELD_START := 2
+const PASSIVE_YIELD_MAX := 18
+const PASSIVE_CAPACITY_START := 20
+const PASSIVE_CAPACITY_MAX := 600
 const BASE_MAX_STAMINA := 30
 const STAMINA_REGEN_SECONDS := 12.0
-const STAMINA_GAUGE_REGEN_BOOST_MULT := 2.0
+const STAMINA_GAUGE_REGEN_BOOST_MULT := 3.0
 const STAMINA_GAUGE_REGEN_EASE_SPEED := 7.5
 const STAMINA_GAUGE_POP_SCALE := Vector2(1.018, 1.018)
 const STAMINA_GAUGE_SETTLE_SCALE := Vector2(0.997, 0.997)
@@ -1371,7 +1598,16 @@ const BOTTOM_NAV_SAFE_PAD := 96
 const PAGE_PAD := 96
 const CARD_RADIUS := 64
 const ACTION_CARD_HEIGHT := 720
+const ACTION_CARD_EXPANDED_HEIGHT := 1080
+const ACTION_CARD_INFO_EXPAND_SECONDS := 0.22
+const ACTION_CARD_INFO_FADE_IN_SECONDS := 0.08
+const ACTION_CARD_INFO_FADE_OUT_SECONDS := 0.12
+const PASSIVE_MODULE_CARD_HEIGHT := 940
 const ACTION_CARD_POP_GUTTER := 44
+const ACTION_CARD_TAP_RELEASE_SLOP := 120.0
+const ACTION_STAT_TAP_RELEASE_SLOP := 30.0
+const PASSIVE_BUTTON_TAP_RELEASE_SLOP := 52.0
+const ACTION_CARD_DUPLICATE_TAP_MSEC := 36
 const SKILL_MENU_CARD_SIDE_INSET := 130
 const SKILL_MENU_COPY_WIDTH := 660
 const SKILL_SWIPE_THRESHOLD := 230.0
@@ -1380,6 +1616,8 @@ const SKILL_SWIPE_MAX_DRAG := 1120.0
 const SKILL_SWIPE_PAGE_GAP := 82.0
 const SKILL_SWIPE_SETTLE_SECONDS := 0.46
 const SKILL_SWIPE_CANCEL_SECONDS := 0.22
+const SKILL_SWIPE_BUTTON_SUPPRESS_MSEC := 320
+const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
 const ACTIVITY_JUMP_TOP_TEXTURE := "res://docs/assets/ui/jump-top-circle.png"
 const ACTIVITY_JUMP_BOTTOM_TEXTURE := "res://docs/assets/ui/jump-bottom-circle.png"
 const ACTIVITY_BACK_TEXTURE := "res://docs/assets/ui/back-arrow.png"
@@ -1390,17 +1628,42 @@ const ACTIVITY_JUMP_ARROW_LINGER_SECONDS := 1.2
 const ACTIVITY_JUMP_ARROW_FADE_IN_SECONDS := 0.10
 const ACTIVITY_JUMP_ARROW_FADE_OUT_SECONDS := 0.22
 const ACTIVITY_JUMP_ARROW_EDGE_EPSILON := 6
+const ACTIVITY_JUMP_ARROW_MIN_MODULES := 6
 const AD_BONUS_SECONDS := 2 * 60 * 60
 const AD_BONUS_WARN_THRESHOLD_SECONDS := 4 * 60 * 60
 const AD_BONUS_MAX_SECONDS := 6 * 60 * 60
 const AD_BONUS_XP_MULT := 0.10
 const AD_BONUS_SPEED_MULT := 0.10
+const TESTING_ADS_DISABLED := true
+const TESTER_ADS_DISABLED_MESSAGE := "I've disabled ads for testers! Here's your free bonus."
 const ACTIVITY_STREAK_BONUS_STEP := 5
+const ACTIVITY_NORMAL_CRIT_CHANCE := 0.01
+const ACTIVITY_STREAK_CRIT_CHANCE := 0.10
+const ACTIVITY_CRIT_XP_MULT := 3
+const OFFLINE_XP_MULT := 0.70
+const ACTIVITY_CRIT_FEEDBACK_SECONDS := 1.68
+const ACTIVITY_CRIT_SHAKE_PIXELS := 17.0
+const ACTIVITY_CRIT_LIFT_PIXELS := 7.0
+const ACTIVITY_CRIT_CARD_SCALE_PEAK := 1.035
+const ACTIVITY_CRIT_ART_BURST_SCALE := 1.52
+const ACTIVITY_CRIT_TEXT_COLOR := Color("#ffd95a")
+const ACTIVITY_CRIT_TEXT_SIZE := Vector2(760, 180)
+const ACTIVITY_CRIT_SFX_VOLUME_DB := -10.0
+const BONUS_EMPHASIS_FLOAT_COLOR := Color("#33f17a")
+const BONUS_EMPHASIS_FLASH_COLOR := Color("#3dff8d")
+const BONUS_EMPHASIS_SECONDS := 0.54
 const ACTIVITY_SUCCESS_SFX_PATHS := [
 	"res://assets/sfx/action_success_glass_pip_1.wav",
 	"res://assets/sfx/action_success_glass_pip_2.wav",
 	"res://assets/sfx/action_success_glass_pip_3.wav",
 	"res://assets/sfx/action_success_glass_pip_4.wav",
+]
+const ACTIVITY_CRIT_SFX_PATHS := [
+	"res://assets/sfx/action_crit_blue_glass_fanfare_1.wav",
+	"res://assets/sfx/action_crit_blue_glass_fanfare_2.wav",
+	"res://assets/sfx/action_crit_blue_glass_fanfare_3.wav",
+	"res://assets/sfx/action_crit_blue_glass_fanfare_4.wav",
+	"res://assets/sfx/action_crit_blue_glass_fanfare_5.wav",
 ]
 const CHAIN_MOVE_SFX_PATHS := [
 	"res://assets/sfx/chain_move_soft_links.wav",
@@ -1426,10 +1689,33 @@ const CHAIN_SCROLL_AUDITION_DISTANCE := 1.35
 const PADLOCK_CLUSTER_SFX_PATH := "res://assets/sfx/padlock_cluster.wav"
 const MUSIC_BUS_NAME := "Music"
 const SFX_BUS_NAME := "SFX"
-const MUSIC_TRACKS := [
-	{"name": "base", "path": "res://assets/music/base_loop.ogg"},
-	{"name": "heavy", "path": "res://assets/music/heavy_loop.ogg"},
-	{"name": "ultimate", "path": "res://assets/music/ultimate_loop.ogg"},
+const MUSIC_SONG_SETS := [
+	{
+		"name": "original",
+		"weight": 0.70,
+		"tracks": [
+			{"name": "base", "path": "res://assets/music/base_loop.ogg"},
+			{"name": "heavy", "path": "res://assets/music/heavy_loop.ogg"},
+			{"name": "ultimate", "path": "res://assets/music/ultimate_loop.ogg"},
+		],
+	},
+	{
+		"name": "guitar",
+		"weight": 0.15,
+		"tracks": [
+			{"name": "base", "path": "res://assets/music/guitar_base_loop.ogg"},
+			{"name": "heavy", "path": "res://assets/music/guitar_heavy_loop.ogg"},
+		],
+	},
+	{
+		"name": "piano",
+		"weight": 0.15,
+		"tracks": [
+			{"name": "base", "path": "res://assets/music/piano_base_loop.ogg"},
+			{"name": "heavy", "path": "res://assets/music/piano_heavy_loop.ogg"},
+			{"name": "ultimate", "path": "res://assets/music/piano_ultimate_loop.ogg"},
+		],
+	},
 ]
 const MUSIC_SILENCE_DB := -80.0
 const MUSIC_BASE_ACTION_THRESHOLD := 8
@@ -1444,8 +1730,9 @@ const MUSIC_FLOW_DEAD_SECONDS := 54.0
 const MUSIC_BASE_FADE_SECONDS := 1.6
 const MUSIC_LAYER_FADE_SECONDS := 4.5
 const MUSIC_ULTIMATE_FADE_SECONDS := 2.8
-const MUSIC_LAYER_VOLUME_BOOST_DB := [0.0, -6.0, 0.0]
-const MUSIC_OUTPUT_GAIN := 0.25
+const MUSIC_START_FADE_SECONDS := 4.8
+const MUSIC_LAYER_VOLUME_BOOST_DB := [-0.92, -6.0, 0.0]
+const MUSIC_OUTPUT_GAIN := 0.2125
 const AUDIO_SETTINGS_VERSION := 2
 const ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS := 1.15
 const ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS := 0.85
@@ -1456,10 +1743,14 @@ const AD_TEST_UNIT_ANDROID_REWARDED := "ca-app-pub-3940256099942544/5224354917"
 const AD_LIVE_UNIT_ANDROID_REWARDED := "ca-app-pub-3570919669688101/7376748559"
 const MODAL_OVERLAY_Z := 4096
 const ACHIEVEMENT_TOAST_CANVAS_LAYER := 128
-const TARGET_FRAME_RATE := 120
+const DESKTOP_TARGET_FRAME_RATE := 120
+const MOBILE_TARGET_FRAME_RATE := 60
 const ACHIEVEMENTS_MODAL_SIZE := Vector2(1760, 3000)
 const ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN := Vector2(64, 80)
 const ACHIEVEMENTS_MODAL_SCROLL_HEIGHT := 2220.0
+const OFFLINE_SUMMARY_MODAL_SIZE := Vector2(1680, 2360)
+const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(64, 80)
+const OFFLINE_SUMMARY_MODAL_SCROLL_HEIGHT := 980.0
 const ACHIEVEMENT_TOAST_SIZE := Vector2(1500, 360)
 const ACHIEVEMENT_TOAST_GAP := 28.0
 const ACHIEVEMENT_TOAST_VIEWPORT_MARGIN := Vector2(36, 36)
@@ -1470,6 +1761,7 @@ const GLOBAL_BUFFS_MODAL_BASE_HEIGHT := 1260.0
 const GLOBAL_BUFFS_MODAL_ROW_HEIGHT := 120.0
 const GLOBAL_BUFFS_MODAL_MAX_HEIGHT := 2740.0
 const GLOBAL_BUFFS_MODAL_SCROLL_CHROME := 760.0
+const TUTORIAL_LAYER := ACHIEVEMENT_TOAST_CANVAS_LAYER + 1
 const ACTION_PROGRESS_RAIL_INSET := 16
 const BUTTON_BORDER := 22
 const SECONDARY_BUTTON_BORDER := 18
@@ -1558,6 +1850,10 @@ var current_screen := "home"
 var running_skill_id := ""
 var running_action_id := ""
 var action_progress := 0.0
+var log_currency := 0
+var passive_modules := {}
+var plank_boost_enabled := false
+var last_passive_process_unix := 0
 var activity_streak_action_key := ""
 var activity_streak_count := 0
 var mastery := {}
@@ -1576,6 +1872,7 @@ var ad_loading := false
 var ad_showing := false
 var ad_show_after_load := false
 var ad_reward_earned_for_show := false
+var shop_bonus_notice_text := ""
 var last_result := "Pick a skill and start training."
 var is_muted := false
 var music_volume := 0.7
@@ -1591,10 +1888,12 @@ var music_ultimate_boost_seconds := 0.0
 var music_players: Array[AudioStreamPlayer] = []
 var music_layer_gains := [0.0, 0.0, 0.0]
 var music_layer_target_gains := [0.0, 0.0, 0.0]
+var active_music_song_set := {}
 var music_started := false
 var music_cycle_active := false
 var music_start_chance_unlocked := false
 var music_lockout_seconds := 0.0
+var music_start_fade_remaining := 0.0
 var music_quiet_fade_remaining := 0.0
 var music_quiet_fade_start_gains := [0.0, 0.0, 0.0]
 var reset_data_confirm_until := 0.0
@@ -1640,6 +1939,27 @@ var shop_bonus_label: Label
 var skill_cards := {}
 var action_cards := {}
 var action_pop_tweens := {}
+var action_crit_tweens := {}
+var action_card_press_key := ""
+var action_card_press_position := Vector2.ZERO
+var action_card_press_stat_kind := ""
+var action_card_press_dragged := false
+var passive_button_press_source: Control
+var passive_button_press_kind := ""
+var passive_button_press_module_id := ""
+var passive_button_press_stat_type := ""
+var passive_button_press_popover: Control
+var passive_button_press_position := Vector2.ZERO
+var passive_button_press_dragged := false
+var passive_button_press_touch_index := -1
+var passive_button_pending_tap_id := 0
+var expanded_activity_stat_key := ""
+var expanded_activity_stat_kind := ""
+var last_activity_stat_toggle_key := ""
+var last_activity_stat_toggle_kind := ""
+var last_activity_stat_toggle_msec := 0
+var last_action_card_tap_key := ""
+var last_action_card_tap_msec := 0
 var pending_activity_unlock_ceremony := {}
 var activity_unlock_ceremony_count := 0
 var activity_unlock_preview_after_ceremony_id := ""
@@ -1649,6 +1969,7 @@ var detail_xp_bar: CleanProgressBar
 var detail_stamina_bar: CleanProgressBar
 var detail_regen_circle: RegenCircle
 var detail_actions_scroll: MobileScrollContainer
+var detail_back_button: Button
 var detail_stamina_gauge_pop_tween: Tween
 var detail_jump_top_button: TextureButton
 var detail_jump_bottom_button: TextureButton
@@ -1656,6 +1977,8 @@ var detail_jump_top_hold := 0.0
 var detail_jump_bottom_hold := 0.0
 var detail_jump_top_hovered := false
 var detail_jump_bottom_hovered := false
+var detail_jump_press_direction := 0
+var detail_jump_press_touch_index := -1
 var chain_audio_scroll_direction := 0
 var chain_audio_scroll_focus_seconds := 0.0
 var detail_action_card_nodes := {}
@@ -1676,6 +1999,7 @@ var skill_swipe_animating := false
 var skill_swipe_animation_mode := ""
 var skill_swipe_drag_base_x := 0.0
 var skill_swipe_child_click_suppressed := false
+var skill_swipe_button_suppressed_until_msec := 0
 var skill_swipe_handoff_cover: Control
 var activity_lock_input_active := false
 var settings_overlay: Control
@@ -1688,9 +2012,21 @@ var achievements_list_stack: VBoxContainer
 var achievements_tab_buttons := {}
 var achievements_hide_completed: CheckBox
 var achievements_modal_tab := "achievements"
+var offline_summary_overlay: Control
+var offline_summary_panel_frame: Control
+var offline_summary_panel: PanelContainer
+var offline_summary_stack: VBoxContainer
 var achievement_toast_layer: CanvasLayer
 var achievement_toast_root: Control
 var achievement_toasts := []
+var tutorial_layer: CanvasLayer
+var tutorial_overlay: Control
+var tutorial_title_label: Label
+var tutorial_body_label: Label
+var tutorial_step_label: Label
+var tutorial_skip_button: Button
+var tutorial_active := false
+var tutorial_step := 0
 var music_volume_sliders := []
 var music_volume_labels := []
 var music_mute_toggles := []
@@ -1706,6 +2042,7 @@ var active_audio_slider_touch_index := -1
 var click_player: AudioStreamPlayer
 var activity_start_player: AudioStreamPlayer
 var success_players: Array[AudioStreamPlayer] = []
+var crit_success_players: Array[AudioStreamPlayer] = []
 var failure_player: AudioStreamPlayer
 var level_player: AudioStreamPlayer
 var medal_player: AudioStreamPlayer
@@ -1717,12 +2054,13 @@ var padlock_cluster_player: AudioStreamPlayer
 var audio_unlocked_by_input := false
 var max_stamina_cache_valid := false
 var cached_max_stamina := BASE_MAX_STAMINA
+var pending_crash_report_text := ""
+var last_save_unix_time := 0
 
 
 func _ready() -> void:
-	OS.low_processor_usage_mode = false
-	OS.low_processor_usage_mode_sleep_usec = 0
-	Engine.max_fps = TARGET_FRAME_RATE
+	_configure_performance_mode()
+	_load_pending_crash_report()
 	_load_font()
 	_load_action_data()
 	_init_state()
@@ -1732,6 +2070,7 @@ func _ready() -> void:
 	load_game()
 	_maybe_start_music_cycle_on_launch()
 	_validate_state()
+	_select_launch_skill_page()
 	_render_screen(current_screen == "skill")
 	_update_ui(0.0, true)
 	var timer := Timer.new()
@@ -1741,10 +2080,20 @@ func _ready() -> void:
 	add_child(timer)
 
 
+func _configure_performance_mode() -> void:
+	if OS.get_name() == "Android" or OS.get_name() == "iOS":
+		Engine.max_fps = MOBILE_TARGET_FRAME_RATE
+	else:
+		Engine.max_fps = DESKTOP_TARGET_FRAME_RATE
+	OS.low_processor_usage_mode = false
+	OS.low_processor_usage_mode_sleep_usec = 0
+
+
 func _process(delta: float) -> void:
 	_process_ad_bonus(delta)
 	_process_stamina_gauge_regen_boost(delta)
 	_regen_stamina(delta)
+	_process_passive_modules()
 	_process_action(delta)
 	_process_music_flow(delta)
 	_update_ui(delta)
@@ -1768,16 +2117,32 @@ func _input(event: InputEvent) -> void:
 	if _route_activity_lock_input(event):
 		get_viewport().set_input_as_handled()
 		return
+	if _route_detail_back_button_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if _route_detail_jump_arrow_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if _event_points_inside_bottom_nav(event):
+		_cancel_skill_swipe_feedback(false)
+		action_card_press_key = ""
+		return
+	if _route_passive_button_global_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	_update_action_stat_press_drag_state(event)
+	if _route_action_card_release(event):
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed:
+			if _route_action_card_press(event.global_position):
+				_begin_skill_swipe_tracking(event.global_position, -1)
+				get_viewport().set_input_as_handled()
+				return
 			_interrupt_skill_swipe_animation_for_input()
 			if skills_page != null and Rect2(skills_page.global_position, skills_page.size).has_point(event.global_position):
-				skill_swipe_tracking = true
-				skill_swipe_horizontal = false
-				skill_swipe_start = event.global_position
-				skill_swipe_last = event.global_position
-				skill_swipe_drag_base_x = _current_skill_swipe_page_x()
-				skill_swipe_touch_index = -1
+				_begin_skill_swipe_tracking(event.global_position, -1)
 		elif skill_swipe_tracking:
 			_finish_skill_swipe(event.global_position)
 		return
@@ -1786,13 +2151,12 @@ func _input(event: InputEvent) -> void:
 		return
 	if event is InputEventScreenTouch:
 		if event.pressed:
+			if _route_action_card_press(event.position):
+				_begin_skill_swipe_tracking(event.position, event.index)
+				get_viewport().set_input_as_handled()
+				return
 			_interrupt_skill_swipe_animation_for_input()
-			skill_swipe_tracking = true
-			skill_swipe_horizontal = false
-			skill_swipe_start = event.position
-			skill_swipe_last = event.position
-			skill_swipe_drag_base_x = _current_skill_swipe_page_x()
-			skill_swipe_touch_index = event.index
+			_begin_skill_swipe_tracking(event.position, event.index)
 		elif skill_swipe_tracking and event.index == skill_swipe_touch_index:
 			_finish_skill_swipe(event.position)
 		return
@@ -1833,6 +2197,385 @@ func _activity_lock_input_released(event: InputEvent) -> bool:
 	return false
 
 
+func _begin_skill_swipe_tracking(position: Vector2, touch_index: int) -> void:
+	_interrupt_skill_swipe_animation_for_input()
+	skill_swipe_tracking = true
+	skill_swipe_horizontal = false
+	skill_swipe_start = position
+	skill_swipe_last = position
+	skill_swipe_drag_base_x = _current_skill_swipe_page_x()
+	skill_swipe_touch_index = touch_index
+
+
+func _route_skill_swipe_button_input(event: InputEvent, source: Control = null) -> bool:
+	if current_screen != "skill":
+		return false
+	if _event_points_inside_bottom_nav(event, source):
+		_cancel_skill_swipe_feedback(false)
+		action_card_press_key = ""
+		return false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var mouse_event := event as InputEventMouseButton
+		var position := _global_event_position(mouse_event.position, mouse_event.global_position, source)
+		if mouse_event.pressed:
+			_begin_skill_swipe_tracking(position, -1)
+		elif skill_swipe_tracking:
+			_finish_skill_swipe(position)
+		return true
+	if event is InputEventMouseMotion and skill_swipe_tracking:
+		var motion_event := event as InputEventMouseMotion
+		_update_skill_swipe_feedback(_global_event_position(motion_event.position, motion_event.global_position, source))
+		return true
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		var position := _global_event_position(touch_event.position, touch_event.position, source)
+		if touch_event.pressed:
+			_begin_skill_swipe_tracking(position, touch_event.index)
+		elif skill_swipe_tracking and touch_event.index == skill_swipe_touch_index:
+			_finish_skill_swipe(position)
+		return true
+	if event is InputEventScreenDrag and skill_swipe_tracking:
+		var drag_event := event as InputEventScreenDrag
+		if drag_event.index == skill_swipe_touch_index:
+			_update_skill_swipe_feedback(_global_event_position(drag_event.position, drag_event.position, source))
+			return true
+	return false
+
+
+func _event_points_inside_bottom_nav(event: InputEvent, source: Control = null) -> bool:
+	var positions: Array[Vector2] = []
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		positions.append(_global_event_position(mouse_event.position, mouse_event.global_position, source))
+	elif event is InputEventMouseMotion:
+		var motion_event := event as InputEventMouseMotion
+		positions.append(_global_event_position(motion_event.position, motion_event.global_position, source))
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		positions.append(_global_event_position(touch_event.position, touch_event.position, source))
+	elif event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		positions.append(_global_event_position(drag_event.position, drag_event.position, source))
+	for position in positions:
+		if _position_inside_bottom_nav(position):
+			return true
+	return false
+
+
+func _position_inside_bottom_nav(position: Vector2) -> bool:
+	if nav_bar == null or not is_instance_valid(nav_bar) or not nav_bar.is_visible_in_tree():
+		return false
+	var nav_rect := nav_bar.get_global_rect().grow(4.0)
+	for candidate in _activity_input_position_candidates(position):
+		if nav_rect.has_point(candidate):
+			return true
+	return false
+
+
+func _global_event_position(local_position: Vector2, global_position: Vector2, source: Control = null) -> Vector2:
+	if global_position != Vector2.ZERO:
+		return global_position
+	if source != null and is_instance_valid(source):
+		return source.get_global_position() + local_position
+	return local_position
+
+
+func _route_detail_back_button_input(event: InputEvent) -> bool:
+	if current_screen != "skill" or detail_back_button == null or not is_instance_valid(detail_back_button):
+		return false
+	var position := Vector2.ZERO
+	var pressed := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		position = event.global_position
+		pressed = event.pressed
+	elif event is InputEventScreenTouch:
+		position = event.position
+		pressed = event.pressed
+	else:
+		return false
+	if not pressed:
+		return false
+	var back_rect := detail_back_button.get_global_rect().grow(36.0)
+	if _first_position_in_rect(_activity_input_position_candidates(position), back_rect) == null:
+		return false
+	_show_skills()
+	return true
+
+
+func _route_detail_jump_arrow_input(event: InputEvent) -> bool:
+	if current_screen != "skill" or detail_actions_scroll == null:
+		detail_jump_press_direction = 0
+		detail_jump_press_touch_index = -1
+		return false
+	var position := Vector2.ZERO
+	var pressed := false
+	var released := false
+	var is_motion := false
+	var touch_index := -1
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var mouse_event := event as InputEventMouseButton
+		position = mouse_event.global_position
+		pressed = mouse_event.pressed
+		released = not mouse_event.pressed
+	elif event is InputEventMouseMotion:
+		position = (event as InputEventMouseMotion).global_position
+		is_motion = true
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		position = touch_event.position
+		touch_index = touch_event.index
+		pressed = touch_event.pressed
+		released = not touch_event.pressed
+	elif event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		position = drag_event.position
+		touch_index = drag_event.index
+		is_motion = true
+	else:
+		return false
+	if pressed:
+		var direction := _detail_jump_arrow_direction_at_position(position)
+		if direction == 0:
+			return false
+		detail_jump_press_direction = direction
+		detail_jump_press_touch_index = touch_index
+		action_card_press_key = ""
+		_cancel_skill_swipe_feedback(false)
+		return true
+	if detail_jump_press_direction == 0:
+		return false
+	if touch_index >= 0 and detail_jump_press_touch_index >= 0 and touch_index != detail_jump_press_touch_index:
+		return false
+	if is_motion:
+		return true
+	if released:
+		var direction := detail_jump_press_direction
+		detail_jump_press_direction = 0
+		detail_jump_press_touch_index = -1
+		if _detail_jump_arrow_direction_at_position(position) == direction:
+			_on_detail_jump_arrow_pressed(direction)
+		return true
+	return false
+
+
+func _detail_jump_arrow_direction_at_position(position: Vector2) -> int:
+	if _detail_jump_arrow_contains_position(detail_jump_top_button, -1, position):
+		return -1
+	if _detail_jump_arrow_contains_position(detail_jump_bottom_button, 1, position):
+		return 1
+	return 0
+
+
+func _detail_jump_arrow_contains_position(button: TextureButton, direction: int, position: Vector2) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	if not _detail_jump_arrow_can_use(direction):
+		return false
+	if button.modulate.a <= 0.04:
+		return false
+	return button.get_global_rect().grow(18.0).has_point(position)
+
+
+func _detail_jump_arrow_can_use(direction: int) -> bool:
+	if detail_actions_scroll == null or not _detail_jump_arrows_have_enough_modules():
+		return false
+	var max_scroll := detail_actions_scroll.get_max_scroll_vertical()
+	if max_scroll <= ACTIVITY_JUMP_ARROW_EDGE_EPSILON:
+		return false
+	var scroll := detail_actions_scroll.scroll_vertical
+	if direction < 0:
+		return scroll > ACTIVITY_JUMP_ARROW_EDGE_EPSILON
+	return scroll < max_scroll - ACTIVITY_JUMP_ARROW_EDGE_EPSILON
+
+
+func _detail_jump_arrows_have_enough_modules() -> bool:
+	return detail_rendered_action_ids.size() >= ACTIVITY_JUMP_ARROW_MIN_MODULES
+
+
+func _route_passive_button_global_input(event: InputEvent) -> bool:
+	if passive_button_press_source == null or not is_instance_valid(passive_button_press_source):
+		return false
+	var position := Vector2.ZERO
+	var is_drag := false
+	var is_release := false
+	if event is InputEventMouseMotion:
+		position = (event as InputEventMouseMotion).global_position
+		is_drag = true
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		position = (event as InputEventMouseButton).global_position
+		is_release = not (event as InputEventMouseButton).pressed
+	elif event is InputEventScreenDrag:
+		position = (event as InputEventScreenDrag).position
+		is_drag = true
+	elif event is InputEventScreenTouch and (passive_button_press_touch_index < 0 or (event as InputEventScreenTouch).index == passive_button_press_touch_index):
+		position = (event as InputEventScreenTouch).position
+		is_release = not (event as InputEventScreenTouch).pressed
+	if not is_drag and not is_release:
+		return false
+	if is_drag or position.distance_to(passive_button_press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+		passive_button_press_dragged = true
+		passive_button_pending_tap_id += 1
+		skill_swipe_button_suppressed_until_msec = Time.get_ticks_msec() + SKILL_SWIPE_BUTTON_SUPPRESS_MSEC
+	if is_release and passive_button_press_dragged:
+		_clear_passive_button_press()
+		return true
+	return false
+
+
+func _route_passive_info_button_press(event: InputEvent) -> bool:
+	var position := Vector2.ZERO
+	var touch_index := -1
+	var pressed := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var mouse_event := event as InputEventMouseButton
+		position = mouse_event.global_position
+		pressed = mouse_event.pressed
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		position = touch_event.position
+		touch_index = touch_event.index
+		pressed = touch_event.pressed
+	if not pressed:
+		return false
+	for raw_card in action_cards.values():
+		var card := raw_card as Dictionary
+		if not bool(card.get("passive", false)):
+			continue
+		var info_button := card.get("info_button") as Control
+		var info_popover := card.get("info_popover") as Control
+		var action := card.get("action", {}) as Dictionary
+		if info_button == null or info_popover == null or action.is_empty():
+			continue
+		if not is_instance_valid(info_button) or not info_button.is_visible_in_tree():
+			continue
+		if not info_button.get_global_rect().grow(8.0).has_point(position):
+			continue
+		var module_id := str(action.get("id", WOODCUTTING_LOG_MODULE_ID))
+		passive_button_press_source = info_button
+		passive_button_press_kind = "info"
+		passive_button_press_module_id = module_id
+		passive_button_press_stat_type = ""
+		passive_button_press_popover = info_popover
+		passive_button_press_position = position
+		passive_button_press_dragged = false
+		passive_button_press_touch_index = touch_index
+		_begin_skill_swipe_tracking(position, touch_index)
+		return true
+	return false
+
+
+func _route_action_card_press(press_position: Vector2) -> bool:
+	if _position_inside_bottom_nav(press_position):
+		return false
+	var press_positions: Array[Vector2] = []
+	press_positions.append(press_position)
+	for routed_position in press_positions:
+		var match := _action_card_at_position(routed_position)
+		if match.is_empty():
+			continue
+		var card := match["card"] as Dictionary
+		var skill_id := str(match["skill_id"])
+		var action_id := str(match["action_id"])
+		var stat_kind := _activity_stat_kind_at_position(card, routed_position)
+		if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+			detail_actions_scroll.prepare_child_tap()
+		action_card_press_key = _action_key(skill_id, action_id)
+		action_card_press_position = routed_position
+		action_card_press_stat_kind = stat_kind
+		action_card_press_dragged = false
+		return true
+	return false
+
+
+func _action_card_at_position(position: Vector2) -> Dictionary:
+	for key in action_cards.keys():
+		var card := action_cards[key] as Dictionary
+		var pop := card.get("pop") as Control
+		if pop == null or not is_instance_valid(pop) or not pop.get_global_rect().has_point(position):
+			continue
+		var parts := str(key).split(":")
+		if parts.size() < 2:
+			continue
+		var skill_id := str(parts[0])
+		var action_id := str(parts[1])
+		var action := _action_data(skill_id, action_id)
+		if action.is_empty() or _skill_level(skill_id) < int(action.get("unlock", 1)):
+			continue
+		if _is_passive_action(action):
+			continue
+		if bool(card.get("unlock_ceremony_active", false)) or bool(card.get("unlock_ceremony_pending", false)):
+			continue
+		return {
+			"card": card,
+			"skill_id": skill_id,
+			"action_id": action_id
+		}
+	return {}
+
+
+func _route_action_card_release(event: InputEvent) -> bool:
+	if action_card_press_key.is_empty():
+		return false
+	var release_position := Vector2.ZERO
+	var released := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+		release_position = event.global_position
+		released = true
+	elif event is InputEventScreenTouch and not event.pressed:
+		release_position = event.position
+		released = true
+	if not released:
+		return false
+	var release_positions := _activity_input_position_candidates(release_position)
+	var key := action_card_press_key
+	var stat_kind := action_card_press_stat_kind
+	var dragged := action_card_press_dragged
+	action_card_press_key = ""
+	action_card_press_stat_kind = ""
+	action_card_press_dragged = false
+	if _position_inside_bottom_nav(release_position):
+		return false
+	var close_to_press := _event_positions_close_to_press(release_positions)
+	if not stat_kind.is_empty():
+		close_to_press = _event_positions_within_press_slop(release_positions, ACTION_STAT_TAP_RELEASE_SLOP)
+	if dragged or not close_to_press:
+		return false
+	if _skill_swipe_suppresses_button_action():
+		if stat_kind.is_empty():
+			return false
+		_clear_skill_swipe_button_suppression()
+	if not action_cards.has(key):
+		return false
+	var card := action_cards[key] as Dictionary
+	var pop := card.get("pop") as Control
+	if pop != null and is_instance_valid(pop) and _first_position_in_rect(release_positions, pop.get_global_rect()) == null:
+		return false
+	var parts := key.split(":")
+	if parts.size() < 2:
+		return false
+	if not stat_kind.is_empty():
+		_toggle_activity_stat_popup(str(parts[0]), str(parts[1]), stat_kind)
+	else:
+		_start_action_from_card_tap(str(parts[0]), str(parts[1]))
+	skill_swipe_tracking = false
+	return true
+
+
+func _update_action_stat_press_drag_state(event: InputEvent) -> void:
+	if action_card_press_stat_kind.is_empty():
+		return
+	var position := Vector2.ZERO
+	var has_position := false
+	if event is InputEventMouseMotion:
+		position = (event as InputEventMouseMotion).global_position
+		has_position = true
+	elif event is InputEventScreenDrag:
+		position = (event as InputEventScreenDrag).position
+		has_position = true
+	if has_position and position.distance_to(action_card_press_position) > ACTION_STAT_TAP_RELEASE_SLOP:
+		action_card_press_dragged = true
+
+
 func _set_activity_lock_page_scrolling_disabled(disabled: bool) -> void:
 	if detail_actions_scroll != null:
 		detail_actions_scroll.set_input_locked_by_activity_lock(disabled)
@@ -1846,6 +2589,12 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
 		save_game()
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
+		var now := _unix_now()
+		var offline_progressed := _apply_offline_progress(last_save_unix_time) > 0
+		_apply_passive_module_production(now)
+		if offline_progressed:
+			_update_ui(0.0, true)
+			save_game()
 		music_started = false
 		_ensure_music_playing()
 
@@ -1872,7 +2621,9 @@ func _build_ui() -> void:
 	_build_nav_bar()
 	_build_settings_overlay()
 	_build_achievements_overlay()
+	_build_offline_summary_overlay()
 	_build_achievement_toast_layer()
+	_build_tutorial_overlay()
 
 
 func _build_achievement_toast_layer() -> void:
@@ -1884,6 +2635,60 @@ func _build_achievement_toast_layer() -> void:
 	achievement_toast_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	achievement_toast_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	achievement_toast_layer.add_child(achievement_toast_root)
+
+
+func _build_tutorial_overlay() -> void:
+	tutorial_layer = CanvasLayer.new()
+	tutorial_layer.layer = TUTORIAL_LAYER
+	add_child(tutorial_layer)
+
+	tutorial_overlay = Control.new()
+	tutorial_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tutorial_overlay.visible = false
+	tutorial_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tutorial_layer.add_child(tutorial_overlay)
+
+	var panel := PanelContainer.new()
+	panel.anchor_left = 0.5
+	panel.anchor_right = 0.5
+	panel.anchor_top = 1.0
+	panel.anchor_bottom = 1.0
+	panel.offset_left = -900
+	panel.offset_right = 900
+	panel.offset_top = -BOTTOM_NAV_HEIGHT - 520
+	panel.offset_bottom = -BOTTOM_NAV_HEIGHT - 42
+	panel.mouse_filter = Control.MOUSE_FILTER_STOP
+	panel.add_theme_stylebox_override("panel", _surface_style(COLOR_PANEL, 52, 46, true))
+	tutorial_overlay.add_child(panel)
+
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 20)
+	panel.add_child(stack)
+
+	var header := HBoxContainer.new()
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	header.add_theme_constant_override("separation", 24)
+	stack.add_child(header)
+
+	tutorial_step_label = _label("", 46, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	tutorial_step_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(tutorial_step_label)
+
+	tutorial_skip_button = _menu_button("Skip")
+	tutorial_skip_button.custom_minimum_size = Vector2(260, 118)
+	tutorial_skip_button.add_theme_font_size_override("font_size", 50)
+	tutorial_skip_button.pressed.connect(_finish_tutorial)
+	header.add_child(tutorial_skip_button)
+
+	tutorial_title_label = _label("", 74, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	if app_bold_font != null:
+		tutorial_title_label.add_theme_font_override("font", app_bold_font)
+	stack.add_child(tutorial_title_label)
+
+	tutorial_body_label = _label("", 58, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	tutorial_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	tutorial_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.add_child(tutorial_body_label)
 
 
 func _build_home_page() -> void:
@@ -1981,14 +2786,16 @@ func _build_elite_summary() -> Control:
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 6)
 	var copy := VBoxContainer.new()
-	copy.custom_minimum_size = Vector2(660, 0)
+	copy.custom_minimum_size = Vector2(1680, 0)
+	copy.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	copy.add_theme_constant_override("separation", 12)
 	row.add_child(copy)
 	achievement_elite_label = _label("", 112, Color("#f4bf35"), HORIZONTAL_ALIGNMENT_CENTER)
 	achievement_elite_label.add_theme_color_override("font_outline_color", COLOR_INK)
-	achievement_elite_label.add_theme_constant_override("outline_size", 18)
+	achievement_elite_label.add_theme_constant_override("outline_size", 28)
 	copy.add_child(achievement_elite_label)
 	achievement_total_bar = _progress(Color("#f4bf35"), 58)
+	achievement_total_bar.custom_minimum_size = Vector2(1680, 58)
 	copy.add_child(achievement_total_bar)
 	return row
 
@@ -2106,7 +2913,7 @@ func _build_achievements(parent: PanelContainer) -> void:
 		header.add_child(level_label)
 		achievement_skill_level_labels[skill_id] = level_label
 
-		var actions: Array = actions_by_skill.get(skill_id, [])
+		var actions: Array = _mastery_actions_for_skill(skill_id)
 		var slot_strip := _achievement_medal_slot_strip(skill_id, actions)
 		skill_stack.add_child(slot_strip["root"])
 		achievement_skill_tier_name_labels[skill_id] = []
@@ -2217,6 +3024,7 @@ func _build_nav_bar() -> void:
 	settings_tab.pressed.connect(_show_settings)
 	row.add_child(settings_tab)
 	shop_tab = _nav_button("res://docs/assets/ui/shop.png")
+	shop_tab.add_theme_constant_override("icon_max_width", 232)
 	shop_tab.pressed.connect(_show_shop)
 	row.add_child(shop_tab)
 
@@ -2256,6 +3064,9 @@ func _build_settings_overlay() -> void:
 	header.add_child(close)
 	stack.add_child(_audio_volume_control("Music", true, 1120))
 	stack.add_child(_audio_volume_control("SFX", false, 1120))
+	var tutorial := _menu_button("Tutorial")
+	tutorial.pressed.connect(_start_tutorial)
+	stack.add_child(tutorial)
 	var discord := _menu_button("Discord")
 	discord.pressed.connect(_settings_discord_pressed)
 	stack.add_child(discord)
@@ -2356,6 +3167,42 @@ func _build_achievements_overlay() -> void:
 	scroll.add_child(achievements_list_stack)
 
 
+func _build_offline_summary_overlay() -> void:
+	offline_summary_overlay = ColorRect.new()
+	(offline_summary_overlay as ColorRect).color = Color(0, 0, 0, 0.46)
+	offline_summary_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	offline_summary_overlay.z_index = MODAL_OVERLAY_Z
+	offline_summary_overlay.z_as_relative = false
+	offline_summary_overlay.visible = false
+	offline_summary_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	offline_summary_overlay.add_to_group("modal_overlay")
+	offline_summary_overlay.gui_input.connect(_on_offline_summary_overlay_gui_input)
+	add_child(offline_summary_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	offline_summary_overlay.add_child(center)
+	var frame := Control.new()
+	frame.custom_minimum_size = OFFLINE_SUMMARY_MODAL_SIZE
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	center.add_child(frame)
+	offline_summary_panel_frame = frame
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = OFFLINE_SUMMARY_MODAL_SIZE
+	panel.add_theme_stylebox_override("panel", _surface_style(COLOR_PANEL, CARD_RADIUS, 72, true))
+	frame.add_child(panel)
+	offline_summary_panel = panel
+	var outer := MarginContainer.new()
+	outer.add_theme_constant_override("margin_left", 58)
+	outer.add_theme_constant_override("margin_right", 58)
+	outer.add_theme_constant_override("margin_top", 52)
+	outer.add_theme_constant_override("margin_bottom", 52)
+	panel.add_child(outer)
+	offline_summary_stack = VBoxContainer.new()
+	offline_summary_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	offline_summary_stack.add_theme_constant_override("separation", 28)
+	outer.add_child(offline_summary_stack)
+
+
 func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1) -> void:
 	if skills_content == null:
 		return
@@ -2370,8 +3217,13 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	_clear(skills_content)
 	skill_cards.clear()
 	_clear_action_pop_tweens()
+	_clear_action_crit_tweens()
 	_clear_stamina_gauge_pop_tween()
 	action_cards.clear()
+	detail_regen_circle = null
+	detail_stamina_bar = null
+	detail_actions_scroll = null
+	detail_back_button = null
 	detail_jump_top_button = null
 	detail_jump_bottom_button = null
 	detail_jump_top_hold = 0.0
@@ -2437,12 +3289,26 @@ func _render_settings_page() -> void:
 	stack.add_child(_label("Settings", 132, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
 	stack.add_child(_audio_volume_control("Music", true, 1480))
 	stack.add_child(_audio_volume_control("SFX", false, 1480, 128))
+	var tutorial := _settings_page_button("Tutorial", "", 940, 128, 180)
+	tutorial.add_theme_stylebox_override("normal", _button_style(Color("#f5fff3"), BUTTON_BORDER, 54))
+	tutorial.add_theme_stylebox_override("hover", _button_style(Color("#e7ffdf"), BUTTON_BORDER, 54))
+	tutorial.add_theme_stylebox_override("pressed", _button_style(Color("#d5f9cb"), BUTTON_BORDER, 54))
+	tutorial.pressed.connect(_start_tutorial)
+	stack.add_child(tutorial)
 	var discord := _settings_page_button("Contact the dev", "res://docs/assets/ui/discord-simple.png", 1320, 220, 286)
 	discord.add_theme_stylebox_override("normal", _button_style(Color("#eaf6ff"), BUTTON_BORDER, 54))
 	discord.add_theme_stylebox_override("hover", _button_style(Color("#d9efff"), BUTTON_BORDER, 54))
 	discord.add_theme_stylebox_override("pressed", _button_style(Color("#c3e4ff"), BUTTON_BORDER, 54))
 	discord.pressed.connect(_settings_discord_pressed)
 	stack.add_child(discord)
+	if _pending_crash_report_exists():
+		var crash_report := _settings_page_button("Copy Crash Report", "", 1320, 128, 220)
+		crash_report.tooltip_text = "Copies the last crash report and clears it from this device."
+		crash_report.add_theme_stylebox_override("normal", _button_style(Color("#fff2a8"), BUTTON_BORDER, 48))
+		crash_report.add_theme_stylebox_override("hover", _button_style(Color("#ffe87a"), BUTTON_BORDER, 48))
+		crash_report.add_theme_stylebox_override("pressed", _button_style(Color("#ffd957"), BUTTON_BORDER, 48))
+		crash_report.pressed.connect(_settings_copy_crash_report_pressed)
+		stack.add_child(crash_report)
 	var reset := _settings_page_button("Hard Reset", "", 940, 128, 236)
 	reset.add_theme_stylebox_override("normal", _button_style(Color("#ffb8b8"), BUTTON_BORDER, 48))
 	reset.add_theme_stylebox_override("hover", _button_style(Color("#ff9f9f"), BUTTON_BORDER, 48))
@@ -2469,12 +3335,14 @@ func _render_shop_page() -> void:
 	var top_spacer := Control.new()
 	top_spacer.custom_minimum_size = Vector2(0, 106)
 	stack.add_child(top_spacer)
-	stack.add_child(_label("Shop", 132, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
-	stack.add_child(_image("res://docs/assets/ui/shop.png", Vector2(300, 300)))
+	var title_text := "Rewarded Ad"
+	var title := _label(title_text, 104, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_font_override("font", app_bold_font)
+	stack.add_child(title)
 	var offer := _shop_ad_offer_button()
 	offer.pressed.connect(_shop_ad_pressed)
 	stack.add_child(offer)
-	shop_bonus_label = _label("", 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	shop_bonus_label = _label("", 74, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	shop_bonus_label.custom_minimum_size = Vector2(1320, 0)
 	shop_bonus_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(shop_bonus_label)
@@ -2581,10 +3449,12 @@ func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
 	back_button.offset_bottom = back_button.offset_top + ACTIVITY_BACK_BUTTON_SIZE.y
 	back_button.z_index = 80
 	if interactive:
-		back_button.pressed.connect(_back_to_skills)
+		back_button.pressed.connect(_show_skills)
 	else:
 		back_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	parent.add_child(back_button)
+	if interactive:
+		detail_back_button = back_button
 	return back_button
 
 
@@ -2697,6 +3567,12 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	for action in _visible_actions_for_skill(selected_skill_id):
 		var action_id := str(action["id"])
 		detail_rendered_action_ids.append(action_id)
+		if _is_passive_action(action as Dictionary):
+			var passive_card := _build_passive_module_card(selected_skill_id, action as Dictionary, content_width, true)
+			stack.add_child(passive_card["root"] as Control)
+			detail_action_card_nodes[action_id] = passive_card["root"] as Control
+			action_cards[_action_key(selected_skill_id, action_id)] = passive_card["card"] as Dictionary
+			continue
 		var card_root := Control.new()
 		card_root.custom_minimum_size = Vector2(0, ACTION_CARD_HEIGHT)
 		card_root.custom_minimum_size.x = content_width
@@ -2715,6 +3591,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		pop_card.offset_top = 0.0
 		pop_card.offset_bottom = 0.0
 		pop_card.clip_contents = false
+		pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
 		card_root.add_child(pop_card)
 		
 		var bg := RoundedTextureRect.new()
@@ -2723,6 +3600,8 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		bg.radius = 66.0
 		bg.crop_left = 0.025 if selected_skill_id == "fishing" else 0.0
 		bg.crop_right = 0.015 if selected_skill_id == "fishing" else 0.0
+		bg.art_height = ACTION_CARD_HEIGHT
+		bg.fallback_color = _skill_theme_color(selected_skill_id)
 		bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		bg.stretch_mode = TextureRect.STRETCH_SCALE
@@ -2744,13 +3623,13 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		margin.add_theme_constant_override("margin_right", 54)
 		margin.add_theme_constant_override("margin_top", 46)
 		margin.add_theme_constant_override("margin_bottom", 126)
-		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		margin.mouse_filter = Control.MOUSE_FILTER_PASS
 		margin.z_index = 200
 		pop_card.add_child(margin)
 		
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 56)
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		row.mouse_filter = Control.MOUSE_FILTER_PASS
 		margin.add_child(row)
 
 		var art_slot := MarginContainer.new()
@@ -2770,7 +3649,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		var copy := VBoxContainer.new()
 		copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		copy.add_theme_constant_override("separation", 38)
-		copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		copy.mouse_filter = Control.MOUSE_FILTER_PASS
 		row.add_child(copy)
 		var name := _label(str(action["name"]), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 		name.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -2781,16 +3660,21 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 
 		var stat_row := HBoxContainer.new()
 		stat_row.add_theme_constant_override("separation", 28)
-		stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stat_row.mouse_filter = Control.MOUSE_FILTER_PASS
 		copy.add_child(stat_row)
 		var xp_label := _action_stat_label("")
-		stat_row.add_child(_action_stat_box(xp_label))
+		var xp_box := _action_stat_box(xp_label, true, selected_skill_id, action_id, "xp")
+		stat_row.add_child(xp_box)
 		var stamina_label := _action_stat_label("")
-		stat_row.add_child(_action_stat_box(stamina_label))
+		var stamina_box := _action_stat_box(stamina_label, true, selected_skill_id, action_id, "stamina")
+		stat_row.add_child(stamina_box)
 		var time_label := _action_stat_label("")
-		stat_row.add_child(_action_stat_box(time_label))
+		var time_box := _action_stat_box(time_label, true, selected_skill_id, action_id, "time")
+		stat_row.add_child(time_box)
 		var success_label := _action_stat_label("")
-		stat_row.add_child(_action_stat_box(success_label))
+		var success_box := _action_stat_box(success_label, true, selected_skill_id, action_id, "success")
+		stat_row.add_child(success_box)
+		var stat_hit_buttons := _activity_stat_hit_buttons(pop_card, selected_skill_id, action_id)
 
 		var medal := TextureRect.new()
 		medal.anchor_left = 0.0
@@ -2810,6 +3694,9 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		mastery_progress.easing_speed = 5.0
 		mastery_progress.z_index = 20
 		copy.add_child(mastery_progress)
+
+		var bonus_panel := _activity_stat_bonus_panel()
+		copy.add_child(bonus_panel["root"] as Control)
 
 		var status := _label("", 42, COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
 		status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2838,17 +3725,17 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 
 		var button := Button.new()
 		button.text = ""
-		button.modulate = Color(1, 1, 1, 0)
 		button.focus_mode = Control.FOCUS_NONE
 		button.flat = true
+		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.set_anchors_preset(Control.PRESET_FULL_RECT)
 		button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 		button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 		button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 		button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
 		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-		button.z_index = 230
-		button.pressed.connect(_start_action.bind(selected_skill_id, action_id))
+		button.z_index = 218
+		button.gui_input.connect(_on_action_card_input.bind(selected_skill_id, action_id, button))
 		pop_card.add_child(button)
 		action_cards[_action_key(selected_skill_id, action_id)] = {
 			"root": card_root,
@@ -2862,6 +3749,15 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 			"stamina": stamina_label,
 			"time": time_label,
 			"success": success_label,
+			"stat_row": stat_row,
+			"stat_boxes": {
+				"xp": xp_box,
+				"stamina": stamina_box,
+				"time": time_box,
+				"success": success_box
+			},
+			"stat_hit_buttons": stat_hit_buttons,
+			"bonus_panel": bonus_panel,
 			"status": status,
 			"medal": medal,
 			"mastery": mastery_progress,
@@ -2889,7 +3785,6 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		call_deferred("_restore_detail_actions_scroll", restore_detail_scroll)
 	elif scroll_latest_activity:
 		call_deferred("_scroll_to_latest_unlocked_activity", false)
-	call_deferred("_prepare_skill_swipe_preview_pages")
 
 
 func _build_detail_jump_arrows(parent: Control) -> void:
@@ -2977,15 +3872,11 @@ func _on_detail_jump_arrow_pressed(direction: int) -> void:
 
 
 func _reveal_detail_jump_arrow(direction: int) -> void:
-	if detail_actions_scroll == null:
+	if detail_actions_scroll == null or not _detail_jump_arrows_have_enough_modules():
 		return
-	var max_scroll := detail_actions_scroll.get_max_scroll_vertical()
-	if max_scroll <= ACTIVITY_JUMP_ARROW_EDGE_EPSILON:
-		return
-	var scroll := detail_actions_scroll.scroll_vertical
-	if direction < 0 and scroll > ACTIVITY_JUMP_ARROW_EDGE_EPSILON:
+	if direction < 0 and _detail_jump_arrow_can_use(-1):
 		detail_jump_top_hold = ACTIVITY_JUMP_ARROW_LINGER_SECONDS
-	elif direction > 0 and scroll < max_scroll - ACTIVITY_JUMP_ARROW_EDGE_EPSILON:
+	elif direction > 0 and _detail_jump_arrow_can_use(1):
 		detail_jump_bottom_hold = ACTIVITY_JUMP_ARROW_LINGER_SECONDS
 
 
@@ -2994,12 +3885,8 @@ func _process_detail_jump_arrows(delta: float) -> void:
 		_process_detail_jump_arrow(detail_jump_top_button, true, false, delta)
 		_process_detail_jump_arrow(detail_jump_bottom_button, false, false, delta)
 		return
-	var max_scroll := detail_actions_scroll.get_max_scroll_vertical()
-	var scroll := detail_actions_scroll.scroll_vertical
-	var can_jump_top := max_scroll > ACTIVITY_JUMP_ARROW_EDGE_EPSILON and scroll > ACTIVITY_JUMP_ARROW_EDGE_EPSILON
-	var can_jump_bottom := max_scroll > ACTIVITY_JUMP_ARROW_EDGE_EPSILON and scroll < max_scroll - ACTIVITY_JUMP_ARROW_EDGE_EPSILON
-	_process_detail_jump_arrow(detail_jump_top_button, true, can_jump_top, delta)
-	_process_detail_jump_arrow(detail_jump_bottom_button, false, can_jump_bottom, delta)
+	_process_detail_jump_arrow(detail_jump_top_button, true, _detail_jump_arrow_can_use(-1), delta)
+	_process_detail_jump_arrow(detail_jump_bottom_button, false, _detail_jump_arrow_can_use(1), delta)
 
 
 func _process_chain_proximity_audio(delta: float) -> void:
@@ -3050,6 +3937,7 @@ func _update_page_visibility() -> void:
 	_apply_nav_style(skills_tab, current_screen == "menu" or current_screen == "skill")
 	_apply_nav_style(shop_tab, current_screen == "shop")
 	_apply_nav_style(settings_tab, current_screen == "settings")
+	_tutorial_check_progress()
 
 
 func _update_ui(delta: float, instant := false) -> void:
@@ -3102,7 +3990,8 @@ func _update_ui(delta: float, instant := false) -> void:
 			detail_regen_circle.set_theme_color(_skill_theme_color(selected_skill_id))
 			detail_regen_circle.set_stamina(stamina_value, max_stamina, instant, circle_value)
 			detail_regen_circle.set_value(_regen_ring_ease(circle_value), instant)
-		_update_skill_swipe_preview_states(delta, instant)
+		if _skill_swipe_previews_need_frame_updates():
+			_update_skill_swipe_preview_states(delta, instant)
 	for key in action_cards.keys():
 		var parts := str(key).split(":")
 		var skill_id := parts[0]
@@ -3111,7 +4000,11 @@ func _update_ui(delta: float, instant := false) -> void:
 		var unlocked := _skill_level(skill_id) >= int(action.get("unlock", 1))
 		var running := running_skill_id == skill_id and running_action_id == action_id
 		var card: Dictionary = action_cards[key]
+		if _is_passive_action(action):
+			_update_passive_card_static_state(card, skill_id, action, unlocked)
+			continue
 		_update_action_card_static_state(card, skill_id, action, unlocked)
+		_sync_activity_stat_popup(card, skill_id, action, unlocked, delta, instant)
 		var status := card["status"] as Label
 		status.text = ""
 		var medal := card["medal"] as TextureRect
@@ -3128,7 +4021,7 @@ func _update_ui(delta: float, instant := false) -> void:
 	_play_pending_activity_unlock_ceremony()
 	_refresh_audio_volume_controls()
 	if shop_bonus_label != null:
-		shop_bonus_label.text = _shop_bonus_status_text()
+		shop_bonus_label.text = _shop_bonus_label_text()
 	_expire_reset_data_confirm_if_needed()
 
 
@@ -3250,7 +4143,7 @@ func _action_card_medal_destination(card: Dictionary, medal: TextureRect) -> Vec
 
 
 func _update_action_card_static_state(card: Dictionary, skill_id: String, action: Dictionary, unlocked: bool) -> void:
-	var xp_text := "+%s\nXP" % _effective_xp(action)
+	var xp_text := "+%s\nXP" % _effective_xp(action, skill_id)
 	var stamina_text := "%s\nSTAM" % _effective_stamina(action)
 	var time_text := "%ss\nTIME" % _format_seconds(_effective_seconds(skill_id, action))
 	var success_text := "%s%%\nRATE" % int(_success_chance(skill_id, action))
@@ -3272,6 +4165,7 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 	var button := card["button"] as Button
 	if button != null:
 		button.disabled = (not unlocked) or bool(card.get("unlock_ceremony_active", false)) or bool(card.get("unlock_ceremony_pending", false))
+		button.visible = true
 		button.modulate = Color(1, 1, 1, 0)
 	var bg := card["bg"] as RoundedTextureRect
 	if bg != null:
@@ -3294,53 +4188,676 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 	card["last_unlocked"] = unlocked
 
 
+func _on_action_stat_box_input(event: InputEvent, skill_id: String, action_id: String, stat_kind: String) -> void:
+	var pressed := false
+	if event is InputEventMouseButton:
+		pressed = event.button_index == MOUSE_BUTTON_LEFT and event.pressed
+	elif event is InputEventScreenTouch:
+		pressed = event.pressed
+	if not pressed:
+		return
+	var action := _action_data(skill_id, action_id)
+	if action.is_empty() or _skill_level(skill_id) < int(action.get("unlock", 1)):
+		return
+	var key := _action_key(skill_id, action_id)
+	if expanded_activity_stat_key == key and expanded_activity_stat_kind == stat_kind:
+		expanded_activity_stat_key = ""
+		expanded_activity_stat_kind = ""
+	else:
+		expanded_activity_stat_key = key
+		expanded_activity_stat_kind = stat_kind
+	_cancel_skill_swipe_feedback(false)
+	action_card_press_key = ""
+	get_viewport().set_input_as_handled()
+	_update_ui(0.0, false)
+
+
+func _on_action_stat_button_pressed(skill_id: String, action_id: String, stat_kind: String) -> void:
+	_toggle_activity_stat_popup(skill_id, action_id, stat_kind)
+	get_viewport().set_input_as_handled()
+
+
+func _toggle_activity_stat_popup(skill_id: String, action_id: String, stat_kind: String) -> void:
+	var action := _action_data(skill_id, action_id)
+	if action.is_empty() or _skill_level(skill_id) < int(action.get("unlock", 1)):
+		return
+	var key := _action_key(skill_id, action_id)
+	var now := Time.get_ticks_msec()
+	if (
+		last_activity_stat_toggle_key == key
+		and last_activity_stat_toggle_kind == stat_kind
+		and now - last_activity_stat_toggle_msec < ACTION_CARD_DUPLICATE_TAP_MSEC
+	):
+		return
+	last_activity_stat_toggle_key = key
+	last_activity_stat_toggle_kind = stat_kind
+	last_activity_stat_toggle_msec = now
+	if expanded_activity_stat_key == key and expanded_activity_stat_kind == stat_kind:
+		expanded_activity_stat_key = ""
+		expanded_activity_stat_kind = ""
+	else:
+		expanded_activity_stat_key = key
+		expanded_activity_stat_kind = stat_kind
+	_cancel_skill_swipe_feedback(false)
+	action_card_press_key = ""
+	_update_ui(0.0, false)
+
+
+func _on_action_card_input(event: InputEvent, skill_id: String, action_id: String, source: Control) -> void:
+	var key := _action_key(skill_id, action_id)
+	if not action_cards.has(key):
+		return
+	var card := action_cards[key] as Dictionary
+	var action := _action_data(skill_id, action_id)
+	if action.is_empty():
+		return
+	var unlocked := _skill_level(skill_id) >= int(action.get("unlock", 1))
+	if not unlocked or bool(card.get("unlock_ceremony_active", false)) or bool(card.get("unlock_ceremony_pending", false)):
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var event_positions := _action_card_event_positions(event, source)
+		if event.pressed:
+			var stat_kind := _activity_stat_kind_from_positions(card, event_positions)
+			if not stat_kind.is_empty():
+				_route_skill_swipe_button_input(event, source)
+				action_card_press_key = key
+				action_card_press_position = _first_event_position(event_positions)
+				action_card_press_stat_kind = stat_kind
+				action_card_press_dragged = false
+				get_viewport().set_input_as_handled()
+				return
+			action_card_press_key = key
+			action_card_press_position = _first_event_position(event_positions)
+			action_card_press_stat_kind = ""
+			action_card_press_dragged = false
+			_route_skill_swipe_button_input(event, source)
+			get_viewport().set_input_as_handled()
+		elif action_card_press_key == key and not _skill_swipe_suppresses_button_action():
+			var stat_kind := action_card_press_stat_kind
+			var close_to_press := _event_positions_close_to_press(event_positions)
+			if not stat_kind.is_empty():
+				close_to_press = _event_positions_within_press_slop(event_positions, ACTION_STAT_TAP_RELEASE_SLOP)
+			action_card_press_key = ""
+			action_card_press_stat_kind = ""
+			if close_to_press and not action_card_press_dragged:
+				if not stat_kind.is_empty():
+					_toggle_activity_stat_popup(skill_id, action_id, stat_kind)
+				else:
+					_start_action_from_card_tap(skill_id, action_id)
+					_cancel_skill_swipe_feedback(false)
+			action_card_press_dragged = false
+			get_viewport().set_input_as_handled()
+		elif action_card_press_key == key:
+			action_card_press_key = ""
+			action_card_press_stat_kind = ""
+			action_card_press_dragged = false
+			if skill_swipe_tracking:
+				_route_skill_swipe_button_input(event, source)
+			get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion:
+		if skill_swipe_tracking:
+			_route_skill_swipe_button_input(event, source)
+			get_viewport().set_input_as_handled()
+	elif event is InputEventScreenTouch:
+		var event_positions := _action_card_event_positions(event, source)
+		if event.pressed:
+			var stat_kind := _activity_stat_kind_from_positions(card, event_positions)
+			if not stat_kind.is_empty():
+				_route_skill_swipe_button_input(event, source)
+				action_card_press_key = key
+				action_card_press_position = _first_event_position(event_positions)
+				action_card_press_stat_kind = stat_kind
+				action_card_press_dragged = false
+				get_viewport().set_input_as_handled()
+				return
+			action_card_press_key = key
+			action_card_press_position = _first_event_position(event_positions)
+			action_card_press_stat_kind = ""
+			action_card_press_dragged = false
+			_route_skill_swipe_button_input(event, source)
+			get_viewport().set_input_as_handled()
+		elif action_card_press_key == key and not _skill_swipe_suppresses_button_action():
+			var stat_kind := action_card_press_stat_kind
+			var close_to_press := _event_positions_close_to_press(event_positions)
+			if not stat_kind.is_empty():
+				close_to_press = _event_positions_within_press_slop(event_positions, ACTION_STAT_TAP_RELEASE_SLOP)
+			action_card_press_key = ""
+			action_card_press_stat_kind = ""
+			if close_to_press and not action_card_press_dragged:
+				if not stat_kind.is_empty():
+					_toggle_activity_stat_popup(skill_id, action_id, stat_kind)
+				else:
+					_start_action_from_card_tap(skill_id, action_id)
+					_cancel_skill_swipe_feedback(false)
+			action_card_press_dragged = false
+			get_viewport().set_input_as_handled()
+		elif action_card_press_key == key:
+			action_card_press_key = ""
+			action_card_press_stat_kind = ""
+			action_card_press_dragged = false
+			if skill_swipe_tracking:
+				_route_skill_swipe_button_input(event, source)
+			get_viewport().set_input_as_handled()
+	elif event is InputEventScreenDrag:
+		if skill_swipe_tracking:
+			_route_skill_swipe_button_input(event, source)
+			get_viewport().set_input_as_handled()
+
+
+func _on_skill_swipe_button_input(event: InputEvent, source: Control) -> void:
+	if _route_skill_swipe_button_input(event, source):
+		get_viewport().set_input_as_handled()
+
+
+func _on_passive_module_button_input(event: InputEvent, action_kind: String, module_id: String, stat_type: String, info_popover: Control, source: Control) -> void:
+	if action_kind != "info" and _route_passive_info_button_press(event):
+		get_viewport().set_input_as_handled()
+		return
+	var position := _passive_button_event_position(event, source)
+	var is_press := false
+	var is_release := false
+	var touch_index := -1
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		is_press = event.pressed
+		is_release = not event.pressed
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		is_press = touch_event.pressed
+		is_release = not touch_event.pressed
+		touch_index = touch_event.index
+	if is_press:
+		passive_button_press_source = source
+		passive_button_press_kind = action_kind
+		passive_button_press_module_id = module_id
+		passive_button_press_stat_type = stat_type
+		passive_button_press_popover = info_popover
+		passive_button_press_position = position
+		passive_button_press_dragged = false
+		passive_button_press_touch_index = touch_index
+		_route_skill_swipe_button_input(event, source)
+		get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseMotion or event is InputEventScreenDrag:
+		if passive_button_press_source == source or skill_swipe_tracking:
+			if passive_button_press_source == source:
+				passive_button_press_dragged = true
+				passive_button_pending_tap_id += 1
+			_route_skill_swipe_button_input(event, source)
+			get_viewport().set_input_as_handled()
+		return
+	if is_release:
+		var matches_press := passive_button_press_source == source and passive_button_press_kind == action_kind
+		if skill_swipe_tracking:
+			_route_skill_swipe_button_input(event, source)
+		var tap_like := (
+			matches_press
+			and not passive_button_press_dragged
+			and position.distance_to(passive_button_press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
+		)
+		if tap_like and not _skill_swipe_suppresses_button_action():
+			_schedule_passive_module_button_activation(action_kind, module_id, stat_type, info_popover, source)
+		else:
+			_clear_passive_button_press()
+		get_viewport().set_input_as_handled()
+
+
+func _passive_button_event_position(event: InputEvent, source: Control) -> Vector2:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		return _global_event_position(mouse_event.position, mouse_event.global_position, source)
+	if event is InputEventMouseMotion:
+		var motion_event := event as InputEventMouseMotion
+		return _global_event_position(motion_event.position, motion_event.global_position, source)
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		return _global_event_position(touch_event.position, touch_event.position, source)
+	if event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		return _global_event_position(drag_event.position, drag_event.position, source)
+	return Vector2.ZERO
+
+
+func _schedule_passive_module_button_activation(action_kind: String, module_id: String, stat_type: String, info_popover: Control, source: Control) -> void:
+	passive_button_pending_tap_id += 1
+	var tap_id := passive_button_pending_tap_id
+	await get_tree().create_timer(PASSIVE_BUTTON_TAP_CONFIRM_SECONDS).timeout
+	if tap_id != passive_button_pending_tap_id:
+		return
+	if passive_button_press_source != source or passive_button_press_kind != action_kind:
+		return
+	if passive_button_press_dragged or _skill_swipe_suppresses_button_action():
+		_clear_passive_button_press()
+		return
+	_clear_passive_button_press()
+	_activate_passive_module_button(action_kind, module_id, stat_type, info_popover)
+	_cancel_skill_swipe_feedback(false)
+
+
+func _activate_passive_module_button(action_kind: String, module_id: String, stat_type: String, info_popover: Control) -> void:
+	if action_kind == "collect":
+		_collect_passive_module(module_id)
+	elif action_kind == "info":
+		if info_popover != null and is_instance_valid(info_popover):
+			info_popover.visible = not info_popover.visible
+	elif action_kind == "plank":
+		_toggle_plank_boost()
+	elif action_kind == "upgrade":
+		_upgrade_passive_module(module_id, stat_type)
+
+
+func _on_passive_collect_pressed(module_id: String) -> void:
+	_cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
+	_collect_passive_module(module_id)
+
+
+func _on_passive_plank_pressed() -> void:
+	_cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
+	_toggle_plank_boost()
+
+
+func _on_passive_upgrade_pressed(module_id: String, stat_type: String) -> void:
+	_cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
+	_upgrade_passive_module(module_id, stat_type)
+
+
+func _toggle_passive_info_popover(info_popover: Control) -> void:
+	_cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
+	if info_popover != null and is_instance_valid(info_popover):
+		info_popover.visible = not info_popover.visible
+
+
+func _action_card_event_positions(event: InputEvent, source: Control) -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	if source == null:
+		return positions
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		for position in _activity_input_position_candidates(mouse_event.position):
+			_add_unique_event_position(positions, position)
+		for position in _activity_input_position_candidates(mouse_event.global_position):
+			_add_unique_event_position(positions, position)
+		for position in _activity_input_position_candidates(source.get_global_position() + mouse_event.position):
+			_add_unique_event_position(positions, position)
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		for position in _activity_input_position_candidates(touch_event.position):
+			_add_unique_event_position(positions, position)
+		for position in _activity_input_position_candidates(source.get_global_position() + touch_event.position):
+			_add_unique_event_position(positions, position)
+	return positions
+
+
+func _activity_input_position_candidates(position: Vector2) -> Array[Vector2]:
+	var positions: Array[Vector2] = []
+	_add_unique_event_position(positions, position)
+	var window_size := Vector2.ZERO
+	if DisplayServer.get_name() != "headless":
+		window_size = Vector2(DisplayServer.window_get_size())
+	if window_size.x > 1.0 and window_size.y > 1.0:
+		_add_unique_event_position(positions, position * (BASE_CANVAS.x / window_size.x))
+		_add_unique_event_position(positions, position * (BASE_CANVAS.y / window_size.y))
+		_add_unique_event_position(positions, Vector2(position.x * BASE_CANVAS.x / window_size.x, position.y * BASE_CANVAS.y / window_size.y))
+	var visible_size := get_viewport_rect().size
+	if visible_size.x > 1.0 and visible_size.y > 1.0:
+		_add_unique_event_position(positions, position * (BASE_CANVAS.x / visible_size.x))
+		_add_unique_event_position(positions, position * (BASE_CANVAS.y / visible_size.y))
+	return positions
+
+
+func _add_unique_event_position(positions: Array[Vector2], position: Vector2) -> void:
+	for existing in positions:
+		if existing.distance_to(position) <= 0.5:
+			return
+	positions.append(position)
+
+
+func _first_position_in_rect(positions: Array[Vector2], rect: Rect2) -> Variant:
+	for position in positions:
+		if rect.has_point(position):
+			return position
+	return null
+
+
+func _activity_stat_kind_from_positions(card: Dictionary, positions: Array[Vector2]) -> String:
+	for position in positions:
+		var stat_kind := _activity_stat_kind_at_position(card, position)
+		if not stat_kind.is_empty():
+			return stat_kind
+	return ""
+
+
+func _first_event_position(positions: Array[Vector2]) -> Vector2:
+	return positions[0] if not positions.is_empty() else Vector2.ZERO
+
+
+func _event_positions_close_to_press(positions: Array[Vector2]) -> bool:
+	return _event_positions_within_press_slop(positions, ACTION_CARD_TAP_RELEASE_SLOP)
+
+
+func _event_positions_within_press_slop(positions: Array[Vector2], slop: float) -> bool:
+	for position in positions:
+		if position.distance_to(action_card_press_position) <= slop:
+			return true
+	return false
+
+
+func _activity_stat_kind_at_position(card: Dictionary, position: Vector2) -> String:
+	var stat_row := card.get("stat_row") as Control
+	if stat_row != null and is_instance_valid(stat_row) and stat_row.is_visible_in_tree():
+		var row_rect := stat_row.get_global_rect()
+		var padded_row_rect := row_rect.grow(maxf(18.0, row_rect.size.y * 0.18))
+		if padded_row_rect.has_point(position):
+			var zone_width := row_rect.size.x / 4.0
+			if zone_width > 1.0:
+				var zone := clampi(int(floor((position.x - row_rect.position.x) / zone_width)), 0, 3)
+				return ["xp", "stamina", "time", "success"][zone]
+	var boxes := card.get("stat_boxes", {}) as Dictionary
+	for kind in ["xp", "stamina", "time", "success"]:
+		var box := boxes.get(kind) as Control
+		if box != null and is_instance_valid(box) and box.is_visible_in_tree() and _padded_activity_stat_rect(box).has_point(position):
+			return kind
+	var fixed_kind := _activity_stat_kind_at_position_from_card_geometry(card, position)
+	if not fixed_kind.is_empty():
+		return fixed_kind
+	return ""
+
+
+func _padded_activity_stat_rect(box: Control) -> Rect2:
+	var rect := box.get_global_rect()
+	var pad_x := maxf(16.0, rect.size.x * 0.12)
+	var pad_y := maxf(16.0, rect.size.y * 0.16)
+	return rect.grow_individual(pad_x, pad_y, pad_x, pad_y)
+
+
+func _activity_stat_kind_at_position_from_card_geometry(card: Dictionary, position: Vector2) -> String:
+	var pop := card.get("pop") as Control
+	if pop == null or not is_instance_valid(pop):
+		return ""
+	var pop_rect := pop.get_global_rect()
+	if not pop_rect.has_point(position):
+		return ""
+	var base_pop_width := _skill_content_width() - ACTION_CARD_POP_GUTTER * 2.0
+	var scale := pop_rect.size.x / maxf(1.0, base_pop_width)
+	var tile_size := Vector2(300.0, 222.0) * scale
+	var left := pop_rect.position.x + (54.0 + 410.0 + 56.0) * scale
+	var top := pop_rect.position.y + (46.0 + 82.0 + 38.0) * scale
+	var step := (300.0 + 28.0) * scale
+	for i in range(4):
+		var rect := Rect2(Vector2(left + float(i) * step, top), tile_size)
+		if rect.has_point(position):
+			return ["xp", "stamina", "time", "success"][i]
+	return ""
+
+
+func _sync_activity_stat_popup(card: Dictionary, skill_id: String, action: Dictionary, unlocked: bool, _delta: float, instant: bool) -> void:
+	if not card.has("bonus_panel"):
+		return
+	var action_id := str(action.get("id", ""))
+	var key := _action_key(skill_id, action_id)
+	var stat_kind := expanded_activity_stat_kind if expanded_activity_stat_key == key and unlocked else ""
+	var expanded := not stat_kind.is_empty()
+	var root := card.get("root") as Control
+	var bg := card.get("bg") as RoundedTextureRect
+	if bg != null:
+		bg.art_height = ACTION_CARD_HEIGHT
+		bg.feather_height = 170.0
+		bg.fallback_color = _skill_theme_color(skill_id)
+		bg._update_mask_params()
+	var border := card.get("border") as ActivityCardBorder
+	if border != null:
+		border.border_color = COLOR_INK
+		border.border_width = 24.0
+		border.queue_redraw()
+	_sync_activity_stat_box_styles(card, stat_kind)
+	if expanded:
+		var displayed_stat_kind := str(card.get("bonus_displayed_stat_kind", ""))
+		var pending_stat_kind := str(card.get("bonus_pending_stat_kind", ""))
+		if pending_stat_kind == stat_kind and card.has("bonus_content_tween"):
+			_set_activity_card_expanded(card, root, expanded, instant)
+			return
+		if displayed_stat_kind != stat_kind:
+			_transition_activity_stat_bonus_panel(card, skill_id, action, stat_kind, instant or displayed_stat_kind.is_empty())
+		elif not card.has("bonus_content_tween"):
+			_update_activity_stat_bonus_panel(card, skill_id, action, stat_kind)
+	else:
+		card.erase("bonus_displayed_stat_kind")
+		card.erase("bonus_pending_stat_kind")
+	_set_activity_card_expanded(card, root, expanded, instant)
+
+
+func _sync_activity_stat_box_styles(card: Dictionary, active_kind: String) -> void:
+	var boxes := card.get("stat_boxes", {}) as Dictionary
+	for kind in boxes.keys():
+		var box := boxes[kind] as Control
+		if box == null:
+			continue
+		_apply_action_stat_box_style(box, str(kind) == active_kind)
+
+
+func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool, instant: bool) -> void:
+	if root == null:
+		return
+	var target_height := float(ACTION_CARD_EXPANDED_HEIGHT if expanded else ACTION_CARD_HEIGHT)
+	var target_size := Vector2(root.custom_minimum_size.x, target_height)
+	var bonus := card.get("bonus_panel", {}) as Dictionary
+	var bonus_root := bonus.get("root") as Control
+	var existing_tween := card.get("bonus_tween", null) as Tween
+	var state_changed := bool(card.get("bonus_expanded", false)) != expanded
+	card["bonus_expanded"] = expanded
+	if not state_changed and absf(root.custom_minimum_size.y - target_height) <= 0.5:
+		return
+	if existing_tween != null and existing_tween.is_valid():
+		existing_tween.kill()
+	if bonus_root != null:
+		bonus_root.visible = true
+	if instant:
+		root.custom_minimum_size = target_size
+		if bonus_root != null:
+			bonus_root.modulate.a = 1.0 if expanded else 0.0
+			bonus_root.visible = expanded
+		return
+	var tween := create_tween()
+	card["bonus_tween"] = tween
+	tween.set_parallel(true)
+	tween.tween_property(root, "custom_minimum_size", target_size, ACTION_CARD_INFO_EXPAND_SECONDS).set_trans(Tween.TRANS_BACK if expanded else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if bonus_root != null:
+		var fade_seconds := ACTION_CARD_INFO_FADE_IN_SECONDS if expanded else ACTION_CARD_INFO_FADE_OUT_SECONDS
+		tween.tween_property(bonus_root, "modulate:a", 1.0 if expanded else 0.0, fade_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		if bonus_root != null and not expanded:
+			bonus_root.visible = false
+		card.erase("bonus_tween")
+	)
+
+
+func _update_activity_stat_bonus_panel(card: Dictionary, skill_id: String, action: Dictionary, stat_kind: String) -> void:
+	var bonus := card.get("bonus_panel", {}) as Dictionary
+	if bonus.is_empty():
+		return
+	var title := bonus.get("title") as Label
+	var original := bonus.get("original") as Label
+	var current := bonus.get("current") as Label
+	var bonuses := bonus.get("bonuses") as Label
+	var details := _activity_stat_bonus_details(skill_id, action, stat_kind)
+	_set_label_text_if_changed(title, str(details.get("title", "")))
+	_set_label_text_if_changed(original, "Original: %s" % str(details.get("original", "")))
+	_set_label_text_if_changed(current, "Current: %s" % str(details.get("current", "")))
+	var bonus_lines := details.get("bonuses", []) as Array
+	_set_label_text_if_changed(bonuses, "Bonuses:\n%s" % _format_activity_bonus_lines(bonus_lines))
+
+
+func _transition_activity_stat_bonus_panel(card: Dictionary, skill_id: String, action: Dictionary, stat_kind: String, instant: bool) -> void:
+	var bonus := card.get("bonus_panel", {}) as Dictionary
+	var bonus_root := bonus.get("root") as Control
+	var existing := card.get("bonus_content_tween", null) as Tween
+	if existing != null and existing.is_valid():
+		existing.kill()
+	card.erase("bonus_content_tween")
+	card["bonus_pending_stat_kind"] = stat_kind
+	if instant or bonus_root == null or not bonus_root.visible or bonus_root.modulate.a <= 0.05:
+		_update_activity_stat_bonus_panel(card, skill_id, action, stat_kind)
+		card["bonus_displayed_stat_kind"] = stat_kind
+		card.erase("bonus_pending_stat_kind")
+		return
+	var tween := create_tween()
+	card["bonus_content_tween"] = tween
+	tween.tween_property(bonus_root, "modulate:a", 0.0, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(func():
+		_update_activity_stat_bonus_panel(card, skill_id, action, stat_kind)
+		card["bonus_displayed_stat_kind"] = stat_kind
+	)
+	tween.tween_property(bonus_root, "modulate:a", 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		card.erase("bonus_content_tween")
+		card.erase("bonus_pending_stat_kind")
+	)
+
+
+func _format_activity_bonus_lines(lines: Array) -> String:
+	var packed := PackedStringArray()
+	for line in lines:
+		packed.append(str(line))
+	if packed.is_empty():
+		packed.append("No active bonuses yet")
+	return "\n".join(packed)
+
+
+func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kind: String) -> Dictionary:
+	match stat_kind:
+		"xp":
+			var base_xp := maxi(1, int(action.get("xp", 1)))
+			var xp_bonus := _global_medal_bonus("xp_mult") + _ad_bonus_xp_mult()
+			var xp_lines := []
+			var medal_xp := _global_medal_bonus("xp_mult")
+			var ad_xp := _ad_bonus_xp_mult()
+			if medal_xp > 0.0:
+				xp_lines.append("+%s%% global medal XP" % _format_significant_digits(medal_xp * 100.0))
+			if ad_xp > 0.0:
+				xp_lines.append("+%s%% ad XP" % _format_significant_digits(ad_xp * 100.0))
+			if _plank_bonus_applies(skill_id):
+				xp_bonus += PLANK_BUILD_XP_MULT
+				xp_lines.append("+5%% plank build XP")
+			if xp_lines.is_empty():
+				xp_lines.append("No active XP bonuses yet")
+			return {
+				"title": "XP",
+				"original": "+%s XP" % _format_significant_digits(float(base_xp)),
+				"current": "+%s XP" % _format_significant_digits(float(base_xp) * (1.0 + xp_bonus)),
+				"bonuses": xp_lines
+			}
+		"stamina":
+			var base_stamina := maxi(1, int(action.get("stamina", 1)))
+			return {
+				"title": "STAMINA COST",
+				"original": "%s STAM" % _format_significant_digits(float(base_stamina)),
+				"current": "%s STAM" % _format_significant_digits(float(_effective_stamina(action))),
+				"bonuses": ["No stamina cost bonuses yet"]
+			}
+		"time":
+			var base_seconds := maxf(0.1, float(action.get("seconds", 1.0)))
+			var time_lines := []
+			var medal_speed := _global_medal_bonus("speed_mult")
+			var ad_speed := _ad_bonus_speed_mult()
+			var skill_reduction := _skill_level_timer_reduction(skill_id)
+			if medal_speed > 0.0:
+				time_lines.append("-%s%% global medal speed" % _format_significant_digits(medal_speed * 100.0))
+			if ad_speed > 0.0:
+				time_lines.append("-%s%% ad speed" % _format_significant_digits(ad_speed * 100.0))
+			if skill_reduction > 0.0:
+				time_lines.append("-%s%% %s level timer" % [_format_significant_digits(skill_reduction * 100.0), _skill_name(skill_id)])
+			if time_lines.is_empty():
+				time_lines.append("No active time bonuses yet")
+			return {
+				"title": "TIME",
+				"original": "%ss" % _format_significant_digits(base_seconds),
+				"current": "%ss" % _format_significant_digits(_effective_seconds(skill_id, action)),
+				"bonuses": time_lines
+			}
+		"success":
+			var base_success := clampf(float(action.get("success", 90.0)), 5.0, 99.0)
+			var success_lines := []
+			var medal_success := _global_medal_bonus("success_bonus")
+			if medal_success > 0.0:
+				success_lines.append("+%s%% global medal success" % _format_significant_digits(medal_success))
+			if success_lines.is_empty():
+				success_lines.append("No active rate bonuses yet")
+			return {
+				"title": "RATE",
+				"original": "%s%%" % _format_significant_digits(base_success),
+				"current": "%s%%" % _format_significant_digits(_success_chance(skill_id, action)),
+				"bonuses": success_lines
+			}
+	return {"title": "", "original": "", "current": "", "bonuses": []}
+
+
 func _update_skill_swipe_preview_states(delta: float, instant: bool) -> void:
 	for raw_offset in skill_swipe_preview_states.keys():
-		var state := skill_swipe_preview_states[raw_offset] as Dictionary
-		if state == null:
+		var offset := int(raw_offset)
+		if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page) and offset != skill_swipe_preview_offset:
 			continue
-		var page := state.get("page") as Control
-		if page == null or not is_instance_valid(page):
+		_update_skill_swipe_preview_state(skill_swipe_preview_states[offset] as Dictionary, delta, instant)
+
+
+func _skill_swipe_previews_need_frame_updates() -> bool:
+	return (
+		skill_swipe_tracking
+		or skill_swipe_animating
+		or (skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page))
+	)
+
+
+func _update_skill_swipe_preview_state(state: Dictionary, delta: float, instant: bool) -> void:
+	if state == null:
+		return
+	var page := state.get("page") as Control
+	if page == null or not is_instance_valid(page) or not page.is_inside_tree():
+		return
+	_sync_skill_swipe_preview_scroll_state(state)
+	var skill_id := str(state.get("skill_id", ""))
+	if skill_id.is_empty():
+		return
+	var xp := _xp_progress(skill_id)
+	var xp_label := state.get("xp_label") as Label
+	if xp_label != null:
+		xp_label.text = "Lv %s - XP %s / %s" % [_skill_level(skill_id), int(xp["current"]), int(xp["needed"])]
+	var xp_bar := state.get("xp_bar") as CleanProgressBar
+	if xp_bar != null:
+		xp_bar.fill_color = _skill_theme_color(skill_id)
+		_set_bar(xp_bar, float(xp["pct"]), delta, instant)
+	var regen_circle := state.get("regen_circle") as RegenCircle
+	if regen_circle != null:
+		_set_regen_circle_for_skill(regen_circle, skill_id, instant)
+	var preview_cards := state.get("action_cards", []) as Array
+	for card in preview_cards:
+		var action_card := card as Dictionary
+		if action_card == null:
 			continue
-		_sync_skill_swipe_preview_scroll_state(state)
-		var skill_id := str(state.get("skill_id", ""))
-		if skill_id.is_empty():
+		var action := action_card.get("action", {}) as Dictionary
+		var action_id := str(action.get("id", ""))
+		if action_id.is_empty():
 			continue
-		var xp := _xp_progress(skill_id)
-		var xp_label := state.get("xp_label") as Label
-		if xp_label != null:
-			xp_label.text = "Lv %s - XP %s / %s" % [_skill_level(skill_id), int(xp["current"]), int(xp["needed"])]
-		var xp_bar := state.get("xp_bar") as CleanProgressBar
-		if xp_bar != null:
-			xp_bar.fill_color = _skill_theme_color(skill_id)
-			_set_bar(xp_bar, float(xp["pct"]), delta, instant)
-		var regen_circle := state.get("regen_circle") as RegenCircle
-		if regen_circle != null:
-			_set_regen_circle_for_skill(regen_circle, skill_id, instant)
-		var preview_cards := state.get("action_cards", []) as Array
-		for card in preview_cards:
-			var action_card := card as Dictionary
-			if action_card == null:
-				continue
-			var action := action_card.get("action", {}) as Dictionary
-			var action_id := str(action.get("id", ""))
-			if action_id.is_empty():
-				continue
-			var unlocked := _skill_level(skill_id) >= int(action.get("unlock", 1))
-			var running := running_skill_id == skill_id and running_action_id == action_id
-			_update_action_card_static_state(action_card, skill_id, action, unlocked)
-			var medal := action_card.get("medal") as TextureRect
-			var mastery_level := _mastery_level(skill_id, action_id)
-			_set_action_card_medal(action_card, medal, mastery_level, instant)
-			_set_bar(action_card.get("mastery"), _mastery_progress_pct(skill_id, action_id), delta, instant)
-			var progress_rail := action_card.get("progress") as ActivityProgressRail
-			if progress_rail != null:
-				progress_rail.fill_color = _skill_theme_color(skill_id)
-				var progress_target := action_progress * 100.0 if running else 0.0
-				var progress_instant := instant
-				if running and progress_target + 6.0 < progress_rail.value:
-					progress_instant = true
-				_set_bar(progress_rail, progress_target, delta, progress_instant)
+		var unlocked := _skill_level(skill_id) >= int(action.get("unlock", 1))
+		if _is_passive_action(action):
+			_update_passive_card_static_state(action_card, skill_id, action, unlocked)
+			continue
+		var running := running_skill_id == skill_id and running_action_id == action_id
+		_update_action_card_static_state(action_card, skill_id, action, unlocked)
+		var medal := action_card.get("medal") as TextureRect
+		var mastery_level := _mastery_level(skill_id, action_id)
+		_set_action_card_medal(action_card, medal, mastery_level, instant)
+		_set_bar(action_card.get("mastery"), _mastery_progress_pct(skill_id, action_id), delta, instant)
+		var progress_rail := action_card.get("progress") as ActivityProgressRail
+		if progress_rail != null:
+			progress_rail.fill_color = _skill_theme_color(skill_id)
+			var progress_target := action_progress * 100.0 if running else 0.0
+			var progress_instant := instant
+			if running and progress_target + 6.0 < progress_rail.value:
+				progress_instant = true
+			_set_bar(progress_rail, progress_target, delta, progress_instant)
 
 
 func _sync_skill_swipe_preview_scroll_state(state: Dictionary) -> void:
@@ -3362,7 +4879,7 @@ func _set_label_text_if_changed(label: Label, next_text: String) -> void:
 func _update_achievements_ui(delta: float, instant: bool) -> void:
 	if achievement_elite_label == null and achievement_total_bar == null and achievement_total_level_label == null:
 		return
-	var totals := _all_medal_counts()
+	var totals := _elite_completion_counts()
 	var total_earned := int(totals["earned"])
 	var total_possible := int(totals["possible"])
 	for def in skill_defs:
@@ -3370,7 +4887,7 @@ func _update_achievements_ui(delta: float, instant: bool) -> void:
 		if achievement_skill_level_labels.has(skill_id):
 			var level_label := achievement_skill_level_labels[skill_id] as Label
 			level_label.text = "%s Lv %s" % [_skill_name(skill_id), _skill_level(skill_id)]
-		_update_achievement_medal_slots(skill_id, actions_by_skill.get(skill_id, []))
+		_update_achievement_medal_slots(skill_id, _mastery_actions_for_skill(skill_id))
 	if achievement_elite_label != null:
 		var elite_pct := 0.0 if total_possible <= 0 else float(total_earned) / float(total_possible) * 100.0
 		achievement_elite_label.text = "%s%% Elite" % int(round(elite_pct))
@@ -3445,7 +4962,7 @@ func _update_achievement_medal_slots(skill_id: String, actions: Array) -> void:
 
 
 func _skill_medal_counts(skill_id: String) -> Dictionary:
-	var actions: Array = actions_by_skill.get(skill_id, [])
+	var actions: Array = _mastery_actions_for_skill(skill_id)
 	var tiers := []
 	for _i in range(MASTERY_MAX_LEVEL):
 		tiers.append(0)
@@ -3474,6 +4991,27 @@ func _all_medal_counts() -> Dictionary:
 	return {"earned": earned, "possible": possible}
 
 
+func _skill_level_completion_counts() -> Dictionary:
+	var earned := 0
+	var possible := 0
+	for def in skill_defs:
+		var level_targets := _skill_level_achievement_targets()
+		possible += level_targets.size()
+		for target in level_targets:
+			if _skill_level(str(def["id"])) >= int(target):
+				earned += 1
+	return {"earned": earned, "possible": possible}
+
+
+func _elite_completion_counts() -> Dictionary:
+	var medal_counts := _all_medal_counts()
+	var skill_counts := _skill_level_completion_counts()
+	return {
+		"earned": int(medal_counts["earned"]) + int(skill_counts["earned"]),
+		"possible": int(medal_counts["possible"]) + int(skill_counts["possible"])
+	}
+
+
 func _all_medal_tier_counts() -> Array:
 	var totals := []
 	for _i in range(MASTERY_MAX_LEVEL):
@@ -3492,7 +5030,7 @@ func _most_impressive_activity() -> Dictionary:
 	var best_level := 0
 	for def in skill_defs:
 		var skill_id := str(def["id"])
-		var actions: Array = actions_by_skill.get(skill_id, [])
+		var actions: Array = _mastery_actions_for_skill(skill_id)
 		for action in actions:
 			var action_id := str(action.get("id", ""))
 			var level := _mastery_level(skill_id, action_id)
@@ -3517,8 +5055,18 @@ func _most_impressive_activity() -> Dictionary:
 func _total_activity_count() -> int:
 	var total := 0
 	for def in skill_defs:
-		total += int(actions_by_skill.get(str(def["id"]), []).size())
+		total += int(_mastery_actions_for_skill(str(def["id"])).size())
 	return total
+
+
+func _mastery_actions_for_skill(skill_id: String) -> Array:
+	var actions := []
+	for action in actions_by_skill.get(skill_id, []):
+		var action_data := action as Dictionary
+		if _is_passive_action(action_data):
+			continue
+		actions.append(action_data)
+	return actions
 
 
 func _max_total_level() -> int:
@@ -3554,28 +5102,6 @@ func _achievement_milestones() -> Array:
 	var cumulative_possible := int(total_counts["possible"])
 	var total_level := _global_level()
 	var max_total_level := _max_total_level()
-	for def in skill_defs:
-		var skill_id := str(def["id"])
-		var skill_level := _skill_level(skill_id)
-		var skill_name := _skill_name(skill_id)
-		for target in _skill_level_achievement_targets():
-			milestones.append({
-				"id": "skill-level-%s-%s" % [skill_id, target],
-				"chain_key": "skill-level-%s" % skill_id,
-				"kind": "skill_level",
-				"skill_id": skill_id,
-				"title": "%s Level %s" % [skill_name, target],
-				"subtitle": "%s Lv %s of %s" % [skill_name, mini(skill_level, int(target)), target],
-				"reward": _skill_level_achievement_reward_text(skill_name, int(target)),
-				"reward_stat": "skill_timer_reduction",
-				"reward_skill_id": skill_id,
-				"reward_amount": _skill_level_achievement_timer_reward(int(target)),
-				"current": skill_level,
-				"target": int(target),
-				"completed": skill_level >= int(target),
-				"medal_level": _skill_level_milestone_medal(int(target)),
-				"accent": "#" + _skill_theme_color(skill_id).to_html(false)
-			})
 	for target in TOTAL_LEVEL_ACHIEVEMENT_TARGETS:
 		if max_total_level < int(target) and total_level < int(target):
 			continue
@@ -3809,8 +5335,15 @@ func _ad_bonus_speed_mult() -> float:
 
 func _shop_bonus_status_text() -> String:
 	if ad_bonus_seconds_remaining <= 0.0:
-		return "No shop bonus active."
-	return "Shop bonus remaining: %s" % _format_duration(ad_bonus_seconds_remaining)
+		return "No bonus active."
+	return "Bonus remaining: %s" % _format_duration(ad_bonus_seconds_remaining)
+
+
+func _shop_bonus_label_text() -> String:
+	var status := _shop_bonus_status_text()
+	if shop_bonus_notice_text.is_empty():
+		return status
+	return "%s\n%s" % [shop_bonus_notice_text, status]
 
 
 func _on_stamina_gauge_input(event: InputEvent) -> void:
@@ -3844,6 +5377,14 @@ func _set_stamina_gauge_pressed(pressed: bool) -> void:
 	else:
 		stamina_gauge_press_active = false
 		stamina_gauge_regen_target_multiplier = 1.0
+
+
+func _cancel_stamina_gauge_boost_for_navigation() -> void:
+	stamina_gauge_press_active = false
+	stamina_gauge_boost_skill_id = ""
+	stamina_gauge_regen_multiplier = 1.0
+	stamina_gauge_regen_target_multiplier = 1.0
+	_clear_stamina_gauge_pop_tween()
 
 
 func _process_stamina_gauge_regen_boost(delta: float) -> void:
@@ -4141,6 +5682,8 @@ func _finish_skill_swipe(end_position: Vector2) -> void:
 
 func _suppress_skill_swipe_action_click() -> void:
 	skill_swipe_child_click_suppressed = true
+	passive_button_pending_tap_id += 1
+	skill_swipe_button_suppressed_until_msec = Time.get_ticks_msec() + SKILL_SWIPE_BUTTON_SUPPRESS_MSEC
 	get_viewport().set_input_as_handled()
 
 
@@ -4148,8 +5691,46 @@ func _clear_skill_swipe_action_click_suppression() -> void:
 	skill_swipe_child_click_suppressed = false
 
 
+func _clear_skill_swipe_button_suppression() -> void:
+	skill_swipe_child_click_suppressed = false
+	skill_swipe_button_suppressed_until_msec = 0
+
+
+func _skill_swipe_suppresses_button_action() -> bool:
+	return skill_swipe_child_click_suppressed or Time.get_ticks_msec() < skill_swipe_button_suppressed_until_msec
+
+
+func _collapse_expanded_activity_modules() -> void:
+	expanded_activity_stat_key = ""
+	expanded_activity_stat_kind = ""
+	_clear_passive_button_press()
+	for raw_card in action_cards.values():
+		var card := raw_card as Dictionary
+		var info_popover := card.get("info_popover") as Control
+		if info_popover != null and is_instance_valid(info_popover):
+			info_popover.visible = false
+		var root := card.get("root") as Control
+		if root != null and is_instance_valid(root) and card.has("bonus_panel"):
+			_set_activity_card_expanded(card, root, false, true)
+			card.erase("bonus_displayed_stat_kind")
+			card.erase("bonus_pending_stat_kind")
+
+
+func _clear_passive_button_press() -> void:
+	passive_button_pending_tap_id += 1
+	passive_button_press_source = null
+	passive_button_press_kind = ""
+	passive_button_press_module_id = ""
+	passive_button_press_stat_type = ""
+	passive_button_press_popover = null
+	passive_button_press_position = Vector2.ZERO
+	passive_button_press_dragged = false
+	passive_button_press_touch_index = -1
+
+
 func _commit_skill_swipe(offset: int) -> void:
 	skill_swipe_horizontal = false
+	skill_swipe_button_suppressed_until_msec = Time.get_ticks_msec() + SKILL_SWIPE_BUTTON_SUPPRESS_MSEC
 	var target := _skill_swipe_visual_target()
 	if target == null or skill_swipe_preview_page == null or not is_instance_valid(skill_swipe_preview_page):
 		_navigate_skill_page(offset, 0.0, true, false)
@@ -4178,6 +5759,8 @@ func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, pl
 	var skill_count := skill_defs.size()
 	if skill_count <= 0:
 		return
+	_cancel_stamina_gauge_boost_for_navigation()
+	_collapse_expanded_activity_modules()
 	var next_index := (current_index + offset) % skill_count
 	if next_index < 0:
 		next_index += skill_count
@@ -4231,29 +5814,6 @@ func _ensure_skill_swipe_preview(offset: int) -> void:
 	skill_swipe_preview_page = cached_page
 	skill_swipe_preview_offset = offset
 	skill_swipe_preview_page.position.x = signi(offset) * _skill_swipe_page_span()
-
-
-func _prepare_skill_swipe_preview_pages() -> void:
-	if current_screen != "skill" or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
-		return
-	for raw_offset in [-1, 1]:
-		var offset := int(raw_offset)
-		if skill_swipe_preview_pages.has(offset):
-			var existing := skill_swipe_preview_pages[offset] as Control
-			if existing != null and is_instance_valid(existing):
-				continue
-		var current_index := _skill_index(selected_skill_id)
-		if current_index < 0 or skill_defs.is_empty():
-			return
-		var next_index: int = (current_index + offset) % skill_defs.size()
-		if next_index < 0:
-			next_index += skill_defs.size()
-		var next_skill_id := str(skill_defs[next_index]["id"])
-		var preview_page := _build_skill_swipe_preview_page(next_skill_id, offset)
-		preview_page.position.x = signi(offset) * _skill_swipe_page_span()
-		skill_swipe_frame.add_child(preview_page)
-		skill_swipe_preview_pages[offset] = preview_page
-
 
 func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	var content_width := _skill_content_width()
@@ -4336,7 +5896,6 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	header_row.add_child(regen_circle)
 	state["regen_circle"] = regen_circle
 	_set_regen_circle_for_skill(regen_circle, skill_id, true)
-	call_deferred("_set_regen_circle_for_skill", regen_circle, skill_id, true)
 
 	var divider := Control.new()
 	divider.custom_minimum_size = Vector2(0, 24)
@@ -4369,7 +5928,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	preview_stack.add_child(top_spacer)
 
 	for action in _visible_actions_for_skill(skill_id):
-		var card_result := _skill_swipe_preview_action_card(skill_id, action, content_width)
+		var card_result := _build_passive_module_card(skill_id, action as Dictionary, content_width, false) if _is_passive_action(action as Dictionary) else _skill_swipe_preview_action_card(skill_id, action, content_width)
 		preview_stack.add_child(card_result["root"])
 		(state["action_cards"] as Array).append(card_result["card"])
 	var scroll_bottom_spacer := Control.new()
@@ -4379,8 +5938,486 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	if offset != 0:
 		skill_swipe_preview_states[offset] = state
 	_sync_skill_swipe_preview_scroll_state(state)
-	_update_skill_swipe_preview_states(0.0, true)
+	_update_skill_swipe_preview_state(state, 0.0, true)
 	return page
+
+
+func _build_passive_module_card(skill_id: String, action: Dictionary, content_width: float, interactive: bool) -> Dictionary:
+	var module_id := str(action.get("id", WOODCUTTING_LOG_MODULE_ID))
+	var card_root := Control.new()
+	card_root.custom_minimum_size = Vector2(content_width, PASSIVE_MODULE_CARD_HEIGHT)
+	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card_root.clip_contents = false
+	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.offset_top = 0.0
+	pop_card.offset_bottom = 0.0
+	pop_card.clip_contents = false
+	pop_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
+	card_root.add_child(pop_card)
+
+	var bg := RoundedTextureRect.new()
+	bg.texture = _texture(str(action.get("bg", "res://docs/assets/woodcutting/backgrounds/01-early.png")))
+	bg.radius = 66.0
+	bg.art_height = PASSIVE_MODULE_CARD_HEIGHT
+	bg.fallback_color = _skill_theme_color(skill_id)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.z_index = 150
+	pop_card.add_child(bg)
+
+	var wash := Panel.new()
+	wash.add_theme_stylebox_override("panel", _passive_card_wash_style())
+	wash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wash.z_index = 151
+	pop_card.add_child(wash)
+
+	var shade := Panel.new()
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.50))
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.visible = false
+	shade.z_index = 224
+	pop_card.add_child(shade)
+
+	var collect_button := Button.new()
+	collect_button.text = ""
+	collect_button.focus_mode = Control.FOCUS_NONE
+	collect_button.flat = true
+	collect_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
+	collect_button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	collect_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	collect_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	collect_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	collect_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	collect_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	collect_button.z_index = 180
+	if interactive:
+		collect_button.pressed.connect(_on_passive_collect_pressed.bind(module_id))
+	pop_card.add_child(collect_button)
+
+	var title := _label(str(action.get("name", "Stack Logs #1")), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_constant_override("outline_size", 34)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.position = Vector2(74, 48)
+	title.size = Vector2(760, 106)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.z_index = 200
+	pop_card.add_child(title)
+
+	var info_popover := PanelContainer.new()
+	info_popover.position = Vector2(770, 142)
+	info_popover.custom_minimum_size = Vector2(660, 170)
+	info_popover.visible = false
+	info_popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_popover.z_index = 222
+	info_popover.add_theme_stylebox_override("panel", _passive_popup_style())
+	pop_card.add_child(info_popover)
+	var info_label := _label(WOODCUTTING_LOG_MODULE_INFO, 38, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_popover.add_child(info_label)
+
+	var info_button := Button.new()
+	info_button.text = "i"
+	info_button.custom_minimum_size = Vector2(86, 86)
+	info_button.size = info_button.custom_minimum_size
+	info_button.position = Vector2(792, 58)
+	info_button.focus_mode = Control.FOCUS_NONE
+	info_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
+	info_button.z_index = 221
+	info_button.add_theme_font_size_override("font_size", 42)
+	info_button.add_theme_color_override("font_color", COLOR_INK)
+	info_button.add_theme_stylebox_override("normal", _passive_round_button_style(COLOR_PANEL))
+	info_button.add_theme_stylebox_override("hover", _passive_round_button_style(COLOR_GOLD))
+	info_button.add_theme_stylebox_override("pressed", _passive_round_button_style(COLOR_GOLD.darkened(0.08)))
+	info_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	if app_bold_font != null:
+		info_button.add_theme_font_override("font", app_bold_font)
+	if interactive:
+		info_button.pressed.connect(_toggle_passive_info_popover.bind(info_popover))
+	pop_card.add_child(info_button)
+
+	var plank_button := Button.new()
+	plank_button.text = ""
+	plank_button.icon = _texture(PASSIVE_PLANK_TEXTURE)
+	plank_button.expand_icon = true
+	plank_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	plank_button.custom_minimum_size = Vector2(142, 128)
+	plank_button.size = plank_button.custom_minimum_size
+	plank_button.position = Vector2(content_width - ACTION_CARD_POP_GUTTER * 2.0 - 566, 44)
+	plank_button.focus_mode = Control.FOCUS_NONE
+	plank_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
+	plank_button.z_index = 220
+	plank_button.tooltip_text = "+5% Build XP, consumes 1 log on successful build."
+	plank_button.add_theme_constant_override("icon_max_width", 96)
+	if interactive:
+		plank_button.pressed.connect(_on_passive_plank_pressed)
+	pop_card.add_child(plank_button)
+
+	var currency_panel := PanelContainer.new()
+	currency_panel.position = Vector2(content_width - ACTION_CARD_POP_GUTTER * 2.0 - 412, 44)
+	currency_panel.custom_minimum_size = Vector2(338, 128)
+	currency_panel.size = currency_panel.custom_minimum_size
+	currency_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	currency_panel.z_index = 219
+	currency_panel.add_theme_stylebox_override("panel", _passive_currency_style())
+	pop_card.add_child(currency_panel)
+	var currency_row := HBoxContainer.new()
+	currency_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	currency_row.add_theme_constant_override("separation", 20)
+	currency_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	currency_panel.add_child(currency_row)
+	var currency_label := _label("", 74, COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	currency_label.custom_minimum_size = Vector2(188, 100)
+	currency_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	currency_row.add_child(currency_label)
+	var currency_icon := _image(PASSIVE_LOG_CURRENCY_TEXTURE, Vector2(100, 100))
+	currency_row.add_child(currency_icon)
+
+	var stats := {}
+	var upgrade_buttons := {}
+	var stat_y := 194.0
+	var stat_step := 176.0
+	var stat_types := ["time", "yield", "capacity"]
+	for i in range(3):
+		var stat_type := str(stat_types[i])
+		var stat_panel := PanelContainer.new()
+		stat_panel.position = Vector2(74, stat_y + float(i) * stat_step)
+		stat_panel.custom_minimum_size = Vector2(760, 132)
+		stat_panel.size = stat_panel.custom_minimum_size
+		stat_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stat_panel.z_index = 200
+		stat_panel.add_theme_stylebox_override("panel", _passive_stat_style())
+		pop_card.add_child(stat_panel)
+		var stat_label := _label("", 54, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+		stat_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stat_panel.add_child(stat_label)
+		stats[stat_type] = stat_label
+		var upgrade := Button.new()
+		upgrade.text = ""
+		upgrade.icon = _texture(PASSIVE_UPGRADE_ARROW_TEXTURE)
+		upgrade.expand_icon = true
+		upgrade.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		upgrade.custom_minimum_size = Vector2(240, 132)
+		upgrade.size = upgrade.custom_minimum_size
+		upgrade.position = Vector2(866, stat_y + float(i) * stat_step)
+		upgrade.focus_mode = Control.FOCUS_NONE
+		upgrade.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
+		upgrade.z_index = 220
+		upgrade.add_theme_font_size_override("font_size", 52)
+		upgrade.add_theme_color_override("font_color", COLOR_INK)
+		upgrade.add_theme_constant_override("icon_max_width", 78)
+		upgrade.add_theme_stylebox_override("normal", _passive_upgrade_button_style(false))
+		upgrade.add_theme_stylebox_override("hover", _passive_upgrade_button_style(false, true))
+		upgrade.add_theme_stylebox_override("pressed", _passive_upgrade_button_style(false, true))
+		upgrade.add_theme_stylebox_override("disabled", _passive_upgrade_button_style(true))
+		upgrade.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		if app_bold_font != null:
+			upgrade.add_theme_font_override("font", app_bold_font)
+		if interactive:
+			upgrade.pressed.connect(_on_passive_upgrade_pressed.bind(module_id, stat_type))
+		pop_card.add_child(upgrade)
+		upgrade_buttons[stat_type] = upgrade
+
+	var loot := Control.new()
+	loot.position = Vector2(1230, 340)
+	loot.custom_minimum_size = Vector2(540, 360)
+	loot.size = loot.custom_minimum_size
+	loot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	loot.z_index = 201
+	pop_card.add_child(loot)
+
+	var progress := ActivityProgressRail.new()
+	progress.fill_color = _skill_theme_color(skill_id)
+	progress.anchor_left = 0.0
+	progress.anchor_right = 1.0
+	progress.anchor_top = 1.0
+	progress.anchor_bottom = 1.0
+	progress.offset_left = ACTION_PROGRESS_RAIL_INSET
+	progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
+	progress.offset_top = -126
+	progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
+	progress.z_index = 152
+	progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(progress)
+
+	var border := ActivityCardBorder.new()
+	border.set_anchors_preset(Control.PRESET_FULL_RECT)
+	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	border.z_index = 220
+	pop_card.add_child(border)
+	var lock_overlay := _activity_lock_overlay(pop_card, int(action.get("unlock", WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL)))
+	var card := {
+		"passive": true,
+		"root": card_root,
+		"pop": pop_card,
+		"button": collect_button,
+		"bg": bg,
+		"shade": shade,
+		"title": title,
+		"info_button": info_button,
+		"info_popover": info_popover,
+		"currency": currency_label,
+		"currency_panel": currency_panel,
+		"plank": plank_button,
+		"stats": stats,
+		"upgrade_buttons": upgrade_buttons,
+		"loot": loot,
+		"progress": progress,
+		"border": border,
+		"lock_overlay": lock_overlay,
+		"action": action
+	}
+	_update_passive_card_static_state(card, skill_id, action, _skill_level(skill_id) >= int(action.get("unlock", 1)))
+	return {"root": card_root, "card": card}
+
+
+func _update_passive_card_static_state(card: Dictionary, _skill_id: String, action: Dictionary, unlocked: bool) -> void:
+	var module_id := str(action.get("id", WOODCUTTING_LOG_MODULE_ID))
+	var state := _passive_module_state(module_id)
+	_sync_activity_lock_overlay(card, action, unlocked)
+	var button := card.get("button") as Button
+	if button != null:
+		button.disabled = not unlocked
+	var shade := card.get("shade") as Panel
+	if shade != null:
+		shade.visible = not unlocked
+	var border := card.get("border") as ActivityCardBorder
+	if border != null:
+		border.border_color = COLOR_INK
+		border.border_width = 24.0
+		border.queue_redraw()
+	var currency_label := card.get("currency") as Label
+	if currency_label != null:
+		currency_label.text = str(log_currency)
+	var plank_button := card.get("plank") as Button
+	if plank_button != null:
+		plank_button.button_pressed = plank_boost_enabled
+		plank_button.disabled = not unlocked
+		plank_button.add_theme_stylebox_override("normal", _passive_icon_button_style(plank_boost_enabled))
+		plank_button.add_theme_stylebox_override("hover", _passive_icon_button_style(plank_boost_enabled, true))
+		plank_button.add_theme_stylebox_override("pressed", _passive_icon_button_style(true, true))
+		plank_button.add_theme_stylebox_override("disabled", _passive_icon_button_style(false))
+	var stats := card.get("stats", {}) as Dictionary
+	_set_label_text_if_changed(stats.get("time") as Label, "Time     %s" % _format_passive_time(int(state.get("time_seconds", PASSIVE_TIME_START))))
+	_set_label_text_if_changed(stats.get("yield") as Label, "Yield    +%s logs" % int(state.get("yield", PASSIVE_YIELD_START)))
+	_set_label_text_if_changed(stats.get("capacity") as Label, "Max      %s" % int(state.get("capacity", PASSIVE_CAPACITY_START)))
+	var upgrade_buttons := card.get("upgrade_buttons", {}) as Dictionary
+	for stat_type in ["time", "yield", "capacity"]:
+		var upgrade := upgrade_buttons.get(stat_type) as Button
+		if upgrade == null:
+			continue
+		var maxed := _passive_upgrade_maxed(module_id, stat_type)
+		var cost := _passive_upgrade_cost(module_id, stat_type)
+		upgrade.visible = not maxed
+		upgrade.text = " %s" % cost
+		upgrade.disabled = (not unlocked) or maxed or log_currency < cost
+	var progress := card.get("progress") as ActivityProgressRail
+	if progress != null:
+		progress.fill_color = _skill_theme_color("woodcutting")
+		progress.set_value(_passive_production_progress_pct(module_id, state, unlocked))
+	_render_passive_loot(card, module_id, unlocked)
+
+
+func _passive_production_progress_pct(module_id: String, state: Dictionary, unlocked: bool) -> float:
+	if not unlocked or not _is_passive_module_unlocked(module_id):
+		return 0.0
+	var capacity := maxi(1, int(state.get("capacity", PASSIVE_CAPACITY_START)))
+	var stored := clampi(int(state.get("stored", 0)), 0, capacity)
+	if stored >= capacity:
+		return 100.0
+	var interval := maxi(PASSIVE_TIME_MAX, int(state.get("time_seconds", PASSIVE_TIME_START)))
+	var elapsed := maxi(0, _unix_now() - int(state.get("last_update", _unix_now())))
+	return clampf(float(elapsed) / float(interval) * 100.0, 0.0, 99.0)
+
+
+func _render_passive_loot(card: Dictionary, module_id: String, unlocked: bool) -> void:
+	var loot := card.get("loot") as Control
+	if loot == null or not is_instance_valid(loot):
+		return
+	var state := _passive_module_state(module_id)
+	var stored := maxi(0, int(state.get("stored", 0))) if unlocked else 0
+	if int(card.get("last_rendered_stored", -1)) == stored and bool(card.get("last_rendered_unlocked", false)) == unlocked:
+		return
+	card["last_rendered_stored"] = stored
+	card["last_rendered_unlocked"] = unlocked
+	_clear(loot)
+	if stored <= 0:
+		var empty := _label("empty", 42, Color(1, 1, 1, 0.78), HORIZONTAL_ALIGNMENT_CENTER)
+		empty.add_theme_color_override("font_outline_color", COLOR_INK)
+		empty.add_theme_constant_override("outline_size", 14)
+		empty.position = Vector2(156, 112)
+		empty.size = Vector2(260, 72)
+		empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		loot.add_child(empty)
+		return
+	var visible_logs := mini(16, maxi(1, stored))
+	var icon_size := Vector2(246, 246)
+	for i in range(visible_logs):
+		var icon := _image(PASSIVE_LOG_CURRENCY_TEXTURE, icon_size)
+		icon.size = icon_size
+		var column := i % 5
+		var row := int(floor(float(i) / 5.0))
+		var jitter_x := float(((i * 17) % 31) - 15)
+		var jitter_y := float(((i * 23) % 25) - 12)
+		var x := 168.0 + float(column) * 38.0 - float(row) * 18.0 + jitter_x
+		var y := 132.0 - float(row) * 34.0 + float((column % 3) * 18) + jitter_y
+		icon.position = Vector2(x, y)
+		icon.rotation_degrees = float(((i * 29) % 37) - 18)
+		icon.z_index = i + 1
+		loot.add_child(icon)
+
+
+func _float_log_currency_feedback(module_id: String, amount: int) -> void:
+	var key := _action_key("woodcutting", module_id)
+	if amount <= 0 or not action_cards.has(key):
+		return
+	var card := action_cards[key] as Dictionary
+	var panel := card.get("currency_panel") as Control
+	var loot := card.get("loot") as Control
+	if loot != null and panel != null and is_instance_valid(loot) and is_instance_valid(panel):
+		_arc_passive_collection_logs(loot, panel, amount)
+	if panel != null and is_instance_valid(panel) and panel.is_inside_tree():
+		_flash_bonus_control(panel)
+		_float_reward(self, panel, "+%s logs" % amount, 58, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -146), 0.0)
+
+
+func _arc_passive_collection_logs(source: Control, target: Control, amount: int) -> void:
+	if source == null or target == null or not source.is_inside_tree() or not target.is_inside_tree():
+		return
+	var visible_count := mini(14, maxi(4, amount))
+	var source_rect := source.get_global_rect()
+	var target_rect := target.get_global_rect()
+	var effect_parent := _passive_effect_parent()
+	var parent_origin := effect_parent.get_global_rect().position if effect_parent.is_inside_tree() else Vector2.ZERO
+	var base_start := source_rect.position + source_rect.size * 0.5 - parent_origin
+	var base_end := target_rect.position + target_rect.size * 0.5 - parent_origin
+	var flyer_size := Vector2(76, 76)
+	for i in range(visible_count):
+		var flyer := TextureRect.new()
+		flyer.texture = _texture(PASSIVE_LOG_CURRENCY_TEXTURE)
+		flyer.custom_minimum_size = flyer_size
+		flyer.size = flyer_size
+		flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		flyer.z_index = 8192
+		flyer.z_as_relative = false
+		effect_parent.add_child(flyer)
+		var jitter := Vector2(float((i * 29) % 91) - 45.0, float((i * 17) % 67) - 33.0)
+		var start := base_start + jitter
+		var end := base_end + Vector2(float((i * 11) % 23) - 11.0, float((i * 7) % 17) - 8.0)
+		var arc_height := 140.0 + float(i % 5) * 24.0
+		var apex := (start + end) * 0.5 + Vector2(0, -arc_height)
+		flyer.position = start - flyer_size * 0.5
+		flyer.rotation_degrees = float(((i * 19) % 41) - 20)
+		var tween := create_tween()
+		var delay := float(i) * 0.035
+		tween.tween_interval(delay)
+		tween.tween_property(flyer, "position", apex - flyer_size * 0.5, 0.24).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(flyer, "rotation_degrees", flyer.rotation_degrees + 80.0, 0.24)
+		tween.tween_property(flyer, "position", end - flyer_size * 0.5, 0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tween.parallel().tween_property(flyer, "rotation_degrees", flyer.rotation_degrees + 190.0, 0.32)
+		tween.parallel().tween_property(flyer, "modulate:a", 0.0, 0.12).set_delay(0.20)
+		tween.tween_callback(flyer.queue_free)
+
+
+func _passive_effect_parent() -> Control:
+	if achievement_toast_root != null and is_instance_valid(achievement_toast_root):
+		return achievement_toast_root
+	return self
+
+
+func _play_build_log_spend_feedback(action_key: String) -> void:
+	if not action_cards.has(action_key):
+		return
+	var card := action_cards[action_key] as Dictionary
+	var anchor := card.get("art_panel") as Control
+	if anchor != null and is_instance_valid(anchor) and anchor.is_inside_tree():
+		_float_reward(self, anchor, "-1 log", 58, Color("#fff2a8"), Vector2(58, 16), Vector2(58, -110), 0.0, true)
+
+
+func _float_passive_upgrade_feedback(module_id: String, stat_type: String, cost: int, old_value: int, new_value: int) -> void:
+	var key := _action_key("woodcutting", module_id)
+	if not action_cards.has(key):
+		return
+	var card := action_cards[key] as Dictionary
+	var currency_panel := card.get("currency_panel") as Control
+	if currency_panel != null and is_instance_valid(currency_panel) and currency_panel.is_inside_tree():
+		_flash_bonus_control(currency_panel)
+		_float_log_spend(currency_panel, cost)
+	var stats := card.get("stats", {}) as Dictionary
+	var stat_anchor := stats.get(stat_type) as Control
+	if stat_anchor == null or not is_instance_valid(stat_anchor) or not stat_anchor.is_inside_tree():
+		return
+	var gain_text := _passive_upgrade_gain_text(stat_type, old_value, new_value)
+	if gain_text.is_empty():
+		return
+	_flash_bonus_control(stat_anchor)
+	_float_reward(self, stat_anchor, gain_text, 54, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -138), 0.0)
+
+
+func _float_log_spend(anchor: Control, cost: int) -> void:
+	if cost <= 0:
+		return
+	var text := "-%s" % cost
+	var reward_size := Vector2(300, 116)
+	var holder := Control.new()
+	holder.z_index = 4096
+	holder.z_as_relative = false
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.size = reward_size
+	add_child(holder)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 4)
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(row)
+	var label := _label(text, 58, Color("#fff2a8"), HORIZONTAL_ALIGNMENT_RIGHT)
+	label.custom_minimum_size = Vector2(152, reward_size.y)
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", 14)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(label)
+	var icon := _image(PASSIVE_LOG_CURRENCY_TEXTURE, Vector2(74, 74))
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	var local_pos := anchor.global_position - global_position
+	holder.position = local_pos + Vector2(anchor.size.x * 0.5 - reward_size.x * 0.5, -76)
+	holder.modulate = Color(1, 1, 1, 0)
+	holder.scale = Vector2(0.82, 0.82)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(holder, "position", holder.position + Vector2(0, -142), 1.05).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
+	tween.tween_property(holder, "modulate:a", 0.0, 0.70).set_delay(0.45)
+	tween.chain().tween_callback(holder.queue_free)
+
+
+func _passive_upgrade_gain_text(stat_type: String, old_value: int, new_value: int) -> String:
+	if stat_type == "time":
+		var saved := old_value - new_value
+		return "-%s" % _format_passive_time(saved) if saved > 0 else ""
+	if stat_type == "yield":
+		var gained_yield := new_value - old_value
+		return "+%s" % gained_yield if gained_yield > 0 else ""
+	var gained_capacity := new_value - old_value
+	return "+%s" % gained_capacity if gained_capacity > 0 else ""
 
 
 func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, content_width: float) -> Dictionary:
@@ -4410,6 +6447,8 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	bg.radius = 66.0
 	bg.crop_left = 0.025 if skill_id == "fishing" else 0.0
 	bg.crop_right = 0.015 if skill_id == "fishing" else 0.0
+	bg.art_height = ACTION_CARD_HEIGHT
+	bg.fallback_color = _skill_theme_color(skill_id)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bg.stretch_mode = TextureRect.STRETCH_SCALE
@@ -4781,16 +6820,16 @@ func _process_action(delta: float) -> void:
 		return
 	var cost := _effective_stamina(action)
 	if _stamina(running_skill_id) < cost:
-		last_result = "Out of stamina."
-		running_skill_id = ""
-		running_action_id = ""
 		action_progress = 0.0
-		_nudge_music_flow_down(1.2)
-		_update_ui(0.0, false)
+		var waiting_message := _waiting_for_stamina_text(action)
+		if last_result != waiting_message:
+			last_result = waiting_message
+			_nudge_music_flow_down(1.2)
 		return
 	action_progress += delta / _effective_seconds(running_skill_id, action)
 	if action_progress < 1.0:
 		return
+	var bonus_snapshot_before := _capture_visible_bonus_snapshot()
 	action_progress = 0.0
 	stamina[running_skill_id] = _stamina(running_skill_id) - cost
 	var reward_key := _action_key(running_skill_id, running_action_id)
@@ -4805,8 +6844,13 @@ func _process_action(delta: float) -> void:
 	if success:
 		var streak_step := _record_successful_activity_completion(reward_key)
 		var streak_bonus := streak_step == ACTIVITY_STREAK_BONUS_STEP
-		var xp_reward := _effective_xp(action)
-		if streak_bonus:
+		var crit_chance := ACTIVITY_STREAK_CRIT_CHANCE if streak_bonus else ACTIVITY_NORMAL_CRIT_CHANCE
+		var xp_crit := randf() < crit_chance
+		var plank_bonus_used := _plank_bonus_applies(running_skill_id)
+		var xp_reward := _effective_xp(action, running_skill_id, plank_bonus_used)
+		if xp_crit:
+			xp_reward *= ACTIVITY_CRIT_XP_MULT
+		elif streak_bonus:
 			xp_reward *= 2
 		skills[running_skill_id]["xp"] = int(skills[running_skill_id]["xp"]) + xp_reward
 		_add_mastery_xp(running_skill_id, running_action_id, mastery_reward)
@@ -4814,16 +6858,25 @@ func _process_action(delta: float) -> void:
 		_recalculate_level(running_skill_id)
 		var new_skill_level := _skill_level(running_skill_id)
 		_queue_activity_unlock_ceremony(running_skill_id, old_skill_level, new_skill_level)
+		_sync_passive_module_unlocks(_unix_now())
+		if plank_bonus_used:
+			log_currency = maxi(0, log_currency - 1)
 		last_result = "+%s XP from %s." % [xp_reward, action["name"]]
-		if streak_bonus:
+		if plank_bonus_used:
+			last_result += " Plank boost used 1 log."
+		if xp_crit:
+			last_result += " Critical success: triple XP."
+		elif streak_bonus:
 			last_result += " Fifth repeat: double XP."
 		var new_global_buffs := _new_global_medal_buff_messages(old_mastery_level, new_mastery_level, tiers_unlocked_before)
 		if not new_global_buffs.is_empty():
 			last_result += " " + " ".join(new_global_buffs)
-		_play_action_feedback(reward_key, true, xp_reward, mastery_reward)
+		_play_action_feedback(reward_key, true, xp_reward, mastery_reward, xp_crit)
+		if plank_bonus_used:
+			_play_build_log_spend_feedback(reward_key)
 		for achievement in _newly_completed_achievements(completed_achievements_before):
 			_show_achievement_unlocked(achievement)
-		_play_activity_success_sound(streak_step, new_mastery_level > old_mastery_level, streak_bonus)
+		_play_activity_success_sound(streak_step, new_mastery_level > old_mastery_level, streak_bonus, xp_crit)
 		_record_music_flow_action(true, streak_step, streak_bonus, new_mastery_level > old_mastery_level, new_skill_level > old_skill_level, cost)
 	else:
 		_reset_activity_completion_streak()
@@ -4842,27 +6895,208 @@ func _process_action(delta: float) -> void:
 			_show_achievement_unlocked(achievement)
 		_play(failure_player)
 		_record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, cost)
-	if _stamina(running_skill_id) < cost:
-		running_skill_id = ""
-		running_action_id = ""
 	_update_ui(0.0, false)
+	_emphasize_visible_bonus_changes(bonus_snapshot_before)
+
+
+func _waiting_for_stamina_text(action: Dictionary) -> String:
+	return "%s is waiting for stamina." % str(action.get("name", "Activity"))
+
+
+func _capture_visible_bonus_snapshot() -> Dictionary:
+	var action_stats := {}
+	for raw_key in action_cards.keys():
+		var key := str(raw_key)
+		var parts := key.split(":")
+		if parts.size() < 2:
+			continue
+		var skill_id := str(parts[0])
+		var action_id := str(parts[1])
+		var action := _action_data(skill_id, action_id)
+		if action.is_empty():
+			continue
+		if _is_passive_action(action):
+			continue
+		action_stats[key] = {
+			"xp": _effective_xp(action, skill_id),
+			"stamina": _effective_stamina(action),
+			"seconds": _effective_seconds(skill_id, action),
+			"base_seconds": maxf(0.1, float(action.get("seconds", 1.0))),
+			"success": _success_chance(skill_id, action)
+		}
+	return {
+		"max_stamina": _max_stamina(),
+		"global_buff_lines": _global_medal_buff_lines(),
+		"actions": action_stats
+	}
+
+
+func _emphasize_visible_bonus_changes(before: Dictionary) -> void:
+	if before.is_empty():
+		return
+	var old_max_stamina := int(before.get("max_stamina", _max_stamina()))
+	var new_max_stamina := _max_stamina()
+	if new_max_stamina > old_max_stamina:
+		_emphasize_visible_stamina_bonus(new_max_stamina - old_max_stamina)
+	var old_global_buff_lines := str(before.get("global_buff_lines", _global_medal_buff_lines()))
+	if old_global_buff_lines != _global_medal_buff_lines():
+		_emphasize_global_buff_label()
+	var old_actions := before.get("actions", {}) as Dictionary
+	var emphasized_card_keys := {}
+	for raw_key in action_cards.keys():
+		var key := str(raw_key)
+		if not old_actions.has(key):
+			continue
+		var parts := key.split(":")
+		if parts.size() < 2:
+			continue
+		var skill_id := str(parts[0])
+		var action_id := str(parts[1])
+		var action := _action_data(skill_id, action_id)
+		if action.is_empty():
+			continue
+		if _is_passive_action(action):
+			continue
+		var old_stats := old_actions[key] as Dictionary
+		var card := action_cards[key] as Dictionary
+		var old_xp := int(old_stats.get("xp", _effective_xp(action, skill_id)))
+		var new_xp := _effective_xp(action, skill_id)
+		if new_xp > old_xp:
+			_emphasize_action_stat_bonus(card, "xp", "+%s XP" % (new_xp - old_xp))
+			emphasized_card_keys[key] = true
+		var old_stamina := int(old_stats.get("stamina", _effective_stamina(action)))
+		var new_stamina := _effective_stamina(action)
+		if new_stamina < old_stamina:
+			_emphasize_action_stat_bonus(card, "stamina", "-%s STAM" % (old_stamina - new_stamina))
+			emphasized_card_keys[key] = true
+		var old_seconds := float(old_stats.get("seconds", _effective_seconds(skill_id, action)))
+		var new_seconds := _effective_seconds(skill_id, action)
+		if new_seconds + 0.001 < old_seconds:
+			var base_seconds := maxf(0.1, float(old_stats.get("base_seconds", action.get("seconds", 1.0))))
+			var reduction_pct := (old_seconds - new_seconds) / base_seconds * 100.0
+			_emphasize_action_stat_bonus(card, "time", _format_bonus_percent_delta(-reduction_pct))
+			emphasized_card_keys[key] = true
+		var old_success := float(old_stats.get("success", _success_chance(skill_id, action)))
+		var new_success := _success_chance(skill_id, action)
+		if new_success > old_success + 0.001:
+			_emphasize_action_stat_bonus(card, "success", _format_bonus_percent_delta(new_success - old_success))
+			emphasized_card_keys[key] = true
+	for key in emphasized_card_keys.keys():
+		if action_cards.has(key):
+			_flash_action_bonus_bottom(action_cards[key] as Dictionary)
+
+
+func _emphasize_action_stat_bonus(card: Dictionary, stat_kind: String, text: String) -> void:
+	var boxes := card.get("stat_boxes", {}) as Dictionary
+	var box := boxes.get(stat_kind) as Control
+	if box == null or not is_instance_valid(box) or not box.is_inside_tree():
+		return
+	_flash_bonus_control(box)
+	_float_reward(self, box, text, 70, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -58), Vector2(0, -154), 0.0)
+
+
+func _emphasize_visible_stamina_bonus(amount: int) -> void:
+	if amount <= 0:
+		return
+	var text := "+%s MAX" % amount
+	var emphasized := false
+	if current_screen == "menu":
+		for raw_card in skill_cards.values():
+			var card := raw_card as Dictionary
+			var gauge := card.get("stamina") as Control
+			if gauge != null and is_instance_valid(gauge) and gauge.is_inside_tree():
+				_flash_bonus_control(gauge)
+				_float_reward(self, gauge, text, 66, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -54), Vector2(0, -150), 0.0)
+				emphasized = true
+	elif current_screen == "skill" and detail_regen_circle != null and is_instance_valid(detail_regen_circle):
+		_flash_bonus_control(detail_regen_circle)
+		_float_reward(self, detail_regen_circle, text, 72, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -70), Vector2(0, -170), 0.0)
+		emphasized = true
+	if not emphasized:
+		_emphasize_global_buff_label()
+
+
+func _emphasize_global_buff_label() -> void:
+	if achievement_buff_label == null or not is_instance_valid(achievement_buff_label) or not achievement_buff_label.is_visible_in_tree():
+		return
+	_flash_bonus_control(achievement_buff_label)
+	_float_reward(self, achievement_buff_label, "BUFF UP", 66, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -46), Vector2(0, -138), 0.0)
+
+
+func _emphasize_shop_bonus_award() -> void:
+	if shop_bonus_label == null or not is_instance_valid(shop_bonus_label) or not shop_bonus_label.is_visible_in_tree():
+		return
+	_flash_bonus_control(shop_bonus_label)
+	_float_reward(self, shop_bonus_label, "+10% XP", 66, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -136), 0.0)
+	_float_reward(self, shop_bonus_label, "-10% TIME", 66, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -10), Vector2(0, -136), 0.14)
+
+
+func _format_bonus_percent_delta(delta: float) -> String:
+	var prefix := "+" if delta >= 0.0 else "-"
+	return "%s%s%%" % [prefix, _format_significant_digits(absf(delta))]
+
+
+func _flash_bonus_control(anchor: Control) -> void:
+	if anchor == null or not is_instance_valid(anchor):
+		return
+	var flash := Panel.new()
+	flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	flash.z_index = 96
+	flash.add_theme_stylebox_override("panel", _bonus_emphasis_style())
+	anchor.add_child(flash)
+	flash.modulate = Color(1, 1, 1, 0.96)
+	var tween := create_tween()
+	tween.tween_property(flash, "modulate:a", 0.0, BONUS_EMPHASIS_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(flash.queue_free)
+
+
+func _flash_action_bonus_bottom(card: Dictionary) -> void:
+	var pop := card.get("pop") as Control
+	var rail := card.get("progress") as Control
+	if pop == null or rail == null or not is_instance_valid(pop) or not is_instance_valid(rail):
+		return
+	if not pop.is_inside_tree() or not rail.is_inside_tree():
+		return
+	var overlay := Panel.new()
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 230
+	overlay.add_theme_stylebox_override("panel", _bonus_bottom_highlight_style())
+	var rail_rect := rail.get_global_rect()
+	overlay.position = rail_rect.position - pop.global_position
+	overlay.size = rail_rect.size
+	pop.add_child(overlay)
+	overlay.modulate = Color(1, 1, 1, 0.92)
+	var tween := create_tween()
+	tween.tween_property(overlay, "modulate:a", 0.0, BONUS_EMPHASIS_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(overlay.queue_free)
 
 
 func _regen_stamina(delta: float) -> void:
+	_apply_stamina_regen_seconds(delta, true)
+
+
+func _apply_stamina_regen_seconds(seconds: float, allow_gauge_boost := false) -> void:
+	if seconds <= 0.0:
+		return
 	var max_stamina := _max_stamina()
 	for def in skill_defs:
 		var skill_id := str(def["id"])
 		if _stamina(skill_id) >= max_stamina:
 			stamina_bank[skill_id] = 0.0
 			continue
-		var regen_delta := delta
-		if skill_id == stamina_gauge_boost_skill_id:
+		var regen_delta := seconds
+		if allow_gauge_boost and skill_id == stamina_gauge_boost_skill_id:
 			regen_delta *= stamina_gauge_regen_multiplier
-		stamina_bank[skill_id] = float(stamina_bank.get(skill_id, 0.0)) + regen_delta
-		if float(stamina_bank[skill_id]) >= STAMINA_REGEN_SECONDS:
-			var gained := int(floor(float(stamina_bank[skill_id]) / STAMINA_REGEN_SECONDS))
+		stamina_bank[skill_id] = maxf(0.0, float(stamina_bank.get(skill_id, 0.0))) + regen_delta
+		var bank_value := float(stamina_bank[skill_id])
+		if bank_value >= STAMINA_REGEN_SECONDS:
+			var gained := int(floor(bank_value / STAMINA_REGEN_SECONDS))
 			stamina[skill_id] = mini(max_stamina, _stamina(skill_id) + gained)
-			stamina_bank[skill_id] = fmod(float(stamina_bank[skill_id]), STAMINA_REGEN_SECONDS)
+			if _stamina(skill_id) >= max_stamina:
+				stamina_bank[skill_id] = 0.0
+			else:
+				stamina_bank[skill_id] = fmod(bank_value, STAMINA_REGEN_SECONDS)
 
 
 func _regen_ring_ease(raw_value: float) -> float:
@@ -4870,7 +7104,7 @@ func _regen_ring_ease(raw_value: float) -> float:
 
 
 func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant := false) -> void:
-	if circle == null or not is_instance_valid(circle):
+	if circle == null or not is_instance_valid(circle) or not circle.is_inside_tree():
 		return
 	var maximum := _max_stamina()
 	var stamina_value := _stamina(skill_id)
@@ -4882,14 +7116,17 @@ func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant 
 	circle.set_value(_regen_ring_ease(circle_value), instant)
 
 
-func _start_action(skill_id: String, action_id: String) -> void:
-	if skill_swipe_child_click_suppressed:
-		return
+func _start_action(skill_id: String, action_id: String) -> bool:
+	if _skill_swipe_suppresses_button_action():
+		return false
 	if detail_actions_scroll != null and detail_actions_scroll.is_child_click_suppressed():
-		return
+		return false
 	var action := _action_data(skill_id, action_id)
 	if action.is_empty() or _skill_level(skill_id) < int(action["unlock"]):
-		return
+		return false
+	if _is_passive_action(action):
+		_collect_passive_module(action_id)
+		return true
 	_unlock_audio_for_gameplay()
 	if running_skill_id == skill_id and running_action_id == action_id:
 		running_skill_id = ""
@@ -4898,11 +7135,7 @@ func _start_action(skill_id: String, action_id: String) -> void:
 		_nudge_music_flow_down(0.4)
 		_set_result("%s stopped." % action["name"])
 		_update_ui(0.0, false)
-		return
-	if _stamina(skill_id) < _effective_stamina(action):
-		_set_result("Not enough stamina.")
-		_play(failure_player)
-		return
+		return true
 	selected_skill_id = skill_id
 	running_skill_id = skill_id
 	running_action_id = action_id
@@ -4912,7 +7145,22 @@ func _start_action(skill_id: String, action_id: String) -> void:
 		_record_music_flow_start()
 	_play(activity_start_player)
 	_pop_activity_button(_action_key(skill_id, action_id))
-	_set_result("%s started." % action["name"])
+	if _stamina(skill_id) < _effective_stamina(action):
+		_set_result(_waiting_for_stamina_text(action))
+	else:
+		_set_result("%s started." % action["name"])
+	_tutorial_on_action_started()
+	return true
+
+
+func _start_action_from_card_tap(skill_id: String, action_id: String) -> void:
+	var key := _action_key(skill_id, action_id)
+	var now := Time.get_ticks_msec()
+	if last_action_card_tap_key == key and now - last_action_card_tap_msec < ACTION_CARD_DUPLICATE_TAP_MSEC:
+		return
+	if _start_action(skill_id, action_id):
+		last_action_card_tap_key = key
+		last_action_card_tap_msec = now
 
 
 func _pop_activity_button(action_key: String) -> void:
@@ -4940,6 +7188,13 @@ func _clear_action_pop_tweens() -> void:
 		if tween != null and (tween as Tween).is_valid():
 			(tween as Tween).kill()
 	action_pop_tweens.clear()
+
+
+func _clear_action_crit_tweens() -> void:
+	for tween in action_crit_tweens.values():
+		if tween != null and (tween as Tween).is_valid():
+			(tween as Tween).kill()
+	action_crit_tweens.clear()
 
 
 func _pop_nav_button(button: Button) -> void:
@@ -5001,9 +7256,7 @@ func _scroll_home_to_top() -> void:
 
 
 func _back_to_skills() -> void:
-	current_screen = "menu"
-	_play(click_player)
-	_render_screen()
+	_show_skills()
 
 
 func _open_settings() -> void:
@@ -5019,6 +7272,12 @@ func _on_achievements_overlay_gui_input(event: InputEvent) -> void:
 	var panel := achievements_panel if achievements_panel != null and is_instance_valid(achievements_panel) else achievements_panel_frame
 	if _event_is_outside_panel_press(event, panel):
 		_close_achievements_overlay()
+
+
+func _on_offline_summary_overlay_gui_input(event: InputEvent) -> void:
+	var panel := offline_summary_panel if offline_summary_panel != null and is_instance_valid(offline_summary_panel) else offline_summary_panel_frame
+	if _event_is_outside_panel_press(event, panel):
+		_close_offline_summary_overlay()
 
 
 func _event_is_outside_panel_press(event: InputEvent, panel: Control) -> bool:
@@ -5039,6 +7298,72 @@ func _close_settings() -> void:
 		_show_home()
 
 
+func _start_tutorial() -> void:
+	if settings_overlay != null:
+		settings_overlay.visible = false
+	if achievements_overlay != null:
+		achievements_overlay.visible = false
+	if offline_summary_overlay != null:
+		offline_summary_overlay.visible = false
+	tutorial_active = true
+	tutorial_step = 0
+	_play(click_player)
+	_update_tutorial_overlay()
+
+
+func _finish_tutorial() -> void:
+	tutorial_active = false
+	if tutorial_overlay != null:
+		tutorial_overlay.visible = false
+	_play(click_player)
+
+
+func _tutorial_check_progress() -> void:
+	if not tutorial_active:
+		return
+	if tutorial_step == 0 and current_screen == "menu":
+		_set_tutorial_step(1)
+	elif tutorial_step == 1 and current_screen == "skill":
+		_set_tutorial_step(2)
+
+
+func _tutorial_on_action_started() -> void:
+	if tutorial_active and tutorial_step == 2:
+		_set_tutorial_step(3)
+
+
+func _set_tutorial_step(step: int) -> void:
+	tutorial_step = clampi(step, 0, 3)
+	_update_tutorial_overlay()
+
+
+func _update_tutorial_overlay() -> void:
+	if tutorial_overlay == null:
+		return
+	tutorial_overlay.visible = tutorial_active
+	if not tutorial_active:
+		return
+	var title := ""
+	var body := ""
+	match tutorial_step:
+		0:
+			title = "Open Skills"
+			body = "Tap Skills. That is where training activities live."
+		1:
+			title = "Pick a Skill"
+			body = "Tap any skill card. Controls are simple: tap buttons to choose what to do."
+		2:
+			title = "Start Training"
+			body = "Tap an unlocked activity. It uses stamina, runs briefly, then gives XP."
+		_:
+			title = "Good Luck"
+			body = "Level skills, unlock more activities, and earn medals. Different buttons will appear on your journey. Good luck!"
+	tutorial_step_label.text = "Tutorial %s/4" % (tutorial_step + 1)
+	tutorial_title_label.text = title
+	tutorial_body_label.text = body
+	tutorial_skip_button.text = "Done" if tutorial_step >= 3 else "Skip"
+
+
 func _open_achievements_overlay() -> void:
 	achievements_modal_tab = "achievements"
 	if achievements_overlay != null:
@@ -5050,6 +7375,12 @@ func _open_achievements_overlay() -> void:
 func _close_achievements_overlay() -> void:
 	if achievements_overlay != null:
 		achievements_overlay.visible = false
+	_play(click_player)
+
+
+func _close_offline_summary_overlay() -> void:
+	if offline_summary_overlay != null:
+		offline_summary_overlay.visible = false
 	_play(click_player)
 
 
@@ -5111,6 +7442,211 @@ func _fit_achievements_modal(modal_size: Vector2) -> void:
 	achievements_panel.size = modal_size
 	achievements_panel.position = Vector2.ZERO
 	achievements_panel.scale = Vector2(fitted_scale, fitted_scale)
+
+
+func _fit_offline_summary_modal() -> void:
+	if offline_summary_panel == null:
+		return
+	var fitted_scale := _fit_scale_to_canvas(OFFLINE_SUMMARY_MODAL_SIZE, OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN)
+	var fitted_frame_size := OFFLINE_SUMMARY_MODAL_SIZE * fitted_scale
+	if offline_summary_panel_frame != null:
+		offline_summary_panel_frame.custom_minimum_size = fitted_frame_size
+		offline_summary_panel_frame.size = fitted_frame_size
+	offline_summary_panel.custom_minimum_size = OFFLINE_SUMMARY_MODAL_SIZE
+	offline_summary_panel.size = OFFLINE_SUMMARY_MODAL_SIZE
+	offline_summary_panel.position = Vector2.ZERO
+	offline_summary_panel.scale = Vector2(fitted_scale, fitted_scale)
+
+
+func _maybe_show_offline_summary(offline_seconds: float, active_result: Dictionary) -> void:
+	if offline_summary_overlay == null or not bool(active_result.get("handled", false)):
+		return
+	var has_progress := int(active_result.get("completions", 0)) > 0
+	has_progress = has_progress or int(active_result.get("xp", 0)) > 0
+	has_progress = has_progress or int(active_result.get("new_skill_level", 1)) > int(active_result.get("old_skill_level", 1))
+	has_progress = has_progress or int(active_result.get("new_mastery_level", 0)) > int(active_result.get("old_mastery_level", 0))
+	has_progress = has_progress or not (active_result.get("unlocked_actions", []) as Array).is_empty()
+	has_progress = has_progress or not (active_result.get("achievements", []) as Array).is_empty()
+	if not has_progress:
+		return
+	_rebuild_offline_summary_overlay(offline_seconds, active_result)
+	offline_summary_overlay.visible = true
+
+
+func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dictionary) -> void:
+	if offline_summary_stack == null:
+		return
+	_clear(offline_summary_stack)
+	_fit_offline_summary_modal()
+	var header := HBoxContainer.new()
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	header.add_theme_constant_override("separation", 24)
+	offline_summary_stack.add_child(header)
+	var title_stack := VBoxContainer.new()
+	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_stack.add_theme_constant_override("separation", 2)
+	header.add_child(title_stack)
+	var title := _label("Welcome Back", 118, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	title_stack.add_child(title)
+	var subtitle := _label("Away for %s" % _format_duration(offline_seconds), 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	title_stack.add_child(subtitle)
+	var close := _menu_button("X")
+	close.custom_minimum_size = Vector2(170, 158)
+	close.pressed.connect(_close_offline_summary_overlay)
+	header.add_child(close)
+
+	offline_summary_stack.add_child(_offline_summary_activity_card(active_result))
+
+	var stat_row := HBoxContainer.new()
+	stat_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stat_row.add_theme_constant_override("separation", 24)
+	offline_summary_stack.add_child(stat_row)
+	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), "res://docs/assets/ui/motivation-star.png"))
+	stat_row.add_child(_offline_summary_stat_card("Activity Runs", "%s" % int(active_result.get("completions", 0)), _skill_theme_color(str(active_result.get("skill_id", ""))), _skill_icon_path(str(active_result.get("skill_id", "")))))
+	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% XP" % int(round(OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), "res://docs/assets/ui/total-lv-bargraph.png"))
+
+	var scroll := MobileScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(0, OFFLINE_SUMMARY_MODAL_SCROLL_HEIGHT)
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	offline_summary_stack.add_child(scroll)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 22)
+	scroll.add_child(list)
+	_populate_offline_summary_progress(list, active_result)
+
+	var done := _menu_button("Nice")
+	done.custom_minimum_size = Vector2(0, 190)
+	done.pressed.connect(_close_offline_summary_overlay)
+	offline_summary_stack.add_child(done)
+
+
+func _offline_summary_activity_card(active_result: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", _achievement_card_style(Color("#fffdf8"), 48, 34))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 32)
+	card.add_child(row)
+	var art_frame := PanelContainer.new()
+	art_frame.custom_minimum_size = Vector2(248, 248)
+	art_frame.add_theme_stylebox_override("panel", _featured_activity_art_style())
+	row.add_child(art_frame)
+	art_frame.add_child(_image(str(active_result.get("action_art", "")), Vector2(214, 214)))
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 10)
+	row.add_child(copy)
+	var eyebrow := _label(str(active_result.get("skill_name", "Skill")), 50, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	copy.add_child(eyebrow)
+	var name := _label(str(active_result.get("action_name", "Activity")), 78, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	name.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_child(name)
+	var detail := _label("%s successes from %s completed runs" % [int(active_result.get("successes", 0)), int(active_result.get("completions", 0))], 48, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_child(detail)
+	return card
+
+
+func _offline_summary_stat_card(title: String, value: String, accent: Color, icon_path: String) -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 270)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", _offline_summary_stat_style(accent))
+	var stack := VBoxContainer.new()
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 4)
+	card.add_child(stack)
+	stack.add_child(_image(icon_path, Vector2(92, 92)))
+	var value_label := _label(value, 70, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stack.add_child(value_label)
+	var title_label := _label(title, 38, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stack.add_child(title_label)
+	return card
+
+
+func _populate_offline_summary_progress(list: VBoxContainer, active_result: Dictionary) -> void:
+	list.add_child(_offline_summary_section_label("Levels"))
+	var old_skill_level := int(active_result.get("old_skill_level", 1))
+	var new_skill_level := int(active_result.get("new_skill_level", old_skill_level))
+	if new_skill_level > old_skill_level:
+		list.add_child(_offline_summary_row(_skill_icon_path(str(active_result.get("skill_id", ""))), "%s Level" % str(active_result.get("skill_name", "Skill")), "Lv %s -> %s" % [old_skill_level, new_skill_level], "Achieved %s" % _offline_level_range_text(old_skill_level, new_skill_level), _skill_theme_color(str(active_result.get("skill_id", "")))))
+	else:
+		list.add_child(_offline_summary_row(_skill_icon_path(str(active_result.get("skill_id", ""))), "%s Level" % str(active_result.get("skill_name", "Skill")), "Lv %s" % new_skill_level, "No new skill levels this time.", COLOR_MUTED))
+	var old_global_level := int(active_result.get("old_global_level", 1))
+	var new_global_level := int(active_result.get("new_global_level", old_global_level))
+	if new_global_level > old_global_level:
+		list.add_child(_offline_summary_row("res://docs/assets/ui/total-lv-bargraph.png", "Total Level", "Lv %s -> %s" % [old_global_level, new_global_level], "Total level increased while away.", Color("#f4bf35")))
+	var old_mastery_level := int(active_result.get("old_mastery_level", 0))
+	var new_mastery_level := int(active_result.get("new_mastery_level", old_mastery_level))
+	if new_mastery_level > old_mastery_level:
+		list.add_child(_offline_summary_row(str(active_result.get("action_art", "")), "Activity Mastery", "Medal %s -> %s" % [old_mastery_level, new_mastery_level], "New mastery tier earned.", _mastery_medal_accent(new_mastery_level)))
+
+	list.add_child(_offline_summary_section_label("Unlocked"))
+	var unlocked_actions := active_result.get("unlocked_actions", []) as Array
+	if unlocked_actions.is_empty():
+		list.add_child(_offline_summary_row("res://docs/assets/ui/unlock-padlock.png", "Activities", "No new unlocks", "Keep this activity running to reach the next one.", COLOR_MUTED))
+	else:
+		for unlocked in unlocked_actions:
+			list.add_child(_offline_summary_unlock_card(unlocked as Dictionary, str(active_result.get("skill_id", ""))))
+
+	var achievements := active_result.get("achievements", []) as Array
+	if not achievements.is_empty():
+		list.add_child(_offline_summary_section_label("Achievements"))
+		for achievement in achievements:
+			list.add_child(_achievement_log_card(achievement as Dictionary))
+
+
+func _offline_level_range_text(old_level: int, new_level: int) -> String:
+	if new_level <= old_level:
+		return "none"
+	if new_level == old_level + 1:
+		return "Lv %s" % new_level
+	return "Lv %s-%s" % [old_level + 1, new_level]
+
+
+func _offline_summary_section_label(text: String) -> Label:
+	var label := _label(text, 58, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.45))
+	label.add_theme_constant_override("outline_size", 10)
+	return label
+
+
+func _offline_summary_row(icon_path: String, title: String, value: String, subtitle: String, accent: Color) -> Control:
+	var card := PanelContainer.new()
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", _achievement_card_style(Color("#fffdf8"), 34, 26))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	card.add_child(row)
+	row.add_child(_image(icon_path, Vector2(118, 118)))
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 4)
+	row.add_child(copy)
+	var title_label := _label(title, 50, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_child(title_label)
+	var subtitle_label := _label(subtitle, 38, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	copy.add_child(subtitle_label)
+	var value_label := _label(value, 58, accent, HORIZONTAL_ALIGNMENT_RIGHT)
+	value_label.custom_minimum_size = Vector2(360, 0)
+	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(value_label)
+	return card
+
+
+func _offline_summary_unlock_card(unlocked: Dictionary, skill_id: String) -> Control:
+	var accent := _skill_theme_color(skill_id)
+	return _offline_summary_row(str(unlocked.get("art", "")), str(unlocked.get("name", "Activity")), "Lv %s" % int(unlocked.get("level", 1)), "New activity unlocked.", accent)
 
 
 func _fit_scale_to_canvas(base_size: Vector2, margin: Vector2) -> float:
@@ -5470,6 +8006,8 @@ func _init_ads() -> void:
 	ad_content_callback.on_ad_dismissed_full_screen_content = _on_rewarded_ad_dismissed
 	ad_content_callback.on_ad_failed_to_show_full_screen_content = _on_rewarded_ad_failed_to_show
 	ad_content_callback.on_ad_showed_full_screen_content = _on_rewarded_ad_showed
+	if TESTING_ADS_DISABLED:
+		return
 	if _ads_supported() and not _rewarded_ad_unit_id().is_empty():
 		MobileAds.initialize()
 		_load_rewarded_ad(false)
@@ -5488,6 +8026,12 @@ func _rewarded_ad_unit_id() -> String:
 
 
 func _load_rewarded_ad(show_when_loaded: bool) -> void:
+	if TESTING_ADS_DISABLED:
+		ad_loading = false
+		ad_show_after_load = false
+		if show_when_loaded:
+			_grant_ad_bonus(TESTER_ADS_DISABLED_MESSAGE)
+		return
 	var unit_id := _rewarded_ad_unit_id()
 	if unit_id.is_empty():
 		_set_result("Ad Not Configured")
@@ -5570,10 +8114,19 @@ func _on_rewarded_ad_dismissed() -> void:
 
 func _on_rewarded_ad_user_earned_reward(_item: RewardedItem) -> void:
 	ad_reward_earned_for_show = true
+	_grant_ad_bonus("Ad bonus active: +10% XP, +10% speed for 2 hours.")
+
+
+func _grant_ad_bonus(message: String) -> void:
+	var bonus_snapshot_before := _capture_visible_bonus_snapshot()
 	ad_bonus_seconds_remaining = minf(float(AD_BONUS_MAX_SECONDS), ad_bonus_seconds_remaining + float(AD_BONUS_SECONDS))
-	_set_result("Ad bonus active: +10% XP, +10% speed for 2 hours.")
+	shop_bonus_notice_text = message
+	_set_result(message)
 	if shop_bonus_label != null:
-		shop_bonus_label.text = _shop_bonus_status_text()
+		shop_bonus_label.text = _shop_bonus_label_text()
+	_update_ui(0.0, false)
+	_emphasize_visible_bonus_changes(bonus_snapshot_before)
+	_emphasize_shop_bonus_award()
 	save_game()
 
 
@@ -5581,7 +8134,10 @@ func _shop_ad_pressed() -> void:
 	if ad_bonus_seconds_remaining > float(AD_BONUS_WARN_THRESHOLD_SECONDS):
 		_set_result("Max stackable bonus time is 6 hours.")
 		if shop_bonus_label != null:
-			shop_bonus_label.text = _shop_bonus_status_text()
+			shop_bonus_label.text = _shop_bonus_label_text()
+		return
+	if TESTING_ADS_DISABLED:
+		_grant_ad_bonus(TESTER_ADS_DISABLED_MESSAGE)
 		return
 	if ad_showing:
 		_set_result("Ad already open.")
@@ -5598,6 +8154,52 @@ func _settings_discord_pressed() -> void:
 		_set_result("Opening Discord invite.")
 	else:
 		_set_result("Couldn't open Discord invite.")
+
+
+func _settings_copy_crash_report_pressed() -> void:
+	if not _pending_crash_report_exists():
+		_set_result("No crash report found.")
+		return
+	if pending_crash_report_text.is_empty():
+		_load_pending_crash_report()
+	var report := pending_crash_report_text
+	if report.is_empty():
+		_set_result("Couldn't read crash report.")
+		return
+	if report.length() > MAX_CRASH_REPORT_CLIPBOARD_CHARS:
+		report = report.substr(0, MAX_CRASH_REPORT_CLIPBOARD_CHARS) + "\n\n[Crash report truncated for clipboard.]"
+	DisplayServer.clipboard_set(report)
+	pending_crash_report_text = ""
+	var err := OS.shell_open(DISCORD_INVITE_URL)
+	if err == OK:
+		_set_result("Crash report copied. Paste it to the dev. Local report cleared.")
+	else:
+		_set_result("Crash report copied. Local report cleared.")
+	if current_screen == "settings":
+		_render_screen()
+
+
+func _pending_crash_report_exists() -> bool:
+	return not pending_crash_report_text.is_empty() or FileAccess.file_exists(PENDING_CRASH_REPORT_PATH)
+
+
+func _load_pending_crash_report() -> void:
+	if not FileAccess.file_exists(PENDING_CRASH_REPORT_PATH):
+		return
+	var file := FileAccess.open(PENDING_CRASH_REPORT_PATH, FileAccess.READ)
+	if file != null:
+		pending_crash_report_text = file.get_as_text()
+		file = null
+	_delete_pending_crash_report()
+
+
+func _delete_pending_crash_report() -> void:
+	var absolute_path := ProjectSettings.globalize_path(PENDING_CRASH_REPORT_PATH)
+	if absolute_path.is_empty():
+		return
+	var err := DirAccess.remove_absolute(absolute_path)
+	if err != OK and err != ERR_FILE_NOT_FOUND:
+		push_warning("Could not clear pending crash report: %s" % error_string(err))
 
 
 func _register_reset_button(button: Button, default_text: String) -> void:
@@ -5660,7 +8262,7 @@ func _set_result(text: String) -> void:
 	_play(click_player)
 
 
-func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_amount: float) -> void:
+func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_amount: float, xp_crit := false) -> void:
 	if not action_cards.has(key):
 		return
 	var card: Dictionary = action_cards[key]
@@ -5672,6 +8274,8 @@ func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_a
 	art_panel.pivot_offset = art_panel.size * 0.5
 	if success:
 		_flash_art_glow(art_panel, Color("#35d86d"))
+		if xp_crit:
+			_play_activity_crit_feedback(key, card)
 		art_panel.modulate = Color("#93ff9e")
 		art_panel.scale = Vector2.ONE
 		var pop := create_tween()
@@ -5693,6 +8297,145 @@ func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_a
 		shake.tween_property(art_panel, "rotation_degrees", 0.0, 0.06)
 		shake.parallel().tween_property(art_panel, "modulate", Color.WHITE, 0.26)
 		_float_mastery_bar(self, mastery_bar, mastery_amount)
+
+
+func _play_activity_crit_feedback(key: String, card: Dictionary) -> void:
+	var pop_card := card.get("pop") as Control
+	if pop_card == null:
+		return
+	if action_crit_tweens.has(key):
+		var existing := action_crit_tweens[key] as Tween
+		if existing != null and existing.is_valid():
+			existing.kill()
+		if pop_card.has_meta("activity_crit_start_position"):
+			pop_card.position = pop_card.get_meta("activity_crit_start_position")
+		if pop_card.has_meta("activity_crit_start_scale"):
+			pop_card.scale = pop_card.get_meta("activity_crit_start_scale")
+	var old_highlight := pop_card.get_node_or_null("ActivityCritHighlight")
+	if old_highlight != null:
+		old_highlight.queue_free()
+	var old_art_burst := pop_card.get_node_or_null("ActivityCritArtBurst")
+	if old_art_burst != null:
+		old_art_burst.queue_free()
+	var old_crit_text := pop_card.get_node_or_null("ActivityCritText")
+	if old_crit_text != null:
+		var old_text_tween := old_crit_text.get_meta("activity_crit_text_tween", null) as Tween
+		if old_text_tween != null and old_text_tween.is_valid():
+			old_text_tween.kill()
+		old_crit_text.queue_free()
+	pop_card.pivot_offset = pop_card.size * 0.5
+	pop_card.rotation_degrees = 0.0
+	var start_position := pop_card.position
+	var start_scale := pop_card.scale
+	pop_card.set_meta("activity_crit_start_position", start_position)
+	pop_card.set_meta("activity_crit_start_scale", start_scale)
+	var highlight := Panel.new()
+	highlight.name = "ActivityCritHighlight"
+	highlight.set_anchors_preset(Control.PRESET_FULL_RECT)
+	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	highlight.z_index = 229
+	highlight.add_theme_stylebox_override("panel", _activity_crit_glow_style())
+	pop_card.add_child(highlight)
+	highlight.modulate = Color(1, 1, 1, 1.0)
+	var art_burst := _activity_crit_art_burst(card, pop_card)
+	_activity_crit_text_burst(pop_card)
+	var tween := create_tween()
+	action_crit_tweens[key] = tween
+	tween.tween_method(_apply_activity_crit_feedback_frame.bind(pop_card, start_position, start_scale, highlight, art_burst), 0.0, 1.0, ACTIVITY_CRIT_FEEDBACK_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		pop_card.position = start_position
+		pop_card.scale = start_scale
+		pop_card.remove_meta("activity_crit_start_position")
+		pop_card.remove_meta("activity_crit_start_scale")
+		if highlight != null and is_instance_valid(highlight):
+			highlight.queue_free()
+		if art_burst != null and is_instance_valid(art_burst):
+			art_burst.queue_free()
+		action_crit_tweens.erase(key)
+	)
+
+
+func _activity_crit_art_burst(card: Dictionary, pop_card: Control) -> TextureRect:
+	var art := card.get("art") as TextureRect
+	if art == null or art.texture == null or not is_instance_valid(art):
+		return null
+	var burst := TextureRect.new()
+	burst.name = "ActivityCritArtBurst"
+	burst.texture = art.texture
+	burst.expand_mode = art.expand_mode
+	burst.stretch_mode = art.stretch_mode
+	burst.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	burst.z_index = 231
+	var art_size := art.size
+	if art_size.x <= 1.0 or art_size.y <= 1.0:
+		art_size = art.custom_minimum_size
+	burst.size = art_size
+	burst.custom_minimum_size = art_size
+	burst.position = art.global_position - pop_card.global_position
+	burst.pivot_offset = art_size * 0.5
+	burst.scale = Vector2.ONE
+	burst.modulate = Color(1.0, 1.0, 1.0, 1.0)
+	pop_card.add_child(burst)
+	return burst
+
+
+func _activity_crit_text_burst(pop_card: Control) -> Control:
+	var holder := Control.new()
+	holder.name = "ActivityCritText"
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.z_index = 232
+	holder.size = ACTIVITY_CRIT_TEXT_SIZE
+	holder.pivot_offset = ACTIVITY_CRIT_TEXT_SIZE * 0.5
+	holder.position = Vector2((pop_card.size.x - ACTIVITY_CRIT_TEXT_SIZE.x) * 0.5, -ACTIVITY_CRIT_TEXT_SIZE.y * 0.42)
+	holder.scale = Vector2(0.78, 0.78)
+	holder.modulate = Color(1, 1, 1, 0)
+	pop_card.add_child(holder)
+	var label := _label("CRIT!!", 128, ACTIVITY_CRIT_TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER)
+	label.size = ACTIVITY_CRIT_TEXT_SIZE
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_outline_color", Color("#171615"))
+	label.add_theme_constant_override("outline_size", 26)
+	if app_bold_font != null:
+		label.add_theme_font_override("font", app_bold_font)
+	holder.add_child(label)
+	var tween := create_tween()
+	holder.set_meta("activity_crit_text_tween", tween)
+	tween.set_parallel(true)
+	tween.tween_property(holder, "position", holder.position + Vector2(0, -230), 2.05).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "scale", Vector2(1.08, 1.08), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
+	tween.tween_property(holder, "modulate:a", 0.0, 0.55).set_delay(1.50).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.chain().tween_callback(holder.queue_free)
+	return holder
+
+
+func _apply_activity_crit_feedback_frame(progress: float, pop_card: Control, start_position: Vector2, start_scale: Vector2, highlight: CanvasItem, art_burst: TextureRect) -> void:
+	if pop_card == null or highlight == null or not is_instance_valid(pop_card) or not is_instance_valid(highlight):
+		return
+	var damping := 1.0 - progress
+	var fast_start := pow(progress, 0.46)
+	var shake_wave := sin(fast_start * PI * 9.5) * pow(damping, 1.08)
+	var lift_wave := absf(sin(fast_start * PI * 4.0)) * pow(damping, 1.18)
+	pop_card.position = start_position + Vector2(shake_wave * ACTIVITY_CRIT_SHAKE_PIXELS, -lift_wave * ACTIVITY_CRIT_LIFT_PIXELS)
+	var scale_peak_progress := clampf(progress / 0.18, 0.0, 1.0)
+	var scale_settle_progress := clampf((progress - 0.18) / 0.82, 0.0, 1.0)
+	var peak_scale := lerpf(1.0, ACTIVITY_CRIT_CARD_SCALE_PEAK, 1.0 - pow(1.0 - scale_peak_progress, 2.4))
+	var settle_scale := lerpf(ACTIVITY_CRIT_CARD_SCALE_PEAK, 1.0, 1.0 - pow(1.0 - scale_settle_progress, 2.1))
+	var current_card_scale := peak_scale if progress < 0.18 else settle_scale
+	pop_card.scale = start_scale * current_card_scale
+	var fade_progress := clampf((progress - 0.21) / 0.79, 0.0, 1.0)
+	var flash_pulse := sin(clampf(progress / 0.52, 0.0, 1.0) * PI)
+	var linger_pulse := sin(clampf((progress - 0.34) / 0.52, 0.0, 1.0) * PI) * 0.34
+	highlight.modulate.a = clampf(lerpf(1.0, 0.0, fade_progress) + flash_pulse * 0.22 + linger_pulse, 0.0, 1.0)
+	if art_burst != null and is_instance_valid(art_burst):
+		var peak_progress := clampf(progress / 0.22, 0.0, 1.0)
+		var art_settle_progress := clampf((progress - 0.22) / 0.78, 0.0, 1.0)
+		var burst_scale := lerpf(1.0, ACTIVITY_CRIT_ART_BURST_SCALE, 1.0 - pow(1.0 - peak_progress, 2.2))
+		var art_settle_scale := lerpf(ACTIVITY_CRIT_ART_BURST_SCALE, 1.0, 1.0 - pow(1.0 - art_settle_progress, 2.8))
+		var current_scale := burst_scale if progress < 0.22 else art_settle_scale
+		art_burst.scale = Vector2(current_scale, current_scale)
+		art_burst.rotation_degrees = sin(fast_start * PI * 3.0) * 8.5 * pow(damping, 0.85)
+		art_burst.modulate = Color(0.78, 0.92, 1.0, lerpf(1.0, 0.0, fade_progress))
 
 
 func _flash_art_glow(anchor: Control, color: Color) -> void:
@@ -6023,7 +8766,7 @@ func _load_activity_database() -> bool:
 				var action_id := str(action.get("id", ""))
 				if action_id.is_empty():
 					action_id = _slug(str(action.get("name", "Action")))
-				actions.append({
+				var action_data := {
 					"id": action_id,
 					"name": str(action.get("name", action_id.capitalize())),
 					"unlock": int(action.get("unlock", 1)),
@@ -6033,7 +8776,14 @@ func _load_activity_database() -> bool:
 					"success": float(action.get("success", 90.0)),
 					"art": _res_path(str(action.get("art", ""))),
 					"bg": _res_path(str(action.get("background", action.get("bg", ""))))
-				})
+				}
+				var kind := str(action.get("kind", action.get("type", "activity")))
+				action_data["kind"] = kind
+				if kind == "passive_item_collect":
+					action_data["passive"] = action.get("passive", {})
+					action_data["stamina"] = 0
+					action_data["success"] = 100.0
+				actions.append(action_data)
 		actions_by_skill[skill_id] = actions
 	return not skill_defs.is_empty()
 
@@ -6063,6 +8813,10 @@ func _init_state() -> void:
 	mastery.clear()
 	stamina.clear()
 	stamina_bank.clear()
+	log_currency = 0
+	passive_modules.clear()
+	plank_boost_enabled = false
+	last_passive_process_unix = _unix_now()
 	ad_bonus_seconds_remaining = 0.0
 	for def in skill_defs:
 		var skill_id := str(def["id"])
@@ -6070,6 +8824,9 @@ func _init_state() -> void:
 		stamina[skill_id] = BASE_MAX_STAMINA
 		stamina_bank[skill_id] = 0.0
 		for action in actions_by_skill.get(skill_id, []):
+			if _is_passive_action(action as Dictionary):
+				_ensure_passive_module_state(str(action.get("id", "")), last_passive_process_unix)
+				continue
 			mastery[_action_key(skill_id, str(action["id"]))] = {"xp": 0, "level": 0}
 	_invalidate_stat_caches()
 
@@ -6085,6 +8842,9 @@ func _validate_state() -> void:
 		if not stamina_bank.has(skill_id):
 			stamina_bank[skill_id] = 0.0
 		for action in actions_by_skill.get(skill_id, []):
+			if _is_passive_action(action as Dictionary):
+				_ensure_passive_module_state(str(action.get("id", "")), _unix_now())
+				continue
 			var key := _action_key(skill_id, str(action["id"]))
 			if not mastery.has(key):
 				mastery[key] = {"xp": 0, "level": 0}
@@ -6092,18 +8852,41 @@ func _validate_state() -> void:
 		_recalculate_level(skill_id)
 	if not skills.has(selected_skill_id):
 		selected_skill_id = "fight"
+	_sync_passive_module_unlocks(_unix_now())
 	_invalidate_stat_caches()
+
+
+func _select_launch_skill_page() -> void:
+	var best_skill_id := selected_skill_id
+	var best_level := -1
+	var best_xp := -1
+	for def in skill_defs:
+		var skill_id := str(def["id"])
+		var skill_level := _skill_level(skill_id)
+		var skill_xp := int(skills.get(skill_id, {}).get("xp", 0))
+		if best_skill_id.is_empty() or skill_level > best_level or (skill_level == best_level and skill_xp > best_xp):
+			best_skill_id = skill_id
+			best_level = skill_level
+			best_xp = skill_xp
+	if skills.has(best_skill_id):
+		selected_skill_id = best_skill_id
+	current_screen = "skill"
 
 
 func save_game() -> void:
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
 		return
+	var now := _unix_now()
+	last_save_unix_time = now
 	file.store_string(JSON.stringify({
 		"skills": skills,
 		"mastery": mastery,
 		"stamina": stamina,
 		"stamina_bank": stamina_bank,
+		"log_currency": log_currency,
+		"passive_modules": passive_modules,
+		"plank_boost_enabled": plank_boost_enabled,
 		"ad_bonus_seconds_remaining": ad_bonus_seconds_remaining,
 		"selected_skill_id": selected_skill_id,
 		"running_skill_id": running_skill_id,
@@ -6119,22 +8902,222 @@ func save_game() -> void:
 		"flow_heat": flow_heat,
 		"flow_active_action_seconds": flow_active_action_seconds,
 		"last_result": last_result,
-		"saved_at": Time.get_unix_time_from_system()
+		"saved_at": now
 	}))
+
+
+func _unix_now() -> int:
+	return int(floor(Time.get_unix_time_from_system()))
+
+
+func _apply_offline_progress(saved_at_unix_time: int) -> int:
+	var now := _unix_now()
+	var offline := int(clamp(now - saved_at_unix_time, 0, MAX_OFFLINE_SECONDS))
+	last_save_unix_time = now
+	if offline <= 0:
+		return 0
+	var active_result := _apply_offline_active_action(float(offline))
+	if not bool(active_result.get("handled", false)):
+		_apply_stamina_regen_seconds(float(offline), false)
+	ad_bonus_seconds_remaining = maxf(0.0, ad_bonus_seconds_remaining - float(offline))
+	_set_offline_result_text(float(offline), active_result)
+	_maybe_show_offline_summary(float(offline), active_result)
+	return offline
+
+
+func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
+	if offline_seconds <= 0.0 or running_skill_id.is_empty() or running_action_id.is_empty():
+		return {"handled": false}
+	var action := _action_data(running_skill_id, running_action_id)
+	if action.is_empty() or _is_passive_action(action):
+		running_skill_id = ""
+		running_action_id = ""
+		action_progress = 0.0
+		return {"handled": false}
+	if _skill_level(running_skill_id) < int(action.get("unlock", 1)):
+		action_progress = 0.0
+		return {"handled": false}
+	var skill_id := running_skill_id
+	var action_id := running_action_id
+	var old_skill_level := _skill_level(skill_id)
+	var old_global_level := _global_level()
+	var old_mastery_level := _mastery_level(skill_id, action_id)
+	var completed_achievements_before := _completed_achievement_ids()
+	var remaining := offline_seconds
+	var completions := 0
+	var successes := 0
+	var xp_total := 0
+	var mastery_total := 0.0
+	var logs_spent := 0
+	while remaining > 0.001:
+		var cost := _effective_stamina(action)
+		if cost > _max_stamina():
+			_apply_stamina_regen_seconds(remaining, false)
+			action_progress = 0.0
+			remaining = 0.0
+			break
+		if _stamina(skill_id) < cost:
+			var wait_seconds := _seconds_until_stamina_cost(skill_id, cost)
+			if wait_seconds <= 0.001:
+				wait_seconds = STAMINA_REGEN_SECONDS
+			var wait_step = minf(remaining, wait_seconds)
+			_apply_stamina_regen_seconds(wait_step, false)
+			remaining -= wait_step
+			action_progress = 0.0
+			if wait_step < wait_seconds:
+				break
+			continue
+		var action_seconds := _effective_seconds(skill_id, action)
+		var progress := clampf(action_progress, 0.0, 0.999)
+		var seconds_to_complete := maxf(0.001, action_seconds * (1.0 - progress))
+		if remaining < seconds_to_complete:
+			_apply_stamina_regen_seconds(remaining, false)
+			action_progress = clampf(progress + remaining / action_seconds, 0.0, 0.999)
+			remaining = 0.0
+			break
+		_apply_stamina_regen_seconds(seconds_to_complete, false)
+		remaining -= seconds_to_complete
+		action_progress = 0.0
+		stamina[skill_id] = maxi(0, _stamina(skill_id) - cost)
+		var completion := _grant_offline_action_completion(skill_id, action_id, action)
+		completions += 1
+		if bool(completion.get("success", false)):
+			successes += 1
+		xp_total += int(completion.get("xp", 0))
+		mastery_total += float(completion.get("mastery", 0.0))
+		logs_spent += int(completion.get("logs_spent", 0))
+	var new_skill_level := _skill_level(skill_id)
+	var new_global_level := _global_level()
+	var new_mastery_level := _mastery_level(skill_id, action_id)
+	return {
+		"handled": true,
+		"skill_id": skill_id,
+		"skill_name": _skill_name(skill_id),
+		"action_id": action_id,
+		"action_name": str(action.get("name", "activity")),
+		"action_art": str(action.get("art", "")),
+		"completions": completions,
+		"successes": successes,
+		"xp": xp_total,
+		"mastery": mastery_total,
+		"logs_spent": logs_spent,
+		"old_skill_level": old_skill_level,
+		"new_skill_level": new_skill_level,
+		"old_global_level": old_global_level,
+		"new_global_level": new_global_level,
+		"old_mastery_level": old_mastery_level,
+		"new_mastery_level": new_mastery_level,
+		"unlocked_actions": _offline_unlocked_actions(skill_id, old_skill_level, new_skill_level),
+		"achievements": _newly_completed_achievements(completed_achievements_before)
+	}
+
+
+func _seconds_until_stamina_cost(skill_id: String, cost: int) -> float:
+	if _stamina(skill_id) >= cost:
+		return 0.0
+	var missing := cost - _stamina(skill_id)
+	var bank_seconds := clampf(float(stamina_bank.get(skill_id, 0.0)), 0.0, STAMINA_REGEN_SECONDS)
+	var first_stamina_seconds := maxf(0.0, STAMINA_REGEN_SECONDS - bank_seconds)
+	return first_stamina_seconds + float(maxi(0, missing - 1)) * STAMINA_REGEN_SECONDS
+
+
+func _grant_offline_action_completion(skill_id: String, action_id: String, action: Dictionary) -> Dictionary:
+	var mastery_reward := _mastery_xp_reward(action)
+	var success := randf() * 100.0 <= _success_chance(skill_id, action)
+	var xp_reward := 0
+	var mastery_gained := 0.0
+	var logs_spent := 0
+	var old_skill_level := _skill_level(skill_id)
+	if success:
+		var plank_bonus_used := _plank_bonus_applies(skill_id)
+		xp_reward = _offline_xp_reward(action, skill_id, plank_bonus_used)
+		skills[skill_id]["xp"] = int(skills[skill_id]["xp"]) + xp_reward
+		_add_mastery_xp(skill_id, action_id, mastery_reward)
+		mastery_gained = mastery_reward
+		if plank_bonus_used:
+			log_currency = maxi(0, log_currency - 1)
+			logs_spent = 1
+		_recalculate_level(skill_id)
+		_sync_passive_module_unlocks(_unix_now())
+	else:
+		var failure_mastery_reward := 0.0 if _would_mastery_reward_medal_up(skill_id, action_id, mastery_reward) else mastery_reward
+		if failure_mastery_reward > 0.0:
+			_add_mastery_xp(skill_id, action_id, failure_mastery_reward)
+			mastery_gained = failure_mastery_reward
+	if _skill_level(skill_id) > old_skill_level:
+		_invalidate_stat_caches()
+	return {
+		"success": success,
+		"xp": xp_reward,
+		"mastery": mastery_gained,
+		"logs_spent": logs_spent
+	}
+
+
+func _offline_xp_reward(action: Dictionary, skill_id: String, force_plank_bonus := false) -> int:
+	return maxi(1, int(round(float(_effective_xp(action, skill_id, force_plank_bonus)) * OFFLINE_XP_MULT)))
+
+
+func _offline_unlocked_actions(skill_id: String, old_level: int, new_level: int) -> Array:
+	var unlocked := []
+	if new_level <= old_level:
+		return unlocked
+	for action in actions_by_skill.get(skill_id, []):
+		var action_data := action as Dictionary
+		if _is_passive_action(action_data):
+			continue
+		var unlock_level := int(action_data.get("unlock", 1))
+		if unlock_level > old_level and unlock_level <= new_level:
+			unlocked.append({
+				"name": str(action_data.get("name", "")),
+				"level": unlock_level,
+				"art": str(action_data.get("art", ""))
+			})
+	return unlocked
+
+
+func _set_offline_result_text(offline_seconds: float, active_result: Dictionary) -> void:
+	if not bool(active_result.get("handled", false)):
+		return
+	var completions := int(active_result.get("completions", 0))
+	var action_name := str(active_result.get("action_name", "activity"))
+	if completions <= 0:
+		last_result = "Away %s: %s waited for stamina." % [_format_duration(offline_seconds), action_name]
+		return
+	var parts := [
+		"Away %s: %s x%s" % [_format_duration(offline_seconds), action_name, completions]
+	]
+	var xp_total := int(active_result.get("xp", 0))
+	if xp_total > 0:
+		parts.append("+%s XP" % xp_total)
+	var mastery_total := float(active_result.get("mastery", 0.0))
+	if mastery_total > 0.0:
+		parts.append("+%s mastery" % _format_significant_digits(mastery_total))
+	var logs_spent := int(active_result.get("logs_spent", 0))
+	if logs_spent > 0:
+		parts.append("%s logs spent" % logs_spent)
+	parts.append("offline XP at %s%%" % int(round(OFFLINE_XP_MULT * 100.0)))
+	last_result = ", ".join(parts) + "."
 
 
 func load_game() -> void:
 	if not FileAccess.file_exists(SAVE_PATH):
+		selected_skill_id = "fight"
+		current_screen = "skill"
+		last_save_unix_time = _unix_now()
 		return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.READ)
 	if file == null:
+		last_save_unix_time = _unix_now()
 		return
 	var raw := file.get_buffer(file.get_length()).get_string_from_utf8()
 	var json := JSON.new()
 	if json.parse(raw) != OK:
+		last_save_unix_time = _unix_now()
 		return
 	var data = json.data
 	if typeof(data) != TYPE_DICTIONARY:
+		last_save_unix_time = _unix_now()
 		return
 	var loaded_skills = data.get("skills", {})
 	if typeof(loaded_skills) == TYPE_DICTIONARY:
@@ -6160,6 +9143,22 @@ func load_game() -> void:
 		for skill_id in loaded_bank.keys():
 			if stamina_bank.has(skill_id):
 				stamina_bank[skill_id] = float(loaded_bank[skill_id])
+	log_currency = maxi(0, int(data.get("log_currency", log_currency)))
+	var loaded_passive_modules = data.get("passive_modules", {})
+	if typeof(loaded_passive_modules) == TYPE_DICTIONARY:
+		for module_id in loaded_passive_modules.keys():
+			if typeof(loaded_passive_modules[module_id]) != TYPE_DICTIONARY:
+				continue
+			var loaded_module := loaded_passive_modules[module_id] as Dictionary
+			var module_state := _ensure_passive_module_state(str(module_id), _unix_now())
+			module_state["stored"] = clampi(int(loaded_module.get("stored", module_state.get("stored", 0))), 0, PASSIVE_CAPACITY_MAX)
+			module_state["time_seconds"] = clampi(int(loaded_module.get("time_seconds", module_state.get("time_seconds", PASSIVE_TIME_START))), PASSIVE_TIME_MAX, PASSIVE_TIME_START)
+			module_state["yield"] = clampi(int(loaded_module.get("yield", module_state.get("yield", PASSIVE_YIELD_START))), PASSIVE_YIELD_START, PASSIVE_YIELD_MAX)
+			module_state["capacity"] = clampi(int(loaded_module.get("capacity", module_state.get("capacity", PASSIVE_CAPACITY_START))), PASSIVE_CAPACITY_START, PASSIVE_CAPACITY_MAX)
+			module_state["seeded"] = bool(loaded_module.get("seeded", module_state.get("seeded", false)))
+			module_state["last_update"] = int(loaded_module.get("last_update", module_state.get("last_update", _unix_now())))
+			passive_modules[str(module_id)] = module_state
+	plank_boost_enabled = bool(data.get("plank_boost_enabled", false))
 	ad_bonus_seconds_remaining = clampf(float(data.get("ad_bonus_seconds_remaining", 0.0)), 0.0, float(AD_BONUS_MAX_SECONDS))
 	selected_skill_id = str(data.get("selected_skill_id", selected_skill_id))
 	running_skill_id = str(data.get("running_skill_id", ""))
@@ -6180,11 +9179,11 @@ func load_game() -> void:
 	flow_active_action_seconds = maxf(0.0, float(data.get("flow_active_action_seconds", flow_active_action_seconds)))
 	last_result = str(data.get("last_result", last_result))
 	_apply_audio_bus_volumes()
-	var offline := int(clamp(Time.get_unix_time_from_system() - int(data.get("saved_at", Time.get_unix_time_from_system())), 0, MAX_OFFLINE_SECONDS))
-	if offline > 0:
-		ad_bonus_seconds_remaining = maxf(0.0, ad_bonus_seconds_remaining - float(offline))
-		for skill_id in stamina.keys():
-			stamina[skill_id] = mini(_max_stamina(), _stamina(str(skill_id)) + int(floor(float(offline) / STAMINA_REGEN_SECONDS)))
+	_apply_offline_progress(int(data.get("saved_at", _unix_now())))
+	var now := _unix_now()
+	_sync_passive_module_unlocks(now)
+	_apply_passive_module_production(now)
+	last_passive_process_unix = now
 
 
 func _skill_level(skill_id: String) -> int:
@@ -6337,7 +9336,7 @@ func _mastery_medal_region(index: int, sheet_size: Vector2i) -> Rect2i:
 		Rect2i(0, 19, 278, 278),
 		Rect2i(267, 19, 278, 278),
 		Rect2i(536, 19, 278, 278),
-		Rect2i(804, 19, 278, 276),
+		Rect2i(804, 19, 278, 261),
 		Rect2i(1073, 18, 278, 278),
 		Rect2i(2, 296, 279, 279),
 		Rect2i(266, 296, 279, 279),
@@ -6508,8 +9507,232 @@ func _reset_activity_completion_streak() -> void:
 	activity_streak_count = 0
 
 
-func _effective_xp(action: Dictionary) -> int:
+func _is_passive_action(action: Dictionary) -> bool:
+	return str(action.get("kind", "activity")) == "passive_item_collect"
+
+
+func _passive_module_state(module_id: String) -> Dictionary:
+	return _ensure_passive_module_state(module_id, _unix_now())
+
+
+func _ensure_passive_module_state(module_id: String, now: int) -> Dictionary:
+	if module_id.is_empty():
+		module_id = WOODCUTTING_LOG_MODULE_ID
+	if not passive_modules.has(module_id) or typeof(passive_modules[module_id]) != TYPE_DICTIONARY:
+		passive_modules[module_id] = {
+			"stored": 0,
+			"time_seconds": PASSIVE_TIME_START,
+			"yield": PASSIVE_YIELD_START,
+			"capacity": PASSIVE_CAPACITY_START,
+			"seeded": false,
+			"last_update": now
+		}
+	var state := passive_modules[module_id] as Dictionary
+	state["time_seconds"] = clampi(int(state.get("time_seconds", PASSIVE_TIME_START)), PASSIVE_TIME_MAX, PASSIVE_TIME_START)
+	state["yield"] = clampi(int(state.get("yield", PASSIVE_YIELD_START)), PASSIVE_YIELD_START, PASSIVE_YIELD_MAX)
+	state["capacity"] = clampi(int(state.get("capacity", PASSIVE_CAPACITY_START)), PASSIVE_CAPACITY_START, PASSIVE_CAPACITY_MAX)
+	state["stored"] = clampi(int(state.get("stored", 0)), 0, int(state["capacity"]))
+	state["seeded"] = bool(state.get("seeded", false))
+	var last_update := int(state.get("last_update", now))
+	if last_update <= 0 or last_update > now + 60:
+		last_update = now
+	state["last_update"] = last_update
+	passive_modules[module_id] = state
+	return state
+
+
+func _is_passive_module_unlocked(module_id: String) -> bool:
+	var action := _action_data("woodcutting", module_id)
+	var unlock_level := WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL if action.is_empty() else int(action.get("unlock", WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL))
+	return _skill_level("woodcutting") >= unlock_level
+
+
+func _sync_passive_module_unlocks(now: int) -> void:
+	for action in actions_by_skill.get("woodcutting", []):
+		var action_data := action as Dictionary
+		if not _is_passive_action(action_data):
+			continue
+		var module_id := str(action_data.get("id", WOODCUTTING_LOG_MODULE_ID))
+		var state := _ensure_passive_module_state(module_id, now)
+		if _is_passive_module_unlocked(module_id):
+			if not bool(state.get("seeded", false)):
+				state["stored"] = mini(int(state.get("capacity", PASSIVE_CAPACITY_START)), int(state.get("stored", 0)) + 3)
+				state["seeded"] = true
+				state["last_update"] = now
+		else:
+			state["last_update"] = now
+		passive_modules[module_id] = state
+
+
+func _process_passive_modules() -> void:
+	var now := _unix_now()
+	if now == last_passive_process_unix:
+		return
+	last_passive_process_unix = now
+	_sync_passive_module_unlocks(now)
+	_apply_passive_module_production(now)
+
+
+func _apply_passive_module_production(now: int) -> void:
+	for action in actions_by_skill.get("woodcutting", []):
+		var action_data := action as Dictionary
+		if not _is_passive_action(action_data):
+			continue
+		var module_id := str(action_data.get("id", WOODCUTTING_LOG_MODULE_ID))
+		var state := _ensure_passive_module_state(module_id, now)
+		if not _is_passive_module_unlocked(module_id):
+			state["last_update"] = now
+			passive_modules[module_id] = state
+			continue
+		var capacity := int(state.get("capacity", PASSIVE_CAPACITY_START))
+		var stored := clampi(int(state.get("stored", 0)), 0, capacity)
+		if stored >= capacity:
+			state["stored"] = capacity
+			state["last_update"] = now
+			passive_modules[module_id] = state
+			continue
+		var interval := maxi(PASSIVE_TIME_MAX, int(state.get("time_seconds", PASSIVE_TIME_START)))
+		var last_update := int(state.get("last_update", now))
+		var elapsed := maxi(0, mini(MAX_OFFLINE_SECONDS, now - last_update))
+		if elapsed < interval:
+			passive_modules[module_id] = state
+			continue
+		var cycles := int(floor(float(elapsed) / float(interval)))
+		if cycles <= 0:
+			passive_modules[module_id] = state
+			continue
+		var produced := cycles * maxi(1, int(state.get("yield", PASSIVE_YIELD_START)))
+		var next_stored := mini(capacity, stored + produced)
+		state["stored"] = next_stored
+		state["last_update"] = now if next_stored >= capacity else last_update + cycles * interval
+		passive_modules[module_id] = state
+
+
+func _collect_passive_module(module_id: String) -> void:
+	if not _is_passive_module_unlocked(module_id):
+		return
+	var state := _passive_module_state(module_id)
+	var stored := maxi(0, int(state.get("stored", 0)))
+	if stored <= 0:
+		return
+	log_currency += stored
+	state["stored"] = 0
+	passive_modules[module_id] = state
+	_float_log_currency_feedback(module_id, stored)
+	save_game()
+	_update_ui(0.0, false)
+
+
+func _upgrade_passive_module(module_id: String, stat_type: String) -> void:
+	if not _is_passive_module_unlocked(module_id):
+		return
+	if _passive_upgrade_maxed(module_id, stat_type):
+		return
+	var cost := _passive_upgrade_cost(module_id, stat_type)
+	if log_currency < cost:
+		return
+	var state := _passive_module_state(module_id)
+	var old_value := _passive_upgrade_value(module_id, stat_type)
+	log_currency -= cost
+	if stat_type == "time":
+		state["time_seconds"] = _passive_next_upgrade_value(module_id, stat_type)
+	elif stat_type == "yield":
+		state["yield"] = _passive_next_upgrade_value(module_id, stat_type)
+	elif stat_type == "capacity":
+		state["capacity"] = _passive_next_upgrade_value(module_id, stat_type)
+		state["stored"] = mini(int(state.get("stored", 0)), int(state.get("capacity", PASSIVE_CAPACITY_START)))
+	var new_value := int(state.get("time_seconds", PASSIVE_TIME_START)) if stat_type == "time" else (int(state.get("yield", PASSIVE_YIELD_START)) if stat_type == "yield" else int(state.get("capacity", PASSIVE_CAPACITY_START)))
+	passive_modules[module_id] = state
+	_float_passive_upgrade_feedback(module_id, stat_type, cost, old_value, new_value)
+	save_game()
+	_update_ui(0.0, false)
+
+
+func _toggle_plank_boost() -> void:
+	plank_boost_enabled = not plank_boost_enabled
+	save_game()
+	_update_ui(0.0, false)
+
+
+func _passive_upgrade_value(module_id: String, stat_type: String) -> int:
+	var state := _passive_module_state(module_id)
+	if stat_type == "time":
+		return int(state.get("time_seconds", PASSIVE_TIME_START))
+	if stat_type == "yield":
+		return int(state.get("yield", PASSIVE_YIELD_START))
+	return int(state.get("capacity", PASSIVE_CAPACITY_START))
+
+
+func _passive_upgrade_maxed(module_id: String, stat_type: String) -> bool:
+	var value := _passive_upgrade_value(module_id, stat_type)
+	if stat_type == "time":
+		return value <= PASSIVE_TIME_MAX
+	if stat_type == "yield":
+		return value >= PASSIVE_YIELD_MAX
+	return value >= PASSIVE_CAPACITY_MAX
+
+
+func _passive_next_upgrade_value(module_id: String, stat_type: String) -> int:
+	var value := _passive_upgrade_value(module_id, stat_type)
+	if stat_type == "time":
+		if value > 90:
+			return maxi(90, value - 15)
+		return maxi(PASSIVE_TIME_MAX, value - 10)
+	if stat_type == "yield":
+		return mini(PASSIVE_YIELD_MAX, value + 1)
+	if value < 80:
+		return mini(80, value + 10)
+	if value < 200:
+		return mini(200, value + 20)
+	return mini(PASSIVE_CAPACITY_MAX, value + 50)
+
+
+func _passive_upgrade_step_index(module_id: String, stat_type: String) -> int:
+	var value := _passive_upgrade_value(module_id, stat_type)
+	if stat_type == "time":
+		if value > 90:
+			return int(round(float(PASSIVE_TIME_START - value) / 15.0))
+		return 10 + int(round(float(90 - value) / 10.0))
+	if stat_type == "yield":
+		return value - PASSIVE_YIELD_START
+	if value < 80:
+		return int(round(float(value - PASSIVE_CAPACITY_START) / 10.0))
+	if value < 200:
+		return 6 + int(round(float(value - 80) / 20.0))
+	return 12 + int(round(float(value - 200) / 50.0))
+
+
+func _passive_upgrade_cost(module_id: String, stat_type: String) -> int:
+	if _passive_upgrade_maxed(module_id, stat_type):
+		return 0
+	var step_index := _passive_upgrade_step_index(module_id, stat_type)
+	if step_index < 2:
+		return 1
+	if step_index < 4:
+		return 2
+	if step_index < 6:
+		return 3
+	return int(floor(4.0 + pow(float(step_index - 5), 1.45) * 2.15))
+
+
+func _format_passive_time(seconds: int) -> String:
+	if seconds >= 60:
+		var minutes := int(floor(float(seconds) / 60.0))
+		var remainder := seconds % 60
+		if remainder > 0:
+			return "%sm%ss" % [minutes, remainder]
+		return "%sm" % minutes
+	return "%ss" % seconds
+
+
+func _plank_bonus_applies(skill_id: String) -> bool:
+	return skill_id == "build" and plank_boost_enabled and log_currency > 0
+
+
+func _effective_xp(action: Dictionary, skill_id := "", force_plank_bonus := false) -> int:
 	var xp_bonus := _global_medal_bonus("xp_mult") + _ad_bonus_xp_mult()
+	if force_plank_bonus or _plank_bonus_applies(skill_id):
+		xp_bonus += PLANK_BUILD_XP_MULT
 	return maxi(1, int(round(float(action.get("xp", 1)) * (1.0 + xp_bonus))))
 
 
@@ -6550,6 +9773,20 @@ func _slug(text: String) -> String:
 
 func _format_seconds(seconds: float) -> String:
 	return "%.1f" % seconds if seconds < 10.0 else "%.0f" % seconds
+
+
+func _format_significant_digits(value: float, digits := 3) -> String:
+	var safe_digits := maxi(1, digits)
+	var absolute := absf(value)
+	if absolute < 0.000001:
+		return "0"
+	var places := safe_digits - 1 - int(floor(log(absolute) / log(10.0)))
+	if places < 0:
+		var factor := pow(10.0, float(-places))
+		return "%.0f" % (round(value / factor) * factor)
+	places = mini(places, 6)
+	var format := "%." + str(places) + "f"
+	return format % value
 
 
 func _format_duration(seconds: float) -> String:
@@ -6835,7 +10072,7 @@ func _settings_page_button(text: String, icon_path := "", min_width := 900, icon
 
 func _shop_ad_offer_button() -> Button:
 	var button := _menu_button("")
-	button.custom_minimum_size = Vector2(1480, 520)
+	button.custom_minimum_size = Vector2(1480, 540)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.add_theme_stylebox_override("normal", _button_style(Color("#fff5c7"), BUTTON_BORDER, 58))
 	button.add_theme_stylebox_override("hover", _button_style(COLOR_GOLD, BUTTON_BORDER, 58))
@@ -6853,17 +10090,15 @@ func _shop_ad_offer_button() -> Button:
 	row.add_theme_constant_override("separation", 54)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
-	row.add_child(_image("res://docs/assets/ui/ad-reward.png", Vector2(300, 300)))
+	row.add_child(_image("res://docs/assets/ui/ad-reward.png", Vector2(380, 380)))
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
 	copy.add_theme_constant_override("separation", 12)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
-	var title := _label("Play Ad", 84, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	copy.add_child(title)
-	var details := _label("+10% XP\n+10% Speed\nFor 2 hours\n(Stackable)", 58, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var details_text := "Watch to claim\n+10% XP\n+10% speed\n2 hours\n(stackable)"
+	var details := _label(details_text, 62, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(details)
@@ -6874,16 +10109,108 @@ func _action_stat_label(text: String) -> Label:
 	var label := _label(text, 60, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return label
 
 
-func _action_stat_box(label: Label) -> PanelContainer:
+func _action_stat_box(label: Label, _interactive := false, _skill_id := "", _action_id := "", _stat_kind := "") -> Control:
 	var box := PanelContainer.new()
 	box.custom_minimum_size = Vector2(300, 222)
-	box.add_theme_stylebox_override("panel", _stat_box_style())
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_action_stat_box_style(box, false)
 	box.add_child(label)
 	return box
+
+
+func _activity_stat_hit_buttons(parent: Control, _skill_id: String, _action_id: String) -> Dictionary:
+	var hit_buttons := {}
+	var kinds := ["xp", "stamina", "time", "success"]
+	var button_size := Vector2(300, 222)
+	var left := 54.0 + 410.0 + 56.0
+	var top := 46.0 + 82.0 + 38.0
+	var step := button_size.x + 28.0
+	for i in range(kinds.size()):
+		var kind := str(kinds[i])
+		var button := Button.new()
+		button.text = ""
+		button.focus_mode = Control.FOCUS_NONE
+		button.flat = true
+		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.anchor_left = 0.0
+		button.anchor_right = 0.0
+		button.anchor_top = 0.0
+		button.anchor_bottom = 0.0
+		button.offset_left = left + float(i) * step
+		button.offset_right = button.offset_left + button_size.x
+		button.offset_top = top
+		button.offset_bottom = top + button_size.y
+		button.z_index = 219
+		button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+		button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		parent.add_child(button)
+		hit_buttons[kind] = button
+	return hit_buttons
+
+
+func _apply_action_stat_box_style(box: Control, active := false) -> void:
+	var style := _stat_box_style(active)
+	if box is Button:
+		var button := box as Button
+		button.add_theme_stylebox_override("normal", style)
+		button.add_theme_stylebox_override("hover", _stat_box_style(active))
+		button.add_theme_stylebox_override("pressed", _stat_box_style(active))
+		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	elif box is PanelContainer:
+		(box as PanelContainer).add_theme_stylebox_override("panel", style)
+
+
+func _activity_stat_bonus_panel() -> Dictionary:
+	var root := HBoxContainer.new()
+	root.custom_minimum_size = Vector2(0, 282)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.add_theme_constant_override("separation", 54)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.modulate.a = 0.0
+	root.visible = false
+	var values := VBoxContainer.new()
+	values.custom_minimum_size = Vector2(570, 0)
+	values.add_theme_constant_override("separation", 8)
+	values.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(values)
+	var title := _activity_bonus_label("", 62)
+	values.add_child(title)
+	var original := _activity_bonus_label("", 52)
+	values.add_child(original)
+	var current := _activity_bonus_label("", 58)
+	values.add_child(current)
+	var bonus_column := VBoxContainer.new()
+	bonus_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bonus_column.add_theme_constant_override("separation", 8)
+	bonus_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(bonus_column)
+	var bonuses := _activity_bonus_label("", 52)
+	bonuses.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bonuses.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	bonuses.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bonus_column.add_child(bonuses)
+	return {
+		"root": root,
+		"title": title,
+		"original": original,
+		"current": current,
+		"bonuses": bonuses
+	}
+
+
+func _activity_bonus_label(text: String, font_size: int) -> Label:
+	var label := _label(text, font_size, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", maxi(12, int(round(float(font_size) * 0.30))))
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
 
 
 func _progress(fill: Color, height: int, value := 0.0) -> CleanProgressBar:
@@ -7042,6 +10369,19 @@ func _achievement_card_style(color: Color, radius: int, margin: int) -> StyleBox
 	return style
 
 
+func _offline_summary_stat_style(accent: Color) -> StyleBoxFlat:
+	var style := _surface_style(Color("#fffdf8"), 36, 22, true)
+	style.border_color = Color(accent.r, accent.g, accent.b, 0.72)
+	style.border_width_left = 10
+	style.border_width_right = 10
+	style.border_width_top = 10
+	style.border_width_bottom = 10
+	style.shadow_color = Color(accent.r, accent.g, accent.b, 0.22)
+	style.shadow_size = 14
+	style.shadow_offset = Vector2(0, 8)
+	return style
+
+
 func _achievement_slot_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#fff6d6")
@@ -7137,17 +10477,174 @@ func _art_glow_style(color: Color) -> StyleBoxFlat:
 	return style
 
 
-func _stat_box_style() -> StyleBoxFlat:
+func _bonus_emphasis_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.20)
+	style.border_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.88)
+	style.border_width_left = 18
+	style.border_width_right = 18
+	style.border_width_top = 18
+	style.border_width_bottom = 18
+	style.corner_radius_top_left = 38
+	style.corner_radius_top_right = 38
+	style.corner_radius_bottom_left = 38
+	style.corner_radius_bottom_right = 38
+	style.shadow_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.42)
+	style.shadow_size = 18
+	style.shadow_offset = Vector2.ZERO
+	return style
+
+
+func _bonus_bottom_highlight_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.28)
+	style.border_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.95)
+	style.border_width_left = 14
+	style.border_width_right = 14
+	style.border_width_top = 14
+	style.border_width_bottom = 14
+	style.corner_radius_top_left = 999
+	style.corner_radius_top_right = 999
+	style.corner_radius_bottom_left = 999
+	style.corner_radius_bottom_right = 999
+	style.shadow_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.34)
+	style.shadow_size = 16
+	style.shadow_offset = Vector2.ZERO
+	return style
+
+
+func _passive_card_wash_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.96, 0.82, 0.82)
+	style.corner_radius_top_left = 66
+	style.corner_radius_top_right = 66
+	style.corner_radius_bottom_left = 66
+	style.corner_radius_bottom_right = 66
+	return style
+
+
+func _passive_currency_style() -> StyleBoxFlat:
+	var style := _surface_style(COLOR_PANEL, 28, 14, true)
+	style.border_color = COLOR_INK
+	style.border_width_left = 12
+	style.border_width_right = 12
+	style.border_width_top = 12
+	style.border_width_bottom = 12
+	style.content_margin_left = 22
+	style.content_margin_right = 16
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
+	return style
+
+
+func _passive_stat_style() -> StyleBoxFlat:
+	var style := _surface_style(Color.WHITE, 22, 18, true)
+	style.border_color = COLOR_INK
+	style.border_width_left = 10
+	style.border_width_right = 10
+	style.border_width_top = 10
+	style.border_width_bottom = 10
+	style.content_margin_left = 24
+	style.content_margin_right = 20
+	style.content_margin_top = 6
+	style.content_margin_bottom = 6
+	return style
+
+
+func _passive_popup_style() -> StyleBoxFlat:
+	var style := _surface_style(COLOR_PANEL, 22, 20, true)
+	style.border_color = COLOR_INK
+	style.border_width_left = 8
+	style.border_width_right = 8
+	style.border_width_top = 8
+	style.border_width_bottom = 8
+	return style
+
+
+func _passive_icon_button_style(active := false, hovered := false) -> StyleBoxFlat:
+	var fill := Color("#dfffe8") if active else COLOR_PANEL
+	if hovered:
+		fill = Color("#eafbf0") if active else COLOR_GOLD
+	var style := _surface_style(fill, 24, 8, true)
+	style.border_color = COLOR_INK
+	style.border_width_left = 10
+	style.border_width_right = 10
+	style.border_width_top = 10
+	style.border_width_bottom = 10
+	if active:
+		style.shadow_color = Color(0.05, 0.30, 0.12, 0.28)
+	return style
+
+
+func _passive_round_button_style(fill: Color) -> StyleBoxFlat:
+	var style := _surface_style(fill, 999, 0, true)
+	style.border_color = COLOR_INK
+	style.border_width_left = 8
+	style.border_width_right = 8
+	style.border_width_top = 8
+	style.border_width_bottom = 8
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	return style
+
+
+func _passive_upgrade_button_style(disabled := false, hovered := false) -> StyleBoxFlat:
+	var fill := Color("#fff5ba")
+	if disabled:
+		fill = Color("#eee8d4")
+	elif hovered:
+		fill = COLOR_GOLD
+	var style := _surface_style(fill, 20, 10, true)
+	style.border_color = COLOR_INK
+	style.border_width_left = 8
+	style.border_width_right = 8
+	style.border_width_top = 8
+	style.border_width_bottom = 8
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 5
+	style.content_margin_bottom = 5
+	return style
+
+
+func _activity_crit_glow_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	var fill := Color("#67b8ff")
+	var border := Color("#1f9dff")
+	style.bg_color = Color(fill.r, fill.g, fill.b, 0.31)
+	style.border_color = Color(border.r, border.g, border.b, 0.96)
+	style.border_width_left = 46
+	style.border_width_right = 46
+	style.border_width_top = 46
+	style.border_width_bottom = 46
+	style.shadow_color = Color(0.10, 0.58, 1.0, 0.62)
+	style.shadow_size = 42
+	style.shadow_offset = Vector2.ZERO
+	style.corner_radius_top_left = 66
+	style.corner_radius_top_right = 66
+	style.corner_radius_bottom_left = 66
+	style.corner_radius_bottom_right = 66
+	return style
+
+
+func _stat_box_style(active := false) -> StyleBoxFlat:
 	var style := _surface_style(Color.WHITE, 38, 18, true)
-	style.border_color = Color("#eadfcd")
-	style.border_width_left = 4
-	style.border_width_right = 4
-	style.border_width_top = 4
-	style.border_width_bottom = 4
+	style.border_color = COLOR_GOLD if active else Color("#eadfcd")
+	var border_width := 14 if active else 4
+	style.border_width_left = border_width
+	style.border_width_right = border_width
+	style.border_width_top = border_width
+	style.border_width_bottom = border_width
 	style.content_margin_left = 18
 	style.content_margin_right = 18
 	style.content_margin_top = 8
 	style.content_margin_bottom = 8
+	if active:
+		style.shadow_color = Color(0.05, 0.04, 0.03, 0.36)
+		style.shadow_size = 14
+		style.shadow_offset = Vector2(0, 10)
 	return style
 
 
@@ -7250,6 +10747,11 @@ func _build_audio() -> void:
 	success_players.clear()
 	for path in ACTIVITY_SUCCESS_SFX_PATHS:
 		success_players.append(_sfx(path))
+	crit_success_players.clear()
+	for path in ACTIVITY_CRIT_SFX_PATHS:
+		var player := _sfx(path)
+		player.volume_db = ACTIVITY_CRIT_SFX_VOLUME_DB
+		crit_success_players.append(player)
 	chain_move_players.clear()
 	for path in CHAIN_MOVE_SFX_PATHS:
 		for i in range(CHAIN_MOVE_PLAYER_COPIES):
@@ -7286,10 +10788,16 @@ func _ensure_audio_bus(bus_name: String) -> void:
 
 
 func _build_music_players() -> void:
+	for player in music_players:
+		if player != null:
+			player.stop()
+			player.queue_free()
 	music_players.clear()
 	music_layer_gains = []
 	music_layer_target_gains = []
-	for track in MUSIC_TRACKS:
+	var song_set := active_music_song_set if not active_music_song_set.is_empty() else _default_music_song_set()
+	active_music_song_set = song_set
+	for track in _music_tracks_for_song_set(song_set):
 		var stream := load(str(track["path"]))
 		if stream == null:
 			push_warning("Music loop missing: %s" % str(track["path"]))
@@ -7307,6 +10815,34 @@ func _build_music_players() -> void:
 		music_layer_gains.append(0.0)
 		music_layer_target_gains.append(0.0)
 	music_started = false
+
+
+func _default_music_song_set() -> Dictionary:
+	return MUSIC_SONG_SETS[0] if MUSIC_SONG_SETS.size() > 0 else {}
+
+
+func _music_tracks_for_song_set(song_set: Dictionary) -> Array:
+	return song_set.get("tracks", []) as Array
+
+
+func _choose_music_song_set() -> Dictionary:
+	var total_weight := 0.0
+	for song_set in MUSIC_SONG_SETS:
+		total_weight += maxf(0.0, float(song_set.get("weight", 0.0)))
+	if total_weight <= 0.0:
+		return _default_music_song_set()
+	var roll := randf() * total_weight
+	var cumulative := 0.0
+	for song_set in MUSIC_SONG_SETS:
+		cumulative += maxf(0.0, float(song_set.get("weight", 0.0)))
+		if roll <= cumulative:
+			return song_set
+	return _default_music_song_set()
+
+
+func _select_music_song_for_cycle() -> void:
+	active_music_song_set = _choose_music_song_set()
+	_build_music_players()
 
 
 func _apply_audio_bus_volumes() -> void:
@@ -7531,7 +11067,10 @@ func _play_capped_chain_jingle(player: AudioStreamPlayer, pitch: float, volume_d
 	)
 
 
-func _play_activity_success_sound(streak_step: int, medal_unlocked: bool, streak_bonus: bool) -> void:
+func _play_activity_success_sound(streak_step: int, medal_unlocked: bool, streak_bonus: bool, xp_crit := false) -> void:
+	if xp_crit:
+		_play_activity_crit_sound(streak_step)
+		return
 	if not success_players.is_empty():
 		var pitch_index := clampi(streak_step, 1, success_players.size()) - 1
 		_play(success_players[pitch_index])
@@ -7539,6 +11078,13 @@ func _play_activity_success_sound(streak_step: int, medal_unlocked: bool, streak
 		_play_bonus_jingle()
 	elif medal_unlocked:
 		_play(medal_player)
+
+
+func _play_activity_crit_sound(streak_step: int) -> void:
+	if crit_success_players.is_empty():
+		return
+	var pitch_index := clampi(streak_step, 1, crit_success_players.size()) - 1
+	_play(crit_success_players[pitch_index])
 
 
 func _play_bonus_jingle() -> void:
@@ -7553,6 +11099,8 @@ func _play_bonus_jingle() -> void:
 func _process_music_flow(delta: float) -> void:
 	if music_lockout_seconds > 0.0:
 		music_lockout_seconds = maxf(0.0, music_lockout_seconds - delta)
+	if music_start_fade_remaining > 0.0:
+		music_start_fade_remaining = maxf(0.0, music_start_fade_remaining - delta)
 	if music_ultimate_boost_seconds > 0.0:
 		music_ultimate_boost_seconds = maxf(0.0, music_ultimate_boost_seconds - delta)
 	if flow_failure_drag > 0.0:
@@ -7639,6 +11187,7 @@ func _maybe_trigger_music_quiet_break(stamina_cost: int) -> bool:
 func _trigger_music_quiet_break() -> void:
 	music_cycle_active = false
 	music_lockout_seconds = MUSIC_QUIET_BREAK_LOCKOUT_SECONDS
+	music_start_fade_remaining = 0.0
 	music_quiet_fade_remaining = MUSIC_QUIET_BREAK_FADE_SECONDS
 	music_quiet_fade_start_gains = music_layer_gains.duplicate()
 	music_layer_target_gains = _music_targets_for_intensity(0)
@@ -7655,12 +11204,14 @@ func _nudge_music_flow_down(amount: float) -> void:
 func _start_music_cycle() -> void:
 	if music_lockout_seconds > 0.0:
 		return
+	_select_music_song_for_cycle()
 	music_cycle_active = true
+	music_start_fade_remaining = MUSIC_START_FADE_SECONDS
 	flow_idle_seconds = 0.0
 	flow_active_action_seconds = maxf(flow_active_action_seconds, 1.0)
 	flow_heat = maxf(flow_heat, 6.0)
 	_ensure_music_playing()
-	print("music cycle started; actions=", flow_actions_taken, " heat=", flow_heat)
+	print("music cycle started; song=", str(active_music_song_set.get("name", "unknown")), " actions=", flow_actions_taken, " heat=", flow_heat)
 
 
 func _maybe_start_music_cycle_on_launch() -> void:
@@ -7753,7 +11304,9 @@ func _apply_music_layer_fades(delta: float) -> void:
 		var fade_seconds := MUSIC_BASE_FADE_SECONDS if i == 0 else MUSIC_LAYER_FADE_SECONDS
 		if i == 2:
 			fade_seconds = MUSIC_ULTIMATE_FADE_SECONDS
-		if target < current:
+		if music_start_fade_remaining > 0.0 and target > current:
+			fade_seconds = maxf(fade_seconds, MUSIC_START_FADE_SECONDS)
+		elif target < current:
 			fade_seconds += 1.8
 		var blend := 1.0 if delta <= 0.0 else 1.0 - exp(-delta / maxf(0.001, fade_seconds))
 		var next_gain := lerpf(current, target, blend)

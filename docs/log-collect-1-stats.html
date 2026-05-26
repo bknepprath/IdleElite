@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Log Collect #1 Upgrade Stats</title>
+  <style>
+    :root {
+      --ink: #171615;
+      --paper: #f8f1e5;
+      --panel: #fffdf8;
+      --line: #d9cfbc;
+      --muted: #6e6658;
+      --green: #28d66f;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      background: linear-gradient(135deg, #fbf8ef 0%, #edf7f4 52%, #f7f0e5 100%);
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+    }
+
+    .canvas {
+      width: min(430px, calc(100% - 24px));
+      display: grid;
+      gap: 14px;
+      padding: 28px 0;
+    }
+
+    .mock-title {
+      display: grid;
+      gap: 4px;
+      text-align: center;
+    }
+
+    h1,
+    h2,
+    p {
+      margin: 0;
+    }
+
+    .mock-title h1 {
+      color: #4d3f15;
+      font-size: 26px;
+      line-height: 1;
+      text-transform: lowercase;
+    }
+
+    .mock-title p {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .module {
+      --progress: 35%;
+      position: relative;
+      min-height: 182px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 158px minmax(0, 1fr);
+      gap: 10px;
+      padding: 12px 12px 22px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.96), rgba(255, 246, 215, 0.86)),
+        url("assets/woodcutting/backgrounds/01-early.png") center / cover;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .log-scatter {
+      position: relative;
+      z-index: 3;
+      width: 166px;
+      height: 128px;
+      margin-left: -8px;
+      margin-top: 10px;
+      pointer-events: none;
+    }
+
+    .log-scatter img {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      filter: drop-shadow(1px 3px 0 rgba(23, 22, 21, 0.72));
+    }
+
+    .log-scatter img:nth-child(1) { left: 0; top: 12px; transform: rotate(-18deg); }
+    .log-scatter img:nth-child(2) { left: 27px; top: 0; transform: rotate(9deg); }
+    .log-scatter img:nth-child(3) { left: 58px; top: 18px; transform: rotate(-7deg); }
+    .log-scatter img:nth-child(4) { left: 100px; top: 5px; transform: rotate(17deg); }
+    .log-scatter img:nth-child(5) { left: 18px; top: 45px; transform: rotate(13deg); }
+    .log-scatter img:nth-child(6) { left: 51px; top: 50px; transform: rotate(-14deg); }
+    .log-scatter img:nth-child(7) { left: 88px; top: 42px; transform: rotate(4deg); }
+    .log-scatter img:nth-child(8) { left: 124px; top: 48px; transform: rotate(-11deg); }
+    .log-scatter img:nth-child(9) { left: 5px; bottom: 3px; transform: rotate(6deg); }
+    .log-scatter img:nth-child(10) { left: 42px; bottom: 12px; transform: rotate(-4deg); }
+    .log-scatter img:nth-child(11) { left: 80px; bottom: 0; transform: rotate(15deg); }
+    .log-scatter img:nth-child(12) { left: 119px; bottom: 10px; transform: rotate(-16deg); }
+
+    .module-main {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      align-content: start;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .module-title {
+      overflow: hidden;
+      font-size: 18px;
+      font-weight: 950;
+      line-height: 1.05;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-transform: lowercase;
+    }
+
+    .stat-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .stat-chip {
+      min-height: 38px;
+      display: grid;
+      grid-template-columns: 48px 1fr;
+      gap: 6px;
+      align-items: center;
+      padding: 5px 7px;
+      border: 3px solid var(--ink);
+      border-radius: 8px;
+      background: #ffffff;
+      line-height: 1.05;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.75);
+    }
+
+    .stat-chip b {
+      font-size: 14px;
+      font-weight: 950;
+      white-space: nowrap;
+    }
+
+    .stat-chip small {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .progress-rail {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 4;
+      height: 14px;
+      border-top: 2px solid var(--ink);
+      background: #fff1c8;
+    }
+
+    .progress-rail i {
+      display: block;
+      width: var(--progress);
+      height: 100%;
+      background: linear-gradient(90deg, #28d66f, #7effa8);
+    }
+
+    .upgrade-panel {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .upgrade-panel h2 {
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .upgrade-table {
+      display: grid;
+      gap: 5px;
+    }
+
+    .upgrade-row {
+      display: grid;
+      grid-template-columns: 38px repeat(3, minmax(0, 1fr)) 64px;
+      gap: 5px;
+      align-items: center;
+      min-height: 36px;
+      padding: 5px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #fff8e8;
+      font-size: 11px;
+      font-weight: 950;
+      text-align: center;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.55);
+    }
+
+    .upgrade-row.header {
+      background: #fff2a8;
+      color: #4d3f15;
+      text-transform: uppercase;
+    }
+
+    .cost {
+      display: grid;
+      grid-template-columns: auto 18px;
+      gap: 3px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .cost img {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+    }
+
+    @media (max-width: 390px) {
+      .module {
+        grid-template-columns: 138px minmax(0, 1fr);
+      }
+
+      .log-scatter {
+        width: 146px;
+        margin-left: -10px;
+      }
+
+      .upgrade-row {
+        grid-template-columns: 34px repeat(3, minmax(0, 1fr)) 58px;
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="canvas">
+    <header class="mock-title">
+      <h1>log collect #1</h1>
+      <p>Stats per upgrade, with stored logs scattered over the module UI.</p>
+    </header>
+
+    <section class="module" aria-label="log collect #1 module">
+      <div class="log-scatter" aria-label="stored logs">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+        <img src="assets/passive/resources/log-currency.png" alt="">
+      </div>
+      <div class="module-main">
+        <strong class="module-title">log collect #1</strong>
+        <div class="stat-grid" aria-label="current module stats">
+          <span class="stat-chip"><b>2m</b><small>Collect Time</small></span>
+          <span class="stat-chip"><b>+2</b><small>Yield</small></span>
+          <span class="stat-chip"><b>40</b><small>Max Capacity</small></span>
+        </div>
+      </div>
+      <span class="progress-rail" aria-hidden="true"><i></i></span>
+    </section>
+
+    <section class="upgrade-panel" aria-label="log collect #1 upgrade stats">
+      <h2>Stats Per Upgrade</h2>
+      <div class="upgrade-table">
+        <div class="upgrade-row header">
+          <span>Lv</span><span>Time</span><span>Yield</span><span>Max</span><span>Cost</span>
+        </div>
+        <div class="upgrade-row"><span>1</span><span>2m</span><span>+2</span><span>40</span><span class="cost">-</span></div>
+        <div class="upgrade-row"><span>2</span><span>2m</span><span>+3</span><span>50</span><span class="cost">40 <img src="assets/passive/resources/log-currency.png" alt=""></span></div>
+        <div class="upgrade-row"><span>3</span><span>2m</span><span>+4</span><span>60</span><span class="cost">90 <img src="assets/passive/resources/log-currency.png" alt=""></span></div>
+        <div class="upgrade-row"><span>4</span><span>2m</span><span>+5</span><span>75</span><span class="cost">160 <img src="assets/passive/resources/log-currency.png" alt=""></span></div>
+        <div class="upgrade-row"><span>5</span><span>2m</span><span>+6</span><span>90</span><span class="cost">260 <img src="assets/passive/resources/log-currency.png" alt=""></span></div>
+        <div class="upgrade-row"><span>6</span><span>2m</span><span>+8</span><span>110</span><span class="cost">400 <img src="assets/passive/resources/log-currency.png" alt=""></span></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

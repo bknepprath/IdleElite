@@ -1,0 +1,2169 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite Item Collect Module Mock</title>
+  <style>
+    :root {
+      --ink: #171615;
+      --paper: #f8f1e5;
+      --panel: #fffdf8;
+      --line: #d9cfbc;
+      --muted: #6e6658;
+      --gold: #fff2a8;
+      --green: #367a52;
+      --blue: #1d73a7;
+      --red: #a94438;
+      --shadow: 0 24px 54px rgba(28, 24, 18, 0.2);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      color: var(--ink);
+      background: linear-gradient(135deg, #fbf8ef 0%, #edf7f4 52%, #f7f0e5 100%);
+    }
+
+    button {
+      font: inherit;
+      color: inherit;
+    }
+
+    .canvas {
+      position: relative;
+      width: min(410px, calc(100% - 28px));
+      display: grid;
+      gap: 14px;
+      padding: 28px 0;
+    }
+
+    .mock-title {
+      display: grid;
+      gap: 4px;
+      min-height: 52px;
+      text-align: center;
+    }
+
+    .mock-title h1 {
+      margin: 0;
+      color: #4d3f15;
+      font-size: 26px;
+      line-height: 1;
+    }
+
+    .mock-title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 850;
+    }
+
+    .ledger-currency-row {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 10;
+      display: grid;
+      grid-template-columns: 42px auto;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .currency-panel {
+      position: relative;
+      min-width: 116px;
+      min-height: 48px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 42px;
+      gap: 8px;
+      align-items: center;
+      padding: 5px 5px 5px 9px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: #fffdf8;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .currency-help-button {
+      width: 19px;
+      height: 19px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: #fffdf8;
+      font-size: 11px;
+      font-weight: 950;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.75);
+    }
+
+    .currency-plank-button {
+      width: 42px;
+      height: 38px;
+    }
+
+    .ledger-info-popover {
+      position: absolute;
+      top: 25px;
+      left: 0;
+      width: 178px;
+      display: none;
+      padding: 7px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #fffdf8;
+      font-size: 10px;
+      font-weight: 850;
+      line-height: 1.15;
+      box-shadow: 2px 3px 0 rgba(23, 22, 21, 0.85);
+    }
+
+    .ledger-info-popover.open {
+      display: block;
+    }
+
+    .currency-panel.bump {
+      animation: currency-bump 180ms ease-out;
+    }
+
+    @keyframes currency-bump {
+      0% {
+        transform: scale(1);
+      }
+
+      45% {
+        transform: scale(1.09) rotate(-1deg);
+      }
+
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    .currency-panel img {
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      filter: drop-shadow(1px 2px 0 rgba(23, 22, 21, 0.55));
+    }
+
+    .currency-panel strong {
+      font-size: 18px;
+      font-weight: 950;
+      line-height: 1;
+      text-align: right;
+    }
+
+    .action {
+      width: 100%;
+      display: grid;
+      gap: 9px;
+      align-items: center;
+      padding: 10px;
+      text-align: left;
+      cursor: pointer;
+      border: 1px solid var(--line);
+      border-radius: 9px;
+      background: var(--panel);
+    }
+
+    .action.running {
+      border-color: #1f6f4a;
+      box-shadow: inset 0 0 0 2px rgba(47, 226, 117, 0.36), 0 10px 18px rgba(35, 87, 56, 0.18);
+    }
+
+    .activity {
+      position: relative;
+      min-height: 152px;
+      overflow: hidden;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      padding-bottom: 18px;
+      background-color: #fff8e8;
+      background-image: var(--activity-bg);
+      background-position: center;
+      background-size: cover;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+      transition: box-shadow 120ms ease, border-color 120ms ease;
+    }
+
+    .activity.boosted {
+      border-color: #1f6f4a;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9), inset 0 0 0 2px rgba(47, 226, 117, 0.26);
+    }
+
+    .activity::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(255, 253, 248, 0.88) 0%, rgba(255, 253, 248, 0.74) 48%, rgba(255, 253, 248, 0.2) 100%);
+      pointer-events: none;
+    }
+
+    .activity:hover,
+    .activity:focus-visible {
+      border-color: #1f6f4a;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9), inset 0 0 0 2px rgba(47, 226, 117, 0.22);
+    }
+
+    .activity:active {
+      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .activity-inner {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr);
+      gap: 10px;
+      align-items: start;
+      width: 100%;
+    }
+
+    .activity-art {
+      position: relative;
+      width: 74px;
+      min-width: 74px;
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+
+    .activity-art img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      image-rendering: auto;
+    }
+
+    .mastery-medal {
+      position: absolute;
+      top: -12px;
+      right: -12px;
+      width: 38px;
+      height: 38px;
+      background-image: url("assets/ui/mastery-medals-20.png");
+      background-repeat: no-repeat;
+      background-size: 500% 400%;
+      background-position: 25% 0%;
+      filter: drop-shadow(1px 2px 0 rgba(23, 22, 21, 0.8));
+      pointer-events: none;
+    }
+
+    .activity-main {
+      min-width: 0;
+      display: grid;
+      gap: 7px;
+    }
+
+    .activity-title-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: start;
+    }
+
+    .activity-title-row strong {
+      overflow: hidden;
+      font-size: 15px;
+      line-height: 1.05;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .activity-stats {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .stat-chip {
+      min-width: 0;
+      display: grid;
+      place-items: center;
+      min-height: 40px;
+      padding: 5px 5px 4px;
+      border: 3px solid var(--ink);
+      border-radius: 7px;
+      background: #ffffff;
+      text-align: center;
+      line-height: 1.05;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.75);
+    }
+
+    .stat-chip b {
+      display: block;
+      overflow: hidden;
+      font-size: 12px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .stat-chip small {
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .activity-bars {
+      display: grid;
+      gap: 5px;
+    }
+
+    .meter-line {
+      display: grid;
+      grid-template-columns: 1fr;
+      align-items: center;
+      color: #29241f;
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .meter-line .bar {
+      height: 10px;
+      margin: 0;
+      border: 2px solid var(--ink);
+      background: #fff1c8;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+
+    .meter-line .bar i {
+      display: block;
+      width: 68%;
+      height: 100%;
+      background: linear-gradient(90deg, #ffc54a, #fff394);
+    }
+
+    .activity-progress-rail {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      height: 14px;
+      border-top: 2px solid var(--ink);
+      background: #fff1c8;
+    }
+
+    .activity-progress-rail i {
+      display: block;
+      width: var(--progress);
+      height: 100%;
+      background: linear-gradient(90deg, #28d66f, #7effa8);
+    }
+
+    .build-consume-marker {
+      position: absolute;
+      right: 7px;
+      bottom: 16px;
+      z-index: 4;
+      display: none;
+      grid-template-columns: auto 18px;
+      gap: 2px;
+      align-items: center;
+      padding: 3px 5px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fffdf8;
+      font-size: 11px;
+      font-weight: 950;
+      line-height: 1;
+      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.8);
+      pointer-events: none;
+    }
+
+    .activity.boosted .build-consume-marker {
+      display: grid;
+    }
+
+    .build-consume-marker img {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+    }
+
+    .build-consume-marker.spend {
+      animation: log-spend-pop 420ms ease-out;
+    }
+
+    @keyframes log-spend-pop {
+      0% {
+        transform: translateY(0) scale(1);
+        opacity: 1;
+      }
+
+      48% {
+        transform: translateY(-18px) scale(1.2) rotate(-4deg);
+        opacity: 1;
+      }
+
+      100% {
+        transform: translateY(-30px) scale(0.82) rotate(4deg);
+        opacity: 0;
+      }
+    }
+
+    .passive-module {
+      --passive-progress: 42%;
+      position: relative;
+      min-height: 170px;
+      overflow: hidden;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      padding: 12px 12px 22px;
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 12px;
+      align-items: stretch;
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.92), rgba(255, 250, 231, 0.76)),
+        url("assets/build/backgrounds/01-early.png") center / cover;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .passive-module::after {
+      content: "";
+      position: absolute;
+      right: -34px;
+      bottom: -42px;
+      width: 138px;
+      aspect-ratio: 1;
+      border: 3px solid rgba(23, 22, 21, 0.22);
+      border-radius: 50%;
+      background: rgba(255, 242, 168, 0.42);
+      pointer-events: none;
+    }
+
+    .passive-module.ledger {
+      --passive-progress: 28%;
+      grid-template-columns: minmax(0, 1fr);
+      min-height: 184px;
+      padding: 12px 12px 22px;
+      cursor: pointer;
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.96), rgba(255, 246, 215, 0.9)),
+        url("assets/build/backgrounds/02-rising.png") center / cover;
+    }
+
+    .passive-module.ledger.harvesting {
+      animation: module-harvest 260ms ease-out;
+    }
+
+    .passive-module.ledger.empty {
+      --passive-progress: 0%;
+      filter: saturate(0.82);
+    }
+
+    @keyframes module-harvest {
+      0% {
+        transform: translateY(0);
+      }
+
+      45% {
+        transform: translateY(-3px) rotate(-0.4deg);
+      }
+
+      100% {
+        transform: translateY(0);
+      }
+    }
+
+    .ledger::after {
+      display: none;
+    }
+
+    .passive-loot {
+      position: relative;
+      z-index: 1;
+      display: block;
+      align-self: start;
+      width: 96px;
+      height: 106px;
+    }
+
+    .loot-item {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      object-fit: contain;
+      filter: drop-shadow(1px 3px 0 rgba(23, 22, 21, 0.72));
+    }
+
+    .loot-item:nth-child(1) {
+      left: 8px;
+      top: 9px;
+      transform: rotate(-8deg);
+    }
+
+    .loot-item:nth-child(2) {
+      right: 8px;
+      top: 12px;
+      transform: rotate(7deg);
+    }
+
+    .loot-item:nth-child(3) {
+      left: 26px;
+      top: 31px;
+      z-index: 2;
+      transform: rotate(2deg);
+    }
+
+    .loot-item:nth-child(4) {
+      left: 10px;
+      bottom: 9px;
+      transform: rotate(8deg);
+    }
+
+    .loot-item:nth-child(5) {
+      right: 10px;
+      bottom: 8px;
+      z-index: 3;
+      transform: rotate(-6deg);
+    }
+
+    .loot-item:nth-child(6) {
+      left: 34px;
+      bottom: 27px;
+      z-index: 4;
+      transform: rotate(12deg);
+    }
+
+    .ledger .passive-loot {
+      position: absolute;
+      top: 92px;
+      right: 10px;
+      width: 178px;
+      height: 74px;
+    }
+
+    .ledger .loot-item {
+      width: 36px;
+      height: 36px;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .ledger .loot-item.collecting {
+      opacity: 0;
+      transform: translateY(-10px) scale(0.72) rotate(var(--rot, 0deg));
+    }
+
+    .ledger .loot-item.empty-note {
+      width: auto;
+      height: auto;
+      inset: 22px 0 auto 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 950;
+      text-align: center;
+      filter: none;
+      transform: none;
+    }
+
+    .ledger .passive-main {
+      max-width: 180px;
+    }
+
+    .module-controls {
+      position: relative;
+      z-index: 11;
+      display: flex;
+      gap: 7px;
+      align-items: center;
+    }
+
+    .icon-button {
+      width: 42px;
+      height: 42px;
+      display: grid;
+      place-items: center;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      background: #fffdf8;
+      cursor: pointer;
+      box-shadow: 2px 3px 0 rgba(23, 22, 21, 0.9);
+      transition: transform 120ms ease, box-shadow 120ms ease, background 120ms ease;
+    }
+
+    .icon-button:hover,
+    .icon-button:focus-visible {
+      background: #eafbf0;
+    }
+
+    .icon-button:active {
+      transform: translate(1px, 2px);
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .icon-button.active {
+      background: #dfffe8;
+      box-shadow: 2px 3px 0 rgba(23, 22, 21, 0.9), inset 0 0 0 2px rgba(47, 226, 117, 0.5);
+    }
+
+    .icon-button img {
+      width: 31px;
+      height: 31px;
+      object-fit: contain;
+      filter: drop-shadow(1px 1px 0 rgba(23, 22, 21, 0.35));
+    }
+
+    .upgrade-icon {
+      display: grid;
+      gap: 0;
+      place-items: center;
+      color: #23b75b;
+      font-size: 23px;
+      font-weight: 950;
+      line-height: 0.62;
+      text-shadow:
+        -1px -1px 0 var(--ink),
+        1px -1px 0 var(--ink),
+        -1px 1px 0 var(--ink),
+        1px 1px 0 var(--ink);
+    }
+
+    .upgrade-arrow {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+      filter: drop-shadow(1px 1px 0 rgba(23, 22, 21, 0.35));
+    }
+
+    .ledger .passive-stats {
+      grid-template-columns: 1fr;
+      width: 178px;
+    }
+
+    .stat-upgrade-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 50px;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .ledger .stat-chip {
+      min-height: 30px;
+      grid-template-columns: 46px minmax(0, 1fr);
+      place-items: center start;
+      gap: 4px;
+      text-align: left;
+    }
+
+    .ledger .stat-chip b,
+    .ledger .stat-chip small {
+      display: inline;
+    }
+
+    .stat-upgrade-button {
+      width: 50px;
+      height: 26px;
+      display: grid;
+      grid-template-columns: 17px minmax(0, 1fr);
+      gap: 1px;
+      place-items: center;
+      justify-self: stretch;
+      border: 2px solid var(--ink);
+      border-radius: 7px;
+      background: #fff5ba;
+      cursor: pointer;
+      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.8);
+      transition: transform 120ms ease, box-shadow 120ms ease, filter 120ms ease;
+    }
+
+    .stat-upgrade-button:active {
+      transform: translate(1px, 1px);
+      box-shadow: 0 1px 0 rgba(23, 22, 21, 0.8);
+    }
+
+    .stat-upgrade-button:disabled {
+      cursor: not-allowed;
+      filter: grayscale(0.85) opacity(0.55);
+    }
+
+    .stat-upgrade-button img {
+      width: 17px;
+      height: 17px;
+      object-fit: contain;
+    }
+
+    .stat-upgrade-button span {
+      overflow: hidden;
+      font-size: 10px;
+      font-weight: 950;
+      line-height: 1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .passive-main {
+      position: relative;
+      z-index: 1;
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+
+    .passive-title-row {
+      position: relative;
+      z-index: 12;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .passive-title-row strong {
+      overflow: hidden;
+      font-size: 17px;
+      line-height: 1.05;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .passive-stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 5px;
+    }
+
+    .passive-progress-rail {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      height: 14px;
+      border-top: 2px solid var(--ink);
+      background: #fff1c8;
+    }
+
+    .passive-progress-rail i {
+      display: block;
+      width: var(--passive-progress);
+      height: 100%;
+      background: linear-gradient(90deg, #28d66f, #7effa8);
+      transition: width 260ms ease;
+    }
+
+    .flying-log {
+      position: fixed;
+      z-index: 999;
+      width: 38px;
+      height: 38px;
+      object-fit: contain;
+      pointer-events: none;
+      filter: drop-shadow(1px 3px 0 rgba(23, 22, 21, 0.72));
+      transform-origin: center;
+    }
+
+    .upgrade-panel {
+      display: none;
+      gap: 8px;
+      padding: 10px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: #fffdf8;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .upgrade-panel.open {
+      display: grid;
+      animation: panel-pop 160ms ease-out;
+    }
+
+    @keyframes panel-pop {
+      0% {
+        opacity: 0;
+        transform: translateY(-6px) scale(0.98);
+      }
+
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .upgrade-panel h2 {
+      margin: 0;
+      font-size: 15px;
+      line-height: 1;
+    }
+
+    .upgrade-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      padding: 8px;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      background: #fff8e8;
+    }
+
+    .upgrade-row strong {
+      display: block;
+      font-size: 13px;
+      line-height: 1.05;
+    }
+
+    .upgrade-row small {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 850;
+    }
+
+    .upgrade-buy {
+      display: grid;
+      grid-template-columns: auto 20px;
+      gap: 4px;
+      align-items: center;
+      min-width: 72px;
+      min-height: 36px;
+      padding: 5px 7px;
+      border: 3px solid var(--ink);
+      border-radius: 9px;
+      background: #eafbf0;
+      font-size: 12px;
+      font-weight: 950;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 rgba(23, 22, 21, 0.85);
+    }
+
+    .upgrade-buy img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
+
+    .upgrade-buy:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+      filter: grayscale(0.35);
+    }
+
+    .page-view {
+      display: grid;
+      gap: 14px;
+    }
+
+    .stats-module {
+      --progress: 35%;
+      position: relative;
+      min-height: 182px;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 158px minmax(0, 1fr);
+      gap: 10px;
+      padding: 12px 12px 22px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.96), rgba(255, 246, 215, 0.86)),
+        url("assets/woodcutting/backgrounds/01-early.png") center / cover;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .stats-log-scatter {
+      position: relative;
+      z-index: 3;
+      width: 166px;
+      height: 128px;
+      margin-left: -8px;
+      margin-top: 10px;
+      pointer-events: none;
+    }
+
+    .stats-log-scatter img {
+      position: absolute;
+      width: 42px;
+      height: 42px;
+      object-fit: contain;
+      filter: drop-shadow(1px 3px 0 rgba(23, 22, 21, 0.72));
+    }
+
+    .stats-log-scatter img:nth-child(1) { left: 0; top: 12px; transform: rotate(-18deg); }
+    .stats-log-scatter img:nth-child(2) { left: 27px; top: 0; transform: rotate(9deg); }
+    .stats-log-scatter img:nth-child(3) { left: 58px; top: 18px; transform: rotate(-7deg); }
+    .stats-log-scatter img:nth-child(4) { left: 100px; top: 5px; transform: rotate(17deg); }
+    .stats-log-scatter img:nth-child(5) { left: 18px; top: 45px; transform: rotate(13deg); }
+    .stats-log-scatter img:nth-child(6) { left: 51px; top: 50px; transform: rotate(-14deg); }
+    .stats-log-scatter img:nth-child(7) { left: 88px; top: 42px; transform: rotate(4deg); }
+    .stats-log-scatter img:nth-child(8) { left: 124px; top: 48px; transform: rotate(-11deg); }
+    .stats-log-scatter img:nth-child(9) { left: 5px; bottom: 3px; transform: rotate(6deg); }
+    .stats-log-scatter img:nth-child(10) { left: 42px; bottom: 12px; transform: rotate(-4deg); }
+    .stats-log-scatter img:nth-child(11) { left: 80px; bottom: 0; transform: rotate(15deg); }
+    .stats-log-scatter img:nth-child(12) { left: 119px; bottom: 10px; transform: rotate(-16deg); }
+
+    .stats-module-main {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      align-content: start;
+      gap: 9px;
+      min-width: 0;
+    }
+
+    .stats-module-title {
+      overflow: hidden;
+      font-size: 18px;
+      font-weight: 950;
+      line-height: 1.05;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-transform: lowercase;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 6px;
+    }
+
+    .stats-upgrade-panel {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .stats-upgrade-panel h2 {
+      margin: 0;
+      font-size: 16px;
+      line-height: 1;
+    }
+
+    .stats-upgrade-table {
+      display: grid;
+      gap: 5px;
+    }
+
+    .stats-upgrade-row {
+      display: grid;
+      grid-template-columns: 38px repeat(3, minmax(0, 1fr)) 64px;
+      gap: 5px;
+      align-items: center;
+      min-height: 36px;
+      padding: 5px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #fff8e8;
+      font-size: 11px;
+      font-weight: 950;
+      text-align: center;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.55);
+    }
+
+    .stats-upgrade-row.header {
+      background: #fff2a8;
+      color: #4d3f15;
+      text-transform: uppercase;
+    }
+
+    .stats-cost {
+      display: grid;
+      grid-template-columns: auto 18px;
+      gap: 3px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .stats-cost img {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+    }
+
+    .progress-rail {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 4;
+      height: 14px;
+      border-top: 2px solid var(--ink);
+      background: #fff1c8;
+    }
+
+    .progress-rail i {
+      display: block;
+      width: var(--progress);
+      height: 100%;
+      background: linear-gradient(90deg, #28d66f, #7effa8);
+    }
+
+    .concept-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 178px;
+      display: grid;
+      gap: 8px;
+      padding: 10px 10px 22px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.94), rgba(255, 246, 215, 0.82)),
+        url("assets/woodcutting/backgrounds/01-early.png") center / cover;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .concept-card::after {
+      content: "";
+      position: absolute;
+      inset: auto 0 0;
+      height: 14px;
+      border-top: 2px solid var(--ink);
+      background: #fff1c8;
+    }
+
+    .concept-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      z-index: 1;
+      width: var(--concept-progress, 44%);
+      height: 14px;
+      background: linear-gradient(90deg, #28d66f, #7effa8);
+    }
+
+    .concept-title {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .concept-title strong {
+      overflow: hidden;
+      font-size: 16px;
+      font-weight: 950;
+      line-height: 1.05;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      text-transform: lowercase;
+    }
+
+    .concept-number {
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: #fff2a8;
+      font-size: 12px;
+      font-weight: 950;
+      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.75);
+    }
+
+    .concept-zone {
+      position: relative;
+      z-index: 2;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      background: rgba(255, 253, 248, 0.9);
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.65);
+    }
+
+    .zone-label {
+      position: absolute;
+      top: -10px;
+      left: 6px;
+      min-width: 22px;
+      padding: 2px 5px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fff2a8;
+      font-size: 9px;
+      font-weight: 950;
+      line-height: 1;
+      text-align: center;
+      text-transform: uppercase;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.65);
+    }
+
+    .concept-stats {
+      display: grid;
+      gap: 5px;
+      padding: 11px 7px 7px;
+    }
+
+    .mini-stat {
+      display: grid;
+      grid-template-columns: 35px 1fr;
+      gap: 5px;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 950;
+      line-height: 1;
+      text-transform: uppercase;
+    }
+
+    .mini-stat b {
+      font-size: 13px;
+    }
+
+    .concept-currency {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 38px;
+      gap: 7px;
+      align-items: center;
+      padding: 10px 7px 7px;
+    }
+
+    .concept-currency strong {
+      font-size: 24px;
+      font-weight: 950;
+      line-height: 1;
+      text-align: right;
+    }
+
+    .concept-currency img,
+    .concept-action img {
+      width: 32px;
+      height: 32px;
+      object-fit: contain;
+    }
+
+    .concept-actions {
+      display: grid;
+      gap: 5px;
+      padding: 10px 7px 7px;
+    }
+
+    .concept-action {
+      min-height: 36px;
+      display: grid;
+      grid-template-columns: 31px minmax(0, 1fr);
+      gap: 5px;
+      align-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #eafbf0;
+      font-size: 10px;
+      font-weight: 950;
+      line-height: 1;
+      text-align: left;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.65);
+    }
+
+    .concept-action .upgrade-arrow {
+      width: 32px;
+      height: 32px;
+    }
+
+    .concept-a {
+      --concept-progress: 52%;
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .concept-a .concept-title,
+    .concept-a .concept-actions {
+      grid-column: 1 / -1;
+    }
+
+    .concept-b {
+      --concept-progress: 0%;
+      grid-template-columns: 132px minmax(0, 1fr);
+      grid-template-rows: auto auto 1fr;
+      min-height: 252px;
+    }
+
+    .concept-b .concept-title {
+      grid-column: 1 / -1;
+    }
+
+    .concept-b .concept-currency {
+      grid-column: 1;
+      grid-row: 2 / 4;
+      min-height: 176px;
+      display: grid;
+      grid-template-columns: 1fr;
+      grid-template-rows: auto minmax(0, 1fr);
+      align-content: stretch;
+      padding: 14px 8px 8px;
+      cursor: pointer;
+    }
+
+    .concept-b .concept-currency strong {
+      font-size: 22px;
+      text-align: right;
+    }
+
+    .concept-b .concept-currency img {
+      width: 28px;
+      height: 28px;
+    }
+
+    .currency-readout {
+      display: grid;
+      grid-template-columns: auto 28px;
+      gap: 4px;
+      align-items: center;
+      justify-content: center;
+      justify-self: center;
+      min-height: 30px;
+      padding-top: 0;
+      transform-origin: center;
+    }
+
+    .currency-readout.bump {
+      animation: currency-bump 180ms ease-out;
+    }
+
+    .currency-storage {
+      position: relative;
+      min-height: 118px;
+      margin-top: 8px;
+    }
+
+    .stored-log-token {
+      position: absolute;
+      width: 35px;
+      height: 35px;
+      object-fit: contain;
+      cursor: pointer;
+      touch-action: none;
+      filter: drop-shadow(1px 3px 0 rgba(23, 22, 21, 0.72));
+      animation: token-land 280ms ease-out;
+    }
+
+    @keyframes token-land {
+      0% {
+        opacity: 0;
+        transform: translateY(-16px) scale(0.55) rotate(-12deg);
+      }
+
+      70% {
+        opacity: 1;
+        transform: translateY(4px) scale(1.12) rotate(8deg);
+      }
+
+      100% {
+        opacity: 1;
+      }
+    }
+
+    .stored-log-token.collecting {
+      opacity: 0;
+      transform: scale(0.68) rotate(18deg);
+      transition: opacity 90ms ease, transform 90ms ease;
+      pointer-events: none;
+    }
+
+    .concept-b .concept-stats {
+      grid-column: 2;
+      grid-row: 2;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 5px;
+      padding-top: 12px;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .concept-b .mini-stat {
+      min-height: 42px;
+      display: grid;
+      grid-template-columns: 1fr;
+      place-items: center;
+      gap: 1px;
+      border: 3px solid var(--ink);
+      border-radius: 7px;
+      background: #ffffff;
+      text-align: center;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.75);
+    }
+
+    .concept-b .mini-stat b {
+      display: block;
+      font-size: 13px;
+    }
+
+    .concept-b .mini-stat span {
+      color: var(--muted);
+      font-size: 9px;
+    }
+
+    .concept-b .concept-actions {
+      grid-column: 2;
+      grid-row: 3;
+      position: relative;
+      align-self: start;
+      grid-template-columns: 1fr;
+      justify-content: center;
+      align-items: center;
+      padding: 12px 0 0;
+      border: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .concept-b .concept-actions .concept-action {
+      width: 56px;
+      min-height: 52px;
+      justify-self: center;
+      grid-template-columns: 1fr;
+      place-items: center;
+      padding: 5px;
+      text-align: center;
+    }
+
+    .concept-b .concept-actions .concept-action.active {
+      background: #dfffe8;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.65), inset 0 0 0 2px rgba(47, 226, 117, 0.5);
+    }
+
+    .concept-b .concept-actions .concept-action img {
+      width: 38px;
+      height: 38px;
+    }
+
+    .concept-b .concept-actions .upgrade-arrow {
+      width: 38px;
+      height: 38px;
+    }
+
+    .concept-info {
+      position: absolute;
+      left: calc(50% + 35px);
+      top: 23px;
+      z-index: 5;
+      display: grid;
+      place-items: center;
+    }
+
+    .concept-info-button {
+      width: 19px;
+      height: 19px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: #fffdf8;
+      font-size: 11px;
+      font-weight: 950;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.75);
+    }
+
+    .concept-info-popover {
+      position: absolute;
+      right: -4px;
+      top: 25px;
+      width: 148px;
+      display: none;
+      padding: 7px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #fffdf8;
+      font-size: 10px;
+      font-weight: 850;
+      line-height: 1.15;
+      box-shadow: 2px 3px 0 rgba(23, 22, 21, 0.85);
+    }
+
+    .concept-info-popover.open {
+      display: block;
+    }
+
+    .currency-upgrade-menu {
+      position: relative;
+      z-index: 2;
+      display: none;
+      gap: 6px;
+      padding: 8px;
+      border: 2px solid var(--ink);
+      border-radius: 9px;
+      background: rgba(255, 253, 248, 0.94);
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.65);
+    }
+
+    .currency-upgrade-menu.open {
+      display: grid;
+    }
+
+    .concept-b .currency-upgrade-menu {
+      grid-column: 1 / -1;
+    }
+
+    .currency-upgrade-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+      min-height: 34px;
+      padding: 6px;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #fff8e8;
+      font-size: 11px;
+      font-weight: 950;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.55);
+    }
+
+    .currency-cost {
+      display: grid;
+      grid-template-columns: auto 18px;
+      gap: 3px;
+      align-items: center;
+    }
+
+    .currency-cost img {
+      width: 18px;
+      height: 18px;
+      object-fit: contain;
+    }
+
+    .concept-c {
+      --concept-progress: 23%;
+      grid-template-columns: 1fr;
+    }
+
+    .concept-c .concept-row {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 112px 1fr;
+      gap: 8px;
+    }
+
+    .concept-c .concept-actions {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .concept-d {
+      --concept-progress: 88%;
+      grid-template-columns: 1fr;
+    }
+
+    .concept-d .command-strip {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 6px;
+    }
+
+    .concept-d .concept-stats,
+    .concept-d .concept-currency,
+    .concept-d .concept-actions {
+      min-height: 72px;
+    }
+
+    @media (max-width: 380px) {
+      .canvas {
+        width: calc(100% - 18px);
+      }
+
+      .activity-stats,
+      .passive-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .passive-module {
+        grid-template-columns: 82px minmax(0, 1fr);
+      }
+
+      .passive-loot {
+        width: 82px;
+        height: 100px;
+      }
+
+      .loot-item {
+        width: 44px;
+        height: 44px;
+      }
+
+      .stats-module {
+        grid-template-columns: 138px minmax(0, 1fr);
+      }
+
+      .stats-log-scatter {
+        width: 146px;
+        margin-left: -10px;
+      }
+
+      .stats-upgrade-row {
+        grid-template-columns: 34px repeat(3, minmax(0, 1fr)) 58px;
+        font-size: 10px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="canvas" aria-label="Passive module design canvas">
+    <header class="mock-title">
+      <h1>Item Collect Module</h1>
+      <p>Fast-read layouts for stats, currency, and spend choices.</p>
+    </header>
+    <section class="page-view active" data-page-view="module">
+      <button
+        type="button"
+        class="action activity running"
+        style="--activity-bg: url('assets/build/backgrounds/01-early.png'); --progress: 57%;"
+        data-build-action
+      >
+        <span class="activity-inner">
+          <span class="activity-art">
+            <img src="assets/build/actions/01-stack-bricks.png" alt="">
+            <span class="mastery-medal"></span>
+          </span>
+          <span class="activity-main">
+            <span class="activity-title-row">
+              <strong>Stack Bricks</strong>
+            </span>
+            <span class="activity-stats" aria-label="Activity rewards and costs">
+              <span class="stat-chip"><b data-build-xp>+24</b><small>XP</small></span>
+              <span class="stat-chip"><b>4</b><small>Stam</small></span>
+              <span class="stat-chip"><b>5s</b><small>Time</small></span>
+              <span class="stat-chip"><b>90%</b><small>Rate</small></span>
+            </span>
+            <span class="activity-bars">
+              <span class="meter-line mastery-meter"><span class="bar"><i></i></span></span>
+            </span>
+          </span>
+        </span>
+        <span class="activity-progress-rail" aria-hidden="true"><i></i></span>
+        <span class="build-consume-marker" aria-hidden="true">-1 <img src="assets/passive/resources/log-currency.png" alt=""></span>
+      </button>
+
+      <section class="passive-module ledger" aria-label="Passive module ledger design" data-storage="14" data-time-seconds="240" data-yield="2" data-max-storage="20" data-log-src="assets/passive/resources/log-currency.png">
+        <div class="ledger-currency-row">
+          <button type="button" class="icon-button currency-plank-button" data-plank-toggle aria-pressed="false" title="Plank boost">
+            <img src="assets/passive/resources/plank.png" alt="">
+          </button>
+          <aside class="currency-panel" aria-label="Log currency">
+            <strong data-log-count>247</strong>
+            <img src="assets/passive/resources/log-currency.png" alt="">
+          </aside>
+        </div>
+        <div class="passive-loot" aria-label="Stored items ready to gather" data-passive-loot>
+        </div>
+        <div class="passive-main">
+          <div class="passive-title-row">
+            <strong>stack logs #1</strong>
+            <button type="button" class="currency-help-button" data-ledger-info aria-label="How does stack logs work?" aria-expanded="false">i</button>
+            <div class="ledger-info-popover" data-ledger-info-popover>
+              Click to collect logs. Upgrades cost logs. Plank toggle consumes logs for bonus XP while building.
+            </div>
+          </div>
+          <div class="passive-stats" aria-label="Passive module timing and yield">
+            <span class="stat-upgrade-row"><span class="stat-chip"><b data-time-readout>4m</b><small>Time</small></span><button type="button" class="stat-upgrade-button" data-upgrade="time" aria-label="Upgrade collection time"><img class="upgrade-arrow" src="assets/passive/resources/upgrade-arrow.png" alt=""><span data-upgrade-cost>1</span></button></span>
+            <span class="stat-upgrade-row"><span class="stat-chip"><b data-yield-readout>+2</b><small>Yield</small></span><button type="button" class="stat-upgrade-button" data-upgrade="yield" aria-label="Upgrade yield"><img class="upgrade-arrow" src="assets/passive/resources/upgrade-arrow.png" alt=""><span data-upgrade-cost>1</span></button></span>
+            <span class="stat-upgrade-row"><span class="stat-chip"><b data-max-storage-readout>20</b><small>Max Store</small></span><button type="button" class="stat-upgrade-button" data-upgrade="capacity" aria-label="Upgrade max storage"><img class="upgrade-arrow" src="assets/passive/resources/upgrade-arrow.png" alt=""><span data-upgrade-cost>1</span></button></span>
+          </div>
+        </div>
+        <span class="passive-progress-rail" aria-hidden="true"><i></i></span>
+      </section>
+
+      <section class="concept-card concept-b" aria-label="item collect concept currency first" data-currency-first>
+        <div class="concept-title">
+          <strong>stack logs #1</strong>
+        </div>
+        <div class="concept-zone concept-stats">
+          <span class="zone-label">1 stats</span>
+          <span class="mini-stat"><b>90s</b><span>time</span></span>
+          <span class="mini-stat" data-yield-square><b>+2</b><span>yield</span></span>
+          <span class="mini-stat"><b>40</b><span>max</span></span>
+        </div>
+        <div class="concept-zone concept-currency" data-currency-panel>
+          <span class="zone-label">2 logs</span>
+          <div class="currency-readout">
+            <strong data-concept-log-count>247</strong>
+            <img src="assets/passive/resources/log-currency.png" alt="">
+          </div>
+          <div class="currency-storage" data-currency-storage aria-label="loose logs ready to gather"></div>
+        </div>
+        <div class="concept-zone concept-actions">
+          <span class="zone-label">3 spend</span>
+          <button type="button" class="concept-action" data-currency-plank aria-label="Fuel build" aria-pressed="false"><img src="assets/passive/resources/plank.png" alt=""></button>
+          <div class="concept-info">
+            <button type="button" class="concept-info-button" data-currency-info aria-label="What does plank boost do?" aria-expanded="false">i</button>
+            <div class="concept-info-popover" data-currency-info-popover>
+              Toggle on to spend 1 log when a build activity succeeds for +5% build XP.
+            </div>
+          </div>
+        </div>
+      </section>
+    </section>
+  </main>
+  <script>
+    const module = document.querySelector(".passive-module.ledger");
+    const loot = document.querySelector("[data-passive-loot]");
+    const currencyPanel = document.querySelector(".currency-panel");
+    const logCount = document.querySelector("[data-log-count]");
+    const timeReadout = document.querySelector("[data-time-readout]");
+    const yieldReadout = document.querySelector("[data-yield-readout]");
+    const maxStorageReadout = document.querySelector("[data-max-storage-readout]");
+    const buildActivity = document.querySelector("[data-build-action]");
+    const buildXp = document.querySelector("[data-build-xp]");
+    const consumeMarker = document.querySelector(".build-consume-marker");
+    const plankToggle = document.querySelector("[data-plank-toggle]");
+    const ledgerInfoButton = document.querySelector("[data-ledger-info]");
+    const ledgerInfoPopover = document.querySelector("[data-ledger-info-popover]");
+    const baseBuildXp = 24;
+    let audioContext;
+    let animating = false;
+    let plankBoostOn = false;
+    const upgradeCaps = {
+      time: 30,
+      yield: 18,
+      capacity: 600
+    };
+
+    function storedCount() {
+      return Number(module.dataset.storage || 0);
+    }
+
+    function yieldAmount() {
+      return Number(module.dataset.yield || 0);
+    }
+
+    function timeSeconds() {
+      return Number(module.dataset.timeSeconds || (Number(module.dataset.time || 1) * 60));
+    }
+
+    function maxStorage() {
+      return Number(module.dataset.maxStorage || 1);
+    }
+
+    function logSrc() {
+      return module.dataset.logSrc;
+    }
+
+    function currentLogs() {
+      return Number(logCount.textContent || 0);
+    }
+
+    function setCurrentLogs(value) {
+      logCount.textContent = String(Math.max(0, Math.floor(value)));
+      refreshUpgradeButtons();
+    }
+
+    function spendLogs(amount) {
+      if (currentLogs() < amount) return false;
+      setCurrentLogs(currentLogs() - amount);
+      bumpPanel();
+      blip(1);
+      return true;
+    }
+
+    function formatTime(seconds) {
+      const minutes = Math.floor(seconds / 60);
+      const remainder = seconds % 60;
+      if (minutes > 0 && remainder > 0) return `${minutes}m${remainder}s`;
+      if (minutes > 0) return `${minutes}m`;
+      return `${remainder}s`;
+    }
+
+    function upgradeValue(type) {
+      if (type === "time") return timeSeconds();
+      if (type === "yield") return yieldAmount();
+      return maxStorage();
+    }
+
+    function upgradeMax(type) {
+      return upgradeCaps[type];
+    }
+
+    function isUpgradeMaxed(type) {
+      const value = upgradeValue(type);
+      if (type === "time") return value <= upgradeCaps.time;
+      return value >= upgradeCaps[type];
+    }
+
+    function nextUpgradeValue(type) {
+      const value = upgradeValue(type);
+      if (type === "time") {
+        if (value > 90) return Math.max(90, value - 15);
+        return Math.max(upgradeCaps.time, value - 10);
+      }
+      if (type === "yield") return Math.min(upgradeCaps.yield, value + 1);
+      if (value < 80) return Math.min(80, value + 10);
+      if (value < 200) return Math.min(200, value + 20);
+      return Math.min(upgradeCaps.capacity, value + 50);
+    }
+
+    function upgradeStepIndex(type) {
+      const value = upgradeValue(type);
+      if (type === "time") {
+        if (value > 90) return Math.round((240 - value) / 15);
+        return 10 + Math.round((90 - value) / 10);
+      }
+      if (type === "yield") return value - 2;
+      if (value < 80) return Math.round((value - 20) / 10);
+      if (value < 200) return 6 + Math.round((value - 80) / 20);
+      return 12 + Math.round((value - 200) / 50);
+    }
+
+    function smoothUpgradeCost(stepIndex) {
+      if (stepIndex < 2) return 1;
+      if (stepIndex < 4) return 2;
+      if (stepIndex < 6) return 3;
+      return Math.floor(4 + Math.pow(stepIndex - 5, 1.45) * 2.15);
+    }
+
+    function upgradeCost(type) {
+      if (isUpgradeMaxed(type)) return 0;
+      return smoothUpgradeCost(upgradeStepIndex(type));
+    }
+
+    function renderModuleStats() {
+      timeReadout.textContent = formatTime(timeSeconds());
+      yieldReadout.textContent = `+${yieldAmount()}`;
+      maxStorageReadout.textContent = String(maxStorage());
+      plankToggle.classList.toggle("active", plankBoostOn);
+      plankToggle.setAttribute("aria-pressed", String(plankBoostOn));
+      buildActivity.classList.toggle("boosted", plankBoostOn);
+      buildXp.textContent = `+${Math.round(baseBuildXp * (plankBoostOn ? 1.05 : 1))}`;
+      refreshUpgradeButtons();
+    }
+
+    function refreshUpgradeButtons() {
+      document.querySelectorAll("[data-upgrade]").forEach((button) => {
+        const type = button.dataset.upgrade;
+        const maxed = isUpgradeMaxed(type);
+        const cost = upgradeCost(type);
+        const costLabel = button.querySelector("[data-upgrade-cost]");
+        button.hidden = maxed;
+        button.dataset.cost = String(cost);
+        button.disabled = !maxed && currentLogs() < cost;
+        button.title = maxed ? "Maxed" : `Upgrade for ${cost} logs`;
+        button.setAttribute("aria-label", maxed ? `${type} maxed` : `Upgrade ${type} for ${cost} logs`);
+        if (costLabel) costLabel.textContent = String(cost);
+      });
+    }
+
+    function renderStoredLogs() {
+      const count = storedCount();
+      loot.innerHTML = "";
+      module.classList.toggle("empty", count <= 0);
+      module.style.setProperty("--passive-progress", `${Math.round((count / maxStorage()) * 100)}%`);
+
+      if (count <= 0) {
+        const empty = document.createElement("span");
+        empty.className = "loot-item empty-note";
+        empty.textContent = "empty";
+        loot.append(empty);
+        renderModuleStats();
+        return;
+      }
+
+      const visibleLogs = Math.min(24, Math.max(5, count));
+      for (let i = 0; i < visibleLogs; i += 1) {
+        const img = document.createElement("img");
+        img.className = "loot-item";
+        img.src = logSrc();
+        img.alt = "";
+        const column = i % 8;
+        const row = Math.floor(i / 8);
+        const jitterX = ((i * 13) % 9) - 4;
+        const jitterY = ((i * 17) % 7) - 3;
+        const rot = ((i * 23) % 31) - 15;
+        img.style.left = `${column * 20 + jitterX}px`;
+        img.style.top = `${row * 18 + jitterY}px`;
+        img.style.zIndex = String(i + 1);
+        img.style.setProperty("--rot", `${rot}deg`);
+        img.style.transform = `rotate(${rot}deg)`;
+        loot.append(img);
+      }
+      renderModuleStats();
+    }
+
+    function ensureAudio() {
+      const AudioCtor = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtor) return null;
+      audioContext ||= new AudioCtor();
+      if (audioContext.state === "suspended") {
+        audioContext.resume();
+      }
+      return audioContext;
+    }
+
+    function blip(index) {
+      const ctx = ensureAudio();
+      if (!ctx) return;
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(580 + index * 24, now);
+      osc.frequency.exponentialRampToValueAtTime(880 + index * 18, now + 0.055);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.055, now + 0.012);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.13);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.14);
+    }
+
+    function bumpPanel() {
+      currencyPanel.classList.remove("bump");
+      void currencyPanel.offsetWidth;
+      currencyPanel.classList.add("bump");
+    }
+
+    function animateLog(start, end, index, total) {
+      const img = document.createElement("img");
+      img.className = "flying-log";
+      img.src = logSrc();
+      img.alt = "";
+      document.body.append(img);
+
+      const duration = 560 + index * 28;
+      const delay = index * 38;
+      const launchX = start.x + (((index * 19) % 41) - 20);
+      const launchY = start.y + (((index * 11) % 21) - 10);
+      const arc = 92 + (index % 5) * 16;
+      const startTime = performance.now() + delay;
+
+      return new Promise((resolve) => {
+        function frame(now) {
+          if (now < startTime) {
+            requestAnimationFrame(frame);
+            return;
+          }
+
+          const t = Math.min(1, (now - startTime) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          const x = launchX + (end.x - launchX) * eased;
+          const y = launchY + (end.y - launchY) * eased - Math.sin(t * Math.PI) * arc;
+          const scale = 1 + Math.sin(t * Math.PI) * 0.22 - t * 0.18;
+          const spin = ((index % 2 === 0 ? 1 : -1) * (index * 18 + t * 260));
+          img.style.left = `${x - 19}px`;
+          img.style.top = `${y - 19}px`;
+          img.style.opacity = `${1 - Math.max(0, t - 0.86) / 0.14}`;
+          img.style.transform = `scale(${scale}) rotate(${spin}deg)`;
+
+          if (t < 1) {
+            requestAnimationFrame(frame);
+            return;
+          }
+
+          img.remove();
+          setCurrentLogs(currentLogs() + 1);
+          bumpPanel();
+          blip(index);
+          resolve();
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+
+    async function collectLogs() {
+      const count = storedCount();
+      if (animating || count <= 0) return;
+      animating = true;
+      module.classList.add("harvesting");
+      ensureAudio();
+
+      const sourceItems = [...loot.querySelectorAll(".loot-item:not(.empty-note)")];
+      sourceItems.forEach((item, index) => {
+        setTimeout(() => item.classList.add("collecting"), index * 24);
+      });
+
+      const lootRect = loot.getBoundingClientRect();
+      const panelIcon = currencyPanel.querySelector("img").getBoundingClientRect();
+      const end = {
+        x: panelIcon.left + panelIcon.width / 2,
+        y: panelIcon.top + panelIcon.height / 2
+      };
+
+      const start = {
+        x: lootRect.left + lootRect.width / 2,
+        y: lootRect.top + lootRect.height / 2
+      };
+
+      const flyingCount = Math.min(24, Math.max(6, count));
+      const flights = Array.from({ length: flyingCount }, (_, index) => animateLog(start, end, index, flyingCount));
+
+      module.dataset.storage = "0";
+      setTimeout(renderStoredLogs, 420);
+      await Promise.all(flights);
+      module.classList.remove("harvesting");
+      animating = false;
+    }
+
+    function consumeBuildLog() {
+      if (!plankBoostOn || currentLogs() <= 0) return;
+      spendLogs(1);
+      consumeMarker.classList.remove("spend");
+      void consumeMarker.offsetWidth;
+      consumeMarker.classList.add("spend");
+    }
+
+    module.addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
+      collectLogs();
+    });
+    module.addEventListener("keydown", (event) => {
+      if (event.target.closest("button")) return;
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        collectLogs();
+      }
+    });
+
+    buildActivity.addEventListener("click", consumeBuildLog);
+
+    plankToggle.addEventListener("click", (event) => {
+      event.stopPropagation();
+      plankBoostOn = !plankBoostOn;
+      renderModuleStats();
+    });
+
+    ledgerInfoButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = !ledgerInfoPopover.classList.contains("open");
+      ledgerInfoPopover.classList.toggle("open", open);
+      ledgerInfoButton.setAttribute("aria-expanded", String(open));
+    });
+
+    ledgerInfoPopover.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    document.querySelectorAll("[data-upgrade]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        const type = button.dataset.upgrade;
+        if (isUpgradeMaxed(type)) return;
+        const cost = upgradeCost(type);
+        if (!spendLogs(cost)) return;
+        if (type === "time") {
+          module.dataset.timeSeconds = String(nextUpgradeValue(type));
+        }
+        if (type === "yield") {
+          module.dataset.yield = String(nextUpgradeValue(type));
+        }
+        if (type === "capacity") {
+          module.dataset.maxStorage = String(nextUpgradeValue(type));
+        }
+        renderStoredLogs();
+      });
+    });
+
+    renderStoredLogs();
+
+    const currencyFirst = document.querySelector("[data-currency-first]");
+    const conceptStorage = document.querySelector("[data-currency-storage]");
+    const conceptLogCount = document.querySelector("[data-concept-log-count]");
+    const conceptYieldSquare = document.querySelector("[data-yield-square]");
+    const conceptPlankButton = document.querySelector("[data-currency-plank]");
+    const conceptInfoButton = document.querySelector("[data-currency-info]");
+    const conceptInfoPopover = document.querySelector("[data-currency-info-popover]");
+    let conceptLogs = 247;
+    let conceptLooseLogs = 0;
+    let conceptTokenId = 0;
+    let conceptDragCollect = false;
+    let conceptPlankOn = false;
+    const conceptCycleMs = 90000;
+    const conceptYield = 2;
+    const conceptMax = 40;
+    let conceptCycleStart = performance.now();
+
+    function setConceptLogs(value) {
+      conceptLogs = Math.max(0, Math.floor(value));
+      conceptLogCount.textContent = String(conceptLogs);
+    }
+
+    function conceptLogSrc() {
+      return "assets/passive/resources/log-currency.png";
+    }
+
+    function placeConceptToken(token) {
+      const index = Number(token.dataset.index || 0);
+      const column = index % 3;
+      const row = Math.floor(index / 3);
+      const jitterX = ((index * 17) % 9) - 4;
+      const jitterY = ((index * 23) % 7) - 3;
+      const rot = ((index * 29) % 31) - 15;
+      token.style.left = `${column * 31 + jitterX + 4}px`;
+      token.style.bottom = `${row * 18 + jitterY + 2}px`;
+      token.style.top = "auto";
+      token.style.transform = `rotate(${rot}deg)`;
+      token.style.zIndex = String(index + 1);
+    }
+
+    function spawnConceptLog(indexOffset = 0) {
+      if (conceptLooseLogs >= conceptMax) return;
+      const token = document.createElement("img");
+      token.className = "stored-log-token";
+      token.src = conceptLogSrc();
+      token.alt = "";
+      token.dataset.tokenId = String(conceptTokenId);
+      token.dataset.index = String(conceptLooseLogs);
+      conceptTokenId += 1;
+      conceptLooseLogs += 1;
+      conceptStorage.append(token);
+      placeConceptToken(token);
+
+      const yieldRect = conceptYieldSquare.getBoundingClientRect();
+      const storageRect = conceptStorage.getBoundingClientRect();
+      const tokenRect = token.getBoundingClientRect();
+      const fromX = yieldRect.left + yieldRect.width / 2 - (tokenRect.left + tokenRect.width / 2);
+      const fromY = yieldRect.top + yieldRect.height / 2 - (tokenRect.top + tokenRect.height / 2);
+      token.animate([
+        { transform: `translate(${fromX}px, ${fromY}px) scale(0.45) rotate(-18deg)`, opacity: 0 },
+        { transform: `translate(${fromX * 0.35}px, ${Math.min(fromY * 0.35, -26)}px) scale(1.18) rotate(8deg)`, opacity: 1, offset: 0.62 },
+        { transform: token.style.transform, opacity: 1 }
+      ], {
+        duration: 430 + indexOffset * 70,
+        easing: "cubic-bezier(.2,.9,.2,1)"
+      });
+    }
+
+    function animateConceptTokenToPile(token, index = 0) {
+      const startRect = token.getBoundingClientRect();
+      const targetIcon = conceptLogCount.closest(".currency-readout").querySelector("img");
+      const targetRect = targetIcon.getBoundingClientRect();
+      const flyer = document.createElement("img");
+      const startX = startRect.left + startRect.width / 2;
+      const startY = startRect.top + startRect.height / 2;
+      const endX = targetRect.left + targetRect.width / 2 + (((index * 13) % 11) - 5);
+      const endY = targetRect.top + targetRect.height / 2 + (((index * 17) % 9) - 4);
+      const arc = 56 + (index % 4) * 10;
+      const duration = 420 + (index % 5) * 28;
+      const readout = conceptLogCount.closest(".currency-readout");
+      const startTime = performance.now();
+
+      flyer.className = "flying-log";
+      flyer.src = conceptLogSrc();
+      flyer.alt = "";
+      flyer.style.width = `${startRect.width}px`;
+      flyer.style.height = `${startRect.height}px`;
+      document.body.append(flyer);
+
+      return new Promise((resolve) => {
+        function frame(now) {
+          const t = Math.min(1, (now - startTime) / duration);
+          const eased = 1 - Math.pow(1 - t, 3);
+          const x = startX + (endX - startX) * eased;
+          const y = startY + (endY - startY) * eased - Math.sin(t * Math.PI) * arc;
+          const scale = 1 + Math.sin(t * Math.PI) * 0.18 - t * 0.22;
+          const spin = (index % 2 === 0 ? 1 : -1) * (24 + t * 210);
+
+          flyer.style.left = `${x - startRect.width / 2}px`;
+          flyer.style.top = `${y - startRect.height / 2}px`;
+          flyer.style.opacity = `${1 - Math.max(0, t - 0.86) / 0.14}`;
+          flyer.style.transform = `scale(${scale}) rotate(${spin}deg)`;
+
+          if (t < 1) {
+            requestAnimationFrame(frame);
+            return;
+          }
+
+          flyer.remove();
+          setConceptLogs(conceptLogs + 1);
+          readout.classList.remove("bump");
+          void readout.offsetWidth;
+          readout.classList.add("bump");
+          blip(index + 2);
+          resolve();
+        }
+        requestAnimationFrame(frame);
+      });
+    }
+
+    function runConceptProduction() {
+      for (let i = 0; i < conceptYield; i += 1) {
+        setTimeout(() => spawnConceptLog(i), i * 150);
+      }
+    }
+
+    function conceptFrame(now) {
+      const elapsed = now - conceptCycleStart;
+      if (elapsed >= conceptCycleMs) {
+        conceptCycleStart = now;
+        currencyFirst.style.setProperty("--concept-progress", "0%");
+        runConceptProduction();
+      } else {
+        currencyFirst.style.setProperty("--concept-progress", `${Math.round((elapsed / conceptCycleMs) * 100)}%`);
+      }
+      requestAnimationFrame(conceptFrame);
+    }
+
+    function gatherConceptToken(token, index = 0) {
+      if (!token || token.classList.contains("collecting")) return;
+      animateConceptTokenToPile(token, index);
+      token.classList.add("collecting");
+      conceptLooseLogs = Math.max(0, conceptLooseLogs - 1);
+      setTimeout(() => token.remove(), 190);
+    }
+
+    function gatherAllConceptLogs() {
+      [...conceptStorage.querySelectorAll(".stored-log-token")].forEach((token, index) => {
+        setTimeout(() => gatherConceptToken(token, index), index * 35);
+      });
+    }
+
+    function gatherTouchedConceptLog(x, y) {
+      const elements = document.elementsFromPoint(x, y);
+      const token = elements.find((element) => element.classList?.contains("stored-log-token"));
+      if (token) gatherConceptToken(token, Number(token.dataset.index || 0));
+    }
+
+    conceptStorage.addEventListener("pointerdown", (event) => {
+      event.stopPropagation();
+      conceptDragCollect = true;
+      conceptStorage.setPointerCapture?.(event.pointerId);
+      gatherTouchedConceptLog(event.clientX, event.clientY);
+    });
+
+    conceptStorage.addEventListener("pointermove", (event) => {
+      if (!conceptDragCollect) return;
+      gatherTouchedConceptLog(event.clientX, event.clientY);
+    });
+
+    window.addEventListener("pointerup", () => {
+      conceptDragCollect = false;
+    });
+
+    currencyFirst.addEventListener("click", (event) => {
+      if (event.target.closest("button") || event.target.closest(".stored-log-token") || event.target.closest(".concept-info-popover")) return;
+      gatherAllConceptLogs();
+    });
+
+    conceptPlankButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      conceptPlankOn = !conceptPlankOn;
+      conceptPlankButton.classList.toggle("active", conceptPlankOn);
+      conceptPlankButton.setAttribute("aria-pressed", String(conceptPlankOn));
+    });
+
+    conceptInfoButton.addEventListener("click", (event) => {
+      event.stopPropagation();
+      const open = !conceptInfoPopover.classList.contains("open");
+      conceptInfoPopover.classList.toggle("open", open);
+      conceptInfoButton.setAttribute("aria-expanded", String(open));
+    });
+
+    conceptInfoPopover.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    requestAnimationFrame(conceptFrame);
+  </script>
+</body>
+</html>

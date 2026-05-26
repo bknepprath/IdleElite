@@ -24,3 +24,10 @@ For one-off Godot commands, call the wrapper directly:
 ```powershell
 .\run-godot-safe.ps1 --path . --quit-after 1
 ```
+
+## Audio Safety
+
+- Never add or wire a new SFX at full blast.
+- New SFX should start quieter than the regular UI cue they accompany, especially if they are rare, layered, or celebratory.
+- Avoid stacking multiple full-volume reward sounds on the same event.
+- Validate new sounds as they will be heard in-game, not only as solo audition clips.
