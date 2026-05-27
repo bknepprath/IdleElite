@@ -758,6 +758,301 @@
       transition: width 260ms ease;
     }
 
+    .build-project-module {
+      --build-stage-progress: 0%;
+      position: relative;
+      min-height: 224px;
+      overflow: hidden;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      padding: 10px 10px 22px;
+      display: grid;
+      grid-template-columns: 112px minmax(0, 1fr);
+      gap: 8px;
+      align-items: stretch;
+      background:
+        linear-gradient(120deg, rgba(255, 253, 248, 0.9), rgba(246, 255, 239, 0.72)),
+        url("assets/build/backgrounds/02-rising.png") center / cover;
+      box-shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+    }
+
+    .build-project-module::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg, rgba(255, 253, 248, 0.78), rgba(255, 253, 248, 0.38));
+      pointer-events: none;
+    }
+
+    .build-project-title {
+      position: relative;
+      z-index: 1;
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      min-height: 24px;
+    }
+
+    .build-project-title strong {
+      overflow: hidden;
+      font-size: 17px;
+      line-height: 1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .build-stage-badge {
+      display: grid;
+      place-items: center;
+      min-width: 58px;
+      min-height: 24px;
+      padding: 2px 8px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fff2a8;
+      font-size: 11px;
+      font-weight: 950;
+      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.75);
+    }
+
+    .build-cost-panel {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      align-content: start;
+      gap: 6px;
+    }
+
+    .build-cost-now {
+      display: grid;
+      gap: 5px;
+      padding: 8px;
+      border: 3px solid var(--ink);
+      border-radius: 8px;
+      background: #fffdf8;
+      box-shadow: 2px 3px 0 rgba(23, 22, 21, 0.8);
+    }
+
+    .build-cost-now span {
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 950;
+      text-transform: uppercase;
+    }
+
+    .build-cost-line {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 24px;
+      gap: 4px;
+      align-items: center;
+      font-size: 20px;
+      font-weight: 950;
+      line-height: 1;
+    }
+
+    .build-cost-line img,
+    .build-stage-cost img {
+      width: 24px;
+      height: 24px;
+      object-fit: contain;
+      filter: drop-shadow(1px 1px 0 rgba(23, 22, 21, 0.45));
+    }
+
+    .build-stage-list {
+      display: grid;
+      gap: 4px;
+    }
+
+    .build-stage-row {
+      min-height: 28px;
+      display: grid;
+      grid-template-columns: 16px minmax(0, 1fr) auto;
+      gap: 4px;
+      align-items: center;
+      padding: 3px 5px;
+      border: 2px solid var(--ink);
+      border-radius: 7px;
+      background: rgba(255, 253, 248, 0.86);
+      font-size: 10px;
+      font-weight: 900;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.58);
+    }
+
+    .build-stage-row.done {
+      background: #dfffe8;
+    }
+
+    .build-stage-row.active {
+      background: #fff2a8;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.58), inset 0 0 0 2px rgba(255, 197, 74, 0.5);
+    }
+
+    .build-stage-dot {
+      width: 13px;
+      height: 13px;
+      border: 2px solid var(--ink);
+      border-radius: 50%;
+      background: #fffdf8;
+    }
+
+    .build-stage-row.done .build-stage-dot {
+      background: #28d66f;
+    }
+
+    .build-stage-cost {
+      display: grid;
+      grid-template-columns: auto 18px;
+      gap: 1px;
+      align-items: center;
+      justify-content: end;
+      font-size: 10px;
+      font-weight: 950;
+    }
+
+    .build-stage-cost img {
+      width: 18px;
+      height: 18px;
+    }
+
+    .build-project-center {
+      position: relative;
+      z-index: 1;
+      min-height: 154px;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) auto;
+      gap: 7px;
+    }
+
+    .build-click-target {
+      position: relative;
+      overflow: hidden;
+      min-height: 130px;
+      border: 3px solid var(--ink);
+      border-radius: 9px;
+      background: linear-gradient(#dff5ff 0 44%, #e8d4a2 44% 100%);
+      cursor: pointer;
+      box-shadow: 2px 3px 0 rgba(23, 22, 21, 0.86);
+    }
+
+    .build-click-target:disabled {
+      cursor: not-allowed;
+      filter: grayscale(0.72) opacity(0.76);
+    }
+
+    .build-click-target:active:not(:disabled) {
+      transform: translate(1px, 2px);
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.86);
+    }
+
+    .build-site {
+      position: absolute;
+      inset: 8px 8px 6px;
+    }
+
+    .build-piece {
+      position: absolute;
+      border: 3px solid var(--ink);
+      opacity: 0.22;
+      transform: translateY(8px) scale(0.96);
+      transition: opacity 180ms ease, transform 180ms ease, background 180ms ease;
+    }
+
+    .build-piece.visible {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+
+    .build-foundation {
+      left: 16px;
+      right: 12px;
+      bottom: 10px;
+      height: 22px;
+      border-radius: 5px;
+      background: #b9a07b;
+    }
+
+    .build-frame-left,
+    .build-frame-right {
+      bottom: 30px;
+      width: 16px;
+      height: 54px;
+      border-radius: 4px;
+      background: #d49a51;
+    }
+
+    .build-frame-left {
+      left: 28px;
+    }
+
+    .build-frame-right {
+      right: 28px;
+    }
+
+    .build-roof {
+      left: 19px;
+      right: 16px;
+      bottom: 80px;
+      height: 30px;
+      border-radius: 7px 7px 4px 4px;
+      background: #c85242;
+      transform: translateY(8px) scale(0.96) skewX(-14deg);
+    }
+
+    .build-roof.visible {
+      transform: translateY(0) scale(1) skewX(-14deg);
+    }
+
+    .build-finish {
+      left: 49px;
+      bottom: 31px;
+      width: 32px;
+      height: 42px;
+      border-radius: 5px 5px 2px 2px;
+      background: #7bb2d7;
+    }
+
+    .build-click-label {
+      position: absolute;
+      right: 6px;
+      bottom: 6px;
+      padding: 4px 6px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fffdf8;
+      font-size: 10px;
+      font-weight: 950;
+      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.75);
+    }
+
+    .build-project-status {
+      min-height: 18px;
+      color: #4d3f15;
+      font-size: 11px;
+      font-weight: 950;
+      text-align: center;
+    }
+
+    .build-project-rail {
+      position: absolute;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      z-index: 2;
+      height: 14px;
+      border-top: 2px solid var(--ink);
+      background: #fff1c8;
+    }
+
+    .build-project-rail i {
+      display: block;
+      width: var(--build-stage-progress);
+      height: 100%;
+      background: linear-gradient(90deg, #28d66f, #7effa8);
+      transition: width 220ms ease;
+    }
+
     .flying-log {
       position: fixed;
       z-index: 999;
@@ -1576,6 +1871,34 @@
         <span class="passive-progress-rail" aria-hidden="true"><i></i></span>
       </section>
 
+      <section class="build-project-module" data-build-project aria-label="Build project module">
+        <div class="build-project-title">
+          <strong>Build Storage Shed</strong>
+          <span class="build-stage-badge" data-build-stage-badge>Stage 1/4</span>
+        </div>
+        <aside class="build-cost-panel" aria-label="Build costs">
+          <div class="build-cost-now">
+            <span>Next Cost</span>
+            <div class="build-cost-line"><strong data-build-cost>8</strong><img src="assets/passive/resources/log-currency.png" alt=""></div>
+          </div>
+          <div class="build-stage-list" data-build-stage-list></div>
+        </aside>
+        <div class="build-project-center">
+          <button type="button" class="build-click-target" data-build-click aria-label="Build next stage">
+            <span class="build-site">
+              <span class="build-piece build-foundation" data-build-piece="0"></span>
+              <span class="build-piece build-frame-left" data-build-piece="1"></span>
+              <span class="build-piece build-frame-right" data-build-piece="1"></span>
+              <span class="build-piece build-roof" data-build-piece="2"></span>
+              <span class="build-piece build-finish" data-build-piece="3"></span>
+            </span>
+            <span class="build-click-label" data-build-click-label>Tap to place foundation</span>
+          </button>
+          <div class="build-project-status" data-build-status>Costs logs from your storage.</div>
+        </div>
+        <span class="build-project-rail" aria-hidden="true"><i></i></span>
+      </section>
+
       <section class="concept-card concept-b" aria-label="item collect concept currency first" data-currency-first>
         <div class="concept-title">
           <strong>stack logs #1</strong>
@@ -1658,6 +1981,9 @@
     function setCurrentLogs(value) {
       logCount.textContent = String(Math.max(0, Math.floor(value)));
       refreshUpgradeButtons();
+      if (document.querySelector("[data-build-project]")) {
+        requestAnimationFrame(renderBuildProject);
+      }
     }
 
     function spendLogs(amount) {
@@ -1965,6 +2291,66 @@
     });
 
     renderStoredLogs();
+
+    const buildProject = document.querySelector("[data-build-project]");
+    const buildClick = document.querySelector("[data-build-click]");
+    const buildStageBadge = document.querySelector("[data-build-stage-badge]");
+    const buildCost = document.querySelector("[data-build-cost]");
+    const buildStageList = document.querySelector("[data-build-stage-list]");
+    const buildStatus = document.querySelector("[data-build-status]");
+    const buildClickLabel = document.querySelector("[data-build-click-label]");
+    const buildStages = [
+      { name: "Foundation", cost: 8, label: "Tap to place foundation" },
+      { name: "Frame", cost: 12, label: "Tap to raise frame" },
+      { name: "Roof", cost: 18, label: "Tap to add roof" },
+      { name: "Finish", cost: 25, label: "Tap to finish shed" }
+    ];
+    let buildStage = 0;
+
+    function renderBuildProject() {
+      const complete = buildStage >= buildStages.length;
+      const nextStage = buildStages[Math.min(buildStage, buildStages.length - 1)];
+      buildProject.style.setProperty("--build-stage-progress", `${Math.round((buildStage / buildStages.length) * 100)}%`);
+      buildStageBadge.textContent = complete ? "Complete" : `Stage ${buildStage + 1}/${buildStages.length}`;
+      buildCost.textContent = complete ? "-" : String(nextStage.cost);
+      buildClickLabel.textContent = complete ? "Built" : nextStage.label;
+      buildStatus.textContent = complete ? "Storage Shed complete." : `Costs ${nextStage.cost} logs to build ${nextStage.name.toLowerCase()}.`;
+      buildClick.disabled = complete || currentLogs() < nextStage.cost;
+      buildClick.title = complete ? "Complete" : currentLogs() < nextStage.cost ? "Not enough logs" : nextStage.label;
+      document.querySelectorAll("[data-build-piece]").forEach((piece) => {
+        piece.classList.toggle("visible", Number(piece.dataset.buildPiece || 0) < buildStage);
+      });
+      buildStageList.innerHTML = "";
+      buildStages.forEach((stage, index) => {
+        const row = document.createElement("div");
+        row.className = "build-stage-row";
+        row.classList.toggle("done", index < buildStage);
+        row.classList.toggle("active", index === buildStage && !complete);
+        row.innerHTML = `
+          <span class="build-stage-dot"></span>
+          <span>${stage.name}</span>
+          <span class="build-stage-cost">${stage.cost}<img src="assets/passive/resources/log-currency.png" alt=""></span>
+        `;
+        buildStageList.append(row);
+      });
+    }
+
+    buildClick.addEventListener("click", (event) => {
+      event.stopPropagation();
+      if (buildStage >= buildStages.length) return;
+      const stage = buildStages[buildStage];
+      if (!spendLogs(stage.cost)) {
+        renderBuildProject();
+        return;
+      }
+      buildStage += 1;
+      buildClick.classList.remove("pop");
+      void buildClick.offsetWidth;
+      blip(buildStage + 3);
+      renderBuildProject();
+    });
+
+    renderBuildProject();
 
     const currencyFirst = document.querySelector("[data-currency-first]");
     const conceptStorage = document.querySelector("[data-currency-storage]");

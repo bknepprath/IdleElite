@@ -1957,6 +1957,7 @@ const SKILL_MENU_CARD_SIDE_INSET := 130
 const SKILL_MENU_COPY_WIDTH := 660
 const SKILL_DETAIL_HEADER_SCALE := 1.15
 const SKILL_DETAIL_TITLE_FONT_SIZE := 152
+const SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE := 128
 const SKILL_DETAIL_XP_FONT_SIZE := 76
 const SKILL_DETAIL_XP_BAR_HEIGHT := 62
 const SKILL_DETAIL_TEXT_SEPARATION := 25
@@ -2344,6 +2345,8 @@ var stamina_gauge_press_source: RegenCircle
 var detail_header_body: Control
 var detail_actions_scroll: MobileScrollContainer
 var detail_back_button: Button
+var detail_back_press_active := false
+var detail_back_press_touch_index := -1
 var detail_stamina_gauge_pop_tween: Tween
 var detail_stamina_gauge_pop_source: RegenCircle
 var detail_jump_top_button: TextureButton
@@ -2370,6 +2373,8 @@ var skill_swipe_preview_page: Control
 var skill_swipe_preview_pages := {}
 var skill_swipe_preview_states := {}
 var skill_swipe_preview_offset := 0
+var skill_swipe_preview_module_reveal_token := 0
+var skill_swipe_preview_prewarm_token := 0
 var skill_swipe_animating := false
 var skill_swipe_animation_mode := ""
 var skill_swipe_drag_base_x := 0.0
@@ -2385,6 +2390,7 @@ var skill_swipe_tip_seen := false
 var stamina_gauge_tip_seen := false
 var stamina_gauge_tip_root: Control
 var activity_lock_input_active := false
+var active_activity_lock_rig: ActivityLockRig
 var settings_overlay: Control
 var settings_panel: PanelContainer
 var achievements_overlay: Control
@@ -2561,6 +2567,9 @@ func _route_activity_lock_input(event: InputEvent) -> bool:
 		return false
 	if not _event_points_inside_detail_actions_viewport(event):
 		if activity_lock_input_active and _activity_lock_input_released(event):
+			if active_activity_lock_rig != null and is_instance_valid(active_activity_lock_rig):
+				active_activity_lock_rig.handle_pointer_event(event)
+			active_activity_lock_rig = null
 			activity_lock_input_active = false
 			_set_activity_lock_page_scrolling_disabled(false)
 			return true
@@ -2576,6 +2585,7 @@ func _route_activity_lock_input(event: InputEvent) -> bool:
 			continue
 		if rig.handle_pointer_event(event):
 			activity_lock_input_active = not _activity_lock_input_released(event)
+			active_activity_lock_rig = rig if activity_lock_input_active else null
 			_set_activity_lock_page_scrolling_disabled(activity_lock_input_active)
 			_cancel_skill_swipe_feedback(false)
 			return true
@@ -2711,24 +2721,64 @@ func _global_event_position(local_position: Vector2, global_position: Vector2, s
 
 func _route_detail_back_button_input(event: InputEvent) -> bool:
 	if current_screen != "skill" or detail_back_button == null or not is_instance_valid(detail_back_button):
+		detail_back_press_active = false
+		detail_back_press_touch_index = -1
 		return false
 	var position := Vector2.ZERO
 	var pressed := false
+	var released := false
+	var is_motion := false
+	var touch_index := -1
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		position = event.global_position
 		pressed = event.pressed
+		released = not event.pressed
+	elif event is InputEventMouseMotion:
+		position = (event as InputEventMouseMotion).global_position
+		is_motion = true
 	elif event is InputEventScreenTouch:
-		position = event.position
-		pressed = event.pressed
+		var touch_event := event as InputEventScreenTouch
+		position = touch_event.position
+		touch_index = touch_event.index
+		pressed = touch_event.pressed
+		released = not touch_event.pressed
+	elif event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		position = drag_event.position
+		touch_index = drag_event.index
+		is_motion = true
 	else:
 		return false
-	if not pressed:
+	if pressed:
+		if not _detail_back_button_contains_position(position):
+			return false
+		detail_back_press_active = true
+		detail_back_press_touch_index = touch_index
+		action_card_press_key = ""
+		action_card_press_stat_kind = ""
+		action_card_press_dragged = false
+		_cancel_skill_swipe_feedback(false)
+		return true
+	if not detail_back_press_active:
+		return false
+	if touch_index >= 0 and detail_back_press_touch_index >= 0 and touch_index != detail_back_press_touch_index:
+		return false
+	if is_motion:
+		return true
+	if released:
+		detail_back_press_active = false
+		detail_back_press_touch_index = -1
+		if _detail_back_button_contains_position(position):
+			_show_skills()
+		return true
+	return false
+
+
+func _detail_back_button_contains_position(position: Vector2) -> bool:
+	if detail_back_button == null or not is_instance_valid(detail_back_button):
 		return false
 	var back_rect := detail_back_button.get_global_rect().grow(36.0)
-	if _first_position_in_rect(_activity_input_position_candidates(position), back_rect) == null:
-		return false
-	_show_skills()
-	return true
+	return _first_position_in_rect(_activity_input_position_candidates(position), back_rect) != null
 
 
 func _route_detail_jump_arrow_input(event: InputEvent) -> bool:
@@ -3472,7 +3522,7 @@ func _build_skills_page() -> void:
 	margin.add_theme_constant_override("margin_left", 0)
 	margin.add_theme_constant_override("margin_right", 0)
 	margin.add_theme_constant_override("margin_top", 96)
-	margin.add_theme_constant_override("margin_bottom", 72)
+	margin.add_theme_constant_override("margin_bottom", 0)
 	skills_page.add_child(margin)
 	
 	skills_content = Control.new()
@@ -3709,6 +3759,8 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	detail_header_body = null
 	detail_actions_scroll = null
 	detail_back_button = null
+	detail_back_press_active = false
+	detail_back_press_touch_index = -1
 	detail_jump_top_button = null
 	detail_jump_bottom_button = null
 	detail_jump_top_hold = 0.0
@@ -3909,8 +3961,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		var stamina_gauge := RegenCircle.new()
 		stamina_gauge.custom_minimum_size = Vector2(366, 366)
 		stamina_gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		stamina_gauge.mouse_filter = Control.MOUSE_FILTER_STOP
-		stamina_gauge.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, stamina_gauge))
+		stamina_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stamina_gauge.set_theme_color(theme_color)
 		row.add_child(stamina_gauge)
 		skill_cards[skill_id] = {"title": title, "meta": meta, "xp": xp_bar, "stamina": stamina_gauge}
@@ -4007,7 +4058,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	title_stack.add_theme_constant_override("separation", SKILL_DETAIL_TEXT_SEPARATION)
 	title_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_block.add_child(title_stack)
-	var title := _label(_skill_name(selected_skill_id), SKILL_DETAIL_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title := _label(_skill_name(selected_skill_id), _skill_detail_title_font_size(selected_skill_id), COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_stack.add_child(title)
 	var xp := _xp_progress(selected_skill_id)
@@ -4065,6 +4116,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		if _is_passive_action(action as Dictionary):
 			var passive_card := _build_passive_module_card(selected_skill_id, action as Dictionary, content_width, true)
 			_prepare_locked_activity_preview_fade(passive_card["card"] as Dictionary, selected_skill_id, action as Dictionary)
+			_sync_locked_activity_preview_presence(passive_card["card"] as Dictionary, selected_skill_id, action as Dictionary)
 			stack.add_child(passive_card["root"] as Control)
 			detail_action_card_nodes[action_id] = passive_card["root"] as Control
 			action_cards[_action_key(selected_skill_id, action_id)] = passive_card["card"] as Dictionary
@@ -4244,6 +4296,8 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		pop_card.add_child(button)
 		action_cards[_action_key(selected_skill_id, action_id)] = {
 			"root": card_root,
+			"skill_id": selected_skill_id,
+			"action": action,
 			"pop": pop_card,
 			"button": button,
 			"bg": bg,
@@ -4272,13 +4326,14 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 			"medal_destination": Vector2(medal.offset_left, medal.offset_top)
 		}
 		_prepare_locked_activity_preview_fade(action_cards[_action_key(selected_skill_id, action_id)] as Dictionary, selected_skill_id, action as Dictionary)
+		_sync_locked_activity_preview_presence(action_cards[_action_key(selected_skill_id, action_id)] as Dictionary, selected_skill_id, action as Dictionary)
 		if _pending_activity_unlock_matches(action_id):
 			action_cards[_action_key(selected_skill_id, action_id)]["unlock_ceremony_pending"] = true
 		if _pending_activity_unlock_preview_matches(action_id):
-			card_root.modulate = Color(1, 1, 1, 0)
+			_stage_activity_preview_enter(action_cards[_action_key(selected_skill_id, action_id)] as Dictionary)
 			action_cards[_action_key(selected_skill_id, action_id)]["fade_in_pending"] = true
 		elif activity_unlock_preview_after_ceremony_id == action_id:
-			card_root.modulate = Color(1, 1, 1, 0)
+			_stage_activity_preview_enter(action_cards[_action_key(selected_skill_id, action_id)] as Dictionary)
 			action_cards[_action_key(selected_skill_id, action_id)]["fade_in_pending"] = true
 
 	if not activity_start_tip_seen:
@@ -4290,11 +4345,14 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	stack.add_child(scroll_bottom_spacer)
 	_build_detail_jump_arrows(actions_clip)
 	if restore_detail_scroll >= 0:
-		actions_scroll.drag_scroll_position = float(maxi(0, restore_detail_scroll))
-		actions_scroll.scroll_vertical = maxi(0, restore_detail_scroll)
-		call_deferred("_restore_detail_actions_scroll", restore_detail_scroll)
+		var restore_scroll := maxi(0, restore_detail_scroll)
+		actions_scroll.drag_scroll_position = float(restore_scroll)
+		actions_scroll.scroll_vertical = restore_scroll
+		stack.position.y = -float(restore_scroll)
+		call_deferred("_restore_detail_actions_scroll", restore_scroll)
 	elif scroll_latest_activity:
 		call_deferred("_scroll_to_latest_unlocked_activity", false)
+	_queue_skill_swipe_preview_prewarm()
 
 
 func _build_detail_jump_arrows(parent: Control) -> void:
@@ -4349,6 +4407,7 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 	chain_audio_scroll_direction = 1 if direction > 0 else -1
 	chain_audio_scroll_focus_seconds = CHAIN_SCROLL_TOWARD_SECONDS
 	_reveal_detail_jump_arrow(direction)
+	_queue_skill_swipe_preview_prewarm()
 
 
 func _on_detail_jump_arrow_hovered(top: bool, hovered: bool) -> void:
@@ -4379,6 +4438,7 @@ func _on_detail_jump_arrow_pressed(direction: int) -> void:
 		detail_jump_top_hold = 0.0
 		detail_jump_top_hovered = false
 		detail_actions_scroll.scroll_to_vertical(detail_actions_scroll.get_max_scroll_vertical(), 0.24)
+	_queue_skill_swipe_preview_prewarm()
 	get_viewport().set_input_as_handled()
 
 
@@ -4481,9 +4541,7 @@ func _update_ui(delta: float, instant := false) -> void:
 			if stamina_gauge != null:
 				var max_stamina := _max_stamina()
 				var stamina_value := _stamina(skill_id_text)
-				var circle_value := 1.0
-				if stamina_value < max_stamina:
-					circle_value = float(stamina_bank.get(skill_id_text, 0.0)) / STAMINA_REGEN_SECONDS
+				var circle_value := _stamina_fraction(skill_id_text)
 				stamina_gauge.set_theme_color(_skill_theme_color(skill_id_text))
 				stamina_gauge.set_stamina(stamina_value, max_stamina, instant, circle_value)
 				stamina_gauge.set_value(_regen_ring_ease(circle_value), instant)
@@ -4497,9 +4555,7 @@ func _update_ui(delta: float, instant := false) -> void:
 		if detail_regen_circle != null:
 			var max_stamina := _max_stamina()
 			var stamina_value := _stamina(selected_skill_id)
-			var circle_value := 1.0
-			if stamina_value < max_stamina:
-				circle_value = float(stamina_bank.get(selected_skill_id, 0.0)) / STAMINA_REGEN_SECONDS
+			var circle_value := _stamina_fraction(selected_skill_id)
 			detail_regen_circle.set_theme_color(_skill_theme_color(selected_skill_id))
 			detail_regen_circle.set_stamina(stamina_value, max_stamina, instant, circle_value)
 			detail_regen_circle.set_value(_regen_ring_ease(circle_value), instant)
@@ -4671,7 +4727,7 @@ func _action_card_medal_destination(card: Dictionary, medal: TextureRect) -> Vec
 func _update_action_card_static_state(card: Dictionary, skill_id: String, action: Dictionary, unlocked: bool) -> void:
 	var ceremony_active := bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
 	var xp_text := "+%s\nXP" % _effective_xp(action, skill_id)
-	var stamina_text := "%s\nSTAM" % _effective_stamina(action)
+	var stamina_text := "%s\nSTAM" % _display_stamina_cost(skill_id, action)
 	var time_text := "%ss\nTIME" % _format_seconds(_effective_seconds(skill_id, action))
 	var success_text := "%s%%\nRATE" % int(_success_chance(skill_id, action))
 	if card.get("last_xp_text", "") != xp_text:
@@ -5358,7 +5414,7 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 				xp_lines.append("+%s%% ad XP" % _format_percent_points(ad_xp * 100.0))
 			if _plank_bonus_applies(skill_id):
 				xp_bonus += PLANK_BUILD_XP_MULT
-				xp_lines.append("+5%% plank build XP")
+				xp_lines.append("+5% plank build XP")
 			if xp_lines.is_empty():
 				xp_lines.append("No active XP bonuses yet")
 			return {
@@ -5369,11 +5425,19 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			}
 		"stamina":
 			var base_stamina := maxi(1, int(action.get("stamina", 1)))
+			var stamina_lines := []
+			var medal_reduction := _activity_medal_stamina_cost_reduction(skill_id, action)
+			if medal_reduction > 0.0:
+				var action_id := str(action.get("id", ""))
+				var medal_level := _mastery_level(skill_id, action_id)
+				stamina_lines.append("-%s%% %s medal on this activity" % [_format_percent_points(medal_reduction * 100.0), _mastery_medal_name(medal_level)])
+			if stamina_lines.is_empty():
+				stamina_lines.append("No stamina cost bonuses yet")
 			return {
 				"title": "STAMINA COST",
-				"original": "%s STAM" % _format_significant_digits(float(base_stamina)),
-				"current": "%s STAM" % _format_significant_digits(float(_effective_stamina(action))),
-				"bonuses": ["No stamina cost bonuses yet"]
+				"original": "%s STAM" % _format_stamina_cost_detail(float(base_stamina)),
+				"current": "%s STAM" % _format_stamina_cost_detail(_effective_stamina(skill_id, action)),
+				"bonuses": stamina_lines
 			}
 		"time":
 			var base_seconds := maxf(0.1, float(action.get("seconds", 1.0)))
@@ -5396,11 +5460,18 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 				"bonuses": time_lines
 			}
 		"success":
-			var base_success := clampf(float(action.get("success", 90.0)), 5.0, 99.0)
+			var base_success := clampf(float(action.get("success", 90.0)), 5.0, 100.0)
 			var success_lines := []
 			var medal_success := _global_medal_bonus("success_bonus")
+			var activity_medal_success := _activity_medal_rate_bonus(skill_id, action)
 			if medal_success > 0.0:
 				success_lines.append("+%s%% global medal success" % _format_percent_points(medal_success))
+			if activity_medal_success > 0.0:
+				var action_id := str(action.get("id", ""))
+				var medal_level := _mastery_level(skill_id, action_id)
+				success_lines.append("+%s%% %s medal on this activity" % [_format_percent_points(activity_medal_success), _mastery_medal_name(medal_level)])
+			if _success_chance(skill_id, action) >= 100.0:
+				success_lines.append("RATE maxed at 100%")
 			if success_lines.is_empty():
 				success_lines.append("No active rate bonuses yet")
 			return {
@@ -5432,9 +5503,10 @@ func _update_skill_swipe_preview_state(state: Dictionary, delta: float, instant:
 	if state == null:
 		return
 	var page := state.get("page") as Control
-	if page == null or not is_instance_valid(page) or not page.is_inside_tree():
+	if page == null or not is_instance_valid(page):
 		return
-	_sync_skill_swipe_preview_scroll_state(state)
+	if not bool(state.get("prewarmed", false)):
+		_sync_skill_swipe_preview_scroll_state(state)
 	var skill_id := str(state.get("skill_id", ""))
 	if skill_id.is_empty():
 		return
@@ -6066,12 +6138,9 @@ func _clear_stamina_gauge_pop_tween() -> void:
 func _visible_actions_for_skill(skill_id: String) -> Array:
 	var visible_actions := []
 	var showed_locked_preview := false
-	var show_locked_preview := _locked_activity_preview_available()
 	for action in actions_by_skill.get(skill_id, []):
 		var unlocked := _is_action_unlocked(skill_id, action as Dictionary)
 		if not unlocked:
-			if not show_locked_preview:
-				continue
 			if showed_locked_preview:
 				continue
 			showed_locked_preview = true
@@ -6145,11 +6214,25 @@ func _scroll_detail_actions_to_top(animated := true) -> void:
 func _restore_detail_actions_scroll(target: int) -> void:
 	if current_screen != "skill" or detail_actions_scroll == null:
 		return
+	_apply_detail_actions_stack_scroll_offset(target)
 	await get_tree().process_frame
 	if detail_actions_scroll == null:
 		return
+	_apply_detail_actions_stack_scroll_offset(target)
 	detail_actions_scroll.scroll_to_vertical(target, 0.0)
+	await get_tree().process_frame
+	if detail_actions_scroll != null:
+		detail_actions_scroll.scroll_to_vertical(target, 0.0)
 	_clear_skill_swipe_handoff_cover()
+
+
+func _apply_detail_actions_stack_scroll_offset(target: int) -> void:
+	if detail_actions_scroll == null or detail_actions_scroll.get_child_count() <= 0:
+		return
+	var stack := detail_actions_scroll.get_child(0) as Control
+	if stack == null:
+		return
+	stack.position.y = -float(maxi(0, target))
 
 
 func _update_skill_swipe_feedback(position: Vector2) -> void:
@@ -6230,6 +6313,8 @@ func _interrupt_skill_swipe_animation_for_input() -> void:
 
 
 func _clear_skill_swipe_preview() -> void:
+	skill_swipe_preview_prewarm_token += 1
+	skill_swipe_preview_module_reveal_token += 1
 	var active_was_cached := false
 	for preview in skill_swipe_preview_pages.values():
 		var preview_page := preview as Control
@@ -6251,6 +6336,7 @@ func _begin_skill_swipe_handoff_cover() -> void:
 		return
 	if skill_swipe_preview_page == null or not is_instance_valid(skill_swipe_preview_page):
 		return
+	_force_show_skill_swipe_preview_modules(skill_swipe_preview_offset)
 	var page := skill_swipe_preview_page
 	for raw_offset in skill_swipe_preview_pages.keys():
 		if skill_swipe_preview_pages[raw_offset] == page:
@@ -6265,6 +6351,13 @@ func _begin_skill_swipe_handoff_cover() -> void:
 	cover.z_as_relative = false
 	cover.clip_contents = true
 	skills_page.add_child(cover)
+
+	var backing := ColorRect.new()
+	backing.color = COLOR_PAPER
+	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backing.z_index = -1
+	cover.add_child(backing)
 
 	var holder := Control.new()
 	holder.position = skill_swipe_frame.global_position - skills_page.global_position
@@ -6300,6 +6393,13 @@ func _begin_skill_detail_refresh_cover() -> void:
 	cover.z_as_relative = false
 	cover.clip_contents = true
 	skills_page.add_child(cover)
+
+	var backing := ColorRect.new()
+	backing.color = COLOR_PAPER
+	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	backing.z_index = -1
+	cover.add_child(backing)
 
 	var holder := Control.new()
 	holder.position = old_page.global_position - skills_page.global_position
@@ -6560,34 +6660,93 @@ func _show_stamina_gauge_tip() -> void:
 	_add_stamina_gauge_tip(detail_header_body, true)
 
 
+func _queue_skill_swipe_preview_prewarm() -> void:
+	if current_screen != "skill" or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
+		return
+	skill_swipe_preview_prewarm_token += 1
+	call_deferred("_prewarm_skill_swipe_neighbor_previews", selected_skill_id, skill_swipe_preview_prewarm_token)
+
+
+func _prewarm_skill_swipe_neighbor_previews(skill_id: String, token: int) -> void:
+	if token != skill_swipe_preview_prewarm_token or current_screen != "skill" or selected_skill_id != skill_id:
+		return
+	await get_tree().process_frame
+	if token != skill_swipe_preview_prewarm_token or current_screen != "skill" or selected_skill_id != skill_id:
+		return
+	for offset in [-1, 1]:
+		var page := _ensure_skill_swipe_preview_page_cached(offset)
+		if page == null or not is_instance_valid(page):
+			continue
+		page.position.x = signi(offset) * _skill_swipe_page_span()
+		var state := skill_swipe_preview_states.get(offset, {}) as Dictionary
+		if state != null:
+			state["prewarmed"] = false
+			_update_skill_swipe_preview_state(state, 0.0, true)
+	await get_tree().process_frame
+	if token != skill_swipe_preview_prewarm_token or current_screen != "skill" or selected_skill_id != skill_id:
+		return
+	for offset in [-1, 1]:
+		var state := skill_swipe_preview_states.get(offset, {}) as Dictionary
+		if state == null:
+			continue
+		_update_skill_swipe_preview_state(state, 0.0, true)
+		state["prewarmed"] = true
+		var modules_root := state.get("modules_root") as Control
+		if modules_root != null and is_instance_valid(modules_root):
+			modules_root.visible = true
+			modules_root.modulate.a = 1.0
+
+
 func _ensure_skill_swipe_preview(offset: int) -> void:
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		return
 	if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page) and skill_swipe_preview_offset == offset:
 		return
 	_park_skill_swipe_preview()
-	var current_index := _skill_index(selected_skill_id)
-	if current_index < 0 or skill_defs.is_empty():
-		return
-	var next_index := (current_index + offset) % skill_defs.size()
-	if next_index < 0:
-		next_index += skill_defs.size()
-	var next_skill_id := str(skill_defs[next_index]["id"])
-	var cached_page := skill_swipe_preview_pages.get(offset) as Control
+	var cached_page := _ensure_skill_swipe_preview_page_cached(offset)
 	if cached_page == null or not is_instance_valid(cached_page):
-		cached_page = _build_skill_swipe_preview_page(next_skill_id, offset)
-		cached_page.position.x = signi(offset) * _skill_swipe_page_span()
-		skill_swipe_frame.add_child(cached_page)
-		skill_swipe_preview_pages[offset] = cached_page
+		return
 	skill_swipe_preview_page = cached_page
 	skill_swipe_preview_offset = offset
 	skill_swipe_preview_page.position.x = signi(offset) * _skill_swipe_page_span()
+	var state := skill_swipe_preview_states.get(offset, {}) as Dictionary
+	if state != null and bool(state.get("prewarmed", false)):
+		_force_show_skill_swipe_preview_modules(offset)
+	else:
+		_prime_skill_swipe_preview_modules(offset)
+
+
+func _ensure_skill_swipe_preview_page_cached(offset: int) -> Control:
+	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
+		return null
+	var cached_page := skill_swipe_preview_pages.get(offset) as Control
+	if cached_page != null and is_instance_valid(cached_page):
+		return cached_page
+	var next_skill_id := _skill_id_for_swipe_offset(offset)
+	if next_skill_id.is_empty():
+		return null
+	cached_page = _build_skill_swipe_preview_page(next_skill_id, offset)
+	cached_page.position.x = signi(offset) * _skill_swipe_page_span()
+	skill_swipe_frame.add_child(cached_page)
+	skill_swipe_preview_pages[offset] = cached_page
+	return cached_page
+
+
+func _skill_id_for_swipe_offset(offset: int) -> String:
+	var current_index := _skill_index(selected_skill_id)
+	if current_index < 0 or skill_defs.is_empty():
+		return ""
+	var next_index := (current_index + offset) % skill_defs.size()
+	if next_index < 0:
+		next_index += skill_defs.size()
+	return str(skill_defs[next_index]["id"])
 
 func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	var content_width := _skill_content_width()
 	var state := {
 		"skill_id": skill_id,
-		"action_cards": []
+		"action_cards": [],
+		"prewarmed": false
 	}
 	var page := VBoxContainer.new()
 	state["page"] = page
@@ -6642,7 +6801,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	title_stack.add_theme_constant_override("separation", SKILL_DETAIL_TEXT_SEPARATION)
 	title_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_block.add_child(title_stack)
-	title_stack.add_child(_label(_skill_name(skill_id), SKILL_DETAIL_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT))
+	title_stack.add_child(_label(_skill_name(skill_id), _skill_detail_title_font_size(skill_id), COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT))
 	var xp := _xp_progress(skill_id)
 	var xp_label := _label("Lv %s - XP %s / %s" % [_skill_level(skill_id), int(xp["current"]), int(xp["needed"])], SKILL_DETAIL_XP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_stack.add_child(xp_label)
@@ -6676,6 +6835,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	preview_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(preview_scroll)
 	state["actions_scroll"] = preview_scroll
+	state["modules_root"] = preview_scroll
 
 	var preview_stack := VBoxContainer.new()
 	preview_stack.custom_minimum_size.x = content_width
@@ -6693,6 +6853,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	for action in _visible_actions_for_skill(skill_id):
 		var card_result := _build_passive_module_card(skill_id, action as Dictionary, content_width, false) if _is_passive_action(action as Dictionary) else _skill_swipe_preview_action_card(skill_id, action, content_width)
 		_prepare_locked_activity_preview_fade(card_result["card"] as Dictionary, skill_id, action as Dictionary)
+		_sync_locked_activity_preview_presence(card_result["card"] as Dictionary, skill_id, action as Dictionary)
 		preview_stack.add_child(card_result["root"])
 		(state["action_cards"] as Array).append(card_result["card"])
 	if not activity_start_tip_seen:
@@ -6708,6 +6869,57 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	_sync_skill_swipe_preview_scroll_state(state)
 	_update_skill_swipe_preview_state(state, 0.0, true)
 	return page
+
+
+func _prime_skill_swipe_preview_modules(offset: int) -> void:
+	if not skill_swipe_preview_states.has(offset):
+		return
+	var state := skill_swipe_preview_states[offset] as Dictionary
+	if state == null:
+		return
+	var modules_root := state.get("modules_root") as Control
+	if modules_root == null or not is_instance_valid(modules_root):
+		return
+	skill_swipe_preview_module_reveal_token += 1
+	var token := skill_swipe_preview_module_reveal_token
+	modules_root.visible = true
+	modules_root.modulate.a = 0.0
+	_update_skill_swipe_preview_state(state, 0.0, true)
+	call_deferred("_reveal_skill_swipe_preview_modules", offset, token)
+
+
+func _reveal_skill_swipe_preview_modules(offset: int, token: int) -> void:
+	if token != skill_swipe_preview_module_reveal_token:
+		return
+	if offset != skill_swipe_preview_offset:
+		return
+	if not skill_swipe_preview_states.has(offset):
+		return
+	var state := skill_swipe_preview_states[offset] as Dictionary
+	if state == null:
+		return
+	await get_tree().process_frame
+	if token != skill_swipe_preview_module_reveal_token or offset != skill_swipe_preview_offset:
+		return
+	_update_skill_swipe_preview_state(state, 0.0, true)
+	var modules_root := state.get("modules_root") as Control
+	if modules_root != null and is_instance_valid(modules_root):
+		modules_root.visible = true
+		modules_root.modulate.a = 1.0
+
+
+func _force_show_skill_swipe_preview_modules(offset: int) -> void:
+	if not skill_swipe_preview_states.has(offset):
+		return
+	var state := skill_swipe_preview_states[offset] as Dictionary
+	if state == null:
+		return
+	if not bool(state.get("prewarmed", false)):
+		_update_skill_swipe_preview_state(state, 0.0, true)
+	var modules_root := state.get("modules_root") as Control
+	if modules_root != null and is_instance_valid(modules_root):
+		modules_root.visible = true
+		modules_root.modulate.a = 1.0
 
 
 func _activity_start_tip_note(content_width: float) -> Control:
@@ -6791,7 +7003,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	var card_root := Control.new()
 	card_root.custom_minimum_size = Vector2(content_width, PASSIVE_MODULE_CARD_HEIGHT)
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card_root.clip_contents = false
+	card_root.clip_contents = not interactive
 	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
 
 	var pop_card := Control.new()
@@ -7048,6 +7260,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	var card := {
 		"passive": true,
 		"root": card_root,
+		"skill_id": skill_id,
 		"pop": pop_card,
 		"button": collect_button,
 		"bg": bg,
@@ -7568,7 +7781,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var card_root := Control.new()
 	card_root.custom_minimum_size = Vector2(content_width, ACTION_CARD_HEIGHT)
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card_root.clip_contents = false
+	card_root.clip_contents = true
 	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var pop_card := Control.new()
@@ -7679,6 +7892,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	medal.z_index = 21
 	art_panel.add_child(medal)
 	var mastery_progress := _progress(Color("#f4bf35"), 56)
+	mastery_progress.border_color = COLOR_INK
 	mastery_progress.easing_speed = 5.0
 	mastery_progress.z_index = 20
 	copy.add_child(mastery_progress)
@@ -7712,6 +7926,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	_connect_activity_lock_handler(lock_overlay, skill_id, str(action.get("id", "")))
 	var card := {
 		"root": card_root,
+		"skill_id": skill_id,
 		"pop": pop_card,
 		"button": null,
 		"bg": bg,
@@ -7929,19 +8144,88 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	if root == null:
 		return
 	var pop := card.get("pop") as Control
+	var expand_from_zero := card.has("preview_enter_target_height")
+	var target_height := float(card.get("preview_enter_target_height", root.custom_minimum_size.y))
+	root.visible = true
 	root.modulate = Color(1, 1, 1, 0)
+	if expand_from_zero:
+		var collapsed_size := root.custom_minimum_size
+		collapsed_size.y = 0.0
+		root.custom_minimum_size = collapsed_size
+		root.clip_contents = true
 	if pop != null:
 		pop.position.y = 34.0
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(root, "modulate:a", 1.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if expand_from_zero:
+		tween.tween_property(root, "custom_minimum_size:y", target_height, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if pop != null:
 		tween.tween_property(pop, "position:y", 0.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.finished.connect(func():
 		root.modulate = Color.WHITE
+		if expand_from_zero:
+			var final_size := root.custom_minimum_size
+			final_size.y = target_height
+			root.custom_minimum_size = final_size
+			root.clip_contents = bool(card.get("preview_enter_original_clip", false))
+			card.erase("preview_enter_target_height")
+			card.erase("preview_enter_original_clip")
 		if pop != null and is_instance_valid(pop):
 			pop.position.y = 0.0
 	)
+
+
+func _stage_activity_preview_enter(card: Dictionary) -> void:
+	var root := card.get("root") as Control
+	if root == null:
+		return
+	var target_height := root.custom_minimum_size.y
+	if target_height <= 0.0:
+		target_height = root.size.y
+	if target_height <= 0.0:
+		target_height = PASSIVE_MODULE_CARD_HEIGHT if bool(card.get("passive", false)) else ACTION_CARD_HEIGHT
+	card["preview_enter_target_height"] = target_height
+	card["preview_enter_original_clip"] = root.clip_contents
+	card["locked_preview_hidden"] = false
+	var collapsed_size := root.custom_minimum_size
+	collapsed_size.y = 0.0
+	root.custom_minimum_size = collapsed_size
+	root.visible = true
+	root.modulate = Color(1, 1, 1, 0)
+	root.clip_contents = true
+	var pop := card.get("pop") as Control
+	if pop != null:
+		pop.position.y = 34.0
+
+
+func _sync_locked_activity_preview_presence(card: Dictionary, skill_id: String, action: Dictionary) -> void:
+	var root := card.get("root") as Control
+	if root == null:
+		return
+	var unlocked := _is_action_unlocked(skill_id, action)
+	var action_id := str(action.get("id", ""))
+	var hidden_preview := not unlocked and action_id == _first_locked_action_id(skill_id) and not _locked_activity_preview_available() and not locked_activity_preview_reveal_pending
+	if hidden_preview:
+		card["locked_preview_hidden"] = true
+		var collapsed_size := root.custom_minimum_size
+		if collapsed_size.y > 0.0:
+			card["locked_preview_target_height"] = collapsed_size.y
+		collapsed_size.y = 0.0
+		root.custom_minimum_size = collapsed_size
+		root.modulate = Color(1, 1, 1, 0)
+		root.visible = false
+		root.clip_contents = true
+		return
+	if bool(card.get("locked_preview_hidden", false)):
+		card["locked_preview_hidden"] = false
+		root.visible = true
+		var restored_size := root.custom_minimum_size
+		restored_size.y = float(card.get("locked_preview_target_height", PASSIVE_MODULE_CARD_HEIGHT if bool(card.get("passive", false)) else ACTION_CARD_HEIGHT))
+		root.custom_minimum_size = restored_size
+		root.modulate = Color.WHITE
+		root.clip_contents = bool(card.get("preview_enter_original_clip", false))
+		card.erase("locked_preview_target_height")
 
 
 func _prepare_locked_activity_preview_fade(card: Dictionary, skill_id: String, action: Dictionary) -> void:
@@ -7951,13 +8235,7 @@ func _prepare_locked_activity_preview_fade(card: Dictionary, skill_id: String, a
 		return
 	if _is_action_unlocked(skill_id, action):
 		return
-	var root := card.get("root") as Control
-	if root == null:
-		return
-	root.modulate = Color(1, 1, 1, 0)
-	var pop := card.get("pop") as Control
-	if pop != null:
-		pop.position.y = 34.0
+	_stage_activity_preview_enter(card)
 	card["locked_preview_fade_in_pending"] = true
 	card["locked_preview_reveal_skill_id"] = skill_id
 	locked_activity_preview_fade_play_pending = true
@@ -7965,16 +8243,30 @@ func _prepare_locked_activity_preview_fade(card: Dictionary, skill_id: String, a
 
 func _play_pending_locked_activity_preview_reveals() -> void:
 	for raw_card in action_cards.values():
-		_play_locked_activity_preview_reveal(raw_card as Dictionary)
+		var card := raw_card as Dictionary
+		_prepare_pending_locked_activity_preview_card(card)
+		_play_locked_activity_preview_reveal(card)
 	for raw_state in skill_swipe_preview_states.values():
 		var state := raw_state as Dictionary
 		if state == null:
 			continue
 		var preview_cards := state.get("action_cards", []) as Array
 		for raw_card in preview_cards:
-			_play_locked_activity_preview_reveal(raw_card as Dictionary)
+			var card := raw_card as Dictionary
+			_prepare_pending_locked_activity_preview_card(card)
+			_play_locked_activity_preview_reveal(card)
 	locked_activity_preview_fade_play_pending = false
 	locked_activity_preview_reveal_pending = not locked_activity_preview_reveal_skill_ids.is_empty()
+
+
+func _prepare_pending_locked_activity_preview_card(card: Dictionary) -> void:
+	if card == null:
+		return
+	var skill_id := str(card.get("skill_id", ""))
+	var action := card.get("action", {}) as Dictionary
+	if skill_id.is_empty() or action.is_empty():
+		return
+	_prepare_locked_activity_preview_fade(card, skill_id, action)
 
 
 func _play_locked_activity_preview_reveal(card: Dictionary) -> void:
@@ -7994,6 +8286,7 @@ func _refresh_skill_detail_after_activity_unlock_ceremony() -> void:
 		return
 	var preview_id := activity_unlock_preview_after_ceremony_id
 	var restore_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
+	_begin_skill_detail_refresh_cover()
 	_render_screen(false, restore_scroll)
 	_update_ui(0.0, true)
 	if preview_id.is_empty():
@@ -8036,8 +8329,8 @@ func _process_action(delta: float) -> void:
 		running_action_id = ""
 		action_progress = 0.0
 		return
-	var cost := _effective_stamina(action)
-	var has_stamina_for_action := _stamina(running_skill_id) >= cost
+	var cost := _effective_stamina(running_skill_id, action)
+	var has_stamina_for_action := _stamina_value(running_skill_id) + 0.0001 >= cost
 	var speed_mult := 1.0 if has_stamina_for_action else LOW_STAMINA_ACTION_SPEED_MULT
 	if not has_stamina_for_action:
 		var low_stamina_message := _low_stamina_training_text(action)
@@ -8049,8 +8342,9 @@ func _process_action(delta: float) -> void:
 		return
 	var bonus_snapshot_before := _capture_visible_bonus_snapshot()
 	action_progress = 0.0
-	if _stamina(running_skill_id) >= cost:
-		stamina[running_skill_id] = _stamina(running_skill_id) - cost
+	if _stamina_value(running_skill_id) + 0.0001 >= cost:
+		stamina[running_skill_id] = maxf(0.0, _stamina_value(running_skill_id) - cost)
+		_sync_stamina_bank(running_skill_id)
 	var reward_key := _action_key(running_skill_id, running_action_id)
 	var old_mastery_level := _mastery_level(running_skill_id, running_action_id)
 	var mastery_reward := _mastery_reward_for_action(running_skill_id, running_action_id, action)
@@ -8144,7 +8438,7 @@ func _capture_visible_bonus_snapshot() -> Dictionary:
 			continue
 		action_stats[key] = {
 			"xp": _effective_xp(action, skill_id),
-			"stamina": _effective_stamina(action),
+			"stamina": _effective_stamina(skill_id, action),
 			"seconds": _effective_seconds(skill_id, action),
 			"base_seconds": maxf(0.1, float(action.get("seconds", 1.0))),
 			"success": _success_chance(skill_id, action)
@@ -8189,10 +8483,10 @@ func _emphasize_visible_bonus_changes(before: Dictionary) -> void:
 		if new_xp > old_xp:
 			_emphasize_action_stat_bonus(card, "xp", "+%s XP" % (new_xp - old_xp))
 			emphasized_card_keys[key] = true
-		var old_stamina := int(old_stats.get("stamina", _effective_stamina(action)))
-		var new_stamina := _effective_stamina(action)
-		if new_stamina < old_stamina:
-			_emphasize_action_stat_bonus(card, "stamina", "-%s STAM" % (old_stamina - new_stamina))
+		var old_stamina := float(old_stats.get("stamina", _effective_stamina(skill_id, action)))
+		var new_stamina := _effective_stamina(skill_id, action)
+		if new_stamina + 0.0001 < old_stamina:
+			_emphasize_action_stat_bonus(card, "stamina", "-%s STAM" % _format_stamina_cost_detail(old_stamina - new_stamina))
 			emphasized_card_keys[key] = true
 		var old_seconds := float(old_stats.get("seconds", _effective_seconds(skill_id, action)))
 		var new_seconds := _effective_seconds(skill_id, action)
@@ -8307,21 +8601,14 @@ func _apply_stamina_regen_seconds(seconds: float, allow_gauge_boost := false) ->
 	var max_stamina := _max_stamina()
 	for def in skill_defs:
 		var skill_id := str(def["id"])
-		if _stamina(skill_id) >= max_stamina:
+		if _stamina_value(skill_id) >= float(max_stamina):
 			stamina_bank[skill_id] = 0.0
 			continue
 		var regen_delta := seconds
 		if allow_gauge_boost and skill_id == stamina_gauge_boost_skill_id:
 			regen_delta *= stamina_gauge_regen_multiplier
-		stamina_bank[skill_id] = maxf(0.0, float(stamina_bank.get(skill_id, 0.0))) + regen_delta
-		var bank_value := float(stamina_bank[skill_id])
-		if bank_value >= STAMINA_REGEN_SECONDS:
-			var gained := int(floor(bank_value / STAMINA_REGEN_SECONDS))
-			stamina[skill_id] = mini(max_stamina, _stamina(skill_id) + gained)
-			if _stamina(skill_id) >= max_stamina:
-				stamina_bank[skill_id] = 0.0
-			else:
-				stamina_bank[skill_id] = fmod(bank_value, STAMINA_REGEN_SECONDS)
+		stamina[skill_id] = minf(float(max_stamina), _stamina_value(skill_id) + regen_delta / STAMINA_REGEN_SECONDS)
+		_sync_stamina_bank(skill_id)
 
 
 func _regen_ring_ease(raw_value: float) -> float:
@@ -8333,9 +8620,7 @@ func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant 
 		return
 	var maximum := _max_stamina()
 	var stamina_value := _stamina(skill_id)
-	var circle_value := 1.0
-	if stamina_value < maximum:
-		circle_value = float(stamina_bank.get(skill_id, 0.0)) / STAMINA_REGEN_SECONDS
+	var circle_value := _stamina_fraction(skill_id)
 	circle.set_theme_color(_skill_theme_color(skill_id))
 	circle.set_stamina(stamina_value, maximum, instant, circle_value)
 	circle.set_value(_regen_ring_ease(circle_value), instant)
@@ -8370,7 +8655,7 @@ func _start_action(skill_id: String, action_id: String) -> bool:
 		_record_music_flow_start()
 	_play(activity_start_player)
 	_pop_activity_button(_action_key(skill_id, action_id))
-	if _stamina(skill_id) < _effective_stamina(action):
+	if _stamina_value(skill_id) + 0.0001 < _effective_stamina(skill_id, action):
 		_set_result(_low_stamina_training_text(action))
 	else:
 		_set_result("%s started." % action["name"])
@@ -10328,7 +10613,7 @@ func _init_state() -> void:
 	for def in skill_defs:
 		var skill_id := str(def["id"])
 		skills[skill_id] = {"xp": 0, "level": 1}
-		stamina[skill_id] = BASE_MAX_STAMINA
+		stamina[skill_id] = float(BASE_MAX_STAMINA)
 		stamina_bank[skill_id] = 0.0
 		for action in actions_by_skill.get(skill_id, []):
 			if _is_passive_action(action as Dictionary):
@@ -10345,7 +10630,7 @@ func _validate_state() -> void:
 		if not skills.has(skill_id):
 			skills[skill_id] = {"xp": 0, "level": 1}
 		if not stamina.has(skill_id):
-			stamina[skill_id] = _max_stamina()
+			stamina[skill_id] = float(_max_stamina())
 		if not stamina_bank.has(skill_id):
 			stamina_bank[skill_id] = 0.0
 		for action in actions_by_skill.get(skill_id, []):
@@ -10463,10 +10748,10 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 	var mastery_total := 0.0
 	var logs_spent := 0
 	while remaining > 0.001:
-		var cost := _effective_stamina(action)
+		var cost := _effective_stamina(skill_id, action)
 		var action_seconds := _effective_seconds(skill_id, action)
 		var progress := clampf(action_progress, 0.0, 0.999)
-		var stamina_ready := _stamina(skill_id) >= cost
+		var stamina_ready := _stamina_value(skill_id) + 0.0001 >= cost
 		var speed_mult := 1.0 if stamina_ready else LOW_STAMINA_ACTION_SPEED_MULT
 		var seconds_to_complete := maxf(0.001, action_seconds * (1.0 - progress) / speed_mult)
 		var seconds_until_ready := INF
@@ -10486,8 +10771,9 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 			action_progress = clampf(progress + step / action_seconds * speed_mult, 0.0, 0.999)
 			continue
 		action_progress = 0.0
-		if _stamina(skill_id) >= cost:
-			stamina[skill_id] = maxi(0, _stamina(skill_id) - cost)
+		if _stamina_value(skill_id) + 0.0001 >= cost:
+			stamina[skill_id] = maxf(0.0, _stamina_value(skill_id) - cost)
+			_sync_stamina_bank(skill_id)
 		var completion := _grant_offline_action_completion(skill_id, action_id, action)
 		completions += 1
 		if bool(completion.get("success", false)):
@@ -10521,13 +10807,11 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 	}
 
 
-func _seconds_until_stamina_cost(skill_id: String, cost: int) -> float:
-	if _stamina(skill_id) >= cost:
+func _seconds_until_stamina_cost(skill_id: String, cost: float) -> float:
+	if _stamina_value(skill_id) + 0.0001 >= cost:
 		return 0.0
-	var missing := cost - _stamina(skill_id)
-	var bank_seconds := clampf(float(stamina_bank.get(skill_id, 0.0)), 0.0, STAMINA_REGEN_SECONDS)
-	var first_stamina_seconds := maxf(0.0, STAMINA_REGEN_SECONDS - bank_seconds)
-	return first_stamina_seconds + float(maxi(0, missing - 1)) * STAMINA_REGEN_SECONDS
+	var missing := cost - _stamina_value(skill_id)
+	return maxf(0.0, missing * STAMINA_REGEN_SECONDS)
 
 
 func _grant_offline_action_completion(skill_id: String, action_id: String, action: Dictionary) -> Dictionary:
@@ -10641,12 +10925,15 @@ func load_game() -> void:
 	if typeof(loaded_stamina) == TYPE_DICTIONARY:
 		for skill_id in loaded_stamina.keys():
 			if stamina.has(skill_id):
-				stamina[skill_id] = clampi(int(loaded_stamina[skill_id]), 0, _max_stamina())
+				stamina[skill_id] = clampf(float(loaded_stamina[skill_id]), 0.0, float(_max_stamina()))
 	var loaded_bank = data.get("stamina_bank", {})
 	if typeof(loaded_bank) == TYPE_DICTIONARY:
 		for skill_id in loaded_bank.keys():
 			if stamina_bank.has(skill_id):
 				stamina_bank[skill_id] = float(loaded_bank[skill_id])
+				if floor(_stamina_value(str(skill_id))) == _stamina_value(str(skill_id)) and float(stamina_bank[skill_id]) > 0.0:
+					stamina[skill_id] = minf(float(_max_stamina()), _stamina_value(str(skill_id)) + clampf(float(stamina_bank[skill_id]) / STAMINA_REGEN_SECONDS, 0.0, 0.9999))
+				_sync_stamina_bank(str(skill_id))
 	log_currency = maxi(0, int(data.get("log_currency", log_currency)))
 	var loaded_passive_modules = data.get("passive_modules", {})
 	if typeof(loaded_passive_modules) == TYPE_DICTIONARY:
@@ -10706,6 +10993,12 @@ func _skill_name(skill_id: String) -> String:
 	return skill_id.capitalize()
 
 
+func _skill_detail_title_font_size(skill_id: String) -> int:
+	if skill_id == "woodcutting":
+		return SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE
+	return SKILL_DETAIL_TITLE_FONT_SIZE
+
+
 func _skill_theme_color(skill_id: String) -> Color:
 	return SKILL_THEME_COLORS.get(skill_id, COLOR_BLUE)
 
@@ -10733,9 +11026,28 @@ func _invalidate_stat_caches() -> void:
 	max_stamina_cache_valid = false
 
 
-func _stamina(skill_id: String) -> int:
+func _stamina_value(skill_id: String) -> float:
 	var maximum := _max_stamina()
-	return clampi(int(stamina.get(skill_id, maximum)), 0, maximum)
+	return clampf(float(stamina.get(skill_id, maximum)), 0.0, float(maximum))
+
+
+func _stamina(skill_id: String) -> int:
+	return clampi(int(floor(_stamina_value(skill_id))), 0, _max_stamina())
+
+
+func _stamina_fraction(skill_id: String) -> float:
+	var current := _stamina_value(skill_id)
+	if current >= float(_max_stamina()) - 0.0001:
+		return 1.0
+	return clampf(current - floor(current), 0.0, 1.0)
+
+
+func _sync_stamina_bank(skill_id: String) -> void:
+	if _stamina_value(skill_id) >= float(_max_stamina()) - 0.0001:
+		stamina[skill_id] = float(_max_stamina())
+		stamina_bank[skill_id] = 0.0
+		return
+	stamina_bank[skill_id] = _stamina_fraction(skill_id) * STAMINA_REGEN_SECONDS
 
 
 func _xp_for_level(level: int) -> int:
@@ -10747,10 +11059,13 @@ func _xp_for_level(level: int) -> int:
 func _xp_progress(skill_id: String) -> Dictionary:
 	var level := _skill_level(skill_id)
 	var xp_total := int(skills.get(skill_id, {}).get("xp", 0))
+	var start := _xp_for_level(level)
 	var end := _xp_for_level(level + 1)
 	var current := clampi(xp_total, 0, end)
 	var needed := maxi(1, end)
-	return {"current": current, "needed": needed, "pct": clampf(float(current) / float(needed) * 100.0, 0.0, 100.0)}
+	var level_current := clampi(xp_total - start, 0, end - start)
+	var level_needed := maxi(1, end - start)
+	return {"current": current, "needed": needed, "pct": clampf(float(level_current) / float(level_needed) * 100.0, 0.0, 100.0)}
 
 
 func _recalculate_level(skill_id: String) -> void:
@@ -10995,8 +11310,29 @@ func _recalculate_mastery(key: String) -> void:
 		_invalidate_stat_caches()
 
 
-func _effective_stamina(action: Dictionary) -> int:
-	return maxi(1, int(action.get("stamina", 1)))
+func _activity_medal_stamina_cost_reduction(skill_id: String, action: Dictionary) -> float:
+	var action_id := str(action.get("id", ""))
+	if skill_id.is_empty() or action_id.is_empty():
+		return 0.0
+	var medal_tier := clampi(_mastery_level(skill_id, action_id), 0, MASTERY_MAX_LEVEL)
+	return clampf(float(medal_tier) * 0.01, 0.0, 0.95)
+
+
+func _activity_medal_rate_bonus(skill_id: String, action: Dictionary) -> float:
+	var action_id := str(action.get("id", ""))
+	if skill_id.is_empty() or action_id.is_empty():
+		return 0.0
+	return float(clampi(_mastery_level(skill_id, action_id), 0, MASTERY_MAX_LEVEL))
+
+
+func _effective_stamina(skill_id: String, action: Dictionary) -> float:
+	var base_stamina := maxi(1, int(action.get("stamina", 1)))
+	var medal_reduction := _activity_medal_stamina_cost_reduction(skill_id, action)
+	return maxf(0.01, float(base_stamina) * (1.0 - medal_reduction))
+
+
+func _display_stamina_cost(skill_id: String, action: Dictionary) -> int:
+	return maxi(1, int(round(_effective_stamina(skill_id, action))))
 
 
 func _effective_seconds(skill_id: String, action: Dictionary) -> float:
@@ -11302,7 +11638,9 @@ func _action_key(skill_id: String, action_id: String) -> String:
 
 
 func _success_chance(skill_id: String, action: Dictionary) -> float:
-	return clampf(float(action.get("success", 90.0)) + _global_medal_bonus("success_bonus"), 5.0, 99.0)
+	var base_success := float(action.get("success", 90.0))
+	var medal_success := _global_medal_bonus("success_bonus") + _activity_medal_rate_bonus(skill_id, action)
+	return clampf(base_success + medal_success, 5.0, 100.0)
 
 
 func _res_path(path: String) -> String:
@@ -11327,6 +11665,10 @@ func _slug(text: String) -> String:
 
 func _format_seconds(seconds: float) -> String:
 	return "%.1f" % seconds if seconds < 10.0 else "%.0f" % seconds
+
+
+func _format_stamina_cost_detail(value: float) -> String:
+	return "%.2f" % maxf(0.0, value)
 
 
 func _format_significant_digits(value: float, digits := 3) -> String:
@@ -12863,7 +13205,7 @@ func _record_music_flow_start() -> void:
 	flow_heat = clampf(flow_heat + 2.5, 0.0, 36.0)
 
 
-func _record_music_flow_action(success: bool, streak_step: int, streak_bonus: bool, medal_unlocked: bool, skill_level_up: bool, stamina_cost: int) -> void:
+func _record_music_flow_action(success: bool, streak_step: int, streak_bonus: bool, medal_unlocked: bool, skill_level_up: bool, stamina_cost: float) -> void:
 	flow_actions_taken += 1
 	if music_cycle_active:
 		flow_idle_seconds = 0.0
@@ -12893,7 +13235,7 @@ func _record_music_flow_action(success: bool, streak_step: int, streak_bonus: bo
 		_start_music_cycle()
 
 
-func _maybe_trigger_music_quiet_break(stamina_cost: int) -> bool:
+func _maybe_trigger_music_quiet_break(stamina_cost: float) -> bool:
 	if stamina_cost >= MUSIC_QUIET_BREAK_STAMINA_CEILING or music_lockout_seconds > 0.0:
 		return false
 	if not music_cycle_active and _music_layers_are_silent():
@@ -12971,11 +13313,11 @@ func _music_flow_target_intensity() -> int:
 	return intensity
 
 
-func _active_action_stamina_cost() -> int:
+func _active_action_stamina_cost() -> float:
 	if running_skill_id.is_empty() or running_action_id.is_empty():
-		return 0
+		return 0.0
 	var action := _action_data(running_skill_id, running_action_id)
-	return 0 if action.is_empty() else _effective_stamina(action)
+	return 0.0 if action.is_empty() else _effective_stamina(running_skill_id, action)
 
 
 func _music_targets_for_intensity(intensity: int) -> Array:
