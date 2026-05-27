@@ -41,7 +41,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
     "success_formula": "max(20, skill.success_start - action_index_0_based * 2)",
     "skill_level_xp_formula": "skill_xp_required(level) = round(22 * pow(level - 1, 2.08)); level starts at 1",
     "max_stamina_formula": "max_stamina = base_max_stamina + floor(cumulative_skill_levels / 10)",
-    "mastery_xp_formula": "mastery_xp_required(level) = round(18 * pow(level, 2.05)); mastery starts at 0 and caps at 10",
+    "mastery_xp_formula": "mastery_xp_required(level) = round(18 * pow(level, 2.05)); mastery starts at 0 and caps at 20",
     "mastery_xp_reward_formula": "mastery_xp_reward = 7 + ceil(base_seconds * 1.5) on successful action completion",
     "level_up_effects": [
       "Skill level unlocks activities whose unlock level is now met.",
@@ -49,9 +49,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "Every 10 cumulative skill levels adds +1 max stamina to every skill."
     ],
     "mastery_level_up_effects": [
-      "Each activity mastery level awards that tier medal for that activity, from Bronze through Heavenly only.",
-      "Mastery is presented as visual progress on the action card: medal state plus progress bar.",
-      "The first globally earned medal of each tier unlocks a permanent global buff. Bronze, Sapphire, and Demonic increase max stamina; Silver, Emerald, and Heavenly increase XP; Gold and Ruby increase action speed; Platinum and Diamond increase success rate."
+      "Each activity mastery level awards that tier medal for that activity, from Bronze through Elite Heavenly only.",
+      "Mastery is presented as visual progress on the action card: medal state plus progress bar until the activity reaches max mastery.",
+      "The first globally earned medal of each tier unlocks a permanent global buff. Bronze, Sapphire, Demonic, Elite Bronze, Elite Sapphire, and Elite Demonic increase max stamina; Silver, Emerald, Heavenly, Elite Silver, Elite Emerald, and Elite Heavenly increase XP; Gold, Ruby, Elite Gold, and Elite Ruby increase action speed; Platinum, Diamond, Elite Platinum, and Elite Diamond increase success rate."
     ]
   },
   "skills": [

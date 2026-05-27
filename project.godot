@@ -20,8 +20,8 @@ boot_splash/image="res://assets/loading/idle-elite-loading-screen.png"
 
 window/size/viewport_width=2160
 window/size/viewport_height=3840
-window/size/window_width_override=475
-window/size/window_height_override=845
+window/size/window_width_override=627
+window/size/window_height_override=1115
 window/stretch/mode="viewport"
 window/stretch/aspect="expand"
 window/handheld/orientation=1
