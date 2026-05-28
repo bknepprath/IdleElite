@@ -11,8 +11,8 @@ Use this for the current closed test release candidate.
 ## Build And Local Test
 
 - Run `.\scripts\build-android-release.ps1` if rebuilding.
-- Verify `builds/android/idle-elite-release-v0.1.8-code9.aab` exists.
-- Run `jarsigner -verify builds\android\idle-elite-release-v0.1.8-code9.aab`.
+- Verify `builds/android/idle-elite-release-v0.1.9-code10.aab` exists.
+- Run `jarsigner -verify builds\android\idle-elite-release-v0.1.9-code10.aab`.
 - Run `.\scripts\test-release-aab.ps1 -UninstallExisting` with an emulator or phone connected.
 - Launch the app and confirm the release build no longer says `Ad Not Configured`.
 
@@ -30,7 +30,7 @@ Use this for the current closed test release candidate.
 - Create the app as `Idle Elite`.
 - Confirm package name is `com.idleelite.game`.
 - Enroll in Play App Signing.
-- Upload `builds/android/idle-elite-release-v0.1.8-code9.aab`.
+- Upload `builds/android/idle-elite-release-v0.1.9-code10.aab`.
 - Add the 512x512 icon from `docs/play-store/assets/app-icon-512.png`.
 - Add the feature graphic from `docs/play-store/assets/feature-graphic-1024x500.png`.
 - Add phone screenshots from `docs/play-store/assets/screenshot-*.png`.

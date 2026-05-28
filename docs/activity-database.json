@@ -38,13 +38,14 @@
     "seconds_formula": "(1 + stamina * 0.75 + unlock * 0.06) * skill.time_scale",
     "success_formula": "max(20, skill.success_start - action_index_0_based * 2)",
     "skill_level_xp_formula": "skill_xp_required(level) = round(22 * pow(level - 1, 2.08)); level starts at 1",
-    "max_stamina_formula": "max_stamina = base_max_stamina + floor(cumulative_skill_levels / 10)",
+    "max_stamina_formula": "max_stamina(skill) = base_max_stamina + floor(cumulative_skill_levels / 10) + global medal/achievement bonuses + floor(skill_medals_earned / 3)",
     "mastery_xp_formula": "mastery_xp_required(level) = round(18 * pow(level, 2.05)); mastery starts at 0 and caps at 20",
     "mastery_xp_reward_formula": "mastery_xp_reward = 7 + ceil(base_seconds * 1.5) on successful action completion",
     "level_up_effects": [
       "Skill level unlocks activities whose unlock level is now met.",
       "Every skill level contributes to cumulative skill levels.",
-      "Every 10 cumulative skill levels adds +1 max stamina to every skill."
+      "Every 10 cumulative skill levels adds +1 max stamina to every skill.",
+      "Every 3 medals earned within a skill adds +1 max stamina to that skill."
     ],
     "mastery_level_up_effects": [
       "Each activity mastery level awards that tier medal for that activity, from Bronze through Elite Heavenly only.",
@@ -1495,7 +1496,7 @@
           "id": "stack-logs-1",
           "kind": "passive_item_collect",
           "tier": 2,
-          "name": "Stack Logs #1",
+          "name": "Collect Logs #1",
           "unlock": 2,
           "stamina": 0,
           "seconds": 240,

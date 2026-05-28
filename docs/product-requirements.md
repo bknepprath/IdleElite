@@ -1,505 +1,396 @@
-# Idle Elite Rebuild PRD
+# Idle Elite Current Product Requirements
+
+Updated: 2026-05-27
+
+This PRD replaces the original rebuild plan. The game is no longer just a target concept: it already has a portrait mobile shell, five skills, a shared activity system, mastery medals, stamina rotation, offline progress, achievements, audio, rewarded-ad plumbing, and Play Store screenshot positioning. This document defines the product from the current build forward.
 
 ## Product Summary
 
-`Idle Elite` is a mobile idle RPG about becoming an elite all-rounder by training many small activities instead of only optimizing one endless button. Every skill has its own stamina pool. Activities consume that skill's stamina, then reward XP, cash, items, and upgrade materials. Because each skill runs out of stamina independently, the player is nudged to rotate between activities often: fight until tired, go fish, chop wood, rob, build, claim upgrades, then come back stronger.
+`Idle Elite` is a handmade mobile idle RPG about becoming an elite all-rounder through small jobs and huge progress. The player trains five job skills, starts short activities, spends each skill's stamina, unlocks better activities, earns XP and mastery, and comes back later to collect offline progress.
 
-The game should preserve the simple charm of the 2012 Flash original while becoming polished enough for Google Play: readable portrait UI, satisfying progress bars, clear next activities, offline progress, rewarded ad boosts, and room for frequent content updates.
+The current product is not a generic cash-idler. Its strongest identity is:
 
-## Product Goals
+- Five parallel job ladders.
+- A rotate-when-tired stamina loop.
+- Big illustrated activity cards.
+- Medal mastery and global buffs.
+- Cozy handmade mobile UI with intentionally silly job names.
 
-- Rebuild the original `Fight`, `Thieving`, and `Build` structure in Godot.
-- Add `Woodcutting` and `Fishing` as core starter skills.
-- Make skill-specific stamina the main activity-switching mechanic.
-- Give every skill a clear fantasy, activity ladder, upgrade path, and collectible rewards.
-- Design for short mobile sessions of 30 seconds to 5 minutes.
-- Support longer idle progression through offline rewards and automation upgrades.
-- Prepare monetization with rewarded ads that feel helpful, not hostile.
+The next product phase should sharpen those existing strengths instead of adding unrelated systems too early.
 
-## Player Fantasy
+## Current Screenshot Evidence
 
-The player starts as a scrappy nobody shouting, `I MUST BECOME AN IDLE ELITIST!` They grow into a ridiculous multi-skilled legend by training practical, weird, and increasingly elite activities across town.
+These are the current Play Store screenshots and should guide the public-facing product promise.
 
-Tone: lightly funny, sincere, handmade, and progression-heavy.
+![Train five skills](play-store/assets/screenshot-01-train-five-skills-1080x1920.png)
+
+![Rotate jobs](play-store/assets/screenshot-02-stamina-choices-1080x1920.png)
+
+![Level up fast](play-store/assets/screenshot-03-level-up-1080x1920.png)
+
+![Come back stronger](play-store/assets/screenshot-04-offline-progress-1080x1920.png)
+
+![Become elite](play-store/assets/screenshot-05-idle-elitist-1080x1920.png)
+
+### Screenshot Promises
+
+| Screenshot | Promise | Product Meaning |
+| --- | --- | --- |
+| Train Five Skills | Fight, fish, chop, build, and sneak upward. | Five skills must stay visible, distinct, and easy to compare. |
+| Rotate Jobs | Each skill has its own stamina. | The core session should naturally move players between jobs. |
+| Level Up Fast | XP and better actions arrive quickly. | Early levels must unlock visible new activity cards fast enough to hook. |
+| Come Back Stronger | Offline progress and upgrades continue the loop. | Returning after time away should produce a concrete reward summary. |
+| Become Elite | Handmade idle RPG, small jobs, huge progress. | Tone should remain cozy, funny, readable, and progression-heavy. |
+
+## Current Build Snapshot
+
+### Content
+
+- 5 skills: Fight, Thieving, Build, Woodcutting, Fishing.
+- 126 actions loaded from `docs/activity-database.json`.
+- 25 actions each for Fight, Thieving, Build, and Fishing.
+- 26 Woodcutting actions, including the current passive log module.
+- Unlocks currently run from level 1 through level 50, with Woodcutting extending to level 55.
+- Activity art and background references validate with no missing files.
+
+### Current Screens
+
+- Jobs/home surface with global level, skill list, stamina, active activity, and bottom navigation.
+- Skill detail surface with illustrated activity cards, progress bars, stat boxes, locked previews, chains, and padlocks.
+- Gear/boost surface with rewarded bonus plumbing and current tester bypass behavior.
+- Hero/achievement surface with total level, best activity, medal progress, global buffs, and achievement log.
+- Settings surface with audio controls, offline progress toggle, Discord/crash/report utility, and reset-data flow.
+- Offline summary modal for return-session feedback.
+
+### Current Systems
+
+- Table-driven skill/action loading from `docs/activity-database.json`.
+- Per-skill XP and level progression.
+- Global level as the sum of skill levels.
+- Per-skill stamina with fractional regen banking.
+- Action progress bars and success chance.
+- Low-stamina tired training at reduced speed.
+- Mastery XP per action.
+- 20 mastery medal tiers.
+- Activity medal bonuses for stamina, speed, success, and XP.
+- Global medal buffs unlocked by first medal tier earned across the account.
+- Manual activity unlocks through lock interaction once level requirements are met.
+- Achievements, achievement toasts, and achievement reward bonuses.
+- Woodcutting log passive module with collect, time, yield, capacity, and plank boost.
+- Offline active-action progress, stamina regen, passive production, and offline summary.
+- Rewarded ad boost plumbing for XP/speed bonus, with tester-disabled behavior in the current build.
+- Music/SFX buses, layered music flow, activity SFX, chain/lock SFX, passive SFX, and audio settings.
+- Persistent save/load in Godot `user://`.
+
+## Redefined Product Pillars
+
+### 1. Rotate, Do Not Camp Forever
+
+The game should make switching jobs feel natural, not punitive. A player who rotates should see more progress across more bars than a player who camps one tired action forever.
+
+Current issue to decide: tired training keeps activities moving at 20% speed when stamina is short. This is kind, but it weakens the rotation message unless tired rewards are clearly worse or UI messaging makes rotation feel smarter.
+
+### 2. Every Tap Should Move Something
+
+The player should always see at least one of these move after an action:
+
+- Activity progress.
+- Skill XP.
+- Mastery medal progress.
+- Stamina.
+- Global level.
+- Achievement progress.
+- Passive log storage or upgrade progress.
+
+Failure can happen, but it should still feel like the player learned, trained, or banked mastery.
+
+### 3. Activities Are Collectible Objects
+
+Activities are not just rows in a table. Each one has a name, art, background, unlock moment, mastery state, and medal history. The activity card is the heart of the game.
+
+Requirements:
+
+- Each unlocked action should feel like a new collectible card.
+- Locked actions should tease what is coming without overwhelming the first session.
+- Unlocking should remain tactile: lock, chain, reveal, sound, and scroll position should all support the moment.
+
+### 4. Mastery Is The Long Tail
+
+Skill levels unlock the ladder. Mastery medals make old activities worth revisiting.
+
+Requirements:
+
+- Medal progress must be readable on activity cards.
+- Medal rewards must be understandable from stat popups.
+- Global medal buffs should be visible in Hero/Achievements.
+- The player should understand that mastering any activity can improve the whole account.
+
+### 5. Come Back Stronger
+
+The current offline system is a product pillar, not a side feature. When the player returns, the game should explain what happened while away and offer a clear next action.
+
+Requirements:
+
+- Offline summary must include time away, active activity progress, XP/mastery gains, unlocked actions, achievements, and passive production when relevant.
+- Offline progress should respect the same stamina and tired-training rules as live play.
+- The offline progress toggle must stay easy to understand and recover from.
 
 ## Target Audience
 
-- Idle and incremental players who like checking in often.
-- RuneScape-style skill progression fans.
-- Mobile players who want satisfying upgrades without needing twitch skill.
-- Players who enjoy collecting resources, unlocks, titles, and passive bonuses.
+- Idle and incremental players who enjoy visible bars, unlock ladders, and long-term collection.
+- Mobile players who want 30-second to 5-minute sessions.
+- Players who enjoy RuneScape-like skill lists but want lighter touch.
+- Players who respond to handmade charm, silly job names, and cozy progression.
+
+The game should not chase players who want deep combat builds, heavy inventory management, or high-pressure gacha monetization.
 
 ## Core Loop
 
-1. Pick a skill.
-2. Choose an unlocked activity.
-3. Spend that skill's stamina.
-4. Gain XP, cash, and possible resources.
-5. Skill levels unlock better activities.
-6. Resources and cash buy upgrades.
-7. When stamina runs low, jump to another skill.
-8. Return later after stamina regenerates or use a reward boost.
+1. Open the game and scan five skills.
+2. Pick the skill with available stamina, a desirable unlock, or a favorite activity.
+3. Start an unlocked activity card.
+4. Watch progress fill.
+5. Resolve success/failure.
+6. Gain XP, mastery, and possible resource/progression effects.
+7. Spend or wait on stamina.
+8. Unlock new actions with level and lock interaction.
+9. Earn medals, achievements, and global buffs.
+10. Return later to offline progress and passive production.
 
 ```mermaid
 flowchart TD
-    A["Open Game"] --> B["Check Stamina Pools"]
-    B --> C["Choose Skill"]
-    C --> D["Run Activity"]
-    D --> E["Gain XP, Cash, Items"]
-    E --> F["Unlock Levels and Upgrades"]
-    F --> G{"Skill Stamina Low?"}
-    G -- "Yes" --> H["Switch Skill"]
-    G -- "No" --> D
-    H --> C
+    A["Open Idle Elite"] --> B["Scan skill stamina and levels"]
+    B --> C["Choose job"]
+    C --> D["Start activity card"]
+    D --> E["Progress bar fills"]
+    E --> F["Resolve success or failure"]
+    F --> G["Gain XP, mastery, and rewards"]
+    G --> H{"New unlock or medal?"}
+    H -- "Yes" --> I["Reveal activity, medal, buff, or achievement"]
+    H -- "No" --> J{"Stamina low?"}
+    I --> J
+    J -- "Yes" --> K["Rotate job or train tired"]
+    J -- "No" --> D
+    K --> B
 ```
 
-## Key Systems
+## Current Tuning Rules
 
-### Skill Identity Rule
+These are current implementation rules, not old design targets.
 
-Every skill must have a mechanical identity, not only a different name and loot table. A player should be able to feel the difference between training Woodcutting and Fishing within a few taps.
+| System | Current Rule |
+| --- | --- |
+| Base max stamina | 30 |
+| Stamina regen | 1 stamina every 12 seconds |
+| Max offline window | 8 hours |
+| Skill XP requirement | `round(22 * pow(level - 1, 2.08))` |
+| Max stamina growth | Base + floor(global level / 10) + global medal bonuses + achievement bonuses + skill medal bonuses |
+| Action time | Database seconds value, modified by speed bonuses |
+| Action success | Database success value + medal/global bonuses, clamped |
+| Tired training | Action continues at 20% speed when stamina is short |
+| Offline XP | Reduced multiplier for offline completion |
+| Mastery cap | 20 medal levels per activity |
 
-Each skill needs at least three identity levers:
+## Skill Requirements
 
-- Reward variance: steady, spiky, streak-based, jackpot-based, or choice-based.
-- XP pattern: fixed XP, variable XP, combo XP, failure XP, discovery XP, or delayed XP.
-- Stamina pattern: low-cost frequent actions, expensive bursts, stamina reservation, over-time commitments, or partial refunds.
-- Loot pattern: predictable materials, rare drops, quality tiers, item sets, or consumables.
-- Upgrade pattern: direct stat boosts, new sub-actions, automation, risk control, resource conversion, or better choices.
-- Session behavior: quick dump, careful selection, come-back timer, rotating checklist, or collection hunt.
+The skills already exist. The next phase should make their play identities clearer using existing data and UI.
 
-Design test: if two skills can swap their activity names and still play the same, at least one of them needs another mechanical rule.
+| Skill | Current Fantasy | Current Curve | Product Direction |
+| --- | --- | --- | --- |
+| Fight | Farm chores become personal confrontations. | 25 actions, Lv 1-50, success 95%-47%. | Make streaks and crits feel punchy and readable. |
+| Thieving | Tiny sneaks escalate into absurd heists. | 25 actions, Lv 1-50, success 96%-48%. | Add stronger jackpot/stealth identity later; keep early actions fast. |
+| Build | Fix, patch, build, and eventually construct ridiculous infrastructure. | 25 actions, Lv 1-50, success 86%-38%. | Tie Build to log/plank spending and permanent account improvement. |
+| Woodcutting | Reliable gathering and passive log production. | 26 actions, Lv 1-55, success 90%-42%. | Keep it the resource backbone; expand passive module use. |
+| Fishing | Pond catches grow into stranger waters. | 25 actions, Lv 1-50, XP scale higher than other skills. | Lean into variable catch quality once resources are deeper. |
 
-### Global Level
+## Resource And Economy Direction
 
-Global level is the sum of all skill levels.
+The current code has a concrete Woodcutting log currency and plank boost. Screenshots and store copy also use cash as a familiar idle-game framing, but the live product should not promise a deep cash economy until it exists as a clear sink/source loop.
 
-```text
-global_level = fight_level + thieving_level + build_level + woodcutting_level + fishing_level
-```
+Near-term requirement:
 
-Global level unlocks account-wide features:
+- Treat XP, stamina, mastery, medals, achievements, logs, passive production, and ad boost time as the real current economies.
+- Use cash language only where it is implemented or intentionally part of marketing art.
+- If cash returns as a core resource, it must have visible sources, sinks, and a reason to rotate jobs.
 
-| Global Level | Unlock |
-| ---: | --- |
-| 5 | Activity log |
-| 10 | Upgrade collection |
-| 15 | Offline reward multiplier |
-| 20 | Titles |
-| 30 | Prestige preview |
-| 50 | First prestige reset |
-
-### Skill XP
-
-Each skill levels independently. The original XP thresholds can seed the first balancing pass:
-
-| Level | Total XP Required |
-| ---: | ---: |
-| 1 | 0 |
-| 2 | 400 |
-| 3 | 1,300 |
-| 4 | 2,700 |
-| 5 | 4,800 |
-| 6 | 7,600 |
-| 7 | 11,200 |
-| 8 | 15,700 |
-| 9 | 21,100 |
-| 10 | 27,600 |
-
-After level 10, use a scaling formula:
-
-```text
-next_level_xp = round(300 * level ^ 2.15)
-```
-
-### Skill Stamina
-
-Each skill has its own stamina:
-
-```text
-max_stamina = 10 + skill_level * 5 + stamina_upgrades
-```
-
-Stamina regenerates independently over time.
-
-Initial tuning:
-
-| Value | Amount |
-| --- | ---: |
-| Base max stamina | 15 at skill level 1 |
-| Regen interval | 1 stamina every 20 seconds |
-| Offline regen | Yes |
-| Activity action style | idle activities use `Start`; active activities use one clear verb |
-
-### Activity Success
-
-Activities have a success chance, improved by skill level and upgrades. The original game used about 67%. Use that as the early baseline.
-
-```text
-success_chance = activity_base_chance + skill_level_bonus + upgrade_bonus
-```
-
-Failing still grants small XP so stamina never feels fully wasted.
-
-## Main Menu Design
-
-### Bottom Navigation
-
-Use a portrait-first layout with a persistent bottom tab bar.
-
-```text
-┌──────────────────────────────┐
-│ IDLE ELITE        Lv 12  $450 │
-├──────────────────────────────┤
-│ Daily Goal: Train 3 skills    │
-│ ███████░░░  2 / 3             │
-├──────────────────────────────┤
-│ FIGHT        12/20 stamina    │
-│ THIEVING      3/18 stamina    │
-│ BUILD        16/16 stamina    │
-│ WOODCUTTING   9/15 stamina    │
-│ FISHING      14/15 stamina    │
-├──────────────────────────────┤
-│ Active Skill Panel            │
-│ Activity cards / rewards      │
-│                              │
-├──────────────────────────────┤
-│ Jobs | Gear | Hero            │
-└──────────────────────────────┘
-```
-
-Tabs:
-
-- `Jobs`: skill list and activity cards.
-- `Gear`: upgrades, tools, equipment, passive boosters.
-- `Hero`: stats, titles, prestige, settings.
-
-### Jobs Screen
-
-```text
-┌──────────────────────────────┐
-│ Jobs                         │
-├──────────────────────────────┤
-│ Fight      Lv 3  7/25 stam   │
-│ Thieving   Lv 2  0/20 stam   │
-│ Build      Lv 4  18/30 stam  │
-│ Woodcut    Lv 1  12/15 stam  │
-│ Fishing    Lv 1  15/15 stam  │
-├──────────────────────────────┤
-│ FIGHT                         │
-│ XP █████░░░  980 / 1300       │
-│ Stamina ███░░  7 / 25         │
-│                              │
-│ [Spar With Dummy]             │
-│ Cost 1 stam  +5 XP  +$100     │
-│                              │
-│ [Patrol Alley]                │
-│ Cost 3 stam  +22 XP +$420     │
-│                              │
-│ [Start Patrol] [Reward Refill]│
-└──────────────────────────────┘
-```
-
-### Gear Screen
-
-```text
-┌──────────────────────────────┐
-│ Gear                         │
-├──────────────────────────────┤
-│ Tools                        │
-│ Rusty Axe      Woodcut +5%    │
-│ Bamboo Rod     Fishing +5%    │
-│ Training Gloves Fight +5%     │
-├──────────────────────────────┤
-│ Upgrades                     │
-│ [Sharper Tools]       $500    │
-│ [Bigger Pockets]      $750    │
-│ [Snack Bag]          $1200    │
-└──────────────────────────────┘
-```
-
-### Hero Screen
-
-```text
-┌──────────────────────────────┐
-│ Hero                         │
-├──────────────────────────────┤
-│ "Aspiring Idle Elitist"       │
-│ Global Lv 12                  │
-│ Total Cash $14,500            │
-│ Best Skill: Build Lv 4        │
-├──────────────────────────────┤
-│ Titles                       │
-│ Out-of-Breath Intern          │
-│ Snack-Powered Worker          │
-├──────────────────────────────┤
-│ Prestige                     │
-│ Elite Rank unlocks at Lv 50   │
-└──────────────────────────────┘
-```
-
-## Skill Activity Lists
-
-Activity tiers unlock by skill level. Exact numbers are first-pass design targets.
-
-### Skill Identity Matrix
-
-| Skill | Core Feel | XP Pattern | Loot Pattern | Stamina Pattern | Upgrade Focus |
-| --- | --- | --- | --- | --- | --- |
-| Fight | Risky bursts | streak and crit bonuses | trophies, gear shards, cash spikes | medium-cost bursts | crits, success, failure protection |
-| Thieving | Sneaky jackpots | modest XP plus Heat control | cash ranges, keys, rare relics | risk rises after failures | Heat reduction, jackpots, stealth |
-| Build | Permanent progress | steady predictable XP | project progress, town bonuses | planned multi-step spends | project speed, global passives |
-| Woodcutting | Reliable gathering | consistent XP | predictable wood grades | multi-hit durability actions | yield, stamina preserve, chop speed |
-| Fishing | Variable catches | catch-quality XP | fish quality tiers, food, trophies | patient casts and bait choices | rare catch, bait, stamina food |
-
-### Fight
-
-Fight is the high-variance, risk-and-reward skill. It pays well when it succeeds, gives bonus XP for streaks, and has more failure volatility than gathering skills. Fight should feel punchy: short bursts, visible crits, and big cash moments.
-
-Mechanical identity:
-
-- Higher cash per success than most skills.
-- Chance for `crit wins` that double cash and add trophy progress.
-- Failure still gives grit XP but no cash.
-- Streak bonuses reward doing several Fight actions in a row before switching.
-- Gear upgrades focus on success chance, crit chance, and reducing failure loss.
-
-| Unlock Level | Activity | Stamina | Base Success | Rewards |
-| ---: | --- | ---: | ---: | --- |
-| 1 | Punch Training Dummy | 1 | 85% | XP, small cash |
-| 2 | Spar With Local Rookie | 2 | 78% | XP, cash, bruised gloves |
-| 4 | Patrol Sketchy Alley | 3 | 72% | XP, cash, street tokens |
-| 7 | Clear Basement Rats | 4 | 68% | XP, cash, junk loot |
-| 10 | Enter Amateur Arena | 6 | 62% | XP, cash, arena badges |
-| 15 | Guard Merchant Caravan | 8 | 58% | XP, cash, trade crates |
-| 22 | Duel Rival Elitist | 10 | 54% | XP, rare gear shard |
-| 30 | Survive Elite Gauntlet | 15 | 48% | XP, premium trophy |
-
-Upgrade ideas:
-
-- `Training Gloves`: fight success chance.
-- `Protein Snacks`: fight stamina max.
-- `Combo Notebook`: extra XP from Fight.
-- `Arena Pass`: better cash from arena activities.
-
-### Thieving
-
-Thieving is the jackpot and stealth-management skill. It has the most uneven loot: many small wins, occasional huge finds, and special keys/relics that unlock upgrade branches. It should feel sneaky and opportunistic.
-
-Mechanical identity:
-
-- Cash rewards have wide ranges instead of fixed values.
-- Rare jackpot table on successful actions.
-- `Heat` meter rises on failures and temporarily lowers success chance.
-- Some upgrades reduce Heat or convert Heat into bonus XP.
-- Best loot comes from riskier actions, not simply higher XP rates.
-
-| Unlock Level | Activity | Stamina | Base Success | Rewards |
-| ---: | --- | ---: | ---: | --- |
-| 1 | Pick Up Loose Coins | 1 | 88% | tiny cash, XP |
-| 2 | Distract Fruit Stand | 2 | 80% | cash, snacks |
-| 4 | Pick Simple Lock | 3 | 72% | cash, lock scraps |
-| 7 | Lift Noble's Purse | 4 | 65% | cash, gems |
-| 10 | Rob Tiny Bank Desk | 6 | 58% | large cash, keys |
-| 15 | Crack Warehouse Safe | 8 | 52% | cash, upgrade parts |
-| 22 | Swipe Museum Relic | 10 | 46% | relics, high XP |
-| 30 | Shadow Heist | 15 | 40% | major cash, elite relic |
-
-Upgrade ideas:
-
-- `Quiet Shoes`: thieving success chance.
-- `Bigger Pockets`: more cash per success.
-- `Lockpick Set`: unlocks special lock activities.
-- `Fake Mustache`: reduces failure penalty.
-
-### Build
-
-Build is the planning and permanent-progress skill. It gives steadier XP than Thieving or Fight, but its most important rewards are projects that improve the rest of the game. Build should feel like investing in infrastructure.
-
-Mechanical identity:
-
-- Activities fill project progress bars instead of only dropping loot.
-- Project completion grants permanent bonuses.
-- XP is steady and predictable.
-- Build consumes materials from Woodcutting and Fishing upgrades later.
-- Some actions take multiple completions before the reward pays out.
-
-| Unlock Level | Activity | Stamina | Base Success | Rewards |
-| ---: | --- | ---: | ---: | --- |
-| 1 | Stack Bricks | 1 | 86% | XP, cash |
-| 2 | Patch Fence | 2 | 80% | XP, wood, cash |
-| 4 | Repair Small Shack | 3 | 73% | XP, planks, cash |
-| 7 | Build Market Stall | 4 | 68% | XP, passive cash bonus |
-| 10 | Upgrade Training Yard | 6 | 62% | XP, fight bonus |
-| 15 | Construct Fishing Pier | 8 | 58% | XP, fishing bonus |
-| 22 | Raise Guild Hall | 10 | 52% | XP, global bonus |
-| 30 | Build Elite Tower | 15 | 46% | XP, prestige resource |
-
-Upgrade ideas:
-
-- `Better Hammer`: build success chance.
-- `Blueprint Shelf`: construction XP.
-- `Worker Crew`: passive build stamina regen.
-- `Town Permits`: unlock town structures.
-
-### Woodcutting
-
-Woodcutting is the consistent resource-production skill. It should be the reliable backbone for upgrades and building costs. Compared with Fishing, Woodcutting has less jackpot randomness, more predictable material output, and more visible tool efficiency.
-
-Mechanical identity:
-
-- Low reward variance: chopping almost always produces useful wood.
-- Consistent XP per stamina, with small bonuses for tougher trees.
-- `Tree durability` allows multi-hit activities where each action chips toward a guaranteed log bundle.
-- Wood has grades, but drops are predictable by activity.
-- Upgrades improve yield, chop speed, and chance to preserve stamina.
-
-| Unlock Level | Activity | Stamina | Base Success | Rewards |
-| ---: | --- | ---: | ---: | --- |
-| 1 | Gather Fallen Branches | 1 | 90% | twigs, XP |
-| 2 | Chop Softwood Tree | 2 | 82% | logs, cash |
-| 4 | Split Firewood | 3 | 76% | logs, kindling |
-| 7 | Fell Oak Tree | 4 | 68% | oak logs, cash |
-| 10 | Clear Dense Grove | 6 | 62% | mixed lumber |
-| 15 | Harvest Ironwood | 8 | 55% | ironwood, upgrade parts |
-| 22 | Chop Ancient Tree | 10 | 48% | ancient bark |
-| 30 | Clear Mystic Timberland | 15 | 42% | elite lumber, rare seed |
-
-Upgrade ideas:
-
-- `Sharper Axe`: woodcutting success chance.
-- `Log Cart`: more wood per success.
-- `Tree Map`: unlocks rare wood drops.
-- `Campfire Kit`: converts wood into stamina snacks.
-
-### Fishing
-
-Fishing is the variable-quality and timing skill. It has more uncertainty than Woodcutting: catches can be common, rare, tiny, huge, or useful as stamina food. Fishing should feel like waiting for the right bite, then occasionally landing something memorable.
-
-Mechanical identity:
-
-- Variable loot quality: common, large, rare, trophy.
-- XP depends on catch quality, not only stamina spent.
-- Some failed casts return bait or give patience XP.
-- Fish can be cooked into stamina recovery items.
-- Upgrades improve rare catch chance, bait efficiency, and storage value.
-
-| Unlock Level | Activity | Stamina | Base Success | Rewards |
-| ---: | --- | ---: | ---: | --- |
-| 1 | Scoop Pond Minnows | 1 | 90% | minnows, XP |
-| 2 | Cast From Dock | 2 | 82% | fish, cash |
-| 4 | Net River Fish | 3 | 76% | fish, scales |
-| 7 | Catch Lake Bass | 4 | 69% | bass, cash |
-| 10 | Deep Water Trip | 6 | 62% | rare fish, pearls |
-| 15 | Night Fishing | 8 | 56% | glowfish, high XP |
-| 22 | Hunt Giant Catfish | 10 | 50% | trophy fish |
-| 30 | Sail to Elite Waters | 15 | 44% | elite fish, prestige item |
-
-Upgrade ideas:
-
-- `Bamboo Rod`: fishing success chance.
-- `Better Bait`: rare fish chance.
-- `Cooler Box`: more fish storage and value.
-- `Fish Stew Recipe`: fish can refill small amounts of stamina.
-
-## Cross-Skill Synergy
-
-The game gets deeper when skills feed each other.
-
-| Source Skill | Feeds Into | Example |
+## Screen Requirements
+
+### Jobs
+
+The Jobs surface must remain the default first impression.
+
+Requirements:
+
+- Show all five skills at once when possible.
+- Show level and stamina for each skill.
+- Highlight the active or selected skill.
+- Surface the current/next activity without sending the player through a maze.
+- Keep bottom navigation reachable on mobile.
+
+### Activity Detail
+
+The activity-detail screen is the primary gameplay surface.
+
+Requirements:
+
+- Activity art and background must be prominent.
+- XP, stamina, time, and success stats must stay legible.
+- Stat popups should explain bonuses without blocking normal play.
+- Running activity progress must be visible both in the card and from the skill list when relevant.
+- Locked activity previews must not cause scroll jumps or duplicated-card artifacts.
+
+### Gear / Boosts
+
+The current Gear direction is less about equipping items and more about bonuses, reward boosts, and resource interactions.
+
+Requirements:
+
+- Rewarded XP/speed boost must be clear, optional, and never interrupt an activity.
+- Tester-disabled rewarded behavior must not look broken.
+- Plank boost should explain that it consumes logs for Build XP.
+- Future gear should modify existing stats first: XP, stamina, speed, success, passive yield, passive capacity.
+
+### Hero / Achievements
+
+Hero is the long-term identity and completion surface.
+
+Requirements:
+
+- Show global level.
+- Show best or featured activity.
+- Show mastery/achievement progress by skill.
+- Show global buffs earned from medals.
+- Show prestige as a future feature only if it has clear unlock rules.
+
+### Settings
+
+Settings should support launch readiness and tester support.
+
+Requirements:
+
+- Music and SFX controls.
+- Offline progress toggle.
+- Discord/community entry.
+- Copy crash report.
+- Reset data with confirmation.
+- No destructive action without a confirmation affordance.
+
+## Monetization Requirements
+
+Rewarded ads should be helpful and opt-in.
+
+Current implementation direction:
+
+- Rewarded ad grants an XP/speed boost window.
+- Tester flow can bypass ads with a free bonus message.
+- Live ad IDs must only be used in policy-safe release testing.
+
+Allowed future placements:
+
+- Boost active progress speed/XP.
+- Double or enhance offline summary rewards.
+- Refill or accelerate one selected stamina pool.
+
+Disallowed placements:
+
+- Forced ads.
+- Ads after every completion.
+- Ads that trigger during an active progress bar.
+- Ads that hide normal stamina recovery.
+
+## Audio Requirements
+
+Audio is now part of game feel and should be protected.
+
+Requirements:
+
+- New SFX start quieter than existing UI cues.
+- Rare celebratory sounds must not stack at full volume.
+- Chain/lock sounds should support tactile unlock interactions.
+- Passive log sounds should stay soft and non-fatiguing.
+- Music should respond to play flow without becoming harsh or constant.
+
+## MVP Status
+
+| Requirement | Status | Notes |
 | --- | --- | --- |
-| Woodcutting | Build | Logs reduce construction costs |
-| Fishing | All skills | Cooked fish restores stamina |
-| Fight | Thieving | Intimidation improves risky heists |
-| Thieving | Gear | Stolen parts unlock odd upgrades |
-| Build | All skills | Town structures boost regen and rewards |
+| Five skills | Shipped | Fight, Thieving, Build, Woodcutting, Fishing. |
+| Table-driven actions | Shipped | `docs/activity-database.json` is source of truth. |
+| 20+ jobs/actions | Shipped | 126 total actions. |
+| Skill XP/levels | Shipped | Formula implemented. |
+| Per-skill stamina | Shipped | Regen and offline regen implemented. |
+| Activity cards | Shipped | Art, background, progress, stats, lock/reveal. |
+| Mastery medals | Shipped | 20 tiers per activity. |
+| Global buffs | Shipped | Medal tiers grant account bonuses. |
+| Achievements | Shipped | Includes toasts and achievement UI. |
+| Offline progress | Shipped | Active action, stamina, passive, summary. |
+| Passive production | Partial | Woodcutting log module exists; needs more modules. |
+| Gear/economy | Partial | Boosts and plank/log use exist; broader economy needs definition. |
+| Rewarded ads | Partial | Plumbing exists; tester behavior disabled/free. |
+| Prestige | Future | Shown as aspiration only. |
+| Cloud save | Future | Not current scope. |
 
-## Upgrades
+## Near-Term Product Priorities
 
-### Upgrade Types
+### P0: Align The Promise
 
-- Skill tools: improve one skill.
-- Utility gear: improves stamina, offline progress, or inventory.
-- Town upgrades: permanent global bonuses.
-- Collectibles: rare items from activities that complete sets.
-- Titles: cosmetic and small passive bonuses.
+- Update store copy, README, and PRD language so they do not overpromise cash/items that are not yet central.
+- Keep screenshots aligned with the actual current UI and resource loop.
+- Decide tired-training rules and make the UI explain them.
+- Use simulator output to tune the first five minutes toward at least three natural job switches.
+- Keep `docs/activity-database.json` and generated/shareable views in sync.
 
-### Example Early Upgrade List
+### P1: Deepen Existing Loops
 
-| Upgrade | Cost | Effect |
-| --- | ---: | --- |
-| Better Gloves | $250 | Fight success +5% |
-| Quiet Shoes | $250 | Thieving success +5% |
-| Better Hammer | $250 | Build success +5% |
-| Sharper Axe | $250 | Woodcutting success +5% |
-| Bamboo Rod | $250 | Fishing success +5% |
-| Snack Bag | $800 | All max stamina +5 |
-| Stamina Watch | $1,200 | Stamina regen 10% faster |
-| Ledger | $1,500 | Cash gains +10% |
-| Tool Rack | 50 wood | Tool upgrades cost 5% less |
-| Camp Kitchen | 30 fish, 40 wood | Unlock cooked stamina snacks |
+- Add at least one more passive module using the Woodcutting module pattern.
+- Make skill identities more mechanically distinct without rewriting the whole activity system.
+- Expand Gear from ad boost/plank boost into a compact stat-upgrade surface.
+- Improve offline summary readability and reward clarity.
+- Add stronger achievement and mastery guidance in Hero.
 
-## Rewarded Ads
+### P2: Expand The Game
 
-Rewarded ads should support player agency.
-
-Allowed rewarded ad placements:
-
-- Double offline earnings.
-- Refill one selected skill's stamina.
-- Add a temporary `Elite Focus` buff: +10% success for 10 minutes.
-- Refresh an optional activity suggestion once.
-
-Avoid:
-
-- Forced ads after every action.
-- Ads that interrupt the player while rotating skills.
-- Paywalling normal stamina recovery.
-
-## MVP Scope
-
-### Must Have
-
-- Title screen using the `Idle Elite` identity.
-- Jobs screen with five skills: Fight, Thieving, Build, Woodcutting, Fishing.
-- Skill-specific stamina and regen.
-- At least three activities per skill.
-- Skill XP and leveling.
-- Global level.
-- Cash and earning upgrade.
-- Save/load.
-- Offline stamina regen and offline cash.
-- Basic Gear screen.
-
-### Should Have
-
-- Activity result feed.
-- Activity log.
-- First pass polished mobile UI.
-- Basic sound effects.
-- Rewarded ad placeholder interface using test hooks.
-
-### Later
-
-- Prestige / Elite Rank.
-- More skills.
-- Collections and title bonuses.
+- Prestige/Elite Rank.
+- More resource conversions.
+- More passive modules.
+- More skill-specific special rules.
 - Cloud save.
-- Live events.
-- Real AdMob integration.
+- Events or rotating activity bonuses.
 
 ## Success Metrics
 
-- First session reaches at least two skill level-ups.
-- Player switches skills at least three times in the first five minutes.
-- Day 1 retention target: 25% or better for early test build.
-- Rewarded ad opt-in target: 20% or better once implemented.
-- Average session length: 3-8 minutes.
+Design targets for testing:
 
-## Implementation Notes
+- First session produces at least two level-ups.
+- First five minutes produce at least three natural skill switches for a player following stamina prompts.
+- Player understands within 60 seconds that each skill has its own stamina.
+- Player unlocks or clearly sees the next locked activity in the first session.
+- Offline return produces a summary that is understood without explanation.
+- Rewarded-ad opt-in target remains 20% or better after real ad behavior is enabled.
+- Average session target: 3-8 minutes.
 
-- Data should be table-driven: skills, activities, upgrades, and rewards should live in resources or config-like structures.
-- The first Godot implementation should avoid hardcoding individual skill logic.
-- Stamina, XP, and activity execution should be shared systems.
-- UI should be built around reusable skill cards and activity cards.
-- Keep the initial build playable before visual polish gets too deep.
+Current simulator snapshot:
+
+- `RotateLowStamina` reaches 3 switches in 5 minutes and levels 3 skills in the simple expected-value model.
+- `StayFight` levels one skill faster but does not support the multi-skill fantasy.
+- `BalancedTour` levels broadly but switches too often to represent realistic play.
+
+## Validation And Tooling
+
+Use the current local tools:
+
+```powershell
+.\scripts\audit-activity-database.ps1
+.\scripts\simulate-first-five-minutes.ps1
+.\scripts\check-project.ps1
+```
+
+The Godot validation command must always go through the safe wrapper path described in `AGENTS.md`.
+
+## Non-Goals For The Next Pass
+
+- Do not add a large inventory system before the current loop is tuned.
+- Do not add forced ads.
+- Do not add prestige until mastery, achievements, and offline progress have a clearer endgame arc.
+- Do not split `scripts/main.gd` through broad refactors while gameplay behavior is still moving quickly; extract one low-risk section at a time.
+- Do not use screenshots that imply systems the build cannot support.

@@ -169,8 +169,20 @@ public class GodotApp extends GodotActivity {
 	}
 
 	private void writeCrashReport(Thread thread, Throwable throwable) {
-		File report = getPendingCrashReportFile();
-		if (report == null) {
+		List<File> reports = getPendingCrashReportFiles();
+		if (reports.isEmpty()) {
+			return;
+		}
+
+		for (File report : reports) {
+			writeCrashReportToFile(report, thread, throwable);
+		}
+	}
+
+	private void writeCrashReportToFile(File report, Thread thread, Throwable throwable) {
+		File parent = report.getParentFile();
+		if (parent != null && !parent.exists() && !parent.mkdirs()) {
+			Log.w(TAG, "Unable to create crash report directory: " + parent.getAbsolutePath());
 			return;
 		}
 
@@ -210,12 +222,15 @@ public class GodotApp extends GodotActivity {
 		Log.i(TAG, line);
 	}
 
-	private File getPendingCrashReportFile() {
+	private List<File> getPendingCrashReportFiles() {
+		List<File> reports = new ArrayList<>();
 		File internalRoot = getFilesDir();
 		if (internalRoot == null) {
-			return null;
+			return reports;
 		}
-		return new File(internalRoot, PENDING_CRASH_REPORT_FILE);
+		reports.add(new File(internalRoot, PENDING_CRASH_REPORT_FILE));
+		reports.add(new File(new File(new File(internalRoot, "app_userdata"), "Idle Elite"), PENDING_CRASH_REPORT_FILE));
+		return reports;
 	}
 
 	private void cleanupLegacyExternalCrashReports() {

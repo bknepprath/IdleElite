@@ -9,6 +9,26 @@ $stderrLogPath = Join-Path $projectRoot "builds\android\last-release-build.stder
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $keystorePassword = $env:IDLE_ELITE_KEYSTORE_PASSWORD
 
+function Set-TextWithRetry {
+    param(
+        [string] $Path,
+        [string] $Value
+    )
+
+    $lastError = $null
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
+        try {
+            Set-Content -LiteralPath $Path -Value $Value -NoNewline
+            return
+        } catch {
+            $lastError = $_
+            Start-Sleep -Milliseconds 500
+        }
+    }
+
+    throw $lastError
+}
+
 if (-not (Test-Path -LiteralPath $runner)) {
     throw "Godot runner was not found at $runner"
 }
@@ -70,11 +90,11 @@ $arguments = @(
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $env:GODOT_RUN_TIMEOUT_SECONDS = "1200"
 try {
-    Set-Content -LiteralPath $exportPresetsPath -Value $patchedExportPresets -NoNewline
+    Set-TextWithRetry -Path $exportPresetsPath -Value $patchedExportPresets
     & $runner @arguments > $stdoutLogPath 2> $stderrLogPath
     $godotExitCode = $LASTEXITCODE
 } finally {
-    Set-Content -LiteralPath $exportPresetsPath -Value $originalExportPresets -NoNewline
+    Set-TextWithRetry -Path $exportPresetsPath -Value $originalExportPresets
     $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
 }
 
