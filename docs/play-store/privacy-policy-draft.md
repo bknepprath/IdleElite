@@ -6,13 +6,28 @@ This draft is ready to paste into a hosted privacy policy page after replacing t
 
 ## Overview
 
-Idle Elite is an idle mobile game. The game stores progress locally on your device and does not currently provide user accounts, cloud saves, chat, leaderboards, or in-app purchases.
+Idle Elite is an idle mobile game. The game stores progress locally on your device. If Firebase online features are enabled in the installed build, the game also uses Firebase Authentication and Firebase Realtime Database to publish and display leaderboard scores and global chat. Idle Elite does not currently provide cloud saves or in-app purchases.
 
 ## Information Stored By The Game
 
 Idle Elite stores gameplay progress, settings, and upgrade state locally on your device using Godot's local app storage. This local save data is used to resume your game and apply your preferences.
 
 The developer does not receive this local save data unless you choose to share device files or screenshots directly.
+
+## Online Leaderboard And Chat
+
+When Firebase online features are enabled and you open leaderboard or chat, Idle Elite creates an anonymous Firebase identifier. The Firebase database may store:
+
+- Anonymous Firebase user id.
+- Leaderboard display name chosen in the game.
+- Selected avatar index.
+- Leaderboard category scores.
+- Submission and update timestamps.
+- Global chat messages.
+- Chat message timestamps.
+- Chat moderation/deletion tombstones.
+
+The Firebase database does not store your email address. Leaderboard data is used to show rankings and protect the leaderboard from abuse. Chat data is used to show public global chat and moderate abusive messages. The game does not upload your full local save file. Leaderboard reads are limited to the visible category, score publishes are rate-limited, chat reads are limited to recent visible messages, and chat posts are rate-limited.
 
 ## Advertising
 
@@ -24,11 +39,13 @@ Learn more about how Google uses data at https://policies.google.com/technologie
 
 ## Data Sharing
 
-Idle Elite does not sell personal information. Advertising-related data may be collected or shared by Google AdMob as described in Google's advertising and privacy documentation.
+Idle Elite does not sell personal information. Leaderboard and chat data are stored by Firebase for online game features. Advertising-related data may be collected or shared by Google AdMob as described in Google's advertising and privacy documentation.
 
 ## Data Deletion
 
-Idle Elite does not have an account system. You can remove local game data by using the in-game reset option if available, clearing the app's storage in Android settings, or uninstalling the app.
+You can remove local game data by using the in-game reset option if available, clearing the app's storage in Android settings, or uninstalling the app.
+
+If Firebase online features are enabled, deleting local app data does not automatically delete already-published leaderboard rows or chat messages. Contact the developer to request removal of leaderboard or chat data associated with your leaderboard display name, Firebase user id, or other information you provide.
 
 ## Children
 

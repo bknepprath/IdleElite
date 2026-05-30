@@ -19,3 +19,4 @@ google key downloads/
 *.p12
 *.pem
 local-release-notes.md
+firebase-leaderboard-config.json

@@ -1,0 +1,5 @@
+{
+  "database_url": "https://your-project-id-default-rtdb.firebaseio.com",
+  "regional_database_url_example": "https://your-project-id-default-rtdb.europe-west1.firebasedatabase.app",
+  "web_api_key": "YOUR_FIREBASE_WEB_API_KEY"
+}

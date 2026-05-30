@@ -497,6 +497,57 @@ class ActivityCardBorder:
 		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 24, border_color, border_width, true)
 
 
+class OrganicLeaderboardBorder:
+	extends Control
+
+	var border_color := Color("#77c9ff")
+	var paper_color := Color("#f8f1e5")
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		if size.x <= 220.0 or size.y <= 320.0:
+			return
+		draw_rect(Rect2(Vector2.ZERO, size), border_color)
+		var paper_shape := _inner_paper_shape()
+		draw_polygon(paper_shape, PackedColorArray([paper_color]))
+		var paper_edge := PackedVector2Array(paper_shape)
+		if not paper_edge.is_empty():
+			paper_edge.append(paper_edge[0])
+			draw_polyline(paper_edge, paper_color, 86.0, true)
+
+	func _inner_paper_shape() -> PackedVector2Array:
+		var points := []
+		var left_top_side := Vector2(104.0, 520.0)
+		var top_left := Vector2(238.0, 270.0)
+		var top_mid := Vector2(size.x * 0.50, 246.0)
+		var top_right := Vector2(size.x - 214.0, 270.0)
+		var right_top_side := Vector2(size.x - 104.0, 520.0)
+		var right_mid := Vector2(size.x - 96.0, size.y * 0.48)
+		var right_bottom := Vector2(size.x - 112.0, size.y + 180.0)
+		var left_bottom := Vector2(112.0, size.y + 180.0)
+		var left_mid := Vector2(104.0, size.y * 0.48)
+		points.append(left_top_side)
+		_append_leaderboard_curve(points, left_top_side, Vector2(108.0, 382.0), Vector2(126.0, 300.0), top_left, 96)
+		_append_leaderboard_curve(points, top_left, Vector2(344.0, 216.0), Vector2(size.x * 0.34, 244.0), top_mid, 112)
+		_append_leaderboard_curve(points, top_mid, Vector2(size.x * 0.66, 244.0), Vector2(size.x - 330.0, 216.0), top_right, 112)
+		_append_leaderboard_curve(points, top_right, Vector2(size.x - 118.0, 300.0), Vector2(size.x - 108.0, 382.0), right_top_side, 96)
+		_append_leaderboard_curve(points, right_top_side, Vector2(size.x - 78.0, size.y * 0.30), Vector2(size.x - 118.0, size.y * 0.36), right_mid, 128)
+		_append_leaderboard_curve(points, right_mid, Vector2(size.x - 72.0, size.y * 0.64), Vector2(size.x - 112.0, size.y * 0.86), right_bottom, 128)
+		points.append(left_bottom)
+		_append_leaderboard_curve(points, left_bottom, Vector2(112.0, size.y * 0.86), Vector2(72.0, size.y * 0.64), left_mid, 128)
+		_append_leaderboard_curve(points, left_mid, Vector2(118.0, size.y * 0.36), Vector2(78.0, size.y * 0.30), left_top_side, 128)
+		return PackedVector2Array(points)
+
+	func _append_leaderboard_curve(points: Array, p0: Vector2, c1: Vector2, c2: Vector2, p3: Vector2, steps: int) -> void:
+		for i in range(1, steps + 1):
+			var t := float(i) / float(steps)
+			var inv := 1.0 - t
+			points.append(inv * inv * inv * p0 + 3.0 * inv * inv * t * c1 + 3.0 * inv * t * t * c2 + t * t * t * p3)
+
+
 class ActivityCardInnerShadow:
 	extends Control
 
@@ -1670,6 +1721,8 @@ class MobileScrollContainer:
 	var pull_resistance_enabled := false
 	var pull_raw_offset := 0.0
 	var pull_offset := 0.0
+	var pull_rest_position_y := 0.0
+	var pull_rest_position_valid := false
 	var child_click_suppressed := false
 	var input_locked_by_activity_lock := false
 	var scroll_tween: Tween
@@ -1927,40 +1980,56 @@ class MobileScrollContainer:
 		user_scroll_direction.emit(1 if delta > 0.0 else -1)
 
 	func _set_pull_raw_offset(next_raw_offset: float) -> void:
+		_capture_pull_rest_position()
 		pull_raw_offset = next_raw_offset
 		var direction := signf(pull_raw_offset)
 		pull_offset = direction * PULL_RESISTANCE_MAX * (1.0 - exp(-absf(pull_raw_offset) / PULL_RESISTANCE_MAX))
-		position.y = pull_offset
+		position.y = pull_rest_position_y + pull_offset
+		if absf(pull_offset) <= 0.0 and pull_tween == null:
+			pull_rest_position_valid = false
 
 	func _snap_pull_offset() -> void:
 		if not pull_resistance_enabled and absf(pull_offset) <= 0.0:
 			pull_raw_offset = 0.0
 			pull_offset = 0.0
+			pull_rest_position_valid = false
 			return
 		if absf(pull_offset) <= 0.0:
 			_set_pull_raw_offset(0.0)
 			return
 		_cancel_pull_tween()
 		velocity = 0.0
+		_capture_pull_rest_position()
 		pull_raw_offset = 0.0
 		pull_tween = create_tween()
-		pull_tween.tween_property(self, "position:y", 0.0, PULL_SNAP_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+		pull_tween.tween_property(self, "position:y", pull_rest_position_y, PULL_SNAP_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 		pull_tween.finished.connect(func():
 			pull_offset = 0.0
 			pull_raw_offset = 0.0
+			position.y = pull_rest_position_y
+			pull_rest_position_valid = false
 			pull_tween = null
 		)
 
 	func _cancel_pull_tween() -> void:
 		if pull_tween != null and pull_tween.is_valid():
 			pull_tween.kill()
-			pull_offset = position.y
+			_capture_pull_rest_position()
+			pull_offset = position.y - pull_rest_position_y
 			var pull_pct := clampf(absf(pull_offset) / PULL_RESISTANCE_MAX, 0.0, 0.98)
 			pull_raw_offset = signf(pull_offset) * -PULL_RESISTANCE_MAX * log(1.0 - pull_pct)
 		pull_tween = null
 
+	func _capture_pull_rest_position() -> void:
+		if pull_rest_position_valid:
+			return
+		pull_rest_position_y = position.y - pull_offset
+		pull_rest_position_valid = true
+
 
 const SAVE_PATH := "user://idle_elite_save.json"
+const SAVE_SCHEMA_VERSION := 1
+const SAVE_SCHEMA_MANUAL_ACTIVITY_UNLOCKS := 1
 const PENDING_CRASH_REPORT_PATH := "user://pending-crash-report.json"
 const CRASH_SESSION_MARKER_PATH := "user://last-session-marker.json"
 const DISCORD_INVITE_URL := "https://discord.com/invite/NHvsGdGfVW"
@@ -2108,6 +2177,9 @@ const ACTION_CARD_DUPLICATE_TAP_MSEC := 36
 const SKILL_MENU_CARD_SIDE_INSET := 104
 const SKILL_MENU_COPY_WIDTH := 760
 const SKILL_MENU_ACTIVITY_PROGRESS_HEIGHT := 33
+const SKILL_MENU_SHELF_HEIGHT := 368
+const SKILL_MENU_TOP_SCROLL_PAD := 54
+const SKILL_MENU_BOTTOM_SCROLL_PAD := 420
 const SKILL_DETAIL_HEADER_HEIGHT := 704
 const SKILL_DETAIL_HEADER_MARGIN_BOTTOM := 34
 const SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT := 18
@@ -2150,6 +2222,67 @@ const ACTIVITY_JUMP_ARROW_FADE_IN_SECONDS := 0.10
 const ACTIVITY_JUMP_ARROW_FADE_OUT_SECONDS := 0.22
 const ACTIVITY_JUMP_ARROW_EDGE_EPSILON := 6
 const ACTIVITY_JUMP_ARROW_MIN_MODULES := 6
+const LEADERBOARD_SUBMIT_INTERVAL_SECONDS := 60 * 60
+const LEADERBOARD_ICON := "res://assets/ui/leaderboard-podium-icon.png"
+const FIREBASE_DATABASE_URL := ""
+const FIREBASE_WEB_API_KEY := ""
+const FIREBASE_LOCAL_CONFIG_PATH := "res://firebase-leaderboard-config.json"
+const LEADERBOARD_FIREBASE_ROOT := "leaderboards/v1"
+const CHAT_FIREBASE_ROOT := "global_chat/v1"
+const LEADERBOARD_FETCH_INTERVAL_SECONDS := 15 * 60
+const LEADERBOARD_PROCESS_INTERVAL_SECONDS := 30.0
+const LEADERBOARD_AUTH_REFRESH_MARGIN_SECONDS := 5 * 60
+const LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS := 15 * 60
+const CHAT_STREAM_RETRY_INTERVAL_SECONDS := 30
+const CHAT_SEND_INTERVAL_SECONDS := 2
+const CHAT_MESSAGE_MAX_CHARS := 80
+const CHAT_STRIP_VISIBLE_COUNT := 2
+const CHAT_FULL_VISIBLE_COUNT := 25
+const CHAT_STRIP_HEIGHT := 260
+const CHAT_STRIP_ICON := "res://assets/ui/chat-speech-bubble.png"
+const CHAT_UI_Z := 512
+const CHAT_CENSORED_WORDS := [
+	"fag",
+	"faggot",
+	"faggots",
+	"nigga",
+	"niggas",
+	"nigger",
+	"niggers"
+]
+const FIREBASE_AUTH_SIGN_UP_URL := "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=%s"
+const FIREBASE_AUTH_REFRESH_URL := "https://securetoken.googleapis.com/v1/token?key=%s"
+const LEADERBOARD_BOTTOM_SCROLL_PAD := 720
+const LEADERBOARD_BASE_FRAME_WIDTH := BASE_CANVAS.x
+const PROFILE_AVATAR_SHEETS := [
+	"res://assets/ui/profile-avatar-game-objects-spritesheet.png",
+	"res://assets/ui/profile-avatar-blue-guy-spritesheet.png"
+]
+const PROFILE_AVATAR_COUNT := 20
+const PROFILE_AVATAR_SHEET_CELL_COUNT := 10
+const PROFILE_AVATAR_COLUMNS := 5
+const PROFILE_AVATAR_CELL_SIZE := 512
+const PROFILE_AVATAR_ATLAS_INSET := 16
+const PROFILE_AVATAR_COLORED_ATLAS_INSET := 60
+const PROFILE_AVATAR_FRAME_BORDER := 16
+const PROFILE_DISPLAY_NAME_MAX_CHARS := 16
+const PROFILE_NAME_KEY_MAX_CHARS := 16
+const PROFILE_GUEST_NAME_PREFIX := "guest"
+const LEADERBOARD_TOP_COUNT := 50
+const LEADERBOARD_PLAYER_OVERLAY_HEIGHT := 470
+const CHAT_BOTTOM_SCROLL_PAD := 420
+const LEADERBOARD_CATEGORY_TOTAL_LEVEL := "total_level"
+const LEADERBOARD_CATEGORY_MEDALS := "medals_earned"
+const LEADERBOARD_CATEGORY_TOTAL_XP := "total_xp"
+const LEADERBOARD_CATEGORY_ELITE_HEAVENLY := "elite_heavenly"
+const LEADERBOARD_CATEGORY_SKILL_PREFIX := "skill_xp:"
+const LEADERBOARD_HTTP_HEADER_JSON := "Content-Type: application/json"
+const LEADERBOARD_HTTP_HEADER_ACCEPT_JSON := "Accept: application/json"
+const LEADERBOARD_HTTP_HEADER_FORM := "Content-Type: application/x-www-form-urlencoded"
+const LEADERBOARD_FIREBASE_URL_SCHEME := "https://"
+const LEADERBOARD_FIREBASE_US_HOST_SUFFIX := ".firebaseio.com"
+const LEADERBOARD_FIREBASE_REGIONAL_HOST_SUFFIX := ".firebasedatabase.app"
+const LEADERBOARD_FIREBASE_HOST_CHARS := "abcdefghijklmnopqrstuvwxyz0123456789-"
 const AD_BONUS_SECONDS := 2 * 60 * 60
 const AD_BONUS_WARN_THRESHOLD_SECONDS := 4 * 60 * 60
 const AD_BONUS_MAX_SECONDS := 6 * 60 * 60
@@ -2307,7 +2440,6 @@ const OFFLINE_SUMMARY_MODAL_MAX_PROGRESS_HEIGHT := 1280.0
 const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(64, 80)
 const OFFLINE_SUMMARY_SECTION_HEIGHT := 88.0
 const OFFLINE_SUMMARY_ROW_HEIGHT := 214.0
-const OFFLINE_SUMMARY_ACHIEVEMENT_ROW_HEIGHT := 322.0
 const OFFLINE_SUMMARY_ROW_GAP := 28.0
 const ACHIEVEMENT_TOAST_SIZE := Vector2(1500, 430)
 const ACHIEVEMENT_TOAST_GAP := 28.0
@@ -2323,6 +2455,7 @@ const GLOBAL_BUFFS_MODAL_MAX_HEIGHT := 2740.0
 const GLOBAL_BUFFS_MODAL_SCROLL_CHROME := 760.0
 const TUTORIAL_LAYER := ACHIEVEMENT_TOAST_CANVAS_LAYER + 1
 const BOOT_WARMUP_LAYER := TUTORIAL_LAYER + 2
+const CHAT_OVERLAY_CANVAS_LAYER := BOOT_WARMUP_LAYER + 1
 const BOOT_WARMUP_FRAME_BUDGET_MSEC := 8
 const BOOT_WARMUP_MIN_VISIBLE_SECONDS := 0.85
 const ACTION_PROGRESS_RAIL_INSET := 0
@@ -2507,8 +2640,81 @@ var hero_tab: Button
 var shop_tab: Button
 var settings_tab: Button
 var nav_pop_tweens := {}
-var coming_soon_message: Control
-var coming_soon_tween: Tween
+var leaderboard_category_id := LEADERBOARD_CATEGORY_TOTAL_LEVEL
+var leaderboard_last_submitted_score := 0
+var leaderboard_last_submitted_scores_by_category := {}
+var leaderboard_last_submit_unix := 0
+var leaderboard_display_name := ""
+var leaderboard_name_key := ""
+var leaderboard_avatar_index := 0
+var leaderboard_profile_claimed := false
+var leaderboard_name_claim_verified := false
+var leaderboard_player_id := ""
+var leaderboard_rows_by_category := {}
+var leaderboard_fetch_unix_by_category := {}
+var leaderboard_fetch_retry_unix_by_category := {}
+var leaderboard_auth_request: HTTPRequest
+var leaderboard_fetch_request: HTTPRequest
+var leaderboard_submit_request: HTTPRequest
+var leaderboard_name_claim_request: HTTPRequest
+var profile_reference_update_request: HTTPRequest
+var leaderboard_auth_in_flight := false
+var leaderboard_auth_mode := ""
+var leaderboard_auth_id_token := ""
+var leaderboard_auth_refresh_token := ""
+var leaderboard_auth_expires_unix := 0
+var leaderboard_auth_retry_after_unix := 0
+var leaderboard_auth_provider := "anonymous"
+var leaderboard_config_loaded := false
+var leaderboard_config_database_url := ""
+var leaderboard_config_web_api_key := ""
+var leaderboard_fetch_in_flight := false
+var leaderboard_fetch_category_id := ""
+var leaderboard_submit_in_flight := false
+var leaderboard_name_claim_in_flight := false
+var leaderboard_name_claim_pending_name := ""
+var leaderboard_name_claim_pending_key := ""
+var profile_reference_update_in_flight := false
+var leaderboard_process_seconds := 0.0
+var leaderboard_status_message := ""
+var leaderboard_last_submit_payload_categories := []
+var chat_send_request: HTTPRequest
+var chat_stream_client: HTTPClient
+var chat_stream_connected := false
+var chat_stream_connecting := false
+var chat_stream_request_sent := false
+var chat_stream_retry_unix := 0
+var chat_stream_visible_count := 0
+var chat_stream_buffer := ""
+var chat_stream_event_name := ""
+var chat_stream_event_data_lines := []
+var chat_send_in_flight := false
+var chat_rows := []
+var chat_last_send_unix := 0
+var chat_status_message := ""
+var chat_message_edit: LineEdit
+var chat_draft_message := ""
+var chat_pending_send_after_auth := ""
+var chat_last_submit_press_msec := 0
+var chat_pending_send_message_id := ""
+var chat_strip: PanelContainer
+var chat_strip_line_one: Label
+var chat_strip_line_two: Label
+var chat_overlay_layer: CanvasLayer
+var chat_overlay: ColorRect
+var chat_keyboard_fill: ColorRect
+var chat_overlay_body: VBoxContainer
+var chat_overlay_scroll: MobileScrollContainer
+var chat_keyboard_lift_active := false
+var chat_keyboard_lift_pixels := 0.0
+var chat_keyboard_lift_hold_seconds := 0.0
+var chat_keyboard_lift_last_height := 0.0
+var chat_keyboard_lift_target_pixels := 0.0
+var chat_keyboard_lift_viewport_height := 0.0
+var chat_keyboard_lift_zero_seconds := 0.0
+var chat_keyboard_was_visible := false
+var chat_keyboard_close_submit_done := false
+var chat_keyboard_focus_active := false
 var shop_bonus_label: Label
 var skill_cards := {}
 var action_cards := {}
@@ -2612,6 +2818,12 @@ var activity_lock_input_active := false
 var active_activity_lock_rig: ActivityLockRig
 var settings_overlay: Control
 var settings_panel: PanelContainer
+var profile_overlay: Control
+var profile_panel: PanelContainer
+var profile_content_stack: VBoxContainer
+var profile_name_edit: LineEdit
+var profile_status_label: Label
+var profile_avatar_buttons := []
 var achievements_overlay: Control
 var achievements_panel_frame: Control
 var achievements_panel: PanelContainer
@@ -2624,6 +2836,7 @@ var offline_summary_overlay: Control
 var offline_summary_panel_frame: Control
 var offline_summary_panel: PanelContainer
 var offline_summary_stack: VBoxContainer
+var pending_offline_summary_achievements := []
 var achievement_toast_layer: CanvasLayer
 var achievement_toast_root: Control
 var achievement_toasts := []
@@ -2677,6 +2890,7 @@ var crash_session_heartbeat_elapsed := 0.0
 var last_save_unix_time := 0
 var passive_upgrade_player: AudioStreamPlayer
 var texture_cache := {}
+var profile_avatar_texture_cache := {}
 var boot_warmup_active := false
 var boot_warmup_layer: CanvasLayer
 var boot_warmup_overlay: Control
@@ -2702,6 +2916,7 @@ func _ready() -> void:
 	_build_audio()
 	_init_ads()
 	_build_ui()
+	_build_leaderboard_http()
 	load_game()
 	if _pending_crash_report_exists():
 		last_result = "Crash report ready in Settings."
@@ -2743,6 +2958,9 @@ func _process(delta: float) -> void:
 	_process_passive_modules()
 	_process_action(delta)
 	_process_music_flow(delta)
+	_process_leaderboard_sync(delta)
+	_process_chat_live_sync(delta)
+	_process_chat_keyboard_lift(delta)
 	_update_ui(delta)
 	_process_chain_proximity_audio(delta)
 	_process_detail_jump_arrows(delta)
@@ -2758,6 +2976,12 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if _route_audio_slider_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if _route_chat_overlay_key_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if _route_chat_strip_input(event):
 		get_viewport().set_input_as_handled()
 		return
 	if _is_stamina_gauge_release_event(event):
@@ -3427,11 +3651,931 @@ func _build_ui() -> void:
 	_build_skills_page()
 	
 	_build_nav_bar()
+	_build_chat_strip()
+	_build_chat_overlay()
 	_build_settings_overlay()
+	_build_profile_overlay()
 	_build_achievements_overlay()
 	_build_offline_summary_overlay()
 	_build_achievement_toast_layer()
 	_build_tutorial_overlay()
+
+
+func _build_leaderboard_http() -> void:
+	leaderboard_auth_request = HTTPRequest.new()
+	leaderboard_auth_request.timeout = 15.0
+	leaderboard_auth_request.request_completed.connect(_on_leaderboard_auth_completed)
+	add_child(leaderboard_auth_request)
+	leaderboard_fetch_request = HTTPRequest.new()
+	leaderboard_fetch_request.timeout = 15.0
+	leaderboard_fetch_request.request_completed.connect(_on_leaderboard_fetch_completed)
+	add_child(leaderboard_fetch_request)
+	leaderboard_submit_request = HTTPRequest.new()
+	leaderboard_submit_request.timeout = 15.0
+	leaderboard_submit_request.request_completed.connect(_on_leaderboard_submit_completed)
+	add_child(leaderboard_submit_request)
+	leaderboard_name_claim_request = HTTPRequest.new()
+	leaderboard_name_claim_request.timeout = 15.0
+	leaderboard_name_claim_request.request_completed.connect(_on_leaderboard_name_claim_completed)
+	add_child(leaderboard_name_claim_request)
+	profile_reference_update_request = HTTPRequest.new()
+	profile_reference_update_request.timeout = 15.0
+	profile_reference_update_request.request_completed.connect(_on_profile_reference_update_completed)
+	add_child(profile_reference_update_request)
+	chat_stream_client = HTTPClient.new()
+	chat_send_request = HTTPRequest.new()
+	chat_send_request.timeout = 15.0
+	chat_send_request.request_completed.connect(_on_chat_send_completed)
+	add_child(chat_send_request)
+
+
+func _leaderboard_firebase_enabled() -> bool:
+	return not _leaderboard_firebase_base_url().is_empty() and not _leaderboard_firebase_api_key().is_empty()
+
+
+func _leaderboard_load_firebase_config() -> void:
+	if leaderboard_config_loaded:
+		return
+	leaderboard_config_loaded = true
+	if not FileAccess.file_exists(FIREBASE_LOCAL_CONFIG_PATH):
+		return
+	var file := FileAccess.open(FIREBASE_LOCAL_CONFIG_PATH, FileAccess.READ)
+	if file == null:
+		return
+	var parsed = JSON.parse_string(file.get_as_text())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		push_warning("Firebase leaderboard config must be a JSON object.")
+		return
+	var data := parsed as Dictionary
+	leaderboard_config_database_url = str(data.get("database_url", "")).strip_edges()
+	leaderboard_config_web_api_key = str(data.get("web_api_key", "")).strip_edges()
+
+
+func _leaderboard_firebase_base_url() -> String:
+	_leaderboard_load_firebase_config()
+	var url := leaderboard_config_database_url if not leaderboard_config_database_url.is_empty() else FIREBASE_DATABASE_URL.strip_edges()
+	while url.ends_with("/"):
+		url = url.substr(0, url.length() - 1)
+	if url == "https://YOUR-PROJECT-default-rtdb.firebaseio.com":
+		return ""
+	if not _leaderboard_database_url_allowed(url):
+		return ""
+	return url
+
+
+func _leaderboard_firebase_api_key() -> String:
+	_leaderboard_load_firebase_config()
+	var key := leaderboard_config_web_api_key if not leaderboard_config_web_api_key.is_empty() else FIREBASE_WEB_API_KEY.strip_edges()
+	if key == "YOUR_FIREBASE_WEB_API_KEY":
+		return ""
+	if key.length() < 20 or key.find(" ") >= 0 or key.find("\t") >= 0 or key.find("\n") >= 0 or key.find("\r") >= 0:
+		return ""
+	return key
+
+
+func _leaderboard_database_url_allowed(url: String) -> bool:
+	if url.is_empty() or not url.begins_with(LEADERBOARD_FIREBASE_URL_SCHEME):
+		return false
+	var host := url.substr(LEADERBOARD_FIREBASE_URL_SCHEME.length()).to_lower()
+	if host.is_empty() or host.find("/") >= 0 or host.find(":") >= 0:
+		return false
+	if host.find("your-project") >= 0 or host.find("your_project") >= 0:
+		return false
+	if host.ends_with(LEADERBOARD_FIREBASE_US_HOST_SUFFIX):
+		var database_name := host.substr(0, host.length() - LEADERBOARD_FIREBASE_US_HOST_SUFFIX.length())
+		return _leaderboard_firebase_host_label_allowed(database_name)
+	if host.ends_with(LEADERBOARD_FIREBASE_REGIONAL_HOST_SUFFIX):
+		var database_and_region := host.substr(0, host.length() - LEADERBOARD_FIREBASE_REGIONAL_HOST_SUFFIX.length())
+		var separator := database_and_region.find(".")
+		if separator <= 0 or separator >= database_and_region.length() - 1:
+			return false
+		return (
+			_leaderboard_firebase_host_label_allowed(database_and_region.substr(0, separator))
+			and _leaderboard_firebase_host_label_allowed(database_and_region.substr(separator + 1))
+		)
+	return false
+
+
+func _leaderboard_firebase_host_label_allowed(value: String) -> bool:
+	if value.is_empty() or value.begins_with("-") or value.ends_with("-"):
+		return false
+	for i in range(value.length()):
+		if LEADERBOARD_FIREBASE_HOST_CHARS.find(value.substr(i, 1)) < 0:
+			return false
+	return true
+
+
+func _leaderboard_firebase_url(path := "", query := "") -> String:
+	return _firebase_database_url(LEADERBOARD_FIREBASE_ROOT, path, query)
+
+
+func _chat_firebase_url(path := "", query := "") -> String:
+	return _firebase_database_url(CHAT_FIREBASE_ROOT, path, query)
+
+
+func _firebase_database_url(root_path: String, path := "", query := "") -> String:
+	var root := root_path.strip_edges()
+	while root.begins_with("/"):
+		root = root.substr(1)
+	while root.ends_with("/"):
+		root = root.substr(0, root.length() - 1)
+	var clean_path := path.strip_edges()
+	while clean_path.begins_with("/"):
+		clean_path = clean_path.substr(1)
+	var url := "%s/%s" % [_leaderboard_firebase_base_url(), root]
+	if not clean_path.is_empty():
+		url = "%s/%s" % [url, clean_path]
+	url = "%s.json" % url
+	if not query.is_empty():
+		url = "%s?%s" % [url, query]
+	return url
+
+
+func _leaderboard_authenticated_query(query := "") -> String:
+	var token := leaderboard_auth_id_token.strip_edges()
+	if token.is_empty():
+		return query
+	var auth_param := "auth=%s" % token.uri_encode()
+	if query.is_empty():
+		return auth_param
+	return "%s&%s" % [query, auth_param]
+
+
+func _leaderboard_category_key(category_id: String) -> String:
+	return _leaderboard_valid_category_id(category_id).replace(":", "__")
+
+
+func _leaderboard_auth_ready() -> bool:
+	return not leaderboard_auth_id_token.is_empty() and not leaderboard_player_id.is_empty() and leaderboard_auth_expires_unix > _unix_now() + LEADERBOARD_AUTH_REFRESH_MARGIN_SECONDS
+
+
+func _leaderboard_auth_retry_wait_seconds() -> int:
+	return maxi(0, leaderboard_auth_retry_after_unix - _unix_now())
+
+
+func _leaderboard_note_auth_failure(message: String, clear_refresh_token := false) -> void:
+	leaderboard_status_message = "%s Trying again in %s." % [message, _format_duration(float(LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS))]
+	leaderboard_auth_retry_after_unix = _unix_now() + LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS
+	if clear_refresh_token:
+		leaderboard_auth_refresh_token = ""
+	save_game()
+
+
+func _leaderboard_note_submit_failure(message: String) -> void:
+	leaderboard_status_message = "%s Trying again in %s." % [message, _format_duration(float(LEADERBOARD_SUBMIT_INTERVAL_SECONDS))]
+	leaderboard_last_submit_unix = _unix_now()
+	leaderboard_last_submit_payload_categories.clear()
+	save_game()
+
+
+func _leaderboard_note_fetch_failure(category_id: String, message: String) -> void:
+	var valid_id := _leaderboard_valid_category_id(category_id)
+	leaderboard_fetch_retry_unix_by_category[valid_id] = _unix_now()
+	leaderboard_status_message = "%s Trying again in %s." % [message, _format_duration(float(LEADERBOARD_FETCH_INTERVAL_SECONDS))]
+	save_game()
+
+
+func _leaderboard_ensure_auth() -> bool:
+	if not _leaderboard_firebase_enabled():
+		leaderboard_status_message = "Firebase URL and Web API key are not configured yet."
+		return false
+	if _leaderboard_auth_ready():
+		return true
+	if leaderboard_auth_in_flight:
+		return false
+	var retry_wait := _leaderboard_auth_retry_wait_seconds()
+	if retry_wait > 0:
+		leaderboard_status_message = "Leaderboard login is cooling down for %s." % _format_duration(float(retry_wait))
+		return false
+	var api_key := _leaderboard_firebase_api_key()
+	if api_key.is_empty():
+		leaderboard_status_message = "Firebase Web API key is not configured yet."
+		return false
+	leaderboard_auth_in_flight = true
+	if not leaderboard_auth_refresh_token.is_empty():
+		leaderboard_auth_mode = "refresh"
+		leaderboard_status_message = "Refreshing leaderboard login..."
+		var body := "grant_type=refresh_token&refresh_token=%s" % leaderboard_auth_refresh_token.uri_encode()
+		var err := leaderboard_auth_request.request(
+			FIREBASE_AUTH_REFRESH_URL % api_key.uri_encode(),
+			PackedStringArray([LEADERBOARD_HTTP_HEADER_FORM, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+			HTTPClient.METHOD_POST,
+			body
+		)
+		if err == OK:
+			return false
+	else:
+		leaderboard_auth_mode = "sign_up"
+		leaderboard_status_message = "Creating leaderboard login..."
+		var err := leaderboard_auth_request.request(
+			FIREBASE_AUTH_SIGN_UP_URL % api_key.uri_encode(),
+			PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+			HTTPClient.METHOD_POST,
+			JSON.stringify({"returnSecureToken": true})
+		)
+		if err == OK:
+			return false
+	leaderboard_auth_in_flight = false
+	leaderboard_auth_mode = ""
+	_leaderboard_note_auth_failure("Leaderboard auth failed to start.")
+	return false
+
+
+func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := false) -> void:
+	var valid_id := _leaderboard_valid_category_id(category_id)
+	if not _leaderboard_firebase_enabled():
+		leaderboard_status_message = "Firebase URL and Web API key are not configured yet."
+		return
+	var now := _unix_now()
+	var last_success_fetch := int(leaderboard_fetch_unix_by_category.get(valid_id, 0))
+	var last_failed_fetch := int(leaderboard_fetch_retry_unix_by_category.get(valid_id, 0))
+	var last_fetch := maxi(last_success_fetch, last_failed_fetch)
+	if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS:
+		return
+	if not _leaderboard_ensure_auth():
+		return
+	if leaderboard_fetch_in_flight:
+		return
+	leaderboard_fetch_in_flight = true
+	leaderboard_fetch_category_id = valid_id
+	leaderboard_status_message = "Loading %s..." % _leaderboard_category_label(valid_id)
+	var category_key := _leaderboard_category_key(valid_id)
+	var query := "orderBy=%%22score%%22&limitToLast=%s" % LEADERBOARD_TOP_COUNT
+	var err := leaderboard_fetch_request.request(
+		_leaderboard_firebase_url("scores/%s" % category_key, _leaderboard_authenticated_query(query)),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_GET
+	)
+	if err != OK:
+		leaderboard_fetch_in_flight = false
+		leaderboard_fetch_category_id = ""
+		_leaderboard_note_fetch_failure(valid_id, "Leaderboard read failed: %s" % error_string(err))
+
+
+func _leaderboard_submit_scores() -> void:
+	if not _leaderboard_firebase_enabled():
+		leaderboard_status_message = "Firebase URL and Web API key are not configured yet."
+		return
+	if not _leaderboard_ensure_auth():
+		return
+	if not _leaderboard_profile_claim_valid():
+		leaderboard_status_message = "Save a unique leaderboard name before publishing."
+		return
+	if leaderboard_submit_in_flight or not _leaderboard_submit_ready():
+		return
+	if leaderboard_player_id.is_empty():
+		leaderboard_player_id = _make_leaderboard_player_id()
+	var now_unix := _unix_now()
+	var now_msec := _unix_now_msec()
+	var updates := {}
+	leaderboard_last_submit_payload_categories.clear()
+	for raw_category in _leaderboard_categories():
+		var category := raw_category as Dictionary
+		var category_id := _leaderboard_valid_category_id(str(category.get("id", "")))
+		if category_id.is_empty():
+			continue
+		var score := maxi(0, _leaderboard_score_for_category(category_id))
+		var last_score := int(leaderboard_last_submitted_scores_by_category.get(category_id, 0))
+		if score <= 0 or score <= last_score:
+			continue
+		var category_key := _leaderboard_category_key(category_id)
+		updates["scores/%s/%s" % [category_key, leaderboard_player_id]] = {
+			"name": leaderboard_display_name,
+			"name_key": leaderboard_name_key,
+			"avatar_index": leaderboard_avatar_index,
+			"score": score,
+			"updated_at": now_msec,
+			"submitted_at_unix": now_unix
+		}
+		leaderboard_last_submit_payload_categories.append(category_id)
+	if updates.is_empty():
+		leaderboard_last_submitted_score = _leaderboard_score()
+		save_game()
+		return
+	updates["player_write_gates/%s" % leaderboard_player_id] = {
+		"updated_at": now_msec,
+		"submitted_at_unix": now_unix
+	}
+	leaderboard_submit_in_flight = true
+	leaderboard_status_message = "Publishing leaderboard scores..."
+	var err := leaderboard_submit_request.request(
+		_leaderboard_firebase_url("", _leaderboard_authenticated_query("print=silent")),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_PATCH,
+		JSON.stringify(updates)
+	)
+	if err != OK:
+		leaderboard_submit_in_flight = false
+		_leaderboard_note_submit_failure("Leaderboard write failed: %s" % error_string(err))
+
+
+func _process_leaderboard_sync(delta: float) -> void:
+	leaderboard_process_seconds += delta
+	if leaderboard_process_seconds < LEADERBOARD_PROCESS_INTERVAL_SECONDS:
+		return
+	leaderboard_process_seconds = 0.0
+	if not _leaderboard_firebase_enabled():
+		return
+	if current_screen == "leaderboard":
+		_leaderboard_fetch_category(leaderboard_category_id)
+	if _chat_strip_visible_on_current_screen():
+		_chat_stream_connect(true)
+	if _leaderboard_submit_ready():
+		_leaderboard_submit_scores()
+
+
+func _on_leaderboard_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var category_id := leaderboard_fetch_category_id
+	leaderboard_fetch_in_flight = false
+	leaderboard_fetch_category_id = ""
+	if result != HTTPRequest.RESULT_SUCCESS:
+		_leaderboard_note_fetch_failure(category_id, "Leaderboard read failed.")
+		return
+	if response_code < 200 or response_code >= 300:
+		_leaderboard_note_fetch_failure(category_id, "Leaderboard read returned HTTP %s." % response_code)
+		return
+	var parsed = JSON.parse_string(body.get_string_from_utf8())
+	var rows := []
+	if typeof(parsed) == TYPE_DICTIONARY:
+		for raw_player_id in (parsed as Dictionary).keys():
+			var player_id := str(raw_player_id)
+			var entry = (parsed as Dictionary).get(raw_player_id, {})
+			if typeof(entry) != TYPE_DICTIONARY:
+				continue
+			var row := entry as Dictionary
+			var score := maxi(0, int(row.get("score", 0)))
+			if score <= 0:
+				continue
+			rows.append({
+				"player_id": player_id,
+				"name": _sanitize_leaderboard_display_name(str(row.get("name", "Player"))),
+				"name_key": _sanitize_leaderboard_name_key(str(row.get("name_key", ""))),
+				"score": score,
+				"score_text": _leaderboard_format_score(category_id, score),
+				"avatar_index": _valid_profile_avatar_index(int(row.get("avatar_index", 0))),
+				"is_player": player_id == leaderboard_player_id
+			})
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var score_a := int(a.get("score", 0))
+		var score_b := int(b.get("score", 0))
+		if score_a == score_b:
+			return str(a.get("name", "")) < str(b.get("name", ""))
+		return score_a > score_b
+	)
+	if rows.size() > LEADERBOARD_TOP_COUNT:
+		rows = rows.slice(0, LEADERBOARD_TOP_COUNT)
+	leaderboard_rows_by_category[category_id] = rows
+	leaderboard_fetch_unix_by_category[category_id] = _unix_now()
+	var had_retry_cooldown := leaderboard_fetch_retry_unix_by_category.has(category_id)
+	if had_retry_cooldown:
+		leaderboard_fetch_retry_unix_by_category.erase(category_id)
+		save_game()
+	leaderboard_status_message = "Leaderboard loaded."
+	if current_screen == "leaderboard" and category_id == leaderboard_category_id:
+		_render_screen()
+
+
+func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var mode := leaderboard_auth_mode
+	leaderboard_auth_in_flight = false
+	leaderboard_auth_mode = ""
+	if result != HTTPRequest.RESULT_SUCCESS:
+		_leaderboard_note_auth_failure("Leaderboard login failed.", mode == "refresh")
+		return
+	if response_code < 200 or response_code >= 300:
+		_leaderboard_note_auth_failure("Leaderboard login returned HTTP %s." % response_code, mode == "refresh")
+		return
+	var parsed = JSON.parse_string(body.get_string_from_utf8())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		_leaderboard_note_auth_failure("Leaderboard login returned invalid JSON.")
+		return
+	var data := parsed as Dictionary
+	var id_token := str(data.get("idToken", data.get("id_token", "")))
+	var refresh_token := str(data.get("refreshToken", data.get("refresh_token", "")))
+	var local_id := str(data.get("localId", data.get("user_id", "")))
+	var expires_in := maxi(0, int(data.get("expiresIn", data.get("expires_in", 0))))
+	if id_token.is_empty() or refresh_token.is_empty() or local_id.is_empty() or expires_in <= 0:
+		_leaderboard_note_auth_failure("Leaderboard login was incomplete.", mode == "refresh")
+		return
+	leaderboard_auth_id_token = id_token
+	leaderboard_auth_refresh_token = refresh_token
+	leaderboard_auth_expires_unix = _unix_now() + expires_in
+	leaderboard_auth_retry_after_unix = 0
+	if leaderboard_auth_provider.is_empty():
+		leaderboard_auth_provider = "anonymous"
+	leaderboard_player_id = _sanitize_leaderboard_player_id(local_id)
+	if leaderboard_player_id.is_empty():
+		_leaderboard_note_auth_failure("Leaderboard login id was invalid.", mode == "refresh")
+		return
+	leaderboard_status_message = "Leaderboard login ready."
+	save_game()
+	if profile_overlay != null and profile_overlay.visible:
+		_rebuild_profile_overlay()
+	if current_screen == "leaderboard":
+		_leaderboard_fetch_category(leaderboard_category_id)
+	if _leaderboard_submit_ready():
+		_leaderboard_submit_scores()
+	if not chat_pending_send_after_auth.is_empty():
+		var queued_chat := chat_pending_send_after_auth
+		chat_pending_send_after_auth = ""
+		_chat_send(queued_chat)
+
+
+func _claim_leaderboard_name(display_name: String) -> void:
+	if leaderboard_name_claim_in_flight:
+		return
+	if not _leaderboard_firebase_enabled():
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "Firebase URL and Web API key are not configured yet."
+		return
+	if not _leaderboard_ensure_auth():
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "Connecting leaderboard login..."
+		return
+	var name_key := _leaderboard_name_key(display_name)
+	if name_key.is_empty():
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "Choose a real name before making an account. You cannot change it after this."
+		if profile_name_edit != null and is_instance_valid(profile_name_edit):
+			profile_name_edit.grab_focus()
+		return
+	var now_unix := _unix_now()
+	var now_msec := _unix_now_msec()
+	var payload := {
+		"uid": leaderboard_player_id,
+		"name": display_name,
+		"name_key": name_key,
+		"avatar_index": leaderboard_avatar_index,
+		"created_at": now_msec,
+		"updated_at": now_msec,
+		"submitted_at_unix": now_unix
+	}
+	leaderboard_name_claim_pending_name = display_name
+	leaderboard_name_claim_pending_key = name_key
+	leaderboard_name_claim_in_flight = true
+	if profile_status_label != null and is_instance_valid(profile_status_label):
+		profile_status_label.text = "Checking name..."
+	var err := leaderboard_name_claim_request.request(
+		_leaderboard_firebase_url("name_claims/%s" % name_key, _leaderboard_authenticated_query("print=silent")),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_PUT,
+		JSON.stringify(payload)
+	)
+	if err != OK:
+		leaderboard_name_claim_in_flight = false
+		leaderboard_name_claim_pending_name = ""
+		leaderboard_name_claim_pending_key = ""
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "Name check failed. Try again."
+
+
+func _on_leaderboard_name_claim_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+	leaderboard_name_claim_in_flight = false
+	var claimed_name := leaderboard_name_claim_pending_name
+	var claimed_key := leaderboard_name_claim_pending_key
+	leaderboard_name_claim_pending_name = ""
+	leaderboard_name_claim_pending_key = ""
+	if result != HTTPRequest.RESULT_SUCCESS:
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "Name check failed. Try again."
+		return
+	if response_code == 401 or response_code == 403:
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "name is taken!"
+		if profile_name_edit != null and is_instance_valid(profile_name_edit):
+			profile_name_edit.grab_focus()
+		return
+	if response_code < 200 or response_code >= 300:
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "Name check failed. Try again."
+		return
+	leaderboard_display_name = claimed_name
+	leaderboard_name_key = claimed_key
+	leaderboard_profile_claimed = true
+	leaderboard_name_claim_verified = true
+	leaderboard_status_message = "Leaderboard name saved."
+	save_game()
+	_refresh_profile_references()
+	_rebuild_profile_overlay()
+	if current_screen == "leaderboard":
+		_render_screen()
+
+
+func _on_leaderboard_submit_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+	leaderboard_submit_in_flight = false
+	if result != HTTPRequest.RESULT_SUCCESS:
+		_leaderboard_note_submit_failure("Leaderboard write failed.")
+		return
+	if response_code < 200 or response_code >= 300:
+		_leaderboard_note_submit_failure("Leaderboard write returned HTTP %s." % response_code)
+		return
+	leaderboard_last_submit_unix = _unix_now()
+	leaderboard_last_submitted_score = _leaderboard_score()
+	for raw_category_id in leaderboard_last_submit_payload_categories:
+		var category_id := _leaderboard_valid_category_id(str(raw_category_id))
+		leaderboard_last_submitted_scores_by_category[category_id] = _leaderboard_score_for_category(category_id)
+	leaderboard_last_submit_payload_categories.clear()
+	leaderboard_status_message = "Leaderboard published."
+	save_game()
+	if current_screen == "leaderboard":
+		_leaderboard_fetch_category(leaderboard_category_id, true)
+		_render_screen()
+
+
+func _on_profile_reference_update_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+	profile_reference_update_in_flight = false
+	if result != HTTPRequest.RESULT_SUCCESS or response_code < 200 or response_code >= 300:
+		return
+
+
+func _chat_stream_connect(force_reconnect := false) -> void:
+	if not _leaderboard_firebase_enabled():
+		chat_status_message = "Firebase URL and Web API key are not configured yet."
+		return
+	var now := _unix_now()
+	var visible_count := _chat_target_visible_count()
+	if chat_stream_connected and chat_stream_visible_count == visible_count and not force_reconnect:
+		return
+	if not _leaderboard_ensure_auth():
+		chat_status_message = "Connecting chat login..."
+		return
+	if chat_stream_connecting and chat_stream_visible_count == visible_count and not force_reconnect:
+		return
+	if not force_reconnect and chat_stream_retry_unix > now:
+		return
+	_chat_stream_disconnect(false)
+	chat_stream_visible_count = visible_count
+	var query := "orderBy=%%22created_at%%22&limitToLast=%s" % visible_count
+	var target := _firebase_stream_target(_chat_firebase_url("messages", _leaderboard_authenticated_query(query)))
+	if target.is_empty():
+		_chat_note_stream_failure("Chat stream URL was invalid.")
+		return
+	var err := chat_stream_client.connect_to_host(str(target.get("host", "")), 443, TLSOptions.client())
+	if err != OK:
+		_chat_note_stream_failure("Chat stream failed to connect: %s" % error_string(err))
+		return
+	chat_stream_connecting = true
+	chat_stream_request_sent = false
+	chat_stream_buffer = ""
+	chat_stream_event_name = ""
+	chat_stream_event_data_lines.clear()
+	chat_stream_client.set_meta("request_path", str(target.get("path", "/")))
+	chat_status_message = "Connecting global chat stream..."
+
+
+func _process_chat_live_sync(delta: float) -> void:
+	if not _chat_strip_visible_on_current_screen():
+		_chat_stream_disconnect(false)
+		return
+	if not _leaderboard_firebase_enabled():
+		_chat_stream_disconnect(false)
+		return
+	if chat_stream_client == null:
+		return
+	var status := chat_stream_client.get_status()
+	if status == HTTPClient.STATUS_DISCONNECTED:
+		chat_stream_connected = false
+		chat_stream_connecting = false
+		_chat_stream_connect()
+		return
+	var poll_err := chat_stream_client.poll()
+	if poll_err != OK:
+		_chat_note_stream_failure("Chat stream failed: %s" % error_string(poll_err))
+		return
+	status = chat_stream_client.get_status()
+	if status == HTTPClient.STATUS_CONNECTED and not chat_stream_request_sent:
+		var request_path := str(chat_stream_client.get_meta("request_path", "/"))
+		var err := chat_stream_client.request(
+			HTTPClient.METHOD_GET,
+			request_path,
+			PackedStringArray(["Accept: text/event-stream"])
+		)
+		if err != OK:
+			_chat_note_stream_failure("Chat stream request failed: %s" % error_string(err))
+			return
+		chat_stream_request_sent = true
+		chat_status_message = "Opening global chat stream..."
+		return
+	if status == HTTPClient.STATUS_BODY:
+		if not chat_stream_connected:
+			chat_stream_connected = true
+			chat_stream_connecting = false
+			chat_stream_retry_unix = 0
+			chat_status_message = "Global chat is live."
+			save_game()
+		var chunk := chat_stream_client.read_response_body_chunk()
+		if chunk.size() > 0:
+			_chat_stream_receive_text(chunk.get_string_from_utf8())
+		return
+	if status == HTTPClient.STATUS_CONNECTION_ERROR or status == HTTPClient.STATUS_TLS_HANDSHAKE_ERROR:
+		_chat_note_stream_failure("Chat stream disconnected.")
+
+
+func _chat_send(raw_text: String) -> void:
+	if not _leaderboard_firebase_enabled():
+		chat_status_message = "Firebase URL and Web API key are not configured yet."
+		_render_chat_if_visible()
+		return
+	if not _leaderboard_ensure_auth():
+		var pending_text := _sanitize_chat_message(raw_text)
+		if not pending_text.is_empty() and leaderboard_auth_in_flight:
+			chat_pending_send_after_auth = pending_text
+			chat_status_message = "Connecting chat login, then sending..."
+		else:
+			chat_status_message = leaderboard_status_message
+		_render_chat_if_visible()
+		return
+	if not _leaderboard_profile_claim_valid():
+		chat_status_message = "Save a unique leaderboard name before chatting."
+		_render_chat_if_visible()
+		return
+	if chat_send_in_flight:
+		return
+	var clean_text := _sanitize_chat_message(raw_text)
+	if clean_text.is_empty():
+		chat_status_message = "Write a message first."
+		_render_chat_if_visible()
+		return
+	var wait := _chat_next_send_seconds()
+	if wait > 0:
+		chat_status_message = "Chat is cooling down for %s." % _format_duration(float(wait))
+		_render_chat_if_visible()
+		return
+	var message_id := _make_chat_message_id()
+	var now_unix := _unix_now()
+	var now_msec := _unix_now_msec()
+	var updates := {
+		"messages/%s" % message_id: {
+			"sender_id": leaderboard_player_id,
+			"name": leaderboard_display_name,
+			"name_key": leaderboard_name_key,
+			"avatar_index": leaderboard_avatar_index,
+			"text": clean_text,
+			"created_at": now_msec,
+			"created_at_unix": now_unix,
+			"deleted": false
+		},
+		"user_write_gates/%s" % leaderboard_player_id: {
+			"updated_at": now_msec,
+			"submitted_at_unix": now_unix
+		}
+	}
+	chat_send_in_flight = true
+	chat_pending_send_message_id = message_id
+	chat_status_message = "Sending chat message..."
+	_chat_upsert_row(message_id, updates["messages/%s" % message_id] as Dictionary)
+	chat_draft_message = ""
+	if chat_message_edit != null and is_instance_valid(chat_message_edit):
+		chat_message_edit.text = ""
+	_render_chat_if_visible()
+	_chat_scroll_to_latest_deferred()
+	var err := chat_send_request.request(
+		_chat_firebase_url("", _leaderboard_authenticated_query("print=silent")),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_PATCH,
+		JSON.stringify(updates)
+	)
+	if err != OK:
+		chat_send_in_flight = false
+		_chat_remove_row(message_id)
+		chat_pending_send_message_id = ""
+		_chat_note_send_failure("Chat write failed: %s" % error_string(err))
+		_render_chat_if_visible()
+
+
+func _on_chat_send_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+	chat_send_in_flight = false
+	if result != HTTPRequest.RESULT_SUCCESS:
+		_chat_remove_row(chat_pending_send_message_id)
+		chat_pending_send_message_id = ""
+		_chat_note_send_failure("Chat write failed.")
+		_render_chat_if_visible()
+		return
+	if response_code < 200 or response_code >= 300:
+		_chat_remove_row(chat_pending_send_message_id)
+		chat_pending_send_message_id = ""
+		if response_code == 401 or response_code == 403:
+			_chat_note_send_rejected("Firebase rejected chat write HTTP %s. Check Anonymous Auth and RTDB rules." % response_code)
+			_render_chat_if_visible()
+			return
+		_chat_note_send_failure("Chat write returned HTTP %s." % response_code)
+		_render_chat_if_visible()
+		return
+	chat_last_send_unix = _unix_now()
+	chat_pending_send_message_id = ""
+	chat_status_message = ""
+	chat_draft_message = ""
+	save_game()
+	if chat_message_edit != null and is_instance_valid(chat_message_edit):
+		chat_message_edit.text = ""
+	_chat_stream_connect()
+	_render_chat_if_visible()
+	_chat_scroll_to_latest_deferred()
+
+
+func _chat_note_stream_failure(message: String) -> void:
+	_chat_stream_disconnect(false)
+	chat_stream_retry_unix = _unix_now() + CHAT_STREAM_RETRY_INTERVAL_SECONDS
+	chat_status_message = "%s Reconnecting in %s." % [message, _format_duration(float(CHAT_STREAM_RETRY_INTERVAL_SECONDS))]
+	save_game()
+
+
+func _chat_stream_disconnect(clear_status := true) -> void:
+	if chat_stream_client != null:
+		chat_stream_client.close()
+	chat_stream_connected = false
+	chat_stream_connecting = false
+	chat_stream_request_sent = false
+	chat_stream_visible_count = 0
+	chat_stream_buffer = ""
+	chat_stream_event_name = ""
+	chat_stream_event_data_lines.clear()
+	if clear_status and current_screen == "chat":
+		chat_status_message = "Chat stream closed."
+
+
+func _chat_stream_receive_text(text: String) -> void:
+	chat_stream_buffer += text.replace("\r\n", "\n").replace("\r", "\n")
+	while chat_stream_buffer.find("\n") >= 0:
+		var line_end := chat_stream_buffer.find("\n")
+		var line := chat_stream_buffer.substr(0, line_end)
+		chat_stream_buffer = chat_stream_buffer.substr(line_end + 1)
+		_chat_stream_receive_line(line)
+
+
+func _chat_stream_receive_line(line: String) -> void:
+	if line.is_empty():
+		_chat_stream_dispatch_event()
+		return
+	if line.begins_with(":"):
+		return
+	if line.begins_with("event:"):
+		chat_stream_event_name = line.substr(6).strip_edges()
+	elif line.begins_with("data:"):
+		chat_stream_event_data_lines.append(line.substr(5).strip_edges())
+
+
+func _chat_stream_dispatch_event() -> void:
+	var event_name := chat_stream_event_name
+	var data_text := "\n".join(chat_stream_event_data_lines)
+	chat_stream_event_name = ""
+	chat_stream_event_data_lines.clear()
+	if event_name.is_empty() and data_text.is_empty():
+		return
+	if event_name == "cancel" or event_name == "auth_revoked":
+		_chat_note_stream_failure("Chat stream was cancelled.")
+		_render_chat_if_visible()
+		return
+	if data_text.is_empty():
+		return
+	var parsed = JSON.parse_string(data_text)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return
+	_chat_apply_stream_payload(parsed as Dictionary)
+	chat_status_message = "Global chat is live."
+	_render_chat_if_visible()
+
+
+func _chat_apply_stream_payload(payload: Dictionary) -> void:
+	var path := str(payload.get("path", "/"))
+	var data = payload.get("data", null)
+	if path == "/":
+		if typeof(data) == TYPE_DICTIONARY:
+			_chat_replace_rows(data as Dictionary)
+		elif data == null:
+			chat_rows.clear()
+		return
+	var clean_path := path.substr(1) if path.begins_with("/") else path
+	var parts := clean_path.split("/", false)
+	if parts.is_empty():
+		return
+	var message_id := str(parts[0])
+	if message_id.is_empty():
+		return
+	if data == null:
+		_chat_remove_row(message_id)
+		return
+	if typeof(data) == TYPE_DICTIONARY:
+		if parts.size() == 1:
+			_chat_upsert_row(message_id, data as Dictionary)
+		else:
+			var existing := _chat_existing_row(message_id)
+			if existing.is_empty():
+				return
+			existing[str(parts[1])] = data
+			_chat_upsert_row(message_id, existing)
+
+
+func _chat_replace_rows(data: Dictionary) -> void:
+	var rows := []
+	for raw_message_id in data.keys():
+		var entry = data.get(raw_message_id, {})
+		if typeof(entry) != TYPE_DICTIONARY:
+			continue
+		var row := _chat_row_from_entry(str(raw_message_id), entry as Dictionary)
+		if not row.is_empty():
+			rows.append(row)
+	chat_rows = rows
+	_chat_sort_and_trim_rows()
+
+
+func _chat_upsert_row(message_id: String, entry: Dictionary) -> void:
+	var row := _chat_row_from_entry(message_id, entry)
+	if row.is_empty():
+		return
+	_chat_remove_row(message_id)
+	chat_rows.append(row)
+	_chat_sort_and_trim_rows()
+
+
+func _chat_remove_row(message_id: String) -> void:
+	for i in range(chat_rows.size() - 1, -1, -1):
+		if str((chat_rows[i] as Dictionary).get("message_id", "")) == message_id:
+			chat_rows.remove_at(i)
+
+
+func _chat_existing_row(message_id: String) -> Dictionary:
+	for raw_row in chat_rows:
+		var row := raw_row as Dictionary
+		if str(row.get("message_id", "")) == message_id:
+			return row.duplicate()
+	return {}
+
+
+func _chat_row_from_entry(message_id: String, entry: Dictionary) -> Dictionary:
+	var text := _sanitize_chat_message(str(entry.get("text", "")))
+	var deleted := bool(entry.get("deleted", false))
+	if text.is_empty() and not deleted:
+		return {}
+	return {
+		"message_id": message_id,
+			"sender_id": _sanitize_leaderboard_player_id(str(entry.get("sender_id", ""))),
+			"name": _sanitize_leaderboard_display_name(str(entry.get("name", "Player"))),
+			"name_key": _sanitize_leaderboard_name_key(str(entry.get("name_key", ""))),
+			"avatar_index": _valid_profile_avatar_index(int(entry.get("avatar_index", 0))),
+		"text": text,
+		"created_at": maxi(0, int(entry.get("created_at", 0))),
+		"created_at_unix": maxi(0, int(entry.get("created_at_unix", 0))),
+		"deleted": deleted
+	}
+
+
+func _chat_sort_and_trim_rows() -> void:
+	chat_rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var created_a := int(a.get("created_at", 0))
+		var created_b := int(b.get("created_at", 0))
+		if created_a == created_b:
+			return str(a.get("message_id", "")) < str(b.get("message_id", ""))
+		return created_a < created_b
+	)
+	var visible_count := _chat_target_visible_count()
+	if chat_rows.size() > visible_count:
+		chat_rows = chat_rows.slice(chat_rows.size() - visible_count)
+
+
+func _chat_target_visible_count() -> int:
+	if chat_overlay != null and chat_overlay.visible:
+		return CHAT_FULL_VISIBLE_COUNT
+	return CHAT_STRIP_VISIBLE_COUNT
+
+
+func _firebase_stream_target(url: String) -> Dictionary:
+	if not url.begins_with(LEADERBOARD_FIREBASE_URL_SCHEME):
+		return {}
+	var rest := url.substr(LEADERBOARD_FIREBASE_URL_SCHEME.length())
+	var slash := rest.find("/")
+	if slash <= 0:
+		return {}
+	return {
+		"host": rest.substr(0, slash),
+		"path": rest.substr(slash)
+	}
+
+
+func _chat_note_send_failure(message: String) -> void:
+	chat_last_send_unix = _unix_now()
+	chat_status_message = "%s Trying again in %s." % [message, _format_duration(float(CHAT_SEND_INTERVAL_SECONDS))]
+	save_game()
+
+
+func _chat_note_send_rejected(message: String) -> void:
+	chat_status_message = message
+	save_game()
+
+
+func _chat_next_send_seconds() -> int:
+	if chat_last_send_unix <= 0:
+		return 0
+	return maxi(0, CHAT_SEND_INTERVAL_SECONDS - (_unix_now() - chat_last_send_unix))
+
+
+func _chat_can_send() -> bool:
+	return _leaderboard_firebase_enabled() and _leaderboard_auth_ready() and not chat_send_in_flight and _chat_next_send_seconds() <= 0
+
+
+func _render_chat_if_visible() -> void:
+	_update_chat_strip()
+	_rebuild_chat_overlay()
 
 
 func _build_boot_warmup_overlay() -> void:
@@ -3937,9 +5081,9 @@ func _build_nav_bar() -> void:
 	row.clip_contents = true
 	row.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT - BOTTOM_NAV_SAFE_PAD)
 	nav_bar.add_child(row)
-	leaderboard_tab = _nav_button("res://assets/ui/leaderboard-podium-icon.png")
+	leaderboard_tab = _nav_button(LEADERBOARD_ICON)
 	leaderboard_tab.add_theme_constant_override("icon_max_width", 220)
-	leaderboard_tab.pressed.connect(_show_leaderboard_coming_soon)
+	leaderboard_tab.pressed.connect(_show_leaderboard)
 	row.add_child(leaderboard_tab)
 	hero_tab = _nav_button("res://docs/assets/ui/motivation-star.png")
 	hero_tab.custom_minimum_size = Vector2(318, 318)
@@ -3956,6 +5100,377 @@ func _build_nav_bar() -> void:
 	shop_tab.add_theme_constant_override("icon_max_width", 232)
 	shop_tab.pressed.connect(_show_shop)
 	row.add_child(shop_tab)
+
+
+func _build_chat_strip() -> void:
+	chat_strip = PanelContainer.new()
+	chat_strip.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	chat_strip.offset_top = -BOTTOM_NAV_HEIGHT - CHAT_STRIP_HEIGHT
+	chat_strip.offset_bottom = -BOTTOM_NAV_HEIGHT
+	chat_strip.z_index = CHAT_UI_Z
+	chat_strip.z_as_relative = false
+	chat_strip.visible = false
+	chat_strip.clip_contents = true
+	chat_strip.mouse_filter = Control.MOUSE_FILTER_STOP
+	chat_strip.add_theme_stylebox_override("panel", _chat_strip_style())
+	chat_strip.gui_input.connect(_on_chat_strip_gui_input)
+	add_child(chat_strip)
+
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 46)
+	margin.add_theme_constant_override("margin_right", 44)
+	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_bottom", 18)
+	chat_strip.add_child(margin)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 28)
+	margin.add_child(row)
+	var icon := _image(CHAT_STRIP_ICON, Vector2(213, 213))
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.alignment = BoxContainer.ALIGNMENT_CENTER
+	copy.add_theme_constant_override("separation", 4)
+	row.add_child(copy)
+	chat_strip_line_one = _label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_one.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
+	chat_strip_line_one.add_theme_constant_override("outline_size", 5)
+	chat_strip_line_one.clip_text = true
+	chat_strip_line_one.custom_minimum_size = Vector2(0, 84)
+	copy.add_child(chat_strip_line_one)
+	chat_strip_line_two = _label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_two.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
+	chat_strip_line_two.add_theme_constant_override("outline_size", 5)
+	chat_strip_line_two.clip_text = true
+	chat_strip_line_two.custom_minimum_size = Vector2(0, 84)
+	copy.add_child(chat_strip_line_two)
+	_update_chat_strip()
+
+
+func _build_chat_overlay() -> void:
+	chat_overlay_layer = CanvasLayer.new()
+	chat_overlay_layer.layer = CHAT_OVERLAY_CANVAS_LAYER
+	add_child(chat_overlay_layer)
+
+	chat_overlay = ColorRect.new()
+	chat_overlay.color = Color.WHITE
+	chat_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	chat_overlay.z_index = MODAL_OVERLAY_Z
+	chat_overlay.z_as_relative = false
+	chat_overlay.visible = false
+	chat_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	chat_overlay.add_to_group("modal_overlay")
+	chat_overlay_layer.add_child(chat_overlay)
+	chat_keyboard_fill = ColorRect.new()
+	chat_keyboard_fill.color = COLOR_NAV
+	chat_keyboard_fill.set_anchors_preset(Control.PRESET_FULL_RECT)
+	chat_keyboard_fill.anchor_top = 1.0
+	chat_keyboard_fill.offset_top = 0.0
+	chat_keyboard_fill.offset_bottom = 0.0
+	chat_keyboard_fill.visible = false
+	chat_keyboard_fill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chat_overlay.add_child(chat_keyboard_fill)
+	chat_overlay_body = VBoxContainer.new()
+	chat_overlay_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	chat_overlay_body.add_theme_constant_override("separation", 0)
+	chat_overlay.add_child(chat_overlay_body)
+
+
+func _on_chat_strip_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		_open_chat_overlay()
+		chat_strip.accept_event()
+	elif event is InputEventScreenTouch and event.pressed:
+		_open_chat_overlay()
+		chat_strip.accept_event()
+
+
+func _route_chat_strip_input(event: InputEvent) -> bool:
+	if chat_strip == null or not is_instance_valid(chat_strip) or not chat_strip.visible:
+		return false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		if chat_strip.get_global_rect().has_point(event.global_position):
+			_open_chat_overlay()
+			return true
+	if event is InputEventScreenTouch and event.pressed:
+		if chat_strip.get_global_rect().has_point(event.position):
+			_open_chat_overlay()
+			return true
+	return false
+
+
+func _open_chat_overlay() -> void:
+	_play_default_button_sfx()
+	if chat_overlay == null or not _chat_strip_visible_on_current_screen():
+		return
+	chat_overlay.visible = true
+	chat_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	_chat_stream_connect()
+	_rebuild_chat_overlay()
+
+
+func _close_chat_overlay() -> void:
+	_play_default_button_sfx()
+	if chat_overlay != null:
+		chat_overlay.visible = false
+	chat_keyboard_lift_active = false
+	chat_keyboard_lift_pixels = 0.0
+	chat_keyboard_lift_hold_seconds = 0.0
+	chat_keyboard_lift_last_height = 0.0
+	chat_keyboard_lift_target_pixels = 0.0
+	chat_keyboard_lift_viewport_height = 0.0
+	chat_keyboard_lift_zero_seconds = 0.0
+	chat_keyboard_was_visible = false
+	chat_keyboard_close_submit_done = false
+	chat_keyboard_focus_active = false
+	chat_overlay_scroll = null
+	if chat_overlay_body != null and is_instance_valid(chat_overlay_body):
+		chat_overlay_body.offset_bottom = 0.0
+	if chat_keyboard_fill != null and is_instance_valid(chat_keyboard_fill):
+		chat_keyboard_fill.visible = false
+		chat_keyboard_fill.offset_top = 0.0
+	if _chat_strip_visible_on_current_screen():
+		_chat_stream_connect(true)
+
+
+func _rebuild_chat_overlay() -> void:
+	if chat_overlay == null or chat_overlay_body == null or not chat_overlay.visible:
+		return
+	for child in chat_overlay_body.get_children():
+		chat_overlay_body.remove_child(child)
+		child.queue_free()
+	chat_message_edit = null
+	chat_overlay_scroll = null
+	chat_overlay_body.add_child(_chat_expanded_header())
+	var scroll := MobileScrollContainer.new()
+	chat_overlay_scroll = scroll
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.set_pull_resistance_enabled(false)
+	chat_overlay_body.add_child(scroll)
+	var list_margin := MarginContainer.new()
+	var viewport_width := get_viewport_rect().size.x
+	list_margin.custom_minimum_size = Vector2(viewport_width, 0)
+	list_margin.add_theme_constant_override("margin_left", 64)
+	list_margin.add_theme_constant_override("margin_right", 48)
+	list_margin.add_theme_constant_override("margin_top", 8)
+	list_margin.add_theme_constant_override("margin_bottom", 34)
+	scroll.add_child(list_margin)
+	var list := VBoxContainer.new()
+	list.custom_minimum_size = Vector2(maxf(1.0, viewport_width - 112.0), 0)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 36)
+	list_margin.add_child(list)
+	if not chat_rows.is_empty():
+		for raw_row in chat_rows:
+			list.add_child(_chat_expanded_row(raw_row as Dictionary))
+	chat_overlay_body.add_child(_chat_expanded_composer())
+	_chat_scroll_to_latest_deferred()
+
+
+func _chat_expanded_header() -> Control:
+	var header := Control.new()
+	header.custom_minimum_size = Vector2(0, 260)
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var shelf := ColorRect.new()
+	shelf.color = COLOR_PAPER
+	shelf.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(shelf)
+	var top := MarginContainer.new()
+	top.set_anchors_preset(Control.PRESET_FULL_RECT)
+	top.add_theme_constant_override("margin_left", 180)
+	top.add_theme_constant_override("margin_right", 180)
+	top.add_theme_constant_override("margin_top", 90)
+	top.add_theme_constant_override("margin_bottom", 20)
+	header.add_child(top)
+	var tabs := HBoxContainer.new()
+	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
+	top.add_child(tabs)
+	var world := PanelContainer.new()
+	world.custom_minimum_size = Vector2(880, 150)
+	world.add_theme_stylebox_override("panel", _chat_world_tab_style())
+	tabs.add_child(world)
+	var world_label := _label("Global Chat", 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	world_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	world.add_child(world_label)
+	var shadow := SkillDetailPageShelfShadow.new()
+	shadow.anchor_left = 0.0
+	shadow.anchor_right = 1.0
+	shadow.anchor_top = 0.0
+	shadow.anchor_bottom = 0.0
+	shadow.offset_left = 0.0
+	shadow.offset_right = 0.0
+	shadow.offset_top = 260.0
+	shadow.offset_bottom = 352.0
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(shadow)
+	return header
+
+
+func _chat_expanded_row(row_data: Dictionary) -> Control:
+	var deleted := bool(row_data.get("deleted", false))
+	var is_self := str(row_data.get("sender_id", "")) == leaderboard_player_id
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 28)
+	row.custom_minimum_size = Vector2(0, 260)
+	row.add_child(_profile_avatar_frame(int(row_data.get("avatar_index", 0)), Vector2(188, 188), is_self))
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 10)
+	row.add_child(copy)
+	var meta := HBoxContainer.new()
+	meta.add_theme_constant_override("separation", 12)
+	copy.add_child(meta)
+	var name_text := str(row_data.get("name", "Player"))
+	if name_text.is_empty():
+		name_text = "Player"
+	var name_color := Color("#57b8ff") if is_self else Color("#ffc94a")
+	var name := _label(name_text, 66, name_color, HORIZONTAL_ALIGNMENT_LEFT)
+	var name_settings := LabelSettings.new()
+	if app_bold_font != null:
+		name_settings.font = app_bold_font
+	elif app_font != null:
+		name_settings.font = app_font
+	name_settings.font_size = 66
+	name_settings.font_color = name_color
+	name_settings.outline_color = Color.BLACK
+	name_settings.outline_size = 30
+	name.label_settings = name_settings
+	name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var name_margin := MarginContainer.new()
+	name_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_margin.add_theme_constant_override("margin_left", 34)
+	name_margin.add_theme_constant_override("margin_top", 6)
+	name_margin.add_theme_constant_override("margin_bottom", 6)
+	name_margin.add_child(name)
+	meta.add_child(name_margin)
+	var time := _label(_chat_time_text(row_data), 58, Color("#a7a7a7"), HORIZONTAL_ALIGNMENT_RIGHT)
+	time.custom_minimum_size = Vector2(210, 0)
+	meta.add_child(time)
+	var bubble := PanelContainer.new()
+	bubble.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bubble.add_theme_stylebox_override("panel", _chat_expanded_message_style(deleted))
+	copy.add_child(bubble)
+	var body_text := "Message removed by moderator." if deleted else str(row_data.get("text", ""))
+	var body := _label(body_text, 70, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(0, 112)
+	bubble.add_child(body)
+	return row
+
+
+func _chat_expanded_composer() -> Control:
+	var stack := VBoxContainer.new()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.add_theme_constant_override("separation", 0)
+	var bar := PanelContainer.new()
+	bar.custom_minimum_size = Vector2(0, CHAT_STRIP_HEIGHT)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_theme_stylebox_override("panel", _chat_strip_style())
+	stack.add_child(bar)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 44)
+	margin.add_theme_constant_override("margin_right", 56)
+	margin.add_theme_constant_override("margin_top", 24)
+	margin.add_theme_constant_override("margin_bottom", 24)
+	bar.add_child(margin)
+	var column := VBoxContainer.new()
+	column.alignment = BoxContainer.ALIGNMENT_CENTER
+	column.add_theme_constant_override("separation", 8)
+	margin.add_child(column)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 34)
+	column.add_child(row)
+	var back := _menu_button("<")
+	back.custom_minimum_size = Vector2(154, 154)
+	back.add_theme_font_size_override("font_size", 84)
+	back.add_theme_stylebox_override("normal", _chat_back_button_style(false))
+	back.add_theme_stylebox_override("hover", _chat_back_button_style(false))
+	back.add_theme_stylebox_override("pressed", _chat_back_button_style(true))
+	back.pressed.connect(_close_chat_overlay)
+	row.add_child(back)
+	chat_message_edit = LineEdit.new()
+	chat_message_edit.placeholder_text = "Send a message..."
+	chat_message_edit.max_length = CHAT_MESSAGE_MAX_CHARS
+	chat_message_edit.custom_minimum_size = Vector2(0, 154)
+	chat_message_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chat_message_edit.focus_mode = Control.FOCUS_ALL
+	chat_message_edit.add_theme_font_size_override("font_size", 68)
+	if app_bold_font != null:
+		chat_message_edit.add_theme_font_override("font", app_bold_font)
+	elif app_font != null:
+		chat_message_edit.add_theme_font_override("font", app_font)
+	chat_message_edit.add_theme_color_override("font_color", COLOR_INK)
+	chat_message_edit.add_theme_color_override("font_placeholder_color", Color("#b9b9b9"))
+	chat_message_edit.add_theme_color_override("caret_color", COLOR_INK)
+	chat_message_edit.add_theme_constant_override("caret_width", 8)
+	chat_message_edit.set("caret_blink", true)
+	chat_message_edit.set("caret_blink_interval", 0.42)
+	chat_message_edit.add_theme_stylebox_override("normal", _chat_input_style(false))
+	chat_message_edit.add_theme_stylebox_override("focus", _chat_input_style(true))
+	chat_message_edit.text = chat_draft_message
+	chat_message_edit.text_changed.connect(_on_chat_draft_changed)
+	chat_message_edit.gui_input.connect(_on_chat_input_gui_input)
+	chat_message_edit.focus_entered.connect(_on_chat_input_focus_entered)
+	chat_message_edit.focus_exited.connect(_on_chat_input_focus_exited)
+	chat_message_edit.text_submitted.connect(_chat_text_submitted)
+	chat_message_edit.editable = _leaderboard_firebase_enabled()
+	row.add_child(chat_message_edit)
+	var ribbon_frame := Control.new()
+	ribbon_frame.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT)
+	ribbon_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ribbon_frame.clip_contents = true
+	stack.add_child(ribbon_frame)
+	var ribbon := PanelContainer.new()
+	ribbon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ribbon.add_theme_stylebox_override("panel", _nav_style())
+	ribbon_frame.add_child(ribbon)
+	var ribbon_row := HBoxContainer.new()
+	ribbon_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	ribbon_row.add_theme_constant_override("separation", 120)
+	ribbon_row.clip_contents = true
+	ribbon_row.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT - BOTTOM_NAV_SAFE_PAD)
+	ribbon.add_child(ribbon_row)
+	var chat_leaderboard := _nav_button(LEADERBOARD_ICON)
+	chat_leaderboard.add_theme_constant_override("icon_max_width", 220)
+	chat_leaderboard.pressed.connect(func():
+		_close_chat_overlay()
+		_show_leaderboard()
+	)
+	ribbon_row.add_child(chat_leaderboard)
+	var chat_home := _nav_button("res://docs/assets/ui/motivation-star.png")
+	chat_home.custom_minimum_size = Vector2(318, 318)
+	chat_home.add_theme_constant_override("icon_max_width", 244)
+	chat_home.pressed.connect(func():
+		_close_chat_overlay()
+		_show_home()
+	)
+	ribbon_row.add_child(chat_home)
+	var chat_skills := _nav_button("res://docs/assets/ui/total-lv-bargraph.png")
+	chat_skills.pressed.connect(func():
+		_close_chat_overlay()
+		_show_skills()
+	)
+	ribbon_row.add_child(chat_skills)
+	var chat_settings := _nav_button("res://docs/assets/ui/settings-gear-simple.png")
+	chat_settings.pressed.connect(func():
+		_close_chat_overlay()
+		_show_settings()
+	)
+	ribbon_row.add_child(chat_settings)
+	var chat_shop := _nav_button("res://docs/assets/ui/shop.png")
+	chat_shop.add_theme_constant_override("icon_max_width", 232)
+	chat_shop.pressed.connect(func():
+		_close_chat_overlay()
+		_show_shop()
+	)
+	ribbon_row.add_child(chat_shop)
+	return stack
 
 
 func _build_settings_overlay() -> void:
@@ -4006,6 +5521,127 @@ func _build_settings_overlay() -> void:
 	reset.add_theme_stylebox_override("pressed", _paper_button_style(Color("#ef5656"), 48, 72, true))
 	_register_reset_button(reset, "Reset Data")
 	stack.add_child(reset)
+
+
+func _build_profile_overlay() -> void:
+	profile_overlay = ColorRect.new()
+	(profile_overlay as ColorRect).color = Color(0, 0, 0, 0.38)
+	profile_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	profile_overlay.z_index = MODAL_OVERLAY_Z
+	profile_overlay.z_as_relative = false
+	profile_overlay.visible = false
+	profile_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	profile_overlay.add_to_group("modal_overlay")
+	profile_overlay.gui_input.connect(_on_profile_overlay_gui_input)
+	add_child(profile_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_preset(Control.PRESET_FULL_RECT)
+	profile_overlay.add_child(center)
+	profile_panel = PanelContainer.new()
+	profile_panel.custom_minimum_size = Vector2(1540, 2020)
+	profile_panel.add_theme_stylebox_override("panel", _surface_style(COLOR_PANEL, CARD_RADIUS, 72, true))
+	center.add_child(profile_panel)
+	profile_content_stack = VBoxContainer.new()
+	profile_content_stack.add_theme_constant_override("separation", 34)
+	profile_panel.add_child(profile_content_stack)
+
+
+func _rebuild_profile_overlay() -> void:
+	if profile_content_stack == null:
+		return
+	for child in profile_content_stack.get_children():
+		child.queue_free()
+	profile_avatar_buttons.clear()
+	var header := HBoxContainer.new()
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	header.add_theme_constant_override("separation", 24)
+	profile_content_stack.add_child(header)
+	var title := _label("Profile", 124, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var close := _menu_button("Done")
+	close.custom_minimum_size = Vector2(300, 154)
+	close.pressed.connect(_save_profile_and_close)
+	header.add_child(close)
+
+	var identity_row := HBoxContainer.new()
+	identity_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	identity_row.add_theme_constant_override("separation", 42)
+	profile_content_stack.add_child(identity_row)
+	identity_row.add_child(_profile_avatar_frame(leaderboard_avatar_index, Vector2(310, 310), true))
+	var name_stack := VBoxContainer.new()
+	name_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	name_stack.add_theme_constant_override("separation", 18)
+	identity_row.add_child(name_stack)
+	name_stack.add_child(_label("Leaderboard name", 56, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+	profile_name_edit = LineEdit.new()
+	profile_name_edit.text = leaderboard_display_name
+	profile_name_edit.placeholder_text = "Your name"
+	profile_name_edit.max_length = PROFILE_DISPLAY_NAME_MAX_CHARS
+	profile_name_edit.custom_minimum_size = Vector2(0, 150)
+	profile_name_edit.focus_mode = Control.FOCUS_ALL
+	profile_name_edit.editable = not leaderboard_profile_claimed
+	profile_name_edit.add_theme_font_size_override("font_size", 66)
+	if app_bold_font != null:
+		profile_name_edit.add_theme_font_override("font", app_bold_font)
+	elif app_font != null:
+		profile_name_edit.add_theme_font_override("font", app_font)
+	profile_name_edit.add_theme_color_override("font_color", COLOR_INK)
+	profile_name_edit.add_theme_color_override("font_uneditable_color", COLOR_INK)
+	profile_name_edit.add_theme_color_override("font_placeholder_color", Color("#8a8175"))
+	profile_name_edit.add_theme_color_override("caret_color", COLOR_BLUE)
+	profile_name_edit.add_theme_stylebox_override("normal", _profile_name_field_style(false))
+	profile_name_edit.add_theme_stylebox_override("focus", _profile_name_field_style(true))
+	profile_name_edit.add_theme_stylebox_override("read_only", _profile_name_field_style(false))
+	profile_name_edit.text_submitted.connect(func(_text: String): _save_profile_and_close())
+	name_stack.add_child(profile_name_edit)
+	profile_status_label = _label(_profile_status_text(), 46, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	profile_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	profile_status_label.custom_minimum_size = Vector2(0, 112)
+	name_stack.add_child(profile_status_label)
+
+	if not leaderboard_profile_claimed:
+		var account_button := _menu_button("Save Leaderboard Name")
+		account_button.custom_minimum_size = Vector2(0, 154)
+		account_button.disabled = leaderboard_name_claim_in_flight
+		if leaderboard_name_claim_in_flight:
+			account_button.text = "Checking..."
+		account_button.pressed.connect(_create_leaderboard_account)
+		name_stack.add_child(account_button)
+
+	var chooser_label := _label("Choose picture", 68, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	profile_content_stack.add_child(chooser_label)
+	var grid := GridContainer.new()
+	grid.columns = PROFILE_AVATAR_COLUMNS
+	grid.add_theme_constant_override("h_separation", 24)
+	grid.add_theme_constant_override("v_separation", 24)
+	grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	profile_content_stack.add_child(grid)
+	for i in range(PROFILE_AVATAR_COUNT):
+		var avatar_button := _profile_avatar_picker_button(i)
+		profile_avatar_buttons.append(avatar_button)
+		grid.add_child(avatar_button)
+
+
+func _profile_avatar_picker_button(index: int) -> Button:
+	var selected := _valid_profile_avatar_index(index) == leaderboard_avatar_index
+	var button := Button.new()
+	button.text = ""
+	button.custom_minimum_size = Vector2(250, 250)
+	button.focus_mode = Control.FOCUS_NONE
+	button.clip_contents = true
+	button.add_theme_stylebox_override("normal", _profile_avatar_button_style(selected, false))
+	button.add_theme_stylebox_override("hover", _profile_avatar_button_style(selected, false))
+	button.add_theme_stylebox_override("pressed", _profile_avatar_button_style(selected, true))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	_attach_button_depress_animation(button, 0.94)
+	button.pressed.connect(_select_profile_avatar.bind(index))
+	var art := _image_from_texture(_profile_avatar_texture(index), Vector2(250, 250))
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.add_child(art)
+	button.add_child(_profile_avatar_border_overlay(selected))
+	return button
 
 
 func _build_achievements_overlay() -> void:
@@ -4179,16 +5815,22 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	
 	if current_screen == "skill":
 		_render_skill_detail(scroll_latest_activity, restore_detail_scroll)
+	elif current_screen == "leaderboard":
+		_render_leaderboard_page()
 	elif current_screen == "settings":
 		_render_settings_page()
 	elif current_screen == "shop":
 		_render_shop_page()
 	else:
+		skills_content.offset_top = 0.0
+		_render_skill_menu_shelf()
 		content_scroll = MobileScrollContainer.new()
+		content_scroll.clip_contents = true
 		content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 		content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 		content_scroll.set_pull_resistance_enabled(true)
 		_add_centered_skill_column(content_scroll)
+		content_scroll.offset_top = SKILL_MENU_SHELF_HEIGHT
 		var stack := VBoxContainer.new()
 		stack.custom_minimum_size.x = _skill_content_width()
 		stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -4297,11 +5939,902 @@ func _render_shop_page() -> void:
 	stack.add_child(bottom_spacer)
 
 
-func _render_skill_menu(stack: VBoxContainer) -> void:
+func _render_leaderboard_page() -> void:
+	skills_content.offset_top = 0.0
+	var background := ColorRect.new()
+	background.color = Color("#77c9ff")
+	background.set_anchors_preset(Control.PRESET_FULL_RECT)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	skills_content.add_child(background)
+	content_scroll = MobileScrollContainer.new()
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	content_scroll.set_pull_resistance_enabled(true)
+	content_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content_scroll.offset_left = 0
+	content_scroll.offset_right = 0
+	content_scroll.offset_top = 0
+	content_scroll.offset_bottom = 0
+	skills_content.add_child(content_scroll)
+	var stack := VBoxContainer.new()
+	stack.custom_minimum_size.x = _leaderboard_frame_width()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 0)
+	content_scroll.add_child(stack)
+
+	var rows := _leaderboard_rows()
+	var page_frame := _leaderboard_page_frame(rows)
+	stack.add_child(page_frame)
+	skills_content.add_child(_leaderboard_player_overlay())
+
+
+func _leaderboard_page_frame(rows: Array) -> Control:
+	var frame := Control.new()
+	frame.custom_minimum_size = Vector2(_leaderboard_frame_width(), _leaderboard_page_frame_height(rows.size()))
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	frame.clip_contents = false
+	var border := OrganicLeaderboardBorder.new()
+	border.set_anchors_preset(Control.PRESET_FULL_RECT)
+	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(border)
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 190)
+	margin.add_theme_constant_override("margin_right", 190)
+	margin.add_theme_constant_override("margin_top", 330)
+	margin.add_theme_constant_override("margin_bottom", 400)
+	frame.add_child(margin)
+	var stack := VBoxContainer.new()
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 40)
+	margin.add_child(stack)
+	var title := _label("Leaderboard", 210, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_font_override("font", app_bold_font)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.add_child(title)
+
+	stack.add_child(_leaderboard_category_dropdown())
+
+	var list_stack := VBoxContainer.new()
+	list_stack.custom_minimum_size = Vector2(1580, 0)
+	list_stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	list_stack.add_theme_constant_override("separation", 20)
+	stack.add_child(list_stack)
+	if rows.is_empty():
+		list_stack.add_child(_leaderboard_empty_state())
+	else:
+		for i in range(rows.size()):
+			list_stack.add_child(_leaderboard_row(i + 1, rows[i] as Dictionary))
+	var bottom_spacer := Control.new()
+	bottom_spacer.custom_minimum_size = Vector2(0, LEADERBOARD_BOTTOM_SCROLL_PAD)
+	list_stack.add_child(bottom_spacer)
+	return frame
+
+
+func _leaderboard_frame_width() -> float:
+	return maxf(LEADERBOARD_BASE_FRAME_WIDTH, _current_canvas_size().x)
+
+
+func _leaderboard_page_frame_height(row_count: int) -> float:
+	var content_height := 1040.0 + float(row_count) * 260.0 + float(LEADERBOARD_BOTTOM_SCROLL_PAD) + LEADERBOARD_PLAYER_OVERLAY_HEIGHT + 128.0
+	return maxf(content_height, _current_canvas_size().y)
+
+
+func _leaderboard_player_overlay() -> Control:
+	var overlay := Control.new()
+	var content_width := _skill_content_width()
+	overlay.anchor_left = 0.5
+	overlay.anchor_right = 0.5
+	overlay.anchor_top = 1.0
+	overlay.anchor_bottom = 1.0
+	overlay.offset_left = -content_width * 0.5
+	overlay.offset_right = content_width * 0.5
+	overlay.offset_top = -float(LEADERBOARD_PLAYER_OVERLAY_HEIGHT)
+	overlay.offset_bottom = -34.0
+	overlay.z_index = 32
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var card := _leaderboard_player_card()
+	card.set_anchors_preset(Control.PRESET_FULL_RECT)
+	card.offset_left = 56
+	card.offset_right = -56
+	card.offset_top = 24
+	card.offset_bottom = -24
+	overlay.add_child(card)
+	return overlay
+
+
+func _leaderboard_category_dropdown() -> OptionButton:
+	var dropdown := OptionButton.new()
+	dropdown.custom_minimum_size = Vector2(1180, 230)
+	dropdown.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	dropdown.focus_mode = Control.FOCUS_NONE
+	dropdown.fit_to_longest_item = false
+	dropdown.alignment = HORIZONTAL_ALIGNMENT_CENTER
+	dropdown.add_theme_font_size_override("font_size", 86)
+	if app_bold_font != null:
+		dropdown.add_theme_font_override("font", app_bold_font)
+	dropdown.add_theme_stylebox_override("normal", _leaderboard_dropdown_style(Color("#e8f6ff"), false))
+	dropdown.add_theme_stylebox_override("hover", _leaderboard_dropdown_style(Color("#e8f6ff"), false))
+	dropdown.add_theme_stylebox_override("pressed", _leaderboard_dropdown_style(Color("#cfefff"), true))
+	dropdown.add_theme_color_override("font_color", COLOR_INK)
+	dropdown.add_theme_color_override("font_pressed_color", COLOR_INK)
+	dropdown.add_theme_color_override("font_hover_color", COLOR_INK)
+	var categories := _leaderboard_categories()
+	var selected_index := 0
+	for i in range(categories.size()):
+		var category := categories[i] as Dictionary
+		var id := str(category.get("id", ""))
+		dropdown.add_item(str(category.get("label", id)))
+		if id == leaderboard_category_id:
+			selected_index = i
+	dropdown.select(selected_index)
+	var popup := dropdown.get_popup()
+	if popup != null:
+		popup.add_theme_font_size_override("font_size", 70)
+		if app_bold_font != null:
+			popup.add_theme_font_override("font", app_bold_font)
+	dropdown.item_selected.connect(_leaderboard_category_selected)
+	return dropdown
+
+
+func _leaderboard_category_selected(index: int) -> void:
+	var categories := _leaderboard_categories()
+	if index < 0 or index >= categories.size():
+		return
+	var category_id := str((categories[index] as Dictionary).get("id", LEADERBOARD_CATEGORY_TOTAL_LEVEL))
+	if leaderboard_category_id == category_id:
+		return
+	leaderboard_category_id = category_id
+	_leaderboard_fetch_category(leaderboard_category_id)
+	_render_screen()
+
+
+func _leaderboard_player_card() -> Control:
+	var category_id := _leaderboard_valid_category_id(leaderboard_category_id)
+	var player_score := _leaderboard_score_for_category(category_id)
+	var card := Button.new()
+	card.text = ""
+	card.focus_mode = Control.FOCUS_NONE
+	card.mouse_filter = Control.MOUSE_FILTER_STOP
+	card.add_theme_stylebox_override("normal", _leaderboard_player_card_style(Color("#d8f5ff"), false))
+	card.add_theme_stylebox_override("hover", _leaderboard_player_card_style(Color("#d8f5ff"), false))
+	card.add_theme_stylebox_override("pressed", _leaderboard_player_card_style(Color("#beeaff"), true))
+	card.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	card.pressed.connect(_open_profile_overlay)
+	_attach_button_depress_animation(card, 0.986)
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 38)
+	margin.add_theme_constant_override("margin_right", 38)
+	margin.add_theme_constant_override("margin_top", 28)
+	margin.add_theme_constant_override("margin_bottom", 28)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(margin)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 34)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(row)
+	row.add_child(_profile_avatar_frame(leaderboard_avatar_index, Vector2(232, 232), true))
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 2)
+	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(copy)
+	var eyebrow := _label("Tap to edit profile", 48, Color("#22546c"), HORIZONTAL_ALIGNMENT_LEFT)
+	copy.add_child(eyebrow)
+	var score := _label(leaderboard_display_name, 104, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	score.add_theme_color_override("font_outline_color", COLOR_INK)
+	score.add_theme_constant_override("outline_size", 18)
+	copy.add_child(score)
+	var rank_text := _leaderboard_player_rank_text(category_id)
+	var rank := _label("%s  |  %s" % [_leaderboard_format_score(category_id, player_score), rank_text if rank_text == "unranked" else "Rank %s" % rank_text], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
+	copy.add_child(rank)
+	var status := VBoxContainer.new()
+	status.custom_minimum_size = Vector2(560, 0)
+	status.add_theme_constant_override("separation", 8)
+	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(status)
+	var status_title := _label(_leaderboard_submit_status_title(), 54, COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	status.add_child(status_title)
+	var detail := _label(_leaderboard_submit_status_detail(), 42, COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.custom_minimum_size = Vector2(560, 146)
+	status.add_child(detail)
+	return card
+
+
+func _leaderboard_score_card() -> PanelContainer:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(1680, 440)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.add_theme_stylebox_override("panel", _paper_button_style_with_outline(Color("#ffd94d"), 58, 56, false, false, COLOR_INK))
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 58)
+	margin.add_theme_constant_override("margin_right", 58)
+	margin.add_theme_constant_override("margin_top", 42)
+	margin.add_theme_constant_override("margin_bottom", 42)
+	card.add_child(margin)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 36)
+	margin.add_child(row)
+	var icon := _image(LEADERBOARD_ICON, Vector2(250, 250))
+	row.add_child(icon)
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 8)
+	row.add_child(copy)
+	var label := _label("Your Elite Score", 64, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", 16)
+	copy.add_child(label)
+	var score := _label(_format_compact_number(float(_leaderboard_score()), 4), 132, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	score.add_theme_color_override("font_outline_color", COLOR_INK)
+	score.add_theme_constant_override("outline_size", 24)
+	copy.add_child(score)
+	var sub := _label("Total Lv %s  |  %s queued" % [_global_level(), _format_compact_number(float(_leaderboard_queued_score()), 3)], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
+	copy.add_child(sub)
+	return card
+
+
+func _leaderboard_sync_card() -> PanelContainer:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(1680, 300)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.add_theme_stylebox_override("panel", _surface_style(Color("#e8edf5"), 46, 42, true))
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 18)
+	card.add_child(stack)
+	var header := HBoxContainer.new()
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	header.add_theme_constant_override("separation", 18)
+	stack.add_child(header)
+	var dot := PanelContainer.new()
+	dot.custom_minimum_size = Vector2(42, 42)
+	dot.add_theme_stylebox_override("panel", _leaderboard_status_dot_style())
+	header.add_child(dot)
+	var title := _label(_leaderboard_submit_status_title(), 68, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_child(title)
+	var cadence := _label("1/hr", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	cadence.custom_minimum_size = Vector2(190, 82)
+	cadence.add_theme_color_override("font_outline_color", COLOR_INK)
+	cadence.add_theme_constant_override("outline_size", 14)
+	header.add_child(cadence)
+	var detail := _label(_leaderboard_submit_status_detail(), 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.custom_minimum_size = Vector2(0, 128)
+	stack.add_child(detail)
+	return card
+
+
+func _leaderboard_row(rank: int, row_data: Dictionary) -> Control:
+	var row := PanelContainer.new()
+	row.custom_minimum_size = Vector2(0, 244)
+	var fill := Color("#ececec")
+	if bool(row_data.get("is_player", false)):
+		fill = Color("#d8f5ff")
+	row.add_theme_stylebox_override("panel", _surface_style(fill, 30, 22, false))
+	var h := HBoxContainer.new()
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.add_theme_constant_override("separation", 34)
+	row.add_child(h)
+	h.add_child(_leaderboard_rank_badge(rank))
+	var avatar := _profile_avatar_frame(int(row_data.get("avatar_index", rank - 1)), Vector2(190, 190), bool(row_data.get("is_player", false)))
+	h.add_child(avatar)
+	var name_label := _label(str(row_data.get("name", "Player")), 80, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	name_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	name_label.add_theme_constant_override("outline_size", 30)
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 0)
+	h.add_child(copy)
+	name_label.custom_minimum_size = Vector2(0, 108)
+	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_child(name_label)
+	var score_label := _label(str(row_data.get("score_text", _format_compact_number(float(row_data.get("score", 0)), 4))), 76, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_LEFT)
+	score_label.custom_minimum_size = Vector2(0, 98)
+	score_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	score_label.add_theme_constant_override("outline_size", 28)
+	copy.add_child(score_label)
+	return row
+
+
+func _leaderboard_rank_badge(rank: int) -> Control:
+	var badge := PanelContainer.new()
+	badge.custom_minimum_size = Vector2(198, 154)
+	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	badge.add_theme_stylebox_override("panel", _leaderboard_rank_badge_style())
+	var label := _label(str(rank), 102, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", 22)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.add_child(label)
+	return badge
+
+
+func _chat_strip_visible_on_current_screen() -> bool:
+	return current_screen == "menu" or current_screen == "skill"
+
+
+func _update_chat_strip() -> void:
+	if chat_strip == null or not is_instance_valid(chat_strip):
+		return
+	var visible := _chat_strip_visible_on_current_screen()
+	chat_strip.visible = visible
+	if visible:
+		_chat_stream_connect()
+	else:
+		_chat_stream_disconnect(false)
+	if chat_strip_line_one == null or chat_strip_line_two == null:
+		return
+	var lines := _chat_strip_lines()
+	chat_strip_line_one.text = str(lines[0])
+	chat_strip_line_two.text = str(lines[1])
+
+
+func _chat_strip_lines() -> Array:
+	var messages := []
+	for raw_row in chat_rows:
+		var row := raw_row as Dictionary
+		if bool(row.get("deleted", false)):
+			messages.append("mod: message removed")
+		else:
+			var name := _sanitize_leaderboard_display_name(str(row.get("name", "Player")))
+			var text := _sanitize_chat_message(str(row.get("text", "")))
+			if text.is_empty():
+				continue
+			messages.append("%s: %s" % [name, text])
+	if messages.size() >= 2:
+		return [messages[messages.size() - 2], messages[messages.size() - 1]]
+	if messages.size() == 1:
+		return ["Global Chat", messages[0]]
+	if not _leaderboard_firebase_enabled():
+		return ["Global Chat", "Tap to open chat."]
+	return ["Global Chat", "Tap to open chat."]
+
+
+func _render_chat_page() -> void:
+	chat_message_edit = null
+	content_scroll = MobileScrollContainer.new()
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	content_scroll.set_pull_resistance_enabled(true)
+	_add_centered_skill_column(content_scroll)
+	var stack := VBoxContainer.new()
+	stack.custom_minimum_size.x = _skill_content_width()
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 30)
+	content_scroll.add_child(stack)
+	var top_spacer := Control.new()
+	top_spacer.custom_minimum_size = Vector2(0, 106)
+	stack.add_child(top_spacer)
+	stack.add_child(_label("Global Chat", 132, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	stack.add_child(_chat_status_card())
+	stack.add_child(_chat_composer())
+	var list := VBoxContainer.new()
+	list.custom_minimum_size = Vector2(1540, 0)
+	list.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	list.add_theme_constant_override("separation", 22)
+	stack.add_child(list)
+	if chat_rows.is_empty():
+		list.add_child(_chat_empty_state())
+	else:
+		for raw_row in chat_rows:
+			list.add_child(_chat_row(raw_row as Dictionary))
+	var bottom_spacer := Control.new()
+	bottom_spacer.custom_minimum_size = Vector2(0, CHAT_BOTTOM_SCROLL_PAD)
+	stack.add_child(bottom_spacer)
+
+
+func _chat_status_card() -> PanelContainer:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(1540, 250)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.add_theme_stylebox_override("panel", _surface_style(Color("#e8f6ff"), 42, 34, true))
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 28)
+	card.add_child(row)
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 6)
+	row.add_child(copy)
+	var title := _label(_chat_status_title(), 64, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	copy.add_child(title)
+	var detail := _label(_chat_status_detail(), 46, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.custom_minimum_size = Vector2(0, 118)
+	copy.add_child(detail)
+	var refresh := _menu_button("Refresh")
+	refresh.custom_minimum_size = Vector2(360, 160)
+	refresh.add_theme_font_size_override("font_size", 58)
+	refresh.disabled = chat_stream_connecting
+	refresh.pressed.connect(_chat_refresh_pressed)
+	row.add_child(refresh)
+	return card
+
+
+func _chat_composer() -> PanelContainer:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(1540, 350)
+	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	card.add_theme_stylebox_override("panel", _surface_style(Color("#fff6e1"), 42, 34, false))
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 22)
+	card.add_child(stack)
+	var input_row := HBoxContainer.new()
+	input_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	input_row.add_theme_constant_override("separation", 22)
+	stack.add_child(input_row)
+	chat_message_edit = LineEdit.new()
+	chat_message_edit.placeholder_text = "Message"
+	chat_message_edit.max_length = CHAT_MESSAGE_MAX_CHARS
+	chat_message_edit.custom_minimum_size = Vector2(0, 150)
+	chat_message_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chat_message_edit.focus_mode = Control.FOCUS_ALL
+	chat_message_edit.add_theme_font_size_override("font_size", 62)
+	if app_bold_font != null:
+		chat_message_edit.add_theme_font_override("font", app_bold_font)
+	elif app_font != null:
+		chat_message_edit.add_theme_font_override("font", app_font)
+	chat_message_edit.add_theme_color_override("font_color", COLOR_INK)
+	chat_message_edit.add_theme_color_override("font_placeholder_color", Color("#8a8175"))
+	chat_message_edit.add_theme_color_override("caret_color", COLOR_BLUE)
+	chat_message_edit.add_theme_stylebox_override("normal", _profile_name_field_style(false))
+	chat_message_edit.add_theme_stylebox_override("focus", _profile_name_field_style(true))
+	chat_message_edit.text_submitted.connect(_chat_text_submitted)
+	input_row.add_child(chat_message_edit)
+	var send := _menu_button("Send")
+	send.custom_minimum_size = Vector2(300, 150)
+	send.add_theme_font_size_override("font_size", 58)
+	send.disabled = not _chat_can_send()
+	send.pressed.connect(func(): _chat_send_pressed(chat_message_edit.text if chat_message_edit != null else ""))
+	input_row.add_child(send)
+	var hint := _label("One message every %s. Full chat shows the latest %s messages." % [_format_duration(float(CHAT_SEND_INTERVAL_SECONDS)), CHAT_FULL_VISIBLE_COUNT], 42, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hint.custom_minimum_size = Vector2(0, 100)
+	stack.add_child(hint)
+	return card
+
+
+func _chat_row(row_data: Dictionary) -> Control:
+	var row := PanelContainer.new()
+	var deleted := bool(row_data.get("deleted", false))
+	row.custom_minimum_size = Vector2(0, 230)
+	row.add_theme_stylebox_override("panel", _surface_style(Color("#ececec") if not deleted else Color("#ddd7cf"), 30, 24, false))
+	var h := HBoxContainer.new()
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	h.add_theme_constant_override("separation", 28)
+	row.add_child(h)
+	h.add_child(_profile_avatar_frame(int(row_data.get("avatar_index", 0)), Vector2(168, 168), str(row_data.get("sender_id", "")) == leaderboard_player_id))
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 2)
+	h.add_child(copy)
+	var name_text := str(row_data.get("name", "Player"))
+	var name := _label("%s  %s" % [name_text, _chat_time_text(row_data)], 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	copy.add_child(name)
+	var body_text := "Message removed by moderator." if deleted else str(row_data.get("text", ""))
+	var body := _label(body_text, 66, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(0, 120)
+	copy.add_child(body)
+	return row
+
+
+func _chat_empty_state() -> Control:
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(0, 420)
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return spacer
+
+
+func _chat_status_title() -> String:
+	if not _leaderboard_firebase_enabled():
+		return "Firebase not connected"
+	if not _leaderboard_auth_ready():
+		return "Chat login needed"
+	if chat_send_in_flight:
+		return "Sending..."
+	if chat_stream_connecting:
+		return "Connecting..."
+	if chat_stream_connected:
+		return "Real-time chat live"
+	var wait := _chat_next_send_seconds()
+	if wait > 0:
+		return "Next message in %s" % _format_duration(float(wait))
+	return "Live chat ready"
+
+
+func _chat_status_detail() -> String:
+	if not _leaderboard_firebase_enabled():
+		return "No network calls are made until Firebase is configured."
+	if not _leaderboard_auth_ready():
+		return "Anonymous Firebase Auth is required before chat reads or writes."
+	if not chat_status_message.is_empty() and chat_status_message != "Chat loaded.":
+		return chat_status_message
+	if chat_stream_connected:
+		return "One RTDB stream is open for this tab only, capped to %s recent messages." % _chat_target_visible_count()
+	var wait := maxi(0, chat_stream_retry_unix - _unix_now())
+	if wait > 0:
+		return "The chat stream is cooling down for %s before reconnecting." % _format_duration(float(wait))
+	return "The skills chat strip opens one Firebase RTDB Server-Sent Events stream."
+
+
+func _chat_refresh_pressed() -> void:
+	_play_default_button_sfx()
+	_chat_stream_connect(true)
+	_render_chat_if_visible()
+
+
+func _on_chat_draft_changed(text: String) -> void:
+	chat_draft_message = text
+	chat_keyboard_close_submit_done = false
+
+
+func _on_chat_input_focus_entered() -> void:
+	chat_keyboard_lift_active = true
+	chat_keyboard_focus_active = true
+	chat_keyboard_lift_hold_seconds = 0.9
+	chat_keyboard_lift_zero_seconds = 0.0
+	chat_keyboard_was_visible = false
+	chat_keyboard_close_submit_done = false
+	chat_keyboard_lift_viewport_height = maxf(chat_keyboard_lift_viewport_height, get_viewport_rect().size.y)
+	_process_chat_keyboard_lift(1.0)
+
+
+func _on_chat_input_focus_exited() -> void:
+	chat_keyboard_focus_active = false
+	if OS.get_name() == "Android" or OS.get_name() == "iOS":
+		var submitted_text := ""
+		if chat_message_edit != null and is_instance_valid(chat_message_edit):
+			submitted_text = chat_message_edit.text
+		if not _sanitize_chat_message(submitted_text).is_empty():
+			_chat_submit_current_draft()
+		chat_keyboard_lift_hold_seconds = 0.55
+		return
+	chat_keyboard_lift_active = false
+	chat_keyboard_lift_hold_seconds = 0.0
+	chat_keyboard_lift_last_height = 0.0
+	chat_keyboard_lift_target_pixels = 0.0
+	chat_keyboard_lift_viewport_height = 0.0
+	chat_keyboard_lift_zero_seconds = 0.0
+	chat_keyboard_was_visible = false
+	chat_keyboard_close_submit_done = false
+	chat_keyboard_focus_active = false
+
+
+func _process_chat_keyboard_lift(delta: float) -> void:
+	if chat_overlay_body == null or not is_instance_valid(chat_overlay_body):
+		return
+	var target := 0.0
+	var is_mobile_keyboard := OS.get_name() == "Android" or OS.get_name() == "iOS"
+	var raw_keyboard_height := 0.0
+	if is_mobile_keyboard:
+		raw_keyboard_height = float(DisplayServer.virtual_keyboard_get_height())
+		if raw_keyboard_height > 0.0:
+			chat_keyboard_lift_active = true
+			chat_keyboard_lift_zero_seconds = 0.0
+			chat_keyboard_was_visible = true
+		else:
+			chat_keyboard_lift_zero_seconds += delta
+			if chat_keyboard_was_visible and not chat_keyboard_close_submit_done and chat_keyboard_lift_zero_seconds > 0.2:
+				var submitted_text := ""
+				if chat_message_edit != null and is_instance_valid(chat_message_edit):
+					submitted_text = chat_message_edit.text
+				if not _sanitize_chat_message(submitted_text).is_empty():
+					chat_keyboard_close_submit_done = true
+					_chat_submit_current_draft()
+			if not chat_keyboard_focus_active and chat_keyboard_lift_zero_seconds > 0.85:
+				chat_keyboard_lift_active = false
+	if chat_overlay != null and chat_overlay.visible and is_mobile_keyboard and (chat_keyboard_focus_active or chat_keyboard_lift_active or raw_keyboard_height > 0.0 or chat_keyboard_lift_hold_seconds > 0.0):
+		chat_keyboard_lift_viewport_height = maxf(chat_keyboard_lift_viewport_height, get_viewport_rect().size.y)
+		var viewport_height := maxf(chat_keyboard_lift_viewport_height, get_viewport_rect().size.y)
+		var keyboard_height := raw_keyboard_height
+		if keyboard_height > 0.0:
+			chat_keyboard_lift_last_height = keyboard_height
+			chat_keyboard_lift_hold_seconds = 0.9
+		elif chat_keyboard_lift_hold_seconds > 0.0:
+			chat_keyboard_lift_hold_seconds = maxf(0.0, chat_keyboard_lift_hold_seconds - delta)
+			keyboard_height = chat_keyboard_lift_last_height
+		if keyboard_height <= 0.0:
+			keyboard_height = maxf(chat_keyboard_lift_last_height, viewport_height * 0.46)
+		var measured_target := clampf(keyboard_height - BOTTOM_NAV_HEIGHT + 96.0, 300.0, viewport_height * 0.52)
+		if chat_keyboard_focus_active or raw_keyboard_height > 0.0 or chat_keyboard_lift_hold_seconds > 0.0:
+			chat_keyboard_lift_target_pixels = maxf(chat_keyboard_lift_target_pixels, measured_target)
+		else:
+			chat_keyboard_lift_target_pixels = 0.0
+		target = chat_keyboard_lift_target_pixels
+	else:
+		chat_keyboard_lift_hold_seconds = 0.0
+		chat_keyboard_lift_last_height = 0.0
+		chat_keyboard_lift_target_pixels = 0.0
+		chat_keyboard_lift_viewport_height = 0.0
+		chat_keyboard_lift_zero_seconds = 0.0
+		chat_keyboard_was_visible = false
+		chat_keyboard_close_submit_done = false
+		chat_keyboard_focus_active = false
+	var t := clampf(delta * 12.0, 0.0, 1.0)
+	chat_keyboard_lift_pixels = lerpf(chat_keyboard_lift_pixels, target, t)
+	if absf(chat_keyboard_lift_pixels - target) < 1.0:
+		chat_keyboard_lift_pixels = target
+	chat_overlay_body.offset_bottom = -chat_keyboard_lift_pixels
+	if chat_keyboard_fill != null and is_instance_valid(chat_keyboard_fill):
+		chat_keyboard_fill.visible = chat_keyboard_lift_pixels > 1.0
+		chat_keyboard_fill.offset_top = -chat_keyboard_lift_pixels - 8.0
+	if chat_keyboard_focus_active:
+		_chat_scroll_to_latest()
+
+
+func _chat_scroll_to_latest_deferred() -> void:
+	call_deferred("_chat_scroll_to_latest")
+
+
+func _chat_scroll_to_latest() -> void:
+	if chat_overlay_scroll == null or not is_instance_valid(chat_overlay_scroll):
+		return
+	chat_overlay_scroll.scroll_vertical = chat_overlay_scroll.get_max_scroll_vertical()
+
+
+func _route_chat_overlay_key_input(event: InputEvent) -> bool:
+	if chat_overlay == null or not chat_overlay.visible:
+		return false
+	if not (event is InputEventKey):
+		return false
+	var key := event as InputEventKey
+	if not key.pressed or key.echo:
+		return false
+	if key.keycode == KEY_ENTER or key.keycode == KEY_KP_ENTER:
+		_chat_submit_current_draft()
+		return true
+	return false
+
+
+func _on_chat_input_gui_input(event: InputEvent) -> void:
+	if event is InputEventKey:
+		var key := event as InputEventKey
+		if key.pressed and not key.echo and (key.keycode == KEY_ENTER or key.keycode == KEY_KP_ENTER):
+			_chat_submit_current_draft()
+			chat_message_edit.accept_event()
+
+
+func _chat_submit_current_draft() -> void:
+	var text := chat_draft_message
+	if chat_message_edit != null and is_instance_valid(chat_message_edit):
+		text = chat_message_edit.text
+	_chat_send_pressed(text)
+	_chat_finish_mobile_submit_attempt()
+
+
+func _chat_text_submitted(text: String) -> void:
+	_chat_send_pressed(text)
+	_chat_finish_mobile_submit_attempt()
+
+
+func _chat_finish_mobile_submit_attempt() -> void:
+	if OS.get_name() != "Android" and OS.get_name() != "iOS":
+		return
+	if chat_message_edit != null and is_instance_valid(chat_message_edit):
+		chat_message_edit.release_focus()
+	DisplayServer.virtual_keyboard_hide()
+
+
+func _chat_send_pressed(text: String) -> void:
+	var now := Time.get_ticks_msec()
+	if now - chat_last_submit_press_msec < 250:
+		return
+	chat_last_submit_press_msec = now
+	_play_default_button_sfx()
+	chat_draft_message = text
+	_chat_send(text)
+
+
+func _sanitize_chat_message(raw_text: String) -> String:
+	var clean := raw_text.strip_edges()
+	clean = clean.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+	while clean.contains("  "):
+		clean = clean.replace("  ", " ")
+	clean = _censor_chat_message(clean)
+	if clean.length() > CHAT_MESSAGE_MAX_CHARS:
+		clean = clean.substr(0, CHAT_MESSAGE_MAX_CHARS).strip_edges()
+	return clean
+
+
+func _censor_chat_message(raw_text: String) -> String:
+	var output := ""
+	var token := ""
+	for i in range(raw_text.length()):
+		var ch := raw_text.substr(i, 1)
+		if _is_chat_word_char(ch):
+			token += ch
+		else:
+			output += _censor_chat_token(token)
+			token = ""
+			output += ch
+	output += _censor_chat_token(token)
+	return output
+
+
+func _censor_chat_token(token: String) -> String:
+	if token.is_empty():
+		return ""
+	if CHAT_CENSORED_WORDS.has(token.to_lower()):
+		var mask := ""
+		for _i in range(token.length()):
+			mask += "*"
+		return mask
+	return token
+
+
+func _is_chat_word_char(ch: String) -> bool:
+	if ch.length() != 1:
+		return false
+	var code := ch.unicode_at(0)
+	return (
+		(code >= 48 and code <= 57)
+		or (code >= 65 and code <= 90)
+		or (code >= 97 and code <= 122)
+	)
+
+
+func _make_chat_message_id() -> String:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var alphabet := "0123456789abcdef"
+	var suffix := ""
+	for _i in range(12):
+		suffix += alphabet.substr(rng.randi_range(0, alphabet.length() - 1), 1)
+	return "m%s_%s" % [_unix_now(), suffix]
+
+
+func _chat_time_text(row_data: Dictionary) -> String:
+	var created := maxi(0, int(row_data.get("created_at_unix", 0)))
+	if created <= 0:
+		return ""
+	var timestamp := Time.get_datetime_dict_from_unix_time(created)
+	return "%02d:%02d" % [int(timestamp.get("hour", 0)), int(timestamp.get("minute", 0))]
+
+
+func _refresh_profile_references() -> void:
+	_refresh_local_profile_references()
+	if not _leaderboard_firebase_enabled() or profile_reference_update_in_flight:
+		return
+	if not _leaderboard_ensure_auth():
+		return
+	if leaderboard_player_id.is_empty():
+		return
+	var updates := _profile_reference_updates()
+	if updates.is_empty():
+		return
+	profile_reference_update_in_flight = true
+	var err := profile_reference_update_request.request(
+		_firebase_database_url("", "", _leaderboard_authenticated_query("print=silent")),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_PATCH,
+		JSON.stringify(updates)
+	)
+	if err != OK:
+		profile_reference_update_in_flight = false
+
+
+func _refresh_local_profile_references() -> void:
+	for category_id in leaderboard_rows_by_category.keys():
+		var rows = leaderboard_rows_by_category.get(category_id, [])
+		if typeof(rows) != TYPE_ARRAY:
+			continue
+		for row in rows:
+			if typeof(row) != TYPE_DICTIONARY:
+				continue
+			var row_data := row as Dictionary
+			if str(row_data.get("player_id", "")) == leaderboard_player_id:
+				row_data["name"] = leaderboard_display_name
+				row_data["name_key"] = leaderboard_name_key
+				row_data["avatar_index"] = leaderboard_avatar_index
+	for raw_row in chat_rows:
+		var row := raw_row as Dictionary
+		if str(row.get("sender_id", "")) == leaderboard_player_id:
+			row["name"] = leaderboard_display_name
+			row["name_key"] = leaderboard_name_key
+			row["avatar_index"] = leaderboard_avatar_index
+	_update_chat_strip()
+	_rebuild_chat_overlay()
+
+
+func _profile_reference_updates() -> Dictionary:
+	var now_unix := _unix_now()
+	var now_msec := _unix_now_msec()
+	var updates := {}
+	if _leaderboard_profile_claim_valid():
+		updates["leaderboards/v1/name_claims/%s" % leaderboard_name_key] = {
+			"uid": leaderboard_player_id,
+			"name": leaderboard_display_name,
+			"name_key": leaderboard_name_key,
+			"avatar_index": leaderboard_avatar_index,
+			"created_at": now_msec,
+			"updated_at": now_msec,
+			"submitted_at_unix": now_unix
+		}
+	var category_scores := {}
+	for raw_category in _leaderboard_categories():
+		var category := raw_category as Dictionary
+		var category_id := _leaderboard_valid_category_id(str(category.get("id", "")))
+		if category_id.is_empty():
+			continue
+		var score := int(leaderboard_last_submitted_scores_by_category.get(category_id, 0))
+		for row in _leaderboard_rows_for_category(category_id):
+			var row_data := row as Dictionary
+			if str(row_data.get("player_id", "")) == leaderboard_player_id:
+				score = maxi(score, int(row_data.get("score", 0)))
+		if score > 0:
+			category_scores[category_id] = score
+	for raw_category_id in category_scores.keys():
+		var category_id := _leaderboard_valid_category_id(str(raw_category_id))
+		var category_key := _leaderboard_category_key(category_id)
+		updates["leaderboards/v1/scores/%s/%s" % [category_key, leaderboard_player_id]] = {
+			"name": leaderboard_display_name,
+			"name_key": leaderboard_name_key,
+			"avatar_index": leaderboard_avatar_index,
+			"score": int(category_scores[category_id]),
+			"updated_at": now_msec,
+			"submitted_at_unix": now_unix
+		}
+	for raw_row in chat_rows:
+		var row := raw_row as Dictionary
+		if str(row.get("sender_id", "")) != leaderboard_player_id:
+			continue
+		if bool(row.get("deleted", false)):
+			continue
+		var message_id := str(row.get("message_id", ""))
+		if message_id.is_empty():
+			continue
+		updates["global_chat/v1/messages/%s" % message_id] = {
+			"sender_id": leaderboard_player_id,
+			"name": leaderboard_display_name,
+			"name_key": leaderboard_name_key,
+			"avatar_index": leaderboard_avatar_index,
+			"text": _sanitize_chat_message(str(row.get("text", ""))),
+			"created_at": maxi(0, int(row.get("created_at", 0))),
+			"created_at_unix": maxi(0, int(row.get("created_at_unix", 0))),
+			"deleted": false
+		}
+	return updates
+
+
+func _render_skill_menu_shelf() -> void:
+	var shelf := ColorRect.new()
+	shelf.color = COLOR_PAPER
+	shelf.anchor_left = 0.0
+	shelf.anchor_right = 1.0
+	shelf.anchor_top = 0.0
+	shelf.anchor_bottom = 0.0
+	shelf.offset_left = 0.0
+	shelf.offset_right = 0.0
+	shelf.offset_top = 0.0
+	shelf.offset_bottom = SKILL_MENU_SHELF_HEIGHT
+	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shelf.z_index = 420
+	skills_content.add_child(shelf)
+
 	var total_level_header := MarginContainer.new()
+	total_level_header.anchor_left = 0.0
+	total_level_header.anchor_right = 1.0
+	total_level_header.anchor_top = 0.0
+	total_level_header.anchor_bottom = 0.0
+	total_level_header.offset_left = 0.0
+	total_level_header.offset_right = 0.0
+	total_level_header.offset_top = 0.0
+	total_level_header.offset_bottom = SKILL_MENU_SHELF_HEIGHT
 	total_level_header.add_theme_constant_override("margin_top", 150)
 	total_level_header.add_theme_constant_override("margin_bottom", 12)
-	stack.add_child(total_level_header)
+	total_level_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	total_level_header.z_index = 430
+	skills_content.add_child(total_level_header)
 	var total_row := HBoxContainer.new()
 	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	total_row.add_theme_constant_override("separation", 22)
@@ -4310,6 +6843,13 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 	total_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	total_row.add_child(total_icon)
 	total_row.add_child(_label("Total Lv %s" % _global_level(), 154, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	_add_skill_detail_shadow_overlay_to(skills_content, SKILL_MENU_SHELF_HEIGHT, 1.0)
+
+
+func _render_skill_menu(stack: VBoxContainer) -> void:
+	var top_spacer := Control.new()
+	top_spacer.custom_minimum_size = Vector2(0, SKILL_MENU_TOP_SCROLL_PAD)
+	stack.add_child(top_spacer)
 	for def in skill_defs:
 		var skill_id := str(def["id"])
 		var theme_color := _skill_theme_color(skill_id)
@@ -4401,6 +6941,9 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		panel_chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(panel_chrome)
 		skill_cards[skill_id] = {"button": button, "title": title, "meta": meta, "xp": xp_bar, "stamina": stamina_gauge, "activity": activity_progress}
+	var bottom_spacer := Control.new()
+	bottom_spacer.custom_minimum_size = Vector2(0, SKILL_MENU_BOTTOM_SCROLL_PAD)
+	stack.add_child(bottom_spacer)
 
 
 func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
@@ -4999,11 +7542,12 @@ func _process_detail_jump_arrow(button: TextureButton, top: bool, can_use: bool,
 func _update_page_visibility() -> void:
 	home_page.visible = current_screen == "home"
 	skills_page.visible = current_screen != "home"
-	_apply_nav_style(leaderboard_tab, false)
+	_apply_nav_style(leaderboard_tab, current_screen == "leaderboard")
 	_apply_nav_style(hero_tab, current_screen == "home")
 	_apply_nav_style(skills_tab, current_screen == "menu" or current_screen == "skill")
 	_apply_nav_style(shop_tab, current_screen == "shop")
 	_apply_nav_style(settings_tab, current_screen == "settings")
+	_update_chat_strip()
 	_tutorial_check_progress()
 	_sync_tutorial_target_indicator()
 
@@ -6460,6 +9004,8 @@ func _show_pending_completed_achievement_toasts() -> void:
 	while boot_warmup_active:
 		await get_tree().process_frame
 	await get_tree().process_frame
+	while offline_summary_overlay != null and offline_summary_overlay.visible:
+		await get_tree().process_frame
 	var showed_toast := false
 	for achievement in _achievement_milestones():
 		var id := str(achievement.get("id", ""))
@@ -10436,53 +12982,15 @@ func _show_shop() -> void:
 	_render_screen()
 
 
-func _show_leaderboard_coming_soon() -> void:
+func _show_leaderboard() -> void:
+	if not _top_level_nav_allowed("leaderboard"):
+		return
+	if current_screen == "settings":
+		_disarm_reset_data_confirmation()
+	current_screen = "leaderboard"
+	_leaderboard_fetch_category(leaderboard_category_id)
 	_play_default_button_sfx()
-	if coming_soon_tween != null and coming_soon_tween.is_valid():
-		coming_soon_tween.kill()
-	if coming_soon_message != null and is_instance_valid(coming_soon_message):
-		coming_soon_message.queue_free()
-	var canvas_size := _current_canvas_size()
-	var message_size := Vector2(900, 190)
-	var holder := Control.new()
-	coming_soon_message = holder
-	holder.z_index = 8192
-	holder.z_as_relative = false
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.size = message_size
-	holder.position = Vector2(
-		(canvas_size.x - message_size.x) * 0.5,
-		canvas_size.y - BOTTOM_NAV_HEIGHT - message_size.y - 96.0
-	)
-	var parent := achievement_toast_root if achievement_toast_root != null and is_instance_valid(achievement_toast_root) else self
-	parent.add_child(holder)
-
-	var shadow := _label("coming soon", 88, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	shadow.size = message_size
-	shadow.position = Vector2(7, 8)
-	holder.add_child(shadow)
-	var label := _label("coming soon", 88, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	label.add_theme_color_override("font_outline_color", COLOR_INK)
-	label.add_theme_constant_override("outline_size", 18)
-	label.size = message_size
-	holder.add_child(label)
-
-	holder.modulate = Color(1, 1, 1, 0)
-	holder.scale = Vector2(0.86, 0.86)
-	holder.pivot_offset = message_size * 0.5
-	coming_soon_tween = create_tween()
-	coming_soon_tween.set_parallel(true)
-	coming_soon_tween.tween_property(holder, "modulate:a", 1.0, 0.10)
-	coming_soon_tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	coming_soon_tween.tween_property(holder, "position:y", holder.position.y - 42.0, 1.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	coming_soon_tween.tween_property(holder, "modulate:a", 0.0, 0.42).set_delay(0.92)
-	coming_soon_tween.chain().tween_callback(func():
-		if is_instance_valid(holder):
-			holder.queue_free()
-		if coming_soon_message == holder:
-			coming_soon_message = null
-		coming_soon_tween = null
-	)
+	_render_screen()
 
 
 func _show_settings() -> void:
@@ -10509,13 +13017,29 @@ func _open_settings() -> void:
 	_show_settings()
 
 
+func _open_profile_overlay() -> void:
+	if profile_overlay == null:
+		return
+	_rebuild_profile_overlay()
+	profile_overlay.visible = true
+
+
+func _on_profile_overlay_gui_input(event: InputEvent) -> void:
+	if _event_is_outside_panel_press(event, profile_panel):
+		_save_profile_and_close()
+
+
 func _on_settings_overlay_gui_input(event: InputEvent) -> void:
 	if _event_is_outside_panel_press(event, settings_panel):
 		_close_settings()
 
 
 func _any_modal_overlay_visible() -> bool:
+	if chat_overlay != null and chat_overlay.visible:
+		return true
 	if settings_overlay != null and settings_overlay.visible:
+		return true
+	if profile_overlay != null and profile_overlay.visible:
 		return true
 	if achievements_overlay != null and achievements_overlay.visible:
 		return true
@@ -10555,14 +13079,65 @@ func _close_settings() -> void:
 		_show_home()
 
 
+func _save_profile_and_close() -> void:
+	if not leaderboard_profile_claimed and profile_name_edit != null and is_instance_valid(profile_name_edit):
+		leaderboard_display_name = _sanitize_leaderboard_display_name(profile_name_edit.text)
+		leaderboard_name_key = ""
+		leaderboard_name_claim_verified = false
+	if _is_default_leaderboard_display_name(leaderboard_display_name):
+		leaderboard_display_name = _make_guest_display_name()
+		leaderboard_name_key = ""
+	if profile_overlay != null:
+		profile_overlay.visible = false
+	save_game()
+	if current_screen == "leaderboard":
+		_render_screen()
+
+
+func _select_profile_avatar(index: int) -> void:
+	var new_avatar_index := _valid_profile_avatar_index(index)
+	if leaderboard_avatar_index == new_avatar_index:
+		return
+	leaderboard_avatar_index = new_avatar_index
+	if not leaderboard_profile_claimed and profile_name_edit != null and is_instance_valid(profile_name_edit):
+		leaderboard_display_name = _sanitize_leaderboard_display_name(profile_name_edit.text)
+		leaderboard_name_key = ""
+		if _is_default_leaderboard_display_name(leaderboard_display_name):
+			leaderboard_display_name = _make_guest_display_name()
+	_refresh_profile_references()
+	save_game()
+	_rebuild_profile_overlay()
+	if current_screen == "leaderboard":
+		_render_screen()
+
+
+func _create_leaderboard_account() -> void:
+	if leaderboard_profile_claimed or leaderboard_name_claim_in_flight:
+		return
+	var chosen_name := leaderboard_display_name
+	if profile_name_edit != null and is_instance_valid(profile_name_edit):
+		chosen_name = _sanitize_leaderboard_display_name(profile_name_edit.text)
+	if _is_guest_leaderboard_display_name(chosen_name):
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "Choose a real name before making an account. You cannot change it after this."
+		if profile_name_edit != null and is_instance_valid(profile_name_edit):
+			profile_name_edit.grab_focus()
+		return
+	_claim_leaderboard_name(chosen_name)
+
+
 func _start_tutorial() -> void:
 	_disarm_reset_data_confirmation()
 	if settings_overlay != null:
 		settings_overlay.visible = false
+	if profile_overlay != null:
+		profile_overlay.visible = false
 	if achievements_overlay != null:
 		achievements_overlay.visible = false
 	if offline_summary_overlay != null:
 		offline_summary_overlay.visible = false
+	if chat_overlay != null:
+		chat_overlay.visible = false
 	tutorial_active = true
 	tutorial_step = 0
 	_play_default_button_sfx()
@@ -10823,6 +13398,7 @@ func _close_offline_summary_overlay() -> void:
 	if offline_summary_overlay != null:
 		offline_summary_overlay.visible = false
 	_play_default_button_sfx()
+	_play_pending_offline_summary_achievement_toasts()
 
 
 func _set_achievements_modal_tab(tab: String) -> void:
@@ -10901,14 +13477,16 @@ func _fit_offline_summary_modal(modal_size: Vector2) -> void:
 func _maybe_show_offline_summary(offline_seconds: float, active_result: Dictionary) -> void:
 	if offline_summary_overlay == null or not bool(active_result.get("handled", false)):
 		return
+	var achievements := _offline_summary_achievements(active_result)
 	var has_progress := int(active_result.get("completions", 0)) > 0
 	has_progress = has_progress or int(active_result.get("xp", 0)) > 0
 	has_progress = has_progress or int(active_result.get("new_skill_level", 1)) > int(active_result.get("old_skill_level", 1))
 	has_progress = has_progress or int(active_result.get("new_mastery_level", 0)) > int(active_result.get("old_mastery_level", 0))
 	has_progress = has_progress or not (active_result.get("unlocked_actions", []) as Array).is_empty()
-	has_progress = has_progress or not (active_result.get("achievements", []) as Array).is_empty()
 	if not has_progress:
+		_show_offline_summary_achievement_toasts(achievements)
 		return
+	pending_offline_summary_achievements = achievements
 	_rebuild_offline_summary_overlay(offline_seconds, active_result)
 	offline_summary_overlay.visible = true
 
@@ -11046,36 +13624,33 @@ func _offline_summary_medal_stack(old_level: int, new_level: int) -> Control:
 func _offline_summary_progress_content_height(active_result: Dictionary) -> float:
 	var rows := 0
 	var sections := 0
-	var achievement_rows := 0
 	var old_skill_level := int(active_result.get("old_skill_level", 1))
 	var new_skill_level := int(active_result.get("new_skill_level", old_skill_level))
 	var old_global_level := int(active_result.get("old_global_level", 1))
 	var new_global_level := int(active_result.get("new_global_level", old_global_level))
 	var old_mastery_level := int(active_result.get("old_mastery_level", 0))
 	var new_mastery_level := int(active_result.get("new_mastery_level", old_mastery_level))
-	if new_skill_level > old_skill_level or new_global_level > old_global_level or new_mastery_level > old_mastery_level:
+	var show_skill_level_row := new_skill_level > old_skill_level
+	var show_global_level_row := new_global_level > old_global_level
+	var show_mastery_row := new_mastery_level > old_mastery_level
+	if show_skill_level_row or show_global_level_row or show_mastery_row:
 		sections += 1
-		if new_skill_level > old_skill_level:
+		if show_skill_level_row:
 			rows += 1
-		if new_global_level > old_global_level:
+		if show_global_level_row:
 			rows += 1
-		if new_mastery_level > old_mastery_level:
+		if show_mastery_row:
 			rows += 1
 	var unlocked_actions := active_result.get("unlocked_actions", []) as Array
 	if not unlocked_actions.is_empty():
 		sections += 1
 		rows += unlocked_actions.size()
-	var achievements := active_result.get("achievements", []) as Array
-	if not achievements.is_empty():
-		sections += 1
-		achievement_rows += achievements.size()
-	var item_count := sections + rows + achievement_rows
+	var item_count := sections + rows
 	if item_count <= 0:
 		return 0.0
 	return (
 		float(sections) * OFFLINE_SUMMARY_SECTION_HEIGHT
 		+ float(rows) * OFFLINE_SUMMARY_ROW_HEIGHT
-		+ float(achievement_rows) * OFFLINE_SUMMARY_ACHIEVEMENT_ROW_HEIGHT
 		+ float(item_count - 1) * OFFLINE_SUMMARY_ROW_GAP
 	)
 
@@ -11087,13 +13662,16 @@ func _populate_offline_summary_progress(list: VBoxContainer, active_result: Dict
 	var new_global_level := int(active_result.get("new_global_level", old_global_level))
 	var old_mastery_level := int(active_result.get("old_mastery_level", 0))
 	var new_mastery_level := int(active_result.get("new_mastery_level", old_mastery_level))
-	if new_skill_level > old_skill_level or new_global_level > old_global_level or new_mastery_level > old_mastery_level:
+	var show_skill_level_row := new_skill_level > old_skill_level
+	var show_global_level_row := new_global_level > old_global_level
+	var show_mastery_row := new_mastery_level > old_mastery_level
+	if show_skill_level_row or show_global_level_row or show_mastery_row:
 		list.add_child(_offline_summary_section_label("Levels"))
-	if new_skill_level > old_skill_level:
+	if show_skill_level_row:
 		list.add_child(_offline_summary_row(_skill_icon_path(str(active_result.get("skill_id", ""))), "%s Level" % str(active_result.get("skill_name", "Skill")), "Lv %s -> %s" % [old_skill_level, new_skill_level], "Achieved %s" % _offline_level_range_text(old_skill_level, new_skill_level), _skill_theme_color(str(active_result.get("skill_id", "")))))
-	if new_global_level > old_global_level:
+	if show_global_level_row:
 		list.add_child(_offline_summary_row("res://docs/assets/ui/total-lv-bargraph.png", "Total Level", "Lv %s -> %s" % [old_global_level, new_global_level], "Total level increased while away.", Color("#f4bf35")))
-	if new_mastery_level > old_mastery_level:
+	if show_mastery_row:
 		list.add_child(_offline_summary_mastery_row(str(active_result.get("action_art", "")), old_mastery_level, new_mastery_level))
 
 	var unlocked_actions := active_result.get("unlocked_actions", []) as Array
@@ -11102,11 +13680,44 @@ func _populate_offline_summary_progress(list: VBoxContainer, active_result: Dict
 		for unlocked in unlocked_actions:
 			list.add_child(_offline_summary_unlock_card(unlocked as Dictionary, str(active_result.get("skill_id", ""))))
 
+
+func _offline_summary_achievements(active_result: Dictionary) -> Array:
 	var achievements := active_result.get("achievements", []) as Array
-	if not achievements.is_empty():
-		list.add_child(_offline_summary_section_label("Achievements"))
-		for achievement in achievements:
-			list.add_child(_achievement_log_card(achievement as Dictionary))
+	var compact := []
+	var index_by_chain := {}
+	for raw_achievement in achievements:
+		var achievement := raw_achievement as Dictionary
+		var id := str(achievement.get("id", ""))
+		var chain_key := str(achievement.get("chain_key", id))
+		if chain_key.is_empty():
+			chain_key = id
+		if chain_key.is_empty():
+			continue
+		if index_by_chain.has(chain_key):
+			compact[int(index_by_chain[chain_key])] = achievement
+		else:
+			index_by_chain[chain_key] = compact.size()
+			compact.append(achievement)
+	return compact
+
+
+func _play_pending_offline_summary_achievement_toasts() -> void:
+	var achievements := pending_offline_summary_achievements.duplicate()
+	pending_offline_summary_achievements.clear()
+	_show_offline_summary_achievement_toasts(achievements)
+
+
+func _show_offline_summary_achievement_toasts(achievements: Array) -> void:
+	var showed_toast := false
+	for achievement in achievements:
+		var data := achievement as Dictionary
+		var id := str(data.get("id", ""))
+		if id.is_empty() or bool(achievement_toast_seen_ids.get(id, false)):
+			continue
+		_show_achievement_unlocked(data)
+		showed_toast = true
+	if showed_toast:
+		save_game()
 
 
 func _offline_level_range_text(old_level: int, new_level: int) -> String:
@@ -11368,11 +13979,11 @@ func _achievement_progress_pct(achievement: Dictionary) -> float:
 	return clampf(float(current) / float(target) * 100.0, 0.0, 100.0)
 
 
-func _achievement_log_card(achievement: Dictionary) -> Control:
+func _achievement_log_card(achievement: Dictionary, show_progress := true) -> Control:
 	var completed := bool(achievement.get("completed", false))
 	var accent := Color(str(achievement.get("accent", "#f4bf35")))
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 300)
+	card.custom_minimum_size = Vector2(0, 300 if show_progress else 250)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _achievement_card_style(Color("#fffdf8") if completed else Color("#fff6e1"), 34, 34))
 	card.modulate = Color.WHITE if completed else Color(1, 1, 1, 0.78)
@@ -11397,7 +14008,8 @@ func _achievement_log_card(achievement: Dictionary) -> Control:
 	var reward_label := _label(str(achievement.get("reward", "")), 52, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(reward_label)
-	stack.add_child(_progress(accent, 36, _achievement_progress_pct(achievement)))
+	if show_progress:
+		stack.add_child(_progress(accent, 36, _achievement_progress_pct(achievement)))
 	return card
 
 
@@ -12724,6 +15336,28 @@ func _init_state() -> void:
 	lock_click_tip_seen = false
 	stamina_gauge_pre_tip_hold_seconds = 0.0
 	stamina_gauge_tip_root = null
+	leaderboard_last_submitted_score = 0
+	leaderboard_last_submitted_scores_by_category.clear()
+	leaderboard_last_submit_unix = 0
+	leaderboard_display_name = _make_guest_display_name()
+	leaderboard_name_key = ""
+	leaderboard_avatar_index = 0
+	leaderboard_profile_claimed = false
+	leaderboard_name_claim_verified = false
+	leaderboard_player_id = _make_leaderboard_player_id()
+	leaderboard_auth_id_token = ""
+	leaderboard_auth_refresh_token = ""
+	leaderboard_auth_expires_unix = 0
+	leaderboard_auth_retry_after_unix = 0
+	leaderboard_auth_provider = "anonymous"
+	leaderboard_rows_by_category.clear()
+	leaderboard_fetch_unix_by_category.clear()
+	leaderboard_fetch_retry_unix_by_category.clear()
+	leaderboard_status_message = ""
+	chat_rows.clear()
+	chat_stream_retry_unix = 0
+	chat_last_send_unix = 0
+	chat_status_message = ""
 	last_passive_process_unix = _unix_now()
 	ad_bonus_seconds_remaining = 0.0
 	for def in skill_defs:
@@ -12764,6 +15398,18 @@ func _validate_state() -> void:
 	_invalidate_stat_caches()
 
 
+func _migrate_manual_activity_unlocks_from_levels() -> void:
+	for raw_skill_id in skills.keys():
+		var skill_id := str(raw_skill_id)
+		for raw_action in actions_by_skill.get(skill_id, []):
+			var action := raw_action as Dictionary
+			var action_id := str(action.get("id", ""))
+			if action_id.is_empty() or int(action.get("unlock", 1)) <= 1:
+				continue
+			if _can_unlock_action(skill_id, action):
+				_mark_action_manually_unlocked(skill_id, action_id)
+
+
 func _select_launch_skill_page() -> void:
 	if not running_skill_id.is_empty() and skills.has(running_skill_id) and not _action_data(running_skill_id, running_action_id).is_empty():
 		selected_skill_id = running_skill_id
@@ -12792,6 +15438,7 @@ func save_game() -> void:
 	var now := _unix_now()
 	last_save_unix_time = now
 	file.store_string(JSON.stringify({
+		"save_schema_version": SAVE_SCHEMA_VERSION,
 		"skills": skills,
 		"mastery": mastery,
 		"stamina": stamina,
@@ -12825,6 +15472,21 @@ func save_game() -> void:
 		"music_start_chance_unlocked": music_start_chance_unlocked,
 		"flow_heat": flow_heat,
 		"flow_active_action_seconds": flow_active_action_seconds,
+		"leaderboard_last_submitted_score": leaderboard_last_submitted_score,
+		"leaderboard_last_submitted_scores_by_category": leaderboard_last_submitted_scores_by_category,
+		"leaderboard_last_submit_unix": leaderboard_last_submit_unix,
+		"leaderboard_display_name": leaderboard_display_name,
+		"leaderboard_name_key": leaderboard_name_key,
+		"leaderboard_avatar_index": leaderboard_avatar_index,
+		"leaderboard_profile_claimed": leaderboard_profile_claimed,
+		"leaderboard_name_claim_verified": leaderboard_name_claim_verified,
+		"leaderboard_player_id": leaderboard_player_id,
+		"leaderboard_auth_refresh_token": leaderboard_auth_refresh_token,
+		"leaderboard_auth_retry_after_unix": leaderboard_auth_retry_after_unix,
+		"leaderboard_auth_provider": leaderboard_auth_provider,
+		"leaderboard_fetch_retry_unix_by_category": leaderboard_fetch_retry_unix_by_category,
+		"chat_last_send_unix": chat_last_send_unix,
+		"chat_stream_retry_unix": chat_stream_retry_unix,
 		"last_result": last_result,
 		"saved_at": now
 	}))
@@ -12832,6 +15494,10 @@ func save_game() -> void:
 
 func _unix_now() -> int:
 	return int(floor(Time.get_unix_time_from_system()))
+
+
+func _unix_now_msec() -> int:
+	return int(round(Time.get_unix_time_from_system() * 1000.0))
 
 
 func _apply_offline_progress(saved_at_unix_time: int) -> int:
@@ -13030,6 +15696,7 @@ func load_game() -> void:
 	if typeof(data) != TYPE_DICTIONARY:
 		last_save_unix_time = _unix_now()
 		return
+	var save_schema_version := int(data.get("save_schema_version", 0))
 	var save_has_achievement_toast_seen_ids: bool = data.has("achievement_toast_seen_ids")
 	_restore_achievement_toast_seen_ids(data)
 	var loaded_skills = data.get("skills", {})
@@ -13055,6 +15722,8 @@ func load_game() -> void:
 				_recalculate_mastery(str(key))
 	for skill_id in skills.keys():
 		_recalculate_level(str(skill_id))
+	if save_schema_version < SAVE_SCHEMA_MANUAL_ACTIVITY_UNLOCKS:
+		_migrate_manual_activity_unlocks_from_levels()
 	_invalidate_stat_caches()
 	var loaded_stamina = data.get("stamina", {})
 	if typeof(loaded_stamina) == TYPE_DICTIONARY:
@@ -13111,6 +15780,53 @@ func load_game() -> void:
 	music_start_chance_unlocked = bool(data.get("music_start_chance_unlocked", false)) or _saved_music_groove_floor() >= MUSIC_BASE_ACTION_THRESHOLD
 	flow_heat = clampf(float(data.get("flow_heat", flow_heat)), 0.0, 36.0)
 	flow_active_action_seconds = maxf(0.0, float(data.get("flow_active_action_seconds", flow_active_action_seconds)))
+	leaderboard_last_submitted_score = maxi(0, int(data.get("leaderboard_last_submitted_score", 0)))
+	var submitted_scores = data.get("leaderboard_last_submitted_scores_by_category", {})
+	leaderboard_last_submitted_scores_by_category.clear()
+	if typeof(submitted_scores) == TYPE_DICTIONARY:
+		for raw_category_id in (submitted_scores as Dictionary).keys():
+			var category_id := _leaderboard_valid_category_id(str(raw_category_id))
+			leaderboard_last_submitted_scores_by_category[category_id] = maxi(0, int((submitted_scores as Dictionary).get(raw_category_id, 0)))
+	leaderboard_last_submit_unix = maxi(0, int(data.get("leaderboard_last_submit_unix", 0)))
+	leaderboard_display_name = _sanitize_leaderboard_display_name(str(data.get("leaderboard_display_name", leaderboard_display_name)))
+	leaderboard_name_key = _sanitize_leaderboard_name_key(str(data.get("leaderboard_name_key", leaderboard_name_key)))
+	leaderboard_profile_claimed = bool(data.get("leaderboard_profile_claimed", false))
+	leaderboard_name_claim_verified = bool(data.get("leaderboard_name_claim_verified", false))
+	if _is_default_leaderboard_display_name(leaderboard_display_name):
+		leaderboard_display_name = _make_guest_display_name()
+		leaderboard_profile_claimed = false
+		leaderboard_name_claim_verified = false
+		leaderboard_name_key = ""
+	if _is_guest_leaderboard_display_name(leaderboard_display_name):
+		leaderboard_profile_claimed = false
+		leaderboard_name_claim_verified = false
+		leaderboard_name_key = ""
+	if leaderboard_profile_claimed and leaderboard_name_key.is_empty():
+		leaderboard_name_key = _leaderboard_name_key(leaderboard_display_name)
+	if leaderboard_profile_claimed and not leaderboard_name_claim_verified:
+		leaderboard_profile_claimed = false
+		leaderboard_name_key = ""
+	leaderboard_avatar_index = _valid_profile_avatar_index(int(data.get("leaderboard_avatar_index", leaderboard_avatar_index)))
+	leaderboard_player_id = _sanitize_leaderboard_player_id(str(data.get("leaderboard_player_id", leaderboard_player_id)))
+	if leaderboard_player_id.is_empty():
+		leaderboard_player_id = _make_leaderboard_player_id()
+	leaderboard_auth_id_token = ""
+	leaderboard_auth_refresh_token = str(data.get("leaderboard_auth_refresh_token", "")).strip_edges()
+	leaderboard_auth_expires_unix = 0
+	leaderboard_auth_retry_after_unix = maxi(0, int(data.get("leaderboard_auth_retry_after_unix", 0)))
+	leaderboard_auth_provider = str(data.get("leaderboard_auth_provider", "anonymous")).strip_edges()
+	leaderboard_auth_provider = "anonymous"
+	leaderboard_fetch_unix_by_category.clear()
+	var saved_fetch_retry_unix = data.get("leaderboard_fetch_retry_unix_by_category", {})
+	leaderboard_fetch_retry_unix_by_category.clear()
+	if typeof(saved_fetch_retry_unix) == TYPE_DICTIONARY:
+		for raw_category_id in (saved_fetch_retry_unix as Dictionary).keys():
+			var category_id := _leaderboard_valid_category_id(str(raw_category_id))
+			leaderboard_fetch_retry_unix_by_category[category_id] = maxi(0, int((saved_fetch_retry_unix as Dictionary).get(raw_category_id, 0)))
+	# Successful rows are not saved, so successful fetch timestamps intentionally reset on launch.
+	chat_last_send_unix = maxi(0, int(data.get("chat_last_send_unix", 0)))
+	chat_stream_retry_unix = maxi(0, int(data.get("chat_stream_retry_unix", data.get("chat_fetch_retry_unix", 0))))
+	# Chat rows are not saved; the realtime stream is reopened only while the skills chat strip is visible.
 	last_result = str(data.get("last_result", last_result))
 	_apply_audio_bus_volumes()
 	_apply_offline_progress(int(data.get("saved_at", _unix_now())))
@@ -13156,6 +15872,208 @@ func _global_level() -> int:
 	for skill_id in skills.keys():
 		total += _skill_level(str(skill_id))
 	return total
+
+
+func _leaderboard_score() -> int:
+	var total := 0
+	for skill_id in skills.keys():
+		total += int(skills.get(skill_id, {}).get("xp", 0))
+	for key in mastery.keys():
+		total += int(round(float(mastery.get(key, {}).get("xp", 0)) * 0.25))
+	return maxi(0, total)
+
+
+func _leaderboard_categories() -> Array:
+	var categories := [
+		{"id": LEADERBOARD_CATEGORY_TOTAL_LEVEL, "label": "Total Lv"},
+		{"id": LEADERBOARD_CATEGORY_MEDALS, "label": "Medals"},
+		{"id": LEADERBOARD_CATEGORY_TOTAL_XP, "label": "Total XP"}
+	]
+	for def in skill_defs:
+		var skill := def as Dictionary
+		var skill_id := str(skill.get("id", ""))
+		if skill_id.is_empty():
+			continue
+		categories.append({"id": LEADERBOARD_CATEGORY_SKILL_PREFIX + skill_id, "label": "%s XP" % _skill_name(skill_id)})
+	categories.append({"id": LEADERBOARD_CATEGORY_ELITE_HEAVENLY, "label": "Elite Heavenly"})
+	return categories
+
+
+func _leaderboard_valid_category_id(category_id: String) -> String:
+	for category in _leaderboard_categories():
+		if str((category as Dictionary).get("id", "")) == category_id:
+			return category_id
+	return LEADERBOARD_CATEGORY_TOTAL_LEVEL
+
+
+func _leaderboard_category_label(category_id: String) -> String:
+	var valid_id := _leaderboard_valid_category_id(category_id)
+	for category in _leaderboard_categories():
+		var data := category as Dictionary
+		if str(data.get("id", "")) == valid_id:
+			return str(data.get("label", valid_id))
+	return "Total Lv"
+
+
+func _leaderboard_score_for_category(category_id: String) -> int:
+	var valid_id := _leaderboard_valid_category_id(category_id)
+	if valid_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL:
+		return _global_level()
+	if valid_id == LEADERBOARD_CATEGORY_MEDALS:
+		return int(_all_medal_counts().get("earned", 0))
+	if valid_id == LEADERBOARD_CATEGORY_TOTAL_XP:
+		return _leaderboard_score()
+	if valid_id == LEADERBOARD_CATEGORY_ELITE_HEAVENLY:
+		var tiers := _all_medal_tier_counts()
+		if tiers.size() >= MASTERY_MAX_LEVEL:
+			return int(tiers[MASTERY_MAX_LEVEL - 1])
+		return 0
+	if valid_id.begins_with(LEADERBOARD_CATEGORY_SKILL_PREFIX):
+		var skill_id := valid_id.substr(LEADERBOARD_CATEGORY_SKILL_PREFIX.length())
+		return int(skills.get(skill_id, {}).get("xp", 0))
+	return _global_level()
+
+
+func _leaderboard_format_score(category_id: String, score: int) -> String:
+	var valid_id := _leaderboard_valid_category_id(category_id)
+	if valid_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL:
+		return "Lv %s" % score
+	if valid_id == LEADERBOARD_CATEGORY_MEDALS:
+		return "%s medals" % score
+	if valid_id == LEADERBOARD_CATEGORY_ELITE_HEAVENLY:
+		return "%s medals" % score
+	return "%s XP" % _format_compact_number(float(score), 4)
+
+
+func _leaderboard_player_rank_text(category_id: String) -> String:
+	var score := _leaderboard_score_for_category(category_id)
+	if score <= 0:
+		return "unranked"
+	var rank := 1
+	for row in _leaderboard_rows_for_category(category_id):
+		if int((row as Dictionary).get("score", 0)) > score:
+			rank += 1
+	if rank > LEADERBOARD_TOP_COUNT:
+		return "#%s+" % LEADERBOARD_TOP_COUNT
+	return "#%s" % rank
+
+
+func _leaderboard_queued_score() -> int:
+	return maxi(0, _leaderboard_score() - leaderboard_last_submitted_score)
+
+
+func _leaderboard_has_pending_category_score() -> bool:
+	for raw_category in _leaderboard_categories():
+		var category := raw_category as Dictionary
+		var category_id := _leaderboard_valid_category_id(str(category.get("id", "")))
+		if category_id.is_empty():
+			continue
+		var score := maxi(0, _leaderboard_score_for_category(category_id))
+		var last_score := int(leaderboard_last_submitted_scores_by_category.get(category_id, 0))
+		if score > 0 and score > last_score:
+			return true
+	return false
+
+
+func _leaderboard_next_submit_seconds() -> int:
+	if leaderboard_last_submit_unix <= 0:
+		return 0
+	var elapsed := _unix_now() - leaderboard_last_submit_unix
+	return maxi(0, LEADERBOARD_SUBMIT_INTERVAL_SECONDS - elapsed)
+
+
+func _leaderboard_submit_ready() -> bool:
+	return _leaderboard_profile_claim_valid() and _leaderboard_has_pending_category_score() and _leaderboard_next_submit_seconds() <= 0
+
+
+func _leaderboard_submit_status_title() -> String:
+	if not _leaderboard_firebase_enabled():
+		return "Firebase not connected"
+	if not _leaderboard_auth_ready():
+		return "Leaderboard login needed"
+	if not _leaderboard_profile_claim_valid():
+		return "Name needed"
+	if leaderboard_submit_in_flight:
+		return "Publishing..."
+	if leaderboard_last_submit_unix <= 0:
+		return "Ready for first publish"
+	if _leaderboard_submit_ready():
+		return "Ready to publish"
+	return "Next publish in %s" % _format_duration(float(_leaderboard_next_submit_seconds()))
+
+
+func _leaderboard_submit_status_detail() -> String:
+	var queued := _leaderboard_queued_score()
+	if not _leaderboard_firebase_enabled():
+		return "No network calls are made until the Firebase URL and Web API key are configured."
+	var retry_wait := _leaderboard_auth_retry_wait_seconds()
+	if retry_wait > 0:
+		return "Leaderboard login failed recently. The next retry waits %s." % _format_duration(float(retry_wait))
+	if not _leaderboard_auth_ready():
+		return "Anonymous Firebase Auth protects leaderboard reads and hourly writes."
+	if not _leaderboard_profile_claim_valid():
+		return "Save a unique leaderboard name before scores publish."
+	if leaderboard_submit_in_flight:
+		return "One capped write is in flight. The next write cannot start for another hour."
+	if not leaderboard_status_message.is_empty() and leaderboard_status_message != "Leaderboard loaded.":
+		return leaderboard_status_message
+	if leaderboard_last_submit_unix <= 0:
+		return "The game will keep the newest score and publish at most once per hour."
+	var category_pending := _leaderboard_has_pending_category_score()
+	if queued <= 0 and not category_pending:
+		return "Your latest published score is current."
+	if _leaderboard_submit_ready():
+		if queued > 0:
+			return "%s score is queued for the next Firebase write." % _format_compact_number(float(queued), 3)
+		return "A category score is queued for the next Firebase write."
+	if queued > 0:
+		return "%s score is queued. The game will publish only once per hour." % _format_compact_number(float(queued), 3)
+	return "A category score is queued. The game will publish only once per hour."
+
+
+func _leaderboard_rows() -> Array:
+	return _leaderboard_rows_for_category(leaderboard_category_id)
+
+
+func _leaderboard_rows_for_category(category_id: String) -> Array:
+	var valid_id := _leaderboard_valid_category_id(category_id)
+	if _leaderboard_firebase_enabled():
+		var cached = leaderboard_rows_by_category.get(valid_id, null)
+		if typeof(cached) == TYPE_ARRAY:
+			return cached as Array
+	return []
+
+
+func _leaderboard_empty_state() -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 420)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", _surface_style(Color("#fff6e1"), 38, 30, false))
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 54)
+	margin.add_theme_constant_override("margin_right", 54)
+	margin.add_theme_constant_override("margin_top", 46)
+	margin.add_theme_constant_override("margin_bottom", 46)
+	card.add_child(margin)
+	var stack := VBoxContainer.new()
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 22)
+	margin.add_child(stack)
+	var title_text := "Loading leaderboard..."
+	var detail_text := "Only this visible category is being read. There are no realtime listeners."
+	if not _leaderboard_firebase_enabled():
+		title_text = "Firebase not connected"
+		detail_text = "Add your Realtime Database URL to enable the live leaderboard."
+	elif not leaderboard_fetch_in_flight:
+		title_text = "No scores yet"
+		detail_text = leaderboard_status_message if not leaderboard_status_message.is_empty() else "Scores appear here after the first hourly publish."
+	var title := _label(title_text, 84, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stack.add_child(title)
+	var detail := _label(detail_text, 56, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stack.add_child(detail)
+	return card
 
 
 func _max_stamina(skill_id: String = "") -> int:
@@ -13934,6 +16852,173 @@ func _image_from_texture(texture: Texture2D, minimum_size: Vector2) -> TextureRe
 	return image
 
 
+func _profile_avatar_texture(index: int) -> Texture2D:
+	var valid_index := _valid_profile_avatar_index(index)
+	if profile_avatar_texture_cache.has(valid_index):
+		return profile_avatar_texture_cache[valid_index] as Texture2D
+	var atlas := AtlasTexture.new()
+	var sheet_index := clampi(valid_index / PROFILE_AVATAR_SHEET_CELL_COUNT, 0, PROFILE_AVATAR_SHEETS.size() - 1)
+	var sheet_avatar_index := valid_index % PROFILE_AVATAR_SHEET_CELL_COUNT
+	atlas.atlas = _texture(str(PROFILE_AVATAR_SHEETS[sheet_index]))
+	var column := sheet_avatar_index % PROFILE_AVATAR_COLUMNS
+	var row := sheet_avatar_index / PROFILE_AVATAR_COLUMNS
+	var inset := PROFILE_AVATAR_COLORED_ATLAS_INSET if _profile_avatar_has_colored_background(valid_index) else PROFILE_AVATAR_ATLAS_INSET
+	var region_size := PROFILE_AVATAR_CELL_SIZE - inset * 2
+	atlas.region = Rect2(Vector2(column * PROFILE_AVATAR_CELL_SIZE + inset, row * PROFILE_AVATAR_CELL_SIZE + inset), Vector2(region_size, region_size))
+	profile_avatar_texture_cache[valid_index] = atlas
+	return atlas
+
+
+func _profile_avatar_frame(index: int, minimum_size: Vector2, selected := false) -> PanelContainer:
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = minimum_size
+	frame.size = minimum_size
+	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	frame.clip_contents = true
+	frame.add_theme_stylebox_override("panel", _profile_avatar_frame_style(selected))
+	var art := _image_from_texture(_profile_avatar_texture(index), minimum_size)
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	frame.add_child(art)
+	frame.add_child(_profile_avatar_border_overlay(selected))
+	return frame
+
+
+func _profile_avatar_border_overlay(selected := false) -> PanelContainer:
+	var overlay := PanelContainer.new()
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.add_theme_stylebox_override("panel", _profile_avatar_border_overlay_style(selected))
+	return overlay
+
+
+func _valid_profile_avatar_index(index: int) -> int:
+	if PROFILE_AVATAR_COUNT <= 0:
+		return 0
+	return clampi(index, 0, PROFILE_AVATAR_COUNT - 1)
+
+
+func _profile_avatar_has_colored_background(index: int) -> bool:
+	return _valid_profile_avatar_index(index) >= PROFILE_AVATAR_SHEET_CELL_COUNT
+
+
+func _sanitize_leaderboard_display_name(raw_name: String) -> String:
+	var clean := raw_name.strip_edges()
+	clean = clean.replace("\n", " ").replace("\r", " ").replace("\t", " ")
+	while clean.contains("  "):
+		clean = clean.replace("  ", " ")
+	if clean.length() > PROFILE_DISPLAY_NAME_MAX_CHARS:
+		clean = clean.substr(0, PROFILE_DISPLAY_NAME_MAX_CHARS).strip_edges()
+	return clean
+
+
+func _leaderboard_name_key(display_name: String) -> String:
+	var clean := _sanitize_leaderboard_display_name(display_name).to_lower()
+	var key := ""
+	var last_was_separator := false
+	for i in range(clean.length()):
+		var code := clean.unicode_at(i)
+		var is_digit := code >= 48 and code <= 57
+		var is_lower := code >= 97 and code <= 122
+		if is_digit or is_lower:
+			key += char(code)
+			last_was_separator = false
+		elif code == 32 or code == 45 or code == 95:
+			if not key.is_empty() and not last_was_separator:
+				key += "_"
+				last_was_separator = true
+	while key.ends_with("_"):
+		key = key.substr(0, key.length() - 1)
+	if key.length() > PROFILE_NAME_KEY_MAX_CHARS:
+		key = key.substr(0, PROFILE_NAME_KEY_MAX_CHARS)
+		while key.ends_with("_"):
+			key = key.substr(0, key.length() - 1)
+	return _sanitize_leaderboard_name_key(key)
+
+
+func _sanitize_leaderboard_name_key(raw_key: String) -> String:
+	var clean := raw_key.strip_edges().to_lower()
+	if clean.length() <= 0 or clean.length() > PROFILE_NAME_KEY_MAX_CHARS:
+		return ""
+	for i in range(clean.length()):
+		var code := clean.unicode_at(i)
+		var is_digit := code >= 48 and code <= 57
+		var is_lower := code >= 97 and code <= 122
+		var is_underscore := code == 95
+		if not (is_digit or is_lower or is_underscore):
+			return ""
+	return clean
+
+
+func _leaderboard_profile_claim_valid() -> bool:
+	if not leaderboard_profile_claimed or not leaderboard_name_claim_verified:
+		return false
+	if leaderboard_name_key.is_empty():
+		leaderboard_name_key = _leaderboard_name_key(leaderboard_display_name)
+	return not leaderboard_name_key.is_empty() and not _is_guest_leaderboard_display_name(leaderboard_display_name)
+
+
+func _is_default_leaderboard_display_name(name: String) -> bool:
+	var clean := _sanitize_leaderboard_display_name(name)
+	return clean.is_empty() or clean == "You"
+
+
+func _is_guest_leaderboard_display_name(name: String) -> bool:
+	var clean := _sanitize_leaderboard_display_name(name)
+	if clean.is_empty() or clean == "You":
+		return true
+	if not clean.begins_with(PROFILE_GUEST_NAME_PREFIX):
+		return false
+	if clean.length() != PROFILE_GUEST_NAME_PREFIX.length() + 4:
+		return false
+	for i in range(PROFILE_GUEST_NAME_PREFIX.length(), clean.length()):
+		var code := clean.unicode_at(i)
+		if code < 48 or code > 57:
+			return false
+	return true
+
+
+func _profile_status_text() -> String:
+	if leaderboard_name_claim_in_flight:
+		return "Checking name..."
+	if leaderboard_profile_claimed:
+		return "Leaderboard name locked. This name cannot be changed."
+	return "Guest leaderboard profile. Choose carefully: this unique name locks after saving."
+
+
+func _make_guest_display_name() -> String:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	return "%s%04d" % [PROFILE_GUEST_NAME_PREFIX, rng.randi_range(0, 9999)]
+
+
+func _make_leaderboard_player_id() -> String:
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	var alphabet := "0123456789abcdef"
+	var token := ""
+	for _i in range(32):
+		token += alphabet.substr(rng.randi_range(0, alphabet.length() - 1), 1)
+	return "p%s" % token
+
+
+func _sanitize_leaderboard_player_id(raw_id: String) -> String:
+	var clean := raw_id.strip_edges()
+	if clean.length() < 8 or clean.length() > 48:
+		return ""
+	for i in range(clean.length()):
+		var code := clean.unicode_at(i)
+		var is_digit := code >= 48 and code <= 57
+		var is_lower := code >= 97 and code <= 122
+		var is_upper := code >= 65 and code <= 90
+		var is_dash := code == 45
+		var is_underscore := code == 95
+		if not (is_digit or is_lower or is_upper or is_dash or is_underscore):
+			return ""
+	return clean
+
+
 func _skill_detail_icon(skill_id: String) -> Control:
 	var holder := Control.new()
 	holder.custom_minimum_size = SKILL_DETAIL_ICON_SIZE
@@ -14569,6 +17654,134 @@ func _surface_style(color: Color, radius: int, margin := 28, elevated := false) 
 	return style
 
 
+func _leaderboard_status_dot_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	if not _leaderboard_firebase_enabled():
+		style.bg_color = Color("#d1d5db")
+	elif not _leaderboard_auth_ready():
+		style.bg_color = Color("#ffd94d")
+	elif leaderboard_submit_in_flight:
+		style.bg_color = Color("#58a6ff")
+	else:
+		style.bg_color = Color("#48dd6c") if _leaderboard_submit_ready() else Color("#ffd94d")
+	style.border_color = COLOR_INK
+	style.set_border_width_all(6)
+	style.corner_radius_top_left = 999
+	style.corner_radius_top_right = 999
+	style.corner_radius_bottom_left = 999
+	style.corner_radius_bottom_right = 999
+	return style
+
+
+func _leaderboard_dropdown_style(color: Color, pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color.darkened(0.06 if pressed else 0.0)
+	style.border_color = COLOR_INK
+	style.set_border_width_all(18)
+	style.corner_radius_top_left = 46
+	style.corner_radius_top_right = 46
+	style.corner_radius_bottom_left = 46
+	style.corner_radius_bottom_right = 46
+	style.content_margin_left = 54
+	style.content_margin_right = 54
+	style.content_margin_top = 32 + (6 if pressed else 0)
+	style.content_margin_bottom = 32 - (4 if pressed else 0)
+	style.shadow_color = Color(0.08, 0.07, 0.06, 0.28 if not pressed else 0.14)
+	style.shadow_size = 10 if not pressed else 4
+	style.shadow_offset = Vector2(0, 8 if not pressed else 3)
+	return style
+
+
+func _leaderboard_player_card_style(color: Color, pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color.darkened(0.06 if pressed else 0.0)
+	style.border_color = COLOR_INK
+	style.set_border_width_all(16)
+	style.corner_radius_top_left = 58
+	style.corner_radius_top_right = 58
+	style.corner_radius_bottom_left = 58
+	style.corner_radius_bottom_right = 58
+	style.content_margin_left = 48
+	style.content_margin_right = 48
+	style.content_margin_top = 40 + (6 if pressed else 0)
+	style.content_margin_bottom = 40 - (4 if pressed else 0)
+	style.shadow_color = Color(0.08, 0.07, 0.06, 0.32 if not pressed else 0.16)
+	style.shadow_size = 12 if not pressed else 5
+	style.shadow_offset = Vector2(0, 9 if not pressed else 4)
+	return style
+
+
+func _leaderboard_rank_badge_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1, 1, 1, 0)
+	style.border_color = Color(0, 0, 0, 0)
+	style.set_border_width_all(0)
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	return style
+
+
+func _profile_avatar_frame_style(selected := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#fffdf8") if not selected else Color("#fff1b8")
+	style.border_color = COLOR_INK
+	style.set_border_width_all(PROFILE_AVATAR_FRAME_BORDER)
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
+	style.content_margin_left = PROFILE_AVATAR_FRAME_BORDER
+	style.content_margin_right = PROFILE_AVATAR_FRAME_BORDER
+	style.content_margin_top = PROFILE_AVATAR_FRAME_BORDER
+	style.content_margin_bottom = PROFILE_AVATAR_FRAME_BORDER
+	if selected:
+		style.shadow_color = Color(0.09, 0.08, 0.07, 0.22)
+		style.shadow_size = 10
+		style.shadow_offset = Vector2(0, 8)
+	return style
+
+
+func _profile_avatar_button_style(selected := false, pressed := false) -> StyleBoxFlat:
+	var style := _profile_avatar_frame_style(selected)
+	style.bg_color = (Color("#fff1b8") if selected else Color("#fffdf8")).darkened(0.08 if pressed else 0.0)
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	if pressed:
+		style.shadow_size = 4
+		style.shadow_offset = Vector2(0, 3)
+	return style
+
+
+func _profile_avatar_border_overlay_style(selected := false) -> StyleBoxFlat:
+	var style := _profile_avatar_frame_style(selected)
+	style.draw_center = false
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	return style
+
+
+func _profile_name_field_style(focused := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#fffaf0")
+	style.border_color = COLOR_BLUE if focused else COLOR_INK
+	style.set_border_width_all(9)
+	style.corner_radius_top_left = 36
+	style.corner_radius_top_right = 36
+	style.corner_radius_bottom_left = 36
+	style.corner_radius_bottom_right = 36
+	style.content_margin_left = 34
+	style.content_margin_right = 34
+	style.content_margin_top = 18
+	style.content_margin_bottom = 18
+	return style
+
+
 func _summary_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = COLOR_PAPER
@@ -14772,6 +17985,96 @@ func _tutorial_tip_note_style() -> StyleBoxFlat:
 	style.shadow_color = Color(0.20, 0.13, 0.07, 0.18)
 	style.shadow_size = 8
 	style.shadow_offset = Vector2(0, 6)
+	return style
+
+
+func _chat_world_tab_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#3f5068")
+	style.border_color = COLOR_INK
+	style.set_border_width_all(10)
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
+	style.content_margin_left = 26
+	style.content_margin_right = 26
+	style.content_margin_top = 24
+	style.content_margin_bottom = 24
+	return style
+
+
+func _chat_expanded_message_style(deleted := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#e8e8e8") if not deleted else Color("#ddd7cf")
+	style.border_color = Color(0, 0, 0, 0)
+	style.set_border_width_all(0)
+	style.corner_radius_top_left = 18
+	style.corner_radius_top_right = 18
+	style.corner_radius_bottom_left = 18
+	style.corner_radius_bottom_right = 18
+	style.content_margin_left = 32
+	style.content_margin_right = 32
+	style.content_margin_top = 20
+	style.content_margin_bottom = 20
+	return style
+
+
+func _chat_expanded_bottom_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = COLOR_NAV
+	style.border_color = COLOR_INK
+	style.border_width_top = 7
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	return style
+
+
+func _chat_back_button_style(pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#ef3f55").darkened(0.08 if pressed else 0.0)
+	style.border_color = COLOR_INK
+	style.set_border_width_all(8)
+	style.corner_radius_top_left = 16
+	style.corner_radius_top_right = 16
+	style.corner_radius_bottom_left = 16
+	style.corner_radius_bottom_right = 16
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 10 + (5 if pressed else 0)
+	style.content_margin_bottom = 10 - (3 if pressed else 0)
+	return style
+
+
+func _chat_input_style(focused := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color.WHITE
+	style.border_color = COLOR_BLUE if focused else COLOR_INK
+	style.set_border_width_all(7)
+	style.corner_radius_top_left = 18
+	style.corner_radius_top_right = 18
+	style.corner_radius_bottom_left = 18
+	style.corner_radius_bottom_right = 18
+	style.content_margin_left = 46
+	style.content_margin_right = 46
+	style.content_margin_top = 24
+	style.content_margin_bottom = 24
+	return style
+
+
+func _chat_strip_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.725, 0.725, 0.725, 1.0)
+	style.draw_center = true
+	style.border_color = Color("#8f8f8f")
+	style.border_width_top = 0
+	style.border_width_bottom = 5
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
 	return style
 
 

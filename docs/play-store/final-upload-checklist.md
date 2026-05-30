@@ -7,14 +7,16 @@ Use this for the current closed test release candidate.
 - Confirm the configured AdMob app ID and rewarded ad unit are the intended production IDs.
 - Set `IDLE_ELITE_KEYSTORE_PASSWORD` in the shell that will run the release build if rebuilding.
 - Run `.\scripts\check-project.ps1`.
+- Run `.\scripts\check-leaderboard-cost-safety.ps1` before any Firebase-enabled build.
 
 ## Build And Local Test
 
 - Run `.\scripts\build-android-release.ps1` if rebuilding.
-- Verify `builds/android/idle-elite-release-v0.1.9-code10.aab` exists.
-- Run `jarsigner -verify builds\android\idle-elite-release-v0.1.9-code10.aab`.
+- Verify `builds/android/idle-elite-release-v0.1.10-code11.aab` exists.
+- Run `jarsigner -verify builds\android\idle-elite-release-v0.1.10-code11.aab`.
 - Run `.\scripts\test-release-aab.ps1 -UninstallExisting` with an emulator or phone connected.
 - Launch the app and confirm the release build no longer says `Ad Not Configured`.
+- If Firebase is enabled, open chat on a phone and confirm it live-refreshes only while visible, sends at most once per 2 seconds, and renders moderator-deleted messages as removed.
 
 ## Real Device Ad Test
 
@@ -30,7 +32,7 @@ Use this for the current closed test release candidate.
 - Create the app as `Idle Elite`.
 - Confirm package name is `com.idleelite.game`.
 - Enroll in Play App Signing.
-- Upload `builds/android/idle-elite-release-v0.1.9-code10.aab`.
+- Upload `builds/android/idle-elite-release-v0.1.10-code11.aab`.
 - Add the 512x512 icon from `docs/play-store/assets/app-icon-512.png`.
 - Add the feature graphic from `docs/play-store/assets/feature-graphic-1024x500.png`.
 - Add phone screenshots from `docs/play-store/assets/screenshot-*.png`.
