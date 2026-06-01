@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Idle Elite Rebuild PRD</title>
+  <title>Idle Elite PRD</title>
+  <link rel="stylesheet" href="docs-nav.css">
+  <link rel="stylesheet" href="docs-theme.css">
   <style>
     :root {
       --ink: #171615;
@@ -490,22 +492,22 @@
     }
   </style>
 </head>
-<body>
+<body class="docs-theme-dark">
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite</p>
+      <h1>Product requirements</h1>
+      <p class="docs-lead">Mobile idle RPG — five skills, short sessions.</p>
+    </div>
+    <nav data-docs-nav></nav>
+  </header>
   <main class="page">
     <section class="hero">
       <div>
         <span class="eyebrow">Godot mobile idle RPG PRD</span>
         <h1>Idle Elite Rebuild</h1>
-        <p class="hero-copy">A phone-first idle RPG about short sessions, readable progress, and five skill stamina pools. The player picks a ready skill, runs an activity, earns XP and mastery, then rotates before the session goes stale.</p>
+        <p class="hero-copy">Pick a skill, run an activity, earn XP and mastery, rotate when stamina runs low.</p>
       <div class="tagline">I must become an Idle Elitist!</div>
-        <nav class="nav-links" aria-label="Mockup pages">
-          <a class="nav-link" href="idle-elite-prd.html">PRD</a>
-          <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
-          <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
-          <a class="nav-link" href="activity-database.html">Activity Database</a>
-          <a class="nav-link" href="stamina-gauge-mock.html">Stamina Gauge</a>
-          <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
-        </nav>
       </div>
       <aside class="hero-board" aria-label="Launch asset board">
         <div class="hero-board-header">
@@ -646,7 +648,8 @@
       </div>
     </section>
 
-    <div class="footer">Idle Elite PRD. Activity tuning lives in the Activity Database; launch copy and store asset notes live in docs/play-store.</div>
+    <div class="footer">Activity data: Database page. Launch: <code>docs/play-store/</code>.</div>
   </main>
+  <script src="docs-nav.js"></script>
 </body>
 </html>

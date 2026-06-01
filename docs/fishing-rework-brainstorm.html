@@ -1,0 +1,2277 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fishing Rework</title>
+  <link rel="stylesheet" href="docs-nav.css">
+  <link rel="stylesheet" href="docs-theme.css">
+  <style>
+    :root {
+      --ink: #171615;
+      --panel: #fffdf8;
+      --muted: #6e6658;
+      --teal: #2dc0b9;
+      --water: #3db8d9;
+      --water-deep: #2a8fb8;
+      --gold: #fff2a8;
+      --shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--ink); background: linear-gradient(135deg, #fbf8ef 0%, #e8f7f6 45%, #f7f0e5 100%); }
+    main.layout {
+      padding: 20px clamp(14px, 3vw, 40px) 48px;
+      max-width: 1180px;
+      margin: 0 auto;
+      display: grid;
+      gap: 16px;
+      align-items: start;
+    }
+    @media (min-width: 900px) {
+      main.layout { grid-template-columns: minmax(0, 1fr) minmax(340px, 500px); }
+    }
+    .card {
+      padding: 14px 16px;
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .card h2 { margin: 0 0 8px; font-size: 18px; }
+    .card ul { margin: 0; padding-left: 18px; line-height: 1.4; }
+    .card li + li { margin-top: 4px; }
+    .summary-col { display: grid; gap: 12px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .tag {
+      padding: 4px 10px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+    .tag.teal { background: var(--teal); color: #fff; }
+    .tag.green { background: #367a52; color: #fff; }
+    .tag.amber { background: var(--gold); }
+    .areas-col h2 { margin: 0 0 4px; font-size: 18px; }
+    .areas-lead { margin: 0 0 10px; color: var(--muted); font-size: 12px; font-weight: 800; line-height: 1.35; }
+
+    .skill-hud {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 12px;
+      padding: 10px 12px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .skill-hud h3 { margin: 0; font-size: 15px; font-weight: 950; text-transform: lowercase; }
+    .skill-hud p { margin: 2px 0 0; font-size: 11px; color: var(--muted); font-weight: 800; }
+
+    .affinity-chip {
+      display: inline-block;
+      margin-top: 6px;
+      padding: 3px 8px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+    .affinity-chip[data-tier="ideal"] { background: #b8f5c8; }
+    .affinity-chip[data-tier="good"] { background: #d4eef8; }
+    .affinity-chip[data-tier="awkward"] { background: #f4e6c8; }
+    .affinity-chip[data-tier="joke"] { background: #ffe0d0; }
+    .gear-wallet-stack {
+      margin-bottom: 12px;
+    }
+    .gear-wallet-stack .skill-hud {
+      margin-bottom: 0;
+      border-radius: 12px 12px 0 0;
+    }
+    .gear-wallet-stack:has(.tool-splay.is-open) .skill-hud {
+      border-bottom-left-radius: 0;
+      border-bottom-right-radius: 0;
+      border-bottom-width: 2px;
+    }
+    .tool-splay {
+      display: grid;
+      gap: 0;
+      max-height: 0;
+      overflow: hidden;
+      opacity: 0;
+      border: 3px solid var(--ink);
+      border-top: 0;
+      border-radius: 0 0 12px 12px;
+      background: linear-gradient(180deg, #e8f7f6 0%, #fffdf8 100%);
+      box-shadow: var(--shadow);
+      transition: max-height 280ms ease, opacity 200ms ease, padding 280ms ease;
+      padding: 0 10px;
+    }
+    .tool-splay.is-open {
+      max-height: 420px;
+      opacity: 1;
+      padding: 8px 10px 10px;
+    }
+    .tool-splay-meta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px 8px;
+      margin-bottom: 8px;
+      padding-bottom: 8px;
+      border-bottom: 2px dashed rgba(23, 22, 21, 0.12);
+    }
+    .tool-splay-meta h4 {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .tool-splay-hint {
+      margin: 0 0 8px;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.35;
+      color: var(--muted);
+    }
+    .tool-splay-list {
+      display: grid;
+      gap: 6px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .tool-row-btn {
+      display: grid;
+      grid-template-columns: 52px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 8px 10px;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      background: #fffdf8;
+      font-family: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 2px 2px 0 var(--ink);
+      transition: transform 80ms ease, background 120ms ease;
+    }
+    .tool-row-btn:hover:not(:disabled) { background: #fff2a8; }
+    .tool-row-btn:active:not(:disabled) { transform: translate(1px, 1px); box-shadow: 1px 1px 0 var(--ink); }
+    .tool-row-btn.is-equipped {
+      background: var(--teal);
+      color: #fff;
+      box-shadow: 3px 3px 0 var(--ink);
+    }
+    .tool-row-btn.is-locked,
+    .tool-row-btn:disabled {
+      opacity: 0.72;
+      cursor: not-allowed;
+      filter: grayscale(0.25);
+      background: #f4f0e8;
+    }
+    .tool-row-btn img {
+      width: 52px;
+      height: 52px;
+      object-fit: contain;
+      border: 2px solid var(--ink);
+      border-radius: 8px;
+      background: #e8f4ff;
+    }
+    .tool-row-btn.is-equipped img { border-color: rgba(255, 255, 255, 0.65); }
+    .tool-row-text {
+      display: grid;
+      gap: 2px;
+      min-width: 0;
+    }
+    .tool-row-text strong {
+      font-size: 13px;
+      font-weight: 950;
+      text-transform: lowercase;
+      line-height: 1.15;
+    }
+    .tool-row-text small {
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 1.3;
+      color: var(--muted);
+    }
+    .tool-row-btn.is-equipped .tool-row-text small { color: rgba(255, 255, 255, 0.88); }
+    .tool-row-badge {
+      padding: 3px 7px;
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      font-size: 9px;
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      line-height: 1;
+      white-space: nowrap;
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+    .tool-row-badge.equipped { background: #fff2a8; color: var(--ink); }
+    .tool-row-btn.is-equipped .tool-row-badge.equipped { background: #fffdf8; }
+    .tool-row-badge.craft { background: #f4e6c8; color: var(--ink); }
+    .tool-row-badge.starter { background: #d4eef8; }
+    .legacy-area-note {
+      margin: 0 0 10px;
+      padding: 8px 10px;
+      border: 2px dashed var(--ink);
+      border-radius: 8px;
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1.35;
+      color: var(--muted);
+      background: rgba(255, 253, 248, 0.85);
+    }
+
+    .rocky-zoom-module {
+      margin: -4px 0 12px;
+      padding: 10px 10px 12px;
+      border: 3px solid #c45c2a;
+      border-radius: 12px;
+      background: linear-gradient(165deg, #3a352e 0%, #5c4a3a 28%, #4a4035 100%);
+      box-shadow: var(--shadow), inset 0 0 0 1px rgba(255, 242, 168, 0.15);
+      color: #fffdf8;
+    }
+    .rocky-zoom-module[hidden] { display: none !important; }
+    .rocky-zoom-module .module-head strong { color: #fffdf8; }
+    .rocky-zoom-module .module-state {
+      background: #fff2a8;
+      color: var(--ink);
+    }
+    .rocky-zoom-stage {
+      position: relative;
+      min-height: 140px;
+      margin: 8px 0;
+      border: 3px solid var(--ink);
+      border-radius: 10px;
+      overflow: hidden;
+      background: url('assets/fishing/backgrounds/03-crab-pier.png') center 60% / cover no-repeat;
+      box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.35);
+    }
+    .rocky-zoom-stage::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(180deg, rgba(58, 53, 46, 0.15) 0%, rgba(23, 22, 21, 0.45) 100%);
+      pointer-events: none;
+    }
+    .discarded-net-prop {
+      position: absolute;
+      left: 50%;
+      bottom: 18%;
+      z-index: 2;
+      display: grid;
+      gap: 6px;
+      justify-items: center;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      cursor: pointer;
+      transform: translateX(-50%);
+      font-family: inherit;
+      color: #fffdf8;
+      animation: net-wiggle 2.2s ease-in-out infinite;
+    }
+    .discarded-net-prop img {
+      width: 88px;
+      height: 88px;
+      object-fit: contain;
+      filter: drop-shadow(3px 4px 0 rgba(23, 22, 21, 0.85)) sepia(0.25) brightness(0.92);
+    }
+    .discarded-net-prop span {
+      padding: 4px 10px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.92);
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 900;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+    .discarded-net-prop:hover span { background: #fff2a8; }
+    @keyframes net-wiggle {
+      0%, 100% { transform: translateX(-50%) rotate(-2deg); }
+      50% { transform: translateX(-50%) rotate(3deg); }
+    }
+    .rocky-zoom-hint {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 700;
+      line-height: 1.4;
+      color: rgba(255, 253, 248, 0.82);
+    }
+    .gear-toast {
+      position: fixed;
+      top: clamp(72px, 12vh, 120px);
+      left: 50%;
+      z-index: 300;
+      transform: translateX(-50%) translateY(-12px);
+      padding: 10px 18px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: #fff2a8;
+      color: var(--ink);
+      font-size: 15px;
+      font-weight: 950;
+      box-shadow: 4px 5px 0 var(--ink);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 200ms ease, transform 200ms ease;
+    }
+    .gear-toast.is-visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    .net-fly-clone {
+      position: fixed;
+      z-index: 400;
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      pointer-events: none;
+      filter: drop-shadow(2px 3px 0 rgba(23, 22, 21, 0.7));
+      transition: left 650ms cubic-bezier(0.2, 0.9, 0.2, 1), top 650ms cubic-bezier(0.4, 0, 0.8, 1), transform 650ms ease, opacity 200ms ease 550ms;
+    }
+    .tool-discovery-hidden { display: none !important; }
+    .gear-wallet-btn {
+      display: grid;
+      grid-template-columns: 48px 1fr 22px;
+      align-items: center;
+      gap: 8px 10px;
+      min-width: 148px;
+      padding: 8px 10px 8px 8px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: linear-gradient(165deg, #fffdf8 0%, #e8f7f6 100%);
+      font-family: inherit;
+      color: inherit;
+      text-align: left;
+      cursor: pointer;
+      box-shadow: 2px 3px 0 var(--ink);
+      transition: background 120ms ease, transform 80ms ease;
+    }
+    .gear-wallet-btn:hover { background: #fff2a8; }
+    .gear-wallet-btn[aria-expanded="true"] {
+      background: #fff2a8;
+      box-shadow: 2px 2px 0 var(--ink), inset 0 0 0 2px rgba(45, 192, 185, 0.35);
+    }
+    .gear-wallet-btn:active { transform: translate(1px, 1px); box-shadow: 1px 2px 0 var(--ink); }
+    .gear-wallet-tool-thumb {
+      width: 48px;
+      height: 48px;
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      background: #e8f4ff center/cover no-repeat;
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+    .gear-wallet-body { display: grid; gap: 2px; min-width: 0; }
+    .gear-wallet-fish-row {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+    .gear-wallet-fish-row strong {
+      font-size: 22px;
+      font-weight: 950;
+      font-variant-numeric: tabular-nums;
+      line-height: 1;
+    }
+    .gear-wallet-fish-row img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      filter: drop-shadow(1px 1px 0 rgba(23, 22, 21, 0.35));
+    }
+    .gear-wallet-tool-name {
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: lowercase;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+    .gear-wallet-chevron {
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1;
+      transition: transform 160ms ease;
+    }
+    .gear-wallet-btn[aria-expanded="true"] .gear-wallet-chevron { transform: rotate(180deg); }
+
+    .area-grid { display: grid; gap: 12px; }
+    .fishing-module {
+      position: relative;
+      overflow: hidden;
+      padding: 10px 10px 0;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background-color: #fff8e8;
+      background-image:
+        linear-gradient(90deg, rgba(255, 253, 248, 0.9) 0%, rgba(255, 253, 248, 0.78) 52%, rgba(255, 253, 248, 0.35) 100%),
+        var(--area-bg, #cfe8f0);
+      background-position: center;
+      background-size: cover;
+      box-shadow: var(--shadow);
+      transition: background-image 280ms ease, border-color 140ms ease;
+      --fluid: var(--water);
+      --fluid-deep: var(--water-deep);
+      --fluid-foam: rgba(255, 255, 255, 0.42);
+      --wave-a-dur: 2.8s;
+      --wave-b-dur: 3.4s;
+      --foam-scroll-dur: 2.6s;
+    }
+    .fishing-module.is-active {
+      border-color: #1f6f4a;
+      box-shadow: var(--shadow), inset 0 0 0 2px rgba(47, 226, 117, 0.2);
+    }
+    .module-head {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+    .module-head strong { font-size: 17px; font-weight: 950; text-transform: lowercase; }
+    .module-state {
+      padding: 3px 8px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fffdf8;
+      font-size: 10px;
+      font-weight: 900;
+    }
+    .fishing-module.is-active .module-state { background: var(--teal); color: #fff; }
+
+    .module-layout {
+      position: relative;
+      z-index: 2;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 108px;
+      gap: 10px;
+      align-items: start;
+      padding-bottom: 6px;
+    }
+
+    .method-arts,
+    .location-spots {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: flex-start;
+    }
+
+    .location-slot .location-thumb {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 56px;
+      background: #cfe8f0 center/cover no-repeat;
+    }
+    .location-name {
+      font-size: 10px;
+      font-weight: 950;
+      text-transform: lowercase;
+      line-height: 1.1;
+    }
+    .location-fish {
+      font-size: 9px;
+      font-weight: 800;
+      color: var(--muted);
+      line-height: 1.1;
+    }
+    .location-slot.is-selected .location-thumb {
+      border-color: #d99b28;
+      box-shadow: 2px 2px 0 var(--ink), inset 0 0 0 2px rgba(255, 210, 65, 0.45);
+    }
+
+    .method-slot {
+      display: grid;
+      gap: 4px;
+      width: 74px;
+      padding: 0;
+      border: 0;
+      background: transparent;
+      font: inherit;
+      color: inherit;
+      text-align: center;
+      cursor: pointer;
+    }
+    .method-slot.is-selected .activity-art {
+      border-color: #d99b28;
+      box-shadow: 2px 2px 0 var(--ink), inset 0 0 0 2px rgba(255, 210, 65, 0.45);
+    }
+    .method-slot.is-locked {
+      cursor: default;
+      pointer-events: none;
+    }
+    .method-slot.is-locked .activity-art {
+      opacity: 0.72;
+      filter: grayscale(0.25);
+    }
+    .method-slot.is-locked .mastery-meter,
+    .method-slot.is-locked .mastery-medal { opacity: 0.35; }
+
+    .method-lock {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      z-index: 3;
+      width: 38px;
+      height: 42px;
+      margin: -26px 0 0 -19px;
+      background: url("assets/ui/unlock-padlock.png") center / contain no-repeat;
+      filter: drop-shadow(2px 3px 0 rgba(23, 22, 21, 0.85));
+      pointer-events: none;
+    }
+    .method-lock-lv {
+      position: absolute;
+      bottom: -4px;
+      left: 50%;
+      z-index: 4;
+      transform: translateX(-50%);
+      padding: 1px 5px;
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      background: #fffdf8;
+      font-size: 9px;
+      font-weight: 950;
+      line-height: 1.2;
+      box-shadow: 1px 1px 0 var(--ink);
+      pointer-events: none;
+    }
+
+    .activity-art {
+      position: relative;
+      width: 74px;
+      height: 74px;
+      display: grid;
+      place-items: center;
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+    .activity-art img {
+      width: 64px;
+      height: 64px;
+      object-fit: contain;
+      pointer-events: none;
+    }
+    .mastery-medal {
+      position: absolute;
+      top: -10px;
+      right: -10px;
+      width: 34px;
+      height: 34px;
+      background-image: url("assets/ui/mastery-medals-20.png");
+      background-repeat: no-repeat;
+      background-size: 500% 400%;
+      background-position: calc(var(--medal-col, 0) * 25%) calc(var(--medal-row, 0) * 33.3333%);
+      filter: drop-shadow(1px 2px 0 rgba(23, 22, 21, 0.8));
+      pointer-events: none;
+    }
+    .mastery-medal.dim { opacity: 0.42; filter: grayscale(0.35) drop-shadow(1px 2px 0 rgba(23, 22, 21, 0.8)); }
+
+    .method-name {
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 1.1;
+      text-transform: lowercase;
+    }
+
+    .mastery-meter .bar {
+      display: block;
+      height: 8px;
+      border: 2px solid var(--ink);
+      border-radius: 4px;
+      background: #fff1c8;
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+      overflow: hidden;
+    }
+    .mastery-meter .bar i {
+      display: block;
+      height: 100%;
+      background: linear-gradient(90deg, #ffc54a, #fff394);
+    }
+
+    .module-side {
+      display: grid;
+      gap: 6px;
+      align-content: start;
+    }
+    .module-stats {
+      display: grid;
+      gap: 5px;
+    }
+    .stat-chip {
+      display: grid;
+      place-items: center;
+      min-height: 38px;
+      padding: 4px 4px 3px;
+      border: 3px solid var(--ink);
+      border-radius: 7px;
+      background: #fff;
+      text-align: center;
+      line-height: 1.05;
+      box-shadow: 1px 1px 0 rgba(23, 22, 21, 0.75);
+    }
+    .stat-chip b {
+      display: block;
+      font-size: 11px;
+      font-weight: 950;
+    }
+    .stat-chip small {
+      color: var(--muted);
+      font-size: 8px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .compare-note {
+      margin: 0;
+      font-size: 9px;
+      font-weight: 800;
+      color: var(--muted);
+      line-height: 1.3;
+    }
+
+    /* Hybrid fluid strip: code motion + tiled foam (SVG). Tint via data-fluid on module. */
+    .fishing-module[data-fluid="sewer"] {
+      --fluid: #6dc96e;
+      --fluid-deep: #3f8f45;
+      --fluid-foam: rgba(220, 255, 200, 0.38);
+      --wave-a-dur: 2.2s;
+      --wave-b-dur: 2.9s;
+      --foam-scroll-dur: 2.1s;
+    }
+    .fishing-module[data-fluid="lava"] {
+      --fluid: #ff9a48;
+      --fluid-deep: #d84a18;
+      --fluid-foam: rgba(255, 240, 160, 0.5);
+      --wave-a-dur: 3.6s;
+      --wave-b-dur: 4.4s;
+      --foam-scroll-dur: 3.8s;
+    }
+    .fishing-module.is-active[data-fluid="lava"] {
+      border-color: #a63b12;
+      box-shadow: var(--shadow), inset 0 0 0 2px rgba(255, 140, 50, 0.28);
+    }
+    .fishing-module.is-active[data-fluid="sewer"] {
+      border-color: #2d6b38;
+      box-shadow: var(--shadow), inset 0 0 0 2px rgba(90, 200, 100, 0.22);
+    }
+
+    .water-strip {
+      position: relative;
+      z-index: 1;
+      height: 0;
+      margin: 8px -10px 0;
+      border-top: 0 solid var(--ink);
+      overflow: hidden;
+      transition: height 320ms ease, opacity 200ms ease;
+      opacity: 0;
+    }
+    .fishing-module.is-active .water-strip {
+      height: 38px;
+      border-top-width: 2px;
+      opacity: 1;
+    }
+    .water-inner {
+      position: absolute;
+      inset: 2px 0 0;
+      overflow: hidden;
+      background: var(--fluid-deep);
+    }
+    .water-deep,
+    .water-surface {
+      position: absolute;
+      left: -18%;
+      width: 136%;
+      height: 130%;
+      border-radius: 42%;
+      pointer-events: none;
+    }
+    .water-deep {
+      bottom: -18%;
+      background: var(--fluid-deep);
+      opacity: 0;
+    }
+    .water-surface {
+      bottom: -8%;
+      background: var(--fluid);
+      opacity: 0;
+    }
+    .fishing-module.is-active .water-deep {
+      opacity: 1;
+      animation: wave-b var(--wave-b-dur) ease-in-out infinite reverse;
+    }
+    .fishing-module.is-active .water-surface {
+      opacity: 1;
+      animation: wave-a var(--wave-a-dur) ease-in-out infinite;
+    }
+    .water-foam {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 200%;
+      height: 72%;
+      opacity: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='128' height='32' viewBox='0 0 128 32'%3E%3Cellipse cx='18' cy='10' rx='16' ry='7' fill='%23fff' opacity='0.55'/%3E%3Cellipse cx='52' cy='8' rx='12' ry='5' fill='%23fff' opacity='0.4'/%3E%3Cellipse cx='88' cy='11' rx='18' ry='6' fill='%23fff' opacity='0.48'/%3E%3Cellipse cx='118' cy='9' rx='10' ry='4' fill='%23fff' opacity='0.35'/%3E%3C/svg%3E");
+      background-repeat: repeat-x;
+      background-size: 96px 28px;
+      background-position: 0 100%;
+      filter: drop-shadow(0 1px 0 rgba(23, 22, 21, 0.12));
+      mix-blend-mode: soft-light;
+      pointer-events: none;
+    }
+    .fishing-module.is-active .water-foam {
+      opacity: 1;
+      animation: foam-scroll var(--foam-scroll-dur) linear infinite;
+    }
+    .fishing-module[data-fluid="lava"].is-active .water-foam {
+      mix-blend-mode: screen;
+      animation: foam-scroll var(--foam-scroll-dur) linear infinite, lava-bubble 1.4s ease-in-out infinite;
+    }
+    .water-shine {
+      position: absolute;
+      top: 0;
+      left: -30%;
+      width: 45%;
+      height: 100%;
+      background: linear-gradient(105deg, transparent 0%, var(--fluid-foam) 48%, transparent 100%);
+      opacity: 0;
+      pointer-events: none;
+    }
+    .fishing-module.is-active .water-shine {
+      opacity: 0.65;
+      animation: shine-pass 4.2s ease-in-out infinite;
+    }
+    .fishing-module.phase-calm { --wave-a-dur: 3.4s; --wave-b-dur: 4s; --foam-scroll-dur: 3.2s; }
+    /* Bite: badge only for now — fluid scroll speed stays same as calm until we add a new cue. */
+    .fishing-module.phase-reveal .water-deep,
+    .fishing-module.phase-reveal .water-surface { animation-play-state: paused; }
+
+    .fishing-phase {
+      padding: 2px 7px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: #fffdf8;
+      font-size: 9px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+    }
+    .fishing-module.phase-calm .fishing-phase { background: #e8f4ff; }
+    .fishing-module.phase-bite .fishing-phase { background: #fff2a8; animation: bite-pulse 0.45s ease-in-out infinite; }
+    .fishing-module.phase-reveal.reveal-success .fishing-phase { background: #b8f5c8; }
+    .fishing-module.phase-reveal.reveal-fail .fishing-phase { background: #f0e0e0; }
+    @keyframes bite-pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.06); }
+    }
+
+    .catch-burst {
+      position: absolute;
+      inset: 0;
+      z-index: 4;
+      pointer-events: none;
+      overflow: visible;
+    }
+    .catch-pop {
+      position: absolute;
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+      filter: drop-shadow(2px 2px 0 rgba(23, 22, 21, 0.75));
+      opacity: 0;
+      transform: translate(-50%, 0) scale(0.3);
+      animation: catch-pop-in 420ms cubic-bezier(0.2, 1.1, 0.35, 1) forwards;
+    }
+    .catch-pop.shiny {
+      filter: drop-shadow(0 0 6px rgba(255, 220, 80, 0.9)) drop-shadow(2px 2px 0 rgba(23, 22, 21, 0.75));
+      animation: catch-pop-in 520ms cubic-bezier(0.2, 1.2, 0.3, 1) forwards, shiny-twinkle 1s ease-in-out 2;
+    }
+    @keyframes catch-pop-in {
+      0% { opacity: 0; transform: translate(-50%, 8px) scale(0.2); }
+      70% { opacity: 1; transform: translate(-50%, -18px) scale(1.08); }
+      100% { opacity: 1; transform: translate(-50%, -28px) scale(1); }
+    }
+    @keyframes shiny-twinkle {
+      0%, 100% { filter: drop-shadow(0 0 4px rgba(255, 220, 80, 0.7)) drop-shadow(2px 2px 0 rgba(23, 22, 21, 0.75)); }
+      50% { filter: drop-shadow(0 0 14px rgba(255, 245, 140, 1)) drop-shadow(2px 2px 0 rgba(23, 22, 21, 0.75)); }
+    }
+    .reveal-flash {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      font-size: 15px;
+      font-weight: 950;
+      text-transform: lowercase;
+      opacity: 0;
+      pointer-events: none;
+      text-shadow: 2px 2px 0 #fffdf8, 3px 3px 0 var(--ink);
+    }
+    .fishing-module.phase-reveal .reveal-flash { animation: reveal-flash-in 900ms ease-out forwards; }
+    .fishing-module.reveal-success .reveal-flash { color: #1f6f4a; }
+    .fishing-module.reveal-fail .reveal-flash { color: #8b3a3a; }
+    @keyframes reveal-flash-in {
+      0% { opacity: 0; transform: scale(0.85); }
+      18% { opacity: 1; transform: scale(1.05); }
+      75% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1); }
+    }
+    .method-archetype {
+      display: block;
+      font-size: 8px;
+      font-weight: 800;
+      color: var(--muted);
+      line-height: 1.1;
+    }
+    @keyframes wave-a {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      50% { transform: translateX(-5%) rotate(-2deg); }
+    }
+    @keyframes wave-b {
+      0%, 100% { transform: translateX(0) rotate(0deg); }
+      50% { transform: translateX(4%) rotate(1.5deg); }
+    }
+    @keyframes foam-scroll {
+      0% { transform: translateX(0); }
+      100% { transform: translateX(-48px); }
+    }
+    @keyframes shine-pass {
+      0%, 100% { transform: translateX(0); opacity: 0.2; }
+      45% { transform: translateX(220%); opacity: 0.75; }
+    }
+    @keyframes lava-bubble {
+      0%, 100% { transform: translateX(0) translateY(0); }
+      50% { transform: translateX(-2%) translateY(-3px); }
+    }
+    .fluid-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin: 0 0 10px;
+    }
+    .fluid-legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      background: #fffdf8;
+      box-shadow: 1px 1px 0 var(--ink);
+    }
+    .fluid-legend i {
+      width: 14px;
+      height: 8px;
+      border: 1px solid var(--ink);
+      border-radius: 3px;
+    }
+    .fluid-legend i.water-i { background: linear-gradient(180deg, #3db8d9, #2a8fb8); }
+    .fluid-legend i.sewer-i { background: linear-gradient(180deg, #6dc96e, #3f8f45); }
+    .fluid-legend i.lava-i { background: linear-gradient(180deg, #ff9a48, #d84a18); }
+    .later-card {
+      margin-top: 4px;
+      padding: 12px 14px;
+      border: 2px dashed var(--ink);
+      border-radius: 10px;
+      background: rgba(255, 253, 248, 0.7);
+    }
+    .later-card h3 { margin: 0 0 6px; font-size: 14px; }
+    .later-card p { margin: 0; font-size: 12px; line-height: 1.4; color: #3a352e; }
+
+    .unlock-rules {
+      margin: 0 0 10px;
+      padding: 10px 12px;
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      background: #e8f7f6;
+      box-shadow: 2px 2px 0 var(--ink);
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1.4;
+    }
+    .unlock-rules strong { font-weight: 950; }
+    .fishing-module.is-teaser-only .module-layout { opacity: 0.92; }
+    .fishing-module.is-teaser-only .module-head::after {
+      content: "next unlock";
+      padding: 2px 7px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      background: var(--gold);
+      font-size: 9px;
+      font-weight: 900;
+    }
+    code { padding: 1px 4px; border-radius: 4px; background: #e8f4ff; font-size: 0.9em; }
+
+    .page-shell { max-width: 1180px; margin: 0 auto; padding: 0 clamp(14px, 3vw, 40px) 88px; }
+    .archetype-atlas {
+      margin: 20px 0 28px;
+      padding: 22px clamp(14px, 2.5vw, 24px) 26px;
+      border: 4px solid var(--ink);
+      border-radius: 16px;
+      background: linear-gradient(165deg, #f0f8fc 0%, #fffdf8 38%, #f5f0e6 100%);
+      box-shadow: 6px 7px 0 var(--ink);
+    }
+    .archetype-atlas > h2 {
+      margin: 0 0 4px;
+      font-size: 26px;
+      font-weight: 950;
+      letter-spacing: -0.02em;
+    }
+    .archetype-atlas > .atlas-lead {
+      margin: 0 0 18px;
+      max-width: 72ch;
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .progress-rule {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding: 14px 16px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: #fffdf8;
+      box-shadow: var(--shadow);
+    }
+    .progress-rule h3 { margin: 0 0 8px; font-size: 14px; font-weight: 950; }
+    .progress-layers {
+      display: grid;
+      gap: 8px;
+    }
+    @media (min-width: 640px) {
+      .progress-layers { grid-template-columns: repeat(3, 1fr); }
+    }
+    .progress-layer {
+      padding: 10px 12px;
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      font-size: 12px;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+    .progress-layer strong { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+    .progress-layer.area-fluid { background: #d4eef8; }
+    .progress-layer.attempt-bar { background: #fff2a8; border-width: 3px; }
+    .progress-layer.mastery { background: #f4e6c8; }
+    .phase-legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .phase-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border: 2px solid var(--ink);
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 800;
+      background: #fffdf8;
+      box-shadow: 2px 2px 0 var(--ink);
+    }
+    .phase-chip i {
+      width: 14px;
+      height: 14px;
+      border-radius: 4px;
+      border: 1px solid var(--ink);
+    }
+    .archetype-grid {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 22px;
+    }
+    @media (min-width: 720px) {
+      .archetype-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 1020px) {
+      .archetype-grid { grid-template-columns: repeat(3, 1fr); }
+    }
+    .archetype-card {
+      display: grid;
+      gap: 10px;
+      padding: 14px 14px 12px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+    }
+    .archetype-card[data-arch="novice"] { border-left: 10px solid #6ec9a8; }
+    .archetype-card[data-arch="steady"] { border-left: 10px solid #3db8d9; }
+    .archetype-card[data-arch="volume"] { border-left: 10px solid #5a8fd4; }
+    .archetype-card[data-arch="commit"] { border-left: 10px solid #c45c2a; }
+    .archetype-card[data-arch="chaos"] { border-left: 10px solid #9b6bb8; }
+    .archetype-card[data-arch="risk"] { border-left: 10px solid #d84a18; }
+    .arch-head {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .arch-head h3 {
+      margin: 0;
+      font-size: 17px;
+      font-weight: 950;
+      text-transform: lowercase;
+    }
+    .arch-id {
+      padding: 3px 8px;
+      border: 2px solid var(--ink);
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 900;
+      font-family: ui-monospace, Consolas, monospace;
+      background: #e8f4ff;
+    }
+    .arch-feel {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.45;
+      font-weight: 700;
+      color: var(--ink);
+    }
+    .arch-spec {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 11px;
+      line-height: 1.45;
+      font-weight: 700;
+      color: var(--muted);
+    }
+    .arch-spec li {
+      display: grid;
+      grid-template-columns: 72px 1fr;
+      gap: 6px;
+      padding: 4px 0;
+      border-top: 1px dashed rgba(23, 22, 21, 0.15);
+    }
+    .arch-spec li:first-child { border-top: 0; padding-top: 0; }
+    .arch-spec strong { color: var(--ink); font-weight: 900; }
+    .bar-demo {
+      height: 18px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: #fff1c8;
+      overflow: hidden;
+    }
+    .bar-demo i {
+      display: block;
+      height: 100%;
+      border-radius: 999px;
+      background: #9ad4e8;
+    }
+    .bar-demo[data-mode="steps"] i { width: 60%; background: linear-gradient(90deg, #9ad4e8 0 20%, #fff1c8 20% 20.5%, #9ad4e8 20.5% 40%, #fff1c8 40% 40.5%, #9ad4e8 40.5% 60%, #fff1c8 60% 100%); }
+    .bar-demo[data-mode="smooth"] i { width: 72%; background: linear-gradient(90deg, #9ad4e8 0 55%, #fff2a8 55% 88%, #8ee4a8 88% 100%); }
+    .bar-demo[data-mode="late_surge"] i { width: 88%; background: linear-gradient(90deg, #9ad4e8 0 68%, #fff2a8 68% 100%); }
+    .bar-demo[data-mode="jitter"] i { width: 64%; animation: bar-jitter 1.2s ease-in-out infinite; }
+    .bar-demo[data-mode="pulse"] i { width: 48%; animation: bar-pulse 1.8s ease-in-out infinite; }
+    .bar-demo[data-mode="breathe"] i { width: 58%; animation: bar-breathe 2.4s ease-in-out infinite; }
+    .bar-demo[data-mode="stall"] i { width: 52%; background: linear-gradient(90deg, #9ad4e8 0 48%, #fff1c8 48% 52%, #fff2a8 52% 100%); }
+    @keyframes bar-jitter {
+      0%, 100% { width: 58%; margin-left: 0; }
+      50% { width: 70%; margin-left: 4%; }
+    }
+    @keyframes bar-pulse {
+      0%, 100% { width: 35%; opacity: 0.7; }
+      50% { width: 55%; opacity: 1; }
+    }
+    @keyframes bar-breathe {
+      0%, 100% { width: 52%; }
+      50% { width: 62%; }
+    }
+    .method-index {
+      padding: 16px;
+      border: 3px solid var(--ink);
+      border-radius: 12px;
+      background: #fffdf8;
+      box-shadow: var(--shadow);
+    }
+    .method-index h3 { margin: 0 0 12px; font-size: 16px; font-weight: 950; }
+    .method-groups {
+      display: grid;
+      gap: 12px;
+    }
+    @media (min-width: 720px) {
+      .method-groups { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (min-width: 1000px) {
+      .method-groups { grid-template-columns: repeat(3, 1fr); }
+    }
+    .method-group {
+      padding: 10px 12px;
+      border: 2px solid var(--ink);
+      border-radius: 10px;
+      background: var(--panel);
+    }
+    .method-group h4 {
+      margin: 0 0 8px;
+      font-size: 12px;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .method-group h4 .dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 3px;
+      border: 2px solid var(--ink);
+    }
+    .method-list {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      font-size: 11px;
+      line-height: 1.35;
+      font-weight: 700;
+    }
+    .method-list li {
+      padding: 5px 0;
+      border-top: 1px solid rgba(23, 22, 21, 0.1);
+    }
+    .method-list li:first-child { border-top: 0; padding-top: 0; }
+    .method-list .lv {
+      display: inline-block;
+      min-width: 2.4em;
+      font-variant-numeric: tabular-nums;
+      font-weight: 900;
+      color: var(--muted);
+    }
+    .method-list .area-tag {
+      float: right;
+      font-size: 9px;
+      font-weight: 900;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .method-list .one-fish {
+      color: #1f6f4a;
+      font-weight: 900;
+    }
+    .atlas-jump {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 12px;
+      font-weight: 800;
+      color: #1a7a75;
+    }
+    .atlas-jump:hover { color: #0f5c58; }
+
+    /* Readable when shared docs-theme-dark wraps this page */
+    body.docs-theme-dark .archetype-atlas,
+    body.docs-theme-dark .archetype-atlas .archetype-card,
+    body.docs-theme-dark .archetype-atlas .progress-rule,
+    body.docs-theme-dark .archetype-atlas .method-index,
+    body.docs-theme-dark .archetype-atlas .method-group {
+      color: var(--ink);
+    }
+    body.docs-theme-dark .archetype-atlas .phase-chip,
+    body.docs-theme-dark .archetype-atlas .arch-id {
+      color: var(--ink);
+      background: #fffdf8;
+    }
+
+    .doc-refresh-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 8px 10px;
+      margin: 14px 0;
+    }
+    .doc-refresh-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      min-height: 44px;
+      padding: 10px 18px;
+      border: 3px solid var(--ink, #171615);
+      border-radius: 12px;
+      background: linear-gradient(180deg, #3dd4cd 0%, #2dc0b9 55%, #24a8a2 100%);
+      color: #fff;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 950;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 3px 4px 0 var(--ink, #171615);
+      transition: transform 80ms ease, box-shadow 80ms ease, filter 120ms ease;
+    }
+    .doc-refresh-btn--wide { min-width: 140px; padding: 12px 22px; font-size: 15px; }
+    .doc-refresh-btn:hover,
+    .doc-refresh-btn:focus-visible {
+      filter: brightness(1.06);
+      outline: 2px solid #fff2a8;
+      outline-offset: 2px;
+    }
+    .doc-refresh-btn:active {
+      transform: translate(2px, 2px);
+      box-shadow: 1px 2px 0 var(--ink, #171615);
+    }
+    .doc-refresh-btn .refresh-glyph { font-size: 18px; line-height: 1; }
+    .doc-refresh-dock {
+      position: fixed;
+      right: clamp(12px, 3vw, 28px);
+      bottom: 18px;
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .doc-refresh-dock .doc-refresh-btn {
+      pointer-events: auto;
+      min-height: 52px;
+      padding: 12px 20px;
+      font-size: 16px;
+      box-shadow: 4px 5px 0 var(--ink, #171615);
+    }
+    body.docs-theme-dark .doc-refresh-btn {
+      border-color: rgba(247, 234, 215, 0.45);
+      box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.45);
+    }
+    body.docs-theme-dark .doc-refresh-dock .doc-refresh-btn {
+      box-shadow: 4px 5px 0 rgba(0, 0, 0, 0.5);
+    }
+  </style>
+</head>
+<body class="docs-theme-dark">
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite</p>
+      <h1>Fishing Rework</h1>
+      <p class="docs-lead">Same <strong>activity art</strong> as other skills — fishing shows <strong>1–3</strong> side by side. Stats on the right.</p>
+    </div>
+    <nav data-docs-nav></nav>
+  </header>
+  <div class="page-shell">
+  <section id="archetype-atlas" class="archetype-atlas" aria-labelledby="archetype-atlas-title">
+    <h2 id="archetype-atlas-title">Method archetype atlas</h2>
+    <p class="atlas-lead">Design reference for every fishing method’s <strong>feel</strong>. Progress reads on the <strong>small bar under each art</strong> — not the bottom water strip (ambiance only). <strong>Not every method uses calm → bite → harvest.</strong> That story is for line tools; nets use <strong>drag → snag → spill</strong> via the <code>volume</code> archetype.</p>
+
+    <div class="progress-rule">
+      <h3>Where progress shows</h3>
+      <div class="progress-layers">
+        <div class="progress-layer area-fluid"><strong>Area fluid strip</strong>Mood / water tint while any method in that area runs. No attempt %.</div>
+        <div class="progress-layer attempt-bar"><strong>Attempt bar (per art)</strong>Each archetype tells its own story on the same bar widget (line wait/bite/land vs net drag/snag/spill).</div>
+        <div class="progress-layer mastery"><strong>Mastery bar</strong>Long-term medal progress. Unchanged.</div>
+      </div>
+    </div>
+
+    <div class="phase-legend" aria-label="Bar tint bands (meaning varies by archetype)">
+      <span class="phase-chip" title="Line: waiting · Net: dragging"><i style="background:#9ad4e8"></i> early</span>
+      <span class="phase-chip" title="Line: bite · Net: snag"><i style="background:#fff2a8"></i> middle</span>
+      <span class="phase-chip" title="Line: landed · Net: spill"><i style="background:#8ee4a8"></i> catch</span>
+      <span class="phase-chip" title="Line: got away · Net: empty"><i style="background:#e8b0b0"></i> miss</span>
+    </div>
+    <p class="phase-story-note" style="margin:-8px 0 14px;font-size:11px;font-weight:700;color:var(--muted);line-height:1.4">Same four tints in code; copy and bar shape change per archetype. See <a href="fishing-archetype-design.md">fishing-archetype-design.md</a>.</p>
+
+    <div class="archetype-grid">
+      <article class="archetype-card" data-arch="novice">
+        <div class="arch-head"><h3>Novice dip</h3><span class="arch-id">novice</span></div>
+        <p class="arch-feel">Fishing Lv 1 tutorial: one minnow, one pop, one currency. Believably clumsy, still rewarding.</p>
+        <ul class="arch-spec">
+          <li><strong>Bar</strong> Smooth fill, extra-long calm</li>
+          <li><strong>Timing</strong> ~62% calm · short bite</li>
+          <li><strong>Success</strong> ~92%</li>
+          <li><strong>Catch</strong> Fixed <strong>1 fish</strong> (1:1 with HUD)</li>
+          <li><strong>Fail</strong> Soft miss, no punishment stack</li>
+        </ul>
+        <div class="bar-demo" data-mode="smooth" title="Example fill curve"><i></i></div>
+      </article>
+
+      <article class="archetype-card" data-arch="steady">
+        <div class="arch-head"><h3>Reliable line</h3><span class="arch-id">steady</span></div>
+        <p class="arch-feel">Default idle rhythm. Patient calm, readable bite, normal yield band. Most methods use this.</p>
+        <ul class="arch-spec">
+          <li><strong>Bar</strong> Smooth linear fill</li>
+          <li><strong>Timing</strong> 55% calm · 88% bite (baseline)</li>
+          <li><strong>Success</strong> ~82%</li>
+          <li><strong>Catch</strong> Tier-based min–max pops</li>
+          <li><strong>Fail</strong> Standard miss</li>
+        </ul>
+        <div class="bar-demo" data-mode="smooth"><i></i></div>
+      </article>
+
+      <article class="archetype-card" data-arch="volume">
+        <div class="arch-head"><h3>Net haul</h3><span class="arch-id">volume</span></div>
+        <p class="arch-feel"><strong>The net type.</strong> Drag mesh, snag something, spill fish out — not a bobber fantasy. Stepped bar sells pull strokes.</p>
+        <ul class="arch-spec">
+          <li><strong>Story</strong> Drag → snag → spill (not calm / bite)</li>
+          <li><strong>Bar</strong> Stepped ticks (4–5 chunks)</li>
+          <li><strong>Timing</strong> Short drag · quick snag band</li>
+          <li><strong>Success</strong> ~78%</li>
+          <li><strong>Catch</strong> +1 fish roll often; faster pop stagger</li>
+          <li><strong>Fail</strong> “Empty net” — not “got away”</li>
+        </ul>
+        <div class="bar-demo" data-mode="steps"><i></i></div>
+      </article>
+
+      <article class="archetype-card" data-arch="commit">
+        <div class="arch-head"><h3>All-in strike</h3><span class="arch-id">commit</span></div>
+        <p class="arch-feel">Long setup, one sharp moment. Bar crawls, then surges in the bite window.</p>
+        <ul class="arch-spec">
+          <li><strong>Bar</strong> Late surge to 100%</li>
+          <li><strong>Timing</strong> ~72% calm · short bite</li>
+          <li><strong>Success</strong> ~70%</li>
+          <li><strong>Catch</strong> Fewer pops, bigger spacing</li>
+          <li><strong>Fail</strong> Harder whiff on reveal</li>
+        </ul>
+        <div class="bar-demo" data-mode="late_surge"><i></i></div>
+      </article>
+
+      <article class="archetype-card" data-arch="chaos">
+        <div class="arch-head"><h3>Sewer grab</h3><span class="arch-id">chaos</span></div>
+        <p class="arch-feel">Unreliable and janky. Jitter bar, lower success, high variance when it hits.</p>
+        <ul class="arch-spec">
+          <li><strong>Bar</strong> Jitter wobble on fill</li>
+          <li><strong>Timing</strong> Medium calm · unstable bite</li>
+          <li><strong>Success</strong> ~62%</li>
+          <li><strong>Catch</strong> Low min, spicy highs rare</li>
+          <li><strong>Fail</strong> Common — “slipped away”</li>
+        </ul>
+        <div class="bar-demo" data-mode="jitter"><i></i></div>
+      </article>
+
+      <article class="archetype-card" data-arch="risk">
+        <div class="arch-head"><h3>Chum gamble</h3><span class="arch-id">risk</span></div>
+        <p class="arch-feel">High upside, zero on fail. Bite phase feels dangerous; miss means no fish at all.</p>
+        <ul class="arch-spec">
+          <li><strong>Bar</strong> Smooth + caution bite tint</li>
+          <li><strong>Timing</strong> Medium calm · warned bite</li>
+          <li><strong>Success</strong> ~68%</li>
+          <li><strong>Catch</strong> High max yield</li>
+          <li><strong>Fail</strong> <strong>0 fish</strong> (not low roll)</li>
+        </ul>
+        <div class="bar-demo" data-mode="smooth"><i></i></div>
+      </article>
+    </div>
+
+    <div class="method-index">
+      <h3>All methods by archetype</h3>
+      <p style="margin:0 0 14px;font-size:12px;line-height:1.4;color:var(--muted);font-weight:700">Unlock = Fishing level. <span class="one-fish">1 fish</span> = fixed 1:1 currency pop. Source: <code>activity-database.json</code> + code map.</p>
+      <div class="method-groups">
+        <div class="method-group" data-arch="novice">
+          <h4><span class="dot" style="background:#6ec9a8"></span> novice · 1</h4>
+          <ul class="method-list">
+            <li><span class="lv">Lv1</span> Dip For A Shallow Minnow <span class="area-tag">beach</span><br><span class="one-fish">1 fish only</span> — start here</li>
+          </ul>
+        </div>
+        <div class="method-group" data-arch="volume">
+          <h4><span class="dot" style="background:#5a8fd4"></span> volume · 3</h4>
+          <ul class="method-list">
+            <li><span class="lv">Lv4</span> Drag Net Through Creek <span class="area-tag">beach</span></li>
+            <li><span class="lv">Lv14</span> Trawl From Tiny Boat <span class="area-tag">boat</span></li>
+            <li><span class="lv">Lv40</span> Net The Reflection Of A Fish <span class="area-tag">space</span></li>
+          </ul>
+        </div>
+        <div class="method-group" data-arch="commit">
+          <h4><span class="dot" style="background:#c45c2a"></span> commit · 5</h4>
+          <ul class="method-list">
+            <li><span class="lv">Lv9</span> Spear Fish In Shallows <span class="area-tag">sewers</span></li>
+            <li><span class="lv">Lv18</span> Harpoon Suspicious Ripple <span class="area-tag">beach</span></li>
+            <li><span class="lv">Lv24</span> Cast Storm Kite Line <span class="area-tag">storm</span></li>
+            <li><span class="lv">Lv26</span> Dive For Pearl Oysters <span class="area-tag">reef</span></li>
+            <li><span class="lv">Lv30</span> Bait A Tiny Leviathan <span class="area-tag">deep</span></li>
+          </ul>
+        </div>
+        <div class="method-group" data-arch="chaos">
+          <h4><span class="dot" style="background:#9b6bb8"></span> chaos · 1</h4>
+          <ul class="method-list">
+            <li><span class="lv">Lv7</span> Hand Grab Muddy Catfish <span class="area-tag">sewers</span></li>
+          </ul>
+        </div>
+        <div class="method-group" data-arch="risk">
+          <h4><span class="dot" style="background:#d84a18"></span> risk · 1</h4>
+          <ul class="method-list">
+            <li><span class="lv">Lv22</span> Chum Open Water <span class="area-tag">boat</span></li>
+          </ul>
+        </div>
+        <div class="method-group" data-arch="steady" style="grid-column: 1 / -1;">
+          <h4><span class="dot" style="background:#3db8d9"></span> steady · 13</h4>
+          <ul class="method-list" style="columns:2;column-gap:20px;">
+            <li><span class="lv">Lv3</span> Scoop Pond Minnows <span class="area-tag">pier</span></li>
+            <li><span class="lv">Lv5</span> Dangle String From Dock <span class="area-tag">pier</span></li>
+            <li><span class="lv">Lv6</span> Cast Bamboo Rod <span class="area-tag">river</span></li>
+            <li><span class="lv">Lv8</span> Set Tiny Crab Pot <span class="area-tag">beach</span></li>
+            <li><span class="lv">Lv8</span> Ice Fish Through Nervous Hole <span class="area-tag">lake</span></li>
+            <li><span class="lv">Lv10</span> Fly Fish At River Bend <span class="area-tag">river</span></li>
+            <li><span class="lv">Lv10</span> Cast From Rowboat <span class="area-tag">boat</span></li>
+            <li><span class="lv">Lv12</span> Drop Lobster Cage <span class="area-tag">reef</span></li>
+            <li><span class="lv">Lv16</span> Night Fish With Lantern <span class="area-tag">reef</span></li>
+            <li><span class="lv">Lv28</span> Fish With Magnetic Hook <span class="area-tag">deep</span></li>
+            <li><span class="lv">Lv33</span> Open Deep Sea Mailbox Trap <span class="area-tag">deep</span></li>
+            <li><span class="lv">Lv36</span> Dip For A Starlight Minnow <span class="area-tag">space</span></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <p style="margin:12px 0 0;font-size:11px;color:var(--muted);font-weight:700">Cut / deferred: sonar (electronics), negotiate (bargain), catch-the-fishing-mechanic (finale). Bargain archetype not in v1.</p>
+    <div class="doc-refresh-row">
+      <button type="button" class="doc-refresh-btn doc-refresh-btn--wide" data-doc-refresh title="Reload page (fresh HTML)">
+        <span class="refresh-glyph" aria-hidden="true">↻</span> Refresh
+      </button>
+    </div>
+  </section>
+
+  <main class="layout">
+    <div class="summary-col">
+      <section class="card" style="border-color:#2dc0b9">
+        <h2>Implementation (game)</h2>
+        <p style="margin:0 0 8px;font-size:14px;line-height:1.45">Live in Godot with <code>FISHING_REWORK_ENABLED</code>. Areas: beach → pier → river → sewers → lake → reef → <strong>boat</strong> → deep → storm → <strong>space</strong>. Mock modules below still say <code>offshore</code> / cosmic naming in places — see <a href="fishing-rework-status.md">fishing-rework-status.md</a> for shipped vs deferred.</p>
+      </section>
+      <section class="card" style="border-color:#c45c2a;background:linear-gradient(165deg,#fff8f0 0%,#fffdf8 100%)">
+        <h2>Direction — pick your tool</h2>
+        <p style="margin:0 0 8px;font-size:14px;line-height:1.45">Unlock <strong>places</strong> and <strong>tools</strong> separately. At any unlocked area, use <strong>any</strong> unlocked tool — affinity sets success/yield/speed, not a hard ban. Bare hands → one beach minnow; later a net; later a harpoon you <em>can</em> use on minnows (terrible idea). Same joke in reverse: hands in space, boat in a tide pool.</p>
+        <p style="margin:0 0 6px;font-size:13px;line-height:1.4"><strong>UI:</strong> tap <strong>fish wallet</strong> → tools <strong>splay vertically</strong> (crafted unlocks). Region cards = <strong>location spots</strong> only.</p>
+        <p style="margin:0;font-size:12px;line-height:1.4;color:var(--muted)">Spec: <a href="fishing-tool-area-matrix.md"><strong>fishing-tool-area-matrix.md</strong></a>. <strong>Beach</strong> below is the target; other regions may still show legacy method arts.</p>
+      </section>
+      <section class="card">
+        <h2>Locked</h2>
+        <div class="tags">
+          <span class="tag teal">No stamina</span>
+          <span class="tag green">Fish HUD</span>
+        </div>
+        <ul>
+          <li>Other skills: <strong>whole module</strong> level-locked (chains + padlock on card).</li>
+          <li>Fishing: <strong>each method</strong> has its own unlock level.</li>
+          <li>Fishing lock UI: <strong>padlock on the art tile only</strong> — no chains.</li>
+          <li>Show <strong>one</strong> locked teaser at a time (next method globally).</li>
+          <li>Hide all other future locked methods until they become that teaser.</li>
+          <li>Data: each action has <code>area</code>; <code>fishing.areas[]</code> is module metadata (order, bg, fluid).</li>
+          <li>Target: region module = <strong>1–3 location spots</strong> (not tool arts); mastery on <strong>tool rack</strong>.</li>
+          <li>Legacy shipped UI: <strong>1–3 method arts</strong> per area until migration.</li>
+          <li>Right column: <strong>XP</strong> + <strong>yield</strong> only (no time/success).</li>
+          <li>Running fluid: <strong>hybrid strip</strong> (wave layers + scrolling foam tile); tint per area (<code>data-fluid</code>).</li>
+          <li><strong>No action bar</strong> — same <code>seconds</code> timer as other skills, hidden; fluid + phases show progress.</li>
+          <li><strong>Attempt readout:</strong> archetype picks the story (line: wait/bite/land; net: drag/snag/spill). Flat XP each attempt; fish only on success (<code>min–max</code>).</li>
+          <li><strong>Success juice:</strong> one roll, then <strong>pop pop pop</strong> fish icons (burst UI, not extra rolls).</li>
+          <li><strong>Method archetypes (#4):</strong> each method has its own timing + rules (net / rod / harpoon / …).</li>
+          <li><strong>Shiny fish (#6):</strong> ultra-rare variant on a pop — collection / sparkle moment.</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>Method archetypes</h2>
+        <p style="margin:0;font-size:13px;line-height:1.45">Full design atlas (grouped cards, bar demos, every method): <a href="#archetype-atlas"><strong>jump to archetype atlas ↑</strong></a>. Markdown mirror: <a href="fishing-archetype-design.md">fishing-archetype-design.md</a>.</p>
+      </section>
+      <section class="card">
+        <h2>Modules & locations</h2>
+        <p style="margin:0 0 8px;font-size:13px;line-height:1.45">Full plan: <a href="fishing-modules-and-locations-plan.md"><strong>fishing-modules-and-locations-plan.md</strong></a> — 10 regions, 2–3 spots each, craft tools, migration from 23 legacy actions.</p>
+        <p style="margin:0;font-size:12px;line-height:1.4;color:var(--muted)"><strong>Rocky Lv 5:</strong> first tap opens zoom module under Beach → collect discarded net → flies to wallet → <em>Net collected!</em> (mock below).</p>
+      </section>
+      <section class="card">
+        <h2>Open</h2>
+        <ul>
+          <li>Exact shiny rate & album UI</li>
+          <li>Line tool tiers vs separate crafted rods</li>
+          <li>Crab pot: passive only vs equip tool</li>
+        </ul>
+      </section>
+      <section class="card">
+        <h2>Later</h2>
+        <p style="margin:0 0 8px;font-size:14px;line-height:1.4"><strong>Lobster cage</strong> — same pattern as woodcutting <strong>collect module</strong> (timer stack, not art-row fishing).</p>
+        <p style="margin:0;font-size:12px;line-height:1.35;color:var(--muted)">Bucket-style session loot (#5) can inspire cage payout later; v1 fishing row does not use bucket.</p>
+      </section>
+    </div>
+
+    <div class="areas-col">
+      <h2>Region modules</h2>
+      <p class="areas-lead">Equip a tool on the rack, tap a <strong>location</strong> in a region (~7s mock). Attempt uses <strong>your tool × that spot</strong> (affinity chip updates). Line → wait/bite/land; net → drag/snag/spill. Tap again to stop.</p>
+      <p class="fluid-legend" aria-label="Fluid tints">
+        <span><i class="water-i"></i> water</span>
+        <span><i class="sewer-i"></i> sewers</span>
+        <span><i class="lava-i"></i> lava</span>
+      </p>
+      <p class="unlock-rules"><strong>Other skills:</strong> entire rows/modules lock together.<br><strong>Fishing:</strong> methods lock individually; only the <strong>next</strong> locked art is visible (here: Beach Harpoon). Later locks stay hidden until promoted.</p>
+
+      <div class="gear-wallet-stack">
+        <div class="skill-hud">
+          <div>
+            <h3>Fishing</h3>
+            <p>Lv 12 · tap fish to pick gear</p>
+          </div>
+          <button type="button" class="gear-wallet-btn" id="gear-wallet-btn" aria-expanded="false" aria-controls="tool-splay" title="Fish currency · tap to splay tools">
+            <span class="gear-wallet-tool-thumb" id="gear-wallet-tool-thumb" role="img" aria-hidden="true" style="background-image:url('assets/fishing/actions/01-scoop-pond-minnows.png')"></span>
+            <span class="gear-wallet-body">
+              <span class="gear-wallet-fish-row" aria-label="128 fish">
+                <strong id="fish-count">128</strong>
+                <img src="assets/fishing/catches/00-minnow.png" alt="">
+              </span>
+              <span class="gear-wallet-tool-name" id="gear-wallet-tool-name">bare hands · tap for tools</span>
+            </span>
+            <span class="gear-wallet-chevron" aria-hidden="true">▼</span>
+          </button>
+        </div>
+
+        <div class="tool-splay" id="tool-splay" aria-label="Crafted fishing tools">
+          <div class="tool-splay-meta">
+            <h4>Your tools</h4>
+            <span class="affinity-chip" id="tool-affinity-chip" data-tier="ideal">Shallows · ideal</span>
+          </div>
+          <p class="tool-splay-hint" id="tool-equipped-hint">Most tools are <strong>crafted</strong> elsewhere, then appear here when unlocked.</p>
+          <ul class="tool-splay-list" role="listbox" aria-label="Unlocked and craftable tools">
+            <li>
+              <button type="button" class="tool-row-btn tool-slot-btn is-equipped" role="option" aria-selected="true" data-tool="hands" data-archetype="novice" data-label="Bare hands" data-img="assets/fishing/actions/01-scoop-pond-minnows.png" data-hint="Starter — no craft. Cup minnows in the shallows.">
+                <img src="assets/fishing/actions/01-scoop-pond-minnows.png" alt="">
+                <span class="tool-row-text"><strong>Bare hands</strong><small>Starter gear</small></span>
+                <span class="tool-row-badge starter">starter</span>
+              </button>
+            </li>
+            <li class="tool-discovery-hidden" id="tool-net-discovery" data-discovery="rocky-net">
+              <button type="button" class="tool-row-btn tool-slot-btn" role="option" aria-selected="false" data-tool="net" data-archetype="volume" data-label="Drag net" data-img="assets/fishing/actions/04-drag-net-through-creek.png" data-hint="Found on the rocky beach — sweep mesh through open water.">
+                <img src="assets/fishing/actions/04-drag-net-through-creek.png" alt="">
+                <span class="tool-row-text"><strong>Drag net</strong><small>Found gear · volume</small></span>
+                <span class="tool-row-badge equipped" hidden>equipped</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="tool-row-btn tool-slot-btn" role="option" aria-selected="false" data-tool="line" data-archetype="steady" data-label="Bamboo line" data-img="assets/fishing/actions/02-dangle-string-from-dock.png" data-hint="Crafted rod & line — patient idle rhythm.">
+                <img src="assets/fishing/actions/02-dangle-string-from-dock.png" alt="">
+                <span class="tool-row-text"><strong>Bamboo line</strong><small>Crafted · steady</small></span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="tool-row-btn tool-slot-btn" role="option" aria-selected="false" data-tool="harpoon" data-archetype="commit" data-label="Harpoon" data-img="assets/fishing/actions/14-harpoon-suspicious-ripple.png" data-hint="Crafted harpoon — all-in strike.">
+                <img src="assets/fishing/actions/14-harpoon-suspicious-ripple.png" alt="">
+                <span class="tool-row-text"><strong>Harpoon</strong><small>Crafted · commit</small></span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="tool-row-btn tool-slot-btn is-locked" role="option" aria-selected="false" disabled data-tool="crab-pot" data-label="Crab pot" data-img="assets/fishing/actions/05-set-tiny-crab-pot.png" data-hint="Craft: wicker + bait jar (smithing or cooking bench TBD).">
+                <img src="assets/fishing/actions/05-set-tiny-crab-pot.png" alt="">
+                <span class="tool-row-text"><strong>Crab pot</strong><small>Craft to unlock</small></span>
+                <span class="tool-row-badge craft">craft</span>
+              </button>
+            </li>
+            <li>
+              <button type="button" class="tool-row-btn tool-slot-btn is-locked" role="option" aria-selected="false" disabled data-tool="boat" data-label="Rowboat trawl" data-img="assets/fishing/actions/12-trawl-from-tiny-boat.png" data-hint="Craft: hull planks + net rigging at boat bench.">
+                <img src="assets/fishing/actions/12-trawl-from-tiny-boat.png" alt="">
+                <span class="tool-row-text"><strong>Rowboat trawl</strong><small>Craft to unlock</small></span>
+                <span class="tool-row-badge craft">craft</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="doc-refresh-row">
+        <button type="button" class="doc-refresh-btn" data-doc-refresh title="Reload page">
+          <span class="refresh-glyph" aria-hidden="true">↻</span> Refresh
+        </button>
+      </div>
+
+      <p class="legacy-area-note"><strong>Beach</strong> = target (location spots). Other regions below may still use legacy <strong>method arts</strong> until migrated.</p>
+
+      <div class="area-grid">
+        <article class="fishing-module fishing-module--locations" data-area="beach" data-region="beach" data-fluid="water" style="--area-bg: url('assets/fishing/backgrounds/00-tide-pool-shallows.png')">
+          <div class="module-head"><strong>Beach</strong><span class="fishing-phase" hidden>calm</span><span class="module-state">idle</span></div>
+          <div class="module-layout">
+            <div class="reveal-flash" aria-hidden="true"></div>
+            <div class="catch-burst" aria-hidden="true"></div>
+            <div class="location-spots" aria-label="Beach locations">
+              <button type="button" class="location-slot method-slot" data-location="beach-shallows" data-location-name="Shallows" data-catch-icon="assets/fishing/catches/00-minnow.png" data-label="Shallows" data-fish="minnows" data-bg="assets/fishing/backgrounds/00-tide-pool-shallows.png" data-xp="+3" data-yield="1–1">
+                <span class="activity-art"><span class="location-thumb" style="background-image:url('assets/fishing/backgrounds/00-tide-pool-shallows.png')"></span></span>
+                <span class="location-name">Shallows</span>
+                <span class="location-fish">minnows</span>
+              </button>
+              <button type="button" class="location-slot method-slot" data-location="beach-rocky" data-location-name="Rocky ledge" data-catch-icon="assets/fishing/catches/02-crab.png" data-label="Rocky" data-fish="crabs" data-bg="assets/fishing/backgrounds/03-crab-pier.png" data-xp="+8" data-yield="1–3">
+                <span class="activity-art"><span class="location-thumb" style="background-image:url('assets/fishing/backgrounds/03-crab-pier.png')"></span></span>
+                <span class="location-name">Rocky ledge</span>
+                <span class="location-fish">crabs</span>
+              </button>
+              <button type="button" class="location-slot method-slot is-locked" disabled aria-disabled="true" data-locked="true" data-unlock-lv="12" data-location="beach-reef-edge" data-location-name="Reef edge" data-label="Reef edge" data-fish="mixed" data-bg="assets/fishing/backgrounds/05-coral-reef-shallows.png" data-xp="+20" data-yield="2–5" title="Fishing Lv 12">
+                <span class="activity-art">
+                  <span class="location-thumb" style="background-image:url('assets/fishing/backgrounds/05-coral-reef-shallows.png')"></span>
+                  <span class="method-lock" aria-hidden="true"></span>
+                  <span class="method-lock-lv">Lv 12</span>
+                </span>
+                <span class="location-name">Reef edge</span>
+                <span class="location-fish">mixed</span>
+              </button>
+            </div>
+            <aside class="module-side">
+              <div class="module-stats">
+                <span class="stat-chip"><b data-stat-xp>—</b><small>XP</small></span>
+                <span class="stat-chip"><b data-stat-yield>—</b><small>Yield</small></span>
+              </div>
+              <p class="compare-note">Tool from rack × selected spot</p>
+            </aside>
+          </div>
+          <div class="water-strip" aria-hidden="true">
+            <div class="water-inner">
+              <div class="water-deep"></div>
+              <div class="water-surface"></div>
+              <div class="water-foam"></div>
+              <div class="water-shine"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="rocky-zoom-module" id="rocky-zoom-module" hidden aria-label="Rocky ledge close-up">
+          <div class="module-head">
+            <strong>Rocky ledge · close-up</strong>
+            <span class="module-state">find gear</span>
+          </div>
+          <div class="rocky-zoom-stage">
+            <button type="button" class="discarded-net-prop" id="discarded-net-prop" aria-label="Collect old discarded net">
+              <img src="assets/fishing/actions/04-drag-net-through-creek.png" alt="">
+              <span>Tap to collect</span>
+            </button>
+          </div>
+          <p class="rocky-zoom-hint">First visit only — pick up the old net, then you can train here with your new gear.</p>
+        </article>
+
+        <article class="fishing-module" data-area="river" data-fluid="water" style="--area-bg: url('assets/fishing/backgrounds/02-river-bend.png')">
+          <div class="module-head"><strong>River</strong><span class="fishing-phase" hidden>calm</span><span class="module-state">idle</span></div>
+          <div class="module-layout">
+            <div class="reveal-flash" aria-hidden="true"></div>
+            <div class="catch-burst" aria-hidden="true"></div>
+            <div class="method-arts">
+              <button type="button" class="method-slot" data-archetype="steady" data-catch-icon="assets/fishing/catches/03-trout.png" data-label="Rod" data-bg="assets/fishing/backgrounds/02-river-bend.png" data-img="assets/fishing/actions/03-cast-bamboo-rod.png" data-xp="+8" data-yield="1–3" data-mastery="52" data-medal-col="0" data-medal-row="1">
+                <span class="activity-art"><img src="assets/fishing/actions/03-cast-bamboo-rod.png" alt=""><span class="mastery-medal" style="--medal-col:0;--medal-row:1"></span></span>
+                <span class="method-name">Rod</span>
+                <span class="method-archetype">steady</span>
+                <span class="mastery-meter"><span class="bar"><i style="width:52%"></i></span></span>
+              </button>
+            </div>
+            <aside class="module-side">
+              <div class="module-stats">
+                <span class="stat-chip"><b data-stat-xp>—</b><small>XP</small></span>
+                <span class="stat-chip"><b data-stat-yield>—</b><small>Yield</small></span>
+              </div>
+              <p class="compare-note">Fly hidden until Harpoon unlocks</p>
+            </aside>
+          </div>
+          <div class="water-strip" aria-hidden="true">
+            <div class="water-inner">
+              <div class="water-deep"></div>
+              <div class="water-surface"></div>
+              <div class="water-foam"></div>
+              <div class="water-shine"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="fishing-module" data-area="sewers" data-fluid="sewer" style="--area-bg: url('assets/fishing/backgrounds/03-mid.png')">
+          <div class="module-head"><strong>Sewers</strong><span class="fishing-phase" hidden>calm</span><span class="module-state">idle</span><span class="tag green" style="font-size:10px">green fluid</span></div>
+          <div class="module-layout">
+            <div class="reveal-flash" aria-hidden="true"></div>
+            <div class="catch-burst" aria-hidden="true"></div>
+            <div class="method-arts">
+              <button type="button" class="method-slot" data-archetype="chaos" data-catch-icon="assets/fishing/catches/06-eel.png" data-label="Hand grab" data-bg="assets/fishing/backgrounds/03-mid.png" data-img="assets/fishing/actions/07-hand-grab-muddy-catfish.png" data-xp="+24" data-yield="1–3" data-mastery="18" data-medal-col="2" data-medal-row="0">
+                <span class="activity-art"><img src="assets/fishing/actions/07-hand-grab-muddy-catfish.png" alt=""><span class="mastery-medal dim" style="--medal-col:2;--medal-row:0"></span></span>
+                <span class="method-name">Hand grab</span>
+                <span class="method-archetype">chaos</span>
+                <span class="mastery-meter"><span class="bar"><i style="width:18%"></i></span></span>
+              </button>
+              <button type="button" class="method-slot" data-archetype="commit" data-catch-icon="assets/fishing/catches/06-eel.png" data-label="Spear" data-bg="assets/fishing/backgrounds/09-deep-sea-abyss.png" data-img="assets/fishing/actions/09-spear-fish-in-shallows.png" data-xp="+33" data-yield="2–5" data-mastery="7" data-medal-col="4" data-medal-row="1">
+                <span class="activity-art"><img src="assets/fishing/actions/09-spear-fish-in-shallows.png" alt=""><span class="mastery-medal dim" style="--medal-col:4;--medal-row:1"></span></span>
+                <span class="method-name">Spear</span>
+                <span class="method-archetype">commit</span>
+                <span class="mastery-meter"><span class="bar"><i style="width:7%"></i></span></span>
+              </button>
+            </div>
+            <aside class="module-side">
+              <div class="module-stats">
+                <span class="stat-chip"><b data-stat-xp>—</b><small>XP</small></span>
+                <span class="stat-chip"><b data-stat-yield>—</b><small>Yield</small></span>
+              </div>
+              <p class="compare-note">Module 3 · sewer tint</p>
+            </aside>
+          </div>
+          <div class="water-strip" aria-hidden="true">
+            <div class="water-inner">
+              <div class="water-deep"></div>
+              <div class="water-surface"></div>
+              <div class="water-foam"></div>
+              <div class="water-shine"></div>
+            </div>
+          </div>
+        </article>
+
+        <details class="later-card" style="margin-top:0">
+          <summary style="cursor:pointer;font-weight:950;font-size:13px">When the next unlock is a new area</summary>
+          <p style="margin:8px 0 10px;font-size:11px;line-height:1.35">At Lv&nbsp;12 only Beach Harpoon is the teaser. Later, the whole Lake row can appear with <strong>one</strong> locked art — ice hole and pier stay hidden until they are next.</p>
+          <article class="fishing-module is-teaser-only" data-area="lake" data-fluid="water" style="--area-bg: url('assets/fishing/backgrounds/01-early.png')">
+            <div class="module-head"><strong>Lake</strong><span class="module-state">new area</span></div>
+            <div class="module-layout">
+              <div class="method-arts">
+                <button type="button" class="method-slot is-locked" disabled data-locked="true" data-unlock-lv="22" data-label="Rod">
+                  <span class="activity-art">
+                    <img src="assets/fishing/actions/03-cast-bamboo-rod.png" alt="">
+                    <span class="method-lock"></span>
+                    <span class="method-lock-lv">Lv 22</span>
+                  </span>
+                  <span class="method-name">Rod</span>
+                  <span class="mastery-meter"><span class="bar"><i style="width:0%"></i></span></span>
+                </button>
+              </div>
+              <aside class="module-side"><p class="compare-note">Ice hole not shown yet</p></aside>
+            </div>
+            <div class="water-strip" aria-hidden="true">
+              <div class="water-inner">
+                <div class="water-deep"></div>
+                <div class="water-surface"></div>
+                <div class="water-foam"></div>
+                <div class="water-shine"></div>
+              </div>
+            </div>
+          </article>
+        </details>
+
+        <details class="later-card open-fluid-demo">
+          <summary style="cursor:pointer;font-weight:950;font-size:13px">Later module: lava (orange fluid)</summary>
+          <p style="margin:8px 0 10px;font-size:11px;line-height:1.35">Same hybrid strip — slower waves, warmer foam. Tap a method to preview.</p>
+          <article class="fishing-module" data-area="lava" data-fluid="lava" style="--area-bg: url('assets/fishing/backgrounds/05-finale.png')">
+            <div class="module-head"><strong>Lava</strong><span class="fishing-phase" hidden>calm</span><span class="module-state">idle</span><span class="tag amber" style="font-size:10px;background:#ff9a48">lava</span></div>
+            <div class="module-layout">
+              <div class="reveal-flash" aria-hidden="true"></div>
+              <div class="catch-burst" aria-hidden="true"></div>
+              <div class="method-arts">
+                <button type="button" class="method-slot" data-archetype="risk" data-catch-icon="assets/fishing/catches/20-golden-koi.png" data-label="Chum" data-bg="assets/fishing/backgrounds/05-finale.png" data-img="assets/fishing/actions/16-chum-open-water.png" data-xp="+67" data-yield="4–9" data-mastery="3" data-medal-col="1" data-medal-row="3">
+                  <span class="activity-art"><img src="assets/fishing/actions/16-chum-open-water.png" alt=""><span class="mastery-medal dim" style="--medal-col:1;--medal-row:3"></span></span>
+                  <span class="method-name">Chum</span>
+                  <span class="method-archetype">risk</span>
+                  <span class="mastery-meter"><span class="bar"><i style="width:3%"></i></span></span>
+                </button>
+                <button type="button" class="method-slot" data-archetype="commit" data-catch-icon="assets/fishing/catches/22-tiny-leviathan-trophy.png" data-label="Bait leviathan" data-bg="assets/fishing/backgrounds/10-storm-ocean.png" data-img="assets/fishing/actions/20-bait-a-tiny-leviathan.png" data-xp="+72" data-yield="5–12" data-mastery="0" data-medal-col="0" data-medal-row="2">
+                  <span class="activity-art"><img src="assets/fishing/actions/20-bait-a-tiny-leviathan.png" alt=""><span class="mastery-medal dim" style="--medal-col:0;--medal-row:2"></span></span>
+                  <span class="method-name">Bait leviathan</span>
+                  <span class="method-archetype">commit</span>
+                  <span class="mastery-meter"><span class="bar"><i style="width:0%"></i></span></span>
+                </button>
+              </div>
+              <aside class="module-side">
+                <div class="module-stats">
+                  <span class="stat-chip"><b data-stat-xp>—</b><small>XP</small></span>
+                  <span class="stat-chip"><b data-stat-yield>—</b><small>Yield</small></span>
+                </div>
+                <p class="compare-note">Orange lava fluid</p>
+              </aside>
+            </div>
+            <div class="water-strip" aria-hidden="true">
+              <div class="water-inner">
+                <div class="water-deep"></div>
+                <div class="water-surface"></div>
+                <div class="water-foam"></div>
+                <div class="water-shine"></div>
+              </div>
+            </div>
+          </article>
+        </details>
+
+        <article class="fishing-module" data-area="pier" hidden data-fluid="water" style="--area-bg: url('assets/fishing/backgrounds/01-pond-dock.png')">
+          <div class="module-head"><strong>Pier</strong><span class="module-state">idle</span></div>
+          <div class="module-layout">
+            <div class="method-arts">
+              <button type="button" class="method-slot" data-label="Rod" data-bg="assets/fishing/backgrounds/01-pond-dock.png" data-img="assets/fishing/actions/02-dangle-string-from-dock.png" data-xp="+4" data-yield="1–2" data-mastery="55" data-medal-col="2" data-medal-row="2">
+                <span class="activity-art"><img src="assets/fishing/actions/02-dangle-string-from-dock.png" alt=""><span class="mastery-medal" style="--medal-col:2;--medal-row:2"></span></span>
+                <span class="method-name">Rod</span>
+                <span class="mastery-meter"><span class="bar"><i style="width:55%"></i></span></span>
+              </button>
+            </div>
+            <aside class="module-side">
+              <div class="module-stats">
+                <span class="stat-chip"><b data-stat-xp>—</b><small>XP</small></span>
+                <span class="stat-chip"><b data-stat-yield>—</b><small>Yield</small></span>
+              </div>
+              <p class="compare-note">1 method shown</p>
+            </aside>
+          </div>
+          <div class="water-strip" aria-hidden="true">
+            <div class="water-inner">
+              <div class="water-deep"></div>
+              <div class="water-surface"></div>
+              <div class="water-foam"></div>
+              <div class="water-shine"></div>
+            </div>
+          </div>
+        </article>
+
+        <article class="fishing-module" data-area="offshore" hidden data-fluid="water" style="--area-bg: url('assets/fishing/backgrounds/07-rowboat-offshore.png')">
+          <div class="module-head"><strong>Offshore</strong><span class="tag amber" style="font-size:10px">Build boat</span></div>
+          <div class="module-layout">
+            <div class="method-arts">
+              <button type="button" class="method-slot is-locked" disabled data-locked="true" data-unlock-lv="30" data-label="Trawl" data-bg="assets/fishing/backgrounds/07-rowboat-offshore.png" data-img="assets/fishing/actions/12-trawl-from-tiny-boat.png" data-xp="+49" data-yield="3–8" data-mastery="0" data-medal-col="0" data-medal-row="3">
+                <span class="activity-art"><img src="assets/fishing/actions/12-trawl-from-tiny-boat.png" alt=""><span class="method-lock"></span><span class="method-lock-lv">Lv 30</span></span>
+                <span class="method-name">Trawl</span>
+                <span class="mastery-meter"><span class="bar"><i style="width:0%"></i></span></span>
+              </button>
+            </div>
+            <aside class="module-side"><div class="module-stats"></div></aside>
+          </div>
+          <div class="water-strip" aria-hidden="true">
+            <div class="water-inner">
+              <div class="water-deep"></div>
+              <div class="water-surface"></div>
+              <div class="water-foam"></div>
+              <div class="water-shine"></div>
+            </div>
+          </div>
+        </article>
+      </div>
+
+      <aside class="later-card">
+        <h3>Lobster cage (later)</h3>
+        <p>Separate collect module — not in this art row.</p>
+      </aside>
+
+      <div class="doc-refresh-row">
+        <button type="button" class="doc-refresh-btn doc-refresh-btn--wide" data-doc-refresh title="Reload page">
+          <span class="refresh-glyph" aria-hidden="true">↻</span> Refresh mock
+        </button>
+      </div>
+    </div>
+  </main>
+  </div>
+
+  <div class="gear-toast" id="gear-toast" role="status" aria-live="polite"></div>
+
+  <div class="doc-refresh-dock" aria-label="Quick reload">
+    <button type="button" class="doc-refresh-btn doc-refresh-btn--wide" data-doc-refresh title="Reload page (fresh HTML)">
+      <span class="refresh-glyph" aria-hidden="true">↻</span> Refresh
+    </button>
+  </div>
+
+  <script src="docs-nav.js"></script>
+  <script>
+    function reloadDocPage() {
+      try {
+        location.reload({ cache: "reload" });
+      } catch (_err) {
+        location.reload();
+      }
+    }
+    document.querySelectorAll("[data-doc-refresh]").forEach((btn) => {
+      btn.addEventListener("click", reloadDocPage);
+    });
+
+    const gearWalletBtn = document.getElementById("gear-wallet-btn");
+    const toolSplay = document.getElementById("tool-splay");
+    gearWalletBtn?.addEventListener("click", () => {
+      const open = !toolSplay.classList.contains("is-open");
+      toolSplay.classList.toggle("is-open", open);
+      gearWalletBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+
+    const TOOL_AFFINITY = {
+      hands: {
+        "beach-shallows": "ideal",
+        "beach-rocky": "awkward",
+        "beach-reef-edge": "awkward",
+        river: "awkward",
+        space: "joke",
+      },
+      net: {
+        "beach-shallows": "good",
+        "beach-rocky": "awkward",
+        "beach-reef-edge": "good",
+        river: "good",
+      },
+      line: {
+        "beach-shallows": "good",
+        "beach-rocky": "ideal",
+        "beach-reef-edge": "good",
+        pier: "ideal",
+        river: "ideal",
+      },
+      harpoon: {
+        "beach-shallows": "joke",
+        "beach-rocky": "awkward",
+        "beach-reef-edge": "good",
+        river: "good",
+      },
+    };
+    const AFFINITY_COPY = {
+      ideal: "ideal match",
+      good: "works here",
+      awkward: "awkward",
+      joke: "bad idea (funny)",
+    };
+    let equippedToolId = "hands";
+    let watchedLocationId = "beach-shallows";
+
+    function equippedArchetype() {
+      const btn = document.querySelector(".tool-slot-btn.is-equipped");
+      return btn?.dataset.archetype || "steady";
+    }
+
+    function updateToolRackUi(btn) {
+      if (!btn || btn.classList.contains("is-locked")) return;
+      equippedToolId = btn.dataset.tool;
+      document.querySelectorAll(".tool-slot-btn:not(.is-locked)").forEach((b) => {
+        const on = b === btn;
+        b.classList.toggle("is-equipped", on);
+        b.setAttribute("aria-selected", on ? "true" : "false");
+        const badge = b.querySelector(".tool-row-badge.equipped");
+        if (badge) badge.hidden = !on;
+      });
+      const thumb = document.getElementById("gear-wallet-tool-thumb");
+      const walletName = document.getElementById("gear-wallet-tool-name");
+      const hint = document.getElementById("tool-equipped-hint");
+      const label = btn.dataset.label || equippedToolId;
+      if (thumb && btn.dataset.img) thumb.style.backgroundImage = "url('" + btn.dataset.img + "')";
+      if (walletName) walletName.textContent = label.toLowerCase() + " · tap for tools";
+      if (hint) hint.textContent = btn.dataset.hint || "";
+      updateAffinityChip();
+    }
+
+    function updateAffinityChip() {
+      const chip = document.getElementById("tool-affinity-chip");
+      if (!chip) return;
+      const tier = (TOOL_AFFINITY[equippedToolId] || {})[watchedLocationId] || "awkward";
+      const locBtn = document.querySelector('.location-slot[data-location="' + watchedLocationId + '"]');
+      const locLabel = locBtn?.dataset.locationName || locBtn?.dataset.label || watchedLocationId;
+      chip.dataset.tier = tier;
+      chip.textContent = locLabel + " · " + (AFFINITY_COPY[tier] || tier);
+    }
+
+    document.querySelectorAll(".tool-slot-btn:not(.is-locked)").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        updateToolRackUi(btn);
+      });
+    });
+    updateToolRackUi(document.querySelector(".tool-slot-btn.is-equipped"));
+
+    const ROCKY_NET_KEY = "fishing-mock-rocky-net-collected";
+    const rockyZoom = document.getElementById("rocky-zoom-module");
+    const discardedNetProp = document.getElementById("discarded-net-prop");
+    const gearToast = document.getElementById("gear-toast");
+    const toolNetDiscovery = document.getElementById("tool-net-discovery");
+
+    function isRockyNetCollected() {
+      try {
+        return localStorage.getItem(ROCKY_NET_KEY) === "1";
+      } catch (_err) {
+        return false;
+      }
+    }
+
+    function setRockyNetCollected() {
+      try {
+        localStorage.setItem(ROCKY_NET_KEY, "1");
+      } catch (_err) {
+        /* ignore */
+      }
+    }
+
+    function syncRockyNetDiscoveryUi() {
+      if (!isRockyNetCollected()) return;
+      toolNetDiscovery?.classList.remove("tool-discovery-hidden");
+      if (rockyZoom) rockyZoom.hidden = true;
+    }
+    syncRockyNetDiscoveryUi();
+
+    function showGearToast(message) {
+      if (!gearToast) return;
+      gearToast.textContent = message;
+      gearToast.classList.add("is-visible");
+      window.setTimeout(() => gearToast.classList.remove("is-visible"), 2600);
+    }
+
+    function flyNetToWallet(imgSrc) {
+      const propImg = discardedNetProp?.querySelector("img");
+      const wallet = document.getElementById("gear-wallet-btn");
+      if (!propImg || !wallet) return Promise.resolve();
+      const from = propImg.getBoundingClientRect();
+      const to = wallet.getBoundingClientRect();
+      const fly = document.createElement("img");
+      fly.src = imgSrc;
+      fly.className = "net-fly-clone";
+      fly.style.left = from.left + "px";
+      fly.style.top = from.top + "px";
+      document.body.appendChild(fly);
+      requestAnimationFrame(() => {
+        fly.style.left = (to.left + to.width * 0.12) + "px";
+        fly.style.top = (to.top + to.height * 0.25) + "px";
+        fly.style.transform = "scale(0.5)";
+      });
+      return sleep(720).then(() => {
+        fly.style.opacity = "0";
+        return sleep(240).then(() => fly.remove());
+      });
+    }
+
+    function showRockyZoomModule(beachModule, rockySlot) {
+      stopModule(beachModule);
+      beachModule.querySelectorAll(".location-slot").forEach((s) => s.classList.remove("is-selected"));
+      rockySlot.classList.add("is-selected");
+      applySlot(beachModule, rockySlot);
+      watchedLocationId = "beach-rocky";
+      updateAffinityChip();
+      if (rockyZoom) {
+        rockyZoom.hidden = false;
+        rockyZoom.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    }
+
+    discardedNetProp?.addEventListener("click", async () => {
+      if (isRockyNetCollected()) return;
+      discardedNetProp.disabled = true;
+      const imgSrc = discardedNetProp.querySelector("img")?.src || "";
+      await flyNetToWallet(imgSrc);
+      showGearToast("Net collected!");
+      setRockyNetCollected();
+      toolNetDiscovery?.classList.remove("tool-discovery-hidden");
+      if (rockyZoom) rockyZoom.hidden = true;
+      const netBtn = toolNetDiscovery?.querySelector(".tool-slot-btn");
+      if (netBtn) {
+        updateToolRackUi(netBtn);
+        toolSplay?.classList.add("is-open");
+        gearWalletBtn?.setAttribute("aria-expanded", "true");
+      }
+    });
+
+    document.querySelectorAll(".location-slot[data-location]").forEach((slot) => {
+      slot.addEventListener("mouseenter", () => {
+        watchedLocationId = slot.dataset.location;
+        updateAffinityChip();
+      });
+    });
+
+    document.querySelectorAll(".fishing-module[data-area]:not(.fishing-module--locations)").forEach((mod) => {
+      mod.addEventListener("mouseenter", () => {
+        watchedLocationId = mod.dataset.area || "beach";
+        updateAffinityChip();
+      });
+    });
+
+    function applySlot(module, slot) {
+      const bg = slot.dataset.bg;
+      if (bg) {
+        module.style.setProperty("--area-bg", "url('" + bg + "')");
+      }
+      const xp = module.querySelector("[data-stat-xp]");
+      const yieldStat = module.querySelector("[data-stat-yield]");
+      if (xp) xp.textContent = slot.dataset.xp || "—";
+      if (yieldStat) yieldStat.textContent = slot.dataset.yield || "—";
+    }
+
+    const PHASE_MS = { calm: 2200, bite: 1400, reveal: 1100 };
+    const PHASE_MS_VOLUME = { calm: 1800, bite: 900, reveal: 900 };
+    const ARCHETYPE_SUCCESS = { volume: 0.78, steady: 0.82, commit: 0.7, chaos: 0.62, risk: 0.68 };
+    const SHINY_CHANCE = 0.08;
+
+    function phaseCopy(archetype) {
+      if (archetype === "volume") {
+        return {
+          calm: ["calm", "drag…"],
+          bite: ["bite", "snag!"],
+          revealOk: ["reveal", "spill!"],
+          revealFail: ["reveal", "empty"],
+          stateCalm: "dragging…",
+          stateBite: "snag!",
+          stateOk: "spill!",
+          stateFail: "empty net",
+          flashFail: "empty…",
+        };
+      }
+      return {
+        calm: ["calm", "wait…"],
+        bite: ["bite", "bite!"],
+        revealOk: ["reveal", "landed!"],
+        revealFail: ["reveal", "miss"],
+        stateCalm: "waiting…",
+        stateBite: "bite!",
+        stateOk: "caught!",
+        stateFail: "miss",
+        flashFail: "miss…",
+      };
+    }
+
+    function sleep(ms) {
+      return new Promise((resolve) => setTimeout(resolve, ms));
+    }
+
+    function parseYieldRange(text) {
+      const m = String(text || "").match(/(\d+)\s*[–-]\s*(\d+)/);
+      if (!m) return { min: 1, max: 2 };
+      return { min: parseInt(m[1], 10), max: parseInt(m[2], 10) };
+    }
+
+    function rollFishCount(min, max, archetype) {
+      const span = max - min + 1;
+      let count = min + Math.floor(Math.random() * span);
+      if (archetype === "volume") count = Math.min(max + 1, count + (Math.random() < 0.45 ? 1 : 0));
+      return Math.max(0, count);
+    }
+
+    function setPhase(module, phase, label) {
+      module.classList.remove("phase-calm", "phase-bite", "phase-reveal", "reveal-success", "reveal-fail");
+      module.classList.add("phase-" + phase);
+      const badge = module.querySelector(".fishing-phase");
+      if (badge) {
+        badge.hidden = false;
+        badge.textContent = label;
+      }
+    }
+
+    function clearBurst(module) {
+      const burst = module.querySelector(".catch-burst");
+      if (burst) burst.replaceChildren();
+      const flash = module.querySelector(".reveal-flash");
+      if (flash) flash.textContent = "";
+    }
+
+    function spawnBurst(module, slot, count) {
+      const burst = module.querySelector(".catch-burst");
+      const art = slot.querySelector(".activity-art");
+      if (!burst || !art) return;
+      burst.replaceChildren();
+      const rect = art.getBoundingClientRect();
+      const host = module.querySelector(".module-layout").getBoundingClientRect();
+      const cx = rect.left + rect.width * 0.5 - host.left;
+      const cy = rect.top + rect.height * 0.35 - host.top;
+      const icon = slot.dataset.catchIcon || "assets/fishing/catches/00-minnow.png";
+      for (let i = 0; i < count; i += 1) {
+        const img = document.createElement("img");
+        img.className = "catch-pop";
+        img.src = icon;
+        img.alt = "";
+        if (i === 0 && Math.random() < SHINY_CHANCE) {
+          img.classList.add("shiny");
+          img.title = "shiny!";
+        }
+        img.style.left = (cx + (i - (count - 1) * 0.5) * 22) + "px";
+        img.style.top = cy + "px";
+        img.style.animationDelay = (i * 110) + "ms";
+        burst.appendChild(img);
+      }
+    }
+
+    async function runFishingLoop(module, slot) {
+      const token = (module._loopToken = (module._loopToken || 0) + 1);
+      const archetype = slot.dataset.archetype || equippedArchetype();
+      const successRate = ARCHETYPE_SUCCESS[archetype] ?? 0.75;
+      const yieldRange = parseYieldRange(slot.dataset.yield);
+
+      const copy = phaseCopy(archetype);
+      const timing = archetype === "volume" ? PHASE_MS_VOLUME : PHASE_MS;
+
+      while (module.classList.contains("is-active") && module._loopToken === token) {
+        setPhase(module, copy.calm[0], copy.calm[1]);
+        const state = module.querySelector(".module-state");
+        if (state) state.textContent = copy.stateCalm;
+        await sleep(timing.calm);
+        if (module._loopToken !== token) return;
+
+        setPhase(module, copy.bite[0], copy.bite[1]);
+        if (state) state.textContent = copy.stateBite;
+        await sleep(timing.bite);
+        if (module._loopToken !== token) return;
+
+        const success = Math.random() < successRate;
+        setPhase(module, copy.revealOk[0], success ? copy.revealOk[1] : copy.revealFail[1]);
+        module.classList.add(success ? "reveal-success" : "reveal-fail");
+        const flash = module.querySelector(".reveal-flash");
+        if (flash) flash.textContent = success ? "+" + rollFishCount(yieldRange.min, yieldRange.max, archetype) + " fish" : copy.flashFail;
+        if (state) state.textContent = success ? copy.stateOk : copy.stateFail;
+        if (success) {
+          const n = rollFishCount(yieldRange.min, yieldRange.max, archetype);
+          spawnBurst(module, slot, Math.max(1, n));
+        }
+        await sleep(PHASE_MS.reveal);
+        clearBurst(module);
+        module.classList.remove("reveal-success", "reveal-fail");
+        if (module._loopToken !== token) return;
+      }
+    }
+
+    function stopModule(module) {
+      module._loopToken = (module._loopToken || 0) + 1;
+      module.classList.remove("is-active", "phase-calm", "phase-bite", "phase-reveal", "reveal-success", "reveal-fail");
+      module.querySelectorAll(".method-slot, .location-slot").forEach((s) => s.classList.remove("is-selected"));
+      const state = module.querySelector(".module-state");
+      if (state) state.textContent = "idle";
+      const badge = module.querySelector(".fishing-phase");
+      if (badge) badge.hidden = true;
+      clearBurst(module);
+      module.querySelectorAll("[data-stat-xp],[data-stat-yield]").forEach((el) => {
+        el.textContent = "—";
+      });
+    }
+
+    document.querySelectorAll(".fishing-module").forEach((module) => {
+      module.querySelectorAll(".method-slot").forEach((slot) => {
+        const medal = slot.querySelector(".mastery-medal");
+        const bar = slot.querySelector(".mastery-meter .bar i");
+        const mastery = parseInt(slot.dataset.mastery || "0", 10);
+        if (bar) bar.style.width = mastery + "%";
+        if (medal) {
+          medal.classList.toggle("dim", mastery < 20);
+          medal.style.setProperty("--medal-col", slot.dataset.medalCol || "0");
+          medal.style.setProperty("--medal-row", slot.dataset.medalRow || "0");
+        }
+
+        slot.addEventListener("click", () => {
+          if (slot.dataset.locked === "true" || slot.classList.contains("is-locked")) {
+            return;
+          }
+          if (slot.dataset.location === "beach-rocky" && !isRockyNetCollected()) {
+            showRockyZoomModule(module, slot);
+            return;
+          }
+          const selected = slot.classList.contains("is-selected");
+          const running = module.classList.contains("is-active") && selected;
+          if (running) {
+            stopModule(module);
+            return;
+          }
+          if (rockyZoom && slot.dataset.location !== "beach-rocky") rockyZoom.hidden = true;
+          module.querySelectorAll(".method-slot, .location-slot").forEach((s) => s.classList.remove("is-selected"));
+          slot.classList.add("is-selected");
+          if (slot.dataset.location) {
+            watchedLocationId = slot.dataset.location;
+            updateAffinityChip();
+          }
+          applySlot(module, slot);
+          module.classList.add("is-active");
+          runFishingLoop(module, slot);
+        });
+      });
+    });
+
+    const lavaDetails = document.querySelector("details.open-fluid-demo");
+    if (lavaDetails) {
+      lavaDetails.addEventListener("toggle", () => {
+        if (!lavaDetails.open) return;
+        const lava = lavaDetails.querySelector(".fishing-module[data-fluid='lava']");
+        if (lava && !lava.classList.contains("is-active")) {
+          const first = lava.querySelector(".method-slot:not(.is-locked)");
+          if (first) first.click();
+        }
+      });
+    }
+  </script>
+</body>
+</html>

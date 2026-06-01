@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Swaying Chain Physics Mock</title>
+  <title>Chain Physics</title>
+  <link rel="stylesheet" href="docs-nav.css">
+  <link rel="stylesheet" href="docs-theme.css">
   <style>
     :root {
       color-scheme: dark;
@@ -25,7 +27,10 @@
     body {
       margin: 0;
       min-height: 100vh;
+      height: 100vh;
       overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr;
       background:
         radial-gradient(circle at 18% 12%, rgba(119, 200, 178, 0.13), transparent 22rem),
         linear-gradient(145deg, #171512 0%, #211c17 54%, #11100e 100%);
@@ -36,8 +41,9 @@
     main {
       display: grid;
       grid-template-columns: minmax(0, 1fr) 310px;
-      width: 100vw;
-      height: 100vh;
+      width: 100%;
+      min-height: 0;
+      height: 100%;
     }
 
     .stage {
@@ -209,7 +215,15 @@
     }
   </style>
 </head>
-<body>
+<body class="docs-theme-dark">
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite</p>
+      <h1>Chain Physics</h1>
+      <p class="docs-lead">Verlet chain prototype for unlock chains.</p>
+    </div>
+    <nav data-docs-nav></nav>
+  </header>
   <main>
     <section class="stage" aria-label="Chain simulation stage">
       <canvas id="chainCanvas"></canvas>
@@ -217,8 +231,8 @@
     </section>
 
     <aside>
-      <h1>2D Chain Physics Mock</h1>
-      <p class="lede">A lightweight Verlet chain drives the motion. Each link hangs vertically, then the renderer splits the loop into left and right sides so the next link can pass through it.</p>
+      <h2>Controls</h2>
+      <p class="lede">Drag the bottom link. Wind push resets on resize.</p>
 
       <div class="stat-grid">
         <div class="stat"><strong id="linkStat">14</strong><span>visual links</span></div>
@@ -249,10 +263,6 @@
         <button id="reset" class="secondary">Reset</button>
       </div>
 
-      <div class="notes">
-        <p>The top particle is pinned. Each frame integrates gravity and inertia, then repeatedly corrects neighboring points back to their fixed spacing.</p>
-        <p>This is the version I would prototype before moving the same idea into Godot: simulate the spine, render the links.</p>
-      </div>
     </aside>
   </main>
 
@@ -614,5 +624,6 @@
     resize();
     requestAnimationFrame(frame);
   </script>
+  <script src="docs-nav.js"></script>
 </body>
 </html>

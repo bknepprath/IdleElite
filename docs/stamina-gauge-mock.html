@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Idle Elite Gauge Mock</title>
+  <title>Stamina Gauge</title>
+  <link rel="stylesheet" href="docs-nav.css">
+  <link rel="stylesheet" href="docs-theme.css">
   <style>
     :root {
       --ink: #171615;
@@ -323,7 +325,15 @@
     }
   </style>
 </head>
-<body>
+<body class="docs-theme-dark">
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite</p>
+      <h1>Stamina Gauge</h1>
+      <p class="docs-lead">Circular stamina + regen ring (non-fishing skills).</p>
+    </div>
+    <nav data-docs-nav></nav>
+  </header>
   <main class="stage">
     <section class="phone" aria-label="Stamina gauge mock">
       <div class="topbar">
@@ -365,15 +375,8 @@
     </section>
 
     <aside class="aside">
-      <h1>Gauge Mock</h1>
-      <p>A single circular status piece for skill pages: the outer ring shows recovery progress, while the center drains as points are spent.</p>
-      <nav class="nav-links" aria-label="Docs pages">
-        <a class="nav-link" href="idle-elite-prd.html">PRD</a>
-        <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
-        <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
-        <a class="nav-link" href="activity-database.html">Activity Database</a>
-        <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
-      </nav>
+      <h2>Controls</h2>
+      <p>Outer ring = regen. Center = stamina left.</p>
     </aside>
   </main>
 
@@ -431,5 +434,6 @@
 
     render();
   </script>
+  <script src="docs-nav.js"></script>
 </body>
 </html>

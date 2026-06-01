@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Idle Elite Action Review</title>
+  <title>Action Review</title>
+  <link rel="stylesheet" href="docs-nav.css">
+  <link rel="stylesheet" href="docs-theme.css">
   <style>
     :root {
       --ink: #171615;
@@ -55,33 +57,6 @@
       flex-wrap: wrap;
       gap: 8px;
       justify-content: flex-end;
-    }
-
-    .nav-links {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 12px 0 18px;
-    }
-
-    .nav-link {
-      display: inline-flex;
-      align-items: center;
-      min-height: 36px;
-      padding: 8px 11px;
-      border: 2px solid var(--ink);
-      border-radius: 999px;
-      background: #fffdf8;
-      color: var(--ink);
-      font-size: 12px;
-      font-weight: 950;
-      text-decoration: none;
-      box-shadow: 2px 2px 0 var(--ink);
-    }
-
-    .nav-link:hover,
-    .nav-link:focus-visible {
-      background: var(--gold);
     }
 
     .pill {
@@ -348,25 +323,21 @@
     }
   </style>
 </head>
-<body>
-  <main class="page">
-    <header class="topbar">
+<body class="docs-theme-dark">
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite</p>
       <h1>Action Review</h1>
-      <div class="summary" aria-label="Action summary">
-        <span class="pill">5 skills</span>
-        <span class="pill">125 actions</span>
-        <span class="pill">Levels 1-50</span>
-      </div>
-    </header>
-
-    <nav class="nav-links" aria-label="Mockup pages">
-      <a class="nav-link" href="idle-elite-prd.html">PRD</a>
-      <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
-      <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
-      <a class="nav-link" href="activity-database.html">Activity Database</a>
-      <a class="nav-link" href="stamina-gauge-mock.html">Stamina Gauge</a>
-      <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
-    </nav>
+      <p class="docs-lead">All skills and actions from the database.</p>
+    </div>
+    <nav data-docs-nav></nav>
+  </header>
+  <main class="page">
+    <div class="summary" aria-label="Action summary" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
+      <span class="pill">5 skills</span>
+      <span class="pill">125 actions</span>
+      <span class="pill">Lv 1–50</span>
+    </div>
 
     <section class="formula-grid" aria-label="Progression formulas">
       <article class="formula-card">
@@ -459,5 +430,6 @@
 
     boot();
   </script>
+  <script src="docs-nav.js"></script>
 </body>
 </html>

@@ -72,11 +72,13 @@ $env:IDLE_ELITE_KEYSTORE_PASSWORD = "<upload keystore password>"
 .\scripts\build-android-release.ps1
 ```
 
-To install the latest debug APK to a connected device:
+To install the latest debug build on a connected phone (preview package, keeps release app data):
 
 ```powershell
-.\scripts\install-android-debug.ps1
+.\scripts\install-android-phone-debug.ps1
 ```
+
+`install-android-debug.ps1` forwards to the same preview installer.
 
 To test an AAB locally with bundletool:
 

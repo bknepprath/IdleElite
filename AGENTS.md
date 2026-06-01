@@ -25,6 +25,18 @@ For one-off Godot commands, call the wrapper directly:
 .\run-godot-safe.ps1 --path . --quit-after 1
 ```
 
+## Activity Database (fishing rework)
+
+- Source of truth: `docs/activity-database.json` (`fishing.areas[]`, per-action `area`).
+- After editing fishing data: `python scripts\sync-activity-database-js.py`, then `.\scripts\audit-activity-database.ps1`.
+- Area tags / backgrounds: `python scripts\reorganize-fishing-areas.py` or `python scripts\fix-fishing-action-order.py`.
+- Status doc: `docs/fishing-rework-status.md`.
+
+## Android phone debug install
+
+- Do not uninstall `com.idleelite.game` unless the user explicitly accepts data loss.
+- Use `.\scripts\install-android-phone-debug.ps1` to export and install **Idle Elite Preview** (`com.idleelite.game.preview`) on a USB-connected device.
+
 ## Audio Safety
 
 - Never add or wire a new SFX at full blast.

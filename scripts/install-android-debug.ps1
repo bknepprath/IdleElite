@@ -1,16 +1,11 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$adb = Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb.exe"
-$apk = Join-Path $projectRoot "builds\android\idle-elite-debug.apk"
+$phoneInstaller = Join-Path $projectRoot "scripts\install-android-phone-debug.ps1"
 
-if (-not (Test-Path -LiteralPath $adb)) {
-    throw "adb not found at $adb"
-}
-if (-not (Test-Path -LiteralPath $apk)) {
-    throw "Debug APK not found at $apk"
+if (Test-Path -LiteralPath $phoneInstaller) {
+    & $phoneInstaller
+    exit $LASTEXITCODE
 }
 
-& $adb devices -l
-& $adb install -r $apk
-& $adb shell monkey -p com.idleelite.game -c android.intent.category.LAUNCHER 1
+throw "Phone debug installer not found at $phoneInstaller"

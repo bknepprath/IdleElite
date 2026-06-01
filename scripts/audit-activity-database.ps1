@@ -136,17 +136,20 @@ foreach ($skill in $skills) {
         if ($unlock -lt $lastUnlock) {
             Add-Finding $warnings "$label unlock level drops from $lastUnlock to $unlock."
         }
-        if ($kind -ne "passive_item_collect" -and $stamina -lt $lastStamina) {
-            Add-Finding $warnings "$label stamina drops from $lastStamina to $stamina."
-        }
-        if ($kind -ne "passive_item_collect" -and $xp -lt $lastXp) {
-            Add-Finding $warnings "$label XP drops from $lastXp to $xp."
-        }
-        if ($kind -ne "passive_item_collect" -and $seconds -lt $lastSeconds) {
-            Add-Finding $warnings "$label seconds drops from $lastSeconds to $seconds."
-        }
-        if ($kind -ne "passive_item_collect" -and $success -gt $lastSuccess) {
-            Add-Finding $warnings "$label success rises from $lastSuccess to $success."
+        # Fishing methods unlock per-area, not as a single linear action list curve.
+        if ($skillId -ne "fishing") {
+            if ($kind -ne "passive_item_collect" -and $stamina -lt $lastStamina) {
+                Add-Finding $warnings "$label stamina drops from $lastStamina to $stamina."
+            }
+            if ($kind -ne "passive_item_collect" -and $xp -lt $lastXp) {
+                Add-Finding $warnings "$label XP drops from $lastXp to $xp."
+            }
+            if ($kind -ne "passive_item_collect" -and $seconds -lt $lastSeconds) {
+                Add-Finding $warnings "$label seconds drops from $lastSeconds to $seconds."
+            }
+            if ($kind -ne "passive_item_collect" -and $success -gt $lastSuccess) {
+                Add-Finding $warnings "$label success rises from $lastSuccess to $success."
+            }
         }
         if ($kind -ne "passive_item_collect" -and ($success -lt 5 -or $success -gt 100)) {
             Add-Finding $errors "$label success must be between 5 and 100, found $success."
@@ -172,6 +175,70 @@ foreach ($skill in $skills) {
             $lastXp = $xp
             $lastSeconds = $seconds
             $lastSuccess = $success
+        }
+    }
+
+    if ($skillId -eq "fishing") {
+        $areas = @($skill.areas)
+        $areaIds = @{}
+        $actionsByArea = @{}
+        if ($areas.Count -eq 0) {
+            Add-Finding $errors "fishing has no areas block (required for rework modules)."
+        } else {
+            foreach ($area in $areas) {
+                $areaId = [string]$area.id
+                $label = "fishing/area:$areaId"
+                if ([string]::IsNullOrWhiteSpace($areaId)) {
+                    Add-Finding $errors "A fishing area is missing an id."
+                    continue
+                }
+                if ($areaIds.ContainsKey($areaId)) {
+                    Add-Finding $errors "Duplicate fishing area id: $areaId."
+                } else {
+                    $areaIds[$areaId] = $true
+                }
+                $bgPath = [string]$area.background
+                if ([string]::IsNullOrWhiteSpace($bgPath)) {
+                    $bgPath = [string]$area.bg
+                }
+                if ([string]::IsNullOrWhiteSpace($bgPath)) {
+                    Add-Finding $errors "$label has no background path."
+                } else {
+                    $resolvedBg = Resolve-ProjectPath $bgPath
+                    if ($null -ne $resolvedBg -and -not (Test-Path -LiteralPath $resolvedBg)) {
+                        $missingAssets++
+                        Add-Finding $errors "$label references missing background: $bgPath."
+                    }
+                }
+            }
+        }
+        for ($i = 0; $i -lt $actions.Count; $i++) {
+            $action = $actions[$i]
+            $label = "$skillId/$([string]$action.id)"
+            $kind = [string]$action.kind
+            if ([string]::IsNullOrWhiteSpace($kind)) {
+                $kind = "activity"
+            }
+            if ($kind -eq "passive_item_collect") {
+                continue
+            }
+            $areaId = [string]$action.area
+            if ([string]::IsNullOrWhiteSpace($areaId)) {
+                Add-Finding $errors "$label is missing area (required for fishing rework)."
+                continue
+            }
+            if ($areaIds.Count -gt 0 -and -not $areaIds.ContainsKey($areaId)) {
+                Add-Finding $errors "$label references unknown area: $areaId."
+            }
+            if (-not $actionsByArea.ContainsKey($areaId)) {
+                $actionsByArea[$areaId] = New-Object System.Collections.Generic.List[string]
+            }
+            $actionsByArea[$areaId].Add([string]$action.id) | Out-Null
+        }
+        foreach ($areaId in $areaIds.Keys) {
+            if (-not $actionsByArea.ContainsKey($areaId) -or $actionsByArea[$areaId].Count -eq 0) {
+                Add-Finding $warnings "fishing/area:$areaId has no actions assigned."
+            }
         }
     }
 }

@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Idle Elite Phone Mock</title>
+  <title>Phone Mock</title>
+  <link rel="stylesheet" href="docs-nav.css">
+  <link rel="stylesheet" href="docs-theme.css">
   <style>
     :root {
       --ink: #171615;
@@ -24,8 +26,8 @@
     body {
       min-height: 100vh;
       margin: 0;
-      display: grid;
-      place-items: center;
+      display: flex;
+      flex-direction: column;
       color: var(--ink);
       background: linear-gradient(135deg, #fbf8ef 0%, #edf7f4 52%, #f5eef9 100%);
     }
@@ -36,7 +38,9 @@
     }
 
     .stage {
+      flex: 1;
       width: min(1020px, calc(100% - 28px));
+      margin: 0 auto;
       display: grid;
       grid-template-columns: minmax(310px, 390px) minmax(260px, 1fr);
       gap: 34px;
@@ -1088,7 +1092,15 @@
     }
   </style>
 </head>
-<body>
+<body class="docs-theme-dark">
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite</p>
+      <h1>Phone Mock</h1>
+      <p class="docs-lead">Interactive UI prototype.</p>
+    </div>
+    <nav data-docs-nav></nav>
+  </header>
   <main class="stage">
     <section class="phone" aria-label="Idle Elite phone mock">
       <div class="content" id="app"></div>
@@ -1099,24 +1111,12 @@
     </section>
 
     <aside class="aside">
-      <h1>Phone Mock</h1>
-      <p>The mock now follows the new simple loop: pick a skill, pick an action, and let the progress bar complete for XP.</p>
-      <div class="aside-card">
-        <h2>Try This</h2>
-        <ul>
-          <li>Tap a skill row to open that skill's action page.</li>
-          <li>Tap an action to start its progress bar.</li>
-          <li>Tap the Skills tab on the skill menu to roll it down and reveal home.</li>
-        </ul>
-      </div>
-      <nav class="nav-links" aria-label="Mockup pages">
-        <a class="nav-link" href="idle-elite-prd.html">PRD</a>
-        <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
-        <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
-        <a class="nav-link" href="activity-database.html">Activity Database</a>
-        <a class="nav-link" href="stamina-gauge-mock.html">Stamina Gauge</a>
-        <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
-      </nav>
+      <h2>Try</h2>
+      <ul>
+        <li>Tap a skill → actions.</li>
+        <li>Tap an action → progress bar.</li>
+        <li>Skills tab → home.</li>
+      </ul>
     </aside>
   </main>
 
@@ -1849,5 +1849,6 @@
 
     boot();
   </script>
+  <script src="docs-nav.js"></script>
 </body>
 </html>

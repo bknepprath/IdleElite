@@ -6,7 +6,7 @@ Idle Elite's Firebase features are deliberately cost-conservative:
 - Global chat uses one Firebase Realtime Database REST stream while the skills chat strip or expanded chat is visible.
 - The game reads only the currently visible leaderboard category.
 - The game streams chat only while the skills chat strip or expanded chat is visible.
-- The compact skills chat strip streams only `limitToLast=2`; the expanded chat streams `limitToLast=25`.
+- The compact skills chat strip opens with `limitToLast=2`; the expanded chat upgrades the stream to `limitToLast=25`. Closing expanded chat keeps the live stream open and reuses cached rows for the strip instead of reconnecting.
 - Failed or cancelled chat streams wait 30 seconds before reconnecting.
 - Visible-category reads are cached for 15 minutes.
 - Failed or rejected visible-category reads also cool down for 15 minutes before retrying.
@@ -141,9 +141,10 @@ Before shipping a build:
 6. Try a second write inside an hour, even to another category. Firebase rules should reject it even if the client gate failed.
 7. On a skills page, confirm one compact RTDB stream opens with `Accept: text/event-stream` at `/global_chat/v1/messages.json?orderBy=%22created_at%22&limitToLast=2&auth=<idToken>`.
 8. Open expanded chat. Confirm the stream reconnects with `limitToLast=25`.
-9. Leave the skills/chat surfaces. Confirm the RTDB stream closes and does not continue in the background.
-10. Send two chat messages quickly. The second should be blocked by the client and rejected by rules if forced.
-11. Tombstone a test chat message with the moderation script and confirm the game renders it as removed in the live stream.
+9. Close expanded chat. Confirm the RTDB stream stays open and the compact strip reuses cached rows with no downgrade reconnect to `limitToLast=2`.
+10. Leave the skills/chat surfaces. Confirm the RTDB stream closes and does not continue in the background.
+11. Send two chat messages quickly. The second should be blocked by the client and rejected by rules if forced.
+12. Tombstone a test chat message with the moderation script and confirm the game renders it as removed in the live stream.
 
 Run the local guardrail audit before any Firebase-enabled build:
 

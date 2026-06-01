@@ -1,0 +1,112 @@
+.docs-bar {
+  padding: 14px clamp(14px, 3vw, 40px) 12px;
+  border-bottom: 3px solid var(--docs-ink, #171615);
+  background: var(--docs-bar-bg, #fffdf8);
+  color: var(--docs-ink, #171615);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+.docs-bar-head {
+  display: grid;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.docs-eyebrow {
+  margin: 0;
+  color: var(--docs-muted, #6e6658);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.docs-bar h1 {
+  margin: 0;
+  font-size: clamp(22px, 4vw, 36px);
+  line-height: 1;
+}
+
+.docs-lead {
+  margin: 0;
+  max-width: 720px;
+  color: #3a352e;
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.docs-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  align-items: flex-start;
+}
+
+.docs-nav-group {
+  display: grid;
+  gap: 6px;
+  min-width: 0;
+}
+
+.docs-nav-label {
+  margin: 0;
+  color: var(--docs-muted, #6e6658);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.docs-nav-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.docs-nav-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 10px;
+  border: 2px solid var(--docs-ink, #171615);
+  border-radius: 999px;
+  background: var(--docs-link-bg, #fffdf8);
+  color: inherit;
+  font-size: 12px;
+  font-weight: 900;
+  text-decoration: none;
+  box-shadow: 2px 2px 0 var(--docs-ink, #171615);
+  white-space: nowrap;
+}
+
+.docs-nav-link:hover,
+.docs-nav-link:focus-visible {
+  background: var(--docs-gold, #fff2a8);
+}
+
+.docs-nav-link.is-current {
+  background: var(--docs-gold, #fff2a8);
+  outline: 2px solid var(--docs-ink, #171615);
+  outline-offset: 1px;
+}
+
+body.docs-theme-dark {
+  --docs-ink: #f7ead7;
+  --docs-muted: #bba88d;
+  --docs-bar-bg: #26221c;
+  --docs-link-bg: #312b23;
+  --docs-gold: #5a4a32;
+}
+
+body.docs-theme-dark .docs-bar {
+  border-bottom-color: rgba(247, 234, 215, 0.2);
+}
+
+body.docs-theme-dark .docs-lead {
+  color: var(--docs-muted);
+}
+
+body.docs-theme-dark .docs-nav-link {
+  box-shadow: none;
+  border-color: rgba(247, 234, 215, 0.35);
+}

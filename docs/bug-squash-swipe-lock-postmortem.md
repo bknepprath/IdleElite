@@ -84,6 +84,18 @@ These were tried or partially useful but did not solve the core swipe glitch alo
 - Do not clip real activity card roots unless all overflow visuals are accounted for. The lock needs room outside the module.
 - For drag gestures, always forward the release event to the component that captured the press, even if the pointer leaves its original viewport.
 
+## Fishing Module Corner Crop
+
+The full-size fishing area module background briefly looked muddled after changing it from a plain `TextureRect` to `RoundedTextureRect`. The rounded shader did crop the corners, but it also changed the background art sampling, which distorted the wide fishing scene.
+
+The better fix was to preserve the original art path:
+
+- Keep the fishing module background as a `TextureRect` with `STRETCH_KEEP_ASPECT_COVERED`.
+- Add a separate corner-only overlay above the background and below the border/content.
+- Color that overlay with `COLOR_PAPER` so only the square corner spill is hidden.
+
+Rule: when art already looks correct, do not solve corner cropping by changing how the image is sampled. Mask or cover only the unwanted corner pixels.
+
 ## Validation Notes
 
 Use the project-safe validation command:

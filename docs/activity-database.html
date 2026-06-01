@@ -3,19 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Idle Elite Activity Database</title>
+  <title>Activity Database</title>
+  <link rel="stylesheet" href="docs-nav.css">
+  <link rel="stylesheet" href="docs-theme.css">
   <style>
     :root { --ink:#171615; --paper:#f8f1e5; --panel:#fffdf8; --line:#d9cfbc; --muted:#625b50; --gold:#fff2a8; --green:#2f8f57; --blue:#276fba; --red:#b84242; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
     body { margin: 0; color: var(--ink); background: var(--paper); }
-    header { padding: 34px clamp(18px, 4vw, 54px) 22px; border-bottom: 4px solid var(--ink); background: #fffdf8; }
-    .eyebrow { margin: 0 0 7px; color: var(--muted); font-size: 13px; font-weight: 900; letter-spacing: 0; text-transform: uppercase; }
-    h1 { margin: 0; font-size: clamp(34px, 5vw, 72px); line-height: 0.95; }
-    header p { max-width: 920px; margin: 14px 0 0; color: #3a352e; font-size: 18px; line-height: 1.45; }
     code { padding: 2px 5px; border-radius: 5px; background: #e8f4ff; }
-    .nav-links { display: flex; flex-wrap: wrap; gap: 9px; margin-top: 20px; }
-    .nav-link, .filter button { min-height: 36px; border: 2px solid var(--ink); border-radius: 999px; background: #fffdf8; color: var(--ink); font-size: 13px; font-weight: 950; text-decoration: none; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; }
-    .nav-link { display: inline-flex; align-items: center; padding: 8px 11px; }
+    .filter button { min-height: 36px; border: 2px solid var(--ink); border-radius: 999px; background: #fffdf8; color: var(--ink); font-size: 13px; font-weight: 950; box-shadow: 2px 2px 0 var(--ink); cursor: pointer; padding: 8px 11px; }
     .filter { position: sticky; top: 0; z-index: 5; display: flex; flex-wrap: wrap; gap: 9px; padding: 14px clamp(18px, 4vw, 54px); border-bottom: 2px solid var(--ink); background: rgba(248, 241, 229, 0.96); backdrop-filter: blur(10px); }
     .filter button { padding: 8px 12px; }
     .filter button.active { background: var(--gold); }
@@ -54,19 +50,14 @@
     @media (max-width: 560px) { .summary, .formulas { grid-template-columns: 1fr; } }
   </style>
 </head>
-<body>
-  <header>
-    <p class="eyebrow">Source of truth</p>
-    <h1>Activity Database</h1>
-    <p>Every activity the game currently knows about, pulled from <code>activity-database.json</code>. Edit the JSON first when tuning activity names, unlocks, XP, stamina, timing, success, or art paths; the Godot game reads the same file.</p>
-    <nav class="nav-links" aria-label="Docs pages">
-      <a class="nav-link" href="idle-elite-prd.html">PRD</a>
-      <a class="nav-link" href="idle-elite-app-mock.html">Phone Mock</a>
-      <a class="nav-link" href="idle-elite-app-mock.html?view=activity-buttons">Action Button Mock</a>
-      <a class="nav-link" href="stamina-gauge-mock.html">Stamina Gauge</a>
-      <a class="nav-link" href="idle-elite-action-review.html">Action Review</a>
-      <a class="nav-link" href="activity-database.json">Raw JSON</a>
-    </nav>
+<body class="docs-theme-dark">
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite</p>
+      <h1>Activity Database</h1>
+      <p class="docs-lead">Live view of <code>activity-database.json</code>. Edit JSON first.</p>
+    </div>
+    <nav data-docs-nav></nav>
   </header>
   <section class="filter" id="filters" aria-label="Skill filters"></section>
   <main>
@@ -74,6 +65,7 @@
     <section class="formulas" id="formulas" aria-label="Current formulas"></section>
     <section id="database"></section>
   </main>
+  <script src="docs-nav.js"></script>
   <script src="activity-database-data.js"></script>
   <script src="activity-docs.js"></script>
   <script>

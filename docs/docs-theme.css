@@ -1,0 +1,320 @@
+/* Shared dark theme for Idle Elite design docs */
+
+body.docs-theme-dark {
+  color-scheme: dark;
+  --ink: #f7ead7;
+  --paper: #171512;
+  --panel: #26221c;
+  --panel-2: #312b23;
+  --line: #4c4236;
+  --muted: #bba88d;
+  --gold: #5a4a32;
+  --green: #5cb88a;
+  --blue: #6eb8e8;
+  --red: #e87878;
+  --shadow: none;
+  --shadow-offset: 3px 4px 0 rgba(0, 0, 0, 0.45);
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 18% 12%, rgba(119, 200, 178, 0.1), transparent 22rem),
+    linear-gradient(145deg, #171512 0%, #211c17 54%, #11100e 100%);
+}
+
+/* Keep in-game UI mocks on their light palette */
+body.docs-theme-dark .phone,
+body.docs-theme-dark .canvas,
+body.docs-theme-dark .areas-col {
+  --ink: #171615;
+  --paper: #f8f1e5;
+  --panel: #fffdf8;
+  --line: #d9cfbc;
+  --muted: #6e6658;
+  --gold: #fff2a8;
+  --green: #367a52;
+  --blue: #36b8e8;
+  --red: #e84d4d;
+  --shadow: 0 26px 58px rgba(28, 24, 18, 0.22);
+  --shadow-offset: 3px 4px 0 rgba(23, 22, 21, 0.9);
+  color: var(--ink);
+}
+
+body.docs-theme-dark code {
+  background: #2a3440;
+  color: #9ec5e8;
+}
+
+body.docs-theme-dark .filter {
+  background: rgba(38, 34, 28, 0.96);
+  border-bottom-color: rgba(247, 234, 215, 0.2);
+}
+
+body.docs-theme-dark .filter button {
+  background: var(--panel-2);
+  border-color: rgba(247, 234, 215, 0.35);
+  box-shadow: none;
+}
+
+body.docs-theme-dark .filter button.active {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+body.docs-theme-dark .metric,
+body.docs-theme-dark .formula-card,
+body.docs-theme-dark .skill,
+body.docs-theme-dark .card,
+body.docs-theme-dark .upgrade-panel {
+  border-color: rgba(247, 234, 215, 0.35);
+  box-shadow: var(--shadow-offset);
+}
+
+body.docs-theme-dark .formula-card code {
+  border-color: rgba(110, 184, 232, 0.35);
+}
+
+body.docs-theme-dark .formula-card ul,
+body.docs-theme-dark .skill p,
+body.docs-theme-dark .card p,
+body.docs-theme-dark .later-card p {
+  color: var(--muted);
+}
+
+body.docs-theme-dark .milestone {
+  background: var(--panel-2);
+}
+
+body.docs-theme-dark .skill-head {
+  background: var(--panel-2);
+  border-bottom-color: rgba(247, 234, 215, 0.2);
+}
+
+body.docs-theme-dark .skill-head img,
+body.docs-theme-dark .art,
+body.docs-theme-dark .chip {
+  background: var(--panel);
+  border-color: rgba(247, 234, 215, 0.35);
+  box-shadow: none;
+}
+
+body.docs-theme-dark tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+body.docs-theme-dark th {
+  background: #1a1714;
+}
+
+body.docs-theme-dark .pill,
+body.docs-theme-dark .tag.amber {
+  background: var(--gold);
+  border-color: rgba(247, 234, 215, 0.35);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+body.docs-theme-dark .formula-card,
+body.docs-theme-dark .action-card,
+body.docs-theme-dark .identity-card,
+body.docs-theme-dark .skill-head {
+  background: var(--panel);
+  border-color: rgba(247, 234, 215, 0.35);
+  box-shadow: var(--shadow-offset);
+}
+
+body.docs-theme-dark .formula-card code {
+  color: #d4e8ff;
+}
+
+body.docs-theme-dark .level {
+  background: #2a3440;
+  border-color: rgba(247, 234, 215, 0.35);
+  box-shadow: none;
+}
+
+body.docs-theme-dark .stat {
+  background: var(--panel-2);
+  border-color: rgba(247, 234, 215, 0.2);
+}
+
+body.docs-theme-dark .formula-row .stat {
+  background: #2e2820;
+}
+
+body.docs-theme-dark .skill-head img {
+  background: var(--panel);
+}
+
+body.docs-theme-dark .aside p,
+body.docs-theme-dark .gauge-caption,
+body.docs-theme-dark .aside-card {
+  color: var(--muted);
+}
+
+body.docs-theme-dark .canvas .mock-title h1,
+body.docs-theme-dark .phone .top h1 {
+  color: #4d3f15;
+}
+
+body.docs-theme-dark .aside-card {
+  background: var(--panel);
+  border-color: rgba(247, 234, 215, 0.25);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.28);
+}
+
+body.docs-theme-dark .nav-link,
+body.docs-theme-dark .button-row button {
+  background: var(--panel-2);
+  border-color: rgba(247, 234, 215, 0.35);
+  box-shadow: none;
+  color: var(--ink);
+}
+
+body.docs-theme-dark .nav-link:hover,
+body.docs-theme-dark .nav-link:focus-visible,
+body.docs-theme-dark .button-row button:hover,
+body.docs-theme-dark .button-row button:focus-visible {
+  background: var(--gold);
+}
+
+body.docs-theme-dark .doc-link {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+/* PRD */
+body.docs-theme-dark .hero-copy {
+  color: var(--muted);
+}
+
+body.docs-theme-dark .eyebrow {
+  background: rgba(49, 43, 35, 0.72);
+  border-color: rgba(247, 234, 215, 0.15);
+}
+
+body.docs-theme-dark .tagline {
+  background: var(--gold);
+  border-color: rgba(247, 234, 215, 0.35);
+  box-shadow: var(--shadow-offset);
+  color: var(--ink);
+}
+
+body.docs-theme-dark .hero-board,
+body.docs-theme-dark .section,
+body.docs-theme-dark .loop-step,
+body.docs-theme-dark .rule-card,
+body.docs-theme-dark .system-card,
+body.docs-theme-dark .asset-card,
+body.docs-theme-dark .asset-preview {
+  background: var(--panel);
+  border-color: rgba(247, 234, 215, 0.25);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24);
+}
+
+body.docs-theme-dark .hero-board {
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.24), var(--shadow-offset);
+}
+
+body.docs-theme-dark .hero-board-header {
+  background: linear-gradient(90deg, #4a3d22, #2e4a42);
+}
+
+body.docs-theme-dark .icon-grid {
+  background:
+    linear-gradient(rgba(247, 234, 215, 0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(247, 234, 215, 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+body.docs-theme-dark .icon-tile {
+  background: var(--panel-2);
+  border-color: rgba(247, 234, 215, 0.2);
+}
+
+body.docs-theme-dark .pill {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+body.docs-theme-dark .live-frame {
+  background: #1a1714;
+  border-color: rgba(247, 234, 215, 0.35);
+}
+
+body.docs-theme-dark .file-list {
+  color: var(--muted);
+}
+
+body.docs-theme-dark .file-list li {
+  background: var(--panel-2);
+}
+
+body.docs-theme-dark .asset-preview img {
+  background: var(--panel-2);
+}
+
+/* Fishing brainstorm — light readable doc band; area mocks keep game palette */
+body.docs-theme-dark .page-shell {
+  --ink: #171615;
+  --paper: #f8f1e5;
+  --panel: #fffdf8;
+  --panel-2: #f0ebe0;
+  --line: #d9cfbc;
+  --muted: #5c5548;
+  --gold: #fff2a8;
+  --green: #367a52;
+  --blue: #36b8e8;
+  --red: #e84d4d;
+  --shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
+  --shadow-offset: 3px 4px 0 rgba(23, 22, 21, 0.9);
+  color: var(--ink);
+  background: linear-gradient(165deg, #f5f0e8 0%, #eef6f5 48%, #f8f4ec 100%);
+  border-radius: 0 0 12px 12px;
+}
+
+body.docs-theme-dark .page-shell code {
+  background: #e8f4ff;
+  color: #1a4a6e;
+}
+
+body.docs-theme-dark .page-shell .card {
+  background: var(--panel);
+  border-color: var(--ink);
+  box-shadow: var(--shadow);
+}
+
+body.docs-theme-dark .page-shell .card p,
+body.docs-theme-dark .page-shell .archetype-atlas .atlas-lead,
+body.docs-theme-dark .page-shell .arch-spec,
+body.docs-theme-dark .page-shell .method-list .lv,
+body.docs-theme-dark .page-shell .method-list .area-tag {
+  color: var(--muted);
+}
+
+body.docs-theme-dark .page-shell .arch-spec strong {
+  color: var(--ink);
+}
+
+body.docs-theme-dark .areas-col .later-card {
+  background: rgba(255, 253, 248, 0.85);
+  border-color: var(--ink);
+}
+
+body.docs-theme-dark .areas-col .later-card p {
+  color: #3a352e;
+}
+
+body.docs-theme-dark .areas-col .unlock-rules {
+  background: #e8f7f6;
+  border-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+  color: var(--ink);
+}
+
+/* Stamina gauge — aside panel only */
+body.docs-theme-dark .aside h1 {
+  color: var(--ink);
+}
+
+body.docs-theme-dark .aside p {
+  color: var(--muted);
+}

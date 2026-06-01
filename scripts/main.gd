@@ -1,10 +1,15 @@
 extends Control
 
+const FishingFluidStripClass = preload("res://scripts/fishing_fluid_strip.gd")
+const FishingAttemptBarClass = preload("res://scripts/fishing_attempt_bar.gd")
+
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
 const DEFAULT_BUTTON_SFX_DEBOUNCE_MSEC := 180
 const STAMINA_GAUGE_UNFILL_SECONDS := 0.34
 const TOP_LEVEL_NAV_DEBOUNCE_MSEC := 120
+const UI_STATIC_REFRESH_INTERVAL_SECONDS := 0.20
+const MASTERY_BAR_EASE_SECONDS := 0.16
 const ACTIVITY_CRIT_OVERLAY_GROUP := "activity_crit_overlay"
 const ACTIVITY_CRIT_OVERLAY_LAYER := 96
 
@@ -220,6 +225,570 @@ class RegenCircle:
 		var baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
 		var position := Vector2(center.x - text_size.x * 0.5, baseline)
 		draw_string(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
+
+
+class FishCircle:
+	extends Button
+
+	signal wallet_pressed
+
+	var fish_count := 0
+	var display_text := "0"
+	var tool_text := ""
+	var tool_icon_path := "res://docs/assets/fishing/actions/01-scoop-pond-minnows.png"
+	var theme_color := Color("#2dc0b9")
+	var readout_font: Font
+	var currency_icon_texture: Texture2D
+	var fish_icon: TextureRect
+	var wallet_hit_button: Button
+	var last_toggle_msec := 0
+	var wallet_open := false
+	var wallet_tool_ids: Array = []
+	var wallet_tool_icons: Array = []
+	var wallet_unlocked_states: Array = []
+	var wallet_equipped_tool_id := ""
+	var wallet_button_rects: Array = []
+	var wallet_visual_root: Control
+
+	func _ready() -> void:
+		text = ""
+		flat = true
+		focus_mode = Control.FOCUS_NONE
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+		add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+		add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+		add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+		add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		_load_readout_font()
+		currency_icon_texture = _fish_currency_icon_texture()
+		fish_icon = TextureRect.new()
+		fish_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fish_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		fish_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		fish_icon.texture = _fish_circle_icon_texture()
+		fish_icon.z_index = 4
+		add_child(fish_icon)
+		wallet_hit_button = Button.new()
+		wallet_hit_button.name = "FishCircleWalletHitButton"
+		wallet_hit_button.text = ""
+		wallet_hit_button.flat = true
+		wallet_hit_button.focus_mode = Control.FOCUS_NONE
+		wallet_hit_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		wallet_hit_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+		wallet_hit_button.set_anchors_preset(Control.PRESET_FULL_RECT)
+		wallet_hit_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		wallet_hit_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+		wallet_hit_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+		wallet_hit_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+		wallet_hit_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		wallet_hit_button.z_index = 1000
+		wallet_hit_button.pressed.connect(_trigger_circle_pressed)
+		add_child(wallet_hit_button)
+		_layout_fish_icon()
+
+	func _on_circle_pressed() -> void:
+		wallet_pressed.emit()
+
+	func _gui_input(event: InputEvent) -> void:
+		if event is InputEventMouseButton:
+			var mouse_event := event as InputEventMouseButton
+			if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+				wallet_pressed.emit()
+				accept_event()
+		elif event is InputEventScreenTouch:
+			var touch_event := event as InputEventScreenTouch
+			if touch_event.pressed:
+				wallet_pressed.emit()
+				accept_event()
+
+	func _trigger_circle_pressed() -> void:
+		wallet_pressed.emit()
+
+	func setup_chroma(_material: ShaderMaterial) -> void:
+		pass
+
+	func _fish_circle_icon_texture() -> Texture2D:
+		var node: Node = get_parent()
+		while node != null:
+			if node.has_method("_fishing_tool_icon_texture"):
+				return node.call("_fishing_tool_icon_texture", tool_icon_path) as Texture2D
+			node = node.get_parent()
+		return load(tool_icon_path) as Texture2D
+
+	func _fish_currency_icon_texture() -> Texture2D:
+		var source := load("res://docs/assets/fishing/ui/fishing-ui-supplemental-sheet.png") as Texture2D
+		if source == null:
+			return null
+		var source_image := source.get_image()
+		if source_image == null:
+			return source
+		var region := Rect2i(Vector2i(92, 148), Vector2i(504, 340))
+		var cropped := Image.create(region.size.x, region.size.y, false, Image.FORMAT_RGBA8)
+		cropped.blit_rect(source_image, region, Vector2i.ZERO)
+		for y in range(cropped.get_height()):
+			for x in range(cropped.get_width()):
+				var color := cropped.get_pixel(x, y)
+				if color.r > 0.82 and color.b > 0.82 and color.g < 0.34:
+					color.a = 0.0
+					cropped.set_pixel(x, y, color)
+		return ImageTexture.create_from_image(cropped)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			_layout_fish_icon()
+			if wallet_open:
+				_build_wallet_rects()
+				_rebuild_wallet_visual_children()
+
+	func _layout_fish_icon() -> void:
+		if fish_icon == null or not is_instance_valid(fish_icon):
+			return
+		var min_size := minf(size.x, size.y)
+		var scale := min_size / 552.0
+		var icon_size := (Vector2(400, 400) if wallet_open else FISH_CIRCLE_ICON_BASE_SIZE) * scale * 0.95
+		fish_icon.custom_minimum_size = icon_size
+		fish_icon.size = icon_size
+		if wallet_open:
+			fish_icon.position = (size - icon_size) * 0.5
+		else:
+			fish_icon.position = Vector2(
+				(size.x - icon_size.x) * 0.5,
+				size.y * 0.5 - 278.0 * scale
+			)
+
+	func set_wallet_open_visual(open: bool) -> void:
+		if wallet_open == open:
+			return
+		wallet_open = open
+		_layout_fish_icon()
+		queue_redraw()
+
+	func set_theme_color(next_color: Color) -> void:
+		theme_color = next_color
+		queue_redraw()
+
+	func set_fish_count(count: int, formatted_text: String, _instant := false) -> void:
+		var next_count := maxi(0, count)
+		if fish_count == next_count and display_text == formatted_text:
+			return
+		fish_count = next_count
+		display_text = formatted_text
+		queue_redraw()
+
+	func set_tool_text(next_tool_text: String) -> void:
+		if tool_text == next_tool_text:
+			return
+		tool_text = next_tool_text
+		queue_redraw()
+
+	func set_tool_icon(path: String) -> void:
+		if tool_icon_path == path:
+			return
+		tool_icon_path = path
+		if fish_icon != null and is_instance_valid(fish_icon):
+			fish_icon.texture = _fish_circle_icon_texture()
+		queue_redraw()
+
+	func _draw() -> void:
+		var center := size * 0.5
+		var min_size := minf(size.x, size.y)
+		var scale := min_size / 552.0
+		var gauge_stroke := PAPER_BUTTON_OUTLINE_WIDTH * scale
+		var radius := min_size * 0.5 - gauge_stroke * 0.5 - 4.0 * scale
+		draw_circle(center, radius, theme_color)
+		_draw_inner_bevel(center, radius, scale)
+		draw_arc(center, radius + gauge_stroke * 0.5, -PI * 0.5, PI * 1.5, 192, Color("#171615"), gauge_stroke, true)
+		_draw_center_content(center, scale, min_size)
+
+	func _draw_inner_bevel(center: Vector2, radius: float, scale: float) -> void:
+		var bevel_radius := radius - 8.0 * scale
+		draw_arc(center, bevel_radius, PI * 0.12, PI * 0.88, 96, Color(0.05, 0.04, 0.03, 0.14), maxf(4.0, 8.0 * scale), true)
+		draw_arc(center, bevel_radius - 5.0 * scale, PI * 0.18, PI * 0.82, 96, Color(0.05, 0.04, 0.03, 0.07), maxf(3.0, 5.0 * scale), true)
+		draw_arc(center, bevel_radius, PI * 1.12, PI * 1.88, 96, Color(1, 1, 1, 0.13), maxf(2.0, 3.5 * scale), true)
+
+	func _draw_center_content(center: Vector2, scale: float, min_size: float) -> void:
+		if wallet_open:
+			return
+		var font := readout_font if readout_font != null else ThemeDB.fallback_font
+		var max_text_width := min_size * 0.72
+		var font_size := _fit_font_size(font, display_text, maxi(64, int(min_size * 0.34)), 42, max_text_width)
+		var stroke_size := maxi(5, int(round(8.0 * scale)))
+		var text_center := center
+		_draw_currency_minnow_cluster(font, display_text, text_center, font_size, scale)
+		_draw_stroked_text_centered(
+			font,
+			display_text,
+			text_center,
+			font_size,
+			Color.WHITE,
+			stroke_size
+		)
+
+	func _draw_currency_minnow_cluster(_font: Font, _text: String, _text_center: Vector2, _font_size: int, scale: float) -> void:
+		if currency_icon_texture == null:
+			return
+		var icon_size := Vector2(689.0, 462.0) * scale
+		var center := size * 0.5
+		var radius := minf(size.x, size.y) * 0.5 - (PAPER_BUTTON_OUTLINE_WIDTH + 6.0) * scale
+		var rect := Rect2(
+			Vector2(
+				size.x * 0.5 - icon_size.x * 0.5,
+				size.y - icon_size.y * 0.84 + 100.0 * scale
+			),
+			icon_size
+		)
+		var row_height := maxf(2.0, 4.0 * scale)
+		var y := rect.position.y
+		while y < rect.end.y:
+			var slice_height := minf(row_height, rect.end.y - y)
+			var sample_y := y + slice_height * 0.5
+			var dy := sample_y - center.y
+			var chord := sqrt(maxf(0.0, radius * radius - dy * dy))
+			if chord > 0.0:
+				var left := maxf(rect.position.x, center.x - chord)
+				var right := minf(rect.end.x, center.x + chord)
+				if right > left:
+					var src_y := (y - rect.position.y) / rect.size.y
+					var src_h := slice_height / rect.size.y
+					var src_x := (left - rect.position.x) / rect.size.x
+					var src_w := (right - left) / rect.size.x
+					draw_texture_rect_region(
+						currency_icon_texture,
+						Rect2(Vector2(left, y), Vector2(right - left, slice_height)),
+						Rect2(Vector2(src_x * currency_icon_texture.get_width(), src_y * currency_icon_texture.get_height()), Vector2(src_w * currency_icon_texture.get_width(), src_h * currency_icon_texture.get_height())),
+						Color(1, 1, 1, 0.34)
+					)
+			y += row_height
+
+	func _load_readout_font() -> void:
+		if ResourceLoader.exists("res://assets/fonts/Fredoka.ttf"):
+			var loaded := load("res://assets/fonts/Fredoka.ttf")
+			if loaded is Font:
+				var bold := FontVariation.new()
+				bold.base_font = loaded
+				bold.variation_embolden = 1.05
+				readout_font = bold
+		if readout_font == null:
+			readout_font = ThemeDB.fallback_font
+
+	func _fit_font_size(font: Font, text: String, desired_size: int, minimum_size: int, max_width: float) -> int:
+		var fitted := desired_size
+		while fitted > minimum_size and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
+			fitted -= 2
+		return fitted
+
+	func _draw_stroked_text_centered(font: Font, text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
+		var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
+		var baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
+		var position := Vector2(center.x - text_size.x * 0.5, baseline)
+		for x in range(-stroke_size, stroke_size + 1):
+			for y in range(-stroke_size, stroke_size + 1):
+				if x == 0 and y == 0:
+					continue
+				var offset := Vector2(x, y)
+				if offset.length() <= float(stroke_size) + 0.25:
+					draw_string(font, position + offset, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("#171615"))
+		draw_string(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
+
+	func configure_wallet(open: bool, tool_ids: Array, tool_icons: Array, unlocked_states: Array, equipped_tool_id: String) -> void:
+		wallet_open = open
+		wallet_tool_ids = tool_ids
+		wallet_tool_icons = tool_icons
+		wallet_unlocked_states = unlocked_states
+		wallet_equipped_tool_id = equipped_tool_id
+		_build_wallet_rects()
+		_rebuild_wallet_visual_children()
+		queue_redraw()
+
+	func wallet_button_index_at(global_point: Vector2) -> int:
+		if not wallet_open:
+			return -1
+		var local_point := get_global_transform_with_canvas().affine_inverse() * global_point
+		for index in range(wallet_button_rects.size()):
+			var rect := wallet_button_rects[index] as Rect2
+			if rect.has_point(local_point):
+				return index
+		return -1
+
+	func wallet_button_center_global(index: int) -> Vector2:
+		if index < 0 or index >= wallet_button_rects.size():
+			return Vector2.ZERO
+		var rect := wallet_button_rects[index] as Rect2
+		return get_global_transform_with_canvas() * rect.get_center()
+
+	func _build_wallet_rects() -> void:
+		wallet_button_rects.clear()
+		var count := wallet_tool_ids.size()
+		if count <= 0:
+			return
+		var min_size := minf(size.x, size.y)
+		if min_size <= 0.0:
+			min_size = 552.0
+		var scale := min_size / 552.0
+		var button_size := 148.0 * scale
+		var gap := 18.0 * scale
+		var padding := 24.0 * scale
+		var panel_width := button_size + padding * 2.0
+		var panel_left := size.x - panel_width - 8.0 * scale
+		var panel_top := 12.0 * scale
+		for index in range(count):
+			wallet_button_rects.append(Rect2(
+				Vector2(panel_left + padding, panel_top + padding + float(index) * (button_size + gap)),
+				Vector2(button_size, button_size)
+			))
+
+	func _rebuild_wallet_visual_children() -> void:
+		if wallet_visual_root != null and is_instance_valid(wallet_visual_root):
+			wallet_visual_root.queue_free()
+			wallet_visual_root = null
+		if not wallet_open or wallet_button_rects.is_empty():
+			return
+		var root := Control.new()
+		root.name = "FishCircleVisibleWallet"
+		root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.top_level = true
+		root.position = get_global_rect().position
+		root.size = size
+		root.clip_contents = false
+		root.z_index = 4090
+		root.z_as_relative = false
+		add_child(root)
+		wallet_visual_root = root
+		var min_size := minf(size.x, size.y)
+		if min_size <= 0.0:
+			min_size = 552.0
+		var scale := min_size / 552.0
+		var padding := 24.0 * scale
+		var first := wallet_button_rects[0] as Rect2
+		var last := wallet_button_rects[wallet_button_rects.size() - 1] as Rect2
+		var panel_rect := Rect2(
+			Vector2(first.position.x - padding, first.position.y - padding),
+			Vector2(first.size.x + padding * 2.0, last.end.y - first.position.y + padding * 2.0)
+		)
+		var panel := Panel.new()
+		panel.name = "FishCircleVisibleWalletPill"
+		panel.position = panel_rect.position
+		panel.size = panel_rect.size
+		panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		panel.add_theme_stylebox_override("panel", _wallet_style(Color("#fff6df"), Color("#171615"), 10.0 * scale, panel_rect.size.x * 0.5))
+		root.add_child(panel)
+		for index in range(wallet_button_rects.size()):
+			var rect := wallet_button_rects[index] as Rect2
+			var tool_id := str(wallet_tool_ids[index])
+			var unlocked := bool(wallet_unlocked_states[index])
+			var equipped := tool_id == wallet_equipped_tool_id
+			var fill := Color("#32c5bd") if equipped else (Color("#ffffff") if unlocked else Color("#cfcac0"))
+			var border := COLOR_GOLD if equipped else (Color("#171615") if unlocked else COLOR_MUTED)
+			var circle := Panel.new()
+			circle.name = "FishCircleVisibleWalletGear%s" % str(index)
+			circle.position = rect.position
+			circle.size = rect.size
+			circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			circle.add_theme_stylebox_override("panel", _wallet_style(fill, border, 8.0 * scale if equipped else 5.0 * scale, rect.size.x * 0.5))
+			root.add_child(circle)
+			var icon := wallet_tool_icons[index] as Texture2D
+			if icon != null:
+				var icon_rect := _fit_wallet_texture_rect(icon, Rect2(Vector2.ZERO, rect.size).grow(-18.0 * scale))
+				var texture_rect := TextureRect.new()
+				texture_rect.texture = icon
+				texture_rect.position = icon_rect.position
+				texture_rect.size = icon_rect.size
+				texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				texture_rect.modulate = Color.WHITE if unlocked else Color(1, 1, 1, 0.42)
+				texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				circle.add_child(texture_rect)
+
+	func _wallet_style(fill: Color, border: Color, border_width: float, radius: float) -> StyleBoxFlat:
+		var style := StyleBoxFlat.new()
+		style.bg_color = fill
+		style.border_color = border
+		var border_int := maxi(1, int(round(border_width)))
+		style.border_width_left = border_int
+		style.border_width_top = border_int
+		style.border_width_right = border_int
+		style.border_width_bottom = border_int
+		var corner := maxi(1, int(round(radius)))
+		style.corner_radius_top_left = corner
+		style.corner_radius_top_right = corner
+		style.corner_radius_bottom_left = corner
+		style.corner_radius_bottom_right = corner
+		style.shadow_color = Color(0, 0, 0, 0.3)
+		style.shadow_size = 12
+		style.shadow_offset = Vector2(4, 6)
+		return style
+
+	func _draw_wallet_menu(scale: float) -> void:
+		_build_wallet_rects()
+		var count := wallet_button_rects.size()
+		if count <= 0:
+			return
+		var padding := 24.0 * scale
+		var first := wallet_button_rects[0] as Rect2
+		var last := wallet_button_rects[count - 1] as Rect2
+		var panel_rect := Rect2(
+			Vector2(first.position.x - padding, first.position.y - padding),
+			Vector2(first.size.x + padding * 2.0, last.end.y - first.position.y + padding * 2.0)
+		)
+		_draw_wallet_pill(panel_rect, Color("#fff6df"), Color("#171615"), 10.0 * scale)
+		for index in range(count):
+			var rect := wallet_button_rects[index] as Rect2
+			var tool_id := str(wallet_tool_ids[index])
+			var unlocked := bool(wallet_unlocked_states[index])
+			var equipped := tool_id == wallet_equipped_tool_id
+			var fill := Color("#32c5bd") if equipped else (Color("#ffffff") if unlocked else Color("#cfcac0"))
+			var border := COLOR_GOLD if equipped else (Color("#171615") if unlocked else COLOR_MUTED)
+			_draw_wallet_pill(rect, fill, border, (8.0 if equipped else 5.0) * scale)
+			var icon := wallet_tool_icons[index] as Texture2D
+			if icon != null:
+				var icon_rect := _fit_wallet_texture_rect(icon, rect.grow(-18.0 * scale))
+				draw_texture_rect(icon, icon_rect, false, Color.WHITE if unlocked else Color(1, 1, 1, 0.42))
+
+	func _draw_wallet_pill(rect: Rect2, fill: Color, border: Color, border_width: float) -> void:
+		_draw_wallet_filled_pill(rect, border)
+		_draw_wallet_filled_pill(rect.grow(-border_width), fill)
+
+	func _draw_wallet_filled_pill(rect: Rect2, color: Color) -> void:
+		if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+			return
+		var radius := minf(rect.size.x, rect.size.y) * 0.5
+		if rect.size.y >= rect.size.x:
+			draw_rect(Rect2(rect.position.x, rect.position.y + radius, rect.size.x, maxf(0.0, rect.size.y - radius * 2.0)), color)
+			draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
+			draw_circle(Vector2(rect.position.x + radius, rect.end.y - radius), radius, color)
+		else:
+			draw_rect(Rect2(rect.position.x + radius, rect.position.y, maxf(0.0, rect.size.x - radius * 2.0), rect.size.y), color)
+			draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
+			draw_circle(Vector2(rect.end.x - radius, rect.position.y + radius), radius, color)
+
+	func _fit_wallet_texture_rect(texture: Texture2D, bounds: Rect2) -> Rect2:
+		var texture_size := texture.get_size()
+		if texture_size.x <= 0.0 or texture_size.y <= 0.0:
+			return bounds
+		var draw_scale := minf(bounds.size.x / texture_size.x, bounds.size.y / texture_size.y)
+		var draw_size := texture_size * draw_scale
+		return Rect2(bounds.position + (bounds.size - draw_size) * 0.5, draw_size)
+
+
+class FishingToolWalletOverlay:
+	extends Control
+
+	var panel_size := Vector2.ZERO
+	var button_rects: Array = []
+	var tool_ids: Array = []
+	var tool_icons: Array = []
+	var unlocked_states: Array = []
+	var equipped_tool_id := ""
+
+	func configure(next_panel_size: Vector2, next_button_rects: Array, next_tool_ids: Array, next_tool_icons: Array, next_unlocked_states: Array, next_equipped_tool_id: String) -> void:
+		panel_size = next_panel_size
+		button_rects = next_button_rects
+		tool_ids = next_tool_ids
+		tool_icons = next_tool_icons
+		unlocked_states = next_unlocked_states
+		equipped_tool_id = next_equipped_tool_id
+		_rebuild_visuals()
+		queue_redraw()
+
+	func button_index_at(global_point: Vector2) -> int:
+		var point: Vector2 = get_global_transform_with_canvas().affine_inverse() * global_point
+		for index in range(button_rects.size()):
+			var rect := button_rects[index] as Rect2
+			if rect.has_point(point):
+				return index
+		return -1
+
+	func button_center_global(index: int) -> Vector2:
+		if index < 0 or index >= button_rects.size():
+			return Vector2.ZERO
+		var rect := button_rects[index] as Rect2
+		return get_global_transform_with_canvas() * rect.get_center()
+
+	func _draw() -> void:
+		pass
+
+	func _rebuild_visuals() -> void:
+		for child in get_children():
+			child.queue_free()
+		var background := Panel.new()
+		background.name = "WalletVisiblePill"
+		background.position = Vector2.ZERO
+		background.size = panel_size
+		background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		background.add_theme_stylebox_override("panel", _wallet_style(Color("#fff6df"), Color("#171615"), 10.0, panel_size.x * 0.5))
+		add_child(background)
+		for index in range(button_rects.size()):
+			var rect := button_rects[index] as Rect2
+			var tool_id := str(tool_ids[index])
+			var unlocked := bool(unlocked_states[index])
+			var equipped := tool_id == equipped_tool_id
+			var fill := Color("#32c5bd") if equipped else (Color("#fffdf8") if unlocked else Color("#cfcac0"))
+			var border := COLOR_GOLD if equipped else (Color("#171615") if unlocked else COLOR_MUTED)
+			var circle := Panel.new()
+			circle.name = "WalletVisibleGear%s" % str(index)
+			circle.position = rect.position
+			circle.size = rect.size
+			circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			circle.add_theme_stylebox_override("panel", _wallet_style(fill, border, 8.0 if equipped else 5.0, rect.size.x * 0.5))
+			add_child(circle)
+			var icon := tool_icons[index] as Texture2D
+			if icon != null:
+				var icon_rect := _fit_texture_rect(icon, Rect2(Vector2.ZERO, rect.size).grow(-18.0))
+				var texture_rect := TextureRect.new()
+				texture_rect.texture = icon
+				texture_rect.position = icon_rect.position
+				texture_rect.size = icon_rect.size
+				texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+				texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+				texture_rect.modulate = Color.WHITE if unlocked else Color(1, 1, 1, 0.42)
+				texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				circle.add_child(texture_rect)
+
+	func _wallet_style(fill: Color, border: Color, border_width: float, radius: float) -> StyleBoxFlat:
+		var style := StyleBoxFlat.new()
+		style.bg_color = fill
+		style.border_color = border
+		style.border_width_left = int(border_width)
+		style.border_width_top = int(border_width)
+		style.border_width_right = int(border_width)
+		style.border_width_bottom = int(border_width)
+		var corner := int(radius)
+		style.corner_radius_top_left = corner
+		style.corner_radius_top_right = corner
+		style.corner_radius_bottom_left = corner
+		style.corner_radius_bottom_right = corner
+		style.shadow_color = Color(0, 0, 0, 0.22)
+		style.shadow_size = 10
+		style.shadow_offset = Vector2(4, 6)
+		return style
+
+	func _draw_pill(rect: Rect2, fill: Color, border: Color, border_width: float) -> void:
+		var radius := rect.size.x * 0.5 if rect.size.y > rect.size.x else minf(rect.size.x, rect.size.y) * 0.5
+		_draw_filled_pill(rect, border)
+		_draw_filled_pill(rect.grow(-border_width), fill)
+
+	func _draw_filled_pill(rect: Rect2, color: Color) -> void:
+		if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+			return
+		var radius := minf(rect.size.x, rect.size.y) * 0.5
+		if rect.size.y >= rect.size.x:
+			draw_rect(Rect2(rect.position.x, rect.position.y + radius, rect.size.x, maxf(0.0, rect.size.y - radius * 2.0)), color)
+			draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
+			draw_circle(Vector2(rect.position.x + radius, rect.end.y - radius), radius, color)
+		else:
+			draw_rect(Rect2(rect.position.x + radius, rect.position.y, maxf(0.0, rect.size.x - radius * 2.0), rect.size.y), color)
+			draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
+			draw_circle(Vector2(rect.end.x - radius, rect.position.y + radius), radius, color)
+
+	func _fit_texture_rect(texture: Texture2D, bounds: Rect2) -> Rect2:
+		var texture_size := texture.get_size()
+		if texture_size.x <= 0.0 or texture_size.y <= 0.0:
+			return bounds
+		var scale := minf(bounds.size.x / texture_size.x, bounds.size.y / texture_size.y)
+		var draw_size := texture_size * scale
+		return Rect2(bounds.position + (bounds.size - draw_size) * 0.5, draw_size)
 
 
 class CleanProgressBar:
@@ -497,6 +1066,30 @@ class ActivityCardBorder:
 		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 24, border_color, border_width, true)
 
 
+class RoundedCornerCropOverlay:
+	extends Control
+
+	var radius := 66.0
+	var cover_color := Color("#f8f1e5")
+
+	func _draw() -> void:
+		if size.x <= 2.0 or size.y <= 2.0:
+			return
+		var r := minf(radius, minf(size.x, size.y) * 0.5)
+		var step := 1.0
+		var y := 0.0
+		while y < r:
+			var sample_y := y + step * 0.5
+			var dy := sample_y - r
+			var inset := r - sqrt(maxf(0.0, r * r - dy * dy))
+			if inset > 0.0:
+				draw_rect(Rect2(Vector2(0.0, y), Vector2(inset, step)), cover_color)
+				draw_rect(Rect2(Vector2(size.x - inset, y), Vector2(inset, step)), cover_color)
+				draw_rect(Rect2(Vector2(0.0, size.y - y - step), Vector2(inset, step)), cover_color)
+				draw_rect(Rect2(Vector2(size.x - inset, size.y - y - step), Vector2(inset, step)), cover_color)
+			y += step
+
+
 class OrganicLeaderboardBorder:
 	extends Control
 
@@ -675,7 +1268,9 @@ class RoundedTextureRect:
 	var art_height := 0.0
 	var feather_height := 150.0
 	var mask_inset := 6.0
+	var corner_mask_mode := 0
 	var fallback_color := Color("#3aa0ff")
+	var aspect_mode := 0
 
 	func _ready() -> void:
 		_ensure_mask_material()
@@ -699,6 +1294,8 @@ uniform float crop_bottom = 0.0;
 uniform float art_height_px = 0.0;
 uniform float feather_px = 150.0;
 uniform float mask_inset_px = 0.0;
+uniform int corner_mask_mode = 0;
+uniform int aspect_mode = 0;
 uniform vec4 fallback_color : source_color = vec4(0.2, 0.55, 0.9, 1.0);
 
 void fragment() {
@@ -707,26 +1304,75 @@ void fragment() {
 	vec2 mask_size = max(vec2(1.0), control_size - vec2(inset * 2.0));
 	vec2 mask_p = p - vec2(inset);
 	vec2 half_size = mask_size * 0.5;
-	float r = min(max(0.0, radius_px - inset), min(half_size.x, half_size.y));
+	float r;
+	if (corner_mask_mode == 1) {
+		r = min(radius_px, min(half_size.x, half_size.y));
+	} else {
+		r = min(max(0.0, radius_px - inset), min(half_size.x, half_size.y));
+	}
 	vec2 q = abs(mask_p - half_size) - (half_size - vec2(r));
 	float distance = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
-	float alpha = 1.0 - smoothstep(0.0, 2.0, distance);
+	float alpha = 1.0 - smoothstep(0.0, corner_mask_mode == 1 ? 1.0 : 2.0, distance);
 	vec4 tint = COLOR;
-	float crop_width = max(0.001, 1.0 - crop_left - crop_right);
-	float crop_height = max(0.001, 1.0 - crop_top - crop_bottom);
-	float art_h = art_height_px <= 1.0 ? control_size.y : min(art_height_px, control_size.y);
-	vec2 source_uv = vec2(
-		crop_left + UV.x * crop_width,
-		crop_top + clamp(p.y / max(1.0, art_h), 0.0, 1.0) * crop_height
-	);
-	vec4 art_color = texture(TEXTURE, source_uv) * tint;
-	vec4 fill_color = vec4(fallback_color.rgb * tint.rgb, fallback_color.a * tint.a);
-	float art_mix = 1.0;
-	if (control_size.y > art_h + 1.0) {
-		art_mix = 1.0 - smoothstep(max(0.0, art_h - feather_px), art_h, p.y);
+	vec2 source_uv = vec2(UV.x, UV.y);
+	if (aspect_mode == 2) {
+		vec2 tex_size = vec2(textureSize(TEXTURE, 0));
+		if (tex_size.x > 0.0 && tex_size.y > 0.0) {
+			float control_aspect = control_size.x / max(control_size.y, 1.0);
+			float tex_aspect = tex_size.x / tex_size.y;
+			if (control_aspect > tex_aspect) {
+				float scale = tex_aspect / control_aspect;
+				source_uv.y = 0.5 + (UV.y - 0.5) / scale;
+			} else {
+				float scale = control_aspect / tex_aspect;
+				source_uv.x = 0.5 + (UV.x - 0.5) / scale;
+			}
+		}
+	} else {
+		float crop_width = max(0.001, 1.0 - crop_left - crop_right);
+		float crop_height = max(0.001, 1.0 - crop_top - crop_bottom);
+		float art_h = art_height_px <= 1.0 ? control_size.y : min(art_height_px, control_size.y);
+		float u = UV.x;
+		float v = clamp(p.y / max(1.0, art_h), 0.0, 1.0);
+		if (aspect_mode == 1) {
+			vec2 tex_size = vec2(textureSize(TEXTURE, 0));
+			if (tex_size.x > 0.0 && tex_size.y > 0.0) {
+				float control_aspect = control_size.x / max(art_h, 1.0);
+				float tex_aspect = tex_size.x / tex_size.y;
+				if (control_aspect > tex_aspect) {
+					float scale = tex_aspect / control_aspect;
+					v = 0.5 + (v - 0.5) * scale;
+				} else {
+					float scale = control_aspect / tex_aspect;
+					u = 0.5 + (u - 0.5) * scale;
+				}
+			}
+		}
+		source_uv = vec2(crop_left + u * crop_width, crop_top + v * crop_height);
 	}
-	vec4 color = mix(fill_color, art_color, art_mix);
-	color.a *= alpha;
+	if (aspect_mode == 2) {
+		source_uv = clamp(source_uv, vec2(0.0), vec2(1.0));
+	}
+	vec4 art_sample = texture(TEXTURE, source_uv);
+	vec3 art_rgb = art_sample.rgb;
+	if (aspect_mode != 2 && art_sample.a > 0.001) {
+		art_rgb /= art_sample.a;
+	}
+	vec4 art_color = vec4(art_rgb, 1.0) * tint;
+	vec4 fill_color = vec4(fallback_color.rgb * tint.rgb, fallback_color.a * tint.a);
+	vec4 color;
+	if (aspect_mode == 2) {
+		color = art_sample.a > 0.01 ? art_color : fill_color;
+		color.a = alpha * tint.a;
+	} else {
+		float art_h = art_height_px <= 1.0 ? control_size.y : min(art_height_px, control_size.y);
+		float art_mix = 1.0;
+		if (control_size.y > art_h + 1.0 && feather_px > 0.5) {
+			art_mix = 1.0 - smoothstep(max(0.0, art_h - feather_px), art_h, p.y);
+		}
+		color = mix(fill_color, art_color, art_mix);
+		color.a = alpha * tint.a;
+	}
 	COLOR = color;
 }
 """
@@ -748,6 +1394,8 @@ void fragment() {
 		shader_material.set_shader_parameter("art_height_px", art_height)
 		shader_material.set_shader_parameter("feather_px", feather_height)
 		shader_material.set_shader_parameter("mask_inset_px", mask_inset)
+		shader_material.set_shader_parameter("corner_mask_mode", corner_mask_mode)
+		shader_material.set_shader_parameter("aspect_mode", aspect_mode)
 		shader_material.set_shader_parameter("fallback_color", fallback_color)
 
 
@@ -2034,7 +2682,8 @@ const PENDING_CRASH_REPORT_PATH := "user://pending-crash-report.json"
 const CRASH_SESSION_MARKER_PATH := "user://last-session-marker.json"
 const DISCORD_INVITE_URL := "https://discord.com/invite/NHvsGdGfVW"
 const MAX_CRASH_REPORT_CLIPBOARD_CHARS := 12000
-const CRASH_SESSION_HEARTBEAT_SECONDS := 5.0
+const CRASH_SESSION_HEARTBEAT_SECONDS := 15.0
+const AUTOSAVE_INTERVAL_SECONDS := 15.0
 const RESET_DATA_CONFIRM_SECONDS := 8.0
 const RESET_DATA_CONFIRM_MIN_SECONDS := 0.08
 const RESET_DATA_CONFIRM_TEXT := "Are you sure?"
@@ -2168,6 +2817,167 @@ const ACTION_ART_OFFSET := Vector2(-8.6, -8.6)
 const FISHING_BACKGROUND_CROP_LEFT := 0.06
 const FISHING_BACKGROUND_CROP_TOP := 0.06
 const FISHING_BACKGROUND_CROP_RIGHT := 0.015
+const FISHING_MODULE_BACKGROUND_MASK_INSET := 8.0
+const FISHING_REWORK_ENABLED := true
+const FISHING_FLUID_STRIP_HEIGHT := 88.0
+const FISHING_FLUID_STRIP_EDGE_INSET := 6.0
+const FISHING_FLUID_STRIP_BOTTOM_RADIUS := 66.0
+const FISHING_FLUID_STRIP_BOTTOM_INSET := 0.0
+const FISHING_FLUID_STRIP_Z_INDEX := 205
+const FISHING_MODULE_TITLE_Z_INDEX := 500
+const FISHING_METHOD_PADLOCK_SIZE := Vector2(336, 368)
+const FISHING_METHOD_PADLOCK_LEVEL_SIZE := Vector2(150, 130)
+const FISHING_METHOD_PADLOCK_LEVEL_FONT := 128
+const FISHING_METHOD_PADLOCK_LEVEL_OUTLINE := 14
+const FISHING_METHOD_TITLE_OUTLINE := 20
+const FISHING_MODULE_TITLE_FONT_SIZE := 82
+const FISHING_MODULE_TITLE_OUTLINE := 34
+const FISHING_MODULE_TITLE_TOP := 18
+const FISHING_MODULE_TITLE_BAND_HEIGHT := 106
+const FISHING_AREA_STAT_FADE_SECONDS := 0.22
+const FISHING_AREA_MAX_BUTTONS_PER_MODULE := 2
+const FISHING_AREA_CONTENT_TOP_MARGIN := FISHING_MODULE_TITLE_TOP
+const FISHING_AREA_WATER_BOTTOM_MARGIN := 70
+const FISHING_AREA_STAT_COLUMN_TOP_MARGIN := FISHING_MODULE_TITLE_TOP + FISHING_MODULE_TITLE_BAND_HEIGHT
+const FISHING_AREA_STAT_STACK_TOP := FISHING_AREA_STAT_COLUMN_TOP_MARGIN
+const FISHING_AREA_METHOD_TOP_MARGIN := 0
+const FISHING_AREA_ART_OFFSET := Vector2(-8.6, -18.0)
+const FISHING_AREA_MEDAL_TOP := -78.0
+const FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH := 350.0
+const FISHING_ACTIVE_TOOL_LAYER_SIZE := Vector2(560, 430)
+const FISHING_ACTIVE_TOOL_LAYER_RIGHT_OFFSET := -470.0
+const FISHING_ACTIVE_TOOL_LAYER_TOP := 250.0
+const FISHING_ACTIVE_TOOL_ICON_SIZE := Vector2(319, 319)
+const FISHING_ACTIVE_NET_ICON_SIZE := Vector2(380, 380)
+const FISHING_ACTIVE_TOOL_FLOAT_Y := 26.0
+const FISHING_ACTIVE_TOOL_DIP_Y := 222.0
+const FISHING_ACTIVE_TOOL_HARVEST_Y := 166.0
+const FISHING_ACTIVE_TOOL_Z_INDEX := FISHING_FLUID_STRIP_Z_INDEX - 1
+const FISHING_METHOD_ACTIVE_SWAY_SPEED := 1.18
+const FISHING_METHOD_ACTIVE_SWAY_OFFSET := Vector2(4.2, 3.4)
+const FISHING_METHOD_ACTIVE_SWAY_ROTATION := 0.026
+const FISHING_METHOD_ACTIVE_SWAY_SCALE_PULSE := 0.042
+const FISHING_METHOD_ACTIVE_SWAY_RETURN_SECONDS := 0.2
+const FISHING_LOCATION_ACTIVE_CAMERA_ZOOM := 2.35
+const FISHING_LOCATION_ACTIVE_CAMERA_PAN := Vector2(92.0, 74.0)
+const FISHING_LOCATION_ACTIVE_CAMERA_EASE := 1.45
+const FISHING_LOCATION_ACTIVE_CAMERA_RETURN_SECONDS := 0.36
+const FISHING_ATTEMPT_BAR_HEIGHT := 20.0
+const FISHING_ATTEMPT_BAR_SEPARATION := 8
+const FISHING_PADLOCK_UNLOCK_DROP_SECONDS := 0.82
+const FISHING_PADLOCK_UNLOCK_POP_SECONDS := 0.24
+const FISH_CIRCLE_ICON_BASE_SIZE := Vector2(228, 228)
+const FISH_CATCH_CHROMA_TOLERANCE_8 := 74
+const FISHING_CATCH_POP_SIZE := Vector2(166, 166)
+const FISHING_CATCH_POP_STAGGER_SECONDS := 0.11
+const FISHING_CATCH_POP_STAGGER_SPACING := 44.0
+const FISHING_CATCH_POP_RISE_PIXELS := 120.0
+const FISHING_CATCH_POP_MAX_VISUALS := 9
+const FISHING_TOOL_WALLET_HEIGHT := 360
+const FISHING_TOOL_WALLET_ROW_HEIGHT := 184
+const FISHING_LOCATION_TILE_SIZE := Vector2(410, 410)
+const FISHING_NET_OFFER_UNLOCK_LEVEL := 3
+const FISHING_NET_OFFER_HEIGHT := 740
+const FISHING_NET_TOOL_ID := "net"
+const FISHING_ROD_OFFER_UNLOCK_LEVEL := 18
+const FISHING_ROD_OFFER_COST := 1000
+const FISHING_ROD_OFFER_HEIGHT := 740
+const FISHING_ROD_UPGRADE_OFFER_HEIGHT := 740
+const FISHING_REINFORCED_ROD_UNLOCK_LEVEL := 45
+const FISHING_REINFORCED_ROD_COST := 50000
+const FISHING_STAR_ROD_UNLOCK_LEVEL := 85
+const FISHING_STAR_ROD_COST := 250000
+const FISHING_BOAT_OFFER_UNLOCK_LEVEL := 50
+const FISHING_BOAT_BUILD_REQUIRED_LEVEL := 30
+const FISHING_BOAT_OFFER_COST := 1000
+const FISHING_BOAT_OFFER_HEIGHT := 740
+const FISHING_MIRROR_OFFER_UNLOCK_LEVEL := 90
+const FISHING_MIRROR_OFFER_COST := 1000000
+const FISHING_MIRROR_OFFER_HEIGHT := 740
+const FISHING_NET_HAUL_THRESHOLD := 10
+const FISHING_NET_FILL_MIN := 1
+const FISHING_NET_FILL_MAX := 6
+const FISHING_NET_HAUL_VISUAL_SECONDS := 0.42
+const FISHING_TOOL_DEFS := [
+	{"id": "hands", "name": "Bare hands", "archetype": "novice", "unlock": "starter", "art": "res://docs/assets/fishing/tools/tool-bare-hands.png"},
+	{"id": "net", "name": "Drag net", "archetype": "volume", "unlock": "Fishing Lv 3", "art": "res://docs/assets/fishing/tools/net-player.png"},
+	{"id": "line", "name": "Bamboo rod", "archetype": "steady", "unlock": "Fishing Lv 14", "art": "res://docs/assets/fishing/tools/tool-bamboo-rod.png"},
+	{"id": "reinforced_rod", "name": "Reinforced rod", "archetype": "steady", "unlock": "Fishing Lv 45", "art": "res://docs/assets/fishing/tools/tool-bamboo-rod.png"},
+	{"id": "star_rod", "name": "Star rod", "archetype": "steady", "unlock": "Fishing Lv 85", "art": "res://docs/assets/fishing/tools/tool-bamboo-rod.png"},
+	{"id": "boat", "name": "Boat", "archetype": "steady", "unlock": "Build at Fishing Lv 50", "art": "res://docs/assets/fishing/tools/tool-boat.png"},
+	{"id": "mirror", "name": "Reflection mirror", "archetype": "risk", "unlock": "Space Reflection", "art": "res://docs/assets/fishing/tools/reflection-net.png"},
+]
+const FISHING_TOOL_ICON_SHEET := "res://docs/assets/fishing/tools/fishing-tool-icons-sheet.png"
+const FISHING_LOCATION_THUMBNAIL_SHEET := "res://docs/assets/fishing/locations/fishing-location-thumbnails-sheet.png"
+const FISHING_LOCATION_DEFS := {
+	"beach": [
+		{"id": "shallows", "name": "Shallows", "unlock": 1, "fish": "Minnow", "bg": "res://docs/assets/fishing/backgrounds/00-tide-pool-shallows.png"},
+		{"id": "rocky", "name": "Rocks", "unlock": 4, "fish": "Crab", "bg": "res://docs/assets/fishing/backgrounds/03-crab-pier.png"},
+	],
+	"pier": [
+		{"id": "dock-cup", "name": "Dock Edge", "unlock": 7, "fish": "Minnow", "bg": "res://docs/assets/fishing/backgrounds/01-pond-dock.png"},
+		{"id": "piling-line", "name": "Piling Line", "unlock": 11, "fish": "Panfish", "bg": "res://docs/assets/fishing/backgrounds/01-pond-dock.png"},
+	],
+}
+const FISHING_TOOL_LOCATION_ACTIONS := {
+	"hands": {
+		"beach.shallows": "beach-shallows",
+		"beach.rocky": "beach-rocks",
+		"pier.dock-cup": "pier-dock-edge",
+		"pier.piling-line": "pier-piling-line",
+	},
+	"net": {
+		"beach.shallows": "beach-shallows",
+		"beach.rocky": "beach-rocks",
+		"pier.dock-cup": "pier-dock-edge",
+		"pier.piling-line": "pier-piling-line",
+	},
+	"line": {
+		"beach.shallows": "beach-shallows",
+		"beach.rocky": "beach-rocks",
+		"pier.dock-cup": "pier-dock-edge",
+		"pier.piling-line": "pier-piling-line",
+	},
+}
+const FISHING_ACTION_CATCH_TEXTURE_PATHS := {
+	"beach-shallows": "res://docs/assets/fishing/catches/00-minnow.png",
+	"beach-rocks": "res://docs/assets/fishing/catches/00-minnow.png",
+	"reef-pot": "res://docs/assets/fishing/catches/02-crab.png",
+	"stormy-sea-ripple": "res://docs/assets/fishing/catches/14-shark.png",
+	"river-bend": "res://docs/assets/fishing/catches/03-trout.png",
+	"river-rapids": "res://docs/assets/fishing/catches/05-salmon.png",
+	"sewers-drain-gate": "res://docs/assets/fishing/catches/06-eel.png",
+	"sewers-tunnel-pool": "res://docs/assets/fishing/catches/06-eel.png",
+	"winter-lake-ice-hole": "res://docs/assets/fishing/catches/08-snowfish.png",
+	"reef-cage": "res://docs/assets/fishing/catches/07-lobster.png",
+	"reef-night-reef": "res://docs/assets/fishing/catches/10-reef-fish.png",
+	"reef-pearl-bed": "res://docs/assets/fishing/catches/09-pearl-oyster.png",
+	"sea-rowboat": "res://docs/assets/fishing/catches/04-bass.png",
+	"sea-open-water": "res://docs/assets/fishing/catches/12-tuna.png",
+	"sea-chum-line": "res://docs/assets/fishing/catches/10-reef-fish.png",
+	"stormy-sea-storm-line": "res://docs/assets/fishing/catches/19-storm-ray.png",
+	"deep-sea-wreck-drop": "res://docs/assets/fishing/catches/11-octopus.png",
+	"deep-sea-abyss": "res://docs/assets/fishing/catches/14-shark.png",
+	"deep-sea-trench": "res://docs/assets/fishing/catches/11-octopus.png",
+	"space-reflection": "res://docs/assets/fishing/catches/01-clam.png",
+	"space-starlight": "res://docs/assets/fishing/catches/00-minnow.png",
+}
+const FISHING_CATCH_TEXTURE_PATHS := [
+	"res://docs/assets/fishing/catches/00-minnow.png",
+	"res://docs/assets/fishing/catches/01-clam.png",
+	"res://docs/assets/fishing/catches/02-crab.png",
+	"res://docs/assets/fishing/catches/03-trout.png",
+	"res://docs/assets/fishing/catches/04-bass.png",
+	"res://docs/assets/fishing/catches/05-salmon.png",
+	"res://docs/assets/fishing/catches/06-eel.png",
+	"res://docs/assets/fishing/catches/07-lobster.png",
+	"res://docs/assets/fishing/catches/08-snowfish.png",
+	"res://docs/assets/fishing/catches/09-pearl-oyster.png",
+	"res://docs/assets/fishing/catches/10-reef-fish.png",
+	"res://docs/assets/fishing/catches/11-octopus.png",
+	"res://docs/assets/fishing/catches/12-tuna.png",
+]
+const ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS := 0.26
 const PASSIVE_MODULE_CARD_HEIGHT := 940
 const ACTION_CARD_POP_GUTTER := 44
 const ACTION_CARD_TAP_RELEASE_SLOP := 120.0
@@ -2177,6 +2987,7 @@ const ACTION_CARD_DUPLICATE_TAP_MSEC := 36
 const SKILL_MENU_CARD_SIDE_INSET := 104
 const SKILL_MENU_COPY_WIDTH := 760
 const SKILL_MENU_ACTIVITY_PROGRESS_HEIGHT := 33
+const SKILL_MENU_FISHING_FLUID_Z_INDEX := 18
 const SKILL_MENU_SHELF_HEIGHT := 368
 const SKILL_MENU_TOP_SCROLL_PAD := 54
 const SKILL_MENU_BOTTOM_SCROLL_PAD := 420
@@ -2184,6 +2995,7 @@ const SKILL_DETAIL_HEADER_HEIGHT := 704
 const SKILL_DETAIL_HEADER_MARGIN_BOTTOM := 34
 const SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT := 18
 const SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT := 8
+const SKILL_DETAIL_BOTTOM_SCROLL_PAD := 420
 const SKILL_DETAIL_HEADER_SCALE := 1.15
 const SKILL_DETAIL_TITLE_FONT_SIZE := 152
 const SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE := 128
@@ -2217,6 +3029,7 @@ const ACTIVITY_JUMP_ARROW_SIZE := Vector2(296, 296)
 const ACTIVITY_BACK_BUTTON_SIZE := Vector2(460, 140)
 const ACTIVITY_BACK_ARROW_SIZE := Vector2(250, 74)
 const ACTIVITY_JUMP_ARROW_EDGE_INSET := 28.0
+const ACTIVITY_JUMP_ARROW_BOTTOM_EDGE_INSET := 144.0
 const ACTIVITY_JUMP_ARROW_LINGER_SECONDS := 1.2
 const ACTIVITY_JUMP_ARROW_FADE_IN_SECONDS := 0.10
 const ACTIVITY_JUMP_ARROW_FADE_OUT_SECONDS := 0.22
@@ -2239,8 +3052,10 @@ const CHAT_MESSAGE_MAX_CHARS := 80
 const CHAT_STRIP_VISIBLE_COUNT := 2
 const CHAT_FULL_VISIBLE_COUNT := 25
 const CHAT_STRIP_HEIGHT := 260
+const CHAT_STRIP_EMPTY_GRACE_MSEC := 2200
+const CHAT_STRIP_HIDE_GRACE_MSEC := 800
 const CHAT_STRIP_ICON := "res://assets/ui/chat-speech-bubble.png"
-const CHAT_UI_Z := 512
+const CHAT_UI_Z := 3500
 const CHAT_CENSORED_WORDS := [
 	"fag",
 	"faggot",
@@ -2542,6 +3357,8 @@ const ACTION_FILES := {
 var skills := {}
 var skill_defs := []
 var actions_by_skill := {}
+var actions_by_key := {}
+var fishing_area_definitions: Array = []
 var selected_skill_id := "fight"
 var current_screen := "home"
 var running_skill_id := ""
@@ -2549,8 +3366,61 @@ var running_action_id := ""
 var action_progress := 0.0
 var tired_activity_zero_float_action_key := ""
 var log_currency := 0
+var fish_currency := 0
+var equipped_fishing_tool_id := "hands"
+var fishing_tool_wallet_open := false
+var fishing_net_stored_fish := 0
+var fishing_net_successes := 0
+var fishing_net_stored_xp := 0
+var fishing_net_stored_mastery := 0.0
+var fishing_net_haul_visual_seconds := 0.0
+var fishing_net_collected := false
+var fishing_rod_collected := false
+var fishing_reinforced_rod_collected := false
+var fishing_star_rod_collected := false
+var fishing_boat_built := false
+var fishing_mirror_collected := false
+var selected_fishing_locations := {}
 var passive_modules := {}
 var manual_activity_unlocks := {}
+
+const FISHING_AREA_ID_ALIASES := {
+	"lake": "winter_lake",
+	"boat": "sea",
+	"storm": "stormy_sea",
+	"deep": "deep_sea",
+}
+
+const FISHING_ACTION_ID_ALIASES := {
+	"dip-a-tidepool-minnow": "beach-shallows",
+	"drag-net-through-creek": "beach-rocks",
+	"scoop-pond-minnows": "pier-dock-edge",
+	"dangle-string-from-dock": "pier-piling-line",
+	"cast-bamboo-rod": "river-bend",
+	"fly-fish-at-river-bend": "river-rapids",
+	"hand-grab-muddy-catfish": "sewers-drain-gate",
+	"spear-fish-in-shallows": "sewers-tunnel-pool",
+	"set-tiny-crab-pot": "reef-pot",
+	"ice-fish-through-nervous-hole": "winter-lake-ice-hole",
+	"cast-from-rowboat": "sea-rowboat",
+	"drop-lobster-cage": "reef-cage",
+	"trawl-from-tiny-boat": "sea-open-water",
+	"night-fish-with-lantern": "reef-night-reef",
+	"harpoon-suspicious-ripple": "stormy-sea-ripple",
+	"chum-open-water": "sea-chum-line",
+	"dive-for-pearl-oysters": "reef-pearl-bed",
+	"cast-storm-kite-line": "stormy-sea-storm-line",
+	"fish-with-magnetic-hook": "deep-sea-wreck-drop",
+	"bait-a-tiny-leviathan": "deep-sea-abyss",
+	"open-deep-sea-mailbox-trap": "deep-sea-trench",
+	"dredge-wreck-with-magnet": "deep-sea-wreck-drop",
+	"bait-the-abyss": "deep-sea-abyss",
+	"drop-deep-trench-trap": "deep-sea-trench",
+	"skim-a-starlight-minnow": "space-starlight",
+	"net-the-reflection-of-a-fish": "space-reflection",
+	"beach-crab-pot": "reef-pot",
+	"beach-ripple": "stormy-sea-ripple",
+}
 var plank_boost_enabled := false
 var last_passive_process_unix := 0
 var activity_streak_action_key := ""
@@ -2700,6 +3570,13 @@ var chat_pending_send_message_id := ""
 var chat_strip: PanelContainer
 var chat_strip_line_one: Label
 var chat_strip_line_two: Label
+var chat_strip_last_visible := false
+var chat_strip_last_line_one := ""
+var chat_strip_last_line_two := ""
+var chat_strip_stable_line_one := ""
+var chat_strip_stable_line_two := ""
+var chat_strip_empty_started_msec := 0
+var chat_strip_hide_started_msec := 0
 var chat_overlay_layer: CanvasLayer
 var chat_overlay: ColorRect
 var chat_keyboard_fill: ColorRect
@@ -2758,6 +3635,12 @@ var detail_xp_label: Label
 var detail_xp_bar: CleanProgressBar
 var detail_stamina_bar: CleanProgressBar
 var detail_regen_circle: RegenCircle
+var detail_fish_circle: FishCircle
+var fishing_tool_wallet_layer: Control
+var fishing_tool_wallet_canvas: CanvasLayer
+var fishing_tool_wallet_popup: Control
+var fishing_tool_wallet_pop_tween: Tween
+var fishing_tool_wallet_last_toggle_msec := 0
 var stamina_gauge_press_source: RegenCircle
 var detail_header_body: Control
 var detail_actions_scroll: MobileScrollContainer
@@ -2861,8 +3744,11 @@ var sfx_volume_labels := []
 var sfx_mute_toggles := []
 var sfx_mute_labels := []
 var offline_progress_toggles := []
+var audio_controls_sync_key := ""
 var audio_slider_grabber_texture: Texture2D
 var paper_button_style_textures := {}
+var empty_style_cache := StyleBoxEmpty.new()
+var ui_static_refresh_elapsed := 0.0
 var last_default_button_sfx_msec := -100000
 var top_level_nav_locked_until_msec := 0
 var active_audio_slider: HSlider
@@ -2896,6 +3782,8 @@ var boot_warmup_layer: CanvasLayer
 var boot_warmup_overlay: Control
 var boot_warmup_label: Label
 var boot_warmup_progress: CleanProgressBar
+var boot_warmup_cancel_requested := false
+var shutdown_cleanup_started := false
 var startup_initialized := false
 
 
@@ -2927,16 +3815,19 @@ func _ready() -> void:
 	_update_ui(0.0, true)
 	startup_initialized = true
 	_write_crash_session_marker("running")
-	call_deferred("_show_pending_completed_achievement_toasts")
+	if DisplayServer.get_name() != "headless":
+		call_deferred("_show_pending_completed_achievement_toasts")
 	var timer := Timer.new()
-	timer.wait_time = 10.0
+	timer.wait_time = AUTOSAVE_INTERVAL_SECONDS
 	timer.autostart = true
 	timer.timeout.connect(func():
-		save_game()
-		_write_crash_session_marker("running")
+		_autosave_if_needed()
 	)
 	add_child(timer)
-	call_deferred("_run_boot_warmup")
+	if DisplayServer.get_name() == "headless":
+		_hide_boot_warmup_overlay()
+	else:
+		call_deferred("_run_boot_warmup")
 
 
 func _configure_performance_mode() -> void:
@@ -2966,12 +3857,19 @@ func _process(delta: float) -> void:
 	_process_detail_jump_arrows(delta)
 
 
+func _unhandled_input(event: InputEvent) -> void:
+	pass
+
+
 func _input(event: InputEvent) -> void:
 	_note_player_input(event)
 	if boot_warmup_active:
 		get_viewport().set_input_as_handled()
 		return
 	_disarm_reset_data_confirmation_on_outside_press(event)
+	if _route_fishing_wallet_unhandled_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	if _route_tutorial_panel_input(event):
 		get_viewport().set_input_as_handled()
 		return
@@ -3613,7 +4511,11 @@ func _set_activity_lock_page_scrolling_disabled(disabled: bool) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST or what == NOTIFICATION_APPLICATION_PAUSED:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		save_game()
+		_write_crash_session_marker("clean")
+		_prepare_for_shutdown()
+	elif what == NOTIFICATION_APPLICATION_PAUSED:
 		save_game()
 		_write_crash_session_marker("clean")
 	elif what == NOTIFICATION_APPLICATION_RESUMED:
@@ -3629,6 +4531,58 @@ func _notification(what: int) -> void:
 			save_game()
 		music_started = false
 		_ensure_music_playing()
+	elif what == NOTIFICATION_PREDELETE:
+		_prepare_for_shutdown()
+
+
+func _exit_tree() -> void:
+	_prepare_for_shutdown()
+
+
+func _prepare_for_shutdown() -> void:
+	if shutdown_cleanup_started:
+		return
+	shutdown_cleanup_started = true
+	boot_warmup_cancel_requested = true
+	boot_warmup_active = false
+	_chat_stream_disconnect(false)
+	_kill_transient_tweens_in_subtree(self)
+	skill_swipe_preview_prewarm_token += 1
+	skill_swipe_preview_prewarm_pending = false
+	skill_swipe_preview_module_reveal_token += 1
+	_free_skill_swipe_preview_shutdown_nodes()
+	if boot_warmup_layer != null and is_instance_valid(boot_warmup_layer):
+		boot_warmup_layer.free()
+	boot_warmup_layer = null
+	boot_warmup_overlay = null
+	boot_warmup_label = null
+	boot_warmup_progress = null
+	texture_cache.clear()
+	profile_avatar_texture_cache.clear()
+	mastery_medal_textures.clear()
+	mastery_medal_silhouette_textures.clear()
+	paper_button_style_textures.clear()
+	mastery_medal_dot_texture = null
+	audio_slider_grabber_texture = null
+	locked_activity_material = null
+	app_font = null
+	app_bold_font = null
+
+
+func _free_skill_swipe_preview_shutdown_nodes() -> void:
+	for preview in skill_swipe_preview_pages.values():
+		var preview_page := preview as Control
+		if preview_page != null and is_instance_valid(preview_page):
+			preview_page.free()
+	skill_swipe_preview_pages.clear()
+	skill_swipe_preview_states.clear()
+	if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page):
+		skill_swipe_preview_page.free()
+	skill_swipe_preview_page = null
+	skill_swipe_preview_offset = 0
+	if skill_swipe_handoff_cover != null and is_instance_valid(skill_swipe_handoff_cover):
+		skill_swipe_handoff_cover.free()
+	skill_swipe_handoff_cover = null
 
 
 func _build_ui() -> void:
@@ -3979,7 +4933,7 @@ func _process_leaderboard_sync(delta: float) -> void:
 	if current_screen == "leaderboard":
 		_leaderboard_fetch_category(leaderboard_category_id)
 	if _chat_strip_visible_on_current_screen():
-		_chat_stream_connect(true)
+		_chat_stream_connect()
 	if _leaderboard_submit_ready():
 		_leaderboard_submit_scores()
 
@@ -4194,12 +5148,12 @@ func _chat_stream_connect(force_reconnect := false) -> void:
 		return
 	var now := _unix_now()
 	var visible_count := _chat_target_visible_count()
-	if chat_stream_connected and chat_stream_visible_count == visible_count and not force_reconnect:
+	if chat_stream_connected and chat_stream_visible_count >= visible_count and not force_reconnect:
 		return
 	if not _leaderboard_ensure_auth():
 		chat_status_message = "Connecting chat login..."
 		return
-	if chat_stream_connecting and chat_stream_visible_count == visible_count and not force_reconnect:
+	if chat_stream_connecting and chat_stream_visible_count >= visible_count and not force_reconnect:
 		return
 	if not force_reconnect and chat_stream_retry_unix > now:
 		return
@@ -4224,7 +5178,7 @@ func _chat_stream_connect(force_reconnect := false) -> void:
 
 
 func _process_chat_live_sync(delta: float) -> void:
-	if not _chat_strip_visible_on_current_screen():
+	if not _chat_strip_visible_on_current_screen() and (chat_strip == null or not is_instance_valid(chat_strip) or not chat_strip.visible):
 		_chat_stream_disconnect(false)
 		return
 	if not _leaderboard_firebase_enabled():
@@ -4528,9 +5482,9 @@ func _chat_sort_and_trim_rows() -> void:
 			return str(a.get("message_id", "")) < str(b.get("message_id", ""))
 		return created_a < created_b
 	)
-	var visible_count := _chat_target_visible_count()
-	if chat_rows.size() > visible_count:
-		chat_rows = chat_rows.slice(chat_rows.size() - visible_count)
+	var trim_count := maxi(_chat_target_visible_count(), chat_stream_visible_count)
+	if chat_rows.size() > trim_count:
+		chat_rows = chat_rows.slice(chat_rows.size() - trim_count)
 
 
 func _chat_target_visible_count() -> int:
@@ -5179,6 +6133,8 @@ func _build_chat_overlay() -> void:
 
 
 func _on_chat_strip_gui_input(event: InputEvent) -> void:
+	if chat_overlay != null and chat_overlay.visible:
+		return
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 		_open_chat_overlay()
 		chat_strip.accept_event()
@@ -5188,6 +6144,8 @@ func _on_chat_strip_gui_input(event: InputEvent) -> void:
 
 
 func _route_chat_strip_input(event: InputEvent) -> bool:
+	if chat_overlay != null and chat_overlay.visible:
+		return false
 	if chat_strip == null or not is_instance_valid(chat_strip) or not chat_strip.visible:
 		return false
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
@@ -5232,7 +6190,7 @@ func _close_chat_overlay() -> void:
 		chat_keyboard_fill.visible = false
 		chat_keyboard_fill.offset_top = 0.0
 	if _chat_strip_visible_on_current_screen():
-		_chat_stream_connect(true)
+		_update_chat_strip()
 
 
 func _rebuild_chat_overlay() -> void:
@@ -5796,6 +6754,7 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	_clear_activity_unlock_visual_scroll_tween()
 	action_cards.clear()
 	detail_regen_circle = null
+	detail_fish_circle = null
 	detail_stamina_bar = null
 	detail_header_body = null
 	detail_actions_scroll = null
@@ -6264,17 +7223,43 @@ func _chat_strip_visible_on_current_screen() -> bool:
 func _update_chat_strip() -> void:
 	if chat_strip == null or not is_instance_valid(chat_strip):
 		return
-	var visible := _chat_strip_visible_on_current_screen()
-	chat_strip.visible = visible
-	if visible:
-		_chat_stream_connect()
-	else:
-		_chat_stream_disconnect(false)
+	var visible := _chat_strip_committed_visible()
+	if chat_strip_last_visible != visible:
+		chat_strip_last_visible = visible
+		if visible:
+			_chat_stream_connect()
+		else:
+			_chat_stream_disconnect(false)
 	if chat_strip_line_one == null or chat_strip_line_two == null:
 		return
 	var lines := _chat_strip_lines()
-	chat_strip_line_one.text = str(lines[0])
-	chat_strip_line_two.text = str(lines[1])
+	var line_one := str(lines[0])
+	var line_two := str(lines[1])
+	if chat_strip_last_line_one != line_one:
+		chat_strip_last_line_one = line_one
+		_set_label_text_if_changed(chat_strip_line_one, line_one)
+	if chat_strip_last_line_two != line_two:
+		chat_strip_last_line_two = line_two
+		_set_label_text_if_changed(chat_strip_line_two, line_two)
+
+
+func _chat_strip_committed_visible() -> bool:
+	var target_visible := _chat_strip_visible_on_current_screen()
+	var now := Time.get_ticks_msec()
+	if target_visible:
+		chat_strip_hide_started_msec = 0
+		if not chat_strip.visible:
+			chat_strip.visible = true
+		return true
+	if chat_strip.visible:
+		if chat_strip_hide_started_msec <= 0:
+			chat_strip_hide_started_msec = now
+			return true
+		if now - chat_strip_hide_started_msec < CHAT_STRIP_HIDE_GRACE_MSEC:
+			return true
+		chat_strip.visible = false
+		chat_strip_hide_started_msec = 0
+	return false
 
 
 func _chat_strip_lines() -> Array:
@@ -6290,12 +7275,33 @@ func _chat_strip_lines() -> Array:
 				continue
 			messages.append("%s: %s" % [name, text])
 	if messages.size() >= 2:
-		return [messages[messages.size() - 2], messages[messages.size() - 1]]
+		return _chat_strip_remember_lines(messages[messages.size() - 2], messages[messages.size() - 1])
 	if messages.size() == 1:
-		return ["Global Chat", messages[0]]
+		return _chat_strip_remember_lines("Global Chat", messages[0])
+	if not chat_strip_stable_line_two.is_empty() and _chat_strip_should_hold_empty_state():
+		return [chat_strip_stable_line_one, chat_strip_stable_line_two]
+	chat_strip_stable_line_one = ""
+	chat_strip_stable_line_two = ""
+	chat_strip_empty_started_msec = 0
 	if not _leaderboard_firebase_enabled():
 		return ["Global Chat", "Tap to open chat."]
 	return ["Global Chat", "Tap to open chat."]
+
+
+func _chat_strip_remember_lines(line_one: String, line_two: String) -> Array:
+	chat_strip_stable_line_one = line_one
+	chat_strip_stable_line_two = line_two
+	chat_strip_empty_started_msec = 0
+	return [line_one, line_two]
+
+
+func _chat_strip_should_hold_empty_state() -> bool:
+	if not (chat_stream_connecting or chat_stream_request_sent or chat_stream_retry_unix > _unix_now()):
+		return false
+	var now := Time.get_ticks_msec()
+	if chat_strip_empty_started_msec <= 0:
+		chat_strip_empty_started_msec = now
+	return now - chat_strip_empty_started_msec <= CHAT_STRIP_EMPTY_GRACE_MSEC
 
 
 func _render_chat_page() -> void:
@@ -6909,41 +7915,127 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		xp_bar.custom_minimum_size.x = 640
 		xp_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		copy.add_child(xp_bar)
-		var stamina_gauge := RegenCircle.new()
-		stamina_gauge.custom_minimum_size = Vector2(356, 356)
-		stamina_gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		stamina_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		stamina_gauge.set_theme_color(theme_color)
-		row.add_child(stamina_gauge)
-		var activity_progress := ActivityProgressRail.new()
-		activity_progress.fill_color = theme_color
-		activity_progress.visible = false
-		activity_progress.anchor_left = 0.0
-		activity_progress.anchor_right = 1.0
-		activity_progress.anchor_top = 1.0
-		activity_progress.anchor_bottom = 1.0
-		activity_progress.offset_left = 0.0
-		activity_progress.offset_right = 0.0
-		activity_progress.offset_top = -SKILL_MENU_ACTIVITY_PROGRESS_HEIGHT
-		activity_progress.offset_bottom = 0.0
-		activity_progress.top_lip_height = 0.0
-		activity_progress.bottom_radius = CARD_RADIUS
-		activity_progress.edge_inset = 0.0
-		activity_progress.bottom_inset = 9.0
-		activity_progress.corner_guard = 0.0
-		activity_progress.z_index = 18
-		activity_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		button.add_child(activity_progress)
+		var side_gauge := _build_skill_menu_side_gauge(skill_id, theme_color)
+		row.add_child(side_gauge)
+		var bottom_rail := _build_skill_menu_bottom_rail(skill_id, theme_color, button)
 		var panel_chrome := SkillMenuPanelChrome.new()
 		panel_chrome.set_anchors_preset(Control.PRESET_FULL_RECT)
 		panel_chrome.radius = CARD_RADIUS
 		panel_chrome.z_index = 30
 		panel_chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		button.add_child(panel_chrome)
-		skill_cards[skill_id] = {"button": button, "title": title, "meta": meta, "xp": xp_bar, "stamina": stamina_gauge, "activity": activity_progress}
+		skill_cards[skill_id] = {
+			"button": button,
+			"title": title,
+			"meta": meta,
+			"xp": xp_bar,
+			"stamina": side_gauge if side_gauge is RegenCircle else null,
+			"fish": side_gauge if side_gauge is FishCircle else null,
+			"activity": bottom_rail.get("activity"),
+			"fluid_strip": bottom_rail.get("fluid_strip"),
+		}
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = Vector2(0, SKILL_MENU_BOTTOM_SCROLL_PAD)
 	stack.add_child(bottom_spacer)
+
+
+func _build_skill_menu_side_gauge(skill_id: String, theme_color: Color) -> Control:
+	if _fishing_rework_active_for_skill(skill_id):
+		var fish_gauge := FishCircle.new()
+		fish_gauge.custom_minimum_size = Vector2(356, 356)
+		fish_gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		fish_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		return fish_gauge
+	var stamina_gauge := RegenCircle.new()
+	stamina_gauge.custom_minimum_size = Vector2(356, 356)
+	stamina_gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	stamina_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stamina_gauge.set_theme_color(theme_color)
+	return stamina_gauge
+
+
+func _build_skill_menu_bottom_rail(skill_id: String, theme_color: Color, button: Button) -> Dictionary:
+	if _fishing_rework_active_for_skill(skill_id):
+		var water_strip_host := Control.new()
+		water_strip_host.anchor_left = 0.0
+		water_strip_host.anchor_right = 1.0
+		water_strip_host.anchor_top = 1.0
+		water_strip_host.anchor_bottom = 1.0
+		water_strip_host.offset_left = 0.0
+		water_strip_host.offset_right = 0.0
+		water_strip_host.offset_bottom = FISHING_FLUID_STRIP_BOTTOM_INSET
+		water_strip_host.offset_top = -FISHING_FLUID_STRIP_HEIGHT
+		water_strip_host.clip_contents = true
+		water_strip_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		water_strip_host.z_index = SKILL_MENU_FISHING_FLUID_Z_INDEX
+		water_strip_host.z_as_relative = false
+		button.add_child(water_strip_host)
+		var fluid_strip := _attach_fishing_fluid_strip(water_strip_host, {"id": "fishing"})
+		if fluid_strip.has_method("set_fluid_kind"):
+			fluid_strip.call("set_fluid_kind", "water")
+		if fluid_strip.has_method("set_running"):
+			fluid_strip.call("set_running", true)
+		return {"activity": null, "fluid_strip": fluid_strip}
+	var activity_progress := ActivityProgressRail.new()
+	activity_progress.fill_color = theme_color
+	activity_progress.visible = false
+	activity_progress.anchor_left = 0.0
+	activity_progress.anchor_right = 1.0
+	activity_progress.anchor_top = 1.0
+	activity_progress.anchor_bottom = 1.0
+	activity_progress.offset_left = 0.0
+	activity_progress.offset_right = 0.0
+	activity_progress.offset_top = -SKILL_MENU_ACTIVITY_PROGRESS_HEIGHT
+	activity_progress.offset_bottom = 0.0
+	activity_progress.top_lip_height = 0.0
+	activity_progress.bottom_radius = CARD_RADIUS
+	activity_progress.edge_inset = 0.0
+	activity_progress.bottom_inset = 9.0
+	activity_progress.corner_guard = 0.0
+	activity_progress.z_index = SKILL_MENU_FISHING_FLUID_Z_INDEX
+	activity_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(activity_progress)
+	return {"activity": activity_progress, "fluid_strip": null}
+
+
+func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, instant: bool) -> void:
+	if _fishing_rework_active_for_skill(skill_id):
+		var fish_gauge := card.get("fish") as FishCircle
+		if fish_gauge != null:
+			_set_fish_circle_for_skill(fish_gauge, skill_id, instant)
+		var fluid_strip := card.get("fluid_strip") as Control
+		if fluid_strip != null:
+			if fluid_strip.has_method("set_running"):
+				fluid_strip.call("set_running", true)
+			var activity_running := running_skill_id == skill_id and not running_action_id.is_empty()
+			if activity_running and fluid_strip.has_method("set_attempt_progress"):
+				fluid_strip.call("set_attempt_progress", action_progress)
+		return
+	var stamina_gauge := card.get("stamina") as RegenCircle
+	if stamina_gauge != null:
+		var max_stamina := _max_stamina(skill_id)
+		var stamina_value := _stamina(skill_id)
+		var circle_value := _stamina_fraction(skill_id)
+		stamina_gauge.set_theme_color(_skill_theme_color(skill_id))
+		stamina_gauge.set_stamina(stamina_value, max_stamina, instant, circle_value)
+		stamina_gauge.set_value(_regen_ring_ease(circle_value), instant)
+	var activity_progress := card.get("activity") as ActivityProgressRail
+	if activity_progress != null:
+		var activity_running := running_skill_id == skill_id and not running_action_id.is_empty()
+		activity_progress.visible = activity_running
+		activity_progress.fill_color = _skill_theme_color(skill_id)
+		var activity_target := action_progress * 100.0 if activity_running else 0.0
+		var activity_instant := instant or not activity_running
+		if activity_running and activity_target + 6.0 < activity_progress.value:
+			activity_instant = true
+		_set_bar(activity_progress, activity_target, delta, activity_instant)
+
+
+func _skill_menu_card_side_gauge(card: Dictionary) -> Control:
+	var fish_gauge := card.get("fish") as Control
+	if fish_gauge != null and is_instance_valid(fish_gauge):
+		return fish_gauge
+	return card.get("stamina") as Control
 
 
 func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
@@ -7048,14 +8140,30 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	detail_xp_bar = _skill_detail_xp_bar(selected_skill_id, float(xp["pct"]))
 	title_stack.add_child(detail_xp_bar)
 
-	detail_regen_circle = RegenCircle.new()
-	detail_regen_circle.custom_minimum_size = Vector2(552, 552)
-	detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
-	detail_regen_circle.gui_input.connect(_on_stamina_gauge_input.bind("", detail_regen_circle))
-	header_row.add_child(detail_regen_circle)
 	detail_stamina_bar = null
-	_add_stamina_gauge_tip(header_body)
+	if _fishing_rework_active_for_skill(selected_skill_id):
+		detail_regen_circle = null
+		detail_fish_circle = FishCircle.new()
+		detail_fish_circle.custom_minimum_size = Vector2(552, 552)
+		detail_fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		detail_fish_circle.mouse_filter = Control.MOUSE_FILTER_PASS
+		detail_fish_circle.z_index = 3000
+		detail_fish_circle.z_as_relative = false
+		header_row.add_child(detail_fish_circle)
+		_attach_fishing_fish_circle_button(detail_fish_circle)
+		_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
+	else:
+		detail_fish_circle = null
+		detail_regen_circle = RegenCircle.new()
+		detail_regen_circle.custom_minimum_size = Vector2(552, 552)
+		detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
+		detail_regen_circle.gui_input.connect(_on_stamina_gauge_input.bind("", detail_regen_circle))
+		header_row.add_child(detail_regen_circle)
+	if _skill_detail_shows_tutorial_tips(selected_skill_id):
+		_add_stamina_gauge_tip(header_body)
+	elif _fishing_rework_active_for_skill(selected_skill_id):
+		_dismiss_skill_detail_tutorial_tips()
 
 	var divider := Control.new()
 	divider.custom_minimum_size = Vector2(0, SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
@@ -7089,8 +8197,13 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	var scroll_top_spacer := Control.new()
 	scroll_top_spacer.custom_minimum_size = Vector2(0, SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT)
 	stack.add_child(scroll_top_spacer)
-	
+
+	if _fishing_rework_active_for_skill(selected_skill_id):
+		_render_fishing_area_modules(stack, content_width)
+
 	for action in _visible_actions_for_skill(selected_skill_id):
+		if _fishing_rework_active_for_skill(selected_skill_id):
+			continue
 		var action_id := str(action["id"])
 		detail_rendered_action_ids.append(action_id)
 		if _is_passive_action(action as Dictionary):
@@ -7233,19 +8346,24 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		var status := _label("", 42, COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
 		status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-		var progress := ActivityProgressRail.new()
-		progress.fill_color = _skill_theme_color(selected_skill_id)
-		progress.anchor_left = 0.0
-		progress.anchor_right = 1.0
-		progress.anchor_top = 1.0
-		progress.anchor_bottom = 1.0
-		progress.offset_left = ACTION_PROGRESS_RAIL_INSET
-		progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
-		progress.offset_top = -ACTION_PROGRESS_RAIL_HEIGHT
-		progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
-		progress.z_index = 152
-		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pop_card.add_child(progress)
+		var progress: ActivityProgressRail = null
+		var fluid_strip: Control = null
+		if _fishing_rework_active_for_skill(selected_skill_id):
+			fluid_strip = _attach_fishing_fluid_strip(pop_card, action as Dictionary)
+		else:
+			progress = ActivityProgressRail.new()
+			progress.fill_color = _skill_theme_color(selected_skill_id)
+			progress.anchor_left = 0.0
+			progress.anchor_right = 1.0
+			progress.anchor_top = 1.0
+			progress.anchor_bottom = 1.0
+			progress.offset_left = ACTION_PROGRESS_RAIL_INSET
+			progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
+			progress.offset_top = -ACTION_PROGRESS_RAIL_HEIGHT
+			progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
+			progress.z_index = 152
+			progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			pop_card.add_child(progress)
 
 		var inner_shadow := ActivityCardInnerShadow.new()
 		inner_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -7303,6 +8421,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 			"medal": medal,
 			"mastery": mastery_progress,
 			"progress": progress,
+			"fluid_strip": fluid_strip,
 			"border": border,
 			"lock_overlay": lock_overlay,
 			"medal_destination": Vector2(medal.offset_left, medal.offset_top)
@@ -7325,7 +8444,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	elif _skill_swipe_tip_available():
 		stack.add_child(_skill_swipe_tip_note(content_width))
 	var scroll_bottom_spacer := Control.new()
-	scroll_bottom_spacer.custom_minimum_size = Vector2(0, _detail_unlock_scroll_spacer_height(selected_skill_id))
+	scroll_bottom_spacer.custom_minimum_size = Vector2(0, _detail_actions_bottom_scroll_pad(selected_skill_id))
 	stack.add_child(scroll_bottom_spacer)
 	detail_unlock_scroll_spacer = scroll_bottom_spacer
 	_build_detail_jump_arrows(actions_clip)
@@ -7407,7 +8526,8 @@ func _activity_jump_button(path: String, top: bool) -> TextureButton:
 	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	button.custom_minimum_size = ACTIVITY_JUMP_ARROW_SIZE
 	button.focus_mode = Control.FOCUS_NONE
-	button.z_index = 800
+	button.z_index = CHAT_UI_Z + 20
+	button.z_as_relative = false
 	button.anchor_left = 0.5
 	button.anchor_right = 0.5
 	button.offset_left = -ACTIVITY_JUMP_ARROW_SIZE.x * 0.5
@@ -7420,8 +8540,8 @@ func _activity_jump_button(path: String, top: bool) -> TextureButton:
 	else:
 		button.anchor_top = 1.0
 		button.anchor_bottom = 1.0
-		button.offset_top = -ACTIVITY_JUMP_ARROW_EDGE_INSET - ACTIVITY_JUMP_ARROW_SIZE.y
-		button.offset_bottom = -ACTIVITY_JUMP_ARROW_EDGE_INSET
+		button.offset_top = -ACTIVITY_JUMP_ARROW_BOTTOM_EDGE_INSET - ACTIVITY_JUMP_ARROW_SIZE.y
+		button.offset_bottom = -ACTIVITY_JUMP_ARROW_BOTTOM_EDGE_INSET
 	button.modulate = Color(1, 1, 1, 0)
 	button.disabled = true
 	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -7437,7 +8557,7 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 		return
 	chain_audio_scroll_direction = 1 if direction > 0 else -1
 	chain_audio_scroll_focus_seconds = CHAIN_SCROLL_TOWARD_SECONDS
-	if detail_unlock_scroll_spacer != null and is_instance_valid(detail_unlock_scroll_spacer) and detail_unlock_scroll_spacer.custom_minimum_size.y > 0.0:
+	if _detail_unlock_scroll_spacer_height(selected_skill_id) > 1.0:
 		detail_unlock_auto_scroll_interrupted = true
 		if detail_unlock_scroll_spacer_tween != null and detail_unlock_scroll_spacer_tween.is_valid():
 			detail_unlock_scroll_spacer_tween.kill()
@@ -7553,63 +8673,53 @@ func _update_page_visibility() -> void:
 
 
 func _update_ui(delta: float, instant := false) -> void:
-	if _skill_detail_needs_action_list_refresh():
+	var static_refresh := _consume_ui_static_refresh(delta, instant)
+	if static_refresh and _skill_detail_needs_action_list_refresh():
 		var restore_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
 		_begin_skill_detail_refresh_cover()
 		_render_screen(false, restore_scroll)
-	_show_lock_click_tip_note_if_needed()
-	if current_screen == "home" and home_total_label != null:
-		home_total_label.text = "Total Lv %s" % _global_level()
+	if static_refresh and _skill_detail_shows_tutorial_tips():
+		_show_lock_click_tip_note_if_needed()
+	if static_refresh and current_screen == "home" and home_total_label != null:
+		_set_label_text_if_changed(home_total_label, "Total Lv %s" % _global_level())
 		for skill_id in home_skill_labels.keys():
 			var skill_id_text := str(skill_id)
-			(home_skill_labels[skill_id] as Label).text = "%s Lvl %s" % [_skill_name(skill_id_text), _skill_level(skill_id_text)]
+			_set_label_text_if_changed(home_skill_labels[skill_id] as Label, "%s Lvl %s" % [_skill_name(skill_id_text), _skill_level(skill_id_text)])
 	var achievements_visible := current_screen == "home" or (achievements_overlay != null and achievements_overlay.visible)
-	if achievements_visible:
+	if static_refresh and achievements_visible:
 		_update_achievements_ui(delta, instant)
 	if current_screen == "menu":
 		for skill_id in skill_cards.keys():
 			var skill_id_text := str(skill_id)
 			var xp := _xp_progress(skill_id_text)
 			var card: Dictionary = skill_cards[skill_id]
-			_normalize_skill_menu_card_button(card)
-			(card["title"] as Label).text = "%s" % _skill_name(skill_id_text)
-			(card["meta"] as Label).text = "Lv %s (XP %s / %s)" % [
-				_skill_level(skill_id_text),
-				_format_compact_number(float(xp["current"])),
-				_format_compact_number(float(xp["needed"]))
-			]
-			(card["xp"] as CleanProgressBar).fill_color = _skill_theme_color(skill_id_text)
+			if static_refresh:
+				_normalize_skill_menu_card_button(card)
+				_set_label_text_if_changed(card["title"] as Label, "%s" % _skill_name(skill_id_text))
+				_set_label_text_if_changed(card["meta"] as Label, "Lv %s (XP %s / %s)" % [
+					_skill_level(skill_id_text),
+					_format_compact_number(float(xp["current"])),
+					_format_compact_number(float(xp["needed"]))
+				])
+				(card["xp"] as CleanProgressBar).fill_color = _skill_theme_color(skill_id_text)
 			_set_bar(card["xp"], float(xp["pct"]), delta, instant)
-			var stamina_gauge := card["stamina"] as RegenCircle
-			if stamina_gauge != null:
-				var max_stamina := _max_stamina(skill_id_text)
-				var stamina_value := _stamina(skill_id_text)
-				var circle_value := _stamina_fraction(skill_id_text)
-				stamina_gauge.set_theme_color(_skill_theme_color(skill_id_text))
-				stamina_gauge.set_stamina(stamina_value, max_stamina, instant, circle_value)
-				stamina_gauge.set_value(_regen_ring_ease(circle_value), instant)
-			var activity_progress := card.get("activity") as ActivityProgressRail
-			if activity_progress != null:
-				var activity_running := running_skill_id == skill_id_text and not running_action_id.is_empty()
-				activity_progress.visible = activity_running
-				activity_progress.fill_color = _skill_theme_color(skill_id_text)
-				var activity_target := action_progress * 100.0 if activity_running else 0.0
-				var activity_instant := instant or not activity_running
-				if activity_running and activity_target + 6.0 < activity_progress.value:
-					activity_instant = true
-				_set_bar(activity_progress, activity_target, delta, activity_instant)
+			_update_skill_menu_card(card, skill_id_text, delta, instant)
 	if current_screen == "skill":
 		var detail_xp := _xp_progress(selected_skill_id)
-		if detail_xp_label != null:
-			detail_xp_label.text = "Lv %s (XP %s / %s)" % [
+		if static_refresh and detail_xp_label != null:
+			_set_label_text_if_changed(detail_xp_label, "Lv %s (XP %s / %s)" % [
 				_skill_level(selected_skill_id),
 				_format_compact_number(float(detail_xp["current"])),
 				_format_compact_number(float(detail_xp["needed"]))
-			]
+			])
 		if detail_xp_bar != null:
-			detail_xp_bar.fill_color = _skill_theme_color(selected_skill_id)
+			if static_refresh:
+				detail_xp_bar.fill_color = _skill_theme_color(selected_skill_id)
 			_set_bar(detail_xp_bar, float(detail_xp["pct"]), delta, instant)
-		if detail_regen_circle != null:
+		if _fishing_rework_active_for_skill(selected_skill_id):
+			if detail_fish_circle != null:
+				_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, instant)
+		elif detail_regen_circle != null:
 			var max_stamina := _max_stamina(selected_skill_id)
 			var stamina_value := _stamina(selected_skill_id)
 			var circle_value := _stamina_fraction(selected_skill_id)
@@ -7623,36 +8733,72 @@ func _update_ui(delta: float, instant := false) -> void:
 		var parts := str(key).split(":")
 		var skill_id := parts[0]
 		var action_id := parts[1]
+		var card: Dictionary = action_cards[key]
+		if card.get("is_fishing_area"):
+			var area_running := (
+				running_skill_id == skill_id
+				and _fishing_area_card_owns_action(card, running_action_id)
+			)
+			if bool(card.get("fluid_was_running", false)) and not area_running:
+				card["fluid_exiting"] = true
+			if not static_refresh and not area_running and not bool(card.get("fluid_exiting", false)):
+				continue
+			_update_fishing_area_module(card, skill_id, area_running, delta, instant)
+			continue
+		if card.get("is_fishing_method"):
+			action_id = str(card.get("action_id", action_id))
+			var method_action := _action_data(skill_id, action_id)
+			var method_unlocked := _is_action_unlocked(skill_id, method_action)
+			var method_running := running_skill_id == skill_id and running_action_id == action_id
+			if card.get("is_fishing_location"):
+				method_running = (
+					method_running
+					and str(selected_fishing_locations.get(str(card.get("area_id", "")), "")) == str(card.get("location_id", ""))
+				)
+			if float(card.get("active_camera_zoom", 0.0)) > 1.0 and bool(card.get("active_camera_was_running", false)) and not method_running:
+				card["active_camera_returning"] = true
+			if not static_refresh and not method_running and not bool(card.get("active_camera_returning", false)):
+				continue
+			_update_fishing_method_slot(card, skill_id, action_id, method_action, method_unlocked, method_running, delta, instant)
+			continue
 		var action := _action_data(skill_id, action_id)
 		var unlocked := _is_action_unlocked(skill_id, action)
 		var running := running_skill_id == skill_id and running_action_id == action_id
-		var card: Dictionary = action_cards[key]
 		if _is_passive_action(action):
-			_update_passive_card_static_state(card, skill_id, action, unlocked)
+			if static_refresh:
+				_update_passive_card_static_state(card, skill_id, action, unlocked)
 			continue
-		_update_action_card_static_state(card, skill_id, action, unlocked)
-		_sync_activity_stat_popup(card, skill_id, action, unlocked, delta, instant)
-		var status := card["status"] as Label
-		status.text = ""
-		var medal := card["medal"] as TextureRect
-		var mastery_level := _mastery_level(skill_id, action_id)
-		_set_action_card_medal(card, medal, mastery_level, instant)
-		_update_action_card_mastery_bar(card, skill_id, action_id, delta, instant)
-		var progress_rail := card["progress"] as ActivityProgressRail
-		progress_rail.fill_color = _skill_theme_color(skill_id)
-		var progress_target := action_progress * 100.0 if running else 0.0
-		var progress_instant := instant
-		if running and progress_target + 6.0 < progress_rail.value:
-			progress_instant = true
-		_set_bar(progress_rail, progress_target, delta, progress_instant)
+		if static_refresh:
+			_update_action_card_static_state(card, skill_id, action, unlocked)
+			_sync_activity_stat_popup(card, skill_id, action, unlocked, delta, instant)
+			var status := card["status"] as Label
+			_set_label_text_if_changed(status, "")
+			var medal := card["medal"] as TextureRect
+			var mastery_level := _mastery_level(skill_id, action_id)
+			_set_action_card_medal(card, medal, mastery_level, instant)
+			_update_action_card_mastery_bar(card, skill_id, action_id, delta, instant)
+		_update_action_card_run_feedback(card, skill_id, running, delta, instant)
 	_play_pending_activity_unlock_ceremony()
 	if locked_activity_preview_fade_play_pending:
 		_play_pending_locked_activity_preview_reveals()
-	_refresh_audio_volume_controls()
-	if shop_bonus_label != null:
-		shop_bonus_label.text = _shop_bonus_label_text()
+	if static_refresh:
+		_refresh_audio_volume_controls()
+	if static_refresh and shop_bonus_label != null:
+		_set_label_text_if_changed(shop_bonus_label, _shop_bonus_label_text())
 	_expire_reset_data_confirm_if_needed()
-	_sync_tutorial_target_indicator()
+	if static_refresh:
+		_sync_tutorial_target_indicator()
+
+
+func _consume_ui_static_refresh(delta: float, instant: bool) -> bool:
+	if instant or delta <= 0.0:
+		ui_static_refresh_elapsed = 0.0
+		return true
+	ui_static_refresh_elapsed += delta
+	if ui_static_refresh_elapsed < UI_STATIC_REFRESH_INTERVAL_SECONDS:
+		return false
+	ui_static_refresh_elapsed = 0.0
+	return true
 
 
 func _set_action_card_medal(card: Dictionary, medal: TextureRect, mastery_level: int, instant: bool) -> void:
@@ -7676,11 +8822,60 @@ func _update_action_card_mastery_bar(card: Dictionary, skill_id: String, action_
 	var mastery_bar := card.get("mastery") as Control
 	if mastery_bar == null or not is_instance_valid(mastery_bar):
 		return
-	var maxed := _mastery_level(skill_id, action_id) >= MASTERY_MAX_LEVEL
+	var mastery_action_id := str(card.get("mastery_action_id", action_id))
+	var maxed := _mastery_level(skill_id, mastery_action_id) >= MASTERY_MAX_LEVEL
 	mastery_bar.visible = not maxed
 	if maxed:
+		_clear_mastery_bar_tween(mastery_bar)
 		return
-	_set_bar(mastery_bar, _mastery_progress_pct(skill_id, action_id), delta, instant)
+	_set_mastery_bar(mastery_bar, _mastery_progress_pct(skill_id, mastery_action_id), instant or bool(card.get("mastery_bar_instant_updates", false)))
+
+
+func _set_mastery_bar(mastery_bar: Control, target: float, instant: bool) -> void:
+	if mastery_bar == null or not is_instance_valid(mastery_bar):
+		return
+	var current_value := 0.0
+	if mastery_bar is CleanProgressBar:
+		current_value = float((mastery_bar as CleanProgressBar).value)
+	else:
+		return
+	var clamped_target := clampf(target, 0.0, 100.0)
+	var previous_target := float(mastery_bar.get_meta("mastery_bar_target", -9999.0))
+	var initialized := bool(mastery_bar.get_meta("mastery_bar_initialized", false))
+	if instant or not initialized:
+		_clear_mastery_bar_tween(mastery_bar)
+		mastery_bar.set_meta("mastery_bar_initialized", true)
+		mastery_bar.set_meta("mastery_bar_target", clamped_target)
+		if absf(current_value - clamped_target) > 0.001:
+			mastery_bar.call("set_value", clamped_target)
+		return
+	if absf(previous_target - clamped_target) <= 0.001:
+		return
+	mastery_bar.set_meta("mastery_bar_target", clamped_target)
+	_clear_mastery_bar_tween(mastery_bar)
+	if absf(current_value - clamped_target) <= 0.01:
+		mastery_bar.call("set_value", clamped_target)
+		return
+	var tween := create_tween()
+	mastery_bar.set_meta("mastery_bar_tween", tween)
+	tween.tween_method(Callable(mastery_bar, "set_value"), current_value, clamped_target, MASTERY_BAR_EASE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		if not is_instance_valid(mastery_bar):
+			return
+		mastery_bar.call("set_value", clamped_target)
+		if mastery_bar.has_meta("mastery_bar_tween") and mastery_bar.get_meta("mastery_bar_tween") == tween:
+			mastery_bar.remove_meta("mastery_bar_tween")
+	)
+
+
+func _clear_mastery_bar_tween(mastery_bar: Control) -> void:
+	if mastery_bar == null or not is_instance_valid(mastery_bar):
+		return
+	if mastery_bar.has_meta("mastery_bar_tween"):
+		var tween := mastery_bar.get_meta("mastery_bar_tween") as Tween
+		if tween != null and tween.is_valid():
+			tween.kill()
+		mastery_bar.remove_meta("mastery_bar_tween")
 
 
 func _place_action_card_medal(card: Dictionary, medal: TextureRect, mastery_level: int) -> void:
@@ -7787,7 +8982,8 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 	var ceremony_active := bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
 	var xp_text := "+%s\nXP" % _effective_xp(action, skill_id)
 	var stamina_text := "%s\nSTAM" % _display_stamina_cost(skill_id, action)
-	var time_text := "%ss\nTIME" % _format_seconds(_effective_seconds(skill_id, action))
+	var time_label := "FILL" if _fishing_net_soak_active(skill_id) else "TIME"
+	var time_text := "%ss\n%s" % [_format_seconds(_action_cycle_seconds(skill_id, action)), time_label]
 	var success_text := "%s%%\nRATE" % int(_success_chance(skill_id, action))
 	if card.get("last_xp_text", "") != xp_text:
 		_set_label_text_if_changed(card["xp"] as Label, xp_text)
@@ -7828,9 +9024,11 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		art.material = null
 	var border := card.get("border") as ActivityCardBorder
 	if border != null:
-		border.border_color = COLOR_INK
-		border.border_width = 8.0
-		border.queue_redraw()
+		if str(card.get("passive_border_state", "")) != "default":
+			card["passive_border_state"] = "default"
+			border.border_color = COLOR_INK
+			border.border_width = 8.0
+			border.queue_redraw()
 	card["last_unlocked"] = unlocked
 
 
@@ -8334,18 +9532,21 @@ func _sync_activity_stat_popup(card: Dictionary, skill_id: String, action: Dicti
 	var stat_kind := expanded_activity_stat_kind if expanded_activity_stat_key == key and unlocked else ""
 	var expanded := not stat_kind.is_empty()
 	var root := card.get("root") as Control
-	var bg := card.get("bg") as RoundedTextureRect
-	if bg != null:
-		bg.art_height = ACTION_CARD_HEIGHT
-		bg.feather_height = 170.0
-		bg.fallback_color = _skill_theme_color(skill_id)
-		bg._update_mask_params()
-	var border := card.get("border") as ActivityCardBorder
-	if border != null:
-		border.border_color = COLOR_INK
-		border.border_width = 8.0
-		border.queue_redraw()
-	_sync_activity_stat_box_styles(card, stat_kind)
+	var visual_key := "%s:%s" % [stat_kind, _skill_theme_color(skill_id).to_html(true)]
+	if str(card.get("stat_popup_visual_key", "")) != visual_key:
+		card["stat_popup_visual_key"] = visual_key
+		var bg := card.get("bg") as RoundedTextureRect
+		if bg != null:
+			bg.art_height = ACTION_CARD_HEIGHT
+			bg.feather_height = 170.0
+			bg.fallback_color = _skill_theme_color(skill_id)
+			bg._update_mask_params()
+		var border := card.get("border") as ActivityCardBorder
+		if border != null:
+			border.border_color = COLOR_INK
+			border.border_width = 8.0
+			border.queue_redraw()
+		_sync_activity_stat_box_styles(card, stat_kind)
 	if expanded:
 		var displayed_stat_kind := str(card.get("bonus_displayed_stat_kind", ""))
 		var pending_stat_kind := str(card.get("bonus_pending_stat_kind", ""))
@@ -8368,7 +9569,11 @@ func _sync_activity_stat_box_styles(card: Dictionary, active_kind: String) -> vo
 		var box := boxes[kind] as Control
 		if box == null:
 			continue
-		_apply_action_stat_box_style(box, str(kind) == active_kind)
+		var active := str(kind) == active_kind
+		if bool(box.get_meta("stat_box_style_active", false)) == active:
+			continue
+		box.set_meta("stat_box_style_active", active)
+		_apply_action_stat_box_style(box, active)
 
 
 func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool, instant: bool) -> void:
@@ -8499,6 +9704,13 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 				"bonuses": stamina_lines
 			}
 		"time":
+			if _fishing_net_soak_active(skill_id):
+				return {
+					"title": "FILL",
+					"original": "%ss" % _format_significant_digits(float(action.get("seconds", 1.0))),
+					"current": "%ss" % _format_significant_digits(_action_cycle_seconds(skill_id, action)),
+					"bonuses": ["Fish enter the net in batches, then the full net hauls at 10+ fish."]
+				}
 			var base_seconds := maxf(0.1, float(action.get("seconds", 1.0)))
 			var time_lines := []
 			var medal_speed := _global_medal_bonus("speed_mult")
@@ -8582,6 +9794,9 @@ func _update_skill_swipe_preview_state(state: Dictionary, delta: float, instant:
 	if xp_bar != null:
 		xp_bar.fill_color = _skill_theme_color(skill_id)
 		_set_bar(xp_bar, float(xp["pct"]), delta, instant)
+	var fish_circle := state.get("fish_circle") as FishCircle
+	if fish_circle != null:
+		_set_fish_circle_for_skill(fish_circle, skill_id, instant)
 	var regen_circle := state.get("regen_circle") as RegenCircle
 	if regen_circle != null:
 		_set_regen_circle_for_skill(regen_circle, skill_id, instant)
@@ -8606,14 +9821,7 @@ func _update_skill_swipe_preview_state(state: Dictionary, delta: float, instant:
 		var mastery_level := _mastery_level(skill_id, action_id)
 		_set_action_card_medal(action_card, medal, mastery_level, instant)
 		_update_action_card_mastery_bar(action_card, skill_id, action_id, delta, instant)
-		var progress_rail := action_card.get("progress") as ActivityProgressRail
-		if progress_rail != null:
-			progress_rail.fill_color = _skill_theme_color(skill_id)
-			var progress_target := action_progress * 100.0 if running else 0.0
-			var progress_instant := instant
-			if running and progress_target + 6.0 < progress_rail.value:
-				progress_instant = true
-			_set_bar(progress_rail, progress_target, delta, progress_instant)
+		_update_action_card_run_feedback(action_card, skill_id, running, delta, instant)
 
 
 func _sync_skill_swipe_preview_scroll_state(state: Dictionary) -> void:
@@ -8630,6 +9838,11 @@ func _sync_skill_swipe_preview_scroll_state(state: Dictionary) -> void:
 func _set_label_text_if_changed(label: Label, next_text: String) -> void:
 	if label != null and label.text != next_text:
 		label.text = next_text
+
+
+func _set_button_text_if_changed(button: Button, next_text: String) -> void:
+	if button != null and button.text != next_text:
+		button.text = next_text
 
 
 func _update_achievements_ui(delta: float, instant: bool) -> void:
@@ -9325,13 +10538,25 @@ func _skill_detail_needs_action_list_refresh() -> bool:
 	if not pending_activity_unlock_ceremony.is_empty() or activity_unlock_ceremony_count > 0:
 		return false
 	var expected_action_ids := []
-	for action in _visible_actions_for_skill(selected_skill_id):
-		expected_action_ids.append(str(action["id"]))
+	if _fishing_rework_active_for_skill(selected_skill_id):
+		expected_action_ids = _fishing_detail_render_signature()
+	else:
+		for action in _visible_actions_for_skill(selected_skill_id):
+			expected_action_ids.append(str(action["id"]))
 	if expected_action_ids.size() != detail_rendered_action_ids.size():
 		return true
 	for i in range(expected_action_ids.size()):
 		if str(expected_action_ids[i]) != str(detail_rendered_action_ids[i]):
 			return true
+	if _fishing_rework_active_for_skill(selected_skill_id):
+		for raw_key in action_cards.keys():
+			if not str(raw_key).begins_with("fishing:"):
+				continue
+			var card := action_cards[raw_key] as Dictionary
+			if card == null:
+				continue
+			if card.get("is_fishing_area") and not card.get("uses_static_background_only", false) and card.get("fluid_strip") == null:
+				return true
 	return false
 
 
@@ -9438,6 +10663,24 @@ func _scroll_detail_actions_to_unlock_target(action_id: String) -> void:
 	detail_actions_scroll.scroll_to_vertical(target, ACTIVITY_UNLOCK_CENTER_SCROLL_SECONDS, Tween.TRANS_QUINT, Tween.EASE_OUT)
 
 
+func _skill_detail_bottom_scroll_pad() -> float:
+	if current_screen != "skill":
+		return 0.0
+	return SKILL_DETAIL_BOTTOM_SCROLL_PAD
+
+
+func _detail_actions_bottom_scroll_pad(skill_id: String) -> float:
+	return _skill_detail_bottom_scroll_pad() + _detail_unlock_scroll_spacer_height(skill_id)
+
+
+func _sync_detail_actions_bottom_spacer() -> void:
+	if detail_unlock_scroll_spacer == null or not is_instance_valid(detail_unlock_scroll_spacer):
+		return
+	var height := _detail_actions_bottom_scroll_pad(selected_skill_id)
+	detail_unlock_scroll_spacer.custom_minimum_size = Vector2(0, height)
+	detail_unlock_scroll_spacer.update_minimum_size()
+
+
 func _set_detail_unlock_scroll_spacer_height(height: float) -> void:
 	var normalized_height := maxf(0.0, height)
 	if selected_skill_id.is_empty():
@@ -9446,10 +10689,7 @@ func _set_detail_unlock_scroll_spacer_height(height: float) -> void:
 		detail_unlock_scroll_spacer_heights[selected_skill_id] = normalized_height
 	else:
 		detail_unlock_scroll_spacer_heights.erase(selected_skill_id)
-	if detail_unlock_scroll_spacer == null or not is_instance_valid(detail_unlock_scroll_spacer):
-		return
-	detail_unlock_scroll_spacer.custom_minimum_size = Vector2(0, normalized_height)
-	detail_unlock_scroll_spacer.update_minimum_size()
+	_sync_detail_actions_bottom_spacer()
 
 
 func _detail_unlock_scroll_spacer_height(skill_id: String) -> float:
@@ -9463,14 +10703,16 @@ func _release_detail_unlock_extra_scroll_space() -> void:
 		return
 	if detail_unlock_scroll_spacer_tween != null and detail_unlock_scroll_spacer_tween.is_valid():
 		detail_unlock_scroll_spacer_tween.kill()
-	var start_height := maxf(detail_unlock_scroll_spacer.custom_minimum_size.y, _detail_unlock_scroll_spacer_height(selected_skill_id))
-	if start_height <= 1.0:
+	var base_pad := _skill_detail_bottom_scroll_pad()
+	var start_height := maxf(detail_unlock_scroll_spacer.custom_minimum_size.y, _detail_actions_bottom_scroll_pad(selected_skill_id))
+	var start_extra := maxf(0.0, start_height - base_pad)
+	if start_extra <= 1.0:
 		_set_detail_unlock_scroll_spacer_height(0.0)
 		return
 	detail_unlock_scroll_spacer_tween = create_tween()
 	detail_unlock_scroll_spacer_tween.tween_method(
 		func(progress: float) -> void:
-			_set_detail_unlock_scroll_spacer_height(lerpf(start_height, 0.0, clampf(progress, 0.0, 1.0))),
+			_set_detail_unlock_scroll_spacer_height(lerpf(start_extra, 0.0, clampf(progress, 0.0, 1.0))),
 		0.0,
 		1.0,
 		ACTIVITY_UNLOCK_SPACER_SETTLE_SECONDS
@@ -10080,6 +11322,8 @@ func _show_skill_swipe_tip_note() -> void:
 
 
 func _show_lock_click_tip_note_if_needed() -> void:
+	if not _skill_detail_shows_tutorial_tips():
+		return
 	if current_screen != "skill" or detail_actions_scroll == null or lock_click_tip_seen:
 		return
 	if not get_tree().get_nodes_in_group("lock_click_tip_notes").is_empty():
@@ -10107,21 +11351,36 @@ func _show_lock_click_tip_note_if_needed() -> void:
 
 
 func _show_stamina_gauge_tip() -> void:
+	if not _skill_detail_shows_tutorial_tips():
+		return
 	if current_screen != "skill" or detail_header_body == null or not is_instance_valid(detail_header_body):
 		return
 	_add_stamina_gauge_tip(detail_header_body, true)
 
 
 func _run_boot_warmup() -> void:
+	if _boot_warmup_cancelled():
+		return
 	var started_msec := Time.get_ticks_msec()
 	await get_tree().process_frame
+	if _boot_warmup_cancelled():
+		return
 	await _prewarm_boot_textures(0.0, 0.58)
+	if _boot_warmup_cancelled():
+		return
 	await _prewarm_boot_skill_pages(0.58, 0.96)
+	if _boot_warmup_cancelled():
+		return
 	await _wait_for_active_skill_preview_prewarm()
+	if _boot_warmup_cancelled():
+		return
 	_set_boot_warmup_progress("Ready", 1.0)
 	var elapsed := float(Time.get_ticks_msec() - started_msec) / 1000.0
-	if elapsed < BOOT_WARMUP_MIN_VISIBLE_SECONDS:
-		await get_tree().create_timer(BOOT_WARMUP_MIN_VISIBLE_SECONDS - elapsed).timeout
+	while elapsed < BOOT_WARMUP_MIN_VISIBLE_SECONDS:
+		await get_tree().process_frame
+		if _boot_warmup_cancelled():
+			return
+		elapsed = float(Time.get_ticks_msec() - started_msec) / 1000.0
 	_hide_boot_warmup_overlay()
 
 
@@ -10132,26 +11391,38 @@ func _prewarm_boot_textures(progress_start: float, progress_end: float) -> void:
 		return
 	var last_yield_msec := Time.get_ticks_msec()
 	for i in range(paths.size()):
+		if _boot_warmup_cancelled():
+			return
 		_texture(str(paths[i]))
 		var pct := float(i + 1) / float(paths.size())
 		_set_boot_warmup_progress("Loading art %s/%s" % [i + 1, paths.size()], lerpf(progress_start, progress_end, pct))
 		if Time.get_ticks_msec() - last_yield_msec >= BOOT_WARMUP_FRAME_BUDGET_MSEC:
 			await get_tree().process_frame
+			if _boot_warmup_cancelled():
+				return
 			last_yield_msec = Time.get_ticks_msec()
 
 
 func _prewarm_boot_skill_pages(progress_start: float, progress_end: float) -> void:
+	if _boot_warmup_cancelled():
+		return
 	_set_boot_warmup_progress("Preparing pages...", lerpf(progress_start, progress_end, 0.5))
 	await get_tree().process_frame
+	if _boot_warmup_cancelled():
+		return
 	_set_boot_warmup_progress("Prepared pages", progress_end)
 
 
 func _wait_for_active_skill_preview_prewarm() -> void:
 	var frames_remaining := 45
-	while skill_swipe_preview_prewarm_pending and frames_remaining > 0:
+	while skill_swipe_preview_prewarm_pending and frames_remaining > 0 and not _boot_warmup_cancelled():
 		_set_boot_warmup_progress("Preparing swipes...", 0.98)
 		await get_tree().process_frame
 		frames_remaining -= 1
+
+
+func _boot_warmup_cancelled() -> bool:
+	return boot_warmup_cancel_requested or not is_inside_tree()
 
 
 func _boot_warmup_texture_paths() -> Array:
@@ -10180,6 +11451,10 @@ func _boot_warmup_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_TOP_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_BOTTOM_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ACTIVITY_BACK_TEXTURE)
+	for catch_path in FISHING_CATCH_TEXTURE_PATHS:
+		_add_boot_warmup_texture_path(paths, catch_path)
+	for catch_path in FISHING_ACTION_CATCH_TEXTURE_PATHS.values():
+		_add_boot_warmup_texture_path(paths, catch_path)
 	for skill_id in _boot_warmup_skill_ids():
 		_add_boot_warmup_texture_path(paths, _skill_icon_path(skill_id))
 		for action in _visible_actions_for_skill(skill_id):
@@ -10211,6 +11486,8 @@ func _add_boot_warmup_texture_path(paths: Array, path: String) -> void:
 
 
 func _queue_skill_swipe_preview_prewarm() -> void:
+	if DisplayServer.get_name() == "headless":
+		return
 	if current_screen != "skill" or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		return
 	if skill_swipe_tracking or skill_swipe_animating:
@@ -10392,14 +11669,23 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	title_stack.add_child(xp_bar)
 	state["xp_bar"] = xp_bar
 
-	var regen_circle := RegenCircle.new()
-	regen_circle.custom_minimum_size = Vector2(552, 552)
-	regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	regen_circle.set_theme_color(_skill_theme_color(skill_id))
-	header_row.add_child(regen_circle)
-	state["regen_circle"] = regen_circle
-	_set_regen_circle_for_skill(regen_circle, skill_id, true)
+	if _fishing_rework_active_for_skill(skill_id):
+		var fish_circle := FishCircle.new()
+		fish_circle.custom_minimum_size = Vector2(552, 552)
+		fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		fish_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		header_row.add_child(fish_circle)
+		state["fish_circle"] = fish_circle
+		_set_fish_circle_for_skill(fish_circle, skill_id, true)
+	else:
+		var regen_circle := RegenCircle.new()
+		regen_circle.custom_minimum_size = Vector2(552, 552)
+		regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		regen_circle.set_theme_color(_skill_theme_color(skill_id))
+		header_row.add_child(regen_circle)
+		state["regen_circle"] = regen_circle
+		_set_regen_circle_for_skill(regen_circle, skill_id, true)
 
 	var divider := Control.new()
 	divider.custom_minimum_size = Vector2(0, SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
@@ -10432,12 +11718,15 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview_stack.add_child(top_spacer)
 
-	for action in _visible_actions_for_skill(skill_id):
-		var card_result := _build_passive_module_card(skill_id, action as Dictionary, content_width, false) if _is_passive_action(action as Dictionary) else _skill_swipe_preview_action_card(skill_id, action, content_width)
-		_prepare_locked_activity_preview_fade(card_result["card"] as Dictionary, skill_id, action as Dictionary)
-		_sync_locked_activity_preview_presence(card_result["card"] as Dictionary, skill_id, action as Dictionary)
-		preview_stack.add_child(card_result["root"])
-		(state["action_cards"] as Array).append(card_result["card"])
+	if _fishing_rework_active_for_skill(skill_id):
+		_render_fishing_area_modules_preview(preview_stack, content_width, state)
+	else:
+		for action in _visible_actions_for_skill(skill_id):
+			var card_result := _build_passive_module_card(skill_id, action as Dictionary, content_width, false) if _is_passive_action(action as Dictionary) else _skill_swipe_preview_action_card(skill_id, action, content_width)
+			_prepare_locked_activity_preview_fade(card_result["card"] as Dictionary, skill_id, action as Dictionary)
+			_sync_locked_activity_preview_presence(card_result["card"] as Dictionary, skill_id, action as Dictionary)
+			preview_stack.add_child(card_result["root"])
+			(state["action_cards"] as Array).append(card_result["card"])
 	if not activity_start_tip_seen:
 		preview_stack.add_child(_activity_start_tip_note(content_width))
 	elif _skill_swipe_tip_available():
@@ -10559,6 +11848,8 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 
 func _add_stamina_gauge_tip(parent: Control, fade_in := false) -> void:
 	stamina_gauge_tip_root = null
+	if not _skill_detail_shows_tutorial_tips():
+		return
 	if not _stamina_gauge_tip_available():
 		return
 	var root := Control.new()
@@ -10918,18 +12209,23 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 		border.queue_redraw()
 	var currency_label := card.get("currency") as Label
 	if currency_label != null:
-		currency_label.text = str(log_currency)
+		_set_label_text_if_changed(currency_label, str(log_currency))
 	var plank_button := card.get("plank") as Button
 	if plank_button != null:
 		plank_button.button_pressed = plank_boost_enabled
 		plank_button.disabled = (not unlocked) or ceremony_active
-		plank_button.add_theme_stylebox_override("normal", _passive_icon_button_style(plank_boost_enabled))
-		plank_button.add_theme_stylebox_override("hover", _passive_icon_button_style(plank_boost_enabled, false))
-		plank_button.add_theme_stylebox_override("pressed", _passive_icon_button_style(true, true))
-		plank_button.add_theme_stylebox_override("disabled", _passive_icon_button_style(false))
+		if bool(plank_button.get_meta("passive_style_active", false)) != plank_boost_enabled:
+			plank_button.set_meta("passive_style_active", plank_boost_enabled)
+			plank_button.add_theme_stylebox_override("normal", _passive_icon_button_style(plank_boost_enabled))
+			plank_button.add_theme_stylebox_override("hover", _passive_icon_button_style(plank_boost_enabled, false))
+			plank_button.add_theme_stylebox_override("pressed", _passive_icon_button_style(true, true))
+			plank_button.add_theme_stylebox_override("disabled", _passive_icon_button_style(false))
 	var plank_light := card.get("plank_light") as Panel
 	if plank_light != null:
-		plank_light.add_theme_stylebox_override("panel", _passive_plank_light_style(plank_boost_enabled and unlocked))
+		var light_active := plank_boost_enabled and unlocked
+		if bool(plank_light.get_meta("passive_light_active", false)) != light_active:
+			plank_light.set_meta("passive_light_active", light_active)
+			plank_light.add_theme_stylebox_override("panel", _passive_plank_light_style(light_active))
 	var stats := card.get("stats", {}) as Dictionary
 	_set_label_text_if_changed(stats.get("time") as Label, _format_passive_time(int(state.get("time_seconds", PASSIVE_TIME_START))))
 	_set_label_text_if_changed(stats.get("yield") as Label, "+%s" % int(state.get("yield", PASSIVE_YIELD_START)))
@@ -10944,13 +12240,9 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 		upgrade.visible = not maxed
 		upgrade.disabled = (not unlocked) or ceremony_active or maxed or log_currency < cost
 		upgrade.modulate = Color(1, 1, 1, 0.42) if upgrade.disabled else Color.WHITE
-		upgrade.add_theme_stylebox_override("normal", _passive_upgrade_button_style(upgrade.disabled, false))
-		upgrade.add_theme_stylebox_override("hover", _passive_upgrade_button_style(upgrade.disabled, false))
-		upgrade.add_theme_stylebox_override("pressed", _passive_upgrade_button_style(upgrade.disabled, true, true))
-		upgrade.add_theme_stylebox_override("disabled", _passive_upgrade_button_style(true, false))
 		var cost_label := upgrade.get_meta("cost_label", null) as Label
 		if cost_label != null:
-			cost_label.text = str(cost)
+			_set_label_text_if_changed(cost_label, str(cost))
 	var progress := card.get("progress") as ActivityProgressRail
 	if progress != null:
 		progress.fill_color = _skill_theme_color("woodcutting")
@@ -11646,19 +12938,24 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	mastery_progress.z_index = 20
 	copy.add_child(mastery_progress)
 
-	var progress := ActivityProgressRail.new()
-	progress.fill_color = _skill_theme_color(skill_id)
-	progress.anchor_left = 0.0
-	progress.anchor_right = 1.0
-	progress.anchor_top = 1.0
-	progress.anchor_bottom = 1.0
-	progress.offset_left = ACTION_PROGRESS_RAIL_INSET
-	progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
-	progress.offset_top = -ACTION_PROGRESS_RAIL_HEIGHT
-	progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
-	progress.z_index = 152
-	progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(progress)
+	var progress: ActivityProgressRail = null
+	var fluid_strip: Control = null
+	if _fishing_rework_active_for_skill(skill_id):
+		fluid_strip = _attach_fishing_fluid_strip(pop_card, action)
+	else:
+		progress = ActivityProgressRail.new()
+		progress.fill_color = _skill_theme_color(skill_id)
+		progress.anchor_left = 0.0
+		progress.anchor_right = 1.0
+		progress.anchor_top = 1.0
+		progress.anchor_bottom = 1.0
+		progress.offset_left = ACTION_PROGRESS_RAIL_INSET
+		progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
+		progress.offset_top = -ACTION_PROGRESS_RAIL_HEIGHT
+		progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
+		progress.z_index = 152
+		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pop_card.add_child(progress)
 
 	var inner_shadow := ActivityCardInnerShadow.new()
 	inner_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -11690,6 +12987,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		"medal": medal,
 		"mastery": mastery_progress,
 		"progress": progress,
+		"fluid_strip": fluid_strip,
 		"border": border,
 		"lock_overlay": lock_overlay,
 		"action": action,
@@ -11799,6 +13097,10 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 		return
 	var ceremony_active := bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
 	var lock_visible := (not unlocked) or ceremony_active
+	var sync_key := "%s:%s:%s" % [lock_visible, ceremony_active, int(action.get("unlock", 1))]
+	if str(card.get("lock_overlay_sync_key", "")) == sync_key:
+		return
+	card["lock_overlay_sync_key"] = sync_key
 	overlay_root.visible = lock_visible
 	overlay_root.mouse_filter = Control.MOUSE_FILTER_PASS if lock_visible else Control.MOUSE_FILTER_IGNORE
 	var rig := overlay.get("group") as ActivityLockRig
@@ -12021,6 +13323,19 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 			pop.position.y = 0.0
 		card.erase("unlock_next_preview_smooth")
 	)
+
+
+func _stage_fishing_module_fade_in(root: Control, collapse_height := true) -> void:
+	if root == null or not is_instance_valid(root):
+		return
+	var pop := root.get_child(0) as Control if root.get_child_count() > 0 else null
+	var card := {
+		"root": root,
+		"pop": pop,
+		"unlock_next_preview_smooth": true,
+	}
+	_stage_activity_preview_enter(card, collapse_height)
+	call_deferred("_play_activity_preview_fade_in", card)
 
 
 func _stage_activity_preview_enter(card: Dictionary, collapse_height := true) -> void:
@@ -12255,10 +13570,11 @@ func _process_action(delta: float) -> void:
 		tired_activity_zero_float_action_key = ""
 		return
 	var active_key := _action_key(running_skill_id, running_action_id)
+	var fishing_rework_attempt := _fishing_rework_active_for_skill(running_skill_id)
 	var cost := _effective_stamina(running_skill_id, action)
-	var has_stamina_for_action := _stamina_value(running_skill_id) + 0.0001 >= cost
-	var speed_mult := 1.0 if has_stamina_for_action else LOW_STAMINA_ACTION_SPEED_MULT
-	if not has_stamina_for_action:
+	var has_stamina_for_action := true if fishing_rework_attempt else _stamina_value(running_skill_id) + 0.0001 >= cost
+	var speed_mult := _action_progress_speed_multiplier(running_skill_id, action, has_stamina_for_action)
+	if not fishing_rework_attempt and not has_stamina_for_action:
 		var low_stamina_message := _low_stamina_training_text(action)
 		if last_result != low_stamina_message:
 			last_result = low_stamina_message
@@ -12268,11 +13584,14 @@ func _process_action(delta: float) -> void:
 			_float_tired_activity_feedback(active_key)
 	else:
 		tired_activity_zero_float_action_key = ""
-	action_progress += delta / _effective_seconds(running_skill_id, action) * speed_mult
+	action_progress += delta / _action_cycle_seconds(running_skill_id, action) * speed_mult
 	if action_progress < 1.0:
 		return
 	var bonus_snapshot_before := _capture_visible_bonus_snapshot()
 	action_progress = 0.0
+	if fishing_rework_attempt:
+		_complete_fishing_action_attempt(action, active_key, bonus_snapshot_before)
+		return
 	if _stamina_value(running_skill_id) + 0.0001 >= cost:
 		stamina[running_skill_id] = maxf(0.0, _stamina_value(running_skill_id) - cost)
 		_sync_stamina_bank(running_skill_id)
@@ -12286,6 +13605,7 @@ func _process_action(delta: float) -> void:
 	var old_skill_level := _skill_level(running_skill_id)
 	var locked_preview_available_before := _locked_activity_preview_available()
 	var success := randf() * 100.0 <= _success_chance(running_skill_id, action)
+	_play_fishing_attempt_reveal(running_skill_id, running_action_id, success)
 	if success:
 		var streak_step := _record_successful_activity_completion(reward_key)
 		var streak_bonus := streak_step == ACTIVITY_STREAK_BONUS_STEP
@@ -12468,7 +13788,7 @@ func _append_visible_stamina_bonus_entries(entries: Array, amount: int, skill_id
 			var card := skill_cards[raw_skill_id] as Dictionary
 			_append_bonus_emphasis_entry(entries, {
 				"kind": "stamina",
-				"anchor": card.get("stamina") as Control,
+				"anchor": _skill_menu_card_side_gauge(card),
 				"text": text,
 				"font_size": 66,
 				"start_offset": Vector2(0, -54),
@@ -12577,7 +13897,7 @@ func _emphasize_visible_stamina_bonus(amount: int, skill_id := "", delay := 0.0)
 			if not skill_id.is_empty() and card_skill_id != skill_id:
 				continue
 			var card := skill_cards[raw_skill_id] as Dictionary
-			var gauge := card.get("stamina") as Control
+			var gauge := _skill_menu_card_side_gauge(card)
 			if gauge != null and is_instance_valid(gauge) and gauge.is_inside_tree():
 				_flash_bonus_control(gauge, delay)
 				_float_reward(self, gauge, text, 66, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -54), Vector2(0, -150), delay)
@@ -12683,6 +14003,22 @@ func _regen_ring_ease(raw_value: float) -> float:
 	return clampf(t + sin(TAU * 2.0 * t) * STAMINA_GAUGE_RING_SPEED_VARIANCE / (TAU * 2.0), 0.0, 1.0)
 
 
+func _fish_currency_display_text(count: int) -> String:
+	return _format_compact_number(float(maxi(0, count)), 3)
+
+
+func _set_fish_circle_for_skill(circle: FishCircle, skill_id: String, instant := false) -> void:
+	if circle == null or not is_instance_valid(circle):
+		return
+	if not circle.is_inside_tree():
+		return
+	circle.set_theme_color(_skill_theme_color(skill_id))
+	circle.set_fish_count(fish_currency, _fish_currency_display_text(fish_currency), instant)
+	var tool_def := _fishing_tool_def(equipped_fishing_tool_id)
+	circle.set_tool_text("")
+	circle.set_tool_icon(str(tool_def.get("art", "res://docs/assets/fishing/actions/01-scoop-pond-minnows.png")))
+
+
 func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant := false) -> void:
 	if circle == null or not is_instance_valid(circle) or not circle.is_inside_tree():
 		return
@@ -12708,12 +14044,14 @@ func _start_action(skill_id: String, action_id: String) -> bool:
 		return true
 	_unlock_audio_for_gameplay()
 	if running_skill_id == skill_id and running_action_id == action_id:
+		var stop_action_key := _action_key(skill_id, action_id)
 		running_skill_id = ""
 		running_action_id = ""
 		action_progress = 0.0
 		tired_activity_zero_float_action_key = ""
 		_nudge_music_flow_down(0.4)
 		_set_result("%s stopped." % action["name"])
+		_pop_activity_button(stop_action_key)
 		_update_ui(0.0, false)
 		return true
 	selected_skill_id = skill_id
@@ -12727,7 +14065,9 @@ func _start_action(skill_id: String, action_id: String) -> bool:
 	_play(activity_start_player)
 	var action_key := _action_key(skill_id, action_id)
 	_pop_activity_button(action_key)
-	if _stamina_value(skill_id) + 0.0001 < _effective_stamina(skill_id, action):
+	if _fishing_rework_active_for_skill(skill_id):
+		_set_result("%s started." % action["name"])
+	elif _stamina_value(skill_id) + 0.0001 < _effective_stamina(skill_id, action):
 		_set_result(_low_stamina_training_text(action))
 		_float_tired_activity_feedback(action_key)
 		if _stamina(skill_id) <= 0:
@@ -12752,10 +14092,15 @@ func _start_action_from_card_tap(skill_id: String, action_id: String) -> void:
 func _pop_activity_button(action_key: String) -> void:
 	if not action_cards.has(action_key):
 		return
-	var card := action_cards[action_key].get("pop") as Control
-	if card == null:
+	var card := action_cards[action_key] as Dictionary
+	var pop := card.get("pop") as Control
+	if pop != null:
+		_animate_activity_press_effect(pop, action_key, 0.982)
 		return
-	_animate_activity_press_effect(card, action_key, 0.982)
+	if card.get("is_fishing_method"):
+		var art_panel := card.get("art_panel") as Control
+		if art_panel != null:
+			_animate_activity_press_effect(art_panel, action_key, 0.982)
 
 
 func _press_activity_stat_box(action_key: String, stat_kind: String) -> void:
@@ -13527,7 +14872,7 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	stat_row.add_theme_constant_override("separation", 28)
 	offline_summary_stack.add_child(stat_row)
 	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), "res://docs/assets/ui/motivation-star.png"))
-	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% XP" % int(round(OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), "res://docs/assets/ui/total-lv-bargraph.png"))
+	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), "res://docs/assets/ui/total-lv-bargraph.png"))
 
 	if progress_content_height > 0.0:
 		var list := VBoxContainer.new()
@@ -14124,6 +15469,25 @@ func _clear_active_audio_slider() -> void:
 
 
 func _refresh_audio_volume_controls() -> void:
+	var sync_key := "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" % [
+		music_volume,
+		sfx_volume,
+		music_muted,
+		sfx_muted,
+		offline_progress_enabled,
+		_control_array_ids(music_volume_sliders),
+		_control_array_ids(sfx_volume_sliders),
+		_control_array_ids(music_volume_labels),
+		_control_array_ids(sfx_volume_labels),
+		_control_array_ids(music_mute_toggles),
+		_control_array_ids(sfx_mute_toggles),
+		_control_array_ids(music_mute_labels),
+		_control_array_ids(sfx_mute_labels),
+		_control_array_ids(offline_progress_toggles),
+	]
+	if audio_controls_sync_key == sync_key:
+		return
+	audio_controls_sync_key = sync_key
 	music_volume_sliders = _sync_volume_sliders(music_volume_sliders, music_volume)
 	sfx_volume_sliders = _sync_volume_sliders(sfx_volume_sliders, sfx_volume)
 	music_volume_labels = _sync_volume_labels(music_volume_labels, music_volume)
@@ -14135,13 +15499,24 @@ func _refresh_audio_volume_controls() -> void:
 	_refresh_offline_progress_controls()
 
 
+func _control_array_ids(controls: Array) -> String:
+	var ids := PackedStringArray()
+	for raw_control in controls:
+		var control := raw_control as Control
+		if control == null or not is_instance_valid(control):
+			ids.append("x")
+		else:
+			ids.append(str(control.get_instance_id()))
+	return ",".join(ids)
+
+
 func _refresh_offline_progress_controls() -> void:
 	var live := []
 	for raw_toggle in offline_progress_toggles:
 		var toggle := raw_toggle as Button
 		if toggle == null or not is_instance_valid(toggle):
 			continue
-		toggle.text = _offline_progress_toggle_text()
+		_set_button_text_if_changed(toggle, _offline_progress_toggle_text())
 		_apply_offline_progress_toggle_style(toggle)
 		live.append(toggle)
 	offline_progress_toggles = live
@@ -14153,7 +15528,9 @@ func _sync_volume_sliders(sliders: Array, volume: float) -> Array:
 		var slider := raw_slider as HSlider
 		if slider == null or not is_instance_valid(slider):
 			continue
-		slider.set_value_no_signal(round(clampf(volume, 0.0, 1.0) * 100.0))
+		var next_value: float = round(clampf(volume, 0.0, 1.0) * 100.0)
+		if absf(float(slider.value) - next_value) > 0.001:
+			slider.set_value_no_signal(next_value)
 		live.append(slider)
 	return live
 
@@ -14164,7 +15541,7 @@ func _sync_mute_labels(labels: Array, muted: bool) -> Array:
 		var label := raw_label as Label
 		if label == null or not is_instance_valid(label):
 			continue
-		label.text = "X" if muted else ""
+		_set_label_text_if_changed(label, "X" if muted else "")
 		live.append(label)
 	return live
 
@@ -14175,7 +15552,7 @@ func _sync_volume_labels(labels: Array, volume: float) -> Array:
 		var label := raw_label as Label
 		if label == null or not is_instance_valid(label):
 			continue
-		label.text = "%s%%" % int(round(clampf(volume, 0.0, 1.0) * 100.0))
+		_set_label_text_if_changed(label, "%s%%" % int(round(clampf(volume, 0.0, 1.0) * 100.0)))
 		live.append(label)
 	return live
 
@@ -14628,13 +16005,18 @@ func _set_result(text: String) -> void:
 
 
 func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_amount: float, xp_crit := false, mega_crit := false) -> void:
-	if not action_cards.has(key):
+	var card: Dictionary = {}
+	if action_cards.has(key):
+		card = action_cards[key]
+	else:
+		var parts := key.split(":")
+		if parts.size() >= 2 and _fishing_rework_active_for_skill(str(parts[0])):
+			card = _fishing_method_card_for_action(str(parts[0]), str(parts[1]))
+	if card.is_empty():
 		return
-	var card: Dictionary = action_cards[key]
-	var button := card.get("button") as Button
 	var art_panel := card.get("art_panel") as Control
 	var mastery_bar := card.get("mastery") as Control
-	if button == null or art_panel == null:
+	if art_panel == null:
 		return
 	art_panel.pivot_offset = art_panel.size * 0.5
 	if success:
@@ -14923,7 +16305,8 @@ func _float_xp(parent: Control, anchor: Control, xp_amount: int) -> void:
 func _float_mastery_bar(parent: Control, anchor: Control, mastery_amount: float) -> void:
 	if mastery_amount <= 0:
 		return
-	_float_reward(parent, anchor, "+%s" % mastery_amount, 70, Color("#ffd95a"), Vector2(0, -84), Vector2(0, -88), 0.08, true)
+	var amount_text := str(int(round(mastery_amount))) if absf(mastery_amount - round(mastery_amount)) <= 0.001 else _format_significant_digits(mastery_amount)
+	_float_reward(parent, anchor, "+%s" % amount_text, 70, Color("#ffd95a"), Vector2(0, -84), Vector2(0, -88), 0.08, true)
 
 
 func _float_tired_activity_feedback(action_key: String) -> void:
@@ -15199,8 +16582,11 @@ func _achievement_toast_reward_text(achievement: Dictionary) -> String:
 
 func _load_action_data() -> void:
 	actions_by_skill.clear()
+	actions_by_key.clear()
+	fishing_area_definitions.clear()
 	skill_defs.clear()
 	if _load_activity_database():
+		_rebuild_action_lookup()
 		return
 	skill_defs.assign(SKILL_DEFS)
 	for raw_def in SKILL_DEFS:
@@ -15238,6 +16624,21 @@ func _load_action_data() -> void:
 				"bg": _background_for_action(skill_id, index)
 			})
 		actions_by_skill[skill_id] = actions
+	_rebuild_action_lookup()
+
+
+func _rebuild_action_lookup() -> void:
+	actions_by_key.clear()
+	for raw_skill_id in actions_by_skill.keys():
+		var skill_id := str(raw_skill_id)
+		for raw_action in actions_by_skill.get(skill_id, []):
+			if typeof(raw_action) != TYPE_DICTIONARY:
+				continue
+			var action := raw_action as Dictionary
+			var action_id := str(action.get("id", ""))
+			if action_id.is_empty():
+				continue
+			actions_by_key[_action_key(skill_id, action_id)] = action
 
 
 func _load_activity_database() -> bool:
@@ -15278,6 +16679,7 @@ func _load_activity_database() -> bool:
 					"id": action_id,
 					"name": str(action.get("name", action_id.capitalize())),
 					"unlock": int(action.get("unlock", 1)),
+					"tier": int(action.get("tier", 1)),
 					"seconds": float(action.get("seconds", 1.0)),
 					"xp": int(action.get("xp", action.get("rewards", {}).get("xp", 1))),
 					"stamina": int(action.get("stamina", action.get("costs", {}).get("stamina", 1))),
@@ -15287,13 +16689,3827 @@ func _load_activity_database() -> bool:
 				}
 				var kind := str(action.get("kind", action.get("type", "activity")))
 				action_data["kind"] = kind
+				if skill_id == "fishing":
+					action_data["area"] = str(action.get("area", ""))
 				if kind == "passive_item_collect":
 					action_data["passive"] = action.get("passive", {})
 					action_data["stamina"] = 0
 					action_data["success"] = 100.0
 				actions.append(action_data)
 		actions_by_skill[skill_id] = actions
+		if skill_id == "fishing":
+			_load_fishing_area_definitions_from_skill(skill, actions)
 	return not skill_defs.is_empty()
+
+
+const FISHING_AREA_FLUID_KINDS := ["water", "sewer", "lava"]
+
+
+func _fishing_area_definitions_fallback() -> Array:
+	var fallback_actions: Array = [
+		{"id": "beach-rocks", "area": "beach", "unlock": 4, "tier": 4, "kind": "activity"},
+		{"id": "reef-pot", "area": "reef", "unlock": 30, "tier": 5, "kind": "activity"},
+		{"id": "stormy-sea-ripple", "area": "stormy_sea", "unlock": 64, "tier": 14, "kind": "activity"},
+		{"id": "pier-dock-edge", "area": "pier", "unlock": 7, "tier": 1, "kind": "activity"},
+		{"id": "pier-piling-line", "area": "pier", "unlock": 11, "tier": 2, "kind": "activity"},
+		{"id": "river-bend", "area": "river", "unlock": 14, "tier": 3, "kind": "activity"},
+		{"id": "river-rapids", "area": "river", "unlock": 18, "tier": 6, "kind": "activity"},
+		{"id": "sewers-drain-gate", "area": "sewers", "unlock": 22, "tier": 7, "kind": "activity"},
+		{"id": "sewers-tunnel-pool", "area": "sewers", "unlock": 26, "tier": 9, "kind": "activity"},
+	]
+	var fallback_skill := {
+		"areas": [
+			{
+				"id": "beach",
+				"name": "Beach",
+				"fluid": "water",
+				"background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+			},
+			{
+				"id": "pier",
+				"name": "Pier",
+				"fluid": "water",
+				"background": "docs/assets/fishing/backgrounds/01-pond-dock.png",
+			},
+			{
+				"id": "river",
+				"name": "River",
+				"fluid": "water",
+				"background": "docs/assets/fishing/backgrounds/02-river-bend.png",
+			},
+			{
+				"id": "sewers",
+				"name": "Sewers",
+				"fluid": "sewer",
+				"background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
+			},
+		]
+	}
+	_load_fishing_area_definitions_from_skill(fallback_skill, fallback_actions)
+	return fishing_area_definitions
+
+
+func _load_fishing_area_definitions_from_skill(skill: Dictionary, actions: Array) -> void:
+	fishing_area_definitions.clear()
+	var loaded_areas = skill.get("areas", [])
+	if typeof(loaded_areas) != TYPE_ARRAY or loaded_areas.is_empty():
+		push_warning("Fishing skill has no areas array in activity-database.json.")
+		_fishing_area_definitions_fallback()
+		return
+	var methods_by_area := _fishing_methods_grouped_by_area(actions)
+	for raw_area in loaded_areas:
+		if typeof(raw_area) != TYPE_DICTIONARY:
+			continue
+		var area_meta := _parse_fishing_area_metadata(raw_area as Dictionary)
+		if area_meta.is_empty():
+			continue
+		var area_id := str(area_meta.get("id", ""))
+		var method_rows: Array = methods_by_area.get(area_id, [])
+		if method_rows.is_empty():
+			continue
+		method_rows.sort_custom(_sort_fishing_area_method_rows)
+		var methods: Array = []
+		for row in method_rows:
+			methods.append(str(row.get("id", "")))
+		area_meta["methods"] = methods
+		fishing_area_definitions.append(area_meta)
+	if fishing_area_definitions.is_empty():
+		push_warning("Fishing areas failed to load; using built-in fallback.")
+		_fishing_area_definitions_fallback()
+		return
+	for area_id in methods_by_area.keys():
+		if _fishing_area_metadata_loaded(area_id):
+			continue
+		push_warning(
+			"Fishing action(s) use area '%s' but it is missing from fishing.areas." % area_id
+		)
+
+
+func _fishing_area_metadata_loaded(area_id: String) -> bool:
+	for raw_area in fishing_area_definitions:
+		if str(raw_area.get("id", "")) == area_id:
+			return true
+	return false
+
+
+func _fishing_methods_grouped_by_area(actions: Array) -> Dictionary:
+	var grouped := {}
+	for raw_action in actions:
+		if typeof(raw_action) != TYPE_DICTIONARY:
+			continue
+		var action := raw_action as Dictionary
+		if str(action.get("kind", "activity")) == "passive_item_collect":
+			continue
+		var action_id := str(action.get("id", ""))
+		var area_id := _canonical_fishing_area_id(str(action.get("area", "")))
+		if action_id.is_empty() or area_id.is_empty():
+			continue
+		if not grouped.has(area_id):
+			grouped[area_id] = []
+		(grouped[area_id] as Array).append({
+			"id": action_id,
+			"unlock": int(action.get("unlock", 1)),
+			"tier": int(action.get("tier", 1)),
+		})
+	return grouped
+
+
+func _sort_fishing_area_method_rows(a: Dictionary, b: Dictionary) -> bool:
+	var unlock_a := int(a.get("unlock", 1))
+	var unlock_b := int(b.get("unlock", 1))
+	if unlock_a != unlock_b:
+		return unlock_a < unlock_b
+	return int(a.get("tier", 1)) < int(b.get("tier", 1))
+
+
+func _parse_fishing_area_metadata(raw_area: Dictionary) -> Dictionary:
+	var area_id := _canonical_fishing_area_id(str(raw_area.get("id", "")))
+	if area_id.is_empty():
+		push_warning("Skipping fishing area with no id.")
+		return {}
+	var fluid := str(raw_area.get("fluid", "water"))
+	if fluid not in FISHING_AREA_FLUID_KINDS:
+		push_warning("Fishing area '%s' has unknown fluid '%s'; using water." % [area_id, fluid])
+		fluid = "water"
+	var bg_path := _res_path(str(raw_area.get("background", raw_area.get("bg", ""))))
+	if bg_path.is_empty():
+		push_warning("Skipping fishing area '%s' with no background." % area_id)
+		return {}
+	return {
+		"id": area_id,
+		"name": str(raw_area.get("name", area_id.capitalize())),
+		"fluid": fluid,
+		"bg": bg_path,
+	}
+
+
+func _fishing_area_definitions() -> Array:
+	if fishing_area_definitions.is_empty():
+		return _fishing_area_definitions_fallback()
+	return fishing_area_definitions
+
+
+func _fishing_area_key(skill_id: String, area_id: String) -> String:
+	return "%s:area-%s" % [skill_id, area_id]
+
+
+func _fishing_area_module_key(skill_id: String, area_def: Dictionary) -> String:
+	var area_id := str(area_def.get("id", ""))
+	var module_index := int(area_def.get("module_index", -1))
+	if module_index >= 0:
+		return "%s:area-%s-%s" % [skill_id, area_id, module_index]
+	return _fishing_area_key(skill_id, area_id)
+
+
+func _fishing_area_module_display_name(area_def: Dictionary) -> String:
+	var area_id := str(area_def.get("id", ""))
+	var base_name := str(area_def.get("name", area_id.capitalize()))
+	var module_index := int(area_def.get("module_index", -1))
+	if module_index <= 0:
+		return base_name
+	match area_id:
+		"sea":
+			return "Sea #%d" % (module_index + 1)
+		"reef":
+			return "Reef #%d" % (module_index + 1)
+	return "%s #%d" % [base_name, module_index + 1]
+
+
+func _fishing_next_locked_preview_candidate(skill_id: String) -> Dictionary:
+	var best := {}
+	var best_unlock := 999999
+	var best_order := 999999
+	var order := 0
+	for raw_area in _fishing_area_definitions():
+		var area_def := raw_area as Dictionary
+		var area_id := str(area_def.get("id", ""))
+		if _fishing_area_uses_location_tiles(area_def):
+			for raw_location in _fishing_locations_for_area(area_id):
+				var location := raw_location as Dictionary
+				if _fishing_location_is_unlocked(area_id, location):
+					order += 1
+					continue
+				var unlock_level := int(location.get("unlock", 1))
+				if unlock_level < best_unlock or (unlock_level == best_unlock and order < best_order):
+					best_unlock = unlock_level
+					best_order = order
+					best = {
+						"kind": "location",
+						"unlock": unlock_level,
+						"key": _fishing_location_key(area_id, str(location.get("id", ""))),
+					}
+				order += 1
+			continue
+		for method_id in area_def.get("methods", []):
+			var action_id := str(method_id)
+			var action := _action_data(skill_id, action_id)
+			if action.is_empty() or _is_action_unlocked(skill_id, action):
+				order += 1
+				continue
+			var unlock_level := int(action.get("unlock", 1))
+			if unlock_level < best_unlock or (unlock_level == best_unlock and order < best_order):
+				best_unlock = unlock_level
+				best_order = order
+				best = {
+					"kind": "action",
+					"unlock": unlock_level,
+					"action_id": action_id,
+				}
+			order += 1
+	return best
+
+
+func _fishing_global_teaser_action_id(skill_id: String) -> String:
+	var candidate := _fishing_next_locked_preview_candidate(skill_id)
+	if str(candidate.get("kind", "")) == "action":
+		return str(candidate.get("action_id", ""))
+	return ""
+
+
+func _fishing_global_teaser_location_key(skill_id: String) -> String:
+	var candidate := _fishing_next_locked_preview_candidate(skill_id)
+	if str(candidate.get("kind", "")) == "location":
+		return str(candidate.get("key", ""))
+	return ""
+
+
+func _fishing_method_should_show(skill_id: String, action_id: String) -> bool:
+	var action := _action_data(skill_id, action_id)
+	if action.is_empty():
+		return false
+	if _is_action_unlocked(skill_id, action):
+		return true
+	return action_id == _fishing_global_teaser_action_id(skill_id)
+
+
+func _fishing_area_should_show(skill_id: String, area_def: Dictionary) -> bool:
+	if str(area_def.get("id", "")) == "space" and not fishing_mirror_collected:
+		return false
+	if _fishing_area_uses_location_tiles(area_def):
+		var area_id := str(area_def.get("id", ""))
+		for raw_location in _fishing_locations_for_area(area_id):
+			if _fishing_location_should_show(area_id, raw_location as Dictionary):
+				return true
+		return false
+	for method_id in area_def.get("methods", []):
+		if _fishing_method_should_show(skill_id, str(method_id)):
+			return true
+	return false
+
+
+func _fishing_area_visible_method_ids(skill_id: String, area_def: Dictionary) -> Array:
+	var visible_ids: Array = []
+	for method_id in area_def.get("methods", []):
+		var action_id := str(method_id)
+		if _fishing_method_should_show(skill_id, action_id):
+			visible_ids.append(action_id)
+	return visible_ids
+
+
+func _fishing_render_area_modules(skill_id: String) -> Array:
+	var modules: Array = []
+	var render_order := 0
+	for raw_area in _fishing_area_definitions():
+		var area_def := raw_area as Dictionary
+		if not _fishing_area_should_show(skill_id, area_def):
+			continue
+		if _fishing_area_uses_location_tiles(area_def):
+			var location_module := area_def.duplicate(true)
+			location_module["render_order"] = render_order
+			modules.append(location_module)
+			render_order += 1
+			continue
+		var visible_methods := _fishing_area_visible_method_ids(skill_id, area_def)
+		var chunk_index := 0
+		for start in range(0, visible_methods.size(), FISHING_AREA_MAX_BUTTONS_PER_MODULE):
+			var chunk := area_def.duplicate(true)
+			chunk["methods"] = visible_methods.slice(start, start + FISHING_AREA_MAX_BUTTONS_PER_MODULE)
+			chunk["module_index"] = chunk_index
+			chunk["render_order"] = render_order
+			modules.append(chunk)
+			render_order += 1
+			chunk_index += 1
+	modules.sort_custom(_sort_fishing_render_modules)
+	return modules
+
+
+func _sort_fishing_render_modules(a: Dictionary, b: Dictionary) -> bool:
+	var unlock_a := _fishing_render_module_unlock(a)
+	var unlock_b := _fishing_render_module_unlock(b)
+	if unlock_a != unlock_b:
+		return unlock_a < unlock_b
+	return int(a.get("render_order", 0)) < int(b.get("render_order", 0))
+
+
+func _fishing_render_module_unlock(area_def: Dictionary) -> int:
+	var area_id := str(area_def.get("id", ""))
+	var best_unlock := 999999
+	if _fishing_area_uses_location_tiles(area_def):
+		for raw_location in _fishing_locations_for_area(area_id):
+			var location := raw_location as Dictionary
+			if not _fishing_location_should_show(area_id, location):
+				continue
+			best_unlock = mini(best_unlock, int(location.get("unlock", 1)))
+	else:
+		for raw_method in area_def.get("methods", []):
+			var action := _action_data("fishing", str(raw_method))
+			if action.is_empty():
+				continue
+			best_unlock = mini(best_unlock, int(action.get("unlock", 1)))
+	if best_unlock == 999999:
+		return int(area_def.get("render_order", 999999))
+	return best_unlock
+
+
+func _fishing_previous_location_areas_complete(area_id: String) -> bool:
+	for raw_area in _fishing_area_definitions():
+		var area_def := raw_area as Dictionary
+		if not _fishing_area_uses_location_tiles(area_def):
+			continue
+		var current_area_id := str(area_def.get("id", ""))
+		if current_area_id == area_id:
+			return true
+		for raw_location in _fishing_locations_for_area(current_area_id):
+			if not _fishing_location_is_unlocked(current_area_id, raw_location as Dictionary):
+				return false
+	return true
+
+
+func _fishing_action_belongs_to_area(area_id: String, action_id: String) -> bool:
+	return _fishing_area_id_for_action(action_id) == area_id
+
+
+func _fishing_area_card_owns_action(area_card: Dictionary, action_id: String) -> bool:
+	if action_id.is_empty():
+		return false
+	for method_id in area_card.get("method_ids", []):
+		if str(method_id) == action_id:
+			return true
+	return false
+
+
+func _fishing_area_card_for_action(skill_id: String, action_id: String) -> Dictionary:
+	for raw_card in action_cards.values():
+		if typeof(raw_card) != TYPE_DICTIONARY:
+			continue
+		var card := raw_card as Dictionary
+		if not card.get("is_fishing_area"):
+			continue
+		if str(card.get("skill_id", "")) != skill_id:
+			continue
+		if _fishing_area_card_owns_action(card, action_id):
+			return card
+	return {}
+
+
+func _fishing_area_id_for_action(action_id: String) -> String:
+	var action := _action_data("fishing", action_id)
+	if action.is_empty():
+		return ""
+	return _canonical_fishing_area_id(str(action.get("area", "")))
+
+
+func _fishing_detail_render_signature() -> Array:
+	var signature: Array = [
+		"tool:%s" % equipped_fishing_tool_id,
+		"net-offer:%s:%s" % [str(fishing_net_collected), str(_fishing_net_offer_available())],
+		"rod-offer:%s:%s" % [str(fishing_rod_collected), str(_fishing_rod_offer_available())],
+		"reinforced-rod-offer:%s:%s" % [str(fishing_reinforced_rod_collected), str(_fishing_reinforced_rod_offer_available())],
+		"star-rod-offer:%s:%s" % [str(fishing_star_rod_collected), str(_fishing_star_rod_offer_available())],
+		"boat-offer:%s:%s:%s:%s" % [str(fishing_boat_built), str(_fishing_boat_offer_available()), str(_skill_level("build")), str(log_currency)],
+		"mirror-offer:%s:%s" % [str(fishing_mirror_collected), str(_fishing_mirror_offer_available())],
+	]
+	for action in _visible_actions_for_skill("fishing"):
+		if _is_passive_action(action as Dictionary):
+			signature.append(str(action.get("id", "")))
+	for area_def in _fishing_render_area_modules("fishing"):
+		signature.append("area:%s" % str(area_def.get("id", "")))
+		if _fishing_area_uses_location_tiles(area_def):
+			var area_id := str(area_def.get("id", ""))
+			for raw_location in _fishing_locations_for_area(area_id):
+				var location := raw_location as Dictionary
+				if _fishing_location_should_show(area_id, location):
+					signature.append("location-tile:%s:%s" % [area_id, str(location.get("id", ""))])
+			continue
+		if int(area_def.get("module_index", -1)) >= 0:
+			signature.append("area-module:%s:%s" % [str(area_def.get("id", "")), int(area_def.get("module_index", 0))])
+		for method_id in area_def.get("methods", []):
+			if _fishing_method_should_show("fishing", str(method_id)):
+				signature.append(str(method_id))
+	return signature
+
+
+func _fishing_method_short_label(action: Dictionary) -> String:
+	var action_id := str(action.get("id", ""))
+	var custom := {
+		"beach-shallows": "Shallows",
+		"beach-rocks": "Rocks",
+		"reef-pot": "Reef Pot",
+		"stormy-sea-ripple": "Storm Ripple",
+		"pier-dock-edge": "Dock Edge",
+		"pier-piling-line": "Piling Line",
+		"river-bend": "River Bend",
+		"river-rapids": "Rapids",
+		"sewers-drain-gate": "Drain Gate",
+		"sewers-tunnel-pool": "Tunnel Pool",
+		"winter-lake-ice-hole": "Ice Hole",
+		"reef-cage": "Reef Cage",
+		"reef-night-reef": "Night Reef",
+		"reef-pearl-bed": "Pearl Bed",
+		"sea-rowboat": "Rowboat",
+		"sea-open-water": "Open Water",
+		"sea-chum-line": "Chum Line",
+		"stormy-sea-storm-line": "Storm Line",
+		"deep-sea-wreck-drop": "Wreck Drop",
+		"deep-sea-abyss": "Abyss",
+		"deep-sea-trench": "Deep Trench",
+		"space-starlight": "Starlight",
+		"space-reflection": "Reflection",
+	}
+	if custom.has(action_id):
+		return str(custom[action_id])
+	var words := str(action.get("name", "")).split(" ")
+	return words[0] if not words.is_empty() else action_id
+
+
+func _fishing_area_focused_method_label(action: Dictionary) -> String:
+	var action_id := str(action.get("id", ""))
+	var custom := {
+		"river-bend": "River Bend",
+		"river-rapids": "Rapids",
+		"sewers-drain-gate": "Drain Gate",
+		"sewers-tunnel-pool": "Tunnel Pool",
+		"winter-lake-ice-hole": "Ice Hole",
+		"reef-cage": "Reef Cage",
+		"reef-night-reef": "Night Reef",
+		"reef-pearl-bed": "Pearl Bed",
+		"sea-rowboat": "Rowboat",
+		"sea-open-water": "Open Water",
+		"sea-chum-line": "Chum Line",
+		"stormy-sea-storm-line": "Storm Line",
+		"deep-sea-wreck-drop": "Wreck Drop",
+		"deep-sea-abyss": "Abyss",
+		"deep-sea-trench": "Deep Trench",
+		"space-starlight": "Starlight",
+		"space-reflection": "Reflection",
+		"reef-pot": "Reef Pot",
+		"stormy-sea-ripple": "Storm Ripple",
+	}
+	if custom.has(action_id):
+		return str(custom[action_id])
+	return _fishing_method_short_label(action)
+
+
+func _fishing_tool_def(tool_id: String) -> Dictionary:
+	for raw_tool in FISHING_TOOL_DEFS:
+		var tool := raw_tool as Dictionary
+		if str(tool.get("id", "")) == tool_id:
+			return tool
+	return FISHING_TOOL_DEFS[0] as Dictionary
+
+
+func _fishing_tool_is_unlocked(tool_id: String) -> bool:
+	match tool_id:
+		"hands":
+			return true
+		"net":
+			return fishing_net_collected
+		"line":
+			return fishing_rod_collected and not fishing_reinforced_rod_collected and not fishing_star_rod_collected
+		"reinforced_rod":
+			return fishing_reinforced_rod_collected and not fishing_star_rod_collected
+		"star_rod":
+			return fishing_star_rod_collected
+		"boat":
+			return fishing_boat_built
+		"mirror":
+			return fishing_mirror_collected
+		_:
+			return false
+
+
+func _fishing_tool_label(tool_id: String) -> String:
+	return str(_fishing_tool_def(tool_id).get("name", tool_id.capitalize()))
+
+
+func _fishing_rod_offer_available() -> bool:
+	return not fishing_rod_collected and _skill_level("fishing") >= FISHING_ROD_OFFER_UNLOCK_LEVEL
+
+
+func _fishing_net_offer_available() -> bool:
+	return not fishing_net_collected and _skill_level("fishing") >= FISHING_NET_OFFER_UNLOCK_LEVEL
+
+
+func _fishing_reinforced_rod_offer_available() -> bool:
+	return fishing_rod_collected and not fishing_reinforced_rod_collected and _skill_level("fishing") >= FISHING_REINFORCED_ROD_UNLOCK_LEVEL
+
+
+func _fishing_star_rod_offer_available() -> bool:
+	return fishing_reinforced_rod_collected and not fishing_star_rod_collected and _skill_level("fishing") >= FISHING_STAR_ROD_UNLOCK_LEVEL
+
+
+func _fishing_boat_offer_available() -> bool:
+	return not fishing_boat_built and _skill_level("fishing") >= FISHING_BOAT_OFFER_UNLOCK_LEVEL
+
+
+func _fishing_mirror_offer_available() -> bool:
+	return not fishing_mirror_collected and _skill_level("fishing") >= FISHING_MIRROR_OFFER_UNLOCK_LEVEL
+
+
+func _fishing_visible_tool_defs() -> Array:
+	var visible: Array = []
+	var rod_slot_id := "line"
+	if fishing_star_rod_collected:
+		rod_slot_id = "star_rod"
+	elif fishing_reinforced_rod_collected:
+		rod_slot_id = "reinforced_rod"
+	for raw_tool in FISHING_TOOL_DEFS:
+		var tool := raw_tool as Dictionary
+		var tool_id := str(tool.get("id", ""))
+		if tool_id in ["line", "reinforced_rod", "star_rod"] and tool_id != rod_slot_id:
+			continue
+		visible.append(tool)
+	return visible
+
+
+func _fishing_equipped_rod_power() -> int:
+	match equipped_fishing_tool_id:
+		"reinforced_rod":
+			return 1
+		"star_rod":
+			return 2
+	return 0
+
+
+func _fishing_tool_success_bonus() -> float:
+	match _fishing_equipped_rod_power():
+		1:
+			return 5.0
+		2:
+			return 10.0
+	return 0.0
+
+
+func _fishing_tool_time_multiplier() -> float:
+	match _fishing_equipped_rod_power():
+		1:
+			return 0.90
+		2:
+			return 0.78
+	return 1.0
+
+
+func _fishing_tool_yield_bonus() -> int:
+	return _fishing_equipped_rod_power()
+
+
+func _fishing_wallet_choice_tools() -> Array:
+	var choices: Array = []
+	for raw_tool in _fishing_visible_tool_defs():
+		var tool := raw_tool as Dictionary
+		var tool_id := str(tool.get("id", ""))
+		if tool_id == equipped_fishing_tool_id:
+			continue
+		if not _fishing_tool_is_unlocked(tool_id):
+			continue
+		choices.append(tool)
+	return choices
+
+
+func _fishing_atlas_texture(path: String, region: Rect2) -> Texture2D:
+	var source := _texture(path)
+	if source == null:
+		return null
+	var atlas := AtlasTexture.new()
+	atlas.atlas = source
+	atlas.region = region
+	return atlas
+
+
+func _fishing_chroma_region_texture(path: String, region: Rect2i) -> Texture2D:
+	var cache_key := "%s|region|%d,%d,%d,%d" % [_res_path(path), region.position.x, region.position.y, region.size.x, region.size.y]
+	if texture_cache.has(cache_key):
+		return texture_cache[cache_key] as Texture2D
+	var source := _texture(path)
+	if source == null:
+		texture_cache[cache_key] = null
+		return null
+	var image := source.get_image()
+	if image == null or image.is_empty():
+		texture_cache[cache_key] = source
+		return source
+	var cropped := image.get_region(region)
+	if cropped.get_format() != Image.FORMAT_RGBA8:
+		cropped.convert(Image.FORMAT_RGBA8)
+	for y in range(cropped.get_height()):
+		for x in range(cropped.get_width()):
+			var color := cropped.get_pixel(x, y)
+			if _color_should_fishing_catch_chroma_key(color):
+				color.a = 0.0
+				cropped.set_pixel(x, y, color)
+	var texture := ImageTexture.create_from_image(cropped)
+	texture_cache[cache_key] = texture
+	return texture
+
+
+func _fishing_tool_icon_texture(tool_id_or_path: String) -> Texture2D:
+	match tool_id_or_path:
+		"hands":
+			return _texture("res://docs/assets/fishing/tools/tool-bare-hands.png")
+		"bamboo-rod":
+			return _texture("res://docs/assets/fishing/tools/tool-bamboo-rod.png")
+		"line":
+			return _fishing_tool_icon_texture("bamboo-rod")
+		"reinforced_rod", "star_rod":
+			return _fishing_tool_icon_texture("bamboo-rod")
+		"net":
+			return _texture("res://docs/assets/fishing/tools/net-player.png")
+		"boat":
+			return _texture("res://docs/assets/fishing/tools/tool-boat.png")
+		"mirror":
+			return _texture("res://docs/assets/fishing/tools/reflection-net.png")
+		"tool:hands":
+			return _fishing_tool_icon_texture("hands")
+		"tool:bamboo-rod":
+			return _fishing_tool_icon_texture("bamboo-rod")
+		_:
+			for raw_tool in FISHING_TOOL_DEFS:
+				var tool := raw_tool as Dictionary
+				if str(tool.get("art", "")) == tool_id_or_path:
+					return _fishing_tool_icon_texture(str(tool.get("id", "")))
+			return _texture(tool_id_or_path)
+
+
+func _fishing_location_thumbnail_texture(area_id: String, location_id: String) -> Texture2D:
+	match _fishing_location_key(area_id, location_id):
+		"beach.shallows":
+			return _texture("res://docs/assets/fishing/locations/location-shallows.png")
+		"beach.rocky":
+			return _texture("res://docs/assets/fishing/locations/location-rocky-ledge.png")
+		"pier.dock-cup":
+			return _texture("res://docs/assets/fishing/locations/location-dock-cup.png")
+		"pier.piling-line":
+			return _texture("res://docs/assets/fishing/locations/location-piling-line.png")
+	return _texture("res://docs/assets/fishing/locations/location-shallows.png")
+
+
+func _fishing_area_uses_location_tiles(area_def: Dictionary) -> bool:
+	return FISHING_LOCATION_DEFS.has(str(area_def.get("id", "")))
+
+
+func _fishing_locations_for_area(area_id: String) -> Array:
+	return FISHING_LOCATION_DEFS.get(area_id, []) as Array
+
+
+func _fishing_location_key(area_id: String, location_id: String) -> String:
+	return "%s.%s" % [area_id, location_id]
+
+
+func _fishing_location_action_id(area_id: String, location_id: String) -> String:
+	var location_key := _fishing_location_key(area_id, location_id)
+	var tool_map := FISHING_TOOL_LOCATION_ACTIONS.get(equipped_fishing_tool_id, {}) as Dictionary
+	var action_id := str(tool_map.get(location_key, ""))
+	if not action_id.is_empty():
+		return action_id
+	var hands_map := FISHING_TOOL_LOCATION_ACTIONS.get("hands", {}) as Dictionary
+	return str(hands_map.get(location_key, ""))
+
+
+func _fishing_location_mastery_action_id(area_id: String, location_id: String) -> String:
+	var hands_map := FISHING_TOOL_LOCATION_ACTIONS.get("hands", {}) as Dictionary
+	return str(hands_map.get(_fishing_location_key(area_id, location_id), _fishing_location_action_id(area_id, location_id)))
+
+
+func _fishing_selected_location_id(area_def: Dictionary) -> String:
+	var area_id := str(area_def.get("id", ""))
+	var locations := _fishing_locations_for_area(area_id)
+	var saved_id := str(selected_fishing_locations.get(area_id, ""))
+	for raw_location in locations:
+		var location := raw_location as Dictionary
+		if str(location.get("id", "")) == saved_id:
+			return saved_id
+	for raw_location in locations:
+		var location := raw_location as Dictionary
+		if _fishing_location_is_unlocked(area_id, location):
+			return str(location.get("id", ""))
+	return str((locations[0] as Dictionary).get("id", "")) if not locations.is_empty() else ""
+
+
+func _fishing_location_should_show(area_id: String, location: Dictionary) -> bool:
+	if _fishing_location_is_unlocked(area_id, location):
+		return true
+	var location_id := str(location.get("id", ""))
+	return _fishing_location_key(area_id, location_id) == _fishing_next_locked_location_preview_key()
+
+
+func _fishing_location_level_unlocked(location: Dictionary) -> bool:
+	return _skill_level("fishing") >= int(location.get("unlock", 1))
+
+
+func _fishing_location_is_available(area_id: String, location: Dictionary) -> bool:
+	var location_id := str(location.get("id", ""))
+	if not _fishing_location_level_unlocked(location):
+		return false
+	return true
+
+
+func _fishing_location_is_unlocked(area_id: String, location: Dictionary) -> bool:
+	if not _fishing_location_is_available(area_id, location):
+		return false
+	var action := _fishing_location_display_action(area_id, location)
+	if action.is_empty():
+		return false
+	return _is_action_unlocked("fishing", action)
+
+
+func _fishing_location_area_is_unlocked(area_id: String) -> bool:
+	for raw_location in _fishing_locations_for_area(area_id):
+		var location := raw_location as Dictionary
+		if _fishing_location_is_unlocked(area_id, location):
+			return true
+	return false
+
+
+func _fishing_next_locked_location_key(area_id: String) -> String:
+	var best_key := ""
+	var best_unlock := 999999
+	for raw_location in _fishing_locations_for_area(area_id):
+		var location := raw_location as Dictionary
+		var unlock_level := int(location.get("unlock", 1))
+		if not _fishing_location_is_unlocked(area_id, location) and unlock_level < best_unlock:
+			best_unlock = unlock_level
+			best_key = _fishing_location_key(area_id, str(location.get("id", "")))
+	return best_key
+
+
+func _fishing_next_locked_location_preview_key() -> String:
+	return _fishing_global_teaser_location_key("fishing")
+
+
+func _fishing_location_display_action(area_id: String, location: Dictionary) -> Dictionary:
+	var action_id := _fishing_location_action_id(area_id, str(location.get("id", "")))
+	var action := _action_data("fishing", action_id)
+	if not action.is_empty():
+		return action
+	var methods := []
+	for area_def in _fishing_area_definitions():
+		if str(area_def.get("id", "")) == area_id:
+			methods = area_def.get("methods", [])
+			break
+	for raw_method in methods:
+		action = _action_data("fishing", str(raw_method))
+		if not action.is_empty():
+			return action
+	return {}
+
+
+func _render_fishing_tool_circle_menu(parent: Control) -> void:
+	_clear_fishing_tool_circle_menu()
+	if detail_fish_circle == null or not is_instance_valid(detail_fish_circle):
+		return
+	var tool_defs := _fishing_visible_tool_defs()
+	var row_count := tool_defs.size()
+	var gear_button_size := 128.0
+	var gear_gap := 14.0
+	var panel_padding := 18.0
+	var panel_width := gear_button_size + panel_padding * 2.0
+	var panel_height := panel_padding * 2.0 + float(row_count) * gear_button_size + float(maxi(0, row_count - 1)) * gear_gap
+	var circle_rect := detail_fish_circle.get_global_rect()
+	var panel_left := circle_rect.get_center().x - panel_width * 0.5
+	var panel_top := circle_rect.position.y + 12.0
+	var viewport_size := get_viewport_rect().size
+	panel_left = clampf(panel_left, 12.0, maxf(12.0, viewport_size.x - panel_width - 12.0))
+	panel_top = clampf(panel_top, 12.0, maxf(12.0, viewport_size.y - panel_height - 12.0))
+	var canvas := CanvasLayer.new()
+	canvas.name = "FishingToolWalletCanvas"
+	canvas.layer = 100
+	add_child(canvas)
+	fishing_tool_wallet_canvas = canvas
+	var layer := FishingToolWalletOverlay.new()
+	layer.name = "FishingToolFloatingWallet"
+	layer.position = Vector2(panel_left, panel_top)
+	layer.size = Vector2(panel_width, panel_height)
+	layer.custom_minimum_size = Vector2(panel_width, panel_height)
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.z_index = 0
+	layer.z_as_relative = true
+	canvas.add_child(layer)
+	fishing_tool_wallet_layer = layer
+	var button_rects: Array = []
+	var tool_ids: Array = []
+	var tool_icons: Array = []
+	var unlocked_states: Array = []
+	for index in range(tool_defs.size()):
+		var raw_tool = tool_defs[index]
+		var tool := raw_tool as Dictionary
+		var tool_id := str(tool.get("id", ""))
+		var unlocked := _fishing_tool_is_unlocked(tool_id)
+		var button_left := panel_padding
+		var button_top := panel_padding + float(index) * (gear_button_size + gear_gap)
+		button_rects.append(Rect2(Vector2(button_left, button_top), Vector2(gear_button_size, gear_button_size)))
+		tool_ids.append(tool_id)
+		tool_icons.append(_fishing_tool_icon_texture(tool_id))
+		unlocked_states.append(unlocked)
+	layer.configure(
+		Vector2(panel_width, panel_height),
+		button_rects,
+		tool_ids,
+		tool_icons,
+		unlocked_states,
+		equipped_fishing_tool_id
+	)
+
+
+func _render_fishing_tool_popup_menu() -> void:
+	if detail_fish_circle == null or not is_instance_valid(detail_fish_circle):
+		return
+	_clear_fishing_tool_circle_menu()
+	fishing_tool_wallet_open = true
+	var choice_tools := _fishing_visible_tool_defs()
+	var row_count := choice_tools.size()
+	if row_count <= 0:
+		return
+	var circle_rect := detail_fish_circle.get_global_rect()
+	var gear_button_size := clampf(minf(circle_rect.size.x, circle_rect.size.y) * 0.60, 240.0, 336.0)
+	if gear_button_size <= 0.0:
+		gear_button_size = 296.0
+	var column_count := mini(3, row_count)
+	var grid_rows := int(ceil(float(row_count) / float(column_count)))
+	var gear_gap := maxf(24.0, gear_button_size * 0.08)
+	var panel_padding := maxf(30.0, gear_button_size * 0.10)
+	var panel_width := panel_padding * 2.0 + float(column_count) * gear_button_size + float(maxi(0, column_count - 1)) * gear_gap
+	var panel_height := panel_padding * 2.0 + float(grid_rows) * gear_button_size + float(maxi(0, grid_rows - 1)) * gear_gap
+	var viewport_size := get_viewport_rect().size
+	var panel_left := clampf(circle_rect.get_center().x - panel_width * 0.5, 12.0, maxf(12.0, viewport_size.x - panel_width - 12.0))
+	var panel_top := circle_rect.end.y + maxf(14.0, gear_button_size * 0.08)
+	if panel_top + panel_height > viewport_size.y - 12.0:
+		panel_top = maxf(12.0, viewport_size.y - panel_height - 12.0)
+	var canvas := CanvasLayer.new()
+	canvas.name = "FishingToolWalletCanvas"
+	canvas.layer = 120
+	add_child(canvas)
+	fishing_tool_wallet_canvas = canvas
+	var popup := Panel.new()
+	popup.name = "FishingToolPopupWallet"
+	popup.position = Vector2(panel_left, panel_top)
+	popup.size = Vector2(panel_width, panel_height)
+	popup.custom_minimum_size = Vector2(panel_width, panel_height)
+	popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popup.clip_contents = false
+	popup.pivot_offset = Vector2(panel_width * 0.5, 0.0)
+	popup.scale = Vector2(0.88, 0.18)
+	popup.modulate = Color(1, 1, 1, 0)
+	popup.add_theme_stylebox_override("panel", _fishing_tool_wallet_popup_style(Vector2(panel_width, panel_height)))
+	canvas.add_child(popup)
+	fishing_tool_wallet_popup = popup
+	var column := Control.new()
+	column.position = Vector2(panel_padding, panel_padding)
+	column.size = Vector2(panel_width - panel_padding * 2.0, panel_height - panel_padding * 2.0)
+	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popup.add_child(column)
+	for index in range(choice_tools.size()):
+		var tool := choice_tools[index] as Dictionary
+		var tool_id := str(tool.get("id", ""))
+		var unlocked := _fishing_tool_is_unlocked(tool_id)
+		var equipped := tool_id == equipped_fishing_tool_id
+		var button := Button.new()
+		button.name = "FishingToolPopupButton%s" % str(index)
+		button.set_meta("tool_id", tool_id)
+		button.set_meta("tool_unlocked", unlocked)
+		button.custom_minimum_size = Vector2(gear_button_size, gear_button_size)
+		button.size = Vector2(gear_button_size, gear_button_size)
+		var grid_column := index % column_count
+		var grid_row := int(floor(float(index) / float(column_count)))
+		var target_y := float(grid_row) * (gear_button_size + gear_gap)
+		button.position.x = float(grid_column) * (gear_button_size + gear_gap)
+		button.position.y = target_y
+		button.set_meta("wallet_target_y", target_y)
+		button.clip_contents = true
+		button.text = ""
+		button.disabled = not unlocked
+		button.focus_mode = Control.FOCUS_NONE
+		button.mouse_filter = Control.MOUSE_FILTER_STOP
+		button.modulate = Color(1, 1, 1, 0)
+		button.position.y -= gear_button_size * 0.10
+		button.add_theme_stylebox_override("normal", _fishing_tool_circle_button_style(equipped, unlocked))
+		button.add_theme_stylebox_override("hover", _fishing_tool_circle_button_style(equipped, unlocked))
+		button.add_theme_stylebox_override("pressed", _fishing_tool_circle_button_style(equipped, unlocked, true))
+		button.add_theme_stylebox_override("disabled", _fishing_tool_circle_button_style(equipped, false))
+		button.pressed.connect(_on_fishing_tool_selected.bind(tool_id))
+		column.add_child(button)
+		var icon_size := Vector2(gear_button_size * 0.66, gear_button_size * 0.66)
+		var icon := _image_from_texture(_fishing_tool_icon_texture(tool_id), icon_size, str(tool.get("art", "")))
+		icon.set_anchors_preset(Control.PRESET_CENTER)
+		icon.offset_left = -icon_size.x * 0.5
+		icon.offset_right = icon_size.x * 0.5
+		icon.offset_top = -icon_size.y * 0.5
+		icon.offset_bottom = icon_size.y * 0.5
+		icon.size = icon_size
+		icon.modulate = Color.WHITE if unlocked else Color(1, 1, 1, 0.42)
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_child(icon)
+	popup.show()
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(popup, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(popup, "modulate:a", 1.0, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	for index in range(column.get_child_count()):
+		var button := column.get_child(index) as Control
+		if button == null:
+			continue
+		var delay := 0.025 * float(index)
+		tween.tween_property(button, "position:y", float(button.get_meta("wallet_target_y", 0.0)), 0.15).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(button, "modulate:a", 1.0, 0.08).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _fishing_tool_wallet_popup_style(panel_size: Vector2) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#fff6df")
+	style.border_color = Color("#171615")
+	style.border_width_left = 8
+	style.border_width_top = 8
+	style.border_width_right = 8
+	style.border_width_bottom = 8
+	var corner := int(panel_size.x * 0.5)
+	style.corner_radius_top_left = corner
+	style.corner_radius_top_right = corner
+	style.corner_radius_bottom_left = corner
+	style.corner_radius_bottom_right = corner
+	style.shadow_color = Color(0, 0, 0, 0.35)
+	style.shadow_size = 16
+	style.shadow_offset = Vector2(6, 8)
+	return style
+
+
+func _attach_fishing_fish_circle_button(circle: Control) -> void:
+	if circle == null:
+		return
+	circle.mouse_filter = Control.MOUSE_FILTER_STOP
+	if circle is BaseButton:
+		var button := circle as BaseButton
+		button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+		if not button.pressed.is_connected(_on_fishing_tool_wallet_pressed):
+			button.pressed.connect(_on_fishing_tool_wallet_pressed)
+	if circle.has_signal("wallet_pressed") and not circle.is_connected("wallet_pressed", Callable(self, "_on_fishing_tool_wallet_pressed")):
+		circle.connect("wallet_pressed", Callable(self, "_on_fishing_tool_wallet_pressed"))
+
+
+func _clear_fishing_tool_circle_menu() -> void:
+	if fishing_tool_wallet_popup != null and is_instance_valid(fishing_tool_wallet_popup):
+		fishing_tool_wallet_popup.queue_free()
+	if fishing_tool_wallet_canvas != null and is_instance_valid(fishing_tool_wallet_canvas):
+		fishing_tool_wallet_canvas.queue_free()
+	elif fishing_tool_wallet_layer != null and is_instance_valid(fishing_tool_wallet_layer):
+		fishing_tool_wallet_layer.queue_free()
+	fishing_tool_wallet_layer = null
+	fishing_tool_wallet_canvas = null
+	fishing_tool_wallet_popup = null
+	if detail_fish_circle != null and is_instance_valid(detail_fish_circle):
+		detail_fish_circle.set_wallet_open_visual(false)
+		detail_fish_circle.wallet_button_rects.clear()
+		if detail_fish_circle.wallet_visual_root != null and is_instance_valid(detail_fish_circle.wallet_visual_root):
+			detail_fish_circle.wallet_visual_root.queue_free()
+			detail_fish_circle.wallet_visual_root = null
+
+
+func _sync_fishing_tool_wallet_circle_state() -> void:
+	pass
+
+
+func _set_fishing_tool_wallet_open(open: bool) -> void:
+	if not _fishing_rework_active_for_skill(selected_skill_id):
+		open = false
+	if fishing_tool_wallet_open == open and (not open or (fishing_tool_wallet_popup != null and is_instance_valid(fishing_tool_wallet_popup))):
+		return
+	var now_msec := Time.get_ticks_msec()
+	if fishing_tool_wallet_last_toggle_msec > 0 and now_msec - fishing_tool_wallet_last_toggle_msec < 180:
+		return
+	fishing_tool_wallet_last_toggle_msec = now_msec
+	_play_fishing_wallet_circle_pop()
+	fishing_tool_wallet_open = open
+	if open:
+		_render_fishing_tool_popup_menu()
+	else:
+		_clear_fishing_tool_circle_menu()
+	if detail_fish_circle != null and is_instance_valid(detail_fish_circle):
+		detail_fish_circle.set_wallet_open_visual(open)
+
+
+func _render_fishing_tool_popup_menu_deferred() -> void:
+	if not fishing_tool_wallet_open:
+		return
+	_render_fishing_tool_popup_menu()
+
+
+func _play_fishing_wallet_circle_pop() -> void:
+	if detail_fish_circle == null or not is_instance_valid(detail_fish_circle):
+		return
+	detail_fish_circle.pivot_offset = detail_fish_circle.size * 0.5
+	if fishing_tool_wallet_pop_tween != null and fishing_tool_wallet_pop_tween.is_valid():
+		fishing_tool_wallet_pop_tween.kill()
+	detail_fish_circle.scale = Vector2.ONE
+	fishing_tool_wallet_pop_tween = create_tween()
+	fishing_tool_wallet_pop_tween.tween_property(detail_fish_circle, "scale", Vector2(1.08, 1.08), 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	fishing_tool_wallet_pop_tween.tween_property(detail_fish_circle, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _fishing_wallet_event_point(event: InputEvent) -> Dictionary:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			return {"pressed": true, "point": mouse_event.global_position}
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			return {"pressed": true, "point": touch_event.position}
+	return {"pressed": false, "point": Vector2.ZERO}
+
+
+func _route_fishing_wallet_unhandled_input(event: InputEvent) -> bool:
+	if current_screen != "skill" or not _fishing_rework_active_for_skill(selected_skill_id):
+		return false
+	if _any_modal_overlay_visible():
+		return false
+	var parsed := _fishing_wallet_event_point(event)
+	if not bool(parsed.get("pressed", false)):
+		return false
+	var point := parsed.get("point", Vector2.ZERO) as Vector2
+	if fishing_tool_wallet_open:
+		if fishing_tool_wallet_popup != null and is_instance_valid(fishing_tool_wallet_popup):
+			for child in fishing_tool_wallet_popup.find_children("FishingToolPopupButton*", "Button", true, false):
+				var button := child as Button
+				if button == null:
+					continue
+				if button.get_global_rect().has_point(point):
+					if bool(button.get_meta("tool_unlocked", false)):
+						_on_fishing_tool_selected(str(button.get_meta("tool_id", "")))
+					return true
+			if fishing_tool_wallet_popup.get_global_rect().has_point(point):
+				return true
+		if detail_fish_circle != null and is_instance_valid(detail_fish_circle) and detail_fish_circle.get_global_rect().grow(16.0).has_point(point):
+			_set_fishing_tool_wallet_open(false)
+			return true
+		return false
+	if detail_fish_circle != null and is_instance_valid(detail_fish_circle) and detail_fish_circle.get_global_rect().grow(16.0).has_point(point):
+		_set_fishing_tool_wallet_open(true)
+		return true
+	return false
+
+
+func _fishing_tool_wallet_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1, 0.99, 0.95, 0.94)
+	style.border_color = COLOR_INK
+	style.border_width_left = 8
+	style.border_width_top = 8
+	style.border_width_right = 8
+	style.border_width_bottom = 8
+	style.corner_radius_top_left = 98
+	style.corner_radius_top_right = 98
+	style.corner_radius_bottom_left = 98
+	style.corner_radius_bottom_right = 98
+	style.shadow_color = Color(0, 0, 0, 0.25)
+	style.shadow_size = 12
+	style.shadow_offset = Vector2(8, 10)
+	return style
+
+
+func _fishing_tool_circle_button_style(equipped: bool, unlocked: bool, pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#e8f7f6") if equipped else (Color("#fffdf8") if unlocked else Color("#cfcac0"))
+	if pressed:
+		style.bg_color = style.bg_color.darkened(0.08)
+	style.border_color = COLOR_GOLD if equipped else (COLOR_INK if unlocked else COLOR_MUTED)
+	style.border_width_left = 8 if equipped else 5
+	style.border_width_top = 8 if equipped else 5
+	style.border_width_right = 8 if equipped else 5
+	style.border_width_bottom = 8 if equipped else 5
+	style.corner_radius_top_left = 999
+	style.corner_radius_top_right = 999
+	style.corner_radius_bottom_left = 999
+	style.corner_radius_bottom_right = 999
+	style.shadow_color = Color(0, 0, 0, 0.22) if unlocked else Color.TRANSPARENT
+	style.shadow_size = 6 if unlocked else 0
+	style.shadow_offset = Vector2(3, 5) if unlocked else Vector2.ZERO
+	return style
+
+
+func _fishing_tool_row_style(equipped: bool, unlocked: bool, pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#e8f7f6") if equipped else (Color("#fff8ea") if unlocked else Color("#e8e0dc"))
+	if pressed:
+		style.bg_color = style.bg_color.darkened(0.08)
+	style.border_color = COLOR_INK if equipped else COLOR_LINE
+	style.border_width_left = 6
+	style.border_width_top = 6
+	style.border_width_right = 6
+	style.border_width_bottom = 6
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
+	return style
+
+
+func _on_fishing_tool_wallet_pressed() -> void:
+	_set_fishing_tool_wallet_open(not fishing_tool_wallet_open)
+
+
+func _on_fishing_tool_selected(tool_id: String) -> void:
+	if not _fishing_tool_is_unlocked(tool_id):
+		return
+	if tool_id == equipped_fishing_tool_id:
+		_set_fishing_tool_wallet_open(false)
+		return
+	equipped_fishing_tool_id = tool_id
+	if equipped_fishing_tool_id != "net":
+		fishing_net_stored_fish = 0
+		fishing_net_successes = 0
+		fishing_net_stored_xp = 0
+		fishing_net_stored_mastery = 0.0
+		fishing_net_haul_visual_seconds = 0.0
+	fishing_tool_wallet_open = false
+	_clear_fishing_tool_circle_menu()
+	save_game()
+	_render_screen(false, detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1)
+	_set_result("%s equipped." % _fishing_tool_label(tool_id))
+
+
+func _fishing_yield_label(action: Dictionary, tool_id := "") -> String:
+	var active_tool_id := equipped_fishing_tool_id if tool_id.is_empty() else tool_id
+	if active_tool_id == "net":
+		return "%d-%d/%d" % [FISHING_NET_FILL_MIN, FISHING_NET_FILL_MAX, FISHING_NET_HAUL_THRESHOLD]
+	var yield_range := _fishing_yield_range(action, tool_id)
+	if int(yield_range["min"]) == int(yield_range["max"]):
+		return "%d" % int(yield_range["min"])
+	return "%d–%d" % [yield_range["min"], yield_range["max"]]
+
+
+func _fishing_yield_range(action: Dictionary, tool_id := "") -> Dictionary:
+	var active_tool_id := equipped_fishing_tool_id if tool_id.is_empty() else tool_id
+	if active_tool_id == "hands":
+		return {"min": 1, "max": 1}
+	var rewards := action.get("rewards", {}) as Dictionary
+	if rewards.has("fish_min") and rewards.has("fish_max"):
+		var fish_min := maxi(1, int(rewards.get("fish_min", 1)))
+		var fish_max := maxi(fish_min, int(rewards.get("fish_max", fish_min)))
+		if active_tool_id == "net":
+			return {"min": FISHING_NET_FILL_MIN, "max": FISHING_NET_FILL_MAX}
+		var yield_bonus := _fishing_tool_yield_bonus() if active_tool_id == equipped_fishing_tool_id else 0
+		return {"min": fish_min + yield_bonus, "max": fish_max + yield_bonus}
+	var tier := int(action.get("tier", 1))
+	if active_tool_id == "net":
+		return {"min": FISHING_NET_FILL_MIN, "max": FISHING_NET_FILL_MAX}
+	var fallback_bonus := _fishing_tool_yield_bonus() if active_tool_id == equipped_fishing_tool_id else 0
+	return {
+		"min": maxi(1, tier - 1) + fallback_bonus,
+		"max": maxi(maxi(1, tier - 1) + 1, tier + 1) + fallback_bonus,
+	}
+
+
+func _fishing_method_archetype(action_id: String) -> String:
+	var action := _action_data("fishing", action_id)
+	if not action.is_empty():
+		var from_data := str(action.get("archetype", "")).strip_edges()
+		if not from_data.is_empty():
+			return from_data
+	match action_id:
+		"beach-rocks", "sea-open-water", "space-reflection":
+			return "volume"
+		"sewers-drain-gate":
+			return "chaos"
+		"sea-chum-line":
+			return "risk"
+		"stormy-sea-ripple", "sewers-tunnel-pool", "deep-sea-abyss", "stormy-sea-storm-line", "reef-pearl-bed":
+			return "commit"
+		_:
+			return "steady"
+
+
+func _fishing_attempt_success_chance(action_id: String) -> float:
+	var action := _action_data("fishing", action_id)
+	var bonus := _fishing_tool_success_bonus()
+	if not action.is_empty():
+		return clampf(float(action.get("success", _fishing_attempt_success_chance_for_archetype(_fishing_method_archetype(action_id)))) + bonus, 5.0, 100.0)
+	return clampf(_fishing_attempt_success_chance_for_archetype(_fishing_method_archetype(action_id)) + bonus, 5.0, 100.0)
+
+
+func _fishing_attempt_success_chance_for_archetype(archetype: String) -> float:
+	match archetype:
+		"novice":
+			return 92.0
+		"volume":
+			return 78.0
+		"chaos":
+			return 62.0
+		"commit":
+			return 70.0
+		"risk":
+			return 68.0
+		_:
+			return 82.0
+
+
+func _fishing_catch_texture_path(action: Dictionary) -> String:
+	var action_id := str(action.get("id", ""))
+	if FISHING_ACTION_CATCH_TEXTURE_PATHS.has(action_id):
+		return FISHING_ACTION_CATCH_TEXTURE_PATHS[action_id]
+	var tier_index := clampi(int(action.get("tier", 1)) - 1, 0, FISHING_CATCH_TEXTURE_PATHS.size() - 1)
+	return FISHING_CATCH_TEXTURE_PATHS[tier_index]
+
+
+func _fishing_roll_fish_count(action: Dictionary, tool_id := "") -> int:
+	var yield_range := _fishing_yield_range(action, tool_id)
+	var active_tool_id := equipped_fishing_tool_id if tool_id.is_empty() else tool_id
+	if active_tool_id == "hands":
+		return 1
+	if active_tool_id == "net":
+		return randi_range(FISHING_NET_FILL_MIN, FISHING_NET_FILL_MAX)
+	var action_id := str(action.get("id", ""))
+	if yield_range["min"] == yield_range["max"]:
+		return yield_range["min"]
+	var count := randi_range(yield_range["min"], yield_range["max"])
+	if _fishing_method_archetype(action_id) == "volume" and randf() < 0.45:
+		count += 1
+	return clampi(count, yield_range["min"], yield_range["max"] + 1)
+
+
+func _fishing_flat_xp_reward(action: Dictionary, skill_id: String) -> int:
+	if equipped_fishing_tool_id == "net":
+		return 1
+	return maxi(1, _effective_xp(action, skill_id, false))
+
+
+func _fishing_mastery_reward(skill_id: String, action_id: String) -> float:
+	if _mastery_is_maxed(skill_id, action_id):
+		return 0.0
+	return 1.0
+
+
+func _fishing_area_default_method(skill_id: String, area_def: Dictionary) -> String:
+	if (
+		running_skill_id == skill_id
+		and _fishing_action_belongs_to_area(str(area_def.get("id", "")), running_action_id)
+		and (area_def.get("methods", []) as Array).has(running_action_id)
+	):
+		return running_action_id
+	if _fishing_area_uses_location_tiles(area_def):
+		var area_id := str(area_def.get("id", ""))
+		var location_id := _fishing_selected_location_id(area_def)
+		var action_id := _fishing_location_action_id(area_id, location_id)
+		if not action_id.is_empty():
+			return action_id
+	for method_id in area_def.get("methods", []):
+		var action_id := str(method_id)
+		var action := _action_data(skill_id, action_id)
+		if not action.is_empty() and _is_action_unlocked(skill_id, action):
+			return action_id
+	for method_id in area_def.get("methods", []):
+		if _fishing_method_should_show(skill_id, str(method_id)):
+			return str(method_id)
+	return ""
+
+
+func _render_fishing_area_modules(stack: VBoxContainer, content_width: float) -> void:
+	var skill_id := "fishing"
+	var net_offer_rendered := false
+	var rod_offer_rendered := false
+	var reinforced_rod_offer_rendered := false
+	var star_rod_offer_rendered := false
+	var boat_offer_rendered := false
+	var mirror_offer_rendered := false
+	for action in _visible_actions_for_skill(skill_id):
+		if not _is_passive_action(action as Dictionary):
+			continue
+		var action_id := str(action["id"])
+		detail_rendered_action_ids.append(action_id)
+		var passive_card := _build_passive_module_card(skill_id, action as Dictionary, content_width, true)
+		_prepare_locked_activity_preview_fade(passive_card["card"] as Dictionary, skill_id, action as Dictionary)
+		_sync_locked_activity_preview_presence(passive_card["card"] as Dictionary, skill_id, action as Dictionary)
+		stack.add_child(passive_card["root"] as Control)
+		detail_action_card_nodes[action_id] = passive_card["root"] as Control
+		action_cards[_action_key(skill_id, action_id)] = passive_card["card"] as Dictionary
+
+	for area_def in _fishing_render_area_modules(skill_id):
+		if _fishing_net_offer_available() and not net_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_NET_OFFER_UNLOCK_LEVEL:
+			stack.add_child(_build_fishing_net_offer_module(content_width))
+			net_offer_rendered = true
+		if _fishing_rod_offer_available() and not rod_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_ROD_OFFER_UNLOCK_LEVEL:
+			stack.add_child(_build_fishing_rod_offer_module(content_width))
+			rod_offer_rendered = true
+		if _fishing_reinforced_rod_offer_available() and not reinforced_rod_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_REINFORCED_ROD_UNLOCK_LEVEL:
+			stack.add_child(_build_fishing_rod_upgrade_offer_module(content_width, "reinforced_rod"))
+			reinforced_rod_offer_rendered = true
+		if _fishing_boat_offer_available() and not boat_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_BOAT_OFFER_UNLOCK_LEVEL:
+			stack.add_child(_build_fishing_boat_offer_module(content_width))
+			boat_offer_rendered = true
+		if _fishing_star_rod_offer_available() and not star_rod_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_STAR_ROD_UNLOCK_LEVEL:
+			stack.add_child(_build_fishing_rod_upgrade_offer_module(content_width, "star_rod"))
+			star_rod_offer_rendered = true
+		if _fishing_mirror_offer_available() and not mirror_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_MIRROR_OFFER_UNLOCK_LEVEL:
+			stack.add_child(_build_fishing_mirror_offer_module(content_width))
+			mirror_offer_rendered = true
+		var built := _build_fishing_area_module(skill_id, area_def, content_width)
+		stack.add_child(built["root"] as Control)
+		action_cards[built["area_key"] as String] = built["area_card"] as Dictionary
+		detail_rendered_action_ids.append(str(built["area_key"]))
+		for method_id in (built["method_ids"] as Array):
+			detail_rendered_action_ids.append(str(method_id))
+			detail_action_card_nodes[str(method_id)] = built["root"] as Control
+	if _fishing_net_offer_available() and not net_offer_rendered:
+		stack.add_child(_build_fishing_net_offer_module(content_width))
+	if _fishing_rod_offer_available() and not rod_offer_rendered:
+		stack.add_child(_build_fishing_rod_offer_module(content_width))
+	if _fishing_reinforced_rod_offer_available() and not reinforced_rod_offer_rendered:
+		stack.add_child(_build_fishing_rod_upgrade_offer_module(content_width, "reinforced_rod"))
+	if _fishing_boat_offer_available() and not boat_offer_rendered:
+		stack.add_child(_build_fishing_boat_offer_module(content_width))
+	if _fishing_star_rod_offer_available() and not star_rod_offer_rendered:
+		stack.add_child(_build_fishing_rod_upgrade_offer_module(content_width, "star_rod"))
+	if _fishing_mirror_offer_available() and not mirror_offer_rendered:
+		stack.add_child(_build_fishing_mirror_offer_module(content_width))
+	detail_rendered_action_ids = _fishing_detail_render_signature()
+
+
+func _render_fishing_area_modules_preview(stack: VBoxContainer, content_width: float, state: Dictionary) -> void:
+	var skill_id := "fishing"
+	var net_offer_rendered := false
+	var rod_offer_rendered := false
+	var reinforced_rod_offer_rendered := false
+	var star_rod_offer_rendered := false
+	var boat_offer_rendered := false
+	var mirror_offer_rendered := false
+	for action in _visible_actions_for_skill(skill_id):
+		if not _is_passive_action(action as Dictionary):
+			continue
+		var passive_card := _build_passive_module_card(skill_id, action as Dictionary, content_width, false)
+		_prepare_locked_activity_preview_fade(passive_card["card"] as Dictionary, skill_id, action as Dictionary)
+		_sync_locked_activity_preview_presence(passive_card["card"] as Dictionary, skill_id, action as Dictionary)
+		stack.add_child(passive_card["root"] as Control)
+		(state["action_cards"] as Array).append(passive_card["card"])
+
+	for area_def in _fishing_render_area_modules(skill_id):
+		if _fishing_net_offer_available() and not net_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_NET_OFFER_UNLOCK_LEVEL:
+			var net_offer := _build_fishing_net_offer_module(content_width)
+			_set_preview_controls_mouse_filter(net_offer)
+			stack.add_child(net_offer)
+			net_offer_rendered = true
+		if _fishing_rod_offer_available() and not rod_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_ROD_OFFER_UNLOCK_LEVEL:
+			var rod_offer := _build_fishing_rod_offer_module(content_width)
+			_set_preview_controls_mouse_filter(rod_offer)
+			stack.add_child(rod_offer)
+			rod_offer_rendered = true
+		if _fishing_reinforced_rod_offer_available() and not reinforced_rod_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_REINFORCED_ROD_UNLOCK_LEVEL:
+			var reinforced_offer := _build_fishing_rod_upgrade_offer_module(content_width, "reinforced_rod")
+			_set_preview_controls_mouse_filter(reinforced_offer)
+			stack.add_child(reinforced_offer)
+			reinforced_rod_offer_rendered = true
+		if _fishing_boat_offer_available() and not boat_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_BOAT_OFFER_UNLOCK_LEVEL:
+			var boat_offer := _build_fishing_boat_offer_module(content_width)
+			_set_preview_controls_mouse_filter(boat_offer)
+			stack.add_child(boat_offer)
+			boat_offer_rendered = true
+		if _fishing_mirror_offer_available() and not mirror_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_MIRROR_OFFER_UNLOCK_LEVEL:
+			var mirror_offer := _build_fishing_mirror_offer_module(content_width)
+			_set_preview_controls_mouse_filter(mirror_offer)
+			stack.add_child(mirror_offer)
+			mirror_offer_rendered = true
+		if _fishing_star_rod_offer_available() and not star_rod_offer_rendered and _fishing_render_module_unlock(area_def) > FISHING_STAR_ROD_UNLOCK_LEVEL:
+			var star_offer := _build_fishing_rod_upgrade_offer_module(content_width, "star_rod")
+			_set_preview_controls_mouse_filter(star_offer)
+			stack.add_child(star_offer)
+			star_rod_offer_rendered = true
+		var built := _build_fishing_area_module(skill_id, area_def, content_width)
+		var root := built["root"] as Control
+		_set_preview_controls_mouse_filter(root)
+		stack.add_child(root)
+	if _fishing_net_offer_available() and not net_offer_rendered:
+		var net_offer := _build_fishing_net_offer_module(content_width)
+		_set_preview_controls_mouse_filter(net_offer)
+		stack.add_child(net_offer)
+	if _fishing_rod_offer_available() and not rod_offer_rendered:
+		var rod_offer := _build_fishing_rod_offer_module(content_width)
+		_set_preview_controls_mouse_filter(rod_offer)
+		stack.add_child(rod_offer)
+	if _fishing_reinforced_rod_offer_available() and not reinforced_rod_offer_rendered:
+		var reinforced_offer := _build_fishing_rod_upgrade_offer_module(content_width, "reinforced_rod")
+		_set_preview_controls_mouse_filter(reinforced_offer)
+		stack.add_child(reinforced_offer)
+	if _fishing_boat_offer_available() and not boat_offer_rendered:
+		var boat_offer := _build_fishing_boat_offer_module(content_width)
+		_set_preview_controls_mouse_filter(boat_offer)
+		stack.add_child(boat_offer)
+	if _fishing_star_rod_offer_available() and not star_rod_offer_rendered:
+		var star_offer := _build_fishing_rod_upgrade_offer_module(content_width, "star_rod")
+		_set_preview_controls_mouse_filter(star_offer)
+		stack.add_child(star_offer)
+	if _fishing_mirror_offer_available() and not mirror_offer_rendered:
+		var mirror_offer := _build_fishing_mirror_offer_module(content_width)
+		_set_preview_controls_mouse_filter(mirror_offer)
+		stack.add_child(mirror_offer)
+
+
+func _set_preview_controls_mouse_filter(root: Control) -> void:
+	if root == null:
+		return
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child in root.get_children():
+		var child_control := child as Control
+		if child_control != null:
+			_set_preview_controls_mouse_filter(child_control)
+
+
+func _attach_fishing_area_module_title(pop_card: Control, title_text: String) -> Label:
+	var area_title := _label(title_text, FISHING_MODULE_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	area_title.add_theme_color_override("font_outline_color", COLOR_INK)
+	area_title.add_theme_constant_override("outline_size", FISHING_MODULE_TITLE_OUTLINE)
+	area_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	area_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	area_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	area_title.anchor_left = 0.0
+	area_title.anchor_right = 1.0
+	area_title.anchor_top = 0.0
+	area_title.anchor_bottom = 0.0
+	area_title.offset_left = 54.0
+	area_title.offset_right = -54.0
+	area_title.offset_top = FISHING_MODULE_TITLE_TOP
+	area_title.offset_bottom = FISHING_MODULE_TITLE_TOP + FISHING_MODULE_TITLE_BAND_HEIGHT
+	area_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	area_title.z_index = FISHING_MODULE_TITLE_Z_INDEX
+	area_title.z_as_relative = true
+	area_title.visible = true
+	pop_card.add_child(area_title)
+	return area_title
+
+
+func _fishing_area_title_backing_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.02, 0.02, 0.015, 0.42)
+	style.border_color = Color(1, 1, 1, 0.55)
+	style.border_width_left = 4
+	style.border_width_top = 4
+	style.border_width_right = 4
+	style.border_width_bottom = 4
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
+	style.shadow_color = Color(0, 0, 0, 0.25)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 3)
+	return style
+
+
+func _build_fishing_location_tile(
+	skill_id: String,
+	area_id: String,
+	area_key: String,
+	location: Dictionary,
+	method_row: HBoxContainer
+) -> Dictionary:
+	var location_id := str(location.get("id", ""))
+	var action := _fishing_location_display_action(area_id, location)
+	if action.is_empty():
+		return {}
+	var action_id := str(action.get("id", ""))
+	var location_unlocked := _fishing_location_is_available(area_id, location)
+	var action_unlocked := _is_action_unlocked(skill_id, action)
+	var unlocked := location_unlocked and action_unlocked
+
+	var method_column := VBoxContainer.new()
+	method_column.add_theme_constant_override("separation", FISHING_MODULE_TITLE_TOP)
+	method_column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	method_column.mouse_filter = Control.MOUSE_FILTER_STOP if unlocked else Control.MOUSE_FILTER_PASS
+	method_row.add_child(method_column)
+
+	var method_title := _label(str(location.get("name", location_id.capitalize())), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	method_title.add_theme_color_override("font_outline_color", COLOR_INK)
+	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
+	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	method_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	method_title.custom_minimum_size.x = FISHING_LOCATION_TILE_SIZE.x
+	method_title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	method_column.add_child(method_title)
+
+	var art_panel := Panel.new()
+	art_panel.custom_minimum_size = FISHING_LOCATION_TILE_SIZE
+	art_panel.size = FISHING_LOCATION_TILE_SIZE
+	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	art_panel.clip_contents = false
+	art_panel.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
+	art_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+	method_column.add_child(art_panel)
+
+	var tile_motion_root := Control.new()
+	tile_motion_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tile_motion_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile_motion_root.pivot_offset = FISHING_LOCATION_TILE_SIZE * 0.5
+	art_panel.add_child(tile_motion_root)
+
+	var art_clip := Control.new()
+	art_clip.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art_clip.clip_contents = true
+	art_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_clip.z_index = 1
+	tile_motion_root.add_child(art_clip)
+
+	var location_art := TextureRect.new()
+	location_art.texture = _fishing_location_thumbnail_texture(area_id, location_id)
+	location_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	location_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	location_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	location_art.modulate = Color.WHITE if unlocked else Color(0.72, 0.72, 0.72, 0.82)
+	location_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	location_art.pivot_offset = FISHING_LOCATION_TILE_SIZE * 0.5
+	location_art.z_index = 1
+	art_clip.add_child(location_art)
+
+	var location_border := Panel.new()
+	location_border.set_anchors_preset(Control.PRESET_FULL_RECT)
+	location_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	location_border.z_index = 20
+	location_border.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
+	tile_motion_root.add_child(location_border)
+
+	var medal := TextureRect.new()
+	medal.anchor_left = 0.0
+	medal.anchor_right = 0.0
+	medal.anchor_top = 0.0
+	medal.anchor_bottom = 0.0
+	medal.offset_left = 314
+	medal.offset_right = 464
+	medal.offset_top = -42.0
+	medal.offset_bottom = 108.0
+	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	medal.z_index = 21
+	tile_motion_root.add_child(medal)
+
+	var mastery_progress := _progress(Color("#f4bf35"), 56)
+	mastery_progress.border_color = COLOR_INK
+	mastery_progress.easing_speed = 24.0
+	mastery_progress.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 56.0)
+	mastery_progress.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	mastery_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mastery_progress.z_index = 24
+	method_column.add_child(mastery_progress)
+	var lock_root: Control = null
+	if not unlocked:
+		lock_root = _attach_fishing_method_padlock(
+			art_panel, skill_id, action_id, int(location.get("unlock", action.get("unlock", 1)))
+		)
+
+	var method_button := Button.new()
+	method_button.text = ""
+	method_button.focus_mode = Control.FOCUS_NONE
+	method_button.flat = true
+	method_button.mouse_filter = Control.MOUSE_FILTER_STOP if unlocked else Control.MOUSE_FILTER_IGNORE
+	method_button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	method_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	method_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	method_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	method_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	method_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	method_button.z_index = 218
+	if unlocked:
+		method_button.pressed.connect(_on_fishing_location_pressed.bind(skill_id, area_id, location_id, action_id, area_key))
+		_attach_default_button_sfx(method_button)
+	art_panel.add_child(method_button)
+
+	return {
+		"is_fishing_method": true,
+		"is_fishing_location": true,
+		"fishing_area_key": area_key,
+		"skill_id": skill_id,
+		"action": action,
+		"action_id": action_id,
+		"mastery_action_id": action_id,
+		"area_id": area_id,
+		"location_id": location_id,
+		"art_panel": art_panel,
+		"wiggle_root": tile_motion_root,
+		"art": location_art,
+		"active_rest_position": Vector2.ZERO,
+		"active_sway_offset": Vector2.ZERO,
+		"active_sway_rotation": 0.0,
+		"active_sway_scale_pulse": 0.0,
+		"active_camera_zoom": FISHING_LOCATION_ACTIVE_CAMERA_ZOOM,
+		"active_camera_pan": FISHING_LOCATION_ACTIVE_CAMERA_PAN,
+		"medal": medal,
+		"attempt_bar": null,
+		"mastery": mastery_progress,
+		"mastery_bar_instant_updates": true,
+		"method_button": method_button,
+		"lock_root": lock_root,
+		"status": null,
+		"medal_destination": Vector2(medal.offset_left, medal.offset_top),
+		"last_mastery_level": -1,
+		"method_active_sway_phase": randf() * TAU,
+		"fixed_layout": true,
+	}
+
+
+func _fishing_location_affinity_label(area_id: String, location_id: String) -> String:
+	var key := _fishing_location_key(area_id, location_id)
+	match equipped_fishing_tool_id:
+		"hands":
+			if key in ["beach.shallows", "pier.dock-cup"]:
+				return "ideal"
+			return "awkward"
+		"net":
+			if key in ["beach.shallows", "pier.dock-cup"]:
+				return "good"
+			return "awkward"
+		"line":
+			if key in ["beach.rocky", "pier.piling-line"]:
+				return "ideal"
+			return "good"
+		_:
+			return "awkward"
+
+
+func _fishing_location_tile_style(available: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color.TRANSPARENT
+	style.draw_center = false
+	style.border_color = Color.WHITE if available else Color("#d9cfbc")
+	style.border_width_left = 10
+	style.border_width_top = 10
+	style.border_width_right = 10
+	style.border_width_bottom = 10
+	style.corner_radius_top_left = 30
+	style.corner_radius_top_right = 30
+	style.corner_radius_bottom_left = 30
+	style.corner_radius_bottom_right = 30
+	style.shadow_color = Color.TRANSPARENT
+	style.shadow_size = 0
+	style.shadow_offset = Vector2.ZERO
+	return style
+
+
+func _build_fishing_active_tool_layer() -> Dictionary:
+	var layer := Control.new()
+	layer.anchor_left = 1.0
+	layer.anchor_right = 1.0
+	layer.anchor_top = 0.0
+	layer.anchor_bottom = 0.0
+	layer.offset_left = FISHING_ACTIVE_TOOL_LAYER_RIGHT_OFFSET - FISHING_ACTIVE_TOOL_LAYER_SIZE.x
+	layer.offset_right = FISHING_ACTIVE_TOOL_LAYER_RIGHT_OFFSET
+	layer.offset_top = FISHING_ACTIVE_TOOL_LAYER_TOP
+	layer.offset_bottom = FISHING_ACTIVE_TOOL_LAYER_TOP + FISHING_ACTIVE_TOOL_LAYER_SIZE.y
+	layer.clip_contents = true
+	layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.visible = false
+	layer.z_index = FISHING_ACTIVE_TOOL_Z_INDEX
+
+	var art := TextureRect.new()
+	art.texture = _fishing_tool_icon_texture(equipped_fishing_tool_id)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.custom_minimum_size = FISHING_ACTIVE_TOOL_ICON_SIZE
+	art.size = FISHING_ACTIVE_TOOL_ICON_SIZE
+	art.position = Vector2(_fishing_active_tool_base_x(FISHING_ACTIVE_TOOL_ICON_SIZE.x), FISHING_ACTIVE_TOOL_FLOAT_Y)
+	art.pivot_offset = FISHING_ACTIVE_TOOL_ICON_SIZE * 0.5
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(art)
+
+	return {
+		"layer": layer,
+		"art": art,
+		"tool_id": equipped_fishing_tool_id,
+	}
+
+
+func _fishing_active_tool_ease(value: float) -> float:
+	var t := clampf(value, 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
+func _fishing_active_tool_base_x(icon_width: float) -> float:
+	return FISHING_ACTIVE_TOOL_LAYER_SIZE.x - FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH + (FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH - icon_width) * 0.5
+
+
+func _update_fishing_net_tool_animation(
+	area_card: Dictionary,
+	art: TextureRect,
+	progress: float,
+	delta: float,
+	instant: bool
+) -> void:
+	var center_x := _fishing_active_tool_base_x(FISHING_ACTIVE_NET_ICON_SIZE.x)
+	var cast_start := Vector2(center_x - 86.0, FISHING_ACTIVE_TOOL_FLOAT_Y - 38.0)
+	var set_position := Vector2(center_x + 8.0, FISHING_ACTIVE_TOOL_DIP_Y + 22.0)
+	var harvest_position := Vector2(center_x + 2.0, FISHING_ACTIVE_TOOL_HARVEST_Y + 10.0)
+	var target_position := cast_start
+	var target_rotation := -0.38
+	var target_scale := Vector2.ONE * 0.88
+	if fishing_net_haul_visual_seconds > 0.0:
+		var haul_t := 1.0 - clampf(fishing_net_haul_visual_seconds / FISHING_NET_HAUL_VISUAL_SECONDS, 0.0, 1.0)
+		haul_t = _fishing_active_tool_ease(haul_t)
+		target_position = set_position.lerp(harvest_position, haul_t)
+		target_position.y -= sin(haul_t * PI) * 18.0
+		target_rotation = lerpf(0.10, -0.08, haul_t)
+		target_scale = Vector2.ONE * lerpf(0.98, 1.09, haul_t)
+		fishing_net_haul_visual_seconds = maxf(0.0, fishing_net_haul_visual_seconds - delta)
+	elif progress < 0.24 and fishing_net_stored_fish <= 0 and fishing_net_successes <= 0:
+		var throw_t := 1.0 - pow(1.0 - clampf(progress / 0.24, 0.0, 1.0), 2.4)
+		target_position = cast_start.lerp(set_position, throw_t)
+		target_position.y -= sin(throw_t * PI) * 42.0
+		target_rotation = lerpf(-0.38, 0.16, throw_t)
+		target_scale = Vector2.ONE * lerpf(0.88, 0.96, throw_t)
+	else:
+		var fill_progress := clampf((progress - 0.24) / 0.76, 0.0, 1.0)
+		var soak := sin((progress + float(fishing_net_stored_fish) * 0.07) * TAU * 1.15)
+		target_position = set_position + Vector2(soak * 4.0, sin(progress * TAU * 0.72) * 5.0)
+		target_rotation = 0.10 + sin(progress * TAU * 0.8) * 0.03
+		target_scale = Vector2.ONE * (0.95 + fill_progress * 0.045)
+	area_card["active_tool_underwater"] = fishing_net_haul_visual_seconds <= 0.0 and (progress >= 0.24 or fishing_net_stored_fish > 0 or fishing_net_successes > 0)
+	if instant:
+		art.position = target_position
+		art.rotation = target_rotation
+		art.scale = target_scale
+		return
+	var ease := clampf(delta * 18.0, 0.0, 1.0)
+	art.position = art.position.lerp(target_position, ease)
+	art.rotation = lerpf(art.rotation, target_rotation, ease)
+	art.scale = art.scale.lerp(target_scale, ease)
+
+
+func _update_fishing_active_tool_animation(area_card: Dictionary, running: bool, delta: float, instant: bool) -> void:
+	var layer := area_card.get("active_tool_layer") as Control
+	var art := area_card.get("active_tool_art") as TextureRect
+	if layer == null or art == null or not is_instance_valid(layer) or not is_instance_valid(art):
+		return
+	var active_here := running and _fishing_area_card_owns_action(area_card, running_action_id)
+	layer.visible = active_here
+	if not active_here:
+		art.position = Vector2(_fishing_active_tool_base_x(FISHING_ACTIVE_TOOL_ICON_SIZE.x), FISHING_ACTIVE_TOOL_FLOAT_Y)
+		art.rotation = 0.0
+		art.scale = Vector2.ONE
+		return
+	var current_tool_id := equipped_fishing_tool_id
+	if str(area_card.get("active_tool_id", "")) != current_tool_id:
+		area_card["active_tool_id"] = current_tool_id
+		art.texture = _fishing_tool_icon_texture(current_tool_id)
+		var icon_size := FISHING_ACTIVE_NET_ICON_SIZE if current_tool_id == "net" else FISHING_ACTIVE_TOOL_ICON_SIZE
+		art.custom_minimum_size = icon_size
+		art.size = icon_size
+		art.pivot_offset = icon_size * 0.5
+	var progress := clampf(action_progress, 0.0, 1.0)
+	if current_tool_id == "net":
+		_update_fishing_net_tool_animation(area_card, art, progress, delta, instant)
+		return
+	var y := FISHING_ACTIVE_TOOL_FLOAT_Y
+	if progress < 0.32:
+		y += sin(progress / 0.45 * PI * 2.0) * 6.0
+	elif progress < 0.88:
+		var dip_t := 1.0 - pow(1.0 - clampf((progress - 0.32) / 0.16, 0.0, 1.0), 3.0)
+		y = lerpf(FISHING_ACTIVE_TOOL_FLOAT_Y, FISHING_ACTIVE_TOOL_DIP_Y, dip_t)
+	else:
+		var rise_t := 1.0 - pow(1.0 - clampf((progress - 0.88) / 0.12, 0.0, 1.0), 2.2)
+		y = lerpf(FISHING_ACTIVE_TOOL_DIP_Y, FISHING_ACTIVE_TOOL_HARVEST_Y, rise_t)
+	var x := _fishing_active_tool_base_x(FISHING_ACTIVE_TOOL_ICON_SIZE.x) + sin(progress * TAU * 1.4) * 5.0
+	var target_position := Vector2(x, y)
+	var target_rotation := sin(progress * TAU * 1.1) * 0.045
+	var target_scale := Vector2.ONE * (1.0 + sin(progress * TAU * 2.0) * 0.025)
+	if instant:
+		art.position = target_position
+		art.rotation = target_rotation
+		art.scale = target_scale
+		return
+	var ease := clampf(delta * 18.0, 0.0, 1.0)
+	art.position = art.position.lerp(target_position, ease)
+	art.rotation = lerpf(art.rotation, target_rotation, ease)
+	art.scale = art.scale.lerp(target_scale, ease)
+
+
+func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_width: float) -> Dictionary:
+	var area_id := str(area_def.get("id", ""))
+	var area_key := _fishing_area_module_key(skill_id, area_def)
+	var selected_id := _fishing_area_default_method(skill_id, area_def)
+	if _fishing_area_uses_location_tiles(area_def) and str(selected_fishing_locations.get(area_id, "")).is_empty():
+		selected_fishing_locations[area_id] = _fishing_selected_location_id(area_def)
+
+	var card_root := Control.new()
+	card_root.custom_minimum_size = Vector2(content_width, ACTION_CARD_HEIGHT)
+	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card_root.clip_contents = false
+	card_root.mouse_filter = Control.MOUSE_FILTER_PASS
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.offset_top = 0.0
+	pop_card.offset_bottom = 0.0
+	pop_card.clip_contents = true
+	pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	card_root.add_child(pop_card)
+
+	var area_bg_path := str(area_def.get("bg", ""))
+	if area_id == "beach" and ResourceLoader.exists("res://docs/assets/fishing/backgrounds/beach-rocky-zoom.png"):
+		area_bg_path = "res://docs/assets/fishing/backgrounds/beach-rocky-zoom.png"
+	var bg := TextureRect.new()
+	bg.texture = _texture(area_bg_path)
+	bg.modulate = Color.WHITE
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.z_index = 150
+	pop_card.add_child(bg)
+
+	var bg_corner_crop := RoundedCornerCropOverlay.new()
+	bg_corner_crop.radius = CARD_RADIUS
+	bg_corner_crop.cover_color = COLOR_PAPER
+	bg_corner_crop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_corner_crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg_corner_crop.z_index = 151
+	pop_card.add_child(bg_corner_crop)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 54)
+	margin.add_theme_constant_override("margin_right", 54)
+	margin.add_theme_constant_override("margin_top", FISHING_AREA_CONTENT_TOP_MARGIN)
+	margin.add_theme_constant_override("margin_bottom", FISHING_AREA_WATER_BOTTOM_MARGIN)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.z_index = 200
+	pop_card.add_child(margin)
+
+	var layout_column := VBoxContainer.new()
+	layout_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	layout_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	layout_column.add_theme_constant_override("separation", 10)
+	layout_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(layout_column)
+
+	var top_row := HBoxContainer.new()
+	top_row.add_theme_constant_override("separation", 28)
+	top_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	top_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	top_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layout_column.add_child(top_row)
+
+	var method_slot := MarginContainer.new()
+	method_slot.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	method_slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	method_slot.add_theme_constant_override("margin_top", FISHING_AREA_METHOD_TOP_MARGIN)
+	method_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_row.add_child(method_slot)
+
+	var method_row := HBoxContainer.new()
+	method_row.add_theme_constant_override("separation", 28)
+	method_row.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	method_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	method_slot.add_child(method_row)
+
+	var top_spacer := Control.new()
+	top_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_row.add_child(top_spacer)
+
+	var stat_slot := MarginContainer.new()
+	stat_slot.size_flags_horizontal = Control.SIZE_SHRINK_END
+	stat_slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	stat_slot.add_theme_constant_override("margin_top", FISHING_AREA_STAT_COLUMN_TOP_MARGIN)
+	stat_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top_row.add_child(stat_slot)
+
+	var stat_column := VBoxContainer.new()
+	stat_column.add_theme_constant_override("separation", 28)
+	stat_column.size_flags_horizontal = Control.SIZE_SHRINK_END
+	stat_column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	stat_column.alignment = BoxContainer.ALIGNMENT_BEGIN
+	stat_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stat_slot.add_child(stat_column)
+	var xp_side := _action_stat_label("")
+	var xp_box := _action_stat_box(xp_side, false)
+	stat_column.add_child(xp_box)
+	var yield_side := _action_stat_label("")
+	var yield_box := _action_stat_box(yield_side, false)
+	stat_column.add_child(yield_box)
+	stat_column.modulate.a = 0.0
+
+	var active_tool := _build_fishing_active_tool_layer()
+	var active_tool_layer := active_tool["layer"] as Control
+	pop_card.add_child(active_tool_layer)
+
+	var water_strip_host: Control = null
+	var fluid_strip: Control = null
+	water_strip_host = Control.new()
+	water_strip_host.anchor_left = 0.0
+	water_strip_host.anchor_right = 1.0
+	water_strip_host.anchor_top = 1.0
+	water_strip_host.anchor_bottom = 1.0
+	water_strip_host.offset_left = 0.0
+	water_strip_host.offset_right = 0.0
+	water_strip_host.offset_top = -FISHING_FLUID_STRIP_HEIGHT
+	water_strip_host.offset_bottom = FISHING_FLUID_STRIP_BOTTOM_INSET
+	water_strip_host.clip_contents = true
+	water_strip_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	water_strip_host.visible = false
+	water_strip_host.z_index = FISHING_FLUID_STRIP_Z_INDEX
+	pop_card.add_child(water_strip_host)
+	fluid_strip = _attach_fishing_fluid_strip(water_strip_host, {"id": selected_id})
+	if fluid_strip.has_method("set_fluid_kind"):
+		fluid_strip.call("set_fluid_kind", str(area_def.get("fluid", "water")))
+
+	var catch_burst := Control.new()
+	catch_burst.set_anchors_preset(Control.PRESET_FULL_RECT)
+	catch_burst.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	catch_burst.z_index = 640
+	pop_card.add_child(catch_burst)
+
+	var border := ActivityCardBorder.new()
+	border.set_anchors_preset(Control.PRESET_FULL_RECT)
+	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	border.z_index = 220
+	pop_card.add_child(border)
+
+	var status := _label("", 42, COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
+	status.visible = false
+
+	var method_slots: Dictionary = {}
+	var teaser_id := _fishing_global_teaser_action_id(skill_id)
+	var stat_hit_buttons: Dictionary = {}
+	var method_source_ids = area_def.get("methods", [])
+
+	if _fishing_area_uses_location_tiles(area_def):
+		method_source_ids = []
+		for raw_location in _fishing_locations_for_area(area_id):
+			var location := raw_location as Dictionary
+			if not _fishing_location_should_show(area_id, location):
+				continue
+			var location_card := _build_fishing_location_tile(skill_id, area_id, area_key, location, method_row)
+			if location_card.is_empty():
+				continue
+			var location_action_id := str(location_card.get("action_id", ""))
+			var location_ui_key := "%s:location-%s-%s" % [skill_id, area_id, str(location.get("id", ""))]
+			action_cards[location_ui_key] = location_card
+			method_slots[location_action_id] = location_card
+
+	for method_id in method_source_ids:
+		var action_id := str(method_id)
+		if not _fishing_method_should_show(skill_id, action_id):
+			continue
+		var action := _action_data(skill_id, action_id)
+		if action.is_empty():
+			continue
+		var unlocked := _is_action_unlocked(skill_id, action)
+		var is_teaser := (not unlocked) and action_id == teaser_id
+
+		var method_column := VBoxContainer.new()
+		method_column.add_theme_constant_override("separation", FISHING_MODULE_TITLE_TOP)
+		method_column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		method_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		method_row.add_child(method_column)
+
+		var method_title := _label(_fishing_area_focused_method_label(action), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		method_title.add_theme_color_override("font_outline_color", COLOR_INK)
+		method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
+		method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
+		method_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		method_title.custom_minimum_size.x = FISHING_LOCATION_TILE_SIZE.x
+		method_title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		method_column.add_child(method_title)
+
+		var art_panel := Panel.new()
+		art_panel.custom_minimum_size = FISHING_LOCATION_TILE_SIZE
+		art_panel.size = FISHING_LOCATION_TILE_SIZE
+		art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		art_panel.clip_contents = false
+		art_panel.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
+		art_panel.mouse_filter = Control.MOUSE_FILTER_PASS
+		method_column.add_child(art_panel)
+
+		var tile_motion_root := Control.new()
+		tile_motion_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tile_motion_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tile_motion_root.pivot_offset = FISHING_LOCATION_TILE_SIZE * 0.5
+		art_panel.add_child(tile_motion_root)
+
+		var art_clip := Control.new()
+		art_clip.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art_clip.clip_contents = true
+		art_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art_clip.z_index = 1
+		tile_motion_root.add_child(art_clip)
+
+		var art := TextureRect.new()
+		art.texture = _texture(str(action.get("background", area_bg_path)))
+		art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+		art.modulate = Color.WHITE if unlocked else Color(0.72, 0.72, 0.72, 0.82)
+		art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		art.pivot_offset = FISHING_LOCATION_TILE_SIZE * 0.5
+		art.z_index = 1
+		art_clip.add_child(art)
+
+		var location_border := Panel.new()
+		location_border.set_anchors_preset(Control.PRESET_FULL_RECT)
+		location_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		location_border.z_index = 20
+		location_border.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
+		tile_motion_root.add_child(location_border)
+
+		var medal := TextureRect.new()
+		medal.anchor_left = 0.0
+		medal.anchor_right = 0.0
+		medal.anchor_top = 0.0
+		medal.anchor_bottom = 0.0
+		medal.offset_left = 314
+		medal.offset_right = 464
+		medal.offset_top = -42.0
+		medal.offset_bottom = 108.0
+		medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		medal.z_index = 21
+		tile_motion_root.add_child(medal)
+		var attempt_bar: Control = null
+
+		var mastery_progress := _progress(Color("#f4bf35"), 56)
+		mastery_progress.border_color = COLOR_INK
+		mastery_progress.easing_speed = 24.0
+		mastery_progress.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 56.0)
+		mastery_progress.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		mastery_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		mastery_progress.z_index = 24
+		method_column.add_child(mastery_progress)
+
+		var lock_root: Control = null
+		if is_teaser:
+			lock_root = _attach_fishing_method_padlock(
+				art_panel, skill_id, action_id, int(action.get("unlock", 1))
+			)
+
+		var method_button := Button.new()
+		method_button.text = ""
+		method_button.focus_mode = Control.FOCUS_NONE
+		method_button.flat = true
+		method_button.mouse_filter = Control.MOUSE_FILTER_STOP if unlocked else Control.MOUSE_FILTER_IGNORE
+		method_button.set_anchors_preset(Control.PRESET_FULL_RECT)
+		method_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		method_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+		method_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+		method_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+		method_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		method_button.z_index = 218
+		art_panel.add_child(method_button)
+
+		var method_card := {
+			"is_fishing_method": true,
+			"fishing_area_key": area_key,
+			"skill_id": skill_id,
+			"action": action,
+			"action_id": action_id,
+			"art_panel": art_panel,
+			"wiggle_root": tile_motion_root,
+			"art": art,
+			"active_rest_position": Vector2.ZERO,
+			"active_sway_offset": Vector2.ZERO,
+			"active_sway_rotation": 0.0,
+			"active_sway_scale_pulse": 0.0,
+			"active_camera_zoom": FISHING_LOCATION_ACTIVE_CAMERA_ZOOM,
+			"active_camera_pan": FISHING_LOCATION_ACTIVE_CAMERA_PAN,
+			"medal": medal,
+			"attempt_bar": attempt_bar,
+			"mastery": mastery_progress,
+			"mastery_bar_instant_updates": true,
+			"method_button": method_button,
+			"lock_root": lock_root,
+			"status": status,
+			"medal_destination": Vector2(medal.offset_left, medal.offset_top),
+			"last_mastery_level": -1,
+			"method_active_sway_phase": randf() * TAU,
+			"fixed_layout": true,
+		}
+		if unlocked:
+			_activate_fishing_method_button(method_card)
+		action_cards[_action_key(skill_id, action_id)] = method_card
+		method_slots[action_id] = method_card
+
+	stat_hit_buttons = _fishing_area_stat_hit_buttons(pop_card, skill_id, area_key, method_slots.size())
+
+	var area_card := {
+		"is_fishing_area": true,
+		"area_id": area_id,
+		"area_key": area_key,
+		"method_ids": method_slots.keys(),
+		"skill_id": skill_id,
+		"area_def": area_def,
+		"area_bg_path": area_bg_path,
+		"root": card_root,
+		"pop": pop_card,
+		"bg": bg,
+		"border": border,
+		"fluid_strip": fluid_strip,
+		"water_strip_host": water_strip_host,
+		"active_tool_layer": active_tool_layer,
+		"active_tool_art": active_tool["art"],
+		"active_tool_id": active_tool["tool_id"],
+		"uses_static_background_only": true,
+		"catch_burst": catch_burst,
+		"area_xp": xp_side,
+		"area_yield": yield_side,
+		"stat_column": stat_column,
+		"stat_boxes": {"xp": xp_box, "yield": yield_box},
+		"stat_hit_buttons": stat_hit_buttons,
+		"method_row": method_row,
+		"method_slot": method_slot,
+		"method_slots": method_slots,
+		"selected_action_id": selected_id,
+		"status": status,
+	}
+	var area_title := _attach_fishing_area_module_title(
+		pop_card,
+		_fishing_area_module_display_name(area_def)
+	)
+	area_card["area_title"] = area_title
+
+	_apply_fishing_area_selection(area_card, selected_id, true)
+	_set_fishing_area_stats_visible(area_card, false, 0.0, true)
+	_sync_fishing_area_stat_hit_buttons(area_card, false)
+	return {
+		"root": card_root,
+		"area_key": area_key,
+		"area_card": area_card,
+		"method_ids": method_slots.keys(),
+	}
+
+
+func _build_fishing_net_offer_module(content_width: float) -> Control:
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(content_width, FISHING_NET_OFFER_HEIGHT)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.clip_contents = true
+	root.add_child(pop_card)
+
+	var bg := RoundedTextureRect.new()
+	bg.texture = _texture("res://docs/assets/fishing/backgrounds/beach-rocky-zoom.png")
+	if bg.texture == null:
+		bg.texture = _texture("res://docs/assets/fishing/backgrounds/03-crab-pier.png")
+	bg.radius = 64.0
+	bg.art_height = FISHING_NET_OFFER_HEIGHT
+	bg.feather_height = 120.0
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(bg)
+
+	var shade := Panel.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.22))
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(shade)
+
+	var title := _label("Drag net", 76, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_constant_override("outline_size", 20)
+	title.anchor_left = 0.0
+	title.anchor_right = 1.0
+	title.anchor_top = 0.0
+	title.anchor_bottom = 0.0
+	title.offset_left = 48
+	title.offset_right = -48
+	title.offset_top = 36
+	title.offset_bottom = 140
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(title)
+
+	var net_button := Button.new()
+	net_button.text = ""
+	net_button.focus_mode = Control.FOCUS_NONE
+	net_button.flat = true
+	net_button.anchor_left = 0.5
+	net_button.anchor_right = 0.5
+	net_button.anchor_top = 0.5
+	net_button.anchor_bottom = 0.5
+	net_button.offset_left = -260
+	net_button.offset_right = 260
+	net_button.offset_top = -170
+	net_button.offset_bottom = 220
+	net_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	net_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	net_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	net_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	net_button.pressed.connect(_on_fishing_net_offer_pressed.bind(net_button))
+	_attach_default_button_sfx(net_button)
+	pop_card.add_child(net_button)
+
+	var net_art := _image("res://docs/assets/fishing/tools/net-player.png", Vector2(470, 330))
+	net_art.position = Vector2(25, 20)
+	net_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	net_button.add_child(net_art)
+
+	var hint := _label("Tap the net", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	hint.add_theme_color_override("font_outline_color", COLOR_INK)
+	hint.add_theme_constant_override("outline_size", 14)
+	hint.anchor_left = 0.0
+	hint.anchor_right = 1.0
+	hint.anchor_top = 1.0
+	hint.anchor_bottom = 1.0
+	hint.offset_left = 48
+	hint.offset_right = -48
+	hint.offset_top = -132
+	hint.offset_bottom = -48
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(hint)
+
+	return root
+
+
+func _build_fishing_rod_offer_module(content_width: float) -> Control:
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(content_width, FISHING_ROD_OFFER_HEIGHT)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.clip_contents = true
+	root.add_child(pop_card)
+
+	var bg := RoundedTextureRect.new()
+	bg.texture = _texture("res://docs/assets/fishing/backgrounds/02-river-bend.png")
+	bg.radius = 64.0
+	bg.art_height = FISHING_ROD_OFFER_HEIGHT
+	bg.feather_height = 120.0
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(bg)
+
+	var shade := Panel.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.28))
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(shade)
+
+	var title := _label("Bamboo rod", 76, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_constant_override("outline_size", 18)
+	title.anchor_left = 0.0
+	title.anchor_right = 1.0
+	title.anchor_top = 0.0
+	title.anchor_bottom = 0.0
+	title.offset_left = 48
+	title.offset_right = -48
+	title.offset_top = 56
+	title.offset_bottom = 150
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(title)
+
+	var rod_button := Button.new()
+	rod_button.text = ""
+	rod_button.focus_mode = Control.FOCUS_NONE
+	rod_button.flat = true
+	rod_button.anchor_left = 0.5
+	rod_button.anchor_right = 0.5
+	rod_button.anchor_top = 0.5
+	rod_button.anchor_bottom = 0.5
+	rod_button.offset_left = -280
+	rod_button.offset_right = 280
+	rod_button.offset_top = -170
+	rod_button.offset_bottom = 220
+	rod_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	rod_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	rod_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	rod_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	rod_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	rod_button.pressed.connect(_on_fishing_rod_offer_pressed.bind(rod_button))
+	_attach_default_button_sfx(rod_button)
+	pop_card.add_child(rod_button)
+
+	var rod_art := _image("res://docs/assets/fishing/tools/tool-bamboo-rod.png", Vector2(520, 360))
+	rod_art.position = Vector2(20, 10)
+	rod_art.modulate = Color.WHITE if fish_currency >= FISHING_ROD_OFFER_COST else Color(1, 1, 1, 0.52)
+	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rod_button.add_child(rod_art)
+
+	var hint_text := "Buy for %s fish" % _format_compact_number(float(FISHING_ROD_OFFER_COST), 3)
+	if fish_currency < FISHING_ROD_OFFER_COST:
+		hint_text = "%s fish needed" % _format_compact_number(float(FISHING_ROD_OFFER_COST), 3)
+	var hint := _label(hint_text, 48, Color.WHITE if fish_currency >= FISHING_ROD_OFFER_COST else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
+	hint.add_theme_color_override("font_outline_color", COLOR_INK)
+	hint.add_theme_constant_override("outline_size", 14)
+	hint.anchor_left = 0.0
+	hint.anchor_right = 1.0
+	hint.anchor_top = 1.0
+	hint.anchor_bottom = 1.0
+	hint.offset_left = 48
+	hint.offset_right = -48
+	hint.offset_top = -132
+	hint.offset_bottom = -48
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(hint)
+
+	return root
+
+
+func _build_fishing_mirror_offer_module(content_width: float) -> Control:
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(content_width, FISHING_MIRROR_OFFER_HEIGHT)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.clip_contents = true
+	root.add_child(pop_card)
+
+	var bg := RoundedTextureRect.new()
+	bg.texture = _texture("res://docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png")
+	bg.radius = 64.0
+	bg.art_height = FISHING_MIRROR_OFFER_HEIGHT
+	bg.feather_height = 120.0
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(bg)
+
+	var shade := Panel.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.34))
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(shade)
+
+	var title := _label("Reflection mirror", 76, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_constant_override("outline_size", 18)
+	title.anchor_left = 0.0
+	title.anchor_right = 1.0
+	title.anchor_top = 0.0
+	title.anchor_bottom = 0.0
+	title.offset_left = 48
+	title.offset_right = -48
+	title.offset_top = 56
+	title.offset_bottom = 150
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(title)
+
+	var mirror_button := Button.new()
+	mirror_button.text = ""
+	mirror_button.focus_mode = Control.FOCUS_NONE
+	mirror_button.flat = true
+	mirror_button.anchor_left = 0.5
+	mirror_button.anchor_right = 0.5
+	mirror_button.anchor_top = 0.5
+	mirror_button.anchor_bottom = 0.5
+	mirror_button.offset_left = -280
+	mirror_button.offset_right = 280
+	mirror_button.offset_top = -170
+	mirror_button.offset_bottom = 220
+	mirror_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	mirror_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	mirror_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	mirror_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	mirror_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	mirror_button.pressed.connect(_on_fishing_mirror_offer_pressed.bind(mirror_button))
+	_attach_default_button_sfx(mirror_button)
+	pop_card.add_child(mirror_button)
+
+	var mirror_art := _image("res://docs/assets/fishing/tools/reflection-net.png", Vector2(520, 360))
+	mirror_art.position = Vector2(20, 10)
+	mirror_art.modulate = Color.WHITE if fish_currency >= FISHING_MIRROR_OFFER_COST else Color(1, 1, 1, 0.52)
+	mirror_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mirror_button.add_child(mirror_art)
+
+	var hint_text := "Buy for %s fish" % _format_compact_number(float(FISHING_MIRROR_OFFER_COST), 3)
+	if fish_currency < FISHING_MIRROR_OFFER_COST:
+		hint_text = "%s fish needed" % _format_compact_number(float(FISHING_MIRROR_OFFER_COST), 3)
+	var hint := _label(hint_text, 48, Color.WHITE if fish_currency >= FISHING_MIRROR_OFFER_COST else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
+	hint.add_theme_color_override("font_outline_color", COLOR_INK)
+	hint.add_theme_constant_override("outline_size", 14)
+	hint.anchor_left = 0.0
+	hint.anchor_right = 1.0
+	hint.anchor_top = 1.0
+	hint.anchor_bottom = 1.0
+	hint.offset_left = 48
+	hint.offset_right = -48
+	hint.offset_top = -132
+	hint.offset_bottom = -48
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(hint)
+
+	return root
+
+
+func _fishing_rod_upgrade_cost(tool_id: String) -> int:
+	return FISHING_STAR_ROD_COST if tool_id == "star_rod" else FISHING_REINFORCED_ROD_COST
+
+
+func _fishing_rod_upgrade_title(tool_id: String) -> String:
+	return "Star rod" if tool_id == "star_rod" else "Reinforced rod"
+
+
+func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: String) -> Control:
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(content_width, FISHING_ROD_UPGRADE_OFFER_HEIGHT)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.clip_contents = true
+	root.add_child(pop_card)
+
+	var bg := RoundedTextureRect.new()
+	bg.texture = _texture("res://docs/assets/fishing/backgrounds/04-frozen-lake.png" if tool_id == "star_rod" else "res://docs/assets/fishing/backgrounds/05-coral-reef-shallows.png")
+	bg.radius = 64.0
+	bg.art_height = FISHING_ROD_UPGRADE_OFFER_HEIGHT
+	bg.feather_height = 120.0
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(bg)
+
+	var shade := Panel.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.30))
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(shade)
+
+	var title := _label(_fishing_rod_upgrade_title(tool_id), 76, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_constant_override("outline_size", 18)
+	title.anchor_left = 0.0
+	title.anchor_right = 1.0
+	title.anchor_top = 0.0
+	title.anchor_bottom = 0.0
+	title.offset_left = 48
+	title.offset_right = -48
+	title.offset_top = 56
+	title.offset_bottom = 150
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(title)
+
+	var upgrade_button := Button.new()
+	upgrade_button.text = ""
+	upgrade_button.focus_mode = Control.FOCUS_NONE
+	upgrade_button.flat = true
+	upgrade_button.anchor_left = 0.5
+	upgrade_button.anchor_right = 0.5
+	upgrade_button.anchor_top = 0.5
+	upgrade_button.anchor_bottom = 0.5
+	upgrade_button.offset_left = -280
+	upgrade_button.offset_right = 280
+	upgrade_button.offset_top = -170
+	upgrade_button.offset_bottom = 220
+	upgrade_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	upgrade_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	upgrade_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	upgrade_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	upgrade_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	upgrade_button.pressed.connect(_on_fishing_rod_upgrade_offer_pressed.bind(tool_id, upgrade_button))
+	_attach_default_button_sfx(upgrade_button)
+	pop_card.add_child(upgrade_button)
+
+	var cost := _fishing_rod_upgrade_cost(tool_id)
+	var rod_art := _image("res://docs/assets/fishing/tools/tool-bamboo-rod.png", Vector2(520, 360))
+	rod_art.position = Vector2(20, 10)
+	rod_art.modulate = (Color("#dcf7ff") if tool_id == "star_rod" else Color("#ffe8a8")) if fish_currency >= cost else Color(1, 1, 1, 0.52)
+	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	upgrade_button.add_child(rod_art)
+
+	var hint_text := "Upgrade for %s fish" % _format_compact_number(float(cost), 3)
+	if fish_currency < cost:
+		hint_text = "%s fish needed" % _format_compact_number(float(cost), 3)
+	var hint := _label(hint_text, 48, Color.WHITE if fish_currency >= cost else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
+	hint.add_theme_color_override("font_outline_color", COLOR_INK)
+	hint.add_theme_constant_override("outline_size", 14)
+	hint.anchor_left = 0.0
+	hint.anchor_right = 1.0
+	hint.anchor_top = 1.0
+	hint.anchor_bottom = 1.0
+	hint.offset_left = 48
+	hint.offset_right = -48
+	hint.offset_top = -132
+	hint.offset_bottom = -48
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(hint)
+
+	return root
+
+
+func _build_fishing_boat_offer_module(content_width: float) -> Control:
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(content_width, FISHING_BOAT_OFFER_HEIGHT)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.clip_contents = true
+	root.add_child(pop_card)
+
+	var bg := RoundedTextureRect.new()
+	bg.texture = _texture("res://docs/assets/fishing/backgrounds/07-rowboat-offshore.png")
+	bg.radius = 64.0
+	bg.art_height = FISHING_BOAT_OFFER_HEIGHT
+	bg.feather_height = 120.0
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(bg)
+
+	var shade := Panel.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.30))
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(shade)
+
+	var title := _label("Build boat", 76, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_constant_override("outline_size", 18)
+	title.anchor_left = 0.0
+	title.anchor_right = 1.0
+	title.anchor_top = 0.0
+	title.anchor_bottom = 0.0
+	title.offset_left = 48
+	title.offset_right = -48
+	title.offset_top = 56
+	title.offset_bottom = 150
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(title)
+
+	var boat_button := Button.new()
+	boat_button.text = ""
+	boat_button.focus_mode = Control.FOCUS_NONE
+	boat_button.flat = true
+	boat_button.anchor_left = 0.5
+	boat_button.anchor_right = 0.5
+	boat_button.anchor_top = 0.5
+	boat_button.anchor_bottom = 0.5
+	boat_button.offset_left = -280
+	boat_button.offset_right = 280
+	boat_button.offset_top = -170
+	boat_button.offset_bottom = 220
+	boat_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	boat_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	boat_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	boat_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	boat_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	boat_button.pressed.connect(_on_fishing_boat_offer_pressed.bind(boat_button))
+	_attach_default_button_sfx(boat_button)
+	pop_card.add_child(boat_button)
+
+	var boat_art := _image("res://docs/assets/fishing/tools/tool-boat.png", Vector2(520, 360))
+	boat_art.position = Vector2(20, 10)
+	var can_build := _skill_level("build") >= FISHING_BOAT_BUILD_REQUIRED_LEVEL and log_currency >= FISHING_BOAT_OFFER_COST
+	boat_art.modulate = Color.WHITE if can_build else Color(1, 1, 1, 0.52)
+	boat_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boat_button.add_child(boat_art)
+
+	var hint_text := "Build for %s logs" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3)
+	if _skill_level("build") < FISHING_BOAT_BUILD_REQUIRED_LEVEL:
+		hint_text = "Requires Building Lv %s" % FISHING_BOAT_BUILD_REQUIRED_LEVEL
+	elif log_currency < FISHING_BOAT_OFFER_COST:
+		hint_text = "%s logs needed" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3)
+	var hint := _label(hint_text, 48, Color.WHITE if can_build else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
+	hint.add_theme_color_override("font_outline_color", COLOR_INK)
+	hint.add_theme_constant_override("outline_size", 14)
+	hint.anchor_left = 0.0
+	hint.anchor_right = 1.0
+	hint.anchor_top = 1.0
+	hint.anchor_bottom = 1.0
+	hint.offset_left = 48
+	hint.offset_right = -48
+	hint.offset_top = -132
+	hint.offset_bottom = -48
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(hint)
+
+	return root
+
+
+func _on_fishing_net_offer_pressed(net_button: Control) -> void:
+	if fishing_net_collected:
+		return
+	fishing_net_collected = true
+	equipped_fishing_tool_id = FISHING_NET_TOOL_ID
+	save_game()
+	if net_button != null and is_instance_valid(net_button):
+		_float_reward(net_button, net_button, "Net collected!", 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
+		_fly_fishing_tool_to_wallet(net_button, "res://docs/assets/fishing/tools/net-player.png")
+	_set_result("Net collected!")
+	_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
+	_rerender_after_fishing_tool_collect()
+
+
+func _on_fishing_rod_offer_pressed(rod_button: Control) -> void:
+	if fishing_rod_collected:
+		return
+	if fish_currency < FISHING_ROD_OFFER_COST:
+		if rod_button != null and is_instance_valid(rod_button):
+			_float_reward(rod_button, rod_button, "Need %s fish" % _format_compact_number(float(FISHING_ROD_OFFER_COST), 3), 50, Color("#ffd95a"), Vector2(0, -40), Vector2(0, -150), 0.0)
+		_set_result("Need %s fish for the rod." % _format_compact_number(float(FISHING_ROD_OFFER_COST), 3))
+		return
+	fish_currency = maxi(0, fish_currency - FISHING_ROD_OFFER_COST)
+	fishing_rod_collected = true
+	equipped_fishing_tool_id = "line"
+	save_game()
+	if rod_button != null and is_instance_valid(rod_button):
+		_float_reward(rod_button, rod_button, "Rod collected!", 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
+		_fly_fishing_tool_to_wallet(rod_button, "res://docs/assets/fishing/tools/tool-bamboo-rod.png")
+	_set_result("Bamboo rod collected!")
+	_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
+	_rerender_after_fishing_tool_collect()
+
+
+func _on_fishing_rod_upgrade_offer_pressed(tool_id: String, upgrade_button: Control) -> void:
+	var needs_previous := (tool_id == "star_rod" and not fishing_reinforced_rod_collected) or (tool_id == "reinforced_rod" and not fishing_rod_collected)
+	if needs_previous:
+		return
+	if (tool_id == "star_rod" and fishing_star_rod_collected) or (tool_id == "reinforced_rod" and fishing_reinforced_rod_collected):
+		return
+	var cost := _fishing_rod_upgrade_cost(tool_id)
+	if fish_currency < cost:
+		if upgrade_button != null and is_instance_valid(upgrade_button):
+			_float_reward(upgrade_button, upgrade_button, "Need %s fish" % _format_compact_number(float(cost), 3), 50, Color("#ffd95a"), Vector2(0, -40), Vector2(0, -150), 0.0)
+		_set_result("Need %s fish for the %s." % [_format_compact_number(float(cost), 3), _fishing_rod_upgrade_title(tool_id)])
+		return
+	fish_currency = maxi(0, fish_currency - cost)
+	if tool_id == "star_rod":
+		fishing_star_rod_collected = true
+	else:
+		fishing_reinforced_rod_collected = true
+	equipped_fishing_tool_id = tool_id
+	save_game()
+	if upgrade_button != null and is_instance_valid(upgrade_button):
+		_float_reward(upgrade_button, upgrade_button, "%s collected!" % _fishing_rod_upgrade_title(tool_id), 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
+		_fly_fishing_tool_to_wallet(upgrade_button, "res://docs/assets/fishing/tools/tool-bamboo-rod.png")
+	_set_result("%s collected!" % _fishing_rod_upgrade_title(tool_id))
+	_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
+	_rerender_after_fishing_tool_collect()
+
+
+func _on_fishing_boat_offer_pressed(boat_button: Control) -> void:
+	if fishing_boat_built:
+		return
+	if _skill_level("build") < FISHING_BOAT_BUILD_REQUIRED_LEVEL:
+		if boat_button != null and is_instance_valid(boat_button):
+			_float_reward(boat_button, boat_button, "Building Lv %s required" % FISHING_BOAT_BUILD_REQUIRED_LEVEL, 48, Color("#ffd95a"), Vector2(0, -40), Vector2(0, -150), 0.0)
+		_set_result("Building Lv %s required to build the boat." % FISHING_BOAT_BUILD_REQUIRED_LEVEL)
+		return
+	if log_currency < FISHING_BOAT_OFFER_COST:
+		if boat_button != null and is_instance_valid(boat_button):
+			_float_reward(boat_button, boat_button, "Need %s logs" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3), 50, Color("#ffd95a"), Vector2(0, -40), Vector2(0, -150), 0.0)
+		_set_result("Need %s logs for the boat." % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3))
+		return
+	log_currency = maxi(0, log_currency - FISHING_BOAT_OFFER_COST)
+	fishing_boat_built = true
+	equipped_fishing_tool_id = "boat"
+	save_game()
+	if boat_button != null and is_instance_valid(boat_button):
+		_float_reward(boat_button, boat_button, "Boat built!", 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
+		_fly_fishing_tool_to_wallet(boat_button, "res://docs/assets/fishing/tools/tool-boat.png")
+	_set_result("Boat built!")
+	_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
+	_rerender_after_fishing_tool_collect()
+
+
+func _on_fishing_mirror_offer_pressed(mirror_button: Control) -> void:
+	if fishing_mirror_collected:
+		return
+	if fish_currency < FISHING_MIRROR_OFFER_COST:
+		if mirror_button != null and is_instance_valid(mirror_button):
+			_float_reward(mirror_button, mirror_button, "Need %s fish" % _format_compact_number(float(FISHING_MIRROR_OFFER_COST), 3), 50, Color("#ffd95a"), Vector2(0, -40), Vector2(0, -150), 0.0)
+		_set_result("Need %s fish for the mirror." % _format_compact_number(float(FISHING_MIRROR_OFFER_COST), 3))
+		return
+	fish_currency = maxi(0, fish_currency - FISHING_MIRROR_OFFER_COST)
+	fishing_mirror_collected = true
+	equipped_fishing_tool_id = "mirror"
+	save_game()
+	if mirror_button != null and is_instance_valid(mirror_button):
+		_float_reward(mirror_button, mirror_button, "Mirror collected!", 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
+		_fly_fishing_tool_to_wallet(mirror_button, "res://docs/assets/fishing/tools/reflection-net.png")
+	_set_result("Reflection mirror collected!")
+	_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
+	_rerender_after_fishing_tool_collect()
+
+
+func _fly_fishing_tool_to_wallet(source: Control, texture_path: String) -> void:
+	if source == null or not is_instance_valid(source) or detail_fish_circle == null or not is_instance_valid(detail_fish_circle):
+		return
+	var texture := _texture(texture_path)
+	if texture == null:
+		return
+	var source_rect := source.get_global_rect()
+	var target_rect := detail_fish_circle.get_global_rect()
+	var to_local := get_global_transform_with_canvas().affine_inverse()
+	var start := to_local * source_rect.get_center()
+	var target := to_local * target_rect.get_center()
+	var art := TextureRect.new()
+	art.texture = texture
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.size = Vector2(220, 220)
+	art.position = start - art.size * 0.5
+	art.pivot_offset = art.size * 0.5
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art.z_index = 7000
+	art.z_as_relative = false
+	add_child(art)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(art, "position", target - art.size * 0.5, 0.46).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(art, "scale", Vector2(0.62, 0.62), 0.46).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+	tween.tween_property(art, "rotation", randf_range(-0.35, 0.35), 0.46).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.chain().tween_interval(0.08)
+	tween.tween_property(art, "modulate:a", 0.0, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(art, "scale", Vector2(0.44, 0.44), 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_callback(art.queue_free)
+	_play_fishing_wallet_circle_pop()
+
+
+func _rerender_after_fishing_tool_collect() -> void:
+	var scroll_y := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
+	var timer := get_tree().create_timer(0.72)
+	timer.timeout.connect(func() -> void:
+		_render_screen(false, scroll_y)
+	)
+
+
+func _cropped_unlock_padlock_texture() -> Texture2D:
+	var source := _texture(UNLOCK_PADLOCK_TEXTURE)
+	if source == null:
+		return null
+	var source_size := source.get_size()
+	if source_size.x <= 4.0:
+		return source
+	var cropped := AtlasTexture.new()
+	cropped.atlas = source
+	cropped.region = Rect2(Vector2.ZERO, Vector2(source_size.x - 3.0, source_size.y))
+	return cropped
+
+
+func _play_padlock_click_shake(shake_body: Control) -> void:
+	if shake_body == null or not is_instance_valid(shake_body):
+		return
+	_play_padlock_cluster_sfx()
+	shake_body.position = Vector2.ZERO
+	shake_body.rotation = 0.0
+	var pivot_size := shake_body.size
+	if pivot_size.length_squared() <= 1.0:
+		pivot_size = FISHING_METHOD_PADLOCK_SIZE
+	shake_body.pivot_offset = pivot_size * 0.5
+	var base_position := Vector2.ZERO
+	var base_rotation := 0.0
+	var shake_direction := -1.0 if randf() < 0.5 else 1.0
+	var tween_meta_key := "padlock_shake_tween"
+	if shake_body.has_meta(tween_meta_key):
+		var existing := shake_body.get_meta(tween_meta_key) as Tween
+		if existing != null and existing.is_valid():
+			existing.kill()
+	var tween := create_tween()
+	shake_body.set_meta(tween_meta_key, tween)
+	tween.tween_method(
+		func(progress: float) -> void:
+			if shake_body == null or not is_instance_valid(shake_body):
+				return
+			var shake_pct := 1.0 - progress
+			var shake_wave := sin((1.0 - shake_pct) * PI * 7.0) * shake_pct * shake_direction
+			shake_body.position = base_position + Vector2(shake_wave * 10.0, absf(shake_wave) * 3.0)
+			shake_body.rotation = base_rotation + shake_wave * 0.085,
+		0.0,
+		1.0,
+		ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS
+	).set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func() -> void:
+		if shake_body == null or not is_instance_valid(shake_body):
+			return
+		shake_body.position = base_position
+		shake_body.rotation = base_rotation
+		if shake_body.has_meta(tween_meta_key):
+			shake_body.remove_meta(tween_meta_key)
+	)
+
+
+func _fishing_padlock_unlock_fall_progress(drop_progress: float) -> float:
+	var elapsed := drop_progress * FISHING_PADLOCK_UNLOCK_DROP_SECONDS
+	var fall_delay := FISHING_PADLOCK_UNLOCK_POP_SECONDS * 0.72
+	var fall_elapsed := maxf(0.0, elapsed - fall_delay)
+	return clampf(fall_elapsed / maxf(0.001, FISHING_PADLOCK_UNLOCK_DROP_SECONDS - fall_delay), 0.0, 1.0)
+
+
+func _fishing_padlock_unlock_pop_scale(pop_progress: float) -> float:
+	if pop_progress >= 1.0:
+		return 1.0
+	var pop := pow(1.0 - pop_progress, 1.18) * 0.22
+	var settle := sin(pop_progress * PI) * 0.035
+	return 1.0 + pop - settle
+
+
+func _fishing_padlock_unlock_pop_wiggle(pop_progress: float, direction: float) -> float:
+	if pop_progress >= 1.0:
+		return 0.0
+	var damping := pow(1.0 - pop_progress, 0.82)
+	var wave := cos(pop_progress * TAU * 2.35)
+	return wave * damping * direction
+
+
+func _apply_fishing_padlock_unlock_drop_frame(shake_body: Control, direction: float, progress: float) -> void:
+	if shake_body == null or not is_instance_valid(shake_body):
+		return
+	var padlock_size := FISHING_METHOD_PADLOCK_SIZE
+	var drop_progress := clampf(progress, 0.0, 1.0)
+	var elapsed := drop_progress * FISHING_PADLOCK_UNLOCK_DROP_SECONDS
+	var pop_progress := clampf(elapsed / FISHING_PADLOCK_UNLOCK_POP_SECONDS, 0.0, 1.0)
+	var fall_progress := _fishing_padlock_unlock_fall_progress(drop_progress)
+	var gravity := fall_progress * fall_progress
+	var fallover := smoothstep(0.28, 1.0, fall_progress)
+	var settling_wobble := sin(fall_progress * PI * 2.45) * 0.08 * (1.0 - fall_progress)
+	var pop_wiggle := _fishing_padlock_unlock_pop_wiggle(pop_progress, direction)
+	var lock_offset := Vector2(
+		direction * 18.0 * fall_progress + pop_wiggle * 8.0,
+		padlock_size.y * 0.46 * gravity - absf(pop_wiggle) * 3.0
+	)
+	var lock_rotation := (0.92 * direction * fallover) + settling_wobble + pop_wiggle * 0.16
+	var pop_scale := _fishing_padlock_unlock_pop_scale(pop_progress)
+	shake_body.position = lock_offset
+	shake_body.rotation = lock_rotation
+	shake_body.scale = Vector2.ONE * pop_scale
+	shake_body.pivot_offset = padlock_size * 0.5
+
+
+func _finish_fishing_method_unlock_ceremony(method_card: Dictionary, refresh_detail: bool) -> void:
+	if method_card.is_empty() or bool(method_card.get("unlock_ceremony_finalized", false)):
+		return
+	method_card["unlock_ceremony_finalized"] = true
+	var method_button := method_card.get("method_button") as Button
+	if method_button != null and is_instance_valid(method_button):
+		_activate_fishing_method_button(method_card)
+	method_card["unlock_ceremony_active"] = false
+	activity_unlock_ceremony_count = maxi(0, activity_unlock_ceremony_count - 1)
+	if refresh_detail and activity_unlock_ceremony_count <= 0 and not activity_unlock_detail_refresh_done:
+		call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
+
+
+func _activate_fishing_method_button(method_card: Dictionary) -> void:
+	if method_card.is_empty():
+		return
+	var method_button := method_card.get("method_button") as Button
+	if method_button == null or not is_instance_valid(method_button):
+		return
+	method_button.disabled = false
+	method_button.mouse_filter = Control.MOUSE_FILTER_STOP
+	if bool(method_button.get_meta("fishing_method_pressed_connected", false)):
+		return
+	var skill_id := str(method_card.get("skill_id", ""))
+	var action_id := str(method_card.get("action_id", ""))
+	var area_key := str(method_card.get("fishing_area_key", ""))
+	method_button.pressed.connect(_on_fishing_method_pressed.bind(skill_id, action_id, area_key))
+	_attach_default_button_sfx(method_button)
+	method_button.set_meta("fishing_method_pressed_connected", true)
+
+
+func _run_fishing_method_unlock_drop_motion(method_card: Dictionary) -> void:
+	await get_tree().create_timer(ACTIVITY_UNLOCK_MOTION_START_DELAY).timeout
+	if method_card.is_empty() or bool(method_card.get("unlock_ceremony_finalized", false)):
+		return
+	var lock_root := method_card.get("lock_root") as Control
+	if lock_root == null or not is_instance_valid(lock_root):
+		_finish_fishing_method_unlock_ceremony(method_card, true)
+		return
+	var shake_body := lock_root.get_meta("padlock_shake_body") as Control
+	if shake_body == null or not is_instance_valid(shake_body):
+		_finish_fishing_method_unlock_ceremony(method_card, true)
+		return
+	if shake_body.has_meta("padlock_shake_tween"):
+		var existing := shake_body.get_meta("padlock_shake_tween") as Tween
+		if existing != null and existing.is_valid():
+			existing.kill()
+		shake_body.remove_meta("padlock_shake_tween")
+	_play_padlock_cluster_sfx()
+	shake_body.modulate = Color.WHITE
+	shake_body.position = Vector2.ZERO
+	shake_body.rotation = 0.0
+	shake_body.scale = Vector2.ONE
+	var direction := -1.0 if randf() < 0.5 else 1.0
+	var drop_tween := create_tween()
+	drop_tween.tween_method(
+		func(progress: float) -> void:
+			_apply_fishing_padlock_unlock_drop_frame(shake_body, direction, progress),
+		0.0,
+		1.0,
+		FISHING_PADLOCK_UNLOCK_DROP_SECONDS
+	).set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN_OUT)
+	var fade_tween := create_tween()
+	var fade_delay := FISHING_PADLOCK_UNLOCK_DROP_SECONDS * 0.58
+	var fade_seconds := maxf(0.08, FISHING_PADLOCK_UNLOCK_DROP_SECONDS - fade_delay)
+	fade_tween.tween_property(shake_body, "modulate:a", 0.0, fade_seconds).set_delay(fade_delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	fade_tween.finished.connect(func() -> void:
+		_finish_fishing_method_unlock_ceremony(method_card, true)
+	)
+
+
+func _play_fishing_method_unlock_ceremony(method_card: Dictionary) -> void:
+	if method_card.is_empty() or bool(method_card.get("unlock_ceremony_active", false)):
+		return
+	method_card["unlock_ceremony_pending"] = false
+	method_card["unlock_ceremony_active"] = true
+	method_card["unlock_ceremony_finalized"] = false
+	activity_unlock_ceremony_count += 1
+	var method_button := method_card.get("method_button") as Button
+	if method_button != null:
+		method_button.disabled = true
+	var lock_root := method_card.get("lock_root") as Control
+	if lock_root != null:
+		var padlock_hit_area := lock_root.get_meta("padlock_button") as Control
+		if padlock_hit_area != null:
+			padlock_hit_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_run_fishing_method_unlock_drop_motion(method_card)
+
+
+func _attach_fishing_method_padlock(art_panel: Panel, skill_id: String, action_id: String, unlock_level: int) -> Control:
+	var padlock_texture := _cropped_unlock_padlock_texture()
+	if padlock_texture == null:
+		return null
+	var padlock_size := FISHING_METHOD_PADLOCK_SIZE
+	var lock_root := Control.new()
+	lock_root.custom_minimum_size = padlock_size
+	lock_root.mouse_filter = Control.MOUSE_FILTER_PASS
+	lock_root.anchor_left = 0.5
+	lock_root.anchor_right = 0.5
+	lock_root.anchor_top = 0.5
+	lock_root.anchor_bottom = 0.5
+	lock_root.offset_left = -padlock_size.x * 0.5
+	lock_root.offset_right = padlock_size.x * 0.5
+	lock_root.offset_top = -padlock_size.y * 0.5 - 12.0
+	lock_root.offset_bottom = padlock_size.y * 0.5 - 12.0
+	lock_root.z_index = 900
+	lock_root.z_as_relative = false
+	art_panel.add_child(lock_root)
+
+	var shake_body := Control.new()
+	shake_body.custom_minimum_size = padlock_size
+	shake_body.size = padlock_size
+	shake_body.position = Vector2.ZERO
+	shake_body.pivot_offset = padlock_size * 0.5
+	shake_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	lock_root.add_child(shake_body)
+
+	var padlock_shadow := TextureRect.new()
+	padlock_shadow.texture = padlock_texture
+	padlock_shadow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	padlock_shadow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	padlock_shadow.size = padlock_size
+	padlock_shadow.position = Vector2(0, 14)
+	padlock_shadow.modulate = Color(0, 0, 0, 0.26)
+	padlock_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	padlock_shadow.z_index = 4
+	shake_body.add_child(padlock_shadow)
+
+	var padlock_visual := TextureRect.new()
+	padlock_visual.texture = padlock_texture
+	padlock_visual.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	padlock_visual.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	padlock_visual.size = padlock_size
+	padlock_visual.modulate = Color.WHITE
+	padlock_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	padlock_visual.z_index = 5
+	shake_body.add_child(padlock_visual)
+
+	var padlock_hit_area := Control.new()
+	padlock_hit_area.custom_minimum_size = padlock_size
+	padlock_hit_area.size = padlock_size
+	padlock_hit_area.mouse_filter = Control.MOUSE_FILTER_STOP
+	padlock_hit_area.z_index = 7
+	padlock_hit_area.gui_input.connect(_on_fishing_method_lock_hit_input.bind(skill_id, action_id))
+	shake_body.add_child(padlock_hit_area)
+	lock_root.set_meta("padlock_button", padlock_hit_area)
+
+	var level_label := ActivityLockNumber.new()
+	level_label.set_text(str(unlock_level))
+	level_label.font_size = FISHING_METHOD_PADLOCK_LEVEL_FONT
+	level_label.outline_size = FISHING_METHOD_PADLOCK_LEVEL_OUTLINE
+	level_label.size = FISHING_METHOD_PADLOCK_LEVEL_SIZE
+	level_label.position = Vector2(
+		padlock_size.x * 0.5 - FISHING_METHOD_PADLOCK_LEVEL_SIZE.x * 0.5 - 15.0,
+		padlock_size.y * 0.52
+	)
+	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	level_label.z_index = 6
+	if app_bold_font != null:
+		level_label.font = app_bold_font
+	elif app_font != null:
+		level_label.font = app_font
+	shake_body.add_child(level_label)
+	lock_root.set_meta("padlock_shake_body", shake_body)
+	return lock_root
+
+
+func _apply_fishing_area_selection(area_card: Dictionary, action_id: String, instant := false) -> void:
+	var skill_id := str(area_card.get("skill_id", "fishing"))
+	var action := _action_data(skill_id, action_id)
+	if action.is_empty():
+		return
+	var xp_text := "+%s\nXP" % _fishing_flat_xp_reward(action, skill_id)
+	var yield_text := "%s\nFISH" % _fishing_yield_label(action, equipped_fishing_tool_id)
+	if equipped_fishing_tool_id == "net":
+		yield_text = "%s/%s\nNET" % [mini(fishing_net_stored_fish, FISHING_NET_HAUL_THRESHOLD), FISHING_NET_HAUL_THRESHOLD]
+	var running_here := running_skill_id == skill_id and running_action_id == action_id
+	var selection_key := "%s:%s:%s" % [action_id, xp_text, yield_text]
+	var border_key := "%s:%s" % [action_id, running_here]
+	if (
+		not instant
+		and str(area_card.get("selection_sync_key", "")) == selection_key
+		and str(area_card.get("selection_border_key", "")) == border_key
+	):
+		return
+	area_card["selection_sync_key"] = selection_key
+	area_card["selection_border_key"] = border_key
+	area_card["selected_action_id"] = action_id
+	var xp_label := area_card.get("area_xp") as Label
+	if xp_label != null:
+		_set_label_text_if_changed(xp_label, xp_text)
+	var yield_label := area_card.get("area_yield") as Label
+	if yield_label != null:
+		_set_label_text_if_changed(yield_label, yield_text)
+	var border := area_card.get("border") as ActivityCardBorder
+	if border != null:
+		border.border_color = Color("#1f6f4a") if running_here else COLOR_INK
+		border.queue_redraw()
+
+
+func _fishing_selected_location_background(area_id: String) -> String:
+	var selected_location_id := str(selected_fishing_locations.get(area_id, ""))
+	for raw_location in _fishing_locations_for_area(area_id):
+		var location := raw_location as Dictionary
+		if str(location.get("id", "")) == selected_location_id:
+			return str(location.get("bg", ""))
+	return ""
+
+
+func _fishing_area_stat_fade_controls(area_card: Dictionary) -> Array:
+	var controls: Array = []
+	var stat_column := area_card.get("stat_column") as Control
+	if stat_column != null and is_instance_valid(stat_column):
+		controls.append(stat_column)
+	for raw_button in (area_card.get("stat_hit_buttons", {}) as Dictionary).values():
+		var button := raw_button as Control
+		if button != null and is_instance_valid(button):
+			controls.append(button)
+	return controls
+
+
+func _set_fishing_area_stats_visible(area_card: Dictionary, visible: bool, _delta: float, instant: bool) -> void:
+	var target_alpha := 1.0 if visible else 0.0
+	if area_card.has("stat_fade_tween"):
+		var existing := area_card.get("stat_fade_tween") as Tween
+		if existing != null and existing.is_valid():
+			existing.kill()
+		area_card.erase("stat_fade_tween")
+	var controls := _fishing_area_stat_fade_controls(area_card)
+	if controls.is_empty():
+		return
+	if instant:
+		for control in controls:
+			control.modulate.a = target_alpha
+		area_card["stats_visible"] = visible
+		return
+	var lead := controls[0] as Control
+	if absf(lead.modulate.a - target_alpha) < 0.02:
+		area_card["stats_visible"] = visible
+		return
+	var tween := create_tween()
+	area_card["stat_fade_tween"] = tween
+	tween.set_parallel(true)
+	for control in controls:
+		tween.tween_property(control, "modulate:a", target_alpha, FISHING_AREA_STAT_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		if area_card.get("stat_fade_tween") == tween:
+			area_card.erase("stat_fade_tween")
+		area_card["stats_visible"] = visible
+	)
+
+
+func _fishing_area_stat_hit_buttons(pop_card: Control, skill_id: String, area_key: String, _method_count: int) -> Dictionary:
+	var hit_buttons := {}
+	var kinds := ["xp", "yield"]
+	var button_size := Vector2(300, 222)
+	var right_inset := 54.0
+	var stack_top := FISHING_AREA_STAT_STACK_TOP
+	var stack_step := button_size.y + 28.0
+	for i in range(kinds.size()):
+		var kind := str(kinds[i])
+		var button := Button.new()
+		button.text = ""
+		button.focus_mode = Control.FOCUS_NONE
+		button.flat = true
+		button.mouse_filter = Control.MOUSE_FILTER_STOP
+		button.anchor_left = 1.0
+		button.anchor_right = 1.0
+		button.anchor_top = 0.0
+		button.anchor_bottom = 0.0
+		button.offset_left = -(right_inset + button_size.x)
+		button.offset_right = -right_inset
+		button.offset_top = stack_top + float(i) * stack_step
+		button.offset_bottom = button.offset_top + button_size.y
+		button.z_index = 219
+		button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+		button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+		button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		button.pressed.connect(_on_fishing_area_stat_pressed.bind(skill_id, area_key, kind))
+		_attach_default_button_sfx(button)
+		pop_card.add_child(button)
+		button.modulate.a = 0.0
+		hit_buttons[kind] = button
+	return hit_buttons
+
+
+func _sync_fishing_area_stat_hit_buttons(area_card: Dictionary, running: bool) -> void:
+	var selected_id := str(area_card.get("selected_action_id", ""))
+	var enabled := running and not selected_id.is_empty()
+	for raw_button in (area_card.get("stat_hit_buttons", {}) as Dictionary).values():
+		var button := raw_button as Button
+		if button == null or not is_instance_valid(button):
+			continue
+		if bool(button.get_meta("fishing_area_stat_enabled", false)) == enabled:
+			continue
+		button.set_meta("fishing_area_stat_enabled", enabled)
+		button.disabled = not enabled
+		button.mouse_filter = Control.MOUSE_FILTER_STOP if enabled else Control.MOUSE_FILTER_IGNORE
+
+
+func _update_fishing_area_module(area_card: Dictionary, skill_id: String, running: bool, delta: float, instant: bool) -> void:
+	if running and not running_action_id.is_empty():
+		if _fishing_area_card_owns_action(area_card, running_action_id):
+			if running_action_id != str(area_card.get("selected_action_id", "")):
+				_apply_fishing_area_selection(area_card, running_action_id, instant)
+	var stats_running := running
+	if bool(area_card.get("stats_running", false)) != stats_running:
+		area_card["stats_running"] = stats_running
+		if stats_running:
+			var show_id := running_action_id
+			if show_id.is_empty():
+				show_id = str(area_card.get("selected_action_id", ""))
+			if not show_id.is_empty():
+				_apply_fishing_area_selection(area_card, show_id, instant)
+		_set_fishing_area_stats_visible(area_card, stats_running, delta, instant)
+	_sync_fishing_area_stat_hit_buttons(area_card, stats_running)
+	_update_fishing_active_tool_animation(area_card, running, delta, instant)
+	_update_action_card_run_feedback(area_card, skill_id, running, delta, instant)
+
+
+func _update_fishing_method_slot(
+	card: Dictionary,
+	skill_id: String,
+	action_id: String,
+	action: Dictionary,
+	unlocked: bool,
+	running: bool,
+	delta: float,
+	instant: bool
+) -> void:
+	var status := card.get("status") as Label
+	if status != null:
+		_set_label_text_if_changed(status, "")
+	var medal := card.get("medal") as TextureRect
+	var mastery_action_id := str(card.get("mastery_action_id", action_id))
+	var mastery_level := _mastery_level(skill_id, mastery_action_id)
+	_set_action_card_medal(card, medal, mastery_level, instant)
+	_update_action_card_mastery_bar(card, skill_id, mastery_action_id, delta, instant)
+	var art_panel := card.get("art_panel") as CanvasItem
+	if art_panel != null:
+		art_panel.modulate = Color.WHITE
+	var active_art := card.get("art") as Control
+	_update_fishing_method_active_art(card, active_art, running, delta, instant)
+	_update_fishing_method_attempt_bar(card, action_id, running, instant)
+	var area_key := str(card.get("fishing_area_key", ""))
+	var area_card := action_cards.get(area_key) as Dictionary
+	if area_card != null and str(area_card.get("selected_action_id", "")) == action_id:
+		_apply_fishing_area_selection(area_card, action_id, instant)
+
+
+func _update_fishing_method_active_art(
+	card: Dictionary,
+	art: Control,
+	running: bool,
+	delta: float,
+	instant: bool
+) -> void:
+	if art == null or not is_instance_valid(art):
+		return
+	var rest_position := card.get("active_rest_position", ACTION_ART_OFFSET) as Vector2
+	var camera_zoom := float(card.get("active_camera_zoom", 0.0))
+	if camera_zoom > 1.0:
+		_update_fishing_location_active_camera(card, art, running, delta, instant, rest_position, camera_zoom)
+		return
+	var sway_offset := card.get("active_sway_offset", FISHING_METHOD_ACTIVE_SWAY_OFFSET) as Vector2
+	var sway_rotation := float(card.get("active_sway_rotation", FISHING_METHOD_ACTIVE_SWAY_ROTATION))
+	var sway_scale_pulse := float(card.get("active_sway_scale_pulse", FISHING_METHOD_ACTIVE_SWAY_SCALE_PULSE))
+	if running:
+		var phase := float(card.get("method_active_sway_phase", 0.0)) + delta * FISHING_METHOD_ACTIVE_SWAY_SPEED * 1.20
+		card["method_active_sway_phase"] = phase
+		var bob := sin(phase)
+		var sway := sin(phase * 0.85 + 0.55)
+		var tilt := sin(phase * 0.95 - 0.35) * sway_rotation
+		var pulse := 1.0 + sin(phase * 3.05) * sway_scale_pulse
+		art.position = rest_position + Vector2(
+			sway * sway_offset.x,
+			bob * sway_offset.y
+		)
+		art.rotation = tilt
+		art.scale = Vector2(pulse, pulse)
+		return
+	if instant:
+		art.position = rest_position
+		art.rotation = 0.0
+		art.scale = Vector2.ONE
+		return
+	var return_step := clampf(delta / maxf(0.001, FISHING_METHOD_ACTIVE_SWAY_RETURN_SECONDS), 0.0, 1.0)
+	art.position = art.position.lerp(rest_position, return_step)
+	art.rotation = lerpf(art.rotation, 0.0, return_step)
+	art.scale = art.scale.lerp(Vector2.ONE, return_step)
+	if (
+		art.position.distance_squared_to(rest_position) <= 0.25
+		and absf(art.rotation) <= 0.001
+		and art.scale.distance_squared_to(Vector2.ONE) <= 0.0001
+	):
+		art.position = rest_position
+		art.rotation = 0.0
+		art.scale = Vector2.ONE
+
+
+func _update_fishing_location_active_camera(
+	card: Dictionary,
+	art: Control,
+	running: bool,
+	delta: float,
+	instant: bool,
+	rest_position: Vector2,
+	camera_zoom: float
+) -> void:
+	if art.size.x > 1.0 and art.size.y > 1.0:
+		art.pivot_offset = art.size * 0.5
+	art.rotation = 0.0
+	if running:
+		card["active_camera_was_running"] = true
+		card["active_camera_returning"] = false
+		if not bool(card.get("active_camera_initialized", false)):
+			card["active_camera_initialized"] = true
+			card["active_camera_target"] = Vector2.ZERO
+			card["active_camera_next_shift"] = randf_range(1.35, 2.4)
+		var next_shift := float(card.get("active_camera_next_shift", 0.0)) - delta
+		if next_shift <= 0.0:
+			var pan := card.get("active_camera_pan", FISHING_LOCATION_ACTIVE_CAMERA_PAN) as Vector2
+			card["active_camera_target"] = Vector2(
+				randf_range(-pan.x, pan.x),
+				randf_range(-pan.y, pan.y)
+			)
+			next_shift = randf_range(2.6, 4.4)
+		card["active_camera_next_shift"] = next_shift
+		var target_position := rest_position + (card.get("active_camera_target", Vector2.ZERO) as Vector2)
+		if instant:
+			art.position = target_position
+			art.scale = Vector2(camera_zoom, camera_zoom)
+			return
+		var ease := clampf(delta * FISHING_LOCATION_ACTIVE_CAMERA_EASE, 0.0, 1.0)
+		art.position = art.position.lerp(target_position, ease)
+		art.scale = art.scale.lerp(Vector2(camera_zoom, camera_zoom), ease)
+		return
+	card["active_camera_was_running"] = false
+	card["active_camera_initialized"] = false
+	card["active_camera_target"] = Vector2.ZERO
+	if (
+		instant
+		and art.position.distance_squared_to(rest_position) <= 0.25
+		and art.scale.distance_squared_to(Vector2.ONE) <= 0.0001
+	):
+		art.position = rest_position
+		art.rotation = 0.0
+		art.scale = Vector2.ONE
+		return
+	var return_step := clampf(delta / maxf(0.001, FISHING_LOCATION_ACTIVE_CAMERA_RETURN_SECONDS), 0.0, 1.0)
+	art.position = art.position.lerp(rest_position, return_step)
+	art.scale = art.scale.lerp(Vector2.ONE, return_step)
+	if art.position.distance_squared_to(rest_position) <= 0.25 and art.scale.distance_squared_to(Vector2.ONE) <= 0.0001:
+		art.position = rest_position
+		art.scale = Vector2.ONE
+		card["active_camera_returning"] = false
+
+
+func _play_fishing_location_tile_wiggle(method_card: Dictionary) -> void:
+	if bool(method_card.get("is_fishing_location", false)) or bool(method_card.get("fixed_layout", false)):
+		return
+	var target := method_card.get("wiggle_root") as Control
+	if target == null or not is_instance_valid(target):
+		target = method_card.get("art_panel") as Control
+	if target == null or not is_instance_valid(target):
+		return
+	target.pivot_offset = target.size * 0.5
+	if target.has_meta("fishing_tile_wiggle_tween"):
+		var existing := target.get_meta("fishing_tile_wiggle_tween") as Tween
+		if existing != null and existing.is_valid():
+			existing.kill()
+	target.rotation = 0.0
+	target.scale = Vector2.ONE
+	var direction := -1.0 if randf() < 0.5 else 1.0
+	var tween := create_tween()
+	target.set_meta("fishing_tile_wiggle_tween", tween)
+	tween.tween_property(target, "rotation", 0.035 * direction, 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(target, "scale", Vector2(1.025, 1.025), 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(target, "rotation", -0.024 * direction, 0.12).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(target, "rotation", 0.0, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.parallel().tween_property(target, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func() -> void:
+		if target != null and is_instance_valid(target):
+			target.rotation = 0.0
+			target.scale = Vector2.ONE
+			if target.has_meta("fishing_tile_wiggle_tween") and target.get_meta("fishing_tile_wiggle_tween") == tween:
+				target.remove_meta("fishing_tile_wiggle_tween")
+	)
+
+
+func _update_fishing_method_attempt_bar(
+	card: Dictionary,
+	action_id: String,
+	running: bool,
+	instant: bool
+) -> void:
+	var attempt_bar := card.get("attempt_bar") as Control
+	if attempt_bar == null or not is_instance_valid(attempt_bar):
+		return
+	if not attempt_bar.has_method("set_archetype") or not attempt_bar.has_method("set_attempt"):
+		return
+	var archetype := str(_fishing_tool_def("hands").get("archetype", _fishing_method_archetype(action_id)))
+	if str(attempt_bar.get("archetype")) != archetype:
+		attempt_bar.call("set_archetype", archetype)
+	var reveal_kind := ""
+	if not running:
+		reveal_kind = str(card.get("attempt_reveal_kind", ""))
+		if instant:
+			card["attempt_reveal_kind"] = ""
+	var progress := action_progress if running else 0.0
+	attempt_bar.call("set_attempt", progress, running, reveal_kind)
+	attempt_bar.modulate.a = 1.0 if running or not reveal_kind.is_empty() else 0.42
+
+
+func _on_fishing_method_pressed(skill_id: String, action_id: String, area_key: String) -> void:
+	_select_fishing_method(skill_id, action_id)
+	_start_action_from_card_tap(skill_id, action_id)
+
+
+func _on_fishing_location_tile_input(
+	event: InputEvent,
+	skill_id: String,
+	area_id: String,
+	location_id: String,
+	action_id: String,
+	area_key: String
+) -> void:
+	var pressed := false
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		pressed = mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
+	elif event is InputEventScreenTouch:
+		pressed = (event as InputEventScreenTouch).pressed
+	if not pressed:
+		return
+	_on_fishing_location_pressed(skill_id, area_id, location_id, action_id, area_key)
+	var viewport := get_viewport()
+	if viewport != null:
+		viewport.set_input_as_handled()
+
+
+func _on_fishing_location_pressed(skill_id: String, area_id: String, location_id: String, action_id: String, area_key: String) -> void:
+	selected_fishing_locations[area_id] = location_id
+	var area_card := action_cards.get(area_key) as Dictionary
+	if area_card != null:
+		_apply_fishing_area_selection(area_card, action_id, false)
+	var method_card := _fishing_method_card_for_action(skill_id, action_id)
+	if not method_card.is_empty():
+		_play_fishing_location_tile_wiggle(method_card)
+	_start_action_from_card_tap(skill_id, action_id)
+
+
+func _on_fishing_area_card_pressed(skill_id: String, area_key: String) -> void:
+	var area_card := action_cards.get(area_key) as Dictionary
+	if area_card == null:
+		return
+	var action_id := str(area_card.get("selected_action_id", ""))
+	if action_id.is_empty():
+		return
+	var method_card := _fishing_method_card_for_action(skill_id, action_id)
+	if not method_card.is_empty():
+		_play_fishing_location_tile_wiggle(method_card)
+	_start_action_from_card_tap(skill_id, action_id)
+
+
+func _on_fishing_area_stat_pressed(skill_id: String, area_key: String, _stat_kind: String) -> void:
+	_on_fishing_area_card_pressed(skill_id, area_key)
+
+
+func _on_fishing_method_lock_pressed(skill_id: String, action_id: String) -> void:
+	var action := _action_data(skill_id, action_id)
+	if action.is_empty() or _is_action_unlocked(skill_id, action):
+		return
+	var method_card := _fishing_method_card_for_action(skill_id, action_id)
+	var shake_body: Control = null
+	if method_card != null:
+		var lock_root := method_card.get("lock_root") as Control
+		if lock_root != null and is_instance_valid(lock_root):
+			shake_body = lock_root.get_meta("padlock_shake_body") as Control
+	_mark_lock_click_tip_seen()
+	if not _can_unlock_action(skill_id, action):
+		if shake_body != null and is_instance_valid(shake_body):
+			_play_padlock_click_shake(shake_body)
+		_set_result("%s needs %s Lv %s." % [str(action.get("name", "Method")), _skill_name(skill_id), int(action.get("unlock", 1))])
+		return
+	_mark_action_manually_unlocked(skill_id, action_id)
+	_sync_passive_module_unlocks(_unix_now())
+	activity_unlock_detail_refresh_done = false
+	activity_unlock_preview_after_ceremony_id = _first_locked_action_id(skill_id)
+	var preview_id := activity_unlock_preview_after_ceremony_id
+	if _lock_click_tip_remaining_collapse_seconds() > 0.0:
+		_stage_next_locked_activity_preview_after_tip_collapse(preview_id)
+	if method_card != null and method_card.get("lock_root") != null:
+		_play_fishing_method_unlock_ceremony(method_card)
+	else:
+		call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
+	_set_result("%s unlocked." % str(action.get("name", "Method")))
+	save_game()
+
+
+func _on_fishing_method_lock_hit_input(event: InputEvent, skill_id: String, action_id: String) -> void:
+	var pressed := false
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		pressed = mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
+	elif event is InputEventScreenTouch:
+		pressed = (event as InputEventScreenTouch).pressed
+	if not pressed:
+		return
+	_on_fishing_method_lock_pressed(skill_id, action_id)
+	var viewport := get_viewport()
+	if viewport != null:
+		viewport.set_input_as_handled()
+
+
+func _fishing_method_card_for_action(skill_id: String, action_id: String) -> Dictionary:
+	var direct = action_cards.get(_action_key(skill_id, action_id))
+	if typeof(direct) == TYPE_DICTIONARY:
+		return direct as Dictionary
+	for raw_key in action_cards.keys():
+		var raw_card = action_cards.get(raw_key)
+		if typeof(raw_card) != TYPE_DICTIONARY:
+			continue
+		var card := raw_card as Dictionary
+		if not card.get("is_fishing_method"):
+			continue
+		if str(card.get("skill_id", "")) == skill_id and str(card.get("action_id", "")) == action_id:
+			return card
+	return {}
+
+
+func _select_fishing_method(skill_id: String, action_id: String) -> void:
+	var area_card := _fishing_area_card_for_action(skill_id, action_id)
+	if area_card.is_empty():
+		return
+	_apply_fishing_area_selection(area_card, action_id, false)
+
+
+func _fishing_rework_active_for_skill(skill_id: String) -> bool:
+	return FISHING_REWORK_ENABLED and skill_id == "fishing"
+
+
+func _skill_detail_shows_tutorial_tips(skill_id: String = selected_skill_id) -> bool:
+	return not _fishing_rework_active_for_skill(skill_id)
+
+
+func _dismiss_skill_detail_tutorial_tips() -> void:
+	_fade_tip_group("lock_click_tip_notes")
+	if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
+		_fade_tip_control(stamina_gauge_tip_root)
+		stamina_gauge_tip_root = null
+
+
+func _fishing_fluid_kind_for_action(action: Dictionary) -> String:
+	var action_id := str(action.get("id", ""))
+	if action_id in ["sewers-drain-gate", "sewers-tunnel-pool"]:
+		return "sewer"
+	if action_id.contains("chum") or action_id.contains("leviathan") or action_id.contains("lobster"):
+		return "lava"
+	return "water"
+
+
+func _attach_fishing_fluid_strip(parent: Control, action: Dictionary) -> Control:
+	var fluid: Control = FishingFluidStripClass.new()
+	fluid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fluid.z_index = 1
+	fluid.set_fluid_kind(_fishing_fluid_kind_for_action(action))
+	parent.add_child(fluid)
+	return fluid
+
+
+func _update_action_card_run_feedback(card: Dictionary, skill_id: String, running: bool, delta: float, instant: bool) -> void:
+	if _fishing_rework_active_for_skill(skill_id) and card.get("is_fishing_method"):
+		return
+	if _fishing_rework_active_for_skill(skill_id):
+		var fluid_strip := card.get("fluid_strip") as Control
+		if fluid_strip != null:
+			if fluid_strip.has_method("set_running"):
+				fluid_strip.call("set_running", running)
+			if running and fluid_strip.has_method("set_attempt_progress"):
+				fluid_strip.call("set_attempt_progress", action_progress)
+		if card.get("is_fishing_area"):
+			var water_strip_host := card.get("water_strip_host") as Control
+			if water_strip_host != null:
+				var strip_visible := running
+				if fluid_strip != null and fluid_strip.has_method("is_animating_visible"):
+					strip_visible = strip_visible or bool(fluid_strip.call("is_animating_visible"))
+				water_strip_host.visible = strip_visible
+				card["fluid_exiting"] = (not running) and strip_visible
+				card["fluid_was_running"] = running
+			return
+	var progress_rail := card.get("progress") as ActivityProgressRail
+	if progress_rail != null:
+		progress_rail.visible = true
+		progress_rail.fill_color = _skill_theme_color(skill_id)
+		var progress_target := action_progress * 100.0 if running else 0.0
+		var progress_instant := instant
+		if running and progress_target + 6.0 < progress_rail.value:
+			progress_instant = true
+		_set_bar(progress_rail, progress_target, delta, progress_instant)
+
+
+func _clear_fishing_catch_burst(catch_burst: Control) -> void:
+	if catch_burst == null or not is_instance_valid(catch_burst):
+		return
+	for child in catch_burst.get_children():
+		if child != null and is_instance_valid(child):
+			child.queue_free()
+
+
+func _fishing_catch_burst_visual_count(action_id: String, fish_count: int) -> int:
+	if equipped_fishing_tool_id == "net":
+		return clampi(fish_count, 1, 6)
+	var archetype := _fishing_method_archetype(action_id)
+	var max_visuals := FISHING_CATCH_POP_MAX_VISUALS
+	match archetype:
+		"commit":
+			max_visuals = 4
+		"risk":
+			max_visuals = 6
+		"chaos":
+			max_visuals = 7
+		"volume":
+			max_visuals = FISHING_CATCH_POP_MAX_VISUALS
+		_:
+			max_visuals = 5
+	return clampi(fish_count, 1, max_visuals)
+
+
+func _fishing_catch_burst_stagger_seconds(action_id: String) -> float:
+	if equipped_fishing_tool_id == "net":
+		return 0.018
+	match _fishing_method_archetype(action_id):
+		"volume":
+			return 0.065
+		"chaos":
+			return 0.075
+		"commit":
+			return 0.145
+		"risk":
+			return 0.125
+		_:
+			return FISHING_CATCH_POP_STAGGER_SECONDS
+
+
+func _fishing_catch_burst_spacing(action_id: String) -> float:
+	if equipped_fishing_tool_id == "net":
+		return 38.0
+	match _fishing_method_archetype(action_id):
+		"volume":
+			return 34.0
+		"chaos":
+			return 56.0
+		"commit":
+			return 58.0
+		_:
+			return FISHING_CATCH_POP_STAGGER_SPACING
+
+
+func _fishing_catch_burst_rise_pixels(action_id: String) -> float:
+	if equipped_fishing_tool_id == "net":
+		return 156.0
+	match _fishing_method_archetype(action_id):
+		"volume":
+			return 136.0
+		"commit", "risk":
+			return 150.0
+		_:
+			return FISHING_CATCH_POP_RISE_PIXELS
+
+
+func _play_fishing_catch_burst(area_card: Dictionary, action_id: String, fish_count: int) -> void:
+	if fish_count <= 0:
+		return
+	var catch_burst := area_card.get("catch_burst") as Control
+	var method_slots := area_card.get("method_slots", {}) as Dictionary
+	var method_card := method_slots.get(action_id) as Dictionary
+	if catch_burst == null or method_card == null:
+		return
+	var art_panel := method_card.get("art_panel") as Control
+	if art_panel == null or not is_instance_valid(art_panel):
+		return
+	var action := method_card.get("action") as Dictionary
+	if action.is_empty():
+		return
+	_clear_fishing_catch_burst(catch_burst)
+	var catch_path := _fishing_catch_texture_path(action)
+	var texture := _texture(catch_path)
+	if texture == null:
+		return
+	var button := method_card.get("method_button") as Control
+	var anchor_rect := button.get_global_rect() if button != null and is_instance_valid(button) else art_panel.get_global_rect()
+	var burst_origin := catch_burst.get_global_transform().affine_inverse() * Vector2(anchor_rect.position.x + anchor_rect.size.x * 0.5, anchor_rect.position.y + anchor_rect.size.y * 0.28)
+	var visual_count := _fishing_catch_burst_visual_count(action_id, fish_count)
+	var stagger_seconds := _fishing_catch_burst_stagger_seconds(action_id)
+	var rise_pixels := _fishing_catch_burst_rise_pixels(action_id)
+	for i in range(visual_count):
+		var pop := _image_from_texture(texture, FISHING_CATCH_POP_SIZE, catch_path)
+		pop.size = FISHING_CATCH_POP_SIZE
+		pop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pop.position = burst_origin + Vector2(randf_range(-8.0, 8.0), randf_range(-6.0, 6.0)) - pop.size * 0.5
+		pop.rotation = randf_range(-0.16, 0.16)
+		pop.scale = Vector2(0.35, 0.35)
+		pop.pivot_offset = pop.size * 0.5
+		pop.modulate = Color(1, 1, 1, 0)
+		pop.z_index = i
+		catch_burst.add_child(pop)
+		var delay := float(i) * stagger_seconds
+		var fly_direction := Vector2(randf_range(-0.58, 0.58), -1.0).normalized()
+		var fly_distance := rise_pixels * randf_range(0.86, 1.18)
+		var target_position := pop.position + fly_direction * fly_distance
+		var target_rotation := pop.rotation + randf_range(-0.55, 0.55)
+		var tween := create_tween()
+		tween.set_parallel(true)
+		tween.tween_property(pop, "scale", Vector2.ONE, 0.22).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(pop, "modulate:a", 1.0, 0.08).set_delay(delay)
+		tween.chain().tween_property(pop, "position", target_position, 0.62).set_delay(delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(pop, "rotation", target_rotation, 0.62).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.parallel().tween_property(pop, "modulate:a", 0.0, 0.34).set_delay(delay + 0.44)
+		tween.chain().tween_callback(pop.queue_free)
+
+
+func _complete_fishing_action_attempt(action: Dictionary, active_key: String, bonus_snapshot_before: Dictionary) -> void:
+	var skill_id := running_skill_id
+	var action_id := running_action_id
+	var reward_key := active_key
+	var catch_burst_action_id := ""
+	var catch_burst_fish_count := 0
+	var old_mastery_level := _mastery_level(skill_id, action_id)
+	var tiers_unlocked_before := {}
+	for tier in range(1, MASTERY_MAX_LEVEL + 1):
+		tiers_unlocked_before[tier] = _global_medal_tier_unlocked(tier)
+	var completed_achievements_before := _completed_achievement_ids()
+	var old_skill_level := _skill_level(skill_id)
+	var locked_preview_available_before := _locked_activity_preview_available()
+	var success := randf() * 100.0 <= _fishing_attempt_success_chance(action_id)
+	consecutive_activity_crit_count = 0
+	if success:
+		var xp_reward := _fishing_flat_xp_reward(action, skill_id)
+		skills[skill_id]["xp"] = int(skills[skill_id]["xp"]) + xp_reward
+		var fish_count := _fishing_roll_fish_count(action, equipped_fishing_tool_id)
+		var haul_count := fish_count
+		var feedback_xp := xp_reward
+		var feedback_mastery := 0.0
+		if equipped_fishing_tool_id == "net":
+			fishing_net_successes += 1
+			fishing_net_stored_xp += xp_reward
+			fishing_net_stored_fish += fish_count
+			haul_count = 0
+			if fishing_net_stored_fish >= FISHING_NET_HAUL_THRESHOLD:
+				haul_count = fishing_net_stored_fish
+				feedback_xp = fishing_net_stored_xp
+				feedback_mastery = fishing_net_stored_mastery
+				fishing_net_stored_fish = 0
+				fishing_net_successes = 0
+				fishing_net_stored_xp = 0
+				fishing_net_stored_mastery = 0.0
+				fishing_net_haul_visual_seconds = FISHING_NET_HAUL_VISUAL_SECONDS
+		var show_success_feedback := equipped_fishing_tool_id != "net" or haul_count > 0
+		if show_success_feedback:
+			_play_fishing_attempt_reveal(skill_id, action_id, true)
+		if haul_count > 0:
+			fish_currency += haul_count
+		var mastery_reward := _fishing_mastery_reward(skill_id, action_id)
+		if mastery_reward > 0.0:
+			_add_mastery_xp(skill_id, action_id, mastery_reward)
+			if equipped_fishing_tool_id == "net":
+				if haul_count > 0:
+					feedback_mastery += mastery_reward
+				else:
+					fishing_net_stored_mastery += mastery_reward
+			else:
+				feedback_mastery = mastery_reward
+		var new_mastery_level := _mastery_level(skill_id, action_id)
+		_recalculate_level(skill_id)
+		_queue_locked_activity_preview_reveal_if_needed(locked_preview_available_before)
+		_sync_passive_module_unlocks(_unix_now())
+		var new_global_buffs := _new_global_medal_buff_messages(old_mastery_level, new_mastery_level, tiers_unlocked_before)
+		if equipped_fishing_tool_id == "net":
+			if haul_count > 0:
+				last_result = "+%s XP, +%s mastery, hauled +%s fish from %s." % [feedback_xp, _format_significant_digits(feedback_mastery), haul_count, action["name"]]
+			else:
+				last_result = "+%s XP, +%s fish entered net (%s/%s)." % [xp_reward, fish_count, fishing_net_stored_fish, FISHING_NET_HAUL_THRESHOLD]
+		else:
+			last_result = "+%s XP, +%s fish from %s." % [xp_reward, fish_count, action["name"]]
+		if not new_global_buffs.is_empty():
+			last_result += " " + " ".join(new_global_buffs)
+		if show_success_feedback:
+			_play_action_feedback(reward_key, true, feedback_xp, feedback_mastery, false, false)
+		var area_card := _fishing_area_card_for_action(skill_id, action_id)
+		if not area_card.is_empty() and haul_count > 0:
+			catch_burst_action_id = action_id
+			catch_burst_fish_count = haul_count
+		_record_successful_activity_completion(reward_key)
+		_play_activity_success_sound(1, new_mastery_level > old_mastery_level, false, false, false, 0)
+		_record_music_flow_action(true, 1, false, new_mastery_level > old_mastery_level, _skill_level(skill_id) > old_skill_level, 0.0)
+	else:
+		_play_fishing_attempt_reveal(skill_id, action_id, false)
+		_reset_activity_completion_streak()
+		var failure_mastery_level := _mastery_level(skill_id, action_id)
+		last_result = "Missed %s." % action["name"]
+		if not _mastery_is_maxed(skill_id, action_id):
+			last_result += " Next medal needs a catch."
+		var failure_global_buffs := _new_global_medal_buff_messages(old_mastery_level, failure_mastery_level, tiers_unlocked_before)
+		if not failure_global_buffs.is_empty():
+			last_result += " " + " ".join(failure_global_buffs)
+		_play_action_feedback(reward_key, false, 0, 0.0, false, false)
+		_play(failure_player)
+		_record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, 0.0)
+	for achievement in _newly_completed_achievements(completed_achievements_before):
+		_show_achievement_unlocked(achievement)
+	_record_activity_completion_for_tips()
+	_update_ui(0.0, false)
+	if not catch_burst_action_id.is_empty() and catch_burst_fish_count > 0:
+		call_deferred("_play_fishing_catch_burst_for_action", skill_id, catch_burst_action_id, catch_burst_fish_count)
+	_emphasize_visible_bonus_changes(bonus_snapshot_before)
+
+
+func _play_fishing_catch_burst_for_action(skill_id: String, action_id: String, fish_count: int) -> void:
+	var burst_area_card := _fishing_area_card_for_action(skill_id, action_id)
+	if burst_area_card.is_empty():
+		return
+	_play_fishing_catch_burst(burst_area_card, action_id, fish_count)
+
+
+func _play_fishing_attempt_reveal(skill_id: String, action_id: String, success: bool) -> void:
+	if not _fishing_rework_active_for_skill(skill_id):
+		return
+	var area_id := _fishing_area_id_for_action(action_id)
+	var area_card := _fishing_area_card_for_action(skill_id, action_id) if not area_id.is_empty() else {}
+	if not area_card.is_empty():
+		var fluid_strip := area_card.get("fluid_strip") as Control
+		if fluid_strip != null and fluid_strip.has_method("play_reveal"):
+			fluid_strip.call("play_reveal", success)
+	var method_card := _fishing_method_card_for_action(skill_id, action_id)
+	if not method_card.is_empty():
+		method_card["attempt_reveal_kind"] = "success" if success else "fail"
+		_update_fishing_method_attempt_bar(method_card, action_id, false, true)
 
 
 func _background_for_action(skill_id: String, index: int) -> String:
@@ -15322,6 +20538,21 @@ func _init_state() -> void:
 	stamina.clear()
 	stamina_bank.clear()
 	log_currency = 0
+	fish_currency = 0
+	equipped_fishing_tool_id = "hands"
+	fishing_tool_wallet_open = false
+	fishing_net_stored_fish = 0
+	fishing_net_successes = 0
+	fishing_net_stored_xp = 0
+	fishing_net_stored_mastery = 0.0
+	fishing_net_haul_visual_seconds = 0.0
+	fishing_net_collected = false
+	fishing_rod_collected = false
+	fishing_reinforced_rod_collected = false
+	fishing_star_rod_collected = false
+	fishing_boat_built = false
+	fishing_mirror_collected = false
+	selected_fishing_locations.clear()
 	passive_modules.clear()
 	manual_activity_unlocks.clear()
 	plank_boost_enabled = false
@@ -15375,6 +20606,7 @@ func _init_state() -> void:
 
 func _validate_state() -> void:
 	_invalidate_stat_caches()
+	equipped_fishing_tool_id = "hands"
 	for def in skill_defs:
 		var skill_id := str(def["id"])
 		if not skills.has(skill_id):
@@ -15444,6 +20676,20 @@ func save_game() -> void:
 		"stamina": stamina,
 		"stamina_bank": stamina_bank,
 		"log_currency": log_currency,
+		"fish_currency": fish_currency,
+		"equipped_fishing_tool_id": equipped_fishing_tool_id,
+		"fishing_net_stored_fish": fishing_net_stored_fish,
+		"fishing_net_successes": fishing_net_successes,
+		"fishing_net_stored_xp": fishing_net_stored_xp,
+		"fishing_net_stored_mastery": fishing_net_stored_mastery,
+		"fishing_net_collected": fishing_net_collected,
+		"fishing_rocky_net_found": fishing_net_collected,
+		"fishing_rod_collected": fishing_rod_collected,
+		"fishing_reinforced_rod_collected": fishing_reinforced_rod_collected,
+		"fishing_star_rod_collected": fishing_star_rod_collected,
+		"fishing_boat_built": fishing_boat_built,
+		"fishing_mirror_collected": fishing_mirror_collected,
+		"selected_fishing_locations": selected_fishing_locations,
 		"passive_modules": passive_modules,
 		"manual_activity_unlocks": manual_activity_unlocks,
 		"plank_boost_enabled": plank_boost_enabled,
@@ -15490,6 +20736,33 @@ func save_game() -> void:
 		"last_result": last_result,
 		"saved_at": now
 	}))
+
+
+func _autosave_if_needed() -> void:
+	if _autosave_has_live_state_changes():
+		save_game()
+
+
+func _autosave_has_live_state_changes() -> bool:
+	if not startup_initialized:
+		return false
+	if not running_skill_id.is_empty():
+		return true
+	if ad_bonus_seconds_remaining > 0.0:
+		return true
+	for raw_skill_id in skills.keys():
+		var skill_id := str(raw_skill_id)
+		if _stamina_value(skill_id) < float(_max_stamina(skill_id)) - 0.0001:
+			return true
+	if offline_progress_enabled:
+		for raw_action in actions_by_skill.get("woodcutting", []):
+			var action := raw_action as Dictionary
+			if not _is_passive_action(action):
+				continue
+			var module_id := str(action.get("id", WOODCUTTING_LOG_MODULE_ID))
+			if _is_passive_module_unlocked(module_id):
+				return true
+	return false
 
 
 func _unix_now() -> int:
@@ -15542,12 +20815,13 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 	var xp_total := 0
 	var mastery_total := 0.0
 	var logs_spent := 0
+	var fishing_rework_attempt := _fishing_rework_active_for_skill(skill_id)
 	while remaining > 0.001:
 		var cost := _effective_stamina(skill_id, action)
-		var action_seconds := _effective_seconds(skill_id, action)
+		var action_seconds := _action_cycle_seconds(skill_id, action)
 		var progress := clampf(action_progress, 0.0, 0.999)
-		var stamina_ready := _stamina_value(skill_id) + 0.0001 >= cost
-		var speed_mult := 1.0 if stamina_ready else LOW_STAMINA_ACTION_SPEED_MULT
+		var stamina_ready := true if fishing_rework_attempt else _stamina_value(skill_id) + 0.0001 >= cost
+		var speed_mult := _action_progress_speed_multiplier(skill_id, action, stamina_ready)
 		var seconds_to_complete := maxf(0.001, action_seconds * (1.0 - progress) / speed_mult)
 		var seconds_until_ready := INF
 		if not stamina_ready and cost <= _max_stamina(skill_id):
@@ -15610,7 +20884,7 @@ func _seconds_until_stamina_cost(skill_id: String, cost: float) -> float:
 
 
 func _grant_offline_action_completion(skill_id: String, action_id: String, action: Dictionary) -> Dictionary:
-	var mastery_reward := _mastery_reward_for_action(skill_id, action_id, action)
+	var mastery_reward := _offline_mastery_reward(skill_id, action_id, action)
 	var success := randf() * 100.0 <= _success_chance(skill_id, action)
 	var xp_reward := 0
 	var mastery_gained := 0.0
@@ -15649,6 +20923,10 @@ func _offline_xp_reward(action: Dictionary, skill_id: String, force_plank_bonus 
 	return maxi(1, int(round(float(_effective_xp(action, skill_id, force_plank_bonus)) * OFFLINE_XP_MULT)))
 
 
+func _offline_mastery_reward(skill_id: String, action_id: String, action: Dictionary) -> float:
+	return maxf(0.0, _mastery_reward_for_action(skill_id, action_id, action) * OFFLINE_XP_MULT)
+
+
 func _offline_unlocked_actions(_skill_id: String, _old_level: int, _new_level: int) -> Array:
 	return []
 
@@ -15673,7 +20951,7 @@ func _set_offline_result_text(offline_seconds: float, active_result: Dictionary)
 	var logs_spent := int(active_result.get("logs_spent", 0))
 	if logs_spent > 0:
 		parts.append("%s logs spent" % logs_spent)
-	parts.append("offline XP at %s%%" % int(round(OFFLINE_XP_MULT * 100.0)))
+	parts.append("offline XP and mastery at %s%%" % int(round(OFFLINE_XP_MULT * 100.0)))
 	last_result = ", ".join(parts) + "."
 
 
@@ -15709,7 +20987,7 @@ func load_game() -> void:
 	if typeof(loaded_manual_unlocks) == TYPE_DICTIONARY:
 		for key in loaded_manual_unlocks.keys():
 			if bool(loaded_manual_unlocks[key]):
-				manual_activity_unlocks[str(key)] = true
+				manual_activity_unlocks[_canonical_action_key(str(key))] = true
 	activity_crit_seen = bool(data.get("activity_crit_seen", false))
 	activity_mega_crit_seen = bool(data.get("activity_mega_crit_seen", false))
 	if activity_mega_crit_seen:
@@ -15717,9 +20995,10 @@ func load_game() -> void:
 	var loaded_mastery = data.get("mastery", {})
 	if typeof(loaded_mastery) == TYPE_DICTIONARY:
 		for key in loaded_mastery.keys():
-			if mastery.has(key) and typeof(loaded_mastery[key]) == TYPE_DICTIONARY:
-				mastery[key]["xp"] = int(loaded_mastery[key].get("xp", 0))
-				_recalculate_mastery(str(key))
+			var canonical_key := _canonical_action_key(str(key))
+			if mastery.has(canonical_key) and typeof(loaded_mastery[key]) == TYPE_DICTIONARY:
+				mastery[canonical_key]["xp"] = int(loaded_mastery[key].get("xp", 0))
+				_recalculate_mastery(canonical_key)
 	for skill_id in skills.keys():
 		_recalculate_level(str(skill_id))
 	if save_schema_version < SAVE_SCHEMA_MANUAL_ACTIVITY_UNLOCKS:
@@ -15739,6 +21018,38 @@ func load_game() -> void:
 					stamina[skill_id] = minf(float(_max_stamina(str(skill_id))), _stamina_value(str(skill_id)) + clampf(float(stamina_bank[skill_id]) / STAMINA_REGEN_SECONDS, 0.0, 0.9999))
 				_sync_stamina_bank(str(skill_id))
 	log_currency = maxi(0, int(data.get("log_currency", log_currency)))
+	fish_currency = maxi(0, int(data.get("fish_currency", fish_currency)))
+	equipped_fishing_tool_id = str(data.get("equipped_fishing_tool_id", equipped_fishing_tool_id))
+	fishing_net_stored_fish = clampi(int(data.get("fishing_net_stored_fish", fishing_net_stored_fish)), 0, FISHING_NET_HAUL_THRESHOLD - 1)
+	fishing_net_successes = maxi(0, int(data.get("fishing_net_successes", fishing_net_successes)))
+	fishing_net_stored_xp = maxi(0, int(data.get("fishing_net_stored_xp", fishing_net_stored_xp)))
+	fishing_net_stored_mastery = maxf(0.0, float(data.get("fishing_net_stored_mastery", fishing_net_stored_mastery)))
+	fishing_net_haul_visual_seconds = 0.0
+	fishing_net_collected = bool(data.get("fishing_net_collected", data.get("fishing_rocky_net_found", fishing_net_collected)))
+	fishing_rod_collected = bool(data.get("fishing_rod_collected", fishing_rod_collected))
+	fishing_reinforced_rod_collected = bool(data.get("fishing_reinforced_rod_collected", fishing_reinforced_rod_collected))
+	fishing_star_rod_collected = bool(data.get("fishing_star_rod_collected", fishing_star_rod_collected))
+	fishing_boat_built = bool(data.get("fishing_boat_built", fishing_boat_built))
+	fishing_mirror_collected = bool(data.get("fishing_mirror_collected", fishing_mirror_collected))
+	if equipped_fishing_tool_id in ["line", "reinforced_rod", "star_rod"]:
+		if fishing_star_rod_collected:
+			equipped_fishing_tool_id = "star_rod"
+		elif fishing_reinforced_rod_collected:
+			equipped_fishing_tool_id = "reinforced_rod"
+		elif fishing_rod_collected:
+			equipped_fishing_tool_id = "line"
+	if not _fishing_tool_is_unlocked(equipped_fishing_tool_id):
+		equipped_fishing_tool_id = "hands"
+	if equipped_fishing_tool_id != "net":
+		fishing_net_stored_fish = 0
+		fishing_net_successes = 0
+		fishing_net_stored_xp = 0
+		fishing_net_stored_mastery = 0.0
+	selected_fishing_locations.clear()
+	var loaded_fishing_locations = data.get("selected_fishing_locations", {})
+	if typeof(loaded_fishing_locations) == TYPE_DICTIONARY:
+		for area_id in (loaded_fishing_locations as Dictionary).keys():
+			selected_fishing_locations[_canonical_fishing_area_id(str(area_id))] = str((loaded_fishing_locations as Dictionary).get(area_id, ""))
 	var loaded_passive_modules = data.get("passive_modules", {})
 	if typeof(loaded_passive_modules) == TYPE_DICTIONARY:
 		for module_id in loaded_passive_modules.keys():
@@ -15757,7 +21068,7 @@ func load_game() -> void:
 	ad_bonus_seconds_remaining = clampf(float(data.get("ad_bonus_seconds_remaining", 0.0)), 0.0, float(AD_BONUS_MAX_SECONDS))
 	selected_skill_id = str(data.get("selected_skill_id", selected_skill_id))
 	running_skill_id = str(data.get("running_skill_id", ""))
-	running_action_id = str(data.get("running_action_id", ""))
+	running_action_id = _canonical_action_id(running_skill_id, str(data.get("running_action_id", "")))
 	action_progress = float(data.get("action_progress", 0.0))
 	var audio_settings_version := int(data.get("audio_settings_version", 0))
 	music_volume = clampf(float(data.get("music_volume", music_volume)), 0.0, 1.0)
@@ -16405,6 +21716,49 @@ func _effective_seconds(skill_id: String, action: Dictionary) -> float:
 	return maxf(0.1, base_seconds * (1.0 - total_reduction))
 
 
+func _fishing_net_soak_active(skill_id: String) -> bool:
+	return _fishing_rework_active_for_skill(skill_id) and equipped_fishing_tool_id == "net"
+
+
+func _fishing_net_tick_seconds(action: Dictionary) -> float:
+	var base_seconds := maxf(0.75, float(action.get("seconds", 1.0)) * 0.42)
+	var action_id := str(action.get("id", ""))
+	var multiplier := 1.0
+	match _fishing_method_archetype(action_id):
+		"volume":
+			multiplier = 0.72
+		"steady":
+			multiplier = 1.0
+		"risk":
+			multiplier = 1.15
+		"chaos":
+			multiplier = 1.25
+		"commit":
+			multiplier = 1.35
+		_:
+			multiplier = 1.0
+	match action_id:
+		"beach-shallows", "pier-dock-edge":
+			multiplier *= 0.78
+		"beach-rocks", "pier-piling-line":
+			multiplier *= 1.25
+	return clampf(base_seconds * multiplier, 0.65, 4.2)
+
+
+func _action_cycle_seconds(skill_id: String, action: Dictionary) -> float:
+	if _fishing_net_soak_active(skill_id):
+		return _fishing_net_tick_seconds(action)
+	if _fishing_rework_active_for_skill(skill_id):
+		return maxf(0.1, _effective_seconds(skill_id, action) * _fishing_tool_time_multiplier())
+	return _effective_seconds(skill_id, action)
+
+
+func _action_progress_speed_multiplier(skill_id: String, _action: Dictionary, has_stamina_for_action: bool) -> float:
+	if _fishing_net_soak_active(skill_id):
+		return 1.0
+	return 1.0 if has_stamina_for_action else LOW_STAMINA_ACTION_SPEED_MULT
+
+
 func _record_successful_activity_completion(action_key: String) -> int:
 	if activity_streak_action_key == action_key:
 		activity_streak_count += 1
@@ -16700,19 +22054,42 @@ func _mark_action_manually_unlocked(skill_id: String, action_id: String) -> void
 
 
 func _action_data(skill_id: String, action_id: String) -> Dictionary:
-	for action in actions_by_skill.get(skill_id, []):
-		if str(action["id"]) == action_id:
-			return action
+	var cached = actions_by_key.get(_action_key(skill_id, action_id), null)
+	if typeof(cached) == TYPE_DICTIONARY:
+		return cached as Dictionary
 	return {}
 
 
 func _action_key(skill_id: String, action_id: String) -> String:
-	return "%s:%s" % [skill_id, action_id]
+	return "%s:%s" % [skill_id, _canonical_action_id(skill_id, action_id)]
+
+
+func _canonical_action_id(skill_id: String, action_id: String) -> String:
+	if skill_id == "fishing" and FISHING_ACTION_ID_ALIASES.has(action_id):
+		return str(FISHING_ACTION_ID_ALIASES[action_id])
+	return action_id
+
+
+func _canonical_action_key(key: String) -> String:
+	var separator := key.find(":")
+	if separator < 0:
+		return key
+	var skill_id := key.substr(0, separator)
+	var action_id := key.substr(separator + 1)
+	return _action_key(skill_id, action_id)
+
+
+func _canonical_fishing_area_id(area_id: String) -> String:
+	if FISHING_AREA_ID_ALIASES.has(area_id):
+		return str(FISHING_AREA_ID_ALIASES[area_id])
+	return area_id
 
 
 func _success_chance(skill_id: String, action: Dictionary) -> float:
 	var base_success := float(action.get("success", 90.0))
 	var medal_success := _global_medal_bonus("success_bonus") + _activity_medal_rate_bonus(skill_id, action)
+	if _fishing_rework_active_for_skill(skill_id):
+		medal_success += _fishing_tool_success_bonus()
 	return clampf(base_success + medal_success, 5.0, 100.0)
 
 
@@ -16832,6 +22209,49 @@ func _label(text: String, font_size: int, color: Color, align: HorizontalAlignme
 	return label
 
 
+func _is_fishing_catch_texture_path(path: String) -> bool:
+	var normalized := _res_path(path)
+	return normalized.contains("/fishing/catches/")
+
+
+func _fishing_catch_chroma_baked_cache_key(path: String) -> String:
+	return "%s|chroma_baked" % _res_path(path)
+
+
+func _color_should_fishing_catch_chroma_key(color: Color) -> bool:
+	var red := int(round(color.r * 255.0))
+	var green := int(round(color.g * 255.0))
+	var blue := int(round(color.b * 255.0))
+	var magenta_match := absi(red - 255) + absi(green) + absi(blue - 255)
+	var green_match := absi(red) + absi(green - 255) + absi(blue)
+	return (
+		magenta_match < FISH_CATCH_CHROMA_TOLERANCE_8
+		or green_match < FISH_CATCH_CHROMA_TOLERANCE_8
+	)
+
+
+func _bake_fishing_catch_chroma_image(source: Image) -> Image:
+	var image := source.duplicate()
+	if image.get_format() != Image.FORMAT_RGBA8:
+		image.convert(Image.FORMAT_RGBA8)
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var color: Color = image.get_pixel(x, y)
+			if _color_should_fishing_catch_chroma_key(color):
+				color.a = 0.0
+				image.set_pixel(x, y, color)
+	return image
+
+
+func _texture_from_image(path: String, image: Image) -> Texture2D:
+	var baked := image
+	if _is_fishing_catch_texture_path(path):
+		baked = _bake_fishing_catch_chroma_image(image)
+	var texture := ImageTexture.create_from_image(baked)
+	texture_cache[_fishing_catch_chroma_baked_cache_key(path) if _is_fishing_catch_texture_path(path) else _res_path(path)] = texture
+	return texture
+
+
 func _image(path: String, minimum_size: Vector2) -> TextureRect:
 	var image := TextureRect.new()
 	image.texture = _texture(path)
@@ -16842,9 +22262,12 @@ func _image(path: String, minimum_size: Vector2) -> TextureRect:
 	return image
 
 
-func _image_from_texture(texture: Texture2D, minimum_size: Vector2) -> TextureRect:
+func _image_from_texture(texture: Texture2D, minimum_size: Vector2, texture_path := "") -> TextureRect:
 	var image := TextureRect.new()
-	image.texture = texture
+	if _is_fishing_catch_texture_path(texture_path) and not texture_path.is_empty():
+		image.texture = _texture(texture_path)
+	else:
+		image.texture = texture
 	image.custom_minimum_size = minimum_size
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -16876,7 +22299,7 @@ func _profile_avatar_frame(index: int, minimum_size: Vector2, selected := false)
 	frame.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	frame.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	frame.clip_contents = true
-	frame.add_theme_stylebox_override("panel", _profile_avatar_frame_style(selected))
+	frame.add_theme_stylebox_override("panel", _profile_avatar_frame_background_style(selected))
 	var art := _image_from_texture(_profile_avatar_texture(index), minimum_size)
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -17369,7 +22792,7 @@ func _apply_action_stat_box_style(box: Control, active := false, pressed := fals
 		button.add_theme_stylebox_override("normal", _stat_box_style(active))
 		button.add_theme_stylebox_override("hover", _stat_box_style(active))
 		button.add_theme_stylebox_override("pressed", _stat_box_style(active, true))
-		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		button.add_theme_stylebox_override("focus", empty_style_cache)
 	elif box is PanelContainer:
 		(box as PanelContainer).add_theme_stylebox_override("panel", style)
 
@@ -17723,19 +23146,15 @@ func _leaderboard_rank_badge_style() -> StyleBoxFlat:
 	return style
 
 
-func _profile_avatar_frame_style(selected := false) -> StyleBoxFlat:
+func _profile_avatar_frame_background_style(selected := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#fffdf8") if not selected else Color("#fff1b8")
-	style.border_color = COLOR_INK
-	style.set_border_width_all(PROFILE_AVATAR_FRAME_BORDER)
+	style.border_color = Color.TRANSPARENT
+	style.set_border_width_all(0)
 	style.corner_radius_top_left = 24
 	style.corner_radius_top_right = 24
 	style.corner_radius_bottom_left = 24
 	style.corner_radius_bottom_right = 24
-	style.content_margin_left = PROFILE_AVATAR_FRAME_BORDER
-	style.content_margin_right = PROFILE_AVATAR_FRAME_BORDER
-	style.content_margin_top = PROFILE_AVATAR_FRAME_BORDER
-	style.content_margin_bottom = PROFILE_AVATAR_FRAME_BORDER
 	if selected:
 		style.shadow_color = Color(0.09, 0.08, 0.07, 0.22)
 		style.shadow_size = 10
@@ -17743,13 +23162,22 @@ func _profile_avatar_frame_style(selected := false) -> StyleBoxFlat:
 	return style
 
 
+func _profile_avatar_frame_style(selected := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color.TRANSPARENT
+	style.draw_center = false
+	style.border_color = COLOR_INK
+	style.set_border_width_all(PROFILE_AVATAR_FRAME_BORDER)
+	style.corner_radius_top_left = 24
+	style.corner_radius_top_right = 24
+	style.corner_radius_bottom_left = 24
+	style.corner_radius_bottom_right = 24
+	return style
+
+
 func _profile_avatar_button_style(selected := false, pressed := false) -> StyleBoxFlat:
-	var style := _profile_avatar_frame_style(selected)
+	var style := _profile_avatar_frame_background_style(selected)
 	style.bg_color = (Color("#fff1b8") if selected else Color("#fffdf8")).darkened(0.08 if pressed else 0.0)
-	style.content_margin_left = 0
-	style.content_margin_right = 0
-	style.content_margin_top = 0
-	style.content_margin_bottom = 0
 	if pressed:
 		style.shadow_size = 4
 		style.shadow_offset = Vector2(0, 3)
@@ -17757,13 +23185,7 @@ func _profile_avatar_button_style(selected := false, pressed := false) -> StyleB
 
 
 func _profile_avatar_border_overlay_style(selected := false) -> StyleBoxFlat:
-	var style := _profile_avatar_frame_style(selected)
-	style.draw_center = false
-	style.content_margin_left = 0
-	style.content_margin_right = 0
-	style.content_margin_top = 0
-	style.content_margin_bottom = 0
-	return style
+	return _profile_avatar_frame_style(selected)
 
 
 func _profile_name_field_style(focused := false) -> StyleBoxFlat:
@@ -18271,20 +23693,25 @@ func _apply_nav_style(button: Button, _active: bool) -> void:
 func _texture(path: String) -> Texture2D:
 	if path.is_empty():
 		return null
-	if texture_cache.has(path):
-		return texture_cache[path] as Texture2D
-	if ResourceLoader.exists(path):
-		var loaded = load(path)
+	var normalized := _res_path(path)
+	var cache_key := normalized
+	if _is_fishing_catch_texture_path(normalized):
+		cache_key = _fishing_catch_chroma_baked_cache_key(normalized)
+	if texture_cache.has(cache_key):
+		return texture_cache[cache_key] as Texture2D
+	if ResourceLoader.exists(normalized):
+		var loaded = load(normalized)
 		if loaded is Texture2D:
-			texture_cache[path] = loaded
+			var source_image := (loaded as Texture2D).get_image()
+			if source_image != null and not source_image.is_empty():
+				return _texture_from_image(normalized, source_image)
+			texture_cache[cache_key] = loaded
 			return loaded
 	var image := Image.new()
-	if image.load(path) != OK:
-		texture_cache[path] = null
+	if image.load(normalized) != OK:
+		texture_cache[cache_key] = null
 		return null
-	var texture := ImageTexture.create_from_image(image)
-	texture_cache[path] = texture
-	return texture
+	return _texture_from_image(normalized, image)
 
 
 func _chroma_material(chroma: Color) -> ShaderMaterial:
@@ -19007,6 +24434,7 @@ func _kill_transient_tweens_in_subtree(node: Node) -> void:
 	_kill_meta_tween(node, "bonus_content_tween")
 	_kill_meta_tween(node, "medal_ceremony_tween")
 	_kill_meta_tween(node, "medal_outgoing_tween")
+	_kill_meta_tween(node, "mastery_bar_tween")
 	_kill_meta_tween(node, "activity_crit_text_tween")
 	for child in node.get_children():
 		_kill_transient_tweens_in_subtree(child)

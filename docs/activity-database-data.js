@@ -1,5 +1,5 @@
 // Generated from activity-database.json for file:// HTML previews.
-// Edit activity-database.json first, then regenerate this bridge.
+// Edit activity-database.json first, then run: python scripts/sync-activity-database-js.py
 globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
   "schema_version": 1,
   "updated": "2026-05-23",
@@ -19,6 +19,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       8,
       9,
       10,
+      11,
       12,
       14,
       16,
@@ -30,11 +31,24 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       28,
       30,
       33,
+      34,
       36,
       40,
       45,
+      46,
       50,
-      55
+      52,
+      55,
+      58,
+      64,
+      70,
+      74,
+      78,
+      82,
+      86,
+      88,
+      90,
+      95
     ],
     "xp_formula": "round(pow(action_index_1_based, 1.35) * skill.xp_scale)",
     "seconds_formula": "(1 + stamina * 0.75 + unlock * 0.06) * skill.time_scale",
@@ -1976,453 +1990,550 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "icon": "docs/assets/icons/fishing.png",
       "actions": [
         {
-          "id": "scoop-pond-minnows",
+          "id": "beach-shallows",
           "tier": 1,
-          "name": "Scoop Pond Minnows",
+          "name": "Shallows",
           "unlock": 1,
           "stamina": 1,
-          "seconds": 2.86,
-          "xp": 2,
-          "success": 90,
+          "seconds": 3.2,
+          "xp": 3,
+          "success": 92,
           "rewards": {
-            "xp": 2
+            "xp": 3,
+            "fish_min": 1,
+            "fish_max": 1
           },
           "costs": {
             "stamina": 1
           },
           "art": "docs/assets/fishing/actions/01-scoop-pond-minnows.png",
-          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png"
+          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+          "area": "beach",
+          "archetype": "novice"
         },
         {
-          "id": "dangle-string-from-dock",
-          "tier": 2,
-          "name": "Dangle String From Dock",
-          "unlock": 2,
-          "stamina": 1,
-          "seconds": 2.95,
-          "xp": 4,
-          "success": 88,
-          "rewards": {
-            "xp": 4
-          },
-          "costs": {
-            "stamina": 1
-          },
-          "art": "docs/assets/fishing/actions/02-dangle-string-from-dock.png",
-          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png"
-        },
-        {
-          "id": "cast-bamboo-rod",
-          "tier": 3,
-          "name": "Cast Bamboo Rod",
-          "unlock": 3,
-          "stamina": 1,
-          "seconds": 3.05,
-          "xp": 8,
-          "success": 86,
-          "rewards": {
-            "xp": 8
-          },
-          "costs": {
-            "stamina": 1
-          },
-          "art": "docs/assets/fishing/actions/03-cast-bamboo-rod.png",
-          "background": "docs/assets/fishing/backgrounds/01-early.png"
-        },
-        {
-          "id": "drag-net-through-creek",
+          "id": "beach-rocks",
           "tier": 4,
-          "name": "Drag Net Through Creek",
+          "name": "Rocks",
           "unlock": 4,
           "stamina": 2,
           "seconds": 4.33,
           "xp": 11,
           "success": 84,
           "rewards": {
-            "xp": 11
+            "xp": 11,
+            "fish_min": 1,
+            "fish_max": 2
           },
           "costs": {
             "stamina": 2
           },
           "art": "docs/assets/fishing/actions/04-drag-net-through-creek.png",
-          "background": "docs/assets/fishing/backgrounds/01-early.png"
+          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+          "area": "beach"
         },
         {
-          "id": "set-tiny-crab-pot",
-          "tier": 5,
-          "name": "Set Tiny Crab Pot",
-          "unlock": 5,
-          "stamina": 2,
-          "seconds": 4.42,
-          "xp": 15,
-          "success": 82,
+          "id": "pier-dock-edge",
+          "tier": 1,
+          "name": "Dock Edge",
+          "unlock": 7,
+          "stamina": 1,
+          "seconds": 2.86,
+          "xp": 2,
+          "success": 90,
           "rewards": {
-            "xp": 15
+            "xp": 2,
+            "fish_min": 1,
+            "fish_max": 1
           },
           "costs": {
-            "stamina": 2
+            "stamina": 1
           },
-          "art": "docs/assets/fishing/actions/05-set-tiny-crab-pot.png",
-          "background": "docs/assets/fishing/backgrounds/02-rising.png"
+          "art": "docs/assets/fishing/actions/01-scoop-pond-minnows.png",
+          "background": "docs/assets/fishing/backgrounds/01-pond-dock.png",
+          "area": "pier"
         },
         {
-          "id": "fly-fish-at-river-bend",
+          "id": "pier-piling-line",
+          "tier": 2,
+          "name": "Piling Line",
+          "unlock": 11,
+          "stamina": 1,
+          "seconds": 2.95,
+          "xp": 4,
+          "success": 88,
+          "rewards": {
+            "xp": 4,
+            "fish_min": 1,
+            "fish_max": 2
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/fishing/actions/02-dangle-string-from-dock.png",
+          "background": "docs/assets/fishing/backgrounds/01-pond-dock.png",
+          "area": "pier"
+        },
+        {
+          "id": "river-bend",
+          "tier": 3,
+          "name": "River Bend",
+          "unlock": 14,
+          "stamina": 1,
+          "seconds": 3.05,
+          "xp": 8,
+          "success": 86,
+          "rewards": {
+            "xp": 8,
+            "fish_min": 1,
+            "fish_max": 2
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "art": "docs/assets/fishing/actions/03-cast-bamboo-rod.png",
+          "background": "docs/assets/fishing/backgrounds/02-river-bend.png",
+          "area": "river"
+        },
+        {
+          "id": "river-rapids",
           "tier": 6,
-          "name": "Fly Fish At River Bend",
-          "unlock": 6,
+          "name": "Rapids",
+          "unlock": 18,
           "stamina": 2,
           "seconds": 4.52,
           "xp": 19,
           "success": 80,
           "rewards": {
-            "xp": 19
+            "xp": 19,
+            "fish_min": 2,
+            "fish_max": 4
           },
           "costs": {
             "stamina": 2
           },
           "art": "docs/assets/fishing/actions/06-fly-fish-at-river-bend.png",
-          "background": "docs/assets/fishing/backgrounds/02-rising.png"
+          "background": "docs/assets/fishing/backgrounds/02-river-bend.png",
+          "area": "river"
         },
         {
-          "id": "hand-grab-muddy-catfish",
+          "id": "sewers-drain-gate",
           "tier": 7,
-          "name": "Hand Grab Muddy Catfish",
-          "unlock": 7,
+          "name": "Drain Gate",
+          "unlock": 22,
           "stamina": 3,
           "seconds": 5.8,
           "xp": 24,
           "success": 78,
           "rewards": {
-            "xp": 24
+            "xp": 24,
+            "fish_min": 1,
+            "fish_max": 3
           },
           "costs": {
             "stamina": 3
           },
           "art": "docs/assets/fishing/actions/07-hand-grab-muddy-catfish.png",
-          "background": "docs/assets/fishing/backgrounds/03-crab-pier.png"
+          "background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
+          "area": "sewers"
         },
         {
-          "id": "ice-fish-through-nervous-hole",
-          "tier": 8,
-          "name": "Ice Fish Through Nervous Hole",
-          "unlock": 8,
-          "stamina": 3,
-          "seconds": 5.89,
-          "xp": 28,
-          "success": 76,
-          "rewards": {
-            "xp": 28
-          },
-          "costs": {
-            "stamina": 3
-          },
-          "art": "docs/assets/fishing/actions/08-ice-fish-through-nervous-hole.png",
-          "background": "docs/assets/fishing/backgrounds/03-crab-pier.png"
-        },
-        {
-          "id": "spear-fish-in-shallows",
+          "id": "sewers-tunnel-pool",
           "tier": 9,
-          "name": "Spear Fish In Shallows",
-          "unlock": 9,
+          "name": "Tunnel Pool",
+          "unlock": 26,
           "stamina": 3,
           "seconds": 5.99,
           "xp": 33,
           "success": 74,
           "rewards": {
-            "xp": 33
+            "xp": 33,
+            "fish_min": 1,
+            "fish_max": 3
           },
           "costs": {
             "stamina": 3
           },
           "art": "docs/assets/fishing/actions/09-spear-fish-in-shallows.png",
-          "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png"
+          "background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
+          "area": "sewers"
         },
         {
-          "id": "cast-from-rowboat",
+          "id": "reef-pot",
+          "tier": 5,
+          "name": "Reef Pot",
+          "unlock": 30,
+          "stamina": 2,
+          "seconds": 4.42,
+          "xp": 15,
+          "success": 82,
+          "rewards": {
+            "xp": 15,
+            "fish_min": 2,
+            "fish_max": 3
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "art": "docs/assets/fishing/actions/05-set-tiny-crab-pot.png",
+          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
+          "area": "reef"
+        },
+        {
+          "id": "winter-lake-ice-hole",
+          "tier": 8,
+          "name": "Ice Hole",
+          "unlock": 34,
+          "stamina": 3,
+          "seconds": 5.89,
+          "xp": 28,
+          "success": 76,
+          "rewards": {
+            "xp": 28,
+            "fish_min": 2,
+            "fish_max": 4
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "docs/assets/fishing/actions/08-ice-fish-through-nervous-hole.png",
+          "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png",
+          "area": "winter_lake"
+        },
+        {
+          "id": "sea-rowboat",
           "tier": 10,
-          "name": "Cast From Rowboat",
-          "unlock": 10,
+          "name": "Rowboat",
+          "unlock": 40,
           "stamina": 4,
           "seconds": 7.27,
           "xp": 39,
           "success": 72,
           "rewards": {
-            "xp": 39
+            "xp": 39,
+            "fish_min": 2,
+            "fish_max": 4
           },
           "costs": {
             "stamina": 4
           },
           "art": "docs/assets/fishing/actions/10-cast-from-rowboat.png",
-          "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png"
+          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
+          "area": "sea"
         },
         {
-          "id": "drop-lobster-cage",
+          "id": "reef-cage",
           "tier": 11,
-          "name": "Drop Lobster Cage",
-          "unlock": 12,
+          "name": "Reef Cage",
+          "unlock": 46,
           "stamina": 4,
           "seconds": 7.46,
           "xp": 44,
           "success": 70,
           "rewards": {
-            "xp": 44
+            "xp": 44,
+            "fish_min": 3,
+            "fish_max": 5
           },
           "costs": {
             "stamina": 4
           },
           "art": "docs/assets/fishing/actions/11-drop-lobster-cage.png",
-          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png"
+          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
+          "area": "reef"
         },
         {
-          "id": "trawl-from-tiny-boat",
+          "id": "sea-open-water",
           "tier": 12,
-          "name": "Trawl From Tiny Boat",
-          "unlock": 14,
+          "name": "Open Water",
+          "unlock": 52,
           "stamina": 4,
           "seconds": 7.65,
           "xp": 49,
           "success": 68,
           "rewards": {
-            "xp": 49
+            "xp": 49,
+            "fish_min": 4,
+            "fish_max": 7
           },
           "costs": {
             "stamina": 4
           },
           "art": "docs/assets/fishing/actions/12-trawl-from-tiny-boat.png",
-          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png"
+          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
+          "area": "sea"
         },
         {
-          "id": "night-fish-with-lantern",
+          "id": "reef-night-reef",
           "tier": 13,
-          "name": "Night Fish With Lantern",
-          "unlock": 16,
+          "name": "Night Reef",
+          "unlock": 58,
           "stamina": 5,
           "seconds": 9.02,
           "xp": 55,
           "success": 66,
           "rewards": {
-            "xp": 55
+            "xp": 55,
+            "fish_min": 3,
+            "fish_max": 5
           },
           "costs": {
             "stamina": 5
           },
           "art": "docs/assets/fishing/actions/13-night-fish-with-lantern.png",
-          "background": "docs/assets/fishing/backgrounds/06-shark-open-water.png"
+          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
+          "area": "reef"
         },
         {
-          "id": "harpoon-suspicious-ripple",
+          "id": "stormy-sea-ripple",
           "tier": 14,
-          "name": "Harpoon Suspicious Ripple",
-          "unlock": 18,
+          "name": "Storm Ripple",
+          "unlock": 64,
           "stamina": 5,
           "seconds": 9.21,
           "xp": 61,
           "success": 64,
           "rewards": {
-            "xp": 61
+            "xp": 61,
+            "fish_min": 1,
+            "fish_max": 2
           },
           "costs": {
             "stamina": 5
           },
           "art": "docs/assets/fishing/actions/14-harpoon-suspicious-ripple.png",
-          "background": "docs/assets/fishing/backgrounds/06-shark-open-water.png"
+          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
+          "area": "stormy_sea"
         },
         {
-          "id": "use-sonar-in-the-farm-pond",
-          "tier": 15,
-          "name": "Use Sonar In The Farm Pond",
-          "unlock": 20,
-          "stamina": 5,
-          "seconds": 9.4,
-          "xp": 67,
-          "success": 62,
-          "rewards": {
-            "xp": 67
-          },
-          "costs": {
-            "stamina": 5
-          },
-          "art": "docs/assets/fishing/actions/15-use-sonar-in-the-farm-pond.png",
-          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png"
-        },
-        {
-          "id": "chum-open-water",
+          "id": "sea-chum-line",
           "tier": 16,
-          "name": "Chum Open Water",
-          "unlock": 22,
+          "name": "Chum Line",
+          "unlock": 70,
           "stamina": 6,
           "seconds": 10.78,
           "xp": 73,
           "success": 60,
           "rewards": {
-            "xp": 73
+            "xp": 73,
+            "fish_min": 2,
+            "fish_max": 6
           },
           "costs": {
             "stamina": 6
           },
           "art": "docs/assets/fishing/actions/16-chum-open-water.png",
-          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png"
+          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
+          "area": "sea"
         },
         {
-          "id": "cast-storm-kite-line",
-          "tier": 17,
-          "name": "Cast Storm Kite Line",
-          "unlock": 24,
-          "stamina": 6,
-          "seconds": 10.97,
-          "xp": 79,
-          "success": 58,
-          "rewards": {
-            "xp": 79
-          },
-          "costs": {
-            "stamina": 6
-          },
-          "art": "docs/assets/fishing/actions/17-cast-storm-kite-line.png",
-          "background": "docs/assets/fishing/backgrounds/08-trawler-deck.png"
-        },
-        {
-          "id": "dive-for-pearl-oysters",
+          "id": "reef-pearl-bed",
           "tier": 18,
-          "name": "Dive For Pearl Oysters",
-          "unlock": 26,
+          "name": "Pearl Bed",
+          "unlock": 74,
           "stamina": 6,
           "seconds": 11.15,
           "xp": 85,
           "success": 56,
           "rewards": {
-            "xp": 85
+            "xp": 85,
+            "fish_min": 1,
+            "fish_max": 3
           },
           "costs": {
             "stamina": 6
           },
           "art": "docs/assets/fishing/actions/18-dive-for-pearl-oysters.png",
-          "background": "docs/assets/fishing/backgrounds/08-trawler-deck.png"
+          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
+          "area": "reef"
         },
         {
-          "id": "fish-with-magnetic-hook",
+          "id": "stormy-sea-storm-line",
+          "tier": 17,
+          "name": "Storm Line",
+          "unlock": 78,
+          "stamina": 6,
+          "seconds": 10.97,
+          "xp": 79,
+          "success": 58,
+          "rewards": {
+            "xp": 79,
+            "fish_min": 1,
+            "fish_max": 3
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "art": "docs/assets/fishing/actions/17-cast-storm-kite-line.png",
+          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
+          "area": "stormy_sea"
+        },
+        {
+          "id": "deep-sea-wreck-drop",
           "tier": 19,
-          "name": "Fish With Magnetic Hook",
-          "unlock": 28,
+          "name": "Wreck Drop",
+          "unlock": 82,
           "stamina": 7,
           "seconds": 12.53,
           "xp": 92,
           "success": 54,
           "rewards": {
-            "xp": 92
+            "xp": 92,
+            "fish_min": 3,
+            "fish_max": 6
           },
           "costs": {
             "stamina": 7
           },
           "art": "docs/assets/fishing/actions/19-fish-with-magnetic-hook.png",
-          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png"
+          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
+          "area": "deep_sea"
         },
         {
-          "id": "bait-a-tiny-leviathan",
+          "id": "deep-sea-abyss",
           "tier": 20,
-          "name": "Bait A Tiny Leviathan",
-          "unlock": 30,
+          "name": "Abyss",
+          "unlock": 86,
           "stamina": 7,
           "seconds": 12.72,
           "xp": 98,
           "success": 52,
           "rewards": {
-            "xp": 98
+            "xp": 98,
+            "fish_min": 1,
+            "fish_max": 2
           },
           "costs": {
             "stamina": 7
           },
           "art": "docs/assets/fishing/actions/20-bait-a-tiny-leviathan.png",
-          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png"
+          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
+          "area": "deep_sea"
         },
         {
-          "id": "open-deep-sea-mailbox-trap",
+          "id": "deep-sea-trench",
           "tier": 21,
-          "name": "Open Deep Sea Mailbox Trap",
-          "unlock": 33,
+          "name": "Deep Trench",
+          "unlock": 88,
           "stamina": 7,
           "seconds": 13,
           "xp": 105,
           "success": 50,
           "rewards": {
-            "xp": 105
+            "xp": 105,
+            "fish_min": 4,
+            "fish_max": 8
           },
           "costs": {
             "stamina": 7
           },
           "art": "docs/assets/fishing/actions/21-open-deep-sea-mailbox-trap.png",
-          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png"
+          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
+          "area": "deep_sea"
         },
         {
-          "id": "angle-in-cosmic-dream-sea",
+          "id": "space-starlight",
           "tier": 22,
-          "name": "Angle In Cosmic Dream Sea",
-          "unlock": 36,
-          "stamina": 8,
-          "seconds": 14.47,
-          "xp": 112,
-          "success": 48,
+          "name": "Starlight",
+          "unlock": 90,
+          "stamina": 5,
+          "seconds": 6,
+          "xp": 42,
+          "success": 92,
           "rewards": {
-            "xp": 112
+            "xp": 42,
+            "fish_min": 2,
+            "fish_max": 5
           },
           "costs": {
-            "stamina": 8
+            "stamina": 5
           },
           "art": "docs/assets/fishing/actions/22-angle-in-cosmic-dream-sea.png",
-          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png"
+          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
+          "area": "space",
+          "archetype": "steady"
         },
         {
-          "id": "net-the-reflection-of-a-fish",
+          "id": "space-reflection",
           "tier": 23,
-          "name": "Net The Reflection Of A Fish",
-          "unlock": 40,
+          "name": "Reflection",
+          "unlock": 95,
           "stamina": 8,
           "seconds": 14.85,
           "xp": 119,
           "success": 46,
           "rewards": {
-            "xp": 119
+            "xp": 119,
+            "fish_min": 5,
+            "fish_max": 10
           },
           "costs": {
             "stamina": 8
           },
           "art": "docs/assets/fishing/actions/23-net-the-reflection-of-a-fish.png",
-          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png"
+          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
+          "area": "space"
+        }
+      ],
+      "areas": [
+        {
+          "id": "beach",
+          "name": "Beach",
+          "fluid": "water",
+          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png"
         },
         {
-          "id": "negotiate-with-the-oceans-manager",
-          "tier": 24,
-          "name": "Negotiate With Ocean",
-          "unlock": 45,
-          "stamina": 8,
-          "seconds": 15.33,
-          "xp": 126,
-          "success": 44,
-          "rewards": {
-            "xp": 126
-          },
-          "costs": {
-            "stamina": 8
-          },
-          "art": "docs/assets/fishing/actions/24-negotiate-with-the-ocean-s-manager.png",
-          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png"
+          "id": "pier",
+          "name": "Pier",
+          "fluid": "water",
+          "background": "docs/assets/fishing/backgrounds/01-pond-dock.png"
         },
         {
-          "id": "catch-the-fishing-mechanic-itself",
-          "tier": 25,
-          "name": "Catch Fishing Itself",
-          "unlock": 50,
-          "stamina": 9,
-          "seconds": 16.98,
-          "xp": 133,
-          "success": 42,
-          "rewards": {
-            "xp": 133
-          },
-          "costs": {
-            "stamina": 9
-          },
-          "art": "docs/assets/fishing/actions/25-catch-the-fishing-mechanic-itself.png",
+          "id": "river",
+          "name": "River",
+          "fluid": "water",
+          "background": "docs/assets/fishing/backgrounds/02-river-bend.png"
+        },
+        {
+          "id": "sewers",
+          "name": "Sewers",
+          "fluid": "sewer",
+          "background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png"
+        },
+        {
+          "id": "winter_lake",
+          "name": "Winter Lake",
+          "fluid": "water",
+          "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png"
+        },
+        {
+          "id": "reef",
+          "name": "Reef",
+          "fluid": "water",
+          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png"
+        },
+        {
+          "id": "sea",
+          "name": "Sea",
+          "fluid": "water",
+          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png"
+        },
+        {
+          "id": "deep_sea",
+          "name": "Deep Sea",
+          "fluid": "water",
+          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png"
+        },
+        {
+          "id": "stormy_sea",
+          "name": "Stormy Sea",
+          "fluid": "water",
+          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png"
+        },
+        {
+          "id": "space",
+          "name": "Space Fishing",
+          "fluid": "water",
           "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png"
         }
       ]
