@@ -6469,7 +6469,11 @@ func _chat_expanded_header() -> Control:
 
 
 func _chat_expanded_notice_visible() -> bool:
-	return not chat_status_message.is_empty() or chat_rows.is_empty()
+	return _chat_status_actionable() or chat_rows.is_empty()
+
+
+func _chat_status_actionable() -> bool:
+	return not chat_status_message.is_empty() and chat_status_message != "Chat loaded." and chat_status_message != "Global chat is live."
 
 
 func _chat_expanded_notice() -> Control:
@@ -16585,6 +16589,24 @@ func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_a
 		_float_mastery_bar(self, mastery_bar, mastery_amount)
 
 
+func _play_action_mastery_feedback(key: String, mastery_amount: float) -> void:
+	if mastery_amount <= 0.0:
+		return
+	var card: Dictionary = {}
+	if action_cards.has(key):
+		card = action_cards[key]
+	else:
+		var parts := key.split(":")
+		if parts.size() >= 2 and _fishing_rework_active_for_skill(str(parts[0])):
+			card = _fishing_method_card_for_action(str(parts[0]), str(parts[1]))
+	if card.is_empty():
+		return
+	var mastery_bar := card.get("mastery") as Control
+	if mastery_bar == null or not is_instance_valid(mastery_bar):
+		return
+	_float_mastery_bar(self, mastery_bar, mastery_amount)
+
+
 func _play_activity_crit_feedback(key: String, card: Dictionary, mega_crit := false) -> void:
 	var pop_card := card.get("pop") as Control
 	if pop_card == null:
@@ -21770,6 +21792,7 @@ func _complete_fishing_action_attempt(action: Dictionary, active_key: String, bo
 					feedback_mastery += mastery_reward
 				else:
 					fishing_net_stored_mastery += mastery_reward
+					_play_action_mastery_feedback(reward_key, mastery_reward)
 			elif boating:
 				if haul_count > 0:
 					feedback_mastery += mastery_reward

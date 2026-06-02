@@ -2039,10 +2039,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 7,
           "stamina": 1,
           "seconds": 4.0,
-          "xp": 2,
+          "xp": 4,
           "success": 90,
           "rewards": {
-            "xp": 2,
+            "xp": 4,
             "fish_min": 1,
             "fish_max": 1
           },
