@@ -2935,6 +2935,18 @@ const FISHING_NET_FILL_MIN := 1
 const FISHING_NET_FILL_MAX := 6
 const FISHING_NET_HAUL_VISUAL_SECONDS := 0.74
 const FISHING_NET_SUCCESS_RATE_MULT := 0.25
+const FISHING_NET_FILL_MASTERY_MULT := 0.1
+const FISHING_NET_AREA_XP := {
+	"beach": 1,
+	"pier": 1,
+	"river": 2,
+	"sewers": 3,
+	"winter_lake": 3,
+	"reef": 3,
+	"sea": 4,
+	"stormy_sea": 4,
+	"deep_sea": 5,
+}
 const FISHING_BOAT_HAUL_THRESHOLD := 200
 const FISHING_BOAT_FILL_MIN := 1
 const FISHING_BOAT_FILL_MAX := 30
@@ -3109,8 +3121,10 @@ const LEADERBOARD_AUTH_REFRESH_MARGIN_SECONDS := 5 * 60
 const LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS := 15 * 60
 const CHAT_STREAM_RETRY_INTERVAL_SECONDS := 30
 const CHAT_STREAM_RECONNECT_MIN_SECONDS := 5
+const CHAT_STREAM_MAX_BUFFER_CHARS := 65536
 const CHAT_SEND_INTERVAL_SECONDS := 2
 const CHAT_MESSAGE_MAX_CHARS := 80
+const CHAT_MOBILE_SEND_MAX_DRAG := 42.0
 const CHAT_STRIP_VISIBLE_COUNT := 2
 const CHAT_FULL_VISIBLE_COUNT := 25
 const CHAT_STRIP_HEIGHT := 260
@@ -3638,6 +3652,8 @@ var chat_pending_send_after_auth := ""
 var chat_last_submit_press_msec := 0
 var chat_pending_send_message_id := ""
 var chat_pending_send_text := ""
+var chat_mobile_send_touch_index := -1
+var chat_mobile_send_touch_origin := Vector2.ZERO
 var chat_strip: PanelContainer
 var chat_strip_line_one: Label
 var chat_strip_line_two: Label
@@ -5527,6 +5543,10 @@ func _chat_stream_disconnect(clear_status := true) -> void:
 
 func _chat_stream_receive_text(text: String) -> void:
 	chat_stream_buffer += text.replace("\r\n", "\n").replace("\r", "\n")
+	if chat_stream_buffer.length() > CHAT_STREAM_MAX_BUFFER_CHARS:
+		_chat_note_stream_failure("Chat stream sent too much pending data.")
+		_render_chat_if_visible()
+		return
 	while chat_stream_buffer.find("\n") >= 0:
 		var line_end := chat_stream_buffer.find("\n")
 		var line := chat_stream_buffer.substr(0, line_end)
@@ -6370,16 +6390,7 @@ func _close_chat_overlay() -> void:
 	_play_default_button_sfx()
 	if chat_overlay != null:
 		chat_overlay.visible = false
-	chat_keyboard_lift_active = false
-	chat_keyboard_lift_pixels = 0.0
-	chat_keyboard_lift_hold_seconds = 0.0
-	chat_keyboard_lift_last_height = 0.0
-	chat_keyboard_lift_target_pixels = 0.0
-	chat_keyboard_lift_viewport_height = 0.0
-	chat_keyboard_lift_zero_seconds = 0.0
-	chat_keyboard_was_visible = false
-	chat_keyboard_close_submit_done = false
-	chat_keyboard_focus_active = false
+	_reset_chat_keyboard_lift()
 	chat_overlay_scroll = null
 	if chat_overlay_body != null and is_instance_valid(chat_overlay_body):
 		chat_overlay_body.offset_bottom = 0.0
@@ -6611,7 +6622,7 @@ func _chat_expanded_composer() -> Control:
 	send.custom_minimum_size = Vector2(230, 154)
 	send.add_theme_font_size_override("font_size", 58)
 	send.disabled = chat_send_in_flight
-	send.pressed.connect(func(): _chat_send_pressed(chat_message_edit.text if chat_message_edit != null else ""))
+	_configure_chat_send_button(send)
 	row.add_child(send)
 	var ribbon_frame := Control.new()
 	ribbon_frame.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT)
@@ -6969,6 +6980,8 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 		return
 	_kill_skill_swipe_tween()
 	_clear_page_transient_input_state()
+	if current_screen != "skill":
+		_cancel_activity_unlock_transients_for_navigation()
 	_kill_transient_tweens_in_subtree(skills_content)
 	skills_content.offset_left = 0.0
 	skills_content.offset_right = 0.0
@@ -7032,6 +7045,26 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 		_render_skill_menu(stack)
 	_update_page_visibility()
 	_update_chat_strip(true)
+
+
+func _cancel_activity_unlock_transients_for_navigation() -> void:
+	for raw_card in action_cards.values():
+		if typeof(raw_card) != TYPE_DICTIONARY:
+			continue
+		var card := raw_card as Dictionary
+		_kill_preview_fade_tween(card)
+		card["unlock_ceremony_finalized"] = true
+		card["unlock_ceremony_pending"] = false
+		card["unlock_ceremony_active"] = false
+	pending_activity_unlock_ceremony = {}
+	activity_unlock_ceremony_count = 0
+	activity_unlock_preview_after_ceremony_id = ""
+	activity_unlock_center_scroll_target = -1
+	activity_unlock_detail_refresh_done = true
+	if detail_unlock_scroll_spacer_tween != null and detail_unlock_scroll_spacer_tween.is_valid():
+		detail_unlock_scroll_spacer_tween.kill()
+		detail_unlock_scroll_spacer_tween = null
+	_clear_activity_unlock_visual_scroll_tween()
 
 
 func _skill_content_width() -> float:
@@ -7639,7 +7672,7 @@ func _chat_composer() -> PanelContainer:
 	send.custom_minimum_size = Vector2(300, 150)
 	send.add_theme_font_size_override("font_size", 58)
 	send.disabled = chat_send_in_flight
-	send.pressed.connect(func(): _chat_send_pressed(chat_message_edit.text if chat_message_edit != null else ""))
+	_configure_chat_send_button(send)
 	input_row.add_child(send)
 	var hint := _label("One message every %s. Full chat shows the latest %s messages." % [_format_duration(float(CHAT_SEND_INTERVAL_SECONDS)), CHAT_FULL_VISIBLE_COUNT], 42, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -7737,14 +7770,14 @@ func _on_chat_input_focus_entered() -> void:
 func _on_chat_input_focus_exited() -> void:
 	chat_keyboard_focus_active = false
 	if OS.get_name() == "Android" or OS.get_name() == "iOS":
-		var submitted_text := ""
-		if chat_message_edit != null and is_instance_valid(chat_message_edit):
-			submitted_text = chat_message_edit.text
-		if not _sanitize_chat_message(submitted_text).is_empty():
-			_chat_submit_current_draft()
-		chat_keyboard_lift_hold_seconds = 0.55
+		chat_keyboard_lift_hold_seconds = 0.20
 		return
+	_reset_chat_keyboard_lift()
+
+
+func _reset_chat_keyboard_lift() -> void:
 	chat_keyboard_lift_active = false
+	chat_keyboard_lift_pixels = 0.0
 	chat_keyboard_lift_hold_seconds = 0.0
 	chat_keyboard_lift_last_height = 0.0
 	chat_keyboard_lift_target_pixels = 0.0
@@ -7769,13 +7802,6 @@ func _process_chat_keyboard_lift(delta: float) -> void:
 			chat_keyboard_was_visible = true
 		else:
 			chat_keyboard_lift_zero_seconds += delta
-			if chat_keyboard_was_visible and not chat_keyboard_close_submit_done and chat_keyboard_lift_zero_seconds > 0.2:
-				var submitted_text := ""
-				if chat_message_edit != null and is_instance_valid(chat_message_edit):
-					submitted_text = chat_message_edit.text
-				if not _sanitize_chat_message(submitted_text).is_empty():
-					chat_keyboard_close_submit_done = true
-					_chat_submit_current_draft()
 			if not chat_keyboard_focus_active and chat_keyboard_lift_zero_seconds > 0.85:
 				chat_keyboard_lift_active = false
 	if chat_overlay != null and chat_overlay.visible and is_mobile_keyboard and (chat_keyboard_focus_active or chat_keyboard_lift_active or raw_keyboard_height > 0.0 or chat_keyboard_lift_hold_seconds > 0.0):
@@ -7787,24 +7813,14 @@ func _process_chat_keyboard_lift(delta: float) -> void:
 			chat_keyboard_lift_hold_seconds = 0.9
 		elif chat_keyboard_lift_hold_seconds > 0.0:
 			chat_keyboard_lift_hold_seconds = maxf(0.0, chat_keyboard_lift_hold_seconds - delta)
-			keyboard_height = chat_keyboard_lift_last_height
-		if keyboard_height <= 0.0:
-			keyboard_height = maxf(chat_keyboard_lift_last_height, viewport_height * 0.46)
-		var measured_target := clampf(keyboard_height - BOTTOM_NAV_HEIGHT + 96.0, 300.0, viewport_height * 0.52)
-		if chat_keyboard_focus_active or raw_keyboard_height > 0.0 or chat_keyboard_lift_hold_seconds > 0.0:
-			chat_keyboard_lift_target_pixels = maxf(chat_keyboard_lift_target_pixels, measured_target)
+			keyboard_height = chat_keyboard_lift_last_height * clampf(chat_keyboard_lift_hold_seconds / 0.20, 0.0, 1.0)
+		if keyboard_height > 0.0:
+			chat_keyboard_lift_target_pixels = clampf(keyboard_height - BOTTOM_NAV_HEIGHT + 96.0, 0.0, viewport_height * 0.52)
 		else:
 			chat_keyboard_lift_target_pixels = 0.0
 		target = chat_keyboard_lift_target_pixels
 	else:
-		chat_keyboard_lift_hold_seconds = 0.0
-		chat_keyboard_lift_last_height = 0.0
-		chat_keyboard_lift_target_pixels = 0.0
-		chat_keyboard_lift_viewport_height = 0.0
-		chat_keyboard_lift_zero_seconds = 0.0
-		chat_keyboard_was_visible = false
-		chat_keyboard_close_submit_done = false
-		chat_keyboard_focus_active = false
+		_reset_chat_keyboard_lift()
 	var t := clampf(delta * 12.0, 0.0, 1.0)
 	chat_keyboard_lift_pixels = lerpf(chat_keyboard_lift_pixels, target, t)
 	if absf(chat_keyboard_lift_pixels - target) < 1.0:
@@ -7830,6 +7846,8 @@ func _chat_scroll_to_latest() -> void:
 func _route_chat_overlay_key_input(event: InputEvent) -> bool:
 	if chat_overlay == null or not chat_overlay.visible:
 		return false
+	if _chat_mobile_keyboard_platform():
+		return false
 	if not (event is InputEventKey):
 		return false
 	var key := event as InputEventKey
@@ -7845,6 +7863,10 @@ func _on_chat_input_gui_input(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key := event as InputEventKey
 		if key.pressed and not key.echo and (key.keycode == KEY_ENTER or key.keycode == KEY_KP_ENTER):
+			if _chat_mobile_keyboard_platform():
+				chat_message_edit.accept_event()
+				_chat_submit_current_draft()
+				return
 			_chat_submit_current_draft()
 			chat_message_edit.accept_event()
 
@@ -7860,6 +7882,60 @@ func _chat_submit_current_draft() -> void:
 func _chat_text_submitted(text: String) -> void:
 	_chat_send_pressed(text)
 	_chat_finish_mobile_submit_attempt()
+
+
+func _configure_chat_send_button(button: Button) -> void:
+	button.pressed.connect(_chat_send_button_pressed)
+	button.gui_input.connect(_on_chat_send_button_gui_input.bind(button))
+
+
+func _on_chat_send_button_gui_input(event: InputEvent, button: Button) -> void:
+	if not _chat_mobile_keyboard_platform():
+		return
+	if button == null or button.disabled:
+		return
+	if event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			chat_mobile_send_touch_index = touch.index
+			chat_mobile_send_touch_origin = touch.position
+			button.accept_event()
+			return
+		if touch.index != chat_mobile_send_touch_index:
+			return
+		var moved := chat_mobile_send_touch_origin.distance_to(touch.position)
+		var released_inside := button.get_global_rect().has_point(touch.position)
+		chat_mobile_send_touch_index = -1
+		chat_mobile_send_touch_origin = Vector2.ZERO
+		button.accept_event()
+		if released_inside and moved <= CHAT_MOBILE_SEND_MAX_DRAG:
+			_chat_send_from_visible_button()
+	elif event is InputEventScreenDrag and (event as InputEventScreenDrag).index == chat_mobile_send_touch_index:
+		var drag := event as InputEventScreenDrag
+		if chat_mobile_send_touch_origin.distance_to(drag.position) > CHAT_MOBILE_SEND_MAX_DRAG:
+			chat_mobile_send_touch_index = -1
+			chat_mobile_send_touch_origin = Vector2.ZERO
+		button.accept_event()
+	elif event is InputEventMouseButton:
+		button.accept_event()
+
+
+func _chat_send_from_visible_button() -> void:
+	var text := chat_draft_message
+	if chat_message_edit != null and is_instance_valid(chat_message_edit):
+		text = chat_message_edit.text
+	_chat_send_pressed(text)
+	_chat_finish_mobile_submit_attempt()
+
+
+func _chat_send_button_pressed() -> void:
+	if _chat_mobile_keyboard_platform():
+		return
+	_chat_send_from_visible_button()
+
+
+func _chat_mobile_keyboard_platform() -> bool:
+	return OS.get_name() == "Android" or OS.get_name() == "iOS"
 
 
 func _chat_finish_mobile_submit_attempt() -> void:
@@ -8213,7 +8289,7 @@ func _build_skill_menu_bottom_rail(skill_id: String, theme_color: Color, button:
 		if fluid_strip.has_method("set_fluid_kind"):
 			fluid_strip.call("set_fluid_kind", "water")
 		if fluid_strip.has_method("set_running"):
-			fluid_strip.call("set_running", true)
+			fluid_strip.call("set_running", running_skill_id == skill_id and not running_action_id.is_empty())
 		return {"activity": null, "fluid_strip": fluid_strip}
 	var activity_progress := ActivityProgressRail.new()
 	activity_progress.fill_color = theme_color
@@ -8244,9 +8320,9 @@ func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, i
 			_set_fish_circle_for_skill(fish_gauge, skill_id, instant)
 		var fluid_strip := card.get("fluid_strip") as Control
 		if fluid_strip != null:
-			if fluid_strip.has_method("set_running"):
-				fluid_strip.call("set_running", true)
 			var activity_running := running_skill_id == skill_id and not running_action_id.is_empty()
+			if fluid_strip.has_method("set_running"):
+				fluid_strip.call("set_running", activity_running)
 			if activity_running and fluid_strip.has_method("set_attempt_progress"):
 				fluid_strip.call("set_attempt_progress", action_progress)
 		return
@@ -12426,7 +12502,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	info_button.text = "i"
 	info_button.custom_minimum_size = Vector2(86, 86)
 	info_button.size = info_button.custom_minimum_size
-	info_button.position = Vector2(626, 58)
+	info_button.position = Vector2(700, 58)
 	info_button.focus_mode = Control.FOCUS_NONE
 	info_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	info_button.z_index = 221
@@ -13654,8 +13730,11 @@ func _start_activity_unlock_ceremony_motion_after_delay(card: Dictionary, group_
 	await get_tree().create_timer(ACTIVITY_UNLOCK_MOTION_START_DELAY).timeout
 	if bool(card.get("unlock_ceremony_finalized", false)):
 		return
+	if current_screen != "skill":
+		_finish_activity_unlock_ceremony_from_refs(card, overlay_root_ref, shade_ref, button_ref, false)
+		return
 	var group := group_ref.get_ref() as Control if group_ref != null else null
-	if group == null or not is_instance_valid(group):
+	if group == null or not is_instance_valid(group) or group.is_queued_for_deletion():
 		_finish_activity_unlock_ceremony_from_refs(card, overlay_root_ref, shade_ref, button_ref, true)
 		return
 	if group is ActivityLockRig:
@@ -13721,7 +13800,7 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	card["fade_in_pending"] = false
 	_hold_skill_detail_layout_refresh(ACTIVITY_PREVIEW_FADE_IN_SECONDS + 0.18)
 	var root := card.get("root") as Control
-	if root == null:
+	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
 		return
 	_kill_preview_fade_tween(card)
 	var pop := card.get("pop") as Control
@@ -13746,13 +13825,16 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	if pop != null:
 		var start_offset := ACTIVITY_UNLOCK_NEXT_PREVIEW_SETTLE_OFFSET if smooth_unlock_reveal else 34.0
 		tween.tween_method(
-			func(offset_y: float) -> void:
-				_set_preview_pop_vertical_offset(pop, offset_y),
+			_set_preview_pop_vertical_offset_safe.bind(pop),
 			start_offset,
 			0.0,
 			ACTIVITY_PREVIEW_FADE_IN_SECONDS
 		).set_trans(Tween.TRANS_QUINT if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.finished.connect(func():
+		if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
+			card.erase("unlock_next_preview_smooth")
+			card.erase("preview_fade_tween")
+			return
 		root.modulate = Color.WHITE
 		if expand_from_zero:
 			var final_size := root.custom_minimum_size
@@ -13761,7 +13843,7 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 			root.clip_contents = bool(card.get("preview_enter_original_clip", false))
 			card.erase("preview_enter_target_height")
 			card.erase("preview_enter_original_clip")
-		if pop != null and is_instance_valid(pop):
+		if pop != null and is_instance_valid(pop) and not pop.is_queued_for_deletion():
 			_set_preview_pop_vertical_offset(pop, 0.0)
 		card.erase("unlock_next_preview_smooth")
 		card.erase("preview_fade_tween")
@@ -13783,6 +13865,12 @@ func _set_preview_pop_vertical_offset(pop: Control, offset_y: float) -> void:
 		pop.offset_bottom = offset_y
 	else:
 		pop.position.y = offset_y
+
+
+func _set_preview_pop_vertical_offset_safe(offset_y: float, pop: Control) -> void:
+	if pop == null or not is_instance_valid(pop) or pop.is_queued_for_deletion():
+		return
+	_set_preview_pop_vertical_offset(pop, offset_y)
 
 
 func _hold_skill_detail_layout_refresh(seconds: float) -> void:
@@ -16341,6 +16429,12 @@ func _crash_session_payload(status: String) -> Dictionary:
 		"running_skill_id": running_skill_id,
 		"running_action_id": running_action_id,
 		"action_progress": action_progress,
+		"chat_overlay_visible": chat_overlay != null and is_instance_valid(chat_overlay) and chat_overlay.visible,
+		"chat_rows": chat_rows.size(),
+		"chat_stream_connected": chat_stream_connected,
+		"chat_stream_connecting": chat_stream_connecting,
+		"chat_keyboard_focus_active": chat_keyboard_focus_active,
+		"chat_keyboard_lift_pixels": chat_keyboard_lift_pixels,
 		"last_result": last_result
 	}
 
@@ -18696,14 +18790,27 @@ func _fishing_flat_xp_reward(action: Dictionary, skill_id: String) -> int:
 	if _fishing_tool_catches_nothing_for_action(equipped_fishing_tool_id, str(action.get("id", ""))):
 		return 0
 	if equipped_fishing_tool_id == "net":
-		return 1
+		return _fishing_net_xp_reward(action)
 	return maxi(1, int(round(float(_effective_xp(action, skill_id, false)) * _fishing_tool_xp_multiplier())))
+
+
+func _fishing_net_xp_reward(action: Dictionary) -> int:
+	var action_id := str(action.get("id", ""))
+	if _fishing_tool_catches_nothing_for_action(FISHING_NET_TOOL_ID, action_id):
+		return 0
+	var area_id := _canonical_fishing_area_id(str(action.get("area", _fishing_area_id_for_action(action_id))))
+	return maxi(1, int(FISHING_NET_AREA_XP.get(area_id, 1)))
 
 
 func _fishing_mastery_reward(skill_id: String, action_id: String) -> float:
 	if _mastery_is_maxed(skill_id, action_id):
 		return 0.0
 	return 1.0
+
+
+func _fishing_net_mastery_reward(skill_id: String, action_id: String, harvest: bool) -> float:
+	var reward := _fishing_mastery_reward(skill_id, action_id)
+	return reward if harvest else reward * FISHING_NET_FILL_MASTERY_MULT
 
 
 func _fishing_area_default_method(skill_id: String, area_def: Dictionary) -> String:
@@ -20856,7 +20963,7 @@ func _fishing_padlock_unlock_pop_wiggle(pop_progress: float, direction: float) -
 
 
 func _apply_fishing_padlock_unlock_drop_frame(shake_body: Control, direction: float, progress: float) -> void:
-	if shake_body == null or not is_instance_valid(shake_body):
+	if shake_body == null or not is_instance_valid(shake_body) or shake_body.is_queued_for_deletion():
 		return
 	var padlock_size := FISHING_METHOD_PADLOCK_SIZE
 	var drop_progress := clampf(progress, 0.0, 1.0)
@@ -20877,6 +20984,10 @@ func _apply_fishing_padlock_unlock_drop_frame(shake_body: Control, direction: fl
 	shake_body.rotation = lock_rotation
 	shake_body.scale = Vector2.ONE * pop_scale
 	shake_body.pivot_offset = padlock_size * 0.5
+
+
+func _apply_fishing_padlock_unlock_drop_frame_bound(progress: float, shake_body: Control, direction: float) -> void:
+	_apply_fishing_padlock_unlock_drop_frame(shake_body, direction, progress)
 
 
 func _finish_fishing_method_unlock_ceremony(method_card: Dictionary, refresh_detail: bool) -> void:
@@ -20914,12 +21025,15 @@ func _run_fishing_method_unlock_drop_motion(method_card: Dictionary) -> void:
 	await get_tree().create_timer(ACTIVITY_UNLOCK_MOTION_START_DELAY).timeout
 	if method_card.is_empty() or bool(method_card.get("unlock_ceremony_finalized", false)):
 		return
+	if current_screen != "skill":
+		_finish_fishing_method_unlock_ceremony(method_card, false)
+		return
 	var lock_root := method_card.get("lock_root") as Control
-	if lock_root == null or not is_instance_valid(lock_root):
+	if lock_root == null or not is_instance_valid(lock_root) or lock_root.is_queued_for_deletion():
 		_finish_fishing_method_unlock_ceremony(method_card, true)
 		return
 	var shake_body := lock_root.get_meta("padlock_shake_body") as Control
-	if shake_body == null or not is_instance_valid(shake_body):
+	if shake_body == null or not is_instance_valid(shake_body) or shake_body.is_queued_for_deletion():
 		_finish_fishing_method_unlock_ceremony(method_card, true)
 		return
 	if shake_body.has_meta("padlock_shake_tween"):
@@ -20935,8 +21049,7 @@ func _run_fishing_method_unlock_drop_motion(method_card: Dictionary) -> void:
 	var direction := -1.0 if randf() < 0.5 else 1.0
 	var drop_tween := create_tween()
 	drop_tween.tween_method(
-		func(progress: float) -> void:
-			_apply_fishing_padlock_unlock_drop_frame(shake_body, direction, progress),
+		_apply_fishing_padlock_unlock_drop_frame_bound.bind(shake_body, direction),
 		0.0,
 		1.0,
 		FISHING_PADLOCK_UNLOCK_DROP_SECONDS
@@ -21784,7 +21897,7 @@ func _complete_fishing_action_attempt(action: Dictionary, active_key: String, bo
 		var food_value := _fishing_tool_food_value_for_catches(equipped_fishing_tool_id, action_id, haul_count)
 		if haul_count > 0:
 			fish_currency += food_value
-		var mastery_reward := _fishing_mastery_reward(skill_id, action_id)
+		var mastery_reward := _fishing_net_mastery_reward(skill_id, action_id, haul_count > 0) if netting else _fishing_mastery_reward(skill_id, action_id)
 		if mastery_reward > 0.0:
 			_add_mastery_xp(skill_id, action_id, mastery_reward)
 			if netting:
@@ -22309,16 +22422,21 @@ func _grant_offline_action_completion(skill_id: String, action_id: String, actio
 		var plank_bonus_used := _plank_bonus_applies(skill_id)
 		xp_reward = _offline_xp_reward(action, skill_id, plank_bonus_used)
 		skills[skill_id]["xp"] = int(skills[skill_id]["xp"]) + xp_reward
+		var net_fill_without_harvest := _fishing_net_soak_active(skill_id) and not _record_offline_fishing_net_success(action, xp_reward)
+		if net_fill_without_harvest:
+			mastery_reward *= FISHING_NET_FILL_MASTERY_MULT
 		if mastery_reward > 0.0:
 			_add_mastery_xp(skill_id, action_id, mastery_reward)
 			mastery_gained = mastery_reward
+			if net_fill_without_harvest:
+				fishing_net_stored_mastery += mastery_reward
 		if plank_bonus_used:
 			log_currency = maxi(0, log_currency - 1)
 			logs_spent = 1
 		_recalculate_level(skill_id)
 		_queue_locked_activity_preview_reveal_if_needed(locked_preview_available_before)
 		_sync_passive_module_unlocks(_unix_now())
-	else:
+	elif not _fishing_rework_active_for_skill(skill_id):
 		var failure_mastery_reward := 0.0 if _would_mastery_reward_medal_up(skill_id, action_id, mastery_reward) else mastery_reward
 		if failure_mastery_reward > 0.0:
 			_add_mastery_xp(skill_id, action_id, failure_mastery_reward)
@@ -22333,7 +22451,26 @@ func _grant_offline_action_completion(skill_id: String, action_id: String, actio
 	}
 
 
+func _record_offline_fishing_net_success(action: Dictionary, xp_reward: int) -> bool:
+	var fish_count := _fishing_roll_fish_count(action, FISHING_NET_TOOL_ID)
+	fishing_net_set_in_water = true
+	fishing_net_successes += 1
+	fishing_net_stored_xp += xp_reward
+	fishing_net_stored_fish += fish_count
+	if fishing_net_stored_fish < FISHING_NET_HAUL_THRESHOLD:
+		return false
+	fishing_net_stored_fish = 0
+	fishing_net_successes = 0
+	fishing_net_stored_xp = 0
+	fishing_net_stored_mastery = 0.0
+	fishing_net_haul_visual_seconds = FISHING_NET_HAUL_VISUAL_SECONDS
+	fishing_net_set_in_water = false
+	return true
+
+
 func _offline_xp_reward(action: Dictionary, skill_id: String, force_plank_bonus := false) -> int:
+	if _fishing_net_soak_active(skill_id):
+		return maxi(1, int(round(float(_fishing_net_xp_reward(action)) * OFFLINE_XP_MULT)))
 	return maxi(1, int(round(float(_effective_xp(action, skill_id, force_plank_bonus)) * OFFLINE_XP_MULT)))
 
 

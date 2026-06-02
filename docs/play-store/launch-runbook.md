@@ -2,8 +2,8 @@
 
 ## Current Build Artifacts
 
-- Play upload bundle: `builds/android/idle-elite-release-v0.1.10-code11.aab`
-- Bundletool test package: `builds/android/idle-elite-release-v0.1.10-code11.apks`
+- Play upload bundle: `builds/android/idle-elite-release-v0.1.11-code12.aab`
+- Bundletool test package: `builds/android/idle-elite-release-v0.1.11-code12.apks`
 - Debug APK used for emulator testing: `builds/android/idle-elite-debug.apk`
 - Upload keystore: `release/idle-elite-upload.keystore`
 - Local keystore details: `release/local-release-notes.md`
@@ -23,7 +23,7 @@ The `release/` and `builds/` folders are ignored by Git because they contain loc
 - Release AAB converts to APKs with official Google `bundletool-all-1.18.3`.
 - Bundletool-generated APKs are ready for device install testing.
 - Debug build ad button reaches the AdMob rewarded loader.
-- Release manifest reports `versionCode=11`, `versionName=0.1.10`, `minSdk=24`, and `targetSdk=35`.
+- Release manifest reports `versionCode=12`, `versionName=0.1.11`, `minSdk=24`, and `targetSdk=35`.
 - Exported manifest contains AdMob app ID `ca-app-pub-3570919669688101~3616255490`.
 
 ## Account Items Before Public Upload
@@ -55,7 +55,7 @@ Use this helper when the real AdMob IDs are available:
 1. Create a Google Play app named `Idle Elite`.
 2. Package name must be `com.idleelite.game`.
 3. Enroll in Play App Signing.
-4. Upload `builds/android/idle-elite-release-v0.1.10-code11.aab`.
+4. Upload `builds/android/idle-elite-release-v0.1.11-code12.aab`.
 5. Store listing:
    - App icon: `docs/play-store/assets/app-icon-512.png`
    - Feature graphic: `docs/play-store/assets/feature-graphic-1024x500.png`
