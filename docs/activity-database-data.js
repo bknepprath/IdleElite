@@ -1995,7 +1995,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Shallows",
           "unlock": 1,
           "stamina": 1,
-          "seconds": 3.2,
+          "seconds": 4.0,
           "xp": 3,
           "success": 92,
           "rewards": {
@@ -2006,7 +2006,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fishing/actions/01-scoop-pond-minnows.png",
+          "art": "docs/assets/fishing/locations/location-shallows.png",
           "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
           "area": "beach",
           "archetype": "novice"
@@ -2017,18 +2017,18 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Rocks",
           "unlock": 4,
           "stamina": 2,
-          "seconds": 4.33,
-          "xp": 11,
+          "seconds": 4.0,
+          "xp": 5,
           "success": 84,
           "rewards": {
-            "xp": 11,
+            "xp": 5,
             "fish_min": 1,
             "fish_max": 2
           },
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fishing/actions/04-drag-net-through-creek.png",
+          "art": "docs/assets/fishing/locations/location-rocky-ledge.png",
           "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
           "area": "beach"
         },
@@ -2038,7 +2038,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Dock Edge",
           "unlock": 7,
           "stamina": 1,
-          "seconds": 2.86,
+          "seconds": 4.0,
           "xp": 2,
           "success": 90,
           "rewards": {
@@ -2049,7 +2049,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fishing/actions/01-scoop-pond-minnows.png",
+          "art": "docs/assets/fishing/locations/location-dock-cup.png",
           "background": "docs/assets/fishing/backgrounds/01-pond-dock.png",
           "area": "pier"
         },
@@ -2059,7 +2059,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Piling Line",
           "unlock": 11,
           "stamina": 1,
-          "seconds": 2.95,
+          "seconds": 4.0,
           "xp": 4,
           "success": 88,
           "rewards": {
@@ -2070,7 +2070,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fishing/actions/02-dangle-string-from-dock.png",
+          "art": "docs/assets/fishing/locations/location-piling-line.png",
           "background": "docs/assets/fishing/backgrounds/01-pond-dock.png",
           "area": "pier"
         },
@@ -2080,18 +2080,18 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "River Bend",
           "unlock": 14,
           "stamina": 1,
-          "seconds": 3.05,
-          "xp": 8,
+          "seconds": 4.0,
+          "xp": 5,
           "success": 86,
           "rewards": {
-            "xp": 8,
+            "xp": 5,
             "fish_min": 1,
             "fish_max": 2
           },
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fishing/actions/03-cast-bamboo-rod.png",
+          "art": "docs/assets/fishing/backgrounds/02-river-bend.png",
           "background": "docs/assets/fishing/backgrounds/02-river-bend.png",
           "area": "river"
         },
@@ -2101,7 +2101,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Rapids",
           "unlock": 18,
           "stamina": 2,
-          "seconds": 4.52,
+          "seconds": 4.0,
           "xp": 19,
           "success": 80,
           "rewards": {
@@ -2112,7 +2112,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fishing/actions/06-fly-fish-at-river-bend.png",
+          "art": "docs/assets/fishing/backgrounds/02-river-bend.png",
           "background": "docs/assets/fishing/backgrounds/02-river-bend.png",
           "area": "river"
         },
@@ -2122,7 +2122,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Drain Gate",
           "unlock": 22,
           "stamina": 3,
-          "seconds": 5.8,
+          "seconds": 4.0,
           "xp": 24,
           "success": 78,
           "rewards": {
@@ -2133,7 +2133,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fishing/actions/07-hand-grab-muddy-catfish.png",
+          "art": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
           "background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
           "area": "sewers"
         },
@@ -2143,7 +2143,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Tunnel Pool",
           "unlock": 26,
           "stamina": 3,
-          "seconds": 5.99,
+          "seconds": 4.0,
           "xp": 33,
           "success": 74,
           "rewards": {
@@ -2154,7 +2154,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fishing/actions/09-spear-fish-in-shallows.png",
+          "art": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
           "background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
           "area": "sewers"
         },
@@ -2164,7 +2164,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Reef Pot",
           "unlock": 30,
           "stamina": 2,
-          "seconds": 4.42,
+          "seconds": 4.0,
           "xp": 15,
           "success": 82,
           "rewards": {
@@ -2175,7 +2175,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fishing/actions/05-set-tiny-crab-pot.png",
+          "art": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
           "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
         },
@@ -2185,7 +2185,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Ice Hole",
           "unlock": 34,
           "stamina": 3,
-          "seconds": 5.89,
+          "seconds": 4.0,
           "xp": 28,
           "success": 76,
           "rewards": {
@@ -2196,38 +2196,17 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fishing/actions/08-ice-fish-through-nervous-hole.png",
+          "art": "docs/assets/fishing/backgrounds/04-frozen-lake.png",
           "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png",
           "area": "winter_lake"
         },
         {
-          "id": "sea-rowboat",
-          "tier": 10,
-          "name": "Rowboat",
-          "unlock": 40,
-          "stamina": 4,
-          "seconds": 7.27,
-          "xp": 39,
-          "success": 72,
-          "rewards": {
-            "xp": 39,
-            "fish_min": 2,
-            "fish_max": 4
-          },
-          "costs": {
-            "stamina": 4
-          },
-          "art": "docs/assets/fishing/actions/10-cast-from-rowboat.png",
-          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
-          "area": "sea"
-        },
-        {
           "id": "reef-cage",
-          "tier": 11,
+          "tier": 10,
           "name": "Reef Cage",
           "unlock": 46,
           "stamina": 4,
-          "seconds": 7.46,
+          "seconds": 4.0,
           "xp": 44,
           "success": 70,
           "rewards": {
@@ -2238,9 +2217,30 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/fishing/actions/11-drop-lobster-cage.png",
+          "art": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
           "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
+        },
+        {
+          "id": "sea-rowboat",
+          "tier": 11,
+          "name": "Rowboat",
+          "unlock": 50,
+          "stamina": 4,
+          "seconds": 4.0,
+          "xp": 39,
+          "success": 72,
+          "rewards": {
+            "xp": 39,
+            "fish_min": 2,
+            "fish_max": 4
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "art": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
+          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
+          "area": "sea"
         },
         {
           "id": "sea-open-water",
@@ -2248,7 +2248,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Open Water",
           "unlock": 52,
           "stamina": 4,
-          "seconds": 7.65,
+          "seconds": 4.0,
           "xp": 49,
           "success": 68,
           "rewards": {
@@ -2259,7 +2259,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/fishing/actions/12-trawl-from-tiny-boat.png",
+          "art": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
           "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
           "area": "sea"
         },
@@ -2269,7 +2269,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Night Reef",
           "unlock": 58,
           "stamina": 5,
-          "seconds": 9.02,
+          "seconds": 4.0,
           "xp": 55,
           "success": 66,
           "rewards": {
@@ -2280,7 +2280,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fishing/actions/13-night-fish-with-lantern.png",
+          "art": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
           "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
         },
@@ -2290,7 +2290,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Storm Ripple",
           "unlock": 64,
           "stamina": 5,
-          "seconds": 9.21,
+          "seconds": 4.0,
           "xp": 61,
           "success": 64,
           "rewards": {
@@ -2301,7 +2301,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fishing/actions/14-harpoon-suspicious-ripple.png",
+          "art": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
           "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
           "area": "stormy_sea"
         },
@@ -2311,7 +2311,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Chum Line",
           "unlock": 70,
           "stamina": 6,
-          "seconds": 10.78,
+          "seconds": 4.0,
           "xp": 73,
           "success": 60,
           "rewards": {
@@ -2322,7 +2322,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fishing/actions/16-chum-open-water.png",
+          "art": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
           "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
           "area": "sea"
         },
@@ -2332,7 +2332,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Pearl Bed",
           "unlock": 74,
           "stamina": 6,
-          "seconds": 11.15,
+          "seconds": 4.0,
           "xp": 85,
           "success": 56,
           "rewards": {
@@ -2343,7 +2343,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fishing/actions/18-dive-for-pearl-oysters.png",
+          "art": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
           "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
         },
@@ -2353,7 +2353,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Storm Line",
           "unlock": 78,
           "stamina": 6,
-          "seconds": 10.97,
+          "seconds": 4.0,
           "xp": 79,
           "success": 58,
           "rewards": {
@@ -2364,7 +2364,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fishing/actions/17-cast-storm-kite-line.png",
+          "art": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
           "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
           "area": "stormy_sea"
         },
@@ -2374,7 +2374,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Wreck Drop",
           "unlock": 82,
           "stamina": 7,
-          "seconds": 12.53,
+          "seconds": 4.0,
           "xp": 92,
           "success": 54,
           "rewards": {
@@ -2385,7 +2385,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fishing/actions/19-fish-with-magnetic-hook.png",
+          "art": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
           "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
           "area": "deep_sea"
         },
@@ -2395,7 +2395,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Abyss",
           "unlock": 86,
           "stamina": 7,
-          "seconds": 12.72,
+          "seconds": 4.0,
           "xp": 98,
           "success": 52,
           "rewards": {
@@ -2406,7 +2406,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fishing/actions/20-bait-a-tiny-leviathan.png",
+          "art": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
           "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
           "area": "deep_sea"
         },
@@ -2416,7 +2416,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Deep Trench",
           "unlock": 88,
           "stamina": 7,
-          "seconds": 13,
+          "seconds": 4.0,
           "xp": 105,
           "success": 50,
           "rewards": {
@@ -2427,7 +2427,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fishing/actions/21-open-deep-sea-mailbox-trap.png",
+          "art": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
           "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
           "area": "deep_sea"
         },
@@ -2437,18 +2437,18 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Starlight",
           "unlock": 90,
           "stamina": 5,
-          "seconds": 6,
-          "xp": 42,
+          "seconds": 4.0,
+          "xp": 467,
           "success": 92,
           "rewards": {
-            "xp": 42,
-            "fish_min": 2,
-            "fish_max": 5
+            "xp": 467,
+            "fish_min": 45,
+            "fish_max": 110
           },
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fishing/actions/22-angle-in-cosmic-dream-sea.png",
+          "art": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
           "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
           "area": "space",
           "archetype": "steady"
@@ -2459,18 +2459,18 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Reflection",
           "unlock": 95,
           "stamina": 8,
-          "seconds": 14.85,
-          "xp": 119,
-          "success": 46,
+          "seconds": 4.0,
+          "xp": 700,
+          "success": 72,
           "rewards": {
-            "xp": 119,
-            "fish_min": 5,
-            "fish_max": 10
+            "xp": 700,
+            "fish_min": 70,
+            "fish_max": 170
           },
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/fishing/actions/23-net-the-reflection-of-a-fish.png",
+          "art": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
           "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
           "area": "space"
         }
@@ -2503,7 +2503,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "winter_lake",
           "name": "Winter Lake",
-          "fluid": "water",
+          "fluid": "ice",
           "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png"
         },
         {
@@ -2521,19 +2521,19 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "deep_sea",
           "name": "Deep Sea",
-          "fluid": "water",
+          "fluid": "deep_water",
           "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png"
         },
         {
           "id": "stormy_sea",
           "name": "Stormy Sea",
-          "fluid": "water",
+          "fluid": "storm",
           "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png"
         },
         {
           "id": "space",
           "name": "Space Fishing",
-          "fluid": "water",
+          "fluid": "space",
           "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png"
         }
       ]

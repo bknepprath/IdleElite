@@ -29,6 +29,26 @@ const FLUID_LAVA := {
 	"deep": Color("#d84a18"),
 	"scroll_speed": 1.0,
 }
+const FLUID_SPACE := {
+	"fluid": Color("#4331a8"),
+	"deep": Color("#17113f"),
+	"scroll_speed": 0.65,
+}
+const FLUID_DEEP_WATER := {
+	"fluid": Color("#123766"),
+	"deep": Color("#071a36"),
+	"scroll_speed": 0.85,
+}
+const FLUID_STORM := {
+	"fluid": Color("#17202c"),
+	"deep": Color("#05080d"),
+	"scroll_speed": 1.15,
+}
+const FLUID_ICE := {
+	"fluid": Color("#c9f6ff"),
+	"deep": Color("#7fd5ee"),
+	"scroll_speed": 0.0,
+}
 
 const CALM_END := 0.55
 const BITE_END := 0.88
@@ -108,7 +128,7 @@ func _setup_fill() -> void:
 
 
 func set_fluid_kind(kind: String) -> void:
-	_fluid_kind = kind if kind in ["water", "sewer", "lava"] else "water"
+	_fluid_kind = kind if kind in ["water", "sewer", "lava", "space", "deep_water", "storm", "ice"] else "water"
 	_apply_fluid_colors()
 	_sync_shader_uniforms()
 
@@ -116,6 +136,10 @@ func set_fluid_kind(kind: String) -> void:
 func set_running(running: bool) -> void:
 	_running = running
 	_target_height = STRIP_EXPANDED_HEIGHT if running else STRIP_IDLE_HEIGHT
+	if _fluid_kind == "ice":
+		_current_height = _target_height
+		_apply_layout_height(_current_height)
+		_sync_mask_uniforms()
 	if running:
 		set_process(true)
 	if not running:
@@ -198,6 +222,14 @@ func _fluid_table() -> Dictionary:
 			return FLUID_SEWER
 		"lava":
 			return FLUID_LAVA
+		"space":
+			return FLUID_SPACE
+		"deep_water":
+			return FLUID_DEEP_WATER
+		"storm":
+			return FLUID_STORM
+		"ice":
+			return FLUID_ICE
 	return FLUID_WATER
 
 
