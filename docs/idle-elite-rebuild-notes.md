@@ -1,4 +1,6 @@
 # Idle Elite Rebuild Notes
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 Source page: https://www.kongregate.com/en/games/brian4/idle-elite
 
@@ -139,7 +141,7 @@ Keep the recognizable structure:
 
 Modernize for mobile:
 
-- Rename the project away from the placeholder `Idle Slop`.
+- Keep the repository and docs aligned around the shipped name `Idle Elite`.
 - Use a portrait layout with bottom tabs for Jobs, Gear, and Hero.
 - Keep the handmade charm, but replace the harsh empty Flash layout with polished panels, readable mobile typography, animation, and clear progress bars.
 - Split activities into idle actions with a single `Start` button and active actions with one clear verb, such as `Chop` or `Pick Lock`.

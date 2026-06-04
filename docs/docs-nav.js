@@ -3,35 +3,31 @@
     {
       label: "Product",
       links: [
-        { href: "idle-elite-prd.html", label: "PRD" },
-        { href: "activity-database.html", label: "Database" },
-        { href: "activity-database.json", label: "JSON" }
+        { href: "idle-elite-prd.html", label: "Godot PRD" },
+        { href: "activity-database.html", label: "Activity DB" }
       ]
     },
     {
-      label: "UI",
+      label: "Godot UI refs",
       links: [
-        { href: "idle-elite-app-mock.html", label: "Phone" },
-        { href: "idle-elite-app-mock.html?view=activity-buttons", label: "Buttons" },
-        { href: "idle-elite-action-review.html", label: "Actions" },
-        { href: "stamina-gauge-mock.html", label: "Stamina" },
-        { href: "passive-module-mock.html", label: "Collect" },
-        { href: "chain-physics-mock.html", label: "Chains" }
+        { href: "idle-elite-app-mock.html", label: "Current UI" },
+        { href: "player-hub-mock.html", label: "Player hub" },
+        { href: "idle-elite-action-review.html", label: "Action review" },
+        { href: "stamina-gauge-mock.html", label: "Stamina rules" },
+        { href: "passive-module-mock.html", label: "Collect module" }
       ]
     },
     {
       label: "Fishing",
       links: [
-        { href: "fishing-rework-implementation-guide.html", label: "Build guide" },
-        { href: "fishing-rework-brainstorm.html", label: "Mock" },
-        { href: "fishing-modules-and-locations-plan.md", label: "Plan MD" }
+        { href: "fishing-rework-brainstorm.html", label: "Current fishing" }
       ]
     },
     {
-      label: "Tools",
+      label: "Tuning tools",
       links: [
         { href: "log-collect-1-stats.html", label: "Log stats" },
-        { href: "xp-sfx-audition.html", label: "SFX" }
+        { href: "xp-sfx-audition.html", label: "SFX audition" }
       ]
     }
   ];

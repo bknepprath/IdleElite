@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>SFX Audition</title>
+  <title>Idle Elite Godot Docs - SFX Audition</title>
+  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG documentation and design reference">
   <link rel="stylesheet" href="docs-nav.css">
   <link rel="stylesheet" href="docs-theme.css">
   <style>
@@ -275,17 +276,17 @@
 <body class="docs-theme-dark">
   <header class="docs-bar">
     <div class="docs-bar-head">
-      <p class="docs-eyebrow">Idle Elite</p>
-      <h1>SFX Audition</h1>
-      <p class="docs-lead">Synthetic UI sounds for XP, crits, and feedback.</p>
+      <p class="docs-eyebrow">Idle Elite Godot Docs</p>
+      <h1>Godot SFX Audition</h1>
+      <p class="docs-lead">Synthetic UI sounds for Idle Elite's Godot XP, crit, mastery, and feedback events.</p>
     </div>
     <nav data-docs-nav></nav>
   </header>
   <main>
     <header>
       <div>
-        <h1>Panels</h1>
-        <p>Click a card to play. Adjust volume on the right.</p>
+        <h1>Shipped SFX</h1>
+        <p>Click a card to play shipped or wired Idle Elite sound families. Adjust volume on the right.</p>
       </div>
       <div class="meter">
         <label for="volume">Audition volume</label>
@@ -294,126 +295,34 @@
     </header>
 
     <div class="section-label">
-      <h2>XP Crit Options</h2>
-      <p>Six subtle blue-spark success accents for the rare 3x XP crit.</p>
+      <h2>Action Success</h2>
+      <p>Four glass pips used by action completion.</p>
     </div>
-    <section class="grid" id="critGrid" aria-label="XP crit sound options"></section>
+    <section class="grid" id="glassPipGrid" aria-label="Glass pip action success sounds"></section>
 
     <div class="section-label">
-      <h2>Activity Boop Options</h2>
-      <p>Four soft boops for replacing the activity button sound with something rounder and friendlier.</p>
+      <h2>XP Crit</h2>
+      <p>Blue glass fanfare accents used by rare XP crits.</p>
     </div>
-    <section class="grid" id="boopGrid" aria-label="Activity boop sound options"></section>
+    <section class="grid" id="critGrid" aria-label="XP crit sounds"></section>
 
     <div class="section-label">
-      <h2>Quick Wind Down Options</h2>
-      <p>Four short descending cues for stopping, cooling off, or easing an active loop back to idle.</p>
+      <h2>Feedback</h2>
+      <p>Warm Reject and XP Spark cues used for blocked states, medals, bonus feedback, and related UI moments.</p>
     </div>
-    <section class="grid" id="windDownGrid" aria-label="Quick wind down sound options"></section>
+    <section class="grid" id="feedbackGrid" aria-label="Feedback sounds"></section>
 
     <div class="section-label">
-      <h2>XP Success Options</h2>
-      <p>Glass Pip, Coinlet Ding, and Magic Droplet are now written into the project WAVs.</p>
+      <h2>Chains And Locks</h2>
+      <p>Processed Jingle Chains variants plus padlock cluster used for lock movement and unlock feedback.</p>
     </div>
-    <section class="grid" id="soundGrid" aria-label="XP success sound options"></section>
-
-    <div class="section-label">
-      <h2>Glass Pip Ladder Options</h2>
-      <p>Four glass pips that start lower, then climb a little with each version.</p>
-    </div>
-    <section class="grid" id="glassPipGrid" aria-label="Glass pip ladder sound options"></section>
-
-    <div class="section-label">
-      <h2>Activity Failure Options</h2>
-      <p>Soft misses for “not enough stamina,” bad roll, or blocked action states.</p>
-    </div>
-    <section class="grid" id="failureGrid" aria-label="Activity failure sound options"></section>
-
-    <div class="section-label">
-      <h2>Medal Replacement Options</h2>
-      <p>Metallic swoops for a new medal sliding in and seating over the old one.</p>
-    </div>
-    <section class="grid" id="medalGrid" aria-label="Medal replacement sound options"></section>
-
-    <div class="section-label">
-      <h2>Metal Clank / Chain Rattle Options</h2>
-      <p>Six rougher metal hits and chain-link rattles for locks, shackles, gates, and heavy equipment.</p>
-    </div>
-    <section class="grid" id="metalGrid" aria-label="Metal clank and chain rattle sound options"></section>
-
-    <div class="section-label">
-      <h2>Layered Glass-On-Metal</h2>
-      <p>Quiet, lower-toned slices of the Glass Hitting A Metal candidate arranged like chain links rattling.</p>
-    </div>
-    <section class="grid" id="layeredGlassMetalGrid" aria-label="Layered glass on metal sound options"></section>
-
-    <div class="section-label">
-      <h2>Jingle Chains Mixups</h2>
-      <p>Six softened slices from Jingle Chains.wav with filtering, compression, and a quiet output ceiling.</p>
-    </div>
-    <section class="grid" id="jingleChainsGrid" aria-label="Jingle Chains processed sound options"></section>
-
-    <div class="section-label">
-      <h2>Fetched Clang Candidates</h2>
-      <p>Real Mixkit recordings/previews to audition as the clang layer.</p>
-    </div>
-    <section class="candidate-list" aria-label="Fetched clang candidates">
-      <article class="candidate">
-        <div>
-          <h3>Metal Button Radio Ping</h3>
-          <p class="notes">Best first listen for a medal UI clang: short, bright, and not too violent. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
-        </div>
-        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-metal-button-radio-ping.mp3"></audio>
-      </article>
-      <article class="candidate">
-        <div>
-          <h3>Gear Metallic Lock Sound</h3>
-          <p class="notes">Good “seated into place” energy, more mechanical than celebratory. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
-        </div>
-        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-gear-metallic-lock-sound.mp3"></audio>
-      </article>
-      <article class="candidate">
-        <div>
-          <h3>Gear Fast Lock Tap</h3>
-          <p class="notes">Compact lock/clink. Could layer under a swoop without hogging the moment. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
-        </div>
-        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-gear-fast-lock-tap.mp3"></audio>
-      </article>
-      <article class="candidate">
-        <div>
-          <h3>Glass Hitting A Metal</h3>
-          <p class="notes">Brighter, thinner hit. Nice if the medal should feel shiny instead of heavy. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
-        </div>
-        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-glass-hitting-a-metal.mp3"></audio>
-      </article>
-      <article class="candidate">
-        <div>
-          <h3>Whoosh Resonating Metallic Hit</h3>
-          <p class="notes">Already contains motion plus impact. Useful reference, probably needs trimming. <a href="https://mixkit.co/free-sound-effects/woosh/">Source</a></p>
-        </div>
-        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-whoosh-resonating-metallic-hit.mp3"></audio>
-      </article>
-      <article class="candidate">
-        <div>
-          <h3>Metal Hammer Hit</h3>
-          <p class="notes">Harder clang. Might work if we soften/shorten it for medal replacement. <a href="https://mixkit.co/free-sound-effects/metal/">Source</a></p>
-        </div>
-        <audio controls preload="metadata" src="assets/sfx-candidates/mixkit-metal-hammer-hit.mp3"></audio>
-      </article>
-    </section>
+    <section class="grid" id="jingleChainsGrid" aria-label="Chain and lock sounds"></section>
 
     <div class="footer">
-      <button id="playAll" type="button">Play all in sequence</button>
-      <button id="quickBurst" type="button">Test rapid XP taps</button>
       <button id="glassPipBurst" type="button">Test glass pip climb</button>
-      <button id="failureBurst" type="button">Test rapid failures</button>
-      <button id="medalBurst" type="button">Test medal swaps</button>
-      <button id="metalBurst" type="button">Test metal rattles</button>
-      <button id="layeredGlassMetalBurst" type="button">Test layered glass metal</button>
-      <button id="jingleChainsBurst" type="button">Test jingle chains</button>
       <button id="critBurst" type="button">Test XP crits</button>
-      <button id="boopBurst" type="button">Test boops</button>
-      <button id="windDownBurst" type="button">Test wind downs</button>
+      <button id="feedbackBurst" type="button">Test feedback</button>
+      <button id="jingleChainsBurst" type="button">Test jingle chains</button>
     </div>
   </main>
 
@@ -488,19 +397,6 @@
           ping(ctx, out, t + 0.012, 1760, 0.11, "sine", 0.13);
           sweep(ctx, out, t + 0.12, 698.46, 1396.91, 0.34, "triangle", 0.2);
           ping(ctx, out, t + 0.42, 2093, 0.26, "sine", 0.09);
-        }
-      },
-      {
-        id: "lucky-blue-drop",
-        name: "Lucky Blue Fanfare",
-        tag: "lucky",
-        gain: 0.48,
-        notes: "A playful up-chirp that turns into a fuller lucky reward fanfare.",
-        bars: [24, 46, 86, 100, 86, 66, 78, 58, 38, 24, 14, 7],
-        play: (ctx, out, t) => {
-          scoop(ctx, out, t, [349.23, 523.25, 880, 1318.51], [0, 0.10, 0.26, 0.46], "sine", 0.34);
-          ping(ctx, out, t + 0.18, 659.25, 0.28, "triangle", 0.14);
-          ping(ctx, out, t + 0.46, 1760, 0.22, "triangle", 0.1);
         }
       }
     ];
@@ -1071,6 +967,11 @@
       }
     ];
 
+
+    const feedbackSounds = [
+      sounds.find((sound) => sound.id === "xp-spark"),
+      failureSounds.find((sound) => sound.id === "warm-reject")
+    ].filter(Boolean);
     const jingleChainSampleUrl = "../assets/sfx/Jingle%20Chains.wav";
     const jingleChainSounds = [
       {
@@ -1158,14 +1059,9 @@
     let masterGain;
     const sampleCache = new Map();
     const volume = document.querySelector("#volume");
-    const boopGrid = document.querySelector("#boopGrid");
-    const windDownGrid = document.querySelector("#windDownGrid");
-    const grid = document.querySelector("#soundGrid");
+    const feedbackGrid = document.querySelector("#feedbackGrid");
     const glassPipGrid = document.querySelector("#glassPipGrid");
-    const failureGrid = document.querySelector("#failureGrid");
-    const medalGrid = document.querySelector("#medalGrid");
-    const metalGrid = document.querySelector("#metalGrid");
-    const layeredGlassMetalGrid = document.querySelector("#layeredGlassMetalGrid");
+    const critGrid = document.querySelector("#critGrid");
     const jingleChainsGrid = document.querySelector("#jingleChainsGrid");
 
     function ensureAudio() {
@@ -1542,14 +1438,8 @@
 
     function render() {
       renderGrid(critGrid, critSounds);
-      renderGrid(boopGrid, boopSounds);
-      renderGrid(windDownGrid, windDownSounds);
-      renderGrid(grid, sounds);
+      renderGrid(feedbackGrid, feedbackSounds);
       renderGrid(glassPipGrid, glassPipSounds);
-      renderGrid(failureGrid, failureSounds);
-      renderGrid(medalGrid, medalSounds);
-      renderGrid(metalGrid, metalSounds);
-      renderGrid(layeredGlassMetalGrid, layeredGlassMetalSounds);
       renderGrid(jingleChainsGrid, jingleChainSounds);
     }
 
@@ -1566,53 +1456,13 @@
       playSound(sound);
     }
 
-    grid.addEventListener("click", (event) => handleGridClick(event, sounds));
+    feedbackGrid.addEventListener("click", (event) => handleGridClick(event, feedbackSounds));
     critGrid.addEventListener("click", (event) => handleGridClick(event, critSounds));
-    boopGrid.addEventListener("click", (event) => handleGridClick(event, boopSounds));
-    windDownGrid.addEventListener("click", (event) => handleGridClick(event, windDownSounds));
     glassPipGrid.addEventListener("click", (event) => handleGridClick(event, glassPipSounds));
-    failureGrid.addEventListener("click", (event) => handleGridClick(event, failureSounds));
-    medalGrid.addEventListener("click", (event) => handleGridClick(event, medalSounds));
-    metalGrid.addEventListener("click", (event) => handleGridClick(event, metalSounds));
-    layeredGlassMetalGrid.addEventListener("click", (event) => handleGridClick(event, layeredGlassMetalSounds));
     jingleChainsGrid.addEventListener("click", (event) => handleGridClick(event, jingleChainSounds));
-
-    document.querySelector("#playAll").addEventListener("click", () => {
-      sounds.forEach((sound, index) => playSound(sound, index * 0.42));
-    });
-
-    document.querySelector("#quickBurst").addEventListener("click", () => {
-      const picks = [sounds[1], sounds[0], sounds[3], sounds[1], sounds[6], sounds[0]];
-      picks.forEach((sound, index) => playSound(sound, index * 0.14));
-    });
-
-    document.querySelector("#boopBurst").addEventListener("click", () => {
-      boopSounds.forEach((sound, index) => playSound(sound, index * 0.24));
-    });
-
-    document.querySelector("#windDownBurst").addEventListener("click", () => {
-      windDownSounds.forEach((sound, index) => playSound(sound, index * 0.28));
-    });
 
     document.querySelector("#glassPipBurst").addEventListener("click", () => {
       glassPipSounds.forEach((sound, index) => playSound(sound, index * 0.2));
-    });
-
-    document.querySelector("#failureBurst").addEventListener("click", () => {
-      const picks = [failureSounds[6], failureSounds[7], failureSounds[9], failureSounds[6], failureSounds[8], failureSounds[7]];
-      picks.forEach((sound, index) => playSound(sound, index * 0.15));
-    });
-
-    document.querySelector("#medalBurst").addEventListener("click", () => {
-      medalSounds.forEach((sound, index) => playSound(sound, index * 0.34));
-    });
-
-    document.querySelector("#metalBurst").addEventListener("click", () => {
-      metalSounds.forEach((sound, index) => playSound(sound, index * 0.38));
-    });
-
-    document.querySelector("#layeredGlassMetalBurst").addEventListener("click", () => {
-      layeredGlassMetalSounds.forEach((sound) => playSound(sound));
     });
 
     document.querySelector("#jingleChainsBurst").addEventListener("click", () => {
@@ -1623,8 +1473,12 @@
       critSounds.forEach((sound, index) => playSound(sound, index * 0.28));
     });
 
+    document.querySelector("#feedbackBurst").addEventListener("click", () => {
+      feedbackSounds.forEach((sound, index) => playSound(sound, index * 0.28));
+    });
+
     render();
   </script>
-  <script src="docs-nav.js"></script>
+  <script src="docs-nav.js?v=nav-clean-20260603"></script>
 </body>
 </html>

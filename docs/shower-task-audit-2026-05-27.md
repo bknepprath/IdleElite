@@ -1,4 +1,6 @@
-# Shower Task Audit - 2026-05-27
+# Idle Elite Shower Task Audit - 2026-05-27
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 This is a queue of medium-to-long tasks that are safe for an agent to grind on while you are away. The project already has a lot of polish work in flight, so the bias here is toward work that either produces a useful artifact or changes code in small, testable steps.
 

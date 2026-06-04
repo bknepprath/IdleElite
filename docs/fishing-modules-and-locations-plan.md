@@ -1,8 +1,10 @@
-# Fishing — modules & locations plan
+# Idle Elite Fishing Modules and Locations Plan
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
 
-Planning doc for the **tool × location** rework. Companion specs: [fishing-tool-area-matrix.md](fishing-tool-area-matrix.md), [fishing-archetype-design.md](fishing-archetype-design.md), mock [fishing-rework-brainstorm.html](fishing-rework-brainstorm.html).
 
-**Status:** design / authoring — not implemented in Godot JSON yet.
+Planning doc for the **tool × location** rework. Companion specs: [fishing-tool-area-matrix.md](fishing-tool-area-matrix.md), [fishing-archetype-design.md](fishing-archetype-design.md), and the current fishing implementation reference [fishing-rework-brainstorm.html](fishing-rework-brainstorm.html).
+
+**Status:** partially implemented in Godot. The current build has `FISHING_REWORK_ENABLED`, `fishing.areas[]`, per-action `area`, the fish wallet/tool system, and authored Beach/Pier location tiles. Later authored locations and full affinity coverage remain planning work.
 
 ---
 

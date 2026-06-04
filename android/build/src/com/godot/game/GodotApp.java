@@ -42,8 +42,10 @@ import androidx.activity.EdgeToEdge;
 import androidx.core.splashscreen.SplashScreen;
 
 import java.io.File;
+import java.io.BufferedReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.FileReader;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.text.SimpleDateFormat;
@@ -59,6 +61,7 @@ import java.util.Locale;
 public class GodotApp extends GodotActivity {
 	private static final String TAG = "IdleEliteCrash";
 	private static final String PENDING_CRASH_REPORT_FILE = "pending-crash-report.json";
+	private static final String DIAGNOSTIC_EVENTS_FILE = "android-diagnostic-events.txt";
 	private static final int MAX_DIAGNOSTIC_EVENTS = 80;
 	private Thread.UncaughtExceptionHandler previousExceptionHandler;
 	private PowerManager.OnThermalStatusChangedListener thermalStatusListener;
@@ -88,6 +91,7 @@ public class GodotApp extends GodotActivity {
 	@Override
 	public void onCreate(Bundle savedInstanceState) {
 		installCrashReporter();
+		loadPersistedDiagnosticEvents();
 		writeDiagnosticEvent("create");
 		cleanupLegacyExternalCrashReports();
 		SplashScreen.installSplashScreen(this);
@@ -219,6 +223,7 @@ public class GodotApp extends GodotActivity {
 				diagnosticEvents.remove(0);
 			}
 		}
+		persistDiagnosticEvents();
 		Log.i(TAG, line);
 	}
 
@@ -231,6 +236,71 @@ public class GodotApp extends GodotActivity {
 		reports.add(new File(internalRoot, PENDING_CRASH_REPORT_FILE));
 		reports.add(new File(new File(new File(internalRoot, "app_userdata"), "Idle Elite"), PENDING_CRASH_REPORT_FILE));
 		return reports;
+	}
+
+	private List<File> getDiagnosticEventFiles() {
+		List<File> files = new ArrayList<>();
+		File internalRoot = getFilesDir();
+		if (internalRoot == null) {
+			return files;
+		}
+		files.add(new File(internalRoot, DIAGNOSTIC_EVENTS_FILE));
+		files.add(new File(new File(new File(internalRoot, "app_userdata"), "Idle Elite"), DIAGNOSTIC_EVENTS_FILE));
+		return files;
+	}
+
+	private void loadPersistedDiagnosticEvents() {
+		for (File file : getDiagnosticEventFiles()) {
+			if (file.exists() && loadDiagnosticEventsFromFile(file)) {
+				return;
+			}
+		}
+	}
+
+	private boolean loadDiagnosticEventsFromFile(File file) {
+		try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+			String line;
+			synchronized (diagnosticEvents) {
+				diagnosticEvents.clear();
+				while ((line = reader.readLine()) != null) {
+					if (line.trim().isEmpty()) {
+						continue;
+					}
+					diagnosticEvents.add(line);
+					while (diagnosticEvents.size() > MAX_DIAGNOSTIC_EVENTS) {
+						diagnosticEvents.remove(0);
+					}
+				}
+			}
+			return true;
+		} catch (IOException exception) {
+			Log.w(TAG, "Unable to read diagnostic events: " + file.getAbsolutePath(), exception);
+			return false;
+		}
+	}
+
+	private void persistDiagnosticEvents() {
+		List<String> eventsSnapshot = diagnosticEventsSnapshot();
+		for (File file : getDiagnosticEventFiles()) {
+			writeDiagnosticEventsToFile(file, eventsSnapshot);
+		}
+	}
+
+	private void writeDiagnosticEventsToFile(File file, List<String> eventsSnapshot) {
+		File parent = file.getParentFile();
+		if (parent != null && !parent.exists() && !parent.mkdirs()) {
+			Log.w(TAG, "Unable to create diagnostic event directory: " + parent.getAbsolutePath());
+			return;
+		}
+
+		try (FileWriter writer = new FileWriter(file, false)) {
+			for (String event : eventsSnapshot) {
+				writer.write(event);
+				writer.write("\n");
+			}
+		} catch (IOException exception) {
+			Log.w(TAG, "Unable to write diagnostic events: " + file.getAbsolutePath(), exception);
+		}
 	}
 
 	private void cleanupLegacyExternalCrashReports() {

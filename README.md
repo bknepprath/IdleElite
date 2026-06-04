@@ -1,6 +1,10 @@
 # Idle Elite
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
 
-A small Godot 4 idle RPG prototype built for a mobile-first loop.
+
+A Godot 4 mobile idle RPG built around short sessions, table-driven activities, stamina rotation, mastery medals, offline progress, rewarded ads, and Android release builds.
+
+Docs live in `docs/` and are maintained as Godot project references. Legacy HTML filenames are retained for link stability, but their contents should reflect the current Godot game.
 
 ## Codex Loop
 
@@ -62,7 +66,7 @@ The first playable combat ladder uses plain regular animals:
 
 ## Monetization Path
 
-The Android/AdMob launch path is tracked in `docs/play-store/launch-runbook.md`.
+The Android/AdMob launch path is tracked in `play-store/docs/launch-runbook.md`.
 
 Current status:
 

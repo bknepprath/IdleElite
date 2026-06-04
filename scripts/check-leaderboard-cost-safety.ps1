@@ -78,7 +78,7 @@ $chatDeleteTool = Get-Content -LiteralPath $chatDeleteToolPath -Raw
 $chatPruneTool = Get-Content -LiteralPath $chatPruneToolPath -Raw
 $skillIds = @($activityDatabase.skills | ForEach-Object { $_.id } | Where-Object { $_ })
 Assert-True ($skillIds.Count -gt 0) "Activity database must define leaderboard skill categories."
-$expectedCategoryKeys = @("total_level", "medals_earned", "total_xp") + @($skillIds | ForEach-Object { "skill_xp__$_" }) + @("elite_heavenly")
+$expectedCategoryKeys = @("total_level") + @($skillIds | ForEach-Object { "skill_xp__$_" }) + @("medals_earned", "elite_heavenly")
 foreach ($categoryKey in $expectedCategoryKeys) {
     Assert-True ($categoryKey -match '^[a-z0-9_-]+$') "Generated leaderboard category key '$categoryKey' is unsafe for Firebase paths."
 }
@@ -100,9 +100,9 @@ Assert-True ($exportPresets -match '(?m)^permissions/internet=true$') "Android e
 Assert-True ([string]$firebaseJson.database.rules -eq "firebase-realtime-database.rules.json") "firebase.json must deploy the generated Realtime Database rules file."
 Assert-True ($rulesGenerator -match "\^\[a-z0-9_-\]\+\$") "Rules generator must reject category keys with Firebase-unsafe characters."
 Assert-True ($rulesGenerator -match '\$duplicateCategoryKeys\s*=\s*@\(\$categoryKeys \| Group-Object') "Rules generator must reject duplicate category keys before emitting rules."
-Assert-True ($main -match 'const LEADERBOARD_SUBMIT_INTERVAL_SECONDS := 60 \* 60') "Client write interval must stay at one hour."
+Assert-True ($main -match 'const LEADERBOARD_SUBMIT_INTERVAL_SECONDS := 15 \* 60') "Client write interval must stay at 15 minutes."
 Assert-True ($main -match 'func _leaderboard_has_pending_category_score\(\) -> bool:') "Submit readiness must detect pending category score improvements."
-Assert-True ($main -match 'return _leaderboard_profile_claim_valid\(\) and _leaderboard_has_pending_category_score\(\) and _leaderboard_next_submit_seconds\(\) <= 0') "Submit readiness must require a claimed unique name, a pending category score, and the hourly submit gate."
+Assert-True ($main -match 'return _leaderboard_profile_claim_valid\(\) and _leaderboard_has_pending_category_score\(\) and _leaderboard_next_submit_seconds\(\) <= 0') "Submit readiness must require a claimed unique name, a pending category score, and the 15-minute submit gate."
 Assert-True ($main -match 'const LEADERBOARD_FETCH_INTERVAL_SECONDS := 15 \* 60') "Visible-category reads must stay cached for at least 15 minutes."
 Assert-True ($main -match 'const LEADERBOARD_PROCESS_INTERVAL_SECONDS := 30\.0') "Leaderboard sync tick must stay calm; expected 30 seconds."
 Assert-True ($main -match 'const LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS := 15 \* 60') "Failed Firebase auth must cool down for at least 15 minutes."
@@ -125,7 +125,7 @@ Assert-True ([regex]::Matches($main, '_leaderboard_fetch_category\(leaderboard_c
 Assert-True ($main -match 'var query := "orderBy=%%22score%%22&limitToLast=%s" % LEADERBOARD_TOP_COUNT') "Reads must be ordered by score and capped to the top count."
 Assert-True ($main -match 'HTTPClient\.METHOD_GET') "Leaderboard must use finite REST GET reads, not realtime listeners."
 Assert-True ($main -match 'HTTPClient\.METHOD_PATCH') "Leaderboard writes must use one finite REST PATCH."
-Assert-True ($main -match 'updates\["player_write_gates/%s" % leaderboard_player_id\]') "Writes must include the shared per-player hourly write gate."
+Assert-True ($main -match 'updates\["player_write_gates/%s" % leaderboard_player_id\]') "Writes must include the shared per-player 15-minute write gate."
 Assert-True ($main -match 'FIREBASE_AUTH_SIGN_UP_URL') "Leaderboard must use Firebase Anonymous Auth before database access."
 Assert-True ($main -match 'FIREBASE_AUTH_REFRESH_URL') "Leaderboard must refresh the anonymous auth token instead of creating a new account every launch."
 Assert-True ($main -notmatch 'signInWithIdp|IdleEliteGoogleSignIn|_start_google_account_link|google_link') "Leaderboard-only beta must not expose dormant Google sign-in code paths."
@@ -136,7 +136,7 @@ Assert-True ($main -match '"leaderboard_auth_retry_after_unix": leaderboard_auth
 Assert-True ($main -match 'leaderboard_auth_retry_after_unix = maxi\(0, int\(data\.get\("leaderboard_auth_retry_after_unix", 0\)\)\)') "Leaderboard auth retry deadlines must be loaded across relaunches."
 Assert-True ($main -match '_leaderboard_note_submit_failure') "Leaderboard write failures must use the submit cooldown helper."
 Assert-True ($main -match 'leaderboard_last_submit_unix = _unix_now\(\)') "Leaderboard write failures must update the submit gate to avoid rapid retries."
-Assert-True ($main -match 'Trying again in %s\." % \[message, _format_duration\(float\(LEADERBOARD_SUBMIT_INTERVAL_SECONDS\)\)\]') "Leaderboard write failures must cool down for the hourly submit interval."
+Assert-True ($main -match 'Trying again in %s\." % \[message, _format_duration\(float\(LEADERBOARD_SUBMIT_INTERVAL_SECONDS\)\)\]') "Leaderboard write failures must cool down for the 15-minute submit interval."
 Assert-True ($main -match '_leaderboard_authenticated_query') "Database REST calls must include the Firebase auth token."
 Assert-True ($main -notmatch 'WebSocket|WebSocketPeer|connect_to_url') "WebSocket-style realtime transports are not allowed."
 Assert-True ($main -match 'const CHAT_FIREBASE_ROOT := "global_chat/v1"') "Chat must use the expected Firebase root."
@@ -154,6 +154,10 @@ Assert-True ($main -match 'func _process_chat_live_sync\(delta: float\) -> void:
 Assert-True ($main -match '(?s)func _process_chat_live_sync\(delta: float\) -> void:.*?if not _chat_strip_visible_on_current_screen\(\):.*?_chat_stream_disconnect\(false\).*?return') "Chat realtime stream must close when the skills chat strip is not visible."
 Assert-True ($main -match 'var query := "orderBy=%%22created_at%%22&limitToLast=%s" % visible_count') "Chat reads must query by created_at with the active capped visible count."
 Assert-True ($main -match 'func _chat_target_visible_count\(\) -> int:') "Chat must switch stream limits by compact strip vs full chat."
+Assert-True ($main -match 'upgrading_visible_count') "Opening full chat must upgrade the compact stream without waiting for the reconnect throttle."
+Assert-True ($main -match '_chat_apply_stream_payload\(parsed as Dictionary, event_name\)') "Chat stream handlers must pass the event type into payload handling."
+Assert-True ($main -match 'func _chat_merge_rows\(data: Dictionary\) -> void:') "Chat patch events must merge changed rows instead of replacing visible history."
+Assert-True ($main -match '_collapse_chat_keyboard_lift_after_submit\(\)') "Mobile chat submit must clear stale keyboard lift state after hiding the keyboard."
 Assert-True ($main -match 'Accept: text/event-stream') "Chat must use Firebase RTDB REST streaming."
 Assert-True ($main -match 'chat_stream_client\.connect_to_host') "Chat must open exactly one explicit HTTPS stream client."
 Assert-True ($main -match '_chat_stream_disconnect\(false\)') "Chat must explicitly disconnect the stream off-screen."
@@ -162,8 +166,8 @@ Assert-True ($main -match '"user_write_gates/%s" % leaderboard_player_id') "Chat
 Assert-True ($main -match '"chat_last_send_unix": chat_last_send_unix') "Chat send cooldown must be saved across relaunches."
 Assert-True ($main -match '"chat_stream_retry_unix": chat_stream_retry_unix') "Chat stream reconnect cooldown must be saved across relaunches."
 Assert-True ($main -match 'Chat rows are not saved; the realtime stream is reopened only while the skills chat strip is visible\.') "Chat rows must not be persisted locally."
-Assert-True ($main -notmatch '"chat_rows": chat_rows') "Chat rows must not be saved locally."
-Assert-True ($main -match 'one Firebase RTDB Server-Sent Events stream') "Chat UI must disclose that live chat uses one RTDB SSE stream."
+Assert-True ($main -notmatch '"chat_rows":\s*chat_rows\s*(,|\})') "Chat rows must not be saved locally."
+Assert-True ($main -match 'one live chat connection while it is visible') "Chat UI must describe the live connection without naming backend services."
 
 $leaderboardRequests = [regex]::Matches($main, 'leaderboard_(fetch|submit)_request\.request\(').Count
 Assert-True ($leaderboardRequests -eq 2) "Expected exactly two leaderboard HTTP request sites: one GET and one PATCH."
@@ -220,6 +224,7 @@ Assert-True ($categoryWriteRule -match "updated_at'\)\.val\(\) <= now \+ 60000")
 
 $scoreRule = Get-JsonProp (Get-JsonProp $player "score") ".validate"
 Assert-True ($scoreRule -match "newData.val\(\) >= data.val\(\)") "Scores must be monotonic per player/category."
+Assert-True ($null -ne (Get-JsonProp $player "total_xp")) "Score rows must allow total XP for the combined Total leaderboard."
 Assert-True ((Get-JsonProp $player ".validate") -match "newData.hasChildren") "Score rows must require the expected child fields."
 Assert-True ((Get-JsonProp $player ".validate") -match "name_key") "Score rows must store the claimed name key."
 Assert-True ($null -ne (Get-JsonProp $player '$other')) "Score rows must reject unexpected fields."
@@ -228,7 +233,7 @@ Assert-True ($null -ne $gatePlayer) "Rules must define leaderboards/v1/player_wr
 Assert-True ((Get-JsonProp $gatePlayer ".read") -eq $false) "Write gates must not be readable."
 Assert-True ((Get-JsonProp $gatePlayer ".write") -match [regex]::Escape('auth.uid == $playerId')) "Write gates must be bound to the authenticated anonymous UID."
 Assert-True ((Get-JsonProp $gatePlayer ".write") -match "newData.exists\(\)") "Write gates must reject client deletes."
-Assert-True ((Get-JsonProp $gatePlayer ".write") -match "3600000") "Firebase rules must enforce at least one hour between player writes."
+Assert-True ((Get-JsonProp $gatePlayer ".write") -match "900000") "Firebase rules must enforce at least 15 minutes between player writes."
 Assert-True ((Get-JsonProp $gatePlayer ".validate") -match "newData.hasChildren") "Write gates must require the expected child fields."
 Assert-True ($null -ne (Get-JsonProp $gatePlayer '$other')) "Write gates must reject unexpected fields."
 Assert-True ((Get-JsonProp (Get-JsonProp $gatePlayer "updated_at") ".validate") -match "newData.val\(\) >= now - 10000") "Write gate timestamps must be fresh."

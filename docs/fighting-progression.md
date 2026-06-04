@@ -1,4 +1,6 @@
-# Fighting Progression
+# Idle Elite Fighting Progression
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 This first implementation focuses on the early `Fight` skill while the other starter skills are still being rebuilt.
 
@@ -40,6 +42,6 @@ Hit chance gains a small bonus when the player's Fight level is above an enemy's
 
 ## Asset Direction
 
-The starter ladder uses `docs/assets/enemies/starter-enemies.png`; the extended ladder uses `docs/assets/enemies/animal-progression-enemies.png`. Both sheets use plain, normal farm/field animals with thick black outlines and soft painterly shading.
+The starter ladder uses `assets/content/enemies/starter-enemies.png`; the extended ladder uses `assets/content/enemies/animal-progression-enemies.png`. Both sheets use plain, normal farm/field animals with thick black outlines and soft painterly shading.
 
 Every sheet must be crop-safe: each animal lives fully inside one `724x724` square cell with green padding on all sides. Do not let antlers, horns, tails, snouts, feet, feathers, or ears cross into another frame.

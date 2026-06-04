@@ -1,4 +1,6 @@
-# Fishing — tool × area (player picks gear)
+# Idle Elite Fishing Tool and Area Matrix
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 Design direction (2026-05): fishing is about **choosing your tool** and **choosing your spot**, not following a fixed route of “this activity art only works on this map tile.”
 
@@ -116,20 +118,20 @@ Target:
     "id": "beach",
     "name": "Beach",
     "fluid": "water",
-    "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+    "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
     "locations": [
       {
         "id": "shallows",
         "name": "Shallows",
         "unlock": 1,
-        "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+        "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
         "fish_table": "minnow"
       },
       {
         "id": "rocky",
         "name": "Rocky ledge",
         "unlock": 5,
-        "background": "docs/assets/fishing/backgrounds/03-crab-pier.png",
+        "background": "assets/content/fishing/backgrounds/03-crab-pier.png",
         "fish_table": "crab"
       }
     ]
@@ -187,7 +189,7 @@ Full region → location → tool → migration tables: **[fishing-modules-and-l
 ## Suggested implementation phases
 
 1. **Design lock** — tool list + affinity table on paper/HTML (this doc + brainstorm + modules plan).
-2. **Beach prototype** — tool rack + Beach module with **Shallows** + **Rocky ledge** location tiles; affinity chip per spot.
+2. **Beach/Pier implementation** — tool wallet + authored Beach and Pier location tiles; continue expanding current Godot locations from there.
 3. **Data** — `fishing.tools[]`, `areas[].locations[]`, `fishing.affinity{}` in `activity-database.json`; compat shim from old action ids.
 4. **Rollout** — migrate areas; deprecate duplicate line methods into tool ranks.
 5. **Polish** — mismatch flavor lines, efficiency chip, album fish by area table not by action id.

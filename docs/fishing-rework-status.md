@@ -1,4 +1,6 @@
 # Fishing Rework - Status & Next Steps
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 Last updated: 2026-05-31 (in progress on branch / working tree)
 
@@ -68,7 +70,7 @@ Player unlocks **tools**, **regions**, and **locations** within each region modu
 
 1. **Shiny fish** - rare flag on catch pop + album/counter
 2. **Method timing** - per-archetype attempt bands (line vs net stories); fluid strip stays ambiance-only
-3. **Brainstorm HTML** - sync mock areas to `sea`, `winter_lake`, `stormy_sea`, `deep_sea`, and `space`
+3. **Fishing reference HTML** - keep current area, tool, and location status synced to `docs/activity-database.json` and `scripts/main.gd`
 4. **Lobster passive module** - if design locks cage as non-row activity
 
 ## Data Hygiene Commands

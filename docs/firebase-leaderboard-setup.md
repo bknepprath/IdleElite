@@ -1,4 +1,6 @@
 # Firebase Realtime Database Leaderboard and Chat Setup
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 Idle Elite's Firebase features are deliberately cost-conservative:
 
@@ -10,13 +12,13 @@ Idle Elite's Firebase features are deliberately cost-conservative:
 - Failed or cancelled chat streams wait 30 seconds before reconnecting.
 - Visible-category reads are cached for 15 minutes.
 - Failed or rejected visible-category reads also cool down for 15 minutes before retrying.
-- Player score publishes are capped client-side to once per hour.
+- Player score publishes are capped client-side to once every 15 minutes.
 - Chat sends are capped client-side to one message every 2 seconds.
-- Failed or rejected score publishes also cool down for one hour before retrying.
+- Failed or rejected score publishes also cool down for 15 minutes before retrying.
 - Failed or rejected chat sends also cool down for 2 seconds before retrying.
 - Auth, failed-read, and write retry cooldowns are saved locally so relaunches do not immediately retry bad Firebase states.
 - Successful read timestamps are session-only because leaderboard rows and chat messages are not saved locally.
-- Database rules add a second hourly write gate per player across all categories.
+- Database rules add a second 15-minute write gate per player across all categories.
 - Database rules add a second 2-second write gate per player for global chat.
 - Queries must be `orderBy="score"` with `limitToLast=50`, backed by `.indexOn`.
 - Chat streams must use `Accept: text/event-stream`, `orderBy="created_at"`, and a capped `limitToLast`, backed by `.indexOn`.
@@ -137,8 +139,8 @@ Before shipping a build:
 2. Add the database URL and Web API key after rules are published.
 3. Open only one leaderboard category. Confirm one anonymous auth request, then one GET request hits `/leaderboards/v1/scores/<category>.json?orderBy=%22score%22&limitToLast=50&auth=<idToken>`.
 4. Switch away from and back to the same category inside 15 minutes. The cached rows should be reused rather than issuing another GET.
-5. Earn score. Confirm at most one PATCH request hits `/leaderboards/v1.json?print=silent` per hour from the device. It should include score updates plus `player_write_gates/<playerId>`.
-6. Try a second write inside an hour, even to another category. Firebase rules should reject it even if the client gate failed.
+5. Earn score. Confirm at most one PATCH request hits `/leaderboards/v1.json?print=silent` every 15 minutes from the device. It should include score updates plus `player_write_gates/<playerId>`.
+6. Try a second write inside 15 minutes, even to another category. Firebase rules should reject it even if the client gate failed.
 7. On a skills page, confirm one compact RTDB stream opens with `Accept: text/event-stream` at `/global_chat/v1/messages.json?orderBy=%22created_at%22&limitToLast=2&auth=<idToken>`.
 8. Open expanded chat. Confirm the stream reconnects with `limitToLast=25`.
 9. Close expanded chat. Confirm the RTDB stream stays open and the compact strip reuses cached rows with no downgrade reconnect to `limitToLast=2`.
@@ -172,7 +174,7 @@ After rules are published and `firebase-leaderboard-config.json` exists, run a r
 .\scripts\test-firebase-leaderboard-live-read.ps1 -Category total_level
 ```
 
-This reuses a per-Firebase-project cached anonymous smoke-test refresh token in `.codex-tmp` when available, then performs one top-1 REST read for the requested visible category. It does not write leaderboard data. Add `-ResetAuth` if you intentionally want a fresh anonymous smoke-test user. Skill categories can use either game ids such as `skill_xp:fight` or Firebase path keys such as `skill_xp__fight`.
+This reuses a per-Firebase-project cached anonymous smoke-test refresh token in `.codex-tmp` when available, then performs one top-1 REST read for the requested visible category. It does not write leaderboard data. Add `-ResetAuth` if you intentionally want a fresh anonymous smoke-test user. The combined Total category uses `total_level`; skill categories can use either game ids such as `skill_xp:fight` or Firebase path keys such as `skill_xp__fight`.
 
 If the activity database gains or renames skills, regenerate the Firebase category allowlist first:
 

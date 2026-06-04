@@ -1,4 +1,6 @@
-# Bug Squash: Swipe Preview, Locked Module Reveal, and Lock Dragging
+# Idle Elite Bug Squash: Swipe Preview, Locked Module Reveal, and Lock Dragging
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 Date: 2026-05-27
 

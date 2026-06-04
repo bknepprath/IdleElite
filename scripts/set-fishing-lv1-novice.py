@@ -18,8 +18,8 @@ NOVICE_OPENER = {
     "success": 92,
     "rewards": {"xp": 3, "fish_min": 1, "fish_max": 1},
     "costs": {"stamina": 1},
-    "art": "docs/assets/fishing/actions/01-scoop-pond-minnows.png",
-    "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+    "art": "assets/content/fishing/actions/01-scoop-pond-minnows.png",
+    "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
     "area": "beach",
     "archetype": "novice",
 }

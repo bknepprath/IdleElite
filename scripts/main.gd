@@ -260,7 +260,7 @@ class FishCircle:
 	var fish_count := 0.0
 	var display_text := "0"
 	var tool_text := ""
-	var tool_icon_path := "res://docs/assets/fishing/tools/tool-bare-hands.png"
+	var tool_icon_path := "res://assets/content/fishing/tools/tool-bare-hands.png"
 	var theme_color := Color("#2dc0b9")
 	var readout_font: Font
 	var currency_icon_texture: Texture2D
@@ -343,7 +343,7 @@ class FishCircle:
 		return load(tool_icon_path) as Texture2D
 
 	func _fish_currency_icon_texture() -> Texture2D:
-		var sheet_path := "res://docs/assets/fishing/ui/fishing-ui-supplemental-sheet.png"
+		var sheet_path := "res://assets/content/fishing/ui/fishing-ui-supplemental-sheet.png"
 		if not ResourceLoader.exists(sheet_path):
 			return null
 		var source := load(sheet_path) as Texture2D
@@ -2714,27 +2714,29 @@ const SAVE_SCHEMA_MANUAL_ACTIVITY_UNLOCKS := 1
 const DEBUG_TEMP_FISHING_99_ALL_TOOLS := false
 const PENDING_CRASH_REPORT_PATH := "user://pending-crash-report.json"
 const CRASH_SESSION_MARKER_PATH := "user://last-session-marker.json"
+const ANDROID_DIAGNOSTIC_EVENTS_PATH := "user://android-diagnostic-events.txt"
 const DISCORD_INVITE_URL := "https://discord.com/invite/NHvsGdGfVW"
-const MAX_CRASH_REPORT_CLIPBOARD_CHARS := 12000
+const MAX_CRASH_REPORT_CLIPBOARD_CHARS := 1800
+const MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT := 80
 const CRASH_SESSION_HEARTBEAT_SECONDS := 15.0
 const AUTOSAVE_INTERVAL_SECONDS := 15.0
 const RESET_DATA_CONFIRM_SECONDS := 8.0
 const RESET_DATA_CONFIRM_MIN_SECONDS := 0.08
 const RESET_DATA_CONFIRM_TEXT := "Are you sure?"
 const ACTIVITY_DATABASE_PATH := "res://docs/activity-database.json"
-const MASTERY_MEDALS_TEXTURE := "res://docs/assets/ui/mastery-medals-20.png"
-const UNLOCK_LOCK_CHAINS_TEXTURE := "res://docs/assets/ui/unlock-lock-chains.png"
-const UNLOCK_CHAIN_LINK_TEXTURE := "res://docs/assets/ui/unlock-chain-link.png"
-const UNLOCK_CHAIN_LEFT_TEXTURE := "res://docs/assets/ui/unlock-chain-left.png"
-const UNLOCK_CHAIN_RIGHT_TEXTURE := "res://docs/assets/ui/unlock-chain-right.png"
-const UNLOCK_PADLOCK_TEXTURE := "res://docs/assets/ui/unlock-padlock.png"
-const ACHIEVEMENT_TOTAL_LEVEL_ART := "res://docs/assets/achievements/achievement-total-level.png"
-const ACHIEVEMENT_CRIT_ART := "res://docs/assets/achievements/achievement-crit.png"
-const ACHIEVEMENT_CREDIT_ART := "res://docs/assets/achievements/achievement-credit.png"
-const ACHIEVEMENT_CUMULATIVE_MEDALS_ART := "res://docs/assets/achievements/achievement-cumulative-medals.png"
-const PASSIVE_LOG_CURRENCY_TEXTURE := "res://assets/passive/log-currency.png"
-const PASSIVE_PLANK_TEXTURE := "res://assets/passive/plank.png"
-const PASSIVE_UPGRADE_ARROW_TEXTURE := "res://assets/passive/upgrade-arrow.png"
+const MASTERY_MEDALS_TEXTURE := "res://assets/content/ui/mastery-medals-20.png"
+const UNLOCK_LOCK_CHAINS_TEXTURE := "res://assets/content/ui/unlock-lock-chains.png"
+const UNLOCK_CHAIN_LINK_TEXTURE := "res://assets/content/ui/unlock-chain-link.png"
+const UNLOCK_CHAIN_LEFT_TEXTURE := "res://assets/content/ui/unlock-chain-left.png"
+const UNLOCK_CHAIN_RIGHT_TEXTURE := "res://assets/content/ui/unlock-chain-right.png"
+const UNLOCK_PADLOCK_TEXTURE := "res://assets/content/ui/unlock-padlock.png"
+const ACHIEVEMENT_TOTAL_LEVEL_ART := "res://assets/content/achievements/achievement-total-level.png"
+const ACHIEVEMENT_CRIT_ART := "res://assets/content/achievements/achievement-crit.png"
+const ACHIEVEMENT_CREDIT_ART := "res://assets/content/achievements/achievement-credit.png"
+const ACHIEVEMENT_CUMULATIVE_MEDALS_ART := "res://assets/content/achievements/achievement-cumulative-medals.png"
+const LOG_CURRENCY_ICON_TEXTURE := "res://assets/icons/resources/log-currency.png"
+const PLANK_ICON_TEXTURE := "res://assets/icons/resources/plank.png"
+const UPGRADE_ARROW_ICON_TEXTURE := "res://assets/icons/upgrades/upgrade-arrow.png"
 const PASSIVE_LOG_TEXTURE_VISIBLE_MIN := Vector2(0.146, 0.246)
 const PASSIVE_LOG_TEXTURE_VISIBLE_MAX := Vector2(0.856, 0.755)
 const WOODCUTTING_LOG_MODULE_ID := "stack-logs-1"
@@ -2961,24 +2963,24 @@ const FISHING_REINFORCED_ROD_XP_MULT := 2.5
 const FISHING_STAR_ROD_XP_MULT := 3.0
 const FISHING_REFLECT_NET_XP_MULT := 4.0
 const FISHING_TOOL_DEFS := [
-	{"id": "hands", "name": "Bare hands", "archetype": "novice", "unlock": "starter", "art": "res://docs/assets/fishing/tools/tool-bare-hands.png"},
-	{"id": "net", "name": "Drag net", "archetype": "volume", "unlock": "Fishing Lv 3", "art": "res://docs/assets/fishing/tools/net-player.png"},
-	{"id": "line", "name": "Bamboo rod", "archetype": "steady", "unlock": "Fishing Lv 14", "art": "res://docs/assets/fishing/tools/tool-bamboo-rod.png"},
-	{"id": "reinforced_rod", "name": "Reinforced rod", "archetype": "steady", "unlock": "Fishing Lv 45", "art": "res://docs/assets/fishing/tools/tool-bamboo-rod.png"},
-	{"id": "star_rod", "name": "Star rod", "archetype": "steady", "unlock": "Fishing Lv 85", "art": "res://docs/assets/fishing/tools/tool-bamboo-rod.png"},
-	{"id": "boat", "name": "Boat", "archetype": "steady", "unlock": "Build at Fishing Lv 50", "art": "res://docs/assets/fishing/tools/tool-boat.png"},
-	{"id": "mirror", "name": "Reflection mirror", "archetype": "risk", "unlock": "Space Reflection", "art": "res://docs/assets/fishing/tools/reflection-net.png"},
+	{"id": "hands", "name": "Bare hands", "archetype": "novice", "unlock": "starter", "art": "res://assets/content/fishing/tools/tool-bare-hands.png"},
+	{"id": "net", "name": "Drag net", "archetype": "volume", "unlock": "Fishing Lv 3", "art": "res://assets/content/fishing/tools/net-player.png"},
+	{"id": "line", "name": "Bamboo rod", "archetype": "steady", "unlock": "Fishing Lv 14", "art": "res://assets/content/fishing/tools/tool-bamboo-rod.png"},
+	{"id": "reinforced_rod", "name": "Reinforced rod", "archetype": "steady", "unlock": "Fishing Lv 45", "art": "res://assets/content/fishing/tools/tool-bamboo-rod.png"},
+	{"id": "star_rod", "name": "Star rod", "archetype": "steady", "unlock": "Fishing Lv 85", "art": "res://assets/content/fishing/tools/tool-bamboo-rod.png"},
+	{"id": "boat", "name": "Boat", "archetype": "steady", "unlock": "Build at Fishing Lv 50", "art": "res://assets/content/fishing/tools/tool-boat.png"},
+	{"id": "mirror", "name": "Reflection mirror", "archetype": "risk", "unlock": "Space Reflection", "art": "res://assets/content/fishing/tools/reflection-net.png"},
 ]
-const FISHING_TOOL_ICON_SHEET := "res://docs/assets/fishing/tools/fishing-tool-icons-sheet.png"
-const FISHING_LOCATION_THUMBNAIL_SHEET := "res://docs/assets/fishing/locations/fishing-location-thumbnails-sheet.png"
+const FISHING_TOOL_ICON_SHEET := "res://assets/content/fishing/tools/fishing-tool-icons-sheet.png"
+const FISHING_LOCATION_THUMBNAIL_SHEET := "res://assets/content/fishing/locations/fishing-location-thumbnails-sheet.png"
 const FISHING_LOCATION_DEFS := {
 	"beach": [
-		{"id": "shallows", "name": "Shallows", "unlock": 1, "fish": "Minnow", "bg": "res://docs/assets/fishing/backgrounds/00-tide-pool-shallows.png"},
-		{"id": "rocky", "name": "Rocks", "unlock": 4, "fish": "Crab", "bg": "res://docs/assets/fishing/backgrounds/03-crab-pier.png"},
+		{"id": "shallows", "name": "Shallows", "unlock": 1, "fish": "Minnow", "bg": "res://assets/content/fishing/backgrounds/00-tide-pool-shallows.png"},
+		{"id": "rocky", "name": "Rocks", "unlock": 4, "fish": "Crab", "bg": "res://assets/content/fishing/backgrounds/03-crab-pier.png"},
 	],
 	"pier": [
-		{"id": "dock-cup", "name": "Dock Edge", "unlock": 7, "fish": "Minnow", "bg": "res://docs/assets/fishing/backgrounds/01-pond-dock.png"},
-		{"id": "piling-line", "name": "Piling Line", "unlock": 11, "fish": "Panfish", "bg": "res://docs/assets/fishing/backgrounds/01-pond-dock.png"},
+		{"id": "dock-cup", "name": "Dock Edge", "unlock": 7, "fish": "Minnow", "bg": "res://assets/content/fishing/backgrounds/01-pond-dock.png"},
+		{"id": "piling-line", "name": "Piling Line", "unlock": 11, "fish": "Panfish", "bg": "res://assets/content/fishing/backgrounds/01-pond-dock.png"},
 	],
 }
 const FISHING_TOOL_LOCATION_ACTIONS := {
@@ -3002,27 +3004,27 @@ const FISHING_TOOL_LOCATION_ACTIONS := {
 	},
 }
 const FISHING_ACTION_CATCH_TEXTURE_PATHS := {
-	"beach-shallows": "res://docs/assets/fishing/catches/00-minnow.png",
-	"beach-rocks": "res://docs/assets/fishing/catches/02-crab.png",
-	"reef-pot": "res://docs/assets/fishing/catches/02-crab.png",
-	"stormy-sea-ripple": "res://docs/assets/fishing/catches/14-shark.png",
-	"river-bend": "res://docs/assets/fishing/catches/03-trout.png",
-	"river-rapids": "res://docs/assets/fishing/catches/05-salmon.png",
-	"sewers-drain-gate": "res://docs/assets/fishing/catches/06-eel.png",
-	"sewers-tunnel-pool": "res://docs/assets/fishing/catches/06-eel.png",
-	"winter-lake-ice-hole": "res://docs/assets/fishing/catches/08-snowfish.png",
-	"reef-cage": "res://docs/assets/fishing/catches/07-lobster.png",
-	"reef-night-reef": "res://docs/assets/fishing/catches/10-reef-fish.png",
-	"reef-pearl-bed": "res://docs/assets/fishing/catches/09-pearl-oyster.png",
-	"sea-rowboat": "res://docs/assets/fishing/catches/04-bass.png",
-	"sea-open-water": "res://docs/assets/fishing/catches/12-tuna.png",
-	"sea-chum-line": "res://docs/assets/fishing/catches/10-reef-fish.png",
-	"stormy-sea-storm-line": "res://docs/assets/fishing/catches/19-storm-ray.png",
-	"deep-sea-wreck-drop": "res://docs/assets/fishing/catches/11-octopus.png",
-	"deep-sea-abyss": "res://docs/assets/fishing/catches/14-shark.png",
-	"deep-sea-trench": "res://docs/assets/fishing/catches/11-octopus.png",
-	"space-reflection": "res://docs/assets/fishing/catches/23-cosmic-starfish.png",
-	"space-starlight": "res://docs/assets/fishing/catches/23-cosmic-starfish.png",
+	"beach-shallows": "res://assets/content/fishing/catches/00-minnow.png",
+	"beach-rocks": "res://assets/content/fishing/catches/02-crab.png",
+	"reef-pot": "res://assets/content/fishing/catches/02-crab.png",
+	"stormy-sea-ripple": "res://assets/content/fishing/catches/14-shark.png",
+	"river-bend": "res://assets/content/fishing/catches/03-trout.png",
+	"river-rapids": "res://assets/content/fishing/catches/05-salmon.png",
+	"sewers-drain-gate": "res://assets/content/fishing/catches/06-eel.png",
+	"sewers-tunnel-pool": "res://assets/content/fishing/catches/06-eel.png",
+	"winter-lake-ice-hole": "res://assets/content/fishing/catches/08-snowfish.png",
+	"reef-cage": "res://assets/content/fishing/catches/07-lobster.png",
+	"reef-night-reef": "res://assets/content/fishing/catches/10-reef-fish.png",
+	"reef-pearl-bed": "res://assets/content/fishing/catches/09-pearl-oyster.png",
+	"sea-rowboat": "res://assets/content/fishing/catches/04-bass.png",
+	"sea-open-water": "res://assets/content/fishing/catches/12-tuna.png",
+	"sea-chum-line": "res://assets/content/fishing/catches/10-reef-fish.png",
+	"stormy-sea-storm-line": "res://assets/content/fishing/catches/19-storm-ray.png",
+	"deep-sea-wreck-drop": "res://assets/content/fishing/catches/11-octopus.png",
+	"deep-sea-abyss": "res://assets/content/fishing/catches/14-shark.png",
+	"deep-sea-trench": "res://assets/content/fishing/catches/11-octopus.png",
+	"space-reflection": "res://assets/content/fishing/catches/23-cosmic-starfish.png",
+	"space-starlight": "res://assets/content/fishing/catches/23-cosmic-starfish.png",
 }
 const FISHING_ACTION_FOOD_VALUES := {
 	"beach-shallows": 0.3,
@@ -3036,19 +3038,19 @@ const FISHING_ACTION_FOOD_VALUES := {
 	"space-reflection": 1.0,
 }
 const FISHING_CATCH_TEXTURE_PATHS := [
-	"res://docs/assets/fishing/catches/00-minnow.png",
-	"res://docs/assets/fishing/catches/01-clam.png",
-	"res://docs/assets/fishing/catches/02-crab.png",
-	"res://docs/assets/fishing/catches/03-trout.png",
-	"res://docs/assets/fishing/catches/04-bass.png",
-	"res://docs/assets/fishing/catches/05-salmon.png",
-	"res://docs/assets/fishing/catches/06-eel.png",
-	"res://docs/assets/fishing/catches/07-lobster.png",
-	"res://docs/assets/fishing/catches/08-snowfish.png",
-	"res://docs/assets/fishing/catches/09-pearl-oyster.png",
-	"res://docs/assets/fishing/catches/10-reef-fish.png",
-	"res://docs/assets/fishing/catches/11-octopus.png",
-	"res://docs/assets/fishing/catches/12-tuna.png",
+	"res://assets/content/fishing/catches/00-minnow.png",
+	"res://assets/content/fishing/catches/01-clam.png",
+	"res://assets/content/fishing/catches/02-crab.png",
+	"res://assets/content/fishing/catches/03-trout.png",
+	"res://assets/content/fishing/catches/04-bass.png",
+	"res://assets/content/fishing/catches/05-salmon.png",
+	"res://assets/content/fishing/catches/06-eel.png",
+	"res://assets/content/fishing/catches/07-lobster.png",
+	"res://assets/content/fishing/catches/08-snowfish.png",
+	"res://assets/content/fishing/catches/09-pearl-oyster.png",
+	"res://assets/content/fishing/catches/10-reef-fish.png",
+	"res://assets/content/fishing/catches/11-octopus.png",
+	"res://assets/content/fishing/catches/12-tuna.png",
 ]
 const ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS := 0.26
 const PASSIVE_MODULE_CARD_HEIGHT := 940
@@ -3095,9 +3097,9 @@ const STAMINA_TIP_DISCOVERY_HOLD_SECONDS := 4.0
 const LOCKED_ACTIVITY_PREVIEW_XP_THRESHOLD := 10
 const BOTTOM_TUTORIAL_TIP_FONT_SIZE := 64
 const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
-const ACTIVITY_JUMP_TOP_TEXTURE := "res://docs/assets/ui/jump-top-circle.png"
-const ACTIVITY_JUMP_BOTTOM_TEXTURE := "res://docs/assets/ui/jump-bottom-circle.png"
-const ACTIVITY_BACK_TEXTURE := "res://docs/assets/ui/back-arrow.png"
+const ACTIVITY_JUMP_TOP_TEXTURE := "res://assets/content/ui/jump-top-circle.png"
+const ACTIVITY_JUMP_BOTTOM_TEXTURE := "res://assets/content/ui/jump-bottom-circle.png"
+const ACTIVITY_BACK_TEXTURE := "res://assets/content/ui/back-arrow.png"
 const ACTIVITY_JUMP_ARROW_SIZE := Vector2(296, 296)
 const ACTIVITY_BACK_BUTTON_SIZE := Vector2(460, 140)
 const ACTIVITY_BACK_ARROW_SIZE := Vector2(250, 74)
@@ -3108,7 +3110,7 @@ const ACTIVITY_JUMP_ARROW_FADE_IN_SECONDS := 0.10
 const ACTIVITY_JUMP_ARROW_FADE_OUT_SECONDS := 0.22
 const ACTIVITY_JUMP_ARROW_EDGE_EPSILON := 6
 const ACTIVITY_JUMP_ARROW_MIN_MODULES := 6
-const LEADERBOARD_SUBMIT_INTERVAL_SECONDS := 60 * 60
+const LEADERBOARD_SUBMIT_INTERVAL_SECONDS := 15 * 60
 const LEADERBOARD_ICON := "res://assets/ui/leaderboard-podium-icon.png"
 const FIREBASE_DATABASE_URL := ""
 const FIREBASE_WEB_API_KEY := ""
@@ -3128,6 +3130,7 @@ const CHAT_MOBILE_SEND_MAX_DRAG := 42.0
 const CHAT_STRIP_VISIBLE_COUNT := 2
 const CHAT_FULL_VISIBLE_COUNT := 25
 const CHAT_STRIP_HEIGHT := 260
+const CHAT_KEYBOARD_PREVIEW_HEIGHT := 178
 const CHAT_STRIP_EMPTY_GRACE_MSEC := 2200
 const CHAT_STRIP_HIDE_GRACE_MSEC := 800
 const CHAT_STRIP_ICON := "res://assets/ui/chat-speech-bubble.png"
@@ -3163,8 +3166,8 @@ const LEADERBOARD_TOP_COUNT := 50
 const LEADERBOARD_PLAYER_OVERLAY_HEIGHT := 470
 const CHAT_BOTTOM_SCROLL_PAD := 420
 const LEADERBOARD_CATEGORY_TOTAL_LEVEL := "total_level"
+const LEADERBOARD_CATEGORY_TOTAL_XP_COMPAT := "total_xp"
 const LEADERBOARD_CATEGORY_MEDALS := "medals_earned"
-const LEADERBOARD_CATEGORY_TOTAL_XP := "total_xp"
 const LEADERBOARD_CATEGORY_ELITE_HEAVENLY := "elite_heavenly"
 const LEADERBOARD_CATEGORY_SKILL_PREFIX := "skill_xp:"
 const LEADERBOARD_HTTP_HEADER_JSON := "Content-Type: application/json"
@@ -3179,8 +3182,6 @@ const AD_BONUS_WARN_THRESHOLD_SECONDS := 4 * 60 * 60
 const AD_BONUS_MAX_SECONDS := 6 * 60 * 60
 const AD_BONUS_XP_MULT := 0.10
 const AD_BONUS_SPEED_MULT := 0.10
-const TESTING_ADS_DISABLED := true
-const TESTER_ADS_DISABLED_MESSAGE := "I've disabled ads for testers! Here's your free bonus."
 const ACTIVITY_STREAK_BONUS_STEP := 5
 const ACTIVITY_NORMAL_CRIT_CHANCE := 0.01
 const ACTIVITY_STREAK_CRIT_CHANCE := 0.10
@@ -3595,6 +3596,7 @@ var settings_tab: Button
 var nav_pop_tweens := {}
 var leaderboard_category_id := LEADERBOARD_CATEGORY_TOTAL_LEVEL
 var leaderboard_last_submitted_score := 0
+var leaderboard_last_submitted_total_xp := 0
 var leaderboard_last_submitted_scores_by_category := {}
 var leaderboard_last_submit_unix := 0
 var leaderboard_display_name := ""
@@ -3608,6 +3610,7 @@ var leaderboard_fetch_unix_by_category := {}
 var leaderboard_fetch_retry_unix_by_category := {}
 var leaderboard_auth_request: HTTPRequest
 var leaderboard_fetch_request: HTTPRequest
+var leaderboard_total_xp_fetch_request: HTTPRequest
 var leaderboard_submit_request: HTTPRequest
 var leaderboard_name_claim_request: HTTPRequest
 var profile_reference_update_request: HTTPRequest
@@ -3623,6 +3626,8 @@ var leaderboard_config_database_url := ""
 var leaderboard_config_web_api_key := ""
 var leaderboard_fetch_in_flight := false
 var leaderboard_fetch_category_id := ""
+var leaderboard_total_xp_fetch_in_flight := false
+var leaderboard_pending_total_rows := []
 var leaderboard_submit_in_flight := false
 var leaderboard_name_claim_in_flight := false
 var leaderboard_name_claim_pending_name := ""
@@ -3668,6 +3673,8 @@ var chat_overlay_layer: CanvasLayer
 var fishing_collection_canvas: CanvasLayer
 var chat_overlay: ColorRect
 var chat_keyboard_fill: ColorRect
+var chat_keyboard_preview: PanelContainer
+var chat_keyboard_preview_label: Label
 var chat_overlay_body: VBoxContainer
 var chat_overlay_scroll: MobileScrollContainer
 var chat_keyboard_lift_active := false
@@ -3676,7 +3683,9 @@ var chat_keyboard_lift_hold_seconds := 0.0
 var chat_keyboard_lift_last_height := 0.0
 var chat_keyboard_lift_target_pixels := 0.0
 var chat_keyboard_lift_viewport_height := 0.0
+var chat_keyboard_lift_window_height := 0.0
 var chat_keyboard_lift_zero_seconds := 0.0
+var chat_keyboard_preview_keyboard_visible := false
 var chat_keyboard_was_visible := false
 var chat_keyboard_close_submit_done := false
 var chat_keyboard_focus_active := false
@@ -3895,8 +3904,8 @@ func _ready() -> void:
 	_set_boot_warmup_progress("Building game...", 0.10)
 	_build_audio()
 	_init_ads()
-	_build_ui()
 	_build_leaderboard_http()
+	_build_ui()
 	load_game()
 	if _pending_crash_report_exists():
 		last_result = "Crash report ready in Settings."
@@ -3956,6 +3965,9 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _input(event: InputEvent) -> void:
 	_note_player_input(event)
+	if _route_system_back_input(event):
+		get_viewport().set_input_as_handled()
+		return
 	if boot_warmup_active:
 		get_viewport().set_input_as_handled()
 		return
@@ -4667,7 +4679,9 @@ func _set_activity_lock_page_scrolling_disabled(disabled: bool) -> void:
 
 
 func _notification(what: int) -> void:
-	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+		_handle_system_back_request()
+	elif what == NOTIFICATION_WM_CLOSE_REQUEST:
 		save_game()
 		_write_crash_session_marker("clean")
 		_prepare_for_shutdown()
@@ -4780,6 +4794,10 @@ func _build_leaderboard_http() -> void:
 	leaderboard_fetch_request.timeout = 15.0
 	leaderboard_fetch_request.request_completed.connect(_on_leaderboard_fetch_completed)
 	add_child(leaderboard_fetch_request)
+	leaderboard_total_xp_fetch_request = HTTPRequest.new()
+	leaderboard_total_xp_fetch_request.timeout = 15.0
+	leaderboard_total_xp_fetch_request.request_completed.connect(_on_leaderboard_total_xp_fetch_completed)
+	add_child(leaderboard_total_xp_fetch_request)
 	leaderboard_submit_request = HTTPRequest.new()
 	leaderboard_submit_request.timeout = 15.0
 	leaderboard_submit_request.request_completed.connect(_on_leaderboard_submit_completed)
@@ -4814,7 +4832,7 @@ func _leaderboard_load_firebase_config() -> void:
 		return
 	var parsed = JSON.parse_string(file.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
-		push_warning("Firebase leaderboard config must be a JSON object.")
+		push_warning("Online leaderboard config must be a JSON object.")
 		return
 	var data := parsed as Dictionary
 	leaderboard_config_database_url = str(data.get("database_url", "")).strip_edges()
@@ -4965,10 +4983,13 @@ func _firebase_error_detail(body: PackedByteArray) -> String:
 
 func _leaderboard_ensure_auth() -> bool:
 	if not _leaderboard_firebase_enabled():
-		leaderboard_status_message = "Firebase URL and Web API key are not configured yet."
+		leaderboard_status_message = "Online services are not connected yet."
 		return false
 	if _leaderboard_auth_ready():
 		return true
+	if leaderboard_auth_request == null or not is_instance_valid(leaderboard_auth_request):
+		leaderboard_status_message = "Leaderboard login is still starting."
+		return false
 	if leaderboard_auth_in_flight:
 		return false
 	var retry_wait := _leaderboard_auth_retry_wait_seconds()
@@ -4977,7 +4998,7 @@ func _leaderboard_ensure_auth() -> bool:
 		return false
 	var api_key := _leaderboard_firebase_api_key()
 	if api_key.is_empty():
-		leaderboard_status_message = "Firebase Web API key is not configured yet."
+		leaderboard_status_message = "Online services are not connected yet."
 		return false
 	leaderboard_auth_in_flight = true
 	if not leaderboard_auth_refresh_token.is_empty():
@@ -5005,14 +5026,14 @@ func _leaderboard_ensure_auth() -> bool:
 			return false
 	leaderboard_auth_in_flight = false
 	leaderboard_auth_mode = ""
-	_leaderboard_note_auth_failure("Leaderboard auth failed to start.")
+	_leaderboard_note_auth_failure("Leaderboard login failed to start.")
 	return false
 
 
 func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := false) -> void:
 	var valid_id := _leaderboard_valid_category_id(category_id)
 	if not _leaderboard_firebase_enabled():
-		leaderboard_status_message = "Firebase URL and Web API key are not configured yet."
+		leaderboard_status_message = "Online services are not connected yet."
 		return
 	var now := _unix_now()
 	var last_success_fetch := int(leaderboard_fetch_unix_by_category.get(valid_id, 0))
@@ -5022,7 +5043,7 @@ func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := fa
 		return
 	if not _leaderboard_ensure_auth():
 		return
-	if leaderboard_fetch_in_flight:
+	if leaderboard_fetch_in_flight or leaderboard_total_xp_fetch_in_flight:
 		return
 	leaderboard_fetch_in_flight = true
 	leaderboard_fetch_category_id = valid_id
@@ -5040,9 +5061,59 @@ func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := fa
 		_leaderboard_note_fetch_failure(valid_id, "Leaderboard read failed: %s" % error_string(err))
 
 
+func _leaderboard_finalize_fetch_rows(category_id: String, rows: Array) -> void:
+	if category_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL:
+		leaderboard_pending_total_rows = rows
+		var query := "orderBy=%%22score%%22&limitToLast=%s" % LEADERBOARD_TOP_COUNT
+		leaderboard_total_xp_fetch_in_flight = true
+		var err := leaderboard_total_xp_fetch_request.request(
+			_leaderboard_firebase_url("scores/%s" % LEADERBOARD_CATEGORY_TOTAL_XP_COMPAT, _leaderboard_authenticated_query(query)),
+			PackedStringArray([LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+			HTTPClient.METHOD_GET
+		)
+		if err == OK:
+			return
+		leaderboard_total_xp_fetch_in_flight = false
+		leaderboard_pending_total_rows = []
+	_leaderboard_store_fetch_rows(category_id, rows)
+
+
+func _leaderboard_store_fetch_rows(category_id: String, rows: Array) -> void:
+	leaderboard_rows_by_category[category_id] = rows
+	leaderboard_fetch_unix_by_category[category_id] = _unix_now()
+	var had_retry_cooldown := leaderboard_fetch_retry_unix_by_category.has(category_id)
+	if had_retry_cooldown:
+		leaderboard_fetch_retry_unix_by_category.erase(category_id)
+		save_game()
+	leaderboard_status_message = "Leaderboard loaded."
+	if current_screen == "leaderboard" and category_id == leaderboard_category_id:
+		_render_screen()
+
+
+func _on_leaderboard_total_xp_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	leaderboard_total_xp_fetch_in_flight = false
+	var rows := leaderboard_pending_total_rows
+	leaderboard_pending_total_rows = []
+	if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+		var parsed = JSON.parse_string(body.get_string_from_utf8())
+		var xp_by_player := {}
+		if typeof(parsed) == TYPE_DICTIONARY:
+			for raw_player_id in (parsed as Dictionary).keys():
+				var entry = (parsed as Dictionary).get(raw_player_id, {})
+				if typeof(entry) == TYPE_DICTIONARY:
+					xp_by_player[str(raw_player_id)] = maxi(0, int((entry as Dictionary).get("score", 0)))
+		for i in range(rows.size()):
+			var row := rows[i] as Dictionary
+			if int(row.get("total_xp", 0)) <= 0:
+				row["total_xp"] = int(xp_by_player.get(str(row.get("player_id", "")), 0))
+			row["score_text"] = _leaderboard_format_score(LEADERBOARD_CATEGORY_TOTAL_LEVEL, int(row.get("score", 0)), 0, int(row.get("total_xp", 0)))
+			rows[i] = row
+	_leaderboard_store_fetch_rows(LEADERBOARD_CATEGORY_TOTAL_LEVEL, rows)
+
+
 func _leaderboard_submit_scores() -> void:
 	if not _leaderboard_firebase_enabled():
-		leaderboard_status_message = "Firebase URL and Web API key are not configured yet."
+		leaderboard_status_message = "Online services are not connected yet."
 		return
 	if not _leaderboard_ensure_auth():
 		return
@@ -5065,13 +5136,16 @@ func _leaderboard_submit_scores() -> void:
 		var score := maxi(0, _leaderboard_score_for_category(category_id))
 		var last_score := int(leaderboard_last_submitted_scores_by_category.get(category_id, 0))
 		if score <= 0 or score <= last_score:
-			continue
+			if not (category_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL and _leaderboard_score() > leaderboard_last_submitted_total_xp):
+				continue
 		var category_key := _leaderboard_category_key(category_id)
 		updates["scores/%s/%s" % [category_key, leaderboard_player_id]] = {
 			"name": leaderboard_display_name,
 			"name_key": leaderboard_name_key,
 			"avatar_index": leaderboard_avatar_index,
 			"score": score,
+			"skill_level": _leaderboard_skill_level_for_category(category_id),
+			"total_xp": _leaderboard_total_xp_for_category(category_id),
 			"updated_at": now_msec,
 			"submitted_at_unix": now_unix
 		}
@@ -5139,7 +5213,8 @@ func _on_leaderboard_fetch_completed(result: int, response_code: int, _headers: 
 				"name": _sanitize_leaderboard_display_name(str(row.get("name", "Player"))),
 				"name_key": _sanitize_leaderboard_name_key(str(row.get("name_key", ""))),
 				"score": score,
-				"score_text": _leaderboard_format_score(category_id, score),
+				"total_xp": maxi(0, int(row.get("total_xp", 0))),
+				"score_text": _leaderboard_format_score(category_id, score, maxi(0, int(row.get("skill_level", 0))), maxi(0, int(row.get("total_xp", 0)))),
 				"avatar_index": _valid_profile_avatar_index(int(row.get("avatar_index", 0))),
 				"is_player": player_id == leaderboard_player_id
 			})
@@ -5201,6 +5276,9 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 		_rebuild_profile_overlay()
 	if current_screen == "leaderboard":
 		_leaderboard_fetch_category(leaderboard_category_id)
+	if _chat_strip_visible_on_current_screen():
+		_chat_stream_connect(true)
+		_render_chat_if_visible()
 	if _leaderboard_submit_ready():
 		_leaderboard_submit_scores()
 	if not chat_pending_send_after_auth.is_empty():
@@ -5214,7 +5292,7 @@ func _claim_leaderboard_name(display_name: String) -> void:
 		return
 	if not _leaderboard_firebase_enabled():
 		if profile_status_label != null and is_instance_valid(profile_status_label):
-			profile_status_label.text = "Firebase URL and Web API key are not configured yet."
+			profile_status_label.text = "Online services are not connected yet."
 		return
 	if not _leaderboard_ensure_auth():
 		if profile_status_label != null and is_instance_valid(profile_status_label):
@@ -5287,18 +5365,28 @@ func _on_leaderboard_name_claim_completed(result: int, response_code: int, _head
 	_rebuild_profile_overlay()
 	if current_screen == "leaderboard":
 		_render_screen()
+	if _leaderboard_submit_ready():
+		_leaderboard_submit_scores()
 
 
-func _on_leaderboard_submit_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
+func _on_leaderboard_submit_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
 	leaderboard_submit_in_flight = false
 	if result != HTTPRequest.RESULT_SUCCESS:
 		_leaderboard_note_submit_failure("Leaderboard write failed.")
 		return
 	if response_code < 200 or response_code >= 300:
-		_leaderboard_note_submit_failure("Leaderboard write returned HTTP %s." % response_code)
+		var detail := _firebase_error_detail(body)
+		if response_code == 401 or response_code == 403:
+			leaderboard_auth_id_token = ""
+			leaderboard_auth_expires_unix = 0
+		if not detail.is_empty():
+			_leaderboard_note_submit_failure("Leaderboard write returned HTTP %s: %s" % [response_code, detail])
+		else:
+			_leaderboard_note_submit_failure("Leaderboard write returned HTTP %s." % response_code)
 		return
 	leaderboard_last_submit_unix = _unix_now()
 	leaderboard_last_submitted_score = _leaderboard_score()
+	leaderboard_last_submitted_total_xp = _leaderboard_score()
 	for raw_category_id in leaderboard_last_submit_payload_categories:
 		var category_id := _leaderboard_valid_category_id(str(raw_category_id))
 		leaderboard_last_submitted_scores_by_category[category_id] = _leaderboard_score_for_category(category_id)
@@ -5318,13 +5406,14 @@ func _on_profile_reference_update_completed(result: int, response_code: int, _he
 
 func _chat_stream_connect(force_reconnect := false) -> void:
 	if not _leaderboard_firebase_enabled():
-		chat_status_message = "Firebase URL and Web API key are not configured yet."
+		chat_status_message = "Online chat is not connected yet."
 		return
 	var now := _unix_now()
 	var visible_count := _chat_target_visible_count()
 	if chat_stream_connected and chat_stream_visible_count >= visible_count and not force_reconnect:
 		return
-	if not force_reconnect and chat_stream_next_connect_unix > now:
+	var upgrading_visible_count := visible_count > chat_stream_visible_count and (chat_stream_connected or chat_stream_connecting or chat_stream_request_sent)
+	if not force_reconnect and not upgrading_visible_count and chat_stream_next_connect_unix > now:
 		return
 	if not _leaderboard_ensure_auth():
 		chat_status_message = "Connecting chat login..."
@@ -5407,7 +5496,7 @@ func _process_chat_live_sync(delta: float) -> void:
 
 func _chat_send(raw_text: String) -> void:
 	if not _leaderboard_firebase_enabled():
-		chat_status_message = "Firebase URL and Web API key are not configured yet."
+		chat_status_message = "Online chat is not connected yet."
 		_render_chat_if_visible()
 		return
 	if not _leaderboard_ensure_auth():
@@ -5494,9 +5583,9 @@ func _on_chat_send_completed(result: int, response_code: int, _headers: PackedSt
 		_chat_restore_failed_send()
 		var detail := _firebase_error_detail(body)
 		if response_code == 401 or response_code == 403:
-			var message := "Firebase rejected chat write HTTP %s. Check Anonymous Auth and RTDB rules." % response_code
+			var message := "Online chat rejected this message. Please try again later."
 			if not detail.is_empty():
-				message = "Firebase rejected chat write HTTP %s: %s" % [response_code, detail]
+				message = "Online chat rejected this message: %s" % detail
 			_chat_note_send_rejected(message)
 			_render_chat_if_visible()
 			return
@@ -5582,18 +5671,21 @@ func _chat_stream_dispatch_event() -> void:
 	var parsed = JSON.parse_string(data_text)
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
-	_chat_apply_stream_payload(parsed as Dictionary)
+	_chat_apply_stream_payload(parsed as Dictionary, event_name)
 	chat_status_message = "Global chat is live."
 	_render_chat_if_visible()
 
 
-func _chat_apply_stream_payload(payload: Dictionary) -> void:
+func _chat_apply_stream_payload(payload: Dictionary, event_name := "") -> void:
 	var path := str(payload.get("path", "/"))
 	var data = payload.get("data", null)
+	var is_patch_event := event_name == "patch"
 	if path == "/":
-		if typeof(data) == TYPE_DICTIONARY:
+		if typeof(data) == TYPE_DICTIONARY and is_patch_event:
+			_chat_merge_rows(data as Dictionary)
+		elif typeof(data) == TYPE_DICTIONARY:
 			_chat_replace_rows(data as Dictionary)
-		elif data == null:
+		elif data == null and not is_patch_event:
 			chat_rows.clear()
 		return
 	var clean_path := path.substr(1) if path.begins_with("/") else path
@@ -5607,7 +5699,12 @@ func _chat_apply_stream_payload(payload: Dictionary) -> void:
 		_chat_remove_row(message_id)
 		return
 	if typeof(data) == TYPE_DICTIONARY:
-		if parts.size() == 1:
+		if is_patch_event and parts.size() == 1:
+			var existing := _chat_existing_row(message_id)
+			for key in (data as Dictionary).keys():
+				existing[str(key)] = (data as Dictionary).get(key)
+			_chat_upsert_row(message_id, existing)
+		elif parts.size() == 1:
 			_chat_upsert_row(message_id, data as Dictionary)
 		else:
 			var existing := _chat_existing_row(message_id)
@@ -5627,6 +5724,20 @@ func _chat_replace_rows(data: Dictionary) -> void:
 		if not row.is_empty():
 			rows.append(row)
 	chat_rows = rows
+	_chat_sort_and_trim_rows()
+
+
+func _chat_merge_rows(data: Dictionary) -> void:
+	for raw_message_id in data.keys():
+		var message_id := str(raw_message_id)
+		var entry = data.get(raw_message_id, null)
+		if entry == null:
+			_chat_remove_row(message_id)
+		elif typeof(entry) == TYPE_DICTIONARY:
+			var existing := _chat_existing_row(message_id)
+			for key in (entry as Dictionary).keys():
+				existing[str(key)] = (entry as Dictionary).get(key)
+			_chat_upsert_row(message_id, existing)
 	_chat_sort_and_trim_rows()
 
 
@@ -5950,7 +6061,7 @@ func _build_home_page() -> void:
 	margin.add_child(stack)
 	
 	var logo := TextureRect.new()
-	logo.texture = _texture("res://docs/assets/logo/idle-elite-logo-chroma.png")
+	logo.texture = _texture("res://assets/content/logo/idle-elite-logo-chroma.png")
 	logo.custom_minimum_size = Vector2(0, 560)
 	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -5976,7 +6087,7 @@ func _make_level_snapshot() -> Control:
 	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	total_row.add_theme_constant_override("separation", 34)
 	stack.add_child(total_row)
-	total_row.add_child(_image("res://docs/assets/ui/total-lv-bargraph.png", Vector2(150, 150)))
+	total_row.add_child(_image("res://assets/content/ui/total-lv-bargraph.png", Vector2(150, 150)))
 	home_total_label = _label("", 108, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	total_row.add_child(home_total_label)
 	
@@ -5991,7 +6102,7 @@ func _make_level_snapshot() -> Control:
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", 38)
 		rows.add_child(row)
-		row.add_child(_image("res://docs/assets/icons/%s.png" % skill_id, Vector2(144, 144)))
+		row.add_child(_image("res://assets/content/icons/%s.png" % skill_id, Vector2(144, 144)))
 		var value := _label("", 78, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		value.custom_minimum_size = Vector2(520, 0)
 		row.add_child(value)
@@ -6057,7 +6168,7 @@ func _build_achievements(parent: PanelContainer) -> void:
 	achievement_title_row.add_theme_constant_override("separation", 28)
 	achievement_title_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	achievement_button_margin.add_child(achievement_title_row)
-	achievement_title_row.add_child(_image("res://docs/assets/ui/motivation-star.png", Vector2(100, 100)))
+	achievement_title_row.add_child(_image("res://assets/content/ui/motivation-star.png", Vector2(100, 100)))
 	var achievement_button_label := _label("Achievements", 104, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	achievement_button_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	achievement_button_label.add_theme_constant_override("outline_size", 20)
@@ -6105,7 +6216,7 @@ func _build_achievements(parent: PanelContainer) -> void:
 	total_section.alignment = BoxContainer.ALIGNMENT_CENTER
 	total_section.add_theme_constant_override("separation", 40)
 	total_margin.add_child(total_section)
-	total_section.add_child(_image("res://docs/assets/ui/total-lv-bargraph.png", Vector2(210, 210)))
+	total_section.add_child(_image("res://assets/content/ui/total-lv-bargraph.png", Vector2(210, 210)))
 	achievement_total_level_label = _label("", 122, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	total_section.add_child(achievement_total_level_label)
 
@@ -6140,7 +6251,7 @@ func _build_achievements(parent: PanelContainer) -> void:
 		header.alignment = BoxContainer.ALIGNMENT_CENTER
 		header.add_theme_constant_override("separation", 34)
 		skill_stack.add_child(header)
-		var icon := _image("res://docs/assets/icons/%s.png" % skill_id, Vector2(178, 178))
+		var icon := _image("res://assets/content/icons/%s.png" % skill_id, Vector2(178, 178))
 		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		header.add_child(icon)
 
@@ -6174,7 +6285,7 @@ func _build_hero(parent: PanelContainer) -> void:
 	scene.add_child(stage)
 	
 	var hero := TextureRect.new()
-	hero.texture = _texture("res://docs/assets/characters/stick-hero.png")
+	hero.texture = _texture("res://assets/content/characters/stick-hero.png")
 	hero.anchor_left = 0.03
 	hero.anchor_right = 0.80
 	hero.anchor_top = 0.30
@@ -6191,7 +6302,7 @@ func _build_hero(parent: PanelContainer) -> void:
 	bubble.anchor_bottom = 0.40
 	stage.add_child(bubble)
 	var bubble_art := TextureRect.new()
-	bubble_art.texture = _texture("res://docs/assets/ui/speech-bubble-down.png")
+	bubble_art.texture = _texture("res://assets/content/ui/speech-bubble-down.png")
 	bubble_art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bubble_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bubble_art.stretch_mode = TextureRect.STRETCH_SCALE
@@ -6213,10 +6324,10 @@ func _build_hero(parent: PanelContainer) -> void:
 	tools.alignment = BoxContainer.ALIGNMENT_CENTER
 	tools.add_theme_constant_override("separation", 58)
 	stage.add_child(tools)
-	var settings := _icon_button("res://docs/assets/ui/settings-gear-simple.png")
+	var settings := _icon_button("res://assets/content/ui/settings-gear-simple.png")
 	settings.pressed.connect(_open_settings)
 	tools.add_child(settings)
-	var discord := _icon_button("res://docs/assets/ui/discord-simple.png")
+	var discord := _icon_button("res://assets/content/ui/discord-simple.png")
 	discord.pressed.connect(_settings_discord_pressed)
 	tools.add_child(discord)
 
@@ -6246,18 +6357,18 @@ func _build_nav_bar() -> void:
 	leaderboard_tab.add_theme_constant_override("icon_max_width", 220)
 	leaderboard_tab.pressed.connect(_show_leaderboard)
 	row.add_child(leaderboard_tab)
-	hero_tab = _nav_button("res://docs/assets/ui/motivation-star.png")
+	hero_tab = _nav_button("res://assets/content/ui/motivation-star.png")
 	hero_tab.custom_minimum_size = Vector2(318, 318)
 	hero_tab.add_theme_constant_override("icon_max_width", 244)
 	hero_tab.pressed.connect(_show_home)
 	row.add_child(hero_tab)
-	skills_tab = _nav_button("res://docs/assets/ui/total-lv-bargraph.png")
-	skills_tab.pressed.connect(_show_skills)
+	skills_tab = _nav_button("res://assets/content/ui/total-lv-bargraph.png")
+	skills_tab.pressed.connect(_show_skills_module)
 	row.add_child(skills_tab)
-	settings_tab = _nav_button("res://docs/assets/ui/settings-gear-simple.png")
+	settings_tab = _nav_button("res://assets/content/ui/settings-gear-simple.png")
 	settings_tab.pressed.connect(_show_settings)
 	row.add_child(settings_tab)
-	shop_tab = _nav_button("res://docs/assets/ui/shop.png")
+	shop_tab = _nav_button("res://assets/content/ui/shop.png")
 	shop_tab.add_theme_constant_override("icon_max_width", 232)
 	shop_tab.pressed.connect(_show_shop)
 	row.add_child(shop_tab)
@@ -6337,6 +6448,27 @@ func _build_chat_overlay() -> void:
 	chat_overlay_body.set_anchors_preset(Control.PRESET_FULL_RECT)
 	chat_overlay_body.add_theme_constant_override("separation", 0)
 	chat_overlay.add_child(chat_overlay_body)
+	chat_keyboard_preview = PanelContainer.new()
+	chat_keyboard_preview.anchor_left = 0.0
+	chat_keyboard_preview.anchor_right = 1.0
+	chat_keyboard_preview.anchor_top = 1.0
+	chat_keyboard_preview.anchor_bottom = 1.0
+	chat_keyboard_preview.offset_left = 46.0
+	chat_keyboard_preview.offset_right = -46.0
+	chat_keyboard_preview.offset_top = -CHAT_KEYBOARD_PREVIEW_HEIGHT
+	chat_keyboard_preview.offset_bottom = 0.0
+	chat_keyboard_preview.z_index = MODAL_OVERLAY_Z
+	chat_keyboard_preview.visible = false
+	chat_keyboard_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chat_keyboard_preview.add_theme_stylebox_override("panel", _chat_keyboard_preview_style())
+	chat_overlay.add_child(chat_keyboard_preview)
+	chat_keyboard_preview_label = _label("", 62, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_keyboard_preview_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	chat_keyboard_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	chat_keyboard_preview_label.clip_text = true
+	chat_keyboard_preview_label.custom_minimum_size = Vector2(0, CHAT_KEYBOARD_PREVIEW_HEIGHT - 34)
+	chat_keyboard_preview_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chat_keyboard_preview.add_child(chat_keyboard_preview_label)
 
 
 func _on_chat_strip_gui_input(event: InputEvent) -> void:
@@ -6397,6 +6529,7 @@ func _close_chat_overlay() -> void:
 	if chat_keyboard_fill != null and is_instance_valid(chat_keyboard_fill):
 		chat_keyboard_fill.visible = false
 		chat_keyboard_fill.offset_top = 0.0
+	_hide_chat_keyboard_preview()
 	if _chat_strip_visible_on_current_screen():
 		_update_chat_strip()
 
@@ -6646,7 +6779,7 @@ func _chat_expanded_composer() -> Control:
 		_show_leaderboard()
 	)
 	ribbon_row.add_child(chat_leaderboard)
-	var chat_home := _nav_button("res://docs/assets/ui/motivation-star.png")
+	var chat_home := _nav_button("res://assets/content/ui/motivation-star.png")
 	chat_home.custom_minimum_size = Vector2(318, 318)
 	chat_home.add_theme_constant_override("icon_max_width", 244)
 	chat_home.pressed.connect(func():
@@ -6654,19 +6787,19 @@ func _chat_expanded_composer() -> Control:
 		_show_home()
 	)
 	ribbon_row.add_child(chat_home)
-	var chat_skills := _nav_button("res://docs/assets/ui/total-lv-bargraph.png")
+	var chat_skills := _nav_button("res://assets/content/ui/total-lv-bargraph.png")
 	chat_skills.pressed.connect(func():
 		_close_chat_overlay()
-		_show_skills()
+		_show_skills_module()
 	)
 	ribbon_row.add_child(chat_skills)
-	var chat_settings := _nav_button("res://docs/assets/ui/settings-gear-simple.png")
+	var chat_settings := _nav_button("res://assets/content/ui/settings-gear-simple.png")
 	chat_settings.pressed.connect(func():
 		_close_chat_overlay()
 		_show_settings()
 	)
 	ribbon_row.add_child(chat_settings)
-	var chat_shop := _nav_button("res://docs/assets/ui/shop.png")
+	var chat_shop := _nav_button("res://assets/content/ui/shop.png")
 	chat_shop.add_theme_constant_override("icon_max_width", 232)
 	chat_shop.pressed.connect(func():
 		_close_chat_overlay()
@@ -6908,7 +7041,7 @@ func _build_achievements_overlay() -> void:
 	achievements_tab_buttons["buffs"] = buffs_tab
 
 	achievements_hide_completed = CheckBox.new()
-	achievements_hide_completed.text = "Hide completed achievements"
+	achievements_hide_completed.text = "Show completed achievements"
 	achievements_hide_completed.button_pressed = false
 	achievements_hide_completed.add_theme_font_size_override("font_size", 60)
 	achievements_hide_completed.add_theme_color_override("font_color", COLOR_INK)
@@ -7110,7 +7243,7 @@ func _render_settings_page() -> void:
 	tutorial.add_theme_stylebox_override("pressed", _paper_button_style(Color("#35c756"), 54, 72, true))
 	tutorial.pressed.connect(_start_tutorial)
 	stack.add_child(tutorial)
-	var discord := _settings_page_button("Contact the dev", "res://docs/assets/ui/discord-simple.png", 1320, 220, 286)
+	var discord := _settings_page_button("Contact the dev", "res://assets/content/ui/discord-simple.png", 1320, 220, 286)
 	discord.add_theme_stylebox_override("normal", _paper_button_style(COLOR_BLUE, 54))
 	discord.add_theme_stylebox_override("hover", _paper_button_style(COLOR_BLUE, 54))
 	discord.add_theme_stylebox_override("pressed", _paper_button_style(COLOR_BLUE.darkened(0.10), 54, 72, true))
@@ -7150,7 +7283,7 @@ func _render_shop_page() -> void:
 	var top_spacer := Control.new()
 	top_spacer.custom_minimum_size = Vector2(0, 106)
 	stack.add_child(top_spacer)
-	var title_text := "Rewarded Ad"
+	var title_text := "Watch Ad"
 	var title := _label(title_text, 112, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_font_override("font", app_bold_font)
 	stack.add_child(title)
@@ -7273,12 +7406,12 @@ func _leaderboard_player_overlay() -> Control:
 
 func _leaderboard_category_dropdown() -> OptionButton:
 	var dropdown := OptionButton.new()
-	dropdown.custom_minimum_size = Vector2(1180, 230)
+	dropdown.custom_minimum_size = Vector2(1360, 280)
 	dropdown.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	dropdown.focus_mode = Control.FOCUS_NONE
 	dropdown.fit_to_longest_item = false
 	dropdown.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dropdown.add_theme_font_size_override("font_size", 86)
+	dropdown.add_theme_font_size_override("font_size", 96)
 	if app_bold_font != null:
 		dropdown.add_theme_font_override("font", app_bold_font)
 	dropdown.add_theme_stylebox_override("normal", _leaderboard_dropdown_style(Color("#e8f6ff"), false))
@@ -7298,7 +7431,8 @@ func _leaderboard_category_dropdown() -> OptionButton:
 	dropdown.select(selected_index)
 	var popup := dropdown.get_popup()
 	if popup != null:
-		popup.add_theme_font_size_override("font_size", 70)
+		popup.add_theme_font_size_override("font_size", 90)
+		popup.add_theme_constant_override("v_separation", 26)
 		if app_bold_font != null:
 			popup.add_theme_font_override("font", app_bold_font)
 	dropdown.item_selected.connect(_leaderboard_category_selected)
@@ -7356,7 +7490,7 @@ func _leaderboard_player_card() -> Control:
 	score.add_theme_constant_override("outline_size", 18)
 	copy.add_child(score)
 	var rank_text := _leaderboard_player_rank_text(category_id)
-	var rank := _label("%s  |  %s" % [_leaderboard_format_score(category_id, player_score), rank_text if rank_text == "unranked" else "Rank %s" % rank_text], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
+	var rank := _label("%s  |  %s" % [_leaderboard_format_score(category_id, player_score, _leaderboard_skill_level_for_category(category_id), _leaderboard_total_xp_for_category(category_id)), rank_text if rank_text == "unranked" else "Rank %s" % rank_text], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(rank)
 	var status := VBoxContainer.new()
 	status.custom_minimum_size = Vector2(560, 0)
@@ -7715,9 +7849,14 @@ func _chat_empty_state() -> Control:
 
 func _chat_status_title() -> String:
 	if not _leaderboard_firebase_enabled():
-		return "Firebase not connected"
+		return "Online chat unavailable"
+	if leaderboard_auth_in_flight:
+		return "Connecting chat..."
+	var auth_wait := _leaderboard_auth_retry_wait_seconds()
+	if auth_wait > 0:
+		return "Chat login cooling down"
 	if not _leaderboard_auth_ready():
-		return "Chat login needed"
+		return "Starting chat login"
 	if chat_send_in_flight:
 		return "Sending..."
 	if chat_stream_connecting:
@@ -7732,17 +7871,26 @@ func _chat_status_title() -> String:
 
 func _chat_status_detail() -> String:
 	if not _leaderboard_firebase_enabled():
-		return "No network calls are made until Firebase is configured."
+		return "Online chat is not connected yet."
+	var auth_wait := _leaderboard_auth_retry_wait_seconds()
+	if auth_wait > 0:
+		return "Online chat login failed recently. The next retry waits %s." % _format_duration(float(auth_wait))
+	if leaderboard_auth_in_flight:
+		if not chat_status_message.is_empty():
+			return chat_status_message
+		return "Online chat is connecting so messages can load and send."
 	if not _leaderboard_auth_ready():
-		return "Anonymous Firebase Auth is required before chat reads or writes."
+		if not leaderboard_status_message.is_empty():
+			return leaderboard_status_message
+		return "Online chat login will start before messages load or send."
 	if not chat_status_message.is_empty() and chat_status_message != "Chat loaded.":
 		return chat_status_message
 	if chat_stream_connected:
-		return "One RTDB stream is open for this tab only, capped to %s recent messages." % _chat_target_visible_count()
+		return "One live chat connection is open here, capped to %s recent messages." % _chat_target_visible_count()
 	var wait := maxi(0, chat_stream_retry_unix - _unix_now())
 	if wait > 0:
 		return "The chat stream is cooling down for %s before reconnecting." % _format_duration(float(wait))
-	return "The skills chat strip opens one Firebase RTDB Server-Sent Events stream."
+	return "The skills chat strip opens one live chat connection while it is visible."
 
 
 func _chat_refresh_pressed() -> void:
@@ -7754,6 +7902,7 @@ func _chat_refresh_pressed() -> void:
 func _on_chat_draft_changed(text: String) -> void:
 	chat_draft_message = text
 	chat_keyboard_close_submit_done = false
+	_update_chat_keyboard_preview()
 
 
 func _on_chat_input_focus_entered() -> void:
@@ -7769,6 +7918,8 @@ func _on_chat_input_focus_entered() -> void:
 
 func _on_chat_input_focus_exited() -> void:
 	chat_keyboard_focus_active = false
+	chat_keyboard_preview_keyboard_visible = false
+	_hide_chat_keyboard_preview()
 	if OS.get_name() == "Android" or OS.get_name() == "iOS":
 		chat_keyboard_lift_hold_seconds = 0.20
 		return
@@ -7782,10 +7933,66 @@ func _reset_chat_keyboard_lift() -> void:
 	chat_keyboard_lift_last_height = 0.0
 	chat_keyboard_lift_target_pixels = 0.0
 	chat_keyboard_lift_viewport_height = 0.0
+	chat_keyboard_lift_window_height = 0.0
 	chat_keyboard_lift_zero_seconds = 0.0
+	chat_keyboard_preview_keyboard_visible = false
 	chat_keyboard_was_visible = false
 	chat_keyboard_close_submit_done = false
 	chat_keyboard_focus_active = false
+	_hide_chat_keyboard_preview()
+
+
+func _collapse_chat_keyboard_lift_after_submit() -> void:
+	chat_keyboard_lift_active = false
+	chat_keyboard_focus_active = false
+	chat_keyboard_lift_hold_seconds = 0.0
+	chat_keyboard_lift_last_height = 0.0
+	chat_keyboard_lift_target_pixels = 0.0
+	chat_keyboard_lift_zero_seconds = 0.0
+	chat_keyboard_preview_keyboard_visible = false
+	chat_keyboard_close_submit_done = true
+	_hide_chat_keyboard_preview()
+
+
+func _chat_keyboard_height_canvas_units(raw_keyboard_height: float) -> float:
+	var viewport_height := maxf(1.0, get_viewport_rect().size.y)
+	var window_height := viewport_height
+	if DisplayServer.get_name() != "headless":
+		window_height = maxf(1.0, float(DisplayServer.window_get_size().y))
+	chat_keyboard_lift_viewport_height = maxf(chat_keyboard_lift_viewport_height, viewport_height)
+	chat_keyboard_lift_window_height = maxf(chat_keyboard_lift_window_height, window_height)
+	var height_from_keyboard := 0.0
+	if raw_keyboard_height > 0.0:
+		height_from_keyboard = raw_keyboard_height * viewport_height / maxf(1.0, chat_keyboard_lift_window_height)
+	var height_from_resize := 0.0
+	if chat_keyboard_lift_window_height > window_height + 1.0:
+		height_from_resize = (chat_keyboard_lift_window_height - window_height) * viewport_height / maxf(1.0, chat_keyboard_lift_window_height)
+	return maxf(height_from_keyboard, height_from_resize)
+
+
+func _update_chat_keyboard_preview() -> void:
+	if chat_keyboard_preview == null or not is_instance_valid(chat_keyboard_preview):
+		return
+	if chat_keyboard_preview_label == null or not is_instance_valid(chat_keyboard_preview_label):
+		return
+	var should_show := chat_overlay != null and chat_overlay.visible and _chat_mobile_keyboard_platform() and chat_keyboard_preview_keyboard_visible
+	chat_keyboard_preview.visible = should_show
+	if not should_show:
+		return
+	var preview_text := chat_draft_message.strip_edges()
+	if preview_text.is_empty():
+		chat_keyboard_preview_label.text = "Send a message..."
+		chat_keyboard_preview_label.add_theme_color_override("font_color", Color("#8a8175"))
+	else:
+		chat_keyboard_preview_label.text = chat_draft_message
+		chat_keyboard_preview_label.add_theme_color_override("font_color", COLOR_INK)
+	chat_keyboard_preview.offset_top = -chat_keyboard_lift_pixels - CHAT_KEYBOARD_PREVIEW_HEIGHT - 22.0
+	chat_keyboard_preview.offset_bottom = -chat_keyboard_lift_pixels - 22.0
+
+
+func _hide_chat_keyboard_preview() -> void:
+	if chat_keyboard_preview != null and is_instance_valid(chat_keyboard_preview):
+		chat_keyboard_preview.visible = false
 
 
 func _process_chat_keyboard_lift(delta: float) -> void:
@@ -7801,13 +8008,15 @@ func _process_chat_keyboard_lift(delta: float) -> void:
 			chat_keyboard_lift_zero_seconds = 0.0
 			chat_keyboard_was_visible = true
 		else:
+			chat_keyboard_preview_keyboard_visible = false
+			_hide_chat_keyboard_preview()
 			chat_keyboard_lift_zero_seconds += delta
 			if not chat_keyboard_focus_active and chat_keyboard_lift_zero_seconds > 0.85:
 				chat_keyboard_lift_active = false
 	if chat_overlay != null and chat_overlay.visible and is_mobile_keyboard and (chat_keyboard_focus_active or chat_keyboard_lift_active or raw_keyboard_height > 0.0 or chat_keyboard_lift_hold_seconds > 0.0):
-		chat_keyboard_lift_viewport_height = maxf(chat_keyboard_lift_viewport_height, get_viewport_rect().size.y)
 		var viewport_height := maxf(chat_keyboard_lift_viewport_height, get_viewport_rect().size.y)
-		var keyboard_height := raw_keyboard_height
+		var keyboard_height := _chat_keyboard_height_canvas_units(raw_keyboard_height)
+		chat_keyboard_preview_keyboard_visible = keyboard_height > 1.0
 		if keyboard_height > 0.0:
 			chat_keyboard_lift_last_height = keyboard_height
 			chat_keyboard_lift_hold_seconds = 0.9
@@ -7815,11 +8024,12 @@ func _process_chat_keyboard_lift(delta: float) -> void:
 			chat_keyboard_lift_hold_seconds = maxf(0.0, chat_keyboard_lift_hold_seconds - delta)
 			keyboard_height = chat_keyboard_lift_last_height * clampf(chat_keyboard_lift_hold_seconds / 0.20, 0.0, 1.0)
 		if keyboard_height > 0.0:
-			chat_keyboard_lift_target_pixels = clampf(keyboard_height - BOTTOM_NAV_HEIGHT + 96.0, 0.0, viewport_height * 0.52)
+			chat_keyboard_lift_target_pixels = clampf(keyboard_height - BOTTOM_NAV_HEIGHT + 128.0, 0.0, viewport_height * 0.72)
 		else:
 			chat_keyboard_lift_target_pixels = 0.0
 		target = chat_keyboard_lift_target_pixels
 	else:
+		chat_keyboard_preview_keyboard_visible = false
 		_reset_chat_keyboard_lift()
 	var t := clampf(delta * 12.0, 0.0, 1.0)
 	chat_keyboard_lift_pixels = lerpf(chat_keyboard_lift_pixels, target, t)
@@ -7829,6 +8039,7 @@ func _process_chat_keyboard_lift(delta: float) -> void:
 	if chat_keyboard_fill != null and is_instance_valid(chat_keyboard_fill):
 		chat_keyboard_fill.visible = chat_keyboard_lift_pixels > 1.0
 		chat_keyboard_fill.offset_top = -chat_keyboard_lift_pixels - 8.0
+	_update_chat_keyboard_preview()
 	if chat_keyboard_focus_active:
 		_chat_scroll_to_latest()
 
@@ -7944,6 +8155,7 @@ func _chat_finish_mobile_submit_attempt() -> void:
 	if chat_message_edit != null and is_instance_valid(chat_message_edit):
 		chat_message_edit.release_focus()
 	DisplayServer.virtual_keyboard_hide()
+	_collapse_chat_keyboard_lift_after_submit()
 
 
 func _chat_send_pressed(text: String) -> void:
@@ -8018,8 +8230,49 @@ func _chat_time_text(row_data: Dictionary) -> String:
 	var created := maxi(0, int(row_data.get("created_at_unix", 0)))
 	if created <= 0:
 		return ""
-	var timestamp := Time.get_datetime_dict_from_unix_time(created)
+	var timestamp := _central_datetime_from_unix_time(created)
 	return "%02d:%02d" % [int(timestamp.get("hour", 0)), int(timestamp.get("minute", 0))]
+
+
+func _central_datetime_from_unix_time(unix_time: int) -> Dictionary:
+	var offset_seconds := -5 * 60 * 60 if _central_daylight_time_active(unix_time) else -6 * 60 * 60
+	return Time.get_datetime_dict_from_unix_time(unix_time + offset_seconds)
+
+
+func _central_daylight_time_active(unix_time: int) -> bool:
+	var utc := Time.get_datetime_dict_from_unix_time(unix_time)
+	var year := int(utc.get("year", 1970))
+	var dst_start_utc := _central_dst_transition_utc(year, 3, 2, 2, -6)
+	var dst_end_utc := _central_dst_transition_utc(year, 11, 1, 2, -5)
+	return unix_time >= dst_start_utc and unix_time < dst_end_utc
+
+
+func _central_dst_transition_utc(year: int, month: int, sunday_ordinal: int, local_hour: int, offset_hours_before_transition: int) -> int:
+	var day := _nth_sunday_day_of_month(year, month, sunday_ordinal)
+	var local_unix := Time.get_unix_time_from_datetime_dict({
+		"year": year,
+		"month": month,
+		"day": day,
+		"hour": local_hour,
+		"minute": 0,
+		"second": 0
+	})
+	return int(local_unix) - offset_hours_before_transition * 60 * 60
+
+
+func _nth_sunday_day_of_month(year: int, month: int, sunday_ordinal: int) -> int:
+	var first_day_unix := Time.get_unix_time_from_datetime_dict({
+		"year": year,
+		"month": month,
+		"day": 1,
+		"hour": 0,
+		"minute": 0,
+		"second": 0
+	})
+	var first_day := Time.get_datetime_dict_from_unix_time(first_day_unix)
+	var first_weekday := int(first_day.get("weekday", 0))
+	var first_sunday := 1 if first_weekday == 0 else 8 - first_weekday
+	return first_sunday + (maxi(1, sunday_ordinal) - 1) * 7
 
 
 func _refresh_profile_references() -> void:
@@ -8102,6 +8355,8 @@ func _profile_reference_updates() -> Dictionary:
 			"name_key": leaderboard_name_key,
 			"avatar_index": leaderboard_avatar_index,
 			"score": int(category_scores[category_id]),
+			"skill_level": _leaderboard_skill_level_for_category(category_id),
+			"total_xp": _leaderboard_total_xp_for_category(category_id),
 			"updated_at": now_msec,
 			"submitted_at_unix": now_unix
 		}
@@ -8160,7 +8415,7 @@ func _render_skill_menu_shelf() -> void:
 	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	total_row.add_theme_constant_override("separation", 22)
 	total_level_header.add_child(total_row)
-	var total_icon := _image("res://docs/assets/ui/total-lv-bargraph.png", Vector2(118, 118))
+	var total_icon := _image("res://assets/content/ui/total-lv-bargraph.png", Vector2(118, 118))
 	total_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	total_row.add_child(total_icon)
 	total_row.add_child(_label("Total Lv %s" % _global_level(), 154, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
@@ -8213,7 +8468,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		row.add_theme_constant_override("separation", 34)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margin.add_child(row)
-		row.add_child(_image("res://docs/assets/icons/%s.png" % skill_id, Vector2(274, 274)))
+		row.add_child(_image("res://assets/content/icons/%s.png" % skill_id, Vector2(274, 274)))
 		var copy := VBoxContainer.new()
 		copy.custom_minimum_size.x = SKILL_MENU_COPY_WIDTH
 		copy.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
@@ -8449,7 +8704,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_stack.add_child(title)
 	var xp := _xp_progress(selected_skill_id)
-	detail_xp_label = _label("", SKILL_DETAIL_XP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	detail_xp_label = _label(_skill_level_xp_text(selected_skill_id), SKILL_DETAIL_XP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	detail_xp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_stack.add_child(detail_xp_label)
 	detail_xp_bar = _skill_detail_xp_bar(selected_skill_id, float(xp["pct"]))
@@ -8475,6 +8730,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
 		detail_regen_circle.gui_input.connect(_on_stamina_gauge_input.bind("", detail_regen_circle))
 		header_row.add_child(detail_regen_circle)
+		_set_regen_circle_for_skill(detail_regen_circle, selected_skill_id, true)
 	if _skill_detail_shows_tutorial_tips(selected_skill_id):
 		_add_stamina_gauge_tip(header_body)
 	elif _fishing_rework_active_for_skill(selected_skill_id):
@@ -8601,9 +8857,9 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		art_panel.add_theme_stylebox_override("panel", _action_art_style())
 		art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		art_slot.add_child(art_panel)
-		var art := _image(str(action["art"]), ACTION_ART_SIZE)
-		art.position = ACTION_ART_OFFSET
+		var art := _action_art_image(str(action["art"]))
 		art_panel.add_child(art)
+		art_panel.add_child(_action_art_border_overlay())
 
 		var copy := VBoxContainer.new()
 		copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -8709,7 +8965,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		button.z_index = 218
 		button.gui_input.connect(_on_action_card_input.bind(selected_skill_id, action_id, button))
 		pop_card.add_child(button)
-		action_cards[_action_key(selected_skill_id, action_id)] = {
+		var card := {
 			"root": card_root,
 			"skill_id": selected_skill_id,
 			"action": action,
@@ -8741,16 +8997,20 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 			"lock_overlay": lock_overlay,
 			"medal_destination": Vector2(medal.offset_left, medal.offset_top)
 		}
-		_prepare_locked_activity_preview_fade(action_cards[_action_key(selected_skill_id, action_id)] as Dictionary, selected_skill_id, action as Dictionary)
-		_sync_locked_activity_preview_presence(action_cards[_action_key(selected_skill_id, action_id)] as Dictionary, selected_skill_id, action as Dictionary)
+		action_cards[_action_key(selected_skill_id, action_id)] = card
+		_prepare_locked_activity_preview_fade(card, selected_skill_id, action as Dictionary)
+		_sync_locked_activity_preview_presence(card, selected_skill_id, action as Dictionary)
 		if _pending_activity_unlock_matches(action_id):
-			action_cards[_action_key(selected_skill_id, action_id)]["unlock_ceremony_pending"] = true
+			card["unlock_ceremony_pending"] = true
 		if _pending_activity_unlock_preview_matches(action_id):
-			_stage_activity_preview_enter(action_cards[_action_key(selected_skill_id, action_id)] as Dictionary)
-			action_cards[_action_key(selected_skill_id, action_id)]["fade_in_pending"] = true
+			_stage_activity_preview_enter(card)
+			card["fade_in_pending"] = true
 		elif activity_unlock_preview_after_ceremony_id == action_id:
-			_stage_activity_preview_enter(action_cards[_action_key(selected_skill_id, action_id)] as Dictionary, false)
-			action_cards[_action_key(selected_skill_id, action_id)]["fade_in_pending"] = true
+			_stage_activity_preview_enter(card, false)
+			card["fade_in_pending"] = true
+		_update_action_card_static_state(card, selected_skill_id, action as Dictionary, _is_action_unlocked(selected_skill_id, action as Dictionary))
+		_set_action_card_medal(card, medal, _mastery_level(selected_skill_id, action_id), true)
+		_update_action_card_mastery_bar(card, selected_skill_id, action_id, 0.0, true)
 		if _should_show_lock_click_tip(selected_skill_id, action as Dictionary):
 			stack.add_child(_lock_click_tip_note(content_width))
 
@@ -10000,9 +10260,9 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			var stamina_lines := []
 			var medal_reduction := _activity_medal_stamina_cost_reduction(skill_id, action)
 			if medal_reduction > 0.0:
-				var action_id := str(action.get("id", ""))
-				var medal_level := _mastery_level(skill_id, action_id)
-				stamina_lines.append("-%s%% %s medal on this activity" % [_format_percent_points(medal_reduction * 100.0), _mastery_medal_name(medal_level)])
+				var medal_level := _activity_medal_buff_source_level(skill_id, action)
+				var source_name := _activity_medal_buff_source_name(skill_id, action)
+				stamina_lines.append("-%s%% %s medal from %s" % [_format_percent_points(medal_reduction * 100.0), _mastery_medal_name(medal_level), source_name])
 			if stamina_lines.is_empty():
 				stamina_lines.append("No stamina cost bonuses yet")
 			return {
@@ -10013,19 +10273,30 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			}
 		"time":
 			if _fishing_batch_soak_active(skill_id):
+				var batch_lines := ["Fish enter the net in batches, then the full net hauls at 10+ fish."]
+				var batch_medal_time := _activity_medal_time_reduction(skill_id, action)
+				if batch_medal_time > 0.0:
+					var batch_medal_level := _activity_medal_buff_source_level(skill_id, action)
+					var batch_source_name := _activity_medal_buff_source_name(skill_id, action)
+					batch_lines.append("-%s%% %s medal speed from %s" % [_format_percent_points(batch_medal_time * 100.0), _mastery_medal_name(batch_medal_level), batch_source_name])
 				return {
 					"title": "FILL",
 					"original": "%ss" % _format_significant_digits(float(action.get("seconds", 1.0))),
 					"current": "%ss" % _format_significant_digits(_action_cycle_seconds(skill_id, action)),
-					"bonuses": ["Fish enter the net in batches, then the full net hauls at 10+ fish."]
+					"bonuses": batch_lines
 				}
 			var base_seconds := maxf(0.1, float(action.get("seconds", 1.0)))
 			var time_lines := []
 			var medal_speed := _global_medal_bonus("speed_mult")
 			var ad_speed := _ad_bonus_speed_mult()
 			var skill_reduction := _skill_level_timer_reduction(skill_id)
+			var activity_medal_speed := _activity_medal_time_reduction(skill_id, action)
 			if medal_speed > 0.0:
 				time_lines.append("-%s%% global medal speed" % _format_percent_points(medal_speed * 100.0))
+			if activity_medal_speed > 0.0:
+				var activity_medal_level := _activity_medal_buff_source_level(skill_id, action)
+				var activity_source_name := _activity_medal_buff_source_name(skill_id, action)
+				time_lines.append("-%s%% %s medal speed from %s" % [_format_percent_points(activity_medal_speed * 100.0), _mastery_medal_name(activity_medal_level), activity_source_name])
 			if ad_speed > 0.0:
 				time_lines.append("-%s%% ad speed" % _format_percent_points(ad_speed * 100.0))
 			if skill_reduction > 0.0:
@@ -10035,7 +10306,7 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			return {
 				"title": "TIME",
 				"original": "%ss" % _format_significant_digits(base_seconds),
-				"current": "%ss" % _format_significant_digits(_effective_seconds(skill_id, action)),
+				"current": "%ss" % _format_significant_digits(_action_cycle_seconds(skill_id, action)),
 				"bonuses": time_lines
 			}
 		"success":
@@ -10402,6 +10673,37 @@ func _achievement_milestones() -> Array:
 			"medal_level": _total_level_milestone_medal(int(target), max_total_level),
 			"accent": "#f4bf35"
 			})
+	for skill_def in skill_defs:
+		var skill_id := str((skill_def as Dictionary).get("id", ""))
+		if skill_id.is_empty():
+			continue
+		for raw_action in _mastery_actions_for_skill(skill_id):
+			var action := raw_action as Dictionary
+			var action_id := str(action.get("id", ""))
+			if action_id.is_empty():
+				continue
+			var current_level := _mastery_level(skill_id, action_id)
+			if current_level <= 0:
+				continue
+			for medal_level in range(1, current_level + 1):
+				var medal_name := _mastery_medal_name(medal_level)
+				milestones.append({
+					"id": "action-medal-%s-%s-%s" % [skill_id, action_id, medal_level],
+					"chain_key": "action-medal-%s-%s" % [skill_id, action_id],
+					"kind": "action_medal",
+					"skill_id": skill_id,
+					"action_id": action_id,
+					"title": "%s %s" % [str(action.get("name", "Activity")), medal_name],
+					"subtitle": "Earned %s mastery on %s." % [medal_name, _skill_name(skill_id)],
+					"reward": "Reward: permanent mastery credit",
+					"current": medal_level,
+					"target": medal_level,
+					"completed": true,
+					"log_only": true,
+					"medal_level": medal_level,
+					"art": str(action.get("art", "")),
+					"accent": "#" + _mastery_medal_accent(medal_level).to_html(false)
+				})
 	var tier_counts := _all_medal_tier_counts()
 	var total_activity_count := _total_activity_count()
 	for tier_index in range(mini(MASTERY_MAX_LEVEL, tier_counts.size())):
@@ -10481,7 +10783,7 @@ func _achievement_milestones() -> Array:
 func _completed_achievement_ids() -> Dictionary:
 	var completed := {}
 	for achievement in _achievement_milestones():
-		if bool(achievement.get("completed", false)):
+		if bool(achievement.get("completed", false)) and not bool(achievement.get("log_only", false)):
 			completed[str(achievement.get("id", ""))] = true
 	return completed
 
@@ -10491,6 +10793,8 @@ func _newly_completed_achievements(before: Dictionary) -> Array:
 	for achievement in _achievement_milestones():
 		var id := str(achievement.get("id", ""))
 		if id.is_empty() or not bool(achievement.get("completed", false)):
+			continue
+		if bool(achievement.get("log_only", false)):
 			continue
 		if not bool(before.get(id, false)):
 			unlocked.append(achievement)
@@ -10512,6 +10816,8 @@ func _mark_completed_achievement_toasts_seen(excluded_ids: Array = []) -> void:
 		var id := str(achievement.get("id", ""))
 		if id.is_empty() or not bool(achievement.get("completed", false)):
 			continue
+		if bool(achievement.get("log_only", false)):
+			continue
 		if excluded_ids.has(id):
 			continue
 		achievement_toast_seen_ids[id] = true
@@ -10527,6 +10833,8 @@ func _show_pending_completed_achievement_toasts() -> void:
 	for achievement in _achievement_milestones():
 		var id := str(achievement.get("id", ""))
 		if id.is_empty() or not bool(achievement.get("completed", false)):
+			continue
+		if bool(achievement.get("log_only", false)):
 			continue
 		if bool(achievement_toast_seen_ids.get(id, false)):
 			continue
@@ -10552,13 +10860,14 @@ func _visible_achievement_milestones(hide_completed: bool) -> Array:
 		var chain: Array = chains[chain_key]
 		var next_achievement := {}
 		for achievement in chain:
-			if not bool(achievement.get("completed", false)):
-				next_achievement = achievement
-				break
-		if next_achievement.is_empty():
-			if hide_completed:
+			if bool(achievement.get("completed", false)):
+				if not hide_completed:
+					visible.append(achievement)
 				continue
-			next_achievement = chain[chain.size() - 1]
+			if next_achievement.is_empty():
+				next_achievement = achievement
+		if next_achievement.is_empty():
+			continue
 		visible.append(next_achievement)
 	return visible
 
@@ -10860,13 +11169,19 @@ func _shake_stamina_gauge_red(target: Control) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	var tween_meta_key := "stamina_eat_fail_tween"
+	var rest_position_meta_key := "stamina_eat_fail_rest_position"
+	var base_position := target.position
+	if target.has_meta(rest_position_meta_key):
+		base_position = target.get_meta(rest_position_meta_key) as Vector2
+	else:
+		target.set_meta(rest_position_meta_key, base_position)
 	if target.has_meta(tween_meta_key):
 		var existing := target.get_meta(tween_meta_key) as Tween
 		if existing != null and existing.is_valid():
 			existing.kill()
 		target.remove_meta(tween_meta_key)
+		target.position = base_position
 	target.pivot_offset = target.size * 0.5
-	var base_position := target.position
 	var base_rotation := target.rotation
 	var base_modulate := target.modulate
 	var direction := -1.0 if randf() < 0.5 else 1.0
@@ -10895,13 +11210,15 @@ func _shake_stamina_gauge_red(target: Control) -> void:
 		target.modulate = base_modulate
 		if target.has_meta(tween_meta_key):
 			target.remove_meta(tween_meta_key)
+		if target.has_meta(rest_position_meta_key):
+			target.remove_meta(rest_position_meta_key)
 	)
 
 
 func _float_eaten_fish_icon(source: Control) -> void:
 	if source == null or not is_instance_valid(source) or not source.is_inside_tree():
 		return
-	var texture := _texture("res://docs/assets/fishing/catches/00-minnow.png")
+	var texture := _texture("res://assets/content/fishing/catches/00-minnow.png")
 	if texture == null:
 		return
 	var source_rect := source.get_global_rect()
@@ -10935,7 +11252,7 @@ func _float_eaten_fish_icon(source: Control) -> void:
 	root.add_child(label)
 
 	var icon_size := Vector2(216, 216)
-	var icon := _image_from_texture(texture, icon_size, "res://docs/assets/fishing/catches/00-minnow.png")
+	var icon := _image_from_texture(texture, icon_size, "res://assets/content/fishing/catches/00-minnow.png")
 	icon.anchor_left = 0.56
 	icon.anchor_right = 0.56
 	icon.anchor_top = 0.0
@@ -11922,13 +12239,13 @@ func _boot_warmup_cancelled() -> bool:
 func _boot_warmup_texture_paths() -> Array:
 	var paths := []
 	_add_boot_warmup_texture_path(paths, "res://assets/loading/idle-elite-loading-screen.png")
-	_add_boot_warmup_texture_path(paths, "res://docs/assets/logo/idle-elite-logo-chroma.png")
-	_add_boot_warmup_texture_path(paths, "res://docs/assets/characters/stick-hero.png")
-	_add_boot_warmup_texture_path(paths, "res://docs/assets/ui/speech-bubble-down.png")
-	_add_boot_warmup_texture_path(paths, "res://docs/assets/ui/total-lv-bargraph.png")
-	_add_boot_warmup_texture_path(paths, "res://docs/assets/icons/gear.png")
-	_add_boot_warmup_texture_path(paths, "res://docs/assets/ui/ad-reward.png")
-	_add_boot_warmup_texture_path(paths, "res://docs/assets/ui/discord-simple.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-chroma.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/speech-bubble-down.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/total-lv-bargraph.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/ad-reward.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/discord-simple.png")
 	_add_boot_warmup_texture_path(paths, MASTERY_MEDALS_TEXTURE)
 	_add_boot_warmup_texture_path(paths, UNLOCK_LOCK_CHAINS_TEXTURE)
 	_add_boot_warmup_texture_path(paths, UNLOCK_CHAIN_LINK_TEXTURE)
@@ -11939,9 +12256,9 @@ func _boot_warmup_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_CRIT_ART)
 	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_CREDIT_ART)
 	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_CUMULATIVE_MEDALS_ART)
-	_add_boot_warmup_texture_path(paths, PASSIVE_LOG_CURRENCY_TEXTURE)
-	_add_boot_warmup_texture_path(paths, PASSIVE_PLANK_TEXTURE)
-	_add_boot_warmup_texture_path(paths, PASSIVE_UPGRADE_ARROW_TEXTURE)
+	_add_boot_warmup_texture_path(paths, LOG_CURRENCY_ICON_TEXTURE)
+	_add_boot_warmup_texture_path(paths, PLANK_ICON_TEXTURE)
+	_add_boot_warmup_texture_path(paths, UPGRADE_ARROW_ICON_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_TOP_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_BOTTOM_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ACTIVITY_BACK_TEXTURE)
@@ -12429,7 +12746,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	card_root.add_child(pop_card)
 
 	var bg := RoundedTextureRect.new()
-	bg.texture = _texture(str(action.get("bg", "res://docs/assets/woodcutting/backgrounds/01-early.png")))
+	bg.texture = _texture(str(action.get("bg", "res://assets/content/woodcutting/backgrounds/01-early.png")))
 	bg.radius = 66.0
 	bg.art_height = PASSIVE_MODULE_CARD_HEIGHT
 	bg.fallback_color = _skill_theme_color(skill_id)
@@ -12521,7 +12838,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 
 	var plank_button := Button.new()
 	plank_button.text = ""
-	plank_button.icon = _texture(PASSIVE_PLANK_TEXTURE)
+	plank_button.icon = _texture(PLANK_ICON_TEXTURE)
 	plank_button.expand_icon = true
 	plank_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	plank_button.custom_minimum_size = Vector2(192, 168)
@@ -12561,7 +12878,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	currency_label.custom_minimum_size = Vector2(242, 134)
 	currency_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	currency_row.add_child(currency_label)
-	var currency_icon := _image(PASSIVE_LOG_CURRENCY_TEXTURE, Vector2(138, 138))
+	var currency_icon := _image(LOG_CURRENCY_ICON_TEXTURE, Vector2(138, 138))
 	currency_row.add_child(currency_icon)
 
 	var stats := {}
@@ -12620,7 +12937,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 		cost_label.custom_minimum_size = Vector2(70, 168)
 		cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		upgrade_visual.add_child(cost_label)
-		var cost_icon := _image(PASSIVE_LOG_CURRENCY_TEXTURE, Vector2(94, 94))
+		var cost_icon := _image(LOG_CURRENCY_ICON_TEXTURE, Vector2(94, 94))
 		cost_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		cost_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		upgrade_visual.add_child(cost_icon)
@@ -12944,7 +13261,7 @@ func _animate_passive_log_pile(log_layer: Control, shadow: Control, tier_changed
 
 func _passive_log_sprite(sprite_size: Vector2, shadow_offset: Vector2, shadow_alpha: float) -> Control:
 	var sprite := PassiveIconSprite.new()
-	sprite.configure(_texture(PASSIVE_LOG_CURRENCY_TEXTURE), sprite_size)
+	sprite.configure(_texture(LOG_CURRENCY_ICON_TEXTURE), sprite_size)
 	sprite.shadow_offset = shadow_offset
 	sprite.shadow_alpha = shadow_alpha
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -12953,7 +13270,7 @@ func _passive_log_sprite(sprite_size: Vector2, shadow_offset: Vector2, shadow_al
 
 func _passive_log_icon(sprite_size: Vector2, tint: Color) -> Control:
 	var sprite := PassiveIconSprite.new()
-	sprite.configure(_texture(PASSIVE_LOG_CURRENCY_TEXTURE), sprite_size)
+	sprite.configure(_texture(LOG_CURRENCY_ICON_TEXTURE), sprite_size)
 	sprite.modulate = tint
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return sprite
@@ -12961,7 +13278,7 @@ func _passive_log_icon(sprite_size: Vector2, tint: Color) -> Control:
 
 func _passive_upgrade_arrow_icon(icon_size: Vector2) -> Control:
 	var sprite := PassiveIconSprite.new()
-	sprite.configure(_texture(PASSIVE_UPGRADE_ARROW_TEXTURE), icon_size)
+	sprite.configure(_texture(UPGRADE_ARROW_ICON_TEXTURE), icon_size)
 	sprite.stroke_color = COLOR_INK
 	sprite.stroke_width = 8.0
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -13262,7 +13579,7 @@ func _float_log_spend(anchor: Control, cost: int) -> void:
 	label.add_theme_constant_override("outline_size", 14)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)
-	var icon := _image(PASSIVE_LOG_CURRENCY_TEXTURE, Vector2(74, 74))
+	var icon := _image(LOG_CURRENCY_ICON_TEXTURE, Vector2(74, 74))
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(icon)
 	var local_pos := anchor.global_position - global_position
@@ -13298,7 +13615,7 @@ func _float_build_log_spend(anchor: Control) -> void:
 	label.add_theme_constant_override("outline_size", 16)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)
-	var icon := _image(PASSIVE_LOG_CURRENCY_TEXTURE, Vector2(82, 82))
+	var icon := _image(LOG_CURRENCY_ICON_TEXTURE, Vector2(82, 82))
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon)
@@ -13396,9 +13713,9 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	art_panel.modulate = Color.WHITE
 	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_slot.add_child(art_panel)
-	var art := _image(str(action["art"]), ACTION_ART_SIZE)
-	art.position = ACTION_ART_OFFSET
+	var art := _action_art_image(str(action["art"]))
 	art_panel.add_child(art)
+	art_panel.add_child(_action_art_border_overlay())
 
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -14292,7 +14609,7 @@ func _capture_visible_bonus_snapshot() -> Dictionary:
 		action_stats[key] = {
 			"xp": _effective_xp(action, skill_id),
 			"stamina": _effective_stamina(skill_id, action),
-			"seconds": _effective_seconds(skill_id, action),
+			"seconds": _action_cycle_seconds(skill_id, action),
 			"base_seconds": maxf(0.1, float(action.get("seconds", 1.0))),
 			"success": _success_chance(skill_id, action)
 		}
@@ -14346,8 +14663,8 @@ func _emphasize_visible_bonus_changes(before: Dictionary) -> void:
 		var new_stamina := _effective_stamina(skill_id, action)
 		if new_stamina + 0.0001 < old_stamina:
 			_append_action_stat_bonus_entry(entries, card, key, "stamina", "-%s STAM" % _format_stamina_cost_detail(old_stamina - new_stamina))
-		var old_seconds := float(old_stats.get("seconds", _effective_seconds(skill_id, action)))
-		var new_seconds := _effective_seconds(skill_id, action)
+		var old_seconds := float(old_stats.get("seconds", _action_cycle_seconds(skill_id, action)))
+		var new_seconds := _action_cycle_seconds(skill_id, action)
 		if new_seconds + 0.001 < old_seconds:
 			var base_seconds := maxf(0.1, float(old_stats.get("base_seconds", action.get("seconds", 1.0))))
 			var reduction_pct := (old_seconds - new_seconds) / base_seconds * 100.0
@@ -14620,7 +14937,7 @@ func _set_fish_circle_for_skill(circle: FishCircle, skill_id: String, instant :=
 	circle.set_fish_count(fish_currency, _fish_currency_display_text(fish_currency), instant)
 	var tool_def := _fishing_tool_def(equipped_fishing_tool_id)
 	circle.set_tool_text("")
-	circle.set_tool_icon(str(tool_def.get("art", "res://docs/assets/fishing/tools/tool-bare-hands.png")))
+	circle.set_tool_icon(str(tool_def.get("art", "res://assets/content/fishing/tools/tool-bare-hands.png")))
 
 
 func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant := false) -> void:
@@ -14901,6 +15218,41 @@ func _top_level_nav_allowed(target_screen: String) -> bool:
 	return true
 
 
+func _route_system_back_input(event: InputEvent) -> bool:
+	if event is InputEventKey and event.pressed and not event.echo and event.is_action("ui_cancel"):
+		_handle_system_back_request()
+		return true
+	return false
+
+
+func _handle_system_back_request() -> void:
+	if boot_warmup_active:
+		return
+	if tutorial_active:
+		_finish_tutorial()
+		return
+	if chat_overlay != null and chat_overlay.visible:
+		_close_chat_overlay()
+		return
+	if offline_summary_overlay != null and offline_summary_overlay.visible:
+		_close_offline_summary_overlay()
+		return
+	if achievements_overlay != null and achievements_overlay.visible:
+		_close_achievements_overlay()
+		return
+	if profile_overlay != null and profile_overlay.visible:
+		_save_profile_and_close()
+		return
+	if settings_overlay != null and settings_overlay.visible:
+		_close_settings()
+		return
+	if current_screen == "skill":
+		_show_skills()
+		return
+	if current_screen != "menu":
+		_show_skills()
+
+
 func _select_skill(skill_id: String) -> void:
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
@@ -14931,6 +15283,18 @@ func _show_skills() -> void:
 	current_screen = "menu"
 	_play_default_button_sfx()
 	_render_screen()
+
+
+func _show_skills_module() -> void:
+	if current_screen == "skill":
+		return
+	if not _top_level_nav_allowed("skill"):
+		return
+	if current_screen == "settings":
+		_disarm_reset_data_confirmation()
+	_select_launch_skill_page()
+	_play_default_button_sfx()
+	_render_screen(true)
 
 
 func _show_shop() -> void:
@@ -15395,6 +15759,7 @@ func _rebuild_achievements_overlay() -> void:
 		_rebuild_global_buffs_tab(active_buffs)
 	else:
 		_rebuild_achievement_log_tab()
+	_apply_achievements_modal_layout(active_buffs.size())
 
 
 func _apply_achievements_modal_layout(buff_count: int) -> void:
@@ -15403,8 +15768,8 @@ func _apply_achievements_modal_layout(buff_count: int) -> void:
 	var modal_size := ACHIEVEMENTS_MODAL_SIZE
 	var scroll_height := ACHIEVEMENTS_MODAL_SCROLL_HEIGHT
 	if achievements_modal_tab != "buffs":
-		_fit_achievements_modal(modal_size)
 		achievements_scroll.custom_minimum_size = Vector2(0, scroll_height)
+		_fit_achievements_modal(modal_size)
 		return
 	var visible_rows := maxi(1, buff_count)
 	var modal_height := clampf(
@@ -15414,20 +15779,24 @@ func _apply_achievements_modal_layout(buff_count: int) -> void:
 	)
 	modal_size = Vector2(ACHIEVEMENTS_MODAL_SIZE.x, modal_height)
 	scroll_height = maxf(520.0, modal_height - GLOBAL_BUFFS_MODAL_SCROLL_CHROME)
-	_fit_achievements_modal(modal_size)
 	achievements_scroll.custom_minimum_size = Vector2(0, scroll_height)
+	_fit_achievements_modal(modal_size)
 
 
 func _fit_achievements_modal(modal_size: Vector2) -> void:
-	var fitted_scale := _fit_scale_to_canvas(ACHIEVEMENTS_MODAL_SIZE, ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN)
-	var fitted_frame_size := ACHIEVEMENTS_MODAL_SIZE * fitted_scale
+	var fitted_scale := _fit_scale_to_canvas(modal_size, ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN)
+	var fitted_frame_size := modal_size * fitted_scale
 	if achievements_panel_frame != null:
 		achievements_panel_frame.custom_minimum_size = fitted_frame_size
 		achievements_panel_frame.size = fitted_frame_size
+		achievements_panel_frame.reset_size()
+		achievements_panel_frame.update_minimum_size()
 	achievements_panel.custom_minimum_size = modal_size
 	achievements_panel.size = modal_size
 	achievements_panel.position = Vector2.ZERO
 	achievements_panel.scale = Vector2(fitted_scale, fitted_scale)
+	achievements_panel.reset_size()
+	achievements_panel.update_minimum_size()
 
 
 func _fit_offline_summary_modal(modal_size: Vector2) -> void:
@@ -15496,8 +15865,8 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	stat_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_row.add_theme_constant_override("separation", 28)
 	offline_summary_stack.add_child(stat_row)
-	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), "res://docs/assets/ui/motivation-star.png"))
-	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), "res://docs/assets/ui/total-lv-bargraph.png"))
+	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), "res://assets/content/ui/motivation-star.png"))
+	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), "res://assets/content/ui/total-lv-bargraph.png"))
 
 	if progress_content_height > 0.0:
 		var list := VBoxContainer.new()
@@ -15640,7 +16009,7 @@ func _populate_offline_summary_progress(list: VBoxContainer, active_result: Dict
 	if show_skill_level_row:
 		list.add_child(_offline_summary_row(_skill_icon_path(str(active_result.get("skill_id", ""))), "%s Level" % str(active_result.get("skill_name", "Skill")), "Lv %s -> %s" % [old_skill_level, new_skill_level], "Achieved %s" % _offline_level_range_text(old_skill_level, new_skill_level), _skill_theme_color(str(active_result.get("skill_id", "")))))
 	if show_global_level_row:
-		list.add_child(_offline_summary_row("res://docs/assets/ui/total-lv-bargraph.png", "Total Level", "Lv %s -> %s" % [old_global_level, new_global_level], "Total level increased while away.", Color("#f4bf35")))
+		list.add_child(_offline_summary_row("res://assets/content/ui/total-lv-bargraph.png", "Total Level", "Lv %s -> %s" % [old_global_level, new_global_level], "Total level increased while away.", Color("#f4bf35")))
 	if show_mastery_row:
 		list.add_child(_offline_summary_mastery_row(str(active_result.get("action_art", "")), old_mastery_level, new_mastery_level))
 
@@ -15804,7 +16173,7 @@ func _current_canvas_size() -> Vector2:
 
 
 func _rebuild_achievement_log_tab() -> void:
-	var hide_completed := achievements_hide_completed != null and achievements_hide_completed.button_pressed
+	var hide_completed := achievements_hide_completed != null and not achievements_hide_completed.button_pressed
 	var any_visible := false
 	for achievement in _visible_achievement_milestones(hide_completed):
 		var completed := bool(achievement["completed"])
@@ -15815,11 +16184,12 @@ func _rebuild_achievement_log_tab() -> void:
 
 
 func _rebuild_global_buffs_tab(buffs: Array) -> void:
+	achievements_list_stack.add_child(_label("Global Buffs", 70, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT))
 	if buffs.is_empty():
 		achievements_list_stack.add_child(_label("No global buffs earned yet.", 64, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		achievements_list_stack.add_child(_label("Earn your first Bronze medal on any activity to unlock the first account buff.", 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 		return
-	achievements_list_stack.add_child(_label("Active Global Buffs", 70, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT))
-	achievements_list_stack.add_child(_label("All earned medal bonuses combined.", 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+	achievements_list_stack.add_child(_label("Your earned medal bonuses, combined.", 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT))
 	for buff_text in buffs:
 		achievements_list_stack.add_child(_global_buff_list_row(str(buff_text)))
 
@@ -15876,7 +16246,7 @@ func _add_achievement_art_image(parent: Control, texture: Texture2D, position: V
 
 
 func _skill_icon_path(skill_id: String) -> String:
-	return "res://docs/assets/icons/%s.png" % skill_id
+	return "res://assets/content/icons/%s.png" % skill_id
 
 
 func _same_tier_achievement_medal_count(target: int) -> int:
@@ -16200,8 +16570,6 @@ func _init_ads() -> void:
 	ad_content_callback.on_ad_dismissed_full_screen_content = _on_rewarded_ad_dismissed
 	ad_content_callback.on_ad_failed_to_show_full_screen_content = _on_rewarded_ad_failed_to_show
 	ad_content_callback.on_ad_showed_full_screen_content = _on_rewarded_ad_showed
-	if TESTING_ADS_DISABLED:
-		return
 	if _ads_supported() and not _rewarded_ad_unit_id().is_empty():
 		MobileAds.initialize()
 		_load_rewarded_ad(false)
@@ -16220,11 +16588,10 @@ func _rewarded_ad_unit_id() -> String:
 
 
 func _load_rewarded_ad(show_when_loaded: bool) -> void:
-	if TESTING_ADS_DISABLED:
+	if show_when_loaded and _should_grant_ad_preview_bonus():
 		ad_loading = false
 		ad_show_after_load = false
-		if show_when_loaded:
-			_grant_ad_bonus(TESTER_ADS_DISABLED_MESSAGE)
+		_grant_ad_bonus("Ad bonus active: +10% XP, +10% speed for 2 hours.")
 		return
 	var unit_id := _rewarded_ad_unit_id()
 	if unit_id.is_empty():
@@ -16243,6 +16610,10 @@ func _load_rewarded_ad(show_when_loaded: bool) -> void:
 	if show_when_loaded:
 		_set_result("Ad loading...")
 	RewardedAdLoader.new().load(unit_id, AdRequest.new(), ad_load_callback)
+
+
+func _should_grant_ad_preview_bonus() -> bool:
+	return OS.get_name() != "Android"
 
 
 func _show_rewarded_ad() -> void:
@@ -16330,9 +16701,6 @@ func _shop_ad_pressed() -> void:
 		if shop_bonus_label != null:
 			shop_bonus_label.text = _shop_bonus_label_text()
 		return
-	if TESTING_ADS_DISABLED:
-		_grant_ad_bonus(TESTER_ADS_DISABLED_MESSAGE)
-		return
 	if ad_showing:
 		_set_result("Ad already open.")
 		return
@@ -16356,7 +16724,7 @@ func _settings_copy_crash_report_pressed() -> void:
 		return
 	if pending_crash_report_text.is_empty():
 		_load_pending_crash_report()
-	var report := pending_crash_report_text
+	var report := _crash_report_clipboard_text(pending_crash_report_text)
 	if report.is_empty():
 		_set_result("Couldn't read crash report.")
 		return
@@ -16372,6 +16740,77 @@ func _settings_copy_crash_report_pressed() -> void:
 		_set_result("Crash report copied. Local report cleared.")
 	if current_screen == "settings":
 		_render_screen()
+
+
+func _crash_report_clipboard_text(raw_report: String) -> String:
+	var parsed = JSON.parse_string(raw_report)
+	if typeof(parsed) != TYPE_DICTIONARY:
+		return raw_report
+	var report := parsed as Dictionary
+	var lines := ["Idle Elite crash report"]
+	var kind := str(report.get("kind", "java_exception"))
+	lines.append("kind: %s" % kind)
+	if report.has("timestamp_unix"):
+		lines.append("time_unix: %s" % int(report.get("timestamp_unix", 0)))
+	elif report.has("timestamp"):
+		lines.append("time: %s" % str(report.get("timestamp", "")))
+	if report.has("version_name"):
+		lines.append("version: %s (%s)" % [str(report.get("version_name", "")), int(report.get("version_code", 0))])
+	if report.has("device"):
+		lines.append("device: %s android=%s" % [str(report.get("device", "")), int(report.get("android_sdk", 0))])
+	if kind == "unclean_previous_session" and typeof(report.get("previous_session", {})) == TYPE_DICTIONARY:
+		_append_previous_session_crash_summary(lines, report.get("previous_session", {}) as Dictionary)
+	elif report.has("exception"):
+		lines.append("exception: %s" % str(report.get("exception", "")))
+		lines.append("thread: %s" % str(report.get("thread", "unknown")))
+		var stack_first_line := _first_nonempty_line(str(report.get("stack_trace", "")))
+		if not stack_first_line.is_empty():
+			lines.append("stack: %s" % stack_first_line)
+	var events := _crash_report_diagnostic_events(report)
+	if not events.is_empty():
+		lines.append("events:")
+		var start := maxi(0, events.size() - 8)
+		for i in range(start, events.size()):
+			lines.append("- %s" % str(events[i]))
+	return "\n".join(lines)
+
+
+func _append_previous_session_crash_summary(lines: Array, previous: Dictionary) -> void:
+	lines.append("prev_status: %s startup=%s os=%s" % [
+		str(previous.get("status", "")),
+		str(previous.get("startup_initialized", false)),
+		str(previous.get("os", ""))
+	])
+	lines.append("screen: %s selected=%s" % [
+		str(previous.get("current_screen", "")),
+		str(previous.get("selected_skill_id", ""))
+	])
+	lines.append("running: %s/%s progress=%s" % [
+		str(previous.get("running_skill_id", "")),
+		str(previous.get("running_action_id", "")),
+		_format_significant_digits(float(previous.get("action_progress", 0.0)), 4)
+	])
+	var last := str(previous.get("last_result", ""))
+	if not last.is_empty():
+		lines.append("last: %s" % last)
+
+
+func _crash_report_diagnostic_events(report: Dictionary) -> Array:
+	var events = report.get("android_diagnostic_events", [])
+	if typeof(events) == TYPE_ARRAY and not (events as Array).is_empty():
+		return events as Array
+	events = report.get("diagnostic_events", [])
+	if typeof(events) == TYPE_ARRAY:
+		return events as Array
+	return []
+
+
+func _first_nonempty_line(text: String) -> String:
+	for line in text.split("\n", false):
+		var trimmed := str(line).strip_edges()
+		if not trimmed.is_empty():
+			return trimmed
+	return ""
 
 
 func _pending_crash_report_exists() -> bool:
@@ -16435,8 +16874,27 @@ func _crash_session_payload(status: String) -> Dictionary:
 		"chat_stream_connecting": chat_stream_connecting,
 		"chat_keyboard_focus_active": chat_keyboard_focus_active,
 		"chat_keyboard_lift_pixels": chat_keyboard_lift_pixels,
+		"android_diagnostic_events": _load_android_diagnostic_events(),
 		"last_result": last_result
 	}
+
+
+func _load_android_diagnostic_events() -> Array:
+	if OS.get_name() != "Android" or not FileAccess.file_exists(ANDROID_DIAGNOSTIC_EVENTS_PATH):
+		return []
+	var file := FileAccess.open(ANDROID_DIAGNOSTIC_EVENTS_PATH, FileAccess.READ)
+	if file == null:
+		return []
+	var lines := file.get_as_text().split("\n", false)
+	var events := []
+	for line in lines:
+		var event := str(line).strip_edges()
+		if event.is_empty():
+			continue
+		events.append(event)
+	while events.size() > MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT:
+		events.pop_front()
+	return events
 
 
 func _synthesize_unclean_session_crash_report() -> void:
@@ -16456,7 +16914,8 @@ func _synthesize_unclean_session_crash_report() -> void:
 		"timestamp_unix": _unix_now(),
 		"kind": "unclean_previous_session",
 		"message": "Previous session did not mark a clean pause or close. This usually means a native crash, OS process kill, or engine-level exit before the Java crash handler could write a stack trace.",
-		"previous_session": marker
+		"previous_session": marker,
+		"android_diagnostic_events": _load_android_diagnostic_events()
 	}, "\t")
 	_store_pending_crash_report_text()
 
@@ -17191,6 +17650,7 @@ func _prune_achievement_toasts() -> void:
 func _achievement_toast_card(achievement: Dictionary) -> Control:
 	var completed := bool(achievement.get("completed", true))
 	var accent := Color(str(achievement.get("accent", "#f4bf35")))
+	var text_accent := _achievement_toast_text_accent(achievement, accent)
 	var card := PanelContainer.new()
 	card.clip_contents = true
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -17226,7 +17686,7 @@ func _achievement_toast_card(achievement: Dictionary) -> Control:
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
 
-	var eyebrow := _label("ACHIEVEMENT UNLOCKED", 42, accent, HORIZONTAL_ALIGNMENT_LEFT)
+	var eyebrow := _label("ACHIEVEMENT UNLOCKED", 42, text_accent, HORIZONTAL_ALIGNMENT_LEFT)
 	eyebrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(eyebrow)
 
@@ -17257,6 +17717,12 @@ func _achievement_toast_card(achievement: Dictionary) -> Control:
 	return card
 
 
+func _achievement_toast_text_accent(achievement: Dictionary, accent: Color) -> Color:
+	if str(achievement.get("id", "")) == "activity-mega-crit":
+		return Color("#7a5700")
+	return accent
+
+
 func _achievement_toast_reward_text(achievement: Dictionary) -> String:
 	var reward_text := str(achievement.get("reward", "")).strip_edges()
 	if reward_text.is_empty():
@@ -17279,7 +17745,7 @@ func _load_action_data() -> void:
 		var skill := raw_def as Dictionary
 		var skill_id := str(skill["id"])
 		var actions := []
-		var dir_path := "res://docs/assets/%s/actions" % skill_id
+		var dir_path := "res://assets/content/%s/actions" % skill_id
 		var files := PackedStringArray()
 		var dir := DirAccess.open(dir_path)
 		if dir != null:
@@ -17409,25 +17875,25 @@ func _fishing_area_definitions_fallback() -> Array:
 				"id": "beach",
 				"name": "Beach",
 				"fluid": "water",
-				"background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+				"background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
 			},
 			{
 				"id": "pier",
 				"name": "Pier",
 				"fluid": "water",
-				"background": "docs/assets/fishing/backgrounds/01-pond-dock.png",
+				"background": "assets/content/fishing/backgrounds/01-pond-dock.png",
 			},
 			{
 				"id": "river",
 				"name": "River",
 				"fluid": "water",
-				"background": "docs/assets/fishing/backgrounds/02-river-bend.png",
+				"background": "assets/content/fishing/backgrounds/02-river-bend.png",
 			},
 			{
 				"id": "sewers",
 				"name": "Sewers",
 				"fluid": "sewer",
-				"background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
+				"background": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
 			},
 		]
 	}
@@ -17918,6 +18384,25 @@ func _fishing_visible_tool_defs() -> Array:
 	return visible
 
 
+func _restore_fishing_unlock_from_equipped_tool(tool_id: String) -> void:
+	match tool_id:
+		"net":
+			fishing_net_collected = true
+		"line":
+			fishing_rod_collected = true
+		"reinforced_rod":
+			fishing_rod_collected = true
+			fishing_reinforced_rod_collected = true
+		"star_rod":
+			fishing_rod_collected = true
+			fishing_reinforced_rod_collected = true
+			fishing_star_rod_collected = true
+		"boat":
+			fishing_boat_built = true
+		"mirror":
+			fishing_mirror_collected = true
+
+
 func _fishing_equipped_rod_power() -> int:
 	match equipped_fishing_tool_id:
 		"reinforced_rod":
@@ -18083,19 +18568,19 @@ func _fishing_chroma_region_texture(path: String, region: Rect2i) -> Texture2D:
 func _fishing_tool_icon_texture(tool_id_or_path: String) -> Texture2D:
 	match tool_id_or_path:
 		"hands":
-			return _texture("res://docs/assets/fishing/tools/tool-bare-hands.png")
+			return _texture("res://assets/content/fishing/tools/tool-bare-hands.png")
 		"bamboo-rod":
-			return _texture("res://docs/assets/fishing/tools/tool-bamboo-rod.png")
+			return _texture("res://assets/content/fishing/tools/tool-bamboo-rod.png")
 		"line":
 			return _fishing_tool_icon_texture("bamboo-rod")
 		"reinforced_rod", "star_rod":
 			return _fishing_tool_icon_texture("bamboo-rod")
 		"net":
-			return _texture("res://docs/assets/fishing/tools/net-player.png")
+			return _texture("res://assets/content/fishing/tools/net-player.png")
 		"boat":
-			return _texture("res://docs/assets/fishing/tools/tool-boat.png")
+			return _texture("res://assets/content/fishing/tools/tool-boat.png")
 		"mirror":
-			return _texture("res://docs/assets/fishing/tools/reflection-net.png")
+			return _texture("res://assets/content/fishing/tools/reflection-net.png")
 		"tool:hands":
 			return _fishing_tool_icon_texture("hands")
 		"tool:bamboo-rod":
@@ -18111,14 +18596,14 @@ func _fishing_tool_icon_texture(tool_id_or_path: String) -> Texture2D:
 func _fishing_location_thumbnail_path(area_id: String, location_id: String) -> String:
 	match _fishing_location_key(area_id, location_id):
 		"beach.shallows":
-			return "res://docs/assets/fishing/locations/location-shallows.png"
+			return "res://assets/content/fishing/locations/location-shallows.png"
 		"beach.rocky":
-			return "res://docs/assets/fishing/locations/location-rocky-ledge.png"
+			return "res://assets/content/fishing/locations/location-rocky-ledge.png"
 		"pier.dock-cup":
-			return "res://docs/assets/fishing/locations/location-dock-cup.png"
+			return "res://assets/content/fishing/locations/location-dock-cup.png"
 		"pier.piling-line":
-			return "res://docs/assets/fishing/locations/location-piling-line.png"
-	return "res://docs/assets/fishing/locations/location-shallows.png"
+			return "res://assets/content/fishing/locations/location-piling-line.png"
+	return "res://assets/content/fishing/locations/location-shallows.png"
 
 
 func _fishing_location_thumbnail_texture(area_id: String, location_id: String) -> Texture2D:
@@ -19739,8 +20224,8 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 	card_root.add_child(pop_card)
 
 	var area_bg_path := str(area_def.get("bg", ""))
-	if area_id == "beach" and ResourceLoader.exists("res://docs/assets/fishing/backgrounds/beach-rocky-zoom.png"):
-		area_bg_path = "res://docs/assets/fishing/backgrounds/beach-rocky-zoom.png"
+	if area_id == "beach" and ResourceLoader.exists("res://assets/content/fishing/backgrounds/beach-rocky-zoom.png"):
+		area_bg_path = "res://assets/content/fishing/backgrounds/beach-rocky-zoom.png"
 	var bg := TextureRect.new()
 	bg.texture = _texture(area_bg_path)
 	bg.modulate = Color.WHITE
@@ -20101,9 +20586,9 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	root.add_child(pop_card)
 
 	var bg := RoundedTextureRect.new()
-	bg.texture = _texture("res://docs/assets/fishing/backgrounds/00-tide-pool-shallows.png")
+	bg.texture = _texture("res://assets/content/fishing/backgrounds/00-tide-pool-shallows.png")
 	if bg.texture == null:
-		bg.texture = _texture("res://docs/assets/fishing/backgrounds/beach-rocky-zoom.png")
+		bg.texture = _texture("res://assets/content/fishing/backgrounds/beach-rocky-zoom.png")
 	bg.radius = 64.0
 	bg.art_height = FISHING_NET_OFFER_HEIGHT
 	bg.feather_height = 120.0
@@ -20168,7 +20653,7 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	net_motion_root.z_index = 12
 	pop_card.add_child(net_motion_root)
 
-	var net_art := _image("res://docs/assets/fishing/tools/net-player.png", Vector2(517, 363))
+	var net_art := _image("res://assets/content/fishing/tools/net-player.png", Vector2(517, 363))
 	net_art.anchor_left = 0.0
 	net_art.anchor_right = 0.0
 	net_art.anchor_top = 0.0
@@ -20213,7 +20698,7 @@ func _build_fishing_rod_offer_module(content_width: float) -> Control:
 	root.add_child(pop_card)
 
 	var bg := RoundedTextureRect.new()
-	bg.texture = _texture("res://docs/assets/fishing/backgrounds/02-river-bend.png")
+	bg.texture = _texture("res://assets/content/fishing/backgrounds/02-river-bend.png")
 	bg.radius = 64.0
 	bg.art_height = FISHING_ROD_OFFER_HEIGHT
 	bg.feather_height = 120.0
@@ -20264,7 +20749,7 @@ func _build_fishing_rod_offer_module(content_width: float) -> Control:
 	_attach_default_button_sfx(rod_button)
 	pop_card.add_child(rod_button)
 
-	var rod_art := _image("res://docs/assets/fishing/tools/tool-bamboo-rod.png", Vector2(520, 360))
+	var rod_art := _image("res://assets/content/fishing/tools/tool-bamboo-rod.png", Vector2(520, 360))
 	rod_art.position = Vector2(20, 10)
 	rod_art.modulate = Color.WHITE if fish_currency >= FISHING_ROD_OFFER_COST else Color(1, 1, 1, 0.52)
 	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -20306,7 +20791,7 @@ func _build_fishing_mirror_offer_module(content_width: float) -> Control:
 	root.add_child(pop_card)
 
 	var bg := RoundedTextureRect.new()
-	bg.texture = _texture("res://docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png")
+	bg.texture = _texture("res://assets/content/fishing/backgrounds/11-cosmic-dream-sea.png")
 	bg.radius = 64.0
 	bg.art_height = FISHING_MIRROR_OFFER_HEIGHT
 	bg.feather_height = 120.0
@@ -20357,7 +20842,7 @@ func _build_fishing_mirror_offer_module(content_width: float) -> Control:
 	_attach_default_button_sfx(mirror_button)
 	pop_card.add_child(mirror_button)
 
-	var mirror_art := _image("res://docs/assets/fishing/tools/reflection-net.png", Vector2(520, 360))
+	var mirror_art := _image("res://assets/content/fishing/tools/reflection-net.png", Vector2(520, 360))
 	mirror_art.position = Vector2(20, 10)
 	mirror_art.modulate = Color.WHITE if fish_currency >= FISHING_MIRROR_OFFER_COST else Color(1, 1, 1, 0.52)
 	mirror_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -20407,7 +20892,7 @@ func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: Stri
 	root.add_child(pop_card)
 
 	var bg := RoundedTextureRect.new()
-	bg.texture = _texture("res://docs/assets/fishing/backgrounds/04-frozen-lake.png" if tool_id == "star_rod" else "res://docs/assets/fishing/backgrounds/05-coral-reef-shallows.png")
+	bg.texture = _texture("res://assets/content/fishing/backgrounds/04-frozen-lake.png" if tool_id == "star_rod" else "res://assets/content/fishing/backgrounds/05-coral-reef-shallows.png")
 	bg.radius = 64.0
 	bg.art_height = FISHING_ROD_UPGRADE_OFFER_HEIGHT
 	bg.feather_height = 120.0
@@ -20459,7 +20944,7 @@ func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: Stri
 	pop_card.add_child(upgrade_button)
 
 	var cost := _fishing_rod_upgrade_cost(tool_id)
-	var rod_art := _image("res://docs/assets/fishing/tools/tool-bamboo-rod.png", Vector2(520, 360))
+	var rod_art := _image("res://assets/content/fishing/tools/tool-bamboo-rod.png", Vector2(520, 360))
 	rod_art.position = Vector2(20, 10)
 	rod_art.modulate = (Color("#dcf7ff") if tool_id == "star_rod" else Color("#ffe8a8")) if fish_currency >= cost else Color(1, 1, 1, 0.52)
 	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -20501,7 +20986,7 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	root.add_child(pop_card)
 
 	var bg := RoundedTextureRect.new()
-	bg.texture = _texture("res://docs/assets/fishing/backgrounds/07-rowboat-offshore.png")
+	bg.texture = _texture("res://assets/content/fishing/backgrounds/07-rowboat-offshore.png")
 	bg.radius = 64.0
 	bg.art_height = FISHING_BOAT_OFFER_HEIGHT
 	bg.feather_height = 120.0
@@ -20552,7 +21037,7 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	_attach_default_button_sfx(boat_button)
 	pop_card.add_child(boat_button)
 
-	var boat_art := _image("res://docs/assets/fishing/tools/tool-boat.png", Vector2(520, 360))
+	var boat_art := _image("res://assets/content/fishing/tools/tool-boat.png", Vector2(520, 360))
 	boat_art.position = Vector2(20, 10)
 	var can_build := _skill_level("build") >= FISHING_BOAT_BUILD_REQUIRED_LEVEL and log_currency >= FISHING_BOAT_OFFER_COST
 	boat_art.modulate = Color.WHITE if can_build else Color(1, 1, 1, 0.52)
@@ -20598,7 +21083,7 @@ func _finish_fishing_net_collect() -> void:
 		return
 	fishing_net_collected = true
 	fishing_net_collect_pending = false
-	call_deferred("save_game")
+	save_game()
 	_set_result("Net collected!")
 	_refresh_fish_circle_currency_only()
 	_rerender_after_fishing_tool_collect()
@@ -20614,10 +21099,10 @@ func _on_fishing_rod_offer_pressed(rod_button: Control) -> void:
 		return
 	fish_currency = maxf(0.0, fish_currency - float(FISHING_ROD_OFFER_COST))
 	fishing_rod_collected = true
-	call_deferred("save_game")
+	save_game()
 	if rod_button != null and is_instance_valid(rod_button):
 		_float_reward(rod_button, rod_button, "Rod collected!", 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
-		_fly_fishing_tool_to_wallet(rod_button, "res://docs/assets/fishing/tools/tool-bamboo-rod.png")
+		_fly_fishing_tool_to_wallet(rod_button, "res://assets/content/fishing/tools/tool-bamboo-rod.png")
 		_play_fishing_offer_collected_transition(rod_button)
 	_set_result("Bamboo rod collected!")
 	_refresh_fish_circle_currency_only()
@@ -20641,10 +21126,10 @@ func _on_fishing_rod_upgrade_offer_pressed(tool_id: String, upgrade_button: Cont
 		fishing_star_rod_collected = true
 	else:
 		fishing_reinforced_rod_collected = true
-	call_deferred("save_game")
+	save_game()
 	if upgrade_button != null and is_instance_valid(upgrade_button):
 		_float_reward(upgrade_button, upgrade_button, "%s collected!" % _fishing_rod_upgrade_title(tool_id), 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
-		_fly_fishing_tool_to_wallet(upgrade_button, "res://docs/assets/fishing/tools/tool-bamboo-rod.png")
+		_fly_fishing_tool_to_wallet(upgrade_button, "res://assets/content/fishing/tools/tool-bamboo-rod.png")
 		_play_fishing_offer_collected_transition(upgrade_button)
 	_set_result("%s collected!" % _fishing_rod_upgrade_title(tool_id))
 	_refresh_fish_circle_currency_only()
@@ -20666,10 +21151,10 @@ func _on_fishing_boat_offer_pressed(boat_button: Control) -> void:
 		return
 	log_currency = maxi(0, log_currency - FISHING_BOAT_OFFER_COST)
 	fishing_boat_built = true
-	call_deferred("save_game")
+	save_game()
 	if boat_button != null and is_instance_valid(boat_button):
 		_float_reward(boat_button, boat_button, "Boat built!", 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
-		_fly_fishing_tool_to_wallet(boat_button, "res://docs/assets/fishing/tools/tool-boat.png")
+		_fly_fishing_tool_to_wallet(boat_button, "res://assets/content/fishing/tools/tool-boat.png")
 		_play_fishing_offer_collected_transition(boat_button)
 	_set_result("Boat built!")
 	_refresh_fish_circle_currency_only()
@@ -20686,10 +21171,10 @@ func _on_fishing_mirror_offer_pressed(mirror_button: Control) -> void:
 		return
 	fish_currency = maxf(0.0, fish_currency - float(FISHING_MIRROR_OFFER_COST))
 	fishing_mirror_collected = true
-	call_deferred("save_game")
+	save_game()
 	if mirror_button != null and is_instance_valid(mirror_button):
 		_float_reward(mirror_button, mirror_button, "Mirror collected!", 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
-		_fly_fishing_tool_to_wallet(mirror_button, "res://docs/assets/fishing/tools/reflection-net.png")
+		_fly_fishing_tool_to_wallet(mirror_button, "res://assets/content/fishing/tools/reflection-net.png")
 		_play_fishing_offer_collected_transition(mirror_button)
 	_set_result("Reflection mirror collected!")
 	_refresh_fish_circle_currency_only()
@@ -21552,6 +22037,7 @@ func _on_fishing_location_pressed(skill_id: String, area_id: String, location_id
 	if area_card != null:
 		_apply_fishing_area_selection(area_card, action_id, false)
 	var method_card := _fishing_method_card_for_action(skill_id, action_id)
+	save_game()
 	if not method_card.is_empty():
 		_play_fishing_location_tile_wiggle(method_card)
 	_start_action_from_card_tap(skill_id, action_id)
@@ -21995,10 +22481,10 @@ func _play_fishing_attempt_reveal(skill_id: String, action_id: String, success: 
 
 
 func _background_for_action(skill_id: String, index: int) -> String:
-	var bg_dir := "res://docs/assets/%s/backgrounds" % skill_id
+	var bg_dir := "res://assets/content/%s/backgrounds" % skill_id
 	var dir := DirAccess.open(bg_dir)
 	if dir == null:
-		return "res://docs/assets/%s/actions/01-placeholder.png" % skill_id
+		return "res://assets/content/%s/actions/01-placeholder.png" % skill_id
 	var files := dir.get_files()
 	files.sort()
 	var wanted := clampi(int(floor(float(index) / 5.0)) + 1, 1, 5)
@@ -22061,6 +22547,7 @@ func _init_state() -> void:
 	stamina_gauge_pre_tip_hold_seconds = 0.0
 	stamina_gauge_tip_root = null
 	leaderboard_last_submitted_score = 0
+	leaderboard_last_submitted_total_xp = 0
 	leaderboard_last_submitted_scores_by_category.clear()
 	leaderboard_last_submit_unix = 0
 	leaderboard_display_name = _make_guest_display_name()
@@ -22245,6 +22732,7 @@ func save_game() -> void:
 		"flow_heat": flow_heat,
 		"flow_active_action_seconds": flow_active_action_seconds,
 		"leaderboard_last_submitted_score": leaderboard_last_submitted_score,
+		"leaderboard_last_submitted_total_xp": leaderboard_last_submitted_total_xp,
 		"leaderboard_last_submitted_scores_by_category": leaderboard_last_submitted_scores_by_category,
 		"leaderboard_last_submit_unix": leaderboard_last_submit_unix,
 		"leaderboard_display_name": leaderboard_display_name,
@@ -22585,13 +23073,14 @@ func load_game() -> void:
 	fishing_boat_set_in_water = false
 	fishing_rod_set_in_water = false
 	fishing_rod_haul_visual_seconds = 0.0
-	fishing_net_collected = bool(data.get("fishing_net_collect_completed", false))
+	fishing_net_collected = bool(data.get("fishing_net_collect_completed", data.get("fishing_net_collected", false)))
 	fishing_net_collect_pending = false
 	fishing_rod_collected = bool(data.get("fishing_rod_collected", fishing_rod_collected))
 	fishing_reinforced_rod_collected = bool(data.get("fishing_reinforced_rod_collected", fishing_reinforced_rod_collected))
 	fishing_star_rod_collected = bool(data.get("fishing_star_rod_collected", fishing_star_rod_collected))
 	fishing_boat_built = bool(data.get("fishing_boat_built", fishing_boat_built))
 	fishing_mirror_collected = bool(data.get("fishing_mirror_collected", fishing_mirror_collected))
+	_restore_fishing_unlock_from_equipped_tool(equipped_fishing_tool_id)
 	if equipped_fishing_tool_id in ["line", "reinforced_rod", "star_rod"]:
 		if fishing_star_rod_collected:
 			equipped_fishing_tool_id = "star_rod"
@@ -22659,6 +23148,7 @@ func load_game() -> void:
 	flow_heat = clampf(float(data.get("flow_heat", flow_heat)), 0.0, 36.0)
 	flow_active_action_seconds = maxf(0.0, float(data.get("flow_active_action_seconds", flow_active_action_seconds)))
 	leaderboard_last_submitted_score = maxi(0, int(data.get("leaderboard_last_submitted_score", 0)))
+	leaderboard_last_submitted_total_xp = maxi(0, int(data.get("leaderboard_last_submitted_total_xp", leaderboard_last_submitted_score)))
 	var submitted_scores = data.get("leaderboard_last_submitted_scores_by_category", {})
 	leaderboard_last_submitted_scores_by_category.clear()
 	if typeof(submitted_scores) == TYPE_DICTIONARY:
@@ -22703,8 +23193,9 @@ func load_game() -> void:
 			leaderboard_fetch_retry_unix_by_category[category_id] = maxi(0, int((saved_fetch_retry_unix as Dictionary).get(raw_category_id, 0)))
 	# Successful rows are not saved, so successful fetch timestamps intentionally reset on launch.
 	chat_last_send_unix = maxi(0, int(data.get("chat_last_send_unix", 0)))
-	chat_stream_retry_unix = maxi(0, int(data.get("chat_stream_retry_unix", data.get("chat_fetch_retry_unix", 0))))
-	chat_stream_next_connect_unix = maxi(chat_stream_retry_unix, int(data.get("chat_stream_next_connect_unix", 0)))
+	var max_chat_retry_unix := _unix_now() + CHAT_STREAM_RETRY_INTERVAL_SECONDS
+	chat_stream_retry_unix = mini(maxi(0, int(data.get("chat_stream_retry_unix", data.get("chat_fetch_retry_unix", 0)))), max_chat_retry_unix)
+	chat_stream_next_connect_unix = mini(maxi(chat_stream_retry_unix, int(data.get("chat_stream_next_connect_unix", 0))), max_chat_retry_unix)
 	# Chat rows are not saved; the realtime stream is reopened only while the skills chat strip is visible.
 	last_result = str(data.get("last_result", last_result))
 	_apply_audio_bus_volumes()
@@ -22764,16 +23255,15 @@ func _leaderboard_score() -> int:
 
 func _leaderboard_categories() -> Array:
 	var categories := [
-		{"id": LEADERBOARD_CATEGORY_TOTAL_LEVEL, "label": "Total Lv"},
-		{"id": LEADERBOARD_CATEGORY_MEDALS, "label": "Medals"},
-		{"id": LEADERBOARD_CATEGORY_TOTAL_XP, "label": "Total XP"}
+		{"id": LEADERBOARD_CATEGORY_TOTAL_LEVEL, "label": "Total"}
 	]
 	for def in skill_defs:
 		var skill := def as Dictionary
 		var skill_id := str(skill.get("id", ""))
 		if skill_id.is_empty():
 			continue
-		categories.append({"id": LEADERBOARD_CATEGORY_SKILL_PREFIX + skill_id, "label": "%s XP" % _skill_name(skill_id)})
+		categories.append({"id": LEADERBOARD_CATEGORY_SKILL_PREFIX + skill_id, "label": _skill_name(skill_id)})
+	categories.append({"id": LEADERBOARD_CATEGORY_MEDALS, "label": "Medals"})
 	categories.append({"id": LEADERBOARD_CATEGORY_ELITE_HEAVENLY, "label": "Elite Heavenly"})
 	return categories
 
@@ -22791,7 +23281,7 @@ func _leaderboard_category_label(category_id: String) -> String:
 		var data := category as Dictionary
 		if str(data.get("id", "")) == valid_id:
 			return str(data.get("label", valid_id))
-	return "Total Lv"
+	return "Total"
 
 
 func _leaderboard_score_for_category(category_id: String) -> int:
@@ -22800,8 +23290,6 @@ func _leaderboard_score_for_category(category_id: String) -> int:
 		return _global_level()
 	if valid_id == LEADERBOARD_CATEGORY_MEDALS:
 		return int(_all_medal_counts().get("earned", 0))
-	if valid_id == LEADERBOARD_CATEGORY_TOTAL_XP:
-		return _leaderboard_score()
 	if valid_id == LEADERBOARD_CATEGORY_ELITE_HEAVENLY:
 		var tiers := _all_medal_tier_counts()
 		if tiers.size() >= MASTERY_MAX_LEVEL:
@@ -22813,14 +23301,42 @@ func _leaderboard_score_for_category(category_id: String) -> int:
 	return _global_level()
 
 
-func _leaderboard_format_score(category_id: String, score: int) -> String:
+func _leaderboard_skill_level_for_category(category_id: String) -> int:
+	var valid_id := _leaderboard_valid_category_id(category_id)
+	if not valid_id.begins_with(LEADERBOARD_CATEGORY_SKILL_PREFIX):
+		return 0
+	var skill_id := valid_id.substr(LEADERBOARD_CATEGORY_SKILL_PREFIX.length())
+	return _skill_level(skill_id)
+
+
+func _leaderboard_total_xp_for_category(category_id: String) -> int:
 	var valid_id := _leaderboard_valid_category_id(category_id)
 	if valid_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL:
+		return _leaderboard_score()
+	return 0
+
+
+func _skill_level_from_total_xp(total_xp: int) -> int:
+	var level := 1
+	var xp_total := maxi(0, total_xp)
+	while level < 99 and xp_total >= _xp_for_level(level + 1):
+		level += 1
+	return level
+
+
+func _leaderboard_format_score(category_id: String, score: int, skill_level := 0, total_xp := 0) -> String:
+	var valid_id := _leaderboard_valid_category_id(category_id)
+	if valid_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL:
+		if total_xp > 0:
+			return "Lv %s  |  %s XP" % [score, _format_compact_number(float(total_xp), 4)]
 		return "Lv %s" % score
 	if valid_id == LEADERBOARD_CATEGORY_MEDALS:
 		return "%s medals" % score
 	if valid_id == LEADERBOARD_CATEGORY_ELITE_HEAVENLY:
 		return "%s medals" % score
+	if valid_id.begins_with(LEADERBOARD_CATEGORY_SKILL_PREFIX):
+		var level := skill_level if skill_level > 0 else _skill_level_from_total_xp(score)
+		return "Lv %s  |  %s XP" % [level, _format_compact_number(float(score), 4)]
 	return "%s XP" % _format_compact_number(float(score), 4)
 
 
@@ -22851,6 +23367,8 @@ func _leaderboard_has_pending_category_score() -> bool:
 		var last_score := int(leaderboard_last_submitted_scores_by_category.get(category_id, 0))
 		if score > 0 and score > last_score:
 			return true
+		if category_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL and _leaderboard_score() > leaderboard_last_submitted_total_xp:
+			return true
 	return false
 
 
@@ -22867,7 +23385,7 @@ func _leaderboard_submit_ready() -> bool:
 
 func _leaderboard_submit_status_title() -> String:
 	if not _leaderboard_firebase_enabled():
-		return "Firebase not connected"
+		return "Online rankings unavailable"
 	if not _leaderboard_auth_ready():
 		return "Leaderboard login needed"
 	if not _leaderboard_profile_claim_valid():
@@ -22884,30 +23402,30 @@ func _leaderboard_submit_status_title() -> String:
 func _leaderboard_submit_status_detail() -> String:
 	var queued := _leaderboard_queued_score()
 	if not _leaderboard_firebase_enabled():
-		return "No network calls are made until the Firebase URL and Web API key are configured."
+		return "Online rankings are not connected yet."
 	var retry_wait := _leaderboard_auth_retry_wait_seconds()
 	if retry_wait > 0:
 		return "Leaderboard login failed recently. The next retry waits %s." % _format_duration(float(retry_wait))
 	if not _leaderboard_auth_ready():
-		return "Anonymous Firebase Auth protects leaderboard reads and hourly writes."
+		return "Online login protects ranking reads and 15-minute writes."
 	if not _leaderboard_profile_claim_valid():
 		return "Save a unique leaderboard name before scores publish."
 	if leaderboard_submit_in_flight:
-		return "One capped write is in flight. The next write cannot start for another hour."
+		return "One capped write is in flight. The next write cannot start for 15 minutes."
 	if not leaderboard_status_message.is_empty() and leaderboard_status_message != "Leaderboard loaded.":
 		return leaderboard_status_message
 	if leaderboard_last_submit_unix <= 0:
-		return "The game will keep the newest score and publish at most once per hour."
+		return "The game will keep the newest score and publish at most every 15 minutes."
 	var category_pending := _leaderboard_has_pending_category_score()
 	if queued <= 0 and not category_pending:
 		return "Your latest published score is current."
 	if _leaderboard_submit_ready():
 		if queued > 0:
-			return "%s score is queued for the next Firebase write." % _format_compact_number(float(queued), 3)
-		return "A category score is queued for the next Firebase write."
+			return "%s score is queued for the next online publish." % _format_compact_number(float(queued), 3)
+		return "A category score is queued for the next online publish."
 	if queued > 0:
-		return "%s score is queued. The game will publish only once per hour." % _format_compact_number(float(queued), 3)
-	return "A category score is queued. The game will publish only once per hour."
+		return "%s score is queued. The game will publish every 15 minutes at most." % _format_compact_number(float(queued), 3)
+	return "A category score is queued. The game will publish every 15 minutes at most."
 
 
 func _leaderboard_rows() -> Array:
@@ -22941,11 +23459,11 @@ func _leaderboard_empty_state() -> Control:
 	var title_text := "Loading leaderboard..."
 	var detail_text := "Only this visible category is being read. There are no realtime listeners."
 	if not _leaderboard_firebase_enabled():
-		title_text = "Firebase not connected"
-		detail_text = "Add your Realtime Database URL to enable the live leaderboard."
+		title_text = "Online rankings unavailable"
+		detail_text = "Online rankings are not connected yet."
 	elif not leaderboard_fetch_in_flight:
 		title_text = "No scores yet"
-		detail_text = leaderboard_status_message if not leaderboard_status_message.is_empty() else "Scores appear here after the first hourly publish."
+		detail_text = leaderboard_status_message if not leaderboard_status_message.is_empty() else "Scores appear here after the first 15-minute publish."
 	var title := _label(title_text, 84, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(title)
@@ -23123,7 +23641,7 @@ func _mastery_medal_region(index: int, sheet_size: Vector2i) -> Rect2i:
 		Rect2i(267, 574, 282, 282),
 		Rect2i(536, 574, 282, 282),
 		Rect2i(804, 574, 282, 282),
-		Rect2i(1068, 574, 297, 282),
+		Rect2i(1068, 574, 297, 261),
 		Rect2i(0, 842, 282, 280),
 		Rect2i(267, 842, 282, 280),
 		Rect2i(536, 842, 282, 280),
@@ -23267,11 +23785,64 @@ func _recalculate_mastery(key: String) -> void:
 
 
 func _activity_medal_stamina_cost_reduction(skill_id: String, action: Dictionary) -> float:
+	var source_action_id := _previous_playable_action_id_for_medal_buff(skill_id, action)
+	if source_action_id.is_empty():
+		return 0.0
+	var medal_tier := clampi(_mastery_level(skill_id, source_action_id), 0, MASTERY_MAX_LEVEL)
+	return clampf(float(medal_tier) * 0.02, 0.0, 0.95)
+
+
+func _activity_medal_time_reduction(skill_id: String, action: Dictionary) -> float:
+	var source_action_id := _previous_playable_action_id_for_medal_buff(skill_id, action)
+	if source_action_id.is_empty():
+		return 0.0
+	var medal_tier := clampi(_mastery_level(skill_id, source_action_id), 0, MASTERY_MAX_LEVEL)
+	return clampf(float(medal_tier) * 0.02, 0.0, 0.9)
+
+
+func _activity_medal_buff_source_name(skill_id: String, action: Dictionary) -> String:
+	var source_action_id := _previous_playable_action_id_for_medal_buff(skill_id, action)
+	if source_action_id.is_empty():
+		return ""
+	var source_action := _action_data(skill_id, source_action_id)
+	return str(source_action.get("name", source_action_id.capitalize()))
+
+
+func _activity_medal_buff_source_level(skill_id: String, action: Dictionary) -> int:
+	var source_action_id := _previous_playable_action_id_for_medal_buff(skill_id, action)
+	if source_action_id.is_empty():
+		return 0
+	return _mastery_level(skill_id, source_action_id)
+
+
+func _previous_playable_action_id_for_medal_buff(skill_id: String, action: Dictionary) -> String:
 	var action_id := str(action.get("id", ""))
 	if skill_id.is_empty() or action_id.is_empty():
-		return 0.0
-	var medal_tier := clampi(_mastery_level(skill_id, action_id), 0, MASTERY_MAX_LEVEL)
-	return clampf(float(medal_tier) * 0.01, 0.0, 0.95)
+		return ""
+	if _is_passive_action(action):
+		return ""
+	var actions: Array = actions_by_skill.get(skill_id, [])
+	for i in range(actions.size()):
+		var raw_action = actions[i]
+		if typeof(raw_action) != TYPE_DICTIONARY:
+			continue
+		var source_action := raw_action as Dictionary
+		if _is_passive_action(source_action):
+			continue
+		var source_action_id := str(source_action.get("id", ""))
+		if source_action_id.is_empty():
+			continue
+		for j in range(i + 1, actions.size()):
+			var raw_next_action = actions[j]
+			if typeof(raw_next_action) != TYPE_DICTIONARY:
+				continue
+			var next_action := raw_next_action as Dictionary
+			if _is_passive_action(next_action):
+				continue
+			if str(next_action.get("id", "")) == action_id:
+				return source_action_id
+			break
+	return ""
 
 
 func _activity_medal_rate_bonus(skill_id: String, action: Dictionary) -> float:
@@ -23295,8 +23866,13 @@ func _effective_seconds(skill_id: String, action: Dictionary) -> float:
 	var base_seconds := maxf(0.1, float(action.get("seconds", 1.0)))
 	var speed_bonus := clampf(_global_medal_bonus("speed_mult") + _ad_bonus_speed_mult(), 0.0, 0.75)
 	var skill_timer_reduction := clampf(_skill_level_timer_reduction(skill_id), 0.0, 0.85)
-	var total_reduction := clampf(speed_bonus + skill_timer_reduction, 0.0, 0.9)
+	var medal_time_reduction := _activity_medal_time_reduction(skill_id, action)
+	var total_reduction := clampf(speed_bonus + skill_timer_reduction + medal_time_reduction, 0.0, 0.9)
 	return maxf(0.1, base_seconds * (1.0 - total_reduction))
+
+
+func _apply_activity_medal_time_reduction(skill_id: String, action: Dictionary, seconds: float) -> float:
+	return maxf(0.1, maxf(0.1, seconds) * (1.0 - _activity_medal_time_reduction(skill_id, action)))
 
 
 func _fishing_net_soak_active(skill_id: String) -> bool:
@@ -23322,11 +23898,11 @@ func _fishing_boat_tick_seconds(action: Dictionary) -> float:
 
 func _action_cycle_seconds(skill_id: String, action: Dictionary) -> float:
 	if _fishing_net_soak_active(skill_id):
-		return _fishing_net_tick_seconds(action)
+		return _apply_activity_medal_time_reduction(skill_id, action, _fishing_net_tick_seconds(action))
 	if _fishing_boat_soak_active(skill_id):
-		return _fishing_boat_tick_seconds(action)
+		return _apply_activity_medal_time_reduction(skill_id, action, _fishing_boat_tick_seconds(action))
 	if _fishing_rework_active_for_skill(skill_id):
-		return maxf(0.1, maxf(0.1, float(action.get("seconds", 1.0))) * _fishing_tool_time_multiplier())
+		return _apply_activity_medal_time_reduction(skill_id, action, maxf(0.1, float(action.get("seconds", 1.0))) * _fishing_tool_time_multiplier())
 	return _effective_seconds(skill_id, action)
 
 
@@ -23839,6 +24415,34 @@ func _image(path: String, minimum_size: Vector2) -> TextureRect:
 	return image
 
 
+func _action_art_image(path: String) -> RoundedTextureRect:
+	var image := RoundedTextureRect.new()
+	image.texture = _texture(path)
+	image.custom_minimum_size = ACTION_ART_SIZE
+	image.size = ACTION_ART_SIZE
+	image.position = ACTION_ART_OFFSET
+	image.radius = 56.0
+	image.mask_inset = 0.0
+	image.corner_mask_mode = 1
+	image.art_height = ACTION_ART_SIZE.y
+	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	image.stretch_mode = TextureRect.STRETCH_SCALE
+	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	image.z_index = 1
+	return image
+
+
+func _action_art_border_overlay() -> Panel:
+	var border := Panel.new()
+	border.set_anchors_preset(Control.PRESET_FULL_RECT)
+	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	border.z_index = 20
+	var style := _action_art_style()
+	style.draw_center = false
+	border.add_theme_stylebox_override("panel", style)
+	return border
+
+
 func _image_from_texture(texture: Texture2D, minimum_size: Vector2, texture_path := "") -> TextureRect:
 	var image := TextureRect.new()
 	if _is_fishing_catch_texture_path(texture_path) and not texture_path.is_empty():
@@ -24024,7 +24628,7 @@ func _skill_detail_icon(skill_id: String) -> Control:
 	holder.custom_minimum_size = SKILL_DETAIL_ICON_SIZE
 	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var icon := _image("res://docs/assets/icons/%s.png" % skill_id, SKILL_DETAIL_ICON_SIZE)
+	var icon := _image("res://assets/content/icons/%s.png" % skill_id, SKILL_DETAIL_ICON_SIZE)
 	icon.position.y = SKILL_DETAIL_ICON_Y_OFFSET
 	holder.add_child(icon)
 	return holder
@@ -24296,13 +24900,18 @@ func _shop_ad_offer_button() -> Button:
 	row.add_theme_constant_override("separation", 54)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
-	row.add_child(_image("res://docs/assets/ui/ad-reward.png", Vector2(380, 380)))
+	row.add_child(_image("res://assets/content/ui/ad-reward.png", Vector2(380, 380)))
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
 	copy.add_theme_constant_override("separation", 12)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
+	var cta := _label("Watch Ad", 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	cta.add_theme_color_override("font_outline_color", COLOR_INK)
+	cta.add_theme_constant_override("outline_size", DEFAULT_BUTTON_TEXT_OUTLINE_SIZE)
+	cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(cta)
 	var details_text := "+10% XP\n+10% speed\n2 hours (stackable)"
 	var details := _label(details_text, 72, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	details.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -24682,10 +25291,10 @@ func _leaderboard_dropdown_style(color: Color, pressed := false) -> StyleBoxFlat
 	style.corner_radius_top_right = 46
 	style.corner_radius_bottom_left = 46
 	style.corner_radius_bottom_right = 46
-	style.content_margin_left = 54
-	style.content_margin_right = 54
-	style.content_margin_top = 32 + (6 if pressed else 0)
-	style.content_margin_bottom = 32 - (4 if pressed else 0)
+	style.content_margin_left = 70
+	style.content_margin_right = 70
+	style.content_margin_top = 42 + (6 if pressed else 0)
+	style.content_margin_bottom = 42 - (4 if pressed else 0)
 	style.shadow_color = Color(0.08, 0.07, 0.06, 0.28 if not pressed else 0.14)
 	style.shadow_size = 10 if not pressed else 4
 	style.shadow_offset = Vector2(0, 8 if not pressed else 3)
@@ -25060,6 +25669,25 @@ func _chat_input_style(focused := false) -> StyleBoxFlat:
 	style.content_margin_right = 46
 	style.content_margin_top = 24
 	style.content_margin_bottom = 24
+	return style
+
+
+func _chat_keyboard_preview_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color.WHITE
+	style.border_color = COLOR_BLUE
+	style.set_border_width_all(8)
+	style.corner_radius_top_left = 22
+	style.corner_radius_top_right = 22
+	style.corner_radius_bottom_left = 22
+	style.corner_radius_bottom_right = 22
+	style.content_margin_left = 44
+	style.content_margin_right = 44
+	style.content_margin_top = 16
+	style.content_margin_bottom = 16
+	style.shadow_color = Color(0, 0, 0, 0.24)
+	style.shadow_size = 18
+	style.shadow_offset = Vector2(0, 8)
 	return style
 
 

@@ -72,7 +72,7 @@ func _init() -> void:
 	_expect_leaderboard_requests_idle(game, "submit with absent config")
 	game._process_leaderboard_sync(31.0)
 	_expect_leaderboard_requests_idle(game, "sync with absent config")
-	_expect(game.leaderboard_status_message == "Firebase URL and Web API key are not configured yet.", "Absent config should produce the fail-closed leaderboard status.")
+	_expect(game.leaderboard_status_message == "Online services are not connected yet.", "Absent config should produce the fail-closed leaderboard status.")
 	game.free()
 	if failures.is_empty():
 		print("firebase-runtime-guard-ok")

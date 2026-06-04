@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Idle Elite PRD</title>
+  <title>Idle Elite Godot Docs - Idle Elite PRD</title>
+  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG documentation and design reference">
   <link rel="stylesheet" href="docs-nav.css">
   <link rel="stylesheet" href="docs-theme.css">
   <style>
@@ -274,25 +275,25 @@
       background: #f4cf5c;
     }
 
-    .live-mock-grid {
+    .live-reference-grid {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 22px;
       align-items: start;
     }
 
-    .live-mock {
+    .live-reference {
       min-width: 0;
       display: grid;
       gap: 12px;
     }
 
-    .live-mock h3 {
+    .live-reference h3 {
       margin: 0;
       font-size: 20px;
     }
 
-    .live-mock p {
+    .live-reference p {
       margin: 0;
       color: var(--muted);
       font-size: 14px;
@@ -452,7 +453,7 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .live-mock-grid {
+      .live-reference-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
@@ -481,7 +482,7 @@
 
       .loop,
       .systems,
-      .live-mock-grid,
+      .live-reference-grid,
       .rules-list {
         grid-template-columns: 1fr;
       }
@@ -495,9 +496,9 @@
 <body class="docs-theme-dark">
   <header class="docs-bar">
     <div class="docs-bar-head">
-      <p class="docs-eyebrow">Idle Elite</p>
-      <h1>Product requirements</h1>
-      <p class="docs-lead">Mobile idle RPG — five skills, short sessions.</p>
+      <p class="docs-eyebrow">Idle Elite Godot Docs</p>
+      <h1>Godot Product Requirements</h1>
+      <p class="docs-lead">Idle Elite mobile idle RPG requirements for the Godot 4 build.</p>
     </div>
     <nav data-docs-nav></nav>
   </header>
@@ -505,7 +506,7 @@
     <section class="hero">
       <div>
         <span class="eyebrow">Godot mobile idle RPG PRD</span>
-        <h1>Idle Elite Rebuild</h1>
+        <h1>Idle Elite Godot Build</h1>
         <p class="hero-copy">Pick a skill, run an activity, earn XP and mastery, rotate when stamina runs low.</p>
       <div class="tagline">I must become an Idle Elitist!</div>
       </div>
@@ -515,11 +516,11 @@
           <span>Store + Ads</span>
         </div>
         <div class="icon-grid">
-          <div class="icon-tile"><img src="play-store/assets/app-icon-512.png" alt="Idle Elite app icon"><span>App Icon</span></div>
-          <div class="icon-tile wide"><img src="play-store/assets/feature-graphic-1024x500.png" alt="Idle Elite feature graphic"><span>Feature Graphic</span></div>
-          <div class="icon-tile"><img src="play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png" alt="Vertical train skills ad creative"><span>Vertical Ad</span></div>
-          <div class="icon-tile"><img src="play-store/assets/screenshot-01-train-five-skills-1080x1920.png" alt="Train five skills screenshot"><span>Screenshot</span></div>
-          <div class="icon-tile"><img src="play-store/assets/ad-vertical-04-become-idle-elite-1080x1920.png" alt="Vertical brand ad creative"><span>Brand Ad</span></div>
+          <div class="icon-tile"><img src="../play-store/assets/app-icon-512.png" alt="Idle Elite app icon"><span>App Icon</span></div>
+          <div class="icon-tile wide"><img src="../play-store/assets/feature-graphic-1024x500.png" alt="Idle Elite feature graphic"><span>Feature Graphic</span></div>
+          <div class="icon-tile"><img src="../play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png" alt="Vertical train skills ad creative"><span>Vertical Ad</span></div>
+          <div class="icon-tile"><img src="../play-store/assets/screenshot-01-train-five-skills-1080x1920.png" alt="Train five skills screenshot"><span>Screenshot</span></div>
+          <div class="icon-tile"><img src="../play-store/assets/ad-vertical-04-become-idle-elite-1080x1920.png" alt="Vertical brand ad creative"><span>Brand Ad</span></div>
         </div>
       </aside>
     </section>
@@ -556,36 +557,36 @@
       </div>
     </section>
 
-    <section class="section" id="exact-menu-mockups">
+    <section class="section" id="current-godot-references">
       <div class="section-header">
         <div>
           <h2>Phone Experience Screens</h2>
-          <p>This section reuses the live phone mock instead of maintaining separate PRD-only screen sketches. The embedded views below are the references for the next full HTML phone pass.</p>
+          <p>This section links to current implementation reference pages instead of preserving old browser-only references.</p>
         </div>
-        <span class="pill">Live mock reused</span>
+        <span class="pill">Godot UI reference</span>
       </div>
 
-      <div class="live-mock-grid">
-        <article class="live-mock">
+      <div class="live-reference-grid">
+        <article class="live-reference">
           <div>
-            <h3>Phone Mock</h3>
-            <p>Use this for the live shell, tabs, skill menu, home reveal, ad boost state, and general interaction behavior.</p>
+            <h3>Current Godot UI</h3>
+            <p>Current screen map, skill list, activity count, and source functions for the Godot UI.</p>
           </div>
-          <iframe class="live-frame" title="Idle Elite phone mock" src="idle-elite-app-mock.html"></iframe>
+          <iframe class="live-frame" title="Idle Elite current Godot UI reference" src="idle-elite-app-mock.html"></iframe>
         </article>
 
-        <article class="live-mock">
+        <article class="live-reference">
           <div>
-            <h3>Action Button Mock</h3>
-            <p>Use this for action card layout, stamina gauge, generated activity art, stat chips, mastery medals, and progress rails.</p>
+            <h3>Action Data Review</h3>
+            <p>Database-backed action values for card layout, stamina, art, mastery, and progress rails.</p>
           </div>
-          <iframe class="live-frame" title="Idle Elite action button mock" src="idle-elite-app-mock.html?view=activity-buttons&amp;skill=fight"></iframe>
+          <iframe class="live-frame" title="Idle Elite action data review" src="idle-elite-action-review.html"></iframe>
         </article>
       </div>
 
       <div class="rules-list">
-        <div class="rule-card"><h3>Do Not Redraw</h3><p>When the phone mock changes, the PRD should reflect it by embedding or linking it, not by creating a second approximate mockup.</p></div>
-        <div class="rule-card"><h3>Build Target</h3><p>The next HTML pass should evolve <code>idle-elite-app-mock.html</code> directly into the full phone experience.</p></div>
+        <div class="rule-card"><h3>Do Not Redraw</h3><p>When the Godot UI changes, update the current reference pages from the real source data and GDScript.</p></div>
+        <div class="rule-card"><h3>Build Target</h3><p>Reference pages should describe shipped or actively implemented Godot behavior, not independent browser interactions.</p></div>
         <div class="rule-card"><h3>Data Source</h3><p>Activity values still come from the Activity Database. The PRD should describe scope, not duplicate tables.</p></div>
       </div>
     </section>
@@ -616,39 +617,39 @@
       <div class="asset-strip">
         <div class="asset-grid">
           <article class="asset-preview icon">
-            <img src="play-store/assets/app-icon-512.png" alt="Idle Elite app icon">
+            <img src="../play-store/assets/app-icon-512.png" alt="Idle Elite app icon">
             <div><strong>App Icon</strong><small>512 x 512 PNG</small></div>
           </article>
           <article class="asset-preview feature">
-            <img src="play-store/assets/feature-graphic-1024x500.png" alt="Idle Elite feature graphic">
+            <img src="../play-store/assets/feature-graphic-1024x500.png" alt="Idle Elite feature graphic">
             <div><strong>Feature Graphic</strong><small>1024 x 500 PNG</small></div>
           </article>
           <article class="asset-preview portrait">
-            <img src="play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png" alt="Idle Elite vertical ad">
+            <img src="../play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png" alt="Idle Elite vertical ad">
             <div><strong>Vertical Ad</strong><small>1080 x 1920 PNG</small></div>
           </article>
           <article class="asset-preview portrait">
-            <img src="play-store/assets/screenshot-01-train-five-skills-1080x1920.png" alt="Idle Elite phone screenshot">
+            <img src="../play-store/assets/screenshot-01-train-five-skills-1080x1920.png" alt="Idle Elite phone screenshot">
             <div><strong>Phone Screenshot</strong><small>1080 x 1920 PNG</small></div>
           </article>
         </div>
         <ul class="file-list">
-          <li>docs/play-store/assets/app-icon-512.png</li>
-          <li>docs/play-store/assets/feature-graphic-1024x500.png</li>
-          <li>docs/play-store/assets/screenshot-01-train-five-skills-1080x1920.png</li>
-          <li>docs/play-store/assets/screenshot-02-stamina-choices-1080x1920.png</li>
-          <li>docs/play-store/assets/screenshot-03-level-up-1080x1920.png</li>
-          <li>docs/play-store/assets/screenshot-04-offline-progress-1080x1920.png</li>
-          <li>docs/play-store/assets/screenshot-05-idle-elitist-1080x1920.png</li>
-          <li>docs/play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png</li>
-          <li>docs/play-store/assets/ad-vertical-02-progress-while-away-1080x1920.png</li>
-          <li>docs/play-store/assets/ad-vertical-03-tap-level-repeat-1080x1920.png</li>
-          <li>docs/play-store/assets/ad-vertical-04-become-idle-elite-1080x1920.png</li>
+          <li>play-store/assets/app-icon-512.png</li>
+          <li>play-store/assets/feature-graphic-1024x500.png</li>
+          <li>play-store/assets/screenshot-01-train-five-skills-1080x1920.png</li>
+          <li>play-store/assets/screenshot-02-stamina-choices-1080x1920.png</li>
+          <li>play-store/assets/screenshot-03-level-up-1080x1920.png</li>
+          <li>play-store/assets/screenshot-04-offline-progress-1080x1920.png</li>
+          <li>play-store/assets/screenshot-05-idle-elitist-1080x1920.png</li>
+          <li>play-store/assets/ad-vertical-01-train-five-skills-1080x1920.png</li>
+          <li>play-store/assets/ad-vertical-02-progress-while-away-1080x1920.png</li>
+          <li>play-store/assets/ad-vertical-03-tap-level-repeat-1080x1920.png</li>
+          <li>play-store/assets/ad-vertical-04-become-idle-elite-1080x1920.png</li>
         </ul>
       </div>
     </section>
 
-    <div class="footer">Activity data: Database page. Launch: <code>docs/play-store/</code>.</div>
+    <div class="footer">Activity data: Database page. Launch: <code>play-store/docs/</code>.</div>
   </main>
   <script src="docs-nav.js"></script>
 </body>

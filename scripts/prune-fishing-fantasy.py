@@ -34,8 +34,8 @@ for action in fishing["actions"]:
             "success": 84,
             "rewards": {"xp": 48, "fish_min": 1, "fish_max": 1},
             "costs": {"stamina": 6},
-            "art": "docs/assets/fishing/actions/22-angle-in-cosmic-dream-sea.png",
-            "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
+            "art": "assets/content/fishing/actions/22-angle-in-cosmic-dream-sea.png",
+            "background": "assets/content/fishing/backgrounds/11-cosmic-dream-sea.png",
             "area": "space",
             "archetype": "steady",
         }

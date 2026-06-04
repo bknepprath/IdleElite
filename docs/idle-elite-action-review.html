@@ -3,7 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Action Review</title>
+  <title>Idle Elite Godot Docs - Godot Action Review</title>
+  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG documentation and design reference">
   <link rel="stylesheet" href="docs-nav.css">
   <link rel="stylesheet" href="docs-theme.css">
   <style>
@@ -13,9 +14,10 @@
       --panel: #fffdf8;
       --line: #d9cfbc;
       --muted: #6e6658;
-      --green: #367a52;
       --gold: #fff2a8;
-      --shadow: 0 18px 42px rgba(28, 24, 18, 0.16);
+      --blue: #3aa0ff;
+      --red: #e84d4d;
+      --shadow: 0 24px 58px rgba(28, 24, 18, 0.22);
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
@@ -27,298 +29,549 @@
       min-height: 100vh;
       margin: 0;
       color: var(--ink);
-      background: linear-gradient(135deg, #fbf8ef 0%, #edf7f4 52%, #f5eef9 100%);
+      background:
+        radial-gradient(circle at 18% 12%, rgba(119, 200, 178, 0.08), transparent 22rem),
+        linear-gradient(145deg, #171512 0%, #211c17 54%, #11100e 100%);
     }
 
     .page {
-      width: min(1680px, calc(100% - 32px));
+      width: min(100%, 1880px);
       margin: 0 auto;
-      padding: 28px 0 36px;
+      padding: 26px clamp(10px, 3vw, 32px) 46px;
     }
 
-    .topbar {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 16px;
-      align-items: end;
-      justify-content: space-between;
+    .review-summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
       margin-bottom: 18px;
     }
 
-    h1 {
+    .summary-tile {
+      min-width: 0;
+      padding: 10px 12px;
+      border: 2px solid rgba(247, 234, 215, 0.28);
+      border-radius: 8px;
+      background: #26221c;
+      color: #f7ead7;
+      box-shadow: 3px 4px 0 rgba(0, 0, 0, 0.45);
+    }
+
+    .summary-tile strong {
+      display: block;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .summary-tile span {
+      display: block;
+      margin-top: 4px;
+      color: #bba88d;
+      font-size: 11px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .phone-shell {
+      width: 100%;
+      margin: 0 auto;
+      overflow-x: auto;
+      padding: 10px 4px 22px;
+    }
+
+    .phone {
+      --ink: #171615;
+      --paper: #f8f1e5;
+      --panel: #fffdf8;
+      --line: #d9cfbc;
+      --muted: #6e6658;
+      --gold: #fff2a8;
+      color: var(--ink);
+      background: transparent;
+    }
+
+    #board {
+      width: min(100%, 1460px);
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    .phone-status {
+      display: none;
+    }
+
+    .skill-screen {
+      min-width: 0;
+      overflow: hidden;
+      border: 8px solid #0e0d0b;
+      border-radius: 32px;
+      background: var(--paper);
+      box-shadow: 0 24px 58px rgba(0, 0, 0, 0.34);
+    }
+
+    .skill-screen:last-child {
+      border-bottom: 8px solid #0e0d0b;
+    }
+
+    .skill-hero {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      min-height: 174px;
+      padding: 20px 20px 18px;
+      border-bottom: 2px solid rgba(23, 22, 21, 0.14);
+      background:
+        linear-gradient(120deg, color-mix(in srgb, var(--skill-color) 18%, #fffdf8), #fffdf8 68%),
+        #fffdf8;
+      box-shadow: 0 12px 28px rgba(23, 22, 21, 0.12);
+    }
+
+    .skill-hero-top {
+      display: grid;
+      grid-template-columns: 74px minmax(0, 1fr) 86px;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .skill-icon {
+      width: 74px;
+      height: 74px;
+      padding: 7px;
+      border: 4px solid var(--ink);
+      border-radius: 18px;
+      background: var(--panel);
+      object-fit: contain;
+      box-shadow: 0 5px 0 rgba(23, 22, 21, 0.24);
+    }
+
+    .skill-title {
+      min-width: 0;
+    }
+
+    .skill-title h2 {
       margin: 0;
-      font-size: clamp(30px, 5vw, 56px);
-      line-height: 0.95;
+      overflow-wrap: anywhere;
+      font-size: 34px;
+      line-height: 0.94;
       letter-spacing: 0;
     }
 
-    .summary {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      justify-content: flex-end;
+    .skill-title p {
+      margin: 7px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      line-height: 1.25;
     }
 
-    .pill {
-      padding: 8px 10px;
+    .regen-ring {
+      display: grid;
+      place-items: center;
+      width: 86px;
+      aspect-ratio: 1;
+      border: 7px solid var(--ink);
+      border-radius: 999px;
+      background:
+        conic-gradient(var(--skill-color) 0 74%, #eadfcb 74% 100%);
+      box-shadow: inset 0 0 0 9px #fffdf8, 0 5px 0 rgba(23, 22, 21, 0.22);
+      font-weight: 1000;
+    }
+
+    .xp-strip {
+      height: 14px;
+      margin-top: 16px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: #171615;
+      overflow: hidden;
+    }
+
+    .xp-strip span {
+      display: block;
+      width: 62%;
+      height: 100%;
+      border-radius: inherit;
+      background: var(--skill-color);
+    }
+
+    .module-stack {
+      display: grid;
+      gap: 18px;
+      padding: 18px 14px 28px;
+    }
+
+    .module {
+      position: relative;
+      min-height: 210px;
+      overflow: hidden;
+      border: 5px solid var(--ink);
+      border-radius: 26px;
+      background: var(--panel);
+      box-shadow: 0 12px 0 rgba(23, 22, 21, 0.2);
+    }
+
+    .module-bg {
+      position: absolute;
+      inset: 0;
+      background-color: var(--skill-color);
+      background-image: linear-gradient(rgba(23, 22, 21, 0.34), rgba(23, 22, 21, 0.48)), var(--bg);
+      background-position: center;
+      background-size: cover;
+      transform: scale(1.02);
+    }
+
+    .module-body {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      grid-template-columns: 128px minmax(0, 1fr);
+      gap: 14px;
+      min-height: 210px;
+      padding: 18px;
+      align-items: start;
+    }
+
+    .module-art {
+      width: 128px;
+      aspect-ratio: 1;
+      padding: 8px;
+      border: 4px solid #eee2ce;
+      border-radius: 20px;
+      background: #fff;
+      object-fit: contain;
+      box-shadow: 0 5px 0 rgba(23, 22, 21, 0.28);
+    }
+
+    .module-copy {
+      min-width: 0;
+      display: grid;
+      gap: 10px;
+    }
+
+    .module-kicker {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .badge {
+      min-height: 24px;
+      padding: 4px 8px;
       border: 2px solid var(--ink);
       border-radius: 999px;
       background: var(--gold);
-      font-size: 12px;
-      font-weight: 950;
-      box-shadow: 2px 2px 0 var(--ink);
-      white-space: nowrap;
-    }
-
-    .formula-grid {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(220px, 1fr));
-      gap: 10px;
-      margin: 0 0 16px;
-    }
-
-    .formula-card {
-      min-height: 96px;
-      padding: 12px;
-      border: 2px solid var(--ink);
-      border-radius: 8px;
-      background: rgba(255, 253, 248, 0.9);
-      box-shadow: 2px 3px 0 var(--ink);
-    }
-
-    .formula-card strong {
-      display: block;
-      margin-bottom: 6px;
-      font-size: 14px;
-    }
-
-    .formula-card code {
-      display: block;
-      color: #2d271f;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      color: var(--ink);
       font-size: 11px;
-      font-weight: 800;
-      line-height: 1.35;
-      white-space: normal;
-    }
-
-    .formula-card small {
-      display: block;
-      margin-top: 6px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 800;
-      line-height: 1.3;
-    }
-
-    .board {
-      display: grid;
-      grid-template-columns: repeat(5, minmax(250px, 1fr));
-      gap: 12px;
-      align-items: start;
-      overflow-x: auto;
-      padding: 4px 2px 18px;
-    }
-
-    .skill-column {
-      min-width: 250px;
-      display: grid;
-      gap: 10px;
-    }
-
-    .skill-head {
-      position: sticky;
-      top: 0;
-      z-index: 2;
-      display: grid;
-      grid-template-columns: 54px minmax(0, 1fr);
-      gap: 10px;
-      align-items: center;
-      padding: 10px;
-      border: 3px solid var(--ink);
-      border-radius: 10px;
-      background: rgba(255, 253, 248, 0.96);
-      box-shadow: 3px 4px 0 var(--ink);
-    }
-
-    .skill-head img {
-      width: 54px;
-      height: 54px;
-      object-fit: contain;
-      border: 2px solid var(--ink);
-      border-radius: 8px;
-      background: #fff;
-    }
-
-    .skill-head h2 {
-      margin: 0;
-      font-size: 19px;
-      line-height: 1.05;
-    }
-
-    .skill-head small {
-      display: block;
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 850;
-    }
-
-    .action-list {
-      display: grid;
-      gap: 9px;
-    }
-
-    .action-card {
-      display: grid;
-      gap: 9px;
-      min-height: 112px;
-      padding: 10px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 253, 248, 0.9);
-      box-shadow: var(--shadow);
-    }
-
-    .action-title {
-      display: grid;
-      grid-template-columns: auto minmax(0, 1fr);
-      gap: 8px;
-      align-items: start;
-    }
-
-    .level {
-      min-width: 34px;
-      padding: 5px 6px;
-      border: 2px solid var(--ink);
-      border-radius: 8px;
-      background: #e8f4ff;
-      font-size: 11px;
-      font-weight: 950;
+      font-weight: 1000;
       line-height: 1;
-      text-align: center;
-      box-shadow: 1px 1px 0 var(--ink);
+      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.55);
     }
 
-    .action-title strong {
-      display: block;
-      font-size: 15px;
-      line-height: 1.1;
+    .badge.dark {
+      background: #171615;
+      color: #fffdf8;
     }
 
-    .action-title small {
-      display: block;
-      margin-top: 3px;
-      color: var(--muted);
-      font-size: 11px;
-      font-weight: 850;
+    .module-title {
+      margin: 0;
+      color: #fff;
+      font-size: 27px;
+      line-height: 0.98;
+      letter-spacing: 0;
+      text-shadow:
+        -2px -2px 0 var(--ink),
+        2px -2px 0 var(--ink),
+        -2px 2px 0 var(--ink),
+        2px 2px 0 var(--ink),
+        0 4px 0 rgba(23, 22, 21, 0.42);
     }
 
-    .stats {
+    .stat-grid {
       display: grid;
-      gap: 5px;
-    }
-
-    .stat-row {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 6px;
     }
 
     .stat {
       min-width: 0;
-      padding: 6px;
-      border: 1px solid rgba(23, 22, 21, 0.25);
-      border-radius: 7px;
-      background: #fff;
-      line-height: 1.05;
+      min-height: 46px;
+      padding: 6px 5px;
+      border: 2px solid rgba(23, 22, 21, 0.88);
+      border-radius: 10px;
+      background: rgba(255, 253, 248, 0.92);
+      text-align: center;
     }
 
-    .stat b {
+    .stat b,
+    .stat span {
       display: block;
       overflow: hidden;
-      font-size: 13px;
       text-overflow: ellipsis;
       white-space: nowrap;
     }
 
+    .stat b {
+      font-size: 14px;
+      line-height: 1.05;
+    }
+
     .stat span {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 9px;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
+    .mastery-line {
+      display: grid;
+      grid-template-columns: 42px minmax(0, 1fr);
+      gap: 8px;
+      align-items: center;
+      margin-top: 2px;
+    }
+
+    .medal {
+      width: 42px;
+      aspect-ratio: 1;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: radial-gradient(circle at 35% 28%, #fff8cf, #d18b28 58%, #7b4a13);
+      box-shadow: 0 4px 0 rgba(23, 22, 21, 0.36);
+    }
+
+    .progress {
+      height: 17px;
+      border: 3px solid var(--ink);
+      border-radius: 999px;
+      background: #171615;
+      overflow: hidden;
+    }
+
+    .progress span {
+      display: block;
+      width: var(--progress, 34%);
+      height: 100%;
+      background: var(--skill-color);
+    }
+
+    .passive .module-bg {
+      background-image:
+        linear-gradient(rgba(255, 242, 168, 0.62), rgba(255, 242, 168, 0.72)),
+        var(--bg);
+    }
+
+    .passive .module-title,
+    .area-module .module-title {
+      color: #fffdf8;
+    }
+
+    .passive .passive-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 7px;
+    }
+
+    .upgrade-pill {
+      min-height: 48px;
+      padding: 7px 5px;
+      border: 2px solid var(--ink);
+      border-radius: 12px;
+      background: rgba(255, 253, 248, 0.94);
+      text-align: center;
+      font-weight: 1000;
+    }
+
+    .upgrade-pill span {
       display: block;
       margin-top: 3px;
       color: var(--muted);
       font-size: 9px;
-      font-weight: 950;
       text-transform: uppercase;
     }
 
-    .formula-row .stat {
-      background: #f1eadc;
+    .area-module {
+      min-height: 0;
     }
 
-    .formula-row .stat b {
-      font-size: 12px;
+    .area-module .module-body {
+      grid-template-columns: 1fr;
+      min-height: 0;
+      padding: 18px;
     }
 
-    .identity {
-      margin-top: 16px;
+    .area-top {
       display: grid;
-      grid-template-columns: repeat(5, minmax(250px, 1fr));
+      grid-template-columns: 82px minmax(0, 1fr);
       gap: 12px;
+      align-items: center;
+    }
+
+    .area-thumb {
+      width: 82px;
+      aspect-ratio: 1;
+      border: 4px solid var(--ink);
+      border-radius: 20px;
+      background-image: var(--bg);
+      background-position: center;
+      background-size: cover;
+      box-shadow: 0 5px 0 rgba(23, 22, 21, 0.26);
+    }
+
+    .method-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .method-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 10px;
+      align-items: center;
+      padding: 9px 10px;
+      border: 2px solid rgba(23, 22, 21, 0.78);
+      border-radius: 14px;
+      background: rgba(255, 253, 248, 0.94);
+    }
+
+    .method-row strong {
+      display: block;
+      overflow: hidden;
+      font-size: 15px;
+      line-height: 1.1;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .method-row span {
+      display: block;
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+
+    .method-stat {
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 1000;
+      white-space: nowrap;
     }
 
     .identity-card {
-      min-width: 250px;
-      padding: 12px;
-      border: 1px solid var(--line);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.76);
+      padding: 14px 16px;
+      border: 3px solid var(--ink);
+      border-radius: 20px;
+      background: #fffdf8;
+      box-shadow: 0 7px 0 rgba(23, 22, 21, 0.18);
     }
 
     .identity-card strong {
       display: block;
       margin-bottom: 5px;
-      font-size: 14px;
+      font-size: 16px;
     }
 
     .identity-card p {
       margin: 0;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 750;
+      font-weight: 800;
       line-height: 1.35;
     }
 
-    @media (max-width: 980px) {
-      .board,
-      .identity,
-      .formula-grid {
-        grid-template-columns: repeat(5, minmax(260px, 1fr));
+    @supports not (color: color-mix(in srgb, red, white)) {
+      .skill-hero {
+        background: #fffdf8;
       }
     }
 
-    @media (max-width: 720px) {
+    @media (max-width: 1500px) {
+      .module-body {
+        grid-template-columns: 112px minmax(0, 1fr);
+      }
+
+      .module-art {
+        width: 112px;
+      }
+
+      .module-title {
+        font-size: 24px;
+      }
+
+      .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 680px) {
       .page {
-        width: min(100% - 20px, 520px);
+        padding-inline: 10px;
       }
 
-      .topbar {
-        align-items: start;
+      .review-summary {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
 
-      .summary {
-        justify-content: flex-start;
+      .phone-shell {
+        padding-inline: 0;
       }
 
-      .board,
-      .identity,
-      .formula-grid {
-        grid-template-columns: 1fr;
-        overflow: visible;
+      #board {
+        width: max-content;
+        grid-template-columns: repeat(5, minmax(360px, 1fr));
       }
 
-      .skill-column,
-      .identity-card {
-        min-width: 0;
+      .skill-hero {
+        min-height: 154px;
+        padding: 16px 14px;
+      }
+
+      .skill-hero-top {
+        grid-template-columns: 62px minmax(0, 1fr) 70px;
+      }
+
+      .skill-icon {
+        width: 62px;
+        height: 62px;
+      }
+
+      .skill-title h2 {
+        font-size: 28px;
+      }
+
+      .regen-ring {
+        width: 70px;
+        border-width: 6px;
+        font-size: 13px;
+      }
+
+      .module-stack {
+        padding-inline: 9px;
+      }
+
+      .module-body {
+        grid-template-columns: 96px minmax(0, 1fr);
+        gap: 10px;
+        padding: 13px;
+      }
+
+      .module-art {
+        width: 96px;
+      }
+
+      .module-title {
+        font-size: 22px;
+      }
+
+      .stat-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
       }
     }
   </style>
@@ -326,110 +579,249 @@
 <body class="docs-theme-dark">
   <header class="docs-bar">
     <div class="docs-bar-head">
-      <p class="docs-eyebrow">Idle Elite</p>
-      <h1>Action Review</h1>
-      <p class="docs-lead">All skills and actions from the database.</p>
+      <p class="docs-eyebrow">Idle Elite Godot Docs</p>
+      <h1>Godot Action Review</h1>
+      <p class="docs-lead">Phone-scroll review of every Idle Elite module in the same order and visual structure used by the Godot skill detail screens.</p>
     </div>
     <nav data-docs-nav></nav>
   </header>
   <main class="page">
-    <div class="summary" aria-label="Action summary" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-      <span class="pill">5 skills</span>
-      <span class="pill">125 actions</span>
-      <span class="pill">Lv 1–50</span>
-    </div>
-
-    <section class="formula-grid" aria-label="Progression formulas">
-      <article class="formula-card">
-        <strong>Base Action Time</strong>
-        <code>seconds = (1.0 + stamina * 0.75 + unlock_level * 0.06) * skill_time_scale</code>
-        <small>Action timing comes from <code>activity-database.json</code>, so this page only reviews the current source values.</small>
-      </article>
-      <article class="formula-card">
-        <strong>Visual Mastery</strong>
-        <code>action mastery = medal state + progress bar</code>
-        <small>Mastery belongs on the action card as visual progress. Do not show mastery text or per-level speed/cost formulas here.</small>
-      </article>
-      <article class="formula-card">
-        <strong>Skill Level Scaling</strong>
-        <code>success = activity.success</code>
-        <small>Success values are kept as explicit source data until the full phone mock needs runtime scaling.</small>
-      </article>
+    <section class="review-summary" id="summary" aria-label="Action summary"></section>
+    <section class="phone-shell" aria-label="Phone action review">
+      <div class="phone">
+        <div class="phone-status"></div>
+        <div id="board"></div>
+      </div>
     </section>
-
-    <section class="board" id="board" aria-label="All skill actions"></section>
-    <section class="identity" id="identity" aria-label="Skill identities"></section>
   </main>
 
   <script src="activity-database-data.js"></script>
   <script src="activity-docs.js"></script>
   <script>
     const board = document.getElementById("board");
-    const identity = document.getElementById("identity");
+    const summary = document.getElementById("summary");
 
-    function renderAction(skill, action) {
+    const skillColors = {
+      fight: "#e84d4d",
+      thieving: "#8956bc",
+      build: "#237cd5",
+      woodcutting: "#6ea937",
+      fishing: "#2dc0b9"
+    };
+
+    function asset(path) {
+      return ActivityDocs.docsAsset(path);
+    }
+
+    function cssImage(path) {
+      const clean = asset(path);
+      return clean ? `url('${clean.replace(/'/g, "%27")}')` : "none";
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
+    function stat(value, label) {
+      return `<span class="stat"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></span>`;
+    }
+
+    function actionSubtitle(skill, action) {
+      if (action.area) return `${skill.name} / ${action.area.replaceAll("_", " ")}`;
+      return skill.name;
+    }
+
+    function renderActionModule(skill, action, index) {
+      const progress = 18 + ((index * 17) % 72);
       return `
-        <section class="action-card">
-          <div class="action-title">
-            <span class="level">Lv ${action.unlock}</span>
-            <div>
-              <strong>${action.name}</strong>
-              <small>${skill.name}</small>
+        <article class="module action-module" style="--skill-color:${skillColors[skill.id] || "#3aa0ff"};--bg:${cssImage(action.background)}">
+          <div class="module-bg"></div>
+          <div class="module-body">
+            <img class="module-art" src="${asset(action.art)}" alt="">
+            <div class="module-copy">
+              <div class="module-kicker">
+                <span class="badge">Lv ${escapeHtml(action.unlock)}</span>
+                <span class="badge dark">${escapeHtml(actionSubtitle(skill, action))}</span>
+              </div>
+              <h3 class="module-title">${escapeHtml(action.name)}</h3>
+              <div class="stat-grid">
+                ${stat("+" + action.xp, "XP")}
+                ${stat(action.stamina, "Stam")}
+                ${stat(ActivityDocs.formatSeconds(action.seconds), "Time")}
+                ${stat(ActivityDocs.formatPercent(action.success), "Rate")}
+              </div>
+              <div class="mastery-line" aria-label="Mastery progress">
+                <span class="medal"></span>
+                <span class="progress" style="--progress:${progress}%"><span></span></span>
+              </div>
             </div>
           </div>
-          <div class="stats">
-            <div class="stat-row">
-              <span class="stat"><b>${action.stamina}</b><span>Stam</span></span>
-              <span class="stat"><b>${ActivityDocs.formatSeconds(action.seconds)}</b><span>Time</span></span>
-              <span class="stat"><b>${ActivityDocs.formatPercent(action.success)}</b><span>Rate</span></span>
+        </article>
+      `;
+    }
+
+    function renderPassiveModule(skill, action) {
+      const passive = action.passive || {};
+      const capacity = passive.base_capacity || passive.capacity || 0;
+      const seconds = passive.base_time_seconds || passive.time_seconds || action.seconds;
+      const yieldValue = passive.base_yield || passive.yield || 1;
+      return `
+        <article class="module passive" style="--skill-color:${skillColors[skill.id] || "#3aa0ff"};--bg:${cssImage(action.background || action.art)}">
+          <div class="module-bg"></div>
+          <div class="module-body">
+            <img class="module-art" src="${asset(action.art)}" alt="">
+            <div class="module-copy">
+              <div class="module-kicker">
+                <span class="badge">Lv ${escapeHtml(action.unlock)}</span>
+                <span class="badge dark">Passive module</span>
+              </div>
+              <h3 class="module-title">${escapeHtml(action.name)}</h3>
+              <div class="passive-grid">
+                <span class="upgrade-pill">${escapeHtml(yieldValue)}<span>Yield</span></span>
+                <span class="upgrade-pill">${escapeHtml(ActivityDocs.formatSeconds(seconds))}<span>Cycle</span></span>
+                <span class="upgrade-pill">${escapeHtml(capacity)}<span>Max</span></span>
+              </div>
+              <div class="mastery-line" aria-label="Storage progress">
+                <span class="medal"></span>
+                <span class="progress" style="--progress:46%"><span></span></span>
+              </div>
             </div>
-            <div class="stat-row formula-row">
-              <span class="stat"><b>+${action.xp}</b><span>XP</span></span>
-              <span class="stat"><b>Medal</b><span>Mastery</span></span>
-              <span class="stat"><b>Bar</b><span>Progress</span></span>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderFishingAreaModule(skill, area, actions, index) {
+      const unlock = Math.min(...actions.map(action => Number(action.unlock || 1)));
+      const fluid = area.fluid ? area.fluid.replaceAll("_", " ") : "water";
+      return `
+        <article class="module area-module" style="--skill-color:${skillColors[skill.id]};--bg:${cssImage(area.background)}">
+          <div class="module-bg"></div>
+          <div class="module-body">
+            <div class="area-top">
+              <span class="area-thumb" style="--bg:${cssImage(area.background)}"></span>
+              <div class="module-copy">
+                <div class="module-kicker">
+                  <span class="badge">Lv ${escapeHtml(unlock)}</span>
+                  <span class="badge dark">${escapeHtml(fluid)}</span>
+                </div>
+                <h3 class="module-title">${escapeHtml(area.name)}</h3>
+              </div>
             </div>
+            <div class="method-list">
+              ${actions.map((action, methodIndex) => `
+                <div class="method-row">
+                  <div>
+                    <strong>${escapeHtml(action.name)}</strong>
+                    <span>Method ${methodIndex + 1} / Lv ${escapeHtml(action.unlock)} / ${escapeHtml(ActivityDocs.formatPercent(action.success))}</span>
+                  </div>
+                  <div class="method-stat">+${escapeHtml(action.xp)} XP</div>
+                </div>
+              `).join("")}
+            </div>
+            <div class="mastery-line" aria-label="Area progress">
+              <span class="medal"></span>
+              <span class="progress" style="--progress:${24 + ((index * 13) % 60)}%"><span></span></span>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderSkillHeader(skill, modules) {
+      return `
+        <header class="skill-hero">
+          <div class="skill-hero-top">
+            <img class="skill-icon" src="${asset(skill.icon)}" alt="">
+            <div class="skill-title">
+              <h2>${escapeHtml(skill.name)}</h2>
+              <p>${escapeHtml(skill.identity)}</p>
+            </div>
+            <div class="regen-ring">${modules}</div>
+          </div>
+          <div class="xp-strip"><span></span></div>
+        </header>
+      `;
+    }
+
+    function renderFishingSkill(skill) {
+      const passiveModules = skill.actions.filter(action => action.kind === "passive_item_collect");
+      const activeActions = skill.actions.filter(action => action.kind !== "passive_item_collect");
+      const areas = Array.isArray(skill.areas) ? skill.areas : [];
+      const areaModules = areas.map((area, index) => {
+        const areaActions = activeActions.filter(action => action.area === area.id);
+        if (!areaActions.length) return "";
+        return renderFishingAreaModule(skill, area, areaActions, index);
+      }).join("");
+      const fallback = areas.length ? "" : activeActions.map(renderActionModule.bind(null, skill)).join("");
+      const modules = passiveModules.length + (areas.length || activeActions.length);
+      return `
+        <section class="skill-screen" style="--skill-color:${skillColors[skill.id]}">
+          ${renderSkillHeader(skill, modules)}
+          <div class="module-stack">
+            ${passiveModules.map(action => renderPassiveModule(skill, action)).join("")}
+            ${areaModules || fallback}
+            <article class="identity-card">
+              <strong>${escapeHtml(skill.name)} identity</strong>
+              <p>${escapeHtml(skill.identity)}</p>
+            </article>
           </div>
         </section>
       `;
     }
 
     function renderSkill(skill) {
+      if (skill.id === "fishing") return renderFishingSkill(skill);
+      const modules = skill.actions.length;
       return `
-        <article class="skill-column">
-          <header class="skill-head">
-            <img src="${skill.icon}" alt="">
-            <div>
-              <h2>${skill.name}</h2>
-              <small>${skill.actions.length} actions</small>
-            </div>
-          </header>
-          <div class="action-list">
-            ${skill.actions.map(action => renderAction(skill, action)).join("")}
+        <section class="skill-screen" style="--skill-color:${skillColors[skill.id] || "#3aa0ff"}">
+          ${renderSkillHeader(skill, modules)}
+          <div class="module-stack">
+            ${skill.actions.map((action, index) => {
+              if (action.kind === "passive_item_collect") return renderPassiveModule(skill, action);
+              return renderActionModule(skill, action, index);
+            }).join("")}
+            <article class="identity-card">
+              <strong>${escapeHtml(skill.name)} identity</strong>
+              <p>${escapeHtml(skill.identity)}</p>
+            </article>
           </div>
-        </article>
+        </section>
+      `;
+    }
+
+    function renderSummary(database) {
+      const skills = database.skills.length;
+      const actions = database.skills.reduce((sum, skill) => sum + skill.actions.length, 0);
+      const passive = database.skills.reduce((sum, skill) => sum + skill.actions.filter(action => action.kind === "passive_item_collect").length, 0);
+      const fishingAreas = (database.skills.find(skill => skill.id === "fishing")?.areas || []).length;
+      summary.innerHTML = `
+        <article class="summary-tile"><strong>${skills}</strong><span>Skills</span></article>
+        <article class="summary-tile"><strong>${actions}</strong><span>Actions</span></article>
+        <article class="summary-tile"><strong>${passive}</strong><span>Passive modules</span></article>
+        <article class="summary-tile"><strong>${fishingAreas}</strong><span>Fishing areas</span></article>
       `;
     }
 
     async function boot() {
       try {
         const database = await ActivityDocs.loadDatabase();
-        const skills = ActivityDocs.databaseSkillData(database);
-        board.innerHTML = skills.map(renderSkill).join("");
-        identity.innerHTML = database.skills.map(skill => `
-          <article class="identity-card">
-            <strong>${skill.name} Identity</strong>
-            <p>${skill.identity}</p>
-            <small>Verb: ${skill.verb} | Time x${skill.tuning.time_scale} | XP x${skill.tuning.xp_scale} | Start rate ${skill.tuning.success_start}%</small>
-          </article>
-        `).join("");
+        renderSummary(database);
+        board.innerHTML = database.skills.map(renderSkill).join("");
       } catch (error) {
         ActivityDocs.renderError(board, error);
-        identity.innerHTML = "";
+        summary.innerHTML = "";
       }
     }
 
     boot();
   </script>
-  <script src="docs-nav.js"></script>
+  <script src="docs-nav.js?v=nav-clean-20260603"></script>
 </body>
 </html>

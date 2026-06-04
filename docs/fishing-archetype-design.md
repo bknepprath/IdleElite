@@ -1,4 +1,6 @@
-# Fishing method archetypes — design
+# Idle Elite Fishing Method Archetypes
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 > **Direction:** **Tool rack** (global gear) + **region modules** with **1–3 location spots** each (e.g. Beach: shallows + rocks). Tool × location **affinity**, not fixed activity arts. See [fishing-tool-area-matrix.md](fishing-tool-area-matrix.md). Archetypes = tool feel; affinity = good idea at this spot.
 
@@ -208,4 +210,4 @@ Same four fills for every archetype; **meaning depends on archetype** (see table
 
 - Third space slot (max 3): e.g. moon-thread rod or whisper-lure when ready.
 - Lobster cage stays **passive module** (no attempt bar).
-- Optional: per-archetype phase labels in UI (hide “bite” on `volume` modules in mock + game).
+- Optional: per-archetype phase labels in UI; hide "bite" on `volume` modules in the Godot game.

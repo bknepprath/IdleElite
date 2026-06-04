@@ -84,7 +84,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "primary": "Skill XP",
         "secondary": "Combat mastery"
       },
-      "icon": "docs/assets/icons/fight.png",
+      "icon": "assets/content/icons/fight.png",
       "actions": [
         {
           "id": "shove-wobbly-hay-bale",
@@ -101,8 +101,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fight/actions/01-shove-wobbly-hay-bale.png",
-          "background": "docs/assets/fight/backgrounds/01-early.png"
+          "art": "assets/content/fight/actions/01-shove-wobbly-hay-bale.png",
+          "background": "assets/content/fight/backgrounds/01-early.png"
         },
         {
           "id": "kick-mud-off-boot",
@@ -119,8 +119,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fight/actions/02-kick-mud-off-boot.png",
-          "background": "docs/assets/fight/backgrounds/01-early.png"
+          "art": "assets/content/fight/actions/02-kick-mud-off-boot.png",
+          "background": "assets/content/fight/backgrounds/01-early.png"
         },
         {
           "id": "wrestle-stuck-gate-latch",
@@ -137,8 +137,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fight/actions/03-wrestle-stuck-gate-latch.png",
-          "background": "docs/assets/fight/backgrounds/01-early.png"
+          "art": "assets/content/fight/actions/03-wrestle-stuck-gate-latch.png",
+          "background": "assets/content/fight/backgrounds/01-early.png"
         },
         {
           "id": "box-suspicious-feed-sack",
@@ -155,8 +155,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fight/actions/04-box-suspicious-feed-sack.png",
-          "background": "docs/assets/fight/backgrounds/01-early.png"
+          "art": "assets/content/fight/actions/04-box-suspicious-feed-sack.png",
+          "background": "assets/content/fight/backgrounds/01-early.png"
         },
         {
           "id": "duel-leaning-fence-post",
@@ -173,8 +173,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fight/actions/05-duel-leaning-fence-post.png",
-          "background": "docs/assets/fight/backgrounds/01-early.png"
+          "art": "assets/content/fight/actions/05-duel-leaning-fence-post.png",
+          "background": "assets/content/fight/backgrounds/01-early.png"
         },
         {
           "id": "outmuscle-angry-wheelbarrow",
@@ -191,8 +191,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fight/actions/06-outmuscle-angry-wheelbarrow.png",
-          "background": "docs/assets/fight/backgrounds/02-rising.png"
+          "art": "assets/content/fight/actions/06-outmuscle-angry-wheelbarrow.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
           "id": "brawl-with-kicking-milk-pail",
@@ -209,8 +209,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fight/actions/07-brawl-with-kicking-milk-pail.png",
-          "background": "docs/assets/fight/backgrounds/02-rising.png"
+          "art": "assets/content/fight/actions/07-brawl-with-kicking-milk-pail.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
           "id": "square-up-with-rake-in-grass",
@@ -227,8 +227,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fight/actions/08-square-up-with-rake-in-grass.png",
-          "background": "docs/assets/fight/backgrounds/02-rising.png"
+          "art": "assets/content/fight/actions/08-square-up-with-rake-in-grass.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
           "id": "grapple-overfull-compost-bin",
@@ -245,8 +245,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fight/actions/09-grapple-overfull-compost-bin.png",
-          "background": "docs/assets/fight/backgrounds/02-rising.png"
+          "art": "assets/content/fight/actions/09-grapple-overfull-compost-bin.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
           "id": "parry-windmill-shadow",
@@ -263,8 +263,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/fight/actions/10-parry-windmill-shadow.png",
-          "background": "docs/assets/fight/backgrounds/02-rising.png"
+          "art": "assets/content/fight/actions/10-parry-windmill-shadow.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
           "id": "tackle-runaway-water-trough",
@@ -281,8 +281,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/fight/actions/11-tackle-runaway-water-trough.png",
-          "background": "docs/assets/fight/backgrounds/03-mid.png"
+          "art": "assets/content/fight/actions/11-tackle-runaway-water-trough.png",
+          "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
           "id": "fight-the-barn-door-at-midnight",
@@ -299,8 +299,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/fight/actions/12-fight-the-barn-door-at-midnight.png",
-          "background": "docs/assets/fight/backgrounds/03-mid.png"
+          "art": "assets/content/fight/actions/12-fight-the-barn-door-at-midnight.png",
+          "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
           "id": "challenge-the-silo-echo",
@@ -317,8 +317,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fight/actions/13-challenge-the-silo-echo.png",
-          "background": "docs/assets/fight/backgrounds/03-mid.png"
+          "art": "assets/content/fight/actions/13-challenge-the-silo-echo.png",
+          "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
           "id": "survive-the-hayloft-ambush",
@@ -335,8 +335,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fight/actions/14-survive-the-hayloft-ambush.png",
-          "background": "docs/assets/fight/backgrounds/03-mid.png"
+          "art": "assets/content/fight/actions/14-survive-the-hayloft-ambush.png",
+          "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
           "id": "punch-through-corn-maze-panic",
@@ -353,8 +353,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fight/actions/15-punch-through-corn-maze-panic.png",
-          "background": "docs/assets/fight/backgrounds/03-mid.png"
+          "art": "assets/content/fight/actions/15-punch-through-corn-maze-panic.png",
+          "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
           "id": "body-slam-the-root-cellar-door",
@@ -371,8 +371,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fight/actions/16-body-slam-the-root-cellar-door.png",
-          "background": "docs/assets/fight/backgrounds/04-late.png"
+          "art": "assets/content/fight/actions/16-body-slam-the-root-cellar-door.png",
+          "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
           "id": "trade-blows-with-the-weather-vane",
@@ -389,8 +389,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fight/actions/17-trade-blows-with-the-weather-vane.png",
-          "background": "docs/assets/fight/backgrounds/04-late.png"
+          "art": "assets/content/fight/actions/17-trade-blows-with-the-weather-vane.png",
+          "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
           "id": "dodge-the-irrigation-betrayal",
@@ -407,8 +407,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fight/actions/18-dodge-the-irrigation-betrayal.png",
-          "background": "docs/assets/fight/backgrounds/04-late.png"
+          "art": "assets/content/fight/actions/18-dodge-the-irrigation-betrayal.png",
+          "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
           "id": "enter-the-scarecrow-circle",
@@ -425,8 +425,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fight/actions/19-enter-the-scarecrow-circle.png",
-          "background": "docs/assets/fight/backgrounds/04-late.png"
+          "art": "assets/content/fight/actions/19-enter-the-scarecrow-circle.png",
+          "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
           "id": "defeat-the-tractor-that-would-not-start",
@@ -443,8 +443,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fight/actions/20-defeat-the-tractor-that-would-not-start.png",
-          "background": "docs/assets/fight/backgrounds/04-late.png"
+          "art": "assets/content/fight/actions/20-defeat-the-tractor-that-would-not-start.png",
+          "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
           "id": "hold-the-line-at-the-pumpkin-patch",
@@ -461,8 +461,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fight/actions/21-hold-the-line-at-the-pumpkin-patch.png",
-          "background": "docs/assets/fight/backgrounds/05-finale.png"
+          "art": "assets/content/fight/actions/21-hold-the-line-at-the-pumpkin-patch.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
         },
         {
           "id": "storm-the-forbidden-tool-shed",
@@ -479,8 +479,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/fight/actions/22-storm-the-forbidden-tool-shed.png",
-          "background": "docs/assets/fight/backgrounds/05-finale.png"
+          "art": "assets/content/fight/actions/22-storm-the-forbidden-tool-shed.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
         },
         {
           "id": "win-the-great-barn-rafters-melee",
@@ -497,8 +497,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/fight/actions/23-win-the-great-barn-rafters-melee.png",
-          "background": "docs/assets/fight/backgrounds/05-finale.png"
+          "art": "assets/content/fight/actions/23-win-the-great-barn-rafters-melee.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
         },
         {
           "id": "face-the-entire-farm-at-once",
@@ -515,8 +515,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/fight/actions/24-face-the-entire-farm-at-once.png",
-          "background": "docs/assets/fight/backgrounds/05-finale.png"
+          "art": "assets/content/fight/actions/24-face-the-entire-farm-at-once.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
         },
         {
           "id": "rematch-the-same-hay-bale-somehow-stronger",
@@ -533,8 +533,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 9
           },
-          "art": "docs/assets/fight/actions/25-rematch-the-same-hay-bale-somehow-stronger.png",
-          "background": "docs/assets/fight/backgrounds/05-finale.png"
+          "art": "assets/content/fight/actions/25-rematch-the-same-hay-bale-somehow-stronger.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
         }
       ]
     },
@@ -552,12 +552,12 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "primary": "Skill XP",
         "secondary": "Nerve and audacity"
       },
-      "icon": "docs/assets/icons/thieving.png",
+      "icon": "assets/content/icons/thieving.png",
       "actions": [
         {
           "id": "pocket-a-penny-nobody-wanted",
           "tier": 1,
-          "name": "Pocket Lost Penny",
+          "name": "Borrow A Cookie Permanently",
           "unlock": 1,
           "stamina": 1,
           "seconds": 1.3,
@@ -569,13 +569,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/thieving/actions/01-pocket-a-penny-nobody-wanted.png",
-          "background": "docs/assets/thieving/backgrounds/01-early.png"
+          "art": "assets/content/thieving/actions/02-borrow-a-cookie-permanently.png",
+          "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
           "id": "borrow-a-cookie-permanently",
           "tier": 2,
-          "name": "Borrow A Cookie Permanently",
+          "name": "Sneak Past Tip Jar",
           "unlock": 2,
           "stamina": 1,
           "seconds": 1.35,
@@ -587,13 +587,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/thieving/actions/02-borrow-a-cookie-permanently.png",
-          "background": "docs/assets/thieving/backgrounds/01-early.png"
+          "art": "assets/content/thieving/actions/03-sneak-past-tip-jar-eye-contact.png",
+          "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
           "id": "sneak-past-tip-jar-eye-contact",
           "tier": 3,
-          "name": "Sneak Past Tip Jar",
+          "name": "Pocket Couch Coins",
           "unlock": 3,
           "stamina": 1,
           "seconds": 1.39,
@@ -605,13 +605,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/thieving/actions/03-sneak-past-tip-jar-eye-contact.png",
-          "background": "docs/assets/thieving/backgrounds/01-early.png"
+          "art": "assets/content/thieving/actions/04-lift-loose-coins-from-couch-cushions.png",
+          "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
           "id": "lift-loose-coins-from-couch-cushions",
           "tier": 4,
-          "name": "Pocket Couch Coins",
+          "name": "Steal A Penny",
           "unlock": 4,
           "stamina": 2,
           "seconds": 1.97,
@@ -623,8 +623,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/thieving/actions/04-lift-loose-coins-from-couch-cushions.png",
-          "background": "docs/assets/thieving/backgrounds/01-early.png"
+          "art": "assets/content/thieving/actions/01-pocket-a-penny-nobody-wanted.png",
+          "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
           "id": "distract-fruit-stand-with-jazz-hands",
@@ -641,8 +641,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/thieving/actions/05-distract-fruit-stand-with-jazz-hands.png",
-          "background": "docs/assets/thieving/backgrounds/01-early.png"
+          "art": "assets/content/thieving/actions/05-distract-fruit-stand-with-jazz-hands.png",
+          "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
           "id": "pick-the-worlds-friendliest-lock",
@@ -659,8 +659,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/thieving/actions/06-pick-the-world-s-friendliest-lock.png",
-          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+          "art": "assets/content/thieving/actions/06-pick-the-world-s-friendliest-lock.png",
+          "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
           "id": "swap-price-tags-at-the-broom-store",
@@ -677,8 +677,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/thieving/actions/07-swap-price-tags-at-the-broom-store.png",
-          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+          "art": "assets/content/thieving/actions/07-swap-price-tags-at-the-broom-store.png",
+          "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
           "id": "steal-a-wallet-from-a-mannequin",
@@ -695,8 +695,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/thieving/actions/08-steal-a-wallet-from-a-mannequin.png",
-          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+          "art": "assets/content/thieving/actions/08-steal-a-wallet-from-a-mannequin.png",
+          "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
           "id": "rob-the-tiny-bank-desk",
@@ -713,8 +713,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/thieving/actions/09-rob-the-tiny-bank-desk.png",
-          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+          "art": "assets/content/thieving/actions/09-rob-the-tiny-bank-desk.png",
+          "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
           "id": "crack-the-breakroom-snack-safe",
@@ -731,8 +731,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/thieving/actions/10-crack-the-breakroom-snack-safe.png",
-          "background": "docs/assets/thieving/backgrounds/02-rising.png"
+          "art": "assets/content/thieving/actions/10-crack-the-breakroom-snack-safe.png",
+          "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
           "id": "lift-the-mayors-ceremonial-purse",
@@ -749,8 +749,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/thieving/actions/11-lift-the-mayor-s-ceremonial-purse.png",
-          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+          "art": "assets/content/thieving/actions/11-lift-the-mayor-s-ceremonial-purse.png",
+          "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
           "id": "heist-the-museum-gift-shop",
@@ -767,8 +767,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/thieving/actions/12-heist-the-museum-gift-shop.png",
-          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+          "art": "assets/content/thieving/actions/12-heist-the-museum-gift-shop.png",
+          "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
           "id": "swipe-the-banks-practice-vault",
@@ -785,8 +785,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/thieving/actions/13-swipe-the-bank-s-practice-vault.png",
-          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+          "art": "assets/content/thieving/actions/13-swipe-the-bank-s-practice-vault.png",
+          "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
           "id": "rob-the-bank-during-a-robbery-drill",
@@ -803,8 +803,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/thieving/actions/14-rob-the-bank-during-a-robbery-drill.png",
-          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+          "art": "assets/content/thieving/actions/14-rob-the-bank-during-a-robbery-drill.png",
+          "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
           "id": "empty-the-banks-backup-bank",
@@ -821,8 +821,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/thieving/actions/15-empty-the-bank-s-backup-bank.png",
-          "background": "docs/assets/thieving/backgrounds/03-mid.png"
+          "art": "assets/content/thieving/actions/15-empty-the-bank-s-backup-bank.png",
+          "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
           "id": "steal-a-password-from-a-fortune-cookie",
@@ -839,8 +839,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/thieving/actions/16-steal-a-password-from-a-fortune-cookie.png",
-          "background": "docs/assets/thieving/backgrounds/04-late.png"
+          "art": "assets/content/thieving/actions/16-steal-a-password-from-a-fortune-cookie.png",
+          "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
           "id": "pickpocket-the-security-camera",
@@ -857,8 +857,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/thieving/actions/17-pickpocket-the-security-camera.png",
-          "background": "docs/assets/thieving/backgrounds/04-late.png"
+          "art": "assets/content/thieving/actions/17-pickpocket-the-security-camera.png",
+          "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
           "id": "hotwire-a-parked-alien-spaceship",
@@ -875,8 +875,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/thieving/actions/18-hotwire-a-parked-alien-spaceship.png",
-          "background": "docs/assets/thieving/backgrounds/04-late.png"
+          "art": "assets/content/thieving/actions/18-hotwire-a-parked-alien-spaceship.png",
+          "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
           "id": "rob-the-alien-spaceships-bank",
@@ -893,8 +893,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/thieving/actions/19-rob-the-alien-spaceship-s-bank.png",
-          "background": "docs/assets/thieving/backgrounds/04-late.png"
+          "art": "assets/content/thieving/actions/19-rob-the-alien-spaceship-s-bank.png",
+          "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
           "id": "forge-a-receipt-for-the-moon",
@@ -911,8 +911,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/thieving/actions/20-forge-a-receipt-for-the-moon.png",
-          "background": "docs/assets/thieving/backgrounds/04-late.png"
+          "art": "assets/content/thieving/actions/20-forge-a-receipt-for-the-moon.png",
+          "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
           "id": "burgle-the-dream-of-a-sleeping-wizard",
@@ -929,8 +929,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/thieving/actions/21-burgle-the-dream-of-a-sleeping-wizard.png",
-          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+          "art": "assets/content/thieving/actions/21-burgle-the-dream-of-a-sleeping-wizard.png",
+          "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
           "id": "shoplift-from-the-concept-of-money",
@@ -947,8 +947,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/thieving/actions/22-shoplift-from-the-concept-of-money.png",
-          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+          "art": "assets/content/thieving/actions/22-shoplift-from-the-concept-of-money.png",
+          "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
           "id": "crack-the-vault-between-dimensions",
@@ -965,8 +965,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/thieving/actions/23-crack-the-vault-between-dimensions.png",
-          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+          "art": "assets/content/thieving/actions/23-crack-the-vault-between-dimensions.png",
+          "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
           "id": "pickpocket-an-interdimensional-god",
@@ -983,8 +983,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/thieving/actions/24-pickpocket-an-interdimensional-god.png",
-          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+          "art": "assets/content/thieving/actions/24-pickpocket-an-interdimensional-god.png",
+          "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
           "id": "steal-the-alibi-you-used-to-do-it",
@@ -1001,8 +1001,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 9
           },
-          "art": "docs/assets/thieving/actions/25-steal-the-alibi-you-used-to-do-it.png",
-          "background": "docs/assets/thieving/backgrounds/05-finale.png"
+          "art": "assets/content/thieving/actions/25-steal-the-alibi-you-used-to-do-it.png",
+          "background": "assets/content/thieving/backgrounds/05-finale.png"
         }
       ]
     },
@@ -1020,7 +1020,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "primary": "Skill XP",
         "secondary": "Construction progress"
       },
-      "icon": "docs/assets/icons/build.png",
+      "icon": "assets/content/icons/build.png",
       "actions": [
         {
           "id": "stack-bricks",
@@ -1037,8 +1037,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/build/actions/01-stack-bricks.png",
-          "background": "docs/assets/build/backgrounds/01-early.png"
+          "art": "assets/content/build/actions/01-stack-bricks.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
           "id": "patch-fence-with-confidence",
@@ -1055,8 +1055,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/build/actions/02-patch-fence-with-confidence.png",
-          "background": "docs/assets/build/backgrounds/01-early.png"
+          "art": "assets/content/build/actions/02-patch-fence-with-confidence.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
           "id": "hammer-one-suspicious-nail",
@@ -1073,8 +1073,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/build/actions/03-hammer-one-suspicious-nail.png",
-          "background": "docs/assets/build/backgrounds/01-early.png"
+          "art": "assets/content/build/actions/03-hammer-one-suspicious-nail.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
           "id": "repair-small-shack",
@@ -1091,8 +1091,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/build/actions/04-repair-small-shack.png",
-          "background": "docs/assets/build/backgrounds/01-early.png"
+          "art": "assets/content/build/actions/04-repair-small-shack.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
           "id": "install-door-that-mostly-opens",
@@ -1109,8 +1109,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/build/actions/05-install-door-that-mostly-opens.png",
-          "background": "docs/assets/build/backgrounds/01-early.png"
+          "art": "assets/content/build/actions/05-install-door-that-mostly-opens.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
           "id": "build-market-stall",
@@ -1127,8 +1127,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/build/actions/06-build-market-stall.png",
-          "background": "docs/assets/build/backgrounds/02-rising.png"
+          "art": "assets/content/build/actions/06-build-market-stall.png",
+          "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
           "id": "add-roof-to-something-roofless",
@@ -1145,8 +1145,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/build/actions/07-add-roof-to-something-roofless.png",
-          "background": "docs/assets/build/backgrounds/02-rising.png"
+          "art": "assets/content/build/actions/07-add-roof-to-something-roofless.png",
+          "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
           "id": "pour-questionable-foundation",
@@ -1163,8 +1163,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/build/actions/08-pour-questionable-foundation.png",
-          "background": "docs/assets/build/backgrounds/02-rising.png"
+          "art": "assets/content/build/actions/08-pour-questionable-foundation.png",
+          "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
           "id": "upgrade-training-yard",
@@ -1181,8 +1181,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/build/actions/09-upgrade-training-yard.png",
-          "background": "docs/assets/build/backgrounds/02-rising.png"
+          "art": "assets/content/build/actions/09-upgrade-training-yard.png",
+          "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
           "id": "construct-fishing-pier",
@@ -1199,8 +1199,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/build/actions/10-construct-fishing-pier.png",
-          "background": "docs/assets/build/backgrounds/02-rising.png"
+          "art": "assets/content/build/actions/10-construct-fishing-pier.png",
+          "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
           "id": "raise-a-two-story-barn",
@@ -1217,8 +1217,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/build/actions/11-raise-a-two-story-barn.png",
-          "background": "docs/assets/build/backgrounds/03-mid.png"
+          "art": "assets/content/build/actions/11-raise-a-two-story-barn.png",
+          "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
           "id": "build-town-notice-board",
@@ -1235,8 +1235,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/build/actions/12-build-town-notice-board.png",
-          "background": "docs/assets/build/backgrounds/03-mid.png"
+          "art": "assets/content/build/actions/12-build-town-notice-board.png",
+          "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
           "id": "assemble-windmill-that-judges-you",
@@ -1253,8 +1253,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/build/actions/13-assemble-windmill-that-judges-you.png",
-          "background": "docs/assets/build/backgrounds/03-mid.png"
+          "art": "assets/content/build/actions/13-assemble-windmill-that-judges-you.png",
+          "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
           "id": "dig-emergency-basement",
@@ -1271,8 +1271,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/build/actions/14-dig-emergency-basement.png",
-          "background": "docs/assets/build/backgrounds/03-mid.png"
+          "art": "assets/content/build/actions/14-dig-emergency-basement.png",
+          "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
           "id": "raise-guild-hall",
@@ -1289,8 +1289,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/build/actions/15-raise-guild-hall.png",
-          "background": "docs/assets/build/backgrounds/03-mid.png"
+          "art": "assets/content/build/actions/15-raise-guild-hall.png",
+          "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
           "id": "build-bridge-over-tiny-puddle",
@@ -1307,8 +1307,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/build/actions/16-build-bridge-over-tiny-puddle.png",
-          "background": "docs/assets/build/backgrounds/04-late.png"
+          "art": "assets/content/build/actions/16-build-bridge-over-tiny-puddle.png",
+          "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
           "id": "construct-suspiciously-tall-silo",
@@ -1325,8 +1325,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/build/actions/17-construct-suspiciously-tall-silo.png",
-          "background": "docs/assets/build/backgrounds/04-late.png"
+          "art": "assets/content/build/actions/17-construct-suspiciously-tall-silo.png",
+          "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
           "id": "install-elevator-in-the-shack",
@@ -1343,8 +1343,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/build/actions/18-install-elevator-in-the-shack.png",
-          "background": "docs/assets/build/backgrounds/04-late.png"
+          "art": "assets/content/build/actions/18-install-elevator-in-the-shack.png",
+          "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
           "id": "build-elite-tower",
@@ -1361,8 +1361,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/build/actions/19-build-elite-tower.png",
-          "background": "docs/assets/build/backgrounds/04-late.png"
+          "art": "assets/content/build/actions/19-build-elite-tower.png",
+          "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
           "id": "add-second-elite-tower-on-top",
@@ -1379,8 +1379,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/build/actions/20-add-second-elite-tower-on-top.png",
-          "background": "docs/assets/build/backgrounds/04-late.png"
+          "art": "assets/content/build/actions/20-add-second-elite-tower-on-top.png",
+          "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
           "id": "construct-underground-town",
@@ -1397,8 +1397,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/build/actions/21-construct-underground-town.png",
-          "background": "docs/assets/build/backgrounds/05-finale.png"
+          "art": "assets/content/build/actions/21-construct-underground-town.png",
+          "background": "assets/content/build/backgrounds/05-finale.png"
         },
         {
           "id": "build-weatherproof-weather",
@@ -1415,8 +1415,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/build/actions/22-build-weatherproof-weather.png",
-          "background": "docs/assets/build/backgrounds/05-finale.png"
+          "art": "assets/content/build/actions/22-build-weatherproof-weather.png",
+          "background": "assets/content/build/backgrounds/05-finale.png"
         },
         {
           "id": "renovate-the-horizon",
@@ -1433,8 +1433,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/build/actions/23-renovate-the-horizon.png",
-          "background": "docs/assets/build/backgrounds/05-finale.png"
+          "art": "assets/content/build/actions/23-renovate-the-horizon.png",
+          "background": "assets/content/build/backgrounds/05-finale.png"
         },
         {
           "id": "permit-the-impossible-megastructure",
@@ -1451,8 +1451,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/build/actions/24-permit-the-impossible-megastructure.png",
-          "background": "docs/assets/build/backgrounds/05-finale.png"
+          "art": "assets/content/build/actions/24-permit-the-impossible-megastructure.png",
+          "background": "assets/content/build/backgrounds/05-finale.png"
         },
         {
           "id": "build-the-building-that-builds-you",
@@ -1469,8 +1469,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 9
           },
-          "art": "docs/assets/build/actions/25-build-the-building-that-builds-you.png",
-          "background": "docs/assets/build/backgrounds/05-finale.png"
+          "art": "assets/content/build/actions/25-build-the-building-that-builds-you.png",
+          "background": "assets/content/build/backgrounds/05-finale.png"
         }
       ]
     },
@@ -1488,7 +1488,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "primary": "Skill XP",
         "secondary": "Wood supplies"
       },
-      "icon": "docs/assets/icons/woodcutting.png",
+      "icon": "assets/content/icons/woodcutting.png",
       "actions": [
         {
           "id": "gather-fallen-branches",
@@ -1505,8 +1505,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/woodcutting/actions/01-gather-fallen-branches.png",
-          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+          "art": "assets/content/woodcutting/actions/01-gather-fallen-branches.png",
+          "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
           "id": "stack-logs-1",
@@ -1532,12 +1532,12 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "capacity_max": 600,
             "first_unlock_stored": 3,
             "plank_build_xp_bonus": 0.05,
-            "log_icon": "docs/assets/passive/resources/log-currency.png",
-            "plank_icon": "docs/assets/passive/resources/plank.png",
-            "upgrade_icon": "docs/assets/passive/resources/upgrade-arrow.png"
+            "log_icon": "assets/icons/resources/log-currency.png",
+            "plank_icon": "assets/icons/resources/plank.png",
+            "upgrade_icon": "assets/icons/upgrades/upgrade-arrow.png"
           },
-          "art": "docs/assets/passive/resources/log-currency.png",
-          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+          "art": "assets/icons/resources/log-currency.png",
+          "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
           "id": "snap-a-twig-with-purpose",
@@ -1554,8 +1554,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/woodcutting/actions/02-snap-a-twig-with-purpose.png",
-          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+          "art": "assets/content/woodcutting/actions/02-snap-a-twig-with-purpose.png",
+          "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
           "id": "trim-overconfident-shrub",
@@ -1572,8 +1572,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/woodcutting/actions/03-trim-overconfident-shrub.png",
-          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+          "art": "assets/content/woodcutting/actions/03-trim-overconfident-shrub.png",
+          "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
           "id": "chop-softwood-tree",
@@ -1590,8 +1590,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/woodcutting/actions/04-chop-softwood-tree.png",
-          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+          "art": "assets/content/woodcutting/actions/04-chop-softwood-tree.png",
+          "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
           "id": "split-firewood",
@@ -1608,8 +1608,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/woodcutting/actions/05-split-firewood.png",
-          "background": "docs/assets/woodcutting/backgrounds/01-early.png"
+          "art": "assets/content/woodcutting/actions/05-split-firewood.png",
+          "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
           "id": "fell-skinny-pine",
@@ -1626,8 +1626,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/woodcutting/actions/06-fell-skinny-pine.png",
-          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+          "art": "assets/content/woodcutting/actions/06-fell-skinny-pine.png",
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
           "id": "prune-orchard-row",
@@ -1644,8 +1644,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/woodcutting/actions/07-prune-orchard-row.png",
-          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+          "art": "assets/content/woodcutting/actions/07-prune-orchard-row.png",
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
           "id": "chop-knotty-maple",
@@ -1662,8 +1662,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/woodcutting/actions/08-chop-knotty-maple.png",
-          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+          "art": "assets/content/woodcutting/actions/08-chop-knotty-maple.png",
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
           "id": "fell-oak-tree",
@@ -1680,8 +1680,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/woodcutting/actions/09-fell-oak-tree.png",
-          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+          "art": "assets/content/woodcutting/actions/09-fell-oak-tree.png",
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
           "id": "clear-dense-grove",
@@ -1698,8 +1698,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/woodcutting/actions/10-clear-dense-grove.png",
-          "background": "docs/assets/woodcutting/backgrounds/02-rising.png"
+          "art": "assets/content/woodcutting/actions/10-clear-dense-grove.png",
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
           "id": "harvest-ironwood",
@@ -1716,8 +1716,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/woodcutting/actions/11-harvest-ironwood.png",
-          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+          "art": "assets/content/woodcutting/actions/11-harvest-ironwood.png",
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
           "id": "carve-through-fallen-giant",
@@ -1734,8 +1734,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/woodcutting/actions/12-carve-through-fallen-giant.png",
-          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+          "art": "assets/content/woodcutting/actions/12-carve-through-fallen-giant.png",
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
           "id": "chop-ancient-tree",
@@ -1752,8 +1752,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/woodcutting/actions/13-chop-ancient-tree.png",
-          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+          "art": "assets/content/woodcutting/actions/13-chop-ancient-tree.png",
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
           "id": "negotiate-with-angry-stump",
@@ -1770,8 +1770,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/woodcutting/actions/14-negotiate-with-angry-stump.png",
-          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+          "art": "assets/content/woodcutting/actions/14-negotiate-with-angry-stump.png",
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
           "id": "clear-mystic-timberland",
@@ -1788,8 +1788,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/woodcutting/actions/15-clear-mystic-timberland.png",
-          "background": "docs/assets/woodcutting/backgrounds/03-mid.png"
+          "art": "assets/content/woodcutting/actions/15-clear-mystic-timberland.png",
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
           "id": "split-lightning-struck-cedar",
@@ -1806,8 +1806,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/woodcutting/actions/16-split-lightning-struck-cedar.png",
-          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+          "art": "assets/content/woodcutting/actions/16-split-lightning-struck-cedar.png",
+          "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
           "id": "fell-tree-that-remembers-you",
@@ -1824,8 +1824,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/woodcutting/actions/17-fell-tree-that-remembers-you.png",
-          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+          "art": "assets/content/woodcutting/actions/17-fell-tree-that-remembers-you.png",
+          "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
           "id": "chop-invisible-windwood",
@@ -1842,8 +1842,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/woodcutting/actions/18-chop-invisible-windwood.png",
-          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+          "art": "assets/content/woodcutting/actions/18-chop-invisible-windwood.png",
+          "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
           "id": "harvest-moonlit-silverwood",
@@ -1860,8 +1860,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/woodcutting/actions/19-harvest-moonlit-silverwood.png",
-          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+          "art": "assets/content/woodcutting/actions/19-harvest-moonlit-silverwood.png",
+          "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
           "id": "clear-the-forests-legal-department",
@@ -1878,8 +1878,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/woodcutting/actions/20-clear-the-forest-s-legal-department.png",
-          "background": "docs/assets/woodcutting/backgrounds/04-late.png"
+          "art": "assets/content/woodcutting/actions/20-clear-the-forest-s-legal-department.png",
+          "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
           "id": "axe-the-world-trees-paperwork",
@@ -1896,8 +1896,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/woodcutting/actions/21-axe-the-world-tree-s-paperwork.png",
-          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+          "art": "assets/content/woodcutting/actions/21-axe-the-world-tree-s-paperwork.png",
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
           "id": "chop-a-tree-in-four-timelines",
@@ -1914,13 +1914,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/woodcutting/actions/22-chop-a-tree-in-four-timelines.png",
-          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+          "art": "assets/content/woodcutting/actions/22-chop-a-tree-in-four-timelines.png",
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
           "id": "fell-the-wooden-concept-of-height",
           "tier": 24,
-          "name": "Fell Wooden Height",
+          "name": "Chop Super Tall Tree",
           "unlock": 45,
           "stamina": 8,
           "seconds": 10.15,
@@ -1932,8 +1932,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/woodcutting/actions/23-fell-the-wooden-concept-of-height.png",
-          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+          "art": "assets/content/woodcutting/actions/23-fell-the-wooden-concept-of-height.png",
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
           "id": "harvest-the-first-trees-apology",
@@ -1950,8 +1950,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
-          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+          "art": "assets/content/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
           "id": "clear-the-infinite-lumberyard",
@@ -1968,8 +1968,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 9
           },
-          "art": "docs/assets/woodcutting/actions/25-clear-the-infinite-lumberyard.png",
-          "background": "docs/assets/woodcutting/backgrounds/05-finale.png"
+          "art": "assets/content/woodcutting/actions/25-clear-the-infinite-lumberyard.png",
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         }
       ]
     },
@@ -1987,7 +1987,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "primary": "Skill XP",
         "secondary": "Fish and catch quality"
       },
-      "icon": "docs/assets/icons/fishing.png",
+      "icon": "assets/content/icons/fishing.png",
       "actions": [
         {
           "id": "beach-shallows",
@@ -2006,8 +2006,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fishing/locations/location-shallows.png",
-          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+          "art": "assets/content/fishing/locations/location-shallows.png",
+          "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
           "area": "beach",
           "archetype": "novice"
         },
@@ -2028,8 +2028,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fishing/locations/location-rocky-ledge.png",
-          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png",
+          "art": "assets/content/fishing/locations/location-rocky-ledge.png",
+          "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
           "area": "beach"
         },
         {
@@ -2049,8 +2049,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fishing/locations/location-dock-cup.png",
-          "background": "docs/assets/fishing/backgrounds/01-pond-dock.png",
+          "art": "assets/content/fishing/locations/location-dock-cup.png",
+          "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
           "area": "pier"
         },
         {
@@ -2070,8 +2070,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fishing/locations/location-piling-line.png",
-          "background": "docs/assets/fishing/backgrounds/01-pond-dock.png",
+          "art": "assets/content/fishing/locations/location-piling-line.png",
+          "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
           "area": "pier"
         },
         {
@@ -2091,8 +2091,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "docs/assets/fishing/backgrounds/02-river-bend.png",
-          "background": "docs/assets/fishing/backgrounds/02-river-bend.png",
+          "art": "assets/content/fishing/backgrounds/02-river-bend.png",
+          "background": "assets/content/fishing/backgrounds/02-river-bend.png",
           "area": "river"
         },
         {
@@ -2112,8 +2112,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fishing/backgrounds/02-river-bend.png",
-          "background": "docs/assets/fishing/backgrounds/02-river-bend.png",
+          "art": "assets/content/fishing/backgrounds/02-river-bend.png",
+          "background": "assets/content/fishing/backgrounds/02-river-bend.png",
           "area": "river"
         },
         {
@@ -2133,8 +2133,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
-          "background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
+          "art": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
+          "background": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
           "area": "sewers"
         },
         {
@@ -2154,8 +2154,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
-          "background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png",
+          "art": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
+          "background": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
           "area": "sewers"
         },
         {
@@ -2175,8 +2175,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
-          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
+          "art": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
+          "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
         },
         {
@@ -2196,8 +2196,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 3
           },
-          "art": "docs/assets/fishing/backgrounds/04-frozen-lake.png",
-          "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png",
+          "art": "assets/content/fishing/backgrounds/04-frozen-lake.png",
+          "background": "assets/content/fishing/backgrounds/04-frozen-lake.png",
           "area": "winter_lake"
         },
         {
@@ -2217,8 +2217,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
-          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
+          "art": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
+          "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
         },
         {
@@ -2238,8 +2238,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
-          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
+          "art": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
+          "background": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
           "area": "sea"
         },
         {
@@ -2259,8 +2259,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 4
           },
-          "art": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
-          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
+          "art": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
+          "background": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
           "area": "sea"
         },
         {
@@ -2280,8 +2280,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
-          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
+          "art": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
+          "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
         },
         {
@@ -2301,8 +2301,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
-          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
+          "art": "assets/content/fishing/backgrounds/10-storm-ocean.png",
+          "background": "assets/content/fishing/backgrounds/10-storm-ocean.png",
           "area": "stormy_sea"
         },
         {
@@ -2322,8 +2322,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
-          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png",
+          "art": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
+          "background": "assets/content/fishing/backgrounds/07-rowboat-offshore.png",
           "area": "sea"
         },
         {
@@ -2343,8 +2343,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
-          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png",
+          "art": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
+          "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
         },
         {
@@ -2364,8 +2364,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 6
           },
-          "art": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
-          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png",
+          "art": "assets/content/fishing/backgrounds/10-storm-ocean.png",
+          "background": "assets/content/fishing/backgrounds/10-storm-ocean.png",
           "area": "stormy_sea"
         },
         {
@@ -2385,8 +2385,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
-          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
+          "art": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
+          "background": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
           "area": "deep_sea"
         },
         {
@@ -2406,8 +2406,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
-          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
+          "art": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
+          "background": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
           "area": "deep_sea"
         },
         {
@@ -2427,8 +2427,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 7
           },
-          "art": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
-          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png",
+          "art": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
+          "background": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png",
           "area": "deep_sea"
         },
         {
@@ -2448,8 +2448,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 5
           },
-          "art": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
-          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
+          "art": "assets/content/fishing/backgrounds/11-cosmic-dream-sea.png",
+          "background": "assets/content/fishing/backgrounds/11-cosmic-dream-sea.png",
           "area": "space",
           "archetype": "steady"
         },
@@ -2470,8 +2470,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 8
           },
-          "art": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
-          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png",
+          "art": "assets/content/fishing/backgrounds/11-cosmic-dream-sea.png",
+          "background": "assets/content/fishing/backgrounds/11-cosmic-dream-sea.png",
           "area": "space"
         }
       ],
@@ -2480,61 +2480,61 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "beach",
           "name": "Beach",
           "fluid": "water",
-          "background": "docs/assets/fishing/backgrounds/00-tide-pool-shallows.png"
+          "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png"
         },
         {
           "id": "pier",
           "name": "Pier",
           "fluid": "water",
-          "background": "docs/assets/fishing/backgrounds/01-pond-dock.png"
+          "background": "assets/content/fishing/backgrounds/01-pond-dock.png"
         },
         {
           "id": "river",
           "name": "River",
           "fluid": "water",
-          "background": "docs/assets/fishing/backgrounds/02-river-bend.png"
+          "background": "assets/content/fishing/backgrounds/02-river-bend.png"
         },
         {
           "id": "sewers",
           "name": "Sewers",
           "fluid": "sewer",
-          "background": "docs/assets/fishing/backgrounds/sewer-pipe-outlet.png"
+          "background": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png"
         },
         {
           "id": "winter_lake",
           "name": "Winter Lake",
           "fluid": "ice",
-          "background": "docs/assets/fishing/backgrounds/04-frozen-lake.png"
+          "background": "assets/content/fishing/backgrounds/04-frozen-lake.png"
         },
         {
           "id": "reef",
           "name": "Reef",
           "fluid": "water",
-          "background": "docs/assets/fishing/backgrounds/05-coral-reef-shallows.png"
+          "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png"
         },
         {
           "id": "sea",
           "name": "Sea",
           "fluid": "water",
-          "background": "docs/assets/fishing/backgrounds/07-rowboat-offshore.png"
+          "background": "assets/content/fishing/backgrounds/07-rowboat-offshore.png"
         },
         {
           "id": "deep_sea",
           "name": "Deep Sea",
           "fluid": "deep_water",
-          "background": "docs/assets/fishing/backgrounds/09-deep-sea-abyss.png"
+          "background": "assets/content/fishing/backgrounds/09-deep-sea-abyss.png"
         },
         {
           "id": "stormy_sea",
           "name": "Stormy Sea",
           "fluid": "storm",
-          "background": "docs/assets/fishing/backgrounds/10-storm-ocean.png"
+          "background": "assets/content/fishing/backgrounds/10-storm-ocean.png"
         },
         {
           "id": "space",
           "name": "Space Fishing",
           "fluid": "space",
-          "background": "docs/assets/fishing/backgrounds/11-cosmic-dream-sea.png"
+          "background": "assets/content/fishing/backgrounds/11-cosmic-dream-sea.png"
         }
       ]
     }

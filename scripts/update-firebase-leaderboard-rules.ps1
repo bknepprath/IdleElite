@@ -41,7 +41,7 @@ foreach ($skillId in $skillIds) {
     Assert-True ($skillId -match '^[a-z0-9_-]+$') "Invalid activity skill id '$skillId' for leaderboard category generation. Use only lowercase letters, numbers, underscores, and hyphens."
 }
 
-$categoryKeys = @("total_level", "medals_earned", "total_xp") + @($skillIds | ForEach-Object { "skill_xp__$_" }) + @("elite_heavenly")
+$categoryKeys = @("total_level") + @($skillIds | ForEach-Object { "skill_xp__$_" }) + @("medals_earned", "elite_heavenly")
 $duplicateCategoryKeys = @($categoryKeys | Group-Object | Where-Object { $_.Count -gt 1 } | ForEach-Object { $_.Name })
 Assert-True ($duplicateCategoryKeys.Count -eq 0) "Leaderboard category keys must be unique: $($duplicateCategoryKeys -join ', ')"
 foreach ($categoryKey in $categoryKeys) {
@@ -116,6 +116,12 @@ $rulesObject = [ordered]@{
                             score = [ordered]@{
                                 ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val())"
                             }
+                            skill_level = [ordered]@{
+                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
+                            }
+                            total_xp = [ordered]@{
+                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || !data.child('total_xp').exists() || newData.val() >= data.child('total_xp').val())"
+                            }
                             updated_at = [ordered]@{
                                 ".validate" = "newData.isNumber() && newData.val() >= now - 300000 && newData.val() <= now + 60000"
                             }
@@ -131,7 +137,7 @@ $rulesObject = [ordered]@{
                 player_write_gates = [ordered]@{
                     '$playerId' = [ordered]@{
                         ".read" = $false
-                        ".write" = "auth != null && newData.exists() && auth.uid == `$playerId && `$playerId.length >= 8 && `$playerId.length <= 48 && (!data.exists() || now - data.child('updated_at').val() >= 3600000)"
+                        ".write" = "auth != null && newData.exists() && auth.uid == `$playerId && `$playerId.length >= 8 && `$playerId.length <= 48 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
                         ".validate" = "newData.hasChildren(['updated_at', 'submitted_at_unix'])"
                         updated_at = [ordered]@{
                             ".validate" = $freshClientTimestampRule

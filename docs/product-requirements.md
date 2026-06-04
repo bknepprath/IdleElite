@@ -1,4 +1,6 @@
 # Idle Elite Current Product Requirements
+<!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
+
 
 Updated: 2026-05-27
 
@@ -22,15 +24,15 @@ The next product phase should sharpen those existing strengths instead of adding
 
 These are the current Play Store screenshots and should guide the public-facing product promise.
 
-![Train five skills](play-store/assets/screenshot-01-train-five-skills-1080x1920.png)
+![Train five skills](../play-store/assets/screenshot-01-train-five-skills-1080x1920.png)
 
-![Rotate jobs](play-store/assets/screenshot-02-stamina-choices-1080x1920.png)
+![Rotate jobs](../play-store/assets/screenshot-02-stamina-choices-1080x1920.png)
 
-![Level up fast](play-store/assets/screenshot-03-level-up-1080x1920.png)
+![Level up fast](../play-store/assets/screenshot-03-level-up-1080x1920.png)
 
-![Come back stronger](play-store/assets/screenshot-04-offline-progress-1080x1920.png)
+![Come back stronger](../play-store/assets/screenshot-04-offline-progress-1080x1920.png)
 
-![Become elite](play-store/assets/screenshot-05-idle-elitist-1080x1920.png)
+![Become elite](../play-store/assets/screenshot-05-idle-elitist-1080x1920.png)
 
 ### Screenshot Promises
 

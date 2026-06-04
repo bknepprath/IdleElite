@@ -154,14 +154,14 @@ def load_asset(path: str) -> Image.Image:
 
 
 SKILL_ICONS = {
-    "fight": load_asset("docs/assets/icons/fight.png"),
-    "thieving": load_asset("docs/assets/icons/thieving.png"),
-    "build": load_asset("docs/assets/icons/build.png"),
-    "woodcutting": load_asset("docs/assets/icons/woodcutting.png"),
-    "fishing": load_asset("docs/assets/icons/fishing.png"),
-    "gear": load_asset("docs/assets/icons/gear.png"),
+    "fight": load_asset("assets/content/icons/fight.png"),
+    "thieving": load_asset("assets/content/icons/thieving.png"),
+    "build": load_asset("assets/content/icons/build.png"),
+    "woodcutting": load_asset("assets/content/icons/woodcutting.png"),
+    "fishing": load_asset("assets/content/icons/fishing.png"),
+    "gear": load_asset("assets/content/icons/gear.png"),
 }
-HERO = load_asset("docs/assets/characters/stick-hero.png")
+HERO = load_asset("assets/content/characters/stick-hero.png")
 
 
 def make_icon():
@@ -304,7 +304,7 @@ def phone_card(scale=0.78) -> Image.Image:
 
 
 def hero_cutout(max_size) -> Image.Image:
-    hero = chroma_to_alpha(load_asset("docs/assets/characters/stick-hero-transparent.png"))
+    hero = chroma_to_alpha(load_asset("assets/content/characters/stick-hero-transparent.png"))
     hero.thumbnail(max_size, Image.Resampling.LANCZOS)
     return hero
 
@@ -389,8 +389,8 @@ def fight_activity_phone() -> Image.Image:
 
     cards = [
         (
-            "docs/assets/fight/actions/01-shove-wobbly-hay-bale.png",
-            "docs/assets/fight/backgrounds/01-early.png",
+            "assets/content/fight/actions/01-shove-wobbly-hay-bale.png",
+            "assets/content/fight/backgrounds/01-early.png",
             "Shove Wobbly Hay Bale",
             [("+1", "XP"), ("1", "Stam"), ("1.6s", "Time"), ("95%", "Rate")],
             0.74,
@@ -398,8 +398,8 @@ def fight_activity_phone() -> Image.Image:
             312,
         ),
         (
-            "docs/assets/fight/actions/05-duel-leaning-fence-post.png",
-            "docs/assets/fight/backgrounds/01-early.png",
+            "assets/content/fight/actions/05-duel-leaning-fence-post.png",
+            "assets/content/fight/backgrounds/01-early.png",
             "Duel Leaning Fence Post",
             [("+9", "XP"), ("2", "Stam"), ("2.5s", "Time"), ("87%", "Rate")],
             0.35,
@@ -407,8 +407,8 @@ def fight_activity_phone() -> Image.Image:
             584,
         ),
         (
-            "docs/assets/fight/actions/06-outmuscle-angry-wheelbarrow.png",
-            "docs/assets/fight/backgrounds/02-rising.png",
+            "assets/content/fight/actions/06-outmuscle-angry-wheelbarrow.png",
+            "assets/content/fight/backgrounds/02-rising.png",
             "Outmuscle Angry Wheelbarrow",
             [("+11", "XP"), ("2", "Stam"), ("2.5s", "Time"), ("85%", "Rate")],
             0.0,
@@ -437,7 +437,7 @@ def draw_ad_frame(img, headline, subhead, accent, cta="PLAY NOW"):
 
 
 def make_vertical_train_skills():
-    img = background_from("docs/assets/fight/backgrounds/03-mid.png", (170, 65, 58), (33, 123, 142))
+    img = background_from("assets/content/fight/backgrounds/03-mid.png", (170, 65, 58), (33, 123, 142))
     d = ImageDraw.Draw(img)
     draw_ad_frame(img, "TRAIN 5 IDLE SKILLS", "Fight. Fish. Build. Sneak. Chop.", RED)
 
@@ -462,7 +462,7 @@ def make_vertical_train_skills():
 
 
 def make_vertical_offline_progress():
-    img = background_from("docs/assets/fishing/backgrounds/10-storm-ocean.png", (43, 88, 130), (230, 180, 74))
+    img = background_from("assets/content/fishing/backgrounds/10-storm-ocean.png", (43, 88, 130), (230, 180, 74))
     d = ImageDraw.Draw(img)
     draw_ad_frame(img, "PROGRESS WHILE AWAY", "Come back stronger.", BLUE)
 
@@ -489,15 +489,15 @@ def make_vertical_offline_progress():
 
 
 def make_vertical_small_tasks():
-    img = background_from("docs/assets/woodcutting/backgrounds/05-finale.png", (51, 118, 83), (160, 92, 174))
+    img = background_from("assets/content/woodcutting/backgrounds/05-finale.png", (51, 118, 83), (160, 92, 174))
     d = ImageDraw.Draw(img)
     draw_ad_frame(img, "TAP. LEVEL. REPEAT.", "Tiny jobs. Huge numbers.", GREEN)
 
     tiles = [
-        ("docs/assets/fight/actions/01-shove-wobbly-hay-bale.png", "Fight", RED),
-        ("docs/assets/fishing/actions/03-cast-bamboo-rod.png", "Fish", (39, 151, 168)),
-        ("docs/assets/woodcutting/actions/09-fell-oak-tree.png", "Chop", GREEN),
-        ("docs/assets/thieving/actions/06-pick-the-world-s-friendliest-lock.png", "Sneak", PURPLE),
+        ("assets/content/fight/actions/01-shove-wobbly-hay-bale.png", "Fight", RED),
+        ("assets/content/fishing/actions/03-cast-bamboo-rod.png", "Fish", (39, 151, 168)),
+        ("assets/content/woodcutting/actions/09-fell-oak-tree.png", "Chop", GREEN),
+        ("assets/content/thieving/actions/06-pick-the-world-s-friendliest-lock.png", "Sneak", PURPLE),
     ]
     positions = [(84, 442), (710, 492), (84, 1118), (710, 1148)]
     for spec, pos in zip(tiles, positions):
@@ -514,7 +514,7 @@ def make_vertical_small_tasks():
 
 
 def make_vertical_become_elite():
-    img = background_from("docs/assets/thieving/backgrounds/05-finale.png", (124, 78, 174), (232, 142, 54))
+    img = background_from("assets/content/thieving/backgrounds/05-finale.png", (124, 78, 174), (232, 142, 54))
     d = ImageDraw.Draw(img)
     draw_ad_frame(img, "BECOME IDLE ELITE", "A cozy idle RPG for quick check-ins.", PURPLE)
 
@@ -540,11 +540,11 @@ def make_vertical_become_elite():
 
 
 def make_vertical_fighting_activity():
-    img = background_from("docs/assets/fight/backgrounds/03-mid.png", (146, 48, 45), (232, 150, 61))
+    img = background_from("assets/content/fight/backgrounds/03-mid.png", (146, 48, 45), (232, 150, 61))
     d = ImageDraw.Draw(img)
     draw_ad_frame(img, "FIGHT YOUR WAY UP", "Real activity page. Fast idle battles.", RED)
 
-    action = load_asset("docs/assets/fight/actions/12-fight-the-barn-door-at-midnight.png")
+    action = load_asset("assets/content/fight/actions/12-fight-the-barn-door-at-midnight.png")
     action.thumbnail((300, 300), Image.Resampling.LANCZOS)
     burst = Image.new("RGBA", (352, 352), (0, 0, 0, 0))
     bd = ImageDraw.Draw(burst)

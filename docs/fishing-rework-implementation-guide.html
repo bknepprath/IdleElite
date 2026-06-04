@@ -3,513 +3,70 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Fishing Rework — Implementation & Assets</title>
+  <title>Idle Elite Godot Docs - Fishing Implementation</title>
+  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG documentation and design reference">
   <link rel="stylesheet" href="docs-nav.css">
   <link rel="stylesheet" href="docs-theme.css">
   <style>
-    :root {
-      --ink: #171615;
-      --panel: #fffdf8;
-      --muted: #5c5548;
-      --teal: #1a7a75;
-      --green: #367a52;
-      --amber: #c45c2a;
-      --red: #b83a3a;
-      --line: #d9cfbc;
-      --shadow: 3px 4px 0 rgba(23, 22, 21, 0.9);
-      font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-    }
-    body { margin: 0; color: var(--ink); background: #f5f0e8; }
-    .page {
-      max-width: 960px;
-      margin: 0 auto;
-      padding: 0 clamp(14px, 3vw, 40px) 64px;
-    }
-    .hero-card {
-      margin: 16px 0 20px;
-      padding: 18px 20px;
-      border: 3px solid var(--ink);
-      border-radius: 14px;
-      background: linear-gradient(165deg, #e8f7f6 0%, #fffdf8 55%, #fff2a8 100%);
-      box-shadow: var(--shadow);
-    }
-    .hero-card h1 { margin: 0 0 8px; font-size: clamp(24px, 4vw, 32px); line-height: 1.1; }
-    .hero-card p { margin: 0; font-size: 14px; line-height: 1.5; color: var(--muted); max-width: 65ch; }
-    .hero-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
-    .hero-links a {
-      padding: 6px 12px;
-      border: 2px solid var(--ink);
-      border-radius: 999px;
-      background: #fffdf8;
-      font-size: 12px;
-      font-weight: 800;
-      text-decoration: none;
-      color: var(--ink);
-      box-shadow: 2px 2px 0 var(--ink);
-    }
-    .hero-links a:hover { background: #fff2a8; }
-
-    section.block {
-      margin-bottom: 22px;
-      padding: 16px 18px;
-      border: 3px solid var(--ink);
-      border-radius: 12px;
-      background: var(--panel);
-      box-shadow: var(--shadow);
-    }
-    section.block h2 {
-      margin: 0 0 4px;
-      font-size: 20px;
-      font-weight: 950;
-    }
-    section.block .lead {
-      margin: 0 0 14px;
-      font-size: 13px;
-      line-height: 1.45;
-      color: var(--muted);
-      max-width: 72ch;
-    }
-
-    .legend {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px 14px;
-      margin-bottom: 14px;
-      font-size: 11px;
-      font-weight: 800;
-    }
-    .badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      padding: 3px 8px;
-      border: 2px solid var(--ink);
-      border-radius: 6px;
-    }
-    .badge.done { background: #b8f5c8; }
-    .badge.todo { background: #f4e6c8; }
-    .badge.new { background: #ffe0d0; }
-    .badge.cut { background: #e8e0e0; color: #5c5548; }
-
-    .flow-diagram {
-      padding: 12px 14px;
-      border: 2px dashed var(--ink);
-      border-radius: 10px;
-      background: #f8f4ec;
-      font-size: 13px;
-      line-height: 1.55;
-      font-weight: 700;
-    }
-    .flow-diagram strong { font-weight: 950; }
-
-    table.data {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 12px;
-      line-height: 1.35;
-    }
-    table.data th,
-    table.data td {
-      padding: 8px 10px;
-      border: 2px solid var(--line);
-      text-align: left;
-      vertical-align: top;
-    }
-    table.data th {
-      background: #e8f7f6;
-      font-size: 10px;
-      font-weight: 950;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    table.data tr:nth-child(even) td { background: rgba(232, 247, 246, 0.35); }
-    table.data code {
-      font-size: 10px;
-      background: #e8f4ff;
-      padding: 1px 4px;
-      border-radius: 3px;
-    }
-    .path { font-size: 10px; color: var(--muted); word-break: break-all; }
-
-    ol.phases { margin: 0; padding-left: 22px; }
-    ol.phases > li {
-      margin-bottom: 14px;
-      padding-left: 4px;
-      line-height: 1.45;
-      font-size: 13px;
-      font-weight: 700;
-    }
-    ol.phases > li > strong { display: block; margin-bottom: 4px; font-size: 14px; }
-    ul.sub { margin: 6px 0 0; padding-left: 18px; font-weight: 600; color: var(--muted); }
-    ul.sub li { margin-bottom: 4px; }
-
-    .asset-grid {
-      display: grid;
-      gap: 10px;
-    }
-    @media (min-width: 640px) {
-      .asset-grid { grid-template-columns: repeat(2, 1fr); }
-    }
-    .asset-card {
-      padding: 10px 12px;
-      border: 2px solid var(--ink);
-      border-radius: 10px;
-      background: #fffdf8;
-    }
-    .asset-card.must { border-left: 8px solid var(--amber); }
-    .asset-card.nice { border-left: 8px solid var(--teal); }
-    .asset-card.have { border-left: 8px solid var(--green); opacity: 0.92; }
-    .asset-card h3 {
-      margin: 0 0 6px;
-      font-size: 13px;
-      font-weight: 950;
-    }
-    .asset-card p {
-      margin: 0;
-      font-size: 11px;
-      line-height: 1.4;
-      color: var(--muted);
-      font-weight: 700;
-    }
-    .asset-card .file {
-      margin-top: 6px;
-      font-size: 10px;
-      font-family: ui-monospace, Consolas, monospace;
-      color: var(--ink);
-      word-break: break-all;
-    }
-
-    .doc-refresh-row { margin: 16px 0; }
-    .doc-refresh-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 10px 18px;
-      border: 3px solid var(--ink);
-      border-radius: 12px;
-      background: linear-gradient(180deg, #3dd4cd, #2dc0b9);
-      color: #fff;
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 950;
-      cursor: pointer;
-      box-shadow: 3px 4px 0 var(--ink);
-    }
-
-    body.docs-theme-dark { color: var(--ink); background: #f5f0e8; }
-    body.docs-theme-dark .page { --ink: #171615; --panel: #fffdf8; --muted: #5c5548; color: var(--ink); }
-    body.docs-theme-dark section.block,
-    body.docs-theme-dark .hero-card,
-    body.docs-theme-dark .asset-card { color: var(--ink); }
-    body.docs-theme-dark table.data th { background: #e8f7f6; color: var(--ink); }
-    body.docs-theme-dark .docs-bar { /* nav stays dark theme */ }
+    :root { --ink:#171615; --paper:#f8f1e5; --panel:#fffdf8; --line:#d8cdb9; --muted:#6a6256; --gold:#fff2a8; font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif; }
+    body { margin:0; background:var(--paper); color:var(--ink); }
+    main { max-width:1180px; margin:0 auto; padding:24px clamp(14px,3vw,32px) 44px; display:grid; gap:18px; }
+    .notice,.card,.table-card { border:2px solid var(--line); border-radius:8px; background:var(--panel); padding:14px; box-shadow:0 2px 0 rgba(23,22,21,.08); }
+    .notice { border-color:var(--ink); background:var(--gold); font-weight:900; }
+    h2 { margin:0 0 10px; font-size:20px; }
+    p,li { line-height:1.45; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th,td { padding:8px 9px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+    th { color:var(--muted); font-size:11px; text-transform:uppercase; }
+    code { font-family:ui-monospace,SFMono-Regular,Consolas,monospace; background:#f1e7d3; padding:1px 4px; border-radius:4px; }
   </style>
 </head>
 <body class="docs-theme-dark">
   <header class="docs-bar">
     <div class="docs-bar-head">
-      <p class="docs-eyebrow">Idle Elite · Fishing</p>
-      <h1>Implementation & assets</h1>
-      <p class="docs-lead">What to build next and what art to make. The game today still uses the <strong>old</strong> fishing row (one method per area). This page is the <strong>target</strong> design.</p>
+      <p class="docs-eyebrow">Idle Elite Godot Docs</p>
+      <h1>Fishing Implementation</h1>
+      <p class="docs-lead">Current fishing implementation, source files, and remaining authoring work.</p>
     </div>
     <nav data-docs-nav></nav>
   </header>
-
-  <div class="page">
-    <div class="hero-card">
-      <h1>Fishing rework — build checklist</h1>
-      <p>Pick gear from the <strong>fish wallet</strong>, fish at <strong>locations</strong> inside <strong>region</strong> cards. First net comes from the <strong>Rocks</strong> discovery beat (Lv 5), not crafting.</p>
-      <div class="hero-links">
-        <a href="fishing-rework-brainstorm.html">Interactive mock</a>
-        <a href="fishing-modules-and-locations-plan.md">Modules plan</a>
-        <a href="fishing-tool-area-matrix.md">Tool × location</a>
-        <a href="fishing-archetype-design.md">Archetypes</a>
-        <a href="fishing-rework-status.md">Shipped status</a>
-      </div>
-    </div>
-
-    <section class="block">
-      <h2>Target in one diagram</h2>
-      <p class="lead">Everything on the Fishing screen should follow this flow.</p>
-      <div class="flow-diagram">
-        <strong>Fish wallet</strong> (always visible) → tap to splay <strong>tools</strong> vertically (crafted + found net).<br>
-        Scroll <strong>region modules</strong> (Beach → … → Space @ Lv 90).<br>
-        Each region has <strong>1–3 location tiles</strong> (not tool icons).<br>
-        Tap location + equipped tool → attempt (archetype bar) → fish pops.<br>
-        <strong>Special:</strong> first tap Rocky Lv 5 → zoom module + collect discarded net → first gear upgrade.
-      </div>
-      <div class="legend" style="margin-top:14px;margin-bottom:0">
-        <span class="badge done">■ Shipped (old model)</span>
-        <span class="badge todo">■ To implement</span>
-        <span class="badge new">■ New asset needed</span>
-        <span class="badge cut">■ Cut / later</span>
-      </div>
-    </section>
-
-    <section class="block">
-      <h2>Already in the game</h2>
-      <p class="lead">Live with <code>FISHING_REWORK_ENABLED</code> in <code>scripts/main.gd</code> — keep these; replace the row model on top.</p>
-      <table class="data">
-        <thead>
-          <tr><th>Feature</th><th>Notes</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>10 region cards</td><td>beach → space; fluid strip per region; rounded BG crops</td></tr>
-          <tr><td>Up to 3 <strong>method</strong> arts per region</td><td><strong>Replace</strong> with location tiles + global tools</td></tr>
-          <tr><td>Fish currency HUD</td><td>Top of fishing detail — becomes <strong>gear wallet</strong> button</td></tr>
-          <tr><td>Per-method attempt bars</td><td>Keep widget; drive from <strong>equipped tool</strong> archetype</td></tr>
-          <tr><td>Archetype curves</td><td><code>fishing_attempt_bar.gd</code> — novice / volume / steady / commit / chaos / risk</td></tr>
-          <tr><td>Catch burst pops</td><td>Tune per tool × location yield</td></tr>
-          <tr><td><code>fishing.areas[]</code> in JSON</td><td>Extend with <code>locations[]</code> per area</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section class="block">
-      <h2>Implementation — in order</h2>
-      <p class="lead">Suggested Godot + data phases. Each step should pass <code>.\scripts\check-project.ps1</code>.</p>
-      <ol class="phases">
-        <li>
-          <strong>Phase A — Data foundation</strong>
-          <ul class="sub">
-            <li>Add <code>fishing.tools[]</code>, <code>areas[].locations[]</code>, <code>fishing.affinity{}</code> to <code>activity-database.json</code></li>
-            <li>Unlock Lvs: Beach shallows <strong>1</strong>, rocky <strong>5</strong>, Pier module <strong>7</strong>, Space module <strong>90</strong> (full table below)</li>
-            <li>Save: <code>equipped_tool_id</code>, <code>fishing_rocky_net_found</code>, last location per region</li>
-            <li>Sync JS: <code>python scripts/sync-activity-database-js.py</code></li>
-          </ul>
-        </li>
-        <li>
-          <strong>Phase B — Gear wallet + tool splay</strong>
-          <ul class="sub">
-            <li>Replace fish-only HUD with button: fish count + equipped tool thumb + chevron</li>
-            <li>Vertical tool list; hide until discovered/crafted; padlock / “craft” rows</li>
-            <li>Affinity chip for active location (tool × spot)</li>
-            <li>Reference mock: <a href="fishing-rework-brainstorm.html">fishing-rework-brainstorm.html</a></li>
-          </ul>
-        </li>
-        <li>
-          <strong>Phase C — Location tiles (Beach + Pier)</strong>
-          <ul class="sub">
-            <li>Region module shows 1–3 <strong>location</strong> thumbs (not methods)</li>
-            <li>Attempt = equipped tool × selected location (affinity multipliers)</li>
-            <li>XP/yield chips from resolved pair, not fixed action row</li>
-          </ul>
-        </li>
-        <li>
-          <strong>Phase D — Rocky net discovery (Lv 5)</strong>
-          <ul class="sub">
-            <li>First tap <code>beach.rocky</code>: no attempt — insert <strong>zoom module</strong> under Beach</li>
-            <li>Click discarded net → fly to wallet → toast “Net collected!” → unlock <code>net</code> tool</li>
-            <li>Later Rocky taps = normal fishing</li>
-          </ul>
-        </li>
-        <li>
-          <strong>Phase E — Roll out regions</strong>
-          <ul class="sub">
-            <li>River → Lake → Boat → Reef → Storm → Deep → Space (unlock table)</li>
-            <li>Remove legacy per-area method grouping in <code>main.gd</code></li>
-          </ul>
-        </li>
-        <li>
-          <strong>Phase F — Crafting & passive</strong>
-          <ul class="sub">
-            <li>Craft recipes unlock tools in splay (line, spear, rowboat, …)</li>
-            <li>Lobster cage: passive collect module at Reef Lv 40 (not a location tile)</li>
-            <li>Hook into existing craft benches (woodworking / smithing / TBD)</li>
-          </ul>
-        </li>
-        <li>
-          <strong>Polish (can trail v1)</strong>
-          <ul class="sub">
-            <li>JSON <code>fish_min</code> / <code>fish_max</code> on all spots (not tier guess)</li>
-            <li>Archetype art sway on active location</li>
-            <li>Shiny fish on catch pop</li>
-            <li>Mismatch flavor text (“empty net”, “overkill”, etc.)</li>
-          </ul>
-        </li>
-      </ol>
-    </section>
-
-    <section class="block">
-      <h2>Regions & locations (authoring)</h2>
-      <p class="lead">Module Lv = when the region card appears. Spot Lv = when that location tile unlocks.</p>
-      <table class="data">
-        <thead>
-          <tr><th>Region</th><th>Module</th><th>Location</th><th>Spot Lv</th><th>Fish table</th><th>Background (existing)</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Beach</td><td>1</td><td>Shallows</td><td>1</td><td>minnow</td><td class="path">backgrounds/00-tide-pool-shallows.png</td></tr>
-          <tr><td>Beach</td><td>1</td><td>Rocks</td><td>5</td><td>crab</td><td class="path">backgrounds/03-crab-pier.png</td></tr>
-          <tr><td>Beach</td><td>1</td><td>Reef edge</td><td>12</td><td>mixed</td><td class="path">backgrounds/05-coral-reef-shallows.png</td></tr>
-          <tr><td>Pier</td><td>7</td><td>Dock edge</td><td>7</td><td>minnow</td><td class="path">backgrounds/01-pond-dock.png</td></tr>
-          <tr><td>Pier</td><td>7</td><td>Piling line</td><td>11</td><td>panfish</td><td class="path">backgrounds/01-pond-dock.png</td></tr>
-          <tr><td>River</td><td>14</td><td>River bend</td><td>14</td><td>trout</td><td class="path">backgrounds/02-river-bend.png</td></tr>
-          <tr><td>River</td><td>14</td><td>Undercut bank</td><td>18</td><td>trout</td><td class="path">backgrounds/02-river-bend.png</td></tr>
-          <tr><td>Sewers</td><td>20</td><td>Muddy run</td><td>20</td><td>catfish</td><td class="path">backgrounds/03-mid.png · sewer fluid</td></tr>
-          <tr><td>Sewers</td><td>20</td><td>Grate pool</td><td>24</td><td>catfish/eel</td><td class="path">backgrounds/03-mid.png</td></tr>
-          <tr><td>Lake</td><td>26</td><td>Ice hole</td><td>26</td><td>cold fish</td><td class="path">backgrounds/04-frozen-lake.png</td></tr>
-          <tr><td>Lake</td><td>26</td><td>Open water</td><td>32</td><td>pike</td><td class="path">backgrounds/04-frozen-lake.png</td></tr>
-          <tr><td>Boat</td><td>32</td><td>Offshore cast</td><td>32</td><td>sea bass</td><td class="path">backgrounds/07-rowboat-offshore.png</td></tr>
-          <tr><td>Boat</td><td>32</td><td>Trawl lane</td><td>38</td><td>bulk</td><td class="path">backgrounds/08-trawler-deck.png</td></tr>
-          <tr><td>Boat</td><td>32</td><td>Chum slick</td><td>45</td><td>shark mix</td><td class="path">backgrounds/07-rowboat-offshore.png</td></tr>
-          <tr><td>Reef</td><td>40</td><td>Coral shelf</td><td>40</td><td>reef</td><td class="path">backgrounds/05-coral-reef-shallows.png</td></tr>
-          <tr><td>Reef</td><td>40</td><td>Night lantern</td><td>48</td><td>reef rare</td><td class="path">backgrounds/05-coral-reef-shallows.png</td></tr>
-          <tr><td>Reef</td><td>40</td><td>Pearl bed</td><td>55</td><td>oyster</td><td class="path">backgrounds/05-coral-reef-shallows.png</td></tr>
-          <tr><td>Storm</td><td>55</td><td>Storm surf</td><td>55</td><td>storm</td><td class="path">backgrounds/10-storm-ocean.png</td></tr>
-          <tr><td>Storm</td><td>55</td><td>Wrack line</td><td>62</td><td>storm scrap</td><td class="path">backgrounds/10-storm-ocean.png</td></tr>
-          <tr><td>Deep</td><td>68</td><td>Abyss hook</td><td>68</td><td>deep</td><td class="path">backgrounds/09-deep-sea-abyss.png</td></tr>
-          <tr><td>Deep</td><td>68</td><td>Leviathan lure</td><td>75</td><td>leviathan</td><td class="path">backgrounds/09-deep-sea-abyss.png</td></tr>
-          <tr><td>Deep</td><td>68</td><td>Mailbox rig</td><td>82</td><td>treasure</td><td class="path">backgrounds/09-deep-sea-abyss.png</td></tr>
-          <tr><td>Space</td><td>90</td><td>Starlight pool</td><td>90</td><td>starlight</td><td class="path">backgrounds/11-cosmic-dream-sea.png</td></tr>
-          <tr><td>Space</td><td>90</td><td>Mirror surface</td><td>95</td><td>reflection</td><td class="path">backgrounds/11-cosmic-dream-sea.png</td></tr>
-        </tbody>
-      </table>
-      <p style="margin:12px 0 0;font-size:11px;font-weight:700;color:var(--muted)">Reef also needs a <strong>lobster cage passive module</strong> (Lv 40) — separate UI from location row.</p>
-    </section>
-
-    <section class="block">
-      <h2>Tools (authoring)</h2>
-      <p class="lead">Shown in wallet splay. Most unlock by <strong>craft</strong>; only <code>net</code> is found on Rocks first visit.</p>
-      <table class="data">
-        <thead>
-          <tr><th>Tool</th><th>Archetype</th><th>Unlock</th><th>Icon today (reuse?)</th></tr>
-        </thead>
-        <tbody>
-          <tr><td>Bare hands</td><td>novice</td><td>Starter</td><td class="path">actions/01-scoop-pond-minnows.png</td></tr>
-          <tr><td>Drag net</td><td>volume</td><td><strong>Rocky discovery</strong></td><td class="path">actions/04-drag-net-through-creek.png</td></tr>
-          <tr><td>Bamboo line</td><td>steady</td><td>Craft ~10</td><td class="path">actions/02-dangle or 03-cast-bamboo-rod</td></tr>
-          <tr><td>Sewer grab</td><td>chaos</td><td>Craft ~20</td><td class="path">actions/07-hand-grab-muddy-catfish.png</td></tr>
-          <tr><td>Spear</td><td>commit</td><td>Craft ~24</td><td class="path">actions/09-spear-fish-in-shallows.png</td></tr>
-          <tr><td>Rowboat rod</td><td>steady</td><td>Craft ~32</td><td class="path">actions/10-cast-from-rowboat.png</td></tr>
-          <tr><td>Trawl</td><td>volume</td><td>Craft ~38</td><td class="path">actions/12-trawl-from-tiny-boat.png</td></tr>
-          <tr><td>Harpoon</td><td>commit</td><td>Craft ~45</td><td class="path">actions/14-harpoon-suspicious-ripple.png</td></tr>
-          <tr><td>Chum bucket</td><td>risk</td><td>Craft ~45</td><td class="path">actions/16-chum-open-water.png</td></tr>
-          <tr><td>Storm kite</td><td>commit</td><td>Craft ~55</td><td class="path">actions/17-cast-storm-kite-line.png</td></tr>
-          <tr><td>Magnetic hook</td><td>steady</td><td>Craft ~68</td><td class="path">actions/19-fish-with-magnetic-hook.png</td></tr>
-          <tr><td>Starlight dip</td><td>steady</td><td>Craft ~88</td><td class="path">actions/22-angle-in-cosmic-dream-sea.png</td></tr>
-          <tr><td>Reflection net</td><td>volume</td><td>Craft ~92</td><td class="path">actions/23-net-the-reflection-of-a-fish.png</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <section class="block">
-      <h2>Assets you need to create</h2>
-      <p class="lead">Priority order for art. Paths are under <code>docs/assets/fishing/</code> unless noted.</p>
-
-      <h3 style="margin:16px 0 8px;font-size:14px;font-weight:950">Must-have for v1 rework</h3>
-      <div class="asset-grid">
-        <div class="asset-card must">
-          <h3>Rocky beach zoom background</h3>
-          <p>Wide close-up of rocky shore for the child module under Beach. Tighter crop than the normal region card.</p>
-          <p><strong>Temp:</strong> crop <code>03-crab-pier.png</code> with dark vignette.</p>
-          <div class="file">NEW: backgrounds/beach-rocky-zoom.png (suggested)</div>
-        </div>
-        <div class="asset-card must">
-          <h3>Discarded net prop</h3>
-          <p>Weathered / abandoned net on rocks. Tap target in zoom module. Should read as “found junk”, not shiny gear.</p>
-          <p><strong>Temp:</strong> desaturate drag-net icon + shadow on rocky BG.</p>
-          <div class="file">NEW: props/discarded-net-rocky.png (suggested)</div>
-        </div>
-        <div class="asset-card must">
-          <h3>Location thumbnail crops</h3>
-          <p>Small scenic squares for each location tile (~24 spots). Many can be <strong>crops</strong> of existing backgrounds; a few need unique framing.</p>
-          <div class="file">NEW: locations/&lt;region&gt;-&lt;spot&gt;-thumb.png OR runtime crop from BG</div>
-        </div>
-        <div class="asset-card must">
-          <h3>Tool icons (wallet splay)</h3>
-          <p>One clear icon per tool at ~52–64px. Can standardize from existing <code>actions/</code> but should feel like <strong>gear</strong>, not activity cards.</p>
-          <div class="file">NEW: tools/&lt;tool-id&gt;.png OR curated set in tools/</div>
-        </div>
-      </div>
-
-      <h3 style="margin:18px 0 8px;font-size:14px;font-weight:950">Nice to have</h3>
-      <div class="asset-grid">
-        <div class="asset-card nice">
-          <h3>Fish currency icon</h3>
-          <p>Wallet button uses catch art. Dedicated pile-of-fish icon optional.</p>
-          <div class="file">HAVE: catches/00-minnow.png · optional HUD icon</div>
-        </div>
-        <div class="asset-card nice">
-          <h3>Net fly / collect FX</h3>
-          <p>2–4 frames or single sprite for net flying to wallet + sparkle on “Net collected!”</p>
-          <div class="file">NEW: fx/net-collect-fly.png (optional sheet)</div>
-        </div>
-        <div class="asset-card nice">
-          <h3>Lobster cage passive module</h3>
-          <p>Art for woodcutting-style collect stack at Reef (timer, stack count).</p>
-          <div class="file">REUSE: actions/11-drop-lobster-cage.png · poses/07-lift-lobster-cage.png</div>
-        </div>
-        <div class="asset-card nice">
-          <h3>Shiny fish variant</h3>
-          <p>Alternate catch pop (sparkle) for rare rolls — can tint base catches first.</p>
-          <div class="file">NEW: catches/*-shiny.png or shader</div>
-        </div>
-      </div>
-
-      <h3 style="margin:18px 0 8px;font-size:14px;font-weight:950">Already have (reuse)</h3>
-      <div class="asset-grid">
-        <div class="asset-card have">
-          <h3>Region backgrounds</h3>
-          <p>10 region fluids + full-bleed BGs exist for all planned regions.</p>
-          <div class="file">backgrounds/00–11-*.png</div>
-        </div>
-        <div class="asset-card have">
-          <h3>Activity / method art</h3>
-          <p>23 action sprites — source for tool icons & legacy row until migrated.</p>
-          <div class="file">actions/01–23-*.png</div>
-        </div>
-        <div class="asset-card have">
-          <h3>Catch fish sprites</h3>
-          <p>Pop burst icons per fish type (minnow, crab, trout, …).</p>
-          <div class="file">catches/00-minnow.png … 23-cosmic-starfish.png</div>
-        </div>
-        <div class="asset-card have">
-          <h3>Pose sheet</h3>
-          <p>Character poses for future sway / celebration (not blocking v1).</p>
-          <div class="file">poses/*.png</div>
-        </div>
-      </div>
-
-      <h3 style="margin:18px 0 8px;font-size:14px;font-weight:950">Do not create (cut)</h3>
-      <ul style="margin:0;padding-left:20px;font-size:12px;font-weight:700;color:var(--muted);line-height:1.5">
-        <li>Sonar / electronics actions (15, 24 negotiate) — cut from design</li>
-        <li>Lava fishing region — brainstorm only</li>
-        <li>Per-method art row for every legacy action id — replaced by tools + locations</li>
-        <li>Separate bench craft icons until craft system is defined</li>
+  <main>
+    <div class="notice">The old future-state build checklist has been removed. This page now describes the current Godot implementation.</div>
+    <section class="card">
+      <h2>Current Source Of Truth</h2>
+      <ul>
+        <li><code>docs/activity-database.json</code>: fishing skill, 23 actions, 10 areas, area tags, art paths, rewards, unlocks.</li>
+        <li><code>scripts/main.gd</code>: <code>FISHING_REWORK_ENABLED</code>, tool definitions, location definitions, wallet rendering, catch handling, save/load fields.</li>
+        <li><code>docs/activity-database-data.js</code>: generated copy used by docs; refresh it after editing the JSON.</li>
       </ul>
     </section>
-
-    <section class="block">
-      <h2>Code touch list (Godot)</h2>
-      <p class="lead">Main files to expect when implementing.</p>
-      <table class="data">
-        <thead>
-          <tr><th>Area</th><th>File / symbol</th></tr>
-        </thead>
+    <section class="table-card">
+      <h2>Implemented In Godot</h2>
+      <table>
+        <thead><tr><th>Feature</th><th>Status</th><th>Source</th></tr></thead>
         <tbody>
-          <tr><td>Skill detail UI</td><td><code>scripts/main.gd</code> — <code>_render_fishing_*</code>, gear wallet, location tiles</td></tr>
-          <tr><td>Attempt bar</td><td><code>scripts/fishing_attempt_bar.gd</code> (keep)</td></tr>
-          <tr><td>Fluid strip</td><td><code>scripts/fishing_fluid_strip.gd</code> (keep)</td></tr>
-          <tr><td>Data</td><td><code>docs/activity-database.json</code> → load tools, locations, affinity</td></tr>
-          <tr><td>Save</td><td>Extend save blob: equipped tool, rocky net flag, crafted tools[]</td></tr>
-          <tr><td>Rocky tutorial</td><td>New child module under beach card + collect interaction</td></tr>
-          <tr><td>Passive cage</td><td>Pattern from woodcutting collect module in <code>main.gd</code></td></tr>
+          <tr><td>Fishing rework switch</td><td>Enabled</td><td><code>FISHING_REWORK_ENABLED := true</code></td></tr>
+          <tr><td>Region modules</td><td>Live</td><td><code>_render_fishing_area_modules</code>, <code>fishing.areas[]</code></td></tr>
+          <tr><td>Tool wallet and circular picker</td><td>Live</td><td><code>_render_fishing_tool_circle_menu</code>, <code>_render_fishing_tool_popup_menu</code></td></tr>
+          <tr><td>Beach/Pier location tiles</td><td>Live</td><td><code>FISHING_LOCATION_DEFS</code></td></tr>
+          <tr><td>Net, rod, boat, mirror offers</td><td>Live</td><td><code>_build_fishing_*_offer_module</code></td></tr>
+          <tr><td>Saved equipped tool</td><td>Live</td><td><code>equipped_fishing_tool_id</code></td></tr>
+          <tr><td>Saved selected locations</td><td>Live</td><td><code>selected_fishing_locations</code></td></tr>
         </tbody>
       </table>
     </section>
-
-    <div class="doc-refresh-row">
-      <button type="button" class="doc-refresh-btn" data-doc-refresh>↻ Refresh page</button>
-    </div>
-  </div>
-
+    <section class="table-card">
+      <h2>Remaining Authoring Work</h2>
+      <table>
+        <thead><tr><th>Work</th><th>Current gap</th><th>Guardrail</th></tr></thead>
+        <tbody>
+          <tr><td>Later area locations</td><td>River through Space still use area action rows instead of authored location tiles.</td><td>Add locations in small batches and audit after each batch.</td></tr>
+          <tr><td>Tool-location coverage</td><td><code>FISHING_TOOL_LOCATION_ACTIONS</code> currently maps Beach/Pier starter locations.</td><td>Keep mappings explicit; do not infer from names.</td></tr>
+          <tr><td>Docs sync</td><td>Docs must reflect current JSON and GDScript, not old standalone interactions.</td><td>Run text audit after doc updates.</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
   <script src="docs-nav.js"></script>
-  <script>
-    document.querySelectorAll("[data-doc-refresh]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        try { location.reload({ cache: "reload" }); } catch (_e) { location.reload(); }
-      });
-    });
-  </script>
 </body>
 </html>
