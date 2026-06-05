@@ -14,6 +14,223 @@ const ACTIVITY_CRIT_OVERLAY_GROUP := "activity_crit_overlay"
 const ACTIVITY_CRIT_OVERLAY_LAYER := 96
 const FISHING_COLLECTION_CANVAS_LAYER := 124
 
+class HubPathDots:
+	extends Control
+
+	var points := []
+	var blockers := []
+	var dots := []
+	var origin := Vector2.ZERO
+	var dot_radius := 68.0
+	var dot_step := 172.0
+	var dot_height_scale := 0.34
+	var path_color := Color("#a97943")
+	var edge_color := Color("#6f4c2e")
+	var stone_color := Color("#9d9485")
+
+	func set_paths(next_origin: Vector2, next_points: Array, next_blockers: Array) -> void:
+		origin = next_origin
+		points = next_points.duplicate()
+		blockers = next_blockers.duplicate()
+		_rebuild_dots()
+		queue_redraw()
+
+	func _rebuild_dots() -> void:
+		dots.clear()
+		var routes := points.duplicate()
+		routes.sort_custom(func(a, b): return _route_target_y(a) > _route_target_y(b))
+		for raw_point in routes:
+			if typeof(raw_point) == TYPE_DICTIONARY:
+				var route := raw_point as Dictionary
+				var target = route.get("target", Vector2.ZERO)
+				if target is Vector2:
+					_collect_dotted_path(_nearest_route_start(target as Vector2), target as Vector2, float(route.get("seed", 1.0)), dots)
+			elif raw_point is Vector2:
+				_collect_dotted_path(_nearest_route_start(raw_point as Vector2), raw_point as Vector2, origin.x * 0.017 + origin.y * 0.023, dots)
+		_merge_overlapping_dots(dots)
+
+	func _route_target_y(route: Variant) -> float:
+		if typeof(route) == TYPE_DICTIONARY:
+			var target = (route as Dictionary).get("target", origin)
+			if target is Vector2:
+				return (target as Vector2).y
+		if route is Vector2:
+			return (route as Vector2).y
+		return origin.y
+
+	func _nearest_route_start(target: Vector2) -> Vector2:
+		var direct_distance := origin.distance_to(target)
+		var best := origin
+		var best_distance := direct_distance
+		for raw_dot in dots:
+			var dot := raw_dot as Dictionary
+			var center := dot.get("center", origin) as Vector2
+			var distance := center.distance_to(target)
+			if distance < best_distance:
+				best = center
+				best_distance = distance
+		if best != origin and best_distance < direct_distance * 0.82 and best_distance < 900.0:
+			return best
+		return origin
+
+	func _draw() -> void:
+		for dot in dots:
+			_draw_path_dot(dot)
+
+	func occupied_rects() -> Array:
+		var rects := []
+		for dot in dots:
+			rects.append(_dot_rect(dot as Dictionary, 16.0))
+		return rects
+
+	func _collect_dotted_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
+		var control := Vector2(start.x, lerpf(start.y, target.y, 0.54))
+		var previous := start
+		var distance_bank := 0.0
+		var dot_index := 0
+		for i in range(1, 80):
+			var t := float(i) / 79.0
+			var q := 1.0 - t
+			var point := q * q * start + 2.0 * q * t * control + t * t * target
+			var segment := point - previous
+			var segment_length := segment.length()
+			var next_step := dot_step * lerpf(0.78, 1.24, _unit(route_seed + float(dot_index) * 9.13))
+			while distance_bank + segment_length >= next_step and segment_length > 0.001:
+				var needed := next_step - distance_bank
+				var ratio := needed / segment_length
+				var dot := previous + segment * ratio
+				var direction := segment.normalized()
+				var normal := Vector2(-direction.y, direction.x)
+				var scatter := normal * lerpf(-46.0, 46.0, _unit(route_seed + float(dot_index) * 13.71))
+				scatter += direction * lerpf(-24.0, 24.0, _unit(route_seed + float(dot_index) * 17.89))
+				var radius := dot_radius * lerpf(0.92, 1.12, _unit(route_seed + float(dot_index) * 19.41))
+				var fill := stone_color if _unit(route_seed + float(dot_index) * 29.33) > 0.88 else path_color
+				_add_or_merge_dot(next_dots, {"center": dot + scatter, "radius": radius, "fill": fill})
+				dot_index += 1
+				previous = dot
+				segment = point - previous
+				segment_length = segment.length()
+				distance_bank = 0.0
+				next_step = dot_step * lerpf(0.78, 1.24, _unit(route_seed + float(dot_index) * 9.13))
+			distance_bank += segment_length
+			previous = point
+
+	func _add_or_merge_dot(dots: Array, dot: Dictionary) -> void:
+		var center := dot.get("center", Vector2.ZERO) as Vector2
+		var radius := float(dot.get("radius", dot_radius))
+		if _dot_hits_blocker(center, radius):
+			return
+		for i in range(dots.size()):
+			var existing := dots[i] as Dictionary
+			var existing_center := existing.get("center", Vector2.ZERO) as Vector2
+			var existing_radius := float(existing.get("radius", dot_radius))
+			if not _dot_rect(dot, 10.0).intersects(_dot_rect(existing, 10.0)):
+				continue
+			if center.distance_to(existing_center) > maxf(radius, existing_radius) * 1.55:
+				continue
+			var radius_weight := radius * radius
+			var existing_weight := existing_radius * existing_radius
+			existing["center"] = (existing_center * existing_weight + center * radius_weight) / (existing_weight + radius_weight)
+			existing["radius"] = maxf(existing_radius, radius) + minf(existing_radius, radius) * 0.10
+			if dot.get("fill", path_color) == stone_color or existing.get("fill", path_color) == stone_color:
+				existing["fill"] = stone_color
+			dots[i] = existing
+			return
+		dots.append(dot)
+
+	func _merge_overlapping_dots(next_dots: Array) -> void:
+		var changed := true
+		var guard := 0
+		while changed and guard < 12:
+			changed = false
+			guard += 1
+			var i := 0
+			while i < next_dots.size():
+				var j := i + 1
+				while j < next_dots.size():
+					var a := next_dots[i] as Dictionary
+					var b := next_dots[j] as Dictionary
+					if _dot_rect(a, 18.0).intersects(_dot_rect(b, 18.0)):
+						var a_radius := float(a.get("radius", dot_radius))
+						var b_radius := float(b.get("radius", dot_radius))
+						var a_weight := a_radius * a_radius
+						var b_weight := b_radius * b_radius
+						a["center"] = ((a.get("center", Vector2.ZERO) as Vector2) * a_weight + (b.get("center", Vector2.ZERO) as Vector2) * b_weight) / (a_weight + b_weight)
+						a["radius"] = maxf(a_radius, b_radius) + minf(a_radius, b_radius) * 0.18
+						if a.get("fill", path_color) == stone_color or b.get("fill", path_color) == stone_color:
+							a["fill"] = stone_color
+						next_dots[i] = a
+						next_dots.remove_at(j)
+						changed = true
+						continue
+					j += 1
+				i += 1
+
+	func _draw_path_dot(dot: Dictionary) -> void:
+		var center := dot.get("center", Vector2.ZERO) as Vector2
+		var radius := float(dot.get("radius", dot_radius))
+		var fill := dot.get("fill", path_color) as Color
+		_draw_feathered_oval(center, radius, radius * dot_height_scale, fill)
+
+	func _draw_feathered_oval(center: Vector2, radius_x: float, radius_y: float, color: Color) -> void:
+		var fade_color := color
+		var fade_steps := [
+			{"scale": 1.26, "alpha": 0.08},
+			{"scale": 1.16, "alpha": 0.16},
+			{"scale": 1.08, "alpha": 0.30},
+			{"scale": 1.00, "alpha": 0.92}
+		]
+		for raw_step in fade_steps:
+			var step := raw_step as Dictionary
+			fade_color.a = float(step.get("alpha", 1.0))
+			var scale := float(step.get("scale", 1.0))
+			_draw_oval(center, radius_x * scale, radius_y * scale, fade_color)
+
+	func _draw_oval(center: Vector2, radius_x: float, radius_y: float, color: Color) -> void:
+		var points := PackedVector2Array()
+		for i in range(28):
+			var angle := TAU * float(i) / 28.0
+			points.append(center + Vector2(cos(angle) * radius_x, sin(angle) * radius_y))
+		draw_colored_polygon(points, color)
+
+	func _dot_rect(dot: Dictionary, padding: float) -> Rect2:
+		var center := dot.get("center", Vector2.ZERO) as Vector2
+		var radius := float(dot.get("radius", dot_radius)) + padding
+		var half_size := Vector2(radius, radius * dot_height_scale)
+		return Rect2(center - half_size, half_size * 2.0)
+
+	func _dot_hits_blocker(center: Vector2, radius: float) -> bool:
+		var rect := Rect2(center - Vector2(radius + 12.0, radius * dot_height_scale + 12.0), Vector2((radius + 12.0) * 2.0, (radius * dot_height_scale + 12.0) * 2.0))
+		for raw_blocker in blockers:
+			if raw_blocker is Rect2 and rect.intersects(raw_blocker as Rect2):
+				return true
+		return false
+
+	func _unit(seed: float) -> float:
+		return fposmod(sin(seed * 12.9898 + 78.233) * 43758.5453, 1.0)
+
+
+class HubMoveIcon:
+	extends Control
+
+	func _draw() -> void:
+		var center := size * 0.5
+		var length := minf(size.x, size.y) * 0.34
+		for direction in [Vector2(-1, -1), Vector2(1, -1), Vector2(-1, 1), Vector2(1, 1)]:
+			var normal: Vector2 = direction.normalized()
+			var tip: Vector2 = center + normal * length
+			var base: Vector2 = center + normal * (length * 0.36)
+			_draw_arrow(base, tip, normal, 12.0, Color.BLACK)
+			_draw_arrow(base, tip, normal, 7.0, Color.WHITE)
+
+	func _draw_arrow(base: Vector2, tip: Vector2, normal: Vector2, width: float, color: Color) -> void:
+		draw_line(base, tip, color, width, true)
+		var side := Vector2(-normal.y, normal.x)
+		var head_back := tip - normal * 28.0
+		draw_line(tip, head_back + side * 18.0, color, width, true)
+		draw_line(tip, head_back - side * 18.0, color, width, true)
+
+
 class RegenCircle:
 	extends Control
 
@@ -893,6 +1110,38 @@ class CleanProgressBar:
 		draw_arc(Vector2(x_right, rect.position.y + radius), radius - half_width, PI * 1.5, TAU, 32, color, width, true)
 		draw_arc(Vector2(x_left, rect.end.y - radius), radius - half_width, PI * 0.5, PI, 32, color, width, true)
 		draw_arc(Vector2(x_right, rect.end.y - radius), radius - half_width, 0.0, PI * 0.5, 32, color, width, true)
+
+
+class HubBuildProgressBar:
+	extends Control
+
+	var value := 0.0
+
+	func set_progress(next_value: float) -> void:
+		value = clampf(next_value, 0.0, 1.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		var rect := Rect2(Vector2.ZERO, size)
+		var radius := minf(size.y * 0.5, 30.0)
+		var border := 8.0
+		_draw_round_rect(rect, Color(0, 0, 0, 0.22), radius)
+		_draw_round_rect(Rect2(Vector2(0, 4), size - Vector2(0, 4)), Color("#171615"), radius)
+		var inner := Rect2(Vector2(border, border), size - Vector2(border * 2.0, border * 2.0))
+		_draw_round_rect(inner, Color("#d9cfbc"), maxf(0.0, radius - border))
+		var fill_rect := inner.grow(-7.0)
+		fill_rect.size.x *= value
+		if fill_rect.size.x > 0.0:
+			_draw_round_rect(fill_rect, Color("#35d86d"), maxf(0.0, radius - border - 7.0))
+
+	func _draw_round_rect(rect: Rect2, color: Color, radius: float) -> void:
+		if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+			return
+		var clamped_radius := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
+		var center_y := rect.position.y + rect.size.y * 0.5
+		draw_rect(Rect2(rect.position + Vector2(clamped_radius, 0.0), Vector2(maxf(0.0, rect.size.x - clamped_radius * 2.0), rect.size.y)), color)
+		draw_circle(Vector2(rect.position.x + clamped_radius, center_y), clamped_radius, color)
+		draw_circle(Vector2(rect.end.x - clamped_radius, center_y), clamped_radius, color)
 
 
 class ActivityProgressRail:
@@ -2712,6 +2961,8 @@ const SAVE_PATH := "user://idle_elite_save.json"
 const SAVE_SCHEMA_VERSION := 1
 const SAVE_SCHEMA_MANUAL_ACTIVITY_UNLOCKS := 1
 const DEBUG_TEMP_FISHING_99_ALL_TOOLS := false
+const DEBUG_TEMP_THIEVING_70_TROPHY_TEST := true
+const DEBUG_TEMP_HUB_BUILD_TOTAL_LEVEL := 70
 const PENDING_CRASH_REPORT_PATH := "user://pending-crash-report.json"
 const CRASH_SESSION_MARKER_PATH := "user://last-session-marker.json"
 const ANDROID_DIAGNOSTIC_EVENTS_PATH := "user://android-diagnostic-events.txt"
@@ -2761,6 +3012,85 @@ const STAMINA_GAUGE_POP_SCALE := Vector2(1.018, 1.018)
 const STAMINA_GAUGE_SETTLE_SCALE := Vector2(0.997, 0.997)
 const STAMINA_GAUGE_HOLD_BOOST_SECONDS := 0.24
 const MAX_OFFLINE_SECONDS := 8 * 60 * 60
+const HUB_BUILD_SECONDS := 15.0
+const HUB_BUILD_SMOKE_SHEET := "res://assets/content/hub/hub-build-cloud-solid-sheet.png"
+const HUB_BUILD_SMOKE_FRAME_COUNT := 4
+const HUB_OFFLINE_SECONDS_PER_GARDEN_LEVEL := 60 * 60
+const HUB_MODULE_MAX_LEVEL := 4
+const HUB_FIELD_SIZE := Vector2(2160, 3060)
+const HUB_PATH_SIZE := Vector2(1958, 3060)
+const HUB_PATH_VERTICAL_OFFSET := 520.0
+const HUB_TROPHY_DEFAULT_CENTER := Vector2(1725, 1190)
+const HUB_MODULE_DEFS := {
+	"barn": {
+		"name": "Barn",
+		"sheet": "res://assets/content/hub/hub-barn-tiers.png",
+		"cell_count": 5,
+		"position": Vector2(470, 1100),
+		"size": Vector2(560, 560),
+		"visual_size": Vector2(560, 560),
+		"visual_sizes": [Vector2(560, 560), Vector2(560, 560), Vector2(650, 650), Vector2(720, 720), Vector2(780, 780)],
+		"bubble_offset": Vector2(520, -760),
+		"currency": "logs",
+		"costs": [25, 250, 1000, 10000],
+		"unlock_levels": [3, 12, 28, 52],
+		"bonus": "Makes low success rate activities more reliable."
+	},
+	"garden": {
+		"name": "Garden",
+		"sheet": "res://assets/content/hub/hub-garden-tiers.png",
+		"cell_count": 5,
+		"position": Vector2(560, 1660),
+		"size": Vector2(560, 560),
+		"visual_size": Vector2(560, 560),
+		"bubble_offset": Vector2(520, -760),
+		"currency": "mixed",
+		"costs": [25, 250, 1000, 10000],
+		"fish_costs": [10, 100, 500, 2500],
+		"unlock_levels": [7, 19, 39, 65],
+		"bonus": "+1 hour offline progress cap per level."
+	},
+	"pond": {
+		"name": "Fish Pond",
+		"sheet": "res://assets/content/hub/hub-fish-pond-tiers.png",
+		"cell_count": 5,
+		"position": Vector2(1580, 1660),
+		"size": Vector2(560, 560),
+		"visual_size": Vector2(560, 560),
+		"visual_sizes": [Vector2(920, 920), Vector2(820, 820), Vector2(840, 840), Vector2(880, 880), Vector2(920, 920)],
+		"bubble_offset": Vector2(-1260, -760),
+		"currency": "fish",
+		"costs": [5, 250, 1000, 10000],
+		"unlock_levels": [5, 15, 33, 58],
+		"bonus": "Improves stamina regen speed across all skills."
+	},
+	"mission": {
+		"name": "Mission Sign",
+		"sheet": "res://assets/content/hub/hub-mission-sign-tiers.png",
+		"cell_count": 5,
+		"position": Vector2(520, 2350),
+		"size": Vector2(560, 560),
+		"visual_size": Vector2(560, 560),
+		"bubble_offset": Vector2(520, -760),
+		"currency": "logs",
+		"costs": [15, 175, 850, 5000],
+		"unlock_levels": [10, 24, 45, 62],
+		"bonus": "Prepares boosted task missions for a later update."
+	}
+}
+const HUB_MODULE_ORDER := ["barn", "garden", "pond", "mission"]
+const HUB_POSITION_ORDER := ["barn", "garden", "pond", "mission", "trophy"]
+const HUB_BARN_FAILURE_GAP_FACTORS := [0.0, 0.10, 0.22, 0.38, 0.58]
+const HUB_POND_REGEN_BONUS_BY_LEVEL := [0.0, 0.01, 0.03, 0.06, 0.10]
+const HUB_TROPHY_SUCCESS_BONUS_BY_TIER := [0.0, 0.01, 0.02, 0.03, 0.05]
+const HUB_MISSION_PAPER_BADGE := "res://assets/content/hub/hub-mission-paper-badge.png"
+const HUB_MISSION_SLOT_COUNT_BY_LEVEL := [0, 1, 2, 3, 4]
+const HUB_MISSION_STAMINA_REDUCTION_BY_LEVEL := [0.0, 0.30, 0.35, 0.42, 0.50]
+const HUB_MISSION_XP_BONUS_BY_LEVEL := [0.0, 0.10, 0.14, 0.18, 0.25]
+const HUB_MISSION_TIME_REDUCTION_BY_LEVEL := [0.0, 0.10, 0.14, 0.18, 0.25]
+const HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL := [0, 300, 240, 180, 120]
+const HUB_MISSION_REP_MIN_BY_LEVEL := [0, 50, 45, 40, 35]
+const HUB_MISSION_REP_MAX_BY_LEVEL := [0, 150, 135, 120, 110]
 const MASTERY_MAX_LEVEL := 20
 const ACHIEVEMENT_MEDAL_ART_COUNT := 20
 const ACHIEVEMENT_MEDAL_SLOT_COUNT := 25
@@ -2845,6 +3175,7 @@ const PAGE_PAD := 96
 const CARD_RADIUS := 64
 const ACTION_CARD_HEIGHT := 720
 const ACTION_CARD_EXPANDED_HEIGHT := 1080
+const THIEVING_HEIST_CARD_HEIGHT := 880
 const ACTION_CARD_INFO_EXPAND_SECONDS := 0.22
 const ACTION_CARD_INFO_FADE_IN_SECONDS := 0.08
 const ACTION_CARD_INFO_FADE_OUT_SECONDS := 0.12
@@ -3059,6 +3390,69 @@ const ACTION_CARD_TAP_RELEASE_SLOP := 120.0
 const ACTION_STAT_TAP_RELEASE_SLOP := 30.0
 const PASSIVE_BUTTON_TAP_RELEASE_SLOP := 52.0
 const ACTION_CARD_DUPLICATE_TAP_MSEC := 36
+const THIEVING_HEIST_BACKGROUND_SHEET := "res://assets/content/thieving/heists/thieving-trophy-heist-backgrounds-wide.png"
+const THIEVING_HEIST_TROPHY_SHEET := "res://assets/content/thieving/trophies/thieving-trophy-sheet.png"
+const THIEVING_HEIST_JAIL_BARS_TEXTURE := "res://assets/content/thieving/heists/thieving-jail-bars-overlay.png"
+const THIEVING_HEIST_BACKGROUND_CELL := Vector2(1536, 880)
+const THIEVING_HEIST_TROPHY_CELL := Vector2(256, 256)
+const THIEVING_HEIST_HORIZONTAL_BLEED := 0.0
+const THIEVING_HEIST_UI_SAFE_INSET := PAGE_PAD + 132.0
+const THIEVING_HEIST_LEVEL_SUCCESS_BONUS := 0.75
+const THIEVING_HEIST_MAX_SUCCESS := 95.0
+const THIEVING_HEIST_DEFS := [
+	{
+		"id": "complimentary_spoon",
+		"name": "Case The Cafe Display",
+		"trophy": "The Complimentary Spoon",
+		"unlock": 8,
+		"tier": 1,
+		"cell": 0,
+		"xp": 250,
+		"success": 88.0,
+		"cooldown_seconds": 60,
+		"success_text": "Acquired: The Complimentary Spoon.",
+		"failure_text": "Jailed for spoon hesitation."
+	},
+	{
+		"id": "crown_jewel_replica_replica",
+		"name": "Lift The Replica's Replica",
+		"trophy": "The Crown Jewel Replica Replica",
+		"unlock": 20,
+		"tier": 2,
+		"cell": 1,
+		"xp": 1000,
+		"success": 68.0,
+		"cooldown_seconds": 15 * 60,
+		"success_text": "Acquired: The Crown Jewel Replica Replica.",
+		"failure_text": "Jailed for fake jewel confusion."
+	},
+	{
+		"id": "bad_decisions_idol",
+		"name": "Dodge The Temple Refund Policy",
+		"trophy": "The Idol Of Slightly Bad Decisions",
+		"unlock": 32,
+		"tier": 3,
+		"cell": 2,
+		"xp": 3000,
+		"success": 48.0,
+		"cooldown_seconds": 60 * 60,
+		"success_text": "Acquired: The Idol Of Slightly Bad Decisions.",
+		"failure_text": "Jailed under museum-temple policy."
+	},
+	{
+		"id": "borrowed_empire_crown",
+		"name": "Empty The Imperial Exhibit",
+		"trophy": "The Crown Of Borrowed Empire",
+		"unlock": 65,
+		"tier": 4,
+		"cell": 3,
+		"xp": 12000,
+		"success": 32.0,
+		"cooldown_seconds": 3 * 60 * 60,
+		"success_text": "Acquired: The Crown Of Borrowed Empire.",
+		"failure_text": "Jailed for diplomatic crown nonsense."
+	}
+]
 const SKILL_MENU_CARD_SIDE_INSET := 104
 const SKILL_MENU_COPY_WIDTH := 760
 const SKILL_MENU_ACTIVITY_PROGRESS_HEIGHT := 33
@@ -3135,6 +3529,7 @@ const CHAT_STRIP_EMPTY_GRACE_MSEC := 2200
 const CHAT_STRIP_HIDE_GRACE_MSEC := 800
 const CHAT_STRIP_ICON := "res://assets/ui/chat-speech-bubble.png"
 const CHAT_UI_Z := 3500
+const HUB_OVERLAY_Z := 2800
 const CHAT_CENSORED_WORDS := [
 	"fag",
 	"faggot",
@@ -3339,7 +3734,6 @@ const ACHIEVEMENT_TOAST_VIEWPORT_MARGIN := Vector2(36, 36)
 const ACHIEVEMENT_TOAST_EXIT_DELAY := 9.0
 const ACHIEVEMENT_TOAST_AUTO_EXIT_SECONDS := 0.64
 const ACHIEVEMENT_TOAST_TAP_EXIT_SECONDS := 0.24
-const ACHIEVEMENT_TOAST_DISMISS_GRACE_SECONDS := 0.35
 const GLOBAL_BUFFS_MODAL_MIN_HEIGHT := 1440.0
 const GLOBAL_BUFFS_MODAL_BASE_HEIGHT := 1260.0
 const GLOBAL_BUFFS_MODAL_ROW_HEIGHT := 120.0
@@ -3463,6 +3857,33 @@ var fishing_boat_set_in_water := false
 var fishing_mirror_collected := false
 var selected_fishing_locations := {}
 var passive_modules := {}
+var thieving_trophies := {}
+var pending_thieving_trophy_reward_float := {}
+var hub_modules := {}
+var hub_selected_module_id := "pond"
+var hub_detail_open := false
+var hub_module_buttons := {}
+var hub_module_progress_bars := {}
+var hub_module_smoke_layers := {}
+var hub_detail_panel: PanelContainer
+var hub_detail_title: Label
+var hub_detail_body: Label
+var hub_detail_cost: Label
+var hub_detail_button: Button
+var hub_detail_secondary_button: Button
+var hub_detail_missions_box: VBoxContainer
+var hub_build_mode := false
+var hub_drag_module_id := ""
+var hub_drag_pointer_id := -1
+var hub_drag_offset := Vector2.ZERO
+var hub_drag_start_center := Vector2.ZERO
+var hub_drag_valid := true
+var hub_module_positions := {}
+var hub_path_dots: HubPathDots
+var hub_decor_items := []
+var hub_decor_layout := []
+var hub_missions := []
+var hub_mission_cooldown_until_unix := 0
 var manual_activity_unlocks := {}
 
 const FISHING_AREA_ID_ALIASES := {
@@ -3591,6 +4012,7 @@ var achievement_medal_slot_icons := {}
 var leaderboard_tab: Button
 var skills_tab: Button
 var hero_tab: Button
+var hub_tab: Button
 var shop_tab: Button
 var settings_tab: Button
 var nav_pop_tweens := {}
@@ -3721,6 +4143,7 @@ var last_action_card_tap_msec := 0
 var pending_activity_unlock_ceremony := {}
 var activity_unlock_ceremony_count := 0
 var activity_unlock_preview_after_ceremony_id := ""
+var activity_unlock_heist_preview_after_ceremony_id := ""
 var activity_unlock_center_scroll_target := -1
 var activity_unlock_detail_refresh_done := false
 var activity_unlock_visual_scroll_tween: Tween
@@ -3912,6 +4335,7 @@ func _ready() -> void:
 	_maybe_start_music_cycle_on_launch()
 	_validate_state()
 	_apply_debug_temp_fishing_99_all_tools()
+	_apply_debug_temp_thieving_70_trophy_test()
 	_select_launch_skill_page()
 	_render_screen(current_screen == "skill")
 	_update_ui(0.0, true)
@@ -3949,6 +4373,7 @@ func _process(delta: float) -> void:
 	_process_stamina_gauge_regen_boost(delta)
 	_regen_stamina(delta)
 	_process_passive_modules()
+	_process_hub_modules(delta)
 	_process_action(delta)
 	_process_music_flow(delta)
 	_process_leaderboard_sync(delta)
@@ -3969,6 +4394,9 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if boot_warmup_active:
+		get_viewport().set_input_as_handled()
+		return
+	if _route_achievement_toast_input(event):
 		get_viewport().set_input_as_handled()
 		return
 	_disarm_reset_data_confirmation_on_outside_press(event)
@@ -6057,24 +6485,18 @@ func _build_home_page() -> void:
 	
 	var stack := VBoxContainer.new()
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.add_theme_constant_override("separation", 10)
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 52)
 	margin.add_child(stack)
-	
-	var logo := TextureRect.new()
-	logo.texture = _texture("res://assets/content/logo/idle-elite-logo-chroma.png")
-	logo.custom_minimum_size = Vector2(0, 560)
-	logo.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	logo.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	logo.material = _chroma_material(Color("#00ff00"))
-	stack.add_child(logo)
-
-	stack.add_child(_build_elite_summary())
-	
-	var hero_panel := PanelContainer.new()
-	hero_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	hero_panel.add_theme_stylebox_override("panel", _panel_style(Color(1, 0.96, 0.78, 0.35), 0, 0))
-	stack.add_child(hero_panel)
-	_build_achievements(hero_panel)
+	var top_spacer := Control.new()
+	top_spacer.custom_minimum_size = Vector2(0, 450)
+	stack.add_child(top_spacer)
+	var leaderboard_button := _home_action_panel_button("Leaderboard", _texture(LEADERBOARD_ICON), Vector2(540, 460))
+	leaderboard_button.pressed.connect(_show_leaderboard)
+	stack.add_child(leaderboard_button)
+	var achievements_button := _home_action_panel_button("Achievements", _achievement_medal_texture(3), Vector2(520, 520))
+	achievements_button.pressed.connect(_open_achievements_overlay)
+	stack.add_child(achievements_button)
 
 
 func _make_level_snapshot() -> Control:
@@ -6353,15 +6775,15 @@ func _build_nav_bar() -> void:
 	row.clip_contents = true
 	row.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT - BOTTOM_NAV_SAFE_PAD)
 	nav_bar.add_child(row)
-	leaderboard_tab = _nav_button(LEADERBOARD_ICON)
-	leaderboard_tab.add_theme_constant_override("icon_max_width", 220)
-	leaderboard_tab.pressed.connect(_show_leaderboard)
-	row.add_child(leaderboard_tab)
 	hero_tab = _nav_button("res://assets/content/ui/motivation-star.png")
 	hero_tab.custom_minimum_size = Vector2(318, 318)
 	hero_tab.add_theme_constant_override("icon_max_width", 244)
 	hero_tab.pressed.connect(_show_home)
 	row.add_child(hero_tab)
+	hub_tab = _nav_button("res://assets/content/hub/hub-nav-barn.png")
+	hub_tab.add_theme_constant_override("icon_max_width", 220)
+	hub_tab.pressed.connect(_show_hub)
+	row.add_child(hub_tab)
 	skills_tab = _nav_button("res://assets/content/ui/total-lv-bargraph.png")
 	skills_tab.pressed.connect(_show_skills_module)
 	row.add_child(skills_tab)
@@ -6772,13 +7194,6 @@ func _chat_expanded_composer() -> Control:
 	ribbon_row.clip_contents = true
 	ribbon_row.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT - BOTTOM_NAV_SAFE_PAD)
 	ribbon.add_child(ribbon_row)
-	var chat_leaderboard := _nav_button(LEADERBOARD_ICON)
-	chat_leaderboard.add_theme_constant_override("icon_max_width", 220)
-	chat_leaderboard.pressed.connect(func():
-		_close_chat_overlay()
-		_show_leaderboard()
-	)
-	ribbon_row.add_child(chat_leaderboard)
 	var chat_home := _nav_button("res://assets/content/ui/motivation-star.png")
 	chat_home.custom_minimum_size = Vector2(318, 318)
 	chat_home.add_theme_constant_override("icon_max_width", 244)
@@ -6787,6 +7202,13 @@ func _chat_expanded_composer() -> Control:
 		_show_home()
 	)
 	ribbon_row.add_child(chat_home)
+	var chat_hub := _nav_button("res://assets/content/hub/hub-nav-barn.png")
+	chat_hub.add_theme_constant_override("icon_max_width", 220)
+	chat_hub.pressed.connect(func():
+		_close_chat_overlay()
+		_show_hub()
+	)
+	ribbon_row.add_child(chat_hub)
 	var chat_skills := _nav_button("res://assets/content/ui/total-lv-bargraph.png")
 	chat_skills.pressed.connect(func():
 		_close_chat_overlay()
@@ -7151,11 +7573,15 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	detail_jump_bottom_hovered = false
 	chain_audio_scroll_direction = 0
 	chain_audio_scroll_focus_seconds = 0.0
+	if current_screen == "hub":
+		skills_content.offset_top = 0.0
 	
 	if current_screen == "skill":
 		_render_skill_detail(scroll_latest_activity, restore_detail_scroll)
 	elif current_screen == "leaderboard":
 		_render_leaderboard_page()
+	elif current_screen == "hub":
+		_render_hub_page()
 	elif current_screen == "settings":
 		_render_settings_page()
 	elif current_screen == "shop":
@@ -7192,6 +7618,7 @@ func _cancel_activity_unlock_transients_for_navigation() -> void:
 	pending_activity_unlock_ceremony = {}
 	activity_unlock_ceremony_count = 0
 	activity_unlock_preview_after_ceremony_id = ""
+	activity_unlock_heist_preview_after_ceremony_id = ""
 	activity_unlock_center_scroll_target = -1
 	activity_unlock_detail_refresh_done = true
 	if detail_unlock_scroll_spacer_tween != null and detail_unlock_scroll_spacer_tween.is_valid():
@@ -7216,6 +7643,1774 @@ func _add_centered_skill_column(control: Control) -> void:
 	control.offset_bottom = 0.0
 	control.custom_minimum_size.x = content_width
 	skills_content.add_child(control)
+
+
+func _detail_stack_entry(child: Control, child_width: float, stack_width: float) -> Control:
+	if child == null or absf(stack_width - child_width) <= 0.001:
+		return child
+	var entry := Control.new()
+	var child_height := child.custom_minimum_size.y
+	if child_height <= 1.0:
+		child_height = child.size.y
+	entry.custom_minimum_size = Vector2(stack_width, maxf(1.0, child_height))
+	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.clip_contents = false
+	child.anchor_left = 0.0
+	child.anchor_right = 0.0
+	child.anchor_top = 0.0
+	child.anchor_bottom = 0.0
+	child.size = Vector2(child_width, maxf(1.0, child_height))
+	child.position = Vector2((stack_width - child_width) * 0.5, 0.0)
+	child.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	entry.add_child(child)
+	return entry
+
+
+func _render_hub_page() -> void:
+	hub_module_buttons.clear()
+	hub_module_progress_bars.clear()
+	hub_module_smoke_layers.clear()
+	hub_decor_items.clear()
+	hub_detail_panel = null
+	hub_detail_title = null
+	hub_detail_body = null
+	hub_detail_cost = null
+	hub_detail_button = null
+	hub_detail_secondary_button = null
+	hub_detail_missions_box = null
+	var hub_frame := Control.new()
+	hub_frame.anchor_left = 0.5
+	hub_frame.anchor_right = 0.5
+	hub_frame.anchor_top = 0.0
+	hub_frame.anchor_bottom = 1.0
+	hub_frame.offset_left = -HUB_FIELD_SIZE.x * 0.5
+	hub_frame.offset_right = HUB_FIELD_SIZE.x * 0.5
+	hub_frame.offset_top = 0.0
+	hub_frame.offset_bottom = 0.0
+	hub_frame.clip_contents = true
+	hub_frame.mouse_filter = Control.MOUSE_FILTER_PASS
+	skills_content.add_child(hub_frame)
+	var hub_render_size := Vector2(HUB_FIELD_SIZE.x, maxf(HUB_FIELD_SIZE.y, BASE_CANVAS.y - BOTTOM_NAV_HEIGHT))
+	var field := Control.new()
+	field.position = Vector2.ZERO
+	field.custom_minimum_size = hub_render_size
+	field.size = hub_render_size
+	field.clip_contents = true
+	field.mouse_filter = Control.MOUSE_FILTER_PASS
+	hub_frame.add_child(field)
+	var grass_bg := ColorRect.new()
+	grass_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	grass_bg.offset_top = -8
+	grass_bg.offset_bottom = 8
+	grass_bg.color = Color("#a7cb72")
+	field.add_child(grass_bg)
+	_add_hub_decor(field)
+	hub_path_dots = HubPathDots.new()
+	hub_path_dots.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hub_path_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hub_path_dots.z_index = 4
+	field.add_child(hub_path_dots)
+	_update_hub_path_dots()
+	_add_hub_trophy_display(field)
+	var sorted_modules := HUB_MODULE_ORDER.duplicate()
+	sorted_modules.sort_custom(func(a, b): return _hub_module_center(str(a)).y < _hub_module_center(str(b)).y)
+	for module_id in sorted_modules:
+		_add_hub_module(field, str(module_id))
+	if hub_detail_open:
+		_add_hub_detail_panel(field)
+		_update_hub_detail_panel()
+	_add_hub_build_mode_toggle(field)
+	_update_hub_decor_visibility()
+
+
+func _add_hub_build_mode_toggle(parent: Control) -> void:
+	var button := Button.new()
+	button.text = ""
+	button.anchor_left = 1.0
+	button.anchor_right = 1.0
+	button.anchor_top = 0.0
+	button.anchor_bottom = 0.0
+	button.offset_left = -246
+	button.offset_right = -46
+	button.offset_top = 96
+	button.offset_bottom = 296
+	button.z_index = HUB_OVERLAY_Z + 40
+	button.z_as_relative = false
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.add_theme_stylebox_override("normal", _hub_build_mode_button_style(hub_build_mode))
+	button.add_theme_stylebox_override("hover", _hub_build_mode_button_style(hub_build_mode))
+	button.add_theme_stylebox_override("pressed", _hub_build_mode_button_style(hub_build_mode, true))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.pressed.connect(_toggle_hub_build_mode)
+	parent.add_child(button)
+	var icon := HubMoveIcon.new()
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.offset_left = 30
+	icon.offset_right = -30
+	icon.offset_top = 30
+	icon.offset_bottom = -30
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(icon)
+
+
+func _hub_build_mode_button_style(active: bool, pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = (Color("#3cbf6d") if active else Color("#d7c8a4")).darkened(0.08 if pressed else 0.0)
+	style.border_color = COLOR_INK
+	style.set_border_width_all(7)
+	style.corner_radius_top_left = 28
+	style.corner_radius_top_right = 28
+	style.corner_radius_bottom_left = 28
+	style.corner_radius_bottom_right = 28
+	style.shadow_color = Color(0, 0, 0, 0.22)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 6)
+	return style
+
+
+func _toggle_hub_build_mode() -> void:
+	hub_build_mode = not hub_build_mode
+	hub_detail_open = false
+	hub_drag_module_id = ""
+	hub_drag_pointer_id = -1
+	hub_drag_valid = true
+	_play_default_button_sfx()
+	_render_screen()
+
+
+func _add_hub_decor(parent: Control) -> void:
+	_ensure_hub_decor_layout()
+	var sorted_layout := hub_decor_layout.duplicate()
+	sorted_layout.sort_custom(func(a, b): return _hub_decor_entry_base_y(a) < _hub_decor_entry_base_y(b))
+	for raw_entry in sorted_layout:
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		var entry := raw_entry as Dictionary
+		var decor_type := str(entry.get("type", "decor"))
+		var index := int(entry.get("index", 0))
+		var position := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
+		var display_size := Vector2(float(entry.get("w", 170.0)), float(entry.get("h", 170.0)))
+		var item: TextureRect
+		if decor_type == "tree":
+			item = _hub_sheet_image("res://assets/content/hub/hub-tree-sheet.png", clampi(index, 0, 5), Vector2(512, 512), display_size)
+		else:
+			item = _hub_sheet_image("res://assets/content/hub/hub-decor-sheet.png", clampi(index, 0, 15), Vector2(256, 256), display_size)
+		item.position = position
+		item.z_index = _hub_decor_depth_z_index(position, display_size)
+		parent.add_child(item)
+		_register_hub_decor_item(item)
+
+
+func _ensure_hub_decor_layout() -> void:
+	if not hub_decor_layout.is_empty():
+		return
+	hub_decor_layout = _generate_hub_decor_layout()
+	save_game()
+
+
+func _generate_hub_decor_layout() -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _hub_decor_seed()
+	var layout := []
+	for i in range(9):
+		var size := rng.randf_range(230.0, 390.0)
+		var display_size := Vector2(size, size)
+		layout.append(_hub_decor_entry("tree", rng.randi_range(0, 5), _hub_find_decor_position(layout, "tree", display_size, rng, true), display_size))
+	var weighted_decor := [0, 0, 0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
+	for i in range(54):
+		var index := int(weighted_decor[rng.randi_range(0, weighted_decor.size() - 1)])
+		var size := rng.randf_range(118.0, 190.0)
+		if index >= 4 and index <= 6:
+			size = rng.randf_range(145.0, 220.0)
+		elif index >= 12:
+			size = rng.randf_range(160.0, 235.0)
+		var display_size := Vector2(size, size)
+		layout.append(_hub_decor_entry("decor", index, _hub_find_decor_position(layout, "decor", display_size, rng, false), display_size))
+	return layout
+
+
+func _hub_decor_entry(decor_type: String, index: int, position: Vector2, display_size: Vector2) -> Dictionary:
+	return {
+		"type": decor_type,
+		"index": index,
+		"x": round(position.x),
+		"y": round(position.y),
+		"w": round(display_size.x),
+		"h": round(display_size.y)
+	}
+
+
+func _hub_decor_entry_base_y(raw_entry: Variant) -> float:
+	if typeof(raw_entry) != TYPE_DICTIONARY:
+		return 0.0
+	var entry := raw_entry as Dictionary
+	return float(entry.get("y", 0.0)) + float(entry.get("h", 170.0)) * 0.86
+
+
+func _hub_decor_depth_z_index(position: Vector2, display_size: Vector2) -> int:
+	var base_y := position.y + display_size.y * 0.86
+	return 5 + int(clampf(base_y / 24.0, 0.0, 130.0))
+
+
+func _hub_random_decor_position(rng: RandomNumberGenerator, display_size: Vector2, tree := false) -> Vector2:
+	var margin := 46.0 if tree else 24.0
+	var min_x := margin
+	var max_x := maxf(min_x, HUB_FIELD_SIZE.x - display_size.x - margin)
+	var min_y := 80.0
+	var max_y := maxf(min_y, HUB_FIELD_SIZE.y - CHAT_STRIP_HEIGHT - display_size.y - (74.0 if tree else 40.0))
+	var x := rng.randf_range(min_x, max_x)
+	var y := rng.randf_range(min_y, max_y)
+	if tree and rng.randf() < 0.58:
+		if rng.randf() < 0.5:
+			x = rng.randf_range(min_x, minf(max_x, min_x + 230.0))
+		else:
+			x = rng.randf_range(maxf(min_x, max_x - 230.0), max_x)
+	return Vector2(x, y)
+
+
+func _hub_clamp_decor_position(decor_type: String, position: Vector2, display_size: Vector2) -> Vector2:
+	var margin := 46.0 if decor_type == "tree" else 24.0
+	var max_x := maxf(margin, HUB_FIELD_SIZE.x - display_size.x - margin)
+	var max_y := maxf(80.0, HUB_FIELD_SIZE.y - CHAT_STRIP_HEIGHT - display_size.y - (74.0 if decor_type == "tree" else 40.0))
+	return Vector2(
+		clampf(position.x, margin, max_x),
+		clampf(position.y, 80.0, max_y)
+	)
+
+
+func _hub_find_decor_position(existing_layout: Array, decor_type: String, display_size: Vector2, rng: RandomNumberGenerator, tree := false, preferred_position: Variant = null) -> Vector2:
+	if preferred_position is Vector2:
+		var preferred := _hub_clamp_decor_position(decor_type, preferred_position as Vector2, display_size)
+		if _hub_decor_position_clear(existing_layout, decor_type, preferred, display_size):
+			return preferred
+	var attempts := 70 if tree else 34
+	var fallback := _hub_random_decor_position(rng, display_size, tree)
+	for _i in range(attempts):
+		var candidate := _hub_random_decor_position(rng, display_size, tree)
+		fallback = candidate
+		if _hub_decor_position_clear(existing_layout, decor_type, candidate, display_size):
+			return candidate
+	return fallback
+
+
+func _hub_decor_position_clear(existing_layout: Array, decor_type: String, position: Vector2, display_size: Vector2) -> bool:
+	var rect := _hub_decor_block_rect(decor_type, position, display_size)
+	for raw_entry in existing_layout:
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		var entry := raw_entry as Dictionary
+		var other_type := str(entry.get("type", "decor"))
+		var other_size := Vector2(float(entry.get("w", 170.0)), float(entry.get("h", 170.0)))
+		var other_position := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
+		var other_rect := _hub_decor_block_rect(other_type, other_position, other_size)
+		if rect.intersects(other_rect):
+			return false
+	return true
+
+
+func _hub_decor_block_rect(decor_type: String, position: Vector2, display_size: Vector2) -> Rect2:
+	var scale := Vector2(0.54, 0.46)
+	var center_ratio := Vector2(0.50, 0.62)
+	if decor_type == "tree":
+		scale = Vector2(0.70, 0.74)
+		center_ratio = Vector2(0.50, 0.56)
+	var size := Vector2(maxf(display_size.x * scale.x, 82.0), maxf(display_size.y * scale.y, 72.0))
+	var center := position + display_size * center_ratio
+	return Rect2(center - size * 0.5, size)
+
+
+func _hub_decor_seed() -> int:
+	var basis := str(leaderboard_player_id)
+	if basis.is_empty():
+		basis = "%s:%s:%s" % [SAVE_PATH, OS.get_unique_id(), _unix_now()]
+	var hash := 2166136261
+	for i in range(basis.length()):
+		hash = int((hash ^ basis.unicode_at(i)) * 16777619) & 0x7fffffff
+	return maxi(1, hash)
+
+
+func _restore_hub_decor_layout(raw_layout: Variant) -> void:
+	hub_decor_layout.clear()
+	if typeof(raw_layout) != TYPE_ARRAY:
+		return
+	var rng := RandomNumberGenerator.new()
+	rng.seed = _hub_decor_seed() + 101
+	for raw_entry in raw_layout as Array:
+		if typeof(raw_entry) != TYPE_DICTIONARY:
+			continue
+		var entry := raw_entry as Dictionary
+		var decor_type := str(entry.get("type", "decor"))
+		if decor_type != "tree" and decor_type != "decor":
+			continue
+		var max_index := 5 if decor_type == "tree" else 15
+		var display_size := Vector2(
+			clampf(float(entry.get("w", 170.0)), 80.0, 460.0),
+			clampf(float(entry.get("h", 170.0)), 80.0, 460.0)
+		)
+		var raw_position := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
+		var position := _hub_find_decor_position(hub_decor_layout, decor_type, display_size, rng, decor_type == "tree", raw_position)
+		hub_decor_layout.append({
+			"type": decor_type,
+			"index": clampi(int(entry.get("index", 0)), 0, max_index),
+			"x": position.x,
+			"y": position.y,
+			"w": display_size.x,
+			"h": display_size.y
+		})
+
+
+func _register_hub_decor_item(item: Control) -> void:
+	hub_decor_items.append({"node": item, "rect": Rect2(item.position, item.custom_minimum_size)})
+
+
+func _add_hub_trophy_display(parent: Control) -> void:
+	var button := Button.new()
+	button.text = ""
+	button.focus_mode = Control.FOCUS_NONE
+	button.flat = true
+	button.clip_contents = false
+	button.custom_minimum_size = Vector2(430, 300)
+	button.size = button.custom_minimum_size
+	button.position = _hub_module_center("trophy") - button.size * 0.5
+	button.z_index = _hub_module_depth_z_index("trophy")
+	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.pressed.connect(_on_hub_trophy_pressed)
+	button.gui_input.connect(_on_hub_module_gui_input.bind("trophy", button))
+	parent.add_child(button)
+	hub_module_buttons["trophy"] = button
+	var platform := TextureRect.new()
+	platform.texture = _texture("res://assets/content/hub/hub-trophy-platform.png")
+	platform.set_anchors_preset(Control.PRESET_FULL_RECT)
+	platform.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	platform.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	platform.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(platform)
+	var trophy_def := _hub_best_trophy_def()
+	if not trophy_def.is_empty():
+		var trophy := TextureRect.new()
+		trophy.texture = _spritesheet_texture(THIEVING_HEIST_TROPHY_SHEET, int(trophy_def.get("cell", 0)), THIEVING_HEIST_TROPHY_CELL)
+		trophy.custom_minimum_size = Vector2(315, 315)
+		trophy.size = trophy.custom_minimum_size
+		trophy.position = Vector2((button.size.x - trophy.size.x) * 0.5, -58.0)
+		trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		trophy.z_index = 2
+		button.add_child(trophy)
+
+
+func _add_hub_module(parent: Control, module_id: String) -> void:
+	var def := HUB_MODULE_DEFS.get(module_id, {}) as Dictionary
+	if def.is_empty():
+		return
+	var level := _hub_module_level(module_id)
+	var building := _hub_module_building(module_id)
+	var sprite_index := clampi(level, 0, int(def.get("cell_count", 5)) - 1)
+	var button := Button.new()
+	button.text = ""
+	button.focus_mode = Control.FOCUS_NONE
+	button.flat = true
+	button.clip_contents = false
+	button.custom_minimum_size = def.get("size", Vector2(500, 500))
+	button.size = button.custom_minimum_size
+	button.position = _hub_module_center(module_id) - button.size * 0.5
+	button.z_index = _hub_module_depth_z_index(module_id)
+	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.pressed.connect(_on_hub_module_pressed.bind(module_id))
+	button.gui_input.connect(_on_hub_module_gui_input.bind(module_id, button))
+	parent.add_child(button)
+	hub_module_buttons[module_id] = button
+	var visual_size := _hub_module_visual_size(module_id, sprite_index)
+	var art := _hub_sheet_image(str(def.get("sheet", "")), sprite_index, Vector2(512, 512), visual_size)
+	art.position = (button.size - visual_size) * 0.5
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	button.add_child(art)
+	if building:
+		var smoke_layers := []
+		var smoke_specs := [
+			{"frame": 0, "alpha": 1.0}
+		]
+		for spec in smoke_specs:
+			var smoke_rect := _hub_module_build_smoke_rect(module_id)
+			var smoke := _hub_build_smoke(int(spec.get("frame", 0)), smoke_rect.size)
+			smoke.position = smoke_rect.position
+			smoke.set_meta("hub_smoke_base_position", smoke.position)
+			smoke.modulate.a = float(spec.get("alpha", 0.72))
+			smoke.pivot_offset = smoke.size * 0.5
+			smoke.z_index = button.z_index + 8
+			parent.add_child(smoke)
+			smoke_layers.append(smoke)
+		hub_module_smoke_layers[module_id] = smoke_layers
+		var progress := HubBuildProgressBar.new()
+		progress.set_progress(_hub_module_build_progress(module_id))
+		var progress_rect := _hub_module_build_progress_rect(module_id)
+		progress.position = progress_rect.position
+		progress.custom_minimum_size = progress_rect.size
+		progress.size = progress_rect.size
+		progress.z_index = button.z_index + 9
+		parent.add_child(progress)
+		hub_module_progress_bars[module_id] = progress
+
+
+func _on_hub_module_gui_input(event: InputEvent, module_id: String, button: Control) -> void:
+	if not hub_build_mode:
+		return
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mouse_event.pressed:
+			_start_hub_module_drag(module_id, button, mouse_event.global_position, 0)
+		elif hub_drag_module_id == module_id:
+			_finish_hub_module_drag()
+	elif event is InputEventMouseMotion:
+		if hub_drag_module_id == module_id:
+			_drag_hub_module_to(button, (event as InputEventMouseMotion).global_position)
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			_start_hub_module_drag(module_id, button, touch_event.position, touch_event.index)
+		elif hub_drag_module_id == module_id and hub_drag_pointer_id == touch_event.index:
+			_finish_hub_module_drag()
+	elif event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		if hub_drag_module_id == module_id and hub_drag_pointer_id == drag_event.index:
+			_drag_hub_module_to(button, drag_event.position)
+
+
+func _start_hub_module_drag(module_id: String, button: Control, global_point: Vector2, pointer_id: int) -> void:
+	hub_drag_module_id = module_id
+	hub_drag_pointer_id = pointer_id
+	hub_drag_start_center = _hub_module_center(module_id)
+	hub_drag_valid = true
+	var field_point := _hub_global_to_field_point(button, global_point)
+	hub_drag_offset = field_point - _hub_module_center(module_id)
+	hub_detail_open = false
+	button.z_index = 60
+	button.modulate = Color.WHITE
+	_update_hub_build_overlays_position(module_id)
+	_pop_hub_module(module_id)
+
+
+func _drag_hub_module_to(button: Control, global_point: Vector2) -> void:
+	if hub_drag_module_id.is_empty():
+		return
+	var field_point := _hub_global_to_field_point(button, global_point)
+	var next_center := field_point - hub_drag_offset
+	next_center = _clamp_hub_module_center(next_center)
+	hub_drag_valid = _hub_module_position_valid(hub_drag_module_id, next_center)
+	hub_module_positions[hub_drag_module_id] = next_center
+	button.position = next_center - button.size * 0.5
+	button.modulate = Color.WHITE if hub_drag_valid else Color(1.0, 0.02, 0.02, 1.0)
+	_update_hub_build_overlays_position(hub_drag_module_id)
+	_update_hub_path_dots()
+
+
+func _finish_hub_module_drag() -> void:
+	if hub_drag_module_id.is_empty():
+		return
+	var module_id := hub_drag_module_id
+	var button := hub_module_buttons.get(module_id) as Control
+	if not hub_drag_valid:
+		hub_module_positions[module_id] = hub_drag_start_center
+		if button != null and is_instance_valid(button):
+			button.position = hub_drag_start_center - button.size * 0.5
+		_update_hub_build_overlays_position(module_id)
+	if button != null and is_instance_valid(button):
+		button.modulate = Color.WHITE
+		button.z_index = _hub_module_depth_z_index(module_id)
+	_update_hub_build_overlays_position(module_id)
+	hub_drag_module_id = ""
+	hub_drag_pointer_id = -1
+	hub_drag_valid = true
+	_update_hub_path_dots()
+	if _hub_module_center(module_id) != hub_drag_start_center:
+		save_game()
+
+
+func _hub_global_to_field_point(button: Control, global_point: Vector2) -> Vector2:
+	var parent := button.get_parent() as Control
+	if parent == null:
+		return global_point
+	return parent.get_global_transform().affine_inverse() * global_point
+
+
+func _hub_module_center(module_id: String) -> Vector2:
+	if hub_module_positions.has(module_id):
+		var raw_position = hub_module_positions[module_id]
+		if raw_position is Vector2:
+			return _clamp_hub_module_center(raw_position as Vector2)
+	return _hub_default_module_center(module_id)
+
+
+func _hub_default_module_center(module_id: String) -> Vector2:
+	if module_id == "trophy":
+		return _clamp_hub_module_center(HUB_TROPHY_DEFAULT_CENTER)
+	if HUB_MODULE_DEFS.has(module_id):
+		var raw_position = (HUB_MODULE_DEFS[module_id] as Dictionary).get("position", HUB_FIELD_SIZE * 0.5)
+		if raw_position is Vector2:
+			return _clamp_hub_module_center(raw_position as Vector2)
+	return HUB_FIELD_SIZE * 0.5
+
+
+func _clamp_hub_module_center(position: Vector2) -> Vector2:
+	return Vector2(
+		clampf(position.x, 160.0, HUB_FIELD_SIZE.x - 160.0),
+		clampf(position.y, 180.0, HUB_FIELD_SIZE.y - CHAT_STRIP_HEIGHT - 160.0)
+	)
+
+
+func _hub_separated_module_center(module_id: String, desired_center: Vector2) -> Vector2:
+	var center := desired_center
+	for _pass in range(5):
+		var changed := false
+		for raw_other_id in HUB_POSITION_ORDER:
+			var other_id := str(raw_other_id)
+			if other_id == module_id:
+				continue
+			var rect := _hub_module_collision_rect_at(module_id, center, 4.0)
+			var other_rect: Rect2 = _hub_module_collision_rect(other_id, 4.0)
+			if not rect.intersects(other_rect):
+				continue
+			var push_left: float = other_rect.position.x - rect.end.x
+			var push_right: float = other_rect.end.x - rect.position.x
+			var push_up: float = other_rect.position.y - rect.end.y
+			var push_down: float = other_rect.end.y - rect.position.y
+			var push := Vector2(push_left, 0.0)
+			if absf(push_right) < absf(push.x):
+				push = Vector2(push_right, 0.0)
+			if absf(push_up) < absf(push.x):
+				push = Vector2(0.0, push_up)
+			if absf(push_down) < absf(push.length()):
+				push = Vector2(0.0, push_down)
+			if push.length() <= 0.001:
+				var direction := center - _hub_module_center(other_id)
+				if direction.length() <= 0.001:
+					direction = Vector2(1, -0.35)
+				push = direction.normalized() * 34.0
+			center = _clamp_hub_module_center(center + push)
+			changed = true
+		if not changed:
+			break
+	return center
+
+
+func _hub_module_position_valid(module_id: String, center: Vector2) -> bool:
+	var rect := _hub_module_collision_rect_at(module_id, center, 4.0)
+	for raw_other_id in HUB_POSITION_ORDER:
+		var other_id := str(raw_other_id)
+		if other_id == module_id:
+			continue
+		if rect.intersects(_hub_module_collision_rect(other_id, 4.0)):
+			return false
+	return true
+
+
+func _hub_module_positions_for_save() -> Dictionary:
+	var saved := {}
+	for raw_module_id in HUB_POSITION_ORDER:
+		var module_id := str(raw_module_id)
+		if not hub_module_positions.has(module_id):
+			continue
+		var position := _hub_module_center(module_id)
+		saved[module_id] = {"x": position.x, "y": position.y}
+	return saved
+
+
+func _restore_hub_module_positions(raw_positions: Variant) -> void:
+	hub_module_positions.clear()
+	if typeof(raw_positions) != TYPE_DICTIONARY:
+		return
+	for raw_module_id in (raw_positions as Dictionary).keys():
+		var module_id := str(raw_module_id)
+		if not _hub_can_store_position(module_id):
+			continue
+		var fallback := _hub_default_module_center(module_id)
+		var raw_position = (raw_positions as Dictionary).get(raw_module_id)
+		var position := fallback
+		if raw_position is Vector2:
+			position = raw_position as Vector2
+		elif typeof(raw_position) == TYPE_DICTIONARY:
+			var raw_dict := raw_position as Dictionary
+			position = Vector2(float(raw_dict.get("x", fallback.x)), float(raw_dict.get("y", fallback.y)))
+		hub_module_positions[module_id] = _clamp_hub_module_center(position)
+
+
+func _validate_hub_module_positions() -> void:
+	var clean := {}
+	for raw_module_id in hub_module_positions.keys():
+		var module_id := str(raw_module_id)
+		if not _hub_can_store_position(module_id):
+			continue
+		var raw_position = hub_module_positions.get(raw_module_id)
+		if raw_position is Vector2:
+			clean[module_id] = _clamp_hub_module_center(raw_position as Vector2)
+	hub_module_positions = clean
+
+
+func _hub_can_store_position(module_id: String) -> bool:
+	return HUB_MODULE_DEFS.has(module_id) or module_id == "trophy"
+
+
+func _update_hub_path_dots() -> void:
+	if hub_path_dots == null or not is_instance_valid(hub_path_dots):
+		return
+	var targets := []
+	for raw_module_id in HUB_MODULE_ORDER:
+		var module_id := str(raw_module_id)
+		targets.append({"target": _hub_path_target(module_id), "seed": _hub_route_seed(module_id)})
+	hub_path_dots.set_paths(_hub_path_origin(), targets, _hub_path_blocker_rects())
+	_update_hub_decor_visibility()
+
+
+func _hub_path_origin() -> Vector2:
+	return Vector2(HUB_FIELD_SIZE.x * 0.5, HUB_FIELD_SIZE.y + 220.0)
+
+
+func _hub_route_seed(module_id: String) -> float:
+	var seed := 0.0
+	for i in range(module_id.length()):
+		seed += float(module_id.unicode_at(i)) * float(i + 3) * 0.371
+	return seed + 11.0
+
+
+func _hub_path_blocker_rects() -> Array:
+	var rects := []
+	for raw_module_id in HUB_POSITION_ORDER:
+		rects.append(_hub_module_path_blocker_rect(str(raw_module_id), 8.0))
+	return rects
+
+
+func _hub_path_target(module_id: String) -> Vector2:
+	var center := _hub_module_center(module_id)
+	var visual_size := _hub_module_visual_size(module_id)
+	if module_id == "trophy":
+		return center + Vector2(0, visual_size.y * 0.24)
+	return center + Vector2(0, visual_size.y * 0.28)
+
+
+func _hub_module_visual_size(module_id: String, sprite_index := -1) -> Vector2:
+	if module_id == "trophy":
+		return Vector2(430, 300)
+	if HUB_MODULE_DEFS.has(module_id):
+		var def := HUB_MODULE_DEFS[module_id] as Dictionary
+		if sprite_index >= 0 and def.has("visual_sizes"):
+			var visual_sizes := def.get("visual_sizes", []) as Array
+			if sprite_index < visual_sizes.size():
+				return visual_sizes[sprite_index] as Vector2
+		return def.get("visual_size", def.get("size", Vector2(500, 500))) as Vector2
+	return Vector2(430, 300)
+
+
+func _hub_module_path_blocker_rect(module_id: String, padding: float) -> Rect2:
+	var visual_size := _hub_module_visual_size(module_id)
+	var target := _hub_path_target(module_id)
+	var size := Vector2(maxf(visual_size.x * 0.52, 190.0), maxf(visual_size.y * 0.16, 92.0))
+	return Rect2(target - size * 0.5 - Vector2(padding, padding), size + Vector2(padding * 2.0, padding * 2.0))
+
+
+func _hub_module_depth_z_index(module_id: String) -> int:
+	return 12 + int(clampf(_hub_module_center(module_id).y / 18.0, 0.0, 180.0))
+
+
+func _hub_module_collision_rect(module_id: String, padding: float) -> Rect2:
+	return _hub_module_collision_rect_at(module_id, _hub_module_center(module_id), padding)
+
+
+func _hub_module_collision_rect_at(module_id: String, center: Vector2, padding: float) -> Rect2:
+	var size := _hub_module_placement_size(module_id)
+	var footprint_center := _hub_module_placement_center(module_id, center)
+	return Rect2(footprint_center - size * 0.5 - Vector2(padding, padding), size + Vector2(padding * 2.0, padding * 2.0))
+
+
+func _hub_module_build_progress_rect(module_id: String) -> Rect2:
+	var footprint := _hub_module_collision_rect(module_id, 0.0)
+	var visual_size := _hub_module_visual_size(module_id)
+	var width := clampf(visual_size.x * 0.86, 420.0, 520.0)
+	var height := 60.0
+	var position := Vector2(
+		footprint.get_center().x - width * 0.5,
+		footprint.end.y + 42.0
+	)
+	return Rect2(position, Vector2(width, height))
+
+
+func _hub_module_build_smoke_rect(module_id: String) -> Rect2:
+	var footprint := _hub_module_collision_rect(module_id, 0.0)
+	var visual_size := _hub_module_visual_size(module_id)
+	var size := clampf(visual_size.x * 0.66, 350.0, 410.0)
+	var center := footprint.get_center() + Vector2(0.0, -footprint.size.y * 0.98)
+	return Rect2(center - Vector2(size, size) * 0.5, Vector2(size, size))
+
+
+func _update_hub_build_overlays_position(module_id: String) -> void:
+	var button := hub_module_buttons.get(module_id) as Control
+	var base_z := _hub_module_depth_z_index(module_id)
+	if button != null and is_instance_valid(button):
+		base_z = button.z_index
+	if hub_module_smoke_layers.has(module_id):
+		var smoke_rect := _hub_module_build_smoke_rect(module_id)
+		var layers := hub_module_smoke_layers[module_id] as Array
+		for raw_smoke in layers:
+			var smoke := raw_smoke as TextureRect
+			if smoke == null or not is_instance_valid(smoke):
+				continue
+			smoke.position = smoke_rect.position
+			smoke.size = smoke_rect.size
+			smoke.custom_minimum_size = smoke_rect.size
+			smoke.pivot_offset = smoke.size * 0.5
+			smoke.set_meta("hub_smoke_base_position", smoke_rect.position)
+			smoke.z_index = base_z + 8
+	if hub_module_progress_bars.has(module_id):
+		var progress := hub_module_progress_bars[module_id] as HubBuildProgressBar
+		if progress != null and is_instance_valid(progress):
+			var progress_rect := _hub_module_build_progress_rect(module_id)
+			progress.position = progress_rect.position
+			progress.size = progress_rect.size
+			progress.custom_minimum_size = progress_rect.size
+			progress.z_index = base_z + 9
+
+
+func _hub_module_placement_size(module_id: String) -> Vector2:
+	var visual_size := _hub_module_visual_size(module_id)
+	if module_id == "trophy":
+		return Vector2(maxf(visual_size.x * 0.58, 220.0), maxf(visual_size.y * 0.34, 96.0))
+	return Vector2(maxf(visual_size.x * 0.55, 250.0), maxf(visual_size.y * 0.22, 108.0))
+
+
+func _hub_module_placement_center(module_id: String, center: Vector2) -> Vector2:
+	var visual_size := _hub_module_visual_size(module_id)
+	if module_id == "trophy":
+		return center + Vector2(0.0, visual_size.y * 0.24)
+	return center + Vector2(0.0, visual_size.y * 0.25)
+
+
+func _hub_module_decor_clear_rect(module_id: String, padding: float) -> Rect2:
+	var visual_size := _hub_module_visual_size(module_id)
+	var center := _hub_module_center(module_id)
+	var size := visual_size
+	if module_id == "trophy":
+		size = Vector2(maxf(visual_size.x * 1.10, 450.0), maxf(visual_size.y * 0.92, 280.0))
+	else:
+		size = Vector2(maxf(visual_size.x * 1.08, 590.0), maxf(visual_size.y * 0.90, 470.0))
+	var clear_center := center + Vector2(0.0, visual_size.y * 0.11)
+	return Rect2(clear_center - size * 0.5 - Vector2(padding, padding), size + Vector2(padding * 2.0, padding * 2.0))
+
+
+func _update_hub_decor_visibility() -> void:
+	if hub_decor_items.is_empty():
+		return
+	var eaten_rects := []
+	if hub_path_dots != null and is_instance_valid(hub_path_dots):
+		eaten_rects.append_array(hub_path_dots.occupied_rects())
+	for raw_module_id in HUB_POSITION_ORDER:
+		eaten_rects.append(_hub_module_decor_clear_rect(str(raw_module_id), 64.0))
+	for item in hub_decor_items:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var node := (item as Dictionary).get("node") as Control
+		if node == null or not is_instance_valid(node):
+			continue
+		var rect := (item as Dictionary).get("rect", Rect2()) as Rect2
+		var visible := true
+		for raw_eaten_rect in eaten_rects:
+			if raw_eaten_rect is Rect2 and rect.intersects(raw_eaten_rect as Rect2):
+				visible = false
+				break
+		_set_hub_decor_visibility_state(node, visible, not hub_build_mode and hub_drag_module_id.is_empty())
+
+
+func _set_hub_decor_visibility_state(node: Control, visible: bool, animate := true) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if not node.has_meta("hub_decor_visibility_initialized"):
+		node.set_meta("hub_decor_visibility_initialized", true)
+		node.set_meta("hub_decor_logical_visible", visible)
+		node.visible = visible
+		node.modulate.a = 1.0 if visible else 0.0
+		node.scale = Vector2.ONE
+		return
+	var previous_visible := bool(node.get_meta("hub_decor_logical_visible", node.visible))
+	if previous_visible == visible:
+		return
+	node.set_meta("hub_decor_logical_visible", visible)
+	if node.has_meta("hub_decor_pop_tween"):
+		var old_tween := node.get_meta("hub_decor_pop_tween") as Tween
+		if old_tween != null and old_tween.is_valid():
+			old_tween.kill()
+	if not animate:
+		node.visible = visible
+		node.modulate.a = 1.0 if visible else 0.0
+		node.scale = Vector2.ONE
+		return
+	node.pivot_offset = node.size * 0.5
+	var tween := create_tween()
+	node.set_meta("hub_decor_pop_tween", tween)
+	if visible:
+		node.visible = true
+		node.modulate.a = 0.0
+		node.scale = Vector2(0.72, 0.72)
+		tween.set_parallel(true)
+		tween.tween_property(node, "modulate:a", 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(node, "scale", Vector2(1.13, 1.13), 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.chain().tween_property(node, "scale", Vector2.ONE, 0.09).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	else:
+		node.visible = true
+		node.modulate.a = 1.0
+		node.scale = Vector2.ONE
+		tween.set_parallel(true)
+		tween.tween_property(node, "modulate:a", 0.0, 0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tween.tween_property(node, "scale", Vector2(0.68, 0.68), 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
+		tween.chain().tween_callback(_finish_hub_decor_hide.bind(node))
+
+
+func _finish_hub_decor_hide(node: Control) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if bool(node.get_meta("hub_decor_logical_visible", false)):
+		return
+	node.visible = false
+
+
+func _add_hub_detail_panel(parent: Control) -> void:
+	_add_hub_detail_dismiss_layer(parent)
+	var layout := _hub_detail_bubble_layout(hub_selected_module_id)
+	var panel_pos := layout.get("position", Vector2(590, 360)) as Vector2
+	var panel_size := layout.get("size", Vector2(980, 430)) as Vector2
+	hub_detail_panel = PanelContainer.new()
+	hub_detail_panel.anchor_left = 0.0
+	hub_detail_panel.anchor_right = 0.0
+	hub_detail_panel.anchor_top = 0.0
+	hub_detail_panel.anchor_bottom = 0.0
+	hub_detail_panel.offset_left = panel_pos.x
+	hub_detail_panel.offset_right = panel_pos.x + panel_size.x
+	hub_detail_panel.offset_top = panel_pos.y
+	hub_detail_panel.offset_bottom = panel_pos.y + panel_size.y
+	hub_detail_panel.z_index = HUB_OVERLAY_Z + 3
+	hub_detail_panel.add_theme_stylebox_override("panel", _hub_bubble_style())
+	hub_detail_panel.gui_input.connect(_on_hub_detail_panel_gui_input)
+	parent.add_child(hub_detail_panel)
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 42)
+	margin.add_theme_constant_override("margin_right", 42)
+	margin.add_theme_constant_override("margin_top", 28)
+	margin.add_theme_constant_override("margin_bottom", 30)
+	hub_detail_panel.add_child(margin)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 18)
+	margin.add_child(stack)
+	hub_detail_title = _label("", 74, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	stack.add_child(hub_detail_title)
+	hub_detail_body = _label("", 48, COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	hub_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	stack.add_child(hub_detail_body)
+	hub_detail_missions_box = VBoxContainer.new()
+	hub_detail_missions_box.add_theme_constant_override("separation", 12)
+	hub_detail_missions_box.visible = false
+	stack.add_child(hub_detail_missions_box)
+	hub_detail_cost = _label("", 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	stack.add_child(hub_detail_cost)
+	hub_detail_button = _menu_button("")
+	hub_detail_button.custom_minimum_size = Vector2(0, 126)
+	hub_detail_button.add_theme_font_size_override("font_size", 58)
+	hub_detail_button.pressed.connect(_upgrade_selected_hub_module)
+	stack.add_child(hub_detail_button)
+	hub_detail_secondary_button = _menu_button("")
+	hub_detail_secondary_button.custom_minimum_size = Vector2(0, 110)
+	hub_detail_secondary_button.add_theme_font_size_override("font_size", 52)
+	hub_detail_secondary_button.pressed.connect(_jump_to_hub_mission_task)
+	hub_detail_secondary_button.visible = false
+	stack.add_child(hub_detail_secondary_button)
+
+
+func _add_hub_detail_dismiss_layer(parent: Control) -> void:
+	var dismiss_layer := Control.new()
+	dismiss_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dismiss_layer.mouse_filter = Control.MOUSE_FILTER_STOP
+	dismiss_layer.z_index = HUB_OVERLAY_Z
+	dismiss_layer.z_as_relative = false
+	dismiss_layer.gui_input.connect(_on_hub_detail_dismiss_gui_input)
+	parent.add_child(dismiss_layer)
+
+
+func _on_hub_detail_dismiss_gui_input(event: InputEvent) -> void:
+	if _is_primary_press_event(event):
+		_close_hub_detail_popup()
+		accept_event()
+
+
+func _on_hub_detail_panel_gui_input(event: InputEvent) -> void:
+	if not _is_primary_press_event(event):
+		return
+	if hub_detail_button != null and is_instance_valid(hub_detail_button) and hub_detail_button.visible:
+		if hub_detail_button.get_global_rect().has_point(hub_detail_button.get_global_mouse_position()):
+			return
+	if hub_detail_missions_box != null and is_instance_valid(hub_detail_missions_box) and hub_detail_missions_box.visible:
+		if hub_detail_missions_box.get_global_rect().has_point(hub_detail_missions_box.get_global_mouse_position()):
+			return
+	if hub_detail_secondary_button != null and is_instance_valid(hub_detail_secondary_button) and hub_detail_secondary_button.visible:
+		if hub_detail_secondary_button.get_global_rect().has_point(hub_detail_secondary_button.get_global_mouse_position()):
+			return
+	_close_hub_detail_popup()
+	accept_event()
+
+
+func _close_hub_detail_popup() -> void:
+	if not hub_detail_open:
+		return
+	hub_detail_open = false
+	_render_screen()
+
+
+func _is_primary_press_event(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		return mouse_event.pressed and mouse_event.button_index == MOUSE_BUTTON_LEFT
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).pressed
+	return false
+
+
+func _hub_detail_bubble_layout(module_id: String) -> Dictionary:
+	var panel_size := Vector2(1240, 900) if module_id == "mission" else Vector2(1120, 560)
+	var target := _hub_detail_target(module_id)
+	var offset := Vector2(0, -680)
+	if module_id == "trophy":
+		offset = Vector2(-1240, -720)
+	elif HUB_MODULE_DEFS.has(module_id):
+		offset = (HUB_MODULE_DEFS[module_id] as Dictionary).get("bubble_offset", offset) as Vector2
+	var candidate_offsets := [
+		offset,
+		Vector2(0, -760),
+		Vector2(-1260, -760),
+		Vector2(520, -760),
+		Vector2(-1260, -120),
+		Vector2(520, -120),
+		Vector2(0, 360),
+		Vector2(-1260, 320),
+		Vector2(520, 320)
+	]
+	var avoid_rect := _hub_detail_avoid_rect(module_id, 96.0)
+	var pos := _hub_clamped_bubble_position(target + offset, panel_size)
+	var best_score := INF
+	for raw_offset in candidate_offsets:
+		var candidate := _hub_clamped_bubble_position(target + (raw_offset as Vector2), panel_size)
+		var candidate_rect := Rect2(candidate, panel_size)
+		var overlap := _rect_overlap_area(candidate_rect, avoid_rect)
+		var distance_score := candidate.distance_to(target + offset)
+		var side_penalty := 0.0
+		if candidate_rect.has_point(target):
+			side_penalty += 1000000.0
+		var score := overlap * 80.0 + distance_score + side_penalty
+		if score < best_score:
+			best_score = score
+			pos = candidate
+	return {"position": pos, "size": panel_size, "target": target}
+
+
+func _hub_clamped_bubble_position(pos: Vector2, panel_size: Vector2) -> Vector2:
+	pos.x = clampf(pos.x, 48.0, HUB_FIELD_SIZE.x - panel_size.x - 48.0)
+	pos.y = clampf(pos.y, 130.0, HUB_FIELD_SIZE.y - CHAT_STRIP_HEIGHT - panel_size.y - 72.0)
+	return pos
+
+
+func _hub_detail_avoid_rect(module_id: String, padding: float) -> Rect2:
+	if not _hub_can_store_position(module_id):
+		var target := _hub_detail_target(module_id)
+		return Rect2(target - Vector2(160, 160), Vector2(320, 320)).grow(padding)
+	var center := _hub_module_center(module_id)
+	var visual_size := _hub_module_visual_size(module_id, _hub_detail_sprite_index(module_id))
+	var size := Vector2(maxf(visual_size.x * 0.82, 360.0), maxf(visual_size.y * 0.72, 280.0))
+	if module_id == "trophy":
+		size = Vector2(maxf(visual_size.x * 0.92, 390.0), maxf(visual_size.y * 0.78, 230.0))
+	var rect_center := center + Vector2(0.0, visual_size.y * 0.08)
+	return Rect2(rect_center - size * 0.5, size).grow(padding)
+
+
+func _hub_detail_sprite_index(module_id: String) -> int:
+	if module_id == "trophy":
+		return -1
+	if HUB_MODULE_DEFS.has(module_id):
+		return clampi(_hub_module_level(module_id), 0, int((HUB_MODULE_DEFS[module_id] as Dictionary).get("cell_count", 5)) - 1)
+	return -1
+
+
+func _hub_detail_target(module_id: String) -> Vector2:
+	if _hub_can_store_position(module_id):
+		return _hub_path_target(module_id)
+	return HUB_FIELD_SIZE * 0.5
+
+
+func _rect_overlap_area(a: Rect2, b: Rect2) -> float:
+	var left := maxf(a.position.x, b.position.x)
+	var top := maxf(a.position.y, b.position.y)
+	var right := minf(a.end.x, b.end.x)
+	var bottom := minf(a.end.y, b.end.y)
+	if right <= left or bottom <= top:
+		return 0.0
+	return (right - left) * (bottom - top)
+
+
+func _hub_bubble_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = COLOR_PANEL
+	style.border_color = COLOR_INK
+	style.set_border_width_all(9)
+	style.corner_radius_top_left = 34
+	style.corner_radius_top_right = 34
+	style.corner_radius_bottom_left = 34
+	style.corner_radius_bottom_right = 34
+	style.shadow_color = Color(0, 0, 0, 0.24)
+	style.shadow_size = 12
+	style.shadow_offset = Vector2(0, 8)
+	return style
+
+
+func _hub_sheet_image(path: String, index: int, cell_size: Vector2, display_size: Vector2) -> TextureRect:
+	var image := TextureRect.new()
+	image.texture = _hub_sheet_texture(path, index, cell_size)
+	image.custom_minimum_size = display_size
+	image.size = display_size
+	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return image
+
+
+func _hub_sheet_texture(path: String, index: int, cell_size: Vector2) -> Texture2D:
+	var atlas := AtlasTexture.new()
+	var texture := _texture(path)
+	var columns = maxi(1, int(texture.get_width() / cell_size.x))
+	var rows = maxi(1, int(texture.get_height() / cell_size.y))
+	var safe_index := clampi(index, 0, columns * rows - 1)
+	var cell := Vector2(float(safe_index % columns), float(safe_index / columns))
+	atlas.atlas = texture
+	atlas.region = Rect2(Vector2(cell.x * cell_size.x, cell.y * cell_size.y), cell_size)
+	atlas.filter_clip = true
+	return atlas
+
+
+func _hub_build_smoke(frame_offset := 0, display_size := Vector2(380, 380)) -> TextureRect:
+	var frame := (int(Time.get_ticks_msec() / 1000) + frame_offset) % HUB_BUILD_SMOKE_FRAME_COUNT
+	var smoke := _hub_sheet_image(HUB_BUILD_SMOKE_SHEET, frame, Vector2(256, 256), display_size)
+	return smoke
+
+
+func _animate_hub_build_smoke(smoke: TextureRect, now_seconds: float, layer_index: int) -> void:
+	var phase := now_seconds * 1.06 + float(layer_index) * 0.73
+	var stretch := sin(phase) * 0.045
+	var breathe := sin(phase * 0.61 + 1.4) * 0.020
+	smoke.scale = Vector2(1.0 + stretch + breathe, 1.0 - stretch * 0.62 + breathe)
+	smoke.rotation = sin(phase * 0.48) * 0.025
+	if smoke.has_meta("hub_smoke_base_position"):
+		var base_position := smoke.get_meta("hub_smoke_base_position") as Vector2
+		smoke.position = base_position + Vector2(sin(phase * 0.42) * 8.0, sin(phase * 0.36 + 0.8) * 6.0)
+
+
+func _hub_progress_bg_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#d9cfbc")
+	style.border_color = COLOR_INK
+	style.set_border_width_all(4)
+	style.corner_radius_top_left = 18
+	style.corner_radius_top_right = 18
+	style.corner_radius_bottom_left = 18
+	style.corner_radius_bottom_right = 18
+	return style
+
+
+func _hub_progress_fill_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = COLOR_GREEN
+	style.corner_radius_top_left = 14
+	style.corner_radius_top_right = 14
+	style.corner_radius_bottom_left = 14
+	style.corner_radius_bottom_right = 14
+	return style
+
+
+func _ensure_hub_module_state(module_id: String) -> Dictionary:
+	if not hub_modules.has(module_id) or typeof(hub_modules[module_id]) != TYPE_DICTIONARY:
+		hub_modules[module_id] = {"level": 0, "building": false, "build_started_unix_msec": 0}
+	var state := hub_modules[module_id] as Dictionary
+	state["level"] = clampi(int(state.get("level", 0)), 0, HUB_MODULE_MAX_LEVEL)
+	state["building"] = bool(state.get("building", false))
+	state["build_started_unix_msec"] = maxi(0, int(state.get("build_started_unix_msec", state.get("build_started_msec", 0))))
+	hub_modules[module_id] = state
+	return state
+
+
+func _hub_module_level(module_id: String) -> int:
+	if module_id == "trophy":
+		return maxi(int(_ensure_hub_module_state(module_id).get("level", 0)), _hub_best_trophy_tier())
+	return int(_ensure_hub_module_state(module_id).get("level", 0))
+
+
+func _hub_module_building(module_id: String) -> bool:
+	return bool(_ensure_hub_module_state(module_id).get("building", false))
+
+
+func _hub_module_build_progress(module_id: String) -> float:
+	var state := _ensure_hub_module_state(module_id)
+	if not bool(state.get("building", false)):
+		return 0.0
+	var started := int(state.get("build_started_unix_msec", 0))
+	if started <= 0:
+		return 0.0
+	var elapsed := float(_unix_now_msec() - started) / 1000.0
+	return clampf(elapsed / HUB_BUILD_SECONDS, 0.0, 1.0)
+
+
+func _process_hub_modules(_delta: float) -> void:
+	var changed := false
+	for module_id in HUB_MODULE_ORDER:
+		var id := str(module_id)
+		var state := _ensure_hub_module_state(id)
+		if not bool(state.get("building", false)):
+			continue
+		var progress := _hub_module_build_progress(id)
+		if hub_module_progress_bars.has(id):
+			var bar := hub_module_progress_bars[id] as HubBuildProgressBar
+			if bar != null and is_instance_valid(bar):
+				bar.set_progress(progress)
+		if hub_module_smoke_layers.has(id):
+			var now_seconds := float(Time.get_ticks_msec()) / 1000.0
+			var frame_base := int(now_seconds)
+			var layers := hub_module_smoke_layers[id] as Array
+			for i in range(layers.size()):
+				var smoke := layers[i] as TextureRect
+				if smoke == null or not is_instance_valid(smoke):
+					continue
+				smoke.texture = _hub_sheet_texture(HUB_BUILD_SMOKE_SHEET, (frame_base + i) % HUB_BUILD_SMOKE_FRAME_COUNT, Vector2(256, 256))
+				_animate_hub_build_smoke(smoke, now_seconds, i)
+		if progress >= 1.0:
+			state["building"] = false
+			state["build_started_unix_msec"] = 0
+			state["level"] = mini(HUB_MODULE_MAX_LEVEL, int(state.get("level", 0)) + 1)
+			hub_modules[id] = state
+			changed = true
+	if _sync_hub_missions():
+		changed = true
+	if changed:
+		save_game()
+		if current_screen == "hub":
+			_render_screen()
+
+
+func _sync_hub_missions() -> bool:
+	var level := _hub_mission_level()
+	var changed := false
+	if level <= 0:
+		if not hub_missions.is_empty() or hub_mission_cooldown_until_unix > 0:
+			hub_missions.clear()
+			hub_mission_cooldown_until_unix = 0
+			changed = true
+		return changed
+	var cleaned := []
+	for raw_mission in hub_missions:
+		if typeof(raw_mission) != TYPE_DICTIONARY:
+			changed = true
+			continue
+		var mission := _normalized_hub_mission(raw_mission as Dictionary)
+		if mission.is_empty():
+			changed = true
+			continue
+		cleaned.append(mission)
+	if cleaned.size() != hub_missions.size():
+		changed = true
+	hub_missions = cleaned
+	var slot_count := _hub_mission_slot_count()
+	while hub_missions.size() > slot_count:
+		hub_missions.pop_back()
+		changed = true
+	if hub_missions.size() >= slot_count:
+		return changed
+	var now := _unix_now()
+	if hub_mission_cooldown_until_unix > now:
+		return changed
+	while hub_missions.size() < slot_count:
+		var mission := _roll_hub_mission()
+		if mission.is_empty():
+			break
+		hub_missions.append(mission)
+		hub_mission_cooldown_until_unix = 0
+		changed = true
+	return changed
+
+
+func _normalized_hub_mission(mission: Dictionary) -> Dictionary:
+	var skill_id := str(mission.get("skill_id", ""))
+	var action_id := str(mission.get("action_id", ""))
+	var action := _action_data(skill_id, action_id)
+	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
+		return {}
+	if not _is_action_unlocked(skill_id, action) or _is_passive_action(action):
+		return {}
+	var target := maxi(1, int(mission.get("target", mission.get("count", 1))))
+	var remaining := clampi(int(mission.get("remaining", target)), 1, target)
+	return {
+		"skill_id": skill_id,
+		"action_id": _canonical_action_id(skill_id, action_id),
+		"target": target,
+		"remaining": remaining,
+		"assigned_unix": maxi(0, int(mission.get("assigned_unix", _unix_now())))
+	}
+
+
+func _roll_hub_mission() -> Dictionary:
+	var existing_keys := {}
+	for raw_mission in hub_missions:
+		var mission := raw_mission as Dictionary
+		existing_keys[_action_key(str(mission.get("skill_id", "")), str(mission.get("action_id", "")))] = true
+	var choices := _hub_mission_eligible_actions(existing_keys)
+	if choices.is_empty():
+		return {}
+	var choice := choices[randi_range(0, choices.size() - 1)] as Dictionary
+	var level := _hub_mission_level()
+	var target := randi_range(_hub_mission_rep_min(), _hub_mission_rep_max())
+	return {
+		"skill_id": str(choice.get("skill_id", "")),
+		"action_id": str(choice.get("action_id", "")),
+		"target": target,
+		"remaining": target,
+		"assigned_unix": _unix_now(),
+		"level": level
+	}
+
+
+func _hub_mission_eligible_actions(existing_keys: Dictionary) -> Array:
+	var choices := []
+	for raw_def in skill_defs:
+		var skill_id := str((raw_def as Dictionary).get("id", ""))
+		if skill_id.is_empty():
+			continue
+		if _fishing_rework_active_for_skill(skill_id):
+			continue
+		for raw_action in actions_by_skill.get(skill_id, []):
+			var action := raw_action as Dictionary
+			var action_id := str(action.get("id", ""))
+			if action_id.is_empty() or _is_passive_action(action):
+				continue
+			if existing_keys.has(_action_key(skill_id, action_id)):
+				continue
+			if not _is_action_unlocked(skill_id, action):
+				continue
+			choices.append({"skill_id": skill_id, "action_id": action_id})
+	return choices
+
+
+func _hub_mission_level() -> int:
+	return clampi(_hub_module_level("mission"), 0, HUB_MODULE_MAX_LEVEL)
+
+
+func _hub_mission_slot_count() -> int:
+	return int(HUB_MISSION_SLOT_COUNT_BY_LEVEL[_hub_mission_level()])
+
+
+func _hub_mission_stamina_reduction() -> float:
+	return float(HUB_MISSION_STAMINA_REDUCTION_BY_LEVEL[_hub_mission_level()])
+
+
+func _hub_mission_xp_bonus() -> float:
+	return float(HUB_MISSION_XP_BONUS_BY_LEVEL[_hub_mission_level()])
+
+
+func _hub_mission_time_reduction() -> float:
+	return float(HUB_MISSION_TIME_REDUCTION_BY_LEVEL[_hub_mission_level()])
+
+
+func _hub_mission_cooldown_seconds() -> int:
+	return int(HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL[_hub_mission_level()])
+
+
+func _hub_mission_rep_min() -> int:
+	return int(HUB_MISSION_REP_MIN_BY_LEVEL[_hub_mission_level()])
+
+
+func _hub_mission_rep_max() -> int:
+	return int(HUB_MISSION_REP_MAX_BY_LEVEL[_hub_mission_level()])
+
+
+func _hub_mission_for_action(skill_id: String, action_id: String) -> Dictionary:
+	var key := _action_key(skill_id, action_id)
+	for raw_mission in hub_missions:
+		var mission := raw_mission as Dictionary
+		if _action_key(str(mission.get("skill_id", "")), str(mission.get("action_id", ""))) == key:
+			return mission
+	return {}
+
+
+func _hub_mission_bonus_applies(skill_id: String, action: Dictionary) -> bool:
+	if _hub_mission_level() <= 0:
+		return false
+	return not _hub_mission_for_action(skill_id, str(action.get("id", ""))).is_empty()
+
+
+func _record_hub_mission_action_completion(skill_id: String, action_id: String) -> bool:
+	var key := _action_key(skill_id, action_id)
+	for i in range(hub_missions.size()):
+		var mission := hub_missions[i] as Dictionary
+		if _action_key(str(mission.get("skill_id", "")), str(mission.get("action_id", ""))) != key:
+			continue
+		var remaining := maxi(0, int(mission.get("remaining", 0)) - 1)
+		if remaining <= 0:
+			hub_missions.remove_at(i)
+			hub_mission_cooldown_until_unix = _unix_now() + _hub_mission_cooldown_seconds()
+		else:
+			mission["remaining"] = remaining
+			hub_missions[i] = mission
+		return true
+	return false
+
+
+func _hub_mission_primary() -> Dictionary:
+	if _sync_hub_missions():
+		save_game()
+	if hub_missions.is_empty():
+		return {}
+	return hub_missions[0] as Dictionary
+
+
+func _hub_mission_summary_text() -> String:
+	if _sync_hub_missions():
+		save_game()
+	var level := _hub_mission_level()
+	if level <= 0:
+		return "Build the board to start boosted missions."
+	var lines := [
+		"%s mission slot%s" % [_hub_mission_slot_count(), "" if _hub_mission_slot_count() == 1 else "s"],
+		"-%s%% stamina, +%s%% XP, +%s%% speed." % [
+			_format_percent_points(_hub_mission_stamina_reduction() * 100.0),
+			_format_percent_points(_hub_mission_xp_bonus() * 100.0),
+			_format_percent_points(_hub_mission_time_reduction() * 100.0)
+		]
+	]
+	if hub_missions.is_empty():
+		var wait := maxi(0, hub_mission_cooldown_until_unix - _unix_now())
+		lines.append("Next mission in %s." % _format_duration(float(wait)))
+	return "\n".join(lines)
+
+
+func _jump_to_hub_mission_task(mission_index := 0) -> void:
+	var mission := _hub_mission_at_index(mission_index)
+	if mission.is_empty():
+		return
+	var skill_id := str(mission.get("skill_id", ""))
+	var action_id := str(mission.get("action_id", ""))
+	if skill_id.is_empty() or action_id.is_empty():
+		return
+	hub_detail_open = false
+	selected_skill_id = skill_id
+	current_screen = "skill"
+	_render_screen(false, -1)
+	await _scroll_to_activity_card(action_id, true, true)
+
+
+func _hub_mission_at_index(mission_index: int) -> Dictionary:
+	if _sync_hub_missions():
+		save_game()
+	if mission_index < 0 or mission_index >= hub_missions.size():
+		return {}
+	return hub_missions[mission_index] as Dictionary
+
+
+func _sync_hub_detail_mission_cards() -> void:
+	if hub_detail_missions_box == null or not is_instance_valid(hub_detail_missions_box):
+		return
+	for child in hub_detail_missions_box.get_children():
+		child.queue_free()
+	var show_cards := hub_selected_module_id == "mission" and not hub_missions.is_empty()
+	hub_detail_missions_box.visible = show_cards
+	if not show_cards:
+		return
+	for i in range(hub_missions.size()):
+		var mission := hub_missions[i] as Dictionary
+		var action := _action_data(str(mission.get("skill_id", "")), str(mission.get("action_id", "")))
+		if action.is_empty():
+			continue
+		hub_detail_missions_box.add_child(_hub_mission_slab(mission, action, i))
+
+
+func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: int) -> Button:
+	var button := Button.new()
+	button.text = ""
+	button.custom_minimum_size = Vector2(0, 190)
+	button.clip_contents = true
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_stylebox_override("normal", _hub_mission_slab_style(false))
+	button.add_theme_stylebox_override("hover", _hub_mission_slab_style(false))
+	button.add_theme_stylebox_override("pressed", _hub_mission_slab_style(true))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.pressed.connect(_jump_to_hub_mission_task.bind(mission_index))
+	_attach_button_depress_animation(button, 0.98)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_bottom", 18)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(row)
+
+	var art_panel := Panel.new()
+	art_panel.custom_minimum_size = Vector2(132, 132)
+	art_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	art_panel.clip_contents = true
+	art_panel.add_theme_stylebox_override("panel", _action_art_style())
+	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(art_panel)
+	var art := TextureRect.new()
+	art.texture = _texture(str(action.get("art", "")))
+	art.set_anchors_preset(Control.PRESET_FULL_RECT)
+	art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_panel.add_child(art)
+	art_panel.add_child(_action_art_border_overlay())
+
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.alignment = BoxContainer.ALIGNMENT_CENTER
+	copy.add_theme_constant_override("separation", 4)
+	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(copy)
+	var name := _label(str(action.get("name", "Task")), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	name.add_theme_color_override("font_outline_color", COLOR_INK)
+	name.add_theme_constant_override("outline_size", 16)
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(name)
+	var meta := _label("%s reps left  |  %s" % [int(mission.get("remaining", 0)), _skill_name(str(mission.get("skill_id", "")))], 34, Color("#fff3bd"), HORIZONTAL_ALIGNMENT_LEFT)
+	meta.add_theme_color_override("font_outline_color", COLOR_INK)
+	meta.add_theme_constant_override("outline_size", 10)
+	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(meta)
+
+	var go := Label.new()
+	go.text = "JUMP"
+	go.custom_minimum_size = Vector2(174, 118)
+	go.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	go.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	go.add_theme_font_size_override("font_size", 54)
+	if app_bold_font != null:
+		go.add_theme_font_override("font", app_bold_font)
+	go.add_theme_color_override("font_color", Color.WHITE)
+	go.add_theme_color_override("font_outline_color", COLOR_INK)
+	go.add_theme_constant_override("outline_size", 14)
+	go.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(go)
+	return button
+
+
+func _hub_mission_slab_style(pressed: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#8f5b28") if not pressed else Color("#70431f")
+	style.border_color = COLOR_INK
+	style.set_border_width_all(7)
+	style.corner_radius_top_left = 20
+	style.corner_radius_top_right = 20
+	style.corner_radius_bottom_left = 20
+	style.corner_radius_bottom_right = 20
+	style.shadow_color = Color(0, 0, 0, 0.22)
+	style.shadow_size = 7
+	style.shadow_offset = Vector2(0, 5)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 14
+	style.content_margin_bottom = 14
+	return style
+
+
+func _on_hub_module_pressed(module_id: String) -> void:
+	if hub_build_mode:
+		return
+	if hub_detail_open:
+		_close_hub_detail_popup()
+		return
+	hub_selected_module_id = module_id
+	hub_detail_open = true
+	_render_screen()
+	_pop_hub_module(module_id)
+	_update_hub_detail_panel()
+
+
+func _on_hub_trophy_pressed() -> void:
+	if hub_build_mode:
+		return
+	if hub_detail_open:
+		_close_hub_detail_popup()
+		return
+	hub_selected_module_id = "trophy"
+	hub_detail_open = true
+	_render_screen()
+	_pop_hub_module("trophy")
+	_update_hub_detail_panel()
+
+
+func _pop_hub_module(module_id: String) -> void:
+	var button := hub_module_buttons.get(module_id) as Control
+	if button == null or not is_instance_valid(button):
+		return
+	button.pivot_offset = button.size * 0.5
+	var tween := create_tween()
+	tween.tween_property(button, "scale", Vector2(0.94, 0.94), 0.05)
+	tween.tween_property(button, "scale", Vector2(1.06, 1.06), 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(button, "scale", Vector2.ONE, 0.10)
+
+
+func _update_hub_detail_panel() -> void:
+	if hub_detail_panel == null or not is_instance_valid(hub_detail_panel):
+		return
+	var module_id := hub_selected_module_id
+	if module_id == "trophy":
+		hub_detail_title.text = "Trophy Platform"
+		hub_detail_body.text = "%s\n%s" % [_hub_trophy_current_bonus_text(), _hub_trophy_next_bonus_text()]
+		hub_detail_cost.text = "Source: Thieving trophy heists"
+		hub_detail_button.visible = false
+		hub_detail_button.disabled = true
+		if hub_detail_secondary_button != null:
+			hub_detail_secondary_button.visible = false
+		if hub_detail_missions_box != null:
+			hub_detail_missions_box.visible = false
+		return
+	hub_detail_button.visible = true
+	if not HUB_MODULE_DEFS.has(module_id):
+		module_id = "pond"
+		hub_selected_module_id = module_id
+	var def := HUB_MODULE_DEFS[module_id] as Dictionary
+	var level := _hub_module_level(module_id)
+	var building := _hub_module_building(module_id)
+	hub_detail_title.text = "%s Lv %s" % [str(def.get("name", "Module")), level]
+	hub_detail_body.text = "%s\n%s" % [_hub_module_current_bonus_text(module_id), _hub_module_next_bonus_text(module_id)]
+	hub_detail_cost.text = _hub_module_cost_text(module_id)
+	_sync_hub_detail_mission_cards()
+	if hub_detail_secondary_button != null:
+		hub_detail_secondary_button.visible = false
+		hub_detail_secondary_button.disabled = true
+	if building:
+		hub_detail_button.text = "Building..."
+		hub_detail_button.disabled = true
+	elif level >= HUB_MODULE_MAX_LEVEL:
+		hub_detail_button.text = "Maxed Out"
+		hub_detail_button.disabled = true
+	elif not _hub_module_next_level_unlocked(module_id):
+		hub_detail_button.text = "Build Lv %s" % _hub_module_next_unlock_level(module_id)
+		hub_detail_button.disabled = true
+	else:
+		hub_detail_button.text = "Build" if level <= 0 else "Upgrade"
+		hub_detail_button.disabled = not _can_afford_hub_module(module_id)
+
+
+func _hub_module_current_bonus_text(module_id: String) -> String:
+	var level := _hub_module_level(module_id)
+	match module_id:
+		"pond":
+			return "Current: +%s%% stamina regen speed." % _format_percent_points(_hub_pond_regen_bonus() * 100.0)
+		"barn":
+			return "Current: raises action success rates %s%% of the way to 100%%." % _format_percent_points(_hub_barn_failure_factor() * 100.0)
+		"garden":
+			return "Current: +%sh offline progress cap." % level
+		"trophy":
+			return "Current: trophy display tier %s." % level
+		"mission":
+			return "Current: %s" % _hub_mission_summary_text()
+	return "Current: no bonus yet."
+
+
+func _hub_module_next_bonus_text(module_id: String) -> String:
+	var next_level := _hub_module_level(module_id) + 1
+	if next_level > HUB_MODULE_MAX_LEVEL:
+		return "Next: maxed."
+	var unlock_level := _hub_module_next_unlock_level(module_id)
+	if _hub_build_level() < unlock_level:
+		return "Next: unlocks at Build Lv %s." % unlock_level
+	match module_id:
+		"pond":
+			return "Next: +%s%% total stamina regen speed." % _format_percent_points(float(HUB_POND_REGEN_BONUS_BY_LEVEL[next_level]) * 100.0)
+		"barn":
+			return "Next: raises action success rates %s%% of the way to 100%%." % _format_percent_points(float(HUB_BARN_FAILURE_GAP_FACTORS[next_level]) * 100.0)
+		"garden":
+			return "Next: +%sh offline progress cap." % next_level
+		"trophy":
+			return "Next: better stolen trophy display."
+		"mission":
+			return "Next: %s slots, -%s%% stamina, +%s%% XP, +%s%% speed, %s cooldown." % [
+				int(HUB_MISSION_SLOT_COUNT_BY_LEVEL[next_level]),
+				_format_percent_points(float(HUB_MISSION_STAMINA_REDUCTION_BY_LEVEL[next_level]) * 100.0),
+				_format_percent_points(float(HUB_MISSION_XP_BONUS_BY_LEVEL[next_level]) * 100.0),
+				_format_percent_points(float(HUB_MISSION_TIME_REDUCTION_BY_LEVEL[next_level]) * 100.0),
+				_format_duration(float(HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL[next_level]))
+			]
+	return "Next: upgrade."
+
+
+func _hub_trophy_current_bonus_text() -> String:
+	var tier := _hub_best_trophy_tier()
+	if tier <= 0:
+		return "Current: no stolen trophy displayed yet."
+	return "Current: +%s%% success chance from %s." % [_format_percent_points(_hub_trophy_success_bonus() * 100.0), _hub_best_trophy_name()]
+
+
+func _hub_trophy_next_bonus_text() -> String:
+	var tier := _hub_best_trophy_tier()
+	if tier <= 0:
+		return "Next: steal The Complimentary Spoon for +1%% success chance."
+	if tier >= HUB_TROPHY_SUCCESS_BONUS_BY_TIER.size() - 1:
+		return "Next: best trophy already displayed."
+	return "Next trophy tier: +%s%% success chance." % _format_percent_points(float(HUB_TROPHY_SUCCESS_BONUS_BY_TIER[tier + 1]) * 100.0)
+
+
+func _hub_best_trophy_tier() -> int:
+	var trophy_def := _hub_best_trophy_def()
+	if trophy_def.is_empty():
+		return 0
+	return int(trophy_def.get("tier", 0))
+
+
+func _hub_best_trophy_def() -> Dictionary:
+	var best_def := {}
+	var best_tier := 0
+	for def in THIEVING_HEIST_DEFS:
+		var trophy_id := str((def as Dictionary).get("id", ""))
+		var state = thieving_trophies.get(trophy_id, {})
+		var stolen := false
+		if typeof(state) == TYPE_DICTIONARY:
+			stolen = bool((state as Dictionary).get("stolen", false))
+		elif typeof(state) == TYPE_BOOL:
+			stolen = bool(state)
+		var tier := int((def as Dictionary).get("tier", 0))
+		if stolen and tier >= best_tier:
+			best_def = def as Dictionary
+			best_tier = tier
+	return best_def
+
+
+func _hub_best_trophy_name() -> String:
+	var trophy_def := _hub_best_trophy_def()
+	return str(trophy_def.get("trophy", "No Trophy"))
+
+
+func _hub_trophy_success_bonus() -> float:
+	var tier := clampi(_hub_best_trophy_tier(), 0, HUB_TROPHY_SUCCESS_BONUS_BY_TIER.size() - 1)
+	return float(HUB_TROPHY_SUCCESS_BONUS_BY_TIER[tier])
+
+
+func _hub_module_cost_text(module_id: String) -> String:
+	var level := _hub_module_level(module_id)
+	if level >= HUB_MODULE_MAX_LEVEL:
+		return "Cost: maxed"
+	var unlock_level := _hub_module_next_unlock_level(module_id)
+	if _hub_build_level() < unlock_level:
+		return "Requires: Build Lv %s" % unlock_level
+	var costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("costs", []) as Array
+	var cost := int(costs[level])
+	if module_id == "pond":
+		return "Cost: %s fish" % cost
+	if module_id == "garden":
+		var fish_costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", []) as Array
+		return "Cost: %s logs + %s fish" % [cost, int(fish_costs[level])]
+	return "Cost: %s logs" % cost
+
+
+func _can_afford_hub_module(module_id: String) -> bool:
+	if not _hub_module_next_level_unlocked(module_id):
+		return false
+	var level := _hub_module_level(module_id)
+	if level >= HUB_MODULE_MAX_LEVEL:
+		return false
+	var costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("costs", []) as Array
+	var cost := int(costs[level])
+	if module_id == "pond":
+		return fish_currency >= float(cost)
+	if module_id == "garden":
+		var fish_costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", []) as Array
+		return log_currency >= cost and fish_currency >= float(int(fish_costs[level]))
+	return log_currency >= cost
+
+
+func _hub_module_next_unlock_level(module_id: String) -> int:
+	if not HUB_MODULE_DEFS.has(module_id):
+		return 999999
+	var level := _hub_module_level(module_id)
+	if level >= HUB_MODULE_MAX_LEVEL:
+		return 999999
+	var unlocks := (HUB_MODULE_DEFS[module_id] as Dictionary).get("unlock_levels", []) as Array
+	if level >= 0 and level < unlocks.size():
+		return int(unlocks[level])
+	return 0
+
+
+func _hub_module_next_level_unlocked(module_id: String) -> bool:
+	return _hub_build_level() >= _hub_module_next_unlock_level(module_id)
+
+
+func _hub_build_level() -> int:
+	return _skill_level("build")
+
+
+func _upgrade_selected_hub_module() -> void:
+	if hub_selected_module_id == "trophy":
+		return
+	_upgrade_hub_module(hub_selected_module_id)
+
+
+func _upgrade_hub_module(module_id: String) -> void:
+	if not HUB_MODULE_DEFS.has(module_id):
+		return
+	var state := _ensure_hub_module_state(module_id)
+	if bool(state.get("building", false)) or int(state.get("level", 0)) >= HUB_MODULE_MAX_LEVEL:
+		return
+	if not _hub_module_next_level_unlocked(module_id):
+		_pop_hub_module(module_id)
+		return
+	if not _can_afford_hub_module(module_id):
+		_pop_hub_module(module_id)
+		return
+	var level := int(state.get("level", 0))
+	var costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("costs", []) as Array
+	var cost := int(costs[level])
+	if module_id == "pond":
+		fish_currency = maxf(0.0, fish_currency - float(cost))
+	elif module_id == "garden":
+		var fish_costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", []) as Array
+		log_currency = maxi(0, log_currency - cost)
+		fish_currency = maxf(0.0, fish_currency - float(int(fish_costs[level])))
+	else:
+		log_currency = maxi(0, log_currency - cost)
+	state["building"] = true
+	state["build_started_unix_msec"] = _unix_now_msec()
+	hub_modules[module_id] = state
+	hub_detail_open = false
+	save_game()
+	_render_screen()
+
+
+func _hub_barn_failure_factor() -> float:
+	var level := clampi(_hub_module_level("barn"), 0, HUB_MODULE_MAX_LEVEL)
+	return float(HUB_BARN_FAILURE_GAP_FACTORS[level])
+
+
+func _hub_pond_regen_bonus() -> float:
+	var level := clampi(_hub_module_level("pond"), 0, HUB_MODULE_MAX_LEVEL)
+	return float(HUB_POND_REGEN_BONUS_BY_LEVEL[level])
+
+
+func _hub_offline_cap_seconds() -> int:
+	return MAX_OFFLINE_SECONDS + _hub_module_level("garden") * HUB_OFFLINE_SECONDS_PER_GARDEN_LEVEL
 
 
 func _render_settings_page() -> void:
@@ -7619,7 +9814,7 @@ func _leaderboard_rank_badge(rank: int) -> Control:
 
 
 func _chat_strip_visible_on_current_screen() -> bool:
-	return current_screen == "menu" or current_screen == "skill"
+	return current_screen == "menu" or current_screen == "skill" or current_screen == "hub"
 
 
 func _update_chat_strip(force_visibility := false) -> void:
@@ -8650,15 +10845,28 @@ func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
 
 func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll := -1) -> void:
 	var content_width := _skill_content_width()
+	var actions_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
 	var frame := Control.new()
 	skill_swipe_frame = frame
-	_add_centered_skill_column(frame)
+	if selected_skill_id == "thieving":
+		frame.anchor_left = 0.5
+		frame.anchor_right = 0.5
+		frame.anchor_top = 0.0
+		frame.anchor_bottom = 1.0
+		frame.offset_left = -BASE_CANVAS.x * 0.5
+		frame.offset_right = BASE_CANVAS.x * 0.5
+		frame.offset_top = 0.0
+		frame.offset_bottom = 0.0
+		frame.custom_minimum_size.x = BASE_CANVAS.x
+		skills_content.add_child(frame)
+	else:
+		_add_centered_skill_column(frame)
 	frame.clip_contents = true
 
 	var page := VBoxContainer.new()
 	skill_swipe_page = page
 	page.set_anchors_preset(Control.PRESET_FULL_RECT)
-	page.custom_minimum_size.x = content_width
+	page.custom_minimum_size.x = actions_width
 	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page.add_theme_constant_override("separation", 0)
 	page.z_index = 20
@@ -8667,7 +10875,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	var header := PanelContainer.new()
 	header.custom_minimum_size = Vector2(0, SKILL_DETAIL_HEADER_HEIGHT)
 	header.custom_minimum_size.x = content_width
-	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if selected_skill_id == "thieving" else Control.SIZE_EXPAND_FILL
 	header.add_theme_stylebox_override("panel", _summary_style())
 	page.add_child(header)
 	var header_body := Control.new()
@@ -8739,11 +10947,11 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	var divider := Control.new()
 	divider.custom_minimum_size = Vector2(0, SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
 	divider.custom_minimum_size.x = content_width
-	divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	divider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER if selected_skill_id == "thieving" else Control.SIZE_EXPAND_FILL
 	page.add_child(divider)
 
 	var actions_clip := Control.new()
-	actions_clip.custom_minimum_size.x = content_width
+	actions_clip.custom_minimum_size.x = actions_width
 	actions_clip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actions_clip.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	actions_clip.clip_contents = true
@@ -8758,10 +10966,11 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	actions_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	actions_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	actions_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	actions_scroll.clip_contents = true
 	actions_scroll.set_pull_resistance_enabled(true)
 	actions_clip.add_child(actions_scroll)
 	var stack := VBoxContainer.new()
-	stack.custom_minimum_size.x = content_width
+	stack.custom_minimum_size.x = actions_width
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_theme_constant_override("separation", 56)
 	actions_scroll.add_child(stack)
@@ -8772,28 +10981,42 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	if _fishing_rework_active_for_skill(selected_skill_id):
 		_render_fishing_area_modules(stack, content_width)
 
-	for action in _visible_actions_for_skill(selected_skill_id):
+	for entry in _visible_detail_entries_for_skill(selected_skill_id):
 		if _fishing_rework_active_for_skill(selected_skill_id):
 			continue
+		var entry_data := entry as Dictionary
+		if str(entry_data.get("kind", "")) == "thieving_heist":
+			var heist := entry_data.get("heist", {}) as Dictionary
+			var heist_root := _build_thieving_heist_card(heist, actions_width)
+			stack.add_child(heist_root)
+			var heist_id := str(heist.get("id", ""))
+			var rendered_id := "heist:%s" % heist_id
+			detail_rendered_action_ids.append(rendered_id)
+			detail_action_card_nodes[rendered_id] = heist_root
+			continue
+		var action := entry_data.get("action", {}) as Dictionary
 		var action_id := str(action["id"])
 		detail_rendered_action_ids.append(action_id)
 		if _is_passive_action(action as Dictionary):
 			var passive_card := _build_passive_module_card(selected_skill_id, action as Dictionary, content_width, true)
 			_prepare_locked_activity_preview_fade(passive_card["card"] as Dictionary, selected_skill_id, action as Dictionary)
 			_sync_locked_activity_preview_presence(passive_card["card"] as Dictionary, selected_skill_id, action as Dictionary)
-			stack.add_child(passive_card["root"] as Control)
-			detail_action_card_nodes[action_id] = passive_card["root"] as Control
+			var passive_root := passive_card["root"] as Control
+			var passive_entry := _detail_stack_entry(passive_root, content_width, actions_width)
+			stack.add_child(passive_entry)
+			detail_action_card_nodes[action_id] = passive_entry
 			action_cards[_action_key(selected_skill_id, action_id)] = passive_card["card"] as Dictionary
 			if _should_show_lock_click_tip(selected_skill_id, action as Dictionary):
-				stack.add_child(_lock_click_tip_note(content_width))
+				stack.add_child(_detail_stack_entry(_lock_click_tip_note(content_width), content_width, actions_width))
 			continue
 		var card_root := Control.new()
 		card_root.custom_minimum_size = Vector2(0, ACTION_CARD_HEIGHT)
 		card_root.custom_minimum_size.x = content_width
 		card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		card_root.clip_contents = false
-		stack.add_child(card_root)
-		detail_action_card_nodes[action_id] = card_root
+		var card_entry := _detail_stack_entry(card_root, content_width, actions_width)
+		stack.add_child(card_entry)
+		detail_action_card_nodes[action_id] = card_entry
 
 		var pop_card := Control.new()
 		pop_card.anchor_left = 0.0
@@ -8948,6 +11171,9 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		border.z_index = 220
 		pop_card.add_child(border)
 
+		var mission_badge := _hub_mission_badge()
+		pop_card.add_child(mission_badge["root"] as Control)
+
 		var lock_overlay := _activity_lock_overlay(pop_card, int(action.get("unlock", 1)))
 		_connect_activity_lock_handler(lock_overlay, selected_skill_id, action_id)
 
@@ -8967,6 +11193,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		pop_card.add_child(button)
 		var card := {
 			"root": card_root,
+			"entry": card_entry,
 			"skill_id": selected_skill_id,
 			"action": action,
 			"pop": pop_card,
@@ -8994,6 +11221,8 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 			"progress": progress,
 			"fluid_strip": fluid_strip,
 			"border": border,
+			"mission_badge": mission_badge["root"],
+			"mission_badge_label": mission_badge["label"],
 			"lock_overlay": lock_overlay,
 			"medal_destination": Vector2(medal.offset_left, medal.offset_top)
 		}
@@ -9012,12 +11241,12 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		_set_action_card_medal(card, medal, _mastery_level(selected_skill_id, action_id), true)
 		_update_action_card_mastery_bar(card, selected_skill_id, action_id, 0.0, true)
 		if _should_show_lock_click_tip(selected_skill_id, action as Dictionary):
-			stack.add_child(_lock_click_tip_note(content_width))
+			stack.add_child(_detail_stack_entry(_lock_click_tip_note(content_width), content_width, actions_width))
 
 	if not activity_start_tip_seen:
-		stack.add_child(_activity_start_tip_note(content_width))
+		stack.add_child(_detail_stack_entry(_activity_start_tip_note(content_width), content_width, actions_width))
 	elif _skill_swipe_tip_available():
-		stack.add_child(_skill_swipe_tip_note(content_width))
+		stack.add_child(_detail_stack_entry(_skill_swipe_tip_note(content_width), content_width, actions_width))
 	var scroll_bottom_spacer := Control.new()
 	scroll_bottom_spacer.name = "DetailActionsBottomSpacer"
 	scroll_bottom_spacer.custom_minimum_size = Vector2(0, _detail_actions_bottom_scroll_pad(selected_skill_id))
@@ -9033,6 +11262,495 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		call_deferred("_scroll_to_resume_activity", false)
 	_add_skill_detail_shadow_overlay(float(SKILL_DETAIL_HEADER_HEIGHT) + divider.custom_minimum_size.y)
 	_queue_skill_swipe_preview_prewarm()
+
+
+func _build_thieving_heist_card(heist: Dictionary, content_width: float) -> Control:
+	var heist_id := str(heist.get("id", ""))
+	var card_root := Control.new()
+	card_root.custom_minimum_size = Vector2(0, THIEVING_HEIST_CARD_HEIGHT)
+	card_root.custom_minimum_size.x = content_width
+	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card_root.clip_contents = false
+	detail_action_card_nodes["heist:%s" % heist_id] = card_root
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = -THIEVING_HEIST_HORIZONTAL_BLEED
+	pop_card.offset_right = THIEVING_HEIST_HORIZONTAL_BLEED
+	pop_card.offset_top = 0.0
+	pop_card.offset_bottom = 0.0
+	pop_card.clip_contents = true
+	card_root.add_child(pop_card)
+
+	var bg := TextureRect.new()
+	bg.texture = _spritesheet_texture(THIEVING_HEIST_BACKGROUND_SHEET, int(heist.get("cell", 0)), THIEVING_HEIST_BACKGROUND_CELL)
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.z_index = 150
+	pop_card.add_child(bg)
+
+	var shade := Panel.new()
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.28))
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.z_index = 175
+	pop_card.add_child(shade)
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", int(THIEVING_HEIST_UI_SAFE_INSET))
+	margin.add_theme_constant_override("margin_right", int(THIEVING_HEIST_UI_SAFE_INSET))
+	margin.add_theme_constant_override("margin_top", 118)
+	margin.add_theme_constant_override("margin_bottom", 118)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.z_index = 210
+	pop_card.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 28)
+	margin.add_child(row)
+
+	var info_column := VBoxContainer.new()
+	info_column.custom_minimum_size = Vector2(360, 0)
+	info_column.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	info_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	info_column.alignment = BoxContainer.ALIGNMENT_CENTER
+	info_column.add_theme_constant_override("separation", 30)
+	info_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(info_column)
+
+	var chance_label := _label("", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chance_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	chance_label.add_theme_constant_override("outline_size", 28)
+	chance_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	chance_label.custom_minimum_size = Vector2(0, 170)
+	info_column.add_child(chance_label)
+
+	var punishment_label := _label("Punishment\n%s jail" % _format_duration(float(heist.get("cooldown_seconds", 0))), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	punishment_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	punishment_label.add_theme_constant_override("outline_size", 22)
+	punishment_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	punishment_label.custom_minimum_size = Vector2(0, 170)
+	info_column.add_child(punishment_label)
+
+	var trophy_panel := Control.new()
+	trophy_panel.custom_minimum_size = Vector2(560, 640)
+	trophy_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	trophy_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	trophy_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(trophy_panel)
+
+	var trophy := TextureRect.new()
+	trophy.texture = _spritesheet_texture(THIEVING_HEIST_TROPHY_SHEET, int(heist.get("cell", 0)), THIEVING_HEIST_TROPHY_CELL)
+	trophy.set_anchors_preset(Control.PRESET_FULL_RECT)
+	trophy.offset_left = -190
+	trophy.offset_right = 190
+	trophy.offset_top = -120
+	trophy.offset_bottom = 120
+	trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	trophy.z_index = 1
+	trophy_panel.add_child(trophy)
+
+	var state := _ensure_thieving_trophy_state(heist_id)
+	var stolen := bool(state.get("stolen", false))
+	var cooldown_remaining := _thieving_heist_cooldown_remaining(heist_id)
+	var can_steal := not stolen and cooldown_remaining <= 0
+
+	var button := _menu_button("STOLEN" if stolen else ("JAILED" if cooldown_remaining > 0 else "STEAL"))
+	button.custom_minimum_size = Vector2(360, 430)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.add_theme_font_size_override("font_size", 86)
+	button.disabled = not can_steal
+	button.pressed.connect(_attempt_thieving_heist.bind(heist_id))
+	row.add_child(button)
+
+	pop_card.add_child(_thieving_heist_feather_band(true))
+	pop_card.add_child(_thieving_heist_feather_band(false))
+
+	var card := {
+		"root": card_root,
+		"pop": pop_card,
+		"button": button,
+		"art_panel": trophy_panel,
+		"progress": trophy_panel,
+		"mastery": null,
+		"heist": heist,
+		"heist_id": heist_id,
+		"trophy": trophy,
+		"chance_label": chance_label,
+		"jail_overlay": null,
+		"jail_label": null,
+		"last_stolen": stolen,
+		"last_cooldown": cooldown_remaining
+	}
+	action_cards[_thieving_heist_card_key(heist_id)] = card
+	_stage_thieving_heist_preview_if_pending(card)
+
+	if stolen:
+		_add_thieving_heist_completed_stamp(pop_card)
+	elif cooldown_remaining > 0:
+		_add_thieving_heist_jail_overlay(card, cooldown_remaining)
+	_update_thieving_heist_card(card, 0.0, true)
+	return card_root
+
+
+func _thieving_heist_card_key(heist_id: String) -> String:
+	return "thieving_heist:%s" % heist_id
+
+
+func _stage_thieving_heist_preview_if_pending(card: Dictionary) -> void:
+	var heist_id := str(card.get("heist_id", ""))
+	if heist_id.is_empty() or heist_id != activity_unlock_heist_preview_after_ceremony_id:
+		return
+	var root := card.get("root") as Control
+	var pop := card.get("pop") as Control
+	if root == null or pop == null or not is_instance_valid(root) or not is_instance_valid(pop):
+		return
+	var target_height := maxf(float(root.custom_minimum_size.y), THIEVING_HEIST_CARD_HEIGHT)
+	card["thieving_heist_reveal_target_height"] = target_height
+	card["thieving_heist_reveal_original_root_clip"] = root.clip_contents
+	card["thieving_heist_reveal_original_pop_anchor_bottom"] = pop.anchor_bottom
+	card["thieving_heist_reveal_original_pop_offset_bottom"] = pop.offset_bottom
+	root.visible = true
+	root.modulate = Color.WHITE
+	root.clip_contents = true
+	var collapsed_size := root.custom_minimum_size
+	collapsed_size.y = 0.0
+	root.custom_minimum_size = collapsed_size
+	pop.anchor_top = 0.0
+	pop.anchor_bottom = 0.0
+	pop.offset_top = 42.0
+	pop.offset_bottom = target_height + 42.0
+	pop.modulate = Color(1, 1, 1, 0)
+	call_deferred("_play_thieving_heist_preview_fade_in", heist_id)
+
+
+func _play_thieving_heist_preview_fade_in(heist_id: String) -> void:
+	if heist_id.is_empty() or heist_id != activity_unlock_heist_preview_after_ceremony_id:
+		return
+	var key := _thieving_heist_card_key(heist_id)
+	if not action_cards.has(key):
+		activity_unlock_heist_preview_after_ceremony_id = ""
+		return
+	var card := action_cards[key] as Dictionary
+	var root := card.get("root") as Control
+	var pop := card.get("pop") as Control
+	if root == null or pop == null or not is_instance_valid(root) or not is_instance_valid(pop):
+		activity_unlock_heist_preview_after_ceremony_id = ""
+		return
+	_kill_preview_fade_tween(card)
+	var target_height := maxf(float(card.get("thieving_heist_reveal_target_height", THIEVING_HEIST_CARD_HEIGHT)), THIEVING_HEIST_CARD_HEIGHT)
+	_hold_skill_detail_layout_refresh(1.10)
+	var tween := create_tween()
+	card["preview_fade_tween"] = tween
+	tween.set_parallel(true)
+	tween.tween_property(root, "custom_minimum_size:y", target_height, 0.62).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	tween.tween_property(pop, "modulate:a", 1.0, 0.36).set_delay(0.22).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_method(
+		_set_thieving_heist_reveal_pop_offset.bind(pop, target_height),
+		0.0,
+		1.0,
+		0.54
+	).set_delay(0.18).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func() -> void:
+		if root != null and is_instance_valid(root) and not root.is_queued_for_deletion():
+			var final_size := root.custom_minimum_size
+			final_size.y = target_height
+			root.custom_minimum_size = final_size
+			root.clip_contents = bool(card.get("thieving_heist_reveal_original_root_clip", false))
+			root.modulate = Color.WHITE
+		if pop != null and is_instance_valid(pop) and not pop.is_queued_for_deletion():
+			pop.anchor_top = 0.0
+			pop.anchor_bottom = float(card.get("thieving_heist_reveal_original_pop_anchor_bottom", 1.0))
+			pop.offset_top = 0.0
+			pop.offset_bottom = float(card.get("thieving_heist_reveal_original_pop_offset_bottom", 0.0))
+			pop.modulate = Color.WHITE
+		card.erase("thieving_heist_reveal_target_height")
+		card.erase("thieving_heist_reveal_original_root_clip")
+		card.erase("thieving_heist_reveal_original_pop_anchor_bottom")
+		card.erase("thieving_heist_reveal_original_pop_offset_bottom")
+		card.erase("preview_fade_tween")
+		activity_unlock_heist_preview_after_ceremony_id = ""
+		_release_detail_unlock_extra_scroll_space()
+	)
+
+
+func _set_thieving_heist_reveal_pop_offset(progress: float, pop: Control, target_height: float) -> void:
+	if pop == null or not is_instance_valid(pop) or pop.is_queued_for_deletion():
+		return
+	var offset_y := lerpf(42.0, 0.0, clampf(progress, 0.0, 1.0))
+	pop.offset_top = offset_y
+	pop.offset_bottom = target_height + offset_y
+
+
+func _action_stat_style(active := false) -> StyleBoxTexture:
+	return _stat_box_style(active)
+
+
+func _thieving_heist_stat_box(text: String) -> PanelContainer:
+	var box := PanelContainer.new()
+	box.custom_minimum_size = Vector2(210, 104)
+	box.add_theme_stylebox_override("panel", _action_stat_style(false))
+	var label := _label(text, 42, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	box.add_child(label)
+	return box
+
+
+func _thieving_heist_feather_band(top: bool) -> ColorRect:
+	var band := ColorRect.new()
+	band.color = COLOR_PAPER
+	band.anchor_left = 0.0
+	band.anchor_right = 1.0
+	band.anchor_top = 0.0 if top else 1.0
+	band.anchor_bottom = 0.0 if top else 1.0
+	band.offset_left = 0.0
+	band.offset_right = 0.0
+	band.offset_top = 0.0 if top else -170.0
+	band.offset_bottom = 170.0 if top else 0.0
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.z_index = 205
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+uniform bool top_fade = true;
+
+void fragment() {
+	float alpha = top_fade ? (1.0 - UV.y) : UV.y;
+	COLOR.a *= smoothstep(0.0, 1.0, alpha);
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("top_fade", top)
+	band.material = material
+	return band
+
+
+func _add_thieving_heist_completed_stamp(parent: Control) -> void:
+	var stamp := _label("STOLEN", 68, COLOR_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	stamp.add_theme_color_override("font_outline_color", COLOR_INK)
+	stamp.add_theme_constant_override("outline_size", 26)
+	stamp.anchor_left = 1.0
+	stamp.anchor_right = 1.0
+	stamp.anchor_top = 0.0
+	stamp.anchor_bottom = 0.0
+	stamp.offset_left = -420
+	stamp.offset_right = -60
+	stamp.offset_top = 38
+	stamp.offset_bottom = 132
+	stamp.rotation_degrees = 4.0
+	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stamp.z_index = 260
+	parent.add_child(stamp)
+
+
+func _add_thieving_heist_jail_overlay(card: Dictionary, cooldown_remaining: int) -> void:
+	var pop := card.get("pop") as Control
+	var root := card.get("root") as Control
+	if pop == null or root == null or not is_instance_valid(pop) or not is_instance_valid(root):
+		return
+	var heist_id := str(card.get("heist_id", ""))
+	var overlay := Control.new()
+	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	overlay.clip_contents = false
+	overlay.z_index = 280
+	overlay.gui_input.connect(_on_thieving_heist_jail_overlay_input.bind(heist_id))
+	root.add_child(overlay)
+
+	var shade := ColorRect.new()
+	shade.color = Color(0.05, 0.045, 0.04, 0.36)
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(shade)
+
+	var bars_shake_body := Control.new()
+	bars_shake_body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bars_shake_body.offset_left = -54.0
+	bars_shake_body.offset_right = 54.0
+	bars_shake_body.offset_top = -28.0
+	bars_shake_body.offset_bottom = 28.0
+	bars_shake_body.clip_contents = false
+	bars_shake_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bars_shake_body.z_index = 2
+	overlay.add_child(bars_shake_body)
+
+	var bars := TextureRect.new()
+	bars.texture = _texture(THIEVING_HEIST_JAIL_BARS_TEXTURE)
+	bars.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bars.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bars.stretch_mode = TextureRect.STRETCH_SCALE
+	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bars_shake_body.add_child(bars)
+
+	var timer := _label(_thieving_heist_jail_text(cooldown_remaining), 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	timer.add_theme_color_override("font_outline_color", Color.BLACK)
+	timer.add_theme_constant_override("outline_size", 34)
+	timer.add_theme_constant_override("line_spacing", -8)
+	timer.anchor_left = 0.0
+	timer.anchor_right = 1.0
+	timer.anchor_top = 0.5
+	timer.anchor_bottom = 0.5
+	timer.offset_left = 0
+	timer.offset_right = 0
+	timer.offset_top = -105
+	timer.offset_bottom = 105
+	timer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	timer.z_index = 6
+	overlay.add_child(timer)
+	card["jail_overlay"] = overlay
+	card["jail_label"] = timer
+	card["jail_bars_shake_body"] = bars_shake_body
+
+
+func _on_thieving_heist_jail_overlay_input(event: InputEvent, heist_id: String) -> void:
+	if event is InputEventMouseButton:
+		if not event.pressed or event.button_index != MOUSE_BUTTON_LEFT:
+			return
+	elif event is InputEventScreenTouch:
+		if not event.pressed:
+			return
+	else:
+		return
+	var key := _thieving_heist_card_key(heist_id)
+	var card := action_cards.get(key, {}) as Dictionary
+	if event is InputEventMouseButton:
+		var mouse_event_id := int(event.get_instance_id())
+		if int(card.get("last_jail_mouse_event_id", 0)) == mouse_event_id:
+			get_viewport().set_input_as_handled()
+			return
+		card["last_jail_mouse_event_id"] = mouse_event_id
+	var shake_body := card.get("jail_bars_shake_body") as Control
+	if shake_body != null and is_instance_valid(shake_body):
+		_play_padlock_click_shake(shake_body)
+	var remaining := _thieving_heist_cooldown_remaining(heist_id)
+	if remaining > 0:
+		_reduce_thieving_heist_jail_timer(heist_id, card)
+		var updated_remaining := _thieving_heist_cooldown_remaining(heist_id)
+		_set_result("Still jailed: %s." % _format_countdown(updated_remaining))
+	get_viewport().set_input_as_handled()
+
+
+func _reduce_thieving_heist_jail_timer(heist_id: String, card: Dictionary) -> void:
+	if card.is_empty():
+		return
+	var state := _ensure_thieving_trophy_state(heist_id)
+	var cooldown_until := maxi(0, int(state.get("cooldown_until_unix", 0)))
+	if cooldown_until <= 0:
+		return
+	state["cooldown_until_unix"] = maxi(_unix_now(), cooldown_until - 1)
+	thieving_trophies[heist_id] = state
+	_float_thieving_jail_timer_reduction(card)
+	_update_thieving_heist_card(card, 0.0, true)
+	if _thieving_heist_cooldown_remaining(heist_id) <= 0:
+		save_game()
+
+
+func _float_thieving_jail_timer_reduction(card: Dictionary) -> void:
+	var timer := card.get("jail_label") as Label
+	var overlay := card.get("jail_overlay") as Control
+	if timer == null or overlay == null or not is_instance_valid(timer) or not is_instance_valid(overlay):
+		return
+	if not overlay.is_inside_tree() or not timer.is_inside_tree():
+		return
+	var reward_size := Vector2(210, 92)
+	var holder := Control.new()
+	holder.size = reward_size
+	holder.z_index = 320
+	holder.z_as_relative = false
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(holder)
+
+	var shadow := _label("-1s", 58, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER)
+	shadow.size = reward_size
+	shadow.position = Vector2(5, 6)
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shadow.modulate = Color(1, 1, 1, 0.58)
+	holder.add_child(shadow)
+
+	var label := _label("-1s", 58, Color("#7dff8e"), HORIZONTAL_ALIGNMENT_CENTER)
+	label.size = reward_size
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", 16)
+	holder.add_child(label)
+
+	var timer_rect := timer.get_global_rect()
+	var overlay_origin := overlay.global_position
+	var origin := timer_rect.position - overlay_origin + Vector2(
+		randf_range(timer_rect.size.x * 0.34, timer_rect.size.x * 0.66),
+		randf_range(-18.0, 18.0)
+	)
+	origin += Vector2(randf_range(-150.0, 150.0), randf_range(-36.0, 10.0))
+	holder.position = origin - reward_size * 0.5
+	holder.rotation = randf_range(-0.22, 0.22)
+	holder.scale = Vector2.ONE * randf_range(0.74, 0.92)
+	holder.modulate = Color(1, 1, 1, 0)
+
+	var rise := Vector2(randf_range(-76.0, 76.0), randf_range(-172.0, -108.0))
+	var end_rotation := holder.rotation + randf_range(-0.16, 0.16)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(holder, "position", holder.position + rise, randf_range(0.82, 1.12)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "rotation", end_rotation, 0.95).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "scale", Vector2.ONE * randf_range(1.02, 1.18), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
+	tween.tween_property(holder, "modulate:a", 0.0, 0.48).set_delay(randf_range(0.34, 0.52))
+	tween.chain().tween_callback(holder.queue_free)
+
+
+func _thieving_heist_jail_text(cooldown_remaining: int) -> String:
+	return "JAILED\n%s" % _format_countdown(cooldown_remaining)
+
+
+func _format_countdown(seconds: int) -> String:
+	var total := maxi(0, seconds)
+	var hours := total / 3600
+	var minutes := (total % 3600) / 60
+	var secs := total % 60
+	if hours > 0:
+		return "%d:%02d:%02d" % [hours, minutes, secs]
+	return "%d:%02d" % [minutes, secs]
+
+
+func _update_thieving_heist_card(card: Dictionary, _delta: float, _instant: bool) -> void:
+	var heist := card.get("heist", {}) as Dictionary
+	var heist_id := str(card.get("heist_id", ""))
+	var state := _ensure_thieving_trophy_state(heist_id)
+	var stolen := bool(state.get("stolen", false))
+	var cooldown_remaining := _thieving_heist_cooldown_remaining(heist_id)
+	var button := card.get("button") as Button
+	if button != null and is_instance_valid(button):
+		button.text = "STOLEN" if stolen else ("JAILED" if cooldown_remaining > 0 else "STEAL")
+		button.disabled = stolen or cooldown_remaining > 0
+	var chance_label := card.get("chance_label") as Label
+	if chance_label != null and is_instance_valid(chance_label):
+		_set_label_text_if_changed(chance_label, "%s%% chance\nof success" % int(round(_thieving_heist_success_chance(heist))))
+	var jail_label := card.get("jail_label") as Label
+	if jail_label != null and is_instance_valid(jail_label):
+		_set_label_text_if_changed(jail_label, _thieving_heist_jail_text(cooldown_remaining))
+	var jail_overlay := card.get("jail_overlay") as Control
+	if jail_overlay != null and is_instance_valid(jail_overlay):
+		jail_overlay.visible = cooldown_remaining > 0 and not stolen
+	card["last_stolen"] = stolen
+	card["last_cooldown"] = cooldown_remaining
+
+
+func _thieving_heist_success_chance(heist: Dictionary) -> float:
+	var base_success := float(heist.get("success", 0.0))
+	var unlock_level := int(heist.get("unlock", 1))
+	var level_bonus := maxf(0.0, float(_skill_level("thieving") - unlock_level) * THIEVING_HEIST_LEVEL_SUCCESS_BONUS)
+	return clampf(base_success + level_bonus, 5.0, THIEVING_HEIST_MAX_SUCCESS)
 
 
 func _add_skill_detail_shadow_overlay(top_y: float) -> void:
@@ -9238,8 +11956,10 @@ func _process_detail_jump_arrow(button: TextureButton, top: bool, can_use: bool,
 func _update_page_visibility() -> void:
 	home_page.visible = current_screen == "home"
 	skills_page.visible = current_screen != "home"
-	_apply_nav_style(leaderboard_tab, current_screen == "leaderboard")
+	if leaderboard_tab != null:
+		_apply_nav_style(leaderboard_tab, current_screen == "leaderboard")
 	_apply_nav_style(hero_tab, current_screen == "home")
+	_apply_nav_style(hub_tab, current_screen == "hub")
 	_apply_nav_style(skills_tab, current_screen == "menu" or current_screen == "skill")
 	_apply_nav_style(shop_tab, current_screen == "shop")
 	_apply_nav_style(settings_tab, current_screen == "settings")
@@ -9302,6 +12022,10 @@ func _update_ui(delta: float, instant := false) -> void:
 		var skill_id := parts[0]
 		var action_id := parts[1]
 		var card: Dictionary = action_cards[key]
+		if card.get("heist_id") != null:
+			if static_refresh:
+				_update_thieving_heist_card(card, delta, instant)
+			continue
 		if card.get("is_fishing_area"):
 			var area_running := (
 				running_skill_id == skill_id
@@ -9546,6 +12270,53 @@ func _action_card_medal_destination(card: Dictionary, medal: TextureRect) -> Vec
 	return medal.position
 
 
+func _hub_mission_badge() -> Dictionary:
+	var root := Control.new()
+	root.anchor_left = 1.0
+	root.anchor_right = 1.0
+	root.anchor_top = 0.0
+	root.anchor_bottom = 0.0
+	root.offset_left = -214.0
+	root.offset_right = -30.0
+	root.offset_top = -46.0
+	root.offset_bottom = 138.0
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.visible = false
+	root.z_index = 232
+	var paper := TextureRect.new()
+	paper.set_anchors_preset(Control.PRESET_FULL_RECT)
+	paper.texture = _texture(HUB_MISSION_PAPER_BADGE)
+	paper.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	paper.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	paper.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(paper)
+	var label := _label("", 58, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.offset_left = 22.0
+	label.offset_right = -22.0
+	label.offset_top = 44.0
+	label.offset_bottom = -34.0
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_outline_color", Color.WHITE)
+	label.add_theme_constant_override("outline_size", 10)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(label)
+	return {"root": root, "label": label}
+
+
+func _sync_hub_mission_badge(card: Dictionary, skill_id: String, action: Dictionary, unlocked: bool) -> void:
+	var badge := card.get("mission_badge") as Control
+	var label := card.get("mission_badge_label") as Label
+	if badge == null or label == null:
+		return
+	var mission := _hub_mission_for_action(skill_id, str(action.get("id", "")))
+	var visible := unlocked and not mission.is_empty()
+	badge.visible = visible
+	if not visible:
+		return
+	_set_label_text_if_changed(label, str(maxi(0, int(mission.get("remaining", 0)))))
+
+
 func _update_action_card_static_state(card: Dictionary, skill_id: String, action: Dictionary, unlocked: bool) -> void:
 	var ceremony_active := bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
 	var xp_text := "+%s\nXP" % _effective_xp(action, skill_id)
@@ -9565,6 +12336,7 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 	if card.get("last_success_text", "") != success_text:
 		_set_label_text_if_changed(card["success"] as Label, success_text)
 		card["last_success_text"] = success_text
+	_sync_hub_mission_badge(card, skill_id, action, unlocked)
 	_sync_activity_lock_overlay(card, action, unlocked)
 	var shade := card["shade"] as Panel
 	if shade != null:
@@ -10149,12 +12921,17 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		return
 	var target_height := float(ACTION_CARD_EXPANDED_HEIGHT if expanded else ACTION_CARD_HEIGHT)
 	var target_size := Vector2(root.custom_minimum_size.x, target_height)
+	var entry := card.get("entry") as Control
+	var target_entry_size := Vector2(target_size.x, target_height)
+	if entry != null and is_instance_valid(entry):
+		target_entry_size.x = entry.custom_minimum_size.x
 	var bonus := card.get("bonus_panel", {}) as Dictionary
 	var bonus_root := bonus.get("root") as Control
 	var existing_tween := card.get("bonus_tween", null) as Tween
 	var state_changed := bool(card.get("bonus_expanded", false)) != expanded
 	card["bonus_expanded"] = expanded
-	if not state_changed and absf(root.custom_minimum_size.y - target_height) <= 0.5:
+	var entry_at_height := entry == null or not is_instance_valid(entry) or absf(entry.custom_minimum_size.y - target_height) <= 0.5
+	if not state_changed and absf(root.custom_minimum_size.y - target_height) <= 0.5 and entry_at_height:
 		return
 	if existing_tween != null and existing_tween.is_valid():
 		existing_tween.kill()
@@ -10162,6 +12939,8 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		bonus_root.visible = true
 	if instant:
 		root.custom_minimum_size = target_size
+		if entry != null and is_instance_valid(entry):
+			entry.custom_minimum_size = target_entry_size
 		if bonus_root != null:
 			bonus_root.modulate.a = 1.0 if expanded else 0.0
 			bonus_root.visible = expanded
@@ -10170,6 +12949,8 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 	card["bonus_tween"] = tween
 	tween.set_parallel(true)
 	tween.tween_property(root, "custom_minimum_size", target_size, ACTION_CARD_INFO_EXPAND_SECONDS).set_trans(Tween.TRANS_BACK if expanded else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if entry != null and is_instance_valid(entry):
+		tween.tween_property(entry, "custom_minimum_size", target_entry_size, ACTION_CARD_INFO_EXPAND_SECONDS).set_trans(Tween.TRANS_BACK if expanded else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if bonus_root != null:
 		var fade_seconds := ACTION_CARD_INFO_FADE_IN_SECONDS if expanded else ACTION_CARD_INFO_FADE_OUT_SECONDS
 		tween.tween_property(bonus_root, "modulate:a", 1.0 if expanded else 0.0, fade_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -10247,6 +13028,9 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			if _plank_bonus_applies(skill_id):
 				xp_bonus += PLANK_BUILD_XP_MULT
 				xp_lines.append("+5% plank build XP")
+			if _hub_mission_bonus_applies(skill_id, action):
+				xp_bonus += _hub_mission_xp_bonus()
+				xp_lines.append("+%s%% mission board XP" % _format_percent_points(_hub_mission_xp_bonus() * 100.0))
 			if xp_lines.is_empty():
 				xp_lines.append("No active XP bonuses yet")
 			return {
@@ -10263,6 +13047,8 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 				var medal_level := _activity_medal_buff_source_level(skill_id, action)
 				var source_name := _activity_medal_buff_source_name(skill_id, action)
 				stamina_lines.append("-%s%% %s medal from %s" % [_format_percent_points(medal_reduction * 100.0), _mastery_medal_name(medal_level), source_name])
+			if _hub_mission_bonus_applies(skill_id, action):
+				stamina_lines.append("-%s%% mission board stamina" % _format_percent_points(_hub_mission_stamina_reduction() * 100.0))
 			if stamina_lines.is_empty():
 				stamina_lines.append("No stamina cost bonuses yet")
 			return {
@@ -10301,6 +13087,8 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 				time_lines.append("-%s%% ad speed" % _format_percent_points(ad_speed * 100.0))
 			if skill_reduction > 0.0:
 				time_lines.append("-%s%% %s level timer" % [_format_percent_points(skill_reduction * 100.0), _skill_name(skill_id)])
+			if _hub_mission_bonus_applies(skill_id, action):
+				time_lines.append("-%s%% mission board speed" % _format_percent_points(_hub_mission_time_reduction() * 100.0))
 			if time_lines.is_empty():
 				time_lines.append("No active time bonuses yet")
 			return {
@@ -10848,6 +13636,8 @@ func _visible_achievement_milestones(hide_completed: bool) -> Array:
 	var chain_order := []
 	var chains := {}
 	for achievement in _achievement_milestones():
+		if not _achievement_should_show_in_bonus_log(achievement):
+			continue
 		var chain_key := str(achievement.get("chain_key", achievement.get("id", "")))
 		if chain_key.is_empty():
 			continue
@@ -10870,6 +13660,13 @@ func _visible_achievement_milestones(hide_completed: bool) -> Array:
 			continue
 		visible.append(next_achievement)
 	return visible
+
+
+func _achievement_should_show_in_bonus_log(achievement: Dictionary) -> bool:
+	return (
+		not bool(achievement.get("log_only", false))
+		and not str(achievement.get("reward_stat", "")).is_empty()
+	)
 
 
 func _skill_level_achievement_targets() -> Array:
@@ -11324,6 +14121,149 @@ func _visible_actions_for_skill(skill_id: String) -> Array:
 	return visible_actions
 
 
+func _visible_detail_entries_for_skill(skill_id: String) -> Array:
+	var entries := []
+	var pending_heists := _visible_thieving_heists_for_render() if skill_id == "thieving" else []
+	var heist_index := 0
+	for raw_action in _visible_actions_for_skill(skill_id):
+		var action := raw_action as Dictionary
+		var action_unlock := int(action.get("unlock", 1))
+		while heist_index < pending_heists.size() and int((pending_heists[heist_index] as Dictionary).get("unlock", 1)) <= action_unlock:
+			entries.append({"kind": "thieving_heist", "heist": pending_heists[heist_index]})
+			heist_index += 1
+		entries.append({"kind": "action", "action": action})
+	while heist_index < pending_heists.size():
+		entries.append({"kind": "thieving_heist", "heist": pending_heists[heist_index]})
+		heist_index += 1
+	return entries
+
+
+func _visible_thieving_heists_for_render() -> Array:
+	var visible := []
+	var pending_heist_id := ""
+	var pending_key := str(pending_thieving_trophy_reward_float.get("key", "")) if not pending_thieving_trophy_reward_float.is_empty() else ""
+	if pending_key.begins_with("thieving_heist:"):
+		pending_heist_id = pending_key.substr("thieving_heist:".length())
+	for i in range(THIEVING_HEIST_DEFS.size()):
+		var heist := THIEVING_HEIST_DEFS[i] as Dictionary
+		var heist_id := str(heist.get("id", ""))
+		if _skill_level("thieving") < int(heist.get("unlock", 1)):
+			continue
+		if not _thieving_heist_preceding_action_unlocked(heist):
+			continue
+		if i > 0 and not _thieving_trophy_stolen(str((THIEVING_HEIST_DEFS[i - 1] as Dictionary).get("id", ""))):
+			continue
+		if _thieving_trophy_stolen(heist_id) and heist_id != pending_heist_id:
+			continue
+		visible.append(heist)
+	return visible
+
+
+func _thieving_heist_preceding_action_unlocked(heist: Dictionary) -> bool:
+	var preceding_action := _thieving_heist_preceding_action(heist)
+	if preceding_action.is_empty():
+		return true
+	return _is_action_unlocked("thieving", preceding_action)
+
+
+func _thieving_heist_preceding_action(heist: Dictionary) -> Dictionary:
+	var heist_unlock := int(heist.get("unlock", 1))
+	var best_action := {}
+	var best_unlock := -1
+	for raw_action in actions_by_skill.get("thieving", []):
+		var action := raw_action as Dictionary
+		if action.is_empty():
+			continue
+		var action_unlock := int(action.get("unlock", 1))
+		if action_unlock >= heist_unlock:
+			continue
+		if action_unlock >= best_unlock:
+			best_action = action
+			best_unlock = action_unlock
+	return best_action
+
+
+func _thieving_heist_revealed_by_action_unlock(skill_id: String, action: Dictionary) -> String:
+	if skill_id != "thieving" or action.is_empty():
+		return ""
+	var action_id := str(action.get("id", ""))
+	if action_id.is_empty():
+		return ""
+	for i in range(THIEVING_HEIST_DEFS.size()):
+		var heist := THIEVING_HEIST_DEFS[i] as Dictionary
+		var heist_id := str(heist.get("id", ""))
+		if heist_id.is_empty() or _thieving_trophy_stolen(heist_id):
+			continue
+		if _skill_level("thieving") < int(heist.get("unlock", 1)):
+			continue
+		if i > 0 and not _thieving_trophy_stolen(str((THIEVING_HEIST_DEFS[i - 1] as Dictionary).get("id", ""))):
+			continue
+		var preceding_action := _thieving_heist_preceding_action(heist)
+		if str(preceding_action.get("id", "")) == action_id:
+			return heist_id
+	return ""
+
+
+func _thieving_heist_def(heist_id: String) -> Dictionary:
+	for raw_heist in THIEVING_HEIST_DEFS:
+		var heist := raw_heist as Dictionary
+		if str(heist.get("id", "")) == heist_id:
+			return heist
+	return {}
+
+
+func _ensure_thieving_trophy_state(heist_id: String) -> Dictionary:
+	if heist_id.is_empty():
+		return {}
+	if not thieving_trophies.has(heist_id) or typeof(thieving_trophies[heist_id]) != TYPE_DICTIONARY:
+		thieving_trophies[heist_id] = {"stolen": false, "cooldown_until_unix": 0}
+	var state := thieving_trophies[heist_id] as Dictionary
+	if not state.has("stolen"):
+		state["stolen"] = false
+	if not state.has("cooldown_until_unix"):
+		state["cooldown_until_unix"] = int(state.get("cooldown_until", 0))
+	thieving_trophies[heist_id] = state
+	return state
+
+
+func _ensure_all_thieving_trophy_state() -> void:
+	for raw_heist in THIEVING_HEIST_DEFS:
+		var heist := raw_heist as Dictionary
+		_ensure_thieving_trophy_state(str(heist.get("id", "")))
+	_sync_hub_trophy_level_from_thieving()
+
+
+func _thieving_trophy_stolen(heist_id: String) -> bool:
+	return bool(_ensure_thieving_trophy_state(heist_id).get("stolen", false))
+
+
+func _thieving_heist_cooldown_remaining(heist_id: String) -> int:
+	var state := _ensure_thieving_trophy_state(heist_id)
+	return maxi(0, int(state.get("cooldown_until_unix", 0)) - _unix_now())
+
+
+func _best_thieving_trophy_tier() -> int:
+	var best := 0
+	for raw_heist in THIEVING_HEIST_DEFS:
+		var heist := raw_heist as Dictionary
+		if _thieving_trophy_stolen(str(heist.get("id", ""))):
+			best = maxi(best, int(heist.get("tier", 0)))
+	return clampi(best, 0, HUB_MODULE_MAX_LEVEL)
+
+
+func _sync_hub_trophy_level_from_thieving() -> void:
+	var tier := _best_thieving_trophy_tier()
+	if tier > 0:
+		var state := _ensure_hub_module_state("trophy")
+		if int(state.get("level", 0)) < tier:
+			state["level"] = tier
+			state["building"] = false
+			state["build_started_unix_msec"] = 0
+			hub_modules["trophy"] = state
+	if hub_selected_module_id == "trophy":
+		hub_detail_open = true
+
+
 func _locked_activity_preview_available() -> bool:
 	for raw_skill_id in skills.keys():
 		var skill_id := str(raw_skill_id)
@@ -11352,8 +14292,12 @@ func _skill_detail_needs_action_list_refresh() -> bool:
 	if _fishing_rework_active_for_skill(selected_skill_id):
 		expected_action_ids = _fishing_detail_render_signature()
 	else:
-		for action in _visible_actions_for_skill(selected_skill_id):
-			expected_action_ids.append(str(action["id"]))
+		for entry in _visible_detail_entries_for_skill(selected_skill_id):
+			var entry_data := entry as Dictionary
+			if str(entry_data.get("kind", "")) == "thieving_heist":
+				expected_action_ids.append("heist:%s" % str((entry_data.get("heist", {}) as Dictionary).get("id", "")))
+			else:
+				expected_action_ids.append(str((entry_data.get("action", {}) as Dictionary).get("id", "")))
 	if expected_action_ids.size() != detail_rendered_action_ids.size():
 		return true
 	for i in range(expected_action_ids.size()):
@@ -11646,7 +14590,8 @@ func _skill_swipe_visual_distance(abs_x: float) -> float:
 
 
 func _skill_swipe_page_span() -> float:
-	return _skill_content_width() + SKILL_SWIPE_PAGE_GAP
+	var active_width := BASE_CANVAS.x if selected_skill_id == "thieving" else _skill_content_width()
+	return active_width + SKILL_SWIPE_PAGE_GAP
 
 
 func _current_skill_swipe_page_x() -> float:
@@ -13869,11 +16814,13 @@ func _on_activity_lock_clicked(skill_id: String, action_id: String, group: Activ
 	_mark_action_manually_unlocked(skill_id, action_id)
 	_sync_passive_module_unlocks(_unix_now())
 	activity_unlock_preview_after_ceremony_id = _first_locked_action_id(skill_id)
+	activity_unlock_heist_preview_after_ceremony_id = _thieving_heist_revealed_by_action_unlock(skill_id, action)
 	var preview_id := activity_unlock_preview_after_ceremony_id
-	if _lock_click_tip_remaining_collapse_seconds() > 0.0:
-		_stage_next_locked_activity_preview_after_tip_collapse(preview_id)
-	elif _stage_next_locked_activity_preview(false):
-		_fade_staged_next_locked_activity_preview(preview_id)
+	if activity_unlock_heist_preview_after_ceremony_id.is_empty():
+		if _lock_click_tip_remaining_collapse_seconds() > 0.0:
+			_stage_next_locked_activity_preview_after_tip_collapse(preview_id)
+		elif _stage_next_locked_activity_preview(false):
+			_fade_staged_next_locked_activity_preview(preview_id)
 	call_deferred("_scroll_detail_actions_to_unlock_target", action_id)
 	var key := _action_key(skill_id, action_id)
 	if action_cards.has(key):
@@ -14071,10 +17018,14 @@ func _start_activity_unlock_ceremony_motion_after_delay(card: Dictionary, group_
 
 
 func _refresh_activity_detail_during_unlock_ceremony(card: Dictionary, overlay_root_ref: WeakRef, shade_ref: WeakRef, button_ref: WeakRef) -> void:
-	await get_tree().create_timer(ACTIVITY_UNLOCK_NEXT_PREVIEW_REFRESH_DELAY).timeout
+	var refresh_delay := 0.18 if not activity_unlock_heist_preview_after_ceremony_id.is_empty() else ACTIVITY_UNLOCK_NEXT_PREVIEW_REFRESH_DELAY
+	await get_tree().create_timer(refresh_delay).timeout
 	if current_screen != "skill":
 		return
 	if bool(card.get("unlock_ceremony_finalized", false)):
+		return
+	if not activity_unlock_heist_preview_after_ceremony_id.is_empty():
+		_finish_activity_unlock_ceremony_from_refs(card, overlay_root_ref, shade_ref, button_ref, true)
 		return
 	if activity_unlock_preview_after_ceremony_id.is_empty():
 		return
@@ -14109,7 +17060,7 @@ func _finish_activity_unlock_ceremony(card: Dictionary, overlay_root: Control, s
 	if button != null and is_instance_valid(button):
 		button.disabled = false
 	activity_unlock_ceremony_count = maxi(0, activity_unlock_ceremony_count - 1)
-	if refresh_detail and activity_unlock_ceremony_count <= 0 and not activity_unlock_detail_refresh_done and not activity_unlock_preview_after_ceremony_id.is_empty():
+	if refresh_detail and activity_unlock_ceremony_count <= 0 and not activity_unlock_detail_refresh_done and (not activity_unlock_preview_after_ceremony_id.is_empty() or not activity_unlock_heist_preview_after_ceremony_id.is_empty()):
 		call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
 
 
@@ -14342,18 +17293,23 @@ func _refresh_skill_detail_after_activity_unlock_ceremony() -> void:
 	activity_unlock_detail_refresh_done = true
 	if current_screen != "skill":
 		activity_unlock_preview_after_ceremony_id = ""
+		activity_unlock_heist_preview_after_ceremony_id = ""
 		activity_unlock_center_scroll_target = -1
 		return
 	var preview_id := activity_unlock_preview_after_ceremony_id
+	var heist_preview_id := activity_unlock_heist_preview_after_ceremony_id
 	var restore_scroll := activity_unlock_center_scroll_target if activity_unlock_center_scroll_target >= 0 else (detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1)
 	_begin_skill_detail_refresh_cover()
 	_render_screen(false, restore_scroll)
 	_update_ui(0.0, true)
-	if preview_id.is_empty():
+	if preview_id.is_empty() and heist_preview_id.is_empty():
 		activity_unlock_center_scroll_target = -1
 		return
-	_stage_activity_preview_for_action_id(preview_id, false)
-	call_deferred("_play_activity_preview_fade_in_by_id", preview_id)
+	if not preview_id.is_empty():
+		_stage_activity_preview_for_action_id(preview_id, false)
+		call_deferred("_play_activity_preview_fade_in_by_id", preview_id)
+	else:
+		activity_unlock_center_scroll_target = -1
 
 
 func _activity_preview_card_for_action_id(action_id: String) -> Dictionary:
@@ -14547,6 +17503,8 @@ func _process_action(delta: float) -> void:
 			last_result += " Critical success: triple XP."
 		elif streak_bonus:
 			last_result += " Fifth repeat: double XP."
+		if _record_hub_mission_action_completion(running_skill_id, running_action_id):
+			last_result += " Mission progress."
 		var new_global_buffs := _new_global_medal_buff_messages(old_mastery_level, new_mastery_level, tiers_unlocked_before)
 		if not new_global_buffs.is_empty():
 			last_result += " " + " ".join(new_global_buffs)
@@ -14889,7 +17847,7 @@ func _apply_stamina_regen_seconds(seconds: float, allow_gauge_boost := false) ->
 		if _stamina_value(skill_id) >= float(max_stamina):
 			stamina_bank[skill_id] = 0.0
 			continue
-		var regen_delta := seconds
+		var regen_delta := seconds * (1.0 + _hub_pond_regen_bonus())
 		if allow_gauge_boost and skill_id == stamina_gauge_boost_skill_id:
 			regen_delta *= stamina_gauge_regen_multiplier
 		var next_bank := clampf(float(stamina_bank.get(skill_id, 0.0)), 0.0, STAMINA_REGEN_SECONDS) + regen_delta
@@ -15022,10 +17980,71 @@ func _start_action_from_card_tap(skill_id: String, action_id: String) -> void:
 		last_action_card_tap_msec = now
 
 
+func _attempt_thieving_heist(heist_id: String) -> void:
+	_disarm_reset_data_confirmation()
+	if _skill_swipe_suppresses_button_action():
+		return
+	if detail_actions_scroll != null and detail_actions_scroll.is_child_click_suppressed():
+		return
+	var heist := _thieving_heist_def(heist_id)
+	if heist.is_empty():
+		return
+	if _skill_level("thieving") < int(heist.get("unlock", 1)):
+		return
+	var state := _ensure_thieving_trophy_state(heist_id)
+	if bool(state.get("stolen", false)) or _thieving_heist_cooldown_remaining(heist_id) > 0:
+		return
+	_unlock_audio_for_gameplay()
+	var key := _thieving_heist_card_key(heist_id)
+	_pop_activity_button(key)
+	var success := randf() * 100.0 <= _thieving_heist_success_chance(heist)
+	if success:
+		state["stolen"] = true
+		state["cooldown_until_unix"] = 0
+		thieving_trophies[heist_id] = state
+		var xp_reward := int(heist.get("xp", 1))
+		skills["thieving"]["xp"] = int(skills.get("thieving", {}).get("xp", 0)) + xp_reward
+		var old_level := _skill_level("thieving")
+		_recalculate_level("thieving")
+		_sync_hub_trophy_level_from_thieving()
+		_set_result("%s +%s XP." % [str(heist.get("success_text", "Trophy stolen.")), xp_reward])
+		pending_thieving_trophy_reward_float = {"key": key, "xp": xp_reward}
+		_play_activity_success_sound(1, false, false, false, false, 0)
+		_record_music_flow_action(true, 1, false, _skill_level("thieving") > old_level, _skill_level("thieving") > old_level, 0.0)
+	else:
+		var cooldown_until := _unix_now() + int(heist.get("cooldown_seconds", 60))
+		state["cooldown_until_unix"] = cooldown_until
+		thieving_trophies[heist_id] = state
+		var failure_xp := maxi(1, int(round(float(heist.get("xp", 1)) * 0.20)))
+		skills["thieving"]["xp"] = int(skills.get("thieving", {}).get("xp", 0)) + failure_xp
+		_recalculate_level("thieving")
+		_reset_activity_completion_streak()
+		consecutive_activity_crit_count = 0
+		_set_result("%s +%s XP. Try again in %s." % [str(heist.get("failure_text", "Heist failed.")), failure_xp, _format_duration(float(heist.get("cooldown_seconds", 60)))])
+		_play_action_feedback(key, false, failure_xp, 0.0)
+		_play(failure_player)
+		_record_music_flow_action(false, 0, false, false, false, 0.0)
+	_record_activity_start_for_tips()
+	_record_activity_completion_for_tips()
+	save_game()
+	if not pending_thieving_trophy_reward_float.is_empty():
+		_update_ui(0.0, true)
+		call_deferred("_play_pending_thieving_trophy_reward_float")
+	else:
+		var restore_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
+		_render_screen(false, restore_scroll)
+		_update_ui(0.0, true)
+
+
 func _pop_activity_button(action_key: String) -> void:
 	if not action_cards.has(action_key):
 		return
 	var card := action_cards[action_key] as Dictionary
+	if action_key.begins_with("thieving_heist:"):
+		var heist_button := card.get("button") as Control
+		if heist_button != null:
+			_animate_activity_press_effect(heist_button, "%s:button" % action_key, 0.965)
+		return
 	var pop := card.get("pop") as Control
 	if pop != null:
 		_animate_activity_press_effect(pop, action_key, 0.982)
@@ -15295,6 +18314,17 @@ func _show_skills_module() -> void:
 	_select_launch_skill_page()
 	_play_default_button_sfx()
 	_render_screen(true)
+
+
+func _show_hub() -> void:
+	if not _top_level_nav_allowed("hub"):
+		return
+	if current_screen == "settings":
+		_disarm_reset_data_confirmation()
+	current_screen = "hub"
+	hub_detail_open = false
+	_play_default_button_sfx()
+	_render_screen()
 
 
 func _show_shop() -> void:
@@ -16176,7 +19206,6 @@ func _rebuild_achievement_log_tab() -> void:
 	var hide_completed := achievements_hide_completed != null and not achievements_hide_completed.button_pressed
 	var any_visible := false
 	for achievement in _visible_achievement_milestones(hide_completed):
-		var completed := bool(achievement["completed"])
 		any_visible = true
 		achievements_list_stack.add_child(_achievement_log_card(achievement))
 	if not any_visible:
@@ -16228,7 +19257,8 @@ func _achievement_art(achievement: Dictionary) -> Control:
 				levels.append(tier)
 			_populate_achievement_medal_cluster(art, levels)
 		"cumulative_medals":
-			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CUMULATIVE_MEDALS_ART), Vector2(6, -7), Vector2(166, 166), 1)
+			art.custom_minimum_size = Vector2(220, 172)
+			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CUMULATIVE_MEDALS_ART), Vector2(0, -4), Vector2(172, 172), 1)
 		"activity_crit":
 			art.custom_minimum_size = Vector2(236, 180)
 			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CRIT_ART), Vector2(0, 2), Vector2(236, 176), 1)
@@ -17416,6 +20446,242 @@ func _float_xp(parent: Control, anchor: Control, xp_amount: int) -> void:
 	_float_reward(parent, anchor, "+%s XP" % xp_amount, 92, Color("#2ff06d"), Vector2(0, -86), Vector2(0, -230), 0.0)
 
 
+func _play_pending_thieving_trophy_reward_float() -> void:
+	if pending_thieving_trophy_reward_float.is_empty():
+		return
+	if bool(pending_thieving_trophy_reward_float.get("playing", false)):
+		return
+	pending_thieving_trophy_reward_float["playing"] = true
+	var reward := pending_thieving_trophy_reward_float.duplicate()
+	await get_tree().process_frame
+	await get_tree().create_timer(0.18).timeout
+	if pending_thieving_trophy_reward_float.is_empty():
+		return
+	_play_thieving_trophy_hub_float(str(reward.get("key", "")), int(reward.get("xp", 0)))
+
+
+func _play_thieving_trophy_hub_float(action_key: String, xp_amount: int) -> void:
+	if not action_cards.has(action_key):
+		pending_thieving_trophy_reward_float.clear()
+		return
+	var card := action_cards[action_key] as Dictionary
+	var trophy := card.get("trophy") as TextureRect
+	var anchor := card.get("art_panel") as Control
+	if trophy == null or not is_instance_valid(trophy) or anchor == null or not is_instance_valid(anchor) or not anchor.is_inside_tree():
+		pending_thieving_trophy_reward_float.clear()
+		return
+	if trophy.texture == null:
+		pending_thieving_trophy_reward_float.clear()
+		return
+	var source_rect := trophy.get_global_rect()
+	if source_rect.size.x <= 1.0 or source_rect.size.y <= 1.0:
+		source_rect = anchor.get_global_rect()
+	var to_local := get_global_transform_with_canvas().affine_inverse()
+	var start_center := to_local * source_rect.get_center()
+	var target_center := Vector2(_current_canvas_size().x * 0.5, _current_canvas_size().y - BOTTOM_NAV_HEIGHT * 0.52)
+	if hub_tab != null and is_instance_valid(hub_tab) and hub_tab.is_inside_tree():
+		target_center = to_local * hub_tab.get_global_rect().get_center()
+	var holder_size := Vector2(maxf(360.0, source_rect.size.x), maxf(330.0, source_rect.size.y))
+	var holder := Control.new()
+	holder.size = holder_size
+	holder.position = start_center - holder_size * 0.5
+	holder.pivot_offset = holder_size * 0.5
+	holder.scale = Vector2(0.86, 0.86)
+	holder.rotation = -0.08
+	holder.modulate = Color(1, 1, 1, 0)
+	holder.z_index = 4097
+	holder.z_as_relative = false
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fishing_collection_canvas().add_child(holder)
+	_float_thieving_heist_xp_reward(start_center, xp_amount)
+
+	var glow := Panel.new()
+	glow.anchor_left = 0.5
+	glow.anchor_right = 0.5
+	glow.anchor_top = 0.5
+	glow.anchor_bottom = 0.5
+	glow.offset_left = -holder_size.x * 0.42
+	glow.offset_right = holder_size.x * 0.42
+	glow.offset_top = -holder_size.y * 0.36
+	glow.offset_bottom = holder_size.y * 0.36
+	glow.add_theme_stylebox_override("panel", _thieving_trophy_soft_glow_style())
+	glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glow.z_index = 0
+	holder.add_child(glow)
+
+	var old_parent := trophy.get_parent()
+	if old_parent != null:
+		old_parent.remove_child(trophy)
+	holder.add_child(trophy)
+	trophy.anchor_left = 0.0
+	trophy.anchor_right = 1.0
+	trophy.anchor_top = 0.0
+	trophy.anchor_bottom = 1.0
+	trophy.offset_left = 34
+	trophy.offset_right = -34
+	trophy.offset_top = 72
+	trophy.offset_bottom = -6
+	trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	trophy.z_index = 3
+	card["trophy"] = null
+
+	var float_center := start_center + Vector2(randf_range(-50.0, 50.0), -250.0)
+	var control_1 := float_center + Vector2(randf_range(-220.0, 220.0), -260.0)
+	var control_2 := target_center + Vector2(randf_range(-160.0, 160.0), -430.0)
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(holder, "modulate:a", 1.0, 0.16)
+	tween.tween_property(glow, "modulate:a", 0.0, 1.30).set_delay(0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_method(
+		func(progress: float) -> void:
+			if holder == null or not is_instance_valid(holder):
+				return
+			var p := clampf(progress, 0.0, 1.0)
+			var center := start_center.lerp(float_center, 1.0 - pow(1.0 - p, 2.2))
+			holder.position = center + Vector2(sin(p * TAU * 1.6) * 18.0, 0) - holder.size * 0.5
+			holder.rotation = lerpf(-0.08, 0.08, sin(p * PI))
+			holder.scale = Vector2.ONE * lerpf(0.86, 1.28, sin(p * PI * 0.5)),
+		0.0,
+		1.0,
+		0.72
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.chain()
+	tween.tween_interval(0.22)
+	tween.chain()
+	tween.tween_method(
+		func(progress: float) -> void:
+			if holder == null or not is_instance_valid(holder):
+				return
+			var p := clampf(progress, 0.0, 1.0)
+			var q := 1.0 - p
+			var center := q * q * q * float_center + 3.0 * q * q * p * control_1 + 3.0 * q * p * p * control_2 + p * p * p * target_center
+			var bob := Vector2(sin(p * TAU * 3.0) * 34.0 * (1.0 - p), cos(p * TAU * 2.0) * 20.0 * (1.0 - p))
+			holder.position = center + bob - holder.size * 0.5
+			holder.rotation = sin(p * TAU * 2.4) * 0.16 * (1.0 - p) - 0.08 * (1.0 - p)
+			var zoom := lerpf(1.28, 0.22, pow(p, 2.2))
+			holder.scale = Vector2(zoom, zoom)
+			holder.modulate.a = 1.0 if p < 0.86 else lerpf(1.0, 0.0, (p - 0.86) / 0.14),
+		0.0,
+		1.0,
+		1.48
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	tween.chain()
+	tween.tween_interval(0.20)
+	tween.chain().tween_callback(func() -> void:
+		if holder != null and is_instance_valid(holder):
+			holder.queue_free()
+		_pop_nav_button(hub_tab)
+		_fade_completed_thieving_heist_card(action_key)
+	)
+
+
+func _thieving_trophy_soft_glow_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.91, 0.42, 0.20)
+	style.corner_radius_top_left = 999
+	style.corner_radius_top_right = 999
+	style.corner_radius_bottom_left = 999
+	style.corner_radius_bottom_right = 999
+	style.shadow_color = Color(1.0, 0.84, 0.26, 0.46)
+	style.shadow_size = 34
+	style.shadow_offset = Vector2.ZERO
+	return style
+
+
+func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> void:
+	if xp_amount <= 0:
+		return
+	var reward_size := Vector2(460, 132)
+	var canvas_size := _current_canvas_size()
+	var reward_center := start_center + Vector2(360.0 + randf_range(-18.0, 26.0), -110.0 + randf_range(-18.0, 16.0))
+	reward_center.x = clampf(reward_center.x, reward_size.x * 0.5 + 24.0, canvas_size.x - reward_size.x * 0.5 - 24.0)
+	var holder := Control.new()
+	holder.size = reward_size
+	holder.position = reward_center - reward_size * 0.5
+	holder.pivot_offset = reward_size * 0.5
+	holder.rotation = randf_range(-0.08, 0.08)
+	holder.scale = Vector2(0.76, 0.76)
+	holder.modulate = Color(1, 1, 1, 0)
+	holder.z_index = 4100
+	holder.z_as_relative = false
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fishing_collection_canvas().add_child(holder)
+
+	var shadow := _label("+%s XP!" % xp_amount, 82, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER)
+	shadow.size = reward_size
+	shadow.position = Vector2(6, 7)
+	shadow.modulate = Color(1, 1, 1, 0.56)
+	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(shadow)
+
+	var label := _label("+%s XP!" % xp_amount, 82, Color("#2ff06d"), HORIZONTAL_ALIGNMENT_CENTER)
+	label.size = reward_size
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", 22)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(label)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(holder, "position", holder.position + Vector2(randf_range(18.0, 58.0), -250.0), 1.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "rotation", holder.rotation + randf_range(-0.06, 0.06), 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "modulate:a", 1.0, 0.10)
+	tween.tween_property(holder, "modulate:a", 0.0, 0.56).set_delay(0.66).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_callback(holder.queue_free)
+
+
+func _fade_completed_thieving_heist_card(action_key: String) -> void:
+	var card := action_cards.get(action_key, {}) as Dictionary
+	var root := card.get("root") as Control
+	if root == null or not is_instance_valid(root) or not root.is_inside_tree():
+		_refresh_skill_detail_after_thieving_heist_fade(-1)
+		return
+	var restore_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.clip_contents = true
+	_hold_skill_detail_layout_refresh(1.25)
+	var start_height := maxf(root.custom_minimum_size.y, root.size.y)
+	var tween := create_tween()
+	tween.tween_interval(0.18)
+	tween.tween_property(root, "modulate:a", 0.0, 0.58).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(0.12)
+	tween.tween_property(root, "custom_minimum_size:y", 0.0, 0.48).from(start_height).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_interval(0.08)
+	tween.chain().tween_callback(_refresh_skill_detail_after_thieving_heist_fade.bind(restore_scroll))
+
+
+func _refresh_skill_detail_after_thieving_heist_fade(restore_scroll: int) -> void:
+	pending_thieving_trophy_reward_float.clear()
+	if current_screen != "skill" or selected_skill_id != "thieving":
+		return
+	_set_detail_unlock_scroll_spacer_height(0.0)
+	var action_key := ""
+	for raw_key in action_cards.keys():
+		if str(raw_key).begins_with("thieving_heist:"):
+			var card := action_cards.get(raw_key, {}) as Dictionary
+			var root := card.get("root") as Control
+			if root != null and is_instance_valid(root) and root.custom_minimum_size.y <= 1.0:
+				action_key = str(raw_key)
+				break
+	if not action_key.is_empty():
+		var card := action_cards.get(action_key, {}) as Dictionary
+		var root := card.get("root") as Control
+		if root != null and is_instance_valid(root):
+			var rendered_id := "heist:%s" % action_key.substr("thieving_heist:".length())
+			detail_action_card_nodes.erase(rendered_id)
+			detail_rendered_action_ids.erase(rendered_id)
+			action_cards.erase(action_key)
+			root.queue_free()
+			if detail_actions_scroll != null and restore_scroll >= 0:
+				var clamped_scroll := clampi(restore_scroll, 0, detail_actions_scroll.get_max_scroll_vertical())
+				detail_actions_scroll.drag_scroll_position = float(clamped_scroll)
+				detail_actions_scroll.scroll_vertical = clamped_scroll
+	_update_ui(0.0, true)
+
+
 func _float_mastery_bar(parent: Control, anchor: Control, mastery_amount: float) -> void:
 	if mastery_amount <= 0:
 		return
@@ -17545,7 +20811,7 @@ func _show_achievement_unlocked(achievement: Dictionary) -> void:
 	banner.scale = Vector2(0.92, 0.92)
 	banner.pivot_offset = presentation_size * 0.5
 	var exit_offset := Vector2(0, 110.0 * fitted_scale)
-	banner.set_meta("achievement_dismiss_after_msec", Time.get_ticks_msec() + int(ACHIEVEMENT_TOAST_DISMISS_GRACE_SECONDS * 1000.0))
+	banner.set_meta("achievement_exit_offset", exit_offset)
 	banner.gui_input.connect(_on_achievement_toast_gui_input.bind(banner, exit_offset))
 
 	var tween := create_tween()
@@ -17568,10 +20834,23 @@ func _on_achievement_toast_gui_input(event: InputEvent, banner: Control, exit_of
 		get_viewport().set_input_as_handled()
 
 
+func _route_achievement_toast_input(event: InputEvent) -> bool:
+	if achievement_toasts.is_empty():
+		return false
+	for i in range(achievement_toasts.size() - 1, -1, -1):
+		var toast := achievement_toasts[i] as Control
+		if toast == null or not is_instance_valid(toast) or not toast.visible or not toast.is_visible_in_tree():
+			continue
+		if not _achievement_toast_accepts_dismiss_event(event, toast):
+			continue
+		_block_background_input_briefly()
+		_dismiss_achievement_toast(toast, toast.get_meta("achievement_exit_offset", Vector2(0, 110.0)) as Vector2, false)
+		return true
+	return false
+
+
 func _achievement_toast_accepts_dismiss_event(event: InputEvent, banner: Control) -> bool:
 	if banner == null or not is_instance_valid(banner):
-		return false
-	if Time.get_ticks_msec() < int(banner.get_meta("achievement_dismiss_after_msec", 0)):
 		return false
 	if event is InputEventMouseButton:
 		if event.button_index != MOUSE_BUTTON_LEFT or not event.pressed:
@@ -18960,6 +22239,8 @@ func _set_fishing_tool_wallet_open(open: bool) -> void:
 		return
 	fishing_tool_wallet_last_toggle_msec = now_msec
 	_play_fishing_wallet_circle_pop()
+	if open:
+		_play_fishing_wallet_open_sfx()
 	fishing_tool_wallet_open = open
 	if open:
 		_render_fishing_tool_popup_menu()
@@ -18987,6 +22268,15 @@ func _play_fishing_wallet_circle_pop(delay := 0.0) -> void:
 		fishing_tool_wallet_pop_tween.tween_interval(delay)
 	fishing_tool_wallet_pop_tween.tween_property(detail_fish_circle, "scale", Vector2(1.08, 1.08), 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	fishing_tool_wallet_pop_tween.tween_property(detail_fish_circle, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _play_fishing_wallet_open_sfx() -> void:
+	_play_chain_impact_cluster(2, 0.34, "drag_start", 1.0)
+	_play_chain_jingle_mix(1, 0.16, 0.34, 0.16)
+
+
+func _play_fishing_gear_selected_sfx() -> void:
+	_play_chain_impact_cluster(1, 0.42, "click", 1.0)
 
 
 func _fishing_wallet_event_point(event: InputEvent) -> Dictionary:
@@ -19098,6 +22388,7 @@ func _on_fishing_tool_selected(tool_id: String) -> void:
 	if tool_id == equipped_fishing_tool_id:
 		_set_fishing_tool_wallet_open(false)
 		return
+	_play_fishing_gear_selected_sfx()
 	equipped_fishing_tool_id = tool_id
 	fishing_net_set_in_water = false
 	fishing_boat_set_in_water = false
@@ -21386,13 +24677,14 @@ func _play_padlock_click_shake(shake_body: Control) -> void:
 	if shake_body == null or not is_instance_valid(shake_body):
 		return
 	_play_padlock_cluster_sfx()
-	shake_body.position = Vector2.ZERO
-	shake_body.rotation = 0.0
 	var pivot_size := shake_body.size
 	if pivot_size.length_squared() <= 1.0:
 		pivot_size = FISHING_METHOD_PADLOCK_SIZE
 	shake_body.pivot_offset = pivot_size * 0.5
-	var base_position := Vector2.ZERO
+	var rest_meta_key := "padlock_shake_rest_position"
+	if not shake_body.has_meta(rest_meta_key):
+		shake_body.set_meta(rest_meta_key, shake_body.position)
+	var base_position := shake_body.get_meta(rest_meta_key) as Vector2
 	var base_rotation := 0.0
 	var shake_direction := -1.0 if randf() < 0.5 else 1.0
 	var tween_meta_key := "padlock_shake_tween"
@@ -21400,6 +24692,8 @@ func _play_padlock_click_shake(shake_body: Control) -> void:
 		var existing := shake_body.get_meta(tween_meta_key) as Tween
 		if existing != null and existing.is_valid():
 			existing.kill()
+	shake_body.position = base_position
+	shake_body.rotation = base_rotation
 	var tween := create_tween()
 	shake_body.set_meta(tween_meta_key, tween)
 	tween.tween_method(
@@ -22416,6 +25710,8 @@ func _complete_fishing_action_attempt(action: Dictionary, active_key: String, bo
 				last_result = "+%s XP, +%s catch loaded boat (%s/%s)." % [xp_reward, fish_count, fishing_boat_stored_fish, FISHING_BOAT_HAUL_THRESHOLD]
 		else:
 			last_result = "+%s XP, +%s food from %s." % [xp_reward, _fish_currency_display_text(food_value), action["name"]]
+		if _record_hub_mission_action_completion(skill_id, action_id):
+			last_result += " Mission progress."
 		if not new_global_buffs.is_empty():
 			last_result += " " + " ".join(new_global_buffs)
 		if show_success_feedback:
@@ -22533,6 +25829,10 @@ func _init_state() -> void:
 	fishing_mirror_collected = false
 	selected_fishing_locations.clear()
 	passive_modules.clear()
+	thieving_trophies.clear()
+	hub_module_positions.clear()
+	hub_missions.clear()
+	hub_mission_cooldown_until_unix = 0
 	manual_activity_unlocks.clear()
 	plank_boost_enabled = false
 	activity_crit_seen = false
@@ -22581,6 +25881,7 @@ func _init_state() -> void:
 				_ensure_passive_module_state(str(action.get("id", "")), last_passive_process_unix)
 				continue
 			mastery[_action_key(skill_id, str(action["id"]))] = {"xp": 0, "level": 0}
+	_ensure_all_thieving_trophy_state()
 	_invalidate_stat_caches()
 
 
@@ -22607,6 +25908,9 @@ func _validate_state() -> void:
 	if not skills.has(selected_skill_id):
 		selected_skill_id = "fight"
 	_sync_passive_module_unlocks(_unix_now())
+	_ensure_all_thieving_trophy_state()
+	_validate_hub_module_positions()
+	_sync_hub_missions()
 	_invalidate_stat_caches()
 
 
@@ -22635,6 +25939,51 @@ func _apply_debug_temp_fishing_99_all_tools() -> void:
 	current_screen = "skill"
 	last_result = "TEMP DEBUG: Fishing 99 and all fishing tools enabled. Saves are paused."
 	_invalidate_stat_caches()
+
+
+func _apply_debug_temp_thieving_70_trophy_test() -> void:
+	if not DEBUG_TEMP_THIEVING_70_TROPHY_TEST:
+		return
+	if not skills.has("thieving"):
+		skills["thieving"] = {"xp": 0, "level": 1}
+	skills["thieving"]["xp"] = _xp_for_level(70)
+	_recalculate_level("thieving")
+	_ensure_debug_min_total_level(DEBUG_TEMP_HUB_BUILD_TOTAL_LEVEL)
+	stamina["thieving"] = float(_max_stamina("thieving"))
+	stamina_bank["thieving"] = 0.0
+	log_currency = maxi(log_currency, 1000000)
+	fish_currency = maxf(fish_currency, 1000000.0)
+	thieving_trophies.clear()
+	hub_modules.erase("trophy")
+	pending_thieving_trophy_reward_float.clear()
+	_ensure_all_thieving_trophy_state()
+	selected_skill_id = "thieving"
+	current_screen = "hub"
+	last_result = "TEMP DEBUG: Hub build Total Lv 70, Thieving 70, 1M wood, and 1M fish enabled. Saves are paused."
+	_invalidate_stat_caches()
+
+
+func _ensure_debug_min_total_level(target_total_level: int) -> void:
+	var remaining := maxi(0, target_total_level - _global_level())
+	if remaining <= 0:
+		return
+	var skill_ids := skills.keys()
+	skill_ids.sort()
+	for raw_skill_id in skill_ids:
+		if remaining <= 0:
+			break
+		var skill_id := str(raw_skill_id)
+		if skill_id == "build":
+			continue
+		var current_level := _skill_level(skill_id)
+		if current_level >= 99:
+			continue
+		var added_levels := mini(remaining, 99 - current_level)
+		skills[skill_id]["xp"] = maxi(int(skills[skill_id].get("xp", 0)), _xp_for_level(current_level + added_levels))
+		_recalculate_level(skill_id)
+		stamina[skill_id] = float(_max_stamina(skill_id))
+		stamina_bank[skill_id] = 0.0
+		remaining -= added_levels
 
 
 func _migrate_manual_activity_unlocks_from_levels() -> void:
@@ -22671,7 +26020,7 @@ func _select_launch_skill_page() -> void:
 
 
 func save_game() -> void:
-	if DEBUG_TEMP_FISHING_99_ALL_TOOLS:
+	if DEBUG_TEMP_FISHING_99_ALL_TOOLS or DEBUG_TEMP_THIEVING_70_TROPHY_TEST:
 		return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
@@ -22704,6 +26053,13 @@ func save_game() -> void:
 		"fishing_mirror_collected": fishing_mirror_collected,
 		"selected_fishing_locations": selected_fishing_locations,
 		"passive_modules": passive_modules,
+		"thieving_trophies": thieving_trophies,
+		"hub_modules": hub_modules,
+		"hub_selected_module_id": hub_selected_module_id,
+		"hub_module_positions": _hub_module_positions_for_save(),
+		"hub_decor_layout": hub_decor_layout,
+		"hub_missions": hub_missions,
+		"hub_mission_cooldown_until_unix": hub_mission_cooldown_until_unix,
 		"manual_activity_unlocks": manual_activity_unlocks,
 		"plank_boost_enabled": plank_boost_enabled,
 		"activity_crit_seen": activity_crit_seen,
@@ -22765,6 +26121,9 @@ func _autosave_has_live_state_changes() -> bool:
 		return true
 	if ad_bonus_seconds_remaining > 0.0:
 		return true
+	for raw_module_id in HUB_MODULE_ORDER:
+		if _hub_module_building(str(raw_module_id)):
+			return true
 	for raw_skill_id in skills.keys():
 		var skill_id := str(raw_skill_id)
 		if _stamina_value(skill_id) < float(_max_stamina(skill_id)) - 0.0001:
@@ -22791,7 +26150,7 @@ func _unix_now_msec() -> int:
 func _apply_offline_progress(saved_at_unix_time: int) -> int:
 	var now := _unix_now()
 	last_save_unix_time = now
-	var offline := int(clamp(now - saved_at_unix_time, 0, MAX_OFFLINE_SECONDS))
+	var offline := int(clamp(now - saved_at_unix_time, 0, _hub_offline_cap_seconds()))
 	if offline <= 0:
 		return 0
 	if not offline_progress_enabled:
@@ -22895,7 +26254,7 @@ func _seconds_until_stamina_cost(skill_id: String, cost: float) -> float:
 	if _stamina_value(skill_id) + 0.0001 >= cost:
 		return 0.0
 	var missing := cost - _stamina_value(skill_id)
-	return maxf(0.0, missing * STAMINA_REGEN_SECONDS)
+	return maxf(0.0, missing * STAMINA_REGEN_SECONDS / (1.0 + _hub_pond_regen_bonus()))
 
 
 func _grant_offline_action_completion(skill_id: String, action_id: String, action: Dictionary) -> Dictionary:
@@ -22921,6 +26280,7 @@ func _grant_offline_action_completion(skill_id: String, action_id: String, actio
 		if plank_bonus_used:
 			log_currency = maxi(0, log_currency - 1)
 			logs_spent = 1
+		_record_hub_mission_action_completion(skill_id, action_id)
 		_recalculate_level(skill_id)
 		_queue_locked_activity_preview_reveal_if_needed(locked_preview_available_before)
 		_sync_passive_module_unlocks(_unix_now())
@@ -23027,6 +26387,19 @@ func load_game() -> void:
 		for key in loaded_manual_unlocks.keys():
 			if bool(loaded_manual_unlocks[key]):
 				manual_activity_unlocks[_canonical_action_key(str(key))] = true
+	thieving_trophies.clear()
+	var loaded_thieving_trophies = data.get("thieving_trophies", {})
+	if typeof(loaded_thieving_trophies) == TYPE_DICTIONARY:
+		for raw_trophy_id in (loaded_thieving_trophies as Dictionary).keys():
+			var trophy_id := str(raw_trophy_id)
+			var raw_trophy_state = (loaded_thieving_trophies as Dictionary).get(raw_trophy_id, {})
+			if typeof(raw_trophy_state) == TYPE_DICTIONARY:
+				thieving_trophies[trophy_id] = {
+					"stolen": bool((raw_trophy_state as Dictionary).get("stolen", false)),
+					"cooldown_until_unix": maxi(0, int((raw_trophy_state as Dictionary).get("cooldown_until_unix", (raw_trophy_state as Dictionary).get("cooldown_until_unix_msec", 0))))
+				}
+			elif typeof(raw_trophy_state) == TYPE_BOOL:
+				thieving_trophies[trophy_id] = {"stolen": bool(raw_trophy_state), "cooldown_until_unix": 0}
 	activity_crit_seen = bool(data.get("activity_crit_seen", false))
 	activity_mega_crit_seen = bool(data.get("activity_mega_crit_seen", false))
 	if activity_mega_crit_seen:
@@ -23120,6 +26493,38 @@ func load_game() -> void:
 			module_state["seeded"] = bool(loaded_module.get("seeded", module_state.get("seeded", false)))
 			module_state["last_update"] = int(loaded_module.get("last_update", module_state.get("last_update", _unix_now())))
 			passive_modules[str(module_id)] = module_state
+	_ensure_all_thieving_trophy_state()
+	hub_modules.clear()
+	var loaded_hub_modules = data.get("hub_modules", {})
+	if typeof(loaded_hub_modules) == TYPE_DICTIONARY:
+		for raw_module_id in (loaded_hub_modules as Dictionary).keys():
+			var module_id := str(raw_module_id)
+			if not HUB_MODULE_DEFS.has(module_id) or typeof((loaded_hub_modules as Dictionary).get(raw_module_id, {})) != TYPE_DICTIONARY:
+				continue
+			var loaded_hub_module := (loaded_hub_modules as Dictionary).get(raw_module_id, {}) as Dictionary
+			hub_modules[module_id] = {
+				"level": clampi(int(loaded_hub_module.get("level", 0)), 0, HUB_MODULE_MAX_LEVEL),
+				"building": bool(loaded_hub_module.get("building", false)),
+				"build_started_unix_msec": maxi(0, int(loaded_hub_module.get("build_started_unix_msec", loaded_hub_module.get("build_started_msec", 0))))
+			}
+			_ensure_hub_module_state(module_id)
+	hub_selected_module_id = str(data.get("hub_selected_module_id", hub_selected_module_id))
+	if not HUB_MODULE_DEFS.has(hub_selected_module_id):
+		hub_selected_module_id = "pond"
+	_restore_hub_module_positions(data.get("hub_module_positions", {}))
+	_restore_hub_decor_layout(data.get("hub_decor_layout", []))
+	hub_missions.clear()
+	var loaded_hub_missions = data.get("hub_missions", [])
+	if typeof(loaded_hub_missions) == TYPE_ARRAY:
+		for raw_mission in (loaded_hub_missions as Array):
+			if typeof(raw_mission) != TYPE_DICTIONARY:
+				continue
+			var mission := _normalized_hub_mission(raw_mission as Dictionary)
+			if not mission.is_empty():
+				hub_missions.append(mission)
+	hub_mission_cooldown_until_unix = maxi(0, int(data.get("hub_mission_cooldown_until_unix", 0)))
+	_sync_hub_missions()
+	_sync_hub_trophy_level_from_thieving()
 	plank_boost_enabled = bool(data.get("plank_boost_enabled", false))
 	ad_bonus_seconds_remaining = clampf(float(data.get("ad_bonus_seconds_remaining", 0.0)), 0.0, float(AD_BONUS_MAX_SECONDS))
 	selected_skill_id = str(data.get("selected_skill_id", selected_skill_id))
@@ -23855,7 +27260,8 @@ func _activity_medal_rate_bonus(skill_id: String, action: Dictionary) -> float:
 func _effective_stamina(skill_id: String, action: Dictionary) -> float:
 	var base_stamina := maxi(1, int(action.get("stamina", 1)))
 	var medal_reduction := _activity_medal_stamina_cost_reduction(skill_id, action)
-	return maxf(0.01, float(base_stamina) * (1.0 - medal_reduction))
+	var mission_reduction := _hub_mission_stamina_reduction() if _hub_mission_bonus_applies(skill_id, action) else 0.0
+	return maxf(0.01, float(base_stamina) * (1.0 - clampf(medal_reduction + mission_reduction, 0.0, 0.92)))
 
 
 func _display_stamina_cost(skill_id: String, action: Dictionary) -> int:
@@ -23867,7 +27273,8 @@ func _effective_seconds(skill_id: String, action: Dictionary) -> float:
 	var speed_bonus := clampf(_global_medal_bonus("speed_mult") + _ad_bonus_speed_mult(), 0.0, 0.75)
 	var skill_timer_reduction := clampf(_skill_level_timer_reduction(skill_id), 0.0, 0.85)
 	var medal_time_reduction := _activity_medal_time_reduction(skill_id, action)
-	var total_reduction := clampf(speed_bonus + skill_timer_reduction + medal_time_reduction, 0.0, 0.9)
+	var mission_time_reduction := _hub_mission_time_reduction() if _hub_mission_bonus_applies(skill_id, action) else 0.0
+	var total_reduction := clampf(speed_bonus + skill_timer_reduction + medal_time_reduction + mission_time_reduction, 0.0, 0.9)
 	return maxf(0.1, base_seconds * (1.0 - total_reduction))
 
 
@@ -23898,12 +27305,18 @@ func _fishing_boat_tick_seconds(action: Dictionary) -> float:
 
 func _action_cycle_seconds(skill_id: String, action: Dictionary) -> float:
 	if _fishing_net_soak_active(skill_id):
-		return _apply_activity_medal_time_reduction(skill_id, action, _fishing_net_tick_seconds(action))
+		return _apply_hub_mission_time_reduction(skill_id, action, _apply_activity_medal_time_reduction(skill_id, action, _fishing_net_tick_seconds(action)))
 	if _fishing_boat_soak_active(skill_id):
-		return _apply_activity_medal_time_reduction(skill_id, action, _fishing_boat_tick_seconds(action))
+		return _apply_hub_mission_time_reduction(skill_id, action, _apply_activity_medal_time_reduction(skill_id, action, _fishing_boat_tick_seconds(action)))
 	if _fishing_rework_active_for_skill(skill_id):
-		return _apply_activity_medal_time_reduction(skill_id, action, maxf(0.1, float(action.get("seconds", 1.0))) * _fishing_tool_time_multiplier())
+		return _apply_hub_mission_time_reduction(skill_id, action, _apply_activity_medal_time_reduction(skill_id, action, maxf(0.1, float(action.get("seconds", 1.0))) * _fishing_tool_time_multiplier()))
 	return _effective_seconds(skill_id, action)
+
+
+func _apply_hub_mission_time_reduction(skill_id: String, action: Dictionary, seconds: float) -> float:
+	if not _hub_mission_bonus_applies(skill_id, action):
+		return seconds
+	return maxf(0.1, maxf(0.1, seconds) * (1.0 - _hub_mission_time_reduction()))
 
 
 func _action_progress_speed_multiplier(skill_id: String, _action: Dictionary, has_stamina_for_action: bool) -> float:
@@ -24185,6 +27598,8 @@ func _effective_xp(action: Dictionary, skill_id := "", force_plank_bonus := fals
 	var xp_bonus := _global_medal_bonus("xp_mult") + _ad_bonus_xp_mult()
 	if force_plank_bonus or _plank_bonus_applies(skill_id):
 		xp_bonus += PLANK_BUILD_XP_MULT
+	if _hub_mission_bonus_applies(skill_id, action):
+		xp_bonus += _hub_mission_xp_bonus()
 	return maxi(1, int(round(float(action.get("xp", 1)) * (1.0 + xp_bonus))))
 
 
@@ -24243,7 +27658,9 @@ func _success_chance(skill_id: String, action: Dictionary) -> float:
 		return _fishing_attempt_success_chance(str(action.get("id", "")))
 	var base_success := float(action.get("success", 90.0))
 	var medal_success := _global_medal_bonus("success_bonus") + _activity_medal_rate_bonus(skill_id, action)
-	return clampf(base_success + medal_success, 5.0, 100.0)
+	var success_before_barn := clampf(base_success + medal_success, 5.0, 100.0)
+	var barn_bonus := (100.0 - success_before_barn) * _hub_barn_failure_factor()
+	return clampf(success_before_barn + barn_bonus + _hub_trophy_success_bonus() * 100.0, 5.0, 100.0)
 
 
 func _activity_crit_chance(streak_bonus: bool) -> float:
@@ -24413,6 +27830,13 @@ func _image(path: String, minimum_size: Vector2) -> TextureRect:
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return image
+
+
+func _spritesheet_texture(path: String, index: int, cell_size: Vector2) -> Texture2D:
+	var atlas := AtlasTexture.new()
+	atlas.atlas = _texture(path)
+	atlas.region = Rect2(Vector2(maxi(0, index) * cell_size.x, 0), cell_size)
+	return atlas
 
 
 func _action_art_image(path: String) -> RoundedTextureRect:
@@ -24694,6 +28118,59 @@ func _menu_button(text: String) -> Button:
 	button.add_theme_stylebox_override("hover", _paper_button_style(COLOR_BLUE, 48))
 	button.add_theme_stylebox_override("pressed", _paper_button_style(COLOR_BLUE.darkened(0.10), 48, 72, true))
 	button.add_theme_stylebox_override("disabled", _paper_button_style(Color("#b9b3a8"), 48, 72, false, true))
+	_attach_button_depress_animation(button, 0.97)
+	return button
+
+
+func _home_action_panel_button(text: String, icon_texture: Texture2D, icon_size: Vector2) -> Button:
+	var button := Button.new()
+	button.text = ""
+	button.custom_minimum_size = Vector2(_skill_content_width(), 1040)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	button.focus_mode = Control.FOCUS_NONE
+	button.clip_contents = true
+	button.add_theme_stylebox_override("normal", _paper_button_style(COLOR_BLUE, 58))
+	button.add_theme_stylebox_override("hover", _paper_button_style(COLOR_BLUE, 58))
+	button.add_theme_stylebox_override("pressed", _paper_button_style(COLOR_BLUE.darkened(0.10), 58, 76, true))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_theme_constant_override("margin_left", 86)
+	margin.add_theme_constant_override("margin_right", 86)
+	margin.add_theme_constant_override("margin_top", 72)
+	margin.add_theme_constant_override("margin_bottom", 84)
+	button.add_child(margin)
+
+	var stack := VBoxContainer.new()
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_theme_constant_override("separation", 30)
+	margin.add_child(stack)
+
+	var icon_holder := Control.new()
+	icon_holder.custom_minimum_size = icon_size
+	icon_holder.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	icon_holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(icon_holder)
+
+	var icon := _image_from_texture(icon_texture, icon_size)
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon_holder.add_child(icon)
+
+	var label := _label(text, 94, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	label.custom_minimum_size = Vector2(0, 130)
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", DEFAULT_BUTTON_TEXT_OUTLINE_SIZE)
+	stack.add_child(label)
+
 	_attach_button_depress_animation(button, 0.97)
 	return button
 
@@ -25695,8 +29172,8 @@ func _chat_strip_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.725, 0.725, 0.725, 1.0)
 	style.draw_center = true
-	style.border_color = Color("#8f8f8f")
-	style.border_width_top = 0
+	style.border_color = COLOR_INK
+	style.border_width_top = 5
 	style.border_width_bottom = 5
 	style.content_margin_left = 0
 	style.content_margin_right = 0
@@ -25927,10 +29404,10 @@ uniform vec4 chroma_key : source_color = vec4(0.0, 1.0, 0.0, 1.0);
 void fragment() {
 	vec4 color = texture(TEXTURE, UV);
 	float distance_from_key = distance(color.rgb, chroma_key.rgb);
-	if (distance_from_key < 0.30) {
+	if (distance_from_key < 0.08) {
 		color.a = 0.0;
 	}
-	COLOR = color;
+	COLOR = color * COLOR;
 }
 """
 	var material := ShaderMaterial.new()

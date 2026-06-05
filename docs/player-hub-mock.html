@@ -257,7 +257,7 @@
       box-shadow:1px 2px 0 #171615;
     }
 
-    .pond { left:20px; top:94px; }
+    .pond { right:18px; top:292px; }
     .pond .built {
       position:absolute;
       inset:32px 14px 12px;
@@ -281,7 +281,7 @@
     .pond .reed.a { left:24px; transform:rotate(-12deg); }
     .pond .reed.b { right:24px; transform:rotate(10deg); }
 
-    .barn { right:18px; top:144px; }
+    .barn { left:54px; top:92px; }
     .barn-shape {
       position:absolute;
       left:25px;
@@ -317,72 +317,74 @@
       border-bottom:0;
     }
 
-    .training { left:148px; top:254px; }
-    .ring {
+    .garden { left:24px; top:270px; }
+    .garden-rows {
       position:absolute;
-      inset:38px 16px 18px;
-      border:4px dashed #171615;
-      border-radius:50%;
-      background:rgba(194,145,83,.76);
-    }
-    .dummy {
-      position:absolute;
-      left:54px;
+      left:19px;
       top:38px;
+      width:84px;
+      height:58px;
+      border:3px solid #171615;
+      border-radius:44% 48% 42% 50%;
+      background:#8b5b31;
+      box-shadow:inset 0 -9px 0 rgba(0,0,0,.12), 3px 4px 0 rgba(23,22,21,.35);
+    }
+    .garden-rows::before,
+    .garden-rows::after {
+      content:"";
+      position:absolute;
+      left:11px;
+      right:11px;
+      height:5px;
+      border-top:3px solid #5f3b20;
+      border-bottom:2px solid rgba(255,255,255,.14);
+      border-radius:999px;
+    }
+    .garden-rows::before { top:17px; }
+    .garden-rows::after { top:34px; }
+    .sprout {
+      position:absolute;
       width:14px;
-      height:44px;
-      border:2px solid #171615;
-      border-radius:7px;
-      background:#e3b25e;
+      height:16px;
+      border-left:3px solid #2f7b32;
+      border-radius:50%;
     }
-    .dummy::before {
+    .sprout::after {
       content:"";
       position:absolute;
-      left:-10px;
-      top:10px;
-      width:30px;
+      left:1px;
+      top:2px;
+      width:12px;
       height:8px;
+      background:#4da548;
       border:2px solid #171615;
-      background:#7a4b25;
-      border-radius:5px;
+      border-radius:50%;
+      transform:rotate(-24deg);
+    }
+    .sprout.s1 { left:31px; top:47px; }
+    .sprout.s2 { left:65px; top:66px; transform:scale(.85); }
+
+    .trophy { right:18px; top:142px; }
+    .trophy-display {
+      position:absolute;
+      width:126px;
+      height:126px;
+      right:18px;
+      top:142px;
+    }
+    .platform {
+      position:absolute;
+      left:14px;
+      top:62px;
+      width:98px;
+      height:40px;
+      border:5px solid #171615;
+      border-radius:50%;
+      background:#b87935;
+      box-shadow:0 22px 0 #835025, 0 27px 0 #171615;
     }
 
-    .trophy { left:24px; bottom:120px; }
-    .case {
-      position:absolute;
-      left:27px;
-      top:39px;
-      width:70px;
-      height:56px;
-      border:3px solid #171615;
-      border-radius:8px;
-      background:#f0d48a;
-      box-shadow:inset -7px -7px 0 rgba(0,0,0,.12), 3px 4px 0 rgba(23,22,21,.35);
-    }
-    .case::before {
-      content:"";
-      position:absolute;
-      left:22px;
-      top:-20px;
-      width:26px;
-      height:30px;
-      border:3px solid #171615;
-      border-radius:50% 50% 36% 36%;
-      background:#fff2a8;
-    }
-    .case::after {
-      content:"";
-      position:absolute;
-      left:10px;
-      bottom:8px;
-      width:50px;
-      height:7px;
-      border:2px solid #171615;
-      background:#8f5a2c;
-      border-radius:5px;
-    }
-
-    .board { right:20px; bottom:94px; }
+    .board { left:24px; bottom:126px; }
     .board-shape {
       position:absolute;
       left:20px;
@@ -434,6 +436,43 @@
     }
     .callout strong { display:block; font-size:15px; }
     .callout span { display:block; color:#6e6658; font-size:11px; font-weight:850; line-height:1.25; margin-top:2px; }
+    .progress {
+      height:12px;
+      margin-top:8px;
+      border:2px solid #171615;
+      border-radius:999px;
+      background:#d9cfbc;
+      overflow:hidden;
+      box-shadow:inset 0 2px 0 rgba(0,0,0,.16);
+    }
+    .progress span {
+      display:block;
+      width:62%;
+      height:100%;
+      background:#35d86d;
+      border-right:2px solid #171615;
+    }
+    .smoke {
+      position:absolute;
+      z-index:7;
+      width:92px;
+      height:62px;
+      right:44px;
+      top:300px;
+      pointer-events:none;
+      opacity:.78;
+    }
+    .smoke::before,
+    .smoke::after {
+      content:"";
+      position:absolute;
+      border:3px solid #171615;
+      border-radius:50%;
+      background:rgba(247, 234, 215, .9);
+      box-shadow:18px -8px 0 rgba(247, 234, 215, .82), 36px 4px 0 rgba(247, 234, 215, .76);
+    }
+    .smoke::before { left:0; top:18px; width:36px; height:28px; }
+    .smoke::after { left:22px; top:4px; width:42px; height:34px; }
 
     .nav {
       position:absolute;
@@ -533,6 +572,26 @@
               <div class="rock r2"></div>
               <div class="rock r3"></div>
 
+              <button class="hotspot barn" aria-label="Barn hotspot">
+                <span class="patch"></span>
+                <span class="barn-shape"></span>
+                <span class="sign">B</span>
+                <small>Barn</small>
+              </button>
+
+              <div class="trophy-display" aria-label="Trophy display platform">
+                <span class="platform"></span>
+              </div>
+
+              <button class="hotspot garden" aria-label="Garden hotspot">
+                <span class="patch"></span>
+                <span class="garden-rows"></span>
+                <span class="sprout s1"></span>
+                <span class="sprout s2"></span>
+                <span class="sign">G</span>
+                <small>Garden</small>
+              </button>
+
               <button class="hotspot pond" aria-label="Fish pond hotspot">
                 <span class="built"></span>
                 <span class="reed a"></span>
@@ -541,42 +600,22 @@
                 <small>Pond Lv 1</small>
               </button>
 
-              <button class="hotspot barn" aria-label="Barn hotspot">
-                <span class="patch"></span>
-                <span class="barn-shape"></span>
-                <span class="sign">L</span>
-                <small>Barn</small>
-              </button>
-
-              <button class="hotspot training" aria-label="Training ring hotspot">
-                <span class="patch"></span>
-                <span class="ring"></span>
-                <span class="dummy"></span>
-                <span class="sign">!</span>
-                <small>Ring</small>
-              </button>
-
-              <button class="hotspot trophy" aria-label="Trophy case hotspot">
-                <span class="patch"></span>
-                <span class="case"></span>
-                <span class="sign">T</span>
-                <small>Trophy</small>
-              </button>
-
-              <button class="hotspot board" aria-label="Notice board hotspot">
+              <button class="hotspot board" aria-label="Mission sign hotspot">
                 <span class="patch"></span>
                 <span class="board-shape">
                   <span class="note n1"></span>
                   <span class="note n2"></span>
                   <span class="note n3"></span>
                 </span>
-                <span class="sign">J</span>
-                <small>Jobs</small>
+                <span class="sign">M</span>
+                <small>Missions</small>
               </button>
 
+              <div class="smoke" aria-hidden="true"></div>
               <div class="callout">
                 <strong>Fish Pond Lv 1</strong>
-                <span>Built for 5 fish. Permanent +1% stamina regen speed across all skills.</span>
+                <span>Current: +1% stamina regen. Next: +2% more for 250 fish.</span>
+                <div class="progress"><span></span></div>
               </div>
             </div>
 
@@ -594,7 +633,7 @@
       <article class="card">
         <h2>Screen Intent</h2>
         <p>The hub should open on a weak, unfinished farm lot. The signs make the hotspots readable before the buildings exist, while the dirt patches make upgrades feel visually earned.</p>
-        <p>The first shippable build can make the Fish Pond real and leave Barn, Trophy Case, Training Ring, and Notice Board as clear labeled shells.</p>
+        <p>The first shippable build can make the Fish Pond real and leave Barn, Mission Sign, and Garden as clear labeled shells, with the Trophy Platform as a passive display spot.</p>
         <div class="pill-row">
           <span class="pill">Barren start</span>
           <span class="pill">Clickable hotspots</span>
@@ -609,11 +648,95 @@
       <table>
         <thead><tr><th>Hotspot</th><th>Mock Placement</th><th>Launch Behavior</th><th>Later Growth</th></tr></thead>
         <tbody>
-          <tr><td>Fish Pond</td><td>Upper-left built pond with fish sign.</td><td>Costs fish and grants global stamina regen speed.</td><td>Gets clearer water, more reeds, bigger sparkle as it levels.</td></tr>
-          <tr><td>Barn / Lumber Shed</td><td>Upper-right red barn over a brown patch.</td><td>Log sink, likely global max stamina.</td><td>Grows from plank pile to shed to barn.</td></tr>
-          <tr><td>Training Ring</td><td>Center dirt ring with dummy.</td><td>Future combat/action module shell.</td><td>Can host temporary fights or boss targets.</td></tr>
-          <tr><td>Trophy Case</td><td>Lower-left pedestal and stolen trophy.</td><td>Thieving trophy display shell.</td><td>Best stolen trophy controls passive success bonus.</td></tr>
-          <tr><td>Notice Board</td><td>Lower-right board with pinned notes.</td><td>Future boosted-task jobs shell.</td><td>Temporary jobs, streaks, and job-completion achievements.</td></tr>
+          <tr><td>Barn</td><td>Upper-left red barn over a brown patch.</td><td>Spend logs to improve low success rate activities.</td><td>Closes part of the failure gap, so risky tasks improve the most.</td></tr>
+          <tr><td>Trophy Platform</td><td>Upper-right platform above the pond.</td><td>Click to inspect the best stolen trophy buff once earned.</td><td>Best trophy controls passive success bonus.</td></tr>
+          <tr><td>Garden</td><td>Left-middle dirt rows with sprouts.</td><td>Spend mixed resources to extend offline progress.</td><td>Rows fill with crops as it levels.</td></tr>
+          <tr><td>Fish Pond</td><td>Mid-right built pond with fish sign.</td><td>Costs fish and grants global stamina regen speed.</td><td>Gets clearer water, more reeds, bigger sparkle as it levels.</td></tr>
+          <tr><td>Mission Sign</td><td>Bottom-left sign board near the path.</td><td>Future boosted-task jobs shell.</td><td>Temporary missions, streaks, and mission-completion achievements.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="table-card">
+      <h2>Module Bonuses</h2>
+      <table>
+        <thead><tr><th>Module</th><th>Upgrade Path</th><th>Max Result</th></tr></thead>
+        <tbody>
+          <tr><td>Barn</td><td>25, 250, 1,000, then 10,000 logs to close 10%, 22%, 38%, then 58% of the failure gap.</td><td>Low success activities become dramatically more reliable.</td></tr>
+          <tr><td>Fish Pond</td><td>5, 250, 1,000, then 10,000 fish for +1%, +2%, +3%, +4% stamina regen speed.</td><td>+10% stamina regen speed.</td></tr>
+          <tr><td>Garden</td><td>Mixed logs and fish. Each level adds +1 hour to the offline progress cap.</td><td>+4 hours offline progress cap.</td></tr>
+          <tr><td>Mission Sign</td><td>Unlocks one mission slot, task speed missions, stamina-saving missions, then two mission slots.</td><td>Better boosted-task mission board.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="table-card">
+      <h2>Build Flow</h2>
+      <table>
+        <thead><tr><th>Step</th><th>Behavior</th></tr></thead>
+        <tbody>
+          <tr><td>Tap hotspot</td><td>Hotspot pops: scale down, bounce up, settle.</td></tr>
+          <tr><td>Open panel</td><td>Shows current bonus, next bonus, next cost, and build or upgrade button.</td></tr>
+          <tr><td>Confirm</td><td>Spend resources and start a short 15 second build bar.</td></tr>
+          <tr><td>Building</td><td>Smoke puffs over the facility while the progress bar fills.</td></tr>
+          <tr><td>Complete</td><td>Smoke clears, new tier sprite pops in, bonus delta floats briefly.</td></tr>
+          <tr><td>Unaffordable</td><td>Price pulses red and the hotspot gives a tiny shake.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="table-card">
+      <h2>Barn Success Formula</h2>
+      <table>
+        <thead><tr><th>Rule</th><th>Formula</th></tr></thead>
+        <tbody>
+          <tr><td>Level factors</td><td><code>[0%, 10%, 22%, 38%, 58%]</code> of the remaining failure gap.</td></tr>
+          <tr><td>Bonus</td><td><code>(100 - success_before_barn) * barn_factor</code></td></tr>
+          <tr><td>Final rate</td><td><code>clamp(success_before_barn + barn_bonus, 5, 100)</code></td></tr>
+        </tbody>
+      </table>
+      <table>
+        <thead><tr><th>Before Barn</th><th>Max Barn Bonus</th><th>After Barn</th></tr></thead>
+        <tbody>
+          <tr><td>95%</td><td>+2.9%</td><td>97.9%</td></tr>
+          <tr><td>80%</td><td>+11.6%</td><td>91.6%</td></tr>
+          <tr><td>60%</td><td>+23.2%</td><td>83.2%</td></tr>
+          <tr><td>40%</td><td>+34.8%</td><td>74.8%</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="table-card">
+      <h2>Asset Contract</h2>
+      <table>
+        <thead><tr><th>Layer</th><th>Format</th><th>Purpose</th></tr></thead>
+        <tbody>
+          <tr><td>Ground</td><td>Godot generated</td><td>Green grass and barren dirt base stay flexible and recolorable.</td></tr>
+          <tr><td>Path</td><td>2160 x 3420 transparent PNG</td><td>Organic dirt route with feathered edges, no buildings baked in.</td></tr>
+          <tr><td>Facilities</td><td>512 px transparent tier sprites</td><td>Barn, pond, garden, and mission sign swap by level.</td></tr>
+          <tr><td>Trophy display</td><td>Single transparent PNG</td><td>Empty wooden platform that later holds the best stolen trophy.</td></tr>
+          <tr><td>Decor</td><td>256 px transparent spritesheet cells</td><td>Grass tufts, rocks, weeds, flowers, reeds, broken planks, stumps.</td></tr>
+          <tr><td>Trees</td><td>384 px transparent spritesheet cells</td><td>Several edge trees with small/large variants.</td></tr>
+          <tr><td>Build smoke</td><td>256 px transparent spritesheet cells</td><td>Soft puffs for short build and upgrade animation.</td></tr>
+          <tr><td>Ribbon icon</td><td>430 x 430 transparent PNG</td><td>Barn icon for the gray bottom navigation, matching existing skill icons.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="table-card">
+      <h2>Asset List</h2>
+      <table>
+        <thead><tr><th>File</th><th>Shape</th><th>Contents</th></tr></thead>
+        <tbody>
+          <tr><td><code>hub-decor-sheet.png</code></td><td>4 x 4, 256 px cells</td><td>Grass tufts, rocks, weeds, tiny flowers, reeds, broken plank, small stump.</td></tr>
+          <tr><td><code>hub-tree-sheet.png</code></td><td>2 x 3, 384 px cells</td><td>Three chunky farm trees, each with small and large variants.</td></tr>
+          <tr><td><code>hub-barn-tiers.png</code></td><td>1 x 5, 512 px cells</td><td>Locked, buildable, level 1, level 2, max barn.</td></tr>
+          <tr><td><code>hub-fish-pond-tiers.png</code></td><td>1 x 5, 512 px cells</td><td>Dirt patch through max pond.</td></tr>
+          <tr><td><code>hub-garden-tiers.png</code></td><td>1 x 5, 512 px cells</td><td>Empty rows through fuller crops.</td></tr>
+          <tr><td><code>hub-trophy-platform.png</code></td><td>Single PNG</td><td>Empty wooden platform for the best stolen trophy.</td></tr>
+          <tr><td><code>hub-mission-sign-tiers.png</code></td><td>1 x 5, 512 px cells</td><td>Wobbly sign through busy mission board.</td></tr>
+          <tr><td><code>hub-build-smoke-sheet.png</code></td><td>4 x 4, 256 px cells</td><td>Soft smoke puffs for 15 second build animations.</td></tr>
+          <tr><td><code>hub-nav-barn.png</code></td><td>430 x 430 icon</td><td>Gray-ribbon hub icon in the current Idle Elite icon style.</td></tr>
         </tbody>
       </table>
     </section>

@@ -1558,9 +1558,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
-          "id": "trim-overconfident-shrub",
+          "id": "split-firewood",
           "tier": 4,
-          "name": "Trim Overconfident Shrub",
+          "name": "Split Firewood",
           "unlock": 4,
           "stamina": 1,
           "seconds": 2.08,
@@ -1572,13 +1572,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
-          "art": "assets/content/woodcutting/actions/03-trim-overconfident-shrub.png",
+          "art": "assets/content/woodcutting/actions/05-split-firewood.png",
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
-          "id": "chop-softwood-tree",
+          "id": "trim-overconfident-shrub",
           "tier": 5,
-          "name": "Chop Softwood Tree",
+          "name": "Trim Overconfident Shrub",
           "unlock": 5,
           "stamina": 2,
           "seconds": 2.96,
@@ -1590,13 +1590,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "assets/content/woodcutting/actions/04-chop-softwood-tree.png",
+          "art": "assets/content/woodcutting/actions/03-trim-overconfident-shrub.png",
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
-          "id": "split-firewood",
+          "id": "chop-softwood-tree",
           "tier": 6,
-          "name": "Split Firewood",
+          "name": "Chop Softwood Tree",
           "unlock": 6,
           "stamina": 2,
           "seconds": 3.02,
@@ -1608,7 +1608,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 2
           },
-          "art": "assets/content/woodcutting/actions/05-split-firewood.png",
+          "art": "assets/content/woodcutting/actions/04-chop-softwood-tree.png",
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
