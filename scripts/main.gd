@@ -136,6 +136,7 @@ class HubPathDots:
 				var fill := _path_dot_color(route_seed, dot_index)
 				var dot_center := dot + scatter
 				_add_or_merge_dot(next_dots, {"center": dot_center, "radius": radius, "fill": fill})
+				_add_path_clump_dots(next_dots, dot_center, radius, direction, normal, route_seed, dot_index)
 				_add_tiny_path_dots(next_dots, dot_center, radius, route_seed, dot_index)
 				dot_index += 1
 				previous = dot
@@ -170,6 +171,21 @@ class HubPathDots:
 		var high := Color("#bd8851")
 		return low.lerp(high, _unit(seed + 7.17))
 
+	func _add_path_clump_dots(next_dots: Array, center: Vector2, radius: float, direction: Vector2, normal: Vector2, route_seed: float, dot_index: int) -> void:
+		if _unit(route_seed + float(dot_index) * 23.61) < 0.28:
+			return
+		var count := 1 + int(_unit(route_seed + float(dot_index) * 47.31) > 0.62)
+		for clump_index in range(count):
+			var seed := route_seed + float(dot_index) * 71.29 + float(clump_index) * 17.41
+			var side := -1.0 if _unit(seed + 1.0) < 0.5 else 1.0
+			var offset := normal * side * radius * lerpf(0.32, 0.76, _unit(seed + 2.0))
+			offset += direction * radius * lerpf(-0.46, 0.54, _unit(seed + 3.0))
+			var clump_center := center + offset
+			var clump_radius := radius * lerpf(0.58, 0.88, _unit(seed + 4.0))
+			if _dot_hits_blocker(clump_center, clump_radius):
+				continue
+			_add_unmerged_dot(next_dots, {"center": clump_center, "radius": clump_radius, "fill": _varied_path_color(seed + 5.0), "keep_separate": true})
+
 	func _add_tiny_path_dots(next_dots: Array, center: Vector2, radius: float, route_seed: float, dot_index: int) -> void:
 		if _unit(route_seed + float(dot_index) * 31.7) < 0.38:
 			return
@@ -183,13 +199,18 @@ class HubPathDots:
 			if _dot_hits_blocker(tiny_center, tiny_radius):
 				continue
 			var fill := stone_color if _unit(seed + 11.0) > 0.82 else _varied_path_color(seed + 13.0)
-			_add_or_merge_unblocked_dot(next_dots, {"center": tiny_center, "radius": tiny_radius, "fill": fill})
+			_add_unmerged_dot(next_dots, {"center": tiny_center, "radius": tiny_radius, "fill": fill, "keep_separate": true})
+
+	func _add_unmerged_dot(dots: Array, dot: Dictionary) -> void:
+		dots.append(dot)
 
 	func _add_or_merge_unblocked_dot(dots: Array, dot: Dictionary) -> void:
 		var center := dot.get("center", Vector2.ZERO) as Vector2
 		var radius := float(dot.get("radius", dot_radius))
 		for i in range(dots.size()):
 			var existing := dots[i] as Dictionary
+			if bool(existing.get("keep_separate", false)) or bool(dot.get("keep_separate", false)):
+				continue
 			var existing_center := existing.get("center", Vector2.ZERO) as Vector2
 			var existing_radius := float(existing.get("radius", dot_radius))
 			if not _dot_rect(dot, 10.0).intersects(_dot_rect(existing, 10.0)):
@@ -218,6 +239,9 @@ class HubPathDots:
 				while j < next_dots.size():
 					var a := next_dots[i] as Dictionary
 					var b := next_dots[j] as Dictionary
+					if bool(a.get("keep_separate", false)) or bool(b.get("keep_separate", false)):
+						j += 1
+						continue
 					if _dot_rect(a, -6.0).intersects(_dot_rect(b, -6.0)):
 						var a_radius := float(a.get("radius", dot_radius))
 						var b_radius := float(b.get("radius", dot_radius))
@@ -243,11 +267,10 @@ class HubPathDots:
 	func _draw_feathered_oval(center: Vector2, radius_x: float, radius_y: float, color: Color) -> void:
 		var fade_color := color
 		var fade_steps := [
-			{"scale": 1.42, "alpha": 0.035},
-			{"scale": 1.30, "alpha": 0.075},
-			{"scale": 1.18, "alpha": 0.16},
-			{"scale": 1.08, "alpha": 0.34},
-			{"scale": 1.00, "alpha": 0.86}
+			{"scale": 1.20, "alpha": 0.09},
+			{"scale": 1.10, "alpha": 0.25},
+			{"scale": 1.03, "alpha": 0.52},
+			{"scale": 1.00, "alpha": 0.94}
 		]
 		for raw_step in fade_steps:
 			var step := raw_step as Dictionary
