@@ -270,7 +270,29 @@ class HubPathDots:
 		var center := dot.get("center", Vector2.ZERO) as Vector2
 		var radius := float(dot.get("radius", dot_radius))
 		var fill := dot.get("fill", path_color) as Color
-		_draw_feathered_oval(center, radius, radius * dot_height_scale, fill)
+		var seed := center.x * 0.013 + center.y * 0.019 + radius * 0.071
+		_draw_dirt_patch(center, radius, radius * dot_height_scale, fill, seed)
+
+	func _draw_dirt_patch(center: Vector2, radius_x: float, radius_y: float, color: Color, seed: float) -> void:
+		var underpaint := color.lerp(Color("#7b5b3c"), 0.20)
+		underpaint.a = 0.10
+		_draw_irregular_oval(center, radius_x * 1.38, radius_y * 1.52, underpaint, seed + 1.0, 0.22)
+		var glaze := color.lerp(Color("#c1935d"), 0.15)
+		glaze.a = 0.20
+		_draw_irregular_oval(center + Vector2(lerpf(-5.0, 5.0, _unit(seed + 2.0)), lerpf(-1.4, 1.4, _unit(seed + 3.0))), radius_x * 1.12, radius_y * 1.16, glaze, seed + 5.0, 0.15)
+		var body := color
+		body.a = 0.34
+		_draw_irregular_oval(center, radius_x * 0.96, radius_y * 0.92, body, seed + 11.0, 0.11)
+		if _unit(seed + 17.0) > 0.34:
+			var warm := color.lerp(Color("#c48747"), 0.28)
+			warm.a = 0.16
+			var offset := Vector2(lerpf(-0.18, 0.20, _unit(seed + 19.0)) * radius_x, lerpf(-0.18, 0.20, _unit(seed + 23.0)) * radius_y)
+			_draw_irregular_oval(center + offset, radius_x * lerpf(0.34, 0.56, _unit(seed + 29.0)), radius_y * lerpf(0.44, 0.72, _unit(seed + 31.0)), warm, seed + 37.0, 0.18)
+		if _unit(seed + 41.0) > 0.46:
+			var cool := color.lerp(Color("#85694f"), 0.32)
+			cool.a = 0.12
+			var offset := Vector2(lerpf(-0.24, 0.24, _unit(seed + 43.0)) * radius_x, lerpf(-0.22, 0.22, _unit(seed + 47.0)) * radius_y)
+			_draw_irregular_oval(center + offset, radius_x * lerpf(0.22, 0.42, _unit(seed + 53.0)), radius_y * lerpf(0.32, 0.58, _unit(seed + 59.0)), cool, seed + 61.0, 0.20)
 
 	func _draw_feathered_oval(center: Vector2, radius_x: float, radius_y: float, color: Color) -> void:
 		var fade_color := color
@@ -285,6 +307,17 @@ class HubPathDots:
 			fade_color.a = float(step.get("alpha", 1.0))
 			var scale := float(step.get("scale", 1.0))
 			_draw_oval(center, radius_x * scale, radius_y * scale, fade_color)
+
+	func _draw_irregular_oval(center: Vector2, radius_x: float, radius_y: float, color: Color, seed: float, wobble: float) -> void:
+		var points := PackedVector2Array()
+		var count := 32
+		for i in range(count):
+			var angle := TAU * float(i) / float(count)
+			var edge_noise := lerpf(-wobble, wobble, _unit(seed + float(i) * 5.31))
+			var tangent_noise := lerpf(-wobble * 0.18, wobble * 0.18, _unit(seed + float(i) * 7.77))
+			var radial := 1.0 + edge_noise
+			points.append(center + Vector2(cos(angle + tangent_noise) * radius_x * radial, sin(angle + tangent_noise) * radius_y * radial))
+		draw_colored_polygon(points, color)
 
 	func _draw_oval(center: Vector2, radius_x: float, radius_y: float, color: Color) -> void:
 		var points := PackedVector2Array()
@@ -8743,13 +8776,13 @@ func _on_hub_module_gui_input(event: InputEvent, module_id: String, button: Cont
 	elif event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
 		if touch_event.pressed:
-			_start_hub_module_drag(module_id, button, touch_event.position, touch_event.index)
+			_start_hub_module_drag(module_id, button, _control_local_point_to_global(button, touch_event.position), touch_event.index)
 		elif hub_drag_module_id == module_id and hub_drag_pointer_id == touch_event.index:
 			_finish_hub_module_drag()
 	elif event is InputEventScreenDrag:
 		var drag_event := event as InputEventScreenDrag
 		if hub_drag_module_id == module_id and hub_drag_pointer_id == drag_event.index:
-			_drag_hub_module_to(button, drag_event.position)
+			_drag_hub_module_to(button, _control_local_point_to_global(button, drag_event.position))
 
 
 func _start_hub_module_drag(module_id: String, button: Control, global_point: Vector2, pointer_id: int) -> void:
@@ -8806,7 +8839,7 @@ func _hub_global_to_field_point(button: Control, global_point: Vector2) -> Vecto
 	var parent := button.get_parent() as Control
 	if parent == null:
 		return global_point
-	return parent.get_global_transform().affine_inverse() * global_point
+	return parent.get_global_transform_with_canvas().affine_inverse() * global_point
 
 
 func _hub_module_center(module_id: String) -> Vector2:
