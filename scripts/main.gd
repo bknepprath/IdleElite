@@ -108,19 +108,31 @@ class HubPathDots:
 
 	func _collect_trunk_path(route_entries: Array, next_dots: Array) -> void:
 		var trunk_nodes := [origin]
+		var seed := origin.x * 0.017 + origin.y * 0.023
 		for raw_entry in route_entries:
 			var entry := raw_entry as Dictionary
 			var join := entry.get("join", origin) as Vector2
-			if join.distance_to(trunk_nodes[trunk_nodes.size() - 1] as Vector2) > dot_step * 0.42:
-				trunk_nodes.append(join)
+			_append_trunk_node_with_detour(trunk_nodes, join, seed + float(trunk_nodes.size()) * 13.0)
 		if trunk_nodes.size() < 2:
 			return
-		var seed := origin.x * 0.017 + origin.y * 0.023
 		for i in range(trunk_nodes.size() - 1):
 			var start := trunk_nodes[i] as Vector2
 			var target := trunk_nodes[i + 1] as Vector2
 			_collect_trunk_segment(start, target, seed + float(i) * 19.0, next_dots)
 		_add_terminal_dot(trunk_nodes[trunk_nodes.size() - 1] as Vector2, seed + 73.0, next_dots)
+
+	func _append_trunk_node_with_detour(trunk_nodes: Array, join: Vector2, route_seed: float) -> void:
+		var start := trunk_nodes[trunk_nodes.size() - 1] as Vector2
+		var blocker = _blocking_rect_for_segment(start, join)
+		if blocker is Rect2:
+			var rect := blocker as Rect2
+			var side := _detour_side_for_blocker(rect, route_seed)
+			var detour_y := clampf(lerpf(start.y, join.y, 0.52), rect.position.y - dot_step * 0.42, rect.end.y + dot_step * 0.58)
+			var detour := Vector2(rect.get_center().x + side * (rect.size.x * 0.5 + dot_step * 0.70), detour_y)
+			if detour.distance_to(start) > dot_step * 0.34:
+				trunk_nodes.append(detour)
+		if join.distance_to(trunk_nodes[trunk_nodes.size() - 1] as Vector2) > dot_step * 0.42:
+			trunk_nodes.append(join)
 
 	func _collect_trunk_segment(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
 		var vertical := target.y - start.y
@@ -145,6 +157,13 @@ class HubPathDots:
 		var side := signf(target.x - start.x)
 		if absf(side) < 0.001:
 			side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
+		var target_blocker = _blocker_near_point(target)
+		if target_blocker is Rect2:
+			var rect := target_blocker as Rect2
+			var centered_hotspot := absf(rect.get_center().x - origin.x) < dot_step * 1.18
+			if centered_hotspot:
+				side = _detour_side_for_blocker(rect, route_seed + 37.0)
+				return Vector2(rect.get_center().x + side * (rect.size.x * 0.5 + dot_step * 0.28), rect.end.y + dot_step * lerpf(0.18, 0.40, _unit(route_seed + 41.0)))
 		var bottom_bias := _unit(route_seed + 71.0)
 		if bottom_bias > 0.36:
 			var bottom_drop := dot_step * lerpf(0.34, 0.72, _unit(route_seed + 73.0))
@@ -185,6 +204,30 @@ class HubPathDots:
 			var q := 1.0 - t
 			return q * q * start + 2.0 * q * t * control + t * t * target
 		)
+
+	func _blocking_rect_for_segment(start: Vector2, target: Vector2) -> Variant:
+		for raw_blocker in blockers:
+			if not raw_blocker is Rect2:
+				continue
+			var rect := (raw_blocker as Rect2).grow(dot_radius * 0.72)
+			for i in range(1, 18):
+				var t := float(i) / 18.0
+				var point := start.lerp(target, t)
+				if rect.has_point(point):
+					return raw_blocker
+		return null
+
+	func _blocker_near_point(point: Vector2) -> Variant:
+		for raw_blocker in blockers:
+			if raw_blocker is Rect2 and (raw_blocker as Rect2).grow(dot_step * 0.45).has_point(point):
+				return raw_blocker
+		return null
+
+	func _detour_side_for_blocker(rect: Rect2, route_seed: float) -> float:
+		var center_delta := rect.get_center().x - origin.x
+		if absf(center_delta) > dot_step * 0.28:
+			return -signf(center_delta)
+		return -1.0 if _unit(route_seed + 113.0) < 0.5 else 1.0
 
 	func _collect_sampled_dotted_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array, sampler: Callable) -> void:
 		var previous := start
