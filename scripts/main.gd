@@ -8267,13 +8267,16 @@ func _render_hub_page() -> void:
 	grass_bg.offset_bottom = 8
 	grass_bg.color = Color("#a7cb72")
 	field.add_child(grass_bg)
-	_add_hub_decor(field)
-	hub_path_dots = HubPathDots.new()
-	hub_path_dots.set_anchors_preset(Control.PRESET_FULL_RECT)
-	hub_path_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	hub_path_dots.z_index = 4
-	field.add_child(hub_path_dots)
-	_update_hub_path_dots()
+	if not _mobile_runtime():
+		_add_hub_decor(field)
+		hub_path_dots = HubPathDots.new()
+		hub_path_dots.set_anchors_preset(Control.PRESET_FULL_RECT)
+		hub_path_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hub_path_dots.z_index = 4
+		field.add_child(hub_path_dots)
+		_update_hub_path_dots()
+	else:
+		hub_path_dots = null
 	_add_hub_trophy_display(field)
 	var sorted_modules := HUB_MODULE_ORDER.duplicate()
 	sorted_modules.sort_custom(func(a, b): return _hub_module_center(str(a)).y < _hub_module_center(str(b)).y)
@@ -8340,6 +8343,10 @@ func _toggle_hub_build_mode() -> void:
 	hub_drag_valid = true
 	_play_default_button_sfx()
 	_render_screen()
+
+
+func _mobile_runtime() -> bool:
+	return OS.get_name() == "Android" or OS.get_name() == "iOS"
 
 
 func _add_hub_decor(parent: Control) -> void:
