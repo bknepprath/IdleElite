@@ -37,19 +37,46 @@ class HubPathDots:
 
 	func _rebuild_dots() -> void:
 		dots.clear()
-		var routes := points.duplicate()
+		var routes := _path_routes()
+		if routes.is_empty():
+			return
+		var trunk_top := _central_trunk_top(routes)
+		_collect_dotted_path(origin, trunk_top, origin.x * 0.017 + origin.y * 0.023, dots)
+		_add_terminal_dot(trunk_top, origin.x * 0.017 + origin.y * 0.023, dots)
 		routes.sort_custom(func(a, b): return _route_target_y(a) > _route_target_y(b))
-		for raw_point in routes:
+		for route in routes:
+			var target := route.get("target", origin) as Vector2
+			var seed := float(route.get("seed", 1.0))
+			var join := _central_trunk_join(target, trunk_top, seed)
+			_add_terminal_dot(join, seed + 23.0, dots)
+			_collect_dotted_path(join, target, seed, dots)
+			_add_terminal_dot(target, seed, dots)
+		_merge_overlapping_dots(dots)
+
+	func _path_routes() -> Array:
+		var routes := []
+		for raw_point in points:
 			if typeof(raw_point) == TYPE_DICTIONARY:
 				var route := raw_point as Dictionary
 				var target = route.get("target", Vector2.ZERO)
 				if target is Vector2:
-					_collect_dotted_path(_nearest_route_start(target as Vector2), target as Vector2, float(route.get("seed", 1.0)), dots)
-					_add_terminal_dot(target as Vector2, float(route.get("seed", 1.0)), dots)
+					routes.append({"target": target as Vector2, "seed": float(route.get("seed", 1.0))})
 			elif raw_point is Vector2:
-				_collect_dotted_path(_nearest_route_start(raw_point as Vector2), raw_point as Vector2, origin.x * 0.017 + origin.y * 0.023, dots)
-				_add_terminal_dot(raw_point as Vector2, origin.x * 0.017 + origin.y * 0.023, dots)
-		_merge_overlapping_dots(dots)
+				routes.append({"target": raw_point as Vector2, "seed": origin.x * 0.017 + origin.y * 0.023})
+		return routes
+
+	func _central_trunk_top(routes: Array) -> Vector2:
+		var top_y := origin.y
+		for raw_route in routes:
+			var route := raw_route as Dictionary
+			var target := route.get("target", origin) as Vector2
+			top_y = minf(top_y, target.y)
+		return Vector2(origin.x, top_y - dot_step * 0.72)
+
+	func _central_trunk_join(target: Vector2, trunk_top: Vector2, route_seed: float) -> Vector2:
+		var x_jitter := lerpf(-34.0, 34.0, _unit(route_seed + 5.11))
+		var join_y := clampf(target.y + lerpf(-dot_step * 0.38, dot_step * 0.58, _unit(route_seed + 8.37)), trunk_top.y, origin.y - dot_step * 0.9)
+		return Vector2(origin.x + x_jitter, join_y)
 
 	func _route_target_y(route: Variant) -> float:
 		if typeof(route) == TYPE_DICTIONARY:
