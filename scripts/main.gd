@@ -45,8 +45,10 @@ class HubPathDots:
 				var target = route.get("target", Vector2.ZERO)
 				if target is Vector2:
 					_collect_dotted_path(_nearest_route_start(target as Vector2), target as Vector2, float(route.get("seed", 1.0)), dots)
+					_add_terminal_dot(target as Vector2, float(route.get("seed", 1.0)), dots)
 			elif raw_point is Vector2:
 				_collect_dotted_path(_nearest_route_start(raw_point as Vector2), raw_point as Vector2, origin.x * 0.017 + origin.y * 0.023, dots)
+				_add_terminal_dot(raw_point as Vector2, origin.x * 0.017 + origin.y * 0.023, dots)
 		_merge_overlapping_dots(dots)
 
 	func _route_target_y(route: Variant) -> float:
@@ -120,6 +122,16 @@ class HubPathDots:
 		var radius := float(dot.get("radius", dot_radius))
 		if _dot_hits_blocker(center, radius):
 			return
+		_add_or_merge_unblocked_dot(dots, dot)
+
+	func _add_terminal_dot(center: Vector2, route_seed: float, next_dots: Array) -> void:
+		var radius := dot_radius * lerpf(0.94, 1.08, _unit(route_seed + 41.0))
+		var fill := stone_color if _unit(route_seed + 59.0) > 0.78 else path_color
+		_add_or_merge_unblocked_dot(next_dots, {"center": center, "radius": radius, "fill": fill})
+
+	func _add_or_merge_unblocked_dot(dots: Array, dot: Dictionary) -> void:
+		var center := dot.get("center", Vector2.ZERO) as Vector2
+		var radius := float(dot.get("radius", dot_radius))
 		for i in range(dots.size()):
 			var existing := dots[i] as Dictionary
 			var existing_center := existing.get("center", Vector2.ZERO) as Vector2
@@ -208,56 +220,6 @@ class HubPathDots:
 
 	func _unit(seed: float) -> float:
 		return fposmod(sin(seed * 12.9898 + 78.233) * 43758.5453, 1.0)
-
-
-class MobileHubPathDots:
-	extends HubPathDots
-
-	func set_paths(next_origin: Vector2, next_points: Array, next_blockers: Array) -> void:
-		super.set_paths(next_origin, next_points, next_blockers)
-		_rebuild_dot_nodes()
-
-	func _draw() -> void:
-		pass
-
-	func _rebuild_dot_nodes() -> void:
-		for child in get_children():
-			child.queue_free()
-		for raw_dot in dots:
-			var dot := raw_dot as Dictionary
-			var center := dot.get("center", Vector2.ZERO) as Vector2
-			var radius := float(dot.get("radius", dot_radius))
-			var fill := dot.get("fill", path_color) as Color
-			_add_mobile_dot_node(center, radius, fill)
-
-	func _add_mobile_dot_node(center: Vector2, radius: float, fill: Color) -> void:
-		var dot_size := Vector2(radius * 2.0, radius * dot_height_scale * 2.0)
-		var shell := Panel.new()
-		shell.position = center - dot_size * 0.5
-		shell.custom_minimum_size = dot_size
-		shell.size = dot_size
-		shell.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		shell.add_theme_stylebox_override("panel", _mobile_dot_style(edge_color, 1.0))
-		add_child(shell)
-		var inset := maxf(5.0, radius * 0.08)
-		var fill_panel := Panel.new()
-		fill_panel.position = Vector2(inset, inset * dot_height_scale)
-		fill_panel.custom_minimum_size = dot_size - Vector2(inset * 2.0, inset * dot_height_scale * 2.0)
-		fill_panel.size = fill_panel.custom_minimum_size
-		fill_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		fill_panel.add_theme_stylebox_override("panel", _mobile_dot_style(fill, 0.92))
-		shell.add_child(fill_panel)
-
-	func _mobile_dot_style(color: Color, alpha: float) -> StyleBoxFlat:
-		var style := StyleBoxFlat.new()
-		var next_color := color
-		next_color.a = alpha
-		style.bg_color = next_color
-		style.corner_radius_top_left = 999
-		style.corner_radius_top_right = 999
-		style.corner_radius_bottom_left = 999
-		style.corner_radius_bottom_right = 999
-		return style
 
 
 class HubMoveIcon:
@@ -8318,10 +8280,7 @@ func _render_hub_page() -> void:
 	grass_bg.color = Color("#a7cb72")
 	field.add_child(grass_bg)
 	_add_hub_decor(field)
-	if _mobile_runtime():
-		hub_path_dots = MobileHubPathDots.new()
-	else:
-		hub_path_dots = HubPathDots.new()
+	hub_path_dots = HubPathDots.new()
 	hub_path_dots.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hub_path_dots.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hub_path_dots.z_index = 4
@@ -8914,7 +8873,7 @@ func _hub_path_target(module_id: String) -> Vector2:
 	if module_id == "trophy":
 		return center + Vector2(0, visual_size.y * 0.24)
 	if module_id == "pond":
-		return center + Vector2(0, visual_size.y * 0.20)
+		return center + Vector2(-visual_size.x * 0.08, -visual_size.y * 0.16)
 	return center + Vector2(0, visual_size.y * 0.28)
 
 
@@ -8970,7 +8929,7 @@ func _hub_module_path_blocker_rect(module_id: String, padding: float) -> Rect2:
 	var visual_size := _hub_current_module_visual_size(module_id)
 	var target := _hub_path_target(module_id)
 	if module_id == "pond":
-		var pond_size := Vector2(maxf(visual_size.x * 0.26, 190.0), maxf(visual_size.y * 0.07, 58.0))
+		var pond_size := Vector2(maxf(visual_size.x * 0.18, 150.0), maxf(visual_size.y * 0.055, 46.0))
 		return Rect2(target - pond_size * 0.5 - Vector2(padding, padding), pond_size + Vector2(padding * 2.0, padding * 2.0))
 	var size := Vector2(maxf(visual_size.x * 0.52, 190.0), maxf(visual_size.y * 0.16, 92.0))
 	return Rect2(target - size * 0.5 - Vector2(padding, padding), size + Vector2(padding * 2.0, padding * 2.0))
