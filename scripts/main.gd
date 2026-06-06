@@ -53,9 +53,12 @@ class HubPathDots:
 			var target := route_entry.get("target", origin) as Vector2
 			var seed := float(route_entry.get("seed", 1.0))
 			var join := route_entry.get("join", origin) as Vector2
+			var arrival := _branch_arrival_point(join, target, seed)
 			_add_terminal_dot(join, seed + 23.0, dots)
-			_collect_branch_path(join, target, seed, dots)
-			_add_terminal_dot(target, seed, dots)
+			_collect_branch_path(join, arrival, target, seed, dots)
+			if arrival.distance_to(target) > dot_step * 0.22:
+				_collect_arrival_tail(arrival, target, seed + 67.0, dots)
+			_add_terminal_dot(arrival, seed, dots)
 		_merge_overlapping_dots(dots)
 
 	func _path_routes() -> Array:
@@ -138,10 +141,23 @@ class HubPathDots:
 			return q * q * start + 2.0 * q * t * control + t * t * target
 		)
 
-	func _collect_branch_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
-		var horizontal := absf(target.x - start.x)
-		var vertical := absf(target.y - start.y)
+	func _branch_arrival_point(start: Vector2, target: Vector2, route_seed: float) -> Vector2:
 		var side := signf(target.x - start.x)
+		if absf(side) < 0.001:
+			side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
+		var bottom_bias := _unit(route_seed + 71.0)
+		if bottom_bias > 0.36:
+			var bottom_drop := dot_step * lerpf(0.34, 0.72, _unit(route_seed + 73.0))
+			var side_nudge := -side * dot_step * lerpf(0.04, 0.20, _unit(route_seed + 79.0))
+			return target + Vector2(side_nudge, bottom_drop)
+		if bottom_bias > 0.14:
+			return target + Vector2(-side * dot_step * lerpf(0.22, 0.42, _unit(route_seed + 83.0)), dot_step * lerpf(0.02, 0.18, _unit(route_seed + 89.0)))
+		return target
+
+	func _collect_branch_path(start: Vector2, arrival: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
+		var horizontal := absf(arrival.x - start.x)
+		var vertical := absf(arrival.y - start.y)
+		var side := signf(arrival.x - start.x)
 		if absf(side) < 0.001:
 			side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
 		var y_direction := signf(target.y - start.y)
@@ -149,14 +165,25 @@ class HubPathDots:
 			y_direction = -1.0
 		var trunk_launch := clampf(absf(vertical) * 0.62 + horizontal * 0.08, dot_step * 1.05, dot_step * 2.45)
 		var target_ease := clampf(absf(vertical) * 0.34 + horizontal * 0.16, dot_step * 0.72, dot_step * 1.95)
-		var control_a := start + Vector2(side * horizontal * 0.10 + lerpf(-12.0, 12.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
-		var control_b := target + Vector2(-side * horizontal * 0.18, -y_direction * target_ease)
-		_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2:
+		var s_curve := _unit(route_seed + 97.0) > 0.48
+		var s_strength := dot_step * lerpf(0.32, 0.78, _unit(route_seed + 101.0))
+		var control_a := start + Vector2(side * horizontal * (0.08 if not s_curve else -0.24) + lerpf(-12.0, 12.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
+		var control_b := arrival + Vector2(-side * horizontal * (0.18 if not s_curve else 0.44), -y_direction * target_ease)
+		_collect_sampled_dotted_path(start, arrival, route_seed, next_dots, func(t: float) -> Vector2:
 			var q := 1.0 - t
 			var sag := sin(t * PI) * dot_step * lerpf(0.06, 0.18, _unit(route_seed + 31.0))
-			var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * target
+			var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * arrival
+			if s_curve:
+				point.x += sin(t * TAU) * s_strength
 			point.y += sag
 			return point
+		)
+
+	func _collect_arrival_tail(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
+		var control := start.lerp(target, 0.68) + Vector2(lerpf(-14.0, 14.0, _unit(route_seed + 3.0)), dot_step * lerpf(-0.04, 0.12, _unit(route_seed + 5.0)))
+		_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2:
+			var q := 1.0 - t
+			return q * q * start + 2.0 * q * t * control + t * t * target
 		)
 
 	func _collect_sampled_dotted_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array, sampler: Callable) -> void:
