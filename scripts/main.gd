@@ -4148,6 +4148,7 @@ var pending_thieving_trophy_reward_float := {}
 var hub_modules := {}
 var hub_selected_module_id := "pond"
 var hub_detail_open := false
+var hub_detail_transition_pending := false
 var hub_module_buttons := {}
 var hub_module_progress_bars := {}
 var hub_module_smoke_layers := {}
@@ -4299,6 +4300,7 @@ var leaderboard_tab: Button
 var skills_tab: Button
 var hero_tab: Button
 var hub_tab: Button
+var chat_hub_tab: Button
 var shop_tab: Button
 var settings_tab: Button
 var nav_pop_tweens := {}
@@ -7320,14 +7322,20 @@ func _sync_hub_nav_button(instant := false) -> void:
 	var target_modulate := Color.WHITE if unlocked else HUB_NAV_LOCKED_MODULATE
 	hub_nav_unlocked = unlocked
 	hub_tab.tooltip_text = "" if unlocked else HUB_LOCKED_MESSAGE
+	if chat_hub_tab != null and is_instance_valid(chat_hub_tab):
+		chat_hub_tab.tooltip_text = hub_tab.tooltip_text
 	if hub_nav_fade_tween != null and hub_nav_fade_tween.is_valid():
 		hub_nav_fade_tween.kill()
 		hub_nav_fade_tween = null
 	if instant:
 		hub_tab.modulate = target_modulate
+		if chat_hub_tab != null and is_instance_valid(chat_hub_tab):
+			chat_hub_tab.modulate = target_modulate
 		return
 	hub_nav_fade_tween = create_tween()
 	hub_nav_fade_tween.tween_property(hub_tab, "modulate", target_modulate, HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if chat_hub_tab != null and is_instance_valid(chat_hub_tab):
+		hub_nav_fade_tween.parallel().tween_property(chat_hub_tab, "modulate", target_modulate, HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	hub_nav_fade_tween.finished.connect(func(): hub_nav_fade_tween = null)
 
 
@@ -7753,13 +7761,15 @@ func _chat_expanded_composer() -> Control:
 		_show_home()
 	)
 	ribbon_row.add_child(chat_home)
-	var chat_hub := _nav_button("res://assets/content/hub/hub-nav-barn.png")
-	chat_hub.add_theme_constant_override("icon_max_width", 220)
-	chat_hub.pressed.connect(func():
+	chat_hub_tab = _nav_button("res://assets/content/hub/hub-nav-barn.png")
+	chat_hub_tab.add_theme_constant_override("icon_max_width", 220)
+	chat_hub_tab.modulate = Color.WHITE if _hub_unlocked() else HUB_NAV_LOCKED_MODULATE
+	chat_hub_tab.tooltip_text = "" if _hub_unlocked() else HUB_LOCKED_MESSAGE
+	chat_hub_tab.pressed.connect(func():
 		_close_chat_overlay()
 		_show_hub()
 	)
-	ribbon_row.add_child(chat_hub)
+	ribbon_row.add_child(chat_hub_tab)
 	var chat_skills := _nav_button("res://assets/content/ui/total-lv-bargraph.png")
 	chat_skills.pressed.connect(func():
 		_close_chat_overlay()
@@ -8099,6 +8109,8 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	skill_swipe_frame = null
 	skill_swipe_page = null
 	skill_swipe_animating = false
+	if current_screen != "settings":
+		_clear_settings_page_control_refs()
 	_clear(skills_content)
 	skill_cards.clear()
 	_clear_action_pop_tweens()
@@ -9154,6 +9166,14 @@ func _on_hub_detail_panel_gui_input(event: InputEvent) -> void:
 
 
 func _close_hub_detail_popup() -> void:
+	if not hub_detail_open or hub_detail_transition_pending:
+		return
+	hub_detail_transition_pending = true
+	call_deferred("_apply_close_hub_detail_popup")
+
+
+func _apply_close_hub_detail_popup() -> void:
+	hub_detail_transition_pending = false
 	if not hub_detail_open:
 		return
 	hub_detail_open = false
@@ -9727,10 +9747,18 @@ func _hub_mission_slab_style(pressed: bool) -> StyleBoxFlat:
 
 
 func _on_hub_module_pressed(module_id: String) -> void:
-	if hub_build_mode:
+	if hub_build_mode or hub_detail_transition_pending:
 		return
 	if hub_detail_open:
 		_close_hub_detail_popup()
+		return
+	hub_detail_transition_pending = true
+	call_deferred("_apply_open_hub_detail_popup", module_id)
+
+
+func _apply_open_hub_detail_popup(module_id: String) -> void:
+	hub_detail_transition_pending = false
+	if current_screen != "hub" or hub_build_mode:
 		return
 	hub_selected_module_id = module_id
 	hub_detail_open = true
@@ -9740,16 +9768,13 @@ func _on_hub_module_pressed(module_id: String) -> void:
 
 
 func _on_hub_trophy_pressed() -> void:
-	if hub_build_mode:
+	if hub_build_mode or hub_detail_transition_pending:
 		return
 	if hub_detail_open:
 		_close_hub_detail_popup()
 		return
-	hub_selected_module_id = "trophy"
-	hub_detail_open = true
-	_render_screen()
-	_pop_hub_module("trophy")
-	_update_hub_detail_panel()
+	hub_detail_transition_pending = true
+	call_deferred("_apply_open_hub_detail_popup", "trophy")
 
 
 func _pop_hub_module(module_id: String) -> void:
@@ -10006,6 +10031,7 @@ func _hub_offline_cap_seconds() -> int:
 
 func _render_settings_page() -> void:
 	_clear_reset_data_buttons_for_rebuild()
+	_clear_settings_page_control_refs()
 	content_scroll = MobileScrollContainer.new()
 	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
@@ -17447,7 +17473,7 @@ func _activity_lock_overlay(parent: Control, unlock_level: int) -> Dictionary:
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.clip_contents = false
 	overlay.visible = false
-	overlay.z_index = 225
+	overlay.z_index = 280
 	parent.add_child(overlay)
 
 	var group := ActivityLockRig.new()
@@ -20224,6 +20250,20 @@ func _clear_active_audio_slider() -> void:
 	active_audio_slider_touch_index = -1
 
 
+func _clear_settings_page_control_refs() -> void:
+	_clear_active_audio_slider()
+	music_volume_sliders.clear()
+	music_volume_labels.clear()
+	music_mute_toggles.clear()
+	music_mute_labels.clear()
+	sfx_volume_sliders.clear()
+	sfx_volume_labels.clear()
+	sfx_mute_toggles.clear()
+	sfx_mute_labels.clear()
+	offline_progress_toggles.clear()
+	audio_controls_sync_key = ""
+
+
 func _refresh_audio_volume_controls() -> void:
 	var sync_key := "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s:%s" % [
 		music_volume,
@@ -20258,6 +20298,9 @@ func _refresh_audio_volume_controls() -> void:
 func _control_array_ids(controls: Array) -> String:
 	var ids := PackedStringArray()
 	for raw_control in controls:
+		if raw_control == null or not is_instance_valid(raw_control):
+			ids.append("x")
+			continue
 		var control := raw_control as Control
 		if control == null or not is_instance_valid(control):
 			ids.append("x")
@@ -20269,6 +20312,8 @@ func _control_array_ids(controls: Array) -> String:
 func _refresh_offline_progress_controls() -> void:
 	var live := []
 	for raw_toggle in offline_progress_toggles:
+		if raw_toggle == null or not is_instance_valid(raw_toggle):
+			continue
 		var toggle := raw_toggle as Button
 		if toggle == null or not is_instance_valid(toggle):
 			continue
@@ -20281,6 +20326,8 @@ func _refresh_offline_progress_controls() -> void:
 func _sync_volume_sliders(sliders: Array, volume: float) -> Array:
 	var live := []
 	for raw_slider in sliders:
+		if raw_slider == null or not is_instance_valid(raw_slider):
+			continue
 		var slider := raw_slider as HSlider
 		if slider == null or not is_instance_valid(slider):
 			continue
@@ -20294,6 +20341,8 @@ func _sync_volume_sliders(sliders: Array, volume: float) -> Array:
 func _sync_mute_labels(labels: Array, muted: bool) -> Array:
 	var live := []
 	for raw_label in labels:
+		if raw_label == null or not is_instance_valid(raw_label):
+			continue
 		var label := raw_label as Label
 		if label == null or not is_instance_valid(label):
 			continue
@@ -20305,6 +20354,8 @@ func _sync_mute_labels(labels: Array, muted: bool) -> Array:
 func _sync_volume_labels(labels: Array, volume: float) -> Array:
 	var live := []
 	for raw_label in labels:
+		if raw_label == null or not is_instance_valid(raw_label):
+			continue
 		var label := raw_label as Label
 		if label == null or not is_instance_valid(label):
 			continue
@@ -20316,6 +20367,8 @@ func _sync_volume_labels(labels: Array, volume: float) -> Array:
 func _sync_mute_toggles(toggles: Array, muted: bool) -> Array:
 	var live := []
 	for raw_toggle in toggles:
+		if raw_toggle == null or not is_instance_valid(raw_toggle):
+			continue
 		var toggle := raw_toggle as Button
 		if toggle == null or not is_instance_valid(toggle):
 			continue
