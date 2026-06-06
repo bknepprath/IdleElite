@@ -49,7 +49,7 @@ class HubPathDots:
 			var seed := float(route.get("seed", 1.0))
 			var join := _central_trunk_join(target, trunk_top, seed)
 			_add_terminal_dot(join, seed + 23.0, dots)
-			_collect_dotted_path(join, target, seed, dots)
+			_collect_branch_path(join, target, seed, dots)
 			_add_terminal_dot(target, seed, dots)
 		_merge_overlapping_dots(dots)
 
@@ -75,7 +75,7 @@ class HubPathDots:
 
 	func _central_trunk_join(target: Vector2, trunk_top: Vector2, route_seed: float) -> Vector2:
 		var x_jitter := lerpf(-34.0, 34.0, _unit(route_seed + 5.11))
-		var join_y := clampf(target.y + lerpf(-dot_step * 0.38, dot_step * 0.58, _unit(route_seed + 8.37)), trunk_top.y, origin.y - dot_step * 0.9)
+		var join_y := clampf(target.y + dot_step * lerpf(0.78, 1.55, _unit(route_seed + 8.37)), trunk_top.y + dot_step * 0.7, origin.y - dot_step * 0.9)
 		return Vector2(origin.x + x_jitter, join_y)
 
 	func _route_target_y(route: Variant) -> float:
@@ -86,21 +86,6 @@ class HubPathDots:
 		if route is Vector2:
 			return (route as Vector2).y
 		return origin.y
-
-	func _nearest_route_start(target: Vector2) -> Vector2:
-		var direct_distance := origin.distance_to(target)
-		var best := origin
-		var best_distance := direct_distance
-		for raw_dot in dots:
-			var dot := raw_dot as Dictionary
-			var center := dot.get("center", origin) as Vector2
-			var distance := center.distance_to(target)
-			if distance < best_distance:
-				best = center
-				best_distance = distance
-		if best != origin and best_distance < direct_distance * 0.82 and best_distance < 900.0:
-			return best
-		return origin
 
 	func _draw() -> void:
 		for dot in dots:
@@ -114,13 +99,36 @@ class HubPathDots:
 
 	func _collect_dotted_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
 		var control := Vector2(start.x, lerpf(start.y, target.y, 0.54))
+		_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2: 
+			var q := 1.0 - t
+			return q * q * start + 2.0 * q * t * control + t * t * target
+		)
+
+	func _collect_branch_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
+		var horizontal := absf(target.x - start.x)
+		var vertical := absf(target.y - start.y)
+		var side := signf(target.x - start.x)
+		if absf(side) < 0.001:
+			side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
+		var y_direction := signf(target.y - start.y)
+		if absf(y_direction) < 0.001:
+			y_direction = -1.0
+		var trunk_launch := clampf(vertical * 0.45 + horizontal * 0.10, dot_step * 1.25, dot_step * 2.85)
+		var target_ease := clampf(vertical * 0.18 + horizontal * 0.08, dot_step * 0.55, dot_step * 1.65)
+		var control_a := start + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
+		var control_b := target + Vector2(-side * horizontal * 0.42, -y_direction * target_ease)
+		_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2:
+			var q := 1.0 - t
+			return q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * target
+		)
+
+	func _collect_sampled_dotted_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array, sampler: Callable) -> void:
 		var previous := start
 		var distance_bank := 0.0
 		var dot_index := 0
 		for i in range(1, 80):
 			var t := float(i) / 79.0
-			var q := 1.0 - t
-			var point := q * q * start + 2.0 * q * t * control + t * t * target
+			var point := sampler.call(t) as Vector2
 			var segment := point - previous
 			var segment_length := segment.length()
 			var next_step := dot_step * lerpf(0.78, 1.24, _unit(route_seed + float(dot_index) * 9.13))
