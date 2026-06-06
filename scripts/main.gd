@@ -5773,7 +5773,7 @@ func _action_card_at_position(position: Vector2) -> Dictionary:
 		var skill_id := str(parts[0])
 		var action_id := str(parts[1])
 		var action := _action_data(skill_id, action_id)
-		if action.is_empty() or not _is_action_unlocked(skill_id, action):
+		if action.is_empty():
 			continue
 		if _is_passive_action(action):
 			continue
@@ -5829,9 +5829,11 @@ func _route_action_card_release(event: InputEvent) -> bool:
 	var parts := key.split(":")
 	if parts.size() < 2:
 		return false
+	var action := _action_data(str(parts[0]), str(parts[1]))
+	var unlocked := not action.is_empty() and _is_action_unlocked(str(parts[0]), action)
 	if not stat_kind.is_empty():
 		_toggle_activity_stat_popup(str(parts[0]), str(parts[1]), stat_kind)
-	else:
+	elif unlocked:
 		_start_action_from_card_tap(str(parts[0]), str(parts[1]))
 	skill_swipe_tracking = false
 	return true
@@ -13274,7 +13276,9 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 func _sync_action_stat_chip_title(value_label: Label, title_text: String) -> void:
 	if value_label == null:
 		return
-	var title_label := value_label.get_meta("stat_title_label", null) as Label
+	if not value_label.has_meta("stat_title_label"):
+		return
+	var title_label := value_label.get_meta("stat_title_label") as Label
 	if title_label == null:
 		return
 	_set_label_text_if_changed(title_label, title_text)
@@ -13291,7 +13295,7 @@ func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color:
 		box.set_meta("stat_box_theme_color", theme_color)
 		_apply_action_stat_box_style(box, bool(box.get_meta("stat_box_style_active", false)))
 	label.set_meta("stat_chip_buffed", buffed)
-	var title_label := label.get_meta("stat_title_label", null) as Label
+	var title_label := (label.get_meta("stat_title_label") as Label) if label.has_meta("stat_title_label") else null
 	if buffed:
 		label.add_theme_color_override("font_color", Color.WHITE)
 		label.add_theme_constant_override("outline_size", 0)
@@ -13357,9 +13361,9 @@ func _on_action_stat_box_input(event: InputEvent, skill_id: String, action_id: S
 	if not pressed:
 		return
 	var action := _action_data(skill_id, action_id)
-	if action.is_empty() or not _is_action_unlocked(skill_id, action):
+	if action.is_empty():
 		return
-	if _activity_stat_clicks_should_start_action():
+	if _activity_stat_clicks_should_start_action() and _is_action_unlocked(skill_id, action):
 		_start_action_from_card_tap(skill_id, action_id)
 		get_viewport().set_input_as_handled()
 		return
@@ -13384,9 +13388,9 @@ func _on_action_stat_button_pressed(skill_id: String, action_id: String, stat_ki
 
 func _toggle_activity_stat_popup(skill_id: String, action_id: String, stat_kind: String) -> void:
 	var action := _action_data(skill_id, action_id)
-	if action.is_empty() or not _is_action_unlocked(skill_id, action):
+	if action.is_empty():
 		return
-	if _activity_stat_clicks_should_start_action():
+	if _activity_stat_clicks_should_start_action() and _is_action_unlocked(skill_id, action):
 		_start_action_from_card_tap(skill_id, action_id)
 		return
 	var key := _action_key(skill_id, action_id)
@@ -13822,7 +13826,7 @@ func _sync_activity_stat_popup(card: Dictionary, skill_id: String, action: Dicti
 		return
 	var action_id := str(action.get("id", ""))
 	var key := _action_key(skill_id, action_id)
-	var stat_kind := expanded_activity_stat_kind if expanded_activity_stat_key == key and unlocked else ""
+	var stat_kind := expanded_activity_stat_kind if expanded_activity_stat_key == key else ""
 	var expanded := not stat_kind.is_empty()
 	var root := card.get("root") as Control
 	var visual_key := "%s:%s" % [stat_kind, _skill_theme_color(skill_id).to_html(true)]
@@ -17847,11 +17851,11 @@ func _set_activity_lock_overlay_active(overlay: Dictionary, active: bool) -> voi
 	var overlay_root := overlay.get("root") as Control
 	if overlay_root != null and is_instance_valid(overlay_root):
 		overlay_root.visible = active
-		overlay_root.mouse_filter = Control.MOUSE_FILTER_PASS if active else Control.MOUSE_FILTER_IGNORE
+		overlay_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var rig := overlay.get("group") as ActivityLockRig
 	if rig != null and is_instance_valid(rig):
 		rig.visible = active
-		rig.mouse_filter = Control.MOUSE_FILTER_PASS if active else Control.MOUSE_FILTER_IGNORE
+		rig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		rig.set_process(active)
 
 
