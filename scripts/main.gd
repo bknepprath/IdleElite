@@ -2234,10 +2234,10 @@ class ActivityLockRig:
 	var lock_hovered := false
 	var rng := RandomNumberGenerator.new()
 
-	func setup(next_link_texture: Texture2D, next_padlock_texture: Texture2D, unlock_level: int, font: Font, fallback_font: Font) -> void:
+	func setup(next_link_texture: Texture2D, next_padlock_texture: Texture2D, next_padlock_pulse_texture: Texture2D, unlock_level: int, font: Font, fallback_font: Font) -> void:
 		link_texture = next_link_texture
 		padlock_texture = _cropped_padlock_texture(next_padlock_texture)
-		padlock_pulse_texture = _alpha_mask_texture(padlock_texture)
+		padlock_pulse_texture = next_padlock_pulse_texture if next_padlock_pulse_texture != null else _alpha_mask_texture(padlock_texture)
 		padlock_hit_image = padlock_texture.get_image() if padlock_texture != null else null
 		level = unlock_level
 		mouse_filter = Control.MOUSE_FILTER_PASS
@@ -4744,6 +4744,7 @@ var activity_completion_count := 0
 var locked_activity_preview_reveal_pending := false
 var locked_activity_preview_reveal_skill_ids := {}
 var locked_activity_preview_fade_play_pending := false
+var unlock_padlock_pulse_texture: Texture2D
 var skill_swipe_tip_seen := false
 var stamina_gauge_tip_seen := false
 var stamina_gauge_tip_root: Control
@@ -7536,7 +7537,7 @@ func _build_nav_bar() -> void:
 	row.add_child(hero_tab)
 	hub_tab = _nav_button("res://assets/content/hub/hub-nav-barn.png")
 	hub_tab.add_theme_constant_override("icon_max_width", 220)
-	hub_tab.pressed.connect(_show_hub)
+	hub_tab.pressed.connect(_show_hub.bind(hub_tab))
 	row.add_child(hub_tab)
 	_sync_hub_nav_button(true)
 	skills_tab = _nav_button("res://assets/content/ui/total-lv-bargraph.png")
@@ -7588,11 +7589,13 @@ func _refresh_hub_nav_unlock_state() -> void:
 	_sync_hub_nav_button(not unlocked)
 
 
-func _show_hub_locked_message() -> void:
-	last_result = HUB_LOCKED_MESSAGE
-	if hero_message != null:
-		hero_message.text = HUB_LOCKED_MESSAGE.to_upper()
-	_play(failure_player)
+func _show_hub_locked_message(source_button: Control = null) -> void:
+	_set_result(HUB_LOCKED_MESSAGE, false)
+	var anchor := source_button
+	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
+		anchor = hub_tab
+	if anchor != null and is_instance_valid(anchor) and anchor.is_visible_in_tree():
+		_float_reward(self, anchor, HUB_LOCKED_MESSAGE, 50, Color("#ffd95a"), Vector2(0, -34), Vector2(0, -150), 0.0)
 
 
 func _build_chat_strip() -> void:
@@ -7739,8 +7742,9 @@ func _open_chat_overlay() -> void:
 	_rebuild_chat_overlay()
 
 
-func _close_chat_overlay() -> void:
-	_play_default_button_sfx()
+func _close_chat_overlay(play_sfx := true) -> void:
+	if play_sfx:
+		_play_default_button_sfx()
 	if chat_overlay != null:
 		chat_overlay.visible = false
 	_reset_chat_keyboard_lift()
@@ -7997,7 +8001,7 @@ func _chat_expanded_composer() -> Control:
 	chat_home.custom_minimum_size = Vector2(318, 318)
 	chat_home.add_theme_constant_override("icon_max_width", 244)
 	chat_home.pressed.connect(func():
-		_close_chat_overlay()
+		_close_chat_overlay(false)
 		_show_home()
 	)
 	ribbon_row.add_child(chat_home)
@@ -8006,26 +8010,26 @@ func _chat_expanded_composer() -> Control:
 	chat_hub_tab.modulate = Color.WHITE if _hub_unlocked() else HUB_NAV_LOCKED_MODULATE
 	chat_hub_tab.tooltip_text = "" if _hub_unlocked() else HUB_LOCKED_MESSAGE
 	chat_hub_tab.pressed.connect(func():
-		_close_chat_overlay()
-		_show_hub()
+		_close_chat_overlay(false)
+		_show_hub(chat_hub_tab)
 	)
 	ribbon_row.add_child(chat_hub_tab)
 	var chat_skills := _nav_button("res://assets/content/ui/total-lv-bargraph.png")
 	chat_skills.pressed.connect(func():
-		_close_chat_overlay()
+		_close_chat_overlay(false)
 		_show_skills_module()
 	)
 	ribbon_row.add_child(chat_skills)
 	var chat_settings := _nav_button("res://assets/content/ui/settings-gear-simple.png")
 	chat_settings.pressed.connect(func():
-		_close_chat_overlay()
+		_close_chat_overlay(false)
 		_show_settings()
 	)
 	ribbon_row.add_child(chat_settings)
 	var chat_shop := _nav_button("res://assets/content/ui/shop.png")
 	chat_shop.add_theme_constant_override("icon_max_width", 232)
 	chat_shop.pressed.connect(func():
-		_close_chat_overlay()
+		_close_chat_overlay(false)
 		_show_shop()
 	)
 	ribbon_row.add_child(chat_shop)
@@ -17723,7 +17727,7 @@ func _activity_lock_overlay(parent: Control, unlock_level: int) -> Dictionary:
 	parent.add_child(overlay)
 
 	var group := ActivityLockRig.new()
-	group.setup(_texture(UNLOCK_CHAIN_LINK_TEXTURE), _texture(UNLOCK_PADLOCK_TEXTURE), unlock_level, app_bold_font, app_font)
+	group.setup(_texture(UNLOCK_CHAIN_LINK_TEXTURE), _texture(UNLOCK_PADLOCK_TEXTURE), _unlock_padlock_pulse_texture(), unlock_level, app_bold_font, app_font)
 	group.set_anchors_preset(Control.PRESET_FULL_RECT)
 	group.clip_contents = false
 	group.visible = false
@@ -17815,17 +17819,40 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 		return
 	var ceremony_active := bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
 	var lock_visible := (not unlocked) or ceremony_active
+	var preview_revealing := (
+		not ceremony_active
+		and lock_visible
+		and (
+			bool(card.get("locked_preview_hidden", false))
+			or bool(card.get("locked_preview_fade_in_pending", false))
+			or bool(card.get("fade_in_pending", false))
+			or card.get("preview_fade_tween") != null
+		)
+	)
+	if preview_revealing:
+		_set_activity_lock_overlay_active(overlay, false)
+		card["lock_overlay_sync_key"] = "preview_revealing:%s" % int(action.get("unlock", 1))
+		return
 	var sync_key := "%s:%s:%s" % [lock_visible, ceremony_active, int(action.get("unlock", 1))]
 	if str(card.get("lock_overlay_sync_key", "")) == sync_key:
 		return
 	card["lock_overlay_sync_key"] = sync_key
-	overlay_root.visible = lock_visible
-	overlay_root.mouse_filter = Control.MOUSE_FILTER_PASS if lock_visible else Control.MOUSE_FILTER_IGNORE
+	_set_activity_lock_overlay_active(overlay, lock_visible)
 	var rig := overlay.get("group") as ActivityLockRig
 	if rig != null:
-		rig.visible = lock_visible
-		rig.mouse_filter = Control.MOUSE_FILTER_PASS if lock_visible else Control.MOUSE_FILTER_IGNORE
 		rig.set_unlock_level(int(action.get("unlock", 1)))
+
+
+func _set_activity_lock_overlay_active(overlay: Dictionary, active: bool) -> void:
+	var overlay_root := overlay.get("root") as Control
+	if overlay_root != null and is_instance_valid(overlay_root):
+		overlay_root.visible = active
+		overlay_root.mouse_filter = Control.MOUSE_FILTER_PASS if active else Control.MOUSE_FILTER_IGNORE
+	var rig := overlay.get("group") as ActivityLockRig
+	if rig != null and is_instance_valid(rig):
+		rig.visible = active
+		rig.mouse_filter = Control.MOUSE_FILTER_PASS if active else Control.MOUSE_FILTER_IGNORE
+		rig.set_process(active)
 
 
 func _reset_activity_lock_overlay_pieces(card: Dictionary) -> void:
@@ -18087,6 +18114,7 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 		if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
 			card.erase("unlock_next_preview_smooth")
 			card.erase("preview_fade_tween")
+			card["fade_in_pending"] = false
 			return
 		root.modulate = Color.WHITE
 		if expand_from_zero:
@@ -18100,6 +18128,11 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 			_set_preview_pop_vertical_offset(pop, 0.0)
 		card.erase("unlock_next_preview_smooth")
 		card.erase("preview_fade_tween")
+		card["fade_in_pending"] = false
+		var skill_id := str(card.get("skill_id", selected_skill_id))
+		var action := card.get("action", {}) as Dictionary
+		if not skill_id.is_empty() and not action.is_empty():
+			_sync_activity_lock_overlay(card, action, _is_action_unlocked(skill_id, action))
 	)
 
 
@@ -19118,11 +19151,12 @@ func _pop_nav_button(button: Button) -> void:
 	tween.finished.connect(func(): nav_pop_tweens.erase(key))
 
 
-func _attach_button_depress_animation(button: BaseButton, depressed_scale := 0.965) -> void:
+func _attach_button_depress_animation(button: BaseButton, depressed_scale := 0.965, play_sfx := true) -> void:
 	if button == null or button.has_meta("depress_animation_attached"):
 		return
 	button.set_meta("depress_animation_attached", true)
-	_attach_default_button_sfx(button)
+	if play_sfx:
+		_attach_default_button_sfx(button)
 	button.resized.connect(func():
 		if is_instance_valid(button):
 			button.pivot_offset = button.size * 0.5
@@ -19287,7 +19321,6 @@ func _show_home() -> void:
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	current_screen = "home"
-	_play_default_button_sfx()
 	_render_screen()
 	_scroll_home_to_top()
 
@@ -19300,7 +19333,6 @@ func _show_skills() -> void:
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	current_screen = "menu"
-	_play_default_button_sfx()
 	_render_screen()
 
 
@@ -19312,21 +19344,19 @@ func _show_skills_module() -> void:
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	_select_launch_skill_page()
-	_play_default_button_sfx()
 	_render_screen(true)
 
 
-func _show_hub() -> void:
+func _show_hub(source_button: Control = null) -> void:
 	if not _top_level_nav_allowed("hub"):
 		return
 	if not _hub_unlocked():
-		_show_hub_locked_message()
+		_show_hub_locked_message(source_button)
 		return
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	current_screen = "hub"
 	hub_detail_open = false
-	_play_default_button_sfx()
 	_render_screen()
 
 
@@ -19336,7 +19366,6 @@ func _show_shop() -> void:
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	current_screen = "shop"
-	_play_default_button_sfx()
 	_render_screen()
 
 
@@ -19356,7 +19385,6 @@ func _show_settings() -> void:
 		return
 	_disarm_reset_data_confirmation()
 	current_screen = "settings"
-	_play_default_button_sfx()
 	_render_screen()
 
 
@@ -21153,11 +21181,12 @@ func _kill_reset_data_feedback_tween(button: Button) -> void:
 		button.remove_meta("reset_feedback_active")
 
 
-func _set_result(text: String) -> void:
+func _set_result(text: String, play_sfx := true) -> void:
 	last_result = text
 	if hero_message != null:
 		hero_message.text = text.to_upper()
-	_play_default_button_sfx()
+	if play_sfx:
+		_play_default_button_sfx()
 
 
 func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_amount: float, xp_crit := false, mega_crit := false) -> void:
@@ -25711,6 +25740,23 @@ func _cropped_unlock_padlock_texture() -> Texture2D:
 	return cropped
 
 
+func _unlock_padlock_pulse_texture() -> Texture2D:
+	if unlock_padlock_pulse_texture != null:
+		return unlock_padlock_pulse_texture
+	var source := _cropped_unlock_padlock_texture()
+	if source == null:
+		return null
+	var image := source.get_image()
+	if image == null or image.is_empty():
+		return null
+	for y in range(image.get_height()):
+		for x in range(image.get_width()):
+			var pixel := image.get_pixel(x, y)
+			image.set_pixel(x, y, Color(1, 1, 1, clampf(pixel.a, 0.0, 1.0)))
+	unlock_padlock_pulse_texture = ImageTexture.create_from_image(image)
+	return unlock_padlock_pulse_texture
+
+
 func _play_padlock_click_shake(shake_body: Control) -> void:
 	if shake_body == null or not is_instance_valid(shake_body):
 		return
@@ -29691,7 +29737,7 @@ func _nav_button(path: String) -> Button:
 	button.add_theme_constant_override("icon_max_width", 184)
 	_apply_nav_style(button, false)
 	button.resized.connect(func(): button.pivot_offset = button.size * 0.5)
-	_attach_button_depress_animation(button, 0.92)
+	_attach_button_depress_animation(button, 0.92, false)
 	button.pressed.connect(_pop_nav_button.bind(button))
 	return button
 
