@@ -161,7 +161,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "duel-leaning-fence-post",
           "tier": 5,
-          "name": "Duel Leaning Fence Post",
+          "name": "Duel Fence Post",
           "unlock": 5,
           "stamina": 2,
           "seconds": 2.46,
@@ -197,7 +197,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "brawl-with-kicking-milk-pail",
           "tier": 7,
-          "name": "Brawl With Kicking Milk Pail",
+          "name": "Brawl With Milk Pail",
           "unlock": 7,
           "stamina": 3,
           "seconds": 3.23,
@@ -215,7 +215,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "square-up-with-rake-in-grass",
           "tier": 8,
-          "name": "Square Up With Rake In Grass",
+          "name": "Square Up With Rake",
           "unlock": 8,
           "stamina": 3,
           "seconds": 3.28,
@@ -233,7 +233,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "grapple-overfull-compost-bin",
           "tier": 9,
-          "name": "Grapple Overfull Compost Bin",
+          "name": "Grapple Compost Bin",
           "unlock": 9,
           "stamina": 3,
           "seconds": 3.34,
@@ -269,7 +269,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "tackle-runaway-water-trough",
           "tier": 11,
-          "name": "Tackle Runaway Water Trough",
+          "name": "Tackle Water Trough",
           "unlock": 12,
           "stamina": 4,
           "seconds": 4.15,

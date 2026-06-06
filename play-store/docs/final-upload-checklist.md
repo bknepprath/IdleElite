@@ -14,8 +14,8 @@ Use this for the current closed test release candidate.
 ## Build And Local Test
 
 - Run `.\scripts\build-android-release.ps1` if rebuilding.
-- Verify `builds/android/idle-elite-release-v0.1.12-code13.aab` exists.
-- Run `jarsigner -verify builds\android\idle-elite-release-v0.1.12-code13.aab`.
+- Verify `builds/android/idle-elite-release-v0.2.0-code14.aab` exists.
+- Run `jarsigner -verify builds\android\idle-elite-release-v0.2.0-code14.aab`.
 - Run `.\scripts\test-release-aab.ps1 -UninstallExisting` with an emulator or phone connected.
 - Launch the app and confirm the release build no longer says `Ad Not Configured`.
 - If Firebase is enabled, open chat on a phone and confirm it live-refreshes only while visible, sends at most once per 2 seconds, and renders moderator-deleted messages as removed.
@@ -34,7 +34,7 @@ Use this for the current closed test release candidate.
 - Create the app as `Idle Elite`.
 - Confirm package name is `com.idleelite.game`.
 - Enroll in Play App Signing.
-- Upload `builds/android/idle-elite-release-v0.1.12-code13.aab`.
+- Upload `builds/android/idle-elite-release-v0.2.0-code14.aab`.
 - Add the 512x512 icon from `play-store/assets/app-icon-512.png`.
 - Add the feature graphic from `play-store/assets/feature-graphic-1024x500.png`.
 - Add phone screenshots from `play-store/assets/screenshot-*.png`.
