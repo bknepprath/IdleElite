@@ -40,14 +40,19 @@ class HubPathDots:
 		var routes := _path_routes()
 		if routes.is_empty():
 			return
-		var trunk_top := _central_trunk_top(routes)
-		_collect_dotted_path(origin, trunk_top, origin.x * 0.017 + origin.y * 0.023, dots)
-		_add_terminal_dot(trunk_top, origin.x * 0.017 + origin.y * 0.023, dots)
+		var trunk_top_y := _central_trunk_top_y(routes)
 		routes.sort_custom(func(a, b): return _route_target_y(a) > _route_target_y(b))
+		var route_entries := []
 		for route in routes:
 			var target := route.get("target", origin) as Vector2
 			var seed := float(route.get("seed", 1.0))
-			var join := _central_trunk_join(target, trunk_top, seed)
+			var join := _central_trunk_join(target, trunk_top_y, seed)
+			route_entries.append({"target": target, "seed": seed, "join": join})
+		_collect_trunk_path(route_entries, dots)
+		for route_entry in route_entries:
+			var target := route_entry.get("target", origin) as Vector2
+			var seed := float(route_entry.get("seed", 1.0))
+			var join := route_entry.get("join", origin) as Vector2
 			_add_terminal_dot(join, seed + 23.0, dots)
 			_collect_branch_path(join, target, seed, dots)
 			_add_terminal_dot(target, seed, dots)
@@ -65,18 +70,19 @@ class HubPathDots:
 				routes.append({"target": raw_point as Vector2, "seed": origin.x * 0.017 + origin.y * 0.023})
 		return routes
 
-	func _central_trunk_top(routes: Array) -> Vector2:
+	func _central_trunk_top_y(routes: Array) -> float:
 		var top_y := origin.y
 		for raw_route in routes:
 			var route := raw_route as Dictionary
 			var target := route.get("target", origin) as Vector2
 			top_y = minf(top_y, target.y)
-		return Vector2(origin.x, top_y - dot_step * 0.72)
+		return top_y + dot_step * 0.38
 
-	func _central_trunk_join(target: Vector2, trunk_top: Vector2, route_seed: float) -> Vector2:
-		var x_jitter := lerpf(-34.0, 34.0, _unit(route_seed + 5.11))
-		var join_y := clampf(target.y + dot_step * lerpf(0.78, 1.55, _unit(route_seed + 8.37)), trunk_top.y + dot_step * 0.7, origin.y - dot_step * 0.9)
-		return Vector2(origin.x + x_jitter, join_y)
+	func _central_trunk_join(target: Vector2, trunk_top_y: float, route_seed: float) -> Vector2:
+		var target_pull := clampf((target.x - origin.x) * 0.16, -92.0, 92.0)
+		var x_jitter := lerpf(-28.0, 28.0, _unit(route_seed + 5.11))
+		var join_y := clampf(target.y + dot_step * lerpf(0.44, 1.02, _unit(route_seed + 8.37)), trunk_top_y, origin.y - dot_step * 0.75)
+		return Vector2(origin.x + target_pull + x_jitter, join_y)
 
 	func _route_target_y(route: Variant) -> float:
 		if typeof(route) == TYPE_DICTIONARY:
@@ -97,6 +103,34 @@ class HubPathDots:
 			rects.append(_dot_rect(dot as Dictionary, 16.0))
 		return rects
 
+	func _collect_trunk_path(route_entries: Array, next_dots: Array) -> void:
+		var trunk_nodes := [origin]
+		for raw_entry in route_entries:
+			var entry := raw_entry as Dictionary
+			var join := entry.get("join", origin) as Vector2
+			if join.distance_to(trunk_nodes[trunk_nodes.size() - 1] as Vector2) > dot_step * 0.42:
+				trunk_nodes.append(join)
+		if trunk_nodes.size() < 2:
+			return
+		var seed := origin.x * 0.017 + origin.y * 0.023
+		for i in range(trunk_nodes.size() - 1):
+			var start := trunk_nodes[i] as Vector2
+			var target := trunk_nodes[i + 1] as Vector2
+			_collect_trunk_segment(start, target, seed + float(i) * 19.0, next_dots)
+		_add_terminal_dot(trunk_nodes[trunk_nodes.size() - 1] as Vector2, seed + 73.0, next_dots)
+
+	func _collect_trunk_segment(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
+		var vertical := target.y - start.y
+		var control_a := start + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 1.0)), vertical * 0.42)
+		var control_b := target + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 3.0)), -vertical * 0.30)
+		_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2:
+			var q := 1.0 - t
+			var wave := sin(t * PI) * lerpf(-22.0, 22.0, _unit(route_seed + 7.0))
+			var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * target
+			point.x += wave
+			return point
+		)
+
 	func _collect_dotted_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
 		var control := Vector2(start.x, lerpf(start.y, target.y, 0.54))
 		_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2: 
@@ -113,13 +147,16 @@ class HubPathDots:
 		var y_direction := signf(target.y - start.y)
 		if absf(y_direction) < 0.001:
 			y_direction = -1.0
-		var trunk_launch := clampf(vertical * 0.45 + horizontal * 0.10, dot_step * 1.25, dot_step * 2.85)
-		var target_ease := clampf(vertical * 0.18 + horizontal * 0.08, dot_step * 0.55, dot_step * 1.65)
-		var control_a := start + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
-		var control_b := target + Vector2(-side * horizontal * 0.42, -y_direction * target_ease)
+		var trunk_launch := clampf(absf(vertical) * 0.62 + horizontal * 0.08, dot_step * 1.05, dot_step * 2.45)
+		var target_ease := clampf(absf(vertical) * 0.34 + horizontal * 0.16, dot_step * 0.72, dot_step * 1.95)
+		var control_a := start + Vector2(side * horizontal * 0.10 + lerpf(-12.0, 12.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
+		var control_b := target + Vector2(-side * horizontal * 0.18, -y_direction * target_ease)
 		_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2:
 			var q := 1.0 - t
-			return q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * target
+			var sag := sin(t * PI) * dot_step * lerpf(0.06, 0.18, _unit(route_seed + 31.0))
+			var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * target
+			point.y += sag
+			return point
 		)
 
 	func _collect_sampled_dotted_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array, sampler: Callable) -> void:
