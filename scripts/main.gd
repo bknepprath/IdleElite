@@ -260,74 +260,6 @@ class MobileHubPathDots:
 		return style
 
 
-class MobileHubDecor:
-	extends Control
-
-	var decor_type := "shrub"
-	var color_seed := 0
-
-	func _draw() -> void:
-		var center := size * 0.5
-		match decor_type:
-			"tree":
-				_draw_tree(center)
-			"stone":
-				_draw_stones(center)
-			"log":
-				_draw_logs(center)
-			_:
-				_draw_shrub(center)
-
-	func _draw_tree(center: Vector2) -> void:
-		var trunk_color := Color("#7b5131")
-		var trunk_shadow := Color("#4f3424")
-		var leaf_color := _shifted_green(0.10)
-		var leaf_dark := Color("#407942")
-		var trunk := Rect2(Vector2(center.x - size.x * 0.08, size.y * 0.40), Vector2(size.x * 0.16, size.y * 0.42))
-		draw_rect(trunk.grow(5.0), trunk_shadow)
-		draw_rect(trunk, trunk_color)
-		_draw_circle_cluster([
-			{"pos": Vector2(center.x, size.y * 0.28), "r": size.x * 0.25},
-			{"pos": Vector2(center.x - size.x * 0.18, size.y * 0.36), "r": size.x * 0.22},
-			{"pos": Vector2(center.x + size.x * 0.18, size.y * 0.36), "r": size.x * 0.22},
-			{"pos": Vector2(center.x, size.y * 0.46), "r": size.x * 0.24},
-		], leaf_dark, leaf_color)
-
-	func _draw_shrub(center: Vector2) -> void:
-		_draw_circle_cluster([
-			{"pos": Vector2(center.x - size.x * 0.18, center.y + size.y * 0.08), "r": size.x * 0.20},
-			{"pos": Vector2(center.x, center.y - size.y * 0.03), "r": size.x * 0.24},
-			{"pos": Vector2(center.x + size.x * 0.20, center.y + size.y * 0.10), "r": size.x * 0.19},
-		], Color("#315d34"), _shifted_green(0.0))
-
-	func _draw_stones(center: Vector2) -> void:
-		for i in range(3):
-			var offset := Vector2((float(i) - 1.0) * size.x * 0.20, absf(float(i) - 1.0) * size.y * 0.08)
-			draw_circle(center + offset + Vector2(0, size.y * 0.08), size.x * (0.15 + float(i % 2) * 0.03), Color("#4d4a42"))
-			draw_circle(center + offset, size.x * (0.14 + float(i % 2) * 0.03), Color("#9b9585"))
-
-	func _draw_logs(center: Vector2) -> void:
-		for i in range(2):
-			var rect := Rect2(Vector2(size.x * 0.20 + float(i) * size.x * 0.12, size.y * (0.38 + float(i) * 0.14)), Vector2(size.x * 0.58, size.y * 0.16))
-			draw_rect(rect.grow(4.0), Color("#5c3a22"))
-			draw_rect(rect, Color("#a86f3a"))
-			draw_line(rect.position + Vector2(rect.size.x * 0.25, 0), rect.position + Vector2(rect.size.x * 0.25, rect.size.y), Color("#704621"), 3.0)
-
-	func _draw_circle_cluster(circles: Array, outline: Color, fill: Color) -> void:
-		for raw_circle in circles:
-			var circle := raw_circle as Dictionary
-			var pos := circle.get("pos", Vector2.ZERO) as Vector2
-			var radius := float(circle.get("r", 20.0))
-			draw_circle(pos, radius + 6.0, outline)
-		for raw_circle in circles:
-			var circle := raw_circle as Dictionary
-			draw_circle(circle.get("pos", Vector2.ZERO) as Vector2, float(circle.get("r", 20.0)), fill)
-
-	func _shifted_green(offset: float) -> Color:
-		var greens := [Color("#6fae4f"), Color("#7dbf57"), Color("#5f9c48"), Color("#87bd5d")]
-		return greens[wrapi(color_seed + int(round(offset * 10.0)), 0, greens.size())]
-
-
 class HubMoveIcon:
 	extends Control
 
@@ -8479,10 +8411,8 @@ func _add_hub_decor(parent: Control) -> void:
 		var index := int(entry.get("index", 0))
 		var position := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
 		var display_size := Vector2(float(entry.get("w", 170.0)), float(entry.get("h", 170.0)))
-		var item: Control
-		if _mobile_runtime():
-			item = _mobile_hub_decor_item(decor_type, index, display_size)
-		elif decor_type == "tree":
+		var item: TextureRect
+		if decor_type == "tree":
 			item = _hub_sheet_image("res://assets/content/hub/hub-tree-sheet.png", clampi(index, 0, 5), Vector2(512, 512), display_size)
 		else:
 			item = _hub_sheet_image("res://assets/content/hub/hub-decor-sheet.png", clampi(index, 0, 15), Vector2(256, 256), display_size)
@@ -8490,29 +8420,6 @@ func _add_hub_decor(parent: Control) -> void:
 		item.z_index = _hub_decor_depth_z_index(position, display_size)
 		parent.add_child(item)
 		_register_hub_decor_item(item)
-
-
-func _mobile_hub_decor_item(decor_type: String, index: int, display_size: Vector2) -> MobileHubDecor:
-	var item := MobileHubDecor.new()
-	item.decor_type = _mobile_hub_decor_type(decor_type, index)
-	item.color_seed = index
-	var size_scale := 0.72 if decor_type == "tree" else 0.56
-	item.custom_minimum_size = display_size * size_scale
-	item.size = item.custom_minimum_size
-	item.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return item
-
-
-func _mobile_hub_decor_type(decor_type: String, index: int) -> String:
-	if decor_type == "tree":
-		return "tree"
-	if index <= 3:
-		return "shrub"
-	if index <= 6:
-		return "log"
-	if index <= 11:
-		return "stone"
-	return "shrub"
 
 
 func _ensure_hub_decor_layout() -> void:
