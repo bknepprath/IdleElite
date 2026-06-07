@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dogq2rbhdt6ci"
-path="res://.godot/imported/location-rocky-ledge.png-c0d5920125201b1ca8cd07514a8bc82c.ctex"
+path.s3tc="res://.godot/imported/location-rocky-ledge.png-c0d5920125201b1ca8cd07514a8bc82c.s3tc.ctex"
+path.etc2="res://.godot/imported/location-rocky-ledge.png-c0d5920125201b1ca8cd07514a8bc82c.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/locations/location-rocky-ledge.png"
-dest_files=["res://.godot/imported/location-rocky-ledge.png-c0d5920125201b1ca8cd07514a8bc82c.ctex"]
+dest_files=["res://.godot/imported/location-rocky-ledge.png-c0d5920125201b1ca8cd07514a8bc82c.s3tc.ctex", "res://.godot/imported/location-rocky-ledge.png-c0d5920125201b1ca8cd07514a8bc82c.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

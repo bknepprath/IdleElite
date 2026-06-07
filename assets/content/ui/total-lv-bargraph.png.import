@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://tfd6xulon06h"
-path="res://.godot/imported/total-lv-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.ctex"
+path.s3tc="res://.godot/imported/total-lv-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.s3tc.ctex"
+path.etc2="res://.godot/imported/total-lv-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/ui/total-lv-bargraph.png"
-dest_files=["res://.godot/imported/total-lv-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.ctex"]
+dest_files=["res://.godot/imported/total-lv-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.s3tc.ctex", "res://.godot/imported/total-lv-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

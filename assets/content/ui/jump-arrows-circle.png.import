@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://caxo3t5sf112k"
-path="res://.godot/imported/jump-arrows-circle.png-bc5150f05b62ef67bf65147ca887e32b.ctex"
+path.s3tc="res://.godot/imported/jump-arrows-circle.png-bc5150f05b62ef67bf65147ca887e32b.s3tc.ctex"
+path.etc2="res://.godot/imported/jump-arrows-circle.png-bc5150f05b62ef67bf65147ca887e32b.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/ui/jump-arrows-circle.png"
-dest_files=["res://.godot/imported/jump-arrows-circle.png-bc5150f05b62ef67bf65147ca887e32b.ctex"]
+dest_files=["res://.godot/imported/jump-arrows-circle.png-bc5150f05b62ef67bf65147ca887e32b.s3tc.ctex", "res://.godot/imported/jump-arrows-circle.png-bc5150f05b62ef67bf65147ca887e32b.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

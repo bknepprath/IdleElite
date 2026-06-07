@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://chbhm55ivkx3d"
-path="res://.godot/imported/leaderboard-podium-icon.png-20afad07964e02403deb3262a08e35e8.ctex"
+path.s3tc="res://.godot/imported/leaderboard-podium-icon.png-20afad07964e02403deb3262a08e35e8.s3tc.ctex"
+path.etc2="res://.godot/imported/leaderboard-podium-icon.png-20afad07964e02403deb3262a08e35e8.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/ui/leaderboard-podium-icon.png"
-dest_files=["res://.godot/imported/leaderboard-podium-icon.png-20afad07964e02403deb3262a08e35e8.ctex"]
+dest_files=["res://.godot/imported/leaderboard-podium-icon.png-20afad07964e02403deb3262a08e35e8.s3tc.ctex", "res://.godot/imported/leaderboard-podium-icon.png-20afad07964e02403deb3262a08e35e8.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

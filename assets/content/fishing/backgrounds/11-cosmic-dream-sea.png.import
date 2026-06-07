@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://deb5jdtjq54vi"
-path="res://.godot/imported/11-cosmic-dream-sea.png-4fb9b783d76c38960be83db284d6845f.ctex"
+path.s3tc="res://.godot/imported/11-cosmic-dream-sea.png-4fb9b783d76c38960be83db284d6845f.s3tc.ctex"
+path.etc2="res://.godot/imported/11-cosmic-dream-sea.png-4fb9b783d76c38960be83db284d6845f.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/backgrounds/11-cosmic-dream-sea.png"
-dest_files=["res://.godot/imported/11-cosmic-dream-sea.png-4fb9b783d76c38960be83db284d6845f.ctex"]
+dest_files=["res://.godot/imported/11-cosmic-dream-sea.png-4fb9b783d76c38960be83db284d6845f.s3tc.ctex", "res://.godot/imported/11-cosmic-dream-sea.png-4fb9b783d76c38960be83db284d6845f.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

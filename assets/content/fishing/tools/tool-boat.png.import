@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dxu4bg4b7ghn"
-path="res://.godot/imported/tool-boat.png-e2d79712d0d93d8cb9ccf47b7c0624da.ctex"
+path.s3tc="res://.godot/imported/tool-boat.png-e2d79712d0d93d8cb9ccf47b7c0624da.s3tc.ctex"
+path.etc2="res://.godot/imported/tool-boat.png-e2d79712d0d93d8cb9ccf47b7c0624da.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/tools/tool-boat.png"
-dest_files=["res://.godot/imported/tool-boat.png-e2d79712d0d93d8cb9ccf47b7c0624da.ctex"]
+dest_files=["res://.godot/imported/tool-boat.png-e2d79712d0d93d8cb9ccf47b7c0624da.s3tc.ctex", "res://.godot/imported/tool-boat.png-e2d79712d0d93d8cb9ccf47b7c0624da.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

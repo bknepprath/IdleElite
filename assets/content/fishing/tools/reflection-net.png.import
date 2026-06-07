@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cmrcxh42wa6em"
-path="res://.godot/imported/reflection-net.png-4e6485aa47e56d2a63325d77e441ef7f.ctex"
+path.s3tc="res://.godot/imported/reflection-net.png-4e6485aa47e56d2a63325d77e441ef7f.s3tc.ctex"
+path.etc2="res://.godot/imported/reflection-net.png-4e6485aa47e56d2a63325d77e441ef7f.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/tools/reflection-net.png"
-dest_files=["res://.godot/imported/reflection-net.png-4e6485aa47e56d2a63325d77e441ef7f.ctex"]
+dest_files=["res://.godot/imported/reflection-net.png-4e6485aa47e56d2a63325d77e441ef7f.s3tc.ctex", "res://.godot/imported/reflection-net.png-4e6485aa47e56d2a63325d77e441ef7f.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

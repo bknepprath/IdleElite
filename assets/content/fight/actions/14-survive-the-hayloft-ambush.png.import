@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b6oumn24x8t56"
-path="res://.godot/imported/14-survive-the-hayloft-ambush.png-0723cfbd2034861a0bc5e0dc884d05d6.ctex"
+path.s3tc="res://.godot/imported/14-survive-the-hayloft-ambush.png-0723cfbd2034861a0bc5e0dc884d05d6.s3tc.ctex"
+path.etc2="res://.godot/imported/14-survive-the-hayloft-ambush.png-0723cfbd2034861a0bc5e0dc884d05d6.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/actions/14-survive-the-hayloft-ambush.png"
-dest_files=["res://.godot/imported/14-survive-the-hayloft-ambush.png-0723cfbd2034861a0bc5e0dc884d05d6.ctex"]
+dest_files=["res://.godot/imported/14-survive-the-hayloft-ambush.png-0723cfbd2034861a0bc5e0dc884d05d6.s3tc.ctex", "res://.godot/imported/14-survive-the-hayloft-ambush.png-0723cfbd2034861a0bc5e0dc884d05d6.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://xoa0f5r8mmms"
-path="res://.godot/imported/unlock-chain-right.png-c3afd3e22d28950ebe191a144f06320a.ctex"
+path.s3tc="res://.godot/imported/unlock-chain-right.png-c3afd3e22d28950ebe191a144f06320a.s3tc.ctex"
+path.etc2="res://.godot/imported/unlock-chain-right.png-c3afd3e22d28950ebe191a144f06320a.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/ui/unlock-chain-right.png"
-dest_files=["res://.godot/imported/unlock-chain-right.png-c3afd3e22d28950ebe191a144f06320a.ctex"]
+dest_files=["res://.godot/imported/unlock-chain-right.png-c3afd3e22d28950ebe191a144f06320a.s3tc.ctex", "res://.godot/imported/unlock-chain-right.png-c3afd3e22d28950ebe191a144f06320a.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,19 +3,21 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ci2fxyg8bfeu6"
-path="res://.godot/imported/thieving-trophy-heist-backgrounds.png-a498ecd24ffdb825de3d5b2a4659d3ce.ctex"
+path.s3tc="res://.godot/imported/thieving-trophy-heist-backgrounds.png-a498ecd24ffdb825de3d5b2a4659d3ce.s3tc.ctex"
+path.etc2="res://.godot/imported/thieving-trophy-heist-backgrounds.png-a498ecd24ffdb825de3d5b2a4659d3ce.etc2.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/thieving/heists/thieving-trophy-heist-backgrounds.png"
-dest_files=["res://.godot/imported/thieving-trophy-heist-backgrounds.png-a498ecd24ffdb825de3d5b2a4659d3ce.ctex"]
+dest_files=["res://.godot/imported/thieving-trophy-heist-backgrounds.png-a498ecd24ffdb825de3d5b2a4659d3ce.s3tc.ctex", "res://.godot/imported/thieving-trophy-heist-backgrounds.png-a498ecd24ffdb825de3d5b2a4659d3ce.etc2.ctex"]
 
 [params]
 
-compress/mode=0
+compress/mode=2
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
