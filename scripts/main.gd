@@ -9,6 +9,7 @@ const DEFAULT_BUTTON_SFX_DEBOUNCE_MSEC := 180
 const STAMINA_GAUGE_UNFILL_SECONDS := 0.34
 const TOP_LEVEL_NAV_DEBOUNCE_MSEC := 120
 const UI_STATIC_REFRESH_INTERVAL_SECONDS := 0.20
+const DETAIL_ACTIONS_SCROLL_LIMIT_REFRESH_SECONDS := 0.10
 const MASTERY_BAR_EASE_SECONDS := 0.16
 const ACTIVITY_CRIT_OVERLAY_GROUP := "activity_crit_overlay"
 const ACTIVITY_CRIT_OVERLAY_LAYER := 96
@@ -489,10 +490,20 @@ class RegenCircle:
 	var regen_unfill_start_value := 0.0
 	var regen_unfill_elapsed := 0.0
 	var readout_font: Font
+	var _glass_bowl_texture: ImageTexture
+	var _glass_bowl_cached_size := Vector2.ZERO
 
 	func _ready() -> void:
 		_load_readout_font()
-		set_process(true)
+		set_process(false)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			_invalidate_glass_bowl_cache()
+
+	func _invalidate_glass_bowl_cache() -> void:
+		_glass_bowl_texture = null
+		_glass_bowl_cached_size = Vector2.ZERO
 
 	func set_value(next_value: float, instant := false) -> void:
 		var clamped_value := clampf(next_value, 0.0, 1.0)
@@ -506,6 +517,7 @@ class RegenCircle:
 			value = target_value
 			value_initialized = true
 			queue_redraw()
+			_maybe_sleep_animation_process()
 			return
 		var wrapped_to_next_refill := clamped_value < target_value - 0.18
 		if wrapped_to_next_refill:
@@ -521,10 +533,12 @@ class RegenCircle:
 				value = target_value
 			regen_unfill_from_max_pending = false
 			queue_redraw()
+			_ensure_animation_process()
 			return
 		if regen_wrap_emptying:
 			regen_wrap_pending_value = clamped_value
 			queue_redraw()
+			_ensure_animation_process()
 			return
 		target_value = clamped_value
 		if clamped_value >= 0.995:
@@ -532,6 +546,20 @@ class RegenCircle:
 			regen_wrap_emptying = false
 			regen_unfill_from_max_pending = false
 		queue_redraw()
+		_ensure_animation_process()
+
+	func _ensure_animation_process() -> void:
+		if not is_processing():
+			set_process(true)
+
+	func _maybe_sleep_animation_process() -> void:
+		if regen_wrap_emptying:
+			return
+		if absf(value - target_value) > 0.0005:
+			return
+		if absf(displayed_current - target_current) > 0.01:
+			return
+		set_process(false)
 
 	func _process(delta: float) -> void:
 		if regen_wrap_emptying:
@@ -560,6 +588,7 @@ class RegenCircle:
 			displayed_current = target_current
 			if needs_final_redraw:
 				queue_redraw()
+		_maybe_sleep_animation_process()
 
 	func _ease_to(from: float, to: float, speed: float, delta: float) -> float:
 		if delta <= 0.0:
@@ -584,6 +613,7 @@ class RegenCircle:
 			displayed_current = target_current
 			stamina_initialized = true
 		queue_redraw()
+		_ensure_animation_process()
 
 	func _draw() -> void:
 		var center := size * 0.5
@@ -595,14 +625,36 @@ class RegenCircle:
 		var ring_inner_radius := ring_radius - ring_width * 0.5
 		var inner_radius := ring_inner_radius - gauge_stroke
 		draw_arc(center, ring_radius, -PI * 0.5, -PI * 0.5 + TAU * value, 192, theme_color, ring_width, true)
-		_draw_glass_bowl(center, inner_radius, scale)
+		_ensure_glass_bowl_texture()
+		if _glass_bowl_texture != null:
+			draw_texture(_glass_bowl_texture, Vector2.ZERO)
 		_draw_inner_fill(center, inner_radius, scale)
 		_draw_inner_bevel(center, inner_radius, scale)
 		draw_arc(center, inner_radius + gauge_stroke * 0.5, -PI * 0.5, PI * 1.5, 192, Color("#171615"), gauge_stroke, true)
 		_draw_center_text(center)
 
-	func _draw_glass_bowl(center: Vector2, radius: float, scale: float) -> void:
-		draw_circle(center, radius, Color("#fffaf0"))
+	func _ensure_glass_bowl_texture() -> void:
+		var draw_size := size.floor()
+		if draw_size.x < 2.0 or draw_size.y < 2.0:
+			return
+		if _glass_bowl_texture != null and _glass_bowl_cached_size.is_equal_approx(draw_size):
+			return
+		var center := draw_size * 0.5
+		var scale := minf(draw_size.x, draw_size.y) / 552.0
+		var outer_radius := minf(draw_size.x, draw_size.y) * 0.5
+		var gauge_stroke := PAPER_BUTTON_OUTLINE_WIDTH * scale
+		var ring_width := 30.0 * scale
+		var ring_radius := outer_radius - ring_width * 0.5
+		var ring_inner_radius := ring_radius - ring_width * 0.5
+		var inner_radius := ring_inner_radius - gauge_stroke
+		var image := Image.create(int(draw_size.x), int(draw_size.y), false, Image.FORMAT_RGBA8)
+		image.fill(Color(0, 0, 0, 0))
+		_paint_glass_bowl_to_image(image, center, inner_radius, scale)
+		_glass_bowl_texture = ImageTexture.create_from_image(image)
+		_glass_bowl_cached_size = draw_size
+
+	func _paint_glass_bowl_to_image(image: Image, center: Vector2, radius: float, scale: float) -> void:
+		_image_paint_disc(image, center, radius, Color("#fffaf0"))
 		var step := maxf(1.0, radius / 74.0)
 		var y := center.y - radius
 		while y <= center.y + radius:
@@ -610,10 +662,104 @@ class RegenCircle:
 			var chord := sqrt(maxf(0.0, radius * radius - dy * dy))
 			var vertical := clampf((dy / radius + 1.0) * 0.5, 0.0, 1.0)
 			var glass_tint := Color("#eef7ff", 0.18 * (1.0 - vertical) + 0.04)
-			draw_line(Vector2(center.x - chord, y), Vector2(center.x + chord, y), glass_tint, step + 1.0, true)
+			_image_paint_thick_hline(
+				image,
+				int(round(center.x - chord)),
+				int(round(center.x + chord)),
+				int(round(y)),
+				glass_tint,
+				int(ceil(step + 1.0))
+			)
 			y += step
-		_draw_ellipse_lines(center + Vector2(-radius * 0.25, -radius * 0.39), radius * 0.30, radius * 0.11, Color(1, 1, 1, 0.34), maxf(1.0, 2.0 * scale), center, radius)
-		_draw_ellipse_lines(center + Vector2(radius * 0.26, radius * 0.27), radius * 0.19, radius * 0.07, Color(1, 1, 1, 0.11), maxf(1.0, 1.4 * scale), center, radius)
+		_image_paint_ellipse_arc(
+			image,
+			center + Vector2(-radius * 0.25, -radius * 0.39),
+			radius * 0.30,
+			radius * 0.11,
+			Color(1, 1, 1, 0.34),
+			maxf(1.0, 2.0 * scale),
+			center,
+			radius
+		)
+		_image_paint_ellipse_arc(
+			image,
+			center + Vector2(radius * 0.26, radius * 0.27),
+			radius * 0.19,
+			radius * 0.07,
+			Color(1, 1, 1, 0.11),
+			maxf(1.0, 1.4 * scale),
+			center,
+			radius
+		)
+
+	func _image_paint_disc(image: Image, center: Vector2, radius: float, color: Color) -> void:
+		var pixel_radius := int(ceil(radius))
+		var center_x := int(round(center.x))
+		var center_y := int(round(center.y))
+		for y in range(center_y - pixel_radius, center_y + pixel_radius + 1):
+			if y < 0 or y >= image.get_height():
+				continue
+			for x in range(center_x - pixel_radius, center_x + pixel_radius + 1):
+				if x < 0 or x >= image.get_width():
+					continue
+				if Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius + 0.5:
+					_image_blend_pixel(image, x, y, color)
+
+	func _image_blend_pixel(image: Image, x: int, y: int, color: Color) -> void:
+		if x < 0 or y < 0 or x >= image.get_width() or y >= image.get_height():
+			return
+		var existing := image.get_pixel(x, y)
+		var alpha := clampf(color.a, 0.0, 1.0)
+		if alpha <= 0.0:
+			return
+		if alpha >= 0.999 and existing.a <= 0.001:
+			image.set_pixel(x, y, color)
+			return
+		var blended := existing.lerp(color, alpha)
+		blended.a = clampf(existing.a + alpha * (1.0 - existing.a), 0.0, 1.0)
+		image.set_pixel(x, y, blended)
+
+	func _image_paint_thick_hline(image: Image, x0: int, x1: int, y: int, color: Color, thickness: int) -> void:
+		if thickness <= 0:
+			return
+		var left := mini(x0, x1)
+		var right := maxi(x0, x1)
+		var half := thickness / 2
+		for row in range(y - half, y - half + thickness):
+			for x in range(left, right + 1):
+				_image_blend_pixel(image, x, row, color)
+
+	func _image_paint_ellipse_arc(
+		image: Image,
+		ellipse_center: Vector2,
+		half_width: float,
+		half_height: float,
+		color: Color,
+		width: float,
+		clip_center: Vector2,
+		clip_radius: float
+	) -> void:
+		var previous := Vector2.ZERO
+		var has_previous := false
+		for i in range(97):
+			var angle := lerpf(0.0, TAU, float(i) / 96.0)
+			var point := ellipse_center + Vector2(cos(angle) * half_width, sin(angle) * half_height)
+			var inside := point.distance_to(clip_center) <= clip_radius + width * 0.5
+			if inside and has_previous:
+				_image_paint_line(image, previous, point, color, width)
+			previous = point
+			has_previous = inside
+
+	func _image_paint_line(image: Image, from: Vector2, to: Vector2, color: Color, width: float) -> void:
+		var length := maxf(1.0, from.distance_to(to))
+		var steps := maxi(1, int(ceil(length)))
+		var half_width := maxi(1, int(ceil(width * 0.5)))
+		for i in range(steps + 1):
+			var t := float(i) / float(steps)
+			var point := from.lerp(to, t)
+			for oy in range(-half_width, half_width + 1):
+				for ox in range(-half_width, half_width + 1):
+					_image_blend_pixel(image, int(round(point.x)) + ox, int(round(point.y)) + oy, color)
 
 	func _draw_inner_fill(center: Vector2, radius: float, scale: float) -> void:
 		var pct := clampf(displayed_current / float(maximum), 0.0, 1.0)
@@ -889,9 +1035,6 @@ class FishCircle:
 	func _trigger_circle_pressed() -> void:
 		wallet_pressed.emit()
 
-	func setup_chroma(_material: ShaderMaterial) -> void:
-		pass
-
 	func _fish_circle_icon_texture() -> Texture2D:
 		var node: Node = get_parent()
 		while node != null:
@@ -901,25 +1044,9 @@ class FishCircle:
 		return load(tool_icon_path) as Texture2D
 
 	func _fish_currency_icon_texture() -> Texture2D:
-		var sheet_path := "res://assets/content/fishing/ui/fishing-ui-supplemental-sheet.png"
-		if not ResourceLoader.exists(sheet_path):
+		if not ResourceLoader.exists(FISH_CURRENCY_ICON_TEXTURE):
 			return null
-		var source := load(sheet_path) as Texture2D
-		if source == null:
-			return null
-		var source_image := source.get_image()
-		if source_image == null:
-			return source
-		var region := Rect2i(Vector2i(92, 148), Vector2i(504, 340))
-		var cropped := Image.create(region.size.x, region.size.y, false, Image.FORMAT_RGBA8)
-		cropped.blit_rect(source_image, region, Vector2i.ZERO)
-		for y in range(cropped.get_height()):
-			for x in range(cropped.get_width()):
-				var color := cropped.get_pixel(x, y)
-				if color.r > 0.82 and color.b > 0.82 and color.g < 0.34:
-					color.a = 0.0
-					cropped.set_pixel(x, y, color)
-		return ImageTexture.create_from_image(cropped)
+		return load(FISH_CURRENCY_ICON_TEXTURE) as Texture2D
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
@@ -1503,7 +1630,7 @@ class PassiveSerpentineProgressBar:
 	var locked_shadow_color := Color(0.08, 0.07, 0.06, 0.22)
 
 	func _ready() -> void:
-		set_process(true)
+		set_process(false)
 
 	func set_value(next_value: float) -> void:
 		var clamped := clampf(next_value, 0.0, 100.0)
@@ -1512,17 +1639,26 @@ class PassiveSerpentineProgressBar:
 		value = clamped
 		target_value = clamped
 		queue_redraw()
+		set_process(false)
 
 	func set_target_value(next_value: float, instant := false) -> void:
 		var clamped := clampf(next_value, 0.0, 100.0)
 		if instant:
 			set_value(clamped)
 			return
+		if absf(target_value - clamped) <= 0.001:
+			return
 		target_value = clamped
+		_ensure_animation_process()
+
+	func _ensure_animation_process() -> void:
+		if not is_processing():
+			set_process(true)
 
 	func _process(delta: float) -> void:
 		if absf(value - target_value) <= 0.001:
 			value = target_value
+			set_process(false)
 			return
 		var speed := easing_speed
 		if target_value < value:
@@ -3980,7 +4116,7 @@ const HERO_LOCKED_MESSAGE := "Total Lv 25 required!"
 const HUB_UNLOCK_BUILD_LEVEL := 3
 const HUB_LOCKED_MESSAGE := "Lv 3 Build required!"
 const SHOP_UNLOCK_BRONZE_MEDALS := 5
-const SHOP_LOCKED_MESSAGE := "5 Bronze medals required!"
+const SHOP_LOCKED_MESSAGE := "5 Bronze medals\nrequired!"
 const HUB_NAV_LOCKED_MODULATE := Color("#3f3f3f")
 const HUB_NAV_UNLOCK_FADE_SECONDS := 0.62
 const PASSIVE_LOG_PILE_MEDIUM_THRESHOLD := 25
@@ -4241,7 +4377,7 @@ const FISHING_ATTEMPT_BAR_SEPARATION := 8
 const FISHING_PADLOCK_UNLOCK_DROP_SECONDS := 0.82
 const FISHING_PADLOCK_UNLOCK_POP_SECONDS := 0.24
 const FISH_CIRCLE_ICON_BASE_SIZE := Vector2(228, 228)
-const FISH_CATCH_CHROMA_TOLERANCE_8 := 74
+const FISH_CURRENCY_ICON_TEXTURE := "res://assets/content/fishing/ui/fish-currency-cutout.png"
 const FISHING_CATCH_POP_SIZE := Vector2(183, 183)
 const FISHING_CATCH_POP_STAGGER_SECONDS := 0.11
 const FISHING_CATCH_POP_STAGGER_SPACING := 44.0
@@ -4340,27 +4476,27 @@ const FISHING_TOOL_LOCATION_ACTIONS := {
 	},
 }
 const FISHING_ACTION_CATCH_TEXTURE_PATHS := {
-	"beach-shallows": "res://assets/content/fishing/catches/00-minnow.png",
-	"beach-rocks": "res://assets/content/fishing/catches/02-crab.png",
-	"reef-pot": "res://assets/content/fishing/catches/02-crab.png",
-	"stormy-sea-ripple": "res://assets/content/fishing/catches/14-shark.png",
-	"river-bend": "res://assets/content/fishing/catches/03-trout.png",
-	"river-rapids": "res://assets/content/fishing/catches/05-salmon.png",
-	"sewers-drain-gate": "res://assets/content/fishing/catches/06-eel.png",
-	"sewers-tunnel-pool": "res://assets/content/fishing/catches/06-eel.png",
-	"winter-lake-ice-hole": "res://assets/content/fishing/catches/08-snowfish.png",
-	"reef-cage": "res://assets/content/fishing/catches/07-lobster.png",
-	"reef-night-reef": "res://assets/content/fishing/catches/10-reef-fish.png",
-	"reef-pearl-bed": "res://assets/content/fishing/catches/09-pearl-oyster.png",
-	"sea-rowboat": "res://assets/content/fishing/catches/04-bass.png",
-	"sea-open-water": "res://assets/content/fishing/catches/12-tuna.png",
-	"sea-chum-line": "res://assets/content/fishing/catches/10-reef-fish.png",
-	"stormy-sea-storm-line": "res://assets/content/fishing/catches/19-storm-ray.png",
-	"deep-sea-wreck-drop": "res://assets/content/fishing/catches/11-octopus.png",
-	"deep-sea-abyss": "res://assets/content/fishing/catches/14-shark.png",
-	"deep-sea-trench": "res://assets/content/fishing/catches/11-octopus.png",
-	"space-reflection": "res://assets/content/fishing/catches/23-cosmic-starfish.png",
-	"space-starlight": "res://assets/content/fishing/catches/23-cosmic-starfish.png",
+	"beach-shallows": "res://assets/content/fishing/catch-icons/00-minnow-cutout.png",
+	"beach-rocks": "res://assets/content/fishing/catch-icons/02-crab-cutout.png",
+	"reef-pot": "res://assets/content/fishing/catch-icons/02-crab-cutout.png",
+	"stormy-sea-ripple": "res://assets/content/fishing/catch-icons/14-shark-cutout.png",
+	"river-bend": "res://assets/content/fishing/catch-icons/03-trout-cutout.png",
+	"river-rapids": "res://assets/content/fishing/catch-icons/05-salmon-cutout.png",
+	"sewers-drain-gate": "res://assets/content/fishing/catch-icons/06-eel-cutout.png",
+	"sewers-tunnel-pool": "res://assets/content/fishing/catch-icons/06-eel-cutout.png",
+	"winter-lake-ice-hole": "res://assets/content/fishing/catch-icons/08-snowfish-cutout.png",
+	"reef-cage": "res://assets/content/fishing/catch-icons/07-lobster-cutout.png",
+	"reef-night-reef": "res://assets/content/fishing/catch-icons/10-reef-fish-cutout.png",
+	"reef-pearl-bed": "res://assets/content/fishing/catch-icons/09-pearl-oyster-cutout.png",
+	"sea-rowboat": "res://assets/content/fishing/catch-icons/04-bass-cutout.png",
+	"sea-open-water": "res://assets/content/fishing/catch-icons/12-tuna-cutout.png",
+	"sea-chum-line": "res://assets/content/fishing/catch-icons/10-reef-fish-cutout.png",
+	"stormy-sea-storm-line": "res://assets/content/fishing/catch-icons/19-storm-ray-cutout.png",
+	"deep-sea-wreck-drop": "res://assets/content/fishing/catch-icons/11-octopus-cutout.png",
+	"deep-sea-abyss": "res://assets/content/fishing/catch-icons/14-shark-cutout.png",
+	"deep-sea-trench": "res://assets/content/fishing/catch-icons/11-octopus-cutout.png",
+	"space-reflection": "res://assets/content/fishing/catch-icons/23-cosmic-starfish-cutout.png",
+	"space-starlight": "res://assets/content/fishing/catch-icons/23-cosmic-starfish-cutout.png",
 }
 const FISHING_ACTION_FOOD_VALUES := {
 	"beach-shallows": 0.3,
@@ -4374,19 +4510,30 @@ const FISHING_ACTION_FOOD_VALUES := {
 	"space-reflection": 1.0,
 }
 const FISHING_CATCH_TEXTURE_PATHS := [
-	"res://assets/content/fishing/catches/00-minnow.png",
-	"res://assets/content/fishing/catches/01-clam.png",
-	"res://assets/content/fishing/catches/02-crab.png",
-	"res://assets/content/fishing/catches/03-trout.png",
-	"res://assets/content/fishing/catches/04-bass.png",
-	"res://assets/content/fishing/catches/05-salmon.png",
-	"res://assets/content/fishing/catches/06-eel.png",
-	"res://assets/content/fishing/catches/07-lobster.png",
-	"res://assets/content/fishing/catches/08-snowfish.png",
-	"res://assets/content/fishing/catches/09-pearl-oyster.png",
-	"res://assets/content/fishing/catches/10-reef-fish.png",
-	"res://assets/content/fishing/catches/11-octopus.png",
-	"res://assets/content/fishing/catches/12-tuna.png",
+	"res://assets/content/fishing/catch-icons/00-minnow-cutout.png",
+	"res://assets/content/fishing/catch-icons/01-clam-cutout.png",
+	"res://assets/content/fishing/catch-icons/02-crab-cutout.png",
+	"res://assets/content/fishing/catch-icons/03-trout-cutout.png",
+	"res://assets/content/fishing/catch-icons/04-bass-cutout.png",
+	"res://assets/content/fishing/catch-icons/05-salmon-cutout.png",
+	"res://assets/content/fishing/catch-icons/06-eel-cutout.png",
+	"res://assets/content/fishing/catch-icons/07-lobster-cutout.png",
+	"res://assets/content/fishing/catch-icons/08-snowfish-cutout.png",
+	"res://assets/content/fishing/catch-icons/09-pearl-oyster-cutout.png",
+	"res://assets/content/fishing/catch-icons/10-reef-fish-cutout.png",
+	"res://assets/content/fishing/catch-icons/11-octopus-cutout.png",
+	"res://assets/content/fishing/catch-icons/12-tuna-cutout.png",
+	"res://assets/content/fishing/catch-icons/13-swordfish-cutout.png",
+	"res://assets/content/fishing/catch-icons/14-shark-cutout.png",
+	"res://assets/content/fishing/catch-icons/15-lanternfish-cutout.png",
+	"res://assets/content/fishing/catch-icons/16-abyss-anglerfish-cutout.png",
+	"res://assets/content/fishing/catch-icons/17-jellyfish-cutout.png",
+	"res://assets/content/fishing/catch-icons/18-lightning-eel-cutout.png",
+	"res://assets/content/fishing/catch-icons/19-storm-ray-cutout.png",
+	"res://assets/content/fishing/catch-icons/20-golden-koi-cutout.png",
+	"res://assets/content/fishing/catch-icons/21-ancient-coelacanth-cutout.png",
+	"res://assets/content/fishing/catch-icons/22-tiny-leviathan-trophy-cutout.png",
+	"res://assets/content/fishing/catch-icons/23-cosmic-starfish-cutout.png",
 ]
 const ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS := 0.26
 const PASSIVE_MODULE_CARD_HEIGHT := 940
@@ -4573,6 +4720,7 @@ const LEADERBOARD_AUTH_REFRESH_MARGIN_SECONDS := 5 * 60
 const LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS := 15 * 60
 const CHAT_STREAM_RETRY_INTERVAL_SECONDS := 30
 const CHAT_STREAM_RECONNECT_MIN_SECONDS := 5
+const CHAT_STREAM_POLL_INTERVAL_SECONDS := 0.05
 const CHAT_STREAM_MAX_BUFFER_CHARS := 65536
 const CHAT_SEND_INTERVAL_SECONDS := 2
 const CHAT_MESSAGE_MAX_CHARS := 80
@@ -5227,6 +5375,12 @@ var chat_keyboard_preview: PanelContainer
 var chat_keyboard_preview_label: Label
 var chat_overlay_body: VBoxContainer
 var chat_overlay_scroll: MobileScrollContainer
+var chat_overlay_list: VBoxContainer
+var chat_overlay_notice: Control
+var chat_overlay_row_nodes := {}
+var chat_overlay_row_signatures := {}
+var chat_overlay_shell_ready := false
+var chat_stream_poll_timer: Timer
 var chat_keyboard_lift_active := false
 var chat_keyboard_lift_pixels := 0.0
 var chat_keyboard_lift_hold_seconds := 0.0
@@ -5405,6 +5559,7 @@ var audio_slider_grabber_texture: Texture2D
 var paper_button_style_textures := {}
 var empty_style_cache := StyleBoxEmpty.new()
 var ui_static_refresh_elapsed := 0.0
+var detail_actions_scroll_limit_elapsed := 0.0
 var last_default_button_sfx_msec := -100000
 var top_level_nav_locked_until_msec := 0
 var active_audio_slider: HSlider
@@ -5498,7 +5653,7 @@ func _ready() -> void:
 	if DisplayServer.get_name() == "headless":
 		boot_warmup_active = false
 	else:
-		call_deferred("_finish_boot_warmup_overlay")
+		call_deferred("_run_boot_warmup")
 
 
 func _headless_validation_mode() -> bool:
@@ -5530,10 +5685,12 @@ func _process(delta: float) -> void:
 	_process_action_stop_hold(delta)
 	_process_music_flow(delta)
 	_process_leaderboard_sync(delta)
-	_process_chat_live_sync(delta)
 	_process_chat_keyboard_lift(delta)
 	_update_ui(delta)
-	_sync_detail_actions_scroll_limit()
+	detail_actions_scroll_limit_elapsed += delta
+	if detail_actions_scroll_limit_elapsed >= DETAIL_ACTIONS_SCROLL_LIMIT_REFRESH_SECONDS:
+		detail_actions_scroll_limit_elapsed = 0.0
+		_sync_detail_actions_scroll_limit()
 	_process_chain_proximity_audio(delta)
 	_process_detail_jump_arrows(delta)
 
@@ -6564,6 +6721,12 @@ func _prepare_for_shutdown() -> void:
 	chat_overlay = null
 	chat_overlay_body = null
 	chat_overlay_scroll = null
+	chat_overlay_list = null
+	chat_overlay_notice = null
+	chat_overlay_row_nodes.clear()
+	chat_overlay_row_signatures.clear()
+	chat_overlay_shell_ready = false
+	chat_stream_poll_timer = null
 	fishing_collection_canvas = null
 	fishing_tool_wallet_canvas = null
 	fishing_tool_wallet_layer = null
@@ -6717,6 +6880,11 @@ func _build_leaderboard_http() -> void:
 	chat_send_request.timeout = 15.0
 	chat_send_request.request_completed.connect(_on_chat_send_completed)
 	add_child(chat_send_request)
+	chat_stream_poll_timer = Timer.new()
+	chat_stream_poll_timer.wait_time = CHAT_STREAM_POLL_INTERVAL_SECONDS
+	chat_stream_poll_timer.autostart = false
+	chat_stream_poll_timer.timeout.connect(_poll_chat_live_sync)
+	add_child(chat_stream_poll_timer)
 
 
 func _leaderboard_firebase_enabled() -> bool:
@@ -7347,9 +7515,23 @@ func _chat_stream_connect(force_reconnect := false) -> void:
 	chat_status_message = "Connecting global chat stream..."
 
 
-func _process_chat_live_sync(delta: float) -> void:
+func _start_chat_stream_poll_timer() -> void:
+	if chat_stream_poll_timer == null:
+		return
+	if chat_stream_poll_timer.is_stopped():
+		chat_stream_poll_timer.start()
+	_poll_chat_live_sync()
+
+
+func _stop_chat_stream_poll_timer() -> void:
+	if chat_stream_poll_timer != null:
+		chat_stream_poll_timer.stop()
+
+
+func _poll_chat_live_sync() -> void:
 	if not _chat_strip_visible_on_current_screen():
 		_chat_stream_disconnect(false)
+		_stop_chat_stream_poll_timer()
 		return
 	if chat_strip == null or not is_instance_valid(chat_strip) or not chat_strip.visible:
 		_chat_stream_disconnect(false)
@@ -7521,6 +7703,7 @@ func _chat_note_stream_failure(message: String) -> void:
 
 
 func _chat_stream_disconnect(clear_status := true) -> void:
+	_stop_chat_stream_poll_timer()
 	if chat_stream_client != null:
 		chat_stream_client.close()
 	chat_stream_connected = false
@@ -7751,7 +7934,132 @@ func _chat_can_send() -> bool:
 
 func _render_chat_if_visible() -> void:
 	_update_chat_strip()
-	_rebuild_chat_overlay()
+	if chat_overlay == null or not chat_overlay.visible:
+		return
+	_ensure_chat_overlay_shell()
+	_sync_chat_overlay_rows()
+	_chat_scroll_to_latest_deferred()
+
+
+func _destroy_chat_overlay_shell() -> void:
+	chat_overlay_shell_ready = false
+	chat_overlay_list = null
+	chat_overlay_notice = null
+	chat_overlay_row_nodes.clear()
+	chat_overlay_row_signatures.clear()
+	chat_message_edit = null
+	chat_overlay_scroll = null
+	if chat_overlay_body == null or not is_instance_valid(chat_overlay_body):
+		return
+	for child in chat_overlay_body.get_children():
+		chat_overlay_body.remove_child(child)
+		child.queue_free()
+
+
+func _ensure_chat_overlay_shell() -> void:
+	if chat_overlay == null or chat_overlay_body == null:
+		return
+	if (
+		chat_overlay_shell_ready
+		and chat_overlay_list != null
+		and is_instance_valid(chat_overlay_list)
+		and chat_overlay_scroll != null
+		and is_instance_valid(chat_overlay_scroll)
+		and chat_message_edit != null
+		and is_instance_valid(chat_message_edit)
+	):
+		return
+	_destroy_chat_overlay_shell()
+	chat_overlay_body.add_child(_chat_expanded_header())
+	var scroll := MobileScrollContainer.new()
+	chat_overlay_scroll = scroll
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.set_pull_resistance_enabled(false)
+	chat_overlay_body.add_child(scroll)
+	var list_margin := MarginContainer.new()
+	var viewport_width := get_viewport_rect().size.x
+	list_margin.custom_minimum_size = Vector2(viewport_width, 0)
+	list_margin.add_theme_constant_override("margin_left", 64)
+	list_margin.add_theme_constant_override("margin_right", 48)
+	list_margin.add_theme_constant_override("margin_top", 8)
+	list_margin.add_theme_constant_override("margin_bottom", 34)
+	scroll.add_child(list_margin)
+	var list := VBoxContainer.new()
+	chat_overlay_list = list
+	list.custom_minimum_size = Vector2(maxf(1.0, viewport_width - 112.0), 0)
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 36)
+	list_margin.add_child(list)
+	chat_overlay_body.add_child(_chat_expanded_composer())
+	chat_overlay_shell_ready = true
+
+
+func _chat_overlay_row_signature(row_data: Dictionary) -> String:
+	return "%s|%s|%s|%s|%s|%s" % [
+		str(row_data.get("text", "")),
+		str(row_data.get("deleted", false)),
+		str(row_data.get("name", "")),
+		str(row_data.get("created_at", 0)),
+		str(row_data.get("avatar_index", 0)),
+		str(row_data.get("sender_id", "")),
+	]
+
+
+func _sync_chat_overlay_notice() -> void:
+	if chat_overlay_list == null or not is_instance_valid(chat_overlay_list):
+		return
+	var should_show := _chat_expanded_notice_visible()
+	if should_show:
+		var fresh := _chat_expanded_notice()
+		if chat_overlay_notice != null and is_instance_valid(chat_overlay_notice):
+			var notice_index := chat_overlay_notice.get_index()
+			chat_overlay_notice.queue_free()
+			chat_overlay_list.add_child(fresh)
+			chat_overlay_list.move_child(fresh, notice_index)
+		else:
+			chat_overlay_list.add_child(fresh)
+			chat_overlay_list.move_child(fresh, 0)
+		chat_overlay_notice = fresh
+	elif chat_overlay_notice != null and is_instance_valid(chat_overlay_notice):
+		chat_overlay_notice.queue_free()
+		chat_overlay_notice = null
+
+
+func _sync_chat_overlay_rows() -> void:
+	if chat_overlay == null or not chat_overlay.visible or chat_overlay_list == null:
+		return
+	_sync_chat_overlay_notice()
+	var row_start_index := 1 if chat_overlay_notice != null and is_instance_valid(chat_overlay_notice) else 0
+	var desired_ids: Array[String] = []
+	for raw_row in chat_rows:
+		desired_ids.append(str((raw_row as Dictionary).get("message_id", "")))
+	for raw_message_id in chat_overlay_row_nodes.keys():
+		var message_id := str(raw_message_id)
+		if message_id not in desired_ids:
+			var stale := chat_overlay_row_nodes.get(message_id) as Control
+			if stale != null and is_instance_valid(stale):
+				stale.queue_free()
+			chat_overlay_row_nodes.erase(message_id)
+			chat_overlay_row_signatures.erase(message_id)
+	for i in range(chat_rows.size()):
+		var row_data := chat_rows[i] as Dictionary
+		var message_id := str(row_data.get("message_id", ""))
+		if message_id.is_empty():
+			continue
+		var target_index := row_start_index + i
+		var signature := _chat_overlay_row_signature(row_data)
+		var row_widget := chat_overlay_row_nodes.get(message_id) as Control
+		if row_widget == null or not is_instance_valid(row_widget) or str(chat_overlay_row_signatures.get(message_id, "")) != signature:
+			if row_widget != null and is_instance_valid(row_widget):
+				row_widget.queue_free()
+			row_widget = _chat_expanded_row(row_data)
+			chat_overlay_list.add_child(row_widget)
+			chat_overlay_row_nodes[message_id] = row_widget
+			chat_overlay_row_signatures[message_id] = signature
+		if row_widget.get_index() != target_index:
+			chat_overlay_list.move_child(row_widget, target_index)
 
 
 func _refresh_leaderboard_if_visible() -> void:
@@ -8199,7 +8507,6 @@ func _build_hero(parent: PanelContainer) -> void:
 	hero.anchor_bottom = 1.48
 	hero.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	hero.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	hero.material = _hero_chroma_material()
 	stage.add_child(hero)
 	
 	var bubble := Control.new()
@@ -8566,7 +8873,9 @@ func _open_chat_overlay() -> void:
 	chat_overlay.visible = true
 	chat_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	_chat_stream_connect()
-	_rebuild_chat_overlay()
+	_ensure_chat_overlay_shell()
+	_sync_chat_overlay_rows()
+	_chat_scroll_to_latest_deferred()
 
 
 func _close_chat_overlay(play_sfx := true) -> void:
@@ -8575,7 +8884,6 @@ func _close_chat_overlay(play_sfx := true) -> void:
 	if chat_overlay != null:
 		chat_overlay.visible = false
 	_reset_chat_keyboard_lift()
-	chat_overlay_scroll = null
 	if chat_overlay_body != null and is_instance_valid(chat_overlay_body):
 		chat_overlay_body.offset_bottom = 0.0
 	if chat_keyboard_fill != null and is_instance_valid(chat_keyboard_fill):
@@ -8589,38 +8897,9 @@ func _close_chat_overlay(play_sfx := true) -> void:
 func _rebuild_chat_overlay() -> void:
 	if chat_overlay == null or chat_overlay_body == null or not chat_overlay.visible:
 		return
-	for child in chat_overlay_body.get_children():
-		chat_overlay_body.remove_child(child)
-		child.queue_free()
-	chat_message_edit = null
-	chat_overlay_scroll = null
-	chat_overlay_body.add_child(_chat_expanded_header())
-	var scroll := MobileScrollContainer.new()
-	chat_overlay_scroll = scroll
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.set_pull_resistance_enabled(false)
-	chat_overlay_body.add_child(scroll)
-	var list_margin := MarginContainer.new()
-	var viewport_width := get_viewport_rect().size.x
-	list_margin.custom_minimum_size = Vector2(viewport_width, 0)
-	list_margin.add_theme_constant_override("margin_left", 64)
-	list_margin.add_theme_constant_override("margin_right", 48)
-	list_margin.add_theme_constant_override("margin_top", 8)
-	list_margin.add_theme_constant_override("margin_bottom", 34)
-	scroll.add_child(list_margin)
-	var list := VBoxContainer.new()
-	list.custom_minimum_size = Vector2(maxf(1.0, viewport_width - 112.0), 0)
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 36)
-	list_margin.add_child(list)
-	if _chat_expanded_notice_visible():
-		list.add_child(_chat_expanded_notice())
-	if not chat_rows.is_empty():
-		for raw_row in chat_rows:
-			list.add_child(_chat_expanded_row(raw_row as Dictionary))
-	chat_overlay_body.add_child(_chat_expanded_composer())
+	_destroy_chat_overlay_shell()
+	_ensure_chat_overlay_shell()
+	_sync_chat_overlay_rows()
 	_chat_scroll_to_latest_deferred()
 
 
@@ -11827,6 +12106,7 @@ func _update_chat_strip(force_visibility := false) -> void:
 		chat_strip_last_visible = visible
 		if visible:
 			_chat_stream_connect()
+			_start_chat_stream_poll_timer()
 		else:
 			_chat_stream_disconnect(false)
 	if chat_strip_line_one == null or chat_strip_line_two == null:
@@ -12514,7 +12794,7 @@ func _refresh_local_profile_references() -> void:
 			row["name_key"] = leaderboard_name_key
 			row["avatar_index"] = leaderboard_avatar_index
 	_update_chat_strip()
-	_rebuild_chat_overlay()
+	_render_chat_if_visible()
 
 
 func _profile_reference_updates() -> Dictionary:
@@ -16600,7 +16880,7 @@ func _shake_stamina_gauge_red(target: Control) -> void:
 func _float_eaten_fish_icon(source: Control) -> void:
 	if source == null or not is_instance_valid(source) or not source.is_inside_tree():
 		return
-	var texture := _texture("res://assets/content/fishing/catches/00-minnow.png")
+	var texture := _texture("res://assets/content/fishing/catch-icons/00-minnow-cutout.png")
 	if texture == null:
 		return
 	var source_rect := source.get_global_rect()
@@ -16634,7 +16914,7 @@ func _float_eaten_fish_icon(source: Control) -> void:
 	root.add_child(label)
 
 	var icon_size := Vector2(216, 216)
-	var icon := _image_from_texture(texture, icon_size, "res://assets/content/fishing/catches/00-minnow.png")
+	var icon := _image_from_texture(texture, icon_size)
 	icon.anchor_left = 0.56
 	icon.anchor_right = 0.56
 	icon.anchor_top = 0.0
@@ -17886,7 +18166,7 @@ func _boot_warmup_texture_paths() -> Array:
 	var paths := []
 	var warmup_skill_ids := _boot_warmup_skill_ids()
 	_add_boot_warmup_texture_path(paths, "res://assets/loading/idle-elite-player-hub-launch-loading-screen.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-chroma.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-cutout.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/speech-bubble-down.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/total-lv-bargraph.png")
@@ -17910,6 +18190,7 @@ func _boot_warmup_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_BOTTOM_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ACTIVITY_BACK_TEXTURE)
 	if warmup_skill_ids.has("fishing"):
+		_add_boot_warmup_texture_path(paths, FISH_CURRENCY_ICON_TEXTURE)
 		for catch_path in FISHING_CATCH_TEXTURE_PATHS:
 			_add_boot_warmup_texture_path(paths, catch_path)
 		for catch_path in FISHING_ACTION_CATCH_TEXTURE_PATHS.values():
@@ -24893,32 +25174,6 @@ func _fishing_atlas_texture(path: String, region: Rect2) -> Texture2D:
 	return _atlas_texture(path, region)
 
 
-func _fishing_chroma_region_texture(path: String, region: Rect2i) -> Texture2D:
-	var cache_key := "%s|region|%d,%d,%d,%d" % [_res_path(path), region.position.x, region.position.y, region.size.x, region.size.y]
-	if texture_cache.has(cache_key):
-		return texture_cache[cache_key] as Texture2D
-	var source := _texture(path)
-	if source == null:
-		texture_cache[cache_key] = null
-		return null
-	var image := source.get_image()
-	if image == null or image.is_empty():
-		texture_cache[cache_key] = source
-		return source
-	var cropped := image.get_region(region)
-	if cropped.get_format() != Image.FORMAT_RGBA8:
-		cropped.convert(Image.FORMAT_RGBA8)
-	for y in range(cropped.get_height()):
-		for x in range(cropped.get_width()):
-			var color := cropped.get_pixel(x, y)
-			if _color_should_fishing_catch_chroma_key(color):
-				color.a = 0.0
-				cropped.set_pixel(x, y, color)
-	var texture := ImageTexture.create_from_image(cropped)
-	texture_cache[cache_key] = texture
-	return texture
-
-
 func _fishing_tool_icon_texture(tool_id_or_path: String) -> Texture2D:
 	match tool_id_or_path:
 		"hands":
@@ -31898,46 +32153,9 @@ func _label(text: String, font_size: int, color: Color, align: HorizontalAlignme
 	return label
 
 
-func _is_fishing_catch_texture_path(path: String) -> bool:
-	var normalized := _res_path(path)
-	return normalized.contains("/fishing/catches/")
-
-
-func _fishing_catch_chroma_baked_cache_key(path: String) -> String:
-	return "%s|chroma_baked" % _res_path(path)
-
-
-func _color_should_fishing_catch_chroma_key(color: Color) -> bool:
-	var red := int(round(color.r * 255.0))
-	var green := int(round(color.g * 255.0))
-	var blue := int(round(color.b * 255.0))
-	var magenta_match := absi(red - 255) + absi(green) + absi(blue - 255)
-	var green_match := absi(red) + absi(green - 255) + absi(blue)
-	return (
-		magenta_match < FISH_CATCH_CHROMA_TOLERANCE_8
-		or green_match < FISH_CATCH_CHROMA_TOLERANCE_8
-	)
-
-
-func _bake_fishing_catch_chroma_image(source: Image) -> Image:
-	var image := source.duplicate()
-	if image.get_format() != Image.FORMAT_RGBA8:
-		image.convert(Image.FORMAT_RGBA8)
-	for y in range(image.get_height()):
-		for x in range(image.get_width()):
-			var color: Color = image.get_pixel(x, y)
-			if _color_should_fishing_catch_chroma_key(color):
-				color.a = 0.0
-				image.set_pixel(x, y, color)
-	return image
-
-
 func _texture_from_image(path: String, image: Image) -> Texture2D:
-	var baked := image
-	if _is_fishing_catch_texture_path(path):
-		baked = _bake_fishing_catch_chroma_image(image)
-	var texture := ImageTexture.create_from_image(baked)
-	texture_cache[_fishing_catch_chroma_baked_cache_key(path) if _is_fishing_catch_texture_path(path) else _res_path(path)] = texture
+	var texture := ImageTexture.create_from_image(image)
+	texture_cache[_res_path(path)] = texture
 	return texture
 
 
@@ -32009,10 +32227,7 @@ func _action_art_border_overlay() -> Panel:
 
 func _image_from_texture(texture: Texture2D, minimum_size: Vector2, texture_path := "") -> TextureRect:
 	var image := TextureRect.new()
-	if _is_fishing_catch_texture_path(texture_path) and not texture_path.is_empty():
-		image.texture = _texture(texture_path)
-	else:
-		image.texture = texture
+	image.texture = _texture(texture_path) if not texture_path.is_empty() else texture
 	image.custom_minimum_size = minimum_size
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -33554,46 +33769,18 @@ func _texture(path: String) -> Texture2D:
 	if path.is_empty():
 		return null
 	var normalized := _res_path(path)
-	var needs_chroma_bake := _is_fishing_catch_texture_path(normalized)
-	var cache_key := normalized
-	if needs_chroma_bake:
-		cache_key = _fishing_catch_chroma_baked_cache_key(normalized)
-	if texture_cache.has(cache_key):
-		return texture_cache[cache_key] as Texture2D
+	if texture_cache.has(normalized):
+		return texture_cache[normalized] as Texture2D
 	if ResourceLoader.exists(normalized):
 		var loaded = load(normalized)
 		if loaded is Texture2D:
-			if needs_chroma_bake:
-				var source_image := (loaded as Texture2D).get_image()
-				if source_image != null and not source_image.is_empty():
-					return _texture_from_image(normalized, source_image)
-			texture_cache[cache_key] = loaded
+			texture_cache[normalized] = loaded
 			return loaded
 	var image := Image.new()
 	if image.load(normalized) != OK:
-		texture_cache[cache_key] = null
+		texture_cache[normalized] = null
 		return null
 	return _texture_from_image(normalized, image)
-
-
-func _chroma_material(chroma: Color) -> ShaderMaterial:
-	var shader := Shader.new()
-	shader.code = """
-shader_type canvas_item;
-uniform vec4 chroma_key : source_color = vec4(0.0, 1.0, 0.0, 1.0);
-void fragment() {
-	vec4 color = texture(TEXTURE, UV);
-	float distance_from_key = distance(color.rgb, chroma_key.rgb);
-	if (distance_from_key < 0.08) {
-		color.a = 0.0;
-	}
-	COLOR = color * COLOR;
-}
-"""
-	var material := ShaderMaterial.new()
-	material.shader = shader
-	material.set_shader_parameter("chroma_key", chroma)
-	return material
 
 
 func _locked_activity_material() -> ShaderMaterial:
@@ -33612,10 +33799,6 @@ void fragment() {
 	locked_activity_material = ShaderMaterial.new()
 	locked_activity_material.shader = shader
 	return locked_activity_material
-
-
-func _hero_chroma_material() -> ShaderMaterial:
-	return _chroma_material(Color("#ffffff"))
 
 
 func _build_audio() -> void:

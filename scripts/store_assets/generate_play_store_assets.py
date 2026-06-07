@@ -67,22 +67,7 @@ def paste_cover(base: Image.Image, src: Image.Image, box):
     base.alpha_composite(img.crop((x, y, x + target_w, y + target_h)), (x0, y0))
 
 
-def chroma_to_alpha(src: Image.Image, keys=((255, 0, 255), (0, 255, 0)), tolerance=74) -> Image.Image:
-    img = src.convert("RGBA")
-    pixels = []
-    data = img.get_flattened_data() if hasattr(img, "get_flattened_data") else img.getdata()
-    for r, g, b, a in data:
-        remove = False
-        for kr, kg, kb in keys:
-            if abs(r - kr) + abs(g - kg) + abs(b - kb) < tolerance:
-                remove = True
-                break
-        pixels.append((r, g, b, 0 if remove else a))
-    img.putdata(pixels)
-    return img
-
-
-def paste_shadow(base: Image.Image, src: Image.Image, xy, blur=18, offset=(0, 18), opacity=110):
+def paste_cover(base: Image.Image, src: Image.Image, box):
     x, y = xy
     alpha = src.getchannel("A").point(lambda a: int(a * opacity / 255))
     shadow = Image.new("RGBA", src.size, (0, 0, 0, 0))
@@ -304,7 +289,7 @@ def phone_card(scale=0.78) -> Image.Image:
 
 
 def hero_cutout(max_size) -> Image.Image:
-    hero = chroma_to_alpha(load_asset("assets/content/characters/stick-hero-transparent.png"))
+    hero = load_asset("assets/content/characters/stick-hero.png").convert("RGBA")
     hero.thumbnail(max_size, Image.Resampling.LANCZOS)
     return hero
 
@@ -518,8 +503,7 @@ def make_vertical_become_elite():
     d = ImageDraw.Draw(img)
     draw_ad_frame(img, "BECOME IDLE ELITE", "A cozy idle RPG for quick check-ins.", PURPLE)
 
-    icon = draw_character_head_icon(330)
-    icon = chroma_to_alpha(icon)
+    icon = draw_character_head_icon(330).convert("RGBA")
     badge = Image.new("RGBA", (410, 410), (0, 0, 0, 0))
     bd = ImageDraw.Draw(badge)
     rounded(bd, (0, 0, 409, 409), 76, (255, 213, 84, 255), (24, 22, 20), 8)
