@@ -4961,8 +4961,10 @@ const TUTORIAL_LAYER := ACHIEVEMENT_TOAST_CANVAS_LAYER + 1
 const BOOT_WARMUP_LAYER := TUTORIAL_LAYER + 2
 const CHAT_OVERLAY_CANVAS_LAYER := BOOT_WARMUP_LAYER + 1
 const BOOT_WARMUP_FRAME_BUDGET_MSEC := 32
-const DETAIL_LAZY_VIEWPORT_BUFFER_PX := 960.0
+const DETAIL_LAZY_VIEWPORT_BUFFER_PX := 480.0
+const DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX := 240.0
 const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 3
+const DETAIL_LAZY_BOOT_MOUNT_BUDGET_PER_FRAME := 2
 const DETAIL_LAZY_FADE_IN_SECONDS := 0.18
 const DETAIL_LAZY_STACK_SEPARATION := 56.0
 const DETAIL_LAZY_TIP_HEIGHT := 174.0
@@ -5546,6 +5548,7 @@ var achievements_list_stack: VBoxContainer
 var achievements_tab_buttons := {}
 var achievements_hide_completed: CheckBox
 var achievements_modal_tab := "achievements"
+var achievements_rebuild_signature := ""
 var offline_summary_overlay: Control
 var offline_summary_panel_frame: Control
 var offline_summary_panel: PanelContainer
@@ -7009,6 +7012,7 @@ func _prewarm_achievements_overlay() -> void:
 	if home_page == null or not is_instance_valid(home_page):
 		return
 	_ensure_achievements_overlay()
+	call_deferred("_rebuild_achievements_overlay")
 
 
 func _lazy_overlay_built(key: String) -> bool:
@@ -9742,6 +9746,9 @@ func _capture_page_state() -> Dictionary:
 		"chain_audio_scroll_focus_seconds": chain_audio_scroll_focus_seconds,
 		"detail_action_card_nodes": detail_action_card_nodes,
 		"detail_rendered_action_ids": detail_rendered_action_ids,
+		"detail_lazy_plan": detail_lazy_plan,
+		"detail_lazy_stack": detail_lazy_stack,
+		"detail_lazy_last_scroll": detail_lazy_last_scroll,
 		"skill_swipe_frame": skill_swipe_frame,
 		"skill_swipe_page": skill_swipe_page,
 		"skill_swipe_animating": skill_swipe_animating,
@@ -9812,6 +9819,9 @@ func _apply_page_state(state: Dictionary) -> void:
 	chain_audio_scroll_focus_seconds = float(state.get("chain_audio_scroll_focus_seconds", 0.0))
 	detail_action_card_nodes = state.get("detail_action_card_nodes", {}) as Dictionary
 	detail_rendered_action_ids = state.get("detail_rendered_action_ids", []) as Array
+	detail_lazy_plan = state.get("detail_lazy_plan", []) as Array
+	detail_lazy_stack = state.get("detail_lazy_stack") as VBoxContainer
+	detail_lazy_last_scroll = float(state.get("detail_lazy_last_scroll", -1.0))
 	skill_swipe_frame = state.get("skill_swipe_frame") as Control
 	skill_swipe_page = state.get("skill_swipe_page") as Control
 	skill_swipe_animating = bool(state.get("skill_swipe_animating", false))
@@ -10054,6 +10064,7 @@ func _try_activate_skill_detail_page(
 		call_deferred("_scroll_to_resume_activity", false)
 	call_deferred("_sync_detail_actions_scroll_limit_deferred")
 	call_deferred("_queue_skill_swipe_preview_prewarm")
+	call_deferred("_detail_lazy_refresh_after_page_ready")
 	return true
 
 
@@ -10070,6 +10081,8 @@ func _finish_render_screen_transition(target_key: String) -> void:
 	_update_page_visibility()
 	_update_chat_strip(true)
 	call_deferred("_update_ui", 0.0, true)
+	if current_screen == "skill" and not _fishing_rework_active_for_skill(selected_skill_id):
+		call_deferred("_detail_lazy_refresh_after_page_ready")
 
 
 func _stash_skills_page(cache_key: String) -> void:
@@ -14064,13 +14077,10 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		call_deferred("_restore_detail_actions_scroll", restore_scroll)
 	elif scroll_latest_activity:
 		call_deferred("_scroll_to_resume_activity", false)
-	if not _fishing_rework_active_for_skill(selected_skill_id) and detail_lazy_plan.size() > 0:
-		call_deferred("_sync_detail_lazy_visible_cards_after_scroll")
 
 
 func _sync_detail_lazy_visible_cards_after_scroll() -> void:
-	await get_tree().process_frame
-	_sync_detail_lazy_visible_cards(true, -1)
+	await _detail_lazy_refresh_after_page_ready()
 
 
 func _build_detail_interactive_action_card(skill_id: String, action: Dictionary, content_width: float, actions_width: float) -> Dictionary:
@@ -14496,10 +14506,31 @@ func _build_detail_lazy_plan(skill_id: String) -> Array:
 	return plan
 
 
+func _detail_lazy_viewport_buffer_px() -> float:
+	if boot_detail_render_in_progress:
+		return DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX
+	return DETAIL_LAZY_VIEWPORT_BUFFER_PX
+
+
 func _detail_lazy_entry_in_viewport(plan_item: Dictionary) -> bool:
+	var stack_host := plan_item.get("stack_host") as Control
+	if (
+		stack_host != null
+		and is_instance_valid(stack_host)
+		and detail_actions_scroll != null
+		and is_instance_valid(detail_actions_scroll)
+		and stack_host.is_visible_in_tree()
+	):
+		var host_rect := stack_host.get_global_rect()
+		if host_rect.size.y > 1.0:
+			var buffer := _detail_lazy_viewport_buffer_px()
+			var view_rect := detail_actions_scroll.get_global_rect()
+			view_rect = view_rect.grow_individual(0.0, buffer, 0.0, buffer)
+			return host_rect.intersects(view_rect)
 	var scroll_y := _detail_lazy_scroll_y()
-	var view_top := scroll_y - DETAIL_LAZY_VIEWPORT_BUFFER_PX
-	var view_bottom := scroll_y + _detail_lazy_viewport_height() + DETAIL_LAZY_VIEWPORT_BUFFER_PX
+	var buffer := _detail_lazy_viewport_buffer_px()
+	var view_top := scroll_y - buffer
+	var view_bottom := scroll_y + _detail_lazy_viewport_height() + buffer
 	var entry_y := float(plan_item.get("y", 0.0)) + SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT
 	var entry_bottom := entry_y + float(plan_item.get("height", 0.0))
 	return entry_bottom >= view_top and entry_y <= view_bottom
@@ -14701,19 +14732,70 @@ func _ensure_detail_lazy_entry_mounted(track_id: String) -> void:
 		return
 
 
+func _detail_lazy_refresh_after_page_ready() -> void:
+	if _fishing_rework_active_for_skill(selected_skill_id):
+		return
+	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+		return
+	if detail_actions_scroll.get_child_count() <= 0:
+		return
+	var stack := detail_actions_scroll.get_child(0) as VBoxContainer
+	if stack == null or not is_instance_valid(stack):
+		return
+	detail_lazy_stack = stack
+	if detail_lazy_plan.is_empty():
+		detail_rendered_action_ids.clear()
+		detail_lazy_plan = _build_detail_lazy_plan(selected_skill_id)
+		_detail_lazy_bind_plan_to_existing_stack(stack, selected_skill_id, _skill_content_width(), BASE_CANVAS.x if selected_skill_id == "thieving" else _skill_content_width())
+	await get_tree().process_frame
+	_sync_detail_lazy_visible_cards(true, -1)
+
+
+func _detail_lazy_bind_plan_to_existing_stack(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
+	var plan_index := 0
+	for child in stack.get_children():
+		if not child is Control:
+			continue
+		var control := child as Control
+		if control.name in ["DetailActionsTopSpacer", "DetailActionsBottomSpacer"]:
+			continue
+		if plan_index >= detail_lazy_plan.size():
+			break
+		var plan_item := detail_lazy_plan[plan_index] as Dictionary
+		plan_item["stack_host"] = control
+		plan_item["direct_stack_child"] = skill_id == "thieving" and str(plan_item.get("kind", "")) == "heist"
+		if control.get_child_count() > 0:
+			plan_item["mounted"] = true
+			plan_item["placeholder"] = null
+		else:
+			plan_item["mounted"] = false
+			var placeholder := Control.new()
+			placeholder.custom_minimum_size = Vector2(content_width, float(plan_item.get("height", ACTION_CARD_HEIGHT)))
+			placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			if bool(plan_item.get("direct_stack_child", false)):
+				placeholder.custom_minimum_size.x = actions_width
+			plan_item["placeholder"] = placeholder
+			control.add_child(placeholder)
+		plan_index += 1
+
+
 func _render_detail_lazy_card_list(stack: VBoxContainer, content_width: float, actions_width: float) -> void:
+	detail_rendered_action_ids.clear()
 	detail_lazy_plan = _build_detail_lazy_plan(selected_skill_id)
 	_detail_lazy_create_slots(stack, selected_skill_id, content_width, actions_width)
+	await get_tree().process_frame
+	await get_tree().process_frame
 	var card_yield_started_msec := Time.get_ticks_msec()
-	while true:
-		var mounted := _sync_detail_lazy_visible_cards(false, DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME if boot_detail_card_yield else -1)
-		if not boot_detail_card_yield:
-			break
+	var boot_budget := DETAIL_LAZY_BOOT_MOUNT_BUDGET_PER_FRAME if boot_detail_card_yield else -1
+	while boot_detail_card_yield:
+		var mounted := _sync_detail_lazy_visible_cards(false, boot_budget)
 		if mounted <= 0:
 			break
 		if Time.get_ticks_msec() - card_yield_started_msec >= BOOT_WARMUP_FRAME_BUDGET_MSEC:
 			await get_tree().process_frame
 			card_yield_started_msec = Time.get_ticks_msec()
+	if not boot_detail_card_yield:
+		_sync_detail_lazy_visible_cards(true, -1)
 
 func _build_thieving_heist_card(heist: Dictionary, content_width: float) -> Control:
 	var heist_id := str(heist.get("id", ""))
@@ -19159,6 +19241,7 @@ func _finalize_swipe_preview_to_full_detail() -> void:
 	_render_skill_detail(false, preserve_scroll)
 	_finish_render_screen_transition(target_key)
 	_update_ui(0.0, true)
+	call_deferred("_detail_lazy_refresh_after_page_ready")
 
 
 func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, play_click := true) -> void:
@@ -19741,10 +19824,18 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	if _fishing_rework_active_for_skill(skill_id):
 		_render_fishing_area_modules_preview(preview_stack, content_width, state)
 	else:
-		for action in _visible_actions_for_skill(skill_id):
-			var card_result := _build_passive_module_card(skill_id, action as Dictionary, content_width, false) if _is_passive_action(action as Dictionary) else _skill_swipe_preview_action_card(skill_id, action, content_width)
-			_prepare_locked_activity_preview_fade(card_result["card"] as Dictionary, skill_id, action as Dictionary)
-			_sync_locked_activity_preview_presence(card_result["card"] as Dictionary, skill_id, action as Dictionary)
+		for entry in _visible_detail_entries_for_skill(skill_id):
+			var entry_data := entry as Dictionary
+			if str(entry_data.get("kind", "")) == "thieving_heist":
+				var heist := entry_data.get("heist", {}) as Dictionary
+				var heist_root := _build_thieving_heist_card(heist, content_width)
+				heist_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				preview_stack.add_child(heist_root)
+				continue
+			var action := entry_data.get("action", {}) as Dictionary
+			var card_result := _build_passive_module_card(skill_id, action, content_width, false) if _is_passive_action(action) else _skill_swipe_preview_action_card(skill_id, action, content_width)
+			_prepare_locked_activity_preview_fade(card_result["card"] as Dictionary, skill_id, action)
+			_sync_locked_activity_preview_presence(card_result["card"] as Dictionary, skill_id, action)
 			preview_stack.add_child(card_result["root"])
 			(state["action_cards"] as Array).append(card_result["card"])
 	if not activity_start_tip_seen:
@@ -23445,9 +23536,26 @@ func _set_achievements_modal_tab(tab: String) -> void:
 	_play_default_button_sfx()
 
 
-func _rebuild_achievements_overlay() -> void:
+func _achievements_current_signature() -> String:
+	var show_completed := achievements_hide_completed != null and achievements_hide_completed.button_pressed
+	return "%s:%s:%s:%s:%s:%s:%s" % [
+		achievements_modal_tab,
+		show_completed,
+		_global_level(),
+		mastery.size(),
+		activity_crit_seen,
+		activity_mega_crit_seen,
+		_active_global_buff_lines().size()
+	]
+
+
+func _rebuild_achievements_overlay(force := false) -> void:
 	if achievements_list_stack == null:
 		return
+	var signature := _achievements_current_signature()
+	if not force and achievements_rebuild_signature == signature and achievements_list_stack.get_child_count() > 0:
+		return
+	achievements_rebuild_signature = signature
 	achievements_rebuild_token += 1
 	var token := achievements_rebuild_token
 	_clear(achievements_list_stack)
@@ -23883,7 +23991,6 @@ func _achievements_rebuild_current(token: int) -> bool:
 		token == achievements_rebuild_token
 		and achievements_list_stack != null
 		and is_instance_valid(achievements_list_stack)
-		and current_screen == "achievements"
 	)
 
 
