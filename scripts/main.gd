@@ -4961,6 +4961,11 @@ const TUTORIAL_LAYER := ACHIEVEMENT_TOAST_CANVAS_LAYER + 1
 const BOOT_WARMUP_LAYER := TUTORIAL_LAYER + 2
 const CHAT_OVERLAY_CANVAS_LAYER := BOOT_WARMUP_LAYER + 1
 const BOOT_WARMUP_FRAME_BUDGET_MSEC := 32
+const DETAIL_LAZY_VIEWPORT_BUFFER_PX := 960.0
+const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 3
+const DETAIL_LAZY_FADE_IN_SECONDS := 0.18
+const DETAIL_LAZY_STACK_SEPARATION := 56.0
+const DETAIL_LAZY_TIP_HEIGHT := 174.0
 const BOOT_WARMUP_MIN_VISIBLE_SECONDS := 0.0
 const EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC := 12
 const OFFLINE_ACTIVE_BATCH_MIN_CYCLES := 12
@@ -5481,6 +5486,9 @@ var chain_audio_scroll_direction := 0
 var chain_audio_scroll_focus_seconds := 0.0
 var detail_action_card_nodes := {}
 var detail_rendered_action_ids := []
+var detail_lazy_plan: Array = []
+var detail_lazy_last_scroll := -1.0
+var detail_lazy_stack: VBoxContainer = null
 var skill_detail_layout_refresh_hold_until_msec := 0
 var skill_swipe_tracking := false
 var skill_swipe_horizontal := false
@@ -5793,6 +5801,8 @@ func _configure_performance_mode() -> void:
 func _process(delta: float) -> void:
 	if not startup_initialized or boot_detail_render_in_progress:
 		return
+	if detail_lazy_plan.size() > 0 and not _detail_lazy_all_mounted():
+		_sync_detail_lazy_visible_cards(false, DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
 	_process_crash_session_heartbeat(delta)
 	_process_ad_bonus(delta)
 	_process_stamina_gauge_regen_boost(delta)
@@ -9856,6 +9866,9 @@ func _reset_page_control_refs() -> void:
 	chain_audio_scroll_focus_seconds = 0.0
 	detail_action_card_nodes.clear()
 	detail_rendered_action_ids.clear()
+	detail_lazy_plan.clear()
+	detail_lazy_last_scroll = -1.0
+	detail_lazy_stack = null
 	skill_swipe_frame = null
 	skill_swipe_page = null
 	skill_swipe_animating = false
@@ -14021,367 +14034,17 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	scroll_top_spacer.custom_minimum_size = Vector2(0, SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT)
 	stack.add_child(scroll_top_spacer)
 
+	detail_lazy_stack = stack
 	if _fishing_rework_active_for_skill(selected_skill_id):
 		_render_fishing_area_modules(stack, content_width)
 		if boot_detail_card_yield:
 			await get_tree().process_frame
-
-	var card_yield_started_msec := Time.get_ticks_msec()
-	for entry in _visible_detail_entries_for_skill(selected_skill_id):
-		if boot_detail_card_yield and Time.get_ticks_msec() - card_yield_started_msec >= BOOT_WARMUP_FRAME_BUDGET_MSEC:
-			await get_tree().process_frame
-			card_yield_started_msec = Time.get_ticks_msec()
-		if _fishing_rework_active_for_skill(selected_skill_id):
-			continue
-		var entry_data := entry as Dictionary
-		if str(entry_data.get("kind", "")) == "thieving_heist":
-			var heist := entry_data.get("heist", {}) as Dictionary
-			var heist_root := _build_thieving_heist_card(heist, actions_width)
-			stack.add_child(heist_root)
-			var heist_id := str(heist.get("id", ""))
-			var rendered_id := "heist:%s" % heist_id
-			detail_rendered_action_ids.append(rendered_id)
-			detail_action_card_nodes[rendered_id] = heist_root
-			continue
-		var action := entry_data.get("action", {}) as Dictionary
-		var action_id := str(action["id"])
-		var is_convergence_card := _is_convergence_action(action as Dictionary)
-		detail_rendered_action_ids.append(action_id)
-		if _is_passive_action(action as Dictionary):
-			var passive_card := _build_passive_module_card(selected_skill_id, action as Dictionary, content_width, true)
-			_prepare_locked_activity_preview_fade(passive_card["card"] as Dictionary, selected_skill_id, action as Dictionary)
-			_sync_locked_activity_preview_presence(passive_card["card"] as Dictionary, selected_skill_id, action as Dictionary)
-			var passive_root := passive_card["root"] as Control
-			var passive_entry := _detail_stack_entry(passive_root, content_width, actions_width)
-			stack.add_child(passive_entry)
-			detail_action_card_nodes[action_id] = passive_entry
-			_register_action_card(_action_key(selected_skill_id, action_id), passive_card["card"] as Dictionary)
-			if _should_show_lock_click_tip(selected_skill_id, action as Dictionary):
-				stack.add_child(_detail_stack_entry(_lock_click_tip_note(content_width), content_width, actions_width))
-			continue
-		var card_root := Control.new()
-		card_root.custom_minimum_size = Vector2(0, ACTION_CARD_HEIGHT)
-		card_root.custom_minimum_size.x = content_width
-		card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card_root.clip_contents = false
-		var card_entry := _detail_stack_entry(card_root, content_width, actions_width)
-		stack.add_child(card_entry)
-		detail_action_card_nodes[action_id] = card_entry
-
-		var pop_card := Control.new()
-		pop_card.anchor_left = 0.0
-		pop_card.anchor_right = 1.0
-		pop_card.anchor_top = 0.0
-		pop_card.anchor_bottom = 1.0
-		pop_card.offset_left = ACTION_CARD_POP_GUTTER
-		pop_card.offset_right = -ACTION_CARD_POP_GUTTER
-		pop_card.offset_top = 0.0
-		pop_card.offset_bottom = 0.0
-		pop_card.clip_contents = false
-		pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
-		card_root.add_child(pop_card)
-		
-		var bg := RoundedTextureRect.new()
-		bg.texture = _texture(str(action["bg"]))
-		bg.modulate = Color.WHITE
-		bg.radius = 66.0
-		bg.crop_left = FISHING_BACKGROUND_CROP_LEFT if selected_skill_id == "fishing" else 0.0
-		bg.crop_top = FISHING_BACKGROUND_CROP_TOP if selected_skill_id == "fishing" else 0.0
-		bg.crop_right = FISHING_BACKGROUND_CROP_RIGHT if selected_skill_id == "fishing" else 0.0
-		bg.art_height = ACTION_CARD_HEIGHT
-		bg.fallback_color = _skill_theme_color(selected_skill_id)
-		if _is_convergence_action(action as Dictionary):
-			bg.aspect_mode = 2
-			bg.fallback_color = Color("#8baa54")
-		bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-		bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		bg.stretch_mode = TextureRect.STRETCH_SCALE
-		bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		bg.z_index = 150
-		pop_card.add_child(bg)
-		
-		var shade := Panel.new()
-		shade.add_theme_stylebox_override("panel", _activity_shade_style(0.50))
-		shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-		shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		shade.visible = false
-		shade.z_index = 224
-		pop_card.add_child(shade)
-		
-		var margin := MarginContainer.new()
-		margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-		margin.add_theme_constant_override("margin_left", 54)
-		margin.add_theme_constant_override("margin_right", 54)
-		margin.add_theme_constant_override("margin_top", 46)
-		margin.add_theme_constant_override("margin_bottom", 126)
-		margin.mouse_filter = Control.MOUSE_FILTER_PASS
-		margin.z_index = 200
-		pop_card.add_child(margin)
-		
-		var row := HBoxContainer.new()
-		row.add_theme_constant_override("separation", 56)
-		row.mouse_filter = Control.MOUSE_FILTER_PASS
-		margin.add_child(row)
-
-		var art_slot := MarginContainer.new()
-		art_slot.add_theme_constant_override("margin_top", 42)
-		art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var art_panel := Panel.new()
-		art_panel.custom_minimum_size = ACTION_ART_PANEL_SIZE
-		art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		art_panel.add_theme_stylebox_override("panel", _action_art_style())
-		art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		art_slot.add_child(art_panel)
-		var art := _action_art_image(str(action["art"]))
-		art_panel.add_child(art)
-		art_panel.add_child(_action_art_border_overlay())
-
-		var copy := VBoxContainer.new()
-		copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		copy.add_theme_constant_override("separation", 38)
-		copy.mouse_filter = Control.MOUSE_FILTER_PASS
-		row.add_child(copy)
-		if not is_convergence_card:
-			row.add_child(art_slot)
-		var name := _label(str(action["name"]), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-		name.add_theme_color_override("font_outline_color", COLOR_INK)
-		name.add_theme_constant_override("outline_size", 34)
-		name.autowrap_mode = TextServer.AUTOWRAP_OFF
-		name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		copy.add_child(name)
-
-		var stat_row := HBoxContainer.new()
-		stat_row.add_theme_constant_override("separation", 28)
-		stat_row.mouse_filter = Control.MOUSE_FILTER_PASS
-		copy.add_child(stat_row)
-		var xp_label := _action_stat_label("")
-		var xp_box := _action_stat_box(xp_label, true, selected_skill_id, action_id, "xp")
-		stat_row.add_child(xp_box)
-		var stamina_label := _action_stat_label("")
-		var stamina_box := _action_stat_box(stamina_label, true, selected_skill_id, action_id, "stamina")
-		stat_row.add_child(stamina_box)
-		var time_label := _action_stat_label("")
-		var time_box := _action_stat_box(time_label, true, selected_skill_id, action_id, "time")
-		stat_row.add_child(time_box)
-		var success_label := _action_stat_label("")
-		var success_box := _action_stat_box(success_label, true, selected_skill_id, action_id, "success")
-		stat_row.add_child(success_box)
-		if is_convergence_card:
-			stamina_box.visible = false
-			success_box.visible = false
-		var stat_hit_buttons := _activity_stat_hit_buttons(pop_card, selected_skill_id, action_id)
-
-		var medal := TextureRect.new()
-		medal.anchor_left = 0.0
-		medal.anchor_right = 0.0
-		medal.anchor_top = 0.0
-		medal.anchor_bottom = 0.0
-		medal.offset_left = -80
-		medal.offset_right = 110
-		medal.offset_top = -62
-		medal.offset_bottom = 128
-		medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		medal.z_index = 21
-		art_panel.add_child(medal)
-		var mastery_progress := _progress(Color("#f4bf35"), 56)
-		mastery_progress.border_color = COLOR_INK
-		mastery_progress.easing_speed = 5.0
-		mastery_progress.z_index = 20
-		copy.add_child(mastery_progress)
-
-		var bonus_panel := _activity_stat_bonus_panel()
-		copy.add_child(bonus_panel["root"] as Control)
-
-		var status := _label("", 42, COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
-		status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-
-		var progress: ActivityProgressRail = null
-		var convergence_progress: ConvergenceMultiProgressBar = null
-		var fluid_strip: Control = null
-		if _fishing_rework_active_for_skill(selected_skill_id):
-			fluid_strip = _attach_fishing_fluid_strip(pop_card, action as Dictionary)
-		elif _is_convergence_action(action as Dictionary):
-			convergence_progress = ConvergenceMultiProgressBar.new()
-			convergence_progress.anchor_left = 0.0
-			convergence_progress.anchor_right = 1.0
-			convergence_progress.anchor_top = 1.0
-			convergence_progress.anchor_bottom = 1.0
-			convergence_progress.offset_left = ACTION_PROGRESS_RAIL_INSET + 18
-			convergence_progress.offset_right = -ACTION_PROGRESS_RAIL_INSET - 18
-			convergence_progress.offset_top = -CONVERGENCE_BAR_HEIGHT + 34
-			convergence_progress.offset_bottom = 34
-			convergence_progress.z_index = 234
-			convergence_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			pop_card.add_child(convergence_progress)
-		else:
-			progress = ActivityProgressRail.new()
-			progress.fill_color = _skill_theme_color(selected_skill_id)
-			progress.anchor_left = 0.0
-			progress.anchor_right = 1.0
-			progress.anchor_top = 1.0
-			progress.anchor_bottom = 1.0
-			progress.offset_left = ACTION_PROGRESS_RAIL_INSET
-			progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
-			progress.offset_top = -ACTION_PROGRESS_RAIL_HEIGHT
-			progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
-			progress.z_index = 232
-			progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			pop_card.add_child(progress)
-
-		var convergence_overlay: Control = null
-		var convergence_overlay_label: Label = null
-		var convergence_build_cta: PanelContainer = null
-		var convergence_build_cta_title: Label = null
-		var convergence_build_cta_meta: Label = null
-		if _is_convergence_action(action as Dictionary):
-			convergence_overlay = ColorRect.new()
-			(convergence_overlay as ColorRect).color = CONVERGENCE_BUILD_OVERLAY_COLOR
-			convergence_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-			convergence_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			convergence_overlay.z_index = 231
-			pop_card.add_child(convergence_overlay)
-			convergence_overlay_label = _label("", 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-			convergence_overlay_label.add_theme_color_override("font_outline_color", COLOR_INK)
-			convergence_overlay_label.add_theme_constant_override("outline_size", 26)
-			convergence_overlay_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-			convergence_overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-			convergence_overlay_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			convergence_overlay_label.z_index = 232
-			pop_card.add_child(convergence_overlay_label)
-			convergence_build_cta = PanelContainer.new()
-			convergence_build_cta.custom_minimum_size = Vector2(620, 210)
-			convergence_build_cta.anchor_left = 0.5
-			convergence_build_cta.anchor_right = 0.5
-			convergence_build_cta.anchor_top = 0.5
-			convergence_build_cta.anchor_bottom = 0.5
-			convergence_build_cta.offset_left = -310
-			convergence_build_cta.offset_right = 310
-			convergence_build_cta.offset_top = -105
-			convergence_build_cta.offset_bottom = 105
-			convergence_build_cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			convergence_build_cta.z_index = 233
-			convergence_build_cta.add_theme_stylebox_override("panel", _convergence_build_cta_style())
-			pop_card.add_child(convergence_build_cta)
-			var cta_margin := MarginContainer.new()
-			cta_margin.add_theme_constant_override("margin_left", 34)
-			cta_margin.add_theme_constant_override("margin_right", 34)
-			cta_margin.add_theme_constant_override("margin_top", 24)
-			cta_margin.add_theme_constant_override("margin_bottom", 24)
-			cta_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			convergence_build_cta.add_child(cta_margin)
-			var cta_stack := VBoxContainer.new()
-			cta_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-			cta_stack.add_theme_constant_override("separation", 8)
-			cta_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cta_margin.add_child(cta_stack)
-			convergence_build_cta_title = _label("BUILD SHRINE", 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-			convergence_build_cta_title.add_theme_color_override("font_outline_color", COLOR_INK)
-			convergence_build_cta_title.add_theme_constant_override("outline_size", 18)
-			convergence_build_cta_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cta_stack.add_child(convergence_build_cta_title)
-			convergence_build_cta_meta = _label("", 46, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-			convergence_build_cta_meta.add_theme_color_override("font_outline_color", COLOR_INK)
-			convergence_build_cta_meta.add_theme_constant_override("outline_size", 12)
-			convergence_build_cta_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			cta_stack.add_child(convergence_build_cta_meta)
-
-		var inner_shadow := ActivityCardInnerShadow.new()
-		inner_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
-		inner_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		inner_shadow.z_index = 153
-		pop_card.add_child(inner_shadow)
-
-		var border := ActivityCardBorder.new()
-		border.set_anchors_preset(Control.PRESET_FULL_RECT)
-		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		border.z_index = 220
-		pop_card.add_child(border)
-
-		var mission_badge := _hub_mission_badge()
-		pop_card.add_child(mission_badge["root"] as Control)
-
-		var lock_overlay := _activity_lock_overlay(pop_card, int(action.get("unlock", 1)))
-		_connect_activity_lock_handler(lock_overlay, selected_skill_id, action_id)
-
-		var button := Button.new()
-		button.text = ""
-		button.focus_mode = Control.FOCUS_NONE
-		button.flat = true
-		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		button.set_anchors_preset(Control.PRESET_FULL_RECT)
-		button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-		button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
-		button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-		button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
-		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-		button.z_index = 218
-		button.gui_input.connect(_on_action_card_input.bind(selected_skill_id, action_id, button))
-		pop_card.add_child(button)
-		var card := {
-			"root": card_root,
-			"entry": card_entry,
-			"skill_id": selected_skill_id,
-			"action_id": action_id,
-			"action": action,
-			"pop": pop_card,
-			"button": button,
-			"bg": bg,
-			"shade": shade,
-			"art_panel": art_panel,
-			"art": art,
-			"xp": xp_label,
-			"stamina": stamina_label,
-			"time": time_label,
-			"success": success_label,
-			"stat_row": stat_row,
-			"stat_boxes": {
-				"xp": xp_box,
-				"stamina": stamina_box,
-				"time": time_box,
-				"success": success_box
-			},
-			"stat_hit_buttons": stat_hit_buttons,
-			"bonus_panel": bonus_panel,
-			"status": status,
-			"medal": medal,
-			"mastery": mastery_progress,
-			"progress": progress,
-			"convergence_progress": convergence_progress,
-			"convergence_overlay": convergence_overlay,
-			"convergence_overlay_label": convergence_overlay_label,
-			"convergence_build_cta": convergence_build_cta,
-			"convergence_build_cta_title": convergence_build_cta_title,
-			"convergence_build_cta_meta": convergence_build_cta_meta,
-			"fluid_strip": fluid_strip,
-			"border": border,
-			"mission_badge": mission_badge["root"],
-			"mission_badge_label": mission_badge["label"],
-			"lock_overlay": lock_overlay,
-			"medal_destination": Vector2(medal.offset_left, medal.offset_top)
-		}
-		_register_action_card(_action_key(selected_skill_id, action_id), card)
-		_prepare_locked_activity_preview_fade(card, selected_skill_id, action as Dictionary)
-		_sync_locked_activity_preview_presence(card, selected_skill_id, action as Dictionary)
-		if _pending_activity_unlock_matches(action_id):
-			card["unlock_ceremony_pending"] = true
-		if _pending_activity_unlock_preview_matches(action_id):
-			if _stage_activity_unlock_preview_once(action_id, card):
-				card["fade_in_pending"] = true
-		elif activity_unlock_preview_after_ceremony_id == action_id:
-			if _stage_activity_unlock_preview_once(action_id, card, false):
-				card["fade_in_pending"] = true
-		_update_action_card_static_state(card, selected_skill_id, action as Dictionary, _is_action_unlocked(selected_skill_id, action as Dictionary))
-		_set_action_card_medal(card, medal, _mastery_level(selected_skill_id, action_id), true)
-		_update_action_card_mastery_bar(card, selected_skill_id, action_id, 0.0, true)
-		if _should_show_lock_click_tip(selected_skill_id, action as Dictionary):
-			stack.add_child(_detail_stack_entry(_lock_click_tip_note(content_width), content_width, actions_width))
-
-	if not activity_start_tip_seen:
-		stack.add_child(_detail_stack_entry(_activity_start_tip_note(content_width), content_width, actions_width))
-	elif _skill_swipe_tip_available():
-		stack.add_child(_detail_stack_entry(_skill_swipe_tip_note(content_width), content_width, actions_width))
+		if not activity_start_tip_seen:
+			stack.add_child(_detail_stack_entry(_activity_start_tip_note(content_width), content_width, actions_width))
+		elif _skill_swipe_tip_available():
+			stack.add_child(_detail_stack_entry(_skill_swipe_tip_note(content_width), content_width, actions_width))
+	else:
+		await _render_detail_lazy_card_list(stack, content_width, actions_width)
 	var scroll_bottom_spacer := Control.new()
 	scroll_bottom_spacer.name = "DetailActionsBottomSpacer"
 	scroll_bottom_spacer.custom_minimum_size = Vector2(0, _detail_actions_bottom_scroll_pad(selected_skill_id))
@@ -14401,7 +14064,656 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		call_deferred("_restore_detail_actions_scroll", restore_scroll)
 	elif scroll_latest_activity:
 		call_deferred("_scroll_to_resume_activity", false)
+	if not _fishing_rework_active_for_skill(selected_skill_id) and detail_lazy_plan.size() > 0:
+		call_deferred("_sync_detail_lazy_visible_cards_after_scroll")
 
+
+func _sync_detail_lazy_visible_cards_after_scroll() -> void:
+	await get_tree().process_frame
+	_sync_detail_lazy_visible_cards(true, -1)
+
+
+func _build_detail_interactive_action_card(skill_id: String, action: Dictionary, content_width: float, actions_width: float) -> Dictionary:
+	var action_id := str(action.get("id", ""))
+	var is_convergence_card := _is_convergence_action(action)
+	var card_root := Control.new()
+	card_root.custom_minimum_size = Vector2(0, ACTION_CARD_HEIGHT)
+	card_root.custom_minimum_size.x = content_width
+	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card_root.clip_contents = false
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.offset_top = 0.0
+	pop_card.offset_bottom = 0.0
+	pop_card.clip_contents = false
+	pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	card_root.add_child(pop_card)
+	
+	var bg := RoundedTextureRect.new()
+	bg.texture = _texture(str(action["bg"]))
+	bg.modulate = Color.WHITE
+	bg.radius = 66.0
+	bg.crop_left = FISHING_BACKGROUND_CROP_LEFT if skill_id == "fishing" else 0.0
+	bg.crop_top = FISHING_BACKGROUND_CROP_TOP if skill_id == "fishing" else 0.0
+	bg.crop_right = FISHING_BACKGROUND_CROP_RIGHT if skill_id == "fishing" else 0.0
+	bg.art_height = ACTION_CARD_HEIGHT
+	bg.fallback_color = _skill_theme_color(skill_id)
+	if _is_convergence_action(action):
+		bg.aspect_mode = 2
+		bg.fallback_color = Color("#8baa54")
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bg.stretch_mode = TextureRect.STRETCH_SCALE
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.z_index = 150
+	pop_card.add_child(bg)
+	
+	var shade := Panel.new()
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.50))
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.visible = false
+	shade.z_index = 224
+	pop_card.add_child(shade)
+	
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 54)
+	margin.add_theme_constant_override("margin_right", 54)
+	margin.add_theme_constant_override("margin_top", 46)
+	margin.add_theme_constant_override("margin_bottom", 126)
+	margin.mouse_filter = Control.MOUSE_FILTER_PASS
+	margin.z_index = 200
+	pop_card.add_child(margin)
+	
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 56)
+	row.mouse_filter = Control.MOUSE_FILTER_PASS
+	margin.add_child(row)
+
+	var art_slot := MarginContainer.new()
+	art_slot.add_theme_constant_override("margin_top", 42)
+	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var art_panel := Panel.new()
+	art_panel.custom_minimum_size = ACTION_ART_PANEL_SIZE
+	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	art_panel.add_theme_stylebox_override("panel", _action_art_style())
+	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_slot.add_child(art_panel)
+	var art := _action_art_image(str(action["art"]))
+	art_panel.add_child(art)
+	art_panel.add_child(_action_art_border_overlay())
+
+	var copy := VBoxContainer.new()
+	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.add_theme_constant_override("separation", 38)
+	copy.mouse_filter = Control.MOUSE_FILTER_PASS
+	row.add_child(copy)
+	if not is_convergence_card:
+		row.add_child(art_slot)
+	var name := _label(str(action["name"]), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	name.add_theme_color_override("font_outline_color", COLOR_INK)
+	name.add_theme_constant_override("outline_size", 34)
+	name.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	copy.add_child(name)
+
+	var stat_row := HBoxContainer.new()
+	stat_row.add_theme_constant_override("separation", 28)
+	stat_row.mouse_filter = Control.MOUSE_FILTER_PASS
+	copy.add_child(stat_row)
+	var xp_label := _action_stat_label("")
+	var xp_box := _action_stat_box(xp_label, true, skill_id, action_id, "xp")
+	stat_row.add_child(xp_box)
+	var stamina_label := _action_stat_label("")
+	var stamina_box := _action_stat_box(stamina_label, true, skill_id, action_id, "stamina")
+	stat_row.add_child(stamina_box)
+	var time_label := _action_stat_label("")
+	var time_box := _action_stat_box(time_label, true, skill_id, action_id, "time")
+	stat_row.add_child(time_box)
+	var success_label := _action_stat_label("")
+	var success_box := _action_stat_box(success_label, true, skill_id, action_id, "success")
+	stat_row.add_child(success_box)
+	if is_convergence_card:
+		stamina_box.visible = false
+		success_box.visible = false
+	var stat_hit_buttons := _activity_stat_hit_buttons(pop_card, skill_id, action_id)
+
+	var medal := TextureRect.new()
+	medal.anchor_left = 0.0
+	medal.anchor_right = 0.0
+	medal.anchor_top = 0.0
+	medal.anchor_bottom = 0.0
+	medal.offset_left = -80
+	medal.offset_right = 110
+	medal.offset_top = -62
+	medal.offset_bottom = 128
+	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	medal.z_index = 21
+	art_panel.add_child(medal)
+	var mastery_progress := _progress(Color("#f4bf35"), 56)
+	mastery_progress.border_color = COLOR_INK
+	mastery_progress.easing_speed = 5.0
+	mastery_progress.z_index = 20
+	copy.add_child(mastery_progress)
+
+	var bonus_panel := _activity_stat_bonus_panel()
+	copy.add_child(bonus_panel["root"] as Control)
+
+	var status := _label("", 42, COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
+	status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+	var progress: ActivityProgressRail = null
+	var convergence_progress: ConvergenceMultiProgressBar = null
+	var fluid_strip: Control = null
+	if _fishing_rework_active_for_skill(skill_id):
+		fluid_strip = _attach_fishing_fluid_strip(pop_card, action)
+	elif _is_convergence_action(action):
+		convergence_progress = ConvergenceMultiProgressBar.new()
+		convergence_progress.anchor_left = 0.0
+		convergence_progress.anchor_right = 1.0
+		convergence_progress.anchor_top = 1.0
+		convergence_progress.anchor_bottom = 1.0
+		convergence_progress.offset_left = ACTION_PROGRESS_RAIL_INSET + 18
+		convergence_progress.offset_right = -ACTION_PROGRESS_RAIL_INSET - 18
+		convergence_progress.offset_top = -CONVERGENCE_BAR_HEIGHT + 34
+		convergence_progress.offset_bottom = 34
+		convergence_progress.z_index = 234
+		convergence_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pop_card.add_child(convergence_progress)
+	else:
+		progress = ActivityProgressRail.new()
+		progress.fill_color = _skill_theme_color(skill_id)
+		progress.anchor_left = 0.0
+		progress.anchor_right = 1.0
+		progress.anchor_top = 1.0
+		progress.anchor_bottom = 1.0
+		progress.offset_left = ACTION_PROGRESS_RAIL_INSET
+		progress.offset_right = -ACTION_PROGRESS_RAIL_INSET
+		progress.offset_top = -ACTION_PROGRESS_RAIL_HEIGHT
+		progress.offset_bottom = -ACTION_PROGRESS_RAIL_INSET
+		progress.z_index = 232
+		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		pop_card.add_child(progress)
+
+	var convergence_overlay: Control = null
+	var convergence_overlay_label: Label = null
+	var convergence_build_cta: PanelContainer = null
+	var convergence_build_cta_title: Label = null
+	var convergence_build_cta_meta: Label = null
+	if _is_convergence_action(action):
+		convergence_overlay = ColorRect.new()
+		(convergence_overlay as ColorRect).color = CONVERGENCE_BUILD_OVERLAY_COLOR
+		convergence_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		convergence_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		convergence_overlay.z_index = 231
+		pop_card.add_child(convergence_overlay)
+		convergence_overlay_label = _label("", 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		convergence_overlay_label.add_theme_color_override("font_outline_color", COLOR_INK)
+		convergence_overlay_label.add_theme_constant_override("outline_size", 26)
+		convergence_overlay_label.set_anchors_preset(Control.PRESET_FULL_RECT)
+		convergence_overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		convergence_overlay_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		convergence_overlay_label.z_index = 232
+		pop_card.add_child(convergence_overlay_label)
+		convergence_build_cta = PanelContainer.new()
+		convergence_build_cta.custom_minimum_size = Vector2(620, 210)
+		convergence_build_cta.anchor_left = 0.5
+		convergence_build_cta.anchor_right = 0.5
+		convergence_build_cta.anchor_top = 0.5
+		convergence_build_cta.anchor_bottom = 0.5
+		convergence_build_cta.offset_left = -310
+		convergence_build_cta.offset_right = 310
+		convergence_build_cta.offset_top = -105
+		convergence_build_cta.offset_bottom = 105
+		convergence_build_cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		convergence_build_cta.z_index = 233
+		convergence_build_cta.add_theme_stylebox_override("panel", _convergence_build_cta_style())
+		pop_card.add_child(convergence_build_cta)
+		var cta_margin := MarginContainer.new()
+		cta_margin.add_theme_constant_override("margin_left", 34)
+		cta_margin.add_theme_constant_override("margin_right", 34)
+		cta_margin.add_theme_constant_override("margin_top", 24)
+		cta_margin.add_theme_constant_override("margin_bottom", 24)
+		cta_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		convergence_build_cta.add_child(cta_margin)
+		var cta_stack := VBoxContainer.new()
+		cta_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+		cta_stack.add_theme_constant_override("separation", 8)
+		cta_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cta_margin.add_child(cta_stack)
+		convergence_build_cta_title = _label("BUILD SHRINE", 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		convergence_build_cta_title.add_theme_color_override("font_outline_color", COLOR_INK)
+		convergence_build_cta_title.add_theme_constant_override("outline_size", 18)
+		convergence_build_cta_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cta_stack.add_child(convergence_build_cta_title)
+		convergence_build_cta_meta = _label("", 46, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		convergence_build_cta_meta.add_theme_color_override("font_outline_color", COLOR_INK)
+		convergence_build_cta_meta.add_theme_constant_override("outline_size", 12)
+		convergence_build_cta_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cta_stack.add_child(convergence_build_cta_meta)
+
+	var inner_shadow := ActivityCardInnerShadow.new()
+	inner_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	inner_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inner_shadow.z_index = 153
+	pop_card.add_child(inner_shadow)
+
+	var border := ActivityCardBorder.new()
+	border.set_anchors_preset(Control.PRESET_FULL_RECT)
+	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	border.z_index = 220
+	pop_card.add_child(border)
+
+	var mission_badge := _hub_mission_badge()
+	pop_card.add_child(mission_badge["root"] as Control)
+
+	var lock_overlay := _activity_lock_overlay(pop_card, int(action.get("unlock", 1)))
+	_connect_activity_lock_handler(lock_overlay, skill_id, action_id)
+
+	var button := Button.new()
+	button.text = ""
+	button.focus_mode = Control.FOCUS_NONE
+	button.flat = true
+	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.z_index = 218
+	button.gui_input.connect(_on_action_card_input.bind(skill_id, action_id, button))
+	pop_card.add_child(button)
+	var card := {
+		"root": card_root,
+		"entry": null,
+		"skill_id": skill_id,
+		"action_id": action_id,
+		"action": action,
+		"pop": pop_card,
+		"button": button,
+		"bg": bg,
+		"shade": shade,
+		"art_panel": art_panel,
+		"art": art,
+		"xp": xp_label,
+		"stamina": stamina_label,
+		"time": time_label,
+		"success": success_label,
+		"stat_row": stat_row,
+		"stat_boxes": {
+		"xp": xp_box,
+		"stamina": stamina_box,
+		"time": time_box,
+		"success": success_box
+		},
+		"stat_hit_buttons": stat_hit_buttons,
+		"bonus_panel": bonus_panel,
+		"status": status,
+		"medal": medal,
+		"mastery": mastery_progress,
+		"progress": progress,
+		"convergence_progress": convergence_progress,
+		"convergence_overlay": convergence_overlay,
+		"convergence_overlay_label": convergence_overlay_label,
+		"convergence_build_cta": convergence_build_cta,
+		"convergence_build_cta_title": convergence_build_cta_title,
+		"convergence_build_cta_meta": convergence_build_cta_meta,
+		"fluid_strip": fluid_strip,
+		"border": border,
+		"mission_badge": mission_badge["root"],
+		"mission_badge_label": mission_badge["label"],
+		"lock_overlay": lock_overlay,
+		"medal_destination": Vector2(medal.offset_left, medal.offset_top)
+	}
+	return {
+		"card_root": card_root,
+		"card": card,
+		"action_id": action_id
+	}
+
+
+func _detail_lazy_scroll_y() -> float:
+	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+		return 0.0
+	return detail_actions_scroll.drag_scroll_position
+
+
+func _detail_lazy_viewport_height() -> float:
+	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+		return 1200.0
+	return maxf(maxf(detail_actions_scroll.size.y, detail_actions_scroll.custom_minimum_size.y), 800.0)
+
+
+func _detail_lazy_pinned_track_ids() -> Dictionary:
+	var pinned := {}
+	if running_skill_id == selected_skill_id and not running_action_id.is_empty():
+		pinned[running_action_id] = true
+	if not pending_activity_unlock_ceremony.is_empty():
+		var pending_action_id := str(pending_activity_unlock_ceremony.get("action_id", ""))
+		if not pending_action_id.is_empty():
+			pinned[pending_action_id] = true
+	if not activity_unlock_preview_after_ceremony_id.is_empty():
+		pinned[activity_unlock_preview_after_ceremony_id] = true
+	var pending_heist_key := str(pending_thieving_trophy_reward_float.get("key", "")) if not pending_thieving_trophy_reward_float.is_empty() else ""
+	if pending_heist_key.begins_with("thieving_heist:"):
+		pinned["heist:%s" % pending_heist_key.substr("thieving_heist:".length())] = true
+	return pinned
+
+
+func _detail_lazy_entry_height(plan_item: Dictionary) -> float:
+	match str(plan_item.get("kind", "")):
+		"heist":
+			return float(THIEVING_HEIST_CARD_HEIGHT)
+		"passive":
+			return float(PASSIVE_MODULE_CARD_HEIGHT)
+		"lock_tip", "activity_start_tip", "skill_swipe_tip":
+			return DETAIL_LAZY_TIP_HEIGHT
+	return float(ACTION_CARD_HEIGHT)
+
+
+func _detail_lazy_track_id_for_entry(entry_data: Dictionary) -> String:
+	if str(entry_data.get("kind", "")) == "thieving_heist":
+		var heist := entry_data.get("heist", {}) as Dictionary
+		return "heist:%s" % str(heist.get("id", ""))
+	var action := entry_data.get("action", {}) as Dictionary
+	return str(action.get("id", ""))
+
+
+func _build_detail_lazy_plan(skill_id: String) -> Array:
+	var plan := []
+	var y := 0.0
+	for entry in _visible_detail_entries_for_skill(skill_id):
+		var entry_data := entry as Dictionary
+		var track_id := _detail_lazy_track_id_for_entry(entry_data)
+		if not track_id.is_empty():
+			detail_rendered_action_ids.append(track_id)
+		var plan_item := {
+			"kind": "action",
+			"entry": entry_data,
+			"track_id": track_id,
+			"y": y,
+			"height": 0.0,
+			"mounted": false,
+			"stack_host": null,
+			"placeholder": null,
+			"direct_stack_child": false
+		}
+		if str(entry_data.get("kind", "")) == "thieving_heist":
+			plan_item["kind"] = "heist"
+		elif _is_passive_action(entry_data.get("action", {}) as Dictionary):
+			plan_item["kind"] = "passive"
+		plan_item["height"] = _detail_lazy_entry_height(plan_item)
+		plan.append(plan_item)
+		y += float(plan_item["height"]) + DETAIL_LAZY_STACK_SEPARATION
+		if plan_item["kind"] in ["passive", "action"]:
+			var action := entry_data.get("action", {}) as Dictionary
+			if _should_show_lock_click_tip(skill_id, action):
+				plan.append({
+					"kind": "lock_tip",
+					"entry": {},
+					"track_id": "tip:lock:%s" % str(action.get("id", "")),
+					"y": y,
+					"height": DETAIL_LAZY_TIP_HEIGHT,
+					"mounted": false,
+					"stack_host": null,
+					"placeholder": null,
+					"direct_stack_child": false
+				})
+				y += DETAIL_LAZY_TIP_HEIGHT + DETAIL_LAZY_STACK_SEPARATION
+	if not activity_start_tip_seen:
+		plan.append({
+			"kind": "activity_start_tip",
+			"entry": {},
+			"track_id": "tip:activity_start",
+			"y": y,
+			"height": DETAIL_LAZY_TIP_HEIGHT,
+			"mounted": false,
+			"stack_host": null,
+			"placeholder": null,
+			"direct_stack_child": false
+		})
+	elif _skill_swipe_tip_available():
+		plan.append({
+			"kind": "skill_swipe_tip",
+			"entry": {},
+			"track_id": "tip:skill_swipe",
+			"y": y,
+			"height": DETAIL_LAZY_TIP_HEIGHT,
+			"mounted": false,
+			"stack_host": null,
+			"placeholder": null,
+			"direct_stack_child": false
+		})
+	return plan
+
+
+func _detail_lazy_entry_in_viewport(plan_item: Dictionary) -> bool:
+	var scroll_y := _detail_lazy_scroll_y()
+	var view_top := scroll_y - DETAIL_LAZY_VIEWPORT_BUFFER_PX
+	var view_bottom := scroll_y + _detail_lazy_viewport_height() + DETAIL_LAZY_VIEWPORT_BUFFER_PX
+	var entry_y := float(plan_item.get("y", 0.0)) + SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT
+	var entry_bottom := entry_y + float(plan_item.get("height", 0.0))
+	return entry_bottom >= view_top and entry_y <= view_bottom
+
+
+func _detail_lazy_should_mount_item(plan_item: Dictionary, pinned: Dictionary) -> bool:
+	if bool(plan_item.get("mounted", false)):
+		return false
+	var track_id := str(plan_item.get("track_id", ""))
+	if not track_id.is_empty() and pinned.has(track_id):
+		return true
+	return _detail_lazy_entry_in_viewport(plan_item)
+
+
+func _detail_lazy_add_child_to_host(host: Control, child: Control, content_width: float, actions_width: float) -> void:
+	if absf(actions_width - content_width) <= 0.001:
+		host.add_child(child)
+		return
+	var child_height := child.custom_minimum_size.y
+	if child_height <= 1.0:
+		child_height = child.size.y
+	child.anchor_left = 0.0
+	child.anchor_right = 0.0
+	child.anchor_top = 0.0
+	child.anchor_bottom = 0.0
+	child.size = Vector2(content_width, maxf(1.0, child_height))
+	child.position = Vector2((actions_width - content_width) * 0.5, 0.0)
+	child.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	host.add_child(child)
+
+
+func _detail_lazy_create_slots(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
+	for plan_item in detail_lazy_plan:
+		var item := plan_item as Dictionary
+		var height := float(item.get("height", 0.0))
+		var placeholder := Control.new()
+		placeholder.custom_minimum_size = Vector2(content_width, height)
+		placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		item["placeholder"] = placeholder
+		if skill_id == "thieving" and str(item.get("kind", "")) == "heist":
+			placeholder.custom_minimum_size.x = actions_width
+			stack.add_child(placeholder)
+			item["stack_host"] = placeholder
+			item["direct_stack_child"] = true
+		else:
+			var stack_entry := _detail_stack_entry(placeholder, content_width, actions_width)
+			stack.add_child(stack_entry)
+			item["stack_host"] = stack_entry
+
+
+func _play_detail_lazy_fade_in(target: Control) -> void:
+	if target == null or not is_instance_valid(target):
+		return
+	if target.modulate.a >= 0.99:
+		return
+	target.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(target, "modulate:a", 1.0, DETAIL_LAZY_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _detail_lazy_fade_allowed(skill_id: String, action: Dictionary) -> bool:
+	if action.is_empty():
+		return false
+	return _is_action_unlocked(skill_id, action)
+
+
+func _detail_lazy_finalize_action_card(card: Dictionary, skill_id: String, action: Dictionary, action_id: String) -> void:
+	_prepare_locked_activity_preview_fade(card, skill_id, action)
+	_sync_locked_activity_preview_presence(card, skill_id, action)
+	if _pending_activity_unlock_matches(action_id):
+		card["unlock_ceremony_pending"] = true
+	if _pending_activity_unlock_preview_matches(action_id):
+		if _stage_activity_unlock_preview_once(action_id, card):
+			card["fade_in_pending"] = true
+	elif activity_unlock_preview_after_ceremony_id == action_id:
+		if _stage_activity_unlock_preview_once(action_id, card, false):
+			card["fade_in_pending"] = true
+	var medal := card.get("medal") as TextureRect
+	_update_action_card_static_state(card, skill_id, action, _is_action_unlocked(skill_id, action))
+	_set_action_card_medal(card, medal, _mastery_level(skill_id, action_id), true)
+	_update_action_card_mastery_bar(card, skill_id, action_id, 0.0, true)
+
+
+func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_width: float, actions_width: float, fade_in: bool) -> void:
+	if bool(plan_item.get("mounted", false)):
+		return
+	var kind := str(plan_item.get("kind", ""))
+	var stack_host := plan_item.get("stack_host") as Control
+	var placeholder := plan_item.get("placeholder") as Control
+	if stack_host == null or not is_instance_valid(stack_host):
+		return
+	var track_id := str(plan_item.get("track_id", ""))
+	var fade_target: Control = null
+	var fade_allowed := false
+	match kind:
+		"heist":
+			var heist := (plan_item.get("entry") as Dictionary).get("heist", {}) as Dictionary
+			var heist_root := _build_thieving_heist_card(heist, actions_width)
+			var parent := stack_host.get_parent()
+			var slot_index := stack_host.get_index()
+			if parent != null and is_instance_valid(parent):
+				parent.remove_child(stack_host)
+				stack_host.queue_free()
+				parent.add_child(heist_root)
+				parent.move_child(heist_root, slot_index)
+				plan_item["stack_host"] = heist_root
+				plan_item["placeholder"] = null
+				detail_action_card_nodes[track_id] = heist_root
+				fade_target = heist_root
+				fade_allowed = true
+		"passive":
+			var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
+			var passive_card := _build_passive_module_card(skill_id, action, content_width, true)
+			var passive_root := passive_card["root"] as Control
+			if placeholder != null and is_instance_valid(placeholder):
+				placeholder.queue_free()
+				plan_item["placeholder"] = null
+			_detail_lazy_add_child_to_host(stack_host, passive_root, content_width, actions_width)
+			var card := passive_card["card"] as Dictionary
+			card["entry"] = stack_host
+			_register_action_card(_action_key(skill_id, track_id), card)
+			_detail_lazy_finalize_action_card(card, skill_id, action, track_id)
+			detail_action_card_nodes[track_id] = stack_host
+			fade_target = passive_root
+			fade_allowed = _detail_lazy_fade_allowed(skill_id, action)
+		"action":
+			var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
+			var built := _build_detail_interactive_action_card(skill_id, action, content_width, actions_width)
+			var card_root := built["card_root"] as Control
+			if placeholder != null and is_instance_valid(placeholder):
+				placeholder.queue_free()
+				plan_item["placeholder"] = null
+			_detail_lazy_add_child_to_host(stack_host, card_root, content_width, actions_width)
+			var card := built["card"] as Dictionary
+			card["entry"] = stack_host
+			_register_action_card(_action_key(skill_id, track_id), card)
+			_detail_lazy_finalize_action_card(card, skill_id, action, track_id)
+			detail_action_card_nodes[track_id] = stack_host
+			fade_target = card_root
+			fade_allowed = _detail_lazy_fade_allowed(skill_id, action)
+		"lock_tip":
+			if placeholder != null and is_instance_valid(placeholder):
+				placeholder.queue_free()
+				plan_item["placeholder"] = null
+			_detail_lazy_add_child_to_host(stack_host, _lock_click_tip_note(content_width), content_width, actions_width)
+		"activity_start_tip":
+			if placeholder != null and is_instance_valid(placeholder):
+				placeholder.queue_free()
+				plan_item["placeholder"] = null
+			_detail_lazy_add_child_to_host(stack_host, _activity_start_tip_note(content_width), content_width, actions_width)
+		"skill_swipe_tip":
+			if placeholder != null and is_instance_valid(placeholder):
+				placeholder.queue_free()
+				plan_item["placeholder"] = null
+			_detail_lazy_add_child_to_host(stack_host, _skill_swipe_tip_note(content_width), content_width, actions_width)
+	plan_item["mounted"] = true
+	if fade_in and fade_allowed and fade_target != null:
+		_play_detail_lazy_fade_in(fade_target)
+
+
+func _sync_detail_lazy_visible_cards(instant: bool, max_mounts: int = -1) -> int:
+	if detail_lazy_plan.is_empty() or detail_lazy_stack == null:
+		return 0
+	var pinned := _detail_lazy_pinned_track_ids()
+	var content_width := _skill_content_width()
+	var actions_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
+	var mounted_count := 0
+	for raw_item in detail_lazy_plan:
+		if max_mounts >= 0 and mounted_count >= max_mounts:
+			break
+		var plan_item := raw_item as Dictionary
+		if not _detail_lazy_should_mount_item(plan_item, pinned):
+			continue
+		_detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant)
+		mounted_count += 1
+	detail_lazy_last_scroll = _detail_lazy_scroll_y()
+	return mounted_count
+
+
+func _detail_lazy_all_mounted() -> bool:
+	for raw_item in detail_lazy_plan:
+		if not bool((raw_item as Dictionary).get("mounted", false)):
+			return false
+	return true
+
+
+func _ensure_detail_lazy_entry_mounted(track_id: String) -> void:
+	if track_id.is_empty() or detail_lazy_plan.is_empty():
+		return
+	for raw_item in detail_lazy_plan:
+		var plan_item := raw_item as Dictionary
+		if str(plan_item.get("track_id", "")) != track_id:
+			continue
+		if bool(plan_item.get("mounted", false)):
+			return
+		var content_width := _skill_content_width()
+		var actions_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
+		_detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, false)
+		return
+
+
+func _render_detail_lazy_card_list(stack: VBoxContainer, content_width: float, actions_width: float) -> void:
+	detail_lazy_plan = _build_detail_lazy_plan(selected_skill_id)
+	_detail_lazy_create_slots(stack, selected_skill_id, content_width, actions_width)
+	var card_yield_started_msec := Time.get_ticks_msec()
+	while true:
+		var mounted := _sync_detail_lazy_visible_cards(false, DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME if boot_detail_card_yield else -1)
+		if not boot_detail_card_yield:
+			break
+		if mounted <= 0:
+			break
+		if Time.get_ticks_msec() - card_yield_started_msec >= BOOT_WARMUP_FRAME_BUDGET_MSEC:
+			await get_tree().process_frame
+			card_yield_started_msec = Time.get_ticks_msec()
 
 func _build_thieving_heist_card(heist: Dictionary, content_width: float) -> Control:
 	var heist_id := str(heist.get("id", ""))
@@ -15297,6 +15609,7 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 		_release_detail_unlock_extra_scroll_space()
 	_reveal_detail_jump_arrow(direction)
 	_queue_skill_swipe_preview_prewarm()
+	_sync_detail_lazy_visible_cards(false, DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
 
 
 func _on_detail_jump_arrow_hovered(top: bool, hovered: bool) -> void:
@@ -18009,7 +18322,10 @@ func _scroll_to_resume_activity(animated := true) -> void:
 func _scroll_to_activity_card(action_id: String, animated := true, centered := false) -> void:
 	if current_screen != "skill" or detail_actions_scroll == null:
 		return
-	if action_id.is_empty() or not detail_action_card_nodes.has(action_id):
+	if action_id.is_empty():
+		return
+	_ensure_detail_lazy_entry_mounted(action_id)
+	if not detail_action_card_nodes.has(action_id):
 		return
 	await get_tree().process_frame
 	if detail_actions_scroll == null or not detail_action_card_nodes.has(action_id):
@@ -18024,7 +18340,10 @@ func _scroll_to_activity_card(action_id: String, animated := true, centered := f
 func _detail_actions_scroll_target_for_action(action_id: String, centered := false) -> int:
 	if current_screen != "skill" or detail_actions_scroll == null:
 		return -1
-	if action_id.is_empty() or not detail_action_card_nodes.has(action_id):
+	if action_id.is_empty():
+		return -1
+	_ensure_detail_lazy_entry_mounted(action_id)
+	if not detail_action_card_nodes.has(action_id):
 		return -1
 	var card := detail_action_card_nodes[action_id] as Control
 	if card == null:
