@@ -2384,6 +2384,61 @@ class ActivityCardBorder:
 		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 24, border_color, border_width, true)
 
 
+class ActivityStartHighlightRing:
+	extends Control
+
+	var glow_color := Color("#ffd84a")
+	var corner_radius := 66.0
+	var outer_pad := 34.0
+	var gap := 26.0
+	var ring_thickness := 18.0
+	var blur_spread := 22.0
+	var blur_layers := 12
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func set_glow_alpha(alpha: float) -> void:
+		modulate.a = alpha
+		queue_redraw()
+
+	func _draw() -> void:
+		var inner := Rect2(
+			outer_pad,
+			outer_pad,
+			maxf(1.0, size.x - outer_pad * 2.0),
+			maxf(1.0, size.y - outer_pad * 2.0)
+		)
+		var max_dist := gap + ring_thickness + blur_spread
+		for layer_index in range(blur_layers):
+			var t := float(layer_index) / float(maxi(blur_layers - 1, 1))
+			var dist := gap + t * (ring_thickness + blur_spread)
+			dist = minf(dist, max_dist)
+			var alpha := pow(1.0 - t, 1.55) * 0.48 * modulate.a
+			var col := Color(glow_color.r, glow_color.g, glow_color.b, alpha)
+			var width := maxf(2.5, (ring_thickness + blur_spread) / float(blur_layers) * 1.4)
+			_draw_rounded_outline(inner.grow(dist), corner_radius + dist * 0.42, width, col)
+
+	func _draw_rounded_outline(rect: Rect2, radius: float, width: float, color: Color) -> void:
+		var half := width * 0.5
+		var left := rect.position.x + half
+		var right := rect.position.x + rect.size.x - half
+		var top := rect.position.y + half
+		var bottom := rect.position.y + rect.size.y - half
+		if right <= left + radius * 2.0 or bottom <= top + radius * 2.0:
+			return
+		var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5 - half)
+		draw_line(Vector2(left + r, top), Vector2(right - r, top), color, width, true)
+		draw_line(Vector2(left + r, bottom), Vector2(right - r, bottom), color, width, true)
+		draw_line(Vector2(left, top + r), Vector2(left, bottom - r), color, width, true)
+		draw_line(Vector2(right, top + r), Vector2(right, bottom - r), color, width, true)
+		draw_arc(Vector2(left + r, top + r), r, PI, PI * 1.5, 24, color, width, true)
+		draw_arc(Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0, 24, color, width, true)
+		draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, 24, color, width, true)
+		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 24, color, width, true)
+
+
 class PassiveModuleCardBorder:
 	extends Control
 
@@ -2866,6 +2921,7 @@ class ActivityLockRig:
 		rng.randomize()
 		_build(font, fallback_font)
 		set_process(true)
+		call_deferred("_layout_base")
 
 	func set_unlock_level(next_level: int) -> void:
 		level = next_level
@@ -4694,10 +4750,39 @@ const SKILL_SWIPE_BUTTON_SUPPRESS_MSEC := 320
 const SKILL_DETAIL_SHADOW_FADE_SCROLL := 72.0
 const SKILL_DETAIL_SHADOW_FADE_SPEED := 10.0
 const TUTORIAL_TIP_FADE_SECONDS := 0.28
-const SWIPE_TIP_ACTIVITY_START_THRESHOLD := 26
+const TUTORIAL_TIP_FADE_OUT_SECONDS := 1.2
+const ACTIVITY_START_TIP_FADE_SECONDS := 0.62
+const TUTORIAL_STARTER_SKILL_ID := "fight"
+const TUTORIAL_STARTER_ACTION_ID := "shove-wobbly-hay-bale"
+const ACTIVITY_START_HIGHLIGHT_DELAY_SECONDS := 3.0
+const ACTIVITY_START_HIGHLIGHT_FADE_IN_SECONDS := 3.0
+const ACTIVITY_START_HIGHLIGHT_FADE_OUT_SECONDS := 0.42
+const ACTIVITY_START_HIGHLIGHT_GAP := 26.0
+const ACTIVITY_START_HIGHLIGHT_RING_THICKNESS := 18.0
+const ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD := 22.0
+const ACTIVITY_START_HIGHLIGHT_BLUR_LAYERS := 12
+const ACTIVITY_START_HIGHLIGHT_BORDER_COLOR := Color("#ffd84a")
+const ONBOARDING_HEADER_FADE_SECONDS := 0.62
+const ONBOARDING_SUMMARY_FADE_SECONDS := 2.0
+const ONBOARDING_HEADER_REVEAL_COMPLETION_THRESHOLD := 2.5
+const ONBOARDING_AUTO_RUN_MESSAGE_COMPLETION_THRESHOLD := 1
+const ONBOARDING_HEADER_REVEAL_PROGRESS_FRACTION := 0.5
+const ONBOARDING_AUTO_RUN_MESSAGE_LINGER_SECONDS := 3.0
+const ONBOARDING_STAMINA_GAUGE_DELAY_BEFORE_FADE_SECONDS := 2.0
+const ONBOARDING_STAMINA_GAUGE_FADE_SECONDS := 2.0
+const ONBOARDING_STAMINA_TIP_DELAY_AFTER_GAUGE_SECONDS := 1.0
+const ONBOARDING_STAMINA_TIP_LINGER_SECONDS := 4.0
+const ONBOARDING_STAMINA_TIP_FONT_SIZE := 56
+const ONBOARDING_STAMINA_TIP_LABEL_WIDTH := 300.0
+const ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS := 2.0
+const ONBOARDING_BOTTOM_TIP_FADE_SECONDS := 1.2
+const ONBOARDING_OVERLAY_TIP_FONT_SIZE := 50
+const ONBOARDING_MASTERY_OVERLAY_TIP_GAP := 47.0
+const ONBOARDING_MEDAL_TIP_LINGER_SECONDS := 3.0
+const ONBOARDING_LEVEL_UP_OVERLAY_TIP_GAP := 10.0
 const STAMINA_TIP_ACTIVITY_COMPLETION_THRESHOLD := 3
 const STAMINA_TIP_DISCOVERY_HOLD_SECONDS := 4.0
-const LOCKED_ACTIVITY_PREVIEW_XP_THRESHOLD := 10
+const LOCKED_ACTIVITY_PREVIEW_XP_THRESHOLD := 16
 const BOTTOM_TUTORIAL_TIP_FONT_SIZE := 64
 const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
 const ACTIVITY_JUMP_TOP_TEXTURE := "res://assets/content/ui/jump-top-circle.png"
@@ -4963,8 +5048,13 @@ const CHAT_OVERLAY_CANVAS_LAYER := BOOT_WARMUP_LAYER + 1
 const BOOT_WARMUP_FRAME_BUDGET_MSEC := 32
 const DETAIL_LAZY_VIEWPORT_BUFFER_PX := 480.0
 const DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX := 240.0
-const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 3
-const DETAIL_LAZY_BOOT_MOUNT_BUDGET_PER_FRAME := 2
+const DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := 6
+const DETAIL_LAZY_BOOT_FORCE_MOUNT_COUNT := 2
+const DETAIL_LAZY_BOOT_EAGER_COUNT := 2
+const BOOT_DETAIL_COMPLETE_BUDGET_PER_FRAME := 3
+const BOOT_SWIPE_PREWARM_DELAY_SECONDS := 4.0
+const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 2
+const DETAIL_LAZY_BOOT_MOUNT_BUDGET_PER_FRAME := 1
 const DETAIL_LAZY_FADE_IN_SECONDS := 0.18
 const DETAIL_LAZY_STACK_SEPARATION := 56.0
 const DETAIL_LAZY_TIP_HEIGHT := 174.0
@@ -5264,7 +5354,7 @@ var reset_data_buttons := []
 var app_font: Font
 var app_bold_font: Font
 var mastery_medal_textures := {}
-var mastery_medal_silhouette_textures := {}
+var mastery_medal_silhouette_materials := {}
 var mastery_medal_dot_texture: Texture2D
 var achievement_empty_medal_material: ShaderMaterial
 var home_page: Control
@@ -5459,6 +5549,8 @@ var detail_xp_label: Label
 var detail_xp_bar: CleanProgressBar
 var detail_stamina_bar: CleanProgressBar
 var detail_regen_circle: RegenCircle
+var detail_regen_circle_host: Control
+var detail_regen_circle_fade_group: CanvasGroup
 var detail_fish_circle: FishCircle
 var fishing_tool_wallet_layer: Control
 var fishing_tool_wallet_canvas: CanvasLayer
@@ -5467,11 +5559,12 @@ var fishing_tool_wallet_pop_tween: Tween
 var fishing_tool_wallet_last_toggle_msec := 0
 var stamina_gauge_press_source: RegenCircle
 var detail_header_body: Control
+var detail_header_left_block: Control
 var detail_actions_scroll: MobileScrollContainer
 var detail_unlock_scroll_spacer: Control
 var detail_shelf_shadow_overlay: Control
 var detail_shelf_shadow_alpha := 0.0
-var detail_back_button: Button
+var detail_back_button: BaseButton
 var detail_back_press_active := false
 var detail_back_press_touch_index := -1
 var detail_stamina_gauge_pop_tween: Tween
@@ -5511,9 +5604,12 @@ var skill_swipe_preview_prewarm_pending := false
 var skill_swipe_animating := false
 var skill_swipe_animation_mode := ""
 var skill_swipe_drag_base_x := 0.0
+var skill_swipe_drag_offset_x := 0.0
 var skill_swipe_child_click_suppressed := false
 var skill_swipe_button_suppressed_until_msec := 0
 var skill_swipe_handoff_cover: Control
+var skill_detail_refresh_cover_active := false
+var skill_swipe_outgoing_cover_active := false
 var skill_swipe_queued_offset := 0
 var skill_swipe_pending_full_finalize := false
 var skill_swipe_pending_preview_state := {}
@@ -5526,8 +5622,41 @@ var locked_activity_preview_fade_play_pending := false
 var locked_activity_preview_played_action_keys := {}
 var unlock_padlock_pulse_texture: Texture2D
 var skill_swipe_tip_seen := false
+var onboarding_explore_tip_seen := false
+var onboarding_tutorial_complete := false
+var onboarding_explore_tip_sequence_running := false
 var stamina_gauge_tip_seen := false
 var stamina_gauge_tip_root: Control
+var onboarding_starter_action_completion_count := 0
+var onboarding_header_reveal_after_progress := false
+var onboarding_swipe_tip_eligible := false
+var onboarding_swipe_navigation_unlocked := false
+var onboarding_swipe_tip_sequence_running := false
+var onboarding_fight_summary_revealed := false
+var onboarding_fight_auto_run_message_shown := false
+var onboarding_fight_stamina_revealed := false
+var onboarding_fight_action_stats_revealed := false
+var onboarding_fight_action_stats_fade_running := false
+var onboarding_stamina_tip_sequence_running := false
+var onboarding_mastery_tip_root: Control
+var onboarding_medal_tip_root: Control
+var onboarding_swipe_overlay_tip_root: Control
+var onboarding_level_up_tip_root: Control
+var onboarding_mastery_tip_dismissed := false
+var onboarding_medal_tip_shown := false
+var activity_unlock_ceremony_action_key := ""
+var onboarding_header_sequence_token := 0
+var onboarding_header_sequence_running := false
+var onboarding_auto_run_sequence_running := false
+var onboarding_auto_run_message_root: Control
+var activity_start_highlight_token := 0
+var activity_start_highlight_pending := false
+var activity_start_highlight_active := false
+var activity_start_highlight_border: Control
+var activity_start_highlight_card_key := ""
+var activity_start_highlight_fade_tween: Tween
+var activity_start_highlight_frame_clip_override_active := false
+var activity_start_highlight_frame_clip_saved := true
 var lock_click_tip_seen := false
 var lock_click_tip_collapse_until_msec := 0
 var activity_lock_input_active := false
@@ -5588,6 +5717,7 @@ var detail_actions_scroll_limit_elapsed := 0.0
 var last_default_button_sfx_msec := -100000
 var top_level_nav_locked_until_msec := 0
 var home_achievement_refresh_token := 0
+var home_achievements_build_token := 0
 var achievements_rebuild_token := 0
 var _page_stash := {}
 var _page_stash_state := {}
@@ -5655,6 +5785,14 @@ var chain_move_audio_ready := false
 var deferred_skill_validation_pending := false
 var boot_detail_card_yield := false
 var boot_detail_render_in_progress := false
+var boot_lazy_background_mount_allowed := false
+var boot_early_services_started := false
+var boot_post_load_simulation_scheduled := false
+var boot_splash_dismissed_early := false
+var deferred_selected_skill_mastery_pending := false
+var boot_detail_render_queue: Array = []
+var boot_detail_completion_token := 0
+var boot_detail_scroll_locked := false
 var shutdown_cleanup_started := false
 var startup_initialized := false
 
@@ -5682,12 +5820,12 @@ func _ready() -> void:
 	if _pending_crash_report_exists():
 		last_result = "Crash report ready in Settings."
 	_select_launch_skill_page()
-	_prepare_selected_skill_for_render()
+	_prepare_selected_skill_for_render(true)
 	deferred_skill_validation_pending = true
-	await _prewarm_launch_skill_textures_async()
-	await _boot_progress_step("Building UI...", 0.55)
-	_build_ui()
-	await _finish_boot_render_async()
+	deferred_selected_skill_mastery_pending = true
+	await _build_ui_boot_async()
+	_dismiss_boot_splash_for_interactive()
+	call_deferred("_finish_boot_render_async")
 	call_deferred("_apply_debug_temp_fishing_99_all_tools")
 	call_deferred("_apply_debug_temp_thieving_70_trophy_test")
 	var timer := Timer.new()
@@ -5706,31 +5844,116 @@ func _boot_progress_step(text: String, progress: float) -> void:
 	await get_tree().process_frame
 
 
-func _prewarm_launch_skill_textures_async() -> void:
+func _prewarm_boot_blocking_textures_async() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
-	var paths := _uncached_boot_warmup_texture_paths()
-	for raw_nav_path in [
-		"res://assets/content/ui/motivation-star.png",
-		"res://assets/content/hub/hub-nav-barn.png",
-		"res://assets/content/ui/total-lv-bargraph.png",
-		"res://assets/content/ui/settings-gear-simple.png",
-		"res://assets/content/ui/shop.png"
-	]:
-		var normalized := _res_path(raw_nav_path)
-		if not texture_cache.has(normalized):
-			paths.append(raw_nav_path)
+	var paths := _uncached_texture_paths(_boot_blocking_texture_paths())
 	if paths.is_empty():
 		return
+	await _prewarm_texture_paths_async(paths, 0.28, 0.52)
+
+
+func _uncached_texture_paths(paths: Array) -> Array:
+	var pending := []
+	for raw_path in paths:
+		var path := str(raw_path)
+		if path.is_empty():
+			continue
+		var normalized := _res_path(path)
+		if texture_cache.has(normalized):
+			continue
+		pending.append(path)
+	return pending
+
+
+func _prewarm_texture_paths_async(paths: Array, progress_start: float, progress_end: float) -> void:
 	var last_yield_msec := Time.get_ticks_msec()
 	for i in range(paths.size()):
 		if not is_inside_tree():
 			return
 		_texture(str(paths[i]))
-		_set_boot_warmup_progress("Loading art %s/%s" % [i + 1, paths.size()], lerpf(0.28, 0.52, float(i + 1) / float(paths.size())))
+		if paths.size() > 0:
+			_set_boot_warmup_progress(
+				"Loading art %s/%s" % [i + 1, paths.size()],
+				lerpf(progress_start, progress_end, float(i + 1) / float(paths.size()))
+			)
 		if Time.get_ticks_msec() - last_yield_msec >= BOOT_WARMUP_FRAME_BUDGET_MSEC:
 			await get_tree().process_frame
 			last_yield_msec = Time.get_ticks_msec()
+
+
+func _boot_shared_texture_paths() -> Array:
+	var paths := []
+	_add_boot_warmup_texture_path(paths, "res://assets/loading/idle-elite-player-hub-launch-loading-screen.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-cutout.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/speech-bubble-down.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/total-lv-bargraph.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/ad-reward.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/discord-simple.png")
+	_add_boot_warmup_texture_path(paths, MASTERY_MEDALS_TEXTURE)
+	_add_boot_warmup_texture_path(paths, UNLOCK_LOCK_CHAINS_TEXTURE)
+	_add_boot_warmup_texture_path(paths, UNLOCK_CHAIN_LINK_TEXTURE)
+	_add_boot_warmup_texture_path(paths, UNLOCK_CHAIN_LEFT_TEXTURE)
+	_add_boot_warmup_texture_path(paths, UNLOCK_CHAIN_RIGHT_TEXTURE)
+	_add_boot_warmup_texture_path(paths, UNLOCK_PADLOCK_TEXTURE)
+	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_TOP_TEXTURE)
+	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_BOTTOM_TEXTURE)
+	_add_boot_warmup_texture_path(paths, ACTIVITY_BACK_TEXTURE)
+	for raw_nav_path in [
+		"res://assets/content/ui/motivation-star.png",
+		"res://assets/content/hub/hub-nav-barn.png",
+		"res://assets/content/ui/settings-gear-simple.png",
+		"res://assets/content/ui/shop.png"
+	]:
+		_add_boot_warmup_texture_path(paths, raw_nav_path)
+	return paths
+
+
+func _boot_blocking_texture_paths() -> Array:
+	var paths := []
+	var skill_id := selected_skill_id
+	if skill_id.is_empty():
+		return paths
+	_add_boot_warmup_texture_path(paths, ACTIVITY_BACK_TEXTURE)
+	_add_boot_warmup_texture_path(paths, MASTERY_MEDALS_TEXTURE)
+	_add_boot_warmup_texture_path(paths, _skill_icon_path(skill_id))
+	if skill_id == "fishing":
+		_add_boot_warmup_texture_path(paths, FISH_CURRENCY_ICON_TEXTURE)
+	var entry_count := 0
+	for entry in _visible_detail_entries_for_skill(skill_id):
+		if entry_count >= DETAIL_LAZY_BOOT_EAGER_COUNT:
+			break
+		var entry_data := entry as Dictionary
+		if str(entry_data.get("kind", "")) == "thieving_heist":
+			entry_count += 1
+			continue
+		var action := entry_data.get("action", {}) as Dictionary
+		_add_boot_warmup_texture_path(paths, str(action.get("art", "")))
+		_add_boot_warmup_texture_path(paths, str(action.get("bg", "")))
+		entry_count += 1
+	return paths
+
+
+func _dismiss_boot_splash_for_interactive() -> void:
+	if boot_splash_dismissed_early:
+		return
+	boot_splash_dismissed_early = true
+	current_screen = "skill"
+	_reveal_game_under_boot_splash()
+	_dismiss_boot_splash_for_play()
+	boot_lazy_background_mount_allowed = true
+	if not startup_initialized:
+		startup_initialized = true
+		_write_crash_session_marker("running")
+	if not boot_early_services_started:
+		boot_early_services_started = true
+		call_deferred("_prepare_audio_buses")
+		call_deferred("_ensure_nav_bar_icons")
+		call_deferred("_refresh_boot_nav_unlock_states")
+		call_deferred("_ensure_chat_strip")
+	_update_ui(0.0, true)
 
 
 func _finish_boot_render_async() -> void:
@@ -5739,22 +5962,26 @@ func _finish_boot_render_async() -> void:
 	current_screen = "skill"
 	boot_detail_render_in_progress = true
 	boot_detail_card_yield = true
+	_set_boot_warmup_progress("Drawing first skill...", 0.70)
 	await _render_screen(true, -1, true)
 	boot_detail_card_yield = false
 	boot_detail_render_in_progress = false
+	boot_lazy_background_mount_allowed = false
+	_set_boot_warmup_progress("Finishing startup...", 0.74)
 	if not startup_initialized:
 		startup_initialized = true
 		_write_crash_session_marker("running")
 	_update_ui(0.0, true)
 	if DisplayServer.get_name() != "headless":
-		call_deferred("_prepare_audio_buses")
-		call_deferred("_ensure_nav_bar_icons")
-		call_deferred("_refresh_boot_nav_unlock_states")
+		if not boot_early_services_started:
+			call_deferred("_prepare_audio_buses")
+			call_deferred("_ensure_nav_bar_icons")
+			call_deferred("_refresh_boot_nav_unlock_states")
+			call_deferred("_ensure_chat_strip")
 		call_deferred("_show_pending_completed_achievement_toasts")
-		call_deferred("_apply_post_load_simulation")
+		call_deferred("_schedule_boot_post_load_simulation")
 		call_deferred("_begin_background_boot_validation")
 		call_deferred("_boot_texture_warmup_background")
-		call_deferred("_ensure_chat_strip")
 
 
 func _refresh_boot_nav_unlock_states() -> void:
@@ -5771,6 +5998,13 @@ func _finish_boot_skill_detail_extras() -> void:
 		return
 	_build_detail_jump_arrows(actions_clip)
 	_add_skill_detail_shadow_overlay(float(SKILL_DETAIL_HEADER_HEIGHT) + SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
+	call_deferred("_deferred_boot_swipe_preview_prewarm")
+
+
+func _deferred_boot_swipe_preview_prewarm() -> void:
+	await get_tree().create_timer(BOOT_SWIPE_PREWARM_DELAY_SECONDS).timeout
+	if current_screen != "skill":
+		return
 	_queue_skill_swipe_preview_prewarm()
 
 
@@ -5802,7 +6036,9 @@ func _configure_performance_mode() -> void:
 
 
 func _process(delta: float) -> void:
-	if not startup_initialized or boot_detail_render_in_progress:
+	if not startup_initialized:
+		return
+	if boot_detail_render_in_progress and not boot_lazy_background_mount_allowed:
 		return
 	if detail_lazy_plan.size() > 0 and not _detail_lazy_all_mounted():
 		_sync_detail_lazy_visible_cards(false, DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
@@ -6064,6 +6300,9 @@ func _activity_lock_input_released(event: InputEvent) -> bool:
 
 
 func _begin_skill_swipe_tracking(position: Vector2, touch_index: int) -> void:
+	if _onboarding_blocks_skill_swipe():
+		if not _ensure_onboarding_swipe_unlocked(true):
+			return
 	if not _skill_swipe_animation_blocks_input():
 		skill_swipe_preview_prewarm_token += 1
 		skill_swipe_preview_prewarm_pending = false
@@ -6891,7 +7130,7 @@ func _prepare_for_shutdown() -> void:
 	atlas_texture_cache.clear()
 	profile_avatar_texture_cache.clear()
 	mastery_medal_textures.clear()
-	mastery_medal_silhouette_textures.clear()
+	mastery_medal_silhouette_materials.clear()
 	paper_button_style_textures.clear()
 	mastery_medal_dot_texture = null
 	audio_slider_grabber_texture = null
@@ -6970,7 +7209,7 @@ func _free_skill_swipe_preview_shutdown_nodes() -> void:
 	skill_swipe_handoff_cover = null
 
 
-func _build_ui() -> void:
+func _build_ui_shell() -> void:
 	var root := ColorRect.new()
 	root.color = COLOR_PAPER
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -6986,14 +7225,37 @@ func _build_ui() -> void:
 	skills_page.offset_bottom = -BOTTOM_NAV_HEIGHT
 	skills_page.clip_contents = true
 	add_child(skills_page)
+
+
+func _build_ui() -> void:
+	_build_ui_shell()
 	_build_skills_page()
-	
 	_build_nav_bar()
 	_build_achievement_toast_layer()
-	call_deferred("_prewarm_achievements_overlay")
+
+
+func _build_ui_boot_async() -> void:
+	await _boot_progress_step("Building screen...", 0.34)
+	_build_ui_shell()
+	await _boot_progress_step("Loading skill page...", 0.42)
+	_build_skills_page()
+	await _boot_progress_step("Loading navigation...", 0.50)
+	_build_nav_bar()
+	await _boot_progress_step("Preparing popups...", 0.56)
+	_build_achievement_toast_layer()
+	await _boot_progress_step("Starting systems...", 0.60)
+	await _boot_progress_step("Mounting skill view...", 0.62)
+	await _boot_progress_step("Preparing first frame...", 0.64)
+	await _boot_progress_step("Almost ready...", 0.66)
+
+
+func _global_chat_allowed() -> bool:
+	return _skill_detail_back_arrow_allowed()
 
 
 func _ensure_chat_strip() -> void:
+	if not _global_chat_allowed():
+		return
 	if chat_strip != null and is_instance_valid(chat_strip):
 		return
 	_ensure_leaderboard_http()
@@ -7701,6 +7963,8 @@ func _on_profile_reference_update_completed(result: int, response_code: int, _he
 
 
 func _chat_stream_connect(force_reconnect := false) -> void:
+	if not _global_chat_allowed():
+		return
 	if not _leaderboard_firebase_enabled():
 		chat_status_message = "Online chat is not connected yet."
 		return
@@ -8496,6 +8760,7 @@ func _build_tutorial_overlay() -> void:
 
 
 func _build_home_page() -> void:
+	home_achievements_build_token += 1
 	achievement_skill_count_labels.clear()
 	achievement_skill_bars.clear()
 	achievement_skill_level_labels.clear()
@@ -8713,44 +8978,60 @@ func _build_achievements(parent: PanelContainer) -> void:
 	total_separator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	total_separator_margin.add_child(total_separator)
 
+	home_achievements_build_token += 1
+	call_deferred("_build_home_achievement_skill_sections", stack, home_achievements_build_token)
+
+
+func _build_home_achievement_skill_sections(stack: VBoxContainer, token: int) -> void:
+	await get_tree().process_frame
+	if token != home_achievements_build_token or stack == null or not is_instance_valid(stack):
+		return
 	for def in skill_defs:
+		if token != home_achievements_build_token or stack == null or not is_instance_valid(stack):
+			return
 		var skill_id := str(def["id"])
-		var card := PanelContainer.new()
-		card.custom_minimum_size = Vector2(0, 470)
-		card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		card.add_theme_stylebox_override("panel", _achievement_skill_section_style())
-		stack.add_child(card)
-
-		var skill_stack := VBoxContainer.new()
-		skill_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		skill_stack.add_theme_constant_override("separation", 22)
-		card.add_child(skill_stack)
-
-		var header := HBoxContainer.new()
-		header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		header.alignment = BoxContainer.ALIGNMENT_CENTER
-		header.add_theme_constant_override("separation", 34)
-		skill_stack.add_child(header)
-		var icon := _image("res://assets/content/icons/%s.png" % skill_id, Vector2(178, 178))
-		icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		header.add_child(icon)
-
-		var level_label := _label("", 112, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
-		level_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		header.add_child(level_label)
-		achievement_skill_level_labels[skill_id] = level_label
-
-		var actions: Array = _mastery_actions_for_skill(skill_id)
-		var slot_strip := _achievement_medal_slot_strip(skill_id, actions)
-		skill_stack.add_child(slot_strip["root"])
-		achievement_skill_tier_name_labels[skill_id] = []
-		achievement_skill_tier_count_labels[skill_id] = []
-		achievement_medal_slot_panels[skill_id] = [slot_strip["panels"]]
-		achievement_medal_slot_icons[skill_id] = [slot_strip["icons"]]
+		stack.add_child(_achievement_skill_section(skill_id))
+		await get_tree().process_frame
 
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = Vector2(0, 70)
 	stack.add_child(bottom_spacer)
+	_queue_home_achievement_refresh()
+
+
+func _achievement_skill_section(skill_id: String) -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 470)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", _achievement_skill_section_style())
+
+	var skill_stack := VBoxContainer.new()
+	skill_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	skill_stack.add_theme_constant_override("separation", 22)
+	card.add_child(skill_stack)
+
+	var header := HBoxContainer.new()
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.alignment = BoxContainer.ALIGNMENT_CENTER
+	header.add_theme_constant_override("separation", 34)
+	skill_stack.add_child(header)
+	var icon := _image("res://assets/content/icons/%s.png" % skill_id, Vector2(178, 178))
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	header.add_child(icon)
+
+	var level_label := _label("", 112, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	level_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	header.add_child(level_label)
+	achievement_skill_level_labels[skill_id] = level_label
+
+	var actions: Array = _mastery_actions_for_skill(skill_id)
+	var slot_strip := _achievement_medal_slot_strip(skill_id, actions)
+	skill_stack.add_child(slot_strip["root"])
+	achievement_skill_tier_name_labels[skill_id] = []
+	achievement_skill_tier_count_labels[skill_id] = []
+	achievement_medal_slot_panels[skill_id] = [slot_strip["panels"]]
+	achievement_medal_slot_icons[skill_id] = [slot_strip["icons"]]
+	return card
 
 
 func _build_hero(parent: PanelContainer) -> void:
@@ -8858,7 +9139,7 @@ func _build_nav_bar() -> void:
 
 
 func _hero_unlocked() -> bool:
-	return true
+	return _global_level() >= HERO_UNLOCK_TOTAL_LEVEL
 
 
 func _sync_hero_nav_button(instant := false) -> void:
@@ -9730,6 +10011,7 @@ func _capture_page_state() -> Dictionary:
 		"detail_fish_circle": detail_fish_circle,
 		"detail_stamina_bar": detail_stamina_bar,
 		"detail_header_body": detail_header_body,
+		"detail_header_left_block": detail_header_left_block,
 		"detail_actions_scroll": detail_actions_scroll,
 		"detail_unlock_scroll_spacer": detail_unlock_scroll_spacer,
 		"detail_shelf_shadow_overlay": detail_shelf_shadow_overlay,
@@ -9803,6 +10085,7 @@ func _apply_page_state(state: Dictionary) -> void:
 	detail_fish_circle = state.get("detail_fish_circle") as FishCircle
 	detail_stamina_bar = state.get("detail_stamina_bar") as CleanProgressBar
 	detail_header_body = state.get("detail_header_body") as Control
+	detail_header_left_block = state.get("detail_header_left_block") as Control
 	detail_actions_scroll = state.get("detail_actions_scroll") as MobileScrollContainer
 	detail_unlock_scroll_spacer = state.get("detail_unlock_scroll_spacer") as Control
 	detail_shelf_shadow_overlay = state.get("detail_shelf_shadow_overlay") as Control
@@ -9857,9 +10140,12 @@ func _reset_page_control_refs() -> void:
 	detail_xp_label = null
 	detail_xp_bar = null
 	detail_regen_circle = null
+	detail_regen_circle_host = null
+	detail_regen_circle_fade_group = null
 	detail_fish_circle = null
 	detail_stamina_bar = null
 	detail_header_body = null
+	detail_header_left_block = null
 	detail_actions_scroll = null
 	detail_unlock_scroll_spacer = null
 	detail_shelf_shadow_overlay = null
@@ -9879,8 +10165,18 @@ func _reset_page_control_refs() -> void:
 	detail_lazy_plan.clear()
 	detail_lazy_last_scroll = -1.0
 	detail_lazy_stack = null
+	activity_start_highlight_token += 1
+	activity_start_highlight_pending = false
+	activity_start_highlight_active = false
+	if activity_start_highlight_fade_tween != null:
+		activity_start_highlight_fade_tween.kill()
+	activity_start_highlight_fade_tween = null
+	activity_start_highlight_border = null
+	activity_start_highlight_card_key = ""
+	_restore_activity_start_highlight_frame_clip()
 	skill_swipe_frame = null
 	skill_swipe_page = null
+	skill_swipe_drag_offset_x = 0.0
 	skill_swipe_animating = false
 	skill_swipe_preview_page = null
 	skill_swipe_preview_pages.clear()
@@ -9918,6 +10214,12 @@ func _discard_all_page_stashes() -> void:
 	_deferred_skill_detail_park_state = {}
 	_pending_skill_detail_park_state = {}
 	_last_rendered_screen_key = ""
+	_kill_skill_swipe_tween()
+	_clear_skill_swipe_handoff_cover_immediate()
+	_clear_skill_swipe_preview()
+	skill_swipe_frame = null
+	skill_swipe_page = null
+	skill_swipe_drag_offset_x = 0.0
 
 
 func _new_page_stash_bucket(bucket_name: String) -> Control:
@@ -9988,6 +10290,7 @@ func _store_skill_detail_cache_entry(cache_key: String, bucket: Node, state: Dic
 func _park_skill_detail_from_active(cache_key: String, park_state: Dictionary = {}) -> void:
 	if cache_key.is_empty() or skills_content.get_child_count() == 0:
 		return
+	_normalize_skill_detail_page_layout()
 	var state := park_state if not park_state.is_empty() else _capture_skill_detail_page_state()
 	_discard_skill_detail_cache_entry(cache_key)
 	var bucket := _new_page_stash_bucket("SkillDetailCache_%s" % cache_key.replace(":", "_"))
@@ -10031,6 +10334,18 @@ func _finish_deferred_skill_detail_park() -> void:
 	_deferred_skill_detail_park_state = {}
 
 
+func _skill_detail_cache_has_incomplete_lazy(state: Dictionary, skill_id: String) -> bool:
+	if _fishing_rework_active_for_skill(skill_id):
+		return false
+	var plan := state.get("detail_lazy_plan", []) as Array
+	if plan.is_empty():
+		return false
+	for raw_item in plan:
+		if not bool((raw_item as Dictionary).get("mounted", false)):
+			return true
+	return false
+
+
 func _try_activate_skill_detail_page(
 	cache_key: String,
 	restore_detail_scroll: int,
@@ -10045,6 +10360,10 @@ func _try_activate_skill_detail_page(
 		return false
 	_skill_detail_page_cache.erase(cache_key)
 	var state: Dictionary = entry.get("state", {}) as Dictionary
+	var cached_skill_id := cache_key.replace("skill:", "")
+	if _skill_detail_cache_has_incomplete_lazy(state, cached_skill_id):
+		bucket.queue_free()
+		return false
 	_clear_settings_page_control_refs()
 	if skills_content.get_child_count() > 0:
 		_kill_transient_tweens_in_subtree(skills_content)
@@ -10055,6 +10374,19 @@ func _try_activate_skill_detail_page(
 		bucket.remove_child(child)
 		skills_content.add_child(child)
 	bucket.queue_free()
+	_apply_onboarding_fight_header_visibility()
+	_apply_onboarding_fight_action_stats_visibility_all()
+	_sync_skill_detail_back_arrow_visibility()
+	if _onboarding_auto_run_message_resumable():
+		call_deferred("_run_onboarding_auto_run_message_sequence")
+	if _onboarding_header_reveal_sequence_resumable():
+		call_deferred("_run_onboarding_header_reveal_sequence")
+	elif onboarding_fight_stamina_revealed and not stamina_gauge_tip_seen and _onboarding_fight_header_sequence_active():
+		call_deferred("_run_onboarding_stamina_tip_sequence")
+	elif _onboarding_swipe_tip_sequence_resumable():
+		call_deferred("_run_onboarding_swipe_tip_sequence")
+	if selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
+		call_deferred("_maybe_show_onboarding_explore_tip")
 	if restore_detail_scroll >= 0 and detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 		var restore_scroll := 0 if selected_skill_id == "thieving" else maxi(0, restore_detail_scroll)
 		detail_actions_scroll.drag_scroll_position = float(restore_scroll)
@@ -10064,7 +10396,10 @@ func _try_activate_skill_detail_page(
 		call_deferred("_scroll_to_resume_activity", false)
 	call_deferred("_sync_detail_actions_scroll_limit_deferred")
 	call_deferred("_queue_skill_swipe_preview_prewarm")
-	call_deferred("_detail_lazy_refresh_after_page_ready")
+	call_deferred("_ensure_skill_swipe_frame_centered")
+	if detail_lazy_plan.size() > 0 and not _detail_lazy_all_mounted():
+		call_deferred("_detail_lazy_refresh_after_page_ready")
+	_normalize_skill_detail_page_layout()
 	return true
 
 
@@ -10078,11 +10413,28 @@ func _clear_skills_content_orphans() -> void:
 func _finish_render_screen_transition(target_key: String) -> void:
 	_apply_skills_content_layout_for_screen()
 	_last_rendered_screen_key = target_key
+	if skill_detail_refresh_cover_active:
+		_clear_skill_swipe_handoff_cover_immediate()
+	elif (
+		not skill_swipe_outgoing_cover_active
+		and not skill_swipe_animating
+		and _deferred_skill_detail_park_key.is_empty()
+		and skill_swipe_handoff_cover != null
+		and is_instance_valid(skill_swipe_handoff_cover)
+	):
+		_clear_skill_swipe_handoff_cover_immediate()
 	_update_page_visibility()
 	_update_chat_strip(true)
 	call_deferred("_update_ui", 0.0, true)
+	if current_screen == "skill":
+		if selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
+			if _onboarding_swipe_tip_sequence_resumable() and not onboarding_swipe_tip_sequence_running:
+				call_deferred("_run_onboarding_swipe_tip_sequence")
+		else:
+			call_deferred("_maybe_show_onboarding_explore_tip")
 	if current_screen == "skill" and not _fishing_rework_active_for_skill(selected_skill_id):
-		call_deferred("_detail_lazy_refresh_after_page_ready")
+		if detail_lazy_plan.size() > 0 and not _detail_lazy_all_mounted():
+			call_deferred("_detail_lazy_refresh_after_page_ready")
 
 
 func _stash_skills_page(cache_key: String) -> void:
@@ -10156,15 +10508,20 @@ func _apply_skills_content_layout_for_screen() -> void:
 		skills_content.offset_top = 0.0
 	else:
 		skills_content.offset_top = SKILLS_PAGE_TOP_PAD
-	if current_screen == "skill" and skill_swipe_page != null and is_instance_valid(skill_swipe_page):
-		skill_swipe_page.position = Vector2.ZERO
+	if current_screen == "skill":
+		_ensure_skill_swipe_frame_centered()
+		if not skill_swipe_animating:
+			_normalize_skill_detail_page_layout()
 
 
 func _prepare_skills_page_transition(target_key: String) -> void:
+	_cancel_boot_detail_completion()
 	var leaving_skill := not target_key.begins_with("skill:")
 	if leaving_skill:
 		_cancel_skill_swipe_finalize_for_navigation()
 		_suppress_all_page_stash_buckets()
+	elif _deferred_skill_detail_park_key.is_empty():
+		_cancel_skill_swipe_finalize_for_navigation()
 	if not target_key.begins_with("skill:"):
 		_flush_skill_swipe_handoff_for_navigation()
 	var previous_key := _last_rendered_screen_key
@@ -10216,7 +10573,11 @@ func _prepare_skills_page_transition(target_key: String) -> void:
 func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1, boot_async := false) -> void:
 	if skills_content == null:
 		return
+	if current_screen == "skill" and _skill_swipe_navigation_blocks_detail_refresh():
+		return
 	var target_key := _screen_page_cache_key(current_screen)
+	skill_swipe_animating = false
+	skill_swipe_animation_mode = ""
 	_kill_skill_swipe_tween()
 	_clear_page_transient_input_state()
 	if current_screen != "skill":
@@ -10238,14 +10599,10 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	_clear_skill_swipe_preview()
 	skill_swipe_frame = null
 	skill_swipe_page = null
-	skill_swipe_animating = false
 	_reset_page_control_refs()
 	_clear_skills_content_orphans()
 	if current_screen == "skill":
-		if boot_async:
-			await _render_skill_detail(scroll_latest_activity, restore_detail_scroll)
-		else:
-			_render_skill_detail(scroll_latest_activity, restore_detail_scroll)
+		await _render_skill_detail(scroll_latest_activity, restore_detail_scroll)
 	elif current_screen == "leaderboard":
 		_render_leaderboard_page()
 	elif current_screen == "hub":
@@ -10285,6 +10642,7 @@ func _cancel_activity_unlock_transients_for_navigation() -> void:
 		card["unlock_ceremony_active"] = false
 	pending_activity_unlock_ceremony = {}
 	activity_unlock_ceremony_count = 0
+	activity_unlock_ceremony_action_key = ""
 	_set_activity_unlock_preview_after_ceremony("")
 	_clear_activity_unlock_preview_reveal_guards()
 	activity_unlock_heist_preview_after_ceremony_id = ""
@@ -10318,17 +10676,68 @@ func _skill_content_width() -> float:
 	return BASE_CANVAS.x - PAGE_PAD * 2.0
 
 
-func _add_centered_skill_column(control: Control) -> void:
+func _skill_swipe_frame_content_width(skill_id: String = "") -> float:
+	if skill_id.is_empty():
+		skill_id = selected_skill_id
+	return BASE_CANVAS.x if skill_id == "thieving" else _skill_content_width()
+
+
+func _skill_column_host_width() -> float:
+	if skills_content != null and is_instance_valid(skills_content) and skills_content.size.x > 1.0:
+		return skills_content.size.x
+	return _current_canvas_size().x
+
+
+func _configure_skill_column_frame(frame: Control, content_width: float) -> void:
+	frame.anchor_left = 0.0
+	frame.anchor_right = 0.0
+	frame.anchor_top = 0.0
+	frame.anchor_bottom = 1.0
+	frame.offset_top = 0.0
+	frame.offset_bottom = 0.0
+	frame.position = Vector2.ZERO
+	frame.custom_minimum_size.x = content_width
+
+
+func _apply_skill_column_layout(frame: Control, content_width: float, drag_x: float) -> void:
+	_configure_skill_column_frame(frame, content_width)
+	var left := (_skill_column_host_width() - content_width) * 0.5 + drag_x
+	frame.offset_left = left
+	frame.offset_right = left + content_width
+
+
+func _apply_skill_swipe_drag_offset(drag_x: float) -> void:
+	skill_swipe_drag_offset_x = drag_x
+	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
+		return
+	var content_width := _skill_swipe_frame_content_width()
+	if skill_swipe_frame.custom_minimum_size.x > 1.0:
+		content_width = skill_swipe_frame.custom_minimum_size.x
+	_apply_skill_column_layout(skill_swipe_frame, content_width, drag_x)
+
+
+func _reset_skill_swipe_frame_layout() -> void:
+	_apply_skill_swipe_drag_offset(0.0)
+
+
+func _ensure_skill_swipe_frame_centered() -> void:
+	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
+		return
+	if skill_swipe_tracking or skill_swipe_animating:
+		_apply_skill_swipe_drag_offset(skill_swipe_drag_offset_x)
+		return
+	if absf(skill_swipe_drag_offset_x) > 0.5:
+		_apply_skill_swipe_drag_offset(0.0)
+		return
+	var content_width := _skill_swipe_frame_content_width()
+	if skill_swipe_frame.custom_minimum_size.x > 1.0:
+		content_width = skill_swipe_frame.custom_minimum_size.x
+	_apply_skill_column_layout(skill_swipe_frame, content_width, 0.0)
+
+
+func _add_centered_skill_column(control: Control, drag_x: float = 0.0) -> void:
 	var content_width := _skill_content_width()
-	control.anchor_left = 0.5
-	control.anchor_right = 0.5
-	control.anchor_top = 0.0
-	control.anchor_bottom = 1.0
-	control.offset_left = -content_width * 0.5
-	control.offset_right = content_width * 0.5
-	control.offset_top = 0.0
-	control.offset_bottom = 0.0
-	control.custom_minimum_size.x = content_width
+	_apply_skill_column_layout(control, content_width, drag_x)
 	skills_content.add_child(control)
 
 
@@ -12860,10 +13269,19 @@ func _leaderboard_rank_badge(rank: int) -> Control:
 
 
 func _chat_strip_visible_on_current_screen() -> bool:
+	if not _global_chat_allowed():
+		return false
 	return current_screen == "menu" or current_screen == "skill" or current_screen == "hub"
 
 
 func _update_chat_strip(force_visibility := false) -> void:
+	if not _global_chat_allowed():
+		if chat_stream_connected or chat_stream_connecting or chat_stream_request_sent:
+			_chat_stream_disconnect(false)
+		if chat_strip != null and is_instance_valid(chat_strip):
+			chat_strip.visible = false
+			chat_strip_last_visible = false
+		return
 	if chat_strip == null or not is_instance_valid(chat_strip):
 		if _chat_strip_visible_on_current_screen() or force_visibility:
 			_ensure_chat_strip()
@@ -13750,6 +14168,9 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 			"activity": bottom_rail.get("activity"),
 			"fluid_strip": bottom_rail.get("fluid_strip"),
 		}
+		var accessible := _onboarding_skill_accessible(skill_id)
+		button.disabled = not accessible
+		button.modulate = Color.WHITE if accessible else HUB_NAV_LOCKED_MODULATE
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = Vector2(0, SKILL_MENU_BOTTOM_SCROLL_PAD)
 	stack.add_child(bottom_spacer)
@@ -13815,6 +14236,11 @@ func _build_skill_menu_bottom_rail(skill_id: String, theme_color: Color, button:
 
 
 func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, instant: bool) -> void:
+	var button := card.get("button") as Button
+	if button != null and is_instance_valid(button):
+		var accessible := _onboarding_skill_accessible(skill_id)
+		button.disabled = not accessible
+		button.modulate = Color.WHITE if accessible else HUB_NAV_LOCKED_MODULATE
 	if _fishing_rework_active_for_skill(skill_id):
 		var fish_gauge := card.get("fish") as FishCircle
 		if fish_gauge != null:
@@ -13852,6 +14278,33 @@ func _skill_menu_card_side_gauge(card: Dictionary) -> Control:
 	if fish_gauge != null and is_instance_valid(fish_gauge):
 		return fish_gauge
 	return card.get("stamina") as Control
+
+
+func _skill_detail_back_arrow_allowed() -> bool:
+	return not _onboarding_path_active()
+
+
+func _sync_activity_back_button_visibility(back_button: Button, interactive: bool) -> void:
+	if back_button == null or not is_instance_valid(back_button):
+		return
+	var allowed := interactive and _skill_detail_back_arrow_allowed()
+	back_button.visible = allowed
+	back_button.mouse_filter = Control.MOUSE_FILTER_STOP if allowed else Control.MOUSE_FILTER_IGNORE
+
+
+func _sync_skill_detail_back_arrow_visibility() -> void:
+	if detail_back_button == null or not is_instance_valid(detail_back_button):
+		if detail_header_body == null or not is_instance_valid(detail_header_body):
+			return
+		for child in detail_header_body.get_children():
+			if child is Button and child != detail_jump_top_button and child != detail_jump_bottom_button:
+				var candidate := child as Button
+				if candidate.tooltip_text == "Back":
+					detail_back_button = candidate
+					break
+	if detail_back_button == null or not is_instance_valid(detail_back_button):
+		return
+	_sync_activity_back_button_visibility(detail_back_button as Button, true)
 
 
 func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
@@ -13896,35 +14349,24 @@ func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
 	back_button.z_index = 80
 	if interactive:
 		back_button.pressed.connect(_show_skills)
-	else:
-		back_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	parent.add_child(back_button)
-	if interactive:
 		detail_back_button = back_button
+	parent.add_child(back_button)
+	_sync_activity_back_button_visibility(back_button, interactive)
 	return back_button
 
 
-func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll := -1) -> void:
+func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll := -1, async_action_cards := false) -> void:
+	skill_swipe_drag_offset_x = 0.0
 	var content_width := _skill_content_width()
 	var actions_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
 	if not _detail_unlock_extra_scroll_space_allowed(selected_skill_id):
 		detail_unlock_scroll_spacer_heights.erase(selected_skill_id)
 	var frame := Control.new()
 	skill_swipe_frame = frame
-	if selected_skill_id == "thieving":
-		frame.anchor_left = 0.5
-		frame.anchor_right = 0.5
-		frame.anchor_top = 0.0
-		frame.anchor_bottom = 1.0
-		frame.offset_left = -BASE_CANVAS.x * 0.5
-		frame.offset_right = BASE_CANVAS.x * 0.5
-		frame.offset_top = 0.0
-		frame.offset_bottom = 0.0
-		frame.custom_minimum_size.x = BASE_CANVAS.x
-		skills_content.add_child(frame)
-	else:
-		_add_centered_skill_column(frame)
 	frame.clip_contents = true
+	var frame_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
+	_apply_skill_column_layout(frame, frame_width, 0.0)
+	skills_content.add_child(frame)
 
 	var page := VBoxContainer.new()
 	skill_swipe_page = page
@@ -13963,6 +14405,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	left_block.add_theme_constant_override("separation", SKILL_DETAIL_LEFT_SEPARATION)
 	left_block.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header_row.add_child(left_block)
+	detail_header_left_block = left_block
 	var summary_icon := _skill_detail_icon(selected_skill_id)
 	left_block.add_child(summary_icon)
 	var title_stack := VBoxContainer.new()
@@ -13981,9 +14424,14 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 	detail_xp_bar = _skill_detail_xp_bar(selected_skill_id, float(xp["pct"]))
 	title_stack.add_child(detail_xp_bar)
 
+	if boot_detail_card_yield:
+		await get_tree().process_frame
+
 	detail_stamina_bar = null
 	if _fishing_rework_active_for_skill(selected_skill_id):
 		detail_regen_circle = null
+		detail_regen_circle_host = null
+		detail_regen_circle_fade_group = null
 		detail_fish_circle = FishCircle.new()
 		detail_fish_circle.custom_minimum_size = Vector2(552, 552)
 		detail_fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -13995,21 +14443,36 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
 	else:
 		detail_fish_circle = null
+		detail_regen_circle_host = Control.new()
+		detail_regen_circle_host.custom_minimum_size = Vector2(552, 552)
+		detail_regen_circle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		detail_regen_circle_host.clip_contents = false
+		detail_regen_circle_fade_group = CanvasGroup.new()
 		detail_regen_circle = RegenCircle.new()
 		detail_regen_circle.custom_minimum_size = Vector2(552, 552)
 		detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
+		detail_regen_circle.modulate = Color.WHITE
 		detail_regen_circle.gui_input.connect(_on_stamina_gauge_input.bind("", detail_regen_circle))
-		header_row.add_child(detail_regen_circle)
+		detail_regen_circle_fade_group.add_child(detail_regen_circle)
+		detail_regen_circle_host.add_child(detail_regen_circle_fade_group)
+		header_row.add_child(detail_regen_circle_host)
 		_set_regen_circle_for_skill(detail_regen_circle, selected_skill_id, true)
-	if _skill_detail_shows_tutorial_tips(selected_skill_id):
-		_add_stamina_gauge_tip(header_body)
+	_apply_onboarding_fight_header_visibility()
+	_apply_onboarding_fight_action_stats_visibility_all()
+	_sync_skill_detail_back_arrow_visibility()
+	if _onboarding_auto_run_message_resumable():
+		call_deferred("_run_onboarding_auto_run_message_sequence")
+	if _onboarding_header_reveal_sequence_resumable():
+		call_deferred("_run_onboarding_header_reveal_sequence")
+	elif onboarding_fight_stamina_revealed and not stamina_gauge_tip_seen and _onboarding_fight_header_sequence_active():
+		call_deferred("_run_onboarding_stamina_tip_sequence")
+	elif _onboarding_swipe_tip_sequence_resumable():
+		call_deferred("_run_onboarding_swipe_tip_sequence")
 	elif _fishing_rework_active_for_skill(selected_skill_id):
 		_dismiss_skill_detail_tutorial_tips()
 
 	if boot_detail_card_yield:
-		_reveal_game_under_boot_splash()
-		_dismiss_boot_splash_for_play()
 		await get_tree().process_frame
 
 	var divider := Control.new()
@@ -14053,11 +14516,28 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		if boot_detail_card_yield:
 			await get_tree().process_frame
 		if not activity_start_tip_seen:
-			stack.add_child(_detail_stack_entry(_activity_start_tip_note(content_width), content_width, actions_width))
+			var start_note := _activity_start_tip_note(content_width)
+			stack.add_child(_detail_stack_entry(start_note, content_width, actions_width))
+			_fade_in_activity_start_tip_note(start_note)
 		elif _skill_swipe_tip_available():
-			stack.add_child(_detail_stack_entry(_skill_swipe_tip_note(content_width), content_width, actions_width))
+			call_deferred("_run_onboarding_swipe_tip_sequence")
 	else:
-		await _render_detail_lazy_card_list(stack, content_width, actions_width)
+		if boot_detail_card_yield:
+			await _render_detail_eager_card_list_async(stack, content_width, actions_width, DETAIL_LAZY_BOOT_EAGER_COUNT)
+		elif async_action_cards:
+			await _render_detail_eager_card_list_async(stack, content_width, actions_width)
+		else:
+			_render_detail_eager_card_list(stack, content_width, actions_width)
+	if boot_detail_card_yield:
+		boot_detail_render_in_progress = false
+		if boot_detail_render_queue.is_empty():
+			boot_detail_scroll_locked = false
+			_append_detail_eager_trailing_tips(stack, content_width, actions_width)
+		else:
+			boot_detail_scroll_locked = true
+			actions_scroll.set_max_scroll_override(0)
+			actions_scroll.set_scroll_enabled_by_content(false)
+			call_deferred("_complete_boot_detail_cards_async")
 	var scroll_bottom_spacer := Control.new()
 	scroll_bottom_spacer.name = "DetailActionsBottomSpacer"
 	scroll_bottom_spacer.custom_minimum_size = Vector2(0, _detail_actions_bottom_scroll_pad(selected_skill_id))
@@ -14077,6 +14557,8 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		call_deferred("_restore_detail_actions_scroll", restore_scroll)
 	elif scroll_latest_activity:
 		call_deferred("_scroll_to_resume_activity", false)
+	call_deferred("_ensure_skill_swipe_frame_centered")
+	_normalize_skill_detail_page_layout()
 
 
 func _sync_detail_lazy_visible_cards_after_scroll() -> void:
@@ -14413,6 +14895,21 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 			pinned[pending_action_id] = true
 	if not activity_unlock_preview_after_ceremony_id.is_empty():
 		pinned[activity_unlock_preview_after_ceremony_id] = true
+	if not activity_unlock_ceremony_action_key.is_empty():
+		var ceremony_parts := activity_unlock_ceremony_action_key.split(":")
+		if ceremony_parts.size() >= 2:
+			pinned[str(ceremony_parts[1])] = true
+	for raw_card in action_cards.values():
+		if typeof(raw_card) != TYPE_DICTIONARY:
+			continue
+		var card := raw_card as Dictionary
+		if bool(card.get("unlock_ceremony_active", false)) or bool(card.get("unlock_ceremony_pending", false)):
+			var ceremony_action_id := str(card.get("action_id", ""))
+			if ceremony_action_id.is_empty():
+				var ceremony_action := card.get("action", {}) as Dictionary
+				ceremony_action_id = str(ceremony_action.get("id", ""))
+			if not ceremony_action_id.is_empty():
+				pinned[ceremony_action_id] = true
 	var pending_heist_key := str(pending_thieving_trophy_reward_float.get("key", "")) if not pending_thieving_trophy_reward_float.is_empty() else ""
 	if pending_heist_key.begins_with("thieving_heist:"):
 		pinned["heist:%s" % pending_heist_key.substr("thieving_heist:".length())] = true
@@ -14536,13 +15033,30 @@ func _detail_lazy_entry_in_viewport(plan_item: Dictionary) -> bool:
 	return entry_bottom >= view_top and entry_y <= view_bottom
 
 
-func _detail_lazy_should_mount_item(plan_item: Dictionary, pinned: Dictionary) -> bool:
+func _detail_lazy_should_mount_item(plan_item: Dictionary, pinned: Dictionary, plan_index: int) -> bool:
 	if bool(plan_item.get("mounted", false)):
 		return false
+	var kind := str(plan_item.get("kind", ""))
+	if kind in ["lock_tip", "activity_start_tip", "skill_swipe_tip"]:
+		return plan_index < DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT
 	var track_id := str(plan_item.get("track_id", ""))
 	if not track_id.is_empty() and pinned.has(track_id):
 		return true
+	if plan_index < DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT:
+		return true
 	return _detail_lazy_entry_in_viewport(plan_item)
+
+
+func _detail_lazy_slot_has_real_content(slot: Control) -> bool:
+	if slot == null or not is_instance_valid(slot):
+		return false
+	for child in slot.get_children():
+		if child == null or not is_instance_valid(child):
+			continue
+		if child is Control and bool(child.get_meta("detail_lazy_placeholder", false)):
+			continue
+		return true
+	return false
 
 
 func _detail_lazy_add_child_to_host(host: Control, child: Control, content_width: float, actions_width: float) -> void:
@@ -14569,6 +15083,7 @@ func _detail_lazy_create_slots(stack: VBoxContainer, skill_id: String, content_w
 		var placeholder := Control.new()
 		placeholder.custom_minimum_size = Vector2(content_width, height)
 		placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		placeholder.set_meta("detail_lazy_placeholder", true)
 		item["placeholder"] = placeholder
 		if skill_id == "thieving" and str(item.get("kind", "")) == "heist":
 			placeholder.custom_minimum_size.x = actions_width
@@ -14589,6 +15104,105 @@ func _play_detail_lazy_fade_in(target: Control) -> void:
 	target.modulate.a = 0.0
 	var tween := create_tween()
 	tween.tween_property(target, "modulate:a", 1.0, DETAIL_LAZY_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _cancel_boot_detail_completion() -> void:
+	boot_detail_completion_token += 1
+	boot_detail_render_queue.clear()
+	boot_detail_scroll_locked = false
+
+
+func _detail_eager_add_to_stack(stack: VBoxContainer, node: Control) -> void:
+	stack.add_child(node)
+	if detail_unlock_scroll_spacer != null and is_instance_valid(detail_unlock_scroll_spacer):
+		stack.move_child(node, detail_unlock_scroll_spacer.get_index())
+
+
+func _append_detail_eager_trailing_tips(stack: VBoxContainer, content_width: float, actions_width: float) -> void:
+	if not activity_start_tip_seen:
+		var note := _activity_start_tip_note(content_width)
+		_detail_eager_add_to_stack(stack, _detail_stack_entry(note, content_width, actions_width))
+		_fade_in_activity_start_tip_note(note)
+	elif _skill_swipe_tip_available():
+		var note := _skill_swipe_tip_note(content_width)
+		note.modulate = Color(1, 1, 1, 0)
+		_detail_eager_add_to_stack(stack, _detail_stack_entry(note, content_width, actions_width))
+		call_deferred("_fade_in_skill_swipe_tip_note", note)
+
+
+func _append_detail_eager_entry(stack: VBoxContainer, skill_id: String, entry_data: Dictionary, content_width: float, actions_width: float) -> void:
+	if str(entry_data.get("kind", "")) == "thieving_heist":
+		var heist := entry_data.get("heist", {}) as Dictionary
+		var heist_id := str(heist.get("id", ""))
+		var track_id := "heist:%s" % heist_id
+		if detail_rendered_action_ids.has(track_id):
+			return
+		detail_rendered_action_ids.append(track_id)
+		var heist_root := _build_thieving_heist_card(heist, actions_width)
+		_detail_eager_add_to_stack(stack, heist_root)
+		detail_action_card_nodes[track_id] = heist_root
+		return
+	var action := entry_data.get("action", {}) as Dictionary
+	var action_id := str(action.get("id", ""))
+	if action_id.is_empty() or detail_rendered_action_ids.has(action_id):
+		return
+	detail_rendered_action_ids.append(action_id)
+	if _is_passive_action(action):
+		var passive_card := _build_passive_module_card(skill_id, action, content_width, true)
+		var stack_entry := _detail_stack_entry(passive_card["root"] as Control, content_width, actions_width)
+		_detail_eager_add_to_stack(stack, stack_entry)
+		var card := passive_card["card"] as Dictionary
+		card["entry"] = stack_entry
+		_register_action_card(_action_key(skill_id, action_id), card)
+		_detail_lazy_finalize_action_card(card, skill_id, action, action_id)
+		detail_action_card_nodes[action_id] = stack_entry
+	else:
+		var built := _build_detail_interactive_action_card(skill_id, action, content_width, actions_width)
+		var stack_entry := _detail_stack_entry(built["card_root"] as Control, content_width, actions_width)
+		_detail_eager_add_to_stack(stack, stack_entry)
+		var card := built["card"] as Dictionary
+		card["entry"] = stack_entry
+		_register_action_card(_action_key(skill_id, action_id), card)
+		_detail_lazy_finalize_action_card(card, skill_id, action, action_id)
+		detail_action_card_nodes[action_id] = stack_entry
+	if _should_show_lock_click_tip(skill_id, action):
+		_detail_eager_add_to_stack(stack, _detail_stack_entry(_lock_click_tip_note(content_width), content_width, actions_width))
+
+
+func _complete_boot_detail_cards_async() -> void:
+	if boot_detail_render_queue.is_empty():
+		boot_detail_scroll_locked = false
+		return
+	if detail_lazy_stack == null or not is_instance_valid(detail_lazy_stack):
+		boot_detail_render_queue.clear()
+		boot_detail_scroll_locked = false
+		return
+	boot_detail_completion_token += 1
+	var token := boot_detail_completion_token
+	var stack := detail_lazy_stack
+	var skill_id := selected_skill_id
+	var content_width := _skill_content_width()
+	var actions_width := BASE_CANVAS.x if skill_id == "thieving" else content_width
+	while boot_detail_render_queue.size() > 0:
+		if token != boot_detail_completion_token or current_screen != "skill":
+			boot_detail_scroll_locked = false
+			return
+		for _i in range(BOOT_DETAIL_COMPLETE_BUDGET_PER_FRAME):
+			if boot_detail_render_queue.is_empty():
+				break
+			if token != boot_detail_completion_token:
+				boot_detail_scroll_locked = false
+				return
+			var entry_data := boot_detail_render_queue.pop_front() as Dictionary
+			_append_detail_eager_entry(stack, skill_id, entry_data, content_width, actions_width)
+		await get_tree().process_frame
+	if token != boot_detail_completion_token or current_screen != "skill":
+		boot_detail_scroll_locked = false
+		return
+	_append_detail_eager_trailing_tips(stack, content_width, actions_width)
+	boot_detail_render_queue.clear()
+	boot_detail_scroll_locked = false
+	call_deferred("_sync_detail_actions_scroll_limit_deferred")
 
 
 func _detail_lazy_fade_allowed(skill_id: String, action: Dictionary) -> bool:
@@ -14612,19 +15226,22 @@ func _detail_lazy_finalize_action_card(card: Dictionary, skill_id: String, actio
 	_update_action_card_static_state(card, skill_id, action, _is_action_unlocked(skill_id, action))
 	_set_action_card_medal(card, medal, _mastery_level(skill_id, action_id), true)
 	_update_action_card_mastery_bar(card, skill_id, action_id, 0.0, true)
+	_apply_onboarding_fight_action_card_stats_visibility(card, skill_id)
+	_schedule_activity_start_highlight_if_needed(skill_id, action_id)
 
 
-func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_width: float, actions_width: float, fade_in: bool) -> void:
+func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_width: float, actions_width: float, fade_in: bool) -> bool:
 	if bool(plan_item.get("mounted", false)):
-		return
+		return false
 	var kind := str(plan_item.get("kind", ""))
 	var stack_host := plan_item.get("stack_host") as Control
 	var placeholder := plan_item.get("placeholder") as Control
 	if stack_host == null or not is_instance_valid(stack_host):
-		return
+		return false
 	var track_id := str(plan_item.get("track_id", ""))
 	var fade_target: Control = null
 	var fade_allowed := false
+	var mounted_ok := false
 	match kind:
 		"heist":
 			var heist := (plan_item.get("entry") as Dictionary).get("heist", {}) as Dictionary
@@ -14641,6 +15258,7 @@ func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_wi
 				detail_action_card_nodes[track_id] = heist_root
 				fade_target = heist_root
 				fade_allowed = true
+				mounted_ok = true
 		"passive":
 			var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
 			var passive_card := _build_passive_module_card(skill_id, action, content_width, true)
@@ -14656,6 +15274,7 @@ func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_wi
 			detail_action_card_nodes[track_id] = stack_host
 			fade_target = passive_root
 			fade_allowed = _detail_lazy_fade_allowed(skill_id, action)
+			mounted_ok = true
 		"action":
 			var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
 			var built := _build_detail_interactive_action_card(skill_id, action, content_width, actions_width)
@@ -14671,24 +15290,36 @@ func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_wi
 			detail_action_card_nodes[track_id] = stack_host
 			fade_target = card_root
 			fade_allowed = _detail_lazy_fade_allowed(skill_id, action)
+			mounted_ok = true
 		"lock_tip":
 			if placeholder != null and is_instance_valid(placeholder):
 				placeholder.queue_free()
 				plan_item["placeholder"] = null
 			_detail_lazy_add_child_to_host(stack_host, _lock_click_tip_note(content_width), content_width, actions_width)
+			mounted_ok = true
 		"activity_start_tip":
 			if placeholder != null and is_instance_valid(placeholder):
 				placeholder.queue_free()
 				plan_item["placeholder"] = null
-			_detail_lazy_add_child_to_host(stack_host, _activity_start_tip_note(content_width), content_width, actions_width)
+			var start_note := _activity_start_tip_note(content_width)
+			_detail_lazy_add_child_to_host(stack_host, start_note, content_width, actions_width)
+			_fade_in_activity_start_tip_note(start_note)
+			mounted_ok = true
 		"skill_swipe_tip":
 			if placeholder != null and is_instance_valid(placeholder):
 				placeholder.queue_free()
 				plan_item["placeholder"] = null
-			_detail_lazy_add_child_to_host(stack_host, _skill_swipe_tip_note(content_width), content_width, actions_width)
+			var swipe_note := _skill_swipe_tip_note(content_width)
+			swipe_note.modulate = Color(1, 1, 1, 0)
+			_detail_lazy_add_child_to_host(stack_host, swipe_note, content_width, actions_width)
+			call_deferred("_fade_in_skill_swipe_tip_note", swipe_note)
+			mounted_ok = true
+	if not mounted_ok:
+		return false
 	plan_item["mounted"] = true
-	if fade_in and fade_allowed and fade_target != null:
+	if fade_in and fade_allowed and fade_target != null and not boot_detail_render_in_progress:
 		_play_detail_lazy_fade_in(fade_target)
+	return true
 
 
 func _sync_detail_lazy_visible_cards(instant: bool, max_mounts: int = -1) -> int:
@@ -14698,14 +15329,14 @@ func _sync_detail_lazy_visible_cards(instant: bool, max_mounts: int = -1) -> int
 	var content_width := _skill_content_width()
 	var actions_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
 	var mounted_count := 0
-	for raw_item in detail_lazy_plan:
+	for plan_index in range(detail_lazy_plan.size()):
 		if max_mounts >= 0 and mounted_count >= max_mounts:
 			break
-		var plan_item := raw_item as Dictionary
-		if not _detail_lazy_should_mount_item(plan_item, pinned):
+		var plan_item := detail_lazy_plan[plan_index] as Dictionary
+		if not _detail_lazy_should_mount_item(plan_item, pinned, plan_index):
 			continue
-		_detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant)
-		mounted_count += 1
+		if _detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant):
+			mounted_count += 1
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
 	return mounted_count
 
@@ -14735,6 +15366,8 @@ func _ensure_detail_lazy_entry_mounted(track_id: String) -> void:
 func _detail_lazy_refresh_after_page_ready() -> void:
 	if _fishing_rework_active_for_skill(selected_skill_id):
 		return
+	if detail_lazy_plan.is_empty():
+		return
 	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return
 	if detail_actions_scroll.get_child_count() <= 0:
@@ -14746,12 +15379,25 @@ func _detail_lazy_refresh_after_page_ready() -> void:
 	if detail_lazy_plan.is_empty():
 		detail_rendered_action_ids.clear()
 		detail_lazy_plan = _build_detail_lazy_plan(selected_skill_id)
-		_detail_lazy_bind_plan_to_existing_stack(stack, selected_skill_id, _skill_content_width(), BASE_CANVAS.x if selected_skill_id == "thieving" else _skill_content_width())
+	_detail_lazy_rebind_plan_to_existing_stack(stack, selected_skill_id, _skill_content_width(), BASE_CANVAS.x if selected_skill_id == "thieving" else _skill_content_width())
 	await get_tree().process_frame
-	_sync_detail_lazy_visible_cards(true, -1)
+	_detail_lazy_mount_all_sync(true)
 
 
-func _detail_lazy_bind_plan_to_existing_stack(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
+func _detail_lazy_mount_all_sync(instant := true) -> int:
+	var mounted_count := 0
+	for plan_index in range(detail_lazy_plan.size()):
+		var plan_item := detail_lazy_plan[plan_index] as Dictionary
+		if bool(plan_item.get("mounted", false)):
+			continue
+		var content_width := _skill_content_width()
+		var actions_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
+		if _detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant):
+			mounted_count += 1
+	return mounted_count
+
+
+func _detail_lazy_rebind_plan_to_existing_stack(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
 	var plan_index := 0
 	for child in stack.get_children():
 		if not child is Control:
@@ -14764,19 +15410,114 @@ func _detail_lazy_bind_plan_to_existing_stack(stack: VBoxContainer, skill_id: St
 		var plan_item := detail_lazy_plan[plan_index] as Dictionary
 		plan_item["stack_host"] = control
 		plan_item["direct_stack_child"] = skill_id == "thieving" and str(plan_item.get("kind", "")) == "heist"
-		if control.get_child_count() > 0:
+		if _detail_lazy_slot_has_real_content(control):
 			plan_item["mounted"] = true
 			plan_item["placeholder"] = null
 		else:
 			plan_item["mounted"] = false
-			var placeholder := Control.new()
-			placeholder.custom_minimum_size = Vector2(content_width, float(plan_item.get("height", ACTION_CARD_HEIGHT)))
-			placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			if bool(plan_item.get("direct_stack_child", false)):
-				placeholder.custom_minimum_size.x = actions_width
-			plan_item["placeholder"] = placeholder
-			control.add_child(placeholder)
+			var existing_placeholder: Control = null
+			for slot_child in control.get_children():
+				if slot_child is Control and bool((slot_child as Control).get_meta("detail_lazy_placeholder", false)):
+					existing_placeholder = slot_child as Control
+					break
+			if existing_placeholder != null and is_instance_valid(existing_placeholder):
+				plan_item["placeholder"] = existing_placeholder
+			else:
+				var placeholder := Control.new()
+				placeholder.custom_minimum_size = Vector2(content_width, float(plan_item.get("height", ACTION_CARD_HEIGHT)))
+				placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+				placeholder.set_meta("detail_lazy_placeholder", true)
+				if bool(plan_item.get("direct_stack_child", false)):
+					placeholder.custom_minimum_size.x = actions_width
+				plan_item["placeholder"] = placeholder
+				control.add_child(placeholder)
 		plan_index += 1
+
+
+func _detail_lazy_bind_plan_to_existing_stack(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
+	_detail_lazy_rebind_plan_to_existing_stack(stack, skill_id, content_width, actions_width)
+
+
+func _detail_lazy_mount_initial_window_sync(instant := true, mount_count: int = DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT) -> int:
+	var target := mini(mount_count, detail_lazy_plan.size())
+	var mounted_count := 0
+	for plan_index in range(target):
+		var plan_item := detail_lazy_plan[plan_index] as Dictionary
+		if bool(plan_item.get("mounted", false)):
+			continue
+		var pinned := _detail_lazy_pinned_track_ids()
+		if not _detail_lazy_should_mount_item(plan_item, pinned, plan_index):
+			continue
+		var content_width := _skill_content_width()
+		var actions_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
+		if _detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant):
+			mounted_count += 1
+	return mounted_count
+
+
+func _detail_lazy_mount_initial_window_async(instant := true, mount_count: int = DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT) -> void:
+	var target := mini(mount_count, detail_lazy_plan.size())
+	for plan_index in range(target):
+		var plan_item := detail_lazy_plan[plan_index] as Dictionary
+		if bool(plan_item.get("mounted", false)):
+			continue
+		var pinned := _detail_lazy_pinned_track_ids()
+		if not _detail_lazy_should_mount_item(plan_item, pinned, plan_index):
+			continue
+		var content_width := _skill_content_width()
+		var actions_width := BASE_CANVAS.x if selected_skill_id == "thieving" else content_width
+		_detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant)
+		await get_tree().process_frame
+
+
+func _render_detail_eager_card_list(stack: VBoxContainer, content_width: float, actions_width: float, max_main_entries: int = -1) -> void:
+	detail_lazy_plan.clear()
+	detail_lazy_last_scroll = -1.0
+	detail_lazy_stack = stack
+	boot_detail_render_queue.clear()
+	var skill_id := selected_skill_id
+	if max_main_entries < 0:
+		detail_rendered_action_ids.clear()
+		for entry in _visible_detail_entries_for_skill(skill_id):
+			_append_detail_eager_entry(stack, skill_id, entry as Dictionary, content_width, actions_width)
+		_append_detail_eager_trailing_tips(stack, content_width, actions_width)
+		detail_lazy_stack = null
+		return
+	detail_rendered_action_ids.clear()
+	var main_rendered := 0
+	for entry in _visible_detail_entries_for_skill(skill_id):
+		var entry_data := entry as Dictionary
+		if main_rendered >= max_main_entries:
+			boot_detail_render_queue.append(entry_data)
+			continue
+		_append_detail_eager_entry(stack, skill_id, entry_data, content_width, actions_width)
+		main_rendered += 1
+
+
+func _render_detail_eager_card_list_async(stack: VBoxContainer, content_width: float, actions_width: float, max_main_entries: int = -1) -> void:
+	detail_lazy_plan.clear()
+	detail_lazy_last_scroll = -1.0
+	detail_lazy_stack = stack
+	boot_detail_render_queue.clear()
+	var skill_id := selected_skill_id
+	if max_main_entries < 0:
+		detail_rendered_action_ids.clear()
+		for entry in _visible_detail_entries_for_skill(skill_id):
+			_append_detail_eager_entry(stack, skill_id, entry as Dictionary, content_width, actions_width)
+			await get_tree().process_frame
+		_append_detail_eager_trailing_tips(stack, content_width, actions_width)
+		detail_lazy_stack = null
+		return
+	detail_rendered_action_ids.clear()
+	var main_rendered := 0
+	for entry in _visible_detail_entries_for_skill(skill_id):
+		var entry_data := entry as Dictionary
+		if main_rendered >= max_main_entries:
+			boot_detail_render_queue.append(entry_data)
+			continue
+		_append_detail_eager_entry(stack, skill_id, entry_data, content_width, actions_width)
+		main_rendered += 1
+		await get_tree().process_frame
 
 
 func _render_detail_lazy_card_list(stack: VBoxContainer, content_width: float, actions_width: float) -> void:
@@ -14785,17 +15526,7 @@ func _render_detail_lazy_card_list(stack: VBoxContainer, content_width: float, a
 	_detail_lazy_create_slots(stack, selected_skill_id, content_width, actions_width)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	var card_yield_started_msec := Time.get_ticks_msec()
-	var boot_budget := DETAIL_LAZY_BOOT_MOUNT_BUDGET_PER_FRAME if boot_detail_card_yield else -1
-	while boot_detail_card_yield:
-		var mounted := _sync_detail_lazy_visible_cards(false, boot_budget)
-		if mounted <= 0:
-			break
-		if Time.get_ticks_msec() - card_yield_started_msec >= BOOT_WARMUP_FRAME_BUDGET_MSEC:
-			await get_tree().process_frame
-			card_yield_started_msec = Time.get_ticks_msec()
-	if not boot_detail_card_yield:
-		_sync_detail_lazy_visible_cards(true, -1)
+	_detail_lazy_mount_initial_window_sync(true, DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT)
 
 func _build_thieving_heist_card(heist: Dictionary, content_width: float) -> Control:
 	var heist_id := str(heist.get("id", ""))
@@ -15816,8 +16547,7 @@ func _update_ui(delta: float, instant := false) -> void:
 		for skill_id in home_skill_labels.keys():
 			var skill_id_text := str(skill_id)
 			_set_label_text_if_changed(home_skill_labels[skill_id] as Label, "%s Lvl %s" % [_skill_name(skill_id_text), _skill_level(skill_id_text)])
-	var achievements_visible := current_screen == "achievements" or (achievements_overlay != null and achievements_overlay.visible)
-	if static_refresh and achievements_visible:
+	if static_refresh and current_screen == "achievements":
 		_update_achievements_ui(delta, instant)
 	if current_screen == "menu":
 		for skill_id in skill_cards.keys():
@@ -15832,6 +16562,16 @@ func _update_ui(delta: float, instant := false) -> void:
 			_set_bar(card["xp"], float(xp["pct"]), delta, instant)
 			_update_skill_menu_card(card, skill_id_text, delta, instant)
 	if current_screen == "skill":
+		if static_refresh and _onboarding_fight_header_sequence_active():
+			_apply_onboarding_fight_header_visibility()
+			_apply_onboarding_fight_action_stats_visibility_all()
+		if selected_skill_id == TUTORIAL_STARTER_SKILL_ID and _onboarding_path_active():
+			_maybe_trigger_onboarding_swipe_tip_at_zero_stamina(TUTORIAL_STARTER_SKILL_ID)
+			if _onboarding_swipe_tip_sequence_resumable() and not onboarding_swipe_tip_sequence_running:
+				call_deferred("_run_onboarding_swipe_tip_sequence")
+		_sync_onboarding_overlay_tips()
+		_maybe_trigger_onboarding_header_reveal_from_progress()
+		_sync_activity_start_highlight_position()
 		var detail_xp := _xp_progress(selected_skill_id)
 		if static_refresh and detail_xp_label != null:
 			_set_label_text_if_changed(detail_xp_label, _skill_level_xp_text(selected_skill_id))
@@ -17287,7 +18027,7 @@ func _queue_home_achievement_refresh() -> void:
 
 
 func _refresh_home_achievements_incremental(token: int) -> void:
-	if token != home_achievement_refresh_token or current_screen != "home":
+	if token != home_achievement_refresh_token or current_screen != "home" or _any_modal_overlay_visible():
 		return
 	var totals := _elite_completion_counts()
 	var total_earned := int(totals["earned"])
@@ -17305,7 +18045,7 @@ func _refresh_home_achievements_incremental(token: int) -> void:
 	_update_most_impressive_activity()
 	await get_tree().process_frame
 	for def in skill_defs:
-		if token != home_achievement_refresh_token or current_screen != "home":
+		if token != home_achievement_refresh_token or current_screen != "home" or _any_modal_overlay_visible():
 			return
 		var skill_id := str(def["id"])
 		if achievement_skill_level_labels.has(skill_id):
@@ -17323,39 +18063,45 @@ func _update_achievement_medal_slots(skill_id: String, actions: Array) -> void:
 	var panels: Array = panel_rows[0] if not panel_rows.is_empty() else []
 	var icons: Array = icon_rows[0]
 	for slot_index in range(mini(ACHIEVEMENT_MEDAL_SLOT_COUNT, icons.size())):
-		var has_action := slot_index < actions.size()
-		var accessible := false
-		var mastery_level := 0
-		if has_action:
-			var action := actions[slot_index] as Dictionary
-			accessible = _is_action_unlocked(skill_id, action)
-			mastery_level = _mastery_level(skill_id, str(action["id"]))
 		var icon := icons[slot_index] as TextureRect
-		if icon != null:
-			icon.material = null
-			var shadow := panels[slot_index] as TextureRect if slot_index < panels.size() else null
-			if mastery_level > 0:
-				icon.texture = _mastery_medal_texture(mastery_level)
-				if shadow != null:
-					shadow.set_meta("achievement_medal_outline", false)
-					shadow.visible = false
-			elif accessible:
-				icon.texture = _mastery_medal_texture(1)
-				icon.material = _achievement_empty_medal_material()
-				if shadow != null:
-					shadow.texture = _mastery_medal_silhouette_texture(1, COLOR_INK)
-					shadow.modulate = Color.WHITE
-					shadow.set_meta("achievement_medal_outline", true)
-					shadow.visible = true
-					var strip := shadow.get_parent() as Control
-					if strip != null and strip.has_method("_layout_icons"):
-						strip.call("_layout_icons")
-			else:
-				icon.texture = _mastery_medal_dot_texture()
-				if shadow != null:
-					shadow.set_meta("achievement_medal_outline", false)
-					shadow.visible = false
-			icon.modulate = Color.WHITE
+		var shadow := panels[slot_index] as TextureRect if slot_index < panels.size() else null
+		_configure_achievement_medal_slot(icon, shadow, skill_id, actions, slot_index)
+
+
+func _configure_achievement_medal_slot(icon: TextureRect, shadow: TextureRect, skill_id: String, actions: Array, slot_index: int) -> void:
+	if icon == null:
+		return
+	var has_action := slot_index < actions.size()
+	var accessible := false
+	var mastery_level := 0
+	if has_action:
+		var action := actions[slot_index] as Dictionary
+		accessible = _is_action_unlocked(skill_id, action)
+		mastery_level = _mastery_level(skill_id, str(action["id"]))
+	icon.material = null
+	if mastery_level > 0:
+		icon.texture = _mastery_medal_texture(mastery_level)
+		if shadow != null:
+			shadow.set_meta("achievement_medal_outline", false)
+			shadow.visible = false
+	elif accessible:
+		icon.texture = _mastery_medal_texture(1)
+		icon.material = _achievement_empty_medal_material()
+		if shadow != null:
+			shadow.texture = _mastery_medal_texture(1)
+			shadow.material = _mastery_medal_silhouette_material(COLOR_INK)
+			shadow.modulate = Color.WHITE
+			shadow.set_meta("achievement_medal_outline", true)
+			shadow.visible = true
+			var strip := shadow.get_parent() as Control
+			if strip != null and strip.has_method("_layout_icons"):
+				strip.call("_layout_icons")
+	else:
+		icon.texture = _mastery_medal_dot_texture()
+		if shadow != null:
+			shadow.set_meta("achievement_medal_outline", false)
+			shadow.visible = false
+	icon.modulate = Color.WHITE
 
 
 func _skill_medal_counts(skill_id: String) -> Dictionary:
@@ -17425,6 +18171,29 @@ func _all_medal_tier_counts() -> Array:
 		for i in range(mini(MASTERY_MAX_LEVEL, tiers.size())):
 			totals[i] = int(totals[i]) + int(tiers[i])
 	return totals
+
+
+func _all_medal_summary() -> Dictionary:
+	var tiers := []
+	for _i in range(MASTERY_MAX_LEVEL):
+		tiers.append(0)
+	var earned := 0
+	var possible := 0
+	var activity_count := 0
+	for def in skill_defs:
+		var counts := _skill_medal_counts(str(def["id"]))
+		earned += int(counts.get("earned", 0))
+		possible += int(counts.get("possible", 0))
+		activity_count += int(counts.get("actions", 0))
+		var skill_tiers: Array = counts.get("tiers", [])
+		for i in range(mini(MASTERY_MAX_LEVEL, skill_tiers.size())):
+			tiers[i] = int(tiers[i]) + int(skill_tiers[i])
+	return {
+		"earned": earned,
+		"possible": possible,
+		"tiers": tiers,
+		"activity_count": activity_count
+	}
 
 
 func _most_impressive_activity() -> Dictionary:
@@ -17696,6 +18465,8 @@ func _show_pending_completed_achievement_toasts() -> void:
 
 
 func _visible_achievement_milestones(hide_completed: bool) -> Array:
+	if hide_completed:
+		return _visible_achievement_milestones_fast()
 	var chain_order := []
 	var chains := {}
 	for achievement in _achievement_milestones(false):
@@ -17722,6 +18493,120 @@ func _visible_achievement_milestones(hide_completed: bool) -> Array:
 		if next_achievement.is_empty():
 			continue
 		visible.append(next_achievement)
+	return visible
+
+
+func _visible_achievement_milestones_fast() -> Array:
+	var visible := []
+	var medal_summary := _all_medal_summary()
+	var total_level := _global_level()
+	var max_total_level := _max_total_level()
+	for target in TOTAL_LEVEL_ACHIEVEMENT_TARGETS:
+		var target_int := int(target)
+		if max_total_level < target_int and total_level < target_int:
+			continue
+		if total_level >= target_int:
+			continue
+		visible.append({
+			"id": "total-level-%s" % target_int,
+			"chain_key": "total-level",
+			"kind": "total_level",
+			"title": "Total Level %s" % target_int,
+			"subtitle": "Total Lv %s of %s" % [mini(total_level, target_int), target_int],
+			"reward": _total_level_achievement_reward_text(target_int),
+			"reward_stat": "max_stamina",
+			"reward_amount": _total_level_achievement_stamina_reward(target_int),
+			"current": total_level,
+			"target": target_int,
+			"completed": false,
+			"medal_level": _total_level_milestone_medal(target_int, max_total_level),
+			"accent": "#f4bf35"
+		})
+		break
+	var tier_counts: Array = medal_summary["tiers"]
+	var total_activity_count := int(medal_summary["activity_count"])
+	for tier_index in range(mini(MASTERY_MAX_LEVEL, tier_counts.size())):
+		var tier := tier_index + 1
+		var target := _tier_count_achievement_target(tier)
+		var current := int(tier_counts[tier_index])
+		if total_activity_count < target and current < target:
+			continue
+		if current >= target:
+			continue
+		var medal_name := str(MASTERY_MEDAL_NAMES[tier_index])
+		visible.append({
+			"id": "tier-count-%s-%s" % [tier, target],
+			"chain_key": "tier-count-medals",
+			"kind": "tier_count",
+			"tier": tier,
+			"title": "%s Medals" % medal_name,
+			"subtitle": "%s of %s %s medals earned" % [mini(current, target), target, medal_name],
+			"reward": _tier_count_achievement_reward_text(tier),
+			"reward_stat": "max_stamina",
+			"reward_amount": _tier_count_achievement_stamina_reward(tier),
+			"current": current,
+			"target": target,
+			"completed": false,
+			"medal_level": tier,
+			"accent": "#" + _mastery_medal_accent(tier).to_html(false)
+		})
+		break
+	var cumulative := int(medal_summary["earned"])
+	var cumulative_possible := int(medal_summary["possible"])
+	for target in [10, 25, 50, 100, 250, 500, 1000]:
+		var target_int := int(target)
+		if cumulative_possible < target_int and cumulative < target_int:
+			continue
+		if cumulative >= target_int:
+			continue
+		visible.append({
+			"id": "cumulative-%s" % target_int,
+			"chain_key": "cumulative-medals",
+			"kind": "cumulative_medals",
+			"title": "Cumulative Medals",
+			"subtitle": "%s of %s total medals earned" % [mini(cumulative, target_int), target_int],
+			"reward": _cumulative_medal_achievement_reward_text(target_int),
+			"reward_stat": "max_stamina",
+			"reward_amount": _cumulative_medal_achievement_stamina_reward(target_int),
+			"current": cumulative,
+			"target": target_int,
+			"completed": false,
+			"medal_level": 1,
+			"accent": "#f4bf35"
+		})
+		break
+	if not activity_crit_seen:
+		visible.append({
+			"id": "activity-crit",
+			"chain_key": "activity-crits",
+			"kind": "activity_crit",
+			"title": "Critical Success",
+			"subtitle": "Land your first CRIT!!",
+			"reward": _crit_chance_achievement_reward_text(),
+			"reward_stat": "crit_chance_mult",
+			"reward_amount": ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT,
+			"current": 0,
+			"target": 1,
+			"completed": false,
+			"medal_level": 1,
+			"accent": "#67b8ff"
+		})
+	elif not activity_mega_crit_seen:
+		visible.append({
+			"id": "activity-mega-crit",
+			"chain_key": "activity-crits",
+			"kind": "activity_crit",
+			"title": "Mega Critical Success",
+			"subtitle": "Land your first MEGA CRIT!!!!",
+			"reward": _crit_chance_achievement_reward_text(),
+			"reward_stat": "crit_chance_mult",
+			"reward_amount": ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT,
+			"current": 0,
+			"target": 1,
+			"completed": false,
+			"medal_level": 2,
+			"accent": "#fff052"
+		})
 	return visible
 
 
@@ -17924,8 +18809,6 @@ func _set_stamina_gauge_pressed(pressed: bool, skill_id := "", source: RegenCirc
 		var boost_skill_id := skill_id if not skill_id.is_empty() else selected_skill_id
 		if boost_skill_id.is_empty() or (current_screen != "skill" and current_screen != "menu"):
 			return
-		if _stamina_gauge_tip_available():
-			_mark_stamina_gauge_tip_seen()
 		stamina_gauge_press_active = true
 		stamina_gauge_boost_skill_id = boost_skill_id
 		stamina_gauge_press_source = source
@@ -17971,8 +18854,6 @@ func _process_stamina_gauge_regen_boost(delta: float) -> void:
 			_set_stamina_gauge_pressed(true, boost_skill_id, boost_source)
 	if stamina_gauge_press_active and current_screen != "skill" and current_screen != "menu":
 		_set_stamina_gauge_pressed(false)
-	if stamina_gauge_press_active:
-		_process_stamina_gauge_tip_discovery(delta)
 	var target := clampf(stamina_gauge_regen_target_multiplier, 1.0, STAMINA_GAUGE_REGEN_BOOST_MULT)
 	var weight := 1.0 - exp(-STAMINA_GAUGE_REGEN_EASE_SPEED * delta)
 	stamina_gauge_regen_multiplier = lerpf(stamina_gauge_regen_multiplier, target, weight)
@@ -17980,14 +18861,6 @@ func _process_stamina_gauge_regen_boost(delta: float) -> void:
 		stamina_gauge_regen_multiplier = target
 		if not stamina_gauge_press_active and target <= 1.0:
 			stamina_gauge_boost_skill_id = ""
-
-
-func _process_stamina_gauge_tip_discovery(delta: float) -> void:
-	if stamina_gauge_tip_seen or activity_completion_count >= STAMINA_TIP_ACTIVITY_COMPLETION_THRESHOLD:
-		return
-	stamina_gauge_pre_tip_hold_seconds += delta
-	if stamina_gauge_pre_tip_hold_seconds >= STAMINA_TIP_DISCOVERY_HOLD_SECONDS:
-		_mark_stamina_gauge_tip_seen()
 
 
 func _try_eat_fish_for_stamina(skill_id := "", source: RegenCircle = null) -> void:
@@ -18339,16 +19212,48 @@ func _first_locked_action_id(skill_id: String) -> String:
 	return ""
 
 
+func _skill_swipe_navigation_blocks_detail_refresh() -> bool:
+	return (
+		skill_swipe_animating
+		or skill_swipe_pending_full_finalize
+		or not _deferred_skill_detail_park_key.is_empty()
+	)
+
+
+func _normalize_skill_detail_page_layout(page: Control = null) -> void:
+	_reset_skill_swipe_frame_layout()
+	var target_page := page
+	if target_page == null or not is_instance_valid(target_page):
+		target_page = skill_swipe_page
+	if target_page != null and is_instance_valid(target_page):
+		target_page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		target_page.offset_left = 0.0
+		target_page.offset_top = 0.0
+		target_page.offset_right = 0.0
+		target_page.offset_bottom = 0.0
+		target_page.position = Vector2.ZERO
+
+
+func _reset_skill_swipe_entry_positions() -> void:
+	_normalize_skill_detail_page_layout()
+
+
 func _skill_detail_needs_action_list_refresh() -> bool:
 	if boot_detail_render_in_progress:
 		return false
 	if current_screen != "skill":
 		return false
-	if skill_swipe_animating:
+	if _skill_swipe_navigation_blocks_detail_refresh():
 		return false
 	if Time.get_ticks_msec() < skill_detail_layout_refresh_hold_until_msec:
 		return false
 	if not pending_activity_unlock_ceremony.is_empty() or activity_unlock_ceremony_count > 0:
+		return false
+	if (
+		not _fishing_rework_active_for_skill(selected_skill_id)
+		and detail_lazy_plan.size() > 0
+		and not _detail_lazy_all_mounted()
+	):
 		return false
 	var expected_action_ids := []
 	if _fishing_rework_active_for_skill(selected_skill_id):
@@ -18547,6 +19452,10 @@ func _sync_detail_actions_scroll_limit_deferred() -> void:
 func _sync_detail_actions_scroll_limit() -> void:
 	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return
+	if boot_detail_scroll_locked:
+		detail_actions_scroll.set_max_scroll_override(0)
+		detail_actions_scroll.set_scroll_enabled_by_content(false)
+		return
 	if selected_skill_id != "thieving":
 		detail_actions_scroll.set_max_scroll_override(-1)
 		detail_actions_scroll.set_scroll_enabled_by_content(true)
@@ -18714,6 +19623,12 @@ func _restore_detail_actions_scroll(target: int) -> void:
 
 
 func _update_skill_swipe_feedback(position: Vector2) -> void:
+	if _onboarding_blocks_skill_swipe():
+		if not _ensure_onboarding_swipe_unlocked(true):
+			skill_swipe_tracking = false
+			skill_swipe_touch_index = -1
+			skill_swipe_horizontal = false
+			return
 	skill_swipe_last = position
 	var delta := position - skill_swipe_start
 	var abs_x := absf(delta.x)
@@ -18748,16 +19663,30 @@ func _update_skill_swipe_feedback(position: Vector2) -> void:
 	if target == null:
 		return
 	var offset := 1 if delta.x < 0.0 else -1
-	_ensure_skill_swipe_preview(offset)
+	if _swipe_offset_accessible(offset):
+		_ensure_skill_swipe_preview(offset)
+	else:
+		_park_skill_swipe_preview()
 	var direction := 1.0 if delta.x > 0.0 else -1.0
 	var visual_distance := _skill_swipe_visual_distance(abs_x)
 	_set_skill_swipe_positions(offset, skill_swipe_drag_base_x + direction * visual_distance)
 
 
 func _skill_swipe_visual_target() -> Control:
-	if skill_swipe_page != null and is_instance_valid(skill_swipe_page):
-		return skill_swipe_page
+	if skill_swipe_frame != null and is_instance_valid(skill_swipe_frame):
+		return skill_swipe_frame
 	return null
+
+
+func _skill_swipe_preview_rest_x(offset: int) -> float:
+	var direction := signi(offset)
+	if direction == 0:
+		return 0.0
+	if direction > 0:
+		return _skill_swipe_frame_content_width(selected_skill_id) + SKILL_SWIPE_PAGE_GAP
+	var preview_skill_id := _skill_id_for_swipe_offset(offset)
+	var preview_width := _skill_swipe_frame_content_width(preview_skill_id) if not preview_skill_id.is_empty() else _skill_swipe_frame_content_width(selected_skill_id)
+	return -(preview_width + SKILL_SWIPE_PAGE_GAP)
 
 
 func _skill_swipe_visual_distance(abs_x: float) -> float:
@@ -18771,18 +19700,13 @@ func _skill_swipe_page_span() -> float:
 
 
 func _current_skill_swipe_page_x() -> float:
-	var target := _skill_swipe_visual_target()
-	if target == null:
-		return 0.0
-	return target.position.x
+	return skill_swipe_drag_offset_x
 
 
 func _set_skill_swipe_positions(offset: int, current_x: float) -> void:
-	var target := _skill_swipe_visual_target()
-	if target != null:
-		target.position.x = current_x
+	_apply_skill_swipe_drag_offset(current_x)
 	if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page):
-		skill_swipe_preview_page.position.x = current_x + signi(offset) * _skill_swipe_page_span()
+		skill_swipe_preview_page.position.x = _skill_swipe_preview_rest_x(offset)
 
 
 func _kill_skill_swipe_tween() -> void:
@@ -18880,6 +19804,8 @@ func _clear_skill_swipe_handoff_cover() -> void:
 	if skill_swipe_handoff_cover != null and is_instance_valid(skill_swipe_handoff_cover):
 		skill_swipe_handoff_cover.queue_free()
 	skill_swipe_handoff_cover = null
+	skill_detail_refresh_cover_active = false
+	skill_swipe_outgoing_cover_active = false
 
 
 func _clear_skill_swipe_handoff_cover_immediate() -> void:
@@ -18888,6 +19814,8 @@ func _clear_skill_swipe_handoff_cover_immediate() -> void:
 		skill_swipe_handoff_cover.visible = false
 		skill_swipe_handoff_cover.free()
 	skill_swipe_handoff_cover = null
+	skill_detail_refresh_cover_active = false
+	skill_swipe_outgoing_cover_active = false
 
 
 func _cancel_skill_swipe_finalize_for_navigation() -> void:
@@ -18898,6 +19826,8 @@ func _cancel_skill_swipe_finalize_for_navigation() -> void:
 
 
 func _begin_skill_detail_refresh_cover() -> void:
+	if _skill_swipe_navigation_blocks_detail_refresh():
+		return
 	_clear_skill_swipe_handoff_cover()
 	if skills_page == null or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		return
@@ -18929,6 +19859,7 @@ func _begin_skill_detail_refresh_cover() -> void:
 	old_page.z_index = 0
 	_add_skill_detail_shadow_overlay_to(cover, SKILLS_PAGE_TOP_PAD + float(SKILL_DETAIL_HEADER_HEIGHT + SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT), detail_shelf_shadow_alpha)
 	skill_swipe_handoff_cover = cover
+	skill_detail_refresh_cover_active = true
 
 
 func _begin_skill_swipe_outgoing_cover() -> Control:
@@ -18961,14 +19892,24 @@ func _begin_skill_swipe_outgoing_cover() -> Control:
 		holder.add_child(child)
 
 	skill_swipe_handoff_cover = cover
+	skill_swipe_outgoing_cover_active = true
 	skill_swipe_frame = null
 	skill_swipe_page = null
 	return holder
 
 
+func _hide_parked_skill_swipe_preview_pages(active_page: Control = null) -> void:
+	for preview in skill_swipe_preview_pages.values():
+		var page := preview as Control
+		if page == null or not is_instance_valid(page) or page == active_page:
+			continue
+		page.visible = false
+
+
 func _park_skill_swipe_preview() -> void:
 	if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page) and skill_swipe_preview_offset != 0:
-		skill_swipe_preview_page.position.x = signi(skill_swipe_preview_offset) * _skill_swipe_page_span()
+		skill_swipe_preview_page.position.x = _skill_swipe_preview_rest_x(skill_swipe_preview_offset)
+		skill_swipe_preview_page.visible = false
 	skill_swipe_preview_page = null
 	skill_swipe_preview_offset = 0
 
@@ -18978,19 +19919,19 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 	skill_swipe_horizontal = false
 	skill_swipe_touch_index = -1
 	skill_swipe_drag_base_x = 0.0
-	var target := _skill_swipe_visual_target()
-	if target == null:
+	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		_clear_skill_swipe_preview()
 		return
 	_kill_skill_swipe_tween()
-	if animated and absf(target.position.x) > 1.0:
+	if animated and absf(skill_swipe_drag_offset_x) > 1.0:
 		skill_swipe_animating = true
 		skill_swipe_animation_mode = "cancel"
 		skill_swipe_tween = create_tween()
 		skill_swipe_tween.set_parallel(true)
-		skill_swipe_tween.tween_property(target, "position:x", 0.0, SKILL_SWIPE_CANCEL_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+		var start_drag := skill_swipe_drag_offset_x
+		skill_swipe_tween.tween_method(_apply_skill_swipe_drag_offset, start_drag, 0.0, SKILL_SWIPE_CANCEL_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 		if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page):
-			var preview_exit := signi(skill_swipe_preview_offset) * _skill_swipe_page_span()
+			var preview_exit := _skill_swipe_preview_rest_x(skill_swipe_preview_offset)
 			skill_swipe_tween.tween_property(skill_swipe_preview_page, "position:x", preview_exit, SKILL_SWIPE_CANCEL_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 		skill_swipe_tween.finished.connect(func():
 			skill_swipe_animating = false
@@ -19000,12 +19941,21 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 				_queue_skill_swipe_preview_prewarm()
 		)
 	else:
-		target.position.x = 0.0
+		_apply_skill_swipe_drag_offset(0.0)
 		_park_skill_swipe_preview()
 		_queue_skill_swipe_preview_prewarm()
 
 
 func _finish_skill_swipe(end_position: Vector2) -> void:
+	if _onboarding_blocks_skill_swipe():
+		if not _ensure_onboarding_swipe_unlocked(true):
+			skill_swipe_tracking = false
+			skill_swipe_touch_index = -1
+			skill_swipe_horizontal = false
+			_cancel_skill_swipe_feedback(true)
+			if skill_swipe_child_click_suppressed:
+				call_deferred("_clear_skill_swipe_action_click_suppression")
+			return
 	var delta: Vector2 = end_position - skill_swipe_start
 	skill_swipe_tracking = false
 	skill_swipe_touch_index = -1
@@ -19026,7 +19976,13 @@ func _finish_skill_swipe(end_position: Vector2) -> void:
 			call_deferred("_clear_skill_swipe_action_click_suppression")
 		return
 	_update_skill_swipe_feedback(end_position)
-	_commit_skill_swipe(1 if delta.x < 0.0 else -1)
+	var offset := 1 if delta.x < 0.0 else -1
+	if not _swipe_offset_accessible(offset):
+		_cancel_skill_swipe_feedback(true)
+		if skill_swipe_child_click_suppressed:
+			call_deferred("_clear_skill_swipe_action_click_suppression")
+		return
+	_commit_skill_swipe(offset)
 	if skill_swipe_child_click_suppressed:
 		call_deferred("_clear_skill_swipe_action_click_suppression")
 
@@ -19081,11 +20037,18 @@ func _clear_passive_button_press() -> void:
 
 func _commit_skill_swipe(offset: int) -> void:
 	skill_swipe_horizontal = false
-	if offset != 0:
-		_mark_skill_swipe_tip_seen()
+	var outgoing_skill_id := selected_skill_id
+	if offset != 0 and _onboarding_path_active():
+		if onboarding_explore_tip_seen:
+			_graduate_onboarding_tutorial()
+		elif outgoing_skill_id == TUTORIAL_STARTER_SKILL_ID:
+			_fade_tip_group("skill_swipe_tip_notes", false, true)
+			_fade_out_onboarding_swipe_overlay_tip()
+			if not skill_swipe_tip_seen:
+				skill_swipe_tip_seen = true
+				save_game()
 	var entry_x := signi(offset) * _skill_swipe_page_span()
-	if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page):
-		entry_x = skill_swipe_preview_page.position.x
+	entry_x = skill_swipe_drag_offset_x
 	_navigate_skill_page(offset, entry_x, true, false)
 	action_card_press_key = ""
 	action_card_press_stat_kind = ""
@@ -19098,8 +20061,6 @@ func _queue_skill_swipe_navigation(offset: int) -> void:
 	if offset == 0:
 		return
 	skill_swipe_queued_offset += offset
-	if offset != 0:
-		_mark_skill_swipe_tip_seen()
 
 
 func _consume_queued_skill_swipe_navigation() -> bool:
@@ -19113,6 +20074,8 @@ func _consume_queued_skill_swipe_navigation() -> bool:
 	offset = offset % skill_count
 	if offset == 0:
 		_queue_skill_swipe_preview_prewarm()
+		return false
+	if not _swipe_offset_accessible(offset):
 		return false
 	_navigate_skill_page(offset, signi(offset) * _skill_swipe_page_span(), true, false)
 	return true
@@ -19132,6 +20095,17 @@ func _extract_incoming_swipe_preview(offset: int) -> Dictionary:
 	if preview == null or not is_instance_valid(preview):
 		return {}
 	var state := skill_swipe_preview_states.get(offset, {}) as Dictionary
+	if state == null or state.is_empty():
+		state = {
+			"skill_id": expected_id,
+			"page": preview,
+			"action_cards": [],
+			"fishing_built_modules": [],
+			"prewarmed": false,
+		}
+		var scroll := _find_skill_preview_actions_scroll(preview)
+		state["actions_scroll"] = scroll
+		state["modules_root"] = scroll
 	if state != null and str(state.get("skill_id", "")) != expected_id:
 		return {}
 	var preview_parent := preview.get_parent()
@@ -19155,33 +20129,55 @@ func _mount_swipe_preview_as_skill_detail(preview_page: Control, preview_state: 
 	var frame := Control.new()
 	skill_swipe_frame = frame
 	frame.clip_contents = true
-	if skill_id == "thieving":
-		frame.anchor_left = 0.5
-		frame.anchor_right = 0.5
-		frame.anchor_top = 0.0
-		frame.anchor_bottom = 1.0
-		frame.offset_left = -BASE_CANVAS.x * 0.5
-		frame.offset_right = BASE_CANVAS.x * 0.5
-		frame.offset_top = 0.0
-		frame.offset_bottom = 0.0
-		frame.custom_minimum_size.x = BASE_CANVAS.x
-		skills_content.add_child(frame)
-	else:
-		_add_centered_skill_column(frame)
+	var frame_width := BASE_CANVAS.x if skill_id == "thieving" else _skill_content_width()
+	_apply_skill_column_layout(frame, frame_width, 0.0)
+	skills_content.add_child(frame)
 	skill_swipe_page = preview_page
 	preview_page.reparent(frame)
-	preview_page.set_anchors_preset(Control.PRESET_FULL_RECT)
-	preview_page.position = Vector2.ZERO
+	_normalize_skill_detail_page_layout(preview_page)
 	preview_page.z_index = 20
 	preview_page.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	detail_xp_label = preview_state.get("xp_label") as Label
 	detail_xp_bar = preview_state.get("xp_bar") as CleanProgressBar
 	detail_regen_circle = preview_state.get("regen_circle") as RegenCircle
 	detail_fish_circle = preview_state.get("fish_circle") as FishCircle
-	detail_actions_scroll = null
+	detail_header_body = preview_state.get("header_body") as Control
+	var preview_scroll := preview_state.get("actions_scroll") as MobileScrollContainer
+	if preview_scroll != null and is_instance_valid(preview_scroll):
+		detail_actions_scroll = preview_scroll
+		preview_scroll.visible = true
+		preview_scroll.modulate = Color.WHITE
+	_detail_lazy_show_preview_modules(preview_state)
+	_ensure_swipe_preview_modules_visible(preview_page, preview_state)
+	_wire_mounted_swipe_preview_detail(preview_state)
 	_add_skill_detail_shadow_overlay(float(SKILL_DETAIL_HEADER_HEIGHT) + SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
 	skill_swipe_pending_full_finalize = true
 	skill_swipe_pending_preview_state = preview_state
+
+
+func _wire_mounted_swipe_preview_detail(preview_state: Dictionary) -> void:
+	detail_lazy_stack = _detail_actions_stack() as VBoxContainer
+	detail_rendered_action_ids.clear()
+	detail_action_card_nodes.clear()
+	if skill_swipe_page != null and is_instance_valid(skill_swipe_page):
+		skill_swipe_page.mouse_filter = Control.MOUSE_FILTER_PASS
+	if skill_swipe_frame != null and is_instance_valid(skill_swipe_frame):
+		skill_swipe_frame.mouse_filter = Control.MOUSE_FILTER_PASS
+	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+		detail_actions_scroll.mouse_filter = Control.MOUSE_FILTER_PASS
+
+
+func _schedule_swipe_preview_finalize_after_navigation() -> void:
+	if not skill_swipe_pending_full_finalize:
+		return
+	call_deferred("_finalize_swipe_preview_to_full_detail")
+
+
+func _detail_lazy_show_preview_modules(preview_state: Dictionary) -> void:
+	var modules_root := preview_state.get("modules_root") as Control
+	if modules_root != null and is_instance_valid(modules_root):
+		modules_root.visible = true
+		modules_root.modulate = Color.WHITE
 
 
 func _preview_actions_scroll_vertical(preview_state: Dictionary) -> int:
@@ -19191,19 +20187,169 @@ func _preview_actions_scroll_vertical(preview_state: Dictionary) -> int:
 	return scroll.scroll_vertical
 
 
-func _skill_swipe_install_target_page(target_key: String, incoming_preview_pack: Dictionary) -> void:
+func _find_skill_preview_actions_scroll(preview_page: Control) -> Control:
+	if preview_page == null or not is_instance_valid(preview_page):
+		return null
+	for child in preview_page.get_children():
+		if child is ScrollContainer:
+			return child as Control
+	return null
+
+
+func _incoming_swipe_preview_usable(incoming_preview: Dictionary) -> bool:
+	var preview_page := incoming_preview.get("page") as Control
+	var preview_state := incoming_preview.get("state", {}) as Dictionary
+	if preview_page == null or not is_instance_valid(preview_page):
+		return false
+	var scroll := preview_state.get("actions_scroll") as Control
+	if scroll == null or not is_instance_valid(scroll):
+		scroll = _find_skill_preview_actions_scroll(preview_page)
+	if scroll == null or not is_instance_valid(scroll):
+		return false
+	var cards := preview_state.get("action_cards", []) as Array
+	if not cards.is_empty():
+		return true
+	var fishing_modules := preview_state.get("fishing_built_modules", []) as Array
+	if not fishing_modules.is_empty():
+		return true
+	return _skill_detail_stack_has_visible_modules(_find_skill_preview_stack(preview_page))
+
+
+func _ensure_swipe_preview_modules_visible(preview_page: Control, preview_state: Dictionary) -> void:
+	var modules_root := preview_state.get("modules_root") as Control
+	if modules_root == null or not is_instance_valid(modules_root):
+		modules_root = preview_state.get("actions_scroll") as Control
+	if modules_root == null or not is_instance_valid(modules_root):
+		modules_root = _find_skill_preview_actions_scroll(preview_page)
+	if modules_root != null and is_instance_valid(modules_root):
+		modules_root.visible = true
+		modules_root.modulate = Color(1, 1, 1, 1)
+	if preview_page != null and is_instance_valid(preview_page):
+		preview_page.visible = true
+		preview_page.modulate = Color.WHITE
+
+
+func _find_skill_preview_stack(preview_page: Control) -> Control:
+	var scroll := _find_skill_preview_actions_scroll(preview_page)
+	if scroll == null or scroll.get_child_count() <= 0:
+		return null
+	return scroll.get_child(0) as Control
+
+
+func _skill_detail_stack_has_visible_modules(stack: Control) -> bool:
+	if stack == null or not is_instance_valid(stack):
+		return false
+	for child in stack.get_children():
+		var control := child as Control
+		if control == null or not control.visible:
+			continue
+		if str(control.name).ends_with("Spacer"):
+			continue
+		var height := maxf(control.custom_minimum_size.y, control.size.y)
+		if height > 1.0 and control.modulate.a > 0.01:
+			return true
+	return false
+
+
+func _detail_track_ids_for_skill(skill_id: String) -> Array:
+	var track_ids := []
+	for entry in _visible_detail_entries_for_skill(skill_id):
+		var entry_data := entry as Dictionary
+		if str(entry_data.get("kind", "")) == "thieving_heist":
+			var heist_id := str((entry_data.get("heist", {}) as Dictionary).get("id", ""))
+			if not heist_id.is_empty():
+				track_ids.append("heist:%s" % heist_id)
+		else:
+			var action_id := str((entry_data.get("action", {}) as Dictionary).get("id", ""))
+			if not action_id.is_empty():
+				track_ids.append(action_id)
+	return track_ids
+
+
+func _preview_detail_entries_for_skill(skill_id: String) -> Array:
+	if not _onboarding_path_active() or skill_id == TUTORIAL_STARTER_SKILL_ID:
+		return _visible_detail_entries_for_skill(skill_id)
+	var entries := []
+	for entry in _visible_detail_entries_for_skill(skill_id):
+		var entry_data := entry as Dictionary
+		if str(entry_data.get("kind", "")) == "thieving_heist":
+			continue
+		var action := entry_data.get("action", {}) as Dictionary
+		if action.is_empty() or not _is_action_unlocked(skill_id, action):
+			continue
+		entries.append(entry_data)
+	return entries
+
+
+func _discard_incoming_swipe_preview(incoming_preview: Dictionary) -> void:
+	var preview_state := incoming_preview.get("state", {}) as Dictionary
+	var skill_id := str(preview_state.get("skill_id", ""))
+	for raw_card in preview_state.get("action_cards", []) as Array:
+		var card := raw_card as Dictionary
+		if card.is_empty():
+			continue
+		var heist_id := str(card.get("heist_id", ""))
+		if not heist_id.is_empty():
+			action_cards.erase(_thieving_heist_card_key(heist_id))
+			continue
+		var action := card.get("action", {}) as Dictionary
+		var action_id := str(action.get("id", ""))
+		if not skill_id.is_empty() and not action_id.is_empty():
+			action_cards.erase(_action_key(skill_id, action_id))
+	if skill_id == "thieving":
+		for key in action_cards.keys():
+			if str(key).begins_with("thieving_heist:"):
+				action_cards.erase(key)
+	var preview_page := incoming_preview.get("page") as Control
+	if preview_page != null and is_instance_valid(preview_page):
+		preview_page.queue_free()
+
+
+func _skill_detail_needs_full_render_after_preview(skill_id: String) -> bool:
+	if skill_swipe_page == null or not is_instance_valid(skill_swipe_page):
+		return true
+	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+		return true
+	var stack := _detail_actions_stack()
+	if stack == null or not is_instance_valid(stack):
+		return true
+	if not _skill_detail_stack_has_visible_modules(stack):
+		return true
+	if _fishing_rework_active_for_skill(skill_id):
+		return detail_rendered_action_ids.is_empty()
+	var expected_ids := _detail_track_ids_for_skill(skill_id)
+	if expected_ids.is_empty():
+		return false
+	for track_id in expected_ids:
+		if not detail_rendered_action_ids.has(track_id):
+			return true
+	return false
+
+
+func _rebuild_skill_detail_after_failed_preview() -> void:
+	if skills_content == null:
+		return
+	_kill_transient_tweens_in_subtree(skills_content)
+	_clear_skill_swipe_preview()
+	skill_swipe_frame = null
+	skill_swipe_page = null
+	_reset_page_control_refs()
+	_clear_skills_content_orphans()
+	await _render_skill_detail(false, -1)
+
+
+func _skill_swipe_install_target_page(target_key: String, incoming_preview: Dictionary = {}) -> void:
 	skill_swipe_pending_full_finalize = false
 	skill_swipe_pending_preview_state = {}
+	_hold_skill_detail_layout_refresh_after_navigation()
 	_clear_page_transient_input_state()
 	_prepare_skills_page_transition(target_key)
+	skill_swipe_drag_offset_x = 0.0
+	if not incoming_preview.is_empty():
+		_discard_incoming_swipe_preview(incoming_preview)
+	_discard_skill_detail_cache_entry(target_key)
 	if _try_activate_skill_detail_page(target_key, -1, false):
-		_finish_render_screen_transition(target_key)
-		return
-	var preview_page := incoming_preview_pack.get("page") as Control
-	var preview_state := incoming_preview_pack.get("state", {}) as Dictionary
-	if preview_page != null and is_instance_valid(preview_page):
-		_apply_skills_content_layout_for_screen()
-		_mount_swipe_preview_as_skill_detail(preview_page, preview_state)
+		_normalize_skill_detail_page_layout()
 		_finish_render_screen_transition(target_key)
 		return
 	_clear_settings_page_control_refs()
@@ -19214,37 +20360,249 @@ func _skill_swipe_install_target_page(target_key: String, incoming_preview_pack:
 	skill_swipe_page = null
 	_reset_page_control_refs()
 	_clear_skills_content_orphans()
-	_render_skill_detail(false, -1)
+	await _render_skill_detail(false, -1)
+	_normalize_skill_detail_page_layout()
 	_finish_render_screen_transition(target_key)
+
+
+func _complete_skill_swipe_navigation() -> void:
+	skill_swipe_animating = false
+	skill_swipe_animation_mode = ""
+	skill_swipe_drag_offset_x = 0.0
+	_reset_skill_swipe_entry_positions()
+	_ensure_skill_swipe_frame_centered()
+	_finish_deferred_skill_detail_park()
+	if skill_swipe_handoff_cover != null and is_instance_valid(skill_swipe_handoff_cover):
+		_clear_skill_swipe_handoff_cover_immediate()
+	if not _consume_queued_skill_swipe_navigation():
+		_queue_skill_swipe_preview_prewarm()
+	if current_screen == "skill":
+		if selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
+			if _onboarding_swipe_tip_sequence_resumable() and not onboarding_swipe_tip_sequence_running:
+				call_deferred("_run_onboarding_swipe_tip_sequence")
+		else:
+			call_deferred("_maybe_show_onboarding_explore_tip")
+
+
+func _hold_skill_detail_layout_refresh_after_navigation() -> void:
+	skill_detail_layout_refresh_hold_until_msec = maxi(
+		skill_detail_layout_refresh_hold_until_msec,
+		Time.get_ticks_msec() + int((SKILL_SWIPE_SETTLE_SECONDS + 0.35) * 1000.0)
+	)
 
 
 func _finalize_swipe_preview_to_full_detail() -> void:
 	if not skill_swipe_pending_full_finalize:
 		return
-	skill_swipe_pending_full_finalize = false
 	var preview_state := skill_swipe_pending_preview_state
 	skill_swipe_pending_preview_state = {}
 	var preserve_scroll := _preview_actions_scroll_vertical(preview_state)
-	_begin_skill_detail_refresh_cover()
-	var target_key := _skill_detail_cache_key(selected_skill_id)
-	_clear_page_transient_input_state()
-	_prepare_skills_page_transition(target_key)
-	_clear_settings_page_control_refs()
-	_kill_transient_tweens_in_subtree(skills_content)
-	_apply_skills_content_layout_for_screen()
-	_clear_skill_swipe_preview()
-	skill_swipe_frame = null
-	skill_swipe_page = null
-	skill_swipe_animating = false
-	_reset_page_control_refs()
-	_clear_skills_content_orphans()
-	_render_skill_detail(false, preserve_scroll)
-	_finish_render_screen_transition(target_key)
+	_promote_swipe_preview_to_interactive(preview_state)
+	skill_swipe_pending_full_finalize = false
+	_hold_skill_detail_layout_refresh_after_navigation()
 	_update_ui(0.0, true)
-	call_deferred("_detail_lazy_refresh_after_page_ready")
+	call_deferred("_sync_detail_actions_scroll_limit_deferred")
+	if preserve_scroll >= 0 and detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+		var restore_scroll := 0 if selected_skill_id == "thieving" else maxi(0, preserve_scroll)
+		detail_actions_scroll.drag_scroll_position = float(restore_scroll)
+		detail_actions_scroll.scroll_vertical = restore_scroll
+		call_deferred("_restore_detail_actions_scroll", restore_scroll)
+
+
+func _promote_swipe_preview_to_interactive(preview_state: Dictionary) -> void:
+	var skill_id := str(preview_state.get("skill_id", selected_skill_id))
+	if _fishing_rework_active_for_skill(skill_id):
+		_promote_fishing_swipe_preview(preview_state)
+	else:
+		for raw_card in preview_state.get("action_cards", []) as Array:
+			var card := raw_card as Dictionary
+			if card.is_empty():
+				continue
+			var heist_id := str(card.get("heist_id", ""))
+			if not heist_id.is_empty():
+				_promote_heist_swipe_preview_card(card, heist_id)
+				continue
+			if bool(card.get("passive", false)):
+				_promote_passive_swipe_preview_card(card, skill_id)
+				continue
+			var action := card.get("action", {}) as Dictionary
+			var action_id := str(action.get("id", card.get("action_id", "")))
+			if action.is_empty() or action_id.is_empty():
+				continue
+			_promote_action_swipe_preview_card(card, skill_id, action_id, action)
+	if detail_header_body != null and is_instance_valid(detail_header_body):
+		_enable_skill_detail_back_arrow(detail_header_body)
+		_apply_onboarding_fight_header_visibility()
+		_sync_skill_detail_back_arrow_visibility()
+		if _onboarding_auto_run_message_resumable():
+			call_deferred("_run_onboarding_auto_run_message_sequence")
+		if _onboarding_header_reveal_sequence_resumable():
+			call_deferred("_run_onboarding_header_reveal_sequence")
+	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+		var actions_clip := detail_actions_scroll.get_parent()
+		if actions_clip != null and is_instance_valid(actions_clip):
+			_build_detail_jump_arrows(actions_clip)
+	if skill_swipe_page != null and is_instance_valid(skill_swipe_page):
+		skill_swipe_page.mouse_filter = Control.MOUSE_FILTER_PASS
+
+
+func _promote_action_swipe_preview_card(card: Dictionary, skill_id: String, action_id: String, action: Dictionary) -> void:
+	if bool(card.get("swipe_promoted", false)):
+		return
+	card["swipe_promoted"] = true
+	var card_root := card.get("root") as Control
+	var pop_card := card.get("pop") as Control
+	if card_root != null and is_instance_valid(card_root):
+		card_root.mouse_filter = Control.MOUSE_FILTER_PASS
+	if pop_card != null and is_instance_valid(pop_card):
+		pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	_attach_swipe_preview_activity_button(card, skill_id, action_id, pop_card)
+	card["action_id"] = action_id
+	card["action"] = action
+	_register_action_card(_action_key(skill_id, action_id), card)
+	_detail_lazy_finalize_action_card(card, skill_id, action, action_id)
+	detail_action_card_nodes[action_id] = card_root
+	if not detail_rendered_action_ids.has(action_id):
+		detail_rendered_action_ids.append(action_id)
+
+
+func _promote_heist_swipe_preview_card(card: Dictionary, heist_id: String) -> void:
+	if bool(card.get("swipe_promoted", false)):
+		return
+	card["swipe_promoted"] = true
+	_register_action_card(_thieving_heist_card_key(heist_id), card)
+	var heist_root := card.get("root") as Control
+	if heist_root != null and is_instance_valid(heist_root):
+		heist_root.mouse_filter = Control.MOUSE_FILTER_PASS
+		var button := card.get("button") as Button
+		if button != null and is_instance_valid(button):
+			button.mouse_filter = Control.MOUSE_FILTER_STOP
+		detail_action_card_nodes["heist:%s" % heist_id] = heist_root
+	var track_id := "heist:%s" % heist_id
+	if not detail_rendered_action_ids.has(track_id):
+		detail_rendered_action_ids.append(track_id)
+
+
+func _attach_swipe_preview_activity_button(card: Dictionary, skill_id: String, action_id: String, pop_card: Control) -> void:
+	if card.get("button") != null:
+		var existing := card.get("button") as Button
+		if existing != null and is_instance_valid(existing):
+			existing.mouse_filter = Control.MOUSE_FILTER_STOP
+		return
+	var button := Button.new()
+	button.text = ""
+	button.focus_mode = Control.FOCUS_NONE
+	button.flat = true
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	button.z_index = 218
+	button.gui_input.connect(_on_action_card_input.bind(skill_id, action_id, button))
+	pop_card.add_child(button)
+	card["button"] = button
+
+
+func _promote_passive_swipe_preview_card(card: Dictionary, skill_id: String) -> void:
+	if bool(card.get("swipe_promoted", false)):
+		return
+	card["swipe_promoted"] = true
+	var action := card.get("action", {}) as Dictionary
+	var module_id := str(action.get("id", ""))
+	if module_id.is_empty():
+		return
+	var card_root := card.get("root") as Control
+	var pop_card := card.get("pop") as Control
+	if card_root != null and is_instance_valid(card_root):
+		card_root.clip_contents = false
+		card_root.mouse_filter = Control.MOUSE_FILTER_PASS
+	if pop_card != null and is_instance_valid(pop_card):
+		pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	var collect_button := card.get("button") as Button
+	if collect_button != null and is_instance_valid(collect_button):
+		collect_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		collect_button.pressed.connect(_on_passive_collect_pressed.bind(module_id))
+	var info_button := card.get("info_button") as Button
+	if info_button != null and is_instance_valid(info_button):
+		info_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		var info_popover := card.get("info_popover") as Control
+		if info_popover != null:
+			info_button.pressed.connect(_toggle_passive_info_popover.bind(info_popover))
+	var plank_button := card.get("plank") as Button
+	if plank_button != null and is_instance_valid(plank_button):
+		plank_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		plank_button.pressed.connect(_on_passive_plank_pressed)
+	var upgrade_buttons := card.get("upgrade_buttons", {}) as Dictionary
+	for stat_type in upgrade_buttons.keys():
+		var upgrade := upgrade_buttons.get(stat_type) as Button
+		if upgrade == null or not is_instance_valid(upgrade):
+			continue
+		upgrade.mouse_filter = Control.MOUSE_FILTER_STOP
+		upgrade.pressed.connect(_on_passive_upgrade_pressed.bind(module_id, stat_type))
+	_register_action_card(_action_key(skill_id, module_id), card)
+	_update_passive_card_static_state(card, skill_id, action, _is_action_unlocked(skill_id, action))
+	detail_action_card_nodes[module_id] = card_root
+	if not detail_rendered_action_ids.has(module_id):
+		detail_rendered_action_ids.append(module_id)
+
+
+func _promote_fishing_swipe_preview(preview_state: Dictionary) -> void:
+	var skill_id := "fishing"
+	for raw_card in preview_state.get("action_cards", []) as Array:
+		var card := raw_card as Dictionary
+		if card.is_empty():
+			continue
+		_promote_passive_swipe_preview_card(card, skill_id)
+	for raw_built in preview_state.get("fishing_built_modules", []) as Array:
+		var built := raw_built as Dictionary
+		if built.is_empty():
+			continue
+		var area_key := str(built.get("area_key", ""))
+		if area_key.is_empty():
+			continue
+		_register_action_card(area_key, built.get("area_card", {}) as Dictionary)
+		var root := built.get("root") as Control
+		if root != null and is_instance_valid(root):
+			_enable_interactive_control_tree(root)
+			for method_id in built.get("method_ids", []) as Array:
+				detail_action_card_nodes[str(method_id)] = root
+	detail_rendered_action_ids = _fishing_detail_render_signature()
+
+
+func _enable_interactive_control_tree(root: Control) -> void:
+	if root == null or not is_instance_valid(root):
+		return
+	if root is Button:
+		root.mouse_filter = Control.MOUSE_FILTER_STOP
+	elif root.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		root.mouse_filter = Control.MOUSE_FILTER_PASS
+	for child in root.get_children():
+		var child_control := child as Control
+		if child_control != null:
+			_enable_interactive_control_tree(child_control)
+
+
+func _enable_skill_detail_back_arrow(header_body: Control) -> void:
+	if header_body == null or not is_instance_valid(header_body):
+		return
+	for child in header_body.get_children():
+		if child is TextureButton:
+			var back_button := child as TextureButton
+			back_button.mouse_filter = Control.MOUSE_FILTER_STOP
+			if not back_button.pressed.is_connected(_show_skills):
+				back_button.pressed.connect(_show_skills)
+			detail_back_button = back_button
+			return
+		if child is Control and child.get_child_count() > 0:
+			_enable_skill_detail_back_arrow(child as Control)
 
 
 func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, play_click := true) -> void:
+	if not _swipe_offset_accessible(offset):
+		return
 	var current_index := _skill_index(selected_skill_id)
 	if current_index < 0:
 		return
@@ -19263,7 +20621,10 @@ func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, pl
 	if play_click:
 		_play_default_button_sfx()
 	var use_outgoing_animation := animate_entry and absf(entry_x) > 1.0
-	var incoming_preview_pack := _extract_incoming_swipe_preview(offset) if use_outgoing_animation else {}
+	var incoming_preview := {}
+	if offset != 0:
+		incoming_preview = _extract_incoming_swipe_preview(offset)
+	_park_skill_swipe_preview()
 	if not play_click and not animate_entry and absf(entry_x) <= 1.0:
 		_begin_skill_swipe_handoff_cover()
 	var outgoing_holder := _begin_skill_swipe_outgoing_cover() if use_outgoing_animation else null
@@ -19275,52 +20636,129 @@ func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, pl
 	selected_skill_id = next_skill_id
 	current_screen = "skill"
 	var target_key := _skill_detail_cache_key(next_skill_id)
-	_skill_swipe_install_target_page(target_key, incoming_preview_pack)
+	await _skill_swipe_install_target_page(target_key, incoming_preview)
 	_update_ui(0.0, true)
-	var target := _skill_swipe_visual_target()
-	if target != null:
-		if use_outgoing_animation:
-			target.position.x = entry_x
-			_kill_skill_swipe_tween()
-			skill_swipe_animating = true
-			skill_swipe_animation_mode = "entry"
-			skill_swipe_tween = create_tween()
-			skill_swipe_tween.set_parallel(true)
-			skill_swipe_tween.tween_property(target, "position:x", 0.0, SKILL_SWIPE_SETTLE_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
-			if outgoing_holder != null and is_instance_valid(outgoing_holder):
-				var outgoing_x := -signi(offset) * _skill_swipe_page_span()
-				skill_swipe_tween.tween_property(outgoing_holder, "position:x", outgoing_x, SKILL_SWIPE_SETTLE_SECONDS).as_relative().set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
-			skill_swipe_tween.finished.connect(func():
-				skill_swipe_animating = false
-				skill_swipe_animation_mode = ""
-				_finish_deferred_skill_detail_park()
-				if skill_swipe_pending_full_finalize:
-					_finalize_swipe_preview_to_full_detail()
-				if not _consume_queued_skill_swipe_navigation():
-					_queue_skill_swipe_preview_prewarm()
-			)
-		else:
-			_kill_skill_swipe_tween()
-			target.position.x = 0.0
-			if skill_swipe_pending_full_finalize:
-				_finalize_swipe_preview_to_full_detail()
-			_queue_skill_swipe_preview_prewarm()
+	_reset_skill_swipe_entry_positions()
+	if use_outgoing_animation and outgoing_holder != null and is_instance_valid(outgoing_holder):
+		_kill_skill_swipe_tween()
+		skill_swipe_animating = true
+		skill_swipe_animation_mode = "entry"
+		skill_swipe_tween = create_tween()
+		var outgoing_x := -signi(offset) * _skill_swipe_page_span()
+		skill_swipe_tween.tween_property(
+			outgoing_holder,
+			"position:x",
+			outgoing_x,
+			SKILL_SWIPE_SETTLE_SECONDS
+		).as_relative().set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+		skill_swipe_tween.finished.connect(_complete_skill_swipe_navigation)
+	else:
+		_complete_skill_swipe_navigation()
 
 
 func _mark_skill_swipe_tip_seen() -> void:
 	if skill_swipe_tip_seen:
 		return
 	skill_swipe_tip_seen = true
-	_fade_tip_group("skill_swipe_tip_notes")
 	save_game()
+
+
+func _graduate_onboarding_tutorial() -> void:
+	if onboarding_tutorial_complete:
+		return
+	onboarding_tutorial_complete = true
+	onboarding_explore_tip_seen = true
+	_fade_tip_group("onboarding_explore_tip_notes", false, true)
+	_fade_tip_group("skill_swipe_tip_notes", false, true)
+	save_game()
+	call_deferred("_sync_skill_detail_back_arrow_visibility")
+	call_deferred("_ensure_chat_strip")
+	call_deferred("_update_chat_strip", true)
 
 
 func _mark_stamina_gauge_tip_seen() -> void:
 	if stamina_gauge_tip_seen:
 		return
 	stamina_gauge_tip_seen = true
-	_fade_tip_control(stamina_gauge_tip_root)
 	save_game()
+	call_deferred("_maybe_trigger_onboarding_swipe_tip_at_zero_stamina", TUTORIAL_STARTER_SKILL_ID)
+
+
+func _mark_onboarding_swipe_navigation_unlocked() -> void:
+	if onboarding_swipe_navigation_unlocked:
+		return
+	onboarding_swipe_navigation_unlocked = true
+	save_game()
+
+
+func _onboarding_swipe_intro_complete() -> bool:
+	return (
+		stamina_gauge_tip_seen
+		and onboarding_fight_action_stats_revealed
+	)
+
+
+func _onboarding_fight_stamina_depleted() -> bool:
+	return _stamina_value(TUTORIAL_STARTER_SKILL_ID) < 1.0
+
+
+func _ensure_onboarding_swipe_unlocked(from_user_attempt := false) -> bool:
+	if not _onboarding_path_active():
+		return true
+	if onboarding_swipe_navigation_unlocked:
+		return true
+	if selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
+		return false
+	if not _onboarding_swipe_intro_complete():
+		return false
+	if not _onboarding_fight_stamina_depleted() and not from_user_attempt:
+		return false
+	if not onboarding_swipe_tip_eligible:
+		onboarding_swipe_tip_eligible = true
+		save_game()
+	_mark_onboarding_swipe_navigation_unlocked()
+	if (
+		not skill_swipe_tip_seen
+		and selected_skill_id == TUTORIAL_STARTER_SKILL_ID
+		and not onboarding_swipe_tip_sequence_running
+	):
+		call_deferred("_run_onboarding_swipe_tip_sequence")
+	return true
+
+
+func _onboarding_swipe_tip_sequence_resumable() -> bool:
+	return (
+		_onboarding_path_active()
+		and selected_skill_id == TUTORIAL_STARTER_SKILL_ID
+		and _onboarding_swipe_intro_complete()
+		and _onboarding_fight_stamina_depleted()
+		and not skill_swipe_tip_seen
+	)
+
+
+func _maybe_trigger_onboarding_swipe_tip_at_zero_stamina(skill_id: String) -> void:
+	if skill_id != TUTORIAL_STARTER_SKILL_ID:
+		return
+	if not _onboarding_path_active():
+		return
+	if not _onboarding_swipe_intro_complete():
+		return
+	if not _onboarding_fight_stamina_depleted():
+		return
+	if not onboarding_swipe_tip_eligible:
+		onboarding_swipe_tip_eligible = true
+		save_game()
+	if not onboarding_swipe_navigation_unlocked:
+		_mark_onboarding_swipe_navigation_unlocked()
+	if skill_swipe_tip_seen or onboarding_swipe_tip_sequence_running:
+		return
+	if selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
+		return
+	call_deferred("_run_onboarding_swipe_tip_sequence")
+
+
+func _mark_onboarding_swipe_tip_eligible() -> void:
+	_maybe_trigger_onboarding_swipe_tip_at_zero_stamina(TUTORIAL_STARTER_SKILL_ID)
 
 
 func _mark_lock_click_tip_seen() -> bool:
@@ -19329,7 +20767,7 @@ func _mark_lock_click_tip_seen() -> bool:
 	lock_click_tip_seen = true
 	var had_tip := _fade_tip_group("lock_click_tip_notes", false, true)
 	if had_tip:
-		lock_click_tip_collapse_until_msec = Time.get_ticks_msec() + int(ceil(TUTORIAL_TIP_FADE_SECONDS * 1000.0))
+		lock_click_tip_collapse_until_msec = Time.get_ticks_msec() + int(ceil(TUTORIAL_TIP_FADE_OUT_SECONDS * 1000.0))
 	save_game()
 	return had_tip
 
@@ -19340,16 +20778,99 @@ func _record_activity_start_for_tips() -> void:
 	if not activity_start_tip_seen:
 		activity_start_tip_seen = true
 		_fade_tip_group("activity_start_tip_notes")
-	if previous_count < SWIPE_TIP_ACTIVITY_START_THRESHOLD and _skill_swipe_tip_available():
-		_show_skill_swipe_tip_note()
+		if activity_start_highlight_pending:
+			activity_start_highlight_pending = false
+			activity_start_highlight_token += 1
+	if _onboarding_path_active() and onboarding_explore_tip_seen:
+		_graduate_onboarding_tutorial()
 	save_game()
 
 
-func _record_activity_completion_for_tips() -> void:
-	var previous_count := activity_completion_count
+func _onboarding_mastery_rewards_allowed(skill_id: String) -> bool:
+	if skill_id != TUTORIAL_STARTER_SKILL_ID:
+		return true
+	if not _onboarding_path_active():
+		return true
+	return onboarding_fight_action_stats_revealed
+
+
+func _onboarding_mastery_feedback_allowed(anchor: Control) -> bool:
+	if anchor == null or not is_instance_valid(anchor):
+		return false
+	if anchor.modulate.a <= 0.01:
+		return false
+	return true
+
+
+func _onboarding_path_active() -> bool:
+	return not onboarding_tutorial_complete
+
+
+func _activity_crits_allowed() -> bool:
+	return not _onboarding_path_active()
+
+
+func _onboarding_skill_accessible(skill_id: String) -> bool:
+	if not _onboarding_path_active():
+		return true
+	if skill_id == TUTORIAL_STARTER_SKILL_ID:
+		return true
+	return onboarding_swipe_navigation_unlocked
+
+
+func _onboarding_swipe_to_other_skills_allowed() -> bool:
+	return _onboarding_path_active() and onboarding_swipe_navigation_unlocked
+
+
+func _onboarding_blocks_skill_swipe() -> bool:
+	return _onboarding_path_active() and not _onboarding_swipe_to_other_skills_allowed()
+
+
+func _swipe_offset_accessible(offset: int) -> bool:
+	if offset == 0:
+		return false
+	var target_skill_id := _skill_id_for_swipe_offset(offset)
+	if target_skill_id.is_empty():
+		return false
+	if not _onboarding_skill_accessible(target_skill_id):
+		return false
+	if _onboarding_path_active() and not _onboarding_swipe_to_other_skills_allowed():
+		return false
+	return true
+
+
+func _show_onboarding_skill_locked_message(source: Control = null) -> void:
+	var message := "Finish the %s intro first." % _skill_name(TUTORIAL_STARTER_SKILL_ID)
+	_set_result(message, false)
+	if source != null and is_instance_valid(source) and source.is_visible_in_tree():
+		_float_reward(self, source, message, 52, Color.WHITE, Vector2(0, -24), Vector2(0, -120), 0.0)
+
+
+func _record_activity_completion_for_tips(skill_id: String = "", action_id: String = "") -> void:
 	activity_completion_count += 1
-	if previous_count < STAMINA_TIP_ACTIVITY_COMPLETION_THRESHOLD and _stamina_gauge_tip_available():
-		_show_stamina_gauge_tip()
+	var is_starter_completion := (
+		skill_id == TUTORIAL_STARTER_SKILL_ID
+		and action_id == TUTORIAL_STARTER_ACTION_ID
+	)
+	if is_starter_completion:
+		onboarding_starter_action_completion_count += 1
+	if _onboarding_fight_header_sequence_active() and is_starter_completion:
+		if (
+			onboarding_starter_action_completion_count >= ONBOARDING_AUTO_RUN_MESSAGE_COMPLETION_THRESHOLD
+			and not onboarding_fight_auto_run_message_shown
+		):
+			call_deferred("_run_onboarding_auto_run_message_sequence")
+		if (
+			onboarding_starter_action_completion_count >= 2
+			and not onboarding_fight_summary_revealed
+		):
+			onboarding_header_reveal_after_progress = true
+		if (
+			onboarding_starter_action_completion_count >= 3
+			and not onboarding_fight_summary_revealed
+		):
+			onboarding_header_reveal_after_progress = false
+			call_deferred("_run_onboarding_header_reveal_sequence")
 	save_game()
 
 
@@ -19374,11 +20895,175 @@ func _queue_locked_activity_preview_reveal() -> void:
 
 
 func _skill_swipe_tip_available() -> bool:
-	return not skill_swipe_tip_seen and activity_start_count >= SWIPE_TIP_ACTIVITY_START_THRESHOLD
+	return (
+		not skill_swipe_tip_seen
+		and activity_start_tip_seen
+		and stamina_gauge_tip_seen
+		and (
+			onboarding_swipe_tip_eligible
+			or _onboarding_fight_stamina_depleted()
+		)
+	)
 
 
 func _stamina_gauge_tip_available() -> bool:
-	return not stamina_gauge_tip_seen and activity_completion_count >= STAMINA_TIP_ACTIVITY_COMPLETION_THRESHOLD
+	return false
+
+
+func _show_skill_swipe_tip_note_if_needed() -> void:
+	if not _skill_swipe_tip_available() or skill_swipe_tip_seen:
+		return
+	call_deferred("_run_onboarding_swipe_tip_sequence")
+
+
+func _resolve_skill_swipe_tip_stack() -> VBoxContainer:
+	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+		return null
+	if detail_actions_scroll.get_child_count() <= 0:
+		return null
+	return detail_actions_scroll.get_child(0) as VBoxContainer
+
+
+func _mount_skill_swipe_tip_note() -> Control:
+	var stack := _resolve_skill_swipe_tip_stack()
+	if stack == null:
+		return null
+	var overlay_parent := _onboarding_detail_overlay_parent()
+	for node in get_tree().get_nodes_in_group("skill_swipe_tip_notes"):
+		var existing := node as Control
+		if existing == null or not is_instance_valid(existing):
+			continue
+		if overlay_parent != null and existing.get_parent() == overlay_parent:
+			existing.queue_free()
+			onboarding_swipe_overlay_tip_root = null
+			continue
+		return existing
+	var content_width := _skill_content_width()
+	var actions_width := content_width
+	var note := _skill_swipe_tip_note(content_width)
+	note.modulate = Color(1, 1, 1, 0)
+	_detail_eager_add_to_stack(stack, _detail_stack_entry(note, content_width, actions_width))
+	return note
+
+
+func _fade_in_skill_swipe_tip_note(note: Control) -> void:
+	if note == null or not is_instance_valid(note):
+		return
+	note.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(note, "modulate:a", 1.0, ONBOARDING_BOTTOM_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await tween.finished
+	_mark_skill_swipe_tip_seen()
+
+
+func _wait_for_skill_swipe_tip_stack(attempt := 0) -> VBoxContainer:
+	var stack := _resolve_skill_swipe_tip_stack()
+	if stack != null:
+		return stack
+	if attempt >= 45:
+		return null
+	await get_tree().process_frame
+	return await _wait_for_skill_swipe_tip_stack(attempt + 1)
+
+
+func _run_onboarding_swipe_tip_sequence() -> void:
+	if not _onboarding_swipe_tip_sequence_resumable():
+		return
+	if onboarding_swipe_tip_sequence_running:
+		return
+	onboarding_swipe_tip_sequence_running = true
+	_remove_onboarding_swipe_overlay_tip()
+	for attempt in range(20):
+		if not _onboarding_swipe_tip_sequence_resumable():
+			onboarding_swipe_tip_sequence_running = false
+			return
+		var note := _mount_skill_swipe_tip_note()
+		if note != null and is_instance_valid(note):
+			if note.modulate.a < 0.99:
+				await _fade_in_skill_swipe_tip_note(note)
+			else:
+				_mark_skill_swipe_tip_seen()
+			onboarding_swipe_tip_sequence_running = false
+			return
+		await get_tree().process_frame
+	onboarding_swipe_tip_sequence_running = false
+	call_deferred("_run_onboarding_swipe_tip_sequence")
+
+
+func _maybe_show_onboarding_explore_tip() -> void:
+	if onboarding_tutorial_complete or onboarding_explore_tip_seen:
+		return
+	if not _onboarding_path_active():
+		return
+	if not onboarding_swipe_navigation_unlocked:
+		return
+	if selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
+		return
+	if not skill_swipe_tip_seen:
+		return
+	_remove_onboarding_level_up_tip()
+	call_deferred("_run_onboarding_explore_tip_sequence")
+
+
+func _mount_onboarding_explore_tip_note() -> Control:
+	if not get_tree().get_nodes_in_group("onboarding_explore_tip_notes").is_empty():
+		for node in get_tree().get_nodes_in_group("onboarding_explore_tip_notes"):
+			var existing := node as Control
+			if existing != null and is_instance_valid(existing):
+				if existing.get_parent() is VBoxContainer:
+					existing.queue_free()
+					continue
+				return existing
+	var content_width := _skill_content_width()
+	var note := _onboarding_explore_tip_note(content_width)
+	note.modulate = Color(1, 1, 1, 0)
+	var overlay_parent := _onboarding_detail_overlay_parent()
+	if overlay_parent == null:
+		note.queue_free()
+		return null
+	overlay_parent.add_child(note)
+	var tip_size := note.get_combined_minimum_size()
+	if tip_size.x <= 1.0:
+		tip_size.x = content_width
+	if tip_size.y <= 1.0:
+		tip_size.y = DETAIL_LAZY_TIP_HEIGHT
+	note.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	note.size = tip_size
+	note.position = Vector2(
+		(BASE_CANVAS.x - tip_size.x) * 0.5,
+		BASE_CANVAS.y - BOTTOM_NAV_HEIGHT - tip_size.y - 520.0
+	)
+	note.z_index = 900
+	return note
+
+
+func _fade_in_onboarding_explore_tip_note(note: Control) -> void:
+	if note == null or not is_instance_valid(note):
+		return
+	note.modulate.a = 0.0
+	var tween := create_tween()
+	tween.tween_property(note, "modulate:a", 1.0, ONBOARDING_BOTTOM_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await tween.finished
+
+
+func _run_onboarding_explore_tip_sequence() -> void:
+	if onboarding_tutorial_complete or onboarding_explore_tip_seen:
+		return
+	if selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
+		return
+	if onboarding_explore_tip_sequence_running:
+		return
+	onboarding_explore_tip_sequence_running = true
+	var note := _mount_onboarding_explore_tip_note()
+	if note != null and is_instance_valid(note):
+		await get_tree().process_frame
+		if note.modulate.a < 0.99:
+			await _fade_in_onboarding_explore_tip_note(note)
+		onboarding_explore_tip_seen = true
+		save_game()
+	else:
+		call_deferred("_run_onboarding_explore_tip_sequence")
+	onboarding_explore_tip_sequence_running = false
 
 
 func _show_skill_swipe_tip_note() -> void:
@@ -19386,18 +21071,7 @@ func _show_skill_swipe_tip_note() -> void:
 		return
 	if not get_tree().get_nodes_in_group("skill_swipe_tip_notes").is_empty():
 		return
-	if detail_actions_scroll.get_child_count() <= 0:
-		return
-	var stack := detail_actions_scroll.get_child(0) as VBoxContainer
-	if stack == null:
-		return
-	var note := _skill_swipe_tip_note(_skill_content_width())
-	note.modulate = Color(1, 1, 1, 0)
-	stack.add_child(note)
-	if stack.get_child_count() > 1:
-		stack.move_child(note, maxi(0, stack.get_child_count() - 2))
-	var tween := create_tween()
-	tween.tween_property(note, "modulate:a", 1.0, TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_mount_skill_swipe_tip_note()
 
 
 func _show_lock_click_tip_note_if_needed() -> void:
@@ -19429,14 +21103,6 @@ func _show_lock_click_tip_note_if_needed() -> void:
 		return
 
 
-func _show_stamina_gauge_tip() -> void:
-	if not _skill_detail_shows_tutorial_tips():
-		return
-	if current_screen != "skill" or detail_header_body == null or not is_instance_valid(detail_header_body):
-		return
-	_add_stamina_gauge_tip(detail_header_body, true)
-
-
 func _run_boot_warmup() -> void:
 	if _boot_warmup_cancelled():
 		return
@@ -19452,7 +21118,13 @@ func _run_boot_warmup() -> void:
 		return
 	_set_boot_warmup_progress("Ready", 1.0)
 	var elapsed := float(Time.get_ticks_msec() - started_msec) / 1000.0
+	var ready_messages := ["Ready", "Polishing UI...", "Checking swipes...", "Opening game..."]
+	var ready_message_index := -1
 	while elapsed < BOOT_WARMUP_MIN_VISIBLE_SECONDS:
+		var next_index := int(floor(elapsed / 1.6)) % ready_messages.size()
+		if next_index != ready_message_index:
+			ready_message_index = next_index
+			_set_boot_warmup_progress(str(ready_messages[ready_message_index]), 1.0)
 		await get_tree().process_frame
 		if _boot_warmup_cancelled():
 			return
@@ -19514,22 +21186,7 @@ func _boot_warmup_cancelled() -> bool:
 
 
 func _boot_warmup_texture_paths() -> Array:
-	var paths := []
-	var warmup_skill_ids := _boot_warmup_skill_ids()
-	_add_boot_warmup_texture_path(paths, "res://assets/loading/idle-elite-player-hub-launch-loading-screen.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-cutout.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/speech-bubble-down.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/total-lv-bargraph.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/ad-reward.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/discord-simple.png")
-	_add_boot_warmup_texture_path(paths, MASTERY_MEDALS_TEXTURE)
-	_add_boot_warmup_texture_path(paths, UNLOCK_LOCK_CHAINS_TEXTURE)
-	_add_boot_warmup_texture_path(paths, UNLOCK_CHAIN_LINK_TEXTURE)
-	_add_boot_warmup_texture_path(paths, UNLOCK_CHAIN_LEFT_TEXTURE)
-	_add_boot_warmup_texture_path(paths, UNLOCK_CHAIN_RIGHT_TEXTURE)
-	_add_boot_warmup_texture_path(paths, UNLOCK_PADLOCK_TEXTURE)
+	var paths := _boot_shared_texture_paths()
 	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_TOTAL_LEVEL_ART)
 	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_CRIT_ART)
 	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_CREDIT_ART)
@@ -19537,9 +21194,7 @@ func _boot_warmup_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, LOG_CURRENCY_ICON_TEXTURE)
 	_add_boot_warmup_texture_path(paths, PLANK_ICON_TEXTURE)
 	_add_boot_warmup_texture_path(paths, UPGRADE_ARROW_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_TOP_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_BOTTOM_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ACTIVITY_BACK_TEXTURE)
+	var warmup_skill_ids := _boot_warmup_skill_ids()
 	if warmup_skill_ids.has("fishing"):
 		_add_boot_warmup_texture_path(paths, FISH_CURRENCY_ICON_TEXTURE)
 		_add_fishing_boot_warmup_texture_paths(paths)
@@ -19557,17 +21212,7 @@ func _boot_warmup_texture_paths() -> Array:
 
 
 func _uncached_boot_warmup_texture_paths() -> Array:
-	var paths := _boot_warmup_texture_paths()
-	var pending := []
-	for raw_path in paths:
-		var path := str(raw_path)
-		if path.is_empty():
-			continue
-		var normalized := _res_path(path)
-		if texture_cache.has(normalized):
-			continue
-		pending.append(path)
-	return pending
+	return _uncached_texture_paths(_boot_warmup_texture_paths())
 
 
 func _add_fishing_boot_warmup_texture_paths(paths: Array) -> void:
@@ -19614,13 +21259,15 @@ func _prewarm_skill_swipe_neighbor_previews(skill_id: String, token: int) -> voi
 		return
 	await get_tree().process_frame
 	for offset in [-1, 1]:
+		if not _swipe_offset_accessible(offset):
+			continue
 		if not _skill_swipe_prewarm_can_continue(skill_id, token):
 			_finish_skill_swipe_preview_prewarm(token)
 			return
 		var page := _ensure_skill_swipe_preview_page_cached(offset)
 		if page == null or not is_instance_valid(page):
 			continue
-		page.position.x = signi(offset) * _skill_swipe_page_span()
+		page.position.x = _skill_swipe_preview_rest_x(offset)
 		var state := skill_swipe_preview_states.get(offset, {}) as Dictionary
 		if state == null:
 			continue
@@ -19654,9 +21301,12 @@ func _skill_swipe_prewarm_can_continue(skill_id: String, token: int) -> bool:
 func _finish_skill_swipe_preview_prewarm(token: int) -> void:
 	if token == skill_swipe_preview_prewarm_token:
 		skill_swipe_preview_prewarm_pending = false
+		_hide_parked_skill_swipe_preview_pages(skill_swipe_preview_page)
 
 
 func _ensure_skill_swipe_preview(offset: int) -> void:
+	if not _swipe_offset_accessible(offset):
+		return
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		return
 	if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page) and skill_swipe_preview_offset == offset:
@@ -19669,7 +21319,9 @@ func _ensure_skill_swipe_preview(offset: int) -> void:
 		return
 	skill_swipe_preview_page = cached_page
 	skill_swipe_preview_offset = offset
-	skill_swipe_preview_page.position.x = signi(offset) * _skill_swipe_page_span()
+	skill_swipe_preview_page.position.x = _skill_swipe_preview_rest_x(offset)
+	skill_swipe_preview_page.visible = true
+	_hide_parked_skill_swipe_preview_pages(skill_swipe_preview_page)
 	var state := skill_swipe_preview_states.get(offset, {}) as Dictionary
 	if state != null and bool(state.get("prewarmed", false)):
 		_sync_skill_swipe_preview_scroll_state(state)
@@ -19688,7 +21340,8 @@ func _ensure_skill_swipe_preview_page_cached(offset: int) -> Control:
 	if next_skill_id.is_empty():
 		return null
 	cached_page = _build_skill_swipe_preview_page(next_skill_id, offset)
-	cached_page.position.x = signi(offset) * _skill_swipe_page_span()
+	cached_page.position.x = _skill_swipe_preview_rest_x(offset)
+	cached_page.visible = false
 	skill_swipe_frame.add_child(cached_page)
 	skill_swipe_preview_pages[offset] = cached_page
 	return cached_page
@@ -19705,15 +21358,17 @@ func _skill_id_for_swipe_offset(offset: int) -> String:
 
 func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	var content_width := _skill_content_width()
+	var actions_width := BASE_CANVAS.x if skill_id == "thieving" else content_width
 	var state := {
 		"skill_id": skill_id,
 		"action_cards": [],
+		"fishing_built_modules": [],
 		"prewarmed": false
 	}
 	var page := VBoxContainer.new()
 	state["page"] = page
 	page.set_anchors_preset(Control.PRESET_FULL_RECT)
-	page.custom_minimum_size.x = content_width
+	page.custom_minimum_size.x = actions_width
 	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page.add_theme_constant_override("separation", 0)
 	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -19721,7 +21376,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 
 	var header := PanelContainer.new()
 	header.custom_minimum_size = Vector2(0, SKILL_DETAIL_HEADER_HEIGHT)
-	header.custom_minimum_size.x = content_width
+	header.custom_minimum_size.x = actions_width if skill_id == "thieving" else content_width
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_theme_stylebox_override("panel", _summary_style())
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -19731,6 +21386,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	header_body.set_anchors_preset(Control.PRESET_FULL_RECT)
 	header_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(header_body)
+	state["header_body"] = header_body
 	_add_activity_back_arrow(header_body, false)
 
 	var header_margin := MarginContainer.new()
@@ -19792,24 +21448,26 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 
 	var divider := Control.new()
 	divider.custom_minimum_size = Vector2(0, SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
-	divider.custom_minimum_size.x = content_width
+	divider.custom_minimum_size.x = actions_width
 	divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(divider)
 
-	var preview_scroll := ScrollContainer.new()
-	preview_scroll.custom_minimum_size.x = content_width
+	var preview_scroll := MobileScrollContainer.new()
+	preview_scroll.custom_minimum_size.x = actions_width
 	preview_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	preview_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	preview_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	preview_scroll.clip_contents = true
+	preview_scroll.set_pull_resistance_enabled(true)
 	preview_scroll.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	page.add_child(preview_scroll)
 	state["actions_scroll"] = preview_scroll
 	state["modules_root"] = preview_scroll
 
 	var preview_stack := VBoxContainer.new()
-	preview_stack.custom_minimum_size.x = content_width
+	preview_stack.custom_minimum_size.x = actions_width
 	preview_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	preview_stack.add_theme_constant_override("separation", 56)
@@ -19824,24 +21482,27 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	if _fishing_rework_active_for_skill(skill_id):
 		_render_fishing_area_modules_preview(preview_stack, content_width, state)
 	else:
-		for entry in _visible_detail_entries_for_skill(skill_id):
+		for entry in _preview_detail_entries_for_skill(skill_id):
 			var entry_data := entry as Dictionary
 			if str(entry_data.get("kind", "")) == "thieving_heist":
 				var heist := entry_data.get("heist", {}) as Dictionary
-				var heist_root := _build_thieving_heist_card(heist, content_width)
+				var heist_id := str(heist.get("id", ""))
+				var heist_root := _build_thieving_heist_card(heist, actions_width)
 				heist_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				preview_stack.add_child(heist_root)
+				if not heist_id.is_empty():
+					var heist_key := _thieving_heist_card_key(heist_id)
+					if action_cards.has(heist_key):
+						(state["action_cards"] as Array).append(action_cards[heist_key])
 				continue
 			var action := entry_data.get("action", {}) as Dictionary
 			var card_result := _build_passive_module_card(skill_id, action, content_width, false) if _is_passive_action(action) else _skill_swipe_preview_action_card(skill_id, action, content_width)
-			_prepare_locked_activity_preview_fade(card_result["card"] as Dictionary, skill_id, action)
-			_sync_locked_activity_preview_presence(card_result["card"] as Dictionary, skill_id, action)
 			preview_stack.add_child(card_result["root"])
 			(state["action_cards"] as Array).append(card_result["card"])
-	if not activity_start_tip_seen:
-		preview_stack.add_child(_activity_start_tip_note(content_width))
-	elif _skill_swipe_tip_available():
+	if _skill_swipe_tip_available():
 		preview_stack.add_child(_skill_swipe_tip_note(content_width))
+	elif not activity_start_tip_seen:
+		preview_stack.add_child(_activity_start_tip_note(content_width))
 	var scroll_bottom_spacer := Control.new()
 	scroll_bottom_spacer.custom_minimum_size = Vector2.ZERO
 	scroll_bottom_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -19887,7 +21548,15 @@ func _reveal_skill_swipe_preview_modules(offset: int, token: int) -> void:
 	var modules_root := state.get("modules_root") as Control
 	if modules_root != null and is_instance_valid(modules_root):
 		modules_root.visible = true
-		modules_root.modulate.a = 1.0
+		modules_root.modulate.a = 0.0
+		var tween := create_tween()
+		tween.tween_property(modules_root, "modulate:a", 1.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.finished.connect(func():
+			if token != skill_swipe_preview_module_reveal_token or offset != skill_swipe_preview_offset:
+				return
+			if modules_root != null and is_instance_valid(modules_root):
+				modules_root.modulate.a = 1.0
+		)
 
 
 func _force_show_skill_swipe_preview_modules(offset: int) -> void:
@@ -19904,12 +21573,1031 @@ func _force_show_skill_swipe_preview_modules(offset: int) -> void:
 		modules_root.modulate.a = 1.0
 
 
+func _onboarding_fight_header_sequence_active() -> bool:
+	return (
+		_onboarding_path_active()
+		and selected_skill_id == TUTORIAL_STARTER_SKILL_ID
+		and _skill_detail_shows_tutorial_tips()
+	)
+
+
+func _onboarding_auto_run_message_resumable() -> bool:
+	return (
+		_onboarding_fight_header_sequence_active()
+		and not onboarding_fight_auto_run_message_shown
+		and onboarding_starter_action_completion_count >= ONBOARDING_AUTO_RUN_MESSAGE_COMPLETION_THRESHOLD
+	)
+
+
+func _onboarding_header_reveal_sequence_resumable() -> bool:
+	if not _onboarding_fight_header_sequence_active() or onboarding_fight_stamina_revealed:
+		return false
+	if not onboarding_fight_summary_revealed:
+		return (
+			onboarding_header_reveal_after_progress
+			or onboarding_starter_action_completion_count >= 3
+		)
+	return not onboarding_fight_stamina_revealed
+
+
+func _maybe_trigger_onboarding_header_reveal_from_progress() -> void:
+	if not onboarding_header_reveal_after_progress:
+		return
+	if onboarding_fight_summary_revealed or onboarding_header_sequence_running:
+		return
+	if not _onboarding_fight_header_sequence_active():
+		onboarding_header_reveal_after_progress = false
+		return
+	if running_skill_id != TUTORIAL_STARTER_SKILL_ID or running_action_id != TUTORIAL_STARTER_ACTION_ID:
+		return
+	if action_progress < ONBOARDING_HEADER_REVEAL_PROGRESS_FRACTION:
+		return
+	onboarding_header_reveal_after_progress = false
+	call_deferred("_run_onboarding_header_reveal_sequence")
+
+
+func _cancel_onboarding_header_sequence() -> void:
+	onboarding_header_sequence_token += 1
+	onboarding_header_sequence_running = false
+	onboarding_auto_run_sequence_running = false
+	onboarding_stamina_tip_sequence_running = false
+	_clear_onboarding_auto_run_message(true)
+	_fade_tip_group("onboarding_auto_run_tip_notes")
+
+
+func _apply_onboarding_fight_header_visibility() -> void:
+	if not _onboarding_fight_header_sequence_active():
+		if detail_header_left_block != null and is_instance_valid(detail_header_left_block):
+			detail_header_left_block.modulate = Color.WHITE
+		if detail_regen_circle != null and is_instance_valid(detail_regen_circle):
+			detail_regen_circle.modulate = Color.WHITE
+			detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
+		if detail_regen_circle_fade_group != null and is_instance_valid(detail_regen_circle_fade_group):
+			detail_regen_circle_fade_group.modulate = Color.WHITE
+		if detail_regen_circle_host != null and is_instance_valid(detail_regen_circle_host):
+			detail_regen_circle_host.modulate = Color.WHITE
+		return
+	var summary_visible := onboarding_fight_summary_revealed
+	var stamina_visible := onboarding_fight_stamina_revealed
+	if detail_header_left_block != null and is_instance_valid(detail_header_left_block):
+		detail_header_left_block.modulate = Color(1, 1, 1, 1.0 if summary_visible else 0.0)
+	var regen_fade_target := _detail_regen_circle_fade_target()
+	if regen_fade_target != null:
+		regen_fade_target.modulate = Color(1, 1, 1, 1.0 if stamina_visible else 0.0)
+	if detail_regen_circle != null and is_instance_valid(detail_regen_circle):
+		detail_regen_circle.modulate = Color.WHITE
+		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP if stamina_visible else Control.MOUSE_FILTER_IGNORE
+
+
+func _detail_regen_circle_fade_target() -> CanvasItem:
+	if detail_regen_circle_fade_group != null and is_instance_valid(detail_regen_circle_fade_group):
+		return detail_regen_circle_fade_group
+	return detail_regen_circle
+
+
+func _fade_onboarding_regen_circle_in(duration: float) -> void:
+	var fade_target := _detail_regen_circle_fade_target()
+	if fade_target == null:
+		return
+	if detail_regen_circle != null and is_instance_valid(detail_regen_circle):
+		detail_regen_circle.modulate = Color.WHITE
+	fade_target.modulate.a = 0.0
+	await _fade_onboarding_header_control(fade_target, 1.0, duration)
+
+
+func _fade_onboarding_header_control(control: CanvasItem, target_alpha: float, duration: float) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	var tween := create_tween()
+	tween.tween_property(control, "modulate:a", target_alpha, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await tween.finished
+
+
+func _clear_onboarding_auto_run_message(instant := false) -> void:
+	if onboarding_auto_run_message_root == null or not is_instance_valid(onboarding_auto_run_message_root):
+		onboarding_auto_run_message_root = null
+		return
+	var root := onboarding_auto_run_message_root
+	onboarding_auto_run_message_root = null
+	if instant:
+		root.queue_free()
+	else:
+		_fade_tip_control(root)
+
+
+func _resolve_detail_lazy_stack() -> VBoxContainer:
+	if detail_lazy_stack != null and is_instance_valid(detail_lazy_stack):
+		return detail_lazy_stack
+	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
+		return null
+	if detail_actions_scroll.get_child_count() <= 0:
+		return null
+	return detail_actions_scroll.get_child(0) as VBoxContainer
+
+
+func _wait_for_detail_lazy_stack(token: int, attempt := 0) -> void:
+	if _resolve_detail_lazy_stack() != null:
+		return
+	if attempt >= 45 or token != onboarding_header_sequence_token:
+		return
+	await get_tree().process_frame
+	await _wait_for_detail_lazy_stack(token, attempt + 1)
+
+
+func _show_onboarding_auto_run_message(token: int) -> void:
+	if token != onboarding_header_sequence_token:
+		return
+	_clear_onboarding_auto_run_message(true)
+	await _wait_for_detail_lazy_stack(token)
+	if token != onboarding_header_sequence_token:
+		return
+	var stack := _resolve_detail_lazy_stack()
+	if stack == null:
+		return
+	var content_width := _skill_content_width()
+	var actions_width := content_width
+	var note := _bottom_tutorial_tip_note(
+		content_width,
+		"Your action will continue to run automatically.",
+		"onboarding_auto_run_tip_notes"
+	)
+	_detail_eager_add_to_stack(stack, _detail_stack_entry(note, content_width, actions_width))
+	onboarding_auto_run_message_root = note
+	note.modulate = Color(1, 1, 1, 0)
+	await _fade_onboarding_header_control(note, 1.0, ACTIVITY_START_TIP_FADE_SECONDS)
+
+
+func _run_onboarding_auto_run_message_sequence() -> void:
+	if not _onboarding_fight_header_sequence_active() or onboarding_fight_auto_run_message_shown:
+		return
+	if onboarding_auto_run_sequence_running:
+		return
+	onboarding_auto_run_sequence_running = true
+	var token := onboarding_header_sequence_token
+	await _show_onboarding_auto_run_message(token)
+	if token != onboarding_header_sequence_token:
+		onboarding_auto_run_sequence_running = false
+		return
+	await get_tree().create_timer(ONBOARDING_AUTO_RUN_MESSAGE_LINGER_SECONDS).timeout
+	if token != onboarding_header_sequence_token:
+		onboarding_auto_run_sequence_running = false
+		return
+	_clear_onboarding_auto_run_message(false)
+	await get_tree().create_timer(ONBOARDING_HEADER_FADE_SECONDS).timeout
+	if token != onboarding_header_sequence_token:
+		onboarding_auto_run_sequence_running = false
+		return
+	onboarding_fight_auto_run_message_shown = true
+	save_game()
+	onboarding_auto_run_sequence_running = false
+
+
+func _run_onboarding_header_reveal_sequence() -> void:
+	if not _onboarding_fight_header_sequence_active() or onboarding_fight_stamina_revealed:
+		return
+	if onboarding_header_sequence_running:
+		return
+	onboarding_header_sequence_running = true
+	var token := onboarding_header_sequence_token
+	_apply_onboarding_fight_header_visibility()
+	if not onboarding_fight_summary_revealed:
+		if detail_header_left_block != null and is_instance_valid(detail_header_left_block):
+			detail_header_left_block.modulate.a = 0.0
+			await _fade_onboarding_header_control(detail_header_left_block, 1.0, ONBOARDING_SUMMARY_FADE_SECONDS)
+		if token != onboarding_header_sequence_token:
+			onboarding_header_sequence_running = false
+			return
+		onboarding_fight_summary_revealed = true
+		onboarding_header_reveal_after_progress = false
+		save_game()
+		_apply_onboarding_fight_header_visibility()
+	if not onboarding_fight_stamina_revealed:
+		await get_tree().create_timer(ONBOARDING_STAMINA_GAUGE_DELAY_BEFORE_FADE_SECONDS).timeout
+		if token != onboarding_header_sequence_token:
+			onboarding_header_sequence_running = false
+			return
+		if detail_header_body != null and is_instance_valid(detail_header_body):
+			if get_tree().get_nodes_in_group("stamina_cost_tip_notes").is_empty():
+				_add_stamina_cost_tip(detail_header_body, false)
+		if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
+			stamina_gauge_tip_root.modulate.a = 0.0
+		if detail_regen_circle != null and is_instance_valid(detail_regen_circle):
+			detail_regen_circle.modulate = Color.WHITE
+			detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
+		var gauge_fade := create_tween()
+		gauge_fade.set_parallel(true)
+		var regen_fade_target := _detail_regen_circle_fade_target()
+		if regen_fade_target != null:
+			regen_fade_target.modulate.a = 0.0
+			gauge_fade.tween_property(regen_fade_target, "modulate:a", 1.0, ONBOARDING_STAMINA_GAUGE_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
+			gauge_fade.tween_property(stamina_gauge_tip_root, "modulate:a", 1.0, ONBOARDING_STAMINA_GAUGE_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		await gauge_fade.finished
+		if token != onboarding_header_sequence_token:
+			onboarding_header_sequence_running = false
+			return
+		onboarding_fight_stamina_revealed = true
+		save_game()
+		_apply_onboarding_fight_header_visibility()
+		await _run_onboarding_stamina_tip_sequence(token, true)
+	onboarding_header_sequence_running = false
+	_apply_onboarding_fight_header_visibility()
+
+
+func _onboarding_fight_action_stats_should_hide() -> bool:
+	return (
+		_onboarding_fight_header_sequence_active()
+		and not onboarding_fight_action_stats_revealed
+	)
+
+
+func _detail_stack_index_for_action_id(action_id: String) -> int:
+	if action_id.is_empty():
+		return -1
+	var stack := _resolve_detail_lazy_stack()
+	if stack == null:
+		return -1
+	var host := detail_action_card_nodes.get(action_id) as Control
+	if host != null and is_instance_valid(host) and host.get_parent() == stack:
+		return host.get_index()
+	var key := _action_key(TUTORIAL_STARTER_SKILL_ID, action_id)
+	var card := action_cards.get(key) as Dictionary
+	if card != null:
+		var entry := card.get("entry") as Control
+		if entry != null and is_instance_valid(entry) and entry.get_parent() == stack:
+			return entry.get_index()
+	return -1
+
+
+func _card_for_action_id(skill_id: String, action_id: String) -> Dictionary:
+	if skill_id.is_empty() or action_id.is_empty():
+		return {}
+	var key := _action_key(skill_id, action_id)
+	if action_cards.has(key):
+		return action_cards[key] as Dictionary
+	return {}
+
+
+func _onboarding_detail_overlay_parent() -> Control:
+	return _activity_start_highlight_overlay_parent()
+
+
+func _create_onboarding_overlay_tip(text: String, group_name: String) -> Control:
+	var root := Control.new()
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.z_index = 270
+	root.z_as_relative = false
+	root.add_to_group(group_name)
+	var label := _label(text, ONBOARDING_OVERLAY_TIP_FONT_SIZE, Color("#4b3828"), HORIZONTAL_ALIGNMENT_CENTER)
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_color_override("font_outline_color", Color("#fff4ce"))
+	label.add_theme_constant_override("outline_size", 10)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var content_width := maxf(320.0, _skill_content_width() - ACTION_CARD_POP_GUTTER * 2.0)
+	label.custom_minimum_size = Vector2(content_width, 0.0)
+	label.size = label.get_minimum_size()
+	root.add_child(label)
+	root.custom_minimum_size = label.size
+	root.size = label.size
+	return root
+
+
+func _position_onboarding_overlay_tip_above_card(tip: Control, card_root: Control, gap_px: float) -> void:
+	if tip == null or card_root == null or not is_instance_valid(tip) or not is_instance_valid(card_root):
+		return
+	var overlay_parent := _onboarding_detail_overlay_parent()
+	if overlay_parent == null:
+		return
+	var card_rect := card_root.get_global_rect()
+	var parent_rect := overlay_parent.get_global_rect()
+	var tip_size := tip.size
+	if tip_size.y <= 1.0:
+		tip_size = tip.get_combined_minimum_size()
+	var x := card_rect.position.x - parent_rect.position.x + (card_rect.size.x - tip_size.x) * 0.5
+	var y := card_rect.position.y - parent_rect.position.y - tip_size.y - gap_px
+	tip.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	tip.position = Vector2(x, y)
+	tip.size = tip_size
+
+
+func _position_onboarding_overlay_tip_below_card(tip: Control, card_root: Control, gap_px: float) -> void:
+	if tip == null or card_root == null or not is_instance_valid(tip) or not is_instance_valid(card_root):
+		return
+	var overlay_parent := _onboarding_detail_overlay_parent()
+	if overlay_parent == null:
+		return
+	var card_rect := card_root.get_global_rect()
+	var parent_rect := overlay_parent.get_global_rect()
+	var tip_size := tip.size
+	if tip_size.y <= 1.0:
+		tip_size = tip.get_combined_minimum_size()
+	var x := card_rect.position.x - parent_rect.position.x + (card_rect.size.x - tip_size.x) * 0.5
+	var y := card_rect.position.y - parent_rect.position.y + card_rect.size.y + gap_px
+	tip.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	tip.position = Vector2(x, y)
+	tip.size = tip_size
+
+
+func _remove_onboarding_stack_mastery_tip_legacy() -> void:
+	for node in get_tree().get_nodes_in_group("onboarding_mastery_tip_notes"):
+		var tip := node as Control
+		if tip != null and is_instance_valid(tip) and tip.get_parent() is VBoxContainer:
+			tip.queue_free()
+	if onboarding_mastery_tip_root != null and is_instance_valid(onboarding_mastery_tip_root):
+		if onboarding_mastery_tip_root.get_parent() is VBoxContainer:
+			onboarding_mastery_tip_root.queue_free()
+			onboarding_mastery_tip_root = null
+
+
+func _remove_onboarding_mastery_tip() -> void:
+	_remove_onboarding_stack_mastery_tip_legacy()
+	if onboarding_mastery_tip_root != null and is_instance_valid(onboarding_mastery_tip_root):
+		onboarding_mastery_tip_root.queue_free()
+	onboarding_mastery_tip_root = null
+
+
+func _remove_onboarding_medal_tip() -> void:
+	if onboarding_medal_tip_root != null and is_instance_valid(onboarding_medal_tip_root):
+		onboarding_medal_tip_root.queue_free()
+	onboarding_medal_tip_root = null
+
+
+func _remove_onboarding_swipe_overlay_tip() -> void:
+	if onboarding_swipe_overlay_tip_root != null and is_instance_valid(onboarding_swipe_overlay_tip_root):
+		onboarding_swipe_overlay_tip_root.queue_free()
+	onboarding_swipe_overlay_tip_root = null
+
+
+func _remove_onboarding_level_up_tip() -> void:
+	if onboarding_level_up_tip_root != null and is_instance_valid(onboarding_level_up_tip_root):
+		onboarding_level_up_tip_root.queue_free()
+	onboarding_level_up_tip_root = null
+
+
+func _ensure_onboarding_mastery_tip_note() -> Control:
+	if onboarding_mastery_tip_dismissed:
+		return null
+	_remove_onboarding_stack_mastery_tip_legacy()
+	if onboarding_mastery_tip_root != null and is_instance_valid(onboarding_mastery_tip_root):
+		return onboarding_mastery_tip_root
+	for node in get_tree().get_nodes_in_group("onboarding_mastery_tip_notes"):
+		var existing := node as Control
+		if existing != null and is_instance_valid(existing) and not existing.get_parent() is VBoxContainer:
+			onboarding_mastery_tip_root = existing
+			return existing
+	var starter_card := _card_for_action_id(TUTORIAL_STARTER_SKILL_ID, TUTORIAL_STARTER_ACTION_ID)
+	var card_root := starter_card.get("root") as Control if not starter_card.is_empty() else null
+	var overlay_parent := _onboarding_detail_overlay_parent()
+	if card_root == null or overlay_parent == null:
+		return null
+	_begin_activity_start_highlight_frame_clip_override()
+	var note := _create_onboarding_overlay_tip(
+		"Gain mastery by completing actions.",
+		"onboarding_mastery_tip_notes"
+	)
+	note.modulate.a = 0.0
+	overlay_parent.add_child(note)
+	_position_onboarding_overlay_tip_above_card(note, card_root, ONBOARDING_MASTERY_OVERLAY_TIP_GAP)
+	onboarding_mastery_tip_root = note
+	return note
+
+
+func _ensure_onboarding_medal_tip_note() -> Control:
+	if onboarding_medal_tip_shown and onboarding_medal_tip_root == null:
+		return null
+	if onboarding_medal_tip_root != null and is_instance_valid(onboarding_medal_tip_root):
+		return onboarding_medal_tip_root
+	for node in get_tree().get_nodes_in_group("onboarding_medal_tip_notes"):
+		var existing := node as Control
+		if existing != null and is_instance_valid(existing):
+			onboarding_medal_tip_root = existing
+			return existing
+	var starter_card := _card_for_action_id(TUTORIAL_STARTER_SKILL_ID, TUTORIAL_STARTER_ACTION_ID)
+	var card_root := starter_card.get("root") as Control if not starter_card.is_empty() else null
+	var overlay_parent := _onboarding_detail_overlay_parent()
+	if card_root == null or overlay_parent == null:
+		return null
+	_begin_activity_start_highlight_frame_clip_override()
+	var note := _create_onboarding_overlay_tip(
+		"Medals improve your activity stats.",
+		"onboarding_medal_tip_notes"
+	)
+	note.modulate.a = 0.0
+	overlay_parent.add_child(note)
+	_position_onboarding_overlay_tip_above_card(note, card_root, ONBOARDING_MASTERY_OVERLAY_TIP_GAP)
+	onboarding_medal_tip_root = note
+	return note
+
+
+func _ensure_onboarding_level_up_tip(card: Dictionary) -> Control:
+	if onboarding_level_up_tip_root != null and is_instance_valid(onboarding_level_up_tip_root):
+		return onboarding_level_up_tip_root
+	var card_root := card.get("root") as Control
+	var overlay_parent := _onboarding_detail_overlay_parent()
+	if card_root == null or overlay_parent == null:
+		return null
+	_begin_activity_start_highlight_frame_clip_override()
+	var note := _create_onboarding_overlay_tip(
+		"Level up to reach harder activities.",
+		"onboarding_level_up_tip_notes"
+	)
+	note.modulate.a = 0.0
+	overlay_parent.add_child(note)
+	_position_onboarding_overlay_tip_below_card(note, card_root, ONBOARDING_LEVEL_UP_OVERLAY_TIP_GAP)
+	onboarding_level_up_tip_root = note
+	return note
+
+
+func _sync_onboarding_mastery_tip_position() -> void:
+	if onboarding_mastery_tip_root == null or not is_instance_valid(onboarding_mastery_tip_root):
+		return
+	var starter_card := _card_for_action_id(TUTORIAL_STARTER_SKILL_ID, TUTORIAL_STARTER_ACTION_ID)
+	var card_root := starter_card.get("root") as Control if not starter_card.is_empty() else null
+	if card_root == null:
+		return
+	_position_onboarding_overlay_tip_above_card(
+		onboarding_mastery_tip_root,
+		card_root,
+		ONBOARDING_MASTERY_OVERLAY_TIP_GAP
+	)
+
+
+func _sync_onboarding_medal_tip_position() -> void:
+	if onboarding_medal_tip_root == null or not is_instance_valid(onboarding_medal_tip_root):
+		return
+	var starter_card := _card_for_action_id(TUTORIAL_STARTER_SKILL_ID, TUTORIAL_STARTER_ACTION_ID)
+	var card_root := starter_card.get("root") as Control if not starter_card.is_empty() else null
+	if card_root == null:
+		return
+	_position_onboarding_overlay_tip_above_card(
+		onboarding_medal_tip_root,
+		card_root,
+		ONBOARDING_MASTERY_OVERLAY_TIP_GAP
+	)
+
+
+func _sync_onboarding_level_up_tip_position(card: Dictionary) -> void:
+	if onboarding_level_up_tip_root == null or not is_instance_valid(onboarding_level_up_tip_root):
+		return
+	var card_root := card.get("root") as Control
+	if card_root == null or not is_instance_valid(card_root):
+		return
+	_position_onboarding_overlay_tip_below_card(
+		onboarding_level_up_tip_root,
+		card_root,
+		ONBOARDING_LEVEL_UP_OVERLAY_TIP_GAP
+	)
+
+
+func _sync_onboarding_overlay_tips() -> void:
+	if selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
+		_remove_onboarding_level_up_tip()
+		return
+	if onboarding_mastery_tip_root != null and is_instance_valid(onboarding_mastery_tip_root) and not onboarding_mastery_tip_dismissed:
+		_sync_onboarding_mastery_tip_position()
+	if onboarding_medal_tip_root != null and is_instance_valid(onboarding_medal_tip_root):
+		_sync_onboarding_medal_tip_position()
+	if onboarding_level_up_tip_root != null and is_instance_valid(onboarding_level_up_tip_root):
+		var locked_id := _first_locked_action_id(TUTORIAL_STARTER_SKILL_ID)
+		var locked_card := _card_for_action_id(TUTORIAL_STARTER_SKILL_ID, locked_id)
+		if not locked_card.is_empty():
+			_sync_onboarding_level_up_tip_position(locked_card)
+
+
+func _resync_onboarding_skill_detail_after_navigation() -> void:
+	if current_screen != "skill" or not _onboarding_path_active():
+		return
+	await get_tree().process_frame
+	if current_screen != "skill" or not _onboarding_path_active():
+		return
+	for raw_card in action_cards.values():
+		var card := raw_card as Dictionary
+		if card == null or str(card.get("skill_id", selected_skill_id)) != selected_skill_id:
+			continue
+		var action := card.get("action", {}) as Dictionary
+		if action.is_empty():
+			continue
+		card.erase("lock_overlay_sync_key")
+		_sync_activity_lock_overlay(card, action, _is_action_unlocked(selected_skill_id, action))
+		_apply_onboarding_fight_action_card_stats_visibility(card, selected_skill_id)
+	_apply_onboarding_fight_header_visibility()
+	_apply_onboarding_fight_action_stats_visibility_all()
+	_sync_skill_detail_back_arrow_visibility()
+	if _onboarding_auto_run_message_resumable():
+		call_deferred("_run_onboarding_auto_run_message_sequence")
+	elif _onboarding_header_reveal_sequence_resumable():
+		call_deferred("_run_onboarding_header_reveal_sequence")
+	elif onboarding_fight_stamina_revealed and not stamina_gauge_tip_seen and _onboarding_fight_header_sequence_active():
+		call_deferred("_run_onboarding_stamina_tip_sequence")
+	elif _onboarding_swipe_tip_sequence_resumable():
+		call_deferred("_run_onboarding_swipe_tip_sequence")
+	elif selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
+		call_deferred("_maybe_show_onboarding_explore_tip")
+	if _skill_detail_shows_tutorial_tips():
+		_show_lock_click_tip_note_if_needed()
+	_sync_onboarding_overlay_tips()
+
+
+func _fade_out_onboarding_mastery_tip(duration: float) -> void:
+	if onboarding_mastery_tip_dismissed:
+		return
+	onboarding_mastery_tip_dismissed = true
+	var tip := onboarding_mastery_tip_root
+	if tip == null or not is_instance_valid(tip):
+		onboarding_mastery_tip_root = null
+		return
+	var tween := create_tween()
+	tween.tween_property(tip, "modulate:a", 0.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		if tip != null and is_instance_valid(tip):
+			tip.queue_free()
+		onboarding_mastery_tip_root = null
+	)
+
+
+func _fade_out_onboarding_medal_tip(duration: float) -> void:
+	if not onboarding_medal_tip_shown and onboarding_medal_tip_root == null:
+		return
+	onboarding_medal_tip_shown = true
+	var tip := onboarding_medal_tip_root
+	if tip == null or not is_instance_valid(tip):
+		onboarding_medal_tip_root = null
+		return
+	var tween := create_tween()
+	tween.tween_property(tip, "modulate:a", 0.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		if tip != null and is_instance_valid(tip):
+			tip.queue_free()
+		onboarding_medal_tip_root = null
+	)
+
+
+func _fade_out_onboarding_level_up_tip(duration: float = ACTIVITY_PREVIEW_FADE_IN_SECONDS) -> void:
+	var tip := onboarding_level_up_tip_root
+	if tip == null or not is_instance_valid(tip):
+		onboarding_level_up_tip_root = null
+		return
+	onboarding_level_up_tip_root = null
+	var tween := create_tween()
+	tween.tween_property(tip, "modulate:a", 0.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		if tip != null and is_instance_valid(tip):
+			tip.queue_free()
+	)
+
+
+func _fade_out_onboarding_swipe_overlay_tip(duration: float = ONBOARDING_BOTTOM_TIP_FADE_SECONDS) -> void:
+	var tip := onboarding_swipe_overlay_tip_root
+	if tip == null or not is_instance_valid(tip):
+		onboarding_swipe_overlay_tip_root = null
+		return
+	var tween := create_tween()
+	tween.tween_property(tip, "modulate:a", 0.0, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		if tip != null and is_instance_valid(tip):
+			tip.queue_free()
+		onboarding_swipe_overlay_tip_root = null
+	)
+
+
+func _maybe_show_onboarding_medal_tip(old_level: int, new_level: int, skill_id: String, action_id: String) -> void:
+	if onboarding_medal_tip_shown:
+		return
+	if not _onboarding_path_active():
+		return
+	if skill_id != TUTORIAL_STARTER_SKILL_ID or action_id != TUTORIAL_STARTER_ACTION_ID:
+		return
+	if old_level >= 1 or new_level < 1:
+		return
+	call_deferred("_run_onboarding_medal_tip_sequence")
+
+
+func _run_onboarding_medal_tip_sequence() -> void:
+	if onboarding_medal_tip_shown:
+		return
+	if not _onboarding_path_active():
+		return
+	if selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
+		return
+	if (
+		onboarding_mastery_tip_root != null
+		and is_instance_valid(onboarding_mastery_tip_root)
+		and not onboarding_mastery_tip_dismissed
+	):
+		_fade_out_onboarding_mastery_tip(0.45)
+		await get_tree().create_timer(0.22).timeout
+	var note := _ensure_onboarding_medal_tip_note()
+	if note != null and is_instance_valid(note):
+		var tween := create_tween()
+		tween.tween_property(note, "modulate:a", 1.0, ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		await tween.finished
+		onboarding_medal_tip_shown = true
+		save_game()
+		await get_tree().create_timer(ONBOARDING_MEDAL_TIP_LINGER_SECONDS).timeout
+		if onboarding_medal_tip_root != null and is_instance_valid(onboarding_medal_tip_root):
+			_fade_out_onboarding_medal_tip(ONBOARDING_BOTTOM_TIP_FADE_SECONDS)
+
+
+func _onboarding_fight_action_stats_targets() -> Array[Control]:
+	var targets: Array[Control] = []
+	for raw_key in action_card_keys:
+		var key := str(raw_key)
+		if not action_cards.has(key):
+			continue
+		var card: Dictionary = action_cards[key]
+		if str(card.get("skill_id", "")) != TUTORIAL_STARTER_SKILL_ID:
+			continue
+		var stat_row := card.get("stat_row") as Control
+		if stat_row != null and is_instance_valid(stat_row):
+			targets.append(stat_row)
+		var mastery := card.get("mastery") as Control
+		if mastery != null and is_instance_valid(mastery) and mastery.visible:
+			targets.append(mastery)
+	return targets
+
+
+func _apply_onboarding_fight_action_card_stats_visibility(card: Dictionary, skill_id: String = "") -> void:
+	if skill_id.is_empty():
+		skill_id = str(card.get("skill_id", ""))
+	if skill_id != TUTORIAL_STARTER_SKILL_ID:
+		return
+	var hide := _onboarding_fight_action_stats_should_hide()
+	var alpha := 0.0 if hide else 1.0
+	var stat_row := card.get("stat_row") as Control
+	if stat_row != null and is_instance_valid(stat_row):
+		stat_row.modulate = Color(1, 1, 1, alpha)
+	var mastery := card.get("mastery") as Control
+	if mastery != null and is_instance_valid(mastery):
+		mastery.modulate = Color(1, 1, 1, alpha)
+
+
+func _apply_onboarding_fight_action_stats_visibility_all() -> void:
+	if onboarding_fight_action_stats_fade_running:
+		return
+	if not _onboarding_path_active():
+		for raw_key in action_card_keys:
+			var key := str(raw_key)
+			if not action_cards.has(key):
+				continue
+			var card: Dictionary = action_cards[key]
+			if str(card.get("skill_id", "")) != TUTORIAL_STARTER_SKILL_ID:
+				continue
+			var stat_row := card.get("stat_row") as Control
+			if stat_row != null and is_instance_valid(stat_row):
+				stat_row.modulate = Color.WHITE
+			var mastery := card.get("mastery") as Control
+			if mastery != null and is_instance_valid(mastery):
+				mastery.modulate = Color.WHITE
+		_remove_onboarding_mastery_tip()
+		_remove_onboarding_medal_tip()
+		_remove_onboarding_swipe_overlay_tip()
+		_remove_onboarding_level_up_tip()
+		return
+	if not _onboarding_fight_header_sequence_active() and not onboarding_fight_action_stats_revealed:
+		return
+	for raw_key in action_card_keys:
+		var key := str(raw_key)
+		if not action_cards.has(key):
+			continue
+		var card: Dictionary = action_cards[key]
+		if str(card.get("skill_id", "")) != TUTORIAL_STARTER_SKILL_ID:
+			continue
+		_apply_onboarding_fight_action_card_stats_visibility(card, TUTORIAL_STARTER_SKILL_ID)
+	if onboarding_mastery_tip_root != null and is_instance_valid(onboarding_mastery_tip_root) and not onboarding_mastery_tip_dismissed:
+		var mastery_alpha := 0.0 if _onboarding_fight_action_stats_should_hide() else 1.0
+		if onboarding_fight_action_stats_revealed:
+			mastery_alpha = 1.0
+		onboarding_mastery_tip_root.modulate = Color(1, 1, 1, mastery_alpha)
+
+
+func _fade_onboarding_fight_action_stats_in(token: int) -> void:
+	if onboarding_fight_action_stats_revealed or onboarding_fight_action_stats_fade_running:
+		return
+	var mastery_tip := _ensure_onboarding_mastery_tip_note()
+	var targets := _onboarding_fight_action_stats_targets()
+	if targets.is_empty() and mastery_tip == null:
+		onboarding_fight_action_stats_revealed = true
+		save_game()
+		return
+	for target in targets:
+		target.modulate.a = 0.0
+	if mastery_tip != null and is_instance_valid(mastery_tip):
+		mastery_tip.modulate.a = 0.0
+		_sync_onboarding_mastery_tip_position()
+	onboarding_fight_action_stats_fade_running = true
+	var tween := create_tween()
+	tween.set_parallel(true)
+	for target in targets:
+		tween.tween_property(target, "modulate:a", 1.0, ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if mastery_tip != null and is_instance_valid(mastery_tip):
+		tween.tween_property(mastery_tip, "modulate:a", 1.0, ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await tween.finished
+	onboarding_fight_action_stats_fade_running = false
+	if token != onboarding_header_sequence_token:
+		return
+	onboarding_fight_action_stats_revealed = true
+	save_game()
+	call_deferred("_maybe_trigger_onboarding_swipe_tip_at_zero_stamina", TUTORIAL_STARTER_SKILL_ID)
+
+
+func _run_onboarding_stamina_tip_sequence(token: int = -1, skip_fade_in := false) -> void:
+	if not _onboarding_fight_header_sequence_active() or stamina_gauge_tip_seen:
+		return
+	if onboarding_stamina_tip_sequence_running:
+		return
+	onboarding_stamina_tip_sequence_running = true
+	if token < 0:
+		token = onboarding_header_sequence_token
+	if detail_header_body == null or not is_instance_valid(detail_header_body):
+		onboarding_stamina_tip_sequence_running = false
+		return
+	if not skip_fade_in:
+		if get_tree().get_nodes_in_group("stamina_cost_tip_notes").is_empty():
+			_add_stamina_cost_tip(detail_header_body, false)
+			if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
+				stamina_gauge_tip_root.modulate.a = 0.0
+				await _fade_onboarding_header_control(stamina_gauge_tip_root, 1.0, ONBOARDING_STAMINA_GAUGE_FADE_SECONDS)
+		else:
+			if stamina_gauge_tip_root == null or not is_instance_valid(stamina_gauge_tip_root):
+				for node in get_tree().get_nodes_in_group("stamina_cost_tip_notes"):
+					stamina_gauge_tip_root = node as Control
+					break
+	elif stamina_gauge_tip_root == null or not is_instance_valid(stamina_gauge_tip_root):
+		for node in get_tree().get_nodes_in_group("stamina_cost_tip_notes"):
+			stamina_gauge_tip_root = node as Control
+			break
+	if token != onboarding_header_sequence_token:
+		onboarding_stamina_tip_sequence_running = false
+		return
+	await get_tree().create_timer(ONBOARDING_STAMINA_TIP_LINGER_SECONDS).timeout
+	if token != onboarding_header_sequence_token:
+		onboarding_stamina_tip_sequence_running = false
+		return
+	if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
+		await _fade_onboarding_header_control(stamina_gauge_tip_root, 0.0, TUTORIAL_TIP_FADE_OUT_SECONDS)
+		stamina_gauge_tip_root.queue_free()
+		stamina_gauge_tip_root = null
+	else:
+		_fade_tip_group("stamina_cost_tip_notes")
+	if token != onboarding_header_sequence_token:
+		onboarding_stamina_tip_sequence_running = false
+		return
+	_mark_stamina_gauge_tip_seen()
+	await _fade_onboarding_fight_action_stats_in(token)
+	onboarding_stamina_tip_sequence_running = false
+
+
+func _show_stamina_cost_tip(fade_in := false) -> void:
+	if stamina_gauge_tip_seen or not _skill_detail_shows_tutorial_tips():
+		return
+	if detail_header_body == null or not is_instance_valid(detail_header_body):
+		return
+	if not get_tree().get_nodes_in_group("stamina_cost_tip_notes").is_empty():
+		return
+	_add_stamina_cost_tip(detail_header_body, fade_in)
+
+
+func _activity_start_tutorial_active() -> bool:
+	return (
+		current_screen == "skill"
+		and _skill_detail_shows_tutorial_tips()
+		and not activity_start_tip_seen
+		and selected_skill_id == TUTORIAL_STARTER_SKILL_ID
+	)
+
+
+func _tutorial_starter_action_key() -> String:
+	return _action_key(TUTORIAL_STARTER_SKILL_ID, TUTORIAL_STARTER_ACTION_ID)
+
+
 func _activity_start_tip_note(content_width: float) -> Control:
 	return _bottom_tutorial_tip_note(
 		content_width,
 		"Click an activity to start doing it.",
 		"activity_start_tip_notes"
 	)
+
+
+func _fade_in_activity_start_tip_note(note: Control) -> void:
+	if note == null or not is_instance_valid(note):
+		return
+	note.modulate = Color(1, 1, 1, 0)
+	var tween := create_tween()
+	tween.tween_property(note, "modulate:a", 1.0, ACTIVITY_START_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _schedule_activity_start_highlight_if_needed(skill_id: String, action_id: String) -> void:
+	if skill_id != TUTORIAL_STARTER_SKILL_ID or action_id != TUTORIAL_STARTER_ACTION_ID:
+		return
+	if not _activity_start_tutorial_active():
+		return
+	if activity_start_highlight_pending or activity_start_highlight_active:
+		return
+	call_deferred("_schedule_activity_start_highlight")
+
+
+func _schedule_activity_start_highlight() -> void:
+	if not _activity_start_tutorial_active():
+		return
+	activity_start_highlight_token += 1
+	activity_start_highlight_pending = true
+	var token := activity_start_highlight_token
+	_run_activity_start_highlight_schedule(token)
+
+
+func _run_activity_start_highlight_schedule(token: int) -> void:
+	await get_tree().create_timer(ACTIVITY_START_HIGHLIGHT_DELAY_SECONDS).timeout
+	if token != activity_start_highlight_token:
+		return
+	if not activity_start_highlight_pending or not _activity_start_tutorial_active():
+		activity_start_highlight_pending = false
+		return
+	activity_start_highlight_pending = false
+	_begin_activity_start_highlight_fade_in(token, 0)
+
+
+func _begin_activity_start_highlight_fade_in(token: int, attempt: int) -> void:
+	if token != activity_start_highlight_token or not _activity_start_tutorial_active():
+		return
+	var key := _tutorial_starter_action_key()
+	if not action_cards.has(key):
+		if attempt >= 90:
+			return
+		await get_tree().process_frame
+		_begin_activity_start_highlight_fade_in(token, attempt + 1)
+		return
+	var card := action_cards[key] as Dictionary
+	_attach_activity_start_highlight_border(card)
+	activity_start_highlight_active = true
+	activity_start_highlight_card_key = key
+	var border := activity_start_highlight_border
+	if border == null or not is_instance_valid(border):
+		return
+	border.set_glow_alpha(0.0)
+	if activity_start_highlight_fade_tween != null:
+		activity_start_highlight_fade_tween.kill()
+	activity_start_highlight_fade_tween = create_tween()
+	activity_start_highlight_fade_tween.tween_method(
+		border.set_glow_alpha,
+		0.0,
+		1.0,
+		ACTIVITY_START_HIGHLIGHT_FADE_IN_SECONDS
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _activity_start_highlight_glow_extent() -> float:
+	return ACTIVITY_START_HIGHLIGHT_GAP + ACTIVITY_START_HIGHLIGHT_RING_THICKNESS + ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD + 8.0
+
+
+func _activity_start_highlight_overlay_parent() -> Control:
+	if skill_swipe_frame != null and is_instance_valid(skill_swipe_frame):
+		return skill_swipe_frame
+	if skill_swipe_page != null and is_instance_valid(skill_swipe_page):
+		return skill_swipe_page
+	return null
+
+
+func _begin_activity_start_highlight_frame_clip_override() -> void:
+	var frame := skill_swipe_frame
+	if frame == null or not is_instance_valid(frame) or activity_start_highlight_frame_clip_override_active:
+		return
+	activity_start_highlight_frame_clip_saved = frame.clip_contents
+	frame.clip_contents = false
+	activity_start_highlight_frame_clip_override_active = true
+
+
+func _restore_activity_start_highlight_frame_clip() -> void:
+	if not activity_start_highlight_frame_clip_override_active:
+		return
+	var frame := skill_swipe_frame
+	if frame != null and is_instance_valid(frame):
+		frame.clip_contents = activity_start_highlight_frame_clip_saved
+	activity_start_highlight_frame_clip_override_active = false
+
+
+func _position_activity_start_highlight_border(
+	highlight: ActivityStartHighlightRing,
+	card_root: Control,
+	overlay_parent: Control
+) -> void:
+	var glow_extent := _activity_start_highlight_glow_extent()
+	var card_rect := card_root.get_global_rect()
+	var parent_rect := overlay_parent.get_global_rect()
+	highlight.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	highlight.position = card_rect.position - parent_rect.position - Vector2(glow_extent, glow_extent)
+	highlight.size = card_rect.size + Vector2(glow_extent * 2.0, glow_extent * 2.0)
+	highlight.outer_pad = glow_extent
+	highlight.queue_redraw()
+
+
+func _sync_activity_start_highlight_position() -> void:
+	if not activity_start_highlight_active:
+		return
+	if activity_start_highlight_border == null or not is_instance_valid(activity_start_highlight_border):
+		return
+	if activity_start_highlight_card_key.is_empty() or not action_cards.has(activity_start_highlight_card_key):
+		return
+	var card := action_cards[activity_start_highlight_card_key] as Dictionary
+	var card_root := card.get("root") as Control
+	var overlay_parent := activity_start_highlight_border.get_parent() as Control
+	if card_root == null or not is_instance_valid(card_root) or overlay_parent == null:
+		return
+	_position_activity_start_highlight_border(
+		activity_start_highlight_border as ActivityStartHighlightRing,
+		card_root,
+		overlay_parent
+	)
+
+
+func _attach_activity_start_highlight_border(card: Dictionary) -> void:
+	_remove_activity_start_highlight_border_node()
+	var card_root := card.get("root") as Control
+	if card_root == null or not is_instance_valid(card_root):
+		return
+	var overlay_parent := _activity_start_highlight_overlay_parent()
+	if overlay_parent == null:
+		return
+	_begin_activity_start_highlight_frame_clip_override()
+	var glow_extent := _activity_start_highlight_glow_extent()
+	var highlight := ActivityStartHighlightRing.new()
+	highlight.name = "ActivityStartHighlightBorder"
+	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	highlight.z_index = 280
+	highlight.z_as_relative = false
+	highlight.glow_color = ACTIVITY_START_HIGHLIGHT_BORDER_COLOR
+	highlight.corner_radius = 66.0
+	highlight.gap = ACTIVITY_START_HIGHLIGHT_GAP
+	highlight.ring_thickness = ACTIVITY_START_HIGHLIGHT_RING_THICKNESS
+	highlight.blur_spread = ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD
+	highlight.blur_layers = ACTIVITY_START_HIGHLIGHT_BLUR_LAYERS
+	highlight.set_glow_alpha(0.0)
+	overlay_parent.add_child(highlight)
+	_position_activity_start_highlight_border(highlight, card_root, overlay_parent)
+	activity_start_highlight_border = highlight
+
+
+func _remove_activity_start_highlight_border_node() -> void:
+	if activity_start_highlight_border != null and is_instance_valid(activity_start_highlight_border):
+		activity_start_highlight_border.queue_free()
+	activity_start_highlight_border = null
+	activity_start_highlight_card_key = ""
+	_restore_activity_start_highlight_frame_clip()
+
+
+func _fade_out_activity_start_highlight() -> void:
+	if activity_start_highlight_border == null or not is_instance_valid(activity_start_highlight_border):
+		_remove_activity_start_highlight_border_node()
+		activity_start_highlight_active = false
+		activity_start_highlight_pending = false
+		return
+	activity_start_highlight_active = false
+	activity_start_highlight_pending = false
+	var border := activity_start_highlight_border
+	activity_start_highlight_border = null
+	activity_start_highlight_card_key = ""
+	if activity_start_highlight_fade_tween != null:
+		activity_start_highlight_fade_tween.kill()
+	activity_start_highlight_fade_tween = create_tween()
+	activity_start_highlight_fade_tween.tween_method(
+		border.set_glow_alpha,
+		border.modulate.a,
+		0.0,
+		ACTIVITY_START_HIGHLIGHT_FADE_OUT_SECONDS
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	activity_start_highlight_fade_tween.tween_callback(func():
+		border.queue_free()
+		_restore_activity_start_highlight_frame_clip()
+	)
+
+
+func _dismiss_activity_start_highlight(instant := false) -> void:
+	activity_start_highlight_token += 1
+	activity_start_highlight_pending = false
+	activity_start_highlight_active = false
+	if activity_start_highlight_fade_tween != null:
+		activity_start_highlight_fade_tween.kill()
+	activity_start_highlight_fade_tween = null
+	if activity_start_highlight_border == null or not is_instance_valid(activity_start_highlight_border):
+		activity_start_highlight_border = null
+		activity_start_highlight_card_key = ""
+		return
+	if instant:
+		_remove_activity_start_highlight_border_node()
+	else:
+		_fade_out_activity_start_highlight()
+
+
+func _on_activity_start_tutorial_card_tapped(skill_id: String, action_id: String) -> void:
+	if activity_start_tip_seen:
+		return
+	if skill_id != TUTORIAL_STARTER_SKILL_ID or action_id != TUTORIAL_STARTER_ACTION_ID:
+		return
+	if activity_start_highlight_pending:
+		activity_start_highlight_pending = false
+		activity_start_highlight_token += 1
+		return
+	if activity_start_highlight_active:
+		_fade_out_activity_start_highlight()
 
 
 func _skill_swipe_tip_note(content_width: float) -> Control:
@@ -19919,6 +22607,14 @@ func _skill_swipe_tip_note(content_width: float) -> Control:
 		"skill_swipe_tip_notes"
 	)
 	return note
+
+
+func _onboarding_explore_tip_note(content_width: float) -> Control:
+	return _bottom_tutorial_tip_note(
+		content_width,
+		"Other skills have unique rules and content to explore.\nHave fun!",
+		"onboarding_explore_tip_notes"
+	)
 
 
 func _lock_click_tip_note(content_width: float) -> Control:
@@ -19957,25 +22653,42 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 	return root
 
 
-func _add_stamina_gauge_tip(parent: Control, fade_in := false) -> void:
+func _stamina_gauge_tip_label_position() -> Vector2:
+	if (
+		detail_regen_circle != null
+		and is_instance_valid(detail_regen_circle)
+		and detail_header_body != null
+		and is_instance_valid(detail_header_body)
+	):
+		var circle_rect := detail_regen_circle.get_global_rect()
+		var body_rect := detail_header_body.get_global_rect()
+		var label_width := ONBOARDING_STAMINA_TIP_LABEL_WIDTH
+		var gap := 16.0
+		var local_x := circle_rect.position.x - body_rect.position.x - label_width - gap
+		var local_y := circle_rect.position.y - body_rect.position.y - 52.0
+		return Vector2(local_x, local_y)
+	return Vector2(620, 520)
+
+
+func _add_stamina_cost_tip(parent: Control, fade_in := false) -> void:
 	stamina_gauge_tip_root = null
 	if not _skill_detail_shows_tutorial_tips():
-		return
-	if not _stamina_gauge_tip_available():
 		return
 	var root := Control.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.z_index = 64
+	root.add_to_group("stamina_cost_tip_notes")
 	parent.add_child(root)
 	stamina_gauge_tip_root = root
 
-	var label := _label("Hold the stamina gauge\nto speed up regen.", 44, Color("#4b3828"), HORIZONTAL_ALIGNMENT_CENTER)
-	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.position = Vector2(970, 573)
-	label.size = Vector2(500, 104)
+	var label := _label("This is your\nfight stamina.", ONBOARDING_STAMINA_TIP_FONT_SIZE, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.position = _stamina_gauge_tip_label_position()
+	label.size = Vector2(ONBOARDING_STAMINA_TIP_LABEL_WIDTH, 120)
+	label.add_theme_constant_override("line_spacing", -4)
 	label.add_theme_color_override("font_outline_color", Color("#fff4ce"))
-	label.add_theme_constant_override("outline_size", 10)
+	label.add_theme_constant_override("outline_size", 12)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.z_index = 2
 	root.add_child(label)
@@ -19994,9 +22707,9 @@ func _fade_tip_control(control: Control, preserve_layout := false, collapse_layo
 	var tween := create_tween()
 	if collapse_layout:
 		tween.set_parallel(true)
-	tween.tween_property(control, "modulate:a", 0.0, TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(control, "modulate:a", 0.0, TUTORIAL_TIP_FADE_OUT_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if collapse_layout:
-		tween.tween_property(control, "custom_minimum_size:y", 0.0, TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		tween.tween_property(control, "custom_minimum_size:y", 0.0, TUTORIAL_TIP_FADE_OUT_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		tween.set_parallel(false)
 	if not preserve_layout:
 		tween.tween_callback(control.queue_free)
@@ -21166,6 +23879,33 @@ func _connect_activity_lock_handler(overlay: Dictionary, skill_id: String, actio
 	group.padlock_clicked.connect(_on_activity_lock_clicked.bind(skill_id, action_id, group))
 
 
+func _resolve_activity_unlock_card(skill_id: String, action_id: String) -> Dictionary:
+	if skill_id.is_empty() or action_id.is_empty():
+		return {}
+	_ensure_detail_lazy_entry_mounted(action_id)
+	var key := _action_key(skill_id, action_id)
+	if action_cards.has(key):
+		var card := action_cards[key] as Dictionary
+		if card != null and not card.is_empty():
+			return card
+	var preview_card := _activity_preview_card_for_action_id(action_id)
+	if preview_card.is_empty():
+		return {}
+	if str(preview_card.get("skill_id", selected_skill_id)) != skill_id:
+		return {}
+	return preview_card
+
+
+func _stage_unlock_preview_after_lock_click(preview_id: String) -> void:
+	if current_screen != "skill" or preview_id.is_empty():
+		return
+	if _lock_click_tip_remaining_collapse_seconds() > 0.0:
+		_stage_next_locked_activity_preview_after_tip_collapse(preview_id)
+		return
+	if _stage_next_locked_activity_preview(false):
+		_fade_staged_next_locked_activity_preview(preview_id)
+
+
 func _on_activity_lock_clicked(skill_id: String, action_id: String, group: ActivityLockRig) -> void:
 	var action := _action_data(skill_id, action_id)
 	if action.is_empty() or _is_action_unlocked(skill_id, action):
@@ -21177,24 +23917,30 @@ func _on_activity_lock_clicked(skill_id: String, action_id: String, group: Activ
 		group.consume_unlock_click()
 	activity_unlock_detail_refresh_done = false
 	activity_unlock_center_scroll_target = -1
+	var card := _resolve_activity_unlock_card(skill_id, action_id)
+	var ceremony_started := false
+	if not card.is_empty() and not bool(card.get("unlock_ceremony_active", false)):
+		card["unlock_ceremony_pending"] = true
+		card["unlock_ceremony_finalized"] = false
+		card.erase("lock_overlay_sync_key")
+		_sync_activity_lock_overlay(card, action, false)
+		_play_activity_unlock_ceremony(card, group)
+		ceremony_started = true
 	_mark_action_manually_unlocked(skill_id, action_id)
 	_sync_passive_module_unlocks(_unix_now())
 	_set_activity_unlock_preview_after_ceremony(_first_locked_action_id(skill_id))
 	activity_unlock_heist_preview_after_ceremony_id = _thieving_heist_revealed_by_action_unlock(skill_id, action)
-	var preview_id := activity_unlock_preview_after_ceremony_id
-	if activity_unlock_heist_preview_after_ceremony_id.is_empty():
-		if _lock_click_tip_remaining_collapse_seconds() > 0.0:
-			_stage_next_locked_activity_preview_after_tip_collapse(preview_id)
-		elif _stage_next_locked_activity_preview(false):
-			_fade_staged_next_locked_activity_preview(preview_id)
-	var key := _action_key(skill_id, action_id)
-	if action_cards.has(key):
-		var card := action_cards[key] as Dictionary
-		if not bool(card.get("unlock_ceremony_active", false)):
+	if not ceremony_started:
+		if card.is_empty():
+			card = _resolve_activity_unlock_card(skill_id, action_id)
+		if card.is_empty():
+			call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
+		elif not bool(card.get("unlock_ceremony_active", false)):
 			card["unlock_ceremony_pending"] = true
-			_play_activity_unlock_ceremony(card)
-	else:
-		_refresh_skill_detail_after_activity_unlock_ceremony()
+			card["unlock_ceremony_finalized"] = false
+			card.erase("lock_overlay_sync_key")
+			_sync_activity_lock_overlay(card, action, true)
+			_play_activity_unlock_ceremony(card, group)
 	_set_result("%s unlocked." % str(action.get("name", "Activity")))
 	save_game()
 
@@ -21232,17 +23978,23 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 	var overlay_root := overlay.get("root") as Control
 	if overlay_root == null:
 		return
-	var ceremony_active := bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
+	var rig := overlay.get("group") as ActivityLockRig
+	if rig != null and is_instance_valid(rig) and rig.unlock_drop_active:
+		return
+	var ceremony_active := (
+		bool(card.get("unlock_ceremony_pending", false))
+		or bool(card.get("unlock_ceremony_active", false))
+	)
+	if ceremony_active and rig != null and is_instance_valid(rig):
+		_set_activity_lock_overlay_active(overlay, true, true)
+		rig.set_unlock_level(int(action.get("unlock", 1)))
+		card["lock_overlay_sync_key"] = "ceremony:%s" % int(action.get("unlock", 1))
+		return
 	var lock_visible := (not unlocked) or ceremony_active
 	var preview_revealing := (
 		not ceremony_active
 		and lock_visible
-		and (
-			bool(card.get("locked_preview_hidden", false))
-			or bool(card.get("locked_preview_fade_in_pending", false))
-			or bool(card.get("fade_in_pending", false))
-			or card.get("preview_fade_tween") != null
-		)
+		and bool(card.get("locked_preview_hidden", false))
 	)
 	if preview_revealing:
 		_set_activity_lock_overlay_active(overlay, false)
@@ -21253,12 +24005,11 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 		return
 	card["lock_overlay_sync_key"] = sync_key
 	_set_activity_lock_overlay_active(overlay, lock_visible)
-	var rig := overlay.get("group") as ActivityLockRig
 	if rig != null:
 		rig.set_unlock_level(int(action.get("unlock", 1)))
 
 
-func _set_activity_lock_overlay_active(overlay: Dictionary, active: bool) -> void:
+func _set_activity_lock_overlay_active(overlay: Dictionary, active: bool, skip_rig_reset := false) -> void:
 	var overlay_root := overlay.get("root") as Control
 	if overlay_root != null and is_instance_valid(overlay_root):
 		overlay_root.visible = active
@@ -21268,6 +24019,30 @@ func _set_activity_lock_overlay_active(overlay: Dictionary, active: bool) -> voi
 		rig.visible = active
 		rig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		rig.set_process(active)
+		if active:
+			if not skip_rig_reset and not rig.unlock_drop_active:
+				rig.reset_unlock_drop_animation()
+			rig.call_deferred("_layout_base")
+
+
+func _prepare_activity_unlock_ceremony_overlay(card: Dictionary, lock_rig: ActivityLockRig = null) -> void:
+	var overlay := card.get("lock_overlay", {}) as Dictionary
+	if overlay.is_empty():
+		return
+	var overlay_root := overlay.get("root") as Control
+	var rig := lock_rig if lock_rig != null else overlay.get("group") as ActivityLockRig
+	if overlay_root != null and is_instance_valid(overlay_root):
+		overlay_root.visible = true
+		overlay_root.modulate = Color.WHITE
+	if rig != null and is_instance_valid(rig):
+		rig.visible = true
+		rig.modulate = Color.WHITE
+		rig.set_process(true)
+		rig.call_deferred("_layout_base")
+	var shade := card.get("shade") as CanvasItem
+	if shade != null and is_instance_valid(shade):
+		shade.visible = true
+		shade.modulate = Color.WHITE
 
 
 func _reset_activity_lock_overlay_pieces(card: Dictionary) -> void:
@@ -21288,8 +24063,19 @@ func _reset_activity_lock_overlay_pieces(card: Dictionary) -> void:
 func _queue_activity_unlock_ceremony(skill_id: String, old_level: int, new_level: int, unlocked_ids: Array) -> void:
 	if unlocked_ids.is_empty() or not startup_initialized:
 		return
+	if skill_id == TUTORIAL_STARTER_SKILL_ID and old_level < 2 and new_level >= 2:
+		_fade_out_onboarding_level_up_tip(ACTIVITY_PREVIEW_FADE_IN_SECONDS)
+	pending_activity_unlock_ceremony = {
+		"skill_id": skill_id,
+		"old_level": old_level,
+		"new_level": new_level,
+		"unlocked": unlocked_ids.duplicate(),
+		"preview": _first_locked_action_id(skill_id),
+	}
+	activity_unlock_detail_refresh_done = false
+	activity_unlock_center_scroll_target = -1
 	if skill_id == selected_skill_id and current_screen == "skill":
-		call_deferred("_apply_skill_level_unlock_refresh_in_place", skill_id, unlocked_ids)
+		call_deferred("_update_ui", 0.0, false)
 
 
 func _auto_unlock_actions_for_level_gain(skill_id: String, old_level: int, new_level: int) -> Array:
@@ -21401,12 +24187,19 @@ func _play_pending_activity_unlock_ceremony() -> void:
 				_play_activity_preview_fade_in(preview_card)
 
 
-func _play_activity_unlock_ceremony(card: Dictionary) -> void:
+func _play_activity_unlock_ceremony(card: Dictionary, lock_rig: ActivityLockRig = null) -> void:
 	card["unlock_ceremony_pending"] = false
 	card["unlock_ceremony_active"] = true
 	card["unlock_ceremony_finalized"] = false
 	activity_unlock_ceremony_count += 1
-	_reset_activity_lock_overlay_pieces(card)
+	var ceremony_action_id := str(card.get("action_id", ""))
+	if ceremony_action_id.is_empty():
+		var ceremony_action := card.get("action", {}) as Dictionary
+		ceremony_action_id = str(ceremony_action.get("id", ""))
+	var ceremony_skill_id := str(card.get("skill_id", selected_skill_id))
+	if not ceremony_action_id.is_empty():
+		activity_unlock_ceremony_action_key = _action_key(ceremony_skill_id, ceremony_action_id)
+	_prepare_activity_unlock_ceremony_overlay(card, lock_rig)
 	var root := card.get("root") as Control
 	if root != null:
 		card["unlock_ceremony_original_z_index"] = root.z_index
@@ -21415,7 +24208,11 @@ func _play_activity_unlock_ceremony(card: Dictionary) -> void:
 		root.clip_contents = false
 	var overlay := card.get("lock_overlay", {}) as Dictionary
 	var overlay_root := overlay.get("root") as Control
-	var group := overlay.get("group") as Control
+	var group := lock_rig if lock_rig != null else overlay.get("group") as Control
+	if group == null and overlay.has("group"):
+		group = overlay.get("group") as Control
+	card["unlock_ceremony_lock_rig"] = group
+	card["unlock_ceremony_overlay_root"] = overlay_root
 	var button := card.get("button") as Button
 	var shade := card.get("shade") as CanvasItem
 	if overlay_root == null or group == null:
@@ -21424,49 +24221,113 @@ func _play_activity_unlock_ceremony(card: Dictionary) -> void:
 			root.clip_contents = bool(card.get("unlock_ceremony_original_clip", false))
 		card.erase("unlock_ceremony_original_z_index")
 		card.erase("unlock_ceremony_original_clip")
+		card.erase("unlock_ceremony_lock_rig")
+		card.erase("unlock_ceremony_overlay_root")
 		card["unlock_ceremony_active"] = false
 		activity_unlock_ceremony_count = maxi(0, activity_unlock_ceremony_count - 1)
+		activity_unlock_ceremony_action_key = ""
 		if button != null:
 			button.disabled = false
 		return
-	overlay_root.visible = true
-	if shade != null:
-		shade.visible = true
-		shade.modulate = Color.WHITE
 	if button != null:
 		button.disabled = true
-	var overlay_root_ref: WeakRef = weakref(overlay_root)
-	var shade_ref: WeakRef = weakref(shade) if shade != null else null
-	var button_ref: WeakRef = weakref(button) if button != null else null
-	var group_ref: WeakRef = weakref(group)
-	_start_activity_unlock_ceremony_motion_after_delay(card, group_ref, overlay_root_ref, shade_ref, button_ref)
+	_start_activity_unlock_ceremony_motion(card)
 
 
-func _start_activity_unlock_ceremony_motion_after_delay(card: Dictionary, group_ref: WeakRef, overlay_root_ref: WeakRef, shade_ref: WeakRef, button_ref: WeakRef) -> void:
+func _start_activity_unlock_ceremony_motion(card: Dictionary) -> void:
+	var group := card.get("unlock_ceremony_lock_rig") as Control
+	var overlay_root := card.get("unlock_ceremony_overlay_root") as Control
+	var shade := card.get("shade") as CanvasItem
+	var button := card.get("button") as Button
+	if group == null or not is_instance_valid(group):
+		var overlay := card.get("lock_overlay", {}) as Dictionary
+		group = overlay.get("group") as Control
+	if overlay_root == null or not is_instance_valid(overlay_root):
+		var overlay := card.get("lock_overlay", {}) as Dictionary
+		overlay_root = overlay.get("root") as Control
+	_start_activity_unlock_ceremony_motion_after_delay(card, group, overlay_root, shade, button)
+
+
+func _start_activity_unlock_ceremony_motion_after_delay(card: Dictionary, group: Control, overlay_root: Control, shade: CanvasItem, button: Button) -> void:
 	await get_tree().create_timer(ACTIVITY_UNLOCK_MOTION_START_DELAY).timeout
 	if bool(card.get("unlock_ceremony_finalized", false)):
 		return
 	if current_screen != "skill":
-		_finish_activity_unlock_ceremony_from_refs(card, overlay_root_ref, shade_ref, button_ref, false)
+		_finish_activity_unlock_ceremony(card, overlay_root, shade, button, false)
 		return
-	var group := group_ref.get_ref() as Control if group_ref != null else null
 	if group == null or not is_instance_valid(group) or group.is_queued_for_deletion():
-		_finish_activity_unlock_ceremony_from_refs(card, overlay_root_ref, shade_ref, button_ref, true)
+		var overlay := card.get("lock_overlay", {}) as Dictionary
+		group = overlay.get("group") as Control
+	if group == null or not is_instance_valid(group) or group.is_queued_for_deletion():
+		_finish_activity_unlock_ceremony(card, overlay_root, shade, button, true)
 		return
+	if overlay_root == null or not is_instance_valid(overlay_root):
+		var overlay := card.get("lock_overlay", {}) as Dictionary
+		overlay_root = overlay.get("root") as Control
+	if overlay_root != null and is_instance_valid(overlay_root):
+		overlay_root.visible = true
+		overlay_root.modulate = Color.WHITE
+	group.modulate = Color.WHITE
+	group.visible = true
+	group.set_process(true)
 	if group is ActivityLockRig:
-		(group as ActivityLockRig).play_unlock_drop_animation()
+		var lock_rig := group as ActivityLockRig
+		await get_tree().process_frame
+		await get_tree().process_frame
+		lock_rig._layout_base()
+		if lock_rig.size.y <= 1.0:
+			lock_rig.call_deferred("_layout_base")
+			await get_tree().process_frame
+			lock_rig._layout_base()
+		_play_chain_fall_sfx_sequence(lock_rig)
+		lock_rig.play_unlock_drop_animation()
+		if lock_rig.unlock_drop_tween != null and lock_rig.unlock_drop_tween.is_valid():
+			await lock_rig.unlock_drop_tween.finished
+		else:
+			await get_tree().create_timer(ActivityLockRig.UNLOCK_DROP_SECONDS).timeout
+	else:
+		_play_chain_fall_sfx_sequence(group)
+	if bool(card.get("unlock_ceremony_finalized", false)):
+		return
+	if shade != null and is_instance_valid(shade):
+		shade.visible = true
+	var fade_tween := create_tween()
+	fade_tween.tween_property(group, "modulate:a", 0.0, ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if shade != null and is_instance_valid(shade):
+		fade_tween.parallel().tween_property(shade, "modulate:a", 0.0, ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await fade_tween.finished
+	if bool(card.get("unlock_ceremony_finalized", false)):
+		return
+	_finish_activity_unlock_ceremony(card, overlay_root, shade, button, true)
+	await _run_post_unlock_ceremony_preview(card)
+	var preview_id := activity_unlock_preview_after_ceremony_id
+	if activity_unlock_heist_preview_after_ceremony_id.is_empty() and not preview_id.is_empty():
+		call_deferred("_stage_unlock_preview_after_lock_click", preview_id)
 
-	_play_chain_fall_sfx_sequence(group)
-	var shade := shade_ref.get_ref() as CanvasItem if shade_ref != null else null
-	var tween := create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(group, "modulate:a", 0.0, ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS).set_delay(ACTIVITY_UNLOCK_CHAIN_FADE_DELAY)
-	if shade != null:
-		tween.tween_property(shade, "modulate:a", 0.0, ACTIVITY_UNLOCK_CHAIN_FADE_DELAY + ACTIVITY_UNLOCK_CHAIN_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.finished.connect(func():
-		_finish_activity_unlock_ceremony_from_refs(card, overlay_root_ref, shade_ref, button_ref, true)
-	)
-	_refresh_activity_detail_during_unlock_ceremony(card, overlay_root_ref, shade_ref, button_ref)
+
+func _run_post_unlock_ceremony_preview(card: Dictionary) -> void:
+	if current_screen != "skill":
+		return
+	if bool(card.get("unlock_ceremony_finalized", false)) == false:
+		return
+	if not activity_unlock_heist_preview_after_ceremony_id.is_empty():
+		return
+	if activity_unlock_preview_after_ceremony_id.is_empty():
+		return
+	if _play_next_locked_activity_preview_fade():
+		return
+	var preview_id := activity_unlock_preview_after_ceremony_id
+	if preview_id.is_empty():
+		return
+	var preview_card := _activity_preview_card_for_action_id(preview_id)
+	if preview_card.is_empty():
+		return
+	if not bool(preview_card.get("unlock_next_preview_pending", false)):
+		return
+	preview_card.erase("unlock_next_preview_pending")
+	if not _claim_activity_unlock_preview_play(preview_id):
+		return
+	_play_activity_preview_fade_in(preview_card)
 
 
 func _refresh_activity_detail_during_unlock_ceremony(card: Dictionary, overlay_root_ref: WeakRef, shade_ref: WeakRef, button_ref: WeakRef) -> void:
@@ -21497,6 +24358,9 @@ func _finish_activity_unlock_ceremony(card: Dictionary, overlay_root: Control, s
 	if bool(card.get("unlock_ceremony_finalized", false)):
 		return
 	card["unlock_ceremony_finalized"] = true
+	card.erase("unlock_ceremony_lock_rig")
+	card.erase("unlock_ceremony_overlay_root")
+	activity_unlock_ceremony_action_key = ""
 	var root := card.get("root") as Control
 	if root != null and is_instance_valid(root):
 		root.z_index = int(card.get("unlock_ceremony_original_z_index", 0))
@@ -21540,6 +24404,32 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	var expand_from_zero := card.has("preview_enter_target_height")
 	var smooth_unlock_reveal := bool(card.get("unlock_next_preview_smooth", false)) and not expand_from_zero
 	var target_height := float(card.get("preview_enter_target_height", root.custom_minimum_size.y))
+	var skill_id := str(card.get("skill_id", selected_skill_id))
+	var action := card.get("action", {}) as Dictionary
+	var lock_overlay := card.get("lock_overlay", {}) as Dictionary
+	var lock_rig := lock_overlay.get("group") as ActivityLockRig
+	var show_lock_fade := (
+		lock_rig != null
+		and is_instance_valid(lock_rig)
+		and not action.is_empty()
+		and not _is_action_unlocked(skill_id, action)
+	)
+	var show_onboarding_level_up_tip := (
+		_onboarding_path_active()
+		and skill_id == TUTORIAL_STARTER_SKILL_ID
+		and not action.is_empty()
+		and str(action.get("id", "")) == _first_locked_action_id(skill_id)
+		and int(action.get("unlock", 0)) == 2
+		and _skill_level(skill_id) < 2
+		and bool(card.get("unlock_next_preview_smooth", false))
+	)
+	if show_onboarding_level_up_tip:
+		_fade_out_onboarding_mastery_tip(ACTIVITY_PREVIEW_FADE_IN_SECONDS)
+		_fade_out_onboarding_medal_tip(ACTIVITY_PREVIEW_FADE_IN_SECONDS)
+	if show_lock_fade:
+		_set_activity_lock_overlay_active(lock_overlay, true)
+		lock_rig.modulate = Color(1, 1, 1, 0)
+		lock_rig.reset_unlock_drop_animation()
 	root.visible = true
 	root.modulate = Color(1, 1, 1, 0)
 	if expand_from_zero:
@@ -21553,6 +24443,8 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 	card["preview_fade_tween"] = tween
 	tween.set_parallel(true)
 	tween.tween_property(root, "modulate:a", 1.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_SINE if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if show_lock_fade:
+		tween.tween_property(lock_rig, "modulate:a", 1.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_SINE if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if expand_from_zero:
 		tween.tween_property(root, "custom_minimum_size:y", target_height, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	if pop != null:
@@ -21563,6 +24455,20 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 			0.0,
 			ACTIVITY_PREVIEW_FADE_IN_SECONDS
 		).set_trans(Tween.TRANS_QUINT if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	var level_up_tip: Control = null
+	if show_onboarding_level_up_tip:
+		level_up_tip = _ensure_onboarding_level_up_tip(card)
+		if level_up_tip != null and is_instance_valid(level_up_tip):
+			level_up_tip.modulate.a = 0.0
+			_sync_onboarding_level_up_tip_position(card)
+			tween.tween_property(level_up_tip, "modulate:a", 1.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_SINE if smooth_unlock_reveal else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+			tween.tween_method(
+				func(_progress: float) -> void:
+					_sync_onboarding_level_up_tip_position(card),
+				0.0,
+				1.0,
+				ACTIVITY_PREVIEW_FADE_IN_SECONDS
+			)
 	tween.finished.connect(func():
 		if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
 			card.erase("unlock_next_preview_smooth")
@@ -21582,9 +24488,9 @@ func _play_activity_preview_fade_in(card: Dictionary) -> void:
 		card.erase("unlock_next_preview_smooth")
 		card.erase("preview_fade_tween")
 		card["fade_in_pending"] = false
-		var skill_id := str(card.get("skill_id", selected_skill_id))
-		var action := card.get("action", {}) as Dictionary
 		if not skill_id.is_empty() and not action.is_empty():
+			if lock_rig != null and is_instance_valid(lock_rig):
+				lock_rig.modulate = Color.WHITE
 			_sync_activity_lock_overlay(card, action, _is_action_unlocked(skill_id, action))
 	)
 
@@ -21791,6 +24697,8 @@ func _apply_skill_level_unlock_refresh_in_place(skill_id: String, unlocked_ids: 
 		if not action_cards.has(key):
 			continue
 		var card := action_cards[key] as Dictionary
+		if bool(card.get("unlock_ceremony_active", false)) or bool(card.get("unlock_ceremony_pending", false)):
+			continue
 		card["unlock_ceremony_pending"] = false
 		card["unlock_ceremony_active"] = false
 		card["unlock_ceremony_finalized"] = true
@@ -21869,6 +24777,9 @@ func _apply_skill_detail_unlock_refresh_in_place(preview_id: String) -> bool:
 
 
 func _refresh_skill_detail_after_activity_unlock_ceremony() -> void:
+	if activity_unlock_ceremony_count > 0:
+		activity_unlock_detail_refresh_done = false
+		return
 	if activity_unlock_detail_refresh_done:
 		return
 	activity_unlock_detail_refresh_done = true
@@ -21983,10 +24894,15 @@ func _play_next_locked_activity_preview_fade(_collapse_height := false) -> bool:
 	var card := _activity_preview_card_for_action_id(preview_id)
 	if card.is_empty():
 		return false
-	var preview_action := card.get("action", {}) as Dictionary
-	if preview_action.is_empty():
-		preview_action = _action_data(selected_skill_id, preview_id)
-	_reveal_locked_activity_card_in_place(card, selected_skill_id, preview_action)
+	if not bool(card.get("unlock_next_preview_pending", false)):
+		card["unlock_next_preview_smooth"] = true
+		_stage_activity_preview_enter(card, false)
+		card["fade_in_pending"] = true
+	card.erase("unlock_next_preview_pending")
+	if not _claim_activity_unlock_preview_play(preview_id):
+		_set_activity_unlock_preview_after_ceremony("")
+		return true
+	_play_activity_preview_fade_in(card)
 	_set_activity_unlock_preview_after_ceremony("")
 	activity_unlock_center_scroll_target = -1
 	activity_unlock_detail_refresh_done = true
@@ -22051,7 +24967,7 @@ func _process_action(delta: float) -> void:
 		action_opportunity_cycle_elapsed = 0.0
 	if _is_convergence_action(action):
 		_complete_convergence_cycle(running_action_id)
-		_record_activity_completion_for_tips()
+		_record_activity_completion_for_tips(running_skill_id, running_action_id)
 		_update_ui(0.0, false)
 		return
 	if fishing_rework_attempt:
@@ -22060,6 +24976,8 @@ func _process_action(delta: float) -> void:
 	if _stamina_value(running_skill_id) + 0.0001 >= cost:
 		stamina[running_skill_id] = maxf(0.0, _stamina_value(running_skill_id) - cost)
 		_sync_stamina_bank(running_skill_id)
+		if running_skill_id == TUTORIAL_STARTER_SKILL_ID:
+			_maybe_trigger_onboarding_swipe_tip_at_zero_stamina(TUTORIAL_STARTER_SKILL_ID)
 	var reward_key := active_key
 	var old_mastery_level := _mastery_level(running_skill_id, running_action_id)
 	var mastery_reward := _mastery_reward_for_action(running_skill_id, running_action_id, action)
@@ -22070,17 +24988,20 @@ func _process_action(delta: float) -> void:
 	var old_skill_level := _skill_level(running_skill_id)
 	var locked_preview_available_before := _locked_activity_preview_available()
 	var success := randf() * 100.0 <= _success_chance(running_skill_id, action)
+	var completed_skill_id := running_skill_id
+	var completed_action_id := running_action_id
 	_play_fishing_attempt_reveal(running_skill_id, running_action_id, success)
 	if success:
 		var streak_step := _record_successful_activity_completion(reward_key)
 		var streak_bonus := streak_step == ACTIVITY_STREAK_BONUS_STEP
-		var crit_chance := _activity_crit_chance(streak_bonus)
-		var xp_crit := randf() < crit_chance
+		var crits_allowed := _activity_crits_allowed()
+		var crit_chance := _activity_crit_chance(streak_bonus) if crits_allowed else 0.0
+		var xp_crit := crits_allowed and randf() < crit_chance
 		if xp_crit:
 			consecutive_activity_crit_count += 1
 		else:
 			consecutive_activity_crit_count = 0
-		var mega_crit := consecutive_activity_crit_count >= 2
+		var mega_crit := crits_allowed and consecutive_activity_crit_count >= 2
 		if xp_crit:
 			activity_crit_seen = true
 		if mega_crit:
@@ -22124,6 +25045,7 @@ func _process_action(delta: float) -> void:
 			_show_achievement_unlocked(achievement)
 		_play_activity_success_sound(streak_step, new_mastery_level > old_mastery_level, streak_bonus, xp_crit, mega_crit, consecutive_activity_crit_count)
 		_record_music_flow_action(true, streak_step, streak_bonus, new_mastery_level > old_mastery_level, new_skill_level > old_skill_level, cost)
+		_maybe_show_onboarding_medal_tip(old_mastery_level, new_mastery_level, running_skill_id, running_action_id)
 	else:
 		consecutive_activity_crit_count = 0
 		_reset_activity_completion_streak()
@@ -22146,6 +25068,7 @@ func _process_action(delta: float) -> void:
 			_show_achievement_unlocked(achievement)
 		_play(failure_player)
 		_record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, cost)
+		_maybe_show_onboarding_medal_tip(old_mastery_level, failure_mastery_level, running_skill_id, running_action_id)
 		if running_skill_id == "thieving":
 			var failed_thieving_action_id := running_action_id
 			last_result += " Jailed for %s." % _format_countdown(THIEVING_ACTION_JAIL_SECONDS)
@@ -22154,7 +25077,8 @@ func _process_action(delta: float) -> void:
 			action_progress = 0.0
 			_reset_action_opportunity_state()
 			_jail_thieving_action(failed_thieving_action_id, true)
-	_record_activity_completion_for_tips()
+	_record_activity_completion_for_tips(completed_skill_id, completed_action_id)
+	_maybe_trigger_onboarding_swipe_tip_at_zero_stamina(completed_skill_id)
 	_update_ui(0.0, false)
 	_emphasize_visible_bonus_changes_deferred(bonus_snapshot_before)
 
@@ -22683,6 +25607,7 @@ func _start_action_from_card_tap(skill_id: String, action_id: String) -> void:
 	var now := Time.get_ticks_msec()
 	if last_action_card_tap_key == key and now - last_action_card_tap_msec < ACTION_CARD_DUPLICATE_TAP_MSEC:
 		return
+	_on_activity_start_tutorial_card_tapped(skill_id, action_id)
 	if _start_action(skill_id, action_id):
 		last_action_card_tap_key = key
 		last_action_card_tap_msec = now
@@ -22733,7 +25658,7 @@ func _attempt_thieving_heist(heist_id: String) -> void:
 		_play(failure_player)
 		_record_music_flow_action(false, 0, false, false, false, 0.0)
 	_record_activity_start_for_tips()
-	_record_activity_completion_for_tips()
+	_record_activity_completion_for_tips("thieving", heist_id)
 	save_game()
 	if not pending_thieving_trophy_reward_float.is_empty():
 		_update_ui(0.0, true)
@@ -23019,6 +25944,11 @@ func _handle_system_back_request() -> void:
 
 
 func _select_skill(skill_id: String) -> void:
+	if not _onboarding_skill_accessible(skill_id):
+		var card := skill_cards.get(skill_id, {}) as Dictionary
+		var source := card.get("button") as Control
+		_show_onboarding_skill_locked_message(source)
+		return
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	selected_skill_id = skill_id
@@ -23030,10 +25960,23 @@ func _select_skill(skill_id: String) -> void:
 func _show_home(source_button: Control = null) -> void:
 	if not _top_level_nav_allowed("home"):
 		return
+	if not _hero_unlocked():
+		_show_hero_locked_message(source_button)
+		return
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
-	_ensure_home_page()
 	current_screen = "home"
+	_update_page_visibility()
+	if not home_page_built:
+		call_deferred("_finish_show_home")
+		return
+	_finish_show_home()
+
+
+func _finish_show_home() -> void:
+	if current_screen != "home":
+		return
+	_ensure_home_page()
 	_update_page_visibility()
 	_scroll_home_to_top()
 	_queue_home_achievement_refresh()
@@ -23058,7 +26001,11 @@ func _show_skills_module() -> void:
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	_select_launch_skill_page()
+	if _onboarding_path_active():
+		_discard_skill_detail_cache_entry(_skill_detail_cache_key(selected_skill_id))
 	_render_screen(true)
+	if _onboarding_path_active():
+		call_deferred("_resync_onboarding_skill_detail_after_navigation")
 
 
 func _show_hub(source_button: Control = null) -> void:
@@ -23500,6 +26447,7 @@ func _tutorial_target_text() -> String:
 
 func _open_achievements_overlay() -> void:
 	achievements_modal_tab = "achievements"
+	home_achievement_refresh_token += 1
 	_play_default_button_sfx()
 	_ensure_achievements_overlay()
 	if achievements_overlay == null:
@@ -24301,8 +27249,10 @@ func _update_active_audio_slider(global_point: Vector2) -> void:
 	var next_value: float = round(lerpf(float(active_audio_slider.min_value), float(active_audio_slider.max_value), pct))
 	active_audio_slider.set_value_no_signal(next_value)
 	if active_audio_slider_is_music:
+		music_volume_labels = _sync_volume_labels(music_volume_labels, next_value / 100.0)
 		_set_music_volume_from_slider(next_value)
 	else:
+		sfx_volume_labels = _sync_volume_labels(sfx_volume_labels, next_value / 100.0)
 		_set_sfx_volume_from_slider(next_value)
 
 
@@ -24927,6 +27877,7 @@ func _clear_reset_button_confirmation(button: Button) -> void:
 func _reset_data(feedback_button: Button = null) -> void:
 	var screen_before_reset := current_screen
 	_discard_all_page_stashes()
+	_reset_skill_swipe_frame_layout()
 	_clear_reset_data_buttons_for_rebuild()
 	_init_state()
 	running_skill_id = ""
@@ -25562,6 +28513,8 @@ func _refresh_skill_detail_after_thieving_heist_fade(restore_scroll: int) -> voi
 
 func _float_mastery_bar(parent: Control, anchor: Control, mastery_amount: float, progress_pct := -1.0) -> void:
 	if mastery_amount <= 0:
+		return
+	if not _onboarding_mastery_feedback_allowed(anchor):
 		return
 	var amount_text := str(int(round(mastery_amount))) if absf(mastery_amount - round(mastery_amount)) <= 0.001 else _format_significant_digits(mastery_amount)
 	_float_reward(parent, anchor, "+%s" % amount_text, 70, Color("#ffd95a"), Vector2(0, -84), Vector2(0, -88), 0.08, false, _mastery_bar_fill_anchor_x(anchor, progress_pct))
@@ -27595,6 +30548,7 @@ func _render_fishing_area_modules_preview(stack: VBoxContainer, content_width: f
 		var root := built["root"] as Control
 		_set_preview_controls_mouse_filter(root)
 		stack.add_child(root)
+		(state["fishing_built_modules"] as Array).append(built)
 	if _fishing_net_offer_available() and not net_offer_rendered:
 		var net_offer := _build_fishing_net_offer_module(content_width)
 		_set_preview_controls_mouse_filter(net_offer)
@@ -30331,6 +33285,9 @@ func _skill_detail_shows_tutorial_tips(skill_id: String = selected_skill_id) -> 
 
 func _dismiss_skill_detail_tutorial_tips() -> void:
 	_fade_tip_group("lock_click_tip_notes")
+	_dismiss_activity_start_highlight(true)
+	_cancel_onboarding_header_sequence()
+	_fade_tip_group("stamina_cost_tip_notes")
 	if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
 		_fade_tip_control(stamina_gauge_tip_root)
 		stamina_gauge_tip_root = null
@@ -30671,7 +33628,7 @@ func _complete_fishing_action_attempt(action: Dictionary, active_key: String, bo
 		_record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, 0.0)
 	for achievement in _newly_completed_achievements(completed_achievements_before):
 		_show_achievement_unlocked(achievement)
-	_record_activity_completion_for_tips()
+	_record_activity_completion_for_tips(skill_id, action_id)
 	_update_ui(0.0, false)
 	if not catch_burst_action_id.is_empty() and catch_burst_fish_count > 0:
 		call_deferred("_play_fishing_catch_burst_for_action", skill_id, catch_burst_action_id, catch_burst_fish_count)
@@ -30770,11 +33727,44 @@ func _init_state() -> void:
 	activity_start_tip_seen = false
 	activity_start_count = 0
 	activity_completion_count = 0
+	onboarding_starter_action_completion_count = 0
+	onboarding_header_reveal_after_progress = false
+	onboarding_swipe_tip_eligible = false
+	onboarding_swipe_navigation_unlocked = false
+	onboarding_swipe_tip_sequence_running = false
 	skill_swipe_tip_seen = false
+	onboarding_explore_tip_seen = false
+	onboarding_tutorial_complete = false
+	onboarding_explore_tip_sequence_running = false
 	stamina_gauge_tip_seen = false
 	lock_click_tip_seen = false
 	stamina_gauge_pre_tip_hold_seconds = 0.0
 	stamina_gauge_tip_root = null
+	onboarding_fight_summary_revealed = false
+	onboarding_fight_auto_run_message_shown = false
+	onboarding_fight_stamina_revealed = false
+	onboarding_fight_action_stats_revealed = false
+	onboarding_fight_action_stats_fade_running = false
+	onboarding_stamina_tip_sequence_running = false
+	onboarding_mastery_tip_root = null
+	onboarding_medal_tip_root = null
+	onboarding_swipe_overlay_tip_root = null
+	onboarding_level_up_tip_root = null
+	onboarding_mastery_tip_dismissed = false
+	onboarding_medal_tip_shown = false
+	activity_unlock_ceremony_action_key = ""
+	locked_activity_preview_reveal_pending = false
+	locked_activity_preview_reveal_skill_ids.clear()
+	locked_activity_preview_fade_play_pending = false
+	locked_activity_preview_played_action_keys.clear()
+	_cancel_onboarding_header_sequence()
+	activity_start_highlight_token += 1
+	activity_start_highlight_pending = false
+	activity_start_highlight_active = false
+	activity_start_highlight_border = null
+	activity_start_highlight_card_key = ""
+	activity_start_highlight_fade_tween = null
+	_restore_activity_start_highlight_frame_clip()
 	leaderboard_last_submitted_score = 0
 	leaderboard_last_submitted_total_xp = 0
 	leaderboard_last_submitted_scores_by_category.clear()
@@ -30847,10 +33837,32 @@ func _validate_state_bootstrap() -> void:
 		selected_skill_id = "fight"
 
 
-func _prepare_selected_skill_for_render() -> void:
+func _prepare_selected_skill_for_render(boot_fast := false) -> void:
 	_validate_state_bootstrap()
 	if not skills.has(selected_skill_id):
 		selected_skill_id = "fight"
+	if _onboarding_path_active() and not _onboarding_skill_accessible(selected_skill_id):
+		selected_skill_id = TUTORIAL_STARTER_SKILL_ID
+	if boot_fast:
+		var prepared_action_ids := {}
+		for entry in _visible_detail_entries_for_skill(selected_skill_id):
+			var entry_data := entry as Dictionary
+			if str(entry_data.get("kind", "")) == "thieving_heist":
+				continue
+			var action := entry_data.get("action", {}) as Dictionary
+			if action.is_empty():
+				continue
+			var action_id := str(action.get("id", ""))
+			if action_id.is_empty() or prepared_action_ids.has(action_id):
+				continue
+			prepared_action_ids[action_id] = true
+			var key := _action_key(selected_skill_id, action_id)
+			if not mastery.has(key):
+				mastery[key] = {"xp": 0, "level": 0}
+			_recalculate_mastery(key)
+		_ensure_skill_mastery_keys(selected_skill_id)
+		_recalculate_level(selected_skill_id, false)
+		return
 	for action in actions_by_skill.get(selected_skill_id, []):
 		var action_data := action as Dictionary
 		if _is_convergence_action(action_data):
@@ -30867,9 +33879,15 @@ func _prepare_selected_skill_for_render() -> void:
 
 
 func _begin_background_boot_validation() -> void:
-	if not deferred_skill_validation_pending or not is_inside_tree():
+	if not is_inside_tree():
 		return
-	_load_game_secondary_restore()
+	if deferred_selected_skill_mastery_pending:
+		deferred_selected_skill_mastery_pending = false
+		_prepare_selected_skill_for_render(false)
+	if not deferred_skill_validation_pending:
+		return
+	if not pending_save_restore_data.is_empty():
+		_load_game_secondary_restore()
 	await get_tree().process_frame
 	_validate_remaining_skills_deferred()
 
@@ -31003,6 +34021,10 @@ func _sync_manual_activity_unlocks_from_levels() -> void:
 
 
 func _select_launch_skill_page() -> void:
+	if _onboarding_path_active():
+		selected_skill_id = TUTORIAL_STARTER_SKILL_ID
+		current_screen = "skill"
+		return
 	if not running_skill_id.is_empty() and skills.has(running_skill_id) and not _action_data(running_skill_id, running_action_id).is_empty():
 		selected_skill_id = running_skill_id
 		current_screen = "skill"
@@ -31092,8 +34114,19 @@ func save_game() -> void:
 		"activity_start_tip_seen": activity_start_tip_seen,
 		"activity_start_count": activity_start_count,
 		"activity_completion_count": activity_completion_count,
+		"onboarding_starter_action_completion_count": onboarding_starter_action_completion_count,
+		"onboarding_header_reveal_after_progress": onboarding_header_reveal_after_progress,
+		"onboarding_swipe_tip_eligible": onboarding_swipe_tip_eligible,
+		"onboarding_swipe_navigation_unlocked": onboarding_swipe_navigation_unlocked,
 		"skill_swipe_tip_seen": skill_swipe_tip_seen,
+		"onboarding_explore_tip_seen": onboarding_explore_tip_seen,
+		"onboarding_tutorial_complete": onboarding_tutorial_complete,
 		"stamina_gauge_tip_seen": stamina_gauge_tip_seen,
+		"onboarding_fight_summary_revealed": onboarding_fight_summary_revealed,
+		"onboarding_fight_auto_run_message_shown": onboarding_fight_auto_run_message_shown,
+		"onboarding_fight_stamina_revealed": onboarding_fight_stamina_revealed,
+		"onboarding_fight_action_stats_revealed": onboarding_fight_action_stats_revealed,
+		"onboarding_medal_tip_shown": onboarding_medal_tip_shown,
 		"lock_click_tip_seen": lock_click_tip_seen,
 		"stamina_gauge_pre_tip_hold_seconds": stamina_gauge_pre_tip_hold_seconds,
 		"music_start_chance_unlocked": music_start_chance_unlocked,
@@ -31558,6 +34591,48 @@ func load_game() -> void:
 	pending_save_has_achievement_toast_seen_ids = (data as Dictionary).has("achievement_toast_seen_ids")
 	pending_save_restore_data = data as Dictionary
 	loaded_save_this_boot = true
+	_restore_boot_render_save_fields(data as Dictionary)
+	if not _onboarding_path_active() and not running_skill_id.is_empty() and skills.has(running_skill_id) and not _action_data(running_skill_id, running_action_id).is_empty():
+		selected_skill_id = running_skill_id
+
+
+func _restore_thieving_trophies_from_save(data: Dictionary) -> void:
+	thieving_trophies.clear()
+	var loaded_thieving_trophies = data.get("thieving_trophies", {})
+	if typeof(loaded_thieving_trophies) != TYPE_DICTIONARY:
+		return
+	for raw_trophy_id in (loaded_thieving_trophies as Dictionary).keys():
+		var trophy_id := str(raw_trophy_id)
+		var raw_trophy_state = (loaded_thieving_trophies as Dictionary).get(raw_trophy_id, {})
+		if typeof(raw_trophy_state) == TYPE_DICTIONARY:
+			thieving_trophies[trophy_id] = {
+				"stolen": bool((raw_trophy_state as Dictionary).get("stolen", false)),
+				"cooldown_until_unix": maxi(0, int((raw_trophy_state as Dictionary).get("cooldown_until_unix", (raw_trophy_state as Dictionary).get("cooldown_until_unix_msec", 0))))
+			}
+		elif typeof(raw_trophy_state) == TYPE_BOOL:
+			thieving_trophies[trophy_id] = {"stolen": bool(raw_trophy_state), "cooldown_until_unix": 0}
+
+
+func _restore_boot_render_save_fields(data: Dictionary) -> void:
+	_restore_thieving_trophies_from_save(data)
+	activity_start_tip_seen = bool(data.get("activity_start_tip_seen", false))
+	skill_swipe_tip_seen = bool(data.get("skill_swipe_tip_seen", false))
+	onboarding_explore_tip_seen = bool(data.get("onboarding_explore_tip_seen", false))
+	onboarding_tutorial_complete = bool(data.get("onboarding_tutorial_complete", false))
+	stamina_gauge_tip_seen = bool(data.get("stamina_gauge_tip_seen", false))
+	onboarding_fight_summary_revealed = bool(data.get("onboarding_fight_summary_revealed", false))
+	onboarding_fight_auto_run_message_shown = bool(data.get("onboarding_fight_auto_run_message_shown", false))
+	onboarding_fight_stamina_revealed = bool(data.get("onboarding_fight_stamina_revealed", false))
+	onboarding_fight_action_stats_revealed = bool(data.get("onboarding_fight_action_stats_revealed", false))
+	if stamina_gauge_tip_seen or skill_swipe_tip_seen or onboarding_explore_tip_seen or onboarding_tutorial_complete:
+		onboarding_fight_summary_revealed = true
+		onboarding_fight_auto_run_message_shown = true
+		onboarding_fight_stamina_revealed = true
+		onboarding_fight_action_stats_revealed = true
+	if onboarding_tutorial_complete or skill_swipe_tip_seen:
+		onboarding_swipe_tip_eligible = true
+		onboarding_swipe_navigation_unlocked = true
+	lock_click_tip_seen = bool(data.get("lock_click_tip_seen", false))
 
 
 func _load_game_core(data: Dictionary) -> void:
@@ -31752,19 +34827,7 @@ func _load_game_secondary_restore() -> void:
 	if not pending_save_has_achievement_toast_seen_ids:
 		_mark_completed_achievement_toasts_seen(["activity-crit", "activity-mega-crit"])
 	pending_save_has_achievement_toast_seen_ids = false
-	thieving_trophies.clear()
-	var loaded_thieving_trophies = data.get("thieving_trophies", {})
-	if typeof(loaded_thieving_trophies) == TYPE_DICTIONARY:
-		for raw_trophy_id in (loaded_thieving_trophies as Dictionary).keys():
-			var trophy_id := str(raw_trophy_id)
-			var raw_trophy_state = (loaded_thieving_trophies as Dictionary).get(raw_trophy_id, {})
-			if typeof(raw_trophy_state) == TYPE_DICTIONARY:
-				thieving_trophies[trophy_id] = {
-					"stolen": bool((raw_trophy_state as Dictionary).get("stolen", false)),
-					"cooldown_until_unix": maxi(0, int((raw_trophy_state as Dictionary).get("cooldown_until_unix", (raw_trophy_state as Dictionary).get("cooldown_until_unix_msec", 0))))
-				}
-			elif typeof(raw_trophy_state) == TYPE_BOOL:
-				thieving_trophies[trophy_id] = {"stolen": bool(raw_trophy_state), "cooldown_until_unix": 0}
+	_restore_thieving_trophies_from_save(data)
 	activity_crit_seen = bool(data.get("activity_crit_seen", false))
 	activity_mega_crit_seen = bool(data.get("activity_mega_crit_seen", false))
 	if activity_mega_crit_seen:
@@ -31823,8 +34886,54 @@ func _load_game_secondary_restore() -> void:
 	activity_start_tip_seen = bool(data.get("activity_start_tip_seen", false))
 	activity_start_count = maxi(0, int(data.get("activity_start_count", 0)))
 	activity_completion_count = maxi(0, int(data.get("activity_completion_count", 0)))
+	onboarding_starter_action_completion_count = maxi(0, int(data.get("onboarding_starter_action_completion_count", 0)))
+	onboarding_header_reveal_after_progress = bool(data.get("onboarding_header_reveal_after_progress", false))
+	onboarding_swipe_tip_eligible = bool(data.get("onboarding_swipe_tip_eligible", false))
+	onboarding_swipe_navigation_unlocked = bool(data.get("onboarding_swipe_navigation_unlocked", false))
 	skill_swipe_tip_seen = bool(data.get("skill_swipe_tip_seen", false))
+	onboarding_explore_tip_seen = bool(data.get("onboarding_explore_tip_seen", false))
+	onboarding_tutorial_complete = bool(data.get("onboarding_tutorial_complete", false))
+	if skill_swipe_tip_seen and not bool(data.get("onboarding_tutorial_complete", false)):
+		onboarding_swipe_tip_eligible = true
+		onboarding_swipe_navigation_unlocked = true
 	stamina_gauge_tip_seen = bool(data.get("stamina_gauge_tip_seen", false))
+	onboarding_fight_summary_revealed = bool(data.get("onboarding_fight_summary_revealed", false))
+	onboarding_fight_auto_run_message_shown = bool(data.get("onboarding_fight_auto_run_message_shown", false))
+	onboarding_fight_stamina_revealed = bool(data.get("onboarding_fight_stamina_revealed", false))
+	onboarding_fight_action_stats_revealed = bool(data.get("onboarding_fight_action_stats_revealed", false))
+	onboarding_medal_tip_shown = bool(data.get("onboarding_medal_tip_shown", false))
+	if onboarding_medal_tip_shown:
+		onboarding_mastery_tip_dismissed = true
+	if onboarding_starter_action_completion_count == 0 and onboarding_fight_auto_run_message_shown:
+		onboarding_starter_action_completion_count = 1
+	if (
+		not onboarding_header_reveal_after_progress
+		and not onboarding_fight_summary_revealed
+		and onboarding_starter_action_completion_count >= 2
+	):
+		onboarding_header_reveal_after_progress = true
+	if stamina_gauge_tip_seen or skill_swipe_tip_seen or onboarding_explore_tip_seen or onboarding_tutorial_complete:
+		onboarding_fight_summary_revealed = true
+		onboarding_fight_auto_run_message_shown = true
+		onboarding_fight_stamina_revealed = true
+		onboarding_fight_action_stats_revealed = true
+	elif onboarding_fight_action_stats_revealed:
+		onboarding_fight_auto_run_message_shown = true
+		onboarding_fight_stamina_revealed = true
+	elif onboarding_fight_stamina_revealed:
+		onboarding_fight_auto_run_message_shown = true
+	if onboarding_tutorial_complete or skill_swipe_tip_seen:
+		onboarding_swipe_tip_eligible = true
+		onboarding_swipe_navigation_unlocked = true
+	elif onboarding_swipe_navigation_unlocked:
+		onboarding_swipe_tip_eligible = true
+	elif (
+		stamina_gauge_tip_seen
+		and onboarding_fight_action_stats_revealed
+		and _stamina(TUTORIAL_STARTER_SKILL_ID) < 1
+	):
+		onboarding_swipe_tip_eligible = true
+		onboarding_swipe_navigation_unlocked = true
 	lock_click_tip_seen = bool(data.get("lock_click_tip_seen", false))
 	stamina_gauge_pre_tip_hold_seconds = clampf(float(data.get("stamina_gauge_pre_tip_hold_seconds", 0.0)), 0.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS)
 	is_muted = false
@@ -31881,6 +34990,20 @@ func _load_game_secondary_restore() -> void:
 	chat_stream_retry_unix = mini(maxi(0, int(data.get("chat_stream_retry_unix", data.get("chat_fetch_retry_unix", 0)))), max_chat_retry_unix)
 	chat_stream_next_connect_unix = mini(maxi(chat_stream_retry_unix, int(data.get("chat_stream_next_connect_unix", 0))), max_chat_retry_unix)
 	_refresh_shop_nav_unlock_state()
+
+
+func _schedule_boot_post_load_simulation() -> void:
+	if boot_post_load_simulation_scheduled or pending_post_load_saved_at < 0:
+		return
+	boot_post_load_simulation_scheduled = true
+	call_deferred("_apply_boot_post_load_simulation_after_cards")
+
+
+func _apply_boot_post_load_simulation_after_cards() -> void:
+	if boot_detail_render_queue.size() > 0:
+		call_deferred("_apply_boot_post_load_simulation_after_cards")
+		return
+	_apply_post_load_simulation()
 
 
 func _apply_post_load_simulation() -> void:
@@ -32386,27 +35509,30 @@ func _mastery_medal_region(index: int, sheet_size: Vector2i) -> Rect2i:
 	return Rect2i(Vector2i((index % columns) * cell.x, int(floor(float(index) / float(columns))) * cell.y), cell)
 
 
-func _mastery_medal_silhouette_texture(level: int, color: Color) -> Texture2D:
-	var index := clampi(maxi(level, 1) - 1, 0, MASTERY_MAX_LEVEL - 1)
-	var key := "%s:%s" % [index, color.to_html(true)]
-	if mastery_medal_silhouette_textures.has(key):
-		return mastery_medal_silhouette_textures[key]
-	var sheet := _texture(MASTERY_MEDALS_TEXTURE)
-	if sheet == null:
-		return null
-	var sheet_image := sheet.get_image()
-	if sheet_image == null or sheet_image.is_empty():
-		return null
-	var region := _mastery_medal_region(index, Vector2i(sheet_image.get_width(), sheet_image.get_height()))
-	var image := sheet_image.get_region(region)
-	image.convert(Image.FORMAT_RGBA8)
-	for y in range(image.get_height()):
-		for x in range(image.get_width()):
-			var source := image.get_pixel(x, y)
-			image.set_pixel(x, y, Color(color.r, color.g, color.b, source.a * color.a))
-	var texture := ImageTexture.create_from_image(image)
-	mastery_medal_silhouette_textures[key] = texture
-	return texture
+func _mastery_medal_silhouette_material(color: Color) -> ShaderMaterial:
+	var key := color.to_html(true)
+	if mastery_medal_silhouette_materials.has(key):
+		return mastery_medal_silhouette_materials[key] as ShaderMaterial
+	var shader := Shader.new()
+	shader.code = """
+shader_type canvas_item;
+
+uniform vec4 fill_color : source_color = vec4(0.0, 0.0, 0.0, 0.7);
+
+void fragment() {
+	vec4 tex = texture(TEXTURE, UV);
+	if (tex.a <= 0.01) {
+		COLOR = vec4(0.0);
+	} else {
+		COLOR = vec4(fill_color.rgb, fill_color.a * tex.a);
+	}
+}
+"""
+	var material := ShaderMaterial.new()
+	material.shader = shader
+	material.set_shader_parameter("fill_color", color)
+	mastery_medal_silhouette_materials[key] = material
+	return material
 
 
 func _achievement_empty_medal_material() -> ShaderMaterial:
@@ -32503,6 +35629,8 @@ func _mastery_xp_reward(_action: Dictionary) -> float:
 
 
 func _mastery_reward_for_action(skill_id: String, action_id: String, action: Dictionary) -> float:
+	if not _onboarding_mastery_rewards_allowed(skill_id):
+		return 0.0
 	if _mastery_is_maxed(skill_id, action_id):
 		return 0.0
 	return _mastery_xp_reward(action)
@@ -32510,6 +35638,8 @@ func _mastery_reward_for_action(skill_id: String, action_id: String, action: Dic
 
 func _add_mastery_xp(skill_id: String, action_id: String, amount: float) -> void:
 	if amount <= 0.0 or _mastery_is_maxed(skill_id, action_id):
+		return
+	if not _onboarding_mastery_rewards_allowed(skill_id):
 		return
 	var key := _action_key(skill_id, action_id)
 	if not mastery.has(key):
@@ -34750,15 +37880,18 @@ func _achievement_medal_slot_strip(skill_id: String, actions: Array) -> Dictiona
 	var panels := []
 	var icons := []
 	for i in range(ACHIEVEMENT_MEDAL_SLOT_COUNT):
-		var shadow := _image_from_texture(_mastery_medal_silhouette_texture(1, Color(0, 0, 0, 0.70)), strip.slot_size)
+		var shadow := _image_from_texture(_mastery_medal_texture(1), strip.slot_size)
+		shadow.material = _mastery_medal_silhouette_material(Color(0, 0, 0, 0.70))
 		shadow.z_index = ACHIEVEMENT_MEDAL_SLOT_COUNT - i
-		var icon := _image_from_texture(_mastery_medal_silhouette_texture(1, Color(0, 0, 0, 0.58)), strip.slot_size)
+		var icon := _image_from_texture(_mastery_medal_texture(1), strip.slot_size)
+		icon.material = _mastery_medal_silhouette_material(Color(0, 0, 0, 0.58))
 		icon.z_index = ACHIEVEMENT_MEDAL_SLOT_COUNT - i + ACHIEVEMENT_MEDAL_SLOT_COUNT
 		if i < actions.size():
 			var action := actions[i] as Dictionary
 			icon.tooltip_text = "%s: %s" % [_skill_name(skill_id), str(action.get("name", ""))]
 			shadow.tooltip_text = icon.tooltip_text
 		strip.add_slot_icon(icon, shadow)
+		_configure_achievement_medal_slot(icon, shadow, skill_id, actions, i)
 		panels.append(shadow)
 		icons.append(icon)
 	return {"root": strip, "panels": panels, "icons": icons}
