@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"C:\\\\Users\\\\bknep\\\\Documents\\\\Idle Slop 1\" -Recurse)",
+      "Bash(Select-Object FullName)",
+      "Bash(xargs grep -l \"func _process\\\\b\")",
+      "Bash(Get-ChildItem *)",
+      "Bash(python3 -c ' *)",
+      "Bash(python -c ' *)"
+    ]
+  }
+}

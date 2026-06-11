@@ -8194,7 +8194,7 @@ func _stop_chat_stream_poll_timer() -> void:
 		chat_stream_poll_timer.stop()
 
 
-func _process_chat_live_sync(_delta: float) -> void:
+func _process_chat_live_sync(delta: float) -> void:
 	if not _chat_strip_visible_on_current_screen():
 		_chat_stream_disconnect(false)
 		_stop_chat_stream_poll_timer()
