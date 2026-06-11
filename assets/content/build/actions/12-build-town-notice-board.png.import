@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://chnopf3tww4do"
-path.s3tc="res://.godot/imported/12-build-town-notice-board.png-bfbed78c05761af7c021b3850a2c0afe.s3tc.ctex"
-path.etc2="res://.godot/imported/12-build-town-notice-board.png-bfbed78c05761af7c021b3850a2c0afe.etc2.ctex"
+path="res://.godot/imported/12-build-town-notice-board.png-bfbed78c05761af7c021b3850a2c0afe.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/build/actions/12-build-town-notice-board.png"
-dest_files=["res://.godot/imported/12-build-town-notice-board.png-bfbed78c05761af7c021b3850a2c0afe.s3tc.ctex", "res://.godot/imported/12-build-town-notice-board.png-bfbed78c05761af7c021b3850a2c0afe.etc2.ctex"]
+dest_files=["res://.godot/imported/12-build-town-notice-board.png-bfbed78c05761af7c021b3850a2c0afe.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

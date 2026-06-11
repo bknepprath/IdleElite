@@ -179,13 +179,13 @@ func _sync_mask_uniforms() -> void:
 		return
 	_last_mask_size = size
 	_last_mask_height = _current_height
-	for material in [_material, _underlay_material]:
-		if material == null:
+	for shader_material in [_material, _underlay_material]:
+		if shader_material == null:
 			continue
-		material.set_shader_parameter("strip_size", size)
-		material.set_shader_parameter("corner_radius", STRIP_BOTTOM_RADIUS)
-		material.set_shader_parameter("edge_inset", STRIP_EDGE_INSET)
-		material.set_shader_parameter("bottom_inset", STRIP_BOTTOM_INSET)
+		shader_material.set_shader_parameter("strip_size", size)
+		shader_material.set_shader_parameter("corner_radius", STRIP_BOTTOM_RADIUS)
+		shader_material.set_shader_parameter("edge_inset", STRIP_EDGE_INSET)
+		shader_material.set_shader_parameter("bottom_inset", STRIP_BOTTOM_INSET)
 
 
 func set_attempt_progress(progress: float) -> void:

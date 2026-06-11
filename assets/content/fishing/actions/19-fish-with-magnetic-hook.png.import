@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dux2wkum68wwp"
-path.s3tc="res://.godot/imported/19-fish-with-magnetic-hook.png-e0d5cd32713be0125868a91a8f96e4f7.s3tc.ctex"
-path.etc2="res://.godot/imported/19-fish-with-magnetic-hook.png-e0d5cd32713be0125868a91a8f96e4f7.etc2.ctex"
+path="res://.godot/imported/19-fish-with-magnetic-hook.png-e0d5cd32713be0125868a91a8f96e4f7.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/actions/19-fish-with-magnetic-hook.png"
-dest_files=["res://.godot/imported/19-fish-with-magnetic-hook.png-e0d5cd32713be0125868a91a8f96e4f7.s3tc.ctex", "res://.godot/imported/19-fish-with-magnetic-hook.png-e0d5cd32713be0125868a91a8f96e4f7.etc2.ctex"]
+dest_files=["res://.godot/imported/19-fish-with-magnetic-hook.png-e0d5cd32713be0125868a91a8f96e4f7.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

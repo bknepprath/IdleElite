@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b055d7qxgyo0p"
-path.s3tc="res://.godot/imported/location-shallows.png-e293b85fad2d9520b8dcf3e49f0962ee.s3tc.ctex"
-path.etc2="res://.godot/imported/location-shallows.png-e293b85fad2d9520b8dcf3e49f0962ee.etc2.ctex"
+path="res://.godot/imported/location-shallows.png-e293b85fad2d9520b8dcf3e49f0962ee.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/locations/location-shallows.png"
-dest_files=["res://.godot/imported/location-shallows.png-e293b85fad2d9520b8dcf3e49f0962ee.s3tc.ctex", "res://.godot/imported/location-shallows.png-e293b85fad2d9520b8dcf3e49f0962ee.etc2.ctex"]
+dest_files=["res://.godot/imported/location-shallows.png-e293b85fad2d9520b8dcf3e49f0962ee.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

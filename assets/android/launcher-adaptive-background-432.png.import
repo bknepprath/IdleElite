@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c1rgsoix5apoc"
-path.s3tc="res://.godot/imported/launcher-adaptive-background-432.png-a0d2fa832d5a96d87df838b9e7a1c0ab.s3tc.ctex"
-path.etc2="res://.godot/imported/launcher-adaptive-background-432.png-a0d2fa832d5a96d87df838b9e7a1c0ab.etc2.ctex"
+path="res://.godot/imported/launcher-adaptive-background-432.png-a0d2fa832d5a96d87df838b9e7a1c0ab.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/android/launcher-adaptive-background-432.png"
-dest_files=["res://.godot/imported/launcher-adaptive-background-432.png-a0d2fa832d5a96d87df838b9e7a1c0ab.s3tc.ctex", "res://.godot/imported/launcher-adaptive-background-432.png-a0d2fa832d5a96d87df838b9e7a1c0ab.etc2.ctex"]
+dest_files=["res://.godot/imported/launcher-adaptive-background-432.png-a0d2fa832d5a96d87df838b9e7a1c0ab.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

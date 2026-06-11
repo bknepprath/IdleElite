@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://6v2mynwob4u3"
-path.s3tc="res://.godot/imported/08-pour-questionable-foundation.png-a6fc26ce7a1128be68cbcffb9e95d983.s3tc.ctex"
-path.etc2="res://.godot/imported/08-pour-questionable-foundation.png-a6fc26ce7a1128be68cbcffb9e95d983.etc2.ctex"
+path="res://.godot/imported/08-pour-questionable-foundation.png-a6fc26ce7a1128be68cbcffb9e95d983.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/build/actions/08-pour-questionable-foundation.png"
-dest_files=["res://.godot/imported/08-pour-questionable-foundation.png-a6fc26ce7a1128be68cbcffb9e95d983.s3tc.ctex", "res://.godot/imported/08-pour-questionable-foundation.png-a6fc26ce7a1128be68cbcffb9e95d983.etc2.ctex"]
+dest_files=["res://.godot/imported/08-pour-questionable-foundation.png-a6fc26ce7a1128be68cbcffb9e95d983.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

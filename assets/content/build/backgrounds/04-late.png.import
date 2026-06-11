@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://mecvwt4mil4t"
-path.s3tc="res://.godot/imported/04-late.png-42bc3d485cae392323bb0828698dc048.s3tc.ctex"
-path.etc2="res://.godot/imported/04-late.png-42bc3d485cae392323bb0828698dc048.etc2.ctex"
+path="res://.godot/imported/04-late.png-42bc3d485cae392323bb0828698dc048.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/build/backgrounds/04-late.png"
-dest_files=["res://.godot/imported/04-late.png-42bc3d485cae392323bb0828698dc048.s3tc.ctex", "res://.godot/imported/04-late.png-42bc3d485cae392323bb0828698dc048.etc2.ctex"]
+dest_files=["res://.godot/imported/04-late.png-42bc3d485cae392323bb0828698dc048.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

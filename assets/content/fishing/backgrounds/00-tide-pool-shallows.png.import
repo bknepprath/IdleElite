@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c6bsh6cktem58"
-path.s3tc="res://.godot/imported/00-tide-pool-shallows.png-9ee632bf7e9cd95b3b36d5f0c1d0c381.s3tc.ctex"
-path.etc2="res://.godot/imported/00-tide-pool-shallows.png-9ee632bf7e9cd95b3b36d5f0c1d0c381.etc2.ctex"
+path="res://.godot/imported/00-tide-pool-shallows.png-9ee632bf7e9cd95b3b36d5f0c1d0c381.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/backgrounds/00-tide-pool-shallows.png"
-dest_files=["res://.godot/imported/00-tide-pool-shallows.png-9ee632bf7e9cd95b3b36d5f0c1d0c381.s3tc.ctex", "res://.godot/imported/00-tide-pool-shallows.png-9ee632bf7e9cd95b3b36d5f0c1d0c381.etc2.ctex"]
+dest_files=["res://.godot/imported/00-tide-pool-shallows.png-9ee632bf7e9cd95b3b36d5f0c1d0c381.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cfxlfn8l47jc"
-path.s3tc="res://.godot/imported/woodcutting.png-aff299a93c0b2a916784488a8d8791fc.s3tc.ctex"
-path.etc2="res://.godot/imported/woodcutting.png-aff299a93c0b2a916784488a8d8791fc.etc2.ctex"
+path="res://.godot/imported/woodcutting.png-aff299a93c0b2a916784488a8d8791fc.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/icons/woodcutting.png"
-dest_files=["res://.godot/imported/woodcutting.png-aff299a93c0b2a916784488a8d8791fc.s3tc.ctex", "res://.godot/imported/woodcutting.png-aff299a93c0b2a916784488a8d8791fc.etc2.ctex"]
+dest_files=["res://.godot/imported/woodcutting.png-aff299a93c0b2a916784488a8d8791fc.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

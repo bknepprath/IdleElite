@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ciq56rugakgx6"
-path.s3tc="res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.s3tc.ctex"
-path.etc2="res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.etc2.ctex"
+path="res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/ui/profile-avatar-blue-guy-spritesheet.png"
-dest_files=["res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.s3tc.ctex", "res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.etc2.ctex"]
+dest_files=["res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cjdmoxp8m05o2"
-path.s3tc="res://.godot/imported/10-parry-windmill-shadow.png-96298cf347c690bffcad13f0a1ba34fd.s3tc.ctex"
-path.etc2="res://.godot/imported/10-parry-windmill-shadow.png-96298cf347c690bffcad13f0a1ba34fd.etc2.ctex"
+path="res://.godot/imported/10-parry-windmill-shadow.png-96298cf347c690bffcad13f0a1ba34fd.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fight/actions/10-parry-windmill-shadow.png"
-dest_files=["res://.godot/imported/10-parry-windmill-shadow.png-96298cf347c690bffcad13f0a1ba34fd.s3tc.ctex", "res://.godot/imported/10-parry-windmill-shadow.png-96298cf347c690bffcad13f0a1ba34fd.etc2.ctex"]
+dest_files=["res://.godot/imported/10-parry-windmill-shadow.png-96298cf347c690bffcad13f0a1ba34fd.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

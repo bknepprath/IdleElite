@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b41pjqsb8bp0k"
-path.s3tc="res://.godot/imported/14-harpoon-suspicious-ripple.png-8de52216440e52a988742d06c2692267.s3tc.ctex"
-path.etc2="res://.godot/imported/14-harpoon-suspicious-ripple.png-8de52216440e52a988742d06c2692267.etc2.ctex"
+path="res://.godot/imported/14-harpoon-suspicious-ripple.png-8de52216440e52a988742d06c2692267.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/actions/14-harpoon-suspicious-ripple.png"
-dest_files=["res://.godot/imported/14-harpoon-suspicious-ripple.png-8de52216440e52a988742d06c2692267.s3tc.ctex", "res://.godot/imported/14-harpoon-suspicious-ripple.png-8de52216440e52a988742d06c2692267.etc2.ctex"]
+dest_files=["res://.godot/imported/14-harpoon-suspicious-ripple.png-8de52216440e52a988742d06c2692267.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

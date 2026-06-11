@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cvlc3hjww48l0"
-path.s3tc="res://.godot/imported/20-forge-a-receipt-for-the-moon.png-73367cb0109701db8f7868b8210b5dd2.s3tc.ctex"
-path.etc2="res://.godot/imported/20-forge-a-receipt-for-the-moon.png-73367cb0109701db8f7868b8210b5dd2.etc2.ctex"
+path="res://.godot/imported/20-forge-a-receipt-for-the-moon.png-73367cb0109701db8f7868b8210b5dd2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/thieving/actions/20-forge-a-receipt-for-the-moon.png"
-dest_files=["res://.godot/imported/20-forge-a-receipt-for-the-moon.png-73367cb0109701db8f7868b8210b5dd2.s3tc.ctex", "res://.godot/imported/20-forge-a-receipt-for-the-moon.png-73367cb0109701db8f7868b8210b5dd2.etc2.ctex"]
+dest_files=["res://.godot/imported/20-forge-a-receipt-for-the-moon.png-73367cb0109701db8f7868b8210b5dd2.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

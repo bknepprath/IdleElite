@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://clkw625jbiurb"
-path.s3tc="res://.godot/imported/17-pickpocket-the-security-camera.png-8b9f0929fafb31a75b6b2a02ecab2fce.s3tc.ctex"
-path.etc2="res://.godot/imported/17-pickpocket-the-security-camera.png-8b9f0929fafb31a75b6b2a02ecab2fce.etc2.ctex"
+path="res://.godot/imported/17-pickpocket-the-security-camera.png-8b9f0929fafb31a75b6b2a02ecab2fce.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/thieving/actions/17-pickpocket-the-security-camera.png"
-dest_files=["res://.godot/imported/17-pickpocket-the-security-camera.png-8b9f0929fafb31a75b6b2a02ecab2fce.s3tc.ctex", "res://.godot/imported/17-pickpocket-the-security-camera.png-8b9f0929fafb31a75b6b2a02ecab2fce.etc2.ctex"]
+dest_files=["res://.godot/imported/17-pickpocket-the-security-camera.png-8b9f0929fafb31a75b6b2a02ecab2fce.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

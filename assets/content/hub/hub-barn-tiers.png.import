@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dysjb04cwlmwu"
-path.s3tc="res://.godot/imported/hub-barn-tiers.png-54bca57b655d3a059395c9b6b6892e2c.s3tc.ctex"
-path.etc2="res://.godot/imported/hub-barn-tiers.png-54bca57b655d3a059395c9b6b6892e2c.etc2.ctex"
+path="res://.godot/imported/hub-barn-tiers.png-54bca57b655d3a059395c9b6b6892e2c.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/hub/hub-barn-tiers.png"
-dest_files=["res://.godot/imported/hub-barn-tiers.png-54bca57b655d3a059395c9b6b6892e2c.s3tc.ctex", "res://.godot/imported/hub-barn-tiers.png-54bca57b655d3a059395c9b6b6892e2c.etc2.ctex"]
+dest_files=["res://.godot/imported/hub-barn-tiers.png-54bca57b655d3a059395c9b6b6892e2c.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

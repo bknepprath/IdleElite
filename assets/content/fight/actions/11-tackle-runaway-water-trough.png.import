@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://rjfh8b6wtkhi"
-path.s3tc="res://.godot/imported/11-tackle-runaway-water-trough.png-c8fcfa79775f401320989a12653b1ada.s3tc.ctex"
-path.etc2="res://.godot/imported/11-tackle-runaway-water-trough.png-c8fcfa79775f401320989a12653b1ada.etc2.ctex"
+path="res://.godot/imported/11-tackle-runaway-water-trough.png-c8fcfa79775f401320989a12653b1ada.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fight/actions/11-tackle-runaway-water-trough.png"
-dest_files=["res://.godot/imported/11-tackle-runaway-water-trough.png-c8fcfa79775f401320989a12653b1ada.s3tc.ctex", "res://.godot/imported/11-tackle-runaway-water-trough.png-c8fcfa79775f401320989a12653b1ada.etc2.ctex"]
+dest_files=["res://.godot/imported/11-tackle-runaway-water-trough.png-c8fcfa79775f401320989a12653b1ada.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

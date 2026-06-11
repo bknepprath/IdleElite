@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://0wyhbui738pi"
-path.s3tc="res://.godot/imported/05-duel-leaning-fence-post.png-dc687b7ab4b9408150e3e3b139077b54.s3tc.ctex"
-path.etc2="res://.godot/imported/05-duel-leaning-fence-post.png-dc687b7ab4b9408150e3e3b139077b54.etc2.ctex"
+path="res://.godot/imported/05-duel-leaning-fence-post.png-dc687b7ab4b9408150e3e3b139077b54.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fight/actions/05-duel-leaning-fence-post.png"
-dest_files=["res://.godot/imported/05-duel-leaning-fence-post.png-dc687b7ab4b9408150e3e3b139077b54.s3tc.ctex", "res://.godot/imported/05-duel-leaning-fence-post.png-dc687b7ab4b9408150e3e3b139077b54.etc2.ctex"]
+dest_files=["res://.godot/imported/05-duel-leaning-fence-post.png-dc687b7ab4b9408150e3e3b139077b54.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

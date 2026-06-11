@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bdfl8rbjreple"
-path.s3tc="res://.godot/imported/10-crack-the-breakroom-snack-safe.png-e790581f32af82ca47042a5a6d22c457.s3tc.ctex"
-path.etc2="res://.godot/imported/10-crack-the-breakroom-snack-safe.png-e790581f32af82ca47042a5a6d22c457.etc2.ctex"
+path="res://.godot/imported/10-crack-the-breakroom-snack-safe.png-e790581f32af82ca47042a5a6d22c457.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/thieving/actions/10-crack-the-breakroom-snack-safe.png"
-dest_files=["res://.godot/imported/10-crack-the-breakroom-snack-safe.png-e790581f32af82ca47042a5a6d22c457.s3tc.ctex", "res://.godot/imported/10-crack-the-breakroom-snack-safe.png-e790581f32af82ca47042a5a6d22c457.etc2.ctex"]
+dest_files=["res://.godot/imported/10-crack-the-breakroom-snack-safe.png-e790581f32af82ca47042a5a6d22c457.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

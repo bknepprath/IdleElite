@@ -1,6 +1,6 @@
-[gd_scene load_steps=2 format=3 uid="uid://idle_slop_main"]
+[gd_scene load_steps=2 format=3 uid="uid://uvffp25xjd84"]
 
-[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+[ext_resource type="Script" uid="uid://dohonsop0naoj" path="res://scripts/main.gd" id="1_main"]
 
 [node name="Main" type="Control"]
 layout_mode = 3
@@ -10,4 +10,3 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_main")
-

@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ctf21j6183aq1"
-path.s3tc="res://.godot/imported/20-defeat-the-tractor-that-would-not-start.png-6073a947da328e0034874d0e227065c4.s3tc.ctex"
-path.etc2="res://.godot/imported/20-defeat-the-tractor-that-would-not-start.png-6073a947da328e0034874d0e227065c4.etc2.ctex"
+path="res://.godot/imported/20-defeat-the-tractor-that-would-not-start.png-6073a947da328e0034874d0e227065c4.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fight/actions/20-defeat-the-tractor-that-would-not-start.png"
-dest_files=["res://.godot/imported/20-defeat-the-tractor-that-would-not-start.png-6073a947da328e0034874d0e227065c4.s3tc.ctex", "res://.godot/imported/20-defeat-the-tractor-that-would-not-start.png-6073a947da328e0034874d0e227065c4.etc2.ctex"]
+dest_files=["res://.godot/imported/20-defeat-the-tractor-that-would-not-start.png-6073a947da328e0034874d0e227065c4.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

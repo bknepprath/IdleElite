@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b8t643w7p3dqy"
-path.s3tc="res://.godot/imported/jump-bottom.png-bd512dc7b8b6e6f421453d1bbac28731.s3tc.ctex"
-path.etc2="res://.godot/imported/jump-bottom.png-bd512dc7b8b6e6f421453d1bbac28731.etc2.ctex"
+path="res://.godot/imported/jump-bottom.png-bd512dc7b8b6e6f421453d1bbac28731.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/ui/jump-bottom.png"
-dest_files=["res://.godot/imported/jump-bottom.png-bd512dc7b8b6e6f421453d1bbac28731.s3tc.ctex", "res://.godot/imported/jump-bottom.png-bd512dc7b8b6e6f421453d1bbac28731.etc2.ctex"]
+dest_files=["res://.godot/imported/jump-bottom.png-bd512dc7b8b6e6f421453d1bbac28731.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

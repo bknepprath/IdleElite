@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d06lj4sqb6fm1"
-path.s3tc="res://.godot/imported/05-set-tiny-crab-pot.png-53443e39d2bfce13fa1dc54266e64dc4.s3tc.ctex"
-path.etc2="res://.godot/imported/05-set-tiny-crab-pot.png-53443e39d2bfce13fa1dc54266e64dc4.etc2.ctex"
+path="res://.godot/imported/05-set-tiny-crab-pot.png-53443e39d2bfce13fa1dc54266e64dc4.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/actions/05-set-tiny-crab-pot.png"
-dest_files=["res://.godot/imported/05-set-tiny-crab-pot.png-53443e39d2bfce13fa1dc54266e64dc4.s3tc.ctex", "res://.godot/imported/05-set-tiny-crab-pot.png-53443e39d2bfce13fa1dc54266e64dc4.etc2.ctex"]
+dest_files=["res://.godot/imported/05-set-tiny-crab-pot.png-53443e39d2bfce13fa1dc54266e64dc4.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

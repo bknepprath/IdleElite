@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ydm6gk4whb6y"
-path.s3tc="res://.godot/imported/hub-mission-sign-tiers.png-1180a19baf7f327669b2e38ee0076684.s3tc.ctex"
-path.etc2="res://.godot/imported/hub-mission-sign-tiers.png-1180a19baf7f327669b2e38ee0076684.etc2.ctex"
+path="res://.godot/imported/hub-mission-sign-tiers.png-1180a19baf7f327669b2e38ee0076684.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/hub/hub-mission-sign-tiers.png"
-dest_files=["res://.godot/imported/hub-mission-sign-tiers.png-1180a19baf7f327669b2e38ee0076684.s3tc.ctex", "res://.godot/imported/hub-mission-sign-tiers.png-1180a19baf7f327669b2e38ee0076684.etc2.ctex"]
+dest_files=["res://.godot/imported/hub-mission-sign-tiers.png-1180a19baf7f327669b2e38ee0076684.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

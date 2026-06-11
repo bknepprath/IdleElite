@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://do5i603d2jgwn"
-path.s3tc="res://.godot/imported/06-fell-skinny-pine.png-8128e84aa5f9144ff472ff9703725bb2.s3tc.ctex"
-path.etc2="res://.godot/imported/06-fell-skinny-pine.png-8128e84aa5f9144ff472ff9703725bb2.etc2.ctex"
+path="res://.godot/imported/06-fell-skinny-pine.png-8128e84aa5f9144ff472ff9703725bb2.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/woodcutting/actions/06-fell-skinny-pine.png"
-dest_files=["res://.godot/imported/06-fell-skinny-pine.png-8128e84aa5f9144ff472ff9703725bb2.s3tc.ctex", "res://.godot/imported/06-fell-skinny-pine.png-8128e84aa5f9144ff472ff9703725bb2.etc2.ctex"]
+dest_files=["res://.godot/imported/06-fell-skinny-pine.png-8128e84aa5f9144ff472ff9703725bb2.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0

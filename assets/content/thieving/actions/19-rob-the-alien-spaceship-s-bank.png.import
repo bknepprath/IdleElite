@@ -3,21 +3,19 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bw3xq4jpq2aip"
-path.s3tc="res://.godot/imported/19-rob-the-alien-spaceship-s-bank.png-cef1af01e0ed929a3684f1ed5334a23f.s3tc.ctex"
-path.etc2="res://.godot/imported/19-rob-the-alien-spaceship-s-bank.png-cef1af01e0ed929a3684f1ed5334a23f.etc2.ctex"
+path="res://.godot/imported/19-rob-the-alien-spaceship-s-bank.png-cef1af01e0ed929a3684f1ed5334a23f.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 
 [deps]
 
 source_file="res://assets/content/thieving/actions/19-rob-the-alien-spaceship-s-bank.png"
-dest_files=["res://.godot/imported/19-rob-the-alien-spaceship-s-bank.png-cef1af01e0ed929a3684f1ed5334a23f.s3tc.ctex", "res://.godot/imported/19-rob-the-alien-spaceship-s-bank.png-cef1af01e0ed929a3684f1ed5334a23f.etc2.ctex"]
+dest_files=["res://.godot/imported/19-rob-the-alien-spaceship-s-bank.png-cef1af01e0ed929a3684f1ed5334a23f.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
