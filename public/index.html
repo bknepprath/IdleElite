@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #f6f4ee;
+      color: #1d2228;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+    }
+
+    main {
+      width: min(640px, calc(100% - 32px));
+      padding: 40px 0;
+    }
+
+    h1 {
+      margin: 0 0 12px;
+      font-size: clamp(2rem, 7vw, 4rem);
+      line-height: 1;
+    }
+
+    p {
+      max-width: 42rem;
+      margin: 0 0 18px;
+      font-size: 1.05rem;
+      line-height: 1.5;
+    }
+
+    a {
+      color: #1265d8;
+      font-weight: 700;
+    }
+
+    .links {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 28px;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        background: #171a1f;
+        color: #f4efe3;
+      }
+
+      a {
+        color: #7ab0ff;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Idle Elite</h1>
+    <p>Idle Elite is a mobile idle RPG about training skills, earning upgrades, and building an absurdly elite hero one short session at a time.</p>
+    <p>For app support, contact <a href="mailto:weskillnow@gmail.com">weskillnow@gmail.com</a>.</p>
+    <div class="links">
+      <a href="/app-ads.txt">app-ads.txt</a>
+    </div>
+  </main>
+</body>
+</html>
