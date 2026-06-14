@@ -114,7 +114,7 @@ func _run() -> void:
 	var shadow := scene.get("detail_shelf_shadow_overlay") as CanvasItem
 	var scroll_y := int(scroll.scroll_vertical)
 	var drag_y := float(scroll.get("drag_scroll_position"))
-	var shadow_alpha := 0.0 if shadow == null else shadow.modulate.a
+	var shadow_alpha := _shelf_shadow_alpha(shadow)
 	var shadow_visible := false if shadow == null else shadow.visible
 	if scroll_y != 0 or absf(drag_y) > 0.01:
 		_fail("tutorial starter skill page should start at top scroll, got scroll=%s drag=%.3f %s" % [str(scroll_y), drag_y, _summary(scene)])
@@ -214,7 +214,7 @@ func _summary(scene: Node) -> String:
 	var shadow := scene.get("detail_shelf_shadow_overlay") as CanvasItem
 	var shadow_text := "none"
 	if shadow != null:
-		shadow_text = "visible=%s alpha=%.4f" % [str(shadow.visible), shadow.modulate.a]
+		shadow_text = "visible=%s alpha=%.4f" % [str(shadow.visible), _shelf_shadow_alpha(shadow)]
 	return "screen=%s selected=%s tutorial=%s step=%s scroll=%s shadow=%s" % [
 		str(scene.get("current_screen")),
 		str(scene.get("selected_skill_id")),
@@ -223,6 +223,17 @@ func _summary(scene: Node) -> String:
 		scroll_text,
 		shadow_text
 	]
+
+
+func _shelf_shadow_alpha(shadow: Node) -> float:
+	if shadow == null:
+		return 0.0
+	var raw_alpha = shadow.get("shadow_alpha")
+	if raw_alpha != null:
+		return float(raw_alpha)
+	if shadow is CanvasItem:
+		return (shadow as CanvasItem).modulate.a
+	return 0.0
 
 
 func _wait_for_boot_ready(scene: Node) -> bool:

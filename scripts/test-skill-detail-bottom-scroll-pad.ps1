@@ -20,7 +20,7 @@ function Read-ConstNumber {
         [Parameter(Mandatory = $true)][string]$Name
     )
 
-    $pattern = "(?m)^const $([regex]::Escape($Name)) := ([0-9]+(?:\.[0-9]+)?)$"
+    $pattern = "(?m)^const $([regex]::Escape($Name)) := ([0-9]+(?:\.[0-9]+)?)\r?$"
     $match = [regex]::Match($Source, $pattern)
     Assert-True $match.Success "Missing $Name constant."
     [double]$match.Groups[1].Value

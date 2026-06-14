@@ -4,7 +4,8 @@
       label: "Product",
       links: [
         { href: "idle-elite-prd.html", label: "Godot PRD" },
-        { href: "activity-database.html", label: "Activity DB" }
+        { href: "activity-database.html", label: "Activity DB" },
+        { href: "unlock-combo-events-plan.html", label: "Combo unlock plan" }
       ]
     },
     {

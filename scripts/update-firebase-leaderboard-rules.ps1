@@ -51,12 +51,14 @@ $categoryExpression = New-CategoryExpression -CategoryKeys $categoryKeys
 
 $freshClientTimestampRule = "newData.isNumber() && newData.val() >= now - 10000 && newData.val() <= now + 60000"
 $freshGateTimestampExpr = "{0}.isNumber() && {0}.val() >= now - 10000 && {0}.val() <= now + 60000"
+$leaderboardFreshGateRule = "root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').isNumber() && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() >= now - 10000 && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() <= now + 60000"
+$leaderboardLegacyRowCooldownRule = "newData.child('updated_at').isNumber() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
 $chatFreshGateRule = "newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').val() <= now + 60000"
 $chatClaimedNameRule = "newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid"
 $chatGuestNameRule = "!newData.child('name_key').exists() && newData.child('name').isString() && newData.child('name').val().matches(/^guest[0-9]{4}$/)"
 $chatCreateRule = "newData.exists() && !data.exists() && newData.child('sender_id').val() == auth.uid && ($chatClaimedNameRule || $chatGuestNameRule) && `$messageId.length >= 8 && `$messageId.length <= 64 && $chatFreshGateRule"
 $chatOwnerRefreshRule = "data.exists() && newData.exists() && data.child('sender_id').val() == auth.uid && $chatClaimedNameRule && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == data.child('deleted').val() && newData.child('deleted_at').val() == data.child('deleted_at').val() && newData.child('deleted_by').val() == data.child('deleted_by').val()"
-$chatModerationRule = "data.exists() && newData.exists() && auth.token.moderator == true && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('name').val() == data.child('name').val() && newData.child('name_key').val() == data.child('name_key').val() && newData.child('avatar_index').val() == data.child('avatar_index').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == true && newData.child('deleted_at').val() == now && newData.child('deleted_by').val() == auth.uid"
+$chatModerationRule = "data.exists() && newData.exists() && auth.token.moderator == true && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('name').val() == data.child('name').val() && newData.child('name_key').val() == data.child('name_key').val() && newData.child('total_level').val() == data.child('total_level').val() && newData.child('avatar_index').val() == data.child('avatar_index').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == true && newData.child('deleted_at').val() == now && newData.child('deleted_by').val() == auth.uid"
 
 $rulesObject = [ordered]@{
     rules = [ordered]@{
@@ -102,7 +104,7 @@ $rulesObject = [ordered]@{
                         ".read" = "auth != null && $categoryExpression && query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50"
                         ".indexOn" = @("score")
                         '$playerId' = [ordered]@{
-                            ".write" = "auth != null && newData.exists() && auth.uid == `$playerId && $categoryExpression && `$playerId.length >= 8 && `$playerId.length <= 48 && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid && ((newData.parent().parent().parent().child('player_write_gates').child(`$playerId).child('updated_at').isNumber() && newData.parent().parent().parent().child('player_write_gates').child(`$playerId).child('updated_at').val() >= now - 10000 && newData.parent().parent().parent().child('player_write_gates').child(`$playerId).child('updated_at').val() <= now + 60000) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000))"
+                            ".write" = "auth != null && newData.exists() && auth.uid == `$playerId && $categoryExpression && `$playerId.length >= 8 && `$playerId.length <= 48 && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid && (($leaderboardFreshGateRule) || ($leaderboardLegacyRowCooldownRule) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000))"
                             ".validate" = "newData.hasChildren(['name', 'name_key', 'avatar_index', 'score', 'updated_at', 'submitted_at_unix'])"
                             name = [ordered]@{
                                 ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
@@ -170,6 +172,9 @@ $rulesObject = [ordered]@{
                         }
                         name_key = [ordered]@{
                             ".validate" = "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
+                        }
+                        total_level = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
                         }
                         avatar_index = [ordered]@{
                             ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"

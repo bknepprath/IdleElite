@@ -4,11 +4,13 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $performanceTest = Join-Path $projectRoot "scripts\test-performance-monitor.ps1"
 $performanceRegressionTest = Join-Path $projectRoot "scripts\test-performance-regressions.ps1"
+$leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
 $activityCardGeometryTest = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
 $tutorialStartScrollTest = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
 $staminaGaugeFailShakeTest = Join-Path $projectRoot "scripts\test-stamina-gauge-fail-shake.ps1"
 $skillDetailBottomScrollPadTest = Join-Path $projectRoot "scripts\test-skill-detail-bottom-scroll-pad.ps1"
 $skillDetailHiddenPreviewScrollGapTest = Join-Path $projectRoot "scripts\test-skill-detail-hidden-preview-scroll-gap.ps1"
+$saveNormalizationTest = Join-Path $projectRoot "scripts\test-save-normalization.ps1"
 $skillsPagePerformanceTest = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 $skillsPagePerformanceRepeatTest = Join-Path $projectRoot "scripts\test-skills-page-performance-repeat.ps1"
 
@@ -86,6 +88,17 @@ if ($LASTEXITCODE -ne 0) {
 }
 Assert-NoUnexpectedGodotErrors $performanceRegressionOutput "performance regression validation"
 
+if (-not (Test-Path -LiteralPath $leaderboardCostSafetyTest)) {
+    throw "Leaderboard cost-safety test was not found at $leaderboardCostSafetyTest"
+}
+
+$leaderboardCostSafetyOutput = & $leaderboardCostSafetyTest 2>&1
+$leaderboardCostSafetyOutput | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+Assert-NoUnexpectedGodotErrors $leaderboardCostSafetyOutput "leaderboard cost-safety validation"
+
 if (-not (Test-Path -LiteralPath $activityCardGeometryTest)) {
     throw "Activity card geometry test was not found at $activityCardGeometryTest"
 }
@@ -143,6 +156,18 @@ if ($LASTEXITCODE -ne 0) {
 }
 Assert-NoUnexpectedGodotErrors $skillDetailHiddenPreviewScrollGapOutput "skill detail hidden preview scroll-gap validation"
 Assert-NoHeadlessGodotProcesses "skill detail hidden preview scroll-gap validation"
+
+if (-not (Test-Path -LiteralPath $saveNormalizationTest)) {
+    throw "Save normalization test was not found at $saveNormalizationTest"
+}
+
+$saveNormalizationOutput = & $saveNormalizationTest 2>&1
+$saveNormalizationOutput | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+Assert-NoUnexpectedGodotErrors $saveNormalizationOutput "save normalization validation"
+Assert-NoHeadlessGodotProcesses "save normalization validation"
 
 $strictSkillsPerformance = $env:IDLE_ELITE_STRICT_SKILLS_PERF -eq "1"
 $skillsPageValidationTest = $skillsPagePerformanceRepeatTest

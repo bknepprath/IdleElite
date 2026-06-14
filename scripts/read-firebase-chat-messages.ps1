@@ -43,6 +43,7 @@ $messages.PSObject.Properties | ForEach-Object {
         id = $_.Name
         created_at = [int64]$value.created_at
         name = [string]$value.name
+        total_level = [int]$value.total_level
         sender_id = [string]$value.sender_id
         deleted = [bool]$value.deleted
         text = [string]$value.text
