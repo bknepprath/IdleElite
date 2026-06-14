@@ -11,8 +11,9 @@ This tracks small, testable efficiency changes from the codebase audit. Each ite
 - [x] 3. Replace common gameplay `_render_screen()` calls with targeted refreshes. First pass play-tested and accepted.
 - [x] 4. Debounce save writes while preserving immediate critical saves. First pass play-tested and accepted.
 - [ ] 5. Cache atlas textures and bake avoidable runtime pixel loops. First pass implemented; awaiting play-test confirmation.
-- [ ] 6. Throttle chat/network frame polling.
+- [x] 6. Throttle chat/network frame polling. First pass implemented; awaiting play-test confirmation.
 - [ ] 7. Reuse music players/streams across music cycles.
+- [x] 8. Cache visible action-card stat refresh work. Headless strip suite found this as the current spike source; awaiting live FPS confirmation.
 
 ## Notes
 
@@ -55,3 +56,17 @@ User test: accepted on 2026-06-07.
 Goal: avoid rebuilding identical atlas slices when screens/cards are rerendered. First pass adds a shared atlas texture cache and uses it for hub sheet slices, fishing atlas regions, unlock padlock cropping, and generic spritesheet slices.
 
 Status: first pass implemented; awaiting play-test confirmation.
+
+### 6. Throttle Chat/Network Frame Polling
+
+Goal: reduce live chat stream polling while keeping the compact skills chat strip functional. First pass removes the Hub chat strip and backs the stream poll timer off from 20 polls/sec to 4 polls/sec.
+
+Status: first pass implemented; awaiting play-test confirmation.
+
+### 8. Cache Visible Action-Card Stat Refresh Work
+
+Goal: stop recomputing unchanged visible action-card XP, stamina, cycle time, and success values every frame. A headless stripped-variant suite showed that removing static action-card refresh matched the `no_ui` / `no_card_ui` performance profile, while stripping popup, mastery, run-feedback, regen, music, and background maintenance did not remove the spike.
+
+Status: implemented with action stat value caching and action-card dirty keys; awaiting live FPS confirmation.
+
+Validation: `.\scripts\test-skills-page-performance.ps1`, `.\scripts\test-performance-regressions.ps1`, `.\scripts\test-performance-monitor.ps1`, `.\scripts\check-leaderboard-cost-safety.ps1`, and `.\scripts\check-project.ps1` passed on 2026-06-12.

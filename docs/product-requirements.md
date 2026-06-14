@@ -48,9 +48,9 @@ These are the current Play Store screenshots and should guide the public-facing 
 
 ### Content
 
-- 5 skills: Fight, Thieving, Build, Woodcutting, Fishing.
+- 5 skills: Fighting, Thieving, Building, Woodcutting, Fishing.
 - 126 actions loaded from `docs/activity-database.json`.
-- 25 actions each for Fight, Thieving, Build, and Fishing.
+- 25 actions each for Fighting, Thieving, Building, and Fishing.
 - 26 Woodcutting actions, including the current passive log module.
 - Unlocks currently run from level 1 through level 50, with Woodcutting extending to level 55.
 - Activity art and background references validate with no missing files.
@@ -199,9 +199,9 @@ The skills already exist. The next phase should make their play identities clear
 
 | Skill | Current Fantasy | Current Curve | Product Direction |
 | --- | --- | --- | --- |
-| Fight | Farm chores become personal confrontations. | 25 actions, Lv 1-50, success 95%-47%. | Make streaks and crits feel punchy and readable. |
+| Fighting | Farm chores become personal confrontations. | 25 actions, Lv 1-50, success 95%-47%. | Make streaks and crits feel punchy and readable. |
 | Thieving | Tiny sneaks escalate into absurd heists. | 25 actions, Lv 1-50, success 96%-48%. | Add stronger jackpot/stealth identity later; keep early actions fast. |
-| Build | Fix, patch, build, and eventually construct ridiculous infrastructure. | 25 actions, Lv 1-50, success 86%-38%. | Tie Build to log/plank spending and permanent account improvement. |
+| Building | Fix, patch, build, and eventually construct ridiculous infrastructure. | 25 actions, Lv 1-50, success 86%-38%. | Tie Building to log/plank spending and permanent account improvement. |
 | Woodcutting | Reliable gathering and passive log production. | 26 actions, Lv 1-55, success 90%-42%. | Keep it the resource backbone; expand passive module use. |
 | Fishing | Pond catches grow into stranger waters. | 25 actions, Lv 1-50, XP scale higher than other skills. | Lean into variable catch quality once resources are deeper. |
 
@@ -249,7 +249,7 @@ Requirements:
 
 - Rewarded XP/speed boost must be clear, optional, and never interrupt an activity.
 - Tester-disabled rewarded behavior must not look broken.
-- Plank boost should explain that it consumes logs for Build XP.
+- Plank boost should explain that it consumes logs for Building XP.
 - Future gear should modify existing stats first: XP, stamina, speed, success, passive yield, passive capacity.
 
 ### Hero / Achievements
@@ -316,7 +316,7 @@ Requirements:
 
 | Requirement | Status | Notes |
 | --- | --- | --- |
-| Five skills | Shipped | Fight, Thieving, Build, Woodcutting, Fishing. |
+| Five skills | Shipped | Fighting, Thieving, Building, Woodcutting, Fishing. |
 | Table-driven actions | Shipped | `docs/activity-database.json` is source of truth. |
 | 20+ jobs/actions | Shipped | 126 total actions. |
 | Skill XP/levels | Shipped | Formula implemented. |

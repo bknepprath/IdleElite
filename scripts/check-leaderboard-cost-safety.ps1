@@ -141,6 +141,7 @@ Assert-True ($main -match '_leaderboard_authenticated_query') "Database REST cal
 Assert-True ($main -notmatch 'WebSocket|WebSocketPeer|connect_to_url') "WebSocket-style realtime transports are not allowed."
 Assert-True ($main -match 'const CHAT_FIREBASE_ROOT := "global_chat/v1"') "Chat must use the expected Firebase root."
 Assert-True ($main -match 'const CHAT_STREAM_RETRY_INTERVAL_SECONDS := 30') "Chat stream reconnects must cool down for at least 30 seconds after failure."
+Assert-True ($main -match 'const CHAT_STREAM_POLL_INTERVAL_SECONDS := 0\.25') "Chat stream polling must stay throttled to avoid gameplay-frame churn."
 Assert-True ($main -match 'const CHAT_SEND_INTERVAL_SECONDS := 2') "Chat sends must stay client-limited to one message every two seconds."
 Assert-True ($main -match 'const CHAT_STRIP_VISIBLE_COUNT := 2') "Chat strip reads must stay capped to 2 visible messages."
 Assert-True ($main -match 'const CHAT_FULL_VISIBLE_COUNT := 25') "Full chat reads must stay capped to 25 visible messages."

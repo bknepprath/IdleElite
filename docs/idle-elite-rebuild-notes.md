@@ -132,7 +132,7 @@ The game used the same XP thresholds for each job:
 Keep the recognizable structure:
 
 - Character wants to become an `Idle Elite`.
-- Three starter jobs: Fight, Thieving, Build.
+- Three starter jobs: Fighting, Thieving, Building.
 - Stamina-gated actions.
 - XP and level progression per job.
 - Global level as the sum of job levels.

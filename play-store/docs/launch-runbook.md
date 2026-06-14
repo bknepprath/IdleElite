@@ -4,14 +4,15 @@
 
 ## Current Build Artifacts
 
-- Play upload bundle: `builds/android/idle-elite-release-v0.3.0-code20.aab`
-- Bundletool test package: `builds/android/idle-elite-release-v0.3.0-code20.apks`
+- Play upload bundle: `builds/android/idle-elite-release-v0.3.1-code21.aab`
+- Bundletool test package: `builds/android/idle-elite-release-v0.3.1-code21.apks`
 - Debug APK used for emulator testing: `builds/android/idle-elite-debug.apk`
 - Upload keystore: `release/idle-elite-upload.keystore`
 - Local keystore details: `release/local-release-notes.md`
 - Repeatable release build process: `play-store/docs/release-build-process.md`
 - Final upload checklist: `play-store/docs/final-upload-checklist.md`
 - Privacy policy draft: `play-store/docs/privacy-policy-draft.md`
+- AdMob app-ads.txt hosting notes: `play-store/docs/app-ads-txt-setup.md`
 
 The `release/` and `builds/` folders are ignored by Git because they contain local signing material and generated binaries.
 
@@ -25,7 +26,7 @@ The `release/` and `builds/` folders are ignored by Git because they contain loc
 - Release AAB converts to APKs with official Google `bundletool-all-1.18.3`.
 - Bundletool-generated APKs are ready for device install testing.
 - Debug build ad button reaches the AdMob rewarded loader.
-- Release manifest reports `versionCode=20`, `versionName=0.3.0`, `minSdk=24`, and `targetSdk=35`.
+- Release manifest reports `versionCode=21`, `versionName=0.3.1`, `minSdk=24`, and `targetSdk=35`.
 - Exported manifest contains AdMob app ID `ca-app-pub-3570919669688101~3616255490`.
 
 ## Account Items Before Public Upload
@@ -34,9 +35,10 @@ These require the developer's Google Play account or public hosting:
 
 1. Replace the `TODO` contact fields in `play-store/docs/privacy-policy-draft.md`.
 2. Host the privacy policy at a public URL and paste that URL into Play Console.
-3. Complete Play Console declarations: Ads, Data Safety, Content Rating, Target Audience, and Store Settings.
-4. Upload the release AAB to Closed testing before Production.
-5. Test the closed-test Play build on a real Android phone and confirm:
+3. Deploy `public/app-ads.txt` to the root of the developer website listed in Play Console and verify it is reachable in a browser.
+4. Complete Play Console declarations: Ads, Data Safety, Content Rating, Target Audience, and Store Settings.
+5. Upload the release AAB to Closed testing before Production.
+6. Test the closed-test Play build on a real Android phone and confirm:
    - rewarded ad opens,
    - closing/skipping does not grant the boost,
    - completing the ad grants the +10% XP boost,
@@ -57,14 +59,15 @@ Use this helper when the real AdMob IDs are available:
 1. Create a Google Play app named `Idle Elite`.
 2. Package name must be `com.idleelite.game`.
 3. Enroll in Play App Signing.
-4. Upload `builds/android/idle-elite-release-v0.3.0-code20.aab`.
+4. Upload `builds/android/idle-elite-release-v0.3.1-code21.aab`.
 5. Store listing:
    - App icon: `play-store/assets/app-icon-512.png`
    - Feature graphic: `play-store/assets/feature-graphic-1024x500.png`
    - Phone screenshots: `play-store/assets/screenshot-*.png`
    - Listing copy: `play-store/docs/google-play-store-listing.md`
 6. Complete Data Safety and Ads declarations.
-7. Start with Closed testing before Production.
+7. Set the developer website to the host that serves `app-ads.txt`, then request an AdMob app-ads.txt status refresh if available.
+8. Start with Closed testing before Production.
 
 ## Rebuild Commands
 

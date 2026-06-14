@@ -2,14 +2,14 @@
 <!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
 
 
-This first implementation focuses on the early `Fight` skill while the other starter skills are still being rebuilt.
+This first implementation focuses on the early `Fighting` skill while the other starter skills are still being rebuilt.
 
 ## Runtime Shape
 
 - `scripts/main.gd` owns the current combat loop and keeps enemy tuning in the `ENEMIES` table.
 - Save data uses `user://idle_elite_save.json`.
-- Offline progress currently restores Fight stamina only.
-- Global level is temporarily equal to Fight level until Thieving, Build, Woodcutting, and Fishing are implemented.
+- Offline progress currently restores Fighting stamina only.
+- Global level is temporarily equal to Fighting level until Thieving, Building, Woodcutting, and Fishing are implemented.
 
 ## Animal Ladder
 
@@ -29,7 +29,7 @@ This first implementation focuses on the early `Fight` skill while the other sta
 | 24 | Bull | 860 | 36-68 | 16 | 48% | 5.20K XP, $5.40K |
 | 28 | Bear | 1180 | 46-86 | 19 | 46% | 7.80K XP, $8.50K |
 
-Hit chance gains a small bonus when the player's Fight level is above an enemy's unlock level. Misses grant grit XP so spent stamina always moves the player forward.
+Hit chance gains a small bonus when the player's Fighting level is above an enemy's unlock level. Misses grant grit XP so spent stamina always moves the player forward.
 
 ## Balance Intent
 

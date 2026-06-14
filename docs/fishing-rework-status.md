@@ -27,7 +27,7 @@ Last updated: 2026-05-31 (in progress on branch / working tree)
 
 ## Explicitly Deferred
 
-- **Build skill finale** - `build-the-building-that-builds-you` is not gated on fishing
+- **Building skill finale** - `build-the-building-that-builds-you` is not gated on fishing
 - Teaser-only area rows (hidden future areas)
 - Shiny fish + phase badge UI
 - Lobster cage **passive collect** module (woodcutting-style)

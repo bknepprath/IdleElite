@@ -101,6 +101,18 @@ public class GodotApp extends GodotActivity {
 	}
 
 	@Override
+	protected void onStart() {
+		super.onStart();
+		writeDiagnosticEvent("start");
+	}
+
+	@Override
+	protected void onRestart() {
+		super.onRestart();
+		writeDiagnosticEvent("restart");
+	}
+
+	@Override
 	public void onResume() {
 		super.onResume();
 		writeDiagnosticEvent("resume");
@@ -117,6 +129,13 @@ public class GodotApp extends GodotActivity {
 	protected void onStop() {
 		writeDiagnosticEvent("stop");
 		super.onStop();
+	}
+
+	@Override
+	protected void onDestroy() {
+		writeDiagnosticEvent("destroy");
+		removeThermalStatusLogger();
+		super.onDestroy();
 	}
 
 	@Override
@@ -151,6 +170,18 @@ public class GodotApp extends GodotActivity {
 		writeDiagnosticEvent("thermal_status:" + thermalStatusName(powerManager.getCurrentThermalStatus()));
 		thermalStatusListener = status -> writeDiagnosticEvent("thermal_status:" + thermalStatusName(status));
 		powerManager.addThermalStatusListener(getMainExecutor(), thermalStatusListener);
+	}
+
+	private void removeThermalStatusLogger() {
+		if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q || thermalStatusListener == null) {
+			return;
+		}
+
+		PowerManager powerManager = (PowerManager)getSystemService(POWER_SERVICE);
+		if (powerManager != null) {
+			powerManager.removeThermalStatusListener(thermalStatusListener);
+		}
+		thermalStatusListener = null;
 	}
 
 	private void installCrashReporter() {

@@ -84,7 +84,8 @@ func _ready() -> void:
 	_apply_layout_height(_current_height)
 	_setup_fill()
 	_sync_shader_uniforms()
-	set_process(true)
+	_sync_strip_visibility()
+	set_process(false)
 
 
 func _notification(what: int) -> void:

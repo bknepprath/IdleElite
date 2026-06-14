@@ -70,7 +70,7 @@
   "skills": [
     {
       "id": "fight",
-      "name": "Fight",
+      "name": "Fighting",
       "verb": "Fighting",
       "identity": "Farm-only escalation. The fights begin with chores getting personal and end with the farm itself demanding a rematch.",
       "tuning": {
@@ -1006,7 +1006,7 @@
     },
     {
       "id": "build",
-      "name": "Build",
+      "name": "Building",
       "verb": "Building",
       "identity": "Permanent progress escalating from honest repairs to architecture that makes inspectors whisper.",
       "tuning": {

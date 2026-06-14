@@ -44,25 +44,25 @@ Each skill has:
 - A single progress bar loop for the current action.
 - Standard rewards per completed action.
 
-## Starter Fight Progression
+## Starter Fighting Progression
 
 The first playable combat ladder uses plain regular animals:
 
 | Unlock | Enemy | Role |
 | ---: | --- | --- |
-| Fight Lv. 1 | Chicken | Fast, cheap tutorial target |
-| Fight Lv. 2 | Rat | First stamina step-up |
-| Fight Lv. 3 | Rabbit | Evasive small animal |
-| Fight Lv. 5 | Goat | Durable farm animal |
-| Fight Lv. 7 | Cow | First heavy animal wall |
-| Fight Lv. 9 | Pig | Expanded farm ladder |
-| Fight Lv. 11 | Sheep | Woolly stamina check |
-| Fight Lv. 13 | Goose | Noisy midgame step |
-| Fight Lv. 15 | Emu | Fast animal wall |
-| Fight Lv. 18 | Boar | Wild animal tier |
-| Fight Lv. 21 | Horse | Large animal tier |
-| Fight Lv. 24 | Bull | Heavy farm tier |
-| Fight Lv. 28 | Bear | First apex animal |
+| Fighting Lv. 1 | Chicken | Fast, cheap tutorial target |
+| Fighting Lv. 2 | Rat | First stamina step-up |
+| Fighting Lv. 3 | Rabbit | Evasive small animal |
+| Fighting Lv. 5 | Goat | Durable farm animal |
+| Fighting Lv. 7 | Cow | First heavy animal wall |
+| Fighting Lv. 9 | Pig | Expanded farm ladder |
+| Fighting Lv. 11 | Sheep | Woolly stamina check |
+| Fighting Lv. 13 | Goose | Noisy midgame step |
+| Fighting Lv. 15 | Emu | Fast animal wall |
+| Fighting Lv. 18 | Boar | Wild animal tier |
+| Fighting Lv. 21 | Horse | Large animal tier |
+| Fighting Lv. 24 | Bull | Heavy farm tier |
+| Fighting Lv. 28 | Bear | First apex animal |
 
 ## Monetization Path
 

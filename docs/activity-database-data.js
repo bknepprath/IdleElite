@@ -72,7 +72,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
   "skills": [
     {
       "id": "fight",
-      "name": "Fight",
+      "name": "Fighting",
       "verb": "Fighting",
       "identity": "Farm-only escalation. The fights begin with chores getting personal and end with the farm itself demanding a rematch.",
       "tuning": {
@@ -1008,7 +1008,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
     },
     {
       "id": "build",
-      "name": "Build",
+      "name": "Building",
       "verb": "Building",
       "identity": "Permanent progress escalating from honest repairs to architecture that makes inspectors whisper.",
       "tuning": {
