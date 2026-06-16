@@ -2,7 +2,14 @@ const ActivityDocs = (() => {
   const databasePath = "activity-database.json";
 
   function docsAsset(path) {
-    return String(path || "").replace(/^docs\//, "");
+    const clean = String(path || "").replace(/^docs\//, "");
+    if (!clean || clean.startsWith("../") || clean.startsWith("/") || /^[a-z]+:/i.test(clean)) {
+      return clean;
+    }
+    if (clean.startsWith("assets/")) {
+      return "../" + clean;
+    }
+    return clean;
   }
 
   function formatSeconds(value) {
@@ -52,14 +59,9 @@ const ActivityDocs = (() => {
       identity: skill.identity,
       icon: docsAsset(skill.icon),
       actions: skill.actions.map(action => ({
-        id: action.id,
-        name: action.name,
-        unlock: action.unlock,
-        seconds: action.seconds,
-        xp: action.xp,
-        stamina: action.stamina,
-        success: action.success,
+        ...action,
         art: docsAsset(action.art),
+        background: docsAsset(action.background),
         bg: docsAsset(action.background)
       }))
     }));

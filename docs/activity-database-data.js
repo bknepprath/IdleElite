@@ -1,8 +1,8 @@
 // Generated from activity-database.json for file:// HTML previews.
 // Edit activity-database.json first, then run: python scripts/sync-activity-database-js.py
 globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
-  "schema_version": 1,
-  "updated": "2026-05-23",
+  "schema_version": 2,
+  "updated": "2026-06-14",
   "source_of_truth": "Edit this JSON first. The Godot game and HTML activity database both read this file.",
   "global_rules": {
     "base_max_stamina": 30,
@@ -50,10 +50,83 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       90,
       95
     ],
+    "requirements_schema": {
+      "legacy_unlock": "Existing actions may keep unlock as the owning-skill level gate.",
+      "requirements": "Optional action-level array for one or more skill gates. Each requirement has skill and level.",
+      "owning_page": "The skill array containing the action remains the page where that action is displayed.",
+      "fallback": "If requirements is missing or empty, use unlock with the owning skill.",
+      "example": [
+        {
+          "skill": "thieving",
+          "level": 12
+        },
+        {
+          "skill": "woodcutting",
+          "level": 10
+        }
+      ]
+    },
+    "combo_module_schema": {
+      "page_placement": "The skill array containing the action is the page where the module appears.",
+      "sort_unlock": "Optional display-order level. Defaults to the highest requirement level when omitted.",
+      "requirements": "Use one to five entries. Each entry has skill and level; locks use these entries for colors and counts.",
+      "xp_rewards": "Optional dictionary of skill id to XP. Mono actions default to the owning skill's xp value.",
+      "combo_tags": "Optional stable tags for filters, balancing, and asset planning, such as two_skill, high_level, or resource_combo.",
+      "display_tags": "Optional player-facing tags/chips. Keep short for mobile cards.",
+      "event": "Optional event metadata reserved for temporary event modules.",
+      "example": {
+        "id": "thieve-honey-from-beehive",
+        "page": "thieving",
+        "unlock": 12,
+        "sort_unlock": 12,
+        "requirements": [
+          {
+            "skill": "thieving",
+            "level": 12
+          },
+          {
+            "skill": "woodcutting",
+            "level": 10
+          }
+        ],
+        "xp": 45,
+        "xp_rewards": {
+          "thieving": 45,
+          "woodcutting": 8
+        },
+        "combo_tags": [
+          "two_skill",
+          "resource_combo"
+        ],
+        "display_tags": [
+          "Combo"
+        ]
+      }
+    },
+    "event_module_schema": {
+      "storage": "Temporary events live in the top-level event_modules array until spawned.",
+      "page": "Skill page where the event appears while active.",
+      "target_level": "Display-order anchor for page insertion. Also used as sort_unlock unless overridden.",
+      "minimum_level": "Minimum owning-skill level required before this random event can spawn.",
+      "requirements": "Optional runtime eligibility gates. Random event review cards show minimum_level instead of fixed lock levels.",
+      "xp_rewards": "Reward map template for scaling. Random event review cards do not show fixed XP because rewards scale to player level.",
+      "spawn_weight": "Relative random weight when the scheduler rolls eligible events.",
+      "active_duration_seconds": "How long the event remains active if not completed.",
+      "respawn_cooldown_seconds": "Minimum cooldown after completion or expiry before this event can spawn again.",
+      "example": {
+        "id": "covered-wagon-ambush-drill",
+        "page": "fight",
+        "target_level": 25,
+        "minimum_level": 12,
+        "spawn_weight": 1.0,
+        "active_duration_seconds": 3600,
+        "respawn_cooldown_seconds": 21600
+      }
+    },
     "xp_formula": "round(pow(action_index_1_based, 1.35) * skill.xp_scale)",
     "seconds_formula": "(1 + stamina * 0.75 + unlock * 0.06) * skill.time_scale",
     "success_formula": "max(20, skill.success_start - action_index_0_based * 2)",
-    "skill_level_xp_formula": "skill_xp_required(level) = round(22 * pow(level - 1, 2.08)); level starts at 1",
+    "skill_level_xp_formula": "skill_xp_required(level) = round(22 * pow(level - 1, 2.08) * (1 + 3 * pow(clamp((level - 10) / 89, 0, 1), 2))); levels 1-10 use the original curve; level starts at 1",
     "max_stamina_formula": "max_stamina(skill) = base_max_stamina + floor(cumulative_skill_levels / 10) + global medal/achievement bonuses + floor(skill_medals_earned / 3)",
     "mastery_xp_formula": "mastery_xp_required(level) = round(18 * pow(level, 2.05)); mastery starts at 0 and caps at 20",
     "mastery_xp_reward_formula": "mastery_xp_reward = 7 + ceil(base_seconds * 1.5) on successful action completion",
@@ -69,6 +142,218 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "The first globally earned medal of each tier unlocks a permanent global buff. Bronze, Sapphire, Demonic, Elite Bronze, Elite Sapphire, and Elite Demonic increase max stamina; Silver, Emerald, Heavenly, Elite Silver, Elite Emerald, and Elite Heavenly increase XP; Gold, Ruby, Elite Gold, and Elite Ruby increase action speed; Platinum, Diamond, Elite Platinum, and Elite Diamond increase success rate."
     ]
   },
+  "event_modules": [
+    {
+      "id": "covered-wagon-ambush-drill",
+      "page": "fight",
+      "kind": "event_activity",
+      "name": "Ambush Log Wagon",
+      "target_level": 25,
+      "minimum_level": 12,
+      "unlock": 25,
+      "sort_unlock": 25,
+      "stamina": 4,
+      "seconds": 4.2,
+      "xp": 75,
+      "success": 88,
+      "requirements": [
+        {
+          "skill": "fight",
+          "level": 25
+        },
+        {
+          "skill": "thieving",
+          "level": 20
+        }
+      ],
+      "xp_rewards": {
+        "fight": 75,
+        "thieving": 15
+      },
+      "resource_rewards": {
+        "logs_min": 30,
+        "logs_max": 50
+      },
+      "spawn_weight": 1.0,
+      "active_duration_seconds": 3600,
+      "respawn_cooldown_seconds": 21600,
+      "combo_tags": [
+        "event",
+        "first_event_wave",
+        "two_skill"
+      ],
+      "display_tags": [
+        "Event"
+      ],
+      "art": "assets/content/events/actions/covered-wagon-ambush-drill.png",
+      "background": "assets/content/fight/backgrounds/03-mid.png"
+    },
+    {
+      "id": "suspicious-picnic-basket",
+      "page": "thieving",
+      "kind": "event_activity",
+      "name": "Suspicious Picnic Basket",
+      "target_level": 18,
+      "minimum_level": 12,
+      "unlock": 18,
+      "sort_unlock": 18,
+      "stamina": 3,
+      "seconds": 2.7,
+      "xp": 55,
+      "success": 86,
+      "requirements": [
+        {
+          "skill": "thieving",
+          "level": 18
+        },
+        {
+          "skill": "fishing",
+          "level": 14
+        }
+      ],
+      "xp_rewards": {
+        "thieving": 55,
+        "fishing": 10
+      },
+      "spawn_weight": 1.1,
+      "active_duration_seconds": 3000,
+      "respawn_cooldown_seconds": 18000,
+      "combo_tags": [
+        "event",
+        "first_event_wave",
+        "two_skill"
+      ],
+      "display_tags": [
+        "Event"
+      ],
+      "art": "assets/content/thieving/actions/10-crack-the-breakroom-snack-safe.png",
+      "background": "assets/content/thieving/backgrounds/02-rising.png"
+    },
+    {
+      "id": "storm-damaged-dock",
+      "page": "build",
+      "kind": "event_activity",
+      "name": "Storm-Damaged Dock",
+      "target_level": 34,
+      "minimum_level": 12,
+      "unlock": 34,
+      "sort_unlock": 34,
+      "stamina": 5,
+      "seconds": 5.4,
+      "xp": 90,
+      "success": 84,
+      "requirements": [
+        {
+          "skill": "build",
+          "level": 34
+        },
+        {
+          "skill": "fishing",
+          "level": 30
+        }
+      ],
+      "xp_rewards": {
+        "build": 90,
+        "fishing": 18
+      },
+      "spawn_weight": 0.9,
+      "active_duration_seconds": 4200,
+      "respawn_cooldown_seconds": 25200,
+      "combo_tags": [
+        "event",
+        "first_event_wave",
+        "two_skill"
+      ],
+      "display_tags": [
+        "Event"
+      ],
+      "art": "assets/content/build/actions/10-construct-fishing-pier.png",
+      "background": "assets/content/build/backgrounds/03-mid.png"
+    },
+    {
+      "id": "lightning-struck-tree",
+      "page": "woodcutting",
+      "kind": "event_activity",
+      "name": "Lightning-Struck Tree",
+      "target_level": 42,
+      "minimum_level": 12,
+      "unlock": 42,
+      "sort_unlock": 42,
+      "stamina": 6,
+      "seconds": 6.6,
+      "xp": 100,
+      "success": 80,
+      "requirements": [
+        {
+          "skill": "woodcutting",
+          "level": 42
+        },
+        {
+          "skill": "fight",
+          "level": 35
+        }
+      ],
+      "xp_rewards": {
+        "woodcutting": 100,
+        "fight": 22
+      },
+      "spawn_weight": 0.8,
+      "active_duration_seconds": 3600,
+      "respawn_cooldown_seconds": 28800,
+      "combo_tags": [
+        "event",
+        "first_event_wave",
+        "two_skill"
+      ],
+      "display_tags": [
+        "Event"
+      ],
+      "art": "assets/content/woodcutting/actions/16-split-lightning-struck-cedar.png",
+      "background": "assets/content/woodcutting/backgrounds/03-mid.png"
+    },
+    {
+      "id": "washed-up-locked-crate",
+      "page": "fishing",
+      "kind": "event_activity",
+      "name": "Washed-Up Locked Crate",
+      "target_level": 30,
+      "minimum_level": 12,
+      "unlock": 30,
+      "sort_unlock": 30,
+      "stamina": 3,
+      "seconds": 4.0,
+      "xp": 65,
+      "success": 78,
+      "requirements": [
+        {
+          "skill": "fishing",
+          "level": 30
+        },
+        {
+          "skill": "thieving",
+          "level": 24
+        }
+      ],
+      "xp_rewards": {
+        "fishing": 65,
+        "thieving": 14
+      },
+      "spawn_weight": 1.0,
+      "active_duration_seconds": 3000,
+      "respawn_cooldown_seconds": 21600,
+      "combo_tags": [
+        "event",
+        "first_event_wave",
+        "two_skill"
+      ],
+      "display_tags": [
+        "Event"
+      ],
+      "art": "assets/content/events/actions/washed-up-locked-crate.png",
+      "background": "assets/content/fishing/backgrounds/00-tide-pool-shallows.png",
+      "area": "beach"
+    }
+  ],
   "skills": [
     {
       "id": "fight",
@@ -92,9 +377,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Shove Wobbly Hay Bale",
           "unlock": 1,
           "stamina": 1,
-          "seconds": 1.59,
+          "seconds": 1.09,
           "xp": 1,
-          "success": 95,
+          "success": 97.3,
           "rewards": {
             "xp": 1
           },
@@ -110,9 +395,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Kick Mud Off Boot",
           "unlock": 2,
           "stamina": 1,
-          "seconds": 1.65,
+          "seconds": 1.26,
           "xp": 3,
-          "success": 93,
+          "success": 96.9,
           "rewards": {
             "xp": 3
           },
@@ -128,15 +413,37 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Wrestle Stuck Gate Latch",
           "unlock": 3,
           "stamina": 1,
-          "seconds": 1.7,
+          "seconds": 1.26,
           "xp": 4,
-          "success": 91,
+          "success": 95.4,
           "rewards": {
             "xp": 4
           },
           "costs": {
             "stamina": 1
           },
+          "requirements": [
+            {
+              "skill": "fight",
+              "level": 3
+            },
+            {
+              "skill": "build",
+              "level": 2
+            }
+          ],
+          "xp_rewards": {
+            "fight": 4,
+            "build": 1
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "repair_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/fight/actions/03-wrestle-stuck-gate-latch.png",
           "background": "assets/content/fight/backgrounds/01-early.png"
         },
@@ -145,10 +452,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "tier": 4,
           "name": "Box Suspicious Feed Sack",
           "unlock": 4,
-          "stamina": 2,
-          "seconds": 2.41,
+          "stamina": 1,
+          "seconds": 1.49,
           "xp": 6,
-          "success": 89,
+          "success": 94.2,
           "rewards": {
             "xp": 6
           },
@@ -162,11 +469,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "duel-leaning-fence-post",
           "tier": 5,
           "name": "Duel Fence Post",
-          "unlock": 5,
-          "stamina": 2,
-          "seconds": 2.46,
+          "unlock": 6,
+          "stamina": 1,
+          "seconds": 1.55,
           "xp": 9,
-          "success": 87,
+          "success": 94.2,
           "rewards": {
             "xp": 9
           },
@@ -180,11 +487,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "outmuscle-angry-wheelbarrow",
           "tier": 6,
           "name": "Outmuscle Angry Wheelbarrow",
-          "unlock": 6,
+          "unlock": 8,
           "stamina": 2,
-          "seconds": 2.52,
+          "seconds": 1.9,
           "xp": 11,
-          "success": 85,
+          "success": 94.2,
           "rewards": {
             "xp": 11
           },
@@ -198,11 +505,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "brawl-with-kicking-milk-pail",
           "tier": 7,
           "name": "Brawl With Milk Pail",
-          "unlock": 7,
-          "stamina": 3,
-          "seconds": 3.23,
+          "unlock": 10,
+          "stamina": 2,
+          "seconds": 1.92,
           "xp": 14,
-          "success": 83,
+          "success": 92.3,
           "rewards": {
             "xp": 14
           },
@@ -216,11 +523,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "square-up-with-rake-in-grass",
           "tier": 8,
           "name": "Square Up With Rake",
-          "unlock": 8,
-          "stamina": 3,
-          "seconds": 3.28,
+          "unlock": 13,
+          "stamina": 2,
+          "seconds": 2.28,
           "xp": 17,
-          "success": 81,
+          "success": 90.0,
           "rewards": {
             "xp": 17
           },
@@ -231,14 +538,55 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
+          "id": "duel-the-angry-stump",
+          "tier": 8,
+          "name": "Duel The Angry Stump",
+          "unlock": 15,
+          "sort_unlock": 15,
+          "stamina": 2,
+          "seconds": 2.36,
+          "xp": 18,
+          "success": 89.0,
+          "rewards": {
+            "xp": 18
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "requirements": [
+            {
+              "skill": "fight",
+              "level": 15
+            },
+            {
+              "skill": "woodcutting",
+              "level": 14
+            }
+          ],
+          "xp_rewards": {
+            "fight": 18,
+            "woodcutting": 4
+          },
+          "combo_tags": [
+            "first_wave",
+            "two_skill",
+            "resource_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/woodcutting/actions/14-negotiate-with-angry-stump.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png"
+        },
+        {
           "id": "grapple-overfull-compost-bin",
           "tier": 9,
           "name": "Grapple Compost Bin",
-          "unlock": 9,
-          "stamina": 3,
-          "seconds": 3.34,
+          "unlock": 16,
+          "stamina": 2,
+          "seconds": 2.43,
           "xp": 19,
-          "success": 79,
+          "success": 88.0,
           "rewards": {
             "xp": 19
           },
@@ -252,11 +600,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "parry-windmill-shadow",
           "tier": 10,
           "name": "Parry Windmill Shadow",
-          "unlock": 10,
-          "stamina": 4,
-          "seconds": 4.05,
+          "unlock": 19,
+          "stamina": 2,
+          "seconds": 2.87,
           "xp": 22,
-          "success": 77,
+          "success": 87.7,
           "rewards": {
             "xp": 22
           },
@@ -270,11 +618,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "tackle-runaway-water-trough",
           "tier": 11,
           "name": "Tackle Water Trough",
-          "unlock": 12,
-          "stamina": 4,
-          "seconds": 4.15,
+          "unlock": 23,
+          "stamina": 3,
+          "seconds": 3.38,
           "xp": 25,
-          "success": 75,
+          "success": 87.4,
           "rewards": {
             "xp": 25
           },
@@ -288,11 +636,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "fight-the-barn-door-at-midnight",
           "tier": 12,
           "name": "Fight Barn Door",
-          "unlock": 14,
-          "stamina": 4,
-          "seconds": 4.26,
+          "unlock": 27,
+          "stamina": 3,
+          "seconds": 3.9,
           "xp": 29,
-          "success": 73,
+          "success": 85.8,
           "rewards": {
             "xp": 29
           },
@@ -306,11 +654,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "challenge-the-silo-echo",
           "tier": 13,
           "name": "Challenge The Silo Echo",
-          "unlock": 16,
-          "stamina": 5,
-          "seconds": 5.02,
+          "unlock": 31,
+          "stamina": 6,
+          "seconds": 4.11,
           "xp": 32,
-          "success": 71,
+          "success": 81.5,
           "rewards": {
             "xp": 32
           },
@@ -324,11 +672,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "survive-the-hayloft-ambush",
           "tier": 14,
           "name": "Survive The Hayloft Ambush",
-          "unlock": 18,
-          "stamina": 5,
-          "seconds": 5.13,
+          "unlock": 36,
+          "stamina": 6,
+          "seconds": 4.65,
           "xp": 35,
-          "success": 69,
+          "success": 78.8,
           "rewards": {
             "xp": 35
           },
@@ -341,48 +689,92 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "punch-through-corn-maze-panic",
           "tier": 15,
-          "name": "Punch Corn Maze Panic",
-          "unlock": 20,
-          "stamina": 5,
-          "seconds": 5.24,
+          "name": "Escape Corn Maze",
+          "unlock": 41,
+          "stamina": 7,
+          "seconds": 5.25,
           "xp": 39,
-          "success": 67,
+          "success": 77.7,
           "rewards": {
             "xp": 39
           },
           "costs": {
             "stamina": 5
           },
+          "requirements": [
+            {
+              "skill": "fight",
+              "level": 41
+            },
+            {
+              "skill": "thieving",
+              "level": 36
+            }
+          ],
+          "xp_rewards": {
+            "fight": 39,
+            "thieving": 9
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "escape_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/fight/actions/15-punch-through-corn-maze-panic.png",
           "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
           "id": "body-slam-the-root-cellar-door",
           "tier": 16,
-          "name": "Body Slam The Root Cellar Door",
-          "unlock": 22,
-          "stamina": 6,
-          "seconds": 6,
+          "name": "Unstuck Root Cellar Door",
+          "unlock": 46,
+          "stamina": 7,
+          "seconds": 5.87,
           "xp": 42,
-          "success": 65,
+          "success": 77.0,
           "rewards": {
             "xp": 42
           },
           "costs": {
             "stamina": 6
           },
+          "requirements": [
+            {
+              "skill": "fight",
+              "level": 46
+            },
+            {
+              "skill": "build",
+              "level": 44
+            }
+          ],
+          "xp_rewards": {
+            "fight": 42,
+            "build": 10
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "repair_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/fight/actions/16-body-slam-the-root-cellar-door.png",
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
           "id": "trade-blows-with-the-weather-vane",
           "tier": 17,
-          "name": "Trade With Weather Vane",
-          "unlock": 24,
-          "stamina": 6,
-          "seconds": 6.11,
+          "name": "Parry Weather Vane",
+          "unlock": 52,
+          "stamina": 8,
+          "seconds": 6.3,
           "xp": 46,
-          "success": 63,
+          "success": 74.7,
           "rewards": {
             "xp": 46
           },
@@ -395,12 +787,12 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "dodge-the-irrigation-betrayal",
           "tier": 18,
-          "name": "Dodge The Irrigation Betrayal",
-          "unlock": 26,
-          "stamina": 6,
-          "seconds": 6.21,
+          "name": "Flow Like Water",
+          "unlock": 58,
+          "stamina": 8,
+          "seconds": 7.02,
           "xp": 50,
-          "success": 61,
+          "success": 71.3,
           "rewards": {
             "xp": 50
           },
@@ -414,11 +806,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "enter-the-scarecrow-circle",
           "tier": 19,
           "name": "Enter The Scarecrow Circle",
-          "unlock": 28,
-          "stamina": 7,
-          "seconds": 6.98,
+          "unlock": 64,
+          "stamina": 9,
+          "seconds": 7.67,
           "xp": 53,
-          "success": 59,
+          "success": 66.6,
           "rewards": {
             "xp": 53
           },
@@ -432,11 +824,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "defeat-the-tractor-that-would-not-start",
           "tier": 20,
           "name": "Defeat Stubborn Tractor",
-          "unlock": 30,
-          "stamina": 7,
-          "seconds": 7.08,
+          "unlock": 69,
+          "stamina": 10,
+          "seconds": 8.21,
           "xp": 57,
-          "success": 57,
+          "success": 65.5,
           "rewards": {
             "xp": 57
           },
@@ -450,11 +842,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "hold-the-line-at-the-pumpkin-patch",
           "tier": 21,
           "name": "Hold Pumpkin Line",
-          "unlock": 33,
-          "stamina": 7,
-          "seconds": 7.24,
+          "unlock": 73,
+          "stamina": 11,
+          "seconds": 8.46,
           "xp": 61,
-          "success": 55,
+          "success": 65.2,
           "rewards": {
             "xp": 61
           },
@@ -468,11 +860,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "storm-the-forbidden-tool-shed",
           "tier": 22,
           "name": "Storm The Forbidden Tool Shed",
-          "unlock": 36,
-          "stamina": 8,
-          "seconds": 8.06,
+          "unlock": 76,
+          "stamina": 11,
+          "seconds": 9.15,
           "xp": 65,
-          "success": 53,
+          "success": 64.0,
           "rewards": {
             "xp": 65
           },
@@ -486,11 +878,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "win-the-great-barn-rafters-melee",
           "tier": 23,
           "name": "Win Barn Rafter Melee",
-          "unlock": 40,
-          "stamina": 8,
-          "seconds": 8.27,
+          "unlock": 78,
+          "stamina": 11,
+          "seconds": 9.22,
           "xp": 69,
-          "success": 51,
+          "success": 62.1,
           "rewards": {
             "xp": 69
           },
@@ -504,11 +896,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "face-the-entire-farm-at-once",
           "tier": 24,
           "name": "Face The Entire Farm At Once",
-          "unlock": 45,
-          "stamina": 8,
-          "seconds": 8.54,
+          "unlock": 79,
+          "stamina": 11,
+          "seconds": 9.47,
           "xp": 73,
-          "success": 49,
+          "success": 60.9,
           "rewards": {
             "xp": 73
           },
@@ -522,11 +914,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "rematch-the-same-hay-bale-somehow-stronger",
           "tier": 25,
           "name": "Rematch Buff Hay Bale",
-          "unlock": 50,
-          "stamina": 9,
-          "seconds": 9.46,
+          "unlock": 80,
+          "stamina": 12,
+          "seconds": 9.47,
           "xp": 77,
-          "success": 47,
+          "success": 59.7,
           "rewards": {
             "xp": 77
           },
@@ -560,9 +952,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Borrow A Cookie Permanently",
           "unlock": 1,
           "stamina": 1,
-          "seconds": 1.3,
+          "seconds": 0.98,
           "xp": 1,
-          "success": 96,
+          "success": 96.3,
           "rewards": {
             "xp": 1
           },
@@ -578,9 +970,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Sneak Past Tip Jar",
           "unlock": 2,
           "stamina": 1,
-          "seconds": 1.35,
+          "seconds": 1.15,
           "xp": 3,
-          "success": 94,
+          "success": 95.9,
           "rewards": {
             "xp": 3
           },
@@ -596,9 +988,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Pocket Couch Coins",
           "unlock": 3,
           "stamina": 1,
-          "seconds": 1.39,
+          "seconds": 1.15,
           "xp": 4,
-          "success": 92,
+          "success": 94.4,
           "rewards": {
             "xp": 4
           },
@@ -612,11 +1004,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "lift-loose-coins-from-couch-cushions",
           "tier": 4,
           "name": "Steal A Penny",
-          "unlock": 4,
-          "stamina": 2,
-          "seconds": 1.97,
+          "unlock": 5,
+          "stamina": 1,
+          "seconds": 1.44,
           "xp": 6,
-          "success": 90,
+          "success": 92.8,
           "rewards": {
             "xp": 6
           },
@@ -630,11 +1022,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "distract-fruit-stand-with-jazz-hands",
           "tier": 5,
           "name": "Jazz-Hands Fruit Stand",
-          "unlock": 5,
-          "stamina": 2,
-          "seconds": 2.02,
+          "unlock": 7,
+          "stamina": 1,
+          "seconds": 1.49,
           "xp": 9,
-          "success": 88,
+          "success": 92.8,
           "rewards": {
             "xp": 9
           },
@@ -648,11 +1040,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "pick-the-worlds-friendliest-lock",
           "tier": 6,
           "name": "Pick Friendly Lock",
-          "unlock": 6,
+          "unlock": 9,
           "stamina": 2,
-          "seconds": 2.06,
+          "seconds": 1.82,
           "xp": 11,
-          "success": 86,
+          "success": 92.8,
           "rewards": {
             "xp": 11
           },
@@ -666,11 +1058,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "swap-price-tags-at-the-broom-store",
           "tier": 7,
           "name": "Swap Broom Price Tags",
-          "unlock": 7,
-          "stamina": 3,
-          "seconds": 2.64,
+          "unlock": 12,
+          "stamina": 2,
+          "seconds": 1.91,
           "xp": 14,
-          "success": 84,
+          "success": 90.5,
           "rewards": {
             "xp": 14
           },
@@ -681,14 +1073,55 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
+          "id": "lift-honey-from-beehive",
+          "tier": 7,
+          "name": "Loot Beehive",
+          "unlock": 12,
+          "sort_unlock": 12,
+          "stamina": 2,
+          "seconds": 1.98,
+          "xp": 16,
+          "success": 89.6,
+          "rewards": {
+            "xp": 16
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "requirements": [
+            {
+              "skill": "thieving",
+              "level": 12
+            },
+            {
+              "skill": "woodcutting",
+              "level": 10
+            }
+          ],
+          "xp_rewards": {
+            "thieving": 16,
+            "woodcutting": 4
+          },
+          "combo_tags": [
+            "first_wave",
+            "two_skill",
+            "resource_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/thieving/actions/lift-honey-from-beehive.png",
+          "background": "assets/content/combo/thieving/backgrounds/lift-honey-from-beehive.png"
+        },
+        {
           "id": "steal-a-wallet-from-a-mannequin",
           "tier": 8,
           "name": "Steal Mannequin Wallet",
-          "unlock": 8,
-          "stamina": 3,
-          "seconds": 2.69,
+          "unlock": 15,
+          "stamina": 2,
+          "seconds": 2.24,
           "xp": 17,
-          "success": 82,
+          "success": 88.2,
           "rewards": {
             "xp": 17
           },
@@ -702,11 +1135,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "rob-the-tiny-bank-desk",
           "tier": 9,
           "name": "Rob The Tiny Bank Desk",
-          "unlock": 9,
-          "stamina": 3,
-          "seconds": 2.73,
+          "unlock": 18,
+          "stamina": 2,
+          "seconds": 2.37,
           "xp": 19,
-          "success": 80,
+          "success": 86.3,
           "rewards": {
             "xp": 19
           },
@@ -720,11 +1153,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "crack-the-breakroom-snack-safe",
           "tier": 10,
           "name": "Crack Snack Safe",
-          "unlock": 10,
-          "stamina": 4,
-          "seconds": 3.31,
+          "unlock": 22,
+          "stamina": 3,
+          "seconds": 3.13,
           "xp": 22,
-          "success": 78,
+          "success": 85.5,
           "rewards": {
             "xp": 22
           },
@@ -738,11 +1171,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "lift-the-mayors-ceremonial-purse",
           "tier": 11,
           "name": "Lift Mayor Purse",
-          "unlock": 12,
-          "stamina": 4,
-          "seconds": 3.4,
+          "unlock": 26,
+          "stamina": 3,
+          "seconds": 3.34,
           "xp": 25,
-          "success": 76,
+          "success": 85.2,
           "rewards": {
             "xp": 25
           },
@@ -756,11 +1189,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "heist-the-museum-gift-shop",
           "tier": 12,
           "name": "Heist The Museum Gift Shop",
-          "unlock": 14,
+          "unlock": 30,
           "stamina": 4,
-          "seconds": 3.48,
+          "seconds": 3.84,
           "xp": 29,
-          "success": 74,
+          "success": 83.7,
           "rewards": {
             "xp": 29
           },
@@ -771,14 +1204,55 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
+          "id": "scope-out-a-heist",
+          "tier": 12,
+          "name": "Scope Out A Heist",
+          "unlock": 34,
+          "sort_unlock": 34,
+          "stamina": 5,
+          "seconds": 4.0,
+          "xp": 31,
+          "success": 80.5,
+          "rewards": {
+            "xp": 31
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "requirements": [
+            {
+              "skill": "thieving",
+              "level": 34
+            },
+            {
+              "skill": "build",
+              "level": 29
+            }
+          ],
+          "xp_rewards": {
+            "thieving": 31,
+            "build": 8
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "planning_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/thieving/actions/scope-out-a-heist.png",
+          "background": "assets/content/combo/thieving/backgrounds/scope-out-a-heist.png"
+        },
+        {
           "id": "swipe-the-banks-practice-vault",
           "tier": 13,
-          "name": "Swipe Practice Vault",
-          "unlock": 16,
-          "stamina": 5,
-          "seconds": 4.11,
+          "name": "Practice Cracking Vault",
+          "unlock": 35,
+          "stamina": 6,
+          "seconds": 4.1,
           "xp": 32,
-          "success": 72,
+          "success": 79.0,
           "rewards": {
             "xp": 32
           },
@@ -791,30 +1265,93 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "rob-the-bank-during-a-robbery-drill",
           "tier": 14,
-          "name": "Rob Bank Drill",
-          "unlock": 18,
-          "stamina": 5,
-          "seconds": 4.2,
+          "name": "Remove Competition",
+          "unlock": 40,
+          "stamina": 6,
+          "seconds": 4.86,
           "xp": 35,
-          "success": 70,
+          "success": 76.3,
           "rewards": {
             "xp": 35
           },
           "costs": {
             "stamina": 5
           },
+          "requirements": [
+            {
+              "skill": "thieving",
+              "level": 40
+            },
+            {
+              "skill": "fight",
+              "level": 36
+            }
+          ],
+          "xp_rewards": {
+            "thieving": 35,
+            "fight": 8
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "combat_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/thieving/actions/14-rob-the-bank-during-a-robbery-drill.png",
           "background": "assets/content/thieving/backgrounds/03-mid.png"
+        },
+        {
+          "id": "steal-the-fishermans-lucky-hook",
+          "tier": 14,
+          "name": "Steal Fisherman's Lucky Hook",
+          "unlock": 42,
+          "sort_unlock": 42,
+          "stamina": 6,
+          "seconds": 4.98,
+          "xp": 37,
+          "success": 75.8,
+          "rewards": {
+            "xp": 37
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "requirements": [
+            {
+              "skill": "thieving",
+              "level": 42
+            },
+            {
+              "skill": "fishing",
+              "level": 36
+            }
+          ],
+          "xp_rewards": {
+            "thieving": 37,
+            "fishing": 9
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "fishing_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/fishing/actions/19-fish-with-magnetic-hook.png",
+          "background": "assets/content/fishing/backgrounds/01-pond-dock.png"
         },
         {
           "id": "empty-the-banks-backup-bank",
           "tier": 15,
           "name": "Empty The Bank's Backup Bank",
-          "unlock": 20,
-          "stamina": 5,
-          "seconds": 4.28,
+          "unlock": 45,
+          "stamina": 6,
+          "seconds": 5.16,
           "xp": 39,
-          "success": 68,
+          "success": 75.2,
           "rewards": {
             "xp": 39
           },
@@ -825,14 +1362,60 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
+          "id": "crack-the-shipwrights-lockbox",
+          "tier": 16,
+          "name": "Crack The Shipwright's Lockbox",
+          "unlock": 50,
+          "sort_unlock": 50,
+          "stamina": 7,
+          "seconds": 5.65,
+          "xp": 42,
+          "success": 74.2,
+          "rewards": {
+            "xp": 42
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "requirements": [
+            {
+              "skill": "thieving",
+              "level": 50
+            },
+            {
+              "skill": "build",
+              "level": 44
+            },
+            {
+              "skill": "fishing",
+              "level": 42
+            }
+          ],
+          "xp_rewards": {
+            "thieving": 42,
+            "build": 10,
+            "fishing": 8
+          },
+          "combo_tags": [
+            "user_requested",
+            "three_skill",
+            "dock_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/fishing/actions/loot-a-pirate-ship.png",
+          "background": "assets/content/combo/fishing/backgrounds/loot-a-pirate-ship.png"
+        },
+        {
           "id": "steal-a-password-from-a-fortune-cookie",
           "tier": 16,
           "name": "Steal Fortune Password",
-          "unlock": 22,
-          "stamina": 6,
-          "seconds": 4.91,
+          "unlock": 51,
+          "stamina": 7,
+          "seconds": 5.82,
           "xp": 42,
-          "success": 66,
+          "success": 74.1,
           "rewards": {
             "xp": 42
           },
@@ -846,11 +1429,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "pickpocket-the-security-camera",
           "tier": 17,
           "name": "Pickpocket Camera",
-          "unlock": 24,
-          "stamina": 6,
-          "seconds": 5,
+          "unlock": 57,
+          "stamina": 7,
+          "seconds": 6.21,
           "xp": 46,
-          "success": 64,
+          "success": 71.8,
           "rewards": {
             "xp": 46
           },
@@ -864,11 +1447,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "hotwire-a-parked-alien-spaceship",
           "tier": 18,
           "name": "Hotwire Alien Ship",
-          "unlock": 26,
-          "stamina": 6,
-          "seconds": 5.08,
+          "unlock": 62,
+          "stamina": 8,
+          "seconds": 7.05,
           "xp": 50,
-          "success": 62,
+          "success": 68.7,
           "rewards": {
             "xp": 50
           },
@@ -882,11 +1465,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "rob-the-alien-spaceships-bank",
           "tier": 19,
           "name": "Rob The Alien Spaceship's Bank",
-          "unlock": 28,
-          "stamina": 7,
-          "seconds": 5.71,
+          "unlock": 67,
+          "stamina": 8,
+          "seconds": 7.31,
           "xp": 53,
-          "success": 60,
+          "success": 64.4,
           "rewards": {
             "xp": 53
           },
@@ -900,11 +1483,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "forge-a-receipt-for-the-moon",
           "tier": 20,
           "name": "Forge A Receipt For The Moon",
-          "unlock": 30,
-          "stamina": 7,
-          "seconds": 5.8,
+          "unlock": 71,
+          "stamina": 11,
+          "seconds": 7.72,
           "xp": 57,
-          "success": 58,
+          "success": 63.7,
           "rewards": {
             "xp": 57
           },
@@ -918,11 +1501,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "burgle-the-dream-of-a-sleeping-wizard",
           "tier": 21,
           "name": "Burgle Wizard Dream",
-          "unlock": 33,
-          "stamina": 7,
-          "seconds": 5.93,
+          "unlock": 74,
+          "stamina": 11,
+          "seconds": 7.86,
           "xp": 61,
-          "success": 56,
+          "success": 63.7,
           "rewards": {
             "xp": 61
           },
@@ -936,11 +1519,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "shoplift-from-the-concept-of-money",
           "tier": 22,
           "name": "Shoplift From Money",
-          "unlock": 36,
-          "stamina": 8,
-          "seconds": 6.6,
+          "unlock": 76,
+          "stamina": 11,
+          "seconds": 8.44,
           "xp": 65,
-          "success": 54,
+          "success": 63.0,
           "rewards": {
             "xp": 65
           },
@@ -954,11 +1537,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "crack-the-vault-between-dimensions",
           "tier": 23,
           "name": "Crack Dimensional Vault",
-          "unlock": 40,
-          "stamina": 8,
-          "seconds": 6.77,
+          "unlock": 78,
+          "stamina": 11,
+          "seconds": 8.49,
           "xp": 69,
-          "success": 52,
+          "success": 61.1,
           "rewards": {
             "xp": 69
           },
@@ -972,11 +1555,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "pickpocket-an-interdimensional-god",
           "tier": 24,
           "name": "Pickpocket Dimensional God",
-          "unlock": 45,
-          "stamina": 8,
-          "seconds": 6.98,
+          "unlock": 79,
+          "stamina": 11,
+          "seconds": 8.74,
           "xp": 73,
-          "success": 50,
+          "success": 59.9,
           "rewards": {
             "xp": 73
           },
@@ -990,11 +1573,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "steal-the-alibi-you-used-to-do-it",
           "tier": 25,
           "name": "Steal Your Alibi",
-          "unlock": 50,
-          "stamina": 9,
-          "seconds": 7.74,
+          "unlock": 80,
+          "stamina": 11,
+          "seconds": 8.74,
           "xp": 77,
-          "success": 48,
+          "success": 58.7,
           "rewards": {
             "xp": 77
           },
@@ -1028,9 +1611,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Stack Bricks",
           "unlock": 1,
           "stamina": 1,
-          "seconds": 2.32,
+          "seconds": 1.49,
           "xp": 1,
-          "success": 86,
+          "success": 98.0,
           "rewards": {
             "xp": 1
           },
@@ -1046,9 +1629,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Patch Fence With Confidence",
           "unlock": 2,
           "stamina": 1,
-          "seconds": 2.39,
+          "seconds": 1.71,
           "xp": 3,
-          "success": 84,
+          "success": 98.0,
           "rewards": {
             "xp": 3
           },
@@ -1059,14 +1642,55 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
+          "id": "saw-planks",
+          "tier": 2,
+          "name": "Saw Planks",
+          "unlock": 3,
+          "sort_unlock": 3,
+          "stamina": 1,
+          "seconds": 1.82,
+          "xp": 4,
+          "success": 97.7,
+          "rewards": {
+            "xp": 4
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "requirements": [
+            {
+              "skill": "build",
+              "level": 3
+            },
+            {
+              "skill": "woodcutting",
+              "level": 2
+            }
+          ],
+          "xp_rewards": {
+            "build": 4,
+            "woodcutting": 1
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "resource_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/woodcutting/actions/05-split-firewood.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
+        },
+        {
           "id": "hammer-one-suspicious-nail",
           "tier": 3,
           "name": "Hammer One Suspicious Nail",
-          "unlock": 3,
+          "unlock": 4,
           "stamina": 1,
-          "seconds": 2.47,
+          "seconds": 1.86,
           "xp": 4,
-          "success": 82,
+          "success": 97.5,
           "rewards": {
             "xp": 4
           },
@@ -1077,14 +1701,55 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
+          "id": "study-blueprint",
+          "tier": 3,
+          "name": "Study Blueprint",
+          "unlock": 5,
+          "sort_unlock": 5,
+          "stamina": 1,
+          "seconds": 2.04,
+          "xp": 5,
+          "success": 96.7,
+          "rewards": {
+            "xp": 5
+          },
+          "costs": {
+            "stamina": 1
+          },
+          "requirements": [
+            {
+              "skill": "build",
+              "level": 5
+            },
+            {
+              "skill": "thieving",
+              "level": 4
+            }
+          ],
+          "xp_rewards": {
+            "build": 5,
+            "thieving": 1
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "planning_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/build/actions/03-study-blueprint.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
+        },
+        {
           "id": "repair-small-shack",
           "tier": 4,
           "name": "Repair Small Shack",
-          "unlock": 4,
-          "stamina": 2,
-          "seconds": 3.51,
+          "unlock": 6,
+          "stamina": 1,
+          "seconds": 2.3,
           "xp": 6,
-          "success": 80,
+          "success": 95.9,
           "rewards": {
             "xp": 6
           },
@@ -1098,11 +1763,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "install-door-that-mostly-opens",
           "tier": 5,
           "name": "Install Door That Mostly Opens",
-          "unlock": 5,
-          "stamina": 2,
-          "seconds": 3.58,
+          "unlock": 8,
+          "stamina": 1,
+          "seconds": 2.45,
           "xp": 9,
-          "success": 78,
+          "success": 95.9,
           "rewards": {
             "xp": 9
           },
@@ -1113,32 +1778,32 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
-          "id": "build-market-stall",
+          "id": "build-bridge-over-tiny-puddle",
           "tier": 6,
-          "name": "Build Market Stall",
-          "unlock": 6,
-          "stamina": 2,
-          "seconds": 3.66,
+          "name": "Build Bridge Over Tiny Puddle",
+          "unlock": 11,
+          "stamina": 3,
+          "seconds": 3.03,
           "xp": 11,
-          "success": 76,
+          "success": 95.9,
           "rewards": {
             "xp": 11
           },
           "costs": {
             "stamina": 2
           },
-          "art": "assets/content/build/actions/06-build-market-stall.png",
+          "art": "assets/content/build/actions/16-build-bridge-over-tiny-puddle.png",
           "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
           "id": "add-roof-to-something-roofless",
           "tier": 7,
           "name": "Roof The Roofless",
-          "unlock": 7,
+          "unlock": 14,
           "stamina": 3,
-          "seconds": 4.7,
+          "seconds": 3.28,
           "xp": 14,
-          "success": 74,
+          "success": 93.3,
           "rewards": {
             "xp": 14
           },
@@ -1149,14 +1814,55 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
+          "id": "frame-a-treehouse-platform",
+          "tier": 7,
+          "name": "Frame A Treehouse Platform",
+          "unlock": 16,
+          "sort_unlock": 16,
+          "stamina": 3,
+          "seconds": 3.5,
+          "xp": 16,
+          "success": 91.8,
+          "rewards": {
+            "xp": 16
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "requirements": [
+            {
+              "skill": "build",
+              "level": 16
+            },
+            {
+              "skill": "woodcutting",
+              "level": 12
+            }
+          ],
+          "xp_rewards": {
+            "build": 16,
+            "woodcutting": 4
+          },
+          "combo_tags": [
+            "first_wave",
+            "two_skill",
+            "resource_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/build/actions/07-frame-a-treehouse-platform.png",
+          "background": "assets/content/build/backgrounds/02-rising.png"
+        },
+        {
           "id": "pour-questionable-foundation",
           "tier": 8,
           "name": "Pour Questionable Foundation",
-          "unlock": 8,
+          "unlock": 17,
           "stamina": 3,
-          "seconds": 4.77,
+          "seconds": 3.78,
           "xp": 17,
-          "success": 72,
+          "success": 90.9,
           "rewards": {
             "xp": 17
           },
@@ -1170,35 +1876,120 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "upgrade-training-yard",
           "tier": 9,
           "name": "Upgrade Training Yard",
-          "unlock": 9,
+          "unlock": 21,
           "stamina": 3,
-          "seconds": 4.85,
+          "seconds": 4.47,
           "xp": 19,
-          "success": 70,
+          "success": 88.6,
           "rewards": {
             "xp": 19
           },
           "costs": {
             "stamina": 3
           },
+          "requirements": [
+            {
+              "skill": "build",
+              "level": 21
+            },
+            {
+              "skill": "fight",
+              "level": 19
+            }
+          ],
+          "xp_rewards": {
+            "build": 19,
+            "fight": 5
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "training_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/build/actions/09-upgrade-training-yard.png",
+          "background": "assets/content/build/backgrounds/02-rising.png"
+        },
+        {
+          "id": "build-a-decoy-vault",
+          "tier": 10,
+          "name": "Build A Decoy Vault",
+          "unlock": 22,
+          "sort_unlock": 22,
+          "stamina": 3,
+          "seconds": 4.72,
+          "xp": 21,
+          "success": 88.0,
+          "rewards": {
+            "xp": 21
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "requirements": [
+            {
+              "skill": "build",
+              "level": 22
+            },
+            {
+              "skill": "thieving",
+              "level": 18
+            }
+          ],
+          "xp_rewards": {
+            "build": 21,
+            "thieving": 5
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "heist_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/thieving/actions/13-swipe-the-bank-s-practice-vault.png",
           "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
           "id": "construct-fishing-pier",
           "tier": 11,
           "name": "Construct Fishing Pier",
-          "unlock": 11,
-          "stamina": 4,
-          "seconds": 5.89,
+          "unlock": 25,
+          "stamina": 3,
+          "seconds": 5.18,
           "xp": 22,
-          "success": 68,
+          "success": 87.9,
           "rewards": {
             "xp": 22
           },
           "costs": {
             "stamina": 4
           },
+          "requirements": [
+            {
+              "skill": "build",
+              "level": 25
+            },
+            {
+              "skill": "fishing",
+              "level": 18
+            }
+          ],
+          "xp_rewards": {
+            "build": 22,
+            "fishing": 5
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "fishing_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/build/actions/10-construct-fishing-pier.png",
           "background": "assets/content/build/backgrounds/02-rising.png"
         },
@@ -1206,11 +1997,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "raise-a-two-story-barn",
           "tier": 12,
           "name": "Raise A Two Story Barn",
-          "unlock": 13,
-          "stamina": 4,
-          "seconds": 6.04,
+          "unlock": 29,
+          "stamina": 3,
+          "seconds": 5.61,
           "xp": 25,
-          "success": 66,
+          "success": 87.6,
           "rewards": {
             "xp": 25
           },
@@ -1224,11 +2015,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "build-town-notice-board",
           "tier": 13,
           "name": "Build Town Notice Board",
-          "unlock": 15,
-          "stamina": 4,
-          "seconds": 6.2,
+          "unlock": 34,
+          "stamina": 5,
+          "seconds": 6.46,
           "xp": 29,
-          "success": 64,
+          "success": 85.7,
           "rewards": {
             "xp": 29
           },
@@ -1241,12 +2032,12 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "assemble-windmill-that-judges-you",
           "tier": 14,
-          "name": "Assemble Judgy Windmill",
-          "unlock": 17,
-          "stamina": 5,
-          "seconds": 7.31,
+          "name": "Assemble Windmill",
+          "unlock": 39,
+          "stamina": 7,
+          "seconds": 6.99,
           "xp": 32,
-          "success": 62,
+          "success": 81.0,
           "rewards": {
             "xp": 32
           },
@@ -1260,11 +2051,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "dig-emergency-basement",
           "tier": 15,
           "name": "Dig Emergency Basement",
-          "unlock": 19,
-          "stamina": 5,
-          "seconds": 7.46,
+          "unlock": 44,
+          "stamina": 7,
+          "seconds": 8.02,
           "xp": 35,
-          "success": 60,
+          "success": 78.3,
           "rewards": {
             "xp": 35
           },
@@ -1278,11 +2069,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "raise-guild-hall",
           "tier": 16,
           "name": "Raise Guild Hall",
-          "unlock": 21,
-          "stamina": 5,
-          "seconds": 7.62,
+          "unlock": 49,
+          "stamina": 7,
+          "seconds": 8.59,
           "xp": 39,
-          "success": 58,
+          "success": 77.2,
           "rewards": {
             "xp": 39
           },
@@ -1293,32 +2084,32 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
-          "id": "build-bridge-over-tiny-puddle",
+          "id": "build-market-stall",
           "tier": 17,
-          "name": "Build Bridge Over Tiny Puddle",
-          "unlock": 23,
-          "stamina": 6,
-          "seconds": 8.73,
+          "name": "Build Market Stall",
+          "unlock": 55,
+          "stamina": 8,
+          "seconds": 9.58,
           "xp": 42,
-          "success": 56,
+          "success": 76.1,
           "rewards": {
             "xp": 42
           },
           "costs": {
             "stamina": 6
           },
-          "art": "assets/content/build/actions/16-build-bridge-over-tiny-puddle.png",
+          "art": "assets/content/build/actions/06-build-market-stall.png",
           "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
           "id": "construct-suspiciously-tall-silo",
           "tier": 18,
           "name": "Build Tall Silo",
-          "unlock": 25,
-          "stamina": 6,
-          "seconds": 8.88,
+          "unlock": 60,
+          "stamina": 9,
+          "seconds": 10.41,
           "xp": 46,
-          "success": 54,
+          "success": 74.2,
           "rewards": {
             "xp": 46
           },
@@ -1331,12 +2122,12 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "install-elevator-in-the-shack",
           "tier": 19,
-          "name": "Install Elevator In The Shack",
-          "unlock": 27,
-          "stamina": 6,
-          "seconds": 9.04,
+          "name": "Install Elevator",
+          "unlock": 65,
+          "stamina": 9,
+          "seconds": 11.26,
           "xp": 50,
-          "success": 52,
+          "success": 71.1,
           "rewards": {
             "xp": 50
           },
@@ -1350,11 +2141,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "build-elite-tower",
           "tier": 20,
           "name": "Build Elite Tower",
-          "unlock": 29,
-          "stamina": 7,
-          "seconds": 10.15,
+          "unlock": 70,
+          "stamina": 11,
+          "seconds": 11.79,
           "xp": 53,
-          "success": 50,
+          "success": 66.8,
           "rewards": {
             "xp": 53
           },
@@ -1368,11 +2159,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "add-second-elite-tower-on-top",
           "tier": 21,
           "name": "Add Second Elite Tower On Top",
-          "unlock": 31,
-          "stamina": 7,
-          "seconds": 10.3,
+          "unlock": 73,
+          "stamina": 12,
+          "seconds": 12.28,
           "xp": 57,
-          "success": 48,
+          "success": 66.5,
           "rewards": {
             "xp": 57
           },
@@ -1386,11 +2177,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "construct-underground-town",
           "tier": 22,
           "name": "Construct Underground Town",
-          "unlock": 34,
-          "stamina": 7,
-          "seconds": 10.53,
+          "unlock": 75,
+          "stamina": 12,
+          "seconds": 12.7,
           "xp": 61,
-          "success": 46,
+          "success": 66.5,
           "rewards": {
             "xp": 61
           },
@@ -1404,11 +2195,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "build-weatherproof-weather",
           "tier": 23,
           "name": "Build Weatherproof Weather",
-          "unlock": 37,
-          "stamina": 8,
-          "seconds": 11.72,
+          "unlock": 77,
+          "stamina": 12,
+          "seconds": 13.14,
           "xp": 65,
-          "success": 44,
+          "success": 66.1,
           "rewards": {
             "xp": 65
           },
@@ -1422,11 +2213,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "renovate-the-horizon",
           "tier": 24,
           "name": "Renovate The Horizon",
-          "unlock": 41,
-          "stamina": 8,
-          "seconds": 12.03,
+          "unlock": 78,
+          "stamina": 12,
+          "seconds": 13.15,
           "xp": 69,
-          "success": 42,
+          "success": 64.6,
           "rewards": {
             "xp": 69
           },
@@ -1440,11 +2231,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "permit-the-impossible-megastructure",
           "tier": 25,
           "name": "Permit Mega Structure",
-          "unlock": 46,
-          "stamina": 8,
-          "seconds": 12.42,
+          "unlock": 79,
+          "stamina": 12,
+          "seconds": 13.45,
           "xp": 73,
-          "success": 40,
+          "success": 63.4,
           "rewards": {
             "xp": 73
           },
@@ -1458,11 +2249,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "build-the-building-that-builds-you",
           "tier": 26,
           "name": "Build Builder Building",
-          "unlock": 51,
-          "stamina": 9,
-          "seconds": 13.76,
+          "unlock": 80,
+          "stamina": 12,
+          "seconds": 13.45,
           "xp": 77,
-          "success": 38,
+          "success": 62.2,
           "rewards": {
             "xp": 77
           },
@@ -1496,9 +2287,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Gather Fallen Branches",
           "unlock": 1,
           "stamina": 1,
-          "seconds": 1.95,
+          "seconds": 1.26,
           "xp": 1,
-          "success": 90,
+          "success": 98.0,
           "rewards": {
             "xp": 1
           },
@@ -1519,7 +2310,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "xp": 0,
           "success": 100,
           "rewards": {
-            "logs": 2
+            "logs": 2,
+            "xp": 0
           },
           "costs": {},
           "passive": {
@@ -1545,9 +2337,9 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Snap A Twig With Purpose",
           "unlock": 3,
           "stamina": 1,
-          "seconds": 2.02,
+          "seconds": 1.57,
           "xp": 3,
-          "success": 88,
+          "success": 98.0,
           "rewards": {
             "xp": 3
           },
@@ -1562,16 +2354,40 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "tier": 4,
           "name": "Split Firewood",
           "unlock": 4,
+          "sort_unlock": 4,
           "stamina": 1,
-          "seconds": 2.08,
+          "seconds": 1.57,
           "xp": 4,
-          "success": 86,
+          "success": 97.0,
           "rewards": {
             "xp": 4
           },
           "costs": {
             "stamina": 1
           },
+          "requirements": [
+            {
+              "skill": "woodcutting",
+              "level": 4
+            },
+            {
+              "skill": "fishing",
+              "level": 3
+            }
+          ],
+          "xp_rewards": {
+            "woodcutting": 4,
+            "fishing": 1
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "fishing_combo",
+            "resource_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/woodcutting/actions/05-split-firewood.png",
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
@@ -1579,11 +2395,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "trim-overconfident-shrub",
           "tier": 5,
           "name": "Trim Overconfident Shrub",
-          "unlock": 5,
-          "stamina": 2,
-          "seconds": 2.96,
+          "unlock": 6,
+          "stamina": 1,
+          "seconds": 1.94,
           "xp": 6,
-          "success": 84,
+          "success": 95.4,
           "rewards": {
             "xp": 6
           },
@@ -1597,11 +2413,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "chop-softwood-tree",
           "tier": 6,
           "name": "Chop Softwood Tree",
-          "unlock": 6,
-          "stamina": 2,
-          "seconds": 3.02,
+          "unlock": 8,
+          "stamina": 1,
+          "seconds": 2.05,
           "xp": 9,
-          "success": 82,
+          "success": 95.4,
           "rewards": {
             "xp": 9
           },
@@ -1615,11 +2431,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "fell-skinny-pine",
           "tier": 7,
           "name": "Fell Skinny Pine",
-          "unlock": 7,
-          "stamina": 2,
-          "seconds": 3.09,
+          "unlock": 10,
+          "stamina": 3,
+          "seconds": 2.43,
           "xp": 11,
-          "success": 80,
+          "success": 95.4,
           "rewards": {
             "xp": 11
           },
@@ -1633,11 +2449,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "prune-orchard-row",
           "tier": 8,
           "name": "Prune Orchard Row",
-          "unlock": 8,
+          "unlock": 13,
           "stamina": 3,
-          "seconds": 3.96,
+          "seconds": 2.61,
           "xp": 14,
-          "success": 78,
+          "success": 93.2,
           "rewards": {
             "xp": 14
           },
@@ -1651,11 +2467,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "chop-knotty-maple",
           "tier": 9,
           "name": "Chop Knotty Maple",
-          "unlock": 9,
+          "unlock": 16,
           "stamina": 3,
-          "seconds": 4.03,
+          "seconds": 3.02,
           "xp": 17,
-          "success": 76,
+          "success": 90.8,
           "rewards": {
             "xp": 17
           },
@@ -1669,11 +2485,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "fell-oak-tree",
           "tier": 10,
           "name": "Fell Oak Tree",
-          "unlock": 10,
+          "unlock": 20,
           "stamina": 3,
-          "seconds": 4.09,
+          "seconds": 3.61,
           "xp": 19,
-          "success": 74,
+          "success": 88.5,
           "rewards": {
             "xp": 19
           },
@@ -1687,11 +2503,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "clear-dense-grove",
           "tier": 11,
           "name": "Clear Dense Grove",
-          "unlock": 12,
-          "stamina": 4,
-          "seconds": 4.97,
+          "unlock": 24,
+          "stamina": 3,
+          "seconds": 4.22,
           "xp": 22,
-          "success": 72,
+          "success": 87.8,
           "rewards": {
             "xp": 22
           },
@@ -1702,32 +2518,32 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
-          "id": "harvest-ironwood",
+          "id": "split-lightning-struck-cedar",
           "tier": 12,
-          "name": "Harvest Ironwood",
-          "unlock": 14,
-          "stamina": 4,
-          "seconds": 5.1,
+          "name": "Split Lightning Struck Cedar",
+          "unlock": 28,
+          "stamina": 3,
+          "seconds": 4.55,
           "xp": 25,
-          "success": 70,
+          "success": 87.5,
           "rewards": {
             "xp": 25
           },
           "costs": {
             "stamina": 4
           },
-          "art": "assets/content/woodcutting/actions/11-harvest-ironwood.png",
+          "art": "assets/content/woodcutting/actions/16-split-lightning-struck-cedar.png",
           "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
           "id": "carve-through-fallen-giant",
           "tier": 13,
           "name": "Carve Through Fallen Giant",
-          "unlock": 16,
+          "unlock": 33,
           "stamina": 4,
-          "seconds": 5.23,
+          "seconds": 5.27,
           "xp": 29,
-          "success": 68,
+          "success": 85.6,
           "rewards": {
             "xp": 29
           },
@@ -1741,11 +2557,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "chop-ancient-tree",
           "tier": 14,
           "name": "Chop Ancient Tree",
-          "unlock": 18,
-          "stamina": 5,
-          "seconds": 6.17,
+          "unlock": 38,
+          "stamina": 6,
+          "seconds": 5.67,
           "xp": 32,
-          "success": 66,
+          "success": 80.9,
           "rewards": {
             "xp": 32
           },
@@ -1759,11 +2575,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "negotiate-with-angry-stump",
           "tier": 15,
           "name": "Negotiate With Angry Stump",
-          "unlock": 20,
-          "stamina": 5,
-          "seconds": 6.3,
+          "unlock": 43,
+          "stamina": 6,
+          "seconds": 6.57,
           "xp": 35,
-          "success": 64,
+          "success": 78.2,
           "rewards": {
             "xp": 35
           },
@@ -1777,11 +2593,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "clear-mystic-timberland",
           "tier": 16,
           "name": "Clear Mystic Timberland",
-          "unlock": 22,
-          "stamina": 5,
-          "seconds": 6.43,
+          "unlock": 49,
+          "stamina": 6,
+          "seconds": 7.12,
           "xp": 39,
-          "success": 62,
+          "success": 76.7,
           "rewards": {
             "xp": 39
           },
@@ -1792,50 +2608,163 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
-          "id": "split-lightning-struck-cedar",
+          "id": "harvest-the-first-trees-apology",
           "tier": 17,
-          "name": "Split Lightning Struck Cedar",
-          "unlock": 24,
-          "stamina": 6,
-          "seconds": 7.37,
+          "name": "Harvest Tree Apology",
+          "unlock": 54,
+          "stamina": 7,
+          "seconds": 7.84,
           "xp": 42,
-          "success": 60,
+          "success": 76.0,
           "rewards": {
             "xp": 42
           },
           "costs": {
             "stamina": 6
           },
-          "art": "assets/content/woodcutting/actions/16-split-lightning-struck-cedar.png",
+          "art": "assets/content/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
+          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "fight-ent",
+          "tier": 17,
+          "name": "Fight Ent",
+          "unlock": 56,
+          "sort_unlock": 56,
+          "stamina": 7,
+          "seconds": 8.05,
+          "xp": 44,
+          "success": 75.0,
+          "rewards": {
+            "xp": 44
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "requirements": [
+            {
+              "skill": "woodcutting",
+              "level": 56
+            },
+            {
+              "skill": "fight",
+              "level": 48
+            }
+          ],
+          "xp_rewards": {
+            "woodcutting": 44,
+            "fight": 12
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "combat_combo",
+            "forest_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/woodcutting/actions/fight-ent.png",
           "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
           "id": "fell-tree-that-remembers-you",
           "tier": 18,
           "name": "Fell Tree That Remembers You",
-          "unlock": 26,
-          "stamina": 6,
-          "seconds": 7.5,
+          "unlock": 60,
+          "sort_unlock": 60,
+          "stamina": 8,
+          "seconds": 8.65,
           "xp": 46,
-          "success": 58,
+          "success": 73.7,
           "rewards": {
             "xp": 46
           },
           "costs": {
             "stamina": 6
           },
+          "requirements": [
+            {
+              "skill": "woodcutting",
+              "level": 60
+            },
+            {
+              "skill": "fight",
+              "level": 52
+            }
+          ],
+          "xp_rewards": {
+            "woodcutting": 46,
+            "fight": 10
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "combat_combo",
+            "forest_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/woodcutting/actions/17-fell-tree-that-remembers-you.png",
+          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "carve-the-guilds-trophy-oar",
+          "tier": 18,
+          "name": "Carve The Guild's Trophy Oar",
+          "unlock": 62,
+          "sort_unlock": 62,
+          "stamina": 8,
+          "seconds": 8.95,
+          "xp": 49,
+          "success": 72.0,
+          "rewards": {
+            "xp": 49
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "requirements": [
+            {
+              "skill": "woodcutting",
+              "level": 62
+            },
+            {
+              "skill": "fishing",
+              "level": 58
+            },
+            {
+              "skill": "thieving",
+              "level": 56
+            }
+          ],
+          "xp_rewards": {
+            "woodcutting": 49,
+            "fishing": 10,
+            "thieving": 8
+          },
+          "combo_tags": [
+            "first_wave",
+            "three_skill",
+            "high_level",
+            "resource_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/woodcutting/actions/carve-the-guilds-trophy-oar.png",
           "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
           "id": "chop-invisible-windwood",
           "tier": 19,
           "name": "Chop Invisible Windwood",
-          "unlock": 28,
-          "stamina": 6,
-          "seconds": 7.62,
+          "unlock": 66,
+          "stamina": 8,
+          "seconds": 9.48,
           "xp": 50,
-          "success": 56,
+          "success": 70.2,
           "rewards": {
             "xp": 50
           },
@@ -1849,11 +2778,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "harvest-moonlit-silverwood",
           "tier": 20,
           "name": "Harvest Moonlit Silverwood",
-          "unlock": 30,
-          "stamina": 7,
-          "seconds": 8.56,
+          "unlock": 70,
+          "stamina": 10,
+          "seconds": 9.77,
           "xp": 53,
-          "success": 54,
+          "success": 66.3,
           "rewards": {
             "xp": 53
           },
@@ -1867,17 +2796,41 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "clear-the-forests-legal-department",
           "tier": 21,
           "name": "Clear Forest Legal",
-          "unlock": 33,
-          "stamina": 7,
-          "seconds": 8.69,
+          "unlock": 73,
+          "sort_unlock": 73,
+          "stamina": 11,
+          "seconds": 10.19,
           "xp": 57,
-          "success": 52,
+          "success": 66.0,
           "rewards": {
             "xp": 57
           },
           "costs": {
             "stamina": 7
           },
+          "requirements": [
+            {
+              "skill": "woodcutting",
+              "level": 73
+            },
+            {
+              "skill": "thieving",
+              "level": 64
+            }
+          ],
+          "xp_rewards": {
+            "woodcutting": 57,
+            "thieving": 12
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "legal_combo",
+            "paperwork_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/woodcutting/actions/20-clear-the-forest-s-legal-department.png",
           "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
@@ -1885,11 +2838,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "axe-the-world-trees-paperwork",
           "tier": 22,
           "name": "Axe World Tree Forms",
-          "unlock": 36,
-          "stamina": 7,
-          "seconds": 8.89,
+          "unlock": 75,
+          "stamina": 11,
+          "seconds": 10.55,
           "xp": 61,
-          "success": 50,
+          "success": 66.0,
           "rewards": {
             "xp": 61
           },
@@ -1903,11 +2856,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "chop-a-tree-in-four-timelines",
           "tier": 23,
           "name": "Chop A Tree In Four Timelines",
-          "unlock": 40,
-          "stamina": 8,
-          "seconds": 9.89,
+          "unlock": 77,
+          "stamina": 11,
+          "seconds": 10.93,
           "xp": 65,
-          "success": 48,
+          "success": 65.6,
           "rewards": {
             "xp": 65
           },
@@ -1921,11 +2874,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "id": "fell-the-wooden-concept-of-height",
           "tier": 24,
           "name": "Chop Super Tall Tree",
-          "unlock": 45,
-          "stamina": 8,
-          "seconds": 10.15,
+          "unlock": 78,
+          "stamina": 11,
+          "seconds": 10.93,
           "xp": 69,
-          "success": 46,
+          "success": 64.1,
           "rewards": {
             "xp": 69
           },
@@ -1936,38 +2889,62 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
-          "id": "harvest-the-first-trees-apology",
+          "id": "harvest-ironwood",
           "tier": 25,
-          "name": "Harvest Tree Apology",
-          "unlock": 50,
-          "stamina": 8,
-          "seconds": 10.48,
+          "name": "Harvest Ironwood",
+          "unlock": 79,
+          "stamina": 11,
+          "seconds": 11.2,
           "xp": 73,
-          "success": 44,
+          "success": 62.9,
           "rewards": {
             "xp": 73
           },
           "costs": {
             "stamina": 8
           },
-          "art": "assets/content/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
+          "art": "assets/content/woodcutting/actions/11-harvest-ironwood.png",
           "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
           "id": "clear-the-infinite-lumberyard",
           "tier": 26,
           "name": "Clear The Infinite Lumberyard",
-          "unlock": 55,
-          "stamina": 9,
-          "seconds": 11.61,
+          "unlock": 80,
+          "sort_unlock": 80,
+          "stamina": 11,
+          "seconds": 11.2,
           "xp": 77,
-          "success": 42,
+          "success": 61.7,
           "rewards": {
             "xp": 77
           },
           "costs": {
             "stamina": 9
           },
+          "requirements": [
+            {
+              "skill": "woodcutting",
+              "level": 80
+            },
+            {
+              "skill": "build",
+              "level": 72
+            }
+          ],
+          "xp_rewards": {
+            "woodcutting": 77,
+            "build": 16
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "construction_combo",
+            "resource_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
           "art": "assets/content/woodcutting/actions/25-clear-the-infinite-lumberyard.png",
           "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         }
@@ -2138,6 +3115,51 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "sewers"
         },
         {
+          "id": "fight-rat-king",
+          "tier": 8,
+          "name": "Fight Rat King",
+          "unlock": 24,
+          "sort_unlock": 24,
+          "stamina": 3,
+          "seconds": 4.0,
+          "xp": 7,
+          "success": 76,
+          "rewards": {
+            "xp": 7,
+            "fish_min": 1,
+            "fish_max": 3
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "requirements": [
+            {
+              "skill": "fishing",
+              "level": 24
+            },
+            {
+              "skill": "fight",
+              "level": 20
+            }
+          ],
+          "xp_rewards": {
+            "fishing": 7,
+            "fight": 29
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "danger_combo",
+            "sewer_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/fishing/actions/fight-rat-king.png",
+          "background": "assets/content/fishing/backgrounds/sewer-pipe-outlet.png",
+          "area": "sewers"
+        },
+        {
           "id": "sewers-tunnel-pool",
           "tier": 9,
           "name": "Tunnel Pool",
@@ -2180,6 +3202,50 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "reef"
         },
         {
+          "id": "anchor-the-tiny-boat-dock",
+          "tier": 7,
+          "name": "Anchor Tiny Boat Dock",
+          "unlock": 32,
+          "sort_unlock": 32,
+          "stamina": 3,
+          "seconds": 4.0,
+          "xp": 24,
+          "success": 78,
+          "rewards": {
+            "xp": 24,
+            "fish_min": 2,
+            "fish_max": 4
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "requirements": [
+            {
+              "skill": "fishing",
+              "level": 32
+            },
+            {
+              "skill": "build",
+              "level": 30
+            }
+          ],
+          "xp_rewards": {
+            "fishing": 24,
+            "build": 6
+          },
+          "combo_tags": [
+            "first_wave",
+            "two_skill",
+            "resource_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/fishing/actions/12-trawl-from-tiny-boat.png",
+          "background": "assets/content/fishing/backgrounds/01-pond-dock.png",
+          "area": "pier"
+        },
+        {
           "id": "winter-lake-ice-hole",
           "tier": 8,
           "name": "Ice Hole",
@@ -2199,6 +3265,50 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "art": "assets/content/fishing/backgrounds/04-frozen-lake.png",
           "background": "assets/content/fishing/backgrounds/04-frozen-lake.png",
           "area": "winter_lake"
+        },
+        {
+          "id": "fight-armored-catfish",
+          "tier": 10,
+          "name": "Fight Armored Catfish",
+          "unlock": 44,
+          "sort_unlock": 44,
+          "stamina": 4,
+          "seconds": 4.0,
+          "xp": 42,
+          "success": 70,
+          "rewards": {
+            "xp": 42,
+            "fish_currency_min": 0.1,
+            "fish_currency_max": 1.0
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "requirements": [
+            {
+              "skill": "fishing",
+              "level": 44
+            },
+            {
+              "skill": "fight",
+              "level": 38
+            }
+          ],
+          "xp_rewards": {
+            "fishing": 42,
+            "fight": 10
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "danger_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/fishing/actions/fight-armored-catfish.png",
+          "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
+          "area": "reef"
         },
         {
           "id": "reef-cage",
@@ -2264,6 +3374,50 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "sea"
         },
         {
+          "id": "fight-a-shark",
+          "tier": 12,
+          "name": "Fight A Shark",
+          "unlock": 56,
+          "sort_unlock": 56,
+          "stamina": 5,
+          "seconds": 4.0,
+          "xp": 52,
+          "success": 66,
+          "rewards": {
+            "xp": 52,
+            "fish_currency_min": 0.1,
+            "fish_currency_max": 1.0
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "requirements": [
+            {
+              "skill": "fishing",
+              "level": 56
+            },
+            {
+              "skill": "fight",
+              "level": 50
+            }
+          ],
+          "xp_rewards": {
+            "fishing": 52,
+            "fight": 12
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "danger_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/fishing/actions/fight-a-shark.png",
+          "background": "assets/content/combo/fishing/backgrounds/fight-a-shark.png",
+          "area": "sea"
+        },
+        {
           "id": "reef-night-reef",
           "tier": 13,
           "name": "Night Reef",
@@ -2283,6 +3437,50 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "art": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
           "background": "assets/content/fishing/backgrounds/05-coral-reef-shallows.png",
           "area": "reef"
+        },
+        {
+          "id": "loot-a-pirate-ship",
+          "tier": 13,
+          "name": "Loot A Pirate Ship",
+          "unlock": 60,
+          "sort_unlock": 60,
+          "stamina": 5,
+          "seconds": 4.0,
+          "xp": 36,
+          "success": 65,
+          "rewards": {
+            "xp": 36,
+            "fish_min": 2,
+            "fish_max": 5
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "requirements": [
+            {
+              "skill": "fishing",
+              "level": 60
+            },
+            {
+              "skill": "thieving",
+              "level": 55
+            }
+          ],
+          "xp_rewards": {
+            "fishing": 36,
+            "thieving": 36
+          },
+          "combo_tags": [
+            "user_requested",
+            "two_skill",
+            "pirate_combo"
+          ],
+          "display_tags": [
+            "Combo"
+          ],
+          "art": "assets/content/combo/fishing/actions/loot-a-pirate-ship.png",
+          "background": "assets/content/combo/fishing/backgrounds/loot-a-pirate-ship.png",
+          "area": "sea"
         },
         {
           "id": "stormy-sea-ripple",

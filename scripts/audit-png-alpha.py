@@ -88,7 +88,9 @@ def read_png(path: Path) -> dict:
 
 def main() -> int:
     root = Path(__file__).resolve().parents[1]
-    files = [
+    files = sys.argv[1:]
+    if not files:
+        files = [
         "assets/content/hub/hub-decor-sheet.png",
         "assets/content/hub/hub-tree-sheet.png",
         "assets/content/hub/hub-barn-tiers.png",
@@ -104,7 +106,7 @@ def main() -> int:
         "assets/content/logo/idle-elite-logo-cutout.png",
         "assets/content/fishing/catch-icons/00-minnow-cutout.png",
         "assets/content/fishing/ui/fish-currency-cutout.png",
-    ]
+        ]
     for rel in files:
         r = read_png(root / rel)
         if r.get("error"):

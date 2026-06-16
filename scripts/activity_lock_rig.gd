@@ -31,23 +31,42 @@ const LOCK_DRAG_DEADZONE := 14.0
 const CHAIN_SFX_COOLDOWN_MSEC := 170
 const CHAIN_SFX_MOVE_DISTANCE := 38.0
 const LOCK_CLICK_SHAKE_SECONDS := 0.26
-const UNLOCK_DROP_SECONDS := 0.82
-const UNLOCK_POP_SECONDS := 0.24
+const UNLOCK_DROP_SECONDS := 0.96
+const UNLOCK_POP_SECONDS := 0.30
+const READY_OPEN_CLINK_SECONDS := 0.30
+const READY_OPEN_SHACKLE_LIFT := 86.0
+const READY_OPEN_HANG_DROP := 86.0
+const READY_OPEN_HANG_ROTATION := 0.16
+const DROP_CHAIN_CAPTURE_BLEND_END := 0.42
 const UNLOCK_SUCCESS_GREEN := Color("#45f08a")
 const PADLOCK_HIT_ALPHA_THRESHOLD := 0.08
+const LOCK_STATE_CLOSED := "closed"
+const LOCK_STATE_READY_OPEN := "ready_open"
+const LOCK_STATE_DROPPING := "dropping"
+const LOCK_STATE_GONE := "gone"
 
 var link_texture: Texture2D
 var padlock_texture: Texture2D
+var padlock_tint_mask_texture: Texture2D
 var padlock_pulse_texture: Texture2D
+var padlock_body_texture: Texture2D
+var padlock_shackle_closed_texture: Texture2D
+var padlock_shackle_open_texture: Texture2D
 var padlock_hit_image: Image
 var chain_points := {-1: [], 1: []}
 var chain_prev_points := {-1: [], 1: []}
 var chain_rest_lengths := {-1: [], 1: []}
 var chain_base_points := {-1: [], 1: []}
+var drop_chain_start_points := {-1: [], 1: []}
+var drop_chain_start_links := {-1: [], 1: []}
 var padlock_shadow: TextureRect
 var padlock: TextureRect
+var padlock_shackle: TextureRect
+var padlock_tint: TextureRect
 var level_label: ActivityLockNumber
 var level := 1
+var theme_color := Color("#ffd238")
+var lock_state := LOCK_STATE_CLOSED
 var base_lock_position := Vector2.ZERO
 var lock_offset := Vector2.ZERO
 var lock_velocity := Vector2.ZERO
@@ -66,15 +85,28 @@ var unlock_drop_progress := 0.0
 var unlock_pop_progress := 0.0
 var unlock_success_click_consumed := false
 var unlock_drop_tween: Tween
+var ready_open_tween: Tween
+var ready_open_progress := 0.0
 var lock_hovered := false
 var rng := RandomNumberGenerator.new()
+var chain_visible := true
+var padlock_visible := true
+var base_lock_x_shift := 0.0
+var custom_chain_path_points: Array = []
+var custom_chain_render_count := 0
 
-func setup(next_link_texture: Texture2D, next_padlock_texture: Texture2D, next_padlock_pulse_texture: Texture2D, unlock_level: int, font: Font, fallback_font: Font, next_padlock_hit_image: Image = null) -> void:
+func setup(next_link_texture: Texture2D, next_padlock_texture: Texture2D, next_padlock_pulse_texture: Texture2D, unlock_level: int, font: Font, fallback_font: Font, next_padlock_hit_image: Image = null, next_padlock_tint_mask_texture: Texture2D = null, next_theme_color: Color = Color("#ffd238"), next_padlock_body_texture: Texture2D = null, next_padlock_shackle_closed_texture: Texture2D = null, next_padlock_shackle_open_texture: Texture2D = null) -> void:
 	link_texture = next_link_texture
 	padlock_texture = next_padlock_texture if next_padlock_hit_image != null else _cropped_padlock_texture(next_padlock_texture)
+	padlock_tint_mask_texture = next_padlock_tint_mask_texture
 	padlock_pulse_texture = next_padlock_pulse_texture if next_padlock_pulse_texture != null else _alpha_mask_texture(padlock_texture)
+	padlock_body_texture = next_padlock_body_texture
+	padlock_shackle_closed_texture = next_padlock_shackle_closed_texture
+	padlock_shackle_open_texture = next_padlock_shackle_open_texture
 	padlock_hit_image = next_padlock_hit_image if next_padlock_hit_image != null else _cropped_padlock_hit_image(next_padlock_texture)
 	level = unlock_level
+	theme_color = next_theme_color
+	lock_state = LOCK_STATE_CLOSED
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	rng.randomize()
 	_build(font, fallback_font)
@@ -85,6 +117,62 @@ func set_unlock_level(next_level: int) -> void:
 	level = next_level
 	if level_label != null:
 		level_label.set_text(str(level))
+
+
+func set_theme_color(next_theme_color: Color) -> void:
+	theme_color = next_theme_color
+	if padlock_tint != null:
+		padlock_tint.modulate = _padlock_tint_modulate()
+	if level_label != null:
+		level_label.set_fill_color(_lock_number_fill_color())
+
+
+func set_lock_state(next_state: String) -> void:
+	var previous_state := lock_state
+	var normalized := next_state
+	if not [LOCK_STATE_CLOSED, LOCK_STATE_READY_OPEN, LOCK_STATE_DROPPING, LOCK_STATE_GONE].has(normalized):
+		normalized = LOCK_STATE_CLOSED
+	lock_state = normalized
+	if normalized != LOCK_STATE_READY_OPEN:
+		_stop_ready_open_animation(false)
+	_apply_lock_state_visuals()
+	if previous_state != LOCK_STATE_READY_OPEN and normalized == LOCK_STATE_READY_OPEN:
+		_play_ready_open_animation()
+
+
+func set_chain_visible(next_visible: bool) -> void:
+	chain_visible = next_visible
+	queue_redraw()
+
+
+func set_custom_chain_path(points: Array, render_count := 0) -> void:
+	custom_chain_path_points = []
+	for raw_point in points:
+		if raw_point is Vector2:
+			custom_chain_path_points.append(raw_point as Vector2)
+	custom_chain_render_count = maxi(0, render_count)
+	queue_redraw()
+
+
+func set_padlock_visible(next_visible: bool) -> void:
+	padlock_visible = next_visible
+	_apply_lock_state_visuals()
+
+
+func set_base_lock_x_shift(next_shift: float) -> void:
+	base_lock_x_shift = next_shift
+	_layout_base()
+
+
+func sync_shared_motion(next_offset: Vector2, next_velocity: Vector2, next_rotation: float) -> void:
+	lock_offset = next_offset
+	lock_velocity = next_velocity
+	lock_rotation = next_rotation
+	if chain_visible:
+		_reset_chain_points(false)
+	_place_padlock(lock_offset, lock_rotation)
+	queue_redraw()
+
 
 func unlock_impulse() -> void:
 	_rattle_lock()
@@ -99,20 +187,35 @@ func reset_unlock_drop_animation() -> void:
 	unlock_drop_active = false
 	unlock_drop_progress = 0.0
 	unlock_pop_progress = 0.0
+	_clear_drop_chain_start_points()
+	_clear_drop_chain_start_links()
 	lock_offset = Vector2.ZERO
 	lock_rotation = 0.0
 	_set_padlock_pop_scale(1.0)
+	if lock_state == LOCK_STATE_DROPPING:
+		lock_state = LOCK_STATE_CLOSED
+		_apply_lock_state_visuals()
 	_place_padlock(lock_offset, lock_rotation)
 	queue_redraw()
 
 func play_unlock_drop_animation() -> void:
-	reset_unlock_drop_animation()
+	if unlock_drop_tween != null and unlock_drop_tween.is_valid():
+		unlock_drop_tween.kill()
+	unlock_drop_tween = null
+	unlock_drop_active = false
+	unlock_drop_progress = 0.0
+	unlock_pop_progress = 0.0
+	lock_offset = Vector2.ZERO
+	lock_rotation = 0.0
+	_set_padlock_pop_scale(1.0)
+	_capture_drop_chain_start_points()
+	set_lock_state(LOCK_STATE_DROPPING)
 	unlock_drop_active = true
 	click_shake_direction = -1.0 if rng.randf() < 0.5 else 1.0
 	_pull_chains_from_lock(Vector2(0.0, -1.0), 36.0)
 	_wake_motion_process()
 	unlock_drop_tween = create_tween()
-	unlock_drop_tween.tween_method(_set_unlock_drop_progress, 0.0, 1.0, UNLOCK_DROP_SECONDS).set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_IN_OUT)
+	unlock_drop_tween.tween_method(_set_unlock_drop_progress, 0.0, 1.0, UNLOCK_DROP_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 
 func _set_unlock_drop_progress(progress: float) -> void:
 	unlock_drop_progress = clampf(progress, 0.0, 1.0)
@@ -120,11 +223,11 @@ func _set_unlock_drop_progress(progress: float) -> void:
 	unlock_pop_progress = clampf(elapsed / UNLOCK_POP_SECONDS, 0.0, 1.0)
 	var fall_progress := _unlock_fall_progress()
 	var gravity := fall_progress * fall_progress
-	var fallover := smoothstep(0.28, 1.0, fall_progress)
-	var settling_wobble := sin(fall_progress * PI * 2.45) * 0.08 * (1.0 - fall_progress)
+	var fallover := smoothstep(0.18, 1.0, fall_progress)
+	var settling_wobble := sin(fall_progress * PI * 1.75) * 0.045 * (1.0 - fall_progress)
 	var pop_wiggle := _unlock_pop_wiggle()
-	lock_offset = Vector2(click_shake_direction * 18.0 * fall_progress + pop_wiggle * 8.0, size.y * 0.46 * gravity - absf(pop_wiggle) * 3.0)
-	lock_rotation = (0.92 * click_shake_direction * fallover) + settling_wobble + pop_wiggle * 0.16
+	lock_offset = Vector2(click_shake_direction * 14.0 * fall_progress + pop_wiggle * 6.0, size.y * 0.46 * gravity - absf(pop_wiggle) * 2.0)
+	lock_rotation = (0.78 * click_shake_direction * fallover) + settling_wobble + pop_wiggle * 0.10
 	_set_padlock_pop_scale(_unlock_pop_scale())
 	_place_padlock(lock_offset, lock_rotation)
 	queue_redraw()
@@ -137,35 +240,120 @@ func _unlock_fall_progress() -> float:
 
 func _build(font: Font, fallback_font: Font) -> void:
 	_clear_children()
-	padlock_shadow = _padlock_piece(Color(0, 0, 0, 0.26))
+	padlock_shadow = _padlock_shadow_piece(Color(0, 0, 0, 0.26))
 	padlock_shadow.z_index = 4
 	add_child(padlock_shadow)
-	padlock = _padlock_piece(Color.WHITE)
+	if _uses_split_padlock():
+		padlock = _texture_piece(padlock_body_texture, Color.WHITE)
+		padlock_shackle = _texture_piece(padlock_shackle_closed_texture, Color.WHITE)
+		padlock_shackle.z_index = 5
+		add_child(padlock_shackle)
+	else:
+		padlock = _padlock_piece(Color.WHITE)
 	padlock.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	padlock.gui_input.connect(_on_padlock_gui_input)
 	padlock.z_index = 5
 	add_child(padlock)
+	if padlock_tint_mask_texture != null:
+		padlock_tint = _texture_piece(padlock_tint_mask_texture, _padlock_tint_modulate())
+		padlock_tint.z_index = 6
+		add_child(padlock_tint)
 	level_label = ActivityLockNumber.new()
 	level_label.set_text(str(level))
 	level_label.font_size = 206
 	level_label.outline_size = 24
+	level_label.set_fill_color(_lock_number_fill_color())
 	if font != null:
 		level_label.font = font
 	elif fallback_font != null:
 		level_label.font = fallback_font
 	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	level_label.z_index = 6
+	level_label.z_index = 7
 	add_child(level_label)
+	_apply_lock_state_visuals()
 	_layout_base()
 
 func _padlock_piece(color: Color) -> TextureRect:
+	return _texture_piece(padlock_texture, color)
+
+
+func _padlock_shadow_piece(color: Color) -> TextureRect:
+	return _texture_piece(padlock_body_texture if _uses_split_padlock() else padlock_texture, color)
+
+
+func _texture_piece(texture: Texture2D, color: Color) -> TextureRect:
 	var piece := TextureRect.new()
-	piece.texture = padlock_texture
+	piece.texture = texture
 	piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	piece.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	piece.modulate = color
 	return piece
+
+
+func _padlock_tint_modulate() -> Color:
+	var color := theme_color
+	color.a = 0.92
+	return color
+
+
+func _lock_number_fill_color() -> Color:
+	return Color.WHITE
+
+
+func _uses_split_padlock() -> bool:
+	return padlock_body_texture != null and padlock_shackle_closed_texture != null
+
+
+func _apply_lock_state_visuals() -> void:
+	var lock_visible := lock_state != LOCK_STATE_GONE
+	if padlock_shadow != null:
+		padlock_shadow.visible = lock_visible and padlock_visible
+	if padlock != null:
+		padlock.visible = lock_visible and padlock_visible
+	if padlock_tint != null:
+		padlock_tint.visible = lock_visible and padlock_visible
+	if padlock_shackle != null:
+		padlock_shackle.visible = lock_visible and padlock_visible
+		padlock_shackle.texture = _active_shackle_texture()
+	if level_label != null:
+		level_label.visible = lock_visible and padlock_visible
+	mouse_filter = Control.MOUSE_FILTER_PASS if lock_visible and padlock_visible else Control.MOUSE_FILTER_IGNORE
+	if not lock_visible or not padlock_visible:
+		pressing_lock = false
+		dragging_lock = false
+		if not chain_visible:
+			set_process(false)
+	queue_redraw()
+
+
+func _play_ready_open_animation() -> void:
+	if lock_state != LOCK_STATE_READY_OPEN or not is_inside_tree():
+		return
+	_stop_ready_open_animation(false)
+	ready_open_progress = 0.0
+	_pull_chains_from_lock(Vector2(0.0, -1.0), 20.0)
+	chain_moved.emit("ready_open", 0.32)
+	_wake_motion_process()
+	ready_open_tween = create_tween()
+	ready_open_tween.tween_method(_set_ready_open_progress, 0.0, 1.0, READY_OPEN_CLINK_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _stop_ready_open_animation(update_visual := true) -> void:
+	if ready_open_tween != null and ready_open_tween.is_valid():
+		ready_open_tween.kill()
+	ready_open_tween = null
+	ready_open_progress = 0.0
+	if update_visual:
+		_place_padlock(lock_offset, lock_rotation)
+		queue_redraw()
+
+
+func _set_ready_open_progress(progress: float) -> void:
+	ready_open_progress = clampf(progress, 0.0, 1.0)
+	_place_padlock(lock_offset, lock_rotation)
+	queue_redraw()
+
 
 func _cropped_padlock_texture(source: Texture2D) -> Texture2D:
 	if source == null:
@@ -227,6 +415,8 @@ func _gui_input(event: InputEvent) -> void:
 		_on_padlock_gui_input(event)
 
 func handle_pointer_event(event: InputEvent) -> bool:
+	if lock_state in [LOCK_STATE_DROPPING, LOCK_STATE_GONE]:
+		return false
 	var local_position := _event_local_position(event)
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if event.pressed and not _padlock_contains_local_point(local_position):
@@ -249,6 +439,8 @@ func handle_pointer_event(event: InputEvent) -> bool:
 	return false
 
 func pointer_over_lock_event(event: InputEvent) -> bool:
+	if lock_state in [LOCK_STATE_DROPPING, LOCK_STATE_GONE]:
+		return false
 	if not (
 		event is InputEventMouseButton
 		or event is InputEventMouseMotion
@@ -322,10 +514,14 @@ func _process_padlock_hover() -> void:
 func _layout_base() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
-	base_lock_position = Vector2(size.x * 0.5 - PADLOCK_SIZE.x * 0.5, 48.0)
-	_reset_chain_points(true)
+	base_lock_position = Vector2(size.x * 0.5 - PADLOCK_SIZE.x * 0.5 + base_lock_x_shift, 48.0)
+	_reset_chain_points(not _drop_motion_should_be_preserved())
 	_place_padlock(lock_offset, lock_rotation)
 	queue_redraw()
+
+
+func _drop_motion_should_be_preserved() -> bool:
+	return unlock_drop_active or lock_state in [LOCK_STATE_READY_OPEN, LOCK_STATE_DROPPING]
 
 func _reset_chain_points(reset_motion: bool) -> void:
 	if reset_motion:
@@ -419,7 +615,9 @@ func _outer_chain_anchor(side: int) -> Vector2:
 	return Vector2(margin if side < 0 else size.x - margin, size.y * 0.28)
 
 func _lock_chain_anchor(side: int, offset: Vector2) -> Vector2:
-	return base_lock_position + offset + Vector2(PADLOCK_SIZE.x * 0.5 + float(side) * PADLOCK_SIZE.x * 0.34, PADLOCK_SIZE.y * 0.34)
+	var ready_lift := _lock_band_open_amount() * READY_OPEN_SHACKLE_LIFT
+	var ready_hang := _lock_hang_drop_amount()
+	return base_lock_position + offset + Vector2(PADLOCK_SIZE.x * 0.5 + float(side) * PADLOCK_SIZE.x * 0.34, PADLOCK_SIZE.y * 0.34 + ready_hang - ready_lift)
 
 func _simulate_chains(delta: float) -> void:
 	var damping := exp(-10.0 * delta)
@@ -606,6 +804,8 @@ func _pull_chains_from_lock(direction: Vector2, force: float) -> void:
 		chain_prev_points[side] = previous
 
 func _padlock_contains_local_point(point: Vector2) -> bool:
+	if lock_state == LOCK_STATE_GONE:
+		return false
 	if padlock == null:
 		return false
 	var padlock_point := padlock.get_transform().affine_inverse() * point
@@ -639,10 +839,18 @@ func _rattle_lock() -> void:
 	physics_active = true
 
 func _draw() -> void:
+	if lock_state == LOCK_STATE_GONE or not chain_visible:
+		return
 	_draw_success_pulse()
+	if not custom_chain_path_points.is_empty():
+		var render_points := []
+		for raw_point in custom_chain_path_points:
+			render_points.append((raw_point as Vector2) + lock_offset)
+		_draw_chain_with_depth(_chain_render_links_from_points(render_points, 0, custom_chain_render_count))
+		return
 	if unlock_drop_active and unlock_drop_progress > 0.0:
 		for side in [-1, 1]:
-			var dropped_links := _chain_render_links_from_points(_dropped_chain_path_points(side), 100 if side > 0 else 0)
+			var dropped_links := _dropped_chain_render_links_for_side(side)
 			_draw_chain_with_depth(dropped_links)
 		return
 	for side in [-1, 1]:
@@ -683,9 +891,9 @@ func _chain_render_links_for_side(side: int) -> Array:
 		render_points = points.duplicate()
 	return _chain_render_links_from_points(render_points, 0 if side < 0 else 100)
 
-func _chain_render_links_from_points(points: Array, first_index := 0) -> Array:
+func _chain_render_links_from_points(points: Array, first_index := 0, point_count := 0) -> Array:
 	var render_links := []
-	var render_points := _chain_evenly_spaced_points(points, points.size())
+	var render_points := _chain_evenly_spaced_points(points, point_count if point_count > 0 else points.size())
 	for i in range(render_points.size()):
 		var previous_index := maxi(i - 1, 0)
 		var next_index := mini(i + 1, render_points.size() - 1)
@@ -747,15 +955,77 @@ func _dropped_chain_path_points(side: int) -> Array:
 	var ground_y := size.y * 0.91
 	var inner_ground := Vector2(size.x * 0.5 + float(side) * LINK_SIZE.x * 0.62, ground_y)
 	var inner_anchor := inner_start.lerp(inner_ground, drop)
-	for i in range(LINKS_PER_SIDE + 1):
-		var t := float(i) / float(LINKS_PER_SIDE)
+	for i in range(LINKS_PER_SIDE):
+		var t := float(i) / float(maxi(1, LINKS_PER_SIDE - 1))
 		var point := outer_anchor.lerp(inner_anchor, t)
 		point.y += sin(t * PI) * (size.y * 0.07 + drop * size.y * 0.16)
 		if t > 0.38:
 			var laid_y := ground_y - sin((1.0 - t) * PI) * 22.0
 			point.y = lerpf(point.y, laid_y, rest)
 		points.append(point)
+	var start_points := drop_chain_start_points.get(side, []) as Array
+	if start_points.size() == points.size():
+		var blend := smoothstep(0.0, DROP_CHAIN_CAPTURE_BLEND_END, drop_progress)
+		for i in range(points.size()):
+			points[i] = (start_points[i] as Vector2).lerp(points[i] as Vector2, blend)
 	return points
+
+
+func _dropped_chain_render_points_for_side(side: int) -> Array:
+	var points := _dropped_chain_path_points(side)
+	if side <= 0:
+		return points
+	var render_points := []
+	for i in range(points.size() - 1, -1, -1):
+		render_points.append(points[i] as Vector2)
+	return render_points
+
+
+func _dropped_chain_render_links_for_side(side: int) -> Array:
+	var target_links := _chain_render_links_from_points(_dropped_chain_render_points_for_side(side), 100 if side > 0 else 0)
+	var start_links := drop_chain_start_links.get(side, []) as Array
+	if start_links.size() != target_links.size():
+		return target_links
+	var blend := smoothstep(0.0, DROP_CHAIN_CAPTURE_BLEND_END, clampf(unlock_drop_progress * 1.25, 0.0, 1.0))
+	for i in range(target_links.size()):
+		var start_link := start_links[i] as Dictionary
+		var target_link := target_links[i] as Dictionary
+		target_link["center"] = (start_link.get("center", target_link.get("center", Vector2.ZERO)) as Vector2).lerp(target_link.get("center", Vector2.ZERO) as Vector2, blend)
+		target_link["rotation"] = lerpf(float(start_link.get("rotation", target_link.get("rotation", 0.0))), float(target_link.get("rotation", 0.0)), blend)
+		target_links[i] = target_link
+	return target_links
+
+
+func _capture_drop_chain_start_points() -> void:
+	for side in [-1, 1]:
+		var points := []
+		for raw_point in _visible_chain_path_points(side):
+			points.append(raw_point as Vector2)
+		drop_chain_start_points[side] = points
+		var links := []
+		for raw_link in _chain_render_links_for_side(side):
+			links.append((raw_link as Dictionary).duplicate(true))
+		drop_chain_start_links[side] = links
+
+
+func _clear_drop_chain_start_points() -> void:
+	drop_chain_start_points[-1] = []
+	drop_chain_start_points[1] = []
+
+
+func _clear_drop_chain_start_links() -> void:
+	drop_chain_start_links[-1] = []
+	drop_chain_start_links[1] = []
+
+
+func _visible_chain_path_points(side: int) -> Array:
+	var points := chain_points[side] as Array
+	if points.is_empty():
+		return []
+	var render_points := []
+	for raw_point in points:
+		render_points.append(raw_point as Vector2)
+	return render_points
 
 func _draw_chain_with_depth(render_links: Array) -> void:
 	for layer in _chain_shadow_layers():
@@ -891,25 +1161,47 @@ func _ellipse_points(center: Vector2, link_rotation: float, rx: float, ry: float
 	return points
 
 func _place_padlock(offset: Vector2, next_lock_rotation: float) -> void:
-	var lock_position := base_lock_position + offset
+	var lock_position := base_lock_position + offset + Vector2(0.0, _lock_hang_drop_amount())
 	var pop_scale := _unlock_pop_scale()
+	var open_amount := _lock_band_open_amount()
+	var ready_pop := sin(ready_open_progress * PI)
+	var ready_settle := sin(ready_open_progress * TAU * 1.6) * (1.0 - ready_open_progress)
+	var shackle_slide := Vector2(0.0, -open_amount * READY_OPEN_SHACKLE_LIFT - ready_pop * 4.0)
+	var shared_rotation := next_lock_rotation + open_amount * READY_OPEN_HANG_ROTATION + ready_settle * 0.012
+	var shared_pivot := PADLOCK_SIZE * 0.5
+	if open_amount > 0.0:
+		shared_pivot = Vector2(PADLOCK_SIZE.x * 0.5, PADLOCK_SIZE.y * 0.25)
 	if padlock_shadow != null:
 		padlock_shadow.size = PADLOCK_SIZE
 		padlock_shadow.position = lock_position + PADLOCK_SHADOW_OFFSET
-		padlock_shadow.pivot_offset = PADLOCK_SIZE * 0.5
-		padlock_shadow.rotation = next_lock_rotation
+		padlock_shadow.pivot_offset = shared_pivot
+		padlock_shadow.rotation = shared_rotation
 		padlock_shadow.scale = Vector2.ONE * lerpf(1.0, pop_scale, 0.55)
 	if padlock != null:
 		padlock.size = PADLOCK_SIZE
 		padlock.position = lock_position
-		padlock.pivot_offset = PADLOCK_SIZE * 0.5
-		padlock.rotation = next_lock_rotation
+		padlock.pivot_offset = shared_pivot
+		padlock.rotation = shared_rotation
 		padlock.scale = Vector2.ONE * pop_scale
+	if padlock_shackle != null:
+		var ready_scale := 1.0 + ready_pop * 0.035
+		padlock_shackle.texture = _active_shackle_texture()
+		padlock_shackle.size = PADLOCK_SIZE
+		padlock_shackle.position = lock_position + shackle_slide
+		padlock_shackle.pivot_offset = shared_pivot - shackle_slide
+		padlock_shackle.rotation = shared_rotation
+		padlock_shackle.scale = Vector2.ONE * pop_scale * ready_scale
+	if padlock_tint != null:
+		padlock_tint.size = PADLOCK_SIZE
+		padlock_tint.position = lock_position
+		padlock_tint.pivot_offset = shared_pivot
+		padlock_tint.rotation = shared_rotation
+		padlock_tint.scale = Vector2.ONE * pop_scale
 	if level_label != null:
 		level_label.size = Vector2(240, 210)
 		level_label.position = lock_position + Vector2(PADLOCK_SIZE.x * 0.5 - level_label.size.x * 0.5 - 15.0, PADLOCK_SIZE.y * 0.52)
-		level_label.pivot_offset = level_label.size * 0.5
-		level_label.rotation = next_lock_rotation
+		level_label.pivot_offset = shared_pivot - (level_label.position - lock_position)
+		level_label.rotation = shared_rotation
 		level_label.scale = Vector2.ONE * pop_scale
 
 func _unlock_pop_scale() -> float:
@@ -917,22 +1209,45 @@ func _unlock_pop_scale() -> float:
 		return 1.0
 	if unlock_pop_progress >= 1.0:
 		return 1.0
-	var pop := pow(1.0 - unlock_pop_progress, 1.18) * 0.22
-	var settle := sin(unlock_pop_progress * PI) * 0.035
+	var pop := pow(1.0 - unlock_pop_progress, 1.35) * 0.14
+	var settle := sin(unlock_pop_progress * PI) * 0.018
 	return 1.0 + pop - settle
+
+
+func _lock_band_open_amount() -> float:
+	if lock_state == LOCK_STATE_DROPPING:
+		return 1.0
+	if lock_state != LOCK_STATE_READY_OPEN:
+		return 0.0
+	var progress := clampf(ready_open_progress, 0.0, 1.0)
+	return progress * progress * (3.0 - 2.0 * progress)
+
+
+func _lock_hang_drop_amount() -> float:
+	return _lock_band_open_amount() * READY_OPEN_HANG_DROP
+
+
+func _active_shackle_texture() -> Texture2D:
+	if padlock_shackle_open_texture != null and lock_state in [LOCK_STATE_READY_OPEN, LOCK_STATE_DROPPING]:
+		return padlock_shackle_open_texture
+	return padlock_shackle_closed_texture
 
 func _unlock_pop_wiggle() -> float:
 	if not unlock_drop_active or unlock_pop_progress >= 1.0:
 		return 0.0
-	var damping := pow(1.0 - unlock_pop_progress, 0.82)
-	var wave := cos(unlock_pop_progress * TAU * 2.35)
-	return wave * damping * click_shake_direction
+	var damping := pow(1.0 - unlock_pop_progress, 1.55)
+	var wave := cos(unlock_pop_progress * TAU * 1.65)
+	return wave * damping * click_shake_direction * 0.58
 
 func _set_padlock_pop_scale(next_scale: float) -> void:
 	if padlock_shadow != null:
 		padlock_shadow.scale = Vector2.ONE * lerpf(1.0, next_scale, 0.55)
 	if padlock != null:
 		padlock.scale = Vector2.ONE * next_scale
+	if padlock_shackle != null:
+		padlock_shackle.scale = Vector2.ONE * next_scale
+	if padlock_tint != null:
+		padlock_tint.scale = Vector2.ONE * next_scale
 	if level_label != null:
 		level_label.scale = Vector2.ONE * next_scale
 

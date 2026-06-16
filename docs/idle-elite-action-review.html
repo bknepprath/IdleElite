@@ -42,7 +42,7 @@
 
     .review-summary {
       display: grid;
-      grid-template-columns: repeat(4, minmax(0, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 10px;
       margin-bottom: 18px;
     }
@@ -276,6 +276,68 @@
       color: #fffdf8;
     }
 
+    .badge.combo {
+      background: #e8f4ff;
+    }
+
+    .badge.event {
+      background: #ffe3a6;
+    }
+
+    .pill-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .combo-pill,
+    .reward-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 4px 8px;
+      border: 2px solid var(--pill-color, var(--ink));
+      border-radius: 999px;
+      background: rgba(255, 253, 248, 0.96);
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 1000;
+      line-height: 1.05;
+      box-shadow:
+        inset 5px 0 0 var(--pill-color, var(--line)),
+        1px 2px 0 rgba(23, 22, 21, 0.55);
+    }
+
+    .reward-pill {
+      background: #f4fff1;
+    }
+
+    .event-pill {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 4px 8px;
+      border: 2px solid #8d6425;
+      border-radius: 999px;
+      background: #fff3d3;
+      color: var(--ink);
+      font-size: 10px;
+      font-weight: 1000;
+      line-height: 1.05;
+      box-shadow: 1px 2px 0 rgba(23, 22, 21, 0.55);
+    }
+
+    .combo-pill small,
+    .reward-pill small,
+    .event-pill small {
+      margin-right: 4px;
+      color: var(--muted);
+      font-size: 8px;
+      font-weight: 1000;
+      text-transform: uppercase;
+    }
+
     .module-title {
       margin: 0;
       color: #fff;
@@ -439,6 +501,11 @@
       background: rgba(255, 253, 248, 0.94);
     }
 
+    .method-row.combo-method {
+      border-color: var(--skill-color);
+      background: rgba(255, 250, 233, 0.97);
+    }
+
     .method-row strong {
       display: block;
       overflow: hidden;
@@ -446,6 +513,10 @@
       line-height: 1.1;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+
+    .method-row.combo-method strong {
+      white-space: normal;
     }
 
     .method-row span {
@@ -462,6 +533,17 @@
       font-size: 12px;
       font-weight: 1000;
       white-space: nowrap;
+    }
+
+    .method-pills {
+      margin-top: 7px;
+    }
+
+    .method-pills .combo-pill,
+    .method-pills .reward-pill {
+      min-height: 22px;
+      padding: 3px 7px;
+      font-size: 9px;
     }
 
     .identity-card {
@@ -525,7 +607,7 @@
 
       #board {
         width: max-content;
-        grid-template-columns: repeat(5, minmax(360px, 1fr));
+        grid-template-columns: repeat(6, minmax(360px, 1fr));
       }
 
       .skill-hero {
@@ -600,14 +682,17 @@
   <script>
     const board = document.getElementById("board");
     const summary = document.getElementById("summary");
+    let activityDatabase = null;
 
     const skillColors = {
       fight: "#e84d4d",
       thieving: "#8956bc",
       build: "#237cd5",
       woodcutting: "#6ea937",
-      fishing: "#2dc0b9"
+      fishing: "#2dc0b9",
+      events: "#d18b28"
     };
+    const fishingAreaMaxMethodsPerModule = 3;
 
     function asset(path) {
       return ActivityDocs.docsAsset(path);
@@ -632,31 +717,202 @@
       return `<span class="stat"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></span>`;
     }
 
+    function skillColor(skillId) {
+      return skillColors[skillId] || "#3aa0ff";
+    }
+
+    function skillName(skillId) {
+      const skill = activityDatabase?.skills?.find(entry => entry.id === skillId);
+      return skill?.name || skillId;
+    }
+
+    function actionSortLevel(action) {
+      const level = Number(action.sort_unlock ?? action.unlock ?? 1);
+      return Number.isFinite(level) ? Math.max(1, level) : 1;
+    }
+
+    function actionRequirements(skill, action) {
+      if (Array.isArray(action.requirements) && action.requirements.length) {
+        return action.requirements;
+      }
+      return [{ skill: skill.id, level: action.unlock || 1 }];
+    }
+
+    function actionRewards(skill, action) {
+      if (action.xp_rewards && typeof action.xp_rewards === "object" && Object.keys(action.xp_rewards).length) {
+        return action.xp_rewards;
+      }
+      return { [skill.id]: action.xp || action.rewards?.xp || 0 };
+    }
+
+    function isComboAction(skill, action) {
+      const tags = [...(action.combo_tags || []), ...(action.display_tags || [])]
+        .map(tag => String(tag).toLowerCase());
+      return actionRequirements(skill, action).length > 1 ||
+        Object.keys(actionRewards(skill, action)).length > 1 ||
+        tags.includes("combo");
+    }
+
+    function actionRewardTotal(skill, action) {
+      return Object.values(actionRewards(skill, action)).reduce((sum, value) => sum + Number(value || 0), 0);
+    }
+
+    function eventDuration(value) {
+      const seconds = Number(value);
+      if (!Number.isFinite(seconds) || seconds <= 0) return "-";
+      if (seconds >= 3600) {
+        const hours = seconds / 3600;
+        return Number.isInteger(hours) ? `${hours}h` : `${hours.toFixed(1)}h`;
+      }
+      if (seconds >= 60) return `${Math.round(seconds / 60)}m`;
+      return `${Math.round(seconds)}s`;
+    }
+
+    function eventMinimumLevel(event) {
+      const level = Number(event.minimum_level ?? event.minimum_spawn_level ?? event.min_level ?? event.target_level ?? event.unlock ?? 1);
+      return Number.isFinite(level) ? Math.max(1, level) : 1;
+    }
+
+    function renderRequirementPills(skill, action, extraClass = "") {
+      const className = `pill-line ${extraClass}`.trim();
+      return `<div class="${className}">` + actionRequirements(skill, action).map(requirement => {
+        const id = requirement.skill || skill.id;
+        return `<span class="combo-pill" style="--pill-color:${skillColor(id)}"><small>Lock</small>${escapeHtml(skillName(id))} Lv ${escapeHtml(requirement.level || action.unlock || 1)}</span>`;
+      }).join("") + `</div>`;
+    }
+
+    function renderRewardPills(skill, action, extraClass = "") {
+      const className = `pill-line ${extraClass}`.trim();
+      const rewards = actionRewards(skill, action);
+      return `<div class="${className}">` + Object.keys(rewards).map(id => {
+        return `<span class="reward-pill" style="--pill-color:${skillColor(id)}"><small>XP</small>${escapeHtml(skillName(id))} +${escapeHtml(rewards[id])}</span>`;
+      }).join("") + `</div>`;
+    }
+
+    function orderedActions(actions) {
+      return [...actions]
+        .map((action, index) => ({ action, index }))
+        .sort((left, right) => {
+          const sortDelta = actionSortLevel(left.action) - actionSortLevel(right.action);
+          if (sortDelta) return sortDelta;
+          const unlockDelta = Number(left.action.unlock || 1) - Number(right.action.unlock || 1);
+          if (unlockDelta) return unlockDelta;
+          return left.index - right.index || String(left.action.id || "").localeCompare(String(right.action.id || ""));
+        })
+        .map(entry => entry.action);
+    }
+
+    function orderedFishingMethods(actions) {
+      return [...actions]
+        .map((action, index) => ({ action, index }))
+        .sort((left, right) => {
+          const unlockDelta = Number(left.action.unlock || 1) - Number(right.action.unlock || 1);
+          if (unlockDelta) return unlockDelta;
+          const tierDelta = Number(left.action.tier || 1) - Number(right.action.tier || 1);
+          return tierDelta || left.index - right.index;
+        })
+        .map(entry => entry.action);
+    }
+
+    function isStandaloneFishingModule(skill, action) {
+      return isComboAction(skill, action);
+    }
+
+    function fishingAreaUnlock(actions) {
+      const unlocks = actions.map(action => Number(action.unlock || 1)).filter(Number.isFinite);
+      return unlocks.length ? Math.min(...unlocks) : 1;
+    }
+
+    function splitFishingAreaMethods(actions) {
+      const methods = orderedFishingMethods(actions);
+      const chunks = [];
+      for (let start = 0; start < methods.length; start += fishingAreaMaxMethodsPerModule) {
+        chunks.push({
+          actions: methods.slice(start, start + fishingAreaMaxMethodsPerModule),
+          methodStart: start
+        });
+      }
+      return chunks;
+    }
+
+    function fishingAreaDisplayName(area, moduleIndex, totalModules) {
+      if (totalModules <= 1) return area.name;
+      return `${area.name} #${moduleIndex + 1}`;
+    }
+
     function actionSubtitle(skill, action) {
+      const requirements = actionRequirements(skill, action);
+      if (requirements.length > 1) {
+        return requirements.map(requirement => skillName(requirement.skill || skill.id)).join(" + ");
+      }
       if (action.area) return `${skill.name} / ${action.area.replaceAll("_", " ")}`;
       return skill.name;
     }
 
     function renderActionModule(skill, action, index) {
       const progress = 18 + ((index * 17) % 72);
+      const combo = isComboAction(skill, action);
+      const xpValue = combo ? actionRewardTotal(skill, action) : (action.xp || action.rewards?.xp || 0);
       return `
-        <article class="module action-module" style="--skill-color:${skillColors[skill.id] || "#3aa0ff"};--bg:${cssImage(action.background)}">
+        <article class="module action-module${combo ? " combo-module" : ""}" style="--skill-color:${skillColor(skill.id)};--bg:${cssImage(action.background)}">
           <div class="module-bg"></div>
           <div class="module-body">
             <img class="module-art" src="${asset(action.art)}" alt="">
             <div class="module-copy">
               <div class="module-kicker">
-                <span class="badge">Lv ${escapeHtml(action.unlock)}</span>
+                <span class="badge">Lv ${escapeHtml(actionSortLevel(action))}</span>
+                ${combo ? `<span class="badge combo">Combo</span>` : ""}
                 <span class="badge dark">${escapeHtml(actionSubtitle(skill, action))}</span>
               </div>
               <h3 class="module-title">${escapeHtml(action.name)}</h3>
+              ${combo ? renderRequirementPills(skill, action) : ""}
               <div class="stat-grid">
-                ${stat("+" + action.xp, "XP")}
+                ${stat("+" + xpValue, combo ? "Total XP" : "XP")}
                 ${stat(action.stamina, "Stam")}
                 ${stat(ActivityDocs.formatSeconds(action.seconds), "Time")}
                 ${stat(ActivityDocs.formatPercent(action.success), "Rate")}
               </div>
+              ${combo ? renderRewardPills(skill, action) : ""}
               <div class="mastery-line" aria-label="Mastery progress">
+                <span class="medal"></span>
+                <span class="progress" style="--progress:${progress}%"><span></span></span>
+              </div>
+            </div>
+          </div>
+        </article>
+      `;
+    }
+
+    function renderEventModule(event, index) {
+      const ownerSkill = activityDatabase?.skills?.find(skill => skill.id === event.page) || {
+        id: event.page || "events",
+        name: event.page || "Event"
+      };
+      const progress = 28 + ((index * 19) % 58);
+      const minimumLevel = eventMinimumLevel(event);
+      return `
+        <article class="module action-module event-module" style="--skill-color:${skillColor(ownerSkill.id)};--bg:${cssImage(event.background)}">
+          <div class="module-bg"></div>
+          <div class="module-body">
+            <img class="module-art" src="${asset(event.art)}" alt="">
+            <div class="module-copy">
+              <div class="module-kicker">
+                <span class="badge event">Event</span>
+                <span class="badge dark">${escapeHtml(skillName(ownerSkill.id))}</span>
+              </div>
+              <h3 class="module-title">${escapeHtml(event.name)}</h3>
+              <div class="stat-grid">
+                ${stat(event.stamina, "Stam")}
+                ${stat(ActivityDocs.formatSeconds(event.seconds), "Time")}
+                ${stat(ActivityDocs.formatPercent(event.success), "Rate")}
+              </div>
+              <div class="pill-line">
+                <span class="event-pill"><small>Minimum</small>${escapeHtml(skillName(ownerSkill.id))} Lv ${escapeHtml(minimumLevel)}</span>
+                <span class="event-pill"><small>Active</small>${escapeHtml(eventDuration(event.active_duration_seconds))}</span>
+                <span class="event-pill"><small>Cooldown</small>${escapeHtml(eventDuration(event.respawn_cooldown_seconds))}</span>
+                <span class="event-pill"><small>Weight</small>${escapeHtml(event.spawn_weight ?? "-")}</span>
+              </div>
+              <div class="mastery-line" aria-label="Event progress">
                 <span class="medal"></span>
                 <span class="progress" style="--progress:${progress}%"><span></span></span>
               </div>
@@ -672,7 +928,7 @@
       const seconds = passive.base_time_seconds || passive.time_seconds || action.seconds;
       const yieldValue = passive.base_yield || passive.yield || 1;
       return `
-        <article class="module passive" style="--skill-color:${skillColors[skill.id] || "#3aa0ff"};--bg:${cssImage(action.background || action.art)}">
+        <article class="module passive" style="--skill-color:${skillColor(skill.id)};--bg:${cssImage(action.background || action.art)}">
           <div class="module-bg"></div>
           <div class="module-body">
             <img class="module-art" src="${asset(action.art)}" alt="">
@@ -697,11 +953,13 @@
       `;
     }
 
-    function renderFishingAreaModule(skill, area, actions, index) {
-      const unlock = Math.min(...actions.map(action => Number(action.unlock || 1)));
+    function renderFishingAreaModule(skill, area, actions, index, moduleIndex = 0, totalModules = 1, methodStart = 0) {
+      const unlock = fishingAreaUnlock(actions);
       const fluid = area.fluid ? area.fluid.replaceAll("_", " ") : "water";
+      const methods = orderedFishingMethods(actions);
+      const displayName = fishingAreaDisplayName(area, moduleIndex, totalModules);
       return `
-        <article class="module area-module" style="--skill-color:${skillColors[skill.id]};--bg:${cssImage(area.background)}">
+        <article class="module area-module" style="--skill-color:${skillColor(skill.id)};--bg:${cssImage(area.background)}">
           <div class="module-bg"></div>
           <div class="module-body">
             <div class="area-top">
@@ -711,19 +969,25 @@
                   <span class="badge">Lv ${escapeHtml(unlock)}</span>
                   <span class="badge dark">${escapeHtml(fluid)}</span>
                 </div>
-                <h3 class="module-title">${escapeHtml(area.name)}</h3>
+                <h3 class="module-title">${escapeHtml(displayName)}</h3>
               </div>
             </div>
             <div class="method-list">
-              ${actions.map((action, methodIndex) => `
-                <div class="method-row">
+              ${methods.map((action, methodIndex) => {
+                const combo = isComboAction(skill, action);
+                const xpValue = combo ? actionRewardTotal(skill, action) : (action.xp || action.rewards?.xp || 0);
+                return `
+                <div class="method-row${combo ? " combo-method" : ""}">
                   <div>
                     <strong>${escapeHtml(action.name)}</strong>
-                    <span>Method ${methodIndex + 1} / Lv ${escapeHtml(action.unlock)} / ${escapeHtml(ActivityDocs.formatPercent(action.success))}</span>
+                    <span>Method ${methodStart + methodIndex + 1} / Lv ${escapeHtml(actionSortLevel(action))} / ${escapeHtml(ActivityDocs.formatPercent(action.success))}</span>
+                    ${combo ? renderRequirementPills(skill, action, "method-pills") : ""}
+                    ${combo ? renderRewardPills(skill, action, "method-pills") : ""}
                   </div>
-                  <div class="method-stat">+${escapeHtml(action.xp)} XP</div>
+                  <div class="method-stat">+${escapeHtml(xpValue)} XP</div>
                 </div>
-              `).join("")}
+              `;
+              }).join("")}
             </div>
             <div class="mastery-line" aria-label="Area progress">
               <span class="medal"></span>
@@ -751,22 +1015,41 @@
     }
 
     function renderFishingSkill(skill) {
-      const passiveModules = skill.actions.filter(action => action.kind === "passive_item_collect");
+      const passiveModules = orderedActions(skill.actions.filter(action => action.kind === "passive_item_collect"));
       const activeActions = skill.actions.filter(action => action.kind !== "passive_item_collect");
       const areas = Array.isArray(skill.areas) ? skill.areas : [];
-      const areaModules = areas.map((area, index) => {
-        const areaActions = activeActions.filter(action => action.area === area.id);
-        if (!areaActions.length) return "";
-        return renderFishingAreaModule(skill, area, areaActions, index);
-      }).join("");
-      const fallback = areas.length ? "" : activeActions.map(renderActionModule.bind(null, skill)).join("");
-      const modules = passiveModules.length + (areas.length || activeActions.length);
+      const areaIds = new Set(areas.map(area => String(area.id || "")));
+      const standaloneActions = orderedActions(activeActions.filter(action => {
+        return isStandaloneFishingModule(skill, action) || !areaIds.has(String(action.area || ""));
+      }));
+      const areaPlans = areas.flatMap((area, index) => {
+        const areaActions = activeActions.filter(action => action.area === area.id && !isStandaloneFishingModule(skill, action));
+        if (!areaActions.length) return [];
+        const chunks = splitFishingAreaMethods(areaActions);
+        return chunks.map((chunk, moduleIndex) => ({
+          type: "area",
+          sort: fishingAreaUnlock(chunk.actions),
+          order: index * 100 + moduleIndex,
+          html: renderFishingAreaModule(skill, area, chunk.actions, index * 10 + moduleIndex, moduleIndex, chunks.length, chunk.methodStart)
+        }));
+      });
+      const standalonePlans = standaloneActions.map((action, index) => ({
+        type: "standalone",
+        sort: actionSortLevel(action),
+        order: areas.length + index,
+        html: renderActionModule(skill, action, index)
+      }));
+      const fishingPlans = [...areaPlans, ...standalonePlans].sort((left, right) => {
+        const sortDelta = left.sort - right.sort;
+        return sortDelta || left.order - right.order;
+      });
+      const modules = passiveModules.length + fishingPlans.length;
       return `
-        <section class="skill-screen" style="--skill-color:${skillColors[skill.id]}">
+        <section class="skill-screen" style="--skill-color:${skillColor(skill.id)}">
           ${renderSkillHeader(skill, modules)}
           <div class="module-stack">
             ${passiveModules.map(action => renderPassiveModule(skill, action)).join("")}
-            ${areaModules || fallback}
+            ${fishingPlans.map(plan => plan.html).join("")}
             <article class="identity-card">
               <strong>${escapeHtml(skill.name)} identity</strong>
               <p>${escapeHtml(skill.identity)}</p>
@@ -778,12 +1061,13 @@
 
     function renderSkill(skill) {
       if (skill.id === "fishing") return renderFishingSkill(skill);
-      const modules = skill.actions.length;
+      const actions = orderedActions(skill.actions);
+      const modules = actions.length;
       return `
-        <section class="skill-screen" style="--skill-color:${skillColors[skill.id] || "#3aa0ff"}">
+        <section class="skill-screen" style="--skill-color:${skillColor(skill.id)}">
           ${renderSkillHeader(skill, modules)}
           <div class="module-stack">
-            ${skill.actions.map((action, index) => {
+            ${actions.map((action, index) => {
               if (action.kind === "passive_item_collect") return renderPassiveModule(skill, action);
               return renderActionModule(skill, action, index);
             }).join("")}
@@ -796,14 +1080,41 @@
       `;
     }
 
+    function renderEventScreen(database) {
+      const events = orderedActions(database.event_modules || []);
+      if (!events.length) return "";
+      const eventSkill = {
+        id: "events",
+        name: "Random Events",
+        identity: "Temporary one-shot modules grouped here for visual review.",
+        icon: "assets/content/ui/motivation-star.png"
+      };
+      return `
+        <section class="skill-screen" style="--skill-color:${skillColor(eventSkill.id)}">
+          ${renderSkillHeader(eventSkill, events.length)}
+          <div class="module-stack">
+            ${events.map(renderEventModule).join("")}
+            <article class="identity-card">
+              <strong>Random event identity</strong>
+              <p>These modules can spawn into their owning skill page, then despawn after a successful completion.</p>
+            </article>
+          </div>
+        </section>
+      `;
+    }
+
     function renderSummary(database) {
       const skills = database.skills.length;
       const actions = database.skills.reduce((sum, skill) => sum + skill.actions.length, 0);
+      const combos = database.skills.reduce((sum, skill) => sum + skill.actions.filter(action => isComboAction(skill, action)).length, 0);
+      const events = (database.event_modules || []).length;
       const passive = database.skills.reduce((sum, skill) => sum + skill.actions.filter(action => action.kind === "passive_item_collect").length, 0);
       const fishingAreas = (database.skills.find(skill => skill.id === "fishing")?.areas || []).length;
       summary.innerHTML = `
         <article class="summary-tile"><strong>${skills}</strong><span>Skills</span></article>
         <article class="summary-tile"><strong>${actions}</strong><span>Actions</span></article>
+        <article class="summary-tile"><strong>${combos}</strong><span>Combo modules</span></article>
+        <article class="summary-tile"><strong>${events}</strong><span>Random events</span></article>
         <article class="summary-tile"><strong>${passive}</strong><span>Passive modules</span></article>
         <article class="summary-tile"><strong>${fishingAreas}</strong><span>Fishing areas</span></article>
       `;
@@ -811,9 +1122,9 @@
 
     async function boot() {
       try {
-        const database = await ActivityDocs.loadDatabase();
-        renderSummary(database);
-        board.innerHTML = database.skills.map(renderSkill).join("");
+        activityDatabase = await ActivityDocs.loadDatabase();
+        renderSummary(activityDatabase);
+        board.innerHTML = activityDatabase.skills.map(renderSkill).join("") + renderEventScreen(activityDatabase);
       } catch (error) {
         ActivityDocs.renderError(board, error);
         summary.innerHTML = "";

@@ -69,14 +69,223 @@ function Read-GdConstNumber {
     return [double]$value
 }
 
+function Has-ObjectProperty {
+    param(
+        [object] $Object,
+        [string] $Name
+    )
+
+    if ($null -eq $Object) {
+        return $false
+    }
+    return $null -ne $Object.PSObject.Properties[$Name]
+}
+
+function Get-ObjectProperty {
+    param(
+        [object] $Object,
+        [string] $Name
+    )
+
+    if ($null -eq $Object) {
+        return $null
+    }
+    $property = $Object.PSObject.Properties[$Name]
+    if ($null -eq $property) {
+        return $null
+    }
+    return $property.Value
+}
+
+function Get-ArrayProperty {
+    param(
+        [object] $Object,
+        [string] $Name
+    )
+
+    if (-not (Has-ObjectProperty $Object $Name)) {
+        return @()
+    }
+    $value = Get-ObjectProperty $Object $Name
+    if ($null -eq $value) {
+        return @()
+    }
+    return @($value)
+}
+
+function Test-PositiveNumber {
+    param([object] $Value)
+
+    if ($null -eq $Value) {
+        return $false
+    }
+    try {
+        $number = [double]$Value
+    } catch {
+        return $false
+    }
+    return (-not [double]::IsNaN($number)) -and (-not [double]::IsInfinity($number)) -and $number -gt 0
+}
+
+function Test-PositiveInteger {
+    param([object] $Value)
+
+    if ($null -eq $Value) {
+        return $false
+    }
+    $text = ([string]$Value).Trim()
+    if ($text -notmatch "^\d+$") {
+        return $false
+    }
+    return [int]$text -gt 0
+}
+
+function Validate-OptionalPositiveInteger {
+    param(
+        [object] $Item,
+        [string] $PropertyName,
+        [string] $Label
+    )
+
+    if (-not (Has-ObjectProperty $Item $PropertyName)) {
+        return
+    }
+    $value = Get-ObjectProperty $Item $PropertyName
+    if (-not (Test-PositiveInteger $value)) {
+        Add-Finding $errors "$label $PropertyName must be a positive integer, found $value."
+    }
+}
+
+function Validate-RequirementList {
+    param(
+        [object] $Item,
+        [string] $Label,
+        [string] $OwnerSkillId,
+        [bool] $RequireExplicit = $false
+    )
+
+    if (-not (Has-ObjectProperty $Item "requirements")) {
+        if ($RequireExplicit) {
+            Add-Finding $errors "$Label must define requirements."
+        } elseif (-not (Test-PositiveInteger (Get-ObjectProperty $Item "unlock"))) {
+            Add-Finding $errors "$Label must define a positive unlock level or explicit requirements."
+        }
+        return 0
+    }
+
+    $requirements = Get-ArrayProperty $Item "requirements"
+    if ($requirements.Count -eq 0) {
+        Add-Finding $errors "$Label requirements must contain at least one entry."
+        return 0
+    }
+    if ($requirements.Count -gt 5) {
+        Add-Finding $errors "$Label requirements has $($requirements.Count) entries; max supported lock count is 5."
+    }
+
+    $seenRequirementSkills = @{}
+    for ($r = 0; $r -lt $requirements.Count; $r++) {
+        $requirement = $requirements[$r]
+        $reqLabel = "$Label requirement #$($r + 1)"
+        $reqSkill = [string](Get-ObjectProperty $requirement "skill")
+        $reqLevel = Get-ObjectProperty $requirement "level"
+
+        if ([string]::IsNullOrWhiteSpace($reqSkill)) {
+            Add-Finding $errors "$reqLabel is missing a skill id."
+        } elseif (-not $knownSkillIds.ContainsKey($reqSkill)) {
+            Add-Finding $errors "$reqLabel references unknown skill: $reqSkill."
+        } elseif ($seenRequirementSkills.ContainsKey($reqSkill)) {
+            Add-Finding $errors "$Label repeats requirement skill: $reqSkill."
+        } else {
+            $seenRequirementSkills[$reqSkill] = $true
+        }
+
+        if (-not (Test-PositiveInteger $reqLevel)) {
+            Add-Finding $errors "$reqLabel level must be a positive integer, found $reqLevel."
+        }
+    }
+
+    if ($requirements.Count -eq 1) {
+        $onlySkill = [string](Get-ObjectProperty $requirements[0] "skill")
+        if (-not [string]::IsNullOrWhiteSpace($OwnerSkillId) -and $onlySkill -ne $OwnerSkillId) {
+            Add-Finding $warnings "$Label has one explicit requirement for $onlySkill but lives on $OwnerSkillId."
+        }
+    }
+
+    return $requirements.Count
+}
+
+function Validate-RewardMap {
+    param(
+        [object] $Item,
+        [string] $Label,
+        [string] $OwnerSkillId,
+        [bool] $RequireExplicit = $false
+    )
+
+    if (-not (Has-ObjectProperty $Item "xp_rewards")) {
+        if ($RequireExplicit) {
+            Add-Finding $errors "$Label must define xp_rewards."
+        } elseif (-not (Test-PositiveNumber (Get-ObjectProperty $Item "xp"))) {
+            Add-Finding $errors "$Label must define positive xp or xp_rewards."
+        }
+        return 0
+    }
+
+    $rewardMap = Get-ObjectProperty $Item "xp_rewards"
+    $rewardProperties = @()
+    if ($null -ne $rewardMap -and $null -ne $rewardMap.PSObject) {
+        $rewardProperties = @($rewardMap.PSObject.Properties)
+    }
+    if ($rewardProperties.Count -eq 0) {
+        Add-Finding $errors "$Label xp_rewards must contain at least one skill reward."
+        return 0
+    }
+
+    foreach ($reward in $rewardProperties) {
+        $rewardSkill = [string]$reward.Name
+        $rewardXp = $reward.Value
+        if ([string]::IsNullOrWhiteSpace($rewardSkill)) {
+            Add-Finding $errors "$Label has an empty xp_rewards skill id."
+        } elseif (-not $knownSkillIds.ContainsKey($rewardSkill)) {
+            Add-Finding $errors "$Label xp_rewards references unknown skill: $rewardSkill."
+        }
+        if (-not (Test-PositiveNumber $rewardXp)) {
+            Add-Finding $errors "$Label xp_rewards.$rewardSkill must be positive, found $rewardXp."
+        }
+    }
+
+    if ($rewardProperties.Count -eq 1) {
+        $onlySkill = [string]$rewardProperties[0].Name
+        if (-not [string]::IsNullOrWhiteSpace($OwnerSkillId) -and $onlySkill -ne $OwnerSkillId) {
+            Add-Finding $warnings "$Label has one explicit XP reward for $onlySkill but lives on $OwnerSkillId."
+        }
+    }
+
+    return $rewardProperties.Count
+}
+
 $skillIds = @{}
+$knownSkillIds = @{}
+$globalActionIds = @{}
 $actionCount = 0
 $passiveCount = 0
 $missingAssets = 0
+$comboActionCount = 0
+$eventComboCount = 0
+$rewardMapCount = 0
+$requirementEntryCount = 0
+$eventModuleCount = 0
 $skills = @($database.skills)
 
 if ($skills.Count -eq 0) {
     Add-Finding $errors "No skills were found in docs/activity-database.json."
+}
+
+foreach ($skill in $skills) {
+    $knownSkillId = [string]$skill.id
+    if (-not [string]::IsNullOrWhiteSpace($knownSkillId)) {
+        $knownSkillIds[$knownSkillId] = $true
+    }
 }
 
 foreach ($skill in $skills) {
@@ -120,6 +329,13 @@ foreach ($skill in $skills) {
         } else {
             $actionIds[$actionId] = $true
         }
+        if (-not [string]::IsNullOrWhiteSpace($actionId)) {
+            if ($globalActionIds.ContainsKey($actionId)) {
+                Add-Finding $errors "Duplicate action id across modules: $actionId is used by $($globalActionIds[$actionId]) and $label."
+            } else {
+                $globalActionIds[$actionId] = $label
+            }
+        }
 
         $kind = [string]$action.kind
         if ([string]::IsNullOrWhiteSpace($kind)) {
@@ -137,6 +353,21 @@ foreach ($skill in $skills) {
         $xp = [int]$action.xp
         $seconds = [double]$action.seconds
         $success = [double]$action.success
+
+        Validate-OptionalPositiveInteger $action "sort_unlock" $label
+        $requirementCount = Validate-RequirementList $action $label $skillId
+        if ($requirementCount -gt 0) {
+            $requirementEntryCount += $requirementCount
+        }
+        if ($requirementCount -gt 1) {
+            $comboActionCount++
+        }
+        if ($kind -ne "passive_item_collect") {
+            $rewardCount = Validate-RewardMap $action $label $skillId
+            if ($rewardCount -gt 0) {
+                $rewardMapCount++
+            }
+        }
 
         if ($unlock -lt $lastUnlock) {
             Add-Finding $warnings "$label unlock level drops from $lastUnlock to $unlock."
@@ -244,6 +475,90 @@ foreach ($skill in $skills) {
             if (-not $actionsByArea.ContainsKey($areaId) -or $actionsByArea[$areaId].Count -eq 0) {
                 Add-Finding $warnings "fishing/area:$areaId has no actions assigned."
             }
+        }
+    }
+}
+
+$eventModules = Get-ArrayProperty $database "event_modules"
+for ($i = 0; $i -lt $eventModules.Count; $i++) {
+    $event = $eventModules[$i]
+    $eventModuleCount++
+    $eventId = [string]$event.id
+    $label = "event module #$($i + 1)"
+    if (-not [string]::IsNullOrWhiteSpace($eventId)) {
+        $label = "event/$eventId"
+    }
+
+    if ([string]::IsNullOrWhiteSpace($eventId)) {
+        Add-Finding $errors "$label is missing an id."
+    } elseif ($globalActionIds.ContainsKey($eventId)) {
+        Add-Finding $errors "Duplicate action id across modules: $eventId is used by $($globalActionIds[$eventId]) and $label."
+    } else {
+        $globalActionIds[$eventId] = $label
+    }
+
+    $eventPage = [string]$event.page
+    if ([string]::IsNullOrWhiteSpace($eventPage)) {
+        Add-Finding $errors "$label is missing a page skill id."
+    } elseif (-not $knownSkillIds.ContainsKey($eventPage)) {
+        Add-Finding $errors "$label references unknown page skill: $eventPage."
+    }
+
+    $eventKind = [string]$event.kind
+    if ($eventKind -ne "event_activity") {
+        Add-Finding $warnings "$label kind should be event_activity, found $eventKind."
+    }
+
+    foreach ($requiredIntegerField in @("target_level", "minimum_level", "unlock", "sort_unlock")) {
+        $fieldValue = Get-ObjectProperty $event $requiredIntegerField
+        if (-not (Test-PositiveInteger $fieldValue)) {
+            Add-Finding $errors "$label $requiredIntegerField must be a positive integer, found $fieldValue."
+        }
+    }
+
+    foreach ($requiredNumberField in @("stamina", "seconds", "xp", "spawn_weight", "active_duration_seconds", "respawn_cooldown_seconds")) {
+        $fieldValue = Get-ObjectProperty $event $requiredNumberField
+        if (-not (Test-PositiveNumber $fieldValue)) {
+            Add-Finding $errors "$label $requiredNumberField must be positive, found $fieldValue."
+        }
+    }
+
+    $eventSuccess = [double]$event.success
+    if ($eventSuccess -lt 5 -or $eventSuccess -gt 100) {
+        Add-Finding $errors "$label success must be between 5 and 100, found $eventSuccess."
+    }
+
+    $eventRequirementCount = Validate-RequirementList $event $label $eventPage $true
+    if ($eventRequirementCount -gt 0) {
+        $requirementEntryCount += $eventRequirementCount
+    }
+    if ($eventRequirementCount -gt 1) {
+        $eventComboCount++
+    }
+    $eventRewardCount = Validate-RewardMap $event $label $eventPage $true
+    if ($eventRewardCount -gt 0) {
+        $rewardMapCount++
+    }
+
+    if ((Test-PositiveNumber $event.active_duration_seconds) -and (Test-PositiveNumber $event.respawn_cooldown_seconds)) {
+        $activeDuration = [double]$event.active_duration_seconds
+        $cooldownDuration = [double]$event.respawn_cooldown_seconds
+        if ($cooldownDuration -lt $activeDuration) {
+            Add-Finding $warnings "$label cooldown $cooldownDuration is shorter than active duration $activeDuration."
+        }
+    }
+
+    foreach ($field in @("art", "background")) {
+        $assetPath = [string]$event.$field
+        if ([string]::IsNullOrWhiteSpace($assetPath)) {
+            Add-Finding $errors "$label has no $field path."
+            continue
+        }
+
+        $resolved = Resolve-ProjectPath $assetPath
+        if ($null -ne $resolved -and -not (Test-Path -LiteralPath $resolved)) {
+            $missingAssets++
+            Add-Finding $errors "$label references missing ${field}: $assetPath."
         }
     }
 }
@@ -610,7 +925,7 @@ foreach ($skill in $skills) {
 
 Write-Output "Activity database audit"
 Write-Output "Project: $projectRoot"
-Write-Output ("Skills: {0}; actions: {1}; passive modules: {2}; missing assets: {3}" -f $skills.Count, $actionCount, $passiveCount, $missingAssets)
+Write-Output ("Skills: {0}; actions: {1}; combo modules: {2}; event modules: {3}; event combos: {4}; passive modules: {5}; requirement entries: {6}; reward maps: {7}; missing assets: {8}" -f $skills.Count, $actionCount, $comboActionCount, $eventModuleCount, $eventComboCount, $passiveCount, $requirementEntryCount, $rewardMapCount, $missingAssets)
 Write-Output ""
 
 if ($errors.Count -gt 0) {

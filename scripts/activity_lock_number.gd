@@ -6,10 +6,17 @@ var text := "1"
 var font: Font
 var font_size := 250
 var outline_size := 46
+var fill_color := Color.WHITE
 
 func set_text(next_text: String) -> void:
 	text = next_text
 	queue_redraw()
+
+
+func set_fill_color(next_color: Color) -> void:
+	fill_color = next_color
+	queue_redraw()
+
 
 func _draw() -> void:
 	var active_font := font if font != null else ThemeDB.fallback_font
@@ -27,6 +34,6 @@ func _draw() -> void:
 			var offset := Vector2(x, y)
 			if offset.length() <= float(outline_size) + 0.25:
 				draw_string(active_font, text_position + offset, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted, Color("#171615"))
-	draw_string(active_font, text_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted, Color.WHITE)
+	draw_string(active_font, text_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted, fill_color)
 
 

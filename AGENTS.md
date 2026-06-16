@@ -6,7 +6,8 @@ This project uses Godot, and this machine can overheat if too many Godot instanc
 
 - Never call `Godot.exe` directly.
 - Always launch Godot through `.\run-godot-safe.ps1`.
-- Use headless Godot only.
+- Use headless Godot for automated validation by default.
+- Visible game-only playtesting is allowed when the user explicitly asks to watch interactive testing. Launch visible playtests through `.\run-godot-safe.ps1 --visible-game --path .`; do not use visible mode for editor tasks.
 - Do not launch the Godot editor UI or project manager.
 - Do not use watch mode or long-running Godot processes.
 - Across all agents combined, keep at most 4 Godot processes running at the same time.
@@ -23,6 +24,12 @@ For one-off Godot commands, call the wrapper directly:
 
 ```powershell
 .\run-godot-safe.ps1 --path . --quit-after 1
+```
+
+For visible game-only playtesting when explicitly requested:
+
+```powershell
+.\run-godot-safe.ps1 --visible-game --path .
 ```
 
 ## Activity Database (fishing rework)

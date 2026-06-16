@@ -17,6 +17,23 @@ $database = Get-Content -LiteralPath $databasePath -Raw | ConvertFrom-Json
 $baseMaxStamina = [double]$database.global_rules.base_max_stamina
 $regenSeconds = [double]$database.global_rules.stamina_regen_seconds
 $lowStaminaSpeedMultiplier = 0.20
+$skillXpCurveBase = 22.0
+$skillXpCurveExponent = 2.08
+$skillXpStretchStartLevel = 10
+$skillXpStretchTargetLevel = 99
+$skillXpStretchTargetMultiplier = 4.0
+$skillXpStretchPower = 2.0
+
+function Get-XpCurveStretchForLevel {
+    param([int] $Level)
+
+    if ($Level -le $skillXpStretchStartLevel) {
+        return 1.0
+    }
+    $stretchRange = [math]::Max(1, $skillXpStretchTargetLevel - $skillXpStretchStartLevel)
+    $progress = [math]::Min(1.0, [math]::Max(0.0, ($Level - $skillXpStretchStartLevel) / $stretchRange))
+    return 1.0 + ($skillXpStretchTargetMultiplier - 1.0) * [math]::Pow($progress, $skillXpStretchPower)
+}
 
 function Get-XpForLevel {
     param([int] $Level)
@@ -24,7 +41,8 @@ function Get-XpForLevel {
     if ($Level -le 1) {
         return 0
     }
-    return [int][math]::Round(22.0 * [math]::Pow(($Level - 1), 2.08))
+    $baseXp = $skillXpCurveBase * [math]::Pow(($Level - 1), $skillXpCurveExponent)
+    return [int][math]::Round($baseXp * (Get-XpCurveStretchForLevel $Level))
 }
 
 function Get-LevelForXp {

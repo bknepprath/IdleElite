@@ -93,7 +93,7 @@ The recent swipe/lock work was tricky enough to deserve repeatable coverage. A u
 
 - Write a small Godot validation scene/script that boots headless, instantiates `Main`, and exercises page switching/unlock state transitions enough to catch obvious runtime errors.
 - Keep visual gesture QA in docs until a reliable headless synthetic-input approach exists.
-- Expand `docs/bug-squash-swipe-lock-postmortem.md` into a checklist for future interaction work.
+- Expand `docs/bug-squash.md` into a checklist for future interaction work.
 
 Use only `.\run-godot-safe.ps1` or `.\scripts\check-project.ps1` for validation.
 

@@ -57,10 +57,15 @@ function Get-ChildProcessIds {
 }
 
 $godotArgs = @($args)
-if ($godotArgs -contains "--editor" -or $godotArgs -contains "-e" -or $godotArgs -contains "--project-manager") {
-    throw "Refusing to launch an interactive Godot UI. Use headless one-shot commands only."
+$visibleGame = $false
+if ($godotArgs -contains "--visible-game") {
+    $visibleGame = $true
+    $godotArgs = @($godotArgs | Where-Object { $_ -ne "--visible-game" })
 }
-if ($godotArgs -notcontains "--headless") {
+if ($godotArgs -contains "--editor" -or $godotArgs -contains "-e" -or $godotArgs -contains "--project-manager") {
+    throw "Refusing to launch the Godot editor or project manager."
+}
+if (-not $visibleGame -and $godotArgs -notcontains "--headless") {
     $godotArgs = @("--headless") + $godotArgs
 }
 
@@ -96,13 +101,21 @@ try {
         $running = @(Get-Process godot* -ErrorAction SilentlyContinue)
         if ($running.Count -lt $maxGodots) {
             $argumentList = ($godotArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join " "
-            $process = Start-Process `
-                -FilePath $godotPath `
-                -ArgumentList $argumentList `
-                -PassThru `
-                -WindowStyle Hidden `
-                -RedirectStandardOutput $stdoutPath `
-                -RedirectStandardError $stderrPath
+            if ($visibleGame) {
+                $process = Start-Process `
+                    -FilePath $godotPath `
+                    -ArgumentList $argumentList `
+                    -PassThru `
+                    -WindowStyle Normal
+            } else {
+                $process = Start-Process `
+                    -FilePath $godotPath `
+                    -ArgumentList $argumentList `
+                    -PassThru `
+                    -WindowStyle Hidden `
+                    -RedirectStandardOutput $stdoutPath `
+                    -RedirectStandardError $stderrPath
+            }
             break
         }
 
@@ -141,11 +154,11 @@ if ($runTimeoutSeconds -gt 0) {
     $process.WaitForExit()
 }
 
-if (Test-Path -LiteralPath $stdoutPath) {
+if (-not $visibleGame -and (Test-Path -LiteralPath $stdoutPath)) {
     Get-Content -LiteralPath $stdoutPath
 }
 $stderrLines = @()
-if (Test-Path -LiteralPath $stderrPath) {
+if (-not $visibleGame -and (Test-Path -LiteralPath $stderrPath)) {
     $stderrLines = @(Get-Content -LiteralPath $stderrPath)
     $stderrLines | ForEach-Object { [Console]::Error.WriteLine($_) }
 }

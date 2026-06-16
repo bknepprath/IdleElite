@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="docs-nav.css">
   <link rel="stylesheet" href="docs-theme.css">
   <style>
-    :root { --ink:#171615; --paper:#f8f1e5; --panel:#fffdf8; --line:#d9cfbc; --muted:#625b50; --gold:#fff2a8; --green:#2f8f57; --blue:#276fba; --red:#b84242; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    :root { --ink:#171615; --paper:#f8f1e5; --panel:#fffdf8; --line:#d9cfbc; --muted:#625b50; --gold:#fff2a8; --green:#2f8f57; --blue:#276fba; --red:#b84242; --purple:#8956bc; --teal:#168f8c; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
     * { box-sizing: border-box; }
     body { margin: 0; color: var(--ink); background: var(--paper); }
     code { padding: 2px 5px; border-radius: 5px; background: #e8f4ff; }
@@ -17,7 +17,7 @@
     .filter button { padding: 8px 12px; }
     .filter button.active { background: var(--gold); }
     main { padding: 24px clamp(18px, 4vw, 54px) 60px; }
-    .summary { display: grid; grid-template-columns: repeat(4, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
+    .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 22px; }
     .metric, .skill, .formula-card { border: 2px solid var(--ink); border-radius: 8px; background: var(--panel); box-shadow: 3px 4px 0 rgba(23,22,21,.9); }
     .metric { padding: 14px; }
     .metric b { display: block; font-size: 28px; line-height: 1; }
@@ -35,10 +35,17 @@
     .skill-head img { width: 76px; height: 76px; object-fit: contain; border: 2px solid var(--ink); border-radius: 8px; background: #fffdf8; box-shadow: 2px 2px 0 var(--ink); }
     .skill h2 { margin: 0; font-size: clamp(26px, 3vw, 42px); line-height: 1; }
     .skill p { margin: 7px 0 0; color: #3a352e; line-height: 1.35; }
-    .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
-    .chip { padding: 5px 8px; border: 1px solid var(--ink); border-radius: 999px; background: #fffdf8; font-size: 12px; font-weight: 900; }
+    .chips, .pill-list { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
+    .pill-list { margin-top: 0; }
+    .chip, .pill { padding: 5px 8px; border: 1px solid var(--ink); border-radius: 999px; background: #fffdf8; font-size: 12px; font-weight: 900; }
+    .pill { display: inline-flex; align-items: center; gap: 5px; border-color: var(--pill-color, var(--ink)); box-shadow: inset 5px 0 0 var(--pill-color, var(--line)); }
+    .pill small { color: var(--muted); font-size: 10px; font-weight: 950; text-transform: uppercase; }
+    .tag-pill { border-color: #786d60; background: #fff8e8; box-shadow: none; }
+    .event-note { margin: 22px 0 24px; padding: 14px 16px; border: 2px solid var(--ink); border-radius: 8px; background: #fff8e8; box-shadow: 3px 4px 0 rgba(23,22,21,.9); }
+    .event-note h2 { margin: 0 0 8px; font-size: 24px; line-height: 1; }
+    .event-note p { margin: 0; color: #3a352e; line-height: 1.4; }
     .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; min-width: 1060px; }
+    table { width: 100%; border-collapse: collapse; min-width: 1320px; }
     th, td { padding: 10px 9px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
     th { background: #29241f; color: #fff; font-size: 12px; text-transform: uppercase; }
     tr:nth-child(even) td { background: rgba(255,255,255,.42); }
@@ -78,20 +85,79 @@
     let active = 'all';
     const fmt = new Intl.NumberFormat('en-US', { maximumFractionDigits: 2 });
     function asset(path) { return ActivityDocs.docsAsset(path); }
-    function seconds(value) { return fmt.format(value) + 's'; }
+    function seconds(value) {
+      const number = Number(value);
+      return Number.isFinite(number) ? fmt.format(number) + 's' : '-';
+    }
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+    }
+    const skillColors = { fight:'#b84242', thieving:'#8956bc', build:'#276fba', woodcutting:'#2f8f57', fishing:'#168f8c' };
+    function skillName(skillId) {
+      return (db.skills.find(skill => skill.id === skillId) || { name: skillId }).name;
+    }
+    function skillColor(skillId) {
+      return skillColors[skillId] || '#786d60';
+    }
+    function actionRequirements(action, ownerSkillId) {
+      if (Array.isArray(action.requirements) && action.requirements.length) {
+        return action.requirements;
+      }
+      return [{ skill: ownerSkillId, level: action.unlock || 1 }];
+    }
+    function actionRewards(action, ownerSkillId) {
+      if (action.xp_rewards && typeof action.xp_rewards === 'object' && Object.keys(action.xp_rewards).length) {
+        return action.xp_rewards;
+      }
+      return { [ownerSkillId]: action.xp || (action.rewards && action.rewards.xp) || 0 };
+    }
+    function renderRequirementPills(action, ownerSkillId) {
+      return '<div class="pill-list">' + actionRequirements(action, ownerSkillId).map(req => {
+        const skill = esc(req.skill || ownerSkillId);
+        const level = esc(req.level || action.unlock || 1);
+        return '<span class="pill" style="--pill-color:' + skillColor(skill) + '"><small>Lock</small>' + esc(skillName(skill)) + ' Lv ' + level + '</span>';
+      }).join('') + '</div>';
+    }
+    function renderRewardPills(action, ownerSkillId) {
+      const rewards = actionRewards(action, ownerSkillId);
+      return '<div class="pill-list">' + Object.keys(rewards).map(skill => {
+        return '<span class="pill" style="--pill-color:' + skillColor(skill) + '"><small>XP</small>' + esc(skillName(skill)) + ' +' + esc(rewards[skill]) + '</span>';
+      }).join('') + '</div>';
+    }
+    function renderTags(action) {
+      const tags = [...(action.display_tags || []), ...(action.combo_tags || [])].filter(Boolean);
+      if (!tags.length) return '<span class="muted">-</span>';
+      return '<div class="pill-list">' + tags.map(tag => '<span class="pill tag-pill">' + esc(tag) + '</span>').join('') + '</div>';
+    }
+    function eventMeta(event) {
+      const parts = [];
+      if (event.target_level) parts.push('Target Lv ' + event.target_level);
+      if (event.spawn_weight !== undefined) parts.push('Weight ' + event.spawn_weight);
+      if (event.active_duration_seconds) parts.push('Active ' + seconds(event.active_duration_seconds));
+      if (event.respawn_cooldown_seconds) parts.push('Cooldown ' + seconds(event.respawn_cooldown_seconds));
+      return parts.join(' | ');
+    }
     function renderFilters() {
       filters.innerHTML = ['all', ...db.skills.map(skill => skill.id)].map(id => {
         const label = id === 'all' ? 'All Skills' : db.skills.find(skill => skill.id === id).name;
-        return '<button type="button" class="' + (active === id ? 'active' : '') + '" data-filter="' + id + '">' + label + '</button>';
+        return '<button type="button" class="' + (active === id ? 'active' : '') + '" data-filter="' + esc(id) + '">' + esc(label) + '</button>';
       }).join('');
     }
     function renderSummary(skills) {
-      const actions = skills.flatMap(skill => skill.actions);
+      const actionEntries = skills.flatMap(skill => skill.actions.map(action => ({ skill, action })));
+      const actions = actionEntries.map(entry => entry.action);
       const avgSuccess = actions.reduce((sum, action) => sum + action.success, 0) / Math.max(1, actions.length);
-      const totalXp = actions.reduce((sum, action) => sum + action.xp, 0);
+      const totalXp = actionEntries.reduce((sum, entry) => {
+        return sum + Object.values(actionRewards(entry.action, entry.skill.id)).reduce((inner, xp) => inner + Number(xp || 0), 0);
+      }, 0);
+      const comboCount = actions.filter(action => Array.isArray(action.requirements) && action.requirements.length > 1).length;
+      const visibleEvents = active === 'all' ? (db.event_modules || []) : (db.event_modules || []).filter(event => event.page === active);
+      const eventCount = visibleEvents.length;
       summary.innerHTML = [
         ['Skills', skills.length],
         ['Activities', actions.length],
+        ['Combo Modules', comboCount],
+        ['Event Modules', eventCount],
         ['Total Base XP', totalXp],
         ['Avg Success', fmt.format(avgSuccess) + '%']
       ].map(([label, value]) => '<article class="metric"><b>' + value + '</b><span>' + label + '</span></article>').join('');
@@ -101,16 +167,25 @@
       const list = items => '<ul>' + items.map(item => '<li>' + item + '</li>').join('') + '</ul>';
       formulas.innerHTML = [
         '<article class="formula-card"><h2>Skill Levels</h2><code>' + rules.skill_level_xp_formula + '</code><code>' + rules.max_stamina_formula + '</code>' + list(rules.level_up_effects) + '</article>',
-        '<article class="formula-card"><h2>Activity Tuning</h2><code>' + rules.xp_formula + '</code><code>' + rules.seconds_formula + '</code><code>' + rules.success_formula + '</code><ul><li>Rows below are the current source values for XP, stamina, seconds, success/rate, and art.</li><li>Use the action table for balancing visible activity button data.</li></ul></article>',
-        '<article class="formula-card"><h2>Visual Mastery</h2><code>action mastery = medal state + progress bar</code><ul><li>Do not use this page to invent mastery reward formulas.</li><li>Mastery should stay readable as visual progress on the activity button.</li></ul></article>'
+        '<article class="formula-card"><h2>Activity Tuning</h2><code>' + rules.xp_formula + '</code><code>' + rules.seconds_formula + '</code><code>' + rules.success_formula + '</code><ul><li>Rows below show requirements, reward maps, stamina, seconds, success/rate, and art.</li><li>Use the action table for balancing visible activity button data.</li></ul></article>',
+        '<article class="formula-card"><h2>Combo And Event Schema</h2><code>requirements = one to five colored skill locks</code><code>xp_rewards = skill-id to XP reward map</code><code>event_modules = temporary modules with target level, duration, cooldown, and spawn weight</code><ul><li>Lock chips use the same skill colors as the runtime lock cluster.</li><li>Event rows are source definitions; active save state lives in player saves.</li></ul></article>'
       ].join('');
     }
     function renderSkill(skill) {
-      return '<article class="skill" id="' + skill.id + '">' +
-        '<div class="skill-head"><img src="' + asset(skill.icon) + '" alt=""><div><h2>' + skill.name + '</h2><p>' + skill.identity + '</p><div class="chips">' +
-        '<span class="chip">Verb: ' + skill.verb + '</span><span class="chip">Time x' + skill.tuning.time_scale + '</span><span class="chip">XP x' + skill.tuning.xp_scale + '</span><span class="chip">Start rate ' + skill.tuning.success_start + '%</span><span class="chip">' + skill.rewards.secondary + '</span>' +
-        '</div></div></div><div class="table-wrap"><table><thead><tr><th>Art</th><th>Tier</th><th>Activity</th><th>Unlock</th><th>XP</th><th>Stamina</th><th>Seconds</th><th>Success</th><th>ID</th><th>Background</th></tr></thead><tbody>' +
-        skill.actions.map(action => '<tr><td><img class="art" src="' + asset(action.art) + '" alt=""></td><td class="num">' + action.tier + '</td><td><div class="action-name">' + action.name + '</div><div class="muted">' + skill.rewards.primary + ' reward, ' + skill.rewards.secondary + '</div></td><td class="num">Lv ' + action.unlock + '</td><td class="num">+' + action.xp + '</td><td class="num">' + action.stamina + '</td><td class="num">' + seconds(action.seconds) + '</td><td class="num">' + action.success + '%</td><td class="path">' + action.id + '</td><td class="path">' + action.background + '</td></tr>').join('') +
+      return '<article class="skill" id="' + esc(skill.id) + '">' +
+        '<div class="skill-head"><img src="' + asset(skill.icon) + '" alt=""><div><h2>' + esc(skill.name) + '</h2><p>' + esc(skill.identity) + '</p><div class="chips">' +
+        '<span class="chip">Verb: ' + esc(skill.verb) + '</span><span class="chip">Time x' + esc(skill.tuning.time_scale) + '</span><span class="chip">XP x' + esc(skill.tuning.xp_scale) + '</span><span class="chip">Start rate ' + esc(skill.tuning.success_start) + '%</span><span class="chip">' + esc(skill.rewards.secondary) + '</span>' +
+        '</div></div></div><div class="table-wrap"><table><thead><tr><th>Art</th><th>Tier</th><th>Activity</th><th>Requirements</th><th>XP Rewards</th><th>Tags</th><th>Stamina</th><th>Seconds</th><th>Success</th><th>ID</th><th>Background</th></tr></thead><tbody>' +
+        skill.actions.map(action => '<tr><td><img class="art" src="' + asset(action.art) + '" alt=""></td><td class="num">' + esc(action.tier) + '</td><td><div class="action-name">' + esc(action.name) + '</div><div class="muted">' + esc(skill.rewards.primary) + ' reward, ' + esc(skill.rewards.secondary) + '</div></td><td>' + renderRequirementPills(action, skill.id) + '</td><td>' + renderRewardPills(action, skill.id) + '</td><td>' + renderTags(action) + '</td><td class="num">' + esc(action.stamina) + '</td><td class="num">' + seconds(action.seconds) + '</td><td class="num">' + esc(action.success) + '%</td><td class="path">' + esc(action.id) + '</td><td class="path">' + esc(action.background) + '</td></tr>').join('') +
+        '</tbody></table></div></article>';
+    }
+    function renderEventModules() {
+      const events = db.event_modules || [];
+      if (!events.length || (active !== 'all' && !events.some(event => event.page === active))) return '';
+      const visibleEvents = active === 'all' ? events : events.filter(event => event.page === active);
+      return '<section class="event-note"><h2>Temporary Event Modules</h2><p>These source definitions can spawn into their owning page at the target level, then despawn after a one-time successful completion.</p></section>' +
+        '<article class="skill" id="temporary-events"><div class="table-wrap"><table><thead><tr><th>Art</th><th>Page</th><th>Event</th><th>Requirements</th><th>XP Rewards</th><th>Event Metadata</th><th>Tags</th><th>Stamina</th><th>Seconds</th><th>Success</th><th>ID</th><th>Background</th></tr></thead><tbody>' +
+        visibleEvents.map(event => '<tr><td><img class="art" src="' + asset(event.art) + '" alt=""></td><td><span class="pill" style="--pill-color:' + skillColor(event.page) + '">' + esc(skillName(event.page)) + '</span></td><td><div class="action-name">' + esc(event.name) + '</div><div class="muted">Temporary one-time reward module</div></td><td>' + renderRequirementPills(event, event.page) + '</td><td>' + renderRewardPills(event, event.page) + '</td><td class="muted">' + esc(eventMeta(event)) + '</td><td>' + renderTags(event) + '</td><td class="num">' + esc(event.stamina) + '</td><td class="num">' + seconds(event.seconds) + '</td><td class="num">' + esc(event.success) + '%</td><td class="path">' + esc(event.id) + '</td><td class="path">' + esc(event.background) + '</td></tr>').join('') +
         '</tbody></table></div></article>';
     }
     function render() {
@@ -118,7 +193,7 @@
       renderFilters();
       renderSummary(skills);
       renderFormulas();
-      root.innerHTML = skills.map(renderSkill).join('');
+      root.innerHTML = skills.map(renderSkill).join('') + renderEventModules();
     }
     filters.addEventListener('click', event => {
       const button = event.target.closest('button[data-filter]');

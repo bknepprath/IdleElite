@@ -318,11 +318,18 @@
     </div>
     <section class="grid" id="jingleChainsGrid" aria-label="Chain and lock sounds"></section>
 
+    <div class="section-label">
+      <h2>Water</h2>
+      <p>Subtle water movement cues for low-stress fishing and ambient UI feedback.</p>
+    </div>
+    <section class="grid" id="waterGrid" aria-label="Water movement sounds"></section>
+
     <div class="footer">
       <button id="glassPipBurst" type="button">Test glass pip climb</button>
       <button id="critBurst" type="button">Test XP crits</button>
       <button id="feedbackBurst" type="button">Test feedback</button>
       <button id="jingleChainsBurst" type="button">Test jingle chains</button>
+      <button id="waterBurst" type="button">Test water</button>
     </div>
   </main>
 
@@ -972,6 +979,7 @@
       sounds.find((sound) => sound.id === "xp-spark"),
       failureSounds.find((sound) => sound.id === "warm-reject")
     ].filter(Boolean);
+    const waterSampleUrl = "../assets/sfx/water_whoosh_subtle.wav";
     const jingleChainSampleUrl = "../assets/sfx/Jingle%20Chains.wav";
     const jingleChainSounds = [
       {
@@ -1055,6 +1063,20 @@
       }
     ];
 
+    const waterSounds = [
+      {
+        id: "water-whoosh-subtle",
+        name: "Subtle Water Whoosh",
+        tag: "soft wash",
+        gain: 0.86,
+        notes: "A quiet filtered-noise swell with soft stereo movement and a clean fade.",
+        bars: [8, 14, 28, 52, 74, 92, 86, 64, 40, 24, 14, 7],
+        play: (ctx, out, t) => protectedSampleMix(ctx, out, t, waterSampleUrl, [
+          { offset: 0, sampleOffset: 0, duration: 1, rate: 1, level: 0.12, pan: -0.06 }
+        ], { ceiling: 0.28, highpass: 80, lowpass: 1400, threshold: -28, ratio: 4, drive: 0.76, output: 0.82 })
+      }
+    ];
+
     let audioContext;
     let masterGain;
     const sampleCache = new Map();
@@ -1063,6 +1085,7 @@
     const glassPipGrid = document.querySelector("#glassPipGrid");
     const critGrid = document.querySelector("#critGrid");
     const jingleChainsGrid = document.querySelector("#jingleChainsGrid");
+    const waterGrid = document.querySelector("#waterGrid");
 
     function ensureAudio() {
       if (!audioContext) {
@@ -1441,6 +1464,7 @@
       renderGrid(feedbackGrid, feedbackSounds);
       renderGrid(glassPipGrid, glassPipSounds);
       renderGrid(jingleChainsGrid, jingleChainSounds);
+      renderGrid(waterGrid, waterSounds);
     }
 
     volume.addEventListener("input", () => {
@@ -1460,6 +1484,7 @@
     critGrid.addEventListener("click", (event) => handleGridClick(event, critSounds));
     glassPipGrid.addEventListener("click", (event) => handleGridClick(event, glassPipSounds));
     jingleChainsGrid.addEventListener("click", (event) => handleGridClick(event, jingleChainSounds));
+    waterGrid.addEventListener("click", (event) => handleGridClick(event, waterSounds));
 
     document.querySelector("#glassPipBurst").addEventListener("click", () => {
       glassPipSounds.forEach((sound, index) => playSound(sound, index * 0.2));
@@ -1467,6 +1492,10 @@
 
     document.querySelector("#jingleChainsBurst").addEventListener("click", () => {
       jingleChainSounds.forEach((sound, index) => playSound(sound, index * 0.5));
+    });
+
+    document.querySelector("#waterBurst").addEventListener("click", () => {
+      waterSounds.forEach((sound, index) => playSound(sound, index * 0.5));
     });
 
     document.querySelector("#critBurst").addEventListener("click", () => {
