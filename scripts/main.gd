@@ -15,6 +15,9 @@ const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
 const HubBuildProgressBar = preload("res://scripts/ui/hub_build_progress_bar.gd")
 const PassiveSerpentineProgressBar = preload("res://scripts/ui/passive_serpentine_progress_bar.gd")
 const ConvergenceMultiProgressBar = preload("res://scripts/ui/convergence_multi_progress_bar.gd")
+const PassiveIconSprite = preload("res://scripts/ui/passive_icon_sprite.gd")
+const PassiveLogPileSprite = preload("res://scripts/ui/passive_log_pile_sprite.gd")
+const PassivePileShadow = preload("res://scripts/ui/passive_pile_shadow.gd")
 
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
@@ -1695,131 +1698,7 @@ class AchievementMedalSlotStrip:
 		return Vector2(x, size.y * 0.52)
 
 
-class PassiveIconSprite:
-	extends Control
 
-	var texture: Texture2D
-	var draw_size := Vector2(48, 48)
-	var draw_offset := Vector2.ZERO
-	var shadow_offset := Vector2.ZERO
-	var shadow_alpha := 0.0
-	var stroke_color := Color.TRANSPARENT
-	var stroke_width := 0.0
-
-	func configure(next_texture: Texture2D, next_size: Vector2, next_offset := Vector2.ZERO) -> void:
-		texture = next_texture
-		draw_size = next_size
-		draw_offset = next_offset
-		custom_minimum_size = draw_size + Vector2(absf(draw_offset.x), absf(draw_offset.y)) * 2.0
-		size = custom_minimum_size
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		queue_redraw()
-
-	func _draw() -> void:
-		if texture == null:
-			return
-		var rect := Rect2(draw_offset, draw_size)
-		if shadow_alpha > 0.0:
-			draw_texture_rect(texture, Rect2(draw_offset + shadow_offset, draw_size), false, Color(0, 0, 0, shadow_alpha))
-		if stroke_width > 0.0 and stroke_color.a > 0.0:
-			var stroke_offsets: Array[Vector2] = [
-				Vector2(-stroke_width, 0),
-				Vector2(stroke_width, 0),
-				Vector2(0, -stroke_width),
-				Vector2(0, stroke_width),
-				Vector2(-stroke_width * 0.72, -stroke_width * 0.72),
-				Vector2(stroke_width * 0.72, -stroke_width * 0.72),
-				Vector2(-stroke_width * 0.72, stroke_width * 0.72),
-				Vector2(stroke_width * 0.72, stroke_width * 0.72)
-			]
-			for offset in stroke_offsets:
-				draw_texture_rect(texture, Rect2(draw_offset + offset, draw_size), false, stroke_color)
-		draw_texture_rect(texture, rect, false, Color.WHITE)
-
-
-class PassiveLogPileSprite:
-	extends Control
-
-	var texture: Texture2D
-	var icon_size := Vector2(48, 48)
-	var slots: Array = []
-	var rotations: Array = []
-	var visible_logs := 0
-	var shadow_rect := Rect2()
-	var shadow_color := Color(0.10, 0.07, 0.04, 0.20)
-
-	func configure(
-		next_texture: Texture2D,
-		next_icon_size: Vector2,
-		next_slots: Array,
-		next_rotations: Array,
-		next_visible_logs: int,
-		next_shadow_rect: Rect2
-	) -> void:
-		texture = next_texture
-		icon_size = next_icon_size
-		slots = next_slots
-		rotations = next_rotations
-		visible_logs = next_visible_logs
-		shadow_rect = next_shadow_rect
-		mouse_filter = Control.MOUSE_FILTER_IGNORE
-		queue_redraw()
-
-	func _draw() -> void:
-		_draw_shadow()
-		if texture == null:
-			return
-		var count := mini(visible_logs, slots.size())
-		for i in range(count):
-			var base_position := slots[i] as Vector2
-			var rotation := deg_to_rad(float(rotations[i])) if i < rotations.size() else 0.0
-			draw_set_transform(base_position + icon_size * 0.5, rotation, Vector2.ONE)
-			draw_texture_rect(texture, Rect2(-icon_size * 0.5, icon_size), false, Color.WHITE)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-	func _draw_shadow() -> void:
-		if shadow_rect.size.x <= 1.0 or shadow_rect.size.y <= 1.0:
-			return
-		var center := shadow_rect.position + shadow_rect.size * 0.5
-		var radius_x := shadow_rect.size.x * 0.5
-		var radius_y := shadow_rect.size.y * 0.5
-		var line_count := maxi(10, int(ceil(shadow_rect.size.y)))
-		for i in range(line_count):
-			var t := float(i) / maxf(1.0, float(line_count - 1))
-			var y := lerpf(-radius_y, radius_y, t)
-			var normalized_y := y / maxf(1.0, radius_y)
-			var width := radius_x * sqrt(maxf(0.0, 1.0 - normalized_y * normalized_y))
-			var center_weight := 1.0 - absf(normalized_y)
-			var alpha := shadow_color.a * pow(center_weight, 2.15)
-			var color := Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha)
-			draw_line(Vector2(center.x - width, center.y + y), Vector2(center.x + width, center.y + y), color, 2.0, true)
-
-
-class PassivePileShadow:
-	extends Control
-
-	var shadow_color := Color(0.10, 0.07, 0.04, 0.20)
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()
-
-	func _draw() -> void:
-		if size.x <= 1.0 or size.y <= 1.0:
-			return
-		var center := size * 0.5
-		var radius_x := size.x * 0.5
-		var radius_y := size.y * 0.5
-		var line_count := maxi(10, int(ceil(size.y)))
-		for i in range(line_count):
-			var t := float(i) / maxf(1.0, float(line_count - 1))
-			var y := lerpf(-radius_y, radius_y, t)
-			var normalized_y := y / maxf(1.0, radius_y)
-			var width := radius_x * sqrt(maxf(0.0, 1.0 - normalized_y * normalized_y))
-			var center_weight := 1.0 - absf(normalized_y)
-			var alpha := shadow_color.a * pow(center_weight, 2.15)
-			var color := Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha)
-			draw_line(Vector2(center.x - width, center.y + y), Vector2(center.x + width, center.y + y), color, 2.0, true)
 
 
 class ActivityCardBorder:
