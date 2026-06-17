@@ -22,6 +22,9 @@ const AchievementMedalSlotStrip = preload("res://scripts/ui/achievement_medal_sl
 const ActivityStartHighlightRing = preload("res://scripts/ui/activity_start_highlight_ring.gd")
 const RoundedCornerCropOverlay = preload("res://scripts/ui/rounded_corner_crop_overlay.gd")
 const OrganicLeaderboardBorder = preload("res://scripts/ui/organic_leaderboard_border.gd")
+const ActivityCardInnerShadow = preload("res://scripts/ui/activity_card_inner_shadow.gd")
+const SkillDetailPageShelfShadow = preload("res://scripts/ui/skill_detail_page_shelf_shadow.gd")
+const SkillMenuPanelChrome = preload("res://scripts/ui/skill_menu_panel_chrome.gd")
 
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
@@ -2096,134 +2099,8 @@ class PassiveModuleCardBorder:
 
 
 
-class ActivityCardInnerShadow:
-	extends Control
-
-	var radius := 66.0
-	var inset := 14.0
-	var shadow_height := 42.0
-	var side_lift := 10.0
-	var shadow_color := Color(0.05, 0.04, 0.03, 0.24)
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()
-
-	func _draw() -> void:
-		if size.x <= 1.0 or size.y <= 1.0:
-			return
-		var left := inset
-		var right := maxf(left, size.x - inset)
-		var bottom := maxf(inset, size.y - inset * 0.62)
-		var lines := maxi(1, int(minf(8.0, shadow_height)))
-		var step_y := shadow_height / float(lines)
-		for i in range(lines):
-			var y := bottom - shadow_height + float(i) * step_y
-			var depth := float(i) / maxf(1.0, float(lines - 1))
-			var alpha := shadow_color.a * depth * depth
-			var lift := side_lift * (1.0 - depth)
-			var side_curve := clampf((y - (bottom - shadow_height - lift)) / maxf(1.0, shadow_height + lift), 0.0, 1.0)
-			var x_inset := (1.0 - side_curve) * radius * 0.26
-			var line_left := left + x_inset
-			var line_right := right - x_inset
-			if y > size.y - radius:
-				var dy := y - (size.y - radius)
-				var chord := sqrt(maxf(0.0, radius * radius - dy * dy))
-				var corner_inset := radius - chord
-				line_left = maxf(line_left, corner_inset + 18.0)
-				line_right = minf(line_right, size.x - corner_inset - 18.0)
-			if line_right > line_left:
-				draw_line(Vector2(line_left, y), Vector2(line_right, y), Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha), step_y + 1.0, false)
-		draw_line(Vector2(left + radius * 0.35, bottom - shadow_height - side_lift * 0.44), Vector2(right - radius * 0.35, bottom - shadow_height - side_lift * 0.44), Color(1, 1, 1, 0.08), 4.0, true)
 
 
-class SkillDetailPageShelfShadow:
-	extends Control
-
-	var shadow_height := 92.0
-	var shadow_color := Color(0.05, 0.04, 0.03, 0.09)
-	var shadow_alpha := 1.0
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()
-
-	func set_shadow_alpha(next_alpha: float) -> void:
-		var clamped := clampf(next_alpha, 0.0, 1.0)
-		if absf(shadow_alpha - clamped) <= 0.001:
-			return
-		shadow_alpha = clamped
-		queue_redraw()
-
-	func _draw() -> void:
-		if size.x <= 1.0 or size.y <= 1.0:
-			return
-		var lines := int(minf(14.0, size.y))
-		var step_y := minf(shadow_height, size.y) / maxf(1.0, float(lines))
-		for i in range(lines):
-			var depth := float(i) / maxf(1.0, float(lines - 1))
-			var alpha := shadow_color.a * shadow_alpha * pow(1.0 - depth, 2.45)
-			var y := float(i) * step_y
-			draw_line(Vector2(0.0, y), Vector2(size.x, y), Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha), step_y + 1.0, false)
-
-
-class SkillMenuPanelChrome:
-	extends Control
-
-	var radius := 64.0
-	var border_width := 9.0
-	var shadow_height := 24.0
-	var border_color := Color("#171615")
-	var shadow_color := Color(0.05, 0.04, 0.03, 0.18)
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()
-
-	func _draw() -> void:
-		if size.x <= 1.0 or size.y <= 1.0:
-			return
-		_draw_bottom_shadow()
-		_draw_border()
-
-	func _draw_bottom_shadow() -> void:
-		var bottom := maxf(0.0, size.y - border_width * 1.35)
-		var top := maxf(0.0, bottom - shadow_height)
-		var r := minf(radius, minf(size.x, size.y) * 0.5)
-		var curve_top := size.y - r
-		var lines := maxi(1, int(minf(8.0, shadow_height)))
-		var step_y := shadow_height / float(lines)
-		for i in range(lines):
-			var y := top + float(i) * step_y
-			var depth := float(i) / maxf(1.0, float(lines - 1))
-			var alpha := shadow_color.a * depth * depth
-			var line_left := border_width
-			var line_right := size.x - border_width
-			if y > curve_top:
-				var dy := y - curve_top
-				var chord := sqrt(maxf(0.0, r * r - dy * dy))
-				var corner_inset := r - chord
-				var shadow_corner_guard := border_width + 10.0
-				line_left = maxf(line_left, corner_inset + shadow_corner_guard)
-				line_right = minf(line_right, size.x - corner_inset - shadow_corner_guard)
-			if line_right > line_left:
-				draw_line(Vector2(line_left, y), Vector2(line_right, y), Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha), step_y + 1.0, false)
-
-	func _draw_border() -> void:
-		var half := border_width * 0.5
-		var left := half
-		var right := maxf(half, size.x - half)
-		var top := half
-		var bottom := maxf(half, size.y - half)
-		var r := minf(radius, minf(size.x, size.y) * 0.5 - half)
-		draw_line(Vector2(left + r, top), Vector2(right - r, top), border_color, border_width, true)
-		draw_line(Vector2(left + r, bottom), Vector2(right - r, bottom), border_color, border_width, true)
-		draw_line(Vector2(left, top + r), Vector2(left, bottom - r), border_color, border_width, true)
-		draw_line(Vector2(right, top + r), Vector2(right, bottom - r), border_color, border_width, true)
-		draw_arc(Vector2(left + r, top + r), r, PI, PI * 1.5, 8, border_color, border_width, true)
-		draw_arc(Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0, 8, border_color, border_width, true)
-		draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, 8, border_color, border_width, true)
-		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 8, border_color, border_width, true)
 
 class RoundedTextureRect:
 	extends Control

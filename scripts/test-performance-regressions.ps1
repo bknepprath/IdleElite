@@ -3,6 +3,9 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
+$activityCardInnerShadowPath = Join-Path $projectRoot "scripts\ui\activity_card_inner_shadow.gd"
+$skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detail_page_shelf_shadow.gd"
+$skillMenuPanelChromePath = Join-Path $projectRoot "scripts\ui\skill_menu_panel_chrome.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -51,6 +54,12 @@ Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
 $main = Get-Content -LiteralPath $mainPath -Raw
 Assert-True (Test-Path -LiteralPath $cleanProgressPath) "Missing scripts\ui\clean_progress_bar.gd."
 $cleanProgress = Get-Content -LiteralPath $cleanProgressPath -Raw
+Assert-True (Test-Path -LiteralPath $activityCardInnerShadowPath) "Missing scripts\ui\activity_card_inner_shadow.gd."
+$activityCardInnerShadow = Get-Content -LiteralPath $activityCardInnerShadowPath -Raw
+Assert-True (Test-Path -LiteralPath $skillDetailPageShelfShadowPath) "Missing scripts\ui\skill_detail_page_shelf_shadow.gd."
+$skillDetailPageShelfShadow = Get-Content -LiteralPath $skillDetailPageShelfShadowPath -Raw
+Assert-True (Test-Path -LiteralPath $skillMenuPanelChromePath) "Missing scripts\ui\skill_menu_panel_chrome.gd."
+$skillMenuChrome = Get-Content -LiteralPath $skillMenuPanelChromePath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -575,7 +584,6 @@ $hiddenTransitionCover = Get-FunctionBody -Text $main -Name "_skill_detail_actio
 Assert-True ($hiddenTransitionCover -match 'skill_swipe_pending_full_finalize or skill_swipe_rebuild_cover_active or skill_swipe_defer_initial_lazy_mount or skill_swipe_outgoing_cover_active') "Hidden-card transition guard should apply only during swipe rebuild/finalize cover states."
 Assert-True ($hiddenTransitionCover -match 'skill_swipe_handoff_cover\.visible and skill_swipe_handoff_cover\.modulate\.a >= 0\.92') "Hidden-card transition guard should require an opaque visible cover."
 $updateDetailShadow = Get-FunctionBody -Text $main -Name "_update_skill_detail_shadow"
-$skillDetailPageShelfShadow = Get-ClassBody -Text $main -Name "SkillDetailPageShelfShadow"
 Assert-True ($skillDetailPageShelfShadow -match 'func set_shadow_alpha') "Skill detail shelf shadow should own alpha through custom draw state."
 Assert-True ($skillDetailPageShelfShadow -match 'shadow_color\.a \* shadow_alpha') "Skill detail shelf shadow draw should apply its custom alpha."
 Assert-True ($updateDetailShadow -match '_set_canvas_item_visible_if_changed\(detail_shelf_shadow_overlay, should_show_shadow\)') "Skill detail shelf shadow should stop drawing when fully transparent."
@@ -901,9 +909,8 @@ Assert-True ($actionStatBox -match 'set_meta\("action_stat_box", true\)') "Actio
 $actionStatBoxLookup = Get-FunctionBody -Text $main -Name "_action_stat_box_for_label"
 Assert-True ($actionStatBoxLookup -match 'get_meta\("action_stat_box", false\)') "Action stat label lookup should support stat-chip panel roots."
 
-$cardInnerShadow = Get-ClassBody -Text $main -Name "ActivityCardInnerShadow"
-Assert-True ($cardInnerShadow -match 'var lines := maxi\(1, int\(minf\(8\.0, shadow_height\)\)\)') "Activity card inner shadows should stay capped to eight draw lines."
-Assert-True ($cardInnerShadow -notmatch 'range\(int\(shadow_height\)\)') "Activity card inner shadows must not draw one line per shadow pixel."
+Assert-True ($activityCardInnerShadow -match 'var lines := maxi\(1, int\(minf\(8\.0, shadow_height\)\)\)') "Activity card inner shadows should stay capped to eight draw lines."
+Assert-True ($activityCardInnerShadow -notmatch 'range\(int\(shadow_height\)\)') "Activity card inner shadows must not draw one line per shadow pixel."
 
 $cleanSetValueMatch = [regex]::Match($cleanProgress, "(?ms)^\s+func set_value\b.*?(?=^\s+func |\z)")
 Assert-True $cleanSetValueMatch.Success "Could not find clean progress bar value setter."
@@ -917,7 +924,6 @@ $partialFill = $partialFillMatch.Value
 Assert-True ($partialFill -match 'draw_rect\(Rect2\(rect\.position, Vector2\(clamped_width, rect\.size\.y\)\), color\)') "Skill header XP bars should use a single cheap partial fill rectangle."
 Assert-True ($partialFill -notmatch 'while\s+') "Skill header XP bars must not return to per-slice fill loops."
 
-$skillMenuChrome = Get-ClassBody -Text $main -Name "SkillMenuPanelChrome"
 Assert-True ($skillMenuChrome -match 'var lines := maxi\(1, int\(minf\(8\.0, shadow_height\)\)\)') "Skill menu panel shadow should stay capped to eight draw lines."
 Assert-True ($skillMenuChrome -notmatch 'range\(int\(shadow_height\)\)') "Skill menu panel shadow must not draw one line per shadow pixel."
 $updateSkillDetailShadow = Get-FunctionBody -Text $main -Name "_update_skill_detail_shadow"
