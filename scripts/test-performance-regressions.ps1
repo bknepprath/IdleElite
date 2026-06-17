@@ -10,6 +10,7 @@ $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_borde
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
+$mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -72,6 +73,8 @@ Assert-True (Test-Path -LiteralPath $actionArtTextureRectPath) "Missing scripts\
 $actionArtTexture = Get-Content -LiteralPath $actionArtTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui\rounded_texture_rect.gd."
 $roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
+Assert-True (Test-Path -LiteralPath $mobileScrollContainerPath) "Missing scripts\ui\mobile_scroll_container.gd."
+$mobileScrollContainer = Get-Content -LiteralPath $mobileScrollContainerPath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -982,6 +985,16 @@ $roundedStoreMaskParams = [regex]::Match($roundedTexture, "(?ms)^\s+func _store_
 Assert-True $roundedStoreMaskParams.Success "Could not find rounded card background mask-parameter storage."
 Assert-True ($roundedStoreMaskParams.Value -match 'current_texture: Texture2D') "Rounded card backgrounds should store the already-resolved shader texture."
 Assert-True ($roundedStoreMaskParams.Value -match 'mask_params_texture = current_texture') "Rounded card backgrounds should cache the effective non-null texture after syncing."
+Assert-True ($main -match 'const MobileScrollContainer = preload\("res://scripts/ui/mobile_scroll_container\.gd"\)') "Mobile scroll containers should live in a reusable UI control file."
+Assert-True ($mobileScrollContainer -match 'class_name MobileScrollContainer') "Mobile scroll containers should expose one named reusable control."
+Assert-True ($mobileScrollContainer -match 'signal user_scroll_direction\(direction: int\)') "Mobile scroll containers should keep the scroll-direction signal contract."
+Assert-True ($mobileScrollContainer -match 'func set_scroll_enabled_by_content\(enabled: bool\)') "Mobile scroll containers should keep the content-enabled gate."
+Assert-True ($mobileScrollContainer -match 'vertical_scroll_mode = ScrollContainer\.SCROLL_MODE_SHOW_NEVER if enabled else ScrollContainer\.SCROLL_MODE_DISABLED') "Disabled mobile scroll containers should turn off native scrolling."
+Assert-True ($mobileScrollContainer -match 'func _modal_blocks_this_scroll\(\) -> bool') "Mobile scroll containers should keep modal-overlay input blocking local to the control."
+Assert-True ($mobileScrollContainer -match 'get_nodes_in_group\("modal_overlay"\)') "Mobile scroll containers should respect the shared modal overlay group."
+Assert-True ($mobileScrollContainer -match 'func _set_pull_raw_offset\(next_raw_offset: float\)') "Mobile scroll containers should keep pull-resistance ownership in the reusable control."
+Assert-True ($mobileScrollContainer -match 'PULL_RESISTANCE_MAX \* \(1\.0 - exp\(-absf\(pull_raw_offset\) / PULL_RESISTANCE_MAX\)\)') "Mobile scroll pull resistance should retain the bounded exponential easing."
+Assert-True ($mobileScrollContainer -match 'for child in get_children\(\):\s*\r?\n\s*if child is Control:') "Disabled mobile scroll containers should reset child control offsets."
 Assert-True ($main -match 'const ActionArtTextureRect = preload\("res://scripts/ui/action_art_texture_rect\.gd"\)') "Action art images should live in a reusable UI control file."
 Assert-True ($actionArtTexture -match 'static var shared_mask_shader: Shader') "Action art images should share one mask shader program."
 Assert-True ($actionArtTexture -match 'shader_material\.shader = shared_mask_shader') "Action art images should not allocate a unique Shader for every card."
