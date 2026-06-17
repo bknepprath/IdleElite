@@ -12,6 +12,8 @@ $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_textur
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
 $activityCardDepthPath = Join-Path $projectRoot "scripts\ui\activity_card_depth.gd"
+$activityProgressRailPath = Join-Path $projectRoot "scripts\ui\activity_progress_rail.gd"
+$activityProgressOpportunityOverlayPath = Join-Path $projectRoot "scripts\ui\activity_progress_opportunity_overlay.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -78,6 +80,10 @@ Assert-True (Test-Path -LiteralPath $mobileScrollContainerPath) "Missing scripts
 $mobileScrollContainer = Get-Content -LiteralPath $mobileScrollContainerPath -Raw
 Assert-True (Test-Path -LiteralPath $activityCardDepthPath) "Missing scripts\ui\activity_card_depth.gd."
 $activityCardDepth = Get-Content -LiteralPath $activityCardDepthPath -Raw
+Assert-True (Test-Path -LiteralPath $activityProgressRailPath) "Missing scripts\ui\activity_progress_rail.gd."
+$activityRail = Get-Content -LiteralPath $activityProgressRailPath -Raw
+Assert-True (Test-Path -LiteralPath $activityProgressOpportunityOverlayPath) "Missing scripts\ui\activity_progress_opportunity_overlay.gd."
+$activityOpportunityOverlay = Get-Content -LiteralPath $activityProgressOpportunityOverlayPath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -879,36 +885,37 @@ $featherBand = Get-FunctionBody -Text $main -Name "_thieving_heist_feather_band"
 Assert-True ($featherBand -match '_thieving_heist_feather_shader\(\)') "Thieving heist feather bands should use the cached shader helper."
 Assert-True ($featherBand -notmatch 'Shader\.new\(\)') "Thieving heist feather bands must not build a new shader per band."
 
-$activityRail = Get-ClassBody -Text $main -Name "ActivityProgressRail"
-$railFillMatch = [regex]::Match($activityRail, "(?ms)^\s+func _draw_bottom_round_fill\b.*?(?=^\s+func |\z)")
+Assert-True ($main -match 'const ActivityProgressRail = preload\("res://scripts/ui/activity_progress_rail\.gd"\)') "Activity progress rails should live in a reusable UI control file."
+Assert-True ($main -match 'const ActivityProgressOpportunityOverlay = preload\("res://scripts/ui/activity_progress_opportunity_overlay\.gd"\)') "Activity progress opportunity overlays should live in a reusable UI control file."
+$railFillMatch = [regex]::Match($activityRail, "(?ms)^\s*func _draw_bottom_round_fill\b.*?(?=^\s*func |\z)")
 Assert-True $railFillMatch.Success "Could not find activity progress rail fill renderer."
 $railFill = $railFillMatch.Value
 Assert-True ($activityRail -match 'const ROUNDED_FILL_ROWS := 18') "Activity progress rails should keep rounded clipping bounded for frame stability."
 Assert-True ($railFill -match '_draw_bottom_round_segment\(rect, color, 0\.0, pct\)') "Activity progress rails should use the rounded segment mask."
 Assert-True ($railFill -notmatch 'draw_rect') "Activity progress rails must not bleed as raw rectangles."
 Assert-True ($railFill -notmatch 'while\s+') "Activity progress rails must not return to per-slice fill loops."
-$railSegmentMatch = [regex]::Match($activityRail, "(?ms)^\s+func _draw_bottom_round_segment\b.*?(?=^\s+func |\z)")
+$railSegmentMatch = [regex]::Match($activityRail, "(?ms)^\s*func _draw_bottom_round_segment\b.*?(?=^\s*func |\z)")
 Assert-True $railSegmentMatch.Success "Could not find activity progress rail rounded segment renderer."
 Assert-True ($railSegmentMatch.Value -match '_rounded_fill_row_count\(rect\)') "Activity progress rail drawing should use the testable rounded row-count helper."
 Assert-True ($railSegmentMatch.Value -match 'corner_inset') "Activity progress rail drawing should clip segment rows against bottom rounded corners."
 Assert-True ($railSegmentMatch.Value -match 'var radius := minf\(bottom_radius, rect\.size\.x \* 0\.5\)') "Activity progress rail drawing should clip against the full card bottom radius, not the rail's short local height."
-$railRowCountMatch = [regex]::Match($activityRail, "(?ms)^\s+func _rounded_fill_row_count\b.*?(?=^\s+func |\z)")
+$railRowCountMatch = [regex]::Match($activityRail, "(?ms)^\s*func _rounded_fill_row_count\b.*?(?=^\s*func |\z)")
 Assert-True $railRowCountMatch.Success "Could not find activity progress rail row-count helper."
 Assert-True ($railRowCountMatch.Value -match 'ROUNDED_FILL_ROWS') "Activity progress rails should cap rounded segment rows."
-$railRowClipMatch = [regex]::Match($activityRail, "(?ms)^\s+func _bottom_round_row_clip\b.*?(?=^\s+func |\z)")
+$railRowClipMatch = [regex]::Match($activityRail, "(?ms)^\s*func _bottom_round_row_clip\b.*?(?=^\s*func |\z)")
 Assert-True $railRowClipMatch.Success "Could not find activity progress rail row-clip helper."
 Assert-True ($railRowClipMatch.Value -match 'corner_inset') "Activity progress rails should clip segment rows against bottom rounded corners."
 Assert-True ($railRowClipMatch.Value -match 'var radius := minf\(bottom_radius, rect\.size\.x \* 0\.5\)') "Activity progress rail row clips should use the full card bottom radius."
-$railWindowsMatch = [regex]::Match($activityRail, "(?ms)^\s+func set_opportunity_windows\b.*?(?=^\s+func |\z)")
+$railWindowsMatch = [regex]::Match($activityRail, "(?ms)^\s*func set_opportunity_windows\b.*?(?=^\s*func |\z)")
 Assert-True $railWindowsMatch.Success "Could not find activity progress rail opportunity-window setter."
 $railWindows = $railWindowsMatch.Value
 Assert-True ($railWindows -match '_opportunity_windows_equal\(next_windows\)') "Activity progress rails should ignore unchanged opportunity windows."
 Assert-True ($railWindows -match 'return') "Activity progress rails should return early for unchanged opportunity-window state."
 Assert-True ($activityRail -match 'var opportunity_overlay: ActivityProgressOpportunityOverlay') "Activity progress rails should render click-opportunity windows on a child overlay."
-Assert-True ($activityRail -match 'opportunity_overlay\.z_index = ACTION_OPPORTUNITY_WINDOW_OVERLAY_Z') "Activity progress opportunity overlays should draw above the face border without raising the whole rail."
+Assert-True ($activityRail -match 'const OPPORTUNITY_WINDOW_OVERLAY_Z := 80') "Activity progress rails should keep their overlay above the face border."
+Assert-True ($activityRail -match 'opportunity_overlay\.z_index = OPPORTUNITY_WINDOW_OVERLAY_Z') "Activity progress opportunity overlays should draw above the face border without raising the whole rail."
 Assert-True ($activityRail -notmatch '_draw_opportunity_window_strokes') "Activity progress rails should not draw opportunity markers under the card border."
-$activityOpportunityOverlay = Get-ClassBody -Text $main -Name "ActivityProgressOpportunityOverlay"
-$railWindowStrokesMatch = [regex]::Match($activityOpportunityOverlay, "(?ms)^\s+func _draw_opportunity_window_strokes\b.*?(?=^\s+func |\z)")
+$railWindowStrokesMatch = [regex]::Match($activityOpportunityOverlay, "(?ms)^\s*func _draw_opportunity_window_strokes\b.*?(?=^\s*func |\z)")
 Assert-True $railWindowStrokesMatch.Success "Could not find activity progress opportunity overlay renderer."
 $railWindowStrokes = $railWindowStrokesMatch.Value
 Assert-True ($railWindowStrokes -match '_draw_opportunity_window_ring') "Activity progress opportunity windows should draw layered transparent-center marker rings."
@@ -918,25 +925,28 @@ Assert-True ($main -match 'const ACTION_OPPORTUNITY_WINDOW_VERTICAL_OUTSET := 22
 Assert-True ($main -match 'const ACTION_OPPORTUNITY_WINDOW_STROKE_WIDTH := 12\.0') "Activity progress opportunity windows should use one consistent yellow stroke width."
 Assert-True ($main -match 'const ACTION_OPPORTUNITY_WINDOW_HOLE_INSET := ACTION_OPPORTUNITY_WINDOW_STROKE_INSET \+ ACTION_OPPORTUNITY_WINDOW_STROKE_WIDTH') "Opportunity-window hole inset should be derived from the yellow stroke width."
 Assert-True ($main -match 'const ACTION_OPPORTUNITY_WINDOW_OVERLAY_Z := 80') "Activity progress opportunity windows should have enough relative z to sit above the activity-card border."
-Assert-True ($railWindowStrokes -match 'ACTION_OPPORTUNITY_WINDOW_VERTICAL_OUTSET') "Activity progress opportunity-window chrome should extend beyond the rail without clipping the outer badge to the rail mask."
-Assert-True ($railWindowStrokes -match 'ACTION_OPPORTUNITY_WINDOW_STROKE_INSET') "Activity progress opportunity-window yellow chrome should use the named stroke inset."
-Assert-True ($railWindowStrokes -match 'ACTION_OPPORTUNITY_WINDOW_HOLE_INSET') "Activity progress opportunity-window hole should be cut from the named stroke width."
+Assert-True ($activityOpportunityOverlay -match 'const WINDOW_VERTICAL_OUTSET := 22\.0') "Activity progress opportunity overlay should keep the same vertical outset after extraction."
+Assert-True ($activityOpportunityOverlay -match 'const WINDOW_STROKE_WIDTH := 12\.0') "Activity progress opportunity overlay should keep one consistent yellow stroke width."
+Assert-True ($activityOpportunityOverlay -match 'const WINDOW_HOLE_INSET := WINDOW_STROKE_INSET \+ WINDOW_STROKE_WIDTH') "Opportunity-window overlay hole inset should be derived from the yellow stroke width."
+Assert-True ($railWindowStrokes -match 'WINDOW_VERTICAL_OUTSET') "Activity progress opportunity-window chrome should extend beyond the rail without clipping the outer badge to the rail mask."
+Assert-True ($railWindowStrokes -match 'WINDOW_STROKE_INSET') "Activity progress opportunity-window yellow chrome should use the named stroke inset."
+Assert-True ($railWindowStrokes -match 'WINDOW_HOLE_INSET') "Activity progress opportunity-window hole should be cut from the named stroke width."
 Assert-True ($railWindowStrokes -notmatch 'target_rect') "Activity progress opportunity windows must not return to oversized unmasked rectangles."
 Assert-True ($railWindowStrokes -notmatch '_draw_round_rect_stroke') "Activity progress opportunity windows must not return to rounded stroke helpers."
 Assert-True ($railWindowStrokes -notmatch 'draw_arc\(') "Activity progress opportunity windows must not draw arc-heavy markers every frame."
 Assert-True ($railWindowStrokes -notmatch 'draw_line\(') "Activity progress opportunity windows should keep row drawing inside the shared shape helper."
-$railWindowRingMatch = [regex]::Match($activityOpportunityOverlay, "(?ms)^\s+func _draw_opportunity_window_ring\b.*?(?=^\s+func |\z)")
+$railWindowRingMatch = [regex]::Match($activityOpportunityOverlay, "(?ms)^\s*func _draw_opportunity_window_ring\b.*?(?=^\s*func |\z)")
 Assert-True $railWindowRingMatch.Success "Could not find activity progress opportunity overlay ring renderer."
 Assert-True ($railWindowRingMatch.Value -match '_opportunity_window_row_bounds') "Opportunity-window rings should subtract inner rounded bounds instead of painting over the center."
 Assert-True ($railWindowRingMatch.Value -match 'draw_line\(') "Opportunity-window ring drawing should stay in the capped row renderer."
 Assert-True ($railWindowRingMatch.Value -notmatch 'fill_color|empty_color|source\.get\("value"\)') "Opportunity-window rings must leave the underlying progress bar pixels untouched."
-$railWindowShapeMatch = [regex]::Match($activityOpportunityOverlay, "(?ms)^\s+func _draw_opportunity_window_shape\b.*?(?=^\s+func |\z)")
+$railWindowShapeMatch = [regex]::Match($activityOpportunityOverlay, "(?ms)^\s*func _draw_opportunity_window_shape\b.*?(?=^\s*func |\z)")
 Assert-True $railWindowShapeMatch.Success "Could not find activity progress opportunity overlay shape renderer."
 Assert-True ($railWindowShapeMatch.Value -match 'source\.call\("_bottom_round_row_clip", rect, y\)') "Opportunity-window shapes should share the rail rounded clipping mask."
 Assert-True ($railWindowShapeMatch.Value -match 'source\.call\("_rounded_fill_row_count", draw_rect\)') "Opportunity-window shapes should keep their taller row count capped."
 Assert-True ($railWindowShapeMatch.Value -match 'clip_to_track := true') "Opportunity-window shape rendering should default to clipping against the rail mask when the helper is used."
 Assert-True ($railWindowShapeMatch.Value -match 'Vector2\(rect\.position\.x, rect\.end\.x\)') "Opportunity-window outer chrome should be able to float beyond the rail mask."
-Assert-True ($railWindowShapeMatch.Value -match 'ACTION_OPPORTUNITY_WINDOW_RADIUS - inset_px') "Opportunity-window corner radius should shrink with the inset so the yellow stroke stays consistent."
+Assert-True ($railWindowShapeMatch.Value -match 'WINDOW_RADIUS - inset_px') "Opportunity-window corner radius should shrink with the inset so the yellow stroke stays consistent."
 Assert-True ($railWindowShapeMatch.Value -notmatch 'draw_arc\(') "Opportunity-window shapes must not draw arc-heavy markers every frame."
 
 $actionStatBox = Get-FunctionBody -Text $main -Name "_action_stat_box"
