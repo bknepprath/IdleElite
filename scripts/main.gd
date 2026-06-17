@@ -25,6 +25,7 @@ const OrganicLeaderboardBorder = preload("res://scripts/ui/organic_leaderboard_b
 const ActivityCardInnerShadow = preload("res://scripts/ui/activity_card_inner_shadow.gd")
 const SkillDetailPageShelfShadow = preload("res://scripts/ui/skill_detail_page_shelf_shadow.gd")
 const SkillMenuPanelChrome = preload("res://scripts/ui/skill_menu_panel_chrome.gd")
+const BootFlexLoadingAnimationClass = preload("res://scripts/ui/boot_flex_loading_animation.gd")
 
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
@@ -3532,8 +3533,9 @@ const SKILL_SWIPE_PAGE_GAP := 82.0
 const SKILL_SWIPE_SETTLE_SECONDS := 0.30
 const SKILL_SWIPE_CANCEL_SECONDS := 0.18
 const SKILL_SWIPE_PAGE_FADE_ENABLED := false
-const SKILL_SWIPE_PAGE_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 1.25
-const SKILL_SWIPE_PAGE_FADE_MIN_ALPHA := 0.38
+const SKILL_SWIPE_STRIP_PAGE_FADE_ENABLED := false
+const SKILL_SWIPE_PAGE_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
+const SKILL_SWIPE_PAGE_FADE_MIN_ALPHA := 0.0
 const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.12
 const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.16
 const SKILL_SWIPE_LIGHT_PREVIEW_ENABLED := true
@@ -4455,6 +4457,7 @@ var skill_swipe_drag_offset_x := 0.0
 var skill_swipe_child_click_suppressed := false
 var skill_swipe_button_suppressed_until_msec := 0
 var skill_swipe_handoff_cover: Control
+var skill_swipe_drag_fade_overlay: ColorRect
 var skill_swipe_cover_fade_tween: Tween
 var skill_detail_refresh_cover_active := false
 var skill_swipe_outgoing_cover_active := false
@@ -4626,6 +4629,8 @@ var chain_jingle_players: Array[AudioStreamPlayer] = []
 var padlock_cluster_player: AudioStreamPlayer
 var info_chip_upgrade_players: Array[AudioStreamPlayer] = []
 var audio_unlocked_by_input := false
+var audio_unlock_ping_player: AudioStreamPlayer
+var audio_unlock_ping_played := false
 var max_stamina_cache_valid := false
 var cached_max_stamina := BASE_MAX_STAMINA
 var cached_max_stamina_by_skill := {}
@@ -4660,6 +4665,7 @@ var boot_warmup_layer: CanvasLayer
 var boot_warmup_overlay: Control
 var boot_warmup_background: ColorRect
 var boot_warmup_splash: TextureRect
+var boot_warmup_flex_animation: Control
 var boot_warmup_shade: ColorRect
 var boot_warmup_footer: VBoxContainer
 var boot_warmup_label: Label
@@ -6021,6 +6027,10 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 		var card := match["card"] as Dictionary
 		var skill_id := str(match["skill_id"])
 		var action_id := str(match["action_id"])
+		var action := _action_data(skill_id, action_id)
+		if _activity_card_is_locked_or_covered(skill_id, action, card):
+			_cancel_action_stop_hold()
+			return false
 		if skill_id == "thieving" and _thieving_action_is_jailed(action_id):
 			_reduce_thieving_action_jail_from_card(action_id, card)
 			action_card_press_consumed = true
@@ -6057,6 +6067,20 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 			_queue_action_card_3d_press(action_card_press_key)
 		return true
 	return false
+
+
+func _activity_card_is_locked_or_covered(skill_id: String, action: Dictionary, card: Dictionary) -> bool:
+	if skill_id.is_empty() or action.is_empty() or card.is_empty():
+		return true
+	if _is_action_unlocked(skill_id, action):
+		return false
+	return (
+		bool(card.get("locked_preview_hidden", false))
+		or bool(card.get("unlock_ready_pending", false))
+		or bool(card.get("unlock_ceremony_pending", false))
+		or bool(card.get("unlock_ceremony_active", false))
+		or not (card.get("lock_overlay", {}) as Dictionary).is_empty()
+	)
 
 
 func _action_card_at_position(event_position: Vector2) -> Dictionary:
@@ -6422,6 +6446,9 @@ func _free_skill_swipe_preview_shutdown_nodes() -> void:
 	if skill_swipe_handoff_cover != null and is_instance_valid(skill_swipe_handoff_cover):
 		skill_swipe_handoff_cover.free()
 	skill_swipe_handoff_cover = null
+	if skill_swipe_drag_fade_overlay != null and is_instance_valid(skill_swipe_drag_fade_overlay):
+		skill_swipe_drag_fade_overlay.free()
+	skill_swipe_drag_fade_overlay = null
 
 
 func _build_ui_shell() -> void:
@@ -7916,6 +7943,18 @@ func _build_boot_warmup_overlay() -> void:
 	boot_warmup_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boot_warmup_overlay.add_child(boot_warmup_shade)
 
+	boot_warmup_flex_animation = BootFlexLoadingAnimationClass.new()
+	boot_warmup_flex_animation.anchor_left = 0.5
+	boot_warmup_flex_animation.anchor_right = 0.5
+	boot_warmup_flex_animation.anchor_top = 0.44
+	boot_warmup_flex_animation.anchor_bottom = 0.44
+	boot_warmup_flex_animation.offset_left = -520
+	boot_warmup_flex_animation.offset_right = 520
+	boot_warmup_flex_animation.offset_top = -460
+	boot_warmup_flex_animation.offset_bottom = 380
+	boot_warmup_flex_animation.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boot_warmup_overlay.add_child(boot_warmup_flex_animation)
+
 	boot_warmup_footer = VBoxContainer.new()
 	boot_warmup_footer.anchor_left = 0.5
 	boot_warmup_footer.anchor_right = 0.5
@@ -7948,6 +7987,8 @@ func _show_boot_warmup_overlay() -> void:
 	_set_canvas_item_visible_if_changed(boot_warmup_overlay, true)
 	boot_warmup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	_set_canvas_item_alpha_if_changed(boot_warmup_overlay, 1.0)
+	if boot_warmup_flex_animation != null and is_instance_valid(boot_warmup_flex_animation):
+		boot_warmup_flex_animation.call("restart")
 	_set_boot_warmup_progress("Warming up...", 0.0)
 
 
@@ -7987,6 +8028,8 @@ func _reveal_game_under_boot_splash() -> void:
 		reveal_targets.append(boot_warmup_splash)
 	if boot_warmup_shade != null and is_instance_valid(boot_warmup_shade):
 		reveal_targets.append(boot_warmup_shade)
+	if boot_warmup_flex_animation != null and is_instance_valid(boot_warmup_flex_animation):
+		reveal_targets.append(boot_warmup_flex_animation)
 	for target in reveal_targets:
 		_set_canvas_item_alpha_if_changed(target, 1.0)
 	var tween := create_tween()
@@ -10483,8 +10526,8 @@ func _apply_skill_column_layout(frame: Control, content_width: float, drag_x: fl
 	frame.offset_right = left + content_width
 
 
-func _skill_swipe_fade_progress(abs_x: float) -> float:
-	if not SKILL_SWIPE_PAGE_FADE_ENABLED:
+func _skill_swipe_fade_progress(abs_x: float, force_enabled := false) -> float:
+	if not force_enabled and not SKILL_SWIPE_PAGE_FADE_ENABLED:
 		return 0.0
 	var t := clampf(abs_x / maxf(1.0, SKILL_SWIPE_PAGE_FADE_DISTANCE), 0.0, 1.0)
 	return t * t * (3.0 - 2.0 * t)
@@ -10498,15 +10541,68 @@ func _set_skill_swipe_control_alpha(control: Control, alpha: float) -> void:
 	_set_canvas_item_modulate_if_changed(control, next_modulate)
 
 
+func _sync_skill_swipe_drag_frame_fade(drag_x: float) -> void:
+	if skill_swipe_frame != null and is_instance_valid(skill_swipe_frame) and skill_swipe_frame.modulate.a < 0.999:
+		_set_skill_swipe_control_alpha(skill_swipe_frame, 1.0)
+	if skills_page == null or not is_instance_valid(skills_page):
+		return
+	var progress := _skill_swipe_fade_progress(absf(drag_x), true)
+	var alpha := lerpf(0.0, 1.0 - SKILL_SWIPE_PAGE_FADE_MIN_ALPHA, progress)
+	if skill_swipe_drag_fade_overlay == null or not is_instance_valid(skill_swipe_drag_fade_overlay):
+		skill_swipe_drag_fade_overlay = ColorRect.new()
+		skill_swipe_drag_fade_overlay.color = COLOR_PAPER
+		skill_swipe_drag_fade_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+		skill_swipe_drag_fade_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		skill_swipe_drag_fade_overlay.z_index = 850
+		skill_swipe_drag_fade_overlay.z_as_relative = false
+		skills_page.add_child(skill_swipe_drag_fade_overlay)
+	if alpha <= 0.01:
+		_set_canvas_item_visible_if_changed(skill_swipe_drag_fade_overlay, false)
+	else:
+		_set_canvas_item_visible_if_changed(skill_swipe_drag_fade_overlay, true)
+	_set_canvas_item_alpha_if_changed(skill_swipe_drag_fade_overlay, alpha)
+
+
 func _sync_skill_swipe_live_page_fade(drag_x: float) -> void:
 	if skill_swipe_page == null or not is_instance_valid(skill_swipe_page):
 		return
 	if not skill_strip_ids.is_empty():
-		_set_skill_swipe_control_alpha(skill_swipe_page, 1.0)
+		_sync_skill_strip_page_fade(drag_x)
 		return
 	var progress := _skill_swipe_fade_progress(absf(drag_x))
 	var alpha := lerpf(1.0, SKILL_SWIPE_PAGE_FADE_MIN_ALPHA, progress)
 	_set_skill_swipe_control_alpha(skill_swipe_page, alpha)
+
+
+func _sync_skill_strip_page_fade(_drag_x: float) -> void:
+	if not SKILL_SWIPE_STRIP_PAGE_FADE_ENABLED:
+		return
+	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
+		return
+	var page_width := _skill_content_width()
+	if page_width <= 1.0:
+		return
+	if skill_strip_ids.is_empty():
+		return
+	var frame_left := skill_swipe_frame.offset_left
+	var synced := {}
+	for offset in [-1, 0, 1]:
+		if offset != 0 and not _swipe_offset_accessible(offset):
+			continue
+		var page_index := (skill_strip_index + int(offset)) % skill_strip_ids.size()
+		if page_index < 0:
+			page_index += skill_strip_ids.size()
+		if synced.has(page_index):
+			continue
+		synced[page_index] = true
+		var refs := skill_strip_refs.get(str(skill_strip_ids[page_index]), {}) as Dictionary
+		var page := refs.get("page") as Control
+		if page == null or not is_instance_valid(page) or not page.visible:
+			continue
+		var page_left := frame_left + page.offset_left
+		var progress := _skill_swipe_fade_progress(absf(page_left), true)
+		var alpha := lerpf(1.0, SKILL_SWIPE_PAGE_FADE_MIN_ALPHA, progress)
+		_set_skill_swipe_control_alpha(page, alpha)
 
 
 func _sync_skill_swipe_preview_page_fade(current_x: float) -> void:
@@ -10517,7 +10613,7 @@ func _sync_skill_swipe_preview_page_fade(current_x: float) -> void:
 		preview_page.visible = false
 		_set_skill_swipe_control_alpha(preview_page, 1.0)
 		return
-	var alpha := _skill_swipe_fade_progress(absf(current_x))
+	var alpha := _skill_swipe_fade_progress(absf(current_x), true)
 	_set_skill_swipe_control_alpha(preview_page, alpha)
 
 
@@ -10530,12 +10626,14 @@ func _apply_skill_swipe_drag_offset(drag_x: float) -> void:
 		var left := -float(skill_strip_index) * page_width + drag_x
 		skill_swipe_frame.offset_left = left
 		skill_swipe_frame.offset_right = left + page_width
-		_sync_skill_swipe_live_page_fade(0.0)
+		_sync_skill_swipe_drag_frame_fade(drag_x)
+		_sync_skill_strip_page_fade(drag_x)
 		return
 	var content_width := _skill_swipe_frame_content_width()
 	if skill_swipe_frame.custom_minimum_size.x > 1.0:
 		content_width = skill_swipe_frame.custom_minimum_size.x
 	_apply_skill_column_layout(skill_swipe_frame, content_width, drag_x)
+	_sync_skill_swipe_drag_frame_fade(drag_x)
 	_sync_skill_swipe_live_page_fade(drag_x)
 
 
@@ -17270,6 +17368,7 @@ func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_wi
 		"fishing_offer":
 			var offer_root := _build_fishing_offer_module(str(plan_item.get("offer_id", "")), content_width)
 			if offer_root != null and is_instance_valid(offer_root):
+				offer_root.set_meta("detail_lazy_track_id", track_id)
 				_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
 				plan_item["placeholder"] = null
 				_detail_lazy_add_child_to_host(stack_host, offer_root, content_width, actions_width)
@@ -17483,6 +17582,23 @@ func _detail_lazy_plan_item_matches_track_id(plan_item: Dictionary, track_id: St
 			if str(raw_method_id) == track_id:
 				return true
 	return false
+
+
+func _collapse_detail_lazy_plan_item_height(track_id: String) -> void:
+	var plan_item := _detail_lazy_plan_item_for_track_id(track_id)
+	if plan_item.is_empty():
+		return
+	plan_item["height"] = 0.0
+	var placeholder := _valid_control_ref(plan_item.get("placeholder"))
+	if placeholder != null:
+		placeholder.custom_minimum_size.y = 0.0
+		placeholder.size.y = 0.0
+		placeholder.update_minimum_size()
+	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
+	if stack_host != null:
+		stack_host.custom_minimum_size.y = 0.0
+		stack_host.size.y = 0.0
+		stack_host.update_minimum_size()
 
 
 func _repair_detail_lazy_action_card_registration(track_id: String, skill_id: String) -> bool:
@@ -23153,6 +23269,10 @@ func _sync_skill_strip_page_visibility(include_neighbors := false) -> void:
 		var should_show := dist == 0 or (include_neighbors and dist <= 1)
 		k_page.visible = should_show
 		k_page.process_mode = Node.PROCESS_MODE_INHERIT if dist == 0 else Node.PROCESS_MODE_DISABLED
+		if not should_show:
+			_set_skill_swipe_control_alpha(k_page, 1.0)
+	if not skill_swipe_tracking and not skill_swipe_animating:
+		_sync_skill_strip_page_fade(skill_swipe_drag_offset_x)
 
 
 func _skill_detail_needs_action_list_refresh() -> bool:
@@ -26051,6 +26171,25 @@ func _onboarding_swipe_intro_complete() -> bool:
 	)
 
 
+func _onboarding_combo_swipe_tip_context_ready() -> bool:
+	if not _onboarding_path_active():
+		return true
+	if selected_skill_id != TUTORIAL_STARTER_SKILL_ID:
+		return false
+	if not tutorial_gate_latch_only_until_swipe:
+		return false
+	if activity_unlock_ceremony_count > 0 or locked_activity_preview_fade_play_pending:
+		return false
+	var card := _card_for_action_id(TUTORIAL_STARTER_SKILL_ID, TUTORIAL_GATE_LATCH_ACTION_ID)
+	if card.is_empty() or _activity_preview_reveal_animation_pending(card):
+		return false
+	var root := _valid_control_ref(card.get("root"))
+	if root == null or not root.is_visible_in_tree() or root.modulate.a < 0.96:
+		return false
+	var host := _valid_control_ref(detail_action_card_nodes.get(TUTORIAL_GATE_LATCH_ACTION_ID))
+	return host != null and host.is_visible_in_tree()
+
+
 func _onboarding_fight_stamina_depleted() -> bool:
 	return _stamina_value(TUTORIAL_STARTER_SKILL_ID) < 5.0
 
@@ -26098,6 +26237,7 @@ func _onboarding_swipe_tip_sequence_resumable() -> bool:
 		_onboarding_path_active()
 		and selected_skill_id == TUTORIAL_STARTER_SKILL_ID
 		and _onboarding_swipe_intro_complete()
+		and _onboarding_combo_swipe_tip_context_ready()
 		and (
 			onboarding_swipe_tip_eligible
 			or _onboarding_fight_stamina_depleted()
@@ -26112,6 +26252,8 @@ func _maybe_trigger_onboarding_swipe_tip_at_zero_stamina(skill_id: String) -> vo
 	if not _onboarding_path_active():
 		return
 	if not _onboarding_swipe_intro_complete():
+		return
+	if not _onboarding_combo_swipe_tip_context_ready():
 		return
 	if not _onboarding_fight_stamina_depleted():
 		return
@@ -26292,6 +26434,7 @@ func _skill_swipe_tip_available() -> bool:
 		not skill_swipe_tip_seen
 		and activity_start_tip_seen
 		and stamina_gauge_tip_seen
+		and _onboarding_combo_swipe_tip_context_ready()
 		and (
 			onboarding_swipe_tip_eligible
 			or _onboarding_fight_stamina_depleted()
@@ -31834,6 +31977,8 @@ func _finish_activity_preview_card_after_fade_deferred(card_key: String, skill_i
 		_sync_activity_lock_overlay(card, action, true)
 	else:
 		_finish_locked_preview_overlay_without_resync(card, action)
+	if skill_id == TUTORIAL_STARTER_SKILL_ID and action_id == TUTORIAL_GATE_LATCH_ACTION_ID:
+		call_deferred("_show_skill_swipe_tip_note_if_needed")
 
 
 func _finish_locked_preview_overlay_without_resync(card: Dictionary, action: Dictionary) -> void:
@@ -41594,6 +41739,9 @@ func _play_fishing_offer_collected_transition(source: Control, start_delay := 0.
 	var root := pop_card.get_parent() as Control if pop_card != null and is_instance_valid(pop_card) else null
 	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
 		return
+	var track_id := str(root.get_meta("detail_lazy_track_id", ""))
+	if not track_id.is_empty():
+		_collapse_detail_lazy_plan_item_height(track_id)
 	var start_height := root.custom_minimum_size.y
 	var tween := create_tween()
 	var root_id := root.get_instance_id()
@@ -50767,9 +50915,18 @@ func _ensure_click_player() -> void:
 	click_player = _sfx("res://assets/sfx/click.wav")
 
 
+func _ensure_audio_unlock_ping_player() -> void:
+	if audio_unlock_ping_player != null and is_instance_valid(audio_unlock_ping_player):
+		return
+	_ensure_audio_buses()
+	audio_unlock_ping_player = _sfx("res://assets/sfx/click.wav")
+	audio_unlock_ping_player.volume_db = -10.0
+
+
 func _build_boot_audio() -> void:
 	_prepare_audio_buses()
 	_ensure_click_player()
+	_ensure_audio_unlock_ping_player()
 
 
 func _build_extended_audio() -> void:
@@ -51684,15 +51841,31 @@ func _can_play_audio() -> bool:
 	return audio_unlocked_by_input
 
 
+func _play_audio_unlock_ping() -> void:
+	if audio_unlock_ping_played:
+		return
+	audio_unlock_ping_played = true
+	_ensure_audio_unlock_ping_player()
+	if audio_unlock_ping_player == null or not is_instance_valid(audio_unlock_ping_player):
+		return
+	if not audio_unlock_ping_player.is_inside_tree():
+		return
+	audio_unlock_ping_player.stop()
+	audio_unlock_ping_player.pitch_scale = 1.0
+	audio_unlock_ping_player.play()
+
+
 func _unlock_audio_for_gameplay() -> void:
-	if audio_unlocked_by_input:
+	if audio_unlocked_by_input and audio_unlock_ping_played:
 		return
 	audio_unlocked_by_input = true
+	_prepare_audio_buses()
+	_play_audio_unlock_ping()
 	_ensure_music_playing()
 
 
 func _note_player_input(event: InputEvent) -> void:
-	if audio_unlocked_by_input:
+	if audio_unlocked_by_input and audio_unlock_ping_played:
 		return
 	if event is InputEventMouseButton and event.pressed:
 		_unlock_audio_for_gameplay()

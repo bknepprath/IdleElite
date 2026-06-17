@@ -14,6 +14,28 @@ Fix:
 Validation:
 Rule:
 
+## Itch.io Web Audio Silent
+
+Date: 2026-06-16
+
+Area: Godot Web export on itch.io.
+
+Symptom: the itch.io browser-playable build loaded and played normally, but all music and SFX were silent on itch.io. Browser volume, site permissions, fullscreen, focus, mute state, and first user interaction did not restore audio.
+
+Mistake: the first assumption was that the browser audio context was not being unlocked by a trusted click/tap, so the game added a quiet first-input unlock ping. That was reasonable, but it did not fix the live itch build because the real failure was lower in Godot's Web audio playback path.
+
+Root cause: Godot 4.3+ Web exports can fail silently with the default Web audio playback type when using project audio buses such as `Music` and `SFX`. Idle Elite creates custom audio buses at runtime, and the Web build needed stream playback instead of the default sample path.
+
+Fix:
+
+- Set `general/default_playback_type.web=0` under `[audio]` in `project.godot`.
+- Re-export the Web build through `.\run-godot-safe.ps1 --path . --export-release Web builds\web\index.html`.
+- Upload a fresh itch zip with `index.html` at the zip root.
+
+Validation: uploaded `builds\idle-elite-itch-web-v0.4.0-audiofix4-stream.zip` to itch.io and confirmed sound worked in the live browser-playable page.
+
+Rule: when a Godot Web export is completely silent on itch.io but the game otherwise runs, check `audio/general/default_playback_type.web` early. For Idle Elite, keep Web playback type set to Stream (`0`) before chasing browser mute, focus, iframe, or click-unlock fixes.
+
 ## Action Art Shader Material
 
 Date: 2026-06-15
