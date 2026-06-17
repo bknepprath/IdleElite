@@ -318,6 +318,8 @@ class RegenCircle:
 		var image := Image.create(int(draw_size.x), int(draw_size.y), false, Image.FORMAT_RGBA8)
 		image.fill(Color(0, 0, 0, 0))
 		_paint_glass_bowl_to_image(image, center, inner_radius, draw_scale)
+		if DisplayServer.get_name() == "headless" or image == null or image.is_empty():
+			return
 		_glass_bowl_texture = ImageTexture.create_from_image(image)
 		_glass_bowl_cached_size = draw_size
 		_shared_glass_bowl_textures[cache_key] = _glass_bowl_texture
@@ -40051,7 +40053,7 @@ func _cropped_unlock_padlock_texture() -> Texture2D:
 	var image := _cropped_unlock_padlock_image()
 	if image == null:
 		return null
-	unlock_padlock_texture = ImageTexture.create_from_image(image)
+	unlock_padlock_texture = _create_image_texture(image)
 	return unlock_padlock_texture
 
 
@@ -40100,7 +40102,7 @@ func _unlock_padlock_pulse_texture() -> Texture2D:
 		for x in range(image.get_width()):
 			var pixel := image.get_pixel(x, y)
 			image.set_pixel(x, y, Color(1, 1, 1, clampf(pixel.a, 0.0, 1.0)))
-	unlock_padlock_pulse_texture = ImageTexture.create_from_image(image)
+	unlock_padlock_pulse_texture = _create_image_texture(image)
 	return unlock_padlock_pulse_texture
 
 
@@ -44262,7 +44264,7 @@ func _achievement_empty_medal_texture() -> Texture2D:
 			var fill := COLOR_PAPER
 			fill.a = alpha
 			image.set_pixel(x, y, fill)
-	achievement_empty_medal_texture = ImageTexture.create_from_image(image)
+	achievement_empty_medal_texture = _create_image_texture(image)
 	return achievement_empty_medal_texture
 
 
@@ -44281,7 +44283,7 @@ func _mastery_medal_dot_texture() -> Texture2D:
 			var point := Vector2(float(x) + 0.5, float(y) + 0.5)
 			if point.distance_to(center) <= radius:
 				image.set_pixel(x, y, Color(0.36, 0.22, 0.10, 0.56))
-	mastery_medal_dot_texture = ImageTexture.create_from_image(image)
+	mastery_medal_dot_texture = _create_image_texture(image)
 	return mastery_medal_dot_texture
 
 
@@ -47044,6 +47046,14 @@ func _can_create_image_textures() -> bool:
 	return DisplayServer.get_name() != "headless"
 
 
+func _create_image_texture(image: Image) -> ImageTexture:
+	if image == null or image.is_empty():
+		return null
+	if not _can_create_image_textures():
+		return null
+	return ImageTexture.create_from_image(image)
+
+
 func _format_duration(seconds: float) -> String:
 	var total_seconds := maxi(0, int(ceil(seconds)))
 	var hours := int(floor(float(total_seconds) / 3600.0))
@@ -47084,7 +47094,7 @@ func _texture_from_image(path: String, image: Image) -> Texture2D:
 	if not _can_create_image_textures():
 		texture_cache[_res_path(path)] = null
 		return null
-	var texture := ImageTexture.create_from_image(image)
+	var texture := _create_image_texture(image)
 	texture_cache[_res_path(path)] = texture
 	return texture
 
@@ -47184,7 +47194,7 @@ func _visual_fallback_texture() -> Texture2D:
 		return null
 	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 	image.fill(Color(1.0, 1.0, 1.0, 0.0))
-	var texture := ImageTexture.create_from_image(image)
+	var texture := _create_image_texture(image)
 	texture_cache[cache_key] = texture
 	return texture
 
@@ -47892,7 +47902,7 @@ func _audio_slider_grabber() -> Texture2D:
 			var distance := point.distance_to(Vector2(radius, radius))
 			if distance <= radius - 1.0:
 				image.set_pixel(x, y, COLOR_INK if distance >= radius - border else COLOR_PANEL)
-	audio_slider_grabber_texture = ImageTexture.create_from_image(image)
+	audio_slider_grabber_texture = _create_image_texture(image)
 	return audio_slider_grabber_texture
 
 
@@ -48365,7 +48375,7 @@ func _paper_button_style_with_shape(color: Color, radius: int, margin := 72, pre
 					elif point.y <= inner.position.y + 5.0 and not pressed:
 						pixel = fill.lightened(0.12)
 				image.set_pixel(x, y, pixel)
-		style.texture = ImageTexture.create_from_image(image)
+		style.texture = _create_image_texture(image)
 	style.texture_margin_left = 30
 	style.texture_margin_right = 30
 	style.texture_margin_top = 30
