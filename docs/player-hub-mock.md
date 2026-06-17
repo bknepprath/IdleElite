@@ -1,7 +1,7 @@
 # Player Hub Mock
 <!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
 
-Planning reference for the first Player Hub screen. The HTML companion mock is `player-hub-mock.html`.
+Planning reference for the first Player Hub screen. The archived HTML companion mock is `archive/player-hub-mock.html`.
 
 ## Hub Fantasy
 

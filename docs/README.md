@@ -5,9 +5,11 @@ This folder documents **Idle Elite**, a Godot 4 mobile idle RPG. Treat every Mar
 
 ## How To Read These Docs
 
+- **Planning home:** Start with `planning-system.md` or `planning-system.html` for active direction, doc roles, and the Now/Next/Later buckets.
 - **Live implementation references:** `activity-database.html`, `activity-database.json`, `product-requirements.md`, and the Play Store runbooks describe the current Godot build or release pipeline.
-- **Godot implementation references:** Legacy HTML filenames are kept for link stability, but their contents should document the current Godot implementation rather than old browser-only references.
-- **Feature planning:** fishing, fighting, passive module, stamina, and chain-physics docs should map back to `docs/activity-database.json`, `scripts/main.gd`, Godot scenes, exported Android builds, or assets under `assets/`.
+- **Godot implementation references:** Active HTML files at the top of `docs/` should describe the current Godot implementation.
+- **Archive:** Old plans, mocks, and historical references live in `docs/archive/`.
+- **Feature planning:** active plans should map back to `docs/activity-database.json`, `scripts/main.gd`, Godot scenes, exported Android builds, or assets under `assets/`.
 - **Release documentation:** everything under `play-store/docs/` is for the Android package `com.idleelite.game` unless a page explicitly calls out the preview package `com.idleelite.game.preview`.
 
 ## Guardrails

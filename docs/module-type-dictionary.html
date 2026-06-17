@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite Godot Docs - Module Type Dictionary</title>
+  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG module type dictionary">
+  <link rel="stylesheet" href="docs-nav.css?v=20260616o">
+  <link rel="stylesheet" href="docs-theme.css?v=20260616o">
+  <style>
+    :root {
+      --ink:#171615;
+      --paper:#f8f1e5;
+      --panel:#fffdf8;
+      --muted:#6a6256;
+      --gold:#fff2a8;
+      --fight:#e84d4d;
+      --wood:#6ea937;
+      --build:#237cd5;
+      --hunt:#2dc0b9;
+      --wit:#8956bc;
+      --soft:#7c6bd1;
+      font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    body { margin:0; background:var(--paper); color:var(--ink); }
+    main { padding:18px clamp(10px,2vw,24px) 38px; overflow-x:auto; }
+
+    .type-board {
+      display:grid;
+      grid-template-columns:repeat(7,var(--dictionary-lane-width, 300px));
+      gap:16px;
+      width:max-content;
+      min-width:100%;
+      align-items:start;
+    }
+
+    .type-lane { display:grid; gap:12px; }
+
+    .type-header {
+      min-height:58px;
+      padding:9px 11px;
+      border:3px solid #f7ead7;
+      border-radius:12px;
+      background:var(--type-color);
+      color:#fffdf8;
+      box-shadow:0 6px 0 rgba(23,22,21,.26);
+    }
+
+    .type-header h2 {
+      margin:0;
+      color:#fff;
+      font-size:22px;
+      line-height:1;
+      text-shadow:
+        -2px -2px 0 var(--ink),
+        2px -2px 0 var(--ink),
+        -2px 2px 0 var(--ink),
+        2px 2px 0 var(--ink),
+        0 4px 0 rgba(23,22,21,.42);
+    }
+
+    .type-header p {
+      margin:5px 0 0;
+      color:#fffdf8;
+      font-size:12px;
+      font-weight:900;
+      line-height:1.2;
+    }
+
+    .module-cluster {
+      position:relative;
+      display:grid;
+      padding-top:36px;
+    }
+
+    .module-cluster[data-depth="2"] { padding-top:68px; }
+    .module-cluster:not([data-depth]) { padding-top:0; }
+
+    .dependency-tray {
+      position:absolute;
+      top:0;
+      left:14px;
+      right:14px;
+      z-index:1;
+      display:grid;
+      gap:8px;
+    }
+
+    .dependent-module {
+      min-height:32px;
+      overflow:hidden;
+      padding:6px 10px;
+      border:3px solid var(--ink);
+      border-radius:14px 14px 7px 7px;
+      background:#fffdf8;
+      color:var(--ink);
+      box-shadow:0 5px 0 rgba(23,22,21,.25);
+      cursor:pointer;
+      text-align:left;
+    }
+
+    .dependent-module + .dependent-module { margin-top:-8px; }
+    .dependent-top { display:flex; gap:8px; align-items:center; justify-content:space-between; min-width:0; }
+    .dependent-title { display:block; overflow:hidden; font-size:13px; font-weight:1000; line-height:1; text-overflow:ellipsis; white-space:nowrap; }
+    .dependent-action {
+      flex:0 0 auto;
+      color:var(--muted);
+      font-size:9px;
+      font-weight:1000;
+      line-height:1;
+      text-transform:uppercase;
+    }
+    .dependent-note { display:none; margin-top:7px; color:var(--muted); font-size:12px; font-weight:850; line-height:1.25; }
+
+    .module-cluster > .module { z-index:2; }
+    .module-cluster.is-expanded { padding-top:0; gap:10px; }
+    .module-cluster.is-expanded .dependency-tray { position:relative; left:auto; right:auto; z-index:3; }
+    .module-cluster.is-expanded .dependent-module { min-height:58px; border-radius:14px; }
+    .module-cluster.is-expanded .dependent-module + .dependent-module { margin-top:0; }
+    .module-cluster.is-expanded .dependent-note { display:block; }
+
+    .module {
+      position:relative;
+      min-height:236px;
+      overflow:hidden;
+      border:5px solid var(--ink);
+      border-radius:26px;
+      background:var(--panel);
+      box-shadow:0 12px 0 rgba(23,22,21,.2);
+    }
+
+    .module-active-recovery {
+      min-height:214px;
+      border:0;
+      border-radius:0;
+      background:var(--ink);
+      clip-path:polygon(0 0, calc(100% - 132px) 0, 100% 44px, 100% 100%, 132px 100%, 0 calc(100% - 44px));
+      box-shadow:none;
+      filter:drop-shadow(0 8px 0 rgba(23,22,21,.24));
+    }
+
+    .module-active-recovery .module-bg {
+      inset:4px;
+      clip-path:polygon(0 0, calc(100% - 120px) 0, 100% 40px, 100% 100%, 120px 100%, 0 calc(100% - 40px));
+      background:
+        linear-gradient(rgba(23,22,21,.22), rgba(23,22,21,.44)),
+        radial-gradient(circle at 28% 18%, rgba(255,255,255,.34), transparent 9rem),
+        var(--type-color);
+    }
+
+    .module-bg {
+      position:absolute;
+      inset:0;
+      overflow:visible;
+      background:
+        linear-gradient(rgba(23,22,21,.32), rgba(23,22,21,.54)),
+        radial-gradient(circle at 25% 16%, rgba(255,255,255,.34), transparent 9rem),
+        var(--type-color);
+    }
+
+    .module-body {
+      position:relative;
+      z-index:1;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 82px;
+      gap:10px;
+      min-height:236px;
+      padding:11px;
+      align-items:start;
+    }
+
+    .module-active-recovery .module-body {
+      min-height:236px;
+      grid-template-columns:minmax(0,1fr) 66px;
+      padding:14px 18px 48px 18px;
+    }
+
+    .module-art {
+      grid-column:2;
+      grid-row:1;
+      width:82px;
+      aspect-ratio:1;
+      padding:6px;
+      border:3px solid #eee2ce;
+      border-radius:16px;
+      background:#fff;
+      object-fit:contain;
+      box-shadow:0 5px 0 rgba(23,22,21,.28);
+    }
+
+    .module-active-recovery .module-art {
+      width:56px;
+      margin-top:30px;
+      border-radius:13px;
+    }
+
+    .module-copy { grid-column:1; grid-row:1; display:grid; gap:7px; min-width:0; }
+    .module-kicker { display:none; }
+    .module-actions { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+
+    .badge {
+      min-height:21px;
+      padding:3px 7px;
+      border:2px solid var(--ink);
+      border-radius:999px;
+      background:var(--gold);
+      color:var(--ink);
+      font-size:9px;
+      font-weight:1000;
+      line-height:1;
+      box-shadow:1px 2px 0 rgba(23,22,21,.55);
+      text-transform:uppercase;
+    }
+
+    .badge.dark { background:#171615; color:#fffdf8; }
+
+    .module-title {
+      margin:0;
+      color:#fff;
+      font-size:20px;
+      line-height:.98;
+      text-shadow:
+        -2px -2px 0 var(--ink),
+        2px -2px 0 var(--ink),
+        -2px 2px 0 var(--ink),
+        2px 2px 0 var(--ink),
+        0 4px 0 rgba(23,22,21,.42);
+    }
+
+    .module-active-recovery .module-title {
+      font-size:25px;
+    }
+
+    .module-boss {
+      min-height:258px;
+      margin:0;
+      overflow:hidden;
+      border:0;
+      border-radius:0;
+      background:var(--ink);
+      clip-path:polygon(
+        0 16px,
+        8% 16px, 10% 0, 12% 16px,
+        28% 16px, 30% 0, 32% 16px,
+        48% 16px, 50% 0, 52% 16px,
+        68% 16px, 70% 0, 72% 16px,
+        88% 16px, 90% 0, 92% 16px,
+        100% 16px,
+        100% calc(100% - 16px),
+        92% calc(100% - 16px), 90% 100%, 88% calc(100% - 16px),
+        72% calc(100% - 16px), 70% 100%, 68% calc(100% - 16px),
+        52% calc(100% - 16px), 50% 100%, 48% calc(100% - 16px),
+        32% calc(100% - 16px), 30% 100%, 28% calc(100% - 16px),
+        12% calc(100% - 16px), 10% 100%, 8% calc(100% - 16px),
+        0 calc(100% - 16px)
+      );
+      box-shadow:none;
+      filter:drop-shadow(0 8px 0 rgba(23,22,21,.24));
+    }
+
+    .module-boss::before,
+    .module-boss::after,
+    .module-boss .module-bg::before,
+    .module-boss .module-bg::after {
+      display:none;
+    }
+
+    .module-boss .module-bg {
+      inset:4px;
+      clip-path:polygon(
+        0 14px,
+        8.8% 14px, 10% 4px, 11.2% 14px,
+        28.8% 14px, 30% 4px, 31.2% 14px,
+        48.8% 14px, 50% 4px, 51.2% 14px,
+        68.8% 14px, 70% 4px, 71.2% 14px,
+        88.8% 14px, 90% 4px, 91.2% 14px,
+        100% 14px,
+        100% calc(100% - 14px),
+        91.2% calc(100% - 14px), 90% calc(100% - 4px), 88.8% calc(100% - 14px),
+        71.2% calc(100% - 14px), 70% calc(100% - 4px), 68.8% calc(100% - 14px),
+        51.2% calc(100% - 14px), 50% calc(100% - 4px), 48.8% calc(100% - 14px),
+        31.2% calc(100% - 14px), 30% calc(100% - 4px), 28.8% calc(100% - 14px),
+        11.2% calc(100% - 14px), 10% calc(100% - 4px), 8.8% calc(100% - 14px),
+        0 calc(100% - 14px)
+      );
+      background:
+        linear-gradient(rgba(23,22,21,.32), rgba(23,22,21,.54)),
+        radial-gradient(circle at 28% 18%, rgba(255,255,255,.34), transparent 9rem),
+        var(--type-color);
+    }
+
+    .module-boss .module-body {
+      min-height:258px;
+      padding:22px 11px 24px;
+    }
+
+    .module-boss .module-art,
+    .module-factory .module-art {
+      width:72px;
+    }
+
+    .module-factory {
+      border:0;
+      border-radius:0;
+      overflow:hidden;
+      background:var(--ink);
+      clip-path:polygon(0 0, 100% 0, 100% 100%, 72% 100%, 50% calc(100% - 30px), 28% 100%, 0 100%);
+      box-shadow:none;
+      filter:drop-shadow(0 8px 0 rgba(23,22,21,.24));
+    }
+
+    .module-factory .module-bg {
+      inset:4px;
+      border-radius:0;
+      clip-path:polygon(0 0, 100% 0, 100% 100%, 71% 100%, 50% calc(100% - 24px), 29% 100%, 0 100%);
+      background:
+        linear-gradient(rgba(23,22,21,.34), rgba(23,22,21,.52)),
+        radial-gradient(circle at 28% 18%, rgba(255,255,255,.34), transparent 9rem),
+        var(--type-color);
+    }
+
+    .module-factory::before,
+    .module-factory::after {
+      display:none;
+    }
+
+    .module-factory .module-body {
+      padding:14px 14px 40px;
+    }
+
+    .recovery-readout {
+      display:grid;
+      gap:3px;
+      max-width:132px;
+      padding:7px 9px;
+      border:3px solid var(--ink);
+      border-radius:0 12px 12px 0;
+      background:rgba(255,242,168,.95);
+      color:var(--ink);
+      box-shadow:3px 4px 0 rgba(23,22,21,.28);
+    }
+
+    .recovery-readout b,
+    .recovery-readout span {
+      display:block;
+      line-height:1;
+      text-transform:uppercase;
+    }
+
+    .recovery-readout b {
+      font-size:20px;
+      font-weight:1000;
+    }
+
+    .recovery-readout span {
+      color:var(--muted);
+      font-size:9px;
+      font-weight:1000;
+    }
+
+    .stat-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:5px; }
+
+    .stat {
+      min-width:0;
+      min-height:36px;
+      padding:5px 4px;
+      border:2px solid rgba(23,22,21,.88);
+      border-radius:10px;
+      background:rgba(255,253,248,.92);
+      color:var(--ink);
+      text-align:center;
+    }
+
+    .stat b, .stat span { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .stat b { font-size:13px; line-height:1.05; }
+    .stat span { margin-top:2px; color:var(--muted); font-size:8px; font-weight:1000; text-transform:uppercase; }
+
+    .progress {
+      height:13px;
+      border:3px solid var(--ink);
+      border-radius:999px;
+      background:#171615;
+      overflow:hidden;
+    }
+
+    .progress span {
+      display:block;
+      width:18%;
+      height:100%;
+      background:var(--type-color);
+      transition:width .55s cubic-bezier(.2,.9,.2,1);
+    }
+
+    .module.is-running .progress span { width:100%; }
+
+    .module-meta {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      align-items:center;
+    }
+
+    .module-meta span {
+      min-height:21px;
+      padding:3px 7px;
+      border:2px solid var(--ink);
+      border-radius:999px;
+      background:var(--gold);
+      color:var(--ink);
+      font-size:9px;
+      font-weight:1000;
+      line-height:1;
+      box-shadow:1px 2px 0 rgba(23,22,21,.45);
+      text-transform:uppercase;
+    }
+
+    .action-button {
+      min-height:30px;
+      padding:6px 10px;
+      border:3px solid var(--ink);
+      border-radius:12px;
+      background:#fffdf8;
+      color:var(--ink);
+      font-size:11px;
+      font-weight:1000;
+      box-shadow:0 4px 0 rgba(23,22,21,.35);
+      cursor:pointer;
+    }
+
+    .action-button:active { transform:translateY(3px); box-shadow:0 1px 0 rgba(23,22,21,.35); }
+
+    .resource-count {
+      display:inline-flex;
+      align-items:center;
+      min-height:30px;
+      padding:6px 9px;
+      border:3px solid var(--ink);
+      border-radius:12px;
+      background:#fff2a8;
+      color:var(--ink);
+      font-size:11px;
+      font-weight:1000;
+      box-shadow:0 4px 0 rgba(23,22,21,.26);
+    }
+
+    .type-note {
+      display:grid;
+      gap:6px;
+      padding:10px;
+      border:3px solid var(--ink);
+      border-radius:16px;
+      background:#fffdf8;
+      box-shadow:0 6px 0 rgba(23,22,21,.18);
+      font-size:12px;
+      font-weight:850;
+      line-height:1.25;
+    }
+
+    .type-note strong {
+      font-size:13px;
+      font-weight:1000;
+      text-transform:uppercase;
+    }
+
+    @media (max-width:760px) {
+      main { padding-inline:8px; }
+      .type-board { grid-template-columns:repeat(7,var(--dictionary-lane-width, 300px)); }
+    }
+  </style>
+</head>
+<body>
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite Godot Docs</p>
+      <h1>Module Type Dictionary</h1>
+      <p class="docs-lead">Core module behaviors shown as real cards.</p>
+    </div>
+    <nav data-docs-nav></nav>
+  </header>
+
+  <main>
+    <section class="type-board" aria-label="module type dictionary">
+      <article class="type-lane" style="--type-color:var(--fight)">
+        <header class="type-header">
+          <h2>Training Module</h2>
+          <p>Runs an action and grants XP.</p>
+        </header>
+
+        <div class="module-cluster">
+          <article class="module" data-output="xp">
+            <div class="module-bg"></div>
+            <div class="module-body">
+              <img class="module-art" src="../assets/content/fight/actions/01-shove-wobbly-hay-bale.png" alt="">
+              <div class="module-copy">
+                <div class="module-kicker">
+                  <span class="badge dark">Lv 1</span>
+                  <span class="badge">Activity</span>
+                </div>
+                <h3 class="module-title">Pushups</h3>
+                <div class="stat-grid">
+                  <span class="stat"><b>1</b><span>XP</span></span>
+                  <span class="stat"><b>1</b><span>Stam</span></span>
+                  <span class="stat"><b>1.09s</b><span>Time</span></span>
+                  <span class="stat"><b>+1</b><span>Fit</span></span>
+                </div>
+                <div class="progress"><span></span></div>
+                <div class="module-meta"><span>Lv 1</span><span>Training</span></div>
+                <div class="module-actions">
+                  <button class="action-button" type="button" data-run>Train XP</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <article class="type-lane" style="--type-color:var(--wood)">
+        <header class="type-header">
+          <h2>Collection Module</h2>
+          <p>Runs an action and produces XP plus a resource.</p>
+        </header>
+
+        <div class="module-cluster" data-depth="1">
+          <div class="dependency-tray">
+            <button class="dependent-module" type="button" aria-label="Spread collection dependency: Logs resource">
+              <span class="dependent-top"><span class="dependent-title">Logs Resource</span><span class="dependent-action">Spread</span></span>
+              <span class="dependent-note">Resource module fed by this collection action.</span>
+            </button>
+          </div>
+          <article class="module" data-output="logs">
+            <div class="module-bg"></div>
+            <div class="module-body">
+              <img class="module-art" src="../assets/content/woodcutting/actions/04-chop-softwood-tree.png" alt="">
+              <div class="module-copy">
+                <div class="module-kicker">
+                  <span class="badge dark">Lv 1</span>
+                  <span class="badge">Collection</span>
+                </div>
+                <h3 class="module-title">Chop Tree</h3>
+                <div class="stat-grid">
+                  <span class="stat"><b>2</b><span>XP</span></span>
+                  <span class="stat"><b>1</b><span>Stam</span></span>
+                  <span class="stat"><b>1.26s</b><span>Time</span></span>
+                  <span class="stat"><b>+1</b><span>Log</span></span>
+                </div>
+                <div class="progress"><span></span></div>
+                <div class="module-meta"><span>Lv 3</span><span>Collection</span></div>
+                <div class="module-actions">
+                  <button class="action-button" type="button" data-run>Collect</button>
+                  <span class="resource-count">Logs: <span data-count>0</span></span>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <article class="type-lane" style="--type-color:var(--build)">
+        <header class="type-header">
+          <h2>Factory Module</h2>
+          <p>Uses related modules/resources to make something else.</p>
+        </header>
+
+        <div class="module-cluster" data-depth="2">
+          <div class="dependency-tray">
+            <button class="dependent-module" type="button" aria-label="Spread factory dependency: Chop Tree source">
+              <span class="dependent-top"><span class="dependent-title">Chop Tree</span><span class="dependent-action">Spread</span></span>
+              <span class="dependent-note">Source module shown here because it creates logs.</span>
+            </button>
+            <button class="dependent-module" type="button" aria-label="Spread factory dependency: Logs input">
+              <span class="dependent-top"><span class="dependent-title">Logs Input</span><span class="dependent-action">Spread</span></span>
+              <span class="dependent-note">Resource module consumed by this factory.</span>
+            </button>
+          </div>
+          <article class="module module-factory" data-output="planks">
+            <div class="module-bg"></div>
+            <div class="module-body">
+              <img class="module-art" src="../assets/content/woodcutting/actions/05-split-firewood.png" alt="">
+              <div class="module-copy">
+                <div class="module-kicker">
+                  <span class="badge dark">Lv 3</span>
+                  <span class="badge">Factory</span>
+                </div>
+                <h3 class="module-title">Saw Planks</h3>
+                <div class="stat-grid">
+                  <span class="stat"><b>3</b><span>XP</span></span>
+                  <span class="stat"><b>-2</b><span>Logs</span></span>
+                  <span class="stat"><b>1.82s</b><span>Time</span></span>
+                  <span class="stat"><b>+1</b><span>Plank</span></span>
+                </div>
+                <div class="progress"><span></span></div>
+                <div class="module-meta"><span>Lv 4</span><span>Factory</span></div>
+                <div class="module-actions">
+                  <button class="action-button" type="button" data-run>Saw</button>
+                  <span class="resource-count">Planks: <span data-count>0</span></span>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <article class="type-lane" style="--type-color:var(--build)">
+        <header class="type-header">
+          <h2>Active Recovery Module</h2>
+          <p>Restores stamina and grants a tiny amount of XP.</p>
+        </header>
+
+        <div class="module-cluster">
+          <article class="module module-active-recovery">
+            <div class="module-bg"></div>
+            <div class="module-body">
+              <img class="module-art" src="../assets/content/build/actions/03-hammer-one-suspicious-nail.png" alt="">
+              <div class="module-copy">
+                <h3 class="module-title">Sweep Workshop</h3>
+                <div class="recovery-readout">
+                  <b>+3 Stam</b>
+                  <span>1 XP active recovery</span>
+                </div>
+                <div class="progress"><span></span></div>
+                <div class="module-meta"><span>Lv 18</span><span>Active Recovery</span></div>
+                <div class="module-actions">
+                  <button class="action-button" type="button" data-run>Recover</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <article class="type-lane" style="--type-color:var(--wood)">
+        <header class="type-header">
+          <h2>Resource Module</h2>
+          <p>Shows stored output. Tools are unlocks, not spendable resources.</p>
+        </header>
+
+        <div class="type-note">
+          <strong>Hard Resource</strong>
+          Physical things used to make other things: softwood logs, hardwood logs, ore, rich ore, pristine ore, ingots, refined ingots, animal parts, food, leather, planks.
+        </div>
+        <div class="type-note">
+          <strong>Soft Resource</strong>
+          Abstract progress or readiness: grit, focus, knowledge, secrets.
+        </div>
+        <div class="type-note">
+          <strong>Tool</strong>
+          One-time unlock that persists and enables new actions or improves existing actions: kiln, ice bath, steam lodge.
+        </div>
+        <div class="module-cluster" data-depth="2">
+          <div class="dependency-tray">
+            <button class="dependent-module" type="button">
+              <span class="dependent-top"><span class="dependent-title">Study Field Notes</span><span class="dependent-action">Source</span></span>
+              <span class="dependent-note">Collection module that produces the soft resource.</span>
+            </button>
+          </div>
+          <article class="module">
+            <div class="module-bg"></div>
+            <div class="module-body">
+              <img class="module-art" src="../assets/content/thieving/actions/03-sneak-past-tip-jar-eye-contact.png" alt="">
+              <div class="module-copy">
+                <h3 class="module-title">Knowledge</h3>
+                <div class="stat-grid">
+                  <span class="stat"><b>Soft</b><span>Type</span></span>
+                  <span class="stat"><b>0</b><span>Stored</span></span>
+                  <span class="stat"><b>Used</b><span>Plans</span></span>
+                  <span class="stat"><b>Feeds</b><span>Gates</span></span>
+                </div>
+                <div class="progress"><span></span></div>
+                <div class="module-meta"><span>Resource</span><span>Soft</span></div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <article class="type-lane" style="--type-color:var(--fight)">
+        <header class="type-header">
+          <h2>Boss Module</h2>
+          <p>One-time challenge that unlocks area/progression.</p>
+        </header>
+
+        <div class="module-cluster" data-depth="1">
+          <div class="dependency-tray">
+            <button class="dependent-module" type="button">
+              <span class="dependent-top"><span class="dependent-title">Training Yard</span><span class="dependent-action">After</span></span>
+              <span class="dependent-note">Repeatable training replaces the defeated boss.</span>
+            </button>
+          </div>
+          <article class="module module-boss">
+            <div class="module-bg"></div>
+            <div class="module-body">
+              <img class="module-art" src="../assets/content/fight/actions/02-kick-mud-off-boot.png" alt="">
+              <div class="module-copy">
+                <h3 class="module-title">Chicken Boss Fight</h3>
+                <div class="stat-grid">
+                  <span class="stat"><b>3</b><span>XP</span></span>
+                  <span class="stat"><b>1</b><span>Stam</span></span>
+                  <span class="stat"><b>Gate</b><span>Area</span></span>
+                  <span class="stat"><b>Unlock</b><span>Yard</span></span>
+                </div>
+                <div class="progress"><span></span></div>
+                <div class="module-meta"><span>Lv 2</span><span>Boss</span></div>
+                <div class="module-actions">
+                  <button class="action-button" type="button" data-run>Defeat</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </article>
+
+      <article class="type-lane" style="--type-color:var(--build)">
+        <header class="type-header">
+          <h2>1-Time Tool Unlock</h2>
+          <p>Built once, then gates specific actions without blocking the whole path.</p>
+        </header>
+
+        <div class="module-cluster" data-depth="1">
+          <div class="dependency-tray">
+            <button class="dependent-module" type="button">
+              <span class="dependent-top"><span class="dependent-title">Cold Plunge</span><span class="dependent-action">After</span></span>
+              <span class="dependent-note">The active recovery module appears after this build is complete.</span>
+            </button>
+          </div>
+          <article class="module module-factory">
+            <div class="module-bg"></div>
+            <div class="module-body">
+              <img class="module-art" src="../assets/content/build/actions/04-repair-small-shack.png" alt="">
+              <div class="module-copy">
+                <h3 class="module-title">Build Ice Bath</h3>
+                <div class="stat-grid">
+                  <span class="stat"><b>8</b><span>XP</span></span>
+                  <span class="stat"><b>-3</b><span>Planks</span></span>
+                  <span class="stat"><b>-1</b><span>Bark</span></span>
+                  <span class="stat"><b>Unlock</b><span>Tool</span></span>
+                </div>
+                <div class="progress"><span></span></div>
+                <div class="module-meta"><span>Lv 32</span><span>1-Time Build</span></div>
+                <div class="module-actions">
+                  <button class="action-button" type="button" data-run>Build</button>
+                </div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script src="docs-nav.js"></script>
+  <script>
+    document.querySelectorAll(".dependent-module").forEach((button) => {
+      button.addEventListener("click", () => {
+        const cluster = button.closest(".module-cluster");
+        if (cluster) cluster.classList.toggle("is-expanded");
+      });
+    });
+
+    document.querySelectorAll("[data-run]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const module = button.closest(".module");
+        const counter = module.querySelector("[data-count]");
+        module.classList.remove("is-running");
+        void module.offsetWidth;
+        module.classList.add("is-running");
+
+        if (counter) {
+          const nextValue = Number(counter.textContent || "0") + 1;
+          counter.textContent = String(nextValue);
+        }
+
+        window.setTimeout(() => module.classList.remove("is-running"), 700);
+      });
+    });
+  </script>
+</body>
+</html>

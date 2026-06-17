@@ -318,3 +318,79 @@ body.docs-theme-dark .aside h1 {
 body.docs-theme-dark .aside p {
   color: var(--muted);
 }
+
+/* Shared docs banner: keep active and archived pages visually consistent. */
+.docs-bar {
+  border-bottom: 1px solid rgba(247, 234, 215, 0.18);
+  background: #191714;
+  color: #f7ead7;
+}
+
+.docs-eyebrow {
+  display: none;
+}
+
+.docs-nav-label {
+  display: block;
+  color: #bba88d;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.docs-bar h1 {
+  font-size: clamp(28px, 4vw, 42px);
+  line-height: 1.05;
+}
+
+.docs-eyebrow,
+.docs-nav-label,
+.docs-lead,
+body.docs-theme-dark .docs-lead {
+  color: #bba88d;
+}
+
+.docs-nav-link,
+body.docs-theme-dark .docs-nav-link {
+  min-height: 54px;
+  padding: 8px 12px;
+  border: 1px solid rgba(247, 234, 215, 0.25);
+  border-radius: 6px;
+  background: #2b261f;
+  box-shadow: none;
+  color: #f7ead7;
+  font-size: 14px;
+  font-weight: 800;
+  text-align: center;
+  white-space: normal;
+}
+
+.docs-nav-link-title {
+  display: block;
+  font-size: 14px;
+  line-height: 1.15;
+}
+
+.docs-nav-link-desc {
+  display: block;
+  color: #bba88d;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.15;
+}
+
+.docs-nav-link:hover,
+.docs-nav-link:focus-visible {
+  background: #3a3128;
+}
+
+.docs-nav-link.is-current {
+  background: #f7ead7;
+  color: #171615;
+  outline: 0;
+}
+
+.docs-nav-link.is-current .docs-nav-link-desc {
+  color: #5f5548;
+}
