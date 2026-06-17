@@ -9,6 +9,7 @@ $skillMenuPanelChromePath = Join-Path $projectRoot "scripts\ui\skill_menu_panel_
 $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_border.gd"
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
+$roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -69,6 +70,8 @@ Assert-True (Test-Path -LiteralPath $passiveModuleCardBorderPath) "Missing scrip
 $passiveCardBorder = Get-Content -LiteralPath $passiveModuleCardBorderPath -Raw
 Assert-True (Test-Path -LiteralPath $actionArtTextureRectPath) "Missing scripts\ui\action_art_texture_rect.gd."
 $actionArtTexture = Get-Content -LiteralPath $actionArtTextureRectPath -Raw
+Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui\rounded_texture_rect.gd."
+$roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -957,7 +960,7 @@ $updateSkillDetailShadow = Get-FunctionBody -Text $main -Name "_update_skill_det
 Assert-True ($updateSkillDetailShadow -match 'var should_show_shadow := detail_shelf_shadow_alpha > 0\.001') "Skill detail shelf shadow should use one visibility threshold before applying alpha."
 Assert-True ($updateSkillDetailShadow -match '(?s)if not should_show_shadow:\s+return.*set_shadow_alpha') "Skill detail shelf shadow should skip alpha redraws while hidden."
 
-$roundedTexture = Get-ClassBody -Text $main -Name "RoundedTextureRect"
+Assert-True ($main -match 'const RoundedTextureRect = preload\("res://scripts/ui/rounded_texture_rect\.gd"\)') "Rounded card backgrounds should live in a reusable UI control file."
 Assert-True ($roundedTexture -match 'static var shared_mask_shader: Shader') "Rounded card backgrounds should share one mask shader program."
 Assert-True ($roundedTexture -match 'shader_material\.shader = shared_mask_shader') "Rounded card backgrounds should not allocate a unique Shader for every card."
 Assert-True ($roundedTexture -match 'mask_params_initialized') "Rounded card backgrounds should track the last synced shader parameters."
