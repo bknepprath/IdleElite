@@ -25,7 +25,6 @@ const OrganicLeaderboardBorder = preload("res://scripts/ui/organic_leaderboard_b
 const ActivityCardInnerShadow = preload("res://scripts/ui/activity_card_inner_shadow.gd")
 const SkillDetailPageShelfShadow = preload("res://scripts/ui/skill_detail_page_shelf_shadow.gd")
 const SkillMenuPanelChrome = preload("res://scripts/ui/skill_menu_panel_chrome.gd")
-const BootFlexLoadingAnimationClass = preload("res://scripts/ui/boot_flex_loading_animation.gd")
 
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
@@ -3534,6 +3533,7 @@ const SKILL_SWIPE_SETTLE_SECONDS := 0.30
 const SKILL_SWIPE_CANCEL_SECONDS := 0.18
 const SKILL_SWIPE_PAGE_FADE_ENABLED := false
 const SKILL_SWIPE_STRIP_PAGE_FADE_ENABLED := false
+const SKILL_SWIPE_DRAG_FRAME_FADE_ENABLED := false
 const SKILL_SWIPE_PAGE_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
 const SKILL_SWIPE_PAGE_FADE_MIN_ALPHA := 0.0
 const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.12
@@ -4665,7 +4665,6 @@ var boot_warmup_layer: CanvasLayer
 var boot_warmup_overlay: Control
 var boot_warmup_background: ColorRect
 var boot_warmup_splash: TextureRect
-var boot_warmup_flex_animation: Control
 var boot_warmup_shade: ColorRect
 var boot_warmup_footer: VBoxContainer
 var boot_warmup_label: Label
@@ -7943,18 +7942,6 @@ func _build_boot_warmup_overlay() -> void:
 	boot_warmup_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boot_warmup_overlay.add_child(boot_warmup_shade)
 
-	boot_warmup_flex_animation = BootFlexLoadingAnimationClass.new()
-	boot_warmup_flex_animation.anchor_left = 0.5
-	boot_warmup_flex_animation.anchor_right = 0.5
-	boot_warmup_flex_animation.anchor_top = 0.44
-	boot_warmup_flex_animation.anchor_bottom = 0.44
-	boot_warmup_flex_animation.offset_left = -520
-	boot_warmup_flex_animation.offset_right = 520
-	boot_warmup_flex_animation.offset_top = -460
-	boot_warmup_flex_animation.offset_bottom = 380
-	boot_warmup_flex_animation.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	boot_warmup_overlay.add_child(boot_warmup_flex_animation)
-
 	boot_warmup_footer = VBoxContainer.new()
 	boot_warmup_footer.anchor_left = 0.5
 	boot_warmup_footer.anchor_right = 0.5
@@ -7987,8 +7974,6 @@ func _show_boot_warmup_overlay() -> void:
 	_set_canvas_item_visible_if_changed(boot_warmup_overlay, true)
 	boot_warmup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	_set_canvas_item_alpha_if_changed(boot_warmup_overlay, 1.0)
-	if boot_warmup_flex_animation != null and is_instance_valid(boot_warmup_flex_animation):
-		boot_warmup_flex_animation.call("restart")
 	_set_boot_warmup_progress("Warming up...", 0.0)
 
 
@@ -8028,8 +8013,6 @@ func _reveal_game_under_boot_splash() -> void:
 		reveal_targets.append(boot_warmup_splash)
 	if boot_warmup_shade != null and is_instance_valid(boot_warmup_shade):
 		reveal_targets.append(boot_warmup_shade)
-	if boot_warmup_flex_animation != null and is_instance_valid(boot_warmup_flex_animation):
-		reveal_targets.append(boot_warmup_flex_animation)
 	for target in reveal_targets:
 		_set_canvas_item_alpha_if_changed(target, 1.0)
 	var tween := create_tween()
@@ -10544,10 +10527,18 @@ func _set_skill_swipe_control_alpha(control: Control, alpha: float) -> void:
 func _sync_skill_swipe_drag_frame_fade(drag_x: float) -> void:
 	if skill_swipe_frame != null and is_instance_valid(skill_swipe_frame) and skill_swipe_frame.modulate.a < 0.999:
 		_set_skill_swipe_control_alpha(skill_swipe_frame, 1.0)
+	if not SKILL_SWIPE_DRAG_FRAME_FADE_ENABLED:
+		if skill_swipe_drag_fade_overlay != null and is_instance_valid(skill_swipe_drag_fade_overlay):
+			_set_canvas_item_visible_if_changed(skill_swipe_drag_fade_overlay, false)
+		return
 	if skills_page == null or not is_instance_valid(skills_page):
 		return
 	var progress := _skill_swipe_fade_progress(absf(drag_x), true)
 	var alpha := lerpf(0.0, 1.0 - SKILL_SWIPE_PAGE_FADE_MIN_ALPHA, progress)
+	if alpha <= 0.01:
+		if skill_swipe_drag_fade_overlay != null and is_instance_valid(skill_swipe_drag_fade_overlay):
+			_set_canvas_item_visible_if_changed(skill_swipe_drag_fade_overlay, false)
+		return
 	if skill_swipe_drag_fade_overlay == null or not is_instance_valid(skill_swipe_drag_fade_overlay):
 		skill_swipe_drag_fade_overlay = ColorRect.new()
 		skill_swipe_drag_fade_overlay.color = COLOR_PAPER
@@ -10556,10 +10547,7 @@ func _sync_skill_swipe_drag_frame_fade(drag_x: float) -> void:
 		skill_swipe_drag_fade_overlay.z_index = 850
 		skill_swipe_drag_fade_overlay.z_as_relative = false
 		skills_page.add_child(skill_swipe_drag_fade_overlay)
-	if alpha <= 0.01:
-		_set_canvas_item_visible_if_changed(skill_swipe_drag_fade_overlay, false)
-	else:
-		_set_canvas_item_visible_if_changed(skill_swipe_drag_fade_overlay, true)
+	_set_canvas_item_visible_if_changed(skill_swipe_drag_fade_overlay, true)
 	_set_canvas_item_alpha_if_changed(skill_swipe_drag_fade_overlay, alpha)
 
 
@@ -16638,6 +16626,8 @@ func _detail_lazy_mount_should_wait_for_scroll(plan_item: Dictionary) -> bool:
 		return false
 	if not _fishing_rework_active_for_skill(selected_skill_id):
 		return false
+	if plan_item.has("cached_root"):
+		return false
 	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 		var max_scroll := float(detail_actions_scroll.get_max_scroll_vertical())
 		if max_scroll > 0.0 and _detail_lazy_scroll_y() >= max_scroll - 1.0:
@@ -17211,6 +17201,7 @@ func _detail_lazy_mount_cached_item(
 	if cached_root == null or cached_root.is_queued_for_deletion():
 		plan_item.erase("cached_root")
 		plan_item.erase("cached_card")
+		plan_item.erase("cached_built")
 		return false
 	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
 	if stack_host == null or not is_instance_valid(stack_host):
@@ -17219,6 +17210,7 @@ func _detail_lazy_mount_cached_item(
 	if track_id.is_empty():
 		return false
 	var kind := str(plan_item.get("kind", ""))
+	var cached_card := plan_item.get("cached_card", {}) as Dictionary
 	if kind == "heist":
 		_discard_detail_lazy_cached_root(plan_item)
 		return false
@@ -17242,6 +17234,44 @@ func _detail_lazy_mount_cached_item(
 		detail_action_card_nodes[track_id] = cached_root
 		plan_item["mounted"] = true
 		return true
+	if kind == "fishing_area":
+		var placeholder := _valid_control_ref(plan_item.get("placeholder"))
+		_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
+		plan_item["placeholder"] = null
+		if cached_root.get_parent() != null:
+			cached_root.get_parent().remove_child(cached_root)
+		cached_root.visible = true
+		_enable_interactive_control_tree(cached_root)
+		_detail_lazy_add_child_to_host(stack_host, cached_root, content_width, actions_width)
+		var cached_built := plan_item.get("cached_built", {}) as Dictionary
+		var area_key := track_id
+		var area_card := cached_card
+		if not cached_built.is_empty():
+			area_key = str(cached_built.get("area_key", track_id))
+			area_card = cached_built.get("area_card", cached_card) as Dictionary
+			plan_item["built"] = cached_built
+		_register_action_card(area_key, area_card)
+		plan_item["card"] = area_card
+		detail_action_card_nodes[area_key] = stack_host
+		for raw_method_id in plan_item.get("method_ids", []) as Array:
+			detail_action_card_nodes[str(raw_method_id)] = stack_host
+		if fade_in:
+			_play_detail_lazy_fade_in(cached_root)
+		plan_item["mounted"] = true
+		return true
+	if kind == "fishing_offer":
+		var placeholder := _valid_control_ref(plan_item.get("placeholder"))
+		_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
+		plan_item["placeholder"] = null
+		if cached_root.get_parent() != null:
+			cached_root.get_parent().remove_child(cached_root)
+		cached_root.visible = true
+		_enable_interactive_control_tree(cached_root)
+		_detail_lazy_add_child_to_host(stack_host, cached_root, content_width, actions_width)
+		if fade_in:
+			_play_detail_lazy_fade_in(cached_root)
+		plan_item["mounted"] = true
+		return true
 	if kind != "action" and kind != "passive":
 		return false
 	var placeholder := _valid_control_ref(plan_item.get("placeholder"))
@@ -17254,7 +17284,6 @@ func _detail_lazy_mount_cached_item(
 	_detail_lazy_add_child_to_host(stack_host, cached_root, content_width, actions_width)
 	if fade_in:
 		_play_detail_lazy_fade_in(cached_root)
-	var cached_card := plan_item.get("cached_card", {}) as Dictionary
 	if cached_card.is_empty():
 		return false
 	var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
@@ -17484,7 +17513,7 @@ func _detail_lazy_unmount_item(plan_item: Dictionary, skill_id: String, content_
 	var mounted_card := plan_item.get("card", {}) as Dictionary
 	_kill_transient_tweens_in_subtree(stack_host)
 	var cached_root: Control = null
-	if kind == "action" or kind == "passive":
+	if kind in ["action", "passive", "fishing_area", "fishing_offer"]:
 		for child in stack_host.get_children():
 			var child_control := child as Control
 			if child_control == null or bool(child_control.get_meta("detail_lazy_placeholder", false)):
@@ -17495,9 +17524,12 @@ func _detail_lazy_unmount_item(plan_item: Dictionary, skill_id: String, content_
 			_park_detail_lazy_cached_root(cached_root)
 			plan_item["cached_root"] = cached_root
 			plan_item["cached_card"] = mounted_card
+			if kind == "fishing_area":
+				plan_item["cached_built"] = plan_item.get("built", {}) as Dictionary
 	elif kind == "heist":
 		plan_item.erase("cached_root")
 		plan_item.erase("cached_card")
+		plan_item.erase("cached_built")
 	for child in stack_host.get_children():
 		if child != null and is_instance_valid(child) and child != cached_root:
 			child.queue_free()
@@ -17524,7 +17556,9 @@ func _detail_lazy_unmount_item(plan_item: Dictionary, skill_id: String, content_
 		stack_host.set_meta("detail_lazy_placeholder", true)
 	plan_item["placeholder"] = placeholder
 	plan_item["mounted"] = false
-	plan_item.erase("built")
+	if cached_root == null:
+		plan_item.erase("built")
+		plan_item.erase("cached_built")
 	if kind == "fishing_area":
 		detail_action_card_nodes.erase(track_id)
 		for raw_method_id in plan_item.get("method_ids", []) as Array:
