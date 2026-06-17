@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Idle Elite Godot Docs - UI Navigation Controls Plan</title>
-  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG UI navigation controls plan">
+  <title>Idle Elite Godot Docs - UI Navigation Controls Checklist</title>
+  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG UI navigation controls implementation checklist">
   <link rel="stylesheet" href="docs-nav.css?v=20260616o">
   <link rel="stylesheet" href="docs-theme.css?v=20260616o">
   <style>
@@ -15,11 +15,7 @@
       --line:#d8cdb9;
       --muted:#6a6256;
       --gold:#fff2a8;
-      --fight:#e84d4d;
-      --wood:#6ea937;
-      --build:#237cd5;
       --fish:#2dc0b9;
-      --thief:#8956bc;
       font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
     }
 
@@ -32,41 +28,35 @@
     }
 
     main {
-      padding:18px clamp(10px,2vw,24px) 34px;
+      width:min(820px, 100%);
+      margin:0 auto;
+      padding:18px clamp(12px,3vw,28px) 44px;
       display:grid;
       gap:16px;
     }
 
-    h1,
     h2,
     h3,
     p {
       margin:0;
     }
 
-    p,
-    li,
-    td {
-      line-height:1.42;
-    }
-
-    .hero {
-      display:grid;
-      grid-template-columns:minmax(0,1fr) 390px;
-      gap:16px;
-      align-items:start;
-    }
-
-    .headline {
-      display:grid;
-      gap:12px;
-      min-height:430px;
-      padding:16px;
-      border:4px solid #f7ead7;
+    .intro,
+    .section {
+      border:4px solid var(--ink);
       border-radius:12px;
+      background:var(--panel);
+      box-shadow:0 7px 0 rgba(23,22,21,.22);
+    }
+
+    .intro {
+      display:grid;
+      gap:10px;
+      padding:16px;
       background:var(--fish);
-      color:#fff;
-      box-shadow:0 6px 0 rgba(0,0,0,.28);
+      color:#fffdf8;
+      border-color:#f7ead7;
+      box-shadow:0 7px 0 rgba(0,0,0,.28);
     }
 
     .kicker {
@@ -78,14 +68,14 @@
       color:var(--ink);
       font-size:11px;
       font-weight:1000;
-      text-transform:uppercase;
       letter-spacing:.05em;
+      text-transform:uppercase;
     }
 
-    .headline h2 {
-      max-width:760px;
+    .intro h2 {
+      max-width:12ch;
       color:#fff;
-      font-size:clamp(36px,6vw,72px);
+      font-size:clamp(36px,8vw,68px);
       line-height:.92;
       text-shadow:
         -2px -2px 0 var(--ink),
@@ -95,299 +85,127 @@
         0 5px 0 rgba(23,22,21,.42);
     }
 
-    .headline p {
-      max-width:720px;
+    .intro p {
+      max-width:48ch;
       color:#fffdf8;
-      font-size:18px;
+      font-size:17px;
       font-weight:900;
-      text-shadow:0 2px 0 rgba(23,22,21,.24);
+      line-height:1.35;
+      text-shadow:0 2px 0 rgba(23,22,21,.22);
     }
 
-    .quick-grid {
+    .section {
+      padding:14px;
+    }
+
+    .icon-grid {
       display:grid;
-      grid-template-columns:repeat(2,minmax(0,1fr));
+      grid-template-columns:repeat(auto-fit,minmax(132px,1fr));
       gap:10px;
-      margin-top:auto;
     }
 
-    .quick-card {
-      min-height:88px;
+    .icon-card {
+      display:grid;
+      justify-items:center;
+      gap:7px;
       padding:10px;
       border:3px solid var(--ink);
       border-radius:10px;
       background:#fffdf8;
-      color:var(--ink);
-      box-shadow:0 4px 0 rgba(23,22,21,.28);
+      box-shadow:0 4px 0 rgba(23,22,21,.18);
     }
 
-    .quick-card strong {
-      display:block;
-      margin-bottom:4px;
-      font-size:16px;
-      line-height:1.05;
+    .icon-card img {
+      width:78px;
+      height:78px;
+      object-fit:contain;
+      image-rendering:auto;
     }
 
-    .quick-card span {
-      display:block;
-      color:var(--muted);
+    .icon-card strong {
       font-size:13px;
-      font-weight:850;
-    }
-
-    .phone {
-      width:390px;
-      min-height:760px;
-      padding:16px 14px 18px;
-      border:4px solid var(--ink);
-      border-radius:36px;
-      background:
-        radial-gradient(circle at 50% 14px, #35302a 0 34px, transparent 35px),
-        linear-gradient(#2b241d, #181512);
-      box-shadow:0 10px 0 rgba(23,22,21,.32);
-    }
-
-    .screen {
-      display:grid;
-      grid-template-rows:auto 1fr auto;
-      gap:10px;
-      min-height:720px;
-      padding:14px 12px 12px;
-      border:3px solid var(--ink);
-      border-radius:24px;
-      background:var(--paper);
-      overflow:hidden;
-    }
-
-    .phone-top {
-      display:grid;
-      grid-template-columns:42px 1fr 42px;
-      gap:8px;
-      align-items:center;
-    }
-
-    .screen-title,
-    .top-icon {
-      border:3px solid var(--ink);
-      border-radius:10px;
-      color:var(--ink);
-      font-weight:1000;
-      box-shadow:0 4px 0 rgba(23,22,21,.22);
-    }
-
-    .screen-title {
-      padding:8px 10px;
-      background:#d8fbf7;
-      font-size:20px;
+      line-height:1;
       text-align:center;
     }
 
-    .top-icon {
-      height:42px;
-      display:grid;
-      place-items:center;
-      background:#fffdf8;
-      font-size:16px;
+    .section h2 {
+      margin-bottom:12px;
+      font-size:25px;
+      line-height:1;
     }
 
-    .content-scroll {
+    .checklist {
+      margin:0;
+      padding:0;
+      list-style:none;
+      counter-reset:step;
       display:grid;
-      align-content:start;
       gap:10px;
-      min-height:0;
-      padding-bottom:8px;
-      overflow:hidden;
     }
 
-    .module {
-      position:relative;
-      min-height:92px;
-      padding:10px 44px 10px 10px;
+    .check-item {
+      counter-increment:step;
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:10px;
+      align-items:start;
+      padding:10px;
       border:3px solid var(--ink);
-      border-radius:12px;
+      border-radius:10px;
       background:#fffdf8;
-      box-shadow:0 5px 0 rgba(23,22,21,.18);
+      box-shadow:0 4px 0 rgba(23,22,21,.18);
     }
 
-    .module.hero-module {
-      min-height:122px;
-      background:#d8fbf7;
-    }
-
-    .module.collapsed {
-      min-height:52px;
-      background:#f1e7d3;
-    }
-
-    .module.collapsed span {
-      display:none;
-    }
-
-    .module strong {
-      display:block;
-      font-size:16px;
-      line-height:1.05;
-    }
-
-    .module span {
-      display:block;
-      margin-top:4px;
-      color:var(--muted);
-      font-size:12px;
-      font-weight:850;
-    }
-
-    .menu-dot {
-      position:absolute;
-      right:8px;
-      top:8px;
-      width:30px;
-      height:30px;
+    .check-item::before {
+      content:counter(step);
+      width:34px;
+      height:34px;
       display:grid;
       place-items:center;
       border:3px solid var(--ink);
       border-radius:9px;
       background:var(--gold);
-      color:var(--ink);
-      font-weight:1000;
-      box-shadow:0 3px 0 rgba(23,22,21,.28);
-    }
-
-    .switcher,
-    .dock {
-      display:grid;
-      gap:8px;
-    }
-
-    .switcher {
-      grid-template-columns:1fr 1fr;
-      margin-top:4px;
-      padding:8px;
-      border:3px solid var(--ink);
-      border-radius:12px;
-      background:#fffdf8;
-      box-shadow:0 5px 0 rgba(23,22,21,.18);
-    }
-
-    .dock {
-      grid-template-columns:repeat(4,1fr);
-      padding-top:5px;
-    }
-
-    .btn {
-      min-height:44px;
-      border:3px solid var(--ink);
-      border-radius:10px;
-      background:#fffdf8;
-      color:var(--ink);
-      font-size:12px;
-      font-weight:1000;
-      box-shadow:0 4px 0 rgba(23,22,21,.28);
-    }
-
-    .btn.build { background:#d9ecff; }
-    .btn.fight { background:#ffd7d7; }
-    .btn.active { background:var(--gold); }
-
-    .chat {
-      min-height:34px;
-      display:grid;
-      place-items:center;
-      border:3px solid var(--ink);
-      border-radius:10px;
-      background:#18191f;
-      color:#fffdf8;
-      font-size:12px;
-      font-weight:1000;
-    }
-
-    .fixed-bottom {
-      display:grid;
-      gap:8px;
-    }
-
-    .section-grid {
-      display:grid;
-      grid-template-columns:repeat(4,minmax(0,1fr));
-      gap:14px;
-    }
-
-    .compact-grid {
-      display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
-      gap:14px;
-    }
-
-    .card,
-    .detail-card {
-      padding:14px;
-      border:4px solid var(--ink);
-      border-radius:12px;
-      background:var(--panel);
-      box-shadow:0 7px 0 rgba(23,22,21,.22);
-    }
-
-    .card h2,
-    .detail-card h2 {
-      margin-bottom:10px;
-      font-size:24px;
-      line-height:1;
-    }
-
-    .card p {
-      color:var(--muted);
-      font-weight:850;
-    }
-
-    ul {
-      margin:0;
-      padding-left:20px;
-    }
-
-    li + li {
-      margin-top:5px;
-    }
-
-    .mini-card {
-      display:grid;
-      gap:6px;
-      padding:10px;
-      border:3px solid var(--ink);
-      border-radius:10px;
-      background:#fffdf8;
-      box-shadow:0 5px 0 rgba(23,22,21,.18);
-    }
-
-    .mini-card strong {
       font-size:17px;
-      line-height:1.05;
+      font-weight:1000;
+      box-shadow:0 3px 0 rgba(23,22,21,.22);
     }
 
-    .mini-card span {
-      color:var(--muted);
-      font-size:13px;
-      font-weight:850;
-      line-height:1.32;
-    }
-
-    .step-list {
+    .check-row {
       display:grid;
-      grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+      grid-template-columns:auto 1fr;
       gap:10px;
+      align-items:start;
     }
 
-    .step {
-      min-height:78px;
-      padding:10px;
-      border:3px solid var(--ink);
-      border-radius:10px;
-      background:#f8f1e5;
-      box-shadow:0 4px 0 rgba(23,22,21,.18);
+    input[type="checkbox"] {
+      width:28px;
+      height:28px;
+      margin:1px 0 0;
+      accent-color:var(--fish);
     }
 
-    .step b {
-      display:block;
-      margin-bottom:4px;
+    .check-copy {
+      display:grid;
+      gap:4px;
+      min-width:0;
+    }
+
+    .check-copy strong {
       font-size:18px;
+      line-height:1.08;
+    }
+
+    .check-copy span {
+      color:var(--muted);
+      font-size:14px;
+      font-weight:850;
+      line-height:1.35;
+    }
+
+    .done-note {
+      color:#2c705d;
+      font-size:13px;
+      font-weight:1000;
     }
 
     code {
@@ -400,24 +218,8 @@
       font-size:.92em;
     }
 
-    @media (max-width:960px) {
-      .hero,
-      .section-grid {
-        grid-template-columns:1fr;
-      }
-
-      .phone {
-        width:min(390px, 100%);
-        margin:0 auto;
-      }
-
-      .headline {
-        min-height:0;
-      }
-    }
-
-    @media (max-width:520px) {
-      .quick-grid {
+    @media (max-width:540px) {
+      .check-item {
         grid-template-columns:1fr;
       }
     }
@@ -427,126 +229,107 @@
   <header class="docs-bar">
     <div class="docs-bar-head">
       <p class="docs-eyebrow">Idle Elite Godot Docs</p>
-      <h1>UI Navigation Controls Plan</h1>
-      <p class="docs-lead">A simple plan for page switching, module options, favorites, sorting, and the bottom utility dock.</p>
+      <h1>UI Navigation Controls Checklist</h1>
+      <p class="docs-lead">Implementation checklist for page switching, module controls, favorites, sorting, and bottom dock spacing.</p>
     </div>
     <nav data-docs-nav></nav>
   </header>
 
   <main>
-    <section class="hero">
-      <article class="headline">
-        <p class="kicker">Big UI update</p>
-        <h2>Make long pages easier to control.</h2>
-        <p>Add one module menu to every module, one page switcher at the bottom of each page, and four utility buttons above chat.</p>
-
-        <div class="quick-grid" aria-label="Core decisions">
-          <div class="quick-card"><strong>Module menu</strong><span>Pin, Favorite, Collapse.</span></div>
-          <div class="quick-card"><strong>Page switcher</strong><span>Two colored neighbor buttons.</span></div>
-          <div class="quick-card"><strong>Bottom dock</strong><span>Favorites, Sort, Skills, Ready.</span></div>
-          <div class="quick-card"><strong>Safe spacing</strong><span>No content hidden behind chat.</span></div>
-        </div>
-      </article>
-
-      <aside class="phone" aria-label="Simple UI sketch">
-        <div class="screen">
-          <div class="phone-top">
-            <div class="top-icon">&lt;</div>
-            <div class="screen-title">Fishing</div>
-            <div class="top-icon">...</div>
-          </div>
-
-          <div class="content-scroll">
-            <div class="module hero-module">
-              <strong>Pond Fishing</strong>
-              <span>Regular module area. The menu button always lives in the same corner.</span>
-              <div class="menu-dot">...</div>
-            </div>
-
-            <div class="module">
-              <strong>Favorite Catch</strong>
-              <span>Can be pinned, favorited, collapsed, or sorted.</span>
-              <div class="menu-dot">...</div>
-            </div>
-
-            <div class="module collapsed">
-              <strong>Collapsed Module</strong>
-              <span>Small summary only.</span>
-              <div class="menu-dot">...</div>
-            </div>
-
-            <div class="switcher">
-              <button class="btn build">Building</button>
-              <button class="btn fight">Fighting</button>
-            </div>
-          </div>
-
-          <div class="fixed-bottom">
-            <div class="dock">
-              <button class="btn active">Favs</button>
-              <button class="btn">Sort</button>
-              <button class="btn">Skills</button>
-              <button class="btn">Ready</button>
-            </div>
-
-            <div class="chat">Global chat</div>
-          </div>
-        </div>
-      </aside>
+    <section class="intro">
+      <p class="kicker">Implementation tracker</p>
+      <h2>Build it in order.</h2>
+      <p>Each checkbox is a real implementation step. When a step ships, this page should be updated with that checkbox checked.</p>
     </section>
 
-    <section class="section-grid">
-      <article class="card">
-        <h2>1. Page Switch</h2>
-        <p>Every skill page ends with two buttons: previous skill and next skill. The buttons use the destination skill color.</p>
-      </article>
-
-      <article class="card">
-        <h2>2. Module Menu</h2>
-        <p>Every module gets one small menu button in the same spot. The menu contains Pin, Favorite, and Collapse.</p>
-      </article>
-
-      <article class="card">
-        <h2>3. Bottom Dock</h2>
-        <p>Add four buttons above chat: Favorites, Sort, Skills, and Ready. Keep labels short and readable.</p>
-      </article>
-
-      <article class="card">
-        <h2>4. Spacing</h2>
-        <p>Add bottom padding to scroll pages so the dock and chat never cover the final module.</p>
-      </article>
-    </section>
-
-    <section class="detail-card">
-      <h2>Button Rules</h2>
-      <div class="compact-grid">
-        <div class="mini-card"><strong>Favorites</strong><span>Shows favorited modules. Gold while active.</span></div>
-        <div class="mini-card"><strong>Sort</strong><span>Sort by level order or module type.</span></div>
-        <div class="mini-card"><strong>Skills</strong><span>Returns to the skill hub.</span></div>
-        <div class="mini-card"><strong>Ready</strong><span>Jumps to the active or reward-ready module.</span></div>
+    <section class="section">
+      <h2>Icon Drafts</h2>
+      <div class="icon-grid">
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-favorites-star.png" alt="Favorites icon"><strong>Favorites</strong></div>
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-sort-cards.png" alt="Sort icon"><strong>Sort</strong></div>
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-skills-gems.png" alt="Skills icon"><strong>Skills</strong></div>
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-ready-bolt.png" alt="Ready icon"><strong>Ready</strong></div>
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-module-menu-dots.png" alt="Module menu icon"><strong>Module Menu</strong></div>
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-pin-module.png" alt="Pin icon"><strong>Pin</strong></div>
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-collapse-panel.png" alt="Collapse icon"><strong>Collapse</strong></div>
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-move-to-top.png" alt="Move to top icon"><strong>Move To Top</strong></div>
+        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-future-plus.png" alt="Future action icon"><strong>Future</strong></div>
       </div>
     </section>
 
-    <section class="detail-card">
-      <h2>Module State Rules</h2>
-      <div class="compact-grid">
-        <div class="mini-card"><strong>Pin</strong><span>Move module to the top of this page.</span></div>
-        <div class="mini-card"><strong>Favorite</strong><span>Add module to the Favorites view.</span></div>
-        <div class="mini-card"><strong>Collapse</strong><span>Shrink module, but keep it visible.</span></div>
-        <div class="mini-card"><strong>Sort</strong><span>Sort normal modules. Pinned modules stay first.</span></div>
-      </div>
-    </section>
-
-    <section class="detail-card">
-      <h2>Build Order</h2>
-      <div class="step-list">
-        <div class="step"><b>1</b>Add bottom dock.</div>
-        <div class="step"><b>2</b>Add safe scroll spacing.</div>
-        <div class="step"><b>3</b>Add module menus.</div>
-        <div class="step"><b>4</b>Add Favorites and Sort.</div>
-        <div class="step"><b>5</b>Add page switcher.</div>
-        <div class="step"><b>6</b>Run <code>.\scripts\check-project.ps1</code>.</div>
-      </div>
+    <section class="section">
+      <h2>Main Checklist</h2>
+      <ol class="checklist">
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Generate first-pass UI icons.</strong><span>Created transparent PNG drafts for Favorites, Sort, Skills, Ready, Module Menu, Pin, Collapse, Move To Top, and Future.</span><span class="done-note">Done: icon drafts are shown above and saved in <code>docs/assets/ui-navigation-icons/</code>.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Find the shared module render paths.</strong><span>Identify every place modules are built, including skill detail pages, fishing area modules, passive/collect modules, and any special event modules.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Define stable module keys.</strong><span>Create a consistent key format for pin, favorite, collapse, and sort state. Do not use display names as IDs.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add save data for module UI preferences.</strong><span>Store pinned modules, favorites, collapsed modules, and sort mode separately from activity progress.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add one module menu button to every module.</strong><span>Use the same corner and same visual style everywhere. The button opens actions for that module.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Build the module dropdown.</strong><span>The dropdown must include Pin, Favorite, and Collapse. It should close cleanly after selection or outside tap.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Implement Pin.</strong><span>Pinned modules move to the top of the current page. Pinned modules keep their normal behavior.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Implement Favorite.</strong><span>Favorited modules are added to the Favorites view and can be removed from the same menu.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Implement Collapse.</strong><span>Collapsed modules shrink to a compact row but remain visible and expandable.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add the bottom dock above global chat.</strong><span>Dock buttons: Favorites, Sort, Skills, Ready. Use dark readable text on light buttons.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add safe bottom spacing to scroll pages.</strong><span>At max scroll, the final module must not be hidden behind the dock or chat strip.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Build the Favorites view.</strong><span>Favorites opens from the dock. Pressing Favorites again exits the view.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Build the Sort menu.</strong><span>Sort modes: level order and module type. Pinned modules stay above sorted modules.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Move Skills navigation into the dock.</strong><span>The Skills button returns to the skill hub from skill pages.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Build the Ready button behavior.</strong><span>Ready jumps to the active action first, then reward-ready modules, then newly important modules.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Define the skill page neighbor order.</strong><span>Use a single ring order for page switching so every page has a previous and next destination.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add page switch module to skill pages.</strong><span>The final module on each skill page has two destination-colored buttons.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Block accidental input behind dock menus.</strong><span>Dock taps, dropdown taps, and menu taps must not start swipes or press modules underneath.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Refresh visual states after changes.</strong><span>Pin, favorite, collapse, sort, and favorites mode should redraw immediately without needing a full restart.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Run project validation.</strong><span>Use <code>.\scripts\check-project.ps1</code> and follow Godot process safety rules.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Manual layout pass on a long page.</strong><span>Inspect a long skill page at max scroll and confirm the bottom module, dock, and chat do not overlap.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Manual layout pass on a short page.</strong><span>Confirm the dock still sits naturally above chat when there is not much page content.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Update this checklist.</strong><span>Check off every completed item and add notes for anything deferred.</span></div></div>
+        </li>
+      </ol>
     </section>
   </main>
 
