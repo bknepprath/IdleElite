@@ -25,6 +25,8 @@ const OrganicLeaderboardBorder = preload("res://scripts/ui/organic_leaderboard_b
 const ActivityCardInnerShadow = preload("res://scripts/ui/activity_card_inner_shadow.gd")
 const SkillDetailPageShelfShadow = preload("res://scripts/ui/skill_detail_page_shelf_shadow.gd")
 const SkillMenuPanelChrome = preload("res://scripts/ui/skill_menu_panel_chrome.gd")
+const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
+const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_border.gd")
 
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
@@ -286,6 +288,8 @@ class RegenCircle:
 		_draw_center_text(center)
 
 	func _ensure_glass_bowl_texture() -> void:
+		if DisplayServer.get_name() == "headless":
+			return
 		var draw_size := size.floor()
 		if draw_size.x < 2.0 or draw_size.y < 2.0:
 			return
@@ -1650,43 +1654,6 @@ class ActivityProgressRail:
 
 
 
-class ActivityCardBorder:
-	extends Control
-
-	const FAST_ARC_SEGMENTS := 8
-
-	var border_color := Color("#171615")
-	var border_width := 8.0
-	var radius := ACTION_CARD_FACE_RADIUS
-
-	func _draw() -> void:
-		var half := border_width * 0.5
-		var left := half
-		var right := maxf(half, size.x - half)
-		var top := half
-		var bottom := maxf(half, size.y - half)
-		var r := maxf(0.0, minf(radius, minf(size.x, size.y) * 0.5 - half))
-		var points := PackedVector2Array()
-		points.append(Vector2(left + r, top))
-		points.append(Vector2(right - r, top))
-		_append_arc_points(points, Vector2(right - r, top + r), r, -PI * 0.5, 0.0)
-		points.append(Vector2(right, bottom - r))
-		_append_arc_points(points, Vector2(right - r, bottom - r), r, 0.0, PI * 0.5)
-		points.append(Vector2(left + r, bottom))
-		_append_arc_points(points, Vector2(left + r, bottom - r), r, PI * 0.5, PI)
-		points.append(Vector2(left, top + r))
-		_append_arc_points(points, Vector2(left + r, top + r), r, PI, PI * 1.5)
-		if not points.is_empty():
-			points.append(points[0])
-			draw_polyline(points, border_color, border_width, true)
-
-	func _append_arc_points(points: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, end_angle: float) -> void:
-		for i in range(1, FAST_ARC_SEGMENTS + 1):
-			var t := float(i) / float(FAST_ARC_SEGMENTS)
-			var angle := lerpf(start_angle, end_angle, t)
-			points.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
-
-
 class ActivityCardDepth:
 	extends Control
 
@@ -2064,44 +2031,6 @@ class ActivityCardDepth:
 
 
 
-class PassiveModuleCardBorder:
-	extends Control
-
-	const FAST_ARC_SEGMENTS := 8
-
-	var border_color := Color("#171615")
-	var border_width := 8.0
-	var radius := 66.0
-	var bottom_trim := 0.0
-
-	func _draw() -> void:
-		var half := border_width * 0.5
-		var left := half
-		var right := maxf(half, size.x - half)
-		var top := half
-		var bottom := maxf(top + radius, size.y - half - maxf(0.0, bottom_trim))
-		var r := maxf(0.0, minf(radius, minf(size.x, size.y) * 0.5 - half))
-		var points := PackedVector2Array()
-		points.append(Vector2(left, bottom))
-		points.append(Vector2(left, top + r))
-		_append_arc_points(points, Vector2(left + r, top + r), r, PI, PI * 1.5)
-		points.append(Vector2(right - r, top))
-		_append_arc_points(points, Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0)
-		points.append(Vector2(right, bottom))
-		draw_polyline(points, border_color, border_width, true)
-
-	func _append_arc_points(points: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, end_angle: float) -> void:
-		for i in range(1, FAST_ARC_SEGMENTS + 1):
-			var t := float(i) / float(FAST_ARC_SEGMENTS)
-			var angle := lerpf(start_angle, end_angle, t)
-			points.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
-
-
-
-
-
-
-
 class RoundedTextureRect:
 	extends Control
 
@@ -2327,6 +2256,8 @@ void fragment() {
 		mask_params_fallback_color = fallback_color
 
 	static func _fallback_texture() -> Texture2D:
+		if DisplayServer.get_name() == "headless":
+			return null
 		if shared_fallback_texture != null:
 			return shared_fallback_texture
 		var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
@@ -41812,6 +41743,8 @@ func _rerender_after_fishing_tool_collect() -> void:
 func _cropped_unlock_padlock_texture() -> Texture2D:
 	if unlock_padlock_texture != null:
 		return unlock_padlock_texture
+	if not _can_create_image_textures():
+		return null
 	var image := _cropped_unlock_padlock_image()
 	if image == null:
 		return null
@@ -41851,6 +41784,8 @@ func _unlock_padlock_pulse_texture() -> Texture2D:
 	if imported_mask != null:
 		unlock_padlock_pulse_texture = imported_mask
 		return unlock_padlock_pulse_texture
+	if not _can_create_image_textures():
+		return null
 	var source := _cropped_unlock_padlock_texture()
 	if source == null:
 		return null
@@ -45985,6 +45920,8 @@ void fragment() {
 func _achievement_empty_medal_texture() -> Texture2D:
 	if achievement_empty_medal_texture != null:
 		return achievement_empty_medal_texture
+	if not _can_create_image_textures():
+		return null
 	var sheet := _texture(MASTERY_MEDALS_TEXTURE)
 	if sheet == null:
 		return null
@@ -46026,6 +45963,8 @@ func _achievement_empty_medal_texture() -> Texture2D:
 func _mastery_medal_dot_texture() -> Texture2D:
 	if mastery_medal_dot_texture != null:
 		return mastery_medal_dot_texture
+	if not _can_create_image_textures():
+		return null
 	var texture_size_px := 128
 	var radius := 6.5
 	var center := Vector2(float(texture_size_px) * 0.5, float(texture_size_px) * 0.5)
@@ -48795,6 +48734,10 @@ func _trim_trailing_decimal_zeroes(text: String) -> String:
 	return "0" if text == "-0" else text
 
 
+func _can_create_image_textures() -> bool:
+	return DisplayServer.get_name() != "headless"
+
+
 func _format_duration(seconds: float) -> String:
 	var total_seconds := maxi(0, int(ceil(seconds)))
 	var hours := int(floor(float(total_seconds) / 3600.0))
@@ -48832,6 +48775,9 @@ func _label(text: String, font_size: int, color: Color, align: HorizontalAlignme
 
 
 func _texture_from_image(path: String, image: Image) -> Texture2D:
+	if not _can_create_image_textures():
+		texture_cache[_res_path(path)] = null
+		return null
 	var texture := ImageTexture.create_from_image(image)
 	texture_cache[_res_path(path)] = texture
 	return texture
@@ -48927,6 +48873,9 @@ func _visual_fallback_texture() -> Texture2D:
 	var cache_key := "__visual_fallback_texture__"
 	if texture_cache.has(cache_key):
 		return texture_cache[cache_key] as Texture2D
+	if not _can_create_image_textures():
+		texture_cache[cache_key] = null
+		return null
 	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 	image.fill(Color(1.0, 1.0, 1.0, 0.0))
 	var texture := ImageTexture.create_from_image(image)
@@ -49625,6 +49574,8 @@ func _apply_auto_unlock_lockpad_toggle_style(button: Button) -> void:
 func _audio_slider_grabber() -> Texture2D:
 	if audio_slider_grabber_texture != null:
 		return audio_slider_grabber_texture
+	if not _can_create_image_textures():
+		return null
 	var diameter := 96
 	var radius := float(diameter) * 0.5
 	var border := 14.0
@@ -50077,38 +50028,38 @@ func _paper_button_style_with_shape(color: Color, radius: int, margin := 72, pre
 	var key := "%s:%s:%s:%s:%s:%s:%s" % [color.to_html(true), radius, margin, pressed, disabled, outline_color.to_html(true), bevel_side_lift]
 	if paper_button_style_textures.has(key):
 		return paper_button_style_textures[key] as StyleBoxTexture
-	var texture_size := Vector2i(128, 92)
-	var border := PAPER_BUTTON_OUTLINE_WIDTH
-	var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
-	var inner := outer.grow(-border)
-	var inner_radius := 14.0
-	var bevel_height := 22.0
-	var bevel_strength := 0.40 if not disabled else 0.22
-	var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 0, 0, 0))
-	var fill := color.darkened(0.08 if pressed else 0.0)
-	if disabled:
-		fill = color.darkened(0.12)
-	for y in range(texture_size.y):
-		for x in range(texture_size.x):
-			var point := Vector2(float(x) + 0.5, float(y) + 0.5)
-			if not _button_texture_contains(point, outer, 22.0):
-				continue
-			var pixel := outline_color
-			if _button_texture_contains(point, inner, inner_radius):
-				pixel = fill
-				var horizontal := absf((point.x - (inner.position.x + inner.size.x * 0.5)) / maxf(1.0, inner.size.x * 0.5))
-				var side_curve := pow(clampf(horizontal, 0.0, 1.0), 2.15)
-				var bevel_top := inner.end.y - bevel_height - bevel_side_lift * side_curve + (4.0 if pressed else 0.0)
-				if point.y >= bevel_top:
-					var shade_t := clampf((point.y - bevel_top) / bevel_height, 0.0, 1.0)
-					pixel = fill.lerp(fill.darkened(bevel_strength), 0.38 + shade_t * 0.58)
-				elif point.y <= inner.position.y + 5.0 and not pressed:
-					pixel = fill.lightened(0.12)
-			image.set_pixel(x, y, pixel)
-	var texture := ImageTexture.create_from_image(image)
 	var style := StyleBoxTexture.new()
-	style.texture = texture
+	if _can_create_image_textures():
+		var texture_size := Vector2i(128, 92)
+		var border := PAPER_BUTTON_OUTLINE_WIDTH
+		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
+		var inner := outer.grow(-border)
+		var inner_radius := 14.0
+		var bevel_height := 22.0
+		var bevel_strength := 0.40 if not disabled else 0.22
+		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
+		image.fill(Color(0, 0, 0, 0))
+		var fill := color.darkened(0.08 if pressed else 0.0)
+		if disabled:
+			fill = color.darkened(0.12)
+		for y in range(texture_size.y):
+			for x in range(texture_size.x):
+				var point := Vector2(float(x) + 0.5, float(y) + 0.5)
+				if not _button_texture_contains(point, outer, 22.0):
+					continue
+				var pixel := outline_color
+				if _button_texture_contains(point, inner, inner_radius):
+					pixel = fill
+					var horizontal := absf((point.x - (inner.position.x + inner.size.x * 0.5)) / maxf(1.0, inner.size.x * 0.5))
+					var side_curve := pow(clampf(horizontal, 0.0, 1.0), 2.15)
+					var bevel_top := inner.end.y - bevel_height - bevel_side_lift * side_curve + (4.0 if pressed else 0.0)
+					if point.y >= bevel_top:
+						var shade_t := clampf((point.y - bevel_top) / bevel_height, 0.0, 1.0)
+						pixel = fill.lerp(fill.darkened(bevel_strength), 0.38 + shade_t * 0.58)
+					elif point.y <= inner.position.y + 5.0 and not pressed:
+						pixel = fill.lightened(0.12)
+				image.set_pixel(x, y, pixel)
+		style.texture = ImageTexture.create_from_image(image)
 	style.texture_margin_left = 30
 	style.texture_margin_right = 30
 	style.texture_margin_top = 30

@@ -6,6 +6,8 @@ $cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
 $activityCardInnerShadowPath = Join-Path $projectRoot "scripts\ui\activity_card_inner_shadow.gd"
 $skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detail_page_shelf_shadow.gd"
 $skillMenuPanelChromePath = Join-Path $projectRoot "scripts\ui\skill_menu_panel_chrome.gd"
+$activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_border.gd"
+$passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -60,6 +62,10 @@ Assert-True (Test-Path -LiteralPath $skillDetailPageShelfShadowPath) "Missing sc
 $skillDetailPageShelfShadow = Get-Content -LiteralPath $skillDetailPageShelfShadowPath -Raw
 Assert-True (Test-Path -LiteralPath $skillMenuPanelChromePath) "Missing scripts\ui\skill_menu_panel_chrome.gd."
 $skillMenuChrome = Get-Content -LiteralPath $skillMenuPanelChromePath -Raw
+Assert-True (Test-Path -LiteralPath $activityCardBorderPath) "Missing scripts\ui\activity_card_border.gd."
+$activityCardBorder = Get-Content -LiteralPath $activityCardBorderPath -Raw
+Assert-True (Test-Path -LiteralPath $passiveModuleCardBorderPath) "Missing scripts\ui\passive_module_card_border.gd."
+$passiveCardBorder = Get-Content -LiteralPath $passiveModuleCardBorderPath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -513,6 +519,14 @@ $detailCardStylePrewarm = Get-FunctionBody -Text $main -Name "_prewarm_detail_ca
 Assert-True ($detailCardStylePrewarm -match '_stat_box_style\(false, false\)') "Detail card style prewarm should allocate default stat-box styles before lazy card construction."
 Assert-True ($detailCardStylePrewarm -match '_stat_box_style\(true, true\)') "Detail card style prewarm should allocate active pressed stat-box styles before lazy card construction."
 Assert-True ($detailCardStylePrewarm -match '_action_art_style\(\)') "Detail card style prewarm should warm cached action-art styles before lazy card construction."
+$canCreateImageTextures = Get-FunctionBody -Text $main -Name "_can_create_image_textures"
+Assert-True ($canCreateImageTextures -match 'DisplayServer\.get_name\(\) != "headless"') "Headless validation should not synthesize ImageTexture resources."
+$textureFromImage = Get-FunctionBody -Text $main -Name "_texture_from_image"
+Assert-True ($textureFromImage -match 'not _can_create_image_textures\(\)') "Loaded image fallback textures should be skipped during headless validation."
+$visualFallbackTexture = Get-FunctionBody -Text $main -Name "_visual_fallback_texture"
+Assert-True ($visualFallbackTexture -match 'not _can_create_image_textures\(\)') "Visual fallback textures should be skipped during headless validation."
+$paperButtonStyle = Get-FunctionBody -Text $main -Name "_paper_button_style_with_shape"
+Assert-True ($paperButtonStyle -match 'if _can_create_image_textures\(\):[\s\S]*ImageTexture\.create_from_image') "Generated paper button textures should only be created outside headless validation."
 
 $beginDetailLazy = Get-FunctionBody -Text $main -Name "_begin_detail_lazy_card_list_render"
 $finishDetailLazy = Get-FunctionBody -Text $main -Name "_finish_detail_lazy_card_list_render"
@@ -819,15 +833,15 @@ $actionCardRelease = Get-FunctionBody -Text $main -Name "_route_action_card_rele
 Assert-True ($actionCardRelease -match '_first_position_in_rect\(release_positions, pop\.get_global_rect\(\)\) == null') "Action-card release should still check the moving pressed face."
 Assert-True ($actionCardRelease -match '_first_position_in_rect\(release_positions, root\.get_global_rect\(\)\) == null') "Fully pressed action cards should keep release hit-testing against the stationary card root."
 
-$activityCardBorder = Get-ClassBody -Text $main -Name "ActivityCardBorder"
 Assert-True ($activityCardBorder -match 'const FAST_ARC_SEGMENTS := 8') "Activity card borders should keep rounded outlines smooth while staying low-detail."
-Assert-True ($activityCardBorder -match 'var radius := ACTION_CARD_FACE_RADIUS') "Activity-card borders should use the same radius as the masked background."
+Assert-True ($main -match 'const ActivityCardBorder = preload\("res://scripts/ui/activity_card_border\.gd"\)') "Activity-card borders should live in a reusable UI control file."
+Assert-True ($activityCardBorder -match 'var radius := 66\.0') "Activity-card borders should default to the same radius as the masked background."
 Assert-True ($activityCardBorder -match 'maxf\(0\.0, minf\(radius') "Activity card borders should clamp tiny-layout radii before drawing."
 Assert-True ($activityCardBorder -match 'draw_polyline') "Activity card borders should render as one polyline path instead of separate line/arc draws."
 Assert-True ($activityCardBorder -notmatch 'draw_arc\(') "Activity card borders must not return to separate arc draw calls."
 Assert-True ($activityCardBorder -notmatch 'draw_line\(') "Activity card borders must not return to separate line draw calls."
-$passiveCardBorder = Get-ClassBody -Text $main -Name "PassiveModuleCardBorder"
 Assert-True ($passiveCardBorder -match 'const FAST_ARC_SEGMENTS := 8') "Passive card borders should keep rounded outlines smooth while staying low-detail."
+Assert-True ($main -match 'const PassiveModuleCardBorder = preload\("res://scripts/ui/passive_module_card_border\.gd"\)') "Passive module borders should live in a reusable UI control file."
 Assert-True ($passiveCardBorder -match 'maxf\(0\.0, minf\(radius') "Passive card borders should clamp tiny-layout radii before drawing."
 Assert-True ($passiveCardBorder -match 'draw_polyline') "Passive card borders should render as one polyline path instead of separate line/arc draws."
 Assert-True ($passiveCardBorder -notmatch 'draw_arc\(') "Passive card borders must not return to separate arc draw calls."
