@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
+$cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -48,6 +49,8 @@ function Get-ClassBody {
 
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
 $main = Get-Content -LiteralPath $mainPath -Raw
+Assert-True (Test-Path -LiteralPath $cleanProgressPath) "Missing scripts\ui\clean_progress_bar.gd."
+$cleanProgress = Get-Content -LiteralPath $cleanProgressPath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -902,7 +905,6 @@ $cardInnerShadow = Get-ClassBody -Text $main -Name "ActivityCardInnerShadow"
 Assert-True ($cardInnerShadow -match 'var lines := maxi\(1, int\(minf\(8\.0, shadow_height\)\)\)') "Activity card inner shadows should stay capped to eight draw lines."
 Assert-True ($cardInnerShadow -notmatch 'range\(int\(shadow_height\)\)') "Activity card inner shadows must not draw one line per shadow pixel."
 
-$cleanProgress = Get-ClassBody -Text $main -Name "CleanProgressBar"
 $cleanSetValueMatch = [regex]::Match($cleanProgress, "(?ms)^\s+func set_value\b.*?(?=^\s+func |\z)")
 Assert-True $cleanSetValueMatch.Success "Could not find clean progress bar value setter."
 $cleanSetValue = $cleanSetValueMatch.Value
