@@ -128,6 +128,11 @@
       text-align:center;
     }
 
+    .icon-card.is-selected {
+      background:var(--gold);
+      box-shadow:0 5px 0 rgba(23,22,21,.28);
+    }
+
     .icon-note {
       margin:0 0 10px;
       color:var(--muted);
@@ -252,16 +257,11 @@
 
     <section class="section">
       <h2>Icon Drafts V3</h2>
-      <p class="icon-note">Favorites will use the existing <code>*</code> star. Menu dots are removed for now. Current focus: pure black Sort, all-skills overview, and the thumbtack.</p>
+      <p class="icon-note">Chosen direction: use the top-right Sort candidate and bottom-left Skills candidate from the latest sheet. Favorites will use the existing <code>*</code> star.</p>
       <div class="icon-grid">
-        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-sort-list-black-rounded-v3.png" alt="Rounded black sort list icon candidate"><strong>Sort Rounded</strong></div>
-        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-sort-list-black-square-v3.png" alt="Square black sort list icon candidate"><strong>Sort Square</strong></div>
-        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-skills-circles-cluster-v3.png" alt="All skills circle cluster icon candidate"><strong>Skills Cluster</strong></div>
-        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-skills-circles-breakdown-v3.png" alt="All skills breakdown circle icon candidate"><strong>Skills Breakdown</strong></div>
-        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-pin-flat-v1.png" alt="Flat pin icon candidate one"><strong>Pin Flat 1</strong></div>
-        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-pin-flat-v2.png" alt="Flat pin icon candidate two"><strong>Pin Flat 2</strong></div>
-        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-pin-flat-v3.png" alt="Flat pin icon candidate three"><strong>Pin Flat 3</strong></div>
-        <div class="icon-card"><img src="assets/ui-navigation-icons/icon-pin-flat-v4.png" alt="Flat pin icon candidate four"><strong>Pin Flat 4</strong></div>
+        <div class="icon-card is-selected"><img src="assets/ui-navigation-icons/icon-sort-list-black-square-v3.png" alt="Chosen sort icon"><strong>Sort</strong></div>
+        <div class="icon-card is-selected"><img src="assets/ui-navigation-icons/icon-skills-circles-cluster-v3.png" alt="Chosen skills overview icon"><strong>Skills</strong></div>
+        <div class="icon-card is-selected"><img src="assets/ui-navigation-icons/icon-pin-flat-v2.png" alt="Chosen pin icon"><strong>Pin</strong></div>
       </div>
     </section>
 
