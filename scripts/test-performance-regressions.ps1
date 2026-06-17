@@ -8,6 +8,7 @@ $skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detai
 $skillMenuPanelChromePath = Join-Path $projectRoot "scripts\ui\skill_menu_panel_chrome.gd"
 $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_border.gd"
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
+$actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -66,6 +67,8 @@ Assert-True (Test-Path -LiteralPath $activityCardBorderPath) "Missing scripts\ui
 $activityCardBorder = Get-Content -LiteralPath $activityCardBorderPath -Raw
 Assert-True (Test-Path -LiteralPath $passiveModuleCardBorderPath) "Missing scripts\ui\passive_module_card_border.gd."
 $passiveCardBorder = Get-Content -LiteralPath $passiveModuleCardBorderPath -Raw
+Assert-True (Test-Path -LiteralPath $actionArtTextureRectPath) "Missing scripts\ui\action_art_texture_rect.gd."
+$actionArtTexture = Get-Content -LiteralPath $actionArtTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -976,7 +979,7 @@ $roundedStoreMaskParams = [regex]::Match($roundedTexture, "(?ms)^\s+func _store_
 Assert-True $roundedStoreMaskParams.Success "Could not find rounded card background mask-parameter storage."
 Assert-True ($roundedStoreMaskParams.Value -match 'current_texture: Texture2D') "Rounded card backgrounds should store the already-resolved shader texture."
 Assert-True ($roundedStoreMaskParams.Value -match 'mask_params_texture = current_texture') "Rounded card backgrounds should cache the effective non-null texture after syncing."
-$actionArtTexture = Get-ClassBody -Text $main -Name "ActionArtTextureRect"
+Assert-True ($main -match 'const ActionArtTextureRect = preload\("res://scripts/ui/action_art_texture_rect\.gd"\)') "Action art images should live in a reusable UI control file."
 Assert-True ($actionArtTexture -match 'static var shared_mask_shader: Shader') "Action art images should share one mask shader program."
 Assert-True ($actionArtTexture -match 'shader_material\.shader = shared_mask_shader') "Action art images should not allocate a unique Shader for every card."
 Assert-True ($actionArtTexture -match 'var use_mask_material := false') "Action art cutouts should default to the plain TextureRect render path."
