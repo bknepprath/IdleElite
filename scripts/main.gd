@@ -19,6 +19,9 @@ const PassiveIconSprite = preload("res://scripts/ui/passive_icon_sprite.gd")
 const PassiveLogPileSprite = preload("res://scripts/ui/passive_log_pile_sprite.gd")
 const PassivePileShadow = preload("res://scripts/ui/passive_pile_shadow.gd")
 const AchievementMedalSlotStrip = preload("res://scripts/ui/achievement_medal_slot_strip.gd")
+const ActivityStartHighlightRing = preload("res://scripts/ui/activity_start_highlight_ring.gd")
+const RoundedCornerCropOverlay = preload("res://scripts/ui/rounded_corner_crop_overlay.gd")
+const OrganicLeaderboardBorder = preload("res://scripts/ui/organic_leaderboard_border.gd")
 
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
@@ -2057,60 +2060,6 @@ class ActivityCardDepth:
 			)
 
 
-class ActivityStartHighlightRing:
-	extends Control
-
-	var glow_color := Color("#ffd84a")
-	var corner_radius := 66.0
-	var outer_pad := 34.0
-	var gap := 26.0
-	var ring_thickness := 18.0
-	var blur_spread := 22.0
-	var blur_layers := 12
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()
-
-	func set_glow_alpha(alpha: float) -> void:
-		modulate.a = alpha
-		queue_redraw()
-
-	func _draw() -> void:
-		var inner := Rect2(
-			outer_pad,
-			outer_pad,
-			maxf(1.0, size.x - outer_pad * 2.0),
-			maxf(1.0, size.y - outer_pad * 2.0)
-		)
-		var max_dist := gap + ring_thickness + blur_spread
-		for layer_index in range(blur_layers):
-			var t := float(layer_index) / float(maxi(blur_layers - 1, 1))
-			var dist := gap + t * (ring_thickness + blur_spread)
-			dist = minf(dist, max_dist)
-			var alpha := pow(1.0 - t, 1.55) * 0.48 * modulate.a
-			var col := Color(glow_color.r, glow_color.g, glow_color.b, alpha)
-			var width := maxf(2.5, (ring_thickness + blur_spread) / float(blur_layers) * 1.4)
-			_draw_rounded_outline(inner.grow(dist), corner_radius + dist * 0.42, width, col)
-
-	func _draw_rounded_outline(rect: Rect2, radius: float, width: float, color: Color) -> void:
-		var half := width * 0.5
-		var left := rect.position.x + half
-		var right := rect.position.x + rect.size.x - half
-		var top := rect.position.y + half
-		var bottom := rect.position.y + rect.size.y - half
-		if right <= left + radius * 2.0 or bottom <= top + radius * 2.0:
-			return
-		var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5 - half)
-		draw_line(Vector2(left + r, top), Vector2(right - r, top), color, width, true)
-		draw_line(Vector2(left + r, bottom), Vector2(right - r, bottom), color, width, true)
-		draw_line(Vector2(left, top + r), Vector2(left, bottom - r), color, width, true)
-		draw_line(Vector2(right, top + r), Vector2(right, bottom - r), color, width, true)
-		draw_arc(Vector2(left + r, top + r), r, PI, PI * 1.5, 8, color, width, true)
-		draw_arc(Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0, 8, color, width, true)
-		draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, 8, color, width, true)
-		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 8, color, width, true)
-
 
 class PassiveModuleCardBorder:
 	extends Control
@@ -2145,79 +2094,6 @@ class PassiveModuleCardBorder:
 			points.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
 
 
-class RoundedCornerCropOverlay:
-	extends Control
-
-	var radius := 66.0
-	var cover_color := Color("#f8f1e5")
-
-	func _draw() -> void:
-		if size.x <= 2.0 or size.y <= 2.0:
-			return
-		var r := minf(radius, minf(size.x, size.y) * 0.5)
-		var step := 1.0
-		var y := 0.0
-		while y < r:
-			var sample_y := y + step * 0.5
-			var dy := sample_y - r
-			var inset := r - sqrt(maxf(0.0, r * r - dy * dy))
-			if inset > 0.0:
-				draw_rect(Rect2(Vector2(0.0, y), Vector2(inset, step)), cover_color)
-				draw_rect(Rect2(Vector2(size.x - inset, y), Vector2(inset, step)), cover_color)
-				draw_rect(Rect2(Vector2(0.0, size.y - y - step), Vector2(inset, step)), cover_color)
-				draw_rect(Rect2(Vector2(size.x - inset, size.y - y - step), Vector2(inset, step)), cover_color)
-			y += step
-
-
-class OrganicLeaderboardBorder:
-	extends Control
-
-	var border_color := Color("#77c9ff")
-	var paper_color := Color("#f8f1e5")
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()
-
-	func _draw() -> void:
-		if size.x <= 220.0 or size.y <= 320.0:
-			return
-		draw_rect(Rect2(Vector2.ZERO, size), border_color)
-		var paper_shape := _inner_paper_shape()
-		draw_polygon(paper_shape, PackedColorArray([paper_color]))
-		var paper_edge := PackedVector2Array(paper_shape)
-		if not paper_edge.is_empty():
-			paper_edge.append(paper_edge[0])
-			draw_polyline(paper_edge, paper_color, 86.0, true)
-
-	func _inner_paper_shape() -> PackedVector2Array:
-		var points := []
-		var left_top_side := Vector2(104.0, 520.0)
-		var top_left := Vector2(238.0, 270.0)
-		var top_mid := Vector2(size.x * 0.50, 246.0)
-		var top_right := Vector2(size.x - 214.0, 270.0)
-		var right_top_side := Vector2(size.x - 104.0, 520.0)
-		var right_mid := Vector2(size.x - 96.0, size.y * 0.48)
-		var right_bottom := Vector2(size.x - 112.0, size.y + 180.0)
-		var left_bottom := Vector2(112.0, size.y + 180.0)
-		var left_mid := Vector2(104.0, size.y * 0.48)
-		points.append(left_top_side)
-		_append_leaderboard_curve(points, left_top_side, Vector2(108.0, 382.0), Vector2(126.0, 300.0), top_left, 96)
-		_append_leaderboard_curve(points, top_left, Vector2(344.0, 216.0), Vector2(size.x * 0.34, 244.0), top_mid, 112)
-		_append_leaderboard_curve(points, top_mid, Vector2(size.x * 0.66, 244.0), Vector2(size.x - 330.0, 216.0), top_right, 112)
-		_append_leaderboard_curve(points, top_right, Vector2(size.x - 118.0, 300.0), Vector2(size.x - 108.0, 382.0), right_top_side, 96)
-		_append_leaderboard_curve(points, right_top_side, Vector2(size.x - 78.0, size.y * 0.30), Vector2(size.x - 118.0, size.y * 0.36), right_mid, 128)
-		_append_leaderboard_curve(points, right_mid, Vector2(size.x - 72.0, size.y * 0.64), Vector2(size.x - 112.0, size.y * 0.86), right_bottom, 128)
-		points.append(left_bottom)
-		_append_leaderboard_curve(points, left_bottom, Vector2(112.0, size.y * 0.86), Vector2(72.0, size.y * 0.64), left_mid, 128)
-		_append_leaderboard_curve(points, left_mid, Vector2(118.0, size.y * 0.36), Vector2(78.0, size.y * 0.30), left_top_side, 128)
-		return PackedVector2Array(points)
-
-	func _append_leaderboard_curve(points: Array, p0: Vector2, c1: Vector2, c2: Vector2, p3: Vector2, steps: int) -> void:
-		for i in range(1, steps + 1):
-			var t := float(i) / float(steps)
-			var inv := 1.0 - t
-			points.append(inv * inv * inv * p0 + 3.0 * inv * inv * t * c1 + 3.0 * inv * t * t * c2 + t * t * t * p3)
 
 
 class ActivityCardInnerShadow:
