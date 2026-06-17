@@ -11,6 +11,7 @@ $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
+$activityCardDepthPath = Join-Path $projectRoot "scripts\ui\activity_card_depth.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -75,6 +76,8 @@ Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui
 $roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $mobileScrollContainerPath) "Missing scripts\ui\mobile_scroll_container.gd."
 $mobileScrollContainer = Get-Content -LiteralPath $mobileScrollContainerPath -Raw
+Assert-True (Test-Path -LiteralPath $activityCardDepthPath) "Missing scripts\ui\activity_card_depth.gd."
+$activityCardDepth = Get-Content -LiteralPath $activityCardDepthPath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -123,7 +126,6 @@ Assert-True ($main -match 'const DETAIL_LAZY_WINDOW_SYNC_INTERVAL_SECONDS := 0\.
 Assert-True ($main -match 'const BACKGROUND_MAINTENANCE_INTERVAL_SECONDS := 0\.25') "Non-visual background maintenance should be grouped into a budgeted tick."
 Assert-True ($main -match 'const BACKGROUND_MAINTENANCE_STEP_COUNT := 7') "Background maintenance should be sliced across frames instead of batched into one frame."
 Assert-True ($main -match 'const SKILL_DETAIL_PAGE_CACHE_MAX := 0') "Skill detail pages should not remain cached as hidden node trees while idle."
-Assert-True ($main -match 'const ACTION_CARD_FAST_DEPTH_SHAPE_ENABLED := true') "Activity card 3D depth should use the fast low-draw shape."
 Assert-True ($main -match 'const SKILL_SWIPE_IDLE_PREWARM_ENABLED := false') "Skill swipe previews must not be prewarmed while idle."
 Assert-True ($main -match 'const SKILL_SWIPE_PREVIEW_CACHE_PARKED_PAGES := false') "Parked skill swipe previews must not stay cached as hidden UI."
 Assert-True ($main -match 'const SKILL_SWIPE_PAGE_FADE_ENABLED := false') "Skill swipes should not alpha-fade every live page node during navigation."
@@ -796,7 +798,7 @@ $storeSkillCache = Get-FunctionBody -Text $main -Name "_store_skill_detail_cache
 Assert-True ($storeSkillCache -match 'SKILL_DETAIL_PAGE_CACHE_MAX <= 0') "Disabled skill-detail cache should free parked pages immediately."
 Assert-True ($storeSkillCache -match 'bucket\.queue_free\(\)') "Disabled skill-detail cache should not keep hidden skill pages in the tree."
 
-$fastDepthMatch = [regex]::Match($main, "(?ms)^\s+func _draw_fast_depth\b.*?(?=^\s+func |\z)")
+$fastDepthMatch = [regex]::Match($activityCardDepth, "(?ms)^\s*func _draw_fast_depth\b.*?(?=^\s*func |\z)")
 Assert-True $fastDepthMatch.Success "Could not find fast activity-card depth renderer."
 $fastDepth = $fastDepthMatch.Value
 Assert-True ($fastDepth -notmatch 'draw_polygon') "Fast activity-card depth should not use crude polygon joins at rounded corners."
@@ -807,7 +809,7 @@ Assert-True ($fastDepth -match '_draw_depth_corner_connectors') "Fast activity-c
 Assert-True ($fastDepth -notmatch '_draw_back_plate\(') "Fast activity-card depth must not use the stylebox back plate."
 Assert-True ($fastDepth -match '_draw_rounded_rect_outline') "Fast activity-card depth should keep a clean rounded back-plate outline."
 Assert-True ($fastDepth -notmatch 'side_width|bottom_height|side_color|bottom_color') "Fast activity-card depth should not draw rectangular side strips at the rounded corners."
-$fastBackPlateMatch = [regex]::Match($main, "(?ms)^\s+func _draw_fast_back_plate\b.*?(?=^\s+func |\z)")
+$fastBackPlateMatch = [regex]::Match($activityCardDepth, "(?ms)^\s*func _draw_fast_back_plate\b.*?(?=^\s*func |\z)")
 Assert-True $fastBackPlateMatch.Success "Could not find fast activity-card back plate renderer."
 $fastBackPlate = $fastBackPlateMatch.Value
 Assert-True ($fastBackPlate -match '_draw_fast_round_rect\(rect, back_color, radius\)') "Fast activity-card back plates should use a bounded rounded fill."
@@ -817,23 +819,25 @@ Assert-True ($fastBackPlate -notmatch '_rounded_body_style') "Fast activity-card
 Assert-True ($fastBackPlate -notmatch 'draw_arc') "Fast activity-card back plates should avoid rounded outline arcs."
 Assert-True ($fastBackPlate -notmatch 'draw_line') "Fast activity-card back plates should stay to one rectangle draw."
 
-$activityCardDepth = Get-ClassBody -Text $main -Name "ActivityCardDepth"
-Assert-True ($activityCardDepth -match 'var radius := ACTION_CARD_FACE_RADIUS') "Activity-card depth should use the same radius as the front face."
-$depthConnectorsMatch = [regex]::Match($activityCardDepth, "(?ms)^\s+func _draw_depth_corner_connectors\b.*?(?=^\s+func |\z)")
+Assert-True ($main -match 'const ActivityCardDepth = preload\("res://scripts/ui/activity_card_depth\.gd"\)') "Activity-card depth should live in a reusable UI control file."
+Assert-True ($activityCardDepth -match 'const DEFAULT_RADIUS := 66\.0') "Activity-card depth should keep the same default radius as the front face."
+Assert-True ($activityCardDepth -match 'var radius := DEFAULT_RADIUS') "Activity-card depth should centralize its reusable default radius."
+Assert-True ($activityCardDepth -match 'const FAST_DEPTH_SHAPE_ENABLED := true') "Activity-card depth should preserve the fast drawing path after extraction."
+$depthConnectorsMatch = [regex]::Match($activityCardDepth, "(?ms)^\s*func _draw_depth_corner_connectors\b.*?(?=^\s*func |\z)")
 Assert-True $depthConnectorsMatch.Success "Could not find activity-card depth corner connector renderer."
 Assert-True ($depthConnectorsMatch.Value -match 'draw_line\(points\[0\], points\[1\]') "Activity-card depth should draw the top-right slab connector stroke."
 Assert-True ($depthConnectorsMatch.Value -match 'draw_line\(points\[2\], points\[3\]') "Activity-card depth should draw the bottom-left slab connector stroke."
-$depthConnectorPointsMatch = [regex]::Match($activityCardDepth, "(?ms)^\s+func _depth_corner_connector_points\b.*?(?=^\s+func |\z)")
+$depthConnectorPointsMatch = [regex]::Match($activityCardDepth, "(?ms)^\s*func _depth_corner_connector_points\b.*?(?=^\s*func |\z)")
 Assert-True $depthConnectorPointsMatch.Success "Could not find activity-card depth connector point helper."
 Assert-True ($depthConnectorPointsMatch.Value -match 'top_right_unit') "Activity-card depth connector points should target the top-right rounded corner arc."
 Assert-True ($depthConnectorPointsMatch.Value -match 'bottom_left_unit') "Activity-card depth connector points should target the bottom-left rounded corner arc."
-$fastRoundRectMatch = [regex]::Match($activityCardDepth, "(?ms)^\s+func _draw_fast_round_rect\b.*?(?=^\s+func |\z)")
+$fastRoundRectMatch = [regex]::Match($activityCardDepth, "(?ms)^\s*func _draw_fast_round_rect\b.*?(?=^\s*func |\z)")
 Assert-True $fastRoundRectMatch.Success "Could not find activity-card fast rounded-rect helper."
 Assert-True ($fastRoundRectMatch.Value -match '_fast_round_rect_radius\(rect, corner_radius\)') "Activity-card fast rounded-rect drawing should use the testable radius helper."
-$fastRoundRectRadiusMatch = [regex]::Match($activityCardDepth, "(?ms)^\s+func _fast_round_rect_radius\b.*?(?=^\s+func |\z)")
+$fastRoundRectRadiusMatch = [regex]::Match($activityCardDepth, "(?ms)^\s*func _fast_round_rect_radius\b.*?(?=^\s*func |\z)")
 Assert-True $fastRoundRectRadiusMatch.Success "Could not find activity-card fast rounded-rect radius helper."
 Assert-True ($fastRoundRectRadiusMatch.Value -match 'minf\(corner_radius') "Activity-card fast rounded-rect radius should clamp the requested radius."
-$depthOffsetSetter = [regex]::Match($activityCardDepth, "(?ms)^\s+func set_face_offset\b.*?(?=^\s+func |\z)")
+$depthOffsetSetter = [regex]::Match($activityCardDepth, "(?ms)^\s*func set_face_offset\b.*?(?=^\s*func |\z)")
 Assert-True $depthOffsetSetter.Success "Could not find activity-card depth offset setter."
 Assert-True ($depthOffsetSetter.Value -match 'face_offset\.is_equal_approx\(clamped_offset\)') "Activity-card depth should skip redraws for unchanged press offsets."
 Assert-True ($depthOffsetSetter.Value.IndexOf('return') -lt $depthOffsetSetter.Value.IndexOf('queue_redraw()')) "Activity-card depth should return before queue_redraw when the press offset is unchanged."
