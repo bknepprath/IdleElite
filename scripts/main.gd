@@ -33,6 +33,7 @@ const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
 const ActivityProgressOpportunityOverlay = preload("res://scripts/ui/activity_progress_opportunity_overlay.gd")
 const ActivityProgressRail = preload("res://scripts/ui/activity_progress_rail.gd")
+const FishingToolWalletOverlay = preload("res://scripts/ui/fishing_tool_wallet_overlay.gd")
 
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
@@ -1045,128 +1046,6 @@ class FishCircle:
 		var draw_scale := minf(bounds.size.x / texture_size.x, bounds.size.y / texture_size.y)
 		var draw_size := texture_size * draw_scale
 		return Rect2(bounds.position + (bounds.size - draw_size) * 0.5, draw_size)
-
-
-class FishingToolWalletOverlay:
-	extends Control
-
-	var panel_size := Vector2.ZERO
-	var button_rects: Array = []
-	var tool_ids: Array = []
-	var tool_icons: Array = []
-	var unlocked_states: Array = []
-	var equipped_tool_id := ""
-
-	func configure(next_panel_size: Vector2, next_button_rects: Array, next_tool_ids: Array, next_tool_icons: Array, next_unlocked_states: Array, next_equipped_tool_id: String) -> void:
-		panel_size = next_panel_size
-		button_rects = next_button_rects
-		tool_ids = next_tool_ids
-		tool_icons = next_tool_icons
-		unlocked_states = next_unlocked_states
-		equipped_tool_id = next_equipped_tool_id
-		_rebuild_visuals()
-		queue_redraw()
-
-	func button_index_at(global_point: Vector2) -> int:
-		var point: Vector2 = get_global_transform_with_canvas().affine_inverse() * global_point
-		for index in range(button_rects.size()):
-			var rect := button_rects[index] as Rect2
-			if rect.has_point(point):
-				return index
-		return -1
-
-	func button_center_global(index: int) -> Vector2:
-		if index < 0 or index >= button_rects.size():
-			return Vector2.ZERO
-		var rect := button_rects[index] as Rect2
-		return get_global_transform_with_canvas() * rect.get_center()
-
-	func _draw() -> void:
-		pass
-
-	func _rebuild_visuals() -> void:
-		for child in get_children():
-			child.queue_free()
-		var background := Panel.new()
-		background.name = "WalletVisiblePill"
-		background.position = Vector2.ZERO
-		background.size = panel_size
-		background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		background.add_theme_stylebox_override("panel", _wallet_style(Color("#fff6df"), Color("#171615"), 10.0, panel_size.x * 0.5))
-		add_child(background)
-		for index in range(button_rects.size()):
-			var rect := button_rects[index] as Rect2
-			var tool_id := str(tool_ids[index])
-			var unlocked := bool(unlocked_states[index])
-			var equipped := tool_id == equipped_tool_id
-			var fill := Color("#32c5bd") if equipped else (Color("#fffdf8") if unlocked else Color("#cfcac0"))
-			var border := COLOR_GOLD if equipped else (Color("#171615") if unlocked else COLOR_MUTED)
-			var circle := Panel.new()
-			circle.name = "WalletVisibleGear%s" % str(index)
-			circle.position = rect.position
-			circle.size = rect.size
-			circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			circle.add_theme_stylebox_override("panel", _wallet_style(fill, border, 8.0 if equipped else 5.0, rect.size.x * 0.5))
-			add_child(circle)
-			var tool_icon := tool_icons[index] as Texture2D
-			if tool_icon != null:
-				var icon_rect := _fit_texture_rect(tool_icon, Rect2(Vector2.ZERO, rect.size).grow(-18.0))
-				var texture_rect := TextureRect.new()
-				texture_rect.texture = tool_icon
-				texture_rect.position = icon_rect.position
-				texture_rect.size = icon_rect.size
-				texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-				texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-				texture_rect.modulate = Color.WHITE if unlocked else Color(1, 1, 1, 0.42)
-				texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-				circle.add_child(texture_rect)
-
-	func _wallet_style(fill: Color, border: Color, border_width: float, radius: float) -> StyleBoxFlat:
-		var style := StyleBoxFlat.new()
-		style.bg_color = fill
-		style.border_color = border
-		style.border_width_left = int(border_width)
-		style.border_width_top = int(border_width)
-		style.border_width_right = int(border_width)
-		style.border_width_bottom = int(border_width)
-		var corner := int(radius)
-		style.corner_radius_top_left = corner
-		style.corner_radius_top_right = corner
-		style.corner_radius_bottom_left = corner
-		style.corner_radius_bottom_right = corner
-		style.shadow_color = Color(0, 0, 0, 0.22)
-		style.shadow_size = 10
-		style.shadow_offset = Vector2(4, 6)
-		return style
-
-	func _draw_pill(rect: Rect2, fill: Color, border: Color, border_width: float) -> void:
-		_draw_filled_pill(rect, border)
-		_draw_filled_pill(rect.grow(-border_width), fill)
-
-	func _draw_filled_pill(rect: Rect2, color: Color) -> void:
-		if rect.size.x <= 0.0 or rect.size.y <= 0.0:
-			return
-		var radius := minf(rect.size.x, rect.size.y) * 0.5
-		if rect.size.y >= rect.size.x:
-			draw_rect(Rect2(rect.position.x, rect.position.y + radius, rect.size.x, maxf(0.0, rect.size.y - radius * 2.0)), color)
-			draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
-			draw_circle(Vector2(rect.position.x + radius, rect.end.y - radius), radius, color)
-		else:
-			draw_rect(Rect2(rect.position.x + radius, rect.position.y, maxf(0.0, rect.size.x - radius * 2.0), rect.size.y), color)
-			draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
-			draw_circle(Vector2(rect.end.x - radius, rect.position.y + radius), radius, color)
-
-	func _fit_texture_rect(texture: Texture2D, bounds: Rect2) -> Rect2:
-		var texture_size := texture.get_size()
-		if texture_size.x <= 0.0 or texture_size.y <= 0.0:
-			return bounds
-		var fit_scale := minf(bounds.size.x / texture_size.x, bounds.size.y / texture_size.y)
-		var draw_size := texture_size * fit_scale
-		return Rect2(bounds.position + (bounds.size - draw_size) * 0.5, draw_size)
-
-
-
-
 
 
 const SAVE_PATH := "user://idle_elite_save.json"
@@ -22594,7 +22473,7 @@ func _begin_skill_swipe_outgoing_cover() -> Control:
 	cover.z_index = 900
 	cover.z_as_relative = false
 	cover.clip_contents = true
-	cover.modulate.a = 1.0
+	cover.modulate = Color.WHITE
 	cover.set_meta("swipe_cream_transition_cover", true)
 	if OS.get_environment("IDLE_ELITE_TRACE_SWIPE_COVER") == "1":
 		print("SWIPE_COVER_TRACE begin_outgoing selected=%s alpha=%.3f ready=%s placeholders=%s" % [
@@ -22610,6 +22489,19 @@ func _begin_skill_swipe_outgoing_cover() -> Control:
 	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cover.add_child(backing)
+
+	var holder := Control.new()
+	holder.position = skill_swipe_frame.global_position - skills_page.global_position
+	holder.size = skill_swipe_frame.size
+	holder.custom_minimum_size = skill_swipe_frame.size
+	holder.clip_contents = true
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.modulate = Color.WHITE
+	cover.add_child(holder)
+	skill_swipe_frame.reparent(holder)
+	skill_swipe_frame.position = Vector2.ZERO
+	skill_swipe_frame.z_index = 0
+	cover.set_meta("swipe_outgoing_page_holder_id", holder.get_instance_id())
 
 	skill_swipe_handoff_cover = cover
 	skill_swipe_outgoing_cover_active = true
@@ -22637,6 +22529,18 @@ func _fade_skill_swipe_cover_to_opaque(seconds: float):
 	if cover == null or not is_instance_valid(cover):
 		return
 	_set_canvas_item_visible_if_changed(cover, true)
+	_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
+	var holder_id := int(cover.get_meta("swipe_outgoing_page_holder_id", 0))
+	var outgoing_holder: Control = null
+	if holder_id != 0:
+		outgoing_holder = instance_from_id(holder_id) as Control
+	if outgoing_holder != null and is_instance_valid(outgoing_holder):
+		var tween := create_tween()
+		tween.tween_property(outgoing_holder, "modulate:a", 0.0, maxf(0.01, seconds)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+		await tween.finished
+		if outgoing_holder != null and is_instance_valid(outgoing_holder):
+			_set_canvas_item_alpha_if_changed(outgoing_holder, 0.0)
+		return
 	var next_modulate := cover.modulate
 	next_modulate.a = clampf(next_modulate.a, 0.0, 1.0)
 	_set_canvas_item_modulate_if_changed(cover, next_modulate)
@@ -23013,6 +22917,8 @@ func _clear_passive_button_press() -> void:
 func _commit_skill_swipe(offset: int) -> void:
 	skill_swipe_horizontal = false
 	var outgoing_skill_id := selected_skill_id
+	if offset != 0 and outgoing_skill_id == "fishing" and fishing_tool_wallet_open:
+		_clear_fishing_tool_circle_menu()
 	if offset != 0 and outgoing_skill_id == TUTORIAL_STARTER_SKILL_ID:
 		_clear_tutorial_gate_latch_only_after_skill_swipe(false)
 	_complete_passive_module_tip_page_visit(outgoing_skill_id)
@@ -29624,7 +29530,14 @@ func _pending_activity_ready_ids(skill_id: String = selected_skill_id) -> Array:
 
 
 func _pending_activity_unlock_matches(action_id: String) -> bool:
-	return _pending_activity_ready_ids().has(action_id)
+	if action_id.is_empty() or not _pending_activity_ready_ids().has(action_id):
+		return false
+	var action := _action_data(selected_skill_id, action_id)
+	if not action.is_empty() and _is_action_unlocked(selected_skill_id, action):
+		_clear_pending_activity_readiness_action(selected_skill_id, action_id)
+		_mark_save_dirty("activity unlock cleanup")
+		return false
+	return true
 
 
 func _pending_activity_unlock_preview_matches(action_id: String) -> bool:
@@ -29697,6 +29610,10 @@ func _apply_pending_activity_unlock_readiness() -> void:
 			continue
 		var action := _action_data(selected_skill_id, action_id)
 		if action.is_empty():
+			continue
+		if _is_action_unlocked(selected_skill_id, action):
+			_clear_pending_activity_readiness_action(selected_skill_id, action_id)
+			_mark_save_dirty("activity unlock cleanup")
 			continue
 		card["unlock_ceremony_pending"] = false
 		card["unlock_ceremony_active"] = false
@@ -37390,6 +37307,7 @@ func _attach_fishing_fish_circle_button(circle: Control) -> void:
 
 
 func _clear_fishing_tool_circle_menu() -> void:
+	fishing_tool_wallet_open = false
 	if fishing_tool_wallet_popup != null and is_instance_valid(fishing_tool_wallet_popup):
 		fishing_tool_wallet_popup.queue_free()
 	if fishing_tool_wallet_canvas != null and is_instance_valid(fishing_tool_wallet_canvas):
@@ -40303,6 +40221,9 @@ func _finish_fishing_method_unlock_ceremony(method_card: Dictionary, refresh_det
 	if method_card.is_empty() or bool(method_card.get("unlock_ceremony_finalized", false)):
 		return
 	method_card["unlock_ceremony_finalized"] = true
+	var pending_skill_id := str(method_card.get("manual_unlock_pending_skill_id", method_card.get("skill_id", selected_skill_id)))
+	var pending_action_id := str(method_card.get("manual_unlock_pending_action_id", method_card.get("action_id", "")))
+	_clear_pending_activity_readiness_action(pending_skill_id, pending_action_id)
 	_finalize_manual_activity_unlock_for_card(method_card, "fishing method unlock")
 	var method_button := method_card.get("method_button") as Button
 	if method_button != null and is_instance_valid(method_button):
