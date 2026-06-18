@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cshopicooav2a"
-path="res://.godot/imported/shop.png-87a582c794f5723db27eb49db7133d98.ctex"
+uid="uid://dldjl8imyvbxb"
+path="res://.godot/imported/discord-logo-icon.png-fce6bb096590a6bcdb80e469ed0644b9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/content/ui/shop.png"
-dest_files=["res://.godot/imported/shop.png-87a582c794f5723db27eb49db7133d98.ctex"]
+source_file="res://assets/content/ui/discord-logo-icon.png"
+dest_files=["res://.godot/imported/discord-logo-icon.png-fce6bb096590a6bcdb80e469ed0644b9.ctex"]
 
 [params]
 

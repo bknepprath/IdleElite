@@ -12,7 +12,7 @@ Use this as the approval gate for combo modules, temporary event modules, and an
 - `assets/content/build/actions/02-patch-fence-with-confidence.png`
 - `assets/content/build/actions/06-build-market-stall.png`
 - `assets/content/woodcutting/actions/03-trim-overconfident-shrub.png`
-- `assets/content/ui/shop.png`
+- `assets/content/ui/shop-icon.png`
 
 Subject references may come from nearby Fishing, Thieving, Build, Fighting, and Woodcutting assets, but they do not replace the approved style anchors.
 

@@ -2,7 +2,7 @@
 
 Purpose: pre-production source contact sheets for combo modules, temporary event modules, and lock-part variants. These are not runtime assets and should not be wired into `docs/activity-database.json` until individual tiles are approved and sliced.
 
-Style anchors: `assets/content/fishing/actions/03-cast-bamboo-rod.png`, `assets/content/fight/actions/01-shove-wobbly-hay-bale.png`, `assets/content/build/actions/02-patch-fence-with-confidence.png`, `assets/content/woodcutting/actions/03-trim-overconfident-shrub.png`, `assets/content/ui/shop.png`.
+Style anchors: `assets/content/fishing/actions/03-cast-bamboo-rod.png`, `assets/content/fight/actions/01-shove-wobbly-hay-bale.png`, `assets/content/build/actions/02-patch-fence-with-confidence.png`, `assets/content/woodcutting/actions/03-trim-overconfident-shrub.png`, `assets/content/ui/shop-icon.png`.
 
 Generated source:
 - `contact-sheet-combo-events-locks-master-v1.png`

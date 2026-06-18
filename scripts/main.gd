@@ -1084,6 +1084,9 @@ const ACTIVITY_DATABASE_PATH := "res://docs/activity-database.json"
 const MASTERY_MEDALS_TEXTURE := "res://assets/content/ui/mastery-medals-20.png"
 const TOTAL_LEVEL_BARGRAPH_TEXTURE := "res://assets/content/ui/total-level-bargraph.png"
 const REWARDED_AD_ICON_TEXTURE := "res://assets/content/ui/rewarded-ad-icon.png"
+const DISCORD_LOGO_ICON_TEXTURE := "res://assets/content/ui/discord-logo-icon.png"
+const SETTINGS_GEAR_ICON_TEXTURE := "res://assets/content/ui/settings-gear-icon.png"
+const SHOP_ICON_TEXTURE := "res://assets/content/ui/shop-icon.png"
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
 const UNLOCK_LOCK_CHAINS_TEXTURE := "res://assets/content/ui/unlock-lock-chains.png"
 const UNLOCK_CHAIN_LINK_TEXTURE := "res://assets/content/ui/unlock-chain-link.png"
@@ -2985,7 +2988,7 @@ func _boot_shared_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, TOTAL_LEVEL_BARGRAPH_TEXTURE)
 	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
 	_add_boot_warmup_texture_path(paths, REWARDED_AD_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/discord-simple.png")
+	_add_boot_warmup_texture_path(paths, DISCORD_LOGO_ICON_TEXTURE)
 	_add_boot_warmup_texture_path(paths, MASTERY_MEDALS_TEXTURE)
 	_add_boot_warmup_texture_path(paths, UNLOCK_LOCK_CHAINS_TEXTURE)
 	_add_boot_warmup_texture_path(paths, UNLOCK_CHAIN_LINK_TEXTURE)
@@ -2998,8 +3001,8 @@ func _boot_shared_texture_paths() -> Array:
 	for raw_nav_path in [
 		"res://assets/content/ui/motivation-star.png",
 		"res://assets/content/hub/hub-nav-barn.png",
-		"res://assets/content/ui/settings-gear-simple.png",
-		"res://assets/content/ui/shop.png"
+		SETTINGS_GEAR_ICON_TEXTURE,
+		SHOP_ICON_TEXTURE
 	]:
 		_add_boot_warmup_texture_path(paths, raw_nav_path)
 	return paths
@@ -6626,10 +6629,10 @@ func _build_hero(parent: PanelContainer) -> void:
 	tools.alignment = BoxContainer.ALIGNMENT_CENTER
 	tools.add_theme_constant_override("separation", 58)
 	stage.add_child(tools)
-	var settings := _icon_button("res://assets/content/ui/settings-gear-simple.png")
+	var settings := _icon_button(SETTINGS_GEAR_ICON_TEXTURE)
 	settings.pressed.connect(_open_settings)
 	tools.add_child(settings)
-	var discord := _icon_button("res://assets/content/ui/discord-simple.png")
+	var discord := _icon_button(DISCORD_LOGO_ICON_TEXTURE)
 	discord.pressed.connect(_settings_discord_pressed)
 	tools.add_child(discord)
 
@@ -6673,10 +6676,10 @@ func _build_nav_bar() -> void:
 	skills_tab = _nav_button(TOTAL_LEVEL_BARGRAPH_TEXTURE, true)
 	skills_tab.pressed.connect(_show_skills_module)
 	row.add_child(skills_tab)
-	settings_tab = _nav_button("res://assets/content/ui/settings-gear-simple.png", true)
+	settings_tab = _nav_button(SETTINGS_GEAR_ICON_TEXTURE, true)
 	settings_tab.pressed.connect(_show_settings)
 	row.add_child(settings_tab)
-	shop_tab = _nav_button("res://assets/content/ui/shop.png", true)
+	shop_tab = _nav_button(SHOP_ICON_TEXTURE, true)
 	shop_tab.add_theme_constant_override("icon_max_width", 232)
 	_register_nav_new_symbol_dot(shop_tab, "shop")
 	shop_tab.pressed.connect(_show_shop.bind(shop_tab))
@@ -7346,10 +7349,10 @@ func _chat_expanded_composer() -> Control:
 	var chat_skills := _nav_button(TOTAL_LEVEL_BARGRAPH_TEXTURE)
 	chat_skills.pressed.connect(_on_chat_skills_nav_pressed)
 	ribbon_row.add_child(chat_skills)
-	var chat_settings := _nav_button("res://assets/content/ui/settings-gear-simple.png")
+	var chat_settings := _nav_button(SETTINGS_GEAR_ICON_TEXTURE)
 	chat_settings.pressed.connect(_on_chat_settings_nav_pressed)
 	ribbon_row.add_child(chat_settings)
-	chat_shop_tab = _nav_button("res://assets/content/ui/shop.png")
+	chat_shop_tab = _nav_button(SHOP_ICON_TEXTURE)
 	chat_shop_tab.add_theme_constant_override("icon_max_width", 232)
 	_register_nav_new_symbol_dot(chat_shop_tab, "shop")
 	chat_shop_tab.modulate = Color.WHITE if _shop_unlocked() else HUB_NAV_LOCKED_MODULATE
@@ -12315,7 +12318,7 @@ func _render_settings_page() -> void:
 	fill_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	fill_spacer.custom_minimum_size = Vector2(0, 480)
 	stack.add_child(fill_spacer)
-	var discord := _settings_page_button("Contact the dev", "res://assets/content/ui/discord-simple.png", 1320, 220, 286)
+	var discord := _settings_page_button("Contact the dev", DISCORD_LOGO_ICON_TEXTURE, 1320, 220, 286)
 	discord.add_theme_stylebox_override("normal", _paper_button_style(COLOR_BLUE, 54))
 	discord.add_theme_stylebox_override("hover", _paper_button_style(COLOR_BLUE, 54))
 	discord.add_theme_stylebox_override("pressed", _paper_button_style(COLOR_BLUE.darkened(0.10), 54, 72, true))
