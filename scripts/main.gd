@@ -14772,8 +14772,8 @@ func _detail_lazy_viewport_buffer_px() -> float:
 	return DETAIL_LAZY_VIEWPORT_BUFFER_PX
 
 
-func _detail_lazy_entry_rect_for_viewport(plan_item: Dictionary) -> Rect2:
-	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
+func _detail_lazy_entry_rect_for_viewport(lazy_entry: Dictionary) -> Rect2:
+	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
 	var stack := detail_lazy_stack as Control
 	if stack == null or not is_instance_valid(stack):
 		stack = _detail_actions_stack()
@@ -14781,55 +14781,55 @@ func _detail_lazy_entry_rect_for_viewport(plan_item: Dictionary) -> Rect2:
 		var actual_rect := _detail_control_rect_in_stack(stack_host, stack)
 		if actual_rect.size.y > 1.0:
 			return actual_rect
-	var entry_y := float(plan_item.get("y", 0.0)) + _detail_actions_top_spacer_height()
+	var entry_y := float(lazy_entry.get("y", 0.0)) + _detail_actions_top_spacer_height()
 	return Rect2(
 		Vector2(0.0, entry_y),
-		Vector2(_skill_content_width(), float(plan_item.get("height", 0.0)))
+		Vector2(_skill_content_width(), float(lazy_entry.get("height", 0.0)))
 	)
 
 
-func _detail_lazy_entry_in_viewport(plan_item: Dictionary) -> bool:
-	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
-	if plan_item.has("stack_host") and stack_host == null:
+func _detail_lazy_entry_in_viewport(lazy_entry: Dictionary) -> bool:
+	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
+	if lazy_entry.has("stack_host") and stack_host == null:
 		return false
 	var scroll_y := _detail_lazy_scroll_y()
 	var viewport_buffer := _detail_lazy_viewport_buffer_px()
 	var view_top := scroll_y - viewport_buffer
 	var view_bottom := scroll_y + _detail_lazy_viewport_height() + viewport_buffer
-	var entry_rect := _detail_lazy_entry_rect_for_viewport(plan_item)
+	var entry_rect := _detail_lazy_entry_rect_for_viewport(lazy_entry)
 	var entry_y := entry_rect.position.y
 	var entry_bottom := entry_y + entry_rect.size.y
 	return entry_rect.size.y > 1.0 and entry_bottom >= view_top and entry_y <= view_bottom
 
 
-func _detail_lazy_should_mount_item(plan_item: Dictionary, pinned: Dictionary, plan_index: int) -> bool:
-	if bool(plan_item.get("mounted", false)):
+func _detail_lazy_should_mount_item(lazy_entry: Dictionary, pinned: Dictionary, plan_index: int) -> bool:
+	if bool(lazy_entry.get("mounted", false)):
 		return false
-	var kind := str(plan_item.get("kind", ""))
+	var kind := str(lazy_entry.get("kind", ""))
 	var initial_force_count := _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id)
 	if kind in ["lock_tip", "activity_start_tip", "skill_swipe_tip"]:
 		return plan_index < initial_force_count
-	if _detail_lazy_entry_is_pinned(plan_item, pinned):
+	if _detail_lazy_entry_is_pinned(lazy_entry, pinned):
 		return true
-	if _detail_lazy_mount_should_wait_for_scroll(plan_item):
+	if _detail_lazy_mount_should_wait_for_scroll(lazy_entry):
 		return false
 	if plan_index < initial_force_count and _detail_lazy_scroll_y() <= DETAIL_LAZY_VIEWPORT_BUFFER_PX:
 		return true
-	return _detail_lazy_entry_in_viewport(plan_item)
+	return _detail_lazy_entry_in_viewport(lazy_entry)
 
 
-func _detail_lazy_mount_should_wait_for_scroll(plan_item: Dictionary) -> bool:
+func _detail_lazy_mount_should_wait_for_scroll(lazy_entry: Dictionary) -> bool:
 	if not detail_scroll_visual_work_this_frame:
 		return false
 	if not _fishing_rework_active_for_skill(selected_skill_id):
 		return false
-	if plan_item.has("cached_root"):
+	if lazy_entry.has("cached_root"):
 		return false
 	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 		var max_scroll := float(detail_actions_scroll.get_max_scroll_vertical())
 		if max_scroll > 0.0 and _detail_lazy_scroll_y() >= max_scroll - 1.0:
 			return false
-	return str(plan_item.get("kind", "")) in ["action", "passive", "heist", "fishing_area", "fishing_offer"]
+	return str(lazy_entry.get("kind", "")) in ["action", "passive", "heist", "fishing_area", "fishing_offer"]
 
 
 func _detail_lazy_should_sync_visible_window() -> bool:

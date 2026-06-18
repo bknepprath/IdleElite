@@ -741,13 +741,17 @@ Assert-True ($lazyEntryHeight -match 'func _detail_lazy_entry_height\(lazy_entry
 Assert-True ($lazyEntryHeight -notmatch '\bplan_item\b') "Lazy entry height checks should not use stale plan-item wording internally."
 
 $lazyViewport = Get-FunctionBody -Text $main -Name "_detail_lazy_entry_in_viewport"
-Assert-True ($lazyViewport -match '_valid_control_ref\(plan_item\.get\("stack_host"\)\)') "Lazy viewport checks must validate stack_host refs before use."
-Assert-True ($lazyViewport -notmatch 'plan_item\.get\("stack_host"\) as Control') "Lazy viewport checks must not directly cast possibly freed stack_host refs."
-Assert-True ($lazyViewport -match '_detail_lazy_entry_rect_for_viewport\(plan_item\)') "Lazy viewport checks should use the shared laid-out slot rect helper."
+Assert-True ($lazyViewport -match 'func _detail_lazy_entry_in_viewport\(lazy_entry: Dictionary\)') "Lazy viewport checks should name their render record parameter as a lazy entry."
+Assert-True ($lazyViewport -match '_valid_control_ref\(lazy_entry\.get\("stack_host"\)\)') "Lazy viewport checks must validate stack_host refs before use."
+Assert-True ($lazyViewport -notmatch 'lazy_entry\.get\("stack_host"\) as Control') "Lazy viewport checks must not directly cast possibly freed stack_host refs."
+Assert-True ($lazyViewport -match '_detail_lazy_entry_rect_for_viewport\(lazy_entry\)') "Lazy viewport checks should use the shared laid-out slot rect helper."
+Assert-True ($lazyViewport -notmatch '\bplan_item\b') "Lazy viewport checks should not use stale plan-item wording internally."
 Assert-True ($lazyViewport -notmatch 'get_global_rect\(\)') "Lazy viewport checks should not depend on global rects from animated/offscreen pages."
 $lazyViewportRect = Get-FunctionBody -Text $main -Name "_detail_lazy_entry_rect_for_viewport"
+Assert-True ($lazyViewportRect -match 'func _detail_lazy_entry_rect_for_viewport\(lazy_entry: Dictionary\)') "Lazy viewport rect checks should name their render record parameter as a lazy entry."
 Assert-True ($lazyViewportRect -match '_detail_control_rect_in_stack\(stack_host, stack\)') "Lazy viewport checks should prefer the actual slot position after hidden locked previews collapse."
-Assert-True ($lazyViewportRect -match 'float\(plan_item\.get\("y", 0\.0\)\) \+ _detail_actions_top_spacer_height\(\)') "Lazy viewport checks must fall back to fixed plan positions before layout settles."
+Assert-True ($lazyViewportRect -match 'float\(lazy_entry\.get\("y", 0\.0\)\) \+ _detail_actions_top_spacer_height\(\)') "Lazy viewport checks must fall back to fixed plan positions before layout settles."
+Assert-True ($lazyViewportRect -notmatch '\bplan_item\b') "Lazy viewport rect checks should not use stale plan-item wording internally."
 Assert-True ($lazyViewportRect -notmatch 'get_global_rect\(\)') "Lazy viewport slot measurement must stay local to the detail stack."
 
 $lazyRender = Get-FunctionBody -Text $main -Name "_render_detail_lazy_card_list"
@@ -770,7 +774,9 @@ Assert-True ($lazyMount -match '_build_fishing_offer_module') "Fishing offers sh
 
 $lazyShouldMount = Get-FunctionBody -Text $main -Name "_detail_lazy_should_mount_item"
 Assert-True ($lazyShouldMount -match '_detail_lazy_scroll_y\(\) <= DETAIL_LAZY_VIEWPORT_BUFFER_PX') "Initial lazy-card force mounting should only apply near the top of the list."
-Assert-True ($lazyShouldMount -match '_detail_lazy_entry_is_pinned\(plan_item, pinned\)') "Lazy mounting should pin Fishing areas that contain the running method."
+Assert-True ($lazyShouldMount -match 'func _detail_lazy_should_mount_item\(lazy_entry: Dictionary, pinned: Dictionary, plan_index: int\)') "Lazy mount decisions should name their render record parameter as a lazy entry."
+Assert-True ($lazyShouldMount -match '_detail_lazy_entry_is_pinned\(lazy_entry, pinned\)') "Lazy mounting should pin Fishing areas that contain the running method."
+Assert-True ($lazyShouldMount -notmatch '\bplan_item\b') "Lazy mount decisions should not use stale plan-item wording internally."
 
 $parkDetailLazyCachedRoot = Get-FunctionBody -Text $main -Name "_park_detail_lazy_cached_root"
 Assert-True ($parkDetailLazyCachedRoot -match '_set_canvas_item_modulate_if_changed\(root, Color\.WHITE\)') "Lazy cached-card parking should own the card tint reset before detaching."
@@ -804,8 +810,10 @@ Assert-True ($lazyPrune -match '_detail_lazy_can_unmount_item') "Lazy pruning sh
 Assert-True ($lazyPrune -match 'max_unmounts') "Lazy pruning should remain budgeted."
 
 $lazyMountWaitForScroll = Get-FunctionBody -Text $main -Name "_detail_lazy_mount_should_wait_for_scroll"
-Assert-True ($lazyMountWaitForScroll -match 'plan_item\.has\("cached_root"\)[\s\S]*return false') "Fishing lazy-card scroll deferral should still allow cheap cached remounts."
+Assert-True ($lazyMountWaitForScroll -match 'func _detail_lazy_mount_should_wait_for_scroll\(lazy_entry: Dictionary\)') "Lazy scroll deferral should name its render record parameter as a lazy entry."
+Assert-True ($lazyMountWaitForScroll -match 'lazy_entry\.has\("cached_root"\)[\s\S]*return false') "Fishing lazy-card scroll deferral should still allow cheap cached remounts."
 Assert-True ($lazyMountWaitForScroll -match '"action", "passive", "heist", "fishing_area", "fishing_offer"') "Fishing lazy-card scroll deferral should only protect expensive module mounts."
+Assert-True ($lazyMountWaitForScroll -notmatch '\bplan_item\b') "Lazy scroll deferral should not use stale plan-item wording internally."
 
 $lazyBlankRepair = Get-FunctionBody -Text $main -Name "_repair_blank_detail_lazy_stack"
 Assert-True ($lazyBlankRepair -match '_detail_lazy_mount_initial_window_sync\(true, _detail_lazy_initial_force_mount_count_for_skill\(selected_skill_id\)\)') "Blank lazy-stack repair should stay bounded to the skill-specific initial mount count."
