@@ -16013,23 +16013,23 @@ func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 	if preview_index < 0:
 		return false
 	var old_entries_by_track_id := _detail_lazy_runtime_entries_by_track_id(detail_lazy_plan)
-	for raw_new_item in new_plan:
-		var new_entry := raw_new_item as Dictionary
+	for raw_new_entry in new_plan:
+		var new_entry := raw_new_entry as Dictionary
 		var track_id := str(new_entry.get("track_id", ""))
 		if track_id == action_id or not old_entries_by_track_id.has(track_id):
 			continue
 		_detail_lazy_copy_runtime_entry_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
-	var preview_item := new_plan[preview_index] as Dictionary
+	var preview_entry := new_plan[preview_index] as Dictionary
 	var content_width := _skill_content_width()
 	var actions_width := content_width
-	_detail_lazy_create_slot_for_item(detail_lazy_stack, selected_skill_id, preview_item, content_width, actions_width)
-	var host := _valid_control_ref(preview_item.get("stack_host"))
+	_detail_lazy_create_slot_for_item(detail_lazy_stack, selected_skill_id, preview_entry, content_width, actions_width)
+	var host := _valid_control_ref(preview_entry.get("stack_host"))
 	if host == null or not is_instance_valid(host):
 		return false
 	var insert_index := _detail_lazy_stack_insert_index_for_plan_index(detail_lazy_stack, preview_index)
 	detail_lazy_stack.move_child(host, clampi(insert_index, 0, maxi(0, detail_lazy_stack.get_child_count() - 1)))
-	if not _detail_lazy_mount_item(preview_item, selected_skill_id, content_width, actions_width, false):
-		_detail_lazy_remove_unmounted_inserted_host(preview_item)
+	if not _detail_lazy_mount_item(preview_entry, selected_skill_id, content_width, actions_width, false):
+		_detail_lazy_remove_unmounted_inserted_host(preview_entry)
 		return false
 	_detail_lazy_reorder_existing_hosts_for_plan(detail_lazy_stack, new_plan, action_id)
 	detail_lazy_plan = new_plan
@@ -16130,27 +16130,27 @@ func _detail_lazy_remove_unmounted_inserted_host(plan_item: Dictionary) -> void:
 	host.queue_free()
 
 
-func _detail_lazy_insert_animated_temporary_event_item(
+func _detail_lazy_insert_animated_temporary_event_entry(
 	stack: VBoxContainer,
 	skill_id: String,
-	plan_item: Dictionary,
+	event_entry: Dictionary,
 	plan_index: int,
 	content_width: float,
 	actions_width: float
 ) -> bool:
-	_detail_lazy_create_slot_for_item(stack, skill_id, plan_item, content_width, actions_width)
-	var host := _valid_control_ref(plan_item.get("stack_host"))
+	_detail_lazy_create_slot_for_item(stack, skill_id, event_entry, content_width, actions_width)
+	var host := _valid_control_ref(event_entry.get("stack_host"))
 	if host == null or not is_instance_valid(host):
 		return false
 	var insert_index := _detail_lazy_stack_insert_index_for_plan_index(stack, plan_index)
 	stack.move_child(host, clampi(insert_index, 0, maxi(0, stack.get_child_count() - 1)))
-	var target_height := maxf(1.0, float(plan_item.get("height", _activity_card_root_height())))
+	var target_height := maxf(1.0, float(event_entry.get("height", _activity_card_root_height())))
 	host.clip_contents = true
 	_set_temporary_event_entry_height(host, 0.0)
-	if not _detail_lazy_mount_item(plan_item, skill_id, content_width, actions_width, false):
-		_detail_lazy_remove_unmounted_inserted_host(plan_item)
+	if not _detail_lazy_mount_item(event_entry, skill_id, content_width, actions_width, false):
+		_detail_lazy_remove_unmounted_inserted_host(event_entry)
 		return false
-	host = _valid_control_ref(plan_item.get("stack_host"))
+	host = _valid_control_ref(event_entry.get("stack_host"))
 	if host == null or not is_instance_valid(host):
 		return false
 	var fade_target := _detail_lazy_primary_child_control(host)
@@ -16212,16 +16212,16 @@ func _animate_temporary_event_entry_if_visible(event_def: Dictionary, event_id: 
 	if event_index < 0:
 		return false
 	var old_entries_by_track_id := _detail_lazy_runtime_entries_by_track_id(detail_lazy_plan)
-	for raw_new_item in new_plan:
-		var new_entry := raw_new_item as Dictionary
+	for raw_new_entry in new_plan:
+		var new_entry := raw_new_entry as Dictionary
 		var track_id := str(new_entry.get("track_id", ""))
 		if track_id == event_id or not old_entries_by_track_id.has(track_id):
 			continue
 		_detail_lazy_copy_runtime_entry_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
-	var event_item := new_plan[event_index] as Dictionary
+	var event_entry := new_plan[event_index] as Dictionary
 	var content_width := _skill_content_width()
 	var actions_width := content_width
-	if not _detail_lazy_insert_animated_temporary_event_item(stack, skill_id, event_item, event_index, content_width, actions_width):
+	if not _detail_lazy_insert_animated_temporary_event_entry(stack, skill_id, event_entry, event_index, content_width, actions_width):
 		return false
 	_detail_lazy_reorder_existing_hosts_for_plan(stack, new_plan, event_id)
 	detail_lazy_stack = stack
