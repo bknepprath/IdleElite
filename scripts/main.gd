@@ -15875,14 +15875,14 @@ func _ensure_detail_lazy_entry_mounted(track_id: String) -> void:
 	if track_id.is_empty() or detail_lazy_plan.is_empty():
 		return
 	for raw_item in detail_lazy_plan:
-		var plan_item := raw_item as Dictionary
-		if not _detail_lazy_entry_matches_track_id(plan_item, track_id):
+		var lazy_entry := raw_item as Dictionary
+		if not _detail_lazy_entry_matches_track_id(lazy_entry, track_id):
 			continue
-		if bool(plan_item.get("mounted", false)):
+		if bool(lazy_entry.get("mounted", false)):
 			return
 		var content_width := _skill_content_width()
 		var actions_width := content_width
-		_detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, false)
+		_detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, false)
 		return
 
 
