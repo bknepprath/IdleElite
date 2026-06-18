@@ -14916,33 +14916,33 @@ func _detail_lazy_add_child_to_host(host: Control, child: Control, content_width
 	host.add_child(child)
 
 
-func _detail_lazy_create_slot_for_item(
+func _detail_lazy_create_slot_for_entry(
 	stack: VBoxContainer,
 	skill_id: String,
-	item: Dictionary,
+	lazy_entry: Dictionary,
 	content_width: float,
 	actions_width: float
 ) -> void:
-	var height := float(item.get("height", 0.0))
+	var height := float(lazy_entry.get("height", 0.0))
 	var placeholder := Control.new()
 	placeholder.custom_minimum_size = Vector2(content_width, height)
 	placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	placeholder.set_meta("detail_lazy_placeholder", true)
-	item["placeholder"] = placeholder
-	if skill_id == "thieving" and str(item.get("kind", "")) == "heist":
+	lazy_entry["placeholder"] = placeholder
+	if skill_id == "thieving" and str(lazy_entry.get("kind", "")) == "heist":
 		placeholder.custom_minimum_size.x = actions_width
 		stack.add_child(placeholder)
-		item["stack_host"] = placeholder
-		item["direct_stack_child"] = true
+		lazy_entry["stack_host"] = placeholder
+		lazy_entry["direct_stack_child"] = true
 	else:
 		var stack_entry := _detail_stack_entry(placeholder, content_width, actions_width)
 		stack.add_child(stack_entry)
-		item["stack_host"] = stack_entry
+		lazy_entry["stack_host"] = stack_entry
 
 
 func _detail_lazy_create_slots(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
-	for plan_item in detail_lazy_plan:
-		_detail_lazy_create_slot_for_item(stack, skill_id, plan_item as Dictionary, content_width, actions_width)
+	for lazy_entry in detail_lazy_plan:
+		_detail_lazy_create_slot_for_entry(stack, skill_id, lazy_entry as Dictionary, content_width, actions_width)
 
 
 func _detail_lazy_create_slots_batched(
@@ -14954,12 +14954,12 @@ func _detail_lazy_create_slots_batched(
 ) -> bool:
 	var created_since_yield := 0
 	var batch_limit := maxi(1, batch_size)
-	for plan_item in detail_lazy_plan:
+	for lazy_entry in detail_lazy_plan:
 		if current_screen != "skill" or selected_skill_id != skill_id:
 			return false
 		if stack == null or not is_instance_valid(stack):
 			return false
-		_detail_lazy_create_slot_for_item(stack, skill_id, plan_item as Dictionary, content_width, actions_width)
+		_detail_lazy_create_slot_for_entry(stack, skill_id, lazy_entry as Dictionary, content_width, actions_width)
 		created_since_yield += 1
 		if created_since_yield >= batch_limit:
 			created_since_yield = 0
@@ -16023,7 +16023,7 @@ func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 	var preview_entry := new_plan[preview_index] as Dictionary
 	var content_width := _skill_content_width()
 	var actions_width := content_width
-	_detail_lazy_create_slot_for_item(detail_lazy_stack, selected_skill_id, preview_entry, content_width, actions_width)
+	_detail_lazy_create_slot_for_entry(detail_lazy_stack, selected_skill_id, preview_entry, content_width, actions_width)
 	var host := _valid_control_ref(preview_entry.get("stack_host"))
 	if host == null or not is_instance_valid(host):
 		return false
@@ -16139,7 +16139,7 @@ func _detail_lazy_insert_animated_temporary_event_entry(
 	content_width: float,
 	actions_width: float
 ) -> bool:
-	_detail_lazy_create_slot_for_item(stack, skill_id, event_entry, content_width, actions_width)
+	_detail_lazy_create_slot_for_entry(stack, skill_id, event_entry, content_width, actions_width)
 	var host := _valid_control_ref(event_entry.get("stack_host"))
 	if host == null or not is_instance_valid(host):
 		return false
