@@ -15799,9 +15799,9 @@ func _detail_lazy_entry_for_track_id(track_id: String) -> Dictionary:
 	if track_id.is_empty():
 		return {}
 	for raw_item in detail_lazy_plan:
-		var plan_item := raw_item as Dictionary
-		if _detail_lazy_entry_matches_track_id(plan_item, track_id):
-			return plan_item
+		var lazy_entry := raw_item as Dictionary
+		if _detail_lazy_entry_matches_track_id(lazy_entry, track_id):
+			return lazy_entry
 	return {}
 
 
@@ -15816,16 +15816,16 @@ func _detail_lazy_entry_matches_track_id(lazy_entry: Dictionary, track_id: Strin
 
 
 func _collapse_detail_lazy_entry_height(track_id: String) -> void:
-	var plan_item := _detail_lazy_entry_for_track_id(track_id)
-	if plan_item.is_empty():
+	var lazy_entry := _detail_lazy_entry_for_track_id(track_id)
+	if lazy_entry.is_empty():
 		return
-	plan_item["height"] = 0.0
-	var placeholder := _valid_control_ref(plan_item.get("placeholder"))
+	lazy_entry["height"] = 0.0
+	var placeholder := _valid_control_ref(lazy_entry.get("placeholder"))
 	if placeholder != null:
 		placeholder.custom_minimum_size.y = 0.0
 		placeholder.size.y = 0.0
 		placeholder.update_minimum_size()
-	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
+	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
 	if stack_host != null:
 		stack_host.custom_minimum_size.y = 0.0
 		stack_host.size.y = 0.0
@@ -15833,13 +15833,13 @@ func _collapse_detail_lazy_entry_height(track_id: String) -> void:
 
 
 func _repair_detail_lazy_action_card_registration(track_id: String, skill_id: String) -> bool:
-	var plan_item := _detail_lazy_entry_for_track_id(track_id)
-	if plan_item.is_empty() or not bool(plan_item.get("mounted", false)):
+	var lazy_entry := _detail_lazy_entry_for_track_id(track_id)
+	if lazy_entry.is_empty() or not bool(lazy_entry.get("mounted", false)):
 		return false
-	var kind := str(plan_item.get("kind", ""))
+	var kind := str(lazy_entry.get("kind", ""))
 	if kind != "action" and kind != "passive":
 		return false
-	var card := plan_item.get("card", {}) as Dictionary
+	var card := lazy_entry.get("card", {}) as Dictionary
 	if card.is_empty():
 		return false
 	var root := _valid_control_ref(card.get("root"))
@@ -15850,13 +15850,13 @@ func _repair_detail_lazy_action_card_registration(track_id: String, skill_id: St
 
 
 func _remount_detail_lazy_action_card(track_id: String, skill_id: String) -> bool:
-	var plan_item := _detail_lazy_entry_for_track_id(track_id)
-	if plan_item.is_empty():
+	var lazy_entry := _detail_lazy_entry_for_track_id(track_id)
+	if lazy_entry.is_empty():
 		return false
-	var kind := str(plan_item.get("kind", ""))
+	var kind := str(lazy_entry.get("kind", ""))
 	if kind != "action" and kind != "passive":
 		return false
-	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
+	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
 	if stack_host == null or not stack_host.is_inside_tree():
 		return false
 	_kill_transient_tweens_in_subtree(stack_host)
@@ -15865,10 +15865,10 @@ func _remount_detail_lazy_action_card(track_id: String, skill_id: String) -> boo
 			continue
 		stack_host.remove_child(child)
 		child.queue_free()
-	plan_item["mounted"] = false
-	plan_item["placeholder"] = null
-	plan_item.erase("card")
-	return _detail_lazy_mount_item(plan_item, skill_id, _skill_content_width(), _skill_content_width(), false)
+	lazy_entry["mounted"] = false
+	lazy_entry["placeholder"] = null
+	lazy_entry.erase("card")
+	return _detail_lazy_mount_item(lazy_entry, skill_id, _skill_content_width(), _skill_content_width(), false)
 
 
 func _ensure_detail_lazy_entry_mounted(track_id: String) -> void:
