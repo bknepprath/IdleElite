@@ -37821,7 +37821,7 @@ func _build_fishing_offer_module(offer_id: String, content_width: float) -> Cont
 	return null
 
 
-func _append_fishing_offer_lazy_plan_item(plan: Array, y: float, offer_id: String) -> float:
+func _append_fishing_offer_lazy_entry(plan: Array, y: float, offer_id: String) -> float:
 	var height := _fishing_offer_height(offer_id)
 	plan.append({
 		"kind": "fishing_offer",
@@ -37837,7 +37837,7 @@ func _append_fishing_offer_lazy_plan_item(plan: Array, y: float, offer_id: Strin
 	return y + height + DETAIL_LAZY_STACK_SEPARATION
 
 
-func _append_fishing_action_lazy_plan_item(plan: Array, y: float, action: Dictionary) -> float:
+func _append_fishing_action_lazy_entry(plan: Array, y: float, action: Dictionary) -> float:
 	var action_id := str(action.get("id", ""))
 	if action_id.is_empty():
 		return y
@@ -37910,25 +37910,25 @@ func _build_fishing_detail_lazy_plan(skill_id: String) -> Array:
 	for area_def in _fishing_render_area_modules(skill_id):
 		var unlock_level := _fishing_render_module_unlock(area_def)
 		while inserted_index < inserted_actions.size() and _activity_action_display_sort_level(inserted_actions[inserted_index] as Dictionary) <= unlock_level:
-			y = _append_fishing_action_lazy_plan_item(plan, y, inserted_actions[inserted_index] as Dictionary)
+			y = _append_fishing_action_lazy_entry(plan, y, inserted_actions[inserted_index] as Dictionary)
 			inserted_index += 1
 		if _fishing_net_offer_available() and not net_offer_rendered and unlock_level > FISHING_NET_OFFER_UNLOCK_LEVEL:
-			y = _append_fishing_offer_lazy_plan_item(plan, y, "net")
+			y = _append_fishing_offer_lazy_entry(plan, y, "net")
 			net_offer_rendered = true
 		if _fishing_rod_offer_available() and not rod_offer_rendered and unlock_level > FISHING_ROD_OFFER_UNLOCK_LEVEL:
-			y = _append_fishing_offer_lazy_plan_item(plan, y, "rod")
+			y = _append_fishing_offer_lazy_entry(plan, y, "rod")
 			rod_offer_rendered = true
 		if _fishing_reinforced_rod_offer_available() and not reinforced_rod_offer_rendered and unlock_level > FISHING_REINFORCED_ROD_UNLOCK_LEVEL:
-			y = _append_fishing_offer_lazy_plan_item(plan, y, "reinforced_rod")
+			y = _append_fishing_offer_lazy_entry(plan, y, "reinforced_rod")
 			reinforced_rod_offer_rendered = true
 		if _fishing_boat_offer_available() and not boat_offer_rendered and unlock_level > FISHING_BOAT_OFFER_UNLOCK_LEVEL:
-			y = _append_fishing_offer_lazy_plan_item(plan, y, "boat")
+			y = _append_fishing_offer_lazy_entry(plan, y, "boat")
 			boat_offer_rendered = true
 		if _fishing_star_rod_offer_available() and not star_rod_offer_rendered and unlock_level > FISHING_STAR_ROD_UNLOCK_LEVEL:
-			y = _append_fishing_offer_lazy_plan_item(plan, y, "star_rod")
+			y = _append_fishing_offer_lazy_entry(plan, y, "star_rod")
 			star_rod_offer_rendered = true
 		if _fishing_mirror_offer_available() and not mirror_offer_rendered and unlock_level > FISHING_MIRROR_OFFER_UNLOCK_LEVEL:
-			y = _append_fishing_offer_lazy_plan_item(plan, y, "mirror")
+			y = _append_fishing_offer_lazy_entry(plan, y, "mirror")
 			mirror_offer_rendered = true
 		var area_key := _fishing_area_module_key(skill_id, area_def)
 		var area_item := {
@@ -37946,20 +37946,20 @@ func _build_fishing_detail_lazy_plan(skill_id: String) -> Array:
 		plan.append(area_item)
 		y += float(area_item["height"]) + DETAIL_LAZY_STACK_SEPARATION
 	while inserted_index < inserted_actions.size():
-		y = _append_fishing_action_lazy_plan_item(plan, y, inserted_actions[inserted_index] as Dictionary)
+		y = _append_fishing_action_lazy_entry(plan, y, inserted_actions[inserted_index] as Dictionary)
 		inserted_index += 1
 	if _fishing_net_offer_available() and not net_offer_rendered:
-		y = _append_fishing_offer_lazy_plan_item(plan, y, "net")
+		y = _append_fishing_offer_lazy_entry(plan, y, "net")
 	if _fishing_rod_offer_available() and not rod_offer_rendered:
-		y = _append_fishing_offer_lazy_plan_item(plan, y, "rod")
+		y = _append_fishing_offer_lazy_entry(plan, y, "rod")
 	if _fishing_reinforced_rod_offer_available() and not reinforced_rod_offer_rendered:
-		y = _append_fishing_offer_lazy_plan_item(plan, y, "reinforced_rod")
+		y = _append_fishing_offer_lazy_entry(plan, y, "reinforced_rod")
 	if _fishing_boat_offer_available() and not boat_offer_rendered:
-		y = _append_fishing_offer_lazy_plan_item(plan, y, "boat")
+		y = _append_fishing_offer_lazy_entry(plan, y, "boat")
 	if _fishing_star_rod_offer_available() and not star_rod_offer_rendered:
-		y = _append_fishing_offer_lazy_plan_item(plan, y, "star_rod")
+		y = _append_fishing_offer_lazy_entry(plan, y, "star_rod")
 	if _fishing_mirror_offer_available() and not mirror_offer_rendered:
-		y = _append_fishing_offer_lazy_plan_item(plan, y, "mirror")
+		y = _append_fishing_offer_lazy_entry(plan, y, "mirror")
 	return plan
 
 

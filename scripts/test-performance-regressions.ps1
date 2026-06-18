@@ -707,7 +707,8 @@ Assert-True ($renderFishingModules -match '_detail_lazy_mount_initial_window_syn
 Assert-True ($renderFishingModules -notmatch '_build_fishing_area_module\(') "Fishing detail renders must not eagerly build every area module."
 $fishingLazyPlan = Get-FunctionBody -Text $main -Name "_build_fishing_detail_lazy_plan"
 Assert-True ($fishingLazyPlan -match '"kind": "fishing_area"') "Fishing lazy plans should represent area modules as lazy entries."
-Assert-True ($fishingLazyPlan -match '_append_fishing_offer_lazy_plan_item') "Fishing lazy plans should preserve offer modules as lazy entries."
+Assert-True ($fishingLazyPlan -match '_append_fishing_offer_lazy_entry') "Fishing lazy plans should preserve offer modules as lazy entries."
+Assert-True ($fishingLazyPlan -match '_append_fishing_action_lazy_entry') "Fishing lazy plans should preserve standalone actions as lazy entries."
 Assert-True ($fishingLazyPlan -match '_fishing_area_module_method_ids') "Fishing lazy plans should keep method ids for pinning and scroll-to-action."
 
 $pageReadyRefresh = Get-FunctionBody -Text $main -Name "_detail_lazy_refresh_after_page_ready"
