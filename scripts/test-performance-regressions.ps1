@@ -1025,6 +1025,8 @@ Assert-True ($mobileScrollContainer -match 'func _modal_blocks_this_scroll\(\) -
 Assert-True ($mobileScrollContainer -match 'get_nodes_in_group\("modal_overlay"\)') "Mobile scroll containers should respect the shared modal overlay group."
 Assert-True ($mobileScrollContainer -match 'func _set_pull_raw_offset\(next_raw_offset: float\)') "Mobile scroll containers should keep pull-resistance ownership in the reusable control."
 Assert-True ($mobileScrollContainer -match 'PULL_RESISTANCE_MAX \* \(1\.0 - exp\(-absf\(pull_raw_offset\) / PULL_RESISTANCE_MAX\)\)') "Mobile scroll pull resistance should retain the bounded exponential easing."
+Assert-True ($mobileScrollContainer -match 'pull_anchor_position_y') "Mobile scroll pull resistance should name its baseline as an anchor position."
+Assert-True ($mobileScrollContainer -notmatch 'pull_rest_position') "Mobile scroll pull resistance should not use vague rest-position naming for the pull anchor."
 Assert-True ($mobileScrollContainer -match 'for child in get_children\(\):\s*\r?\n\s*if child is Control:') "Disabled mobile scroll containers should reset child control offsets."
 Assert-True ($main -match 'const ActionArtTextureRect = preload\("res://scripts/ui/action_art_texture_rect\.gd"\)') "Action art images should live in a reusable UI control file."
 Assert-True ($actionArtTexture -match 'static var shared_mask_shader: Shader') "Action art images should share one mask shader program."

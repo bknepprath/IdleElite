@@ -22,8 +22,8 @@ var velocity := 0.0
 var pull_resistance_enabled := false
 var pull_raw_offset := 0.0
 var pull_offset := 0.0
-var pull_rest_position_y := 0.0
-var pull_rest_position_valid := false
+var pull_anchor_position_y := 0.0
+var pull_anchor_position_valid := false
 var child_click_suppressed := false
 var input_locked_by_activity_lock := false
 var max_scroll_override := -1
@@ -389,50 +389,50 @@ func _emit_user_scroll_direction_from_delta(delta: float) -> void:
 	user_scroll_direction.emit(1 if delta > 0.0 else -1)
 
 func _set_pull_raw_offset(next_raw_offset: float) -> void:
-	_capture_pull_rest_position()
+	_capture_pull_anchor_position()
 	pull_raw_offset = next_raw_offset
 	var direction := signf(pull_raw_offset)
 	pull_offset = direction * PULL_RESISTANCE_MAX * (1.0 - exp(-absf(pull_raw_offset) / PULL_RESISTANCE_MAX))
-	position.y = pull_rest_position_y + pull_offset
+	position.y = pull_anchor_position_y + pull_offset
 	if absf(pull_offset) <= 0.0 and pull_tween == null:
-		pull_rest_position_valid = false
+		pull_anchor_position_valid = false
 
 func _snap_pull_offset() -> void:
 	if not pull_resistance_enabled and absf(pull_offset) <= 0.0:
 		pull_raw_offset = 0.0
 		pull_offset = 0.0
-		pull_rest_position_valid = false
+		pull_anchor_position_valid = false
 		return
 	if absf(pull_offset) <= 0.0:
 		_set_pull_raw_offset(0.0)
 		return
 	_cancel_pull_tween()
 	velocity = 0.0
-	_capture_pull_rest_position()
+	_capture_pull_anchor_position()
 	pull_raw_offset = 0.0
 	pull_tween = create_tween()
-	pull_tween.tween_property(self, "position:y", pull_rest_position_y, PULL_SNAP_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	pull_tween.tween_property(self, "position:y", pull_anchor_position_y, PULL_SNAP_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 	pull_tween.finished.connect(func():
 		pull_offset = 0.0
 		pull_raw_offset = 0.0
-		position.y = pull_rest_position_y
-		pull_rest_position_valid = false
+		position.y = pull_anchor_position_y
+		pull_anchor_position_valid = false
 		pull_tween = null
 	)
 
 func _cancel_pull_tween() -> void:
 	if pull_tween != null and pull_tween.is_valid():
 		pull_tween.kill()
-		_capture_pull_rest_position()
-		pull_offset = position.y - pull_rest_position_y
+		_capture_pull_anchor_position()
+		pull_offset = position.y - pull_anchor_position_y
 		var pull_pct := clampf(absf(pull_offset) / PULL_RESISTANCE_MAX, 0.0, 0.98)
 		pull_raw_offset = signf(pull_offset) * -PULL_RESISTANCE_MAX * log(1.0 - pull_pct)
 	pull_tween = null
 
-func _capture_pull_rest_position() -> void:
-	if pull_rest_position_valid:
+func _capture_pull_anchor_position() -> void:
+	if pull_anchor_position_valid:
 		return
-	pull_rest_position_y = position.y - pull_offset
-	pull_rest_position_valid = true
+	pull_anchor_position_y = position.y - pull_offset
+	pull_anchor_position_valid = true
 
 
