@@ -741,7 +741,7 @@ Assert-True ($lazyMount -match '_build_fishing_offer_module') "Fishing offers sh
 
 $lazyShouldMount = Get-FunctionBody -Text $main -Name "_detail_lazy_should_mount_item"
 Assert-True ($lazyShouldMount -match '_detail_lazy_scroll_y\(\) <= DETAIL_LAZY_VIEWPORT_BUFFER_PX') "Initial lazy-card force mounting should only apply near the top of the list."
-Assert-True ($lazyShouldMount -match '_detail_lazy_plan_item_pinned\(plan_item, pinned\)') "Lazy mounting should pin Fishing areas that contain the running method."
+Assert-True ($lazyShouldMount -match '_detail_lazy_entry_is_pinned\(plan_item, pinned\)') "Lazy mounting should pin Fishing areas that contain the running method."
 
 $parkDetailLazyCachedRoot = Get-FunctionBody -Text $main -Name "_park_detail_lazy_cached_root"
 Assert-True ($parkDetailLazyCachedRoot -match '_set_canvas_item_modulate_if_changed\(root, Color\.WHITE\)') "Lazy cached-card parking should own the card tint reset before detaching."
@@ -789,7 +789,7 @@ Assert-True ($lazyVisibleCheck -match '_detail_stack_child_is_module_content') "
 $lazyCanUnmount = Get-FunctionBody -Text $main -Name "_detail_lazy_can_unmount_item"
 Assert-True ($lazyCanUnmount -match '"heist"') "Thieving heist modules should also unload when far outside the visible window."
 Assert-True ($lazyCanUnmount -match '"fishing_area"') "Fishing area modules should unload when far outside the visible window."
-Assert-True ($lazyCanUnmount -match '_detail_lazy_plan_item_pinned\(plan_item, pinned\)') "Pinned Fishing areas must not be unmounted."
+Assert-True ($lazyCanUnmount -match '_detail_lazy_entry_is_pinned\(plan_item, pinned\)') "Pinned Fishing areas must not be unmounted."
 
 $lazyRebind = Get-FunctionBody -Text $main -Name "_detail_lazy_rebind_plan_to_existing_stack"
 Assert-True ($lazyRebind -match 'control\.get_meta\("detail_lazy_placeholder", false\)') "Direct heist placeholders should rebind as placeholders, not as mounted content."

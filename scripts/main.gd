@@ -3210,7 +3210,7 @@ func _detail_lazy_window_scan_due() -> bool:
 	if detail_lazy_window_sync_elapsed >= DETAIL_LAZY_WINDOW_SYNC_INTERVAL_SECONDS:
 		return true
 	if running_skill_id == selected_skill_id and not running_action_id.is_empty():
-		var running_plan_item := _detail_lazy_plan_item_for_track_id(running_action_id)
+		var running_plan_item := _detail_lazy_entry_for_track_id(running_action_id)
 		if not running_plan_item.is_empty() and not bool(running_plan_item.get("mounted", false)):
 			return true
 	return false
@@ -14632,7 +14632,7 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 	return pinned
 
 
-func _detail_lazy_plan_item_pinned(plan_item: Dictionary, pinned: Dictionary) -> bool:
+func _detail_lazy_entry_is_pinned(plan_item: Dictionary, pinned: Dictionary) -> bool:
 	var track_id := str(plan_item.get("track_id", ""))
 	if not track_id.is_empty() and pinned.has(track_id):
 		return true
@@ -14809,7 +14809,7 @@ func _detail_lazy_should_mount_item(plan_item: Dictionary, pinned: Dictionary, p
 	var initial_force_count := _detail_lazy_initial_force_mount_count_for_skill(selected_skill_id)
 	if kind in ["lock_tip", "activity_start_tip", "skill_swipe_tip"]:
 		return plan_index < initial_force_count
-	if _detail_lazy_plan_item_pinned(plan_item, pinned):
+	if _detail_lazy_entry_is_pinned(plan_item, pinned):
 		return true
 	if _detail_lazy_mount_should_wait_for_scroll(plan_item):
 		return false
@@ -15694,7 +15694,7 @@ func _detail_lazy_can_unmount_item(plan_item: Dictionary, pinned: Dictionary) ->
 	if kind not in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
 		return false
 	var track_id := str(plan_item.get("track_id", ""))
-	if track_id.is_empty() or _detail_lazy_plan_item_pinned(plan_item, pinned):
+	if track_id.is_empty() or _detail_lazy_entry_is_pinned(plan_item, pinned):
 		return false
 	return _detail_lazy_entry_far_from_viewport(plan_item)
 
@@ -15795,17 +15795,17 @@ func _detail_lazy_all_mounted() -> bool:
 	return true
 
 
-func _detail_lazy_plan_item_for_track_id(track_id: String) -> Dictionary:
+func _detail_lazy_entry_for_track_id(track_id: String) -> Dictionary:
 	if track_id.is_empty():
 		return {}
 	for raw_item in detail_lazy_plan:
 		var plan_item := raw_item as Dictionary
-		if _detail_lazy_plan_item_matches_track_id(plan_item, track_id):
+		if _detail_lazy_entry_matches_track_id(plan_item, track_id):
 			return plan_item
 	return {}
 
 
-func _detail_lazy_plan_item_matches_track_id(plan_item: Dictionary, track_id: String) -> bool:
+func _detail_lazy_entry_matches_track_id(plan_item: Dictionary, track_id: String) -> bool:
 	if str(plan_item.get("track_id", "")) == track_id:
 		return true
 	if str(plan_item.get("kind", "")) == "fishing_area":
@@ -15816,7 +15816,7 @@ func _detail_lazy_plan_item_matches_track_id(plan_item: Dictionary, track_id: St
 
 
 func _collapse_detail_lazy_plan_item_height(track_id: String) -> void:
-	var plan_item := _detail_lazy_plan_item_for_track_id(track_id)
+	var plan_item := _detail_lazy_entry_for_track_id(track_id)
 	if plan_item.is_empty():
 		return
 	plan_item["height"] = 0.0
@@ -15833,7 +15833,7 @@ func _collapse_detail_lazy_plan_item_height(track_id: String) -> void:
 
 
 func _repair_detail_lazy_action_card_registration(track_id: String, skill_id: String) -> bool:
-	var plan_item := _detail_lazy_plan_item_for_track_id(track_id)
+	var plan_item := _detail_lazy_entry_for_track_id(track_id)
 	if plan_item.is_empty() or not bool(plan_item.get("mounted", false)):
 		return false
 	var kind := str(plan_item.get("kind", ""))
@@ -15850,7 +15850,7 @@ func _repair_detail_lazy_action_card_registration(track_id: String, skill_id: St
 
 
 func _remount_detail_lazy_action_card(track_id: String, skill_id: String) -> bool:
-	var plan_item := _detail_lazy_plan_item_for_track_id(track_id)
+	var plan_item := _detail_lazy_entry_for_track_id(track_id)
 	if plan_item.is_empty():
 		return false
 	var kind := str(plan_item.get("kind", ""))
@@ -15876,7 +15876,7 @@ func _ensure_detail_lazy_entry_mounted(track_id: String) -> void:
 		return
 	for raw_item in detail_lazy_plan:
 		var plan_item := raw_item as Dictionary
-		if not _detail_lazy_plan_item_matches_track_id(plan_item, track_id):
+		if not _detail_lazy_entry_matches_track_id(plan_item, track_id):
 			continue
 		if bool(plan_item.get("mounted", false)):
 			return
@@ -16312,7 +16312,7 @@ func _detail_lazy_mount_initial_window_sync(instant := true, mount_count: int = 
 		var plan_item := detail_lazy_plan[plan_index] as Dictionary
 		if bool(plan_item.get("mounted", false)):
 			continue
-		if plan_index >= target and not _detail_lazy_plan_item_pinned(plan_item, pinned):
+		if plan_index >= target and not _detail_lazy_entry_is_pinned(plan_item, pinned):
 			continue
 		var content_width := _skill_content_width()
 		var actions_width := content_width
