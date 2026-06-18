@@ -15790,7 +15790,8 @@ func _prune_detail_lazy_far_cards(max_unmounts: int = DETAIL_LAZY_UNMOUNT_BUDGET
 
 func _detail_lazy_all_mounted() -> bool:
 	for raw_item in detail_lazy_plan:
-		if not bool((raw_item as Dictionary).get("mounted", false)):
+		var lazy_entry := raw_item as Dictionary
+		if not bool(lazy_entry.get("mounted", false)):
 			return false
 	return true
 
