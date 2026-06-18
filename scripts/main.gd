@@ -16163,10 +16163,10 @@ func _detail_lazy_reorder_existing_hosts_for_plan(stack: VBoxContainer, plan: Ar
 	if stack == null or not is_instance_valid(stack):
 		return
 	for plan_index in range(plan.size()):
-		var plan_item := plan[plan_index] as Dictionary
-		if str(plan_item.get("track_id", "")) == skip_track_id:
+		var lazy_entry := plan[plan_index] as Dictionary
+		if str(lazy_entry.get("track_id", "")) == skip_track_id:
 			continue
-		var host := _valid_control_ref(plan_item.get("stack_host"))
+		var host := _valid_control_ref(lazy_entry.get("stack_host"))
 		if host == null or not is_instance_valid(host) or host.get_parent() != stack:
 			continue
 		var target_index := _detail_lazy_stack_insert_index_for_plan_index(stack, plan_index)

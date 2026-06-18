@@ -897,6 +897,9 @@ $lazyInsertAnimatedTemporaryEventEntry = Get-FunctionBody -Text $main -Name "_de
 Assert-True ($lazyInsertAnimatedTemporaryEventEntry -match 'event_entry: Dictionary') "Temporary event insertion should name its plan record parameter as an event entry."
 Assert-True ($lazyInsertAnimatedTemporaryEventEntry -notmatch '\bplan_item\b') "Temporary event insertion should not use stale plan-item wording internally."
 Assert-True ($main -notmatch '_detail_lazy_insert_animated_temporary_event_item') "Temporary event insertion helper should not use stale item naming."
+$lazyReorderExistingHosts = Get-FunctionBody -Text $main -Name "_detail_lazy_reorder_existing_hosts_for_plan"
+Assert-True ($lazyReorderExistingHosts -match 'var lazy_entry := plan\[plan_index\] as Dictionary') "Lazy host reordering should name moved render records as lazy entries."
+Assert-True ($lazyReorderExistingHosts -notmatch '\bplan_item\b') "Lazy host reordering should not use stale plan-item wording internally."
 
 $lazyRebind = Get-FunctionBody -Text $main -Name "_detail_lazy_rebind_plan_to_existing_stack"
 Assert-True ($lazyRebind -match 'control\.get_meta\("detail_lazy_placeholder", false\)') "Direct heist placeholders should rebind as placeholders, not as mounted content."
