@@ -15805,11 +15805,11 @@ func _detail_lazy_entry_for_track_id(track_id: String) -> Dictionary:
 	return {}
 
 
-func _detail_lazy_entry_matches_track_id(plan_item: Dictionary, track_id: String) -> bool:
-	if str(plan_item.get("track_id", "")) == track_id:
+func _detail_lazy_entry_matches_track_id(lazy_entry: Dictionary, track_id: String) -> bool:
+	if str(lazy_entry.get("track_id", "")) == track_id:
 		return true
-	if str(plan_item.get("kind", "")) == "fishing_area":
-		for raw_method_id in plan_item.get("method_ids", []) as Array:
+	if str(lazy_entry.get("kind", "")) == "fishing_area":
+		for raw_method_id in lazy_entry.get("method_ids", []) as Array:
 			if str(raw_method_id) == track_id:
 				return true
 	return false

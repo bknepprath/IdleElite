@@ -834,6 +834,10 @@ $lazyEntryFarFromViewport = Get-FunctionBody -Text $main -Name "_detail_lazy_ent
 Assert-True ($lazyEntryFarFromViewport -match 'func _detail_lazy_entry_far_from_viewport\(lazy_entry: Dictionary\)') "Lazy viewport-distance checks should name their render record parameter as a lazy entry."
 Assert-True ($lazyEntryFarFromViewport -match '_detail_lazy_entry_rect_for_viewport\(lazy_entry\)') "Lazy viewport-distance checks should use the shared lazy-entry rect helper."
 Assert-True ($lazyEntryFarFromViewport -notmatch '\bplan_item\b') "Lazy viewport-distance checks should not use stale plan-item wording internally."
+$lazyEntryMatchesTrackId = Get-FunctionBody -Text $main -Name "_detail_lazy_entry_matches_track_id"
+Assert-True ($lazyEntryMatchesTrackId -match 'func _detail_lazy_entry_matches_track_id\(lazy_entry: Dictionary, track_id: String\)') "Lazy track-id matching should name its render record parameter as a lazy entry."
+Assert-True ($lazyEntryMatchesTrackId -match 'lazy_entry\.get\("method_ids", \[\]\)') "Lazy track-id matching should still map Fishing area method ids back to their area entry."
+Assert-True ($lazyEntryMatchesTrackId -notmatch '\bplan_item\b') "Lazy track-id matching should not use stale plan-item wording internally."
 
 $lazyRebind = Get-FunctionBody -Text $main -Name "_detail_lazy_rebind_plan_to_existing_stack"
 Assert-True ($lazyRebind -match 'control\.get_meta\("detail_lazy_placeholder", false\)') "Direct heist placeholders should rebind as placeholders, not as mounted content."
