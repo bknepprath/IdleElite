@@ -821,6 +821,9 @@ Assert-True ($lazyUnmount -match 'kind != "fishing_offer"') "Lazy unmounting sho
 $lazyPrune = Get-FunctionBody -Text $main -Name "_prune_detail_lazy_far_cards"
 Assert-True ($lazyPrune -match '_detail_lazy_can_unmount_item') "Lazy pruning should use the safe unmount guard."
 Assert-True ($lazyPrune -match 'max_unmounts') "Lazy pruning should remain budgeted."
+Assert-True ($lazyPrune -match 'var lazy_entry := raw_item as Dictionary') "Lazy pruning should name scanned render records as lazy entries."
+Assert-True ($lazyPrune -match '_detail_lazy_unmount_item\(lazy_entry, selected_skill_id, content_width\)') "Lazy pruning should unmount the entry-named record."
+Assert-True ($lazyPrune -notmatch '\bplan_item\b') "Lazy pruning should not use stale plan-item wording internally."
 
 $lazyMountWaitForScroll = Get-FunctionBody -Text $main -Name "_detail_lazy_mount_should_wait_for_scroll"
 Assert-True ($lazyMountWaitForScroll -match 'func _detail_lazy_mount_should_wait_for_scroll\(lazy_entry: Dictionary\)') "Lazy scroll deferral should name its render record parameter as a lazy entry."

@@ -15780,10 +15780,10 @@ func _prune_detail_lazy_far_cards(max_unmounts: int = DETAIL_LAZY_UNMOUNT_BUDGET
 	for raw_item in detail_lazy_plan:
 		if max_unmounts >= 0 and unmounted_count >= max_unmounts:
 			break
-		var plan_item := raw_item as Dictionary
-		if not _detail_lazy_can_unmount_item(plan_item, pinned):
+		var lazy_entry := raw_item as Dictionary
+		if not _detail_lazy_can_unmount_item(lazy_entry, pinned):
 			continue
-		if _detail_lazy_unmount_item(plan_item, selected_skill_id, content_width):
+		if _detail_lazy_unmount_item(lazy_entry, selected_skill_id, content_width):
 			unmounted_count += 1
 	return unmounted_count
 
