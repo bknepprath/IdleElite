@@ -21,20 +21,20 @@ var mask_inset := 6.0
 var corner_mask_mode := 0
 var fallback_color := Color("#3aa0ff")
 var aspect_mode := 0
-var mask_params_initialized := false
-var mask_params_texture: Texture2D
-var mask_params_size := Vector2(-1.0, -1.0)
-var mask_params_radius := -1.0
-var mask_params_crop_left := -1.0
-var mask_params_crop_right := -1.0
-var mask_params_crop_top := -1.0
-var mask_params_crop_bottom := -1.0
-var mask_params_feather_height := -1.0
-var mask_params_art_height := -1.0
-var mask_params_inset := -1.0
-var mask_params_corner_mode := -1
-var mask_params_aspect_mode := -1
-var mask_params_fallback_color := Color(0, 0, 0, 0)
+var mask_shader_params_initialized := false
+var mask_shader_params_texture: Texture2D
+var mask_shader_params_size := Vector2(-1.0, -1.0)
+var mask_shader_params_radius := -1.0
+var mask_shader_params_crop_left := -1.0
+var mask_shader_params_crop_right := -1.0
+var mask_shader_params_crop_top := -1.0
+var mask_shader_params_crop_bottom := -1.0
+var mask_shader_params_feather_height := -1.0
+var mask_shader_params_art_height := -1.0
+var mask_shader_params_inset := -1.0
+var mask_shader_params_corner_mode := -1
+var mask_shader_params_aspect_mode := -1
+var mask_shader_params_fallback_color := Color(0, 0, 0, 0)
 
 func _ready() -> void:
 	_ensure_mask_material()
@@ -160,9 +160,9 @@ func _update_mask_params() -> void:
 	var current_texture := _mask_texture()
 	if current_texture == null:
 		return
-	if _mask_params_unchanged():
+	if _mask_shader_params_unchanged():
 		return
-	var texture_changed := not mask_params_initialized or mask_params_texture != current_texture
+	var texture_changed := not mask_shader_params_initialized or mask_shader_params_texture != current_texture
 	if texture_changed:
 		shader_material.set_shader_parameter("bg_texture", current_texture)
 	shader_material.set_shader_parameter("control_size", size)
@@ -177,44 +177,44 @@ func _update_mask_params() -> void:
 	shader_material.set_shader_parameter("corner_mask_mode", corner_mask_mode)
 	shader_material.set_shader_parameter("aspect_mode", aspect_mode)
 	shader_material.set_shader_parameter("fallback_color", fallback_color)
-	_store_mask_params(current_texture)
+	_store_mask_shader_params(current_texture)
 
-func _mask_params_unchanged() -> bool:
+func _mask_shader_params_unchanged() -> bool:
 	return (
-		mask_params_initialized
-		and mask_params_texture == _mask_texture()
-		and mask_params_size.is_equal_approx(size)
-		and absf(mask_params_radius - radius) <= 0.001
-		and absf(mask_params_crop_left - crop_left) <= 0.001
-		and absf(mask_params_crop_right - crop_right) <= 0.001
-		and absf(mask_params_crop_top - crop_top) <= 0.001
-		and absf(mask_params_crop_bottom - crop_bottom) <= 0.001
-		and absf(mask_params_feather_height - feather_height) <= 0.001
-		and absf(mask_params_art_height - art_height) <= 0.001
-		and absf(mask_params_inset - mask_inset) <= 0.001
-		and mask_params_corner_mode == corner_mask_mode
-		and mask_params_aspect_mode == aspect_mode
-		and mask_params_fallback_color.is_equal_approx(fallback_color)
+		mask_shader_params_initialized
+		and mask_shader_params_texture == _mask_texture()
+		and mask_shader_params_size.is_equal_approx(size)
+		and absf(mask_shader_params_radius - radius) <= 0.001
+		and absf(mask_shader_params_crop_left - crop_left) <= 0.001
+		and absf(mask_shader_params_crop_right - crop_right) <= 0.001
+		and absf(mask_shader_params_crop_top - crop_top) <= 0.001
+		and absf(mask_shader_params_crop_bottom - crop_bottom) <= 0.001
+		and absf(mask_shader_params_feather_height - feather_height) <= 0.001
+		and absf(mask_shader_params_art_height - art_height) <= 0.001
+		and absf(mask_shader_params_inset - mask_inset) <= 0.001
+		and mask_shader_params_corner_mode == corner_mask_mode
+		and mask_shader_params_aspect_mode == aspect_mode
+		and mask_shader_params_fallback_color.is_equal_approx(fallback_color)
 	)
 
 func _mask_texture() -> Texture2D:
 	return texture if texture != null else _fallback_texture()
 
-func _store_mask_params(current_texture: Texture2D) -> void:
-	mask_params_initialized = true
-	mask_params_texture = current_texture
-	mask_params_size = size
-	mask_params_radius = radius
-	mask_params_crop_left = crop_left
-	mask_params_crop_right = crop_right
-	mask_params_crop_top = crop_top
-	mask_params_crop_bottom = crop_bottom
-	mask_params_feather_height = feather_height
-	mask_params_art_height = art_height
-	mask_params_inset = mask_inset
-	mask_params_corner_mode = corner_mask_mode
-	mask_params_aspect_mode = aspect_mode
-	mask_params_fallback_color = fallback_color
+func _store_mask_shader_params(current_texture: Texture2D) -> void:
+	mask_shader_params_initialized = true
+	mask_shader_params_texture = current_texture
+	mask_shader_params_size = size
+	mask_shader_params_radius = radius
+	mask_shader_params_crop_left = crop_left
+	mask_shader_params_crop_right = crop_right
+	mask_shader_params_crop_top = crop_top
+	mask_shader_params_crop_bottom = crop_bottom
+	mask_shader_params_feather_height = feather_height
+	mask_shader_params_art_height = art_height
+	mask_shader_params_inset = mask_inset
+	mask_shader_params_corner_mode = corner_mask_mode
+	mask_shader_params_aspect_mode = aspect_mode
+	mask_shader_params_fallback_color = fallback_color
 
 static func _fallback_texture() -> Texture2D:
 	if DisplayServer.get_name() == "headless":
