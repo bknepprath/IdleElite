@@ -25,6 +25,7 @@ $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
 $perfMonitorPath = Join-Path $projectRoot "scripts\perf_monitor.gd"
 $checkProjectPath = Join-Path $projectRoot "scripts\check-project.ps1"
 $runtimeAssetPathTestPath = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
+$activityDatabaseContractTestPath = Join-Path $projectRoot "scripts\check-activity-database-contracts.ps1"
 $uiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
 $activityUiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
 $skillsPagePerformancePath = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
@@ -114,6 +115,8 @@ Assert-True (Test-Path -LiteralPath $checkProjectPath) "Missing scripts\check-pr
 $checkProject = Get-Content -LiteralPath $checkProjectPath -Raw
 Assert-True (Test-Path -LiteralPath $runtimeAssetPathTestPath) "Missing scripts\check-runtime-asset-paths.ps1."
 $runtimeAssetPathTest = Get-Content -LiteralPath $runtimeAssetPathTestPath -Raw
+Assert-True (Test-Path -LiteralPath $activityDatabaseContractTestPath) "Missing scripts\check-activity-database-contracts.ps1."
+$activityDatabaseContractTest = Get-Content -LiteralPath $activityDatabaseContractTestPath -Raw
 Assert-True (Test-Path -LiteralPath $uiBoundaryContractTestPath) "Missing scripts\check-ui-boundary-contracts.ps1."
 $uiBoundaryContractTest = Get-Content -LiteralPath $uiBoundaryContractTestPath -Raw
 Assert-True (Test-Path -LiteralPath $activityUiBoundaryContractTestPath) "Missing scripts\check-activity-ui-boundary-contracts.ps1."
@@ -166,6 +169,7 @@ Assert-True ($main -match 'const SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE := 1') "Sk
 Assert-True ($checkProject -match 'IDLE_ELITE_STRICT_SKILLS_PERF') "Project validation should expose an opt-in strict repeated skills-page performance mode."
 Assert-True ($checkProject -match 'test-save-normalization\.ps1') "Project validation should run the focused save-normalization gate."
 Assert-True ($checkProject -match 'check-runtime-asset-paths\.ps1') "Project validation should run the runtime asset path contract gate."
+Assert-True ($checkProject -match 'check-activity-database-contracts\.ps1') "Project validation should run the activity database source/generated contract gate."
 Assert-True ($checkProject -match 'check-ui-boundary-contracts\.ps1') "Project validation should run the UI boundary contract gate."
 Assert-True ($checkProject -match 'check-activity-ui-boundary-contracts\.ps1') "Project validation should run the activity UI boundary contract gate."
 Assert-True ($checkProject -match 'check-leaderboard-cost-safety\.ps1') "Project validation should run the leaderboard cost-safety gate."
@@ -173,6 +177,9 @@ Assert-True ($checkProject -match 'test-skills-page-performance-repeat\.ps1') "S
 Assert-True ($runtimeAssetPathTest -match 'project\.godot') "Runtime asset path validation should include project-level Godot references."
 Assert-True ($runtimeAssetPathTest -match 'export_presets\.cfg') "Runtime asset path validation should include Android export preset references."
 Assert-True ($runtimeAssetPathTest -match 'docs/activity-database\.json') "Runtime asset path validation should include activity database asset references."
+Assert-True ($activityDatabaseContractTest -match 'activity-database-data\.js must match docs/activity-database\.json') "Activity database contract validation should protect generated JS drift."
+Assert-True ($activityDatabaseContractTest -match 'ACTIVITY_DATABASE_PATH') "Activity database contract validation should protect runtime loading path."
+Assert-True ($activityDatabaseContractTest -match 'include_filter') "Activity database contract validation should protect export inclusion."
 Assert-True ($uiBoundaryContractTest -match '_build_nav_bar') "UI boundary validation should protect navigation shell entry points."
 Assert-True ($uiBoundaryContractTest -match '_build_chat_overlay') "UI boundary validation should protect chat presentation entry points."
 Assert-True ($uiBoundaryContractTest -match '_render_leaderboard_page') "UI boundary validation should protect leaderboard page entry points."

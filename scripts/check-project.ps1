@@ -5,6 +5,7 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $performanceTest = Join-Path $projectRoot "scripts\test-performance-monitor.ps1"
 $performanceRegressionTest = Join-Path $projectRoot "scripts\test-performance-regressions.ps1"
 $runtimeAssetPathTest = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
+$activityDatabaseContractTest = Join-Path $projectRoot "scripts\check-activity-database-contracts.ps1"
 $uiBoundaryContractTest = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
 $activityUiBoundaryContractTest = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
 $leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
@@ -97,6 +98,16 @@ if (-not (Test-Path -LiteralPath $runtimeAssetPathTest)) {
 
 $runtimeAssetPathOutput = & $runtimeAssetPathTest 2>&1
 $runtimeAssetPathOutput | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+if (-not (Test-Path -LiteralPath $activityDatabaseContractTest)) {
+    throw "Activity database contract test was not found at $activityDatabaseContractTest"
+}
+
+$activityDatabaseContractOutput = & $activityDatabaseContractTest 2>&1
+$activityDatabaseContractOutput | Out-Host
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

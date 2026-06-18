@@ -216,7 +216,7 @@
         <li>Branch used for prior work: <code>codex/complete-combo-unlock-checklist</code>.</li>
         <li>Recent asset/readability cleanup already aligned runtime UI/resource assets under <code>assets/content/ui</code> and <code>assets/content/icons</code>.</li>
         <li>Runtime asset/code path alignment commits include: <code>7015a95</code>, <code>92c6bef</code>, <code>f109f26</code>, <code>6ee6c5d</code>, <code>3424b3a</code>, <code>3817c9e</code>, <code>24d3184</code>, <code>ad2611f</code>, <code>0ff328c</code>, <code>d002ed8</code>, <code>08ae18d</code>, <code>0817a10</code>, and <code>49da102</code>.</li>
-        <li>Known validation baseline: after Phase 4.3, <code>.\scripts\check-project.ps1</code> reaches <code>runtime-asset-paths-ok</code>, <code>ui-boundary-contracts-ok</code>, <code>activity-ui-boundary-contracts-ok</code>, and <code>leaderboard-cost-safety-ok</code>, then later fails in <code>.\scripts\test-skills-page-performance.ps1</code> on the existing build swipe performance gate. Do not treat that as caused by new naming work unless the failure changes.</li>
+        <li>Known validation baseline: after Phase 5.1, <code>.\scripts\check-project.ps1</code> reaches <code>runtime-asset-paths-ok</code>, <code>activity-database-contracts-ok</code>, <code>ui-boundary-contracts-ok</code>, <code>activity-ui-boundary-contracts-ok</code>, and <code>leaderboard-cost-safety-ok</code>, then later fails in <code>.\scripts\test-skills-page-performance.ps1</code> on the existing build swipe performance gate. Do not treat that as caused by new naming work unless the failure changes.</li>
         <li>Godot safety: never call <code>Godot.exe</code> directly. Use <code>.\run-godot-safe.ps1</code> or project scripts that use it. After every Godot run, verify no headless Godot process was left behind.</li>
         <li>Activity database source of truth: <code>docs/activity-database.json</code>. After editing it, run <code>python scripts\sync-activity-database-js.py</code> and <code>.\scripts\audit-activity-database.ps1</code>.</li>
         <li>Do not rename save keys, public data IDs, node names, input/action names, user-facing strings, exported launcher paths, scene-bound paths, or generated metadata without compatibility handling.</li>
@@ -398,13 +398,16 @@
         </p>
 
         <div class="work-item">
-          <h4><input type="checkbox"> 5.1 Clarify activity database contracts</h4>
+          <h4><input type="checkbox" checked> 5.1 Clarify activity database contracts</h4>
           <div class="goal-meta"><span class="tag">activity database</span><span class="tag">generated data</span> Make source/generated ownership unambiguous.</div>
           <ul>
             <li>Document how <code>docs/activity-database.json</code>, generated JS, runtime loading, docs, and validation scripts relate.</li>
             <li>Make helper names and checks clear where data contracts are opaque.</li>
             <li>Always sync and audit after source JSON edits.</li>
           </ul>
+          <p class="acceptance">
+            Done: added <code>docs/activity-database-contract.md</code> and <code>.\scripts\check-activity-database-contracts.ps1</code> to make the JSON source, generated JS, runtime loader, export filter, sync script, and audit script relationship explicit; linked the contract from orientation docs; and wired the check into focused and full validation. Validation: ran <code>python scripts\sync-activity-database-js.py</code>, <code>.\scripts\check-activity-database-contracts.ps1</code>, <code>.\scripts\audit-activity-database.ps1</code>, and <code>.\scripts\test-performance-regressions.ps1</code> successfully; <code>.\scripts\check-project.ps1</code> reached <code>activity-database-contracts-ok</code>, then failed on the existing build swipe performance gate. No headless Godot process was left behind.
+          </p>
         </div>
 
         <div class="work-item">
