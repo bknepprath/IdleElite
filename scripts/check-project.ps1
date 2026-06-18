@@ -4,6 +4,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $performanceTest = Join-Path $projectRoot "scripts\test-performance-monitor.ps1"
 $performanceRegressionTest = Join-Path $projectRoot "scripts\test-performance-regressions.ps1"
+$runtimeAssetPathTest = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
 $leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
 $activityCardGeometryTest = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
 $tutorialStartScrollTest = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
@@ -87,6 +88,16 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 Assert-NoUnexpectedGodotErrors $performanceRegressionOutput "performance regression validation"
+
+if (-not (Test-Path -LiteralPath $runtimeAssetPathTest)) {
+    throw "Runtime asset path test was not found at $runtimeAssetPathTest"
+}
+
+$runtimeAssetPathOutput = & $runtimeAssetPathTest 2>&1
+$runtimeAssetPathOutput | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
 
 if (-not (Test-Path -LiteralPath $leaderboardCostSafetyTest)) {
     throw "Leaderboard cost-safety test was not found at $leaderboardCostSafetyTest"

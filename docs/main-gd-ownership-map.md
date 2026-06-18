@@ -37,7 +37,7 @@ Line numbers are approximate and should be refreshed with `rg -n "^func _name|^v
 | Chat | `chat_*`, `_chat_*`, Firebase stream helpers, chat overlay/strip builders | `.\scripts\test-firebase-leaderboard-runtime-guard.ps1`, `.\scripts\check-project.ps1`; preserve rate-limit and auth behavior |
 | Shop/ads | `ad_*`, `shop_*`, `_shop_ad_offer_button`, rewarded ad callbacks | Device validation for ads; do not change real/test ad behavior without release context |
 | Audio | `_build_audio`, `_play_*`, `_process_music_flow`, audio stream caches | Audio safety in `AGENTS.md`; validate new sounds in game, not only by file existence |
-| Asset paths and textures | `*_TEXTURE`, `_texture`, `_texture_or_visual_fallback`, `_action_card_background_texture`, `_hub_sheet_or_visual_fallback` | `rg` exact paths, `.\scripts\test-performance-regressions.ps1`, `.\scripts\check-project.ps1` |
+| Asset paths and textures | `*_TEXTURE`, `_texture`, `_texture_or_visual_fallback`, `_action_card_background_texture`, `_hub_sheet_or_visual_fallback` | `rg` exact paths, `.\scripts\check-runtime-asset-paths.ps1`, `.\scripts\test-performance-regressions.ps1`, `.\scripts\check-project.ps1` |
 
 ## Safe Extraction Targets
 

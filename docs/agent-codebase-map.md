@@ -44,9 +44,10 @@ Use PowerShell from the repo root.
 | Activity database audit | `.\scripts\audit-activity-database.ps1` | After syncing activity data. |
 | Save/load contracts | `.\scripts\test-save-normalization.ps1` | After save payload, restore, or serialized field changes. |
 | Performance/static regression assertions | `.\scripts\test-performance-regressions.ps1` | After broad `main.gd`, asset-path, or validation contract changes. |
+| Runtime asset path contract | `.\scripts\check-runtime-asset-paths.ps1` | After changing `res://assets` or `res://docs` paths in `project.godot`, `export_presets.cfg`, `scripts/main.gd`, boot UI scripts, or activity data. |
 | UI geometry/detail checks | `.\scripts\test-activity-card-geometry.ps1`, `.\scripts\test-skill-detail-bottom-scroll-pad.ps1`, `.\scripts\test-skill-detail-hidden-preview-scroll-gap.ps1` | After activity-card or skill-detail layout changes. |
 
-Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches `performance-regressions-ok`, then may fail on pre-existing AdMob type parse errors and a Firebase ignore assertion. Record the exact current output if it changes.
+Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches `leaderboard-cost-safety-ok`, then may fail in the skills-page performance gate on the existing build swipe budget. Record the exact current output if it changes.
 
 After every Godot command, check for leftover headless Godot processes. Only stop a process when it was launched by the validation command, is headless/non-interactive, and should have exited.
 
