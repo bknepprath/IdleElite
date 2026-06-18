@@ -15815,7 +15815,7 @@ func _detail_lazy_entry_matches_track_id(plan_item: Dictionary, track_id: String
 	return false
 
 
-func _collapse_detail_lazy_plan_item_height(track_id: String) -> void:
+func _collapse_detail_lazy_entry_height(track_id: String) -> void:
 	var plan_item := _detail_lazy_entry_for_track_id(track_id)
 	if plan_item.is_empty():
 		return
@@ -40011,7 +40011,7 @@ func _play_fishing_offer_collected_transition(source: Control, start_delay := 0.
 		return
 	var track_id := str(root.get_meta("detail_lazy_track_id", ""))
 	if not track_id.is_empty():
-		_collapse_detail_lazy_plan_item_height(track_id)
+		_collapse_detail_lazy_entry_height(track_id)
 	var start_height := root.custom_minimum_size.y
 	var tween := create_tween()
 	var root_id := root.get_instance_id()
