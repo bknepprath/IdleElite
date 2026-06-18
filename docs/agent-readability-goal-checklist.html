@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite Agent Readability Goal Checklist</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #1d2630;
+      --muted: #5d6875;
+      --line: #d9e0e8;
+      --panel: #f7f9fb;
+      --accent: #266dd3;
+      --done: #0f8f5f;
+    }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      color: var(--ink);
+      background: #ffffff;
+      line-height: 1.5;
+    }
+
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 32px;
+      line-height: 1.15;
+    }
+
+    h2 {
+      margin: 32px 0 12px;
+      font-size: 22px;
+    }
+
+    h3 {
+      margin: 0 0 8px;
+      font-size: 18px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    code,
+    pre {
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      background: #101820;
+      color: #f5fbff;
+      padding: 16px;
+      border-radius: 8px;
+      border: 1px solid #26313b;
+    }
+
+    .lede {
+      color: var(--muted);
+      font-size: 16px;
+      max-width: 860px;
+    }
+
+    .context {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      margin: 20px 0;
+    }
+
+    .context ul {
+      margin: 8px 0 0 22px;
+      padding: 0;
+    }
+
+    .checklist {
+      display: grid;
+      gap: 14px;
+      margin-top: 16px;
+    }
+
+    .goal-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 16px;
+      background: #ffffff;
+    }
+
+    .goal-head {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+    }
+
+    .goal-head input {
+      width: 22px;
+      height: 22px;
+      margin-top: 2px;
+      accent-color: var(--done);
+    }
+
+    .goal-meta {
+      color: var(--muted);
+      font-size: 14px;
+      margin-top: 4px;
+    }
+
+    .goal-card ul {
+      margin: 10px 0 0 34px;
+      padding: 0;
+    }
+
+    .phase-card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #ffffff;
+      padding: 18px;
+    }
+
+    .phase-card + .phase-card {
+      margin-top: 18px;
+    }
+
+    .phase-card h3 {
+      margin-top: 0;
+    }
+
+    .phase-summary {
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+
+    .work-item {
+      border-top: 1px solid var(--line);
+      padding-top: 14px;
+      margin-top: 14px;
+    }
+
+    .work-item h4 {
+      margin: 0 0 6px;
+      font-size: 16px;
+    }
+
+    .work-item ul {
+      margin: 8px 0 0 24px;
+      padding: 0;
+    }
+
+    .acceptance {
+      background: #eef8f4;
+      border-left: 4px solid var(--done);
+      padding: 10px 12px;
+      margin-top: 12px;
+    }
+
+    .tag {
+      display: inline-block;
+      margin-right: 6px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      color: var(--accent);
+      background: #eaf2ff;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .warning {
+      border-left: 4px solid #d88a1d;
+      padding-left: 12px;
+      color: #51370d;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Idle Elite Agent Readability Goal Checklist</h1>
+    <p class="lede">
+      Use this checklist as one continuous agent goal: make the codebase easier for future agents to understand, navigate,
+      validate, and safely refactor. Do not create a separate goal for each checklist item. Treat the items below as phases
+      inside one run, with small commits at the end of each coherent work package.
+    </p>
+
+    <section class="context">
+      <h2>Start One Master Goal</h2>
+      <p>Paste this into a fresh agent thread from the Idle Elite worktree:</p>
+      <pre>/goal Execute docs/agent-readability-goal-checklist.html as one agent-readability improvement run. Work through every phase in order, but do not stop after one checklist item unless blocked. For each work package: inspect the current codebase before changing it, preserve gameplay and visuals unless the checklist explicitly requires a behavior-preserving move or rename, inspect references before renaming or moving files, update code/assets/import metadata/docs/tests together, run focused validation plus .\scripts\check-project.ps1 when practical, verify no headless Godot process was left behind, record progress in the checklist or a linked status note, commit, push to the current branch, then continue with the next work package until all acceptance criteria are met or user input is required.</pre>
+    </section>
+
+    <section class="context">
+      <h2>Execution Model</h2>
+      <ul>
+        <li>Run this as one master goal, not as many separate goals. The agent should keep momentum across phases.</li>
+        <li>Use phases to organize thinking, commits, and validation. A phase may contain several commits when the changes touch unrelated files or risks.</li>
+        <li>Break a phase into smaller work packages only when a change crosses ownership boundaries, touches generated files, moves assets, or needs separate validation.</li>
+        <li>Commit after each coherent package, not after every tiny bullet and not after an oversized mixed refactor.</li>
+        <li>Pause for user input only when compatibility, visual changes, save migration, deletion of uncertain assets, or external credentials are required.</li>
+        <li>Prefer documentation and ownership maps before broad refactors. Later code moves should rely on those maps.</li>
+      </ul>
+    </section>
+
+    <section class="context">
+      <h2>Fresh Agent Context</h2>
+      <ul>
+        <li>Project: Idle Elite Godot project in <code>Idle Slop 1</code>.</li>
+        <li>Branch used for prior work: <code>codex/complete-combo-unlock-checklist</code>.</li>
+        <li>Recent asset/readability cleanup already aligned runtime UI/resource assets under <code>assets/content/ui</code> and <code>assets/content/icons</code>.</li>
+        <li>Runtime asset/code path alignment commits include: <code>7015a95</code>, <code>92c6bef</code>, <code>f109f26</code>, <code>6ee6c5d</code>, <code>3424b3a</code>, <code>3817c9e</code>, <code>24d3184</code>, <code>ad2611f</code>, <code>0ff328c</code>, <code>d002ed8</code>, <code>08ae18d</code>, <code>0817a10</code>, and <code>49da102</code>.</li>
+        <li>Known validation baseline: <code>.\scripts\check-project.ps1</code> reaches <code>performance-regressions-ok</code>, then fails on pre-existing AdMob type parse errors and a Firebase ignore assertion. Do not treat that as caused by new naming work unless the failure changes.</li>
+        <li>Godot safety: never call <code>Godot.exe</code> directly. Use <code>.\run-godot-safe.ps1</code> or project scripts that use it. After every Godot run, verify no headless Godot process was left behind.</li>
+        <li>Activity database source of truth: <code>docs/activity-database.json</code>. After editing it, run <code>python scripts\sync-activity-database-js.py</code> and <code>.\scripts\audit-activity-database.ps1</code>.</li>
+        <li>Do not rename save keys, public data IDs, node names, input/action names, user-facing strings, exported launcher paths, scene-bound paths, or generated metadata without compatibility handling.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>Phased Work Plan</h2>
+
+      <article class="phase-card">
+        <h3>Phase 1. Build The Orientation Layer</h3>
+        <p class="phase-summary">
+          Start by documenting the map future agents need before they touch risky code or assets.
+          This phase should usually be one or two docs-only commits.
+        </p>
+
+        <div class="work-item">
+          <h4><input type="checkbox" checked> 1.1 Create the agent-facing codebase map</h4>
+          <div class="goal-meta"><span class="tag">docs</span><span class="tag">orientation</span> Highest value first because it helps every later phase move safely.</div>
+          <ul>
+            <li>Create or update a concise codebase map for future agents.</li>
+            <li>Explain runtime asset structure, source archives, generated files, activity database ownership, Godot validation rules, and risky paths.</li>
+            <li>Include where major systems live in <code>scripts/main.gd</code> and which areas are safe or risky to refactor.</li>
+          </ul>
+          <p class="acceptance">
+            Done: added <code>docs/agent-codebase-map.md</code>, linked it from <code>README.md</code> and <code>docs/README.md</code>, and covered runtime/source asset ownership, generated files, activity database sync/audit rules, validation commands, and risky paths.
+          </p>
+        </div>
+
+        <div class="work-item">
+          <h4><input type="checkbox" checked> 1.2 Document <code>scripts/main.gd</code> ownership regions</h4>
+          <div class="goal-meta"><span class="tag">code map</span><span class="tag">main.gd</span> Main readability blocker for agents.</div>
+          <ul>
+            <li>Map ownership regions for UI, activity, save/load, ads, leaderboard, chat, shop, hub, profile, and asset paths.</li>
+            <li>Identify safe extraction targets without performing broad refactors yet.</li>
+            <li>Note existing tests that protect each area.</li>
+          </ul>
+          <p class="acceptance">
+            Done: added <code>docs/main-gd-ownership-map.md</code> with approximate line regions, subsystem ownership, safe extraction targets, rename boundaries, and focused validation commands for UI, activity, save/load, ads, leaderboard, chat, shop, hub, profile, fishing, audio, and asset paths.
+          </p>
+        </div>
+
+        <p class="acceptance">
+          Phase complete when a new agent can find major systems, known risky areas, validation commands, source/generated ownership,
+          and the current validation baseline without reading commit history.
+        </p>
+      </article>
+
+      <article class="phase-card">
+        <h3>Phase 2. Audit And Classify Asset Ownership</h3>
+        <p class="phase-summary">
+          Inventory before moving anything. This phase answers what is runtime-critical, generated, source/provenance, stale, or unsafe to touch.
+        </p>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 2.1 Audit remaining source and archive asset folders</h4>
+          <div class="goal-meta"><span class="tag">assets</span><span class="tag">audit</span> Clarifies what should be preserved before deleting or moving anything.</div>
+          <ul>
+            <li>Focus on <code>docs/art-source</code>, <code>assets/loading</code>, <code>assets/android</code>, export presets, and import metadata.</li>
+            <li>Document folders to preserve, rename, clean, or skip.</li>
+            <li>Separate runtime assets from source/generation/provenance assets.</li>
+          </ul>
+        </div>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 2.2 Clean docs art-source archives</h4>
+          <div class="goal-meta"><span class="tag">docs/art-source</span><span class="tag">cleanup</span> Source history should be useful, not a pile of mystery generations.</div>
+          <ul>
+            <li>Make source/archive folders and filenames describe domain, status, and relationship to runtime assets.</li>
+            <li>Remove only proven-unused bad generations after reference and hash checks.</li>
+            <li>Preserve useful provenance and final-selection notes.</li>
+          </ul>
+        </div>
+
+        <p class="acceptance">
+          Phase complete when asset/source folders have explicit ownership notes and any cleanup has evidence from reference searches,
+          hashes, or import metadata. Uncertain assets should be documented, not deleted.
+        </p>
+      </article>
+
+      <article class="phase-card">
+        <h3>Phase 3. Align Critical Runtime Assets</h3>
+        <p class="phase-summary">
+          Handle boot and platform assets separately because they are externally referenced and easier to break than ordinary UI art.
+        </p>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 3.1 Align loading and boot-screen assets</h4>
+          <div class="goal-meta"><span class="tag">loading</span><span class="tag">Godot</span> High impact, but risky because boot paths are project-level.</div>
+          <ul>
+            <li>Audit <code>assets/loading</code>, <code>project.godot</code>, boot loading scripts, tests, and import metadata.</li>
+            <li>Rename only clear active assets and remove only proven stale variants.</li>
+            <li>Do not change loading visuals or behavior unless required to preserve references.</li>
+          </ul>
+        </div>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 3.2 Align Android launcher and export assets</h4>
+          <div class="goal-meta"><span class="tag">android</span><span class="tag">export</span> Keep launcher/export references exact.</div>
+          <ul>
+            <li>Audit <code>assets/android</code>, <code>export_presets.cfg</code>, source files, and docs.</li>
+            <li>Make launcher icons, adaptive foreground/backgrounds, preview icons, and source files understandable at a glance.</li>
+            <li>Validate export preset references after every move.</li>
+          </ul>
+        </div>
+
+        <p class="acceptance">
+          Phase complete when boot/loading and Android/export references are readable, exact, and validated. Commit loading and Android work separately.
+        </p>
+      </article>
+
+      <article class="phase-card">
+        <h3>Phase 4. Make Runtime Ownership Durable</h3>
+        <p class="phase-summary">
+          Turn the maps into code organization improvements, keeping behavior and visuals unchanged.
+        </p>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 4.1 Extract asset path ownership</h4>
+          <div class="goal-meta"><span class="tag">constants</span><span class="tag">tests</span> Make file/code alignment durable.</div>
+          <ul>
+            <li>Move or organize asset path constants into clearer sections or modules following existing project style.</li>
+            <li>Update tests so important resource paths remain protected.</li>
+            <li>Do not change image content, import settings, gameplay, or visuals.</li>
+          </ul>
+        </div>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 4.2 Refactor navigation, home, shop, chat, leaderboard, and profile UI boundaries</h4>
+          <div class="goal-meta"><span class="tag">UI</span><span class="tag">refactor</span> Split by user-facing ownership, not arbitrary helper buckets.</div>
+          <ul>
+            <li>Extract or reorganize code in small commits with no behavior or visual changes.</li>
+            <li>Keep names domain-accurate: navigation, hero/home, shop, chat, leaderboard, profile/avatar.</li>
+            <li>Update focused regression assertions after each extraction.</li>
+          </ul>
+        </div>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 4.3 Refactor activity detail, cards, mastery, unlocks, and offline summary boundaries</h4>
+          <div class="goal-meta"><span class="tag">activity UI</span><span class="tag">mastery</span> High-impact reviewer surface.</div>
+          <ul>
+            <li>Clarify modules and naming for activity detail, cards, mastery medals, lockpads, and offline summary.</li>
+            <li>Keep asset paths and constants aligned with any extracted code.</li>
+            <li>Run focused UI/resource regression checks after each commit.</li>
+          </ul>
+        </div>
+
+        <p class="acceptance">
+          Phase complete when high-traffic UI and asset ownership are easier to locate, protected by focused checks, and behavior-neutral.
+          Split commits by subsystem so failures can be bisected.
+        </p>
+      </article>
+
+      <article class="phase-card">
+        <h3>Phase 5. Clarify Data, Naming, And Generated Rules</h3>
+        <p class="phase-summary">
+          Clean the contracts that future agents are most likely to misunderstand: generated data, generic names, and file hygiene.
+        </p>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 5.1 Clarify activity database contracts</h4>
+          <div class="goal-meta"><span class="tag">activity database</span><span class="tag">generated data</span> Make source/generated ownership unambiguous.</div>
+          <ul>
+            <li>Document how <code>docs/activity-database.json</code>, generated JS, runtime loading, docs, and validation scripts relate.</li>
+            <li>Make helper names and checks clear where data contracts are opaque.</li>
+            <li>Always sync and audit after source JSON edits.</li>
+          </ul>
+        </div>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 5.2 Rename generic internal variables and functions in high-traffic paths</h4>
+          <div class="goal-meta"><span class="tag">naming</span><span class="tag">behavior-neutral</span> Treat naming as architecture, not churn.</div>
+          <ul>
+            <li>Look for generic names like <code>data</code>, <code>item</code>, <code>info</code>, <code>tmp</code>, <code>value</code>, and <code>obj</code> only in high-value areas.</li>
+            <li>Rename only internal identifiers where the role is clear and behavior-neutral.</li>
+            <li>Do not rename serialized keys, data IDs, node names, signals, input names, or user-facing strings without compatibility handling.</li>
+          </ul>
+        </div>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 5.3 Clean generated, cache, output, and import metadata rules</h4>
+          <div class="goal-meta"><span class="tag">generated files</span><span class="tag">git hygiene</span> Prevent future agents from committing noise.</div>
+          <ul>
+            <li>Document which files are tracked, ignored, regenerated, deleted, or never touched manually.</li>
+            <li>Normalize rules for <code>.import</code>, <code>.uid</code>, output folders, build folders, and local config.</li>
+            <li>Fix stale docs if ignore/build behavior has changed.</li>
+          </ul>
+        </div>
+
+        <p class="acceptance">
+          Phase complete when data source/generated relationships, naming boundaries, and generated-file rules are explicit enough
+          that an agent can make a small change without guessing which files are authoritative.
+        </p>
+      </article>
+
+      <article class="phase-card">
+        <h3>Phase 6. Reconcile And Close The Loop</h3>
+        <p class="phase-summary">
+          Finish by making sure the docs, tests, and new-agent instructions describe the architecture that actually exists after the work.
+        </p>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 6.1 Update docs and tests to match current architecture</h4>
+          <div class="goal-meta"><span class="tag">docs</span><span class="tag">tests</span> Documentation should not describe old paths.</div>
+          <ul>
+            <li>Search docs/tests for stale paths, old folder descriptions, old architecture language, and obsolete validation notes.</li>
+            <li>Update or remove stale references in small commits.</li>
+            <li>Keep generated docs/data in sync with their sources.</li>
+          </ul>
+        </div>
+
+        <div class="work-item">
+          <h4><input type="checkbox"> 6.2 Final agent readability audit</h4>
+          <div class="goal-meta"><span class="tag">final audit</span><span class="tag">onboarding</span> Close the loop with a fresh-agent checklist.</div>
+          <ul>
+            <li>Review whether a new agent can identify important folders, generated files, validation commands, and risky areas quickly.</li>
+            <li>Produce a concise new-agent onboarding checklist.</li>
+            <li>List remaining risky areas that should not be renamed without deeper compatibility work.</li>
+          </ul>
+        </div>
+
+        <p class="acceptance">
+          Phase complete when the final docs match the post-refactor tree, validation status is recorded with exact known blockers,
+          and the checklist itself no longer contains stale instructions.
+        </p>
+      </article>
+    </section>
+
+    <section class="context">
+      <h2>Per-Item Completion Rule</h2>
+      <p class="warning">
+        Do not mark an item complete just because a broad scan was run. An item is complete only when the intended docs/code/assets/tests are updated together, focused validation passes, the known full-suite blocker is recorded if present, no headless Godot process is left behind, and the work is committed and pushed.
+      </p>
+    </section>
+  </main>
+</body>
+</html>
