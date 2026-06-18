@@ -25545,17 +25545,17 @@ func _apply_global_swipe_real_card_cache_to_lazy_plan(skill_id: String) -> void:
 	if cache == null or cache.is_empty():
 		return
 	for raw_item in detail_lazy_plan:
-		var plan_item := raw_item as Dictionary
-		var track_id := str(plan_item.get("track_id", ""))
-		if track_id.is_empty() or not cache.has(track_id) or plan_item.has("cached_root"):
+		var lazy_entry := raw_item as Dictionary
+		var track_id := str(lazy_entry.get("track_id", ""))
+		if track_id.is_empty() or not cache.has(track_id) or lazy_entry.has("cached_root"):
 			continue
 		var cached := cache.get(track_id, {}) as Dictionary
 		var root := _valid_control_ref(cached.get("root"))
 		var card := cached.get("card", {}) as Dictionary
 		if root == null or root.is_queued_for_deletion() or card.is_empty():
 			continue
-		plan_item["cached_root"] = root
-		plan_item["cached_card"] = card
+		lazy_entry["cached_root"] = root
+		lazy_entry["cached_card"] = card
 		cache.erase(track_id)
 	if cache.is_empty():
 		skill_swipe_real_card_cache_by_skill.erase(skill_id)
@@ -25569,8 +25569,8 @@ func _apply_swipe_preview_real_card_cache_to_lazy_plan(preview_state: Dictionary
 		preview_state.erase("real_card_cache")
 		return
 	for raw_item in detail_lazy_plan:
-		var plan_item := raw_item as Dictionary
-		var track_id := str(plan_item.get("track_id", ""))
+		var lazy_entry := raw_item as Dictionary
+		var track_id := str(lazy_entry.get("track_id", ""))
 		if track_id.is_empty() or not cache.has(track_id):
 			continue
 		var cached := cache.get(track_id, {}) as Dictionary
@@ -25578,8 +25578,8 @@ func _apply_swipe_preview_real_card_cache_to_lazy_plan(preview_state: Dictionary
 		var card := cached.get("card", {}) as Dictionary
 		if root == null or root.is_queued_for_deletion() or card.is_empty():
 			continue
-		plan_item["cached_root"] = root
-		plan_item["cached_card"] = card
+		lazy_entry["cached_root"] = root
+		lazy_entry["cached_card"] = card
 		cache.erase(track_id)
 	_free_swipe_preview_real_card_cache({"real_card_cache": cache})
 	preview_state.erase("real_card_cache")
