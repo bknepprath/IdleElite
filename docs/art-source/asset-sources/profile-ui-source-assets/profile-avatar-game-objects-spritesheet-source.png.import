@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://assets/ui/profile-avatar-game-objects-spritesheet-source.png"
+source_file="res://docs/art-source/asset-sources/profile-ui-source-assets/profile-avatar-game-objects-spritesheet-source.png"
 dest_files=["res://.godot/imported/profile-avatar-game-objects-spritesheet-source.png-aa488d6e21feda94124257ce6a456abc.ctex"]
 
 [params]

@@ -150,7 +150,7 @@ Assert-True ($main -match 'const CHAT_STRIP_VISIBLE_COUNT := 2') "Chat strip rea
 Assert-True ($main -match 'const CHAT_FULL_VISIBLE_COUNT := 25') "Full chat reads must stay capped to 25 visible messages."
 Assert-True ($main -match 'const CHAT_MESSAGE_MAX_CHARS := 80') "Chat messages must stay capped to 80 characters."
 Assert-True ($main -match 'CHAT_CENSORED_WORDS') "Chat must include a local banned-word filter."
-Assert-True ($main -match 'const CHAT_STRIP_ICON := "res://assets/ui/chat-speech-bubble\.png"') "Chat strip must use the generated speech bubble icon asset."
+Assert-True ($main -match 'const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble\.png"') "Chat strip must use the generated speech bubble icon asset."
 Assert-True ($main -match 'func _chat_strip_visible_on_current_screen\(\) -> bool:\s*\r?\n\s*return current_screen == "menu" or current_screen == "skill"') "Chat strip must appear only on the skills menu and skill detail pages."
 Assert-True ($main -notmatch 'chat_tab') "Chat must not be a bottom-nav tab."
 Assert-True ($main -notmatch 'current_screen = "chat"') "Chat must not be a standalone menu screen."

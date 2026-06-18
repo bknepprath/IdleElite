@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://assets/ui/chat-speech-bubble-source.png"
+source_file="res://docs/art-source/asset-sources/profile-ui-source-assets/chat-speech-bubble-source.png"
 dest_files=["res://.godot/imported/chat-speech-bubble-source.png-118985d4a04960372420a07732142e39.ctex"]
 
 [params]

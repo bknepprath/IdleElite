@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://chbhm55ivkx3d"
-path="res://.godot/imported/leaderboard-podium-icon.png-20afad07964e02403deb3262a08e35e8.ctex"
+uid="uid://ciq56rugakgx6"
+path="res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/leaderboard-podium-icon.png"
-dest_files=["res://.godot/imported/leaderboard-podium-icon.png-20afad07964e02403deb3262a08e35e8.ctex"]
+source_file="res://assets/content/ui/profile-avatar-blue-guy-spritesheet.png"
+dest_files=["res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.ctex"]
 
 [params]
 

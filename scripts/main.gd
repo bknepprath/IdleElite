@@ -1811,7 +1811,7 @@ const ACTIVITY_JUMP_ARROW_FADE_OUT_SECONDS := 0.22
 const ACTIVITY_JUMP_ARROW_EDGE_EPSILON := 6
 const ACTIVITY_JUMP_ARROW_MIN_MODULES := 6
 const LEADERBOARD_SUBMIT_INTERVAL_SECONDS := 15 * 60
-const LEADERBOARD_ICON := "res://assets/ui/leaderboard-podium-icon.png"
+const LEADERBOARD_ICON := "res://assets/content/ui/leaderboard-podium-icon.png"
 const FIREBASE_DATABASE_URL := ""
 const FIREBASE_WEB_API_KEY := ""
 const FIREBASE_LOCAL_CONFIG_PATH := "res://firebase-leaderboard-config.json"
@@ -1833,7 +1833,7 @@ const CHAT_STRIP_HEIGHT := 260
 const CHAT_KEYBOARD_PREVIEW_HEIGHT := 178
 const CHAT_STRIP_EMPTY_GRACE_MSEC := 2200
 const CHAT_STRIP_HIDE_GRACE_MSEC := 800
-const CHAT_STRIP_ICON := "res://assets/ui/chat-speech-bubble.png"
+const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble.png"
 const CHAT_UNREAD_DOT_DIAMETER := 44.0
 const CHAT_UNREAD_DOT_EDGE_INSET := 32.0
 const CHAT_UI_Z := 3500
@@ -1858,8 +1858,8 @@ const FIREBASE_AUTH_REFRESH_URL := "https://securetoken.googleapis.com/v1/token?
 const LEADERBOARD_BOTTOM_SCROLL_PAD := 720
 const LEADERBOARD_BASE_FRAME_WIDTH := BASE_CANVAS.x
 const PROFILE_AVATAR_SHEETS := [
-	"res://assets/ui/profile-avatar-game-objects-spritesheet.png",
-	"res://assets/ui/profile-avatar-blue-guy-spritesheet.png"
+	"res://assets/content/ui/profile-avatar-game-objects-spritesheet.png",
+	"res://assets/content/ui/profile-avatar-blue-guy-spritesheet.png"
 ]
 const PROFILE_AVATAR_COUNT := 20
 const PROFILE_AVATAR_SHEET_CELL_COUNT := 10
