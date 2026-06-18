@@ -2324,11 +2324,11 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "capacity_max": 1000,
             "first_unlock_stored": 3,
             "plank_build_xp_bonus": 0.05,
-            "log_icon": "assets/icons/resources/log-currency.png",
-            "plank_icon": "assets/icons/resources/plank.png",
-            "upgrade_icon": "assets/icons/upgrades/upgrade-arrow.png"
+            "log_icon": "assets/content/icons/resources/log-currency.png",
+            "plank_icon": "assets/content/icons/resources/plank.png",
+            "upgrade_icon": "assets/content/icons/upgrades/upgrade-arrow.png"
           },
-          "art": "assets/icons/resources/log-currency.png",
+          "art": "assets/content/icons/resources/log-currency.png",
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {

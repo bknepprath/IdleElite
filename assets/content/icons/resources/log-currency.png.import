@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://assets/icons/resources/log-currency.png"
+source_file="res://assets/content/icons/resources/log-currency.png"
 dest_files=["res://.godot/imported/log-currency.png-1ac79446f7879d5e1bfade617c9d960e.ctex"]
 
 [params]

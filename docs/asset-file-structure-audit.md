@@ -21,10 +21,10 @@ The current tree has repeated leaf folder names that are either intentional doma
 | --- | ---: | --- | --- |
 | `actions` | 12 | Preserve in runtime skill/domain paths; revisit under source archive | Runtime parent folders make these readable (`fight/actions`, `fishing/actions`). Source/archive copies should be parent-qualified if moved. |
 | `backgrounds` | 11 | Preserve in runtime skill/domain paths; revisit under source archive | Same as `actions`; safe only with activity database and import reference handling. |
-| `ui` | 5 | Parent-qualified source/archive copies | Runtime `ui` folders remain where code expects them; source/archive copies were renamed to `profile-ui-source-assets` and `game-ui-source-assets`. |
+| `ui` | 5 | Merged generic runtime split; parent-qualified source/archive copies | The former runtime `assets/ui` files now live under `assets/content/ui`; source/archive copies were renamed to `profile-ui-source-assets` and `game-ui-source-assets`. |
 | `fishing`, `thieving`, `woodcutting` | 3 each | Preserve runtime domains; parent-qualify source/archive copies | Runtime domain names are clear; mirrored docs paths create the confusion. |
-| `icons` | 3 | Parent-qualified source/archive copies | Runtime `assets/icons` and `assets/content/icons` remain unchanged; docs-side icon sources now use `resource-icon-source-assets` and `upgrade-icon-source-assets`. |
-| `resources`, `upgrades` | 3 each | Parent-qualified source/archive copies | Runtime icon buckets remain unchanged; source copies now spell out whether they are resource icon or upgrade icon sources. |
+| `icons` | 3 | Merged runtime icon folders; parent-qualified source/archive copies | Runtime resource and upgrade icons now live under `assets/content/icons`; docs-side icon sources use `resource-icon-source-assets` and `upgrade-icon-source-assets`. |
+| `resources`, `upgrades` | 3 each | Merged runtime icon buckets; parent-qualified source/archive copies | Runtime icon buckets now live under `assets/content/icons`; source copies spell out whether they are resource icon or upgrade icon sources. |
 | `assets` | 2 | Renamed docs mirror root | `assets` at repo root is runtime; the former docs mirror is now `docs/art-source/asset-sources`. |
 | `content` | 2 | Renamed docs mirror children | Runtime `assets/content` is established; docs source domains now use parent-qualified folders such as `combo-event-source-assets`, `event-source-assets`, `enemy-source-assets`, `hub-source-assets`, and `thieving-source-assets`. |
 | `source` | 2 | Renamed icon source children | Icon source folders now use `resource-icon-source-assets` and `upgrade-icon-source-assets` instead of a generic `source/resources` and `source/upgrades` stack. |

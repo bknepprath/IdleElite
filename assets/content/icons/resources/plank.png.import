@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://assets/icons/resources/plank.png"
+source_file="res://assets/content/icons/resources/plank.png"
 dest_files=["res://.godot/imported/plank.png-7ee4afbaffb565db94efb007ec87ce35.ctex"]
 
 [params]

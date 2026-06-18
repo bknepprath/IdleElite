@@ -10,7 +10,7 @@ metadata={
 
 [deps]
 
-source_file="res://assets/icons/upgrades/upgrade-arrow.png"
+source_file="res://assets/content/icons/upgrades/upgrade-arrow.png"
 dest_files=["res://.godot/imported/upgrade-arrow.png-8cded382b0b49a09b2d9de90b7f214e0.ctex"]
 
 [params]
