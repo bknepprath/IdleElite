@@ -2,7 +2,7 @@ class_name HubPathDots
 extends Control
 
 
-var path_targets := []
+var path_destinations := []
 var blockers := []
 var path_dots := []
 var origin := Vector2.ZERO
@@ -13,9 +13,9 @@ var path_color := Color("#a97943")
 var edge_color := Color("#6f4c2e")
 var stone_color := Color("#9d9485")
 
-func set_paths(next_origin: Vector2, next_points: Array, next_blockers: Array) -> void:
+func set_paths(next_origin: Vector2, next_destinations: Array, next_blockers: Array) -> void:
 	origin = next_origin
-	path_targets = next_points.duplicate()
+	path_destinations = next_destinations.duplicate()
 	blockers = next_blockers.duplicate()
 	_rebuild_dots()
 	queue_redraw()
@@ -26,34 +26,34 @@ func _rebuild_dots() -> void:
 	if routes.is_empty():
 		return
 	var trunk_top_y := _central_trunk_top_y(routes)
-	routes.sort_custom(func(a, b): return _route_target_y(a) > _route_target_y(b))
+	routes.sort_custom(func(a, b): return _route_destination_y(a) > _route_destination_y(b))
 	var route_entries := []
 	for route in routes:
-		var target := route.get("target", origin) as Vector2
+		var destination := route.get("target", origin) as Vector2
 		var route_seed := float(route.get("seed", 1.0))
-		var join := _central_trunk_join(target, trunk_top_y, route_seed)
-		route_entries.append({"target": target, "seed": route_seed, "join": join})
+		var join := _central_trunk_join(destination, trunk_top_y, route_seed)
+		route_entries.append({"target": destination, "seed": route_seed, "join": join})
 	_collect_trunk_path(route_entries, path_dots)
 	for route_entry in route_entries:
-		var target := route_entry.get("target", origin) as Vector2
+		var destination := route_entry.get("target", origin) as Vector2
 		var route_seed := float(route_entry.get("seed", 1.0))
 		var join := route_entry.get("join", origin) as Vector2
-		var arrival := _branch_arrival_point(join, target, route_seed)
+		var arrival := _branch_arrival_point(join, destination, route_seed)
 		_add_terminal_dot(join, route_seed + 23.0, path_dots)
-		_collect_branch_path(join, arrival, target, route_seed, path_dots)
-		if arrival.distance_to(target) > dot_step * 0.22:
-			_collect_arrival_tail(arrival, target, route_seed + 67.0, path_dots)
+		_collect_branch_path(join, arrival, destination, route_seed, path_dots)
+		if arrival.distance_to(destination) > dot_step * 0.22:
+			_collect_arrival_tail(arrival, destination, route_seed + 67.0, path_dots)
 		_add_terminal_dot(arrival, route_seed, path_dots)
 	_merge_overlapping_dots(path_dots)
 
 func _path_routes() -> Array:
 	var routes := []
-	for raw_point in path_targets:
+	for raw_point in path_destinations:
 		if typeof(raw_point) == TYPE_DICTIONARY:
 			var route := raw_point as Dictionary
-			var target = route.get("target", Vector2.ZERO)
-			if target is Vector2:
-				routes.append({"target": target as Vector2, "seed": float(route.get("seed", 1.0))})
+			var destination = route.get("target", Vector2.ZERO)
+			if destination is Vector2:
+				routes.append({"target": destination as Vector2, "seed": float(route.get("seed", 1.0))})
 		elif raw_point is Vector2:
 			routes.append({"target": raw_point as Vector2, "seed": origin.x * 0.017 + origin.y * 0.023})
 	return routes
@@ -62,21 +62,21 @@ func _central_trunk_top_y(routes: Array) -> float:
 	var top_y := origin.y
 	for raw_route in routes:
 		var route := raw_route as Dictionary
-		var target := route.get("target", origin) as Vector2
-		top_y = minf(top_y, target.y)
+		var destination := route.get("target", origin) as Vector2
+		top_y = minf(top_y, destination.y)
 	return top_y + dot_step * 0.38
 
-func _central_trunk_join(target: Vector2, trunk_top_y: float, route_seed: float) -> Vector2:
-	var target_pull := clampf((target.x - origin.x) * 0.16, -92.0, 92.0)
+func _central_trunk_join(destination: Vector2, trunk_top_y: float, route_seed: float) -> Vector2:
+	var destination_pull := clampf((destination.x - origin.x) * 0.16, -92.0, 92.0)
 	var x_jitter := lerpf(-28.0, 28.0, _unit(route_seed + 5.11))
-	var join_y := clampf(target.y + dot_step * lerpf(0.44, 1.02, _unit(route_seed + 8.37)), trunk_top_y, origin.y - dot_step * 0.75)
-	return Vector2(origin.x + target_pull + x_jitter, join_y)
+	var join_y := clampf(destination.y + dot_step * lerpf(0.44, 1.02, _unit(route_seed + 8.37)), trunk_top_y, origin.y - dot_step * 0.75)
+	return Vector2(origin.x + destination_pull + x_jitter, join_y)
 
-func _route_target_y(route: Variant) -> float:
+func _route_destination_y(route: Variant) -> float:
 	if typeof(route) == TYPE_DICTIONARY:
-		var target = (route as Dictionary).get("target", origin)
-		if target is Vector2:
-			return (target as Vector2).y
+		var destination = (route as Dictionary).get("target", origin)
+		if destination is Vector2:
+			return (destination as Vector2).y
 	if route is Vector2:
 		return (route as Vector2).y
 	return origin.y
@@ -102,8 +102,8 @@ func _collect_trunk_path(route_entries: Array, next_dots: Array) -> void:
 		return
 	for i in range(trunk_nodes.size() - 1):
 		var start := trunk_nodes[i] as Vector2
-		var target := trunk_nodes[i + 1] as Vector2
-		_collect_trunk_segment(start, target, trunk_seed + float(i) * 19.0, next_dots)
+		var destination := trunk_nodes[i + 1] as Vector2
+		_collect_trunk_segment(start, destination, trunk_seed + float(i) * 19.0, next_dots)
 	_add_terminal_dot(trunk_nodes[trunk_nodes.size() - 1] as Vector2, trunk_seed + 73.0, next_dots)
 
 func _append_trunk_node_with_detour(trunk_nodes: Array, join: Vector2, route_seed: float) -> void:
@@ -119,32 +119,32 @@ func _append_trunk_node_with_detour(trunk_nodes: Array, join: Vector2, route_see
 	if join.distance_to(trunk_nodes[trunk_nodes.size() - 1] as Vector2) > dot_step * 0.42:
 		trunk_nodes.append(join)
 
-func _collect_trunk_segment(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
-	var vertical := target.y - start.y
+func _collect_trunk_segment(start: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
+	var vertical := destination.y - start.y
 	var control_a := start + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 1.0)), vertical * 0.42)
-	var control_b := target + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 3.0)), -vertical * 0.30)
-	_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2:
+	var control_b := destination + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 3.0)), -vertical * 0.30)
+	_collect_sampled_dotted_path(start, destination, route_seed, next_dots, func(t: float) -> Vector2:
 		var q := 1.0 - t
 		var wave := sin(t * PI) * lerpf(-22.0, 22.0, _unit(route_seed + 7.0))
-		var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * target
+		var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * destination
 		point.x += wave
 		return point
 	)
 
-func _collect_dotted_path(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
-	var control := Vector2(start.x, lerpf(start.y, target.y, 0.54))
-	_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2:
+func _collect_dotted_path(start: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
+	var control := Vector2(start.x, lerpf(start.y, destination.y, 0.54))
+	_collect_sampled_dotted_path(start, destination, route_seed, next_dots, func(t: float) -> Vector2:
 		var q := 1.0 - t
-		return q * q * start + 2.0 * q * t * control + t * t * target
+		return q * q * start + 2.0 * q * t * control + t * t * destination
 	)
 
-func _branch_arrival_point(start: Vector2, target: Vector2, route_seed: float) -> Vector2:
-	var side := signf(target.x - start.x)
+func _branch_arrival_point(start: Vector2, destination: Vector2, route_seed: float) -> Vector2:
+	var side := signf(destination.x - start.x)
 	if absf(side) < 0.001:
 		side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
-	var target_blocker = _blocker_near_point(target)
-	if target_blocker is Rect2:
-		var rect := target_blocker as Rect2
+	var destination_blocker = _blocker_near_point(destination)
+	if destination_blocker is Rect2:
+		var rect := destination_blocker as Rect2
 		var centered_hotspot := absf(rect.get_center().x - origin.x) < dot_step * 1.18
 		if centered_hotspot:
 			side = _detour_side_for_blocker(rect, route_seed + 37.0)
@@ -153,26 +153,26 @@ func _branch_arrival_point(start: Vector2, target: Vector2, route_seed: float) -
 	if bottom_bias > 0.36:
 		var bottom_drop := dot_step * lerpf(0.34, 0.72, _unit(route_seed + 73.0))
 		var side_nudge := -side * dot_step * lerpf(0.04, 0.20, _unit(route_seed + 79.0))
-		return target + Vector2(side_nudge, bottom_drop)
+		return destination + Vector2(side_nudge, bottom_drop)
 	if bottom_bias > 0.14:
-		return target + Vector2(-side * dot_step * lerpf(0.22, 0.42, _unit(route_seed + 83.0)), dot_step * lerpf(0.02, 0.18, _unit(route_seed + 89.0)))
-	return target
+		return destination + Vector2(-side * dot_step * lerpf(0.22, 0.42, _unit(route_seed + 83.0)), dot_step * lerpf(0.02, 0.18, _unit(route_seed + 89.0)))
+	return destination
 
-func _collect_branch_path(start: Vector2, arrival: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
+func _collect_branch_path(start: Vector2, arrival: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
 	var horizontal := absf(arrival.x - start.x)
 	var vertical := absf(arrival.y - start.y)
 	var side := signf(arrival.x - start.x)
 	if absf(side) < 0.001:
 		side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
-	var y_direction := signf(target.y - start.y)
+	var y_direction := signf(destination.y - start.y)
 	if absf(y_direction) < 0.001:
 		y_direction = -1.0
 	var trunk_launch := clampf(absf(vertical) * 0.62 + horizontal * 0.08, dot_step * 1.05, dot_step * 2.45)
-	var target_ease := clampf(absf(vertical) * 0.34 + horizontal * 0.16, dot_step * 0.72, dot_step * 1.95)
+	var destination_ease := clampf(absf(vertical) * 0.34 + horizontal * 0.16, dot_step * 0.72, dot_step * 1.95)
 	var s_curve := _unit(route_seed + 97.0) > 0.48
 	var s_strength := dot_step * lerpf(0.32, 0.78, _unit(route_seed + 101.0))
 	var control_a := start + Vector2(side * horizontal * (0.08 if not s_curve else -0.24) + lerpf(-12.0, 12.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
-	var control_b := arrival + Vector2(-side * horizontal * (0.18 if not s_curve else 0.44), -y_direction * target_ease)
+	var control_b := arrival + Vector2(-side * horizontal * (0.18 if not s_curve else 0.44), -y_direction * destination_ease)
 	_collect_sampled_dotted_path(start, arrival, route_seed, next_dots, func(t: float) -> Vector2:
 		var q := 1.0 - t
 		var sag := sin(t * PI) * dot_step * lerpf(0.06, 0.18, _unit(route_seed + 31.0))
@@ -183,21 +183,21 @@ func _collect_branch_path(start: Vector2, arrival: Vector2, target: Vector2, rou
 		return point
 	)
 
-func _collect_arrival_tail(start: Vector2, target: Vector2, route_seed: float, next_dots: Array) -> void:
-	var control := start.lerp(target, 0.68) + Vector2(lerpf(-14.0, 14.0, _unit(route_seed + 3.0)), dot_step * lerpf(-0.04, 0.12, _unit(route_seed + 5.0)))
-	_collect_sampled_dotted_path(start, target, route_seed, next_dots, func(t: float) -> Vector2:
+func _collect_arrival_tail(start: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
+	var control := start.lerp(destination, 0.68) + Vector2(lerpf(-14.0, 14.0, _unit(route_seed + 3.0)), dot_step * lerpf(-0.04, 0.12, _unit(route_seed + 5.0)))
+	_collect_sampled_dotted_path(start, destination, route_seed, next_dots, func(t: float) -> Vector2:
 		var q := 1.0 - t
-		return q * q * start + 2.0 * q * t * control + t * t * target
+		return q * q * start + 2.0 * q * t * control + t * t * destination
 	)
 
-func _blocking_rect_for_segment(start: Vector2, target: Vector2) -> Variant:
+func _blocking_rect_for_segment(start: Vector2, destination: Vector2) -> Variant:
 	for raw_blocker in blockers:
 		if not raw_blocker is Rect2:
 			continue
 		var rect := (raw_blocker as Rect2).grow(dot_radius * 0.72)
 		for i in range(1, 18):
 			var t := float(i) / 18.0
-			var point := start.lerp(target, t)
+			var point := start.lerp(destination, t)
 			if rect.has_point(point):
 				return raw_blocker
 	return null
@@ -214,7 +214,7 @@ func _detour_side_for_blocker(rect: Rect2, route_seed: float) -> float:
 		return -signf(center_delta)
 	return -1.0 if _unit(route_seed + 113.0) < 0.5 else 1.0
 
-func _collect_sampled_dotted_path(start: Vector2, _target: Vector2, route_seed: float, next_dots: Array, sampler: Callable) -> void:
+func _collect_sampled_dotted_path(start: Vector2, _destination: Vector2, route_seed: float, next_dots: Array, sampler: Callable) -> void:
 	var previous := start
 	var distance_bank := 0.0
 	var dot_index := 0
@@ -247,12 +247,12 @@ func _collect_sampled_dotted_path(start: Vector2, _target: Vector2, route_seed: 
 		distance_bank += segment_length
 		previous = point
 
-func _add_or_merge_dot(target_dots: Array, dot: Dictionary) -> void:
+func _add_or_merge_dot(dot_list: Array, dot: Dictionary) -> void:
 	var center := dot.get("center", Vector2.ZERO) as Vector2
 	var radius := float(dot.get("radius", dot_radius))
 	if _dot_hits_blocker(center, radius):
 		return
-	_add_or_merge_unblocked_dot(target_dots, dot)
+	_add_or_merge_unblocked_dot(dot_list, dot)
 
 func _add_terminal_dot(center: Vector2, route_seed: float, next_dots: Array) -> void:
 	var radius := dot_radius * lerpf(0.94, 1.08, _unit(route_seed + 41.0))
@@ -301,14 +301,14 @@ func _add_tiny_path_dots(next_dots: Array, center: Vector2, radius: float, route
 		var fill := stone_color if _unit(tiny_seed + 11.0) > 0.82 else _varied_path_color(tiny_seed + 13.0)
 		_add_unmerged_dot(next_dots, {"center": tiny_center, "radius": tiny_radius, "fill": fill, "keep_separate": true})
 
-func _add_unmerged_dot(target_dots: Array, dot: Dictionary) -> void:
-	target_dots.append(dot)
+func _add_unmerged_dot(dot_list: Array, dot: Dictionary) -> void:
+	dot_list.append(dot)
 
-func _add_or_merge_unblocked_dot(target_dots: Array, dot: Dictionary) -> void:
+func _add_or_merge_unblocked_dot(dot_list: Array, dot: Dictionary) -> void:
 	var center := dot.get("center", Vector2.ZERO) as Vector2
 	var radius := float(dot.get("radius", dot_radius))
-	for i in range(target_dots.size()):
-		var existing := target_dots[i] as Dictionary
+	for i in range(dot_list.size()):
+		var existing := dot_list[i] as Dictionary
 		if bool(existing.get("keep_separate", false)) or bool(dot.get("keep_separate", false)):
 			continue
 		var existing_center := existing.get("center", Vector2.ZERO) as Vector2
@@ -323,9 +323,9 @@ func _add_or_merge_unblocked_dot(target_dots: Array, dot: Dictionary) -> void:
 		existing["radius"] = maxf(existing_radius, radius) + minf(existing_radius, radius) * 0.05
 		if dot.get("fill", path_color) == stone_color or existing.get("fill", path_color) == stone_color:
 			existing["fill"] = stone_color
-		target_dots[i] = existing
+		dot_list[i] = existing
 		return
-	target_dots.append(dot)
+	dot_list.append(dot)
 
 func _merge_overlapping_dots(next_dots: Array) -> void:
 	var changed := true
