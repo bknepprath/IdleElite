@@ -272,13 +272,16 @@
         </p>
 
         <div class="work-item">
-          <h4><input type="checkbox"> 2.1 Audit remaining source and archive asset folders</h4>
+          <h4><input type="checkbox" checked> 2.1 Audit remaining source and archive asset folders</h4>
           <div class="goal-meta"><span class="tag">assets</span><span class="tag">audit</span> Clarifies what should be preserved before deleting or moving anything.</div>
           <ul>
             <li>Focus on <code>docs/art-source</code>, <code>assets/loading</code>, <code>assets/android</code>, export presets, and import metadata.</li>
             <li>Document folders to preserve, rename, clean, or skip.</li>
             <li>Separate runtime assets from source/generation/provenance assets.</li>
           </ul>
+          <p class="acceptance">
+            Done: updated <code>docs/asset-file-structure-audit.md</code> with a Phase 2.1 ownership classification for <code>docs/art-source/asset-sources</code>, loading assets, Android launcher/export assets, export-side mipmap outputs, and suspicious import metadata. No assets were moved or deleted in this audit-only package.
+          </p>
         </div>
 
         <div class="work-item">

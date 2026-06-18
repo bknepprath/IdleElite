@@ -61,6 +61,24 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 - `.codex-tmp/`, `.codex-tools/`, `.godot/`, `builds/`, `release/`, and `play-store/` are not part of the naming cleanup surface unless a specific stale artifact is proven safe to remove.
 - `docs/art-source/asset-sources/fishing-module-preview-sources/*-v1` through `*-v8-*` files are candidate-generation history. They are likely cleanup targets, but only after identifying approved/runtime descendants and preserving any docs that explain final selections.
 
+## Phase 2.1 Ownership Classification
+
+This pass inspected `docs/art-source`, `assets/loading`, `assets/android`, `android/build/res/mipmap`, `project.godot`, `export_presets.cfg`, and import metadata without moving or deleting assets.
+
+| Surface | Current ownership | Preserve / rename / clean / skip |
+| --- | --- | --- |
+| `docs/art-source/asset-sources/**` | Tracked source/provenance archive with 141 PNGs, 111 `.import` files, 9 Markdown notes, 3 `.gdignore` files, and `moved-files.txt`. Folder names are already parent-qualified by domain: Android launcher, combo/event, enemy, fishing module preview, game UI, hub, profile UI, resource icon, thieving, and upgrade icon sources. | Preserve as source archive. Phase 2.2 may clean only proven bad generations after reference and hash checks. |
+| `docs/art-source/asset-sources/fishing-module-preview-sources/**` | Dense generation history for fishing module previews, including v1-v8 contact sheets and per-area candidates. Docs such as `docs/fishing-module-art-suite-v1.md` still reference these files. | Preserve until approved descendants and doc references are mapped. Candidate for later pruning, not deletion by broad sweep. |
+| `docs/art-source/asset-sources/android-launcher-source-assets/**` | Android launcher provenance. Its `.import` metadata still has a suspicious `source_file` pointing at `res://assets/android/launcher-adaptive-clickable-preview-432.png` instead of the docs path. | Preserve and verify before trusting metadata. Do not use as runtime launcher input unless export presets are updated. |
+| `assets/loading/idle-elite-player-hub-launch-loading-screen.png` | Tracked project boot splash referenced by `project.godot`. | Preserve exactly unless Phase 3.1 changes boot splash paths and validates Godot startup. |
+| `assets/loading/idle-elite-loading-screen.png` | Tracked older loading image with matching import metadata. No direct reference found in `project.godot`, `export_presets.cfg`, or current scripts during this pass. | Keep documented as candidate stale runtime asset; do not delete until Phase 3.1 hash/reference review. |
+| `assets/loading/blue-guy-flex-loading-spritesheet.png` and `blue-guy-flex-speech-bubble-blank.png` | Dirty/untracked runtime loading assets referenced by `scripts/ui/boot_flex_loading_animation.gd` and the current local dirty `scripts/main.gd` warmup list. | Preserve as in-progress loading work. Commit or cleanup only in the dedicated Phase 3.1 package. |
+| `assets/loading/blue-guy-flex-*before-*`, `blue-guy-flex-loading-spritesheet-source.png`, and `blue-guy-flex-speech-bubble.png` | Dirty/untracked variants, source image, and speech-bubble work files with `.import` metadata. | Treat as unresolved loading-source cluster. Do not delete until active runtime files and source/provenance needs are confirmed. |
+| `assets/android/launcher-main-clickable-192.png`, `launcher-adaptive-foreground-clickable-432.png`, `launcher-adaptive-background-clickable-432.png` | Tracked Android launcher assets referenced directly by `export_presets.cfg`. | Preserve exact paths unless Phase 3.2 updates export presets and validates references. |
+| `assets/android/launcher-main-192.png`, `launcher-adaptive-foreground-432.png`, `launcher-adaptive-background-432.png` | Tracked non-clickable launcher variants with import metadata. No direct export preset reference found in this pass. | Keep as candidate fallback/source variants. Do not delete until Phase 3.2 compares hashes and release docs/source notes. |
+| `android/build/res/mipmap/icon*.png` | Tracked generated/export-side Android resources. | Skip for readability cleanup unless an Android export package explicitly owns regeneration. |
+| `.import` metadata under `docs/art-source/asset-sources/**` | Mixed quality. Some entries now point at `res://docs/art-source/...`; older moved entries still point at `res://assets/...`. | Preserve with archives, but do not treat as proof of runtime ownership. Recreate through Godot only when an asset move requires it. |
+
 ## Duplicate Or Unused Cleanup Suspects
 
 - Blue Guy loading variants in `assets/loading` include names like `before-frame2-smaller-right`, `before-frame4-up5`, `before-frame4-up8`, and `source`. These are dirty/untracked and should be resolved as one loading-asset cleanup once the current boot-loading work is intentionally accepted or discarded.
@@ -83,6 +101,8 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 - `rg` found many direct `res://assets` and `assets/content` references in `scripts/main.gd`, `scripts/ui/boot_flex_loading_animation.gd`, tests, export presets, generated docs data, and store-asset tooling.
 - `export_presets.cfg` directly references Android launcher icon paths and excludes several source/preview asset patterns from builds.
 - `project.godot` still references the older loading splash path.
+- Phase 2.1 found `scripts/ui/boot_flex_loading_animation.gd` and current local dirty `scripts/main.gd` references to the Blue Guy loading spritesheet and blank speech bubble, while `project.godot` still references the older player-hub launch loading screen.
+- Phase 2.1 confirmed Android export presets currently use the clickable launcher assets, while `android/build/res/mipmap/icon*.png` are export-side outputs and not a readability cleanup surface.
 - Existing dirty/untracked files include navigation-control imports, Blue Guy loading files/imports, UI script UIDs, `output/`, and `test-results/`; these should remain unstaged unless a cleanup step explicitly owns them.
 
 ## Working Rules For Future Commits
