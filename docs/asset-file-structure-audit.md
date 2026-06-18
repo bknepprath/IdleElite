@@ -23,13 +23,13 @@ The current tree has repeated leaf folder names that are either intentional doma
 | `backgrounds` | 11 | Preserve in runtime skill/domain paths; revisit under source archive | Same as `actions`; safe only with activity database and import reference handling. |
 | `ui` | 5 | Parent-qualified source/archive copies | Runtime `ui` folders remain where code expects them; source/archive copies were renamed to `profile-ui-source-assets` and `game-ui-source-assets`. |
 | `fishing`, `thieving`, `woodcutting` | 3 each | Preserve runtime domains; parent-qualify source/archive copies | Runtime domain names are clear; mirrored docs paths create the confusion. |
-| `icons` | 3 | Audit before rename | `assets/icons` and `assets/content/icons` have different runtime roles but their names are easy to confuse. |
-| `resources`, `upgrades` | 3 each | Preserve under icon source/runtime clusters until references are mapped | These are narrow enough inside `icons`, but source/runtime mirrors need clearer root naming. |
-| `assets` | 2 | Renamed docs mirror root | `assets` at repo root is runtime; the former `docs/art-source/assets` mirror is now `docs/art-source/asset-sources`. |
+| `icons` | 3 | Parent-qualified source/archive copies | Runtime `assets/icons` and `assets/content/icons` remain unchanged; docs-side icon sources now use `resource-icon-source-assets` and `upgrade-icon-source-assets`. |
+| `resources`, `upgrades` | 3 each | Parent-qualified source/archive copies | Runtime icon buckets remain unchanged; source copies now spell out whether they are resource icon or upgrade icon sources. |
+| `assets` | 2 | Renamed docs mirror root | `assets` at repo root is runtime; the former docs mirror is now `docs/art-source/asset-sources`. |
 | `content` | 2 | Renamed docs mirror children | Runtime `assets/content` is established; docs source domains now use parent-qualified folders such as `combo-event-source-assets`, `event-source-assets`, `enemy-source-assets`, `hub-source-assets`, and `thieving-source-assets`. |
-| `source` | 2 | Parent-qualify after icon-source audit | `source` is too generic outside its parent; likely should become `resource_icon_sources` / `upgrade_icon_sources` or similar. |
+| `source` | 2 | Renamed icon source children | Icon source folders now use `resource-icon-source-assets` and `upgrade-icon-source-assets` instead of a generic `source/resources` and `source/upgrades` stack. |
 | `module-previews` | 2 | Renamed source/archive copy | The docs source-generation copy is now `fishing-module-preview-sources`; runtime-style preview folders should only exist if actual runtime/module preview assets are introduced. |
-| `android`, `build`, `combo`, `events`, `fight`, `hub`, `heists`, `trophies`, `enemies` | 2 each | Preserve runtime names; rename only source/archive mirrors | Runtime domains are meaningful; repeated docs/art-source mirrors are the cleanup target. |
+| `android`, `build`, `combo`, `events`, `fight`, `hub`, `heists`, `trophies`, `enemies` | 2 each | Preserve runtime names; source/archive mirrors parent-qualified where touched | Runtime domains are meaningful; docs-side Android, combo/event, enemy, hub, and thieving source mirrors now use parent-qualified folders. |
 
 Not all repeats are equally bad. Runtime paths like `assets/content/fight/actions` and `assets/content/fishing/actions` are readable because the parent skill supplies the domain. The most confusing repeats are mirror/source roots where `assets/content/...` is nested under `docs/art-source`, because the path reads like runtime content but is really source/archive material.
 
