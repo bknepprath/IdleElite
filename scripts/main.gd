@@ -16117,12 +16117,12 @@ func _play_temporary_event_entry_reveal(host: Control, fade_target: Control, tar
 	tween.tween_callback(_finish_temporary_event_entry_reveal.bind(host_id, fade_target_id, target_height))
 
 
-func _detail_lazy_remove_unmounted_inserted_host(plan_item: Dictionary) -> void:
-	var track_id := str(plan_item.get("track_id", ""))
+func _detail_lazy_remove_unmounted_inserted_host(inserted_entry: Dictionary) -> void:
+	var track_id := str(inserted_entry.get("track_id", ""))
 	if not track_id.is_empty():
 		detail_action_card_nodes.erase(track_id)
 		_discard_action_card_key(_action_key(selected_skill_id, track_id))
-	var host := _valid_control_ref(plan_item.get("stack_host"))
+	var host := _valid_control_ref(inserted_entry.get("stack_host"))
 	if host == null or not is_instance_valid(host):
 		return
 	var parent := host.get_parent()
