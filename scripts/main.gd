@@ -16263,34 +16263,34 @@ func _detail_lazy_rebind_plan_to_existing_stack(stack: VBoxContainer, skill_id: 
 			continue
 		if plan_index >= detail_lazy_plan.size():
 			break
-		var plan_item := detail_lazy_plan[plan_index] as Dictionary
-		plan_item["stack_host"] = control
-		plan_item["direct_stack_child"] = skill_id == "thieving" and str(plan_item.get("kind", "")) == "heist"
+		var lazy_entry := detail_lazy_plan[plan_index] as Dictionary
+		lazy_entry["stack_host"] = control
+		lazy_entry["direct_stack_child"] = skill_id == "thieving" and str(lazy_entry.get("kind", "")) == "heist"
 		if bool(control.get_meta("detail_lazy_placeholder", false)):
-			plan_item["mounted"] = false
-			plan_item["placeholder"] = control
+			lazy_entry["mounted"] = false
+			lazy_entry["placeholder"] = control
 			plan_index += 1
 			continue
 		if _detail_lazy_slot_has_real_content(control):
-			plan_item["mounted"] = true
-			plan_item["placeholder"] = null
+			lazy_entry["mounted"] = true
+			lazy_entry["placeholder"] = null
 		else:
-			plan_item["mounted"] = false
+			lazy_entry["mounted"] = false
 			var existing_placeholder: Control = null
 			for slot_child in control.get_children():
 				if slot_child is Control and bool((slot_child as Control).get_meta("detail_lazy_placeholder", false)):
 					existing_placeholder = slot_child as Control
 					break
 			if existing_placeholder != null and is_instance_valid(existing_placeholder):
-				plan_item["placeholder"] = existing_placeholder
+				lazy_entry["placeholder"] = existing_placeholder
 			else:
 				var placeholder := Control.new()
-				placeholder.custom_minimum_size = Vector2(content_width, float(plan_item.get("height", _activity_card_root_height())))
+				placeholder.custom_minimum_size = Vector2(content_width, float(lazy_entry.get("height", _activity_card_root_height())))
 				placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				placeholder.set_meta("detail_lazy_placeholder", true)
-				if bool(plan_item.get("direct_stack_child", false)):
+				if bool(lazy_entry.get("direct_stack_child", false)):
 					placeholder.custom_minimum_size.x = actions_width
-				plan_item["placeholder"] = placeholder
+				lazy_entry["placeholder"] = placeholder
 				control.add_child(placeholder)
 		plan_index += 1
 

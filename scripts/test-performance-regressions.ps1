@@ -906,6 +906,8 @@ Assert-True ($lazyReorderExistingHosts -notmatch '\bplan_item\b') "Lazy host reo
 
 $lazyRebind = Get-FunctionBody -Text $main -Name "_detail_lazy_rebind_plan_to_existing_stack"
 Assert-True ($lazyRebind -match 'control\.get_meta\("detail_lazy_placeholder", false\)') "Direct heist placeholders should rebind as placeholders, not as mounted content."
+Assert-True ($lazyRebind -match 'var lazy_entry := detail_lazy_plan\[plan_index\] as Dictionary') "Lazy stack rebinds should name rebound render records as lazy entries."
+Assert-True ($lazyRebind -notmatch '\bplan_item\b') "Lazy stack rebinds should not use stale plan-item wording internally."
 Assert-True ($main -match 'func _ensure_activity_unlock_preview_lazy_entry') "Activity unlock preview helper should use lazy-entry naming."
 Assert-True ($main -notmatch '_ensure_activity_unlock_preview_lazy_plan_item') "Activity unlock preview helper should not use stale lazy-plan-item naming."
 
