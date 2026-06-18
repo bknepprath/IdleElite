@@ -9,7 +9,7 @@ This audit starts the asset/file naming cleanup pass. The goal is to make paths 
 - Runtime game assets live mostly under `assets/content/<domain>/...`, with repeated domain subfolders such as `actions` and `backgrounds` for Fight, Build, Woodcutting, Thieving, Fishing, Events, and Combo content.
 - UI/runtime support assets are split between `assets/ui`, `assets/content/ui`, `assets/content/ui/navigation-controls`, `assets/icons`, and `assets/content/icons`; source UI work is now parent-qualified under `docs/art-source/asset-sources/profile-ui-source-assets` and `docs/art-source/asset-sources/game-ui-source-assets`.
 - Loading assets live in `assets/loading`, including current untracked Blue Guy loading animation variants and older boot splash references.
-- Source and generation work lives mostly under `docs/art-source/asset-sources/...`, which is clearer than the former `docs/art-source/assets/...` mirror but still contains some runtime-shaped subfolders that need follow-up cleanup.
+- Source and generation work lives mostly under parent-qualified folders in `docs/art-source/asset-sources/...`, which is clearer than the former runtime-shaped mirror.
 - Fishing has the densest asset structure: runtime actions/backgrounds/catch-icons/locations/tools/ui plus many source-generation candidates now parent-qualified under `docs/art-source/asset-sources/fishing-module-preview-sources`.
 - Extracted UI scripts live in `scripts/ui` and many Godot `.uid` files are currently untracked. These are metadata-adjacent and should not be renamed casually.
 
@@ -26,7 +26,7 @@ The current tree has repeated leaf folder names that are either intentional doma
 | `icons` | 3 | Audit before rename | `assets/icons` and `assets/content/icons` have different runtime roles but their names are easy to confuse. |
 | `resources`, `upgrades` | 3 each | Preserve under icon source/runtime clusters until references are mapped | These are narrow enough inside `icons`, but source/runtime mirrors need clearer root naming. |
 | `assets` | 2 | Renamed docs mirror root | `assets` at repo root is runtime; the former `docs/art-source/assets` mirror is now `docs/art-source/asset-sources`. |
-| `content` | 2 | Rename through docs mirror cleanup | Runtime `assets/content` is established; source mirror should stop repeating it literally. |
+| `content` | 2 | Renamed docs mirror children | Runtime `assets/content` is established; docs source domains now use parent-qualified folders such as `combo-event-source-assets`, `event-source-assets`, `enemy-source-assets`, `hub-source-assets`, and `thieving-source-assets`. |
 | `source` | 2 | Parent-qualify after icon-source audit | `source` is too generic outside its parent; likely should become `resource_icon_sources` / `upgrade_icon_sources` or similar. |
 | `module-previews` | 2 | Renamed source/archive copy | The docs source-generation copy is now `fishing-module-preview-sources`; runtime-style preview folders should only exist if actual runtime/module preview assets are introduced. |
 | `android`, `build`, `combo`, `events`, `fight`, `hub`, `heists`, `trophies`, `enemies` | 2 each | Preserve runtime names; rename only source/archive mirrors | Runtime domains are meaningful; repeated docs/art-source mirrors are the cleanup target. |

@@ -7,4 +7,4 @@ Use one folder per owning page:
 - `woodcutting/actions` and `woodcutting/backgrounds`
 - `fishing/actions` and `fishing/backgrounds`
 
-Only place approved, sliced PNGs here. Keep prompts, contact sheets, and source composites under `docs/art-source/asset-sources/content/combo/`.
+Only place approved, sliced PNGs here. Keep prompts, contact sheets, and source composites under `docs/art-source/asset-sources/combo-event-source-assets/`.
