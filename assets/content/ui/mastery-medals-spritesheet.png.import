@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b5d8uuqkrdufq"
-path="res://.godot/imported/mastery-medals-20.png-ab451da47be8a38ebbfbd266b6d1539f.ctex"
+path="res://.godot/imported/mastery-medals-spritesheet.png-ab451da47be8a38ebbfbd266b6d1539f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/content/ui/mastery-medals-20.png"
-dest_files=["res://.godot/imported/mastery-medals-20.png-ab451da47be8a38ebbfbd266b6d1539f.ctex"]
+source_file="res://assets/content/ui/mastery-medals-spritesheet.png"
+dest_files=["res://.godot/imported/mastery-medals-spritesheet.png-ab451da47be8a38ebbfbd266b6d1539f.ctex"]
 
 [params]
 

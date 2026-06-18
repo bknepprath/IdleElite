@@ -101,7 +101,7 @@ def main() -> int:
         "assets/content/hub/hub-build-cloud-solid-sheet.png",
         "assets/content/thieving/trophies/thieving-trophy-sheet.png",
         "assets/content/fishing/tools/fishing-tool-icons-sheet.png",
-        "assets/content/ui/mastery-medals-20.png",
+        "assets/content/ui/mastery-medals-spritesheet.png",
         "assets/content/characters/stick-hero.png",
         "assets/content/logo/idle-elite-logo-cutout.png",
         "assets/content/fishing/catch-icons/00-minnow-cutout.png",
