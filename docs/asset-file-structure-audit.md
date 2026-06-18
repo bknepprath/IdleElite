@@ -9,8 +9,8 @@ This audit starts the asset/file naming cleanup pass. The goal is to make paths 
 - Runtime game assets live mostly under `assets/content/<domain>/...`, with repeated domain subfolders such as `actions` and `backgrounds` for Fight, Build, Woodcutting, Thieving, Fishing, Events, and Combo content.
 - UI/runtime support assets are split between `assets/ui`, `assets/content/ui`, `assets/content/ui/navigation-controls`, `assets/icons`, and `assets/content/icons`.
 - Loading assets live in `assets/loading`, including current untracked Blue Guy loading animation variants and older boot splash references.
-- Source and generation work lives mostly under `docs/art-source/assets/...`, which mirrors `assets/...` deeply enough that paths like `docs/art-source/assets/content/fishing/module-previews` can be mistaken for runtime assets.
-- Fishing has the densest asset structure: runtime actions/backgrounds/catch-icons/locations/module-previews/tools/ui plus many source-generation candidates under `docs/art-source/assets/content/fishing/module-previews`.
+- Source and generation work lives mostly under `docs/art-source/asset-sources/...`, which is clearer than the former `docs/art-source/assets/...` mirror but still contains runtime-shaped subfolders that need follow-up cleanup.
+- Fishing has the densest asset structure: runtime actions/backgrounds/catch-icons/locations/module-previews/tools/ui plus many source-generation candidates under `docs/art-source/asset-sources/content/fishing/module-previews`.
 - Extracted UI scripts live in `scripts/ui` and many Godot `.uid` files are currently untracked. These are metadata-adjacent and should not be renamed casually.
 
 ## Repeated Folder Names Found
@@ -21,11 +21,11 @@ The current tree has repeated leaf folder names that are either intentional doma
 | --- | ---: | --- | --- |
 | `actions` | 12 | Preserve in runtime skill/domain paths; revisit under source archive | Runtime parent folders make these readable (`fight/actions`, `fishing/actions`). Source/archive copies should be parent-qualified if moved. |
 | `backgrounds` | 11 | Preserve in runtime skill/domain paths; revisit under source archive | Same as `actions`; safe only with activity database and import reference handling. |
-| `ui` | 5 | Audit and likely parent-qualify where ambiguous | `assets/ui`, `assets/content/ui`, `docs/art-source/assets/ui`, and `docs/art-source/assets/content/ui` overlap conceptually. |
+| `ui` | 5 | Audit and likely parent-qualify where ambiguous | `assets/ui`, `assets/content/ui`, `docs/art-source/asset-sources/ui`, and `docs/art-source/asset-sources/content/ui` overlap conceptually. |
 | `fishing`, `thieving`, `woodcutting` | 3 each | Preserve runtime domains; parent-qualify source/archive copies | Runtime domain names are clear; mirrored docs paths create the confusion. |
 | `icons` | 3 | Audit before rename | `assets/icons` and `assets/content/icons` have different runtime roles but their names are easy to confuse. |
 | `resources`, `upgrades` | 3 each | Preserve under icon source/runtime clusters until references are mapped | These are narrow enough inside `icons`, but source/runtime mirrors need clearer root naming. |
-| `assets` | 2 | Rename docs mirror first | `assets` at repo root is runtime; `docs/art-source/assets` should become parent-qualified source/archive naming. |
+| `assets` | 2 | Renamed docs mirror root | `assets` at repo root is runtime; the former `docs/art-source/assets` mirror is now `docs/art-source/asset-sources`. |
 | `content` | 2 | Rename through docs mirror cleanup | Runtime `assets/content` is established; source mirror should stop repeating it literally. |
 | `source` | 2 | Parent-qualify after icon-source audit | `source` is too generic outside its parent; likely should become `resource_icon_sources` / `upgrade_icon_sources` or similar. |
 | `module-previews` | 2 | Parent-qualify source/archive copy | Runtime/accepted previews and source-generation preview ladders should not share the same leaf name. |
@@ -59,22 +59,22 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 - Untracked `.import` files for new dirty assets should not be committed unless their paired asset is intentionally accepted.
 - `output/` and `test-results/` are generated local outputs and should be cleaned or ignored rather than reorganized as project source.
 - `.codex-tmp/`, `.codex-tools/`, `.godot/`, `builds/`, `release/`, and `play-store/` are not part of the naming cleanup surface unless a specific stale artifact is proven safe to remove.
-- `docs/art-source/assets/content/fishing/module-previews/*-v1` through `*-v8-*` files are candidate-generation history. They are likely cleanup targets, but only after identifying approved/runtime descendants and preserving any docs that explain final selections.
+- `docs/art-source/asset-sources/content/fishing/module-previews/*-v1` through `*-v8-*` files are candidate-generation history. They are likely cleanup targets, but only after identifying approved/runtime descendants and preserving any docs that explain final selections.
 
 ## Duplicate Or Unused Cleanup Suspects
 
 - Blue Guy loading variants in `assets/loading` include names like `before-frame2-smaller-right`, `before-frame4-up5`, `before-frame4-up8`, and `source`. These are dirty/untracked and should be resolved as one loading-asset cleanup once the current boot-loading work is intentionally accepted or discarded.
-- `docs/art-source/assets/content/fishing/module-previews` has many repeated version ladders per fishing area. These should be reduced to approved source/archival names or moved under a parent-qualified archive folder.
-- `docs/art-source/assets/...` includes `.import` files whose `source_file` entries often point at `res://assets/...` rather than the docs path. Treat those as suspicious generated metadata; do not rely on them until checked in Godot.
+- `docs/art-source/asset-sources/content/fishing/module-previews` has many repeated version ladders per fishing area. These should be reduced to approved source/archival names or moved under a parent-qualified archive folder.
+- `docs/art-source/asset-sources/...` includes `.import` files whose `source_file` entries often point at `res://assets/...` rather than the docs path. Treat those as suspicious generated metadata; do not rely on them until checked in Godot.
 - Runtime and art-source folders both contain generic `assets/content/ui` and `assets/ui` paths. This is a strong candidate for parent-qualified source-folder naming.
 - Exact duplicate detection still needs content-hash verification before deletion. Same-size grouping alone is not proof.
 
 ## First Safe High-Value Targets
 
-1. Rename the source/archive mirror root `docs/art-source/assets` to a parent-qualified name such as `docs/art-source/source_assets` or `docs/art-source/art_source_assets`, then update docs references. This attacks the repeated `assets/content` confusion without touching runtime `res://assets` paths.
+1. Done: rename the source/archive mirror root from `docs/art-source/assets` to `docs/art-source/asset-sources`, then update docs references. This attacks the repeated `assets/content` confusion without touching runtime `res://assets` paths.
 2. Clean or ignore generated local folders `output/` and `test-results/` after confirming they are untracked outputs and not needed artifacts.
 3. Resolve the dirty Blue Guy loading asset cluster by choosing the intended runtime files, removing rejected variants, and updating `scripts/ui/boot_flex_loading_animation.gd`, `scripts/main.gd`, `project.godot`, and tests together if the paths change.
-4. Parent-qualify source-generation folders that repeat runtime names, starting with `docs/art-source/assets/content/fishing/module-previews` into a clearer archive path such as `docs/art-source/fishing_module_preview_sources`.
+4. Parent-qualify source-generation folders that repeat runtime names, starting with `docs/art-source/asset-sources/content/fishing/module-previews` into a clearer archive path such as `docs/art-source/fishing-module-preview-sources`.
 5. Audit `assets/ui`, `assets/content/ui`, and `assets/content/ui/navigation-controls` for overlapping UI asset responsibilities. Rename only after reference checks prove the assets are runtime-safe and update all `res://assets/...` references in code/tests/docs.
 
 ## Reference Evidence Collected

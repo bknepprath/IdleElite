@@ -4,12 +4,12 @@ Purpose: record the approved source direction after the action/background split 
 
 ## Current Source Files
 
-- Combo action cutouts: `docs/art-source/assets/content/combo/contact-sheet-combo-actions-v3.png`
-- Combo action chroma source: `docs/art-source/assets/content/combo/contact-sheet-combo-actions-v3-source-chroma.png`
-- Combo background plates: `docs/art-source/assets/content/combo/contact-sheet-combo-backgrounds-v2.png`
-- Event action cutouts: `docs/art-source/assets/content/events/contact-sheet-event-actions-v3.png`
-- Event action chroma source: `docs/art-source/assets/content/events/contact-sheet-event-actions-v3-source-chroma.png`
-- Event background plates: `docs/art-source/assets/content/events/contact-sheet-event-backgrounds-v2.png`
+- Combo action cutouts: `docs/art-source/asset-sources/content/combo/contact-sheet-combo-actions-v3.png`
+- Combo action chroma source: `docs/art-source/asset-sources/content/combo/contact-sheet-combo-actions-v3-source-chroma.png`
+- Combo background plates: `docs/art-source/asset-sources/content/combo/contact-sheet-combo-backgrounds-v2.png`
+- Event action cutouts: `docs/art-source/asset-sources/content/events/contact-sheet-event-actions-v3.png`
+- Event action chroma source: `docs/art-source/asset-sources/content/events/contact-sheet-event-actions-v3-source-chroma.png`
+- Event background plates: `docs/art-source/asset-sources/content/events/contact-sheet-event-backgrounds-v2.png`
 
 ## Approval Notes
 
