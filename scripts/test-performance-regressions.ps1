@@ -25,6 +25,7 @@ $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
 $perfMonitorPath = Join-Path $projectRoot "scripts\perf_monitor.gd"
 $checkProjectPath = Join-Path $projectRoot "scripts\check-project.ps1"
 $runtimeAssetPathTestPath = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
+$uiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
 $skillsPagePerformancePath = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 $saveNormalizationPath = Join-Path $projectRoot "scripts\test-save-normalization.ps1"
 $tutorialStartScrollPath = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
@@ -112,6 +113,8 @@ Assert-True (Test-Path -LiteralPath $checkProjectPath) "Missing scripts\check-pr
 $checkProject = Get-Content -LiteralPath $checkProjectPath -Raw
 Assert-True (Test-Path -LiteralPath $runtimeAssetPathTestPath) "Missing scripts\check-runtime-asset-paths.ps1."
 $runtimeAssetPathTest = Get-Content -LiteralPath $runtimeAssetPathTestPath -Raw
+Assert-True (Test-Path -LiteralPath $uiBoundaryContractTestPath) "Missing scripts\check-ui-boundary-contracts.ps1."
+$uiBoundaryContractTest = Get-Content -LiteralPath $uiBoundaryContractTestPath -Raw
 Assert-True (Test-Path -LiteralPath $skillsPagePerformancePath) "Missing scripts\test-skills-page-performance.ps1."
 $skillsPagePerformance = Get-Content -LiteralPath $skillsPagePerformancePath -Raw
 Assert-True (Test-Path -LiteralPath $saveNormalizationPath) "Missing scripts\test-save-normalization.ps1."
@@ -160,11 +163,16 @@ Assert-True ($main -match 'const SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE := 1') "Sk
 Assert-True ($checkProject -match 'IDLE_ELITE_STRICT_SKILLS_PERF') "Project validation should expose an opt-in strict repeated skills-page performance mode."
 Assert-True ($checkProject -match 'test-save-normalization\.ps1') "Project validation should run the focused save-normalization gate."
 Assert-True ($checkProject -match 'check-runtime-asset-paths\.ps1') "Project validation should run the runtime asset path contract gate."
+Assert-True ($checkProject -match 'check-ui-boundary-contracts\.ps1') "Project validation should run the UI boundary contract gate."
 Assert-True ($checkProject -match 'check-leaderboard-cost-safety\.ps1') "Project validation should run the leaderboard cost-safety gate."
 Assert-True ($checkProject -match 'test-skills-page-performance-repeat\.ps1') "Strict project validation should run the repeated skills-page performance gate."
 Assert-True ($runtimeAssetPathTest -match 'project\.godot') "Runtime asset path validation should include project-level Godot references."
 Assert-True ($runtimeAssetPathTest -match 'export_presets\.cfg') "Runtime asset path validation should include Android export preset references."
 Assert-True ($runtimeAssetPathTest -match 'docs/activity-database\.json') "Runtime asset path validation should include activity database asset references."
+Assert-True ($uiBoundaryContractTest -match '_build_nav_bar') "UI boundary validation should protect navigation shell entry points."
+Assert-True ($uiBoundaryContractTest -match '_build_chat_overlay') "UI boundary validation should protect chat presentation entry points."
+Assert-True ($uiBoundaryContractTest -match '_render_leaderboard_page') "UI boundary validation should protect leaderboard page entry points."
+Assert-True ($uiBoundaryContractTest -match '_build_profile_overlay') "UI boundary validation should protect profile/avatar entry points."
 $tutorialShelfShadowAlpha = Get-FunctionBody -Text $tutorialStartScroll -Name "_shelf_shadow_alpha"
 Assert-True ($tutorialShelfShadowAlpha -match 'shadow\.get\("shadow_alpha"\)') "Tutorial start-scroll validation should read the shelf shadow's custom alpha state."
 Assert-True ($tutorialStartScroll -notmatch 'detail_shelf_shadow_overlay"\) as CanvasItem[\s\S]{0,220}shadow\.modulate\.a') "Tutorial start-scroll validation should not report shelf shadow alpha from CanvasItem modulate."

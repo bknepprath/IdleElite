@@ -4,7 +4,7 @@
 
 A Godot 4 mobile idle RPG built around short sessions, table-driven activities, stamina rotation, mastery medals, offline progress, rewarded ads, and Android release builds.
 
-Docs live in `docs/` and are maintained as Godot project references. Legacy HTML filenames are retained for link stability, but their contents should reflect the current Godot game. New agents should start with `docs/agent-codebase-map.md` and `docs/main-gd-ownership-map.md` before broad refactors.
+Docs live in `docs/` and are maintained as Godot project references. Legacy HTML filenames are retained for link stability, but their contents should reflect the current Godot game. New agents should start with `docs/agent-codebase-map.md`, `docs/main-gd-ownership-map.md`, and `docs/ui-runtime-boundary-map.md` before broad refactors.
 
 ## Codex Loop
 
