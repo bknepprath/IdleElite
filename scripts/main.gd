@@ -14605,7 +14605,7 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 	if running_skill_id == selected_skill_id and not running_action_id.is_empty():
 		pinned[running_action_id] = true
 	if not pending_activity_unlock_ceremony.is_empty():
-		for raw_action_id in _pending_activity_ready_ids():
+		for raw_action_id in _pending_activity_readiness_action_ids():
 			var pending_action_id := str(raw_action_id)
 			if not pending_action_id.is_empty():
 				pinned[pending_action_id] = true
@@ -15312,10 +15312,10 @@ func _detail_lazy_fade_allowed(skill_id: String, action: Dictionary) -> bool:
 func _detail_lazy_finalize_action_card(card: Dictionary, skill_id: String, action: Dictionary, action_id: String) -> void:
 	_prepare_locked_activity_preview_fade(card, skill_id, action)
 	_sync_locked_activity_preview_presence(card, skill_id, action)
-	if _pending_activity_unlock_matches(action_id):
+	if _action_has_pending_unlock_readiness(action_id):
 		card["unlock_ready_pending"] = true
 		card.erase("lock_overlay_sync_key")
-	if _pending_activity_unlock_preview_matches(action_id):
+	if _action_matches_pending_unlock_preview(action_id):
 		if _stage_activity_unlock_preview_once(action_id, card):
 			card["fade_in_pending"] = true
 	elif activity_unlock_preview_after_ceremony_id == action_id:
@@ -18487,7 +18487,7 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		return
 	var ceremony_active := bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
 	var action_id := str(action.get("id", card.get("action_id", "")))
-	var lock_blocks_button := (not unlocked) or ceremony_active or bool(card.get("unlock_ready_pending", false)) or _pending_activity_unlock_matches(action_id)
+	var lock_blocks_button := (not unlocked) or ceremony_active or bool(card.get("unlock_ready_pending", false)) or _action_has_pending_unlock_readiness(action_id)
 	var button := card.get("button") as Button
 	if button != null:
 		_set_base_button_disabled_if_changed(button, lock_blocks_button)
@@ -19454,7 +19454,7 @@ func _action_info_chips_blocked_by_lock(card: Dictionary) -> bool:
 		or bool(card.get("unlock_ceremony_pending", false))
 		or bool(card.get("unlock_ceremony_active", false))
 		or bool(card.get("unlock_ready_pending", false))
-		or _pending_activity_unlock_matches(resolved_action_id)
+		or _action_has_pending_unlock_readiness(resolved_action_id)
 	)
 
 
@@ -29120,7 +29120,7 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 	)
 	var skill_id := str(card.get("skill_id", selected_skill_id))
 	var action_id := str(action.get("id", card.get("action_id", "")))
-	var ready_pending := bool(card.get("unlock_ready_pending", false)) or _pending_activity_unlock_matches(action_id)
+	var ready_pending := bool(card.get("unlock_ready_pending", false)) or _action_has_pending_unlock_readiness(action_id)
 	var lock_visible := (not unlocked) or ceremony_active
 	var preview_revealing := (
 		not ceremony_active
@@ -29521,7 +29521,7 @@ func _mark_pending_activity_readiness_applied(skill_id: String) -> void:
 	pending_activity_unlock_ceremony = {"pages": pages}
 
 
-func _pending_activity_ready_ids(skill_id: String = selected_skill_id) -> Array:
+func _pending_activity_readiness_action_ids(skill_id: String = selected_skill_id) -> Array:
 	var entry := _pending_activity_readiness_for_skill(skill_id)
 	if entry.is_empty():
 		return []
@@ -29531,8 +29531,8 @@ func _pending_activity_ready_ids(skill_id: String = selected_skill_id) -> Array:
 	return ready_ids
 
 
-func _pending_activity_unlock_matches(action_id: String) -> bool:
-	if action_id.is_empty() or not _pending_activity_ready_ids().has(action_id):
+func _action_has_pending_unlock_readiness(action_id: String) -> bool:
+	if action_id.is_empty() or not _pending_activity_readiness_action_ids().has(action_id):
 		return false
 	var action := _action_data(selected_skill_id, action_id)
 	if not action.is_empty() and _is_action_unlocked(selected_skill_id, action):
@@ -29542,7 +29542,7 @@ func _pending_activity_unlock_matches(action_id: String) -> bool:
 	return true
 
 
-func _pending_activity_unlock_preview_matches(action_id: String) -> bool:
+func _action_matches_pending_unlock_preview(action_id: String) -> bool:
 	var entry := _pending_activity_readiness_for_skill(selected_skill_id)
 	return not entry.is_empty() and str(entry.get("preview", "")) == action_id
 
@@ -29598,9 +29598,9 @@ func _apply_pending_activity_unlock_readiness() -> void:
 		return
 	if bool(pending_entry.get("applied", false)):
 		return
-	var ready_ids := _pending_activity_ready_ids()
-	_release_onboarding_first_module_centering_for_level_two_unlock(selected_skill_id, ready_ids)
-	for raw_action_id in ready_ids:
+	var readiness_action_ids := _pending_activity_readiness_action_ids()
+	_release_onboarding_first_module_centering_for_level_two_unlock(selected_skill_id, readiness_action_ids)
+	for raw_action_id in readiness_action_ids:
 		var action_id := str(raw_action_id)
 		var key := _action_key(selected_skill_id, action_id)
 		var card := {}
@@ -29648,10 +29648,10 @@ func _auto_unlock_visible_pending_lockpads(skill_id: String) -> void:
 		return
 	if activity_unlock_ceremony_count > 0:
 		return
-	var ready_ids := _pending_activity_ready_ids(skill_id)
-	if ready_ids.is_empty():
+	var readiness_action_ids := _pending_activity_readiness_action_ids(skill_id)
+	if readiness_action_ids.is_empty():
 		return
-	for raw_action_id in ready_ids:
+	for raw_action_id in readiness_action_ids:
 		var action_id := str(raw_action_id)
 		if action_id.is_empty():
 			continue
@@ -29763,7 +29763,7 @@ func _auto_unlock_visible_activity_requirement_lock(card: Dictionary, skill_id: 
 func _auto_cleanup_visible_pending_lockpads(skill_id: String) -> void:
 	if skill_id.is_empty() or pending_activity_unlock_ceremony.is_empty():
 		return
-	for raw_action_id in _pending_activity_ready_ids(skill_id).duplicate():
+	for raw_action_id in _pending_activity_readiness_action_ids(skill_id).duplicate():
 		var action_id := str(raw_action_id)
 		if action_id.is_empty():
 			continue
@@ -38182,7 +38182,7 @@ func _build_fishing_location_tile(
 	var location_unlocked := _fishing_location_is_available(area_id, location)
 	var action_unlocked := _is_action_unlocked(skill_id, action)
 	var unlocked := location_unlocked and action_unlocked
-	var unlock_ready_pending := _pending_activity_unlock_matches(action_id)
+	var unlock_ready_pending := _action_has_pending_unlock_readiness(action_id)
 
 	var method_column := VBoxContainer.new()
 	method_column.add_theme_constant_override("separation", FISHING_MODULE_TITLE_TOP)
@@ -39041,7 +39041,7 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		if action.is_empty():
 			continue
 		var unlocked := _is_action_unlocked(skill_id, action)
-		var unlock_ready_pending := _pending_activity_unlock_matches(action_id)
+		var unlock_ready_pending := _action_has_pending_unlock_readiness(action_id)
 
 		var method_column := VBoxContainer.new()
 		method_column.add_theme_constant_override("separation", FISHING_MODULE_TITLE_TOP)
