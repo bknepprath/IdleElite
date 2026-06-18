@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://tfd6xulon06h"
-path="res://.godot/imported/total-lv-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.ctex"
+path="res://.godot/imported/total-level-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/content/ui/total-lv-bargraph.png"
-dest_files=["res://.godot/imported/total-lv-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.ctex"]
+source_file="res://assets/content/ui/total-level-bargraph.png"
+dest_files=["res://.godot/imported/total-level-bargraph.png-78ecc2eeda9689c3078934ae4ef7ab75.ctex"]
 
 [params]
 

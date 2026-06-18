@@ -1082,6 +1082,7 @@ const RESET_DATA_CONFIRM_MIN_SECONDS := 0.08
 const RESET_DATA_CONFIRM_TEXT := "Are you sure?"
 const ACTIVITY_DATABASE_PATH := "res://docs/activity-database.json"
 const MASTERY_MEDALS_TEXTURE := "res://assets/content/ui/mastery-medals-20.png"
+const TOTAL_LEVEL_BARGRAPH_TEXTURE := "res://assets/content/ui/total-level-bargraph.png"
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
 const UNLOCK_LOCK_CHAINS_TEXTURE := "res://assets/content/ui/unlock-lock-chains.png"
 const UNLOCK_CHAIN_LINK_TEXTURE := "res://assets/content/ui/unlock-chain-link.png"
@@ -2980,7 +2981,7 @@ func _boot_shared_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-cutout.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/speech-bubble-down.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/total-lv-bargraph.png")
+	_add_boot_warmup_texture_path(paths, TOTAL_LEVEL_BARGRAPH_TEXTURE)
 	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/ad-reward.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/discord-simple.png")
@@ -6364,7 +6365,7 @@ func _make_level_snapshot() -> Control:
 	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	total_row.add_theme_constant_override("separation", 34)
 	stack.add_child(total_row)
-	total_row.add_child(_image("res://assets/content/ui/total-lv-bargraph.png", Vector2(150, 150)))
+	total_row.add_child(_image(TOTAL_LEVEL_BARGRAPH_TEXTURE, Vector2(150, 150)))
 	home_total_label = _label("", 108, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	total_row.add_child(home_total_label)
 	
@@ -6501,7 +6502,7 @@ func _build_achievements(parent: PanelContainer) -> void:
 	total_section.alignment = BoxContainer.ALIGNMENT_CENTER
 	total_section.add_theme_constant_override("separation", 40)
 	total_margin.add_child(total_section)
-	total_section.add_child(_image("res://assets/content/ui/total-lv-bargraph.png", Vector2(210, 210)))
+	total_section.add_child(_image(TOTAL_LEVEL_BARGRAPH_TEXTURE, Vector2(210, 210)))
 	achievement_total_level_label = _label("", 122, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	total_section.add_child(achievement_total_level_label)
 
@@ -6668,7 +6669,7 @@ func _build_nav_bar() -> void:
 	hub_tab.pressed.connect(_show_hub.bind(hub_tab))
 	row.add_child(hub_tab)
 	_sync_hub_nav_button(true)
-	skills_tab = _nav_button("res://assets/content/ui/total-lv-bargraph.png", true)
+	skills_tab = _nav_button(TOTAL_LEVEL_BARGRAPH_TEXTURE, true)
 	skills_tab.pressed.connect(_show_skills_module)
 	row.add_child(skills_tab)
 	settings_tab = _nav_button("res://assets/content/ui/settings-gear-simple.png", true)
@@ -7341,7 +7342,7 @@ func _chat_expanded_composer() -> Control:
 	chat_hub_tab.tooltip_text = ""
 	chat_hub_tab.pressed.connect(_on_chat_hub_nav_pressed)
 	ribbon_row.add_child(chat_hub_tab)
-	var chat_skills := _nav_button("res://assets/content/ui/total-lv-bargraph.png")
+	var chat_skills := _nav_button(TOTAL_LEVEL_BARGRAPH_TEXTURE)
 	chat_skills.pressed.connect(_on_chat_skills_nav_pressed)
 	ribbon_row.add_child(chat_skills)
 	var chat_settings := _nav_button("res://assets/content/ui/settings-gear-simple.png")
@@ -13660,7 +13661,7 @@ func _render_skill_menu_shelf() -> void:
 	total_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	total_row.add_theme_constant_override("separation", 22)
 	total_level_header.add_child(total_row)
-	var total_icon := _image("res://assets/content/ui/total-lv-bargraph.png", Vector2(118, 118))
+	var total_icon := _image(TOTAL_LEVEL_BARGRAPH_TEXTURE, Vector2(118, 118))
 	total_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	total_row.add_child(total_icon)
 	total_row.add_child(_label("Total Lv %s" % _global_level(), 154, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
@@ -33140,7 +33141,7 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	stat_row.add_theme_constant_override("separation", 28)
 	offline_summary_stack.add_child(stat_row)
 	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), "res://assets/content/ui/motivation-star.png"))
-	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), "res://assets/content/ui/total-lv-bargraph.png"))
+	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), TOTAL_LEVEL_BARGRAPH_TEXTURE))
 
 	if progress_content_height > 0.0:
 		var list := VBoxContainer.new()
@@ -33283,7 +33284,7 @@ func _populate_offline_summary_progress(list: VBoxContainer, active_result: Dict
 	if show_skill_level_row:
 		list.add_child(_offline_summary_row(_skill_icon_path(str(active_result.get("skill_id", ""))), "%s Level" % str(active_result.get("skill_name", "Skill")), "Lv %s -> %s" % [old_skill_level, new_skill_level], "Achieved %s" % _offline_level_range_text(old_skill_level, new_skill_level), _skill_theme_color(str(active_result.get("skill_id", "")))))
 	if show_global_level_row:
-		list.add_child(_offline_summary_row("res://assets/content/ui/total-lv-bargraph.png", "Total Level", "Lv %s -> %s" % [old_global_level, new_global_level], "Total level increased while away.", Color("#f4bf35")))
+		list.add_child(_offline_summary_row(TOTAL_LEVEL_BARGRAPH_TEXTURE, "Total Level", "Lv %s -> %s" % [old_global_level, new_global_level], "Total level increased while away.", Color("#f4bf35")))
 	if show_mastery_row:
 		list.add_child(_offline_summary_mastery_row(str(active_result.get("action_art", "")), old_mastery_level, new_mastery_level))
 
