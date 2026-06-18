@@ -25316,7 +25316,7 @@ func _move_swipe_preview_real_card_cache_to_global(preview_state: Dictionary) ->
 		skill_swipe_real_card_cache_by_skill[skill_id] = global_cache
 
 
-func _build_swipe_preview_real_card_cache_item(skill_id: String, entry_data: Dictionary, content_width: float, actions_width: float) -> Dictionary:
+func _build_swipe_preview_real_card_cache_entry(skill_id: String, entry_data: Dictionary, content_width: float, actions_width: float) -> Dictionary:
 	if skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
 		return {}
 	if str(entry_data.get("kind", "")) == "thieving_heist":
@@ -25376,7 +25376,7 @@ func _prewarm_swipe_preview_real_card_cache(preview_state: Dictionary, skill_id:
 		if not _skill_swipe_prewarm_can_continue(selected_skill_id, token):
 			_free_swipe_preview_real_card_cache(preview_state)
 			return
-		var cached := _build_swipe_preview_real_card_cache_item(skill_id, entry_data, content_width, actions_width)
+		var cached := _build_swipe_preview_real_card_cache_entry(skill_id, entry_data, content_width, actions_width)
 		if cached.is_empty():
 			continue
 		cache[str(cached.get("track_id", action_id))] = cached
@@ -25466,7 +25466,7 @@ func _prewarm_global_swipe_real_card_cache_for_skill_idle(skill_id: String, sour
 		await get_tree().process_frame
 		if not _skill_swipe_real_card_prewarm_can_continue(source_skill_id, token):
 			return
-		var cached := _build_swipe_preview_real_card_cache_item(skill_id, entry_data, content_width, actions_width)
+		var cached := _build_swipe_preview_real_card_cache_entry(skill_id, entry_data, content_width, actions_width)
 		if cached.is_empty():
 			continue
 		if not _skill_swipe_real_card_prewarm_can_continue(source_skill_id, token):
@@ -25522,7 +25522,7 @@ func _prewarm_global_swipe_real_card_cache_for_skill(skill_id: String, source_sk
 		await get_tree().process_frame
 		if not _skill_swipe_prewarm_can_continue(source_skill_id, token):
 			return
-		var cached := _build_swipe_preview_real_card_cache_item(skill_id, entry_data, content_width, actions_width)
+		var cached := _build_swipe_preview_real_card_cache_entry(skill_id, entry_data, content_width, actions_width)
 		if cached.is_empty():
 			continue
 		cache[str(cached.get("track_id", action_id))] = cached

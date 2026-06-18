@@ -482,6 +482,8 @@ Assert-True ($incomingSwipePreviewUsable -match 'Light preview cards are only a 
 $discardIncomingSwipePreview = Get-FunctionBody -Text $main -Name "_discard_incoming_swipe_preview"
 Assert-True ($discardIncomingSwipePreview.IndexOf('_move_swipe_preview_real_card_cache_to_global(preview_state)') -lt $discardIncomingSwipePreview.IndexOf('_free_swipe_preview_real_card_cache(preview_state)')) "Rejected light swipe previews should transfer their prebuilt real-card cache before the preview shell is discarded."
 Assert-True ($main -match 'func _move_swipe_preview_real_card_cache_to_global') "Swipe preview real-card caches should be reusable by the full-render fallback."
+Assert-True ($main -match 'func _build_swipe_preview_real_card_cache_entry') "Swipe preview real-card cache builders should name each cache record as an entry."
+Assert-True ($main -notmatch '_build_swipe_preview_real_card_cache_item') "Swipe preview real-card cache builders should not use stale item wording."
 $applyGlobalSwipeRealCardCache = Get-FunctionBody -Text $main -Name "_apply_global_swipe_real_card_cache_to_lazy_plan"
 Assert-True ($applyGlobalSwipeRealCardCache -match 'lazy_entry\["cached_root"\] = root') "Global swipe real-card cache application should attach cached roots through lazy-entry naming."
 Assert-True ($applyGlobalSwipeRealCardCache -notmatch '\bplan_item\b') "Global swipe real-card cache application should not use stale plan-item wording internally."
