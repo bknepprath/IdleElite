@@ -1088,6 +1088,7 @@ const DISCORD_LOGO_ICON_TEXTURE := "res://assets/content/ui/discord-logo-icon.pn
 const SETTINGS_GEAR_ICON_TEXTURE := "res://assets/content/ui/settings-gear-icon.png"
 const SHOP_ICON_TEXTURE := "res://assets/content/ui/shop-icon.png"
 const HERO_SPEECH_BUBBLE_TEXTURE := "res://assets/content/ui/hero-speech-bubble-down.png"
+const PROGRESS_STAR_ICON_TEXTURE := "res://assets/content/ui/progress-star-icon.png"
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
 const UNLOCK_LOCK_CHAINS_TEXTURE := "res://assets/content/ui/unlock-lock-chains.png"
 const UNLOCK_CHAIN_LINK_TEXTURE := "res://assets/content/ui/unlock-chain-link.png"
@@ -3000,7 +3001,7 @@ func _boot_shared_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, ACTIVITY_JUMP_BOTTOM_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ACTIVITY_BACK_TEXTURE)
 	for raw_nav_path in [
-		"res://assets/content/ui/motivation-star.png",
+		PROGRESS_STAR_ICON_TEXTURE,
 		"res://assets/content/hub/hub-nav-barn.png",
 		SETTINGS_GEAR_ICON_TEXTURE,
 		SHOP_ICON_TEXTURE
@@ -6458,7 +6459,7 @@ func _build_achievements(parent: PanelContainer) -> void:
 	stack.add_theme_constant_override("separation", 30)
 	margin.add_child(stack)
 
-	var achievements_button := _legacy_home_link_button("Achievements", _texture("res://assets/content/ui/motivation-star.png"))
+	var achievements_button := _legacy_home_link_button("Achievements", _texture(PROGRESS_STAR_ICON_TEXTURE))
 	achievements_button.pressed.connect(_open_achievements_overlay)
 	stack.add_child(achievements_button)
 	var leaderboard_button := _legacy_home_link_button("Leaderboard", _texture(LEADERBOARD_ICON))
@@ -6661,7 +6662,7 @@ func _build_nav_bar() -> void:
 	row.clip_contents = true
 	row.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT - BOTTOM_NAV_SAFE_PAD)
 	nav_bar.add_child(row)
-	hero_tab = _nav_button("res://assets/content/ui/motivation-star.png", true)
+	hero_tab = _nav_button(PROGRESS_STAR_ICON_TEXTURE, true)
 	hero_tab.custom_minimum_size = Vector2(318, 318)
 	hero_tab.add_theme_constant_override("icon_max_width", 244)
 	_register_nav_new_symbol_dot(hero_tab, "hero")
@@ -7332,7 +7333,7 @@ func _chat_expanded_composer() -> Control:
 	ribbon_row.clip_contents = true
 	ribbon_row.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT - BOTTOM_NAV_SAFE_PAD)
 	ribbon.add_child(ribbon_row)
-	chat_home_tab = _nav_button("res://assets/content/ui/motivation-star.png")
+	chat_home_tab = _nav_button(PROGRESS_STAR_ICON_TEXTURE)
 	chat_home_tab.custom_minimum_size = Vector2(318, 318)
 	chat_home_tab.add_theme_constant_override("icon_max_width", 244)
 	_register_nav_new_symbol_dot(chat_home_tab, "hero")
@@ -12403,7 +12404,7 @@ func _render_shop_page() -> void:
 		review_stars.alignment = BoxContainer.ALIGNMENT_CENTER
 		review_stars.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		review_stars.add_theme_constant_override("separation", 10)
-		var star_texture := _texture("res://assets/content/ui/motivation-star.png")
+		var star_texture := _texture(PROGRESS_STAR_ICON_TEXTURE)
 		for i in range(5):
 			var star := _image_from_texture(star_texture, Vector2(48, 48))
 			star.modulate = COLOR_MUTED.lightened(0.12)
@@ -33145,7 +33146,7 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	stat_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stat_row.add_theme_constant_override("separation", 28)
 	offline_summary_stack.add_child(stat_row)
-	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), "res://assets/content/ui/motivation-star.png"))
+	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), PROGRESS_STAR_ICON_TEXTURE))
 	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), TOTAL_LEVEL_BARGRAPH_TEXTURE))
 
 	if progress_content_height > 0.0:
