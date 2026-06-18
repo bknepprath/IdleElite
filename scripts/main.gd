@@ -14802,7 +14802,7 @@ func _detail_lazy_entry_in_viewport(lazy_entry: Dictionary) -> bool:
 	return entry_rect.size.y > 1.0 and entry_bottom >= view_top and entry_y <= view_bottom
 
 
-func _detail_lazy_should_mount_item(lazy_entry: Dictionary, pinned: Dictionary, plan_index: int) -> bool:
+func _detail_lazy_should_mount_entry(lazy_entry: Dictionary, pinned: Dictionary, plan_index: int) -> bool:
 	if bool(lazy_entry.get("mounted", false)):
 		return false
 	var kind := str(lazy_entry.get("kind", ""))
@@ -15650,7 +15650,7 @@ func _sync_detail_lazy_visible_cards(instant: bool, max_mounts: int = -1) -> int
 		if max_mounts >= 0 and mounted_count >= max_mounts:
 			break
 		var lazy_entry := detail_lazy_plan[plan_index] as Dictionary
-		if not _detail_lazy_should_mount_item(lazy_entry, pinned, plan_index):
+		if not _detail_lazy_should_mount_entry(lazy_entry, pinned, plan_index):
 			continue
 		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
@@ -15687,7 +15687,7 @@ func _detail_lazy_entry_far_from_viewport(lazy_entry: Dictionary) -> bool:
 	return entry_rect.size.y > 1.0 and (entry_bottom < view_top or entry_y > view_bottom)
 
 
-func _detail_lazy_can_unmount_item(lazy_entry: Dictionary, pinned: Dictionary) -> bool:
+func _detail_lazy_can_unmount_entry(lazy_entry: Dictionary, pinned: Dictionary) -> bool:
 	if not bool(lazy_entry.get("mounted", false)):
 		return false
 	var kind := str(lazy_entry.get("kind", ""))
@@ -15781,7 +15781,7 @@ func _prune_detail_lazy_far_cards(max_unmounts: int = DETAIL_LAZY_UNMOUNT_BUDGET
 		if max_unmounts >= 0 and unmounted_count >= max_unmounts:
 			break
 		var lazy_entry := raw_item as Dictionary
-		if not _detail_lazy_can_unmount_item(lazy_entry, pinned):
+		if not _detail_lazy_can_unmount_entry(lazy_entry, pinned):
 			continue
 		if _detail_lazy_unmount_item(lazy_entry, selected_skill_id, content_width):
 			unmounted_count += 1
@@ -16453,7 +16453,7 @@ func _detail_lazy_mount_initial_window_async(instant := true, mount_count: int =
 		if bool(lazy_entry.get("mounted", false)):
 			continue
 		var pinned := _detail_lazy_pinned_track_ids()
-		if not _detail_lazy_should_mount_item(lazy_entry, pinned, plan_index):
+		if not _detail_lazy_should_mount_entry(lazy_entry, pinned, plan_index):
 			continue
 		var content_width := _skill_content_width()
 		var actions_width := content_width
