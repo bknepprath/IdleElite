@@ -780,6 +780,10 @@ Assert-True ($lazyShouldMount -match '_detail_lazy_scroll_y\(\) <= DETAIL_LAZY_V
 Assert-True ($lazyShouldMount -match 'func _detail_lazy_should_mount_item\(lazy_entry: Dictionary, pinned: Dictionary, plan_index: int\)') "Lazy mount decisions should name their render record parameter as a lazy entry."
 Assert-True ($lazyShouldMount -match '_detail_lazy_entry_is_pinned\(lazy_entry, pinned\)') "Lazy mounting should pin Fishing areas that contain the running method."
 Assert-True ($lazyShouldMount -notmatch '\bplan_item\b') "Lazy mount decisions should not use stale plan-item wording internally."
+$lazyShouldSyncVisibleWindow = Get-FunctionBody -Text $main -Name "_detail_lazy_should_sync_visible_window"
+Assert-True ($lazyShouldSyncVisibleWindow -match 'var lazy_entry := raw_lazy_entry as Dictionary') "Lazy visible-window sync should scan lazy entries."
+Assert-True ($lazyShouldSyncVisibleWindow -match '_detail_lazy_entry_in_viewport\(lazy_entry\)') "Lazy visible-window sync should use entry-named viewport checks."
+Assert-True ($lazyShouldSyncVisibleWindow -notmatch '\bvisible_item\b|\bplan_item\b') "Lazy visible-window sync should not use stale item wording internally."
 
 $parkDetailLazyCachedRoot = Get-FunctionBody -Text $main -Name "_park_detail_lazy_cached_root"
 Assert-True ($parkDetailLazyCachedRoot -match '_set_canvas_item_modulate_if_changed\(root, Color\.WHITE\)') "Lazy cached-card parking should own the card tint reset before detaching."

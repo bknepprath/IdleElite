@@ -14840,20 +14840,20 @@ func _detail_lazy_should_sync_visible_window() -> bool:
 	var scroll_y := _detail_lazy_scroll_y()
 	if absf(scroll_y - detail_lazy_last_scroll) > 8.0:
 		return true
-	for raw_visible_item in detail_lazy_plan:
-		var visible_item := raw_visible_item as Dictionary
-		if bool(visible_item.get("mounted", false)):
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
 			continue
-		if _detail_lazy_entry_in_viewport(visible_item):
+		if _detail_lazy_entry_in_viewport(lazy_entry):
 			return true
 	var pinned := _detail_lazy_pinned_track_ids()
 	if pinned.is_empty():
 		return false
-	for raw_item in detail_lazy_plan:
-		var plan_item := raw_item as Dictionary
-		if bool(plan_item.get("mounted", false)):
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
 			continue
-		var track_id := str(plan_item.get("track_id", ""))
+		var track_id := str(lazy_entry.get("track_id", ""))
 		if not track_id.is_empty() and pinned.has(track_id):
 			return true
 	return false
