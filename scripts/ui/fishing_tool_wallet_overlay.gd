@@ -4,35 +4,35 @@ extends Control
 const COLOR_GOLD := Color("#fff2a8")
 const COLOR_MUTED := Color("#6e6658")
 
-var panel_size := Vector2.ZERO
-var button_rects: Array = []
-var tool_ids: Array = []
-var tool_icons: Array = []
-var unlocked_states: Array = []
+var wallet_panel_size := Vector2.ZERO
+var tool_button_rects: Array = []
+var wallet_tool_ids: Array = []
+var wallet_tool_icons: Array = []
+var tool_unlocked_states: Array = []
 var equipped_tool_id := ""
 
-func configure(next_panel_size: Vector2, next_button_rects: Array, next_tool_ids: Array, next_tool_icons: Array, next_unlocked_states: Array, next_equipped_tool_id: String) -> void:
-	panel_size = next_panel_size
-	button_rects = next_button_rects
-	tool_ids = next_tool_ids
-	tool_icons = next_tool_icons
-	unlocked_states = next_unlocked_states
+func configure(next_wallet_panel_size: Vector2, next_tool_button_rects: Array, next_wallet_tool_ids: Array, next_wallet_tool_icons: Array, next_tool_unlocked_states: Array, next_equipped_tool_id: String) -> void:
+	wallet_panel_size = next_wallet_panel_size
+	tool_button_rects = next_tool_button_rects
+	wallet_tool_ids = next_wallet_tool_ids
+	wallet_tool_icons = next_wallet_tool_icons
+	tool_unlocked_states = next_tool_unlocked_states
 	equipped_tool_id = next_equipped_tool_id
 	_rebuild_visuals()
 	queue_redraw()
 
 func button_index_at(global_point: Vector2) -> int:
 	var point: Vector2 = get_global_transform_with_canvas().affine_inverse() * global_point
-	for index in range(button_rects.size()):
-		var rect := button_rects[index] as Rect2
+	for index in range(tool_button_rects.size()):
+		var rect := tool_button_rects[index] as Rect2
 		if rect.has_point(point):
 			return index
 	return -1
 
 func button_center_global(index: int) -> Vector2:
-	if index < 0 or index >= button_rects.size():
+	if index < 0 or index >= tool_button_rects.size():
 		return Vector2.ZERO
-	var rect := button_rects[index] as Rect2
+	var rect := tool_button_rects[index] as Rect2
 	return get_global_transform_with_canvas() * rect.get_center()
 
 func _draw() -> void:
@@ -44,14 +44,14 @@ func _rebuild_visuals() -> void:
 	var background := Panel.new()
 	background.name = "WalletVisiblePill"
 	background.position = Vector2.ZERO
-	background.size = panel_size
+	background.size = wallet_panel_size
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	background.add_theme_stylebox_override("panel", _wallet_style(Color("#fff6df"), Color("#171615"), 10.0, panel_size.x * 0.5))
+	background.add_theme_stylebox_override("panel", _wallet_style(Color("#fff6df"), Color("#171615"), 10.0, wallet_panel_size.x * 0.5))
 	add_child(background)
-	for index in range(button_rects.size()):
-		var rect := button_rects[index] as Rect2
-		var tool_id := str(tool_ids[index])
-		var unlocked := bool(unlocked_states[index])
+	for index in range(tool_button_rects.size()):
+		var rect := tool_button_rects[index] as Rect2
+		var tool_id := str(wallet_tool_ids[index])
+		var unlocked := bool(tool_unlocked_states[index])
 		var equipped := tool_id == equipped_tool_id
 		var fill := Color("#32c5bd") if equipped else (Color("#fffdf8") if unlocked else Color("#cfcac0"))
 		var border := COLOR_GOLD if equipped else (Color("#171615") if unlocked else COLOR_MUTED)
@@ -62,7 +62,7 @@ func _rebuild_visuals() -> void:
 		circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		circle.add_theme_stylebox_override("panel", _wallet_style(fill, border, 8.0 if equipped else 5.0, rect.size.x * 0.5))
 		add_child(circle)
-		var tool_icon := tool_icons[index] as Texture2D
+		var tool_icon := wallet_tool_icons[index] as Texture2D
 		if tool_icon != null:
 			var icon_rect := _fit_texture_rect(tool_icon, Rect2(Vector2.ZERO, rect.size).grow(-18.0))
 			var texture_rect := TextureRect.new()

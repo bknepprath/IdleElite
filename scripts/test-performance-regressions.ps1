@@ -1224,7 +1224,7 @@ Assert-True ($buildFishingBoatOfferModule -match '_texture_or_visual_fallback') 
 Assert-True ($buildFishingBoatOfferModule -match '_fishing_offer_art_modulate\(can_build\)') "Fishing boat offer art should use the shared affordability tint helper."
 Assert-True ($main -match 'const FishingToolWalletOverlay = preload\("res://scripts/ui/fishing_tool_wallet_overlay\.gd"\)') "Fishing tool wallet overlay should live in a reusable UI control file."
 Assert-True ($fishingToolWalletOverlay -match 'class_name FishingToolWalletOverlay') "Fishing tool wallet overlay should expose one named reusable control."
-Assert-True ($fishingToolWalletOverlay -match 'func configure\(next_panel_size: Vector2, next_button_rects: Array, next_tool_ids: Array, next_tool_icons: Array, next_unlocked_states: Array, next_equipped_tool_id: String\)') "Fishing tool wallet overlay should keep its configure contract."
+Assert-True ($fishingToolWalletOverlay -match 'func configure\(next_wallet_panel_size: Vector2, next_tool_button_rects: Array, next_wallet_tool_ids: Array, next_wallet_tool_icons: Array, next_tool_unlocked_states: Array, next_equipped_tool_id: String\)') "Fishing tool wallet overlay should keep its configure contract."
 Assert-True ($fishingToolWalletOverlay -match 'func button_index_at\(global_point: Vector2\) -> int') "Fishing tool wallet overlay should keep global-point hit testing."
 Assert-True ($fishingToolWalletOverlay -match 'get_global_transform_with_canvas\(\)\.affine_inverse\(\) \* global_point') "Fishing tool wallet overlay hit testing should convert global points to local coordinates."
 Assert-True ($fishingToolWalletOverlay -match 'tool_id == equipped_tool_id') "Fishing tool wallet overlay should style the equipped tool distinctly."
