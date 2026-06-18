@@ -3210,8 +3210,8 @@ func _detail_lazy_window_scan_due() -> bool:
 	if detail_lazy_window_sync_elapsed >= DETAIL_LAZY_WINDOW_SYNC_INTERVAL_SECONDS:
 		return true
 	if running_skill_id == selected_skill_id and not running_action_id.is_empty():
-		var running_plan_item := _detail_lazy_entry_for_track_id(running_action_id)
-		if not running_plan_item.is_empty() and not bool(running_plan_item.get("mounted", false)):
+		var running_lazy_entry := _detail_lazy_entry_for_track_id(running_action_id)
+		if not running_lazy_entry.is_empty() and not bool(running_lazy_entry.get("mounted", false)):
 			return true
 	return false
 

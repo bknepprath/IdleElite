@@ -525,6 +525,9 @@ Assert-True ($lazyWindowProcess -match '_detail_lazy_window_scan_due\(\)') "Lazy
 Assert-True ($lazyWindowProcess -match '_prune_detail_lazy_far_cards\(DETAIL_LAZY_UNMOUNT_BUDGET_PER_FRAME\)') "Cadence-limited lazy-card processing should still prune far-away cards."
 Assert-True ($lazyWindowProcess -match 'mounted_count = _sync_detail_lazy_visible_cards\(true, DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME\)[\s\S]*if mounted_count > 0:[\s\S]*return mounted_count[\s\S]*_prune_detail_lazy_far_cards') "Lazy-card processing should mount newly visible cards fully opaque and avoid pruning in the same frame."
 Assert-True ($lazyWindowProcess -match 'detail_lazy_mounted_this_frame = true') "Lazy-card processing should mark card-mount frames so noncritical work can be deferred."
+$lazyWindowScanDue = Get-FunctionBody -Text $main -Name "_detail_lazy_window_scan_due"
+Assert-True ($lazyWindowScanDue -match 'var running_lazy_entry := _detail_lazy_entry_for_track_id\(running_action_id\)') "Lazy-card window scans should name the running action record as a lazy entry."
+Assert-True ($lazyWindowScanDue -notmatch '\brunning_plan_item\b') "Lazy-card window scans should not use stale plan-item wording for the running action record."
 
 $processBody = Get-FunctionBody -Text $main -Name "_process"
 Assert-True ($processBody -match 'detail_lazy_mounted_count = _process_detail_lazy_window\(delta\)') "Main process should observe whether detail lazy cards mounted this frame."
