@@ -60,6 +60,7 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 - `output/` and `test-results/` are generated local outputs and should be cleaned or ignored rather than reorganized as project source.
 - `.codex-tmp/`, `.codex-tools/`, `.godot/`, `builds/`, `release/`, and `play-store/` are not part of the naming cleanup surface unless a specific stale artifact is proven safe to remove.
 - `docs/art-source/asset-sources/fishing-module-preview-sources/*-v1` through `*-v8-*` files are candidate-generation history. They are likely cleanup targets, but only after identifying approved/runtime descendants and preserving any docs that explain final selections.
+- Godot `.import` metadata is no longer tracked under `docs/art-source/asset-sources/**`. This archive is under `docs/art-source/.gdignore`, and the removed metadata was stale after the source archive rename.
 
 ## Phase 2.1 Ownership Classification
 
@@ -67,9 +68,9 @@ This pass inspected `docs/art-source`, `assets/loading`, `assets/android`, `andr
 
 | Surface | Current ownership | Preserve / rename / clean / skip |
 | --- | --- | --- |
-| `docs/art-source/asset-sources/**` | Tracked source/provenance archive with 141 PNGs, 111 `.import` files, 9 Markdown notes, 3 `.gdignore` files, and `moved-files.txt`. Folder names are already parent-qualified by domain: Android launcher, combo/event, enemy, fishing module preview, game UI, hub, profile UI, resource icon, thieving, and upgrade icon sources. | Preserve as source archive. Phase 2.2 may clean only proven bad generations after reference and hash checks. |
+| `docs/art-source/asset-sources/**` | Tracked source/provenance archive with 141 PNGs, 9 Markdown notes, 3 `.gdignore` files, and `moved-files.txt`. Folder names are already parent-qualified by domain: Android launcher, combo/event, enemy, fishing module preview, game UI, hub, profile UI, resource icon, thieving, and upgrade icon sources. | Preserve as source archive. Phase 2.2 pruned stale docs-side `.import` metadata; future cleanup may remove only proven bad generations after reference and hash checks. |
 | `docs/art-source/asset-sources/fishing-module-preview-sources/**` | Dense generation history for fishing module previews, including v1-v8 contact sheets and per-area candidates. Docs such as `docs/fishing-module-art-suite-v1.md` still reference these files. | Preserve until approved descendants and doc references are mapped. Candidate for later pruning, not deletion by broad sweep. |
-| `docs/art-source/asset-sources/android-launcher-source-assets/**` | Android launcher provenance. Its `.import` metadata still has a suspicious `source_file` pointing at `res://assets/android/launcher-adaptive-clickable-preview-432.png` instead of the docs path. | Preserve and verify before trusting metadata. Do not use as runtime launcher input unless export presets are updated. |
+| `docs/art-source/asset-sources/android-launcher-source-assets/**` | Android launcher provenance. The stale `.import` metadata that pointed at `res://assets/android/launcher-adaptive-clickable-preview-432.png` was removed in Phase 2.2. | Preserve source PNGs and verify before using as runtime launcher input. Do not wire to export presets unless Phase 3.2 owns the change. |
 | `assets/loading/idle-elite-player-hub-launch-loading-screen.png` | Tracked project boot splash referenced by `project.godot`. | Preserve exactly unless Phase 3.1 changes boot splash paths and validates Godot startup. |
 | `assets/loading/idle-elite-loading-screen.png` | Tracked older loading image with matching import metadata. No direct reference found in `project.godot`, `export_presets.cfg`, or current scripts during this pass. | Keep documented as candidate stale runtime asset; do not delete until Phase 3.1 hash/reference review. |
 | `assets/loading/blue-guy-flex-loading-spritesheet.png` and `blue-guy-flex-speech-bubble-blank.png` | Dirty/untracked runtime loading assets referenced by `scripts/ui/boot_flex_loading_animation.gd` and the current local dirty `scripts/main.gd` warmup list. | Preserve as in-progress loading work. Commit or cleanup only in the dedicated Phase 3.1 package. |
@@ -77,13 +78,13 @@ This pass inspected `docs/art-source`, `assets/loading`, `assets/android`, `andr
 | `assets/android/launcher-main-clickable-192.png`, `launcher-adaptive-foreground-clickable-432.png`, `launcher-adaptive-background-clickable-432.png` | Tracked Android launcher assets referenced directly by `export_presets.cfg`. | Preserve exact paths unless Phase 3.2 updates export presets and validates references. |
 | `assets/android/launcher-main-192.png`, `launcher-adaptive-foreground-432.png`, `launcher-adaptive-background-432.png` | Tracked non-clickable launcher variants with import metadata. No direct export preset reference found in this pass. | Keep as candidate fallback/source variants. Do not delete until Phase 3.2 compares hashes and release docs/source notes. |
 | `android/build/res/mipmap/icon*.png` | Tracked generated/export-side Android resources. | Skip for readability cleanup unless an Android export package explicitly owns regeneration. |
-| `.import` metadata under `docs/art-source/asset-sources/**` | Mixed quality. Some entries now point at `res://docs/art-source/...`; older moved entries still point at `res://assets/...`. | Preserve with archives, but do not treat as proof of runtime ownership. Recreate through Godot only when an asset move requires it. |
+| `.import` metadata under `docs/art-source/asset-sources/**` | Removed in Phase 2.2 after reference checks. The archive is under `.gdignore`, runtime code does not reference these metadata files, and many entries pointed at stale runtime paths. | Keep untracked if Godot regenerates any locally. Do not recommit docs-side `.import` files unless a future package proves they carry needed provenance. |
 
 ## Duplicate Or Unused Cleanup Suspects
 
 - Blue Guy loading variants in `assets/loading` include names like `before-frame2-smaller-right`, `before-frame4-up5`, `before-frame4-up8`, and `source`. These are dirty/untracked and should be resolved as one loading-asset cleanup once the current boot-loading work is intentionally accepted or discarded.
 - `docs/art-source/asset-sources/fishing-module-preview-sources` has many repeated version ladders per fishing area. These should be reduced to approved source/archival names once final descendants and explanatory docs are preserved.
-- `docs/art-source/asset-sources/...` includes `.import` files whose `source_file` entries often point at `res://assets/...` rather than the docs path. Treat those as suspicious generated metadata; do not rely on them until checked in Godot.
+- `docs/art-source/asset-sources/...` no longer tracks `.import` files. The removed metadata often pointed at `res://assets/...` rather than the docs path and was not useful provenance after the archive rename.
 - Runtime and art-source folders used to both contain generic `assets/content/ui` and `assets/ui` source paths. The docs-side copies are now parent-qualified, and the remaining runtime `assets/ui` files have been merged into `assets/content/ui`.
 - Exact duplicate detection still needs content-hash verification before deletion. Same-size grouping alone is not proof.
 
@@ -103,6 +104,7 @@ This pass inspected `docs/art-source`, `assets/loading`, `assets/android`, `andr
 - `project.godot` still references the older loading splash path.
 - Phase 2.1 found `scripts/ui/boot_flex_loading_animation.gd` and current local dirty `scripts/main.gd` references to the Blue Guy loading spritesheet and blank speech bubble, while `project.godot` still references the older player-hub launch loading screen.
 - Phase 2.1 confirmed Android export presets currently use the clickable launcher assets, while `android/build/res/mipmap/icon*.png` are export-side outputs and not a readability cleanup surface.
+- Phase 2.2 removed 111 tracked `.import` metadata files under `docs/art-source/asset-sources/**` after confirming the archive has `.gdignore`, runtime references do not use those metadata files, and `moved-files.txt` could preserve the source PNG provenance without listing removed metadata.
 - Existing dirty/untracked files include navigation-control imports, Blue Guy loading files/imports, UI script UIDs, `output/`, and `test-results/`; these should remain unstaged unless a cleanup step explicitly owns them.
 
 ## Working Rules For Future Commits

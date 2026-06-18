@@ -285,13 +285,16 @@
         </div>
 
         <div class="work-item">
-          <h4><input type="checkbox"> 2.2 Clean docs art-source archives</h4>
+          <h4><input type="checkbox" checked> 2.2 Clean docs art-source archives</h4>
           <div class="goal-meta"><span class="tag">docs/art-source</span><span class="tag">cleanup</span> Source history should be useful, not a pile of mystery generations.</div>
           <ul>
             <li>Make source/archive folders and filenames describe domain, status, and relationship to runtime assets.</li>
             <li>Remove only proven-unused bad generations after reference and hash checks.</li>
             <li>Preserve useful provenance and final-selection notes.</li>
           </ul>
+          <p class="acceptance">
+            Done: pruned 111 stale tracked <code>.import</code> metadata files from <code>docs/art-source/asset-sources/**</code> after confirming the archive is under <code>.gdignore</code>, runtime references do not use those metadata files, and many entries pointed at obsolete <code>res://assets/...</code> paths. Source PNGs, Markdown provenance, and <code>moved-files.txt</code> remain.
+          </p>
         </div>
 
         <p class="acceptance">

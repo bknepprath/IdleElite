@@ -19,7 +19,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 | Extracted UI drawing helpers | `scripts/ui/*.gd` | These are runtime scripts preloaded by `scripts/main.gd`. Many have `.gd.uid` metadata; do not rename either side casually. |
 | Activity data | `docs/activity-database.json`, `docs/activity-database-data.js`, `scripts/sync-activity-database-js.py`, `scripts/audit-activity-database.ps1` | Edit JSON first, sync JS second, audit third. |
 | Runtime art | `assets/content/**`, `assets/icons/**`, `assets/ui/**`, `assets/loading/**`, `assets/android/**` | Runtime paths are usually referenced as `res://assets/...` from code, docs data, presets, tests, or project settings. |
-| Art source/provenance | `docs/art-source/**` | Not runtime by default. Some `.import` metadata in this tree points at `res://assets/...`, so inspect before trusting or deleting it. |
+| Art source/provenance | `docs/art-source/**` | Not runtime by default. This tree is under `.gdignore`; source PNGs and notes are tracked, while docs-side `.import` metadata should stay untracked unless future work proves it is needed provenance. |
 | Release docs and outputs | `play-store/docs/**`, `builds/**`, `android/**` | Release artifacts and export-generated files are not general refactor surfaces. |
 | Validation scripts | `scripts/check-project.ps1`, `scripts/test-*.ps1`, `scripts/check-*.ps1` | Prefer focused scripts first, then full project validation when practical. |
 
@@ -29,7 +29,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 - Move tracked `.png` and matching `.png.import` files together. Search for the basename and full `res://` path before and after moves.
 - Do not move `assets/loading/**` or `assets/android/**` as part of broad cleanup. Loading and launcher/export assets have project-level references.
 - Do not hand-edit generated `docs/activity-database-data.js`; regenerate it from `docs/activity-database.json`.
-- Treat `.gd.uid` and `.import` files as metadata-adjacent. They can be tracked and important even though Godot generates them.
+- Treat runtime `.gd.uid` and `.import` files as metadata-adjacent. They can be tracked and important even though Godot generates them. Docs-side `.import` files under `docs/art-source` are archive noise by default.
 - Local output folders such as `.codex-tmp/`, `.codex-tools/`, `.godot/`, `output/`, and `test-results/` are not source unless a checklist explicitly adopts them.
 
 ## Validation Map
