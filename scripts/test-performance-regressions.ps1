@@ -932,6 +932,10 @@ $lazyMountThievingHeists = Get-FunctionBody -Text $main -Name "_detail_lazy_moun
 Assert-True ($lazyMountThievingHeists -match 'var lazy_entry := raw_item as Dictionary') "Thieving heist lazy mounting should name scanned render records as lazy entries."
 Assert-True ($lazyMountThievingHeists -match 'str\(lazy_entry\.get\("kind", ""\)\) != "heist"') "Thieving heist lazy mounting should keep the heist-kind filter through entry naming."
 Assert-True ($lazyMountThievingHeists -notmatch '\bplan_item\b') "Thieving heist lazy mounting should not use stale plan-item wording internally."
+$lazyMountInitialWindowAsync = Get-FunctionBody -Text $main -Name "_detail_lazy_mount_initial_window_async"
+Assert-True ($lazyMountInitialWindowAsync -match 'var lazy_entry := detail_lazy_plan\[plan_index\] as Dictionary') "Async initial lazy-window mounting should name scanned render records as lazy entries."
+Assert-True ($lazyMountInitialWindowAsync -match '_detail_lazy_should_mount_item\(lazy_entry, pinned, plan_index\)') "Async initial lazy-window mounting should preserve pinned mount decisions through entry naming."
+Assert-True ($lazyMountInitialWindowAsync -notmatch '\bplan_item\b') "Async initial lazy-window mounting should not use stale plan-item wording internally."
 Assert-True ($main -match 'func _ensure_activity_unlock_preview_lazy_entry') "Activity unlock preview helper should use lazy-entry naming."
 Assert-True ($main -notmatch '_ensure_activity_unlock_preview_lazy_plan_item') "Activity unlock preview helper should not use stale lazy-plan-item naming."
 

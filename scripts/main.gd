@@ -16449,15 +16449,15 @@ func _maybe_repair_blank_detail_lazy_stack() -> void:
 func _detail_lazy_mount_initial_window_async(instant := true, mount_count: int = DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT) -> void:
 	var target := mini(mount_count, detail_lazy_plan.size())
 	for plan_index in range(target):
-		var plan_item := detail_lazy_plan[plan_index] as Dictionary
-		if bool(plan_item.get("mounted", false)):
+		var lazy_entry := detail_lazy_plan[plan_index] as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
 			continue
 		var pinned := _detail_lazy_pinned_track_ids()
-		if not _detail_lazy_should_mount_item(plan_item, pinned, plan_index):
+		if not _detail_lazy_should_mount_item(lazy_entry, pinned, plan_index):
 			continue
 		var content_width := _skill_content_width()
 		var actions_width := content_width
-		_detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant)
+		_detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant)
 		await get_tree().process_frame
 
 
