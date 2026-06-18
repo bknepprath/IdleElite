@@ -1286,7 +1286,7 @@ $hubTutorialTipVisible = Get-FunctionBody -Text $main -Name "_hub_tutorial_tip_v
 Assert-True ($hubTutorialTipVisible -match 'not hub_tutorial_tip_root\.is_queued_for_deletion\(\)') "Hub tutorial tip visibility checks should ignore roots queued for deletion."
 $buildHero = Get-FunctionBody -Text $main -Name "_build_hero"
 Assert-True ($buildHero -match '_texture_or_visual_fallback\("res://assets/content/characters/stick-hero\.png"\)') "Home hero art should not assign nullable loaded textures directly."
-Assert-True ($buildHero -match '_texture_or_visual_fallback\("res://assets/content/ui/speech-bubble-down\.png"\)') "Home hero speech bubble should not assign nullable loaded textures directly."
+Assert-True ($buildHero -match '_texture_or_visual_fallback\(HERO_SPEECH_BUBBLE_TEXTURE\)') "Home hero speech bubble should not assign nullable loaded textures directly."
 
 $actionCardBackground = Get-FunctionBody -Text $main -Name "_action_card_background"
 Assert-True ($actionCardBackground -match '_action_card_background_texture\(action\)') "Action-card backgrounds should normalize missing textures before creating visual nodes."

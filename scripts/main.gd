@@ -1087,6 +1087,7 @@ const REWARDED_AD_ICON_TEXTURE := "res://assets/content/ui/rewarded-ad-icon.png"
 const DISCORD_LOGO_ICON_TEXTURE := "res://assets/content/ui/discord-logo-icon.png"
 const SETTINGS_GEAR_ICON_TEXTURE := "res://assets/content/ui/settings-gear-icon.png"
 const SHOP_ICON_TEXTURE := "res://assets/content/ui/shop-icon.png"
+const HERO_SPEECH_BUBBLE_TEXTURE := "res://assets/content/ui/hero-speech-bubble-down.png"
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
 const UNLOCK_LOCK_CHAINS_TEXTURE := "res://assets/content/ui/unlock-lock-chains.png"
 const UNLOCK_CHAIN_LINK_TEXTURE := "res://assets/content/ui/unlock-chain-link.png"
@@ -2984,7 +2985,7 @@ func _boot_shared_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, "res://assets/loading/idle-elite-player-hub-launch-loading-screen.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-cutout.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/speech-bubble-down.png")
+	_add_boot_warmup_texture_path(paths, HERO_SPEECH_BUBBLE_TEXTURE)
 	_add_boot_warmup_texture_path(paths, TOTAL_LEVEL_BARGRAPH_TEXTURE)
 	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
 	_add_boot_warmup_texture_path(paths, REWARDED_AD_ICON_TEXTURE)
@@ -6607,7 +6608,7 @@ func _build_hero(parent: PanelContainer) -> void:
 	bubble.anchor_bottom = 0.40
 	stage.add_child(bubble)
 	var bubble_art := TextureRect.new()
-	bubble_art.texture = _texture_or_visual_fallback("res://assets/content/ui/speech-bubble-down.png")
+	bubble_art.texture = _texture_or_visual_fallback(HERO_SPEECH_BUBBLE_TEXTURE)
 	bubble_art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bubble_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	bubble_art.stretch_mode = TextureRect.STRETCH_SCALE
