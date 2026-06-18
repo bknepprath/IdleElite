@@ -16243,12 +16243,12 @@ func _animate_temporary_event_entry_if_visible(event_def: Dictionary, event_id: 
 func _detail_lazy_mount_all_sync(instant := true) -> int:
 	var mounted_count := 0
 	for plan_index in range(detail_lazy_plan.size()):
-		var plan_item := detail_lazy_plan[plan_index] as Dictionary
-		if bool(plan_item.get("mounted", false)):
+		var lazy_entry := detail_lazy_plan[plan_index] as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
 			continue
 		var content_width := _skill_content_width()
 		var actions_width := content_width
-		if _detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	return mounted_count
 
