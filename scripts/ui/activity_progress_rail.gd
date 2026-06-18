@@ -12,7 +12,7 @@ var opportunity_active := false
 var opportunity_alpha := 0.0
 var opportunity_target_alpha := 0.0
 var opportunity_unavailable_blend := 0.0
-var opportunity_unavailable_target := 0.0
+var opportunity_unavailable_target_alpha := 0.0
 var opportunity_feedback_windows: Array[Vector2] = []
 var opportunity_feedback_mode := ""
 var opportunity_feedback_elapsed := 0.0
@@ -47,16 +47,16 @@ func _process(delta: float) -> void:
 	opportunity_alpha = lerpf(opportunity_alpha, opportunity_target_alpha, weight)
 	if absf(opportunity_alpha - opportunity_target_alpha) <= 0.01:
 		opportunity_alpha = opportunity_target_alpha
-	opportunity_unavailable_blend = lerpf(opportunity_unavailable_blend, opportunity_unavailable_target, weight)
-	if absf(opportunity_unavailable_blend - opportunity_unavailable_target) <= 0.01:
-		opportunity_unavailable_blend = opportunity_unavailable_target
+	opportunity_unavailable_blend = lerpf(opportunity_unavailable_blend, opportunity_unavailable_target_alpha, weight)
+	if absf(opportunity_unavailable_blend - opportunity_unavailable_target_alpha) <= 0.01:
+		opportunity_unavailable_blend = opportunity_unavailable_target_alpha
 	if not opportunity_feedback_mode.is_empty():
 		opportunity_feedback_elapsed += delta
 		if opportunity_feedback_elapsed >= opportunity_feedback_duration:
 			opportunity_feedback_mode = ""
 			opportunity_feedback_windows.clear()
 	_queue_opportunity_overlay_redraw()
-	if opportunity_alpha == opportunity_target_alpha and opportunity_unavailable_blend == opportunity_unavailable_target and opportunity_feedback_mode.is_empty():
+	if opportunity_alpha == opportunity_target_alpha and opportunity_unavailable_blend == opportunity_unavailable_target_alpha and opportunity_feedback_mode.is_empty():
 		set_process(false)
 
 func set_value(next_value: float) -> void:
@@ -80,15 +80,15 @@ func set_color_segments(next_fill_segments: Array, next_empty_segments: Array = 
 func set_opportunity_windows(next_windows: Array[Vector2], active := false, should_show := true, unavailable := false) -> void:
 	var next_target_alpha := 1.0 if should_show and not next_windows.is_empty() else 0.0
 	var next_unavailable_target := 1.0 if unavailable and should_show and not next_windows.is_empty() else 0.0
-	if active == opportunity_active and absf(opportunity_target_alpha - next_target_alpha) <= 0.001 and absf(opportunity_unavailable_target - next_unavailable_target) <= 0.001 and _opportunity_windows_equal(next_windows):
+	if active == opportunity_active and absf(opportunity_target_alpha - next_target_alpha) <= 0.001 and absf(opportunity_unavailable_target_alpha - next_unavailable_target) <= 0.001 and _opportunity_windows_equal(next_windows):
 		return
 	opportunity_windows = next_windows.duplicate()
 	opportunity_active = active
 	opportunity_target_alpha = next_target_alpha
-	opportunity_unavailable_target = next_unavailable_target
+	opportunity_unavailable_target_alpha = next_unavailable_target
 	if next_target_alpha > 0.0 or opportunity_alpha > 0.01:
 		_ensure_opportunity_overlay()
-	if opportunity_alpha != opportunity_target_alpha or opportunity_unavailable_blend != opportunity_unavailable_target:
+	if opportunity_alpha != opportunity_target_alpha or opportunity_unavailable_blend != opportunity_unavailable_target_alpha:
 		set_process(true)
 	_queue_opportunity_overlay_redraw()
 
@@ -137,7 +137,7 @@ func get_opportunity_feedback_global_position(progress_pct := -1.0) -> Vector2:
 	return get_global_transform_with_canvas() * local_point
 
 func has_opportunity_progress(progress_pct: float) -> bool:
-	if opportunity_windows.is_empty() or opportunity_target_alpha <= 0.0 or opportunity_unavailable_target > 0.5:
+	if opportunity_windows.is_empty() or opportunity_target_alpha <= 0.0 or opportunity_unavailable_target_alpha > 0.5:
 		return false
 	var checked_progress := clampf(progress_pct, 0.0, 1.0)
 	for raw_window in opportunity_windows:

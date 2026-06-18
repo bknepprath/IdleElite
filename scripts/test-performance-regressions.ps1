@@ -917,6 +917,8 @@ Assert-True $railWindowsMatch.Success "Could not find activity progress rail opp
 $railWindows = $railWindowsMatch.Value
 Assert-True ($railWindows -match '_opportunity_windows_equal\(next_windows\)') "Activity progress rails should ignore unchanged opportunity windows."
 Assert-True ($railWindows -match 'return') "Activity progress rails should return early for unchanged opportunity-window state."
+Assert-True ($activityRail -match 'var opportunity_unavailable_target_alpha := 0\.0') "Activity progress rails should name unavailable opportunity targets as alpha state."
+Assert-True ($activityRail -notmatch 'var opportunity_unavailable_target := 0\.0') "Activity progress rails should not keep ambiguous unavailable target state."
 Assert-True ($activityRail -match 'var opportunity_overlay: ActivityProgressOpportunityOverlay') "Activity progress rails should render click-opportunity windows on a child overlay."
 Assert-True ($activityRail -match 'const OPPORTUNITY_WINDOW_OVERLAY_Z := 80') "Activity progress rails should keep their overlay above the face border."
 Assert-True ($activityRail -match 'opportunity_overlay\.z_index = OPPORTUNITY_WINDOW_OVERLAY_Z') "Activity progress opportunity overlays should draw above the face border without raising the whole rail."
