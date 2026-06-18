@@ -8,15 +8,15 @@ const WINDOW_STROKE_INSET := 5.0
 const WINDOW_STROKE_WIDTH := 12.0
 const WINDOW_HOLE_INSET := WINDOW_STROKE_INSET + WINDOW_STROKE_WIDTH
 
-var source: Control
+var progress_rail: Control
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _draw() -> void:
-	if source == null or not is_instance_valid(source):
+	if progress_rail == null or not is_instance_valid(progress_rail):
 		return
-	var rect: Rect2 = source.call("_activity_progress_track_rect")
+	var rect: Rect2 = progress_rail.call("_activity_progress_track_rect")
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return
 	rect.position.y += WINDOW_VERTICAL_OUTSET
@@ -24,14 +24,14 @@ func _draw() -> void:
 	_draw_opportunity_feedback_windows(rect)
 
 func _draw_opportunity_windows(rect: Rect2) -> void:
-	var windows := source.get("opportunity_windows") as Array
-	var alpha := float(source.get("opportunity_alpha"))
+	var windows := progress_rail.get("opportunity_windows") as Array
+	var alpha := float(progress_rail.get("opportunity_alpha"))
 	if windows.is_empty() or alpha <= 0.01 or rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return
-	if not str(source.get("opportunity_feedback_mode")).is_empty():
+	if not str(progress_rail.get("opportunity_feedback_mode")).is_empty():
 		return
-	var active := bool(source.get("opportunity_active"))
-	var unavailable_blend := float(source.get("opportunity_unavailable_blend"))
+	var active := bool(progress_rail.get("opportunity_active"))
+	var unavailable_blend := float(progress_rail.get("opportunity_unavailable_blend"))
 	for raw_window in windows:
 		var window := raw_window as Vector2
 		var start := clampf(window.x, 0.0, 1.0)
@@ -45,18 +45,18 @@ func _draw_opportunity_windows(rect: Rect2) -> void:
 		_draw_opportunity_window_strokes(rect, start, finish, outline, stroke, Vector2.ZERO)
 
 func _draw_opportunity_feedback_windows(rect: Rect2) -> void:
-	var feedback_mode := str(source.get("opportunity_feedback_mode"))
+	var feedback_mode := str(progress_rail.get("opportunity_feedback_mode"))
 	if feedback_mode.is_empty() or rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return
-	var live_window := bool(source.get("opportunity_feedback_live_window"))
-	var windows := source.get("opportunity_windows") as Array
-	var feedback_windows := source.get("opportunity_feedback_windows") as Array
+	var live_window := bool(progress_rail.get("opportunity_feedback_live_window"))
+	var windows := progress_rail.get("opportunity_windows") as Array
+	var feedback_windows := progress_rail.get("opportunity_feedback_windows") as Array
 	var draw_windows := windows if live_window and not windows.is_empty() else feedback_windows
 	if draw_windows.is_empty():
 		return
-	var elapsed := float(source.get("opportunity_feedback_elapsed"))
-	var duration := float(source.get("opportunity_feedback_duration"))
-	var direction := float(source.get("opportunity_feedback_direction"))
+	var elapsed := float(progress_rail.get("opportunity_feedback_elapsed"))
+	var duration := float(progress_rail.get("opportunity_feedback_duration"))
+	var direction := float(progress_rail.get("opportunity_feedback_direction"))
 	var t := clampf(elapsed / maxf(0.001, duration), 0.0, 1.0)
 	var feedback_alpha := 1.0
 	var offset := Vector2.ZERO
@@ -119,7 +119,7 @@ func _draw_opportunity_window_ring(rect: Rect2, color: Color, outer_start_pct: f
 		Vector2(rect.position.x, rect.position.y - maxf(0.0, vertical_outset_px)),
 		Vector2(rect.size.x, rect.size.y + maxf(0.0, vertical_outset_px) * 2.0)
 	)
-	var row_count := int(source.call("_rounded_fill_row_count", draw_rect))
+	var row_count := int(progress_rail.call("_rounded_fill_row_count", draw_rect))
 	if row_count <= 0:
 		return
 	var row_height := draw_rect.size.y / float(row_count)
@@ -178,7 +178,7 @@ func _draw_opportunity_window_shape(rect: Rect2, color: Color, start_pct: float,
 		return
 	var inset_radius := maxf(0.0, WINDOW_RADIUS - inset_px)
 	var shape_radius := minf(inset_radius, minf(line_right - line_left, shape_bottom - shape_top) * 0.5)
-	var row_count := int(source.call("_rounded_fill_row_count", draw_rect))
+	var row_count := int(progress_rail.call("_rounded_fill_row_count", draw_rect))
 	var row_height := draw_rect.size.y / float(row_count)
 	for i in range(row_count):
 		var y := draw_rect.position.y + (float(i) + 0.5) * row_height
@@ -191,7 +191,7 @@ func _draw_opportunity_window_shape(rect: Rect2, color: Color, start_pct: float,
 		elif shape_radius > 0.0 and y > shape_bottom - shape_radius:
 			var bottom_dy := y - (shape_bottom - shape_radius)
 			window_inset = shape_radius - sqrt(maxf(0.0, shape_radius * shape_radius - bottom_dy * bottom_dy))
-		var clip: Vector2 = source.call("_bottom_round_row_clip", rect, y) if clip_to_track else Vector2(rect.position.x, rect.end.x)
+		var clip: Vector2 = progress_rail.call("_bottom_round_row_clip", rect, y) if clip_to_track else Vector2(rect.position.x, rect.end.x)
 		var row_left := maxf(clip.x, line_left + window_inset)
 		var row_right := minf(clip.y, line_right - window_inset)
 		if row_right <= row_left:
@@ -203,5 +203,4 @@ func _draw_opportunity_window_shape(rect: Rect2, color: Color, start_pct: float,
 			row_height + 1.0,
 			false
 		)
-
 

@@ -177,7 +177,7 @@ func _ensure_opportunity_overlay() -> void:
 		_layout_opportunity_overlay()
 		return
 	opportunity_overlay = ActivityProgressOpportunityOverlay.new()
-	opportunity_overlay.source = self
+	opportunity_overlay.progress_rail = self
 	opportunity_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	opportunity_overlay.z_index = OPPORTUNITY_WINDOW_OVERLAY_Z
 	opportunity_overlay.z_as_relative = true
