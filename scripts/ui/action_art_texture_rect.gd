@@ -6,9 +6,9 @@ static var shared_mask_shader: Shader
 
 var use_mask_material := false
 var radius := 56.0
-var mask_params_initialized := false
-var mask_params_size := Vector2(-1.0, -1.0)
-var mask_params_radius := -1.0
+var mask_shader_params_initialized := false
+var mask_shader_params_size := Vector2(-1.0, -1.0)
+var mask_shader_params_radius := -1.0
 
 func _init() -> void:
 	expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -27,7 +27,7 @@ func set_mask_material_enabled(enabled: bool) -> void:
 	if use_mask_material == enabled:
 		return
 	use_mask_material = enabled
-	mask_params_initialized = false
+	mask_shader_params_initialized = false
 	if not use_mask_material:
 		material = null
 		return
@@ -66,13 +66,13 @@ func _update_mask_params() -> void:
 	if shader_material == null:
 		return
 	if (
-		mask_params_initialized
-		and mask_params_size.is_equal_approx(size)
-		and absf(mask_params_radius - radius) <= 0.001
+		mask_shader_params_initialized
+		and mask_shader_params_size.is_equal_approx(size)
+		and absf(mask_shader_params_radius - radius) <= 0.001
 	):
 		return
 	shader_material.set_shader_parameter("control_size", size)
 	shader_material.set_shader_parameter("radius_px", radius)
-	mask_params_initialized = true
-	mask_params_size = size
-	mask_params_radius = radius
+	mask_shader_params_initialized = true
+	mask_shader_params_size = size
+	mask_shader_params_radius = radius

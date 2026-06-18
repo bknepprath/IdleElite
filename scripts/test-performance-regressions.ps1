@@ -1032,11 +1032,12 @@ Assert-True ($actionArtTexture -match 'var use_mask_material := false') "Action 
 Assert-True ($actionArtTexture -match 'if use_mask_material:\s*\r?\n\s*_ensure_mask_material\(\)') "Action art mask materials should be opt-in, not assigned to every cutout."
 Assert-True ($actionArtTexture -match 'func set_mask_material_enabled\(enabled: bool\)') "Action art images should expose one switch for background-only mask materials."
 Assert-True ($actionArtTexture -match 'if not use_mask_material:\s*\r?\n\s*material = null') "Action art cutouts should clear the shader material when masking is not needed."
-Assert-True ($actionArtTexture -match 'mask_params_initialized') "Action art images should track the last synced shader parameters."
+Assert-True ($actionArtTexture -match 'mask_shader_params_initialized') "Action art images should track the last synced shader parameters with shader-specific cache naming."
+Assert-True ($actionArtTexture -notmatch 'mask_params_initialized') "Action art images should not use vague mask-parameter cache names."
 Assert-True ($actionArtTexture -notmatch 'saturation_scale|value_scale|dot\(color\.rgb|mix\(vec3\(gray\)') "Action art images should not globally desaturate or value-shift source artwork in the shared mask shader."
 $actionArtMaskParams = [regex]::Match($actionArtTexture, "(?ms)^\s+func _update_mask_params\b.*?(?=^\s+func |\z)")
 Assert-True $actionArtMaskParams.Success "Could not find action art mask-parameter updater."
-Assert-True ($actionArtMaskParams.Value -match 'mask_params_size\.is_equal_approx\(size\)') "Action art images should compare size before writing shader parameters."
+Assert-True ($actionArtMaskParams.Value -match 'mask_shader_params_size\.is_equal_approx\(size\)') "Action art images should compare size before writing shader parameters."
 Assert-True ($actionArtMaskParams.Value.IndexOf('return') -lt $actionArtMaskParams.Value.IndexOf('set_shader_parameter')) "Action art images should return before writing unchanged shader parameters."
 
 $actionArtImage = Get-FunctionBody -Text $main -Name "_action_art_image"
