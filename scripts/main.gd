@@ -37886,7 +37886,7 @@ func _build_fishing_detail_lazy_plan(skill_id: String) -> Array:
 		var action_id := str(action_data.get("id", ""))
 		if action_id.is_empty():
 			continue
-		var passive_item := {
+		var passive_entry := {
 			"kind": "passive",
 			"entry": {"action": action_data},
 			"track_id": action_id,
@@ -37897,8 +37897,8 @@ func _build_fishing_detail_lazy_plan(skill_id: String) -> Array:
 			"placeholder": null,
 			"direct_stack_child": false
 		}
-		plan.append(passive_item)
-		y += float(passive_item["height"]) + DETAIL_LAZY_STACK_SEPARATION
+		plan.append(passive_entry)
+		y += float(passive_entry["height"]) + DETAIL_LAZY_STACK_SEPARATION
 
 	var net_offer_rendered := false
 	var rod_offer_rendered := false
@@ -37932,7 +37932,7 @@ func _build_fishing_detail_lazy_plan(skill_id: String) -> Array:
 			y = _append_fishing_offer_lazy_entry(plan, y, "mirror")
 			mirror_offer_rendered = true
 		var area_key := _fishing_area_module_key(skill_id, area_def)
-		var area_item := {
+		var area_entry := {
 			"kind": "fishing_area",
 			"area_def": area_def,
 			"track_id": area_key,
@@ -37944,8 +37944,8 @@ func _build_fishing_detail_lazy_plan(skill_id: String) -> Array:
 			"placeholder": null,
 			"direct_stack_child": false
 		}
-		plan.append(area_item)
-		y += float(area_item["height"]) + DETAIL_LAZY_STACK_SEPARATION
+		plan.append(area_entry)
+		y += float(area_entry["height"]) + DETAIL_LAZY_STACK_SEPARATION
 	while inserted_index < inserted_actions.size():
 		y = _append_fishing_action_lazy_entry(plan, y, inserted_actions[inserted_index] as Dictionary)
 		inserted_index += 1
