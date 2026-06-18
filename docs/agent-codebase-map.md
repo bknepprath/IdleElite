@@ -8,6 +8,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 - `scripts/main.gd` is the main gameplay, UI, save/load, networking, and presentation script. Use `docs/main-gd-ownership-map.md` before editing it.
 - `docs/activity-database.json` is the activity database source of truth. `docs/activity-database-data.js` is generated from it.
 - `docs/activity-database-contract.md` explains how the source JSON, generated JS, runtime loading, export filter, and validation scripts relate.
+- `docs/generated-file-hygiene.md` explains which generated files, Godot metadata, local outputs, caches, build folders, and secrets can be tracked or must stay local.
 - `project.godot`, `export_presets.cfg`, and `assets/android/**` are externally referenced by Godot/Android export tooling. Treat paths there as compatibility-sensitive.
 - `docs/asset-file-structure-audit.md` records the current asset naming and ownership audit. Read it before moving or deleting assets.
 - `docs/ui-runtime-boundary-map.md` records stable navigation, home, shop, chat, leaderboard, and profile UI boundaries.
@@ -36,6 +37,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 - Do not hand-edit generated `docs/activity-database-data.js`; regenerate it from `docs/activity-database.json`.
 - Treat runtime `.gd.uid` and `.import` files as metadata-adjacent. They can be tracked and important even though Godot generates them. Docs-side `.import` files under `docs/art-source` are archive noise by default.
 - Local output folders such as `.codex-tmp/`, `.codex-tools/`, `.godot/`, `output/`, and `test-results/` are not source unless a checklist explicitly adopts them.
+- Do not add broad `*.import` or `*.uid` ignore rules; use `docs/generated-file-hygiene.md` and `.\scripts\check-generated-file-hygiene.ps1` before staging generated metadata.
 
 ## Validation Map
 
@@ -48,6 +50,7 @@ Use PowerShell from the repo root.
 | Activity database sync | `python scripts\sync-activity-database-js.py` | After editing `docs/activity-database.json`. |
 | Activity database source/generated contract | `.\scripts\check-activity-database-contracts.ps1` | After changing activity data, generated JS, sync tooling, runtime database paths, or export filters. |
 | Activity database audit | `.\scripts\audit-activity-database.ps1` | After syncing activity data. |
+| Generated-file hygiene contract | `.\scripts\check-generated-file-hygiene.ps1` | After changing `.gitignore`, generated-file docs, build-output docs, local config rules, `.import` rules, or `.uid` rules. |
 | Save/load contracts | `.\scripts\test-save-normalization.ps1` | After save payload, restore, or serialized field changes. |
 | Performance/static regression assertions | `.\scripts\test-performance-regressions.ps1` | After broad `main.gd`, asset-path, or validation contract changes. |
 | Runtime asset path contract | `.\scripts\check-runtime-asset-paths.ps1` | After changing `res://assets` or `res://docs` paths in `project.godot`, `export_presets.cfg`, `scripts/main.gd`, boot UI scripts, or activity data. |

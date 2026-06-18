@@ -55,6 +55,8 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 
 ## Generated, Import, Cache, And Output Files
 
+The authoritative generated-file staging guide is `docs/generated-file-hygiene.md`, protected by `scripts/check-generated-file-hygiene.ps1`.
+
 - `.import` files are generated metadata but should remain tracked beside tracked runtime assets when the matching source asset is tracked.
 - Untracked `.import` files for new dirty assets should not be committed unless their paired asset is intentionally accepted.
 - `output/` and `test-results/` are generated local outputs and should be cleaned or ignored rather than reorganized as project source.

@@ -26,6 +26,7 @@ $perfMonitorPath = Join-Path $projectRoot "scripts\perf_monitor.gd"
 $checkProjectPath = Join-Path $projectRoot "scripts\check-project.ps1"
 $runtimeAssetPathTestPath = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
 $activityDatabaseContractTestPath = Join-Path $projectRoot "scripts\check-activity-database-contracts.ps1"
+$generatedFileHygieneTestPath = Join-Path $projectRoot "scripts\check-generated-file-hygiene.ps1"
 $uiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
 $activityUiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
 $skillsPagePerformancePath = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
@@ -117,6 +118,8 @@ Assert-True (Test-Path -LiteralPath $runtimeAssetPathTestPath) "Missing scripts\
 $runtimeAssetPathTest = Get-Content -LiteralPath $runtimeAssetPathTestPath -Raw
 Assert-True (Test-Path -LiteralPath $activityDatabaseContractTestPath) "Missing scripts\check-activity-database-contracts.ps1."
 $activityDatabaseContractTest = Get-Content -LiteralPath $activityDatabaseContractTestPath -Raw
+Assert-True (Test-Path -LiteralPath $generatedFileHygieneTestPath) "Missing scripts\check-generated-file-hygiene.ps1."
+$generatedFileHygieneTest = Get-Content -LiteralPath $generatedFileHygieneTestPath -Raw
 Assert-True (Test-Path -LiteralPath $uiBoundaryContractTestPath) "Missing scripts\check-ui-boundary-contracts.ps1."
 $uiBoundaryContractTest = Get-Content -LiteralPath $uiBoundaryContractTestPath -Raw
 Assert-True (Test-Path -LiteralPath $activityUiBoundaryContractTestPath) "Missing scripts\check-activity-ui-boundary-contracts.ps1."
@@ -170,6 +173,7 @@ Assert-True ($checkProject -match 'IDLE_ELITE_STRICT_SKILLS_PERF') "Project vali
 Assert-True ($checkProject -match 'test-save-normalization\.ps1') "Project validation should run the focused save-normalization gate."
 Assert-True ($checkProject -match 'check-runtime-asset-paths\.ps1') "Project validation should run the runtime asset path contract gate."
 Assert-True ($checkProject -match 'check-activity-database-contracts\.ps1') "Project validation should run the activity database source/generated contract gate."
+Assert-True ($checkProject -match 'check-generated-file-hygiene\.ps1') "Project validation should run the generated-file hygiene gate."
 Assert-True ($checkProject -match 'check-ui-boundary-contracts\.ps1') "Project validation should run the UI boundary contract gate."
 Assert-True ($checkProject -match 'check-activity-ui-boundary-contracts\.ps1') "Project validation should run the activity UI boundary contract gate."
 Assert-True ($checkProject -match 'check-leaderboard-cost-safety\.ps1') "Project validation should run the leaderboard cost-safety gate."
@@ -180,6 +184,10 @@ Assert-True ($runtimeAssetPathTest -match 'docs/activity-database\.json') "Runti
 Assert-True ($activityDatabaseContractTest -match 'activity-database-data\.js must match docs/activity-database\.json') "Activity database contract validation should protect generated JS drift."
 Assert-True ($activityDatabaseContractTest -match 'ACTIVITY_DATABASE_PATH') "Activity database contract validation should protect runtime loading path."
 Assert-True ($activityDatabaseContractTest -match 'include_filter') "Activity database contract validation should protect export inclusion."
+Assert-True ($generatedFileHygieneTest -match '\.gitignore must not ignore every \.import file') "Generated-file hygiene validation should protect runtime .import metadata from broad ignores."
+Assert-True ($generatedFileHygieneTest -match '\.gitignore must not ignore every \.uid file') "Generated-file hygiene validation should protect tracked .uid metadata from broad ignores."
+Assert-True ($generatedFileHygieneTest -match 'docs/art-source \.import metadata should stay untracked') "Generated-file hygiene validation should keep docs-side .import metadata out of git."
+Assert-True ($generatedFileHygieneTest -match 'output/ and test-results/ should not contain tracked files') "Generated-file hygiene validation should protect local output folders."
 Assert-True ($uiBoundaryContractTest -match '_build_nav_bar') "UI boundary validation should protect navigation shell entry points."
 Assert-True ($uiBoundaryContractTest -match '_build_chat_overlay') "UI boundary validation should protect chat presentation entry points."
 Assert-True ($uiBoundaryContractTest -match '_render_leaderboard_page') "UI boundary validation should protect leaderboard page entry points."

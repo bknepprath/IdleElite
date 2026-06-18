@@ -424,13 +424,16 @@
         </div>
 
         <div class="work-item">
-          <h4><input type="checkbox"> 5.3 Clean generated, cache, output, and import metadata rules</h4>
+          <h4><input type="checkbox" checked> 5.3 Clean generated, cache, output, and import metadata rules</h4>
           <div class="goal-meta"><span class="tag">generated files</span><span class="tag">git hygiene</span> Prevent future agents from committing noise.</div>
           <ul>
             <li>Document which files are tracked, ignored, regenerated, deleted, or never touched manually.</li>
             <li>Normalize rules for <code>.import</code>, <code>.uid</code>, output folders, build folders, and local config.</li>
             <li>Fix stale docs if ignore/build behavior has changed.</li>
           </ul>
+          <p class="acceptance">
+            Done: added <code>docs/generated-file-hygiene.md</code> and <code>.\scripts\check-generated-file-hygiene.ps1</code> to make tracked generated data, runtime import metadata, existing addon/vendor UID metadata, ignored local outputs, build folders, local config, docs-side import metadata, and untracked script UID rules explicit; linked the guide from orientation docs; and wired the check into focused and full validation. Validation: <code>.\scripts\check-generated-file-hygiene.ps1</code> and <code>.\scripts\test-performance-regressions.ps1</code> passed; <code>.\scripts\check-project.ps1</code> reached <code>generated-file-hygiene-ok</code>, <code>ui-boundary-contracts-ok</code>, <code>activity-ui-boundary-contracts-ok</code>, <code>leaderboard-cost-safety-ok</code>, and later failed on the existing skills-page performance gate. A transient unrelated headless <code>ui_navigation_layout</code> Godot process exited on its own, and the final sweep found no headless Godot process left behind.
+          </p>
         </div>
 
         <p class="acceptance">
