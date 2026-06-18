@@ -39,6 +39,14 @@ For visible game-only playtesting when explicitly requested:
 - Area tags / backgrounds: `python scripts\reorganize-fishing-areas.py` or `python scripts\fix-fishing-action-order.py`.
 - Status doc: `docs/fishing-rework-status.md`.
 
+## Naming Conventions
+
+- Treat naming as architecture work, not cosmetic churn. Prefer human-readable, domain-accurate names that explain the game concept, UI role, state lifetime, or data contract.
+- Preserve established Godot/GDScript style: `snake_case` for variables/functions/signals, `PascalCase` for preloaded class constants, and clear prefixes for related systems such as `skill_swipe_*`, `detail_lazy_*`, `activity_*`, `fishing_*`, and `module_ui_*`.
+- Avoid generic names like `item`, `data`, `info`, `tmp`, `thing`, `obj`, or `value` when the value has a real role. Use names such as `lazy_entry`, `activity_def`, `area_def`, `action_id`, `track_id`, `cached_root`, or `render_record` when those roles are accurate.
+- Do not rename serialized save keys, public data IDs, asset paths, node names, signal names, input/action names, localization/user-facing strings, or externally referenced strings unless compatibility handling is added and validated.
+- Before committing a rename, inspect references with `rg`, update nearby regression assertions when useful, keep the commit scoped to one naming concept, and avoid mixing behavior changes into rename-only commits.
+
 ## Android phone debug install
 
 - Do not uninstall `com.idleelite.game` unless the user explicitly accepts data loss.
