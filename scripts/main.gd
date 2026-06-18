@@ -15493,24 +15493,24 @@ func _detail_lazy_mount_cached_item(
 	return true
 
 
-func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_width: float, actions_width: float, fade_in: bool) -> bool:
-	if bool(plan_item.get("mounted", false)):
+func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_width: float, actions_width: float, fade_in: bool) -> bool:
+	if bool(lazy_entry.get("mounted", false)):
 		return false
 	var trace_mount := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
 	var trace_mount_skill := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
 	if trace_mount and not trace_mount_skill.is_empty() and skill_id != trace_mount_skill:
 		trace_mount = false
 	var trace_started_usec := Time.get_ticks_usec() if trace_mount else 0
-	var kind := str(plan_item.get("kind", ""))
-	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
-	var placeholder := _valid_control_ref(plan_item.get("placeholder"))
+	var kind := str(lazy_entry.get("kind", ""))
+	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
+	var placeholder := _valid_control_ref(lazy_entry.get("placeholder"))
 	if stack_host == null or not is_instance_valid(stack_host):
 		return false
-	var track_id := str(plan_item.get("track_id", ""))
+	var track_id := str(lazy_entry.get("track_id", ""))
 	var fade_target: Control = null
 	var fade_allowed := false
 	var mounted_ok := false
-	if plan_item.has("cached_root") and _detail_lazy_mount_cached_item(plan_item, skill_id, content_width, actions_width, fade_in):
+	if lazy_entry.has("cached_root") and _detail_lazy_mount_cached_item(lazy_entry, skill_id, content_width, actions_width, fade_in):
 		if trace_mount:
 			var cached_mount_us := Time.get_ticks_usec() - trace_started_usec
 			if cached_mount_us >= 1500:
@@ -15523,7 +15523,7 @@ func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_wi
 		return true
 	match kind:
 		"heist":
-			var heist := (plan_item.get("entry") as Dictionary).get("heist", {}) as Dictionary
+			var heist := (lazy_entry.get("entry") as Dictionary).get("heist", {}) as Dictionary
 			var heist_root := _build_thieving_heist_card(heist, actions_width)
 			var parent := stack_host.get_parent()
 			var slot_index := stack_host.get_index()
@@ -15532,59 +15532,59 @@ func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_wi
 				stack_host.queue_free()
 				parent.add_child(heist_root)
 				parent.move_child(heist_root, slot_index)
-				plan_item["stack_host"] = heist_root
-				plan_item["placeholder"] = null
+				lazy_entry["stack_host"] = heist_root
+				lazy_entry["placeholder"] = null
 				detail_action_card_nodes[track_id] = heist_root
 				fade_target = heist_root
 				fade_allowed = true
 				mounted_ok = true
 		"passive":
-			var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
+			var action := (lazy_entry.get("entry") as Dictionary).get("action", {}) as Dictionary
 			var defer_passive_loot := skill_swipe_pending_full_finalize or _skill_swipe_handoff_cover_is_opaque_cream_transition()
 			var passive_card := _build_passive_module_card(skill_id, action, content_width, true, defer_passive_loot)
 			var passive_root := passive_card["root"] as Control
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-			plan_item["placeholder"] = null
+			lazy_entry["placeholder"] = null
 			_detail_lazy_add_child_to_host(stack_host, passive_root, content_width, actions_width)
 			var card := passive_card["card"] as Dictionary
 			card["entry"] = stack_host
 			_register_action_card(_action_key(skill_id, track_id), card)
-			plan_item["card"] = card
+			lazy_entry["card"] = card
 			_detail_lazy_finalize_action_card(card, skill_id, action, track_id)
 			detail_action_card_nodes[track_id] = stack_host
 			fade_target = passive_root
 			fade_allowed = _detail_lazy_fade_allowed(skill_id, action)
 			mounted_ok = true
 		"action":
-			var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
+			var action := (lazy_entry.get("entry") as Dictionary).get("action", {}) as Dictionary
 			var built := _build_detail_interactive_action_card(skill_id, action, content_width, actions_width)
 			var card_root := built["card_root"] as Control
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-			plan_item["placeholder"] = null
+			lazy_entry["placeholder"] = null
 			_detail_lazy_add_child_to_host(stack_host, card_root, content_width, actions_width)
 			var card := built["card"] as Dictionary
 			card["entry"] = stack_host
 			_register_action_card(_action_key(skill_id, track_id), card)
-			plan_item["card"] = card
+			lazy_entry["card"] = card
 			_detail_lazy_finalize_action_card(card, skill_id, action, track_id)
 			detail_action_card_nodes[track_id] = stack_host
 			fade_target = card_root
 			fade_allowed = _detail_lazy_fade_allowed(skill_id, action)
 			mounted_ok = true
 		"fishing_area":
-			var area_def := plan_item.get("area_def", {}) as Dictionary
+			var area_def := lazy_entry.get("area_def", {}) as Dictionary
 			if not area_def.is_empty():
 				var built := _build_fishing_area_module(skill_id, area_def, content_width)
 				var root := built.get("root") as Control
 				if root != null and is_instance_valid(root):
 					_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-					plan_item["placeholder"] = null
+					lazy_entry["placeholder"] = null
 					_detail_lazy_add_child_to_host(stack_host, root, content_width, actions_width)
 					var area_key := str(built.get("area_key", track_id))
 					var area_card := built.get("area_card", {}) as Dictionary
 					_register_action_card(area_key, area_card)
-					plan_item["card"] = area_card
-					plan_item["built"] = built
+					lazy_entry["card"] = area_card
+					lazy_entry["built"] = built
 					detail_action_card_nodes[area_key] = stack_host
 					for raw_method_id in built.get("method_ids", []) as Array:
 						detail_action_card_nodes[str(raw_method_id)] = stack_host
@@ -15592,30 +15592,30 @@ func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_wi
 					fade_allowed = true
 					mounted_ok = true
 		"fishing_offer":
-			var offer_root := _build_fishing_offer_module(str(plan_item.get("offer_id", "")), content_width)
+			var offer_root := _build_fishing_offer_module(str(lazy_entry.get("offer_id", "")), content_width)
 			if offer_root != null and is_instance_valid(offer_root):
 				offer_root.set_meta("detail_lazy_track_id", track_id)
 				_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-				plan_item["placeholder"] = null
+				lazy_entry["placeholder"] = null
 				_detail_lazy_add_child_to_host(stack_host, offer_root, content_width, actions_width)
 				fade_target = offer_root
 				fade_allowed = true
 				mounted_ok = true
 		"lock_tip":
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-			plan_item["placeholder"] = null
+			lazy_entry["placeholder"] = null
 			_detail_lazy_add_child_to_host(stack_host, _lock_click_tip_note(content_width), content_width, actions_width)
 			mounted_ok = true
 		"activity_start_tip":
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-			plan_item["placeholder"] = null
+			lazy_entry["placeholder"] = null
 			var start_note := _activity_start_tip_note(content_width)
 			_detail_lazy_add_child_to_host(stack_host, start_note, content_width, actions_width)
 			_fade_in_activity_start_tip_note(start_note)
 			mounted_ok = true
 		"skill_swipe_tip":
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-			plan_item["placeholder"] = null
+			lazy_entry["placeholder"] = null
 			var swipe_note := _skill_swipe_tip_note(content_width)
 			swipe_note.modulate = Color(1, 1, 1, 0)
 			_detail_lazy_add_child_to_host(stack_host, swipe_note, content_width, actions_width)
@@ -15623,7 +15623,7 @@ func _detail_lazy_mount_item(plan_item: Dictionary, skill_id: String, content_wi
 			mounted_ok = true
 	if not mounted_ok:
 		return false
-	plan_item["mounted"] = true
+	lazy_entry["mounted"] = true
 	if fade_in and fade_allowed and fade_target != null and not boot_detail_render_in_progress:
 		_play_detail_lazy_fade_in(fade_target)
 	if trace_mount:
