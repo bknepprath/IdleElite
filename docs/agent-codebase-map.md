@@ -10,6 +10,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 - `project.godot`, `export_presets.cfg`, and `assets/android/**` are externally referenced by Godot/Android export tooling. Treat paths there as compatibility-sensitive.
 - `docs/asset-file-structure-audit.md` records the current asset naming and ownership audit. Read it before moving or deleting assets.
 - `docs/ui-runtime-boundary-map.md` records stable navigation, home, shop, chat, leaderboard, and profile UI boundaries.
+- `docs/activity-ui-boundary-map.md` records stable activity detail, action card, mastery, unlock, and offline summary boundaries.
 - `docs/naming-audit.md` and the naming section in `AGENTS.md` describe the current rename rules.
 
 ## Runtime Structure
@@ -19,6 +20,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 | Main scene | `scenes/main.tscn`, `scripts/main.gd` | `main.tscn` binds the game to the large script. Avoid node-name or scene-bound path changes unless references are audited. |
 | Extracted UI drawing helpers | `scripts/ui/*.gd` | These are runtime scripts preloaded by `scripts/main.gd`. Many have `.gd.uid` metadata; do not rename either side casually. |
 | Shell UI boundaries | `docs/ui-runtime-boundary-map.md`, `scripts/check-ui-boundary-contracts.ps1` | Navigation, home, shop, chat, leaderboard, and profile still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
+| Activity UI boundaries | `docs/activity-ui-boundary-map.md`, `scripts/check-activity-ui-boundary-contracts.ps1` | Activity detail, action cards, mastery, unlocks, and offline summary still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
 | Activity data | `docs/activity-database.json`, `docs/activity-database-data.js`, `scripts/sync-activity-database-js.py`, `scripts/audit-activity-database.ps1` | Edit JSON first, sync JS second, audit third. |
 | Runtime art | `assets/content/**`, `assets/icons/**`, `assets/ui/**`, `assets/loading/**`, `assets/android/**` | Runtime paths are usually referenced as `res://assets/...` from code, docs data, presets, tests, or project settings. |
 | Art source/provenance | `docs/art-source/**` | Not runtime by default. This tree is under `.gdignore`; source PNGs and notes are tracked, while docs-side `.import` metadata should stay untracked unless future work proves it is needed provenance. |
@@ -48,6 +50,7 @@ Use PowerShell from the repo root.
 | Performance/static regression assertions | `.\scripts\test-performance-regressions.ps1` | After broad `main.gd`, asset-path, or validation contract changes. |
 | Runtime asset path contract | `.\scripts\check-runtime-asset-paths.ps1` | After changing `res://assets` or `res://docs` paths in `project.godot`, `export_presets.cfg`, `scripts/main.gd`, boot UI scripts, or activity data. |
 | UI boundary contract | `.\scripts\check-ui-boundary-contracts.ps1` | After editing navigation, home, shop, chat, leaderboard, or profile/avatar entry points. |
+| Activity UI boundary contract | `.\scripts\check-activity-ui-boundary-contracts.ps1` | After editing activity detail, action cards, mastery medals, unlocks, lockpads, or offline summary entry points. |
 | UI geometry/detail checks | `.\scripts\test-activity-card-geometry.ps1`, `.\scripts\test-skill-detail-bottom-scroll-pad.ps1`, `.\scripts\test-skill-detail-hidden-preview-scroll-gap.ps1` | After activity-card or skill-detail layout changes. |
 
 Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches `leaderboard-cost-safety-ok`, then may fail in the skills-page performance gate on the existing build swipe budget. Record the exact current output if it changes.

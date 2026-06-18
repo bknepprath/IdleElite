@@ -6,6 +6,7 @@ $performanceTest = Join-Path $projectRoot "scripts\test-performance-monitor.ps1"
 $performanceRegressionTest = Join-Path $projectRoot "scripts\test-performance-regressions.ps1"
 $runtimeAssetPathTest = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
 $uiBoundaryContractTest = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
+$activityUiBoundaryContractTest = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
 $leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
 $activityCardGeometryTest = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
 $tutorialStartScrollTest = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
@@ -106,6 +107,16 @@ if (-not (Test-Path -LiteralPath $uiBoundaryContractTest)) {
 
 $uiBoundaryContractOutput = & $uiBoundaryContractTest 2>&1
 $uiBoundaryContractOutput | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+if (-not (Test-Path -LiteralPath $activityUiBoundaryContractTest)) {
+    throw "Activity UI boundary contract test was not found at $activityUiBoundaryContractTest"
+}
+
+$activityUiBoundaryContractOutput = & $activityUiBoundaryContractTest 2>&1
+$activityUiBoundaryContractOutput | Out-Host
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
