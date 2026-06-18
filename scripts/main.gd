@@ -16382,12 +16382,12 @@ func _detail_lazy_mount_thieving_heists_sync(instant := true) -> int:
 	var content_width := _skill_content_width()
 	var actions_width := content_width
 	for raw_item in detail_lazy_plan:
-		var plan_item := raw_item as Dictionary
-		if bool(plan_item.get("mounted", false)):
+		var lazy_entry := raw_item as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
 			continue
-		if str(plan_item.get("kind", "")) != "heist":
+		if str(lazy_entry.get("kind", "")) != "heist":
 			continue
-		if _detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	return mounted_count
 
