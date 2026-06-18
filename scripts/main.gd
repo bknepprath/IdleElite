@@ -14632,19 +14632,19 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 	return pinned
 
 
-func _detail_lazy_entry_is_pinned(plan_item: Dictionary, pinned: Dictionary) -> bool:
-	var track_id := str(plan_item.get("track_id", ""))
+func _detail_lazy_entry_is_pinned(lazy_entry: Dictionary, pinned: Dictionary) -> bool:
+	var track_id := str(lazy_entry.get("track_id", ""))
 	if not track_id.is_empty() and pinned.has(track_id):
 		return true
-	if str(plan_item.get("kind", "")) == "fishing_area":
-		for raw_method_id in plan_item.get("method_ids", []) as Array:
+	if str(lazy_entry.get("kind", "")) == "fishing_area":
+		for raw_method_id in lazy_entry.get("method_ids", []) as Array:
 			if pinned.has(str(raw_method_id)):
 				return true
 	return false
 
 
-func _detail_lazy_entry_height(plan_item: Dictionary) -> float:
-	match str(plan_item.get("kind", "")):
+func _detail_lazy_entry_height(lazy_entry: Dictionary) -> float:
+	match str(lazy_entry.get("kind", "")):
 		"heist":
 			return float(THIEVING_HEIST_CARD_HEIGHT)
 		"passive":
@@ -14652,7 +14652,7 @@ func _detail_lazy_entry_height(plan_item: Dictionary) -> float:
 		"fishing_area":
 			return float(ACTION_CARD_HEIGHT)
 		"fishing_offer":
-			return _fishing_offer_height(str(plan_item.get("offer_id", "")))
+			return _fishing_offer_height(str(lazy_entry.get("offer_id", "")))
 		"lock_tip", "activity_start_tip", "skill_swipe_tip":
 			return DETAIL_LAZY_TIP_HEIGHT
 	return _activity_card_root_height()
@@ -14677,7 +14677,7 @@ func _build_detail_lazy_plan(skill_id: String) -> Array:
 		var track_id := _detail_lazy_track_id_for_entry(entry_data)
 		if not track_id.is_empty():
 			detail_rendered_action_ids.append(track_id)
-		var plan_item := {
+		var lazy_entry := {
 			"kind": "action",
 			"entry": entry_data,
 			"track_id": track_id,
@@ -14689,12 +14689,12 @@ func _build_detail_lazy_plan(skill_id: String) -> Array:
 			"direct_stack_child": false
 		}
 		if str(entry_data.get("kind", "")) == "thieving_heist":
-			plan_item["kind"] = "heist"
+			lazy_entry["kind"] = "heist"
 		elif _is_passive_action(entry_data.get("action", {}) as Dictionary):
-			plan_item["kind"] = "passive"
-		plan_item["height"] = _detail_lazy_entry_height(plan_item)
-		plan.append(plan_item)
-		y += float(plan_item["height"]) + DETAIL_LAZY_STACK_SEPARATION
+			lazy_entry["kind"] = "passive"
+		lazy_entry["height"] = _detail_lazy_entry_height(lazy_entry)
+		plan.append(lazy_entry)
+		y += float(lazy_entry["height"]) + DETAIL_LAZY_STACK_SEPARATION
 		if activity_start_tip_pending:
 			plan.append({
 				"kind": "activity_start_tip",
@@ -14709,7 +14709,7 @@ func _build_detail_lazy_plan(skill_id: String) -> Array:
 			})
 			y += DETAIL_LAZY_TIP_HEIGHT + DETAIL_LAZY_STACK_SEPARATION
 			activity_start_tip_pending = false
-		if plan_item["kind"] in ["passive", "action"]:
+		if lazy_entry["kind"] in ["passive", "action"]:
 			var action := entry_data.get("action", {}) as Dictionary
 			if _should_show_lock_click_tip(skill_id, action):
 				plan.append({
