@@ -867,6 +867,10 @@ Assert-True ($lazyBlankRepair -notmatch '_sync_detail_lazy_next_cards\(true, -1\
 $lazyVisibleCheck = Get-FunctionBody -Text $main -Name "_skill_detail_stack_has_visible_modules"
 Assert-True ($lazyVisibleCheck -match '_detail_stack_child_is_module_content') "Blank lazy-stack checks should ignore placeholder-only wrappers."
 
+$skillDetailCacheIncompleteLazy = Get-FunctionBody -Text $main -Name "_skill_detail_cache_has_incomplete_lazy"
+Assert-True ($skillDetailCacheIncompleteLazy -match 'for raw_lazy_entry in plan') "Cached skill-detail lazy scans should name raw plan records as lazy entries."
+Assert-True ($skillDetailCacheIncompleteLazy -notmatch '\braw_item\b') "Cached skill-detail lazy scans should not use stale raw item wording."
+
 $lazyCanUnmount = Get-FunctionBody -Text $main -Name "_detail_lazy_can_unmount_entry"
 Assert-True ($lazyCanUnmount -match 'func _detail_lazy_can_unmount_entry\(lazy_entry: Dictionary, pinned: Dictionary\)') "Lazy unmount decisions should name their render record parameter as a lazy entry."
 Assert-True ($lazyCanUnmount -match '"heist"') "Thieving heist modules should also unload when far outside the visible window."

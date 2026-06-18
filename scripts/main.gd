@@ -8198,8 +8198,8 @@ func _skill_detail_cache_has_incomplete_lazy(state: Dictionary, skill_id: String
 	var plan := state.get("detail_lazy_plan", []) as Array
 	if plan.is_empty():
 		return false
-	for raw_item in plan:
-		if not bool((raw_item as Dictionary).get("mounted", false)):
+	for raw_lazy_entry in plan:
+		if not bool((raw_lazy_entry as Dictionary).get("mounted", false)):
 			return true
 	return false
 
