@@ -15995,7 +15995,7 @@ func _detail_lazy_find_action_plan_index(plan: Array, action_id: String) -> int:
 	return -1
 
 
-func _ensure_activity_unlock_preview_lazy_plan_item(action_id: String) -> bool:
+func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 	if action_id.is_empty():
 		return false
 	if not _activity_preview_card_for_action_id(action_id, false).is_empty():
@@ -30748,7 +30748,7 @@ func _apply_skill_detail_unlock_refresh_in_place(preview_id: String) -> bool:
 
 func _play_activity_unlock_preview_in_place(preview_id: String) -> bool:
 	var preview_card := _activity_preview_card_for_action_id(preview_id, true)
-	if preview_card.is_empty() and _ensure_activity_unlock_preview_lazy_plan_item(preview_id):
+	if preview_card.is_empty() and _ensure_activity_unlock_preview_lazy_entry(preview_id):
 		preview_card = _activity_preview_card_for_action_id(preview_id, true)
 	if preview_card.is_empty():
 		return false

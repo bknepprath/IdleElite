@@ -802,6 +802,8 @@ Assert-True ($lazyCanUnmount -match '_detail_lazy_entry_is_pinned\(plan_item, pi
 
 $lazyRebind = Get-FunctionBody -Text $main -Name "_detail_lazy_rebind_plan_to_existing_stack"
 Assert-True ($lazyRebind -match 'control\.get_meta\("detail_lazy_placeholder", false\)') "Direct heist placeholders should rebind as placeholders, not as mounted content."
+Assert-True ($main -match 'func _ensure_activity_unlock_preview_lazy_entry') "Activity unlock preview helper should use lazy-entry naming."
+Assert-True ($main -notmatch '_ensure_activity_unlock_preview_lazy_plan_item') "Activity unlock preview helper should not use stale lazy-plan-item naming."
 
 $visibleThievingHeists = Get-FunctionBody -Text $main -Name "_visible_thieving_heists_for_render"
 Assert-True ($visibleThievingHeists -match '_skill_level\("thieving"\) < int\(heist\.get\("unlock", 1\)\)') "Thieving trophy heists should remain gated by their unlock level."
