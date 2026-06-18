@@ -1083,6 +1083,7 @@ const RESET_DATA_CONFIRM_TEXT := "Are you sure?"
 const ACTIVITY_DATABASE_PATH := "res://docs/activity-database.json"
 const MASTERY_MEDALS_TEXTURE := "res://assets/content/ui/mastery-medals-20.png"
 const TOTAL_LEVEL_BARGRAPH_TEXTURE := "res://assets/content/ui/total-level-bargraph.png"
+const REWARDED_AD_ICON_TEXTURE := "res://assets/content/ui/rewarded-ad-icon.png"
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
 const UNLOCK_LOCK_CHAINS_TEXTURE := "res://assets/content/ui/unlock-lock-chains.png"
 const UNLOCK_CHAIN_LINK_TEXTURE := "res://assets/content/ui/unlock-chain-link.png"
@@ -2983,7 +2984,7 @@ func _boot_shared_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/speech-bubble-down.png")
 	_add_boot_warmup_texture_path(paths, TOTAL_LEVEL_BARGRAPH_TEXTURE)
 	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/ad-reward.png")
+	_add_boot_warmup_texture_path(paths, REWARDED_AD_ICON_TEXTURE)
 	_add_boot_warmup_texture_path(paths, "res://assets/content/ui/discord-simple.png")
 	_add_boot_warmup_texture_path(paths, MASTERY_MEDALS_TEXTURE)
 	_add_boot_warmup_texture_path(paths, UNLOCK_LOCK_CHAINS_TEXTURE)
@@ -47969,7 +47970,7 @@ func _shop_ad_offer_button() -> Button:
 	row.add_theme_constant_override("separation", 26)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
-	row.add_child(_image("res://assets/content/ui/ad-reward.png", Vector2(340, 340)))
+	row.add_child(_image(REWARDED_AD_ICON_TEXTURE, Vector2(340, 340)))
 	var copy := VBoxContainer.new()
 	copy.custom_minimum_size = Vector2(730, 0)
 	copy.size_flags_horizontal = Control.SIZE_SHRINK_CENTER

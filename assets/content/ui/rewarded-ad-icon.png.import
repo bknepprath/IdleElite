@@ -3,15 +3,15 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dilydfqkpuhal"
-path="res://.godot/imported/ad-reward.png-e8f0b174308995ea731ed2418fa1f6fb.ctex"
+path="res://.godot/imported/rewarded-ad-icon.png-e8f0b174308995ea731ed2418fa1f6fb.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/content/ui/ad-reward.png"
-dest_files=["res://.godot/imported/ad-reward.png-e8f0b174308995ea731ed2418fa1f6fb.ctex"]
+source_file="res://assets/content/ui/rewarded-ad-icon.png"
+dest_files=["res://.godot/imported/rewarded-ad-icon.png-e8f0b174308995ea731ed2418fa1f6fb.ctex"]
 
 [params]
 
