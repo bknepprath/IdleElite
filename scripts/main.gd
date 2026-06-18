@@ -15351,8 +15351,8 @@ func _clear_detail_lazy_cache_bin() -> void:
 
 
 func _clear_detail_lazy_cached_roots() -> void:
-	for raw_item in detail_lazy_plan:
-		var lazy_entry := raw_item as Dictionary
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
 		if bool(lazy_entry.get("mounted", false)):
 			continue
 		var cached_root := _valid_control_ref(lazy_entry.get("cached_root"))
