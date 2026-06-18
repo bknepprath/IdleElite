@@ -15951,7 +15951,7 @@ func _detail_lazy_copy_runtime_entry_state(target_entry: Dictionary, source_entr
 func _detail_lazy_stack_insert_index_for_plan_index(stack: VBoxContainer, plan_index: int) -> int:
 	if stack == null or not is_instance_valid(stack):
 		return 0
-	var item_index := 0
+	var entry_index := 0
 	var fallback_index := stack.get_child_count()
 	for child_index in range(stack.get_child_count()):
 		var child := stack.get_child(child_index)
@@ -15961,9 +15961,9 @@ func _detail_lazy_stack_insert_index_for_plan_index(stack: VBoxContainer, plan_i
 			break
 		if control != null and control.name == "DetailActionsTopSpacer":
 			continue
-		if item_index >= plan_index:
+		if entry_index >= plan_index:
 			return child_index
-		item_index += 1
+		entry_index += 1
 	return clampi(fallback_index, 0, stack.get_child_count())
 
 
@@ -15971,12 +15971,12 @@ func _detail_lazy_find_temporary_event_plan_index(plan: Array, event_id: String)
 	if event_id.is_empty():
 		return -1
 	for index in range(plan.size()):
-		var item := plan[index] as Dictionary
-		if str(item.get("track_id", "")) != event_id:
+		var lazy_entry := plan[index] as Dictionary
+		if str(lazy_entry.get("track_id", "")) != event_id:
 			continue
-		if str(item.get("kind", "")) != "action":
+		if str(lazy_entry.get("kind", "")) != "action":
 			continue
-		var entry := item.get("entry", {}) as Dictionary
+		var entry := lazy_entry.get("entry", {}) as Dictionary
 		var action := entry.get("action", {}) as Dictionary
 		if _is_event_action(action):
 			return index
@@ -15987,10 +15987,10 @@ func _detail_lazy_find_action_plan_index(plan: Array, action_id: String) -> int:
 	if action_id.is_empty():
 		return -1
 	for index in range(plan.size()):
-		var item := plan[index] as Dictionary
-		if str(item.get("track_id", "")) != action_id:
+		var lazy_entry := plan[index] as Dictionary
+		if str(lazy_entry.get("track_id", "")) != action_id:
 			continue
-		if str(item.get("kind", "")) == "action":
+		if str(lazy_entry.get("kind", "")) == "action":
 			return index
 	return -1
 
