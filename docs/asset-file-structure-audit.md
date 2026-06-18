@@ -7,7 +7,7 @@ This audit starts the asset/file naming cleanup pass. The goal is to make paths 
 ## Current Naming Clusters
 
 - Runtime game assets live mostly under `assets/content/<domain>/...`, with repeated domain subfolders such as `actions` and `backgrounds` for Fight, Build, Woodcutting, Thieving, Fishing, Events, and Combo content.
-- UI/runtime support assets are split between `assets/ui`, `assets/content/ui`, `assets/content/ui/navigation-controls`, `assets/icons`, and `assets/content/icons`.
+- UI/runtime support assets are split between `assets/ui`, `assets/content/ui`, `assets/content/ui/navigation-controls`, `assets/icons`, and `assets/content/icons`; source UI work is now parent-qualified under `docs/art-source/asset-sources/profile-ui-source-assets` and `docs/art-source/asset-sources/game-ui-source-assets`.
 - Loading assets live in `assets/loading`, including current untracked Blue Guy loading animation variants and older boot splash references.
 - Source and generation work lives mostly under `docs/art-source/asset-sources/...`, which is clearer than the former `docs/art-source/assets/...` mirror but still contains some runtime-shaped subfolders that need follow-up cleanup.
 - Fishing has the densest asset structure: runtime actions/backgrounds/catch-icons/locations/tools/ui plus many source-generation candidates now parent-qualified under `docs/art-source/asset-sources/fishing-module-preview-sources`.
@@ -21,7 +21,7 @@ The current tree has repeated leaf folder names that are either intentional doma
 | --- | ---: | --- | --- |
 | `actions` | 12 | Preserve in runtime skill/domain paths; revisit under source archive | Runtime parent folders make these readable (`fight/actions`, `fishing/actions`). Source/archive copies should be parent-qualified if moved. |
 | `backgrounds` | 11 | Preserve in runtime skill/domain paths; revisit under source archive | Same as `actions`; safe only with activity database and import reference handling. |
-| `ui` | 5 | Audit and likely parent-qualify where ambiguous | `assets/ui`, `assets/content/ui`, `docs/art-source/asset-sources/ui`, and `docs/art-source/asset-sources/content/ui` overlap conceptually. |
+| `ui` | 5 | Parent-qualified source/archive copies | Runtime `ui` folders remain where code expects them; source/archive copies were renamed to `profile-ui-source-assets` and `game-ui-source-assets`. |
 | `fishing`, `thieving`, `woodcutting` | 3 each | Preserve runtime domains; parent-qualify source/archive copies | Runtime domain names are clear; mirrored docs paths create the confusion. |
 | `icons` | 3 | Audit before rename | `assets/icons` and `assets/content/icons` have different runtime roles but their names are easy to confuse. |
 | `resources`, `upgrades` | 3 each | Preserve under icon source/runtime clusters until references are mapped | These are narrow enough inside `icons`, but source/runtime mirrors need clearer root naming. |
@@ -66,7 +66,7 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 - Blue Guy loading variants in `assets/loading` include names like `before-frame2-smaller-right`, `before-frame4-up5`, `before-frame4-up8`, and `source`. These are dirty/untracked and should be resolved as one loading-asset cleanup once the current boot-loading work is intentionally accepted or discarded.
 - `docs/art-source/asset-sources/fishing-module-preview-sources` has many repeated version ladders per fishing area. These should be reduced to approved source/archival names once final descendants and explanatory docs are preserved.
 - `docs/art-source/asset-sources/...` includes `.import` files whose `source_file` entries often point at `res://assets/...` rather than the docs path. Treat those as suspicious generated metadata; do not rely on them until checked in Godot.
-- Runtime and art-source folders both contain generic `assets/content/ui` and `assets/ui` paths. This is a strong candidate for parent-qualified source-folder naming.
+- Runtime and art-source folders used to both contain generic `assets/content/ui` and `assets/ui` source paths. The docs-side copies are now parent-qualified; runtime UI paths remain untouched.
 - Exact duplicate detection still needs content-hash verification before deletion. Same-size grouping alone is not proof.
 
 ## First Safe High-Value Targets
@@ -75,7 +75,7 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 2. Clean or ignore generated local folders `output/` and `test-results/` after confirming they are untracked outputs and not needed artifacts.
 3. Resolve the dirty Blue Guy loading asset cluster by choosing the intended runtime files, removing rejected variants, and updating `scripts/ui/boot_flex_loading_animation.gd`, `scripts/main.gd`, `project.godot`, and tests together if the paths change.
 4. Done: parent-qualify the fishing module source-generation folder as `docs/art-source/asset-sources/fishing-module-preview-sources`.
-5. Audit `assets/ui`, `assets/content/ui`, and `assets/content/ui/navigation-controls` for overlapping UI asset responsibilities. Rename only after reference checks prove the assets are runtime-safe and update all `res://assets/...` references in code/tests/docs.
+5. Done for docs-side source copies: profile/avatar UI sources now live in `profile-ui-source-assets`, and broader game UI sources now live in `game-ui-source-assets`. Runtime `assets/ui`, `assets/content/ui`, and `assets/content/ui/navigation-controls` remain intentionally unchanged pending deeper `res://assets/...` compatibility work.
 
 ## Reference Evidence Collected
 
