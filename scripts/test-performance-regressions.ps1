@@ -710,6 +710,11 @@ Assert-True ($fishingLazyPlan -match '"kind": "fishing_area"') "Fishing lazy pla
 Assert-True ($fishingLazyPlan -match '_append_fishing_offer_lazy_entry') "Fishing lazy plans should preserve offer modules as lazy entries."
 Assert-True ($fishingLazyPlan -match '_append_fishing_action_lazy_entry') "Fishing lazy plans should preserve standalone actions as lazy entries."
 Assert-True ($fishingLazyPlan -match '_fishing_area_module_method_ids') "Fishing lazy plans should keep method ids for pinning and scroll-to-action."
+$fishingGlobalTeaserAction = Get-FunctionBody -Text $main -Name "_fishing_global_teaser_action_id"
+$fishingGlobalTeaserLocation = Get-FunctionBody -Text $main -Name "_fishing_global_teaser_location_key"
+Assert-True ($main -match 'func _fishing_next_locked_teaser_target\(skill_id: String\) -> Dictionary') "Fishing locked preview selection should name the selected action/location as a teaser target."
+Assert-True ($fishingGlobalTeaserAction -match 'var teaser_target := _fishing_next_locked_teaser_target\(skill_id\)') "Fishing action teaser lookup should use a named teaser target."
+Assert-True ($fishingGlobalTeaserLocation -match 'var teaser_target := _fishing_next_locked_teaser_target\(skill_id\)') "Fishing location teaser lookup should use a named teaser target."
 
 $pageReadyRefresh = Get-FunctionBody -Text $main -Name "_detail_lazy_refresh_after_page_ready"
 Assert-True ($pageReadyRefresh -match '_sync_detail_lazy_visible_cards\(true, -1\)') "Page-ready lazy refresh should mount only the visible lazy window."

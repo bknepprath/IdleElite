@@ -36387,7 +36387,7 @@ func _fishing_area_module_display_name(area_def: Dictionary) -> String:
 	return "%s #%d" % [base_name, module_index + 1]
 
 
-func _fishing_next_locked_preview_candidate(skill_id: String) -> Dictionary:
+func _fishing_next_locked_teaser_target(skill_id: String) -> Dictionary:
 	var best := {}
 	var best_unlock := 999999
 	var best_order := 999999
@@ -36432,16 +36432,16 @@ func _fishing_next_locked_preview_candidate(skill_id: String) -> Dictionary:
 
 
 func _fishing_global_teaser_action_id(skill_id: String) -> String:
-	var candidate := _fishing_next_locked_preview_candidate(skill_id)
-	if str(candidate.get("kind", "")) == "action":
-		return str(candidate.get("action_id", ""))
+	var teaser_target := _fishing_next_locked_teaser_target(skill_id)
+	if str(teaser_target.get("kind", "")) == "action":
+		return str(teaser_target.get("action_id", ""))
 	return ""
 
 
 func _fishing_global_teaser_location_key(skill_id: String) -> String:
-	var candidate := _fishing_next_locked_preview_candidate(skill_id)
-	if str(candidate.get("kind", "")) == "location":
-		return str(candidate.get("key", ""))
+	var teaser_target := _fishing_next_locked_teaser_target(skill_id)
+	if str(teaser_target.get("kind", "")) == "location":
+		return str(teaser_target.get("key", ""))
 	return ""
 
 
