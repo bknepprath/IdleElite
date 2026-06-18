@@ -3,7 +3,7 @@ extends Control
 
 
 var path_destinations := []
-var blockers := []
+var obstacle_rects := []
 var path_dots := []
 var origin := Vector2.ZERO
 var dot_radius := 68.0
@@ -13,10 +13,10 @@ var path_color := Color("#a97943")
 var edge_color := Color("#6f4c2e")
 var stone_color := Color("#9d9485")
 
-func set_paths(next_origin: Vector2, next_destinations: Array, next_blockers: Array) -> void:
+func set_paths(next_origin: Vector2, next_destinations: Array, next_obstacle_rects: Array) -> void:
 	origin = next_origin
 	path_destinations = next_destinations.duplicate()
-	blockers = next_blockers.duplicate()
+	obstacle_rects = next_obstacle_rects.duplicate()
 	_rebuild_dots()
 	queue_redraw()
 
@@ -108,10 +108,10 @@ func _collect_trunk_path(route_entries: Array, next_dots: Array) -> void:
 
 func _append_trunk_node_with_detour(trunk_nodes: Array, join: Vector2, route_seed: float) -> void:
 	var start := trunk_nodes[trunk_nodes.size() - 1] as Vector2
-	var blocker = _blocking_rect_for_segment(start, join)
-	if blocker is Rect2:
-		var rect := blocker as Rect2
-		var side := _detour_side_for_blocker(rect, route_seed)
+	var obstacle_rect = _obstacle_rect_for_segment(start, join)
+	if obstacle_rect is Rect2:
+		var rect := obstacle_rect as Rect2
+		var side := _detour_side_for_obstacle(rect, route_seed)
 		var detour_y := clampf(lerpf(start.y, join.y, 0.52), rect.position.y - dot_step * 0.42, rect.end.y + dot_step * 0.58)
 		var detour := Vector2(rect.get_center().x + side * (rect.size.x * 0.5 + dot_step * 0.70), detour_y)
 		if detour.distance_to(start) > dot_step * 0.34:
@@ -142,12 +142,12 @@ func _branch_arrival_point(start: Vector2, destination: Vector2, route_seed: flo
 	var side := signf(destination.x - start.x)
 	if absf(side) < 0.001:
 		side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
-	var destination_blocker = _blocker_near_point(destination)
-	if destination_blocker is Rect2:
-		var rect := destination_blocker as Rect2
+	var destination_obstacle = _obstacle_rect_near_point(destination)
+	if destination_obstacle is Rect2:
+		var rect := destination_obstacle as Rect2
 		var centered_hotspot := absf(rect.get_center().x - origin.x) < dot_step * 1.18
 		if centered_hotspot:
-			side = _detour_side_for_blocker(rect, route_seed + 37.0)
+			side = _detour_side_for_obstacle(rect, route_seed + 37.0)
 			return Vector2(rect.get_center().x + side * (rect.size.x * 0.5 + dot_step * 0.28), rect.end.y + dot_step * lerpf(0.18, 0.40, _unit(route_seed + 41.0)))
 	var bottom_bias := _unit(route_seed + 71.0)
 	if bottom_bias > 0.36:
@@ -190,25 +190,25 @@ func _collect_arrival_tail(start: Vector2, destination: Vector2, route_seed: flo
 		return q * q * start + 2.0 * q * t * control + t * t * destination
 	)
 
-func _blocking_rect_for_segment(start: Vector2, destination: Vector2) -> Variant:
-	for raw_blocker in blockers:
-		if not raw_blocker is Rect2:
+func _obstacle_rect_for_segment(start: Vector2, destination: Vector2) -> Variant:
+	for raw_obstacle_rect in obstacle_rects:
+		if not raw_obstacle_rect is Rect2:
 			continue
-		var rect := (raw_blocker as Rect2).grow(dot_radius * 0.72)
+		var rect := (raw_obstacle_rect as Rect2).grow(dot_radius * 0.72)
 		for i in range(1, 18):
 			var t := float(i) / 18.0
 			var point := start.lerp(destination, t)
 			if rect.has_point(point):
-				return raw_blocker
+				return raw_obstacle_rect
 	return null
 
-func _blocker_near_point(point: Vector2) -> Variant:
-	for raw_blocker in blockers:
-		if raw_blocker is Rect2 and (raw_blocker as Rect2).grow(dot_step * 0.45).has_point(point):
-			return raw_blocker
+func _obstacle_rect_near_point(point: Vector2) -> Variant:
+	for raw_obstacle_rect in obstacle_rects:
+		if raw_obstacle_rect is Rect2 and (raw_obstacle_rect as Rect2).grow(dot_step * 0.45).has_point(point):
+			return raw_obstacle_rect
 	return null
 
-func _detour_side_for_blocker(rect: Rect2, route_seed: float) -> float:
+func _detour_side_for_obstacle(rect: Rect2, route_seed: float) -> float:
 	var center_delta := rect.get_center().x - origin.x
 	if absf(center_delta) > dot_step * 0.28:
 		return -signf(center_delta)
@@ -250,7 +250,7 @@ func _collect_sampled_dotted_path(start: Vector2, _destination: Vector2, route_s
 func _add_or_merge_dot(dot_list: Array, dot: Dictionary) -> void:
 	var center := dot.get("center", Vector2.ZERO) as Vector2
 	var radius := float(dot.get("radius", dot_radius))
-	if _dot_hits_blocker(center, radius):
+	if _dot_hits_obstacle_rect(center, radius):
 		return
 	_add_or_merge_unblocked_dot(dot_list, dot)
 
@@ -282,7 +282,7 @@ func _add_path_clump_dots(next_dots: Array, center: Vector2, radius: float, dire
 		offset += direction * radius * lerpf(-0.46, 0.54, _unit(clump_seed + 3.0))
 		var clump_center := center + offset
 		var clump_radius := radius * lerpf(0.58, 0.88, _unit(clump_seed + 4.0))
-		if _dot_hits_blocker(clump_center, clump_radius):
+		if _dot_hits_obstacle_rect(clump_center, clump_radius):
 			continue
 		_add_unmerged_dot(next_dots, {"center": clump_center, "radius": clump_radius, "fill": _varied_path_color(clump_seed + 5.0), "keep_separate": true})
 
@@ -296,7 +296,7 @@ func _add_tiny_path_dots(next_dots: Array, center: Vector2, radius: float, route
 		var distance := radius * lerpf(0.72, 1.34, _unit(tiny_seed + 3.0))
 		var tiny_radius := radius * lerpf(0.18, 0.31, _unit(tiny_seed + 5.0))
 		var tiny_center := center + Vector2(cos(angle), sin(angle) * dot_height_scale * 1.6) * distance
-		if _dot_hits_blocker(tiny_center, tiny_radius):
+		if _dot_hits_obstacle_rect(tiny_center, tiny_radius):
 			continue
 		var fill := stone_color if _unit(tiny_seed + 11.0) > 0.82 else _varied_path_color(tiny_seed + 13.0)
 		_add_unmerged_dot(next_dots, {"center": tiny_center, "radius": tiny_radius, "fill": fill, "keep_separate": true})
@@ -424,10 +424,10 @@ func _dot_rect(dot: Dictionary, padding: float) -> Rect2:
 	var half_size := Vector2(radius, radius * dot_height_scale)
 	return Rect2(center - half_size, half_size * 2.0)
 
-func _dot_hits_blocker(center: Vector2, radius: float) -> bool:
+func _dot_hits_obstacle_rect(center: Vector2, radius: float) -> bool:
 	var rect := Rect2(center - Vector2(radius + 12.0, radius * dot_height_scale + 12.0), Vector2((radius + 12.0) * 2.0, (radius * dot_height_scale + 12.0) * 2.0))
-	for raw_blocker in blockers:
-		if raw_blocker is Rect2 and rect.intersects(raw_blocker as Rect2):
+	for raw_obstacle_rect in obstacle_rects:
+		if raw_obstacle_rect is Rect2 and rect.intersects(raw_obstacle_rect as Rect2):
 			return true
 	return false
 

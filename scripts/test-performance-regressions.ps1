@@ -11,6 +11,7 @@ $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
+$hubPathDotsPath = Join-Path $projectRoot "scripts\ui\hub_path_dots.gd"
 $activityCardDepthPath = Join-Path $projectRoot "scripts\ui\activity_card_depth.gd"
 $activityProgressRailPath = Join-Path $projectRoot "scripts\ui\activity_progress_rail.gd"
 $activityProgressOpportunityOverlayPath = Join-Path $projectRoot "scripts\ui\activity_progress_opportunity_overlay.gd"
@@ -81,6 +82,8 @@ Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui
 $roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $mobileScrollContainerPath) "Missing scripts\ui\mobile_scroll_container.gd."
 $mobileScrollContainer = Get-Content -LiteralPath $mobileScrollContainerPath -Raw
+Assert-True (Test-Path -LiteralPath $hubPathDotsPath) "Missing scripts\ui\hub_path_dots.gd."
+$hubPathDots = Get-Content -LiteralPath $hubPathDotsPath -Raw
 Assert-True (Test-Path -LiteralPath $activityCardDepthPath) "Missing scripts\ui\activity_card_depth.gd."
 $activityCardDepth = Get-Content -LiteralPath $activityCardDepthPath -Raw
 Assert-True (Test-Path -LiteralPath $activityProgressRailPath) "Missing scripts\ui\activity_progress_rail.gd."
@@ -1031,6 +1034,10 @@ Assert-True ($mobileScrollContainer -match 'PULL_RESISTANCE_MAX \* \(1\.0 - exp\
 Assert-True ($mobileScrollContainer -match 'pull_anchor_position_y') "Mobile scroll pull resistance should name its baseline as an anchor position."
 Assert-True ($mobileScrollContainer -notmatch 'pull_rest_position') "Mobile scroll pull resistance should not use vague rest-position naming for the pull anchor."
 Assert-True ($mobileScrollContainer -match 'for child in get_children\(\):\s*\r?\n\s*if child is Control:') "Disabled mobile scroll containers should reset child control offsets."
+Assert-True ($hubPathDots -match 'var obstacle_rects := \[\]') "Hub path dots should name path blockers as obstacle rectangles."
+Assert-True ($hubPathDots -match 'func _obstacle_rect_for_segment\(start: Vector2, destination: Vector2\) -> Variant') "Hub path dots should name segment collision lookup by obstacle rectangle domain."
+Assert-True ($hubPathDots -match 'func _dot_hits_obstacle_rect\(center: Vector2, radius: float\) -> bool') "Hub path dots should name dot collision checks by obstacle rectangle domain."
+Assert-True ($hubPathDots -notmatch '\bblockers\b|_blocking_rect_for_segment|_blocker_near_point|_dot_hits_blocker') "Hub path dots should not use vague blocker naming for obstacle rectangles."
 Assert-True ($main -match 'const ActionArtTextureRect = preload\("res://scripts/ui/action_art_texture_rect\.gd"\)') "Action art images should live in a reusable UI control file."
 Assert-True ($actionArtTexture -match 'static var shared_mask_shader: Shader') "Action art images should share one mask shader program."
 Assert-True ($actionArtTexture -match 'shader_material\.shader = shared_mask_shader') "Action art images should not allocate a unique Shader for every card."
