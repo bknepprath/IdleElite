@@ -15352,17 +15352,17 @@ func _clear_detail_lazy_cache_bin() -> void:
 
 func _clear_detail_lazy_cached_roots() -> void:
 	for raw_item in detail_lazy_plan:
-		var plan_item := raw_item as Dictionary
-		if bool(plan_item.get("mounted", false)):
+		var lazy_entry := raw_item as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
 			continue
-		var cached_root := _valid_control_ref(plan_item.get("cached_root"))
+		var cached_root := _valid_control_ref(lazy_entry.get("cached_root"))
 		if cached_root != null and not cached_root.is_queued_for_deletion():
 			if cached_root.get_parent() != null:
 				cached_root.queue_free()
 			else:
 				cached_root.free()
-		plan_item.erase("cached_root")
-		plan_item.erase("cached_card")
+		lazy_entry.erase("cached_root")
+		lazy_entry.erase("cached_card")
 
 
 func _park_detail_lazy_cached_root(root: Control) -> void:
