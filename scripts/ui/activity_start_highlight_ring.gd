@@ -25,15 +25,15 @@ func _draw() -> void:
 		maxf(1.0, size.x - outer_pad * 2.0),
 		maxf(1.0, size.y - outer_pad * 2.0)
 	)
-	var max_dist := gap + ring_thickness + blur_spread
+	var max_ring_distance := gap + ring_thickness + blur_spread
 	for layer_index in range(blur_layers):
 		var t := float(layer_index) / float(maxi(blur_layers - 1, 1))
-		var dist := gap + t * (ring_thickness + blur_spread)
-		dist = minf(dist, max_dist)
+		var ring_distance := gap + t * (ring_thickness + blur_spread)
+		ring_distance = minf(ring_distance, max_ring_distance)
 		var alpha := pow(1.0 - t, 1.55) * 0.48 * modulate.a
-		var col := Color(glow_color.r, glow_color.g, glow_color.b, alpha)
+		var layer_color := Color(glow_color.r, glow_color.g, glow_color.b, alpha)
 		var width := maxf(2.5, (ring_thickness + blur_spread) / float(blur_layers) * 1.4)
-		_draw_rounded_outline(inner.grow(dist), corner_radius + dist * 0.42, width, col)
+		_draw_rounded_outline(inner.grow(ring_distance), corner_radius + ring_distance * 0.42, width, layer_color)
 
 func _draw_rounded_outline(rect: Rect2, radius: float, width: float, color: Color) -> void:
 	var half := width * 0.5

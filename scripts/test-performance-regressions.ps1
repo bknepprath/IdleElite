@@ -12,6 +12,7 @@ $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_textur
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
 $hubPathDotsPath = Join-Path $projectRoot "scripts\ui\hub_path_dots.gd"
+$activityStartHighlightRingPath = Join-Path $projectRoot "scripts\ui\activity_start_highlight_ring.gd"
 $activityCardDepthPath = Join-Path $projectRoot "scripts\ui\activity_card_depth.gd"
 $activityProgressRailPath = Join-Path $projectRoot "scripts\ui\activity_progress_rail.gd"
 $activityProgressOpportunityOverlayPath = Join-Path $projectRoot "scripts\ui\activity_progress_opportunity_overlay.gd"
@@ -84,6 +85,8 @@ Assert-True (Test-Path -LiteralPath $mobileScrollContainerPath) "Missing scripts
 $mobileScrollContainer = Get-Content -LiteralPath $mobileScrollContainerPath -Raw
 Assert-True (Test-Path -LiteralPath $hubPathDotsPath) "Missing scripts\ui\hub_path_dots.gd."
 $hubPathDots = Get-Content -LiteralPath $hubPathDotsPath -Raw
+Assert-True (Test-Path -LiteralPath $activityStartHighlightRingPath) "Missing scripts\ui\activity_start_highlight_ring.gd."
+$activityStartHighlightRing = Get-Content -LiteralPath $activityStartHighlightRingPath -Raw
 Assert-True (Test-Path -LiteralPath $activityCardDepthPath) "Missing scripts\ui\activity_card_depth.gd."
 $activityCardDepth = Get-Content -LiteralPath $activityCardDepthPath -Raw
 Assert-True (Test-Path -LiteralPath $activityProgressRailPath) "Missing scripts\ui\activity_progress_rail.gd."
@@ -1038,6 +1041,10 @@ Assert-True ($hubPathDots -match 'var obstacle_rects := \[\]') "Hub path dots sh
 Assert-True ($hubPathDots -match 'func _obstacle_rect_for_segment\(start: Vector2, destination: Vector2\) -> Variant') "Hub path dots should name segment collision lookup by obstacle rectangle domain."
 Assert-True ($hubPathDots -match 'func _dot_hits_obstacle_rect\(center: Vector2, radius: float\) -> bool') "Hub path dots should name dot collision checks by obstacle rectangle domain."
 Assert-True ($hubPathDots -notmatch '\bblockers\b|_blocking_rect_for_segment|_blocker_near_point|_dot_hits_blocker') "Hub path dots should not use vague blocker naming for obstacle rectangles."
+Assert-True ($activityStartHighlightRing -match 'var max_ring_distance := gap \+ ring_thickness \+ blur_spread') "Activity start highlight ring should name its maximum glow distance by ring domain."
+Assert-True ($activityStartHighlightRing -match 'var ring_distance := gap \+ t \* \(ring_thickness \+ blur_spread\)') "Activity start highlight ring should name each glow-layer distance by ring domain."
+Assert-True ($activityStartHighlightRing -match 'var layer_color := Color\(glow_color\.r, glow_color\.g, glow_color\.b, alpha\)') "Activity start highlight ring should name per-layer glow color by layer domain."
+Assert-True ($activityStartHighlightRing -notmatch 'max_dist|var dist :=|var col :=') "Activity start highlight ring should not use abbreviated draw-loop names for glow geometry."
 Assert-True ($main -match 'const ActionArtTextureRect = preload\("res://scripts/ui/action_art_texture_rect\.gd"\)') "Action art images should live in a reusable UI control file."
 Assert-True ($actionArtTexture -match 'static var shared_mask_shader: Shader') "Action art images should share one mask shader program."
 Assert-True ($actionArtTexture -match 'shader_material\.shader = shared_mask_shader') "Action art images should not allocate a unique Shader for every card."
