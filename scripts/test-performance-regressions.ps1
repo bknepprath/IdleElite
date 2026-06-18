@@ -824,9 +824,16 @@ $lazyVisibleCheck = Get-FunctionBody -Text $main -Name "_skill_detail_stack_has_
 Assert-True ($lazyVisibleCheck -match '_detail_stack_child_is_module_content') "Blank lazy-stack checks should ignore placeholder-only wrappers."
 
 $lazyCanUnmount = Get-FunctionBody -Text $main -Name "_detail_lazy_can_unmount_item"
+Assert-True ($lazyCanUnmount -match 'func _detail_lazy_can_unmount_item\(lazy_entry: Dictionary, pinned: Dictionary\)') "Lazy unmount decisions should name their render record parameter as a lazy entry."
 Assert-True ($lazyCanUnmount -match '"heist"') "Thieving heist modules should also unload when far outside the visible window."
 Assert-True ($lazyCanUnmount -match '"fishing_area"') "Fishing area modules should unload when far outside the visible window."
-Assert-True ($lazyCanUnmount -match '_detail_lazy_entry_is_pinned\(plan_item, pinned\)') "Pinned Fishing areas must not be unmounted."
+Assert-True ($lazyCanUnmount -match '_detail_lazy_entry_is_pinned\(lazy_entry, pinned\)') "Pinned Fishing areas must not be unmounted."
+Assert-True ($lazyCanUnmount -match '_detail_lazy_entry_far_from_viewport\(lazy_entry\)') "Unmount decisions should use the shared viewport-distance helper."
+Assert-True ($lazyCanUnmount -notmatch '\bplan_item\b') "Lazy unmount decisions should not use stale plan-item wording internally."
+$lazyEntryFarFromViewport = Get-FunctionBody -Text $main -Name "_detail_lazy_entry_far_from_viewport"
+Assert-True ($lazyEntryFarFromViewport -match 'func _detail_lazy_entry_far_from_viewport\(lazy_entry: Dictionary\)') "Lazy viewport-distance checks should name their render record parameter as a lazy entry."
+Assert-True ($lazyEntryFarFromViewport -match '_detail_lazy_entry_rect_for_viewport\(lazy_entry\)') "Lazy viewport-distance checks should use the shared lazy-entry rect helper."
+Assert-True ($lazyEntryFarFromViewport -notmatch '\bplan_item\b') "Lazy viewport-distance checks should not use stale plan-item wording internally."
 
 $lazyRebind = Get-FunctionBody -Text $main -Name "_detail_lazy_rebind_plan_to_existing_stack"
 Assert-True ($lazyRebind -match 'control\.get_meta\("detail_lazy_placeholder", false\)') "Direct heist placeholders should rebind as placeholders, not as mounted content."

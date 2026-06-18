@@ -15677,26 +15677,26 @@ func _sync_detail_lazy_next_cards(instant: bool, max_mounts: int = DETAIL_LAZY_M
 	return mounted_count
 
 
-func _detail_lazy_entry_far_from_viewport(plan_item: Dictionary) -> bool:
+func _detail_lazy_entry_far_from_viewport(lazy_entry: Dictionary) -> bool:
 	var scroll_y := _detail_lazy_scroll_y()
 	var view_top := scroll_y - DETAIL_LAZY_UNMOUNT_BUFFER_PX
 	var view_bottom := scroll_y + _detail_lazy_viewport_height() + DETAIL_LAZY_UNMOUNT_BUFFER_PX
-	var entry_rect := _detail_lazy_entry_rect_for_viewport(plan_item)
+	var entry_rect := _detail_lazy_entry_rect_for_viewport(lazy_entry)
 	var entry_y := entry_rect.position.y
 	var entry_bottom := entry_y + entry_rect.size.y
 	return entry_rect.size.y > 1.0 and (entry_bottom < view_top or entry_y > view_bottom)
 
 
-func _detail_lazy_can_unmount_item(plan_item: Dictionary, pinned: Dictionary) -> bool:
-	if not bool(plan_item.get("mounted", false)):
+func _detail_lazy_can_unmount_item(lazy_entry: Dictionary, pinned: Dictionary) -> bool:
+	if not bool(lazy_entry.get("mounted", false)):
 		return false
-	var kind := str(plan_item.get("kind", ""))
+	var kind := str(lazy_entry.get("kind", ""))
 	if kind not in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
 		return false
-	var track_id := str(plan_item.get("track_id", ""))
-	if track_id.is_empty() or _detail_lazy_entry_is_pinned(plan_item, pinned):
+	var track_id := str(lazy_entry.get("track_id", ""))
+	if track_id.is_empty() or _detail_lazy_entry_is_pinned(lazy_entry, pinned):
 		return false
-	return _detail_lazy_entry_far_from_viewport(plan_item)
+	return _detail_lazy_entry_far_from_viewport(lazy_entry)
 
 
 func _detail_lazy_unmount_item(plan_item: Dictionary, skill_id: String, content_width: float) -> bool:
