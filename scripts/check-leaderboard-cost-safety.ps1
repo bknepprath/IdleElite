@@ -65,6 +65,7 @@ $rulesRaw = Get-Content -LiteralPath $rulesPath -Raw
 $setupGuide = Get-Content -LiteralPath $setupGuidePath -Raw
 $gitignore = Get-Content -LiteralPath $gitignorePath -Raw
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
+$exportPresetLines = Get-Content -LiteralPath $exportPresetsPath
 $firebaseJson = Get-Content -LiteralPath $firebaseJsonPath -Raw | ConvertFrom-Json
 $rulesGenerator = Get-Content -LiteralPath $rulesGeneratorPath -Raw
 $setupState = Get-Content -LiteralPath $setupStatePath -Raw
@@ -96,7 +97,7 @@ Assert-True ($main -match 'if key\.length\(\) < 20 or key\.find\(" "\) >= 0 or k
 Assert-True ($gitignore -match '(?m)^firebase-leaderboard-config\.json$') "Local Firebase config must be ignored by git."
 Assert-True ($exportPresets -match 'include_filter="[^"]*firebase-leaderboard-config\.json') "Android export must explicitly include the local Firebase config when present."
 Assert-True ($exportPresets -match 'include_filter="[^"]*docs/activity-database\.json') "Android export must explicitly include the activity database JSON."
-Assert-True ($exportPresets -match '(?m)^permissions/internet=true$') "Android export must include INTERNET permission for Firebase REST calls."
+Assert-True ($exportPresetLines -contains 'permissions/internet=true') "Android export must include INTERNET permission for Firebase REST calls."
 Assert-True ([string]$firebaseJson.database.rules -eq "firebase-realtime-database.rules.json") "firebase.json must deploy the generated Realtime Database rules file."
 Assert-True ($rulesGenerator -match "\^\[a-z0-9_-\]\+\$") "Rules generator must reject category keys with Firebase-unsafe characters."
 Assert-True ($rulesGenerator -match '\$duplicateCategoryKeys\s*=\s*@\(\$categoryKeys \| Group-Object') "Rules generator must reject duplicate category keys before emitting rules."

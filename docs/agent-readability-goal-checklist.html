@@ -216,7 +216,7 @@
         <li>Branch used for prior work: <code>codex/complete-combo-unlock-checklist</code>.</li>
         <li>Recent asset/readability cleanup already aligned runtime UI/resource assets under <code>assets/content/ui</code> and <code>assets/content/icons</code>.</li>
         <li>Runtime asset/code path alignment commits include: <code>7015a95</code>, <code>92c6bef</code>, <code>f109f26</code>, <code>6ee6c5d</code>, <code>3424b3a</code>, <code>3817c9e</code>, <code>24d3184</code>, <code>ad2611f</code>, <code>0ff328c</code>, <code>d002ed8</code>, <code>08ae18d</code>, <code>0817a10</code>, and <code>49da102</code>.</li>
-        <li>Known validation baseline: <code>.\scripts\check-project.ps1</code> reaches <code>performance-regressions-ok</code>, then fails on pre-existing AdMob type parse errors and a Firebase ignore assertion. Do not treat that as caused by new naming work unless the failure changes.</li>
+        <li>Known validation baseline: after Phase 3.2, <code>.\scripts\check-project.ps1</code> reaches <code>leaderboard-cost-safety-ok</code> and later fails in <code>.\scripts\test-skills-page-performance.ps1</code> on the existing build swipe performance gate. Do not treat that as caused by new naming work unless the failure changes.</li>
         <li>Godot safety: never call <code>Godot.exe</code> directly. Use <code>.\run-godot-safe.ps1</code> or project scripts that use it. After every Godot run, verify no headless Godot process was left behind.</li>
         <li>Activity database source of truth: <code>docs/activity-database.json</code>. After editing it, run <code>python scripts\sync-activity-database-js.py</code> and <code>.\scripts\audit-activity-database.ps1</code>.</li>
         <li>Do not rename save keys, public data IDs, node names, input/action names, user-facing strings, exported launcher paths, scene-bound paths, or generated metadata without compatibility handling.</li>
@@ -323,13 +323,16 @@
         </div>
 
         <div class="work-item">
-          <h4><input type="checkbox"> 3.2 Align Android launcher and export assets</h4>
+          <h4><input type="checkbox" checked> 3.2 Align Android launcher and export assets</h4>
           <div class="goal-meta"><span class="tag">android</span><span class="tag">export</span> Keep launcher/export references exact.</div>
           <ul>
             <li>Audit <code>assets/android</code>, <code>export_presets.cfg</code>, source files, and docs.</li>
             <li>Make launcher icons, adaptive foreground/backgrounds, preview icons, and source files understandable at a glance.</li>
             <li>Validate export preset references after every move.</li>
           </ul>
+          <p class="acceptance">
+            Done: audited <code>assets/android</code>, <code>export_presets.cfg</code>, launcher source files, and docs; kept the active clickable launcher paths stable because they are the preset contract; documented the byte-identical fallback aliases; and made the export safety check read the Android INTERNET permission as a line-based preset entry. Validation: <code>.\scripts\check-leaderboard-cost-safety.ps1</code> passed; <code>.\scripts\check-project.ps1</code> reached <code>leaderboard-cost-safety-ok</code> and then failed on the existing build swipe performance gate in <code>.\scripts\test-skills-page-performance.ps1</code>. No headless Godot process was left behind.
+          </p>
         </div>
 
         <p class="acceptance">
