@@ -15666,10 +15666,10 @@ func _sync_detail_lazy_next_cards(instant: bool, max_mounts: int = DETAIL_LAZY_M
 	var content_width := _skill_content_width()
 	var actions_width := content_width
 	var mounted_count := 0
-	for raw_item in detail_lazy_plan:
+	for raw_lazy_entry in detail_lazy_plan:
 		if max_mounts >= 0 and mounted_count >= max_mounts:
 			break
-		var lazy_entry := raw_item as Dictionary
+		var lazy_entry := raw_lazy_entry as Dictionary
 		if bool(lazy_entry.get("mounted", false)):
 			continue
 		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):

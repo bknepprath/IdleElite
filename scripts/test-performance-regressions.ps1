@@ -806,7 +806,9 @@ $syncDetailLazyVisibleCards = Get-FunctionBody -Text $main -Name "_sync_detail_l
 Assert-True ($syncDetailLazyVisibleCards -match 'var lazy_entry := detail_lazy_plan\[plan_index\] as Dictionary') "Visible lazy-card syncing should name scanned render records as lazy entries."
 Assert-True ($syncDetailLazyVisibleCards -notmatch '\bplan_item\b') "Visible lazy-card syncing should not use stale plan-item wording internally."
 $syncDetailLazyNextCards = Get-FunctionBody -Text $main -Name "_sync_detail_lazy_next_cards"
-Assert-True ($syncDetailLazyNextCards -match 'var lazy_entry := raw_item as Dictionary') "Next lazy-card syncing should name scanned render records as lazy entries."
+Assert-True ($syncDetailLazyNextCards -match 'for raw_lazy_entry in detail_lazy_plan') "Next lazy-card syncing should name raw plan records as lazy entries."
+Assert-True ($syncDetailLazyNextCards -match 'var lazy_entry := raw_lazy_entry as Dictionary') "Next lazy-card syncing should cast entry-named raw records."
+Assert-True ($syncDetailLazyNextCards -notmatch '\braw_item\b') "Next lazy-card syncing should not use stale raw item wording."
 Assert-True ($syncDetailLazyNextCards -notmatch '\bplan_item\b') "Next lazy-card syncing should not use stale plan-item wording internally."
 
 $parkDetailLazyCachedRoot = Get-FunctionBody -Text $main -Name "_park_detail_lazy_cached_root"
