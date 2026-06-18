@@ -16,6 +16,7 @@ $activityProgressRailPath = Join-Path $projectRoot "scripts\ui\activity_progress
 $activityProgressOpportunityOverlayPath = Join-Path $projectRoot "scripts\ui\activity_progress_opportunity_overlay.gd"
 $fishingToolWalletOverlayPath = Join-Path $projectRoot "scripts\ui\fishing_tool_wallet_overlay.gd"
 $achievementMedalSlotStripPath = Join-Path $projectRoot "scripts\ui\achievement_medal_slot_strip.gd"
+$passiveLogPileSpritePath = Join-Path $projectRoot "scripts\ui\passive_log_pile_sprite.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -90,6 +91,8 @@ Assert-True (Test-Path -LiteralPath $fishingToolWalletOverlayPath) "Missing scri
 $fishingToolWalletOverlay = Get-Content -LiteralPath $fishingToolWalletOverlayPath -Raw
 Assert-True (Test-Path -LiteralPath $achievementMedalSlotStripPath) "Missing scripts\ui\achievement_medal_slot_strip.gd."
 $achievementMedalSlotStrip = Get-Content -LiteralPath $achievementMedalSlotStripPath -Raw
+Assert-True (Test-Path -LiteralPath $passiveLogPileSpritePath) "Missing scripts\ui\passive_log_pile_sprite.gd."
+$passiveLogPileSprite = Get-Content -LiteralPath $passiveLogPileSpritePath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -1188,6 +1191,10 @@ Assert-True ($achievementMedalSlotStrip -match 'var medal_icons := \[\]') "Achie
 Assert-True ($achievementMedalSlotStrip -match 'var medal_shadows := \[\]') "Achievement medal slot strip should name its shadow array by medal domain."
 Assert-True ($achievementMedalSlotStrip -notmatch 'var icons := \[\]') "Achievement medal slot strip should not keep a generic icons array."
 Assert-True ($achievementMedalSlotStrip -notmatch 'var shadows := \[\]') "Achievement medal slot strip should not keep a generic shadows array."
+Assert-True ($passiveLogPileSprite -match 'var log_slots: Array = \[\]') "Passive log pile sprite should name stored pile slots by log domain."
+Assert-True ($passiveLogPileSprite -match 'var log_rotations: Array = \[\]') "Passive log pile sprite should name stored rotations by log domain."
+Assert-True ($passiveLogPileSprite -notmatch 'var slots: Array = \[\]') "Passive log pile sprite should not keep a generic slots array."
+Assert-True ($passiveLogPileSprite -notmatch 'var rotations: Array = \[\]') "Passive log pile sprite should not keep a generic rotations array."
 $profileAvatarTexture = Get-FunctionBody -Text $main -Name "_profile_avatar_texture"
 Assert-True ($profileAvatarTexture -match '_visual_fallback_texture\(\)') "Profile avatar atlas textures should fall back when their source sheet is missing."
 $addThievingHeistJailOverlay = Get-FunctionBody -Text $main -Name "_add_thieving_heist_jail_overlay"
