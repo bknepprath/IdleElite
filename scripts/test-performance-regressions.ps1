@@ -784,6 +784,12 @@ $lazyShouldSyncVisibleWindow = Get-FunctionBody -Text $main -Name "_detail_lazy_
 Assert-True ($lazyShouldSyncVisibleWindow -match 'var lazy_entry := raw_lazy_entry as Dictionary') "Lazy visible-window sync should scan lazy entries."
 Assert-True ($lazyShouldSyncVisibleWindow -match '_detail_lazy_entry_in_viewport\(lazy_entry\)') "Lazy visible-window sync should use entry-named viewport checks."
 Assert-True ($lazyShouldSyncVisibleWindow -notmatch '\bvisible_item\b|\bplan_item\b') "Lazy visible-window sync should not use stale item wording internally."
+$syncDetailLazyVisibleCards = Get-FunctionBody -Text $main -Name "_sync_detail_lazy_visible_cards"
+Assert-True ($syncDetailLazyVisibleCards -match 'var lazy_entry := detail_lazy_plan\[plan_index\] as Dictionary') "Visible lazy-card syncing should name scanned render records as lazy entries."
+Assert-True ($syncDetailLazyVisibleCards -notmatch '\bplan_item\b') "Visible lazy-card syncing should not use stale plan-item wording internally."
+$syncDetailLazyNextCards = Get-FunctionBody -Text $main -Name "_sync_detail_lazy_next_cards"
+Assert-True ($syncDetailLazyNextCards -match 'var lazy_entry := raw_item as Dictionary') "Next lazy-card syncing should name scanned render records as lazy entries."
+Assert-True ($syncDetailLazyNextCards -notmatch '\bplan_item\b') "Next lazy-card syncing should not use stale plan-item wording internally."
 
 $parkDetailLazyCachedRoot = Get-FunctionBody -Text $main -Name "_park_detail_lazy_cached_root"
 Assert-True ($parkDetailLazyCachedRoot -match '_set_canvas_item_modulate_if_changed\(root, Color\.WHITE\)') "Lazy cached-card parking should own the card tint reset before detaching."

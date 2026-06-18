@@ -15649,10 +15649,10 @@ func _sync_detail_lazy_visible_cards(instant: bool, max_mounts: int = -1) -> int
 	for plan_index in range(detail_lazy_plan.size()):
 		if max_mounts >= 0 and mounted_count >= max_mounts:
 			break
-		var plan_item := detail_lazy_plan[plan_index] as Dictionary
-		if not _detail_lazy_should_mount_item(plan_item, pinned, plan_index):
+		var lazy_entry := detail_lazy_plan[plan_index] as Dictionary
+		if not _detail_lazy_should_mount_item(lazy_entry, pinned, plan_index):
 			continue
-		if _detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
 	return mounted_count
@@ -15669,10 +15669,10 @@ func _sync_detail_lazy_next_cards(instant: bool, max_mounts: int = DETAIL_LAZY_M
 	for raw_item in detail_lazy_plan:
 		if max_mounts >= 0 and mounted_count >= max_mounts:
 			break
-		var plan_item := raw_item as Dictionary
-		if bool(plan_item.get("mounted", false)):
+		var lazy_entry := raw_item as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
 			continue
-		if _detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	return mounted_count
 
