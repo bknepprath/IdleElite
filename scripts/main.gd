@@ -15699,15 +15699,15 @@ func _detail_lazy_can_unmount_item(lazy_entry: Dictionary, pinned: Dictionary) -
 	return _detail_lazy_entry_far_from_viewport(lazy_entry)
 
 
-func _detail_lazy_unmount_item(plan_item: Dictionary, skill_id: String, content_width: float) -> bool:
-	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
+func _detail_lazy_unmount_item(lazy_entry: Dictionary, skill_id: String, content_width: float) -> bool:
+	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
 	if stack_host == null or not is_instance_valid(stack_host):
 		return false
-	var track_id := str(plan_item.get("track_id", ""))
+	var track_id := str(lazy_entry.get("track_id", ""))
 	if track_id.is_empty():
 		return false
-	var kind := str(plan_item.get("kind", ""))
-	var mounted_card := plan_item.get("card", {}) as Dictionary
+	var kind := str(lazy_entry.get("kind", ""))
+	var mounted_card := lazy_entry.get("card", {}) as Dictionary
 	_kill_transient_tweens_in_subtree(stack_host)
 	var cached_root: Control = null
 	if kind in ["action", "passive", "fishing_area", "fishing_offer"]:
@@ -15719,22 +15719,22 @@ func _detail_lazy_unmount_item(plan_item: Dictionary, skill_id: String, content_
 			break
 		if cached_root != null and is_instance_valid(cached_root):
 			_park_detail_lazy_cached_root(cached_root)
-			plan_item["cached_root"] = cached_root
-			plan_item["cached_card"] = mounted_card
+			lazy_entry["cached_root"] = cached_root
+			lazy_entry["cached_card"] = mounted_card
 			if kind == "fishing_area":
-				plan_item["cached_built"] = plan_item.get("built", {}) as Dictionary
+				lazy_entry["cached_built"] = lazy_entry.get("built", {}) as Dictionary
 	elif kind == "heist":
-		plan_item.erase("cached_root")
-		plan_item.erase("cached_card")
-		plan_item.erase("cached_built")
+		lazy_entry.erase("cached_root")
+		lazy_entry.erase("cached_card")
+		lazy_entry.erase("cached_built")
 	for child in stack_host.get_children():
 		if child != null and is_instance_valid(child) and child != cached_root:
 			child.queue_free()
 	var placeholder := Control.new()
-	placeholder.custom_minimum_size = Vector2(content_width, float(plan_item.get("height", _activity_card_root_height())))
+	placeholder.custom_minimum_size = Vector2(content_width, float(lazy_entry.get("height", _activity_card_root_height())))
 	placeholder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	placeholder.set_meta("detail_lazy_placeholder", true)
-	if bool(plan_item.get("direct_stack_child", false)):
+	if bool(lazy_entry.get("direct_stack_child", false)):
 		var parent := stack_host.get_parent()
 		if parent == null or not is_instance_valid(parent):
 			placeholder.queue_free()
@@ -15747,25 +15747,25 @@ func _detail_lazy_unmount_item(plan_item: Dictionary, skill_id: String, content_
 			stack_host.queue_free()
 		parent.add_child(placeholder)
 		parent.move_child(placeholder, slot_index)
-		plan_item["stack_host"] = placeholder
+		lazy_entry["stack_host"] = placeholder
 	else:
 		stack_host.add_child(placeholder)
 		stack_host.set_meta("detail_lazy_placeholder", true)
-	plan_item["placeholder"] = placeholder
-	plan_item["mounted"] = false
+	lazy_entry["placeholder"] = placeholder
+	lazy_entry["mounted"] = false
 	if cached_root == null:
-		plan_item.erase("built")
-		plan_item.erase("cached_built")
+		lazy_entry.erase("built")
+		lazy_entry.erase("cached_built")
 	if kind == "fishing_area":
 		detail_action_card_nodes.erase(track_id)
-		for raw_method_id in plan_item.get("method_ids", []) as Array:
+		for raw_method_id in lazy_entry.get("method_ids", []) as Array:
 			detail_action_card_nodes.erase(str(raw_method_id))
 		_discard_fishing_area_module_card_keys(track_id, mounted_card, skill_id)
 	elif kind != "fishing_offer":
 		detail_action_card_nodes.erase(track_id)
 		var card_key := _thieving_heist_card_key(track_id.substr("heist:".length())) if track_id.begins_with("heist:") else _action_key(skill_id, track_id)
 		_discard_action_card_key(card_key)
-	plan_item.erase("card")
+	lazy_entry.erase("card")
 	return true
 
 
