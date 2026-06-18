@@ -36767,8 +36767,8 @@ func _fishing_mirror_offer_available() -> bool:
 	return not fishing_mirror_collected and _skill_level("fishing") >= FISHING_MIRROR_OFFER_UNLOCK_LEVEL
 
 
-func _fishing_visible_tool_defs() -> Array:
-	var visible_tools: Array = []
+func _fishing_visible_wallet_tool_defs() -> Array:
+	var visible_wallet_tools: Array = []
 	var rod_slot_id := "line"
 	if fishing_star_rod_collected:
 		rod_slot_id = "star_rod"
@@ -36779,8 +36779,8 @@ func _fishing_visible_tool_defs() -> Array:
 		var tool_id := str(tool.get("id", ""))
 		if tool_id in ["line", "reinforced_rod", "star_rod"] and tool_id != rod_slot_id:
 			continue
-		visible_tools.append(tool)
-	return visible_tools
+		visible_wallet_tools.append(tool)
+	return visible_wallet_tools
 
 
 func _restore_fishing_unlock_from_equipped_tool(tool_id: String) -> void:
@@ -36915,17 +36915,17 @@ func _fishing_tool_yield_bonus() -> int:
 	return 0
 
 
-func _fishing_wallet_choice_tools() -> Array:
-	var choices: Array = []
-	for raw_tool in _fishing_visible_tool_defs():
+func _fishing_wallet_selectable_tools() -> Array:
+	var selectable_tools: Array = []
+	for raw_tool in _fishing_visible_wallet_tool_defs():
 		var tool := raw_tool as Dictionary
 		var tool_id := str(tool.get("id", ""))
 		if tool_id == equipped_fishing_tool_id:
 			continue
 		if not _fishing_tool_is_unlocked(tool_id):
 			continue
-		choices.append(tool)
-	return choices
+		selectable_tools.append(tool)
+	return selectable_tools
 
 
 func _fishing_atlas_texture(path: String, region: Rect2) -> Texture2D:
@@ -37121,8 +37121,8 @@ func _render_fishing_tool_circle_menu(_parent: Control) -> void:
 	_clear_fishing_tool_circle_menu()
 	if detail_fish_circle == null or not is_instance_valid(detail_fish_circle):
 		return
-	var tool_defs := _fishing_visible_tool_defs()
-	var row_count := tool_defs.size()
+	var visible_wallet_tools := _fishing_visible_wallet_tool_defs()
+	var row_count := visible_wallet_tools.size()
 	var gear_button_size := 128.0
 	var gear_gap := 14.0
 	var panel_padding := 18.0
@@ -37153,8 +37153,8 @@ func _render_fishing_tool_circle_menu(_parent: Control) -> void:
 	var tool_ids: Array = []
 	var tool_icons: Array = []
 	var unlocked_states: Array = []
-	for index in range(tool_defs.size()):
-		var raw_tool = tool_defs[index]
+	for index in range(visible_wallet_tools.size()):
+		var raw_tool = visible_wallet_tools[index]
 		var tool := raw_tool as Dictionary
 		var tool_id := str(tool.get("id", ""))
 		var unlocked := _fishing_tool_is_unlocked(tool_id)
@@ -37179,8 +37179,8 @@ func _render_fishing_tool_popup_menu() -> void:
 		return
 	_clear_fishing_tool_circle_menu()
 	fishing_tool_wallet_open = true
-	var choice_tools := _fishing_visible_tool_defs()
-	var row_count := choice_tools.size()
+	var visible_wallet_tools := _fishing_visible_wallet_tool_defs()
+	var row_count := visible_wallet_tools.size()
 	if row_count <= 0:
 		return
 	var circle_rect := detail_fish_circle.get_global_rect()
@@ -37221,8 +37221,8 @@ func _render_fishing_tool_popup_menu() -> void:
 	column.size = Vector2(panel_width - panel_padding * 2.0, panel_height - panel_padding * 2.0)
 	column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popup.add_child(column)
-	for index in range(choice_tools.size()):
-		var tool := choice_tools[index] as Dictionary
+	for index in range(visible_wallet_tools.size()):
+		var tool := visible_wallet_tools[index] as Dictionary
 		var tool_id := str(tool.get("id", ""))
 		var unlocked := _fishing_tool_is_unlocked(tool_id)
 		var equipped := tool_id == equipped_fishing_tool_id
