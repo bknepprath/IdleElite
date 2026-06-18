@@ -15388,30 +15388,30 @@ func _discard_detail_lazy_cached_root(lazy_entry: Dictionary) -> void:
 
 
 func _detail_lazy_mount_cached_item(
-	plan_item: Dictionary,
+	lazy_entry: Dictionary,
 	skill_id: String,
 	content_width: float,
 	actions_width: float,
 	fade_in: bool
 ) -> bool:
-	var cached_root := _valid_control_ref(plan_item.get("cached_root"))
+	var cached_root := _valid_control_ref(lazy_entry.get("cached_root"))
 	if cached_root == null or cached_root.is_queued_for_deletion():
-		plan_item.erase("cached_root")
-		plan_item.erase("cached_card")
-		plan_item.erase("cached_built")
+		lazy_entry.erase("cached_root")
+		lazy_entry.erase("cached_card")
+		lazy_entry.erase("cached_built")
 		return false
-	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
+	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
 	if stack_host == null or not is_instance_valid(stack_host):
 		return false
-	var track_id := str(plan_item.get("track_id", ""))
+	var track_id := str(lazy_entry.get("track_id", ""))
 	if track_id.is_empty():
 		return false
-	var kind := str(plan_item.get("kind", ""))
-	var cached_card := plan_item.get("cached_card", {}) as Dictionary
+	var kind := str(lazy_entry.get("kind", ""))
+	var cached_card := lazy_entry.get("cached_card", {}) as Dictionary
 	if kind == "heist":
-		_discard_detail_lazy_cached_root(plan_item)
+		_discard_detail_lazy_cached_root(lazy_entry)
 		return false
-	if bool(plan_item.get("direct_stack_child", false)):
+	if bool(lazy_entry.get("direct_stack_child", false)):
 		var parent := stack_host.get_parent()
 		if parent == null or not is_instance_valid(parent):
 			return false
@@ -15426,40 +15426,40 @@ func _detail_lazy_mount_cached_item(
 		cached_root.visible = true
 		_set_canvas_item_modulate_if_changed(cached_root, Color.WHITE)
 		_enable_interactive_control_tree(cached_root)
-		plan_item["stack_host"] = cached_root
-		plan_item["placeholder"] = null
+		lazy_entry["stack_host"] = cached_root
+		lazy_entry["placeholder"] = null
 		detail_action_card_nodes[track_id] = cached_root
-		plan_item["mounted"] = true
+		lazy_entry["mounted"] = true
 		return true
 	if kind == "fishing_area":
-		var placeholder := _valid_control_ref(plan_item.get("placeholder"))
+		var placeholder := _valid_control_ref(lazy_entry.get("placeholder"))
 		_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-		plan_item["placeholder"] = null
+		lazy_entry["placeholder"] = null
 		if cached_root.get_parent() != null:
 			cached_root.get_parent().remove_child(cached_root)
 		cached_root.visible = true
 		_enable_interactive_control_tree(cached_root)
 		_detail_lazy_add_child_to_host(stack_host, cached_root, content_width, actions_width)
-		var cached_built := plan_item.get("cached_built", {}) as Dictionary
+		var cached_built := lazy_entry.get("cached_built", {}) as Dictionary
 		var area_key := track_id
 		var area_card := cached_card
 		if not cached_built.is_empty():
 			area_key = str(cached_built.get("area_key", track_id))
 			area_card = cached_built.get("area_card", cached_card) as Dictionary
-			plan_item["built"] = cached_built
+			lazy_entry["built"] = cached_built
 		_register_action_card(area_key, area_card)
-		plan_item["card"] = area_card
+		lazy_entry["card"] = area_card
 		detail_action_card_nodes[area_key] = stack_host
-		for raw_method_id in plan_item.get("method_ids", []) as Array:
+		for raw_method_id in lazy_entry.get("method_ids", []) as Array:
 			detail_action_card_nodes[str(raw_method_id)] = stack_host
 		if fade_in:
 			_play_detail_lazy_fade_in(cached_root)
-		plan_item["mounted"] = true
+		lazy_entry["mounted"] = true
 		return true
 	if kind == "fishing_offer":
-		var placeholder := _valid_control_ref(plan_item.get("placeholder"))
+		var placeholder := _valid_control_ref(lazy_entry.get("placeholder"))
 		_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-		plan_item["placeholder"] = null
+		lazy_entry["placeholder"] = null
 		if cached_root.get_parent() != null:
 			cached_root.get_parent().remove_child(cached_root)
 		cached_root.visible = true
@@ -15467,13 +15467,13 @@ func _detail_lazy_mount_cached_item(
 		_detail_lazy_add_child_to_host(stack_host, cached_root, content_width, actions_width)
 		if fade_in:
 			_play_detail_lazy_fade_in(cached_root)
-		plan_item["mounted"] = true
+		lazy_entry["mounted"] = true
 		return true
 	if kind != "action" and kind != "passive":
 		return false
-	var placeholder := _valid_control_ref(plan_item.get("placeholder"))
+	var placeholder := _valid_control_ref(lazy_entry.get("placeholder"))
 	_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
-	plan_item["placeholder"] = null
+	lazy_entry["placeholder"] = null
 	if cached_root.get_parent() != null:
 		cached_root.get_parent().remove_child(cached_root)
 	cached_root.visible = true
@@ -15483,13 +15483,13 @@ func _detail_lazy_mount_cached_item(
 		_play_detail_lazy_fade_in(cached_root)
 	if cached_card.is_empty():
 		return false
-	var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
+	var action := (lazy_entry.get("entry") as Dictionary).get("action", {}) as Dictionary
 	cached_card["entry"] = stack_host
 	_register_action_card(_action_key(skill_id, track_id), cached_card)
-	plan_item["card"] = cached_card
+	lazy_entry["card"] = cached_card
 	_detail_lazy_finalize_action_card(cached_card, skill_id, action, track_id)
 	detail_action_card_nodes[track_id] = stack_host
-	plan_item["mounted"] = true
+	lazy_entry["mounted"] = true
 	return true
 
 
