@@ -920,6 +920,10 @@ Assert-True ($lazyRebind -notmatch '\bplan_item\b') "Lazy stack rebinds should n
 $lazyMountAllSync = Get-FunctionBody -Text $main -Name "_detail_lazy_mount_all_sync"
 Assert-True ($lazyMountAllSync -match 'var lazy_entry := detail_lazy_plan\[plan_index\] as Dictionary') "Lazy mount-all sync should name scanned render records as lazy entries."
 Assert-True ($lazyMountAllSync -notmatch '\bplan_item\b') "Lazy mount-all sync should not use stale plan-item wording internally."
+$lazyMountInitialWindowSync = Get-FunctionBody -Text $main -Name "_detail_lazy_mount_initial_window_sync"
+Assert-True ($lazyMountInitialWindowSync -match 'var lazy_entry := detail_lazy_plan\[plan_index\] as Dictionary') "Initial lazy-window mounting should name scanned render records as lazy entries."
+Assert-True ($lazyMountInitialWindowSync -match '_detail_lazy_entry_is_pinned\(lazy_entry, pinned\)') "Initial lazy-window mounting should preserve pinned-entry checks through entry naming."
+Assert-True ($lazyMountInitialWindowSync -notmatch '\bplan_item\b') "Initial lazy-window mounting should not use stale plan-item wording internally."
 Assert-True ($main -match 'func _ensure_activity_unlock_preview_lazy_entry') "Activity unlock preview helper should use lazy-entry naming."
 Assert-True ($main -notmatch '_ensure_activity_unlock_preview_lazy_plan_item') "Activity unlock preview helper should not use stale lazy-plan-item naming."
 

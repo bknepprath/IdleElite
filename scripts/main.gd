@@ -16310,14 +16310,14 @@ func _detail_lazy_mount_initial_window_sync(instant := true, mount_count: int = 
 	var mounted_count := 0
 	var pinned := _detail_lazy_pinned_track_ids()
 	for plan_index in range(detail_lazy_plan.size()):
-		var plan_item := detail_lazy_plan[plan_index] as Dictionary
-		if bool(plan_item.get("mounted", false)):
+		var lazy_entry := detail_lazy_plan[plan_index] as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
 			continue
-		if plan_index >= target and not _detail_lazy_entry_is_pinned(plan_item, pinned):
+		if plan_index >= target and not _detail_lazy_entry_is_pinned(lazy_entry, pinned):
 			continue
 		var content_width := _skill_content_width()
 		var actions_width := content_width
-		if _detail_lazy_mount_item(plan_item, selected_skill_id, content_width, actions_width, not instant):
+		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant):
 			mounted_count += 1
 	return mounted_count
 
