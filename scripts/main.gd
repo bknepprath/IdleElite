@@ -15375,16 +15375,16 @@ func _park_detail_lazy_cached_root(root: Control) -> void:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-func _discard_detail_lazy_cached_root(plan_item: Dictionary) -> void:
-	var cached_root := _valid_control_ref(plan_item.get("cached_root"))
-	var stack_host := _valid_control_ref(plan_item.get("stack_host"))
+func _discard_detail_lazy_cached_root(lazy_entry: Dictionary) -> void:
+	var cached_root := _valid_control_ref(lazy_entry.get("cached_root"))
+	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
 	if cached_root != null and cached_root != stack_host and not cached_root.is_queued_for_deletion():
 		if cached_root.get_parent() != null:
 			cached_root.queue_free()
 		else:
 			cached_root.free()
-	plan_item.erase("cached_root")
-	plan_item.erase("cached_card")
+	lazy_entry.erase("cached_root")
+	lazy_entry.erase("cached_card")
 
 
 func _detail_lazy_mount_cached_item(
