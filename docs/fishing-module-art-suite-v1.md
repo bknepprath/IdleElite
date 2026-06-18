@@ -6,123 +6,123 @@ Style target: chunky Idle Elite fishing art, thick outlines, low-texture cartoon
 
 ## Style-Lock Approved Anchors
 
-![Fishing module contact sheet v8](../assets/content/fishing/module-previews/fishing-modules-contact-sheet-v8-style-lock-approved-anchors.png)
+![Fishing module contact sheet v8](art-source/asset-sources/fishing-module-preview-sources/fishing-modules-contact-sheet-v8-style-lock-approved-anchors.png)
 
 This pass uses the `$idle-elite-style-lock` approved anchors as the style source of truth. Fishing backgrounds are treated only as subject/context references.
 
 | Module | Candidate art | Notes |
 | --- | --- | --- |
-| Beach | ![Beach](../assets/content/fishing/module-previews/module-beach-v8-style-lock-approved-anchors.png) | Toy-like tide pool plate with heavy outlines and simple prop details. |
-| Pier | ![Pier](../assets/content/fishing/module-previews/module-pier-v8-style-lock-approved-anchors.png) | Dock, reeds, lily pads, bucket, and bobber in approved-anchor shape language. |
-| River | ![River](../assets/content/fishing/module-previews/module-river-v8-style-lock-approved-anchors.png) | Chunky river/rocks/trees with stronger black outlines. |
-| Sewers | ![Sewers](../assets/content/fishing/module-previews/module-sewers-v8-style-lock-approved-anchors.png) | Sewer plate translated into simple outlined prop language. |
-| Winter Lake | ![Winter Lake](../assets/content/fishing/module-previews/module-winter-lake-v8-style-lock-approved-anchors.png) | Ice fishing plate with simplified props and thick outlines. |
-| Reef | ![Reef](../assets/content/fishing/module-previews/module-reef-v8-style-lock-approved-anchors.png) | Reef module with simplified coral props and small fish. |
-| Sea | ![Sea](../assets/content/fishing/module-previews/module-sea-v8-style-lock-approved-anchors.png) | Rowboat and buoy as bold toy-like props. |
-| Deep Sea | ![Deep Sea](../assets/content/fishing/module-previews/module-deep-sea-v8-style-lock-approved-anchors.png) | Wreck/rocks/fish with stronger silhouette read. |
-| Stormy Sea | ![Stormy Sea](../assets/content/fishing/module-previews/module-stormy-sea-v8-style-lock-approved-anchors.png) | Storm waves and ray detail with heavier outline treatment. |
-| Space Fishing | ![Space Fishing](../assets/content/fishing/module-previews/module-space-fishing-v8-style-lock-approved-anchors.png) | Cosmic water/starfish scene in the same bold plate format. |
+| Beach | ![Beach](art-source/asset-sources/fishing-module-preview-sources/module-beach-v8-style-lock-approved-anchors.png) | Toy-like tide pool plate with heavy outlines and simple prop details. |
+| Pier | ![Pier](art-source/asset-sources/fishing-module-preview-sources/module-pier-v8-style-lock-approved-anchors.png) | Dock, reeds, lily pads, bucket, and bobber in approved-anchor shape language. |
+| River | ![River](art-source/asset-sources/fishing-module-preview-sources/module-river-v8-style-lock-approved-anchors.png) | Chunky river/rocks/trees with stronger black outlines. |
+| Sewers | ![Sewers](art-source/asset-sources/fishing-module-preview-sources/module-sewers-v8-style-lock-approved-anchors.png) | Sewer plate translated into simple outlined prop language. |
+| Winter Lake | ![Winter Lake](art-source/asset-sources/fishing-module-preview-sources/module-winter-lake-v8-style-lock-approved-anchors.png) | Ice fishing plate with simplified props and thick outlines. |
+| Reef | ![Reef](art-source/asset-sources/fishing-module-preview-sources/module-reef-v8-style-lock-approved-anchors.png) | Reef module with simplified coral props and small fish. |
+| Sea | ![Sea](art-source/asset-sources/fishing-module-preview-sources/module-sea-v8-style-lock-approved-anchors.png) | Rowboat and buoy as bold toy-like props. |
+| Deep Sea | ![Deep Sea](art-source/asset-sources/fishing-module-preview-sources/module-deep-sea-v8-style-lock-approved-anchors.png) | Wreck/rocks/fish with stronger silhouette read. |
+| Stormy Sea | ![Stormy Sea](art-source/asset-sources/fishing-module-preview-sources/module-stormy-sea-v8-style-lock-approved-anchors.png) | Storm waves and ray detail with heavier outline treatment. |
+| Space Fishing | ![Space Fishing](art-source/asset-sources/fishing-module-preview-sources/module-space-fishing-v8-style-lock-approved-anchors.png) | Cosmic water/starfish scene in the same bold plate format. |
 
 ## Skill-Guided Regeneration
 
-![Fishing module contact sheet v6](../assets/content/fishing/module-previews/fishing-modules-contact-sheet-v6-idle-skill.png)
+![Fishing module contact sheet v6](art-source/asset-sources/fishing-module-preview-sources/fishing-modules-contact-sheet-v6-idle-skill.png)
 
 This pass used task-local fishing backgrounds incorrectly as style anchors. Kept for comparison, but superseded by v8.
 
 ## Environmental Low-Texture Pass
 
-![Fishing module contact sheet v5](../assets/content/fishing/module-previews/fishing-modules-contact-sheet-v5-environmental-low-texture.png)
+![Fishing module contact sheet v5](art-source/asset-sources/fishing-module-preview-sources/fishing-modules-contact-sheet-v5-environmental-low-texture.png)
 
 This pass combines the preferred wide environmental framing with reduced surface texture: cleaner rocks, water, snow, wood, and sky while avoiding the close-up mascot feel.
 
 | Module | Candidate art | Notes |
 | --- | --- | --- |
-| Beach | ![Beach](../assets/content/fishing/module-previews/module-beach-v5-environmental-low-texture.png) | Wide low-texture tide pool shallows with rocks, shell, crab. |
-| Pier | ![Pier](../assets/content/fishing/module-previews/module-pier-v5-environmental-low-texture.png) | Clean dock and pond edge with bucket, reeds, bobber. |
-| River | ![River](../assets/content/fishing/module-previews/module-river-v5-environmental-low-texture.png) | Smooth river bend with banks, stones, fish ripple. |
-| Sewers | ![Sewers](../assets/content/fishing/module-previews/module-sewers-v5-environmental-low-texture.png) | Simplified sewer spot with arch, pipe, pool, eel detail. |
-| Winter Lake | ![Winter Lake](../assets/content/fishing/module-previews/module-winter-lake-v5-environmental-low-texture.png) | Clean frozen lake with ice hole, stool, rod. |
-| Reef | ![Reef](../assets/content/fishing/module-previews/module-reef-v5-environmental-low-texture.png) | Underwater reef landscape with smoother coral shelves. |
-| Sea | ![Sea](../assets/content/fishing/module-previews/module-sea-v5-environmental-low-texture.png) | Smooth offshore rowboat scene with buoy and horizon. |
-| Deep Sea | ![Deep Sea](../assets/content/fishing/module-previews/module-deep-sea-v5-environmental-low-texture.png) | Low-texture abyss wreck with small glowing fish. |
-| Stormy Sea | ![Stormy Sea](../assets/content/fishing/module-previews/module-stormy-sea-v5-environmental-low-texture.png) | Cleaner storm waves, lightning, ray fin. |
-| Space Fishing | ![Space Fishing](../assets/content/fishing/module-previews/module-space-fishing-v5-environmental-low-texture.png) | Smooth cosmic sea with moon, stars, starfish glints. |
+| Beach | ![Beach](art-source/asset-sources/fishing-module-preview-sources/module-beach-v5-environmental-low-texture.png) | Wide low-texture tide pool shallows with rocks, shell, crab. |
+| Pier | ![Pier](art-source/asset-sources/fishing-module-preview-sources/module-pier-v5-environmental-low-texture.png) | Clean dock and pond edge with bucket, reeds, bobber. |
+| River | ![River](art-source/asset-sources/fishing-module-preview-sources/module-river-v5-environmental-low-texture.png) | Smooth river bend with banks, stones, fish ripple. |
+| Sewers | ![Sewers](art-source/asset-sources/fishing-module-preview-sources/module-sewers-v5-environmental-low-texture.png) | Simplified sewer spot with arch, pipe, pool, eel detail. |
+| Winter Lake | ![Winter Lake](art-source/asset-sources/fishing-module-preview-sources/module-winter-lake-v5-environmental-low-texture.png) | Clean frozen lake with ice hole, stool, rod. |
+| Reef | ![Reef](art-source/asset-sources/fishing-module-preview-sources/module-reef-v5-environmental-low-texture.png) | Underwater reef landscape with smoother coral shelves. |
+| Sea | ![Sea](art-source/asset-sources/fishing-module-preview-sources/module-sea-v5-environmental-low-texture.png) | Smooth offshore rowboat scene with buoy and horizon. |
+| Deep Sea | ![Deep Sea](art-source/asset-sources/fishing-module-preview-sources/module-deep-sea-v5-environmental-low-texture.png) | Low-texture abyss wreck with small glowing fish. |
+| Stormy Sea | ![Stormy Sea](art-source/asset-sources/fishing-module-preview-sources/module-stormy-sea-v5-environmental-low-texture.png) | Cleaner storm waves, lightning, ray fin. |
+| Space Fishing | ![Space Fishing](art-source/asset-sources/fishing-module-preview-sources/module-space-fishing-v5-environmental-low-texture.png) | Smooth cosmic sea with moon, stars, starfish glints. |
 
 ## Environmental Pass
 
-![Fishing module contact sheet v4](../assets/content/fishing/module-previews/fishing-modules-contact-sheet-v4-environmental.png)
+![Fishing module contact sheet v4](art-source/asset-sources/fishing-module-preview-sources/fishing-modules-contact-sheet-v4-environmental.png)
 
 This pass bounces back toward the original game-background feel: wider framing, environmental depth, small creature details instead of face-forward mascot art, and cleaner texture than the first painterly pass.
 
 | Module | Candidate art | Notes |
 | --- | --- | --- |
-| Beach | ![Beach](../assets/content/fishing/module-previews/module-beach-v4-environmental.png) | Wide tide pool shallows with rocks, shell, crab, horizon. |
-| Pier | ![Pier](../assets/content/fishing/module-previews/module-pier-v4-environmental.png) | Scenic dock and pond edge with bucket, reeds, bobber. |
-| River | ![River](../assets/content/fishing/module-previews/module-river-v4-environmental.png) | River bend with trees, banks, stones, fish ripple. |
-| Sewers | ![Sewers](../assets/content/fishing/module-previews/module-sewers-v4-environmental.png) | Sewer fishing spot with arch, pipe, green pool, eel detail. |
-| Winter Lake | ![Winter Lake](../assets/content/fishing/module-previews/module-winter-lake-v4-environmental.png) | Wide frozen lake scene with hole, stool, rod. |
-| Reef | ![Reef](../assets/content/fishing/module-previews/module-reef-v4-environmental.png) | Underwater reef landscape with coral shelves and small fish. |
-| Sea | ![Sea](../assets/content/fishing/module-previews/module-sea-v4-environmental.png) | Offshore rowboat scene with buoy and horizon. |
-| Deep Sea | ![Deep Sea](../assets/content/fishing/module-previews/module-deep-sea-v4-environmental.png) | Deep abyss wreck with glowing fish and rocks. |
-| Stormy Sea | ![Stormy Sea](../assets/content/fishing/module-previews/module-stormy-sea-v4-environmental.png) | Storm ocean environment with lightning, waves, ray detail. |
-| Space Fishing | ![Space Fishing](../assets/content/fishing/module-previews/module-space-fishing-v4-environmental.png) | Cosmic dream sea landscape with moon, stars, starfish glints. |
+| Beach | ![Beach](art-source/asset-sources/fishing-module-preview-sources/module-beach-v4-environmental.png) | Wide tide pool shallows with rocks, shell, crab, horizon. |
+| Pier | ![Pier](art-source/asset-sources/fishing-module-preview-sources/module-pier-v4-environmental.png) | Scenic dock and pond edge with bucket, reeds, bobber. |
+| River | ![River](art-source/asset-sources/fishing-module-preview-sources/module-river-v4-environmental.png) | River bend with trees, banks, stones, fish ripple. |
+| Sewers | ![Sewers](art-source/asset-sources/fishing-module-preview-sources/module-sewers-v4-environmental.png) | Sewer fishing spot with arch, pipe, green pool, eel detail. |
+| Winter Lake | ![Winter Lake](art-source/asset-sources/fishing-module-preview-sources/module-winter-lake-v4-environmental.png) | Wide frozen lake scene with hole, stool, rod. |
+| Reef | ![Reef](art-source/asset-sources/fishing-module-preview-sources/module-reef-v4-environmental.png) | Underwater reef landscape with coral shelves and small fish. |
+| Sea | ![Sea](art-source/asset-sources/fishing-module-preview-sources/module-sea-v4-environmental.png) | Offshore rowboat scene with buoy and horizon. |
+| Deep Sea | ![Deep Sea](art-source/asset-sources/fishing-module-preview-sources/module-deep-sea-v4-environmental.png) | Deep abyss wreck with glowing fish and rocks. |
+| Stormy Sea | ![Stormy Sea](art-source/asset-sources/fishing-module-preview-sources/module-stormy-sea-v4-environmental.png) | Storm ocean environment with lightning, waves, ray detail. |
+| Space Fishing | ![Space Fishing](art-source/asset-sources/fishing-module-preview-sources/module-space-fishing-v4-environmental.png) | Cosmic dream sea landscape with moon, stars, starfish glints. |
 
 ## Low-Texture Experiment
 
-![Fishing module contact sheet v3](../assets/content/fishing/module-previews/fishing-modules-contact-sheet-v3-low-texture.png)
+![Fishing module contact sheet v3](art-source/asset-sources/fishing-module-preview-sources/fishing-modules-contact-sheet-v3-low-texture.png)
 
 This is the cleaner cartoon pass: smooth fills, less brush texture, fewer gritty details, and simple shadow bands. It reads more zoomed-in and mascot-like than the preferred environmental direction.
 
 | Module | Candidate art | Notes |
 | --- | --- | --- |
-| Beach | ![Beach](../assets/content/fishing/module-previews/module-beach-v3-low-texture.png) | Smooth tide pool, chunky rocks, shell, crab. |
-| Pier | ![Pier](../assets/content/fishing/module-previews/module-pier-v3-low-texture.png) | Low-texture dock corner, pilings, bucket, bobber, reeds. |
-| River | ![River](../assets/content/fishing/module-previews/module-river-v3-low-texture.png) | Clean S-curve river with simple banks and fish ripple. |
-| Sewers | ![Sewers](../assets/content/fishing/module-previews/module-sewers-v3-low-texture.png) | Smooth sewer arch, pipe, green pool, silly eel. |
-| Winter Lake | ![Winter Lake](../assets/content/fishing/module-previews/module-winter-lake-v3-low-texture.png) | Flat icy lake, ice hole, stool, scarf, rod. |
-| Reef | ![Reef](../assets/content/fishing/module-previews/module-reef-v3-low-texture.png) | Smooth coral blobs and cute fish. |
-| Sea | ![Sea](../assets/content/fishing/module-previews/module-sea-v3-low-texture.png) | Clean rowboat, calm water, buoy, horizon. |
-| Deep Sea | ![Deep Sea](../assets/content/fishing/module-previews/module-deep-sea-v3-low-texture.png) | Simple wreck shape and glowing fish. |
-| Stormy Sea | ![Stormy Sea](../assets/content/fishing/module-previews/module-stormy-sea-v3-low-texture.png) | Smooth waves, lightning, ray fin. |
-| Space Fishing | ![Space Fishing](../assets/content/fishing/module-previews/module-space-fishing-v3-low-texture.png) | Smooth purple star sea, crescent moon, starfish. |
+| Beach | ![Beach](art-source/asset-sources/fishing-module-preview-sources/module-beach-v3-low-texture.png) | Smooth tide pool, chunky rocks, shell, crab. |
+| Pier | ![Pier](art-source/asset-sources/fishing-module-preview-sources/module-pier-v3-low-texture.png) | Low-texture dock corner, pilings, bucket, bobber, reeds. |
+| River | ![River](art-source/asset-sources/fishing-module-preview-sources/module-river-v3-low-texture.png) | Clean S-curve river with simple banks and fish ripple. |
+| Sewers | ![Sewers](art-source/asset-sources/fishing-module-preview-sources/module-sewers-v3-low-texture.png) | Smooth sewer arch, pipe, green pool, silly eel. |
+| Winter Lake | ![Winter Lake](art-source/asset-sources/fishing-module-preview-sources/module-winter-lake-v3-low-texture.png) | Flat icy lake, ice hole, stool, scarf, rod. |
+| Reef | ![Reef](art-source/asset-sources/fishing-module-preview-sources/module-reef-v3-low-texture.png) | Smooth coral blobs and cute fish. |
+| Sea | ![Sea](art-source/asset-sources/fishing-module-preview-sources/module-sea-v3-low-texture.png) | Clean rowboat, calm water, buoy, horizon. |
+| Deep Sea | ![Deep Sea](art-source/asset-sources/fishing-module-preview-sources/module-deep-sea-v3-low-texture.png) | Simple wreck shape and glowing fish. |
+| Stormy Sea | ![Stormy Sea](art-source/asset-sources/fishing-module-preview-sources/module-stormy-sea-v3-low-texture.png) | Smooth waves, lightning, ray fin. |
+| Space Fishing | ![Space Fishing](art-source/asset-sources/fishing-module-preview-sources/module-space-fishing-v3-low-texture.png) | Smooth purple star sea, crescent moon, starfish. |
 
 ## Earlier Simple Pass
 
-![Fishing module contact sheet v2](../assets/content/fishing/module-previews/fishing-modules-contact-sheet-v2-simple.png)
+![Fishing module contact sheet v2](art-source/asset-sources/fishing-module-preview-sources/fishing-modules-contact-sheet-v2-simple.png)
 
 This is the simpler, more cartoony pass: bigger shapes, less texture than v1, fewer objects, faster mobile readability.
 
 | Module | Candidate art | Notes |
 | --- | --- | --- |
-| Beach | ![Beach](../assets/content/fishing/module-previews/module-beach-v2-simple.png) | Simple tide pool, chunky rocks, shell, crab. |
-| Pier | ![Pier](../assets/content/fishing/module-previews/module-pier-v2-simple.png) | Dock corner, pilings, bucket, bobber, reeds. |
-| River | ![River](../assets/content/fishing/module-previews/module-river-v2-simple.png) | Clear river curve with big banks and fish ripple. |
-| Sewers | ![Sewers](../assets/content/fishing/module-previews/module-sewers-v2-simple.png) | Playful sewer arch, pipe, green pool, silly eel. |
-| Winter Lake | ![Winter Lake](../assets/content/fishing/module-previews/module-winter-lake-v2-simple.png) | Ice hole, stool, scarf, rod, snow banks. |
-| Reef | ![Reef](../assets/content/fishing/module-previews/module-reef-v2-simple.png) | Big coral blobs and cute fish. |
-| Sea | ![Sea](../assets/content/fishing/module-previews/module-sea-v2-simple.png) | Tiny rowboat, calm water, buoy, horizon. |
-| Deep Sea | ![Deep Sea](../assets/content/fishing/module-previews/module-deep-sea-v2-simple.png) | Chunky wreck and glowing fish. |
-| Stormy Sea | ![Stormy Sea](../assets/content/fishing/module-previews/module-stormy-sea-v2-simple.png) | Chunky waves, lightning, ray fin. |
-| Space Fishing | ![Space Fishing](../assets/content/fishing/module-previews/module-space-fishing-v2-simple.png) | Purple star sea, crescent moon, starfish. |
+| Beach | ![Beach](art-source/asset-sources/fishing-module-preview-sources/module-beach-v2-simple.png) | Simple tide pool, chunky rocks, shell, crab. |
+| Pier | ![Pier](art-source/asset-sources/fishing-module-preview-sources/module-pier-v2-simple.png) | Dock corner, pilings, bucket, bobber, reeds. |
+| River | ![River](art-source/asset-sources/fishing-module-preview-sources/module-river-v2-simple.png) | Clear river curve with big banks and fish ripple. |
+| Sewers | ![Sewers](art-source/asset-sources/fishing-module-preview-sources/module-sewers-v2-simple.png) | Playful sewer arch, pipe, green pool, silly eel. |
+| Winter Lake | ![Winter Lake](art-source/asset-sources/fishing-module-preview-sources/module-winter-lake-v2-simple.png) | Ice hole, stool, scarf, rod, snow banks. |
+| Reef | ![Reef](art-source/asset-sources/fishing-module-preview-sources/module-reef-v2-simple.png) | Big coral blobs and cute fish. |
+| Sea | ![Sea](art-source/asset-sources/fishing-module-preview-sources/module-sea-v2-simple.png) | Tiny rowboat, calm water, buoy, horizon. |
+| Deep Sea | ![Deep Sea](art-source/asset-sources/fishing-module-preview-sources/module-deep-sea-v2-simple.png) | Chunky wreck and glowing fish. |
+| Stormy Sea | ![Stormy Sea](art-source/asset-sources/fishing-module-preview-sources/module-stormy-sea-v2-simple.png) | Chunky waves, lightning, ray fin. |
+| Space Fishing | ![Space Fishing](art-source/asset-sources/fishing-module-preview-sources/module-space-fishing-v2-simple.png) | Purple star sea, crescent moon, starfish. |
 
 ## Earlier Painterly Pass
 
-![Fishing module contact sheet](../assets/content/fishing/module-previews/fishing-modules-contact-sheet-v1.png)
+![Fishing module contact sheet](art-source/asset-sources/fishing-module-preview-sources/fishing-modules-contact-sheet-v1.png)
 
 ## Module Candidates
 
 | Module | Candidate art | Notes |
 | --- | --- | --- |
-| Beach | ![Beach](../assets/content/fishing/module-previews/module-beach-v1.png) | Sunny tide pool shallows, rocks, shell, crab. |
-| Pier | ![Pier](../assets/content/fishing/module-previews/module-pier-v1.png) | Wooden dock edge, cup, bucket, reeds, pilings. |
-| River | ![River](../assets/content/fishing/module-previews/module-river-v1.png) | Curving river bend with stones and grassy banks. |
-| Sewers | ![Sewers](../assets/content/fishing/module-previews/module-sewers-v1.png) | Rounded drain gate, green pool, pipe, eel silhouette. |
-| Winter Lake | ![Winter Lake](../assets/content/fishing/module-previews/module-winter-lake-v1.png) | Frozen lake, ice hole, stool, scarf, rod. |
-| Reef | ![Reef](../assets/content/fishing/module-previews/module-reef-v1.png) | Bright underwater coral and readable fish shapes. |
-| Sea | ![Sea](../assets/content/fishing/module-previews/module-sea-v1.png) | Calm offshore rowboat, buoy, horizon. |
-| Deep Sea | ![Deep Sea](../assets/content/fishing/module-previews/module-deep-sea-v1.png) | Abyssal wreck fragments and glowing fish. |
-| Stormy Sea | ![Stormy Sea](../assets/content/fishing/module-previews/module-stormy-sea-v1.png) | Chunky storm waves, lightning, ray ripple. |
-| Space Fishing | ![Space Fishing](../assets/content/fishing/module-previews/module-space-fishing-v1.png) | Cosmic reflective water, crescent moon, starfish glints. |
+| Beach | ![Beach](art-source/asset-sources/fishing-module-preview-sources/module-beach-v1.png) | Sunny tide pool shallows, rocks, shell, crab. |
+| Pier | ![Pier](art-source/asset-sources/fishing-module-preview-sources/module-pier-v1.png) | Wooden dock edge, cup, bucket, reeds, pilings. |
+| River | ![River](art-source/asset-sources/fishing-module-preview-sources/module-river-v1.png) | Curving river bend with stones and grassy banks. |
+| Sewers | ![Sewers](art-source/asset-sources/fishing-module-preview-sources/module-sewers-v1.png) | Rounded drain gate, green pool, pipe, eel silhouette. |
+| Winter Lake | ![Winter Lake](art-source/asset-sources/fishing-module-preview-sources/module-winter-lake-v1.png) | Frozen lake, ice hole, stool, scarf, rod. |
+| Reef | ![Reef](art-source/asset-sources/fishing-module-preview-sources/module-reef-v1.png) | Bright underwater coral and readable fish shapes. |
+| Sea | ![Sea](art-source/asset-sources/fishing-module-preview-sources/module-sea-v1.png) | Calm offshore rowboat, buoy, horizon. |
+| Deep Sea | ![Deep Sea](art-source/asset-sources/fishing-module-preview-sources/module-deep-sea-v1.png) | Abyssal wreck fragments and glowing fish. |
+| Stormy Sea | ![Stormy Sea](art-source/asset-sources/fishing-module-preview-sources/module-stormy-sea-v1.png) | Chunky storm waves, lightning, ray ripple. |
+| Space Fishing | ![Space Fishing](art-source/asset-sources/fishing-module-preview-sources/module-space-fishing-v1.png) | Cosmic reflective water, crescent moon, starfish glints. |
 
 ## Generation Prompt
 
