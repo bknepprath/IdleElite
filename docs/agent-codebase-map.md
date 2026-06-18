@@ -5,6 +5,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 ## Start Here
 
 - `AGENTS.md` is the process guardrail. Follow its Godot process safety rules before running any validation.
+- `docs/agent-onboarding-checklist.md` is the quick first-ten-minutes checklist for new agent tasks.
 - `scripts/main.gd` is the main gameplay, UI, save/load, networking, and presentation script. Use `docs/main-gd-ownership-map.md` before editing it.
 - `docs/activity-database.json` is the activity database source of truth. `docs/activity-database-data.js` is generated from it.
 - `docs/activity-database-contract.md` explains how the source JSON, generated JS, runtime loading, export filter, and validation scripts relate.

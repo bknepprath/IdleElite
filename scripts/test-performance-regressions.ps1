@@ -24,6 +24,7 @@ $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
 $perfMonitorPath = Join-Path $projectRoot "scripts\perf_monitor.gd"
 $checkProjectPath = Join-Path $projectRoot "scripts\check-project.ps1"
+$agentOnboardingPath = Join-Path $projectRoot "docs\agent-onboarding-checklist.md"
 $agentCodebaseMapPath = Join-Path $projectRoot "docs\agent-codebase-map.md"
 $runtimeAssetPathTestPath = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
 $activityDatabaseContractTestPath = Join-Path $projectRoot "scripts\check-activity-database-contracts.ps1"
@@ -115,6 +116,8 @@ Assert-True (Test-Path -LiteralPath $perfMonitorPath) "Missing scripts\perf_moni
 $perfMonitor = Get-Content -LiteralPath $perfMonitorPath -Raw
 Assert-True (Test-Path -LiteralPath $checkProjectPath) "Missing scripts\check-project.ps1."
 $checkProject = Get-Content -LiteralPath $checkProjectPath -Raw
+Assert-True (Test-Path -LiteralPath $agentOnboardingPath) "Missing docs\agent-onboarding-checklist.md."
+$agentOnboarding = Get-Content -LiteralPath $agentOnboardingPath -Raw
 Assert-True (Test-Path -LiteralPath $agentCodebaseMapPath) "Missing docs\agent-codebase-map.md."
 $agentCodebaseMap = Get-Content -LiteralPath $agentCodebaseMapPath -Raw
 Assert-True (Test-Path -LiteralPath $runtimeAssetPathTestPath) "Missing scripts\check-runtime-asset-paths.ps1."
@@ -185,6 +188,13 @@ Assert-True ($agentCodebaseMap -notmatch 'assets/ui/\*\*') "Agent codebase map s
 Assert-True ($agentCodebaseMap -match 'assets/content/\*\*') "Agent codebase map should list the active runtime content tree."
 Assert-True ($agentCodebaseMap -match 'generated-file-hygiene-ok') "Agent codebase map should include the current generated-file hygiene validation baseline."
 Assert-True ($agentCodebaseMap -match 'assets/content/ui') "Agent codebase map should explain that former runtime UI assets now live under assets/content/ui."
+Assert-True ($agentCodebaseMap -match 'agent-onboarding-checklist\.md') "Agent codebase map should point new agents to the onboarding checklist."
+Assert-True ($agentOnboarding -match 'First Ten Minutes') "Agent onboarding checklist should include a first-ten-minutes section."
+Assert-True ($agentOnboarding -match 'Source Of Truth Rules') "Agent onboarding checklist should include source-of-truth rules."
+Assert-True ($agentOnboarding -match 'Validation Flow') "Agent onboarding checklist should include validation flow."
+Assert-True ($agentOnboarding -match 'Remaining High-Risk Areas') "Agent onboarding checklist should list high-risk compatibility areas."
+Assert-True ($agentOnboarding -match 'Get-CimInstance Win32_Process') "Agent onboarding checklist should include the headless Godot sweep command."
+Assert-True ($agentOnboarding -match 'git status --short') "Agent onboarding checklist should tell agents to inspect dirty work before editing."
 Assert-True ($runtimeAssetPathTest -match 'project\.godot') "Runtime asset path validation should include project-level Godot references."
 Assert-True ($runtimeAssetPathTest -match 'export_presets\.cfg') "Runtime asset path validation should include Android export preset references."
 Assert-True ($runtimeAssetPathTest -match 'docs/activity-database\.json') "Runtime asset path validation should include activity database asset references."

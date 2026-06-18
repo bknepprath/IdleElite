@@ -462,13 +462,16 @@
         </div>
 
         <div class="work-item">
-          <h4><input type="checkbox"> 6.2 Final agent readability audit</h4>
+          <h4><input type="checkbox" checked> 6.2 Final agent readability audit</h4>
           <div class="goal-meta"><span class="tag">final audit</span><span class="tag">onboarding</span> Close the loop with a fresh-agent checklist.</div>
           <ul>
             <li>Review whether a new agent can identify important folders, generated files, validation commands, and risky areas quickly.</li>
             <li>Produce a concise new-agent onboarding checklist.</li>
             <li>List remaining risky areas that should not be renamed without deeper compatibility work.</li>
           </ul>
+          <p class="acceptance">
+            Done: added <code>docs/agent-onboarding-checklist.md</code> as the concise first-ten-minutes guide for future agents, linked it from the root and docs README plus the codebase map, and listed remaining high-risk compatibility areas including save keys, public data IDs, Godot/node contracts, export/boot assets, Firebase rules, activity card/lazy-render paths, skill swipe behavior, and offline reward math. Validation: <code>.\scripts\test-performance-regressions.ps1</code>, <code>.\scripts\check-generated-file-hygiene.ps1</code>, and <code>.\scripts\check-runtime-asset-paths.ps1</code> passed; <code>.\scripts\check-project.ps1</code> reached <code>generated-file-hygiene-ok</code>, <code>ui-boundary-contracts-ok</code>, <code>activity-ui-boundary-contracts-ok</code>, and <code>leaderboard-cost-safety-ok</code>, then failed on the existing skills-page performance gate for <code>swipe/build</code>. No headless Godot process was left behind.
+          </p>
         </div>
 
         <p class="acceptance">
