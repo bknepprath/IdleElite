@@ -105,7 +105,7 @@ def main() -> int:
         "assets/content/characters/stick-hero.png",
         "assets/content/logo/idle-elite-logo-cutout.png",
         "assets/content/fishing/catch-icons/00-minnow-cutout.png",
-        "assets/content/fishing/ui/fish-currency-cutout.png",
+        "assets/content/icons/resources/fish-currency-icon.png",
         ]
     for rel in files:
         r = read_png(root / rel)
