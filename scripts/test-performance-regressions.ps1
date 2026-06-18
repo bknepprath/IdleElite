@@ -24,6 +24,7 @@ $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
 $perfMonitorPath = Join-Path $projectRoot "scripts\perf_monitor.gd"
 $checkProjectPath = Join-Path $projectRoot "scripts\check-project.ps1"
+$agentCodebaseMapPath = Join-Path $projectRoot "docs\agent-codebase-map.md"
 $runtimeAssetPathTestPath = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
 $activityDatabaseContractTestPath = Join-Path $projectRoot "scripts\check-activity-database-contracts.ps1"
 $generatedFileHygieneTestPath = Join-Path $projectRoot "scripts\check-generated-file-hygiene.ps1"
@@ -114,6 +115,8 @@ Assert-True (Test-Path -LiteralPath $perfMonitorPath) "Missing scripts\perf_moni
 $perfMonitor = Get-Content -LiteralPath $perfMonitorPath -Raw
 Assert-True (Test-Path -LiteralPath $checkProjectPath) "Missing scripts\check-project.ps1."
 $checkProject = Get-Content -LiteralPath $checkProjectPath -Raw
+Assert-True (Test-Path -LiteralPath $agentCodebaseMapPath) "Missing docs\agent-codebase-map.md."
+$agentCodebaseMap = Get-Content -LiteralPath $agentCodebaseMapPath -Raw
 Assert-True (Test-Path -LiteralPath $runtimeAssetPathTestPath) "Missing scripts\check-runtime-asset-paths.ps1."
 $runtimeAssetPathTest = Get-Content -LiteralPath $runtimeAssetPathTestPath -Raw
 Assert-True (Test-Path -LiteralPath $activityDatabaseContractTestPath) "Missing scripts\check-activity-database-contracts.ps1."
@@ -178,6 +181,10 @@ Assert-True ($checkProject -match 'check-ui-boundary-contracts\.ps1') "Project v
 Assert-True ($checkProject -match 'check-activity-ui-boundary-contracts\.ps1') "Project validation should run the activity UI boundary contract gate."
 Assert-True ($checkProject -match 'check-leaderboard-cost-safety\.ps1') "Project validation should run the leaderboard cost-safety gate."
 Assert-True ($checkProject -match 'test-skills-page-performance-repeat\.ps1') "Strict project validation should run the repeated skills-page performance gate."
+Assert-True ($agentCodebaseMap -notmatch 'assets/ui/\*\*') "Agent codebase map should not list the removed assets/ui split as active runtime art."
+Assert-True ($agentCodebaseMap -match 'assets/content/\*\*') "Agent codebase map should list the active runtime content tree."
+Assert-True ($agentCodebaseMap -match 'generated-file-hygiene-ok') "Agent codebase map should include the current generated-file hygiene validation baseline."
+Assert-True ($agentCodebaseMap -match 'assets/content/ui') "Agent codebase map should explain that former runtime UI assets now live under assets/content/ui."
 Assert-True ($runtimeAssetPathTest -match 'project\.godot') "Runtime asset path validation should include project-level Godot references."
 Assert-True ($runtimeAssetPathTest -match 'export_presets\.cfg') "Runtime asset path validation should include Android export preset references."
 Assert-True ($runtimeAssetPathTest -match 'docs/activity-database\.json') "Runtime asset path validation should include activity database asset references."

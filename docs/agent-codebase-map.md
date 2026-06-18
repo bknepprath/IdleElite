@@ -24,7 +24,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 | Shell UI boundaries | `docs/ui-runtime-boundary-map.md`, `scripts/check-ui-boundary-contracts.ps1` | Navigation, home, shop, chat, leaderboard, and profile still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
 | Activity UI boundaries | `docs/activity-ui-boundary-map.md`, `scripts/check-activity-ui-boundary-contracts.ps1` | Activity detail, action cards, mastery, unlocks, and offline summary still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
 | Activity data | `docs/activity-database.json`, `docs/activity-database-data.js`, `docs/activity-database-contract.md`, `scripts/sync-activity-database-js.py`, `scripts/audit-activity-database.ps1`, `scripts/check-activity-database-contracts.ps1` | Edit JSON first, sync JS second, run the contract check and audit third. |
-| Runtime art | `assets/content/**`, `assets/icons/**`, `assets/ui/**`, `assets/loading/**`, `assets/android/**` | Runtime paths are usually referenced as `res://assets/...` from code, docs data, presets, tests, or project settings. |
+| Runtime art | `assets/content/**`, `assets/loading/**`, `assets/android/**`, `assets/fonts/**`, `assets/music/**`, `assets/sfx/**` | Runtime paths are usually referenced as `res://assets/...` from code, docs data, presets, tests, or project settings. The former `assets/ui` split has been merged into `assets/content/ui`. |
 | Art source/provenance | `docs/art-source/**` | Not runtime by default. This tree is under `.gdignore`; source PNGs and notes are tracked, while docs-side `.import` metadata should stay untracked unless future work proves it is needed provenance. |
 | Release docs and outputs | `play-store/docs/**`, `builds/**`, `android/**` | Release artifacts and export-generated files are not general refactor surfaces. |
 | Validation scripts | `scripts/check-project.ps1`, `scripts/test-*.ps1`, `scripts/check-*.ps1` | Prefer focused scripts first, then full project validation when practical. |
@@ -58,7 +58,7 @@ Use PowerShell from the repo root.
 | Activity UI boundary contract | `.\scripts\check-activity-ui-boundary-contracts.ps1` | After editing activity detail, action cards, mastery medals, unlocks, lockpads, or offline summary entry points. |
 | UI geometry/detail checks | `.\scripts\test-activity-card-geometry.ps1`, `.\scripts\test-skill-detail-bottom-scroll-pad.ps1`, `.\scripts\test-skill-detail-hidden-preview-scroll-gap.ps1` | After activity-card or skill-detail layout changes. |
 
-Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches `leaderboard-cost-safety-ok`, then may fail in the skills-page performance gate on the existing build swipe budget. Record the exact current output if it changes.
+Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches the static/readability gates through `generated-file-hygiene-ok`, `ui-boundary-contracts-ok`, `activity-ui-boundary-contracts-ok`, and `leaderboard-cost-safety-ok`, then may fail in the skills-page performance gate on the existing build swipe budget. Record the exact current output if it changes.
 
 After every Godot command, check for leftover headless Godot processes. Only stop a process when it was launched by the validation command, is headless/non-interactive, and should have exited.
 
