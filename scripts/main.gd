@@ -25,6 +25,7 @@ const OrganicLeaderboardBorder = preload("res://scripts/ui/organic_leaderboard_b
 const ActivityCardInnerShadow = preload("res://scripts/ui/activity_card_inner_shadow.gd")
 const SkillDetailPageShelfShadow = preload("res://scripts/ui/skill_detail_page_shelf_shadow.gd")
 const SkillMenuPanelChrome = preload("res://scripts/ui/skill_menu_panel_chrome.gd")
+const BootFlexLoadingAnimationClass = preload("res://scripts/ui/boot_flex_loading_animation.gd")
 const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_border.gd")
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
@@ -2100,7 +2101,7 @@ const DETAIL_LAZY_WINDOW_SYNC_INTERVAL_SECONDS := 0.035
 const DETAIL_TEXTURE_PREWARM_REQUESTS_PER_FRAME := 2
 const BACKGROUND_MAINTENANCE_INTERVAL_SECONDS := 0.25
 const BACKGROUND_MAINTENANCE_STEP_COUNT := 7
-const BOOT_WARMUP_MIN_VISIBLE_SECONDS := 0.0
+const BOOT_WARMUP_MIN_VISIBLE_SECONDS := 1.65
 const EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC := 12
 const OFFLINE_ACTIVE_BATCH_MIN_CYCLES := 12
 const OFFLINE_ACTIVE_BATCH_MAX_CYCLES := 512
@@ -2868,13 +2869,15 @@ var boot_warmup_active := false
 var boot_warmup_layer: CanvasLayer
 var boot_warmup_overlay: Control
 var boot_warmup_background: ColorRect
-var boot_warmup_splash: TextureRect
+var boot_warmup_splash: Control
 var boot_warmup_shade: ColorRect
 var boot_warmup_footer: VBoxContainer
 var boot_warmup_label: Label
 var boot_warmup_progress: CleanProgressBar
 var boot_warmup_cancel_requested := false
 var boot_warmup_game_revealed := false
+var boot_warmup_show_msec := 0
+var boot_warmup_hide_requested := false
 var lazy_overlays_built := {}
 var chain_move_audio_ready := false
 var deferred_skill_validation_pending := false
@@ -2983,7 +2986,8 @@ func _prewarm_texture_paths_async(paths: Array, progress_start: float, progress_
 
 func _boot_shared_texture_paths() -> Array:
 	var paths := []
-	_add_boot_warmup_texture_path(paths, "res://assets/loading/idle-elite-player-hub-launch-loading-screen.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/loading/blue-guy-flex-loading-spritesheet.png")
+	_add_boot_warmup_texture_path(paths, "res://assets/loading/blue-guy-flex-speech-bubble-blank.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-cutout.png")
 	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
 	_add_boot_warmup_texture_path(paths, HERO_SPEECH_BUBBLE_TEXTURE)
@@ -4468,6 +4472,8 @@ func _prepare_for_shutdown() -> void:
 	boot_warmup_cancel_requested = true
 	boot_warmup_active = false
 	boot_warmup_game_revealed = false
+	boot_warmup_show_msec = 0
+	boot_warmup_hide_requested = false
 	_chat_stream_disconnect(false)
 	_kill_transient_tweens_in_subtree(self)
 	_kill_shutdown_global_tweens()
@@ -6132,16 +6138,13 @@ func _build_boot_warmup_overlay() -> void:
 	boot_warmup_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boot_warmup_overlay.add_child(boot_warmup_background)
 
-	boot_warmup_splash = TextureRect.new()
-	boot_warmup_splash.texture = _texture_or_visual_fallback("res://assets/loading/idle-elite-player-hub-launch-loading-screen.png")
+	boot_warmup_splash = BootFlexLoadingAnimationClass.new()
 	boot_warmup_splash.set_anchors_preset(Control.PRESET_FULL_RECT)
-	boot_warmup_splash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	boot_warmup_splash.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	boot_warmup_splash.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boot_warmup_overlay.add_child(boot_warmup_splash)
 
 	boot_warmup_shade = ColorRect.new()
-	boot_warmup_shade.color = Color(0.10, 0.08, 0.04, 0.18)
+	boot_warmup_shade.color = Color(0.10, 0.08, 0.04, 0.04)
 	boot_warmup_shade.set_anchors_preset(Control.PRESET_FULL_RECT)
 	boot_warmup_shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boot_warmup_overlay.add_child(boot_warmup_shade)
@@ -6158,6 +6161,7 @@ func _build_boot_warmup_overlay() -> void:
 	boot_warmup_footer.alignment = BoxContainer.ALIGNMENT_CENTER
 	boot_warmup_footer.add_theme_constant_override("separation", 34)
 	boot_warmup_footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	boot_warmup_footer.visible = false
 	boot_warmup_overlay.add_child(boot_warmup_footer)
 
 	boot_warmup_label = _label("Warming up...", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
@@ -6173,11 +6177,16 @@ func _build_boot_warmup_overlay() -> void:
 
 func _show_boot_warmup_overlay() -> void:
 	boot_warmup_active = true
+	boot_warmup_game_revealed = false
+	boot_warmup_hide_requested = false
+	boot_warmup_show_msec = Time.get_ticks_msec()
 	if boot_warmup_overlay == null:
 		return
 	_set_canvas_item_visible_if_changed(boot_warmup_overlay, true)
 	boot_warmup_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	_set_canvas_item_alpha_if_changed(boot_warmup_overlay, 1.0)
+	if boot_warmup_splash != null and is_instance_valid(boot_warmup_splash) and boot_warmup_splash.has_method("restart"):
+		boot_warmup_splash.call("restart")
 	_set_boot_warmup_progress("Warming up...", 0.0)
 
 
@@ -6185,6 +6194,17 @@ func _hide_boot_warmup_overlay() -> void:
 	if boot_warmup_overlay == null or not is_instance_valid(boot_warmup_overlay) or boot_warmup_overlay.is_queued_for_deletion():
 		boot_warmup_active = false
 		return
+	if boot_warmup_hide_requested:
+		return
+	boot_warmup_hide_requested = true
+	if BOOT_WARMUP_MIN_VISIBLE_SECONDS > 0.0 and boot_warmup_show_msec > 0:
+		var visible_elapsed := float(Time.get_ticks_msec() - boot_warmup_show_msec) / 1000.0
+		var remaining := BOOT_WARMUP_MIN_VISIBLE_SECONDS - visible_elapsed
+		if remaining > 0.0:
+			await get_tree().create_timer(remaining).timeout
+			if boot_warmup_overlay == null or not is_instance_valid(boot_warmup_overlay) or boot_warmup_overlay.is_queued_for_deletion():
+				boot_warmup_active = false
+				return
 	boot_warmup_active = false
 	boot_warmup_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_clear_page_transient_input_state()
@@ -6195,6 +6215,8 @@ func _hide_boot_warmup_overlay() -> void:
 
 func _finish_boot_warmup_overlay_hide() -> void:
 	if boot_warmup_overlay != null and is_instance_valid(boot_warmup_overlay):
+		if boot_warmup_splash != null and is_instance_valid(boot_warmup_splash) and boot_warmup_splash.has_method("stop"):
+			boot_warmup_splash.call("stop")
 		_set_canvas_item_visible_if_changed(boot_warmup_overlay, false)
 		_set_canvas_item_alpha_if_changed(boot_warmup_overlay, 1.0)
 
@@ -6210,19 +6232,7 @@ func _reveal_game_under_boot_splash() -> void:
 	if boot_warmup_game_revealed or boot_warmup_overlay == null or not is_instance_valid(boot_warmup_overlay):
 		return
 	boot_warmup_game_revealed = true
-	var reveal_targets: Array[CanvasItem] = []
-	if boot_warmup_background != null and is_instance_valid(boot_warmup_background):
-		reveal_targets.append(boot_warmup_background)
-	if boot_warmup_splash != null and is_instance_valid(boot_warmup_splash):
-		reveal_targets.append(boot_warmup_splash)
-	if boot_warmup_shade != null and is_instance_valid(boot_warmup_shade):
-		reveal_targets.append(boot_warmup_shade)
-	for target in reveal_targets:
-		_set_canvas_item_alpha_if_changed(target, 1.0)
-	var tween := create_tween()
-	tween.set_parallel(true)
-	for target in reveal_targets:
-		tween.tween_property(target, "modulate:a", 0.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
 
 
 func _build_achievement_toast_layer() -> void:

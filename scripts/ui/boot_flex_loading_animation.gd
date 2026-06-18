@@ -1,0 +1,283 @@
+class_name BootFlexLoadingAnimation
+extends Control
+
+
+const SHEET_PATH := "res://assets/loading/blue-guy-flex-loading-spritesheet.png"
+const BUBBLE_PATH := "res://assets/loading/blue-guy-flex-speech-bubble-blank.png"
+const FONT_PATH := "res://assets/fonts/Fredoka.ttf"
+const FRAME_SIZE := Vector2(512, 512)
+const LOOP_SECONDS := 2.15
+const SHAKE_START := 0.22
+const COLOR_INK := Color("#171615")
+const SKILL_THEME_COLORS := [
+	Color("#e84d4d"),
+	Color("#8956bc"),
+	Color("#237cd5"),
+	Color("#6ea937"),
+	Color("#2dc0b9")
+]
+
+
+var rng := RandomNumberGenerator.new()
+var elapsed := 0.0
+var previous_loop_pos := 0.0
+var sheet_texture: Texture2D
+var bubble_texture: Texture2D
+var bubble_font: Font
+var atlas_texture: AtlasTexture
+var sprite_holder: Control
+var sprite: TextureRect
+var bubble: TextureRect
+var bubble_text: Control
+var bubble_line_top: Label
+var bubble_line_big: Label
+var xp_layer: Control
+var sprite_base_position := Vector2.ZERO
+var current_frame := -1
+
+
+func _ready() -> void:
+	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rng.randomize()
+	sheet_texture = load(SHEET_PATH)
+	bubble_texture = load(BUBBLE_PATH)
+	_load_bubble_font()
+	_build_nodes()
+	_sync_layout()
+	set_process(true)
+
+
+func restart() -> void:
+	elapsed = 0.0
+	previous_loop_pos = 0.0
+	current_frame = -1
+	_set_frame(0)
+	if sprite_holder != null:
+		sprite_holder.position = sprite_base_position
+	if xp_layer != null:
+		for child in xp_layer.get_children():
+			child.queue_free()
+	set_process(true)
+
+
+func stop() -> void:
+	set_process(false)
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_sync_layout()
+
+
+func _process(delta: float) -> void:
+	var next_elapsed := elapsed + delta
+	var loop_pos := fmod(next_elapsed, LOOP_SECONDS)
+	var wrapped := loop_pos < previous_loop_pos
+	if wrapped or (previous_loop_pos < LOOP_SECONDS * SHAKE_START and loop_pos >= LOOP_SECONDS * SHAKE_START):
+		_spawn_xp_drop()
+	elapsed = next_elapsed
+	previous_loop_pos = loop_pos
+	var phase := loop_pos / LOOP_SECONDS
+	_set_frame(_frame_for_phase(phase))
+	if sprite_holder != null:
+		sprite_holder.position = sprite_base_position + Vector2(_shake_x_for_phase(phase), 0.0)
+
+
+func _build_nodes() -> void:
+	sprite_holder = Control.new()
+	sprite_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(sprite_holder)
+
+	atlas_texture = AtlasTexture.new()
+	atlas_texture.atlas = sheet_texture
+	atlas_texture.region = Rect2(Vector2.ZERO, FRAME_SIZE)
+
+	sprite = TextureRect.new()
+	sprite.texture = atlas_texture
+	sprite.set_anchors_preset(Control.PRESET_FULL_RECT)
+	sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sprite_holder.add_child(sprite)
+
+	bubble = TextureRect.new()
+	bubble.texture = bubble_texture
+	bubble.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	bubble.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	bubble.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bubble)
+
+	bubble_text = Control.new()
+	bubble_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(bubble_text)
+
+	bubble_line_top = _make_bubble_label("I must become an")
+	bubble_text.add_child(bubble_line_top)
+
+	bubble_line_big = _make_bubble_label("IDLE ELITIST!")
+	bubble_text.add_child(bubble_line_big)
+
+	xp_layer = Control.new()
+	xp_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	xp_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(xp_layer)
+
+
+func _make_bubble_label(text: String) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_color", COLOR_INK)
+	label.add_theme_color_override("font_outline_color", Color("#fff7e8"))
+	label.add_theme_constant_override("outline_size", 3)
+	if bubble_font != null:
+		label.add_theme_font_override("font", bubble_font)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
+
+
+func _load_bubble_font() -> void:
+	if ResourceLoader.exists(FONT_PATH):
+		var loaded := load(FONT_PATH)
+		if loaded is Font:
+			var bold := FontVariation.new()
+			bold.base_font = loaded
+			bold.variation_embolden = 1.15
+			bubble_font = bold
+	if bubble_font == null:
+		bubble_font = ThemeDB.fallback_font
+
+
+func _sync_layout() -> void:
+	if size.x <= 1.0 or size.y <= 1.0:
+		return
+	var sprite_size := clampf(minf(size.x, size.y) * 2.05, 1000.0, 1500.0)
+	var center := size * 0.5 + Vector2(0.0, 118.0)
+	sprite_base_position = center - Vector2(sprite_size, sprite_size) * 0.5
+	sprite_base_position.y -= sprite_size * 0.22
+	if sprite_holder != null:
+		sprite_holder.size = Vector2(sprite_size, sprite_size)
+		sprite_holder.position = sprite_base_position
+
+	var bubble_width := clampf(size.x * 0.78, 1240.0, 1760.0)
+	var bubble_height := bubble_width * 0.43
+	var bubble_y := maxf(56.0, sprite_base_position.y - bubble_height - 94.0)
+	if bubble != null:
+		bubble.size = Vector2(bubble_width, bubble_height)
+		bubble.position = Vector2((size.x - bubble_width) * 0.5, bubble_y)
+	if bubble_text != null:
+		bubble_text.size = Vector2(bubble_width * 0.84, bubble_height * 0.66)
+		bubble_text.position = Vector2((size.x - bubble_text.size.x) * 0.5, bubble_y + bubble_height * 0.10)
+		_layout_bubble_text()
+
+
+func _layout_bubble_text() -> void:
+	if bubble_text == null:
+		return
+	var top_height := bubble_text.size.y * 0.35
+	var big_height := bubble_text.size.y * 0.65
+	var small_font := int(clampf(bubble_text.size.x * 0.052, 34.0, 72.0))
+	var big_font := int(clampf(bubble_text.size.x * 0.105, 82.0, 150.0))
+	if bubble_line_top != null:
+		bubble_line_top.size = Vector2(bubble_text.size.x, top_height)
+		bubble_line_top.position = Vector2.ZERO
+		bubble_line_top.add_theme_font_size_override("font_size", small_font)
+	if bubble_line_big != null:
+		bubble_line_big.size = Vector2(bubble_text.size.x, big_height)
+		bubble_line_big.position = Vector2(0.0, top_height - bubble_text.size.y * 0.08)
+		bubble_line_big.add_theme_font_size_override("font_size", big_font)
+
+
+func _frame_for_phase(phase: float) -> int:
+	if phase < 0.08:
+		return 0
+	if phase < 0.15:
+		return 1
+	if phase < 0.22:
+		return 2
+	if phase < 0.92:
+		return 3
+	return 0
+
+
+func _set_frame(frame: int) -> void:
+	if frame == current_frame or atlas_texture == null:
+		return
+	current_frame = frame
+	atlas_texture.region = Rect2(Vector2(FRAME_SIZE.x * frame, 0.0), FRAME_SIZE)
+
+
+func _shake_x_for_phase(phase: float) -> float:
+	if phase < 0.22 or phase >= 0.31:
+		return 0.0
+	if phase < 0.232:
+		return -12.0
+	if phase < 0.244:
+		return 12.0
+	if phase < 0.256:
+		return -12.0
+	if phase < 0.268:
+		return 12.0
+	if phase < 0.280:
+		return -7.0
+	if phase < 0.292:
+		return 7.0
+	if phase < 0.302:
+		return -3.0
+	return 3.0
+
+
+func _spawn_xp_drop() -> void:
+	if xp_layer == null or sprite_holder == null:
+		return
+	var amount := rng.randi_range(1, 3)
+	var side := -1.0 if rng.randf() < 0.5 else 1.0
+	var sprite_size := sprite_holder.size.x
+	var start := sprite_base_position + Vector2(
+		sprite_size * 0.5 + side * rng.randf_range(sprite_size * 0.11, sprite_size * 0.21),
+		rng.randf_range(sprite_size * 0.30, sprite_size * 0.38)
+	)
+	var color: Color = SKILL_THEME_COLORS[rng.randi_range(0, SKILL_THEME_COLORS.size() - 1)]
+	_float_reward("+%s XP" % amount, color, start)
+
+
+func _float_reward(text: String, color: Color, center: Vector2) -> void:
+	var reward_size := Vector2(360, 96)
+	var holder := Control.new()
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.size = reward_size
+	holder.position = center - reward_size * 0.5
+	holder.modulate.a = 0.0
+	holder.scale = Vector2(0.82, 0.82)
+	xp_layer.add_child(holder)
+
+	var shadow := Label.new()
+	shadow.text = text
+	shadow.size = reward_size
+	shadow.position = Vector2(3, 4)
+	shadow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	shadow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	shadow.add_theme_font_size_override("font_size", 64)
+	shadow.add_theme_color_override("font_color", COLOR_INK)
+	shadow.modulate = Color(1, 1, 1, 0.34)
+	holder.add_child(shadow)
+
+	var label := Label.new()
+	label.text = text
+	label.size = reward_size
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_font_size_override("font_size", 64)
+	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", 10)
+	holder.add_child(label)
+
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(holder, "position", holder.position + Vector2(0, -132), 1.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
+	tween.tween_property(holder, "modulate:a", 0.0, 0.85).set_delay(0.55)
+	tween.chain().tween_callback(holder.queue_free)

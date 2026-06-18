@@ -310,13 +310,16 @@
         </p>
 
         <div class="work-item">
-          <h4><input type="checkbox"> 3.1 Align loading and boot-screen assets</h4>
+          <h4><input type="checkbox" checked> 3.1 Align loading and boot-screen assets</h4>
           <div class="goal-meta"><span class="tag">loading</span><span class="tag">Godot</span> High impact, but risky because boot paths are project-level.</div>
           <ul>
             <li>Audit <code>assets/loading</code>, <code>project.godot</code>, boot loading scripts, tests, and import metadata.</li>
             <li>Rename only clear active assets and remove only proven stale variants.</li>
             <li>Do not change loading visuals or behavior unless required to preserve references.</li>
           </ul>
+          <p class="acceptance">
+            Done: accepted the active Blue Guy scripted warmup assets, added <code>scripts/ui/boot_flex_loading_animation.gd</code>, updated <code>scripts/main.gd</code> warmup mounting/preload references without moving the native <code>project.godot</code> splash, adjusted <code>.gitignore</code> so only the active runtime spritesheet is tracked, and updated focused regression assertions. Validation: <code>.\scripts\test-performance-regressions.ps1</code> passed; <code>.\scripts\check-project.ps1</code> reached <code>performance-regressions-ok</code> and then failed on the existing Android export INTERNET permission guard. No headless Godot process was left behind. Untracked source/rejected loading variants remain out of git pending a separate provenance decision.
+          </p>
         </div>
 
         <div class="work-item">

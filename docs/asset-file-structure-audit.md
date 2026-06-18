@@ -45,7 +45,7 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 ## Risky Paths Not To Touch Without Compatibility
 
 - `assets/content/**` runtime art referenced by `docs/activity-database-data.js`, `docs/activity-database.json`, scripts, tests, export tooling, or generated data.
-- `assets/loading/**` while boot/loading animation work is dirty and untracked in the current worktree.
+- `assets/loading/**` because boot/loading presentation is player-visible and project-level. The active Blue Guy warmup animation is now tracked, while rejected/source variants remain untracked unless Phase 3.1+ explicitly accepts them.
 - `assets/android/**` because export presets reference launcher icon paths directly.
 - `project.godot` boot splash path `res://assets/loading/idle-elite-player-hub-launch-loading-screen.png`.
 - `.import` files because Godot stores source/remap metadata in them; move/rename only with the paired asset and validate.
@@ -73,7 +73,7 @@ This pass inspected `docs/art-source`, `assets/loading`, `assets/android`, `andr
 | `docs/art-source/asset-sources/android-launcher-source-assets/**` | Android launcher provenance. The stale `.import` metadata that pointed at `res://assets/android/launcher-adaptive-clickable-preview-432.png` was removed in Phase 2.2. | Preserve source PNGs and verify before using as runtime launcher input. Do not wire to export presets unless Phase 3.2 owns the change. |
 | `assets/loading/idle-elite-player-hub-launch-loading-screen.png` | Tracked project boot splash referenced by `project.godot`. | Preserve exactly unless Phase 3.1 changes boot splash paths and validates Godot startup. |
 | `assets/loading/idle-elite-loading-screen.png` | Tracked older loading image with matching import metadata. No direct reference found in `project.godot`, `export_presets.cfg`, or current scripts during this pass. | Keep documented as candidate stale runtime asset; do not delete until Phase 3.1 hash/reference review. |
-| `assets/loading/blue-guy-flex-loading-spritesheet.png` and `blue-guy-flex-speech-bubble-blank.png` | Dirty/untracked runtime loading assets referenced by `scripts/ui/boot_flex_loading_animation.gd` and the current local dirty `scripts/main.gd` warmup list. | Preserve as in-progress loading work. Commit or cleanup only in the dedicated Phase 3.1 package. |
+| `assets/loading/blue-guy-flex-loading-spritesheet.png` and `blue-guy-flex-speech-bubble-blank.png` | Tracked runtime warmup animation assets referenced by `scripts/ui/boot_flex_loading_animation.gd` and prewarmed by `scripts/main.gd`. | Preserve with their `.import` files. Do not rename without updating the boot animation script, warmup preload list, tests, and validation notes. |
 | `assets/loading/blue-guy-flex-*before-*`, `blue-guy-flex-loading-spritesheet-source.png`, and `blue-guy-flex-speech-bubble.png` | Dirty/untracked variants, source image, and speech-bubble work files with `.import` metadata. | Treat as unresolved loading-source cluster. Do not delete until active runtime files and source/provenance needs are confirmed. |
 | `assets/android/launcher-main-clickable-192.png`, `launcher-adaptive-foreground-clickable-432.png`, `launcher-adaptive-background-clickable-432.png` | Tracked Android launcher assets referenced directly by `export_presets.cfg`. | Preserve exact paths unless Phase 3.2 updates export presets and validates references. |
 | `assets/android/launcher-main-192.png`, `launcher-adaptive-foreground-432.png`, `launcher-adaptive-background-432.png` | Tracked non-clickable launcher variants with import metadata. No direct export preset reference found in this pass. | Keep as candidate fallback/source variants. Do not delete until Phase 3.2 compares hashes and release docs/source notes. |
@@ -82,7 +82,7 @@ This pass inspected `docs/art-source`, `assets/loading`, `assets/android`, `andr
 
 ## Duplicate Or Unused Cleanup Suspects
 
-- Blue Guy loading variants in `assets/loading` include names like `before-frame2-smaller-right`, `before-frame4-up5`, `before-frame4-up8`, and `source`. These are dirty/untracked and should be resolved as one loading-asset cleanup once the current boot-loading work is intentionally accepted or discarded.
+- Blue Guy loading variants in `assets/loading` include names like `before-frame2-smaller-right`, `before-frame4-up5`, `before-frame4-up8`, and `source`. These remain dirty/untracked source or rejected variants after Phase 3.1 accepted the active spritesheet and blank bubble.
 - `docs/art-source/asset-sources/fishing-module-preview-sources` has many repeated version ladders per fishing area. These should be reduced to approved source/archival names once final descendants and explanatory docs are preserved.
 - `docs/art-source/asset-sources/...` no longer tracks `.import` files. The removed metadata often pointed at `res://assets/...` rather than the docs path and was not useful provenance after the archive rename.
 - Runtime and art-source folders used to both contain generic `assets/content/ui` and `assets/ui` source paths. The docs-side copies are now parent-qualified, and the remaining runtime `assets/ui` files have been merged into `assets/content/ui`.
@@ -92,7 +92,7 @@ This pass inspected `docs/art-source`, `assets/loading`, `assets/android`, `andr
 
 1. Done: rename the source/archive mirror root from `docs/art-source/assets` to `docs/art-source/asset-sources`, then update docs references. This attacks the repeated `assets/content` confusion without touching runtime `res://assets` paths.
 2. Clean or ignore generated local folders `output/` and `test-results/` after confirming they are untracked outputs and not needed artifacts.
-3. Resolve the dirty Blue Guy loading asset cluster by choosing the intended runtime files, removing rejected variants, and updating `scripts/ui/boot_flex_loading_animation.gd`, `scripts/main.gd`, `project.godot`, and tests together if the paths change.
+3. Done for runtime warmup: accepted the active Blue Guy spritesheet and blank speech bubble, added `scripts/ui/boot_flex_loading_animation.gd`, updated `scripts/main.gd` warmup mounting/prewarm paths, and protected the flow in `scripts/test-performance-regressions.ps1`. Remaining untracked Blue Guy variants are source/rejected candidates and should not be committed without a separate provenance decision.
 4. Done: parent-qualify the fishing module source-generation folder as `docs/art-source/asset-sources/fishing-module-preview-sources`.
 5. Done: profile/avatar UI sources now live in `profile-ui-source-assets`, broader game UI sources now live in `game-ui-source-assets`, and the runtime `assets/ui` split has been merged into `assets/content/ui`.
 
@@ -102,7 +102,7 @@ This pass inspected `docs/art-source`, `assets/loading`, `assets/android`, `andr
 - `rg` found many direct `res://assets` and `assets/content` references in `scripts/main.gd`, `scripts/ui/boot_flex_loading_animation.gd`, tests, export presets, generated docs data, and store-asset tooling.
 - `export_presets.cfg` directly references Android launcher icon paths and excludes several source/preview asset patterns from builds.
 - `project.godot` still references the older loading splash path.
-- Phase 2.1 found `scripts/ui/boot_flex_loading_animation.gd` and current local dirty `scripts/main.gd` references to the Blue Guy loading spritesheet and blank speech bubble, while `project.godot` still references the older player-hub launch loading screen.
+- Phase 3.1 accepted the Blue Guy warmup animation for the in-game boot warmup overlay. `project.godot` still references the older player-hub launch loading screen as the native Godot boot splash; do not conflate that project splash with the scripted warmup overlay.
 - Phase 2.1 confirmed Android export presets currently use the clickable launcher assets, while `android/build/res/mipmap/icon*.png` are export-side outputs and not a readability cleanup surface.
 - Phase 2.2 removed 111 tracked `.import` metadata files under `docs/art-source/asset-sources/**` after confirming the archive has `.gdignore`, runtime references do not use those metadata files, and `moved-files.txt` could preserve the source PNG provenance without listing removed metadata.
 - Existing dirty/untracked files include navigation-control imports, Blue Guy loading files/imports, UI script UIDs, `output/`, and `test-results/`; these should remain unstaged unless a cleanup step explicitly owns them.
