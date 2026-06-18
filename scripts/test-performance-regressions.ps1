@@ -15,6 +15,7 @@ $activityCardDepthPath = Join-Path $projectRoot "scripts\ui\activity_card_depth.
 $activityProgressRailPath = Join-Path $projectRoot "scripts\ui\activity_progress_rail.gd"
 $activityProgressOpportunityOverlayPath = Join-Path $projectRoot "scripts\ui\activity_progress_opportunity_overlay.gd"
 $fishingToolWalletOverlayPath = Join-Path $projectRoot "scripts\ui\fishing_tool_wallet_overlay.gd"
+$achievementMedalSlotStripPath = Join-Path $projectRoot "scripts\ui\achievement_medal_slot_strip.gd"
 $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
@@ -87,6 +88,8 @@ Assert-True (Test-Path -LiteralPath $activityProgressOpportunityOverlayPath) "Mi
 $activityOpportunityOverlay = Get-Content -LiteralPath $activityProgressOpportunityOverlayPath -Raw
 Assert-True (Test-Path -LiteralPath $fishingToolWalletOverlayPath) "Missing scripts\ui\fishing_tool_wallet_overlay.gd."
 $fishingToolWalletOverlay = Get-Content -LiteralPath $fishingToolWalletOverlayPath -Raw
+Assert-True (Test-Path -LiteralPath $achievementMedalSlotStripPath) "Missing scripts\ui\achievement_medal_slot_strip.gd."
+$achievementMedalSlotStrip = Get-Content -LiteralPath $achievementMedalSlotStripPath -Raw
 Assert-True (Test-Path -LiteralPath $lockClusterPath) "Missing scripts\activity_lock_cluster.gd."
 $lockCluster = Get-Content -LiteralPath $lockClusterPath -Raw
 Assert-True (Test-Path -LiteralPath $lockRigPath) "Missing scripts\activity_lock_rig.gd."
@@ -1167,6 +1170,10 @@ $finishNewMedalCeremony = Get-FunctionBody -Text $main -Name "_finish_new_medal_
 Assert-True ($finishNewMedalCeremony -match '_set_canvas_item_modulate_if_changed\(callback_medal, Color\.WHITE\)') "Action card medal ceremony completion should guard final opacity writes."
 $configureAchievementMedalSlot = Get-FunctionBody -Text $main -Name "_configure_achievement_medal_slot"
 Assert-True ($configureAchievementMedalSlot -match '_mastery_medal_visual_texture\(mastery_level\)') "Achievement medal slots should not assign nullable mastery medal textures directly."
+Assert-True ($achievementMedalSlotStrip -match 'var medal_icons := \[\]') "Achievement medal slot strip should name its icon array by medal domain."
+Assert-True ($achievementMedalSlotStrip -match 'var medal_shadows := \[\]') "Achievement medal slot strip should name its shadow array by medal domain."
+Assert-True ($achievementMedalSlotStrip -notmatch 'var icons := \[\]') "Achievement medal slot strip should not keep a generic icons array."
+Assert-True ($achievementMedalSlotStrip -notmatch 'var shadows := \[\]') "Achievement medal slot strip should not keep a generic shadows array."
 $profileAvatarTexture = Get-FunctionBody -Text $main -Name "_profile_avatar_texture"
 Assert-True ($profileAvatarTexture -match '_visual_fallback_texture\(\)') "Profile avatar atlas textures should fall back when their source sheet is missing."
 $addThievingHeistJailOverlay = Get-FunctionBody -Text $main -Name "_add_thieving_heist_jail_overlay"

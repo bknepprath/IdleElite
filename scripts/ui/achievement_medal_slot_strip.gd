@@ -4,8 +4,8 @@ extends Control
 
 var slot_count := 25
 var slot_size := Vector2(58, 58)
-var icons := []
-var shadows := []
+var medal_icons := []
+var medal_shadows := []
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -18,20 +18,20 @@ func _notification(what: int) -> void:
 
 func add_slot_icon(icon: TextureRect, shadow: TextureRect = null) -> void:
 	if shadow != null:
-		shadows.append(shadow)
+		medal_shadows.append(shadow)
 		add_child(shadow)
-	icons.append(icon)
+	medal_icons.append(icon)
 	add_child(icon)
 	_layout_icons()
 
 func _layout_icons() -> void:
-	if icons.is_empty():
+	if medal_icons.is_empty():
 		return
 	var icon_size := minf(slot_size.x, maxf(1.0, size.y * 0.92))
-	for i in range(icons.size()):
+	for i in range(medal_icons.size()):
 		var center := _slot_center(i, icon_size)
-		if i < shadows.size():
-			var shadow := shadows[i] as TextureRect
+		if i < medal_shadows.size():
+			var shadow := medal_shadows[i] as TextureRect
 			if shadow != null:
 				var outline := bool(shadow.get_meta("achievement_medal_outline", false))
 				var shadow_size := icon_size
@@ -39,7 +39,7 @@ func _layout_icons() -> void:
 				shadow.position = center - shadow.size * 0.5
 				if not outline:
 					shadow.position += Vector2(7, 9)
-		var icon := icons[i] as TextureRect
+		var icon := medal_icons[i] as TextureRect
 		if icon == null:
 			continue
 		icon.size = Vector2(icon_size, icon_size)
