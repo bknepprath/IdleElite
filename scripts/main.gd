@@ -16347,13 +16347,13 @@ func _detail_lazy_settle_warm_mount(skill_id: String, token: int) -> void:
 		for raw_item in detail_lazy_plan:
 			if mounted >= DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME:
 				break
-			var plan_item := raw_item as Dictionary
-			var kind := str(plan_item.get("kind", ""))
+			var lazy_entry := raw_item as Dictionary
+			var kind := str(lazy_entry.get("kind", ""))
 			if kind not in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
 				continue
-			if bool(plan_item.get("mounted", false)) or plan_item.has("cached_root"):
+			if bool(lazy_entry.get("mounted", false)) or lazy_entry.has("cached_root"):
 				continue
-			if _detail_lazy_mount_item(plan_item, skill_id, content_width, actions_width, false):
+			if _detail_lazy_mount_item(lazy_entry, skill_id, content_width, actions_width, false):
 				mounted += 1
 		if mounted <= 0:
 			break
