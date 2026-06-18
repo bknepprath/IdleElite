@@ -15933,7 +15933,7 @@ func _detail_lazy_runtime_entries_by_track_id(plan: Array) -> Dictionary:
 	return lazy_entries_by_track_id
 
 
-func _detail_lazy_copy_runtime_item_state(target: Dictionary, source: Dictionary) -> void:
+func _detail_lazy_copy_runtime_entry_state(target_entry: Dictionary, source_entry: Dictionary) -> void:
 	for key in [
 		"stack_host",
 		"placeholder",
@@ -15944,8 +15944,8 @@ func _detail_lazy_copy_runtime_item_state(target: Dictionary, source: Dictionary
 		"cached_root",
 		"cached_card"
 	]:
-		if source.has(key):
-			target[key] = source[key]
+		if source_entry.has(key):
+			target_entry[key] = source_entry[key]
 
 
 func _detail_lazy_stack_insert_index_for_plan_index(stack: VBoxContainer, plan_index: int) -> int:
@@ -16018,7 +16018,7 @@ func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 		var track_id := str(new_entry.get("track_id", ""))
 		if track_id == action_id or not old_entries_by_track_id.has(track_id):
 			continue
-		_detail_lazy_copy_runtime_item_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
+		_detail_lazy_copy_runtime_entry_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
 	var preview_item := new_plan[preview_index] as Dictionary
 	var content_width := _skill_content_width()
 	var actions_width := content_width
@@ -16217,7 +16217,7 @@ func _animate_temporary_event_entry_if_visible(event_def: Dictionary, event_id: 
 		var track_id := str(new_entry.get("track_id", ""))
 		if track_id == event_id or not old_entries_by_track_id.has(track_id):
 			continue
-		_detail_lazy_copy_runtime_item_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
+		_detail_lazy_copy_runtime_entry_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
 	var event_item := new_plan[event_index] as Dictionary
 	var content_width := _skill_content_width()
 	var actions_width := content_width
