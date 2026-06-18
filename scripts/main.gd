@@ -15923,14 +15923,14 @@ func _detail_lazy_plan_and_signature_for_skill(skill_id: String) -> Dictionary:
 	}
 
 
-func _detail_lazy_runtime_items_by_track_id(plan: Array) -> Dictionary:
-	var items := {}
+func _detail_lazy_runtime_entries_by_track_id(plan: Array) -> Dictionary:
+	var lazy_entries_by_track_id := {}
 	for raw_item in plan:
-		var item := raw_item as Dictionary
-		var track_id := str(item.get("track_id", ""))
+		var lazy_entry := raw_item as Dictionary
+		var track_id := str(lazy_entry.get("track_id", ""))
 		if not track_id.is_empty():
-			items[track_id] = item
-	return items
+			lazy_entries_by_track_id[track_id] = lazy_entry
+	return lazy_entries_by_track_id
 
 
 func _detail_lazy_copy_runtime_item_state(target: Dictionary, source: Dictionary) -> void:
@@ -16012,13 +16012,13 @@ func _ensure_activity_unlock_preview_lazy_entry(action_id: String) -> bool:
 	var preview_index := _detail_lazy_find_action_plan_index(new_plan, action_id)
 	if preview_index < 0:
 		return false
-	var old_items_by_track_id := _detail_lazy_runtime_items_by_track_id(detail_lazy_plan)
+	var old_entries_by_track_id := _detail_lazy_runtime_entries_by_track_id(detail_lazy_plan)
 	for raw_new_item in new_plan:
-		var new_item := raw_new_item as Dictionary
-		var track_id := str(new_item.get("track_id", ""))
-		if track_id == action_id or not old_items_by_track_id.has(track_id):
+		var new_entry := raw_new_item as Dictionary
+		var track_id := str(new_entry.get("track_id", ""))
+		if track_id == action_id or not old_entries_by_track_id.has(track_id):
 			continue
-		_detail_lazy_copy_runtime_item_state(new_item, old_items_by_track_id[track_id] as Dictionary)
+		_detail_lazy_copy_runtime_item_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
 	var preview_item := new_plan[preview_index] as Dictionary
 	var content_width := _skill_content_width()
 	var actions_width := content_width
@@ -16211,13 +16211,13 @@ func _animate_temporary_event_entry_if_visible(event_def: Dictionary, event_id: 
 	var event_index := _detail_lazy_find_temporary_event_plan_index(new_plan, event_id)
 	if event_index < 0:
 		return false
-	var old_items_by_track_id := _detail_lazy_runtime_items_by_track_id(detail_lazy_plan)
+	var old_entries_by_track_id := _detail_lazy_runtime_entries_by_track_id(detail_lazy_plan)
 	for raw_new_item in new_plan:
-		var new_item := raw_new_item as Dictionary
-		var track_id := str(new_item.get("track_id", ""))
-		if track_id == event_id or not old_items_by_track_id.has(track_id):
+		var new_entry := raw_new_item as Dictionary
+		var track_id := str(new_entry.get("track_id", ""))
+		if track_id == event_id or not old_entries_by_track_id.has(track_id):
 			continue
-		_detail_lazy_copy_runtime_item_state(new_item, old_items_by_track_id[track_id] as Dictionary)
+		_detail_lazy_copy_runtime_item_state(new_entry, old_entries_by_track_id[track_id] as Dictionary)
 	var event_item := new_plan[event_index] as Dictionary
 	var content_width := _skill_content_width()
 	var actions_width := content_width
