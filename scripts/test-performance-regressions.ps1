@@ -1132,6 +1132,8 @@ Assert-True ($railWindows -match 'return') "Activity progress rails should retur
 Assert-True ($activityRail -match 'var opportunity_unavailable_target_alpha := 0\.0') "Activity progress rails should name unavailable opportunity targets as alpha state."
 Assert-True ($activityRail -notmatch 'var opportunity_unavailable_target := 0\.0') "Activity progress rails should not keep ambiguous unavailable target state."
 Assert-True ($activityRail -match 'var opportunity_overlay: ActivityProgressOpportunityOverlay') "Activity progress rails should render click-opportunity windows on a child overlay."
+Assert-True ($activityOpportunityOverlay -match 'var progress_rail: Control') "Activity progress opportunity overlays should name their sampled rail as progress_rail."
+Assert-True ($activityOpportunityOverlay -notmatch 'var source') "Activity progress opportunity overlays should not use generic source naming for the sampled progress rail."
 Assert-True ($activityRail -match 'const OPPORTUNITY_WINDOW_OVERLAY_Z := 80') "Activity progress rails should keep their overlay above the face border."
 Assert-True ($activityRail -match 'opportunity_overlay\.z_index = OPPORTUNITY_WINDOW_OVERLAY_Z') "Activity progress opportunity overlays should draw above the face border without raising the whole rail."
 Assert-True ($activityRail -notmatch '_draw_opportunity_window_strokes') "Activity progress rails should not draw opportunity markers under the card border."

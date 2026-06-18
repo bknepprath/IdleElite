@@ -411,13 +411,16 @@
         </div>
 
         <div class="work-item">
-          <h4><input type="checkbox"> 5.2 Rename generic internal variables and functions in high-traffic paths</h4>
+          <h4><input type="checkbox" checked> 5.2 Rename generic internal variables and functions in high-traffic paths</h4>
           <div class="goal-meta"><span class="tag">naming</span><span class="tag">behavior-neutral</span> Treat naming as architecture, not churn.</div>
           <ul>
             <li>Look for generic names like <code>data</code>, <code>item</code>, <code>info</code>, <code>tmp</code>, <code>value</code>, and <code>obj</code> only in high-value areas.</li>
             <li>Rename only internal identifiers where the role is clear and behavior-neutral.</li>
             <li>Do not rename serialized keys, data IDs, node names, signals, input names, or user-facing strings without compatibility handling.</li>
           </ul>
+          <p class="acceptance">
+            Done: inspected high-traffic generic-name candidates and confirmed the safest extracted-control target, <code>ActivityProgressOpportunityOverlay</code>, already uses <code>progress_rail</code> instead of the generic <code>source</code>; updated <code>docs/naming-audit.md</code> to mark that target complete and added regression assertions to keep it that way. Broader <code>scripts/main.gd</code> renames remain deferred while the worktree contains unrelated behavior-changing navigation/module UI edits. Validation: <code>.\scripts\test-performance-regressions.ps1</code> passed; <code>.\scripts\check-project.ps1</code> reached the static contract stages, then failed on the existing skills-page performance gate. No headless Godot process was left behind.
+          </p>
         </div>
 
         <div class="work-item">

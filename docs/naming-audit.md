@@ -62,10 +62,11 @@ Do not rename these categories through simple refactors:
 
 ## First 5 Safe High-Value Rename Targets
 
-1. Rename `source` inside `ActivityProgressOpportunityOverlay` to `progress_rail`.
+1. Done: rename `source` inside `ActivityProgressOpportunityOverlay` to `progress_rail`.
    - Why: `source` hides that the overlay samples an activity progress rail.
    - Scope: `scripts/ui/activity_progress_opportunity_overlay.gd` and call sites only.
    - Safety: extracted control internals; no save/data compatibility expected.
+   - Validation: `scripts/test-performance-regressions.ps1` now asserts the control uses `progress_rail` and does not keep a generic `source` rail field.
 
 2. Rename wallet overlay internals in `FishingToolWalletOverlay`.
    - Candidate names: `button_rects` to `tool_button_rects`, `tool_ids` to `wallet_tool_ids`, `tool_icons` to `wallet_tool_icons`, and `unlocked_states` to `tool_unlocked_states`.
@@ -92,4 +93,4 @@ Do not rename these categories through simple refactors:
 
 ## Deferred But Important
 
-The swipe/navigation cluster needs naming work, especially around `cover`, `handoff`, `preview`, `page`, `frame`, `commit`, and `finalize`. It should not be the first rename target because the worktree currently contains uncommitted swipe fade changes. Once that state is clean, the safest approach is to rename one concept at a time and validate the swipe page fade regression after each commit.
+The swipe/navigation cluster needs naming work, especially around `cover`, `handoff`, `preview`, `page`, `frame`, `commit`, and `finalize`. It should not be the first rename target because the worktree currently contains uncommitted navigation/module UI feature changes. Once that state is clean, the safest approach is to rename one concept at a time and validate the swipe/page regression after each commit.
