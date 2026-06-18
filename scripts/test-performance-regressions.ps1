@@ -1846,8 +1846,9 @@ Assert-True ($scrollTarget -match '_valid_control_ref\(detail_action_card_nodes\
 Assert-True ($scrollTarget -notmatch 'detail_action_card_nodes\[action_id\] as Control') "Scroll target lookup must not directly cast possibly freed lazy card refs."
 
 $lazyBottom = Get-FunctionBody -Text $main -Name "_detail_lazy_plan_module_content_bottom"
-Assert-True ($lazyBottom -match '_valid_control_ref\(plan_item\.get\("stack_host"\)\)') "Lazy scroll-limit measurement must validate stack_host refs."
-Assert-True ($lazyBottom -notmatch 'plan_item\.get\("stack_host"\) as Control') "Lazy scroll-limit measurement must not directly cast possibly freed stack_host refs."
+Assert-True ($lazyBottom -match '_valid_control_ref\(lazy_entry\.get\("stack_host"\)\)') "Lazy scroll-limit measurement must validate stack_host refs through entry naming."
+Assert-True ($lazyBottom -notmatch 'lazy_entry\.get\("stack_host"\) as Control') "Lazy scroll-limit measurement must not directly cast possibly freed stack_host refs."
+Assert-True ($lazyBottom -notmatch '\bplan_item\b') "Lazy scroll-limit measurement should not use stale plan-item wording internally."
 
 $lockInput = Get-FunctionBody -Text $main -Name "_route_activity_lock_input"
 Assert-True ($lockInput -match '_valid_control_ref\(overlay\.get\("root"\)\)') "Activity lock input routing must validate overlay roots before use."

@@ -21816,16 +21816,16 @@ func _detail_lazy_plan_module_content_bottom() -> Dictionary:
 	var top_spacer_height := _detail_actions_top_spacer_height()
 	var stack_separation := float(stack.get_theme_constant("separation"))
 	for raw_item in detail_lazy_plan:
-		var plan_item := raw_item as Dictionary
-		var kind := str(plan_item.get("kind", ""))
+		var lazy_entry := raw_item as Dictionary
+		var kind := str(lazy_entry.get("kind", ""))
 		if not kind in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
 			continue
-		var host := _valid_control_ref(plan_item.get("stack_host"))
+		var host := _valid_control_ref(lazy_entry.get("stack_host"))
 		var host_bottom := -1.0
 		if host != null and is_instance_valid(host):
 			host_bottom = _detail_control_bottom_in_stack(host, stack)
 		if host_bottom < 0.0:
-			host_bottom = top_spacer_height + stack_separation + float(plan_item.get("y", 0.0)) + float(plan_item.get("height", _activity_card_root_height()))
+			host_bottom = top_spacer_height + stack_separation + float(lazy_entry.get("y", 0.0)) + float(lazy_entry.get("height", _activity_card_root_height()))
 		if host_bottom > 1.0:
 			bottom = maxf(bottom, host_bottom)
 			count += 1
