@@ -249,6 +249,9 @@ func _capture_if_requested() -> void:
 	var capture_path := OS.get_environment("IDLE_ELITE_TUTORIAL_START_SCROLL_CAPTURE")
 	if capture_path.is_empty():
 		return
+	if DisplayServer.get_name() == "headless":
+		print("tutorial-start-scroll-capture skipped=headless-display")
+		return
 	for _i in range(2):
 		await _wait_test_frame()
 	var texture := root.get_texture()
@@ -325,6 +328,8 @@ func _fail(message: String) -> void:
         exit $LASTEXITCODE
     }
     Assert-True (($output -join "`n") -match "tutorial-start-scroll-ok") "Tutorial start scroll test did not report success."
+    $captureOutput = ($output -join "`n") -match "tutorial-start-scroll-capture (path=|skipped=)"
+    Assert-True ((Test-Path -LiteralPath $capturePath) -or $captureOutput) "Tutorial hidden-controls screenshot was not created or cleanly skipped at $capturePath."
     Assert-NoUnexpectedGodotErrors $output "tutorial start scroll test"
 
     $headless = @(Get-HeadlessGodotProcesses)
@@ -337,6 +342,11 @@ func _fail(message: String) -> void:
         Remove-Item Env:\GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
     } else {
         $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
+    }
+    if ($null -eq $previousCapture) {
+        Remove-Item Env:\IDLE_ELITE_TUTORIAL_START_SCROLL_CAPTURE -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TUTORIAL_START_SCROLL_CAPTURE = $previousCapture
     }
     if (Test-Path -LiteralPath $testDir) {
         Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
