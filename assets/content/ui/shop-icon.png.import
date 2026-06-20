@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cshopicooav2a"
-path="res://.godot/imported/shop-icon.png-87a582c794f5723db27eb49db7133d98.ctex"
+path="res://.godot/imported/shop-icon.png-607d90fa3b7a30495e2839b4991185e1.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/content/ui/shop-icon.png"
-dest_files=["res://.godot/imported/shop-icon.png-87a582c794f5723db27eb49db7133d98.ctex"]
+dest_files=["res://.godot/imported/shop-icon.png-607d90fa3b7a30495e2839b4991185e1.ctex"]
 
 [params]
 

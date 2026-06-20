@@ -295,6 +295,12 @@
     </header>
 
     <div class="section-label">
+      <h2>Button / Nav Click Candidates</h2>
+      <p>Six quieter replacements for the activity button and bottom navigation press sound. These are real WAV candidates in assets/sfx-candidates.</p>
+    </div>
+    <section class="grid" id="buttonClickGrid" aria-label="Button and bottom navigation click candidates"></section>
+
+    <div class="section-label">
       <h2>Action Success</h2>
       <p>Four glass pips used by action completion.</p>
     </div>
@@ -325,6 +331,7 @@
     <section class="grid" id="waterGrid" aria-label="Water movement sounds"></section>
 
     <div class="footer">
+      <button id="buttonClickBurst" type="button">Test button clicks</button>
       <button id="glassPipBurst" type="button">Test glass pip climb</button>
       <button id="critBurst" type="button">Test XP crits</button>
       <button id="feedbackBurst" type="button">Test feedback</button>
@@ -334,6 +341,66 @@
   </main>
 
   <script>
+    const buttonClickSounds = [
+      {
+        id: "ui-single-soft-snap",
+        name: "Single Soft Snap",
+        tag: "snap",
+        gain: 0.78,
+        url: "../assets/sfx-candidates/ui_single_click_option_01_soft_snap.wav",
+        notes: "The Double Action idea compressed into one padded snap: quick impact, no release click.",
+        bars: [90, 100, 70, 40, 23, 13, 8, 5, 3, 2, 1, 1]
+      },
+      {
+        id: "ui-single-deep-tab",
+        name: "Single Deep Tab",
+        tag: "nav",
+        gain: 0.8,
+        url: "../assets/sfx-candidates/ui_single_click_option_02_deep_tab.wav",
+        notes: "Lower tab-like press with the same decisive contact, tuned for bottom navigation.",
+        bars: [66, 92, 100, 68, 43, 26, 16, 10, 6, 4, 2, 1]
+      },
+      {
+        id: "ui-single-clean-switch",
+        name: "Single Clean Switch",
+        tag: "crisp",
+        gain: 0.64,
+        url: "../assets/sfx-candidates/ui_single_click_option_03_clean_switch.wav",
+        notes: "Tighter microswitch bite, still one click. The brightest of the new batch.",
+        bars: [84, 100, 80, 44, 25, 14, 8, 5, 3, 2, 1, 1]
+      },
+      {
+        id: "ui-single-rubber-lock",
+        name: "Single Rubber Lock",
+        tag: "tactile",
+        gain: 0.76,
+        url: "../assets/sfx-candidates/ui_single_click_option_04_rubber_lock.wav",
+        notes: "Rubbery contact with the release removed. Feels physical without getting bouncy.",
+        bars: [70, 94, 100, 66, 42, 27, 17, 10, 6, 4, 2, 1]
+      },
+      {
+        id: "ui-single-arcade-clack",
+        name: "Single Arcade Clack",
+        tag: "gamey",
+        gain: 0.68,
+        url: "../assets/sfx-candidates/ui_single_click_option_05_arcade_clack.wav",
+        notes: "A one-hit arcade clack with the edges rounded off for repeat tapping.",
+        bars: [82, 100, 72, 42, 25, 15, 9, 6, 4, 2, 1, 1]
+      },
+      {
+        id: "ui-single-premium-tap",
+        name: "Single Premium Tap",
+        tag: "polished",
+        gain: 0.66,
+        url: "../assets/sfx-candidates/ui_single_click_option_06_premium_tap.wav",
+        notes: "A polished single contact with a tiny sheen, but no coin reward tail.",
+        bars: [76, 100, 82, 48, 30, 19, 12, 8, 5, 3, 2, 1]
+      }
+    ].map((sound) => ({
+      ...sound,
+      play: (ctx, out, t) => playSample(ctx, out, t, sound.url)
+    }));
+
     const critSounds = [
       {
         id: "blue-glass-lift",
@@ -1081,6 +1148,7 @@
     let masterGain;
     const sampleCache = new Map();
     const volume = document.querySelector("#volume");
+    const buttonClickGrid = document.querySelector("#buttonClickGrid");
     const feedbackGrid = document.querySelector("#feedbackGrid");
     const glassPipGrid = document.querySelector("#glassPipGrid");
     const critGrid = document.querySelector("#critGrid");
@@ -1134,6 +1202,15 @@
         gain.connect(out);
         source.start(when, layer.sampleOffset || 0, sliceDuration);
       });
+    }
+
+    async function playSample(ctx, out, t, url) {
+      const buffer = await loadSample(ctx, url);
+      const source = ctx.createBufferSource();
+      const startAt = Math.max(ctx.currentTime + 0.025, t);
+      source.buffer = buffer;
+      source.connect(out);
+      source.start(startAt);
     }
 
     function ceilingCurve(ceiling, drive) {
@@ -1460,6 +1537,7 @@
     }
 
     function render() {
+      renderGrid(buttonClickGrid, buttonClickSounds);
       renderGrid(critGrid, critSounds);
       renderGrid(feedbackGrid, feedbackSounds);
       renderGrid(glassPipGrid, glassPipSounds);
@@ -1480,11 +1558,16 @@
       playSound(sound);
     }
 
+    buttonClickGrid.addEventListener("click", (event) => handleGridClick(event, buttonClickSounds));
     feedbackGrid.addEventListener("click", (event) => handleGridClick(event, feedbackSounds));
     critGrid.addEventListener("click", (event) => handleGridClick(event, critSounds));
     glassPipGrid.addEventListener("click", (event) => handleGridClick(event, glassPipSounds));
     jingleChainsGrid.addEventListener("click", (event) => handleGridClick(event, jingleChainSounds));
     waterGrid.addEventListener("click", (event) => handleGridClick(event, waterSounds));
+
+    document.querySelector("#buttonClickBurst").addEventListener("click", () => {
+      buttonClickSounds.forEach((sound, index) => playSound(sound, index * 0.22));
+    });
 
     document.querySelector("#glassPipBurst").addEventListener("click", () => {
       glassPipSounds.forEach((sound, index) => playSound(sound, index * 0.2));

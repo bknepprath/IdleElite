@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://vpj0olmyvhxx"
-path="res://.godot/imported/profile-avatar-game-objects-spritesheet.png-624983fc79929552896b70fa7a91d56e.ctex"
+path="res://.godot/imported/profile-avatar-game-objects-spritesheet.png-2b16a895dc06fa5a81d8a3fb165a013c.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/content/ui/profile-avatar-game-objects-spritesheet.png"
-dest_files=["res://.godot/imported/profile-avatar-game-objects-spritesheet.png-624983fc79929552896b70fa7a91d56e.ctex"]
+dest_files=["res://.godot/imported/profile-avatar-game-objects-spritesheet.png-2b16a895dc06fa5a81d8a3fb165a013c.ctex"]
 
 [params]
 

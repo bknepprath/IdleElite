@@ -16,6 +16,10 @@ $staminaGaugeFailShakeTest = Join-Path $projectRoot "scripts\test-stamina-gauge-
 $skillDetailBottomScrollPadTest = Join-Path $projectRoot "scripts\test-skill-detail-bottom-scroll-pad.ps1"
 $skillDetailHiddenPreviewScrollGapTest = Join-Path $projectRoot "scripts\test-skill-detail-hidden-preview-scroll-gap.ps1"
 $saveNormalizationTest = Join-Path $projectRoot "scripts\test-save-normalization.ps1"
+$moduleListTransitionsTest = Join-Path $projectRoot "scripts\test-module-list-transitions.ps1"
+$pinnedPinVisualSmokeTest = Join-Path $projectRoot "scripts\test-pinned-pin-visual-smoke.ps1"
+$pinnedScrollAnchorTest = Join-Path $projectRoot "scripts\test-pinned-scroll-anchor.ps1"
+$pinnedPageInteractionsTest = Join-Path $projectRoot "scripts\test-pinned-page-interactions.ps1"
 $skillsPagePerformanceTest = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 $skillsPagePerformanceRepeatTest = Join-Path $projectRoot "scripts\test-skills-page-performance-repeat.ps1"
 
@@ -57,6 +61,26 @@ function Assert-NoUnexpectedGodotErrors {
             throw "Unexpected Godot error during ${Context}: $text"
         }
     }
+}
+
+function Invoke-ProjectValidationScript {
+    param(
+        [Parameter(Mandatory = $true)][string]$Path,
+        [Parameter(Mandatory = $true)][string]$MissingMessage,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    if (-not (Test-Path -LiteralPath $Path)) {
+        throw $MissingMessage
+    }
+
+    $output = & $Path 2>&1
+    $output | Out-Host
+    if ($LASTEXITCODE -ne 0) {
+        exit $LASTEXITCODE
+    }
+    Assert-NoUnexpectedGodotErrors $output $Context
+    Assert-NoHeadlessGodotProcesses $Context
 }
 
 if (-not (Test-Path -LiteralPath $runner)) {
@@ -223,6 +247,26 @@ if ($LASTEXITCODE -ne 0) {
 }
 Assert-NoUnexpectedGodotErrors $saveNormalizationOutput "save normalization validation"
 Assert-NoHeadlessGodotProcesses "save normalization validation"
+
+Invoke-ProjectValidationScript `
+    -Path $moduleListTransitionsTest `
+    -MissingMessage "Module list transitions test was not found at $moduleListTransitionsTest" `
+    -Context "module list transitions validation"
+
+Invoke-ProjectValidationScript `
+    -Path $pinnedPinVisualSmokeTest `
+    -MissingMessage "Pinned pin visual smoke test was not found at $pinnedPinVisualSmokeTest" `
+    -Context "pinned pin visual smoke validation"
+
+Invoke-ProjectValidationScript `
+    -Path $pinnedScrollAnchorTest `
+    -MissingMessage "Pinned scroll anchor test was not found at $pinnedScrollAnchorTest" `
+    -Context "pinned scroll anchor validation"
+
+Invoke-ProjectValidationScript `
+    -Path $pinnedPageInteractionsTest `
+    -MissingMessage "Pinned page interactions test was not found at $pinnedPageInteractionsTest" `
+    -Context "pinned page interactions validation"
 
 $strictSkillsPerformance = $env:IDLE_ELITE_STRICT_SKILLS_PERF -eq "1"
 $skillsPageValidationTest = $skillsPagePerformanceRepeatTest

@@ -599,7 +599,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "parry-windmill-shadow",
           "tier": 10,
-          "name": "Parry Windmill Shadow",
+          "name": "Conquer Windmill Fear",
           "unlock": 19,
           "stamina": 2,
           "seconds": 2.87,

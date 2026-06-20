@@ -56,7 +56,7 @@
                                                                                                                           ".validate":  "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
                                                                                                                       },
                                                                                                      "score":  {
-                                                                                                                   ".validate":  "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val())"
+                                                                                                                   ".validate":  "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val() || ($category == 'total_level' && data.exists() && data.child('score').isNumber() && data.child('score').val() > 999 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.child('score').val()))"
                                                                                                                },
                                                                                                      "skill_level":  {
                                                                                                                          ".validate":  "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"

@@ -86,6 +86,7 @@ func _process(delta: float) -> void:
 func _build_nodes() -> void:
 	sprite_holder = Control.new()
 	sprite_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sprite_holder.z_index = 10
 	add_child(sprite_holder)
 
 	atlas_texture = AtlasTexture.new()
@@ -120,6 +121,7 @@ func _build_nodes() -> void:
 	xp_layer = Control.new()
 	xp_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	xp_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	xp_layer.z_index = 30
 	add_child(xp_layer)
 
 
@@ -129,8 +131,11 @@ func _make_bubble_label(text: String) -> Label:
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_color", COLOR_INK)
-	label.add_theme_color_override("font_outline_color", Color("#fff7e8"))
-	label.add_theme_constant_override("outline_size", 3)
+	label.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.64))
+	label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.10))
+	label.add_theme_constant_override("outline_size", 2)
+	label.add_theme_constant_override("shadow_offset_x", 0)
+	label.add_theme_constant_override("shadow_offset_y", 2)
 	if bubble_font != null:
 		label.add_theme_font_override("font", bubble_font)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -143,7 +148,7 @@ func _load_bubble_font() -> void:
 		if loaded is Font:
 			var bold := FontVariation.new()
 			bold.base_font = loaded
-			bold.variation_embolden = 1.15
+			bold.variation_embolden = 1.45
 			bubble_font = bold
 	if bubble_font == null:
 		bubble_font = ThemeDB.fallback_font
@@ -153,7 +158,7 @@ func _sync_layout() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
 	var sprite_size := clampf(minf(size.x, size.y) * 2.05, 1000.0, 1500.0)
-	var center := size * 0.5 + Vector2(0.0, 118.0)
+	var center := size * 0.5 + Vector2(0.0, 720.0)
 	sprite_base_position = center - Vector2(sprite_size, sprite_size) * 0.5
 	sprite_base_position.y -= sprite_size * 0.22
 	if sprite_holder != null:
@@ -162,30 +167,30 @@ func _sync_layout() -> void:
 
 	var bubble_width := clampf(size.x * 0.78, 1240.0, 1760.0)
 	var bubble_height := bubble_width * 0.43
-	var bubble_y := maxf(56.0, sprite_base_position.y - bubble_height - 94.0)
+	var bubble_y := maxf(56.0, sprite_base_position.y - bubble_height + 166.0)
 	if bubble != null:
 		bubble.size = Vector2(bubble_width, bubble_height)
 		bubble.position = Vector2((size.x - bubble_width) * 0.5, bubble_y)
 	if bubble_text != null:
-		bubble_text.size = Vector2(bubble_width * 0.84, bubble_height * 0.66)
-		bubble_text.position = Vector2((size.x - bubble_text.size.x) * 0.5, bubble_y + bubble_height * 0.10)
+		bubble_text.size = Vector2(bubble_width * 0.92, bubble_height * 0.78)
+		bubble_text.position = Vector2((size.x - bubble_text.size.x) * 0.5, bubble_y + bubble_height * 0.135)
 		_layout_bubble_text()
 
 
 func _layout_bubble_text() -> void:
 	if bubble_text == null:
 		return
-	var top_height := bubble_text.size.y * 0.35
-	var big_height := bubble_text.size.y * 0.65
-	var small_font := int(clampf(bubble_text.size.x * 0.052, 34.0, 72.0))
-	var big_font := int(clampf(bubble_text.size.x * 0.105, 82.0, 150.0))
+	var top_height := bubble_text.size.y * 0.30
+	var big_height := bubble_text.size.y * 0.70
+	var small_font := int(clampf(bubble_text.size.x * 0.064, 48.0, 94.0))
+	var big_font := int(clampf(bubble_text.size.x * 0.136, 122.0, 210.0))
 	if bubble_line_top != null:
 		bubble_line_top.size = Vector2(bubble_text.size.x, top_height)
 		bubble_line_top.position = Vector2.ZERO
 		bubble_line_top.add_theme_font_size_override("font_size", small_font)
 	if bubble_line_big != null:
 		bubble_line_big.size = Vector2(bubble_text.size.x, big_height)
-		bubble_line_big.position = Vector2(0.0, top_height - bubble_text.size.y * 0.08)
+		bubble_line_big.position = Vector2(0.0, top_height - bubble_text.size.y * 0.20)
 		bubble_line_big.add_theme_font_size_override("font_size", big_font)
 
 
@@ -235,15 +240,15 @@ func _spawn_xp_drop() -> void:
 	var side := -1.0 if rng.randf() < 0.5 else 1.0
 	var sprite_size := sprite_holder.size.x
 	var start := sprite_base_position + Vector2(
-		sprite_size * 0.5 + side * rng.randf_range(sprite_size * 0.11, sprite_size * 0.21),
-		rng.randf_range(sprite_size * 0.30, sprite_size * 0.38)
+		sprite_size * 0.5 + side * rng.randf_range(sprite_size * 0.18, sprite_size * 0.30),
+		rng.randf_range(sprite_size * 0.18, sprite_size * 0.25)
 	)
 	var color: Color = SKILL_THEME_COLORS[rng.randi_range(0, SKILL_THEME_COLORS.size() - 1)]
 	_float_reward("+%s XP" % amount, color, start)
 
 
 func _float_reward(text: String, color: Color, center: Vector2) -> void:
-	var reward_size := Vector2(360, 96)
+	var reward_size := Vector2(480, 128)
 	var holder := Control.new()
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = reward_size
@@ -258,7 +263,7 @@ func _float_reward(text: String, color: Color, center: Vector2) -> void:
 	shadow.position = Vector2(3, 4)
 	shadow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	shadow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	shadow.add_theme_font_size_override("font_size", 64)
+	shadow.add_theme_font_size_override("font_size", 92)
 	shadow.add_theme_color_override("font_color", COLOR_INK)
 	shadow.modulate = Color(1, 1, 1, 0.34)
 	holder.add_child(shadow)
@@ -268,10 +273,10 @@ func _float_reward(text: String, color: Color, center: Vector2) -> void:
 	label.size = reward_size
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.add_theme_font_size_override("font_size", 64)
+	label.add_theme_font_size_override("font_size", 92)
 	label.add_theme_color_override("font_color", color)
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
-	label.add_theme_constant_override("outline_size", 10)
+	label.add_theme_constant_override("outline_size", 14)
 	holder.add_child(label)
 
 	var tween := create_tween()

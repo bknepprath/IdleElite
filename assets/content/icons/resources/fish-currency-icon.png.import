@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b54t68jox37g"
-path="res://.godot/imported/fish-currency-icon.png-e236d8130f73d65668c6c76a5427ddb6.ctex"
+path="res://.godot/imported/fish-currency-icon.png-7afbf1b440048865d460bcdda85229d3.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/content/icons/resources/fish-currency-icon.png"
-dest_files=["res://.godot/imported/fish-currency-icon.png-e236d8130f73d65668c6c76a5427ddb6.ctex"]
+dest_files=["res://.godot/imported/fish-currency-icon.png-7afbf1b440048865d460bcdda85229d3.ctex"]
 
 [params]
 

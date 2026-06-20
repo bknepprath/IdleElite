@@ -2,6 +2,7 @@ class_name MobileScrollContainer
 extends ScrollContainer
 
 signal user_scroll_direction(direction: int)
+signal pull_offset_changed(offset_y: float)
 
 const DRAG_DEADZONE := 18.0
 const FLICK_SAMPLE_SECONDS := 0.14
@@ -224,6 +225,9 @@ func _process(delta: float) -> void:
 
 func _clamp_to_current_content_height() -> void:
 	var max_scroll := get_max_scroll_vertical()
+	if drag_tracking and absf(pull_raw_offset) > 0.0:
+		_pin_scroll_to_active_pull_edge(max_scroll)
+		return
 	if scroll_vertical <= max_scroll and drag_scroll_position <= float(max_scroll):
 		drag_scroll_position = clampf(float(scroll_vertical), 0.0, float(max_scroll))
 		return
@@ -248,6 +252,8 @@ func _apply_drag_delta(delta_y: float) -> void:
 				next_pull_raw_offset = 0.0
 			elif pull_raw_offset < 0.0 and next_pull_raw_offset > 0.0:
 				next_pull_raw_offset = 0.0
+			if absf(next_pull_raw_offset) > 0.0:
+				_pin_scroll_to_active_pull_edge()
 			_set_pull_raw_offset(next_pull_raw_offset)
 			velocity = 0.0
 			return
@@ -279,6 +285,13 @@ func _set_scroll_vertical_float(next_value: float) -> void:
 		return
 	drag_scroll_position = clampf(next_value, 0.0, float(get_max_scroll_vertical()))
 	scroll_vertical = int(round(drag_scroll_position))
+
+func _pin_scroll_to_active_pull_edge(max_scroll := -1) -> void:
+	if max_scroll < 0:
+		max_scroll = get_max_scroll_vertical()
+	var boundary := 0.0 if pull_raw_offset > 0.0 else float(max_scroll)
+	drag_scroll_position = boundary
+	scroll_vertical = int(round(boundary))
 
 func _contains_global_point(point: Vector2) -> bool:
 	return Rect2(global_position, size).has_point(point)
@@ -394,6 +407,7 @@ func _set_pull_raw_offset(next_raw_offset: float) -> void:
 	var direction := signf(pull_raw_offset)
 	pull_offset = direction * PULL_RESISTANCE_MAX * (1.0 - exp(-absf(pull_raw_offset) / PULL_RESISTANCE_MAX))
 	position.y = pull_anchor_position_y + pull_offset
+	pull_offset_changed.emit(pull_offset)
 	if absf(pull_offset) <= 0.0 and pull_tween == null:
 		pull_anchor_position_valid = false
 
@@ -410,6 +424,7 @@ func _snap_pull_offset() -> void:
 	velocity = 0.0
 	_capture_pull_anchor_position()
 	pull_raw_offset = 0.0
+	pull_offset_changed.emit(0.0)
 	pull_tween = create_tween()
 	pull_tween.tween_property(self, "position:y", pull_anchor_position_y, PULL_SNAP_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 	pull_tween.finished.connect(func():

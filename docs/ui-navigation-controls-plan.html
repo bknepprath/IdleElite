@@ -104,6 +104,606 @@
       gap:10px;
     }
 
+    .menu-layouts {
+      display:grid;
+      gap:14px;
+    }
+
+    .module-demo {
+      display:grid;
+      gap:10px;
+      padding:10px;
+      border:3px solid var(--ink);
+      border-radius:12px;
+      background:#f8f1e5;
+      box-shadow:0 4px 0 rgba(23,22,21,.18);
+    }
+
+    .phone-sim {
+      width:min(430px, 100%);
+      justify-self:center;
+      display:grid;
+      gap:0;
+      padding:16px 14px 18px;
+      border:5px solid var(--ink);
+      border-radius:34px;
+      background:
+        radial-gradient(circle at 50% 13px, #35302a 0 34px, transparent 35px),
+        linear-gradient(#2b241d, #181512);
+      box-shadow:0 10px 0 rgba(23,22,21,.3);
+    }
+
+    .phone-screen {
+      display:grid;
+      grid-template-rows:auto minmax(0,1fr) auto auto auto;
+      gap:9px;
+      min-height:740px;
+      padding:12px;
+      border:3px solid var(--ink);
+      border-radius:24px;
+      background:var(--paper);
+      overflow:hidden;
+    }
+
+    .phone-ribbon {
+      display:grid;
+      grid-template-columns:58px 1fr;
+      gap:8px;
+      align-items:center;
+      padding:8px;
+      border:3px solid var(--ink);
+      border-radius:13px;
+      background:#d9ecff;
+      box-shadow:0 4px 0 rgba(23,22,21,.2);
+    }
+
+    .stamina-circle {
+      width:48px;
+      height:48px;
+      display:grid;
+      place-items:center;
+      border:4px solid var(--ink);
+      border-radius:999px;
+      background:
+        conic-gradient(#fff2a8 0 72%, #171615 72% 100%);
+      color:var(--ink);
+      font-size:12px;
+      font-weight:1000;
+      box-shadow:0 3px 0 rgba(23,22,21,.25);
+    }
+
+    .ribbon-copy {
+      min-width:0;
+      display:grid;
+      gap:2px;
+    }
+
+    .ribbon-copy strong {
+      font-size:24px;
+      line-height:1;
+    }
+
+    .ribbon-copy span {
+      color:var(--muted);
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .phone-module-area {
+      display:grid;
+      align-content:start;
+      min-height:0;
+      overflow:visible;
+    }
+
+    .demo-module {
+      position:relative;
+      height:238px;
+      min-height:0;
+      overflow:visible;
+      border:4px solid var(--ink);
+      border-radius:20px;
+      background:var(--panel);
+      box-shadow:0 8px 0 rgba(0,0,0,.24);
+      --skill-color:#237cd5;
+      transition:height .18s ease, border-radius .18s ease;
+    }
+
+    .demo-module-bg {
+      position:absolute;
+      inset:0;
+      overflow:hidden;
+      border-radius:16px;
+      background:
+        linear-gradient(rgba(23,22,21,.34), rgba(23,22,21,.52)),
+        radial-gradient(circle at 28% 18%, rgba(255,255,255,.34), transparent 9rem),
+        var(--skill-color);
+    }
+
+    .demo-module-body {
+      position:relative;
+      z-index:1;
+      display:grid;
+      grid-template-columns:minmax(0,1fr) 72px;
+      gap:10px;
+      min-height:238px;
+      padding:10px;
+      align-items:start;
+    }
+
+    .demo-module-art {
+      grid-column:2;
+      grid-row:1;
+      width:72px;
+      aspect-ratio:1;
+      border:3px solid #eee2ce;
+      border-radius:15px;
+      background:#fffdf8;
+      object-fit:contain;
+      box-shadow:0 5px 0 rgba(23,22,21,.28);
+    }
+
+    .demo-module-copy {
+      grid-column:1;
+      grid-row:1;
+      min-width:0;
+      display:grid;
+      gap:8px;
+    }
+
+    .demo-module-title {
+      display:block;
+      min-height:56px;
+      color:#fff;
+      font-size:28px;
+      line-height:.96;
+      text-shadow:
+        -2px -2px 0 var(--ink),
+        2px -2px 0 var(--ink),
+        -2px 2px 0 var(--ink),
+        2px 2px 0 var(--ink),
+        0 4px 0 rgba(23,22,21,.42);
+    }
+
+    .demo-stat-grid {
+      display:grid;
+      grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:5px;
+    }
+
+    .demo-stat {
+      min-width:0;
+      min-height:44px;
+      padding:5px 2px;
+      border:2px solid rgba(23,22,21,.88);
+      border-radius:10px;
+      background:rgba(255,253,248,.92);
+      color:var(--ink);
+      text-align:center;
+    }
+
+    .demo-stat b,
+    .demo-stat span {
+      display:block;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .demo-stat b {
+      font-size:12px;
+      line-height:1.05;
+    }
+
+    .demo-stat span {
+      margin-top:3px;
+      color:var(--muted);
+      font-size:8px;
+      font-weight:1000;
+      text-transform:uppercase;
+    }
+
+    .demo-progress {
+      height:16px;
+      border:3px solid var(--ink);
+      border-radius:999px;
+      background:#171615;
+      overflow:hidden;
+    }
+
+    .demo-progress span {
+      display:block;
+      width:34%;
+      height:100%;
+      background:var(--skill-color);
+    }
+
+    .demo-module-meta {
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      align-items:center;
+    }
+
+    .demo-module-meta span {
+      min-height:22px;
+      padding:4px 7px;
+      border:2px solid var(--ink);
+      border-radius:999px;
+      background:var(--gold);
+      color:var(--ink);
+      font-size:9px;
+      font-weight:1000;
+      line-height:1;
+      box-shadow:1px 2px 0 rgba(23,22,21,.45);
+      text-transform:uppercase;
+    }
+
+    .module-hotspot {
+      position:absolute;
+      top:0;
+      width:50%;
+      height:78px;
+      border:0;
+      background:transparent;
+      cursor:pointer;
+      z-index:6;
+    }
+
+    .module-hotspot.is-pin {
+      left:0;
+    }
+
+    .module-hotspot.is-collapse {
+      right:0;
+    }
+
+    .confirm-badge {
+      position:absolute;
+      width:46px;
+      height:46px;
+      display:grid;
+      place-items:center;
+      border:3px solid var(--ink);
+      border-radius:999px;
+      background:var(--gold);
+      color:var(--ink);
+      box-shadow:0 4px 0 rgba(23,22,21,.3);
+      opacity:0;
+      visibility:hidden;
+      pointer-events:none;
+      z-index:9;
+      transform:translateY(-8px) scale(.92);
+      transition:opacity .16s ease, transform .16s ease, visibility .16s ease;
+    }
+
+    .confirm-badge img {
+      width:31px;
+      height:31px;
+      object-fit:contain;
+    }
+
+    .confirm-badge.is-pin {
+      top:0;
+      left:0;
+      width:36px;
+      height:36px;
+      border:0;
+      border-radius:0;
+      background:transparent;
+      box-shadow:none;
+      transform:translate(-32%, -48%) scale(.92);
+    }
+
+    .confirm-badge.is-pin::after {
+      content:"";
+      position:absolute;
+      left:7px;
+      right:7px;
+      bottom:0;
+      height:9px;
+      border-radius:0 0 8px 8px;
+      background:linear-gradient(rgba(23,22,21,.28), rgba(23,22,21,.1)), var(--skill-color);
+      pointer-events:none;
+    }
+
+    .confirm-badge.is-collapse {
+      top:0;
+      right:0;
+      font-size:32px;
+      font-weight:1000;
+      line-height:1;
+      transform:translate(32%, -48%) scale(.92);
+    }
+
+    .demo-module.is-pin-confirm .confirm-badge.is-pin,
+    .demo-module.is-pinned .confirm-badge.is-pin {
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+      transform:translate(-32%, -32%) scale(1);
+    }
+
+    .demo-module.is-collapse-confirm .confirm-badge.is-collapse {
+      opacity:1;
+      visibility:visible;
+      pointer-events:auto;
+      transform:translate(32%, -32%) scale(1);
+    }
+
+    .demo-module.is-pinned .confirm-badge.is-pin {
+      background:transparent;
+    }
+
+    .demo-module.is-collapsed {
+      height:52px;
+      min-height:0;
+      border-radius:14px;
+    }
+
+    .demo-module.is-collapsed .demo-module-body,
+    .demo-module.is-collapsed .module-hotspot,
+    .demo-module.is-collapsed .confirm-badge {
+      display:none;
+    }
+
+    .collapsed-preview {
+      position:relative;
+      z-index:2;
+      display:none;
+      grid-template-columns:minmax(0,1fr);
+      gap:8px;
+      align-items:center;
+      min-height:44px;
+      padding:4px 6px 4px 10px;
+    }
+
+    .demo-module.is-collapsed .collapsed-preview {
+      display:grid;
+    }
+
+    .collapsed-preview strong {
+      overflow:hidden;
+      color:#fff;
+      font-size:18px;
+      line-height:1;
+      text-overflow:ellipsis;
+      text-shadow:
+        -1px -1px 0 var(--ink),
+        1px -1px 0 var(--ink),
+        -1px 1px 0 var(--ink),
+        1px 1px 0 var(--ink),
+        0 3px 0 rgba(23,22,21,.3);
+      white-space:nowrap;
+    }
+
+    .utility-row-demo {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:10px;
+      padding:0 8px;
+    }
+
+    .utility-button {
+      display:grid;
+      justify-items:center;
+      gap:3px;
+      min-height:68px;
+      padding:6px;
+      border:3px solid var(--ink);
+      border-radius:12px;
+      background:#fffdf8;
+      color:var(--ink);
+      font-size:11px;
+      font-weight:1000;
+      box-shadow:0 5px 0 rgba(23,22,21,.22);
+    }
+
+    .utility-button img {
+      width:36px;
+      height:36px;
+      object-fit:contain;
+    }
+
+    .chat-strip-demo,
+    .nav-ribbon-demo {
+      border:3px solid var(--ink);
+      border-radius:12px;
+      box-shadow:0 4px 0 rgba(23,22,21,.2);
+    }
+
+    .chat-strip-demo {
+      min-height:38px;
+      display:grid;
+      place-items:center;
+      background:#18191f;
+      color:#fffdf8;
+      font-size:12px;
+      font-weight:1000;
+    }
+
+    .nav-ribbon-demo {
+      display:grid;
+      grid-template-columns:repeat(5,minmax(0,1fr));
+      gap:6px;
+      padding:7px;
+      background:#74706a;
+    }
+
+    .nav-ribbon-button {
+      display:grid;
+      justify-items:center;
+      gap:3px;
+      min-height:54px;
+      padding:4px 2px;
+      border:3px solid var(--ink);
+      border-radius:10px;
+      background:#f4eee3;
+      color:var(--ink);
+      font-size:9px;
+      font-weight:1000;
+      box-shadow:0 3px 0 rgba(23,22,21,.18);
+    }
+
+    .nav-ribbon-button img {
+      width:34px;
+      height:28px;
+      object-fit:contain;
+    }
+
+    .nav-ribbon-symbol {
+      width:28px;
+      height:28px;
+      display:grid;
+      place-items:center;
+      color:var(--ink);
+      font-size:18px;
+      font-weight:1000;
+      line-height:1;
+    }
+
+    .menu-layout {
+      display:grid;
+      gap:8px;
+      padding:10px;
+      border:3px solid var(--ink);
+      border-radius:10px;
+      background:#f8f1e5;
+      box-shadow:0 4px 0 rgba(23,22,21,.18);
+    }
+
+    .menu-layout h3 {
+      font-size:18px;
+      line-height:1;
+    }
+
+    .menu-row {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:8px;
+    }
+
+    .page-switch-demo {
+      display:grid;
+      gap:10px;
+      padding:12px;
+      border:4px solid var(--ink);
+      border-radius:18px;
+      background:#fffdf8;
+      box-shadow:0 7px 0 rgba(23,22,21,.2);
+    }
+
+    .page-switch-head {
+      display:grid;
+      gap:4px;
+      padding:8px 10px;
+      border:3px solid var(--ink);
+      border-radius:13px;
+      background:#f8f1e5;
+      box-shadow:0 4px 0 rgba(23,22,21,.16);
+    }
+
+    .page-switch-head strong {
+      font-size:20px;
+      line-height:1;
+    }
+
+    .page-switch-head span {
+      color:var(--muted);
+      font-size:13px;
+      font-weight:900;
+      line-height:1.25;
+    }
+
+    .page-switch-buttons {
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      gap:10px;
+    }
+
+    .page-switch-button {
+      min-width:0;
+      display:grid;
+      grid-template-columns:auto minmax(0,1fr);
+      gap:8px;
+      align-items:center;
+      min-height:88px;
+      padding:10px;
+      border:4px solid var(--ink);
+      border-radius:15px;
+      color:#fffdf8;
+      text-align:left;
+      box-shadow:0 6px 0 rgba(23,22,21,.25);
+    }
+
+    .page-switch-button.is-prev {
+      background:#237cd5;
+    }
+
+    .page-switch-button.is-next {
+      background:#2dc0b9;
+      grid-template-columns:minmax(0,1fr) auto;
+      text-align:right;
+    }
+
+    .page-switch-button.is-next .page-switch-copy {
+      justify-items:end;
+    }
+
+    .page-switch-arrow {
+      width:38px;
+      height:38px;
+      display:grid;
+      place-items:center;
+      border:3px solid var(--ink);
+      border-radius:999px;
+      background:#fffdf8;
+      color:var(--ink);
+      font-size:24px;
+      font-weight:1000;
+      line-height:1;
+      box-shadow:0 3px 0 rgba(23,22,21,.22);
+    }
+
+    .page-switch-copy {
+      min-width:0;
+      display:grid;
+      gap:3px;
+    }
+
+    .page-switch-copy b,
+    .page-switch-copy span {
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+
+    .page-switch-copy b {
+      font-size:18px;
+      line-height:1;
+      text-shadow:
+        -1px -1px 0 var(--ink),
+        1px -1px 0 var(--ink),
+        -1px 1px 0 var(--ink),
+        1px 1px 0 var(--ink),
+        0 3px 0 rgba(23,22,21,.28);
+    }
+
+    .page-switch-copy span {
+      font-size:11px;
+      font-weight:1000;
+      line-height:1.15;
+      text-transform:uppercase;
+      opacity:.95;
+    }
+
+    .page-switch-note {
+      color:var(--muted);
+      font-size:13px;
+      font-weight:850;
+      line-height:1.35;
+    }
+
     .icon-card {
       display:grid;
       justify-items:center;
@@ -120,6 +720,20 @@
       height:78px;
       object-fit:contain;
       image-rendering:auto;
+    }
+
+    .icon-placeholder {
+      width:78px;
+      height:78px;
+      display:grid;
+      place-items:center;
+      border:3px solid var(--ink);
+      border-radius:12px;
+      background:#fffdf8;
+      color:var(--ink);
+      font-size:42px;
+      font-weight:1000;
+      line-height:1;
     }
 
     .icon-card strong {
@@ -235,6 +849,10 @@
       .check-item {
         grid-template-columns:1fr;
       }
+
+      .page-switch-buttons {
+        grid-template-columns:1fr;
+      }
     }
   </style>
 </head>
@@ -243,7 +861,7 @@
     <div class="docs-bar-head">
       <p class="docs-eyebrow">Idle Elite Godot Docs</p>
       <h1>UI Navigation Controls Checklist</h1>
-      <p class="docs-lead">Implementation checklist for page switching, module controls, favorites, sorting, and bottom dock spacing.</p>
+      <p class="docs-lead">Implementation checklist for page switching, module controls, pinned activities, sorting, chat, and the bottom navigation bar.</p>
     </div>
     <nav data-docs-nav></nav>
   </header>
@@ -252,16 +870,104 @@
     <section class="intro">
       <p class="kicker">Implementation tracker</p>
       <h2>Build it in order.</h2>
-      <p>Each checkbox is a real implementation step. When a step ships, this page should be updated with that checkbox checked.</p>
+      <p>Each checkbox is a real implementation step. When a step ships, check it off here.</p>
     </section>
 
     <section class="section">
       <h2>Icon Drafts V3</h2>
-      <p class="icon-note">Approved icons are now stored with game assets in <code>assets/content/ui/navigation-controls/</code>. Favorites will use the existing <code>*</code> star.</p>
-      <div class="icon-grid">
-        <div class="icon-card is-selected"><img src="../assets/content/ui/navigation-controls/sort-list.png" alt="Chosen sort icon"><strong>Sort</strong></div>
-        <div class="icon-card is-selected"><img src="../assets/content/ui/navigation-controls/skills-overview.png" alt="Chosen skills overview icon"><strong>Skills</strong></div>
-        <div class="icon-card is-selected"><img src="../assets/content/ui/navigation-controls/pin.png" alt="Chosen pin icon"><strong>Pin</strong></div>
+      <p class="icon-note">There are three bottom layers: utility buttons, global chat, and the five-button gray navigation bar. Pinned modules stay in their normal spot, duplicate into a pinned shelf, and also appear on a Pinned Activities page.</p>
+      <div class="module-demo">
+        <div class="phone-sim" aria-label="Phone layout simulator">
+          <div class="phone-screen">
+            <div class="phone-ribbon">
+              <div class="stamina-circle">22</div>
+              <div class="ribbon-copy"><strong>Building</strong><span>Stamina and skill header ribbon</span></div>
+            </div>
+
+            <div class="phone-module-area">
+              <div class="demo-module">
+                <div class="demo-module-bg"></div>
+                <div class="demo-module-body">
+                  <img class="demo-module-art" src="../assets/content/build/actions/01-stack-bricks.png" alt="">
+                  <div class="demo-module-copy">
+                    <h3 class="demo-module-title">Stack Bricks</h3>
+                    <div class="demo-stat-grid">
+                      <span class="demo-stat"><b>1</b><span>XP</span></span>
+                      <span class="demo-stat"><b>1</b><span>Stam</span></span>
+                      <span class="demo-stat"><b>1.49s</b><span>Time</span></span>
+                      <span class="demo-stat"><b>98%</b><span>Rate</span></span>
+                    </div>
+                    <div class="demo-progress"><span></span></div>
+                    <div class="demo-module-meta"><span>Lv 1</span><span>Training</span></div>
+                  </div>
+                </div>
+                <button class="module-hotspot is-pin" type="button" aria-label="Pin confirm area"></button>
+                <button class="module-hotspot is-collapse" type="button" aria-label="Collapse confirm area"></button>
+                <button class="confirm-badge is-pin" type="button" aria-label="Confirm pin or unpin"><img src="../assets/content/ui/navigation-controls/pin.png" alt=""></button>
+                <button class="confirm-badge is-collapse" type="button" aria-label="Confirm collapse">-</button>
+                <div class="collapsed-preview">
+                  <strong>Stack Bricks</strong>
+                </div>
+              </div>
+            </div>
+
+            <div class="utility-row-demo" aria-label="Floating utility buttons preview">
+              <div class="utility-button"><img src="../assets/content/ui/navigation-controls/pin.png" alt=""><span>Pinned</span></div>
+              <div class="utility-button"><img src="../assets/content/ui/navigation-controls/skills-overview.png" alt=""><span>Skills</span></div>
+              <div class="utility-button"><img src="../assets/content/ui/navigation-controls/sort-list.png" alt=""><span>Sort</span></div>
+            </div>
+
+            <div class="chat-strip-demo">Global chat strip</div>
+
+            <div class="nav-ribbon-demo" aria-label="Bottom navigation bar preview">
+              <div class="nav-ribbon-button"><span class="nav-ribbon-symbol">H</span><span>Home</span></div>
+              <div class="nav-ribbon-button"><span class="nav-ribbon-symbol">Q</span><span>Quests</span></div>
+              <div class="nav-ribbon-button"><span class="nav-ribbon-symbol">S</span><span>Skills</span></div>
+              <div class="nav-ribbon-button"><span class="nav-ribbon-symbol">C</span><span>Chat</span></div>
+              <div class="nav-ribbon-button"><span class="nav-ribbon-symbol">G</span><span>Gear</span></div>
+            </div>
+          </div>
+            </div>
+      </div>
+      <div class="menu-layouts">
+        <div class="menu-layout">
+          <h3>Utility Row Above Chat</h3>
+          <div class="menu-row">
+            <div class="icon-card is-selected"><img src="../assets/content/ui/navigation-controls/pin.png" alt="Pinned page icon"><strong>Pinned</strong></div>
+            <div class="icon-card is-selected"><img src="../assets/content/ui/navigation-controls/skills-overview.png" alt="Chosen skills overview icon"><strong>Skills</strong></div>
+            <div class="icon-card is-selected"><img src="../assets/content/ui/navigation-controls/sort-list.png" alt="Chosen sort icon"><strong>Sort</strong></div>
+          </div>
+        </div>
+        <div class="menu-layout">
+          <h3>Invisible Module Actions</h3>
+          <div class="menu-row">
+            <div class="icon-card is-selected"><img src="../assets/content/ui/navigation-controls/pin.png" alt="Chosen pin icon"><strong>Top left: Pin</strong></div>
+            <div class="icon-card"><div class="icon-placeholder">-</div><strong>Top right: Collapse</strong></div>
+            <div class="icon-card"><div class="icon-placeholder">R</div><strong>Collapsed: Row Tap</strong></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2>Page Switch Prototype</h2>
+      <p class="icon-note">This is the final module on a skill page. It only moves sideways to the neighboring skill pages.</p>
+      <div class="page-switch-demo" aria-label="Page switch module prototype">
+        <div class="page-switch-head">
+          <strong>More Skills</strong>
+          <span>Jump to a neighboring skill page.</span>
+        </div>
+        <div class="page-switch-buttons">
+          <button class="page-switch-button is-prev" type="button">
+            <span class="page-switch-arrow">&lt;</span>
+            <span class="page-switch-copy"><b>Building</b><span>Previous page</span></span>
+          </button>
+          <button class="page-switch-button is-next" type="button">
+            <span class="page-switch-copy"><b>Fishing</b><span>Next page</span></span>
+            <span class="page-switch-arrow">&gt;</span>
+          </button>
+        </div>
+        <p class="page-switch-note">Each button uses the destination page color, not the current page color. The module belongs at the bottom after normal modules and after the pinned shelf.</p>
       </div>
     </section>
 
@@ -269,78 +975,177 @@
       <h2>Main Checklist</h2>
       <ol class="checklist">
         <li class="check-item">
-          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Choose and organize UI icons.</strong><span>Selected the top-right Sort icon, bottom-left Skills icon, and top-right thumbtack from the pin sheet.</span><span class="done-note">Done: approved icons are saved in <code>assets/content/ui/navigation-controls/</code>.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Use approved UI icons.</strong><span>Sort, Skills, and Pin assets are stored with the game UI assets.</span><span class="done-note">Done: approved generated icons are saved in <code>assets/content/ui/navigation-controls/</code>.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Find the shared module render paths.</strong><span>Identify every place modules are built, including skill detail pages, fishing area modules, passive/collect modules, and any special event modules.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Find the shared module render paths.</strong><span>Found in <code>scripts/main.gd</code>: skill detail shell, eager/lazy detail card lists, regular action cards, passive cards, thieving heist cards, fishing area/offers, and hub modules.</span><span class="done-note">Done: key entry points include <code>_render_skill_detail</code>, <code>_render_detail_eager_card_list</code>, <code>_render_detail_lazy_card_list</code>, <code>_build_detail_interactive_action_card</code>, <code>_build_passive_module_card</code>, <code>_build_thieving_heist_card</code>, <code>_render_fishing_area_modules</code>, <code>_build_fishing_area_module</code>, and <code>_add_hub_module</code>.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Define stable module keys.</strong><span>Create a consistent key format for pin, favorite, collapse, and sort state. Do not use display names as IDs.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Define stable module keys.</strong><span>Use internal-ID key families for action, thieving heist, fishing area, fishing offer, and hub modules.</span><span class="done-note">Done: added module UI key helpers in <code>scripts/main.gd</code>. Project validation parsed the change, then failed later on unrelated loading asset and performance gates.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add save data for module UI preferences.</strong><span>Store pinned modules, favorites, collapsed modules, and sort mode separately from activity progress.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Add save data for module UI preferences.</strong><span>Store pinned modules as an ordered list, collapsed modules as true flags, and sort mode separately from activity progress.</span><span class="done-note">Done: added <code>module_ui_pinned_order</code>, <code>module_ui_collapsed</code>, and <code>module_ui_sort_mode</code> save/restore plumbing in <code>scripts/main.gd</code>. Update: save-normalization validation now covers unlocked-only pin/collapse save filtering, rejected locked/hub pin/collapse mutators leaving runtime state unchanged while clearing stale preview tokens, restore clearing transient armed pin-preview tokens, collapse save migration, invalid sort fallback, and hard-reset preference clearing. Module-list smoke also restores a saved pinned+collapsed module before first render and confirms the skill page rebuilds with an expanded pinned shelf duplicate, a collapsed normal copy, and an expanded Pinned Activities page duplicate. It now also verifies the hard-reset preference clear at render level: no pinned shelf, no collapsed rows, default sort mode, and the reset module back in its normal expanded position. Update: save-normalization now rejects stale unavailable module UI keys across action, hub, thieving heist, fishing offer, and any currently locked fishing-area key available in the fixture, including mutators, saved pin/collapse filtering, stale preview-token cleanup, and restore filtering. Update: save-normalization also asserts full save payloads include the current <code>module_ui_collapse_save_version</code> plus normalized pin order, collapsed flags, and sort mode so intentional collapses are not mistaken for legacy saves on reload; malformed collapse save-version values are also treated as legacy and migrate to expanded modules.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add one module menu button to every module.</strong><span>Use the same corner and same visual style everywhere. The button opens actions for that module.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Add invisible module action zones.</strong><span>Every unlocked module gets a top-left pin zone and a top-right collapse zone. They do not show buttons until tapped.</span><span class="done-note">Done: added shared invisible <code>pin</code> and <code>collapse</code> overlay zones to regular action cards, passive modules, thieving heists, fishing areas, and fishing offers. Update: locked/non-eligible modules now receive no runtime pin/collapse zones, hub modules are filtered out because pinned activities are skill-page activity modules, save-normalization validation asserts locked and hub modules cannot create those zones, activity-card geometry validation checks each zone's configured size, offset, anchor, circle-only hit bounds, rectangular edge points inside the zone boxes but outside the intended circles, and the oversized pin badge staying visual-only outside those circular bounds. Module-list smoke now verifies both the real global action router and a rendered locked activity module: locked cards expose no pin/collapse zone controls, no visible badges, and no top-left/top-right routed action hits.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Build the module dropdown.</strong><span>The dropdown must include Pin, Favorite, and Collapse. It should close cleanly after selection or outside tap.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Build the pin confirm interaction.</strong><span>Tap the top-left zone once to show a pin for 3 seconds. Tap the pin again to confirm.</span><span class="done-note">Done: top-left module zones now show a temporary pin badge, expire it after 3 seconds, and persist confirmed pins into <code>module_ui_pinned_order</code>. Update: module-list smoke validates the real input path: first top-left tap arms preview only, second tap confirms, neither tap starts the activity underneath, and an expired preview clears both the pin badge and its bury mask.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Implement Pin.</strong><span>Pinned modules move to the top of the current page. Pinned modules keep their normal behavior.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Animate confirmed pins into place.</strong><span>After confirmation, the pin anticipates backward, pokes into the module corner, and settles as the permanent pinned badge.</span><span class="done-note">Done: confirmed pins now keep the loose armed placement for the first tap, then on confirmation play a 0.24s sequence: tiny up/right prep, quick poke past the settled corner, and a short settle into the embedded top-left placement. The skill-page refresh is delayed until the motion completes, then the existing pin-anchor cover/restore path rebuilds the pinned shelf without exposing a scroll jump. Update: <code>scripts/test-pinned-pin-visual-smoke.ps1</code> now validates the confirm tween exists, starts from the armed pin, disables the badge during motion, passes through an in-between pose, survives a delayed second-tap window while lazy pruning is active, and settles after refresh.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Implement Favorite.</strong><span>Favorited modules are added to the Favorites view and can be removed from the same menu.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Bury the pin tip into the card.</strong><span>The pin has no circle or button background. Its tip visibly tucks under the module surface so it feels physically stuck into the card.</span><span class="done-note">Done: the pin badge uses only the pin icon with no circular button background. Update: screenshot review caught the visible colored bury-mask square as unacceptable, so the mask is now kept hidden and validation guards against it coming back. Pin art now uses a 320px placement badge, and smoke validation checks the approved pin texture, no circular stylebox, armed up/right preview position, settled pinned position, no visible square mask, card overlap, top overhang, and settled placement after refresh. Update: the pin visual smoke now uses a portrait phone viewport so capture mode does not launch the game in a landscape/wide layout.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Implement Collapse.</strong><span>Collapsed modules shrink to a compact row but remain visible and expandable.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Tune the pin poke-in animation.</strong><span>Add a short anticipation beat before the poke-in, then a quick settle so the motion feels intentional.</span><span class="done-note">Done: the confirm motion is intentionally snappy rather than slow, with a 45ms prep, 105ms poke, and 90ms settle using the approved oversized pin asset and no circular background. Visual capture was refreshed at <code>.codex-tmp/pinned-visual-captures/02-confirm-pin-poke-motion.png</code> and <code>.codex-tmp/pinned-visual-captures/03-settled-pin-and-shelf.png</code>; the mid-motion and settled frames show the pin embedded without a visible square mask.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add the bottom dock above global chat.</strong><span>Dock buttons: Favorites, Sort, Skills, Ready. Use dark readable text on light buttons.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Implement Pin as a duplicate shelf.</strong><span>Pinned modules stay in their normal page position and also appear at the top of the current skill column.</span><span class="done-note">Done: skill detail pages now render a top Pinned shelf after the top spacer, including Fishing area modules. It duplicates pinned action, passive, thieving heist, fishing area, and fishing offer modules as preview-safe copies so the normal module registry stays intact. Update: the shelf title is centered as <code>PinnedModuleShelfTitle</code> so the oversized pin badge no longer covers the word <code>Pinned</code>. Update: pin confirmation now captures the normal source module's screen position, inserts the pinned shelf, and compensates scroll after layout so the original module does not visually jump downward; the player can scroll up to see the newly added shelf copy.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add safe bottom spacing to scroll pages.</strong><span>At max scroll, the final module must not be hidden behind the dock or chat strip.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Preserve pin order.</strong><span>Each new pinned module is added after the previously pinned modules. Players can pin as many modules as they want.</span><span class="done-note">Done: confirmed pins append to <code>module_ui_pinned_order</code>, and the shelf iterates that saved array directly without sorting.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Build the Favorites view.</strong><span>Favorites opens from the dock. Pressing Favorites again exits the view.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Keep pinned shelf copies expanded.</strong><span>Modules duplicated into the top pinned shelf never render collapsed, even when the normal copy is collapsed.</span><span class="done-note">Done: pinned shelf copies are tagged with <code>module_ui_force_expanded</code>, keep collapse zones removed, and now register as shelf cards under unique <code>pinned_shelf:</code> keys instead of preview-only copies. Module-list smoke validation checks shelf order, distinct transition keys, shelf action-card starts through the top-level input path, shelf running action cards entering the normal stop-hold route and stopping, all four action info-chip expansions with filled bonus labels on the shelf duplicate, passive collect behavior, thieving heist registration, fishing-area labels and method starts, fishing-offer pin routing, non-empty stat labels, no active collapse zone on shelf copies, no stale registered collapse metadata after duplicate cleanup, and a collapsed source module still renders expanded registered duplicates on both the shelf and pinned page. Update: shelf body taps now prefer the visible shelf card when the oversized original pin graphic overlaps it, while true pin-center taps still yield to normal unpin handling.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Build the Sort menu.</strong><span>Sort modes: level order and module type. Pinned modules stay above sorted modules.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Expire unconfirmed pin previews.</strong><span>If the player does not confirm within 3 seconds, the temporary pin fades away and nothing changes.</span><span class="done-note">Done: unconfirmed pin previews schedule a 3-second token-guarded timer that hides the badge and clears preview state without changing the pinned list. Update: module-list smoke validates the real input path by arming a pin preview, waiting past the timeout, and checking that the token clears, the badge hides, and the module remains unpinned.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Move Skills navigation into the dock.</strong><span>The Skills button returns to the skill hub from skill pages.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Support one-tap unpin from the badge.</strong><span>When a module is already pinned, tapping the top-left pin zone unpins it. The pin moves out and fades away.</span><span class="done-note">Done: pinned badges now remove their key from <code>module_ui_pinned_order</code>, play a move-out fade, save, and refresh the visible skill detail list. Update: module-list smoke validation now taps the rendered original, pinned shelf, and Pinned Activities page circular pin zones while their visible pin badges are present, plus duplicate pin zones for fishing offers, and confirms each unpins without arming a preview token or starting the activity underneath. The refresh after unpin now waits for the short move-out/fade tween when a visible badge exists, and the smoke verifies the badge starts its tween, remains visible/disabled during fade-out, and visibly moves or fades before the page rebuild. The unpin tween metadata is cleared on finish, the active tween now keeps the TextureButton disabled through the release lifecycle, and fading pins block mid-exit re-taps so they cannot re-pin, arm a preview, or start the card underneath.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Build the Ready button behavior.</strong><span>Ready jumps to the active action first, then reward-ready modules, then newly important modules.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Build the collapse confirm interaction.</strong><span>Tap the top-right zone once to show a minus button. Tap the minus again to collapse the module.</span><span class="done-note">Done: top-right module zones now reveal a minus confirm badge. Pressing the minus records the module in <code>module_ui_collapsed</code>, saves, and refreshes the skill detail list. Update: module-list smoke validates the real input path: first top-right tap shows confirm without collapsing, the visible minus badge center routes as a collapse action even when it sits outside the invisible circle, second tap collapses, and neither tap starts the activity underneath. Update: collapse taps also assert they do not arm a pin-preview token or leave an action-card press stuck.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Define the skill page neighbor order.</strong><span>Use a single ring order for page switching so every page has a previous and next destination.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Build the collapsed module view.</strong><span>Collapsed modules shrink the blue module panel height into a teeny row while keeping the title and row expansion affordance readable.</span><span class="done-note">Done: collapsed normal modules now render as compact themed rows in eager and lazy detail paths, including regular actions, passive modules, thieving heists, fishing areas, and fishing offers. Pinned shelf copies stay expanded. Update: module-list smoke validation checks the compact row height, title label, rounded background, rounded tint, rounded 3D depth slab, rounded border, and minimum compact face height so the collapsed state stays a real card row rather than a flat truncation line.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Add page switch module to skill pages.</strong><span>The final module on each skill page has two destination-colored buttons.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Do not add a collapsed expand button.</strong><span>Collapsed rows keep the existing row-tap expansion behavior; there should be no permanent plus button added for this pinned-activity pass.</span><span class="done-note">Done: tracker/demo language now reflects the review decision. The documentation no longer presents a collapsed <code>+</code> button as a requirement, and production collapsed button UI remains untouched.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Block accidental input behind dock menus.</strong><span>Dock taps, dropdown taps, and menu taps must not start swipes or press modules underneath.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Add the bottom gray navigation bar.</strong><span>Five main navigation buttons sit at the very bottom of the screen below global chat.</span><span class="done-note">Done: the existing <code>nav_bar</code> already implements a bottom-wide gray 5-button ribbon with Hero, Hub, Skills, Settings, and Shop buttons. It sits below the global chat strip and uses the shared <code>_nav_style()</code>.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Refresh visual states after changes.</strong><span>Pin, favorite, collapse, sort, and favorites mode should redraw immediately without needing a full restart.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Add the utility row above chat.</strong><span>Pinned, Skills, and Sort sit above the global chat strip as three floating buttons. Skills stays in the middle.</span><span class="done-note">Done: added a shell-level floating utility row above the global chat strip with Pinned, Skills, and Sort buttons. Skills is centered and returns to the skill hub. Pinned and Sort show temporary messages until their later checklist items are implemented. Safe Godot startup/quit validation passed.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Run project validation.</strong><span>Use <code>.\scripts\check-project.ps1</code> and follow Godot process safety rules.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Add safe bottom spacing to scroll pages.</strong><span>At max scroll, the final module must not be hidden behind utility buttons, chat, or the gray navigation bar.</span><span class="done-note">Done: the shared bottom inset now reserves space for the utility row, its gap, the global chat strip, and the gray nav bar. Skill detail bottom spacers and reward float clamping inherit the larger safe area. Safe Godot startup/quit validation passed.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Manual layout pass on a long page.</strong><span>Inspect a long skill page at max scroll and confirm the bottom module, dock, and chat do not overlap.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Build the Pinned Activities page.</strong><span>The Pinned button opens a special page containing every pinned module in pin order.</span><span class="done-note">Done: the Pinned utility button now opens a dedicated <code>pinned</code> screen. The page renders pinned modules in saved pin order and keeps those page copies expanded by removing collapse zones. Update: toggling Pinned again restores the previous skill page and its detail scroll position, and the Pinned button uses the shared gray active fill while the page is open before returning to its normal fill on the skill page. Module-list smoke now validates cross-skill pinned-page ordering by rendering pinned copies from Fishing, Thieving, and Building in the exact saved pin order. Update: the pinned-page return smoke now opens and closes the page through the actual <code>pinned_utility_tab</code> pressed signal instead of calling the page function directly.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Manual layout pass on a short page.</strong><span>Confirm the dock still sits naturally above chat when there is not much page content.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Render the Pinned Activities header.</strong><span>The pinned page header says Pinned Activities. It does not show a skill XP bar or stamina circle.</span><span class="done-note">Done: the pinned page now renders a large centered black <code>Pinned Activities</code> title using the bold app font and an unboxed centered empty state. Module-list smoke validation confirms the exact empty-state copy, large centered black bold title styling, no shelf panel box, and no source skill XP, stamina, regen, or fishing header gauges in the tree.</span></div></div>
         </li>
         <li class="check-item">
-          <div class="check-row"><input type="checkbox"><div class="check-copy"><strong>Update this checklist.</strong><span>Check off every completed item and add notes for anything deferred.</span></div></div>
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Route pinned modules to normal activity logic.</strong><span>Modules on the pinned page still run their normal costs, timers, rewards, and cooldown rules.</span><span class="done-note">Done: pinned-page modules are built with normal action-card registration, their tap viewport uses the pinned scroll container, and the shared card update loop now runs on the pinned screen for live activity progress, costs, timers, rewards, and cooldown state. Update: pinned-page action/passive/heist/fishing-area copies now register under unique page keys while keeping their real activity metadata; smoke validation checks real input-path action starts, running pinned-page action cards entering the normal stop-hold route and stopping, all four action info-chip expansions with filled bonus labels on the pinned duplicate, passive collect buttons clearing the registered module's stored loot and adding log currency on both pinned-page and shelf duplicates, pinned-page passive collect through the same passive button input handler used by live UI, enabled thieving heist button presses applying real trophy success/jail state after clearing stale synthetic gesture suppression, non-empty action/passive/fishing-area labels, pinned fishing method buttons updating their visible duplicate before starting the real fishing action, fishing-offer shelf and pinned-page copies routing their pin zone even though they are not action-card entries, no active/stale collapse route on pinned duplicates, and the oversized pin art stays visual-only outside the circular pin zone so its transparent placement box does not block pinned-page body taps. The module-list smoke now also asserts pinned-page fishing method, heist, and passive collect controls are visible, enabled, pointer-receiving, inside the pinned-page viewport, and clear of the bottom dock before invoking their normal behavior; passive fixtures are seeded to avoid confusing first-time module seeding with failed collection. Thieving heist presses now check the active scroll container for the current screen, so stale skill-page scroll suppression cannot block a Pinned Activities page heist button. Update: pinned-page and pinned-shelf heist buttons now route through <code>_on_thieving_heist_button_input</code> press/release handling instead of direct pressed-signal shortcuts, include the same swipe bookkeeping as passive buttons, and the module-list smoke validates both paths applying real trophy success/jail state. Update: pinned-shelf passive collect now uses <code>_on_passive_module_button_input</code> press/release handling in validation too, so shelf and page duplicates both prove the live collect path instead of a direct pressed signal. Update: fishing method buttons now route through <code>_on_fishing_method_button_input</code> clean tap handling; the pinned-page and pinned-shelf fishing smokes use that live handler and still confirm the visible duplicate selection updates before the real fishing action starts.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Validate pinned-page action feedback and jail bars.</strong><span>Focused coverage confirms pinned-page actions animate the visible duplicate on start, and pinned thieving action jail bars render and reduce jail time when tapped.</span><span class="done-note">Done: added <code>scripts/test-pinned-page-interactions.ps1</code> with headless validation and optional screenshot capture at <code>.codex-tmp/pinned-page-interactions/pinned-page-jailed-action.png</code>; the captured Pinned Activities page shows the jailed pinned action with bars present.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Keep mid-list pin and unpin anchored.</strong><span>When a player pins or unpins from a scrolled skill page, the normal source module should stay visually locked in the viewport while shelf space is inserted or removed.</span><span class="done-note">Done: pin/unpin refresh now captures only a genuinely visible normal module as the scroll anchor, skips anchoring at the top of the list so the newly inserted pinned shelf remains visible, restores once after visible lazy cards mount, and clears the anchor immediately. Update: removed the multi-frame correction loop because it could fight user scrolling/lazy mounting and cause strobing. Update: pinned skill pages now combine lazy-plan and real-stack bottoms for the max-scroll cap, and lazy pruning now pauses only during the active pin/unpin settle window so the source card and cards above it cannot remount mid-handoff; normal pruning resumes afterward, preserving bottom page-switch access without a giant dead-space tail or flashing lazy remounts. Update: pin-anchor refresh keeps the old detail-page cover active until the anchor restore finishes, bypasses stale generic deferred scroll restores, preserves the active cover from generic clear calls while an anchor is pending, and immediately holds the captured scroll so the old page cannot flash at scroll 0 before the corrected viewport lands. Update: the detail refresh handoff cover now preserves the old page's vertical offset without duplicating its horizontal column offset; <code>scripts/test-pinned-scroll-anchor.ps1</code> now checks both covered and uncovered per-frame source-module X/Y stability, catching the former 938-to-1874 sideways bump. Added <code>scripts/test-pinned-scroll-anchor.ps1</code>, which now validates top pin shelf visibility, per-frame mid-scroll pin/unpin X/Y-position stability while covered and uncovered, and bottom clearance after multiple pins including an excessive-dead-space guard.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Build the Sort menu with level order modes.</strong><span>Active modes for this pass are Level order and Reverse level order. Sorting changes the normal module list but keeps the pinned shelf in pin order.</span><span class="done-note">Done: the Sort utility button opens a two-option menu for Level order and Reverse level. The mode is saved, refreshes the visible skill page, reverses normal module order for regular and fishing detail lists, and leaves pinned shelf/page order untouched. Safe Godot startup/quit validation passed.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Defer module type sorting.</strong><span>Module type sort waits until module type metadata exists in the game.</span><span class="done-note">Done: no module-type option was added to the Sort menu. The only active sort modes are Level order and Reverse level order.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Wire the Skills utility button.</strong><span>The Skills button returns to the skill hub from skill pages.</span><span class="done-note">Done: the center utility-row Skills button is wired to <code>_show_skills</code>, matching the existing back-to-skill-hub behavior.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Define the skill page neighbor order.</strong><span>Use one ring order so every skill page has exactly one previous page and one next page.</span><span class="done-note">Done: added <code>_skill_page_neighbor_ids</code>, which uses the existing <code>skill_defs</code> swipe ring so page-switch buttons and swipe navigation share one previous/next order. Safe Godot startup/quit validation passed.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Add page switch module to skill pages.</strong><span>The final module on each skill page has two buttons: previous skill and next skill.</span><span class="done-note">Done: skill detail pages now add a <code>PageSwitchModule</code> immediately before the bottom spacer. It contains Previous and Next buttons wired through the shared skill selection path. Safe Godot startup/quit validation passed.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Color page switch buttons by destination.</strong><span>Each button uses the color theme of the page it opens, so players can learn the route visually.</span><span class="done-note">Done: <code>_page_switch_button</code> styles each button with <code>_skill_theme_color(destination_skill_id)</code>, including hover and pressed variants.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Use compact page switch labels.</strong><span>Show the destination skill name plus a tiny Previous page or Next page label.</span><span class="done-note">Done: page switch buttons use two-line labels: <code>Previous page</code> or <code>Next page</code> plus the destination skill name.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Block accidental input behind UI controls.</strong><span>Navigation bar taps, utility-row taps, confirm badges, and expand buttons must not start swipes or press modules underneath.</span><span class="done-note">Done: utility buttons, sort menu buttons, page switch buttons, collapse/expand buttons, and pin badges use stopped input or explicit event acceptance. Update: module action hit testing now blocks both invisible circles and visible pin/collapse badges from normal activity-card presses; smoke validation checks pin-zone unpin, fading original/shelf/pinned-page pin re-taps, visible collapse-badge confirm, direct pin-zone and collapse-zone <code>gui_input</code> rejecting protected sort-menu coverage while still accepting valid local-zone coordinates, collapsed expand taps and direct collapsed-row <code>gui_input</code> rejecting protected sort-menu coverage before direct row local coordinates and a normal expand tap each expand correctly, raw sort-menu/menu-button input not clicking through to cards, dragged pinned-page card presses releasing without a stuck 3D state, Pinned utility press-drag-release clearing its depressed shell state, pinned-shelf presses released over the bottom nav clearing without starting the activity underneath, and no hover tooltip text on live skill/pinned gameplay controls. The pinned-shelf input route now blocks new duplicate-card presses from protected bottom UI while still allowing releases to unwind an existing shelf press. Update: normal, pinned shelf, and pinned page action info-chip taps now validate filled bonus panels, assert the chip tap does not start the underlying activity or leave an action-card press stuck, and clean up expanded panels before the next interaction smoke. Update: pinned-page and pinned-shelf passive info buttons now open non-empty info popovers through the live passive button input path without collecting loot, changing currency, starting an activity underneath, leaving passive press state stuck, or leaving stale popover fade metadata after hide or delayed fade-finish callbacks; passive info and collect release-without-press paths now also verify no stuck passive press state. Update: pinned-page and pinned-shelf passive collect press-drag-release now validate cancellation without collecting stored loot, adding currency, or leaving passive press state stuck. Update: pinned-page and pinned-shelf thieving heist press-drag-release and release-without-press paths now validate cancellation without attempting the heist or leaving heist press metadata stuck. Update: pinned-page and pinned-shelf fishing method press-drag-release and release-without-press paths now validate cancellation without starting the fishing action or leaving fishing method press metadata stuck. Update: oversized pin art is now visual-only outside the top-left circular pin zone, so it can poke into the card without stealing body/info-chip taps; module-list and activity-card-geometry smokes validate the circular pin-zone route and oversized art non-hit behavior.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Redraw UI states immediately.</strong><span>Pin, unpin, collapse, sort, and pinned page mode update without requiring a restart or page rebuild.</span><span class="done-note">Done: confirmed pins and unpins now refresh either the current skill detail list or the Pinned Activities page immediately. Collapse, expand, sort, and pinned-page navigation already trigger visible redraws. Safe Godot startup/quit validation passed.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Run project validation.</strong><span>Use <code>.\scripts\check-project.ps1</code> and follow Godot process safety rules.</span><span class="done-note">Done: focused pin/collapse validation is green: <code>test-pinned-pin-visual-smoke.ps1</code>, <code>test-pinned-scroll-anchor.ps1</code>, <code>test-pinned-page-interactions.ps1</code>, <code>test-module-list-transitions.ps1</code>, <code>test-activity-card-geometry.ps1</code>, and <code>test-save-normalization.ps1</code> all pass through <code>run-godot-safe.ps1</code>. Update: the module-list smoke now includes centered shelf-title, no-bump pin-confirm coverage, confirm-poke animation expectations, and visible-source pin/unpin anchoring; <code>.\scripts\test-module-list-transitions.ps1</code> now reports <code>module-list-transitions-ok</code>. Update: the pinned-pin visual smoke validates the approved pin texture, large badge placement, armed up/right preview position, confirm-poke tween, settled pinned position, card intersection, top-left overhang, delayed second-tap confirmation while lazy pruning is active, and no visible square bury mask, with no leftover headless Godot process. Update: after narrowing lazy pruning to the active pin/unpin settle window, <code>test-activity-card-geometry.ps1</code> and <code>test-save-normalization.ps1</code> were rerun headlessly and still report <code>activity-card-geometry-ok</code> and <code>save-normalization-ok</code>. Update: <code>check-project.ps1</code> now runs <code>test-module-list-transitions.ps1</code>, <code>test-pinned-pin-visual-smoke.ps1</code>, <code>test-pinned-scroll-anchor.ps1</code>, and <code>test-pinned-page-interactions.ps1</code> before the skills-page performance gate; focused pinned checks pass, the previous scroll/thieving mounted-too-many-cards failure is fixed, and the remaining broad performance failure is frame-time spikes in build swipe/rapid-swipe with an occasional scroll/thieving over-120-FPS sample.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Manual layout pass on a long page.</strong><span>Inspect a long skill page at max scroll and confirm the bottom module, utility row, chat, and navigation bar do not overlap.</span><span class="done-note">Done: targeted Godot layout smoke selected a long Thieving page, scrolled to max, and verified the PageSwitchModule stayed visible and clear of the utility row, chat strip, and nav bar. This found and fixed an overlap by adding page-switch height plus clearance to the detail bottom spacer.</span></div></div>
+        </li>
+        <li class="check-item">
+          <div class="check-row"><input type="checkbox" checked><div class="check-copy"><strong>Manual layout pass on a short page.</strong><span>Confirm badges, collapsed rows, utility row, chat strip, and navigation bar still sit naturally when there is not much page content.</span><span class="done-note">Done: targeted Godot layout smoke forced a short Fight page with collapsed modules, verified the collapsed row height was compact, and confirmed the utility row, chat strip, and nav bar were visible and vertically separated.</span></div></div>
         </li>
       </ol>
     </section>
   </main>
 
+  <script>
+    (() => {
+      const demo = document.querySelector(".demo-module");
+      if (!demo) return;
+      const pinZone = demo.querySelector(".module-hotspot.is-pin");
+      const collapseZone = demo.querySelector(".module-hotspot.is-collapse");
+      const pinBadge = demo.querySelector(".confirm-badge.is-pin");
+      const collapseBadge = demo.querySelector(".confirm-badge.is-collapse");
+      let pinTimer = 0;
+
+      if (window.location.hash === "#collapsed") {
+        demo.classList.add("is-collapsed");
+      }
+
+      const clearPinPreview = () => {
+        window.clearTimeout(pinTimer);
+        pinTimer = 0;
+        demo.classList.remove("is-pin-confirm");
+      };
+
+      pinZone.addEventListener("click", () => {
+        if (demo.classList.contains("is-pinned")) {
+          demo.classList.remove("is-pinned");
+          clearPinPreview();
+          return;
+        }
+
+        demo.classList.add("is-pin-confirm");
+        window.clearTimeout(pinTimer);
+        pinTimer = window.setTimeout(clearPinPreview, 3000);
+      });
+
+      pinBadge.addEventListener("click", () => {
+        if (demo.classList.contains("is-pinned")) {
+          demo.classList.remove("is-pinned");
+          clearPinPreview();
+          return;
+        }
+
+        demo.classList.add("is-pinned");
+        clearPinPreview();
+      });
+
+      collapseZone.addEventListener("click", () => {
+        demo.classList.add("is-collapse-confirm");
+      });
+
+      collapseBadge.addEventListener("click", () => {
+        demo.classList.remove("is-collapse-confirm");
+        demo.classList.add("is-collapsed");
+      });
+
+      demo.querySelector(".collapsed-preview").addEventListener("click", () => {
+        demo.classList.remove("is-collapsed");
+      });
+    })();
+  </script>
   <script src="docs-nav.js"></script>
 </body>
 </html>

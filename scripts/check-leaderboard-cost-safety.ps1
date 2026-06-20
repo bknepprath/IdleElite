@@ -232,6 +232,9 @@ Assert-True ($categoryWriteRule -match "updated_at'\)\.val\(\) <= now \+ 60000")
 
 $scoreRule = Get-JsonProp (Get-JsonProp $player "score") ".validate"
 Assert-True ($scoreRule -match "newData.val\(\) >= data.val\(\)") "Scores must be monotonic per player/category."
+Assert-True ($scoreRule -match "\`$category == 'total_level'") "Only the Total Level category may repair legacy XP-as-score rows."
+Assert-True ($scoreRule -match "data.child\('score'\).val\(\) > 999") "Legacy Total Level repairs must only apply to impossible level-shaped scores."
+Assert-True ($scoreRule -match "newData.parent\(\).child\('total_xp'\).val\(\) >= data.child\('score'\).val\(\)") "Legacy Total Level repairs must preserve the old XP score in total_xp or better."
 Assert-True ($null -ne (Get-JsonProp $player "total_xp")) "Score rows must allow total XP for the combined Total leaderboard."
 Assert-True ((Get-JsonProp $player ".validate") -match "newData.hasChildren") "Score rows must require the expected child fields."
 Assert-True ((Get-JsonProp $player ".validate") -match "name_key") "Score rows must store the claimed name key."

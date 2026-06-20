@@ -1,0 +1,313 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite Pin SFX Audition</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #181915;
+      --panel: #24271f;
+      --panel-2: #303327;
+      --text: #fff7dc;
+      --muted: #c8c2a9;
+      --line: #464532;
+      --gold: #ffd75d;
+      --red: #f05a48;
+      --blue: #59b8ff;
+      --green: #78d86f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: linear-gradient(135deg, #12130f 0%, var(--bg) 48%, #20281c 100%);
+      color: var(--text);
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 30px 0 48px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 24px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      max-width: 700px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .volume {
+      width: min(280px, 100%);
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(36, 39, 31, 0.8);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--gold);
+    }
+
+    .section {
+      margin-top: 26px;
+    }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      letter-spacing: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+    }
+
+    .sound {
+      display: grid;
+      gap: 14px;
+      min-height: 196px;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
+    }
+
+    .sound[data-active="true"] {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(255, 215, 93, 0.18), 0 18px 36px rgba(0, 0, 0, 0.28);
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      flex: 0 0 auto;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 215, 93, 0.55);
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 0.93rem;
+      line-height: 1.35;
+    }
+
+    .bars {
+      height: 44px;
+      display: grid;
+      grid-template-columns: repeat(14, 1fr);
+      align-items: end;
+      gap: 3px;
+    }
+
+    .bar {
+      height: calc(var(--h) * 1%);
+      min-height: 4px;
+      border-radius: 4px 4px 0 0;
+      background: linear-gradient(180deg, var(--blue), var(--green));
+      opacity: 0.75;
+    }
+
+    button {
+      width: 100%;
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #ffe684, #e9aa2a);
+      color: #211805;
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+      box-shadow: inset 0 1px rgba(255,255,255,0.45), 0 6px 0 #8e6515;
+    }
+
+    button:active {
+      transform: translateY(4px);
+      box-shadow: inset 0 1px rgba(255,255,255,0.38), 0 2px 0 #8e6515;
+    }
+
+    .pairs {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .pair button {
+      background: linear-gradient(180deg, #ffffff, #d7e9ff);
+      box-shadow: inset 0 1px rgba(255,255,255,0.58), 0 6px 0 #486b87;
+    }
+
+    code {
+      color: #ffe684;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.86rem;
+      overflow-wrap: anywhere;
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Pin SFX Audition</h1>
+        <p>Fourth-pass candidates for the module pin entry and exit. These are different foley designs, not pitch variants.</p>
+      </div>
+      <div class="volume">
+        <label for="volume">Audition volume</label>
+        <input id="volume" type="range" min="0" max="100" value="55">
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Entry: pin enters module</h2>
+        <p>Target: soft pressure into the card, with the click edge removed.</p>
+      </div>
+      <div class="grid" id="entryGrid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Exit: pin pulls out</h2>
+        <p>Target: gentle pull-out, quieter than entry, no sharp tick.</p>
+      </div>
+      <div class="grid" id="exitGrid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Quick pairs</h2>
+        <p>Entry plays first, exit follows after a short pause.</p>
+      </div>
+      <div class="pairs" id="pairs"></div>
+    </section>
+  </main>
+
+  <script>
+    const entry = [
+      ["Entry 01", "cork push", "Soft cork-like push into the card.", "../assets/sfx/pin-candidates/pin_entry_thwick_01_tight.wav", [4, 10, 22, 39, 58, 68, 57, 43, 31, 22, 15, 10, 6, 3]],
+      ["Entry 02", "paper tuck", "Dry paper/card tuck with no hard snap.", "../assets/sfx/pin-candidates/pin_entry_thwick_02_dry.wav", [8, 24, 45, 52, 40, 28, 20, 15, 11, 8, 5, 3, 2, 2]],
+      ["Entry 03", "felt thump", "Muted felt thump with a low seat.", "../assets/sfx/pin-candidates/pin_entry_thwick_03_chunk.wav", [3, 9, 20, 39, 62, 79, 75, 58, 42, 30, 20, 13, 8, 4]],
+      ["Entry 04", "rubber press", "Rubbery bend-then-seat motion.", "../assets/sfx/pin-candidates/pin_entry_thwick_04_bright.wav", [5, 15, 33, 50, 58, 48, 34, 24, 16, 11, 7, 4, 3, 2]],
+      ["Entry 05", "card sink", "Longer two-stage sink into soft card.", "../assets/sfx/pin-candidates/pin_entry_thwick_05_soft_card.wav", [3, 8, 18, 32, 48, 55, 47, 36, 30, 45, 63, 49, 30, 14]]
+    ];
+
+    const exit = [
+      ["Exit 01", "cloth slide", "Soft cloth/card slide out.", "../assets/sfx/pin-candidates/pin_exit_pull_01_tiny.wav", [7, 18, 32, 46, 51, 45, 36, 29, 23, 18, 13, 9, 5, 3]],
+      ["Exit 02", "cork unseat", "Low cork-like unseat with little friction.", "../assets/sfx/pin-candidates/pin_exit_pull_02_dry.wav", [4, 11, 25, 42, 55, 51, 40, 29, 21, 15, 10, 6, 4, 2]],
+      ["Exit 03", "rubber lift", "Rubbery lift with a soft bend.", "../assets/sfx/pin-candidates/pin_exit_pull_03_soft_pop.wav", [3, 9, 20, 34, 49, 56, 52, 43, 34, 25, 17, 11, 7, 3]],
+      ["Exit 04", "paper release", "Dry paper/card release without a click.", "../assets/sfx/pin-candidates/pin_exit_pull_04_bright_tick.wav", [8, 23, 41, 46, 35, 25, 19, 15, 11, 7, 5, 3, 2, 2]],
+      ["Exit 05", "felt sigh", "Longest muffled felt pull.", "../assets/sfx/pin-candidates/pin_exit_pull_05_felt.wav", [3, 8, 16, 28, 43, 55, 57, 51, 42, 32, 23, 15, 9, 4]]
+    ];
+
+    const volume = document.getElementById("volume");
+    let activeCard = null;
+
+    function play(path, card, delay = 0) {
+      window.setTimeout(() => {
+        const audio = new Audio(path);
+        audio.volume = Number(volume.value) / 100;
+        audio.play();
+        if (activeCard) activeCard.dataset.active = "false";
+        if (card) {
+          activeCard = card;
+          card.dataset.active = "true";
+          window.setTimeout(() => card.dataset.active = "false", 420);
+        }
+      }, delay);
+    }
+
+    function renderCard(sound) {
+      const [title, tag, note, path, bars] = sound;
+      const card = document.createElement("article");
+      card.className = "sound";
+      card.dataset.active = "false";
+      card.innerHTML = `
+        <div>
+          <div class="topline"><h3>${title}</h3><span class="tag">${tag}</span></div>
+          <p class="note">${note}</p>
+        </div>
+        <div class="bars">${bars.map(h => `<span class="bar" style="--h:${h}"></span>`).join("")}</div>
+        <div><button type="button">Play</button></div>
+        <code>${path.replace("../", "")}</code>
+      `;
+      card.querySelector("button").addEventListener("click", () => play(path, card));
+      return card;
+    }
+
+    function renderGrid(id, sounds) {
+      const grid = document.getElementById(id);
+      sounds.forEach(sound => grid.appendChild(renderCard(sound)));
+    }
+
+    function renderPairs() {
+      const pairs = document.getElementById("pairs");
+      for (let i = 0; i < 5; i += 1) {
+        const wrap = document.createElement("div");
+        wrap.className = "pair";
+        wrap.innerHTML = `<button type="button">Pair ${i + 1}: Entry ${i + 1} + Exit ${i + 1}</button>`;
+        wrap.querySelector("button").addEventListener("click", () => {
+          play(entry[i][3], null, 0);
+          play(exit[i][3], null, 430);
+        });
+        pairs.appendChild(wrap);
+      }
+    }
+
+    renderGrid("entryGrid", entry);
+    renderGrid("exitGrid", exit);
+    renderPairs();
+  </script>
+</body>
+</html>

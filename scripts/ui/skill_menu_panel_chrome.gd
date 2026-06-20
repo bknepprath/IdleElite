@@ -15,6 +15,8 @@ func _notification(what: int) -> void:
 func _draw() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
+	if radius <= 0.0:
+		return
 	_draw_bottom_shadow()
 	_draw_border()
 

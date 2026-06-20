@@ -98,16 +98,20 @@ func _run() -> void:
 	_check_leaderboard_fetch_retry_save_restore(game)
 	_check_chat_metadata_save_restore(game)
 	_check_resource_and_audio_settings_save(game)
+	_check_audio_settings_restore(game)
 	_check_god_mode_save(game)
 	_check_test_profile_save_repair(game)
+	_check_hard_reset_pending_restore_cancel(game)
 	_check_active_skill_identity_save(game)
 	_check_running_action_save(game)
 	_check_action_progress_save_restore(game)
 	_check_action_key_save(game)
 	_check_manual_activity_unlock_save_restore(game)
+	_check_module_ui_preferences_save_restore(game)
 	_check_auto_unlock_lockpads(game)
 	_check_achievement_toast_seen_ids_save_restore(game)
 	_check_scalar_progression_metadata_save(game)
+	_check_offline_clock_guard(game)
 	_check_save_payload(game)
 	_check_passive_module_save(game)
 	_check_passive_module_restore(game)
@@ -195,7 +199,7 @@ func _check_stamina_save(game: Node) -> void:
 	_expect(float(saved_stamina.get("thieving", -1.0)) == 0.0, "Stamina save should clamp negative stamina.")
 	_expect(float(saved_stamina.get("build", -1.0)) == 12.5, "Stamina save should preserve fractional stamina.")
 	_expect(float(saved_bank.get("fight", -1.0)) == 0.0, "Stamina bank save should reset full-stamina banks.")
-	_expect(float(saved_bank.get("build", -1.0)) == 6.0, "Stamina bank save should derive fractional progress from stamina.")
+	_expect(float(saved_bank.get("build", -1.0)) == 12.0, "Stamina bank save should preserve clamped regen-bank progress independently from fractional stamina.")
 	_expect(not saved_bank.has("not-a-real-skill"), "Stamina bank save should drop unknown skill ids.")
 
 
@@ -1030,6 +1034,18 @@ func _check_leaderboard_scores_save(game: Node) -> void:
 	_expect(int(restored_scores.get("total_level", 0)) == 99, "Leaderboard submission restore should merge duplicate canonical category scores by max.")
 	_expect(int(restored_scores.get("medals_earned", -1)) == 0, "Leaderboard submission restore should clamp negative category scores.")
 	_expect(not restored_scores.has("unknown-category"), "Leaderboard submission restore should not preserve unknown category keys.")
+	game.set("leaderboard_last_submitted_scores_by_category", {
+		"total_level": 1200,
+	})
+	saved = game.call("_leaderboard_last_submitted_scores_for_save") as Dictionary
+	_expect(int(saved.get("total_level", -1)) == 0, "Leaderboard category save should reset legacy XP-shaped Total Level scores.")
+	game.call("_restore_leaderboard_submission_metadata_from_save", {
+		"leaderboard_last_submitted_scores_by_category": {
+			"total_level": 1200,
+		},
+	})
+	restored_scores = game.get("leaderboard_last_submitted_scores_by_category") as Dictionary
+	_expect(int(restored_scores.get("total_level", -1)) == 0, "Leaderboard submission restore should reset legacy XP-shaped Total Level scores.")
 
 
 func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
@@ -1233,20 +1249,50 @@ func _check_resource_and_audio_settings_save(game: Node) -> void:
 	game.set("auto_unlock_lockpads_enabled", true)
 	var payload := game.call("_save_payload", int(game.call("_unix_now"))) as Dictionary
 	_expect(bool(payload.get("auto_unlock_lockpads_enabled", false)), "Auto-unlock lockpad setting should be saved when enabled.")
+	game.set("show_stamina_decimal", true)
+	payload = game.call("_save_payload", int(game.call("_unix_now"))) as Dictionary
+	_expect(bool(payload.get("show_stamina_decimal", false)), "Stamina decimal setting should be saved when enabled.")
+
+
+func _check_audio_settings_restore(game: Node) -> void:
+	game.set("music_volume", 0.82)
+	game.set("sfx_volume", 0.70)
+	game.call("_restore_audio_settings_from_save", {
+		"audio_settings_version": 1,
+		"music_volume": 0.31,
+		"sfx_volume": 0.44,
+	})
+	_expect(is_equal_approx(float(game.get("music_volume")), 0.31), "Audio restore should preserve old-version saved music slider values.")
+	_expect(is_equal_approx(float(game.get("sfx_volume")), 0.44), "Audio restore should preserve old-version saved SFX slider values.")
+
+	game.call("_restore_audio_settings_from_save", {})
+	_expect(is_equal_approx(float(game.get("music_volume")), 0.55), "Audio restore should use the calmer default music level when no saved value exists.")
+	_expect(is_equal_approx(float(game.get("sfx_volume")), 0.65), "Audio restore should use the default SFX level when no saved value exists.")
+
+	game.call("_restore_audio_settings_from_save", {
+		"music_volume": "loud",
+		"sfx_volume": 2.0,
+	})
+	_expect(is_equal_approx(float(game.get("music_volume")), 0.55), "Audio restore should reject malformed music volume values.")
+	_expect(is_equal_approx(float(game.get("sfx_volume")), 1.0), "Audio restore should clamp oversized SFX volume values.")
 
 	_prime_core_skill_state(game)
 	game.set("auto_unlock_lockpads_enabled", false)
+	game.set("show_stamina_decimal", false)
 	game.call("_load_game_core", {
 		"auto_unlock_lockpads_enabled": true,
+		"show_stamina_decimal": true,
 		"skills": {},
 		"stamina": {},
 		"stamina_bank": {},
 		"saved_at": int(game.call("_unix_now")),
 	})
 	_expect(bool(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should restore when present.")
+	_expect(bool(game.get("show_stamina_decimal")), "Stamina decimal setting should restore when present.")
 
 	_prime_core_skill_state(game)
 	game.set("auto_unlock_lockpads_enabled", true)
+	game.set("show_stamina_decimal", true)
 	game.call("_load_game_core", {
 		"skills": {},
 		"stamina": {},
@@ -1254,6 +1300,7 @@ func _check_resource_and_audio_settings_save(game: Node) -> void:
 		"saved_at": int(game.call("_unix_now")),
 	})
 	_expect(not bool(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should default off for existing saves.")
+	_expect(not bool(game.get("show_stamina_decimal")), "Stamina decimal setting should default off for new saves.")
 
 
 func _check_god_mode_save(game: Node) -> void:
@@ -1298,6 +1345,30 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		"god_mode_save_tainted": false,
 		"god_mode_enabled": false,
 	})), "Regular builds should leave clean saves alone.")
+	var impossible_trophy_save := {
+		"skills": {
+			"thieving": {"xp": int(game.call("_xp_for_level", 2)), "level": 2},
+		},
+		"thieving_trophies": {
+			"complimentary_spoon": {"stolen": true, "cooldown_until_unix": 44},
+			"crown_jewel_replica_replica": {"stolen": false, "cooldown_until_unix": 0},
+		},
+	}
+	_expect(bool(game.call("_repair_save_for_regular_play", impossible_trophy_save)), "Regular builds should repair heist trophies stolen before their Thieving unlock level.")
+	var repaired_trophies := impossible_trophy_save.get("thieving_trophies", {}) as Dictionary
+	var repaired_spoon := repaired_trophies.get("complimentary_spoon", {}) as Dictionary
+	_expect(not bool(repaired_spoon.get("stolen", true)), "Impossible Thieving trophy repair should clear stolen state.")
+	_expect(int(repaired_spoon.get("cooldown_until_unix", -1)) == 0, "Impossible Thieving trophy repair should clear cooldown state.")
+	var valid_trophy_save := {
+		"onboarding_tutorial_complete": true,
+		"skills": {
+			"thieving": {"xp": int(game.call("_xp_for_level", 8)), "level": 8},
+		},
+		"thieving_trophies": {
+			"complimentary_spoon": {"stolen": true, "cooldown_until_unix": 0},
+		},
+	}
+	_expect(not bool(game.call("_repair_save_for_regular_play", valid_trophy_save)), "Regular builds should keep trophies that match the saved Thieving level.")
 	var mixed_tutorial_save := {
 		"onboarding_tutorial_complete": false,
 		"skills": {
@@ -1332,6 +1403,29 @@ func _check_test_profile_save_repair(game: Node) -> void:
 	var normalized_fight := (old_curve_legacy.get("skills", {}) as Dictionary).get("fight", {}) as Dictionary
 	_expect(int(normalized_fight.get("level", 0)) == 7, "Legacy desktop recovery should preserve the saved skill level.")
 	_expect(int(normalized_fight.get("xp", -1)) == int(game.call("_xp_for_level", 7)), "Legacy desktop recovery should remap old XP to the current level curve.")
+
+
+func _check_hard_reset_pending_restore_cancel(game: Node) -> void:
+	game.set("pending_save_restore_data", {
+		"thieving_trophies": {
+			"complimentary_spoon": {"stolen": true, "cooldown_until_unix": 44},
+		},
+		"achievement_toast_seen_ids": {},
+	})
+	game.set("pending_save_has_achievement_toast_seen_ids", true)
+	game.set("pending_post_load_saved_at", int(game.call("_unix_now")))
+	game.set("boot_post_load_simulation_scheduled", true)
+	game.set("save_repaired_this_boot", true)
+	game.set("thieving_trophies", {})
+	game.call("_clear_pending_save_restore_work")
+	game.call("_load_game_secondary_restore")
+	game.call("_apply_post_load_simulation")
+	_expect((game.get("pending_save_restore_data") as Dictionary).is_empty(), "Hard reset should clear pending secondary save restore data.")
+	_expect(int(game.get("pending_post_load_saved_at")) == -1, "Hard reset should clear pending post-load simulation timestamps.")
+	_expect(not bool(game.get("boot_post_load_simulation_scheduled")), "Hard reset should cancel scheduled post-load simulation.")
+	_expect(not bool(game.get("save_repaired_this_boot")), "Hard reset should clear stale save-repair autosave state.")
+	var trophies := game.get("thieving_trophies") as Dictionary
+	_expect(trophies.is_empty(), "Hard reset should prevent delayed save restore from re-adding Thieving trophies.")
 
 
 func _check_active_skill_identity_save(game: Node) -> void:
@@ -1468,6 +1562,131 @@ func _check_manual_activity_unlock_save_restore(game: Node) -> void:
 	_expect(not bool(manual_unlocks.get("fight:wrestle-stuck-gate-latch", false)), "Legacy save migration should not silently grant combo actions without explicit manual unlock state.")
 
 
+func _check_module_ui_preferences_save_restore(game: Node) -> void:
+	_prime_core_skill_state(game)
+	var skills := game.get("skills") as Dictionary
+	skills["fight"] = {"xp": int(game.call("_xp_for_level", 2)), "level": 2}
+	game.set("skills", skills)
+	var unlocked_action := game.call("_action_data", "fight", "shove-wobbly-hay-bale") as Dictionary
+	var unlocked_key := str(game.call("_module_ui_key_for_action", "fight", unlocked_action))
+	var locked_key := ""
+	var actions_by_skill := game.get("actions_by_skill") as Dictionary
+	for raw_action in actions_by_skill.get("fight", []) as Array:
+		var action := raw_action as Dictionary
+		if action.is_empty() or int(action.get("unlock", 1)) <= 2:
+			continue
+		locked_key = str(game.call("_module_ui_key_for_action", "fight", action))
+		break
+	_expect(not unlocked_key.is_empty(), "Module UI test needs an unlocked fight action key.")
+	_expect(not locked_key.is_empty(), "Module UI test needs a locked fight action key.")
+	var locked_heist_key := str(game.call("_module_ui_thieving_heist_key", "complimentary_spoon"))
+	var unavailable_offer_key := str(game.call("_module_ui_fishing_offer_key", "net"))
+	var locked_fishing_area_key := ""
+	for raw_area_def in game.call("_fishing_render_area_modules", "fishing") as Array:
+		var area_def := raw_area_def as Dictionary
+		var area_key := str(game.call("_module_ui_fishing_area_key", "fishing", area_def))
+		if not area_key.is_empty() and not bool(game.call("_module_ui_key_allows_pin_or_collapse", area_key)):
+			locked_fishing_area_key = area_key
+			break
+	_expect(not locked_heist_key.is_empty(), "Module UI test needs a locked thieving heist key.")
+	_expect(not unavailable_offer_key.is_empty(), "Module UI test needs an unavailable fishing offer key.")
+	var locked_host := Control.new()
+	var locked_zones := game.call("_add_module_action_zones", locked_host, locked_key) as Dictionary
+	_expect(locked_zones.is_empty() and locked_host.get_child_count() == 0, "Locked modules should not receive pin or collapse action zones.")
+	locked_host.free()
+	var hub_key := str(game.call("_module_ui_hub_key", "trophy"))
+	var rejected_module_keys := [locked_key, hub_key, locked_heist_key, unavailable_offer_key]
+	if not locked_fishing_area_key.is_empty():
+		rejected_module_keys.append(locked_fishing_area_key)
+	var hub_host := Control.new()
+	var hub_zones := game.call("_add_module_action_zones", hub_host, hub_key) as Dictionary
+	_expect(hub_zones.is_empty() and hub_host.get_child_count() == 0, "Hub modules should not receive activity pin or collapse action zones.")
+	hub_host.free()
+	for rejected_key in rejected_module_keys:
+		var rejected_host := Control.new()
+		var rejected_zones := game.call("_add_module_action_zones", rejected_host, rejected_key) as Dictionary
+		_expect(rejected_zones.is_empty() and rejected_host.get_child_count() == 0, "Unavailable module key should not receive pin or collapse action zones: %s" % rejected_key)
+		rejected_host.free()
+	game.set("module_ui_pinned_order", [])
+	game.set("module_ui_collapsed", {})
+	var preview_tokens := {}
+	for rejected_key in rejected_module_keys:
+		preview_tokens[rejected_key] = 1
+	game.set("module_ui_pin_preview_tokens", preview_tokens)
+	for rejected_key in rejected_module_keys:
+		game.call("_pin_module_ui_key", rejected_key, 0)
+		game.call("_collapse_module_ui_key", rejected_key, 0)
+		game.call("_unpin_module_ui_key", rejected_key, 0)
+	_expect((game.get("module_ui_pinned_order") as Array).is_empty(), "Rejected module pin mutators should not change runtime pinned order.")
+	_expect((game.get("module_ui_collapsed") as Dictionary).is_empty(), "Rejected module collapse mutators should not change runtime collapsed state.")
+	var preview_tokens_after_rejected_mutators := game.get("module_ui_pin_preview_tokens") as Dictionary
+	for rejected_key in rejected_module_keys:
+		_expect(not preview_tokens_after_rejected_mutators.has(rejected_key), "Rejected module UI mutators should clear stale preview token without persisting state: %s" % rejected_key)
+	var dirty_pinned_order := [unlocked_key, locked_key, hub_key, locked_heist_key, unavailable_offer_key, unlocked_key, "not-a-module-key"]
+	var dirty_collapsed := {
+		unlocked_key: true,
+		locked_key: true,
+		hub_key: true,
+		locked_heist_key: true,
+		unavailable_offer_key: true,
+		"not-a-module-key": true,
+	}
+	if not locked_fishing_area_key.is_empty():
+		dirty_pinned_order.insert(5, locked_fishing_area_key)
+		dirty_collapsed[locked_fishing_area_key] = true
+	game.set("module_ui_pinned_order", dirty_pinned_order)
+	game.set("module_ui_collapsed", dirty_collapsed)
+	game.set("module_ui_sort_mode", "level_reverse")
+	var saved_order := game.call("_module_ui_pinned_order_for_save") as Array
+	_expect(saved_order == [unlocked_key], "Module UI pin save should keep only unique unlocked module keys.")
+	var saved_collapsed := game.call("_module_ui_collapsed_for_save") as Dictionary
+	_expect(saved_collapsed.size() == 1 and bool(saved_collapsed.get(unlocked_key, false)), "Module UI collapse save should keep only intentional unlocked module flags.")
+	_expect(str(game.call("_module_ui_sort_mode_for_save")) == "level_reverse", "Module UI sort save should preserve valid sort mode.")
+	var module_ui_payload := game.call("_save_payload", int(game.call("_unix_now"))) as Dictionary
+	_expect(int(module_ui_payload.get("module_ui_collapse_save_version", 0)) == MainScript.MODULE_UI_COLLAPSE_SAVE_VERSION, "Save payload should include the current module collapse save version.")
+	_expect((module_ui_payload.get("module_ui_pinned_order", []) as Array) == [unlocked_key], "Save payload should serialize normalized pinned module order.")
+	var payload_collapsed := module_ui_payload.get("module_ui_collapsed", {}) as Dictionary
+	_expect(payload_collapsed.size() == 1 and bool(payload_collapsed.get(unlocked_key, false)), "Save payload should serialize normalized collapsed module flags.")
+	_expect(str(module_ui_payload.get("module_ui_sort_mode", "")) == "level_reverse", "Save payload should serialize normalized module sort mode.")
+	game.set("module_ui_pin_preview_tokens", {unlocked_key: 7})
+	var restore_pinned_order := [locked_key, hub_key, locked_heist_key, unavailable_offer_key, unlocked_key, "bad"]
+	var restore_collapsed := {locked_key: true, hub_key: true, locked_heist_key: true, unavailable_offer_key: true, unlocked_key: true, "bad": true}
+	if not locked_fishing_area_key.is_empty():
+		restore_pinned_order.insert(4, locked_fishing_area_key)
+		restore_collapsed[locked_fishing_area_key] = true
+	game.call("_restore_module_ui_preferences_from_save", {
+		"module_ui_pinned_order": restore_pinned_order,
+		"module_ui_collapsed": restore_collapsed,
+		"module_ui_collapse_save_version": MainScript.MODULE_UI_COLLAPSE_SAVE_VERSION,
+		"module_ui_sort_mode": "unknown-mode",
+	})
+	var restored_order := game.get("module_ui_pinned_order") as Array
+	var restored_collapsed := game.get("module_ui_collapsed") as Dictionary
+	_expect(restored_order == [unlocked_key], "Module UI pin restore should filter locked and malformed keys.")
+	_expect(restored_collapsed.size() == 1 and bool(restored_collapsed.get(unlocked_key, false)), "Module UI collapse restore should filter locked and malformed keys.")
+	_expect(str(game.get("module_ui_sort_mode")) == "level", "Module UI sort restore should fall back to default for invalid modes.")
+	_expect((game.get("module_ui_pin_preview_tokens") as Dictionary).is_empty(), "Module UI restore should clear transient pin preview tokens.")
+	game.set("module_ui_collapsed", {unlocked_key: true})
+	game.call("_restore_module_ui_preferences_from_save", {
+		"module_ui_collapsed": {unlocked_key: true},
+		"module_ui_collapse_save_version": 0,
+	})
+	_expect((game.get("module_ui_collapsed") as Dictionary).is_empty(), "Legacy module collapse saves should migrate to expanded modules.")
+	game.set("module_ui_collapsed", {unlocked_key: true})
+	game.call("_restore_module_ui_preferences_from_save", {
+		"module_ui_collapsed": {unlocked_key: true},
+		"module_ui_collapse_save_version": "bad-version",
+	})
+	_expect((game.get("module_ui_collapsed") as Dictionary).is_empty(), "Malformed module collapse save versions should migrate to expanded modules.")
+	game.set("module_ui_pinned_order", [unlocked_key])
+	game.set("module_ui_collapsed", {unlocked_key: true})
+	game.set("module_ui_sort_mode", "level_reverse")
+	game.call("_reset_module_ui_preferences")
+	_expect((game.get("module_ui_pinned_order") as Array).is_empty(), "Hard reset should clear pinned module order.")
+	_expect((game.get("module_ui_collapsed") as Dictionary).is_empty(), "Hard reset should expand collapsed modules.")
+	_expect(str(game.get("module_ui_sort_mode")) == "level", "Hard reset should restore default module sorting.")
+
+
 func _check_auto_unlock_lockpads(game: Node) -> void:
 	var previous_startup := bool(game.get("startup_initialized"))
 	var previous_screen := str(game.get("current_screen"))
@@ -1490,6 +1709,27 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 	var manual_unlocks := game.get("manual_activity_unlocks") as Dictionary
 	_expect(bool(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Auto-unlock lockpads should immediately mark non-visible ready locks unlocked.")
 	_expect((game.get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Auto-unlock lockpads should not leave non-visible ready locks pending.")
+
+	_prime_core_skill_state(game)
+	game.set("startup_initialized", true)
+	game.set("current_screen", "skill")
+	game.set("selected_skill_id", "fight")
+	game.set("auto_unlock_lockpads_enabled", true)
+	game.set("manual_activity_unlocks", {})
+	game.set("manual_activity_requirement_unlocks", {})
+	game.set("manual_activity_unlocks_trust_checked", false)
+	game.set("manual_activity_unlocks_trusted", true)
+	game.set("pending_activity_unlock_ceremony", {})
+	skills = game.get("skills") as Dictionary
+	fight = skills.get("fight", {}) as Dictionary
+	fight["xp"] = int(game.call("_xp_for_level", 2))
+	fight["level"] = 2
+	skills["fight"] = fight
+	game.set("skills", skills)
+	game.call("_run_startup_auto_unlock_lockpads")
+	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
+	_expect(bool(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Startup with auto-unlock on should not leave ready lockpads alive until the setting is toggled.")
+	_expect((game.get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Startup with auto-unlock on should drain retroactive ready lockpads.")
 
 	_prime_core_skill_state(game)
 	game.set("startup_initialized", true)
@@ -1655,6 +1895,14 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	game.call("_apply_onboarding_restored_completion_implications")
 	_expect(bool(game.get("onboarding_fight_summary_revealed")) and bool(game.get("onboarding_fight_action_stats_revealed")), "Onboarding completion implications should reveal fight tutorial state from restored stamina tips.")
 	_expect(not bool(game.get("onboarding_swipe_navigation_unlocked")), "Onboarding completion implications should not unlock swipe navigation from stamina tips alone.")
+	var low_fight_stamina := game.get("stamina") as Dictionary
+	low_fight_stamina["fight"] = 4.0
+	game.set("stamina", low_fight_stamina)
+	game.call("_restore_onboarding_progression_from_save", {
+		"stamina_gauge_tip_seen": true,
+		"onboarding_fight_action_stats_revealed": true
+	})
+	_expect(bool(game.get("onboarding_swipe_tip_eligible")) and bool(game.get("onboarding_swipe_navigation_unlocked")), "Onboarding restore should unlock swipe navigation at the same low-stamina threshold as live tutorial play.")
 	game.call("_restore_onboarding_progression_from_save", {"onboarding_medal_tip_shown": true})
 	_expect(bool(game.get("onboarding_mastery_tip_dismissed")), "Onboarding restore should keep medal tips dismissing the mastery tip.")
 	game.set("stamina_gauge_pre_tip_hold_seconds", 99.0)
@@ -1682,6 +1930,25 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	game.call("_restore_music_flow_state_from_save", {})
 	_expect(float(game.get("flow_heat")) == 7.5, "Music flow restore should keep existing heat when save data omits it.")
 	_expect(float(game.get("flow_active_action_seconds")) == 3.25, "Music flow restore should keep existing active seconds when save data omits them.")
+
+
+func _check_offline_clock_guard(game: Node) -> void:
+	var now := int(game.call("_unix_now"))
+	game.set("last_save_monotonic_msec", 0)
+	game.set("offline_clock_guard_tainted", false)
+	game.set("offline_clock_guard_last_rejected_unix", 0)
+	var trusted := int(game.call("_trusted_offline_seconds", now - 60, now))
+	_expect(trusted == 60, "Offline clock guard should allow short offline windows without a monotonic comparison.")
+	_expect(not bool(game.get("offline_clock_guard_tainted")), "Short offline elapsed time should not taint leaderboard publishing.")
+
+	game.set("last_save_monotonic_msec", 0)
+	game.set("god_mode_save_tainted", false)
+	trusted = int(game.call("_trusted_offline_seconds", now - 60 * 60, now))
+	_expect(trusted == 0, "Offline clock guard should reject large wall-clock jumps without matching monotonic elapsed time.")
+	_expect(bool(game.get("offline_clock_guard_tainted")), "Rejected offline clock jumps should taint leaderboard publishing.")
+	_expect(int(game.get("offline_clock_guard_last_rejected_unix")) == now, "Offline clock guard should remember when a suspicious jump was rejected.")
+	_expect(str(game.call("_leaderboard_submit_status_title")) == "Clock check", "Clock-tainted saves should show a leaderboard clock-check status.")
+	_expect(not bool(game.call("_leaderboard_submit_ready")), "Clock-tainted saves should not be ready to publish leaderboard scores.")
 
 
 func _check_save_payload(game: Node) -> void:
@@ -1809,6 +2076,8 @@ func _check_save_payload(game: Node) -> void:
 	game.set("sfx_volume", -0.5)
 	game.set("god_mode_enabled", true)
 	game.set("god_mode_save_tainted", true)
+	game.set("offline_clock_guard_tainted", true)
+	game.set("offline_clock_guard_last_rejected_unix", now - 12)
 	game.set("equipped_fishing_tool_id", "not-a-real-tool")
 	game.set("fish_currency", -10.0)
 	game.set("fishing_net_stored_fish", 999)
@@ -1854,7 +2123,7 @@ func _check_save_payload(game: Node) -> void:
 	_expect(float(payload_stamina.get("thieving", -1.0)) == 0.0, "Save payload should clamp negative stamina.")
 	_expect(float(payload_stamina.get("build", -1.0)) == 12.5, "Save payload should preserve fractional stamina.")
 	_expect(float(payload_stamina_bank.get("fight", -1.0)) == 0.0, "Save payload should reset full-stamina banks.")
-	_expect(float(payload_stamina_bank.get("build", -1.0)) == 6.0, "Save payload should derive stamina bank progress from fractional stamina.")
+	_expect(float(payload_stamina_bank.get("build", -1.0)) == 12.0, "Save payload should preserve clamped regen-bank progress independently from fractional stamina.")
 	_expect(not payload_stamina_bank.has("not-a-real-skill"), "Save payload should include only known stamina bank skill ids.")
 	var payload_locations := payload.get("selected_fishing_locations", {}) as Dictionary
 	_expect(payload_locations.size() == 1 and str(payload_locations.get("beach", "")) == "rocky", "Save payload should include only valid fishing selections.")
@@ -1864,6 +2133,9 @@ func _check_save_payload(game: Node) -> void:
 	_expect(not payload.has("is_muted"), "Save payload should not include obsolete global mute state.")
 	_expect(not bool(payload.get("god_mode_enabled", true)), "Save payload should gate god mode enabled by availability.")
 	_expect(bool(payload.get("god_mode_save_tainted", false)), "Save payload should preserve god mode taint state.")
+	_expect(bool(payload.get("offline_clock_guard_tainted", false)), "Save payload should preserve offline clock guard taint state.")
+	_expect(int(payload.get("offline_clock_guard_last_rejected_unix", 0)) == now - 12, "Save payload should preserve offline clock guard rejection timestamps.")
+	_expect(int(payload.get("saved_at_monotonic_msec", -1)) >= 0, "Save payload should include monotonic save timing for same-session clock checks.")
 	_expect(str(payload.get("equipped_fishing_tool_id", "")) == "hands", "Save payload should normalize invalid equipped fishing tool ids.")
 	_expect(float(payload.get("fish_currency", -1.0)) == 0.0, "Save payload should clamp fishing currency.")
 	_expect(int(payload.get("fishing_net_stored_fish", -1)) == 9, "Save payload should cap fishing net stored fish.")
@@ -2097,6 +2369,7 @@ func _finish() -> void:
 		quit(1)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
+    $beforeHeadless = @(Get-HeadlessGodotProcesses)
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
     $output | Out-Host
     if ($LASTEXITCODE -ne 0) {
@@ -2105,9 +2378,11 @@ func _finish() -> void:
     Assert-True (($output -join "`n") -match "save-normalization-ok") "Save normalization test did not report success."
     Assert-NoUnexpectedGodotErrors $output "save normalization test"
 
-    $headless = @(Get-HeadlessGodotProcesses)
-    if ($headless.Count -gt 0) {
-        $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
+    $afterHeadless = @(Get-HeadlessGodotProcesses)
+    $beforeIds = @($beforeHeadless | ForEach-Object { $_.ProcessId })
+    $newHeadless = @($afterHeadless | Where-Object { $beforeIds -notcontains $_.ProcessId })
+    if ($newHeadless.Count -gt 0) {
+        $newHeadless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
         throw "A headless Godot process is still running after the save normalization test."
     }
 } finally {

@@ -125,6 +125,43 @@ func _run() -> void:
 	depth.depth_offset = Vector2(28.0, 34.0)
 	depth.set_face_offset(Vector2(999.0, 999.0))
 	_expect(depth.face_offset.is_equal_approx(Vector2(28.0, 34.0)), "Activity-card press depth should clamp to the configured depth offset.")
+	var page_switch_depth := MainScript.PageSwitchButtonFace.new()
+	page_switch_depth.size = Vector2(420.0, 170.0)
+	page_switch_depth.side = "right"
+	page_switch_depth.depth_offset = Vector2(28.0, 34.0)
+	page_switch_depth.set_face_offset(Vector2(999.0, 999.0))
+	_expect(page_switch_depth.face_offset.is_equal_approx(Vector2(28.0, 34.0)), "Page-switch depth should clamp press offset to the configured slab offset.")
+	page_switch_depth.set_face_offset(Vector2.ZERO)
+	var page_switch_points: PackedVector2Array = page_switch_depth.call("_shape_points")
+	var page_switch_top_right: Vector2 = page_switch_depth.call("_extreme_shape_point", page_switch_points, 1.0)
+	var page_switch_bottom_left: Vector2 = page_switch_depth.call("_extreme_shape_point", page_switch_points, -1.0)
+	_expect(page_switch_top_right.x > 350.0 and page_switch_top_right.y < 45.0, "Page-switch top-right connector should start on the rounded upper outside corner.")
+	_expect(page_switch_bottom_left.x > 50.0 and page_switch_bottom_left.x < 85.0 and page_switch_bottom_left.y > 145.0, "Page-switch bottom-left connector should start on the lower arrow shoulder.")
+	page_switch_depth.free()
+	var connector := MainScript.PrismConnectorOverlay.new()
+	connector.size = Vector2(420.0, 170.0)
+	connector.side = "right"
+	connector.depth_offset = Vector2(28.0, 34.0)
+	connector.set_face_offset(Vector2(999.0, 999.0))
+	_expect(connector.face_offset.is_equal_approx(Vector2(28.0, 34.0)), "Prism connector overlay should clamp press offset to the configured slab offset.")
+	connector.set_face_offset(Vector2.ZERO)
+	var overlay_points: PackedVector2Array = connector.call("_connector_points")
+	_expect(overlay_points.size() == 2, "Prism connector overlay should expose two visible connector starts.")
+	if overlay_points.size() == 2:
+		_expect(overlay_points[0].x > 350.0 and overlay_points[0].y < 45.0, "Prism connector overlay top-right start should sit on the front silhouette.")
+		_expect(overlay_points[1].x > 50.0 and overlay_points[1].x < 85.0 and overlay_points[1].y > 145.0, "Right page-switch connector lower start should sit on the lower arrow shoulder.")
+	var left_connector := MainScript.PrismConnectorOverlay.new()
+	left_connector.size = Vector2(420.0, 170.0)
+	left_connector.side = "left"
+	left_connector.depth_offset = Vector2(28.0, 34.0)
+	left_connector.set_face_offset(Vector2.ZERO)
+	var left_overlay_points: PackedVector2Array = left_connector.call("_connector_points")
+	_expect(left_overlay_points.size() == 2, "Left prism connector overlay should expose two visible connector starts.")
+	if left_overlay_points.size() == 2:
+		_expect(left_overlay_points[0].x > 345.0 and left_overlay_points[0].x < 380.0 and left_overlay_points[0].y < 25.0, "Left page-switch connector upper start should sit on the upper arrow shoulder.")
+		_expect(left_overlay_points[1].x < 45.0 and left_overlay_points[1].y > 125.0, "Left page-switch connector lower start should sit on the front lower outside corner.")
+	left_connector.free()
+	connector.free()
 	var main_node := MainScript.new()
 	var bg := main_node.call("_action_card_background", "building", {"id": "probe", "bg": ""}) as Control
 	_expect(bg is MainScript.RoundedTextureRect, "Activity-card background should use the rounded masked renderer.")
@@ -135,6 +172,65 @@ func _run() -> void:
 		_expect(rounded_bg.corner_mask_mode == 1, "Activity-card background mask should align the full-radius corner curve.")
 	if bg != null:
 		bg.free()
+	var pin_zone := main_node.call("_module_action_zone", "pin", "action:fight:probe", true) as Control
+	_expect(pin_zone != null, "Module pin action zone should be constructible.")
+	if pin_zone != null:
+		_expect(pin_zone.mouse_filter == Control.MOUSE_FILTER_PASS, "Module pin zone should pass non-accepted touches through to the card.")
+		_expect(pin_zone.get_meta("module_action_kind") == "pin", "Module pin zone should identify its action kind.")
+		_expect(bool(pin_zone.get_meta("module_action_circle_zone", false)), "Module pin zone should use circular hit testing.")
+		_expect(pin_zone.offset_left == MainScript.MODULE_ACTION_ZONE_OUTER_OFFSET, "Module pin zone should sit at the top-left outer offset.")
+		_expect(pin_zone.offset_top == MainScript.MODULE_ACTION_ZONE_TOP_OFFSET, "Module pin zone should use the shared top offset.")
+		_expect(pin_zone.offset_right - pin_zone.offset_left == MainScript.MODULE_ACTION_ZONE_SIZE.x, "Module pin zone width should match the configured circular bounds.")
+		_expect(pin_zone.offset_bottom - pin_zone.offset_top == MainScript.MODULE_ACTION_ZONE_SIZE.y, "Module pin zone height should match the configured circular bounds.")
+	var collapse_zone := main_node.call("_module_action_zone", "collapse", "action:fight:probe", false) as Control
+	_expect(collapse_zone != null, "Module collapse action zone should be constructible.")
+	if collapse_zone != null:
+		_expect(collapse_zone.mouse_filter == Control.MOUSE_FILTER_STOP, "Module collapse zone should claim top-right circle touches before the card.")
+		_expect(collapse_zone.get_meta("module_action_kind") == "collapse", "Module collapse zone should identify its action kind.")
+		_expect(bool(collapse_zone.get_meta("module_action_circle_zone", false)), "Module collapse zone should use circular hit testing.")
+		_expect(collapse_zone.anchor_left == 1.0 and collapse_zone.anchor_right == 1.0, "Module collapse zone should anchor to the top-right.")
+		_expect(collapse_zone.offset_left == -MainScript.MODULE_COLLAPSE_ACTION_ZONE_SIZE.x - MainScript.MODULE_COLLAPSE_ACTION_ZONE_OUTER_OFFSET, "Module collapse zone should sit at the top-right outer offset.")
+		_expect(collapse_zone.offset_top == MainScript.MODULE_COLLAPSE_ACTION_ZONE_TOP_OFFSET, "Module collapse zone should use the collapse top offset.")
+		_expect(collapse_zone.offset_right - collapse_zone.offset_left == MainScript.MODULE_COLLAPSE_ACTION_ZONE_SIZE.x, "Module collapse zone width should match the configured circular bounds.")
+		_expect(collapse_zone.offset_bottom - collapse_zone.offset_top == MainScript.MODULE_COLLAPSE_ACTION_ZONE_SIZE.y, "Module collapse zone height should match the configured circular bounds.")
+	if pin_zone != null and collapse_zone != null:
+		var zone_host := Control.new()
+		zone_host.position = Vector2(200.0, 200.0)
+		zone_host.size = Vector2(900.0, 640.0)
+		root.add_child(zone_host)
+		zone_host.add_child(pin_zone)
+		zone_host.add_child(collapse_zone)
+		await process_frame
+		var pin_rect := pin_zone.get_global_rect()
+		var collapse_rect := collapse_zone.get_global_rect()
+		var pin_near_edge_outside_circle := pin_rect.position + pin_rect.size * Vector2(0.96, 0.04)
+		var collapse_near_edge_outside_circle := collapse_rect.position + collapse_rect.size * Vector2(0.04, 0.04)
+		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, pin_rect.get_center())) == "pin", "Module pin zone center should hit the circular pin action.")
+		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, pin_rect.position)) == "", "Module pin zone outer corner should not hit outside its circular bounds.")
+		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, pin_near_edge_outside_circle)) == "", "Module pin zone rectangular edge should not steal taps outside its circle.")
+		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_rect.get_center())) == "collapse", "Module collapse zone center should hit the circular collapse action.")
+		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_rect.position)) == "", "Module collapse zone outer corner should not hit outside its circular bounds.")
+		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_near_edge_outside_circle)) == "", "Module collapse zone rectangular edge should not steal taps outside its circle.")
+		var badge := main_node.call("_ensure_module_pin_badge", zone_host, "action:fight:probe") as TextureButton
+		_expect(badge != null, "Module pin badge should be constructible for badge hit geometry.")
+		if badge != null:
+			zone_host.set_meta("module_ui_key", "action:fight:probe")
+			badge.visible = true
+			badge.disabled = false
+			badge.modulate.a = 1.0
+			await process_frame
+			var transparent_corner := badge.get_global_rect().position
+			var visible_art_point := badge.get_global_transform() * Vector2(MainScript.MODULE_PIN_BADGE_SIZE.x * 0.36, MainScript.MODULE_PIN_BADGE_SIZE.y * 0.34)
+			_expect(str(main_node.call("_module_action_badge_kind_at_position", zone_host, transparent_corner)) == "", "Oversized pin badge transparent corner should not count as a pin hit.")
+			_expect(str(main_node.call("_module_action_badge_kind_at_position", zone_host, visible_art_point)) == "", "Oversized pin badge visible art outside the circular zone should not count as a pin hit.")
+			var visible_art_action_hit := main_node.call("_module_action_circle_at_position_in_tree", zone_host, visible_art_point) as Dictionary
+			_expect(visible_art_action_hit.is_empty(), "Oversized pin badge visible art outside the circular zone should not route a module action.")
+		zone_host.free()
+	else:
+		if pin_zone != null:
+			pin_zone.free()
+		if collapse_zone != null:
+			collapse_zone.free()
 	main_node.free()
 	_finish()
 

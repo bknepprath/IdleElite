@@ -14,6 +14,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 - `docs/asset-file-structure-audit.md` records the current asset naming and ownership audit. Read it before moving or deleting assets.
 - `docs/ui-runtime-boundary-map.md` records stable navigation, home, shop, chat, leaderboard, and profile UI boundaries.
 - `docs/activity-ui-boundary-map.md` records stable activity detail, action card, mastery, unlock, and offline summary boundaries.
+- `docs/audio-structure-guide.md` records runtime audio assets, buses, player pools, music flow, settings, and sound-iteration guardrails.
 - `docs/naming-audit.md` and the naming section in `AGENTS.md` describe the current rename rules.
 
 ## Runtime Structure
@@ -25,7 +26,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 | Shell UI boundaries | `docs/ui-runtime-boundary-map.md`, `scripts/check-ui-boundary-contracts.ps1` | Navigation, home, shop, chat, leaderboard, and profile still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
 | Activity UI boundaries | `docs/activity-ui-boundary-map.md`, `scripts/check-activity-ui-boundary-contracts.ps1` | Activity detail, action cards, mastery, unlocks, and offline summary still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
 | Activity data | `docs/activity-database.json`, `docs/activity-database-data.js`, `docs/activity-database-contract.md`, `scripts/sync-activity-database-js.py`, `scripts/audit-activity-database.ps1`, `scripts/check-activity-database-contracts.ps1` | Edit JSON first, sync JS second, run the contract check and audit third. |
-| Runtime art | `assets/content/**`, `assets/loading/**`, `assets/android/**`, `assets/fonts/**`, `assets/music/**`, `assets/sfx/**` | Runtime paths are usually referenced as `res://assets/...` from code, docs data, presets, tests, or project settings. The former `assets/ui` split has been merged into `assets/content/ui`. |
+| Runtime art/audio | `assets/content/**`, `assets/loading/**`, `assets/android/**`, `assets/fonts/**`, `assets/music/**`, `assets/sfx/**` | Runtime paths are usually referenced as `res://assets/...` from code, docs data, presets, tests, or project settings. The former `assets/ui` split has been merged into `assets/content/ui`. Use `docs/audio-structure-guide.md` before changing shipped sound or music. |
 | Art source/provenance | `docs/art-source/**` | Not runtime by default. This tree is under `.gdignore`; source PNGs and notes are tracked, while docs-side `.import` metadata should stay untracked unless future work proves it is needed provenance. |
 | Release docs and outputs | `play-store/docs/**`, `builds/**`, `android/**` | Release artifacts and export-generated files are not general refactor surfaces. |
 | Validation scripts | `scripts/check-project.ps1`, `scripts/test-*.ps1`, `scripts/check-*.ps1` | Prefer focused scripts first, then full project validation when practical. |

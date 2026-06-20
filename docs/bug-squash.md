@@ -14,6 +14,195 @@ Fix:
 Validation:
 Rule:
 
+## Thieving Heist STEAL Button And Reset Trophy Leak
+
+Date: 2026-06-20
+
+Area: Thieving heist cards, skill-page input routing, hard reset save restore, and Thieving trophy save repair.
+
+Symptom: the Thieving heist STEAL button rendered as enabled, but tapping it did not trigger the heist from the player's real click path. Separately, after repeated hard resets, the hub could start with heist trophy 1 already present even when the saved Thieving level was far below the trophy's unlock level.
+
+Mistake:
+
+- Testing the heist attempt helper directly before proving the visible STEAL button could be clicked through `_input()`.
+- Assuming the button's local `pressed`/`gui_input` handlers were enough for a card nested in the skill detail scroll layer.
+- Letting the global bottom interactive UI exclusion run before heist button hit-testing, which made a visible button near the lower part of the detail viewport effectively dead.
+- Clearing runtime data during hard reset without also canceling pending boot save-restore work that could run afterward.
+
+Root cause: Thieving heist cards were registered differently from normal action cards and did not carry the same `skill_id`/`action_id` metadata used by the generic action-card input route. The main `_input()` path could therefore miss the heist button and return early when the tap overlapped the bottom interactive UI exclusion band. For the reset issue, `_reset_data()` rebuilt runtime state, but stale `pending_save_restore_data`, post-load simulation state, and save-repair flags could still apply old save data after the reset, reintroducing trophy state. Existing regular-save repair also did not clear impossible stolen heists whose saved Thieving level was below the heist unlock.
+
+Fix:
+
+- Add a dedicated `_route_thieving_heist_button_global_input()` path that hit-tests visible heist buttons, tracks clean press/release taps, and calls `_attempt_thieving_heist(heist_id)` on valid release.
+- Route Thieving heist input before `_event_points_inside_bottom_interactive_ui(event)` in `_input()`.
+- Keep a direct `button.pressed.connect(_attempt_thieving_heist.bind(heist_id))` fallback on each heist STEAL button.
+- Add `_clear_pending_save_restore_work()` and call it during hard reset before state is rebuilt.
+- Add regular-save repair for impossible stolen Thieving trophies, clearing stolen/cooldown state when the saved Thieving level is below the heist unlock.
+- Update process-hygiene checks in focused tests to compare before/after headless Godot process IDs so unrelated already-running headless validation processes do not falsely fail the run.
+
+Validation:
+
+- Added `scripts/test-thieving-heist-click-flow.ps1`.
+- The test renders the real Thieving page, unlocks the first heist at level 8, finds the actual enabled STEAL button, sends mouse press/release through `scene._input(...)` at the button's global center, and verifies trophy state, cooldown, or XP changes.
+- `.\scripts\test-thieving-heist-click-flow.ps1` passed with `thieving-heist-click-flow-ok`.
+- `.\scripts\test-performance-regressions.ps1` passed and now guards that heist input runs before the bottom UI exclusion.
+- `.\scripts\test-save-normalization.ps1` passed and now covers hard-reset pending restore cancellation plus impossible trophy repair.
+- Final process check showed no leftover headless Godot processes from the validation runs.
+
+Rule: for click bugs, test the rendered button through the real top-level `_input()` route before declaring victory. If a control sits in a special lazy-rendered or scroll-layer structure, give it an explicit global hit-test route instead of assuming normal action-card metadata will catch it. For hard reset, clear pending/deferred restore and simulation work as well as the visible runtime state; otherwise old save data can leak back in after the reset appears complete.
+
+## Fishing Shallows Click And Animation Break
+
+Date: 2026-06-19
+
+Area: Fishing skill area modules, Shallows location tile input, lazy-rendered method cards, and fishing animation state.
+
+Symptom: the Fishing page looked clickable and button audio could play, but tapping Shallows did not reliably start fishing. In later attempts the action could appear to start through direct method calls, but the real rendered button still did not respond from the player's click path. When the click did not enter the real fishing start path, the active fishing tool layer and water animation strip stayed hidden.
+
+Mistake:
+
+- The first fixes tested helper methods directly instead of testing the actual rendered Shallows button through the game's `_input` path.
+- A broad module-list smoke was treated as sufficient coverage even though its fishing assertions did not reproduce the player's click route.
+- The first regression allowed synthetic cards that did not match the lazy-rendered fishing area structure.
+- The debug loop initially focused on whether the action could start, not whether the visible animation layers turned on.
+
+Root cause: fishing location tiles are nested inside their parent area card's `method_slots` after lazy rendering. Some code searched only top-level `action_cards`, so it could miss the real Shallows method metadata when the only mounted owner was the Beach area card. Separately, relying only on per-button `gui_input`/`pressed` signal routing was brittle for this UI layer; the player click needed a page-level hit-test route that finds the visible fishing method button and forwards press/release through the clean tap handler. Without that, a click could produce UI feedback without changing `running_action_id`, `selected_fishing_locations`, or the visible fishing animation state.
+
+Fix:
+
+- `_fishing_method_card_for_action()` now searches nested fishing area `method_slots` as well as top-level method cards.
+- Fishing method buttons still have their local `gui_input` handler, but also keep a `pressed` fallback.
+- `_input()` now routes fishing method clicks through `_route_fishing_method_button_global_input()` before lock/activity-card routing.
+- The global route hit-tests visible fishing method buttons from both top-level method cards and nested area-card `method_slots`, then forwards to `_on_fishing_method_button_input()`.
+- Shallows selection is restored to `selected_fishing_locations["beach"] = "shallows"` before starting `beach-shallows`, so the Beach module and active tile animation stay aligned with the running action.
+
+Validation:
+
+- Added `scripts/test-fishing-click-flow.ps1`.
+- The test renders the real Fishing page, finds the actual enabled Shallows button, sends press/release through the game `_input` path at the button's global center, and verifies all of:
+  - `running_skill_id == "fishing"`
+  - `running_action_id == "beach-shallows"`
+  - selected Beach location changes from `rocky` to `shallows`
+  - the active fishing tool animation layer is visible
+  - the water animation strip is visible
+- `.\scripts\test-fishing-click-flow.ps1` passed.
+- Process checks after validation showed no leftover headless Godot processes. Existing non-headless Godot windows were left alone.
+
+Rule: for player input bugs, do not stop at direct method calls or synthetic card dictionaries. Build a regression around the real rendered control and route the event through the same top-level input path the player uses. For animation bugs, assert the visible animation state too, not just the logical running action. When lazy-rendered cards are involved, always check both the top-level registry and nested owner-card structures such as `method_slots`.
+
+## Pinned Activity Visual Validation Failure
+
+Date: 2026-06-19
+
+Area: pinned activity modules, pin art placement, pinned-page interactability, info chips, collapse smoke coverage, and Godot validation workflow.
+
+Symptom: the pinned activity pass consumed hours without producing a trustworthy user-facing result. The pin looked wrong in game, including an unacceptable visible colored square/bury mask. The armed pin placement and size were not verified visually early enough. Pinned-page interactions and info-chip behavior were discussed as if they were fixed before the visual state was proven. A smoke-test expectation for a collapsed-row `+` expand button was then treated as a product requirement, causing production collapsed UI to be changed even though collapsed buttons were not supposed to be touched.
+
+Mistake:
+
+- Treating headless smoke tests and code inspection as enough for a visual polish task.
+- Letting a test invent or override product intent instead of checking the intended behavior first.
+- Broadening the work into collapsed-row button UI after the active request was about pin placement, the purple square, pinned-page behavior, and empty info chips.
+- Reporting progress from internal plumbing while the actual screen still looked bad.
+- Attempting visible screenshot validation without first ensuring the Godot process situation was safe and isolated.
+
+Root cause: the workflow lost the distinction between internal implementation movement and player-visible improvement. For screenshot-quality UI, the source of truth is the rendered screen, not a passing bounds check. For behavior tests, the source of truth is the user's stated intent and existing design, not whatever a smoke assertion happens to say. The collapsed-row test had drifted into requiring a plus button, and that bad assertion was followed instead of corrected. The pin bury-mask approach also created visible artifact risk; it should have been screenshot-tested immediately, not discovered by user playtest.
+
+Fix:
+
+- Revert any production collapsed-row `+` button work from this pass.
+- Update the module-list smoke so collapsed rows validate the existing row-tap expansion behavior and protected-input blocking, without requiring or adding a collapsed plus button.
+- Keep the pin bury mask hidden so no purple/colored square can render on the activity card.
+- Add/keep smoke checks for the approved pin texture, large static badge size, armed up/right placement, settled placement, card overlap, top-left overhang, and no visible square bury mask.
+- Use pinned-page smoke coverage for real action-card starts/stops, info-chip expansion, passive collect/info behavior, heist input, fishing method input, and duplicate card registration, but do not call the feature visually polished until screenshots have been inspected.
+
+Validation:
+
+- `.\scripts\test-module-list-transitions.ps1` passed after the collapsed plus-button expectation was removed from the test.
+- `.\scripts\test-pinned-pin-visual-smoke.ps1` passed headlessly after hiding the visible square mask and tuning static pin placement.
+- `.\scripts\test-activity-card-geometry.ps1` passed in a solo rerun.
+- A module-list run left two headless Godot validation/import processes behind; both were clearly headless leftovers and were terminated. A follow-up process check showed only non-headless Godot processes.
+- Screenshot recapture was intentionally paused after visible-process handling proved unsafe; future screenshot work must first establish a clean/safe wrapper-launched capture path.
+
+Rule: for any UI task whose acceptance depends on appearance, placement, polish, animation feel, or "screenshot quality," take and inspect screenshots after each meaningful visual change. Do not rely on headless tests alone. If a screenshot cannot be captured safely, state that the visual result is unverified and do not present it as done. Tests must enforce the intended behavior, not create new UI requirements. When a smoke test contradicts the stated product intent, fix the test or pause to confirm; do not change production UI to satisfy the bad assertion. For the pinned activity pass specifically, do not touch collapsed button UI unless the user explicitly reopens that area.
+
+## Fake-3D Prism Edges
+
+Date: 2026-06-19
+
+Area: activity cards and bottom skill page-switch buttons.
+
+Symptom: fake-3D controls read as two flat shapes offset down/right instead of one solid prism. Adding diagonal connector strokes helped, but early revisions created hollow black side gaps, inconsistent bottom/right stroke weights, crunchy rounded corners, and press animations where the connector strokes appeared to move opposite the face.
+
+Mistake: treating the effect as one generic overlay that could be dropped onto every card/button. The activity cards and diagonal page-switch buttons had different shape paths, stroke owners, z-order, fill colors, and press offsets. A second mistake was letting multiple layers draw the same edge: front face stroke, back slab outline, side fill, side outline, and connector caps could all overlap or cover each other.
+
+Root cause: the prism illusion only works when each visible edge has exactly one owner. The side face must be filled with the darker slab color, the connector strokes must run between the true front silhouette corners and the offset back silhouette, and animation must derive from the same face offset as the moving front control. On activity cards, duplicate cap strokes made the top-right and bottom-left corners look crusty. On page-switch buttons, the back slab outline and connector overlay were fighting over the bottom/right stroke weight.
+
+Fix:
+
+- Give diagonal page-switch buttons a shape-aware face renderer instead of using a rounded-rect stylebox.
+- Draw page-switch side fills and connector strokes from a dedicated prism overlay using the button's actual trapezoid silhouette.
+- Disable the offset page-switch slab's own stroke so the side/back visible outline has a single owner.
+- Update the prism overlay from the same `face_offset` used by the pressed front face, so connector strokes collapse with the button instead of animating upward.
+- Keep activity cards on the fast depth path: rounded back slab, two corner connector strokes, and one rounded back outline.
+- Match activity-card slab connector/back-outline width to the face border weight and extend connector endpoints slightly to cover tiny cream gaps at rounded corners.
+
+Validation:
+
+- `.\scripts\test-activity-card-geometry.ps1` passed.
+- Captured the skill page with activity cards plus page-switch buttons and inspected the full screenshot and a nav-button crop.
+- Captured a mid-press page-switch state and confirmed the connector strokes move with the pressed face.
+- `.\scripts\check-project.ps1` passed the static/performance-regression sections, then failed later in the live skills-page timing sample on existing frame-budget thresholds; treat that as separate from prism geometry unless it reproduces consistently after a targeted change.
+
+Rule: for fake-3D UI, do not draw "front, back, and some lines" as independent decorations. Define the front silhouette, derive the back silhouette from the same offset, assign one layer to fill visible side faces, assign one layer to draw visible side/corner strokes, and verify both resting and pressed screenshots. If a stroke looks thin, thick, hollow, or crunchy, first look for overlapping stroke owners or side fill covering the outline before changing art or global style widths.
+
+Snapshot before vertical-slit experiment:
+
+- Screenshot: `.codex-tmp/skill-prism-capture.png` from the rounded-chevron pass on 2026-06-19.
+- Page-switch body shape: arrow-ended outside edge, diagonal inside seam, `diagonal_width = 96.0`, `arrow_edge_width = 118.0`, `arrow_corner_radius = 26.0`.
+- Page-switch row spacing: `HBoxContainer` separation `-120`.
+- Chevron glyph: `stroke_width = 50.0`, `fill_width = 31.0`, `shadow_color alpha = 0.18`, glyph bounds `left/right = 18..172` or `-172..-18`, `top/bottom = 18..-46`.
+- Chevron proportions before vertical-slit experiment: `half_width = size.x * 0.24`, `half_height = size.y * 0.25`.
+- Reason for branch: the arrow-ended buttons looked interesting, but the diagonal inside seam made the pair feel like it was on a different perspective plane.
+
+## Skill Icon Badge Cropping Loop
+
+Date: 2026-06-19
+
+Area: skill header/menu icons, Godot rounded badge clipping, and visual-asset QA.
+
+Symptom: the new skill icons repeatedly looked different in real game screenshots than in generated/contact-sheet previews. Icons bled outside rounded badge corners, Fighting/Thieving/Building/Woodcutting/Fishing positioning took too many iterations, and Fishing especially kept showing a truncated fish/rod even after placement tweaks.
+
+Mistake:
+
+- Treating synthetic badge/contact-sheet previews as evidence for the real in-game look.
+- Assuming `Control.clip_contents = true` would clip to the rounded Godot badge shape; it only clipped to the rectangular Control bounds.
+- Trying to solve Fishing mostly through repeated `TextureRect` offset/scale tweaks and source-art cropping, which hid the real problem and even removed rod/reel pixels the icon needed to keep.
+- Capturing stale already-running game windows after code edits, which made it look like offsets had not changed.
+- Relying on manual/right-arrow page navigation for screenshots when layout/save state could move or miss the target; this caused repeated captures of the wrong skill page.
+
+Root cause: there were two different clipping systems being conflated, and the symbol draw path was wrong. The Godot badge needed runtime rounded-rect clipping, while the Fishing PNG needed to remain a complete fish-plus-rod symbol with transparent padding. Rectangular `clip_contents` could never enforce rounded-corner masking, and `TextureRect` made the Fishing icon debugging misleading because repeated scale/offset changes still did not reliably prove the whole source texture was being drawn into the icon rect. The screenshot loop also lacked a reliable per-skill capture path at first, so visual conclusions were sometimes based on the wrong screen or stale process.
+
+Fix:
+
+- Replace rectangular-only child clipping with a badge-specific canvas shader that discards icon pixels outside the rounded badge shape before the black border draws.
+- Replace `TextureRect` for skill symbols with `SkillIconSymbolDraw`, a small custom Control that explicitly draws the entire PNG into the symbol rectangle with `draw_texture_rect()`.
+- Keep the Godot fill/background/border as runtime badge shapes instead of baking them into the icon art.
+- Lock stable icon placements once approved, especially Fighting and Thieving.
+- Tune per-skill offsets/scales only from real rendered screenshots.
+- Use the existing approved Fishing winner art from `assets/content/icons/drafts/fishing-symbol-winner-v19.png`; strip only the magenta sheet background/fringe and preserve the full fish, line, rod, and reel.
+- Rework `assets/content/icons/skill-symbols/fishing.png` itself without deleting the rod/reel: preserve the full fish-plus-rod symbol, add real transparent padding, and only tune scale/position from there so the whole icon remains available to the badge.
+- Use the direct per-skill capture helper for stubborn pages instead of relying on swipe/right-arrow navigation when checking a specific skill header.
+
+Validation:
+
+- `.\run-godot-safe.ps1 --path . --import --quit` reimported the changed Fishing PNG.
+- `.\run-godot-safe.ps1 --path . --quit-after 1` passed after the final icon changes.
+- Direct Fishing-page screenshot confirmed the v19 Fishing winner art is visible in the badge with the whole fish, line, rod, and reel: `.codex-tmp/direct-fishing-v19-scale093.png`.
+- Process checks were run after Godot commands; no-window temporary Godot processes from failed visible captures were cleaned up when clearly launched by the validation/capture attempt, while user/editor windows were left alone.
+
+Rule: for Godot icon polish, separate runtime mask bugs from source-art framing bugs. First prove the runtime clipping shape and symbol draw mode with an actual in-game screenshot; then inspect the PNG alpha bounds before tuning offsets. If an icon keeps truncating, do not keep nudging a bad crop or deleting source pixels. Verify that the renderer is drawing the whole source texture into the intended rect, then add transparent padding or adjust scale. For screenshots, prefer a direct per-skill capture path over manual navigation, and never call a visual change complete from a stale game window or synthetic preview.
+
 ## Itch.io Web Audio Silent
 
 Date: 2026-06-16

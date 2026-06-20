@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ciq56rugakgx6"
-path="res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.ctex"
+path="res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-67c77143e0eb9990f4b60608acd4fd07.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/content/ui/profile-avatar-blue-guy-spritesheet.png"
-dest_files=["res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-d9bb504a78b86c4a86bb2b7783be7324.ctex"]
+dest_files=["res://.godot/imported/profile-avatar-blue-guy-spritesheet.png-67c77143e0eb9990f4b60608acd4fd07.ctex"]
 
 [params]
 

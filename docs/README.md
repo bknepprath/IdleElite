@@ -5,7 +5,7 @@ This folder documents **Idle Elite**, a Godot 4 mobile idle RPG. Treat every Mar
 
 ## How To Read These Docs
 
-- **Agent orientation:** Start with `agent-onboarding-checklist.md`, `agent-codebase-map.md`, `main-gd-ownership-map.md`, `ui-runtime-boundary-map.md`, `activity-ui-boundary-map.md`, and `generated-file-hygiene.md` before broad code, asset, UI, metadata, or validation changes.
+- **Agent orientation:** Start with `agent-onboarding-checklist.md`, `agent-codebase-map.md`, `main-gd-ownership-map.md`, `ui-runtime-boundary-map.md`, `activity-ui-boundary-map.md`, `audio-structure-guide.md`, and `generated-file-hygiene.md` before broad code, asset, UI, metadata, audio, or validation changes.
 - **Planning home:** Start with `planning-system.md` or `planning-system.html` for active direction, doc roles, and the Now/Next/Later buckets.
 - **Live implementation references:** `activity-database.html`, `activity-database.json`, `activity-database-contract.md`, `product-requirements.md`, and the Play Store runbooks describe the current Godot build or release pipeline.
 - **Godot implementation references:** Active HTML files at the top of `docs/` should describe the current Godot implementation.

@@ -105,10 +105,10 @@ func _run() -> void:
 	scene.set("detail_header_gauge_refresh_elapsed", 0.0)
 
 	var changes := 0
-	var last_target := float(circle.get("target_current"))
+	var last_target := float(circle.get("target_value"))
 	for _frame in range(SAMPLE_FRAMES):
 		await _wait_test_frame()
-		var next_target := float(circle.get("target_current"))
+		var next_target := float(circle.get("target_value"))
 		if absf(next_target - last_target) > 0.0001:
 			changes += 1
 			last_target = next_target
@@ -117,7 +117,7 @@ func _run() -> void:
 		_fail("test setup drifted: selected=%s running=%s" % [str(scene.get("selected_skill_id")), str(scene.get("running_skill_id"))])
 		return
 	if changes < 3:
-		_fail("visible build regen gauge updated too slowly while fight was running: changes=%s target=%.4f" % [str(changes), last_target])
+		_fail("visible build regen ring updated too slowly while fight was running: changes=%s target=%.4f" % [str(changes), last_target])
 		return
 
 	print("stamina-gauge-offpage-smooth-ok changes=%s target=%.4f" % [str(changes), last_target])

@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b5d8uuqkrdufq"
-path="res://.godot/imported/mastery-medals-spritesheet.png-ab451da47be8a38ebbfbd266b6d1539f.ctex"
+path="res://.godot/imported/mastery-medals-spritesheet.png-374d6c7619b9a798c9ffa5c8d3c61252.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/content/ui/mastery-medals-spritesheet.png"
-dest_files=["res://.godot/imported/mastery-medals-spritesheet.png-ab451da47be8a38ebbfbd266b6d1539f.ctex"]
+dest_files=["res://.godot/imported/mastery-medals-spritesheet.png-374d6c7619b9a798c9ffa5c8d3c61252.ctex"]
 
 [params]
 

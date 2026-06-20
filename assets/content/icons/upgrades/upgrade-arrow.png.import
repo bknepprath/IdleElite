@@ -3,7 +3,7 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ccbck2a56auiu"
-path="res://.godot/imported/upgrade-arrow.png-8cded382b0b49a09b2d9de90b7f214e0.ctex"
+path="res://.godot/imported/upgrade-arrow.png-333954e1e15d831dc2612c70188eb23d.ctex"
 metadata={
 "vram_texture": false
 }
@@ -11,7 +11,7 @@ metadata={
 [deps]
 
 source_file="res://assets/content/icons/upgrades/upgrade-arrow.png"
-dest_files=["res://.godot/imported/upgrade-arrow.png-8cded382b0b49a09b2d9de90b7f214e0.ctex"]
+dest_files=["res://.godot/imported/upgrade-arrow.png-333954e1e15d831dc2612c70188eb23d.ctex"]
 
 [params]
 

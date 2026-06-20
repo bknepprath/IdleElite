@@ -13,6 +13,7 @@ This project uses Godot, and this machine can overheat if too many Godot instanc
 - Across all agents combined, keep at most 4 Godot processes running at the same time.
 - The wrapper waits up to 5 minutes for a slot. If no slot opens, continue with static analysis where possible and report that Godot validation is blocked.
 - After every Godot command, verify no headless Godot process was left behind by that command. Only terminate Godot processes that were launched by the agent's validation command, are headless/non-interactive, and should have exited. Do not terminate a user-opened Godot editor, project manager, or visible game window. If ownership or headless status is unclear, leave the process running and report it instead of killing it.
+- When working in Godot, verify the result with a screenshot whenever the change affects UI, visuals, layout, animation, scenes, or other player-visible behavior. Prefer automated screenshot capture through the safe wrapper or existing test scripts, and include/report the screenshot path with the validation notes.
 
 Preferred validation:
 

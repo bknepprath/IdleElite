@@ -53,6 +53,7 @@ $freshClientTimestampRule = "newData.isNumber() && newData.val() >= now - 10000 
 $freshGateTimestampExpr = "{0}.isNumber() && {0}.val() >= now - 10000 && {0}.val() <= now + 60000"
 $leaderboardFreshGateRule = "root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').isNumber() && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() >= now - 10000 && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() <= now + 60000"
 $leaderboardLegacyRowCooldownRule = "newData.child('updated_at').isNumber() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
+$leaderboardLegacyTotalLevelScoreRule = "`$category == 'total_level' && data.exists() && data.child('score').isNumber() && data.child('score').val() > 999 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.child('score').val()"
 $chatFreshGateRule = "newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').val() <= now + 60000"
 $chatClaimedNameRule = "newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid"
 $chatGuestNameRule = "!newData.child('name_key').exists() && newData.child('name').isString() && newData.child('name').val().matches(/^guest[0-9]{4}$/)"
@@ -116,7 +117,7 @@ $rulesObject = [ordered]@{
                                 ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
                             }
                             score = [ordered]@{
-                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val())"
+                                ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000 && (!data.exists() || newData.val() >= data.val() || ($leaderboardLegacyTotalLevelScoreRule))"
                             }
                             skill_level = [ordered]@{
                                 ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"

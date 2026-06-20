@@ -31,6 +31,13 @@
     main {
       padding:18px clamp(10px,2vw,24px) 34px;
       overflow-x:auto;
+      cursor:grab;
+      user-select:none;
+      -webkit-user-select:none;
+    }
+
+    main.is-drag-scrolling {
+      cursor:grabbing;
     }
 
     .module-board {
@@ -376,6 +383,7 @@
 
     .module-cluster.is-expanded > .dependency-tray > .dependent-module > .dependent-card {
       display:block;
+      pointer-events:auto;
     }
 
     .dependent-card .module-cluster {
@@ -597,11 +605,12 @@
     }
 
     .module-boss .module-art,
-    .module-factory .module-art {
+    .module-production .module-art,
+    .module-one-time-build .module-art {
       width:72px;
     }
 
-    .module-factory {
+    .module-production {
       border:0;
       border-radius:0;
       overflow:hidden;
@@ -611,7 +620,7 @@
       filter:drop-shadow(0 8px 0 rgba(23,22,21,.24));
     }
 
-    .module-factory .module-bg {
+    .module-production .module-bg {
       inset:4px;
       border-radius:0;
       clip-path:polygon(0 0, 100% 0, 100% 100%, 71% 100%, 50% calc(100% - 24px), 29% 100%, 0 100%);
@@ -621,13 +630,111 @@
         var(--skill-color);
     }
 
-    .module-factory::before,
-    .module-factory::after {
+    .module-production::before,
+    .module-production::after {
       display:none;
     }
 
-    .module-factory .module-body {
+    .module-production .module-body {
       padding:14px 14px 40px;
+    }
+
+    .module-one-time-build {
+      justify-self:center;
+      width:100%;
+      min-height:228px;
+      border:0;
+      border-radius:0;
+      overflow:hidden;
+      background:var(--ink);
+      clip-path:polygon(0 50%, 20% 0, 80% 0, 100% 50%, 80% 100%, 20% 100%);
+      box-shadow:none;
+      filter:drop-shadow(0 8px 0 rgba(23,22,21,.24));
+    }
+
+    .module-one-time-build .module-bg {
+      inset:4px;
+      clip-path:polygon(0 50%, 20% 0, 80% 0, 100% 50%, 80% 100%, 20% 100%);
+      background:
+        linear-gradient(rgba(23,22,21,.28), rgba(23,22,21,.46)),
+        radial-gradient(circle at 28% 18%, rgba(255,255,255,.28), transparent 8rem),
+        var(--skill-color);
+    }
+
+    .module-one-time-build::before,
+    .module-one-time-build::after {
+      display:none;
+    }
+
+    .module-one-time-build .module-body {
+      min-height:228px;
+      display:grid;
+      grid-template-columns:1fr;
+      justify-items:center;
+      align-content:center;
+      gap:8px;
+      padding:16px 42px;
+      text-align:center;
+    }
+
+    .module-one-time-build .module-title {
+      min-height:0;
+      font-size:24px;
+      line-height:.95;
+    }
+
+    .module-one-time-build .module-art {
+      grid-column:auto;
+      grid-row:auto;
+      width:70px;
+    }
+
+    .module-one-time-build .module-copy {
+      grid-column:auto;
+      grid-row:auto;
+      justify-items:center;
+      gap:7px;
+    }
+
+    .tool-build-progress {
+      display:grid;
+      grid-template-columns:repeat(var(--tool-build-steps), minmax(0, 1fr));
+      gap:3px;
+      width:min(126px, 100%);
+      padding:3px;
+      border:3px solid var(--ink);
+      border-radius:999px;
+      background:#171615;
+      box-shadow:0 3px 0 rgba(23,22,21,.28);
+    }
+
+    .tool-build-progress span {
+      height:12px;
+      border-radius:999px;
+      background:#fffdf8;
+      opacity:.92;
+    }
+
+    .tool-build-costs {
+      display:flex;
+      flex-wrap:wrap;
+      justify-content:center;
+      gap:4px;
+      max-width:132px;
+    }
+
+    .tool-build-cost {
+      min-height:22px;
+      padding:4px 6px;
+      border:2px solid var(--ink);
+      border-radius:999px;
+      background:#fffdf8;
+      color:var(--ink);
+      font-size:9px;
+      font-weight:1000;
+      line-height:1;
+      box-shadow:1px 2px 0 rgba(23,22,21,.38);
+      text-transform:uppercase;
     }
 
     .module-bg {
@@ -1002,6 +1109,10 @@
     .fire-module {
       min-height:238px;
       background:var(--woodcutting);
+    }
+
+    .fire-module.module-production {
+      background:var(--ink);
     }
 
     .fire-module .module-bg {
@@ -1396,7 +1507,7 @@
                     <span class="stat"><b>97.7%</b><span>Rate</span></span>
                   </div>
                   <div class="progress"><span></span></div>
-                  <div class="module-meta"><span>Lv 3</span><span>Factory</span></div>
+                  <div class="module-meta"><span>Lv 3</span><span>Production</span></div>
                 </div>
               </div>
             </article>
@@ -1579,7 +1690,7 @@
                     <span class="stat"><b>2.4s</b><span>Time</span></span>
                   </div>
                   <div class="progress"><span></span></div>
-                  <div class="module-meta"><span>Lv 2</span><span>Factory</span></div>
+                  <div class="module-meta"><span>Lv 2</span><span>Production</span></div>
                 </div>
               </div>
             </article>
@@ -1689,8 +1800,8 @@
       {skill:"fight", title:"Chicken Boss Fight", type:"Boss", level:2, art:art.fight2, blocker:true, stats:[["3","XP"],["1","Stam"],["Gate","Area"],["Unlock","Yard"]]},
       {skill:"fight", title:"Breath Control", type:"Training", level:4, art:art.fight4, stats:[["2","XP"],["1","Stam"],["1.2s","Time"],["+1","Focus"]]},
       {skill:"fight", title:"Stone Lift", type:"Training", level:7, art:art.fight6, stats:[["3","XP"],["2","Stam"],["1.58s","Time"],["+1","Grit"]]},
-      {skill:"fight", title:"Wrap Knuckles", type:"Factory", level:11, art:art.fight4, stats:[["4","XP"],["-1","Leather"],["-1","Focus"],["+1","Gear"]], deps:["Leather","Focus"]},
-      {skill:"fight", title:"Sparring Dummy", type:"Factory", level:16, art:art.fight1, stats:[["5","XP"],["-2","Planks"],["-1","Leather"],["Ready","Practice"]], deps:["Planks","Leather"]},
+      {skill:"fight", title:"Wrap Knuckles", type:"Production", level:11, art:art.fight4, stats:[["4","XP"],["-1","Leather"],["-1","Focus"],["+1","Gear"]], deps:["Leather","Focus"]},
+      {skill:"fight", title:"Sparring Dummy", type:"Production", level:16, art:art.fight1, stats:[["5","XP"],["-2","Planks"],["-1","Leather"],["Ready","Practice"]], deps:["Planks","Leather"]},
       {skill:"fight", title:"Mobility Flow", type:"Active Recovery", level:17, art:art.fight4, stats:[["1","XP"],["+3","Stam"],["1.4s","Time"],["Recover","Type"]]},
       {skill:"fight", title:"Shadow Boxing", type:"Training", level:18, art:art.fight2, stats:[["5","XP"],["2","Stam"],["1.35s","Time"],["98%","Rate"]]},
       {skill:"fight", title:"Shark Grapple", type:"Combo", level:22, art:art.salmon, combo:["fight","hunt"], stats:[["6","XP"],["-1","Grit"],["2.0s","Time"],["Control","Shark"]], deps:["Grit"]},
@@ -1702,11 +1813,11 @@
 
       {skill:"survival", title:"Gather Kindling", type:"Collection", level:1, art:art.survival1, stats:[["1","XP"],["1","Stam"],["0.92s","Time"],["+1","Kindling"]]},
       {skill:"survival", title:"Chop Tree", type:"Collection", level:3, art:art.survival4, stats:[["2","XP"],["1","Stam"],["1.26s","Time"],["+1","Log"]]},
-      {skill:"survival", title:"Light Fire", type:"Factory", level:4, art:art.survival5, special:"fire", stats:[["2","XP"],["-1","Kindling"],["-1","Logs"],["Lit","Boost"]], deps:["Kindling","Logs"]},
+      {skill:"survival", title:"Light Fire", type:"Production", level:4, art:art.survival5, special:"fire", stats:[["2","XP"],["-1","Kindling"],["-1","Logs"],["Lit","Boost"]], deps:["Kindling","Logs"]},
       {skill:"survival", title:"Strip Bark", type:"Collection", level:5, art:art.survival4, stats:[["2","XP"],["1","Stam"],["1.05s","Time"],["+1","Bark"]]},
       {skill:"survival", title:"Forage Berries", type:"Collection", level:6, art:art.survival7, stats:[["3","XP"],["1","Stam"],["1.12s","Time"],["+1","Berry"]]},
-      {skill:"survival", title:"Campfire Tea", type:"Factory", level:9, art:art.survival7, stats:[["4","XP"],["-2","Berries"],["Lit","Fire"],["+1","Focus"]], deps:["Berries","Light Fire"]},
-      {skill:"survival", title:"Tan Leather", type:"Factory", level:13, art:art.crab, stats:[["5","XP"],["-1","Parts"],["-2","Bark"],["+1","Leather"]], deps:["Animal Parts","Bark"]},
+      {skill:"survival", title:"Campfire Tea", type:"Production", level:9, art:art.survival7, stats:[["4","XP"],["-2","Berries"],["Lit","Fire"],["+1","Focus"]], deps:["Berries","Light Fire"]},
+      {skill:"survival", title:"Tan Leather", type:"Production", level:13, art:art.crab, stats:[["5","XP"],["-1","Parts"],["-2","Bark"],["+1","Leather"]], deps:["Animal Parts","Bark"]},
       {skill:"survival", title:"Running", type:"Training", level:15, art:art.survival1, stats:[["5","XP"],["2","Stam"],["1.45s","Time"],["97%","Rate"]]},
       {skill:"survival", title:"Camp Kitchen", type:"Combo", level:18, art:art.build7, combo:["survival","build"], stats:[["6","XP"],["-2","Planks"],["Lit","Fire"],["+1","Meal Slot"]], deps:["Planks","Light Fire"]},
       {skill:"survival", title:"Sit By The Fire", type:"Active Recovery", level:20, art:art.survival5, stats:[["1","XP"],["+3","Stam"],["1.6s","Time"],["Recover","Type"]]},
@@ -1715,32 +1826,32 @@
       {skill:"survival", title:"Wolf Den Boss", type:"Combo Boss", level:31, art:art.crab, combo:["survival","fight"], blocker:true, stats:[["9","XP"],["-1","Food"],["-2","Grit"],["Unlock","Den"]], deps:["Food","Grit"]},
       {skill:"survival", title:"Knot Practice", type:"Training", level:34, art:art.survival4, stats:[["9","XP"],["3","Stam"],["1.9s","Time"],["96%","Rate"]]},
       {skill:"survival", title:"Steam Lodge Rest", type:"Active Recovery", level:36, art:art.survival7, unlockAfter:"Build Steam Lodge", stats:[["2","XP"],["+5","Stam"],["2.2s","Time"],["Recover","Type"]], deps:["Steam Lodge"]},
-      {skill:"survival", title:"Scout Hidden Trail", type:"Factory", level:39, art:art.wit3, stats:[["10","XP"],["-1","Knowledge"],["-1","Berries"],["Unlock","Trail"]], deps:["Knowledge","Berries"]},
+      {skill:"survival", title:"Scout Hidden Trail", type:"Production", level:39, art:art.wit3, stats:[["10","XP"],["-1","Knowledge"],["-1","Berries"],["Unlock","Trail"]], deps:["Knowledge","Berries"]},
 
       {skill:"build", title:"Gather Clay", type:"Collection", level:1, art:art.build1, stats:[["1","XP"],["1","Stam"],["1.15s","Time"],["+1","Clay"]]},
-      {skill:"build", title:"Saw Planks", type:"Factory", level:4, art:art.survival5, stats:[["3","XP"],["-2","Logs"],["1.82s","Time"],["+1","Plank"]], deps:["Logs"]},
+      {skill:"build", title:"Saw Planks", type:"Production", level:4, art:art.survival5, stats:[["3","XP"],["-2","Logs"],["1.82s","Time"],["+1","Plank"]], deps:["Logs"]},
       {skill:"build", title:"Hammer Nails", type:"Training", level:6, art:art.build3, stats:[["3","XP"],["1","Stam"],["1.2s","Time"],["+1","Build XP"]]},
-      {skill:"build", title:"Build Kiln", type:"1-Time Build", level:7, art:art.build7, stats:[["4","XP"],["-4","Logs"],["Once","Build"],["Unlock","Kiln"]], deps:["Logs"]},
-      {skill:"build", title:"Bake Bricks", type:"Factory", level:8, art:art.build1, stats:[["4","XP"],["-2","Clay"],["Kiln","Ready"],["+1","Brick"]], deps:["Clay","Kiln"]},
-      {skill:"build", title:"Build Workbench", type:"Factory", level:10, art:art.build4, stats:[["5","XP"],["-3","Planks"],["-1","Bricks"],["+1","Station"]], deps:["Planks","Bricks"]},
+      {skill:"build", title:"Build Kiln", type:"1-Time Build", level:7, art:art.build7, buildStages:1, stats:[["4","XP"],["-4","Logs"],["Once","Build"],["Unlock","Kiln"]], deps:["Logs"]},
+      {skill:"build", title:"Bake Bricks", type:"Production", level:8, art:art.build1, stats:[["4","XP"],["-2","Clay"],["Kiln","Ready"],["+1","Brick"]], deps:["Clay","Kiln"]},
+      {skill:"build", title:"Build Workbench", type:"Production", level:10, art:art.build4, stats:[["5","XP"],["-3","Planks"],["-1","Bricks"],["+1","Station"]], deps:["Planks","Bricks"]},
       {skill:"build", title:"Frame Snare", type:"Combo", level:15, art:art.build7, combo:["build","hunt"], stats:[["5","XP"],["-2","Planks"],["-1","Berries"],["+1","Trap"]], deps:["Planks","Berries"]},
       {skill:"build", title:"Sweep Workshop", type:"Active Recovery", level:18, art:art.build3, stats:[["1","XP"],["+3","Stam"],["1.5s","Time"],["Recover","Type"]]},
       {skill:"build", title:"Build Training Yard", type:"Combo", level:21, art:art.build4, combo:["build","fight"], stats:[["6","XP"],["-2","Planks"],["-1","Grit"],["+1","Gear"]], deps:["Planks","Grit"]},
       {skill:"build", title:"Measure Twice", type:"Training", level:24, art:art.build3, stats:[["6","XP"],["2","Stam"],["1.4s","Time"],["99%","Rate"]]},
-      {skill:"build", title:"Smokehouse", type:"Factory", level:28, art:art.build7, stats:[["7","XP"],["-4","Planks"],["Lit","Fire"],["+1","Food Prep"]], deps:["Planks","Light Fire"]},
-      {skill:"build", title:"Build Ice Bath", type:"1-Time Build", level:32, art:art.build4, replacement:{title:"Use Ice Bath", type:"Active Recovery", stats:[["2","XP"],["+5","Stam"],["2.4s","Time"],["Recover","Type"]]}, stats:[["8","XP"],["-3","Planks"],["-1","Bark"],["Unlock","Tool"]], deps:["Planks","Bark"]},
-      {skill:"build", title:"Lockbox Bench", type:"Factory", level:36, art:art.wit6, stats:[["8","XP"],["-2","Planks"],["-1","Keys"],["+1","Storage"]], deps:["Planks","Keys"]},
+      {skill:"build", title:"Smokehouse", type:"Production", level:28, art:art.build7, stats:[["7","XP"],["-4","Planks"],["Lit","Fire"],["+1","Food Prep"]], deps:["Planks","Light Fire"]},
+      {skill:"build", title:"Build Ice Bath", type:"1-Time Build", level:32, art:art.build4, buildStages:1, replacement:{title:"Use Ice Bath", type:"Active Recovery", stats:[["2","XP"],["+5","Stam"],["2.4s","Time"],["Recover","Type"]]}, stats:[["8","XP"],["-3","Planks"],["-1","Bark"],["Unlock","Tool"]], deps:["Planks","Bark"]},
+      {skill:"build", title:"Lockbox Bench", type:"Production", level:36, art:art.wit6, stats:[["8","XP"],["-2","Planks"],["-1","Keys"],["+1","Storage"]], deps:["Planks","Keys"]},
       {skill:"build", title:"Tool Cleanup", type:"Active Recovery", level:39, art:art.build1, stats:[["2","XP"],["+5","Stam"],["2.1s","Time"],["Recover","Type"]]},
       {skill:"build", title:"Bridge Troll Boss", type:"Boss", level:45, art:art.build7, combo:["build","fight"], blocker:true, stats:[["9","XP"],["-3","Bricks"],["-2","Grit"],["Unlock","Bridge"]], deps:["Bricks","Grit"]},
       {skill:"build", title:"Blueprint Practice", type:"Training", level:49, art:art.build1, stats:[["9","XP"],["3","Stam"],["2.05s","Time"],["95%","Rate"]]},
-      {skill:"build", title:"Build Steam Lodge", type:"1-Time Build", level:52, art:art.build7, replacement:{title:"Use Steam Lodge", type:"Active Recovery", stats:[["2","XP"],["+5","Stam"],["2.2s","Time"],["Recover","Type"]]}, stats:[["10","XP"],["-4","Hardwood"],["-2","Bark"],["Unlock","Tool"]], deps:["Hardwood Logs","Bark"]},
-      {skill:"build", title:"Lookout Post", type:"Factory", level:55, art:art.build7, stats:[["10","XP"],["-4","Planks"],["-1","Knowledge"],["+1","Area"]], deps:["Planks","Knowledge"]},
+      {skill:"build", title:"Build Steam Lodge", type:"1-Time Build", level:52, art:art.build7, buildStages:1, replacement:{title:"Use Steam Lodge", type:"Active Recovery", stats:[["2","XP"],["+5","Stam"],["2.2s","Time"],["Recover","Type"]]}, stats:[["10","XP"],["-4","Hardwood"],["-2","Bark"],["Unlock","Tool"]], deps:["Hardwood Logs","Bark"]},
+      {skill:"build", title:"Lookout Post", type:"Production", level:55, art:art.build7, stats:[["10","XP"],["-4","Planks"],["-1","Knowledge"],["+1","Area"]], deps:["Planks","Knowledge"]},
 
       {skill:"hunt", title:"Shallows", type:"Collection", level:1, art:art.huntPlace, stats:[["2","XP"],["1","Stam"],["4s","Time"],["+1","Parts"]]},
       {skill:"hunt", title:"Track Rabbit", type:"Collection", level:3, art:art.crab, stats:[["2","XP"],["1","Stam"],["1.4s","Time"],["+1","Parts"]]},
       {skill:"hunt", title:"Field Dress", type:"Training", level:5, art:art.crab, stats:[["3","XP"],["1","Stam"],["1.2s","Time"],["+1","Know-How"]]},
-      {skill:"hunt", title:"Build Trap", type:"Factory", level:9, art:art.build7, stats:[["4","XP"],["-1","Berries"],["-1","Kindling"],["+1","Trap"]], deps:["Berries","Kindling"]},
-      {skill:"hunt", title:"Cook Meal", type:"Factory", level:14, art:art.salmon, stats:[["5","XP"],["-1","Parts"],["Lit","Fire"],["+1","Food"]], deps:["Animal Parts","Light Fire"]},
+      {skill:"hunt", title:"Build Trap", type:"Production", level:9, art:art.build7, stats:[["4","XP"],["-1","Berries"],["-1","Kindling"],["+1","Trap"]], deps:["Berries","Kindling"]},
+      {skill:"hunt", title:"Cook Meal", type:"Production", level:14, art:art.salmon, stats:[["5","XP"],["-1","Parts"],["Lit","Fire"],["+1","Food"]], deps:["Animal Parts","Light Fire"]},
       {skill:"hunt", title:"Quiet Sit", type:"Active Recovery", level:17, art:art.huntPlace, stats:[["1","XP"],["+3","Stam"],["1.7s","Time"],["Recover","Type"]]},
       {skill:"hunt", title:"Fight River Pike", type:"Combo", level:20, art:art.fish, combo:["hunt","fight"], stats:[["6","XP"],["-1","Parts"],["-1","Grit"],["+1","Parts"]], deps:["Animal Parts","Grit"]},
       {skill:"hunt", title:"Tracking Practice", type:"Training", level:23, art:art.huntPlace, stats:[["6","XP"],["2","Stam"],["1.55s","Time"],["97%","Rate"]]},
@@ -1751,7 +1862,7 @@
       {skill:"hunt", title:"Sewers", type:"Collection", level:42, art:art.sewers, stats:[["7","XP"],["1","Stam"],["3.2s","Time"],["+1","Parts"]]},
       {skill:"hunt", title:"Boar Boss Fight", type:"Combo Boss", level:44, art:art.crab, combo:["hunt","fight"], blocker:true, stats:[["9","XP"],["-1","Trap"],["-2","Grit"],["Unlock","Woods"]], deps:["Trap","Grit"]},
       {skill:"hunt", title:"Patient Watch", type:"Training", level:48, art:art.huntPlace, stats:[["9","XP"],["3","Stam"],["2.2s","Time"],["96%","Rate"]]},
-      {skill:"hunt", title:"Poacher Ruse", type:"Factory", level:54, art:art.wit3, stats:[["10","XP"],["-2","Secrets"],["-1","Leather"],["+1","Access"]], deps:["Secrets","Leather"]},
+      {skill:"hunt", title:"Poacher Ruse", type:"Production", level:54, art:art.wit3, stats:[["10","XP"],["-2","Secrets"],["-1","Leather"],["+1","Access"]], deps:["Secrets","Leather"]},
 
       {skill:"wit", title:"Sleight of Hand", type:"Training", level:1, art:art.wit2, stats:[["1","XP"],["1","Stam"],["0.98s","Time"],["+1","Wit"]]},
       {skill:"wit", title:"Pocket Coins", type:"Collection", level:4, art:art.wit9, stats:[["2","XP"],["1","Stam"],["1.0s","Time"],["+1","Coin"]]},
@@ -1762,12 +1873,12 @@
       {skill:"wit", title:"Distract Merchant", type:"Combo", level:26, art:art.wit3, combo:["wit","survival"], stats:[["6","XP"],["-1","Berries"],["-1","Secrets"],["+1","Coins"]], deps:["Berries","Secrets"]},
       {skill:"wit", title:"Misdirection Drill", type:"Training", level:31, art:art.wit2, stats:[["7","XP"],["2","Stam"],["1.3s","Time"],["98%","Rate"]]},
       {skill:"wit", title:"Fence Goods", type:"Combo", level:34, art:art.wit9, combo:["wit","hunt"], stats:[["7","XP"],["-1","Leather"],["-1","Coins"],["+1","Secrets"]], deps:["Leather","Coins"]},
-      {skill:"wit", title:"Painting", type:"Factory", level:37, art:art.wit2, stats:[["8","XP"],["-2","Berries"],["1.9s","Time"],["+1","Fulfillment"]], deps:["Berries"]},
-      {skill:"wit", title:"Forge Permit", type:"Factory", level:43, art:art.wit3, stats:[["8","XP"],["-1","Knowledge"],["-1","Coins"],["+1","Permit"]], deps:["Knowledge","Coins"]},
+      {skill:"wit", title:"Painting", type:"Production", level:37, art:art.wit2, stats:[["8","XP"],["-2","Berries"],["1.9s","Time"],["+1","Fulfillment"]], deps:["Berries"]},
+      {skill:"wit", title:"Forge Permit", type:"Production", level:43, art:art.wit3, stats:[["8","XP"],["-1","Knowledge"],["-1","Coins"],["+1","Permit"]], deps:["Knowledge","Coins"]},
       {skill:"wit", title:"People Watching", type:"Active Recovery", level:47, art:art.wit3, stats:[["2","XP"],["+5","Stam"],["2.0s","Time"],["Recover","Type"]]},
       {skill:"wit", title:"Vault Guard Boss", type:"Combo Boss", level:53, art:art.wit6, combo:["wit","fight"], blocker:true, stats:[["9","XP"],["-2","Keys"],["-1","Grit"],["Unlock","Vault"]], deps:["Keys","Grit"]},
       {skill:"wit", title:"Quiet Step Practice", type:"Training", level:58, art:art.wit3, stats:[["10","XP"],["3","Stam"],["1.8s","Time"],["97%","Rate"]]},
-      {skill:"wit", title:"Blueprint Swap", type:"Factory", level:64, art:art.build3, stats:[["10","XP"],["-1","Permit"],["-2","Planks"],["+1","Shortcut"]], deps:["Permit","Planks"]}
+      {skill:"wit", title:"Blueprint Swap", type:"Production", level:64, art:art.build3, stats:[["10","XP"],["-1","Permit"],["-2","Planks"],["+1","Shortcut"]], deps:["Permit","Planks"]}
     ];
 
     Object.assign(resources, {
@@ -1820,34 +1931,34 @@
       {skill:"fight", title:"Balance Beam Walk", type:"Training", level:57, art:art.fight4, stats:[["11","XP"],["3","Stam"],["2.1s","Time"],["+1","Balance"]]},
       {skill:"fight", title:"Weighted Carries", type:"Training", level:63, art:art.fight6, stats:[["12","XP"],["4","Stam"],["2.2s","Time"],["+1","Grit"]]},
       {skill:"fight", title:"Rhythm Footwork", type:"Training", level:68, art:art.fight2, stats:[["12","XP"],["3","Stam"],["1.9s","Time"],["+1","Timing"]]},
-      {skill:"fight", title:"Read Opponent", type:"Factory", level:74, art:art.wit3, stats:[["13","XP"],["-1","Focus"],["-1","Knowledge"],["+1","Tactics"]], deps:["Focus","Knowledge"]},
+      {skill:"fight", title:"Read Opponent", type:"Production", level:74, art:art.wit3, stats:[["13","XP"],["-1","Focus"],["-1","Knowledge"],["+1","Tactics"]], deps:["Focus","Knowledge"]},
       {skill:"fight", title:"Cold Stand", type:"Active Recovery", level:79, art:art.fight6, stats:[["2","XP"],["+6","Stam"],["2.4s","Time"],["+1","Resolve"]]},
       {skill:"fight", title:"Sprint Starts", type:"Training", level:85, art:art.fight2, stats:[["14","XP"],["4","Stam"],["1.7s","Time"],["+1","Momentum"]]},
-      {skill:"fight", title:"Shield Wall Drill", type:"Factory", level:91, art:art.build4, stats:[["14","XP"],["-1","Planks"],["-1","Leather"],["+1","Guard"]], deps:["Planks","Leather"]},
+      {skill:"fight", title:"Shield Wall Drill", type:"Production", level:91, art:art.build4, stats:[["14","XP"],["-1","Planks"],["-1","Leather"],["+1","Guard"]], deps:["Planks","Leather"]},
       {skill:"fight", title:"Face The Bell", type:"Boss", level:98, art:art.fight4, blocker:true, stats:[["15","XP"],["-2","Resolve"],["Gate","Ring"],["Unlock","Arena"]], deps:["Resolve"]},
       {skill:"fight", title:"Arena Sparring", type:"Training", level:104, art:art.fight1, stats:[["15","XP"],["4","Stam"],["2.0s","Time"],["98%","Rate"]]},
       {skill:"fight", title:"Clinch Practice", type:"Training", level:111, art:art.fight6, stats:[["16","XP"],["4","Stam"],["2.3s","Time"],["+1","Grit"]]},
       {skill:"fight", title:"Tactical Feint", type:"Combo", level:119, art:art.wit2, combo:["fight","wit"], stats:[["17","XP"],["-1","Tactics"],["-1","Secrets"],["+1","Opening"]], deps:["Tactics","Secrets"]},
       {skill:"fight", title:"Camp Guard Rotation", type:"Combo", level:126, art:art.survival5, combo:["fight","survival"], stats:[["17","XP"],["-1","Food"],["-1","Guard"],["+1","Safety"]], deps:["Food","Guard"]},
-      {skill:"fight", title:"Heavy Bag Frame", type:"Factory", level:134, art:art.build7, stats:[["18","XP"],["-2","Hardwood Planks"],["-1","Leather"],["Ready","Bag"]], deps:["Hardwood Planks","Leather"]},
+      {skill:"fight", title:"Heavy Bag Frame", type:"Production", level:134, art:art.build7, stats:[["18","XP"],["-2","Hardwood Planks"],["-1","Leather"],["Ready","Bag"]], deps:["Hardwood Planks","Leather"]},
       {skill:"fight", title:"Bag Combos", type:"Training", level:142, art:art.fight2, stats:[["18","XP"],["5","Stam"],["2.1s","Time"],["+1","Timing"]]},
       {skill:"fight", title:"Recovery Stretch", type:"Active Recovery", level:151, art:art.fight4, stats:[["3","XP"],["+7","Stam"],["2.5s","Time"],["Recover","Type"]]},
-      {skill:"fight", title:"Ingot Grip", type:"Factory", level:160, art:art.build3, stats:[["19","XP"],["-1","Ingots"],["-1","Grit"],["+1","Grip"]], deps:["Ingots","Grit"]},
+      {skill:"fight", title:"Ingot Grip", type:"Production", level:160, art:art.build3, stats:[["19","XP"],["-1","Ingots"],["-1","Grit"],["+1","Grip"]], deps:["Ingots","Grit"]},
       {skill:"fight", title:"River Pike Rematch", type:"Combo", level:168, art:art.fish, combo:["fight","hunt"], stats:[["20","XP"],["-1","Animal Parts"],["-2","Timing"],["+1","Courage"]], deps:["Animal Parts","Timing"]},
       {skill:"fight", title:"Stone Ring Boss", type:"Boss", level:177, art:art.build1, blocker:true, stats:[["22","XP"],["-2","Guard"],["-2","Tactics"],["Unlock","Stone Ring"]], deps:["Guard","Tactics"]},
       {skill:"fight", title:"Stone Ring Practice", type:"Training", level:186, art:art.fight6, stats:[["22","XP"],["5","Stam"],["2.5s","Time"],["+1","Resolve"]]},
       {skill:"fight", title:"Pressure Breathing", type:"Active Recovery", level:196, art:art.fight4, stats:[["3","XP"],["+8","Stam"],["2.7s","Time"],["+1","Focus"]]},
-      {skill:"fight", title:"Counter Window", type:"Factory", level:205, art:art.wit3, stats:[["23","XP"],["-1","Timing"],["-1","Knowledge"],["+1","Tactics"]], deps:["Timing","Knowledge"]},
+      {skill:"fight", title:"Counter Window", type:"Production", level:205, art:art.wit3, stats:[["23","XP"],["-1","Timing"],["-1","Knowledge"],["+1","Tactics"]], deps:["Timing","Knowledge"]},
       {skill:"fight", title:"Bridge Push", type:"Combo", level:215, art:art.build7, combo:["fight","build"], stats:[["24","XP"],["-2","Guard"],["-2","Treated Planks"],["+1","Advance"]], deps:["Guard","Treated Planks"]},
       {skill:"fight", title:"Hill Sprints", type:"Training", level:226, art:art.fight2, stats:[["24","XP"],["6","Stam"],["2.2s","Time"],["+1","Momentum"]]},
       {skill:"fight", title:"Night Watch Duel", type:"Combo Boss", level:237, art:art.wit6, combo:["fight","wit"], blocker:true, stats:[["26","XP"],["-2","Courage"],["-1","Keys"],["Unlock","Night Watch"]], deps:["Courage","Keys"]},
       {skill:"fight", title:"Night Watch Patrol", type:"Training", level:248, art:art.fight4, stats:[["26","XP"],["6","Stam"],["2.8s","Time"],["+1","Discipline"]]},
       {skill:"fight", title:"Feast Recovery", type:"Active Recovery", level:260, art:art.salmon, stats:[["4","XP"],["+10","Stam"],["3.0s","Time"],["Recover","Type"]], deps:["Hearty Food"]},
-      {skill:"fight", title:"Armor Movement", type:"Factory", level:272, art:art.build4, stats:[["28","XP"],["-1","Refined Ingots"],["-1","Leather"],["+1","Guard"]], deps:["Refined Ingots","Leather"]},
+      {skill:"fight", title:"Armor Movement", type:"Production", level:272, art:art.build4, stats:[["28","XP"],["-1","Refined Ingots"],["-1","Leather"],["+1","Guard"]], deps:["Refined Ingots","Leather"]},
       {skill:"fight", title:"Final Yard Circuit", type:"Training", level:285, art:art.fight6, stats:[["30","XP"],["7","Stam"],["3.0s","Time"],["+1","Resolve"]]},
       {skill:"fight", title:"Champion Gate Boss", type:"Boss", level:299, art:art.fight2, blocker:true, stats:[["35","XP"],["-3","Tactics"],["-3","Courage"],["Unlock","Champion Yard"]], deps:["Tactics","Courage"]},
       {skill:"fight", title:"Champion Yard Spar", type:"Training", level:314, art:art.fight1, stats:[["35","XP"],["7","Stam"],["2.4s","Time"],["99%","Rate"]]},
-      {skill:"fight", title:"Momentum Chain", type:"Factory", level:330, art:art.fight2, stats:[["38","XP"],["-2","Momentum"],["-1","Timing"],["+1","Opening"]], deps:["Momentum","Timing"]},
+      {skill:"fight", title:"Momentum Chain", type:"Production", level:330, art:art.fight2, stats:[["38","XP"],["-2","Momentum"],["-1","Timing"],["+1","Opening"]], deps:["Momentum","Timing"]},
       {skill:"fight", title:"Guard Captain Drill", type:"Combo", level:347, art:art.build7, combo:["fight","build"], stats:[["40","XP"],["-2","Guard"],["-1","Iron Tools"],["+1","Command"]], deps:["Guard","Iron Tools"]},
       {skill:"fight", title:"Deep Focus Rest", type:"Active Recovery", level:365, art:art.fight4, stats:[["5","XP"],["+12","Stam"],["3.2s","Time"],["+1","Focus"]]},
       {skill:"fight", title:"Old Champion Boss", type:"Boss", level:384, art:art.fight6, blocker:true, stats:[["45","XP"],["-3","Resolve"],["-2","Tactics"],["Unlock","Mastery"]], deps:["Resolve","Tactics"]},
@@ -1856,10 +1967,10 @@
       {skill:"survival", title:"Gather Fieldstone", type:"Collection", level:45, art:art.build1, stats:[["10","XP"],["3","Stam"],["1.8s","Time"],["+1","Stone"]]},
       {skill:"survival", title:"Tap Resin", type:"Collection", level:52, art:art.survival4, stats:[["11","XP"],["3","Stam"],["1.9s","Time"],["+1","Resin"]]},
       {skill:"survival", title:"Gather Herbs", type:"Collection", level:59, art:art.survival7, stats:[["11","XP"],["3","Stam"],["1.6s","Time"],["+1","Herbs"]]},
-      {skill:"survival", title:"Filter Water", type:"Factory", level:66, art:art.huntPlace, stats:[["12","XP"],["-1","Charcoal"],["-1","Stone"],["+1","Water"]], deps:["Charcoal","Stone"]},
-      {skill:"survival", title:"Twist Cordage", type:"Factory", level:73, art:art.survival1, stats:[["12","XP"],["-2","Bark"],["-1","Resin"],["+1","Rope"]], deps:["Bark","Resin"]},
-      {skill:"survival", title:"Charcoal Pit", type:"Factory", level:80, art:art.survival5, stats:[["13","XP"],["-3","Softwood"],["Lit","Fire"],["+2","Charcoal"]], deps:["Logs","Light Fire"]},
-      {skill:"survival", title:"Brew Salve", type:"Factory", level:88, art:art.survival7, stats:[["13","XP"],["-2","Herbs"],["-1","Water"],["+1","Salve"]], deps:["Herbs","Clean Water"]},
+      {skill:"survival", title:"Filter Water", type:"Production", level:66, art:art.huntPlace, stats:[["12","XP"],["-1","Charcoal"],["-1","Stone"],["+1","Water"]], deps:["Charcoal","Stone"]},
+      {skill:"survival", title:"Twist Cordage", type:"Production", level:73, art:art.survival1, stats:[["12","XP"],["-2","Bark"],["-1","Resin"],["+1","Rope"]], deps:["Bark","Resin"]},
+      {skill:"survival", title:"Charcoal Pit", type:"Production", level:80, art:art.survival5, stats:[["13","XP"],["-3","Softwood"],["Lit","Fire"],["+2","Charcoal"]], deps:["Logs","Light Fire"]},
+      {skill:"survival", title:"Brew Salve", type:"Production", level:88, art:art.survival7, stats:[["13","XP"],["-2","Herbs"],["-1","Water"],["+1","Salve"]], deps:["Herbs","Clean Water"]},
       {skill:"survival", title:"Trail Run", type:"Training", level:96, art:art.survival1, stats:[["14","XP"],["4","Stam"],["2.0s","Time"],["97%","Rate"]]},
       {skill:"survival", title:"Herbal Steam", type:"Active Recovery", level:105, art:art.survival7, stats:[["3","XP"],["+7","Stam"],["2.6s","Time"],["Recover","Type"]], deps:["Herbs","Steam Lodge"]},
       {skill:"survival", title:"Mine Ore Vein", type:"Collection", level:114, art:art.build1, stats:[["15","XP"],["4","Stam"],["2.4s","Time"],["+1","Ore"]]},
@@ -1868,18 +1979,18 @@
       {skill:"survival", title:"Bear Trail Boss", type:"Boss", level:143, art:art.crab, blocker:true, stats:[["18","XP"],["-2","Food"],["-1","Tactics"],["Unlock","High Ridge"]], deps:["Food","Tactics"]},
       {skill:"survival", title:"High Ridge Forage", type:"Collection", level:154, art:art.survival7, stats:[["18","XP"],["4","Stam"],["2.1s","Time"],["+2","Herbs"]]},
       {skill:"survival", title:"Weather Reading", type:"Training", level:165, art:art.huntPlace, stats:[["19","XP"],["4","Stam"],["2.2s","Time"],["+1","Knowledge"]]},
-      {skill:"survival", title:"Treat Planks", type:"Factory", level:176, art:art.survival4, stats:[["20","XP"],["-2","Planks"],["-1","Resin"],["+1","Treated"]], deps:["Planks","Resin"]},
-      {skill:"survival", title:"Preserve Food", type:"Factory", level:188, art:art.salmon, stats:[["21","XP"],["-2","Food"],["-1","Charcoal"],["+1","Rations"]], deps:["Food","Charcoal"]},
+      {skill:"survival", title:"Treat Planks", type:"Production", level:176, art:art.survival4, stats:[["20","XP"],["-2","Planks"],["-1","Resin"],["+1","Treated"]], deps:["Planks","Resin"]},
+      {skill:"survival", title:"Preserve Food", type:"Production", level:188, art:art.salmon, stats:[["21","XP"],["-2","Food"],["-1","Charcoal"],["+1","Rations"]], deps:["Food","Charcoal"]},
       {skill:"survival", title:"Hot Stone Rest", type:"Active Recovery", level:201, art:art.build1, stats:[["4","XP"],["+8","Stam"],["2.8s","Time"],["Recover","Type"]], deps:["Stone","Light Fire"]},
       {skill:"survival", title:"Storm Camp Boss", type:"Combo Boss", level:214, art:art.survival5, combo:["survival","build"], blocker:true, stats:[["23","XP"],["-2","Treated Planks"],["-1","Rope"],["Unlock","Storm Camp"]], deps:["Treated Planks","Rope"]},
       {skill:"survival", title:"Storm Camp Repair", type:"Training", level:228, art:art.build4, stats:[["24","XP"],["5","Stam"],["2.6s","Time"],["97%","Rate"]]},
-      {skill:"survival", title:"Deep Woods Path", type:"Factory", level:242, art:art.survival4, stats:[["25","XP"],["-1","Maps"],["-2","Hardwood"],["Unlock","Deep Woods"]], deps:["Maps","Hardwood Logs"]},
+      {skill:"survival", title:"Deep Woods Path", type:"Production", level:242, art:art.survival4, stats:[["25","XP"],["-1","Maps"],["-2","Hardwood"],["Unlock","Deep Woods"]], deps:["Maps","Hardwood Logs"]},
       {skill:"survival", title:"Deep Woods Hunt", type:"Combo", level:257, art:art.crab, combo:["survival","hunt"], stats:[["26","XP"],["-1","Trap"],["-1","Clean Water"],["+2","Animal Parts"]], deps:["Trap","Clean Water"]},
-      {skill:"survival", title:"Resin Torch", type:"Factory", level:273, art:art.survival5, stats:[["28","XP"],["-1","Resin"],["-1","Kindling"],["+1","Light"]], deps:["Resin","Kindling"]},
+      {skill:"survival", title:"Resin Torch", type:"Production", level:273, art:art.survival5, stats:[["28","XP"],["-1","Resin"],["-1","Kindling"],["+1","Light"]], deps:["Resin","Kindling"]},
       {skill:"survival", title:"Silent Camp", type:"Training", level:290, art:art.survival1, stats:[["30","XP"],["6","Stam"],["2.8s","Time"],["+1","Discipline"]]},
       {skill:"survival", title:"Old Grove Boss", type:"Boss", level:308, art:art.survival4, blocker:true, stats:[["33","XP"],["-3","Rations"],["-2","Resolve"],["Unlock","Old Grove"]], deps:["Trail Rations","Resolve"]},
       {skill:"survival", title:"Mine Rich Ore", type:"Collection", level:327, art:art.build1, stats:[["35","XP"],["6","Stam"],["3.0s","Time"],["+1","Rich Ore"]]},
-      {skill:"survival", title:"Winter Firecraft", type:"Factory", level:347, art:art.survival5, stats:[["38","XP"],["-2","Charcoal"],["-1","Hardwood"],["+1","Warmth"]], deps:["Charcoal","Hardwood Logs"]},
+      {skill:"survival", title:"Winter Firecraft", type:"Production", level:347, art:art.survival5, stats:[["38","XP"],["-2","Charcoal"],["-1","Hardwood"],["+1","Warmth"]], deps:["Charcoal","Hardwood Logs"]},
       {skill:"survival", title:"Snow Shelter", type:"Combo", level:368, art:art.build7, combo:["survival","build"], stats:[["40","XP"],["-2","Treated Planks"],["-2","Rope"],["+1","Shelter"]], deps:["Treated Planks","Rope"]},
       {skill:"survival", title:"Winter Steam Rest", type:"Active Recovery", level:390, art:art.survival7, stats:[["5","XP"],["+12","Stam"],["3.4s","Time"],["Recover","Type"]], deps:["Steam Lodge","Herbs"]},
       {skill:"survival", title:"Mountain Pass Boss", type:"Boss", level:413, art:art.huntPlace, blocker:true, stats:[["45","XP"],["-2","Maps"],["-2","Trail Rations"],["Unlock","Pass"]], deps:["Maps","Trail Rations"]},
@@ -1888,57 +1999,57 @@
       {skill:"survival", title:"Elder Grove Rest", type:"Active Recovery", level:488, art:art.survival7, stats:[["6","XP"],["+14","Stam"],["3.6s","Time"],["Recover","Type"]], deps:["Herbs","Clean Water"]},
       {skill:"survival", title:"Elder Grove Boss", type:"Boss", level:515, art:art.survival4, blocker:true, stats:[["55","XP"],["-3","Medicinal Salve"],["-2","Courage"],["Unlock","Elder Grove"]], deps:["Medicinal Salve","Courage"]},
 
-      {skill:"build", title:"Cut Stone Blocks", type:"Factory", level:61, art:art.build1, stats:[["11","XP"],["-2","Stone"],["1.8s","Time"],["+1","Cut Stone"]], deps:["Stone"]},
-      {skill:"build", title:"Smelt Ingots", type:"Factory", level:68, art:art.build7, stats:[["12","XP"],["-2","Ore"],["-1","Charcoal"],["+1","Ingot"]], deps:["Ore","Charcoal"]},
-      {skill:"build", title:"Forge Nails", type:"Factory", level:76, art:art.build3, stats:[["12","XP"],["-1","Ingots"],["Kiln","Ready"],["+4","Nails"]], deps:["Ingots","Kiln"], unlockAfter:"Build Kiln"},
-      {skill:"build", title:"Saw Hardwood Planks", type:"Factory", level:84, art:art.survival5, stats:[["13","XP"],["-2","Hardwood"],["2.2s","Time"],["+1","Hardwood Plank"]], deps:["Hardwood Logs"]},
-      {skill:"build", title:"Forge Tool Set", type:"1-Time Build", level:93, art:art.build3, stats:[["14","XP"],["-2","Ingots"],["-2","Hardwood Planks"],["Unlock","Tools"]], deps:["Ingots","Hardwood Planks"]},
-      {skill:"build", title:"Build Stone Oven", type:"1-Time Build", level:102, art:art.build7, stats:[["15","XP"],["-4","Cut Stone"],["-2","Bricks"],["Unlock","Oven"]], deps:["Cut Stone","Bricks"]},
+      {skill:"build", title:"Cut Stone Blocks", type:"Production", level:61, art:art.build1, stats:[["11","XP"],["-2","Stone"],["1.8s","Time"],["+1","Cut Stone"]], deps:["Stone"]},
+      {skill:"build", title:"Smelt Ingots", type:"Production", level:68, art:art.build7, stats:[["12","XP"],["-2","Ore"],["-1","Charcoal"],["+1","Ingot"]], deps:["Ore","Charcoal"]},
+      {skill:"build", title:"Forge Nails", type:"Production", level:76, art:art.build3, stats:[["12","XP"],["-1","Ingots"],["Kiln","Ready"],["+4","Nails"]], deps:["Ingots","Kiln"], unlockAfter:"Build Kiln"},
+      {skill:"build", title:"Saw Hardwood Planks", type:"Production", level:84, art:art.survival5, stats:[["13","XP"],["-2","Hardwood"],["2.2s","Time"],["+1","Hardwood Plank"]], deps:["Hardwood Logs"]},
+      {skill:"build", title:"Forge Tool Set", type:"1-Time Build", level:93, art:art.build3, buildStages:3, stats:[["14","XP"],["-2","Ingots"],["-2","Hardwood Planks"],["Unlock","Tools"]], deps:["Ingots","Hardwood Planks"]},
+      {skill:"build", title:"Build Stone Oven", type:"1-Time Build", level:102, art:art.build7, buildStages:3, stats:[["15","XP"],["-4","Cut Stone"],["-2","Bricks"],["Unlock","Oven"]], deps:["Cut Stone","Bricks"]},
       {skill:"build", title:"Bake Hearty Food", type:"Combo", level:112, art:art.salmon, combo:["build","hunt"], stats:[["16","XP"],["-2","Food"],["Oven","Ready"],["+1","Hearty Food"]], deps:["Food","Stone Oven"]},
-      {skill:"build", title:"Build River Boat", type:"1-Time Build", level:123, art:art.build7, stats:[["18","XP"],["-4","Hardwood Planks"],["-2","Rope"],["Unlock","Boat"]], deps:["Hardwood Planks","Rope"]},
-      {skill:"build", title:"Dock Repair", type:"Factory", level:134, art:art.build4, stats:[["18","XP"],["-2","Treated Planks"],["-2","Nails"],["+1","Access"]], deps:["Treated Planks","Nails"]},
+      {skill:"build", title:"Build River Boat", type:"1-Time Build", level:123, art:art.build7, buildStages:3, stats:[["18","XP"],["-4","Hardwood Planks"],["-2","Rope"],["Unlock","Boat"]], deps:["Hardwood Planks","Rope"]},
+      {skill:"build", title:"Dock Repair", type:"Production", level:134, art:art.build4, stats:[["18","XP"],["-2","Treated Planks"],["-2","Nails"],["+1","Access"]], deps:["Treated Planks","Nails"]},
       {skill:"build", title:"Sawhorse Rhythm", type:"Training", level:146, art:art.build3, stats:[["19","XP"],["4","Stam"],["2.1s","Time"],["98%","Rate"]]},
       {skill:"build", title:"Workbench Reset", type:"Active Recovery", level:159, art:art.build1, stats:[["3","XP"],["+8","Stam"],["2.6s","Time"],["Recover","Type"]]},
       {skill:"build", title:"Stone Wall Boss", type:"Boss", level:172, art:art.build1, blocker:true, stats:[["22","XP"],["-4","Cut Stone"],["-2","Nails"],["Unlock","Fort"]], deps:["Cut Stone","Nails"]},
-      {skill:"build", title:"Fort Gate", type:"Factory", level:186, art:art.build7, stats:[["23","XP"],["-3","Hardwood Planks"],["-2","Refined Ingots"],["+1","Gate"]], deps:["Hardwood Planks","Refined Ingots"]},
-      {skill:"build", title:"Lantern Frame", type:"Factory", level:201, art:art.build3, stats:[["24","XP"],["-1","Ingots"],["-1","Oil"],["+1","Lantern"]], deps:["Ingots","Oil"]},
-      {skill:"build", title:"Tool Rack", type:"Factory", level:217, art:art.build4, stats:[["25","XP"],["-2","Planks"],["-1","Iron Tools"],["+1","Storage"]], deps:["Planks","Iron Tools"]},
+      {skill:"build", title:"Fort Gate", type:"Production", level:186, art:art.build7, stats:[["23","XP"],["-3","Hardwood Planks"],["-2","Refined Ingots"],["+1","Gate"]], deps:["Hardwood Planks","Refined Ingots"]},
+      {skill:"build", title:"Lantern Frame", type:"Production", level:201, art:art.build3, stats:[["24","XP"],["-1","Ingots"],["-1","Oil"],["+1","Lantern"]], deps:["Ingots","Oil"]},
+      {skill:"build", title:"Tool Rack", type:"Production", level:217, art:art.build4, stats:[["25","XP"],["-2","Planks"],["-1","Iron Tools"],["+1","Storage"]], deps:["Planks","Iron Tools"]},
       {skill:"build", title:"Blueprint Bench", type:"Combo", level:234, art:art.wit3, combo:["build","wit"], stats:[["26","XP"],["-1","Blueprints"],["-2","Treated Planks"],["+1","Plan"]], deps:["Blueprints","Treated Planks"]},
       {skill:"build", title:"Quiet Workshop", type:"Active Recovery", level:252, art:art.build3, stats:[["4","XP"],["+9","Stam"],["2.9s","Time"],["Recover","Type"]]},
       {skill:"build", title:"Waterwheel Boss", type:"Boss", level:271, art:art.build7, blocker:true, stats:[["30","XP"],["-3","Hardwood Planks"],["-2","Refined Ingots"],["Unlock","Mill"]], deps:["Hardwood Planks","Refined Ingots"]},
-      {skill:"build", title:"Mill Assembly", type:"Factory", level:291, art:art.build7, stats:[["31","XP"],["-4","Treated Planks"],["-2","Nails"],["+1","Mill"]], deps:["Treated Planks","Nails"]},
+      {skill:"build", title:"Mill Assembly", type:"Production", level:291, art:art.build7, stats:[["31","XP"],["-4","Treated Planks"],["-2","Nails"],["+1","Mill"]], deps:["Treated Planks","Nails"]},
       {skill:"build", title:"Precision Joinery", type:"Training", level:312, art:art.build3, stats:[["33","XP"],["6","Stam"],["2.8s","Time"],["99%","Rate"]]},
       {skill:"build", title:"Bridge Reinforce", type:"Combo", level:334, art:art.build7, combo:["build","fight"], stats:[["35","XP"],["-2","Guard"],["-3","Treated Planks"],["+1","Bridge"]], deps:["Guard","Treated Planks"]},
-      {skill:"build", title:"Stone Tower", type:"Factory", level:357, art:art.build7, stats:[["38","XP"],["-5","Cut Stone"],["-2","Refined Ingots"],["+1","Tower"]], deps:["Cut Stone","Refined Ingots"]},
+      {skill:"build", title:"Stone Tower", type:"Production", level:357, art:art.build7, stats:[["38","XP"],["-5","Cut Stone"],["-2","Refined Ingots"],["+1","Tower"]], deps:["Cut Stone","Refined Ingots"]},
       {skill:"build", title:"Drafting Rest", type:"Active Recovery", level:381, art:art.build1, stats:[["5","XP"],["+11","Stam"],["3.1s","Time"],["Recover","Type"]]},
       {skill:"build", title:"Clockwork Gate Boss", type:"Boss", level:406, art:art.build3, blocker:true, stats:[["43","XP"],["-2","Blueprints"],["-3","Pristine Ingots"],["Unlock","Clockwork"]], deps:["Blueprints","Pristine Ingots"]},
-      {skill:"build", title:"Refine Ingots", type:"Factory", level:432, art:art.build3, stats:[["45","XP"],["-2","Ingots"],["-1","Charcoal"],["+1","Refined Ingot"]], deps:["Ingots","Charcoal"]},
-      {skill:"build", title:"Master Scaffold", type:"Factory", level:459, art:art.build7, stats:[["48","XP"],["-4","Hardwood Planks"],["-2","Rope"],["+1","Height"]], deps:["Hardwood Planks","Rope"]},
+      {skill:"build", title:"Refine Ingots", type:"Production", level:432, art:art.build3, stats:[["45","XP"],["-2","Ingots"],["-1","Charcoal"],["+1","Refined Ingot"]], deps:["Ingots","Charcoal"]},
+      {skill:"build", title:"Master Scaffold", type:"Production", level:459, art:art.build7, stats:[["48","XP"],["-4","Hardwood Planks"],["-2","Rope"],["+1","Height"]], deps:["Hardwood Planks","Rope"]},
       {skill:"build", title:"Workshop Sweepdown", type:"Active Recovery", level:487, art:art.build3, stats:[["6","XP"],["+13","Stam"],["3.4s","Time"],["Recover","Type"]]},
       {skill:"build", title:"Grand Hall Boss", type:"Boss", level:516, art:art.build7, blocker:true, stats:[["55","XP"],["-5","Cut Stone"],["-5","Treated Planks"],["Unlock","Hall"]], deps:["Cut Stone","Treated Planks"]},
       {skill:"build", title:"Grand Hall Finish", type:"Training", level:546, art:art.build4, stats:[["58","XP"],["8","Stam"],["3.6s","Time"],["Master","Build"]]},
-      {skill:"build", title:"Temper Pristine Ingots", type:"Factory", level:577, art:art.build7, stats:[["62","XP"],["-2","Refined Ingots"],["-1","Pristine Ore"],["+1","Pristine Ingot"]], deps:["Refined Ingots","Pristine Ore"]},
+      {skill:"build", title:"Temper Pristine Ingots", type:"Production", level:577, art:art.build7, stats:[["62","XP"],["-2","Refined Ingots"],["-1","Pristine Ore"],["+1","Pristine Ingot"]], deps:["Refined Ingots","Pristine Ore"]},
       {skill:"build", title:"Master Blueprint", type:"Combo", level:609, art:art.wit3, combo:["build","wit"], stats:[["65","XP"],["-2","Blueprints"],["-1","Guild Seal"],["+1","Master Plan"]], deps:["Blueprints","Guild Seal"]},
       {skill:"build", title:"Architect Rest", type:"Active Recovery", level:642, art:art.build1, stats:[["7","XP"],["+15","Stam"],["3.8s","Time"],["Recover","Type"]]},
 
-      {skill:"hunt", title:"Weave Net", type:"Factory", level:60, art:art.huntPlace, stats:[["10","XP"],["-2","Rope"],["-1","Resin"],["+1","Net"]], deps:["Rope","Resin"]},
-      {skill:"hunt", title:"Prepare Bait", type:"Factory", level:67, art:art.crab, stats:[["11","XP"],["-1","Animal Parts"],["-1","Berries"],["+2","Bait"]], deps:["Animal Parts","Berries"]},
+      {skill:"hunt", title:"Weave Net", type:"Production", level:60, art:art.huntPlace, stats:[["10","XP"],["-2","Rope"],["-1","Resin"],["+1","Net"]], deps:["Rope","Resin"]},
+      {skill:"hunt", title:"Prepare Bait", type:"Production", level:67, art:art.crab, stats:[["11","XP"],["-1","Animal Parts"],["-1","Berries"],["+2","Bait"]], deps:["Animal Parts","Berries"]},
       {skill:"hunt", title:"Net Shallows", type:"Collection", level:75, art:art.huntPlace, stats:[["12","XP"],["-1","Net"],["2.0s","Time"],["+2","Parts"]], deps:["Net"]},
       {skill:"hunt", title:"Gather Shells", type:"Collection", level:83, art:art.crab, stats:[["12","XP"],["2","Stam"],["1.8s","Time"],["+1","Shells"]]},
-      {skill:"hunt", title:"Scale Catch", type:"Factory", level:92, art:art.fish, stats:[["13","XP"],["-1","Animal Parts"],["1.4s","Time"],["+1","Scales"]], deps:["Animal Parts"]},
-      {skill:"hunt", title:"Render Oil", type:"Factory", level:101, art:art.salmon, stats:[["14","XP"],["-2","Animal Parts"],["Lit","Fire"],["+1","Oil"]], deps:["Animal Parts","Light Fire"]},
-      {skill:"hunt", title:"Cook Hearty Stew", type:"Factory", level:111, art:art.salmon, stats:[["15","XP"],["-2","Food"],["-1","Herbs"],["+1","Hearty Food"]], deps:["Food","Herbs"]},
-      {skill:"hunt", title:"Pack Trail Rations", type:"Factory", level:122, art:art.salmon, stats:[["16","XP"],["-2","Food"],["-1","Shells"],["+1","Rations"]], deps:["Food","Shells"]},
+      {skill:"hunt", title:"Scale Catch", type:"Production", level:92, art:art.fish, stats:[["13","XP"],["-1","Animal Parts"],["1.4s","Time"],["+1","Scales"]], deps:["Animal Parts"]},
+      {skill:"hunt", title:"Render Oil", type:"Production", level:101, art:art.salmon, stats:[["14","XP"],["-2","Animal Parts"],["Lit","Fire"],["+1","Oil"]], deps:["Animal Parts","Light Fire"]},
+      {skill:"hunt", title:"Cook Hearty Stew", type:"Production", level:111, art:art.salmon, stats:[["15","XP"],["-2","Food"],["-1","Herbs"],["+1","Hearty Food"]], deps:["Food","Herbs"]},
+      {skill:"hunt", title:"Pack Trail Rations", type:"Production", level:122, art:art.salmon, stats:[["16","XP"],["-2","Food"],["-1","Shells"],["+1","Rations"]], deps:["Food","Shells"]},
       {skill:"hunt", title:"Stag Trail", type:"Collection", level:133, art:art.crab, stats:[["17","XP"],["3","Stam"],["2.3s","Time"],["+1","Antler"]]},
       {skill:"hunt", title:"River Boat Cast", type:"Combo", level:145, art:art.fish, combo:["hunt","build"], stats:[["18","XP"],["Boat","Ready"],["-1","Bait"],["+2","Parts"]], deps:["Boat","Bait"]},
       {skill:"hunt", title:"Blind Sit", type:"Active Recovery", level:158, art:art.huntPlace, stats:[["3","XP"],["+8","Stam"],["2.8s","Time"],["Recover","Type"]]},
       {skill:"hunt", title:"Marsh Boss", type:"Boss", level:171, art:art.sewers, blocker:true, stats:[["22","XP"],["-1","Net"],["-2","Food"],["Unlock","Marsh"]], deps:["Net","Food"]},
       {skill:"hunt", title:"Marsh Forage", type:"Collection", level:185, art:art.huntPlace, stats:[["23","XP"],["4","Stam"],["2.5s","Time"],["+2","Parts"]]},
-      {skill:"hunt", title:"Trap Line", type:"Factory", level:200, art:art.build7, stats:[["24","XP"],["-2","Trap"],["-1","Bait"],["+3","Parts"]], deps:["Trap","Bait"]},
-      {skill:"hunt", title:"Shell Hooks", type:"Factory", level:216, art:art.crab, stats:[["25","XP"],["-2","Shells"],["-1","Rope"],["+1","Net"]], deps:["Shells","Rope"]},
+      {skill:"hunt", title:"Trap Line", type:"Production", level:200, art:art.build7, stats:[["24","XP"],["-2","Trap"],["-1","Bait"],["+3","Parts"]], deps:["Trap","Bait"]},
+      {skill:"hunt", title:"Shell Hooks", type:"Production", level:216, art:art.crab, stats:[["25","XP"],["-2","Shells"],["-1","Rope"],["+1","Net"]], deps:["Shells","Rope"]},
       {skill:"hunt", title:"Oil Lantern Hunt", type:"Combo", level:233, art:art.build3, combo:["hunt","build"], stats:[["26","XP"],["-1","Oil"],["-1","Lantern"],["+2","Parts"]], deps:["Oil","Lantern Frame"]},
       {skill:"hunt", title:"Quiet Tracking", type:"Training", level:251, art:art.huntPlace, stats:[["28","XP"],["5","Stam"],["2.4s","Time"],["98%","Rate"]]},
-      {skill:"hunt", title:"Antler Tools", type:"Factory", level:270, art:art.crab, stats:[["30","XP"],["-2","Antler"],["-1","Leather"],["+1","Tool Part"]], deps:["Antler","Leather"]},
+      {skill:"hunt", title:"Antler Tools", type:"Production", level:270, art:art.crab, stats:[["30","XP"],["-2","Antler"],["-1","Leather"],["+1","Tool Part"]], deps:["Antler","Leather"]},
       {skill:"hunt", title:"Lake Monster Boss", type:"Combo Boss", level:290, art:art.fish, combo:["hunt","fight"], blocker:true, stats:[["34","XP"],["-2","Bait"],["-2","Courage"],["Unlock","Lake"]], deps:["Bait","Courage"]},
       {skill:"hunt", title:"Lake Netting", type:"Collection", level:311, art:art.huntPlace, stats:[["35","XP"],["-1","Net"],["2.8s","Time"],["+3","Parts"]], deps:["Net"]},
       {skill:"hunt", title:"Preserve Catch", type:"Combo", level:333, art:art.salmon, combo:["hunt","survival"], stats:[["37","XP"],["-2","Animal Parts"],["-1","Charcoal"],["+2","Food"]], deps:["Animal Parts","Charcoal"]},
@@ -1948,48 +2059,48 @@
       {skill:"hunt", title:"High Lake Boss", type:"Boss", level:431, art:art.huntPlace, blocker:true, stats:[["47","XP"],["-2","Maps"],["-2","Trail Rations"],["Unlock","High Lake"]], deps:["Maps","Trail Rations"]},
       {skill:"hunt", title:"High Lake Cast", type:"Collection", level:458, art:art.fish, stats:[["48","XP"],["-1","Bait"],["3.0s","Time"],["+3","Parts"]], deps:["Bait"]},
       {skill:"hunt", title:"Expert Butchery", type:"Training", level:486, art:art.crab, stats:[["50","XP"],["7","Stam"],["2.7s","Time"],["Master","Prep"]]},
-      {skill:"hunt", title:"Feast Assembly", type:"Factory", level:515, art:art.salmon, stats:[["54","XP"],["-2","Hearty Food"],["-1","Herbs"],["+1","Feast"]], deps:["Hearty Food","Herbs"]},
+      {skill:"hunt", title:"Feast Assembly", type:"Production", level:515, art:art.salmon, stats:[["54","XP"],["-2","Hearty Food"],["-1","Herbs"],["+1","Feast"]], deps:["Hearty Food","Herbs"]},
       {skill:"hunt", title:"Moonlit Watch", type:"Active Recovery", level:545, art:art.huntPlace, stats:[["6","XP"],["+13","Stam"],["3.4s","Time"],["Recover","Type"]]},
       {skill:"hunt", title:"Ancient Stag Boss", type:"Boss", level:576, art:art.crab, blocker:true, stats:[["60","XP"],["-2","Antler"],["-2","Courage"],["Unlock","Old Herd"]], deps:["Antler","Courage"]},
       {skill:"hunt", title:"Old Herd Trail", type:"Collection", level:608, art:art.huntPlace, stats:[["62","XP"],["8","Stam"],["3.5s","Time"],["+3","Parts"]]},
       {skill:"hunt", title:"Master Smoke", type:"Combo", level:641, art:art.salmon, combo:["hunt","survival"], stats:[["65","XP"],["-3","Animal Parts"],["-2","Charcoal"],["+3","Food"]], deps:["Animal Parts","Charcoal"]},
-      {skill:"hunt", title:"Hunter's Council", type:"Factory", level:675, art:art.wit3, stats:[["68","XP"],["-1","Influence"],["-2","Maps"],["+1","Permit"]], deps:["Influence","Maps"]},
+      {skill:"hunt", title:"Hunter's Council", type:"Production", level:675, art:art.wit3, stats:[["68","XP"],["-1","Influence"],["-2","Maps"],["+1","Permit"]], deps:["Influence","Maps"]},
       {skill:"hunt", title:"Legendary Hunt Boss", type:"Combo Boss", level:710, art:art.ratKing, combo:["hunt","fight"], blocker:true, stats:[["75","XP"],["-3","Hearty Food"],["-3","Tactics"],["Unlock","Legend"]], deps:["Hearty Food","Tactics"]},
 
       {skill:"wit", title:"Rumor Mill", type:"Collection", level:70, art:art.wit3, stats:[["11","XP"],["2","Stam"],["1.4s","Time"],["+1","Secrets"]]},
-      {skill:"wit", title:"Copy Map", type:"Factory", level:77, art:art.wit3, stats:[["12","XP"],["-1","Knowledge"],["-1","Ink"],["+1","Maps"]], deps:["Knowledge","Berries"]},
-      {skill:"wit", title:"Trade Recipes", type:"Factory", level:85, art:art.wit2, stats:[["12","XP"],["-1","Food"],["-1","Coins"],["+1","Recipe"]], deps:["Food","Coins"]},
-      {skill:"wit", title:"Draft Blueprint", type:"Factory", level:94, art:art.build3, stats:[["13","XP"],["-1","Knowledge"],["-1","Planks"],["+1","Blueprint"]], deps:["Knowledge","Planks"]},
-      {skill:"wit", title:"Call In Favor", type:"Factory", level:103, art:art.wit9, stats:[["14","XP"],["-2","Reputation"],["-1","Coins"],["+1","Influence"]], deps:["Reputation","Coins"]},
+      {skill:"wit", title:"Copy Map", type:"Production", level:77, art:art.wit3, stats:[["12","XP"],["-1","Knowledge"],["-1","Ink"],["+1","Maps"]], deps:["Knowledge","Berries"]},
+      {skill:"wit", title:"Trade Recipes", type:"Production", level:85, art:art.wit2, stats:[["12","XP"],["-1","Food"],["-1","Coins"],["+1","Recipe"]], deps:["Food","Coins"]},
+      {skill:"wit", title:"Draft Blueprint", type:"Production", level:94, art:art.build3, stats:[["13","XP"],["-1","Knowledge"],["-1","Planks"],["+1","Blueprint"]], deps:["Knowledge","Planks"]},
+      {skill:"wit", title:"Call In Favor", type:"Production", level:103, art:art.wit9, stats:[["14","XP"],["-2","Reputation"],["-1","Coins"],["+1","Influence"]], deps:["Reputation","Coins"]},
       {skill:"wit", title:"Public Performance", type:"Training", level:113, art:art.wit2, stats:[["15","XP"],["3","Stam"],["1.8s","Time"],["+1","Reputation"]]},
-      {skill:"wit", title:"Earn Guild Seal", type:"1-Time Build", level:124, art:art.wit6, stats:[["16","XP"],["-2","Influence"],["-2","Permit"],["Unlock","Seal"]], deps:["Influence","Permit"]},
-      {skill:"wit", title:"Market Ledger", type:"Factory", level:135, art:art.wit9, stats:[["17","XP"],["-1","Knowledge"],["-2","Coins"],["+1","Secrets"]], deps:["Knowledge","Coins"]},
+      {skill:"wit", title:"Earn Guild Seal", type:"1-Time Build", level:124, art:art.wit6, buildStages:3, stats:[["16","XP"],["-2","Influence"],["-2","Permit"],["Unlock","Seal"]], deps:["Influence","Permit"]},
+      {skill:"wit", title:"Market Ledger", type:"Production", level:135, art:art.wit9, stats:[["17","XP"],["-1","Knowledge"],["-2","Coins"],["+1","Secrets"]], deps:["Knowledge","Coins"]},
       {skill:"wit", title:"Calm Sketch", type:"Active Recovery", level:147, art:art.wit2, stats:[["3","XP"],["+8","Stam"],["2.5s","Time"],["Recover","Type"]]},
       {skill:"wit", title:"Whisper Network", type:"Combo", level:160, art:art.wit3, combo:["wit","hunt"], stats:[["18","XP"],["-1","Maps"],["-1","Food"],["+2","Secrets"]], deps:["Maps","Food"]},
       {skill:"wit", title:"Secret Door Boss", type:"Boss", level:173, art:art.wit6, blocker:true, stats:[["22","XP"],["-2","Keys"],["-2","Secrets"],["Unlock","Hidden Room"]], deps:["Keys","Secrets"]},
       {skill:"wit", title:"Hidden Room Search", type:"Collection", level:187, art:art.wit3, stats:[["23","XP"],["3","Stam"],["2.1s","Time"],["+1","Knowledge"]]},
-      {skill:"wit", title:"Permit Audit", type:"Factory", level:202, art:art.wit3, stats:[["24","XP"],["-1","Permit"],["-1","Blueprints"],["+1","Influence"]], deps:["Permit","Blueprints"]},
+      {skill:"wit", title:"Permit Audit", type:"Production", level:202, art:art.wit3, stats:[["24","XP"],["-1","Permit"],["-1","Blueprints"],["+1","Influence"]], deps:["Permit","Blueprints"]},
       {skill:"wit", title:"Stage Misdirection", type:"Combo", level:218, art:art.wit2, combo:["wit","fight"], stats:[["25","XP"],["-1","Timing"],["-1","Secrets"],["+1","Reputation"]], deps:["Timing","Secrets"]},
       {skill:"wit", title:"Shell Game", type:"Training", level:235, art:art.crab, stats:[["26","XP"],["4","Stam"],["1.9s","Time"],["+1","Coins"]]},
-      {skill:"wit", title:"Map Seller", type:"Factory", level:253, art:art.wit9, stats:[["28","XP"],["-1","Maps"],["-1","Reputation"],["+3","Coins"]], deps:["Maps","Reputation"]},
+      {skill:"wit", title:"Map Seller", type:"Production", level:253, art:art.wit9, stats:[["28","XP"],["-1","Maps"],["-1","Reputation"],["+3","Coins"]], deps:["Maps","Reputation"]},
       {skill:"wit", title:"Library Rest", type:"Active Recovery", level:272, art:art.wit3, stats:[["4","XP"],["+9","Stam"],["2.8s","Time"],["Recover","Type"]]},
-      {skill:"wit", title:"Forgery Desk", type:"Factory", level:292, art:art.wit3, stats:[["30","XP"],["-2","Blueprints"],["-1","Guild Seal"],["+1","Permit"]], deps:["Blueprints","Guild Seal"]},
+      {skill:"wit", title:"Forgery Desk", type:"Production", level:292, art:art.wit3, stats:[["30","XP"],["-2","Blueprints"],["-1","Guild Seal"],["+1","Permit"]], deps:["Blueprints","Guild Seal"]},
       {skill:"wit", title:"Auction Boss", type:"Boss", level:313, art:art.wit9, blocker:true, stats:[["34","XP"],["-3","Coins"],["-2","Reputation"],["Unlock","Auction"]], deps:["Coins","Reputation"]},
       {skill:"wit", title:"Auction Read", type:"Training", level:335, art:art.wit9, stats:[["35","XP"],["5","Stam"],["2.2s","Time"],["+1","Influence"]]},
       {skill:"wit", title:"Blueprint Heist", type:"Combo", level:358, art:art.build3, combo:["wit","build"], stats:[["38","XP"],["-2","Keys"],["-1","Focus"],["+2","Blueprints"]], deps:["Keys","Focus"]},
       {skill:"wit", title:"Recipe Swap", type:"Combo", level:382, art:art.salmon, combo:["wit","hunt"], stats:[["40","XP"],["-1","Recipes"],["-1","Food"],["+1","Hearty Food"]], deps:["Recipes","Food"]},
       {skill:"wit", title:"Silence Practice", type:"Training", level:407, art:art.wit3, stats:[["42","XP"],["5","Stam"],["2.0s","Time"],["99%","Rate"]]},
-      {skill:"wit", title:"Council Favor", type:"Factory", level:433, art:art.wit9, stats:[["45","XP"],["-2","Influence"],["-1","Guild Seal"],["+1","Permit"]], deps:["Influence","Guild Seal"]},
+      {skill:"wit", title:"Council Favor", type:"Production", level:433, art:art.wit9, stats:[["45","XP"],["-2","Influence"],["-1","Guild Seal"],["+1","Permit"]], deps:["Influence","Guild Seal"]},
       {skill:"wit", title:"Quiet Tea", type:"Active Recovery", level:460, art:art.wit2, stats:[["5","XP"],["+11","Stam"],["3.0s","Time"],["Recover","Type"]]},
       {skill:"wit", title:"Masked Ball Boss", type:"Boss", level:488, art:art.wit2, blocker:true, stats:[["50","XP"],["-2","Reputation"],["-2","Secrets"],["Unlock","Court"]], deps:["Reputation","Secrets"]},
       {skill:"wit", title:"Court Etiquette", type:"Training", level:517, art:art.wit2, stats:[["52","XP"],["6","Stam"],["2.6s","Time"],["+1","Influence"]]},
-      {skill:"wit", title:"Master Map", type:"Factory", level:547, art:art.wit3, stats:[["55","XP"],["-2","Maps"],["-2","Knowledge"],["+1","Route"]], deps:["Maps","Knowledge"]},
-      {skill:"wit", title:"Vault Ledger", type:"Factory", level:578, art:art.wit9, stats:[["58","XP"],["-2","Keys"],["-1","Guild Seal"],["+1","Secrets"]], deps:["Keys","Guild Seal"]},
+      {skill:"wit", title:"Master Map", type:"Production", level:547, art:art.wit3, stats:[["55","XP"],["-2","Maps"],["-2","Knowledge"],["+1","Route"]], deps:["Maps","Knowledge"]},
+      {skill:"wit", title:"Vault Ledger", type:"Production", level:578, art:art.wit9, stats:[["58","XP"],["-2","Keys"],["-1","Guild Seal"],["+1","Secrets"]], deps:["Keys","Guild Seal"]},
       {skill:"wit", title:"Focus Sketch", type:"Active Recovery", level:610, art:art.wit2, stats:[["6","XP"],["+13","Stam"],["3.3s","Time"],["Recover","Type"]]},
       {skill:"wit", title:"Guildmaster Boss", type:"Boss", level:643, art:art.wit6, blocker:true, stats:[["65","XP"],["-3","Influence"],["-2","Permit"],["Unlock","Guild"]], deps:["Influence","Permit"]},
       {skill:"wit", title:"Guild Ledger", type:"Collection", level:677, art:art.wit3, stats:[["68","XP"],["6","Stam"],["2.8s","Time"],["+2","Knowledge"]]},
-      {skill:"wit", title:"Master Forgery", type:"Factory", level:712, art:art.wit3, stats:[["72","XP"],["-2","Blueprints"],["-2","Permit"],["+1","Guild Seal"]], deps:["Blueprints","Permit"]},
-      {skill:"wit", title:"Public Myth", type:"Factory", level:748, art:art.wit2, stats:[["76","XP"],["-2","Reputation"],["-2","Secrets"],["+1","Influence"]], deps:["Reputation","Secrets"]},
+      {skill:"wit", title:"Master Forgery", type:"Production", level:712, art:art.wit3, stats:[["72","XP"],["-2","Blueprints"],["-2","Permit"],["+1","Guild Seal"]], deps:["Blueprints","Permit"]},
+      {skill:"wit", title:"Public Myth", type:"Production", level:748, art:art.wit2, stats:[["76","XP"],["-2","Reputation"],["-2","Secrets"],["+1","Influence"]], deps:["Reputation","Secrets"]},
       {skill:"wit", title:"Legendary Trick Boss", type:"Combo Boss", level:785, art:art.wit9, combo:["wit","fight"], blocker:true, stats:[["82","XP"],["-3","Tactics"],["-3","Influence"],["Unlock","Legend"]], deps:["Tactics","Influence"]}
     );
 
@@ -2114,12 +2225,39 @@
       return stats.map(([value, label]) => `<span class="stat"><b>${escapeHtml(value)}</b><span>${escapeHtml(label)}</span></span>`).join("");
     }
 
+    function displayModuleType(type) {
+      return type === "Factory" ? "Production" : type;
+    }
+
     function moduleTypeClass(module) {
       const classes = [];
       if (module.type === "Active Recovery") classes.push("module-active-recovery");
-      if (module.type.includes("Factory") || module.type.includes("Build")) classes.push("module-factory");
+      if (module.type === "Factory" || module.type === "Production") classes.push("module-production");
+      if (module.type.includes("1-Time")) classes.push("module-one-time-build");
       if (module.type.includes("Boss")) classes.push("module-boss");
+      if (module.combo?.length) classes.push("module-combo");
       return classes.length ? ` ${classes.join(" ")}` : "";
+    }
+
+    function comboSkills(module) {
+      return (module.combo || []).filter((skill) => skillInfo[skill]);
+    }
+
+    function comboGradient(module) {
+      const skills = comboSkills(module);
+      if (skills.length < 2) return "";
+      const bands = skills.map((skill, index) => {
+        const start = (index / skills.length) * 100;
+        const end = ((index + 1) / skills.length) * 100;
+        return `${skillInfo[skill].color} ${start}% ${end}%`;
+      });
+      return `linear-gradient(135deg, ${bands.join(", ")})`;
+    }
+
+    function moduleBgStyle(module) {
+      const gradient = comboGradient(module);
+      if (!gradient) return "";
+      return ` style="background:linear-gradient(rgba(23,22,21,.28), rgba(23,22,21,.48)), ${gradient}"`;
     }
 
     function recoveryReadout(module) {
@@ -2129,6 +2267,40 @@
         <b>${escapeHtml(stamina[0])} ${escapeHtml(stamina[1])}</b>
         <span>${escapeHtml(xp[0])} ${escapeHtml(xp[1])} active recovery</span>
       </div>`;
+    }
+
+    function buildStageCount(module) {
+      if (module.buildStages) return module.buildStages;
+      if (module.level >= 300) return 10;
+      if (module.level >= 80) return 3;
+      return 1;
+    }
+
+    function toolBuildCosts(module) {
+      return (module.stats || [])
+        .filter(([value]) => String(value).trim().startsWith("-"))
+        .map(([value, label]) => `<span class="tool-build-cost">${escapeHtml(value)} ${escapeHtml(label)}</span>`)
+        .join("");
+    }
+
+    function toolBuildReadout(module) {
+      const stageCount = buildStageCount(module);
+      const segments = Array.from({ length: stageCount }, () => "<span></span>").join("");
+      const costs = toolBuildCosts(module);
+      return `<div class="tool-build-progress" style="--tool-build-steps:${stageCount}" aria-label="${stageCount} build stages">${segments}</div>
+        <div class="tool-build-costs">${costs}</div>`;
+    }
+
+    function comboHtml(module) {
+      const skills = comboSkills(module);
+      if (skills.length < 2) return "";
+      const barStyle = skills
+        .map((skill, index) => `--combo-${index}:${skillInfo[skill].color}`)
+        .join(";");
+      const segments = skills.map((_, index) => `<span style="background:var(--combo-${index})"></span>`).join("");
+      const names = skills.map((skill) => skillInfo[skill].name).join(" + ");
+      return `<div class="combo-bar" style="grid-template-columns:repeat(${skills.length},1fr);${barStyle}" aria-label="${escapeHtml(names)} combo">${segments}</div>
+        <div class="combo-label">Home: ${escapeHtml(names)}</div>`;
     }
 
     function resourceCard(resource) {
@@ -2176,12 +2348,10 @@
 
     function moduleCard(module) {
       const deps = module.deps?.length ? `<p class="dependency-list">Needs: ${module.deps.map(escapeHtml).join(" + ")}</p>` : "";
-      const combo = module.combo?.length === 2
-        ? `<div class="combo-bar" style="--combo-a:${skillInfo[module.combo[0]].color};--combo-b:${skillInfo[module.combo[1]].color}" aria-label="${escapeHtml(skillInfo[module.combo[0]].name)} and ${escapeHtml(skillInfo[module.combo[1]].name)} combo"><span></span><span></span></div><div class="combo-label">Home: ${escapeHtml(skillInfo[module.combo[0]].name)} + ${escapeHtml(skillInfo[module.combo[1]].name)}</div>`
-        : "";
+      const combo = comboHtml(module);
       if (module.special === "fire") {
         return `<article class="module fire-module${moduleTypeClass(module)}" style="--skill-color:${itemColor(module)}">
-          <div class="module-bg"></div>
+          <div class="module-bg"${moduleBgStyle(module)}></div>
           <div class="fire-body">
             <div class="fire-core">
               <img class="fire-feed-log" src="${art.log}" alt="">
@@ -2189,9 +2359,21 @@
               <h3 class="module-title fire-title">${escapeHtml(module.title)}</h3>
               <div class="fire-log-meter"><img src="${art.log}" alt=""> Logs: 0</div>
               <div class="fire-status"><span>Lit</span><span>Cooking Available</span><span>Global Boost</span></div>
-              <div class="module-meta"><span>Lv ${escapeHtml(module.level)}</span><span>${escapeHtml(module.type)}</span></div>
+              <div class="module-meta"><span>Lv ${escapeHtml(module.level)}</span><span>${escapeHtml(displayModuleType(module.type))}</span></div>
               ${combo}
               ${deps}
+            </div>
+          </div>
+        </article>`;
+      }
+      if (module.type.includes("1-Time")) {
+        return `<article class="module${moduleTypeClass(module)}" style="--skill-color:${itemColor(module)}">
+          <div class="module-bg"${moduleBgStyle(module)}></div>
+          <div class="module-body">
+            <div class="module-copy">
+              <h3 class="module-title">${escapeHtml(module.title)}</h3>
+              <img class="module-art" src="${escapeHtml(module.art)}" alt="">
+              ${toolBuildReadout(module)}
             </div>
           </div>
         </article>`;
@@ -2200,14 +2382,14 @@
         ? recoveryReadout(module)
         : `<div class="stat-grid">${statHtml(module.stats)}</div>`;
       return `<article class="module${moduleTypeClass(module)}" style="--skill-color:${itemColor(module)}">
-        <div class="module-bg"></div>
+        <div class="module-bg"${moduleBgStyle(module)}></div>
         <div class="module-body">
           <img class="module-art" src="${escapeHtml(module.art)}" alt="">
           <div class="module-copy">
             <h3 class="module-title">${escapeHtml(module.title)}</h3>
             ${middleContent}
             <div class="progress"><span></span></div>
-            <div class="module-meta"><span>Lv ${escapeHtml(module.level)}</span><span>${escapeHtml(module.type)}</span></div>
+            <div class="module-meta"><span>Lv ${escapeHtml(module.level)}</span><span>${escapeHtml(displayModuleType(module.type))}</span></div>
             ${combo}
             ${deps}
           </div>
@@ -2261,7 +2443,7 @@
         <span class="dependent-top">
           <span class="dependent-mini-copy">
             <span class="dependent-title">${escapeHtml(item.title)}</span>
-            <span class="dependent-type">${escapeHtml(item.kind === "resource" ? "Resource" : item.kind === "tool" ? "Tool" : `Lv ${item.level} ${item.type}`)}</span>
+            <span class="dependent-type">${escapeHtml(item.kind === "resource" ? "Resource" : item.kind === "tool" ? "Tool" : `Lv ${item.level} ${displayModuleType(item.type)}`)}</span>
           </span>
           <img class="dependent-mini-art" src="${escapeHtml(item.art)}" alt="">
         </span>
@@ -2310,6 +2492,7 @@
     </div>`);
     const completedBlockers = new Set();
     let boardMode = "progression";
+    let suppressBoardClick = false;
 
     board.innerHTML = Object.entries(skillInfo).map(([skill, info]) => {
       const cards = modules.filter((module) => module.skill === skill).map((module) => renderModuleSlot(module)).join("");
@@ -2395,7 +2578,79 @@
       }
     });
 
+    const pageSurface = document.querySelector("main");
+    let dragScrollState = null;
+    const dragClickThreshold = 14;
+
+    pageSurface.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || event.target.closest("button, a, input, textarea, select, .dependent-module, [role='button']")) return;
+
+      dragScrollState = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        scrollX: window.scrollX,
+        scrollY: window.scrollY,
+        mainScrollLeft: pageSurface.scrollLeft,
+        didDrag: false,
+      };
+      suppressBoardClick = false;
+      pageSurface.setPointerCapture(event.pointerId);
+      pageSurface.classList.add("is-drag-scrolling");
+    });
+
+    pageSurface.addEventListener("pointermove", (event) => {
+      if (!dragScrollState || dragScrollState.pointerId !== event.pointerId) return;
+
+      const deltaX = event.clientX - dragScrollState.startX;
+      const deltaY = event.clientY - dragScrollState.startY;
+      if (!dragScrollState.didDrag && Math.hypot(deltaX, deltaY) < dragClickThreshold) return;
+
+      dragScrollState.didDrag = true;
+      suppressBoardClick = true;
+      event.preventDefault();
+      pageSurface.scrollLeft = dragScrollState.mainScrollLeft - deltaX;
+      window.scrollTo(dragScrollState.scrollX, dragScrollState.scrollY - deltaY);
+    });
+
+    function endDragScroll(event) {
+      if (!dragScrollState || dragScrollState.pointerId !== event.pointerId) return;
+
+      pageSurface.classList.remove("is-drag-scrolling");
+      if (pageSurface.hasPointerCapture(event.pointerId)) {
+        pageSurface.releasePointerCapture(event.pointerId);
+      }
+      dragScrollState = null;
+    }
+
+    pageSurface.addEventListener("pointerup", endDragScroll);
+    pageSurface.addEventListener("pointercancel", endDragScroll);
+
     board.addEventListener("click", (event) => {
+      if (suppressBoardClick) {
+        event.preventDefault();
+        event.stopPropagation();
+        suppressBoardClick = false;
+        return;
+      }
+
+      const directDependency = event.target.closest(".dependent-module");
+      if (directDependency?.parentElement?.classList.contains("dependency-tray")) {
+        const dependencyCluster = directDependency.parentElement.parentElement;
+        if (dependencyCluster?.classList.contains("module-cluster")) {
+          event.stopPropagation();
+          toggleCluster(dependencyCluster);
+        }
+        return;
+      }
+
+      const collapsedCluster = event.target.closest(".module-cluster");
+      if (collapsedCluster && board.contains(collapsedCluster) && !collapsedCluster.classList.contains("is-expanded")) {
+        event.stopPropagation();
+        expandCluster(collapsedCluster);
+        return;
+      }
+
       const blockerSlot = event.target.closest(".module-slot.is-blocker, .module-slot.is-unlock");
       if (blockerSlot && !completedBlockers.has(blockerSlot.dataset.moduleTitle)) {
         const directModule = event.target.closest(".module");
@@ -2420,16 +2675,6 @@
         } else if (ownerCluster && ownerTray?.classList.contains("dependency-tray")) {
           event.stopPropagation();
           toggleCluster(ownerCluster);
-        }
-        return;
-      }
-
-      const directDependency = event.target.closest(".dependent-module");
-      if (directDependency?.parentElement?.classList.contains("dependency-tray")) {
-        const cluster = directDependency.parentElement.parentElement;
-        if (cluster?.classList.contains("module-cluster")) {
-          event.stopPropagation();
-          toggleCluster(cluster);
         }
         return;
       }

@@ -14,6 +14,7 @@ var lip_color := Color("#171615")
 var highlight_color := Color(1.0, 0.73, 0.36, 0.22)
 var shadow_color := Color(0.06, 0.045, 0.03, 0.32)
 var segment_theme_colors: Array[Color] = []
+var draw_back_plate_bottom_outline := false
 
 func set_face_offset(next_offset: Vector2) -> void:
 	var clamped_offset := Vector2(
@@ -59,7 +60,6 @@ func _draw() -> void:
 	if FAST_DEPTH_SHAPE_ENABLED:
 		_draw_fast_depth(face_size, front, back)
 		return
-	_draw_soft_floor_shadow(face_size, back)
 	_draw_back_plate(face_size, back)
 	var perimeter := _rounded_rect_points(Rect2(Vector2.ZERO, face_size), 18)
 	_draw_extruded_faces(perimeter, front, back, face_size)
@@ -67,16 +67,21 @@ func _draw() -> void:
 	_draw_extruded_outline(perimeter, front, back, face_size)
 
 func _draw_fast_depth(face_size: Vector2, front: Vector2, back: Vector2) -> void:
-	_draw_soft_floor_shadow(face_size, back)
 	_draw_fast_back_plate(face_size, back)
 	_draw_depth_corner_connectors(face_size, front, back)
-	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 7.0)
+	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 8.0, draw_back_plate_bottom_outline)
 
 func _draw_depth_corner_connectors(face_size: Vector2, front: Vector2, back: Vector2) -> void:
-	var width := 7.0
+	var width := 8.0
 	var points := _depth_corner_connector_points(face_size, front, back, width)
 	if points.size() != 4:
 		return
+	var travel := back - front
+	var direction := travel.normalized() if travel.length_squared() > 0.01 else Vector2.ZERO
+	points[0] -= direction * 1.0
+	points[1] += direction * 1.5
+	points[2] -= direction * 1.0
+	points[3] += direction * 1.5
 	draw_line(points[0], points[1], lip_color, width, true)
 	draw_line(points[2], points[3], lip_color, width, true)
 
@@ -219,15 +224,17 @@ func _draw_extruded_faces(perimeter: PackedVector2Array, front: Vector2, back: V
 	var travel := back - front
 	if travel.length_squared() <= 1.0 or perimeter.size() < 2:
 		return
+	var front_overlap := minf(2.0, maxf(0.0, travel.length() * 0.04))
 	for i in range(perimeter.size()):
 		var p0 := perimeter[i]
 		var p1 := perimeter[(i + 1) % perimeter.size()]
 		var normal := _edge_outward_normal(p0, p1)
 		if not _depth_edge_visible(normal, travel, p0, p1, face_size):
 			continue
+		var tucked_front := -normal * front_overlap
 		var face := PackedVector2Array([
-			front + p0,
-			front + p1,
+			front + p0 + tucked_front,
+			front + p1 + tucked_front,
 			_depth_back_point(p1, front, back, face_size),
 			_depth_back_point(p0, front, back, face_size),
 		])
@@ -249,15 +256,11 @@ func _draw_extruded_outline(perimeter: PackedVector2Array, front: Vector2, back:
 		if bool(visible[i]):
 			if current_path.is_empty():
 				current_path.append(_depth_back_point(p0, front, back, face_size))
-				var prev_index := (i - 1 + perimeter.size()) % perimeter.size()
-				if not bool(visible[prev_index]):
-					_draw_depth_cap_line(p0, front, back, face_size)
 			current_path.append(_depth_back_point(p1, front, back, face_size))
 			var next_index := (i + 1) % perimeter.size()
 			if not bool(visible[next_index]):
 				_draw_visible_outline_path(current_path)
 				current_path = PackedVector2Array()
-				_draw_depth_cap_line(p1, front, back, face_size)
 		elif not current_path.is_empty():
 			_draw_visible_outline_path(current_path)
 			current_path = PackedVector2Array()
@@ -344,7 +347,7 @@ func _draw_polygon_outline(points: PackedVector2Array, color: Color, width: floa
 	closed.append(points[0])
 	draw_polyline(closed, color, width, true)
 
-func _draw_rounded_rect_outline(rect: Rect2, color: Color, width: float) -> void:
+func _draw_rounded_rect_outline(rect: Rect2, color: Color, width: float, draw_bottom := true) -> void:
 	var half := width * 0.5
 	var left := rect.position.x + half
 	var right := rect.position.x + rect.size.x - half
@@ -352,13 +355,14 @@ func _draw_rounded_rect_outline(rect: Rect2, color: Color, width: float) -> void
 	var bottom := rect.position.y + rect.size.y - half
 	var r := maxf(0.0, minf(radius, minf(rect.size.x, rect.size.y) * 0.5 - half))
 	draw_line(Vector2(left + r, top), Vector2(right - r, top), color, width, true)
-	draw_line(Vector2(left + r, bottom), Vector2(right - r, bottom), color, width, true)
 	draw_line(Vector2(left, top + r), Vector2(left, bottom - r), color, width, true)
 	draw_line(Vector2(right, top + r), Vector2(right, bottom - r), color, width, true)
 	draw_arc(Vector2(left + r, top + r), r, PI, PI * 1.5, 8, color, width, true)
 	draw_arc(Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0, 8, color, width, true)
-	draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, 8, color, width, true)
-	draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 8, color, width, true)
+	if draw_bottom:
+		draw_line(Vector2(left + r, bottom), Vector2(right - r, bottom), color, width, true)
+		draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, 8, color, width, true)
+		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 8, color, width, true)
 
 func _draw_soft_floor_shadow(face_size: Vector2, back: Vector2) -> void:
 	var r := minf(radius, minf(face_size.x, face_size.y) * 0.5)
