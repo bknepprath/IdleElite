@@ -116,11 +116,31 @@ func _run() -> void:
 	var drag_y := float(scroll.get("drag_scroll_position"))
 	var shadow_alpha := _shelf_shadow_alpha(shadow)
 	var shadow_visible := false if shadow == null else shadow.visible
+	var nav_bar := scene.get("nav_bar") as Control
+	var module_utility_row := scene.get("module_utility_row") as Control
+	var module_sort_menu := scene.get("module_sort_menu") as Control
+	var auto_fish_toggle := scene.get("detail_auto_eat_fish_button") as Control
+	var shelf_background := _find_named_descendant(scene.get("detail_header_body") as Node, "SkillDetailFullBleedShelfBackground") as Control
 	if scroll_y != 0 or absf(drag_y) > 0.01:
 		_fail("tutorial starter skill page should start at top scroll, got scroll=%s drag=%.3f %s" % [str(scroll_y), drag_y, _summary(scene)])
 		return
 	if shadow_visible and shadow_alpha > 0.001:
 		_fail("tutorial starter skill page shelf shadow should be hidden, got alpha=%.4f %s" % [shadow_alpha, _summary(scene)])
+		return
+	if nav_bar != null and nav_bar.visible:
+		_fail("tutorial starter skill page bottom navigation should be hidden: %s" % _summary(scene))
+		return
+	if module_utility_row != null and module_utility_row.visible:
+		_fail("tutorial starter skill page module utility row should be hidden: %s" % _summary(scene))
+		return
+	if module_sort_menu != null and module_sort_menu.visible:
+		_fail("tutorial starter skill page sort menu should be hidden: %s" % _summary(scene))
+		return
+	if auto_fish_toggle != null and auto_fish_toggle.visible:
+		_fail("tutorial starter skill page auto-fish toggle should be hidden before fish is earned: %s" % _summary(scene))
+		return
+	if shelf_background != null and shelf_background.visible:
+		_fail("tutorial starter skill page colored shelf background should be hidden: %s" % _summary(scene))
 		return
 	if _activity_start_tip_before_second_module(scene):
 		_fail("tutorial starter skill page should not place the activity-start tip between module 1 and 2: %s" % _summary(scene))
@@ -204,6 +224,19 @@ func _control_tree_in_group(root_node: Node, group_name: String) -> bool:
 		if child != null and _control_tree_in_group(child, group_name):
 			return true
 	return false
+
+
+func _find_named_descendant(root_node: Node, node_name: String) -> Node:
+	if root_node == null:
+		return null
+	if root_node.name == node_name:
+		return root_node
+	for raw_child in root_node.get_children():
+		var child := raw_child as Node
+		var found := _find_named_descendant(child, node_name)
+		if found != null:
+			return found
+	return null
 
 
 func _summary(scene: Node) -> String:
