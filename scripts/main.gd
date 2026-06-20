@@ -7916,7 +7916,7 @@ func _build_nav_bar() -> void:
 
 
 func _intro_bottom_controls_unlocked() -> bool:
-	return onboarding_tutorial_complete
+	return onboarding_tutorial_complete and not tutorial_active
 
 
 func _sync_bottom_nav_visibility() -> void:
@@ -57143,7 +57143,7 @@ func _add_skill_detail_shelf_background(parent: Control, skill_id: String, conte
 	background.offset_bottom = SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background.z_index = -20
-	background.visible = not _onboarding_path_active()
+	background.visible = not (tutorial_active or _onboarding_path_active())
 	parent.add_child(background)
 	return background
 

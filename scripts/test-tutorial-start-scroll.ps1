@@ -4,6 +4,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\tutorial-start-scroll"
 $testScript = Join-Path $testDir "tutorial_start_scroll_test.gd"
+$capturePath = Join-Path $projectRoot ".codex-tmp\tutorial-intro-hidden-controls.png"
 
 function Assert-True {
     param(
@@ -52,9 +53,13 @@ if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+New-Item -ItemType Directory -Path (Split-Path -Parent $capturePath) -Force | Out-Null
+Remove-Item -LiteralPath $capturePath -Force -ErrorAction SilentlyContinue
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
+$previousCapture = $env:IDLE_ELITE_TUTORIAL_START_SCROLL_CAPTURE
 $env:GODOT_RUN_TIMEOUT_SECONDS = "180"
+$env:IDLE_ELITE_TUTORIAL_START_SCROLL_CAPTURE = $capturePath
 
 try {
     @'
@@ -152,6 +157,7 @@ func _run() -> void:
 	if first_module_gap > 120.0:
 		_fail("tutorial starter skill page module 1-2 gap is too large: %.1f %s" % [first_module_gap, _summary(scene)])
 		return
+	await _capture_if_requested()
 	print("tutorial-start-scroll-ok scroll=%s drag=%.3f shadow_visible=%s shadow_alpha=%.4f module_gap=%.1f %s" % [str(scroll_y), drag_y, str(shadow_visible), shadow_alpha, first_module_gap, _summary(scene)])
 	quit(0)
 
@@ -237,6 +243,24 @@ func _find_named_descendant(root_node: Node, node_name: String) -> Node:
 		if found != null:
 			return found
 	return null
+
+
+func _capture_if_requested() -> void:
+	var capture_path := OS.get_environment("IDLE_ELITE_TUTORIAL_START_SCROLL_CAPTURE")
+	if capture_path.is_empty():
+		return
+	for _i in range(2):
+		await _wait_test_frame()
+	var texture := root.get_texture()
+	if texture == null:
+		print("tutorial-start-scroll-capture skipped=no-texture")
+		return
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		print("tutorial-start-scroll-capture skipped=empty-image")
+		return
+	var result := image.save_png(capture_path)
+	print("tutorial-start-scroll-capture path=%s result=%s size=%sx%s" % [capture_path, str(result), image.get_width(), image.get_height()])
 
 
 func _summary(scene: Node) -> String:
