@@ -52,4 +52,8 @@ Assert-True ($boundaryMap -match 'save data') "Activity UI boundary map should c
 Assert-True ($boundaryMap -match 'lazy rendering') "Activity UI boundary map should call out lazy rendering coupling."
 Assert-True ($boundaryMap -match 'module UI keys') "Activity UI boundary map should call out module UI key compatibility."
 
+$pinCollapseGate = [regex]::Match($main, '(?s)func _module_ui_key_allows_pin_or_collapse\(module_key: String\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+Assert-True $pinCollapseGate.Success "Missing _module_ui_key_allows_pin_or_collapse body."
+Assert-True ($pinCollapseGate.Groups[1].Value -match 'if key\.begins_with\("fishing_offer:"\):\s*return false') "Fishing tool offer modules must not be pinnable or collapsible."
+
 Write-Output "activity-ui-boundary-contracts-ok"

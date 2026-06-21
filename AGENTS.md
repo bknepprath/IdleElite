@@ -33,6 +33,18 @@ For visible game-only playtesting when explicitly requested:
 .\run-godot-safe.ps1 --visible-game --path .
 ```
 
+## Godot Asset Import and Screenshot Safety
+
+- Before running `.\run-godot-safe.ps1 --path . --import --quit`, record `git status --short`. A headless import can touch many existing `.import` files. Afterward, keep only the new/intentional asset metadata and clean unrelated import churn only if it is clearly from your import command, not pre-existing user work.
+- When cleaning Godot import churn, use `git status --porcelain=v1` to find tracked `.import` files. Do not rely on `git diff -- '*.import'`; line-ending/stat-only changes may appear in `git status` even when `git diff` returns nothing. Restore only the specific tracked `.import` paths you just dirtied, never broad-reset the worktree.
+- If a headless screenshot or validation script times out, inspect Godot command lines before killing anything:
+  ```powershell
+  Get-CimInstance Win32_Process -Filter "Name='Godot.exe'" | Select-Object ProcessId,ParentProcessId,CommandLine
+  ```
+  Stop only the headless process that clearly belongs to your wrapper-launched command and should have exited. Leave visible game/debug/editor/project-manager windows alone.
+- For generated UI icons with a white subject on a white background, do not remove white globally; that will damage the subject. Use a border-connected flood fill or another method that removes only the connected background, then verify corner alpha and subject alpha before wiring the asset.
+- PowerShell image/file scripts should use `(Resolve-Path <path>).Path` when passing paths into .NET APIs. Parenthesize arithmetic inside array literals, for example `@(0, ($height - 1))`, to avoid accidental parser/object-array errors.
+
 ## Activity Database (fishing rework)
 
 - Source of truth: `docs/activity-database.json` (`fishing.areas[]`, per-action `area`).

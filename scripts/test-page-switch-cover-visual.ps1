@@ -103,6 +103,37 @@ func _run() -> void:
 	var entering_cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
 	result["enter_cover_alpha"] = 0.0 if entering_cover == null or not is_instance_valid(entering_cover) else entering_cover.modulate.a
 	result["enter_skill"] = str(scene.get("selected_skill_id"))
+	var enter_cover_id := 0
+	var enter_cover_started_msec := 0
+	if entering_cover != null and is_instance_valid(entering_cover):
+		enter_cover_id = entering_cover.get_instance_id()
+		enter_cover_started_msec = int(entering_cover.get_meta("page_switch_scroll_cover_started_msec", 0))
+	var held_pop := instance_from_id(int(target_button.get_meta("activity_button_pop_id", 0))) as Control
+	var held_offset := Vector2.ZERO
+	if held_pop != null and is_instance_valid(held_pop):
+		held_offset = scene.call("_activity_button_pop_depth_offset", held_pop) as Vector2
+	result["held_offset_enter"] = str(held_offset)
+	result["held_button_id_enter"] = int(scene.get("page_switch_transition_button_id"))
+	_expect(held_offset.length() > 0.5, "page switch button should remain depressed while the cover fades in: %s" % str(held_offset))
+	_expect(int(result.get("held_button_id_enter", 0)) == target_button.get_instance_id(), "page switch transition should remember the exiting button")
+	for _spam in range(4):
+		target_button.emit_signal("pressed")
+		await process_frame
+	var spam_cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var spam_cover_id := 0 if spam_cover == null or not is_instance_valid(spam_cover) else spam_cover.get_instance_id()
+	var spam_cover_started_msec := 0 if spam_cover == null or not is_instance_valid(spam_cover) else int(spam_cover.get_meta("page_switch_scroll_cover_started_msec", 0))
+	var spam_held_pop := instance_from_id(int(target_button.get_meta("activity_button_pop_id", 0))) as Control
+	var spam_held_offset := Vector2.ZERO
+	if spam_held_pop != null and is_instance_valid(spam_held_pop):
+		spam_held_offset = scene.call("_activity_button_pop_depth_offset", spam_held_pop) as Vector2
+	result["spam_same_cover"] = spam_cover_id == enter_cover_id
+	result["spam_same_started_msec"] = spam_cover_started_msec == enter_cover_started_msec
+	result["spam_skill"] = str(scene.get("selected_skill_id"))
+	result["held_offset_after_spam"] = str(spam_held_offset)
+	_expect(bool(result.get("spam_same_cover", false)), "spamming the page switch button restarted the cover")
+	_expect(bool(result.get("spam_same_started_msec", false)), "spamming the page switch button restarted the cover timer")
+	_expect(str(result.get("spam_skill", "")) == before_skill, "selected skill changed before the first cover finished after spam")
+	_expect(spam_held_offset.length() > 0.5, "page switch button should remain depressed after spam: %s" % str(spam_held_offset))
 	_expect(float(result.get("enter_cover_alpha", 1.0)) < 0.95, "page switch cover should fade in instead of appearing fully opaque immediately: %s" % str(result.get("enter_cover_alpha", 1.0)))
 	_expect(str(result.get("enter_skill", "")) == before_skill, "selected skill changed before the cream cover finished fading in")
 	if not await _wait_for_cover_alpha(scene, 0.98):
@@ -117,10 +148,18 @@ func _run() -> void:
 	result["cover_alpha"] = 0.0 if cover == null or not is_instance_valid(cover) else cover.modulate.a
 	result["cover_cream_ratio"] = cover_stats.get("cream_ratio", 0.0)
 	result["cover_average"] = cover_stats.get("average", "")
+	var cover_rect_stats := _rect_cream_stats_from_viewport(cover.get_global_rect()) if cover != null and cover.visible else {"cream_ratio": 0.0, "average": ""}
+	result["cover_rect_cream_ratio"] = cover_rect_stats.get("cream_ratio", 0.0)
+	result["cover_offset_bottom"] = 0.0 if cover == null or not is_instance_valid(cover) else cover.offset_bottom
+	result["expected_cover_offset_bottom"] = scene.call("_global_chat_nav_cover_bottom_offset")
 	var nav_bar := _valid_control(scene.get("nav_bar"))
 	var nav_cover_stats := _rect_cream_stats_from_viewport(nav_bar.get_global_rect()) if nav_bar != null and nav_bar.visible else {"cream_ratio": 0.0, "average": ""}
 	result["cover_nav_cream_ratio"] = nav_cover_stats.get("cream_ratio", 0.0)
 	result["cover_nav_average"] = nav_cover_stats.get("average", "")
+	var chat_strip := _valid_control(scene.get("chat_strip"))
+	var chat_cover_stats := _rect_cream_stats_from_viewport(chat_strip.get_global_rect()) if chat_strip != null and chat_strip.visible else {"cream_ratio": 0.0, "average": ""}
+	result["cover_chat_cream_ratio"] = chat_cover_stats.get("cream_ratio", 0.0)
+	result["cover_chat_average"] = chat_cover_stats.get("average", "")
 	var utility_row := _valid_control(scene.get("module_utility_row"))
 	var utility_cover_stats := _rect_cream_stats_from_viewport(utility_row.get_global_rect()) if utility_row != null and utility_row.visible else {"cream_ratio": 1.0, "average": ""}
 	result["cover_utility_cream_ratio"] = utility_cover_stats.get("cream_ratio", 1.0)
@@ -128,8 +167,10 @@ func _run() -> void:
 	_expect(bool(result.get("cover_exists", false)), "pressing page switch did not create a cover")
 	_expect(bool(result.get("cover_visible", false)), "page switch cover exists but is not visible")
 	_expect(float(result.get("cover_alpha", 0.0)) >= 0.92, "page switch cover alpha is not opaque: %s" % str(result.get("cover_alpha", 0.0)))
-	_expect(float(result.get("cover_cream_ratio", 0.0)) >= 0.96, "plain cover frame is not fully cream: %s" % str(result.get("cover_cream_ratio", 0.0)))
-	_expect(float(result.get("cover_nav_cream_ratio", 0.0)) >= 0.96, "nav bar band is not covered by cream: %s" % str(result.get("cover_nav_cream_ratio", 0.0)))
+	_expect(absf(float(result.get("cover_offset_bottom", 0.0)) - float(result.get("expected_cover_offset_bottom", 0.0))) <= 0.5, "page switch cover bottom does not stop at chat/nav: expected=%s actual=%s" % [str(result.get("expected_cover_offset_bottom", 0.0)), str(result.get("cover_offset_bottom", 0.0))])
+	_expect(float(result.get("cover_rect_cream_ratio", 0.0)) >= 0.96, "plain cover rect is not fully cream: %s" % str(result.get("cover_rect_cream_ratio", 0.0)))
+	_expect(float(result.get("cover_nav_cream_ratio", 1.0)) < 0.90, "nav bar band should remain visible above the cream cover: %s" % str(result.get("cover_nav_cream_ratio", 1.0)))
+	_expect(float(result.get("cover_chat_cream_ratio", 1.0)) < 0.90, "chat strip band should remain visible above the cream cover: %s" % str(result.get("cover_chat_cream_ratio", 1.0)))
 	_expect(float(result.get("cover_utility_cream_ratio", 0.0)) >= 0.96, "module utility row band is not covered by cream: %s" % str(result.get("cover_utility_cream_ratio", 0.0)))
 
 	for _i in range(96):
@@ -139,8 +180,10 @@ func _run() -> void:
 	result["after_cream_ratio"] = after_stats.get("cream_ratio", 0.0)
 	var after_cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
 	result["after_cover_visible"] = after_cover != null and is_instance_valid(after_cover) and after_cover.visible
+	result["after_page_switch_button_lock"] = int(scene.get("page_switch_transition_button_id"))
 	_expect(str(result.get("after_skill", "")) != before_skill, "page switch did not change selected skill")
 	_expect(not bool(result.get("after_cover_visible", false)), "page switch cover is still visible after settle")
+	_expect(int(result.get("after_page_switch_button_lock", 0)) == 0, "page switch button lock did not release after settle")
 	_expect(float(result.get("after_cream_ratio", 0.0)) < 0.78, "after frame still looks like a cream cover: %s" % str(result.get("after_cream_ratio", 0.0)))
 
 	_write_result()
@@ -341,7 +384,9 @@ func _fail(message: String) -> void:
 
     Assert-True (Test-Path -LiteralPath $resultPath) "Page-switch visual test did not write result.json."
     $result = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
-    Assert-True ([double]$result.cover_cream_ratio -ge 0.96) "Cover screenshot is not a plain cream sheet. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+    Assert-True ([double]$result.cover_rect_cream_ratio -ge 0.96) "Cover rect is not a plain cream sheet. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+    Assert-True ([double]$result.cover_nav_cream_ratio -lt 0.90) "Nav bar should remain visible above the cream cover. result: $(Get-Content -LiteralPath $resultPath -Raw)"
+    Assert-True ([double]$result.cover_chat_cream_ratio -lt 0.90) "Chat strip should remain visible above the cream cover. result: $(Get-Content -LiteralPath $resultPath -Raw)"
     Assert-True (-not [bool]$result.after_cover_visible) "Cover stayed visible after settle. result: $(Get-Content -LiteralPath $resultPath -Raw)"
 
     $newProcesses = @(

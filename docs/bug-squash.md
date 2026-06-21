@@ -14,6 +14,73 @@ Fix:
 Validation:
 Rule:
 
+## Pinning Activity Page Flash
+
+Date: 2026-06-21
+
+Area: activity module pinning, skill page pin badges, pinned activities page refresh, and transition covers.
+
+Symptom: every time an activity was pinned or unpinned, the whole activities page briefly flashed out of existence before returning.
+
+Mistake:
+
+- First fix only removed the delayed full `_render_screen()` refresh path and missed the synchronous cover path.
+- Focused tests passed because they asserted pin state and card behavior, not the absence of a visible transition blocker.
+- Scroll-anchor preservation code from an older rebuild-based pin flow was left active after pins no longer needed to rebuild the skill page.
+
+Root cause: `_pin_module_ui_key()` and `_unpin_module_ui_key()` still started pin-time transition blockers and an opaque pin refresh cover (`_begin_pin_transition_blocker("skill")`, `module_ui_pin_refresh_cover_requested`, and `_begin_module_pin_refresh_hard_cover()`) before the badge animation played. Even after replacing the delayed refresh with in-place badge/shelf sync, this immediate cover still blanked the page on every pin.
+
+Fix:
+
+- Removed the pin/unpin-time transition blocker and hard-cover calls.
+- Stopped capturing pin scroll anchors from pin/unpin now that the source skill page no longer rebuilds for pin changes.
+- Kept pin changes local: update pinned state, play the badge animation, then sync visible pin badges in place.
+- On the pinned activities page, rebuild only the pinned shelf content instead of rerendering the whole page.
+
+Validation:
+
+- `.\scripts\test-pinned-pin-visual-smoke.ps1` passed.
+- `.\scripts\test-pinned-scroll-anchor.ps1` passed.
+- `.\scripts\test-pinned-page-interactions.ps1` passed.
+- User confirmed the flashing was fixed in-game.
+
+Rule: when a visual flash remains after removing a delayed rerender, search for synchronous cover/blocker paths in the tap handler itself. For pinning, avoid page-level transition covers unless the user is actually navigating to or from the Pins page; simple pin state changes should update badges and pinned-page shelf content in place.
+
+## Pinned Page Blank Shelf And Dead Tap Regression
+
+Date: 2026-06-21
+
+Area: pinned activities page, active shelf layout, transition cover readiness, and pinned action-card input.
+
+Symptom: the pinned page looked visually correct after adding the blank reserved shelf, but starting activities from the pinned activities page broke again. Earlier smoke coverage still passed because it called action-card handlers directly or rendered the pinned page by setting `current_screen = "pinned"`, bypassing the real navigation transition.
+
+Mistake:
+
+- Treating direct `_on_action_card_input()` calls as proof that the player's tap path worked.
+- Rendering the pinned page directly in tests instead of entering through `_show_pinned_activities()`.
+- Adding visual shelf behavior without checking whether the page transition cover was clearing from the actual node tree.
+- Letting a flaky opportunity-window assertion distract from the real pinned-page input route.
+
+Root cause: `_pinned_page_ready_to_reveal_under_cover()` looked for `PinnedActivitiesPage` as a descendant of `content_scroll`, but the pinned page shell and active shelf live under `skills_content`, outside the scroll container. The transition cover could therefore remain in the way longer than intended and swallow real taps even though the page appeared ready. Existing tests did not catch it because they skipped the transition-cover path.
+
+Fix:
+
+- Keep the inactive pinned shelf at the expanded shelf height so pinned activities keep their spacing.
+- Give the inactive shelf its own neutral gray `SkillDetailGradientShelf` colors instead of fading the shelf background to transparent.
+- Change `_pinned_page_ready_to_reveal_under_cover()` to check `skills_content` for `PinnedActivitiesPage` and `PinnedActivitiesActiveShelf`.
+- Expand `scripts/test-pinned-page-interactions.ps1` so it enters pinned through `_show_pinned_activities()`, waits for `_page_switch_scroll_cover_active()` to clear, then taps the visible pinned card through `scene._input(...)`.
+- Keep button-level and global-input checks for pinned cards, but do not rely on direct helper calls alone.
+- Make the opportunity feedback smoke choose the actual opportunity-window center instead of assuming a fixed progress value.
+
+Validation:
+
+- `.\scripts\test-pinned-page-interactions.ps1` passed with the real navigation-path pinned tap check.
+- `.\scripts\check-activity-ui-boundary-contracts.ps1` passed.
+- `git diff --check -- scripts/main.gd scripts/test-pinned-page-interactions.ps1` passed.
+- Post-validation process checks found no headless Godot process from the pinned-page run. Unrelated headless or visible Godot processes were reported and left alone unless clearly launched by the validation command.
+
+Rule: for pinned-page input bugs, always test the real route: pin/order a real action, enter pinned via `_show_pinned_activities()`, wait for the transition cover to clear, and send press/release through top-level `_input()` at the visible card. A direct render or direct `_on_action_card_input()` call is useful as a narrow unit check, but it cannot prove the page is tappable. When a visual shelf/header change touches page layout, re-check transition-cover readiness against the actual node owner, not the scroll child you wish owned the page.
+
 ## Thieving Heist STEAL Button And Reset Trophy Leak
 
 Date: 2026-06-20

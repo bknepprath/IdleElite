@@ -654,11 +654,13 @@ const ACTION_OPPORTUNITY_WINDOW_STROKE_WIDTH := 12.0
 const ACTION_OPPORTUNITY_WINDOW_HOLE_INSET := ACTION_OPPORTUNITY_WINDOW_STROKE_INSET + ACTION_OPPORTUNITY_WINDOW_STROKE_WIDTH
 const ACTION_OPPORTUNITY_WINDOW_OVERLAY_Z := 80
 const DEFAULT_BUTTON_SFX_DEBOUNCE_MSEC := 180
-const DEFAULT_BUTTON_SFX_PATH := "res://assets/sfx/sfx_pebbles_click.wav"
+const DEFAULT_BUTTON_SFX_PATH := "res://assets/sfx/Sample_0029 bowling ui snap.wav"
+const STAMINA_GAUGE_PARENT_BUTTON_SUPPRESS_MSEC := 650
 const STAMINA_GAUGE_UNFILL_SECONDS := 0.34
 const TOP_LEVEL_NAV_DEBOUNCE_MSEC := 120
 const UI_STATIC_REFRESH_INTERVAL_SECONDS := 0.50
 const DETAIL_HEADER_GAUGE_REFRESH_SECONDS := 0.05
+const PASSIVE_CARD_PROGRESS_REFRESH_SECONDS := 0.10
 const DETAIL_ACTIONS_SCROLL_LIMIT_REFRESH_SECONDS := 0.10
 const TEMPORARY_EVENT_SCHEDULER_CHECK_SECONDS := 5.0
 const TEMPORARY_EVENT_INITIAL_ROLL_DELAY_SECONDS := 120
@@ -898,9 +900,6 @@ class RegenCircle:
 			visible_value = MIN_VISIBLE_REGEN_RING
 		if visible_value > VALUE_EPSILON:
 			draw_arc(center, ring_radius, -PI * 0.5, -PI * 0.5 + TAU * visible_value, RING_ARC_SEGMENTS, theme_color, ring_width, true)
-		_ensure_glass_bowl_texture()
-		if _glass_bowl_texture != null:
-			draw_texture(_glass_bowl_texture, Vector2.ZERO)
 		_draw_inner_fill(center, inner_radius, draw_scale)
 		_draw_inner_bevel(center, inner_radius, draw_scale)
 		_draw_liquid_edge_seal(center, inner_radius, draw_scale)
@@ -1771,7 +1770,7 @@ const HERO_LOCKED_MESSAGE := "Total Lv 25 required!"
 const HUB_UNLOCK_BUILD_LEVEL := 3
 const HUB_LOCKED_MESSAGE := "Lv 3 Building required!"
 const HUB_TUTORIAL_TITLE := "Player Hub"
-const HUB_TUTORIAL_BODY := "Upgrade buildings here for bonuses across the whole game.\nTap a building to upgrade it.\nPress and hold to move it."
+const HUB_TUTORIAL_BODY := "Upgrade buildings here for bonuses across the whole game.\nTap a building to upgrade it.\nDrag a building to move it."
 const SHOP_UNLOCK_BRONZE_MEDALS := 5
 const SHOP_LOCKED_MESSAGE := "5 Bronze medals\nrequired!"
 const HUB_NAV_LOCKED_MODULATE := Color("#3f3f3f")
@@ -2082,7 +2081,7 @@ const FISHING_METHOD_ACTIVE_SWAY_RETURN_SECONDS := 0.2
 const FISHING_LOCATION_ACTIVE_CAMERA_ZOOM := 2.35
 const FISHING_LOCATION_ACTIVE_CAMERA_PAN := Vector2(92.0, 74.0)
 const FISHING_LOCATION_ACTIVE_CAMERA_EASE := 1.45
-const FISHING_LOCATION_ACTIVE_CAMERA_RETURN_SECONDS := 0.36
+const FISHING_LOCATION_ACTIVE_CAMERA_RETURN_SECONDS := 0.18
 const FISHING_ATTEMPT_BAR_HEIGHT := 20.0
 const FISHING_ATTEMPT_BAR_SEPARATION := 8
 const FISHING_PADLOCK_UNLOCK_DROP_SECONDS := 0.96
@@ -2120,6 +2119,7 @@ const FISHING_NET_HAUL_THRESHOLD := 10
 const FISHING_NET_FILL_MIN := 1
 const FISHING_NET_FILL_MAX := 6
 const FISHING_NET_HAUL_VISUAL_SECONDS := 0.74
+const FISHING_NET_COLLECT_LAYOUT_DELAY_SECONDS := 3.62
 const FISHING_NET_SUCCESS_RATE_MULT := 0.25
 const FISHING_NET_FILL_MASTERY_MULT := 0.1
 const FISHING_NET_AREA_XP := {
@@ -2264,9 +2264,7 @@ const ACTION_STOP_HOLD_ARM_DELAY_SECONDS := 0.5
 const ACTION_STOP_HOLD_SECONDS := 0.9
 const ACTION_STOP_HOLD_UNLOAD_SECONDS := 0.18
 const ACTION_STOP_HOLD_RING_SIZE := Vector2(380, 380)
-const HUB_HOTSPOT_MOVE_HOLD_SECONDS := 0.55
-const HUB_HOTSPOT_MOVE_HOLD_SHOW_DELAY_SECONDS := 0.20
-const HUB_HOTSPOT_MOVE_HOLD_SLOP := 42.0
+const HUB_HOTSPOT_DRAG_START_SLOP := 42.0
 const HUB_HOTSPOT_MOVE_HOLD_RING_PADDING := 68.0
 const HUB_TUTORIAL_TIP_FADE_SECONDS := 0.18
 const ACTION_OPPORTUNITY_MIN_MEDAL_LEVEL := 2
@@ -2407,6 +2405,7 @@ const MODULE_UI_SORT_LEVEL := "level"
 const MODULE_UI_SORT_LEVEL_REVERSE := "level_reverse"
 const MODULE_UI_COLLAPSE_SAVE_VERSION := 3
 const DETAIL_RESTORE_SCROLL_BOTTOM := -2
+const NAV_OPEN_CLOSE_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/nav-open-close.png"
 const MODULE_PIN_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/pin.png"
 const MODULE_PIN_COLOR_TEXTURES := [
 	"res://assets/content/ui/navigation-controls/pin-color/pin-color-blue.png",
@@ -2425,7 +2424,10 @@ const MODULE_COLLAPSE_ACTION_ZONE_SIZE := Vector2(174, 174)
 const MODULE_COLLAPSE_ACTION_ZONE_TOP_OFFSET := -30.0
 const MODULE_COLLAPSE_ACTION_ZONE_OUTER_OFFSET := -48.0
 const MODULE_ACTION_ZONE_Z_INDEX := 920
+const MODULE_ACTION_VIEWPORT_OUTSET := 220.0
 const MODULE_PIN_BADGE_SIZE := Vector2(320, 320)
+const MODULE_PIN_BADGE_HIT_MIN := Vector2(35, 2)
+const MODULE_PIN_BADGE_HIT_MAX := Vector2(284, 316)
 const MODULE_PIN_BADGE_CLIP_ORIGIN := Vector2(-220, -330)
 const MODULE_PIN_BADGE_CLIP_SIZE := Vector2(520, 388)
 const MODULE_PIN_BADGE_SETTLED_POSITION := Vector2(198, 128)
@@ -2462,16 +2464,21 @@ const SKILL_DETAIL_ICON_Y_OFFSET := 16.0
 const SKILL_SWIPE_THRESHOLD := 230.0
 const SKILL_SWIPE_FEEDBACK_DEADZONE := 46.0
 const SKILL_SWIPE_MAX_DRAG := 1120.0
-const SKILL_SWIPE_PAGE_GAP := 82.0
-const SKILL_SWIPE_SETTLE_SECONDS := 0.30
-const SKILL_SWIPE_CANCEL_SECONDS := 0.18
+const SKILL_SWIPE_PAGE_GAP := 960.0
+const SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED := true
+const SKILL_SWIPE_GAP_READY_WAIT_FRAMES := 4
+const SKILL_SWIPE_SETTLE_SECONDS := 0.20
+const SKILL_SWIPE_CANCEL_SECONDS := 0.14
 const SKILL_SWIPE_PAGE_FADE_ENABLED := false
 const SKILL_SWIPE_DRAG_FRAME_FADE_ENABLED := false
 const SKILL_SWIPE_PAGE_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
 const SKILL_SWIPE_PAGE_FADE_MIN_ALPHA := 0.0
+const SKILL_SWIPE_PREVIEW_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 1.25
+const SKILL_SWIPE_PREVIEW_FADE_MIN_ALPHA := 0.30
+const SKILL_SWIPE_PAPER_FADE_ENABLED := false
 const SKILL_SWIPE_PAPER_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
-const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.12
-const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.16
+const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.08
+const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.12
 const DIRECT_SKILL_NAV_COVER_MIN_SECONDS := 0.24
 const DIRECT_SKILL_NAV_COVER_FADE_IN_SECONDS := 0.10
 const DIRECT_SKILL_NAV_COVER_FADE_SECONDS := 0.18
@@ -2481,13 +2488,13 @@ const PAGE_SWITCH_SCROLL_COVER_FADE_SECONDS := 0.18
 const SKILL_SWIPE_LIGHT_PREVIEW_ENABLED := true
 const SKILL_SWIPE_SHOW_INCOMING_PREVIEW_DURING_DRAG := false
 const SKILL_SWIPE_LIGHT_PREVIEW_HEADER_ENABLED := true
-const SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS := 2
+const SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_REAL_CARD_IDLE_PREWARM_ENABLED := false
 const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 4
 const SKILL_SWIPE_REAL_PREVIEW_TEXTURE_PREWARM_ENABLED := true
 const SKILL_SWIPE_FINALIZE_SETTLE_FRAMES := 1
-const SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT := 4
+const SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT := 2
 const SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE := 1
 const SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE := 1
 const SKILL_SWIPE_PROXY_FULL_REFRESH_DELAY_FRAMES := 720
@@ -2541,7 +2548,7 @@ const DETAIL_PULL_TIP_FULL_OFFSET := 210.0
 const DETAIL_PULL_TIP_TEXTS := [
 	"tip: tap the top right corner of an activity to collapse it.",
 	"tip: tap the top left corner of an activity to pin it into the Pins page.",
-	"tip: you can collapse modules by pressing the top right.",
+	"tip: you can collapse activities by pressing the top right.",
 	"tip: you can expand collapsed activities by clicking anywhere on them.",
 	"tip: use the sort button to change how activities are ordered.",
 	"tip: tap info chips to see what is changing an activity's stats.",
@@ -2555,8 +2562,8 @@ const DETAIL_PULL_TIP_TEXTS := [
 	"tip: combo activities can train two skills at once.",
 	"tip: rating the game five stars will make the dev very happy.",
 	"tip: badge boosts are strongest next door and fade with distance.",
-	"tip: badges on lower activities can make the next few modules cost less stamina and finish faster.",
-	"tip: badges on modules ahead can give lower activities more success rate and lower stamina cost."
+	"tip: badges on lower activities can make the next few activities cost less stamina and finish faster.",
+	"tip: badges on higher activities can give earlier activities more success rate and lower stamina cost."
 ]
 const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
 const ACTIVITY_JUMP_TOP_TEXTURE := "res://assets/content/ui/activity-jump-top-circle.png"
@@ -2812,6 +2819,10 @@ const MODAL_OVERLAY_Z := 4096
 const ACHIEVEMENT_TOAST_CANVAS_LAYER := 128
 const DESKTOP_TARGET_FRAME_RATE := 120
 const MOBILE_TARGET_FRAME_RATE := 60
+const MOBILE_IDLE_FRAME_RATE := 30
+const BATTERY_GOVERNOR_IDLE_AFTER_SECONDS := 4.0
+const BATTERY_GOVERNOR_LOW_PROCESSOR_SLEEP_USEC := 8000
+const BATTERY_GOVERNOR_FORCE_ENV := "IDLE_ELITE_FORCE_MOBILE_BATTERY_GOVERNOR"
 const ACHIEVEMENTS_MODAL_SIZE := Vector2(1760, 3000)
 const ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN := Vector2(64, 80)
 const ACHIEVEMENTS_MODAL_SCROLL_HEIGHT := 2220.0
@@ -2842,6 +2853,10 @@ const BOOT_WARMUP_LAYER := TUTORIAL_LAYER + 2
 const CHAT_OVERLAY_CANVAS_LAYER := BOOT_WARMUP_LAYER + 1
 const PROFILE_OVERLAY_CANVAS_LAYER := CHAT_OVERLAY_CANVAS_LAYER + 1
 const SKILL_NAV_COVER_CANVAS_LAYER := PROFILE_OVERLAY_CANVAS_LAYER + 1
+const PIN_TRANSITION_BLOCKER_CANVAS_LAYER := SKILL_NAV_COVER_CANVAS_LAYER + 4
+const PIN_TRANSITION_BLOCKER_FADE_IN_SECONDS := 0.12
+const PIN_TRANSITION_BLOCKER_MIN_SECONDS := 0.62
+const PIN_TRANSITION_BLOCKER_FADE_SECONDS := 0.18
 const BOOT_WARMUP_FRAME_BUDGET_MSEC := 32
 const DETAIL_LAZY_VIEWPORT_BUFFER_PX := 120.0
 const DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX := 240.0
@@ -3112,7 +3127,7 @@ var stamina_gauge_pending_skill_id := ""
 var stamina_gauge_pending_hold_seconds := 0.0
 var stamina_gauge_press_active := false
 var stamina_gauge_pre_tip_hold_seconds := 0.0
-var auto_eat_fish_enabled := false
+var auto_eat_fish_enabled_by_skill := {}
 var ad_bonus_seconds_remaining := 0.0
 var rewarded_ad: RewardedAd
 var ad_reward_listener := OnUserEarnedRewardListener.new()
@@ -3167,6 +3182,7 @@ var achievement_empty_medal_texture: Texture2D
 var home_page: Control
 var skills_page: Control
 var nav_bar: PanelContainer
+var bottom_nav_buttons_row: HBoxContainer
 var module_utility_row: Control
 var module_utility_buttons_row: HBoxContainer
 var module_utility_collapse_toggle: Button
@@ -3208,6 +3224,9 @@ var pinned_active_shelf_tween: Tween
 var pinned_active_shelf_height_tween: Tween
 var skills_utility_return_screen := "skill"
 var skills_utility_return_skill_id := ""
+var settings_return_screen := "skill"
+var settings_return_skill_id := ""
+var settings_return_detail_scroll := -1
 var content_scroll: ScrollContainer
 var home_scroll: MobileScrollContainer
 var skills_content: Control
@@ -3245,6 +3264,8 @@ var settings_tab: Button
 var nav_pop_tweens := {}
 var depressed_buttons := {}
 var depressed_activity_shell_buttons := {}
+var bottom_nav_transition_button_id := 0
+var bottom_nav_transition_release_queued := false
 var hero_nav_unlocked := false
 var hero_nav_fade_tween: Tween
 var hub_nav_unlocked := false
@@ -3327,6 +3348,7 @@ var chat_strip_stable_line_one := ""
 var chat_strip_stable_line_two := ""
 var chat_strip_empty_started_msec := 0
 var chat_strip_hide_started_msec := 0
+var post_onboarding_bottom_chrome_fade_tween: Tween
 var chat_last_opened_created_at := 0
 var chat_last_opened_message_id := ""
 var chat_overlay_layer: CanvasLayer
@@ -3367,12 +3389,20 @@ var action_card_keys := []
 var module_ui_pinned_order: Array = []
 var module_ui_pin_color_paths := {}
 var module_ui_collapsed := {}
+var module_ui_animating_collapse_key := ""
 var module_ui_sort_mode := MODULE_UI_SORT_LEVEL
 var module_ui_combo_first := false
 var module_ui_collection_first := false
 var module_ui_pin_preview_tokens := {}
+var module_ui_pin_press_active := false
+var module_ui_pin_press_module_key := ""
+var module_ui_pin_press_card_host_id := 0
+var module_ui_pin_press_position := Vector2.ZERO
+var module_ui_pin_press_touch_index := -1
+var module_ui_pin_press_dragged := false
 var module_ui_pending_pin_scroll_anchor := {}
 var module_ui_pin_scroll_anchor_debug := ""
+var module_ui_pin_refresh_cover_requested := false
 var module_ui_recent_pin_prune_hold_skill_id := ""
 var module_ui_recent_pin_prune_hold_track_id := ""
 var module_ui_recent_pin_prune_hold_until_msec := 0
@@ -3477,6 +3507,9 @@ var detail_lazy_cache_bin: Control = null
 var skill_swipe_real_card_cache_by_skill := {}
 var detail_background_maintenance_last_scroll := -1.0
 var detail_scroll_visual_work_this_frame := false
+var battery_governor_last_activity_msec := 0
+var battery_governor_applied_fps := -1
+var battery_governor_low_processor_applied := false
 var detail_texture_prewarm_skill_id := ""
 var detail_texture_prewarm_request_queue: Array = []
 var detail_texture_prewarm_pending := {}
@@ -3509,10 +3542,26 @@ var skill_swipe_animating := false
 var skill_swipe_animation_mode := ""
 var skill_swipe_drag_base_x := 0.0
 var skill_swipe_drag_offset_x := 0.0
+var skill_swipe_gap_render_offset_x := 0.0
 var skill_swipe_child_click_suppressed := false
 var skill_swipe_button_suppressed_until_msec := 0
 var skill_swipe_handoff_cover: Control
 var skill_nav_cover_layer: CanvasLayer
+var page_switch_pending_transition := {}
+var page_switch_release_when_render_idle := false
+var page_switch_transition_button_id := 0
+var page_switch_transition_target_skill_id := ""
+var page_switch_press_active := false
+var page_switch_press_target_skill_id := ""
+var page_switch_press_position := Vector2.ZERO
+var page_switch_press_dragged := false
+var pin_transition_blocker_layer: CanvasLayer
+var pin_transition_blocker: ColorRect
+var pin_transition_blocker_tween: Tween
+var pin_transition_blocker_target_screen := ""
+var pin_transition_blocker_started_msec := 0
+var pin_transition_blocker_release_started := false
+var pin_transition_blocker_fade_in_done := false
 var skill_swipe_paper_fade_overlay: ColorRect
 var skill_swipe_paper_fade_hold_alpha := 0.0
 var skill_swipe_strip_committed_crossfade := false
@@ -3527,6 +3576,7 @@ var skill_swipe_pending_preview_state := {}
 var skill_swipe_defer_initial_lazy_mount := false
 var skill_swipe_lazy_finalize_token := 0
 var skill_swipe_finalize_schedule_token := 0
+var skill_swipe_finalized_lazy_mount_pending := false
 var main_process_frame_index := 0
 var skill_swipe_finalize_ready_process_frame := -1
 var skill_swipe_finalize_target_skill_id := ""
@@ -3572,6 +3622,8 @@ var onboarding_medal_tip_shown := false
 var activity_unlock_ceremony_action_key := ""
 var onboarding_header_sequence_token := 0
 var onboarding_header_sequence_running := false
+var onboarding_header_sequence_started_msec := 0
+var onboarding_stamina_tip_sequence_started_msec := 0
 var onboarding_auto_run_sequence_running := false
 var onboarding_auto_run_message_root: Control
 var activity_start_highlight_token := 0
@@ -3655,6 +3707,7 @@ var thieving_heist_feather_shader: Shader
 var empty_style_cache := StyleBoxEmpty.new()
 var ui_static_refresh_elapsed := 0.0
 var detail_header_gauge_refresh_elapsed := 0.0
+var passive_card_progress_refresh_elapsed := 0.0
 var detail_actions_scroll_limit_elapsed := 0.0
 var last_default_button_sfx_msec := -100000
 var top_level_nav_locked_until_msec := 0
@@ -3871,6 +3924,7 @@ func _boot_shared_texture_paths() -> Array:
 	for raw_nav_path in [
 		PROGRESS_STAR_ICON_TEXTURE,
 		"res://assets/content/hub/hub-nav-barn.png",
+		NAV_OPEN_CLOSE_ICON_TEXTURE,
 		SETTINGS_GEAR_ICON_TEXTURE,
 		SHOP_ICON_TEXTURE,
 		MODULE_PIN_ICON_TEXTURE,
@@ -4012,16 +4066,110 @@ func _run_headless_boot_smoke() -> void:
 	get_tree().quit()
 
 
+func _screen_capped_frame_rate(frame_cap: int) -> int:
+	var refresh_rate := int(DisplayServer.screen_get_refresh_rate())
+	return mini(refresh_rate, frame_cap) if refresh_rate > 0 else frame_cap
+
+
+func _mobile_battery_governor_enabled() -> bool:
+	if OS.get_environment(BATTERY_GOVERNOR_FORCE_ENV) == "1":
+		return true
+	return OS.get_name() == "Android" or OS.get_name() == "iOS"
+
+
+func _mobile_active_frame_rate() -> int:
+	return _screen_capped_frame_rate(MOBILE_TARGET_FRAME_RATE)
+
+
+func _mobile_idle_frame_rate() -> int:
+	return mini(_mobile_active_frame_rate(), MOBILE_IDLE_FRAME_RATE)
+
+
+func _apply_performance_cap(frame_rate: int, low_processor_mode: bool) -> void:
+	if battery_governor_applied_fps != frame_rate or Engine.max_fps != frame_rate:
+		Engine.max_fps = frame_rate
+		battery_governor_applied_fps = frame_rate
+	var sleep_usec := BATTERY_GOVERNOR_LOW_PROCESSOR_SLEEP_USEC if low_processor_mode else 0
+	if battery_governor_low_processor_applied != low_processor_mode or OS.low_processor_usage_mode != low_processor_mode:
+		OS.low_processor_usage_mode = low_processor_mode
+		battery_governor_low_processor_applied = low_processor_mode
+	if OS.low_processor_usage_mode_sleep_usec != sleep_usec:
+		OS.low_processor_usage_mode_sleep_usec = sleep_usec
+
+
+func _record_battery_governor_activity() -> void:
+	battery_governor_last_activity_msec = Time.get_ticks_msec()
+	if _mobile_battery_governor_enabled():
+		_apply_performance_cap(_mobile_active_frame_rate(), false)
+
+
+func _input_event_wakes_battery_governor(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		return true
+	if event is InputEventScreenTouch:
+		return true
+	if event is InputEventScreenDrag:
+		return true
+	if event is InputEventKey:
+		return event.pressed and not event.echo
+	if event is InputEventJoypadButton:
+		return event.pressed
+	if event is InputEventJoypadMotion:
+		var joy_motion := event as InputEventJoypadMotion
+		return absf(joy_motion.axis_value) >= 0.2
+	if event is InputEventMouseMotion:
+		return (
+			Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+			or Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
+			or Input.is_mouse_button_pressed(MOUSE_BUTTON_MIDDLE)
+		)
+	return false
+
+
+func _battery_governor_visual_work_active() -> bool:
+	if boot_warmup_active or boot_detail_render_in_progress or screen_render_in_progress:
+		return true
+	if detail_scroll_visual_work_this_frame or detail_lazy_mounted_this_frame:
+		return true
+	if _skill_swipe_loading_transition_active():
+		return true
+	if action_stop_hold_active or action_stop_hold_unloading or not action_card_press_key.is_empty():
+		return true
+	if hub_drag_module_id != "" or hub_hotspot_hold_module_id != "":
+		return true
+	if chat_keyboard_lift_active:
+		return true
+	if activity_start_highlight_active or activity_start_highlight_pending:
+		return true
+	if achievement_toast_queue_active or not achievement_toasts.is_empty():
+		return true
+	if not page_switch_pending_transition.is_empty() or module_ui_animating_collapse_key != "":
+		return true
+	if pin_transition_blocker != null and is_instance_valid(pin_transition_blocker) and pin_transition_blocker.visible:
+		return true
+	if detail_jump_top_hold > 0.0 or detail_jump_bottom_hold > 0.0 or detail_jump_top_hovered or detail_jump_bottom_hovered:
+		return true
+	return _skill_detail_has_fishing_camera_returning()
+
+
+func _process_battery_governor() -> void:
+	if not _mobile_battery_governor_enabled():
+		return
+	var now_msec := Time.get_ticks_msec()
+	if _battery_governor_visual_work_active():
+		battery_governor_last_activity_msec = now_msec
+	var idle_after_msec := int(BATTERY_GOVERNOR_IDLE_AFTER_SECONDS * 1000.0)
+	var idle := now_msec - battery_governor_last_activity_msec >= idle_after_msec
+	_apply_performance_cap(_mobile_idle_frame_rate() if idle else _mobile_active_frame_rate(), idle)
+
+
 func _configure_performance_mode() -> void:
-	if OS.get_name() == "Android" or OS.get_name() == "iOS":
-		var mobile_refresh_rate := int(DisplayServer.screen_get_refresh_rate())
-		Engine.max_fps = mini(mobile_refresh_rate, MOBILE_TARGET_FRAME_RATE) if mobile_refresh_rate > 0 else MOBILE_TARGET_FRAME_RATE
+	battery_governor_last_activity_msec = Time.get_ticks_msec()
+	if _mobile_battery_governor_enabled():
+		_apply_performance_cap(_mobile_active_frame_rate(), false)
 	else:
-		var desktop_refresh_rate := int(DisplayServer.screen_get_refresh_rate())
-		Engine.max_fps = mini(desktop_refresh_rate, DESKTOP_TARGET_FRAME_RATE) if desktop_refresh_rate > 0 else DESKTOP_TARGET_FRAME_RATE
+		_apply_performance_cap(_screen_capped_frame_rate(DESKTOP_TARGET_FRAME_RATE), false)
 	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_ADAPTIVE)
-	OS.low_processor_usage_mode = false
-	OS.low_processor_usage_mode_sleep_usec = 0
 
 
 func _performance_overlay_enabled_on_boot() -> bool:
@@ -4063,6 +4211,8 @@ func _toggle_performance_overlay() -> void:
 
 func _process_detail_lazy_window(delta: float) -> int:
 	if detail_lazy_plan.is_empty() or detail_lazy_stack == null:
+		return 0
+	if skill_swipe_finalized_lazy_mount_pending:
 		return 0
 	if skill_swipe_pending_full_finalize:
 		return 0
@@ -4215,6 +4365,8 @@ func _process(delta: float) -> void:
 	_process_chat_keyboard_lift(delta)
 	_update_ui(delta)
 	_maybe_release_ready_skill_swipe_cover()
+	_process_page_switch_pending_transition()
+	_process_pin_transition_blocker()
 	if trace_process:
 		var now_usec := Time.get_ticks_usec()
 		trace_ui_us = now_usec - trace_last_usec
@@ -4228,6 +4380,7 @@ func _process(delta: float) -> void:
 	_process_detail_jump_arrows(delta)
 	_process_pending_swipe_preview_finalize()
 	_maybe_repair_blank_detail_lazy_stack()
+	_process_battery_governor()
 	if trace_process:
 		var trace_total_us := Time.get_ticks_usec() - trace_start_usec
 		if trace_total_us >= 2000:
@@ -4271,8 +4424,24 @@ func _input(event: InputEvent) -> void:
 	if _route_achievement_toast_input(event):
 		get_viewport().set_input_as_handled()
 		return
+	if _route_fishing_detail_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if _route_direct_module_action_zone_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if not _modal_blocks_background_input() and not _any_modal_overlay_visible():
+		if _route_bottom_nav_button_global_input(event):
+			get_viewport().set_input_as_handled()
+			return
+		if _route_module_utility_button_global_input(event):
+			get_viewport().set_input_as_handled()
+			return
 	_disarm_reset_data_confirmation_on_outside_press(event)
 	if _route_fishing_wallet_unhandled_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if _route_onboarding_settings_nav_input(event):
 		get_viewport().set_input_as_handled()
 		return
 	if _route_tutorial_panel_input(event):
@@ -4289,12 +4458,18 @@ func _input(event: InputEvent) -> void:
 		_cancel_action_stop_hold()
 		get_viewport().set_input_as_handled()
 		return
+	if _route_achievement_medal_press(event):
+		get_viewport().set_input_as_handled()
+		return
 	if _route_achievement_medal_popover_dismiss(event):
 		get_viewport().set_input_as_handled()
 		return
 	if _any_modal_overlay_visible():
 		_cancel_skill_swipe_feedback()
 		_cancel_action_stop_hold()
+		return
+	if bool(Callable(self, "_route_page_switch_button_global_input").call(event)):
+		get_viewport().set_input_as_handled()
 		return
 	_maybe_dismiss_hub_tutorial_tip_for_input(event)
 	if _is_stamina_gauge_release_event(event):
@@ -4329,10 +4504,10 @@ func _input(event: InputEvent) -> void:
 			return
 		get_viewport().set_input_as_handled()
 		return
-	if _route_thieving_heist_button_global_input(event):
+	if _route_module_action_zone_input(event):
 		get_viewport().set_input_as_handled()
 		return
-	if _route_fishing_offer_button_global_input(event):
+	if _route_thieving_heist_button_global_input(event):
 		get_viewport().set_input_as_handled()
 		return
 	if _event_points_inside_bottom_nav(event):
@@ -4340,18 +4515,12 @@ func _input(event: InputEvent) -> void:
 		_clear_active_fishing_method_button_press()
 		action_card_press_key = ""
 		return
-	if bool(Callable(self, "_route_page_switch_button_global_input").call(event)):
-		get_viewport().set_input_as_handled()
-		return
 	if _event_points_inside_bottom_interactive_ui(event):
 		_cancel_skill_swipe_feedback(false)
 		_clear_active_fishing_method_button_press()
 		action_card_press_key = ""
 		return
 	if _route_action_stop_hold_input(event):
-		get_viewport().set_input_as_handled()
-		return
-	if _route_fishing_method_button_global_input(event):
 		get_viewport().set_input_as_handled()
 		return
 	if _route_fishing_method_lock_input(event):
@@ -4364,9 +4533,6 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if _route_fishing_active_tool_input(event):
-		get_viewport().set_input_as_handled()
-		return
-	if _route_module_action_zone_input(event):
 		get_viewport().set_input_as_handled()
 		return
 	_hide_skill_header_info_on_outside_press(event)
@@ -4574,9 +4740,11 @@ func _route_activity_lock_input(event: InputEvent) -> bool:
 			continue
 		if not overlay_root.is_visible_in_tree() or not rig.is_visible_in_tree():
 			continue
-		if rig.has_method("pointer_over_lock_event") and bool(rig.call("pointer_over_lock_event", event)):
-			_mark_lock_click_tip_seen()
-		if rig.has_method("handle_pointer_event") and bool(rig.call("handle_pointer_event", event)):
+		if not rig.has_method("pointer_over_lock_event") or not rig.has_method("handle_pointer_event"):
+			continue
+		if not bool(rig.call("pointer_over_lock_event", event)) and not activity_lock_input_active:
+			continue
+		if bool(rig.call("handle_pointer_event", event)):
 			activity_lock_input_active = not _activity_lock_input_released(event)
 			active_activity_lock_rig = rig if activity_lock_input_active else null
 			_set_activity_lock_page_scrolling_disabled(activity_lock_input_active)
@@ -4756,16 +4924,16 @@ func _event_points_inside_bottom_interactive_ui(event: InputEvent, source: Contr
 	var positions: Array[Vector2] = []
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
-		positions.append(_global_event_position(mouse_event.position, mouse_event.global_position, source))
+		_add_bottom_nav_event_position_candidates(positions, _global_event_position(mouse_event.position, mouse_event.global_position, source))
 	elif event is InputEventMouseMotion:
 		var motion_event := event as InputEventMouseMotion
-		positions.append(_global_event_position(motion_event.position, motion_event.global_position, source))
+		_add_bottom_nav_event_position_candidates(positions, _global_event_position(motion_event.position, motion_event.global_position, source))
 	elif event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
-		positions.append(_global_event_position(touch_event.position, touch_event.position, source))
+		_add_bottom_nav_event_position_candidates(positions, _global_event_position(touch_event.position, touch_event.position, source))
 	elif event is InputEventScreenDrag:
 		var drag_event := event as InputEventScreenDrag
-		positions.append(_global_event_position(drag_event.position, drag_event.position, source))
+		_add_bottom_nav_event_position_candidates(positions, _global_event_position(drag_event.position, drag_event.position, source))
 	for event_position in positions:
 		if nav_only:
 			if _position_inside_bottom_nav(event_position):
@@ -4773,6 +4941,10 @@ func _event_points_inside_bottom_interactive_ui(event: InputEvent, source: Contr
 		elif _position_inside_bottom_interactive_ui(event_position):
 			return true
 	return false
+
+
+func _add_bottom_nav_event_position_candidates(positions: Array[Vector2], event_position: Vector2) -> void:
+	_add_unique_event_position(positions, event_position)
 
 
 func _position_inside_bottom_nav(event_position: Vector2) -> bool:
@@ -4793,7 +4965,7 @@ func _position_inside_bottom_interactive_ui(event_position: Vector2) -> bool:
 	return false
 
 
-func _position_inside_detail_actions_viewport(event_position: Vector2) -> bool:
+func _position_inside_detail_actions_viewport(event_position: Vector2, viewport_outset := 2.0) -> bool:
 	var viewport_control: Control = null
 	if current_screen == "skill":
 		viewport_control = detail_actions_scroll
@@ -4805,7 +4977,7 @@ func _position_inside_detail_actions_viewport(event_position: Vector2) -> bool:
 		return false
 	if not viewport_control.is_visible_in_tree():
 		return false
-	var viewport_rect := viewport_control.get_global_rect().grow(2.0)
+	var viewport_rect := viewport_control.get_global_rect().grow(viewport_outset)
 	for candidate in _activity_input_position_candidates(event_position):
 		if viewport_rect.has_point(candidate):
 			return true
@@ -4827,14 +4999,14 @@ func _position_inside_skill_menu_active_drawer(event_position: Vector2) -> bool:
 	return false
 
 
-func _positions_inside_detail_actions_viewport(positions: Array[Vector2]) -> bool:
+func _positions_inside_detail_actions_viewport(positions: Array[Vector2], viewport_outset := 2.0) -> bool:
 	for event_position in positions:
-		if _position_inside_detail_actions_viewport(event_position):
+		if _position_inside_detail_actions_viewport(event_position, viewport_outset):
 			return true
 	return false
 
 
-func _event_points_inside_detail_actions_viewport(event: InputEvent, source: Control = null) -> bool:
+func _event_points_inside_detail_actions_viewport(event: InputEvent, source: Control = null, viewport_outset := 2.0) -> bool:
 	var positions: Array[Vector2] = []
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
@@ -4848,7 +5020,7 @@ func _event_points_inside_detail_actions_viewport(event: InputEvent, source: Con
 	elif event is InputEventScreenDrag:
 		var drag_event := event as InputEventScreenDrag
 		_add_unique_event_position(positions, _global_event_position(drag_event.position, drag_event.position, source))
-	return _positions_inside_detail_actions_viewport(positions)
+	return _positions_inside_detail_actions_viewport(positions, viewport_outset)
 
 
 func _global_event_position(local_position: Vector2, event_global_position: Vector2, source: Control = null) -> Vector2:
@@ -5439,6 +5611,201 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 	return false
 
 
+func _fishing_detail_input_context_active() -> bool:
+	if current_screen == "skill":
+		return selected_skill_id == "fishing"
+	return current_screen == "pinned"
+
+
+func _route_fishing_detail_input(event: InputEvent) -> bool:
+	if not _fishing_detail_input_context_active():
+		return false
+	if not (
+		event is InputEventMouseButton
+		or event is InputEventMouseMotion
+		or event is InputEventScreenTouch
+		or event is InputEventScreenDrag
+	):
+		return false
+	var event_position := _fishing_detail_event_position(event)
+	if current_screen == "pinned" and not _pinned_fishing_detail_event_relevant(event_position):
+		return false
+	if event_position != Vector2.INF and _position_inside_bottom_interactive_ui(event_position):
+		if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
+			return _update_pending_module_pin_press(event)
+		return false
+	if page_switch_press_active:
+		return false
+	if event_position != Vector2.INF and _page_switch_button_at_position(event_position) != null:
+		return false
+	if _route_fishing_area_pin_corner_input(event):
+		return true
+	if _route_fishing_location_image_priority_press(event):
+		return true
+	if _route_fishing_method_button_global_input(event):
+		return true
+	if current_screen == "pinned":
+		var action_hit := _module_action_circle_at_direct_position(event_position)
+		if not action_hit.is_empty() and _fishing_detail_module_key_is_fishing(str(action_hit.get("module_key", ""))):
+			if _route_module_action_zone_input(event):
+				return true
+	else:
+		if _route_module_action_zone_input(event):
+			return true
+	if _route_fishing_offer_button_global_input(event):
+		return true
+	if _route_fishing_area_card_press(event):
+		return true
+	return false
+
+
+func _pinned_fishing_detail_event_relevant(event_position: Vector2) -> bool:
+	if module_ui_pin_press_active:
+		return _fishing_detail_module_key_is_fishing(module_ui_pin_press_module_key)
+	if not _active_fishing_method_button_hit().is_empty() or _active_fishing_offer_button() != null:
+		return true
+	if event_position == Vector2.INF:
+		return false
+	if not _fishing_area_pin_corner_hit(event_position).is_empty():
+		return true
+	var action_hit := _module_action_circle_at_direct_position(event_position)
+	if not action_hit.is_empty() and _fishing_detail_module_key_is_fishing(str(action_hit.get("module_key", ""))):
+		return true
+	if not _fishing_method_button_hit(event_position, true).is_empty():
+		return true
+	if _fishing_offer_button_hit(event_position, true) != null:
+		return true
+	if not _fishing_area_card_at_position(event_position).is_empty():
+		return true
+	return false
+
+
+func _fishing_detail_module_key_is_fishing(module_key: String) -> bool:
+	return _module_ui_key_belongs_to_skill(_normalized_module_ui_key(module_key), "fishing")
+
+
+func _fishing_detail_event_position(event: InputEvent) -> Vector2:
+	if event is InputEventMouseButton:
+		return (event as InputEventMouseButton).global_position
+	if event is InputEventMouseMotion:
+		return (event as InputEventMouseMotion).global_position
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).position
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).position
+	return Vector2.INF
+
+
+func _route_fishing_area_card_press(event: InputEvent) -> bool:
+	if current_screen != "skill" and current_screen != "pinned":
+		return false
+	if current_screen == "skill" and selected_skill_id != "fishing":
+		return false
+	if not (
+		event is InputEventMouseButton
+		or event is InputEventScreenTouch
+	):
+		return false
+	var event_position := Vector2.ZERO
+	var pointer_id := -1
+	var pressed := false
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
+			return false
+		event_position = mouse_event.global_position
+		pressed = mouse_event.pressed
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		event_position = touch_event.position
+		pointer_id = touch_event.index
+		pressed = touch_event.pressed
+	if not pressed:
+		return false
+	if _position_inside_bottom_nav(event_position) or _position_inside_bottom_interactive_ui(event_position):
+		return false
+	if not _position_inside_detail_actions_viewport(event_position):
+		return false
+	if not _fishing_method_button_hit(event_position, true).is_empty():
+		return false
+	var area_card := _fishing_area_card_at_position(event_position)
+	if area_card.is_empty():
+		return false
+	var skill_id := str(area_card.get("skill_id", "fishing"))
+	var action_id := str(area_card.get("selected_action_id", ""))
+	if running_skill_id == skill_id and _fishing_area_card_owns_action(area_card, running_action_id):
+		action_id = running_action_id
+	if action_id.is_empty():
+		return false
+	var action := _action_data(skill_id, action_id)
+	var method_card := _fishing_method_card_for_action(skill_id, action_id)
+	if _activity_card_is_locked_or_covered(skill_id, action, method_card):
+		_cancel_action_stop_hold()
+		return false
+	if running_skill_id != skill_id or running_action_id != action_id:
+		_on_fishing_area_card_pressed(skill_id, str(area_card.get("card_key", "")))
+		action_card_press_consumed = true
+		_cancel_action_stop_hold()
+		skill_swipe_tracking = false
+		skill_swipe_horizontal = false
+		skill_swipe_touch_index = -1
+		return true
+	if _try_action_opportunity_click(skill_id, action_id, event_position):
+		action_card_press_consumed = true
+		_cancel_action_stop_hold()
+		skill_swipe_tracking = false
+		skill_swipe_horizontal = false
+		skill_swipe_touch_index = -1
+		return true
+	if _miss_action_opportunity_click(skill_id, action_id, event_position):
+		action_card_press_consumed = true
+		_cancel_action_stop_hold()
+		skill_swipe_tracking = false
+		skill_swipe_horizontal = false
+		skill_swipe_touch_index = -1
+		return true
+	_begin_action_stop_hold(skill_id, action_id, event_position, pointer_id)
+	return true
+
+
+func _fishing_area_card_at_position(event_position: Vector2) -> Dictionary:
+	if not _position_inside_detail_actions_viewport(event_position):
+		return {}
+	_prune_invalid_action_cards()
+	if not _module_action_circle_at_direct_position(event_position).is_empty():
+		return {}
+	var keys := action_card_keys.duplicate()
+	keys.reverse()
+	for raw_key in keys:
+		var key := str(raw_key)
+		if not action_cards.has(key):
+			continue
+		var card := action_cards[key] as Dictionary
+		if not bool(card.get("is_fishing_area", false)):
+			continue
+		var pop := _valid_control_ref(card.get("pop", null))
+		if pop == null or not pop.is_inside_tree() or not pop.is_visible_in_tree():
+			continue
+		if not pop.get_global_rect().has_point(event_position):
+			continue
+		if not _module_action_zone_kind_at_position(pop, event_position).is_empty():
+			continue
+		if _fishing_active_tool_hit_at_position(card, event_position):
+			continue
+		return card
+	return {}
+
+
+func _fishing_active_tool_hit_at_position(area_card: Dictionary, event_position: Vector2) -> bool:
+	var layer := area_card.get("active_tool_layer") as Control
+	var art := area_card.get("active_tool_art") as TextureRect
+	if layer == null or art == null or not is_instance_valid(layer) or not is_instance_valid(art):
+		return false
+	if not layer.visible or not layer.is_visible_in_tree():
+		return false
+	return art.get_global_rect().grow(18.0).has_point(event_position)
+
+
 func _activity_card_is_locked_or_covered(skill_id: String, action: Dictionary, card: Dictionary) -> bool:
 	if skill_id.is_empty() or action.is_empty() or card.is_empty():
 		return true
@@ -5755,6 +6122,7 @@ func _save_for_app_suspend() -> void:
 
 func _resume_from_app_suspend() -> void:
 	_write_crash_session_marker("running")
+	_record_battery_governor_activity()
 	if not _runtime_save_is_safe():
 		_restart_music_after_app_resume()
 		return
@@ -5872,6 +6240,9 @@ func _build_ui() -> void:
 	_build_nav_bar()
 	_build_module_utility_row()
 	_build_achievement_toast_layer()
+	if tutorial_active:
+		_ensure_tutorial_overlay()
+		_update_tutorial_overlay()
 
 
 func _build_ui_boot_async():
@@ -5884,6 +6255,9 @@ func _build_ui_boot_async():
 	_build_module_utility_row()
 	await _boot_progress_step("Preparing popups...", 0.56)
 	_build_achievement_toast_layer()
+	if tutorial_active:
+		_ensure_tutorial_overlay()
+		_update_tutorial_overlay()
 	await _boot_progress_step("Starting systems...", 0.60)
 	await _boot_progress_step("Mounting skill view...", 0.62)
 	await _boot_progress_step("Preparing first frame...", 0.64)
@@ -7447,6 +7821,7 @@ func _build_tutorial_overlay() -> void:
 	tutorial_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	tutorial_overlay.visible = false
 	tutorial_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tutorial_overlay.gui_input.connect(_on_tutorial_overlay_gui_input)
 	tutorial_layer.add_child(tutorial_overlay)
 
 	tutorial_target_ring = Panel.new()
@@ -7871,6 +8246,8 @@ func _build_nav_bar() -> void:
 	nav_bar.add_theme_stylebox_override("panel", _nav_style())
 	add_child(nav_bar)
 	var row := HBoxContainer.new()
+	row.name = "BottomNavButtonsRow"
+	bottom_nav_buttons_row = row
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 120)
 	row.clip_contents = true
@@ -7881,7 +8258,7 @@ func _build_nav_bar() -> void:
 	hero_tab.add_theme_constant_override("icon_max_width", 244)
 	_register_nav_new_symbol_dot(hero_tab, "hero")
 	hero_tab.set_meta("bottom_nav_builtin_pressed_route", true)
-	hero_tab.pressed.connect(_show_home.bind(hero_tab))
+	hero_tab.pressed.connect(_activate_bottom_nav_target.bind("home", hero_tab))
 	hero_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("home", hero_tab))
 	row.add_child(hero_tab)
 	_sync_hero_nav_button(true)
@@ -7889,25 +8266,26 @@ func _build_nav_bar() -> void:
 	hub_tab.add_theme_constant_override("icon_max_width", 220)
 	_register_nav_new_symbol_dot(hub_tab, "hub")
 	hub_tab.set_meta("bottom_nav_builtin_pressed_route", true)
-	hub_tab.pressed.connect(_show_hub.bind(hub_tab))
+	hub_tab.pressed.connect(_activate_bottom_nav_target.bind("hub", hub_tab))
 	hub_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("hub", hub_tab))
 	row.add_child(hub_tab)
 	_sync_hub_nav_button(true)
 	skills_tab = _nav_button(TOTAL_LEVEL_BARGRAPH_TEXTURE, true)
+	skills_tab.set_meta("nav_open_icon_disabled", true)
 	skills_tab.set_meta("bottom_nav_builtin_pressed_route", true)
 	skills_tab.pressed.connect(_show_skills_module)
 	skills_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("skill", skills_tab))
 	row.add_child(skills_tab)
 	settings_tab = _nav_button(SETTINGS_GEAR_ICON_TEXTURE, true)
 	settings_tab.set_meta("bottom_nav_builtin_pressed_route", true)
-	settings_tab.pressed.connect(_show_settings)
+	settings_tab.pressed.connect(_activate_bottom_nav_target.bind("settings", settings_tab))
 	settings_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("settings", settings_tab))
 	row.add_child(settings_tab)
 	shop_tab = _nav_button(SHOP_ICON_TEXTURE, true)
 	shop_tab.add_theme_constant_override("icon_max_width", 232)
 	_register_nav_new_symbol_dot(shop_tab, "shop")
 	shop_tab.set_meta("bottom_nav_builtin_pressed_route", true)
-	shop_tab.pressed.connect(_show_shop.bind(shop_tab))
+	shop_tab.pressed.connect(_activate_bottom_nav_target.bind("shop", shop_tab))
 	shop_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("shop", shop_tab))
 	row.add_child(shop_tab)
 	shop_nav_unlocked = false
@@ -7922,11 +8300,62 @@ func _intro_bottom_controls_unlocked() -> bool:
 func _sync_bottom_nav_visibility() -> void:
 	if nav_bar == null or not is_instance_valid(nav_bar):
 		return
-	nav_bar.visible = _intro_bottom_controls_unlocked()
+	var controls_unlocked := _intro_bottom_controls_unlocked()
+	nav_bar.visible = true
+	if bottom_nav_buttons_row != null and is_instance_valid(bottom_nav_buttons_row):
+		bottom_nav_buttons_row.visible = true
+	if controls_unlocked:
+		if hero_tab != null and is_instance_valid(hero_tab):
+			hero_tab.visible = true
+			hero_tab.disabled = false
+			hero_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+			hero_tab.self_modulate = Color.WHITE
+		if hub_tab != null and is_instance_valid(hub_tab):
+			hub_tab.visible = true
+			hub_tab.disabled = false
+			hub_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+			hub_tab.self_modulate = Color.WHITE
+		if skills_tab != null and is_instance_valid(skills_tab):
+			skills_tab.visible = true
+			skills_tab.disabled = false
+			skills_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+			skills_tab.self_modulate = Color.WHITE
+			skills_tab.modulate = Color.WHITE
+		if settings_tab != null and is_instance_valid(settings_tab):
+			settings_tab.visible = true
+			settings_tab.disabled = false
+			settings_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+			settings_tab.self_modulate = Color.WHITE
+			settings_tab.modulate = Color.WHITE
+		if shop_tab != null and is_instance_valid(shop_tab):
+			shop_tab.visible = true
+			shop_tab.disabled = false
+			shop_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+			shop_tab.self_modulate = Color.WHITE
+		_sync_hero_nav_button(true)
+		_sync_hub_nav_button(true)
+		_sync_shop_nav_button(true)
+		return
+	for raw_button in [hero_tab, hub_tab, skills_tab, settings_tab, shop_tab]:
+		var button := raw_button as Button
+		if button == null or not is_instance_valid(button):
+			continue
+		var settings_button := button == settings_tab
+		var skills_button := button == skills_tab
+		button.visible = true
+		button.self_modulate = Color.WHITE
+		if controls_unlocked or settings_button or skills_button:
+			button.modulate = Color.WHITE
+		else:
+			button.modulate = HUB_NAV_LOCKED_MODULATE
+		button.disabled = false
+		button.mouse_filter = Control.MOUSE_FILTER_STOP if controls_unlocked or settings_button or skills_button else Control.MOUSE_FILTER_IGNORE
 
 
 func _on_bottom_nav_button_gui_input(event: InputEvent, target_screen: String, button: Button) -> void:
 	if button == null or not is_instance_valid(button) or button.disabled:
+		return
+	if _bottom_nav_transition_input_locked(button):
 		return
 	var event_position := _passive_button_event_position(event, button)
 	var is_press := false
@@ -7966,11 +8395,108 @@ func _on_bottom_nav_button_gui_input(event: InputEvent, target_screen: String, b
 	if not button.get_global_rect().grow(24.0).has_point(event_position):
 		return
 	if bool(button.get_meta("bottom_nav_builtin_pressed_route", false)):
+		_activate_bottom_nav_target(target_screen, button)
 		return
 	_activate_bottom_nav_target(target_screen, button)
 
 
+func _route_bottom_nav_button_global_input(event: InputEvent) -> bool:
+	if nav_bar == null or not is_instance_valid(nav_bar):
+		return false
+	if not nav_bar.is_inside_tree() or not nav_bar.is_visible_in_tree():
+		return false
+	if not (
+		event is InputEventMouseButton
+		or event is InputEventMouseMotion
+		or event is InputEventScreenTouch
+		or event is InputEventScreenDrag
+	):
+		return false
+	var event_position := _passive_button_event_position(event, null)
+	var is_press := _module_utility_event_is_press(event)
+	var button := _bottom_nav_button_at_position(event_position) if is_press else _active_bottom_nav_button()
+	if button == null:
+		return false
+	var target_screen := _bottom_nav_target_for_button(button)
+	if target_screen.is_empty():
+		return false
+	_on_bottom_nav_button_gui_input(event, target_screen, button)
+	_cancel_skill_swipe_feedback(false)
+	_clear_active_fishing_method_button_press()
+	action_card_press_key = ""
+	return true
+
+
+func _bottom_nav_button_at_position(event_position: Vector2) -> Button:
+	for raw_button in [hero_tab, hub_tab, skills_tab, settings_tab, shop_tab]:
+		var button := raw_button as Button
+		if button == null or not is_instance_valid(button) or button.disabled:
+			continue
+		if not button.is_inside_tree() or not button.is_visible_in_tree():
+			continue
+		if button.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			continue
+		var button_rect := button.get_global_rect().grow(24.0)
+		if button_rect.has_point(event_position):
+			return button
+	return null
+
+
+func _active_bottom_nav_button() -> Button:
+	for raw_button in [hero_tab, hub_tab, skills_tab, settings_tab, shop_tab]:
+		var button := raw_button as Button
+		if button != null and is_instance_valid(button) and bool(button.get_meta("bottom_nav_press_active", false)):
+			return button
+	return null
+
+
+func _bottom_nav_target_for_button(button: Button) -> String:
+	if button == hero_tab:
+		return "home"
+	if button == hub_tab:
+		return "hub"
+	if button == skills_tab:
+		return "skill"
+	if button == settings_tab:
+		return "settings"
+	if button == shop_tab:
+		return "shop"
+	return ""
+
+
+func _is_bottom_nav_button(button: Control) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	return button == hero_tab or button == hub_tab or button == skills_tab or button == settings_tab or button == shop_tab
+
+
+func _bottom_nav_transition_input_locked(button: Button = null) -> bool:
+	if bottom_nav_transition_button_id == 0:
+		return false
+	if not _bottom_nav_transition_visual_active():
+		_release_bottom_nav_transition_button()
+		return false
+	if button != null and is_instance_valid(button):
+		_force_button_unpressed(button)
+	return true
+
+
 func _activate_bottom_nav_target(target_screen: String, source_button: Control) -> void:
+	var nav_button := source_button as Button
+	if bottom_nav_transition_button_id != 0 and _bottom_nav_transition_visual_active():
+		if nav_button != null and is_instance_valid(nav_button):
+			_force_button_unpressed(nav_button)
+		return
+	if _is_bottom_nav_button(nav_button):
+		_hold_bottom_nav_transition_button(nav_button)
+		_schedule_bottom_nav_transition_button_idle_release()
+	if target_screen == "settings" and current_screen == "settings":
+		top_level_nav_locked_until_msec = 0
+		_return_from_settings_page()
+		return
+	if _bottom_nav_open_close_returns_to_skill(target_screen, source_button):
+		_show_skills_module()
+		return
 	match target_screen:
 		"home":
 			_show_home(source_button)
@@ -7982,6 +8508,52 @@ func _activate_bottom_nav_target(target_screen: String, source_button: Control) 
 			_show_settings()
 		"shop":
 			_show_shop(source_button)
+
+
+func _bottom_nav_open_close_returns_to_skill(target_screen: String, source_button: Control) -> bool:
+	if target_screen == "skill" or source_button == null or not is_instance_valid(source_button):
+		return false
+	if bool(source_button.get_meta("nav_open_icon_disabled", false)):
+		return false
+	if str(source_button.get_meta("nav_current_icon_path", "")) != NAV_OPEN_CLOSE_ICON_TEXTURE:
+		return false
+	match target_screen:
+		"home":
+			return current_screen == "home" or current_screen == "achievements"
+		"hub":
+			return current_screen == "hub"
+		"settings":
+			return false
+		"shop":
+			return current_screen == "shop"
+	return false
+
+
+func _route_onboarding_settings_nav_input(event: InputEvent) -> bool:
+	if not _onboarding_path_active():
+		return false
+	if settings_tab == null or not is_instance_valid(settings_tab) or not settings_tab.is_visible_in_tree():
+		return false
+	var is_press := false
+	var event_position := Vector2.ZERO
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		is_press = event.pressed
+		event_position = event.global_position
+	elif event is InputEventScreenTouch:
+		is_press = (event as InputEventScreenTouch).pressed
+		event_position = event.position
+	if not is_press:
+		return false
+	var settings_rect := settings_tab.get_global_rect().grow(24.0)
+	var hit_settings := settings_rect.has_point(event_position)
+	if not hit_settings:
+		return false
+	if current_screen == "settings":
+		top_level_nav_locked_until_msec = 0
+		_return_from_settings_page()
+		return true
+	_show_settings()
+	return true
 
 
 func _build_module_utility_row() -> void:
@@ -8088,21 +8660,19 @@ func _module_utility_button(label_text: String, icon_path: String, fill: Color) 
 
 func _on_pinned_utility_pressed() -> void:
 	if pinned_utility_tab != null and is_instance_valid(pinned_utility_tab):
-		pinned_utility_tab.set_meta("activity_button_suppress_next_state_tween", true)
-		pinned_utility_tab.set_meta("activity_button_hold_nav_press", true)
+		_prime_module_utility_nav_button_press_state(pinned_utility_tab)
 	_show_pinned_activities()
 
 
 func _on_skills_utility_pressed() -> void:
 	if skills_utility_tab != null and is_instance_valid(skills_utility_tab):
-		skills_utility_tab.set_meta("activity_button_suppress_next_state_tween", true)
-		skills_utility_tab.set_meta("activity_button_hold_nav_press", true)
+		_prime_module_utility_nav_button_press_state(skills_utility_tab)
 	if current_screen == "menu":
 		_return_from_skills_utility()
 		return
 	skills_utility_return_screen = current_screen
 	skills_utility_return_skill_id = selected_skill_id
-	_show_skills(true)
+	_show_skills()
 
 
 func _return_from_skills_utility() -> void:
@@ -8113,30 +8683,138 @@ func _return_from_skills_utility() -> void:
 		return
 	if not skills_utility_return_skill_id.is_empty() and _known_skill_id(skills_utility_return_skill_id):
 		selected_skill_id = skills_utility_return_skill_id
-	var cover_id := _begin_page_switch_scroll_cover_timed()
-	if cover_id == 0:
-		_complete_return_from_skills_utility(target_screen)
-	else:
-		get_tree().create_timer(PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS, true, false, true).timeout.connect(
-			_complete_return_from_skills_utility_after_cover.bind(cover_id, target_screen)
-		)
+	current_screen = target_screen
+	_render_screen()
 
 
 func _complete_return_from_skills_utility_after_cover(cover_id: int, target_screen: String) -> void:
+	_force_page_switch_scroll_cover_opaque(cover_id)
 	if not _page_switch_cover_id_active(cover_id):
 		return
-	_force_page_switch_scroll_cover_opaque(cover_id)
-	_complete_return_from_skills_utility(target_screen)
+	await _complete_return_from_skills_utility(target_screen)
 
 
 func _complete_return_from_skills_utility(target_screen: String) -> void:
 	current_screen = target_screen
-	_render_screen()
+	await _render_screen()
 	_fade_clear_page_switch_scroll_cover()
 
 
 func _on_sort_utility_pressed() -> void:
 	_toggle_module_sort_menu()
+
+
+func _route_module_utility_button_global_input(event: InputEvent) -> bool:
+	if module_utility_row == null or not is_instance_valid(module_utility_row):
+		return false
+	if not module_utility_row.is_inside_tree() or not module_utility_row.is_visible_in_tree():
+		return false
+	if not (
+		event is InputEventMouseButton
+		or event is InputEventMouseMotion
+		or event is InputEventScreenTouch
+		or event is InputEventScreenDrag
+	):
+		return false
+	var event_position := _passive_button_event_position(event, null)
+	var is_press := _module_utility_event_is_press(event)
+	var button := _module_utility_button_at_position(event_position) if is_press else _active_module_utility_button()
+	if button == null:
+		return false
+	_on_module_utility_button_global_input(event, button)
+	return true
+
+
+func _module_utility_button_at_position(event_position: Vector2) -> Button:
+	for raw_button in [pinned_utility_tab, skills_utility_tab, sort_utility_tab, module_utility_collapse_toggle]:
+		var button := raw_button as Button
+		if button == null or not is_instance_valid(button) or button.disabled:
+			continue
+		if not button.is_inside_tree() or not button.is_visible_in_tree():
+			continue
+		var button_rect := button.get_global_rect().grow(24.0)
+		if button_rect.has_point(event_position):
+			return button
+	return null
+
+
+func _active_module_utility_button() -> Button:
+	for raw_button in [pinned_utility_tab, skills_utility_tab, sort_utility_tab, module_utility_collapse_toggle]:
+		var button := raw_button as Button
+		if button != null and is_instance_valid(button) and bool(button.get_meta("module_utility_press_active", false)):
+			return button
+	return null
+
+
+func _module_utility_event_is_press(event: InputEvent) -> bool:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		return event.pressed
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).pressed
+	return false
+
+
+func _on_module_utility_button_global_input(event: InputEvent, button: Button) -> void:
+	if button == null or not is_instance_valid(button) or button.disabled:
+		return
+	var event_position := _passive_button_event_position(event, null)
+	var is_press := false
+	var is_release := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		is_press = event.pressed
+		is_release = not event.pressed
+	elif event is InputEventScreenTouch:
+		is_press = (event as InputEventScreenTouch).pressed
+		is_release = not (event as InputEventScreenTouch).pressed
+	if is_press:
+		button.set_meta("module_utility_press_active", true)
+		button.set_meta("module_utility_press_position", event_position)
+		button.set_meta("module_utility_press_dragged", false)
+		_play_default_button_sfx()
+		_press_activity_button_shell_bound(button.get_instance_id())
+		return
+	if event is InputEventMouseMotion or event is InputEventScreenDrag:
+		if bool(button.get_meta("module_utility_press_active", false)):
+			var press_position := button.get_meta("module_utility_press_position", event_position) as Vector2
+			if event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+				button.set_meta("module_utility_press_dragged", true)
+		return
+	if not is_release:
+		return
+	var was_active := bool(button.get_meta("module_utility_press_active", false))
+	var was_dragged := bool(button.get_meta("module_utility_press_dragged", false))
+	var press_position := button.get_meta("module_utility_press_position", event_position) as Vector2
+	_clear_module_utility_button_press(button)
+	var valid_tap := (
+		was_active
+		and not was_dragged
+		and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
+	)
+	_release_activity_button_shell_bound(button.get_instance_id())
+	if valid_tap:
+		_activate_module_utility_button(button)
+
+
+func _clear_module_utility_button_press(button: Button) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	if button.has_meta("module_utility_press_active"):
+		button.remove_meta("module_utility_press_active")
+	if button.has_meta("module_utility_press_position"):
+		button.remove_meta("module_utility_press_position")
+	if button.has_meta("module_utility_press_dragged"):
+		button.remove_meta("module_utility_press_dragged")
+
+
+func _activate_module_utility_button(button: Button) -> void:
+	if button == pinned_utility_tab:
+		_on_pinned_utility_pressed()
+	elif button == skills_utility_tab:
+		_on_skills_utility_pressed()
+	elif button == sort_utility_tab:
+		_on_sort_utility_pressed()
+	elif button == module_utility_collapse_toggle:
+		_toggle_module_utility_collapsed()
 
 
 func _toggle_module_sort_menu() -> void:
@@ -8272,16 +8950,26 @@ func _layout_module_sort_menu() -> void:
 	var center_x := size.x * 0.5
 	var top_y := size.y - BOTTOM_NAV_HEIGHT - CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP - MODULE_UTILITY_ROW_HEIGHT - menu_size.y - 22.0
 	if sort_utility_tab != null and is_instance_valid(sort_utility_tab):
-		var sort_rect := sort_utility_tab.get_global_rect()
-		var sort_face := _valid_control_ref(instance_from_id(int(sort_utility_tab.get_meta("activity_button_pop_id", 0)))) as Control
-		if sort_face != null:
-			sort_rect = sort_face.get_global_rect()
+		var sort_rect := _activity_button_target_face_global_rect(sort_utility_tab, true)
 		center_x = sort_rect.position.x + sort_rect.size.x * 0.5
 		top_y = sort_rect.position.y - menu_size.y - 22.0
 	module_sort_menu.position = Vector2(
 		clampf(center_x - menu_size.x * 0.5, 18.0, maxf(18.0, size.x - menu_size.x - 18.0)),
 		maxf(18.0, top_y)
 	)
+
+
+func _activity_button_target_face_global_rect(button: Button, active: bool) -> Rect2:
+	if button == null or not is_instance_valid(button):
+		return Rect2()
+	var face_rect := button.get_global_rect()
+	var pop := _valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
+	if pop != null:
+		face_rect = pop.get_global_rect()
+		var current_offset := _activity_button_pop_depth_offset(pop)
+		var target_offset := button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2 if active else Vector2.ZERO
+		face_rect.position += target_offset - current_offset
+	return face_rect
 
 
 func _module_sort_level_toggle_button() -> Button:
@@ -8769,7 +9457,7 @@ func _show_hero_locked_message(source_button: Control = null) -> void:
 	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
 		anchor = hero_tab
 	if anchor != null and is_instance_valid(anchor) and anchor.is_visible_in_tree():
-		_float_reward(self, anchor, HERO_LOCKED_MESSAGE, 68, Color.WHITE, Vector2(0, -34), Vector2(0, -150), 0.0)
+		_float_nav_locked_message(anchor, HERO_LOCKED_MESSAGE)
 
 
 func _hub_unlocked() -> bool:
@@ -8828,7 +9516,7 @@ func _show_shop_locked_message(source_button: Control = null) -> void:
 	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
 		anchor = shop_tab
 	if anchor != null and is_instance_valid(anchor) and anchor.is_visible_in_tree():
-		_float_reward(self, anchor, SHOP_LOCKED_MESSAGE, 68, Color.WHITE, Vector2(0, -34), Vector2(0, -150), 0.0)
+		_float_nav_locked_message(anchor, SHOP_LOCKED_MESSAGE)
 
 
 func _sync_hub_nav_button(instant := false) -> void:
@@ -8876,7 +9564,44 @@ func _show_hub_locked_message(source_button: Control = null) -> void:
 	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
 		anchor = hub_tab
 	if anchor != null and is_instance_valid(anchor) and anchor.is_visible_in_tree():
-		_float_reward(self, anchor, HUB_LOCKED_MESSAGE, 68, Color.WHITE, Vector2(0, -34), Vector2(0, -150), 0.0)
+		_float_nav_locked_message(anchor, HUB_LOCKED_MESSAGE)
+
+
+func _float_nav_locked_message(anchor: Control, text: String) -> void:
+	if (
+		anchor == null
+		or not is_instance_valid(anchor)
+		or anchor.is_queued_for_deletion()
+		or not anchor.is_visible_in_tree()
+	):
+		return
+	var holder_size := Vector2(430, 112)
+	var holder := Control.new()
+	holder.z_index = REWARD_FLOAT_Z
+	holder.z_as_relative = false
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.size = holder_size
+	add_child(holder)
+	var shadow := _label(text, 58, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
+	shadow.size = holder_size
+	shadow.position = Vector2(4, 5)
+	shadow.modulate = Color(1, 1, 1, 0.58)
+	holder.add_child(shadow)
+	var label := _label(text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	label.size = holder_size
+	holder.add_child(label)
+	var local_pos := anchor.global_position - global_position
+	var desired_position := local_pos + Vector2(
+		anchor.size.x * 0.5 - holder_size.x * 0.5,
+		-holder_size.y - 8.0
+	)
+	var canvas_size := _current_canvas_size()
+	var margin := 14.0
+	holder.position = Vector2(
+		clampf(desired_position.x, margin, maxf(margin, canvas_size.x - holder_size.x - margin)),
+		clampf(desired_position.y, margin, maxf(margin, canvas_size.y - holder_size.y - margin))
+	)
+	_start_reward_float_tween(holder, Vector2(0, -34), 0.0)
 
 
 func _build_chat_strip() -> void:
@@ -9993,6 +10718,7 @@ func _reset_page_control_refs() -> void:
 	skill_swipe_frame = null
 	skill_swipe_page = null
 	skill_swipe_drag_offset_x = 0.0
+	skill_swipe_gap_render_offset_x = 0.0
 	skill_swipe_animating = false
 	skill_strip_ids.clear()
 	skill_strip_index = 0
@@ -10040,6 +10766,7 @@ func _discard_all_page_stashes() -> void:
 	skill_swipe_frame = null
 	skill_swipe_page = null
 	skill_swipe_drag_offset_x = 0.0
+	skill_swipe_gap_render_offset_x = 0.0
 
 
 func _new_page_stash_bucket(bucket_name: String) -> Control:
@@ -10200,6 +10927,8 @@ func _try_activate_skill_detail_page(
 		bucket.remove_child(child)
 		skills_content.add_child(child)
 	bucket.queue_free()
+	if absf(skill_swipe_gap_render_offset_x) > 1.0:
+		_apply_skill_swipe_drag_offset(skill_swipe_gap_render_offset_x)
 	_apply_onboarding_fight_header_visibility()
 	_apply_onboarding_fight_action_stats_visibility_all()
 	_sync_skill_detail_back_arrow_visibility()
@@ -10250,13 +10979,11 @@ func _finish_render_screen_transition(target_key: String) -> void:
 		skill_detail_refresh_cover_active
 		and not skill_swipe_pending_full_finalize
 		and module_ui_pending_pin_scroll_anchor.is_empty()
+		and not module_ui_pin_refresh_cover_requested
 	):
 		_clear_skill_swipe_handoff_cover_immediate()
 	elif direct_skill_nav_cover_active and not skill_swipe_pending_full_finalize:
-		if current_screen == "skill":
-			_fade_clear_direct_skill_nav_cover()
-		else:
-			_clear_skill_swipe_handoff_cover_immediate()
+		_fade_clear_direct_skill_nav_cover()
 	elif (
 		not skill_swipe_pending_full_finalize
 		and
@@ -10667,7 +11394,7 @@ func _register_action_card(key: String, card: Dictionary) -> void:
 		var separator := key.find(":")
 		if separator > 0:
 			card["skill_id"] = key.substr(0, separator)
-	if not card.has("action_id") or str(card.get("action_id", "")).is_empty():
+	if not bool(card.get("is_fishing_area", false)) and (not card.has("action_id") or str(card.get("action_id", "")).is_empty()):
 		var separator := key.find(":")
 		if separator > 0 and not key.begins_with("thieving_heist:") and not key.begins_with("pinned_page:") and not key.begins_with("pinned_shelf:"):
 			card["action_id"] = key.substr(separator + 1)
@@ -10718,6 +11445,11 @@ func _skill_swipe_fade_progress(abs_x: float, force_enabled := false) -> float:
 	if not force_enabled and not SKILL_SWIPE_PAGE_FADE_ENABLED:
 		return 0.0
 	var t := clampf(abs_x / maxf(1.0, SKILL_SWIPE_PAGE_FADE_DISTANCE), 0.0, 1.0)
+	return t * t * (3.0 - 2.0 * t)
+
+
+func _skill_swipe_preview_fade_progress(abs_x: float) -> float:
+	var t := clampf(abs_x / maxf(1.0, SKILL_SWIPE_PREVIEW_FADE_DISTANCE), 0.0, 1.0)
 	return t * t * (3.0 - 2.0 * t)
 
 
@@ -10804,6 +11536,9 @@ func _hold_skill_swipe_paper_fade_for_commit() -> void:
 	if not skill_strip_ids.is_empty():
 		_hide_skill_swipe_paper_fade()
 		return
+	if not SKILL_SWIPE_PAPER_FADE_ENABLED:
+		_hide_skill_swipe_paper_fade()
+		return
 	skill_swipe_paper_fade_hold_alpha = 1.0
 	_sync_skill_swipe_paper_fade(skill_swipe_drag_offset_x)
 
@@ -10816,7 +11551,10 @@ func _sync_skill_swipe_drag_frame_fade(drag_x: float) -> void:
 		_hide_skill_swipe_paper_fade()
 		return
 	if not SKILL_SWIPE_DRAG_FRAME_FADE_ENABLED:
-		_sync_skill_swipe_paper_fade(drag_x)
+		if SKILL_SWIPE_PAPER_FADE_ENABLED:
+			_sync_skill_swipe_paper_fade(drag_x)
+		else:
+			_hide_skill_swipe_paper_fade()
 		return
 	var _legacy_overlay := ColorRect.new()
 	_legacy_overlay.queue_free()
@@ -10840,7 +11578,9 @@ func _sync_skill_swipe_preview_page_fade(current_x: float) -> void:
 		preview_page.visible = false
 		_set_skill_swipe_control_alpha(preview_page, 1.0)
 		return
-	var alpha := _skill_swipe_fade_progress(absf(current_x), true)
+	preview_page.visible = true
+	var progress := _skill_swipe_preview_fade_progress(absf(current_x))
+	var alpha := lerpf(SKILL_SWIPE_PREVIEW_FADE_MIN_ALPHA, 1.0, progress)
 	_set_skill_swipe_control_alpha(preview_page, alpha)
 
 
@@ -11564,8 +12304,11 @@ func _update_hub_hotspot_hold_position(global_point: Vector2) -> void:
 		var button := _valid_hub_module_button(hub_drag_module_id)
 		if button != null:
 			_drag_hub_module_to(button, global_point)
+		return
+	if global_point.distance_to(hub_hotspot_hold_start_global) >= HUB_HOTSPOT_DRAG_START_SLOP:
+		_arm_hub_hotspot_move_drag()
 	else:
-		_sync_hub_hotspot_hold_circle()
+		_hide_hub_hotspot_hold_circle()
 
 
 func _finish_hub_hotspot_press(module_id: String, global_point: Vector2, pointer_id: int) -> void:
@@ -11580,7 +12323,7 @@ func _finish_hub_hotspot_press(module_id: String, global_point: Vector2, pointer
 	_clear_hub_hotspot_hold()
 	if was_move_hold:
 		return
-	if global_point.distance_to(start_global) > HUB_HOTSPOT_MOVE_HOLD_SLOP:
+	if global_point.distance_to(start_global) > HUB_HOTSPOT_DRAG_START_SLOP:
 		return
 	if module_id == "trophy":
 		_on_hub_trophy_pressed()
@@ -11597,17 +12340,11 @@ func _process_hub_hotspot_hold(delta: float) -> void:
 	if hub_hotspot_hold_pointer_id < 0 and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
 		_clear_hub_hotspot_hold()
 		return
-	if hub_hotspot_hold_current_global.distance_to(hub_hotspot_hold_start_global) > HUB_HOTSPOT_MOVE_HOLD_SLOP:
-		_clear_hub_hotspot_hold()
-		return
 	hub_hotspot_hold_elapsed += delta
-	if hub_hotspot_hold_elapsed < HUB_HOTSPOT_MOVE_HOLD_SECONDS:
-		_sync_hub_hotspot_hold_circle()
-		return
-	_arm_hub_hotspot_move_hold()
+	_hide_hub_hotspot_hold_circle()
 
 
-func _arm_hub_hotspot_move_hold() -> void:
+func _arm_hub_hotspot_move_drag() -> void:
 	var module_id := hub_hotspot_hold_module_id
 	var button := _valid_hub_module_button(module_id)
 	if button == null:
@@ -11616,7 +12353,8 @@ func _arm_hub_hotspot_move_hold() -> void:
 	hub_hotspot_hold_move_armed = true
 	hub_build_mode = false
 	_hide_hub_hotspot_hold_circle()
-	_start_hub_module_drag(module_id, button, hub_hotspot_hold_current_global, hub_hotspot_hold_pointer_id)
+	_start_hub_module_drag(module_id, button, hub_hotspot_hold_start_global, hub_hotspot_hold_pointer_id)
+	_drag_hub_module_to(button, hub_hotspot_hold_current_global)
 
 
 func _clear_hub_hotspot_hold() -> void:
@@ -11633,9 +12371,6 @@ func _sync_hub_hotspot_hold_circle() -> void:
 	if hub_hotspot_hold_module_id.is_empty() or hub_hotspot_hold_move_armed:
 		_hide_hub_hotspot_hold_circle()
 		return
-	if hub_hotspot_hold_elapsed < HUB_HOTSPOT_MOVE_HOLD_SHOW_DELAY_SECONDS:
-		_hide_hub_hotspot_hold_circle()
-		return
 	var button := _valid_hub_module_button(hub_hotspot_hold_module_id)
 	if button == null:
 		_hide_hub_hotspot_hold_circle()
@@ -11648,9 +12383,7 @@ func _sync_hub_hotspot_hold_circle() -> void:
 	hub_hotspot_hold_circle.size = rect.size
 	hub_hotspot_hold_circle.theme_color = Color("#ffd84a")
 	_set_canvas_item_visible_if_changed(hub_hotspot_hold_circle, true)
-	var load_seconds := maxf(0.01, HUB_HOTSPOT_MOVE_HOLD_SECONDS - HUB_HOTSPOT_MOVE_HOLD_SHOW_DELAY_SECONDS)
-	var progress := clampf((hub_hotspot_hold_elapsed - HUB_HOTSPOT_MOVE_HOLD_SHOW_DELAY_SECONDS) / load_seconds, 0.0, 1.0)
-	hub_hotspot_hold_circle.set_progress(progress, 0.0, false)
+	hub_hotspot_hold_circle.set_progress(0.0, 0.0, false)
 
 
 func _ensure_hub_hotspot_hold_circle() -> void:
@@ -15396,14 +16129,18 @@ func _process_chat_keyboard_lift(delta: float) -> void:
 		_chat_scroll_to_latest()
 
 
-func _chat_scroll_to_latest_deferred() -> void:
-	call_deferred("_chat_scroll_to_latest")
+func _chat_scroll_to_latest_deferred(attempts_remaining := 4) -> void:
+	call_deferred("_chat_scroll_to_latest", attempts_remaining)
 
 
-func _chat_scroll_to_latest() -> void:
+func _chat_scroll_to_latest(attempts_remaining := 0) -> void:
 	if chat_overlay_scroll == null or not is_instance_valid(chat_overlay_scroll):
+		if attempts_remaining > 0:
+			call_deferred("_chat_scroll_to_latest", attempts_remaining - 1)
 		return
 	chat_overlay_scroll.scroll_vertical = chat_overlay_scroll.get_max_scroll_vertical()
+	if attempts_remaining > 0:
+		call_deferred("_chat_scroll_to_latest", attempts_remaining - 1)
 
 
 func _route_chat_overlay_key_input(event: InputEvent) -> bool:
@@ -15754,6 +16491,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		button.offset_bottom = 0.0
 		button.focus_mode = Control.FOCUS_NONE
 		button.set_meta("depress_release_no_overshoot", true)
+		button.set_meta("skill_menu_card_skill_id", skill_id)
 		var card_fill := _skill_paper_button_color(skill_id)
 		button.add_theme_stylebox_override("normal", _skill_menu_band_style(card_fill))
 		button.add_theme_stylebox_override("hover", _skill_menu_band_style(card_fill))
@@ -15848,6 +16586,10 @@ func _skill_menu_active_drawer_card_key(skill_id: String, action_id: String) -> 
 func _skill_menu_active_drawer_module_key(skill_id: String, action_id: String) -> String:
 	if skill_id.is_empty() or action_id.is_empty():
 		return ""
+	if _fishing_rework_active_for_skill(skill_id):
+		var area_def := _fishing_render_area_module_for_action(skill_id, action_id)
+		if not area_def.is_empty():
+			return _module_ui_fishing_area_key(skill_id, area_def)
 	return _module_ui_key_for_action(skill_id, _action_data(skill_id, action_id))
 
 
@@ -15856,6 +16598,8 @@ func _skill_menu_active_drawer_content_width() -> float:
 
 
 func _clear_skill_menu_active_drawer(drawer: Dictionary) -> void:
+	for raw_card_key in drawer.get("card_keys", []) as Array:
+		_discard_action_card_key(str(raw_card_key))
 	var card_key := str(drawer.get("card_key", ""))
 	if not card_key.is_empty():
 		_discard_action_card_key(card_key)
@@ -15867,6 +16611,7 @@ func _clear_skill_menu_active_drawer(drawer: Dictionary) -> void:
 		slot.visible = false
 	drawer["module_key"] = ""
 	drawer["card_key"] = ""
+	drawer["card_keys"] = []
 	drawer["collapsed"] = false
 
 
@@ -15888,6 +16633,11 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 	var module_key := _skill_menu_active_drawer_module_key(skill_id, action_id)
 	var collapsed := _module_ui_is_collapsed(module_key)
 	var card_key := _skill_menu_active_drawer_card_key(skill_id, action_id)
+	var active_fishing_area_def := {}
+	if _fishing_rework_active_for_skill(skill_id):
+		active_fishing_area_def = _fishing_render_area_module_for_action(skill_id, action_id)
+		if not active_fishing_area_def.is_empty():
+			card_key = _fishing_area_module_key(skill_id, active_fishing_area_def)
 	if (
 		str(drawer.get("module_key", "")) == module_key
 		and str(drawer.get("card_key", "")) == card_key
@@ -15900,6 +16650,7 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 	var content_width := _skill_content_width()
 	var module_root: Control = null
 	var registered_card_key := ""
+	var registered_card_keys: Array = []
 	if _is_passive_action(action):
 		var passive_card := _build_passive_module_card(skill_id, action, content_width, true)
 		module_root = passive_card.get("root") as Control
@@ -15909,6 +16660,30 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 		_register_action_card(card_key, passive_dict)
 		_detail_lazy_finalize_action_card(passive_dict, skill_id, action, action_id)
 		registered_card_key = card_key
+		registered_card_keys.append(card_key)
+	elif not active_fishing_area_def.is_empty():
+		var built := _build_fishing_area_module(skill_id, active_fishing_area_def, content_width)
+		module_root = built.get("root") as Control
+		var area_key := str(built.get("area_key", ""))
+		var area_card := built.get("area_card", {}) as Dictionary
+		if not area_key.is_empty() and not area_card.is_empty():
+			area_card["entry"] = module_root
+			_register_action_card(area_key, area_card)
+			registered_card_key = area_key
+			registered_card_keys.append(area_key)
+			for raw_method_id in built.get("method_ids", []) as Array:
+				var method_key := _action_key(skill_id, str(raw_method_id))
+				if action_cards.has(method_key):
+					registered_card_keys.append(method_key)
+				var method_card := _fishing_method_card_for_action(skill_id, str(raw_method_id))
+				if bool(method_card.get("is_fishing_location", false)):
+					var location_key := "%s:location-%s-%s" % [
+						skill_id,
+						str(method_card.get("area_id", "")),
+						str(method_card.get("location_id", ""))
+					]
+					if action_cards.has(location_key):
+						registered_card_keys.append(location_key)
 	else:
 		var built := _build_detail_interactive_action_card(skill_id, action, content_width, content_width)
 		module_root = built.get("card_root") as Control
@@ -15917,6 +16692,7 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 		_register_action_card(card_key, card)
 		_detail_lazy_finalize_action_card(card, skill_id, action, action_id)
 		registered_card_key = card_key
+		registered_card_keys.append(card_key)
 	if module_root == null:
 		return
 	module_root = _apply_collapsed_module_squeeze(module_root, module_key, collapsed)
@@ -15936,6 +16712,7 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 	slot.add_child(module_root)
 	drawer["module_key"] = module_key
 	drawer["card_key"] = registered_card_key
+	drawer["card_keys"] = registered_card_keys
 	drawer["collapsed"] = collapsed
 
 
@@ -16116,8 +16893,9 @@ func _build_skill_menu_side_gauge(skill_id: String, theme_color: Color) -> Contr
 	var stamina_gauge := RegenCircle.new()
 	stamina_gauge.custom_minimum_size = Vector2(540, 540)
 	stamina_gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	stamina_gauge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stamina_gauge.mouse_filter = Control.MOUSE_FILTER_STOP
 	stamina_gauge.set_theme_color(theme_color)
+	stamina_gauge.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, stamina_gauge))
 	return stamina_gauge
 
 
@@ -16163,6 +16941,20 @@ func _apply_activity_progress_rail_action_theme(bar: ActivityProgressRail, skill
 	bar.fill_color = fill_colors[0]
 	bar.empty_color = empty_colors[0]
 	bar.set_color_segments(fill_colors, empty_colors)
+
+
+func _sync_action_card_progress_rail_theme(card: Dictionary, bar: ActivityProgressRail, skill_id: String, action: Dictionary) -> void:
+	if bar == null:
+		return
+	var theme_key := "%s|%s|%s" % [
+		skill_id,
+		str(action.get("id", "")),
+		hash(action.get("requirements", []))
+	]
+	if str(card.get("progress_rail_theme_key", "")) == theme_key:
+		return
+	_apply_activity_progress_rail_action_theme(bar, skill_id, action)
+	card["progress_rail_theme_key"] = theme_key
 
 
 func _combo_progress_segment_theme_colors(skill_id: String, action: Dictionary) -> Array[Color]:
@@ -16387,8 +17179,9 @@ func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
 
 func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll := -1, async_action_cards := false, strip_index: int = -1):
 	var strip_mode := strip_index >= 0
+	var initial_drag_x := 0.0 if strip_mode else skill_swipe_gap_render_offset_x
 	if not strip_mode:
-		skill_swipe_drag_offset_x = 0.0
+		skill_swipe_drag_offset_x = initial_drag_x
 	var content_width := _skill_content_width()
 	var actions_width := content_width
 	if not _detail_unlock_extra_scroll_space_allowed(selected_skill_id):
@@ -16398,7 +17191,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		skill_swipe_frame = frame
 		frame.clip_contents = false
 		var frame_width := content_width
-		_apply_skill_column_layout(frame, frame_width, 0.0)
+		_apply_skill_column_layout(frame, frame_width, initial_drag_x)
 		skills_content.add_child(frame)
 
 	var page := VBoxContainer.new()
@@ -17309,8 +18102,13 @@ func _play_collapsed_host_squeeze_if_needed(host: Control, child: Control, previ
 		return
 	if not bool(child.get_meta("module_ui_collapsed_squeeze", false)):
 		return
+	var module_key := _normalized_module_ui_key(child.get_meta("module_ui_key", ""))
+	if module_key.is_empty() or module_key != module_ui_animating_collapse_key:
+		return
 	var start_height := maxf(previous_height, float(child.get_meta("module_ui_full_height", 0.0)))
 	if start_height <= target_height + 8.0:
+		if module_ui_animating_collapse_key == module_key:
+			module_ui_animating_collapse_key = ""
 		return
 	_kill_module_list_transition_tween(host)
 	var original_clip := host.clip_contents
@@ -17334,6 +18132,8 @@ func _play_collapsed_host_squeeze_if_needed(host: Control, child: Control, previ
 				host.remove_meta("module_list_transition_tween")
 		if child != null and is_instance_valid(child):
 			child.size.y = target_height
+		if module_ui_animating_collapse_key == module_key:
+			module_ui_animating_collapse_key = ""
 	)
 
 
@@ -17799,9 +18599,36 @@ func _skill_swipe_tip_anchor_track_id(skill_id: String) -> String:
 		if action_id.is_empty():
 			continue
 		visible_action_count += 1
-		if visible_action_count == 3:
+		if visible_action_count == 2:
 			return action_id
 	return ""
+
+
+func _detail_eager_add_smooth_tutorial_tip_after_action(action_id: String, note: Control, content_width: float, actions_width: float, group_name: String) -> Control:
+	var stack := _resolve_detail_lazy_stack()
+	if stack == null or not is_instance_valid(stack) or note == null or not is_instance_valid(note):
+		return null
+	var entry := _detail_stack_entry(note, content_width, actions_width)
+	if entry != note and not group_name.is_empty():
+		note.remove_from_group(group_name)
+		entry.add_to_group(group_name)
+	var target_height := maxf(1.0, entry.custom_minimum_size.y)
+	entry.custom_minimum_size.y = 0.0
+	entry.modulate.a = 0.0
+	entry.clip_contents = true
+	stack.add_child(entry)
+	var anchor := _detail_stack_child_for_action(action_id)
+	if anchor != null and is_instance_valid(anchor) and anchor.get_parent() == stack:
+		stack.move_child(entry, clampi(anchor.get_index() + 1, 0, maxi(0, stack.get_child_count() - 1)))
+	elif detail_unlock_scroll_spacer != null and is_instance_valid(detail_unlock_scroll_spacer) and detail_unlock_scroll_spacer.get_parent() == stack:
+		stack.move_child(entry, clampi(detail_unlock_scroll_spacer.get_index(), 0, maxi(0, stack.get_child_count() - 1)))
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(entry, "custom_minimum_size:y", target_height, TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(entry, "modulate:a", 1.0, TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.set_parallel(false)
+	tween.tween_callback(_finish_smooth_tutorial_tip_entry_reveal.bind(entry.get_instance_id()))
+	return entry
 
 
 func _detail_eager_add_skill_swipe_tip_after_anchor(stack: VBoxContainer, note: Control, content_width: float, actions_width: float) -> Control:
@@ -17809,7 +18636,7 @@ func _detail_eager_add_skill_swipe_tip_after_anchor(stack: VBoxContainer, note: 
 		return null
 	var anchor_id := _skill_swipe_tip_anchor_track_id(selected_skill_id)
 	if not anchor_id.is_empty():
-		var anchored_entry := _detail_eager_add_tutorial_note_after_action(anchor_id, note, content_width, actions_width)
+		var anchored_entry := _detail_eager_add_smooth_tutorial_tip_after_action(anchor_id, note, content_width, actions_width, "skill_swipe_tip_notes")
 		if anchored_entry != null and is_instance_valid(anchored_entry):
 			return anchored_entry
 	var entry := _detail_stack_entry(note, content_width, actions_width)
@@ -18174,6 +19001,7 @@ func _detail_lazy_mount_cached_item(
 		lazy_entry["placeholder"] = null
 		detail_action_card_nodes[track_id] = cached_root
 		lazy_entry["mounted"] = true
+		_mark_detail_lazy_module_mounted(cached_root)
 		return true
 	if kind == "fishing_area":
 		var placeholder := _valid_control_ref(lazy_entry.get("placeholder"))
@@ -18200,6 +19028,7 @@ func _detail_lazy_mount_cached_item(
 		if fade_in:
 			_play_detail_lazy_fade_in(cached_root)
 		lazy_entry["mounted"] = true
+		_mark_detail_lazy_module_mounted(stack_host)
 		return true
 	if kind == "fishing_offer":
 		var placeholder := _valid_control_ref(lazy_entry.get("placeholder"))
@@ -18214,6 +19043,7 @@ func _detail_lazy_mount_cached_item(
 		if fade_in:
 			_play_detail_lazy_fade_in(cached_root)
 		lazy_entry["mounted"] = true
+		_mark_detail_lazy_module_mounted(stack_host)
 		return true
 	if kind != "action" and kind != "passive":
 		return false
@@ -18237,6 +19067,7 @@ func _detail_lazy_mount_cached_item(
 	_detail_lazy_finalize_action_card(cached_card, skill_id, action, track_id)
 	detail_action_card_nodes[track_id] = stack_host
 	lazy_entry["mounted"] = true
+	_mark_detail_lazy_module_mounted(stack_host)
 	return true
 
 
@@ -18376,6 +19207,7 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 	if not mounted_ok:
 		return false
 	lazy_entry["mounted"] = true
+	_mark_detail_lazy_module_mounted(_valid_control_ref(lazy_entry.get("stack_host")))
 	if fade_in and fade_allowed and fade_target != null and not boot_detail_render_in_progress:
 		_play_detail_lazy_fade_in(fade_target)
 	if trace_mount:
@@ -18576,17 +19408,31 @@ func _collapse_detail_lazy_entry_height(track_id: String) -> void:
 	var lazy_entry := _detail_lazy_entry_for_track_id(track_id)
 	if lazy_entry.is_empty():
 		return
-	lazy_entry["height"] = 0.0
+	_apply_detail_lazy_entry_height(0.0, track_id)
+
+
+func _apply_detail_lazy_entry_height(value: float, track_id: String) -> void:
+	var lazy_entry := _detail_lazy_entry_for_track_id(track_id)
+	if lazy_entry.is_empty():
+		return
+	var height := maxf(0.0, value)
+	lazy_entry["height"] = height
 	var placeholder := _valid_control_ref(lazy_entry.get("placeholder"))
 	if placeholder != null:
-		placeholder.custom_minimum_size.y = 0.0
-		placeholder.size.y = 0.0
+		placeholder.custom_minimum_size.y = height
+		placeholder.size.y = height
 		placeholder.update_minimum_size()
+		var placeholder_parent := placeholder.get_parent() as Container
+		if placeholder_parent != null:
+			placeholder_parent.queue_sort()
 	var stack_host := _valid_control_ref(lazy_entry.get("stack_host"))
 	if stack_host != null:
-		stack_host.custom_minimum_size.y = 0.0
-		stack_host.size.y = 0.0
+		stack_host.custom_minimum_size.y = height
+		stack_host.size.y = height
 		stack_host.update_minimum_size()
+		var stack_parent := stack_host.get_parent() as Container
+		if stack_parent != null:
+			stack_parent.queue_sort()
 
 
 func _repair_detail_lazy_action_card_registration(track_id: String, skill_id: String) -> bool:
@@ -19062,6 +19908,11 @@ func _kill_module_list_transition_tween(control: Control) -> void:
 	control.remove_meta("module_list_transition_tween")
 
 
+func _clear_module_ui_animating_collapse_key(module_key: String) -> void:
+	if module_ui_animating_collapse_key == _normalized_module_ui_key(module_key):
+		module_ui_animating_collapse_key = ""
+
+
 func _finish_module_list_transition(
 	control_id: int,
 	final_position: Vector2,
@@ -19175,7 +20026,7 @@ func _play_detail_module_layout_transition(snapshot: Dictionary) -> void:
 				control.position = final_position + delta
 				tween.tween_property(control, "position", final_position, MODULE_LIST_TRANSITION_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 				animated_count += 1
-			if height_delta > 8.0 and (
+			if height_delta > 8.0 and _normalized_module_ui_key(module_key) == module_ui_animating_collapse_key and (
 				_control_tree_has_named_descendant(control, "CollapsedModuleRow")
 				or _control_tree_has_bool_meta(control, "module_ui_collapsed_squeeze")
 			):
@@ -19215,6 +20066,8 @@ func _play_detail_module_layout_transition(snapshot: Dictionary) -> void:
 			animated_count += 1
 		tween.set_parallel(false)
 		tween.tween_callback(_finish_module_list_transition.bind(control.get_instance_id(), final_position, final_scale, final_minimum_size, final_clip_contents))
+		if _normalized_module_ui_key(module_key) == module_ui_animating_collapse_key:
+			tween.tween_callback(_clear_module_ui_animating_collapse_key.bind(module_key))
 	if animated_count > 0:
 		_hold_skill_detail_layout_refresh(MODULE_LIST_TRANSITION_SECONDS + 0.08)
 
@@ -19740,25 +20593,21 @@ func _show_pinned_activities() -> void:
 	pinned_return_detail_scroll = _current_detail_scroll_for_pinned_return()
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
-	var cover_id := _begin_page_switch_scroll_cover_timed()
-	if cover_id == 0:
-		_complete_show_pinned_activities()
-	else:
-		get_tree().create_timer(PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS, true, false, true).timeout.connect(
-			_complete_show_pinned_activities_after_cover.bind(cover_id)
-		)
+	_begin_direct_skill_nav_cover()
+	current_screen = "pinned"
+	_render_screen()
 
 
 func _complete_show_pinned_activities_after_cover(cover_id: int) -> void:
+	_force_page_switch_scroll_cover_opaque(cover_id)
 	if not _page_switch_cover_id_active(cover_id):
 		return
-	_force_page_switch_scroll_cover_opaque(cover_id)
-	_complete_show_pinned_activities()
+	await _complete_show_pinned_activities()
 
 
 func _complete_show_pinned_activities() -> void:
 	current_screen = "pinned"
-	_render_screen()
+	await _render_screen()
 	_fade_clear_page_switch_scroll_cover()
 
 
@@ -19772,25 +20621,21 @@ func _return_from_pinned_activities() -> void:
 		selected_skill_id = pinned_return_skill_id
 	var restore_scroll := pinned_return_detail_scroll if target_screen == "skill" else -1
 	pinned_return_detail_scroll = -1
-	var cover_id := _begin_page_switch_scroll_cover_timed()
-	if cover_id == 0:
-		_complete_return_from_pinned_activities(target_screen, restore_scroll)
-	else:
-		get_tree().create_timer(PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS, true, false, true).timeout.connect(
-			_complete_return_from_pinned_activities_after_cover.bind(cover_id, target_screen, restore_scroll)
-		)
+	_begin_direct_skill_nav_cover()
+	current_screen = target_screen
+	_render_screen(false, restore_scroll)
 
 
 func _complete_return_from_pinned_activities_after_cover(cover_id: int, target_screen: String, restore_scroll: int) -> void:
+	_force_page_switch_scroll_cover_opaque(cover_id)
 	if not _page_switch_cover_id_active(cover_id):
 		return
-	_force_page_switch_scroll_cover_opaque(cover_id)
-	_complete_return_from_pinned_activities(target_screen, restore_scroll)
+	await _complete_return_from_pinned_activities(target_screen, restore_scroll)
 
 
 func _complete_return_from_pinned_activities(target_screen: String, restore_scroll: int) -> void:
 	current_screen = target_screen
-	_render_screen(false, restore_scroll)
+	await _render_screen(false, restore_scroll)
 	_fade_clear_page_switch_scroll_cover()
 
 
@@ -19843,6 +20688,7 @@ func _render_pinned_activities_page() -> void:
 	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	content_scroll.set_pull_resistance_enabled(true)
+	content_scroll.gui_input.connect(_on_pinned_activities_action_scroll_input)
 	actions_clip.add_child(content_scroll)
 
 	var stack := VBoxContainer.new()
@@ -19914,6 +20760,76 @@ func _pinned_activities_active_shelf(content_width: float) -> Control:
 	return header
 
 
+func _on_pinned_activities_action_scroll_input(event: InputEvent) -> void:
+	if current_screen != "pinned":
+		return
+	var routed_event := _pinned_activities_globalized_scroll_event(event)
+	if routed_event == null:
+		return
+	if _event_points_inside_bottom_interactive_ui(routed_event):
+		return
+	if _route_action_card_release(routed_event):
+		accept_event()
+		return
+	_update_action_card_press_drag_state(routed_event)
+	if routed_event is InputEventMouseButton and routed_event.button_index == MOUSE_BUTTON_LEFT and routed_event.pressed:
+		action_card_press_consumed = false
+		var routed_mouse_event := routed_event as InputEventMouseButton
+		var press_position: Vector2 = routed_mouse_event.global_position
+		if _route_action_card_press(press_position):
+			accept_event()
+			return
+	elif routed_event is InputEventScreenTouch and routed_event.pressed:
+		action_card_press_consumed = false
+		var routed_touch_event := routed_event as InputEventScreenTouch
+		var touch_position: Vector2 = routed_touch_event.position
+		if _route_action_card_press(touch_position, routed_touch_event.index):
+			accept_event()
+			return
+
+
+func _pinned_activities_globalized_scroll_event(event: InputEvent) -> InputEvent:
+	if content_scroll == null or not is_instance_valid(content_scroll):
+		return null
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		var global_position := _global_event_position(mouse_event.position, mouse_event.global_position, content_scroll)
+		var routed := InputEventMouseButton.new()
+		routed.button_index = mouse_event.button_index
+		routed.pressed = mouse_event.pressed
+		routed.button_mask = mouse_event.button_mask
+		routed.position = global_position
+		routed.global_position = global_position
+		return routed
+	if event is InputEventMouseMotion:
+		var motion_event := event as InputEventMouseMotion
+		var global_position := _global_event_position(motion_event.position, motion_event.global_position, content_scroll)
+		var routed := InputEventMouseMotion.new()
+		routed.position = global_position
+		routed.global_position = global_position
+		routed.relative = motion_event.relative
+		routed.velocity = motion_event.velocity
+		return routed
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		var global_position := content_scroll.get_global_transform() * touch_event.position
+		var routed := InputEventScreenTouch.new()
+		routed.index = touch_event.index
+		routed.pressed = touch_event.pressed
+		routed.position = global_position
+		return routed
+	if event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		var global_position := content_scroll.get_global_transform() * drag_event.position
+		var routed := InputEventScreenDrag.new()
+		routed.index = drag_event.index
+		routed.position = global_position
+		routed.relative = drag_event.relative
+		routed.velocity = drag_event.velocity
+		return routed
+	return event
+
+
 func _pinned_active_shelf_collapsed_height() -> float:
 	return 116.0
 
@@ -19923,7 +20839,7 @@ func _pinned_active_shelf_expanded_height() -> float:
 
 
 func _pinned_active_shelf_target_height(skill_id: String) -> float:
-	return _pinned_active_shelf_expanded_height() if not skill_id.is_empty() else _pinned_active_shelf_collapsed_height()
+	return _pinned_active_shelf_expanded_height()
 
 
 func _pinned_active_shelf_shadow_top_y() -> float:
@@ -20110,13 +21026,16 @@ func _apply_pinned_active_shelf_theme(skill_id: String, instant := false) -> voi
 	if background == null:
 		return
 	_apply_pinned_active_shelf_background_colors(background, skill_id)
-	var target_alpha := 1.0 if not skill_id.is_empty() else 0.0
-	_set_canvas_item_alpha_if_changed(background, target_alpha if instant else 0.0)
+	var target_alpha := 1.0
+	_set_canvas_item_alpha_if_changed(background, target_alpha if instant or skill_id.is_empty() else 0.0)
 
 
 func _apply_pinned_active_shelf_background_colors(background: Control, skill_id: String) -> void:
 	var gradient := background as SkillDetailGradientShelf
 	if gradient == null:
+		return
+	if skill_id.is_empty():
+		gradient.set_colors(Color("#ececea"), Color("#d4d2cc"))
 		return
 	var theme_skill_id := _pinned_active_shelf_theme_skill_id(skill_id)
 	gradient.set_colors(_skill_detail_shelf_color(theme_skill_id), _skill_detail_shelf_gradient_bottom_color(theme_skill_id))
@@ -20189,8 +21108,6 @@ func _transition_pinned_active_shelf_to(skill_id: String, instant := false) -> v
 	pinned_active_shelf_tween = create_tween()
 	var fade_out_seconds := 0.10
 	pinned_active_shelf_tween.tween_property(pinned_active_shelf_content, "modulate:a", 0.0, fade_out_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	if skill_id.is_empty() and pinned_active_shelf_background != null and is_instance_valid(pinned_active_shelf_background):
-		pinned_active_shelf_tween.parallel().tween_property(pinned_active_shelf_background, "modulate:a", 0.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	pinned_active_shelf_tween.tween_callback(_finish_pinned_active_shelf_fade_out.bind(content_id, skill_id))
 
 
@@ -20249,7 +21166,7 @@ func _pinned_activities_shelf_wrap(shelf: Control, content_width: float) -> Cont
 func _pinned_activities_empty_state(content_width: float) -> Control:
 	var empty := Control.new()
 	empty.name = "PinnedActivitiesEmptyState"
-	empty.custom_minimum_size = Vector2(content_width, 430)
+	empty.custom_minimum_size = Vector2(content_width, _pinned_activities_empty_state_height())
 	empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var label := _label(
@@ -20262,8 +21179,8 @@ func _pinned_activities_empty_state(content_width: float) -> Control:
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.offset_left = 48
 	label.offset_right = -48
-	label.offset_top = 92
-	label.offset_bottom = -72
+	label.offset_top = 0
+	label.offset_bottom = 0
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", Color.WHITE)
@@ -20271,6 +21188,13 @@ func _pinned_activities_empty_state(content_width: float) -> Control:
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	empty.add_child(label)
 	return empty
+
+
+func _pinned_activities_empty_state_height() -> float:
+	var active_shelf_height := _pinned_active_shelf_target_height(_pinned_active_shelf_skill_id())
+	var content_top_reserved := active_shelf_height + SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT + SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT
+	var visible_bottom := BASE_CANVAS.y - float(BOTTOM_NAV_HEIGHT) - _skills_content_bottom_inset_for_screen()
+	return maxf(860.0, visible_bottom - content_top_reserved)
 
 
 func _remove_module_collapse_zones(root: Control) -> void:
@@ -20325,6 +21249,9 @@ func _build_pinned_activities_module(module_key: String, content_width: float) -
 		var built := _build_detail_interactive_action_card(skill_id, action, content_width, content_width)
 		var card_root := built.get("card_root") as Control
 		var card := built.get("card", {}) as Dictionary
+		var pop_card := card.get("pop") as Control
+		if pop_card != null and is_instance_valid(pop_card):
+			_attach_swipe_preview_activity_button(card, skill_id, action_id, pop_card)
 		card["entry"] = card_root
 		_register_action_card(pinned_page_card_key, card)
 		_detail_lazy_finalize_action_card(card, skill_id, action, action_id)
@@ -20418,11 +21345,20 @@ func _build_pinned_shelf_module(skill_id: String, module_key: String, content_wi
 
 
 func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
+	if _onboarding_path_active() and not _onboarding_page_switch_module_visible():
+		return
+	var module := _build_page_switch_module(skill_id, content_width)
+	if module == null:
+		return
+	stack.add_child(_detail_stack_entry(module, content_width, actions_width))
+
+
+func _build_page_switch_module(skill_id: String, content_width: float) -> Control:
 	var neighbors := _skill_page_neighbor_ids(skill_id)
 	var previous_skill := str(neighbors.get("previous", ""))
 	var next_skill := str(neighbors.get("next", ""))
 	if previous_skill.is_empty() or next_skill.is_empty():
-		return
+		return null
 	var module := Control.new()
 	module.name = "PageSwitchModule"
 	module.custom_minimum_size = Vector2(content_width, PAGE_SWITCH_MODULE_HEIGHT)
@@ -20441,12 +21377,69 @@ func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
 	var previous_button := _page_switch_button(previous_skill, "right")
-	previous_button.pressed.connect(_select_skill_from_page_switch.bind(previous_skill))
 	row.add_child(previous_button)
 	var next_button := _page_switch_button(next_skill, "left")
-	next_button.pressed.connect(_select_skill_from_page_switch.bind(next_skill))
 	row.add_child(next_button)
-	stack.add_child(_detail_stack_entry(module, content_width, actions_width))
+	return module
+
+
+func _onboarding_page_switch_module_visible() -> bool:
+	return (
+		_onboarding_path_active()
+		and not tutorial_active
+		and onboarding_swipe_navigation_unlocked
+	)
+
+
+func _ensure_onboarding_page_switch_module_faded_in(stack: VBoxContainer) -> Control:
+	if stack == null or not is_instance_valid(stack):
+		return null
+	if not _onboarding_page_switch_module_visible():
+		return null
+	for raw_child in stack.get_children():
+		var child := raw_child as Control
+		if child == null:
+			continue
+		if child.name == "PageSwitchModule" or _detail_stack_child_contains_named_node(child, "PageSwitchModule"):
+			return child
+	var content_width := _skill_content_width()
+	var module := _build_page_switch_module(selected_skill_id, content_width)
+	if module == null:
+		return null
+	var entry := _detail_stack_entry(module, content_width, content_width)
+	var target_height := maxf(1.0, entry.custom_minimum_size.y)
+	entry.custom_minimum_size.y = 0.0
+	entry.modulate.a = 0.0
+	entry.clip_contents = true
+	stack.add_child(entry)
+	var insert_index := maxi(0, stack.get_child_count() - 1)
+	for i in range(stack.get_child_count()):
+		var child := stack.get_child(i)
+		if child == entry:
+			continue
+		if child.name == "DetailActionsBottomSpacer":
+			insert_index = i
+			break
+	stack.move_child(entry, clampi(insert_index, 0, maxi(0, stack.get_child_count() - 1)))
+	var tween := create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(entry, "custom_minimum_size:y", target_height, TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(entry, "modulate:a", 1.0, TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.set_parallel(false)
+	tween.tween_callback(_finish_smooth_tutorial_tip_entry_reveal.bind(entry.get_instance_id()))
+	call_deferred("_sync_detail_actions_scroll_limit_deferred")
+	return entry
+
+
+func _detail_stack_child_contains_named_node(root_node: Node, node_name: String) -> bool:
+	if root_node == null:
+		return false
+	if root_node.name == node_name:
+		return true
+	for raw_child in root_node.get_children():
+		if _detail_stack_child_contains_named_node(raw_child as Node, node_name):
+			return true
+	return false
 
 
 func _page_switch_button(skill_id: String, diagonal_side := "") -> Button:
@@ -20459,9 +21452,9 @@ func _page_switch_button(skill_id: String, diagonal_side := "") -> Button:
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.set_meta("page_switch_target_skill_id", skill_id)
-	button.set_meta("page_switch_builtin_pressed_route", true)
 	button.add_to_group("page_switch_buttons")
 	button.gui_input.connect(_on_page_switch_button_gui_input.bind(skill_id, button))
+	button.pressed.connect(_on_page_switch_button_pressed.bind(skill_id, button))
 	var theme := _skill_theme_color(skill_id)
 	var pop := _install_activity_button_shell(button, theme, ACTION_CARD_FACE_RADIUS, ACTION_CARD_POP_GUTTER, ACTION_CARD_3D_DEPTH_OFFSET, diagonal_side)
 	if diagonal_side == "right" or diagonal_side == "left":
@@ -20501,32 +21494,114 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 		or event is InputEventScreenDrag
 	):
 		return false
+	if _page_switch_input_locked():
+		return true
 	var event_position := _passive_button_event_position(event, null)
-	var button := _page_switch_button_at_position(event_position)
-	if button == null and not (event is InputEventMouseButton and (event as InputEventMouseButton).pressed) and not (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed):
-		button = _active_page_switch_button()
+	var is_press := (
+		(event is InputEventMouseButton and (event as InputEventMouseButton).pressed)
+		or (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
+	)
+	var is_release := (
+		(event is InputEventMouseButton and not (event as InputEventMouseButton).pressed)
+		or (event is InputEventScreenTouch and not (event as InputEventScreenTouch).pressed)
+	)
+	if page_switch_press_active and (event is InputEventMouseMotion or event is InputEventScreenDrag):
+		if event_position.distance_to(page_switch_press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+			page_switch_press_dragged = true
+		var active_motion_button := _active_page_switch_button()
+		if active_motion_button != null:
+			_on_page_switch_button_gui_input(event, page_switch_press_target_skill_id, active_motion_button)
+		return true
+	if page_switch_press_active and is_release:
+		var target_skill_id := page_switch_press_target_skill_id
+		var valid_tap := (
+			not page_switch_press_dragged
+			and event_position.distance_to(page_switch_press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
+			and not target_skill_id.is_empty()
+		)
+		var active_release_button := _active_page_switch_button()
+		if active_release_button != null:
+			_clear_page_switch_button_press_state(active_release_button, valid_tap)
+			if valid_tap:
+				_hold_page_switch_transition_button(active_release_button, target_skill_id)
+			else:
+				_release_page_switch_button_shell(active_release_button)
+			_suppress_page_switch_pressed_signal(active_release_button)
+		_clear_page_switch_press_state()
+		if valid_tap:
+			_select_skill_from_page_switch(target_skill_id, active_release_button)
+		return true
+	var button := _page_switch_button_at_position(event_position) if is_press else _active_page_switch_button()
 	if button == null:
 		return false
 	var target_skill_id := str(button.get_meta("page_switch_target_skill_id", ""))
 	if target_skill_id.is_empty():
 		return false
+	if is_press:
+		page_switch_press_active = true
+		page_switch_press_target_skill_id = target_skill_id
+		page_switch_press_position = event_position
+		page_switch_press_dragged = false
 	_on_page_switch_button_gui_input(event, target_skill_id, button)
 	_cancel_skill_swipe_feedback(false)
 	action_card_press_key = ""
 	return true
 
 
+func _clear_page_switch_press_state() -> void:
+	page_switch_press_active = false
+	page_switch_press_target_skill_id = ""
+	page_switch_press_position = Vector2.ZERO
+	page_switch_press_dragged = false
+
+
+func _clear_page_switch_button_press_state(button: Button, keep_nav_hold := false) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	if button.has_meta("page_switch_press_active"):
+		button.remove_meta("page_switch_press_active")
+	if button.has_meta("page_switch_press_position"):
+		button.remove_meta("page_switch_press_position")
+	if button.has_meta("page_switch_press_dragged"):
+		button.remove_meta("page_switch_press_dragged")
+	if keep_nav_hold:
+		return
+	if button.has_meta("activity_button_hold_nav_press"):
+		button.remove_meta("activity_button_hold_nav_press")
+	if button.has_meta("activity_button_hold_nav_target_active"):
+		button.remove_meta("activity_button_hold_nav_target_active")
+
+
+func _suppress_page_switch_pressed_signal(button: Button) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	button.set_meta("page_switch_suppress_pressed_signal_until_frame", Engine.get_process_frames() + 2)
+
+
+func _page_switch_pressed_signal_suppressed(button: Button) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	if not button.has_meta("page_switch_suppress_pressed_signal_until_frame"):
+		return false
+	var until_frame := int(button.get_meta("page_switch_suppress_pressed_signal_until_frame", 0))
+	if Engine.get_process_frames() <= until_frame:
+		return true
+	button.remove_meta("page_switch_suppress_pressed_signal_until_frame")
+	return false
+
+
 func _page_switch_button_at_position(event_position: Vector2) -> Button:
 	var tree := get_tree()
 	if tree == null:
 		return null
+	var positions := _activity_input_position_candidates(event_position)
 	for raw_node in tree.get_nodes_in_group("page_switch_buttons"):
 		var button := raw_node as Button
 		if button == null or not is_instance_valid(button) or button.disabled:
 			continue
 		if not button.is_inside_tree() or not button.is_visible_in_tree():
 			continue
-		if button.get_global_rect().grow(16.0).has_point(event_position):
+		if _first_position_in_rect(positions, button.get_global_rect().grow(24.0)) != null:
 			return button
 	return null
 
@@ -20545,6 +21620,8 @@ func _active_page_switch_button() -> Button:
 func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, button: Button) -> void:
 	if button == null or not is_instance_valid(button) or button.disabled:
 		return
+	if _page_switch_input_locked() and not bool(button.get_meta("page_switch_press_active", false)):
+		return
 	var event_position := _passive_button_event_position(event, button)
 	var is_press := false
 	var is_release := false
@@ -20559,6 +21636,8 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		button.set_meta("page_switch_press_position", event_position)
 		button.set_meta("page_switch_press_dragged", false)
 		button.set_meta("activity_button_hold_nav_press", true)
+		button.set_meta("activity_button_hold_nav_target_active", true)
+		_play_default_button_sfx()
 		_press_page_switch_button_shell(button)
 		return
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
@@ -20582,16 +21661,78 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		was_active
 		and not was_dragged
 		and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
-		and button.get_global_rect().grow(24.0).has_point(event_position)
 	)
 	if not valid_tap:
 		if button.has_meta("activity_button_hold_nav_press"):
 			button.remove_meta("activity_button_hold_nav_press")
+		if button.has_meta("activity_button_hold_nav_target_active"):
+			button.remove_meta("activity_button_hold_nav_target_active")
 		_release_page_switch_button_shell(button)
 		return
-	if bool(button.get_meta("page_switch_builtin_pressed_route", false)):
+	_clear_page_switch_button_press_state(button, true)
+	_hold_page_switch_transition_button(button, skill_id)
+	_suppress_page_switch_pressed_signal(button)
+	_select_skill_from_page_switch(skill_id, button)
+
+
+func _on_page_switch_button_pressed(skill_id: String, button: Button) -> void:
+	if button == null or not is_instance_valid(button) or button.disabled:
 		return
-	_select_skill_from_page_switch(skill_id)
+	if current_screen != "skill":
+		return
+	if _page_switch_pressed_signal_suppressed(button):
+		return
+	if page_switch_press_active or bool(button.get_meta("page_switch_press_active", false)):
+		return
+	if _page_switch_transition_active():
+		return
+	_hold_page_switch_transition_button(button, skill_id)
+	_select_skill_from_page_switch(skill_id, button)
+
+
+func _page_switch_transition_active() -> bool:
+	return (
+		_page_switch_scroll_cover_active()
+		or not page_switch_pending_transition.is_empty()
+		or page_switch_release_when_render_idle
+	)
+
+
+func _page_switch_input_locked() -> bool:
+	return page_switch_transition_button_id != 0 or _page_switch_transition_active()
+
+
+func _hold_page_switch_transition_button(button: Button, target_skill_id: String) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	if page_switch_transition_button_id != 0:
+		return
+	page_switch_transition_button_id = button.get_instance_id()
+	page_switch_transition_target_skill_id = target_skill_id
+	button.set_meta("page_switch_transition_hold", true)
+	button.set_meta("activity_button_hold_nav_press", true)
+	button.set_meta("activity_button_hold_nav_target_active", true)
+	_press_page_switch_button_shell(button)
+
+
+func _release_page_switch_transition_button() -> void:
+	var button_id := page_switch_transition_button_id
+	page_switch_transition_button_id = 0
+	page_switch_transition_target_skill_id = ""
+	if button_id == 0:
+		return
+	var button := instance_from_id(button_id) as Button
+	if button == null or not is_instance_valid(button):
+		return
+	if button.has_meta("page_switch_transition_hold"):
+		button.remove_meta("page_switch_transition_hold")
+	if button.has_meta("activity_button_hold_nav_press"):
+		button.remove_meta("activity_button_hold_nav_press")
+	if button.has_meta("activity_button_hold_nav_target_active"):
+		button.remove_meta("activity_button_hold_nav_target_active")
+	_clear_page_switch_button_press_state(button)
+	_force_button_unpressed(button)
+	_release_activity_button_shell_bound(button_id)
 
 
 func _press_page_switch_button_shell(button: Button) -> void:
@@ -20601,6 +21742,31 @@ func _press_page_switch_button_shell(button: Button) -> void:
 	if depressed_activity_shell_buttons.has(button_id):
 		return
 	_press_activity_button_shell_bound(button_id)
+
+
+func _page_switch_button_shell_release_preserved(button: Button) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	if not button.is_in_group("page_switch_buttons"):
+		return false
+	if bool(button.get_meta("page_switch_transition_hold", false)):
+		return true
+	if bool(button.get_meta("page_switch_press_active", false)):
+		return true
+	return page_switch_transition_button_id == button.get_instance_id()
+
+
+func _hold_activity_button_shell_at_depth(button: Button) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	var button_id := button.get_instance_id()
+	depressed_activity_shell_buttons[button_id] = button
+	_force_button_unpressed(button)
+	var depth_offset := button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
+	var pop := _valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
+	_kill_activity_button_shell_tween(button)
+	if pop != null:
+		_set_activity_button_pop_depth_offset_bound(depth_offset, pop.get_instance_id())
 
 
 func _release_page_switch_button_shell(button: Button) -> void:
@@ -20743,11 +21909,16 @@ func _module_action_zone(kind: String, module_key: String, left_side: bool) -> C
 	var zone_size := MODULE_COLLAPSE_ACTION_ZONE_SIZE if kind == "collapse" else MODULE_ACTION_ZONE_SIZE
 	var top_offset := MODULE_COLLAPSE_ACTION_ZONE_TOP_OFFSET if kind == "collapse" else MODULE_ACTION_ZONE_TOP_OFFSET
 	var outer_offset := MODULE_COLLAPSE_ACTION_ZONE_OUTER_OFFSET if kind == "collapse" else MODULE_ACTION_ZONE_OUTER_OFFSET
+	var offset_left := outer_offset if left_side else -zone_size.x - outer_offset
+	if module_key.begins_with("fishing_area:"):
+		zone_size = Vector2(96.0, 96.0)
+		top_offset = -22.0
+		offset_left = -18.0 if left_side else 18.0 - zone_size.x
 	zone.anchor_left = 0.0 if left_side else 1.0
 	zone.anchor_right = 0.0 if left_side else 1.0
 	zone.anchor_top = 0.0
 	zone.anchor_bottom = 0.0
-	zone.offset_left = outer_offset if left_side else -zone_size.x - outer_offset
+	zone.offset_left = offset_left
 	zone.offset_right = zone.offset_left + zone_size.x
 	zone.offset_top = top_offset
 	zone.offset_bottom = top_offset + zone_size.y
@@ -20840,14 +22011,8 @@ func _module_action_zone_event_inside_circle(card_host: Control, kind: String, e
 	var zone := _module_action_zone_for_card(card_host, kind)
 	if zone == null:
 		return false
-	var event_position := Vector2.ZERO
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		event_position = _global_event_position(mouse_event.position, mouse_event.global_position, zone)
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		event_position = _global_event_position(touch_event.position, touch_event.position, zone)
-	else:
+	var event_position := _module_action_zone_event_global_position(zone, event)
+	if event_position == Vector2.INF:
 		return false
 	var rect := zone.get_global_rect()
 	var center := rect.get_center()
@@ -20856,6 +22021,16 @@ func _module_action_zone_event_inside_circle(card_host: Control, kind: String, e
 		if center.distance_to(candidate) <= radius:
 			return true
 	return false
+
+
+func _module_action_zone_event_global_position(zone: Control, event: InputEvent) -> Vector2:
+	if zone == null or not is_instance_valid(zone):
+		return Vector2.INF
+	if event is InputEventMouseButton:
+		return zone.get_global_transform() * (event as InputEventMouseButton).position
+	if event is InputEventScreenTouch:
+		return zone.get_global_transform() * (event as InputEventScreenTouch).position
+	return Vector2.INF
 
 
 func _module_action_zone_for_card(card_host: Control, kind: String) -> Control:
@@ -20888,10 +22063,31 @@ func _module_action_zone_kind_at_position(card_host: Control, event_position: Ve
 
 
 func _module_action_badge_kind_at_position(card_host: Control, event_position: Vector2) -> String:
+	var pin_badge := _module_pin_badge(card_host)
+	if _module_pin_badge_contains_point(pin_badge, event_position):
+		return "pin"
 	var collapse_badge := _module_collapse_badge(card_host)
 	if _visible_control_contains_point(collapse_badge, event_position):
 		return "collapse"
 	return ""
+
+
+func _module_pin_badge_contains_point(badge: TextureButton, event_position: Vector2) -> bool:
+	if badge == null or not is_instance_valid(badge) or not badge.visible or badge.disabled or badge.is_queued_for_deletion():
+		return false
+	if not badge.is_inside_tree() or not badge.is_visible_in_tree():
+		return false
+	var clip_host := _module_pin_badge_clip_host(badge)
+	if clip_host != null and clip_host.clip_contents and not _visible_control_contains_point(clip_host, event_position):
+		return false
+	for candidate in _activity_input_position_candidates(event_position):
+		var local_point := badge.get_global_transform().affine_inverse() * candidate
+		if local_point.x < MODULE_PIN_BADGE_HIT_MIN.x or local_point.y < MODULE_PIN_BADGE_HIT_MIN.y:
+			continue
+		if local_point.x > MODULE_PIN_BADGE_HIT_MAX.x or local_point.y > MODULE_PIN_BADGE_HIT_MAX.y:
+			continue
+		return true
+	return false
 
 
 func _module_pin_badge_is_exiting(card_host: Control) -> bool:
@@ -20912,6 +22108,13 @@ func _visible_control_contains_point(control: Control, event_position: Vector2) 
 
 
 func _module_action_circle_at_position(event_position: Vector2) -> Dictionary:
+	if event_position == Vector2.INF:
+		return {}
+	if _position_inside_bottom_interactive_ui(event_position):
+		return {}
+	var direct_hit := _module_action_circle_at_direct_position(event_position)
+	if not direct_hit.is_empty():
+		return direct_hit
 	_prune_invalid_action_cards()
 	for raw_card in action_cards.values():
 		var card := raw_card as Dictionary
@@ -20924,7 +22127,7 @@ func _module_action_circle_at_position(event_position: Vector2) -> Dictionary:
 		var kind := _module_action_zone_kind_at_position(card_host, event_position)
 		if kind.is_empty():
 			var badge_kind := _module_action_badge_kind_at_position(card_host, event_position)
-			if badge_kind == "collapse":
+			if badge_kind == "pin" or badge_kind == "collapse":
 				kind = badge_kind
 		if kind.is_empty():
 			continue
@@ -20942,6 +22145,118 @@ func _module_action_circle_at_position(event_position: Vector2) -> Dictionary:
 	return {}
 
 
+func _module_action_circle_at_direct_position(event_position: Vector2) -> Dictionary:
+	_prune_invalid_action_cards()
+	for raw_card in action_cards.values():
+		var card := raw_card as Dictionary
+		var raw_host = card.get("pop", null)
+		var card_host := _valid_control_ref(raw_host)
+		if card_host == null:
+			continue
+		if not card_host.is_inside_tree() or not card_host.is_visible_in_tree():
+			continue
+		var kind := _module_action_zone_kind_at_direct_position(card_host, event_position)
+		if kind.is_empty():
+			var badge_kind := _module_action_badge_kind_at_direct_position(card_host, event_position)
+			if badge_kind == "pin" or badge_kind == "collapse":
+				kind = badge_kind
+		if kind.is_empty():
+			continue
+		return {
+			"card": card,
+			"kind": kind,
+			"host": card_host,
+			"module_key": str(card_host.get_meta("module_ui_key", ""))
+		}
+	for raw_root in [content_scroll, detail_lazy_stack]:
+		var root := _valid_control_ref(raw_root)
+		var tree_hit := _module_action_circle_at_direct_position_in_tree(root, event_position)
+		if not tree_hit.is_empty():
+			return tree_hit
+	return {}
+
+
+func _module_action_circle_at_direct_position_in_tree(root: Control, event_position: Vector2) -> Dictionary:
+	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion() or not root.is_inside_tree():
+		return {}
+	if not root.is_visible_in_tree():
+		return {}
+	var module_key := _normalized_module_ui_key(root.get_meta("module_ui_key", ""))
+	if not module_key.is_empty() and _module_ui_key_allows_pin_or_collapse(module_key):
+		var kind := _module_action_zone_kind_at_direct_position(root, event_position)
+		if kind.is_empty():
+			var badge_kind := _module_action_badge_kind_at_direct_position(root, event_position)
+			if badge_kind == "pin" or badge_kind == "collapse":
+				kind = badge_kind
+		if not kind.is_empty():
+			return {
+				"card": {},
+				"kind": kind,
+				"host": root,
+				"module_key": module_key
+			}
+	for child in root.get_children():
+		var child_control := child as Control
+		if child_control == null:
+			continue
+		var child_hit := _module_action_circle_at_direct_position_in_tree(child_control, event_position)
+		if not child_hit.is_empty():
+			return child_hit
+	return {}
+
+
+func _module_action_zone_kind_at_direct_position(card_host: Control, event_position: Vector2) -> String:
+	if card_host == null or not is_instance_valid(card_host):
+		return ""
+	for child in card_host.get_children():
+		var zone := child as Control
+		if zone == null or not bool(zone.get_meta("module_action_circle_zone", false)):
+			continue
+		if not zone.visible or zone.is_queued_for_deletion():
+			continue
+		var kind := str(zone.get_meta("module_action_kind", ""))
+		var rect := zone.get_global_rect()
+		var center := rect.get_center()
+		var radius := minf(rect.size.x, rect.size.y) * 0.5
+		if center.distance_to(event_position) <= radius:
+			return kind
+	return ""
+
+
+func _module_action_badge_kind_at_direct_position(card_host: Control, event_position: Vector2) -> String:
+	var pin_badge := _module_pin_badge(card_host)
+	if _module_pin_badge_contains_direct_point(pin_badge, event_position):
+		return "pin"
+	var collapse_badge := _module_collapse_badge(card_host)
+	if _visible_control_direct_contains_point(collapse_badge, event_position):
+		return "collapse"
+	return ""
+
+
+func _module_pin_badge_contains_direct_point(badge: TextureButton, event_position: Vector2) -> bool:
+	if badge == null or not is_instance_valid(badge) or not badge.visible or badge.disabled or badge.is_queued_for_deletion():
+		return false
+	if not badge.is_inside_tree() or not badge.is_visible_in_tree():
+		return false
+	var clip_host := _module_pin_badge_clip_host(badge)
+	if clip_host != null and clip_host.clip_contents and not _visible_control_direct_contains_point(clip_host, event_position):
+		return false
+	var local_point := badge.get_global_transform().affine_inverse() * event_position
+	if local_point.x < MODULE_PIN_BADGE_HIT_MIN.x or local_point.y < MODULE_PIN_BADGE_HIT_MIN.y:
+		return false
+	if local_point.x > MODULE_PIN_BADGE_HIT_MAX.x or local_point.y > MODULE_PIN_BADGE_HIT_MAX.y:
+		return false
+	return true
+
+
+func _visible_control_direct_contains_point(control: Control, event_position: Vector2) -> bool:
+	if control == null or not is_instance_valid(control) or not control.visible or control.is_queued_for_deletion():
+		return false
+	if not control.is_inside_tree() or not control.is_visible_in_tree():
+		return false
+	return control.get_global_rect().has_point(event_position)
+
+
 func _module_action_circle_at_position_in_tree(root: Control, event_position: Vector2) -> Dictionary:
 	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion() or not root.is_inside_tree():
 		return {}
@@ -20952,7 +22267,7 @@ func _module_action_circle_at_position_in_tree(root: Control, event_position: Ve
 		var kind := _module_action_zone_kind_at_position(root, event_position)
 		if kind.is_empty():
 			var badge_kind := _module_action_badge_kind_at_position(root, event_position)
-			if badge_kind == "collapse":
+			if badge_kind == "pin" or badge_kind == "collapse":
 				kind = badge_kind
 		if not kind.is_empty():
 			return {
@@ -20971,7 +22286,27 @@ func _module_action_circle_at_position_in_tree(root: Control, event_position: Ve
 	return {}
 
 
+func _route_direct_module_action_zone_input(event: InputEvent) -> bool:
+	if (current_screen != "skill" and current_screen != "pinned" and current_screen != "menu") or _modal_blocks_background_input() or _any_modal_overlay_visible():
+		return false
+	if _update_pending_module_pin_press(event):
+		return true
+	if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
+		_update_pending_module_pin_drag(event)
+	if not _is_primary_press_event(event):
+		return false
+	var event_position := _module_pin_press_event_position(event)
+	if event_position == Vector2.INF or _position_inside_bottom_interactive_ui(event_position):
+		return false
+	var hit := _module_action_circle_at_direct_position(event_position)
+	return _handle_module_action_zone_hit(hit, event, event_position)
+
+
 func _route_module_action_zone_input(event: InputEvent) -> bool:
+	if _update_pending_module_pin_press(event):
+		return true
+	if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
+		_update_pending_module_pin_drag(event)
 	if not _is_primary_press_event(event):
 		return false
 	var event_position := Vector2.ZERO
@@ -20982,6 +22317,10 @@ func _route_module_action_zone_input(event: InputEvent) -> bool:
 	else:
 		return false
 	var hit := _module_action_circle_at_position(event_position)
+	return _handle_module_action_zone_hit(hit, event, event_position)
+
+
+func _handle_module_action_zone_hit(hit: Dictionary, event: InputEvent, event_position: Vector2) -> bool:
 	if hit.is_empty():
 		return false
 	var card_host := _valid_control_ref(hit.get("host"))
@@ -20995,12 +22334,7 @@ func _route_module_action_zone_input(event: InputEvent) -> bool:
 		"pin":
 			if _module_pin_badge_is_exiting(card_host):
 				return true
-			if _module_ui_is_pinned(module_key):
-				_unpin_module_ui_key(module_key, card_host_id)
-			elif int(module_ui_pin_preview_tokens.get(module_key, 0)) > 0:
-				_pin_module_ui_key(module_key, card_host_id)
-			else:
-				_show_module_pin_preview(card_host, module_key)
+			_begin_module_pin_press(module_key, card_host_id, event_position, _module_pin_press_touch_index_for_event(event))
 			return true
 		"collapse":
 			if _module_ui_is_collapsed(module_key):
@@ -21013,6 +22347,70 @@ func _route_module_action_zone_input(event: InputEvent) -> bool:
 				_show_module_collapse_confirm(card_host, module_key)
 			return true
 	return false
+
+
+func _route_fishing_area_pin_corner_input(event: InputEvent) -> bool:
+	if _update_pending_module_pin_press(event):
+		return true
+	if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
+		_update_pending_module_pin_drag(event)
+	if current_screen != "skill" and current_screen != "pinned":
+		return false
+	if current_screen == "skill" and selected_skill_id != "fishing":
+		return false
+	if not _is_primary_press_event(event):
+		return false
+	var event_position := Vector2.ZERO
+	if event is InputEventMouseButton:
+		event_position = (event as InputEventMouseButton).global_position
+	elif event is InputEventScreenTouch:
+		event_position = (event as InputEventScreenTouch).position
+	else:
+		return false
+	if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
+		return false
+	var hit := _fishing_area_pin_corner_hit(event_position)
+	if hit.is_empty():
+		return false
+	var card_host := _valid_control_ref(hit.get("host"))
+	if card_host == null:
+		return false
+	var module_key := _normalized_module_ui_key(hit.get("module_key", ""))
+	if module_key.is_empty() or not _module_ui_key_allows_pin_or_collapse(module_key):
+		return false
+	if _module_pin_badge_is_exiting(card_host):
+		return true
+	_begin_module_pin_press(module_key, card_host.get_instance_id(), event_position, _module_pin_press_touch_index_for_event(event))
+	return true
+
+
+func _fishing_area_pin_corner_hit(event_position: Vector2) -> Dictionary:
+	if not _position_inside_detail_actions_viewport(event_position):
+		return {}
+	_prune_invalid_action_cards()
+	var keys := action_card_keys.duplicate()
+	keys.reverse()
+	for raw_key in keys:
+		var key := str(raw_key)
+		if not action_cards.has(key):
+			continue
+		var card := action_cards[key] as Dictionary
+		if not bool(card.get("is_fishing_area", false)):
+			continue
+		var pop := _valid_control_ref(card.get("pop", null))
+		if pop == null or not pop.is_inside_tree() or not pop.is_visible_in_tree():
+			continue
+		var direct_kind := _module_action_zone_kind_at_direct_position(pop, event_position)
+		if direct_kind.is_empty():
+			direct_kind = _module_action_badge_kind_at_direct_position(pop, event_position)
+		if direct_kind != "pin":
+			continue
+		return {
+			"card": card,
+			"host": pop,
+			"module_key": str(pop.get_meta("module_ui_key", ""))
+		}
+	return {}
 
 
 func _route_collapsed_module_expand_input(event: InputEvent) -> bool:
@@ -21067,8 +22465,25 @@ func _collapsed_module_row_for_key(module_key: String) -> Control:
 	return null
 
 
+func _collapsed_module_layout_host(row: Control) -> Control:
+	if row == null or not is_instance_valid(row):
+		return null
+	var current := row
+	while current != null and is_instance_valid(current):
+		var parent := current.get_parent()
+		if parent == detail_lazy_stack or parent is VBoxContainer:
+			return current
+		var parent_control := parent as Control
+		if parent_control == null or not is_instance_valid(parent_control):
+			break
+		current = parent_control
+	return row
+
+
 func _on_module_collapse_zone_gui_input(event: InputEvent, module_key: String, card_host_id: int) -> void:
 	if not _is_primary_press_event(event):
+		return
+	if _event_inside_fishing_location_image(event):
 		return
 	if not _module_ui_key_allows_pin_or_collapse(module_key):
 		return
@@ -21082,7 +22497,10 @@ func _on_module_collapse_zone_gui_input(event: InputEvent, module_key: String, c
 	var zone := _module_action_zone_for_card(card_host, "collapse")
 	if zone == null:
 		return
-	if _event_points_inside_bottom_interactive_ui(event, zone) or not _event_points_inside_detail_actions_viewport(event, zone):
+	var event_position := _module_action_zone_event_global_position(zone, event)
+	if event_position == Vector2.INF:
+		return
+	if _position_inside_bottom_interactive_ui(event_position):
 		return
 	if not _module_action_zone_event_inside_circle(card_host, "collapse", event):
 		return
@@ -21122,6 +22540,7 @@ func _collapse_module_ui_key(module_key: String, card_host_id: int) -> void:
 	if normalized_key.is_empty() or not _module_ui_key_allows_pin_or_collapse(normalized_key) or _module_ui_is_collapsed(normalized_key):
 		return
 	module_ui_collapsed[normalized_key] = true
+	module_ui_animating_collapse_key = normalized_key
 	var card_host := instance_from_id(card_host_id) as Control
 	if card_host != null and is_instance_valid(card_host) and not card_host.is_queued_for_deletion():
 		var badge := _module_collapse_badge(card_host)
@@ -21130,7 +22549,83 @@ func _collapse_module_ui_key(module_key: String, card_host_id: int) -> void:
 			badge.visible = false
 	_mark_save_dirty("module collapsed")
 	save_game()
+	if card_host != null and is_instance_valid(card_host) and _collapse_module_ui_key_in_place(normalized_key, card_host):
+		return
 	call_deferred("_refresh_visible_skill_detail_action_list", -1, selected_skill_id, true, true)
+
+
+func _collapse_module_ui_key_in_place(module_key: String, card_host: Control) -> bool:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty() or card_host == null or not is_instance_valid(card_host) or not card_host.is_inside_tree():
+		return false
+	var row := card_host.get_parent() as Control
+	if row == null or not is_instance_valid(row) or not row.is_inside_tree():
+		return false
+	var start_height := maxf(1.0, maxf(row.custom_minimum_size.y, row.size.y))
+	var target_height := _module_collapsed_squeeze_height()
+	if start_height <= target_height + 8.0:
+		_set_module_root_layout_height(row, target_height)
+		_update_detail_lazy_module_height(normalized_key, target_height)
+		_clear_module_ui_animating_collapse_key(normalized_key)
+		return true
+	if not row.has_meta("module_ui_full_height"):
+		row.set_meta("module_ui_full_height", start_height)
+	if not row.has_meta("module_ui_original_mouse_filter"):
+		row.set_meta("module_ui_original_mouse_filter", int(row.mouse_filter))
+	if not row.has_meta("module_ui_original_clip_contents"):
+		row.set_meta("module_ui_original_clip_contents", row.clip_contents)
+	row.set_meta("module_ui_key", normalized_key)
+	row.set_meta("module_ui_collapsed_squeeze", true)
+	row.add_to_group("collapsed_module_rows")
+	row.mouse_filter = Control.MOUSE_FILTER_STOP
+	row.clip_contents = false
+	var row_input := _on_collapsed_module_row_gui_input.bind(normalized_key, row.get_instance_id())
+	if not row.gui_input.is_connected(row_input):
+		row.gui_input.connect(row_input)
+	var layout_host := _collapsed_module_layout_host(row)
+	_kill_module_list_transition_tween(row)
+	if layout_host != null and layout_host != row:
+		_kill_module_list_transition_tween(layout_host)
+		_set_module_root_layout_height(layout_host, start_height)
+	_set_collapsed_module_visual_clipping(row, normalized_key, true, false)
+	var tween := create_tween()
+	row.set_meta("module_list_transition_tween", tween)
+	if layout_host != null and layout_host != row:
+		layout_host.set_meta("module_list_transition_tween", tween)
+	var layout_host_id := layout_host.get_instance_id() if layout_host != null else 0
+	tween.tween_method(
+		_set_collapsed_module_squeeze_height_for_tween.bind(row.get_instance_id(), layout_host_id),
+		start_height,
+		target_height,
+		MODULE_COLLAPSE_SQUEEZE_SECONDS
+	).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(_finish_collapsed_module_collapse_animation.bind(row.get_instance_id(), layout_host_id, normalized_key, target_height))
+	return true
+
+
+func _set_collapsed_module_squeeze_height_for_tween(value: float, row_id: int, layout_host_id: int) -> void:
+	var row := instance_from_id(row_id) as Control
+	if row != null and is_instance_valid(row):
+		_set_module_root_layout_height(row, value)
+	var host := instance_from_id(layout_host_id) as Control
+	if host != null and is_instance_valid(host):
+		_set_module_root_layout_height(host, value)
+
+
+func _finish_collapsed_module_collapse_animation(row_id: int, layout_host_id: int, module_key: String, target_height: float) -> void:
+	var row := instance_from_id(row_id) as Control
+	var layout_host := instance_from_id(layout_host_id) as Control
+	if layout_host != null and is_instance_valid(layout_host):
+		_set_module_root_layout_height(layout_host, target_height)
+		if layout_host.has_meta("module_list_transition_tween"):
+			layout_host.remove_meta("module_list_transition_tween")
+	if row != null and is_instance_valid(row):
+		_set_module_root_layout_height(row, target_height)
+		row.size.y = target_height
+		if row.has_meta("module_list_transition_tween"):
+			row.remove_meta("module_list_transition_tween")
+	_update_detail_lazy_module_height(module_key, target_height)
+	_clear_module_ui_animating_collapse_key(module_key)
 
 
 func _module_collapse_badge(card_host: Control) -> Button:
@@ -21410,7 +22905,7 @@ func _module_ui_key_allows_pin_or_collapse(module_key: String) -> bool:
 	if key.begins_with("fishing_area:"):
 		return _module_ui_fishing_area_is_unlocked(key)
 	if key.begins_with("fishing_offer:"):
-		return _module_ui_fishing_offer_is_available(key.substr("fishing_offer:".length()))
+		return false
 	if key.begins_with("hub:"):
 		return false
 	return false
@@ -21559,6 +23054,9 @@ func _play_collapsed_module_expand_animation(row: Control, module_key: String) -
 		return
 	row.set_meta("module_ui_expanding_from_collapsed", true)
 	_kill_module_list_transition_tween(row)
+	var layout_host := _collapsed_module_layout_host(row)
+	if layout_host != null and layout_host != row:
+		_kill_module_list_transition_tween(layout_host)
 	var start_height := maxf(1.0, maxf(row.custom_minimum_size.y, row.size.y))
 	var target_height := _module_root_full_height(row)
 	if target_height <= start_height + 8.0:
@@ -21567,18 +23065,31 @@ func _play_collapsed_module_expand_animation(row: Control, module_key: String) -
 		_finish_expand_module_ui_key(normalized_key)
 		return
 	row.clip_contents = false
+	if layout_host != null and is_instance_valid(layout_host):
+		_set_module_root_layout_height(layout_host, start_height)
 	_set_collapsed_module_visual_clipping(row, normalized_key, true, true)
 	_set_collapsed_module_title_lift(row, false, false)
 	var tween := create_tween()
 	row.set_meta("module_list_transition_tween", tween)
+	if layout_host != null and layout_host != row:
+		layout_host.set_meta("module_list_transition_tween", tween)
+	var layout_host_id := layout_host.get_instance_id() if layout_host != null else 0
 	var apply_height := func(value: float) -> void:
 		_set_module_root_layout_height(row, value)
+		var host := instance_from_id(layout_host_id) as Control
+		if host != null and is_instance_valid(host):
+			_set_module_root_layout_height(host, value)
 	tween.tween_method(apply_height, start_height, target_height, MODULE_COLLAPSE_SQUEEZE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_callback(_finish_collapsed_module_expand_animation.bind(row.get_instance_id(), normalized_key, target_height))
+	tween.tween_callback(_finish_collapsed_module_expand_animation.bind(row.get_instance_id(), layout_host_id, normalized_key, target_height))
 
 
-func _finish_collapsed_module_expand_animation(row_id: int, module_key: String, target_height: float) -> void:
+func _finish_collapsed_module_expand_animation(row_id: int, layout_host_id: int, module_key: String, target_height: float) -> void:
 	var row := instance_from_id(row_id) as Control
+	var layout_host := instance_from_id(layout_host_id) as Control
+	if layout_host != null and is_instance_valid(layout_host):
+		_set_module_root_layout_height(layout_host, target_height)
+		if layout_host.has_meta("module_list_transition_tween"):
+			layout_host.remove_meta("module_list_transition_tween")
 	if row != null and is_instance_valid(row):
 		_set_module_root_layout_height(row, target_height)
 		_set_collapsed_module_visual_clipping(row, module_key, false, true)
@@ -21586,20 +23097,64 @@ func _finish_collapsed_module_expand_animation(row_id: int, module_key: String, 
 			row.remove_meta("module_list_transition_tween")
 		if row.has_meta("module_ui_expanding_from_collapsed"):
 			row.remove_meta("module_ui_expanding_from_collapsed")
-	_finish_expand_module_ui_key(module_key)
+		_finish_expanded_module_row_in_place(row, module_key, layout_host, target_height)
+	_finish_expand_module_ui_key(module_key, row == null or not is_instance_valid(row))
 
 
-func _finish_expand_module_ui_key(module_key: String) -> void:
+func _finish_expanded_module_row_in_place(row: Control, module_key: String, layout_host: Control, target_height: float) -> void:
+	if row == null or not is_instance_valid(row):
+		return
+	row.set_meta("module_ui_collapsed_squeeze", false)
+	row.remove_from_group("collapsed_module_rows")
+	row.mouse_filter = int(row.get_meta("module_ui_original_mouse_filter", Control.MOUSE_FILTER_IGNORE))
+	row.clip_contents = bool(row.get_meta("module_ui_original_clip_contents", false))
+	_set_collapsed_module_visual_clipping(row, module_key, false, true)
+	_set_module_root_layout_height(row, target_height)
+	if layout_host != null and is_instance_valid(layout_host):
+		_set_module_root_layout_height(layout_host, target_height)
+	_update_detail_lazy_module_height(module_key, target_height)
+
+
+func _update_detail_lazy_module_height(module_key: String, target_height: float) -> void:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty() or detail_lazy_plan.is_empty():
+		return
+	var changed := false
+	for index in range(detail_lazy_plan.size()):
+		var lazy_entry := detail_lazy_plan[index] as Dictionary
+		if _normalized_module_ui_key(_detail_lazy_module_ui_key(lazy_entry, selected_skill_id)) != normalized_key:
+			continue
+		lazy_entry["height"] = target_height
+		detail_lazy_plan[index] = lazy_entry
+		changed = true
+		break
+	if not changed:
+		return
+	var y := 0.0
+	for index in range(detail_lazy_plan.size()):
+		var lazy_entry := detail_lazy_plan[index] as Dictionary
+		lazy_entry["y"] = y
+		y += float(lazy_entry.get("height", 0.0)) + DETAIL_LAZY_STACK_SEPARATION
+		detail_lazy_plan[index] = lazy_entry
+
+
+func _finish_expand_module_ui_key(module_key: String, refresh_list := true) -> void:
 	var normalized_key := _normalized_module_ui_key(module_key)
 	if normalized_key.is_empty():
 		return
 	module_ui_collapsed.erase(normalized_key)
 	_mark_save_dirty("module expanded")
 	save_game()
-	call_deferred("_refresh_visible_skill_detail_action_list", -1, selected_skill_id, true, true)
+	if refresh_list:
+		call_deferred("_refresh_visible_skill_detail_action_list", -1, selected_skill_id, true, true)
 
 
 func _on_module_pin_zone_gui_input(event: InputEvent, module_key: String, card_host_id: int) -> void:
+	if _update_pending_module_pin_press(event):
+		accept_event()
+		return
+	if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
+		_update_pending_module_pin_drag(event)
 	if not _is_primary_press_event(event):
 		return
 	if not _module_ui_key_allows_pin_or_collapse(module_key):
@@ -21610,20 +23165,142 @@ func _on_module_pin_zone_gui_input(event: InputEvent, module_key: String, card_h
 	var zone := _module_action_zone_for_card(card_host, "pin")
 	if zone == null:
 		return
-	if _event_points_inside_bottom_interactive_ui(event, zone) or not _event_points_inside_detail_actions_viewport(event, zone):
+	var event_position := _module_action_zone_event_global_position(zone, event)
+	if event_position == Vector2.INF:
+		return
+	if _position_inside_bottom_interactive_ui(event_position):
 		return
 	if not _module_action_zone_event_inside_circle(card_host, "pin", event):
 		return
-	if _module_ui_is_pinned(module_key):
-		_unpin_module_ui_key(module_key, card_host_id)
-		accept_event()
-		return
 	var normalized_key := _normalized_module_ui_key(module_key)
-	if int(module_ui_pin_preview_tokens.get(normalized_key, 0)) > 0:
-		_pin_module_ui_key(normalized_key, card_host_id)
-	else:
-		_show_module_pin_preview(card_host, normalized_key)
+	_begin_module_pin_press(normalized_key, card_host_id, event_position, _module_pin_press_touch_index_for_event(event))
 	accept_event()
+
+
+func _begin_module_pin_press(module_key: String, card_host_id: int, press_position: Vector2, touch_index: int) -> void:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty() or not _module_ui_key_allows_pin_or_collapse(normalized_key):
+		return
+	module_ui_pin_press_active = true
+	module_ui_pin_press_module_key = normalized_key
+	module_ui_pin_press_card_host_id = card_host_id
+	module_ui_pin_press_position = press_position
+	module_ui_pin_press_touch_index = touch_index
+	module_ui_pin_press_dragged = false
+
+
+func _update_pending_module_pin_press(event: InputEvent) -> bool:
+	if not module_ui_pin_press_active:
+		return false
+	if not _module_pin_press_event_belongs_to_active_press(event):
+		return false
+	var event_position := _module_pin_press_event_position(event)
+	var is_release := _module_pin_press_event_is_release(event)
+	var is_motion := event is InputEventMouseMotion or event is InputEventScreenDrag
+	if event_position != Vector2.INF and (is_motion or is_release):
+		_update_pending_module_pin_drag_at_position(event_position)
+	if not is_release:
+		return false
+	var should_commit := (
+		not module_ui_pin_press_dragged
+		and event_position != Vector2.INF
+		and event_position.distance_to(module_ui_pin_press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
+	)
+	var module_key := module_ui_pin_press_module_key
+	var card_host_id := module_ui_pin_press_card_host_id
+	_clear_module_pin_press()
+	if should_commit:
+		_commit_module_pin_tap(module_key, card_host_id)
+	return true
+
+
+func _update_pending_module_pin_drag(event: InputEvent) -> void:
+	var event_position := _module_pin_press_event_position(event)
+	if event_position == Vector2.INF:
+		return
+	_update_pending_module_pin_drag_at_position(event_position)
+
+
+func _update_pending_module_pin_drag_at_position(event_position: Vector2) -> void:
+	if not module_ui_pin_press_active:
+		return
+	if (
+		event_position.distance_to(module_ui_pin_press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP
+		or skill_swipe_tracking
+		or _module_pin_press_scroll_is_dragging()
+	):
+		module_ui_pin_press_dragged = true
+
+
+func _module_pin_press_scroll_is_dragging() -> bool:
+	var scroll := detail_actions_scroll if current_screen == "skill" else (content_scroll if current_screen == "pinned" else null)
+	if scroll == null or not is_instance_valid(scroll):
+		return false
+	if scroll is MobileScrollContainer:
+		var mobile_scroll := scroll as MobileScrollContainer
+		return mobile_scroll.drag_scrolling or absf(mobile_scroll.velocity) >= 4.0
+	return false
+
+
+func _module_pin_press_event_belongs_to_active_press(event: InputEvent) -> bool:
+	if module_ui_pin_press_touch_index < 0:
+		return event is InputEventMouseButton or event is InputEventMouseMotion
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).index == module_ui_pin_press_touch_index
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).index == module_ui_pin_press_touch_index
+	return false
+
+
+func _module_pin_press_event_position(event: InputEvent) -> Vector2:
+	if event is InputEventMouseButton:
+		return (event as InputEventMouseButton).global_position
+	if event is InputEventMouseMotion:
+		return (event as InputEventMouseMotion).global_position
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).position
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).position
+	return Vector2.INF
+
+
+func _module_pin_press_event_is_release(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		return mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed
+	if event is InputEventScreenTouch:
+		return not (event as InputEventScreenTouch).pressed
+	return false
+
+
+func _module_pin_press_touch_index_for_event(event: InputEvent) -> int:
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).index
+	return -1
+
+
+func _clear_module_pin_press() -> void:
+	module_ui_pin_press_active = false
+	module_ui_pin_press_module_key = ""
+	module_ui_pin_press_card_host_id = 0
+	module_ui_pin_press_position = Vector2.ZERO
+	module_ui_pin_press_touch_index = -1
+	module_ui_pin_press_dragged = false
+
+
+func _commit_module_pin_tap(module_key: String, card_host_id: int) -> void:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty() or not _module_ui_key_allows_pin_or_collapse(normalized_key):
+		return
+	var card_host := instance_from_id(card_host_id) as Control
+	if card_host == null or not is_instance_valid(card_host) or card_host.is_queued_for_deletion():
+		return
+	if _module_pin_badge_is_exiting(card_host):
+		return
+	if _module_ui_is_pinned(normalized_key):
+		_unpin_module_ui_key(normalized_key, card_host_id)
+	else:
+		_pin_module_ui_key(normalized_key, card_host_id)
 
 
 func _module_ui_is_pinned(module_key: String) -> bool:
@@ -21890,7 +23567,7 @@ func _find_normal_module_ui_control_for_scroll_anchor(root_node: Node, module_ke
 func _refresh_module_ui_after_pin_change(delay_seconds := 0.0) -> void:
 	module_ui_refresh_token += 1
 	var refresh_token := module_ui_refresh_token
-	if current_screen == "pinned":
+	if current_screen == "skill" or current_screen == "pinned":
 		if delay_seconds > 0.0:
 			call_deferred("_refresh_module_ui_after_pin_change_after_delay", refresh_token, current_screen, selected_skill_id, delay_seconds)
 		else:
@@ -21910,9 +23587,100 @@ func _refresh_module_ui_after_pin_change_deferred(refresh_token: int, target_scr
 	if target_screen == "skill":
 		if selected_skill_id != target_skill_id:
 			return
-		await _refresh_visible_skill_detail_action_list(-1, target_skill_id, true, true)
+		_sync_visible_module_pin_badges()
 	elif target_screen == "pinned":
-		_render_screen()
+		_refresh_pinned_activities_shelf_after_pin_change()
+		_sync_visible_module_pin_badges()
+		_sync_pinned_active_shelf(0.0, true)
+
+
+func _sync_visible_module_pin_badges() -> void:
+	for raw_badge in get_tree().get_nodes_in_group("module_pin_badges"):
+		var badge := raw_badge as TextureButton
+		if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
+			continue
+		var module_key := _normalized_module_ui_key(badge.get_meta("module_pin_module_key", ""))
+		if module_key.is_empty():
+			continue
+		_apply_module_pin_badge_texture(badge, module_key)
+		if _module_ui_is_pinned(module_key):
+			_place_module_pin_badge_settled(badge)
+		else:
+			_set_module_pin_badge_clip_enabled(badge, true)
+			badge.visible = false
+			badge.disabled = true
+			badge.position = MODULE_PIN_BADGE_SETTLED_POSITION
+			badge.rotation_degrees = 0.0
+			badge.scale = Vector2.ONE
+			_set_canvas_item_alpha_if_changed(badge, 0.0)
+
+
+func _refresh_pinned_activities_shelf_after_pin_change() -> void:
+	if current_screen != "pinned" or content_scroll == null or not is_instance_valid(content_scroll):
+		return
+	var existing_shelf := _find_named_control_descendant(content_scroll, "PinnedActivitiesShelf")
+	var existing_empty := _find_named_control_descendant(content_scroll, "PinnedActivitiesEmptyState")
+	var anchor := existing_shelf if existing_shelf != null else existing_empty
+	if anchor == null:
+		return
+	var stack := anchor.get_parent() as VBoxContainer
+	if stack == null or not is_instance_valid(stack):
+		return
+	var insert_index := anchor.get_index()
+	var previous_scroll := int(round(content_scroll.scroll_vertical))
+	var old_keys: Array[String] = []
+	for child in stack.get_children():
+		var child_control := child as Control
+		if child_control == null:
+			continue
+		if child_control.name == "PinnedActivitiesShelf":
+			for raw_module in child_control.get_children():
+				var module_control := raw_module as Control
+				if module_control == null:
+					continue
+				var module_key := _normalized_module_ui_key(module_control.get_meta("module_ui_key", ""))
+				if not module_key.is_empty():
+					old_keys.append(module_key)
+			stack.remove_child(child_control)
+			child_control.queue_free()
+		elif child_control.name == "PinnedActivitiesEmptyState":
+			stack.remove_child(child_control)
+			child_control.queue_free()
+	for old_key in old_keys:
+		action_cards.erase(_pinned_page_card_key(old_key))
+	var content_width := _skill_content_width()
+	var replacement := _build_pinned_activities_shelf_content(content_width)
+	stack.add_child(replacement)
+	stack.move_child(replacement, clampi(insert_index, 0, maxi(0, stack.get_child_count() - 1)))
+	content_scroll.scroll_vertical = previous_scroll
+	if content_scroll is MobileScrollContainer:
+		(content_scroll as MobileScrollContainer).drag_scroll_position = float(previous_scroll)
+
+
+func _build_pinned_activities_shelf_content(content_width: float) -> Control:
+	var shelf := VBoxContainer.new()
+	shelf.name = "PinnedActivitiesShelf"
+	shelf.custom_minimum_size = Vector2(content_width, 0)
+	shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shelf.add_theme_constant_override("separation", 34)
+	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for raw_key in module_ui_pinned_order:
+		var module_key := _normalized_module_ui_key(raw_key)
+		if module_key.is_empty():
+			continue
+		var module_root := _build_pinned_activities_module(module_key, content_width)
+		if module_root == null:
+			continue
+		module_root.set_meta("module_ui_pinned_page_copy", true)
+		module_root.set_meta("module_ui_force_expanded", true)
+		module_root.set_meta("module_ui_key", module_key)
+		_remove_module_collapse_zones(module_root)
+		_remove_registered_card_collapse_zone(_pinned_page_card_key(module_key))
+		shelf.add_child(module_root)
+	if shelf.get_child_count() <= 0:
+		shelf.queue_free()
+		return _pinned_activities_empty_state(content_width)
+	return shelf
 
 
 func _module_pin_badge(card_host: Control) -> TextureButton:
@@ -21930,7 +23698,10 @@ func _module_pin_badge_clip_host(badge: TextureButton) -> Control:
 	return parent
 
 
-func _set_module_pin_badge_clip_enabled(badge: TextureButton, enabled: bool) -> void:
+func _set_module_pin_badge_clip_enabled(raw_badge: Object, enabled: bool) -> void:
+	var badge := raw_badge as TextureButton
+	if badge == null:
+		return
 	var clip_host := _module_pin_badge_clip_host(badge)
 	if clip_host == null:
 		return
@@ -22228,7 +23999,7 @@ func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview
 	pop_card.offset_right = THIEVING_HEIST_HORIZONTAL_BLEED
 	pop_card.offset_top = 0.0
 	pop_card.offset_bottom = 0.0
-	pop_card.clip_contents = true
+	pop_card.clip_contents = false
 	card_root.add_child(pop_card)
 
 	var bg := TextureRect.new()
@@ -22990,7 +24761,7 @@ func _add_thieving_action_jail_overlay(card: Dictionary, action_id: String, cool
 	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 	overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	overlay.clip_contents = true
-	overlay.z_index = 280
+	overlay.z_index = MODULE_TITLE_OVER_PIN_Z_INDEX + 240
 	overlay.gui_input.connect(_on_thieving_action_jail_overlay_input.bind(action_id, str(card.get("card_key", _action_key("thieving", action_id)))))
 	overlay.modulate = Color(1, 1, 1, 0)
 	pop.add_child(overlay)
@@ -23420,6 +25191,8 @@ func _update_skill_detail_shadow(delta: float, instant := false) -> void:
 func _build_detail_jump_arrows(parent: Control) -> void:
 	if detail_actions_scroll == null:
 		return
+	if _onboarding_path_active():
+		return
 	if not detail_actions_scroll.user_scroll_direction.is_connected(_on_detail_actions_user_scroll_direction):
 		detail_actions_scroll.user_scroll_direction.connect(_on_detail_actions_user_scroll_direction)
 	detail_jump_top_button = _activity_jump_button(ACTIVITY_JUMP_TOP_TEXTURE, true)
@@ -23642,6 +25415,7 @@ func _skill_detail_needs_high_frequency_ui_update() -> bool:
 			or activity_start_highlight_active
 			or activity_start_highlight_pending
 			or locked_activity_preview_fade_play_pending
+			or _skill_detail_has_fishing_camera_returning()
 			or (pinned_scroll != null and is_instance_valid(pinned_scroll) and (pinned_scroll.drag_scrolling or absf(pinned_scroll.velocity) >= 4.0))
 			or absf(detail_shelf_shadow_alpha - _skill_detail_shadow_target_alpha()) > 0.01
 		)
@@ -23663,8 +25437,27 @@ func _skill_detail_needs_high_frequency_ui_update() -> bool:
 		return true
 	if _skill_swipe_previews_need_frame_updates():
 		return true
+	if _skill_detail_has_fishing_camera_returning():
+		return true
 	if absf(detail_shelf_shadow_alpha - _skill_detail_shadow_target_alpha()) > 0.01:
 		return true
+	return false
+
+
+func _skill_detail_has_fishing_camera_returning() -> bool:
+	if current_screen != "skill" and current_screen != "pinned":
+		return false
+	for raw_card in action_cards.values():
+		var card := raw_card as Dictionary
+		if card.is_empty():
+			continue
+		if bool(card.get("is_fishing_area", false)) and _fishing_area_has_active_camera_return(card):
+			return true
+		if float(card.get("active_camera_zoom", 0.0)) > 1.0 and (
+			bool(card.get("active_camera_returning", false))
+			or bool(card.get("active_camera_was_running", false))
+		):
+			return true
 	return false
 
 
@@ -23683,11 +25476,13 @@ func _update_ui(delta: float, instant := false) -> void:
 	var skill_frame_refresh := instant or static_refresh or _skill_detail_needs_high_frequency_ui_update()
 	var header_gauge_frame_refresh := skill_frame_refresh or _visible_detail_regen_gauge_needs_header_refresh()
 	var detail_header_gauge_refresh := _consume_detail_header_gauge_refresh(delta, instant, static_refresh, header_gauge_frame_refresh)
+	var passive_card_progress_refresh := _consume_passive_card_progress_refresh(delta, instant, static_refresh, skill_frame_refresh)
 	if static_refresh and not boot_detail_render_in_progress and not screen_render_in_progress and _skill_detail_needs_action_list_refresh():
 		var refresh_restore_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
 		call_deferred("_refresh_visible_skill_detail_action_list", refresh_restore_scroll, selected_skill_id)
 	if static_refresh and _skill_detail_shows_tutorial_tips():
 		_show_lock_click_tip_note_if_needed()
+		_resume_onboarding_stamina_mastery_sequence_if_needed()
 	if static_refresh and current_screen == "home" and home_total_label != null:
 		_set_label_text_if_changed(home_total_label, "Total Lv %s" % _global_level())
 		for skill_id in home_skill_labels.keys():
@@ -23789,7 +25584,8 @@ func _update_ui(delta: float, instant := false) -> void:
 				)
 				if bool(card.get("fluid_was_running", false)) and not area_running:
 					card["fluid_exiting"] = true
-				if not static_refresh and not area_running and not bool(card.get("fluid_exiting", false)):
+				var area_camera_returning := _fishing_area_has_active_camera_return(card)
+				if not static_refresh and not area_running and not bool(card.get("fluid_exiting", false)) and not area_camera_returning:
 					continue
 				_update_fishing_area_module(card, skill_id, area_running, delta, instant)
 				continue
@@ -23823,7 +25619,7 @@ func _update_ui(delta: float, instant := false) -> void:
 			if _is_passive_action(action):
 				if static_refresh:
 					_update_passive_card_static_state(card, skill_id, action, unlocked)
-				else:
+				elif passive_card_progress_refresh:
 					_update_passive_card_progress(card, action, unlocked, instant)
 				continue
 			if static_refresh:
@@ -23882,6 +25678,19 @@ func _consume_detail_header_gauge_refresh(delta: float, instant: bool, static_re
 	if detail_header_gauge_refresh_elapsed < DETAIL_HEADER_GAUGE_REFRESH_SECONDS:
 		return false
 	detail_header_gauge_refresh_elapsed = 0.0
+	return true
+
+
+func _consume_passive_card_progress_refresh(delta: float, instant: bool, static_refresh: bool, skill_frame_refresh: bool) -> bool:
+	if instant or static_refresh:
+		passive_card_progress_refresh_elapsed = 0.0
+		return true
+	if not skill_frame_refresh or current_screen != "skill":
+		return false
+	passive_card_progress_refresh_elapsed += maxf(0.0, delta)
+	if passive_card_progress_refresh_elapsed < PASSIVE_CARD_PROGRESS_REFRESH_SECONDS:
+		return false
+	passive_card_progress_refresh_elapsed = 0.0
 	return true
 
 
@@ -26317,6 +28126,43 @@ func _on_achievement_medal_slot_input(event: InputEvent, strip_id: int, icon_id:
 	_show_achievement_medal_popover(strip, icon, skill_id)
 
 
+func _route_achievement_medal_press(event: InputEvent) -> bool:
+	if not _is_primary_press_event(event):
+		return false
+	var event_position := _primary_press_event_position(event)
+	if event_position == Vector2.INF:
+		return false
+	for raw_skill_id in achievement_medal_slot_icons.keys():
+		var skill_id := str(raw_skill_id)
+		var strip := achievement_medal_slot_strips.get(skill_id, null) as Control
+		if strip == null or not is_instance_valid(strip) or not strip.is_visible_in_tree():
+			continue
+		var icon_rows: Array = achievement_medal_slot_icons.get(skill_id, [])
+		for raw_row in icon_rows:
+			var row := raw_row as Array
+			for raw_icon in row:
+				var icon := raw_icon as TextureRect
+				if icon == null or not is_instance_valid(icon) or not icon.visible or not icon.is_visible_in_tree():
+					continue
+				if not icon.get_global_rect().grow(22.0).has_point(event_position):
+					continue
+				_show_achievement_medal_popover(strip, icon, skill_id)
+				return true
+	return false
+
+
+func _primary_press_event_position(event: InputEvent) -> Vector2:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			return mouse_event.global_position
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			return touch_event.position
+	return Vector2.INF
+
+
 func _show_achievement_medal_popover(strip: Control, icon: TextureRect, skill_id: String) -> void:
 	_hide_achievement_medal_popovers()
 	var popover := _achievement_medal_popover(
@@ -26325,13 +28171,24 @@ func _show_achievement_medal_popover(strip: Control, icon: TextureRect, skill_id
 		int(icon.get_meta("achievement_medal_level", 0)),
 		skill_id
 	)
-	strip.add_child(popover)
+	var popover_parent := _valid_control_ref(skills_content) as Control
+	if popover_parent == null:
+		popover_parent = strip
+	popover_parent.add_child(popover)
 	var popover_size := popover.custom_minimum_size
-	var strip_size := Vector2(maxf(strip.size.x, strip.custom_minimum_size.x), maxf(strip.size.y, strip.custom_minimum_size.y))
-	var x := clampf(icon.position.x + icon.size.x * 0.5 - popover_size.x * 0.5, 0.0, maxf(0.0, strip_size.x - popover_size.x))
-	var y := icon.position.y - popover_size.y - 18.0
-	y = clampf(y, 0.0, maxf(0.0, strip_size.y - popover_size.y))
-	popover.position = Vector2(x, y)
+	popover.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	popover.size = popover_size
+	var icon_rect := icon.get_global_rect()
+	var parent_rect := popover_parent.get_global_rect()
+	var canvas_bottom := BASE_CANVAS.y - _bottom_ui_reserved_height_for_current_screen() - 24.0
+	var max_x := BASE_CANVAS.x - popover_size.x - 24.0
+	var max_y := canvas_bottom - popover_size.y
+	var global_x := clampf(icon_rect.get_center().x - popover_size.x * 0.5, 24.0, maxf(24.0, max_x))
+	var global_y := icon_rect.position.y - popover_size.y - 18.0
+	if global_y < SKILLS_PAGE_TOP_PAD:
+		global_y = icon_rect.position.y + icon_rect.size.y + 18.0
+	global_y = clampf(global_y, SKILLS_PAGE_TOP_PAD, maxf(SKILLS_PAGE_TOP_PAD, max_y))
+	popover.position = Vector2(global_x, global_y) - parent_rect.position
 	popover.visible = true
 	popover.set_meta("achievement_medal_popover_opened_msec", Time.get_ticks_msec())
 	popover.modulate = Color(1, 1, 1, 0)
@@ -26352,12 +28209,14 @@ func _achievement_medal_popover(action_name: String, art_path: String, medal_lev
 	popover.add_to_group("achievement_medal_popovers")
 	popover.add_theme_stylebox_override("panel", _passive_popup_style())
 	var margin := MarginContainer.new()
+	margin.custom_minimum_size = Vector2(496, 370)
 	margin.add_theme_constant_override("margin_left", 32)
 	margin.add_theme_constant_override("margin_right", 32)
 	margin.add_theme_constant_override("margin_top", 28)
 	margin.add_theme_constant_override("margin_bottom", 30)
 	popover.add_child(margin)
 	var stack := VBoxContainer.new()
+	stack.custom_minimum_size = Vector2(496, 370)
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
 	stack.add_theme_constant_override("separation", 16)
 	margin.add_child(stack)
@@ -26365,11 +28224,13 @@ func _achievement_medal_popover(action_name: String, art_path: String, medal_lev
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stack.add_child(art)
 	var title := _label(action_name if not action_name.is_empty() else _skill_name(skill_id), 62, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	title.custom_minimum_size = Vector2(496, 122)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(title)
 	var medal_name: String = str(MASTERY_MEDAL_NAMES[clampi(medal_level, 1, MASTERY_MAX_LEVEL) - 1]) if medal_level > 0 else "Medal"
 	var subtitle := _label("%s medal" % medal_name, 48, _skill_theme_color(skill_id), HORIZONTAL_ALIGNMENT_CENTER)
+	subtitle.custom_minimum_size = Vector2(496, 68)
 	subtitle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	subtitle.add_theme_color_override("font_outline_color", COLOR_INK)
 	subtitle.add_theme_constant_override("outline_size", 12)
@@ -27066,18 +28927,92 @@ func _shop_bonus_label_text() -> String:
 
 
 func _on_stamina_gauge_input(event: InputEvent, skill_id := "", source: RegenCircle = null) -> void:
+	if _stamina_gauge_event_hits_auto_eat_toggle(event):
+		_cancel_pending_stamina_gauge_click()
+		get_viewport().set_input_as_handled()
+		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		_suppress_stamina_gauge_parent_button(source)
 		if event.pressed:
 			_begin_stamina_gauge_click_or_hold(skill_id, source)
 		else:
 			_finish_stamina_gauge_click_or_hold(skill_id, source)
 		get_viewport().set_input_as_handled()
 	elif event is InputEventScreenTouch:
+		_suppress_stamina_gauge_parent_button(source)
 		if event.pressed:
 			_begin_stamina_gauge_click_or_hold(skill_id, source)
 		else:
 			_finish_stamina_gauge_click_or_hold(skill_id, source)
 		get_viewport().set_input_as_handled()
+
+
+func _cancel_pending_stamina_gauge_click() -> void:
+	stamina_gauge_pending_click = false
+	stamina_gauge_pending_skill_id = ""
+	stamina_gauge_pending_hold_seconds = 0.0
+	stamina_gauge_press_source = null
+
+
+func _stamina_gauge_event_hits_auto_eat_toggle(event: InputEvent) -> bool:
+	var event_position := Vector2.ZERO
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
+			return false
+		event_position = _global_event_position(mouse_event.position, mouse_event.global_position, self)
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		event_position = _global_event_position(touch_event.position, touch_event.position, self)
+	else:
+		return false
+	for node in get_tree().get_nodes_in_group("auto_eat_fish_toggle"):
+		var button := node as TextureButton
+		if button == null or not is_instance_valid(button) or not button.is_inside_tree() or not button.is_visible_in_tree():
+			continue
+		if button.get_global_rect().grow(8.0).has_point(event_position):
+			return true
+	return false
+
+
+func _suppress_stamina_gauge_parent_button(source: Control) -> void:
+	var button := _stamina_gauge_parent_button(source)
+	if button == null:
+		return
+	button.set_meta("stamina_gauge_suppress_parent_until_msec", Time.get_ticks_msec() + STAMINA_GAUGE_PARENT_BUTTON_SUPPRESS_MSEC)
+	button.set_meta("suppress_current_press_animation", true)
+
+
+func _stamina_gauge_parent_button(source: Control) -> BaseButton:
+	var node := source as Node
+	while node != null:
+		if node is BaseButton:
+			return node as BaseButton
+		node = node.get_parent()
+	return null
+
+
+func _button_has_active_stamina_gauge_parent_suppression(button: BaseButton) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	var until_msec := int(button.get_meta("stamina_gauge_suppress_parent_until_msec", 0))
+	if until_msec <= 0:
+		return false
+	if Time.get_ticks_msec() <= until_msec:
+		return true
+	button.remove_meta("stamina_gauge_suppress_parent_until_msec")
+	return false
+
+
+func _consume_skill_menu_gauge_parent_suppression(skill_id: String) -> bool:
+	if not skill_cards.has(skill_id):
+		return false
+	var card := skill_cards.get(skill_id, {}) as Dictionary
+	var button := card.get("button") as BaseButton
+	if not _button_has_active_stamina_gauge_parent_suppression(button):
+		return false
+	button.remove_meta("stamina_gauge_suppress_parent_until_msec")
+	return true
 
 
 func _is_stamina_gauge_release_event(event: InputEvent) -> bool:
@@ -27092,13 +29027,17 @@ func _is_stamina_gauge_release_event(event: InputEvent) -> bool:
 
 func _begin_stamina_gauge_click_or_hold(skill_id := "", source: RegenCircle = null) -> void:
 	var target_skill_id := skill_id if not skill_id.is_empty() else selected_skill_id
-	if target_skill_id.is_empty() or current_screen != "skill":
+	if target_skill_id.is_empty() or not _stamina_gauge_interaction_screen_active():
 		return
 	_cancel_skill_swipe_feedback(false)
 	stamina_gauge_pending_click = true
 	stamina_gauge_pending_skill_id = target_skill_id
 	stamina_gauge_pending_hold_seconds = 0.0
 	stamina_gauge_press_source = source
+
+
+func _stamina_gauge_interaction_screen_active() -> bool:
+	return current_screen == "skill" or current_screen == "menu" or current_screen == "pinned"
 
 
 func _finish_stamina_gauge_click_or_hold(skill_id := "", source: RegenCircle = null) -> void:
@@ -27160,7 +29099,7 @@ func _process_stamina_gauge_regen_boost(delta: float) -> void:
 		stamina_gauge_regen_multiplier = 1.0
 		stamina_gauge_boost_skill_id = ""
 		return
-	if stamina_gauge_pending_click and current_screen != "skill":
+	if stamina_gauge_pending_click and not _stamina_gauge_interaction_screen_active():
 		_set_stamina_gauge_pressed(false)
 	if stamina_gauge_pending_click:
 		stamina_gauge_pending_hold_seconds += delta
@@ -27189,6 +29128,8 @@ func _try_eat_fish_for_stamina(skill_id := "", source: RegenCircle = null) -> vo
 		return
 	_cancel_skill_swipe_feedback(false)
 	if _stamina_value(target_skill_id) >= float(_max_stamina(target_skill_id)) - 0.0001:
+		_float_stamina_full(target)
+		_play_stamina_gauge_eat_fail(target)
 		return
 	if fish_currency < 1.0:
 		_float_stamina_need_fish(target)
@@ -27205,7 +29146,7 @@ func _try_eat_fish_for_stamina(skill_id := "", source: RegenCircle = null) -> vo
 
 
 func _auto_eat_fish_for_action(skill_id: String, stamina_cost: float, source: RegenCircle = null, show_fail := false) -> bool:
-	if not auto_eat_fish_enabled or skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
+	if not _auto_eat_fish_enabled_for_skill(skill_id) or skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
 		return _stamina_value(skill_id) + 0.0001 >= stamina_cost
 	if stamina_cost <= 0.0 or _stamina_value(skill_id) + 0.0001 >= stamina_cost:
 		return true
@@ -27245,15 +29186,23 @@ func _play_staggered_eaten_fish_icons(skill_id: String, target_id: int, fish_cou
 
 
 func _float_stamina_need_fish(source: Control = null) -> void:
+	_float_stamina_gauge_feedback(source, "need fish!", Color("#ffd95a"))
+
+
+func _float_stamina_full(source: Control = null) -> void:
+	_float_stamina_gauge_feedback(source, "full", Color("#9ff7ff"))
+
+
+func _float_stamina_gauge_feedback(source: Control, text: String, color: Color) -> void:
 	var target := source if source != null else detail_regen_circle
 	if target == null or not is_instance_valid(target) or not target.is_inside_tree():
 		return
 	_float_reward(
 		self,
 		target,
-		"need fish!",
+		text,
 		58,
-		Color("#ffd95a"),
+		color,
 		Vector2(0, -48),
 		Vector2(0, -150),
 		0.0,
@@ -27474,6 +29423,8 @@ func _visible_actions_for_skill(skill_id: String) -> Array:
 		var action_data := action as Dictionary
 		if action_data.is_empty():
 			continue
+		if _tutorial_starter_only_detail_active(skill_id) and str(action_data.get("id", "")) != TUTORIAL_STARTER_ACTION_ID:
+			continue
 		if _tutorial_should_defer_action_until_skill_swipe(skill_id, action_data):
 			if not _action_is_combo_module(skill_id, action_data):
 				mono_lock_blocker_seen = true
@@ -27485,6 +29436,16 @@ func _visible_actions_for_skill(skill_id: String) -> Array:
 				mono_lock_blocker_seen = true
 		visible_actions.append(action)
 	return visible_actions
+
+
+func _tutorial_starter_only_detail_active(skill_id: String) -> bool:
+	return (
+		tutorial_active
+		and current_screen == "skill"
+		and skill_id == TUTORIAL_STARTER_SKILL_ID
+		and selected_skill_id == TUTORIAL_STARTER_SKILL_ID
+		and tutorial_step <= 1
+	)
 
 
 func _tutorial_should_defer_action_until_skill_swipe(skill_id: String, action: Dictionary) -> bool:
@@ -28162,9 +30123,10 @@ func _scroll_to_resume_activity(animated := true) -> void:
 
 
 func _request_swipe_resume_scroll() -> void:
-	if current_screen != "skill" or selected_skill_id.is_empty():
-		return
-	skill_swipe_pending_resume_scroll_skill_id = selected_skill_id
+	# Swiping between skill detail pages should leave the incoming page at the
+	# viewport chosen by the gesture/finalize handoff. Direct navigation paths
+	# still opt into resume scrolling through _render_skill_detail.
+	skill_swipe_pending_resume_scroll_skill_id = ""
 
 
 func _apply_pending_swipe_resume_scroll(expected_skill_id: String = "") -> void:
@@ -28961,13 +30923,13 @@ func _apply_skill_page_cover_bounds(cover: Control, include_bottom_interactive_u
 
 
 func _skill_page_cover_bottom_offset(include_bottom_interactive_ui := false) -> float:
-	if include_bottom_interactive_ui:
+	if include_bottom_interactive_ui or _chat_strip_visible_on_current_screen():
 		return _global_chat_nav_cover_bottom_offset()
 	if skills_page == null or not is_instance_valid(skills_page):
 		return -_skills_content_bottom_inset_for_screen()
 	var page_rect: Rect2 = skills_page.get_global_rect()
 	var cover_bottom_y: float = page_rect.end.y - _skills_content_bottom_inset_for_screen()
-	for raw_control in [module_sort_menu, module_utility_row, chat_strip]:
+	for raw_control in [chat_strip, nav_bar]:
 		var control := raw_control as Control
 		if control == null or not is_instance_valid(control) or not control.visible:
 			continue
@@ -29024,6 +30986,11 @@ func _begin_skill_swipe_handoff_cover() -> void:
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	backing.z_index = -1
 	cover.add_child(backing)
+	if module_ui_pin_refresh_cover_requested or not module_ui_pending_pin_scroll_anchor.is_empty():
+		cover.set_meta("module_pin_refresh_opaque_cover", true)
+		skill_swipe_handoff_cover = cover
+		skill_detail_refresh_cover_active = true
+		return
 
 	var holder := Control.new()
 	holder.position = skill_swipe_frame.global_position
@@ -29043,6 +31010,9 @@ func _begin_skill_swipe_handoff_cover() -> void:
 
 
 func _clear_skill_swipe_handoff_cover() -> void:
+	if _page_switch_scroll_cover_active() and (not page_switch_pending_transition.is_empty() or page_switch_release_when_render_idle):
+		return
+	var was_page_switch_cover := _page_switch_scroll_cover_active()
 	if not module_ui_pending_pin_scroll_anchor.is_empty():
 		if (
 			skill_detail_refresh_cover_active
@@ -29058,9 +31028,16 @@ func _clear_skill_swipe_handoff_cover() -> void:
 	direct_skill_nav_cover_active = false
 	skill_swipe_outgoing_cover_active = false
 	skill_swipe_rebuild_cover_active = false
+	page_switch_pending_transition.clear()
+	page_switch_release_when_render_idle = false
+	if was_page_switch_cover:
+		_release_page_switch_transition_button()
 
 
 func _clear_skill_swipe_handoff_cover_immediate() -> void:
+	if _page_switch_scroll_cover_active() and (not page_switch_pending_transition.is_empty() or page_switch_release_when_render_idle):
+		return
+	var was_page_switch_cover := _page_switch_scroll_cover_active()
 	if not module_ui_pending_pin_scroll_anchor.is_empty():
 		if (
 			skill_detail_refresh_cover_active
@@ -29078,6 +31055,10 @@ func _clear_skill_swipe_handoff_cover_immediate() -> void:
 	direct_skill_nav_cover_active = false
 	skill_swipe_outgoing_cover_active = false
 	skill_swipe_rebuild_cover_active = false
+	page_switch_pending_transition.clear()
+	page_switch_release_when_render_idle = false
+	if was_page_switch_cover:
+		_release_page_switch_transition_button()
 
 
 func _kill_skill_swipe_cover_fade_tween() -> void:
@@ -29144,11 +31125,12 @@ func _begin_skill_detail_refresh_cover() -> void:
 	_clear_skill_swipe_handoff_cover()
 	if skills_page == null or not is_instance_valid(skills_page):
 		return
+	var opaque_pin_refresh := module_ui_pin_refresh_cover_requested or not module_ui_pending_pin_scroll_anchor.is_empty()
 	var old_page := skill_swipe_frame
 	if old_page == null or not is_instance_valid(old_page):
 		if skills_content != null and is_instance_valid(skills_content) and skills_content.get_child_count() > 0:
 			old_page = skills_content.get_child(0) as Control
-	if old_page == null or not is_instance_valid(old_page):
+	if not opaque_pin_refresh and (old_page == null or not is_instance_valid(old_page)):
 		return
 	var cover := Control.new()
 	_apply_skill_page_cover_bounds(cover, true)
@@ -29164,6 +31146,11 @@ func _begin_skill_detail_refresh_cover() -> void:
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	backing.z_index = -1
 	cover.add_child(backing)
+	if opaque_pin_refresh:
+		cover.set_meta("module_pin_refresh_opaque_cover", true)
+		skill_swipe_handoff_cover = cover
+		skill_detail_refresh_cover_active = true
+		return
 
 	var holder := Control.new()
 	holder.position = old_page.global_position
@@ -29185,11 +31172,7 @@ func _begin_direct_skill_nav_cover() -> void:
 		return
 	_clear_skill_swipe_handoff_cover_immediate()
 	var cover := Control.new()
-	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
-	cover.offset_left = 0.0
-	cover.offset_top = 0.0
-	cover.offset_right = 0.0
-	cover.offset_bottom = 0.0
+	_apply_skill_page_cover_bounds(cover, true)
 	cover.mouse_filter = Control.MOUSE_FILTER_STOP
 	cover.z_index = 0
 	cover.z_as_relative = false
@@ -29218,6 +31201,107 @@ func _ensure_skill_nav_cover_layer() -> CanvasLayer:
 		skill_nav_cover_layer.layer = SKILL_NAV_COVER_CANVAS_LAYER
 		add_child(skill_nav_cover_layer)
 	return skill_nav_cover_layer
+
+
+func _begin_pin_transition_blocker(target_screen: String) -> void:
+	if target_screen.is_empty():
+		return
+	if pin_transition_blocker_tween != null and pin_transition_blocker_tween.is_valid():
+		pin_transition_blocker_tween.kill()
+	pin_transition_blocker_tween = null
+	if pin_transition_blocker_layer == null or not is_instance_valid(pin_transition_blocker_layer):
+		pin_transition_blocker_layer = CanvasLayer.new()
+		pin_transition_blocker_layer.name = "PinTransitionBlockerLayer"
+		pin_transition_blocker_layer.layer = PIN_TRANSITION_BLOCKER_CANVAS_LAYER
+		add_child(pin_transition_blocker_layer)
+	if pin_transition_blocker == null or not is_instance_valid(pin_transition_blocker):
+		pin_transition_blocker = ColorRect.new()
+		pin_transition_blocker.name = "PinTransitionBlocker"
+		pin_transition_blocker.color = COLOR_PAPER
+		pin_transition_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+		pin_transition_blocker_layer.add_child(pin_transition_blocker)
+	pin_transition_blocker.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pin_transition_blocker.offset_left = 0.0
+	pin_transition_blocker.offset_top = 0.0
+	pin_transition_blocker.offset_right = 0.0
+	pin_transition_blocker.offset_bottom = _global_chat_nav_cover_bottom_offset()
+	pin_transition_blocker.visible = true
+	pin_transition_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
+	pin_transition_blocker.modulate = Color(1.0, 1.0, 1.0, 0.0)
+	pin_transition_blocker_target_screen = target_screen
+	pin_transition_blocker_started_msec = Time.get_ticks_msec()
+	pin_transition_blocker_release_started = false
+	pin_transition_blocker_fade_in_done = false
+	pin_transition_blocker_tween = create_tween()
+	pin_transition_blocker_tween.tween_property(
+		pin_transition_blocker,
+		"modulate:a",
+		1.0,
+		PIN_TRANSITION_BLOCKER_FADE_IN_SECONDS
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	pin_transition_blocker_tween.tween_callback(_finish_pin_transition_blocker_fade_in)
+
+
+func _process_pin_transition_blocker() -> void:
+	if pin_transition_blocker == null or not is_instance_valid(pin_transition_blocker):
+		return
+	if not pin_transition_blocker.visible or pin_transition_blocker_release_started:
+		return
+	pin_transition_blocker.offset_bottom = _global_chat_nav_cover_bottom_offset()
+	if not pin_transition_blocker_fade_in_done:
+		return
+	var elapsed_seconds := float(maxi(0, Time.get_ticks_msec() - pin_transition_blocker_started_msec)) / 1000.0
+	if elapsed_seconds < PIN_TRANSITION_BLOCKER_MIN_SECONDS:
+		return
+	if not _pin_transition_blocker_target_ready():
+		return
+	pin_transition_blocker_release_started = true
+	if pin_transition_blocker_tween != null and pin_transition_blocker_tween.is_valid():
+		pin_transition_blocker_tween.kill()
+	pin_transition_blocker_tween = create_tween()
+	pin_transition_blocker_tween.tween_property(
+		pin_transition_blocker,
+		"modulate:a",
+		0.0,
+		PIN_TRANSITION_BLOCKER_FADE_SECONDS
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	pin_transition_blocker_tween.tween_callback(_finish_pin_transition_blocker_fade)
+
+
+func _finish_pin_transition_blocker_fade_in() -> void:
+	pin_transition_blocker_tween = null
+	pin_transition_blocker_fade_in_done = true
+	if pin_transition_blocker != null and is_instance_valid(pin_transition_blocker) and pin_transition_blocker.visible:
+		pin_transition_blocker.modulate = Color.WHITE
+
+
+func _pin_transition_blocker_target_ready() -> bool:
+	if screen_render_in_progress:
+		return false
+	if not pending_screen_render_request.is_empty():
+		return false
+	if pin_transition_blocker_target_screen == "pinned":
+		return current_screen == "pinned" and _pinned_page_ready_to_reveal_under_cover()
+	if pin_transition_blocker_target_screen == "skill":
+		return (
+			current_screen == "skill"
+			and detail_actions_scroll != null
+			and is_instance_valid(detail_actions_scroll)
+			and detail_actions_scroll.is_inside_tree()
+			and detail_lazy_stack != null
+			and is_instance_valid(detail_lazy_stack)
+		)
+	return current_screen == pin_transition_blocker_target_screen
+
+
+func _finish_pin_transition_blocker_fade() -> void:
+	pin_transition_blocker_tween = null
+	if pin_transition_blocker != null and is_instance_valid(pin_transition_blocker):
+		pin_transition_blocker.visible = false
+		pin_transition_blocker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pin_transition_blocker_target_screen = ""
+	pin_transition_blocker_release_started = false
+	pin_transition_blocker_fade_in_done = false
 
 
 func _start_skill_nav_cover_fade_in(cover: Control) -> void:
@@ -29425,12 +31509,12 @@ func _begin_skill_swipe_rebuild_cover() -> void:
 	skill_swipe_rebuild_cover_active = true
 
 
-func _begin_page_switch_scroll_cover() -> void:
+func _begin_page_switch_scroll_cover(include_bottom_interactive_ui := false) -> void:
 	if _page_switch_scroll_cover_active():
 		return
 	_clear_skill_swipe_handoff_cover_immediate()
 	var cover := Control.new()
-	_apply_skill_page_cover_bounds(cover, false)
+	_apply_skill_page_cover_bounds(cover, include_bottom_interactive_ui)
 	cover.mouse_filter = Control.MOUSE_FILTER_STOP
 	cover.z_index = 0
 	cover.z_as_relative = false
@@ -29439,6 +31523,7 @@ func _begin_page_switch_scroll_cover() -> void:
 	cover.set_meta("swipe_cream_transition_cover", true)
 	cover.set_meta("page_switch_scroll_cover", true)
 	cover.set_meta("page_switch_scroll_cover_started_msec", Time.get_ticks_msec())
+	cover.set_meta("page_switch_scroll_cover_includes_bottom_interactive_ui", include_bottom_interactive_ui)
 	_ensure_skill_nav_cover_layer().add_child(cover)
 
 	var backing := ColorRect.new()
@@ -29465,8 +31550,8 @@ func _start_page_switch_scroll_cover_fade_in(cover: Control) -> void:
 	skill_swipe_cover_fade_tween.tween_callback(_finish_skill_nav_cover_fade_in.bind(cover.get_instance_id()))
 
 
-func _begin_page_switch_scroll_cover_timed() -> int:
-	_begin_page_switch_scroll_cover()
+func _begin_page_switch_scroll_cover_timed(include_bottom_interactive_ui := false) -> int:
+	_begin_page_switch_scroll_cover(include_bottom_interactive_ui)
 	var cover := skill_swipe_handoff_cover
 	if cover == null or not is_instance_valid(cover):
 		return 0
@@ -29489,6 +31574,146 @@ func _page_switch_cover_id_active(cover_id: int) -> bool:
 	)
 
 
+func _queue_page_switch_transition(kind: String, cover_id: int, payload := {}) -> void:
+	if cover_id == 0:
+		return
+	page_switch_pending_transition = {
+		"kind": kind,
+		"cover_id": cover_id,
+		"payload": payload,
+	}
+	page_switch_release_when_render_idle = false
+
+
+func _process_page_switch_pending_transition() -> void:
+	if page_switch_release_when_render_idle:
+		if screen_render_in_progress or not pending_screen_render_request.is_empty():
+			return
+		page_switch_release_when_render_idle = false
+		_fade_clear_page_switch_scroll_cover()
+		return
+	if page_switch_pending_transition.is_empty():
+		return
+	var cover_id := int(page_switch_pending_transition.get("cover_id", 0))
+	if not _page_switch_cover_id_active(cover_id):
+		page_switch_pending_transition.clear()
+		page_switch_release_when_render_idle = false
+		_release_page_switch_transition_button()
+		return
+	var cover := instance_from_id(cover_id) as Control
+	if cover == null or not is_instance_valid(cover) or not cover.visible:
+		return
+	if cover.modulate.a < 0.98:
+		return
+	if screen_render_in_progress or not pending_screen_render_request.is_empty():
+		return
+	_force_page_switch_scroll_cover_opaque(cover_id)
+	var transition := page_switch_pending_transition
+	page_switch_pending_transition = {}
+	_start_page_switch_render_under_cover(str(transition.get("kind", "")), transition.get("payload", {}) as Dictionary)
+
+
+func _start_page_switch_render_under_cover(kind: String, payload: Dictionary) -> void:
+	match kind:
+		"show_skills":
+			_start_show_skills_under_page_switch_cover()
+		"return_skills_utility":
+			_start_return_from_skills_utility_under_page_switch_cover(str(payload.get("target_screen", "skill")))
+		"show_pinned":
+			_start_show_pinned_activities_under_page_switch_cover()
+		"return_pinned":
+			_start_return_from_pinned_activities_under_page_switch_cover(
+				str(payload.get("target_screen", "skill")),
+				int(payload.get("restore_scroll", -1))
+			)
+		"select_skill":
+			_start_select_skill_under_page_switch_cover(
+				str(payload.get("skill_id", "")),
+				bool(payload.get("scroll_latest_activity", false)),
+				int(payload.get("restore_detail_scroll", DETAIL_RESTORE_SCROLL_BOTTOM)),
+				bool(payload.get("play_nav_sfx", false))
+			)
+		_:
+			_fade_clear_page_switch_scroll_cover()
+
+
+func _mark_page_switch_release_after_render() -> void:
+	page_switch_release_when_render_idle = true
+
+
+func _start_show_skills_under_page_switch_cover() -> void:
+	current_screen = "menu"
+	_render_screen()
+	_mark_page_switch_release_after_render()
+
+
+func _start_return_from_skills_utility_under_page_switch_cover(target_screen: String) -> void:
+	current_screen = target_screen
+	_render_screen()
+	_mark_page_switch_release_after_render()
+
+
+func _start_show_pinned_activities_under_page_switch_cover() -> void:
+	current_screen = "pinned"
+	_render_screen()
+	_mark_page_switch_release_after_render()
+
+
+func _start_return_from_pinned_activities_under_page_switch_cover(target_screen: String, restore_scroll: int) -> void:
+	current_screen = target_screen
+	_render_screen(false, restore_scroll)
+	_mark_page_switch_release_after_render()
+
+
+func _start_select_skill_under_page_switch_cover(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
+	if skill_id.is_empty():
+		_fade_clear_page_switch_scroll_cover()
+		return
+	if not _onboarding_skill_accessible(skill_id):
+		var card := skill_cards.get(skill_id, {}) as Dictionary
+		var source := card.get("button") as Control
+		_show_onboarding_skill_locked_message(source)
+		_fade_clear_page_switch_scroll_cover()
+		return
+	if current_screen == "settings":
+		_disarm_reset_data_confirmation()
+	if skill_id != selected_skill_id and selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
+		_clear_tutorial_gate_latch_only_after_skill_swipe(false)
+	selected_skill_id = skill_id
+	current_screen = "skill"
+	if play_nav_sfx:
+		_play_default_button_sfx()
+	if tutorial_active:
+		action_cards.clear()
+		action_card_keys.clear()
+		detail_action_card_nodes.clear()
+		detail_rendered_action_ids.clear()
+		detail_lazy_plan.clear()
+		_render_screen(false, 0)
+	else:
+		_render_screen(scroll_latest_activity, restore_detail_scroll)
+	_mark_page_switch_release_after_render()
+
+
+func _wait_for_page_switch_cover_opaque(cover_id: int) -> bool:
+	var started_msec := Time.get_ticks_msec()
+	var max_wait_msec := int(round((PAGE_SWITCH_SCROLL_COVER_FADE_IN_SECONDS + 0.30) * 1000.0))
+	while Time.get_ticks_msec() - started_msec < max_wait_msec:
+		if not _page_switch_cover_id_active(cover_id):
+			return false
+		var cover := instance_from_id(cover_id) as Control
+		if cover != null and is_instance_valid(cover) and cover.visible and cover.modulate.a >= 0.98:
+			_force_page_switch_scroll_cover_opaque(cover_id)
+			await get_tree().process_frame
+			return _page_switch_cover_id_active(cover_id)
+		await get_tree().process_frame
+	if not _page_switch_cover_id_active(cover_id):
+		return false
+	_force_page_switch_scroll_cover_opaque(cover_id)
+	await get_tree().process_frame
+	return _page_switch_cover_id_active(cover_id)
+
+
 func _fade_clear_skill_swipe_rebuild_cover() -> void:
 	if not skill_swipe_rebuild_cover_active and not skill_swipe_outgoing_cover_active:
 		return
@@ -29498,6 +31723,8 @@ func _fade_clear_skill_swipe_rebuild_cover() -> void:
 func _fade_clear_page_switch_scroll_cover() -> void:
 	var cover := skill_swipe_handoff_cover
 	if cover == null or not is_instance_valid(cover) or not bool(cover.get_meta("page_switch_scroll_cover", false)):
+		if page_switch_pending_transition.is_empty() and not page_switch_release_when_render_idle:
+			_release_page_switch_transition_button()
 		return
 	var started_msec := int(cover.get_meta("page_switch_scroll_cover_started_msec", Time.get_ticks_msec()))
 	var elapsed_seconds := float(maxi(0, Time.get_ticks_msec() - started_msec)) / 1000.0
@@ -29561,6 +31788,16 @@ func _fade_clear_skill_swipe_cover(seconds: float) -> void:
 	if current_screen == "skill" and not _skill_detail_ready_to_reveal_under_cover():
 		_hold_skill_swipe_cover_until_detail_ready(seconds, 0)
 		return
+	if current_screen == "pinned" and not bool(cover.get_meta("pinned_cover_layout_frame_seen", false)):
+		_kill_skill_swipe_cover_fade_tween()
+		_set_canvas_item_visible_if_changed(cover, true)
+		_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
+		cover.set_meta("pinned_cover_layout_frame_seen", true)
+		call_deferred("_fade_clear_skill_swipe_cover_after_layout_frame", seconds)
+		return
+	if current_screen == "pinned" and not _pinned_page_ready_to_reveal_under_cover():
+		_hold_skill_swipe_cover_until_pinned_ready(seconds, 0)
+		return
 	_start_skill_swipe_cover_fade(seconds)
 
 
@@ -29581,6 +31818,9 @@ func _start_skill_swipe_cover_fade(seconds: float) -> void:
 		return
 	if current_screen == "skill" and not _skill_detail_ready_to_reveal_under_cover():
 		_hold_skill_swipe_cover_until_detail_ready(seconds, 0)
+		return
+	if current_screen == "pinned" and not _pinned_page_ready_to_reveal_under_cover():
+		_hold_skill_swipe_cover_until_pinned_ready(seconds, 0)
 		return
 	if OS.get_environment("IDLE_ELITE_TRACE_SWIPE_COVER") == "1":
 		print("SWIPE_COVER_TRACE start_fade selected=%s alpha=%.3f ready=%s placeholders=%s" % [
@@ -29617,6 +31857,13 @@ func _apply_skill_swipe_cover_fade_alpha(alpha: float, cover_id: int, seconds: f
 		if not bool(cover.get_meta("swipe_cover_fade_cancel_requested", false)):
 			cover.set_meta("swipe_cover_fade_cancel_requested", true)
 			call_deferred("_cancel_skill_swipe_cover_fade_until_ready", cover_id, seconds)
+		return
+	if current_screen == "pinned" and not _pinned_page_ready_to_reveal_under_cover():
+		_set_canvas_item_visible_if_changed(cover, true)
+		_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
+		if not bool(cover.get_meta("pinned_cover_fade_cancel_requested", false)):
+			cover.set_meta("pinned_cover_fade_cancel_requested", true)
+			call_deferred("_cancel_skill_swipe_cover_fade_until_pinned_ready", cover_id, seconds)
 		return
 	_set_canvas_item_alpha_if_changed(cover, alpha)
 
@@ -29670,6 +31917,55 @@ func _hold_skill_swipe_cover_until_detail_ready_after_frame(seconds: float, atte
 	await get_tree().process_frame
 	await get_tree().create_timer(1.0 / 120.0, true, false, true).timeout
 	_hold_skill_swipe_cover_until_detail_ready(seconds, attempts)
+
+
+func _pinned_page_ready_to_reveal_under_cover() -> bool:
+	if current_screen != "pinned":
+		return true
+	if content_scroll == null or not is_instance_valid(content_scroll) or not content_scroll.is_inside_tree():
+		return false
+	if skills_content == null or not is_instance_valid(skills_content) or not skills_content.is_inside_tree():
+		return false
+	if _find_named_control_descendant(skills_content, "PinnedActivitiesPage") == null:
+		return false
+	if _find_named_control_descendant(skills_content, "PinnedActivitiesActiveShelf") == null:
+		return false
+	return true
+
+
+func _cancel_skill_swipe_cover_fade_until_pinned_ready(cover_id: int, seconds: float) -> void:
+	var cover := instance_from_id(cover_id) as Control
+	if cover == null or not is_instance_valid(cover) or cover != skill_swipe_handoff_cover:
+		return
+	if not bool(cover.get_meta("pinned_cover_fade_cancel_requested", false)):
+		return
+	cover.remove_meta("pinned_cover_fade_cancel_requested")
+	_kill_skill_swipe_cover_fade_tween()
+	_set_canvas_item_visible_if_changed(cover, true)
+	_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
+	skill_swipe_outgoing_cover_active = true
+	_hold_skill_swipe_cover_until_pinned_ready(seconds, 0)
+
+
+func _hold_skill_swipe_cover_until_pinned_ready(seconds: float, attempts: int) -> void:
+	var cover := skill_swipe_handoff_cover
+	if cover == null or not is_instance_valid(cover):
+		_clear_skill_swipe_handoff_cover_immediate()
+		return
+	_kill_skill_swipe_cover_fade_tween()
+	_set_canvas_item_visible_if_changed(cover, true)
+	_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
+	skill_swipe_outgoing_cover_active = true
+	if _pinned_page_ready_to_reveal_under_cover() or attempts >= 18:
+		_start_skill_swipe_cover_fade(seconds)
+		return
+	call_deferred("_hold_skill_swipe_cover_until_pinned_ready_after_frame", seconds, attempts + 1)
+
+
+func _hold_skill_swipe_cover_until_pinned_ready_after_frame(seconds: float, attempts: int) -> void:
+	await get_tree().process_frame
+	await get_tree().create_timer(1.0 / 120.0, true, false, true).timeout
+	_hold_skill_swipe_cover_until_pinned_ready(seconds, attempts)
 
 
 func _finish_skill_swipe_rebuild_cover_fade(cover_id: int) -> void:
@@ -29846,11 +32142,15 @@ func _clear_passive_button_press() -> void:
 
 func _commit_skill_swipe(offset: int) -> void:
 	skill_swipe_horizontal = false
-	if skill_strip_ids.is_empty():
-		_hold_skill_swipe_paper_fade_for_commit()
-	else:
-		skill_swipe_strip_committed_crossfade = true
-		_hide_skill_swipe_paper_fade()
+	var entry_x := signi(offset) * _skill_swipe_page_span()
+	entry_x = skill_swipe_drag_offset_x
+	var animate_commit_release := absf(entry_x) > 1.0 and absf(entry_x) < absf(_skill_swipe_commit_release_target_x(offset)) - 1.0
+	if not animate_commit_release:
+		if skill_strip_ids.is_empty():
+			_hold_skill_swipe_paper_fade_for_commit()
+		else:
+			skill_swipe_strip_committed_crossfade = true
+			_hide_skill_swipe_paper_fade()
 	var outgoing_skill_id := selected_skill_id
 	if offset != 0 and outgoing_skill_id == "fishing" and fishing_tool_wallet_open:
 		_clear_fishing_tool_circle_menu()
@@ -29867,14 +32167,61 @@ func _commit_skill_swipe(offset: int) -> void:
 			if not skill_swipe_tip_seen:
 				skill_swipe_tip_seen = true
 				save_game()
-	var entry_x := signi(offset) * _skill_swipe_page_span()
-	entry_x = skill_swipe_drag_offset_x
-	_navigate_skill_page(offset, entry_x, true, false)
+	if animate_commit_release:
+		_animate_skill_swipe_commit_release(offset, entry_x)
+	else:
+		_navigate_skill_page(offset, entry_x, true, false)
 	action_card_press_key = ""
 	action_card_press_stat_kind = ""
 	action_card_press_dragged = false
 	_clear_passive_button_press()
+	_clear_module_pin_press()
 	_clear_skill_swipe_button_suppression()
+
+
+func _apply_skill_swipe_commit_release_offset(current_x: float, offset: int) -> void:
+	_set_skill_swipe_positions(offset, current_x)
+
+
+func _animate_skill_swipe_commit_release(offset: int, start_x: float) -> void:
+	if offset == 0 or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
+		_navigate_skill_page(offset, start_x, true, false)
+		return
+	if skill_strip_ids.is_empty():
+		_ensure_skill_swipe_preview(offset)
+	else:
+		skill_swipe_strip_committed_crossfade = false
+	_kill_skill_swipe_tween()
+	skill_swipe_animating = true
+	skill_swipe_animation_mode = "settle"
+	skill_swipe_preview_offset = offset
+	var target_x := _skill_swipe_commit_release_target_x(offset)
+	var remaining_ratio := clampf(absf(target_x - start_x) / maxf(1.0, _skill_swipe_commit_release_span()), 0.0, 1.0)
+	var settle_seconds := clampf(SKILL_SWIPE_SETTLE_SECONDS * remaining_ratio, 0.08, SKILL_SWIPE_SETTLE_SECONDS)
+	skill_swipe_tween = create_tween()
+	skill_swipe_tween.tween_method(
+		_apply_skill_swipe_commit_release_offset.bind(offset),
+		start_x,
+		target_x,
+		settle_seconds
+	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	skill_swipe_tween.finished.connect(func():
+		skill_swipe_animating = false
+		skill_swipe_animation_mode = ""
+		if skill_strip_ids.is_empty():
+			_hold_skill_swipe_paper_fade_for_commit()
+		else:
+			skill_swipe_strip_committed_crossfade = true
+		_navigate_skill_page(offset, target_x, true, false)
+	)
+
+
+func _skill_swipe_commit_release_span() -> float:
+	return _skill_content_width() if not skill_strip_ids.is_empty() else _skill_swipe_page_span()
+
+
+func _skill_swipe_commit_release_target_x(offset: int) -> float:
+	return -float(signi(offset)) * _skill_swipe_commit_release_span()
 
 
 func _queue_skill_swipe_navigation(offset: int) -> void:
@@ -29952,7 +32299,7 @@ func _mount_swipe_preview_as_skill_detail(preview_page: Control, preview_state: 
 	skill_swipe_frame = frame
 	frame.clip_contents = false
 	var frame_width := _skill_content_width()
-	_apply_skill_column_layout(frame, frame_width, 0.0)
+	_apply_skill_column_layout(frame, frame_width, skill_swipe_gap_render_offset_x)
 	skills_content.add_child(frame)
 	skill_swipe_page = preview_page
 	if preview_page.get_parent() != null:
@@ -30036,6 +32383,7 @@ func _ensure_promoted_swipe_header_gauge(preview_page: Control, preview_state: D
 		var existing_toggle := preview_state.get("auto_eat_fish_button") as TextureButton
 		if existing_toggle != null and is_instance_valid(existing_toggle):
 			detail_auto_eat_fish_button = existing_toggle
+			detail_auto_eat_fish_button.set_meta("auto_eat_skill_id", skill_id)
 			preview_state["regen_circle"] = detail_regen_circle
 			_sync_auto_eat_fish_toggle_button(detail_auto_eat_fish_button)
 			return
@@ -30289,32 +32637,6 @@ func _incoming_swipe_preview_usable(incoming_preview: Dictionary) -> bool:
 	return _skill_swipe_handoff_cover_is_opaque_cream_transition()
 
 
-func _build_cold_incoming_swipe_preview(skill_id: String) -> Dictionary:
-	if skill_id.is_empty():
-		return {}
-	var preview_page := _build_skill_swipe_preview_page(skill_id, 0)
-	if preview_page == null or not is_instance_valid(preview_page):
-		return {}
-	var preview_state := preview_page.get_meta("skill_swipe_preview_state", {}) as Dictionary
-	if preview_state == null or preview_state.is_empty():
-		preview_state = {
-			"skill_id": skill_id,
-			"page": preview_page,
-			"action_cards": [],
-			"fishing_built_modules": [],
-			"prewarmed": false,
-		}
-	preview_state["proxy_handoff"] = true
-	var preview_scroll := _find_skill_preview_actions_scroll(preview_page)
-	preview_state["actions_scroll"] = preview_scroll
-	preview_state["modules_root"] = preview_scroll
-	preview_state["header_body"] = _find_swipe_preview_header_body(preview_page)
-	return {
-		"page": preview_page,
-		"state": preview_state,
-	}
-
-
 func _ensure_swipe_preview_modules_visible(preview_page: Control, preview_state: Dictionary) -> void:
 	_cancel_skill_swipe_preview_modules_reveal(preview_state)
 	var modules_root := preview_state.get("modules_root") as Control
@@ -30352,6 +32674,11 @@ func _skill_detail_visible_module_stats() -> Dictionary:
 		"scroll_area": 0.0,
 		"visible_modules": 0,
 		"visible_module_area": 0.0,
+		"action_stat_boxes": 0,
+		"visible_action_stat_boxes": 0,
+		"fishing_method_tiles": 0,
+		"visible_fishing_method_tiles": 0,
+		"freshly_mounted_modules": 0,
 	}
 	if detail_actions_scroll == null or not is_instance_valid(detail_actions_scroll):
 		return stats
@@ -30378,7 +32705,77 @@ func _skill_detail_visible_module_stats() -> Dictionary:
 			continue
 		stats["visible_modules"] = int(stats["visible_modules"]) + 1
 		stats["visible_module_area"] = float(stats["visible_module_area"]) + area
+		if not _detail_lazy_visible_module_mount_frames_settled(child):
+			stats["freshly_mounted_modules"] = int(stats["freshly_mounted_modules"]) + 1
+		var stat_boxes := _action_stat_box_visibility_stats(child, viewport_rect)
+		stats["action_stat_boxes"] = int(stats["action_stat_boxes"]) + int(stat_boxes.get("total", 0))
+		stats["visible_action_stat_boxes"] = int(stats["visible_action_stat_boxes"]) + int(stat_boxes.get("visible", 0))
+		var fishing_tiles := _marked_control_visibility_stats(child, viewport_rect, "fishing_area_method_ready_marker")
+		stats["fishing_method_tiles"] = int(stats["fishing_method_tiles"]) + int(fishing_tiles.get("total", 0))
+		stats["visible_fishing_method_tiles"] = int(stats["visible_fishing_method_tiles"]) + int(fishing_tiles.get("visible", 0))
 	return stats
+
+
+func _mark_detail_lazy_module_mounted(control: Control) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	control.set_meta("detail_lazy_mounted_process_frame", Engine.get_process_frames())
+
+
+func _detail_lazy_visible_module_mount_frames_settled(control: Control) -> bool:
+	return _detail_lazy_control_mount_frames_settled(control, Engine.get_process_frames())
+
+
+func _detail_lazy_control_mount_frames_settled(control: Control, current_process_frame: int) -> bool:
+	if control == null or not is_instance_valid(control):
+		return true
+	if control.has_meta("detail_lazy_mounted_process_frame"):
+		var mounted_process_frame := int(control.get_meta("detail_lazy_mounted_process_frame"))
+		if current_process_frame - mounted_process_frame < 2:
+			return false
+	for raw_child in control.get_children():
+		var child := raw_child as Control
+		if child != null and not _detail_lazy_control_mount_frames_settled(child, current_process_frame):
+			return false
+	return true
+
+
+func _marked_control_visibility_stats(control: Control, viewport_rect: Rect2, marker_name: String) -> Dictionary:
+	var stats := {"total": 0, "visible": 0}
+	_collect_marked_control_visibility_stats(control, viewport_rect, marker_name, stats)
+	return stats
+
+
+func _collect_marked_control_visibility_stats(control: Control, viewport_rect: Rect2, marker_name: String, stats: Dictionary) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	if bool(control.get_meta(marker_name, false)):
+		stats["total"] = int(stats.get("total", 0)) + 1
+		if _control_rect_intersects_viewport(control, viewport_rect):
+			stats["visible"] = int(stats.get("visible", 0)) + 1
+	for raw_child in control.get_children():
+		var child := raw_child as Control
+		if child != null:
+			_collect_marked_control_visibility_stats(child, viewport_rect, marker_name, stats)
+
+
+func _action_stat_box_visibility_stats(control: Control, viewport_rect: Rect2) -> Dictionary:
+	var stats := {"total": 0, "visible": 0}
+	_collect_action_stat_box_visibility_stats(control, viewport_rect, stats)
+	return stats
+
+
+func _collect_action_stat_box_visibility_stats(control: Control, viewport_rect: Rect2, stats: Dictionary) -> void:
+	if control == null or not is_instance_valid(control):
+		return
+	if bool(control.get_meta("action_stat_box", false)):
+		stats["total"] = int(stats.get("total", 0)) + 1
+		if _control_rect_intersects_viewport(control, viewport_rect):
+			stats["visible"] = int(stats.get("visible", 0)) + 1
+	for raw_child in control.get_children():
+		var child := raw_child as Control
+		if child != null:
+			_collect_action_stat_box_visibility_stats(child, viewport_rect, stats)
 
 
 func _skill_detail_stack_is_presentable(stack: Control) -> bool:
@@ -30431,6 +32828,8 @@ func _skill_detail_has_visible_lazy_placeholders() -> bool:
 
 
 func _skill_detail_ready_to_reveal_under_cover() -> bool:
+	if _skill_swipe_cover_reveal_blocked_by_animation():
+		return false
 	var stack := _detail_actions_stack() as Control
 	if not _skill_detail_stack_is_presentable(stack):
 		return false
@@ -30441,7 +32840,21 @@ func _skill_detail_ready_to_reveal_under_cover() -> bool:
 		return false
 	if float(stats.get("visible_module_area", 0.0)) < 50000.0:
 		return false
+	if int(stats.get("freshly_mounted_modules", 0)) > 0:
+		return false
+	var action_stat_box_count := int(stats.get("action_stat_boxes", 0))
+	if action_stat_box_count > 0 and not _onboarding_fight_action_stats_should_hide():
+		var visible_stat_box_count := int(stats.get("visible_action_stat_boxes", 0))
+		if visible_stat_box_count < mini(2, action_stat_box_count):
+			return false
+	var fishing_tile_count := int(stats.get("fishing_method_tiles", 0))
+	if fishing_tile_count > 0 and int(stats.get("visible_fishing_method_tiles", 0)) <= 0:
+		return false
 	return not _skill_detail_has_visible_lazy_placeholders()
+
+
+func _skill_swipe_cover_reveal_blocked_by_animation() -> bool:
+	return current_screen == "skill" and skill_swipe_animating and not skill_swipe_animation_mode.is_empty()
 
 
 func _force_skill_detail_reveal_mount_under_cover() -> void:
@@ -30611,6 +33024,7 @@ func _rebuild_skill_detail_after_preview(restore_detail_scroll := -1) -> void:
 	skill_swipe_finalize_ready_process_frame = -1
 	skill_swipe_finalize_target_skill_id = ""
 	skill_swipe_lazy_finalize_token += 1
+	skill_swipe_finalized_lazy_mount_pending = false
 	call_deferred("_rebuild_skill_detail_after_preview_deferred", restore_detail_scroll, target_skill_id, target_key)
 
 
@@ -30639,10 +33053,11 @@ func _skill_swipe_install_target_page(target_key: String, incoming_preview: Dict
 	skill_swipe_finalize_target_skill_id = ""
 	skill_swipe_pending_full_finalize = false
 	skill_swipe_pending_preview_state = {}
+	skill_swipe_finalized_lazy_mount_pending = false
 	_hold_skill_detail_layout_refresh_after_navigation()
 	_clear_page_transient_input_state()
 	_prepare_skills_page_transition(target_key)
-	skill_swipe_drag_offset_x = 0.0
+	skill_swipe_drag_offset_x = skill_swipe_gap_render_offset_x
 	if (
 		not incoming_preview.is_empty()
 		and _incoming_swipe_preview_usable(incoming_preview)
@@ -30663,23 +33078,10 @@ func _skill_swipe_install_target_page(target_key: String, incoming_preview: Dict
 		return
 	if not incoming_preview.is_empty():
 		_discard_incoming_swipe_preview(incoming_preview)
-	if _skill_swipe_handoff_cover_is_opaque_cream_transition():
-		var cold_preview := _build_cold_incoming_swipe_preview(selected_skill_id)
-		if _incoming_swipe_preview_usable(cold_preview):
-			var preview_page := cold_preview.get("page") as Control
-			var preview_state := cold_preview.get("state", {}) as Dictionary
-			_clear_settings_page_control_refs()
-			_kill_transient_tweens_in_subtree(skills_content)
-			_clear_skill_swipe_preview()
-			skill_swipe_frame = null
-			skill_swipe_page = null
-			_reset_page_control_refs()
-			_clear_skills_content_orphans()
-			_mount_swipe_preview_as_skill_detail(preview_page, preview_state)
-			_finish_render_screen_transition(target_key)
-			return
 	if _try_activate_skill_detail_page(target_key, -1, false):
 		_normalize_skill_detail_page_layout()
+		if _skill_swipe_handoff_cover_is_opaque_cream_transition():
+			_prepare_full_rendered_swipe_target_for_cover_clear(selected_skill_id)
 		_finish_render_screen_transition(target_key)
 		return
 	_clear_settings_page_control_refs()
@@ -30694,7 +33096,9 @@ func _skill_swipe_install_target_page(target_key: String, incoming_preview: Dict
 	skill_swipe_defer_initial_lazy_mount = defer_initial_mount
 	await _render_skill_detail(false, -1)
 	_normalize_skill_detail_page_layout()
-	if not defer_initial_mount:
+	if defer_initial_mount:
+		_force_skill_detail_reveal_mount_under_cover()
+	else:
 		_prepare_full_rendered_swipe_target_for_cover_clear(selected_skill_id)
 	_finish_render_screen_transition(target_key)
 	skill_swipe_defer_initial_lazy_mount = false
@@ -30733,6 +33137,27 @@ func _complete_skill_swipe_navigation() -> void:
 			_fade_tip_group("skill_swipe_tip_notes", false, true)
 			_mark_skill_swipe_tip_seen()
 			call_deferred("_maybe_show_onboarding_explore_tip")
+
+
+func _skill_detail_ready_for_gap_entry() -> bool:
+	var stack := _detail_actions_stack() as Control
+	if not _skill_detail_stack_is_presentable(stack):
+		return false
+	return not _skill_detail_has_visible_lazy_placeholders()
+
+
+func _wait_for_skill_swipe_gap_entry_ready(target_skill_id: String) -> void:
+	if target_skill_id.is_empty():
+		return
+	for _i in range(SKILL_SWIPE_GAP_READY_WAIT_FRAMES):
+		if current_screen != "skill" or selected_skill_id != target_skill_id:
+			return
+		_force_skill_detail_reveal_mount_under_cover()
+		if _skill_detail_ready_for_gap_entry():
+			return
+		await get_tree().process_frame
+	if current_screen == "skill" and selected_skill_id == target_skill_id:
+		_force_skill_detail_reveal_mount_under_cover()
 
 
 func _begin_skill_swipe_incoming_entry(start_x: float) -> void:
@@ -30913,6 +33338,7 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 	if detail_shelf_shadow_overlay == null or not is_instance_valid(detail_shelf_shadow_overlay):
 		_add_skill_detail_shadow_overlay(_skill_detail_shadow_top_y())
 	call_deferred("_sync_detail_actions_scroll_limit_deferred")
+	skill_swipe_finalized_lazy_mount_pending = true
 	_schedule_mount_swipe_finalized_lazy_cards(selected_skill_id, token, 0)
 	call_deferred("_apply_pending_swipe_resume_scroll", target_skill_id)
 	if trace_finalize:
@@ -30970,6 +33396,7 @@ func _mount_swipe_finalized_lazy_cards_after_frame(target_skill_id: String, toke
 
 func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, mounted_total: int) -> void:
 	if token != skill_swipe_lazy_finalize_token or current_screen != "skill" or selected_skill_id != target_skill_id:
+		skill_swipe_finalized_lazy_mount_pending = false
 		return
 	if skill_swipe_queued_offset != 0:
 		if skill_swipe_handoff_cover != null and is_instance_valid(skill_swipe_handoff_cover):
@@ -30977,6 +33404,7 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 			_set_canvas_item_modulate_if_changed(skill_swipe_handoff_cover, Color.WHITE)
 			skill_swipe_outgoing_cover_active = true
 		if _consume_queued_skill_swipe_navigation():
+			skill_swipe_finalized_lazy_mount_pending = false
 			return
 	if detail_lazy_plan.is_empty() or detail_lazy_stack == null or not is_instance_valid(detail_lazy_stack):
 		if _ensure_finalized_skill_detail_presentable(target_skill_id):
@@ -30986,6 +33414,7 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 			if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 				missing_restore_scroll = detail_actions_scroll.scroll_vertical
 			_rebuild_skill_detail_after_preview(missing_restore_scroll)
+		skill_swipe_finalized_lazy_mount_pending = false
 		return
 	var cover := skill_swipe_handoff_cover
 	var process_frame := Engine.get_process_frames()
@@ -31007,21 +33436,24 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 		if _ensure_finalized_skill_detail_presentable(target_skill_id):
 			call_deferred("_sync_detail_actions_scroll_limit_deferred")
 			if _consume_queued_skill_swipe_navigation():
+				skill_swipe_finalized_lazy_mount_pending = false
 				return
+			skill_swipe_finalized_lazy_mount_pending = false
 			_fade_clear_skill_swipe_rebuild_cover()
 		else:
 			var blank_restore_scroll := -1
 			if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 				blank_restore_scroll = detail_actions_scroll.scroll_vertical
 			_rebuild_skill_detail_after_preview(blank_restore_scroll)
+			skill_swipe_finalized_lazy_mount_pending = false
 		return
 	if mounted > 0 and next_total < SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
 		_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		return
-	if next_total < DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT and not _skill_detail_stack_has_visible_modules(detail_lazy_stack):
+	if next_total < SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT and not _skill_detail_stack_has_visible_modules(detail_lazy_stack):
 		_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		return
-	if next_total < DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT:
+	if next_total < SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
 		_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		return
 	call_deferred("_sync_detail_actions_scroll_limit_deferred")
@@ -31033,9 +33465,12 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 			if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 				restore_scroll = detail_actions_scroll.scroll_vertical
 			_rebuild_skill_detail_after_preview(restore_scroll)
+			skill_swipe_finalized_lazy_mount_pending = false
 		return
 	if _consume_queued_skill_swipe_navigation():
+		skill_swipe_finalized_lazy_mount_pending = false
 		return
+	skill_swipe_finalized_lazy_mount_pending = false
 	_fade_clear_skill_swipe_rebuild_cover()
 
 
@@ -31286,6 +33721,8 @@ func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, pl
 	if play_click:
 		_play_default_button_sfx()
 	var use_outgoing_animation := animate_entry and absf(entry_x) > 1.0
+	var use_gap_load_transition := use_outgoing_animation and SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED
+	var gap_entry_x := float(signi(offset)) * _skill_swipe_page_span() if use_gap_load_transition else 0.0
 	var incoming_preview := {}
 	if offset != 0:
 		incoming_preview = _extract_incoming_swipe_preview(offset)
@@ -31294,22 +33731,32 @@ func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, pl
 		_clear_tutorial_gate_latch_only_after_skill_swipe(false)
 	if not play_click and not animate_entry and absf(entry_x) <= 1.0:
 		_begin_skill_swipe_handoff_cover()
-	var transition_cover := _begin_skill_swipe_outgoing_cover() if use_outgoing_animation else null
+	var transition_cover := null if use_gap_load_transition else (_begin_skill_swipe_outgoing_cover() if use_outgoing_animation else null)
 	if use_outgoing_animation:
 		skill_swipe_animating = true
 		skill_swipe_animation_mode = "entry"
-		if transition_cover != null and is_instance_valid(transition_cover):
+		if transition_cover != null and is_instance_valid(transition_cover) and not use_gap_load_transition:
 			await _fade_skill_swipe_cover_to_opaque(SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS)
+		if use_gap_load_transition:
+			_hide_skill_swipe_paper_fade()
 		_clear_skill_swipe_content_under_cover()
 	else:
 		_pending_skill_detail_park_state = _capture_skill_detail_page_state()
 	selected_skill_id = next_skill_id
 	current_screen = "skill"
 	var target_key := _skill_detail_cache_key(next_skill_id)
+	skill_swipe_gap_render_offset_x = gap_entry_x
 	await _skill_swipe_install_target_page(target_key, incoming_preview)
+	if use_gap_load_transition:
+		_apply_skill_swipe_drag_offset(gap_entry_x)
+		await _wait_for_skill_swipe_gap_entry_ready(next_skill_id)
+		if current_screen != "skill" or selected_skill_id != next_skill_id:
+			skill_swipe_gap_render_offset_x = 0.0
+			return
+	skill_swipe_gap_render_offset_x = 0.0
 	_update_ui(0.0, true)
 	if use_outgoing_animation:
-		_begin_skill_swipe_incoming_entry(float(signi(offset)) * _skill_swipe_page_span())
+		_begin_skill_swipe_incoming_entry(gap_entry_x if use_gap_load_transition else float(signi(offset)) * _skill_swipe_page_span())
 	else:
 		_reset_skill_swipe_entry_positions()
 		_complete_skill_swipe_navigation()
@@ -31449,14 +33896,49 @@ func _graduate_onboarding_tutorial() -> void:
 		return
 	onboarding_tutorial_complete = true
 	onboarding_explore_tip_seen = true
+	module_utility_collapsed = true
 	_fade_tip_group("onboarding_explore_tip_notes", false, true)
 	_fade_tip_group("skill_swipe_tip_notes", false, true)
 	save_game()
+	_sync_bottom_nav_visibility()
+	_sync_module_utility_row_visibility()
+	_sync_skill_detail_back_arrow_visibility()
 	call_deferred("_sync_bottom_nav_visibility")
 	call_deferred("_sync_module_utility_row_visibility")
 	call_deferred("_sync_skill_detail_back_arrow_visibility")
-	call_deferred("_ensure_chat_strip")
-	call_deferred("_update_chat_strip", true)
+	call_deferred("_fade_in_post_onboarding_bottom_chrome")
+
+
+func _fade_in_post_onboarding_bottom_chrome() -> void:
+	if not onboarding_tutorial_complete:
+		return
+	module_utility_collapsed = true
+	_ensure_chat_strip()
+	_update_chat_strip(true)
+	_sync_module_utility_row_visibility(false)
+	if post_onboarding_bottom_chrome_fade_tween != null and post_onboarding_bottom_chrome_fade_tween.is_valid():
+		post_onboarding_bottom_chrome_fade_tween.kill()
+	post_onboarding_bottom_chrome_fade_tween = null
+	var fade_targets := []
+	for raw_control in [chat_strip, module_utility_row]:
+		var control := raw_control as Control
+		if control == null or not is_instance_valid(control) or not control.visible:
+			continue
+		control.modulate.a = 0.0
+		fade_targets.append(control)
+	if fade_targets.is_empty():
+		return
+	post_onboarding_bottom_chrome_fade_tween = create_tween()
+	var first := fade_targets[0] as Control
+	post_onboarding_bottom_chrome_fade_tween.tween_property(first, "modulate:a", 1.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	for index in range(1, fade_targets.size()):
+		var control := fade_targets[index] as Control
+		post_onboarding_bottom_chrome_fade_tween.parallel().tween_property(control, "modulate:a", 1.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	post_onboarding_bottom_chrome_fade_tween.finished.connect(_finish_post_onboarding_bottom_chrome_fade)
+
+
+func _finish_post_onboarding_bottom_chrome_fade() -> void:
+	post_onboarding_bottom_chrome_fade_tween = null
 
 
 func _mark_stamina_gauge_tip_seen() -> void:
@@ -31515,17 +33997,17 @@ func _ensure_onboarding_swipe_unlocked(from_user_attempt := false) -> bool:
 		onboarding_swipe_navigation_unlocked
 		and from_user_attempt
 		and not skill_swipe_tip_seen
-		and not _skill_swipe_tip_visible()
+		and not _skill_swipe_tip_present()
 	):
 		if not onboarding_swipe_tip_eligible:
 			onboarding_swipe_tip_eligible = true
 			save_game()
 		if not onboarding_swipe_tip_sequence_running:
 			call_deferred("_run_onboarding_swipe_tip_sequence")
-		return true
+		return false
 	if onboarding_swipe_navigation_unlocked:
 		return true
-	if not _onboarding_fight_stamina_depleted() and not from_user_attempt:
+	if not _onboarding_fight_stamina_depleted():
 		return false
 	if not onboarding_swipe_tip_eligible:
 		onboarding_swipe_tip_eligible = true
@@ -31537,8 +34019,8 @@ func _ensure_onboarding_swipe_unlocked(from_user_attempt := false) -> bool:
 		and not onboarding_swipe_tip_sequence_running
 	):
 		call_deferred("_run_onboarding_swipe_tip_sequence")
-	if from_user_attempt and not skill_swipe_tip_seen and not _skill_swipe_tip_visible():
-		return true
+	if from_user_attempt and not skill_swipe_tip_seen and not _skill_swipe_tip_present():
+		return false
 	return true
 
 
@@ -31603,7 +34085,7 @@ func _record_activity_start_for_tips() -> void:
 		if activity_start_highlight_pending:
 			activity_start_highlight_pending = false
 			activity_start_highlight_token += 1
-	if _onboarding_path_active() and onboarding_explore_tip_seen:
+	if _onboarding_path_active() and not tutorial_active and onboarding_explore_tip_seen:
 		_graduate_onboarding_tutorial()
 	save_game()
 
@@ -31641,7 +34123,14 @@ func _onboarding_skill_accessible(skill_id: String) -> bool:
 
 
 func _onboarding_swipe_to_other_skills_allowed() -> bool:
-	return _onboarding_path_active() and onboarding_swipe_navigation_unlocked
+	return (
+		_onboarding_path_active()
+		and onboarding_swipe_navigation_unlocked
+		and (
+			skill_swipe_tip_seen
+			or _skill_swipe_tip_present()
+		)
+	)
 
 
 func _onboarding_blocks_skill_swipe() -> bool:
@@ -31656,7 +34145,7 @@ func _onboarding_blocks_skill_swipe() -> bool:
 			or onboarding_swipe_tip_eligible
 			or _onboarding_fight_stamina_depleted()
 		)
-		and not _skill_swipe_tip_visible()
+		and not _skill_swipe_tip_present()
 	):
 		return true
 	return not _onboarding_swipe_to_other_skills_allowed()
@@ -31767,6 +34256,20 @@ func _skill_swipe_tip_visible() -> bool:
 	return false
 
 
+func _skill_swipe_tip_present() -> bool:
+	if (
+		onboarding_swipe_overlay_tip_root != null
+		and is_instance_valid(onboarding_swipe_overlay_tip_root)
+		and onboarding_swipe_overlay_tip_root.is_inside_tree()
+	):
+		return true
+	for node in get_tree().get_nodes_in_group("skill_swipe_tip_notes"):
+		var tip := node as Control
+		if tip != null and is_instance_valid(tip) and tip.is_inside_tree():
+			return true
+	return false
+
+
 func _stamina_gauge_tip_available() -> bool:
 	return false
 
@@ -31795,6 +34298,7 @@ func _mount_skill_swipe_tip_note() -> Control:
 			continue
 		if _tutorial_note_is_in_stack(existing, stack):
 			onboarding_swipe_overlay_tip_root = null
+			_ensure_onboarding_page_switch_module_faded_in(stack)
 			return existing
 		if existing == onboarding_swipe_overlay_tip_root:
 			onboarding_swipe_overlay_tip_root = existing
@@ -31803,6 +34307,7 @@ func _mount_skill_swipe_tip_note() -> Control:
 	var note := _skill_swipe_tip_note(content_width)
 	note.modulate = Color(1, 1, 1, 0)
 	_detail_eager_add_skill_swipe_tip_after_anchor(stack, note, content_width, content_width)
+	_ensure_onboarding_page_switch_module_faded_in(stack)
 	onboarding_swipe_overlay_tip_root = null
 	return note
 
@@ -32836,6 +35341,7 @@ func _skill_swipe_light_preview_card(skill_id: String, entry_data: Dictionary, c
 
 func _skill_swipe_light_preview_simple_card(skill_id: String, entry_data: Dictionary, content_width: float, height: float) -> Control:
 	var root := Control.new()
+	root.set_meta("skill_swipe_light_preview_card", true)
 	root.custom_minimum_size = Vector2(content_width, height)
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -33258,6 +35764,8 @@ func _onboarding_auto_run_message_resumable() -> bool:
 
 
 func _onboarding_header_reveal_sequence_resumable() -> bool:
+	if tutorial_active:
+		return false
 	if not _onboarding_fight_header_sequence_active() or onboarding_fight_stamina_revealed:
 		return false
 	if not onboarding_fight_summary_revealed:
@@ -33287,8 +35795,10 @@ func _maybe_trigger_onboarding_header_reveal_from_progress() -> void:
 func _cancel_onboarding_header_sequence() -> void:
 	onboarding_header_sequence_token += 1
 	onboarding_header_sequence_running = false
+	onboarding_header_sequence_started_msec = 0
 	onboarding_auto_run_sequence_running = false
 	onboarding_stamina_tip_sequence_running = false
+	onboarding_stamina_tip_sequence_started_msec = 0
 	_clear_onboarding_auto_run_message(true)
 	_fade_tip_group("onboarding_auto_run_tip_notes")
 
@@ -33304,6 +35814,7 @@ func _apply_onboarding_fight_header_visibility() -> void:
 			detail_regen_circle_fade_group.modulate = Color.WHITE
 		if detail_regen_circle_host != null and is_instance_valid(detail_regen_circle_host):
 			detail_regen_circle_host.modulate = Color.WHITE
+		_apply_tutorial_starter_intro_header_visibility()
 		return
 	var summary_visible := onboarding_fight_summary_revealed
 	var stamina_visible := onboarding_fight_stamina_revealed
@@ -33315,6 +35826,30 @@ func _apply_onboarding_fight_header_visibility() -> void:
 	if detail_regen_circle != null and is_instance_valid(detail_regen_circle):
 		detail_regen_circle.modulate = Color.WHITE
 		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP if stamina_visible else Control.MOUSE_FILTER_IGNORE
+	_apply_tutorial_starter_intro_header_visibility()
+
+
+func _apply_tutorial_starter_intro_header_visibility() -> void:
+	var intro_active := _tutorial_starter_only_detail_active(selected_skill_id)
+	if detail_header_left_block != null and is_instance_valid(detail_header_left_block):
+		detail_header_left_block.visible = not intro_active
+	if detail_xp_label != null and is_instance_valid(detail_xp_label):
+		detail_xp_label.visible = not intro_active
+	if detail_xp_bar != null and is_instance_valid(detail_xp_bar):
+		detail_xp_bar.visible = not intro_active
+	if not intro_active:
+		return
+	var regen_fade_target := _detail_regen_circle_fade_target()
+	if regen_fade_target != null:
+		regen_fade_target.modulate = Color(1, 1, 1, 0.0)
+	if detail_regen_circle_host != null and is_instance_valid(detail_regen_circle_host):
+		detail_regen_circle_host.modulate = Color(1, 1, 1, 0.0)
+	if detail_regen_circle != null and is_instance_valid(detail_regen_circle):
+		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_fade_tip_group("stamina_cost_tip_notes")
+	if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
+		stamina_gauge_tip_root.queue_free()
+	stamina_gauge_tip_root = null
 
 
 func _detail_regen_circle_fade_target() -> CanvasItem:
@@ -33336,9 +35871,15 @@ func _fade_onboarding_regen_circle_in(duration: float) -> void:
 func _fade_onboarding_header_control(control: CanvasItem, target_alpha: float, duration: float):
 	if control == null or not is_instance_valid(control):
 		return
+	var control_id := control.get_instance_id()
 	var tween := create_tween()
-	tween.tween_property(control, "modulate:a", target_alpha, duration).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	await tween.finished
+	tween.tween_method(
+		_set_canvas_item_alpha_safe.bind(control_id),
+		control.modulate.a,
+		target_alpha,
+		duration
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	await get_tree().create_timer(maxf(0.0, duration)).timeout
 
 
 func _clear_onboarding_auto_run_message(instant := false) -> void:
@@ -33426,6 +35967,7 @@ func _run_onboarding_header_reveal_sequence() -> void:
 	if onboarding_header_sequence_running:
 		return
 	onboarding_header_sequence_running = true
+	onboarding_header_sequence_started_msec = Time.get_ticks_msec()
 	var token := onboarding_header_sequence_token
 	_apply_onboarding_fight_header_visibility()
 	if not onboarding_fight_summary_revealed:
@@ -33434,6 +35976,7 @@ func _run_onboarding_header_reveal_sequence() -> void:
 			await _fade_onboarding_header_control(detail_header_left_block, 1.0, ONBOARDING_SUMMARY_FADE_SECONDS)
 		if token != onboarding_header_sequence_token:
 			onboarding_header_sequence_running = false
+			onboarding_header_sequence_started_msec = 0
 			return
 		onboarding_fight_summary_revealed = true
 		onboarding_header_reveal_after_progress = false
@@ -33443,6 +35986,7 @@ func _run_onboarding_header_reveal_sequence() -> void:
 		await get_tree().create_timer(ONBOARDING_STAMINA_GAUGE_DELAY_BEFORE_FADE_SECONDS).timeout
 		if token != onboarding_header_sequence_token:
 			onboarding_header_sequence_running = false
+			onboarding_header_sequence_started_msec = 0
 			return
 		if detail_header_body != null and is_instance_valid(detail_header_body):
 			if get_tree().get_nodes_in_group("stamina_cost_tip_notes").is_empty():
@@ -33460,6 +36004,7 @@ func _run_onboarding_header_reveal_sequence() -> void:
 			gauge_fade.tween_property(regen_fade_target, "modulate:a", 1.0, ONBOARDING_STAMINA_GAUGE_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
 			gauge_fade.tween_property(stamina_gauge_tip_root, "modulate:a", 1.0, ONBOARDING_STAMINA_GAUGE_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		var gauge_wait_duration := ONBOARDING_STAMINA_GAUGE_FADE_SECONDS
 		if detail_regen_circle != null and is_instance_valid(detail_regen_circle):
 			var fill_target := _stamina_regen_fraction(selected_skill_id)
 			var fill_start := 3.0 / float(maxi(1, _max_stamina(selected_skill_id)))
@@ -33467,17 +36012,20 @@ func _run_onboarding_header_reveal_sequence() -> void:
 			detail_regen_circle.set_value(fill_start, true)
 			const FILL_DELAY := 0.2
 			const FILL_DURATION := 0.9
+			gauge_wait_duration = maxf(gauge_wait_duration, FILL_DELAY + FILL_DURATION)
 			gauge_fade.tween_property(detail_regen_circle, "value", fill_target, FILL_DURATION).set_trans(Tween.TRANS_QUART).set_ease(Tween.EASE_OUT).set_delay(FILL_DELAY)
 			gauge_fade.tween_callback(_finish_onboarding_regen_intro_fill.bind(detail_regen_circle.get_instance_id(), fill_target)).set_delay(FILL_DELAY + FILL_DURATION)
-		await gauge_fade.finished
+		await get_tree().create_timer(gauge_wait_duration).timeout
 		if token != onboarding_header_sequence_token:
 			onboarding_header_sequence_running = false
+			onboarding_header_sequence_started_msec = 0
 			return
 		onboarding_fight_stamina_revealed = true
 		save_game()
 		_apply_onboarding_fight_header_visibility()
 		await _run_onboarding_stamina_tip_sequence(token, true)
 	onboarding_header_sequence_running = false
+	onboarding_header_sequence_started_msec = 0
 	_apply_onboarding_fight_header_visibility()
 
 
@@ -34063,7 +36611,7 @@ func _fade_onboarding_fight_action_stats_in(token: int):
 			1.0,
 			ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS
 		).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	await tween.finished
+	await get_tree().create_timer(ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS).timeout
 	onboarding_fight_action_stats_fade_running = false
 	if token != onboarding_header_sequence_token:
 		return
@@ -34078,10 +36626,12 @@ func _run_onboarding_stamina_tip_sequence(token: int = -1, skip_fade_in := false
 	if onboarding_stamina_tip_sequence_running:
 		return
 	onboarding_stamina_tip_sequence_running = true
+	onboarding_stamina_tip_sequence_started_msec = Time.get_ticks_msec()
 	if token < 0:
 		token = onboarding_header_sequence_token
 	if detail_header_body == null or not is_instance_valid(detail_header_body):
 		onboarding_stamina_tip_sequence_running = false
+		onboarding_stamina_tip_sequence_started_msec = 0
 		return
 	if not skip_fade_in:
 		if get_tree().get_nodes_in_group("stamina_cost_tip_notes").is_empty():
@@ -34100,10 +36650,12 @@ func _run_onboarding_stamina_tip_sequence(token: int = -1, skip_fade_in := false
 			break
 	if token != onboarding_header_sequence_token:
 		onboarding_stamina_tip_sequence_running = false
+		onboarding_stamina_tip_sequence_started_msec = 0
 		return
 	await get_tree().create_timer(ONBOARDING_STAMINA_TIP_LINGER_SECONDS).timeout
 	if token != onboarding_header_sequence_token:
 		onboarding_stamina_tip_sequence_running = false
+		onboarding_stamina_tip_sequence_started_msec = 0
 		return
 	if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
 		await _fade_onboarding_header_control(stamina_gauge_tip_root, 0.0, TUTORIAL_TIP_FADE_OUT_SECONDS)
@@ -34113,10 +36665,58 @@ func _run_onboarding_stamina_tip_sequence(token: int = -1, skip_fade_in := false
 		_fade_tip_group("stamina_cost_tip_notes")
 	if token != onboarding_header_sequence_token:
 		onboarding_stamina_tip_sequence_running = false
+		onboarding_stamina_tip_sequence_started_msec = 0
 		return
 	_mark_stamina_gauge_tip_seen()
 	await _fade_onboarding_fight_action_stats_in(token)
 	onboarding_stamina_tip_sequence_running = false
+	onboarding_stamina_tip_sequence_started_msec = 0
+
+
+func _resume_onboarding_stamina_mastery_sequence_if_needed() -> void:
+	if not _onboarding_fight_header_sequence_active():
+		return
+	if tutorial_active or stamina_gauge_tip_seen or onboarding_fight_action_stats_revealed:
+		return
+	if _recover_stalled_onboarding_stamina_mastery_sequence_if_needed():
+		return
+	if onboarding_header_sequence_running or onboarding_stamina_tip_sequence_running:
+		return
+	if not onboarding_fight_stamina_revealed:
+		return
+	call_deferred("_run_onboarding_stamina_tip_sequence", onboarding_header_sequence_token, true)
+
+
+func _recover_stalled_onboarding_stamina_mastery_sequence_if_needed() -> bool:
+	if not onboarding_fight_stamina_revealed:
+		return false
+	if not onboarding_header_sequence_running and not onboarding_stamina_tip_sequence_running:
+		return false
+	var now_msec := Time.get_ticks_msec()
+	var oldest_started_msec := 0
+	if onboarding_header_sequence_started_msec > 0:
+		oldest_started_msec = onboarding_header_sequence_started_msec
+	if onboarding_stamina_tip_sequence_started_msec > 0:
+		oldest_started_msec = (
+			onboarding_stamina_tip_sequence_started_msec
+			if oldest_started_msec <= 0
+			else mini(oldest_started_msec, onboarding_stamina_tip_sequence_started_msec)
+		)
+	if oldest_started_msec <= 0:
+		return false
+	if now_msec - oldest_started_msec < 6500:
+		return false
+	onboarding_header_sequence_token += 1
+	onboarding_header_sequence_running = false
+	onboarding_header_sequence_started_msec = 0
+	onboarding_stamina_tip_sequence_running = false
+	onboarding_stamina_tip_sequence_started_msec = 0
+	if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
+		stamina_gauge_tip_root.queue_free()
+	stamina_gauge_tip_root = null
+	_mark_stamina_gauge_tip_seen()
+	call_deferred("_fade_onboarding_fight_action_stats_in", onboarding_header_sequence_token)
+	return true
 
 
 func _show_stamina_cost_tip(fade_in := false) -> void:
@@ -34143,6 +36743,8 @@ func _activity_start_inline_tip_available(skill_id: String = selected_skill_id) 
 		return false
 	if not _skill_detail_shows_tutorial_tips(skill_id):
 		return false
+	if _tutorial_starter_only_detail_active(skill_id):
+		return true
 	return skill_id != TUTORIAL_STARTER_SKILL_ID
 
 
@@ -34490,7 +37092,7 @@ func _build_detail_pull_tip_overlay(parent: Control, _content_width: float) -> v
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.max_lines_visible = 2
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_position_detail_pull_tip_label(false, DETAIL_PULL_TIP_FULL_OFFSET)
+	_position_detail_pull_tip_label(true, DETAIL_PULL_TIP_FULL_OFFSET)
 	label.add_theme_color_override("font_outline_color", Color("#fff4ce"))
 	label.add_theme_constant_override("outline_size", 10)
 	label.add_theme_constant_override("line_spacing", -8)
@@ -34575,7 +37177,7 @@ func _on_detail_actions_pull_offset_changed(offset_y: float) -> void:
 		detail_pull_tip_active = false
 		detail_pull_tip_direction = 0
 		return
-	var pull_direction := 1 if offset_y > 0.0 else (-1 if offset_y < 0.0 else 0)
+	var pull_direction := 1 if offset_y > 0.0 else 0
 	var pull_amount := absf(offset_y)
 	var should_show := pull_direction != 0 and pull_amount >= DETAIL_PULL_TIP_TRIGGER_OFFSET
 	if (
@@ -34593,7 +37195,7 @@ func _on_detail_actions_pull_offset_changed(offset_y: float) -> void:
 		detail_pull_tip_root.visible = false
 		detail_pull_tip_root.modulate.a = 0.0
 		return
-	_position_detail_pull_tip_label(pull_direction > 0, pull_amount)
+	_position_detail_pull_tip_label(true, pull_amount)
 	var denominator := maxf(1.0, DETAIL_PULL_TIP_FULL_OFFSET - DETAIL_PULL_TIP_TRIGGER_OFFSET)
 	detail_pull_tip_root.visible = true
 	detail_pull_tip_root.modulate.a = clampf((pull_amount - DETAIL_PULL_TIP_TRIGGER_OFFSET) / denominator, 0.0, 1.0)
@@ -34912,7 +37514,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	loot.custom_minimum_size = Vector2(660, 430)
 	loot.size = loot.custom_minimum_size
 	loot.clip_contents = false
-	loot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	loot.mouse_filter = Control.MOUSE_FILTER_PASS if interactive else Control.MOUSE_FILTER_IGNORE
 	loot.z_index = 223
 	pop_card.add_child(loot)
 
@@ -35155,9 +37757,35 @@ func _render_passive_loot(card: Dictionary, module_id: String, unlocked: bool) -
 	click_prompt.add_theme_color_override("font_outline_color", Color.BLACK)
 	click_prompt.add_theme_constant_override("outline_size", 22)
 	loot.add_child(click_prompt)
+	_add_passive_log_collect_hotspot(loot, module_id, _passive_log_pile_visible_bounds(pile_slots, visible_logs, icon_size), click_prompt)
 	var tier_changed := previous_tier != "" and previous_tier != pile_tier
 	var count_increased := previous_stored >= 0 and stored > previous_stored
 	_animate_passive_log_pile(log_layer, null, tier_changed, count_increased)
+
+
+func _add_passive_log_collect_hotspot(loot: Control, module_id: String, visible_bounds: Rect2, click_prompt: Label) -> void:
+	var hotspot_rect := visible_bounds.grow(30.0)
+	if click_prompt != null and is_instance_valid(click_prompt):
+		hotspot_rect = hotspot_rect.merge(Rect2(click_prompt.position, click_prompt.size).grow(14.0))
+	hotspot_rect = hotspot_rect.intersection(Rect2(Vector2.ZERO, loot.size))
+	if hotspot_rect.size.x <= 1.0 or hotspot_rect.size.y <= 1.0:
+		return
+	var collect_hotspot := Button.new()
+	collect_hotspot.text = ""
+	collect_hotspot.focus_mode = Control.FOCUS_NONE
+	collect_hotspot.flat = true
+	collect_hotspot.position = hotspot_rect.position
+	collect_hotspot.size = hotspot_rect.size
+	collect_hotspot.custom_minimum_size = hotspot_rect.size
+	collect_hotspot.mouse_filter = Control.MOUSE_FILTER_STOP
+	collect_hotspot.z_index = 120
+	collect_hotspot.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	collect_hotspot.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	collect_hotspot.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	collect_hotspot.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	collect_hotspot.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	collect_hotspot.gui_input.connect(_on_passive_module_button_input.bind("collect", module_id, "", null, collect_hotspot))
+	loot.add_child(collect_hotspot)
 
 
 func _passive_log_pile_shadow_rect(pile_slots: Array, visible_logs: int, icon_size: Vector2) -> Rect2:
@@ -35882,7 +38510,6 @@ func _activity_lock_overlay(parent: Control, unlock_level: int, skill_id := "", 
 	group.chain_moved.connect(_play_chain_move_jingle_mix.bind(group))
 	group.padlock_clicked.connect(_play_padlock_cluster_sfx)
 	group.padlock_clicked.connect(_mark_lock_click_tip_seen)
-	group.padlock_hovered.connect(_mark_lock_click_tip_seen)
 	overlay.add_child(group)
 
 	return {
@@ -36203,6 +38830,9 @@ func _pulse_missing_action_requirements(group: Control, skill_id: String, action
 
 
 func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked: bool) -> void:
+	if bool(card.get("is_fishing_area", false)):
+		_reset_activity_lock_overlay_pieces(card)
+		return
 	var ceremony_active := (
 		bool(card.get("unlock_ceremony_pending", false))
 		or bool(card.get("unlock_ceremony_active", false))
@@ -36782,7 +39412,6 @@ func _auto_unlock_visible_pending_lockpads(skill_id: String) -> void:
 			_on_fishing_method_lock_pressed(skill_id, action_id)
 		else:
 			_play_padlock_cluster_sfx()
-			_mark_lock_click_tip_seen()
 			_on_activity_lock_clicked(skill_id, action_id, null)
 		return
 
@@ -36846,7 +39475,6 @@ func _auto_unlock_visible_activity_requirement_lock(card: Dictionary, skill_id: 
 		if activity_unlock_heist_preview_after_ceremony_id.is_empty() and not activity_unlock_preview_after_ceremony_id.is_empty():
 			_prestage_activity_unlock_preview_card(activity_unlock_preview_after_ceremony_id)
 	_play_padlock_cluster_sfx()
-	_mark_lock_click_tip_seen()
 	_play_activity_requirement_lock_dismissal(card, skill_id, action, requirement_index, group, final_requirement_unlock)
 	if not final_requirement_unlock:
 		if _first_ready_action_requirement_lock_index(skill_id, action) < 0 and not _can_unlock_action(skill_id, action):
@@ -36914,6 +39542,9 @@ func _play_activity_unlock_ceremony(card: Dictionary, lock_rig: Control = null) 
 	card["unlock_ceremony_overlay_root"] = overlay_root
 	var button := _valid_button_ref(card.get("button"))
 	var shade := _valid_canvas_item_ref(_ensure_activity_card_shade(card, 0.50))
+	if _tutorial_level_two_unlock_should_use_fast_reveal(ceremony_skill_id, ceremony_action_id):
+		_play_tutorial_level_two_fast_unlock_ceremony(card, group, overlay_root, shade, button)
+		return
 	if overlay_root == null or group == null:
 		if root != null and is_instance_valid(root):
 			root.z_index = int(card.get("unlock_ceremony_original_z_index", 0))
@@ -36931,6 +39562,44 @@ func _play_activity_unlock_ceremony(card: Dictionary, lock_rig: Control = null) 
 	if button != null:
 		button.disabled = true
 	_start_activity_unlock_ceremony_motion(card)
+
+
+func _tutorial_level_two_unlock_should_use_fast_reveal(skill_id: String, action_id: String) -> bool:
+	return (
+		_tutorial_gate_latch_sequence_active()
+		and skill_id == TUTORIAL_STARTER_SKILL_ID
+		and action_id == TUTORIAL_LEVEL_TWO_ACTION_ID
+	)
+
+
+func _play_tutorial_level_two_fast_unlock_ceremony(card: Dictionary, group: Control, overlay_root: Control, shade: CanvasItem, button: Button) -> void:
+	if button != null and is_instance_valid(button):
+		button.disabled = true
+	if overlay_root != null and is_instance_valid(overlay_root):
+		overlay_root.visible = true
+		overlay_root.modulate = Color.WHITE
+	if group != null and is_instance_valid(group):
+		group.visible = true
+		group.modulate = Color.WHITE
+	if shade != null and is_instance_valid(shade):
+		shade.visible = true
+		shade.modulate = Color(1, 1, 1, 0.50)
+	var fade_duration := DETAIL_LAZY_FADE_IN_SECONDS
+	var tween := create_tween()
+	tween.set_parallel(true)
+	if group != null and is_instance_valid(group):
+		tween.tween_property(group, "modulate:a", 0.0, fade_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if shade != null and is_instance_valid(shade):
+		tween.tween_property(shade, "modulate:a", 0.0, fade_duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.set_parallel(false)
+	await get_tree().create_timer(fade_duration).timeout
+	if bool(card.get("unlock_ceremony_finalized", false)):
+		return
+	_finish_activity_unlock_ceremony_safe(card, overlay_root, shade, button, true)
+	await _run_post_unlock_ceremony_preview(card)
+	var preview_id := activity_unlock_preview_after_ceremony_id
+	if activity_unlock_heist_preview_after_ceremony_id.is_empty() and not preview_id.is_empty():
+		call_deferred("_stage_unlock_preview_after_lock_click", preview_id)
 
 
 func _start_activity_unlock_ceremony_motion(card: Dictionary) -> void:
@@ -38245,6 +40914,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 			action_progress = 0.0
 			_reset_action_opportunity_state()
 		_record_activity_completion_for_tips(skill_id, action_id)
+		_update_ui(0.0, false)
 		call_deferred("_refresh_skill_detail_after_temporary_event_despawn", skill_id)
 	else:
 		consecutive_activity_crit_count = 0
@@ -38888,6 +41558,46 @@ func _auto_eat_fish_icon_texture() -> Texture2D:
 	return _texture("res://assets/content/fishing/catch-icons/00-minnow-cutout.png")
 
 
+func _auto_eat_fish_enabled_for_skill(skill_id: String) -> bool:
+	if skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
+		return false
+	return bool(auto_eat_fish_enabled_by_skill.get(skill_id, false))
+
+
+func _set_auto_eat_fish_enabled_for_skill(skill_id: String, enabled: bool) -> void:
+	if skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
+		return
+	if enabled:
+		auto_eat_fish_enabled_by_skill[skill_id] = true
+	else:
+		auto_eat_fish_enabled_by_skill.erase(skill_id)
+
+
+func _auto_eat_fish_enabled_by_skill_for_save() -> Dictionary:
+	var enabled_by_skill := {}
+	for raw_skill_id in auto_eat_fish_enabled_by_skill.keys():
+		var skill_id := str(raw_skill_id)
+		if _auto_eat_fish_enabled_for_skill(skill_id):
+			enabled_by_skill[skill_id] = true
+	return enabled_by_skill
+
+
+func _restore_auto_eat_fish_enabled_from_save(data: Dictionary) -> void:
+	auto_eat_fish_enabled_by_skill.clear()
+	var raw_enabled_by_skill = data.get("auto_eat_fish_enabled_by_skill", null)
+	if raw_enabled_by_skill is Dictionary:
+		var enabled_by_skill := raw_enabled_by_skill as Dictionary
+		for raw_skill_id in enabled_by_skill.keys():
+			var skill_id := str(raw_skill_id)
+			_set_auto_eat_fish_enabled_for_skill(skill_id, bool(enabled_by_skill.get(raw_skill_id, false)))
+		return
+	if bool(data.get("auto_eat_fish_enabled", false)):
+		for raw_skill_id in skills.keys():
+			var skill_id := str(raw_skill_id)
+			if not _fishing_rework_active_for_skill(skill_id):
+				_set_auto_eat_fish_enabled_for_skill(skill_id, true)
+
+
 func _attach_auto_eat_fish_toggle(host: Control, skill_id: String) -> TextureButton:
 	if host == null or not is_instance_valid(host) or _fishing_rework_active_for_skill(skill_id):
 		return null
@@ -38910,7 +41620,7 @@ func _attach_auto_eat_fish_toggle(host: Control, skill_id: String) -> TextureBut
 	button.set_meta("auto_eat_skill_id", skill_id)
 	_build_auto_eat_fish_toggle_visual(button)
 	button.add_to_group("auto_eat_fish_toggle")
-	button.pressed.connect(_on_auto_eat_fish_toggle_pressed)
+	button.pressed.connect(_on_auto_eat_fish_toggle_pressed.bind(skill_id))
 	host.add_child(button)
 	_sync_auto_eat_fish_toggle_button(button)
 	return button
@@ -38933,12 +41643,6 @@ func _build_auto_eat_fish_toggle_visual(button: TextureButton) -> void:
 	button.add_child(visual)
 	var icon_size := Vector2(201, 201)
 	var icon_position := (button.size - icon_size) * 0.5
-	var outline := _image_from_texture(texture, icon_size)
-	outline.name = "AutoEatFishOutline"
-	outline.position = icon_position
-	outline.material = _auto_eat_fish_outline_material(texture)
-	outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	visual.add_child(outline)
 	var fish := _image_from_texture(texture, icon_size)
 	fish.name = "AutoEatFishIcon"
 	fish.position = icon_position
@@ -38965,41 +41669,6 @@ void fragment() {
 	return material
 
 
-func _auto_eat_fish_outline_material(texture: Texture2D) -> ShaderMaterial:
-	var shader := Shader.new()
-	shader.code = """
-shader_type canvas_item;
-
-uniform float outline_px = 5.0;
-uniform vec2 texture_px = vec2(256.0, 256.0);
-uniform vec4 outline_color : source_color = vec4(0.09, 0.08, 0.07, 1.0);
-
-void fragment() {
-	vec4 base = texture(TEXTURE, UV);
-	if (base.a > 0.01) {
-		COLOR = vec4(0.0);
-	} else {
-		vec2 px = outline_px / texture_px;
-		float alpha = 0.0;
-		alpha = max(alpha, texture(TEXTURE, UV + vec2(px.x, 0.0)).a);
-		alpha = max(alpha, texture(TEXTURE, UV + vec2(-px.x, 0.0)).a);
-		alpha = max(alpha, texture(TEXTURE, UV + vec2(0.0, px.y)).a);
-		alpha = max(alpha, texture(TEXTURE, UV + vec2(0.0, -px.y)).a);
-		alpha = max(alpha, texture(TEXTURE, UV + vec2(px.x, px.y)).a);
-		alpha = max(alpha, texture(TEXTURE, UV + vec2(-px.x, px.y)).a);
-		alpha = max(alpha, texture(TEXTURE, UV + vec2(px.x, -px.y)).a);
-		alpha = max(alpha, texture(TEXTURE, UV + vec2(-px.x, -px.y)).a);
-		COLOR = vec4(outline_color.rgb, alpha * outline_color.a);
-	}
-}
-"""
-	var material := ShaderMaterial.new()
-	material.shader = shader
-	var texture_size := texture.get_size()
-	material.set_shader_parameter("texture_px", Vector2(maxf(1.0, texture_size.x), maxf(1.0, texture_size.y)))
-	return material
-
-
 func _sync_auto_eat_fish_toggle_button(button: TextureButton) -> void:
 	if button == null or not is_instance_valid(button):
 		return
@@ -39009,13 +41678,10 @@ func _sync_auto_eat_fish_toggle_button(button: TextureButton) -> void:
 	button.mouse_filter = Control.MOUSE_FILTER_STOP if unlocked else Control.MOUSE_FILTER_IGNORE
 	button.modulate = Color.WHITE
 	button.scale = Vector2.ONE
-	var outline := button.find_child("AutoEatFishOutline", true, false) as TextureRect
-	if outline != null and is_instance_valid(outline):
-		outline.visible = auto_eat_fish_enabled
 	var fish := button.find_child("AutoEatFishIcon", true, false) as TextureRect
 	if fish != null and is_instance_valid(fish):
 		var skill_id := str(button.get_meta("auto_eat_skill_id", selected_skill_id))
-		var fill := _skill_theme_color(skill_id) if auto_eat_fish_enabled else Color("#77726d", 0.35)
+		var fill := _skill_theme_color(skill_id) if _auto_eat_fish_enabled_for_skill(skill_id) else Color("#77726d", 0.35)
 		var material := fish.material as ShaderMaterial
 		if material != null:
 			material.set_shader_parameter("fill_color", fill)
@@ -39027,18 +41693,21 @@ func _sync_auto_eat_fish_toggle_buttons() -> void:
 		_sync_auto_eat_fish_toggle_button(node as TextureButton)
 
 
-func _on_auto_eat_fish_toggle_pressed() -> void:
-	auto_eat_fish_enabled = not auto_eat_fish_enabled
+func _on_auto_eat_fish_toggle_pressed(skill_id: String) -> void:
+	_cancel_pending_stamina_gauge_click()
+	_set_auto_eat_fish_enabled_for_skill(skill_id, not _auto_eat_fish_enabled_for_skill(skill_id))
 	_sync_auto_eat_fish_toggle_buttons()
-	_play_auto_eat_fish_toggle_pop()
+	_play_auto_eat_fish_toggle_pop(skill_id)
 	_play(click_player)
 	save_game()
 
 
-func _play_auto_eat_fish_toggle_pop() -> void:
+func _play_auto_eat_fish_toggle_pop(skill_id: String) -> void:
 	for node in get_tree().get_nodes_in_group("auto_eat_fish_toggle"):
 		var button := node as TextureButton
 		if button == null or not is_instance_valid(button) or not button.is_inside_tree():
+			continue
+		if str(button.get_meta("auto_eat_skill_id", "")) != skill_id:
 			continue
 		if button.has_meta("auto_eat_pop_tween"):
 			var existing := button.get_meta("auto_eat_pop_tween") as Tween
@@ -39455,6 +42124,8 @@ func _clear_action_crit_tweens() -> void:
 func _pop_nav_button(button: Button) -> void:
 	if button == null or not is_instance_valid(button):
 		return
+	if bool(button.get_meta("bottom_nav_transition_hold", false)):
+		return
 	_kill_button_depress_tween(button)
 	var key := button.get_instance_id()
 	if nav_pop_tweens.has(key):
@@ -39481,8 +42152,68 @@ func _pop_nav_button_bound(button_id: int) -> void:
 	_pop_nav_button(button)
 
 
+func _hold_bottom_nav_transition_button(button: Button) -> void:
+	if button == null or not is_instance_valid(button) or button.disabled:
+		return
+	if bottom_nav_transition_button_id != 0 and bottom_nav_transition_button_id != button.get_instance_id():
+		_release_bottom_nav_transition_button()
+	var button_id := button.get_instance_id()
+	bottom_nav_transition_button_id = button_id
+	button.set_meta("bottom_nav_transition_hold", true)
+	if nav_pop_tweens.has(button_id):
+		var existing := nav_pop_tweens[button_id] as Tween
+		if existing != null and existing.is_valid():
+			existing.kill()
+		nav_pop_tweens.erase(button_id)
+	_animate_button_depress(button, float(button.get_meta("depress_animation_scale", 0.92)))
+
+
+func _release_bottom_nav_transition_button() -> void:
+	if bottom_nav_transition_button_id == 0:
+		return
+	var button := instance_from_id(bottom_nav_transition_button_id) as BaseButton
+	bottom_nav_transition_button_id = 0
+	bottom_nav_transition_release_queued = false
+	if button == null or not is_instance_valid(button):
+		return
+	if button.has_meta("bottom_nav_transition_hold"):
+		button.remove_meta("bottom_nav_transition_hold")
+	_animate_button_release(button)
+
+
+func _schedule_bottom_nav_transition_button_idle_release() -> void:
+	if bottom_nav_transition_release_queued:
+		return
+	bottom_nav_transition_release_queued = true
+	call_deferred("_release_bottom_nav_transition_button_when_idle")
+
+
+func _release_bottom_nav_transition_button_when_idle() -> void:
+	await get_tree().process_frame
+	bottom_nav_transition_release_queued = false
+	if bottom_nav_transition_button_id == 0:
+		return
+	if _bottom_nav_transition_visual_active():
+		_schedule_bottom_nav_transition_button_idle_release()
+		return
+	_release_bottom_nav_transition_button()
+
+
+func _bottom_nav_transition_visual_active() -> bool:
+	if direct_skill_nav_cover_active or skill_swipe_outgoing_cover_active or skill_swipe_rebuild_cover_active or skill_detail_refresh_cover_active:
+		return true
+	if _skill_swipe_handoff_cover_is_cream_transition() or _page_switch_scroll_cover_active():
+		return true
+	if pin_transition_blocker != null and is_instance_valid(pin_transition_blocker) and pin_transition_blocker.visible:
+		return true
+	return screen_render_in_progress or not pending_screen_render_request.is_empty()
+
+
 func _attach_button_depress_animation(button: BaseButton, depressed_scale := 0.965, play_sfx := true) -> void:
-	if button == null or button.has_meta("depress_animation_attached"):
+	if button == null:
+		return
+	button.set_meta("depress_animation_scale", depressed_scale)
+	if button.has_meta("depress_animation_attached"):
 		return
 	button.set_meta("depress_animation_attached", true)
 	if play_sfx:
@@ -39545,6 +42276,9 @@ func _play_default_button_sfx_for_button(button: BaseButton) -> void:
 	if _is_dead_reset_confirm_press(button):
 		button.set_meta("suppress_current_press_animation", true)
 		return
+	if _button_has_active_stamina_gauge_parent_suppression(button):
+		button.set_meta("suppress_current_press_animation", true)
+		return
 	if _button_sfx_is_active_action_tap(button):
 		return
 	_play_default_button_sfx()
@@ -39574,6 +42308,16 @@ func _animate_button_depress(button: BaseButton, depressed_scale: float) -> void
 
 func _animate_button_release(button: BaseButton) -> void:
 	if button == null or not is_instance_valid(button):
+		return
+	if bool(button.get_meta("bottom_nav_transition_hold", false)):
+		_force_button_unpressed(button)
+		_kill_button_depress_tween(button)
+		depressed_buttons[button.get_instance_id()] = button
+		button.pivot_offset = button.size * 0.5
+		var hold_scale := float(button.get_meta("depress_animation_scale", 0.92))
+		var tween := create_tween()
+		button.set_meta("depress_tween", tween)
+		tween.tween_property(button, "scale", Vector2(hold_scale, hold_scale), 0.045).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		return
 	depressed_buttons.erase(button.get_instance_id())
 	_force_button_unpressed(button)
@@ -39655,12 +42399,20 @@ func _release_depressed_buttons_if_pointer_left(event: InputEvent) -> void:
 		var button := raw_button as BaseButton
 		if button == null or not is_instance_valid(button):
 			continue
+		if bool(button.get_meta("bottom_nav_transition_hold", false)):
+			_force_button_unpressed(button)
+			continue
 		if _pointer_inside_button_release_rect(event_position, button):
 			continue
 		_animate_button_release(button)
 	for raw_button in depressed_activity_shell_buttons.values().duplicate():
+		if raw_button == null or not is_instance_valid(raw_button):
+			continue
 		var button := raw_button as Button
-		if button == null or not is_instance_valid(button):
+		if button == null:
+			continue
+		if _page_switch_button_shell_release_preserved(button):
+			_hold_activity_button_shell_at_depth(button)
 			continue
 		if _pointer_inside_button_release_rect(event_position, button):
 			continue
@@ -39688,6 +42440,10 @@ func _release_all_depressed_buttons() -> void:
 		var button := raw_button as BaseButton
 		if button == null or not is_instance_valid(button):
 			continue
+		if bool(button.get_meta("bottom_nav_transition_hold", false)):
+			depressed_buttons[button.get_instance_id()] = button
+			_force_button_unpressed(button)
+			continue
 		_force_button_unpressed(button)
 		_kill_button_depress_tween(button)
 		button.scale = Vector2.ONE
@@ -39695,8 +42451,13 @@ func _release_all_depressed_buttons() -> void:
 	var activity_buttons := depressed_activity_shell_buttons.values()
 	depressed_activity_shell_buttons.clear()
 	for raw_button in activity_buttons:
+		if raw_button == null or not is_instance_valid(raw_button):
+			continue
 		var button := raw_button as Button
-		if button == null or not is_instance_valid(button):
+		if button == null:
+			continue
+		if _page_switch_button_shell_release_preserved(button):
+			_hold_activity_button_shell_at_depth(button)
 			continue
 		_force_button_unpressed(button)
 		_animate_activity_button_shell_to(button, Vector2.ZERO, ACTION_CARD_3D_RELEASE_SECONDS, Tween.TRANS_BACK, Tween.EASE_OUT)
@@ -39745,7 +42506,7 @@ func _handle_system_back_request() -> void:
 	if boot_warmup_active:
 		return
 	if tutorial_active:
-		_finish_tutorial()
+		_complete_tutorial_target_intro()
 		return
 	if chat_overlay != null and chat_overlay.visible:
 		_close_chat_overlay()
@@ -39762,6 +42523,9 @@ func _handle_system_back_request() -> void:
 	if settings_overlay != null and settings_overlay.visible:
 		_close_settings()
 		return
+	if current_screen == "settings":
+		_return_from_settings_page()
+		return
 	if current_screen == "skill":
 		_show_skills()
 		return
@@ -39770,24 +42534,47 @@ func _handle_system_back_request() -> void:
 
 
 func _select_skill(skill_id: String) -> void:
+	if _consume_skill_menu_gauge_parent_suppression(skill_id):
+		return
 	_select_skill_with_initial_scroll(skill_id, true, -1)
 
 
-func _select_skill_from_page_switch(skill_id: String) -> void:
-	if screen_render_in_progress or _page_switch_scroll_cover_active():
+func _select_skill_from_page_switch(skill_id: String, source_button: Button = null) -> void:
+	if _page_switch_transition_active():
 		return
+	if _onboarding_path_active() and not _onboarding_swipe_to_other_skills_allowed():
+		if not onboarding_swipe_tip_sequence_running:
+			call_deferred("_run_onboarding_swipe_tip_sequence")
+		_release_page_switch_transition_button()
+		return
+	_complete_onboarding_swipe_navigation_attempt(skill_id)
+	if source_button != null and is_instance_valid(source_button) and page_switch_transition_button_id == 0:
+		_hold_page_switch_transition_button(source_button, skill_id)
 	_begin_page_switch_scroll_cover()
 	var cover := skill_swipe_handoff_cover
 	if cover == null or not is_instance_valid(cover):
-		_select_skill_with_initial_scroll(skill_id, false, DETAIL_RESTORE_SCROLL_BOTTOM)
+		_release_page_switch_transition_button()
+		_select_skill_with_initial_scroll(skill_id, false, DETAIL_RESTORE_SCROLL_BOTTOM, false)
 		return
 	var cover_id := cover.get_instance_id()
-	get_tree().create_timer(PAGE_SWITCH_SCROLL_COVER_FADE_IN_SECONDS, true, false, true).timeout.connect(
-		_force_page_switch_scroll_cover_opaque.bind(cover_id)
-	)
-	get_tree().create_timer(PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS, true, false, true).timeout.connect(
-		_complete_select_skill_from_page_switch.bind(cover_id, skill_id)
-	)
+	_queue_page_switch_transition("select_skill", cover_id, {
+		"skill_id": skill_id,
+		"scroll_latest_activity": false,
+		"restore_detail_scroll": DETAIL_RESTORE_SCROLL_BOTTOM,
+		"play_nav_sfx": false,
+	})
+
+
+func _complete_onboarding_swipe_navigation_attempt(target_skill_id: String) -> void:
+	if not _onboarding_path_active():
+		return
+	if selected_skill_id != TUTORIAL_STARTER_SKILL_ID or target_skill_id == TUTORIAL_STARTER_SKILL_ID:
+		return
+	if not onboarding_swipe_navigation_unlocked:
+		return
+	_fade_tip_group("skill_swipe_tip_notes", false, true)
+	_fade_out_onboarding_swipe_overlay_tip()
+	_mark_skill_swipe_tip_seen()
 
 
 func _force_page_switch_scroll_cover_opaque(cover_id: int) -> void:
@@ -39800,16 +42587,51 @@ func _force_page_switch_scroll_cover_opaque(cover_id: int) -> void:
 
 
 func _complete_select_skill_from_page_switch(cover_id: int, skill_id: String) -> void:
+	_begin_page_switch_selection_under_cover(cover_id, skill_id)
+
+
+func _begin_page_switch_selection_under_cover(cover_id: int, skill_id: String) -> void:
 	var cover := instance_from_id(cover_id) as Control
 	if cover == null or not is_instance_valid(cover) or cover != skill_swipe_handoff_cover:
 		return
 	if not bool(cover.get_meta("page_switch_scroll_cover", false)):
 		return
 	_force_page_switch_scroll_cover_opaque(cover_id)
-	_select_skill_with_initial_scroll(skill_id, false, DETAIL_RESTORE_SCROLL_BOTTOM)
+	if not _page_switch_cover_id_active(cover_id):
+		return
+	await _select_skill_with_initial_scroll_under_page_switch_cover(skill_id, false, DETAIL_RESTORE_SCROLL_BOTTOM, false)
 
 
-func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int) -> void:
+func _select_skill_with_initial_scroll_under_page_switch_cover(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
+	if screen_render_in_progress or (_skill_swipe_loading_transition_active() and not _page_switch_scroll_cover_active()):
+		return
+	if not _onboarding_skill_accessible(skill_id):
+		var card := skill_cards.get(skill_id, {}) as Dictionary
+		var source := card.get("button") as Control
+		_show_onboarding_skill_locked_message(source)
+		_fade_clear_page_switch_scroll_cover()
+		return
+	if current_screen == "settings":
+		_disarm_reset_data_confirmation()
+	if skill_id != selected_skill_id and selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
+		_clear_tutorial_gate_latch_only_after_skill_swipe(false)
+	selected_skill_id = skill_id
+	current_screen = "skill"
+	if play_nav_sfx:
+		_play_default_button_sfx()
+	if tutorial_active:
+		action_cards.clear()
+		action_card_keys.clear()
+		detail_action_card_nodes.clear()
+		detail_rendered_action_ids.clear()
+		detail_lazy_plan.clear()
+		await _render_screen(false, 0)
+	else:
+		await _render_screen(scroll_latest_activity, restore_detail_scroll)
+	_fade_clear_page_switch_scroll_cover()
+
+
+func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
 	if screen_render_in_progress or (_skill_swipe_loading_transition_active() and not _page_switch_scroll_cover_active()):
 		return
 	if not _onboarding_skill_accessible(skill_id):
@@ -39825,7 +42647,8 @@ func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity:
 		_begin_direct_skill_nav_cover()
 	selected_skill_id = skill_id
 	current_screen = "skill"
-	_play_default_button_sfx()
+	if play_nav_sfx:
+		_play_default_button_sfx()
 	if tutorial_active:
 		action_cards.clear()
 		action_card_keys.clear()
@@ -39884,23 +42707,21 @@ func _show_skills(use_page_cover := false) -> void:
 		if cover_id == 0:
 			_complete_show_skills()
 		else:
-			get_tree().create_timer(PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS, true, false, true).timeout.connect(
-				_complete_show_skills_after_cover.bind(cover_id)
-			)
+			_queue_page_switch_transition("show_skills", cover_id)
 		return
 	_complete_show_skills()
 
 
 func _complete_show_skills_after_cover(cover_id: int) -> void:
+	_force_page_switch_scroll_cover_opaque(cover_id)
 	if not _page_switch_cover_id_active(cover_id):
 		return
-	_force_page_switch_scroll_cover_opaque(cover_id)
-	_complete_show_skills()
+	await _complete_show_skills()
 
 
 func _complete_show_skills() -> void:
 	current_screen = "menu"
-	_render_screen()
+	await _render_screen()
 	_fade_clear_page_switch_scroll_cover()
 
 
@@ -39966,6 +42787,7 @@ func _show_leaderboard() -> void:
 func _show_settings() -> void:
 	if not _top_level_nav_allowed("settings"):
 		return
+	_remember_settings_return_context()
 	_disarm_reset_data_confirmation()
 	_kill_skill_swipe_tween()
 	_cancel_skill_swipe_finalize_for_navigation()
@@ -39973,6 +42795,41 @@ func _show_settings() -> void:
 	_clear_skill_swipe_handoff_cover_immediate()
 	current_screen = "settings"
 	_render_screen()
+
+
+func _remember_settings_return_context() -> void:
+	if current_screen == "settings":
+		return
+	settings_return_screen = current_screen
+	settings_return_skill_id = selected_skill_id if _known_skill_id(selected_skill_id) else ""
+	settings_return_detail_scroll = -1
+	if current_screen == "skill" and detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+		settings_return_detail_scroll = maxi(0, int(round(detail_actions_scroll.scroll_vertical)))
+
+
+func _return_from_settings_page() -> void:
+	_disarm_reset_data_confirmation()
+	if settings_overlay != null and settings_overlay.visible:
+		_set_canvas_item_visible_if_changed(settings_overlay, false)
+	var target_screen := settings_return_screen
+	var target_skill_id := settings_return_skill_id
+	var restore_detail_scroll := settings_return_detail_scroll if target_screen == "skill" else -1
+	settings_return_detail_scroll = -1
+	if target_screen.is_empty() or target_screen == "settings":
+		target_screen = "skill"
+	if not target_skill_id.is_empty() and _known_skill_id(target_skill_id):
+		selected_skill_id = target_skill_id
+	if target_screen == "home":
+		top_level_nav_locked_until_msec = 0
+		_show_home()
+		return
+	if not ["skill", "menu", "pinned", "leaderboard", "hub", "shop", "achievements"].has(target_screen):
+		target_screen = "skill"
+	if target_screen == "skill" and not _known_skill_id(selected_skill_id):
+		selected_skill_id = _default_skill_id_for_save()
+	top_level_nav_locked_until_msec = 0
+	current_screen = target_screen
+	_render_screen(false, restore_detail_scroll)
 
 
 func _scroll_home_to_top() -> void:
@@ -40056,10 +42913,14 @@ func _event_is_outside_panel_press(event: InputEvent, panel: Control) -> bool:
 
 
 func _close_settings() -> void:
+	_disarm_reset_data_confirmation()
+	var closed_overlay := false
 	if settings_overlay != null and settings_overlay.visible:
-		_disarm_reset_data_confirmation()
 		_set_canvas_item_visible_if_changed(settings_overlay, false)
-	else:
+		closed_overlay = true
+	if current_screen == "settings":
+		_return_from_settings_page()
+	elif not closed_overlay:
 		_show_home()
 
 
@@ -40113,6 +42974,17 @@ func _create_leaderboard_account() -> void:
 func _start_tutorial() -> void:
 	_ensure_tutorial_overlay()
 	_disarm_reset_data_confirmation()
+	top_level_nav_locked_until_msec = 0
+	if post_onboarding_bottom_chrome_fade_tween != null and post_onboarding_bottom_chrome_fade_tween.is_valid():
+		post_onboarding_bottom_chrome_fade_tween.kill()
+	post_onboarding_bottom_chrome_fade_tween = null
+	_discard_all_page_stashes()
+	selected_skill_id = TUTORIAL_STARTER_SKILL_ID
+	current_screen = "skill"
+	_prepare_selected_skill_for_render(false)
+	onboarding_tutorial_complete = false
+	onboarding_swipe_tip_eligible = false
+	onboarding_swipe_navigation_unlocked = false
 	_sync_bottom_nav_visibility()
 	_sync_module_utility_row_visibility()
 	if settings_overlay != null:
@@ -40125,18 +42997,28 @@ func _start_tutorial() -> void:
 		_set_canvas_item_visible_if_changed(offline_summary_overlay, false)
 	if chat_overlay != null:
 		_set_canvas_item_visible_if_changed(chat_overlay, false)
-	if current_screen != "menu":
-		current_screen = "menu"
-		_render_screen(false)
-	onboarding_fight_summary_revealed = true
-	onboarding_fight_auto_run_message_shown = true
-	onboarding_fight_stamina_revealed = true
-	onboarding_fight_action_stats_revealed = true
+	activity_start_tip_seen = false
+	stamina_gauge_tip_seen = false
+	skill_swipe_tip_seen = false
+	onboarding_explore_tip_seen = false
+	_fade_tip_group("activity_start_tip_notes")
+	_fade_tip_group("stamina_cost_tip_notes")
+	_fade_tip_group("skill_swipe_tip_notes", false, true)
+	_fade_tip_group("onboarding_explore_tip_notes", false, true)
+	if stamina_gauge_tip_root != null and is_instance_valid(stamina_gauge_tip_root):
+		stamina_gauge_tip_root.queue_free()
+	stamina_gauge_tip_root = null
+	onboarding_fight_summary_revealed = false
+	onboarding_fight_auto_run_message_shown = false
+	onboarding_fight_stamina_revealed = false
+	onboarding_fight_action_stats_revealed = false
 	onboarding_fight_action_stats_fade_running = false
 	tutorial_active = true
-	tutorial_step = 0
+	tutorial_step = 1
+	_render_screen(false, 0)
 	_play_default_button_sfx()
 	_update_tutorial_overlay()
+	save_game()
 
 
 func _finish_tutorial() -> void:
@@ -40144,13 +43026,14 @@ func _finish_tutorial() -> void:
 	if tutorial_overlay != null:
 		_set_canvas_item_visible_if_changed(tutorial_overlay, false)
 	_hide_tutorial_target_indicator()
+	_graduate_onboarding_tutorial()
 	_sync_bottom_nav_visibility()
 	_sync_module_utility_row_visibility()
 	_play_default_button_sfx()
 
 
 func _route_tutorial_panel_input(event: InputEvent) -> bool:
-	if not tutorial_active or tutorial_panel == null or not is_instance_valid(tutorial_panel):
+	if not tutorial_active:
 		return false
 	var event_position := Vector2.ZERO
 	var is_press := false
@@ -40172,15 +43055,22 @@ func _route_tutorial_panel_input(event: InputEvent) -> bool:
 	if is_press and _tutorial_target_press_advances(event_position):
 		_activate_tutorial_target()
 		return true
-	if tutorial_skip_button != null and is_instance_valid(tutorial_skip_button) and tutorial_skip_button.get_global_rect().grow(12.0).has_point(event_position):
-		if is_press:
-			_on_tutorial_action_button_pressed()
-		return true
-	return (is_press or is_release) and tutorial_panel.get_global_rect().has_point(event_position)
+	return (
+		tutorial_panel != null
+		and is_instance_valid(tutorial_panel)
+		and tutorial_panel.visible
+		and (is_press or is_release)
+		and tutorial_panel.get_global_rect().has_point(event_position)
+	)
+
+
+func _on_tutorial_overlay_gui_input(event: InputEvent) -> void:
+	if _route_tutorial_panel_input(event):
+		tutorial_overlay.accept_event()
 
 
 func _tutorial_target_press_advances(event_position: Vector2) -> bool:
-	if not tutorial_step in [0, 1, 2]:
+	if not tutorial_step in [1, 2]:
 		return false
 	var target := _tutorial_target_control()
 	if target == null or not is_instance_valid(target) or not target.is_visible_in_tree():
@@ -40189,6 +43079,9 @@ func _tutorial_target_press_advances(event_position: Vector2) -> bool:
 
 
 func _activate_tutorial_target() -> void:
+	if screen_render_in_progress:
+		call_deferred("_activate_tutorial_target")
+		return
 	match tutorial_step:
 		0:
 			var skill_id := _tutorial_target_skill_id()
@@ -40217,7 +43110,18 @@ func _tutorial_check_progress() -> void:
 
 func _tutorial_on_action_started() -> void:
 	if tutorial_active and tutorial_step == 1:
-		_set_tutorial_step(2)
+		_complete_tutorial_target_intro()
+
+
+func _complete_tutorial_target_intro() -> void:
+	tutorial_active = false
+	tutorial_step = 1
+	if tutorial_overlay != null:
+		_set_canvas_item_visible_if_changed(tutorial_overlay, false)
+	_hide_tutorial_target_indicator()
+	_sync_bottom_nav_visibility()
+	_sync_module_utility_row_visibility()
+	save_game()
 
 
 func _force_tutorial_skill_scroll_to_top() -> void:
@@ -40248,43 +43152,17 @@ func _set_tutorial_step(step: int) -> void:
 	tutorial_step = clampi(step, 0, 4)
 	tutorial_step_changed_msec = Time.get_ticks_msec()
 	_update_tutorial_overlay()
+	save_game()
 
 
 func _update_tutorial_overlay() -> void:
 	if tutorial_overlay == null:
 		return
 	_set_canvas_item_visible_if_changed(tutorial_overlay, tutorial_active)
+	if tutorial_panel != null and is_instance_valid(tutorial_panel):
+		_set_canvas_item_visible_if_changed(tutorial_panel, false)
 	if not tutorial_active:
 		return
-	var title := ""
-	var body := ""
-	match tutorial_step:
-		0:
-			title = "Pick a Skill"
-			body = "Tap a skill card to open its activities. Fight is a good first stop."
-		1:
-			title = "Start Training"
-			body = "Tap an unlocked activity. It uses stamina, runs briefly, then gives XP."
-		2:
-			title = "Watch Mastery"
-			body = "This bar fills as you complete tasks. Mastery gives medals, and medals are long-term progress."
-		3:
-			title = "Unlock More"
-			body = "Leveling up reveals new activities. When a lock is ready, tap it to open the next module."
-		_:
-			title = "Good Luck"
-			body = "Train skills, spend stamina, collect rewards, and keep opening new buttons as they appear."
-	tutorial_step_label.text = "Tutorial %s/5" % (tutorial_step + 1)
-	tutorial_title_label.text = title
-	tutorial_body_label.text = body
-	tutorial_body_label.visible = not body.is_empty()
-	_sync_tutorial_panel_layout(body.is_empty())
-	if tutorial_step >= 4:
-		tutorial_skip_button.text = "Done"
-	elif tutorial_step >= 2:
-		tutorial_skip_button.text = "Next"
-	else:
-		tutorial_skip_button.text = "Skip"
 	_sync_tutorial_target_indicator()
 
 
@@ -40297,43 +43175,7 @@ func _sync_tutorial_panel_layout(title_only: bool) -> void:
 
 
 func _sync_tutorial_target_indicator() -> void:
-	if not tutorial_active:
-		_hide_tutorial_target_indicator()
-		return
-	var target := _tutorial_target_control()
-	if target == null or not is_instance_valid(target) or not target.is_visible_in_tree():
-		_hide_tutorial_target_indicator()
-		return
-	var rect := target.get_global_rect().grow(24.0)
-	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
-		_hide_tutorial_target_indicator()
-		return
-	if tutorial_target_ring != null:
-		_set_canvas_item_visible_if_changed(tutorial_target_ring, true)
-		tutorial_target_ring.anchor_left = 0.0
-		tutorial_target_ring.anchor_right = 0.0
-		tutorial_target_ring.anchor_top = 0.0
-		tutorial_target_ring.anchor_bottom = 0.0
-		tutorial_target_ring.offset_left = rect.position.x
-		tutorial_target_ring.offset_top = rect.position.y
-		tutorial_target_ring.offset_right = rect.end.x
-		tutorial_target_ring.offset_bottom = rect.end.y
-	if tutorial_target_label != null:
-		var label_width := minf(760.0, maxf(360.0, rect.size.x + 120.0))
-		var label_height := 72.0
-		var label_y := rect.position.y - label_height - 18.0
-		if label_y < 24.0:
-			label_y = rect.end.y + 18.0
-		_set_canvas_item_visible_if_changed(tutorial_target_label, true)
-		tutorial_target_label.text = _tutorial_target_text()
-		tutorial_target_label.anchor_left = 0.0
-		tutorial_target_label.anchor_right = 0.0
-		tutorial_target_label.anchor_top = 0.0
-		tutorial_target_label.anchor_bottom = 0.0
-		tutorial_target_label.offset_left = clampf(rect.position.x + rect.size.x * 0.5 - label_width * 0.5, 24.0, BASE_CANVAS.x - label_width - 24.0)
-		tutorial_target_label.offset_top = label_y
-		tutorial_target_label.offset_right = tutorial_target_label.offset_left + label_width
-		tutorial_target_label.offset_bottom = label_y + label_height
+	_hide_tutorial_target_indicator()
 
 
 func _hide_tutorial_target_indicator() -> void:
@@ -41929,10 +44771,12 @@ func _disarm_reset_data_confirmation_on_outside_press(event: InputEvent) -> void
 	var press_position := Vector2.ZERO
 	var pressed := false
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		press_position = event.global_position
+		var mouse_event := event as InputEventMouseButton
+		press_position = _global_event_position(mouse_event.position, mouse_event.global_position)
 		pressed = event.pressed
 	elif event is InputEventScreenTouch:
-		press_position = event.position
+		var touch_event := event as InputEventScreenTouch
+		press_position = _global_event_position(touch_event.position, touch_event.position)
 		pressed = event.pressed
 	if not pressed:
 		return
@@ -41946,11 +44790,16 @@ func _disarm_reset_data_confirmation_on_outside_press(event: InputEvent) -> void
 			continue
 		if float(button.get_meta("reset_confirm_until", 0.0)) > now:
 			any_armed = true
-			if button.is_visible_in_tree() and button.get_global_rect().has_point(press_position):
-				return
+			if button.is_visible_in_tree():
+				var button_rect := button.get_global_rect()
+				if button_rect.has_point(press_position):
+					return
+				for candidate in _activity_input_position_candidates(press_position):
+					if button_rect.has_point(candidate):
+						return
 	if not any_armed:
 		return
-	_disarm_reset_data_confirmation()
+	call_deferred("_disarm_reset_data_confirmation")
 
 
 func _refresh_reset_data_buttons() -> void:
@@ -41988,10 +44837,12 @@ func _clear_reset_button_confirmation(button: Button) -> void:
 
 
 func _reset_data(feedback_button: Button = null) -> void:
-	var screen_before_reset := current_screen
 	_clear_pending_save_restore_work()
 	_discard_all_page_stashes()
 	_reset_skill_swipe_frame_layout()
+	screen_render_in_progress = false
+	screen_render_target_key = ""
+	pending_screen_render_request.clear()
 	_clear_reset_data_buttons_for_rebuild()
 	_init_state()
 	_reset_page_control_refs()
@@ -42000,14 +44851,24 @@ func _reset_data(feedback_button: Button = null) -> void:
 	action_progress = 0.0
 	canceled_action_progress_by_key.clear()
 	selected_skill_id = TUTORIAL_STARTER_SKILL_ID
-	current_screen = screen_before_reset
+	if settings_overlay != null:
+		_set_canvas_item_visible_if_changed(settings_overlay, false)
+	if profile_overlay != null:
+		_set_canvas_item_visible_if_changed(profile_overlay, false)
+	if achievements_overlay != null:
+		_set_canvas_item_visible_if_changed(achievements_overlay, false)
+	if offline_summary_overlay != null:
+		_set_canvas_item_visible_if_changed(offline_summary_overlay, false)
+	if chat_overlay != null:
+		_set_canvas_item_visible_if_changed(chat_overlay, false)
 	_prepare_selected_skill_for_render(false)
 	last_result = "Data wiped."
 	_last_rendered_screen_key = ""
 	save_game()
-	_render_screen(false, 0 if current_screen == "skill" else -1)
+	_start_tutorial()
 	_update_ui(0.0, true)
-	call_deferred("_play_reset_data_wiped_feedback", feedback_button)
+	var feedback_button_id := feedback_button.get_instance_id() if feedback_button != null and is_instance_valid(feedback_button) else 0
+	call_deferred("_play_reset_data_wiped_feedback_by_id", feedback_button_id)
 
 
 func _clear_pending_save_restore_work() -> void:
@@ -42016,6 +44877,11 @@ func _clear_pending_save_restore_work() -> void:
 	pending_post_load_saved_at = -1
 	boot_post_load_simulation_scheduled = false
 	save_repaired_this_boot = false
+
+
+func _play_reset_data_wiped_feedback_by_id(feedback_button_id: int = 0) -> void:
+	var feedback_button := instance_from_id(feedback_button_id) as Button if feedback_button_id != 0 else null
+	_play_reset_data_wiped_feedback(feedback_button)
 
 
 func _play_reset_data_wiped_feedback(feedback_button: Button = null) -> void:
@@ -42140,7 +45006,16 @@ func _reward_feedback_card_for_key(key: String) -> Dictionary:
 func _visible_action_feedback_card(skill_id: String, action_id: String) -> Dictionary:
 	if skill_id.is_empty() or action_id.is_empty():
 		return {}
+	if current_screen == "pinned":
+		var pinned_key := _pinned_page_card_key(_module_ui_key_for_action(skill_id, _action_data(skill_id, action_id)))
+		var pinned_card := _live_action_card_for_key(pinned_key)
+		if not pinned_card.is_empty():
+			return pinned_card
 	if current_screen == "menu":
+		if _fishing_rework_active_for_skill(skill_id):
+			var fishing_method_card := _fishing_method_card_for_action(skill_id, action_id)
+			if not fishing_method_card.is_empty() and _reward_feedback_card_has_live_target(fishing_method_card):
+				return fishing_method_card
 		var menu_key := _skill_menu_active_drawer_card_key(skill_id, action_id)
 		var menu_card := _live_action_card_for_key(menu_key)
 		if not menu_card.is_empty():
@@ -42176,7 +45051,7 @@ func _reward_feedback_card_has_live_target(card: Dictionary) -> bool:
 
 
 func _skill_action_reward_feedback_visible() -> bool:
-	return (current_screen == "skill" or current_screen == "menu") and not _any_modal_overlay_visible()
+	return (current_screen == "skill" or current_screen == "menu" or current_screen == "pinned") and not _any_modal_overlay_visible()
 
 
 func _clear_skill_reward_floats() -> void:
@@ -44120,6 +46995,17 @@ func _fishing_render_area_modules(skill_id: String) -> Array:
 	return modules
 
 
+func _fishing_render_area_module_for_action(skill_id: String, action_id: String) -> Dictionary:
+	if action_id.is_empty():
+		return {}
+	for raw_area in _fishing_render_area_modules(skill_id):
+		var area_def := raw_area as Dictionary
+		for raw_method_id in _fishing_area_module_method_ids(skill_id, area_def):
+			if str(raw_method_id) == action_id:
+				return area_def
+	return {}
+
+
 func _sort_fishing_render_modules(a: Dictionary, b: Dictionary) -> bool:
 	var unlock_a := _fishing_render_module_unlock(a)
 	var unlock_b := _fishing_render_module_unlock(b)
@@ -45839,7 +48725,7 @@ func _build_fishing_location_tile(
 	var method_column := VBoxContainer.new()
 	method_column.add_theme_constant_override("separation", FISHING_MODULE_TITLE_TOP)
 	method_column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	method_column.mouse_filter = Control.MOUSE_FILTER_STOP if unlocked else Control.MOUSE_FILTER_PASS
+	method_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_row.add_child(method_column)
 
 	var method_title := _label(str(location.get("name", location_id.capitalize())), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
@@ -45933,7 +48819,8 @@ func _build_fishing_location_tile(
 	method_button.add_theme_stylebox_override("pressed", empty_style_cache)
 	method_button.add_theme_stylebox_override("disabled", empty_style_cache)
 	method_button.add_theme_stylebox_override("focus", empty_style_cache)
-	method_button.z_index = 218
+	method_button.z_index = MODULE_ACTION_ZONE_Z_INDEX + 1
+	method_button.z_as_relative = false
 	method_button.set_meta("action_button_skill_id", skill_id)
 	method_button.set_meta("action_button_action_id", action_id)
 	art_panel.add_child(method_button)
@@ -45962,6 +48849,8 @@ func _build_fishing_location_tile(
 		"mastery": mastery_progress,
 		"mastery_bar_instant_updates": true,
 		"method_button": method_button,
+		"method_hit_control": method_column,
+		"method_image_hit_control": art_panel,
 		"lock_root": lock_root,
 		"status": null,
 		"medal_destination": Vector2(medal.offset_left, medal.offset_top),
@@ -46541,7 +49430,7 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
 	pop_card.offset_top = 0.0
 	pop_card.offset_bottom = 0.0
-	pop_card.clip_contents = true
+	pop_card.clip_contents = false
 	pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
 	pop_card.z_index = 1
 	card_root.add_child(pop_card)
@@ -46689,6 +49578,9 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 			var location_card := _build_fishing_location_tile(skill_id, area_id, area_key, location, method_row)
 			if location_card.is_empty():
 				continue
+			var location_hit_control := location_card.get("method_hit_control") as Control
+			if location_hit_control != null and is_instance_valid(location_hit_control):
+				location_hit_control.set_meta("fishing_area_method_ready_marker", true)
 			var location_action_id := str(location_card.get("action_id", ""))
 			var location_ui_key := "%s:location-%s-%s" % [skill_id, area_id, str(location.get("id", ""))]
 			_register_action_card(location_ui_key, location_card)
@@ -46723,6 +49615,7 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		var art_panel := Panel.new()
 		art_panel.custom_minimum_size = FISHING_LOCATION_TILE_SIZE
 		art_panel.size = FISHING_LOCATION_TILE_SIZE
+		art_panel.set_meta("fishing_area_method_ready_marker", true)
 		art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 		art_panel.clip_contents = false
 		art_panel.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
@@ -46803,7 +49696,8 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		method_button.add_theme_stylebox_override("pressed", empty_style_cache)
 		method_button.add_theme_stylebox_override("disabled", empty_style_cache)
 		method_button.add_theme_stylebox_override("focus", empty_style_cache)
-		method_button.z_index = 218
+		method_button.z_index = MODULE_ACTION_ZONE_Z_INDEX + 1
+		method_button.z_as_relative = false
 		method_button.set_meta("action_button_skill_id", skill_id)
 		method_button.set_meta("action_button_action_id", action_id)
 		art_panel.add_child(method_button)
@@ -46828,6 +49722,8 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 			"mastery": mastery_progress,
 			"mastery_bar_instant_updates": true,
 			"method_button": method_button,
+			"method_hit_control": method_column,
+			"method_image_hit_control": art_panel,
 			"lock_root": lock_root,
 			"status": status,
 			"medal_destination": Vector2(medal.offset_left, medal.offset_top),
@@ -46939,10 +49835,13 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	title.anchor_right = 1.0
 	title.anchor_top = 0.0
 	title.anchor_bottom = 0.0
-	title.offset_left = 48
-	title.offset_right = -48
-	title.offset_top = 24
-	title.offset_bottom = 164
+	title.offset_left = 36
+	title.offset_right = -36
+	title.offset_top = 18
+	title.offset_bottom = 152
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.add_child(title)
 
@@ -46950,17 +49849,12 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	net_button.text = ""
 	net_button.focus_mode = Control.FOCUS_NONE
 	net_button.flat = true
-	net_button.anchor_left = 0.5
-	net_button.anchor_right = 0.5
-	net_button.anchor_top = 0.5
-	net_button.anchor_bottom = 0.5
-	net_button.offset_left = -260
-	net_button.offset_right = 260
-	net_button.offset_top = -170
-	net_button.offset_bottom = 220
+	net_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	net_button.set_anchors_preset(Control.PRESET_FULL_RECT)
 	net_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	net_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	net_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	net_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
 	net_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	_attach_default_button_sfx(net_button)
 	pop_card.add_child(net_button)
@@ -46991,6 +49885,8 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	net_motion_root.add_child(net_art)
 	_start_fishing_net_offer_idle_motion(net_motion_root)
 	net_button.set_meta("fishing_offer_id", "net")
+	net_button.set_meta("fishing_offer_root_id", root.get_instance_id())
+	net_button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
 	net_button.set_meta("fishing_net_art_id", net_motion_root.get_instance_id())
 	net_button.add_to_group("fishing_offer_buttons")
 	net_button.gui_input.connect(_on_fishing_offer_button_input.bind("net", net_button))
@@ -47007,6 +49903,7 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	hint.offset_right = -48
 	hint.offset_top = -132
 	hint.offset_bottom = -48
+	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.add_child(hint)
 
@@ -47472,6 +50369,9 @@ func _route_fishing_offer_button_global_input(event: InputEvent) -> bool:
 		is_motion = true
 	else:
 		return false
+	if _position_inside_bottom_interactive_ui(event_position):
+		_clear_fishing_offer_button_press(_active_fishing_offer_button())
+		return false
 	var source := _fishing_offer_button_hit(event_position, is_press)
 	if source == null and (is_release or is_motion):
 		source = _active_fishing_offer_button()
@@ -47490,10 +50390,26 @@ func _fishing_offer_button_hit(event_position: Vector2, require_contains_point :
 			continue
 		if not button.is_inside_tree() or not button.is_visible_in_tree():
 			continue
-		if require_contains_point and not button.get_global_rect().has_point(event_position):
+		if require_contains_point and not _fishing_offer_button_contains_point(button, event_position):
 			continue
 		return button
 	return null
+
+
+func _fishing_offer_button_contains_point(button: Button, event_position: Vector2) -> bool:
+	if button.get_global_rect().has_point(event_position):
+		return true
+	for meta_name in ["fishing_offer_hit_id", "fishing_offer_root_id"]:
+		if not button.has_meta(meta_name):
+			continue
+		var hit_control := instance_from_id(int(button.get_meta(meta_name))) as Control
+		if hit_control == null or not is_instance_valid(hit_control):
+			continue
+		if not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
+			continue
+		if hit_control.get_global_rect().has_point(event_position):
+			return true
+	return false
 
 
 func _active_fishing_offer_button() -> Button:
@@ -47519,12 +50435,14 @@ func _on_fishing_net_offer_pressed(net_button: Control, net_art: Control = null)
 	if fishing_net_collected or fishing_net_collect_pending:
 		return
 	fishing_net_collect_pending = true
+	var collect_animation_started := false
 	if net_button != null and is_instance_valid(net_button):
 		_float_reward(net_button, net_button, "Net found!", 58, COLOR_GOLD, Vector2(0, -40), Vector2(0, -170), 0.0)
-		_collect_fishing_net_offer_to_wallet(net_art if net_art != null and is_instance_valid(net_art) else net_button)
-		_play_fishing_offer_collected_transition(net_button, 2.95)
+		collect_animation_started = _collect_fishing_net_offer_to_wallet(net_art if net_art != null and is_instance_valid(net_art) else net_button)
+		_play_fishing_offer_collected_transition(net_button, FISHING_NET_COLLECT_LAYOUT_DELAY_SECONDS if collect_animation_started else 0.10, collect_animation_started)
 	_set_result("Collecting net...")
-	_finish_fishing_net_collect()
+	if not collect_animation_started:
+		_finish_fishing_net_collect()
 
 
 func _finish_fishing_net_collect() -> void:
@@ -47792,7 +50710,7 @@ func _play_staged_net_collect_to_wallet(art: Control, target: Vector2) -> void:
 	tween.chain().tween_callback(_queue_free_instance_id.bind(art.get_instance_id()))
 
 
-func _play_fishing_offer_collected_transition(source: Control, start_delay := 0.10) -> void:
+func _play_fishing_offer_collected_transition(source: Control, start_delay := 0.10, collapse_after_fade := false) -> void:
 	if source == null or not is_instance_valid(source) or source.is_queued_for_deletion():
 		return
 	source.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -47803,11 +50721,18 @@ func _play_fishing_offer_collected_transition(source: Control, start_delay := 0.
 	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
 		return
 	var track_id := str(root.get_meta("detail_lazy_track_id", ""))
-	if not track_id.is_empty():
+	if not track_id.is_empty() and not collapse_after_fade:
 		_collapse_detail_lazy_entry_height(track_id)
 	var start_height := root.custom_minimum_size.y
 	var tween := create_tween()
 	var root_id := root.get_instance_id()
+	if collapse_after_fade:
+		tween.tween_property(root, "modulate:a", 0.0, 0.20).set_delay(start_delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+		tween.chain().tween_method(_apply_fishing_offer_collected_height.bind(root_id), start_height, 0.0, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		if not track_id.is_empty():
+			tween.parallel().tween_method(_apply_detail_lazy_entry_height.bind(track_id), start_height, 0.0, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_callback(_hide_control_bound.bind(root_id))
+		return
 	tween.set_parallel(true)
 	tween.tween_property(root, "modulate:a", 0.0, 0.20).set_delay(start_delay).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_method(_apply_fishing_offer_collected_height.bind(root_id), start_height, 0.0, 0.24).set_delay(start_delay + 0.08).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
@@ -47819,6 +50744,11 @@ func _apply_fishing_offer_collected_height(value: float, root_id: int) -> void:
 	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
 		return
 	root.custom_minimum_size = Vector2(root.custom_minimum_size.x, value)
+	root.size.y = value
+	root.update_minimum_size()
+	var parent := root.get_parent() as Container
+	if parent != null:
+		parent.queue_sort()
 
 
 func _hide_control_bound(control_id: int) -> void:
@@ -48038,15 +50968,20 @@ func _activate_fishing_method_button(method_card: Dictionary, owner_area_pop_ins
 		return
 	_set_base_button_disabled_if_changed(method_button, false)
 	method_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	if bool(method_button.get_meta("fishing_method_pressed_connected", false)):
-		return
 	var skill_id := str(method_card.get("skill_id", ""))
 	var action_id := str(method_card.get("action_id", ""))
 	var area_key := str(method_card.get("fishing_area_key", ""))
-	method_button.gui_input.connect(_on_fishing_method_button_input.bind(skill_id, action_id, area_key, owner_area_pop_instance_id, method_button))
-	method_button.pressed.connect(_on_fishing_method_pressed.bind(skill_id, action_id, area_key, owner_area_pop_instance_id))
-	_attach_default_button_sfx(method_button)
-	method_button.set_meta("fishing_method_pressed_connected", true)
+	if not bool(method_button.get_meta("fishing_method_pressed_connected", false)):
+		method_button.gui_input.connect(_on_fishing_method_button_input.bind(skill_id, action_id, area_key, owner_area_pop_instance_id, method_button))
+		method_button.pressed.connect(_on_fishing_method_pressed.bind(skill_id, action_id, area_key, owner_area_pop_instance_id))
+		_attach_default_button_sfx(method_button)
+		method_button.set_meta("fishing_method_pressed_connected", true)
+	var art_panel := method_card.get("art_panel", null) as Control
+	if art_panel != null and is_instance_valid(art_panel) and not art_panel.is_queued_for_deletion():
+		art_panel.mouse_filter = Control.MOUSE_FILTER_STOP
+		if not bool(art_panel.get_meta("fishing_method_art_pressed_connected", false)):
+			art_panel.gui_input.connect(_on_fishing_method_button_input.bind(skill_id, action_id, area_key, owner_area_pop_instance_id, method_button))
+			art_panel.set_meta("fishing_method_art_pressed_connected", true)
 
 
 func _run_fishing_method_unlock_drop_motion(method_card: Dictionary) -> void:
@@ -48403,11 +51338,23 @@ func _update_fishing_area_method_slots(area_card: Dictionary, skill_id: String, 
 				method_running
 				and str(selected_fishing_locations.get(str(method_card.get("area_id", "")), "")) == str(method_card.get("location_id", ""))
 			)
-		if detail_scroll_visual_work_this_frame and not method_running:
-			continue
 		if float(method_card.get("active_camera_zoom", 0.0)) > 1.0 and bool(method_card.get("active_camera_was_running", false)) and not method_running:
 			method_card["active_camera_returning"] = true
+		if detail_scroll_visual_work_this_frame and not method_running and not bool(method_card.get("active_camera_returning", false)):
+			continue
 		_update_fishing_method_slot(method_card, skill_id, action_id, method_action, method_unlocked, method_running, delta, instant)
+
+
+func _fishing_area_has_active_camera_return(area_card: Dictionary) -> bool:
+	for raw_method_card in (area_card.get("method_slots", {}) as Dictionary).values():
+		var method_card := raw_method_card as Dictionary
+		if method_card.is_empty():
+			continue
+		if bool(method_card.get("active_camera_returning", false)):
+			return true
+		if float(method_card.get("active_camera_zoom", 0.0)) > 1.0 and bool(method_card.get("active_camera_was_running", false)):
+			return true
+	return false
 
 
 func _update_fishing_method_slot(
@@ -48507,6 +51454,9 @@ func _update_fishing_location_active_camera(
 	if running:
 		card["active_camera_was_running"] = true
 		card["active_camera_returning"] = false
+		card.erase("active_camera_return_elapsed")
+		card.erase("active_camera_return_start_position")
+		card.erase("active_camera_return_start_scale")
 		if not bool(card.get("active_camera_initialized", false)):
 			card["active_camera_initialized"] = true
 			card["active_camera_target"] = Vector2.ZERO
@@ -48532,22 +51482,34 @@ func _update_fishing_location_active_camera(
 	card["active_camera_was_running"] = false
 	card["active_camera_initialized"] = false
 	card["active_camera_target"] = Vector2.ZERO
-	if (
-		instant
-		and art.position.distance_squared_to(rest_position) <= 0.25
-		and art.scale.distance_squared_to(Vector2.ONE) <= 0.0001
-	):
+	if instant:
 		art.position = rest_position
 		art.rotation = 0.0
 		art.scale = Vector2.ONE
+		card["active_camera_returning"] = false
+		card.erase("active_camera_return_elapsed")
+		card.erase("active_camera_return_start_position")
+		card.erase("active_camera_return_start_scale")
 		return
-	var return_step := clampf(delta / maxf(0.001, FISHING_LOCATION_ACTIVE_CAMERA_RETURN_SECONDS), 0.0, 1.0)
-	art.position = art.position.lerp(rest_position, return_step)
-	art.scale = art.scale.lerp(Vector2.ONE, return_step)
-	if art.position.distance_squared_to(rest_position) <= 0.25 and art.scale.distance_squared_to(Vector2.ONE) <= 0.0001:
+	if not card.has("active_camera_return_elapsed"):
+		card["active_camera_return_elapsed"] = 0.0
+		card["active_camera_return_start_position"] = art.position
+		card["active_camera_return_start_scale"] = art.scale
+	var return_elapsed := float(card.get("active_camera_return_elapsed", 0.0)) + delta
+	card["active_camera_return_elapsed"] = return_elapsed
+	var return_t := clampf(return_elapsed / maxf(0.001, FISHING_LOCATION_ACTIVE_CAMERA_RETURN_SECONDS), 0.0, 1.0)
+	var eased_return_t := 1.0 - pow(1.0 - return_t, 3.0)
+	var start_position := card.get("active_camera_return_start_position", art.position) as Vector2
+	var start_scale := card.get("active_camera_return_start_scale", art.scale) as Vector2
+	art.position = start_position.lerp(rest_position, eased_return_t)
+	art.scale = start_scale.lerp(Vector2.ONE, eased_return_t)
+	if return_t >= 1.0:
 		art.position = rest_position
 		art.scale = Vector2.ONE
 		card["active_camera_returning"] = false
+		card.erase("active_camera_return_elapsed")
+		card.erase("active_camera_return_start_position")
+		card.erase("active_camera_return_start_scale")
 
 
 func _play_fishing_location_tile_wiggle(method_card: Dictionary) -> void:
@@ -48649,6 +51611,27 @@ func _on_fishing_method_button_input(
 	if is_press:
 		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
 			return
+		if running_skill_id == skill_id and running_action_id == action_id:
+			if _try_action_opportunity_click(skill_id, action_id, event_position):
+				action_card_press_consumed = true
+				_cancel_action_stop_hold()
+				skill_swipe_tracking = false
+				skill_swipe_horizontal = false
+				skill_swipe_touch_index = -1
+				get_viewport().set_input_as_handled()
+				return
+			if _miss_action_opportunity_click(skill_id, action_id, event_position):
+				action_card_press_consumed = true
+				_cancel_action_stop_hold()
+				skill_swipe_tracking = false
+				skill_swipe_horizontal = false
+				skill_swipe_touch_index = -1
+				get_viewport().set_input_as_handled()
+				return
+			var pointer_id := (event as InputEventScreenTouch).index if event is InputEventScreenTouch else -1
+			_begin_action_stop_hold(skill_id, action_id, event_position, pointer_id)
+			get_viewport().set_input_as_handled()
+			return
 		source.set_meta("fishing_method_press_active", true)
 		source.set_meta("fishing_method_press_position", event_position)
 		source.set_meta("fishing_method_press_dragged", false)
@@ -48734,7 +51717,80 @@ func _route_fishing_method_button_global_input(event: InputEvent) -> bool:
 	return true
 
 
+func _route_fishing_location_image_priority_press(event: InputEvent) -> bool:
+	if current_screen != "skill" and current_screen != "pinned":
+		return false
+	if current_screen == "skill" and selected_skill_id != "fishing":
+		return false
+	var event_position := Vector2.ZERO
+	var pointer_id := -1
+	var is_press := false
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
+			return false
+		event_position = mouse_event.global_position
+		is_press = mouse_event.pressed
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		event_position = touch_event.position
+		pointer_id = touch_event.index
+		is_press = touch_event.pressed
+	else:
+		return false
+	if not is_press:
+		return false
+	if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
+		return false
+	if not _module_action_circle_at_direct_position(event_position).is_empty():
+		return false
+	var hit := _fishing_method_button_hit(event_position, true)
+	if hit.is_empty():
+		return false
+	var method_card := hit.get("method_card", {}) as Dictionary
+	if method_card.is_empty() or not bool(method_card.get("is_fishing_location", false)):
+		return false
+	var skill_id := str(method_card.get("skill_id", "fishing"))
+	var action_id := str(method_card.get("action_id", ""))
+	var action := _action_data(skill_id, action_id)
+	if action.is_empty() or not _is_action_unlocked(skill_id, action):
+		return false
+	if running_skill_id == skill_id and running_action_id == action_id:
+		if _try_action_opportunity_click(skill_id, action_id, event_position):
+			action_card_press_consumed = true
+			_cancel_action_stop_hold()
+			skill_swipe_tracking = false
+			skill_swipe_horizontal = false
+			skill_swipe_touch_index = -1
+			return true
+		if _miss_action_opportunity_click(skill_id, action_id, event_position):
+			action_card_press_consumed = true
+			_cancel_action_stop_hold()
+			skill_swipe_tracking = false
+			skill_swipe_horizontal = false
+			skill_swipe_touch_index = -1
+			return true
+		_begin_action_stop_hold(skill_id, action_id, event_position, pointer_id)
+		return true
+	var owner_area_card := hit.get("owner_area_card", {}) as Dictionary
+	var owner_pop := owner_area_card.get("pop", null) as Control
+	var owner_area_pop_instance_id := owner_pop.get_instance_id() if owner_pop != null and is_instance_valid(owner_pop) else 0
+	_on_fishing_method_pressed(
+		skill_id,
+		action_id,
+		str(method_card.get("fishing_area_key", "")),
+		owner_area_pop_instance_id
+	)
+	action_card_press_consumed = true
+	_cancel_action_stop_hold()
+	skill_swipe_tracking = false
+	skill_swipe_horizontal = false
+	skill_swipe_touch_index = -1
+	return true
+
+
 func _fishing_method_button_hit(event_position: Vector2, require_contains_point := true) -> Dictionary:
+	var positions := _activity_input_position_candidates(event_position)
 	for hit in _fishing_method_button_hit_candidates():
 		var button := hit.get("button", null) as Button
 		if button == null or not is_instance_valid(button) or button.disabled:
@@ -48743,10 +51799,40 @@ func _fishing_method_button_hit(event_position: Vector2, require_contains_point 
 			continue
 		if not button.is_inside_tree() or not button.is_visible_in_tree():
 			continue
-		if require_contains_point and not button.get_global_rect().has_point(event_position):
+		var hit_control := hit.get("hit_control", button) as Control
+		if hit_control == null or not is_instance_valid(hit_control) or not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
+			hit_control = button
+		if require_contains_point and _first_position_in_rect(positions, hit_control.get_global_rect()) == null:
 			continue
 		return hit
 	return {}
+
+
+func _event_inside_fishing_location_image(event: InputEvent) -> bool:
+	var event_position := Vector2.ZERO
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		event_position = _global_event_position(mouse_event.position, mouse_event.global_position)
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		event_position = _global_event_position(touch_event.position, touch_event.position)
+	else:
+		return false
+	return _fishing_location_image_hit_at_position(event_position)
+
+
+func _fishing_location_image_hit_at_position(event_position: Vector2) -> bool:
+	var positions := _activity_input_position_candidates(event_position)
+	for hit in _fishing_method_button_hit_candidates():
+		var method_card := hit.get("method_card", {}) as Dictionary
+		if not bool(method_card.get("is_fishing_location", false)):
+			continue
+		var hit_control := method_card.get("method_image_hit_control", null) as Control
+		if hit_control == null or not is_instance_valid(hit_control) or not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
+			continue
+		if _first_position_in_rect(positions, hit_control.get_global_rect()) != null:
+			return true
+	return false
 
 
 func _active_fishing_method_button_hit() -> Dictionary:
@@ -48778,8 +51864,9 @@ func _fishing_method_button_hit_candidates() -> Array:
 		var card := raw_card as Dictionary
 		if bool(card.get("is_fishing_method", false)):
 			var button := card.get("method_button", null) as Button
+			var hit_control := card.get("method_hit_control", button) as Control
 			if button != null:
-				hits.append({"method_card": card, "button": button, "owner_area_card": {}})
+				hits.append({"method_card": card, "button": button, "hit_control": hit_control, "owner_area_card": {}})
 			continue
 		if not bool(card.get("is_fishing_area", false)):
 			continue
@@ -48790,8 +51877,9 @@ func _fishing_method_button_hit_candidates() -> Array:
 			if not bool(method_card.get("is_fishing_method", false)):
 				continue
 			var method_button := method_card.get("method_button", null) as Button
+			var hit_control := method_card.get("method_hit_control", method_button) as Control
 			if method_button != null:
-				hits.append({"method_card": method_card, "button": method_button, "owner_area_card": card})
+				hits.append({"method_card": method_card, "button": method_button, "hit_control": hit_control, "owner_area_card": card})
 	return hits
 
 
@@ -49050,7 +52138,7 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 	var progress_rail := card.get("progress") as ActivityProgressRail
 	if progress_rail != null:
 		_set_canvas_item_visible_if_changed(progress_rail, true)
-		_apply_activity_progress_rail_action_theme(progress_rail, skill_id, action_for_card)
+		_sync_action_card_progress_rail_theme(card, progress_rail, skill_id, action_for_card)
 		var action_id := str(card.get("action_id", ""))
 		var opportunity_windows: Array[Vector2] = []
 		var opportunity_active := false
@@ -49383,7 +52471,7 @@ func _init_state() -> void:
 	log_currency = 0
 	fish_currency = 0.0
 	fish_currency_ever_earned = false
-	auto_eat_fish_enabled = false
+	auto_eat_fish_enabled_by_skill.clear()
 	auto_unlock_lockpads_enabled = false
 	nav_symbol_seen_ids.clear()
 	_reset_module_ui_preferences()
@@ -49468,7 +52556,11 @@ func _init_state() -> void:
 	onboarding_fight_stamina_revealed = false
 	onboarding_fight_action_stats_revealed = false
 	onboarding_fight_action_stats_fade_running = false
+	onboarding_header_sequence_running = false
+	onboarding_auto_run_sequence_running = false
 	onboarding_stamina_tip_sequence_running = false
+	onboarding_header_sequence_started_msec = 0
+	onboarding_stamina_tip_sequence_started_msec = 0
 	onboarding_mastery_tip_root = null
 	onboarding_medal_tip_root = null
 	onboarding_swipe_overlay_tip_root = null
@@ -49775,7 +52867,8 @@ func _save_payload(now: int) -> Dictionary:
 		"log_currency": _log_currency_for_save(),
 		"fish_currency": _fish_currency_for_save(),
 		"fish_currency_ever_earned": fish_currency_ever_earned or fish_currency > 0.0,
-		"auto_eat_fish_enabled": auto_eat_fish_enabled,
+		"auto_eat_fish_enabled": not _auto_eat_fish_enabled_by_skill_for_save().is_empty(),
+		"auto_eat_fish_enabled_by_skill": _auto_eat_fish_enabled_by_skill_for_save(),
 		"equipped_fishing_tool_id": _equipped_fishing_tool_id_for_save(),
 		"fishing_net_stored_fish": _fishing_net_stored_fish_for_save(),
 		"fishing_net_successes": _fishing_net_successes_for_save(),
@@ -49849,6 +52942,9 @@ func _save_payload(now: int) -> Dictionary:
 		"skill_swipe_tip_seen": skill_swipe_tip_seen,
 		"onboarding_explore_tip_seen": onboarding_explore_tip_seen,
 		"onboarding_tutorial_complete": onboarding_tutorial_complete,
+		"tutorial_active": tutorial_active,
+		"tutorial_step": tutorial_step,
+		"tutorial_gate_latch_only_until_swipe": _tutorial_gate_latch_only_until_swipe_for_save(),
 		"stamina_gauge_tip_seen": stamina_gauge_tip_seen,
 		"onboarding_fight_summary_revealed": onboarding_fight_summary_revealed,
 		"onboarding_fight_auto_run_message_shown": onboarding_fight_auto_run_message_shown,
@@ -50563,6 +53659,8 @@ func _repair_save_for_regular_play(data: Dictionary) -> bool:
 	var repaired := _repair_manual_activity_unlock_corruption(data)
 	if _repair_onboarding_progress_mismatch(data):
 		repaired = true
+	if _repair_onboarding_gate_latch_checkpoint(data):
+		repaired = true
 	if _repair_impossible_thieving_trophies(data):
 		repaired = true
 	if bool(data.get("god_mode_save_tainted", false)) or bool(data.get("god_mode_enabled", false)):
@@ -50676,11 +53774,45 @@ func _mark_save_onboarding_complete(data: Dictionary) -> void:
 	data["stamina_gauge_tip_seen"] = true
 	data["onboarding_swipe_tip_eligible"] = true
 	data["onboarding_swipe_navigation_unlocked"] = true
+	data["tutorial_active"] = false
+	data["tutorial_step"] = 4
+	data["tutorial_gate_latch_only_until_swipe"] = false
 	data["onboarding_fight_summary_revealed"] = true
 	data["onboarding_fight_auto_run_message_shown"] = true
 	data["onboarding_fight_stamina_revealed"] = true
 	data["onboarding_fight_action_stats_revealed"] = true
 	data["onboarding_header_reveal_after_progress"] = false
+
+
+func _repair_onboarding_gate_latch_checkpoint(data: Dictionary) -> bool:
+	if not _save_should_restore_tutorial_gate_latch(data):
+		return false
+	var repaired := false
+	if bool(data.get("tutorial_active", false)):
+		data["tutorial_active"] = false
+		repaired = true
+	if not bool(data.get("tutorial_gate_latch_only_until_swipe", false)):
+		data["tutorial_gate_latch_only_until_swipe"] = true
+		repaired = true
+	return repaired
+
+
+func _save_should_restore_tutorial_gate_latch(data: Dictionary) -> bool:
+	if bool(data.get("onboarding_tutorial_complete", false)):
+		return false
+	if bool(data.get("skill_swipe_tip_seen", false)):
+		return false
+	return _save_starter_level_two_unlocked(data)
+
+
+func _save_starter_level_two_unlocked(data: Dictionary) -> bool:
+	var level_two_key := _action_key(TUTORIAL_STARTER_SKILL_ID, TUTORIAL_LEVEL_TWO_ACTION_ID)
+	var raw_manual = data.get("manual_activity_unlocks", {})
+	if typeof(raw_manual) == TYPE_DICTIONARY:
+		var manual := raw_manual as Dictionary
+		return bool(manual.get(level_two_key, false))
+	var level_two_action := _action_data(TUTORIAL_STARTER_SKILL_ID, TUTORIAL_LEVEL_TWO_ACTION_ID)
+	return not level_two_action.is_empty() and _save_action_requirements_met(data, TUTORIAL_STARTER_SKILL_ID, level_two_action)
 
 
 func _repair_manual_activity_unlock_corruption(data: Dictionary) -> bool:
@@ -50878,7 +54010,9 @@ func _restore_boot_render_save_fields(data: Dictionary) -> void:
 	onboarding_fight_auto_run_message_shown = bool(data.get("onboarding_fight_auto_run_message_shown", false))
 	onboarding_fight_stamina_revealed = bool(data.get("onboarding_fight_stamina_revealed", false))
 	onboarding_fight_action_stats_revealed = bool(data.get("onboarding_fight_action_stats_revealed", false))
+	_restore_tutorial_state_from_save(data)
 	_apply_onboarding_restored_completion_implications()
+	_restore_tutorial_gate_latch_from_save(data)
 	_restore_tip_metadata_from_save(data)
 
 
@@ -50897,6 +54031,33 @@ func _apply_onboarding_restored_completion_implications() -> void:
 		onboarding_swipe_navigation_unlocked = true
 
 
+func _restore_tutorial_state_from_save(data: Dictionary) -> void:
+	if onboarding_tutorial_complete:
+		tutorial_active = false
+		tutorial_step = 4
+		return
+	if data.has("tutorial_active"):
+		tutorial_active = bool(data.get("tutorial_active", false))
+		if tutorial_active and _onboarding_restored_completion_seen():
+			tutorial_active = false
+	else:
+		tutorial_active = not _onboarding_restored_completion_seen()
+	if tutorial_active:
+		tutorial_step = clampi(int(data.get("tutorial_step", 1)), 1, 4)
+		selected_skill_id = TUTORIAL_STARTER_SKILL_ID
+		current_screen = "skill"
+		onboarding_fight_summary_revealed = false
+		onboarding_fight_auto_run_message_shown = false
+		onboarding_fight_stamina_revealed = false
+		onboarding_fight_action_stats_revealed = false
+	else:
+		tutorial_step = clampi(int(data.get("tutorial_step", 0)), 0, 4)
+
+
+func _restore_tutorial_gate_latch_from_save(data: Dictionary) -> void:
+	tutorial_gate_latch_only_until_swipe = _save_should_restore_tutorial_gate_latch(data)
+
+
 func _restore_onboarding_progression_from_save(data: Dictionary) -> void:
 	onboarding_starter_action_completion_count = maxi(0, int(data.get("onboarding_starter_action_completion_count", 0)))
 	onboarding_first_module_center_released = bool(data.get(
@@ -50913,13 +54074,15 @@ func _restore_onboarding_progression_from_save(data: Dictionary) -> void:
 	onboarding_tutorial_complete = bool(data.get("onboarding_tutorial_complete", false))
 	stamina_gauge_tip_seen = bool(data.get("stamina_gauge_tip_seen", false))
 	onboarding_fight_summary_revealed = bool(data.get("onboarding_fight_summary_revealed", false))
-	onboarding_fight_auto_run_message_shown = bool(data.get("onboarding_fight_auto_run_message_shown", false))
+	var saved_auto_run_message_shown := bool(data.get("onboarding_fight_auto_run_message_shown", false))
+	onboarding_fight_auto_run_message_shown = saved_auto_run_message_shown
 	onboarding_fight_stamina_revealed = bool(data.get("onboarding_fight_stamina_revealed", false))
 	onboarding_fight_action_stats_revealed = bool(data.get("onboarding_fight_action_stats_revealed", false))
+	_restore_tutorial_state_from_save(data)
 	onboarding_medal_tip_shown = bool(data.get("onboarding_medal_tip_shown", false))
 	if onboarding_medal_tip_shown:
 		onboarding_mastery_tip_dismissed = true
-	if onboarding_starter_action_completion_count == 0 and onboarding_fight_auto_run_message_shown:
+	if onboarding_starter_action_completion_count == 0 and saved_auto_run_message_shown:
 		onboarding_starter_action_completion_count = 1
 	if (
 		not onboarding_header_reveal_after_progress
@@ -50945,6 +54108,7 @@ func _restore_onboarding_progression_from_save(data: Dictionary) -> void:
 		):
 			onboarding_swipe_tip_eligible = true
 			onboarding_swipe_navigation_unlocked = true
+	_restore_tutorial_gate_latch_from_save(data)
 
 
 func _load_game_core(data: Dictionary) -> void:
@@ -51639,7 +54803,7 @@ func _save_needs_fishing_restore(data: Dictionary) -> bool:
 func _restore_fishing_state_from_save(data: Dictionary) -> void:
 	fish_currency = maxf(0.0, float(data.get("fish_currency", fish_currency)))
 	fish_currency_ever_earned = bool(data.get("fish_currency_ever_earned", fish_currency_ever_earned or fish_currency > 0.0))
-	auto_eat_fish_enabled = bool(data.get("auto_eat_fish_enabled", auto_eat_fish_enabled))
+	_restore_auto_eat_fish_enabled_from_save(data)
 	equipped_fishing_tool_id = str(data.get("equipped_fishing_tool_id", equipped_fishing_tool_id))
 	fishing_net_stored_fish = clampi(int(data.get("fishing_net_stored_fish", fishing_net_stored_fish)), 0, FISHING_NET_HAUL_THRESHOLD - 1)
 	fishing_net_successes = maxi(0, int(data.get("fishing_net_successes", fishing_net_successes)))
@@ -51701,7 +54865,7 @@ func _load_game_secondary_restore() -> void:
 	if not _save_needs_fishing_restore(data):
 		fish_currency = maxf(0.0, float(data.get("fish_currency", fish_currency)))
 		fish_currency_ever_earned = bool(data.get("fish_currency_ever_earned", fish_currency_ever_earned or fish_currency > 0.0))
-		auto_eat_fish_enabled = bool(data.get("auto_eat_fish_enabled", auto_eat_fish_enabled))
+		_restore_auto_eat_fish_enabled_from_save(data)
 		_restore_fishing_state_from_save(data)
 	_restore_passive_modules_from_save(data, true)
 	if convergence_modules.is_empty():
@@ -54596,6 +57760,10 @@ func _onboarding_starter_action_completion_count_for_save() -> int:
 	return maxi(0, onboarding_starter_action_completion_count)
 
 
+func _tutorial_gate_latch_only_until_swipe_for_save() -> bool:
+	return tutorial_gate_latch_only_until_swipe and not onboarding_tutorial_complete and not skill_swipe_tip_seen
+
+
 func _stamina_gauge_pre_tip_hold_seconds_for_save() -> float:
 	return clampf(stamina_gauge_pre_tip_hold_seconds, 0.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS)
 
@@ -56033,6 +59201,7 @@ func _ensure_nav_bar_icons() -> void:
 			continue
 		button.remove_meta("deferred_icon_path")
 		button.icon = _texture_or_visual_fallback(path)
+		button.set_meta("nav_current_icon_path", path)
 
 
 func _nav_button(path: String, defer_icon := false) -> Button:
@@ -56041,10 +59210,12 @@ func _nav_button(path: String, defer_icon := false) -> Button:
 	button.custom_minimum_size = Vector2(268, 268)
 	button.clip_contents = true
 	button.focus_mode = Control.FOCUS_NONE
+	button.set_meta("nav_default_icon_path", path)
 	if defer_icon:
 		button.set_meta("deferred_icon_path", path)
 	else:
 		button.icon = _texture_or_visual_fallback(path)
+		button.set_meta("nav_current_icon_path", path)
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.expand_icon = true
 	button.add_theme_constant_override("icon_max_width", 184)
@@ -56053,6 +59224,31 @@ func _nav_button(path: String, defer_icon := false) -> Button:
 	_attach_button_depress_animation(button, 0.92, false)
 	button.pressed.connect(_pop_nav_button_bound.bind(button_id))
 	return button
+
+
+func _set_nav_button_icon(button: Button, path: String) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	button.icon = _texture_or_visual_fallback(path)
+	button.set_meta("nav_current_icon_path", path)
+
+
+func _sync_nav_button_open_icon(button: Button, active: bool) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	var default_path := str(button.get_meta("nav_default_icon_path", ""))
+	if default_path.is_empty():
+		return
+	var target_path := default_path
+	if active and not bool(button.get_meta("nav_open_icon_disabled", false)):
+		target_path = NAV_OPEN_CLOSE_ICON_TEXTURE
+	if button.has_meta("deferred_icon_path"):
+		button.remove_meta("deferred_icon_path")
+		_set_nav_button_icon(button, target_path)
+		return
+	if str(button.get_meta("nav_current_icon_path", "")) == target_path:
+		return
+	_set_nav_button_icon(button, target_path)
 
 
 func _menu_button(text: String) -> Button:
@@ -56212,9 +59408,11 @@ func _audio_volume_control(title: String, music: bool, min_width := 1120, bottom
 
 
 func _style_audio_slider(slider: HSlider) -> void:
-	slider.add_theme_icon_override("grabber", _audio_slider_grabber())
-	slider.add_theme_icon_override("grabber_highlight", _audio_slider_grabber())
-	slider.add_theme_icon_override("grabber_disabled", _audio_slider_grabber())
+	var grabber := _audio_slider_grabber()
+	if grabber != null:
+		slider.add_theme_icon_override("grabber", grabber)
+		slider.add_theme_icon_override("grabber_highlight", grabber)
+		slider.add_theme_icon_override("grabber_disabled", grabber)
 	var track := StyleBoxFlat.new()
 	track.bg_color = COLOR_INK
 	track.corner_radius_top_left = 7
@@ -56667,7 +59865,7 @@ func _achievement_medal_slot_strip(skill_id: String, actions: Array) -> Dictiona
 	strip.slot_size = ACHIEVEMENT_MEDAL_SLOT_SIZE * 3.55
 	strip.custom_minimum_size = Vector2(1680, 280)
 	strip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip.mouse_filter = Control.MOUSE_FILTER_PASS
 	var panels := []
 	var icons := []
 	_rebuild_achievement_medal_strip_icons(strip, skill_id, medal_entries, panels, icons)
@@ -57136,7 +60334,7 @@ func _add_skill_detail_shelf_background(parent: Control, skill_id: String, conte
 	background.anchor_right = 1.0
 	background.anchor_top = 0.0
 	background.anchor_bottom = 1.0
-	var bleed := maxf(PAGE_PAD, (_skill_column_host_width() - content_width) * 0.5)
+	var bleed := maxf(PAGE_PAD, (_skill_column_host_width() - content_width) * 0.5) + _skill_swipe_page_span()
 	background.offset_left = -bleed
 	background.offset_right = bleed
 	background.offset_top = -SKILLS_PAGE_TOP_PAD
@@ -57839,6 +61037,22 @@ func _set_activity_button_shell_theme(button: Button, fill: Color, active := fal
 		return
 	var had_active_state := button.has_meta("activity_button_shell_active")
 	var previous_active := bool(button.get_meta("activity_button_shell_active", false))
+	if (
+		_is_module_utility_nav_button(button)
+		and button.has_meta("activity_button_hold_nav_press")
+		and depressed_activity_shell_buttons.has(button.get_instance_id())
+		and button.has_meta("activity_button_hold_nav_target_active")
+	):
+		var pressed_pending_target_active := bool(button.get_meta("activity_button_hold_nav_target_active", false))
+		if pressed_pending_target_active == active:
+			button.set_meta("activity_button_shell_fill", fill)
+			button.set_meta("activity_button_shell_active", active)
+		return
+	if button.has_meta("activity_button_hold_nav_press") and not depressed_activity_shell_buttons.has(button.get_instance_id()):
+		var early_has_pending_nav_target := button.has_meta("activity_button_hold_nav_target_active")
+		var early_pending_target_active := bool(button.get_meta("activity_button_hold_nav_target_active", false))
+		if early_has_pending_nav_target and early_pending_target_active != active:
+			return
 	button.set_meta("activity_button_shell_fill", fill)
 	button.set_meta("activity_button_shell_active", active)
 	var outline_color := COLOR_INK
@@ -57880,8 +61094,17 @@ func _set_activity_button_shell_theme(button: Button, fill: Color, active := fal
 	var suppress_state_tween := bool(button.get_meta("activity_button_suppress_next_state_tween", false))
 	if suppress_state_tween:
 		button.remove_meta("activity_button_suppress_next_state_tween")
-	if button.has_meta("activity_button_hold_nav_press"):
-		button.remove_meta("activity_button_hold_nav_press")
+	var hold_waiting_for_pending_nav_target := false
+	if button.has_meta("activity_button_hold_nav_press") and not depressed_activity_shell_buttons.has(button.get_instance_id()):
+		var has_pending_nav_target := button.has_meta("activity_button_hold_nav_target_active")
+		var pending_target_active := bool(button.get_meta("activity_button_hold_nav_target_active", false))
+		hold_waiting_for_pending_nav_target = has_pending_nav_target and pending_target_active != active
+		if not has_pending_nav_target or pending_target_active == active:
+			button.remove_meta("activity_button_hold_nav_press")
+			if has_pending_nav_target:
+				button.remove_meta("activity_button_hold_nav_target_active")
+	if hold_waiting_for_pending_nav_target:
+		return
 	if animate_state_change and had_active_state and previous_active != active and not suppress_state_tween:
 		_animate_activity_button_shell_to_state(button)
 	elif not animate_state_change or not button.has_meta("activity_button_depth_tween"):
@@ -57981,6 +61204,8 @@ func _press_activity_button_shell_bound(button_id: int) -> void:
 	var button := instance_from_id(button_id) as Button
 	if button == null or not is_instance_valid(button) or button.disabled:
 		return
+	if _is_module_utility_nav_button(button):
+		_prime_module_utility_nav_button_press_state(button)
 	if depressed_activity_shell_buttons.has(button_id):
 		return
 	depressed_activity_shell_buttons[button_id] = button
@@ -57995,20 +61220,58 @@ func _release_activity_button_shell_bound(button_id: int) -> void:
 	var button := instance_from_id(button_id) as Button
 	if button == null or not is_instance_valid(button):
 		return
+	if _page_switch_button_shell_release_preserved(button):
+		_hold_activity_button_shell_at_depth(button)
+		return
 	var was_depressed := depressed_activity_shell_buttons.has(button_id)
 	depressed_activity_shell_buttons.erase(button_id)
 	var target_offset := Vector2.ZERO
-	if bool(button.get_meta("activity_button_shell_active", false)):
+	var target_active := bool(button.get_meta("activity_button_shell_active", false))
+	if target_active:
 		target_offset = button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
 	var pop := _valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
 	if bool(button.get_meta("activity_button_hold_nav_press", false)):
-		var depth_offset := button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
-		if pop != null:
-			_set_activity_button_pop_depth_offset_bound(depth_offset, pop.get_instance_id())
-		return
+		var has_pending_nav_target := button.has_meta("activity_button_hold_nav_target_active")
+		var pending_target_active := bool(button.get_meta("activity_button_hold_nav_target_active", false))
+		if has_pending_nav_target and pending_target_active == target_active:
+			button.remove_meta("activity_button_hold_nav_press")
+			button.remove_meta("activity_button_hold_nav_target_active")
+		else:
+			var depth_offset := button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
+			_kill_activity_button_shell_tween(button)
+			if pop != null:
+				_set_activity_button_pop_depth_offset_bound(depth_offset, pop.get_instance_id())
+			return
 	if not was_depressed and pop != null and _activity_button_pop_depth_offset(pop).distance_squared_to(target_offset) <= 0.25:
 		return
 	_animate_activity_button_shell_to(button, target_offset, ACTION_CARD_3D_RELEASE_SECONDS, Tween.TRANS_BACK, Tween.EASE_OUT)
+
+
+func _is_module_utility_nav_button(button: Button) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	if bool(button.get_meta("module_utility_nav_button", false)):
+		return true
+	if module_utility_buttons_row == null or not is_instance_valid(module_utility_buttons_row):
+		return false
+	return button.get_parent() == module_utility_buttons_row
+
+
+func _prime_module_utility_nav_button_press_state(button: Button) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	var target_active := false
+	if button == pinned_utility_tab:
+		target_active = current_screen != "pinned"
+	elif button == skills_utility_tab:
+		target_active = current_screen != "menu"
+	elif button == sort_utility_tab:
+		target_active = not (module_sort_menu != null and is_instance_valid(module_sort_menu) and module_sort_menu.visible)
+	else:
+		button.set_meta("activity_button_hold_nav_press", true)
+		return
+	button.set_meta("activity_button_hold_nav_press", true)
+	button.set_meta("activity_button_hold_nav_target_active", target_active)
 
 
 func _animate_activity_button_shell_to(button: Button, target_offset: Vector2, seconds: float, transition: Tween.TransitionType, ease_type: Tween.EaseType) -> void:
@@ -58195,13 +61458,15 @@ func _progress_style(color: Color) -> StyleBoxFlat:
 
 
 func _apply_nav_style(button: Button, _active: bool) -> void:
-	if button == null or bool(button.get_meta("nav_empty_style_applied", false)):
+	if button == null:
 		return
-	button.add_theme_stylebox_override("normal", empty_style_cache)
-	button.add_theme_stylebox_override("hover", empty_style_cache)
-	button.add_theme_stylebox_override("pressed", empty_style_cache)
-	button.add_theme_stylebox_override("focus", empty_style_cache)
-	button.set_meta("nav_empty_style_applied", true)
+	if not bool(button.get_meta("nav_empty_style_applied", false)):
+		button.add_theme_stylebox_override("normal", empty_style_cache)
+		button.add_theme_stylebox_override("hover", empty_style_cache)
+		button.add_theme_stylebox_override("pressed", empty_style_cache)
+		button.add_theme_stylebox_override("focus", empty_style_cache)
+		button.set_meta("nav_empty_style_applied", true)
+	_sync_nav_button_open_icon(button, _active)
 
 
 func _texture(path: String) -> Texture2D:
@@ -59289,6 +62554,8 @@ func _unlock_audio_for_gameplay() -> void:
 
 
 func _note_player_input(event: InputEvent) -> void:
+	if _input_event_wakes_battery_governor(event):
+		_record_battery_governor_activity()
 	if audio_unlocked_by_input and audio_unlock_ping_played:
 		return
 	if event is InputEventMouseButton and event.pressed:

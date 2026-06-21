@@ -98,9 +98,7 @@ func _run() -> void:
 	await _wait_for_render_idle(scene)
 	await _check_sort_menu_input_isolation(scene, "build")
 	await _wait_for_render_idle(scene)
-	await _check_two_stage_pin_input_flow(scene, "build")
-	await _wait_for_render_idle(scene)
-	await _check_pin_preview_expiration_input_flow(scene, "build")
+	await _check_immediate_pin_input_flow(scene, "build")
 	await _wait_for_render_idle(scene)
 	await _check_two_stage_collapse_input_flow(scene, "build")
 	await _wait_for_render_idle(scene)
@@ -267,6 +265,23 @@ func _check_sort_menu_input_isolation(scene: Node, skill_id: String) -> void:
 			break
 	if raw_tap_point == Vector2.ZERO:
 		_record("sort menu isolation smoke did not find a menu point blocked by bottom interactive UI")
+		return
+	var cover_id := int(scene.call("_begin_page_switch_scroll_cover_timed"))
+	await process_frame
+	var transition_cover := instance_from_id(cover_id) as Control
+	if transition_cover == null or not is_instance_valid(transition_cover):
+		_record("sort menu isolation smoke could not create a page-switch cover")
+	else:
+		var expected_cover_bottom: float = scene.call("_global_chat_nav_cover_bottom_offset")
+		if absf(transition_cover.offset_bottom - expected_cover_bottom) > 0.5:
+			_record("page-switch cover bottom should stop at chat/nav with sort menu open. expected=%s actual=%s" % [expected_cover_bottom, transition_cover.offset_bottom])
+		if not transition_cover.get_global_rect().has_point(raw_tap_point):
+			_record("page-switch cover should cover the open sort menu area instead of being clipped above it")
+	scene.call("_clear_skill_swipe_handoff_cover_immediate")
+	for _i in range(2):
+		await process_frame
+	if menu == null or not is_instance_valid(menu) or not menu.visible:
+		_record("clearing the page-switch cover unexpectedly hid the sort menu")
 		return
 	var covered_card := scene.call("_action_card_at_position", raw_tap_point) as Dictionary
 	if covered_card.is_empty():
@@ -606,7 +621,7 @@ func _check_pin_refresh_transition(scene: Node, skill_id: String) -> void:
 						_record("pinned shelf fading pin re-tap clicked through and started the activity")
 
 
-func _check_two_stage_pin_input_flow(scene: Node, skill_id: String) -> void:
+func _check_immediate_pin_input_flow(scene: Node, skill_id: String) -> void:
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
 	scene.set("module_ui_sort_mode", "level")
@@ -622,22 +637,22 @@ func _check_two_stage_pin_input_flow(scene: Node, skill_id: String) -> void:
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
 	var first_key := _first_action_module_key(scene, skill_id)
 	if first_key.is_empty():
-		_record("two-stage pin smoke could not find an action module key")
+		_record("immediate pin smoke could not find an action module key")
 		return
 	var action_key := first_key.substr("action:".length())
 	var parts := action_key.split(":", false, 2)
 	if parts.size() < 2:
-		_record("two-stage pin smoke expected a regular action module key")
+		_record("immediate pin smoke expected a regular action module key")
 		return
 	var action_cards := scene.get("action_cards") as Dictionary
 	var action_card_key := "%s:%s" % [str(parts[0]), str(parts[1])]
 	var card := action_cards.get(action_card_key, {}) as Dictionary
 	if card.is_empty():
-		_record("two-stage pin smoke could not find registered action card")
+		_record("immediate pin smoke could not find registered action card")
 		return
 	var pin_zone := (card.get("module_action_zones", {}) as Dictionary).get("pin", null) as Control
 	if pin_zone == null or not is_instance_valid(pin_zone):
-		_record("two-stage pin smoke could not find pin action zone")
+		_record("immediate pin smoke could not find pin action zone")
 		return
 	var pin_corner := pin_zone.get_global_rect().position
 	var pin_corner_hit := scene.call("_module_action_circle_at_position", pin_corner) as Dictionary
@@ -646,7 +661,7 @@ func _check_two_stage_pin_input_flow(scene: Node, skill_id: String) -> void:
 	var pin_center := pin_zone.get_global_rect().get_center()
 	var card_pop := card.get("pop", null) as Control
 	if card_pop == null or not is_instance_valid(card_pop):
-		_record("two-stage pin smoke could not find card pop for direct gui_input coverage")
+		_record("immediate pin smoke could not find card pop for direct gui_input coverage")
 		return
 	var zone_local_center := pin_zone.get_global_rect().get_center() - pin_zone.get_global_rect().position
 	scene.call("_show_module_sort_menu")
@@ -659,80 +674,65 @@ func _check_two_stage_pin_input_flow(scene: Node, skill_id: String) -> void:
 		scene.call("_on_module_pin_zone_gui_input", _local_mouse_button_event(zone_local_center, true), first_key, card_pop.get_instance_id())
 		for _i in range(2):
 			await process_frame
-		if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(first_key, 0)) > 0:
+		if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(first_key, 0)) > 0 or (scene.get("module_ui_pinned_order") as Array).has(first_key):
 			_record("direct pin-zone gui_input ignored protected sort menu coverage")
 			var blocked_tokens := scene.get("module_ui_pin_preview_tokens") as Dictionary
 			blocked_tokens.erase(first_key)
 			scene.set("module_ui_pin_preview_tokens", blocked_tokens)
+		if bool(scene.get("module_ui_pin_press_active")):
+			scene.call("_clear_module_pin_press")
 		scene.call("_hide_module_sort_menu")
 	scene.call("_on_module_pin_zone_gui_input", _local_mouse_button_event(zone_local_center, true), first_key, card_pop.get_instance_id())
 	for _i in range(2):
 		await process_frame
-	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(first_key, 0)) <= 0:
-		_record("direct pin-zone gui_input did not arm preview from local zone coordinates")
-	else:
-		var direct_tokens := scene.get("module_ui_pin_preview_tokens") as Dictionary
-		direct_tokens.erase(first_key)
-		scene.set("module_ui_pin_preview_tokens", direct_tokens)
-		var direct_badge := scene.call("_module_pin_badge", card_pop) as TextureButton
-		if direct_badge != null and is_instance_valid(direct_badge):
-			direct_badge.visible = false
-	scene.call("_input", _mouse_button_event(pin_center, true))
-	scene.call("_input", _mouse_button_event(pin_center, false))
-	for _i in range(14):
-		await process_frame
+	if not bool(scene.get("module_ui_pin_press_active")):
+		_record("direct pin-zone gui_input did not start a pin press from local zone coordinates")
+	elif str(scene.get("module_ui_pin_press_module_key")) != first_key:
+		_record("direct pin-zone gui_input started a pin press for the wrong module")
 	if (scene.get("module_ui_pinned_order") as Array).has(first_key):
-		_record("first pin-zone tap should arm preview without pinning")
-	if str(scene.get("running_action_id")) == str(parts[1]):
-		_record("first pin-zone tap clicked through and started the activity")
-	var preview_tokens := scene.get("module_ui_pin_preview_tokens") as Dictionary
-	if int(preview_tokens.get(first_key, 0)) <= 0:
-		_record("first pin-zone tap did not arm the pin preview token")
-	var preview_badge := scene.call("_module_pin_badge", card.get("pop", null)) as TextureButton
-	if preview_badge == null or not is_instance_valid(preview_badge):
-		_record("first pin-zone tap did not create a pin badge")
-	else:
-		var expected_size: Vector2 = scene.get("MODULE_PIN_BADGE_SIZE")
-		var armed_position: Vector2 = scene.get("MODULE_PIN_BADGE_ARMED_POSITION")
-		var settled_position: Vector2 = scene.get("MODULE_PIN_BADGE_SETTLED_POSITION")
-		if preview_badge.texture_normal == null:
-			_record("pin badge is missing the approved pin texture")
-		if not preview_badge.size.is_equal_approx(expected_size):
-			_record("pin badge size mismatch. expected=%s actual=%s" % [expected_size, preview_badge.size])
-		if expected_size.x < 300.0 or expected_size.y < 300.0:
-			_record("pin badge should stay large enough for the current oversized visual treatment: %s" % expected_size)
-		if preview_badge.stretch_mode != TextureButton.STRETCH_KEEP_ASPECT:
-			_record("pin badge art should scale up to the oversized badge bounds")
-		if preview_badge.position.distance_to(armed_position) > 4.0:
-			_record("armed pin badge position mismatch. expected=%s actual=%s" % [armed_position, preview_badge.position])
-		if not (armed_position.x > settled_position.x and armed_position.y < settled_position.y):
-			_record("armed pin badge should sit up and right of its settled pinned position")
-		if preview_badge.has_theme_stylebox_override("normal"):
-			_record("pin badge should not draw a button/circle stylebox behind the pin art")
-		if _find_named_descendant(card.get("pop", null), "ModulePinBuryMask") != null:
-			_record("armed pin preview created a visible bury-mask node instead of cropping the pin art")
-		var body_point := _card_body_tap_point(scene, card.get("pop", null), str(parts[0]), str(parts[1]))
-		var body_hit := scene.call("_action_card_at_position", body_point) as Dictionary
-		if body_hit.is_empty():
-			_record("oversized armed pin badge blocked normal body hit-testing outside the pin circle")
+		_record("direct pin-zone press pinned the module before release")
+	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(first_key, 0)) > 0:
+		_record("direct pin-zone press armed a preview token")
+	scene.call("_clear_module_pin_press")
 	scene.call("_input", _mouse_button_event(pin_center, true))
 	scene.call("_input", _mouse_button_event(pin_center, false))
 	for _i in range(4):
 		await process_frame
 	if not (scene.get("module_ui_pinned_order") as Array).has(first_key):
-		_record("second pin-zone tap did not confirm the pin")
+		_record("first pin-zone tap did not pin the module")
 	if str(scene.get("running_action_id")) == str(parts[1]):
-		_record("second pin-zone tap clicked through and started the activity")
-	if preview_badge != null and is_instance_valid(preview_badge):
-		if not preview_badge.has_meta("module_pin_tween"):
-			_record("confirmed pin badge did not start its poke-in animation")
-		if not preview_badge.disabled:
-			_record("confirmed pin badge should be disabled while its poke-in animation plays")
-		var armed_position_after: Vector2 = scene.get("MODULE_PIN_BADGE_ARMED_POSITION")
-		var settled_position_after: Vector2 = scene.get("MODULE_PIN_BADGE_SETTLED_POSITION")
-		if preview_badge.position.is_equal_approx(armed_position_after) or preview_badge.position.is_equal_approx(settled_position_after):
-			_record("confirmed pin badge should pass through an in-between poke animation pose")
-	await _wait_for_badge_tween_done(preview_badge, 120)
+		_record("first pin-zone tap clicked through and started the activity")
+	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(first_key, 0)) > 0:
+		_record("first pin-zone tap left a preview token armed")
+	var pin_badge := scene.call("_module_pin_badge", card.get("pop", null)) as TextureButton
+	if pin_badge == null or not is_instance_valid(pin_badge):
+		_record("first pin-zone tap did not create a pin badge")
+	else:
+		var expected_size: Vector2 = scene.get("MODULE_PIN_BADGE_SIZE")
+		var settled_position: Vector2 = scene.get("MODULE_PIN_BADGE_SETTLED_POSITION")
+		if pin_badge.texture_normal == null:
+			_record("pin badge is missing the approved pin texture")
+		if not pin_badge.size.is_equal_approx(expected_size):
+			_record("pin badge size mismatch. expected=%s actual=%s" % [expected_size, pin_badge.size])
+		if expected_size.x < 300.0 or expected_size.y < 300.0:
+			_record("pin badge should stay large enough for the current oversized visual treatment: %s" % expected_size)
+		if pin_badge.stretch_mode != TextureButton.STRETCH_KEEP_ASPECT:
+			_record("pin badge art should scale up to the oversized badge bounds")
+		if pin_badge.has_theme_stylebox_override("normal"):
+			_record("pin badge should not draw a button/circle stylebox behind the pin art")
+		if _find_named_descendant(card.get("pop", null), "ModulePinBuryMask") != null:
+			_record("immediate pin badge created a visible bury-mask node instead of cropping the pin art")
+		var body_point := _card_body_tap_point(scene, card.get("pop", null), str(parts[0]), str(parts[1]))
+		var body_hit := scene.call("_action_card_at_position", body_point) as Dictionary
+		if body_hit.is_empty():
+			_record("oversized immediate pin badge blocked normal body hit-testing outside the pin circle")
+		if not pin_badge.has_meta("module_pin_tween"):
+			_record("immediate pin badge did not start its poke-in animation")
+		if not pin_badge.disabled:
+			_record("immediate pin badge should be disabled while its poke-in animation plays")
+		if pin_badge.position.is_equal_approx(settled_position) and pin_badge.modulate.a >= 0.99:
+			_record("immediate pin badge should pass through an in-between poke animation pose before settling")
+	await _wait_for_badge_tween_done(pin_badge, 120)
 	await _wait_for_pin_anchor_idle(scene, 120)
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
 	var pinned_lookup := _registered_action_card_for_module(scene, first_key)
@@ -829,6 +829,20 @@ func _check_pin_confirm_preserves_source_scroll(scene: Node, skill_id: String) -
 		_record("pin no-bump smoke could not establish a mid-list scroll position")
 		return
 	scene.call("_pin_module_ui_key", first_key, card_pop.get_instance_id())
+	var observed_pin_cover := false
+	for _cover_wait_i in range(80):
+		await process_frame
+		var pin_cover := scene.get("skill_swipe_handoff_cover") as Control
+		if pin_cover == null or not is_instance_valid(pin_cover):
+			continue
+		if not bool(pin_cover.get_meta("module_pin_refresh_opaque_cover", false)):
+			continue
+		observed_pin_cover = true
+		if pin_cover.get_child_count() != 1:
+			_record("pin refresh cover should be opaque paper only, not a previous-page snapshot. child_count=%s" % pin_cover.get_child_count())
+		break
+	if not observed_pin_cover:
+		_record("pin no-bump smoke did not observe the opaque pin refresh cover")
 	await _wait_for_pin_anchor_idle(scene, 140)
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
 	var refreshed_scroll := scene.get("detail_actions_scroll") as ScrollContainer
@@ -883,59 +897,6 @@ func _check_pin_confirm_preserves_source_scroll(scene: Node, skill_id: String) -
 		await cleanup_result
 	for _i in range(4):
 		await process_frame
-
-
-func _check_pin_preview_expiration_input_flow(scene: Node, skill_id: String) -> void:
-	scene.set("current_screen", "skill")
-	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_sort_mode", "level")
-	scene.set("module_ui_pinned_order", [])
-	scene.set("module_ui_collapsed", {})
-	scene.set("module_ui_pin_preview_tokens", {})
-	scene.set("running_skill_id", "")
-	scene.set("running_action_id", "")
-	var render_result = scene.call("_render_screen", false, -1, false)
-	if render_result != null:
-		await render_result
-	for _i in range(8):
-		await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
-	var first_key := _first_action_module_key(scene, skill_id)
-	if first_key.is_empty():
-		_record("pin preview expiration smoke could not find an action module key")
-		return
-	var lookup := _registered_action_card_for_module(scene, first_key)
-	var card := lookup.get("card", {}) as Dictionary
-	var action_id := str(lookup.get("action_id", ""))
-	if card.is_empty() or action_id.is_empty():
-		_record("pin preview expiration smoke could not find registered action card")
-		return
-	var pin_zone := (card.get("module_action_zones", {}) as Dictionary).get("pin", null) as Control
-	if pin_zone == null or not is_instance_valid(pin_zone):
-		_record("pin preview expiration smoke could not find pin action zone")
-		return
-	var pin_center := pin_zone.get_global_rect().get_center()
-	scene.call("_input", _mouse_button_event(pin_center, true))
-	scene.call("_input", _mouse_button_event(pin_center, false))
-	for _i in range(4):
-		await process_frame
-	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(first_key, 0)) <= 0:
-		_record("pin preview expiration smoke did not arm a preview token")
-		return
-	await scene.get_tree().create_timer(3.25).timeout
-	for _i in range(4):
-		await process_frame
-	if (scene.get("module_ui_pinned_order") as Array).has(first_key):
-		_record("expired pin preview should not pin the module")
-	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(first_key, 0)) > 0:
-		_record("expired pin preview did not clear its preview token")
-	var badge := scene.call("_module_pin_badge", card.get("pop", null)) as Control
-	if badge != null and is_instance_valid(badge) and badge.visible:
-		_record("expired pin preview left the pin badge visible")
-	if _find_named_descendant(card.get("pop", null), "ModulePinBuryMask") != null:
-		_record("expired pin preview left a bury-mask node behind")
-	if str(scene.get("running_action_id")) == action_id:
-		_record("pin preview expiration tap clicked through and started the activity")
 
 
 func _check_two_stage_collapse_input_flow(scene: Node, skill_id: String) -> void:
@@ -2324,6 +2285,18 @@ func _check_pinned_page_chrome(scene: Node) -> void:
 			_record("pinned page empty state text mismatch")
 		if empty_label.horizontal_alignment != HORIZONTAL_ALIGNMENT_CENTER or empty_label.vertical_alignment != VERTICAL_ALIGNMENT_CENTER:
 			_record("pinned page empty state is not centered")
+		var empty_state := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyState") as Control
+		if empty_state == null or not is_instance_valid(empty_state):
+			_record("pinned page empty state host did not render")
+		elif active_shelf != null and is_instance_valid(active_shelf):
+			var label_center_y := empty_label.get_global_rect().get_center().y
+			var active_bottom_y := active_shelf.get_global_rect().end.y
+			var bottom_limit_y := 3840.0 - 420.0 - 260.0 - 344.0 - 28.0
+			var expected_center_y := active_bottom_y + (bottom_limit_y - active_bottom_y) * 0.5
+			if absf(label_center_y - expected_center_y) > 130.0:
+				_record("pinned page empty state advice is not centered in the usable frame. expected_y=%s actual_y=%s" % [expected_center_y, label_center_y])
+			if empty_state.custom_minimum_size.y < 860.0:
+				_record("pinned page empty state host is too short to center the advice. height=%s" % empty_state.custom_minimum_size.y)
 	if _find_named_descendant(content_scroll, "PinnedActivitiesShelfPanel") != null:
 		_record("empty pinned page should not render a shelf panel box")
 	var xp_label := scene.get("detail_xp_label") as Label
@@ -2461,7 +2434,17 @@ func _check_pinned_page_return_restores_skill_scroll(scene: Node, skill_id: Stri
 		_record("pinned utility tab was not available before opening the pinned page")
 		return
 	pinned_button.emit_signal("pressed")
-	for _i in range(8):
+	await process_frame
+	var transition_cover := scene.get("skill_swipe_handoff_cover") as Control
+	if transition_cover == null or not is_instance_valid(transition_cover):
+		_record("pinned utility transition did not create a page switch cover")
+	else:
+		if not bool(transition_cover.get_meta("page_switch_scroll_cover_includes_bottom_interactive_ui", false)):
+			_record("pinned utility transition cover did not include the bottom interactive UI")
+		var expected_cover_bottom: float = scene.call("_global_chat_nav_cover_bottom_offset")
+		if absf(transition_cover.offset_bottom - expected_cover_bottom) > 0.5:
+			_record("pinned utility transition cover bottom mismatch. expected=%s actual=%s" % [expected_cover_bottom, transition_cover.offset_bottom])
+	for _i in range(36):
 		await process_frame
 	if str(scene.get("current_screen")) != "pinned":
 		_record("pinned utility button press did not open the pinned page")

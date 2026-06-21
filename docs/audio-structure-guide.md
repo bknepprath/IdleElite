@@ -108,14 +108,14 @@ Several helpers call `_ensure_extended_audio()` before playing. Do not manually 
 
 Constants:
 
-- `DEFAULT_BUTTON_SFX_PATH := "res://assets/sfx/sfx_pebbles_click.wav"`
+- `DEFAULT_BUTTON_SFX_PATH := "res://assets/sfx/Sample_0029 bowling ui snap.wav"`
 - `DEFAULT_BUTTON_SFX_VOLUME_DB := -4.0`
 - `DEFAULT_BUTTON_SFX_DEBOUNCE_MSEC := 180`
 - `ACTIVITY_START_SFX_PATH := DEFAULT_BUTTON_SFX_PATH`
 - `ACTIVITY_START_SFX_VOLUME_DB := -1.0`
 - `ACTIVITY_START_SFX_PLAYER_COUNT := 3`
 
-The same `sfx_pebbles_click.wav` asset is used for general button clicks and activity starts, but through different playback paths.
+The same `Sample_0029 bowling ui snap.wav` asset is used for general button clicks and activity starts, but through different playback paths.
 
 General buttons:
 
@@ -130,7 +130,7 @@ Activity starts:
 - There is also an `activity_start_players` pool created by `_ensure_activity_start_players()`, but current tap playback uses `click_player`.
 - Starting an activity calls `_unlock_audio_for_gameplay()` and then `_play_activity_tap_sfx()`.
 
-Common mistake: replacing `sfx_pebbles_click.wav` changes both ordinary UI clicks and activity-start taps. If only one should change, introduce a separate path and wire it deliberately.
+Common mistake: replacing the default button asset changes both ordinary UI clicks and activity-start taps. If only one should change, introduce a separate path and wire it deliberately.
 
 ## Activity Success, Failure, Crits, And Rewards
 
@@ -503,7 +503,7 @@ Audio-specific manual validation to do when possible:
 
 - Do not wire runtime code to `assets/content/sfx-candidates/`; it is excluded from export.
 - Do not assume `assets/sfx/pin-candidates/` is unused. It has runtime references.
-- Do not replace `sfx_pebbles_click.wav` unless you want to affect both normal UI clicks and activity-start taps.
+- Do not replace `DEFAULT_BUTTON_SFX_PATH` unless you want to affect both normal UI clicks and activity-start taps.
 - Do not add new full-volume reward sounds on action success without checking streak bonus, medal, level-up, crit, and music heat behavior.
 - Do not play `Jingle Chains.wav` directly without the capped fade helper.
 - Do not remove `_can_play_audio()` gating.
@@ -531,9 +531,9 @@ This pass replaced the default button/activity tap sound, and several mistakes m
 
 | Sound family | Runtime asset(s) | Player/helper | Notes |
 | --- | --- | --- | --- |
-| Default UI click | `assets/sfx/sfx_pebbles_click.wav` | `click_player`, `_play_default_button_sfx()` | Debounced; also used by activity tap at different volume. |
+| Default UI click | `assets/sfx/Sample_0029 bowling ui snap.wav` | `click_player`, `_play_default_button_sfx()` | Debounced; also used by activity tap at different volume. |
 | Audio unlock ping | `assets/sfx/click.wav` | `audio_unlock_ping_player` | Quiet one-time sound after first input. |
-| Activity start tap | `assets/sfx/sfx_pebbles_click.wav` | `_play_activity_tap_sfx()` | Uses `ACTIVITY_START_SFX_VOLUME_DB`. |
+| Activity start tap | `assets/sfx/Sample_0029 bowling ui snap.wav` | `_play_activity_tap_sfx()` | Uses `ACTIVITY_START_SFX_VOLUME_DB`. |
 | Activity success | `action_success_glass_pip_1..4.wav` | `success_players`, `_play_activity_success_sound()` | Streak step selects variant. |
 | Activity crit | `action_crit_blue_glass_fanfare_1..5.wav` | `crit_success_players`, `_play_activity_crit_sound()` | Mega crit increases pitch. |
 | General failure | `warm_reject.wav` | `failure_player` | Used for negative feedback paths. |

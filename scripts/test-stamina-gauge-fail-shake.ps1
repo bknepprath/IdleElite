@@ -116,7 +116,7 @@ func _run() -> void:
 	if _count_need_fish_popups() <= 0:
 		_fail("zero-fish stamina gauge click did not create need fish popup")
 		return
-	if not _has_need_fish_popup_text():
+	if not _has_stamina_popup_text("need fish!"):
 		_fail("zero-fish stamina gauge popup did not contain exact need fish! text")
 		return
 
@@ -150,14 +150,22 @@ func _run() -> void:
 	if absf(float(scene.get("fish_currency")) - 3.0) > 0.001:
 		_fail("full stamina gauge click spent fish: %s" % str(scene.get("fish_currency")))
 		return
+	if not circle.has_meta("stamina_eat_fail_tween"):
+		_fail("full stamina gauge click did not start fail shake tween")
+		return
+	if _count_need_fish_popups() <= popup_count_before_full:
+		_fail("full stamina gauge click did not create popup")
+		return
+	if not _has_stamina_popup_text("full"):
+		_fail("full stamina gauge popup did not contain exact full text")
+		return
+	for _i in range(90):
+		await _wait_test_frame()
 	if circle.has_meta("stamina_eat_fail_tween"):
-		_fail("full stamina gauge click started fail shake tween")
+		_fail("full stamina gauge fail tween meta was left behind")
 		return
 	if circle.position.distance_to(rest_position) > 0.5 or absf(circle.rotation - rest_rotation) > 0.002:
-		_fail("full stamina gauge click moved gauge: pos=%s rot=%.4f" % [str(circle.position), circle.rotation])
-		return
-	if _count_need_fish_popups() != popup_count_before_full:
-		_fail("full stamina gauge click created popup")
+		_fail("full stamina gauge did not return to rest transform: pos=%s rot=%.4f" % [str(circle.position), circle.rotation])
 		return
 
 	print("stamina-gauge-fail-shake-ok modulate=%s pos=%s rot=%.4f" % [str(circle.modulate), str(circle.position), circle.rotation])
@@ -189,9 +197,9 @@ func _count_need_fish_popups() -> int:
 	return get_nodes_in_group("stamina_need_fish_float").size()
 
 
-func _has_need_fish_popup_text() -> bool:
+func _has_stamina_popup_text(text: String) -> bool:
 	for node in get_nodes_in_group("stamina_need_fish_float"):
-		if _node_tree_has_label_text(node as Node, "need fish!"):
+		if _node_tree_has_label_text(node as Node, text):
 			return true
 	return false
 

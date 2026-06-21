@@ -68,6 +68,26 @@ Assert-True (($pokeIndex -ge 0) -and ($entrySfxIndex -gt $pokeIndex)) "Pin entry
 $trackerPath = Join-Path $projectRoot "docs\ui-navigation-controls-plan.html"
 $trackerText = Get-Content -LiteralPath $trackerPath -Raw
 Assert-True ($trackerText -notmatch "pin-poke-in") "Tracker demo should not show confirmed pin animation while placement is paused."
+$directRouteIndex = $mainScriptText.IndexOf("if _route_direct_module_action_zone_input(event):")
+$bottomNavRouteIndex = $mainScriptText.IndexOf("if _route_bottom_nav_button_global_input(event):")
+$utilityRouteIndex = $mainScriptText.IndexOf("if _route_module_utility_button_global_input(event):")
+Assert-True ($directRouteIndex -ge 0) "Direct module action routing should exist."
+Assert-True (($bottomNavRouteIndex -ge 0) -and ($directRouteIndex -lt $bottomNavRouteIndex)) "Direct module action routing should run before bottom nav global routing."
+Assert-True (($utilityRouteIndex -ge 0) -and ($directRouteIndex -lt $utilityRouteIndex)) "Direct module action routing should run before module utility global routing."
+$bottomNavHitMatch = [regex]::Match($mainScriptText, 'func\s+_bottom_nav_button_at_position[\s\S]*?func\s+_active_bottom_nav_button')
+Assert-True $bottomNavHitMatch.Success "Bottom nav hit-test block should be inspectable."
+Assert-True ($bottomNavHitMatch.Value -notmatch "_activity_input_position_candidates") "Bottom nav buttons should not accept scaled fallback coordinates."
+$bottomNavContainmentMatch = [regex]::Match($mainScriptText, 'func\s+_add_bottom_nav_event_position_candidates[\s\S]*?func\s+_position_inside_bottom_nav')
+Assert-True $bottomNavContainmentMatch.Success "Bottom nav containment block should be inspectable."
+Assert-True ($bottomNavContainmentMatch.Value -notmatch "_activity_input_position_candidates") "Bottom nav containment should not accept scaled fallback coordinates."
+$utilityHitMatch = [regex]::Match($mainScriptText, 'func\s+_module_utility_button_at_position[\s\S]*?func\s+_active_module_utility_button')
+Assert-True $utilityHitMatch.Success "Module utility hit-test block should be inspectable."
+Assert-True ($utilityHitMatch.Value -notmatch "_activity_input_position_candidates") "Module utility buttons should not accept scaled fallback coordinates."
+$actionHitMatch = [regex]::Match($mainScriptText, 'func\s+_module_action_circle_at_position[\s\S]*?func\s+_module_action_circle_at_direct_position')
+Assert-True $actionHitMatch.Success "Module action circle hit-test block should be inspectable."
+$bottomGuardIndex = $actionHitMatch.Value.IndexOf("_position_inside_bottom_interactive_ui(event_position)")
+$directHitIndex = $actionHitMatch.Value.IndexOf("_module_action_circle_at_direct_position(event_position)")
+Assert-True (($bottomGuardIndex -ge 0) -and ($directHitIndex -gt $bottomGuardIndex)) "Module action hit testing should reject bottom chrome before checking direct card hits."
 
 if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
@@ -132,7 +152,7 @@ func _run() -> void:
 	scene.call("_god_mode_unlock_onboarding_state")
 	scene.call("_god_mode_max_skills_state")
 	scene.call("_god_mode_unlock_actions_state")
-	await _check_pin_visuals(scene, "build")
+	await _check_pin_visuals(scene, "thieving")
 	await _capture_viewport_if_possible()
 
 	if failures.is_empty():
@@ -185,7 +205,7 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 	for _i in range(14):
 		await process_frame
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
-	var live_card := _live_action_card_at_index(scene, skill_id, 1)
+	var live_card := _live_action_card_at_index(scene, skill_id, 0)
 	if live_card.is_empty():
 		live_card = _first_live_action_card(scene, skill_id)
 	var module_key := str(live_card.get("module_key", ""))
@@ -208,34 +228,34 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 		_record("pin visual smoke could not find the pin zone")
 		return
 	var pin_center := pin_zone.get_global_rect().get_center()
+	var drag_release := pin_center + Vector2(0, 150)
 	scene.call("_input", _mouse_button_event(pin_center, true))
-	scene.call("_input", _mouse_button_event(pin_center, false))
-	for _i in range(14):
+	scene.call("_input", _mouse_motion_event(drag_release, Vector2(0, 150)))
+	scene.call("_input", _mouse_button_event(drag_release, false))
+	for _i in range(4):
 		await process_frame
-	var badge := scene.call("_module_pin_badge", pop) as TextureButton
-	if badge == null or not is_instance_valid(badge):
-		_record("pin visual smoke did not create the armed badge")
-		return
-	_check_badge_visual_state(scene, pop, badge, module_key, true)
-	await _capture_viewport_if_possible("armed")
-	for _i in range(36):
-		await process_frame
-	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(module_key, 0)) <= 0:
-		_record("armed pin preview expired or was cleared before the second tap confirmation window")
-		return
-	if badge == null or not is_instance_valid(badge) or not badge.visible:
-		_record("armed pin preview badge was pruned before the second tap confirmation window")
-		return
+	if (scene.get("module_ui_pinned_order") as Array).has(module_key):
+		_record("pin drag should not pin the module")
+	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(module_key, 0)) > 0:
+		_record("pin drag should not arm the pin preview")
 	scene.call("_input", _mouse_button_event(pin_center, true))
 	scene.call("_input", _mouse_button_event(pin_center, false))
 	for _i in range(3):
 		await process_frame
+	var badge := scene.call("_module_pin_badge", pop) as TextureButton
+	if badge == null or not is_instance_valid(badge):
+		_record("pin visual smoke did not create the confirmed badge")
+		return
+	if not (scene.get("module_ui_pinned_order") as Array).has(module_key):
+		_record("pin visual smoke first tap did not pin the module")
+	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(module_key, 0)) > 0:
+		_record("pin visual smoke first tap should commit immediately without arming a preview token")
 	if not badge.has_meta("module_pin_tween"):
-		_record("confirmed pin should start the poke-in animation before the page refresh")
+		_record("first pin tap should start the poke-in animation before the page refresh")
 	if not badge.disabled:
-		_record("confirmed pin badge should be disabled while its poke-in animation plays")
+		_record("first pin tap badge should be disabled while its poke-in animation plays")
 	if badge.position.is_equal_approx(scene.get("MODULE_PIN_BADGE_ARMED_POSITION")) or badge.position.is_equal_approx(scene.get("MODULE_PIN_BADGE_SETTLED_POSITION")):
-		_record("confirmed pin badge should move through an in-between animation pose before settling. position=%s" % badge.position)
+		_record("first pin tap badge should move through an in-between animation pose before settling. position=%s" % badge.position)
 	for _i in range(2):
 		await process_frame
 	await _capture_viewport_if_possible("entry-appear")
@@ -258,7 +278,7 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 	if badge != null and is_instance_valid(badge) and badge.has_meta("module_pin_tween"):
 		_record("confirmed pin entry animation did not finish within the smoke wait window")
 	if not (scene.get("module_ui_pinned_order") as Array).has(module_key):
-		_record("pin visual smoke second tap did not pin the module")
+		_record("pin visual smoke first tap did not keep the module pinned")
 	var settled_live_card := _live_action_card_for_action(scene, skill_id, action_id)
 	var settled_card := settled_live_card.get("card", {}) as Dictionary
 	var settled_pop := settled_card.get("pop", null) as Control
@@ -487,6 +507,14 @@ func _mouse_button_event(global_position: Vector2, pressed: bool) -> InputEventM
 	event.pressed = pressed
 	event.position = global_position
 	event.global_position = global_position
+	return event
+
+
+func _mouse_motion_event(global_position: Vector2, relative: Vector2) -> InputEventMouseMotion:
+	var event := InputEventMouseMotion.new()
+	event.position = global_position
+	event.global_position = global_position
+	event.relative = relative
 	return event
 
 

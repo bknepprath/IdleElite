@@ -88,6 +88,7 @@ func _run() -> void:
 	_check_temporary_event_scheduler(game)
 	_check_temporary_event_page_insertion(game)
 	_check_temporary_event_complete_despawn(game)
+	_check_temporary_event_tap_awards_rewards_before_despawn(game)
 	_check_combo_xp_reward_map(game)
 	_check_hub_module_save_restore(game)
 	_check_hub_module_position_save_restore(game)
@@ -108,6 +109,7 @@ func _run() -> void:
 	_check_action_key_save(game)
 	_check_manual_activity_unlock_save_restore(game)
 	_check_module_ui_preferences_save_restore(game)
+	_check_auto_eat_fish_per_skill_save_restore(game)
 	_check_auto_unlock_lockpads(game)
 	_check_achievement_toast_seen_ids_save_restore(game)
 	_check_scalar_progression_metadata_save(game)
@@ -827,6 +829,59 @@ func _check_temporary_event_complete_despawn(game: Node) -> void:
 	_expect((game.call("_action_data", "fight", "covered-wagon-ambush-drill") as Dictionary).is_empty(), "Completed temporary events should no longer resolve as active action data.")
 
 
+func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> void:
+	_prime_core_skill_state(game)
+	var now := int(game.call("_unix_now"))
+	var skills := game.get("skills") as Dictionary
+	var fight_state := skills.get("fight", {}) as Dictionary
+	fight_state["xp"] = int(game.call("_xp_for_level", 80))
+	skills["fight"] = fight_state
+	game.set("skills", skills)
+	game.call("_recalculate_level", "fight")
+	var stamina_state := game.get("stamina") as Dictionary
+	stamina_state["fight"] = float(game.call("_max_stamina", "fight"))
+	game.set("stamina", stamina_state)
+	game.set("current_screen", "home")
+	game.set("selected_skill_id", "fight")
+	game.set("temporary_event_active", {
+		"covered-wagon-ambush-drill": {
+			"id": "covered-wagon-ambush-drill",
+			"page": "fight",
+			"spawn_level": 20,
+			"spawned_unix": now,
+			"expires_unix": now + 3600,
+			"completed": false
+		}
+	})
+	game.set("temporary_event_cooldowns", {})
+	game.set("save_dirty", false)
+	var event_action := game.call("_action_data", "fight", "covered-wagon-ambush-drill") as Dictionary
+	_expect(not event_action.is_empty(), "Temporary event tap test should resolve the active event action.")
+	event_action["success"] = 100.0
+	var reward_map := game.call("_completion_xp_reward_map", event_action, "fight", false, false, false, false) as Dictionary
+	var expected_fight_xp := int(reward_map.get("fight", 0))
+	var expected_thieving_xp := int(reward_map.get("thieving", 0))
+	skills = game.get("skills") as Dictionary
+	fight_state = skills.get("fight", {}) as Dictionary
+	var thieving_state := skills.get("thieving", {}) as Dictionary
+	var fight_xp_before := int(fight_state.get("xp", 0))
+	var thieving_xp_before := int(thieving_state.get("xp", 0))
+	var stamina_before := float((game.get("stamina") as Dictionary).get("fight", 0.0))
+	var attempted := bool(game.call("_attempt_temporary_event_action_from_tap", "fight", "covered-wagon-ambush-drill", event_action))
+	var active := game.get("temporary_event_active") as Dictionary
+	var cooldowns := game.get("temporary_event_cooldowns") as Dictionary
+	skills = game.get("skills") as Dictionary
+	fight_state = skills.get("fight", {}) as Dictionary
+	thieving_state = skills.get("thieving", {}) as Dictionary
+	_expect(attempted, "Temporary event tap should report that it handled the card tap.")
+	_expect(active.is_empty(), "Successful temporary event tap should despawn the event.")
+	_expect(cooldowns.has("covered-wagon-ambush-drill"), "Successful temporary event tap should set a respawn cooldown.")
+	_expect(int(fight_state.get("xp", 0)) - fight_xp_before == expected_fight_xp, "Successful temporary event tap should grant owner-skill XP before despawning.")
+	_expect(int(thieving_state.get("xp", 0)) - thieving_xp_before == expected_thieving_xp, "Successful temporary event tap should grant secondary event XP before despawning.")
+	_expect(float((game.get("stamina") as Dictionary).get("fight", 0.0)) < stamina_before, "Successful temporary event tap should charge stamina.")
+	_expect(str(game.get("last_result")).begins_with("Event complete:"), "Successful temporary event tap should show event completion feedback text.")
+
+
 func _check_combo_xp_reward_map(game: Node) -> void:
 	_prime_core_skill_state(game)
 	var combo_action := game.call("_action_data", "fishing", "fight-a-shark") as Dictionary
@@ -1383,6 +1438,32 @@ func _check_test_profile_save_repair(game: Node) -> void:
 	_expect(bool(game.call("_repair_save_for_regular_play", mixed_tutorial_save)), "Saves with real progress should not remain stuck in tutorial mode.")
 	_expect(bool(mixed_tutorial_save.get("onboarding_tutorial_complete", false)), "Tutorial-progress mismatch repair should complete onboarding.")
 	_expect(bool(mixed_tutorial_save.get("skill_swipe_tip_seen", false)), "Tutorial-progress mismatch repair should unlock skill navigation.")
+	var latched_tutorial_save := {
+		"onboarding_tutorial_complete": false,
+		"tutorial_active": true,
+		"tutorial_step": 1,
+		"skills": {
+			"fight": {"xp": int(game.call("_xp_for_level", 2)), "level": 2},
+		},
+		"manual_activity_unlocks": {
+			"fight:kick-mud-off-boot": true,
+		},
+		"stamina_gauge_tip_seen": true,
+		"onboarding_fight_action_stats_revealed": true,
+	}
+	_expect(bool(game.call("_repair_save_for_regular_play", latched_tutorial_save)), "Level-two onboarding saves should repair the missing tutorial gate latch.")
+	_expect(not bool(latched_tutorial_save.get("tutorial_active", true)), "Level-two onboarding latch repair should not reopen the boxed tutorial overlay.")
+	_expect(bool(latched_tutorial_save.get("tutorial_gate_latch_only_until_swipe", false)), "Level-two onboarding latch repair should persist the swipe gate latch.")
+	_prime_core_skill_state(game)
+	game.set("tutorial_gate_latch_only_until_swipe", false)
+	game.call("_load_game_core", latched_tutorial_save)
+	game.call("_restore_onboarding_progression_from_save", latched_tutorial_save)
+	var level_two_action := game.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
+	var deferred_action := game.call("_action_data", "fight", "box-suspicious-feed-sack") as Dictionary
+	_expect(not bool(game.get("onboarding_tutorial_complete")), "Level-two onboarding latch restore should keep normal mid-onboarding saves incomplete.")
+	_expect(bool(game.get("tutorial_gate_latch_only_until_swipe")), "Level-two onboarding latch restore should make the swipe tutorial resumable.")
+	_expect(bool(game.call("_is_action_unlocked", "fight", level_two_action)), "Level-two onboarding latch restore should keep the level 2 fight module visible.")
+	_expect(bool(game.call("_tutorial_should_defer_action_until_skill_swipe", "fight", deferred_action)), "Level-two onboarding latch restore should defer only the post-gate module.")
 	var legacy_save := {"skills": {"fight": {"xp": 40, "level": 2}}}
 	var fresh_maxed_skills := {}
 	for raw_def in (game.get("skill_defs") as Array):
@@ -1767,6 +1848,33 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 	game.set("current_screen", previous_screen)
 	game.set("selected_skill_id", previous_selected)
 	game.set("auto_unlock_lockpads_enabled", previous_auto_unlock)
+
+
+func _check_auto_eat_fish_per_skill_save_restore(game: Node) -> void:
+	_prime_core_skill_state(game)
+	game.set("auto_eat_fish_enabled_by_skill", {})
+	game.call("_set_auto_eat_fish_enabled_for_skill", "woodcutting", true)
+	game.call("_set_auto_eat_fish_enabled_for_skill", "fight", false)
+	var saved := game.call("_auto_eat_fish_enabled_by_skill_for_save") as Dictionary
+	_expect(bool(saved.get("woodcutting", false)), "Auto-eat fish save should keep the enabled skill.")
+	_expect(not saved.has("fight"), "Auto-eat fish save should omit disabled skills.")
+	_expect(not saved.has("fishing"), "Auto-eat fish save should omit fishing.")
+
+	game.call("_restore_auto_eat_fish_enabled_from_save", {
+		"auto_eat_fish_enabled_by_skill": {
+			"fight": true,
+			"woodcutting": false,
+			"fishing": true,
+		}
+	})
+	_expect(bool(game.call("_auto_eat_fish_enabled_for_skill", "fight")), "Auto-eat fish restore should enable the saved skill.")
+	_expect(not bool(game.call("_auto_eat_fish_enabled_for_skill", "woodcutting")), "Auto-eat fish restore should keep saved disabled skills off.")
+	_expect(not bool(game.call("_auto_eat_fish_enabled_for_skill", "fishing")), "Auto-eat fish restore should not enable fishing.")
+
+	game.call("_restore_auto_eat_fish_enabled_from_save", {"auto_eat_fish_enabled": true})
+	_expect(bool(game.call("_auto_eat_fish_enabled_for_skill", "fight")), "Legacy auto-eat save should migrate fight to enabled.")
+	_expect(bool(game.call("_auto_eat_fish_enabled_for_skill", "woodcutting")), "Legacy auto-eat save should migrate woodcutting to enabled.")
+	_expect(not bool(game.call("_auto_eat_fish_enabled_for_skill", "fishing")), "Legacy auto-eat save should still leave fishing off.")
 
 
 func _check_achievement_toast_seen_ids_save_restore(game: Node) -> void:

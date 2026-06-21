@@ -10,7 +10,7 @@ var medal_icons := []
 var medal_shadows := []
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	_layout_icons()
 
 func _notification(what: int) -> void:
@@ -61,6 +61,8 @@ func _layout_icons() -> void:
 
 func _slot_center(index: int, icon_size: float) -> Vector2:
 	var count := maxi(1, slot_count)
+	if _row_count() <= 1:
+		return _row_slot_center(index, count, icon_size, 0, count)
 	if count > 1:
 		var top_row_count := _top_row_count(count)
 		if index >= top_row_count:

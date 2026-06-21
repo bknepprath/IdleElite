@@ -432,7 +432,7 @@ func _counts(scene: Node) -> Dictionary:
 	var stack := _valid_control(scroll.get_child(0))
 	if stack == null:
 		return result
-	var viewport_rect := scroll.get_global_rect()
+	var viewport_rect := scroll.get_global_rect().intersection(scene.get_viewport().get_visible_rect())
 	for raw_child in stack.get_children():
 		var child := _valid_control(raw_child)
 		if child == null:

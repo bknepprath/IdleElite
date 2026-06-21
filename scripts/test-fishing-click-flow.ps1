@@ -76,6 +76,13 @@ func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton
 	event.global_position = point
 	return event
 
+func _screen_touch_event(point: Vector2, pressed: bool) -> InputEventScreenTouch:
+	var event := InputEventScreenTouch.new()
+	event.index = 0
+	event.pressed = pressed
+	event.position = point
+	return event
+
 func _find_page_switch_button(root_node: Node, target_skill_id: String) -> Button:
 	if root_node == null:
 		return null
@@ -161,9 +168,133 @@ func _click_page_switch_button(scene: Node, target_skill_id: String, label: Stri
 			target_skill_id,
 			str(scene.get("selected_skill_id")),
 			str(scene.get("current_screen")),
-			str(scene.call("_page_switch_scroll_cover_active"))
+			str(scene.call("_page_switch_scroll_cover_active")) + " global_active=" + str(scene.get("page_switch_press_active")) + " pending=" + str(scene.get("page_switch_pending_transition")) + " release_wait=" + str(scene.get("page_switch_release_when_render_idle")) + " render=" + str(scene.get("screen_render_in_progress")) + " request=" + str(scene.get("pending_screen_render_request"))
 		])
 		return false
+	for _frame in range(90):
+		await process_frame
+		if not bool(scene.call("_page_switch_scroll_cover_active")) and int(scene.get("page_switch_transition_button_id")) == 0:
+			break
+	if bool(scene.call("_page_switch_scroll_cover_active")) or int(scene.get("page_switch_transition_button_id")) != 0:
+		push_error("Fishing %s page-switch transition did not release before the next click. cover=%s lock=%s" % [
+			label,
+			str(scene.call("_page_switch_scroll_cover_active")),
+			str(scene.get("page_switch_transition_button_id"))
+		])
+		return false
+	return true
+
+func _click_module_utility_button(scene: Node, button_name: String, button: Button) -> bool:
+	if button == null or not is_instance_valid(button) or not button.is_inside_tree() or not button.is_visible_in_tree():
+		push_error("Fishing utility %s button was not visible." % button_name)
+		return false
+	var click_point := button.get_global_rect().get_center()
+	scene.call("_input", _mouse_button_event(click_point, true))
+	for _frame in range(2):
+		await process_frame
+	scene.call("_input", _mouse_button_event(click_point, false))
+	for _frame in range(12):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	return true
+
+func _restore_skill_page(scene: Node, skill_id: String) -> void:
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", skill_id)
+	scene.set("_last_rendered_screen_key", "")
+	var render_result = scene.call("_render_screen", false, -1, false)
+	if render_result != null:
+		await render_result
+	for _frame in range(8):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	scene.call("_sync_module_utility_row_visibility")
+
+func _restore_fishing_page(scene: Node) -> void:
+	await _restore_skill_page(scene, "fishing")
+
+func _check_fishing_bottom_utility_buttons(scene: Node) -> bool:
+	scene.set("module_utility_collapsed", false)
+	scene.call("_sync_module_utility_row_visibility")
+	var settings_button := scene.get("settings_tab") as Button
+	if not await _click_module_utility_button(scene, "settings", settings_button):
+		return false
+	if str(scene.get("current_screen")) != "settings":
+		push_error("Fishing bottom nav settings button did not open settings. screen=%s" % str(scene.get("current_screen")))
+		return false
+	if not await _click_module_utility_button(scene, "settings red x", settings_button):
+		return false
+	if str(scene.get("current_screen")) != "skill" or str(scene.get("selected_skill_id")) != "fishing":
+		push_error("Fishing settings red X returned to the wrong detail page. screen=%s selected=%s" % [
+			str(scene.get("current_screen")),
+			str(scene.get("selected_skill_id"))
+		])
+		return false
+	await _restore_fishing_page(scene)
+
+	await _restore_skill_page(scene, "thieving")
+	settings_button = scene.get("settings_tab") as Button
+	if not await _click_module_utility_button(scene, "settings from thieving", settings_button):
+		return false
+	if str(scene.get("current_screen")) != "settings":
+		push_error("Thieving bottom nav settings button did not open settings. screen=%s" % str(scene.get("current_screen")))
+		return false
+	if not await _click_module_utility_button(scene, "settings red x from thieving", settings_button):
+		return false
+	if str(scene.get("current_screen")) != "skill" or str(scene.get("selected_skill_id")) != "thieving":
+		push_error("Thieving settings red X returned to the wrong detail page. screen=%s selected=%s" % [
+			str(scene.get("current_screen")),
+			str(scene.get("selected_skill_id"))
+		])
+		return false
+	await _restore_fishing_page(scene)
+
+	var sort_button := scene.get("sort_utility_tab") as Button
+	if not await _click_module_utility_button(scene, "sort", sort_button):
+		return false
+	var sort_menu := scene.get("module_sort_menu") as Control
+	if sort_menu == null or not is_instance_valid(sort_menu) or not sort_menu.visible:
+		push_error("Fishing utility sort button did not open the module sort menu.")
+		return false
+	scene.call("_hide_module_sort_menu", false)
+	for _frame in range(4):
+		await process_frame
+
+	var skills_button := scene.get("skills_utility_tab") as Button
+	if not await _click_module_utility_button(scene, "skills", skills_button):
+		return false
+	if str(scene.get("current_screen")) != "menu":
+		push_error("Fishing utility skills button did not open the full skill page. screen=%s" % str(scene.get("current_screen")))
+		return false
+	await _restore_fishing_page(scene)
+
+	var pinned_button := scene.get("pinned_utility_tab") as Button
+	if not await _click_module_utility_button(scene, "pinned", pinned_button):
+		return false
+	for _frame in range(90):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+		if str(scene.get("current_screen")) == "pinned":
+			break
+	if str(scene.get("current_screen")) != "pinned":
+		push_error("Fishing utility pinned button did not open the pinned page. screen=%s" % str(scene.get("current_screen")))
+		return false
+	await _restore_fishing_page(scene)
+	return true
+
+func _check_fishing_page_switch_buttons(scene: Node) -> bool:
+	var page_neighbors := scene.call("_skill_page_neighbor_ids", "fishing") as Dictionary
+	var previous_skill_id := str(page_neighbors.get("previous", ""))
+	var next_skill_id := str(page_neighbors.get("next", ""))
+	if previous_skill_id.is_empty() or next_skill_id.is_empty():
+		push_error("Fishing page-switch neighbors were missing: %s" % str(page_neighbors))
+		return false
+	if not await _click_page_switch_button(scene, previous_skill_id, "left Woodcutting"):
+		return false
+	await _restore_fishing_page(scene)
+	if not await _click_page_switch_button(scene, next_skill_id, "right Fighting"):
+		return false
+	await _restore_fishing_page(scene)
 	return true
 
 func _run() -> void:
@@ -187,6 +318,7 @@ func _run() -> void:
 	scene.set("module_ui_sort_mode", "level")
 	scene.set("module_ui_pinned_order", [])
 	scene.set("module_ui_collapsed", {})
+	scene.call("_god_mode_unlock_onboarding_state")
 	scene.call("_mark_action_manually_unlocked", "fishing", "beach-shallows")
 	scene.call("_clear_running_activity_for_test_mode")
 	var render_result = scene.call("_render_screen", false, -1, false)
@@ -195,6 +327,12 @@ func _run() -> void:
 	for _frame in range(30):
 		await process_frame
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	if not await _check_fishing_bottom_utility_buttons(scene):
+		quit(1)
+		return
+	if not await _check_fishing_page_switch_buttons(scene):
+		quit(1)
+		return
 	var area_card := {}
 	for raw_card in (scene.get("action_cards") as Dictionary).values():
 		var card := raw_card as Dictionary
@@ -205,6 +343,18 @@ func _run() -> void:
 		push_error("Fishing click flow could not find the rendered Beach area card.")
 		quit(1)
 		return
+	for raw_card in (scene.get("action_cards") as Dictionary).values():
+		var fishing_area_card := raw_card as Dictionary
+		if not bool(fishing_area_card.get("is_fishing_area", false)):
+			continue
+		if not str(fishing_area_card.get("action_id", "")).is_empty():
+			push_error("Fishing area card inherited a fake action id and can grow a duplicate generic lock: %s" % str(fishing_area_card.get("action_id", "")))
+			quit(1)
+			return
+		if not (fishing_area_card.get("lock_overlay", {}) as Dictionary).is_empty():
+			push_error("Fishing area card created a generic activity lock overlay on top of method padlocks.")
+			quit(1)
+			return
 	var method_card := {}
 	for raw_method_card in (area_card.get("method_slots", {}) as Dictionary).values():
 		var candidate := raw_method_card as Dictionary
@@ -217,42 +367,155 @@ func _run() -> void:
 		quit(1)
 		return
 	var click_point := button.get_global_rect().get_center()
+	var method_hit_control := method_card.get("method_hit_control", null) as Control
+	if method_hit_control == null or not is_instance_valid(method_hit_control):
+		push_error("Fishing click flow could not find the Shallows method hit control.")
+		quit(1)
+		return
+	var image_hit_control := method_card.get("method_image_hit_control", null) as Control
+	if image_hit_control == null or not is_instance_valid(image_hit_control):
+		push_error("Fishing click flow could not find the Shallows image hit control.")
+		quit(1)
+		return
+	var method_rect := method_hit_control.get_global_rect()
+	var image_rect := image_hit_control.get_global_rect()
+	if method_rect.size.y <= image_rect.size.y + 32.0:
+		push_error("Fishing click flow Shallows method button does not cover the whole visible column. method=%s image=%s" % [
+			str(method_rect),
+			str(image_rect)
+		])
+		quit(1)
+		return
+	var title_click_point := Vector2(method_rect.position.x + method_rect.size.x * 0.5, method_rect.position.y + 28.0)
+	var mastery_click_point := Vector2(method_rect.position.x + method_rect.size.x * 0.5, method_rect.end.y - 28.0)
+	for point in [title_click_point, mastery_click_point]:
+		var method_hit := scene.call("_fishing_method_button_hit", point, true) as Dictionary
+		if method_hit.is_empty():
+			push_error("Fishing click flow Shallows visible column point is outside the method hit route: %s method=%s image=%s" % [
+				str(point),
+				str(method_rect),
+				str(image_rect)
+			])
+			quit(1)
+			return
+		if not (scene.call("_module_action_circle_at_direct_position", point) as Dictionary).is_empty():
+			push_error("Fishing click flow Shallows visible column point is blocked by a direct module action zone: %s" % str(point))
+			quit(1)
+			return
+	var top_image_click_point := Vector2(image_rect.position.x + image_rect.size.x * 0.5, image_rect.position.y + 18.0)
+	var upper_left_image_click_point := Vector2(image_rect.position.x + 52.0, image_rect.position.y + 52.0)
+	var top_image_hit := scene.call("_fishing_method_button_hit", top_image_click_point, true) as Dictionary
+	if top_image_hit.is_empty():
+		push_error("Fishing click flow top-image point is outside the fishing method hit route: %s" % str(top_image_click_point))
+		quit(1)
+		return
+	var image_module_action_hit := scene.call("_module_action_circle_at_position", upper_left_image_click_point) as Dictionary
+	if not image_module_action_hit.is_empty():
+		push_error("Fishing click flow upper-left Shallows image point is still blocked by a module action zone: %s" % str(image_module_action_hit))
+		quit(1)
+		return
+	for raw_zone in (area_card.get("module_action_zones", {}) as Dictionary).values():
+		var zone := raw_zone as Control
+		if zone != null and is_instance_valid(zone) and zone.get_global_rect().has_point(upper_left_image_click_point):
+			push_error("Fishing click flow upper-left Shallows image point is physically covered by module zone %s rect=%s point=%s" % [
+				str(zone.name),
+				str(zone.get_global_rect()),
+				str(upper_left_image_click_point)
+			])
+			quit(1)
+			return
+	if bool(scene.call("_route_module_action_zone_input", _mouse_button_event(upper_left_image_click_point, true))):
+		push_error("Fishing click flow upper-left Shallows image point was consumed by the module action zone route.")
+		quit(1)
+		return
+	var area_pop := area_card.get("pop") as Control
+	if area_pop == null or not is_instance_valid(area_pop):
+		push_error("Fishing click flow could not find the fishing area card host.")
+		quit(1)
+		return
+	var area_pop_rect := area_pop.get_global_rect()
+	var pin_point := area_pop_rect.position + Vector2(48.0, 48.0)
+	if image_rect.has_point(pin_point) or method_rect.has_point(pin_point):
+		push_error("Fishing click flow fishing area pin point overlaps Shallows button. pin=%s method=%s image=%s" % [
+			str(pin_point),
+			str(method_rect),
+			str(image_rect)
+		])
+		quit(1)
+		return
+	var pin_corner_hit := scene.call("_fishing_area_pin_corner_hit", pin_point) as Dictionary
+	if pin_corner_hit.is_empty():
+		push_error("Fishing click flow fishing area pin corner was not recognized. pin=%s area=%s" % [
+			str(pin_point),
+			str(area_pop_rect)
+		])
+		quit(1)
+		return
+	var upper_left_corner_hit := scene.call("_fishing_area_pin_corner_hit", upper_left_image_click_point) as Dictionary
+	if not upper_left_corner_hit.is_empty():
+		push_error("Fishing click flow upper-left Shallows image point was mistaken for the fishing pin corner. hit=%s point=%s area=%s" % [
+			str(upper_left_corner_hit),
+			str(upper_left_image_click_point),
+			str(area_pop_rect)
+		])
+		quit(1)
+		return
+	if bool(scene.call("_route_fishing_area_pin_corner_input", _mouse_button_event(upper_left_image_click_point, true))):
+		push_error("Fishing click flow upper-left Shallows image point was consumed by the fishing pin-corner route.")
+		quit(1)
+		return
+	if not bool(scene.call("_route_fishing_area_pin_corner_input", _mouse_button_event(pin_point, true))):
+		push_error("Fishing click flow fishing area pin corner did not route through the explicit pin-corner path. pin=%s area=%s" % [
+			str(pin_point),
+			str(area_pop_rect)
+		])
+		quit(1)
+		return
+	if bool(scene.call("_route_fishing_location_image_priority_press", _mouse_button_event(pin_point, true))):
+		push_error("Fishing click flow fishing area pin corner was consumed by the fishing priority press path.")
+		quit(1)
+		return
+	scene.call("_route_fishing_area_pin_corner_input", _mouse_button_event(pin_point, false))
+	await process_frame
+	var area_module_key := str(area_pop.get_meta("module_ui_key", ""))
+	if not bool(scene.call("_module_ui_is_pinned", area_module_key)):
+		push_error("Fishing click flow fishing area pin corner did not pin the module. key=%s pin=%s area=%s" % [
+			area_module_key,
+			str(pin_point),
+			str(area_pop_rect)
+		])
+		quit(1)
+		return
+	var pin_area_pop_id := area_pop.get_instance_id()
+	scene.call("_unpin_module_ui_key", area_module_key, pin_area_pop_id)
+	await process_frame
+	scene.call("_clear_running_activity_for_test_mode")
+	if not bool(scene.call("_route_fishing_location_image_priority_press", _mouse_button_event(upper_left_image_click_point, true))):
+		push_error("Fishing click flow upper-left Shallows image point did not route through the fishing priority press path.")
+		quit(1)
+		return
+	if str(scene.get("running_skill_id")) != "fishing" or str(scene.get("running_action_id")) != "beach-shallows":
+		push_error("Fishing priority press did not start Shallows. running=%s:%s" % [
+			str(scene.get("running_skill_id")),
+			str(scene.get("running_action_id"))
+		])
+		quit(1)
+		return
+	scene.call("_clear_running_activity_for_test_mode")
 	if not bool(scene.call("_position_inside_detail_actions_viewport", click_point)):
 		push_error("Fishing click flow Shallows click point is outside the activity viewport: %s" % str(click_point))
 		quit(1)
 		return
-
-	var nav_bar := scene.get("nav_bar") as Control
-	if nav_bar == null or not is_instance_valid(nav_bar):
-		push_error("Fishing click flow could not find the bottom navigation bar.")
-		quit(1)
-		return
-	var nav_point := nav_bar.get_global_rect().get_center()
-	scene.call("_clear_skill_swipe_button_suppression")
-	scene.call("_input", _mouse_button_event(click_point, true))
-	for _frame in range(3):
-		await process_frame
-	if not bool(button.get_meta("fishing_method_press_active", false)):
-		push_error("Fishing method press did not arm before bottom-nav cancellation smoke.")
-		quit(1)
-		return
-	scene.call("_input", _mouse_button_event(nav_point, false))
-	for _frame in range(3):
-		await process_frame
-	if bool(button.get_meta("fishing_method_press_active", false)):
-		push_error("Fishing method press stayed armed after release over bottom navigation.")
-		quit(1)
-		return
-	if button.has_meta("fishing_method_press_position") or button.has_meta("fishing_method_press_dragged"):
-		push_error("Fishing method press metadata was not cleared after bottom navigation input.")
+	if not bool(scene.call("_position_inside_detail_actions_viewport", top_image_click_point)):
+		push_error("Fishing click flow Shallows top-image click point is outside the activity viewport: %s" % str(top_image_click_point))
 		quit(1)
 		return
 
 	scene.call("_clear_skill_swipe_button_suppression")
-	scene.call("_input", _mouse_button_event(click_point, true))
+	scene.call("_input", _mouse_button_event(upper_left_image_click_point, true))
 	for _frame in range(3):
 		await process_frame
-	scene.call("_input", _mouse_button_event(click_point, false))
+	scene.call("_input", _mouse_button_event(upper_left_image_click_point, false))
 	scene.call("_update_ui", 0.016, false)
 	await process_frame
 	var hands_init_seconds := float(area_card.get("active_tool_init_seconds", -1.0))
@@ -282,22 +545,58 @@ func _run() -> void:
 		push_error("Fishing click flow did not show the water animation strip.")
 		quit(1)
 		return
-	var page_neighbors := scene.call("_skill_page_neighbor_ids", "fishing") as Dictionary
-	var previous_skill_id := str(page_neighbors.get("previous", ""))
-	var next_skill_id := str(page_neighbors.get("next", ""))
-	if not await _click_page_switch_button(scene, previous_skill_id, "green Woodcutting left"):
+	var area_body_pop := area_card.get("pop") as Control
+	if area_body_pop == null or not is_instance_valid(area_body_pop):
+		push_error("Fishing click flow could not find the Beach area body.")
 		quit(1)
 		return
-	scene.set("current_screen", "skill")
-	scene.set("selected_skill_id", "fishing")
-	render_result = scene.call("_render_screen", false, -1, false)
-	if render_result != null:
-		await render_result
-	for _frame in range(30):
+	var area_rect := area_body_pop.get_global_rect()
+	var area_hold_point := Vector2.ZERO
+	var area_hold_candidates := [
+		Vector2(area_rect.position.x + area_rect.size.x * 0.52, area_rect.position.y + area_rect.size.y * 0.52),
+		Vector2(area_rect.position.x + area_rect.size.x * 0.38, area_rect.position.y + area_rect.size.y * 0.68),
+		Vector2(area_rect.position.x + area_rect.size.x * 0.28, area_rect.position.y + area_rect.size.y * 0.74),
+	]
+	for candidate in area_hold_candidates:
+		var area_hit := scene.call("_fishing_area_card_at_position", candidate) as Dictionary
+		if not area_hit.is_empty():
+			area_hold_point = candidate
+			break
+	if area_hold_point == Vector2.ZERO:
+		push_error("Fishing click flow could not find a holdable Beach area body point. rect=%s" % str(area_rect))
+		quit(1)
+		return
+	if not bool(scene.call("_route_fishing_area_card_press", _screen_touch_event(area_hold_point, true))):
+		push_error("Fishing area hold press did not route. hold_point=%s" % str(area_hold_point))
+		quit(1)
+		return
+	for _frame in range(126):
+		scene.call("_process_action_stop_hold", 0.016)
+		scene.call("_update_ui", 0.016, false)
 		await process_frame
-	if not await _click_page_switch_button(scene, next_skill_id, "red Fighting right"):
+	scene.call("_input", _screen_touch_event(area_hold_point, false))
+	await process_frame
+	if str(scene.get("running_skill_id")) != "" or str(scene.get("running_action_id")) != "":
+		push_error("Fishing area hold did not stop Shallows. running=%s:%s hold_point=%s" % [
+			str(scene.get("running_skill_id")),
+			str(scene.get("running_action_id")),
+			str(area_hold_point)
+		])
 		quit(1)
 		return
+	if not bool(scene.call("_route_fishing_area_card_press", _screen_touch_event(area_hold_point, true))):
+		push_error("Fishing area body press did not start the selected method. hold_point=%s" % str(area_hold_point))
+		quit(1)
+		return
+	await process_frame
+	if str(scene.get("running_skill_id")) != "fishing" or str(scene.get("running_action_id")) != "beach-shallows":
+		push_error("Fishing area body press routed but did not start Shallows. running=%s:%s" % [
+			str(scene.get("running_skill_id")),
+			str(scene.get("running_action_id"))
+		])
+		quit(1)
+		return
+	scene.call("_clear_running_activity_for_test_mode")
 	print("fishing-click-flow-ok")
 	quit(0)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8

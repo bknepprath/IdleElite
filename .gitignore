@@ -22,6 +22,7 @@ google key downloads/
 *.p12
 *.pem
 local-release-notes.md
+firebase-leaderboard-config\.json
 firebase-leaderboard-config.json
 assets/loading/blue-guy-flex-loading-spritesheet*.png
 !assets/loading/blue-guy-flex-loading-spritesheet.png

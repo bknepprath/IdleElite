@@ -377,7 +377,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Shove Wobbly Hay Bale",
           "unlock": 1,
           "stamina": 1,
-          "seconds": 1.09,
+          "seconds": 1.45,
           "xp": 1,
           "success": 97.3,
           "rewards": {
@@ -395,7 +395,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Kick Mud Off Boot",
           "unlock": 2,
           "stamina": 1,
-          "seconds": 1.26,
+          "seconds": 1.55,
           "xp": 3,
           "success": 96.9,
           "rewards": {
@@ -413,7 +413,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Wrestle Stuck Gate Latch",
           "unlock": 3,
           "stamina": 1,
-          "seconds": 1.26,
+          "seconds": 1.6,
           "xp": 4,
           "success": 95.4,
           "rewards": {
@@ -453,7 +453,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Box Suspicious Feed Sack",
           "unlock": 4,
           "stamina": 1,
-          "seconds": 1.49,
+          "seconds": 1.7,
           "xp": 6,
           "success": 94.2,
           "rewards": {
@@ -471,7 +471,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Duel Fence Post",
           "unlock": 6,
           "stamina": 1,
-          "seconds": 1.55,
+          "seconds": 1.75,
           "xp": 9,
           "success": 94.2,
           "rewards": {

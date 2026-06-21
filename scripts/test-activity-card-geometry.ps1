@@ -172,7 +172,8 @@ func _run() -> void:
 		_expect(rounded_bg.corner_mask_mode == 1, "Activity-card background mask should align the full-radius corner curve.")
 	if bg != null:
 		bg.free()
-	var pin_zone := main_node.call("_module_action_zone", "pin", "action:fight:probe", true) as Control
+	var probe_module_key := "action:fight:shove-wobbly-hay-bale"
+	var pin_zone := main_node.call("_module_action_zone", "pin", probe_module_key, true) as Control
 	_expect(pin_zone != null, "Module pin action zone should be constructible.")
 	if pin_zone != null:
 		_expect(pin_zone.mouse_filter == Control.MOUSE_FILTER_PASS, "Module pin zone should pass non-accepted touches through to the card.")
@@ -182,7 +183,7 @@ func _run() -> void:
 		_expect(pin_zone.offset_top == MainScript.MODULE_ACTION_ZONE_TOP_OFFSET, "Module pin zone should use the shared top offset.")
 		_expect(pin_zone.offset_right - pin_zone.offset_left == MainScript.MODULE_ACTION_ZONE_SIZE.x, "Module pin zone width should match the configured circular bounds.")
 		_expect(pin_zone.offset_bottom - pin_zone.offset_top == MainScript.MODULE_ACTION_ZONE_SIZE.y, "Module pin zone height should match the configured circular bounds.")
-	var collapse_zone := main_node.call("_module_action_zone", "collapse", "action:fight:probe", false) as Control
+	var collapse_zone := main_node.call("_module_action_zone", "collapse", probe_module_key, false) as Control
 	_expect(collapse_zone != null, "Module collapse action zone should be constructible.")
 	if collapse_zone != null:
 		_expect(collapse_zone.mouse_filter == Control.MOUSE_FILTER_STOP, "Module collapse zone should claim top-right circle touches before the card.")
@@ -211,10 +212,10 @@ func _run() -> void:
 		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_rect.get_center())) == "collapse", "Module collapse zone center should hit the circular collapse action.")
 		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_rect.position)) == "", "Module collapse zone outer corner should not hit outside its circular bounds.")
 		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_near_edge_outside_circle)) == "", "Module collapse zone rectangular edge should not steal taps outside its circle.")
-		var badge := main_node.call("_ensure_module_pin_badge", zone_host, "action:fight:probe") as TextureButton
+		var badge := main_node.call("_ensure_module_pin_badge", zone_host, probe_module_key) as TextureButton
 		_expect(badge != null, "Module pin badge should be constructible for badge hit geometry.")
 		if badge != null:
-			zone_host.set_meta("module_ui_key", "action:fight:probe")
+			zone_host.set_meta("module_ui_key", probe_module_key)
 			badge.visible = true
 			badge.disabled = false
 			badge.modulate.a = 1.0
@@ -222,9 +223,10 @@ func _run() -> void:
 			var transparent_corner := badge.get_global_rect().position
 			var visible_art_point := badge.get_global_transform() * Vector2(MainScript.MODULE_PIN_BADGE_SIZE.x * 0.36, MainScript.MODULE_PIN_BADGE_SIZE.y * 0.34)
 			_expect(str(main_node.call("_module_action_badge_kind_at_position", zone_host, transparent_corner)) == "", "Oversized pin badge transparent corner should not count as a pin hit.")
-			_expect(str(main_node.call("_module_action_badge_kind_at_position", zone_host, visible_art_point)) == "", "Oversized pin badge visible art outside the circular zone should not count as a pin hit.")
-			var visible_art_action_hit := main_node.call("_module_action_circle_at_position_in_tree", zone_host, visible_art_point) as Dictionary
-			_expect(visible_art_action_hit.is_empty(), "Oversized pin badge visible art outside the circular zone should not route a module action.")
+			_expect(str(main_node.call("_module_action_badge_kind_at_position", zone_host, visible_art_point)) == "pin", "Oversized pin badge visible art should count as a pin hit even outside the old circular zone.")
+			main_node.set("action_cards", {"probe": {"pop": zone_host}})
+			var visible_art_action_hit := main_node.call("_module_action_circle_at_position", visible_art_point) as Dictionary
+			_expect(str(visible_art_action_hit.get("kind", "")) == "pin", "Oversized pin badge visible art should route a module pin action.")
 		zone_host.free()
 	else:
 		if pin_zone != null:

@@ -101,11 +101,10 @@ func _run() -> void:
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
 
-	scene.call("_start_tutorial")
+	scene.call("_reset_data")
 	for _i in range(8):
 		await _wait_test_frame()
 	scene.call("_tutorial_check_progress")
-	scene.call("_select_skill", "fight")
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
 		scene.call("_tutorial_check_progress")
@@ -114,6 +113,9 @@ func _run() -> void:
 
 	if not _tutorial_skill_page_ready(scene):
 		_fail("tutorial starter skill page was not ready: %s" % _summary(scene))
+		return
+	if int(scene.get("tutorial_step")) != 1:
+		_fail("tutorial should start on the fight activity step: %s" % _summary(scene))
 		return
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	var shadow := scene.get("detail_shelf_shadow_overlay") as CanvasItem
@@ -126,14 +128,25 @@ func _run() -> void:
 	var module_sort_menu := scene.get("module_sort_menu") as Control
 	var auto_fish_toggle := scene.get("detail_auto_eat_fish_button") as Control
 	var shelf_background := _find_named_descendant(scene.get("detail_header_body") as Node, "SkillDetailFullBleedShelfBackground") as Control
+	var tutorial_panel := scene.get("tutorial_panel") as Control
+	var tutorial_target_ring := scene.get("tutorial_target_ring") as Control
+	var tutorial_target_label := scene.get("tutorial_target_label") as Control
+	var detail_header_left_block := scene.get("detail_header_left_block") as Control
+	var detail_xp_label := scene.get("detail_xp_label") as Control
+	var detail_xp_bar := scene.get("detail_xp_bar") as Control
+	var detail_regen_circle := scene.get("detail_regen_circle") as Control
+	var activity_start_highlight := scene.get("activity_start_highlight_border") as Control
 	if scroll_y != 0 or absf(drag_y) > 0.01:
 		_fail("tutorial starter skill page should start at top scroll, got scroll=%s drag=%.3f %s" % [str(scroll_y), drag_y, _summary(scene)])
 		return
 	if shadow_visible and shadow_alpha > 0.001:
 		_fail("tutorial starter skill page shelf shadow should be hidden, got alpha=%.4f %s" % [shadow_alpha, _summary(scene)])
 		return
-	if nav_bar != null and nav_bar.visible:
-		_fail("tutorial starter skill page bottom navigation should be hidden: %s" % _summary(scene))
+	if nav_bar == null or not nav_bar.visible:
+		_fail("tutorial starter skill page bottom navigation shell should remain visible: %s" % _summary(scene))
+		return
+	if not _bottom_nav_locked_controls_ok(scene):
+		_fail("tutorial starter skill page should show all nav buttons with skills/settings bright and other nav locked: %s" % _summary(scene))
 		return
 	if module_utility_row != null and module_utility_row.visible:
 		_fail("tutorial starter skill page module utility row should be hidden: %s" % _summary(scene))
@@ -147,18 +160,47 @@ func _run() -> void:
 	if shelf_background != null and shelf_background.visible:
 		_fail("tutorial starter skill page colored shelf background should be hidden: %s" % _summary(scene))
 		return
-	if _activity_start_tip_before_second_module(scene):
-		_fail("tutorial starter skill page should not place the activity-start tip between module 1 and 2: %s" % _summary(scene))
+	if tutorial_panel != null and tutorial_panel.visible:
+		_fail("tutorial starter skill page should not show the legacy boxed tutorial panel: %s" % _summary(scene))
 		return
-	var first_module_gap := _tutorial_first_two_module_gap(scene)
-	if first_module_gap < 0.0:
-		_fail("tutorial starter skill page did not expose two modules for gap check: %s" % _summary(scene))
+	if tutorial_target_ring != null and _effective_canvas_alpha(tutorial_target_ring) > 0.01:
+		_fail("tutorial starter skill page should not show the legacy target ring: %s" % _summary(scene))
 		return
-	if first_module_gap > 120.0:
-		_fail("tutorial starter skill page module 1-2 gap is too large: %.1f %s" % [first_module_gap, _summary(scene)])
+	if tutorial_target_label != null and _effective_canvas_alpha(tutorial_target_label) > 0.01:
+		_fail("tutorial starter skill page should not show the legacy target label: %s" % _summary(scene))
+		return
+	if detail_header_left_block != null and _effective_canvas_alpha(detail_header_left_block) > 0.01:
+		_fail("tutorial starter skill page should hide the fighting icon and title: alpha=%.3f %s" % [_effective_canvas_alpha(detail_header_left_block), _summary(scene)])
+		return
+	if detail_xp_label != null and _effective_canvas_alpha(detail_xp_label) > 0.01:
+		_fail("tutorial starter skill page should hide the fight XP label: alpha=%.3f %s" % [_effective_canvas_alpha(detail_xp_label), _summary(scene)])
+		return
+	if detail_xp_bar != null and _effective_canvas_alpha(detail_xp_bar) > 0.01:
+		_fail("tutorial starter skill page should hide the fight XP bar: alpha=%.3f %s" % [_effective_canvas_alpha(detail_xp_bar), _summary(scene)])
+		return
+	if detail_regen_circle != null and _effective_canvas_alpha(detail_regen_circle) > 0.01:
+		_fail("tutorial starter skill page should hide the stamina gauge: alpha=%.3f %s" % [_effective_canvas_alpha(detail_regen_circle), _summary(scene)])
+		return
+	if not get_nodes_in_group("stamina_cost_tip_notes").is_empty():
+		_fail("tutorial starter skill page should not show the stamina tip: %s" % _summary(scene))
+		return
+	if get_nodes_in_group("activity_start_tip_notes").is_empty():
+		_fail("tutorial starter skill page should show the brown activity-start instruction below the card: %s" % _summary(scene))
+		return
+	if activity_start_highlight != null and _effective_canvas_alpha(activity_start_highlight) > 0.01:
+		_fail("tutorial starter skill page should not show the activity highlight immediately: alpha=%.3f %s" % [_effective_canvas_alpha(activity_start_highlight), _summary(scene)])
+		return
+	if _tutorial_module_count(scene) != 1:
+		_fail("tutorial starter skill page should render only one activity module, got %s: %s" % [str(_tutorial_module_count(scene)), _summary(scene)])
+		return
+	if not _only_starter_activity_rendered(scene):
+		_fail("tutorial starter skill page should render only Shove Wobbly Hay Bale, got %s: %s" % [str(_rendered_action_ids(scene)), _summary(scene)])
+		return
+	if _has_page_switch_module(scene):
+		_fail("tutorial starter skill page should hide page-switch controls: %s" % _summary(scene))
 		return
 	await _capture_if_requested()
-	print("tutorial-start-scroll-ok scroll=%s drag=%.3f shadow_visible=%s shadow_alpha=%.4f module_gap=%.1f %s" % [str(scroll_y), drag_y, str(shadow_visible), shadow_alpha, first_module_gap, _summary(scene)])
+	print("tutorial-start-scroll-ok scroll=%s drag=%.3f shadow_visible=%s shadow_alpha=%.4f modules=%s %s" % [str(scroll_y), drag_y, str(shadow_visible), shadow_alpha, str(_tutorial_module_count(scene)), _summary(scene)])
 	quit(0)
 
 
@@ -174,43 +216,112 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 	return cards != null and cards.size() > 0
 
 
-func _activity_start_tip_before_second_module(scene: Node) -> bool:
+func _tutorial_module_count(scene: Node) -> int:
 	var stack := _tutorial_detail_stack(scene)
 	if stack == null:
-		return false
+		return 0
 	var module_count := 0
 	for raw_child in stack.get_children():
 		var child := raw_child as Control
 		if child == null:
 			continue
-		if _control_tree_in_group(child, "activity_start_tip_notes"):
-			return module_count < 2
 		if bool(scene.call("_detail_stack_child_is_module_content", child)):
 			module_count += 1
-			if module_count >= 2:
-				return false
+	return module_count
+
+
+func _only_starter_activity_rendered(scene: Node) -> bool:
+	var ids := _rendered_action_ids(scene)
+	return ids.size() == 1 and ids[0] == "shove-wobbly-hay-bale"
+
+
+func _bottom_nav_locked_controls_ok(scene: Node) -> bool:
+	return _bottom_nav_row_visible(scene) and _all_nav_buttons_visible(scene) and _settings_nav_button_enabled(scene) and _skills_nav_button_enabled(scene) and _non_settings_nav_buttons_locked(scene)
+
+
+func _bottom_nav_row_visible(scene: Node) -> bool:
+	var nav_bar := scene.get("nav_bar") as Control
+	if nav_bar == null or not is_instance_valid(nav_bar):
+		return false
+	var row := scene.get("bottom_nav_buttons_row") as Control
+	if row == null:
+		row = _find_named_descendant(nav_bar, "BottomNavButtonsRow") as Control
+	return row != null and row.is_visible_in_tree() and _effective_canvas_alpha(row) > 0.01
+
+
+func _all_nav_buttons_visible(scene: Node) -> bool:
+	for raw_name in ["hero_tab", "hub_tab", "skills_tab", "settings_tab", "shop_tab"]:
+		var button := scene.get(raw_name) as Control
+		if button == null or not button.is_visible_in_tree() or _effective_canvas_alpha(button) <= 0.01:
+			return false
+	return true
+
+
+func _settings_nav_button_enabled(scene: Node) -> bool:
+	var settings := scene.get("settings_tab") as Button
+	return settings != null and settings.is_visible_in_tree() and _effective_canvas_alpha(settings) > 0.01 and not settings.disabled and settings.mouse_filter == Control.MOUSE_FILTER_STOP
+
+
+func _skills_nav_button_enabled(scene: Node) -> bool:
+	var skills := scene.get("skills_tab") as Button
+	return skills != null and skills.is_visible_in_tree() and _effective_canvas_alpha(skills) > 0.01 and not skills.disabled and skills.mouse_filter == Control.MOUSE_FILTER_STOP and _color_nearly_equal(skills.modulate, Color.WHITE)
+
+
+func _non_settings_nav_buttons_locked(scene: Node) -> bool:
+	for raw_name in ["hero_tab", "hub_tab", "shop_tab"]:
+		var button := scene.get(raw_name) as Button
+		if button == null or not button.is_visible_in_tree() or _effective_canvas_alpha(button) <= 0.01:
+			return false
+		if button.disabled or button.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+			return false
+		if not _color_nearly_equal(button.modulate, Color("#3f3f3f")):
+			return false
+	return true
+
+
+func _color_nearly_equal(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) < 0.01 and absf(a.g - b.g) < 0.01 and absf(a.b - b.b) < 0.01 and absf(a.a - b.a) < 0.01
+
+
+func _rendered_action_ids(scene: Node) -> Array:
+	var ids := []
+	var cards := scene.get("action_cards") as Dictionary
+	if cards == null:
+		return ids
+	for raw_key in cards.keys():
+		var key := str(raw_key)
+		if key.begins_with("fight:"):
+			ids.append(key.substr("fight:".length()))
+	ids.sort()
+	return ids
+
+
+func _has_page_switch_module(scene: Node) -> bool:
+	var stack := _tutorial_detail_stack(scene)
+	if stack == null:
+		return false
+	for raw_child in stack.get_children():
+		var child := raw_child as Node
+		if child == null:
+			continue
+		if _find_named_descendant(child, "PageSwitchModule") != null:
+			return true
 	return false
 
 
-func _tutorial_first_two_module_gap(scene: Node) -> float:
-	var stack := _tutorial_detail_stack(scene)
-	if stack == null:
-		return -1.0
-	var modules := []
-	for raw_child in stack.get_children():
-		var child := raw_child as Control
-		if child == null:
-			continue
-		if bool(scene.call("_detail_stack_child_is_module_content", child)):
-			modules.append(child)
-			if modules.size() >= 2:
-				break
-	if modules.size() < 2:
-		return -1.0
-	var first := modules[0] as Control
-	var second := modules[1] as Control
-	var first_height := maxf(first.size.y, first.custom_minimum_size.y)
-	return second.position.y - (first.position.y + first_height)
+func _effective_canvas_alpha(node: Node) -> float:
+	if node == null or not is_instance_valid(node):
+		return 0.0
+	var alpha := 1.0
+	var current := node
+	while current != null:
+		if current is CanvasItem:
+			var item := current as CanvasItem
+			if not item.visible:
+				return 0.0
+			alpha *= item.modulate.a * item.self_modulate.a
+		current = current.get_parent()
+	return alpha
 
 
 func _tutorial_detail_stack(scene: Node) -> VBoxContainer:

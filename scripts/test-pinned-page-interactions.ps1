@@ -82,8 +82,12 @@ func _run() -> void:
 	scene.call("_god_mode_max_skills_state")
 	scene.call("_god_mode_unlock_actions_state")
 	await _capture_clean_pinned_page_if_requested(scene)
+	await _check_pinned_page_navigation_start_input(scene)
 	await _check_pinned_active_shelf_expands(scene)
 	await _check_pinned_page_start_animates_visible_card(scene)
+	await _check_pinned_page_switches_between_text_actions(scene)
+	await _check_pinned_page_stop_leaves_blank_active_shelf(scene)
+	await _check_pinned_page_opportunity_feedback_targets_visible_card(scene)
 	await _check_pinned_page_thieving_jail_bars_reduce_time(scene)
 
 	if failures.is_empty():
@@ -120,6 +124,63 @@ func _wait_for_boot_hidden(scene: Node) -> bool:
 	return false
 
 
+func _check_pinned_page_navigation_start_input(scene: Node) -> void:
+	var module_key := _first_action_module_key(scene, "woodcutting")
+	if module_key.is_empty():
+		_record("could not find woodcutting action module for pinned-page navigation input smoke")
+		return
+	var parts := module_key.substr("action:".length()).split(":", false, 2)
+	if parts.size() < 2:
+		_record("pinned-page navigation input module key was malformed: %s" % module_key)
+		return
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "woodcutting")
+	scene.set("module_ui_pinned_order", [module_key])
+	scene.set("_last_rendered_screen_key", "")
+	scene.call("_clear_running_activity_for_test_mode")
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(6):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	scene.call("_show_pinned_activities")
+	for _i in range(90):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+		if str(scene.get("current_screen")) == "pinned" and not bool(scene.call("_skill_swipe_loading_transition_active")):
+			break
+	if str(scene.get("current_screen")) != "pinned":
+		_record("pinned-page navigation input smoke did not enter pinned screen")
+		return
+	if bool(scene.call("_skill_swipe_loading_transition_active")):
+		_record("pinned-page navigation input smoke left transition cover active")
+		return
+	var card_key := str(scene.call("_pinned_page_card_key", module_key))
+	var action_cards := scene.get("action_cards") as Dictionary
+	if not action_cards.has(card_key):
+		_record("pinned-page navigation input card was not registered: %s keys=%s" % [card_key, str(action_cards.keys())])
+		return
+	var card := action_cards.get(card_key, {}) as Dictionary
+	var source := card.get("pop", null) as Control
+	if source == null or not is_instance_valid(source):
+		source = card.get("root", null) as Control
+	if source == null or not is_instance_valid(source) or not source.is_inside_tree():
+		_record("pinned-page navigation input card did not expose visible source")
+		return
+	var press_position := _find_action_body_press_position(scene, card, source.get_global_rect())
+	if press_position == Vector2.INF:
+		_record("could not find non-stat body tap point after pinned-page navigation")
+		return
+	scene.call("_input", _mouse_button_event(press_position, true, press_position))
+	await process_frame
+	scene.call("_input", _mouse_button_event(press_position, false, press_position))
+	var started_after_release := str(scene.get("running_skill_id")) == str(parts[0]) and str(scene.get("running_action_id")) == str(parts[1])
+	for _i in range(4):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	if not started_after_release and (str(scene.get("running_skill_id")) != str(parts[0]) or str(scene.get("running_action_id")) != str(parts[1])):
+		_record("pinned-page action did not start after real pinned navigation. press_key=%s transition=%s" % [str(scene.get("action_card_press_key")), str(scene.call("_skill_swipe_loading_transition_active"))])
+
+
 func _check_pinned_page_start_animates_visible_card(scene: Node) -> void:
 	var module_key := _first_action_module_key(scene, "woodcutting")
 	if module_key.is_empty():
@@ -151,6 +212,10 @@ func _check_pinned_page_start_animates_visible_card(scene: Node) -> void:
 	if source == null or not is_instance_valid(source) or not source.is_inside_tree():
 		_record("pinned-page action card did not expose a visible input source")
 		return
+	var button := card.get("button", null) as Button
+	if button == null or not is_instance_valid(button) or not button.is_inside_tree():
+		_record("pinned-page action card did not install a body input button")
+		return
 	var content_scroll := scene.get("content_scroll") as MobileScrollContainer
 	if content_scroll != null and is_instance_valid(content_scroll):
 		content_scroll.prepare_child_tap()
@@ -161,20 +226,192 @@ func _check_pinned_page_start_animates_visible_card(scene: Node) -> void:
 		return
 	var press_positions: Array[Vector2] = [press_position]
 	var inside_viewport := bool(scene.call("_positions_inside_detail_actions_viewport", press_positions))
-	var local_press_position := press_position - source.get_global_position()
-	scene.call("_on_action_card_input", _mouse_button_event(local_press_position, true, press_position), str(parts[0]), str(parts[1]), source)
+	scene.call("_input", _mouse_button_event(press_position, true, press_position))
 	await process_frame
 	var press_key_after_down := str(scene.get("action_card_press_key"))
 	var press_stat_after_down := str(scene.get("action_card_press_stat_kind"))
-	scene.call("_on_action_card_input", _mouse_button_event(local_press_position, false, press_position), str(parts[0]), str(parts[1]), source)
+	scene.call("_input", _mouse_button_event(press_position, false, press_position))
 	for _i in range(2):
 		await process_frame
 	if str(scene.get("running_skill_id")) != str(parts[0]) or str(scene.get("running_action_id")) != str(parts[1]):
 		_record("pinned-page action did not start from real card press. inside=%s press_key_after_down=%s press_stat_after_down=%s final_press_key=%s" % [inside_viewport, press_key_after_down, press_stat_after_down, str(scene.get("action_card_press_key"))])
 	if not card.has("depth_press_tween") and not (scene.get("action_pop_tweens") as Dictionary).has(card_key):
 		_record("pinned-page action start did not animate the visible pinned-page card")
+	scene.call("_clear_running_activity_for_test_mode")
+	var button_local_press_position := button.get_global_transform().affine_inverse() * press_position
+	scene.call("_on_action_card_input", _mouse_button_event(button_local_press_position, true, press_position), str(parts[0]), str(parts[1]), button)
+	await process_frame
+	scene.call("_on_action_card_input", _mouse_button_event(button_local_press_position, false, press_position), str(parts[0]), str(parts[1]), button)
 	for _i in range(2):
 		await process_frame
+	if str(scene.get("running_skill_id")) != str(parts[0]) or str(scene.get("running_action_id")) != str(parts[1]):
+		_record("pinned-page action did not start from visible card button gui_input")
+	for _i in range(2):
+		await process_frame
+
+
+func _check_pinned_page_switches_between_text_actions(scene: Node) -> void:
+	var module_keys := _first_action_module_keys(scene, "woodcutting", 2)
+	if module_keys.size() < 2:
+		_record("could not find two woodcutting actions for pinned-page action switch smoke")
+		return
+	var first_key := str(module_keys[0])
+	var second_key := str(module_keys[1])
+	var first_parts := first_key.substr("action:".length()).split(":", false, 2)
+	var second_parts := second_key.substr("action:".length()).split(":", false, 2)
+	if first_parts.size() < 2 or second_parts.size() < 2:
+		_record("pinned-page switch smoke module key was malformed: %s / %s" % [first_key, second_key])
+		return
+	scene.set("current_screen", "pinned")
+	scene.set("selected_skill_id", "woodcutting")
+	scene.set("module_ui_pinned_order", [first_key, second_key])
+	scene.set("_last_rendered_screen_key", "")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_start_action", str(first_parts[0]), str(first_parts[1]), false)
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(8):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var card_key := str(scene.call("_pinned_page_card_key", second_key))
+	var action_cards := scene.get("action_cards") as Dictionary
+	if not action_cards.has(card_key):
+		_record("pinned-page switch target card was not registered: %s keys=%s" % [card_key, str(action_cards.keys())])
+		return
+	var card := action_cards.get(card_key, {}) as Dictionary
+	var source := card.get("pop", null) as Control
+	if source == null or not is_instance_valid(source):
+		source = card.get("root", null) as Control
+	if source == null or not is_instance_valid(source) or not source.is_inside_tree():
+		_record("pinned-page switch target card did not expose a visible input source")
+		return
+	var button := card.get("button", null) as Button
+	if button == null or not is_instance_valid(button) or not button.is_inside_tree():
+		_record("pinned-page switch target card did not install a body input button")
+		return
+	var content_scroll := scene.get("content_scroll") as MobileScrollContainer
+	if content_scroll != null and is_instance_valid(content_scroll):
+		content_scroll.prepare_child_tap()
+	var press_position := _find_action_body_press_position(scene, card, source.get_global_rect())
+	if press_position == Vector2.INF:
+		_record("could not find non-stat body tap point for pinned-page action switch card")
+		return
+	var button_local_press_position := button.get_global_transform().affine_inverse() * press_position
+	scene.call("_on_action_card_input", _mouse_button_event(button_local_press_position, true, press_position), str(second_parts[0]), str(second_parts[1]), button)
+	await process_frame
+	var press_key_after_down := str(scene.get("action_card_press_key"))
+	scene.call("_on_action_card_input", _mouse_button_event(button_local_press_position, false, press_position), str(second_parts[0]), str(second_parts[1]), button)
+	for _i in range(3):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	if str(scene.get("running_skill_id")) != str(second_parts[0]) or str(scene.get("running_action_id")) != str(second_parts[1]):
+		_record("pinned-page action switch did not start second card. first=%s second=%s running=%s:%s press_key_after_down=%s final_press_key=%s" % [
+			str(first_parts[1]),
+			str(second_parts[1]),
+			str(scene.get("running_skill_id")),
+			str(scene.get("running_action_id")),
+			press_key_after_down,
+			str(scene.get("action_card_press_key"))
+		])
+
+
+func _check_pinned_page_stop_leaves_blank_active_shelf(scene: Node) -> void:
+	var module_key := _first_action_module_key(scene, "woodcutting")
+	if module_key.is_empty():
+		_record("could not find woodcutting action module for pinned-page stop shelf smoke")
+		return
+	var parts := module_key.substr("action:".length()).split(":", false, 2)
+	if parts.size() < 2:
+		_record("pinned-page stop shelf smoke module key was malformed: %s" % module_key)
+		return
+	scene.set("current_screen", "pinned")
+	scene.set("selected_skill_id", str(parts[0]))
+	scene.set("module_ui_pinned_order", [module_key])
+	scene.set("_last_rendered_screen_key", "")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_start_action", str(parts[0]), str(parts[1]), false)
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(8):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var shelf := _find_named_descendant(scene, "PinnedActivitiesActiveShelf") as Control
+	if shelf == null or not is_instance_valid(shelf):
+		_record("pinned-page stop shelf smoke did not render shelf")
+		return
+	if shelf.custom_minimum_size.y < 650.0:
+		_record("pinned-page stop shelf smoke did not expand before stop. height=%s" % shelf.custom_minimum_size.y)
+	scene.call("_stop_running_action", str(parts[0]), str(parts[1]))
+	for _i in range(24):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var active_content := _find_named_descendant(scene, "PinnedActivitiesActiveShelfContent") as Control
+	if shelf.custom_minimum_size.y < 650.0:
+		_record("pinned-page stop did not preserve blank active shelf spacing. height=%s running=%s:%s shelf_skill=%s" % [
+			shelf.custom_minimum_size.y,
+			str(scene.get("running_skill_id")),
+			str(scene.get("running_action_id")),
+			str(scene.get("pinned_active_shelf_skill_id"))
+		])
+	elif active_content != null and is_instance_valid(active_content) and active_content.modulate.a > 0.1:
+		_record("pinned-page stop left previous active shelf content visible. alpha=%s" % active_content.modulate.a)
+
+
+func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -> void:
+	var module_key := _first_action_module_key(scene, "woodcutting")
+	if module_key.is_empty():
+		_record("could not find woodcutting action module for pinned-page opportunity smoke")
+		return
+	var parts := module_key.substr("action:".length()).split(":", false, 2)
+	if parts.size() < 2:
+		_record("pinned-page opportunity smoke module key was malformed: %s" % module_key)
+		return
+	var skill_id := str(parts[0])
+	var action_id := str(parts[1])
+	scene.set("current_screen", "pinned")
+	scene.set("selected_skill_id", skill_id)
+	scene.set("module_ui_pinned_order", [module_key])
+	scene.set("_last_rendered_screen_key", "")
+	scene.call("_clear_running_activity_for_test_mode")
+	var silver_xp := int(scene.call("_mastery_xp_for_level", 2))
+	scene.call("_add_mastery_xp", skill_id, action_id, silver_xp)
+	scene.call("_start_action", skill_id, action_id, false)
+	scene.set("action_progress", 0.60)
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(8):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var card_key := str(scene.call("_pinned_page_card_key", module_key))
+	var action_cards := scene.get("action_cards") as Dictionary
+	if not action_cards.has(card_key):
+		_record("pinned-page opportunity card was not registered: %s keys=%s" % [card_key, str(action_cards.keys())])
+		return
+	var card := action_cards.get(card_key, {}) as Dictionary
+	var rail := card.get("progress", null) as ActivityProgressRail
+	if rail == null or not is_instance_valid(rail) or not rail.is_inside_tree():
+		_record("pinned-page opportunity card did not expose a visible progress rail")
+		return
+	var opportunity_window := Vector2(rail.opportunity_windows[0])
+	scene.set("action_progress", clampf((opportunity_window.x + opportunity_window.y) * 0.5, 0.0, 0.999))
+	if not rail.has_opportunity_progress(float(scene.get("action_progress"))):
+		_record("pinned-page opportunity rail did not expose a hittable opportunity window. windows=%s progress=%s" % [str(rail.opportunity_windows), str(scene.get("action_progress"))])
+		return
+	var hit := bool(scene.call("_try_action_opportunity_click", skill_id, action_id, rail.get_global_rect().get_center()))
+	for _i in range(3):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	if not hit:
+		_record("pinned-page opportunity click did not report a hit")
+	if str(rail.opportunity_feedback_mode) != "success":
+		_record("pinned-page opportunity click did not shake/play success feedback on visible rail. mode=%s" % str(rail.opportunity_feedback_mode))
+	if _find_text_descendant(scene, "nice!") == null:
+		_record("pinned-page opportunity click did not create visible opportunity text feedback")
+	var reward_float_count_before := _count_nodes_in_group(scene, "skill_reward_float")
+	scene.call("_play_action_feedback", scene.call("_action_key", skill_id, action_id), true, 7, 1.0)
+	for _i in range(3):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var reward_float_count_after := _count_nodes_in_group(scene, "skill_reward_float")
+	if reward_float_count_after <= reward_float_count_before:
+		_record("pinned-page canonical action feedback did not create XP/mastery reward floats. before=%s after=%s" % [reward_float_count_before, reward_float_count_after])
 
 
 func _find_action_body_press_position(scene: Node, card: Dictionary, source_rect: Rect2) -> Vector2:
@@ -299,6 +536,19 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(5):
 		await process_frame
+	var initial_shelf := _find_named_descendant(scene, "PinnedActivitiesActiveShelf") as Control
+	if initial_shelf == null or not is_instance_valid(initial_shelf):
+		_record("inactive pinned shelf did not render shelf control")
+	elif initial_shelf.custom_minimum_size.y < 650.0:
+		_record("inactive pinned shelf did not reserve active shelf spacing. height=%s" % initial_shelf.custom_minimum_size.y)
+	var initial_active_content := _find_named_descendant(scene, "PinnedActivitiesActiveShelfContent") as Control
+	if initial_active_content != null and is_instance_valid(initial_active_content) and initial_active_content.modulate.a > 0.1:
+		_record("inactive pinned shelf showed active content. alpha=%s" % initial_active_content.modulate.a)
+	var initial_background := _find_named_descendant(scene, "PinnedActivitiesFullBleedShelfBackground") as CanvasItem
+	if initial_background == null or not is_instance_valid(initial_background):
+		_record("inactive pinned shelf did not keep a background gradient")
+	elif initial_background.modulate.a < 0.9:
+		_record("inactive pinned shelf background gradient was hidden. alpha=%s" % initial_background.modulate.a)
 	scene.call("_start_action", skill_id, action_id, false)
 	for _i in range(30):
 		scene.call("_update_ui", 0.016, false)
@@ -350,6 +600,12 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 
 
 func _first_action_module_key(scene: Node, skill_id: String) -> String:
+	var keys := _first_action_module_keys(scene, skill_id, 1)
+	return str(keys[0]) if not keys.is_empty() else ""
+
+
+func _first_action_module_keys(scene: Node, skill_id: String, count: int) -> Array[String]:
+	var keys: Array[String] = []
 	var actions = scene.get("actions_by_skill") as Dictionary
 	for raw_action in actions.get(skill_id, []):
 		var action := raw_action as Dictionary
@@ -362,8 +618,11 @@ func _first_action_module_key(scene: Node, skill_id: String) -> String:
 			continue
 		if skill_id == "build" and action_id == "stack-bricks":
 			continue
-		return "action:%s:%s" % [skill_id, action_id]
-	return ""
+		keys.append("action:%s:%s" % [skill_id, action_id])
+		if keys.size() >= count:
+			return keys
+	return keys
+
 
 
 func _mouse_button_event(position: Vector2, pressed: bool, global_position := Vector2.INF) -> InputEventMouseButton:
@@ -421,6 +680,18 @@ func _find_text_descendant(root_node: Node, needle: String) -> Label:
 		if found != null:
 			return found
 	return null
+
+
+func _count_nodes_in_group(scene: Node, group_name: String) -> int:
+	var tree := scene.get_tree()
+	if tree == null:
+		return 0
+	var count := 0
+	for raw_node in tree.get_nodes_in_group(group_name):
+		var node := raw_node as Node
+		if node != null and is_instance_valid(node) and not node.is_queued_for_deletion():
+			count += 1
+	return count
 
 
 func _record(message: String) -> void:
