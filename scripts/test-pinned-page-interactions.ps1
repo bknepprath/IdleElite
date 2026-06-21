@@ -82,8 +82,11 @@ func _run() -> void:
 	scene.call("_god_mode_max_skills_state")
 	scene.call("_god_mode_unlock_actions_state")
 	await _capture_clean_pinned_page_if_requested(scene)
+	await _check_empty_pinned_page_decor_pins(scene)
 	await _check_pinned_page_navigation_start_input(scene)
 	await _check_pinned_active_shelf_expands(scene)
+	await _check_regular_skill_detail_level_up_float(scene)
+	await _check_pinned_page_level_up_float(scene)
 	await _check_pinned_page_start_animates_visible_card(scene)
 	await _check_pinned_page_switches_between_text_actions(scene)
 	await _check_pinned_page_stop_leaves_blank_active_shelf(scene)
@@ -353,6 +356,13 @@ func _check_pinned_page_stop_leaves_blank_active_shelf(scene: Node) -> void:
 		])
 	elif active_content != null and is_instance_valid(active_content) and active_content.modulate.a > 0.1:
 		_record("pinned-page stop left previous active shelf content visible. alpha=%s" % active_content.modulate.a)
+	var stamina_shelf := _find_named_descendant(scene, "PinnedActivitiesStaminaGaugeShelf") as Control
+	if stamina_shelf == null or not is_instance_valid(stamina_shelf):
+		_record("pinned-page stop did not restore the stamina gauge shelf")
+	elif not stamina_shelf.is_visible_in_tree() or stamina_shelf.modulate.a < 0.9:
+		_record("pinned-page stop restored hidden stamina gauge shelf. alpha=%s visible=%s" % [stamina_shelf.modulate.a, stamina_shelf.visible])
+	elif _count_named_descendants_with_prefix(stamina_shelf, "PinnedActivitiesStaminaGauge_") != 4:
+		_record("pinned-page stop restored wrong stamina gauge count. count=%s" % _count_named_descendants_with_prefix(stamina_shelf, "PinnedActivitiesStaminaGauge_"))
 
 
 func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -> void:
@@ -412,6 +422,87 @@ func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -
 	var reward_float_count_after := _count_nodes_in_group(scene, "skill_reward_float")
 	if reward_float_count_after <= reward_float_count_before:
 		_record("pinned-page canonical action feedback did not create XP/mastery reward floats. before=%s after=%s" % [reward_float_count_before, reward_float_count_after])
+
+
+func _check_regular_skill_detail_level_up_float(scene: Node) -> void:
+	var skill_id := "woodcutting"
+	await _clear_skill_reward_floats(scene)
+	_stage_skill_one_xp_before_level(scene, skill_id, 2)
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", skill_id)
+	scene.set("module_ui_pinned_order", [])
+	scene.set("_last_rendered_screen_key", "")
+	scene.call("_clear_running_activity_for_test_mode")
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(8):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var xp_bar := scene.get("detail_xp_bar") as CleanProgressBar
+	if xp_bar == null or not is_instance_valid(xp_bar) or not xp_bar.is_visible_in_tree():
+		_record("regular skill detail level-up smoke did not render a visible XP bar")
+		return
+	if not bool(scene.call("_skill_level_up_float_bar_visible", skill_id)):
+		_record("regular skill detail level-up smoke did not consider the detail XP bar visible")
+	var level_up_text_count_before := _count_text_descendants(scene, "LEVEL UP!")
+	_grant_skill_level_crossing_xp(scene, skill_id, 2)
+	for _i in range(5):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var level_up_text_count_after := _count_text_descendants(scene, "LEVEL UP!")
+	if level_up_text_count_after <= level_up_text_count_before:
+		_record("regular skill detail level-up did not create visible LEVEL UP! text. before=%s after=%s" % [level_up_text_count_before, level_up_text_count_after])
+	var capture_path := OS.get_environment("IDLE_ELITE_PINNED_PAGE_INTERACTIONS_PNG")
+	if not capture_path.is_empty():
+		await _capture_viewport_if_requested(capture_path.replace(".png", "-regular-level-up.png"))
+	await _clear_skill_reward_floats(scene)
+
+
+func _check_pinned_page_level_up_float(scene: Node) -> void:
+	var module_key := _first_action_module_key(scene, "woodcutting")
+	if module_key.is_empty():
+		_record("could not find woodcutting action module for pinned-page level-up smoke")
+		return
+	var parts := module_key.substr("action:".length()).split(":", false, 2)
+	if parts.size() < 2:
+		_record("pinned-page level-up smoke module key was malformed: %s" % module_key)
+		return
+	var skill_id := str(parts[0])
+	var action_id := str(parts[1])
+	await _clear_skill_reward_floats(scene)
+	_stage_skill_one_xp_before_level(scene, skill_id, 2)
+	scene.set("current_screen", "pinned")
+	scene.set("selected_skill_id", skill_id)
+	scene.set("module_ui_pinned_order", [module_key])
+	scene.set("_last_rendered_screen_key", "")
+	scene.call("_clear_running_activity_for_test_mode")
+	await scene.call("_render_screen", false, -1, false)
+	scene.call("_start_action", skill_id, action_id, false)
+	for _i in range(30):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var xp_bar := scene.get("pinned_active_shelf_xp_bar") as CleanProgressBar
+	if xp_bar == null or not is_instance_valid(xp_bar) or not xp_bar.is_visible_in_tree():
+		_record("pinned-page level-up smoke did not render a visible active shelf XP bar")
+		return
+	if str(scene.get("pinned_active_shelf_skill_id")) != skill_id:
+		_record("pinned-page level-up smoke active shelf skill mismatch. expected=%s actual=%s" % [skill_id, str(scene.get("pinned_active_shelf_skill_id"))])
+	if not bool(scene.call("_skill_level_up_float_bar_visible", skill_id)):
+		_record("pinned-page level-up smoke did not consider the active shelf XP bar visible")
+	var level_up_text_count_before := _count_text_descendants(scene, "LEVEL UP!")
+	_grant_skill_level_crossing_xp(scene, skill_id, 2)
+	for _i in range(5):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var level_up_text_count_after := _count_text_descendants(scene, "LEVEL UP!")
+	if level_up_text_count_after <= level_up_text_count_before:
+		_record("pinned-page level-up did not create visible LEVEL UP! text. before=%s after=%s" % [level_up_text_count_before, level_up_text_count_after])
+	var capture_path := OS.get_environment("IDLE_ELITE_PINNED_PAGE_INTERACTIONS_PNG")
+	if not capture_path.is_empty():
+		await _capture_viewport_if_requested(capture_path.replace(".png", "-pinned-level-up.png"))
+	await _clear_skill_reward_floats(scene)
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_god_mode_max_skills_state")
+	scene.call("_god_mode_unlock_actions_state")
 
 
 func _find_action_body_press_position(scene: Node, card: Dictionary, source_rect: Rect2) -> Vector2:
@@ -502,6 +593,110 @@ func _capture_clean_pinned_page_if_requested(scene: Node) -> void:
 	await _capture_viewport_if_requested()
 
 
+func _check_empty_pinned_page_decor_pins(scene: Node) -> void:
+	scene.set("current_screen", "pinned")
+	scene.set("selected_skill_id", "woodcutting")
+	scene.set("module_ui_pinned_order", [])
+	scene.set("_last_rendered_screen_key", "")
+	scene.call("_clear_running_activity_for_test_mode")
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(8):
+		await process_frame
+	var content_scroll := scene.get("content_scroll") as Control
+	if content_scroll == null or not is_instance_valid(content_scroll):
+		_record("empty pinned page decor smoke did not create content scroll")
+		return
+	var capture_path := OS.get_environment("IDLE_ELITE_PINNED_PAGE_INTERACTIONS_PNG")
+	if not capture_path.is_empty():
+		await _capture_viewport_if_requested(capture_path.replace(".png", "-empty-decor.png"))
+	var expected_count := int(scene.get("PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT"))
+	var actual_count := _count_named_descendants_with_prefix(content_scroll, "PinnedActivitiesEmptyDecorPin_")
+	if actual_count != expected_count:
+		_record("empty pinned page decor pin count mismatch. expected=%s actual=%s" % [expected_count, actual_count])
+	var expected_textures: Array[String] = [str(scene.get("MODULE_PIN_ICON_TEXTURE"))]
+	for raw_texture in scene.get("MODULE_PIN_COLOR_TEXTURES"):
+		expected_textures.append(str(raw_texture))
+	var expected_size: Vector2 = scene.get("MODULE_PIN_BADGE_SIZE")
+	var expected_position: Vector2 = scene.get("MODULE_PIN_BADGE_SETTLED_POSITION")
+	var positions: Array[Vector2] = []
+	for index in range(expected_count):
+		var host := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPin_%s" % index) as Control
+		var hit_zone := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPinHit_%s" % index) as Control
+		var badge := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPinBadge_%s" % index) as TextureButton
+		if host == null or not is_instance_valid(host):
+			_record("empty pinned page decor pin host missing at index %s" % index)
+			continue
+		positions.append(host.position)
+		if absf(host.rotation_degrees) > 0.01:
+			_record("empty pinned page decor host should not rotate. index=%s rotation=%s" % [index, host.rotation_degrees])
+		if hit_zone == null or not is_instance_valid(hit_zone):
+			_record("empty pinned page decor hit zone missing at index %s" % index)
+		elif hit_zone.mouse_filter != Control.MOUSE_FILTER_STOP:
+			_record("empty pinned page decor hit zone should accept clicks. index=%s mouse_filter=%s" % [index, hit_zone.mouse_filter])
+		if badge == null or not is_instance_valid(badge):
+			_record("empty pinned page decor badge missing at index %s" % index)
+			continue
+		if not badge.visible or badge.modulate.a < 0.99:
+			_record("empty pinned page decor badge should be fully visible. index=%s visible=%s alpha=%s" % [index, badge.visible, badge.modulate.a])
+		if badge.texture_normal == null:
+			_record("empty pinned page decor badge texture missing at index %s" % index)
+		elif not expected_textures.has(str(badge.texture_normal.resource_path)):
+			_record("empty pinned page decor badge should use an approved module pin texture. index=%s texture=%s" % [index, str(badge.texture_normal.resource_path)])
+		if not badge.size.is_equal_approx(expected_size):
+			_record("empty pinned page decor badge size mismatch. index=%s expected=%s actual=%s" % [index, expected_size, badge.size])
+		if badge.position.distance_to(expected_position) > 0.01:
+			_record("empty pinned page decor badge should use the settled module pin crop. index=%s expected=%s actual=%s" % [index, expected_position, badge.position])
+		if absf(badge.rotation_degrees) > 0.01 or not badge.scale.is_equal_approx(Vector2.ONE):
+			_record("empty pinned page decor badge should not randomize angle or scale. index=%s rotation=%s scale=%s" % [index, badge.rotation_degrees, badge.scale])
+	var varied_positions := false
+	if positions.size() > 1:
+		var first_position := positions[0]
+		for position in positions:
+			if position.distance_to(first_position) > 1.0:
+				varied_positions = true
+				break
+	if expected_count > 1 and not varied_positions:
+		_record("empty pinned page decor pins should only randomize position, but positions did not vary")
+	var first_host := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPin_0") as Control
+	var first_hit_zone := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPinHit_0") as Control
+	var first_badge := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPinBadge_0") as TextureButton
+	if first_host != null and first_hit_zone != null and first_badge != null:
+		var pinned_before := (scene.get("module_ui_pinned_order") as Array).duplicate()
+		first_hit_zone.emit_signal("gui_input", _mouse_button_event(Vector2(16, 16), true))
+		for _i in range(3):
+			await process_frame
+		if not first_badge.has_meta("module_pin_tween"):
+			_record("empty pinned page decor pin click did not start the exit animation")
+		if (scene.get("module_ui_pinned_order") as Array) != pinned_before:
+			_record("empty pinned page decor pin click should not mutate pinned activities")
+		for _i in range(40):
+			await process_frame
+		if first_host != null and is_instance_valid(first_host) and not first_host.is_queued_for_deletion():
+			_record("empty pinned page decor pin host should be removed after exit animation")
+		var after_exit_count := _count_named_descendants_with_prefix(content_scroll, "PinnedActivitiesEmptyDecorPin_")
+		if after_exit_count != maxi(0, expected_count - 1):
+			_record("empty pinned page decor pin exit should remove exactly one pin. expected=%s actual=%s" % [maxi(0, expected_count - 1), after_exit_count])
+	scene.set("_last_rendered_screen_key", "")
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(8):
+		await process_frame
+	content_scroll = scene.get("content_scroll") as Control
+	var regenerated_count := _count_named_descendants_with_prefix(content_scroll, "PinnedActivitiesEmptyDecorPin_")
+	if regenerated_count != expected_count:
+		_record("empty pinned page should regenerate a fresh pin patch on reload. expected=%s actual=%s" % [expected_count, regenerated_count])
+	var regenerated_positions: Array[Vector2] = []
+	for index in range(expected_count):
+		var regenerated_host := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPin_%s" % index) as Control
+		if regenerated_host != null and is_instance_valid(regenerated_host):
+			regenerated_positions.append(regenerated_host.position)
+	if regenerated_positions.size() == positions.size():
+		var total_position_delta := 0.0
+		for index in range(positions.size()):
+			total_position_delta += positions[index].distance_to(regenerated_positions[index])
+		if total_position_delta < 32.0:
+			_record("empty pinned page should randomize pin positions on each empty load. total_delta=%s" % total_position_delta)
+
+
 func _suppress_capture_overlays(scene: Node) -> void:
 	var toast_root := scene.get("achievement_toast_root") as Control
 	if toast_root != null and is_instance_valid(toast_root):
@@ -544,6 +739,13 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 	var initial_active_content := _find_named_descendant(scene, "PinnedActivitiesActiveShelfContent") as Control
 	if initial_active_content != null and is_instance_valid(initial_active_content) and initial_active_content.modulate.a > 0.1:
 		_record("inactive pinned shelf showed active content. alpha=%s" % initial_active_content.modulate.a)
+	var initial_stamina_shelf := _find_named_descendant(scene, "PinnedActivitiesStaminaGaugeShelf") as Control
+	if initial_stamina_shelf == null or not is_instance_valid(initial_stamina_shelf):
+		_record("inactive pinned shelf did not render the stamina gauge shelf")
+	elif not initial_stamina_shelf.is_visible_in_tree() or initial_stamina_shelf.modulate.a < 0.9:
+		_record("inactive pinned shelf stamina gauge shelf was hidden. alpha=%s visible=%s" % [initial_stamina_shelf.modulate.a, initial_stamina_shelf.visible])
+	elif _count_named_descendants_with_prefix(initial_stamina_shelf, "PinnedActivitiesStaminaGauge_") != 4:
+		_record("inactive pinned shelf did not render exactly four stamina gauges. count=%s" % _count_named_descendants_with_prefix(initial_stamina_shelf, "PinnedActivitiesStaminaGauge_"))
 	var initial_background := _find_named_descendant(scene, "PinnedActivitiesFullBleedShelfBackground") as CanvasItem
 	if initial_background == null or not is_instance_valid(initial_background):
 		_record("inactive pinned shelf did not keep a background gradient")
@@ -568,6 +770,9 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 		_record("active pinned shelf did not keep an active content host")
 	elif active_content.modulate.a < 0.9:
 		_record("active pinned shelf content did not fade in. alpha=%s" % active_content.modulate.a)
+	var active_stamina_shelf := _find_named_descendant(scene, "PinnedActivitiesStaminaGaugeShelf") as Control
+	if active_stamina_shelf != null and is_instance_valid(active_stamina_shelf) and active_stamina_shelf.is_visible_in_tree() and active_stamina_shelf.modulate.a > 0.1:
+		_record("active pinned shelf did not hide the inactive stamina gauge shelf. alpha=%s" % active_stamina_shelf.modulate.a)
 	var xp_label := _find_text_descendant(active_content, "Lv") if active_content != null else null
 	if xp_label == null:
 		_record("active pinned shelf did not render skill XP text")
@@ -622,6 +827,36 @@ func _first_action_module_keys(scene: Node, skill_id: String, count: int) -> Arr
 		if keys.size() >= count:
 			return keys
 	return keys
+
+
+func _stage_skill_one_xp_before_level(scene: Node, skill_id: String, target_level: int) -> void:
+	var skills := scene.get("skills") as Dictionary
+	var skill_state := (skills.get(skill_id, {}) as Dictionary).duplicate(true)
+	skill_state["xp"] = maxi(0, int(scene.call("_xp_for_level", target_level)) - 1)
+	skill_state["level"] = maxi(1, target_level - 1)
+	skills[skill_id] = skill_state
+	scene.set("skills", skills)
+	scene.call("_recalculate_level", skill_id, false)
+
+
+func _grant_skill_level_crossing_xp(scene: Node, skill_id: String, target_level: int) -> void:
+	var skills := scene.get("skills") as Dictionary
+	var skill_state := (skills.get(skill_id, {}) as Dictionary).duplicate(true)
+	skill_state["xp"] = int(scene.call("_xp_for_level", target_level))
+	skills[skill_id] = skill_state
+	scene.set("skills", skills)
+	scene.call("_recalculate_level", skill_id, true)
+
+
+func _clear_skill_reward_floats(scene: Node) -> void:
+	var tree := scene.get_tree()
+	if tree == null:
+		return
+	for raw_node in tree.get_nodes_in_group("skill_reward_float"):
+		var node := raw_node as Node
+		if node != null and is_instance_valid(node) and not node.is_queued_for_deletion():
+			node.queue_free()
+	await process_frame
 
 
 
@@ -680,6 +915,27 @@ func _find_text_descendant(root_node: Node, needle: String) -> Label:
 		if found != null:
 			return found
 	return null
+
+
+func _count_named_descendants_with_prefix(root_node: Node, prefix: String) -> int:
+	if root_node == null:
+		return 0
+	var count := 1 if str(root_node.name).begins_with(prefix) else 0
+	for child in root_node.get_children():
+		count += _count_named_descendants_with_prefix(child, prefix)
+	return count
+
+
+func _count_text_descendants(root_node: Node, needle: String) -> int:
+	if root_node == null:
+		return 0
+	var count := 0
+	var label := root_node as Label
+	if label != null and label.text.contains(needle):
+		count += 1
+	for child in root_node.get_children():
+		count += _count_text_descendants(child, needle)
+	return count
 
 
 func _count_nodes_in_group(scene: Node, group_name: String) -> int:

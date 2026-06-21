@@ -102,7 +102,7 @@ $rulesObject = [ordered]@{
                 }
                 scores = [ordered]@{
                     '$category' = [ordered]@{
-                        ".read" = "auth != null && $categoryExpression && query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50"
+                        ".read" = "$categoryExpression && query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50"
                         ".indexOn" = @("score")
                         '$playerId' = [ordered]@{
                             ".write" = "auth != null && newData.exists() && auth.uid == `$playerId && $categoryExpression && `$playerId.length >= 8 && `$playerId.length <= 48 && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid && (($leaderboardFreshGateRule) || ($leaderboardLegacyRowCooldownRule) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000))"

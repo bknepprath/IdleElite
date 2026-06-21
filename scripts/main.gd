@@ -1175,7 +1175,7 @@ class RegenCircle:
 			return {"main": str(shown_current), "suffix": ""}
 		if shown_current >= maximum:
 			return {"main": str(maximum), "suffix": ""}
-		var decimal_digit := int(floor((display_value - float(shown_current)) * 10.0 + 0.0001))
+		var decimal_digit := clampi(int(floor((display_value - float(shown_current)) * 10.0 + 0.0001)), 0, 9)
 		return {
 			"main": str(shown_current),
 			"suffix": ".%d" % decimal_digit
@@ -1973,6 +1973,55 @@ const MASTERY_MEDAL_ACCENTS := [
 	Color("#8a2cff"),
 	Color("#fff0b8")
 ]
+const ACTION_CARD_MEDAL_TAP_SPARKLE_COUNTS := [
+	0, # Bronze
+	1, # Silver
+	2, # Gold
+	2, # Platinum
+	3, # Sapphire
+	3, # Emerald
+	4, # Ruby
+	4, # Diamond
+	5, # Demonic
+	5, # Heavenly
+	6, # Elite Bronze
+	6, # Elite Silver
+	7, # Elite Gold
+	7, # Elite Platinum
+	8, # Elite Sapphire
+	8, # Elite Emerald
+	9, # Elite Ruby
+	10, # Elite Diamond
+	15, # Elite Demonic
+	20 # Elite Heavenly
+]
+const ACTION_CARD_MEDAL_TAP_SPARKLE_PALETTES := [
+	[Color("#d9852e"), Color("#ffb15c"), Color("#ffd08a")], # Bronze
+	[Color("#f4f7ff"), Color("#d5dbe4"), Color("#a9adb7")], # Silver
+	[Color("#fff4a8"), Color("#ffd34a"), Color("#ffffff")], # Gold
+	[Color("#ffffff"), Color("#e8f7ff"), Color("#c6d6df")], # Platinum
+	[Color("#88d8ff"), Color("#3aa0ff"), Color("#0f66ff")], # Sapphire
+	[Color("#d2ffd9"), Color("#a9ffbc"), Color("#35d86d"), Color("#1fb655")], # Emerald
+	[Color("#ff9aa4"), Color("#e84d4d"), Color("#ff2430")], # Ruby
+	[Color("#ffffff"), Color("#bdf3ff"), Color("#8fdcff")], # Diamond
+	[Color("#171615"), Color("#3a0507"), Color("#850d12"), Color("#e1121b")], # Demonic
+	[Color("#ffffff"), Color("#fff0ba"), Color("#ffe37a")], # Heavenly
+	[Color("#ffb15c"), Color("#ffcf92"), Color("#c06d2c"), Color("#fff0ba")], # Elite Bronze
+	[Color("#ffffff"), Color("#dce4ef"), Color("#aeb9c8"), Color("#cfefff")], # Elite Silver
+	[Color("#fff4a8"), Color("#ffd32f"), Color("#ffffff"), Color("#ffec66")], # Elite Gold
+	[Color("#ffffff"), Color("#f1ebe0"), Color("#d9f7ff"), Color("#c5d7e6")], # Elite Platinum
+	[Color("#7fd1ff"), Color("#1f82ff"), Color("#35e8ff"), Color("#005eff")], # Elite Sapphire
+	[Color("#d2ffd9"), Color("#7dff9b"), Color("#22cc58"), Color("#00a83f")], # Elite Emerald
+	[Color("#ff8a94"), Color("#ff2430"), Color("#ff4c6d"), Color("#e01928")], # Elite Ruby
+	[Color("#ffffff"), Color("#aeeeff"), Color("#82e7ff"), Color("#d8a8ff")], # Elite Diamond
+	[Color("#171615"), Color("#2a0204"), Color("#5a070b"), Color("#9f1017"), Color("#ff2430")], # Elite Demonic
+	[Color("#ff3b3b"), Color("#ffd93d"), Color("#48ff6d"), Color("#36e6ff"), Color("#6f7bff"), Color("#ff6bff"), Color("#ff9f1c"), Color("#b8ff2c"), Color("#ff4fd8")] # Elite Heavenly
+]
+const ACTION_CARD_MEDAL_TAP_EXTRA_SHINE_STEPS := [
+	{"level": 8, "delay": 0.30},
+	{"level": 15, "delay": 0.52},
+	{"level": 20, "delay": 0.72}
+]
 const GLOBAL_MEDAL_BUFFS := [
 	{"level": 1, "stat": "max_stamina", "amount": 1.0},
 	{"level": 2, "stat": "xp_mult", "amount": 0.02},
@@ -2393,6 +2442,7 @@ const SKILL_DETAIL_HEADER_HEIGHT := 704
 const SKILL_DETAIL_HEADER_MARGIN_BOTTOM := 34
 const SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT := 18
 const SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT := 8
+const PINNED_ACTIVITIES_STAMINA_GAUGE_SIZE := Vector2(452, 452)
 const ONBOARDING_FIRST_MODULE_CENTER_RELEASE_SECONDS := 0.72
 const SKILL_DETAIL_BOTTOM_SCROLL_PAD := 48
 const THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD := 48
@@ -2437,6 +2487,7 @@ const MODULE_PIN_BADGE_PULL_OUT_POSITION := Vector2(236, 14)
 const MODULE_PIN_CONFIRM_ANIMATION_SECONDS := 0.315
 const MODULE_PIN_UNPIN_ANIMATION_SECONDS := 0.27
 const MODULE_PIN_SOURCE_PRUNE_HOLD_SECONDS := 4.0
+const PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT := 7
 const MODULE_PIN_BADGE_Z_INDEX := 350
 const MODULE_TITLE_OVER_PIN_Z_INDEX := 390
 const MODULE_PIN_CONFIRM_STILL_SECONDS := 0.07
@@ -2554,6 +2605,7 @@ const DETAIL_PULL_TIP_TEXTS := [
 	"tip: tap info chips to see what is changing an activity's stats.",
 	"tip: XP, stamina, time, and rate chips can explain their bonuses.",
 	"tip: info chips show details like badge boosts, mission boosts, and other stat changes.",
+	"tip: tap earned medals to see their celebration animation again.",
 	"tip: training a combo skill is great XP without spending that skill's stamina.",
 	"tip: toggle the fish button at the top left of the stamina gauge to automatically eat fish.",
 	"tip: pinned activities stay easy to reach from the Pins page.",
@@ -3216,6 +3268,8 @@ var pinned_active_shelf_skill_id := ""
 var pinned_active_shelf_transition_skill_id := ""
 var pinned_active_shelf_transition_active := false
 var pinned_active_shelf_content: Control
+var pinned_active_shelf_stamina_strip: Control
+var pinned_active_shelf_stamina_gauges := {}
 var pinned_active_shelf_xp_label: Label
 var pinned_active_shelf_xp_bar: CleanProgressBar
 var pinned_active_shelf_regen_circle: RegenCircle
@@ -3572,6 +3626,11 @@ var skill_swipe_outgoing_cover_active := false
 var skill_swipe_rebuild_cover_active := false
 var skill_swipe_queued_offset := 0
 var skill_swipe_pending_full_finalize := false
+var fishing_detail_swipe_press_active := false
+var fishing_detail_swipe_press_position := Vector2.ZERO
+var fishing_detail_swipe_press_touch_index := -1
+var fishing_method_button_press_active := false
+var fishing_offer_button_press_active := false
 var skill_swipe_pending_preview_state := {}
 var skill_swipe_defer_initial_lazy_mount := false
 var skill_swipe_lazy_finalize_token := 0
@@ -4427,6 +4486,12 @@ func _input(event: InputEvent) -> void:
 	if _route_fishing_detail_input(event):
 		get_viewport().set_input_as_handled()
 		return
+	if _route_fishing_detail_deferred_swipe_input(event):
+		get_viewport().set_input_as_handled()
+		return
+	if _fishing_detail_should_skip_generic_input(event):
+		_begin_fishing_detail_deferred_swipe_if_press(event)
+		return
 	if _route_direct_module_action_zone_input(event):
 		get_viewport().set_input_as_handled()
 		return
@@ -4588,6 +4653,10 @@ func _route_pinned_shelf_action_card_input(event: InputEvent) -> bool:
 		return false
 	if _is_primary_press_event(event) and _event_points_inside_bottom_interactive_ui(event):
 		return false
+	if selected_skill_id == "fishing" and not action_card_press_key.begins_with("pinned_shelf:"):
+		var fishing_event_position := _fishing_detail_event_position(event)
+		if fishing_event_position != Vector2.INF and _position_inside_detail_actions_viewport(fishing_event_position):
+			return false
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var mouse_event := event as InputEventMouseButton
 		var event_position := _global_event_position(mouse_event.position, mouse_event.global_position)
@@ -5024,6 +5093,10 @@ func _event_points_inside_detail_actions_viewport(event: InputEvent, source: Con
 
 
 func _global_event_position(local_position: Vector2, event_global_position: Vector2, source: Control = null) -> Vector2:
+	if source != null and is_instance_valid(source):
+		var source_local_rect := Rect2(Vector2.ZERO, source.size)
+		if event_global_position.distance_squared_to(local_position) <= 0.25 and source_local_rect.has_point(local_position):
+			return source.get_global_position() + local_position
 	if event_global_position != Vector2.ZERO:
 		return event_global_position
 	if source != null and is_instance_valid(source):
@@ -5206,7 +5279,7 @@ func _route_passive_button_global_input(event: InputEvent) -> bool:
 		is_release = not (event as InputEventScreenTouch).pressed
 	if not is_drag and not is_release:
 		return false
-	if is_drag or event_position.distance_to(passive_button_press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+	if event_position.distance_to(passive_button_press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
 		passive_button_press_dragged = true
 		passive_button_pending_tap_id += 1
 		skill_swipe_button_suppressed_until_msec = Time.get_ticks_msec() + SKILL_SWIPE_BUTTON_SUPPRESS_MSEC
@@ -5649,12 +5722,9 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		if not action_hit.is_empty() and _fishing_detail_module_key_is_fishing(str(action_hit.get("module_key", ""))):
 			if _route_module_action_zone_input(event):
 				return true
-	else:
-		if _route_module_action_zone_input(event):
-			return true
 	if _route_fishing_offer_button_global_input(event):
 		return true
-	if _route_fishing_area_card_press(event):
+	if _route_fishing_active_tool_input(event):
 		return true
 	return false
 
@@ -5675,8 +5745,6 @@ func _pinned_fishing_detail_event_relevant(event_position: Vector2) -> bool:
 		return true
 	if _fishing_offer_button_hit(event_position, true) != null:
 		return true
-	if not _fishing_area_card_at_position(event_position).is_empty():
-		return true
 	return false
 
 
@@ -5696,76 +5764,115 @@ func _fishing_detail_event_position(event: InputEvent) -> Vector2:
 	return Vector2.INF
 
 
-func _route_fishing_area_card_press(event: InputEvent) -> bool:
-	if current_screen != "skill" and current_screen != "pinned":
+func _fishing_detail_should_skip_generic_input(event: InputEvent) -> bool:
+	if current_screen != "skill" or selected_skill_id != "fishing":
 		return false
-	if current_screen == "skill" and selected_skill_id != "fishing":
+	if skill_swipe_tracking:
 		return false
 	if not (
 		event is InputEventMouseButton
+		or event is InputEventMouseMotion
 		or event is InputEventScreenTouch
+		or event is InputEventScreenDrag
 	):
 		return false
-	var event_position := Vector2.ZERO
-	var pointer_id := -1
-	var pressed := false
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
-			return false
-		event_position = mouse_event.global_position
-		pressed = mouse_event.pressed
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		event_position = touch_event.position
-		pointer_id = touch_event.index
-		pressed = touch_event.pressed
-	if not pressed:
+	var event_position := _fishing_detail_event_position(event)
+	if event_position == Vector2.INF:
 		return false
-	if _position_inside_bottom_nav(event_position) or _position_inside_bottom_interactive_ui(event_position):
+	if _position_inside_bottom_interactive_ui(event_position):
+		return false
+	if _page_switch_button_at_position(event_position) != null:
 		return false
 	if not _position_inside_detail_actions_viewport(event_position):
 		return false
-	if not _fishing_method_button_hit(event_position, true).is_empty():
-		return false
-	var area_card := _fishing_area_card_at_position(event_position)
-	if area_card.is_empty():
-		return false
-	var skill_id := str(area_card.get("skill_id", "fishing"))
-	var action_id := str(area_card.get("selected_action_id", ""))
-	if running_skill_id == skill_id and _fishing_area_card_owns_action(area_card, running_action_id):
-		action_id = running_action_id
-	if action_id.is_empty():
-		return false
-	var action := _action_data(skill_id, action_id)
-	var method_card := _fishing_method_card_for_action(skill_id, action_id)
-	if _activity_card_is_locked_or_covered(skill_id, action, method_card):
-		_cancel_action_stop_hold()
-		return false
-	if running_skill_id != skill_id or running_action_id != action_id:
-		_on_fishing_area_card_pressed(skill_id, str(area_card.get("card_key", "")))
-		action_card_press_consumed = true
-		_cancel_action_stop_hold()
-		skill_swipe_tracking = false
-		skill_swipe_horizontal = false
-		skill_swipe_touch_index = -1
-		return true
-	if _try_action_opportunity_click(skill_id, action_id, event_position):
-		action_card_press_consumed = true
-		_cancel_action_stop_hold()
-		skill_swipe_tracking = false
-		skill_swipe_horizontal = false
-		skill_swipe_touch_index = -1
-		return true
-	if _miss_action_opportunity_click(skill_id, action_id, event_position):
-		action_card_press_consumed = true
-		_cancel_action_stop_hold()
-		skill_swipe_tracking = false
-		skill_swipe_horizontal = false
-		skill_swipe_touch_index = -1
-		return true
-	_begin_action_stop_hold(skill_id, action_id, event_position, pointer_id)
 	return true
+
+
+func _begin_fishing_detail_deferred_swipe_if_press(event: InputEvent) -> void:
+	var press_position := Vector2.INF
+	var touch_index := -1
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:
+			if mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed:
+				_clear_fishing_detail_deferred_swipe()
+			return
+		press_position = mouse_event.global_position
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if not touch_event.pressed:
+			if fishing_detail_swipe_press_touch_index < 0 or touch_event.index == fishing_detail_swipe_press_touch_index:
+				_clear_fishing_detail_deferred_swipe()
+			return
+		press_position = touch_event.position
+		touch_index = touch_event.index
+	else:
+		return
+	fishing_detail_swipe_press_active = true
+	fishing_detail_swipe_press_position = press_position
+	fishing_detail_swipe_press_touch_index = touch_index
+	skill_swipe_tracking = false
+	skill_swipe_horizontal = false
+	skill_swipe_touch_index = -1
+
+
+func _route_fishing_detail_deferred_swipe_input(event: InputEvent) -> bool:
+	if not fishing_detail_swipe_press_active:
+		return false
+	if current_screen != "skill" or selected_skill_id != "fishing":
+		_clear_fishing_detail_deferred_swipe()
+		return false
+	var event_position := Vector2.INF
+	var is_motion := false
+	var is_release := false
+	if event is InputEventMouseMotion:
+		event_position = (event as InputEventMouseMotion).global_position
+		is_motion = true
+	elif event is InputEventMouseButton and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT:
+		event_position = (event as InputEventMouseButton).global_position
+		is_release = not (event as InputEventMouseButton).pressed
+	elif event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		if fishing_detail_swipe_press_touch_index >= 0 and drag_event.index != fishing_detail_swipe_press_touch_index:
+			return false
+		event_position = drag_event.position
+		is_motion = true
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if fishing_detail_swipe_press_touch_index >= 0 and touch_event.index != fishing_detail_swipe_press_touch_index:
+			return false
+		event_position = touch_event.position
+		is_release = not touch_event.pressed
+	if is_release:
+		_clear_fishing_detail_deferred_swipe()
+		return false
+	if not is_motion or event_position == Vector2.INF:
+		return false
+	var drag_offset := event_position - fishing_detail_swipe_press_position
+	if (
+		absf(drag_offset.y) >= ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE
+		and absf(drag_offset.y) > absf(drag_offset.x) * 1.15
+	):
+		_clear_fishing_detail_deferred_swipe()
+		return false
+	if not (
+		absf(drag_offset.x) >= ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE
+		and absf(drag_offset.x) > absf(drag_offset.y) * 1.15
+	):
+		return false
+	var start_position := fishing_detail_swipe_press_position
+	var touch_index := fishing_detail_swipe_press_touch_index
+	_clear_fishing_detail_deferred_swipe()
+	_begin_skill_swipe_tracking(start_position, touch_index)
+	if skill_swipe_tracking:
+		_update_skill_swipe_feedback(event_position)
+	return true
+
+
+func _clear_fishing_detail_deferred_swipe() -> void:
+	fishing_detail_swipe_press_active = false
+	fishing_detail_swipe_press_position = Vector2.ZERO
+	fishing_detail_swipe_press_touch_index = -1
 
 
 func _fishing_area_card_at_position(event_position: Vector2) -> Dictionary:
@@ -6562,13 +6669,13 @@ func _leaderboard_ensure_auth() -> bool:
 	if _leaderboard_auth_ready():
 		return true
 	if leaderboard_auth_request == null or not is_instance_valid(leaderboard_auth_request):
-		leaderboard_status_message = "Leaderboard login is still starting."
+		leaderboard_status_message = "Online login is still starting."
 		return false
 	if leaderboard_auth_in_flight:
 		return false
 	var retry_wait := _leaderboard_auth_retry_wait_seconds()
 	if retry_wait > 0:
-		leaderboard_status_message = "Leaderboard login is cooling down for %s." % _format_duration(float(retry_wait))
+		leaderboard_status_message = "Online login is cooling down for %s." % _format_duration(float(retry_wait))
 		return false
 	var api_key := _leaderboard_firebase_api_key()
 	if api_key.is_empty():
@@ -6600,11 +6707,12 @@ func _leaderboard_ensure_auth() -> bool:
 			return false
 	leaderboard_auth_in_flight = false
 	leaderboard_auth_mode = ""
-	_leaderboard_note_auth_failure("Leaderboard login failed to start.")
+	_leaderboard_note_auth_failure("Online login failed to start.")
 	return false
 
 
 func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := false) -> void:
+	_ensure_leaderboard_http()
 	var valid_id := _leaderboard_valid_category_id(category_id)
 	if not _leaderboard_firebase_enabled():
 		leaderboard_status_message = "Online services are not connected yet."
@@ -6615,8 +6723,6 @@ func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := fa
 	var last_fetch := maxi(last_success_fetch, last_failed_fetch)
 	if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS:
 		return
-	if not _leaderboard_ensure_auth():
-		return
 	if leaderboard_fetch_in_flight or leaderboard_total_xp_fetch_in_flight:
 		return
 	leaderboard_fetch_in_flight = true
@@ -6625,7 +6731,7 @@ func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := fa
 	var category_key := _leaderboard_category_key(valid_id)
 	var query := "orderBy=%%22score%%22&limitToLast=%s" % LEADERBOARD_TOP_COUNT
 	var err := leaderboard_fetch_request.request(
-		_leaderboard_firebase_url("scores/%s" % category_key, _leaderboard_authenticated_query(query)),
+		_leaderboard_firebase_url("scores/%s" % category_key, query),
 		PackedStringArray([LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
 		HTTPClient.METHOD_GET
 	)
@@ -6641,7 +6747,7 @@ func _leaderboard_finalize_fetch_rows(category_id: String, rows: Array) -> void:
 		var query := "orderBy=%%22score%%22&limitToLast=%s" % LEADERBOARD_TOP_COUNT
 		leaderboard_total_xp_fetch_in_flight = true
 		var err := leaderboard_total_xp_fetch_request.request(
-			_leaderboard_firebase_url("scores/%s" % LEADERBOARD_CATEGORY_TOTAL_XP_COMPAT, _leaderboard_authenticated_query(query)),
+			_leaderboard_firebase_url("scores/%s" % LEADERBOARD_CATEGORY_TOTAL_XP_COMPAT, query),
 			PackedStringArray([LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
 			HTTPClient.METHOD_GET
 		)
@@ -6827,14 +6933,14 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 	leaderboard_auth_in_flight = false
 	leaderboard_auth_mode = ""
 	if result != HTTPRequest.RESULT_SUCCESS:
-		_leaderboard_note_auth_failure("Leaderboard login failed.", mode == "refresh")
+		_leaderboard_note_auth_failure("Online login failed.", mode == "refresh")
 		return
 	if response_code < 200 or response_code >= 300:
-		_leaderboard_note_auth_failure("Leaderboard login returned HTTP %s." % response_code, mode == "refresh")
+		_leaderboard_note_auth_failure("Online login returned HTTP %s." % response_code, mode == "refresh")
 		return
 	var parsed = JSON.parse_string(body.get_string_from_utf8())
 	if typeof(parsed) != TYPE_DICTIONARY:
-		_leaderboard_note_auth_failure("Leaderboard login returned invalid JSON.")
+		_leaderboard_note_auth_failure("Online login returned invalid JSON.")
 		return
 	var data := parsed as Dictionary
 	var id_token := str(data.get("idToken", data.get("id_token", "")))
@@ -6842,7 +6948,7 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 	var local_id := str(data.get("localId", data.get("user_id", "")))
 	var expires_in := maxi(0, int(data.get("expiresIn", data.get("expires_in", 0))))
 	if id_token.is_empty() or refresh_token.is_empty() or local_id.is_empty() or expires_in <= 0:
-		_leaderboard_note_auth_failure("Leaderboard login was incomplete.", mode == "refresh")
+		_leaderboard_note_auth_failure("Online login was incomplete.", mode == "refresh")
 		return
 	leaderboard_auth_id_token = id_token
 	leaderboard_auth_refresh_token = refresh_token
@@ -6852,9 +6958,9 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 		leaderboard_auth_provider = "anonymous"
 	leaderboard_player_id = _sanitize_leaderboard_player_id(local_id)
 	if leaderboard_player_id.is_empty():
-		_leaderboard_note_auth_failure("Leaderboard login id was invalid.", mode == "refresh")
+		_leaderboard_note_auth_failure("Online login id was invalid.", mode == "refresh")
 		return
-	leaderboard_status_message = "Leaderboard login ready."
+	leaderboard_status_message = "Online login ready."
 	save_game()
 	if profile_overlay != null and profile_overlay.visible:
 		_rebuild_profile_overlay()
@@ -10668,6 +10774,8 @@ func _reset_page_control_refs() -> void:
 	pinned_active_shelf_transition_skill_id = ""
 	pinned_active_shelf_transition_active = false
 	pinned_active_shelf_content = null
+	pinned_active_shelf_stamina_strip = null
+	pinned_active_shelf_stamina_gauges.clear()
 	pinned_active_shelf_xp_label = null
 	pinned_active_shelf_xp_bar = null
 	pinned_active_shelf_regen_circle = null
@@ -20748,6 +20856,8 @@ func _pinned_activities_active_shelf(content_width: float) -> Control:
 	header.add_child(body)
 	pinned_active_shelf_background = _add_pinned_active_shelf_background(body, active_skill_id, content_width)
 	body.add_child(_pinned_activities_static_title())
+	pinned_active_shelf_stamina_strip = _build_pinned_active_shelf_stamina_strip()
+	body.add_child(pinned_active_shelf_stamina_strip)
 
 	pinned_active_shelf_content = Control.new()
 	pinned_active_shelf_content.name = "PinnedActivitiesActiveShelfContent"
@@ -20939,7 +21049,10 @@ func _rebuild_pinned_active_shelf_content(skill_id: String, instant := false) ->
 	_apply_pinned_active_shelf_theme(skill_id, instant)
 	if skill_id.is_empty():
 		_set_canvas_item_alpha_if_changed(pinned_active_shelf_content, 0.0)
+		_set_pinned_active_shelf_stamina_strip_visible(true)
+		_sync_pinned_active_shelf_stamina_gauges(0.0, true)
 		return
+	_set_pinned_active_shelf_stamina_strip_visible(false)
 	_build_pinned_active_shelf_skill_content(pinned_active_shelf_content, skill_id)
 	_set_canvas_item_alpha_if_changed(pinned_active_shelf_content, 1.0 if instant else 0.0)
 	if not instant:
@@ -20947,6 +21060,74 @@ func _rebuild_pinned_active_shelf_content(skill_id: String, instant := false) ->
 		pinned_active_shelf_tween.tween_property(pinned_active_shelf_content, "modulate:a", 1.0, 0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		if pinned_active_shelf_background != null and is_instance_valid(pinned_active_shelf_background):
 			pinned_active_shelf_tween.parallel().tween_property(pinned_active_shelf_background, "modulate:a", 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+
+
+func _build_pinned_active_shelf_stamina_strip() -> Control:
+	var strip := Control.new()
+	strip.name = "PinnedActivitiesStaminaGaugeShelf"
+	strip.set_anchors_preset(Control.PRESET_FULL_RECT)
+	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip.z_index = 12
+	pinned_active_shelf_stamina_gauges.clear()
+
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 40)
+	margin.add_theme_constant_override("margin_right", 40)
+	margin.add_theme_constant_override("margin_top", SKILLS_PAGE_TOP_PAD + 76)
+	margin.add_theme_constant_override("margin_bottom", 74)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	strip.add_child(margin)
+
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 24)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(row)
+
+	for raw_skill_id in _pinned_activities_stamina_skill_ids():
+		var skill_id := str(raw_skill_id)
+		var gauge := RegenCircle.new()
+		gauge.name = "PinnedActivitiesStaminaGauge_%s" % skill_id
+		gauge.custom_minimum_size = PINNED_ACTIVITIES_STAMINA_GAUGE_SIZE
+		gauge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		gauge.mouse_filter = Control.MOUSE_FILTER_STOP
+		gauge.set_theme_color(_skill_theme_color(skill_id))
+		gauge.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, gauge))
+		row.add_child(gauge)
+		pinned_active_shelf_stamina_gauges[skill_id] = gauge
+	return strip
+
+
+func _pinned_activities_stamina_skill_ids() -> Array:
+	var ids := []
+	for raw_def in skill_defs:
+		var skill_def := raw_def as Dictionary
+		var skill_id := str(skill_def.get("id", ""))
+		if skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
+			continue
+		ids.append(skill_id)
+	return ids
+
+
+func _set_pinned_active_shelf_stamina_strip_visible(visible: bool) -> void:
+	if pinned_active_shelf_stamina_strip == null or not is_instance_valid(pinned_active_shelf_stamina_strip):
+		return
+	_set_canvas_item_visible_if_changed(pinned_active_shelf_stamina_strip, visible)
+	_set_canvas_item_alpha_if_changed(pinned_active_shelf_stamina_strip, 1.0 if visible else 0.0)
+
+
+func _sync_pinned_active_shelf_stamina_gauges(_delta: float, instant := false) -> void:
+	var live := {}
+	for raw_skill_id in pinned_active_shelf_stamina_gauges.keys():
+		var skill_id := str(raw_skill_id)
+		var gauge := pinned_active_shelf_stamina_gauges.get(raw_skill_id, null) as RegenCircle
+		if gauge == null or not is_instance_valid(gauge):
+			continue
+		live[skill_id] = gauge
+		_set_regen_circle_for_skill(gauge, skill_id, instant)
+	pinned_active_shelf_stamina_gauges = live
 
 
 func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String) -> void:
@@ -21068,6 +21249,7 @@ func _pinned_active_shelf_style(skill_id: String, draw_bottom_border := true) ->
 func _sync_pinned_active_shelf(delta: float, instant := false) -> void:
 	if current_screen != "pinned" or pinned_active_shelf_content == null or not is_instance_valid(pinned_active_shelf_content):
 		return
+	_sync_pinned_active_shelf_stamina_gauges(delta, instant)
 	var active_skill_id := _pinned_active_shelf_skill_id()
 	if pinned_active_shelf_transition_active and active_skill_id == pinned_active_shelf_transition_skill_id:
 		return
@@ -21169,6 +21351,8 @@ func _pinned_activities_empty_state(content_width: float) -> Control:
 	empty.custom_minimum_size = Vector2(content_width, _pinned_activities_empty_state_height())
 	empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	empty.clip_contents = true
+	_add_pinned_activities_empty_decor_pins(empty, content_width)
 	var label := _label(
 		"Press the top left of any activity to pin it.\nPinned activities from every skill page will appear here.",
 		72,
@@ -21186,8 +21370,158 @@ func _pinned_activities_empty_state(content_width: float) -> Control:
 	label.add_theme_color_override("font_outline_color", Color.WHITE)
 	label.add_theme_constant_override("outline_size", 8)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.z_index = 20
 	empty.add_child(label)
 	return empty
+
+
+func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: float) -> void:
+	if empty == null or not is_instance_valid(empty):
+		return
+	var empty_height := maxf(1.0, empty.custom_minimum_size.y)
+	var rng := RandomNumberGenerator.new()
+	rng.randomize()
+	rng.seed = int(Time.get_ticks_usec()) + int(Engine.get_process_frames()) * 104729
+	var badge_top_left_offset := MODULE_PIN_BADGE_CLIP_ORIGIN + MODULE_PIN_BADGE_SETTLED_POSITION
+	var badge_visible_height := MODULE_PIN_BADGE_CLIP_SIZE.y - MODULE_PIN_BADGE_SETTLED_POSITION.y
+	var hit_zone_size := MODULE_PIN_BADGE_HIT_MAX - MODULE_PIN_BADGE_HIT_MIN
+	hit_zone_size.y = minf(hit_zone_size.y, badge_visible_height - MODULE_PIN_BADGE_HIT_MIN.y)
+	var horizontal_margin := 30.0
+	var vertical_margin := 26.0
+	var occupied_rects: Array[Rect2] = []
+	for index in range(PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT):
+		var badge_position := _pinned_activities_empty_decor_pin_position(
+			rng,
+			content_width,
+			empty_height,
+			MODULE_PIN_BADGE_SIZE.x,
+			badge_visible_height,
+			horizontal_margin,
+			vertical_margin,
+			occupied_rects
+		)
+		var badge_left := badge_position.x
+		var badge_top := badge_position.y
+		occupied_rects.append(Rect2(badge_position, Vector2(MODULE_PIN_BADGE_SIZE.x, badge_visible_height)).grow(18.0))
+		var decor_host := Control.new()
+		decor_host.name = "PinnedActivitiesEmptyDecorPin_%s" % index
+		decor_host.anchor_left = 0.0
+		decor_host.anchor_right = 0.0
+		decor_host.anchor_top = 0.0
+		decor_host.anchor_bottom = 0.0
+		decor_host.position = Vector2(badge_left, badge_top) - badge_top_left_offset
+		decor_host.size = MODULE_PIN_BADGE_CLIP_SIZE
+		decor_host.custom_minimum_size = MODULE_PIN_BADGE_CLIP_SIZE
+		decor_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		decor_host.clip_contents = false
+		decor_host.z_index = 4 + index
+		empty.add_child(decor_host)
+		var badge := _create_pinned_activities_empty_decor_pin_badge(decor_host, index)
+		if badge == null:
+			continue
+		var hit_zone := Control.new()
+		hit_zone.name = "PinnedActivitiesEmptyDecorPinHit_%s" % index
+		hit_zone.anchor_left = 0.0
+		hit_zone.anchor_right = 0.0
+		hit_zone.anchor_top = 0.0
+		hit_zone.anchor_bottom = 0.0
+		hit_zone.position = decor_host.position + badge_top_left_offset + MODULE_PIN_BADGE_HIT_MIN
+		hit_zone.size = hit_zone_size
+		hit_zone.custom_minimum_size = hit_zone_size
+		hit_zone.mouse_filter = Control.MOUSE_FILTER_STOP
+		hit_zone.z_index = 44 + index
+		hit_zone.gui_input.connect(_on_pinned_activities_empty_decor_pin_gui_input.bind(decor_host.get_instance_id(), badge.get_instance_id(), hit_zone.get_instance_id()))
+		empty.add_child(hit_zone)
+
+
+func _pinned_activities_empty_decor_pin_position(
+	rng: RandomNumberGenerator,
+	content_width: float,
+	empty_height: float,
+	pin_width: float,
+	pin_height: float,
+	horizontal_margin: float,
+	vertical_margin: float,
+	occupied_rects: Array[Rect2]
+) -> Vector2:
+	var min_x := horizontal_margin
+	var max_x := maxf(min_x, content_width - pin_width - horizontal_margin)
+	var min_y := vertical_margin
+	var max_y := maxf(min_y, empty_height - pin_height - vertical_margin)
+	var label_clear_rect := Rect2(
+		Vector2(content_width * 0.045, empty_height * 0.355),
+		Vector2(content_width * 0.91, empty_height * 0.245)
+	)
+	for _attempt in range(80):
+		var top_band := rng.randf() < 0.5
+		var band_min_y := min_y if top_band else maxf(min_y, empty_height * 0.58)
+		var band_max_y := minf(max_y, empty_height * 0.315) if top_band else max_y
+		if band_max_y < band_min_y:
+			band_min_y = min_y
+			band_max_y = max_y
+		var candidate := Vector2(
+			rng.randf_range(min_x, max_x),
+			rng.randf_range(band_min_y, band_max_y)
+		)
+		var candidate_rect := Rect2(candidate, Vector2(pin_width, pin_height))
+		if candidate_rect.intersects(label_clear_rect):
+			continue
+		var overlaps := false
+		for occupied_rect in occupied_rects:
+			if candidate_rect.intersects(occupied_rect):
+				overlaps = true
+				break
+		if not overlaps:
+			return candidate
+	return Vector2(
+		rng.randf_range(min_x, max_x),
+		rng.randf_range(min_y, max_y)
+	)
+
+
+func _create_pinned_activities_empty_decor_pin_badge(decor_host: Control, index: int) -> TextureButton:
+	if decor_host == null or not is_instance_valid(decor_host):
+		return null
+	var badge := _ensure_module_pin_badge(decor_host, "")
+	if badge == null:
+		return null
+	badge.name = "PinnedActivitiesEmptyDecorPinBadge_%s" % index
+	if badge.is_in_group("module_pin_badges"):
+		badge.remove_from_group("module_pin_badges")
+	badge.texture_normal = _texture_or_visual_fallback(_random_module_pin_texture_path())
+	badge.texture_pressed = badge.texture_normal
+	badge.texture_hover = badge.texture_normal
+	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	badge.disabled = true
+	badge.visible = true
+	badge.position = MODULE_PIN_BADGE_SETTLED_POSITION
+	badge.rotation_degrees = 0.0
+	badge.scale = Vector2.ONE
+	badge.set_meta("module_pin_module_key", "")
+	badge.set_meta("pinned_activities_empty_decor_pin", true)
+	_set_canvas_item_alpha_if_changed(badge, 1.0)
+	_set_module_pin_badge_clip_enabled(badge, true)
+	return badge
+
+
+func _on_pinned_activities_empty_decor_pin_gui_input(event: InputEvent, decor_host_id: int, badge_id: int, hit_zone_id: int) -> void:
+	var mouse_event := event as InputEventMouseButton
+	if mouse_event != null:
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:
+			return
+	else:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event == null or not touch_event.pressed:
+			return
+	var hit_zone := instance_from_id(hit_zone_id) as Control
+	if hit_zone != null and is_instance_valid(hit_zone):
+		hit_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hit_zone.accept_event()
+	var decor_host := instance_from_id(decor_host_id) as Control
+	var badge := instance_from_id(badge_id) as TextureButton
+	if decor_host == null or badge == null or not is_instance_valid(decor_host) or not is_instance_valid(badge):
+		return
+	_play_pinned_activities_empty_decor_pin_exit_animation(badge, decor_host, hit_zone_id)
 
 
 func _pinned_activities_empty_state_height() -> float:
@@ -23712,6 +24046,11 @@ func _set_module_pin_badge_clip_enabled(raw_badge: Object, enabled: bool) -> voi
 	clip_host.clip_children = CanvasItem.CLIP_CHILDREN_ONLY if enabled else CanvasItem.CLIP_CHILDREN_DISABLED
 
 
+func _set_module_pin_badge_clip_enabled_by_id(badge_id: int, enabled: bool) -> void:
+	var badge := instance_from_id(badge_id) as TextureButton
+	_set_module_pin_badge_clip_enabled(badge, enabled)
+
+
 func _random_module_pin_texture_path() -> String:
 	if MODULE_PIN_COLOR_TEXTURES.is_empty():
 		return MODULE_PIN_ICON_TEXTURE
@@ -23886,7 +24225,7 @@ func _play_module_pin_confirm_animation(badge: TextureButton, card_host: Control
 	tween.parallel().tween_property(badge, "rotation_degrees", 0.0, MODULE_PIN_CONFIRM_TURNAROUND_SECONDS)
 	tween.parallel().tween_property(badge, "scale", Vector2.ONE, MODULE_PIN_CONFIRM_TURNAROUND_SECONDS)
 
-	tween.tween_callback(_set_module_pin_badge_clip_enabled.bind(badge, true))
+	tween.tween_callback(_set_module_pin_badge_clip_enabled_by_id.bind(badge.get_instance_id(), true))
 	tween.tween_method(_keep_module_pin_badge_disabled.bind(badge_id), 0.0, 1.0, MODULE_PIN_CONFIRM_POKE_SECONDS)
 	tween.parallel().tween_property(badge, "position", MODULE_PIN_BADGE_SETTLED_POSITION, MODULE_PIN_CONFIRM_POKE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.parallel().tween_property(badge, "rotation_degrees", 0.0, MODULE_PIN_CONFIRM_POKE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
@@ -23935,7 +24274,7 @@ func _play_module_pin_unpin_animation(badge: TextureButton, card_host: Control, 
 	tween.tween_property(badge, "position", MODULE_PIN_BADGE_SETTLED_POSITION + MODULE_PIN_EXIT_LIFT_OFFSET, 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(badge, "rotation_degrees", 0.0, 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.chain()
-	tween.tween_callback(_set_module_pin_badge_clip_enabled.bind(badge, false))
+	tween.tween_callback(_set_module_pin_badge_clip_enabled_by_id.bind(badge.get_instance_id(), false))
 	tween.set_parallel(true)
 	tween.tween_method(_keep_module_pin_badge_disabled.bind(badge_id), 0.0, 1.0, 0.195)
 	tween.tween_property(badge, "position", MODULE_PIN_BADGE_PULL_OUT_POSITION, 0.195).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
@@ -23944,6 +24283,38 @@ func _play_module_pin_unpin_animation(badge: TextureButton, card_host: Control, 
 	tween.tween_property(badge, "modulate:a", 0.0, 0.15).set_delay(0.045).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.set_parallel(false)
 	tween.tween_callback(_finish_module_pin_unpin_animation.bind(badge.get_instance_id(), card_host.get_instance_id(), module_key))
+
+
+func _play_pinned_activities_empty_decor_pin_exit_animation(badge: TextureButton, decor_host: Control, hit_zone_id: int) -> void:
+	if badge == null or decor_host == null or not is_instance_valid(badge) or not is_instance_valid(decor_host):
+		return
+	if badge.is_queued_for_deletion() or decor_host.is_queued_for_deletion() or badge.has_meta("module_pin_tween"):
+		return
+	_set_module_pin_badge_clip_enabled(badge, true)
+	badge.visible = true
+	badge.disabled = true
+	badge.position = MODULE_PIN_BADGE_SETTLED_POSITION
+	badge.rotation_degrees = 0.0
+	badge.scale = Vector2.ONE
+	_set_canvas_item_alpha_if_changed(badge, 1.0)
+	Callable(self, "_play_module_pin_exit_sfx").call()
+	var tween := create_tween()
+	badge.set_meta("module_pin_tween", tween)
+	var badge_id := badge.get_instance_id()
+	tween.set_parallel(true)
+	tween.tween_method(_keep_module_pin_badge_disabled.bind(badge_id), 0.0, 1.0, 0.075)
+	tween.tween_property(badge, "position", MODULE_PIN_BADGE_SETTLED_POSITION + MODULE_PIN_EXIT_LIFT_OFFSET, 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(badge, "rotation_degrees", 0.0, 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.chain()
+	tween.tween_callback(_set_module_pin_badge_clip_enabled_by_id.bind(badge.get_instance_id(), false))
+	tween.set_parallel(true)
+	tween.tween_method(_keep_module_pin_badge_disabled.bind(badge_id), 0.0, 1.0, 0.195)
+	tween.tween_property(badge, "position", MODULE_PIN_BADGE_PULL_OUT_POSITION, 0.195).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(badge, "rotation_degrees", 0.0, 0.195).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(badge, "scale", Vector2(0.96, 0.96), 0.195).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_property(badge, "modulate:a", 0.0, 0.15).set_delay(0.045).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.set_parallel(false)
+	tween.tween_callback(_finish_pinned_activities_empty_decor_pin_exit_animation.bind(badge.get_instance_id(), decor_host.get_instance_id(), hit_zone_id))
 
 
 func _keep_module_pin_badge_disabled(_progress: float, badge_id: int) -> void:
@@ -23980,6 +24351,18 @@ func _finish_module_pin_unpin_animation(badge_id: int, card_host_id: int, module
 		badge.scale = Vector2.ONE
 		_set_canvas_item_alpha_if_changed(badge, 0.0)
 		_set_module_pin_badge_clip_enabled(badge, true)
+
+
+func _finish_pinned_activities_empty_decor_pin_exit_animation(badge_id: int, decor_host_id: int, hit_zone_id: int) -> void:
+	var hit_zone := instance_from_id(hit_zone_id) as Control
+	if hit_zone != null and is_instance_valid(hit_zone) and not hit_zone.is_queued_for_deletion():
+		hit_zone.queue_free()
+	var badge := instance_from_id(badge_id) as TextureButton
+	if badge != null and is_instance_valid(badge) and not badge.is_queued_for_deletion() and badge.has_meta("module_pin_tween"):
+		badge.remove_meta("module_pin_tween")
+	var decor_host := instance_from_id(decor_host_id) as Control
+	if decor_host != null and is_instance_valid(decor_host) and not decor_host.is_queued_for_deletion():
+		decor_host.queue_free()
 
 func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview_only := false, card_key_override := "") -> Control:
 	var heist_id := str(heist.get("id", ""))
@@ -25837,8 +26220,11 @@ func _play_action_card_medal_tap_ceremony(card: Dictionary) -> void:
 	var sparkle_count := _action_card_medal_tap_sparkle_count(mastery_level)
 	for i in range(sparkle_count):
 		_spawn_action_card_medal_sparkle(card, medal, mastery_level, i, sparkle_count)
-	if mastery_level >= 8:
-		_play_action_card_medal_shader_shine(card, medal, mastery_level, 0.30, false)
+	for raw_shine_step in ACTION_CARD_MEDAL_TAP_EXTRA_SHINE_STEPS:
+		var shine_step := raw_shine_step as Dictionary
+		if mastery_level >= int(shine_step.get("level", 0)):
+			var shine_delay := float(shine_step.get("delay", 0.30))
+			_play_action_card_medal_shader_shine(card, medal, mastery_level, shine_delay, false)
 
 
 func _play_action_card_medal_tap_pop(card: Dictionary, medal: TextureRect) -> void:
@@ -25873,11 +26259,10 @@ func _finish_action_card_medal_tap_pop(medal_id: int) -> void:
 
 
 func _action_card_medal_tap_sparkle_count(mastery_level: int) -> int:
-	if mastery_level <= 1:
+	if mastery_level <= 0:
 		return 0
-	if mastery_level == 2:
-		return 1
-	return mini(24, 2 + mastery_level)
+	var index := clampi(mastery_level - 1, 0, ACTION_CARD_MEDAL_TAP_SPARKLE_COUNTS.size() - 1)
+	return int(ACTION_CARD_MEDAL_TAP_SPARKLE_COUNTS[index])
 
 
 func _spawn_action_card_medal_sparkle(card: Dictionary, medal: TextureRect, mastery_level: int, sparkle_index: int, sparkle_count: int) -> void:
@@ -26021,24 +26406,17 @@ func _spawn_action_card_medal_shine(card: Dictionary, medal: TextureRect, master
 
 
 func _action_card_medal_sparkle_color(mastery_level: int, sparkle_index: int) -> Color:
-	var accent := _mastery_medal_accent(mastery_level)
-	if mastery_level <= 2:
-		return Color("#f4f7ff") if sparkle_index % 2 == 0 else accent.lightened(0.25)
-	var colors := [
-		accent.lightened(0.22),
-		Color.WHITE,
-		Color("#fff4a8"),
-		Color("#9ee8ff"),
-		Color("#ff9ad5"),
-		Color("#a9ffbc")
-	]
-	if mastery_level >= 9:
-		colors.append(Color("#d8a8ff"))
-		colors.append(Color("#fff0ba"))
-	if mastery_level >= 15:
-		colors.append(Color("#7efff2"))
-		colors.append(Color("#ff6f7c"))
-	return colors[sparkle_index % colors.size()] as Color
+	var palette := _action_card_medal_sparkle_palette(mastery_level)
+	if palette.is_empty():
+		return Color.WHITE
+	return palette[sparkle_index % palette.size()] as Color
+
+
+func _action_card_medal_sparkle_palette(mastery_level: int) -> Array:
+	if mastery_level <= 0:
+		return []
+	var index := clampi(mastery_level - 1, 0, ACTION_CARD_MEDAL_TAP_SPARKLE_PALETTES.size() - 1)
+	return ACTION_CARD_MEDAL_TAP_SPARKLE_PALETTES[index] as Array
 
 
 func _register_action_card_medal_tap_effect(card: Dictionary, node: Node, tween: Tween) -> void:
@@ -26121,6 +26499,16 @@ func _finish_new_medal_ceremony(card_key: String, medal_id: int, destination: Ve
 	var card := action_cards.get(card_key, {}) as Dictionary
 	if not card.is_empty():
 		card.erase("medal_ceremony_tween")
+		_play_earned_medal_tap_ceremony(card, callback_medal)
+
+
+func _play_earned_medal_tap_ceremony(card: Dictionary, medal: TextureRect) -> void:
+	if card.is_empty() or medal == null or not is_instance_valid(medal) or not medal.is_visible_in_tree():
+		return
+	var card_medal := card.get("medal", null) as TextureRect
+	if card_medal != medal:
+		return
+	_play_action_card_medal_tap_ceremony(card)
 
 
 func _start_replaced_medal_fall(card: Dictionary, medal: TextureRect, old_texture: Texture2D, destination: Vector2) -> void:
@@ -27157,8 +27545,9 @@ func _on_passive_module_button_input(event: InputEvent, action_kind: String, mod
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
 		if passive_button_press_source == source or skill_swipe_tracking:
 			if passive_button_press_source == source:
-				passive_button_press_dragged = true
-				passive_button_pending_tap_id += 1
+				if event_position.distance_to(passive_button_press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+					passive_button_press_dragged = true
+					passive_button_pending_tap_id += 1
 			_route_skill_swipe_button_input(event, source)
 			get_viewport().set_input_as_handled()
 		return
@@ -27970,6 +28359,11 @@ func _update_most_impressive_activity() -> void:
 	if achievement_best_medal != null:
 		achievement_best_medal.visible = true
 		achievement_best_medal.texture = _mastery_medal_visual_texture(int(best.get("level", 1)))
+		achievement_best_medal.set_meta("achievement_skill_id", str(best.get("skill_id", "")))
+		achievement_best_medal.set_meta("achievement_action_id", str(best.get("action_id", "")))
+		achievement_best_medal.set_meta("achievement_action_name", str(best.get("name", "")))
+		achievement_best_medal.set_meta("achievement_action_art", str(best.get("art", "")))
+		achievement_best_medal.set_meta("achievement_medal_level", int(best.get("level", 1)))
 	achievement_best_name_label.text = str(best.get("name", ""))
 
 
@@ -28132,6 +28526,13 @@ func _route_achievement_medal_press(event: InputEvent) -> bool:
 	var event_position := _primary_press_event_position(event)
 	if event_position == Vector2.INF:
 		return false
+	var featured_icon := achievement_best_medal as TextureRect
+	if featured_icon != null and _achievement_medal_icon_hit(featured_icon, event_position):
+		var featured_skill_id := str(featured_icon.get_meta("achievement_skill_id", ""))
+		if not featured_skill_id.is_empty():
+			var featured_anchor := achievement_best_card as Control
+			_show_achievement_medal_popover(featured_anchor if featured_anchor != null else featured_icon, featured_icon, featured_skill_id)
+			return true
 	for raw_skill_id in achievement_medal_slot_icons.keys():
 		var skill_id := str(raw_skill_id)
 		var strip := achievement_medal_slot_strips.get(skill_id, null) as Control
@@ -28142,13 +28543,21 @@ func _route_achievement_medal_press(event: InputEvent) -> bool:
 			var row := raw_row as Array
 			for raw_icon in row:
 				var icon := raw_icon as TextureRect
-				if icon == null or not is_instance_valid(icon) or not icon.visible or not icon.is_visible_in_tree():
-					continue
-				if not icon.get_global_rect().grow(22.0).has_point(event_position):
+				if not _achievement_medal_icon_hit(icon, event_position):
 					continue
 				_show_achievement_medal_popover(strip, icon, skill_id)
 				return true
 	return false
+
+
+func _achievement_medal_icon_hit(icon: TextureRect, event_position: Vector2) -> bool:
+	return (
+		icon != null
+		and is_instance_valid(icon)
+		and icon.visible
+		and icon.is_visible_in_tree()
+		and icon.get_global_rect().grow(22.0).has_point(event_position)
+	)
 
 
 func _primary_press_event_position(event: InputEvent) -> Vector2:
@@ -28171,9 +28580,7 @@ func _show_achievement_medal_popover(strip: Control, icon: TextureRect, skill_id
 		int(icon.get_meta("achievement_medal_level", 0)),
 		skill_id
 	)
-	var popover_parent := _valid_control_ref(skills_content) as Control
-	if popover_parent == null:
-		popover_parent = strip
+	var popover_parent := _achievement_medal_popover_parent(strip)
 	popover_parent.add_child(popover)
 	var popover_size := popover.custom_minimum_size
 	popover.set_anchors_preset(Control.PRESET_TOP_LEFT)
@@ -28198,6 +28605,18 @@ func _show_achievement_medal_popover(strip: Control, icon: TextureRect, skill_id
 	popover.set_meta("achievement_medal_popover_tween", tween)
 	tween.tween_property(popover, "modulate:a", 1.0, 0.08)
 	tween.parallel().tween_property(popover, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+func _achievement_medal_popover_parent(strip: Control) -> Control:
+	var visible_home_page := _valid_control_ref(home_page) as Control
+	if current_screen == "home" and visible_home_page != null and visible_home_page.is_visible_in_tree():
+		return visible_home_page
+	var visible_skills_content := _valid_control_ref(skills_content) as Control
+	if visible_skills_content != null and visible_skills_content.is_visible_in_tree():
+		return visible_skills_content
+	if strip != null and is_instance_valid(strip):
+		return strip
+	return self
 
 
 func _achievement_medal_popover(action_name: String, art_path: String, medal_level: int, skill_id: String) -> PanelContainer:
@@ -29296,6 +29715,10 @@ func _visible_stamina_gauge_for_skill(skill_id: String, fallback: RegenCircle = 
 		return detail_regen_circle
 	if current_screen == "pinned" and pinned_active_shelf_skill_id == skill_id and pinned_active_shelf_regen_circle != null and is_instance_valid(pinned_active_shelf_regen_circle):
 		return pinned_active_shelf_regen_circle
+	if current_screen == "pinned" and pinned_active_shelf_stamina_gauges.has(skill_id):
+		var pinned_strip_gauge := pinned_active_shelf_stamina_gauges.get(skill_id, null) as RegenCircle
+		if pinned_strip_gauge != null and is_instance_valid(pinned_strip_gauge) and pinned_strip_gauge.is_inside_tree() and pinned_strip_gauge.is_visible_in_tree():
+			return pinned_strip_gauge
 	return detail_regen_circle if detail_regen_circle != null and is_instance_valid(detail_regen_circle) else null
 
 
@@ -33594,16 +34017,19 @@ func _promote_passive_swipe_preview_card(card: Dictionary, skill_id: String) -> 
 	var collect_button := card.get("button") as Button
 	if collect_button != null and is_instance_valid(collect_button):
 		collect_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		collect_button.gui_input.connect(_on_passive_module_button_input.bind("collect", module_id, "", null, collect_button))
 		collect_button.pressed.connect(_on_passive_collect_pressed.bind(module_id))
 	var info_button := card.get("info_button") as Button
 	if info_button != null and is_instance_valid(info_button):
 		info_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		var info_popover := card.get("info_popover") as Control
 		if info_popover != null:
+			info_button.gui_input.connect(_on_passive_module_button_input.bind("info", module_id, "", info_popover, info_button))
 			info_button.pressed.connect(_on_passive_info_pressed.bind(module_id, info_popover))
 	var plank_button := card.get("plank") as Button
 	if plank_button != null and is_instance_valid(plank_button):
 		plank_button.mouse_filter = Control.MOUSE_FILTER_STOP
+		plank_button.gui_input.connect(_on_passive_module_button_input.bind("plank", module_id, "", null, plank_button))
 		plank_button.pressed.connect(_on_passive_plank_pressed.bind(module_id))
 	var upgrade_buttons := card.get("upgrade_buttons", {}) as Dictionary
 	for stat_type in upgrade_buttons.keys():
@@ -33611,6 +34037,7 @@ func _promote_passive_swipe_preview_card(card: Dictionary, skill_id: String) -> 
 		if upgrade == null or not is_instance_valid(upgrade):
 			continue
 		upgrade.mouse_filter = Control.MOUSE_FILTER_STOP
+		upgrade.gui_input.connect(_on_passive_module_button_input.bind("upgrade", module_id, stat_type, null, upgrade))
 		upgrade.pressed.connect(_on_passive_upgrade_pressed.bind(module_id, stat_type))
 	card["preview_only"] = false
 	_register_action_card(_action_key(skill_id, module_id), card)
@@ -37328,6 +37755,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	collect_button.z_index = 180
 	_attach_default_button_sfx(collect_button)
 	if interactive:
+		collect_button.gui_input.connect(_on_passive_module_button_input.bind("collect", module_id, "", null, collect_button))
 		collect_button.pressed.connect(_on_passive_collect_pressed.bind(module_id))
 	pop_card.add_child(collect_button)
 
@@ -37380,6 +37808,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	if app_bold_font != null:
 		info_button.add_theme_font_override("font", app_bold_font)
 	if interactive:
+		info_button.gui_input.connect(_on_passive_module_button_input.bind("info", module_id, "", info_popover, info_button))
 		info_button.pressed.connect(_on_passive_info_pressed.bind(module_id, info_popover))
 	pop_card.add_child(info_button)
 
@@ -37402,6 +37831,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	plank_button.add_theme_constant_override("icon_max_width", 146)
 	_attach_button_depress_animation(plank_button, 0.94)
 	if interactive:
+		plank_button.gui_input.connect(_on_passive_module_button_input.bind("plank", module_id, "", null, plank_button))
 		plank_button.pressed.connect(_on_passive_plank_pressed.bind(module_id))
 	pop_card.add_child(plank_button)
 	var plank_light := Panel.new()
@@ -37505,6 +37935,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 		upgrade_visual.add_child(cost_icon)
 		upgrade.set_meta("cost_label", cost_label)
 		if interactive:
+			upgrade.gui_input.connect(_on_passive_module_button_input.bind("upgrade", module_id, stat_type, null, upgrade))
 			upgrade.pressed.connect(_on_passive_upgrade_pressed.bind(module_id, stat_type))
 		pop_card.add_child(upgrade)
 		upgrade_buttons[stat_type] = upgrade
@@ -37721,6 +38152,7 @@ func _render_passive_loot(card: Dictionary, module_id: String, unlocked: bool) -
 		return
 	card["last_rendered_stored"] = stored
 	card["last_rendered_unlocked"] = unlocked
+	loot.remove_meta("passive_log_collect_hotspot_id")
 	_clear(loot)
 	if stored <= 0:
 		card["last_rendered_pile_tier"] = ""
@@ -37772,6 +38204,7 @@ func _add_passive_log_collect_hotspot(loot: Control, module_id: String, visible_
 		return
 	var collect_hotspot := Button.new()
 	collect_hotspot.text = ""
+	collect_hotspot.name = "PassiveLogCollectHotspot"
 	collect_hotspot.focus_mode = Control.FOCUS_NONE
 	collect_hotspot.flat = true
 	collect_hotspot.position = hotspot_rect.position
@@ -37784,8 +38217,10 @@ func _add_passive_log_collect_hotspot(loot: Control, module_id: String, visible_
 	collect_hotspot.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	collect_hotspot.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
 	collect_hotspot.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	collect_hotspot.pressed.connect(_on_passive_collect_pressed.bind(module_id))
 	collect_hotspot.gui_input.connect(_on_passive_module_button_input.bind("collect", module_id, "", null, collect_hotspot))
 	loot.add_child(collect_hotspot)
+	loot.set_meta("passive_log_collect_hotspot_id", collect_hotspot.get_instance_id())
 
 
 func _passive_log_pile_shadow_rect(pile_slots: Array, visible_logs: int, icon_size: Vector2) -> Rect2:
@@ -44209,6 +44644,8 @@ func _sync_stamina_decimal_gauge_preference() -> void:
 	var seen := {}
 	_apply_stamina_decimal_preference_to_circle(detail_regen_circle, seen)
 	_apply_stamina_decimal_preference_to_circle(pinned_active_shelf_regen_circle, seen)
+	for raw_gauge in pinned_active_shelf_stamina_gauges.values():
+		_apply_stamina_decimal_preference_to_circle(raw_gauge as RegenCircle, seen)
 	for raw_card in skill_cards.values():
 		if typeof(raw_card) != TYPE_DICTIONARY:
 			continue
@@ -45796,11 +46233,12 @@ func _float_tired_activity_feedback(action_key: String) -> void:
 
 
 func _show_visible_skill_level_up_float(skill_id: String) -> void:
-	if not _skill_level_up_float_bar_visible(skill_id):
+	var xp_bar := _skill_level_up_float_bar(skill_id)
+	if xp_bar == null:
 		return
 	_float_reward(
 		self,
-		detail_xp_bar,
+		xp_bar,
 		tr("LEVEL UP!"),
 		62,
 		Color("#ffd238"),
@@ -45814,18 +46252,38 @@ func _show_visible_skill_level_up_float(skill_id: String) -> void:
 
 
 func _skill_level_up_float_bar_visible(skill_id: String) -> bool:
+	return _skill_level_up_float_bar(skill_id) != null
+
+
+func _skill_level_up_float_bar(skill_id: String) -> CleanProgressBar:
+	if (
+		not startup_initialized
+		or boot_detail_render_in_progress
+		or screen_render_in_progress
+	):
+		return null
+	if current_screen == "skill":
+		if selected_skill_id != skill_id or _skill_detail_action_cards_hidden_by_transition_cover():
+			return null
+		return detail_xp_bar if _level_up_float_bar_is_visible(detail_xp_bar) else null
+	if current_screen == "pinned":
+		if (
+			pinned_active_shelf_skill_id != skill_id
+			or pinned_active_shelf_transition_active
+			or _skill_detail_action_cards_hidden_by_transition_cover()
+		):
+			return null
+		return pinned_active_shelf_xp_bar if _level_up_float_bar_is_visible(pinned_active_shelf_xp_bar) else null
+	return null
+
+
+func _level_up_float_bar_is_visible(xp_bar: CleanProgressBar) -> bool:
 	return (
-		startup_initialized
-		and current_screen == "skill"
-		and selected_skill_id == skill_id
-		and detail_xp_bar != null
-		and is_instance_valid(detail_xp_bar)
-		and detail_xp_bar.is_visible_in_tree()
-		and detail_xp_bar.size.x > 1.0
-		and detail_xp_bar.size.y > 1.0
-		and not boot_detail_render_in_progress
-		and not screen_render_in_progress
-		and not _skill_detail_action_cards_hidden_by_transition_cover()
+		xp_bar != null
+		and is_instance_valid(xp_bar)
+		and xp_bar.is_visible_in_tree()
+		and xp_bar.size.x > 1.0
+		and xp_bar.size.y > 1.0
 	)
 
 
@@ -49513,14 +49971,8 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 	var yield_side := _action_stat_label("")
 	var yield_box := _action_stat_box(yield_side, false, skill_id, "", "yield")
 	stat_column.add_child(yield_box)
-	var warning_side := _action_stat_label("")
-	warning_side.add_theme_color_override("font_color", Color("#b82121"))
-	warning_side.add_theme_color_override("font_outline_color", Color.WHITE)
-	warning_side.add_theme_constant_override("outline_size", 9)
-	var warning_box := _action_stat_box(warning_side, false)
-	warning_box.custom_minimum_size = Vector2(300, 148)
-	warning_box.visible = false
-	stat_column.add_child(warning_box)
+	var warning_side: Label = null
+	var warning_box: Control = null
 	stat_column.modulate.a = 0.0
 
 	var active_tool := _build_fishing_active_tool_layer()
@@ -49890,7 +50342,6 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	net_button.set_meta("fishing_net_art_id", net_motion_root.get_instance_id())
 	net_button.add_to_group("fishing_offer_buttons")
 	net_button.gui_input.connect(_on_fishing_offer_button_input.bind("net", net_button))
-	net_button.pressed.connect(_on_fishing_net_offer_pressed.bind(net_button, net_motion_root))
 
 	var hint := _label("Tap the net", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	hint.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -49975,7 +50426,6 @@ func _build_fishing_rod_offer_module(content_width: float) -> Control:
 	rod_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	rod_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
 	rod_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	rod_button.pressed.connect(_on_fishing_rod_offer_pressed.bind(rod_button))
 	_attach_default_button_sfx(rod_button)
 	pop_card.add_child(rod_button)
 
@@ -49984,6 +50434,11 @@ func _build_fishing_rod_offer_module(content_width: float) -> Control:
 	rod_art.modulate = _fishing_offer_art_modulate(fish_currency >= FISHING_ROD_OFFER_COST)
 	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rod_button.add_child(rod_art)
+	rod_button.set_meta("fishing_offer_id", "rod")
+	rod_button.set_meta("fishing_offer_root_id", root.get_instance_id())
+	rod_button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
+	rod_button.add_to_group("fishing_offer_buttons")
+	rod_button.gui_input.connect(_on_fishing_offer_button_input.bind("rod", rod_button))
 
 	var hint_text := "Buy for %s fish" % _format_compact_number(float(FISHING_ROD_OFFER_COST), 3)
 	if fish_currency < FISHING_ROD_OFFER_COST:
@@ -50297,11 +50752,40 @@ func _activate_fishing_offer_button(offer_id: String, source: Button) -> void:
 		"net":
 			var net_art := instance_from_id(int(source.get_meta("fishing_net_art_id", 0))) as Control
 			_on_fishing_net_offer_pressed(source, net_art)
+		"rod":
+			_on_fishing_rod_offer_pressed(source)
 
 
-func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source: Button) -> void:
+func _fishing_control_drag_is_vertical_scroll(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
+	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
+		return false
+	var press_position := source.get_meta(press_position_meta, event_position) as Vector2
+	var drag_offset := event_position - press_position
+	return (
+		absf(drag_offset.y) >= ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE
+		and absf(drag_offset.y) > absf(drag_offset.x) * 1.15
+	)
+
+
+func _fishing_control_drag_exceeds_tap_slop(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
+	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
+		return false
+	var press_position := source.get_meta(press_position_meta, event_position) as Vector2
+	return event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP
+
+
+func _prepare_fishing_control_tap() -> void:
+	var active_scroll := _active_action_scroll_container()
+	if active_scroll != null and is_instance_valid(active_scroll):
+		active_scroll.prepare_child_tap()
+	skill_swipe_tracking = false
+	skill_swipe_horizontal = false
+	skill_swipe_touch_index = -1
+
+
+func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source: Button) -> bool:
 	if source == null or not is_instance_valid(source) or source.disabled:
-		return
+		return false
 	var event_position := _passive_button_event_position(event, source)
 	var is_press := false
 	var is_release := false
@@ -50312,36 +50796,47 @@ func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source:
 		is_press = (event as InputEventScreenTouch).pressed
 		is_release = not (event as InputEventScreenTouch).pressed
 	if is_press:
-		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
-			return
+		if (
+			(_position_inside_bottom_interactive_ui(event_position) and not _fishing_offer_button_contains_point(source, event_position))
+			or not _position_inside_detail_actions_viewport(event_position)
+		):
+			return false
+		_prepare_fishing_control_tap()
+		fishing_offer_button_press_active = true
 		source.set_meta("fishing_offer_press_active", true)
 		source.set_meta("fishing_offer_press_position", event_position)
 		source.set_meta("fishing_offer_press_dragged", false)
-		_route_skill_swipe_button_input(event, source)
 		get_viewport().set_input_as_handled()
-		return
+		return true
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
-		if bool(source.get_meta("fishing_offer_press_active", false)) or skill_swipe_tracking:
+		if bool(source.get_meta("fishing_offer_press_active", false)):
+			if _fishing_control_drag_exceeds_tap_slop(source, event_position, "fishing_offer_press_position"):
+				source.set_meta("fishing_offer_press_dragged", true)
+			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_offer_press_position"):
+				return false
 			source.set_meta("fishing_offer_press_dragged", true)
-			_route_skill_swipe_button_input(event, source)
 			get_viewport().set_input_as_handled()
-		return
+			return true
+		return false
 	if is_release:
 		var was_active := bool(source.get_meta("fishing_offer_press_active", false))
 		var was_dragged := bool(source.get_meta("fishing_offer_press_dragged", false))
 		var press_position := source.get_meta("fishing_offer_press_position", event_position) as Vector2
-		if skill_swipe_tracking:
-			_route_skill_swipe_button_input(event, source)
 		_clear_fishing_offer_button_press(source)
+		if not was_active:
+			return false
 		if (
 			was_active
 			and not was_dragged
 			and _position_inside_detail_actions_viewport(event_position)
 			and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
+			and not _detail_actions_scroll_suppresses_child_click()
 			and not _skill_swipe_suppresses_button_action()
 		):
 			_activate_fishing_offer_button(offer_id, source)
 		get_viewport().set_input_as_handled()
+		return true
+	return false
 
 
 func _route_fishing_offer_button_global_input(event: InputEvent) -> bool:
@@ -50369,16 +50864,16 @@ func _route_fishing_offer_button_global_input(event: InputEvent) -> bool:
 		is_motion = true
 	else:
 		return false
-	if _position_inside_bottom_interactive_ui(event_position):
-		_clear_fishing_offer_button_press(_active_fishing_offer_button())
+	if not is_press and not fishing_offer_button_press_active:
 		return false
-	var source := _fishing_offer_button_hit(event_position, is_press)
-	if source == null and (is_release or is_motion):
-		source = _active_fishing_offer_button()
+	var source := _fishing_offer_button_hit(event_position, true) if is_press else _active_fishing_offer_button()
+	if _position_inside_bottom_interactive_ui(event_position):
+		if source == null:
+			_clear_fishing_offer_button_press(_active_fishing_offer_button())
+			return false
 	if source == null:
 		return false
-	_on_fishing_offer_button_input(event, str(source.get_meta("fishing_offer_id", "")), source)
-	return true
+	return _on_fishing_offer_button_input(event, str(source.get_meta("fishing_offer_id", "")), source)
 
 
 func _fishing_offer_button_hit(event_position: Vector2, require_contains_point := true) -> Button:
@@ -50421,6 +50916,7 @@ func _active_fishing_offer_button() -> Button:
 
 
 func _clear_fishing_offer_button_press(source: Button) -> void:
+	fishing_offer_button_press_active = false
 	if source == null or not is_instance_valid(source):
 		return
 	if source.has_meta("fishing_offer_press_active"):
@@ -50973,7 +51469,6 @@ func _activate_fishing_method_button(method_card: Dictionary, owner_area_pop_ins
 	var area_key := str(method_card.get("fishing_area_key", ""))
 	if not bool(method_button.get_meta("fishing_method_pressed_connected", false)):
 		method_button.gui_input.connect(_on_fishing_method_button_input.bind(skill_id, action_id, area_key, owner_area_pop_instance_id, method_button))
-		method_button.pressed.connect(_on_fishing_method_pressed.bind(skill_id, action_id, area_key, owner_area_pop_instance_id))
 		_attach_default_button_sfx(method_button)
 		method_button.set_meta("fishing_method_pressed_connected", true)
 	var art_panel := method_card.get("art_panel", null) as Control
@@ -51596,9 +52091,9 @@ func _on_fishing_method_button_input(
 	area_key: String,
 	owner_area_pop_instance_id: int,
 	source: Button
-) -> void:
+) -> bool:
 	if source == null or not is_instance_valid(source) or source.disabled:
-		return
+		return false
 	var event_position := _passive_button_event_position(event, source)
 	var is_press := false
 	var is_release := false
@@ -51610,7 +52105,7 @@ func _on_fishing_method_button_input(
 		is_release = not (event as InputEventScreenTouch).pressed
 	if is_press:
 		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
-			return
+			return false
 		if running_skill_id == skill_id and running_action_id == action_id:
 			if _try_action_opportunity_click(skill_id, action_id, event_position):
 				action_card_press_consumed = true
@@ -51619,7 +52114,7 @@ func _on_fishing_method_button_input(
 				skill_swipe_horizontal = false
 				skill_swipe_touch_index = -1
 				get_viewport().set_input_as_handled()
-				return
+				return true
 			if _miss_action_opportunity_click(skill_id, action_id, event_position):
 				action_card_press_consumed = true
 				_cancel_action_stop_hold()
@@ -51627,44 +52122,53 @@ func _on_fishing_method_button_input(
 				skill_swipe_horizontal = false
 				skill_swipe_touch_index = -1
 				get_viewport().set_input_as_handled()
-				return
+				return true
 			var pointer_id := (event as InputEventScreenTouch).index if event is InputEventScreenTouch else -1
 			_begin_action_stop_hold(skill_id, action_id, event_position, pointer_id)
 			get_viewport().set_input_as_handled()
-			return
+			return true
+		_prepare_fishing_control_tap()
+		fishing_method_button_press_active = true
 		source.set_meta("fishing_method_press_active", true)
 		source.set_meta("fishing_method_press_position", event_position)
 		source.set_meta("fishing_method_press_dragged", false)
-		_route_skill_swipe_button_input(event, source)
 		get_viewport().set_input_as_handled()
-		return
+		return true
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
-		if bool(source.get_meta("fishing_method_press_active", false)) or skill_swipe_tracking:
+		if bool(source.get_meta("fishing_method_press_active", false)):
+			if _fishing_control_drag_exceeds_tap_slop(source, event_position, "fishing_method_press_position"):
+				source.set_meta("fishing_method_press_dragged", true)
+			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_method_press_position"):
+				return false
 			source.set_meta("fishing_method_press_dragged", true)
-			_route_skill_swipe_button_input(event, source)
 			get_viewport().set_input_as_handled()
-		return
+			return true
+		return false
 	if is_release:
 		var was_active := bool(source.get_meta("fishing_method_press_active", false))
 		var was_dragged := bool(source.get_meta("fishing_method_press_dragged", false))
 		var press_position := source.get_meta("fishing_method_press_position", event_position) as Vector2
-		if skill_swipe_tracking:
-			_route_skill_swipe_button_input(event, source)
 		if source.has_meta("fishing_method_press_active"):
 			source.remove_meta("fishing_method_press_active")
 		if source.has_meta("fishing_method_press_position"):
 			source.remove_meta("fishing_method_press_position")
 		if source.has_meta("fishing_method_press_dragged"):
 			source.remove_meta("fishing_method_press_dragged")
+		fishing_method_button_press_active = false
+		if not was_active:
+			return false
 		if (
 			was_active
 			and not was_dragged
 			and _position_inside_detail_actions_viewport(event_position)
 			and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
+			and not _detail_actions_scroll_suppresses_child_click()
 			and not _skill_swipe_suppresses_button_action()
 		):
 			_on_fishing_method_pressed(skill_id, action_id, area_key, owner_area_pop_instance_id)
 		get_viewport().set_input_as_handled()
+		return true
+	return false
 
 
 func _route_fishing_method_button_global_input(event: InputEvent) -> bool:
@@ -51694,9 +52198,9 @@ func _route_fishing_method_button_global_input(event: InputEvent) -> bool:
 		is_motion = true
 	else:
 		return false
-	var hit := _fishing_method_button_hit(event_position, is_press)
-	if hit.is_empty() and (is_release or is_motion):
-		hit = _active_fishing_method_button_hit()
+	if not is_press and not fishing_method_button_press_active:
+		return false
+	var hit := _fishing_method_button_hit(event_position, true) if is_press else _active_fishing_method_button_hit()
 	if hit.is_empty():
 		return false
 	var method_card := hit.get("method_card", {}) as Dictionary
@@ -51706,7 +52210,7 @@ func _route_fishing_method_button_global_input(event: InputEvent) -> bool:
 	var owner_area_card := hit.get("owner_area_card", {}) as Dictionary
 	var owner_pop := owner_area_card.get("pop", null) as Control
 	var owner_area_pop_instance_id := owner_pop.get_instance_id() if owner_pop != null and is_instance_valid(owner_pop) else 0
-	_on_fishing_method_button_input(
+	return _on_fishing_method_button_input(
 		event,
 		str(method_card.get("skill_id", "fishing")),
 		str(method_card.get("action_id", "")),
@@ -51714,7 +52218,6 @@ func _route_fishing_method_button_global_input(event: InputEvent) -> bool:
 		owner_area_pop_instance_id,
 		source
 	)
-	return true
 
 
 func _route_fishing_location_image_priority_press(event: InputEvent) -> bool:
@@ -51723,7 +52226,6 @@ func _route_fishing_location_image_priority_press(event: InputEvent) -> bool:
 	if current_screen == "skill" and selected_skill_id != "fishing":
 		return false
 	var event_position := Vector2.ZERO
-	var pointer_id := -1
 	var is_press := false
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
@@ -51734,15 +52236,12 @@ func _route_fishing_location_image_priority_press(event: InputEvent) -> bool:
 	elif event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
 		event_position = touch_event.position
-		pointer_id = touch_event.index
 		is_press = touch_event.pressed
 	else:
 		return false
 	if not is_press:
 		return false
 	if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
-		return false
-	if not _module_action_circle_at_direct_position(event_position).is_empty():
 		return false
 	var hit := _fishing_method_button_hit(event_position, true)
 	if hit.is_empty():
@@ -51755,38 +52254,20 @@ func _route_fishing_location_image_priority_press(event: InputEvent) -> bool:
 	var action := _action_data(skill_id, action_id)
 	if action.is_empty() or not _is_action_unlocked(skill_id, action):
 		return false
-	if running_skill_id == skill_id and running_action_id == action_id:
-		if _try_action_opportunity_click(skill_id, action_id, event_position):
-			action_card_press_consumed = true
-			_cancel_action_stop_hold()
-			skill_swipe_tracking = false
-			skill_swipe_horizontal = false
-			skill_swipe_touch_index = -1
-			return true
-		if _miss_action_opportunity_click(skill_id, action_id, event_position):
-			action_card_press_consumed = true
-			_cancel_action_stop_hold()
-			skill_swipe_tracking = false
-			skill_swipe_horizontal = false
-			skill_swipe_touch_index = -1
-			return true
-		_begin_action_stop_hold(skill_id, action_id, event_position, pointer_id)
-		return true
 	var owner_area_card := hit.get("owner_area_card", {}) as Dictionary
 	var owner_pop := owner_area_card.get("pop", null) as Control
 	var owner_area_pop_instance_id := owner_pop.get_instance_id() if owner_pop != null and is_instance_valid(owner_pop) else 0
-	_on_fishing_method_pressed(
+	var source := hit.get("button", null) as Button
+	if source == null or not is_instance_valid(source):
+		return false
+	return _on_fishing_method_button_input(
+		event,
 		skill_id,
 		action_id,
 		str(method_card.get("fishing_area_key", "")),
-		owner_area_pop_instance_id
+		owner_area_pop_instance_id,
+		source
 	)
-	action_card_press_consumed = true
-	_cancel_action_stop_hold()
-	skill_swipe_tracking = false
-	skill_swipe_horizontal = false
-	skill_swipe_touch_index = -1
-	return true
 
 
 func _fishing_method_button_hit(event_position: Vector2, require_contains_point := true) -> Dictionary:
@@ -51844,6 +52325,7 @@ func _active_fishing_method_button_hit() -> Dictionary:
 
 
 func _clear_active_fishing_method_button_press() -> void:
+	fishing_method_button_press_active = false
 	for hit in _fishing_method_button_hit_candidates():
 		var button := hit.get("button", null) as Button
 		if button == null or not is_instance_valid(button):
@@ -55165,10 +55647,10 @@ func _leaderboard_submit_status_title() -> String:
 		return "Clock check"
 	if not _leaderboard_firebase_enabled():
 		return "Online rankings unavailable"
-	if not _leaderboard_auth_ready():
-		return "Leaderboard login needed"
 	if not _leaderboard_profile_claim_valid():
 		return "Name needed"
+	if not _leaderboard_auth_ready():
+		return "Score publish waiting" if _leaderboard_has_pending_category_score() else "Online scores visible"
 	if leaderboard_submit_in_flight:
 		return "Publishing..."
 	if leaderboard_last_submit_unix <= 0:
@@ -55186,20 +55668,26 @@ func _leaderboard_submit_status_detail() -> String:
 		return "Leaderboard publishing is paused after suspicious device clock changes. Hard Reset starts a clean save."
 	if not _leaderboard_firebase_enabled():
 		return "Online rankings are not connected yet."
-	var retry_wait := _leaderboard_auth_retry_wait_seconds()
-	if retry_wait > 0:
-		return "Leaderboard login failed recently. The next retry waits %s." % _format_duration(float(retry_wait))
-	if not _leaderboard_auth_ready():
-		return "Online login protects ranking reads and 15-minute writes."
 	if not _leaderboard_profile_claim_valid():
 		return "Save a unique leaderboard name before scores publish."
+	var category_pending := _leaderboard_has_pending_category_score()
+	var retry_wait := _leaderboard_auth_retry_wait_seconds()
+	if retry_wait > 0:
+		if category_pending:
+			return "Score publishing login failed recently. The next retry waits %s." % _format_duration(float(retry_wait))
+		return "Scores are visible. Publishing will retry online login when a new score is ready."
+	if leaderboard_auth_in_flight and not _leaderboard_auth_ready():
+		return "Score publishing login is starting."
+	if not _leaderboard_auth_ready():
+		if category_pending:
+			return "Scores are visible. Publishing uses anonymous online login before sending updates."
+		return "Scores are visible without login. Publishing starts after a new score is ready."
 	if leaderboard_submit_in_flight:
 		return "One capped write is in flight. The next write cannot start for 15 minutes."
 	if not leaderboard_status_message.is_empty() and leaderboard_status_message != "Leaderboard loaded.":
 		return leaderboard_status_message
 	if leaderboard_last_submit_unix <= 0:
 		return "The game will keep the newest score and publish at most every 15 minutes."
-	var category_pending := _leaderboard_has_pending_category_score()
 	if queued <= 0 and not category_pending:
 		return "Your latest published score is current."
 	if _leaderboard_submit_ready():
@@ -55224,6 +55712,16 @@ func _leaderboard_rows_for_category(category_id: String) -> Array:
 	return []
 
 
+func _leaderboard_empty_state_detail_text() -> String:
+	var fallback := "Scores appear here after the first 15-minute publish."
+	var status := str(leaderboard_status_message).strip_edges()
+	if status.is_empty() or status == "Leaderboard loaded.":
+		return fallback
+	if status.begins_with("Leaderboard read"):
+		return status
+	return fallback
+
+
 func _leaderboard_empty_state() -> Control:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(0, 420)
@@ -55246,7 +55744,7 @@ func _leaderboard_empty_state() -> Control:
 		detail_text = "Online rankings are not connected yet."
 	elif not leaderboard_fetch_in_flight:
 		title_text = "No scores yet"
-		detail_text = leaderboard_status_message if not leaderboard_status_message.is_empty() else "Scores appear here after the first 15-minute publish."
+		detail_text = _leaderboard_empty_state_detail_text()
 	var title := _label(title_text, 84, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(title)

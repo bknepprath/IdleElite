@@ -83,6 +83,12 @@ $expectedCategoryKeys = @("total_level") + @($skillIds | ForEach-Object { "skill
 foreach ($categoryKey in $expectedCategoryKeys) {
     Assert-True ($categoryKey -match '^[a-z0-9_-]+$') "Generated leaderboard category key '$categoryKey' is unsafe for Firebase paths."
 }
+$leaderboardFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh := false\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_finalize_fetch_rows)')
+Assert-True ($leaderboardFetchFunctionMatch.Success) "Could not locate _leaderboard_fetch_category()."
+$leaderboardFetchFunction = $leaderboardFetchFunctionMatch.Value
+$leaderboardFinalizeFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_finalize_fetch_rows\(category_id: String, rows: Array\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_store_fetch_rows)')
+Assert-True ($leaderboardFinalizeFetchFunctionMatch.Success) "Could not locate _leaderboard_finalize_fetch_rows()."
+$leaderboardFinalizeFetchFunction = $leaderboardFinalizeFetchFunctionMatch.Value
 
 Assert-True ($main -match 'const FIREBASE_DATABASE_URL := ""') "Firebase URL must default to blank so fresh builds make no leaderboard network calls."
 Assert-True ($main -match 'const FIREBASE_WEB_API_KEY := ""') "Firebase Web API key must default to blank so fresh builds make no leaderboard auth calls."
@@ -108,9 +114,12 @@ Assert-True ($main -match 'const LEADERBOARD_FETCH_INTERVAL_SECONDS := 15 \* 60'
 Assert-True ($main -match 'const LEADERBOARD_PROCESS_INTERVAL_SECONDS := 30\.0') "Leaderboard sync tick must stay calm; expected 30 seconds."
 Assert-True ($main -match 'const LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS := 15 \* 60') "Failed Firebase auth must cool down for at least 15 minutes."
 Assert-True ($main -match 'func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh := false\)') "Visible-category reads must default to honoring the 15-minute cache."
+Assert-True ($leaderboardFetchFunction -match '(?s)_ensure_leaderboard_http\(\).*?if not _leaderboard_firebase_enabled\(\):') "Public leaderboard reads must build HTTP request nodes directly before checking config."
 Assert-True ($main -match 'if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS') "Leaderboard reads must enforce the 15-minute cache unless explicitly refreshed after a write."
-Assert-True ($main -match '(?s)var last_success_fetch := int\(leaderboard_fetch_unix_by_category\.get\(valid_id, 0\)\).*?var last_failed_fetch := int\(leaderboard_fetch_retry_unix_by_category\.get\(valid_id, 0\)\).*?var last_fetch := maxi\(last_success_fetch, last_failed_fetch\).*?if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS:.*?return.*?if not _leaderboard_ensure_auth\(\):') "Fresh visible-category cache hits must return before Firebase Auth refresh/sign-up work."
-Assert-True ($main -match '(?s)func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh := false\) -> void:.*?if not _leaderboard_firebase_enabled\(\):.*?return.*?if not _leaderboard_ensure_auth\(\):') "Visible-category reads must bail out before auth when Firebase config is absent or malformed."
+Assert-True ($leaderboardFetchFunction -match '(?s)var last_success_fetch := int\(leaderboard_fetch_unix_by_category\.get\(valid_id, 0\)\).*?var last_failed_fetch := int\(leaderboard_fetch_retry_unix_by_category\.get\(valid_id, 0\)\).*?var last_fetch := maxi\(last_success_fetch, last_failed_fetch\).*?if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS:.*?return.*?if leaderboard_fetch_in_flight or leaderboard_total_xp_fetch_in_flight:') "Fresh visible-category cache hits must return before any HTTP read work."
+Assert-True ($leaderboardFetchFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Visible-category reads must not start Firebase Auth or append an auth token."
+Assert-True ($leaderboardFinalizeFetchFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Compat total XP reads must not start Firebase Auth or append an auth token."
+Assert-True ($leaderboardFetchFunction -match '(?s)if not _leaderboard_firebase_enabled\(\):.*?return') "Visible-category reads must bail out when Firebase config is absent or malformed."
 Assert-True ($main -match '(?s)func _leaderboard_submit_scores\(\) -> void:.*?if not _leaderboard_firebase_enabled\(\):.*?return.*?if not _leaderboard_ensure_auth\(\):') "Leaderboard writes must bail out before auth when Firebase config is absent or malformed."
 Assert-True ($main -match '_leaderboard_note_fetch_failure') "Leaderboard read failures must use the fetch cooldown helper."
 Assert-True ($main -match 'leaderboard_fetch_retry_unix_by_category\[valid_id\] = _unix_now\(\)') "Leaderboard read failures must update the persisted category retry gate to avoid rapid retries."
@@ -141,7 +150,7 @@ Assert-True ($main -match 'leaderboard_auth_retry_after_unix = maxi\(0, int\(dat
 Assert-True ($main -match '_leaderboard_note_submit_failure') "Leaderboard write failures must use the submit cooldown helper."
 Assert-True ($main -match 'leaderboard_last_submit_unix = _unix_now\(\)') "Leaderboard write failures must update the submit gate to avoid rapid retries."
 Assert-True ($main -match 'Trying again in %s\." % \[message, _format_duration\(float\(LEADERBOARD_SUBMIT_INTERVAL_SECONDS\)\)\]') "Leaderboard write failures must cool down for the 15-minute submit interval."
-Assert-True ($main -match '_leaderboard_authenticated_query') "Database REST calls must include the Firebase auth token."
+Assert-True ($main -match '_leaderboard_authenticated_query') "Authenticated Firebase writes and chat calls must include the Firebase auth token."
 Assert-True ($main -notmatch 'WebSocket|WebSocketPeer|connect_to_url') "WebSocket-style realtime transports are not allowed."
 Assert-True ($main -match 'const CHAT_FIREBASE_ROOT := "global_chat/v1"') "Chat must use the expected Firebase root."
 Assert-True ($main -match 'const CHAT_STREAM_RETRY_INTERVAL_SECONDS := 30') "Chat stream reconnects must cool down for at least 30 seconds after failure."
@@ -213,7 +222,7 @@ Assert-True ($null -ne $category) "Rules must define leaderboards/v1/scores/<cat
 $categoryReadRule = Get-JsonProp $category ".read"
 $categoryWriteRule = Get-JsonProp $player ".write"
 Assert-True ($categoryReadRule -match "query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50") "Reads must require score ordering and an explicit 1..50 limitToLast bound."
-Assert-True ($categoryReadRule -match "auth != null") "Leaderboard reads must require Firebase Auth."
+Assert-True ($categoryReadRule -notmatch "auth != null") "Leaderboard reads must remain public so viewing scores never depends on Firebase Auth."
 foreach ($categoryKey in $expectedCategoryKeys) {
     Assert-True ($categoryReadRule -match [regex]::Escape("'$categoryKey'")) "Read rules must allow known category $categoryKey."
     Assert-True ($categoryWriteRule -match [regex]::Escape("'$categoryKey'")) "Write rules must allow known category $categoryKey."
@@ -296,7 +305,8 @@ Assert-True ($liveReadSmoke -match 'orderBy=%22score%22&limitToLast=1') "Live Fi
 Assert-True ($liveReadSmoke -match 'limitToLast=1') "Live Firebase smoke helper must limit live reads to one row."
 Assert-True ($liveReadSmoke -match 'docs\\activity-database\.json') "Live Firebase smoke helper must derive its category allowlist from the activity database."
 Assert-True ($liveReadSmoke -match '\$categoryKey = \$Category\.Trim\(\)\.Replace\(":", "__"\)') "Live Firebase smoke helper must normalize game category ids to Firebase path keys."
-Assert-True ($liveReadSmoke -match 'firebase-leaderboard-live-read-auth-\$projectCacheKey\.json') "Live Firebase smoke helper auth cache must be scoped to the Firebase project host."
+Assert-True ($liveReadSmoke -notmatch 'identitytoolkit|securetoken|accounts:signUp|auth=') "Live Firebase smoke helper must verify public reads without Firebase Auth."
+Assert-True ($liveReadSmoke -match 'firebase-live-public-read-ok') "Live Firebase smoke helper must report that the read path is public."
 Assert-True ($liveReadSmoke -match 'firebasedatabase\\\.app') "Live Firebase smoke helper must accept regional Realtime Database URLs."
 Assert-True ($rulesDeploy -match 'check-leaderboard-cost-safety\.ps1') "Rules deploy helper must run the cost-safety audit before publishing rules."
 Assert-True ($rulesDeploy -match 'update-firebase-leaderboard-rules\.ps1"\) -Check') "Rules deploy helper must verify generated rules are current before publishing."

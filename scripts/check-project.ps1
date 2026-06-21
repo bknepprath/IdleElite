@@ -11,6 +11,7 @@ $uiBoundaryContractTest = Join-Path $projectRoot "scripts\check-ui-boundary-cont
 $activityUiBoundaryContractTest = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
 $leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
 $activityCardGeometryTest = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
+$homeAchievementMedalClickTest = Join-Path $projectRoot "scripts\test-home-achievement-medal-click.ps1"
 $tutorialStartScrollTest = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
 $staminaGaugeFailShakeTest = Join-Path $projectRoot "scripts\test-stamina-gauge-fail-shake.ps1"
 $skillDetailBottomScrollPadTest = Join-Path $projectRoot "scripts\test-skill-detail-bottom-scroll-pad.ps1"
@@ -189,6 +190,11 @@ if ($LASTEXITCODE -ne 0) {
 }
 Assert-NoUnexpectedGodotErrors $activityCardGeometryOutput "activity card geometry validation"
 Assert-NoHeadlessGodotProcesses "activity card geometry validation"
+
+Invoke-ProjectValidationScript `
+    -Path $homeAchievementMedalClickTest `
+    -MissingMessage "Home achievement medal click test was not found at $homeAchievementMedalClickTest" `
+    -Context "home achievement medal click validation"
 
 if (-not (Test-Path -LiteralPath $tutorialStartScrollTest)) {
     throw "Tutorial start scroll test was not found at $tutorialStartScrollTest"

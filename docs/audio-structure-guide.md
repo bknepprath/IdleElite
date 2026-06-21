@@ -26,7 +26,7 @@ This file is the map for anyone iterating on Idle Elite sounds. Read it before r
 | `docs/xp-sfx-audition.html` | Browser audition page for shipped/candidate action, crit, feedback, chain, and water sounds. Not the runtime implementation. |
 | `docs/pin-sfx-audition.html` | Browser audition page for pin entry/exit sounds. Not the runtime implementation. |
 | `AGENTS.md` | Process-level audio safety rules. Follow them. |
-| `export_presets.cfg` | Export filters exclude candidate/source folders such as `assets/content/sfx-candidates/*` and `assets/content/*source*`. |
+| `export_presets.cfg` | Export filters exclude candidate/source folders such as `assets/content/sfx-candidates/*` and `assets/content/*source-originals*`. |
 
 ## Where Audio Lives In `main.gd`
 
@@ -411,7 +411,6 @@ Export caveat:
 
 `export_presets.cfg` excludes candidate/source-style paths such as:
 
-- `assets/content/*source*`
 - `assets/content/*preview*`
 - `assets/content/*source-originals*`
 - `assets/content/sfx-candidates/*`

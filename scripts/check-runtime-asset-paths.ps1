@@ -47,12 +47,23 @@ function Add-ResourcePath {
 }
 
 $pathsByResourcePath = @{}
+$exportExcludeFilters = New-Object System.Collections.Generic.List[string]
 
 foreach ($sourceFile in $sourceFiles) {
     $sourcePath = Join-Path $projectRoot $sourceFile
     Assert-True (Test-Path -LiteralPath $sourcePath) "Missing asset path source file: $sourceFile"
 
     $text = Get-Content -LiteralPath $sourcePath -Raw
+    if ($sourceFile -eq "export_presets.cfg") {
+        foreach ($match in [regex]::Matches($text, 'exclude_filter="(?<filters>[^"]*)"')) {
+            foreach ($filter in $match.Groups["filters"].Value.Split(",")) {
+                $trimmed = $filter.Trim()
+                if (-not [string]::IsNullOrWhiteSpace($trimmed)) {
+                    $exportExcludeFilters.Add($trimmed)
+                }
+            }
+        }
+    }
     foreach ($match in [regex]::Matches($text, '["''](?<path>res://[^"'']+)["'']')) {
         Add-ResourcePath $pathsByResourcePath $match.Groups["path"].Value $sourceFile
     }
@@ -70,6 +81,22 @@ foreach ($resourcePath in ($pathsByResourcePath.Keys | Sort-Object)) {
 if ($missing.Count -gt 0) {
     $missing | ForEach-Object { Write-Output "missing-runtime-asset-path $_" }
     throw "Runtime asset path check found $($missing.Count) missing paths."
+}
+
+$excludedRuntimeAssets = New-Object System.Collections.Generic.List[string]
+foreach ($resourcePath in ($pathsByResourcePath.Keys | Sort-Object)) {
+    $projectRelativePath = $resourcePath.Substring("res://".Length)
+    foreach ($filter in $exportExcludeFilters) {
+        if ($projectRelativePath -like $filter) {
+            $owners = ($pathsByResourcePath[$resourcePath] | Sort-Object -Unique) -join ", "
+            $excludedRuntimeAssets.Add("$resourcePath referenced by $owners is excluded by $filter")
+        }
+    }
+}
+
+if ($excludedRuntimeAssets.Count -gt 0) {
+    $excludedRuntimeAssets | ForEach-Object { Write-Output "excluded-runtime-asset $_" }
+    throw "Runtime asset path check found $($excludedRuntimeAssets.Count) exported runtime assets blocked by export filters."
 }
 
 Write-Output "runtime-asset-paths-ok"

@@ -39,7 +39,7 @@
                                                                   },
                                                   "scores":  {
                                                                  "$category":  {
-                                                                                   ".read":  "auth != null && ($category == 'total_level' || $category == 'skill_xp__fight' || $category == 'skill_xp__thieving' || $category == 'skill_xp__build' || $category == 'skill_xp__woodcutting' || $category == 'skill_xp__fishing' || $category == 'medals_earned' || $category == 'elite_heavenly') && query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50",
+                                                                                   ".read":  "($category == 'total_level' || $category == 'skill_xp__fight' || $category == 'skill_xp__thieving' || $category == 'skill_xp__build' || $category == 'skill_xp__woodcutting' || $category == 'skill_xp__fishing' || $category == 'medals_earned' || $category == 'elite_heavenly') && query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50",
                                                                                    ".indexOn":  [
                                                                                                     "score"
                                                                                                 ],

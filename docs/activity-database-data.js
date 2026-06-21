@@ -1021,7 +1021,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         {
           "id": "distract-fruit-stand-with-jazz-hands",
           "tier": 5,
-          "name": "Jazz-Hands Fruit Stand",
+          "name": "Jazz Hands Diversion",
           "unlock": 7,
           "stamina": 1,
           "seconds": 1.49,

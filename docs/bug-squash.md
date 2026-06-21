@@ -14,6 +14,40 @@ Fix:
 Validation:
 Rule:
 
+## Fishing Page Scroll Hitch And Horizontal Swipe Regression
+
+Date: 2026-06-21
+
+Area: Fishing detail page input routing, fishing area modules, skill-page scroll, and skill-page horizontal swipe.
+
+Symptom: dragging anywhere on the Fishing page caused a severe hitch, including normal up/down scrolling and attempts to swipe left/right to another skill. After the scroll hitch was fixed, vertical scrolling felt smooth again, but horizontal swiping away from Fishing stopped working.
+
+Mistake:
+
+- First fix focused on fishing method/offer buttons and removed their immediate skill-swipe/prewarm work, but missed plain fishing background presses that fell through to the generic skill-page input path.
+- The first broad fishing skip fixed vertical scroll by bypassing generic skill-page input, but it also intercepted the later drag/release events after a horizontal swipe had started.
+- Early regression coverage proved vertical drags did not start actions, but did not prove that a real horizontal swipe from the Fishing background could finish navigation.
+
+Root cause: Fishing detail input had multiple overlapping routes. A fishing background press could skip fishing-specific handlers and then enter the generic skill-page handler, which immediately started skill-swipe tracking and preview/prewarm work on pointer-down. That made every click/drag feel heavy. The follow-up deferred-swipe gate correctly delayed swipe work until horizontal intent was clear, but the fishing skip path continued to run while `skill_swipe_tracking` was active, preventing the normal `_finish_skill_swipe()` release path from committing navigation.
+
+Fix:
+
+- Add a Fishing-only deferred swipe gate: background presses inside the Fishing detail viewport no longer start generic swipe tracking immediately.
+- Let vertical drags pass through to the scroll container without starting skill-swipe tracking or preview prewarm.
+- Start skill-swipe only after horizontal movement clearly wins, then stop skipping generic input once `skill_swipe_tracking` is active so the normal drag feedback and release/commit path can finish.
+- Bypass unnecessary pinned-shelf/module-zone scans for Fishing scroll-surface presses.
+- Track active Fishing method/offer presses with lightweight flags so background scroll frames do not scan method/offer hit candidates every drag frame.
+- Keep real Fishing offer hits alive even when their fallback hit rect overlaps the bottom interactive UI band.
+
+Validation:
+
+- `.\scripts\test-fishing-click-flow.ps1` passed.
+- `.\scripts\test-fishing-net-offer-click.ps1` passed.
+- `git diff --check -- scripts/main.gd scripts/test-fishing-click-flow.ps1 scripts/test-fishing-net-offer-click.ps1` passed with only normal CRLF warnings.
+- `scripts/test-fishing-click-flow.ps1` now asserts that Fishing background press/vertical drag do not start skill-swipe/prewarm, and that a horizontal swipe from the Fishing background navigates away from Fishing.
+
+Rule: for skill-page input bugs, test both axes. A vertical-scroll fix is incomplete unless horizontal page-swipe still commits through the real release path. When deferring expensive swipe setup, let the lightweight gate own only the undecided press/drag period; once `skill_swipe_tracking` is live, hand control back to the normal swipe machinery.
+
 ## Pinning Activity Page Flash
 
 Date: 2026-06-21
@@ -285,8 +319,8 @@ Root cause: Godot 4.3+ Web exports can fail silently with the default Web audio 
 Fix:
 
 - Set `general/default_playback_type.web=0` under `[audio]` in `project.godot`.
-- Re-export the Web build through `.\run-godot-safe.ps1 --path . --export-release Web builds\web\index.html`.
-- Upload a fresh itch zip with `index.html` at the zip root.
+- Re-export/package the Web build through `.\scripts\package-itch-web.ps1`. It validates the leaderboard rules, exports Web, and writes `builds\itch\idle-elite-itch-web-latest.zip` with `index.html` at the zip root.
+- Upload `builds\itch\idle-elite-itch-web-latest.zip`, or run `.\scripts\package-itch-web.ps1 -Upload -ButlerTarget user-name/game-name:web` when Butler is configured.
 
 Validation: uploaded `builds\idle-elite-itch-web-v0.4.0-audiofix4-stream.zip` to itch.io and confirmed sound worked in the live browser-playable page.
 

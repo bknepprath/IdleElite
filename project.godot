@@ -15,7 +15,7 @@ run/main_scene="res://scenes/main.tscn"
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.5")
 boot_splash/bg_color=Color(0.984314, 0.921569, 0.788235, 1)
-boot_splash/image="res://assets/loading/idle-elite-pin-module-boot-splash.png"
+boot_splash/image="res://assets/loading/idle-elite-pin-module-boot-splash-v0.4.4.png"
 
 [audio]
 

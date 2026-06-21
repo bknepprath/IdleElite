@@ -73,7 +73,7 @@ if (Test-Path -LiteralPath $output) {
 }
 
 $escapedKeystorePassword = $keystorePassword.Replace("\", "\\").Replace('"', '\"')
-$patchedExportPresets = $originalExportPresets -replace '(?m)^keystore/release_password=".*"$', "keystore/release_password=`"$escapedKeystorePassword`""
+$patchedExportPresets = $originalExportPresets -replace '(?m)^keystore/release_password="[^"\r\n]*"', "keystore/release_password=`"$escapedKeystorePassword`""
 if ($patchedExportPresets -eq $originalExportPresets) {
     throw "Could not inject release keystore password into $exportPresetsPath"
 }

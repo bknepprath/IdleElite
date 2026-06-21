@@ -83,6 +83,13 @@ func _screen_touch_event(point: Vector2, pressed: bool) -> InputEventScreenTouch
 	event.position = point
 	return event
 
+func _screen_drag_event(point: Vector2) -> InputEventScreenDrag:
+	var event := InputEventScreenDrag.new()
+	event.index = 0
+	event.position = point
+	event.relative = Vector2(0, 96)
+	return event
+
 func _find_page_switch_button(root_node: Node, target_skill_id: String) -> Button:
 	if root_node == null:
 		return null
@@ -490,12 +497,44 @@ func _run() -> void:
 	scene.call("_unpin_module_ui_key", area_module_key, pin_area_pop_id)
 	await process_frame
 	scene.call("_clear_running_activity_for_test_mode")
-	if not bool(scene.call("_route_fishing_location_image_priority_press", _mouse_button_event(upper_left_image_click_point, true))):
+	scene.set("skill_swipe_tracking", false)
+	scene.set("skill_swipe_preview_prewarm_pending", false)
+	if not bool(scene.call("_route_fishing_location_image_priority_press", _screen_touch_event(upper_left_image_click_point, true))):
 		push_error("Fishing click flow upper-left Shallows image point did not route through the fishing priority press path.")
 		quit(1)
 		return
-	if str(scene.get("running_skill_id")) != "fishing" or str(scene.get("running_action_id")) != "beach-shallows":
-		push_error("Fishing priority press did not start Shallows. running=%s:%s" % [
+	if bool(scene.get("skill_swipe_tracking")):
+		push_error("Fishing priority press started skill-swipe tracking before any horizontal swipe.")
+		quit(1)
+		return
+	if bool(scene.get("skill_swipe_preview_prewarm_pending")):
+		push_error("Fishing priority press queued skill-swipe prewarm before any horizontal swipe.")
+		quit(1)
+		return
+	if str(scene.get("running_skill_id")) != "" or str(scene.get("running_action_id")) != "":
+		push_error("Fishing priority press started Shallows before release. running=%s:%s" % [
+			str(scene.get("running_skill_id")),
+			str(scene.get("running_action_id"))
+		])
+		quit(1)
+		return
+	var drag_point := upper_left_image_click_point + Vector2(0, 180)
+	if bool(scene.call("_route_fishing_method_button_global_input", _screen_drag_event(drag_point))):
+		push_error("Fishing method vertical drag was consumed by the active method press instead of passing to scroll.")
+		quit(1)
+		return
+	if bool(scene.get("skill_swipe_tracking")):
+		push_error("Fishing method vertical drag started skill-swipe tracking.")
+		quit(1)
+		return
+	if bool(scene.get("skill_swipe_preview_prewarm_pending")):
+		push_error("Fishing method vertical drag queued skill-swipe prewarm.")
+		quit(1)
+		return
+	scene.call("_route_fishing_method_button_global_input", _screen_touch_event(drag_point, false))
+	await process_frame
+	if str(scene.get("running_skill_id")) != "" or str(scene.get("running_action_id")) != "":
+		push_error("Fishing drag from Shallows image started an action. running=%s:%s" % [
 			str(scene.get("running_skill_id")),
 			str(scene.get("running_action_id"))
 		])
@@ -545,11 +584,31 @@ func _run() -> void:
 		push_error("Fishing click flow did not show the water animation strip.")
 		quit(1)
 		return
+	var warning_box := area_card.get("area_warning_box") as Control
+	if warning_box != null and is_instance_valid(warning_box) and warning_box.is_inside_tree() and warning_box.visible:
+		push_error("Fishing area duplicate warning chip is visible and can hang outside the card.")
+		quit(1)
+		return
 	var area_body_pop := area_card.get("pop") as Control
 	if area_body_pop == null or not is_instance_valid(area_body_pop):
 		push_error("Fishing click flow could not find the Beach area body.")
 		quit(1)
 		return
+	var stat_column := area_card.get("stat_column") as Control
+	if stat_column != null and is_instance_valid(stat_column):
+		var area_bottom := area_body_pop.get_global_rect().end.y
+		for raw_child in stat_column.get_children():
+			var stat_child := raw_child as Control
+			if stat_child == null or not stat_child.visible:
+				continue
+			if stat_child.get_global_rect().end.y > area_bottom + 1.0:
+				push_error("Fishing stat chip hangs below the area card. chip=%s chip_rect=%s area_rect=%s" % [
+					str(stat_child.name),
+					str(stat_child.get_global_rect()),
+					str(area_body_pop.get_global_rect())
+				])
+				quit(1)
+				return
 	var area_rect := area_body_pop.get_global_rect()
 	var area_hold_point := Vector2.ZERO
 	var area_hold_candidates := [
@@ -566,37 +625,87 @@ func _run() -> void:
 		push_error("Fishing click flow could not find a holdable Beach area body point. rect=%s" % str(area_rect))
 		quit(1)
 		return
-	if not bool(scene.call("_route_fishing_area_card_press", _screen_touch_event(area_hold_point, true))):
-		push_error("Fishing area hold press did not route. hold_point=%s" % str(area_hold_point))
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.set("skill_swipe_tracking", false)
+	scene.set("skill_swipe_preview_prewarm_pending", false)
+	scene.call("_input", _screen_touch_event(area_hold_point, true))
+	await process_frame
+	if bool(scene.get("skill_swipe_tracking")):
+		push_error("Fishing area background press started skill-swipe tracking.")
 		quit(1)
 		return
-	for _frame in range(126):
-		scene.call("_process_action_stop_hold", 0.016)
-		scene.call("_update_ui", 0.016, false)
-		await process_frame
-	scene.call("_input", _screen_touch_event(area_hold_point, false))
-	await process_frame
+	if bool(scene.get("skill_swipe_preview_prewarm_pending")):
+		push_error("Fishing area background press queued skill-swipe prewarm.")
+		quit(1)
+		return
 	if str(scene.get("running_skill_id")) != "" or str(scene.get("running_action_id")) != "":
-		push_error("Fishing area hold did not stop Shallows. running=%s:%s hold_point=%s" % [
+		push_error("Fishing area background tap press started an action. running=%s:%s hold_point=%s" % [
 			str(scene.get("running_skill_id")),
 			str(scene.get("running_action_id")),
 			str(area_hold_point)
 		])
 		quit(1)
 		return
-	if not bool(scene.call("_route_fishing_area_card_press", _screen_touch_event(area_hold_point, true))):
-		push_error("Fishing area body press did not start the selected method. hold_point=%s" % str(area_hold_point))
-		quit(1)
-		return
+	scene.call("_input", _screen_touch_event(area_hold_point, false))
 	await process_frame
-	if str(scene.get("running_skill_id")) != "fishing" or str(scene.get("running_action_id")) != "beach-shallows":
-		push_error("Fishing area body press routed but did not start Shallows. running=%s:%s" % [
+	if str(scene.get("running_skill_id")) != "" or str(scene.get("running_action_id")) != "":
+		push_error("Fishing area background tap release started an action. running=%s:%s hold_point=%s" % [
 			str(scene.get("running_skill_id")),
-			str(scene.get("running_action_id"))
+			str(scene.get("running_action_id")),
+			str(area_hold_point)
 		])
 		quit(1)
 		return
-	scene.call("_clear_running_activity_for_test_mode")
+	var area_drag_point := area_hold_point + Vector2(0, 220)
+	scene.set("skill_swipe_tracking", false)
+	scene.set("skill_swipe_preview_prewarm_pending", false)
+	scene.call("_input", _screen_touch_event(area_hold_point, true))
+	await process_frame
+	scene.call("_input", _screen_drag_event(area_drag_point))
+	for _frame in range(8):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	if bool(scene.get("skill_swipe_tracking")):
+		push_error("Fishing area background vertical drag started skill-swipe tracking.")
+		quit(1)
+		return
+	if bool(scene.get("skill_swipe_preview_prewarm_pending")):
+		push_error("Fishing area background vertical drag queued skill-swipe prewarm.")
+		quit(1)
+		return
+	scene.call("_input", _screen_touch_event(area_drag_point, false))
+	await process_frame
+	if str(scene.get("running_skill_id")) != "" or str(scene.get("running_action_id")) != "":
+		push_error("Fishing area background drag started an action. running=%s:%s hold_point=%s drag_point=%s" % [
+			str(scene.get("running_skill_id")),
+			str(scene.get("running_action_id")),
+			str(area_hold_point),
+			str(area_drag_point)
+		])
+		quit(1)
+		return
+	scene.set("skill_swipe_tracking", false)
+	scene.set("skill_swipe_preview_prewarm_pending", false)
+	scene.call("_clear_skill_swipe_button_suppression")
+	scene.call("_input", _screen_touch_event(area_hold_point, true))
+	await process_frame
+	var horizontal_drag_point := area_hold_point + Vector2(-360, 0)
+	scene.call("_input", _screen_drag_event(horizontal_drag_point))
+	await process_frame
+	if not bool(scene.get("skill_swipe_tracking")):
+		push_error("Fishing area background horizontal drag did not start skill-swipe tracking.")
+		quit(1)
+		return
+	scene.call("_input", _screen_touch_event(horizontal_drag_point, false))
+	for _frame in range(120):
+		scene.call("_update_ui", 0.016, false)
+		if str(scene.get("selected_skill_id")) != "fishing" and not bool(scene.call("_skill_swipe_loading_transition_active")):
+			break
+		await process_frame
+	if str(scene.get("selected_skill_id")) == "fishing":
+		push_error("Fishing area background horizontal swipe did not navigate away from fishing.")
+		quit(1)
+		return
 	print("fishing-click-flow-ok")
 	quit(0)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
