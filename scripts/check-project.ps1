@@ -121,6 +121,8 @@ function Invoke-SkillsPagePerformanceValidation {
     }
 
     $attemptCount = 3
+    $lastFailureOutput = $null
+    $lastFailureExitCode = 0
     for ($attempt = 1; $attempt -le $attemptCount; $attempt++) {
         Write-Host "skills page performance validation attempt $attempt/$attemptCount"
         $previousErrorActionPreference = $ErrorActionPreference
@@ -128,17 +130,24 @@ function Invoke-SkillsPagePerformanceValidation {
         $output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Path 2>&1
         $exitCode = $LASTEXITCODE
         $ErrorActionPreference = $previousErrorActionPreference
-        $output | Out-Host
         Assert-NoHeadlessGodotProcesses "$Context attempt $attempt"
         if ($exitCode -eq 0) {
+            $output | Out-Host
             Assert-NoUnexpectedGodotErrors $output "$Context attempt $attempt"
             Write-Host "skills-page-performance-release-ok attempt=$attempt"
             $global:LASTEXITCODE = 0
             return
         }
+        $lastFailureOutput = $output
+        $lastFailureExitCode = $exitCode
+        Write-Warning "Skills page performance attempt $attempt failed with exit code $exitCode; retrying in non-strict mode."
     }
 
     Write-Warning "Skills page performance validation failed after $attemptCount attempts; continuing because strict skills performance is disabled."
+    if ($null -ne $lastFailureOutput) {
+        Write-Host "Last failed non-strict skills page performance output follows. exitCode=$lastFailureExitCode"
+        $lastFailureOutput | Out-Host
+    }
     Write-Host "skills-page-performance-release-warning attempts=$attemptCount"
     $global:LASTEXITCODE = 0
 }

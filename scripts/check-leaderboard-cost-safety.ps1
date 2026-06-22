@@ -89,6 +89,12 @@ $leaderboardFetchFunction = $leaderboardFetchFunctionMatch.Value
 $leaderboardFinalizeFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_finalize_fetch_rows\(category_id: String, rows: Array\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_store_fetch_rows)')
 Assert-True ($leaderboardFinalizeFetchFunctionMatch.Success) "Could not locate _leaderboard_finalize_fetch_rows()."
 $leaderboardFinalizeFetchFunction = $leaderboardFinalizeFetchFunctionMatch.Value
+$leaderboardWriteReadyFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_write_ready\(\) -> bool:.*?(?=\r?\n\r?\nfunc _leaderboard_category_key)')
+Assert-True ($leaderboardWriteReadyFunctionMatch.Success) "Could not locate _leaderboard_write_ready()."
+$leaderboardWriteReadyFunction = $leaderboardWriteReadyFunctionMatch.Value
+$leaderboardSubmitFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_submit_scores\(\) -> void:.*?(?=\r?\n\r?\nfunc _process_leaderboard_sync)')
+Assert-True ($leaderboardSubmitFunctionMatch.Success) "Could not locate _leaderboard_submit_scores()."
+$leaderboardSubmitFunction = $leaderboardSubmitFunctionMatch.Value
 $chatStreamConnectFunctionMatch = [regex]::Match($main, '(?s)func _chat_stream_connect\(force_reconnect := false\) -> void:.*?(?=\r?\n\r?\nfunc _start_chat_stream_poll_timer)')
 Assert-True ($chatStreamConnectFunctionMatch.Success) "Could not locate _chat_stream_connect()."
 $chatStreamConnectFunction = $chatStreamConnectFunctionMatch.Value
@@ -123,7 +129,8 @@ Assert-True ($leaderboardFetchFunction -match '(?s)var last_success_fetch := int
 Assert-True ($leaderboardFetchFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Visible-category reads must not start Firebase Auth or append an auth token."
 Assert-True ($leaderboardFinalizeFetchFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Compat total XP reads must not start Firebase Auth or append an auth token."
 Assert-True ($leaderboardFetchFunction -match '(?s)if not _leaderboard_firebase_enabled\(\):.*?return') "Visible-category reads must bail out when Firebase config is absent or malformed."
-Assert-True ($main -match '(?s)func _leaderboard_submit_scores\(\) -> void:.*?if not _leaderboard_firebase_enabled\(\):.*?return.*?if not _leaderboard_ensure_auth\(\):') "Leaderboard writes must bail out before auth when Firebase config is absent or malformed."
+Assert-True ($leaderboardSubmitFunction -match '(?s)if not _leaderboard_firebase_enabled\(\):.*?return.*?if not _leaderboard_write_ready\(\):') "Leaderboard writes must bail out before the auth/write-readiness gate when Firebase config is absent or malformed."
+Assert-True ($leaderboardWriteReadyFunction -match '_leaderboard_ensure_auth\(\)') "Leaderboard write readiness must start Firebase Auth only after submit has passed config guards."
 Assert-True ($main -match '_leaderboard_note_fetch_failure') "Leaderboard read failures must use the fetch cooldown helper."
 Assert-True ($main -match 'leaderboard_fetch_retry_unix_by_category\[valid_id\] = _unix_now\(\)') "Leaderboard read failures must update the persisted category retry gate to avoid rapid retries."
 Assert-True ($main -match 'var last_failed_fetch := int\(leaderboard_fetch_retry_unix_by_category\.get\(valid_id, 0\)\)') "Leaderboard reads must honor persisted failure retry gates."

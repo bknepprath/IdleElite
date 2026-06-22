@@ -35,7 +35,7 @@ Run the most relevant focused gate first:
 - `.\scripts\test-save-normalization.ps1` for save/load changes.
 - `.\scripts\test-performance-regressions.ps1` for broad `main.gd`, validation-contract, or performance-sensitive edits.
 
-Then run `.\scripts\check-project.ps1` when practical. The current known baseline reaches the readability/static gates and may fail later in `.\scripts\test-skills-page-performance.ps1` on the existing build swipe performance budget. Always record the exact blocker if it changes.
+Then run `.\scripts\check-project.ps1` when practical. The current known baseline reaches the readability/static gates. In non-strict mode, intermittent skills-page scroll/swipe budget failures are retried with a short warning; the harness prints the last failed sample only if all retries fail, then continues with `skills-page-performance-release-warning`. Always record the exact output if this behavior changes.
 
 After every Godot validation, sweep for leftover headless processes:
 

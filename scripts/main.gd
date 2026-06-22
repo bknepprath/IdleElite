@@ -3983,6 +3983,7 @@ var texture_cache := {}
 var atlas_texture_cache := {}
 var profile_avatar_texture_cache := {}
 var audio_stream_cache := {}
+var music_stream_cache := {}
 var extended_audio_ready := false
 var extended_audio_warming := false
 var home_page_built := false
@@ -6439,6 +6440,7 @@ func _prepare_for_shutdown() -> void:
 	leaderboard_http_built = false
 	chain_move_audio_ready = false
 	audio_stream_cache.clear()
+	music_stream_cache.clear()
 	extended_audio_ready = false
 	extended_audio_warming = false
 	action_stop_hold_layer = null
@@ -64991,15 +64993,11 @@ func _build_music_players() -> void:
 	var song_set := active_music_song_set if not active_music_song_set.is_empty() else _default_music_song_set()
 	active_music_song_set = song_set
 	for track in _music_tracks_for_song_set(song_set):
-		var stream := load(str(track["path"]))
+		var stream := _load_music_stream(str(track["path"]))
 		if stream == null:
 			push_warning("Music loop missing: %s" % str(track["path"]))
 			continue
 		var player := AudioStreamPlayer.new()
-		if stream is AudioStreamWAV:
-			(stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
-		elif stream is AudioStreamOggVorbis:
-			(stream as AudioStreamOggVorbis).loop = true
 		player.stream = stream
 		player.bus = MUSIC_BUS_NAME
 		player.volume_db = MUSIC_SILENCE_DB
@@ -65008,6 +65006,18 @@ func _build_music_players() -> void:
 		music_layer_gains.append(0.0)
 		music_layer_target_gains.append(0.0)
 	music_started = false
+
+
+func _load_music_stream(path: String) -> AudioStream:
+	if music_stream_cache.has(path):
+		return music_stream_cache[path] as AudioStream
+	var stream := load(path) as AudioStream
+	if stream is AudioStreamWAV:
+		(stream as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_FORWARD
+	elif stream is AudioStreamOggVorbis:
+		(stream as AudioStreamOggVorbis).loop = true
+	music_stream_cache[path] = stream
+	return stream
 
 
 func _dispose_music_players() -> void:
@@ -65049,6 +65059,31 @@ func _music_tracks_for_song_set(song_set: Dictionary) -> Array:
 	return song_set.get("tracks", []) as Array
 
 
+func _music_song_set_name(song_set: Dictionary) -> String:
+	return str(song_set.get("name", ""))
+
+
+func _music_players_match_song_set(song_set: Dictionary) -> bool:
+	var tracks := _music_tracks_for_song_set(song_set)
+	if music_players.is_empty() or music_players.size() != tracks.size():
+		return false
+	if _music_song_set_name(active_music_song_set) != _music_song_set_name(song_set):
+		return false
+	var active_tracks := _music_tracks_for_song_set(active_music_song_set)
+	if active_tracks.size() != tracks.size():
+		return false
+	for i in range(tracks.size()):
+		var active_track := active_tracks[i] as Dictionary
+		var next_track := tracks[i] as Dictionary
+		var expected_path := str(next_track.get("path", ""))
+		if str(active_track.get("path", "")) != expected_path:
+			return false
+		var player := music_players[i] as AudioStreamPlayer
+		if player == null or not is_instance_valid(player) or player.stream != _load_music_stream(expected_path):
+			return false
+	return true
+
+
 func _choose_music_song_set() -> Dictionary:
 	var total_weight := 0.0
 	for song_set in MUSIC_SONG_SETS:
@@ -65065,7 +65100,16 @@ func _choose_music_song_set() -> Dictionary:
 
 
 func _select_music_song_for_cycle() -> void:
-	active_music_song_set = _choose_music_song_set()
+	var next_song_set := _choose_music_song_set()
+	if _music_players_match_song_set(next_song_set):
+		music_started = false
+		music_base_only_seconds = 0.0
+		for i in range(music_layer_gains.size()):
+			music_layer_gains[i] = 0.0
+		for i in range(music_layer_target_gains.size()):
+			music_layer_target_gains[i] = 0.0
+		return
+	active_music_song_set = next_song_set
 	_build_music_players()
 
 

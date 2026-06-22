@@ -36,7 +36,7 @@ Line numbers move, so search symbols instead of trusting exact offsets.
 | --- | --- | --- |
 | Button SFX constants | `DEFAULT_BUTTON_SFX_PATH`, `DEFAULT_BUTTON_SFX_DEBOUNCE_MSEC` | Default UI button sound path and tap debounce. |
 | Audio constants | `ACTIVITY_SUCCESS_SFX_PATHS`, `MUSIC_SONG_SETS`, `MUSIC_BUS_NAME`, `SFX_BUS_NAME` | Asset lists, volumes, music weights, bus names, timing knobs. |
-| Runtime state | `music_volume`, `sfx_volume`, `flow_heat`, `music_players`, `audio_stream_cache` | Persistent settings and transient audio state. |
+| Runtime state | `music_volume`, `sfx_volume`, `flow_heat`, `music_players`, `audio_stream_cache`, `music_stream_cache` | Persistent settings and transient audio state. |
 | Audio settings UI | `_audio_volume_control`, `_set_music_volume_from_slider`, `_set_sfx_muted_from_toggle` | Settings screen sliders and mute buttons. |
 | Save/load | `_save_payload`, `_restore_audio_settings_from_save`, `_restore_music_flow_state_from_save` | Persisted audio settings and partial music-flow state. |
 | Audio build/warmup | `_build_boot_audio`, `_build_extended_audio`, `_warm_extended_audio_async`, `_build_audio` | Player creation and deferred warmup. |
@@ -301,9 +301,12 @@ There are also source WAVs in `assets/music/` with long descriptive names. The a
 
 Player setup:
 
-- `_build_music_players()` chooses the active song set and creates one `AudioStreamPlayer` per track.
-- WAV streams are forced to `AudioStreamWAV.LOOP_FORWARD` if used.
-- Ogg streams are set to loop.
+- `_select_music_song_for_cycle()` chooses the next song set for a music cycle.
+- If the selected song set name, layer count, and track paths already match the prepared players, the existing `music_players` pool is reused and only layer gains are reset.
+- `_build_music_players()` creates one `AudioStreamPlayer` per track when the selected song set changes or no prepared pool exists.
+- `_load_music_stream(path)` uses `music_stream_cache`, so repeated cycles do not reload the same loop resources.
+- WAV streams are forced to `AudioStreamWAV.LOOP_FORWARD` inside the music cache helper if used.
+- Ogg streams are set to loop inside the music cache helper.
 - Every music player starts at `MUSIC_SILENCE_DB`.
 - Music players use the `Music` bus.
 
@@ -384,6 +387,7 @@ Not saved:
 - Individual `AudioStreamPlayer` instances.
 - Player pools.
 - `audio_stream_cache`.
+- `music_stream_cache`.
 - `music_players`.
 - `music_started`.
 - Current active song set.

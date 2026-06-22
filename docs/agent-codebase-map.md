@@ -60,7 +60,7 @@ Use PowerShell from the repo root.
 | Activity UI boundary contract | `.\scripts\check-activity-ui-boundary-contracts.ps1` | After editing activity detail, action cards, mastery medals, unlocks, lockpads, or offline summary entry points. |
 | UI geometry/detail checks | `.\scripts\test-activity-card-geometry.ps1`, `.\scripts\test-skill-detail-bottom-scroll-pad.ps1`, `.\scripts\test-skill-detail-hidden-preview-scroll-gap.ps1` | After activity-card or skill-detail layout changes. |
 
-Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches the static/readability gates through `generated-file-hygiene-ok`, `ui-boundary-contracts-ok`, `activity-ui-boundary-contracts-ok`, and `leaderboard-cost-safety-ok`, then may fail in the skills-page performance gate on the existing build swipe budget. Record the exact current output if it changes.
+Known baseline from the agent-readability checklist: `.\scripts\check-project.ps1` reaches the static/readability gates through `generated-file-hygiene-ok`, `ui-boundary-contracts-ok`, `activity-ui-boundary-contracts-ok`, and `leaderboard-cost-safety-ok`. In non-strict mode the skills-page performance gate retries intermittent scroll/swipe budget failures with a short warning; it prints the last failed sample only if all retries fail, then continues with `skills-page-performance-release-warning`. Record the exact current output if this behavior changes.
 
 After every Godot command, check for leftover headless Godot processes. Only stop a process when it was launched by the validation command, is headless/non-interactive, and should have exited.
 

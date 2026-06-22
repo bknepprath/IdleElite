@@ -3859,3 +3859,52 @@ Remaining risks:
 - Full project validation still emits shutdown/RID/resource warnings and resource leak messages.
 - Skills page swipe/build performance remains flaky enough to occasionally fail the full gate even when a focused rerun passes.
 - Other feedback paths still have local cleanup/final-state ownership and should be reviewed one bounded path at a time.
+
+## Completed Phase 102: Music Cycle Stream Reuse And Audit Reliability
+
+Risk reduced: each music cycle rebuilt music players and loaded loop resources even when the selected song set already matched the prepared player pool. The leaderboard cost-safety audit also used an overly broad regex across `main.gd`, which could hang validation before later project gates ran.
+
+Files changed:
+- `scripts/main.gd`
+- `scripts/test-performance-regressions.ps1`
+- `scripts/check-project.ps1`
+- `scripts/check-leaderboard-cost-safety.ps1`
+- `docs/efficiency-audit-tracker.md`
+- `docs/audio-structure-guide.md`
+- `docs/agent-onboarding-checklist.md`
+- `docs/codebase-stabilization-audit.md`
+
+Systems simplified:
+- Music loop stream ownership
+- Music cycle player reuse contract
+- Static regression coverage for music stream caching
+- Leaderboard audit function-body extraction
+- Audio documentation for runtime-only music state
+- Agent onboarding baseline for non-strict skills-page performance warnings
+- Non-strict skills-page performance retry output in the full project harness
+
+Behavior intentionally preserved:
+- Music still starts only through the existing probabilistic music-flow rules.
+- Song set weights, layer volume boosts, fade timings, quiet breaks, bus routing, and audio-unlock gating are unchanged.
+- Music players still rebuild when the selected song set name, layer count, or track paths differ.
+- Music players still rebuild if a prepared player node is stale or its stream no longer matches the selected track path.
+- Leaderboard runtime behavior is unchanged; only the static cost-safety audit changed.
+
+Behavior intentionally removed:
+- Same-song-set music cycles no longer reload the same loop streams or recreate the prepared music player pool.
+- Music loop loading no longer lives inline in `_build_music_players()`.
+- The leaderboard cost-safety audit no longer runs the submit-safety assertion as a broad whole-file regex.
+- The agent onboarding checklist no longer describes the current non-strict skills-page performance warning as a hard validation failure.
+- Non-strict skills-page performance retries no longer dump full failure output for attempts that will be retried.
+
+Validation:
+- `.\scripts\test-performance-regressions.ps1` passed. It now asserts music streams use `music_stream_cache`, music player construction loads through `_load_music_stream()`, same-set reuse checks song-set name/layer count/track paths/player validity/stream identity, changed sets still rebuild, the onboarding/codebase maps document the current non-strict skills-page performance warning, and the project harness summarizes retried skills-page failures before printing only the final failed sample.
+- `.\scripts\check-leaderboard-cost-safety.ps1` passed.
+- `.\run-godot-safe.ps1 --headless --path . --quit-after 1` passed.
+- `.\scripts\check-project.ps1` exited successfully, including `leaderboard-cost-safety-ok`, save normalization, and the performance regression gate.
+- Verified no headless Godot process remained after Godot validation commands.
+
+Remaining risks:
+- Full project validation still emits shutdown/RID/resource warnings and resource leak messages.
+- The non-strict skills-page performance gate can still miss all retries and print the final failed sample before continuing with `skills-page-performance-release-warning`.
+- This pass did not include live audio listening, so the efficiency tracker still marks music reuse as awaiting live audio confirmation.

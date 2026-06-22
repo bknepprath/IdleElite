@@ -12,7 +12,7 @@ This tracks small, testable efficiency changes from the codebase audit. Each ite
 - [x] 4. Debounce save writes while preserving immediate critical saves. First pass play-tested and accepted.
 - [ ] 5. Cache atlas textures and bake avoidable runtime pixel loops. First pass implemented; awaiting play-test confirmation.
 - [x] 6. Throttle chat/network frame polling. First pass implemented; awaiting play-test confirmation.
-- [ ] 7. Reuse music players/streams across music cycles.
+- [x] 7. Reuse music players/streams across music cycles. First pass implemented; awaiting live audio confirmation.
 - [x] 8. Cache visible action-card stat refresh work. Headless strip suite found this as the current spike source; awaiting live FPS confirmation.
 
 ## Notes
@@ -70,3 +70,9 @@ Goal: stop recomputing unchanged visible action-card XP, stamina, cycle time, an
 Status: implemented with action stat value caching and action-card dirty keys; awaiting live FPS confirmation.
 
 Validation: `.\scripts\test-skills-page-performance.ps1`, `.\scripts\test-performance-regressions.ps1`, `.\scripts\test-performance-monitor.ps1`, `.\scripts\check-leaderboard-cost-safety.ps1`, and `.\scripts\check-project.ps1` passed on 2026-06-12.
+
+### 7. Reuse Music Players And Streams Across Music Cycles
+
+Goal: avoid reloading the same music loop resources and recreating music players when a new music cycle chooses the song set that is already prepared. First pass adds a music stream cache beside the SFX stream cache and reuses the existing music player pool when the selected song set name and layer count match.
+
+Status: implemented; awaiting live audio confirmation.
