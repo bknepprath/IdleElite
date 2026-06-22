@@ -159,6 +159,34 @@ func _run() -> void:
 		return
 
 	scene.call("_clear_fishing_offer_button_press", net_offer_button)
+
+	scene.set("skill_swipe_tracking", false)
+	scene.set("skill_swipe_preview_prewarm_pending", false)
+	if not bool(scene.call("_route_fishing_offer_button_global_input", _mouse_button_event(net_offer_point, true))):
+		push_error("Fishing net offer did not accept a second fallback press before horizontal swipe.")
+		quit(1)
+		return
+	var net_offer_horizontal_drag_point := net_offer_point + Vector2(-220, 0)
+	if not bool(scene.call("_route_fishing_offer_button_global_input", _mouse_motion_event(net_offer_horizontal_drag_point, Vector2(-220, 0)))):
+		push_error("Fishing net offer horizontal drag was not routed into swipe handling.")
+		quit(1)
+		return
+	if not bool(scene.get("skill_swipe_tracking")):
+		push_error("Fishing net offer horizontal drag did not start skill-swipe tracking.")
+		quit(1)
+		return
+	if bool(scene.get("skill_swipe_preview_prewarm_pending")):
+		push_error("Fishing net offer horizontal drag queued idle swipe prewarm instead of active swipe feedback.")
+		quit(1)
+		return
+	scene.call("_finish_skill_swipe", net_offer_horizontal_drag_point)
+	for _frame in range(4):
+		await process_frame
+	if bool(scene.get("fishing_net_collected")) or bool(scene.get("fishing_net_collect_pending")):
+		push_error("Fishing net offer horizontal swipe collected the net.")
+		quit(1)
+		return
+
 	net_offer_button.size = saved_net_button_size
 
 	fishing["level"] = 19

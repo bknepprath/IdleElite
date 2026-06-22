@@ -45,6 +45,13 @@ For visible game-only playtesting when explicitly requested:
 - For generated UI icons with a white subject on a white background, do not remove white globally; that will damage the subject. Use a border-connected flood fill or another method that removes only the connected background, then verify corner alpha and subject alpha before wiring the asset.
 - PowerShell image/file scripts should use `(Resolve-Path <path>).Path` when passing paths into .NET APIs. Parenthesize arithmetic inside array literals, for example `@(0, ($height - 1))`, to avoid accidental parser/object-array errors.
 
+## Mobile UI Readability
+
+- Text in the phone UI is NEVER allowed to be tiny or desktop-scaled. If it needs to be read on a phone, it must be comfortably readable in a 1080px-wide portrait screenshot without zooming.
+- For Godot UI, avoid font sizes below 48 for player-facing body text. Popover/help body text should usually be 52 or larger, with titles around 60 or larger. Only use smaller text for decorative/nonessential labels after verifying it is still readable on a phone screenshot.
+- Info boxes, help popovers, tutorial boxes, and explanatory status panels must use at least 52px body text and at least 60px title text. If the text no longer fits, enlarge the popover/window or shorten the copy; do not shrink below the minimum.
+- When adding or changing phone-visible text, check the rendered screenshot for readability, wrapping, and overlap. If the screenshot text looks remotely like fine print, increase the font and resize the container.
+
 ## Activity Database (fishing rework)
 
 - Source of truth: `docs/activity-database.json` (`fishing.areas[]`, per-action `area`).

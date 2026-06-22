@@ -383,6 +383,9 @@ func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -
 	scene.call("_clear_running_activity_for_test_mode")
 	var silver_xp := int(scene.call("_mastery_xp_for_level", 2))
 	scene.call("_add_mastery_xp", skill_id, action_id, silver_xp)
+	scene.set("fish_currency_ever_earned", true)
+	scene.set("fish_currency", 2.0)
+	scene.call("_sync_auto_eat_fish_toggle_buttons")
 	scene.call("_start_action", skill_id, action_id, false)
 	scene.set("action_progress", 0.60)
 	await scene.call("_render_screen", false, -1, false)
@@ -755,6 +758,9 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 	for _i in range(30):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
+	scene.set("fish_currency_ever_earned", true)
+	scene.set("fish_currency", 2.0)
+	scene.call("_sync_auto_eat_fish_toggle_buttons")
 	var content_scroll := scene.get("content_scroll") as Control
 	if content_scroll == null:
 		_record("active pinned shelf smoke lost content scroll")
@@ -776,6 +782,44 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 	var xp_label := _find_text_descendant(active_content, "Lv") if active_content != null else null
 	if xp_label == null:
 		_record("active pinned shelf did not render skill XP text")
+	var active_gauge := scene.get("pinned_active_shelf_regen_circle") as Control
+	if active_gauge == null or not is_instance_valid(active_gauge) or not active_gauge.is_visible_in_tree():
+		_record("active pinned shelf did not render an interactive stamina Gage")
+	else:
+		var auto_fish_toggle := _find_named_descendant(scene, "AutoEatFishToggle") as TextureButton
+		if auto_fish_toggle == null or not is_instance_valid(auto_fish_toggle):
+			_record("active pinned shelf did not create the Auto Fish Eat toggle")
+		elif not auto_fish_toggle.is_visible_in_tree():
+			_record("active pinned shelf Auto Fish Eat toggle was hidden. visible=%s unlocked=%s fish=%s ever=%s" % [
+				auto_fish_toggle.visible,
+				bool(scene.call("_auto_eat_fish_toggle_unlocked")),
+				float(scene.get("fish_currency")),
+				bool(scene.get("fish_currency_ever_earned"))
+			])
+		elif str(auto_fish_toggle.get_meta("auto_eat_skill_id", "")) != skill_id:
+			_record("active pinned shelf Auto Fish Eat toggle targeted %s instead of %s" % [str(auto_fish_toggle.get_meta("auto_eat_skill_id", "")), skill_id])
+		else:
+			scene.call("_set_auto_eat_fish_enabled_for_skill", skill_id, false)
+			scene.call("_sync_auto_eat_fish_toggle_buttons")
+			auto_fish_toggle.emit_signal("pressed")
+			if not bool(scene.call("_auto_eat_fish_enabled_for_skill", skill_id)):
+				_record("active pinned shelf Auto Fish Eat toggle did not flip the active skill setting")
+			var max_stamina := float(scene.call("_max_stamina", skill_id))
+			var stamina_state := scene.get("stamina") as Dictionary
+			stamina_state[skill_id] = maxf(0.0, max_stamina - 2.0)
+			scene.set("stamina", stamina_state)
+			scene.call("_sync_stamina_bank", skill_id)
+			var before_stamina := float(scene.call("_stamina_value", skill_id))
+			var before_fish := float(scene.get("fish_currency"))
+			var tap_position := active_gauge.get_global_rect().get_center()
+			scene.call("_on_stamina_gauge_input", _mouse_button_event(tap_position, true), skill_id, active_gauge)
+			scene.call("_on_stamina_gauge_input", _mouse_button_event(tap_position, false), skill_id, active_gauge)
+			for _i in range(4):
+				await process_frame
+			if absf(float(scene.call("_stamina_value", skill_id)) - (before_stamina + 1.0)) > 0.001:
+				_record("active pinned shelf Gage tap did not eat one fish into stamina")
+			if absf(float(scene.get("fish_currency")) - (before_fish - 1.0)) > 0.001:
+				_record("active pinned shelf Gage tap did not spend one fish")
 	var background := _find_named_descendant(scene, "PinnedActivitiesFullBleedShelfBackground") as CanvasItem
 	if background == null or not is_instance_valid(background):
 		_record("active pinned shelf did not render full-bleed background")

@@ -88,6 +88,22 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
+	var honey_module := scene.call("_mat_collection_module", "honey") as Control
+	root.add_child(honey_module)
+	var honey_info_button := _find_button_with_text(honey_module, "i")
+	if honey_info_button == null:
+		_fail("honey mat module should include an info button")
+		return
+	var honey_info_title := _find_label_with_text(honey_module, "Honey Stamina")
+	if honey_info_title == null:
+		_fail("honey mat module should include a Honey Stamina info popover")
+		return
+	honey_info_button.emit_signal("pressed")
+	await _wait_test_frame()
+	if not honey_info_title.is_visible_in_tree():
+		_fail("honey info popover should become visible when the info button is pressed")
+		return
+
 	scene.call("_god_mode_unlock_onboarding_state")
 	scene.call("_god_mode_unlock_actions_state")
 	scene.set("current_screen", "skill")
@@ -110,14 +126,20 @@ func _run() -> void:
 
 	scene.call("_set_mat_amount", "honey", 2.0)
 	scene.call("_set_regen_circle_for_skill", circle, "build", true)
-	if not _colors_close(circle.get("target_theme_color") as Color, honey_color):
-		_fail("honey stamina gauge did not target honey color: actual=%s expected=%s" % [str(circle.get("target_theme_color")), str(honey_color)])
+	if not _colors_close(circle.get("target_theme_color") as Color, skill_color):
+		_fail("honey stamina gauge changed the inner fill target: actual=%s expected=%s" % [str(circle.get("target_theme_color")), str(skill_color)])
 		return
-	if _colors_close(circle.get("theme_color") as Color, honey_color):
-		_fail("honey stamina gauge snapped to honey color instead of transitioning")
+	if not _colors_close(circle.get("target_regen_ring_color") as Color, honey_color):
+		_fail("honey stamina regen ring did not target honey color: actual=%s expected=%s" % [str(circle.get("target_regen_ring_color")), str(honey_color)])
 		return
-	if not await _wait_for_circle_color(circle, honey_color):
-		_fail("honey stamina gauge did not finish transitioning to honey color: actual=%s expected=%s" % [str(circle.get("theme_color")), str(honey_color)])
+	if not _colors_close(circle.get("theme_color") as Color, skill_color):
+		_fail("honey stamina changed the inner fill color: actual=%s expected=%s" % [str(circle.get("theme_color")), str(skill_color)])
+		return
+	if not _colors_close(circle.get("regen_ring_color") as Color, honey_color):
+		_fail("honey stamina regen ring did not apply honey color: actual=%s expected=%s" % [str(circle.get("regen_ring_color")), str(honey_color)])
+		return
+	if not _colors_close(circle.get("theme_color") as Color, skill_color):
+		_fail("honey stamina inner fill did not remain skill-colored after ring transition: actual=%s expected=%s" % [str(circle.get("theme_color")), str(skill_color)])
 		return
 	var capture_result := await _capture_viewport(OS.get_environment("IDLE_ELITE_HONEY_STAMINA_CAPTURE_PATH"))
 	if capture_result == "skipped":
@@ -147,7 +169,28 @@ func _run() -> void:
 		_fail("honey and manual hold regen should multiply to 6 seconds per tick, got %.4f" % stacked_bank)
 		return
 
-	print("honey-stamina-regen-ok honey_only=%.4f stacked=%.4f color=%s" % [honey_only_bank, stacked_bank, str(circle.get("theme_color"))])
+	scene.call("_set_mat_amount", "honey", 5.0)
+	_set_skill_stamina(scene, "build", max_stamina)
+	if not bool(scene.call("_spend_action_stamina", "build", 2.0)):
+		_fail("spending build stamina with honey should succeed")
+		return
+	if absf(_skill_stamina(scene, "build") - (max_stamina - 2.0)) > 0.01:
+		_fail("spending two stamina should reduce build stamina by two")
+		return
+	if absf(float(scene.call("_mat_amount", "honey")) - 3.0) > 0.01:
+		_fail("spending two stamina should spend two honey, got %.4f" % float(scene.call("_mat_amount", "honey")))
+		return
+
+	scene.call("_set_mat_amount", "honey", 1.0)
+	_set_skill_stamina(scene, "build", max_stamina)
+	if not bool(scene.call("_spend_action_stamina", "build", 1.0)):
+		_fail("spending build stamina with inactive honey should succeed")
+		return
+	if absf(float(scene.call("_mat_amount", "honey")) - 1.0) > 0.01:
+		_fail("inactive last honey should not be spent, got %.4f" % float(scene.call("_mat_amount", "honey")))
+		return
+
+	print("honey-stamina-regen-ok honey_only=%.4f stacked=%.4f honey_after_spend=%.4f color=%s" % [honey_only_bank, stacked_bank, float(scene.call("_mat_amount", "honey")), str(circle.get("theme_color"))])
 	quit(0)
 
 
@@ -168,6 +211,11 @@ func _set_skill_stamina(scene: Node, skill_id: String, value: float) -> void:
 	scene.set("stamina", stamina)
 
 
+func _skill_stamina(scene: Node, skill_id: String) -> float:
+	var stamina := scene.get("stamina") as Dictionary
+	return float(stamina.get(skill_id, 0.0))
+
+
 func _set_stamina_bank(scene: Node, skill_id: String, value: float) -> void:
 	var stamina_bank := scene.get("stamina_bank") as Dictionary
 	stamina_bank[skill_id] = value
@@ -179,14 +227,34 @@ func _stamina_bank(scene: Node, skill_id: String) -> float:
 	return float(stamina_bank.get(skill_id, 0.0))
 
 
+func _find_button_with_text(root_node: Node, text: String) -> Button:
+	if root_node is Button and str((root_node as Button).text) == text:
+		return root_node as Button
+	for child in root_node.get_children():
+		var found := _find_button_with_text(child, text)
+		if found != null:
+			return found
+	return null
+
+
+func _find_label_with_text(root_node: Node, text: String) -> Label:
+	if root_node is Label and str((root_node as Label).text) == text:
+		return root_node as Label
+	for child in root_node.get_children():
+		var found := _find_label_with_text(child, text)
+		if found != null:
+			return found
+	return null
+
+
 func _colors_close(actual: Color, expected: Color) -> bool:
 	return absf(actual.r - expected.r) <= 0.004 and absf(actual.g - expected.g) <= 0.004 and absf(actual.b - expected.b) <= 0.004 and absf(actual.a - expected.a) <= 0.004
 
 
-func _wait_for_circle_color(circle: Control, expected: Color) -> bool:
+func _wait_for_circle_color(circle: Control, expected: Color, property_name := "theme_color") -> bool:
 	for _frame in range(90):
 		await _wait_test_frame()
-		if _colors_close(circle.get("theme_color") as Color, expected):
+		if _colors_close(circle.get(property_name) as Color, expected):
 			return true
 	return false
 

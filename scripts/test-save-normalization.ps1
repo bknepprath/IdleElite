@@ -114,7 +114,7 @@ func _run() -> void:
 	_check_auto_unlock_lockpads(game)
 	_check_achievement_toast_seen_ids_save_restore(game)
 	_check_scalar_progression_metadata_save(game)
-	_check_offline_clock_guard(game)
+	_check_offline_progress_trust(game)
 	_check_save_payload(game)
 	_check_passive_module_save(game)
 	_check_passive_module_restore(game)
@@ -868,19 +868,35 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	var fight_xp_before := int(fight_state.get("xp", 0))
 	var thieving_xp_before := int(thieving_state.get("xp", 0))
 	var stamina_before := float((game.get("stamina") as Dictionary).get("fight", 0.0))
-	var attempted := bool(game.call("_attempt_temporary_event_action_from_tap", "fight", "covered-wagon-ambush-drill", event_action))
+	game.set("running_skill_id", "fight")
+	game.set("running_action_id", "covered-wagon-ambush-drill")
+	game.set("action_progress", 1.0)
+	var cost := float(game.call("_effective_stamina", "fight", event_action))
+	var spent := bool(game.call("_spend_action_stamina", "fight", cost))
+	_expect(spent, "Temporary event completion test should be able to charge stamina.")
+	game.call(
+		"_complete_temporary_event_action_attempt",
+		"fight",
+		"covered-wagon-ambush-drill",
+		event_action,
+		game.call("_action_key", "fight", "covered-wagon-ambush-drill"),
+		cost,
+		{},
+		true
+	)
 	var active := game.get("temporary_event_active") as Dictionary
 	var cooldowns := game.get("temporary_event_cooldowns") as Dictionary
 	skills = game.get("skills") as Dictionary
 	fight_state = skills.get("fight", {}) as Dictionary
 	thieving_state = skills.get("thieving", {}) as Dictionary
-	_expect(attempted, "Temporary event tap should report that it handled the card tap.")
-	_expect(active.is_empty(), "Successful temporary event tap should despawn the event.")
-	_expect(cooldowns.has("covered-wagon-ambush-drill"), "Successful temporary event tap should set a respawn cooldown.")
-	_expect(int(fight_state.get("xp", 0)) - fight_xp_before == expected_fight_xp, "Successful temporary event tap should grant owner-skill XP before despawning.")
-	_expect(int(thieving_state.get("xp", 0)) - thieving_xp_before == expected_thieving_xp, "Successful temporary event tap should grant secondary event XP before despawning.")
-	_expect(float((game.get("stamina") as Dictionary).get("fight", 0.0)) < stamina_before, "Successful temporary event tap should charge stamina.")
-	_expect(str(game.get("last_result")).begins_with("Event complete:"), "Successful temporary event tap should show event completion feedback text.")
+	_expect(active.is_empty(), "Successful temporary event completion should despawn the event.")
+	_expect(cooldowns.has("covered-wagon-ambush-drill"), "Successful temporary event completion should set a respawn cooldown.")
+	_expect(int(fight_state.get("xp", 0)) - fight_xp_before == expected_fight_xp, "Successful temporary event completion should grant owner-skill XP before despawning.")
+	_expect(int(thieving_state.get("xp", 0)) - thieving_xp_before == expected_thieving_xp, "Successful temporary event completion should grant secondary event XP before despawning.")
+	_expect(float((game.get("stamina") as Dictionary).get("fight", 0.0)) < stamina_before, "Successful temporary event completion should charge stamina.")
+	_expect(str(game.get("running_skill_id")).is_empty(), "Successful temporary event completion should clear the running skill.")
+	_expect(str(game.get("running_action_id")).is_empty(), "Successful temporary event completion should clear the running action.")
+	_expect(str(game.get("last_result")).begins_with("Event complete:"), "Successful temporary event completion should show event completion feedback text.")
 
 
 func _check_combo_xp_reward_map(game: Node) -> void:
@@ -1338,6 +1354,8 @@ func _check_audio_settings_restore(game: Node) -> void:
 	game.call("_load_game_core", {
 		"auto_unlock_lockpads_enabled": true,
 		"show_stamina_decimal": true,
+		"offline_clock_guard_tainted": true,
+		"offline_clock_guard_last_rejected_unix": 123,
 		"skills": {},
 		"stamina": {},
 		"stamina_bank": {},
@@ -1345,6 +1363,9 @@ func _check_audio_settings_restore(game: Node) -> void:
 	})
 	_expect(bool(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should restore when present.")
 	_expect(bool(game.get("show_stamina_decimal")), "Stamina decimal setting should restore when present.")
+	var migrated_payload := game.call("_save_payload", int(game.call("_unix_now"))) as Dictionary
+	_expect(not migrated_payload.has("offline_clock_guard_tainted"), "Old offline clock guard taint should be dropped when existing saves are written again.")
+	_expect(not migrated_payload.has("offline_clock_guard_last_rejected_unix"), "Old offline clock guard rejection timestamps should be dropped when existing saves are written again.")
 
 	_prime_core_skill_state(game)
 	game.set("auto_unlock_lockpads_enabled", true)
@@ -2053,23 +2074,19 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	_expect(float(game.get("flow_active_action_seconds")) == 3.25, "Music flow restore should keep existing active seconds when save data omits them.")
 
 
-func _check_offline_clock_guard(game: Node) -> void:
+func _check_offline_progress_trust(game: Node) -> void:
 	var now := int(game.call("_unix_now"))
 	game.set("last_save_monotonic_msec", 0)
-	game.set("offline_clock_guard_tainted", false)
-	game.set("offline_clock_guard_last_rejected_unix", 0)
 	var trusted := int(game.call("_trusted_offline_seconds", now - 60, now))
-	_expect(trusted == 60, "Offline clock guard should allow short offline windows without a monotonic comparison.")
-	_expect(not bool(game.get("offline_clock_guard_tainted")), "Short offline elapsed time should not taint leaderboard publishing.")
+	_expect(trusted == 60, "Offline progress should trust short offline windows.")
 
 	game.set("last_save_monotonic_msec", 0)
 	game.set("god_mode_save_tainted", false)
 	trusted = int(game.call("_trusted_offline_seconds", now - 60 * 60, now))
-	_expect(trusted == 0, "Offline clock guard should reject large wall-clock jumps without matching monotonic elapsed time.")
-	_expect(bool(game.get("offline_clock_guard_tainted")), "Rejected offline clock jumps should taint leaderboard publishing.")
-	_expect(int(game.get("offline_clock_guard_last_rejected_unix")) == now, "Offline clock guard should remember when a suspicious jump was rejected.")
-	_expect(str(game.call("_leaderboard_submit_status_title")) == "Clock check", "Clock-tainted saves should show a leaderboard clock-check status.")
-	_expect(not bool(game.call("_leaderboard_submit_ready")), "Clock-tainted saves should not be ready to publish leaderboard scores.")
+	var expected := mini(60 * 60, int(game.call("_hub_offline_cap_seconds")))
+	_expect(trusted == expected, "Offline progress should trust large offline windows up to the normal cap.")
+	_expect(str(game.call("_leaderboard_submit_status_title")) != "Clock check", "Saves should not show a leaderboard clock-check status.")
+	_expect(str(game.call("_leaderboard_submit_status_detail")).find("Hard Reset") < 0, "Saves should not tell players to hard reset for clock reasons.")
 
 
 func _check_save_payload(game: Node) -> void:
@@ -2197,8 +2214,6 @@ func _check_save_payload(game: Node) -> void:
 	game.set("sfx_volume", -0.5)
 	game.set("god_mode_enabled", true)
 	game.set("god_mode_save_tainted", true)
-	game.set("offline_clock_guard_tainted", true)
-	game.set("offline_clock_guard_last_rejected_unix", now - 12)
 	game.set("equipped_fishing_tool_id", "not-a-real-tool")
 	game.set("fish_currency", -10.0)
 	game.set("fishing_net_stored_fish", 999)
@@ -2254,9 +2269,9 @@ func _check_save_payload(game: Node) -> void:
 	_expect(not payload.has("is_muted"), "Save payload should not include obsolete global mute state.")
 	_expect(not bool(payload.get("god_mode_enabled", true)), "Save payload should gate god mode enabled by availability.")
 	_expect(bool(payload.get("god_mode_save_tainted", false)), "Save payload should preserve god mode taint state.")
-	_expect(bool(payload.get("offline_clock_guard_tainted", false)), "Save payload should preserve offline clock guard taint state.")
-	_expect(int(payload.get("offline_clock_guard_last_rejected_unix", 0)) == now - 12, "Save payload should preserve offline clock guard rejection timestamps.")
-	_expect(int(payload.get("saved_at_monotonic_msec", -1)) >= 0, "Save payload should include monotonic save timing for same-session clock checks.")
+	_expect(not payload.has("offline_clock_guard_tainted"), "Save payload should stop preserving obsolete offline clock guard taint state.")
+	_expect(not payload.has("offline_clock_guard_last_rejected_unix"), "Save payload should stop preserving obsolete offline clock guard rejection timestamps.")
+	_expect(not payload.has("saved_at_monotonic_msec"), "Save payload should stop preserving monotonic timing for obsolete same-session clock checks.")
 	_expect(str(payload.get("equipped_fishing_tool_id", "")) == "hands", "Save payload should normalize invalid equipped fishing tool ids.")
 	_expect(float(payload.get("fish_currency", -1.0)) == 0.0, "Save payload should clamp fishing currency.")
 	_expect(int(payload.get("fishing_net_stored_fish", -1)) == 9, "Save payload should cap fishing net stored fish.")

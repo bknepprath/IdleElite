@@ -323,7 +323,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "stamina": 3,
       "seconds": 4,
       "xp": 65,
-      "success": 78,
+      "success": 77.8,
       "requirements": [
         {
           "skill": "fishing",
@@ -473,7 +473,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 1.75,
           "xp": 9,
-          "success": 94.2,
+          "success": 94,
           "rewards": {
             "xp": 9
           },
@@ -491,7 +491,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 1.9,
           "xp": 11,
-          "success": 94.2,
+          "success": 93.8,
           "rewards": {
             "xp": 11
           },
@@ -509,7 +509,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 1.92,
           "xp": 14,
-          "success": 92.3,
+          "success": 91.8,
           "rewards": {
             "xp": 14
           },
@@ -527,7 +527,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.28,
           "xp": 17,
-          "success": 90,
+          "success": 89.3,
           "rewards": {
             "xp": 17
           },
@@ -546,7 +546,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.36,
           "xp": 18,
-          "success": 89,
+          "success": 88.2,
           "rewards": {
             "xp": 18
           },
@@ -586,7 +586,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.43,
           "xp": 19,
-          "success": 88,
+          "success": 87.1,
           "rewards": {
             "xp": 19
           },
@@ -604,7 +604,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.87,
           "xp": 22,
-          "success": 87.7,
+          "success": 86.6,
           "rewards": {
             "xp": 22
           },
@@ -622,7 +622,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.38,
           "xp": 25,
-          "success": 87.4,
+          "success": 86.2,
           "rewards": {
             "xp": 25
           },
@@ -640,7 +640,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.9,
           "xp": 29,
-          "success": 85.8,
+          "success": 84.5,
           "rewards": {
             "xp": 29
           },
@@ -658,7 +658,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4.11,
           "xp": 32,
-          "success": 81.5,
+          "success": 80.1,
           "rewards": {
             "xp": 32
           },
@@ -676,7 +676,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4.65,
           "xp": 35,
-          "success": 78.8,
+          "success": 77.3,
           "rewards": {
             "xp": 35
           },
@@ -694,7 +694,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 5.25,
           "xp": 39,
-          "success": 77.7,
+          "success": 76.1,
           "rewards": {
             "xp": 39
           },
@@ -734,7 +734,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 5.87,
           "xp": 42,
-          "success": 77,
+          "success": 75.3,
           "rewards": {
             "xp": 42
           },
@@ -774,7 +774,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 6.3,
           "xp": 46,
-          "success": 74.7,
+          "success": 73,
           "rewards": {
             "xp": 46
           },
@@ -792,7 +792,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 7.02,
           "xp": 50,
-          "success": 71.3,
+          "success": 69.5,
           "rewards": {
             "xp": 50
           },
@@ -810,7 +810,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 9,
           "seconds": 7.67,
           "xp": 53,
-          "success": 66.6,
+          "success": 64.7,
           "rewards": {
             "xp": 53
           },
@@ -828,7 +828,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 10,
           "seconds": 8.21,
           "xp": 57,
-          "success": 65.5,
+          "success": 63.5,
           "rewards": {
             "xp": 57
           },
@@ -846,7 +846,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 8.46,
           "xp": 61,
-          "success": 65.2,
+          "success": 63.2,
           "rewards": {
             "xp": 61
           },
@@ -864,7 +864,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 9.15,
           "xp": 65,
-          "success": 64,
+          "success": 61.9,
           "rewards": {
             "xp": 65
           },
@@ -882,7 +882,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 9.22,
           "xp": 69,
-          "success": 62.1,
+          "success": 60,
           "rewards": {
             "xp": 69
           },
@@ -900,7 +900,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 9.47,
           "xp": 73,
-          "success": 60.9,
+          "success": 58.7,
           "rewards": {
             "xp": 73
           },
@@ -918,7 +918,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 12,
           "seconds": 9.47,
           "xp": 77,
-          "success": 59.7,
+          "success": 57.5,
           "rewards": {
             "xp": 77
           },
@@ -1026,7 +1026,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 1.49,
           "xp": 9,
-          "success": 92.8,
+          "success": 92.6,
           "rewards": {
             "xp": 9
           },
@@ -1044,7 +1044,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 1.82,
           "xp": 11,
-          "success": 92.8,
+          "success": 92.4,
           "rewards": {
             "xp": 11
           },
@@ -1062,7 +1062,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 1.91,
           "xp": 14,
-          "success": 90.5,
+          "success": 90,
           "rewards": {
             "xp": 14
           },
@@ -1081,7 +1081,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 1.98,
           "xp": 16,
-          "success": 89.6,
+          "success": 88.9,
           "rewards": {
             "xp": 16
           },
@@ -1128,7 +1128,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.24,
           "xp": 17,
-          "success": 88.2,
+          "success": 87.4,
           "rewards": {
             "xp": 17
           },
@@ -1146,7 +1146,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.37,
           "xp": 19,
-          "success": 86.3,
+          "success": 85.4,
           "rewards": {
             "xp": 19
           },
@@ -1164,7 +1164,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.13,
           "xp": 22,
-          "success": 85.5,
+          "success": 84.4,
           "rewards": {
             "xp": 22
           },
@@ -1182,7 +1182,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.34,
           "xp": 25,
-          "success": 85.2,
+          "success": 84,
           "rewards": {
             "xp": 25
           },
@@ -1200,7 +1200,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 4,
           "seconds": 3.84,
           "xp": 29,
-          "success": 83.7,
+          "success": 82.4,
           "rewards": {
             "xp": 29
           },
@@ -1219,7 +1219,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 5,
           "seconds": 4,
           "xp": 31,
-          "success": 80.5,
+          "success": 79.1,
           "rewards": {
             "xp": 31
           },
@@ -1259,7 +1259,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4.1,
           "xp": 32,
-          "success": 79,
+          "success": 77.5,
           "rewards": {
             "xp": 32
           },
@@ -1277,7 +1277,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4.86,
           "xp": 35,
-          "success": 76.3,
+          "success": 74.7,
           "rewards": {
             "xp": 35
           },
@@ -1318,7 +1318,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4.98,
           "xp": 37,
-          "success": 75.8,
+          "success": 74.1,
           "rewards": {
             "xp": 37
           },
@@ -1358,7 +1358,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 5.16,
           "xp": 39,
-          "success": 75.2,
+          "success": 73.5,
           "rewards": {
             "xp": 39
           },
@@ -1377,7 +1377,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 5.65,
           "xp": 42,
-          "success": 74.2,
+          "success": 72.4,
           "rewards": {
             "xp": 42
           },
@@ -1422,7 +1422,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 5.82,
           "xp": 42,
-          "success": 74.1,
+          "success": 72.2,
           "rewards": {
             "xp": 42
           },
@@ -1440,7 +1440,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 6.21,
           "xp": 46,
-          "success": 71.8,
+          "success": 69.8,
           "rewards": {
             "xp": 46
           },
@@ -1458,7 +1458,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 7.05,
           "xp": 50,
-          "success": 68.7,
+          "success": 66.7,
           "rewards": {
             "xp": 50
           },
@@ -1476,7 +1476,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 7.31,
           "xp": 53,
-          "success": 64.4,
+          "success": 62.3,
           "rewards": {
             "xp": 53
           },
@@ -1494,7 +1494,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 7.72,
           "xp": 57,
-          "success": 63.7,
+          "success": 61.6,
           "rewards": {
             "xp": 57
           },
@@ -1512,7 +1512,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 7.86,
           "xp": 61,
-          "success": 63.7,
+          "success": 61.5,
           "rewards": {
             "xp": 61
           },
@@ -1530,7 +1530,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 8.44,
           "xp": 65,
-          "success": 63,
+          "success": 60.8,
           "rewards": {
             "xp": 65
           },
@@ -1548,7 +1548,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 8.49,
           "xp": 69,
-          "success": 61.1,
+          "success": 58.8,
           "rewards": {
             "xp": 69
           },
@@ -1566,7 +1566,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 8.74,
           "xp": 73,
-          "success": 59.9,
+          "success": 57.6,
           "rewards": {
             "xp": 73
           },
@@ -1584,7 +1584,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 8.74,
           "xp": 77,
-          "success": 58.7,
+          "success": 56.3,
           "rewards": {
             "xp": 77
           },
@@ -1716,7 +1716,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 2.04,
           "xp": 5,
-          "success": 96.7,
+          "success": 96.5,
           "rewards": {
             "xp": 5
           },
@@ -1756,7 +1756,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 2.3,
           "xp": 6,
-          "success": 95.9,
+          "success": 95.5,
           "rewards": {
             "xp": 6
           },
@@ -1774,7 +1774,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 2.45,
           "xp": 9,
-          "success": 95.9,
+          "success": 95.4,
           "rewards": {
             "xp": 9
           },
@@ -1792,7 +1792,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.03,
           "xp": 11,
-          "success": 95.9,
+          "success": 95.2,
           "rewards": {
             "xp": 11
           },
@@ -1810,7 +1810,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.28,
           "xp": 14,
-          "success": 93.3,
+          "success": 92.5,
           "rewards": {
             "xp": 14
           },
@@ -1829,7 +1829,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.5,
           "xp": 16,
-          "success": 91.8,
+          "success": 90.9,
           "rewards": {
             "xp": 16
           },
@@ -1869,7 +1869,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.78,
           "xp": 17,
-          "success": 90.9,
+          "success": 89.8,
           "rewards": {
             "xp": 17
           },
@@ -1887,7 +1887,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4.47,
           "xp": 19,
-          "success": 88.6,
+          "success": 87.4,
           "rewards": {
             "xp": 19
           },
@@ -1928,7 +1928,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4.72,
           "xp": 21,
-          "success": 88,
+          "success": 86.7,
           "rewards": {
             "xp": 21
           },
@@ -1968,7 +1968,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 5.18,
           "xp": 22,
-          "success": 87.9,
+          "success": 86.5,
           "rewards": {
             "xp": 22
           },
@@ -2008,7 +2008,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 5.61,
           "xp": 25,
-          "success": 87.6,
+          "success": 86.1,
           "rewards": {
             "xp": 25
           },
@@ -2026,7 +2026,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 5,
           "seconds": 6.46,
           "xp": 29,
-          "success": 85.7,
+          "success": 84.1,
           "rewards": {
             "xp": 29
           },
@@ -2044,7 +2044,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 6.99,
           "xp": 32,
-          "success": 81,
+          "success": 79.3,
           "rewards": {
             "xp": 32
           },
@@ -2062,7 +2062,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 8.02,
           "xp": 35,
-          "success": 78.3,
+          "success": 76.6,
           "rewards": {
             "xp": 35
           },
@@ -2080,7 +2080,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 8.59,
           "xp": 39,
-          "success": 77.2,
+          "success": 75.4,
           "rewards": {
             "xp": 39
           },
@@ -2098,7 +2098,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 9.58,
           "xp": 42,
-          "success": 76.1,
+          "success": 74.2,
           "rewards": {
             "xp": 42
           },
@@ -2116,7 +2116,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 9,
           "seconds": 10.41,
           "xp": 46,
-          "success": 74.2,
+          "success": 72.2,
           "rewards": {
             "xp": 46
           },
@@ -2134,7 +2134,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 9,
           "seconds": 11.26,
           "xp": 50,
-          "success": 71.1,
+          "success": 69.1,
           "rewards": {
             "xp": 50
           },
@@ -2152,7 +2152,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 11.79,
           "xp": 53,
-          "success": 66.8,
+          "success": 64.7,
           "rewards": {
             "xp": 53
           },
@@ -2170,7 +2170,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 12,
           "seconds": 12.28,
           "xp": 57,
-          "success": 66.5,
+          "success": 64.4,
           "rewards": {
             "xp": 57
           },
@@ -2188,7 +2188,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 12,
           "seconds": 12.7,
           "xp": 61,
-          "success": 66.5,
+          "success": 64.3,
           "rewards": {
             "xp": 61
           },
@@ -2206,7 +2206,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 12,
           "seconds": 13.14,
           "xp": 65,
-          "success": 66.1,
+          "success": 63.9,
           "rewards": {
             "xp": 65
           },
@@ -2224,7 +2224,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 12,
           "seconds": 13.15,
           "xp": 69,
-          "success": 64.6,
+          "success": 62.3,
           "rewards": {
             "xp": 69
           },
@@ -2242,7 +2242,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 12,
           "seconds": 13.45,
           "xp": 73,
-          "success": 63.4,
+          "success": 61.1,
           "rewards": {
             "xp": 73
           },
@@ -2260,7 +2260,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 12,
           "seconds": 13.45,
           "xp": 77,
-          "success": 62.2,
+          "success": 59.8,
           "rewards": {
             "xp": 77
           },
@@ -2408,7 +2408,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 2.05,
           "xp": 9,
-          "success": 95.4,
+          "success": 95.2,
           "rewards": {
             "xp": 9
           },
@@ -2434,7 +2434,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 2.43,
           "xp": 11,
-          "success": 95.4,
+          "success": 95,
           "rewards": {
             "xp": 11
           },
@@ -2461,7 +2461,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 2.61,
           "xp": 14,
-          "success": 93.2,
+          "success": 92.7,
           "rewards": {
             "xp": 14
           },
@@ -2479,7 +2479,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.02,
           "xp": 17,
-          "success": 90.8,
+          "success": 90.1,
           "rewards": {
             "xp": 17
           },
@@ -2506,7 +2506,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 3.61,
           "xp": 19,
-          "success": 88.5,
+          "success": 87.7,
           "rewards": {
             "xp": 19
           },
@@ -2533,7 +2533,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4.22,
           "xp": 22,
-          "success": 87.8,
+          "success": 86.9,
           "rewards": {
             "xp": 22
           },
@@ -2566,7 +2566,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4.55,
           "xp": 25,
-          "success": 87.5,
+          "success": 86.4,
           "rewards": {
             "xp": 25
           },
@@ -2584,7 +2584,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 4,
           "seconds": 5.27,
           "xp": 29,
-          "success": 85.6,
+          "success": 84.4,
           "rewards": {
             "xp": 29
           },
@@ -2602,7 +2602,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 5.67,
           "xp": 32,
-          "success": 80.9,
+          "success": 79.6,
           "rewards": {
             "xp": 32
           },
@@ -2629,7 +2629,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 6.57,
           "xp": 35,
-          "success": 78.2,
+          "success": 76.8,
           "rewards": {
             "xp": 35
           },
@@ -2647,7 +2647,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 7.12,
           "xp": 39,
-          "success": 76.7,
+          "success": 75.2,
           "rewards": {
             "xp": 39
           },
@@ -2673,7 +2673,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 7.84,
           "xp": 42,
-          "success": 76,
+          "success": 74.4,
           "rewards": {
             "xp": 42
           },
@@ -2692,7 +2692,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 8.05,
           "xp": 44,
-          "success": 75,
+          "success": 73.3,
           "rewards": {
             "xp": 44
           },
@@ -2734,7 +2734,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 8.65,
           "xp": 46,
-          "success": 73.7,
+          "success": 72,
           "rewards": {
             "xp": 46
           },
@@ -2776,7 +2776,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 8.95,
           "xp": 49,
-          "success": 72,
+          "success": 70.2,
           "rewards": {
             "xp": 49
           },
@@ -2822,7 +2822,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 9.48,
           "xp": 50,
-          "success": 70.2,
+          "success": 68.3,
           "rewards": {
             "xp": 50
           },
@@ -2849,7 +2849,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 10,
           "seconds": 9.77,
           "xp": 53,
-          "success": 66.3,
+          "success": 64.3,
           "rewards": {
             "xp": 53
           },
@@ -2868,7 +2868,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 10.19,
           "xp": 57,
-          "success": 66,
+          "success": 64,
           "rewards": {
             "xp": 57
           },
@@ -2909,7 +2909,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 10.55,
           "xp": 61,
-          "success": 66,
+          "success": 63.9,
           "rewards": {
             "xp": 61
           },
@@ -2927,7 +2927,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 10.93,
           "xp": 65,
-          "success": 65.6,
+          "success": 63.5,
           "rewards": {
             "xp": 65
           },
@@ -2945,7 +2945,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 10.93,
           "xp": 69,
-          "success": 64.1,
+          "success": 61.9,
           "rewards": {
             "xp": 69
           },
@@ -2963,7 +2963,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 11.2,
           "xp": 73,
-          "success": 62.9,
+          "success": 60.7,
           "rewards": {
             "xp": 73
           },
@@ -2991,7 +2991,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 11.2,
           "xp": 77,
-          "success": 61.7,
+          "success": 59.4,
           "rewards": {
             "xp": 77
           },
@@ -3135,7 +3135,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 4,
           "xp": 5,
-          "success": 86,
+          "success": 85.8,
           "rewards": {
             "xp": 5,
             "fish_min": 1,
@@ -3156,7 +3156,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 4,
           "xp": 19,
-          "success": 80,
+          "success": 79.6,
           "rewards": {
             "xp": 19,
             "fish_min": 2,
@@ -3177,7 +3177,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4,
           "xp": 24,
-          "success": 78,
+          "success": 77.5,
           "rewards": {
             "xp": 24,
             "fish_min": 1,
@@ -3199,7 +3199,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4,
           "xp": 7,
-          "success": 76,
+          "success": 75.3,
           "rewards": {
             "xp": 7,
             "fish_min": 1,
@@ -3243,7 +3243,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4,
           "xp": 33,
-          "success": 74,
+          "success": 73.2,
           "rewards": {
             "xp": 33,
             "fish_min": 1,
@@ -3264,7 +3264,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 4,
           "xp": 15,
-          "success": 82,
+          "success": 81.1,
           "rewards": {
             "xp": 15,
             "fish_min": 2,
@@ -3286,7 +3286,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4,
           "xp": 24,
-          "success": 78,
+          "success": 76.9,
           "rewards": {
             "xp": 24,
             "fish_min": 2,
@@ -3329,7 +3329,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4,
           "xp": 28,
-          "success": 76,
+          "success": 74.8,
           "rewards": {
             "xp": 28,
             "fish_min": 2,
@@ -3351,7 +3351,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 4,
           "seconds": 4,
           "xp": 42,
-          "success": 70,
+          "success": 68.7,
           "rewards": {
             "xp": 42,
             "fish_currency_min": 0.1,
@@ -3394,7 +3394,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 4,
           "seconds": 4,
           "xp": 44,
-          "success": 70,
+          "success": 68.6,
           "rewards": {
             "xp": 44,
             "fish_min": 3,
@@ -3415,7 +3415,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 4,
           "seconds": 4,
           "xp": 39,
-          "success": 72,
+          "success": 70.5,
           "rewards": {
             "xp": 39,
             "fish_min": 2,
@@ -3436,7 +3436,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 4,
           "seconds": 4,
           "xp": 49,
-          "success": 68,
+          "success": 66.4,
           "rewards": {
             "xp": 49,
             "fish_min": 4,
@@ -3458,7 +3458,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 5,
           "seconds": 4,
           "xp": 52,
-          "success": 66,
+          "success": 64.3,
           "rewards": {
             "xp": 52,
             "fish_currency_min": 0.1,
@@ -3501,7 +3501,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 5,
           "seconds": 4,
           "xp": 55,
-          "success": 66,
+          "success": 64.3,
           "rewards": {
             "xp": 55,
             "fish_min": 3,
@@ -3523,7 +3523,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 5,
           "seconds": 4,
           "xp": 36,
-          "success": 65,
+          "success": 63.2,
           "rewards": {
             "xp": 36,
             "fish_min": 2,
@@ -3566,7 +3566,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 5,
           "seconds": 4,
           "xp": 61,
-          "success": 64,
+          "success": 62.1,
           "rewards": {
             "xp": 61,
             "fish_min": 1,
@@ -3587,7 +3587,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4,
           "xp": 73,
-          "success": 60,
+          "success": 58,
           "rewards": {
             "xp": 73,
             "fish_min": 2,
@@ -3608,7 +3608,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4,
           "xp": 85,
-          "success": 56,
+          "success": 54,
           "rewards": {
             "xp": 85,
             "fish_min": 1,
@@ -3629,7 +3629,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4,
           "xp": 79,
-          "success": 58,
+          "success": 55.9,
           "rewards": {
             "xp": 79,
             "fish_min": 1,
@@ -3650,7 +3650,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 4,
           "xp": 92,
-          "success": 54,
+          "success": 51.9,
           "rewards": {
             "xp": 92,
             "fish_min": 3,
@@ -3671,7 +3671,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 4,
           "xp": 98,
-          "success": 52,
+          "success": 49.8,
           "rewards": {
             "xp": 98,
             "fish_min": 1,
@@ -3692,7 +3692,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 4,
           "xp": 105,
-          "success": 50,
+          "success": 47.8,
           "rewards": {
             "xp": 105,
             "fish_min": 4,
@@ -3713,7 +3713,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 5,
           "seconds": 4,
           "xp": 467,
-          "success": 92,
+          "success": 89.7,
           "rewards": {
             "xp": 467,
             "fish_min": 45,
@@ -3735,7 +3735,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 4,
           "xp": 700,
-          "success": 72,
+          "success": 69.7,
           "rewards": {
             "xp": 700,
             "fish_min": 70,

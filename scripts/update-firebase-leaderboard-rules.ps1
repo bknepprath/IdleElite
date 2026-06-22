@@ -51,14 +51,18 @@ $categoryExpression = New-CategoryExpression -CategoryKeys $categoryKeys
 
 $freshClientTimestampRule = "newData.isNumber() && newData.val() >= now - 10000 && newData.val() <= now + 60000"
 $freshGateTimestampExpr = "{0}.isNumber() && {0}.val() >= now - 10000 && {0}.val() <= now + 60000"
+$leaderboardWriterRule = "((auth != null && auth.uid == `$playerId) || auth == null)"
+$nameClaimWriterRule = "((auth != null && newData.child('uid').val() == auth.uid && (!data.exists() || data.child('uid').val() == auth.uid)) || (auth == null && newData.child('uid').isString() && newData.child('uid').val().length >= 8 && newData.child('uid').val().length <= 48 && (!data.exists() || data.child('uid').val() == newData.child('uid').val())))"
+$leaderboardNameClaimRule = "root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == `$playerId"
 $leaderboardFreshGateRule = "root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').isNumber() && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() >= now - 10000 && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() <= now + 60000"
 $leaderboardLegacyRowCooldownRule = "newData.child('updated_at').isNumber() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
 $leaderboardLegacyTotalLevelScoreRule = "`$category == 'total_level' && data.exists() && data.child('score').isNumber() && data.child('score').val() > 999 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.child('score').val()"
-$chatFreshGateRule = "newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(auth.uid).child('updated_at').val() <= now + 60000"
-$chatClaimedNameRule = "newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid"
+$chatSenderRule = "newData.child('sender_id').isString() && newData.child('sender_id').val().length >= 8 && newData.child('sender_id').val().length <= 48 && (auth == null || newData.child('sender_id').val() == auth.uid)"
+$chatFreshGateRule = "newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() <= now + 60000"
+$chatClaimedNameRule = "newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('sender_id').val()"
 $chatGuestNameRule = "!newData.child('name_key').exists() && newData.child('name').isString() && newData.child('name').val().matches(/^guest[0-9]{4}$/)"
-$chatCreateRule = "newData.exists() && !data.exists() && newData.child('sender_id').val() == auth.uid && ($chatClaimedNameRule || $chatGuestNameRule) && `$messageId.length >= 8 && `$messageId.length <= 64 && $chatFreshGateRule"
-$chatOwnerRefreshRule = "data.exists() && newData.exists() && data.child('sender_id').val() == auth.uid && $chatClaimedNameRule && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == data.child('deleted').val() && newData.child('deleted_at').val() == data.child('deleted_at').val() && newData.child('deleted_by').val() == data.child('deleted_by').val()"
+$chatCreateRule = "newData.exists() && !data.exists() && $chatSenderRule && ($chatClaimedNameRule || $chatGuestNameRule) && `$messageId.length >= 8 && `$messageId.length <= 64 && $chatFreshGateRule"
+$chatOwnerRefreshRule = "data.exists() && newData.exists() && data.child('sender_id').val() == newData.child('sender_id').val() && (auth == null || data.child('sender_id').val() == auth.uid) && $chatClaimedNameRule && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == data.child('deleted').val() && newData.child('deleted_at').val() == data.child('deleted_at').val() && newData.child('deleted_by').val() == data.child('deleted_by').val()"
 $chatModerationRule = "data.exists() && newData.exists() && auth.token.moderator == true && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('name').val() == data.child('name').val() && newData.child('name_key').val() == data.child('name_key').val() && newData.child('total_level').val() == data.child('total_level').val() && newData.child('avatar_index').val() == data.child('avatar_index').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == true && newData.child('deleted_at').val() == now && newData.child('deleted_by').val() == auth.uid"
 
 $rulesObject = [ordered]@{
@@ -72,10 +76,10 @@ $rulesObject = [ordered]@{
                 name_claims = [ordered]@{
                     '$nameKey' = [ordered]@{
                         ".read" = $false
-                        ".write" = "auth != null && newData.exists() && `$nameKey.length > 0 && `$nameKey.length <= 16 && newData.child('uid').val() == auth.uid && newData.child('name_key').val() == `$nameKey && (!data.exists() || data.child('uid').val() == auth.uid)"
+                        ".write" = "newData.exists() && `$nameKey.length > 0 && `$nameKey.length <= 16 && newData.child('name_key').val() == `$nameKey && $nameClaimWriterRule"
                         ".validate" = "newData.hasChildren(['uid', 'name', 'name_key', 'avatar_index', 'created_at', 'updated_at', 'submitted_at_unix'])"
                         uid = [ordered]@{
-                            ".validate" = "newData.isString() && newData.val() == auth.uid && (!data.exists() || newData.val() == data.val())"
+                            ".validate" = "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48 && (!data.exists() || newData.val() == data.val())"
                         }
                         name = [ordered]@{
                             ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
@@ -105,7 +109,7 @@ $rulesObject = [ordered]@{
                         ".read" = "$categoryExpression && query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50"
                         ".indexOn" = @("score")
                         '$playerId' = [ordered]@{
-                            ".write" = "auth != null && newData.exists() && auth.uid == `$playerId && $categoryExpression && `$playerId.length >= 8 && `$playerId.length <= 48 && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid && (($leaderboardFreshGateRule) || ($leaderboardLegacyRowCooldownRule) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000))"
+                            ".write" = "newData.exists() && $leaderboardWriterRule && $categoryExpression && `$playerId.length >= 8 && `$playerId.length <= 48 && $leaderboardNameClaimRule && (($leaderboardFreshGateRule) || ($leaderboardLegacyRowCooldownRule) || (data.exists() && newData.child('score').val() == data.child('score').val() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000))"
                             ".validate" = "newData.hasChildren(['name', 'name_key', 'avatar_index', 'score', 'updated_at', 'submitted_at_unix'])"
                             name = [ordered]@{
                                 ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
@@ -140,7 +144,7 @@ $rulesObject = [ordered]@{
                 player_write_gates = [ordered]@{
                     '$playerId' = [ordered]@{
                         ".read" = $false
-                        ".write" = "auth != null && newData.exists() && auth.uid == `$playerId && `$playerId.length >= 8 && `$playerId.length <= 48 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
+                        ".write" = "newData.exists() && $leaderboardWriterRule && `$playerId.length >= 8 && `$playerId.length <= 48 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
                         ".validate" = "newData.hasChildren(['updated_at', 'submitted_at_unix'])"
                         updated_at = [ordered]@{
                             ".validate" = $freshClientTimestampRule
@@ -163,7 +167,7 @@ $rulesObject = [ordered]@{
                     ".read" = "query.orderByChild == 'created_at' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 25"
                     ".indexOn" = @("created_at")
                     '$messageId' = [ordered]@{
-                        ".write" = "auth != null && (($chatCreateRule) || ($chatOwnerRefreshRule) || ($chatModerationRule))"
+                        ".write" = "(($chatCreateRule) || ($chatOwnerRefreshRule) || ($chatModerationRule))"
                         ".validate" = "newData.hasChildren(['sender_id', 'name', 'avatar_index', 'text', 'created_at', 'created_at_unix', 'deleted'])"
                         sender_id = [ordered]@{
                             ".validate" = "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48"
@@ -206,7 +210,7 @@ $rulesObject = [ordered]@{
                 user_write_gates = [ordered]@{
                     '$playerId' = [ordered]@{
                         ".read" = $false
-                        ".write" = "auth != null && newData.exists() && auth.uid == `$playerId && `$playerId.length >= 8 && `$playerId.length <= 48 && (!data.exists() || now - data.child('updated_at').val() >= 2000)"
+                        ".write" = "newData.exists() && ((auth != null && auth.uid == `$playerId) || auth == null) && `$playerId.length >= 8 && `$playerId.length <= 48 && (!data.exists() || now - data.child('updated_at').val() >= 2000)"
                         ".validate" = "newData.hasChildren(['updated_at', 'submitted_at_unix'])"
                         updated_at = [ordered]@{
                             ".validate" = $freshClientTimestampRule

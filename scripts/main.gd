@@ -708,6 +708,8 @@ class RegenCircle:
 	var show_decimal := true
 	var theme_color := Color("#36b8e8")
 	var target_theme_color := Color("#36b8e8")
+	var regen_ring_color := Color("#36b8e8")
+	var target_regen_ring_color := Color("#36b8e8")
 	var theme_color_initialized := false
 	var value_initialized := false
 	var stamina_initialized := false
@@ -813,6 +815,8 @@ class RegenCircle:
 			return
 		if _color_delta(theme_color, target_theme_color) > THEME_COLOR_EPSILON:
 			return
+		if _color_delta(regen_ring_color, target_regen_ring_color) > THEME_COLOR_EPSILON:
+			return
 		set_process(false)
 
 	func _process(delta: float) -> void:
@@ -839,10 +843,11 @@ class RegenCircle:
 			displayed_current = eased_current
 			queue_redraw()
 		else:
-			var needs_final_redraw := absf(value - target_value) > 0.0 or absf(displayed_current - target_current) > 0.0 or _color_delta(theme_color, target_theme_color) > 0.0
+			var needs_final_redraw := absf(value - target_value) > 0.0 or absf(displayed_current - target_current) > 0.0 or _color_delta(theme_color, target_theme_color) > 0.0 or _color_delta(regen_ring_color, target_regen_ring_color) > 0.0
 			value = target_value
 			displayed_current = target_current
 			theme_color = target_theme_color
+			regen_ring_color = target_regen_ring_color
 			if needs_final_redraw:
 				queue_redraw()
 		_maybe_sleep_animation_process()
@@ -860,27 +865,50 @@ class RegenCircle:
 		return maxf(maxf(absf(a.r - b.r), absf(a.g - b.g)), maxf(absf(a.b - b.b), absf(a.a - b.a)))
 
 	func _update_theme_color(delta: float) -> bool:
+		var changed := false
 		if _color_delta(theme_color, target_theme_color) <= THEME_COLOR_EPSILON:
 			if _color_delta(theme_color, target_theme_color) > 0.0:
 				theme_color = target_theme_color
-				return true
-			return false
-		var next_color := _ease_color_to(theme_color, target_theme_color, THEME_COLOR_EASE_SPEED, delta)
-		var changed := _color_delta(theme_color, next_color) > 0.0001
-		theme_color = next_color
+				changed = true
+		else:
+			var next_color := _ease_color_to(theme_color, target_theme_color, THEME_COLOR_EASE_SPEED, delta)
+			changed = _color_delta(theme_color, next_color) > 0.0001
+			theme_color = next_color
+		if _color_delta(regen_ring_color, target_regen_ring_color) <= THEME_COLOR_EPSILON:
+			if _color_delta(regen_ring_color, target_regen_ring_color) > 0.0:
+				regen_ring_color = target_regen_ring_color
+				changed = true
+		else:
+			var next_ring_color := _ease_color_to(regen_ring_color, target_regen_ring_color, THEME_COLOR_EASE_SPEED, delta)
+			changed = changed or _color_delta(regen_ring_color, next_ring_color) > 0.0001
+			regen_ring_color = next_ring_color
 		return changed
 
 	func set_theme_color(next_color: Color, instant := false) -> void:
-		if theme_color_initialized and target_theme_color.is_equal_approx(next_color) and (not instant or theme_color.is_equal_approx(next_color)):
+		if theme_color_initialized and target_theme_color.is_equal_approx(next_color) and target_regen_ring_color.is_equal_approx(next_color) and (not instant or (theme_color.is_equal_approx(next_color) and regen_ring_color.is_equal_approx(next_color))):
 			return
 		target_theme_color = next_color
+		target_regen_ring_color = next_color
 		if instant or not theme_color_initialized:
 			theme_color = next_color
+			regen_ring_color = next_color
 			theme_color_initialized = true
 			queue_redraw()
 			_maybe_sleep_animation_process()
 			return
 		theme_color_initialized = true
+		queue_redraw()
+		_ensure_animation_process()
+
+	func set_regen_ring_color(next_color: Color, instant := false) -> void:
+		if theme_color_initialized and target_regen_ring_color.is_equal_approx(next_color) and (not instant or regen_ring_color.is_equal_approx(next_color)):
+			return
+		target_regen_ring_color = next_color
+		if instant or not theme_color_initialized:
+			regen_ring_color = next_color
+			queue_redraw()
+			_maybe_sleep_animation_process()
+			return
 		queue_redraw()
 		_ensure_animation_process()
 
@@ -934,7 +962,7 @@ class RegenCircle:
 		if visible_value > VALUE_EPSILON and visible_value < MIN_VISIBLE_REGEN_RING:
 			visible_value = MIN_VISIBLE_REGEN_RING
 		if visible_value > VALUE_EPSILON:
-			draw_arc(center, ring_radius, -PI * 0.5, -PI * 0.5 + TAU * visible_value, RING_ARC_SEGMENTS, theme_color, ring_width, true)
+			draw_arc(center, ring_radius, -PI * 0.5, -PI * 0.5 + TAU * visible_value, RING_ARC_SEGMENTS, regen_ring_color, ring_width, true)
 		_draw_inner_fill(center, inner_radius, draw_scale)
 		_draw_inner_bevel(center, inner_radius, draw_scale)
 		_draw_liquid_edge_seal(center, inner_radius, draw_scale)
@@ -1984,8 +2012,11 @@ const ACTION_CARD_TYPE_BADGE_OFFSET_LEFT := -197.0
 const ACTION_CARD_TYPE_BADGE_OFFSET_RIGHT := 34.0
 const ACTION_CARD_TYPE_BADGE_OFFSET_TOP := -68.0
 const ACTION_CARD_TYPE_BADGE_OFFSET_BOTTOM := 163.0
-const ACTION_CARD_TYPE_BADGE_POPOVER_SIZE := Vector2(760, 250)
-const ACTION_CARD_TYPE_BADGE_POPOVER_OFFSET := Vector2(-720, 172)
+const MIN_MOBILE_BODY_FONT_SIZE := 52
+const MIN_MOBILE_INFO_TITLE_FONT_SIZE := 60
+const INFO_POPOVER_PREWARM_FRAMES := 2
+const ACTION_CARD_TYPE_BADGE_POPOVER_SIZE := Vector2(860, 360)
+const ACTION_CARD_TYPE_BADGE_POPOVER_OFFSET := Vector2(-820, 172)
 const EVENT_HOURGLASS_BADGE_TITLE := "Random Event"
 const EVENT_HOURGLASS_BADGE_INFO := "A limited-time event. Tap the card to try it for bonus rewards without interrupting your current idle action."
 const HUB_MISSION_BADGE_TITLE := "Mission Task"
@@ -2166,6 +2197,9 @@ const ACTION_ART_SIZE := Vector2(427.2, 427.2)
 const ACTION_ART_OFFSET := Vector2(-8.6, -8.6)
 const COMBO_ACTION_ART_SIZE := Vector2(352, 352)
 const COMBO_ACTION_ART_OFFSET := (ACTION_ART_PANEL_SIZE - COMBO_ACTION_ART_SIZE) * 0.5
+const ACTION_ART_CORNER_ICON_SIZE := Vector2(172, 172)
+const ACTION_ART_CORNER_ICON_EDGE_OVERLAP := 60.0
+const ACTION_ART_CORNER_ICON_STROKE_PIXELS := 14.0
 const FISHING_BACKGROUND_CROP_LEFT := 0.06
 const FISHING_BACKGROUND_CROP_TOP := 0.06
 const FISHING_BACKGROUND_CROP_RIGHT := 0.015
@@ -2805,7 +2839,9 @@ const ACTIVITY_CRIT_XP_MULT := 3
 const OFFLINE_XP_MULT := 0.30
 const LOW_STAMINA_ACTION_SPEED_MULT := 0.20
 const TIRED_ACTIVITY_FLOAT_TEXT := "Tired!\n20% speed"
+const EVENT_NEED_STAMINA_FLOAT_TEXT := "Need\n%s STAM"
 const TIRED_ACTIVITY_FLOAT_COLOR := Color("#fff2a8")
+const AUTO_EAT_FISH_AFTER_SPEND_VISUAL_DELAY_MSEC := 180
 const ACTIVITY_CRIT_FEEDBACK_SECONDS := 1.68
 const ACTIVITY_CRIT_SHAKE_PIXELS := 17.0
 const ACTIVITY_CRIT_LIFT_PIXELS := 7.0
@@ -3047,9 +3083,6 @@ const OFFLINE_ACTIVE_BATCH_MIN_CYCLES := 12
 const OFFLINE_ACTIVE_BATCH_MAX_CYCLES := 512
 const OFFLINE_CONVERGENCE_BATCH_MIN_CYCLES := 12
 const OFFLINE_CONVERGENCE_BATCH_MAX_CYCLES := 512
-const OFFLINE_CLOCK_GUARD_MIN_WALL_SECONDS := 5 * 60
-const OFFLINE_CLOCK_GUARD_GRACE_SECONDS := 2 * 60
-const OFFLINE_CLOCK_GUARD_MAX_RATIO := 1.35
 const ACTION_PROGRESS_RAIL_INSET := 0
 const ACTION_PROGRESS_RAIL_HEIGHT := 88
 const BUTTON_BORDER := 22
@@ -3142,6 +3175,7 @@ var action_card_press_consumed := false
 var action_progress_speed_key := ""
 var action_progress_speed_mult_current := 1.0
 var tired_activity_zero_float_action_key := ""
+var auto_eat_fish_after_spend_due_msec_by_skill := {}
 var log_currency := 0
 var mat_wallet := {}
 var fish_currency := 0.0
@@ -3283,6 +3317,8 @@ var rewarded_ad: RewardedAd
 var ad_reward_listener := OnUserEarnedRewardListener.new()
 var ad_load_callback := RewardedAdLoadCallback.new()
 var ad_content_callback := FullScreenContentCallback.new()
+var ad_callbacks_configured := false
+var ads_initialized := false
 var ad_loading := false
 var ad_showing := false
 var ad_show_after_load := false
@@ -3480,10 +3516,12 @@ var leaderboard_process_seconds := 0.0
 var leaderboard_status_message := ""
 var leaderboard_last_submit_payload_categories := []
 var chat_send_request: HTTPRequest
+var chat_fetch_request: HTTPRequest
 var chat_stream_client: HTTPClient
 var chat_stream_connected := false
 var chat_stream_connecting := false
 var chat_stream_request_sent := false
+var chat_fetch_in_flight := false
 var chat_stream_retry_unix := 0
 var chat_stream_next_connect_unix := 0
 var chat_stream_visible_count := 0
@@ -3497,7 +3535,8 @@ var chat_status_message := ""
 var chat_message_edit: LineEdit
 var chat_draft_message := ""
 var chat_pending_send_after_auth := ""
-var chat_last_submit_press_msec := 0
+var chat_enter_submit_armed := true
+var chat_submit_deferred := false
 var chat_pending_send_message_id := ""
 var chat_pending_send_text := ""
 var chat_strip: PanelContainer
@@ -3528,6 +3567,8 @@ var chat_overlay_row_nodes := {}
 var chat_overlay_row_signatures := {}
 var chat_overlay_shell_ready := false
 var chat_profile_button: Button
+var chat_status_title_labels := []
+var chat_status_detail_labels := []
 var chat_stream_poll_timer: Timer
 var chat_keyboard_lift_active := false
 var chat_keyboard_lift_pixels := 0.0
@@ -3935,8 +3976,6 @@ var crash_session_id := ""
 var crash_session_heartbeat_elapsed := 0.0
 var last_save_unix_time := 0
 var last_save_monotonic_msec := -1
-var offline_clock_guard_tainted := false
-var offline_clock_guard_last_rejected_unix := 0
 var save_dirty := false
 var save_dirty_reason := ""
 var passive_upgrade_player: AudioStreamPlayer
@@ -4535,6 +4574,7 @@ func _process(delta: float) -> void:
 		trace_last_usec = now_usec
 	_process_music_flow(delta)
 	_process_chat_keyboard_lift(delta)
+	_process_chat_enter_submit_poll()
 	_update_ui(delta)
 	_maybe_release_ready_skill_swipe_cover()
 	_process_page_switch_pending_transition()
@@ -5762,6 +5802,7 @@ func _stop_running_action(skill_id: String, action_id: String) -> bool:
 		return false
 	var stop_action_key := _action_key(skill_id, action_id)
 	_remember_canceled_action_progress(skill_id, action_id, action_progress)
+	_clear_auto_eat_fish_after_spend_delay(skill_id)
 	running_skill_id = ""
 	running_action_id = ""
 	action_progress = 0.0
@@ -6725,6 +6766,10 @@ func _build_leaderboard_http() -> void:
 	profile_reference_update_request.request_completed.connect(_on_profile_reference_update_completed)
 	add_child(profile_reference_update_request)
 	chat_stream_client = HTTPClient.new()
+	chat_fetch_request = HTTPRequest.new()
+	chat_fetch_request.timeout = 15.0
+	chat_fetch_request.request_completed.connect(_on_chat_fetch_completed)
+	add_child(chat_fetch_request)
 	chat_send_request = HTTPRequest.new()
 	chat_send_request.timeout = 15.0
 	chat_send_request.request_completed.connect(_on_chat_send_completed)
@@ -6839,6 +6884,8 @@ func _firebase_database_url(root_path: String, path := "", query := "") -> Strin
 
 
 func _leaderboard_authenticated_query(query := "") -> String:
+	if _leaderboard_web_authless_writes_enabled():
+		return query
 	var token := leaderboard_auth_id_token.strip_edges()
 	if token.is_empty():
 		return query
@@ -6846,6 +6893,27 @@ func _leaderboard_authenticated_query(query := "") -> String:
 	if query.is_empty():
 		return auth_param
 	return "%s&%s" % [query, auth_param]
+
+
+func _firebase_server_timestamp() -> Dictionary:
+	return {".sv": "timestamp"}
+
+
+func _leaderboard_web_authless_writes_enabled() -> bool:
+	return OS.has_feature("web")
+
+
+func _ensure_leaderboard_player_id() -> void:
+	if leaderboard_player_id.is_empty():
+		leaderboard_player_id = _make_leaderboard_player_id()
+		_mark_save_dirty("leaderboard player id")
+
+
+func _leaderboard_write_ready() -> bool:
+	if _leaderboard_web_authless_writes_enabled():
+		_ensure_leaderboard_player_id()
+		return not leaderboard_player_id.is_empty()
+	return _leaderboard_ensure_auth()
 
 
 func _leaderboard_category_key(category_id: String) -> String:
@@ -6954,6 +7022,22 @@ func _leaderboard_ensure_auth() -> bool:
 	return false
 
 
+func _leaderboard_retry_chat_auth_without_refresh() -> bool:
+	if chat_pending_send_after_auth.is_empty():
+		return false
+	if leaderboard_auth_refresh_token.is_empty():
+		return false
+	leaderboard_auth_refresh_token = ""
+	leaderboard_auth_id_token = ""
+	leaderboard_auth_expires_unix = 0
+	leaderboard_auth_retry_after_unix = 0
+	leaderboard_status_message = "Creating fresh chat login..."
+	save_game()
+	var auth_ready := _leaderboard_ensure_auth()
+	_render_chat_if_visible()
+	return auth_ready or leaderboard_auth_in_flight
+
+
 func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := false) -> void:
 	_ensure_leaderboard_http()
 	var valid_id := _leaderboard_valid_category_id(category_id)
@@ -7038,23 +7122,19 @@ func _leaderboard_submit_scores() -> void:
 	if god_mode_save_tainted:
 		leaderboard_status_message = "Test save: leaderboard publishing paused."
 		return
-	if offline_clock_guard_tainted:
-		leaderboard_status_message = "Leaderboard publishing paused after suspicious device clock changes."
-		return
 	if not _leaderboard_firebase_enabled():
 		leaderboard_status_message = "Online services are not connected yet."
 		return
-	if not _leaderboard_ensure_auth():
+	if not _leaderboard_write_ready():
 		return
 	if not _leaderboard_profile_claim_valid():
 		leaderboard_status_message = "Save a unique leaderboard name before publishing."
 		return
 	if leaderboard_submit_in_flight or not _leaderboard_submit_ready():
 		return
-	if leaderboard_player_id.is_empty():
-		leaderboard_player_id = _make_leaderboard_player_id()
+	_ensure_leaderboard_player_id()
 	var now_unix := _unix_now()
-	var now_msec := _unix_now_msec()
+	var server_timestamp := _firebase_server_timestamp()
 	var score_updates := {}
 	leaderboard_last_submit_payload_categories.clear()
 	for raw_category in _leaderboard_categories():
@@ -7075,7 +7155,7 @@ func _leaderboard_submit_scores() -> void:
 			"score": score,
 			"skill_level": _leaderboard_skill_level_for_category(category_id),
 			"total_xp": _leaderboard_total_xp_for_category(category_id),
-			"updated_at": now_msec,
+			"updated_at": server_timestamp,
 			"submitted_at_unix": now_unix
 		}
 		leaderboard_last_submit_payload_categories.append(category_id)
@@ -7086,7 +7166,7 @@ func _leaderboard_submit_scores() -> void:
 	leaderboard_pending_score_updates = score_updates
 	leaderboard_submit_stage = "gate"
 	var gate_payload := {
-		"updated_at": now_msec,
+		"updated_at": server_timestamp,
 		"submitted_at_unix": now_unix
 	}
 	leaderboard_submit_in_flight = true
@@ -7176,10 +7256,14 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 	leaderboard_auth_in_flight = false
 	leaderboard_auth_mode = ""
 	if result != HTTPRequest.RESULT_SUCCESS:
+		if mode == "refresh" and _leaderboard_retry_chat_auth_without_refresh():
+			return
 		_leaderboard_note_auth_failure("Online login failed.", mode == "refresh")
 		return
 	if response_code < 200 or response_code >= 300:
 		var detail := _firebase_error_detail(body)
+		if mode == "refresh" and _leaderboard_retry_chat_auth_without_refresh():
+			return
 		if detail.is_empty():
 			_leaderboard_note_auth_failure("Online login returned HTTP %s." % response_code, mode == "refresh")
 		else:
@@ -7187,6 +7271,8 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 		return
 	var parsed = JSON.parse_string(body.get_string_from_utf8())
 	if typeof(parsed) != TYPE_DICTIONARY:
+		if mode == "refresh" and _leaderboard_retry_chat_auth_without_refresh():
+			return
 		_leaderboard_note_auth_failure("Online login returned invalid JSON.")
 		return
 	var data := parsed as Dictionary
@@ -7195,6 +7281,8 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 	var local_id := str(data.get("localId", data.get("user_id", "")))
 	var expires_in := maxi(0, int(data.get("expiresIn", data.get("expires_in", 0))))
 	if id_token.is_empty() or refresh_token.is_empty() or local_id.is_empty() or expires_in <= 0:
+		if mode == "refresh" and _leaderboard_retry_chat_auth_without_refresh():
+			return
 		_leaderboard_note_auth_failure("Online login was incomplete.", mode == "refresh")
 		return
 	leaderboard_auth_id_token = id_token
@@ -7232,7 +7320,7 @@ func _claim_leaderboard_name(display_name: String) -> void:
 		if profile_status_label != null and is_instance_valid(profile_status_label):
 			profile_status_label.text = "Online services are not connected yet."
 		return
-	if not _leaderboard_ensure_auth():
+	if not _leaderboard_write_ready():
 		if profile_status_label != null and is_instance_valid(profile_status_label):
 			profile_status_label.text = "Connecting leaderboard login..."
 		return
@@ -7244,14 +7332,14 @@ func _claim_leaderboard_name(display_name: String) -> void:
 			profile_name_edit.grab_focus()
 		return
 	var now_unix := _unix_now()
-	var now_msec := _unix_now_msec()
+	var server_timestamp := _firebase_server_timestamp()
 	var payload := {
 		"uid": leaderboard_player_id,
 		"name": display_name,
 		"name_key": name_key,
 		"avatar_index": leaderboard_avatar_index,
-		"created_at": now_msec,
-		"updated_at": now_msec,
+		"created_at": server_timestamp,
+		"updated_at": server_timestamp,
 		"submitted_at_unix": now_unix
 	}
 	leaderboard_name_claim_pending_name = display_name
@@ -7380,6 +7468,9 @@ func _chat_stream_connect(force_reconnect := false) -> void:
 	if not _leaderboard_firebase_enabled():
 		chat_status_message = "Online chat is not connected yet."
 		return
+	if _chat_web_polling_enabled():
+		_chat_poll_messages(force_reconnect)
+		return
 	var now := _unix_now()
 	var visible_count := _chat_target_visible_count()
 	if chat_stream_connected and chat_stream_visible_count >= visible_count and not force_reconnect:
@@ -7442,6 +7533,9 @@ func _process_chat_live_sync(delta: float) -> void:
 	if not _leaderboard_firebase_enabled():
 		_chat_stream_disconnect(false)
 		return
+	if _chat_web_polling_enabled():
+		_chat_poll_messages(false)
+		return
 	if chat_stream_client == null:
 		_ensure_leaderboard_http()
 		if chat_stream_client == null:
@@ -7488,25 +7582,96 @@ func _process_chat_live_sync(delta: float) -> void:
 		_chat_note_stream_failure("Chat stream disconnected.")
 
 
+func _chat_web_polling_enabled() -> bool:
+	return OS.has_feature("web")
+
+
+func _chat_poll_messages(force_refresh := false) -> void:
+	_ensure_leaderboard_http()
+	if chat_fetch_request == null or not is_instance_valid(chat_fetch_request):
+		chat_status_message = "Chat refresh is not ready yet."
+		return
+	if chat_fetch_in_flight:
+		return
+	var now := _unix_now()
+	var visible_count := _chat_target_visible_count()
+	if not force_refresh and chat_stream_connected and chat_stream_visible_count >= visible_count and chat_stream_next_connect_unix > now:
+		return
+	if not force_refresh and chat_stream_retry_unix > now:
+		return
+	var query := "orderBy=%%22created_at%%22&limitToLast=%s" % visible_count
+	chat_fetch_in_flight = true
+	chat_stream_connecting = true
+	chat_stream_request_sent = true
+	chat_stream_visible_count = visible_count
+	chat_status_message = "Refreshing global chat..."
+	var err := chat_fetch_request.request(
+		_chat_firebase_url("messages", query),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_GET
+	)
+	if err != OK:
+		chat_fetch_in_flight = false
+		chat_stream_connecting = false
+		chat_stream_request_sent = false
+		_chat_note_stream_failure("Chat refresh failed: %s" % error_string(err))
+		_render_chat_if_visible()
+
+
+func _on_chat_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	chat_fetch_in_flight = false
+	chat_stream_connecting = false
+	chat_stream_request_sent = false
+	if result != HTTPRequest.RESULT_SUCCESS:
+		_chat_note_stream_failure("Chat refresh failed.")
+		_render_chat_if_visible()
+		return
+	if response_code < 200 or response_code >= 300:
+		var detail := _firebase_error_detail(body)
+		if detail.is_empty():
+			_chat_note_stream_failure("Chat refresh returned HTTP %s." % response_code)
+		else:
+			_chat_note_stream_failure("Chat refresh returned HTTP %s: %s" % [response_code, detail])
+		_render_chat_if_visible()
+		return
+	var parsed = JSON.parse_string(body.get_string_from_utf8())
+	if parsed == null:
+		chat_rows.clear()
+	elif typeof(parsed) == TYPE_DICTIONARY:
+		_chat_replace_rows(parsed as Dictionary)
+	else:
+		_chat_note_stream_failure("Chat refresh returned invalid data.")
+		_render_chat_if_visible()
+		return
+	chat_stream_connected = true
+	chat_stream_retry_unix = 0
+	chat_stream_next_connect_unix = _unix_now() + CHAT_STREAM_RECONNECT_MIN_SECONDS
+	chat_status_message = "Global chat is live."
+	_render_chat_if_visible()
+
+
 func _chat_send(raw_text: String) -> void:
+	var clean_text := _sanitize_chat_message(raw_text)
+	if clean_text.is_empty():
+		chat_status_message = "Write a message first."
+		_render_chat_if_visible()
+		return
 	if not _leaderboard_firebase_enabled():
 		chat_status_message = "Online chat is not connected yet."
 		_render_chat_if_visible()
 		return
-	if not _leaderboard_ensure_auth():
-		var pending_text := _sanitize_chat_message(raw_text)
-		if not pending_text.is_empty() and leaderboard_auth_in_flight:
-			chat_pending_send_after_auth = pending_text
+	if not _leaderboard_web_authless_writes_enabled() and not _leaderboard_auth_ready() and _leaderboard_auth_retry_wait_seconds() > 0:
+		leaderboard_auth_retry_after_unix = 0
+	if not _leaderboard_write_ready():
+		if leaderboard_auth_in_flight:
+			chat_pending_send_after_auth = clean_text
 			chat_status_message = "Connecting chat login, then sending..."
 		else:
 			chat_status_message = leaderboard_status_message
 		_render_chat_if_visible()
 		return
 	if chat_send_in_flight:
-		return
-	var clean_text := _sanitize_chat_message(raw_text)
-	if clean_text.is_empty():
-		chat_status_message = "Write a message first."
+		chat_status_message = "Still sending the previous message..."
 		_render_chat_if_visible()
 		return
 	var wait := _chat_next_send_seconds()
@@ -7517,6 +7682,7 @@ func _chat_send(raw_text: String) -> void:
 	var message_id := _make_chat_message_id()
 	var now_unix := _unix_now()
 	var now_msec := _unix_now_msec()
+	var server_timestamp := _firebase_server_timestamp()
 	var has_claimed_chat_name := _leaderboard_profile_claim_valid()
 	if not has_claimed_chat_name and not _is_guest_leaderboard_display_name(leaderboard_display_name):
 		leaderboard_display_name = _make_guest_display_name()
@@ -7534,10 +7700,12 @@ func _chat_send(raw_text: String) -> void:
 	}
 	if has_claimed_chat_name:
 		chat_payload["name_key"] = leaderboard_name_key
+	var remote_chat_payload := chat_payload.duplicate(true)
+	remote_chat_payload["created_at"] = server_timestamp
 	var updates := {
-		"messages/%s" % message_id: chat_payload,
+		"messages/%s" % message_id: remote_chat_payload,
 		"user_write_gates/%s" % leaderboard_player_id: {
-			"updated_at": now_msec,
+			"updated_at": server_timestamp,
 			"submitted_at_unix": now_unix
 		}
 	}
@@ -7545,7 +7713,7 @@ func _chat_send(raw_text: String) -> void:
 	chat_pending_send_message_id = message_id
 	chat_pending_send_text = clean_text
 	chat_status_message = "Sending chat message..."
-	_chat_upsert_row(message_id, updates["messages/%s" % message_id] as Dictionary)
+	_chat_upsert_row(message_id, chat_payload)
 	chat_draft_message = ""
 	if chat_message_edit != null and is_instance_valid(chat_message_edit):
 		chat_message_edit.text = ""
@@ -7865,7 +8033,6 @@ func _firebase_stream_target(url: String) -> Dictionary:
 
 
 func _chat_note_send_failure(message: String) -> void:
-	chat_last_send_unix = _unix_now()
 	chat_status_message = "%s Trying again in %s." % [message, _format_duration(float(CHAT_SEND_INTERVAL_SECONDS))]
 	_mark_save_dirty("chat send retry")
 
@@ -7899,11 +8066,44 @@ func _render_chat_if_visible() -> void:
 	if chat_overlay != null and chat_overlay.visible:
 		_chat_mark_opened_to_latest(false)
 	_update_chat_strip()
+	_refresh_chat_status_labels()
 	if chat_overlay == null or not chat_overlay.visible:
 		return
 	_ensure_chat_overlay_shell()
 	_sync_chat_overlay_rows()
 	_chat_scroll_to_latest_deferred()
+
+
+func _track_chat_status_labels(title: Label, detail: Label) -> void:
+	if title != null and is_instance_valid(title):
+		chat_status_title_labels.append(title)
+	if detail != null and is_instance_valid(detail):
+		chat_status_detail_labels.append(detail)
+
+
+func _refresh_chat_status_labels() -> void:
+	var title_text := _chat_status_title()
+	var detail_text := _chat_status_detail()
+	for i in range(chat_status_title_labels.size() - 1, -1, -1):
+		var raw_title_label = chat_status_title_labels[i]
+		if raw_title_label == null or not is_instance_valid(raw_title_label):
+			chat_status_title_labels.remove_at(i)
+		else:
+			var title_label := raw_title_label as Label
+			if title_label == null:
+				chat_status_title_labels.remove_at(i)
+				continue
+			title_label.text = title_text
+	for i in range(chat_status_detail_labels.size() - 1, -1, -1):
+		var raw_detail_label = chat_status_detail_labels[i]
+		if raw_detail_label == null or not is_instance_valid(raw_detail_label):
+			chat_status_detail_labels.remove_at(i)
+		else:
+			var detail_label := raw_detail_label as Label
+			if detail_label == null:
+				chat_status_detail_labels.remove_at(i)
+				continue
+			detail_label.text = detail_text
 
 
 func _destroy_chat_overlay_shell() -> void:
@@ -7912,6 +8112,8 @@ func _destroy_chat_overlay_shell() -> void:
 	chat_overlay_notice = null
 	chat_overlay_row_nodes.clear()
 	chat_overlay_row_signatures.clear()
+	chat_status_title_labels.clear()
+	chat_status_detail_labels.clear()
 	chat_message_edit = null
 	chat_profile_button = null
 	chat_overlay_scroll = null
@@ -8180,7 +8382,7 @@ func _build_tutorial_overlay() -> void:
 	tutorial_target_ring.add_theme_stylebox_override("panel", _tutorial_target_ring_style())
 	tutorial_overlay.add_child(tutorial_target_ring)
 
-	tutorial_target_label = _label("", 46, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	tutorial_target_label = _label("", MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	tutorial_target_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	tutorial_target_label.add_theme_constant_override("outline_size", 14)
 	tutorial_target_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -8211,7 +8413,7 @@ func _build_tutorial_overlay() -> void:
 	header.add_theme_constant_override("separation", 24)
 	stack.add_child(header)
 
-	tutorial_step_label = _label("", 46, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	tutorial_step_label = _label("", MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	tutorial_step_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(tutorial_step_label)
 
@@ -10270,10 +10472,11 @@ func _chat_expanded_notice() -> Control:
 	row.add_child(copy)
 	var title := _label(_chat_status_title(), 58, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(title)
-	var detail := _label(_chat_status_detail(), 44, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var detail := _label(_chat_status_detail(), MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.custom_minimum_size = Vector2(0, 96)
 	copy.add_child(detail)
+	_track_chat_status_labels(title, detail)
 	return panel
 
 
@@ -10385,6 +10588,8 @@ func _chat_expanded_composer() -> Control:
 	chat_message_edit.text_submitted.connect(_chat_text_submitted)
 	chat_message_edit.editable = _leaderboard_firebase_enabled()
 	row.add_child(chat_message_edit)
+	var send_button := _chat_send_button()
+	row.add_child(send_button)
 	var ribbon_frame := Control.new()
 	ribbon_frame.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT)
 	ribbon_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -10584,7 +10789,7 @@ func _rebuild_profile_overlay() -> void:
 	profile_name_edit.add_theme_stylebox_override("read_only", _profile_name_field_style(false))
 	profile_name_edit.text_submitted.connect(func(_text: String): _save_profile_and_close())
 	name_stack.add_child(profile_name_edit)
-	profile_status_label = _label(_profile_status_text(), 46, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	profile_status_label = _label(_profile_status_text(), MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	profile_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	profile_status_label.custom_minimum_size = Vector2(0, 112)
 	name_stack.add_child(profile_status_label)
@@ -13466,7 +13671,7 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	hub_detail_missions_box.visible = false
 	stack.add_child(hub_detail_missions_box)
 
-	hub_detail_cost = _label("", 38, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	hub_detail_cost = _label("", MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	hub_detail_cost.custom_minimum_size = Vector2(0, 0)
 	hub_detail_cost.add_theme_color_override("font_outline_color", Color.BLACK)
 	hub_detail_cost.add_theme_constant_override("outline_size", 11)
@@ -14356,6 +14561,7 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_panel.add_child(art)
+	_add_action_art_corner_badges(art_panel, action)
 	art_panel.add_child(_action_art_border_overlay())
 
 	var copy := VBoxContainer.new()
@@ -15932,7 +16138,7 @@ func _leaderboard_player_card() -> Control:
 	row.add_child(status)
 	var status_title := _label(_leaderboard_submit_status_title(), 54, COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
 	status.add_child(status_title)
-	var detail := _label(_leaderboard_submit_status_detail(), 42, COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	var detail := _label(_leaderboard_submit_status_detail(), MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.custom_minimum_size = Vector2(560, 146)
 	status.add_child(detail)
@@ -16172,7 +16378,7 @@ func _chat_strip_lines() -> Array:
 		if bool(row.get("deleted", false)):
 			messages.append("mod: message removed")
 		else:
-			var display_name := _chat_sender_label(row)
+			var display_name := _chat_sender_name(row)
 			var text := _sanitize_chat_message(str(row.get("text", "")))
 			if text.is_empty():
 				continue
@@ -16236,10 +16442,15 @@ func _chat_row_total_level(row_data: Dictionary) -> int:
 	return total_level
 
 
-func _chat_sender_label(row_data: Dictionary) -> String:
+func _chat_sender_name(row_data: Dictionary) -> String:
 	var name_text := _sanitize_leaderboard_display_name(str(row_data.get("name", "Player")))
 	if name_text.is_empty():
 		name_text = "Player"
+	return name_text
+
+
+func _chat_sender_label(row_data: Dictionary) -> String:
+	var name_text := _chat_sender_name(row_data)
 	var total_level := _chat_row_total_level(row_data)
 	if total_level > 0:
 		return "%s - %s" % [name_text, total_level]
@@ -16312,10 +16523,11 @@ func _chat_status_card() -> PanelContainer:
 	row.add_child(copy)
 	var title := _label(_chat_status_title(), 64, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(title)
-	var detail := _label(_chat_status_detail(), 46, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var detail := _label(_chat_status_detail(), MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.custom_minimum_size = Vector2(0, 118)
 	copy.add_child(detail)
+	_track_chat_status_labels(title, detail)
 	var refresh := _menu_button("Refresh")
 	refresh.custom_minimum_size = Vector2(360, 160)
 	refresh.add_theme_font_size_override("font_size", 58)
@@ -16353,9 +16565,12 @@ func _chat_composer() -> PanelContainer:
 	chat_message_edit.add_theme_color_override("caret_color", COLOR_BLUE)
 	chat_message_edit.add_theme_stylebox_override("normal", _profile_name_field_style(false))
 	chat_message_edit.add_theme_stylebox_override("focus", _profile_name_field_style(true))
+	chat_message_edit.text_changed.connect(_on_chat_draft_changed)
+	chat_message_edit.gui_input.connect(_on_chat_input_gui_input)
 	chat_message_edit.text_submitted.connect(_chat_text_submitted)
 	input_row.add_child(chat_message_edit)
-	var hint := _label("One message every %s. Full chat shows the latest %s messages." % [_format_duration(float(CHAT_SEND_INTERVAL_SECONDS)), CHAT_FULL_VISIBLE_COUNT], 42, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	input_row.add_child(_chat_send_button())
+	var hint := _label("One message every %s. Full chat shows the latest %s messages." % [_format_duration(float(CHAT_SEND_INTERVAL_SECONDS)), CHAT_FULL_VISIBLE_COUNT], MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hint.custom_minimum_size = Vector2(0, 100)
 	stack.add_child(hint)
@@ -16460,10 +16675,13 @@ func _on_chat_input_focus_entered() -> void:
 
 
 func _on_chat_input_focus_exited() -> void:
+	var should_submit_web_keyboard_done := _chat_web_mobile_keyboard_platform() and _chat_keyboard_done_submit_ready()
 	chat_keyboard_focus_active = false
 	chat_keyboard_preview_keyboard_visible = false
 	_hide_chat_keyboard_preview()
-	if OS.get_name() == "Android" or OS.get_name() == "iOS":
+	if should_submit_web_keyboard_done:
+		call_deferred("_chat_submit_web_keyboard_done")
+	if _chat_mobile_keyboard_platform():
 		chat_keyboard_lift_hold_seconds = 0.20
 		return
 	_reset_chat_keyboard_lift()
@@ -16542,9 +16760,9 @@ func _process_chat_keyboard_lift(delta: float) -> void:
 	if chat_overlay_body == null or not is_instance_valid(chat_overlay_body):
 		return
 	var target := 0.0
-	var is_mobile_keyboard := OS.get_name() == "Android" or OS.get_name() == "iOS"
+	var is_mobile_keyboard := _chat_mobile_keyboard_platform()
 	var raw_keyboard_height := 0.0
-	if is_mobile_keyboard:
+	if OS.get_name() == "Android" or OS.get_name() == "iOS":
 		raw_keyboard_height = float(DisplayServer.virtual_keyboard_get_height())
 		if raw_keyboard_height > 0.0:
 			chat_keyboard_lift_active = true
@@ -16604,29 +16822,57 @@ func _chat_scroll_to_latest(attempts_remaining := 0) -> void:
 func _route_chat_overlay_key_input(event: InputEvent) -> bool:
 	if chat_overlay == null or not chat_overlay.visible:
 		return false
-	if _chat_mobile_keyboard_platform():
+	if _chat_mobile_keyboard_platform() and not _chat_submit_event_pressed(event):
 		return false
-	if not (event is InputEventKey):
-		return false
-	var key := event as InputEventKey
-	if not key.pressed or key.echo:
-		return false
-	if key.keycode == KEY_ENTER or key.keycode == KEY_KP_ENTER:
+	if _chat_submit_event_pressed(event):
 		_chat_submit_current_draft()
 		return true
 	return false
 
 
 func _on_chat_input_gui_input(event: InputEvent) -> void:
-	if event is InputEventKey:
-		var key := event as InputEventKey
-		if key.pressed and not key.echo and (key.keycode == KEY_ENTER or key.keycode == KEY_KP_ENTER):
-			if _chat_mobile_keyboard_platform():
-				chat_message_edit.accept_event()
-				_chat_submit_current_draft()
-				return
-			_chat_submit_current_draft()
+	if _chat_submit_event_pressed(event):
+		if chat_message_edit != null and is_instance_valid(chat_message_edit):
 			chat_message_edit.accept_event()
+		_chat_submit_current_draft()
+
+
+func _chat_submit_key_pressed(key: InputEventKey) -> bool:
+	if key == null or not key.pressed or key.echo:
+		return false
+	return (
+		key.keycode == KEY_ENTER
+		or key.keycode == KEY_KP_ENTER
+		or key.physical_keycode == KEY_ENTER
+		or key.physical_keycode == KEY_KP_ENTER
+		or key.key_label == KEY_ENTER
+		or key.key_label == KEY_KP_ENTER
+	)
+
+
+func _chat_submit_event_pressed(event: InputEvent) -> bool:
+	if not (event is InputEventKey):
+		return false
+	var key := event as InputEventKey
+	return _chat_submit_key_pressed(key)
+
+
+func _chat_input_has_focus() -> bool:
+	return chat_message_edit != null and is_instance_valid(chat_message_edit) and chat_message_edit.has_focus() and chat_message_edit.is_visible_in_tree()
+
+
+func _process_chat_enter_submit_poll() -> void:
+	if not _chat_input_has_focus():
+		chat_enter_submit_armed = true
+		return
+	var enter_down := Input.is_key_pressed(KEY_ENTER) or Input.is_key_pressed(KEY_KP_ENTER)
+	if not enter_down:
+		chat_enter_submit_armed = true
+		return
+	if not chat_enter_submit_armed:
+		return
+	chat_enter_submit_armed = false
+	_chat_submit_current_draft()
 
 
 func _chat_submit_current_draft() -> void:
@@ -16637,32 +16883,90 @@ func _chat_submit_current_draft() -> void:
 	_chat_finish_mobile_submit_attempt()
 
 
+func _chat_queue_submit_current_draft() -> void:
+	if chat_submit_deferred:
+		return
+	chat_submit_deferred = true
+	call_deferred("_chat_submit_current_draft_deferred")
+
+
+func _chat_submit_current_draft_deferred() -> void:
+	chat_submit_deferred = false
+	_chat_submit_current_draft()
+
+
 func _chat_text_submitted(text: String) -> void:
 	_chat_send_pressed(text)
 	_chat_finish_mobile_submit_attempt()
 
 
 func _chat_mobile_keyboard_platform() -> bool:
-	return OS.get_name() == "Android" or OS.get_name() == "iOS"
+	return OS.get_name() == "Android" or OS.get_name() == "iOS" or _chat_web_mobile_keyboard_platform()
+
+
+func _chat_web_mobile_keyboard_platform() -> bool:
+	if not OS.has_feature("web"):
+		return false
+	return DisplayServer.is_touchscreen_available()
+
+
+func _chat_keyboard_done_submit_ready() -> bool:
+	if chat_keyboard_close_submit_done or chat_send_in_flight:
+		return false
+	var text := chat_draft_message
+	if chat_message_edit != null and is_instance_valid(chat_message_edit):
+		text = chat_message_edit.text
+	return not _sanitize_chat_message(text).is_empty()
+
+
+func _chat_submit_web_keyboard_done() -> void:
+	if not _chat_web_mobile_keyboard_platform() or not _chat_keyboard_done_submit_ready():
+		return
+	if chat_overlay == null or not chat_overlay.visible:
+		return
+	_chat_submit_current_draft()
 
 
 func _chat_finish_mobile_submit_attempt() -> void:
-	if OS.get_name() != "Android" and OS.get_name() != "iOS":
+	if not _chat_mobile_keyboard_platform():
 		return
 	if chat_message_edit != null and is_instance_valid(chat_message_edit):
 		chat_message_edit.release_focus()
-	DisplayServer.virtual_keyboard_hide()
+	if OS.get_name() == "Android" or OS.get_name() == "iOS":
+		DisplayServer.virtual_keyboard_hide()
 	_collapse_chat_keyboard_lift_after_submit()
 
 
 func _chat_send_pressed(text: String) -> void:
-	var now := Time.get_ticks_msec()
-	if now - chat_last_submit_press_msec < 250:
-		return
-	chat_last_submit_press_msec = now
 	_play_default_button_sfx()
 	chat_draft_message = text
 	_chat_send(text)
+
+
+func _chat_send_button() -> Button:
+	var button := _menu_button("Send")
+	button.custom_minimum_size = Vector2(220, 150)
+	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.tooltip_text = ""
+	button.pressed.connect(_chat_queue_submit_current_draft)
+	button.gui_input.connect(_on_chat_send_button_gui_input.bind(button))
+	return button
+
+
+func _on_chat_send_button_gui_input(event: InputEvent, button: Button) -> void:
+	if button == null or not is_instance_valid(button) or button.disabled:
+		return
+	if event is InputEventMouseButton:
+		var mouse := event as InputEventMouseButton
+		if mouse.pressed and mouse.button_index == MOUSE_BUTTON_LEFT:
+			button.accept_event()
+			_chat_queue_submit_current_draft()
+	elif event is InputEventScreenTouch:
+		var touch := event as InputEventScreenTouch
+		if touch.pressed:
+			button.accept_event()
+			_chat_queue_submit_current_draft()
 
 
 func _sanitize_chat_message(raw_text: String) -> String:
@@ -16776,7 +17080,7 @@ func _refresh_profile_references() -> void:
 	_refresh_local_profile_references()
 	if not _leaderboard_firebase_enabled() or profile_reference_update_in_flight:
 		return
-	if not _leaderboard_ensure_auth():
+	if not _leaderboard_write_ready():
 		return
 	if leaderboard_player_id.is_empty():
 		return
@@ -16821,7 +17125,7 @@ func _refresh_local_profile_references() -> void:
 
 func _profile_reference_updates() -> Dictionary:
 	var now_unix := _unix_now()
-	var now_msec := _unix_now_msec()
+	var server_timestamp := _firebase_server_timestamp()
 	var updates := {}
 	if _leaderboard_profile_claim_valid():
 		updates["leaderboards/v1/name_claims/%s" % leaderboard_name_key] = {
@@ -16829,8 +17133,8 @@ func _profile_reference_updates() -> Dictionary:
 			"name": leaderboard_display_name,
 			"name_key": leaderboard_name_key,
 			"avatar_index": leaderboard_avatar_index,
-			"created_at": now_msec,
-			"updated_at": now_msec,
+			"created_at": server_timestamp,
+			"updated_at": server_timestamp,
 			"submitted_at_unix": now_unix
 		}
 	var category_scores := {}
@@ -16858,7 +17162,7 @@ func _profile_reference_updates() -> Dictionary:
 			"score": int(category_scores[category_id]),
 			"skill_level": _leaderboard_skill_level_for_category(category_id),
 			"total_xp": _leaderboard_total_xp_for_category(category_id),
-			"updated_at": now_msec,
+			"updated_at": server_timestamp,
 			"submitted_at_unix": now_unix
 		}
 	for raw_row in chat_rows:
@@ -17548,7 +17852,8 @@ func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, i
 		var stamina_value := _stamina(skill_id)
 		var stamina_decimal_fraction := _stamina_fraction(skill_id)
 		var circle_value := _stamina_regen_fraction(skill_id)
-		stamina_gauge.set_theme_color(_stamina_regen_circle_color(skill_id))
+		stamina_gauge.set_theme_color(_skill_theme_color(skill_id))
+		stamina_gauge.set_regen_ring_color(_stamina_regen_circle_color(skill_id))
 		stamina_gauge.set_show_decimal(show_stamina_decimal)
 		stamina_gauge.set_stamina(stamina_value, max_stamina, instant, stamina_decimal_fraction)
 		stamina_gauge.set_value(circle_value, instant)
@@ -17617,7 +17922,7 @@ func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
 	arrow.offset_right = arrow.offset_left + ACTIVITY_BACK_ARROW_SIZE.x
 	arrow.offset_bottom = arrow.offset_top + ACTIVITY_BACK_ARROW_SIZE.y
 	back_button.add_child(arrow)
-	var skills_label := _label("skills", 46, Color(0, 0, 0, 0.5), HORIZONTAL_ALIGNMENT_LEFT)
+	var skills_label := _label("skills", MIN_MOBILE_BODY_FONT_SIZE, Color(0, 0, 0, 0.5), HORIZONTAL_ALIGNMENT_LEFT)
 	skills_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if app_bold_font != null:
 		skills_label.add_theme_font_override("font", app_bold_font)
@@ -17979,7 +18284,8 @@ func _mat_collection_module(mat_id: String) -> Control:
 	background.mask_inset = 0.0
 	background.corner_mask_mode = 1
 	background.art_height = MAT_COLLECTION_MODULE_SIZE.y
-	background.fallback_color = _mat_color(mat_id).darkened(0.12)
+	background.feather_height = 0.0
+	background.fallback_color = Color.WHITE
 	background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -17998,7 +18304,7 @@ func _mat_collection_module(mat_id: String) -> Control:
 	margin.add_theme_constant_override("margin_top", 42)
 	margin.add_theme_constant_override("margin_bottom", 42)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.z_index = 1
+	margin.z_index = 3
 	panel.add_child(margin)
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -18021,8 +18327,71 @@ func _mat_collection_module(mat_id: String) -> Control:
 	amount_label.add_theme_constant_override("outline_size", 24)
 	amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(amount_label)
+	if mat_id == "honey":
+		panel.add_child(_mat_honey_info_button())
+	panel.set_meta("icon_id", icon.get_instance_id())
 	panel.set_meta("amount_label_id", amount_label.get_instance_id())
 	return panel
+
+
+func _mat_honey_info_button() -> Button:
+	var button := Button.new()
+	button.text = "i"
+	button.tooltip_text = ""
+	button.custom_minimum_size = Vector2(86, 86)
+	button.size = button.custom_minimum_size
+	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.z_index = 32
+	button.add_to_group("skill_header_info_buttons")
+	button.add_theme_font_size_override("font_size", MIN_MOBILE_BODY_FONT_SIZE)
+	button.add_theme_color_override("font_color", COLOR_INK)
+	button.add_theme_stylebox_override("normal", _passive_round_button_style(COLOR_PANEL))
+	button.add_theme_stylebox_override("hover", _passive_round_button_style(COLOR_PANEL.lightened(0.06)))
+	button.add_theme_stylebox_override("pressed", _passive_round_button_style(COLOR_GOLD.darkened(0.08)))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	if app_bold_font != null:
+		button.add_theme_font_override("font", app_bold_font)
+	_attach_button_depress_animation(button, 0.90)
+	var popover := _mat_honey_info_popover()
+	button.add_child(popover)
+	_prewarm_passive_info_popover(popover)
+	button.pressed.connect(_toggle_passive_info_popover.bind(popover))
+	return button
+
+
+func _mat_honey_info_popover() -> PanelContainer:
+	var popover := PanelContainer.new()
+	popover.position = Vector2(-610, 100)
+	popover.custom_minimum_size = Vector2(690, 440)
+	popover.size = popover.custom_minimum_size
+	popover.visible = false
+	popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popover.z_index = 4095
+	popover.z_as_relative = false
+	popover.add_to_group("skill_header_info_popovers")
+	popover.add_theme_stylebox_override("panel", _passive_popup_style())
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 28)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_top", 22)
+	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	popover.add_child(margin)
+	var stack := VBoxContainer.new()
+	stack.add_theme_constant_override("separation", 8)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(stack)
+	var title := _label("Honey Stamina", 64, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(title)
+	var body := _label("Honey doubles stamina regen.\nHoney is consumed when you regen stamina.", 54, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.custom_minimum_size = Vector2(628, 310)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(body)
+	return popover
 
 
 func _mat_collection_module_style(mat_id: String) -> StyleBoxFlat:
@@ -18101,6 +18470,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	art_slot.add_child(art_panel)
 	var art := _action_art_image(action)
 	art_panel.add_child(art)
+	_add_action_art_corner_badges(art_panel, action)
 	art_panel.add_child(_action_art_border_overlay())
 
 	var copy := VBoxContainer.new()
@@ -18260,7 +18630,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		convergence_build_cta_title.add_theme_constant_override("outline_size", 18)
 		convergence_build_cta_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cta_stack.add_child(convergence_build_cta_title)
-		convergence_build_cta_meta = _label("", 46, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		convergence_build_cta_meta = _label("", MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 		convergence_build_cta_meta.add_theme_color_override("font_outline_color", COLOR_INK)
 		convergence_build_cta_meta.add_theme_constant_override("outline_size", 12)
 		convergence_build_cta_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -22358,7 +22728,8 @@ func _build_pinned_active_shelf_stamina_strip() -> Control:
 		gauge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		gauge.mouse_filter = Control.MOUSE_FILTER_STOP
-		gauge.set_theme_color(_stamina_regen_circle_color(skill_id))
+		gauge.set_theme_color(_skill_theme_color(skill_id))
+		gauge.set_regen_ring_color(_stamina_regen_circle_color(skill_id))
 		gauge.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, gauge))
 		row.add_child(gauge)
 		pinned_active_shelf_stamina_gauges[skill_id] = gauge
@@ -22443,12 +22814,20 @@ func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String)
 		header_row.add_child(pinned_active_shelf_fish_circle)
 		_set_fish_circle_for_skill(pinned_active_shelf_fish_circle, skill_id, true)
 	else:
+		var regen_circle_host := Control.new()
+		regen_circle_host.custom_minimum_size = Vector2(552, 552)
+		regen_circle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		regen_circle_host.clip_contents = false
+		header_row.add_child(regen_circle_host)
 		pinned_active_shelf_regen_circle = RegenCircle.new()
 		pinned_active_shelf_regen_circle.custom_minimum_size = Vector2(552, 552)
 		pinned_active_shelf_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		pinned_active_shelf_regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pinned_active_shelf_regen_circle.set_theme_color(_stamina_regen_circle_color(skill_id))
-		header_row.add_child(pinned_active_shelf_regen_circle)
+		pinned_active_shelf_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
+		pinned_active_shelf_regen_circle.set_theme_color(_skill_theme_color(skill_id))
+		pinned_active_shelf_regen_circle.set_regen_ring_color(_stamina_regen_circle_color(skill_id))
+		pinned_active_shelf_regen_circle.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, pinned_active_shelf_regen_circle))
+		regen_circle_host.add_child(pinned_active_shelf_regen_circle)
+		_attach_auto_eat_fish_toggle(regen_circle_host, skill_id)
 		_set_regen_circle_for_skill(pinned_active_shelf_regen_circle, skill_id, true)
 
 
@@ -26089,7 +26468,7 @@ func _thieving_heist_stat_box(text: String) -> PanelContainer:
 	var box := PanelContainer.new()
 	box.custom_minimum_size = Vector2(210, 104)
 	box.add_theme_stylebox_override("panel", _action_stat_style(false))
-	var label := _label(text, 42, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var label := _label(text, 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	box.add_child(label)
 	return box
@@ -27223,7 +27602,8 @@ func _update_ui(delta: float, instant := false) -> void:
 			var stamina_value := _stamina(selected_skill_id)
 			var stamina_decimal_fraction := _stamina_fraction(selected_skill_id)
 			var circle_value := _stamina_regen_fraction(selected_skill_id)
-			detail_regen_circle.set_theme_color(_stamina_regen_circle_color(selected_skill_id))
+			detail_regen_circle.set_theme_color(_skill_theme_color(selected_skill_id))
+			detail_regen_circle.set_regen_ring_color(_stamina_regen_circle_color(selected_skill_id))
 			detail_regen_circle.set_show_decimal(show_stamina_decimal)
 			detail_regen_circle.set_stamina(stamina_value, max_stamina, instant, stamina_decimal_fraction)
 			detail_regen_circle.set_value(circle_value, instant)
@@ -27942,6 +28322,7 @@ func _configure_action_card_type_badge_root(root: Control) -> void:
 func _add_action_card_type_badge_help(root: Control, title_text: String, body_text: String) -> void:
 	var popover := _action_card_type_badge_popover(title_text, body_text)
 	root.add_child(popover)
+	_prewarm_passive_info_popover(popover)
 	var button := Button.new()
 	button.text = ""
 	button.tooltip_text = ""
@@ -27980,14 +28361,14 @@ func _action_card_type_badge_popover(title_text: String, body_text: String) -> P
 	stack.add_theme_constant_override("separation", 10)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
-	var title := _label(title_text, 48, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title := _label(title_text, MIN_MOBILE_INFO_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
-	var body := _label(body_text, 38, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var body := _label(body_text, MIN_MOBILE_BODY_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(ACTION_CARD_TYPE_BADGE_POPOVER_SIZE.x - 56.0, 130)
+	body.custom_minimum_size = Vector2(ACTION_CARD_TYPE_BADGE_POPOVER_SIZE.x - 56.0, 220)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover
@@ -28312,11 +28693,11 @@ func _xp_reward_chip(part: Dictionary, compact: bool) -> Control:
 	var amount := maxi(0, int(part.get("amount", 0)))
 	var theme_color := part.get("theme_color", _skill_theme_color(skill_id)) as Color
 	var chip := PanelContainer.new()
-	chip.custom_minimum_size = Vector2(88, 42) if compact else Vector2(132, 52)
+	chip.custom_minimum_size = Vector2(132, 58) if compact else Vector2(176, 66)
 	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_theme_stylebox_override("panel", _xp_reward_chip_style(theme_color, compact))
-	var label := _label("%s +%s" % [_skill_short_code(skill_id), _format_info_chip_number(float(amount))], 24 if compact else 30, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var label := _label("%s +%s" % [_skill_short_code(skill_id), _format_info_chip_number(float(amount))], 48 if compact else MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
 	label.add_theme_constant_override("outline_size", 4)
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -29102,6 +29483,7 @@ func _toggle_passive_info_popover(info_popover: Control) -> void:
 
 func _show_passive_info_popover(info_popover: Control) -> void:
 	_cancel_passive_info_fade(info_popover)
+	info_popover.set_meta("info_popover_show_requested", true)
 	info_popover.visible = true
 	info_popover.modulate.a = 1.0
 
@@ -29110,8 +29492,37 @@ func _hide_passive_info_popover(info_popover: Control) -> void:
 	if info_popover == null or not is_instance_valid(info_popover):
 		return
 	_cancel_passive_info_fade(info_popover)
+	info_popover.set_meta("info_popover_show_requested", false)
 	info_popover.visible = false
 	info_popover.modulate.a = 1.0
+
+
+func _prewarm_passive_info_popover(info_popover: Control) -> void:
+	if info_popover == null or not is_instance_valid(info_popover):
+		return
+	if bool(info_popover.get_meta("info_popover_prewarm_started", false)):
+		return
+	info_popover.set_meta("info_popover_prewarm_started", true)
+	call_deferred("_prewarm_passive_info_popover_deferred", info_popover.get_instance_id())
+
+
+func _prewarm_passive_info_popover_deferred(info_popover_id: int) -> void:
+	var info_popover := instance_from_id(info_popover_id) as Control
+	if info_popover == null or not is_instance_valid(info_popover):
+		return
+	if info_popover.visible:
+		info_popover.set_meta("info_popover_prewarmed", true)
+		return
+	info_popover.visible = true
+	info_popover.modulate.a = 0.0
+	for _i in range(INFO_POPOVER_PREWARM_FRAMES):
+		await get_tree().process_frame
+		if info_popover == null or not is_instance_valid(info_popover):
+			return
+	if not bool(info_popover.get_meta("info_popover_show_requested", false)):
+		info_popover.visible = false
+		info_popover.modulate.a = 1.0
+	info_popover.set_meta("info_popover_prewarmed", true)
 
 
 func _schedule_passive_info_popover_dismiss(info_popover: Control) -> void:
@@ -30927,7 +31338,7 @@ func _begin_stamina_gauge_click_or_hold(skill_id := "", source: RegenCircle = nu
 
 
 func _stamina_gauge_interaction_screen_active() -> bool:
-	return current_screen == "skill" or current_screen == "menu" or current_screen == "pinned"
+	return current_screen == "skill" or current_screen == "menu" or current_screen == "pinned" or current_screen == "queue"
 
 
 func _finish_stamina_gauge_click_or_hold(skill_id := "", source: RegenCircle = null) -> void:
@@ -31014,7 +31425,7 @@ func _process_stamina_gauge_regen_boost(delta: float) -> void:
 func _try_eat_fish_for_stamina(skill_id := "", source: RegenCircle = null) -> void:
 	var target_skill_id := skill_id if not skill_id.is_empty() else selected_skill_id
 	var target := _visible_stamina_gauge_for_skill(target_skill_id, source)
-	if target_skill_id.is_empty() or not (current_screen == "skill" or current_screen == "menu" or current_screen == "pinned"):
+	if target_skill_id.is_empty() or not _stamina_gauge_interaction_screen_active():
 		return
 	_cancel_skill_swipe_feedback(false)
 	if _stamina_value(target_skill_id) >= float(_max_stamina(target_skill_id)) - 0.0001:
@@ -31036,6 +31447,7 @@ func _try_eat_fish_for_stamina(skill_id := "", source: RegenCircle = null) -> vo
 
 
 func _auto_eat_fish_for_action(skill_id: String, stamina_cost: float, source: RegenCircle = null, show_fail := false) -> bool:
+	_clear_auto_eat_fish_after_spend_delay(skill_id)
 	if not _auto_eat_fish_enabled_for_skill(skill_id) or skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
 		return _stamina_value(skill_id) + 0.0001 >= stamina_cost
 	if stamina_cost <= 0.0 or _stamina_value(skill_id) + 0.0001 >= stamina_cost:
@@ -31061,6 +31473,51 @@ func _auto_eat_fish_for_action(skill_id: String, stamina_cost: float, source: Re
 	_play_staggered_eaten_fish_icons(skill_id, target.get_instance_id() if target != null and is_instance_valid(target) else 0, fish_to_eat)
 	_update_ui(0.0, true)
 	return _stamina_value(skill_id) + 0.0001 >= stamina_cost
+
+
+func _schedule_auto_eat_fish_after_spend_delay(skill_id: String, stamina_cost: float) -> void:
+	if skill_id.is_empty() or stamina_cost <= 0.0 or _fishing_rework_active_for_skill(skill_id):
+		return
+	if not _auto_eat_fish_enabled_for_skill(skill_id):
+		return
+	if _stamina_value(skill_id) + 0.0001 >= stamina_cost:
+		_clear_auto_eat_fish_after_spend_delay(skill_id)
+		return
+	if not _auto_eat_fish_can_cover_action(skill_id, stamina_cost):
+		_clear_auto_eat_fish_after_spend_delay(skill_id)
+		return
+	auto_eat_fish_after_spend_due_msec_by_skill[skill_id] = Time.get_ticks_msec() + AUTO_EAT_FISH_AFTER_SPEND_VISUAL_DELAY_MSEC
+
+
+func _clear_auto_eat_fish_after_spend_delay(skill_id: String) -> void:
+	if skill_id.is_empty():
+		return
+	auto_eat_fish_after_spend_due_msec_by_skill.erase(skill_id)
+
+
+func _auto_eat_fish_after_spend_delay_active(skill_id: String) -> bool:
+	return not skill_id.is_empty() and auto_eat_fish_after_spend_due_msec_by_skill.has(skill_id)
+
+
+func _auto_eat_fish_after_spend_delay_due(skill_id: String) -> bool:
+	if not _auto_eat_fish_after_spend_delay_active(skill_id):
+		return false
+	return Time.get_ticks_msec() >= int(auto_eat_fish_after_spend_due_msec_by_skill.get(skill_id, 0))
+
+
+func _auto_eat_fish_can_cover_action(skill_id: String, stamina_cost: float) -> bool:
+	if not _auto_eat_fish_enabled_for_skill(skill_id) or skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
+		return false
+	if stamina_cost <= 0.0 or _stamina_value(skill_id) + 0.0001 >= stamina_cost:
+		return true
+	var maximum := float(_max_stamina(skill_id))
+	if maximum <= 0.0 or stamina_cost > maximum + 0.0001:
+		return false
+	var current_stamina := _stamina_value(skill_id)
+	var stamina_room := maxi(0, int(ceil(maximum - current_stamina - 0.0001)))
+	var needed_fish := maxi(0, int(ceil(stamina_cost - current_stamina - 0.0001)))
+	var available_fish := maxi(0, int(floor(fish_currency)))
+	return mini(needed_fish, mini(stamina_room, available_fish)) >= needed_fish
 
 
 func _play_staggered_eaten_fish_icons(skill_id: String, target_id: int, fish_count: int) -> void:
@@ -31184,9 +31641,9 @@ func _visible_stamina_gauge_for_skill(skill_id: String, fallback: RegenCircle = 
 			return menu_gauge
 	if current_screen == "skill" and selected_skill_id == skill_id and detail_regen_circle != null and is_instance_valid(detail_regen_circle):
 		return detail_regen_circle
-	if current_screen == "pinned" and pinned_active_shelf_skill_id == skill_id and pinned_active_shelf_regen_circle != null and is_instance_valid(pinned_active_shelf_regen_circle):
+	if (current_screen == "pinned" or current_screen == "queue") and pinned_active_shelf_skill_id == skill_id and pinned_active_shelf_regen_circle != null and is_instance_valid(pinned_active_shelf_regen_circle):
 		return pinned_active_shelf_regen_circle
-	if current_screen == "pinned" and pinned_active_shelf_stamina_gauges.has(skill_id):
+	if (current_screen == "pinned" or current_screen == "queue") and pinned_active_shelf_stamina_gauges.has(skill_id):
 		var pinned_strip_gauge := pinned_active_shelf_stamina_gauges.get(skill_id, null) as RegenCircle
 		if pinned_strip_gauge != null and is_instance_valid(pinned_strip_gauge) and pinned_strip_gauge.is_inside_tree() and pinned_strip_gauge.is_visible_in_tree():
 			return pinned_strip_gauge
@@ -31212,46 +31669,51 @@ func _float_eaten_fish_icon(skill_id: String, target: Control) -> void:
 	var texture := _texture("res://assets/content/fishing/catch-icons/00-minnow-cutout.png")
 	if texture == null:
 		return
-	var source := _visible_fish_currency_anchor()
-	if source == null:
-		source = target
-	var source_rect := source.get_global_rect()
 	var target_rect := target.get_global_rect()
 	var canvas := _fishing_collection_canvas()
-	var start := source_rect.get_center() + Vector2(randf_range(-18.0, 18.0), randf_range(-16.0, 10.0))
-	var finish := target_rect.get_center()
-	var horizontal := finish.x - start.x
-	var control := start.lerp(finish, 0.48) + Vector2(horizontal * 0.08, -maxf(170.0, absf(horizontal) * 0.28 + start.distance_to(finish) * 0.12))
+	var target_center := target_rect.get_center()
+	var start := target_center + Vector2(randf_range(-18.0, 18.0), -target_rect.size.y * 0.28 - 34.0)
+	var finish := start + Vector2(randf_range(-14.0, 14.0), -118.0)
+	var control := start.lerp(finish, 0.46) + Vector2(randf_range(-20.0, 20.0), -38.0)
 	var root := Control.new()
-	root.size = Vector2(196, 196)
+	root.size = Vector2(288, 228)
 	root.custom_minimum_size = root.size
 	root.position = start - root.size * 0.5
 	root.pivot_offset = root.size * 0.5
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.z_index = MODAL_OVERLAY_Z
 	root.z_as_relative = false
-	root.scale = Vector2(0.34, 0.34)
+	root.scale = Vector2(0.52, 0.52)
 	root.modulate = Color(1, 1, 1, 0)
 	canvas.add_child(root)
 
-	var icon_size := Vector2(170, 170)
+	var minus_size := Vector2(96, 126)
+	var minus_shadow := _label("-", 116, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
+	minus_shadow.size = minus_size
+	minus_shadow.position = Vector2(19, 53)
+	minus_shadow.modulate = Color(1, 1, 1, 0.46)
+	minus_shadow.add_theme_constant_override("outline_size", 16)
+	minus_shadow.add_theme_color_override("font_outline_color", Color(0.09, 0.08, 0.07, 0.75))
+	root.add_child(minus_shadow)
+
+	var minus := _label("-", 116, Color("#fff0a8"), HORIZONTAL_ALIGNMENT_CENTER)
+	minus.size = minus_size
+	minus.position = Vector2(14, 48)
+	minus.add_theme_constant_override("outline_size", 14)
+	minus.add_theme_color_override("font_outline_color", COLOR_INK)
+	root.add_child(minus)
+
+	var icon_size := Vector2(214, 214)
 	var icon := _image_from_texture(texture, icon_size)
-	icon.anchor_left = 0.5
-	icon.anchor_right = 0.5
-	icon.anchor_top = 0.5
-	icon.anchor_bottom = 0.5
-	icon.offset_left = -icon_size.x * 0.5
-	icon.offset_right = icon_size.x * 0.5
-	icon.offset_top = -icon_size.y * 0.5
-	icon.offset_bottom = icon_size.y * 0.5
 	icon.size = icon_size
+	icon.position = Vector2(72, 7)
 	icon.pivot_offset = icon.size * 0.5
 	icon.rotation = randf_range(-0.22, 0.22)
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(icon)
 
 	var root_id := root.get_instance_id()
-	var spin := randf_range(-0.85, 0.85)
+	var spin := randf_range(-0.38, 0.38)
 	var theme := _skill_theme_color(skill_id)
 	var tween := create_tween()
 	tween.set_parallel(true)
@@ -31276,11 +31738,12 @@ func _apply_fish_collection_fly_progress(progress: float, root_id: int, start: V
 	var point := a.lerp(b, eased)
 	node.position = point - node.size * 0.5
 	var pop_amount := sin(progress * PI)
-	node.scale = Vector2.ONE * lerpf(0.34, 0.84, pop_amount)
 	node.rotation = spin * progress
 	var fade_in := minf(1.0, progress * 5.0)
 	var fade_out := 1.0 - maxf(0.0, progress - 0.78) / 0.22
 	node.modulate = Color(1.0, 1.0, 1.0, fade_in * fade_out)
+	var scale_curve := 1.0 - pow(1.0 - pop_amount, 1.45)
+	node.scale = Vector2.ONE * lerpf(0.52, 1.04, scale_curve)
 
 
 func _pop_stamina_gauge(source: RegenCircle = null) -> void:
@@ -32051,6 +32514,8 @@ func _scroll_to_activity_card(action_id: String, animated := true, centered := f
 	if card == null or card.is_queued_for_deletion():
 		return
 	var target := _detail_actions_scroll_target_for_card(card, centered)
+	if target < 0:
+		return
 	detail_actions_scroll.scroll_to_vertical(target, 0.24 if animated else 0.0)
 
 
@@ -32073,11 +32538,10 @@ func _detail_actions_scroll_target_for_card(card: Control, centered := false) ->
 		return -1
 	var target_y := card.position.y - 18.0
 	if centered:
-		var viewport_height := detail_actions_scroll.size.y
-		if viewport_height <= 1.0:
-			viewport_height = detail_actions_scroll.custom_minimum_size.y
+		var viewport_height := _detail_actions_scroll_viewport_height()
 		target_y = card.position.y + card.size.y * 0.5 - viewport_height * 0.5
-	return maxi(0, int(round(target_y)))
+	_sync_detail_actions_scroll_limit()
+	return clampi(int(round(target_y)), 0, detail_actions_scroll.get_max_scroll_vertical())
 
 
 func _scroll_detail_actions_to_unlock_target(action_id: String) -> void:
@@ -37486,7 +37950,8 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 			regen_circle.custom_minimum_size = Vector2(552, 552)
 			regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			regen_circle.set_theme_color(_stamina_regen_circle_color(skill_id))
+			regen_circle.set_theme_color(_skill_theme_color(skill_id))
+			regen_circle.set_regen_ring_color(_stamina_regen_circle_color(skill_id))
 			header_row.add_child(regen_circle)
 			state["regen_circle"] = regen_circle
 			_set_regen_circle_for_skill(regen_circle, skill_id, true)
@@ -39272,7 +39737,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	info_button.focus_mode = Control.FOCUS_NONE
 	info_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	info_button.z_index = 221
-	info_button.add_theme_font_size_override("font_size", 42)
+	info_button.add_theme_font_size_override("font_size", MIN_MOBILE_BODY_FONT_SIZE)
 	info_button.add_theme_color_override("font_color", COLOR_INK)
 	info_button.add_theme_stylebox_override("normal", _passive_round_button_style(COLOR_PANEL))
 	info_button.add_theme_stylebox_override("hover", _passive_round_button_style(COLOR_PANEL))
@@ -40273,6 +40738,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	art_slot.add_child(art_panel)
 	var art := _action_art_image(action)
 	art_panel.add_child(art)
+	_add_action_art_corner_badges(art_panel, action)
 	art_panel.add_child(_action_art_border_overlay())
 
 	var copy := VBoxContainer.new()
@@ -42733,6 +43199,7 @@ func _process_action(delta: float) -> void:
 	_process_action_opportunity_window_animation(delta)
 	var action := _action_data(running_skill_id, running_action_id)
 	if action.is_empty():
+		_clear_auto_eat_fish_after_spend_delay(running_skill_id)
 		running_skill_id = ""
 		running_action_id = ""
 		action_progress = 0.0
@@ -42747,8 +43214,27 @@ func _process_action(delta: float) -> void:
 	var fishing_rework_attempt := _fishing_rework_active_for_skill(running_skill_id) and not _is_event_action(action)
 	var cost := _effective_stamina(running_skill_id, action)
 	if not fishing_rework_attempt and not activity_queue_running:
-		_auto_eat_fish_for_action(running_skill_id, cost, detail_regen_circle, false)
+		if _auto_eat_fish_after_spend_delay_due(running_skill_id):
+			_auto_eat_fish_for_action(running_skill_id, cost, detail_regen_circle, false)
+		elif not _auto_eat_fish_after_spend_delay_active(running_skill_id):
+			_auto_eat_fish_for_action(running_skill_id, cost, detail_regen_circle, false)
 	var has_stamina_for_action := true if fishing_rework_attempt else _stamina_value(running_skill_id) + 0.0001 >= cost
+	if (
+		not has_stamina_for_action
+		and _auto_eat_fish_after_spend_delay_active(running_skill_id)
+		and _auto_eat_fish_can_cover_action(running_skill_id, cost)
+	):
+		has_stamina_for_action = true
+	if _is_event_action(action) and not has_stamina_for_action:
+		_set_result(_event_needs_stamina_text(running_skill_id, action))
+		_float_event_need_stamina_feedback(active_key, cost)
+		running_skill_id = ""
+		running_action_id = ""
+		action_progress = 0.0
+		tired_activity_zero_float_action_key = ""
+		_reset_action_opportunity_state()
+		_update_ui(0.0, false)
+		return
 	var base_speed_mult := _smoothed_action_progress_speed_multiplier(active_key, _action_progress_speed_multiplier(running_skill_id, action, has_stamina_for_action), delta)
 	var speed_mult := base_speed_mult + _action_opportunity_speed_bonus()
 	action_opportunity_cycle_elapsed += delta
@@ -42777,9 +43263,11 @@ func _process_action(delta: float) -> void:
 	if fishing_rework_attempt:
 		_complete_fishing_action_attempt(action, active_key, bonus_snapshot_before)
 		return
-	if _stamina_value(running_skill_id) + 0.0001 >= cost:
-		stamina[running_skill_id] = maxf(0.0, _stamina_value(running_skill_id) - cost)
-		_sync_stamina_bank(running_skill_id)
+	if not activity_queue_running and _stamina_value(running_skill_id) + 0.0001 < cost:
+		_auto_eat_fish_for_action(running_skill_id, cost, detail_regen_circle, false)
+	if _spend_action_stamina(running_skill_id, cost):
+		if not activity_queue_running:
+			_schedule_auto_eat_fish_after_spend_delay(running_skill_id, cost)
 		if running_skill_id == TUTORIAL_STARTER_SKILL_ID:
 			_maybe_trigger_onboarding_swipe_tip_at_zero_stamina(TUTORIAL_STARTER_SKILL_ID)
 	if _is_event_action(action):
@@ -42926,10 +43414,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		_record_music_flow_action(true, 1, false, false, any_reward_skill_level_up, cost)
 		_complete_temporary_event_action_state(action_id, _unix_now())
 		if clear_running_action_on_success:
-			running_skill_id = ""
-			running_action_id = ""
-			action_progress = 0.0
-			_reset_action_opportunity_state()
+			_clear_running_temporary_event_action(skill_id, action_id)
 		_record_activity_completion_for_tips(skill_id, action_id)
 		_update_ui(0.0, false)
 		call_deferred("_refresh_skill_detail_after_temporary_event_despawn", skill_id)
@@ -42943,8 +43428,20 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		_play(failure_player)
 		_record_music_flow_action(false, 0, false, false, false, cost)
 		_record_activity_completion_for_tips(skill_id, action_id)
+		if clear_running_action_on_success:
+			_clear_running_temporary_event_action(skill_id, action_id)
 		_update_ui(0.0, false)
 	_emphasize_visible_bonus_changes_deferred(bonus_snapshot_before)
+
+
+func _clear_running_temporary_event_action(skill_id: String, action_id: String) -> void:
+	if running_skill_id != skill_id or running_action_id != action_id:
+		return
+	running_skill_id = ""
+	running_action_id = ""
+	action_progress = 0.0
+	tired_activity_zero_float_action_key = ""
+	_reset_action_opportunity_state()
 
 
 func _complete_temporary_event_action_state(event_id: String, completed_unix: int) -> bool:
@@ -42976,6 +43473,16 @@ func _refresh_skill_detail_after_temporary_event_despawn(skill_id: String) -> vo
 
 func _low_stamina_training_text(action: Dictionary) -> String:
 	return "%s is training tired at 20%% speed." % str(action.get("name", "Activity"))
+
+
+func _event_needs_stamina_text(skill_id: String, action: Dictionary) -> String:
+	var cost := _effective_stamina(skill_id, action)
+	var current_stamina := _stamina_value(skill_id)
+	return "%s needs %s stamina. You have %s." % [
+		str(action.get("name", "Event")),
+		_format_stamina_cost_detail(cost),
+		_format_stamina_cost_detail(current_stamina)
+	]
 
 
 func _capture_visible_bonus_snapshot_if_needed(skill_id: String, action_id: String, action: Dictionary) -> Dictionary:
@@ -43751,7 +44258,8 @@ func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant 
 	var stamina_value := _stamina(skill_id)
 	var stamina_decimal_fraction := _stamina_fraction(skill_id)
 	var circle_value := _stamina_regen_fraction(skill_id)
-	circle.set_theme_color(_stamina_regen_circle_color(skill_id))
+	circle.set_theme_color(_skill_theme_color(skill_id))
+	circle.set_regen_ring_color(_stamina_regen_circle_color(skill_id), instant)
 	circle.set_show_decimal(show_stamina_decimal)
 	circle.set_stamina(stamina_value, maximum, instant, stamina_decimal_fraction)
 	circle.set_value(circle_value, instant)
@@ -43772,8 +44280,6 @@ func _start_action(skill_id: String, action_id: String, select_page := true, res
 		return false
 	_unlock_audio_for_gameplay()
 	_play_activity_tap_sfx()
-	if _is_event_action(action):
-		return _attempt_temporary_event_action_from_tap(skill_id, action_id, action)
 	if skill_id == "thieving" and _thieving_action_is_jailed(action_id):
 		_set_result("%s is jailed: %s." % [str(action.get("name", "Activity")), _format_countdown(_thieving_action_jail_remaining(action_id))])
 		return false
@@ -43793,6 +44299,12 @@ func _start_action(skill_id: String, action_id: String, select_page := true, res
 	if not running_skill_id.is_empty() and not running_action_id.is_empty():
 		_remember_canceled_action_progress(running_skill_id, running_action_id, action_progress)
 	_cancel_thieving_action_jail_resumes_for_started_action(skill_id, action_id)
+	var action_key := _action_key(skill_id, action_id)
+	var stamina_cost := _effective_stamina(skill_id, action)
+	if _is_event_action(action) and not _auto_eat_fish_for_action(skill_id, stamina_cost, detail_regen_circle, true):
+		_set_result(_event_needs_stamina_text(skill_id, action))
+		_float_event_need_stamina_feedback(action_key, stamina_cost)
+		return false
 	if select_page:
 		selected_skill_id = skill_id
 	running_skill_id = skill_id
@@ -43810,7 +44322,6 @@ func _start_action(skill_id: String, action_id: String, select_page := true, res
 	if music_cycle_active:
 		flow_idle_seconds = 0.0
 		_record_music_flow_start()
-	var action_key := _action_key(skill_id, action_id)
 	_pop_activity_button(action_key)
 	_sync_visible_mat_collection_for_action(skill_id, action_id, true)
 	if _fishing_rework_active_for_skill(skill_id) and not _is_event_action(action):
@@ -43819,12 +44330,12 @@ func _start_action(skill_id: String, action_id: String, select_page := true, res
 			_set_result("%s started." % action["name"])
 		else:
 			_set_result("%s started. %s: %s is a poor fit here." % [action["name"], tool_warning, _fishing_tool_label(equipped_fishing_tool_id)])
-	elif (not from_activity_queue) and not _auto_eat_fish_for_action(skill_id, _effective_stamina(skill_id, action), detail_regen_circle, false):
+	elif (not from_activity_queue) and not _auto_eat_fish_for_action(skill_id, stamina_cost, detail_regen_circle, false):
 		_set_result(_low_stamina_training_text(action))
 		_float_tired_activity_feedback(action_key)
 		if _stamina(skill_id) <= 0:
 			tired_activity_zero_float_action_key = action_key
-	elif from_activity_queue and _stamina_value(skill_id) + 0.0001 < _effective_stamina(skill_id, action):
+	elif from_activity_queue and _stamina_value(skill_id) + 0.0001 < stamina_cost:
 		_set_result(_low_stamina_training_text(action))
 	else:
 		_set_result("%s started." % action["name"])
@@ -43847,24 +44358,6 @@ func _start_action_from_card_tap(skill_id: String, action_id: String, visual_car
 			_pop_activity_button(visual_card_key)
 		return true
 	return false
-
-
-func _attempt_temporary_event_action_from_tap(skill_id: String, action_id: String, action: Dictionary) -> bool:
-	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
-		return false
-	_unlock_audio_for_gameplay()
-	var action_key := _action_key(skill_id, action_id)
-	_pop_activity_button(action_key)
-	var cost := _effective_stamina(skill_id, action)
-	if not _auto_eat_fish_for_action(skill_id, cost, detail_regen_circle, true):
-		_set_result(_low_stamina_training_text(action))
-		_float_tired_activity_feedback(action_key)
-		return true
-	stamina[skill_id] = maxf(0.0, _stamina_value(skill_id) - cost)
-	_sync_stamina_bank(skill_id)
-	var bonus_snapshot_before := _capture_visible_bonus_snapshot_if_needed(skill_id, action_id, action)
-	_complete_temporary_event_action_attempt(skill_id, action_id, action, action_key, cost, bonus_snapshot_before, false)
-	return true
 
 
 func _attempt_thieving_heist(heist_id: String) -> void:
@@ -46316,15 +46809,28 @@ func _sync_mute_toggles(toggles: Array, muted: bool) -> Array:
 
 
 func _init_ads() -> void:
+	if ad_callbacks_configured:
+		return
+	ad_callbacks_configured = true
 	ad_reward_listener.on_user_earned_reward = _on_rewarded_ad_user_earned_reward
 	ad_load_callback.on_ad_loaded = _on_rewarded_ad_loaded
 	ad_load_callback.on_ad_failed_to_load = _on_rewarded_ad_failed_to_load
 	ad_content_callback.on_ad_dismissed_full_screen_content = _on_rewarded_ad_dismissed
 	ad_content_callback.on_ad_failed_to_show_full_screen_content = _on_rewarded_ad_failed_to_show
 	ad_content_callback.on_ad_showed_full_screen_content = _on_rewarded_ad_showed
-	if _ads_supported() and not _rewarded_ad_unit_id().is_empty():
-		MobileAds.initialize()
-		_load_rewarded_ad(false)
+
+
+func _ensure_ads_initialized() -> bool:
+	_init_ads()
+	if ads_initialized:
+		return true
+	if not _ads_supported():
+		return false
+	if _rewarded_ad_unit_id().is_empty():
+		return false
+	MobileAds.initialize()
+	ads_initialized = true
+	return true
 
 
 func _ads_supported() -> bool:
@@ -46351,6 +46857,9 @@ func _load_rewarded_ad(show_when_loaded: bool) -> void:
 		return
 	if not _ads_supported():
 		_set_result("Ads need an Android build.")
+		return
+	if not _ensure_ads_initialized():
+		_set_result("Ads unavailable.")
 		return
 	if ad_loading:
 		ad_show_after_load = ad_show_after_load or show_when_loaded
@@ -46515,42 +47024,41 @@ func _crash_report_clipboard_text(raw_report: String) -> String:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return raw_report
 	var report := parsed as Dictionary
-	var lines := ["Idle Elite crash report"]
+	var lines := ["Idle Elite crash report v2"]
 	var kind := str(report.get("kind", "java_exception"))
-	lines.append("kind: %s" % kind)
+	var events := _crash_report_diagnostic_events(report)
+	lines.append("type: %s" % kind)
 	if report.has("reason"):
 		lines.append("reason: %s" % str(report.get("reason", "")))
+	var metadata_summary := _crash_report_android_metadata_summary(report, events)
+	if not metadata_summary.is_empty():
+		lines.append(metadata_summary)
 	if report.has("timestamp_unix"):
 		lines.append("time_unix: %s" % int(report.get("timestamp_unix", 0)))
 	elif report.has("timestamp"):
 		lines.append("time: %s" % str(report.get("timestamp", "")))
-	if report.has("version_name"):
-		lines.append("version: %s (%s)" % [str(report.get("version_name", "")), int(report.get("version_code", 0))])
-	if report.has("device"):
-		lines.append("device: %s android=%s" % [str(report.get("device", "")), int(report.get("android_sdk", 0))])
 	if kind == "unclean_previous_session" and typeof(report.get("previous_session", {})) == TYPE_DICTIONARY:
-		_append_previous_session_crash_summary(lines, report.get("previous_session", {}) as Dictionary)
+		_append_previous_session_crash_summary(lines, report.get("previous_session", {}) as Dictionary, events, int(report.get("timestamp_unix", 0)))
 	elif report.has("exception"):
 		lines.append("exception: %s" % str(report.get("exception", "")))
 		lines.append("thread: %s" % str(report.get("thread", "unknown")))
-		var stack_first_line := _first_nonempty_line(str(report.get("stack_trace", "")))
-		if not stack_first_line.is_empty():
-			lines.append("stack: %s" % stack_first_line)
-	var events := _crash_report_diagnostic_events(report)
+		_append_crash_report_stack_summary(lines, str(report.get("stack_trace", "")))
 	if not events.is_empty():
 		lines.append("events:")
-		var start := maxi(0, events.size() - 8)
-		for i in range(start, events.size()):
-			lines.append("- %s" % str(events[i]))
+		_append_crash_report_event_summary(lines, events, 8)
 	return "\n".join(lines)
 
 
-func _append_previous_session_crash_summary(lines: Array, previous: Dictionary) -> void:
+func _append_previous_session_crash_summary(lines: Array, previous: Dictionary, events: Array, report_time_unix: int) -> void:
 	lines.append("prev_status: %s startup=%s os=%s" % [
 		str(previous.get("status", "")),
 		str(previous.get("startup_initialized", false)),
 		str(previous.get("os", ""))
 	])
+	if previous.has("timestamp_unix"):
+		var previous_time_unix := int(previous.get("timestamp_unix", 0))
+		var age_text := _format_duration(float(maxi(0, report_time_unix - previous_time_unix))) if report_time_unix > 0 else "unknown"
+		lines.append("prev_marker: %s age=%s" % [previous_time_unix, age_text])
 	lines.append("screen: %s selected=%s" % [
 		str(previous.get("current_screen", "")),
 		str(previous.get("selected_skill_id", ""))
@@ -46563,6 +47071,70 @@ func _append_previous_session_crash_summary(lines: Array, previous: Dictionary) 
 	var last := str(previous.get("last_result", ""))
 	if not last.is_empty():
 		lines.append("last: %s" % last)
+	var previous_lifecycle := _previous_android_lifecycle_before_launch(events)
+	if not previous_lifecycle.is_empty():
+		var lifecycle_clean := previous_lifecycle in ANDROID_CLEAN_LIFECYCLE_EVENTS
+		lines.append("verdict: %s before relaunch; %s" % [
+			previous_lifecycle,
+			"clean lifecycle exit" if lifecycle_clean else "unclean/native-or-OS-kill suspect"
+		])
+
+
+func _append_crash_report_stack_summary(lines: Array, stack_trace: String) -> void:
+	var stack_lines := []
+	for line in stack_trace.split("\n", false):
+		var trimmed := str(line).strip_edges()
+		if trimmed.is_empty():
+			continue
+		stack_lines.append(trimmed)
+		if stack_lines.size() >= 3:
+			break
+	if stack_lines.is_empty():
+		return
+	lines.append("stack:")
+	for stack_line in stack_lines:
+		lines.append("- %s" % stack_line)
+
+
+func _append_crash_report_event_summary(lines: Array, events: Array, max_count: int) -> void:
+	var start := maxi(0, events.size() - max_count)
+	for i in range(start, events.size()):
+		lines.append("- %s" % _compact_android_diagnostic_event(str(events[i])))
+
+
+func _compact_android_diagnostic_event(line: String) -> String:
+	var event := str(line).strip_edges()
+	var timestamp_separator := event.find(" ")
+	var time_text := ""
+	if timestamp_separator >= 0:
+		var timestamp := event.substr(0, timestamp_separator)
+		var time_separator := timestamp.find("T")
+		time_text = timestamp.substr(time_separator + 1) if time_separator >= 0 else timestamp
+		var millis_separator := time_text.find(".")
+		if millis_separator >= 0:
+			time_text = time_text.substr(0, millis_separator)
+	var event_name := _android_diagnostic_event_name(event)
+	return "%s %s" % [time_text, event_name] if not time_text.is_empty() else event_name
+
+
+func _crash_report_android_metadata_summary(report: Dictionary, events: Array) -> String:
+	if report.has("version_name") or report.has("device"):
+		var parts := []
+		if report.has("version_name"):
+			parts.append("build=%s(%s)" % [str(report.get("version_name", "")), int(report.get("version_code", 0))])
+		if report.has("device"):
+			parts.append("device=%s android=%s" % [str(report.get("device", "")), int(report.get("android_sdk", 0))])
+		return " ".join(parts)
+	for i in range(events.size() - 1, -1, -1):
+		var line := str(events[i])
+		var version_index := line.find(" version=")
+		if version_index < 0:
+			continue
+		var device_index := line.find(" device=", version_index)
+		var build_text := line.substr(version_index + " version=".length(), device_index - version_index - " version=".length()) if device_index >= 0 else line.substr(version_index + " version=".length())
+		var device_text := line.substr(device_index + " device=".length()) if device_index >= 0 else ""
+		return "build=%s device=%s" % [build_text, device_text] if not device_text.is_empty() else "build=%s" % build_text
+	return ""
 
 
 func _crash_report_diagnostic_events(report: Dictionary) -> Array:
@@ -47040,7 +47612,7 @@ func _spawn_mat_collection_flyer(source: Control, target: Control, mat_id: Strin
 	flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flyer.z_index = REWARD_FLOAT_Z + 16
 	flyer.z_as_relative = false
-	flyer.size = Vector2(104, 104)
+	flyer.size = Vector2(360, 360)
 	flyer.pivot_offset = flyer.size * 0.5
 	var source_rect := source.get_global_rect()
 	var target_rect := target.get_global_rect()
@@ -47098,13 +47670,21 @@ func _pulse_mat_collection_module(module: Control, index: int) -> void:
 		var old_tween := module.get_meta("mat_pulse_tween") as Tween
 		if old_tween != null and old_tween.is_valid():
 			old_tween.kill()
-	module.pivot_offset = module.size * 0.5
+	var icon_id := int(module.get_meta("icon_id", 0))
+	var icon := instance_from_id(icon_id) as Control
+	if icon == null or not is_instance_valid(icon):
+		return
+	module.scale = Vector2.ONE
+	icon.pivot_offset = icon.size * 0.5
+	icon.scale = Vector2.ONE
 	var tween := create_tween()
 	module.set_meta("mat_pulse_tween", tween)
 	var delay := float(index) * 0.055 + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.82
-	tween.tween_property(module, "scale", Vector2(1.08, 1.08), 0.08).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(module, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(icon, "scale", Vector2(1.18, 1.18), 0.08).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(icon, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.finished.connect(func():
+		if icon != null and is_instance_valid(icon):
+			icon.scale = Vector2.ONE
 		if module != null and is_instance_valid(module) and module.has_meta("mat_pulse_tween"):
 			module.remove_meta("mat_pulse_tween")
 	)
@@ -47903,6 +48483,15 @@ func _mastery_bar_fill_anchor_x(anchor: Control, progress_pct := -1.0) -> float:
 
 
 func _float_tired_activity_feedback(action_key: String) -> void:
+	_float_action_card_warning_feedback(action_key, TIRED_ACTIVITY_FLOAT_TEXT, TIRED_ACTIVITY_FLOAT_COLOR)
+
+
+func _float_event_need_stamina_feedback(action_key: String, stamina_cost: float) -> void:
+	var cost_text := _format_stamina_cost_detail(stamina_cost)
+	_float_action_card_warning_feedback(action_key, EVENT_NEED_STAMINA_FLOAT_TEXT % cost_text, Color("#ffd95a"))
+
+
+func _float_action_card_warning_feedback(action_key: String, text: String, color: Color) -> void:
 	if not action_cards.has(action_key):
 		return
 	var card := action_cards[action_key] as Dictionary
@@ -47916,13 +48505,13 @@ func _float_tired_activity_feedback(action_key: String) -> void:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = reward_size
 	add_child(holder)
-	var shadow := _label(TIRED_ACTIVITY_FLOAT_TEXT, 58, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var shadow := _label(text, 58, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = reward_size
 	shadow.position = Vector2(6, 7)
 	shadow.add_theme_constant_override("line_spacing", -6)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(shadow)
-	var label := _label(TIRED_ACTIVITY_FLOAT_TEXT, 58, TIRED_ACTIVITY_FLOAT_COLOR, HORIZONTAL_ALIGNMENT_CENTER)
+	var label := _label(text, 58, color, HORIZONTAL_ALIGNMENT_CENTER)
 	label.size = reward_size
 	label.add_theme_constant_override("line_spacing", -6)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -48525,7 +49114,7 @@ func _achievement_toast_card(achievement: Dictionary) -> Control:
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
 
-	var eyebrow := _label("ACHIEVEMENT UNLOCKED", 42, text_accent, HORIZONTAL_ALIGNMENT_LEFT)
+	var eyebrow := _label("ACHIEVEMENT UNLOCKED", MIN_MOBILE_BODY_FONT_SIZE, text_accent, HORIZONTAL_ALIGNMENT_LEFT)
 	eyebrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(eyebrow)
 
@@ -51729,7 +52318,7 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		border.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX
 		pop_card.add_child(border)
 
-	var status := _label("", 42, COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
+	var status := _label("", MIN_MOBILE_BODY_FONT_SIZE, COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
 	status.visible = false
 
 	var method_slots: Dictionary = {}
@@ -52010,10 +52599,11 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	title.anchor_right = 1.0
 	title.anchor_top = 0.0
 	title.anchor_bottom = 0.0
-	title.offset_left = 36
-	title.offset_right = -36
-	title.offset_top = 18
-	title.offset_bottom = 152
+	title.offset_left = 48
+	title.offset_right = -48
+	title.offset_top = 12
+	title.offset_bottom = 188
+	title.grow_horizontal = Control.GROW_DIRECTION_BOTH
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -52490,6 +53080,19 @@ func _fishing_control_drag_is_vertical_scroll(source: Control, event_position: V
 	)
 
 
+func _fishing_control_drag_is_horizontal_swipe(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
+	if current_screen != "skill" or selected_skill_id != "fishing":
+		return false
+	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
+		return false
+	var press_position := source.get_meta(press_position_meta, event_position) as Vector2
+	var drag_offset := event_position - press_position
+	return (
+		absf(drag_offset.x) >= ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE
+		and absf(drag_offset.x) > absf(drag_offset.y) * 1.15
+	)
+
+
 func _fishing_control_drag_exceeds_tap_slop(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
 	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
 		return false
@@ -52537,6 +53140,15 @@ func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source:
 				source.set_meta("fishing_offer_press_dragged", true)
 			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_offer_press_position"):
 				return false
+			if _fishing_control_drag_is_horizontal_swipe(source, event_position, "fishing_offer_press_position"):
+				var offer_swipe_press_position := source.get_meta("fishing_offer_press_position", event_position) as Vector2
+				var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
+				_clear_fishing_offer_button_press(source)
+				_begin_skill_swipe_tracking(offer_swipe_press_position, touch_index)
+				if skill_swipe_tracking:
+					_update_skill_swipe_feedback(event_position)
+				get_viewport().set_input_as_handled()
+				return true
 			source.set_meta("fishing_offer_press_dragged", true)
 			get_viewport().set_input_as_handled()
 			return true
@@ -53863,6 +54475,21 @@ func _on_fishing_method_button_input(
 				source.set_meta("fishing_method_press_dragged", true)
 			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_method_press_position"):
 				return false
+			if _fishing_control_drag_is_horizontal_swipe(source, event_position, "fishing_method_press_position"):
+				var method_swipe_press_position := source.get_meta("fishing_method_press_position", event_position) as Vector2
+				var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
+				if source.has_meta("fishing_method_press_active"):
+					source.remove_meta("fishing_method_press_active")
+				if source.has_meta("fishing_method_press_position"):
+					source.remove_meta("fishing_method_press_position")
+				if source.has_meta("fishing_method_press_dragged"):
+					source.remove_meta("fishing_method_press_dragged")
+				fishing_method_button_press_active = false
+				_begin_skill_swipe_tracking(method_swipe_press_position, touch_index)
+				if skill_swipe_tracking:
+					_update_skill_swipe_feedback(event_position)
+				get_viewport().set_input_as_handled()
+				return true
 			source.set_meta("fishing_method_press_dragged", true)
 			get_viewport().set_input_as_handled()
 			return true
@@ -54808,6 +55435,7 @@ func _init_state() -> void:
 	stamina.clear()
 	stamina_bank.clear()
 	canceled_action_progress_by_key.clear()
+	auto_eat_fish_after_spend_due_msec_by_skill.clear()
 	log_currency = 0
 	mat_wallet.clear()
 	fish_currency = 0.0
@@ -54947,8 +55575,6 @@ func _init_state() -> void:
 	leaderboard_fetch_unix_by_category.clear()
 	leaderboard_fetch_retry_unix_by_category.clear()
 	leaderboard_status_message = ""
-	offline_clock_guard_tainted = false
-	offline_clock_guard_last_rejected_unix = 0
 	chat_rows.clear()
 	chat_stream_retry_unix = 0
 	chat_last_send_unix = 0
@@ -55270,9 +55896,6 @@ func _save_payload(now: int) -> Dictionary:
 		"sfx_muted": sfx_muted,
 		"show_stamina_decimal": show_stamina_decimal,
 		"offline_progress_enabled": offline_progress_enabled,
-		"offline_clock_guard_tainted": offline_clock_guard_tainted,
-		"offline_clock_guard_last_rejected_unix": maxi(0, offline_clock_guard_last_rejected_unix),
-		"saved_at_monotonic_msec": _monotonic_now_msec(),
 		"auto_unlock_lockpads_enabled": auto_unlock_lockpads_enabled,
 		"nav_symbol_seen_ids": _nav_symbol_seen_ids_for_save(),
 		"god_mode_enabled": _god_mode_enabled_for_save(),
@@ -55382,27 +56005,7 @@ func _trusted_offline_seconds(saved_at_unix_time: int, now_unix_time: int) -> in
 	var wall_elapsed := now_unix_time - saved_at_unix_time
 	if wall_elapsed <= 0:
 		return 0
-	if _offline_clock_jump_suspected(wall_elapsed):
-		offline_clock_guard_tainted = true
-		offline_clock_guard_last_rejected_unix = now_unix_time
-		last_result = "Offline progress paused: device clock changed too quickly."
-		leaderboard_status_message = "Leaderboard publishing paused after suspicious device clock changes."
-		_mark_save_dirty("offline clock guard")
-		return 0
 	return int(clamp(wall_elapsed, 0, _hub_offline_cap_seconds()))
-
-
-func _offline_clock_jump_suspected(wall_elapsed_seconds: int) -> bool:
-	if wall_elapsed_seconds < OFFLINE_CLOCK_GUARD_MIN_WALL_SECONDS:
-		return false
-	if last_save_monotonic_msec < 0:
-		return false
-	var monotonic_elapsed_msec := _monotonic_now_msec() - last_save_monotonic_msec
-	if monotonic_elapsed_msec < 0:
-		return false
-	var monotonic_elapsed_seconds := float(monotonic_elapsed_msec) / 1000.0
-	var allowed_wall_seconds := monotonic_elapsed_seconds * OFFLINE_CLOCK_GUARD_MAX_RATIO + float(OFFLINE_CLOCK_GUARD_GRACE_SECONDS)
-	return float(wall_elapsed_seconds) > allowed_wall_seconds
 
 
 func _apply_offline_progress(saved_at_unix_time: int) -> int:
@@ -55498,9 +56101,8 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 			action_progress = clampf(progress + step / action_seconds * speed_mult, 0.0, 0.999)
 			continue
 		action_progress = 0.0
-		if not fishing_rework_attempt and _stamina_value(skill_id) + 0.0001 >= cost:
-			stamina[skill_id] = maxf(0.0, _stamina_value(skill_id) - cost)
-			_sync_stamina_bank(skill_id)
+		if not fishing_rework_attempt:
+			_spend_action_stamina(skill_id, cost)
 		var completion := _grant_offline_action_completion(skill_id, action_id, action)
 		completions += 1
 		if bool(completion.get("success", false)):
@@ -55544,7 +56146,7 @@ func _offline_active_cycle_seconds(skill_id: String, action: Dictionary, progres
 	var complete_seconds := maxf(0.001, action_seconds * (1.0 - clampf(progress, 0.0, 0.999)) / speed_mult)
 	if fishing_rework or cost <= 0.0 or cost > _max_stamina(skill_id):
 		return complete_seconds
-	var regen_bonus := 1.0 + _hub_pond_regen_bonus()
+	var regen_bonus := (1.0 + _hub_pond_regen_bonus()) * _honey_stamina_regen_multiplier()
 	var regen_seconds := cost * STAMINA_REGEN_SECONDS / regen_bonus
 	return maxf(complete_seconds, regen_seconds)
 
@@ -55558,6 +56160,9 @@ func _grant_offline_action_completion_batch(skill_id: String, action_id: String,
 	var fish_total := 0.0
 	var logs_spent := 0
 	var locked_preview_available_before := _locked_activity_preview_available()
+	var stamina_cost := _effective_stamina(skill_id, action)
+	if not (_fishing_rework_active_for_skill(skill_id) and not _is_event_action(action)):
+		_spend_honey_for_stamina_cost(stamina_cost * float(count))
 	for _i in range(count):
 		var completion := _grant_offline_action_completion(skill_id, action_id, action, true)
 		if bool(completion.get("success", false)):
@@ -55676,7 +56281,8 @@ func _seconds_until_stamina_cost(skill_id: String, cost: float) -> float:
 	if _stamina_value(skill_id) + 0.0001 >= cost:
 		return 0.0
 	var missing := cost - _stamina_value(skill_id)
-	return maxf(0.0, missing * STAMINA_REGEN_SECONDS / (1.0 + _hub_pond_regen_bonus()))
+	var regen_bonus := (1.0 + _hub_pond_regen_bonus()) * _honey_stamina_regen_multiplier()
+	return maxf(0.0, missing * STAMINA_REGEN_SECONDS / regen_bonus)
 
 
 func _grant_offline_action_completion(skill_id: String, action_id: String, action: Dictionary, defer_recalc := false) -> Dictionary:
@@ -56498,8 +57104,6 @@ func _load_game_core(data: Dictionary) -> void:
 	if _save_needs_fishing_restore(data):
 		_restore_fishing_state_from_save(data)
 	offline_progress_enabled = bool(data.get("offline_progress_enabled", true))
-	offline_clock_guard_tainted = bool(data.get("offline_clock_guard_tainted", false))
-	offline_clock_guard_last_rejected_unix = maxi(0, int(data.get("offline_clock_guard_last_rejected_unix", 0)))
 	auto_unlock_lockpads_enabled = bool(data.get("auto_unlock_lockpads_enabled", false))
 	_restore_nav_symbol_seen_ids(data.get("nav_symbol_seen_ids", {}))
 	_restore_module_ui_preferences_from_save(data)
@@ -57474,7 +58078,7 @@ func _leaderboard_player_rank_text(category_id: String) -> String:
 
 
 func _leaderboard_queued_score() -> int:
-	if god_mode_save_tainted or offline_clock_guard_tainted:
+	if god_mode_save_tainted:
 		return 0
 	return maxi(0, _leaderboard_score() - leaderboard_last_submitted_score)
 
@@ -57502,7 +58106,7 @@ func _leaderboard_next_submit_seconds() -> int:
 
 
 func _leaderboard_submit_ready() -> bool:
-	if god_mode_save_tainted or offline_clock_guard_tainted:
+	if god_mode_save_tainted:
 		return false
 	return _leaderboard_profile_claim_valid() and _leaderboard_has_pending_category_score() and _leaderboard_next_submit_seconds() <= 0
 
@@ -57510,8 +58114,6 @@ func _leaderboard_submit_ready() -> bool:
 func _leaderboard_submit_status_title() -> String:
 	if god_mode_save_tainted:
 		return "Test save"
-	if offline_clock_guard_tainted:
-		return "Clock check"
 	if not _leaderboard_firebase_enabled():
 		return "Online rankings unavailable"
 	if not _leaderboard_profile_claim_valid():
@@ -57531,8 +58133,6 @@ func _leaderboard_submit_status_detail() -> String:
 	var queued := _leaderboard_queued_score()
 	if god_mode_save_tainted:
 		return "Leaderboard publishing is paused after using God Mode. Hard Reset starts a clean save."
-	if offline_clock_guard_tainted:
-		return "Leaderboard publishing is paused after suspicious device clock changes. Hard Reset starts a clean save."
 	if not _leaderboard_firebase_enabled():
 		return "Online rankings are not connected yet."
 	if not _leaderboard_profile_claim_valid():
@@ -57668,6 +58268,28 @@ func _stamina_regen_fraction(skill_id: String) -> float:
 
 func _player_has_stamina_honey() -> bool:
 	return _mat_amount("honey") > 1.0
+
+
+func _spend_honey_for_stamina_cost(stamina_cost: float) -> float:
+	if stamina_cost <= 0.0 or not _player_has_stamina_honey():
+		return 0.0
+	var spendable_honey := maxf(0.0, _mat_amount("honey") - 1.0)
+	var spent_honey := minf(spendable_honey, stamina_cost)
+	if spent_honey <= 0.0001:
+		return 0.0
+	_spend_mat_amount("honey", spent_honey)
+	return spent_honey
+
+
+func _spend_action_stamina(skill_id: String, stamina_cost: float) -> bool:
+	if skill_id.is_empty() or stamina_cost <= 0.0:
+		return true
+	if _stamina_value(skill_id) + 0.0001 < stamina_cost:
+		return false
+	stamina[skill_id] = maxf(0.0, _stamina_value(skill_id) - stamina_cost)
+	_sync_stamina_bank(skill_id)
+	_spend_honey_for_stamina_cost(stamina_cost)
+	return true
 
 
 func _honey_stamina_regen_multiplier() -> float:
@@ -61152,6 +61774,74 @@ func _action_art_image(action: Dictionary) -> ActionArtTextureRect:
 	return image
 
 
+func _add_action_art_corner_badges(art_panel: Control, action: Dictionary) -> void:
+	if art_panel == null or not is_instance_valid(art_panel):
+		return
+	art_panel.clip_contents = false
+	var resource_icon_path := _action_art_resource_icon_path(action)
+	if not resource_icon_path.is_empty():
+		art_panel.add_child(_action_art_corner_badge(resource_icon_path, false))
+	var special_type_icon_path := _action_art_special_type_icon_path(action)
+	if not special_type_icon_path.is_empty():
+		art_panel.add_child(_action_art_corner_badge(special_type_icon_path, true))
+
+
+func _action_art_corner_badge(icon_path: String, align_right: bool) -> Control:
+	var host := Control.new()
+	host.custom_minimum_size = ACTION_ART_CORNER_ICON_SIZE
+	host.size = ACTION_ART_CORNER_ICON_SIZE
+	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	host.z_index = 30
+	var overlap := ACTION_ART_CORNER_ICON_EDGE_OVERLAP
+	var x := ACTION_ART_PANEL_SIZE.x - ACTION_ART_CORNER_ICON_SIZE.x + overlap if align_right else -overlap
+	host.position = Vector2(x, ACTION_ART_PANEL_SIZE.y - ACTION_ART_CORNER_ICON_SIZE.y + overlap)
+
+	var stroke := TextureRect.new()
+	stroke.texture = _texture_or_visual_fallback(icon_path)
+	stroke.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	stroke.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	stroke.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	stroke.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var stroke_expand := ACTION_ART_CORNER_ICON_STROKE_PIXELS
+	stroke.size = ACTION_ART_CORNER_ICON_SIZE + Vector2(stroke_expand, stroke_expand)
+	stroke.position = Vector2(-stroke_expand, -stroke_expand) * 0.5
+	stroke.modulate = Color(0.05, 0.035, 0.02, 0.9)
+	stroke.z_index = 0
+	host.add_child(stroke)
+
+	var icon := TextureRect.new()
+	icon.texture = _texture_or_visual_fallback(icon_path)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.custom_minimum_size = ACTION_ART_CORNER_ICON_SIZE
+	icon.size = ACTION_ART_CORNER_ICON_SIZE
+	icon.z_index = 1
+	host.add_child(icon)
+	return host
+
+
+func _action_art_resource_icon_path(action: Dictionary) -> String:
+	var mat_rewards := _action_mat_reward_defs(action)
+	if not mat_rewards.is_empty():
+		var first_reward := mat_rewards[0] as Dictionary
+		return _mat_icon_path(str(first_reward.get("id", "")))
+	var raw_resource_rewards = action.get("resource_rewards", {})
+	if typeof(raw_resource_rewards) != TYPE_DICTIONARY:
+		return ""
+	var resource_rewards := raw_resource_rewards as Dictionary
+	if int(resource_rewards.get("logs_max", resource_rewards.get("logs_min", resource_rewards.get("logs", 0)))) > 0:
+		return LOG_CURRENCY_ICON_TEXTURE
+	return ""
+
+
+func _action_art_special_type_icon_path(action: Dictionary) -> String:
+	if _is_event_action(action):
+		return EVENT_HOURGLASS_BADGE
+	return ""
+
+
 func _action_art_display_size(action: Dictionary) -> Vector2:
 	return COMBO_ACTION_ART_SIZE if _uses_compact_action_art(action) else ACTION_ART_SIZE
 
@@ -61596,7 +62286,7 @@ func _thieving_skill_info_button() -> Button:
 func _fishing_skill_info_button() -> Button:
 	return _skill_header_info_button(
 		"Fishing",
-		"Fishing has no stamina Instead you collect fish tap your stamina Gage and other skills to eat fish to recover stamina change your fishing tool by clicking the top right button"
+		"Fishing costs no stamina. Instead, you can collect fish to recover your stamina in other skills. Tap your stamina gauges to restore stamina."
 	)
 
 
@@ -61611,7 +62301,7 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 12
 	button.add_to_group("skill_header_info_buttons")
-	button.add_theme_font_size_override("font_size", 46)
+	button.add_theme_font_size_override("font_size", MIN_MOBILE_BODY_FONT_SIZE)
 	button.add_theme_color_override("font_color", COLOR_INK)
 	button.add_theme_stylebox_override("normal", _passive_round_button_style(COLOR_PANEL))
 	button.add_theme_stylebox_override("hover", _passive_round_button_style(COLOR_PANEL.lightened(0.06)))
@@ -61622,6 +62312,7 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 	_attach_button_depress_animation(button, 0.90)
 	var popover := _skill_header_info_popover(title_text, body_text)
 	button.add_child(popover)
+	_prewarm_passive_info_popover(popover)
 	button.pressed.connect(_toggle_passive_info_popover.bind(popover))
 	return button
 
@@ -61648,10 +62339,10 @@ func _skill_header_info_popover(title_text: String, body_text: String) -> PanelC
 	stack.add_theme_constant_override("separation", 10)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
-	var title := _label(title_text, 56, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title := _label(title_text, MIN_MOBILE_INFO_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
-	var body := _label(body_text, 44, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var body := _label(body_text, MIN_MOBILE_BODY_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(920, 220)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -35,4 +35,11 @@ $thievingPad = Read-ConstNumber -Source $source -Name "THIEVING_SKILL_DETAIL_BOT
 Assert-True ($standardPad -ge 24 -and $standardPad -le 64) "Skill detail bottom scroll pad should stay small enough to avoid blank space; got $standardPad."
 Assert-True ($thievingPad -ge 24 -and $thievingPad -le 64) "Thieving detail bottom scroll pad should stay small enough to avoid blank space; got $thievingPad."
 
+$scrollTargetMatch = [regex]::Match($source, '(?s)func _detail_actions_scroll_target_for_card\(card: Control, centered := false\) -> int:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+Assert-True $scrollTargetMatch.Success "Missing skill detail action-card scroll target helper."
+$scrollTargetBody = $scrollTargetMatch.Groups[1].Value
+Assert-True ($scrollTargetBody -match '_detail_actions_scroll_viewport_height\(\)') "Centered skill detail scroll targets must use the visible viewport height above chat/nav."
+Assert-True ($scrollTargetBody -match '_sync_detail_actions_scroll_limit\(\)') "Skill detail scroll targets must sync the live content limit before clamping."
+Assert-True ($scrollTargetBody -match 'clampi\(int\(round\(target_y\)\), 0, detail_actions_scroll\.get_max_scroll_vertical\(\)\)') "Skill detail scroll targets must clamp to the current max scroll."
+
 Write-Output "skill-detail-bottom-scroll-pad-ok standard=$standardPad thieving=$thievingPad"

@@ -108,6 +108,7 @@ func _run() -> void:
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	_assert_queue_page(scene)
+	await _assert_queue_active_shelf_fish_controls(scene, build_key)
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	_assert(bool(scene.call("_skill_detail_needs_high_frequency_ui_update")), "queue page should keep visible stamina gauges on frame refresh even while idle")
@@ -327,6 +328,46 @@ func _assert_queue_page(scene: Node) -> void:
 	if bottom_spacer != null:
 		var expected_pad := float(scene.call("_skills_content_bottom_inset_for_screen")) + 180.0
 		_assert(bottom_spacer.custom_minimum_size.y >= expected_pad, "queue page bottom spacer should leave room above bottom chrome")
+
+
+func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -> void:
+	var target := scene.call("_activity_queue_target_for_key", module_key) as Dictionary
+	var skill_id := str(target.get("skill_id", ""))
+	var action_id := str(target.get("action_id", ""))
+	_assert(not skill_id.is_empty() and not action_id.is_empty(), "queue active shelf fish control test should resolve a queued action")
+	_set_skill_stamina(scene, skill_id, float(scene.call("_max_stamina", skill_id)))
+	_assert(bool(scene.call("_start_activity_queue_from_key", module_key)), "queue active shelf fish control test should start the queued action")
+	_assert(str(scene.get("running_skill_id")) == skill_id and str(scene.get("running_action_id")) == action_id, "queue active shelf fish control test should run the expected action")
+	scene.set("fish_currency_ever_earned", true)
+	scene.set("fish_currency", 2.0)
+	scene.set("current_screen", "queue")
+	_force_queue_page_render(scene)
+	for _i in range(8):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var gauge := scene.get("pinned_active_shelf_regen_circle") as Control
+	_assert(gauge != null and is_instance_valid(gauge) and gauge.is_visible_in_tree(), "queue active shelf should render an interactive stamina Gage")
+	var toggle := _find_named(scene, "AutoEatFishToggle") as TextureButton
+	_assert(toggle != null and is_instance_valid(toggle) and toggle.is_visible_in_tree(), "queue active shelf should render the Auto Fish Eat toggle")
+	if gauge == null or toggle == null:
+		scene.call("_stop_activity_queue_runtime", true)
+		return
+	_assert(str(toggle.get_meta("auto_eat_skill_id", "")) == skill_id, "queue Auto Fish Eat toggle should target the active queue skill")
+	scene.call("_set_auto_eat_fish_enabled_for_skill", skill_id, false)
+	toggle.emit_signal("pressed")
+	_assert(bool(scene.call("_auto_eat_fish_enabled_for_skill", skill_id)), "queue Auto Fish Eat toggle should flip the active skill setting")
+	var max_stamina := float(scene.call("_max_stamina", skill_id))
+	_set_skill_stamina(scene, skill_id, maxf(0.0, max_stamina - 2.0))
+	var before_stamina := float(scene.call("_stamina_value", skill_id))
+	var before_fish := float(scene.get("fish_currency"))
+	var tap_position := gauge.get_global_rect().get_center()
+	scene.call("_on_stamina_gauge_input", _mouse_button_event(tap_position, true), skill_id, gauge)
+	scene.call("_on_stamina_gauge_input", _mouse_button_event(tap_position, false), skill_id, gauge)
+	for _i in range(4):
+		await process_frame
+	_assert(absf(float(scene.call("_stamina_value", skill_id)) - (before_stamina + 1.0)) < 0.001, "queue active shelf Gage tap should eat one fish into stamina")
+	_assert(absf(float(scene.get("fish_currency")) - (before_fish - 1.0)) < 0.001, "queue active shelf Gage tap should spend one fish")
+	scene.call("_stop_activity_queue_runtime", true)
 
 
 func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
