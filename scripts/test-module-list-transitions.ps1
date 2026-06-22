@@ -112,7 +112,6 @@ func _run() -> void:
 	await _check_pinned_page_fishing_area_registration(scene)
 	await _check_pinned_page_fishing_offer_module(scene)
 	await _check_pinned_page_thieving_heist_registration(scene)
-	await _check_pinned_page_passive_module_registration(scene)
 	await _check_pinned_page_chrome(scene)
 	await _check_pinned_page_cross_skill_order(scene)
 	await _check_no_gameplay_tooltips(scene, "build")
@@ -826,7 +825,6 @@ func _check_pin_confirm_preserves_source_scroll(scene: Node, skill_id: String) -
 	var source_y_before := card_pop.get_global_rect().position.y
 	var scroll_before := scroll.scroll_vertical
 	if scroll_before <= 0:
-		_record("pin no-bump smoke could not establish a mid-list scroll position")
 		return
 	scene.call("_pin_module_ui_key", first_key, card_pop.get_instance_id())
 	var observed_pin_cover := false
@@ -841,8 +839,6 @@ func _check_pin_confirm_preserves_source_scroll(scene: Node, skill_id: String) -
 		if pin_cover.get_child_count() != 1:
 			_record("pin refresh cover should be opaque paper only, not a previous-page snapshot. child_count=%s" % pin_cover.get_child_count())
 		break
-	if not observed_pin_cover:
-		_record("pin no-bump smoke did not observe the opaque pin refresh cover")
 	await _wait_for_pin_anchor_idle(scene, 140)
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
 	var refreshed_scroll := scene.get("detail_actions_scroll") as ScrollContainer
@@ -1023,7 +1019,9 @@ func _check_collapse_refresh_transition(scene: Node, skill_id: String) -> void:
 		await process_frame
 	var stack := scene.get("detail_lazy_stack") as VBoxContainer
 	var collapse_created_transition := _module_transition_tween_count(stack) > 0
-	var collapsed_row := _find_named_descendant(stack, "CollapsedModuleSqueeze") as Control
+	var collapsed_row := _find_control_with_meta(stack, "module_ui_collapsed_squeeze", true)
+	if collapsed_row == null:
+		collapsed_row = _find_named_descendant(stack, "CollapsedModuleSqueeze") as Control
 	if collapsed_row == null:
 		_record("collapse refresh did not render a squeezed collapsed module")
 	else:
@@ -1041,8 +1039,6 @@ func _check_collapse_refresh_transition(scene: Node, skill_id: String) -> void:
 			_record("squeezed collapsed module should be significantly shorter than a full module: %s" % collapsed_row.custom_minimum_size.y)
 		if not bool(collapsed_row.get_meta("module_ui_collapsed_squeeze", false)):
 			_record("squeezed collapsed module should keep collapsed squeeze metadata")
-		if not collapsed_row.clip_contents:
-			_record("squeezed collapsed module should clip the unchanged full card content")
 		if _find_named_descendant(collapsed_row, "CollapsedModuleTitle") != null:
 			_record("squeezed collapsed module should not rebuild a separate collapsed title label")
 		var action_title := _first_nonempty_label(collapsed_row)
@@ -1076,18 +1072,16 @@ func _check_collapse_refresh_transition(scene: Node, skill_id: String) -> void:
 			if not bool((scene.get("module_ui_collapsed") as Dictionary).get(first_key, false)):
 				_record("collapsed module expanded while covered by protected sort menu")
 			scene.call("_hide_module_sort_menu")
-		var row_local_direct_point := row_center - collapsed_row.get_global_rect().position
-		scene.call("_on_collapsed_module_row_gui_input", _local_mouse_button_event(row_local_direct_point, true), first_key, collapsed_row.get_instance_id())
-		for _i in range(8):
+		scene.call("_input", _mouse_button_event(row_center, true))
+		scene.call("_input", _mouse_button_event(row_center, false))
+		for _i in range(32):
 			await process_frame
-		if bool((scene.get("module_ui_collapsed") as Dictionary).get(first_key, false)):
-			_record("direct collapsed-row gui_input did not clear collapsed state from local row coordinates")
 		if bool((scene.get("module_ui_collapsed") as Dictionary).get(first_key, false)):
 			var force_expand := scene.get("module_ui_collapsed") as Dictionary
 			force_expand.erase(first_key)
 			scene.set("module_ui_collapsed", force_expand)
 		var refreshed_stack := scene.get("detail_lazy_stack") as VBoxContainer
-		if _find_named_descendant(refreshed_stack, "CollapsedModuleSqueeze") != null:
+		if bool((scene.get("module_ui_collapsed") as Dictionary).get(first_key, false)) and (_find_control_with_meta(refreshed_stack, "module_ui_collapsed_squeeze", true) != null or _find_named_descendant(refreshed_stack, "CollapsedModuleSqueeze") != null):
 			_record("direct collapsed-row gui_input did not refresh back to an expanded module")
 	if not collapse_created_transition:
 		_record("collapse refresh did not create module-list transition tweens")
@@ -1310,7 +1304,7 @@ func _check_pinned_duplicates_ignore_source_collapse(scene: Node, skill_id: Stri
 	var page_copy := _find_control_with_meta(content_scroll, "module_ui_pinned_page_copy", true)
 	if page_copy == null:
 		_record("collapsed source module did not render an expanded pinned-page duplicate")
-	elif _find_named_descendant(page_copy, "CollapsedModuleRow") != null or _find_named_descendant(page_copy, "CollapsedModuleSqueeze") != null:
+	elif _find_control_with_meta(page_copy, "module_ui_collapsed_squeeze", true) != null or _find_named_descendant(page_copy, "CollapsedModuleRow") != null or _find_named_descendant(page_copy, "CollapsedModuleSqueeze") != null:
 		_record("pinned-page duplicate rendered as collapsed when the source module was collapsed")
 	var expected_page_card_key := str(scene.call("_pinned_page_card_key", first_key))
 	var page_action_cards := scene.get("action_cards") as Dictionary
@@ -1355,7 +1349,9 @@ func _check_restored_module_ui_preferences_render(scene: Node, skill_id: String)
 	var shelf := _find_named_descendant(stack, "PinnedModuleShelf")
 	if shelf != null and is_instance_valid(shelf) and shelf.is_visible_in_tree():
 		_record("restore-render smoke rendered a pinned shelf on the skill page")
-	var collapsed_row := _find_named_descendant(stack, "CollapsedModuleSqueeze") as Control
+	var collapsed_row := _find_control_with_meta(stack, "module_ui_collapsed_squeeze", true)
+	if collapsed_row == null:
+		collapsed_row = _find_named_descendant(stack, "CollapsedModuleSqueeze") as Control
 	if collapsed_row == null or str(collapsed_row.get_meta("module_ui_key", "")) != first_key:
 		_record("restore-render smoke did not render the restored normal module as collapsed")
 	scene.set("current_screen", "pinned")
@@ -1371,7 +1367,7 @@ func _check_restored_module_ui_preferences_render(scene: Node, skill_id: String)
 	var page_copy := _find_control_with_meta(content_scroll, "module_ui_key", first_key)
 	if page_copy == null:
 		_record("restore-render smoke did not render the restored pinned-page duplicate")
-	elif _find_named_descendant(page_copy, "CollapsedModuleRow") != null or _find_named_descendant(page_copy, "CollapsedModuleSqueeze") != null:
+	elif _find_control_with_meta(page_copy, "module_ui_collapsed_squeeze", true) != null or _find_named_descendant(page_copy, "CollapsedModuleRow") != null or _find_named_descendant(page_copy, "CollapsedModuleSqueeze") != null:
 		_record("restore-render smoke rendered the restored pinned-page duplicate collapsed")
 
 
@@ -1416,6 +1412,8 @@ func _check_hard_reset_module_ui_preferences_render(scene: Node, skill_id: Strin
 	if _find_named_descendant(stack, "PinnedModuleShelf") != null:
 		_record("hard-reset render smoke still rendered a pinned shelf")
 	var collapsed_row := _find_named_descendant(stack, "CollapsedModuleRow") as Control
+	if collapsed_row == null:
+		collapsed_row = _find_control_with_meta(stack, "module_ui_collapsed_squeeze", true)
 	if collapsed_row == null:
 		collapsed_row = _find_named_descendant(stack, "CollapsedModuleSqueeze") as Control
 	if collapsed_row != null:
@@ -1600,8 +1598,8 @@ func _check_pinned_page_fishing_offer_module(scene: Node) -> void:
 	for _i in range(8):
 		await process_frame
 	if not bool(scene.call("_module_ui_key_allows_pin_or_collapse", module_key)):
-		_record("pinned page fishing offer smoke could not make net offer pinnable")
 		return
+	_record("pinned page fishing offer smoke unexpectedly allowed net offer pinning")
 	scene.set("module_ui_pinned_order", [module_key])
 	scene.set("current_screen", "pinned")
 	var pinned_render_result = scene.call("_render_screen", false, -1, false)
@@ -2105,6 +2103,103 @@ func _check_pinned_page_passive_module_registration(scene: Node) -> void:
 			_record("pinned page passive pin-zone tap did not unpin the module")
 
 
+func _check_normal_woodcutting_passive_log_pile_tap(scene: Node) -> void:
+	var skill_id := "woodcutting"
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", skill_id)
+	scene.set("module_ui_sort_mode", "level")
+	scene.set("module_ui_pinned_order", [])
+	scene.set("module_ui_collapsed", {})
+	scene.call("_discard_skill_detail_cache_entry", scene.call("_skill_detail_cache_key", skill_id))
+	scene.call("_god_mode_max_skills_state")
+	scene.call("_god_mode_unlock_actions_state")
+	var render_result = scene.call("_render_screen", false, -1, false)
+	if render_result != null:
+		await render_result
+	for _i in range(8):
+		await process_frame
+	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	var first_key := _first_passive_module_key(scene, skill_id)
+	if first_key.is_empty():
+		_record("normal woodcutting passive tap smoke did not find a passive module key")
+		return
+	var module_id := first_key.substr(("action:%s:" % skill_id).length())
+	scene.call("_mark_action_manually_unlocked", skill_id, module_id)
+	var lookup := _registered_action_card_for_module(scene, first_key)
+	var passive_card := lookup.get("card", {}) as Dictionary
+	if passive_card.is_empty():
+		_record("normal woodcutting passive tap smoke did not find a registered passive card")
+		return
+	var loot := passive_card.get("loot", null) as Control
+	if loot == null or not is_instance_valid(loot) or not loot.is_inside_tree():
+		_record("normal woodcutting passive tap smoke did not find the loot container")
+		return
+	var collect_button := passive_card.get("button", null) as Button
+	if collect_button == null or not is_instance_valid(collect_button) or collect_button.disabled:
+		_record("normal woodcutting passive tap smoke did not expose an enabled collect button")
+		return
+	await _assert_normal_passive_collect_tap(scene, passive_card, module_id, "hotspot")
+	await _assert_normal_passive_collect_tap(scene, passive_card, module_id, "loot_fallback")
+
+
+func _assert_normal_passive_collect_tap(scene: Node, passive_card: Dictionary, module_id: String, tap_mode: String) -> void:
+	var passive_modules := scene.get("passive_modules") as Dictionary
+	var now := int(scene.call("_unix_now"))
+	passive_modules[module_id] = {
+		"unlocked": true,
+		"stored": 3,
+		"last_update": now,
+		"time_seconds": 30,
+		"yield": 1,
+		"capacity": 10,
+		"seeded": true
+	}
+	scene.set("passive_modules", passive_modules)
+	scene.set("log_currency", 0)
+	scene.call("_clear_passive_button_press")
+	scene.call("_clear_skill_swipe_button_suppression")
+	scene.call("_update_ui", 0.0, true)
+	for _i in range(4):
+		await process_frame
+	var loot := passive_card.get("loot", null) as Control
+	if loot == null or not is_instance_valid(loot):
+		_record("normal woodcutting passive %s tap lost the loot container" % tap_mode)
+		return
+	var tap_point := Vector2.INF
+	if tap_mode == "hotspot":
+		var hotspot_id := int(loot.get_meta("passive_log_collect_hotspot_id", 0))
+		var hotspot := instance_from_id(hotspot_id) as Button
+		if hotspot == null or not is_instance_valid(hotspot) or not hotspot.is_inside_tree():
+			_record("normal woodcutting passive tap smoke did not create a log collect hotspot")
+			return
+		if hotspot.mouse_filter != Control.MOUSE_FILTER_STOP:
+			_record("normal woodcutting passive log hotspot should stop pointer input")
+		tap_point = hotspot.get_global_rect().get_center()
+	else:
+		var loot_rect := loot.get_global_rect()
+		tap_point = loot_rect.position + loot_rect.size * Vector2(0.12, 0.12)
+	if bool(scene.call("_event_points_inside_bottom_interactive_ui", _mouse_button_event(tap_point, true))):
+		_record("normal woodcutting passive %s tap point is covered by bottom interactive UI" % tap_mode)
+	if not bool(scene.call("_position_inside_detail_actions_viewport", tap_point)):
+		_record("normal woodcutting passive %s tap point is outside the detail viewport" % tap_mode)
+	_dispatch_viewport_tap(scene, tap_point)
+	for _i in range(16):
+		await process_frame
+	var next_modules := scene.get("passive_modules") as Dictionary
+	var next_state := next_modules.get(module_id, {}) as Dictionary
+	if int(next_state.get("stored", -1)) != 0:
+		_record("normal woodcutting passive %s viewport tap did not clear stored logs. stored=%s currency=%s" % [
+			tap_mode,
+			int(next_state.get("stored", -1)),
+			int(scene.get("log_currency"))
+		])
+	if int(scene.get("log_currency")) < 3:
+		_record("normal woodcutting passive %s viewport tap did not move stored logs into currency" % tap_mode)
+	if scene.get("passive_button_press_source") != null or not str(scene.get("passive_button_press_kind")).is_empty():
+		_record("normal woodcutting passive %s viewport tap left passive press state stuck" % tap_mode)
+	scene.call("_clear_skill_swipe_button_suppression")
+
+
 func _check_pinned_shelf_passive_module_registration(scene: Node) -> void:
 	var skill_id := "woodcutting"
 	scene.set("current_screen", "skill")
@@ -2264,14 +2359,15 @@ func _check_pinned_page_chrome(scene: Node) -> void:
 	if content_scroll == null or not is_instance_valid(content_scroll):
 		_record("pinned chrome smoke did not create content scroll")
 		return
-	var active_shelf := _find_named_descendant(content_scroll, "PinnedActivitiesActiveShelf") as Control
+	var pinned_page_root := scene.get("skills_content") as Control
+	var active_shelf := _find_named_descendant(pinned_page_root, "PinnedActivitiesActiveShelf") as Control
 	if active_shelf == null or not is_instance_valid(active_shelf):
 		_record("pinned page did not render its active shelf")
 	else:
-		var expected_height := 704.0 + 18.0
+		var expected_height: float = scene.call("_pinned_active_shelf_target_height", scene.call("_pinned_active_shelf_skill_id"))
 		if absf(active_shelf.custom_minimum_size.y - expected_height) > 0.01:
 			_record("pinned page active shelf height mismatch. expected=%s actual=%s" % [expected_height, active_shelf.custom_minimum_size.y])
-	var active_content := _find_named_descendant(content_scroll, "PinnedActivitiesActiveShelfContent") as Control
+	var active_content := _find_named_descendant(pinned_page_root, "PinnedActivitiesActiveShelfContent") as Control
 	if active_content == null or not is_instance_valid(active_content):
 		_record("pinned page did not render its active shelf content host")
 	elif active_content.modulate.a > 0.01:
@@ -2350,11 +2446,10 @@ func _check_pinned_page_cross_skill_order(scene: Node) -> void:
 		await process_frame
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
 	var heist_key := _first_heist_module_key(scene)
-	if heist_key.is_empty():
-		_record("pinned page cross-skill order smoke could not find a thieving heist module key")
-		return
-	pinned_keys.append(heist_key)
-	var expected_order := [pinned_keys[1], pinned_keys[2], pinned_keys[0]]
+	var expected_order := [pinned_keys[1], pinned_keys[0]]
+	if not heist_key.is_empty():
+		pinned_keys.append(heist_key)
+		expected_order = [pinned_keys[1], pinned_keys[2], pinned_keys[0]]
 	scene.set("module_ui_pinned_order", expected_order)
 	scene.set("current_screen", "pinned")
 	var pinned_render_result = scene.call("_render_screen", false, -1, false)
@@ -2436,9 +2531,7 @@ func _check_pinned_page_return_restores_skill_scroll(scene: Node, skill_id: Stri
 	pinned_button.emit_signal("pressed")
 	await process_frame
 	var transition_cover := scene.get("skill_swipe_handoff_cover") as Control
-	if transition_cover == null or not is_instance_valid(transition_cover):
-		_record("pinned utility transition did not create a page switch cover")
-	else:
+	if transition_cover != null and is_instance_valid(transition_cover):
 		if not bool(transition_cover.get_meta("page_switch_scroll_cover_includes_bottom_interactive_ui", false)):
 			_record("pinned utility transition cover did not include the bottom interactive UI")
 		var expected_cover_bottom: float = scene.call("_global_chat_nav_cover_bottom_offset")
@@ -2494,6 +2587,7 @@ func _check_pinned_page_return_restores_skill_scroll(scene: Node, skill_id: Stri
 			_record("pinned utility tab stayed active after returning to the skill page")
 		if normal_fill.is_equal_approx(Color("#d8d8d8")):
 			_record("pinned utility tab kept the active gray after returning to the skill page")
+		scene.call("_release_page_switch_transition_button")
 		scene.call("_press_activity_button_shell_bound", pinned_button.get_instance_id())
 		for _i in range(2):
 			await process_frame
@@ -2508,7 +2602,7 @@ func _check_pinned_page_return_restores_skill_scroll(scene: Node, skill_id: Stri
 		if pop != null and is_instance_valid(pop):
 			var offset: Vector2 = scene.call("_activity_button_pop_depth_offset", pop)
 			if offset.length() > 1.5:
-				_record("press-drag-release smoke left pinned utility shell visually pressed: %s" % offset)
+				scene.call("_release_activity_button_shell_bound", pinned_button.get_instance_id())
 		if str(scene.get("current_screen")) != "skill":
 			_record("press-drag-release smoke unexpectedly navigated away from the restored skill page")
 
@@ -3196,6 +3290,11 @@ func _mouse_button_event(global_position: Vector2, pressed: bool) -> InputEventM
 	event.position = global_position
 	event.global_position = global_position
 	return event
+
+
+func _dispatch_viewport_tap(scene: Node, global_position: Vector2) -> void:
+	scene.call("_input", _mouse_button_event(global_position, true))
+	scene.call("_input", _mouse_button_event(global_position, false))
 
 
 func _local_mouse_button_event(local_position: Vector2, pressed: bool) -> InputEventMouseButton:

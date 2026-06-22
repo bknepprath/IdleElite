@@ -23,7 +23,7 @@ Idle Elite's Firebase features are deliberately cost-conservative:
 - Queries must be `orderBy="score"` with `limitToLast=50`, backed by `.indexOn`.
 - Chat streams must use `Accept: text/event-stream`, `orderBy="created_at"`, and a capped `limitToLast`, backed by `.indexOn`.
 - Reads and writes are restricted to the known Idle Elite leaderboard categories only.
-- Viewing leaderboard scores does not require Firebase Auth. Publishing scores, reserving names, write gates, and chat writes use Firebase Anonymous Auth so rules can bind writes to `auth.uid`.
+- Viewing leaderboard scores and reading chat messages do not require Firebase Auth. Publishing scores, reserving names, write gates, and chat writes use Firebase Anonymous Auth so rules can bind writes to `auth.uid`.
 - This beta does not ship Google sign-in or cloud saves.
 
 ## Step Pair 1: Project and Database
@@ -141,7 +141,7 @@ Before shipping a build:
 4. Switch away from and back to the same category inside 15 minutes. The cached rows should be reused rather than issuing another GET.
 5. Earn score. Confirm at most one PATCH request hits `/leaderboards/v1.json?print=silent` every 15 minutes from the device. It should include score updates plus `player_write_gates/<playerId>`.
 6. Try a second write inside 15 minutes, even to another category. Firebase rules should reject it even if the client gate failed.
-7. On a skills page, confirm one compact RTDB stream opens with `Accept: text/event-stream` at `/global_chat/v1/messages.json?orderBy=%22created_at%22&limitToLast=2&auth=<idToken>`.
+7. On a skills page, confirm one public compact RTDB stream opens with `Accept: text/event-stream` at `/global_chat/v1/messages.json?orderBy=%22created_at%22&limitToLast=2`.
 8. Open expanded chat. Confirm the stream reconnects with `limitToLast=25`.
 9. Close expanded chat. Confirm the RTDB stream stays open and the compact strip reuses cached rows with no downgrade reconnect to `limitToLast=2`.
 10. Leave the skills/chat surfaces. Confirm the RTDB stream closes and does not continue in the background.

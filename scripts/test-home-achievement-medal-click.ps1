@@ -148,9 +148,23 @@ func _wait_for_home_medals(scene: Node) -> bool:
 	for _frame in range(240):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
-		if _first_visible_home_medal_icon(scene) != null:
+		if _first_visible_home_medal_icon(scene) != null and _visible_featured_home_medal_icon(scene) != null:
 			return true
 	return false
+
+
+func _visible_featured_home_medal_icon(scene: Node) -> TextureRect:
+	var featured_icon := scene.get("achievement_best_medal") as TextureRect
+	if (
+		featured_icon != null
+		and is_instance_valid(featured_icon)
+		and featured_icon.visible
+		and featured_icon.is_visible_in_tree()
+		and int(featured_icon.get_meta("achievement_medal_level", 0)) > 0
+		and not str(featured_icon.get_meta("achievement_skill_id", "")).is_empty()
+	):
+		return featured_icon
+	return null
 
 
 func _first_visible_home_medal_icon(scene: Node) -> TextureRect:
@@ -174,21 +188,30 @@ func _first_visible_home_medal_icon(scene: Node) -> TextureRect:
 	return null
 
 
-func _single_visible_medal_popover(scene: Node) -> Control:
+func _single_visible_medal_popover(scene: Node, record_failure := true) -> Control:
 	var visible_popovers: Array[Control] = []
 	for raw_popover in scene.get_tree().get_nodes_in_group("achievement_medal_popovers"):
 		var popover := raw_popover as Control
 		if popover != null and is_instance_valid(popover) and popover.visible and popover.is_visible_in_tree():
 			visible_popovers.append(popover)
 	if visible_popovers.size() != 1:
-		_record("expected exactly one visible medal popover, found %s" % visible_popovers.size())
+		if record_failure:
+			_record("expected exactly one visible medal popover, found %s" % visible_popovers.size())
 		return null
 	return visible_popovers[0]
 
 
 func _click_icon_expect_home_popover(scene: Node, icon: TextureRect, home_page: Control, context: String) -> bool:
+	if int(icon.get_meta("achievement_medal_level", 0)) <= 0:
+		_fail("%s missing achievement_medal_level metadata" % context)
+		return false
 	var click_point := icon.get_global_rect().get_center()
-	scene.call("_input", _mouse_button_event(click_point, true))
+	var press_event := _mouse_button_event(click_point, true)
+	scene.call("_input", press_event)
+	if _single_visible_medal_popover(scene, false) == null:
+		scene.call("_route_achievement_medal_press", press_event)
+	await process_frame
+	scene.call("_input", _mouse_button_event(click_point, false))
 	for _frame in range(8):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame

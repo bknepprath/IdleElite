@@ -196,6 +196,8 @@ func _run() -> void:
 	if not _only_starter_activity_rendered(scene):
 		_fail("tutorial starter skill page should render only Shove Wobbly Hay Bale, got %s: %s" % [str(_rendered_action_ids(scene)), _summary(scene)])
 		return
+	if not _tutorial_blocks_info_chip_expansion(scene):
+		return
 	if _has_page_switch_module(scene):
 		_fail("tutorial starter skill page should hide page-switch controls: %s" % _summary(scene))
 		return
@@ -233,6 +235,39 @@ func _tutorial_module_count(scene: Node) -> int:
 func _only_starter_activity_rendered(scene: Node) -> bool:
 	var ids := _rendered_action_ids(scene)
 	return ids.size() == 1 and ids[0] == "shove-wobbly-hay-bale"
+
+
+func _tutorial_blocks_info_chip_expansion(scene: Node) -> bool:
+	var cards := scene.get("action_cards") as Dictionary
+	if cards == null:
+		_fail("tutorial info-chip block smoke could not read action cards: %s" % _summary(scene))
+		return false
+	var card := cards.get("fight:shove-wobbly-hay-bale", {}) as Dictionary
+	if card.is_empty():
+		_fail("tutorial info-chip block smoke could not find starter card: %s" % _summary(scene))
+		return false
+	var stat_boxes := card.get("stat_boxes", {}) as Dictionary
+	var stat_box := stat_boxes.get("xp", null) as Control
+	if stat_box == null or not is_instance_valid(stat_box):
+		_fail("tutorial info-chip block smoke could not find starter XP chip box: %s" % _summary(scene))
+		return false
+	var stat_center := stat_box.get_global_rect().get_center()
+	if not str(scene.call("_activity_stat_kind_at_position", card, stat_center)).is_empty():
+		_fail("tutorial info-chip hit test should ignore hidden starter stat chips: %s" % _summary(scene))
+		return false
+	scene.call("_toggle_activity_stat_popup_for_card", card, "fight", "shove-wobbly-hay-bale", "xp")
+	scene.call("_update_ui", 0.0, true)
+	if str(scene.get("expanded_activity_stat_key")) != "" or str(scene.get("expanded_activity_stat_kind")) != "":
+		_fail("tutorial info-chip tap expanded the starter module: key=%s kind=%s %s" % [
+			str(scene.get("expanded_activity_stat_key")),
+			str(scene.get("expanded_activity_stat_kind")),
+			_summary(scene)
+		])
+		return false
+	if bool(card.get("bonus_expanded", false)):
+		_fail("tutorial info-chip tap left the starter card bonus panel expanded: %s" % _summary(scene))
+		return false
+	return true
 
 
 func _bottom_nav_locked_controls_ok(scene: Node) -> bool:

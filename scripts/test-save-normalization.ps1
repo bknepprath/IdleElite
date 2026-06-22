@@ -108,6 +108,7 @@ func _run() -> void:
 	_check_action_progress_save_restore(game)
 	_check_action_key_save(game)
 	_check_manual_activity_unlock_save_restore(game)
+	_check_fishing_method_unlock_routing(game)
 	_check_module_ui_preferences_save_restore(game)
 	_check_auto_eat_fish_per_skill_save_restore(game)
 	_check_auto_unlock_lockpads(game)
@@ -1641,6 +1642,18 @@ func _check_manual_activity_unlock_save_restore(game: Node) -> void:
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
 	_expect(bool(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Legacy saves without a manual unlock map should keep old level-unlocked mono actions playable.")
 	_expect(not bool(manual_unlocks.get("fight:wrestle-stuck-gate-latch", false)), "Legacy save migration should not silently grant combo actions without explicit manual unlock state.")
+
+
+func _check_fishing_method_unlock_routing(game: Node) -> void:
+	var method_card := {
+		"is_fishing_method": true,
+		"skill_id": "fishing",
+		"action_id": "beach-rocks",
+	}
+	_expect(bool(game.call("_should_route_activity_unlock_to_fishing_method", method_card, "fishing", "beach-rocks")), "Fishing method cards should use the small fishing padlock ceremony.")
+	_expect(not bool(game.call("_should_route_activity_unlock_to_fishing_method", method_card, "fight", "kick-mud-off-boot")), "Non-fishing actions should not use the fishing padlock ceremony.")
+	game.set("action_cards", {str(game.call("_action_key", "fishing", "beach-rocks")): method_card})
+	_expect(bool(game.call("_should_route_activity_unlock_to_fishing_method", {}, "fishing", "beach-rocks")), "Registered fishing methods should be recovered before generic unlock routing.")
 
 
 func _check_module_ui_preferences_save_restore(game: Node) -> void:

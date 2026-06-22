@@ -118,7 +118,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "page": "fight",
         "target_level": 25,
         "minimum_level": 12,
-        "spawn_weight": 1.0,
+        "spawn_weight": 1,
         "active_duration_seconds": 3600,
         "respawn_cooldown_seconds": 21600
       }
@@ -174,7 +174,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "logs_min": 30,
         "logs_max": 50
       },
-      "spawn_weight": 1.0,
+      "spawn_weight": 1,
       "active_duration_seconds": 3600,
       "respawn_cooldown_seconds": 21600,
       "combo_tags": [
@@ -321,7 +321,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "unlock": 30,
       "sort_unlock": 30,
       "stamina": 3,
-      "seconds": 4.0,
+      "seconds": 4,
       "xp": 65,
       "success": 78,
       "requirements": [
@@ -338,7 +338,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "fishing": 65,
         "thieving": 14
       },
-      "spawn_weight": 1.0,
+      "spawn_weight": 1,
       "active_duration_seconds": 3000,
       "respawn_cooldown_seconds": 21600,
       "combo_tags": [
@@ -527,7 +527,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.28,
           "xp": 17,
-          "success": 90.0,
+          "success": 90,
           "rewards": {
             "xp": 17
           },
@@ -546,7 +546,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.36,
           "xp": 18,
-          "success": 89.0,
+          "success": 89,
           "rewards": {
             "xp": 18
           },
@@ -586,7 +586,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 2,
           "seconds": 2.43,
           "xp": 19,
-          "success": 88.0,
+          "success": 88,
           "rewards": {
             "xp": 19
           },
@@ -734,7 +734,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 5.87,
           "xp": 42,
-          "success": 77.0,
+          "success": 77,
           "rewards": {
             "xp": 42
           },
@@ -864,7 +864,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 9.15,
           "xp": 65,
-          "success": 64.0,
+          "success": 64,
           "rewards": {
             "xp": 65
           },
@@ -1085,6 +1085,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "rewards": {
             "xp": 16
           },
+          "mat_rewards": [
+            {
+              "id": "honey",
+              "amount": 1,
+              "whole": true
+            }
+          ],
           "costs": {
             "stamina": 3
           },
@@ -1210,7 +1217,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 34,
           "sort_unlock": 34,
           "stamina": 5,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 31,
           "success": 80.5,
           "rewards": {
@@ -1252,7 +1259,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 6,
           "seconds": 4.1,
           "xp": 32,
-          "success": 79.0,
+          "success": 79,
           "rewards": {
             "xp": 32
           },
@@ -1523,7 +1530,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 8.44,
           "xp": 65,
-          "success": 63.0,
+          "success": 63,
           "rewards": {
             "xp": 65
           },
@@ -1613,7 +1620,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 1.49,
           "xp": 1,
-          "success": 98.0,
+          "success": 98,
           "rewards": {
             "xp": 1
           },
@@ -1624,29 +1631,28 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
-          "id": "patch-fence-with-confidence",
+          "id": "hammer-one-suspicious-nail",
           "tier": 2,
-          "name": "Patch Fence With Confidence",
+          "name": "Hammer a Nail",
           "unlock": 2,
           "stamina": 1,
           "seconds": 1.71,
           "xp": 3,
-          "success": 98.0,
+          "success": 98,
           "rewards": {
             "xp": 3
           },
           "costs": {
             "stamina": 1
           },
-          "art": "assets/content/build/actions/02-patch-fence-with-confidence.png",
+          "art": "assets/content/build/actions/03-hammer-one-suspicious-nail.png",
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
-          "id": "saw-planks",
+          "id": "patch-fence-with-confidence",
           "tier": 2,
-          "name": "Saw Planks",
+          "name": "Patch Fence",
           "unlock": 3,
-          "sort_unlock": 3,
           "stamina": 1,
           "seconds": 1.82,
           "xp": 4,
@@ -1657,10 +1663,29 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "costs": {
             "stamina": 1
           },
+          "art": "assets/content/build/actions/02-patch-fence-with-confidence.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
+        },
+        {
+          "id": "saw-planks",
+          "tier": 3,
+          "name": "Saw Planks",
+          "unlock": 4,
+          "sort_unlock": 4,
+          "stamina": 1,
+          "seconds": 1.86,
+          "xp": 4,
+          "success": 97.5,
+          "rewards": {
+            "xp": 4
+          },
+          "costs": {
+            "stamina": 1
+          },
           "requirements": [
             {
               "skill": "build",
-              "level": 3
+              "level": 4
             },
             {
               "skill": "woodcutting",
@@ -1680,24 +1705,6 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "Combo"
           ],
           "art": "assets/content/woodcutting/actions/05-split-firewood.png",
-          "background": "assets/content/build/backgrounds/01-early.png"
-        },
-        {
-          "id": "hammer-one-suspicious-nail",
-          "tier": 3,
-          "name": "Hammer One Suspicious Nail",
-          "unlock": 4,
-          "stamina": 1,
-          "seconds": 1.86,
-          "xp": 4,
-          "success": 97.5,
-          "rewards": {
-            "xp": 4
-          },
-          "costs": {
-            "stamina": 1
-          },
-          "art": "assets/content/build/actions/03-hammer-one-suspicious-nail.png",
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
@@ -1921,7 +1928,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 3,
           "seconds": 4.72,
           "xp": 21,
-          "success": 88.0,
+          "success": 88,
           "rewards": {
             "xp": 21
           },
@@ -2037,7 +2044,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 6.99,
           "xp": 32,
-          "success": 81.0,
+          "success": 81,
           "rewards": {
             "xp": 32
           },
@@ -2289,7 +2296,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 1.26,
           "xp": 1,
-          "success": 98.0,
+          "success": 98,
           "rewards": {
             "xp": 1
           },
@@ -2297,39 +2304,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "stamina": 1
           },
           "art": "assets/content/woodcutting/actions/01-gather-fallen-branches.png",
-          "background": "assets/content/woodcutting/backgrounds/01-early.png"
-        },
-        {
-          "id": "stack-logs-1",
-          "kind": "passive_item_collect",
-          "tier": 2,
-          "name": "Collect Logs #1",
-          "unlock": 2,
-          "stamina": 0,
-          "seconds": 240,
-          "xp": 0,
-          "success": 100,
-          "rewards": {
-            "logs": 2,
-            "xp": 0
-          },
-          "costs": {},
-          "passive": {
-            "currency": "logs",
-            "time_start_seconds": 240,
-            "time_min_seconds": 30,
-            "yield_start": 2,
-            "yield_max": 18,
-            "capacity_start": 20,
-            "capacity_max": 1000,
-            "first_unlock_stored": 3,
-            "plank_build_xp_bonus": 0.05,
-            "log_icon": "assets/content/icons/resources/log-currency.png",
-            "plank_icon": "assets/content/icons/resources/plank.png",
-            "upgrade_icon": "assets/content/icons/upgrades/upgrade-arrow.png"
-          },
-          "art": "assets/content/icons/resources/log-currency.png",
-          "background": "assets/content/woodcutting/backgrounds/01-early.png"
+          "background": "assets/content/woodcutting/backgrounds/01-early.png",
+          "mat_rewards": [
+            {
+              "id": "scrapwood",
+              "min": 0,
+              "max": 0.35,
+              "zero_chance": 0.25
+            }
+          ]
         },
         {
           "id": "snap-a-twig-with-purpose",
@@ -2339,7 +2322,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 1.57,
           "xp": 3,
-          "success": 98.0,
+          "success": 98,
           "rewards": {
             "xp": 3
           },
@@ -2358,7 +2341,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 1,
           "seconds": 1.57,
           "xp": 4,
-          "success": 97.0,
+          "success": 97,
           "rewards": {
             "xp": 4
           },
@@ -2389,7 +2372,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "Combo"
           ],
           "art": "assets/content/woodcutting/actions/05-split-firewood.png",
-          "background": "assets/content/woodcutting/backgrounds/01-early.png"
+          "background": "assets/content/woodcutting/backgrounds/01-early.png",
+          "mat_rewards": [
+            {
+              "id": "scrapwood",
+              "min": 0.15,
+              "max": 0.65,
+              "zero_chance": 0.1
+            }
+          ]
         },
         {
           "id": "trim-overconfident-shrub",
@@ -2421,6 +2412,14 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "rewards": {
             "xp": 9
           },
+          "mat_rewards": [
+            {
+              "id": "softwood",
+              "amount": 1,
+              "chance": 0.72,
+              "whole": true
+            }
+          ],
           "costs": {
             "stamina": 2
           },
@@ -2439,6 +2438,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "rewards": {
             "xp": 11
           },
+          "mat_rewards": [
+            {
+              "id": "softwood",
+              "min": 1,
+              "max": 2,
+              "zero_chance": 0.2,
+              "whole": true
+            }
+          ],
           "costs": {
             "stamina": 2
           },
@@ -2475,6 +2483,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "rewards": {
             "xp": 17
           },
+          "mat_rewards": [
+            {
+              "id": "hardwood",
+              "min": 1,
+              "max": 2,
+              "zero_chance": 0.25,
+              "whole": true
+            }
+          ],
           "costs": {
             "stamina": 3
           },
@@ -2493,6 +2510,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "rewards": {
             "xp": 19
           },
+          "mat_rewards": [
+            {
+              "id": "hardwood",
+              "min": 1,
+              "max": 3,
+              "zero_chance": 0.15,
+              "whole": true
+            }
+          ],
           "costs": {
             "stamina": 3
           },
@@ -2515,7 +2541,22 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "stamina": 4
           },
           "art": "assets/content/woodcutting/actions/10-clear-dense-grove.png",
-          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png",
+          "mat_rewards": [
+            {
+              "id": "scrapwood",
+              "min": 0.65,
+              "max": 1.8,
+              "zero_chance": 0
+            },
+            {
+              "id": "softwood",
+              "min": 1,
+              "max": 3,
+              "zero_chance": 0.1,
+              "whole": true
+            }
+          ]
         },
         {
           "id": "split-lightning-struck-cedar",
@@ -2565,6 +2606,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "rewards": {
             "xp": 32
           },
+          "mat_rewards": [
+            {
+              "id": "hardwood",
+              "min": 2,
+              "max": 4,
+              "zero_chance": 0.1,
+              "whole": true
+            }
+          ],
           "costs": {
             "stamina": 5
           },
@@ -2605,7 +2655,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "stamina": 5
           },
           "art": "assets/content/woodcutting/actions/15-clear-mystic-timberland.png",
-          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png",
+          "mat_rewards": [
+            {
+              "id": "scrapwood",
+              "min": 1,
+              "max": 2.75,
+              "zero_chance": 0
+            }
+          ]
         },
         {
           "id": "harvest-the-first-trees-apology",
@@ -2615,7 +2673,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 7.84,
           "xp": 42,
-          "success": 76.0,
+          "success": 76,
           "rewards": {
             "xp": 42
           },
@@ -2634,7 +2692,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 7,
           "seconds": 8.05,
           "xp": 44,
-          "success": 75.0,
+          "success": 75,
           "rewards": {
             "xp": 44
           },
@@ -2718,7 +2776,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 8,
           "seconds": 8.95,
           "xp": 49,
-          "success": 72.0,
+          "success": 72,
           "rewards": {
             "xp": 49
           },
@@ -2768,6 +2826,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "rewards": {
             "xp": 50
           },
+          "mat_rewards": [
+            {
+              "id": "softwood",
+              "min": 2,
+              "max": 4,
+              "zero_chance": 0.1,
+              "whole": true
+            }
+          ],
           "costs": {
             "stamina": 6
           },
@@ -2801,7 +2868,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 10.19,
           "xp": 57,
-          "success": 66.0,
+          "success": 66,
           "rewards": {
             "xp": 57
           },
@@ -2842,7 +2909,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "stamina": 11,
           "seconds": 10.55,
           "xp": 61,
-          "success": 66.0,
+          "success": 66,
           "rewards": {
             "xp": 61
           },
@@ -2900,6 +2967,15 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "rewards": {
             "xp": 73
           },
+          "mat_rewards": [
+            {
+              "id": "hardwood",
+              "min": 3,
+              "max": 6,
+              "zero_chance": 0,
+              "whole": true
+            }
+          ],
           "costs": {
             "stamina": 8
           },
@@ -2972,7 +3048,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Shallows",
           "unlock": 1,
           "stamina": 1,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 3,
           "success": 92,
           "rewards": {
@@ -2994,7 +3070,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Rocks",
           "unlock": 4,
           "stamina": 2,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 5,
           "success": 84,
           "rewards": {
@@ -3015,7 +3091,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Dock Edge",
           "unlock": 7,
           "stamina": 1,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 4,
           "success": 90,
           "rewards": {
@@ -3036,7 +3112,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Piling Line",
           "unlock": 11,
           "stamina": 1,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 4,
           "success": 88,
           "rewards": {
@@ -3057,7 +3133,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "River Bend",
           "unlock": 14,
           "stamina": 1,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 5,
           "success": 86,
           "rewards": {
@@ -3078,7 +3154,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Rapids",
           "unlock": 18,
           "stamina": 2,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 19,
           "success": 80,
           "rewards": {
@@ -3099,7 +3175,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Drain Gate",
           "unlock": 22,
           "stamina": 3,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 24,
           "success": 78,
           "rewards": {
@@ -3121,7 +3197,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 24,
           "sort_unlock": 24,
           "stamina": 3,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 7,
           "success": 76,
           "rewards": {
@@ -3165,7 +3241,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Tunnel Pool",
           "unlock": 26,
           "stamina": 3,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 33,
           "success": 74,
           "rewards": {
@@ -3186,7 +3262,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Reef Pot",
           "unlock": 30,
           "stamina": 2,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 15,
           "success": 82,
           "rewards": {
@@ -3208,7 +3284,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 32,
           "sort_unlock": 32,
           "stamina": 3,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 24,
           "success": 78,
           "rewards": {
@@ -3251,7 +3327,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Ice Hole",
           "unlock": 34,
           "stamina": 3,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 28,
           "success": 76,
           "rewards": {
@@ -3273,13 +3349,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 44,
           "sort_unlock": 44,
           "stamina": 4,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 42,
           "success": 70,
           "rewards": {
             "xp": 42,
             "fish_currency_min": 0.1,
-            "fish_currency_max": 1.0
+            "fish_currency_max": 1
           },
           "costs": {
             "stamina": 4
@@ -3316,7 +3392,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Reef Cage",
           "unlock": 46,
           "stamina": 4,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 44,
           "success": 70,
           "rewards": {
@@ -3337,7 +3413,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Rowboat",
           "unlock": 50,
           "stamina": 4,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 39,
           "success": 72,
           "rewards": {
@@ -3358,7 +3434,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Open Water",
           "unlock": 52,
           "stamina": 4,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 49,
           "success": 68,
           "rewards": {
@@ -3380,13 +3456,13 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 56,
           "sort_unlock": 56,
           "stamina": 5,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 52,
           "success": 66,
           "rewards": {
             "xp": 52,
             "fish_currency_min": 0.1,
-            "fish_currency_max": 1.0
+            "fish_currency_max": 1
           },
           "costs": {
             "stamina": 5
@@ -3423,7 +3499,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Night Reef",
           "unlock": 58,
           "stamina": 5,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 55,
           "success": 66,
           "rewards": {
@@ -3445,7 +3521,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 60,
           "sort_unlock": 60,
           "stamina": 5,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 36,
           "success": 65,
           "rewards": {
@@ -3488,7 +3564,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Storm Ripple",
           "unlock": 64,
           "stamina": 5,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 61,
           "success": 64,
           "rewards": {
@@ -3509,7 +3585,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Chum Line",
           "unlock": 70,
           "stamina": 6,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 73,
           "success": 60,
           "rewards": {
@@ -3530,7 +3606,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Pearl Bed",
           "unlock": 74,
           "stamina": 6,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 85,
           "success": 56,
           "rewards": {
@@ -3551,7 +3627,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Storm Line",
           "unlock": 78,
           "stamina": 6,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 79,
           "success": 58,
           "rewards": {
@@ -3572,7 +3648,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Wreck Drop",
           "unlock": 82,
           "stamina": 7,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 92,
           "success": 54,
           "rewards": {
@@ -3593,7 +3669,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Abyss",
           "unlock": 86,
           "stamina": 7,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 98,
           "success": 52,
           "rewards": {
@@ -3614,7 +3690,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Deep Trench",
           "unlock": 88,
           "stamina": 7,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 105,
           "success": 50,
           "rewards": {
@@ -3635,7 +3711,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Starlight",
           "unlock": 90,
           "stamina": 5,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 467,
           "success": 92,
           "rewards": {
@@ -3657,7 +3733,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "name": "Reflection",
           "unlock": 95,
           "stamina": 8,
-          "seconds": 4.0,
+          "seconds": 4,
           "xp": 700,
           "success": 72,
           "rewards": {

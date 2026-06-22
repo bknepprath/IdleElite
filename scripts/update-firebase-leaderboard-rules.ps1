@@ -160,7 +160,7 @@ $rulesObject = [ordered]@{
                 ".read" = $false
                 ".write" = $false
                 messages = [ordered]@{
-                    ".read" = "auth != null && query.orderByChild == 'created_at' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 25"
+                    ".read" = "query.orderByChild == 'created_at' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 25"
                     ".indexOn" = @("created_at")
                     '$messageId' = [ordered]@{
                         ".write" = "auth != null && (($chatCreateRule) || ($chatOwnerRefreshRule) || ($chatModerationRule))"

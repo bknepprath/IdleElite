@@ -696,6 +696,8 @@ class RegenCircle:
 	const CENTER_DECIMAL_SUFFIX_ALPHA := 0.6
 	const LIQUID_EDGE_INSET_SCALE := 2.4
 	const LIQUID_EDGE_SEAL_WIDTH_SCALE := 4.8
+	const THEME_COLOR_EASE_SPEED := 7.5
+	const THEME_COLOR_EPSILON := 0.002
 
 	var value := 0.0
 	var target_value := 0.0
@@ -705,6 +707,8 @@ class RegenCircle:
 	var maximum := 1
 	var show_decimal := true
 	var theme_color := Color("#36b8e8")
+	var target_theme_color := Color("#36b8e8")
+	var theme_color_initialized := false
 	var value_initialized := false
 	var stamina_initialized := false
 	var intro_fill_lock := false
@@ -807,6 +811,8 @@ class RegenCircle:
 			return
 		if absf(displayed_current - target_current) > 0.01:
 			return
+		if _color_delta(theme_color, target_theme_color) > THEME_COLOR_EPSILON:
+			return
 		set_process(false)
 
 	func _process(delta: float) -> void:
@@ -822,18 +828,21 @@ class RegenCircle:
 				target_value = regen_wrap_pending_value
 			value = next_empty_value
 			displayed_current = unfill_current
+			_update_theme_color(delta)
 			queue_redraw()
 			return
 		var next_value := _ease_to(value, target_value, 18.0, delta)
 		var eased_current := _ease_to(displayed_current, target_current, 9.0, delta)
-		if absf(next_value - value) > 0.0005 or absf(eased_current - displayed_current) > 0.01:
+		var color_changed := _update_theme_color(delta)
+		if absf(next_value - value) > 0.0005 or absf(eased_current - displayed_current) > 0.01 or color_changed:
 			value = next_value
 			displayed_current = eased_current
 			queue_redraw()
 		else:
-			var needs_final_redraw := absf(value - target_value) > 0.0 or absf(displayed_current - target_current) > 0.0
+			var needs_final_redraw := absf(value - target_value) > 0.0 or absf(displayed_current - target_current) > 0.0 or _color_delta(theme_color, target_theme_color) > 0.0
 			value = target_value
 			displayed_current = target_current
+			theme_color = target_theme_color
 			if needs_final_redraw:
 				queue_redraw()
 		_maybe_sleep_animation_process()
@@ -843,11 +852,37 @@ class RegenCircle:
 			return from
 		return lerpf(from, to, 1.0 - exp(-speed * delta))
 
-	func set_theme_color(next_color: Color) -> void:
-		if theme_color.is_equal_approx(next_color):
-			return
+	func _ease_color_to(from: Color, to: Color, speed: float, delta: float) -> Color:
+		var weight := 1.0 - exp(-speed * maxf(0.0, delta))
+		return from.lerp(to, weight)
+
+	func _color_delta(a: Color, b: Color) -> float:
+		return maxf(maxf(absf(a.r - b.r), absf(a.g - b.g)), maxf(absf(a.b - b.b), absf(a.a - b.a)))
+
+	func _update_theme_color(delta: float) -> bool:
+		if _color_delta(theme_color, target_theme_color) <= THEME_COLOR_EPSILON:
+			if _color_delta(theme_color, target_theme_color) > 0.0:
+				theme_color = target_theme_color
+				return true
+			return false
+		var next_color := _ease_color_to(theme_color, target_theme_color, THEME_COLOR_EASE_SPEED, delta)
+		var changed := _color_delta(theme_color, next_color) > 0.0001
 		theme_color = next_color
+		return changed
+
+	func set_theme_color(next_color: Color, instant := false) -> void:
+		if theme_color_initialized and target_theme_color.is_equal_approx(next_color) and (not instant or theme_color.is_equal_approx(next_color)):
+			return
+		target_theme_color = next_color
+		if instant or not theme_color_initialized:
+			theme_color = next_color
+			theme_color_initialized = true
+			queue_redraw()
+			_maybe_sleep_animation_process()
+			return
+		theme_color_initialized = true
 		queue_redraw()
+		_ensure_animation_process()
 
 	func set_show_decimal(enabled: bool) -> void:
 		if show_decimal == enabled:
@@ -1756,14 +1791,20 @@ const ACHIEVEMENT_CRIT_ART := "res://assets/content/achievements/achievement-cri
 const ACHIEVEMENT_CREDIT_ART := "res://assets/content/achievements/achievement-credit.png"
 const ACHIEVEMENT_CUMULATIVE_MEDALS_ART := "res://assets/content/achievements/achievement-cumulative-medals.png"
 const LOG_CURRENCY_ICON_TEXTURE := "res://assets/content/icons/resources/log-currency.png"
+const SCRAPWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/scrapwood.png"
+const SOFTWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/softwood.png"
+const HARDWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/hardwood.png"
+const HONEY_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/honey.png"
+const MAT_COLLECTION_STONE_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-stone.png"
+const MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-wood.png"
 const PLANK_ICON_TEXTURE := "res://assets/content/icons/resources/plank.png"
 const UPGRADE_ARROW_ICON_TEXTURE := "res://assets/content/icons/upgrades/upgrade-arrow.png"
 const PASSIVE_LOG_TEXTURE_VISIBLE_MIN := Vector2(0.146, 0.246)
 const PASSIVE_LOG_TEXTURE_VISIBLE_MAX := Vector2(0.856, 0.755)
 const WOODCUTTING_LOG_MODULE_ID := "stack-logs-1"
 const WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL := 2
-const WOODCUTTING_LOG_MODULE_INFO := "Click to collect logs. Upgrades cost logs. Plank toggle consumes logs for bonus XP while building."
-const WOODCUTTING_LOG_MODULE_TIP_TEXT := "This is a special passive activity. It always runs and collects logs for you.\nUse those logs to upgrade it."
+const WOODCUTTING_LOG_MODULE_INFO := "Legacy collector kept only for save compatibility."
+const WOODCUTTING_LOG_MODULE_TIP_TEXT := "Legacy passive collector removed."
 const SILVER_OPPORTUNITY_TIP_TEXT := "Silver medals unlock click opportunity windows.\nTap the activity while the progress bar is inside the window for a boost."
 const HERO_UNLOCK_TOTAL_LEVEL := 25
 const HERO_LOCKED_MESSAGE := "Total Lv 25 required!"
@@ -1795,8 +1836,48 @@ const PASSIVE_YIELD_START := 2
 const PASSIVE_YIELD_MAX := 18
 const PASSIVE_CAPACITY_START := 20
 const PASSIVE_CAPACITY_MAX := 1000
+const MAT_COLLECTION_KIND := "mats_collection"
+const MAT_COLLECTION_MODULE_SIZE := Vector2(754, 754)
+const MAT_COLLECTION_MODULE_GAP := 28.0
+const MAT_COLLECTION_AREA_HEIGHT := 870.0
+const MAT_COLLECTION_CONNECTOR_HEIGHT := 74.0
+const MAT_COLLECTION_CONNECTOR_TOP_OVERLAP := 3.0
+const MAT_COLLECTION_APPEAR_SECONDS := 0.28
+const MAT_COLLECTION_SLIDE_SECONDS := 0.44
+const MAT_COLLECTION_FLYER_ARC_SECONDS := 0.68
+const MAT_COLLECTION_DEFS := {
+	"scrapwood": {
+		"name": "Scrapwood",
+		"icon": SCRAPWOOD_MAT_ICON_TEXTURE,
+		"background": MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE,
+		"color": Color("#bd8f54"),
+		"amount_digits": 1
+	},
+	"softwood": {
+		"name": "Softwood",
+		"icon": SOFTWOOD_MAT_ICON_TEXTURE,
+		"background": MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE,
+		"color": Color("#74b85e"),
+		"amount_digits": 0
+	},
+	"hardwood": {
+		"name": "Hardwood",
+		"icon": HARDWOOD_MAT_ICON_TEXTURE,
+		"background": MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE,
+		"color": Color("#7c4728"),
+		"amount_digits": 0
+	},
+	"honey": {
+		"name": "Honey",
+		"icon": HONEY_MAT_ICON_TEXTURE,
+		"background": MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE,
+		"color": Color("#f2a814"),
+		"amount_digits": 0
+	}
+}
 const BASE_MAX_STAMINA := 30
 const STAMINA_REGEN_SECONDS := 12.0
+const HONEY_STAMINA_REGEN_MULT := 2.0
 const STAMINA_GAUGE_REGEN_BOOST_MULT := 3.0
 const STAMINA_GAUGE_REGEN_EASE_SPEED := 7.5
 const STAMINA_GAUGE_RING_SPEED_VARIANCE := 0.72
@@ -1829,8 +1910,9 @@ const HUB_MODULE_DEFS := {
 		"visual_anchor": Vector2(0, 206),
 		"cell_bottom_offsets": [Vector2(-2.5, 196), Vector2(0, 180), Vector2(0, 183), Vector2(0, 195), Vector2(0, 211)],
 		"bubble_offset": Vector2(520, -760),
-		"currency": "logs",
-		"costs": [25, 250, 1000, 10000],
+		"currency": "softwood",
+		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
+		"costs": [60, 360, 90, 260],
 		"unlock_levels": [3, 12, 28, 52],
 		"bonus": "Makes low success rate activities more reliable."
 	},
@@ -1845,8 +1927,9 @@ const HUB_MODULE_DEFS := {
 		"cell_bottom_offsets": [Vector2(-1, 192), Vector2(0, 176), Vector2(0, 182), Vector2(-1, 186), Vector2(-1.5, 201)],
 		"bubble_offset": Vector2(520, -760),
 		"currency": "mixed",
-		"costs": [25, 250, 1000, 10000],
-		"fish_costs": [10, 100, 500, 2500],
+		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
+		"costs": [45, 280, 80, 220],
+		"fish_costs": [15, 125, 600, 2800],
 		"unlock_levels": [7, 19, 39, 65],
 		"bonus": "+1 hour offline progress cap per level."
 	},
@@ -1869,7 +1952,7 @@ const HUB_MODULE_DEFS := {
 		],
 		"bubble_offset": Vector2(-1260, -760),
 		"currency": "fish",
-		"costs": [5, 250, 1000, 10000],
+		"costs": [8, 320, 1400, 12000],
 		"unlock_levels": [5, 15, 33, 58],
 		"bonus": "Improves stamina regen speed across all skills."
 	},
@@ -1883,8 +1966,9 @@ const HUB_MODULE_DEFS := {
 		"visual_anchor": Vector2(0, 194),
 		"cell_bottom_offsets": [Vector2(1, 176), Vector2(0, 179), Vector2(1, 185), Vector2(-0.5, 195), Vector2(-0.5, 202)],
 		"bubble_offset": Vector2(520, -760),
-		"currency": "logs",
-		"costs": [15, 175, 850, 5000],
+		"currency": "softwood",
+		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
+		"costs": [35, 250, 70, 190],
 		"unlock_levels": [10, 24, 45, 62],
 		"bonus": "Prepares boosted task missions for a later update."
 	}
@@ -2621,6 +2705,7 @@ const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
 const ACTIVITY_JUMP_TOP_TEXTURE := "res://assets/content/ui/activity-jump-top-circle.png"
 const ACTIVITY_JUMP_BOTTOM_TEXTURE := "res://assets/content/ui/activity-jump-bottom-circle.png"
 const ACTIVITY_BACK_TEXTURE := "res://assets/content/ui/activity-back-arrow.png"
+const MODULE_QUEUE_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/queue.png"
 const ACTIVITY_JUMP_ARROW_SIZE := Vector2(296, 296)
 const ACTIVITY_BACK_BUTTON_SIZE := Vector2(460, 140)
 const ACTIVITY_BACK_ARROW_SIZE := Vector2(250, 74)
@@ -2797,10 +2882,22 @@ const MODULE_PIN_EXIT_SFX_PATH := "res://assets/sfx/pin-candidates/pin_entry_thw
 const ACTIVITY_START_SFX_PATH := DEFAULT_BUTTON_SFX_PATH
 const ACTIVITY_START_SFX_PLAYER_COUNT := 3
 const ACTIVITY_START_SFX_VOLUME_DB := -1.0
-const ACTIVITY_SUCCESS_SFX_VOLUME_DB := -1.0
+const ACTIVITY_SUCCESS_SFX_VOLUME_DB := -7.0
+const ACTIVITY_SUCCESS_DUCKED_SFX_VOLUME_DB := -15.0
 const DEFAULT_BUTTON_SFX_VOLUME_DB := -4.0
 const MODULE_PIN_ENTRY_SFX_VOLUME_DB := -5.0
 const MODULE_PIN_EXIT_SFX_VOLUME_DB := -7.0
+const LEVEL_UP_SFX_VOLUME_DB := -9.0
+const MEDAL_REWARD_SFX_VOLUME_DB := -16.0
+const BONUS_JINGLE_SFX_VOLUME_DB := -17.0
+const BONUS_JINGLE_ECHO_SFX_VOLUME_DB := -21.0
+const REWARD_SFX_KEY_GAP_MSEC := 120
+const REWARD_SFX_EXCLUSIVE_MSEC := 460
+const REWARD_SFX_BONUS_EXCLUSIVE_MSEC := 300
+const REWARD_SFX_PRIORITY_BONUS := 1
+const REWARD_SFX_PRIORITY_MEDAL := 2
+const REWARD_SFX_PRIORITY_CRIT := 3
+const REWARD_SFX_PRIORITY_LEVEL := 4
 const MUSIC_BUS_NAME := "Music"
 const SFX_BUS_NAME := "SFX"
 const MUSIC_SONG_SETS := [
@@ -3046,6 +3143,7 @@ var action_progress_speed_key := ""
 var action_progress_speed_mult_current := 1.0
 var tired_activity_zero_float_action_key := ""
 var log_currency := 0
+var mat_wallet := {}
 var fish_currency := 0.0
 var fish_currency_ever_earned := false
 var equipped_fishing_tool_id := "hands"
@@ -3250,6 +3348,7 @@ var module_utility_buttons_motion_to_offset := 0.0
 var module_utility_buttons_motion_from_alpha := 1.0
 var module_utility_buttons_motion_to_alpha := 1.0
 var pinned_utility_tab: Button
+var queue_utility_tab: Button
 var skills_utility_tab: Button
 var sort_utility_tab: Button
 var module_sort_menu: Control
@@ -3262,6 +3361,15 @@ var module_sort_collection_button: Button
 var pinned_return_screen := "skill"
 var pinned_return_skill_id := ""
 var pinned_return_detail_scroll := -1
+var queue_return_screen := "skill"
+var queue_return_skill_id := ""
+var queue_return_detail_scroll := -1
+var queue_selection_mode := false
+var queue_selection_banner: Control
+var activity_queue: Array = []
+var activity_queue_running := false
+var activity_queue_index := -1
+var activity_queue_attempt_key := ""
 var pinned_active_shelf_header: Control
 var pinned_active_shelf_background: Control
 var pinned_active_shelf_skill_id := ""
@@ -3281,6 +3389,7 @@ var skills_utility_return_skill_id := ""
 var settings_return_screen := "skill"
 var settings_return_skill_id := ""
 var settings_return_detail_scroll := -1
+var bottom_nav_open_close_return_to_skill_active := false
 var content_scroll: ScrollContainer
 var home_scroll: MobileScrollContainer
 var skills_content: Control
@@ -3809,6 +3918,9 @@ var module_pin_exit_player: AudioStreamPlayer
 var audio_unlocked_by_input := false
 var audio_unlock_ping_player: AudioStreamPlayer
 var audio_unlock_ping_played := false
+var reward_sfx_exclusive_until_msec := 0
+var reward_sfx_exclusive_priority := 0
+var reward_sfx_last_played_msec := {}
 var max_stamina_cache_valid := false
 var cached_max_stamina := BASE_MAX_STAMINA
 var cached_max_stamina_by_skill := {}
@@ -3987,6 +4099,7 @@ func _boot_shared_texture_paths() -> Array:
 		SETTINGS_GEAR_ICON_TEXTURE,
 		SHOP_ICON_TEXTURE,
 		MODULE_PIN_ICON_TEXTURE,
+		MODULE_QUEUE_ICON_TEXTURE,
 		"res://assets/content/ui/navigation-controls/skills-overview.png",
 		"res://assets/content/ui/navigation-controls/sort-list.png"
 	]:
@@ -4496,10 +4609,10 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if not _modal_blocks_background_input() and not _any_modal_overlay_visible():
-		if _route_bottom_nav_button_global_input(event):
+		if _route_module_utility_button_global_input(event):
 			get_viewport().set_input_as_handled()
 			return
-		if _route_module_utility_button_global_input(event):
+		if _route_bottom_nav_button_global_input(event):
 			get_viewport().set_input_as_handled()
 			return
 	_disarm_reset_data_confirmation_on_outside_press(event)
@@ -4559,7 +4672,7 @@ func _input(event: InputEvent) -> void:
 			return
 		get_viewport().set_input_as_handled()
 		return
-	if (current_screen != "skill" and current_screen != "pinned" and current_screen != "menu") or _any_modal_overlay_visible():
+	if (current_screen != "skill" and current_screen != "pinned" and current_screen != "queue" and current_screen != "menu") or _any_modal_overlay_visible():
 		_cancel_skill_swipe_feedback()
 		_cancel_action_stop_hold()
 		return
@@ -4602,6 +4715,9 @@ func _input(event: InputEvent) -> void:
 		return
 	_hide_skill_header_info_on_outside_press(event)
 	_schedule_passive_info_click_away_dismiss(event)
+	if _route_passive_module_button_input_by_position(event):
+		get_viewport().set_input_as_handled()
+		return
 	if _route_collapsed_module_expand_input(event):
 		get_viewport().set_input_as_handled()
 		return
@@ -5034,11 +5150,25 @@ func _position_inside_bottom_interactive_ui(event_position: Vector2) -> bool:
 	return false
 
 
+func _position_inside_module_utility_interactive_ui(event_position: Vector2) -> bool:
+	if _module_sort_button_at_position(event_position) != null:
+		return true
+	if _module_utility_button_at_position(event_position) != null:
+		return true
+	if module_sort_menu != null and is_instance_valid(module_sort_menu) and module_sort_menu.is_visible_in_tree():
+		if module_sort_menu.get_global_rect().grow(4.0).has_point(event_position):
+			return true
+	if module_utility_row != null and is_instance_valid(module_utility_row) and module_utility_row.is_visible_in_tree():
+		if module_utility_row.get_global_rect().grow(4.0).has_point(event_position):
+			return true
+	return false
+
+
 func _position_inside_detail_actions_viewport(event_position: Vector2, viewport_outset := 2.0) -> bool:
 	var viewport_control: Control = null
 	if current_screen == "skill":
 		viewport_control = detail_actions_scroll
-	elif current_screen == "pinned":
+	elif current_screen == "pinned" or current_screen == "queue":
 		viewport_control = content_scroll
 	elif current_screen == "menu":
 		return _position_inside_skill_menu_active_drawer(event_position)
@@ -5049,6 +5179,30 @@ func _position_inside_detail_actions_viewport(event_position: Vector2, viewport_
 	var viewport_rect := viewport_control.get_global_rect().grow(viewport_outset)
 	for candidate in _activity_input_position_candidates(event_position):
 		if viewport_rect.has_point(candidate):
+			return true
+	if current_screen == "queue":
+		for candidate in _activity_input_position_candidates(event_position):
+			if _queue_page_activity_card_contains_position(candidate):
+				return true
+	return false
+
+
+func _queue_page_activity_card_contains_position(event_position: Vector2) -> bool:
+	_prune_invalid_action_cards()
+	for raw_key in action_card_keys:
+		var key := str(raw_key)
+		if not key.begins_with("queue_page:") or not action_cards.has(key):
+			continue
+		var card := action_cards.get(key, {}) as Dictionary
+		if card.is_empty():
+			continue
+		var module_key := _activity_queue_module_key_for_card(card)
+		if module_key.is_empty() or not is_activity_queued(module_key):
+			continue
+		var pop := _valid_control_ref(card.get("pop", null))
+		if pop == null or not pop.is_inside_tree() or not pop.is_visible_in_tree():
+			continue
+		if pop.get_global_rect().grow(2.0).has_point(event_position):
 			return true
 	return false
 
@@ -5621,6 +5775,7 @@ func _stop_running_action(skill_id: String, action_id: String) -> bool:
 	_set_result("%s stopped." % action["name"])
 	_play(click_player)
 	_pop_activity_button(stop_action_key)
+	_sync_visible_mat_collection_for_action(skill_id, action_id, false)
 	_update_ui(0.0, false)
 	return true
 
@@ -5651,6 +5806,15 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 			skill_swipe_horizontal = false
 			skill_swipe_touch_index = -1
 			return true
+		if queue_selection_mode:
+			if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+				detail_actions_scroll.prepare_child_tap()
+			action_card_press_key = str(card.get("card_key", _action_key(skill_id, action_id)))
+			action_card_press_position = routed_position
+			action_card_press_stat_kind = ""
+			action_card_press_dragged = false
+			_queue_action_card_3d_press(action_card_press_key)
+			return true
 		if running_skill_id == skill_id and running_action_id == action_id:
 			if _try_action_opportunity_click(skill_id, action_id, routed_position):
 				action_card_press_consumed = true
@@ -5662,6 +5826,15 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 		var stat_kind := _activity_stat_kind_at_position(card, routed_position)
 		if stat_kind.is_empty() and _action_card_medal_hit_at_position(card, routed_position):
 			stat_kind = ACTION_CARD_MEDAL_PRESS_KIND
+		if stat_kind.is_empty() and (queue_selection_mode or current_screen == "queue"):
+			if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+				detail_actions_scroll.prepare_child_tap()
+			action_card_press_key = str(card.get("card_key", _action_key(skill_id, action_id)))
+			action_card_press_position = routed_position
+			action_card_press_stat_kind = stat_kind
+			action_card_press_dragged = false
+			_queue_action_card_3d_press(action_card_press_key)
+			return true
 		if stat_kind.is_empty() and running_skill_id == skill_id and running_action_id == action_id:
 			if _miss_action_opportunity_click(skill_id, action_id, routed_position):
 				action_card_press_consumed = true
@@ -5687,7 +5860,7 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 func _fishing_detail_input_context_active() -> bool:
 	if current_screen == "skill":
 		return selected_skill_id == "fishing"
-	return current_screen == "pinned"
+	return current_screen == "pinned" or current_screen == "queue"
 
 
 func _route_fishing_detail_input(event: InputEvent) -> bool:
@@ -5701,7 +5874,7 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 	):
 		return false
 	var event_position := _fishing_detail_event_position(event)
-	if current_screen == "pinned" and not _pinned_fishing_detail_event_relevant(event_position):
+	if (current_screen == "pinned" or current_screen == "queue") and not _pinned_fishing_detail_event_relevant(event_position):
 		return false
 	if event_position != Vector2.INF and _position_inside_bottom_interactive_ui(event_position):
 		if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
@@ -5713,11 +5886,13 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		return false
 	if _route_fishing_area_pin_corner_input(event):
 		return true
+	if _route_fishing_area_queue_selection_input(event):
+		return true
 	if _route_fishing_location_image_priority_press(event):
 		return true
 	if _route_fishing_method_button_global_input(event):
 		return true
-	if current_screen == "pinned":
+	if current_screen == "pinned" or current_screen == "queue":
 		var action_hit := _module_action_circle_at_direct_position(event_position)
 		if not action_hit.is_empty() and _fishing_detail_module_key_is_fishing(str(action_hit.get("module_key", ""))):
 			if _route_module_action_zone_input(event):
@@ -5903,6 +6078,67 @@ func _fishing_area_card_at_position(event_position: Vector2) -> Dictionary:
 	return {}
 
 
+func _route_fishing_area_queue_selection_input(event: InputEvent) -> bool:
+	if not queue_selection_mode:
+		return false
+	if current_screen != "skill" and current_screen != "pinned" and current_screen != "queue":
+		return false
+	if current_screen == "skill" and selected_skill_id != "fishing":
+		return false
+	var event_position := Vector2.INF
+	var is_press := false
+	var is_motion := false
+	var is_release := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var mouse_event := event as InputEventMouseButton
+		event_position = mouse_event.global_position
+		is_press = mouse_event.pressed
+		is_release = not mouse_event.pressed
+	elif event is InputEventMouseMotion:
+		event_position = (event as InputEventMouseMotion).global_position
+		is_motion = true
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		event_position = touch_event.position
+		is_press = touch_event.pressed
+		is_release = not touch_event.pressed
+	elif event is InputEventScreenDrag:
+		event_position = (event as InputEventScreenDrag).position
+		is_motion = true
+	else:
+		return false
+	if is_press:
+		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
+			return false
+		var area_card := _fishing_area_card_at_position(event_position)
+		if area_card.is_empty():
+			return false
+		var card_key := str(area_card.get("card_key", ""))
+		if card_key.is_empty():
+			card_key = _module_ui_fishing_area_key(str(area_card.get("skill_id", "fishing")), area_card.get("area_def", {}) as Dictionary)
+		if card_key.is_empty() or not action_cards.has(card_key):
+			return false
+		if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+			detail_actions_scroll.prepare_child_tap()
+		action_card_press_key = card_key
+		action_card_press_position = event_position
+		action_card_press_stat_kind = ""
+		action_card_press_dragged = false
+		_queue_action_card_3d_press(action_card_press_key)
+		return true
+	if action_card_press_key.is_empty():
+		return false
+	var pressed_card = action_cards.get(action_card_press_key, {})
+	if typeof(pressed_card) != TYPE_DICTIONARY or not bool((pressed_card as Dictionary).get("is_fishing_area", false)):
+		return false
+	if is_motion:
+		_update_action_card_press_drag_state(event)
+		return true
+	if is_release:
+		return _route_action_card_release(event)
+	return false
+
+
 func _fishing_active_tool_hit_at_position(area_card: Dictionary, event_position: Vector2) -> bool:
 	var layer := area_card.get("active_tool_layer") as Control
 	var art := area_card.get("active_tool_art") as TextureRect
@@ -6016,6 +6252,8 @@ func _route_action_card_release(event: InputEvent) -> bool:
 			return false
 	elif pop == null:
 		return false
+	if queue_selection_mode and stat_kind.is_empty():
+		return _queue_selection_toggle_from_card(card)
 	var skill_id := str(card.get("skill_id", ""))
 	var action_id := str(card.get("action_id", ""))
 	if skill_id.is_empty() or action_id.is_empty():
@@ -6027,7 +6265,12 @@ func _route_action_card_release(event: InputEvent) -> bool:
 	elif not stat_kind.is_empty():
 		_toggle_activity_stat_popup_for_card(card, skill_id, action_id, stat_kind)
 	elif unlocked:
-		_start_action_from_card_tap(skill_id, action_id, key)
+		if current_screen == "queue":
+			var module_key := _activity_queue_module_key_for_card(card)
+			if not module_key.is_empty():
+				_start_activity_queue_from_key(module_key)
+		else:
+			_start_action_from_card_tap(skill_id, action_id, key)
 	skill_swipe_tracking = false
 	return true
 
@@ -6035,7 +6278,7 @@ func _route_action_card_release(event: InputEvent) -> bool:
 func _active_action_scroll_container() -> MobileScrollContainer:
 	if current_screen == "skill":
 		return detail_actions_scroll
-	if current_screen == "pinned":
+	if current_screen == "pinned" or current_screen == "queue":
 		return _valid_control_ref(content_scroll) as MobileScrollContainer
 	return null
 
@@ -6936,7 +7179,11 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 		_leaderboard_note_auth_failure("Online login failed.", mode == "refresh")
 		return
 	if response_code < 200 or response_code >= 300:
-		_leaderboard_note_auth_failure("Online login returned HTTP %s." % response_code, mode == "refresh")
+		var detail := _firebase_error_detail(body)
+		if detail.is_empty():
+			_leaderboard_note_auth_failure("Online login returned HTTP %s." % response_code, mode == "refresh")
+		else:
+			_leaderboard_note_auth_failure("Online login returned HTTP %s: %s" % [response_code, detail], mode == "refresh")
 		return
 	var parsed = JSON.parse_string(body.get_string_from_utf8())
 	if typeof(parsed) != TYPE_DICTIONARY:
@@ -7140,9 +7387,6 @@ func _chat_stream_connect(force_reconnect := false) -> void:
 	var upgrading_visible_count := visible_count > chat_stream_visible_count and (chat_stream_connected or chat_stream_connecting or chat_stream_request_sent)
 	if not force_reconnect and not upgrading_visible_count and chat_stream_next_connect_unix > now:
 		return
-	if not _leaderboard_ensure_auth():
-		chat_status_message = "Connecting chat login..."
-		return
 	if chat_stream_connecting and chat_stream_visible_count >= visible_count and not force_reconnect:
 		_start_chat_stream_poll_timer()
 		return
@@ -7151,7 +7395,7 @@ func _chat_stream_connect(force_reconnect := false) -> void:
 	_chat_stream_disconnect(false)
 	chat_stream_visible_count = visible_count
 	var query := "orderBy=%%22created_at%%22&limitToLast=%s" % visible_count
-	var target := _firebase_stream_target(_chat_firebase_url("messages", _leaderboard_authenticated_query(query)))
+	var target := _firebase_stream_target(_chat_firebase_url("messages", query))
 	if target.is_empty():
 		_chat_note_stream_failure("Chat stream URL was invalid.")
 		return
@@ -8520,6 +8764,8 @@ func _route_bottom_nav_button_global_input(event: InputEvent) -> bool:
 		return false
 	var event_position := _passive_button_event_position(event, null)
 	var is_press := _module_utility_event_is_press(event)
+	if is_press and _position_inside_module_utility_interactive_ui(event_position):
+		return false
 	var button := _bottom_nav_button_at_position(event_position) if is_press else _active_bottom_nav_button()
 	if button == null:
 		return false
@@ -8596,12 +8842,15 @@ func _activate_bottom_nav_target(target_screen: String, source_button: Control) 
 	if _is_bottom_nav_button(nav_button):
 		_hold_bottom_nav_transition_button(nav_button)
 		_schedule_bottom_nav_transition_button_idle_release()
+	if _bottom_nav_open_close_returns_to_skill(target_screen, source_button):
+		top_level_nav_locked_until_msec = 0
+		bottom_nav_open_close_return_to_skill_active = true
+		_show_skills_module()
+		bottom_nav_open_close_return_to_skill_active = false
+		return
 	if target_screen == "settings" and current_screen == "settings":
 		top_level_nav_locked_until_msec = 0
 		_return_from_settings_page()
-		return
-	if _bottom_nav_open_close_returns_to_skill(target_screen, source_button):
-		_show_skills_module()
 		return
 	match target_screen:
 		"home":
@@ -8619,9 +8868,10 @@ func _activate_bottom_nav_target(target_screen: String, source_button: Control) 
 func _bottom_nav_open_close_returns_to_skill(target_screen: String, source_button: Control) -> bool:
 	if target_screen == "skill" or source_button == null or not is_instance_valid(source_button):
 		return false
-	if bool(source_button.get_meta("nav_open_icon_disabled", false)):
+	var nav_button := source_button as Button
+	if nav_button == null or not _is_bottom_nav_button(nav_button):
 		return false
-	if str(source_button.get_meta("nav_current_icon_path", "")) != NAV_OPEN_CLOSE_ICON_TEXTURE:
+	if _bottom_nav_target_for_button(nav_button) != target_screen:
 		return false
 	match target_screen:
 		"home":
@@ -8629,7 +8879,7 @@ func _bottom_nav_open_close_returns_to_skill(target_screen: String, source_butto
 		"hub":
 			return current_screen == "hub"
 		"settings":
-			return false
+			return current_screen == "settings"
 		"shop":
 			return current_screen == "shop"
 	return false
@@ -8656,6 +8906,11 @@ func _route_onboarding_settings_nav_input(event: InputEvent) -> bool:
 		return false
 	if current_screen == "settings":
 		top_level_nav_locked_until_msec = 0
+		if _bottom_nav_open_close_returns_to_skill("settings", settings_tab):
+			bottom_nav_open_close_return_to_skill_active = true
+			_show_skills_module()
+			bottom_nav_open_close_return_to_skill_active = false
+			return true
 		_return_from_settings_page()
 		return true
 	_show_settings()
@@ -8688,6 +8943,14 @@ func _build_module_utility_row() -> void:
 	)
 	pinned_utility_tab.pressed.connect(_on_pinned_utility_pressed)
 	row.add_child(pinned_utility_tab)
+
+	queue_utility_tab = _module_utility_button(
+		"Queue",
+		MODULE_QUEUE_ICON_TEXTURE,
+		Color.WHITE
+	)
+	queue_utility_tab.pressed.connect(_on_queue_utility_pressed)
+	row.add_child(queue_utility_tab)
 
 	skills_utility_tab = _module_utility_button(
 		"Skills",
@@ -8770,6 +9033,15 @@ func _on_pinned_utility_pressed() -> void:
 	_show_pinned_activities()
 
 
+func _on_queue_utility_pressed() -> void:
+	if queue_utility_tab != null and is_instance_valid(queue_utility_tab):
+		_prime_module_utility_nav_button_press_state(queue_utility_tab)
+	if queue_selection_mode:
+		_finish_queue_selection_mode()
+		return
+	_show_activity_queue()
+
+
 func _on_skills_utility_pressed() -> void:
 	if skills_utility_tab != null and is_instance_valid(skills_utility_tab):
 		_prime_module_utility_nav_button_press_state(skills_utility_tab)
@@ -8832,20 +9104,41 @@ func _route_module_utility_button_global_input(event: InputEvent) -> bool:
 
 
 func _module_utility_button_at_position(event_position: Vector2) -> Button:
-	for raw_button in [pinned_utility_tab, skills_utility_tab, sort_utility_tab, module_utility_collapse_toggle]:
+	for raw_button in [pinned_utility_tab, queue_utility_tab, skills_utility_tab, sort_utility_tab, module_utility_collapse_toggle]:
 		var button := raw_button as Button
 		if button == null or not is_instance_valid(button) or button.disabled:
 			continue
 		if not button.is_inside_tree() or not button.is_visible_in_tree():
 			continue
-		var button_rect := button.get_global_rect().grow(24.0)
+		var button_rect := _module_utility_button_hit_rect(button)
 		if button_rect.has_point(event_position):
 			return button
 	return null
 
 
+func _module_utility_button_hit_rect(button: Button) -> Rect2:
+	if button == null or not is_instance_valid(button):
+		return Rect2()
+	var button_rect := button.get_global_rect()
+	if button.has_meta("activity_button_pop_id"):
+		button_rect = _activity_button_target_face_global_rect(button, true)
+	return button_rect.grow(24.0)
+
+
+func _module_sort_button_at_position(event_position: Vector2) -> Button:
+	for raw_button in [module_sort_low_level_button, module_sort_high_level_button, module_sort_combo_button, module_sort_collection_button]:
+		var button := raw_button as Button
+		if button == null or not is_instance_valid(button) or button.disabled:
+			continue
+		if not button.is_inside_tree() or not button.is_visible_in_tree():
+			continue
+		if button.get_global_rect().grow(16.0).has_point(event_position):
+			return button
+	return null
+
+
 func _active_module_utility_button() -> Button:
-	for raw_button in [pinned_utility_tab, skills_utility_tab, sort_utility_tab, module_utility_collapse_toggle]:
+	for raw_button in [pinned_utility_tab, queue_utility_tab, skills_utility_tab, sort_utility_tab, module_utility_collapse_toggle]:
 		var button := raw_button as Button
 		if button != null and is_instance_valid(button) and bool(button.get_meta("module_utility_press_active", false)):
 			return button
@@ -8915,6 +9208,8 @@ func _clear_module_utility_button_press(button: Button) -> void:
 func _activate_module_utility_button(button: Button) -> void:
 	if button == pinned_utility_tab:
 		_on_pinned_utility_pressed()
+	elif button == queue_utility_tab:
+		_on_queue_utility_pressed()
 	elif button == skills_utility_tab:
 		_on_skills_utility_pressed()
 	elif button == sort_utility_tab:
@@ -9408,6 +9703,11 @@ func _sync_module_utility_button_states() -> void:
 		var active := current_screen == "pinned"
 		var active_fill := MODULE_UTILITY_ACTIVE_FILL if active else fill
 		_set_activity_button_shell_theme(pinned_utility_tab, active_fill, active, true)
+	if queue_utility_tab != null and is_instance_valid(queue_utility_tab):
+		var fill := queue_utility_tab.get_meta("module_utility_fill", Color.WHITE) as Color
+		var active := current_screen == "queue"
+		var active_fill := MODULE_UTILITY_ACTIVE_FILL if active else fill
+		_set_activity_button_shell_theme(queue_utility_tab, active_fill, active, true)
 	if skills_utility_tab != null and is_instance_valid(skills_utility_tab):
 		var fill := skills_utility_tab.get_meta("module_utility_fill", Color.WHITE) as Color
 		var active := current_screen == "menu"
@@ -11228,6 +11528,18 @@ func _detail_render_signature_current(skill_id: String) -> bool:
 	for index in range(expected.size()):
 		if str(expected[index]) != str(detail_rendered_action_ids[index]):
 			return false
+	var expected_plan := plan_data.get("plan", []) as Array
+	if expected_plan.size() != detail_lazy_plan.size():
+		return false
+	for index in range(expected_plan.size()):
+		var expected_entry := expected_plan[index] as Dictionary
+		var rendered_entry := detail_lazy_plan[index] as Dictionary
+		if str(expected_entry.get("kind", "")) != str(rendered_entry.get("kind", "")):
+			return false
+		if str(expected_entry.get("track_id", "")) != str(rendered_entry.get("track_id", "")):
+			return false
+		if absf(float(expected_entry.get("height", 0.0)) - float(rendered_entry.get("height", 0.0))) > 0.5:
+			return false
 	return true
 
 
@@ -11235,7 +11547,7 @@ func _apply_skills_content_layout_for_screen() -> void:
 	skills_content.offset_left = 0.0
 	skills_content.offset_right = 0.0
 	skills_content.offset_bottom = 0.0
-	if current_screen == "hub" or current_screen == "menu" or current_screen == "pinned":
+	if current_screen == "hub" or current_screen == "menu" or current_screen == "pinned" or current_screen == "queue":
 		skills_content.offset_top = 0.0
 	else:
 		skills_content.offset_top = SKILLS_PAGE_TOP_PAD
@@ -11361,6 +11673,8 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 		await _render_skill_detail(scroll_latest_activity, restore_detail_scroll, _boot_async)
 	elif current_screen == "pinned":
 		_render_pinned_activities_page()
+	elif current_screen == "queue":
+		_render_activity_queue_page()
 	elif current_screen == "leaderboard":
 		_render_leaderboard_page()
 	elif current_screen == "hub":
@@ -14374,6 +14688,28 @@ func _hub_trophy_success_bonus() -> float:
 	return float(HUB_TROPHY_SUCCESS_BONUS_BY_TIER[tier])
 
 
+func _hub_module_wood_currency_for_level(module_id: String, level: int) -> String:
+	if not HUB_MODULE_DEFS.has(module_id):
+		return "softwood"
+	var def := HUB_MODULE_DEFS[module_id] as Dictionary
+	var cost_currencies := def.get("cost_currencies", []) as Array
+	if level >= 0 and level < cost_currencies.size():
+		var tier_currency := _normalized_mat_id(str(cost_currencies[level]))
+		if MAT_COLLECTION_DEFS.has(tier_currency):
+			return tier_currency
+	var base_currency := str(def.get("currency", "softwood"))
+	if base_currency == "mixed":
+		return "softwood"
+	var normalized_currency := _normalized_mat_id(base_currency)
+	return normalized_currency if MAT_COLLECTION_DEFS.has(normalized_currency) else "softwood"
+
+
+func _hub_module_wood_currency_name(module_id: String, level: int) -> String:
+	var wood_currency := _hub_module_wood_currency_for_level(module_id, level)
+	var mat_def := MAT_COLLECTION_DEFS.get(wood_currency, {}) as Dictionary
+	return str(mat_def.get("name", "Softwood"))
+
+
 func _hub_module_cost_text(module_id: String) -> String:
 	var level := _hub_module_level(module_id)
 	if level >= HUB_MODULE_MAX_LEVEL:
@@ -14387,8 +14723,8 @@ func _hub_module_cost_text(module_id: String) -> String:
 		return "Cost: %s fish" % cost
 	if module_id == "garden":
 		var fish_costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", []) as Array
-		return "Cost: %s logs + %s fish" % [cost, int(fish_costs[level])]
-	return "Cost: %s logs" % cost
+		return "Cost: %s %s + %s fish" % [cost, _hub_module_wood_currency_name(module_id, level), int(fish_costs[level])]
+	return "Cost: %s %s" % [cost, _hub_module_wood_currency_name(module_id, level)]
 
 
 func _can_afford_hub_module(module_id: String) -> bool:
@@ -14401,10 +14737,11 @@ func _can_afford_hub_module(module_id: String) -> bool:
 	var cost := int(costs[level])
 	if module_id == "pond":
 		return fish_currency >= float(cost)
+	var wood_currency := _hub_module_wood_currency_for_level(module_id, level)
 	if module_id == "garden":
 		var fish_costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", []) as Array
-		return log_currency >= cost and fish_currency >= float(int(fish_costs[level]))
-	return log_currency >= cost
+		return _mat_amount(wood_currency) >= float(cost) and fish_currency >= float(int(fish_costs[level]))
+	return _mat_amount(wood_currency) >= float(cost)
 
 
 func _hub_module_next_unlock_level(module_id: String) -> int:
@@ -14448,6 +14785,7 @@ func _upgrade_hub_module(module_id: String) -> void:
 	var level := int(state.get("level", 0))
 	var costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("costs", []) as Array
 	var cost := int(costs[level])
+	var wood_currency := _hub_module_wood_currency_for_level(module_id, level)
 	var spent_logs := 0
 	var spent_fish := 0
 	if module_id == "pond":
@@ -14456,12 +14794,12 @@ func _upgrade_hub_module(module_id: String) -> void:
 	elif module_id == "garden":
 		var fish_costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", []) as Array
 		var fish_cost := int(fish_costs[level])
-		log_currency = maxi(0, log_currency - cost)
+		_spend_mat_amount(wood_currency, float(cost))
 		fish_currency = maxf(0.0, fish_currency - float(fish_cost))
 		spent_logs = cost
 		spent_fish = fish_cost
 	else:
-		log_currency = maxi(0, log_currency - cost)
+		_spend_mat_amount(wood_currency, float(cost))
 		spent_logs = cost
 	state["building"] = true
 	state["build_started_unix_msec"] = _unix_now_msec()
@@ -14872,9 +15210,11 @@ func _toggle_god_mode_enabled() -> void:
 func _god_mode_add_resources_pressed() -> void:
 	if not _god_mode_prepare_change("god mode resources"):
 		return
-	log_currency += GOD_MODE_RESOURCE_GRANT
+	_add_mat_amount("softwood", float(GOD_MODE_RESOURCE_GRANT))
+	_add_mat_amount("hardwood", float(GOD_MODE_RESOURCE_GRANT))
+	_add_mat_amount("honey", float(GOD_MODE_RESOURCE_GRANT))
 	_award_fish_currency(float(GOD_MODE_RESOURCE_GRANT))
-	_god_mode_finish_change("God Mode: +%s logs and food." % _format_compact_number(float(GOD_MODE_RESOURCE_GRANT)), false)
+	_god_mode_finish_change("God Mode: +%s Softwood, Hardwood, Honey, and food." % _format_compact_number(float(GOD_MODE_RESOURCE_GRANT)), false)
 
 
 func _god_mode_hub_build_ready_pressed() -> void:
@@ -14882,9 +15222,10 @@ func _god_mode_hub_build_ready_pressed() -> void:
 		return
 	var costs := _god_mode_remaining_hub_build_costs()
 	_god_mode_prepare_hub_build_state(costs)
-	var log_text := _format_compact_number(float(costs.get("logs", 0)), 4)
+	var softwood_text := _format_compact_number(float(costs.get("softwood", costs.get("logs", 0))), 4)
+	var hardwood_text := _format_compact_number(float(costs.get("hardwood", 0)), 4)
 	var fish_text := _fish_currency_display_text(float(costs.get("fish", 0.0)))
-	_god_mode_finish_change("God Mode: hub build ready with %s logs and %s food." % [log_text, fish_text])
+	_god_mode_finish_change("God Mode: hub build ready with %s Softwood, %s Hardwood, and %s food." % [softwood_text, hardwood_text, fish_text])
 
 
 func _god_mode_max_skills_pressed() -> void:
@@ -14992,7 +15333,8 @@ func _apply_art_review_test_unlock_all_state() -> void:
 	_god_mode_max_medals_state()
 	_god_mode_clear_timers_state()
 	_activate_all_temporary_events_for_art_review_test()
-	log_currency = maxi(log_currency, GOD_MODE_RESOURCE_GRANT)
+	_set_mat_amount("softwood", maxf(_mat_amount("softwood"), float(GOD_MODE_RESOURCE_GRANT)))
+	_set_mat_amount("hardwood", maxf(_mat_amount("hardwood"), float(GOD_MODE_RESOURCE_GRANT)))
 	fish_currency = maxf(fish_currency, float(GOD_MODE_RESOURCE_GRANT))
 	if fish_currency > 0.0:
 		fish_currency_ever_earned = true
@@ -15011,7 +15353,8 @@ func _god_mode_prepare_hub_build_state(costs: Dictionary = {}) -> void:
 	_recalculate_level("build", false)
 	if costs.is_empty():
 		costs = _god_mode_remaining_hub_build_costs()
-	log_currency = maxi(log_currency, int(costs.get("logs", 0)))
+	_set_mat_amount("softwood", maxf(_mat_amount("softwood"), float(costs.get("softwood", costs.get("logs", 0)))))
+	_set_mat_amount("hardwood", maxf(_mat_amount("hardwood"), float(costs.get("hardwood", 0))))
 	fish_currency = maxf(fish_currency, float(costs.get("fish", 0.0)))
 	if fish_currency > 0.0:
 		fish_currency_ever_earned = true
@@ -15028,7 +15371,8 @@ func _god_mode_highest_hub_unlock_level() -> int:
 
 
 func _god_mode_remaining_hub_build_costs() -> Dictionary:
-	var logs_needed := 0
+	var softwood_needed := 0
+	var hardwood_needed := 0
 	var fish_needed := 0.0
 	for raw_module_id in HUB_MODULE_DEFS.keys():
 		var module_id := str(raw_module_id)
@@ -15042,12 +15386,18 @@ func _god_mode_remaining_hub_build_costs() -> Dictionary:
 			if module_id == "pond":
 				fish_needed += float(cost)
 			elif module_id == "garden":
-				logs_needed += cost
+				if _hub_module_wood_currency_for_level(module_id, level) == "hardwood":
+					hardwood_needed += cost
+				else:
+					softwood_needed += cost
 				if level < fish_costs.size():
 					fish_needed += float(int(fish_costs[level]))
 			else:
-				logs_needed += cost
-	return {"logs": logs_needed, "fish": fish_needed}
+				if _hub_module_wood_currency_for_level(module_id, level) == "hardwood":
+					hardwood_needed += cost
+				else:
+					softwood_needed += cost
+	return {"logs": softwood_needed, "softwood": softwood_needed, "hardwood": hardwood_needed, "fish": fish_needed}
 
 
 func _god_mode_unlock_fishing_tools_state() -> void:
@@ -15702,7 +16052,7 @@ func _leaderboard_rank_badge(rank: int) -> Control:
 
 
 func _chat_strip_visible_on_current_screen() -> bool:
-	return current_screen == "menu" or current_screen == "skill" or current_screen == "pinned"
+	return current_screen == "menu" or current_screen == "skill" or current_screen == "pinned" or current_screen == "queue"
 
 
 func _module_utility_row_reserved_height_for_screen() -> float:
@@ -15713,6 +16063,10 @@ func _skills_content_bottom_inset_for_screen() -> float:
 	if not _chat_strip_visible_on_current_screen():
 		return 0.0
 	return float(CHAT_STRIP_HEIGHT) + _module_utility_row_reserved_height_for_screen()
+
+
+func _activity_queue_bottom_scroll_pad() -> float:
+	return _skills_content_bottom_inset_for_screen() + 190.0
 
 
 func _bottom_ui_reserved_height_for_current_screen() -> float:
@@ -16043,19 +16397,19 @@ func _chat_empty_state() -> Control:
 func _chat_status_title() -> String:
 	if not _leaderboard_firebase_enabled():
 		return "Online chat unavailable"
-	if leaderboard_auth_in_flight:
-		return "Connecting chat..."
-	var auth_wait := _leaderboard_auth_retry_wait_seconds()
-	if auth_wait > 0:
-		return "Chat login cooling down"
-	if not _leaderboard_auth_ready():
-		return "Starting chat login"
 	if chat_send_in_flight:
 		return "Sending..."
 	if chat_stream_connecting:
 		return "Connecting..."
 	if chat_stream_connected:
 		return "Real-time chat live"
+	if leaderboard_auth_in_flight:
+		return "Chat send login starting"
+	var auth_wait := _leaderboard_auth_retry_wait_seconds()
+	if auth_wait > 0:
+		return "Chat send login cooling down"
+	if not _leaderboard_auth_ready():
+		return "Chat read ready"
 	var wait := _chat_next_send_seconds()
 	if wait > 0:
 		return "Next message in %s" % _format_duration(float(wait))
@@ -16065,17 +16419,6 @@ func _chat_status_title() -> String:
 func _chat_status_detail() -> String:
 	if not _leaderboard_firebase_enabled():
 		return "Online chat is not connected yet."
-	var auth_wait := _leaderboard_auth_retry_wait_seconds()
-	if auth_wait > 0:
-		return "Online chat login failed recently. The next retry waits %s." % _format_duration(float(auth_wait))
-	if leaderboard_auth_in_flight:
-		if not chat_status_message.is_empty():
-			return chat_status_message
-		return "Online chat is connecting so messages can load and send."
-	if not _leaderboard_auth_ready():
-		if not leaderboard_status_message.is_empty():
-			return leaderboard_status_message
-		return "Online chat login will start before messages load or send."
 	if not chat_status_message.is_empty() and chat_status_message != "Chat loaded.":
 		return chat_status_message
 	if chat_stream_connected:
@@ -16083,6 +16426,13 @@ func _chat_status_detail() -> String:
 	var wait := maxi(0, chat_stream_retry_unix - _unix_now())
 	if wait > 0:
 		return "The chat stream is cooling down for %s before reconnecting." % _format_duration(float(wait))
+	var auth_wait := _leaderboard_auth_retry_wait_seconds()
+	if auth_wait > 0:
+		return "Messages can load without login. Sending waits %s before retrying online login." % _format_duration(float(auth_wait))
+	if leaderboard_auth_in_flight:
+		return "Messages can load while online send login starts."
+	if not _leaderboard_auth_ready():
+		return "Messages can load without login. Sending starts anonymous online login first."
 	return "The skills chat strip opens one live chat connection while it is visible."
 
 
@@ -17015,6 +17365,10 @@ func _themed_progress_fill_color(theme_color: Color) -> Color:
 	return theme_color.lightened(0.08)
 
 
+func _themed_activity_card_fill_color(theme_color: Color) -> Color:
+	return theme_color.darkened(0.18)
+
+
 func _themed_mastery_empty_color(theme_color: Color) -> Color:
 	return theme_color.darkened(0.60).lerp(COLOR_INK, 0.02)
 
@@ -17194,7 +17548,7 @@ func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, i
 		var stamina_value := _stamina(skill_id)
 		var stamina_decimal_fraction := _stamina_fraction(skill_id)
 		var circle_value := _stamina_regen_fraction(skill_id)
-		stamina_gauge.set_theme_color(_skill_theme_color(skill_id))
+		stamina_gauge.set_theme_color(_stamina_regen_circle_color(skill_id))
 		stamina_gauge.set_show_decimal(show_stamina_decimal)
 		stamina_gauge.set_stamina(stamina_value, max_stamina, instant, stamina_decimal_fraction)
 		stamina_gauge.set_value(circle_value, instant)
@@ -17552,6 +17906,140 @@ func _sync_detail_lazy_visible_cards_after_scroll() -> void:
 	_detail_lazy_refresh_after_page_ready()
 
 
+func _build_mat_collection_row(skill_id: String, action: Dictionary, content_width: float) -> Dictionary:
+	var reward_defs := _action_mat_reward_defs(action)
+	var root := Control.new()
+	root.anchor_left = 0.0
+	root.anchor_right = 1.0
+	root.anchor_top = 0.0
+	root.anchor_bottom = 0.0
+	root.offset_left = ACTION_CARD_POP_GUTTER
+	root.offset_right = -ACTION_CARD_POP_GUTTER
+	root.offset_top = _activity_card_root_height() - MAT_COLLECTION_CONNECTOR_TOP_OVERLAP
+	root.offset_bottom = root.offset_top + MAT_COLLECTION_AREA_HEIGHT
+	root.clip_contents = false
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.modulate.a = 0.0
+	root.scale = Vector2(0.94, 0.94)
+	root.pivot_offset = Vector2(content_width * 0.5, MAT_COLLECTION_CONNECTOR_HEIGHT + MAT_COLLECTION_MODULE_SIZE.y * 0.5)
+	root.z_index = 0
+
+	var modules := {}
+	var total_width := float(reward_defs.size()) * MAT_COLLECTION_MODULE_SIZE.x + maxf(0.0, float(reward_defs.size() - 1)) * MAT_COLLECTION_MODULE_GAP
+	var start_x := (content_width - ACTION_CARD_POP_GUTTER * 2.0 - total_width) * 0.5
+	for index in range(reward_defs.size()):
+		var reward := reward_defs[index] as Dictionary
+		var mat_id := str(reward.get("id", ""))
+		var module_x := start_x + float(index) * (MAT_COLLECTION_MODULE_SIZE.x + MAT_COLLECTION_MODULE_GAP)
+		var connector := _mat_collection_connector(_mat_color(mat_id).lerp(_skill_theme_color(skill_id), 0.28))
+		connector.position = Vector2(module_x + MAT_COLLECTION_MODULE_SIZE.x * 0.5 - 7.0, 0.0)
+		root.add_child(connector)
+		var module := _mat_collection_module(mat_id)
+		module.position = Vector2(module_x, MAT_COLLECTION_CONNECTOR_HEIGHT)
+		root.add_child(module)
+		modules[mat_id] = module
+	return {
+		"root": root,
+		"modules": modules,
+		"visible": false,
+		"action_id": str(action.get("id", ""))
+	}
+
+
+func _mat_collection_connector(color: Color) -> Control:
+	var line := ColorRect.new()
+	line.custom_minimum_size = Vector2(14, MAT_COLLECTION_CONNECTOR_HEIGHT + 10.0)
+	line.size = line.custom_minimum_size
+	line.color = color.darkened(0.34)
+	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	line.z_index = 0
+	return line
+
+
+func _sync_mat_collection_row_position(card: Dictionary, visual_card_height: float) -> void:
+	var collection := card.get("mat_collection", {}) as Dictionary
+	if collection.is_empty():
+		return
+	var root := collection.get("root") as Control
+	if root == null or not is_instance_valid(root):
+		return
+	root.offset_top = maxf(1.0, visual_card_height - MAT_COLLECTION_CONNECTOR_TOP_OVERLAP)
+	root.offset_bottom = root.offset_top + MAT_COLLECTION_AREA_HEIGHT
+
+
+func _mat_collection_module(mat_id: String) -> Control:
+	var panel := Control.new()
+	panel.custom_minimum_size = MAT_COLLECTION_MODULE_SIZE
+	panel.size = MAT_COLLECTION_MODULE_SIZE
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.set_meta("mat_id", mat_id)
+	var background := RoundedTextureRect.new()
+	background.texture = _texture_or_visual_fallback(_mat_background_path(mat_id))
+	background.radius = 42.0
+	background.mask_inset = 0.0
+	background.corner_mask_mode = 1
+	background.art_height = MAT_COLLECTION_MODULE_SIZE.y
+	background.fallback_color = _mat_color(mat_id).darkened(0.12)
+	background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	background.set_anchors_preset(Control.PRESET_FULL_RECT)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	background.z_index = 0
+	panel.add_child(background)
+	var chrome := Panel.new()
+	chrome.set_anchors_preset(Control.PRESET_FULL_RECT)
+	chrome.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chrome.z_index = 2
+	chrome.add_theme_stylebox_override("panel", _mat_collection_module_style(mat_id))
+	panel.add_child(chrome)
+	var margin := MarginContainer.new()
+	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
+	margin.add_theme_constant_override("margin_left", 46)
+	margin.add_theme_constant_override("margin_right", 46)
+	margin.add_theme_constant_override("margin_top", 42)
+	margin.add_theme_constant_override("margin_bottom", 42)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.z_index = 1
+	panel.add_child(margin)
+	var stack := VBoxContainer.new()
+	stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	stack.add_theme_constant_override("separation", 22)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(stack)
+	var name_label := _label(_mat_name(mat_id), 78, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	name_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	name_label.add_theme_constant_override("outline_size", 18)
+	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(name_label)
+	var icon := _image(_mat_icon_path(mat_id), Vector2(360, 360))
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(icon)
+	var amount_label := _label(_mat_amount_text(mat_id), 110, Color("#fff3b6"), HORIZONTAL_ALIGNMENT_CENTER)
+	amount_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	amount_label.add_theme_constant_override("outline_size", 24)
+	amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(amount_label)
+	panel.set_meta("amount_label_id", amount_label.get_instance_id())
+	return panel
+
+
+func _mat_collection_module_style(mat_id: String) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1, 1, 1, 0.0)
+	style.border_color = COLOR_INK
+	style.set_border_width_all(10)
+	style.corner_radius_top_left = 42
+	style.corner_radius_top_right = 42
+	style.corner_radius_bottom_left = 42
+	style.corner_radius_bottom_right = 42
+	style.shadow_color = Color(0, 0, 0, 0.28)
+	style.shadow_size = 16
+	style.shadow_offset = Vector2(0, 10)
+	return style
+
+
 func _build_detail_interactive_action_card(skill_id: String, action: Dictionary, content_width: float, _actions_width: float) -> Dictionary:
 	var action_id := str(action.get("id", ""))
 	var is_convergence_card := _is_convergence_action(action)
@@ -17560,6 +18048,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	card_root.custom_minimum_size.x = content_width
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card_root.clip_contents = false
+	var action_card_base_height := _activity_card_root_height()
 	var pop_card := Control.new()
 	pop_card.anchor_left = 0.0
 	pop_card.anchor_right = 1.0
@@ -17716,6 +18205,9 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		progress.z_index = 232
 		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(progress)
+	var mat_collection := _build_mat_collection_row(skill_id, action, content_width) if _action_has_mat_rewards(action) else {}
+	if not mat_collection.is_empty():
+		card_root.add_child(mat_collection.get("root") as Control)
 
 	var convergence_overlay: Control = null
 	var convergence_overlay_label: Label = null
@@ -17823,6 +18315,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"medal": medal,
 		"mastery": mastery_progress,
 		"progress": progress,
+		"mat_collection": mat_collection,
 		"convergence_progress": convergence_progress,
 		"convergence_overlay": convergence_overlay,
 		"convergence_overlay_label": convergence_overlay_label,
@@ -18227,19 +18720,26 @@ func _play_collapsed_host_squeeze_if_needed(host: Control, child: Control, previ
 	_set_collapsed_module_title_lift(child, true, false)
 	var tween := create_tween()
 	host.set_meta("module_list_transition_tween", tween)
+	var host_id := host.get_instance_id()
+	var child_id := child.get_instance_id()
 	var apply_height := func(value: float) -> void:
-		_set_module_root_layout_height(host, value)
-		if child != null and is_instance_valid(child):
-			child.size.y = value
+		var live_host := instance_from_id(host_id) as Control
+		if live_host != null and is_instance_valid(live_host):
+			_set_module_root_layout_height(live_host, value)
+		var live_child := instance_from_id(child_id) as Control
+		if live_child != null and is_instance_valid(live_child):
+			live_child.size.y = value
 	tween.tween_method(apply_height, start_height, target_height, MODULE_COLLAPSE_SQUEEZE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_callback(func() -> void:
-		if host != null and is_instance_valid(host):
-			_set_module_root_layout_height(host, target_height)
-			host.clip_contents = original_clip
-			if host.has_meta("module_list_transition_tween"):
-				host.remove_meta("module_list_transition_tween")
-		if child != null and is_instance_valid(child):
-			child.size.y = target_height
+		var live_host := instance_from_id(host_id) as Control
+		if live_host != null and is_instance_valid(live_host):
+			_set_module_root_layout_height(live_host, target_height)
+			live_host.clip_contents = original_clip
+			if live_host.has_meta("module_list_transition_tween"):
+				live_host.remove_meta("module_list_transition_tween")
+		var live_child := instance_from_id(child_id) as Control
+		if live_child != null and is_instance_valid(live_child):
+			live_child.size.y = target_height
 		if module_ui_animating_collapse_key == module_key:
 			module_ui_animating_collapse_key = ""
 	)
@@ -18395,11 +18895,13 @@ func _set_collapsed_module_title_lift(root: Control, collapsed: bool, instant :=
 	var tween := create_tween()
 	title.set_meta("module_collapsed_title_tween", tween)
 	tween.tween_property(title, "position", target_position, MODULE_COLLAPSE_SQUEEZE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var title_id := title.get_instance_id()
 	tween.finished.connect(func() -> void:
-		if title != null and is_instance_valid(title):
-			title.position = target_position
-			if title.has_meta("module_collapsed_title_tween"):
-				title.remove_meta("module_collapsed_title_tween")
+		var live_title := instance_from_id(title_id) as Control
+		if live_title != null and is_instance_valid(live_title):
+			live_title.position = target_position
+			if live_title.has_meta("module_collapsed_title_tween"):
+				live_title.remove_meta("module_collapsed_title_tween")
 	)
 
 
@@ -20747,6 +21249,37 @@ func _complete_return_from_pinned_activities(target_screen: String, restore_scro
 	_fade_clear_page_switch_scroll_cover()
 
 
+func _show_activity_queue() -> void:
+	if current_screen == "queue":
+		_return_from_activity_queue()
+		return
+	if not _top_level_nav_allowed("queue"):
+		return
+	queue_return_screen = current_screen
+	queue_return_skill_id = selected_skill_id
+	queue_return_detail_scroll = _current_detail_scroll_for_pinned_return()
+	if current_screen == "settings":
+		_disarm_reset_data_confirmation()
+	_begin_direct_skill_nav_cover()
+	current_screen = "queue"
+	_render_screen()
+
+
+func _return_from_activity_queue() -> void:
+	var target_screen := queue_return_screen
+	if target_screen.is_empty() or target_screen == "queue":
+		target_screen = "skill"
+	if not _top_level_nav_allowed(target_screen):
+		return
+	if not queue_return_skill_id.is_empty() and _known_skill_id(queue_return_skill_id):
+		selected_skill_id = queue_return_skill_id
+	var restore_scroll := queue_return_detail_scroll if target_screen == "skill" else -1
+	queue_return_detail_scroll = -1
+	_begin_direct_skill_nav_cover()
+	current_screen = target_screen
+	_render_screen(false, restore_scroll)
+
+
 func _current_detail_scroll_for_pinned_return() -> int:
 	if current_screen != "skill":
 		return -1
@@ -20840,6 +21373,738 @@ func _render_pinned_activities_page() -> void:
 	_add_pinned_active_shelf_shadow_overlay()
 
 
+func _render_activity_queue_page() -> void:
+	var content_width := _skill_content_width()
+	var frame := Control.new()
+	frame.name = "ActivityQueueFrame"
+	frame.clip_contents = false
+	_apply_skill_column_layout(frame, content_width, 0.0)
+	skills_content.add_child(frame)
+
+	var page := VBoxContainer.new()
+	page.name = "ActivityQueuePage"
+	page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	page.custom_minimum_size.x = content_width
+	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	page.add_theme_constant_override("separation", 0)
+	frame.add_child(page)
+
+	page.add_child(_activity_queue_active_shelf(content_width))
+	var divider := Control.new()
+	divider.name = "ActivityQueueShelfDivider"
+	divider.custom_minimum_size = Vector2(content_width, SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
+	divider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	page.add_child(divider)
+
+	var actions_clip := Control.new()
+	actions_clip.name = "ActivityQueueActionsClip"
+	actions_clip.custom_minimum_size.x = content_width
+	actions_clip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	actions_clip.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	actions_clip.clip_contents = true
+	page.add_child(actions_clip)
+
+	content_scroll = MobileScrollContainer.new()
+	content_scroll.name = "ActivityQueueActionsScroll"
+	content_scroll.clip_contents = true
+	content_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	content_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	content_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	content_scroll.set_pull_resistance_enabled(true)
+	content_scroll.gui_input.connect(_on_pinned_activities_action_scroll_input)
+	actions_clip.add_child(content_scroll)
+
+	var stack := VBoxContainer.new()
+	stack.custom_minimum_size.x = content_width
+	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stack.add_theme_constant_override("separation", 0)
+	content_scroll.add_child(stack)
+
+	var shelf_clearance := Control.new()
+	shelf_clearance.name = "ActivityQueueShelfClearance"
+	shelf_clearance.custom_minimum_size = Vector2(content_width, SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT)
+	shelf_clearance.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(shelf_clearance)
+	var shelf := VBoxContainer.new()
+	shelf.name = "ActivityQueueShelf"
+	shelf.custom_minimum_size = Vector2(content_width, 0)
+	shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	shelf.add_theme_constant_override("separation", 34)
+	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var queue_index := 0
+	for raw_key in get_activity_queue():
+		var module_key := _normalized_module_ui_key(raw_key)
+		if module_key.is_empty():
+			continue
+		var module_root := _build_queue_activities_module(module_key, content_width)
+		if module_root == null:
+			continue
+		module_root.set_meta("module_ui_pinned_page_copy", true)
+		module_root.set_meta("module_ui_force_expanded", true)
+		module_root.set_meta("module_ui_key", module_key)
+		_remove_module_collapse_zones(module_root)
+		shelf.add_child(module_root)
+		queue_index += 1
+	if shelf.get_child_count() <= 0:
+		shelf.queue_free()
+	else:
+		stack.add_child(shelf)
+	var queue_has_items := get_activity_queue().size() > 0
+	var queue_button_label := "Adjust Queue" if queue_has_items else "Set Queue"
+	stack.add_child(_activity_queue_list_button(content_width, "ActivityQueueSetQueueButton", queue_button_label, Color("#47b7d8")))
+	if queue_has_items:
+		stack.add_child(_activity_queue_list_button(content_width, "ActivityQueueClearQueueButton", "Clear Queue", Color("#d75545")))
+	else:
+		stack.add_child(_activity_queue_empty_description(content_width))
+	var bottom_spacer := Control.new()
+	bottom_spacer.name = "ActivityQueueBottomSpacer"
+	bottom_spacer.custom_minimum_size = Vector2(0, _activity_queue_bottom_scroll_pad())
+	bottom_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(bottom_spacer)
+	_add_pinned_active_shelf_shadow_overlay()
+
+
+func _activity_queue_active_shelf(content_width: float) -> Control:
+	var header := PanelContainer.new()
+	header.name = "ActivityQueueActiveShelf"
+	var active_skill_id := _activity_queue_active_shelf_skill_id()
+	header.custom_minimum_size = Vector2(content_width, _pinned_active_shelf_target_height(active_skill_id))
+	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header.add_theme_stylebox_override("panel", _pinned_active_shelf_panel_style(active_skill_id))
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pinned_active_shelf_header = header
+
+	var body := Control.new()
+	body.set_anchors_preset(Control.PRESET_FULL_RECT)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	header.add_child(body)
+	pinned_active_shelf_background = _add_pinned_active_shelf_background(body, active_skill_id, content_width)
+	body.add_child(_activity_queue_static_title())
+	pinned_active_shelf_stamina_strip = _build_pinned_active_shelf_stamina_strip()
+	body.add_child(pinned_active_shelf_stamina_strip)
+
+	pinned_active_shelf_content = Control.new()
+	pinned_active_shelf_content.name = "ActivityQueueActiveShelfContent"
+	pinned_active_shelf_content.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pinned_active_shelf_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pinned_active_shelf_content.z_index = 20
+	body.add_child(pinned_active_shelf_content)
+
+	_rebuild_pinned_active_shelf_content(active_skill_id, true)
+	return header
+
+
+func _activity_queue_static_title() -> Label:
+	var title := _label("Activity Queue", 54, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	title.name = "ActivityQueueTitle"
+	title.anchor_left = 0.0
+	title.anchor_right = 1.0
+	title.anchor_top = 0.0
+	title.anchor_bottom = 0.0
+	title.offset_left = 0.0
+	title.offset_right = 0.0
+	title.offset_top = 39.0
+	title.offset_bottom = 112.0
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.z_index = 50
+	return title
+
+
+func _activity_queue_list_button(content_width: float, node_name: String, label_text: String, fill: Color) -> Control:
+	var holder := MarginContainer.new()
+	holder.name = "ActivityQueueListButtonRow"
+	holder.custom_minimum_size = Vector2(content_width, 420)
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.add_theme_constant_override("margin_left", 220)
+	holder.add_theme_constant_override("margin_right", 220)
+	holder.add_theme_constant_override("margin_top", 38)
+	holder.add_theme_constant_override("margin_bottom", 38)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var button := Button.new()
+	button.name = node_name
+	button.text = label_text
+	button.custom_minimum_size = Vector2(0, 344)
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	button.clip_contents = false
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.add_theme_font_override("font", app_bold_font)
+	button.add_theme_font_size_override("font_size", 88)
+	button.add_theme_color_override("font_color", Color.WHITE)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
+	button.add_theme_color_override("font_pressed_color", Color.WHITE)
+	button.add_theme_stylebox_override("normal", _module_utility_button_style(fill, false, false))
+	button.add_theme_stylebox_override("hover", _module_utility_button_style(fill.lightened(0.06), false, false))
+	button.add_theme_stylebox_override("pressed", _module_utility_button_style(fill, true, false))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	if node_name == "ActivityQueueSetQueueButton":
+		button.pressed.connect(_on_activity_queue_set_pressed)
+	elif node_name == "ActivityQueueClearQueueButton":
+		button.pressed.connect(_on_activity_queue_clear_pressed)
+	holder.add_child(button)
+	return holder
+
+
+func _activity_queue_empty_description(content_width: float) -> Control:
+	var holder := MarginContainer.new()
+	holder.name = "ActivityQueueEmptyDescription"
+	holder.custom_minimum_size = Vector2(content_width, 470)
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.add_theme_constant_override("margin_left", 160)
+	holder.add_theme_constant_override("margin_right", 160)
+	holder.add_theme_constant_override("margin_top", 18)
+	holder.add_theme_constant_override("margin_bottom", 36)
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var label := _label(
+		"Tap Set Queue, then choose activities from the skills list. Start any queued activity here and your character will try the queue in order, moving down when stamina runs low.",
+		58,
+		COLOR_INK,
+		HORIZONTAL_ALIGNMENT_CENTER
+	)
+	label.name = "ActivityQueueEmptyDescriptionLabel"
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	label.add_theme_color_override("font_outline_color", Color.WHITE)
+	label.add_theme_constant_override("outline_size", 8)
+	label.add_theme_constant_override("line_spacing", 8)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(label)
+	return holder
+
+
+func _on_activity_queue_set_pressed() -> void:
+	_enter_queue_selection_mode()
+
+
+func _on_activity_queue_clear_pressed() -> void:
+	set_activity_queue([])
+
+
+func _activity_queue_empty_state(content_width: float) -> Control:
+	var empty := Control.new()
+	empty.name = "ActivityQueueEmptyState"
+	empty.custom_minimum_size = Vector2(content_width, _pinned_activities_empty_state_height())
+	empty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	empty.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var label := _label("Add activities to build a queue.", 72, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	label.name = "ActivityQueueEmptyStateLabel"
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.offset_left = 48
+	label.offset_right = -48
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_outline_color", Color.WHITE)
+	label.add_theme_constant_override("outline_size", 8)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	empty.add_child(label)
+	return empty
+
+
+func _build_queue_activities_module(module_key: String, content_width: float) -> Control:
+	return _build_page_activity_module_copy(module_key, content_width, _queue_page_card_key(module_key))
+
+
+func _activity_queue_active_shelf_skill_id() -> String:
+	if activity_queue_running and not running_skill_id.is_empty() and not running_action_id.is_empty():
+		return running_skill_id
+	return ""
+
+
+func get_activity_queue() -> Array:
+	activity_queue = _activity_queue_unlocked_only(_normalized_activity_queue(activity_queue))
+	return activity_queue.duplicate()
+
+
+func set_activity_queue(entries) -> void:
+	activity_queue = _activity_queue_unlocked_only(_normalized_activity_queue(entries))
+	_mark_save_dirty("activity queue changed")
+	save_game()
+	_refresh_activity_queue_visuals()
+
+
+func add_activity_to_queue(entry) -> bool:
+	var key := _normalized_module_ui_key(entry)
+	if key.is_empty() or not _activity_queue_key_is_queueable(key):
+		return false
+	if activity_queue.has(key):
+		return false
+	activity_queue.append(key)
+	activity_queue = _activity_queue_unlocked_only(_normalized_activity_queue(activity_queue))
+	_mark_save_dirty("activity queued")
+	save_game()
+	_refresh_activity_queue_visuals()
+	return true
+
+
+func remove_activity_from_queue(entry) -> bool:
+	var key := _normalized_module_ui_key(entry)
+	if key.is_empty() or not activity_queue.has(key):
+		return false
+	var removed_index := activity_queue.find(key)
+	activity_queue.erase(key)
+	if activity_queue_running:
+		if removed_index < activity_queue_index:
+			activity_queue_index -= 1
+		elif removed_index == activity_queue_index:
+			activity_queue_attempt_key = ""
+	_mark_save_dirty("activity dequeued")
+	save_game()
+	_refresh_activity_queue_visuals()
+	return true
+
+
+func is_activity_queued(entry) -> bool:
+	var key := _normalized_module_ui_key(entry)
+	return not key.is_empty() and activity_queue.has(key)
+
+
+func get_queue_index(entry) -> int:
+	var key := _normalized_module_ui_key(entry)
+	if key.is_empty():
+		return -1
+	return activity_queue.find(key)
+
+
+func clear_activity_queue() -> void:
+	if activity_queue.is_empty():
+		return
+	activity_queue.clear()
+	_stop_activity_queue_runtime(false)
+	_mark_save_dirty("activity queue cleared")
+	save_game()
+	_refresh_activity_queue_visuals()
+
+
+func _activity_queue_for_save() -> Array:
+	return _activity_queue_unlocked_only(_normalized_activity_queue(activity_queue))
+
+
+func _restore_activity_queue_from_save(data: Dictionary) -> void:
+	activity_queue = _activity_queue_unlocked_only(_normalized_activity_queue(data.get("activity_queue", [])))
+	activity_queue_running = false
+	activity_queue_index = -1
+	activity_queue_attempt_key = ""
+	queue_selection_mode = false
+
+
+func _normalized_activity_queue(value: Variant) -> Array:
+	var normalized: Array = []
+	if typeof(value) != TYPE_ARRAY:
+		return normalized
+	var seen := {}
+	for raw_key in value:
+		var key := _normalized_module_ui_key(raw_key)
+		if key.is_empty() or seen.has(key):
+			continue
+		seen[key] = true
+		normalized.append(key)
+	return normalized
+
+
+func _activity_queue_unlocked_only(keys: Array) -> Array:
+	var filtered: Array = []
+	for raw_key in keys:
+		var key := _normalized_module_ui_key(raw_key)
+		if not key.is_empty() and _activity_queue_key_is_queueable(key):
+			filtered.append(key)
+	return filtered
+
+
+func _activity_queue_key_is_queueable(module_key: String) -> bool:
+	var key := _normalized_module_ui_key(module_key)
+	if key.is_empty():
+		return false
+	if key.begins_with("action:"):
+		var action_parts := key.substr("action:".length()).split(":", false, 2)
+		if action_parts.size() < 2:
+			return false
+		var skill_id := str(action_parts[0])
+		var action := _action_data(skill_id, str(action_parts[1]))
+		return (
+			not action.is_empty()
+			and _is_action_unlocked(skill_id, action)
+			and not _is_passive_action(action)
+			and not _is_event_action(action)
+		)
+	if key.begins_with("fishing_area:"):
+		return _module_ui_fishing_area_is_unlocked(key)
+	return false
+
+
+func _toggle_activity_queue_entry(module_key: String) -> bool:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty():
+		return false
+	if is_activity_queued(normalized_key):
+		return remove_activity_from_queue(normalized_key)
+	return add_activity_to_queue(normalized_key)
+
+
+func _activity_queue_module_key_for_card(card: Dictionary) -> String:
+	if card.is_empty():
+		return ""
+	var card_key := str(card.get("card_key", ""))
+	if card_key.begins_with("pinned_page:"):
+		var pinned_key := _normalized_module_ui_key(card_key.substr("pinned_page:".length()))
+		if not pinned_key.is_empty():
+			return pinned_key
+	if card_key.begins_with("queue_page:"):
+		var queue_key := _normalized_module_ui_key(card_key.substr("queue_page:".length()))
+		if not queue_key.is_empty():
+			return queue_key
+	var pop := _valid_control_ref(card.get("pop", null))
+	if pop != null:
+		var pop_key := _normalized_module_ui_key(pop.get_meta("module_ui_key", ""))
+		if not pop_key.is_empty():
+			return pop_key
+	if bool(card.get("is_fishing_area", false)):
+		var area_def := card.get("area_def", {}) as Dictionary
+		if not area_def.is_empty():
+			return _module_ui_fishing_area_key(str(card.get("skill_id", "fishing")), area_def)
+	var skill_id := str(card.get("skill_id", ""))
+	var action_id := str(card.get("action_id", ""))
+	if not skill_id.is_empty() and not action_id.is_empty():
+		return _module_ui_action_key(skill_id, action_id)
+	return ""
+
+
+func _queue_selection_toggle_from_card(card: Dictionary) -> bool:
+	var module_key := _activity_queue_module_key_for_card(card)
+	if module_key.is_empty():
+		return false
+	if not _toggle_activity_queue_entry(module_key):
+		return false
+	_play_default_button_sfx()
+	return true
+
+
+func _enter_queue_selection_mode() -> void:
+	queue_selection_mode = true
+	skills_utility_return_screen = "queue"
+	skills_utility_return_skill_id = selected_skill_id
+	if current_screen == "queue" or current_screen == "pinned":
+		top_level_nav_locked_until_msec = 0
+		current_screen = "menu"
+		_render_screen()
+	elif current_screen == "skill":
+		_refresh_activity_queue_visuals()
+	elif skills_content != null and is_instance_valid(skills_content):
+		_render_screen()
+	_sync_queue_selection_banner()
+	_refresh_activity_queue_visuals()
+
+
+func _finish_queue_selection_mode() -> void:
+	queue_selection_mode = false
+	_sync_queue_selection_banner()
+	_begin_direct_skill_nav_cover()
+	current_screen = "queue"
+	_render_screen()
+
+
+func _sync_queue_selection_banner() -> void:
+	if not queue_selection_mode:
+		if queue_selection_banner != null and is_instance_valid(queue_selection_banner):
+			queue_selection_banner.queue_free()
+		queue_selection_banner = null
+		return
+	if queue_selection_banner != null and is_instance_valid(queue_selection_banner):
+		return
+	var banner := PanelContainer.new()
+	banner.name = "QueueSelectionBanner"
+	banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	banner.offset_left = 22.0
+	banner.offset_right = -22.0
+	banner.offset_top = 22.0
+	banner.offset_bottom = 142.0
+	banner.z_index = CHAT_UI_Z + 120
+	banner.z_as_relative = false
+	banner.mouse_filter = Control.MOUSE_FILTER_STOP
+	banner.add_theme_stylebox_override("panel", _module_utility_button_style(Color("#47b7d8"), false, true))
+	add_child(banner)
+	queue_selection_banner = banner
+
+	var row := HBoxContainer.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 42)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	banner.add_child(row)
+	var title := _label("QUEUE SELECTION MODE", 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(title)
+
+
+func _refresh_activity_queue_visuals() -> void:
+	_sync_queue_overlays_for_visible_cards()
+	if current_screen == "queue" and not screen_render_in_progress:
+		_render_screen()
+
+
+func _add_activity_queue_number_overlay(host: Control, number: int, module_key: String) -> void:
+	if host == null or not is_instance_valid(host) or number <= 0:
+		return
+	var overlay := PanelContainer.new()
+	overlay.name = "ActivityQueueNumberOverlay"
+	overlay.anchor_left = 0.5
+	overlay.anchor_right = 0.5
+	overlay.anchor_top = 0.5
+	overlay.anchor_bottom = 0.5
+	overlay.offset_left = -88.0
+	overlay.offset_right = 88.0
+	overlay.offset_top = -88.0
+	overlay.offset_bottom = 88.0
+	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.z_index = 260
+	overlay.add_theme_stylebox_override("panel", _activity_queue_overlay_style())
+	host.add_child(overlay)
+	var label := _label(str(number), 108, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_outline_color", Color.WHITE)
+	label.add_theme_constant_override("outline_size", 0)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	overlay.add_child(label)
+	overlay.set_meta("activity_queue_overlay_key", module_key)
+	overlay.set_meta("activity_queue_overlay_number", number)
+
+
+func _activity_queue_overlay_style() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color.WHITE
+	style.border_color = COLOR_INK
+	style.set_border_width_all(10)
+	style.corner_radius_top_left = 999
+	style.corner_radius_top_right = 999
+	style.corner_radius_bottom_left = 999
+	style.corner_radius_bottom_right = 999
+	return style
+
+
+func _sync_queue_overlays_for_visible_cards() -> void:
+	for raw_card in action_cards.values():
+		if typeof(raw_card) != TYPE_DICTIONARY:
+			continue
+		var card := raw_card as Dictionary
+		var host := _activity_queue_overlay_host_for_card(card)
+		if host == null:
+			continue
+		var module_key := _activity_queue_module_key_for_card(card)
+		if module_key.is_empty():
+			continue
+		_sync_activity_queue_overlay_for_host(host, module_key)
+
+
+func _activity_queue_overlay_host_for_card(card: Dictionary) -> Control:
+	if card.is_empty():
+		return null
+	if bool(card.get("is_fishing_area", false)):
+		var area_host := _valid_control_ref(card.get("queue_overlay_host", null))
+		if area_host != null:
+			return area_host
+	return _valid_control_ref(card.get("pop", null))
+
+
+func _sync_activity_queue_overlay_for_host(host: Control, module_key: String) -> void:
+	if host == null or not is_instance_valid(host):
+		return
+	var existing_overlays: Array[Control] = []
+	for child in host.get_children():
+		var control := child as Control
+		if control != null and control.name == "ActivityQueueNumberOverlay":
+			existing_overlays.append(control)
+	var queue_index := get_queue_index(module_key)
+	if not queue_selection_mode or queue_index < 0:
+		for overlay in existing_overlays:
+			overlay.queue_free()
+		return
+	var desired_number := queue_index + 1
+	var kept_overlay: Control = null
+	for overlay in existing_overlays:
+		var overlay_key := _normalized_module_ui_key(overlay.get_meta("activity_queue_overlay_key", ""))
+		var overlay_number := int(overlay.get_meta("activity_queue_overlay_number", -1))
+		if kept_overlay == null and overlay_key == module_key and overlay_number == desired_number:
+			kept_overlay = overlay
+		else:
+			overlay.queue_free()
+	if kept_overlay != null:
+		return
+	_add_activity_queue_number_overlay(host, desired_number, module_key)
+
+
+func _start_activity_queue_from_key(module_key: String) -> bool:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty():
+		return false
+	var queue := get_activity_queue()
+	var start_index := queue.find(normalized_key)
+	if start_index < 0:
+		return false
+	activity_queue_running = true
+	activity_queue_index = start_index
+	activity_queue_attempt_key = ""
+	return _advance_activity_queue_to_runnable()
+
+
+func _stop_activity_queue_runtime(clear_running_action := false) -> void:
+	activity_queue_running = false
+	activity_queue_index = -1
+	activity_queue_attempt_key = ""
+	if clear_running_action:
+		running_skill_id = ""
+		running_action_id = ""
+		action_progress = 0.0
+		_reset_action_opportunity_state()
+
+
+func _process_activity_queue_runtime() -> void:
+	if not activity_queue_running:
+		return
+	var queue := get_activity_queue()
+	if queue.is_empty() or activity_queue_index < 0:
+		_stop_activity_queue_runtime()
+		return
+	if activity_queue_index >= queue.size():
+		activity_queue_index = 0
+	if running_skill_id.is_empty() or running_action_id.is_empty():
+		_advance_activity_queue_to_runnable()
+		return
+	var active_key := _activity_queue_key_for_running_action(running_skill_id, running_action_id)
+	if active_key.is_empty() or active_key != activity_queue_attempt_key:
+		_stop_activity_queue_runtime()
+		return
+	var action := _action_data(running_skill_id, running_action_id)
+	if action.is_empty() or not _is_action_unlocked(running_skill_id, action):
+		activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+		_advance_activity_queue_to_runnable()
+		return
+	if _fishing_rework_active_for_skill(running_skill_id) and not _is_event_action(action):
+		return
+	var cost := _effective_stamina(running_skill_id, action)
+	if _stamina_value(running_skill_id) + 0.0001 < cost:
+		activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+		_advance_activity_queue_to_runnable()
+
+
+func _advance_activity_queue_to_runnable() -> bool:
+	var queue := get_activity_queue()
+	if queue.is_empty() or activity_queue_index < 0:
+		_stop_activity_queue_runtime(true)
+		_set_result("Queue finished.")
+		_update_ui(0.0, true)
+		return false
+	activity_queue_index = activity_queue_index % queue.size()
+	var attempts_remaining := queue.size()
+	while attempts_remaining > 0:
+		var module_key := _normalized_module_ui_key(queue[activity_queue_index])
+		var target := _activity_queue_target_for_key(module_key)
+		if target.is_empty():
+			activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+			attempts_remaining -= 1
+			continue
+		var skill_id := str(target.get("skill_id", ""))
+		var action_id := str(target.get("action_id", ""))
+		var action := _action_data(skill_id, action_id)
+		if action.is_empty() or _is_passive_action(action) or not _is_action_unlocked(skill_id, action):
+			activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+			attempts_remaining -= 1
+			continue
+		if skill_id == "thieving" and _thieving_action_is_jailed(action_id):
+			activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+			attempts_remaining -= 1
+			continue
+		var fishing_rework_attempt := _fishing_rework_active_for_skill(skill_id) and not _is_event_action(action)
+		if not fishing_rework_attempt:
+			var cost := _effective_stamina(skill_id, action)
+			if _stamina_value(skill_id) + 0.0001 < cost:
+				activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+				attempts_remaining -= 1
+				continue
+		activity_queue_attempt_key = module_key
+		if _start_action(skill_id, action_id, true, false, true):
+			_set_result("Queue: %s started." % str(action.get("name", "Activity")))
+			_update_ui(0.0, true)
+			return true
+		activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+		attempts_remaining -= 1
+	_stop_activity_queue_runtime(true)
+	_set_result("Queue finished.")
+	_update_ui(0.0, true)
+	return false
+
+
+func _activity_queue_next_index(current_index: int, queue_size: int) -> int:
+	if queue_size <= 0:
+		return -1
+	return (current_index + 1) % queue_size
+
+
+func _activity_queue_target_for_key(module_key: String) -> Dictionary:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.begins_with("action:"):
+		var action_key := normalized_key.substr("action:".length())
+		var parts := action_key.split(":", false, 2)
+		if parts.size() < 2:
+			return {}
+		return {"skill_id": str(parts[0]), "action_id": str(parts[1])}
+	if normalized_key.begins_with("fishing_area:"):
+		var area_key := normalized_key.substr("fishing_area:".length())
+		for raw_area_def in _fishing_render_area_modules("fishing"):
+			var area_def := raw_area_def as Dictionary
+			if _fishing_area_module_key("fishing", area_def) != area_key:
+				continue
+			var selected_id := _activity_queue_selected_fishing_action_for_area(area_def)
+			if selected_id.is_empty():
+				return {}
+			return {"skill_id": "fishing", "action_id": selected_id}
+	return {}
+
+
+func _activity_queue_selected_fishing_action_for_area(area_def: Dictionary) -> String:
+	var area_key := _fishing_area_module_key("fishing", area_def)
+	for raw_card in action_cards.values():
+		if typeof(raw_card) != TYPE_DICTIONARY:
+			continue
+		var area_card := raw_card as Dictionary
+		if not bool(area_card.get("is_fishing_area", false)):
+			continue
+		if str(area_card.get("area_key", "")) != area_key:
+			continue
+		var selected_id := str(area_card.get("selected_action_id", ""))
+		if not selected_id.is_empty():
+			return selected_id
+	for raw_method_id in _fishing_area_module_method_ids("fishing", area_def):
+		var action_id := str(raw_method_id)
+		var action := _action_data("fishing", action_id)
+		if not action.is_empty() and _is_action_unlocked("fishing", action):
+			return action_id
+	return ""
+
+
+func _activity_queue_key_for_running_action(skill_id: String, action_id: String) -> String:
+	var action_key := _module_ui_action_key(skill_id, action_id)
+	if activity_queue_attempt_key == action_key:
+		return action_key
+	if skill_id == "fishing":
+		for raw_key in get_activity_queue():
+			var module_key := _normalized_module_ui_key(raw_key)
+			if not module_key.begins_with("fishing_area:"):
+				continue
+			var target := _activity_queue_target_for_key(module_key)
+			if str(target.get("skill_id", "")) == skill_id and str(target.get("action_id", "")) == action_id:
+				return module_key
+	return action_key if is_activity_queued(action_key) else ""
+
+
 func _pinned_activities_active_shelf(content_width: float) -> Control:
 	var header := PanelContainer.new()
 	header.name = "PinnedActivitiesActiveShelf"
@@ -20871,7 +22136,7 @@ func _pinned_activities_active_shelf(content_width: float) -> Control:
 
 
 func _on_pinned_activities_action_scroll_input(event: InputEvent) -> void:
-	if current_screen != "pinned":
+	if current_screen != "pinned" and current_screen != "queue":
 		return
 	var routed_event := _pinned_activities_globalized_scroll_event(event)
 	if routed_event == null:
@@ -21093,7 +22358,7 @@ func _build_pinned_active_shelf_stamina_strip() -> Control:
 		gauge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		gauge.mouse_filter = Control.MOUSE_FILTER_STOP
-		gauge.set_theme_color(_skill_theme_color(skill_id))
+		gauge.set_theme_color(_stamina_regen_circle_color(skill_id))
 		gauge.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, gauge))
 		row.add_child(gauge)
 		pinned_active_shelf_stamina_gauges[skill_id] = gauge
@@ -21182,7 +22447,7 @@ func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String)
 		pinned_active_shelf_regen_circle.custom_minimum_size = Vector2(552, 552)
 		pinned_active_shelf_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		pinned_active_shelf_regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		pinned_active_shelf_regen_circle.set_theme_color(_skill_theme_color(skill_id))
+		pinned_active_shelf_regen_circle.set_theme_color(_stamina_regen_circle_color(skill_id))
 		header_row.add_child(pinned_active_shelf_regen_circle)
 		_set_regen_circle_for_skill(pinned_active_shelf_regen_circle, skill_id, true)
 
@@ -21247,10 +22512,10 @@ func _pinned_active_shelf_style(skill_id: String, draw_bottom_border := true) ->
 
 
 func _sync_pinned_active_shelf(delta: float, instant := false) -> void:
-	if current_screen != "pinned" or pinned_active_shelf_content == null or not is_instance_valid(pinned_active_shelf_content):
+	if (current_screen != "pinned" and current_screen != "queue") or pinned_active_shelf_content == null or not is_instance_valid(pinned_active_shelf_content):
 		return
 	_sync_pinned_active_shelf_stamina_gauges(delta, instant)
-	var active_skill_id := _pinned_active_shelf_skill_id()
+	var active_skill_id := _activity_queue_active_shelf_skill_id() if current_screen == "queue" else _pinned_active_shelf_skill_id()
 	if pinned_active_shelf_transition_active and active_skill_id == pinned_active_shelf_transition_skill_id:
 		return
 	if active_skill_id != pinned_active_shelf_skill_id:
@@ -21560,7 +22825,12 @@ func _remove_registered_card_collapse_zone(card_key: String) -> void:
 
 
 func _build_pinned_activities_module(module_key: String, content_width: float) -> Control:
-	var pinned_page_card_key := _pinned_page_card_key(module_key)
+	return _build_page_activity_module_copy(module_key, content_width, _pinned_page_card_key(module_key))
+
+
+func _build_page_activity_module_copy(module_key: String, content_width: float, page_card_key: String) -> Control:
+	if page_card_key.is_empty():
+		return null
 	if module_key.begins_with("action:"):
 		var action_key := module_key.substr("action:".length())
 		var parts := action_key.split(":", false, 2)
@@ -21577,7 +22847,7 @@ func _build_pinned_activities_module(module_key: String, content_width: float) -
 			var passive_dict := passive_card.get("card", {}) as Dictionary
 			passive_dict["entry"] = passive_root
 			passive_dict["action_id"] = action_id
-			_register_action_card(pinned_page_card_key, passive_dict)
+			_register_action_card(page_card_key, passive_dict)
 			_detail_lazy_finalize_action_card(passive_dict, skill_id, action, action_id)
 			return passive_root
 		var built := _build_detail_interactive_action_card(skill_id, action, content_width, content_width)
@@ -21586,16 +22856,19 @@ func _build_pinned_activities_module(module_key: String, content_width: float) -
 		var pop_card := card.get("pop") as Control
 		if pop_card != null and is_instance_valid(pop_card):
 			_attach_swipe_preview_activity_button(card, skill_id, action_id, pop_card)
-		card["entry"] = card_root
-		_register_action_card(pinned_page_card_key, card)
+		var page_entry: Control = card_root
+		if page_card_key.begins_with("queue_page:"):
+			page_entry = _page_activity_module_copy_entry(card_root, content_width)
+		card["entry"] = page_entry
+		_register_action_card(page_card_key, card)
 		_detail_lazy_finalize_action_card(card, skill_id, action, action_id)
-		return card_root
+		return page_entry
 	if module_key.begins_with("thieving_heist:"):
 		var heist_id := module_key.substr("thieving_heist:".length())
 		var heist := _thieving_heist_def(heist_id)
 		if heist.is_empty():
 			return null
-		return _build_thieving_heist_card(heist, content_width, false, pinned_page_card_key)
+		return _build_thieving_heist_card(heist, content_width, false, page_card_key)
 	if module_key.begins_with("fishing_area:"):
 		var area_key := module_key.substr("fishing_area:".length())
 		for raw_area_def in _fishing_render_area_modules("fishing"):
@@ -21605,11 +22878,37 @@ func _build_pinned_activities_module(module_key: String, content_width: float) -
 			var built := _build_fishing_area_module("fishing", area_def, content_width)
 			var area_card := built.get("area_card", {}) as Dictionary
 			if not area_card.is_empty():
-				_register_action_card(pinned_page_card_key, area_card)
+				_register_action_card(page_card_key, area_card)
 			return built.get("root") as Control
 	if module_key.begins_with("fishing_offer:"):
 		return _build_fishing_offer_module(module_key.substr("fishing_offer:".length()), content_width)
 	return null
+
+
+func _page_activity_module_copy_entry(module_root: Control, content_width: float) -> Control:
+	if module_root == null:
+		return null
+	var entry := Control.new()
+	entry.set_meta("detail_stack_entry_wrapper", true)
+	entry.set_meta("page_activity_module_copy_entry", true)
+	var module_height := maxf(1.0, module_root.custom_minimum_size.y)
+	if module_height <= 1.0:
+		module_height = maxf(1.0, module_root.size.y)
+	entry.custom_minimum_size = Vector2(content_width, module_height)
+	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.clip_contents = false
+	module_root.anchor_left = 0.0
+	module_root.anchor_right = 1.0
+	module_root.anchor_top = 0.0
+	module_root.anchor_bottom = 0.0
+	module_root.offset_left = 0.0
+	module_root.offset_right = 0.0
+	module_root.offset_top = 0.0
+	module_root.offset_bottom = module_height
+	module_root.custom_minimum_size = Vector2(content_width, module_height)
+	module_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.add_child(module_root)
+	return entry
 
 
 func _pinned_page_card_key(module_key: String) -> String:
@@ -21617,6 +22916,13 @@ func _pinned_page_card_key(module_key: String) -> String:
 	if normalized_key.is_empty():
 		return ""
 	return "pinned_page:%s" % normalized_key
+
+
+func _queue_page_card_key(module_key: String) -> String:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty():
+		return ""
+	return "queue_page:%s" % normalized_key
 
 
 func _pinned_shelf_card_key(module_key: String) -> String:
@@ -22621,7 +23927,7 @@ func _module_action_circle_at_position_in_tree(root: Control, event_position: Ve
 
 
 func _route_direct_module_action_zone_input(event: InputEvent) -> bool:
-	if (current_screen != "skill" and current_screen != "pinned" and current_screen != "menu") or _modal_blocks_background_input() or _any_modal_overlay_visible():
+	if (current_screen != "skill" and current_screen != "pinned" and current_screen != "queue" and current_screen != "menu") or _modal_blocks_background_input() or _any_modal_overlay_visible():
 		return false
 	if _update_pending_module_pin_press(event):
 		return true
@@ -22688,7 +23994,7 @@ func _route_fishing_area_pin_corner_input(event: InputEvent) -> bool:
 		return true
 	if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
 		_update_pending_module_pin_drag(event)
-	if current_screen != "skill" and current_screen != "pinned":
+	if current_screen != "skill" and current_screen != "pinned" and current_screen != "queue":
 		return false
 	if current_screen == "skill" and selected_skill_id != "fishing":
 		return false
@@ -25789,6 +27095,8 @@ func _visible_detail_regen_gauge_needs_header_refresh() -> bool:
 func _skill_detail_needs_high_frequency_ui_update() -> bool:
 	if current_screen == "menu":
 		return not running_action_id.is_empty()
+	if current_screen == "queue":
+		return true
 	if current_screen == "pinned":
 		var pinned_scroll := content_scroll as MobileScrollContainer
 		return (
@@ -25856,6 +27164,7 @@ func _update_ui(delta: float, instant := false) -> void:
 	var static_refresh := _consume_ui_static_refresh(delta, instant)
 	_sync_bottom_nav_visibility()
 	_sync_module_utility_row_visibility()
+	_sync_queue_selection_banner()
 	var skill_frame_refresh := instant or static_refresh or _skill_detail_needs_high_frequency_ui_update()
 	var header_gauge_frame_refresh := skill_frame_refresh or _visible_detail_regen_gauge_needs_header_refresh()
 	var detail_header_gauge_refresh := _consume_detail_header_gauge_refresh(delta, instant, static_refresh, header_gauge_frame_refresh)
@@ -25914,7 +27223,7 @@ func _update_ui(delta: float, instant := false) -> void:
 			var stamina_value := _stamina(selected_skill_id)
 			var stamina_decimal_fraction := _stamina_fraction(selected_skill_id)
 			var circle_value := _stamina_regen_fraction(selected_skill_id)
-			detail_regen_circle.set_theme_color(_skill_theme_color(selected_skill_id))
+			detail_regen_circle.set_theme_color(_stamina_regen_circle_color(selected_skill_id))
 			detail_regen_circle.set_show_decimal(show_stamina_decimal)
 			detail_regen_circle.set_stamina(stamina_value, max_stamina, instant, stamina_decimal_fraction)
 			detail_regen_circle.set_value(circle_value, instant)
@@ -25922,10 +27231,12 @@ func _update_ui(delta: float, instant := false) -> void:
 			_update_skill_detail_shadow(delta, instant)
 		if _skill_swipe_previews_need_frame_updates():
 			_update_skill_swipe_preview_states(delta, instant)
-	if current_screen == "pinned" and (skill_frame_refresh or static_refresh or instant):
+	if (current_screen == "pinned" or current_screen == "queue") and (skill_frame_refresh or static_refresh or instant):
 		_sync_pinned_active_shelf(delta, instant)
 		_update_skill_detail_shadow(delta, instant)
-	if current_screen == "skill" or current_screen == "pinned" or current_screen == "menu":
+	if static_refresh or instant:
+		_sync_queue_overlays_for_visible_cards()
+	if current_screen == "skill" or current_screen == "pinned" or current_screen == "queue" or current_screen == "menu":
 		if detail_lazy_mounted_this_frame and not instant:
 			return
 		if _skill_detail_action_cards_hidden_by_transition_cover():
@@ -25946,7 +27257,7 @@ func _update_ui(delta: float, instant := false) -> void:
 				_discard_action_card_key(key)
 				continue
 			var skill_id := str(card.get("skill_id", ""))
-			if current_screen != "pinned" and not skill_strip_ids.is_empty() and not skill_id.is_empty() and skill_id != selected_skill_id and skill_id != running_skill_id:
+			if current_screen != "pinned" and current_screen != "queue" and not skill_strip_ids.is_empty() and not skill_id.is_empty() and skill_id != selected_skill_id and skill_id != running_skill_id:
 				continue
 			var action_id := str(card.get("action_id", ""))
 			if skill_id.is_empty() or action_id.is_empty():
@@ -26944,7 +28255,7 @@ func _sync_convergence_card_static_state(card: Dictionary, action: Dictionary, u
 	if cta != null:
 		_set_canvas_item_visible_if_changed(cta, requires_build and unlocked and not built and not building)
 	if cta_meta != null:
-		var cta_text := "%s logs  |  %s" % [_convergence_log_cost(action), _format_countdown(_convergence_build_seconds(action))]
+		var cta_text := "%s Softwood  |  %s" % [_convergence_log_cost(action), _format_countdown(_convergence_build_seconds(action))]
 		if not requires_build:
 			cta_text = "READY"
 		_set_label_text_if_changed(cta_meta, cta_text)
@@ -27328,6 +28639,8 @@ func _toggle_activity_stat_popup_for_card(card: Dictionary, skill_id: String, ac
 	var action := _action_data(skill_id, action_id)
 	if action.is_empty() or card.is_empty():
 		return
+	if _tutorial_blocks_activity_info_chips():
+		return
 	if _action_info_chips_blocked_by_lock(card):
 		return
 	if _activity_stat_clicks_should_start_action() and _is_action_unlocked(skill_id, action):
@@ -27568,6 +28881,146 @@ func _on_passive_module_button_input(event: InputEvent, action_kind: String, mod
 		get_viewport().set_input_as_handled()
 
 
+func _route_passive_module_button_input_by_position(event: InputEvent) -> bool:
+	if current_screen != "skill" and current_screen != "pinned" and current_screen != "menu":
+		return false
+	if passive_button_press_source != null and is_instance_valid(passive_button_press_source):
+		if event is InputEventMouseMotion or event is InputEventScreenDrag or _input_event_releases_primary_pointer(event):
+			var active_source := passive_button_press_source
+			var routed_event := _passive_button_event_for_source(event, active_source)
+			_on_passive_module_button_input(
+				routed_event,
+				passive_button_press_kind,
+				passive_button_press_module_id,
+				passive_button_press_stat_type,
+				passive_button_press_popover,
+				active_source
+			)
+			return true
+	if not _is_primary_press_event(event):
+		return false
+	var event_position := _passive_button_global_event_position(event)
+	if event_position == Vector2.INF:
+		return false
+	if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
+		return false
+	var hit := _passive_button_hit_at_position(event_position)
+	if hit.is_empty():
+		return false
+	var source := hit.get("source", null) as Control
+	if source == null or not is_instance_valid(source):
+		return false
+	_on_passive_module_button_input(
+		_passive_button_event_for_source(event, source),
+		str(hit.get("kind", "")),
+		str(hit.get("module_id", "")),
+		str(hit.get("stat_type", "")),
+		hit.get("popover", null) as Control,
+		source
+	)
+	return true
+
+
+func _passive_button_global_event_position(event: InputEvent) -> Vector2:
+	if event is InputEventMouseButton:
+		return (event as InputEventMouseButton).global_position
+	if event is InputEventMouseMotion:
+		return (event as InputEventMouseMotion).global_position
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).position
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).position
+	return Vector2.INF
+
+
+func _passive_button_event_for_source(event: InputEvent, source: Control) -> InputEvent:
+	if source == null or not is_instance_valid(source):
+		return event
+	var global_position := _passive_button_global_event_position(event)
+	if global_position == Vector2.INF:
+		return event
+	var local_position := source.get_global_transform().affine_inverse() * global_position
+	var duplicate_event := event.duplicate()
+	if duplicate_event is InputEventMouseButton:
+		var mouse_button := duplicate_event as InputEventMouseButton
+		mouse_button.position = local_position
+		mouse_button.global_position = global_position
+	elif duplicate_event is InputEventMouseMotion:
+		var mouse_motion := duplicate_event as InputEventMouseMotion
+		mouse_motion.position = local_position
+		mouse_motion.global_position = global_position
+	elif duplicate_event is InputEventScreenTouch:
+		(duplicate_event as InputEventScreenTouch).position = global_position
+	elif duplicate_event is InputEventScreenDrag:
+		(duplicate_event as InputEventScreenDrag).position = global_position
+	return duplicate_event
+
+
+func _passive_button_hit_at_position(event_position: Vector2) -> Dictionary:
+	_prune_invalid_action_cards()
+	var keys := action_card_keys.duplicate()
+	keys.reverse()
+	for raw_action_key in action_cards.keys():
+		var action_key := str(raw_action_key)
+		if not keys.has(action_key):
+			keys.push_front(action_key)
+	for raw_key in keys:
+		var key := str(raw_key)
+		if not action_cards.has(key):
+			continue
+		var card := action_cards.get(key, {}) as Dictionary
+		if not bool(card.get("passive", false)):
+			continue
+		var pop := _valid_control_ref(card.get("pop", null))
+		if pop == null or not pop.is_inside_tree() or not pop.is_visible_in_tree():
+			continue
+		if not pop.get_global_rect().has_point(event_position):
+			continue
+		var action := card.get("action", {}) as Dictionary
+		var module_id := str(action.get("id", card.get("action_id", WOODCUTTING_LOG_MODULE_ID)))
+		var info_hit := _passive_source_hit_dict(card.get("info_button", null), event_position, "info", module_id, "", card.get("info_popover", null))
+		if not info_hit.is_empty():
+			return info_hit
+		var plank_hit := _passive_source_hit_dict(card.get("plank", null), event_position, "plank", module_id)
+		if not plank_hit.is_empty():
+			return plank_hit
+		var upgrade_buttons := card.get("upgrade_buttons", {}) as Dictionary
+		for raw_stat_type in ["time", "yield", "capacity"]:
+			var stat_type := str(raw_stat_type)
+			var upgrade_hit := _passive_source_hit_dict(upgrade_buttons.get(stat_type, null), event_position, "upgrade", module_id, stat_type)
+			if not upgrade_hit.is_empty():
+				return upgrade_hit
+		var loot := _valid_control_ref(card.get("loot", null))
+		if loot != null and loot.has_meta("passive_log_collect_hotspot_id"):
+			var hotspot := _valid_control_ref(instance_from_id(int(loot.get_meta("passive_log_collect_hotspot_id", 0))))
+			var hotspot_hit := _passive_source_hit_dict(hotspot, event_position, "collect", module_id)
+			if not hotspot_hit.is_empty():
+				return hotspot_hit
+		var collect_hit := _passive_source_hit_dict(card.get("button", null), event_position, "collect", module_id)
+		if not collect_hit.is_empty():
+			return collect_hit
+	return {}
+
+
+func _passive_source_hit_dict(source_variant, event_position: Vector2, action_kind: String, module_id: String, stat_type := "", info_popover_variant = null) -> Dictionary:
+	var source := _valid_control_ref(source_variant)
+	if source == null or not source.is_inside_tree() or not source.is_visible_in_tree():
+		return {}
+	if source.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		return {}
+	if source is BaseButton and (source as BaseButton).disabled:
+		return {}
+	if not source.get_global_rect().has_point(event_position):
+		return {}
+	return {
+		"source": source,
+		"kind": action_kind,
+		"module_id": module_id,
+		"stat_type": stat_type,
+		"popover": _valid_control_ref(info_popover_variant)
+	}
+
+
 func _passive_button_event_position(event: InputEvent, source: Control) -> Vector2:
 	if event is InputEventMouseButton:
 		var mouse_event := event as InputEventMouseButton
@@ -27766,6 +29219,8 @@ func _first_position_in_rect(positions: Array[Vector2], rect: Rect2) -> Variant:
 
 
 func _activity_stat_kind_from_positions(card: Dictionary, positions: Array[Vector2]) -> String:
+	if _tutorial_blocks_activity_info_chips():
+		return ""
 	if _activity_stat_clicks_should_start_action():
 		return ""
 	if _action_info_chips_blocked_by_lock(card):
@@ -27825,6 +29280,8 @@ func _activity_stat_clicks_should_start_action() -> bool:
 
 
 func _activity_stat_kind_at_position(card: Dictionary, event_position: Vector2) -> String:
+	if _tutorial_blocks_activity_info_chips():
+		return ""
 	if _activity_stat_clicks_should_start_action():
 		return ""
 	if _action_info_chips_blocked_by_lock(card):
@@ -27845,6 +29302,10 @@ func _activity_stat_kind_at_position(card: Dictionary, event_position: Vector2) 
 		if box != null and is_instance_valid(box) and box.is_visible_in_tree() and _padded_activity_stat_rect(box).has_point(event_position):
 			return kind
 	return ""
+
+
+func _tutorial_blocks_activity_info_chips() -> bool:
+	return tutorial_active
 
 
 func _action_info_chips_blocked_by_lock(card: Dictionary) -> bool:
@@ -27904,7 +29365,7 @@ func _sync_activity_stat_popup(card: Dictionary, skill_id: String, action: Dicti
 		if bg != null:
 			bg.art_height = ACTION_CARD_HEIGHT
 			bg.feather_height = 170.0
-			bg.fallback_color = _skill_theme_color(skill_id)
+			bg.fallback_color = _themed_activity_card_fill_color(_skill_theme_color(skill_id))
 			bg._update_mask_params()
 		var border := card.get("border") as ActivityCardBorder
 		if border != null:
@@ -27962,11 +29423,15 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		return
 	if bool(root.get_meta("module_ui_collapsed_squeeze", false)):
 		var collapsed_height := _module_collapsed_squeeze_height()
+		var mat_collection := card.get("mat_collection", {}) as Dictionary
+		var mat_collection_height := MAT_COLLECTION_AREA_HEIGHT if (not mat_collection.is_empty() and bool(mat_collection.get("visible", false))) else 0.0
 		_set_module_root_layout_height(root, collapsed_height)
 		root.clip_contents = false
 		_set_collapsed_module_visual_clipping(root, str(root.get_meta("module_ui_key", "")), true)
+		_sync_mat_collection_row_position(card, collapsed_height)
 		if entry != null and is_instance_valid(entry):
-			_set_module_root_layout_height(entry, collapsed_height)
+			_set_module_root_layout_height(entry, collapsed_height + mat_collection_height)
+			_update_detail_lazy_entry_height_for_card(card, collapsed_height + mat_collection_height)
 		var collapsed_existing_tween := card.get("bonus_tween", null) as Tween
 		if collapsed_existing_tween != null and collapsed_existing_tween.is_valid():
 			collapsed_existing_tween.kill()
@@ -27974,8 +29439,12 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		card["bonus_expanded"] = false
 		return
 	var target_height := _activity_card_root_height(expanded)
+	var mat_collection := card.get("mat_collection", {}) as Dictionary
+	var mat_collection_height := MAT_COLLECTION_AREA_HEIGHT if (not mat_collection.is_empty() and bool(mat_collection.get("visible", false))) else 0.0
+	var target_entry_height := target_height + mat_collection_height
+	_sync_mat_collection_row_position(card, target_height)
 	var target_size := Vector2(root.custom_minimum_size.x, target_height)
-	var target_entry_size := Vector2(target_size.x, target_height)
+	var target_entry_size := Vector2(target_size.x, target_entry_height)
 	if entry != null and is_instance_valid(entry):
 		target_entry_size.x = entry.custom_minimum_size.x
 	var bonus := card.get("bonus_panel", {}) as Dictionary
@@ -27983,7 +29452,7 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 	var existing_tween := card.get("bonus_tween", null) as Tween
 	var state_changed := bool(card.get("bonus_expanded", false)) != expanded
 	card["bonus_expanded"] = expanded
-	var entry_at_height := entry == null or not is_instance_valid(entry) or absf(entry.custom_minimum_size.y - target_height) <= 0.5
+	var entry_at_height := entry == null or not is_instance_valid(entry) or absf(entry.custom_minimum_size.y - target_entry_height) <= 0.5
 	if not state_changed and absf(root.custom_minimum_size.y - target_height) <= 0.5 and entry_at_height:
 		return
 	if existing_tween != null and existing_tween.is_valid():
@@ -27994,6 +29463,7 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		root.custom_minimum_size = target_size
 		if entry != null and is_instance_valid(entry):
 			entry.custom_minimum_size = target_entry_size
+		_update_detail_lazy_entry_height_for_card(card, target_entry_height)
 		if bonus_root != null:
 			bonus_root.modulate.a = 1.0 if expanded else 0.0
 			bonus_root.visible = expanded
@@ -28009,6 +29479,7 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		var fade_seconds := ACTION_CARD_INFO_FADE_IN_SECONDS if expanded else ACTION_CARD_INFO_FADE_OUT_SECONDS
 		tween.tween_property(bonus_root, "modulate:a", 1.0 if expanded else 0.0, fade_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.finished.connect(_finish_activity_card_expanded.bind(str(card.get("card_key", "")), bonus_root_id, expanded))
+	tween.finished.connect(_update_detail_lazy_entry_height_for_card.bind(card, target_entry_height))
 
 
 func _finish_activity_card_expanded(card_key: String, bonus_root_id: int, expanded: bool) -> void:
@@ -34014,6 +35485,9 @@ func _promote_passive_swipe_preview_card(card: Dictionary, skill_id: String) -> 
 		card_root.mouse_filter = Control.MOUSE_FILTER_PASS
 	if pop_card != null and is_instance_valid(pop_card):
 		pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	var loot := card.get("loot") as Control
+	if loot != null and is_instance_valid(loot):
+		loot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var collect_button := card.get("button") as Button
 	if collect_button != null and is_instance_valid(collect_button):
 		collect_button.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -36012,7 +37486,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 			regen_circle.custom_minimum_size = Vector2(552, 552)
 			regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			regen_circle.set_theme_color(_skill_theme_color(skill_id))
+			regen_circle.set_theme_color(_stamina_regen_circle_color(skill_id))
 			header_row.add_child(regen_circle)
 			state["regen_circle"] = regen_circle
 			_set_regen_circle_for_skill(regen_circle, skill_id, true)
@@ -37759,7 +39233,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 		collect_button.pressed.connect(_on_passive_collect_pressed.bind(module_id))
 	pop_card.add_child(collect_button)
 
-	var title := _label(str(action.get("name", "Collect Logs #1")), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var title := _label(str(action.get("name", "Legacy Softwood Collector")), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	title.add_theme_color_override("font_outline_color", COLOR_INK)
 	title.add_theme_constant_override("outline_size", 34)
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -37945,7 +39419,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	loot.custom_minimum_size = Vector2(660, 430)
 	loot.size = loot.custom_minimum_size
 	loot.clip_contents = false
-	loot.mouse_filter = Control.MOUSE_FILTER_PASS if interactive else Control.MOUSE_FILTER_IGNORE
+	loot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	loot.z_index = 223
 	pop_card.add_child(loot)
 
@@ -38395,7 +39869,7 @@ func _float_log_currency_feedback(module_id: String, amount: int) -> void:
 		_arc_passive_collection_logs(loot, panel, currency_icon, amount, module_id)
 	if panel != null and is_instance_valid(panel) and panel.is_inside_tree():
 		_flash_bonus_control(panel)
-		_float_reward(self, panel, "+%s logs" % amount, 58, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -146), 0.0)
+		_float_reward(self, panel, "+%s Softwood" % amount, 58, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -146), 0.0)
 
 
 func _float_passive_production_feedback(module_id: String, amount: int) -> void:
@@ -39016,6 +40490,12 @@ func _on_activity_lock_clicked(skill_id: String, action_id: String, group: Contr
 	if already_unlocked and not _action_has_pending_combo_requirement_lock(skill_id, action):
 		return
 	var card := _resolve_activity_unlock_card(skill_id, action_id)
+	if _should_route_activity_unlock_to_fishing_method(card, skill_id, action_id):
+		if group != null and group.has_method("consume_unlock_click"):
+			group.call("consume_unlock_click")
+		_hide_generic_activity_lock_overlay(card)
+		_on_fishing_method_lock_pressed(skill_id, action_id)
+		return
 	var clicked_requirement_index := _clicked_activity_requirement_index(group)
 	if clicked_requirement_index >= 0:
 		var requirement_states := _action_requirement_states(skill_id, action)
@@ -39089,6 +40569,26 @@ func _clicked_activity_requirement_index(group: Control) -> int:
 	if group.has_method("get_last_clicked_requirement_index"):
 		return int(group.call("get_last_clicked_requirement_index"))
 	return 0
+
+
+func _should_route_activity_unlock_to_fishing_method(card: Dictionary, skill_id: String, action_id: String) -> bool:
+	if not _fishing_rework_active_for_skill(skill_id):
+		return false
+	if action_id.is_empty():
+		return false
+	if not card.is_empty() and bool(card.get("is_fishing_method", false)):
+		return true
+	var method_card := _fishing_method_card_for_action(skill_id, action_id)
+	return not method_card.is_empty() and bool(method_card.get("is_fishing_method", false))
+
+
+func _hide_generic_activity_lock_overlay(card: Dictionary) -> void:
+	if card.is_empty():
+		return
+	var overlay := card.get("lock_overlay", {}) as Dictionary
+	if overlay.is_empty():
+		return
+	_set_activity_lock_overlay_active(overlay, false)
 
 
 func _action_requirement_unlocks_complete_after(skill_id: String, action: Dictionary, clicked_requirement_index: int) -> bool:
@@ -39265,7 +40765,8 @@ func _pulse_missing_action_requirements(group: Control, skill_id: String, action
 
 
 func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked: bool) -> void:
-	if bool(card.get("is_fishing_area", false)):
+	if bool(card.get("is_fishing_area", false)) or bool(card.get("is_fishing_method", false)):
+		_hide_generic_activity_lock_overlay(card)
 		_reset_activity_lock_overlay_pieces(card)
 		return
 	var ceremony_active := (
@@ -41145,8 +42646,84 @@ func _process_canceled_action_progress(delta: float) -> void:
 		canceled_action_progress_by_key.erase(action_key)
 
 
+func _action_mat_reward_defs(action: Dictionary) -> Array:
+	var rewards = action.get("mat_rewards", [])
+	var normalized := []
+	if typeof(rewards) == TYPE_ARRAY:
+		for raw_reward in rewards as Array:
+			if typeof(raw_reward) != TYPE_DICTIONARY:
+				continue
+			var reward := raw_reward as Dictionary
+			var mat_id := _normalized_mat_id(str(reward.get("id", reward.get("mat", ""))))
+			if MAT_COLLECTION_DEFS.has(mat_id):
+				var next_reward := reward.duplicate(true)
+				next_reward["id"] = mat_id
+				normalized.append(next_reward)
+	elif typeof(rewards) == TYPE_DICTIONARY:
+		for raw_mat_id in (rewards as Dictionary).keys():
+			var mat_id := _normalized_mat_id(str(raw_mat_id))
+			if not MAT_COLLECTION_DEFS.has(mat_id):
+				continue
+			var amount_value := float((rewards as Dictionary).get(raw_mat_id, 0.0))
+			normalized.append({"id": mat_id, "min": amount_value, "max": amount_value})
+	return normalized
+
+
+func _action_has_mat_rewards(action: Dictionary) -> bool:
+	return not _action_mat_reward_defs(action).is_empty()
+
+
+func _roll_action_mat_rewards(action: Dictionary) -> Array:
+	var rolled := []
+	for raw_reward in _action_mat_reward_defs(action):
+		var reward := raw_reward as Dictionary
+		var mat_id := str(reward.get("id", ""))
+		var chance := clampf(float(reward.get("chance", 1.0)), 0.0, 1.0)
+		if randf() > chance:
+			rolled.append({"id": mat_id, "amount": 0.0})
+			continue
+		var min_amount := maxf(0.0, float(reward.get("min", reward.get("amount", 0.0))))
+		var max_amount := maxf(min_amount, float(reward.get("max", reward.get("amount", min_amount))))
+		var amount := randf_range(min_amount, max_amount)
+		if bool(reward.get("whole", false)):
+			amount = floor(amount + 0.0001)
+		if bool(reward.get("allow_zero", true)) and min_amount <= 0.0 and max_amount > 0.0 and randf() < float(reward.get("zero_chance", 0.0)):
+			amount = 0.0
+		rolled.append({"id": mat_id, "amount": maxf(0.0, amount)})
+	return rolled
+
+
+func _award_action_mat_rewards(action: Dictionary) -> Array:
+	var awarded := []
+	for raw_roll in _roll_action_mat_rewards(action):
+		var roll := raw_roll as Dictionary
+		var mat_id := str(roll.get("id", ""))
+		var amount := maxf(0.0, float(roll.get("amount", 0.0)))
+		if amount > 0.0001:
+			_add_mat_amount(mat_id, amount)
+		awarded.append({"id": mat_id, "amount": amount})
+	return awarded
+
+
+func _mat_reward_result_text(awarded_mats: Array) -> String:
+	var parts := []
+	for raw_reward in awarded_mats:
+		if typeof(raw_reward) != TYPE_DICTIONARY:
+			continue
+		var reward := raw_reward as Dictionary
+		var mat_id := str(reward.get("id", ""))
+		var amount := maxf(0.0, float(reward.get("amount", 0.0)))
+		if amount <= 0.0001:
+			continue
+		parts.append("+%s %s" % [_mat_amount_text(mat_id, amount), _mat_name(mat_id)])
+	if parts.is_empty():
+		return ""
+	return ", ".join(parts)
+
+
 func _process_action(delta: float) -> void:
 	_process_canceled_action_progress(delta)
+	_process_activity_queue_runtime()
 	if running_skill_id.is_empty():
 		if _action_opportunity_frame_work_needed():
 			_process_action_opportunity_boost(delta)
@@ -41169,7 +42746,7 @@ func _process_action(delta: float) -> void:
 	var active_key := _action_key(running_skill_id, running_action_id)
 	var fishing_rework_attempt := _fishing_rework_active_for_skill(running_skill_id) and not _is_event_action(action)
 	var cost := _effective_stamina(running_skill_id, action)
-	if not fishing_rework_attempt:
+	if not fishing_rework_attempt and not activity_queue_running:
 		_auto_eat_fish_for_action(running_skill_id, cost, detail_regen_circle, false)
 	var has_stamina_for_action := true if fishing_rework_attempt else _stamina_value(running_skill_id) + 0.0001 >= cost
 	var base_speed_mult := _smoothed_action_progress_speed_multiplier(active_key, _action_progress_speed_multiplier(running_skill_id, action, has_stamina_for_action), delta)
@@ -41252,10 +42829,14 @@ func _process_action(delta: float) -> void:
 		var any_reward_skill_level_up := _any_reward_skill_leveled_up(affected_reward_skill_ids, old_reward_skill_levels)
 		_sync_passive_module_unlocks(_unix_now())
 		if plank_bonus_used:
-			log_currency = maxi(0, log_currency - 1)
+			_spend_mat_amount("softwood", 1.0)
+		var awarded_mats := _award_action_mat_rewards(action)
+		var mat_result_text := _mat_reward_result_text(awarded_mats)
 		last_result = _xp_reward_result_sentence(xp_reward_map, running_skill_id, str(action["name"]))
 		if plank_bonus_used:
-			last_result += " Plank boost used 1 log."
+			last_result += " Plank boost used 1 Softwood."
+		if not mat_result_text.is_empty():
+			last_result += " %s." % mat_result_text
 		if mega_crit:
 			last_result += " MEGA CRIT!!!! 9x XP."
 		elif xp_crit:
@@ -41268,6 +42849,7 @@ func _process_action(delta: float) -> void:
 		if not new_global_buffs.is_empty():
 			last_result += " " + " ".join(new_global_buffs)
 		_play_action_feedback(reward_key, true, xp_reward, mastery_reward, xp_crit, mega_crit, xp_reward_map)
+		_play_mat_collection_feedback(reward_key, awarded_mats)
 		if plank_bonus_used:
 			_play_build_log_spend_feedback(reward_key)
 		for achievement in _newly_completed_achievements(completed_achievements_before):
@@ -41332,11 +42914,11 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		_sync_passive_module_unlocks(_unix_now())
 		var log_reward := _temporary_event_roll_log_reward(action)
 		if log_reward > 0:
-			log_currency += log_reward
+			_add_mat_amount("softwood", float(log_reward))
 		var xp_reward := _reward_map_total(xp_reward_map)
 		last_result = "Event complete: %s" % _xp_reward_result_sentence(xp_reward_map, skill_id, str(action.get("name", "Event")))
 		if log_reward > 0:
-			last_result += " +%s logs." % _format_compact_number(float(log_reward), 4)
+			last_result += " +%s Softwood." % _format_compact_number(float(log_reward), 4)
 		_play_action_feedback(reward_key, true, xp_reward, 0.0, false, false, xp_reward_map)
 		for achievement in _newly_completed_achievements(completed_achievements_before):
 			_show_achievement_unlocked(achievement)
@@ -41420,7 +43002,7 @@ func _action_completion_could_change_visible_bonuses(skill_id: String, action_id
 func _max_action_completion_xp_reward_map(skill_id: String, action: Dictionary) -> Dictionary:
 	if _fishing_rework_active_for_skill(skill_id) and not _is_event_action(action):
 		return {skill_id: _fishing_flat_xp_reward(action, skill_id)}
-	var force_plank_bonus := skill_id == "build" and plank_boost_enabled and log_currency > 0
+	var force_plank_bonus := skill_id == "build" and plank_boost_enabled and _mat_amount("softwood") >= 1.0
 	return _completion_xp_reward_map(action, skill_id, force_plank_bonus, false, true, false)
 
 
@@ -41919,6 +43501,7 @@ func _apply_stamina_regen_seconds_except(seconds: float, allow_gauge_boost := fa
 			stamina_bank[skill_id] = 0.0
 			continue
 		var regen_delta := seconds * (1.0 + _hub_pond_regen_bonus())
+		regen_delta *= _honey_stamina_regen_multiplier()
 		if allow_gauge_boost and skill_id == stamina_gauge_boost_skill_id:
 			regen_delta *= stamina_gauge_regen_multiplier
 		if allow_gauge_boost and skill_id == action_opportunity_regen_skill_id and action_opportunity_regen_seconds > 0.0:
@@ -42168,14 +43751,16 @@ func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant 
 	var stamina_value := _stamina(skill_id)
 	var stamina_decimal_fraction := _stamina_fraction(skill_id)
 	var circle_value := _stamina_regen_fraction(skill_id)
-	circle.set_theme_color(_skill_theme_color(skill_id))
+	circle.set_theme_color(_stamina_regen_circle_color(skill_id))
 	circle.set_show_decimal(show_stamina_decimal)
 	circle.set_stamina(stamina_value, maximum, instant, stamina_decimal_fraction)
 	circle.set_value(circle_value, instant)
 
 
-func _start_action(skill_id: String, action_id: String, select_page := true, respect_input_guards := true) -> bool:
+func _start_action(skill_id: String, action_id: String, select_page := true, respect_input_guards := true, from_activity_queue := false) -> bool:
 	_disarm_reset_data_confirmation()
+	if not from_activity_queue and activity_queue_running:
+		_stop_activity_queue_runtime(false)
 	if respect_input_guards:
 		if _skill_swipe_suppresses_button_action():
 			return false
@@ -42227,17 +43812,20 @@ func _start_action(skill_id: String, action_id: String, select_page := true, res
 		_record_music_flow_start()
 	var action_key := _action_key(skill_id, action_id)
 	_pop_activity_button(action_key)
+	_sync_visible_mat_collection_for_action(skill_id, action_id, true)
 	if _fishing_rework_active_for_skill(skill_id) and not _is_event_action(action):
 		var tool_warning := _fishing_tool_warning_text(action_id)
 		if tool_warning.is_empty():
 			_set_result("%s started." % action["name"])
 		else:
 			_set_result("%s started. %s: %s is a poor fit here." % [action["name"], tool_warning, _fishing_tool_label(equipped_fishing_tool_id)])
-	elif not _auto_eat_fish_for_action(skill_id, _effective_stamina(skill_id, action), detail_regen_circle, false):
+	elif (not from_activity_queue) and not _auto_eat_fish_for_action(skill_id, _effective_stamina(skill_id, action), detail_regen_circle, false):
 		_set_result(_low_stamina_training_text(action))
 		_float_tired_activity_feedback(action_key)
 		if _stamina(skill_id) <= 0:
 			tired_activity_zero_float_action_key = action_key
+	elif from_activity_queue and _stamina_value(skill_id) + 0.0001 < _effective_stamina(skill_id, action):
+		_set_result(_low_stamina_training_text(action))
 	else:
 		_set_result("%s started." % action["name"])
 	_record_activity_start_for_tips()
@@ -43165,10 +44753,20 @@ func _show_skills_module() -> void:
 		return
 	if not _top_level_nav_allowed("skill"):
 		return
-	var can_reveal_current_skill_page := current_screen == "home"
+	var previous_screen := current_screen
+	var can_reveal_current_skill_page := previous_screen == "home" or previous_screen == "achievements"
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
-	_select_launch_skill_page()
+		if bottom_nav_open_close_return_to_skill_active:
+			if not settings_return_skill_id.is_empty() and _known_skill_id(settings_return_skill_id):
+				selected_skill_id = settings_return_skill_id
+			current_screen = "skill"
+		else:
+			_select_launch_skill_page()
+	elif not _known_skill_id(selected_skill_id):
+		_select_launch_skill_page()
+	else:
+		current_screen = "skill"
 	if _onboarding_path_active():
 		_discard_skill_detail_cache_entry(_skill_detail_cache_key(selected_skill_id))
 	if can_reveal_current_skill_page and not _onboarding_path_active():
@@ -45402,6 +47000,116 @@ func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_a
 		_float_mastery_bar(self, mastery_bar, mastery_amount, _card_mastery_progress_pct(card))
 
 
+func _play_mat_collection_feedback(key: String, awarded_mats: Array) -> void:
+	if awarded_mats.is_empty() or not _skill_action_reward_feedback_visible():
+		return
+	var card := _reward_feedback_card_for_key(key)
+	if card.is_empty():
+		return
+	var art := _valid_control_ref(card.get("art"))
+	if art == null:
+		art = _valid_control_ref(card.get("art_panel"))
+	var collection := card.get("mat_collection", {}) as Dictionary
+	if art == null or collection.is_empty():
+		return
+	var modules := collection.get("modules", {}) as Dictionary
+	var index := 0
+	for raw_reward in awarded_mats:
+		if typeof(raw_reward) != TYPE_DICTIONARY:
+			continue
+		var reward := raw_reward as Dictionary
+		var mat_id := str(reward.get("id", ""))
+		var amount := maxf(0.0, float(reward.get("amount", 0.0)))
+		if amount <= 0.0001:
+			continue
+		var module := modules.get(mat_id) as Control
+		if module == null or not is_instance_valid(module):
+			continue
+		_spawn_mat_collection_flyer(art, module, mat_id, index)
+		_pulse_mat_collection_module(module, index)
+		index += 1
+
+
+func _spawn_mat_collection_flyer(source: Control, target: Control, mat_id: String, index: int) -> void:
+	if source == null or target == null or not is_instance_valid(source) or not is_instance_valid(target):
+		return
+	var flyer := TextureRect.new()
+	flyer.texture = _texture_or_visual_fallback(_mat_icon_path(mat_id))
+	flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flyer.z_index = REWARD_FLOAT_Z + 16
+	flyer.z_as_relative = false
+	flyer.size = Vector2(104, 104)
+	flyer.pivot_offset = flyer.size * 0.5
+	var source_rect := source.get_global_rect()
+	var target_rect := target.get_global_rect()
+	var start := source_rect.get_center() - flyer.size * 0.5 + Vector2(randf_range(-34.0, 34.0), randf_range(-26.0, 18.0))
+	var end := target_rect.get_center() - flyer.size * 0.5 + Vector2(randf_range(-22.0, 22.0), randf_range(-18.0, 18.0))
+	var travel := end - start
+	var min_arc_x := minf(start.x, end.x)
+	var max_arc_x := maxf(start.x, end.x)
+	var midpoint := (start + end) * 0.5
+	var screen_center_x := get_viewport_rect().size.x * 0.5 - flyer.size.x * 0.5
+	var center_pull_x := lerpf(midpoint.x, screen_center_x, 0.36)
+	var arc_control_x := clampf(center_pull_x + randf_range(-42.0, 42.0), min_arc_x, max_arc_x)
+	var arc_lift := maxf(190.0, minf(360.0, travel.length() * randf_range(0.32, 0.48)))
+	var arc_control := Vector2(arc_control_x, minf(start.y, end.y) - arc_lift)
+	flyer.position = start
+	flyer.scale = Vector2(0.62, 0.62)
+	flyer.rotation_degrees = randf_range(-12.0, 12.0)
+	flyer.modulate = Color(1, 1, 1, 0.0)
+	add_child(flyer)
+	var tween := create_tween()
+	flyer.set_meta("mat_flyer_tween", tween)
+	tween.set_parallel(true)
+	var delay := float(index) * 0.055
+	tween.tween_property(flyer, "modulate:a", 1.0, 0.08).set_delay(delay)
+	tween.tween_property(flyer, "scale", Vector2(1.08, 1.08), 0.16).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_method(
+		_apply_mat_collection_flyer_arc.bind(flyer.get_instance_id(), start, arc_control, end, flyer.rotation_degrees, flyer.rotation_degrees + randf_range(-34.0, 34.0)),
+		0.0,
+		1.0,
+		MAT_COLLECTION_FLYER_ARC_SECONDS
+	).set_delay(delay + 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tween.tween_property(flyer, "scale", Vector2(0.34, 0.34), 0.22).set_delay(delay + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.78).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_property(flyer, "modulate:a", 0.0, 0.14).set_delay(delay + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.90)
+	tween.finished.connect(func():
+		if flyer != null and is_instance_valid(flyer):
+			flyer.queue_free()
+	)
+
+
+func _apply_mat_collection_flyer_arc(progress: float, flyer_id: int, start: Vector2, control: Vector2, end: Vector2, start_rotation: float, end_rotation: float) -> void:
+	var flyer := instance_from_id(flyer_id) as Control
+	if flyer == null or not is_instance_valid(flyer):
+		return
+	var t := clampf(progress, 0.0, 1.0)
+	var a := start.lerp(control, t)
+	var b := control.lerp(end, t)
+	flyer.position = a.lerp(b, t)
+	flyer.rotation_degrees = lerpf(start_rotation, end_rotation, t)
+
+
+func _pulse_mat_collection_module(module: Control, index: int) -> void:
+	if module == null or not is_instance_valid(module):
+		return
+	if module.has_meta("mat_pulse_tween"):
+		var old_tween := module.get_meta("mat_pulse_tween") as Tween
+		if old_tween != null and old_tween.is_valid():
+			old_tween.kill()
+	module.pivot_offset = module.size * 0.5
+	var tween := create_tween()
+	module.set_meta("mat_pulse_tween", tween)
+	var delay := float(index) * 0.055 + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.82
+	tween.tween_property(module, "scale", Vector2(1.08, 1.08), 0.08).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(module, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(func():
+		if module != null and is_instance_valid(module) and module.has_meta("mat_pulse_tween"):
+			module.remove_meta("mat_pulse_tween")
+	)
+
+
 func _play_action_mastery_feedback(key: String, mastery_amount: float) -> void:
 	if mastery_amount <= 0.0:
 		return
@@ -45448,6 +47156,11 @@ func _visible_action_feedback_card(skill_id: String, action_id: String) -> Dicti
 		var pinned_card := _live_action_card_for_key(pinned_key)
 		if not pinned_card.is_empty():
 			return pinned_card
+	if current_screen == "queue":
+		var queue_key := _queue_page_card_key(_module_ui_key_for_action(skill_id, _action_data(skill_id, action_id)))
+		var queue_card := _live_action_card_for_key(queue_key)
+		if not queue_card.is_empty():
+			return queue_card
 	if current_screen == "menu":
 		if _fishing_rework_active_for_skill(skill_id):
 			var fishing_method_card := _fishing_method_card_for_action(skill_id, action_id)
@@ -45488,7 +47201,7 @@ func _reward_feedback_card_has_live_target(card: Dictionary) -> bool:
 
 
 func _skill_action_reward_feedback_visible() -> bool:
-	return (current_screen == "skill" or current_screen == "menu" or current_screen == "pinned") and not _any_modal_overlay_visible()
+	return (current_screen == "skill" or current_screen == "menu" or current_screen == "pinned" or current_screen == "queue") and not _any_modal_overlay_visible()
 
 
 func _clear_skill_reward_floats() -> void:
@@ -46941,6 +48654,9 @@ func _load_activity_database() -> bool:
 				action_data["sort_unlock"] = int(action.get("sort_unlock", _max_requirement_level_for_load(requirements, unlock_level)))
 				action_data["database_order"] = actions.size()
 				action_data["xp_rewards"] = _normalized_action_xp_rewards_for_load(action, skill_id, xp_value)
+				var mat_rewards := _action_mat_reward_defs(action)
+				if not mat_rewards.is_empty():
+					action_data["mat_rewards"] = mat_rewards
 				action_data["combo_tags"] = _normalized_string_array_for_load(action.get("combo_tags", []))
 				action_data["display_tags"] = _normalized_string_array_for_load(action.get("display_tags", action.get("tags", [])))
 				var event_metadata := _normalized_event_metadata_for_load(action.get("event", {}))
@@ -47562,7 +49278,7 @@ func _fishing_detail_render_signature() -> Array:
 		"rod-offer:%s:%s" % [str(fishing_rod_collected), str(_fishing_rod_offer_available())],
 		"reinforced-rod-offer:%s:%s" % [str(fishing_reinforced_rod_collected), str(_fishing_reinforced_rod_offer_available())],
 		"star-rod-offer:%s:%s" % [str(fishing_star_rod_collected), str(_fishing_star_rod_offer_available())],
-		"boat-offer:%s:%s:%s:%s" % [str(fishing_boat_built), str(_fishing_boat_offer_available()), str(_skill_level("build")), str(log_currency)],
+		"boat-offer:%s:%s:%s:%s" % [str(fishing_boat_built), str(_fishing_boat_offer_available()), str(_skill_level("build")), str(_mat_amount("softwood"))],
 		"mirror-offer:%s:%s" % [str(fishing_mirror_collected), str(_fishing_mirror_offer_available())],
 	]
 	for action in _visible_actions_for_skill("fishing"):
@@ -50189,6 +51905,12 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		method_slots[action_id] = method_card
 
 	stat_hit_buttons = _fishing_area_stat_hit_buttons(pop_card, skill_id, area_key, method_slots.size())
+	var queue_overlay_host: Control = null
+	var selected_method_card := method_slots.get(selected_id, {}) as Dictionary
+	if not selected_method_card.is_empty():
+		queue_overlay_host = _valid_control_ref(selected_method_card.get("method_image_hit_control", null))
+		if queue_overlay_host == null:
+			queue_overlay_host = _valid_control_ref(selected_method_card.get("art_panel", null))
 
 	var area_card := {
 		"is_fishing_area": true,
@@ -50220,6 +51942,7 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		"method_row": method_row,
 		"method_slot": method_slot,
 		"method_slots": method_slots,
+		"queue_overlay_host": queue_overlay_host,
 		"selected_action_id": selected_id,
 		"status": status,
 	}
@@ -50718,16 +52441,16 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 
 	var boat_art := _image("res://assets/content/fishing/tools/tool-boat.png", Vector2(520, 360))
 	boat_art.position = Vector2(20, 10)
-	var can_build := _skill_level("build") >= FISHING_BOAT_BUILD_REQUIRED_LEVEL and log_currency >= FISHING_BOAT_OFFER_COST
+	var can_build := _skill_level("build") >= FISHING_BOAT_BUILD_REQUIRED_LEVEL and _mat_amount("softwood") >= float(FISHING_BOAT_OFFER_COST)
 	boat_art.modulate = _fishing_offer_art_modulate(can_build)
 	boat_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boat_button.add_child(boat_art)
 
-	var hint_text := "Build for %s logs" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3)
+	var hint_text := "Build for %s Softwood" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3)
 	if _skill_level("build") < FISHING_BOAT_BUILD_REQUIRED_LEVEL:
 		hint_text = "Requires Building Lv %s" % FISHING_BOAT_BUILD_REQUIRED_LEVEL
-	elif log_currency < FISHING_BOAT_OFFER_COST:
-		hint_text = "%s logs needed" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3)
+	elif _mat_amount("softwood") < float(FISHING_BOAT_OFFER_COST):
+		hint_text = "%s Softwood needed" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3)
 	var hint := _label(hint_text, 68, Color.WHITE if can_build else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
 	hint.add_theme_color_override("font_outline_color", COLOR_INK)
 	hint.add_theme_constant_override("outline_size", 20)
@@ -51008,12 +52731,12 @@ func _on_fishing_boat_offer_pressed(boat_button: Control) -> void:
 			_float_reward(boat_button, boat_button, "Building Lv %s required" % FISHING_BOAT_BUILD_REQUIRED_LEVEL, 48, Color("#ffd95a"), Vector2(0, -40), Vector2(0, -150), 0.0)
 		_set_result("Building Lv %s required to build the boat." % FISHING_BOAT_BUILD_REQUIRED_LEVEL)
 		return
-	if log_currency < FISHING_BOAT_OFFER_COST:
+	if _mat_amount("softwood") < float(FISHING_BOAT_OFFER_COST):
 		if boat_button != null and is_instance_valid(boat_button):
-			_float_reward(boat_button, boat_button, "Need %s logs" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3), 50, Color("#ffd95a"), Vector2(0, -40), Vector2(0, -150), 0.0)
-		_set_result("Need %s logs for the boat." % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3))
+			_float_reward(boat_button, boat_button, "Need %s Softwood" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3), 50, Color("#ffd95a"), Vector2(0, -40), Vector2(0, -150), 0.0)
+		_set_result("Need %s Softwood for the boat." % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3))
 		return
-	log_currency = maxi(0, log_currency - FISHING_BOAT_OFFER_COST)
+	_spend_mat_amount("softwood", float(FISHING_BOAT_OFFER_COST))
 	fishing_boat_built = true
 	save_game()
 	if boat_button != null and is_instance_valid(boat_button):
@@ -52165,14 +53888,27 @@ func _on_fishing_method_button_input(
 			and not _detail_actions_scroll_suppresses_child_click()
 			and not _skill_swipe_suppresses_button_action()
 		):
-			_on_fishing_method_pressed(skill_id, action_id, area_key, owner_area_pop_instance_id)
+			var method_card := _fishing_method_card_for_action(skill_id, action_id)
+			if queue_selection_mode:
+				var owner_area_card := _fishing_area_card_for_pop_instance_id(owner_area_pop_instance_id)
+				if owner_area_card.is_empty():
+					_queue_selection_toggle_from_card(method_card)
+				else:
+					_queue_selection_toggle_from_card(owner_area_card)
+			elif current_screen == "queue":
+				var owner_area_card := _fishing_area_card_for_pop_instance_id(owner_area_pop_instance_id)
+				var module_key := _activity_queue_module_key_for_card(owner_area_card if not owner_area_card.is_empty() else method_card)
+				if not module_key.is_empty():
+					_start_activity_queue_from_key(module_key)
+			else:
+				_on_fishing_method_pressed(skill_id, action_id, area_key, owner_area_pop_instance_id)
 		get_viewport().set_input_as_handled()
 		return true
 	return false
 
 
 func _route_fishing_method_button_global_input(event: InputEvent) -> bool:
-	if current_screen != "skill" and current_screen != "pinned":
+	if current_screen != "skill" and current_screen != "pinned" and current_screen != "queue":
 		return false
 	if current_screen == "skill" and selected_skill_id != "fishing":
 		return false
@@ -52221,7 +53957,7 @@ func _route_fishing_method_button_global_input(event: InputEvent) -> bool:
 
 
 func _route_fishing_location_image_priority_press(event: InputEvent) -> bool:
-	if current_screen != "skill" and current_screen != "pinned":
+	if current_screen != "skill" and current_screen != "pinned" and current_screen != "queue":
 		return false
 	if current_screen == "skill" and selected_skill_id != "fishing":
 		return false
@@ -52397,6 +54133,14 @@ func _on_fishing_location_pressed(skill_id: String, area_id: String, location_id
 		area_card = _fishing_area_card_for_action(skill_id, action_id)
 	if not area_card.is_empty():
 		_apply_fishing_area_selection(area_card, action_id, false)
+		if queue_selection_mode:
+			_queue_selection_toggle_from_card(area_card)
+			return
+		if current_screen == "queue":
+			var module_key := _activity_queue_module_key_for_card(area_card)
+			if not module_key.is_empty():
+				_start_activity_queue_from_key(module_key)
+			return
 	var method_card := _fishing_method_card_for_action(skill_id, action_id)
 	save_game()
 	if not method_card.is_empty():
@@ -52413,6 +54157,14 @@ func _on_fishing_area_card_pressed(skill_id: String, area_key: String) -> void:
 		return
 	var action_id := str(area_card.get("selected_action_id", ""))
 	if action_id.is_empty():
+		return
+	if queue_selection_mode:
+		_queue_selection_toggle_from_card(area_card)
+		return
+	if current_screen == "queue":
+		var module_key := _activity_queue_module_key_for_card(area_card)
+		if not module_key.is_empty():
+			_start_activity_queue_from_key(module_key)
 		return
 	var method_card := _fishing_method_card_for_action(skill_id, action_id)
 	if not method_card.is_empty():
@@ -52638,6 +54390,112 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 		if running and progress_target + 6.0 < progress_rail.value:
 			progress_instant = true
 		_set_bar(progress_rail, progress_target, delta, progress_instant)
+	_sync_mat_collection_card(card, running, instant)
+
+
+func _update_detail_lazy_entry_height_for_card(card: Dictionary, height: float) -> void:
+	var action_id := str(card.get("action_id", ""))
+	if action_id.is_empty():
+		return
+	var lazy_entry := _detail_lazy_entry_for_track_id(action_id)
+	if not lazy_entry.is_empty():
+		lazy_entry["height"] = maxf(1.0, height)
+
+
+func _apply_mat_collection_layout_height(value: float, entry_id: int, action_id: String) -> void:
+	var layout_height := maxf(1.0, value)
+	var entry := instance_from_id(entry_id) as Control if entry_id != 0 else null
+	if entry != null and is_instance_valid(entry):
+		entry.custom_minimum_size.y = layout_height
+		entry.size.y = layout_height
+		entry.update_minimum_size()
+		var entry_parent := entry.get_parent() as Container
+		if entry_parent != null:
+			entry_parent.queue_sort()
+	if not action_id.is_empty():
+		var lazy_entry := _detail_lazy_entry_for_track_id(action_id)
+		if not lazy_entry.is_empty():
+			lazy_entry["height"] = layout_height
+
+
+func _clear_mat_collection_height_tween_meta(card_root_id: int) -> void:
+	var card_root := instance_from_id(card_root_id) as Control if card_root_id != 0 else null
+	if card_root != null and is_instance_valid(card_root) and card_root.has_meta("mat_collection_height_tween"):
+		card_root.remove_meta("mat_collection_height_tween")
+
+
+func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false) -> void:
+	var collection := card.get("mat_collection", {}) as Dictionary
+	if collection.is_empty():
+		return
+	var card_root := card.get("root") as Control
+	var collapsed := card_root != null and is_instance_valid(card_root) and bool(card_root.get_meta("module_ui_collapsed_squeeze", false))
+	var visual_card_height := _module_collapsed_squeeze_height() if collapsed else _activity_card_root_height(bool(card.get("bonus_expanded", false)))
+	var target_height := visual_card_height + (MAT_COLLECTION_AREA_HEIGHT if running else 0.0)
+	_sync_mat_collection_row_position(card, visual_card_height)
+	var entry := card.get("entry") as Control
+	var entry_id := entry.get_instance_id() if entry != null and is_instance_valid(entry) else 0
+	var action_id := str(card.get("action_id", ""))
+	var current_height := target_height
+	if entry != null and is_instance_valid(entry):
+		current_height = maxf(entry.custom_minimum_size.y, entry.size.y)
+	elif card_root != null and is_instance_valid(card_root):
+		current_height = maxf(card_root.custom_minimum_size.y, card_root.size.y)
+	if absf(current_height - target_height) > 0.5:
+		if card_root != null and is_instance_valid(card_root) and card_root.has_meta("mat_collection_height_tween"):
+			var old_height_tween := card_root.get_meta("mat_collection_height_tween") as Tween
+			if old_height_tween != null and old_height_tween.is_valid():
+				old_height_tween.kill()
+			card_root.remove_meta("mat_collection_height_tween")
+		if instant or card_root == null or not is_instance_valid(card_root):
+			_apply_mat_collection_layout_height(target_height, entry_id, action_id)
+		else:
+			var height_tween := card_root.create_tween()
+			card_root.set_meta("mat_collection_height_tween", height_tween)
+			height_tween.tween_method(Callable(self, "_apply_mat_collection_layout_height").bind(entry_id, action_id), current_height, target_height, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
+			height_tween.finished.connect(Callable(self, "_clear_mat_collection_height_tween_meta").bind(card_root.get_instance_id()))
+	var root := collection.get("root") as Control
+	if root == null or not is_instance_valid(root):
+		return
+	var modules := collection.get("modules", {}) as Dictionary
+	for raw_mat_id in modules.keys():
+		var mat_id := str(raw_mat_id)
+		var module := modules.get(raw_mat_id) as Control
+		if module == null or not is_instance_valid(module):
+			continue
+		var amount_label_id := int(module.get_meta("amount_label_id", 0))
+		var amount_label := instance_from_id(amount_label_id) as Label
+		if amount_label != null and is_instance_valid(amount_label):
+			_set_label_text_if_changed(amount_label, _mat_amount_text(mat_id))
+	if bool(collection.get("visible", false)) == running and not instant:
+		return
+	collection["visible"] = running
+	card["mat_collection"] = collection
+	if root.has_meta("mat_collection_tween"):
+		var old_tween := root.get_meta("mat_collection_tween") as Tween
+		if old_tween != null and old_tween.is_valid():
+			old_tween.kill()
+		root.remove_meta("mat_collection_tween")
+	if instant:
+		root.modulate.a = 1.0 if running else 0.0
+		root.scale = Vector2.ONE if running else Vector2(0.94, 0.94)
+		return
+	var tween := create_tween()
+	root.set_meta("mat_collection_tween", tween)
+	tween.set_parallel(true)
+	tween.tween_property(root, "modulate:a", 1.0 if running else 0.0, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
+	tween.tween_property(root, "scale", Vector2.ONE if running else Vector2(0.94, 0.94), MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_BACK if running else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
+	tween.finished.connect(func():
+		if root != null and is_instance_valid(root) and root.has_meta("mat_collection_tween"):
+			root.remove_meta("mat_collection_tween")
+	)
+
+
+func _sync_visible_mat_collection_for_action(skill_id: String, action_id: String, running: bool) -> void:
+	var card := _visible_action_feedback_card(skill_id, action_id)
+	if card.is_empty():
+		return
+	_sync_mat_collection_card(card, running, false)
 
 
 func _clear_fishing_catch_burst(catch_burst: Control) -> void:
@@ -52951,6 +54809,7 @@ func _init_state() -> void:
 	stamina_bank.clear()
 	canceled_action_progress_by_key.clear()
 	log_currency = 0
+	mat_wallet.clear()
 	fish_currency = 0.0
 	fish_currency_ever_earned = false
 	auto_eat_fish_enabled_by_skill.clear()
@@ -53309,6 +55168,10 @@ func _mark_save_dirty(reason := "") -> void:
 
 
 func save_game() -> void:
+	if OS.get_environment("IDLE_ELITE_DISABLE_SAVE_WRITES") == "1":
+		save_dirty = false
+		save_dirty_reason = ""
+		return
 	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if file == null:
 		var open_error := FileAccess.get_open_error()
@@ -53346,6 +55209,7 @@ func _save_payload(now: int) -> Dictionary:
 		"mastery": _mastery_for_save(),
 		"stamina": _stamina_for_save(),
 		"stamina_bank": _stamina_bank_for_save(),
+		"mats": _mats_for_save(),
 		"log_currency": _log_currency_for_save(),
 		"fish_currency": _fish_currency_for_save(),
 		"fish_currency_ever_earned": fish_currency_ever_earned or fish_currency > 0.0,
@@ -53391,6 +55255,7 @@ func _save_payload(now: int) -> Dictionary:
 		"running_skill_id": _running_skill_id_for_save(),
 		"running_action_id": _running_action_id_for_save(),
 		"action_progress": _action_progress_for_save(),
+		"activity_queue": _activity_queue_for_save(),
 		"module_ui_pinned_order": _module_ui_pinned_order_for_save(),
 		"module_ui_pin_color_paths": _module_ui_pin_color_paths_for_save(),
 		"module_ui_collapsed": _module_ui_collapsed_for_save(),
@@ -53834,7 +55699,7 @@ func _grant_offline_action_completion(skill_id: String, action_id: String, actio
 			mastery_gained = mastery_reward
 			_register_silver_opportunity_tip_anchor(skill_id, action_id, old_mastery_level, _mastery_level(skill_id, action_id))
 		if plank_bonus_used:
-			log_currency = maxi(0, log_currency - 1)
+			_spend_mat_amount("softwood", 1.0)
 			logs_spent = 1
 		_record_hub_mission_action_completion(skill_id, action_id)
 		if not defer_recalc:
@@ -54002,7 +55867,7 @@ func _set_offline_result_text(offline_seconds: float, active_result: Dictionary)
 		parts.append("+%s food" % _fish_currency_display_text(fish_total))
 	var logs_spent := int(active_result.get("logs_spent", 0))
 	if logs_spent > 0:
-		parts.append("%s logs spent" % logs_spent)
+		parts.append("%s Softwood spent" % logs_spent)
 	if bool(active_result.get("convergence", false)):
 		parts.append("all-skill shrine XP")
 	else:
@@ -54629,6 +56494,7 @@ func _load_game_core(data: Dictionary) -> void:
 				stamina_bank[skill_id] = float(loaded_bank[skill_id])
 				_sync_stamina_bank(str(skill_id))
 	log_currency = maxi(0, int(data.get("log_currency", log_currency)))
+	_restore_mats_from_save(data)
 	if _save_needs_fishing_restore(data):
 		_restore_fishing_state_from_save(data)
 	offline_progress_enabled = bool(data.get("offline_progress_enabled", true))
@@ -54637,6 +56503,7 @@ func _load_game_core(data: Dictionary) -> void:
 	auto_unlock_lockpads_enabled = bool(data.get("auto_unlock_lockpads_enabled", false))
 	_restore_nav_symbol_seen_ids(data.get("nav_symbol_seen_ids", {}))
 	_restore_module_ui_preferences_from_save(data)
+	_restore_activity_queue_from_save(data)
 	shop_rate_prompt_dismissed = bool(data.get("shop_rate_prompt_dismissed", false))
 	god_mode_enabled = bool(data.get("god_mode_enabled", false)) and _god_mode_available()
 	god_mode_save_tainted = bool(data.get("god_mode_save_tainted", false))
@@ -55799,6 +57666,18 @@ func _stamina_regen_fraction(skill_id: String) -> float:
 	return clampf(float(stamina_bank.get(skill_id, 0.0)) / STAMINA_REGEN_SECONDS, 0.0, 1.0)
 
 
+func _player_has_stamina_honey() -> bool:
+	return _mat_amount("honey") > 1.0
+
+
+func _honey_stamina_regen_multiplier() -> float:
+	return HONEY_STAMINA_REGEN_MULT if _player_has_stamina_honey() else 1.0
+
+
+func _stamina_regen_circle_color(skill_id: String) -> Color:
+	return _mat_color("honey") if _player_has_stamina_honey() else _skill_theme_color(skill_id)
+
+
 func _sync_stamina_bank(skill_id: String) -> void:
 	if _stamina_value(skill_id) >= float(_max_stamina(skill_id)) - 0.0001:
 		stamina[skill_id] = float(_max_stamina(skill_id))
@@ -55863,7 +57742,7 @@ func _recalculate_level(skill_id: String, apply_unlocks := true) -> void:
 			if skill_id == "build" and old_level < HUB_UNLOCK_BUILD_LEVEL and level >= HUB_UNLOCK_BUILD_LEVEL:
 				_sync_hub_nav_button(false)
 			_show_visible_skill_level_up_float(skill_id)
-			_play(level_player)
+			_play_level_up_sfx()
 
 
 func _skill_level_for_xp(xp_total: int) -> int:
@@ -57113,10 +58992,10 @@ func _start_convergence_build(module_id: String) -> bool:
 		_set_result("%s building: %s left." % [str(action.get("name", "Shrine")), _format_countdown(_convergence_build_remaining(module_id))])
 		return false
 	var cost := _convergence_log_cost(action)
-	if log_currency < cost:
-		_set_result("%s needs %s logs." % [str(action.get("name", "Shrine")), cost])
+	if _mat_amount("softwood") < float(cost):
+		_set_result("%s needs %s Softwood." % [str(action.get("name", "Shrine")), cost])
 		return false
-	log_currency = maxi(0, log_currency - cost)
+	_spend_mat_amount("softwood", float(cost))
 	state["building"] = true
 	state["built"] = false
 	state["build_started_unix"] = _unix_now()
@@ -57462,7 +59341,7 @@ func _passive_log_currency_text(value: int) -> String:
 
 
 func _plank_bonus_applies(skill_id: String) -> bool:
-	return skill_id == "build" and plank_boost_enabled and log_currency > 0
+	return skill_id == "build" and plank_boost_enabled and _mat_amount("softwood") >= 1.0
 
 
 func _action_stat_value_cache_key(kind: String, skill_id: String, action: Dictionary) -> String:
@@ -57479,7 +59358,7 @@ func _action_stat_value_cache_key(kind: String, skill_id: String, action: Dictio
 		ad_bonus_seconds_remaining > 0.0,
 		equipped_fishing_tool_id,
 		plank_boost_enabled,
-		log_currency > 0,
+		_mat_amount("softwood") >= 1.0,
 		hash(hub_modules),
 		hash(hub_missions),
 		hash(selected_fishing_locations)
@@ -58087,6 +59966,116 @@ func _reconcile_fishing_rod_collection_state() -> void:
 		fishing_rod_collected = true
 	elif fishing_reinforced_rod_collected:
 		fishing_rod_collected = true
+
+
+func _normalized_mat_id(mat_id: String) -> String:
+	var normalized := mat_id.strip_edges().to_lower()
+	if normalized == "logs" or normalized == "log":
+		return "softwood"
+	return normalized
+
+
+func _mat_def(mat_id: String) -> Dictionary:
+	var normalized := _normalized_mat_id(mat_id)
+	return MAT_COLLECTION_DEFS.get(normalized, {}) as Dictionary
+
+
+func _mat_name(mat_id: String) -> String:
+	var def := _mat_def(mat_id)
+	return str(def.get("name", mat_id.capitalize()))
+
+
+func _mat_icon_path(mat_id: String) -> String:
+	var def := _mat_def(mat_id)
+	return str(def.get("icon", LOG_CURRENCY_ICON_TEXTURE))
+
+
+func _mat_background_path(mat_id: String) -> String:
+	var def := _mat_def(mat_id)
+	return str(def.get("background", MAT_COLLECTION_STONE_BACKGROUND_TEXTURE))
+
+
+func _mat_color(mat_id: String) -> Color:
+	var def := _mat_def(mat_id)
+	return def.get("color", Color("#b98245")) as Color
+
+
+func _rounded_mat_amount(mat_id: String, amount: float) -> float:
+	var normalized := _normalized_mat_id(mat_id)
+	if normalized == "scrapwood":
+		return floor(maxf(0.0, amount) * 10.0 + 0.5) / 10.0
+	return maxf(0.0, amount)
+
+
+func _mat_amount(mat_id: String) -> float:
+	var normalized := _normalized_mat_id(mat_id)
+	if normalized == "softwood":
+		return maxf(float(log_currency), float(mat_wallet.get(normalized, 0.0)))
+	return maxf(0.0, float(mat_wallet.get(normalized, 0.0)))
+
+
+func _set_mat_amount(mat_id: String, amount: float) -> void:
+	var normalized := _normalized_mat_id(mat_id)
+	if not MAT_COLLECTION_DEFS.has(normalized):
+		return
+	var safe_amount := _rounded_mat_amount(normalized, amount)
+	mat_wallet[normalized] = safe_amount
+	if normalized == "softwood":
+		log_currency = maxi(0, int(floor(safe_amount + 0.0001)))
+
+
+func _add_mat_amount(mat_id: String, amount: float) -> float:
+	var normalized := _normalized_mat_id(mat_id)
+	if not MAT_COLLECTION_DEFS.has(normalized):
+		return 0.0
+	var gained := _rounded_mat_amount(normalized, amount)
+	_set_mat_amount(normalized, _mat_amount(normalized) + gained)
+	return gained
+
+
+func _spend_mat_amount(mat_id: String, amount: float) -> bool:
+	var normalized := _normalized_mat_id(mat_id)
+	var safe_amount := maxf(0.0, amount)
+	if _mat_amount(normalized) + 0.0001 < safe_amount:
+		return false
+	_set_mat_amount(normalized, _mat_amount(normalized) - safe_amount)
+	return true
+
+
+func _mat_amount_text(mat_id: String, amount: float = -1.0) -> String:
+	var normalized := _normalized_mat_id(mat_id)
+	var value := _mat_amount(normalized) if amount < -0.0001 else maxf(0.0, amount)
+	if normalized == "scrapwood":
+		if value < 1000.0:
+			return _trim_trailing_decimal_zeroes("%.1f" % _rounded_mat_amount(normalized, value))
+		return _format_compact_number(value, 3)
+	return _format_compact_number(floor(value + 0.0001), 3)
+
+
+func _mats_for_save() -> Dictionary:
+	var normalized := {}
+	for raw_mat_id in MAT_COLLECTION_DEFS.keys():
+		var mat_id := str(raw_mat_id)
+		var amount := _mat_amount(mat_id)
+		if amount > 0.0001:
+			normalized[mat_id] = amount
+	return normalized
+
+
+func _restore_mats_from_save(data: Dictionary) -> void:
+	mat_wallet.clear()
+	var loaded = data.get("mats", {})
+	if typeof(loaded) == TYPE_DICTIONARY:
+		for raw_mat_id in (loaded as Dictionary).keys():
+			var mat_id := _normalized_mat_id(str(raw_mat_id))
+			if not MAT_COLLECTION_DEFS.has(mat_id):
+				continue
+			_set_mat_amount(mat_id, float((loaded as Dictionary).get(raw_mat_id, 0.0)))
+	var legacy_logs := maxi(0, int(data.get("log_currency", log_currency)))
+	if legacy_logs > 0 and _mat_amount("softwood") <= 0.0001:
+		_set_mat_amount("softwood", float(legacy_logs))
+	elif _mat_amount("softwood") > 0.0001:
+		log_currency = maxi(0, int(floor(_mat_amount("softwood") + 0.0001)))
 
 
 func _log_currency_for_save() -> int:
@@ -59219,7 +61208,10 @@ func _first_texture_or_visual_fallback(paths: Array) -> Texture2D:
 
 
 func _action_card_background_texture(action: Dictionary) -> Texture2D:
-	return _texture_or_visual_fallback(str(action.get("bg", "")))
+	var bg_path := str(action.get("bg", ""))
+	if bg_path.is_empty():
+		bg_path = str(action.get("background", ""))
+	return _texture_or_visual_fallback(bg_path)
 
 
 func _action_card_background(skill_id: String, action: Dictionary) -> Control:
@@ -59245,7 +61237,7 @@ func _action_card_background(skill_id: String, action: Dictionary) -> Control:
 	bg.crop_top = FISHING_BACKGROUND_CROP_TOP if skill_id == "fishing" else 0.0
 	bg.crop_right = FISHING_BACKGROUND_CROP_RIGHT if skill_id == "fishing" else 0.0
 	bg.art_height = ACTION_CARD_HEIGHT
-	bg.fallback_color = _skill_theme_color(skill_id)
+	bg.fallback_color = _themed_activity_card_fill_color(_skill_theme_color(skill_id))
 	if _is_convergence_action(action):
 		bg.aspect_mode = 2
 		bg.fallback_color = Color("#8baa54")
@@ -61761,6 +63753,8 @@ func _prime_module_utility_nav_button_press_state(button: Button) -> void:
 	var target_active := false
 	if button == pinned_utility_tab:
 		target_active = current_screen != "pinned"
+	elif button == queue_utility_tab:
+		target_active = current_screen != "queue"
 	elif button == skills_utility_tab:
 		target_active = current_screen != "menu"
 	elif button == sort_utility_tab:
@@ -62102,14 +64096,16 @@ func _build_extended_audio() -> void:
 		opportunity_miss_player.volume_db = ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB
 	if level_player == null:
 		level_player = _sfx("res://assets/sfx/level_up_jingle.wav")
+		level_player.volume_db = LEVEL_UP_SFX_VOLUME_DB
 	if medal_player == null:
 		medal_player = _sfx("res://assets/sfx/xp_spark.wav")
+		medal_player.volume_db = MEDAL_REWARD_SFX_VOLUME_DB
 	if bonus_jingle_player == null:
 		bonus_jingle_player = _sfx("res://assets/sfx/xp_spark.wav")
-		bonus_jingle_player.volume_db = -12.0
+		bonus_jingle_player.volume_db = BONUS_JINGLE_SFX_VOLUME_DB
 	if bonus_jingle_echo_player == null:
 		bonus_jingle_echo_player = _sfx("res://assets/sfx/xp_spark.wav")
-		bonus_jingle_echo_player.volume_db = -15.0
+		bonus_jingle_echo_player.volume_db = BONUS_JINGLE_ECHO_SFX_VOLUME_DB
 	if fish_eat_player == null:
 		fish_eat_player = _sfx("res://assets/sfx/xp_spark.wav")
 		fish_eat_player.volume_db = -16.0
@@ -62201,23 +64197,25 @@ func _warm_extended_audio_async() -> void:
 		return
 	if level_player == null:
 		level_player = _sfx("res://assets/sfx/level_up_jingle.wav")
+		level_player.volume_db = LEVEL_UP_SFX_VOLUME_DB
 	last_yield_msec = await _audio_warm_tick(last_yield_msec)
 	if not extended_audio_warming or extended_audio_ready:
 		return
 	if medal_player == null:
 		medal_player = _sfx("res://assets/sfx/xp_spark.wav")
+		medal_player.volume_db = MEDAL_REWARD_SFX_VOLUME_DB
 	last_yield_msec = await _audio_warm_tick(last_yield_msec)
 	if not extended_audio_warming or extended_audio_ready:
 		return
 	if bonus_jingle_player == null:
 		bonus_jingle_player = _sfx("res://assets/sfx/xp_spark.wav")
-		bonus_jingle_player.volume_db = -12.0
+		bonus_jingle_player.volume_db = BONUS_JINGLE_SFX_VOLUME_DB
 	last_yield_msec = await _audio_warm_tick(last_yield_msec)
 	if not extended_audio_warming or extended_audio_ready:
 		return
 	if bonus_jingle_echo_player == null:
 		bonus_jingle_echo_player = _sfx("res://assets/sfx/xp_spark.wav")
-		bonus_jingle_echo_player.volume_db = -15.0
+		bonus_jingle_echo_player.volume_db = BONUS_JINGLE_ECHO_SFX_VOLUME_DB
 	last_yield_msec = await _audio_warm_tick(last_yield_msec)
 	if not extended_audio_warming or extended_audio_ready:
 		return
@@ -62433,6 +64431,92 @@ func _play_with_pitch(player: AudioStreamPlayer, pitch: float) -> void:
 	player.stop()
 	player.pitch_scale = pitch
 	player.play()
+
+
+func _reward_sfx_window_active() -> bool:
+	if Time.get_ticks_msec() <= reward_sfx_exclusive_until_msec:
+		return true
+	reward_sfx_exclusive_priority = 0
+	return false
+
+
+func _reward_sfx_blocks(priority: int) -> bool:
+	return _reward_sfx_window_active() and reward_sfx_exclusive_priority > priority
+
+
+func _mark_reward_sfx_window(priority: int, duration_msec: int) -> void:
+	var now_msec := Time.get_ticks_msec()
+	if now_msec > reward_sfx_exclusive_until_msec or priority >= reward_sfx_exclusive_priority:
+		reward_sfx_exclusive_priority = priority
+		reward_sfx_exclusive_until_msec = now_msec + maxi(0, duration_msec)
+
+
+func _reward_sfx_recently_played(key: String, now_msec: int) -> bool:
+	var last_msec := int(reward_sfx_last_played_msec.get(key, -100000))
+	if now_msec - last_msec < REWARD_SFX_KEY_GAP_MSEC:
+		return true
+	reward_sfx_last_played_msec[key] = now_msec
+	return false
+
+
+func _stop_lower_priority_reward_players(active_player: AudioStreamPlayer = null) -> void:
+	var reward_players := []
+	reward_players.append_array(success_players)
+	reward_players.append_array(crit_success_players)
+	reward_players.append_array([medal_player, bonus_jingle_player, bonus_jingle_echo_player])
+	for player in reward_players:
+		if player == null or player == active_player or not is_instance_valid(player):
+			continue
+		player.stop()
+
+
+func _play_sfx_with_pitch_and_volume(player: AudioStreamPlayer, pitch: float, volume_db: float) -> void:
+	if player == null or not player.is_inside_tree() or not _can_play_audio():
+		return
+	if player != click_player:
+		_ensure_extended_audio()
+	player.stop()
+	player.pitch_scale = pitch
+	player.volume_db = volume_db
+	player.play()
+
+
+func _play_reward_accent(player: AudioStreamPlayer, pitch: float, volume_db: float, priority: int, key: String, duration_msec := REWARD_SFX_EXCLUSIVE_MSEC) -> bool:
+	if not _can_play_audio():
+		return false
+	_ensure_extended_audio()
+	if player == null or not player.is_inside_tree():
+		return false
+	var now_msec := Time.get_ticks_msec()
+	if _reward_sfx_blocks(priority) or _reward_sfx_recently_played(key, now_msec):
+		return false
+	if priority >= REWARD_SFX_PRIORITY_MEDAL:
+		_stop_lower_priority_reward_players(player)
+	_play_sfx_with_pitch_and_volume(player, pitch, volume_db)
+	_mark_reward_sfx_window(priority, duration_msec)
+	return true
+
+
+func _play_level_up_sfx() -> void:
+	_ensure_extended_audio()
+	_play_reward_accent(level_player, 1.0, LEVEL_UP_SFX_VOLUME_DB, REWARD_SFX_PRIORITY_LEVEL, "level")
+
+
+func _play_medal_reward_sfx() -> void:
+	_ensure_extended_audio()
+	_play_reward_accent(medal_player, 1.0, MEDAL_REWARD_SFX_VOLUME_DB, REWARD_SFX_PRIORITY_MEDAL, "medal")
+
+
+func _play_completion_pip_sfx(streak_step: int) -> void:
+	_ensure_extended_audio()
+	if success_players.is_empty() or not _can_play_audio():
+		return
+	var pitch_index := clampi(streak_step, 1, success_players.size()) - 1
+	var player := success_players[pitch_index] as AudioStreamPlayer
+	if player == null or not player.is_inside_tree():
+		return
+	var volume_db := ACTIVITY_SUCCESS_DUCKED_SFX_VOLUME_DB if _reward_sfx_window_active() else ACTIVITY_SUCCESS_SFX_VOLUME_DB
+	_play_sfx_with_pitch_and_volume(player, 1.0, volume_db)
 
 
 func _play_activity_tap_sfx() -> void:
@@ -62737,33 +64821,36 @@ func _play_activity_success_sound(streak_step: int, medal_unlocked: bool, streak
 	if xp_crit:
 		_play_activity_crit_sound(streak_step, mega_crit, crit_chain_count)
 		return
-	if not success_players.is_empty():
-		var pitch_index := clampi(streak_step, 1, success_players.size()) - 1
-		_play(success_players[pitch_index])
+	_play_completion_pip_sfx(streak_step)
 	if streak_bonus:
 		_play_bonus_jingle()
 	elif medal_unlocked:
-		_play(medal_player)
+		_play_medal_reward_sfx()
 
 
 func _play_activity_crit_sound(streak_step: int, mega_crit := false, crit_chain_count := 0) -> void:
+	_ensure_extended_audio()
 	if crit_success_players.is_empty():
 		return
 	var pitch_index := clampi(streak_step, 1, crit_success_players.size()) - 1
 	if mega_crit:
 		var pitch := minf(ACTIVITY_MEGA_CRIT_SFX_PITCH_MAX, ACTIVITY_MEGA_CRIT_SFX_PITCH_START + float(maxi(0, crit_chain_count - 2)) * ACTIVITY_MEGA_CRIT_SFX_PITCH_STEP)
-		_play_with_pitch(crit_success_players[pitch_index], pitch)
+		_play_reward_accent(crit_success_players[pitch_index], pitch, ACTIVITY_CRIT_SFX_VOLUME_DB, REWARD_SFX_PRIORITY_CRIT, "crit")
 		return
-	_play(crit_success_players[pitch_index])
+	_play_reward_accent(crit_success_players[pitch_index], 1.0, ACTIVITY_CRIT_SFX_VOLUME_DB, REWARD_SFX_PRIORITY_CRIT, "crit")
 
 
 func _play_bonus_jingle() -> void:
 	if not _can_play_audio():
 		return
-	_play_with_pitch(bonus_jingle_player, 1.18)
+	if not _play_reward_accent(bonus_jingle_player, 1.18, BONUS_JINGLE_SFX_VOLUME_DB, REWARD_SFX_PRIORITY_BONUS, "bonus", REWARD_SFX_BONUS_EXCLUSIVE_MSEC):
+		return
 	var tween := create_tween()
 	tween.tween_interval(ACTIVITY_BONUS_JINGLE_DELAY)
-	tween.tween_callback(func(): _play_with_pitch(bonus_jingle_echo_player, 1.42))
+	tween.tween_callback(func():
+		if not _reward_sfx_blocks(REWARD_SFX_PRIORITY_BONUS):
+			_play_sfx_with_pitch_and_volume(bonus_jingle_echo_player, 1.42, BONUS_JINGLE_ECHO_SFX_VOLUME_DB)
+	)
 
 
 func _process_music_flow(delta: float) -> void:

@@ -65,10 +65,13 @@ Assert-True ($activateBottomNavMatch.Groups[1].Value -match '_show_skills_module
 $bottomNavCloseMatch = [regex]::Match($main, '(?s)func _bottom_nav_open_close_returns_to_skill\(target_screen: String, source_button: Control\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($bottomNavCloseMatch.Success) "Missing _bottom_nav_open_close_returns_to_skill body for red-X bottom nav routing contract."
 Assert-True ($bottomNavCloseMatch.Groups[1].Value -match 'target_screen == "skill"') "Stats/skills nav button must remain exempt from red-X close routing."
-Assert-True ($bottomNavCloseMatch.Groups[1].Value -match 'NAV_OPEN_CLOSE_ICON_TEXTURE') "Red-X close routing must only apply when the button is showing the approved open-close icon."
+Assert-True ($bottomNavCloseMatch.Groups[1].Value -match '_is_bottom_nav_button\(nav_button\)') "Red-X close routing must only apply to built-in bottom nav buttons."
+Assert-True ($bottomNavCloseMatch.Groups[1].Value -match '_bottom_nav_target_for_button\(nav_button\) != target_screen') "Red-X close routing must confirm the pressed button owns the requested target screen."
 $showSkillsModuleMatch = [regex]::Match($main, '(?s)func _show_skills_module\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($showSkillsModuleMatch.Success) "Missing _show_skills_module body for bottom Skills nav contract."
 Assert-True ($showSkillsModuleMatch.Groups[1].Value -notmatch '_begin_direct_skill_nav_cover\(\)') "Bottom gray Skills nav button must not show the direct cream transition cover."
+Assert-True ($showSkillsModuleMatch.Groups[1].Value -match 'previous_screen == "home" or previous_screen == "achievements"') "Bottom gray Skills nav button must treat Home/Achievements as revealable top-level pages."
+Assert-True ($showSkillsModuleMatch.Groups[1].Value -match 'current_screen = "skill"') "Bottom gray Skills nav button must commit to the selected skill detail screen before rendering."
 $directSkillNavCoverMatch = [regex]::Match($main, '(?s)func _begin_direct_skill_nav_cover\(\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($directSkillNavCoverMatch.Success) "Missing _begin_direct_skill_nav_cover body for direct skill transition contract."
 Assert-True ($directSkillNavCoverMatch.Groups[1].Value -match '_apply_skill_page_cover_bounds\(cover, true\)') "Direct skill transition cover must stop above global chat and bottom nav."

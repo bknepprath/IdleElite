@@ -89,6 +89,9 @@ $leaderboardFetchFunction = $leaderboardFetchFunctionMatch.Value
 $leaderboardFinalizeFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_finalize_fetch_rows\(category_id: String, rows: Array\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_store_fetch_rows)')
 Assert-True ($leaderboardFinalizeFetchFunctionMatch.Success) "Could not locate _leaderboard_finalize_fetch_rows()."
 $leaderboardFinalizeFetchFunction = $leaderboardFinalizeFetchFunctionMatch.Value
+$chatStreamConnectFunctionMatch = [regex]::Match($main, '(?s)func _chat_stream_connect\(force_reconnect := false\) -> void:.*?(?=\r?\n\r?\nfunc _start_chat_stream_poll_timer)')
+Assert-True ($chatStreamConnectFunctionMatch.Success) "Could not locate _chat_stream_connect()."
+$chatStreamConnectFunction = $chatStreamConnectFunctionMatch.Value
 
 Assert-True ($main -match 'const FIREBASE_DATABASE_URL := ""') "Firebase URL must default to blank so fresh builds make no leaderboard network calls."
 Assert-True ($main -match 'const FIREBASE_WEB_API_KEY := ""') "Firebase Web API key must default to blank so fresh builds make no leaderboard auth calls."
@@ -150,7 +153,7 @@ Assert-True ($main -match 'leaderboard_auth_retry_after_unix = maxi\(0, int\(dat
 Assert-True ($main -match '_leaderboard_note_submit_failure') "Leaderboard write failures must use the submit cooldown helper."
 Assert-True ($main -match 'leaderboard_last_submit_unix = _unix_now\(\)') "Leaderboard write failures must update the submit gate to avoid rapid retries."
 Assert-True ($main -match 'Trying again in %s\." % \[message, _format_duration\(float\(LEADERBOARD_SUBMIT_INTERVAL_SECONDS\)\)\]') "Leaderboard write failures must cool down for the 15-minute submit interval."
-Assert-True ($main -match '_leaderboard_authenticated_query') "Authenticated Firebase writes and chat calls must include the Firebase auth token."
+Assert-True ($main -match '_leaderboard_authenticated_query') "Authenticated Firebase writes must include the Firebase auth token."
 Assert-True ($main -notmatch 'WebSocket|WebSocketPeer|connect_to_url') "WebSocket-style realtime transports are not allowed."
 Assert-True ($main -match 'const CHAT_FIREBASE_ROOT := "global_chat/v1"') "Chat must use the expected Firebase root."
 Assert-True ($main -match 'const CHAT_STREAM_RETRY_INTERVAL_SECONDS := 30') "Chat stream reconnects must cool down for at least 30 seconds after failure."
@@ -167,6 +170,7 @@ Assert-True ($main -notmatch 'current_screen = "chat"') "Chat must not be a stan
 Assert-True ($main -match 'func _process_chat_live_sync\(delta: float\) -> void:') "Chat must have an explicit visible-screen live sync loop."
 Assert-True ($main -match '(?s)func _process_chat_live_sync\(delta: float\) -> void:.*?if not _chat_strip_visible_on_current_screen\(\):.*?_chat_stream_disconnect\(false\).*?return') "Chat realtime stream must close when the skills chat strip is not visible."
 Assert-True ($main -match 'var query := "orderBy=%%22created_at%%22&limitToLast=%s" % visible_count') "Chat reads must query by created_at with the active capped visible count."
+Assert-True ($chatStreamConnectFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Chat reads must not start Firebase Auth or append an auth token."
 Assert-True ($main -match 'func _chat_target_visible_count\(\) -> int:') "Chat must switch stream limits by compact strip vs full chat."
 Assert-True ($main -match 'upgrading_visible_count') "Opening full chat must upgrade the compact stream without waiting for the reconnect throttle."
 Assert-True ($main -match '_chat_apply_stream_payload\(parsed as Dictionary, event_name\)') "Chat stream handlers must pass the event type into payload handling."
@@ -261,6 +265,7 @@ Assert-True ((Get-JsonProp (Get-JsonProp $gatePlayer "updated_at") ".validate") 
 Assert-True ($null -ne $chatMessages) "Rules must define global_chat/v1/messages."
 Assert-True ((Get-JsonProp $chatMessages ".read") -match "query.orderByChild == 'created_at'") "Chat reads must require created_at ordering."
 Assert-True ((Get-JsonProp $chatMessages ".read") -match "query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 25") "Chat reads must require an explicit 1..25 limitToLast bound."
+Assert-True ((Get-JsonProp $chatMessages ".read") -notmatch "auth != null") "Chat reads must remain public so viewing messages never depends on Firebase Auth."
 Assert-True (@(Get-JsonProp $chatMessages ".indexOn") -contains "created_at") "Chat messages must be indexed by created_at."
 Assert-True ((Get-JsonProp $chatMessage ".write") -match [regex]::Escape("newData.child('sender_id').val() == auth.uid")) "Chat message creates must be bound to the authenticated anonymous UID."
 Assert-True ((Get-JsonProp $chatMessage ".write") -match "name_claims") "Claimed-name chat message creates must require ownership of the submitted name key."

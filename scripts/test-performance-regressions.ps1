@@ -31,6 +31,7 @@ $activityDatabaseContractTestPath = Join-Path $projectRoot "scripts\check-activi
 $generatedFileHygieneTestPath = Join-Path $projectRoot "scripts\check-generated-file-hygiene.ps1"
 $uiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
 $activityUiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
+$activityDatabasePath = Join-Path $projectRoot "docs\activity-database.json"
 $skillsPagePerformancePath = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 $saveNormalizationPath = Join-Path $projectRoot "scripts\test-save-normalization.ps1"
 $tutorialStartScrollPath = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
@@ -130,6 +131,8 @@ Assert-True (Test-Path -LiteralPath $uiBoundaryContractTestPath) "Missing script
 $uiBoundaryContractTest = Get-Content -LiteralPath $uiBoundaryContractTestPath -Raw
 Assert-True (Test-Path -LiteralPath $activityUiBoundaryContractTestPath) "Missing scripts\check-activity-ui-boundary-contracts.ps1."
 $activityUiBoundaryContractTest = Get-Content -LiteralPath $activityUiBoundaryContractTestPath -Raw
+Assert-True (Test-Path -LiteralPath $activityDatabasePath) "Missing docs\activity-database.json."
+$activityDatabase = Get-Content -LiteralPath $activityDatabasePath -Raw | ConvertFrom-Json
 Assert-True (Test-Path -LiteralPath $skillsPagePerformancePath) "Missing scripts\test-skills-page-performance.ps1."
 $skillsPagePerformance = Get-Content -LiteralPath $skillsPagePerformancePath -Raw
 Assert-True (Test-Path -LiteralPath $saveNormalizationPath) "Missing scripts\test-save-normalization.ps1."
@@ -155,6 +158,15 @@ Assert-True ($main -match 'const ACTION_CARD_FACE_RADIUS := 66\.0') "Action card
 Assert-True ($main -match 'const ACTION_CARD_FACE_BORDER_Z_INDEX := 244') "Action card face borders should draw above progress rails to preserve an uninterrupted stroke."
 Assert-True ($main -match 'const ACTION_CARD_3D_DEPTH_OFFSET := Vector2\(28\.0, 34\.0\)') "Action cards should keep a visible but modest 3D depth slab."
 Assert-True ($main -match 'const ACTION_CARD_3D_PRESS_OFFSET := Vector2\(28\.0, 34\.0\)') "Action card press feedback should seat the face fully onto the 3D depth slab."
+Assert-True ($main -match 'const SCRAPWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/scrapwood\.png"') "Scrapwood mats should use the selected Scrapwood resource icon."
+Assert-True ($main -match 'const SOFTWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/softwood\.png"') "Softwood mats should use the selected single-log Softwood resource icon."
+Assert-True ($main -match 'const HARDWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/hardwood\.png"') "Hardwood mats should use the selected stacked-log Hardwood resource icon."
+Assert-True ($main -match 'const HONEY_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/honey\.png"') "Honey mats should use the selected hand-and-honey icon texture."
+Assert-True ($main -match 'const MAT_COLLECTION_STONE_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-stone\.png"') "Mat collection modules should have the selected stone background asset available."
+Assert-True ($main -match 'const MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-wood\.png"') "Wood-style mat collection modules should have a wood background asset."
+Assert-True ($main -match 'const MAT_COLLECTION_MODULE_SIZE := Vector2\(754, 754\)') "Mat collection modules should be square and match normal action module height."
+Assert-True ($main -match '"cost_currencies": \["softwood", "softwood", "hardwood", "hardwood"\]') "Hub build costs should support early Softwood tiers and later Hardwood tiers."
+Assert-True ($main -match 'func _hub_module_wood_currency_for_level\(module_id: String, level: int\) -> String:') "Hub build costs should resolve wood currency by upgrade tier."
 $viewportBufferMatch = [regex]::Match($main, 'const DETAIL_LAZY_VIEWPORT_BUFFER_PX := ([0-9]+(?:\.[0-9]+)?)')
 Assert-True $viewportBufferMatch.Success "Missing skill detail lazy viewport buffer."
 Assert-True ([double]$viewportBufferMatch.Groups[1].Value -le 120.0) "Skill detail should not mount a large offscreen card buffer while idle."
@@ -269,7 +281,7 @@ $completeTemporaryEventAttempt = Get-FunctionBody -Text $main -Name "_complete_t
 Assert-True ($completeTemporaryEventAttempt -match 'clear_running_action_on_success := true') "Temporary event completion should default to the legacy running-action cleanup for already-running events."
 Assert-True ($completeTemporaryEventAttempt -match 'if clear_running_action_on_success:\s*\r?\n\s*running_skill_id = ""\s*\r?\n\s*running_action_id = ""') "Temporary event completion should clear running state only when explicitly requested."
 Assert-True ($completeTemporaryEventAttempt -match 'var log_reward := _temporary_event_roll_log_reward\(action\)') "Temporary event completion should roll configured resource rewards."
-Assert-True ($completeTemporaryEventAttempt -match 'log_currency \+= log_reward') "Temporary event log rewards should add to the player's log currency."
+Assert-True ($completeTemporaryEventAttempt -match '_add_mat_amount\("softwood", float\(log_reward\)\)') "Temporary event wood rewards should add to the player's Softwood mats."
 $refreshEventDespawn = Get-FunctionBody -Text $main -Name "_refresh_skill_detail_after_temporary_event_despawn"
 Assert-True ($refreshEventDespawn -match '_refresh_visible_skill_detail_action_list\(event_refresh_scroll, skill_id, true\)') "Temporary event despawn refreshes should preserve scroll position, including on Thieving pages."
 $refreshVisibleSkillDetail = Get-FunctionBody -Text $main -Name "_refresh_visible_skill_detail_action_list"
@@ -317,7 +329,63 @@ Assert-True ($savePayload -match '"thieving_trophies": _thieving_trophies_for_sa
 Assert-True ($savePayload -match '"skills": _skills_for_save\(\)') "Save payload should serialize normalized skill XP and derived levels."
 Assert-True ($savePayload -match '"stamina": _stamina_for_save\(\)') "Save payload should serialize clamped stamina by known skill id."
 Assert-True ($savePayload -match '"stamina_bank": _stamina_bank_for_save\(\)') "Save payload should serialize derived stamina bank state."
-Assert-True ($savePayload -match '"log_currency": _log_currency_for_save\(\)') "Save payload should serialize clamped log currency."
+Assert-True ($savePayload -match '"mats": _mats_for_save\(\)' -and $savePayload -match '"log_currency": _log_currency_for_save\(\)') "Save payload should serialize mats and the legacy Softwood mirror."
+$loadActivityDatabase = Get-FunctionBody -Text $main -Name "_load_activity_database"
+Assert-True ($loadActivityDatabase -match 'action_data\["mat_rewards"\] = mat_rewards') "Activity database loading should preserve mat reward definitions at runtime."
+$woodcuttingSkill = @($activityDatabase.skills | Where-Object { $_.id -eq "woodcutting" })[0]
+Assert-True ($null -ne $woodcuttingSkill) "Activity database should include Woodcutting."
+$woodcuttingActionIds = @($woodcuttingSkill.actions | ForEach-Object { $_.id })
+Assert-True (-not ($woodcuttingActionIds -contains "stack-logs-1")) "Woodcutting should not expose the old Collect Logs #1 passive module."
+$gatherFallenBranches = @($woodcuttingSkill.actions | Where-Object { $_.id -eq "gather-fallen-branches" })[0]
+Assert-True ($null -ne $gatherFallenBranches -and @($gatherFallenBranches.mat_rewards).Count -eq 1 -and $gatherFallenBranches.mat_rewards[0].id -eq "scrapwood" -and [double]$gatherFallenBranches.mat_rewards[0].min -eq 0.0 -and [double]$gatherFallenBranches.mat_rewards[0].max -gt 0.0) "Gather Fallen Branches should produce a small optional Scrapwood mat reward."
+$scrapwoodActionIds = @(
+    "gather-fallen-branches",
+    "split-firewood",
+    "clear-dense-grove",
+    "clear-mystic-timberland"
+)
+$allScrapwoodActionIds = @($woodcuttingSkill.actions | Where-Object { @($_.mat_rewards | Where-Object { $_.id -eq "scrapwood" }).Count -gt 0 } | ForEach-Object { $_.id })
+Assert-True ($allScrapwoodActionIds.Count -le 4) "Woodcutting should keep Scrapwood rewards to at most four activity spots."
+foreach ($scrapwoodActionId in $scrapwoodActionIds) {
+    $scrapwoodAction = @($woodcuttingSkill.actions | Where-Object { $_.id -eq $scrapwoodActionId })[0]
+    $scrapwoodRewards = @($scrapwoodAction.mat_rewards | Where-Object { $_.id -eq "scrapwood" })
+    Assert-True ($null -ne $scrapwoodAction -and $scrapwoodRewards.Count -eq 1 -and [double]$scrapwoodRewards[0].max -gt 0.0) "Woodcutting action '$scrapwoodActionId' should produce Scrapwood when it naturally creates offcuts."
+}
+$clearDenseGrove = @($woodcuttingSkill.actions | Where-Object { $_.id -eq "clear-dense-grove" })[0]
+$clearDenseGroveScrapwood = @($clearDenseGrove.mat_rewards | Where-Object { $_.id -eq "scrapwood" })[0]
+Assert-True ([double]$clearDenseGroveScrapwood.max -ge 1.8 -and [double]$clearDenseGroveScrapwood.min -ge 0.65) "Higher-level Clear Dense Grove should award more Scrapwood per success."
+$clearMysticTimberland = @($woodcuttingSkill.actions | Where-Object { $_.id -eq "clear-mystic-timberland" })[0]
+$clearMysticTimberlandScrapwood = @($clearMysticTimberland.mat_rewards | Where-Object { $_.id -eq "scrapwood" })[0]
+Assert-True ([double]$clearMysticTimberlandScrapwood.max -ge 2.75 -and [double]$clearMysticTimberlandScrapwood.min -ge 1.0) "Higher-level Clear Mystic Timberland should award substantially more Scrapwood per success."
+$chopSoftwoodTree = @($woodcuttingSkill.actions | Where-Object { $_.id -eq "chop-softwood-tree" })[0]
+Assert-True ($null -ne $chopSoftwoodTree -and @($chopSoftwoodTree.mat_rewards).Count -eq 1 -and $chopSoftwoodTree.mat_rewards[0].id -eq "softwood" -and [int]$chopSoftwoodTree.mat_rewards[0].amount -eq 1 -and [bool]$chopSoftwoodTree.mat_rewards[0].whole) "Chop Softwood Tree should produce optional whole Softwood mat rewards."
+$softwoodRangeActionIds = @(
+    "fell-skinny-pine",
+    "clear-dense-grove",
+    "chop-invisible-windwood"
+)
+foreach ($softwoodActionId in $softwoodRangeActionIds) {
+    $softwoodAction = @($woodcuttingSkill.actions | Where-Object { $_.id -eq $softwoodActionId })[0]
+    $softwoodRewards = @($softwoodAction.mat_rewards | Where-Object { $_.id -eq "softwood" })
+    Assert-True ($null -ne $softwoodAction -and $softwoodRewards.Count -eq 1 -and [bool]$softwoodRewards[0].whole -and [double]$softwoodRewards[0].max -gt [double]$softwoodRewards[0].min) "Woodcutting action '$softwoodActionId' should roll a whole-number Softwood reward range."
+}
+$hardwoodActionIds = @(
+    "chop-knotty-maple",
+    "fell-oak-tree",
+    "chop-ancient-tree",
+    "harvest-ironwood"
+)
+foreach ($hardwoodActionId in $hardwoodActionIds) {
+    $hardwoodAction = @($woodcuttingSkill.actions | Where-Object { $_.id -eq $hardwoodActionId })[0]
+    $hardwoodRewards = @($hardwoodAction.mat_rewards | Where-Object { $_.id -eq "hardwood" })
+    Assert-True ($null -ne $hardwoodAction -and $hardwoodRewards.Count -eq 1 -and [bool]$hardwoodRewards[0].whole -and [double]$hardwoodRewards[0].max -gt [double]$hardwoodRewards[0].min) "Woodcutting action '$hardwoodActionId' should roll a whole-number Hardwood reward range."
+}
+$ironwoodHardwood = @((@($woodcuttingSkill.actions | Where-Object { $_.id -eq "harvest-ironwood" })[0]).mat_rewards | Where-Object { $_.id -eq "hardwood" })[0]
+Assert-True ([double]$ironwoodHardwood.min -ge 3.0 -and [double]$ironwoodHardwood.max -ge 6.0) "Late Harvest Ironwood should provide a larger Hardwood reward range."
+$thievingSkill = @($activityDatabase.skills | Where-Object { $_.id -eq "thieving" })[0]
+Assert-True ($null -ne $thievingSkill) "Activity database should include Thieving."
+$lootBeehive = @($thievingSkill.actions | Where-Object { $_.id -eq "lift-honey-from-beehive" })[0]
+Assert-True ($null -ne $lootBeehive -and @($lootBeehive.mat_rewards).Count -eq 1 -and $lootBeehive.mat_rewards[0].id -eq "honey" -and [int]$lootBeehive.mat_rewards[0].amount -eq 1 -and [bool]$lootBeehive.mat_rewards[0].whole) "Loot Beehive should produce whole Honey mat rewards."
 Assert-True ($savePayload -match '"fish_currency": _fish_currency_for_save\(\)') "Save payload should serialize clamped fishing currency."
 Assert-True ($savePayload -match '"equipped_fishing_tool_id": _equipped_fishing_tool_id_for_save\(\)') "Save payload should serialize normalized equipped fishing tool ids."
 Assert-True ($savePayload -match '"music_volume": _music_volume_for_save\(\)') "Save payload should serialize clamped music volume."
@@ -1650,6 +1718,46 @@ Assert-True ($fishStrokeNumber.Value -match 'CENTER_DECIMAL_SUFFIX_ALPHA') "Fish
 
 $actionCardBuilder = Get-FunctionBody -Text $main -Name "_build_detail_interactive_action_card"
 Assert-True ($actionCardBuilder -match '_action_card_background\(skill_id, action\)') "Normal action cards should use the cheap shared background factory."
+Assert-True ($actionCardBuilder -match 'var action_card_base_height := _activity_card_root_height\(\)') "Normal action cards should keep a fixed base-card height separate from optional mats row space."
+Assert-True ($actionCardBuilder -match 'pop_card\.anchor_bottom = 1\.0[\s\S]*pop_card\.offset_bottom = _activity_card_pop_base_bottom_offset\(pop_card\)') "Normal action card faces should keep the shared full-height module layout."
+Assert-True ($actionCardBuilder -notmatch 'depth\.anchor_bottom = 0\.0[\s\S]*depth\.offset_bottom = action_card_base_height') "Normal action card depth slabs should not be forced into a mats-specific fixed-size layout."
+Assert-True ($actionCardBuilder -notmatch 'custom_minimum_size\.y \+= MAT_COLLECTION_AREA_HEIGHT') "Mat-producing action cards should not reserve expanded height while idle."
+Assert-True ($actionCardBuilder -match 'card_root\.add_child\(mat_collection\.get\("root"\) as Control\)') "Mat collection UI should be a separate child row under the activity card."
+$matCollectionRow = Get-FunctionBody -Text $main -Name "_build_mat_collection_row"
+Assert-True ($main -match 'const MAT_COLLECTION_CONNECTOR_TOP_OVERLAP := 3\.0') "Mat collection connectors should overlap the activity card edge enough to avoid visible gaps."
+Assert-True ($main -match 'const MAT_COLLECTION_FLYER_ARC_SECONDS := 0\.68') "Mat collection reward flyers should linger long enough for the arc to read."
+Assert-True ($matCollectionRow -match 'root\.offset_top = _activity_card_root_height\(\) - MAT_COLLECTION_CONNECTOR_TOP_OVERLAP') "Mat collection connectors should touch the fixed activity card face."
+Assert-True ($matCollectionRow -match 'MAT_COLLECTION_MODULE_SIZE\.x \+ MAT_COLLECTION_MODULE_GAP') "Mat collection rows should support multiple square modules side by side."
+$syncMatCollectionRowPosition = Get-FunctionBody -Text $main -Name "_sync_mat_collection_row_position"
+Assert-True ($syncMatCollectionRowPosition -match 'visual_card_height - MAT_COLLECTION_CONNECTOR_TOP_OVERLAP') "Mat collection connectors should continue touching expanded action card faces."
+$syncMatCollectionCard = Get-FunctionBody -Text $main -Name "_sync_mat_collection_card"
+Assert-True ($syncMatCollectionCard -match '_module_collapsed_squeeze_height\(\) if collapsed else _activity_card_root_height') "Running mats rows should anchor below collapsed activity cards without collapsing the mats module."
+$syncActivityCardExpanded = Get-FunctionBody -Text $main -Name "_set_activity_card_expanded"
+Assert-True ($syncActivityCardExpanded -match 'collapsed_height \+ mat_collection_height') "Collapsed active activity cards should reserve full mats-module space while keeping only the activity face squeezed."
+$matCollectionFlyer = Get-FunctionBody -Text $main -Name "_spawn_mat_collection_flyer"
+Assert-True ($matCollectionFlyer -match '_apply_mat_collection_flyer_arc') "Mat collection reward flyers should follow an arc instead of a straight position tween."
+Assert-True ($matCollectionFlyer -match 'clampf\(center_pull_x \+ randf_range\(-42\.0, 42\.0\), min_arc_x, max_arc_x\)' -and $matCollectionFlyer -match 'minf\(start\.y, end\.y\) - arc_lift') "Mat collection reward flyers should follow a rainbow arc toward the target instead of flying away from it."
+$matCollectionFlyerArc = Get-FunctionBody -Text $main -Name "_apply_mat_collection_flyer_arc"
+Assert-True ($matCollectionFlyerArc -match 'start\.lerp\(control, t\)' -and $matCollectionFlyerArc -match 'control\.lerp\(end, t\)') "Mat collection reward flyer arcs should use a quadratic bezier path."
+$matCollectionModule = Get-FunctionBody -Text $main -Name "_mat_collection_module"
+Assert-True ($matCollectionModule -match 'Vector2\(360, 360\)') "Large mat collection modules should scale their icon art with the full-height square."
+Assert-True ($matCollectionModule -match '_texture_or_visual_fallback\(_mat_background_path\(mat_id\)\)') "Mat collection modules should render their material background texture."
+Assert-True ($matCollectionModule -match 'var background := RoundedTextureRect\.new\(\)') "Mat collection module backgrounds should fill through the rounded texture card layer."
+Assert-True ($matCollectionModule -match 'var chrome := Panel\.new\(\)[\s\S]*_mat_collection_module_style\(mat_id\)') "Mat collection modules should draw rounded Godot panel chrome over their texture background."
+$matCollectionModuleStyle = Get-FunctionBody -Text $main -Name "_mat_collection_module_style"
+Assert-True ($matCollectionModuleStyle -match 'style\.bg_color = Color\(1, 1, 1, 0\.0\)') "Mat collection panel chrome should preserve the texture fill instead of painting over it."
+$matBackgroundPath = Get-FunctionBody -Text $main -Name "_mat_background_path"
+Assert-True ($matBackgroundPath -match 'MAT_COLLECTION_STONE_BACKGROUND_TEXTURE') "Unknown mat backgrounds should fall back to the selected stone background."
+$actionCardBackgroundTexture = Get-FunctionBody -Text $main -Name "_action_card_background_texture"
+Assert-True ($actionCardBackgroundTexture -match 'if bg_path\.is_empty\(\):\s*\r?\n\s*bg_path = str\(action\.get\("background", ""\)\)') "Action card backgrounds should fall back to the database background field when bg is empty."
+$syncMatCollectionCard = Get-FunctionBody -Text $main -Name "_sync_mat_collection_card"
+Assert-True ($syncMatCollectionCard -match '_activity_card_root_height\(bool\(card\.get\("bonus_expanded", false\)\)\)') "Mat collection layout should account for expanded activity cards."
+Assert-True ($syncMatCollectionCard -match 'MAT_COLLECTION_AREA_HEIGHT if running else 0\.0') "Mat collection rows should only reserve vertical space while their activity is running."
+Assert-True ($syncMatCollectionCard -notmatch 'card_root\.size\.y = layout_height') "Mat collection reflow should not mutate the visual card root size and disturb anchored card art."
+Assert-True ($syncMatCollectionCard -notmatch 'card_root\.custom_minimum_size\.y = layout_height') "Mat collection reflow should not mutate the visual card root minimum height and disturb shared module layout."
+$setActivityCardExpanded = Get-FunctionBody -Text $main -Name "_set_activity_card_expanded"
+Assert-True ($setActivityCardExpanded -match 'var target_entry_height := target_height \+ mat_collection_height') "Expanded action card entry height should include visible mats module height."
+Assert-True ($setActivityCardExpanded -match '_sync_mat_collection_row_position\(card, target_height\)') "Expanded action cards should push mats rows below the expanded face."
 Assert-True ($actionCardBuilder -notmatch 'RoundedTextureRect\.new\(\)') "Normal action card builders must not directly allocate full-card rounded shader backgrounds."
 Assert-True ($actionCardBuilder -match '"button": null') "Fresh normal action cards should not allocate an ignored full-card Button node."
 Assert-True ($actionCardBuilder -match 'ACTION_CARD_TITLE_OUTLINE_SIZE') "Normal action card titles should use the capped outline constant."
