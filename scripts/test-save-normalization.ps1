@@ -1367,6 +1367,28 @@ func _check_audio_settings_restore(game: Node) -> void:
 	_expect(not migrated_payload.has("offline_clock_guard_tainted"), "Old offline clock guard taint should be dropped when existing saves are written again.")
 	_expect(not migrated_payload.has("offline_clock_guard_last_rejected_unix"), "Old offline clock guard rejection timestamps should be dropped when existing saves are written again.")
 
+	game.set("leaderboard_last_submitted_score", 50)
+	game.set("leaderboard_last_submitted_total_xp", 5000)
+	game.set("leaderboard_last_submitted_scores_by_category", {"total_level": 50, "skill_xp__fight": 1000})
+	game.set("leaderboard_last_submit_unix", int(game.call("_unix_now")))
+	game.set("leaderboard_auth_retry_after_unix", int(game.call("_unix_now")) + 999)
+	game.set("chat_last_send_unix", int(game.call("_unix_now")))
+	game.set("chat_stream_retry_unix", int(game.call("_unix_now")) + 999)
+	game.set("chat_stream_next_connect_unix", int(game.call("_unix_now")) + 999)
+	game.set("last_result", "Offline progress paused: device clock changed too quickly.")
+	game.call("_apply_legacy_clock_guard_leaderboard_forgiveness", {
+		"offline_clock_guard_tainted": true,
+		"offline_clock_guard_last_rejected_unix": 123,
+	})
+	_expect(int(game.get("leaderboard_last_submitted_score")) == 0, "Forgiven clock-guard saves should republish total leaderboard score.")
+	_expect(int(game.get("leaderboard_last_submitted_total_xp")) == 0, "Forgiven clock-guard saves should republish total XP compatibility score.")
+	_expect((game.get("leaderboard_last_submitted_scores_by_category") as Dictionary).is_empty(), "Forgiven clock-guard saves should republish every leaderboard category.")
+	_expect(int(game.get("leaderboard_last_submit_unix")) == 0, "Forgiven clock-guard saves should clear leaderboard submit cooldown.")
+	_expect(int(game.get("leaderboard_auth_retry_after_unix")) == 0, "Forgiven clock-guard saves should clear leaderboard auth retry cooldown.")
+	_expect(int(game.get("chat_last_send_unix")) == 0, "Forgiven clock-guard saves should clear chat send cooldown.")
+	_expect(int(game.get("chat_stream_retry_unix")) == 0, "Forgiven clock-guard saves should clear chat stream retry cooldown.")
+	_expect(str(game.get("last_result")).is_empty(), "Forgiven clock-guard saves should remove the old clock warning result text.")
+
 	_prime_core_skill_state(game)
 	game.set("auto_unlock_lockpads_enabled", true)
 	game.set("show_stamina_decimal", true)

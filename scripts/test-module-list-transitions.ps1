@@ -950,6 +950,7 @@ func _check_two_stage_collapse_input_flow(scene: Node, skill_id: String) -> void
 			blocked_badge.disabled = true
 		scene.call("_hide_module_sort_menu")
 	scene.call("_on_module_collapse_zone_gui_input", _local_mouse_button_event(zone_local_center, true), first_key, card_pop.get_instance_id())
+	scene.call("_on_module_collapse_zone_gui_input", _mouse_button_event(collapse_center, false), first_key, card_pop.get_instance_id())
 	for _i in range(2):
 		await process_frame
 	var direct_badge := _find_named_descendant(card_pop, "ModuleCollapseConfirmBadge") as Control
@@ -958,6 +959,18 @@ func _check_two_stage_collapse_input_flow(scene: Node, skill_id: String) -> void
 	else:
 		direct_badge.visible = false
 		direct_badge.disabled = true
+	scene.call("_on_module_collapse_zone_gui_input", _local_mouse_button_event(zone_local_center, true), first_key, card_pop.get_instance_id())
+	scene.call("_on_module_collapse_zone_gui_input", _mouse_motion_event(collapse_center + Vector2(0, 96)), first_key, card_pop.get_instance_id())
+	scene.call("_on_module_collapse_zone_gui_input", _mouse_button_event(collapse_center + Vector2(0, 96), false), first_key, card_pop.get_instance_id())
+	for _i in range(2):
+		await process_frame
+	var dragged_badge := _find_named_descendant(card_pop, "ModuleCollapseConfirmBadge") as Control
+	if dragged_badge != null and is_instance_valid(dragged_badge) and dragged_badge.visible:
+		_record("dragged collapse-zone press showed confirm while scrolling")
+		dragged_badge.visible = false
+		dragged_badge.disabled = true
+	if bool((scene.get("module_ui_collapsed") as Dictionary).get(first_key, false)):
+		_record("dragged collapse-zone press collapsed the module while scrolling")
 	scene.call("_input", _mouse_button_event(collapse_center, true))
 	scene.call("_input", _mouse_button_event(collapse_center, false))
 	for _i in range(4):

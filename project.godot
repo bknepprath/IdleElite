@@ -8,13 +8,17 @@
 
 config_version=5
 
+[animation]
+
+compatibility/default_parent_skeleton_in_mesh_instance_3d=true
+
 [application]
 
 config/name="Idle Elite"
 run/main_scene="res://scenes/main.tscn"
 config/quit_on_go_back=false
-config/features=PackedStringArray("4.5")
-boot_splash/bg_color=Color(0.984314, 0.921569, 0.788235, 1)
+config/features=PackedStringArray("4.7")
+boot_splash/bg_color=Color(0, 0, 0, 1)
 boot_splash/image="res://assets/loading/idle-elite-honey-boot-splash-v0.4.5.png"
 
 [audio]

@@ -3529,6 +3529,7 @@ var chat_stream_buffer := ""
 var chat_stream_event_name := ""
 var chat_stream_event_data_lines := []
 var chat_send_in_flight := false
+var chat_send_stage := ""
 var chat_rows := []
 var chat_last_send_unix := 0
 var chat_status_message := ""
@@ -3539,6 +3540,7 @@ var chat_enter_submit_armed := true
 var chat_submit_deferred := false
 var chat_pending_send_message_id := ""
 var chat_pending_send_text := ""
+var chat_pending_send_payload := {}
 var chat_strip: PanelContainer
 var chat_unread_dot: PanelContainer
 var chat_strip_line_one: Label
@@ -3604,6 +3606,12 @@ var module_ui_pin_press_card_host_id := 0
 var module_ui_pin_press_position := Vector2.ZERO
 var module_ui_pin_press_touch_index := -1
 var module_ui_pin_press_dragged := false
+var module_ui_collapse_press_active := false
+var module_ui_collapse_press_module_key := ""
+var module_ui_collapse_press_card_host_id := 0
+var module_ui_collapse_press_position := Vector2.ZERO
+var module_ui_collapse_press_touch_index := -1
+var module_ui_collapse_press_dragged := false
 var module_ui_pending_pin_scroll_anchor := {}
 var module_ui_pin_scroll_anchor_debug := ""
 var module_ui_pin_refresh_cover_requested := false
@@ -4653,6 +4661,9 @@ func _input(event: InputEvent) -> void:
 		if _route_module_utility_button_global_input(event):
 			get_viewport().set_input_as_handled()
 			return
+		if _route_chat_strip_input(event):
+			get_viewport().set_input_as_handled()
+			return
 		if _route_bottom_nav_button_global_input(event):
 			get_viewport().set_input_as_handled()
 			return
@@ -5203,6 +5214,12 @@ func _position_inside_module_utility_interactive_ui(event_position: Vector2) -> 
 		if module_utility_row.get_global_rect().grow(4.0).has_point(event_position):
 			return true
 	return false
+
+
+func _position_inside_chat_strip_interactive_ui(event_position: Vector2) -> bool:
+	if chat_strip == null or not is_instance_valid(chat_strip) or not chat_strip.is_visible_in_tree():
+		return false
+	return chat_strip.get_global_rect().grow(4.0).has_point(event_position)
 
 
 func _position_inside_detail_actions_viewport(event_position: Vector2, viewport_outset := 2.0) -> bool:
@@ -7712,8 +7729,10 @@ func _chat_send(raw_text: String) -> void:
 		}
 	}
 	chat_send_in_flight = true
+	chat_send_stage = "patch"
 	chat_pending_send_message_id = message_id
 	chat_pending_send_text = clean_text
+	chat_pending_send_payload = remote_chat_payload
 	chat_status_message = "Sending chat message..."
 	_chat_upsert_row(message_id, chat_payload)
 	chat_draft_message = ""
@@ -7721,14 +7740,25 @@ func _chat_send(raw_text: String) -> void:
 		chat_message_edit.text = ""
 	_render_chat_if_visible()
 	_chat_scroll_to_latest_deferred()
-	var err := chat_send_request.request(
-		_chat_firebase_url("", _leaderboard_authenticated_query("print=silent")),
-		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
-		HTTPClient.METHOD_PATCH,
-		JSON.stringify(updates)
-	)
+	var err := OK
+	if _leaderboard_web_authless_writes_enabled():
+		err = chat_send_request.request(
+			_chat_firebase_url("", _leaderboard_authenticated_query("print=silent")),
+			PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+			HTTPClient.METHOD_PATCH,
+			JSON.stringify(updates)
+		)
+	else:
+		chat_send_stage = "gate"
+		err = chat_send_request.request(
+			_chat_firebase_url("user_write_gates/%s" % leaderboard_player_id, _leaderboard_authenticated_query("print=silent")),
+			PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+			HTTPClient.METHOD_PUT,
+			JSON.stringify(updates.get("user_write_gates/%s" % leaderboard_player_id, {}))
+		)
 	if err != OK:
 		chat_send_in_flight = false
+		chat_send_stage = ""
 		_chat_remove_row(message_id)
 		_chat_restore_failed_send()
 		_chat_note_send_failure("Chat write failed: %s" % error_string(err))
@@ -7736,7 +7766,27 @@ func _chat_send(raw_text: String) -> void:
 
 
 func _on_chat_send_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	var completed_stage := chat_send_stage
+	if completed_stage == "gate":
+		if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
+			chat_send_stage = "message"
+			var message_err := chat_send_request.request(
+				_chat_firebase_url("messages/%s" % chat_pending_send_message_id, _leaderboard_authenticated_query("print=silent")),
+				PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+				HTTPClient.METHOD_PUT,
+				JSON.stringify(chat_pending_send_payload)
+			)
+			if message_err == OK:
+				return
+			chat_send_in_flight = false
+			chat_send_stage = ""
+			_chat_remove_row(chat_pending_send_message_id)
+			_chat_restore_failed_send()
+			_chat_note_send_failure("Chat write failed: %s" % error_string(message_err))
+			_render_chat_if_visible()
+			return
 	chat_send_in_flight = false
+	chat_send_stage = ""
 	if result != HTTPRequest.RESULT_SUCCESS:
 		_chat_remove_row(chat_pending_send_message_id)
 		_chat_restore_failed_send()
@@ -7763,6 +7813,7 @@ func _on_chat_send_completed(result: int, response_code: int, _headers: PackedSt
 	chat_last_send_unix = _unix_now()
 	chat_pending_send_message_id = ""
 	chat_pending_send_text = ""
+	chat_pending_send_payload.clear()
 	chat_status_message = ""
 	chat_draft_message = ""
 	save_game()
@@ -8046,6 +8097,7 @@ func _chat_note_send_rejected(message: String) -> void:
 
 func _chat_restore_failed_send() -> void:
 	chat_pending_send_message_id = ""
+	chat_pending_send_payload.clear()
 	if chat_pending_send_text.is_empty():
 		return
 	chat_draft_message = chat_pending_send_text
@@ -8969,6 +9021,8 @@ func _route_bottom_nav_button_global_input(event: InputEvent) -> bool:
 	var event_position := _passive_button_event_position(event, null)
 	var is_press := _module_utility_event_is_press(event)
 	if is_press and _position_inside_module_utility_interactive_ui(event_position):
+		return false
+	if is_press and _position_inside_chat_strip_interactive_ui(event_position):
 		return false
 	var button := _bottom_nav_button_at_position(event_position) if is_press else _active_bottom_nav_button()
 	if button == null:
@@ -24502,6 +24556,11 @@ func _collapsed_module_layout_host(row: Control) -> Control:
 
 
 func _on_module_collapse_zone_gui_input(event: InputEvent, module_key: String, card_host_id: int) -> void:
+	if _update_pending_module_collapse_press(event):
+		accept_event()
+		return
+	if module_ui_collapse_press_active and _module_collapse_press_event_belongs_to_active_press(event):
+		_update_pending_module_collapse_drag(event)
 	if not _is_primary_press_event(event):
 		return
 	if _event_inside_fishing_location_image(event):
@@ -24525,17 +24584,108 @@ func _on_module_collapse_zone_gui_input(event: InputEvent, module_key: String, c
 		return
 	if not _module_action_zone_event_inside_circle(card_host, "collapse", event):
 		return
-	var badge := _module_collapse_badge(card_host)
-	if badge != null and badge.visible and not badge.disabled:
-		_collapse_module_ui_key(module_key, card_host_id)
-	else:
-		_show_module_collapse_confirm(card_host, module_key)
+	var normalized_key := _normalized_module_ui_key(module_key)
+	_begin_module_collapse_press(normalized_key, card_host_id, event_position, _module_pin_press_touch_index_for_event(event))
 	accept_event()
 
 
 func _module_ui_is_collapsed(module_key: String) -> bool:
 	var normalized_key := _normalized_module_ui_key(module_key)
 	return _module_ui_key_allows_pin_or_collapse(normalized_key) and bool(module_ui_collapsed.get(normalized_key, false))
+
+
+func _begin_module_collapse_press(module_key: String, card_host_id: int, press_position: Vector2, touch_index: int) -> void:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty() or not _module_ui_key_allows_pin_or_collapse(normalized_key):
+		return
+	module_ui_collapse_press_active = true
+	module_ui_collapse_press_module_key = normalized_key
+	module_ui_collapse_press_card_host_id = card_host_id
+	module_ui_collapse_press_position = press_position
+	module_ui_collapse_press_touch_index = touch_index
+	module_ui_collapse_press_dragged = false
+	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
+		detail_actions_scroll.prepare_child_tap()
+
+
+func _update_pending_module_collapse_press(event: InputEvent) -> bool:
+	if not module_ui_collapse_press_active:
+		return false
+	if not _module_collapse_press_event_belongs_to_active_press(event):
+		return false
+	var event_position := _module_pin_press_event_position(event)
+	var is_release := _module_pin_press_event_is_release(event)
+	var is_motion := event is InputEventMouseMotion or event is InputEventScreenDrag
+	if event_position != Vector2.INF and (is_motion or is_release):
+		_update_pending_module_collapse_drag_at_position(event_position)
+	if not is_release:
+		return false
+	var should_commit := (
+		not module_ui_collapse_press_dragged
+		and event_position != Vector2.INF
+		and event_position.distance_to(module_ui_collapse_press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
+		and not _detail_actions_scroll_suppresses_child_click()
+	)
+	var pressed_module_key := module_ui_collapse_press_module_key
+	var pressed_card_host_id := module_ui_collapse_press_card_host_id
+	_clear_module_collapse_press()
+	if should_commit:
+		_commit_module_collapse_tap(pressed_module_key, pressed_card_host_id)
+	return true
+
+
+func _update_pending_module_collapse_drag(event: InputEvent) -> void:
+	var event_position := _module_pin_press_event_position(event)
+	if event_position == Vector2.INF:
+		return
+	_update_pending_module_collapse_drag_at_position(event_position)
+
+
+func _update_pending_module_collapse_drag_at_position(event_position: Vector2) -> void:
+	if not module_ui_collapse_press_active:
+		return
+	if (
+		event_position.distance_to(module_ui_collapse_press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP
+		or skill_swipe_tracking
+		or _module_pin_press_scroll_is_dragging()
+	):
+		module_ui_collapse_press_dragged = true
+
+
+func _module_collapse_press_event_belongs_to_active_press(event: InputEvent) -> bool:
+	if module_ui_collapse_press_touch_index < 0:
+		return event is InputEventMouseButton or event is InputEventMouseMotion
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).index == module_ui_collapse_press_touch_index
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).index == module_ui_collapse_press_touch_index
+	return false
+
+
+func _clear_module_collapse_press() -> void:
+	module_ui_collapse_press_active = false
+	module_ui_collapse_press_module_key = ""
+	module_ui_collapse_press_card_host_id = 0
+	module_ui_collapse_press_position = Vector2.ZERO
+	module_ui_collapse_press_touch_index = -1
+	module_ui_collapse_press_dragged = false
+
+
+func _commit_module_collapse_tap(module_key: String, card_host_id: int) -> void:
+	var normalized_key := _normalized_module_ui_key(module_key)
+	if normalized_key.is_empty() or not _module_ui_key_allows_pin_or_collapse(normalized_key):
+		return
+	if _module_ui_is_collapsed(normalized_key):
+		_expand_module_ui_key(normalized_key)
+		return
+	var card_host := instance_from_id(card_host_id) as Control
+	if card_host == null or not is_instance_valid(card_host) or card_host.is_queued_for_deletion():
+		return
+	var badge := _module_collapse_badge(card_host)
+	if badge != null and badge.visible and not badge.disabled:
+		_collapse_module_ui_key(normalized_key, card_host_id)
+	else:
+		_show_module_collapse_confirm(card_host, normalized_key)
 
 
 func _show_module_collapse_confirm(card_host: Control, module_key: String) -> void:
@@ -55583,6 +55733,8 @@ func _init_state() -> void:
 	chat_last_opened_created_at = 0
 	chat_last_opened_message_id = ""
 	chat_status_message = ""
+	chat_send_stage = ""
+	chat_pending_send_payload.clear()
 	last_passive_process_unix = _unix_now()
 	ad_bonus_seconds_remaining = 0.0
 	for def in skill_defs:
@@ -57846,6 +57998,7 @@ func _load_game_secondary_restore() -> void:
 	_restore_chat_last_send_unix_from_save(data)
 	_restore_chat_stream_retry_metadata_from_save(data)
 	_restore_chat_opened_cursor_from_save(data)
+	_apply_legacy_clock_guard_leaderboard_forgiveness(data)
 	_refresh_shop_nav_unlock_state()
 	if save_repaired_this_boot:
 		save_repaired_this_boot = false
@@ -60924,6 +61077,30 @@ func _restore_leaderboard_submission_metadata_from_save(data: Dictionary) -> voi
 	if _leaderboard_total_level_score_looks_legacy_xp(int(leaderboard_last_submitted_scores_by_category.get(LEADERBOARD_CATEGORY_TOTAL_LEVEL, 0))):
 		leaderboard_last_submitted_scores_by_category[LEADERBOARD_CATEGORY_TOTAL_LEVEL] = 0
 	leaderboard_last_submit_unix = maxi(0, int(data.get("leaderboard_last_submit_unix", 0)))
+
+
+func _legacy_clock_guard_was_saved(data: Dictionary) -> bool:
+	return bool(data.get("offline_clock_guard_tainted", false)) or int(data.get("offline_clock_guard_last_rejected_unix", 0)) > 0
+
+
+func _apply_legacy_clock_guard_leaderboard_forgiveness(data: Dictionary) -> void:
+	if not _legacy_clock_guard_was_saved(data):
+		return
+	leaderboard_last_submitted_score = 0
+	leaderboard_last_submitted_total_xp = 0
+	leaderboard_last_submitted_scores_by_category.clear()
+	leaderboard_last_submit_unix = 0
+	leaderboard_fetch_retry_unix_by_category.clear()
+	leaderboard_auth_retry_after_unix = 0
+	chat_last_send_unix = 0
+	chat_stream_retry_unix = 0
+	chat_stream_next_connect_unix = 0
+	var old_result := str(last_result)
+	if old_result.to_lower().find("clock") >= 0:
+		last_result = ""
+	leaderboard_status_message = ""
+	chat_status_message = ""
+	_mark_save_dirty("legacy clock guard forgiven")
 
 
 func _normalized_leaderboard_last_submitted_scores(loaded_scores: Variant) -> Dictionary:
