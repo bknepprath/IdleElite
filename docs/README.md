@@ -11,10 +11,13 @@ This folder documents **Idle Elite**, a Godot 4 mobile idle RPG. Treat every Mar
 - **Godot implementation references:** Active HTML files at the top of `docs/` should describe the current Godot implementation.
 - **Archive:** Old plans, mocks, and historical references live in `docs/archive/`.
 - **Feature planning:** active plans should map back to `docs/activity-database.json`, `scripts/main.gd`, Godot scenes, exported Android builds, or assets under `assets/`.
+- **Art and animation references:** `art-source/asset-sources/module-animation-imagegen-guide.md` defines the reusable image-generation contract for module animation sheets.
 - **Release documentation:** everything under `play-store/docs/` is for the Android package `com.idleelite.game` unless a page explicitly calls out the preview package `com.idleelite.game.preview`.
 
 ## Guardrails
 
 - Run Godot validation only through `.\scripts\check-project.ps1` or `.\run-godot-safe.ps1`.
+- Use `.\scripts\test-everything.ps1` for the broad whole-game sweep that orchestrates the release gate plus specialized gameplay, fishing, thieving, UI, data, asset, Firebase, and performance tests. Use `-List` to see the selected suite, `-Aspect fishing,ui` to narrow the run, and `-Mode release -IncludeExternal` when release-only and live external checks are intentional.
+- Use `.\scripts\test-button-census-clicks.ps1` when you specifically want a crawler-style survivability test that stages major screens, clicks visible enabled buttons, and skips destructive or external buttons such as hard reset, Discord, ads, and crash-report actions.
 - After editing fishing data, sync `docs/activity-database.json` into the generated JavaScript and run the activity database audit.
-- Keep public-facing Play Store and privacy-policy text accurate to the Godot app: local Godot saves, optional rewarded ads, optional Firebase leaderboard/chat, no cloud saves, no purchases unless implemented.
+- Keep public-facing Play Store and privacy-policy text accurate to the Godot app: local Godot saves, optional rewarded ads, optional Firebase leaderboard/chat, optional Google-backed cloud saves only when configured and device-tested, no purchases unless implemented.

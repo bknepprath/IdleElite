@@ -34,17 +34,18 @@ var bubble_line_big: Label
 var xp_layer: Control
 var sprite_base_position := Vector2.ZERO
 var current_frame := -1
+var transparent_texture: Texture2D
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rng.randomize()
-	sheet_texture = load(SHEET_PATH)
-	bubble_texture = load(BUBBLE_PATH)
+	sheet_texture = _load_texture_or_fallback(SHEET_PATH, Vector2i(int(FRAME_SIZE.x * 4.0), int(FRAME_SIZE.y)))
+	bubble_texture = _load_texture_or_fallback(BUBBLE_PATH, Vector2i(8, 8))
 	_load_bubble_font()
 	_build_nodes()
 	_sync_layout()
-	set_process(true)
+	set_process(not _headless_mode())
 
 
 func restart() -> void:
@@ -57,7 +58,7 @@ func restart() -> void:
 	if xp_layer != null:
 		for child in xp_layer.get_children():
 			child.queue_free()
-	set_process(true)
+	set_process(not _headless_mode())
 
 
 func stop() -> void:
@@ -70,6 +71,8 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	if _headless_mode():
+		return
 	var next_elapsed := elapsed + delta
 	var loop_pos := fmod(next_elapsed, LOOP_SECONDS)
 	var wrapped := loop_pos < previous_loop_pos
@@ -90,11 +93,11 @@ func _build_nodes() -> void:
 	add_child(sprite_holder)
 
 	atlas_texture = AtlasTexture.new()
-	atlas_texture.atlas = sheet_texture
+	atlas_texture.atlas = null if _headless_mode() else sheet_texture
 	atlas_texture.region = Rect2(Vector2.ZERO, FRAME_SIZE)
 
 	sprite = TextureRect.new()
-	sprite.texture = atlas_texture
+	sprite.texture = _transparent_fallback_texture(Vector2i(int(FRAME_SIZE.x), int(FRAME_SIZE.y))) if _headless_mode() else atlas_texture
 	sprite.set_anchors_preset(Control.PRESET_FULL_RECT)
 	sprite.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	sprite.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -207,7 +210,7 @@ func _frame_for_phase(phase: float) -> int:
 
 
 func _set_frame(frame: int) -> void:
-	if frame == current_frame or atlas_texture == null:
+	if _headless_mode() or frame == current_frame or atlas_texture == null:
 		return
 	current_frame = frame
 	atlas_texture.region = Rect2(Vector2(FRAME_SIZE.x * frame, 0.0), FRAME_SIZE)
@@ -285,4 +288,37 @@ func _float_reward(text: String, color: Color, center: Vector2) -> void:
 	tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
 	tween.tween_property(holder, "modulate:a", 0.0, 0.85).set_delay(0.55)
-	tween.chain().tween_callback(holder.queue_free)
+	tween.chain().tween_callback(_queue_free_instance_id.bind(holder.get_instance_id()))
+
+
+func _load_texture_or_fallback(path: String, fallback_size: Vector2i) -> Texture2D:
+	if _headless_mode():
+		return _transparent_fallback_texture(fallback_size)
+	var loaded = load(path)
+	if loaded is Texture2D:
+		return loaded
+	return _transparent_fallback_texture(fallback_size)
+
+
+func _transparent_fallback_texture(fallback_size: Vector2i) -> Texture2D:
+	if transparent_texture != null:
+		return transparent_texture
+	if _headless_mode():
+		var placeholder := PlaceholderTexture2D.new()
+		placeholder.size = Vector2(maxi(1, fallback_size.x), maxi(1, fallback_size.y))
+		transparent_texture = placeholder
+		return transparent_texture
+	var image := Image.create(maxi(1, fallback_size.x), maxi(1, fallback_size.y), false, Image.FORMAT_RGBA8)
+	image.fill(Color(1.0, 1.0, 1.0, 0.0))
+	transparent_texture = ImageTexture.create_from_image(image)
+	return transparent_texture
+
+
+func _queue_free_instance_id(instance_id: int) -> void:
+	var node := instance_from_id(instance_id) as Node
+	if node != null and is_instance_valid(node):
+		node.queue_free()
+
+
+func _headless_mode() -> bool:
+	return DisplayServer.get_name() == "headless"

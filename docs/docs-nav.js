@@ -7,7 +7,8 @@
         { href: "module-type-dictionary.html", label: "Type Dictionary", description: "Module meanings" },
         { href: "ui-navigation-controls-plan.html", label: "UI Controls", description: "Navigation dock plan" },
         { href: "activity-database.html", label: "Activity Data", description: "Numbers and rewards" },
-        { href: "idle-elite-action-review.html", label: "Module Review", description: "All cards visually" }
+        { href: "idle-elite-action-review.html", label: "Module Review", description: "All cards visually" },
+        { href: "blue-guy-action-art-review.html", label: "Blue Guy Art", description: "Action art approvals" }
       ]
     },
     {

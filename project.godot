@@ -16,10 +16,11 @@ compatibility/default_parent_skeleton_in_mesh_instance_3d=true
 
 config/name="Idle Elite"
 run/main_scene="res://scenes/main.tscn"
+run/max_fps=60
 config/quit_on_go_back=false
 config/features=PackedStringArray("4.7")
 boot_splash/bg_color=Color(0, 0, 0, 1)
-boot_splash/image="res://assets/loading/idle-elite-honey-boot-splash-v0.4.5.png"
+boot_splash/image="res://assets/loading/idle-elite-beach-boot-splash-v0.4.6.png"
 
 [audio]
 

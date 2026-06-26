@@ -84,6 +84,7 @@ func _run() -> void:
 	await _capture_clean_pinned_page_if_requested(scene)
 	await _check_empty_pinned_page_decor_pins(scene)
 	await _check_pinned_page_navigation_start_input(scene)
+	await _check_module_utility_tabs_close_to_skill_detail(scene)
 	await _check_pinned_active_shelf_expands(scene)
 	await _check_regular_skill_detail_level_up_float(scene)
 	await _check_pinned_page_level_up_float(scene)
@@ -182,6 +183,47 @@ func _check_pinned_page_navigation_start_input(scene: Node) -> void:
 		await process_frame
 	if not started_after_release and (str(scene.get("running_skill_id")) != str(parts[0]) or str(scene.get("running_action_id")) != str(parts[1])):
 		_record("pinned-page action did not start after real pinned navigation. press_key=%s transition=%s" % [str(scene.get("action_card_press_key")), str(scene.call("_skill_swipe_loading_transition_active"))])
+
+
+func _check_module_utility_tabs_close_to_skill_detail(scene: Node) -> void:
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "woodcutting")
+	scene.set("_last_rendered_screen_key", "")
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(6):
+		await process_frame
+	scene.call("_show_pinned_activities")
+	if not await _wait_for_screen(scene, "pinned"):
+		_record("module utility close smoke did not enter pinned screen")
+		return
+	scene.set("top_level_nav_locked_until_msec", 0)
+	scene.call("_on_queue_utility_pressed")
+	if not await _wait_for_screen(scene, "queue"):
+		_record("module utility close smoke did not enter queue screen from pinned")
+		return
+	if str(scene.get("queue_return_screen")) != "skill":
+		_record("queue utility stored another utility page as its return screen: %s" % str(scene.get("queue_return_screen")))
+		return
+	scene.set("top_level_nav_locked_until_msec", 0)
+	scene.call("_on_queue_utility_pressed")
+	if not await _wait_for_screen(scene, "skill"):
+		_record("active queue utility button returned to %s instead of skill detail" % str(scene.get("current_screen")))
+		return
+	if str(scene.get("selected_skill_id")) != "woodcutting":
+		_record("active queue utility close did not reveal the previous skill detail; selected=%s" % str(scene.get("selected_skill_id")))
+
+
+func _wait_for_screen(scene: Node, target_screen: String, max_frames := 120) -> bool:
+	for _i in range(max_frames):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+		if (
+			str(scene.get("current_screen")) == target_screen
+			and not bool(scene.get("screen_render_in_progress"))
+			and not bool(scene.call("_skill_swipe_loading_transition_active"))
+		):
+			return true
+	return false
 
 
 func _check_pinned_page_start_animates_visible_card(scene: Node) -> void:
@@ -643,8 +685,8 @@ func _check_empty_pinned_page_decor_pins(scene: Node) -> void:
 			_record("empty pinned page decor badge should be fully visible. index=%s visible=%s alpha=%s" % [index, badge.visible, badge.modulate.a])
 		if badge.texture_normal == null:
 			_record("empty pinned page decor badge texture missing at index %s" % index)
-		elif not expected_textures.has(str(badge.texture_normal.resource_path)):
-			_record("empty pinned page decor badge should use an approved module pin texture. index=%s texture=%s" % [index, str(badge.texture_normal.resource_path)])
+		elif not expected_textures.has(str(badge.get_meta("module_pin_texture_path", ""))):
+			_record("empty pinned page decor badge should use an approved module pin texture. index=%s texture=%s" % [index, str(badge.get_meta("module_pin_texture_path", ""))])
 		if not badge.size.is_equal_approx(expected_size):
 			_record("empty pinned page decor badge size mismatch. index=%s expected=%s actual=%s" % [index, expected_size, badge.size])
 		if badge.position.distance_to(expected_position) > 0.01:

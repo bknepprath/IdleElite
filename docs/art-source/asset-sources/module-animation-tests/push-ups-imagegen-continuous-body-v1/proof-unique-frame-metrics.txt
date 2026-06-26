@@ -1,0 +1,14 @@
+Raw generated source: C:\Users\bknep\.codex\generated_images\019ef7e2-b2f0-7a12-8987-e97195d10a61\ig_079dab767e672d57016a3c101f31a081948d5de5b1c6dbae24.png
+Raw size: 2172x724, cell_w=543
+Shared export scale: 0.4967
+Export anchor baseline y=198, x=34
+Frame 1: source_bbox=(52, 251, 490, 487), export_hash=1109bf5577dfdb61, export_bbox=(34, 81, 252, 198)
+Frame 2: source_bbox=(46, 275, 484, 487), export_hash=62584301fef2995f, export_bbox=(34, 93, 252, 198)
+Frame 3: source_bbox=(42, 332, 493, 487), export_hash=e530bc4d67416c3a, export_bbox=(34, 121, 256, 198)
+Frame 4: source_bbox=(47, 355, 476, 490), export_hash=8e1d200972a23ed4, export_bbox=(34, 131, 247, 198)
+Diff 1-2: changed_pixels=14177/65536 (21.63%), diff_bbox=(34, 81, 251, 197)
+Diff 1-3: changed_pixels=16608/65536 (25.34%), diff_bbox=(34, 81, 255, 197)
+Diff 1-4: changed_pixels=16693/65536 (25.47%), diff_bbox=(34, 81, 251, 197)
+Diff 2-3: changed_pixels=14701/65536 (22.43%), diff_bbox=(34, 93, 255, 197)
+Diff 2-4: changed_pixels=14954/65536 (22.82%), diff_bbox=(34, 93, 251, 197)
+Diff 3-4: changed_pixels=11825/65536 (18.04%), diff_bbox=(34, 121, 255, 197)

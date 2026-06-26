@@ -1,3 +1,7 @@
+param(
+    [switch]$SkipGodotSafeValidation
+)
+
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -72,6 +76,7 @@ Invoke-Step "Optional local Firebase config" {
     $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json
     $databaseUrl = [string]$config.database_url
     $webApiKey = [string]$config.web_api_key
+    $googleWebClientId = ([string]$config.google_web_client_id).Trim()
     if ($databaseUrl.Trim().TrimEnd("/") -cnotmatch $firebaseDatabaseUrlPattern) {
         throw "firebase-leaderboard-config.json has an invalid database_url."
     }
@@ -81,13 +86,22 @@ Invoke-Step "Optional local Firebase config" {
     if ($webApiKey.Trim().Length -lt 20 -or $webApiKey -eq "YOUR_FIREBASE_WEB_API_KEY" -or $webApiKey -match '\s') {
         throw "firebase-leaderboard-config.json has an invalid web_api_key."
     }
+    if (-not [string]::IsNullOrWhiteSpace($googleWebClientId) -and $googleWebClientId -notmatch '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') {
+        throw "firebase-leaderboard-config.json has an invalid google_web_client_id."
+    }
     Write-Output "firebase-config-ok"
 }
 
-Invoke-Step "Godot safe validation" {
-    & (Join-Path $projectRoot "scripts\check-project.ps1")
-    if ($LASTEXITCODE -ne 0) {
-        exit $LASTEXITCODE
+if ($SkipGodotSafeValidation) {
+    Invoke-Step "Godot safe validation" {
+        Write-Output "godot-safe-validation-skipped"
+    }
+} else {
+    Invoke-Step "Godot safe validation" {
+        & (Join-Path $projectRoot "scripts\check-project.ps1")
+        if ($LASTEXITCODE -ne 0) {
+            exit $LASTEXITCODE
+        }
     }
 }
 

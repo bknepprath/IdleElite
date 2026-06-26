@@ -1,0 +1,1 @@
+World foot anchor: (210, 184). Source anchors per frame: [(418, 382), (410, 378), (421, 338), (424, 338)]. All frames shifted so this anchor has identical y elevation.

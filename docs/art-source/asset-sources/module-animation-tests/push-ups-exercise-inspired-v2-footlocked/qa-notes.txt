@@ -1,0 +1,1 @@
+Accepted candidate from generated sheet v2. Anchors raw: [(34, 342), (34, 340), (35, 337), (35, 337)]. World anchor: (32, 170). Frames represent 0%, 15%, 85%, 100%.

@@ -24,6 +24,7 @@ Core style rules:
 - Use warm, playful color fills, but anchor them with black borders and strong shadows.
 - Avoid thin-line, low-contrast, photo-real, glossy corporate, or delicate fantasy illustration treatments.
 - White or cream interior fills are allowed only when bordered clearly by black ink.
+- Do not build player-visible fire, smoke, glow, magic, or similar organic effects out of Godot-drawn shapes, CSS shapes, circles, polygons, gradients, or procedural blobs. These read cheap in Idle Elite. Use generated or hand-authored bitmap sprites/sheets with transparent alpha, then animate by swapping frames, moving layers, or changing opacity/scale. For firepit-style effects, keep smoke as a separate no-stroke sprite sheet of small simple puffs that can be layered in code instead of baking smoke into flame frames or using one large cloud.
 
 ## UI Finish
 
@@ -36,3 +37,5 @@ Use black as the default stroke and separator color. Cream, parchment, honey, or
 All player-facing fonts must be large enough to read comfortably on a mobile device without zooming. Validate text in a 1080px-wide portrait screenshot whenever adding or changing phone-visible UI.
 
 Body text should not feel like fine print. For Godot UI, prefer at least 48px for player-facing body text; help popovers, info boxes, tutorials, and status panels should usually use at least 52px body text and 60px titles. If copy does not fit, enlarge the container or shorten the wording instead of shrinking below the readable size.
+
+No phone-visible UI element may be merely technically present but too small to read or understand. Labels, meters, status bars, icons, and progress indicators must have enough on-screen size, contrast, and stroke weight to read at phone screenshot scale. If a compact widget reads like a speck, grain, hairline, or fine print, enlarge it, simplify it, or move it into a larger layout before shipping the change.

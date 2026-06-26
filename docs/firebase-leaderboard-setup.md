@@ -24,7 +24,7 @@ Idle Elite's Firebase features are deliberately cost-conservative:
 - Chat streams must use `Accept: text/event-stream`, `orderBy="created_at"`, and a capped `limitToLast`, backed by `.indexOn`.
 - Reads and writes are restricted to the known Idle Elite leaderboard categories only.
 - Viewing leaderboard scores and reading chat messages do not require Firebase Auth. Publishing scores, reserving names, write gates, and chat writes use Firebase Anonymous Auth so rules can bind writes to `auth.uid`.
-- This beta does not ship Google sign-in or cloud saves.
+- Google sign-in can link the Firebase Auth user to a Google account, then cloud saves store one owner-only save record under `cloud_saves/v1/users/<uid>`.
 
 ## Step Pair 1: Project and Database
 
@@ -46,7 +46,9 @@ https://your-project-id-default-rtdb.europe-west1.firebasedatabase.app
 ## Step Pair 2: Auth and App Config
 
 1. Build > Authentication > Sign-in method. Enable Anonymous sign-in.
-2. Project settings > General > Your apps. Create or select a Web app and copy its Web API key.
+2. Enable Google sign-in if the build should offer Google account backup.
+3. Project settings > General > Your apps. Create or select a Web app and copy its Web API key.
+4. For Google account backup, create or select the OAuth web client used by Google sign-in and copy its client ID.
 
 The Web API key is not a secret, but leave it blank in the game until rules are published.
 
@@ -59,19 +61,39 @@ The Web API key is not a secret, but leave it blank in the game until rules are 
 .\scripts\write-firebase-leaderboard-config.ps1 -DatabaseUrl "https://your-project-id-default-rtdb.firebaseio.com" -WebApiKey "YOUR_WEB_API_KEY"
 ```
 
+For Google sign-in/cloud saves, include the OAuth web client ID:
+
+```powershell
+.\scripts\write-firebase-leaderboard-config.ps1 -DatabaseUrl "https://your-project-id-default-rtdb.firebaseio.com" -WebApiKey "YOUR_WEB_API_KEY" -GoogleWebClientId "YOUR_GOOGLE_WEB_CLIENT_ID.apps.googleusercontent.com"
+```
+
 Leave `firebase-leaderboard-config.json` absent until rules are published. Without that file, the game makes no leaderboard network or auth calls. The local config file is ignored by git, and `export_presets.cfg` explicitly includes it in local Android exports when the file exists in the project folder.
 
 At runtime, the game only accepts official Firebase Realtime Database URL host formats (`firebaseio.com` and `firebasedatabase.app`) and ignores malformed API keys, so a damaged local config fails closed. Keep the database URL lowercase, matching the Firebase console URL.
 
 The Android export keeps `permissions/internet=true`; Firebase REST calls will not work on device without that permission.
 
-Google sign-in and cloud saves are intentionally out of scope for this Firebase beta. Do not advertise account recovery or save backup until a native Android Google sign-in bridge and a separate cloud-save rules/audit pass are implemented.
+Cloud saves require Firebase Auth and are owner-only in Realtime Database rules. The game stores the normalized local save payload as `payload_json` plus summary fields, and does not open realtime listeners for save sync. The profile screen lets the player connect Google; cloud checks and uploads then happen automatically during the normal save flow. Do not advertise Google backup in a public release until the Android Google sign-in bridge is included in the exported build and a device smoke test has passed.
 
 ## Duplicate Name Protection
 
 Leaderboard names are reserved in `leaderboards/v1/name_claims/<name_key>` before the profile is locked locally. The client derives `name_key` by lowercasing the display name and collapsing spaces, hyphens, and underscores. If Firebase rejects the claim because another UID already owns that key, the profile UI shows `name is taken!`.
 
 Score rows and chat messages include `name_key`, and RTDB rules require that key to be owned by the authenticated anonymous UID. This adds one finite REST `PUT` when a player saves a leaderboard name; it does not add any realtime listeners.
+
+## Name Recovery Tickets
+
+If a legitimate player is stuck because their locked local name points at an old UID in `name_claims`, create a short-lived admin ticket by name instead of asking for or guessing UIDs:
+
+`leaderboards/v1/name_recovery_tickets/<name_key>/active = true`
+
+Example for Yawp:
+
+`leaderboards/v1/name_recovery_tickets/yawp/active = true`
+
+After the ticket exists, ask the player to reopen the updated build and try chat again. On permission denied, the client attempts to re-save its locked name claim using its current authenticated UID. RTDB rules allow the UID transfer only while the matching recovery ticket is active. Remove the ticket after the player confirms chat or leaderboard submission works.
+
+Do not leave recovery tickets active indefinitely. While a ticket is active, the first authenticated client that already has that exact `name_key` locally can claim it.
 
 ## Global Chat Moderation
 
@@ -147,6 +169,9 @@ Before shipping a build:
 10. Leave the skills/chat surfaces. Confirm the RTDB stream closes and does not continue in the background.
 11. Send two chat messages quickly. The second should be blocked by the client and rejected by rules if forced.
 12. Tombstone a test chat message with the moderation script and confirm the game renders it as removed in the live stream.
+13. Connect Google from the profile screen. Confirm Firebase Auth shows the user linked to the Google provider.
+14. After normal gameplay progress saves, confirm a single authenticated `PUT` writes `cloud_saves/v1/users/<uid>` with `uid`, summary fields, and `payload_json`.
+15. Restart or use a second install/device signed into the same Google account. Confirm the game performs a bounded authenticated cloud-save check and does not allow older cloud saves to reduce local progress.
 
 Run the local guardrail audit before any Firebase-enabled build:
 

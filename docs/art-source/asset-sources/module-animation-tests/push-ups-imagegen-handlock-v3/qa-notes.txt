@@ -1,0 +1,1 @@
+Image-generated handlock v3. Target: hands stay planted more strictly, feet remain locked, less mid-back/hip bump. Export uses shared scale and fixed baseline; red dots are fixed diagnostic overlays.

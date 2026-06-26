@@ -557,6 +557,20 @@ func _run() -> void:
 	scene.call("_input", _mouse_button_event(upper_left_image_click_point, false))
 	scene.call("_update_ui", 0.016, false)
 	await process_frame
+	var active_location_art := method_card.get("art", null) as Control
+	if active_location_art == null or not is_instance_valid(active_location_art):
+		push_error("Fishing click flow could not inspect the active location art.")
+		quit(1)
+		return
+	var first_active_zoom := float(active_location_art.get("sample_zoom"))
+	var target_active_zoom := float(method_card.get("active_camera_zoom", 0.0))
+	if target_active_zoom > 1.0 and first_active_zoom >= target_active_zoom - 0.001:
+		push_error("Fishing location active camera zoom snapped to full zoom on the first frame. zoom=%s target=%s" % [
+			str(first_active_zoom),
+			str(target_active_zoom)
+		])
+		quit(1)
+		return
 	var hands_init_seconds := float(area_card.get("active_tool_init_seconds", -1.0))
 	if hands_init_seconds > 0.0:
 		push_error("Bare-hands fishing startup should not play the gear drop-in initialization. init_seconds=%s" % str(hands_init_seconds))
@@ -681,6 +695,359 @@ func _run() -> void:
 			str(scene.get("running_action_id")),
 			str(area_hold_point),
 			str(area_drag_point)
+		])
+		quit(1)
+		return
+
+	var level_four_skills := scene.get("skills") as Dictionary
+	var level_four_fishing := (level_four_skills.get("fishing", {}) as Dictionary).duplicate(true)
+	level_four_fishing["level"] = 4
+	level_four_fishing["xp"] = int(scene.call("_xp_for_level", 4))
+	level_four_skills["fishing"] = level_four_fishing
+	scene.set("skills", level_four_skills)
+	var level_four_manual_unlocks := scene.get("manual_activity_unlocks") as Dictionary
+	for raw_key in level_four_manual_unlocks.keys().duplicate():
+		if str(raw_key).begins_with("fishing:"):
+			level_four_manual_unlocks.erase(raw_key)
+	scene.set("manual_activity_unlocks", level_four_manual_unlocks)
+	scene.call("_invalidate_manual_activity_unlock_trust")
+	scene.call("_mark_action_manually_unlocked", "fishing", "beach-shallows")
+	scene.call("_mark_action_manually_unlocked", "fishing", "beach-rocks")
+	scene.call("_clear_pending_activity_readiness_for_skill", "fishing")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "fishing")
+	scene.set("module_ui_sort_mode", "level")
+	scene.set("module_ui_pinned_order", [])
+	scene.set("module_ui_collapsed", {})
+	scene.set("_last_rendered_screen_key", "")
+	var level_four_render_result = scene.call("_render_screen", false, -1, false)
+	if level_four_render_result != null:
+		await level_four_render_result
+	for _frame in range(20):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	var level_four_pier_card := scene.call("_fishing_area_card_for_action", "fishing", "pier-dock-edge") as Dictionary
+	if level_four_pier_card.is_empty():
+		push_error("Fishing Lv 4 reveal regression: Dock Edge/Pier did not load after Rocks unlocked.")
+		quit(1)
+		return
+	var level_four_dock_card := {}
+	for raw_method_card in (level_four_pier_card.get("method_slots", {}) as Dictionary).values():
+		var candidate_level_four_dock := raw_method_card as Dictionary
+		if str(candidate_level_four_dock.get("action_id", "")) == "pier-dock-edge":
+			level_four_dock_card = candidate_level_four_dock
+			break
+	if level_four_dock_card.is_empty():
+		push_error("Fishing Lv 4 reveal regression: Pier card loaded without the Dock Edge locked teaser.")
+		quit(1)
+		return
+	var level_four_dock_action := scene.call("_action_data", "fishing", "pier-dock-edge") as Dictionary
+	if bool(scene.call("_is_action_unlocked", "fishing", level_four_dock_action)) or bool(scene.call("_can_unlock_action", "fishing", level_four_dock_action)):
+		push_error("Fishing Lv 4 reveal regression: Dock Edge should be visible but still locked until Lv 7. unlocked=%s can_unlock=%s" % [
+			str(scene.call("_is_action_unlocked", "fishing", level_four_dock_action)),
+			str(scene.call("_can_unlock_action", "fishing", level_four_dock_action))
+		])
+		quit(1)
+		return
+
+	var level_four_unlock_flow_skills := scene.get("skills") as Dictionary
+	var level_four_unlock_flow_fishing := (level_four_unlock_flow_skills.get("fishing", {}) as Dictionary).duplicate(true)
+	level_four_unlock_flow_fishing["level"] = 4
+	level_four_unlock_flow_fishing["xp"] = int(scene.call("_xp_for_level", 4))
+	level_four_unlock_flow_skills["fishing"] = level_four_unlock_flow_fishing
+	scene.set("skills", level_four_unlock_flow_skills)
+	var level_four_unlock_flow_manual := scene.get("manual_activity_unlocks") as Dictionary
+	for raw_key in level_four_unlock_flow_manual.keys().duplicate():
+		if str(raw_key).begins_with("fishing:"):
+			level_four_unlock_flow_manual.erase(raw_key)
+	scene.set("manual_activity_unlocks", level_four_unlock_flow_manual)
+	scene.call("_invalidate_manual_activity_unlock_trust")
+	scene.call("_mark_action_manually_unlocked", "fishing", "beach-shallows")
+	scene.call("_clear_pending_activity_readiness_for_skill", "fishing")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "fishing")
+	scene.set("module_ui_sort_mode", "level")
+	scene.set("module_ui_pinned_order", [])
+	scene.set("module_ui_collapsed", {})
+	scene.set("_last_rendered_screen_key", "")
+	var level_four_unlock_flow_render_result = scene.call("_render_screen", false, -1, false)
+	if level_four_unlock_flow_render_result != null:
+		await level_four_unlock_flow_render_result
+	for _frame in range(20):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	var rocks_action := scene.call("_action_data", "fishing", "beach-rocks") as Dictionary
+	if bool(scene.call("_is_action_unlocked", "fishing", rocks_action)) or not bool(scene.call("_can_unlock_action", "fishing", rocks_action)):
+		push_error("Fishing Lv 4 unlock-flow regression setup failed: Rocks should be locked but ready. unlocked=%s can_unlock=%s" % [
+			str(scene.call("_is_action_unlocked", "fishing", rocks_action)),
+			str(scene.call("_can_unlock_action", "fishing", rocks_action))
+		])
+		quit(1)
+		return
+	scene.call("_on_fishing_method_lock_pressed", "fishing", "beach-rocks")
+	var level_four_unlock_flow_reveal_faded := false
+	for _frame in range(180):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+		if bool(scene.call("_is_action_unlocked", "fishing", rocks_action)) and int(scene.get("activity_unlock_ceremony_count")) <= 0:
+			var dock_after_rocks_unlock := scene.call("_fishing_area_card_for_action", "fishing", "pier-dock-edge") as Dictionary
+			if not dock_after_rocks_unlock.is_empty():
+				level_four_unlock_flow_reveal_faded = (
+					bool(dock_after_rocks_unlock.get("fade_in_pending", false))
+					or bool(dock_after_rocks_unlock.get("unlock_next_preview_pending", false))
+					or bool(scene.call("_card_tween_is_valid", dock_after_rocks_unlock, "preview_fade_tween"))
+				)
+				break
+	if not bool(scene.call("_is_action_unlocked", "fishing", rocks_action)):
+		push_error("Fishing Lv 4 unlock-flow regression: Rocks did not unlock after its ready padlock was pressed.")
+		quit(1)
+		return
+	var dock_after_level_four_rocks_unlock := scene.call("_fishing_area_card_for_action", "fishing", "pier-dock-edge") as Dictionary
+	if dock_after_level_four_rocks_unlock.is_empty():
+		push_error("Fishing Lv 4 unlock-flow regression: Dock Edge/Pier did not load after Rocks padlock ceremony.")
+		quit(1)
+		return
+	if not level_four_unlock_flow_reveal_faded:
+		push_error("Fishing Lv 4 unlock-flow regression: Dock Edge/Pier loaded without the preview fade ceremony.")
+		quit(1)
+		return
+
+	var level_seven_skills := scene.get("skills") as Dictionary
+	var level_seven_fishing := (level_seven_skills.get("fishing", {}) as Dictionary).duplicate(true)
+	level_seven_fishing["level"] = 7
+	level_seven_fishing["xp"] = int(scene.call("_xp_for_level", 7))
+	level_seven_skills["fishing"] = level_seven_fishing
+	scene.set("skills", level_seven_skills)
+	var level_seven_manual_unlocks := scene.get("manual_activity_unlocks") as Dictionary
+	for raw_key in level_seven_manual_unlocks.keys().duplicate():
+		if str(raw_key).begins_with("fishing:"):
+			level_seven_manual_unlocks.erase(raw_key)
+	scene.set("manual_activity_unlocks", level_seven_manual_unlocks)
+	scene.call("_invalidate_manual_activity_unlock_trust")
+	scene.call("_mark_action_manually_unlocked", "fishing", "beach-shallows")
+	scene.call("_mark_action_manually_unlocked", "fishing", "beach-rocks")
+	scene.call("_clear_pending_activity_readiness_for_skill", "fishing")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "fishing")
+	scene.set("module_ui_sort_mode", "level")
+	scene.set("module_ui_pinned_order", [])
+	scene.set("module_ui_collapsed", {})
+	scene.set("_last_rendered_screen_key", "")
+	var level_seven_render_result = scene.call("_render_screen", false, -1, false)
+	if level_seven_render_result != null:
+		await level_seven_render_result
+	for _frame in range(20):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	var level_seven_pier_card := {}
+	for raw_card in (scene.get("action_cards") as Dictionary).values():
+		var candidate_pier := raw_card as Dictionary
+		if bool(candidate_pier.get("is_fishing_area", false)) and str(candidate_pier.get("area_id", "")) == "pier":
+			var candidate_root := candidate_pier.get("root", null) as Control
+			if candidate_root != null and is_instance_valid(candidate_root) and candidate_root.is_inside_tree():
+				level_seven_pier_card = candidate_pier
+				break
+	if level_seven_pier_card.is_empty():
+		push_error("Fishing unlock regression could not find Pier at level 7.")
+		quit(1)
+		return
+	var dock_edge_card := {}
+	for raw_method_card in (level_seven_pier_card.get("method_slots", {}) as Dictionary).values():
+		var candidate_dock := raw_method_card as Dictionary
+		if str(candidate_dock.get("action_id", "")) == "pier-dock-edge":
+			dock_edge_card = candidate_dock
+			break
+	if dock_edge_card.is_empty():
+		push_error("Fishing unlock regression could not find Dock Edge as the level 7 locked teaser.")
+		quit(1)
+		return
+	if not ((level_seven_pier_card.get("method_slots", {}) as Dictionary).has("pier-dock-edge")):
+		push_error("Fishing unlock regression Pier card did not contain Dock Edge before unlock.")
+		quit(1)
+		return
+	if (level_seven_pier_card.get("method_slots", {}) as Dictionary).has("pier-piling-line"):
+		push_error("Fishing unlock regression Piling Line appeared before Dock Edge was unlocked.")
+		quit(1)
+		return
+	var dock_action := scene.call("_action_data", "fishing", "pier-dock-edge") as Dictionary
+	if bool(scene.call("_is_action_unlocked", "fishing", dock_action)) or not bool(scene.call("_can_unlock_action", "fishing", dock_action)):
+		push_error("Fishing unlock regression Dock Edge was not in the locked-but-ready level 7 state. unlocked=%s can_unlock=%s" % [
+			str(scene.call("_is_action_unlocked", "fishing", dock_action)),
+			str(scene.call("_can_unlock_action", "fishing", dock_action))
+		])
+		quit(1)
+		return
+	scene.call("_on_fishing_method_lock_pressed", "fishing", "pier-dock-edge")
+	for _frame in range(160):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+		if not bool(scene.call("_action_has_pending_unlock_readiness", "pier-dock-edge")) and int(scene.get("activity_unlock_ceremony_count")) <= 0:
+			var refreshed_pier_card := scene.call("_fishing_area_card_for_action", "fishing", "pier-piling-line") as Dictionary
+			if not refreshed_pier_card.is_empty():
+				break
+	var pier_after_dock_unlock := scene.call("_fishing_area_card_for_action", "fishing", "pier-piling-line") as Dictionary
+	if pier_after_dock_unlock.is_empty():
+		push_error("Fishing unlock regression did not reveal Piling Line after the level 7 Dock Edge padlock fell.")
+		quit(1)
+		return
+	var piling_after_unlock := {}
+	for raw_method_card in (pier_after_dock_unlock.get("method_slots", {}) as Dictionary).values():
+		var candidate_piling := raw_method_card as Dictionary
+		if str(candidate_piling.get("action_id", "")) == "pier-piling-line":
+			piling_after_unlock = candidate_piling
+			break
+	if piling_after_unlock.is_empty():
+		push_error("Fishing unlock regression Pier card exists after Dock Edge unlock but lacks Piling Line method slot.")
+		quit(1)
+		return
+	var piling_action := scene.call("_action_data", "fishing", "pier-piling-line") as Dictionary
+	if bool(scene.call("_is_action_unlocked", "fishing", piling_action)) or bool(scene.call("_can_unlock_action", "fishing", piling_action)):
+		push_error("Fishing unlock regression Piling Line is not shown as the next locked future method after Dock Edge unlock. unlocked=%s can_unlock=%s" % [
+			str(scene.call("_is_action_unlocked", "fishing", piling_action)),
+			str(scene.call("_can_unlock_action", "fishing", piling_action))
+		])
+		quit(1)
+		return
+
+	var auto_unlock_skills := scene.get("skills") as Dictionary
+	var auto_unlock_fishing := (auto_unlock_skills.get("fishing", {}) as Dictionary).duplicate(true)
+	auto_unlock_fishing["level"] = 11
+	auto_unlock_fishing["xp"] = int(scene.call("_xp_for_level", 11))
+	auto_unlock_skills["fishing"] = auto_unlock_fishing
+	scene.set("skills", auto_unlock_skills)
+	scene.set("auto_unlock_lockpads_enabled", true)
+	scene.call("_clear_pending_activity_readiness_for_skill", "fishing")
+	scene.set("_last_rendered_screen_key", "")
+	var auto_unlock_render_result = scene.call("_render_screen", false, -1, false)
+	if auto_unlock_render_result != null:
+		await auto_unlock_render_result
+	for _frame in range(20):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_auto_unlock_retroactive_lockpads")
+	var auto_unlock_reveal_faded := false
+	for _frame in range(180):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+		if bool(scene.call("_is_action_unlocked", "fishing", piling_action)) and int(scene.get("activity_unlock_ceremony_count")) <= 0:
+			var river_preview_card := scene.call("_fishing_area_card_for_action", "fishing", "river-bend") as Dictionary
+			if not river_preview_card.is_empty():
+				auto_unlock_reveal_faded = (
+					bool(river_preview_card.get("fade_in_pending", false))
+					or bool(river_preview_card.get("unlock_next_preview_pending", false))
+					or bool(scene.call("_card_tween_is_valid", river_preview_card, "preview_fade_tween"))
+				)
+				break
+	if not bool(scene.call("_is_action_unlocked", "fishing", piling_action)):
+		push_error("Fishing auto-unlock did not unlock Piling Line while its padlock was ready on the visible fishing page.")
+		quit(1)
+		return
+	var river_after_auto_unlock := scene.call("_fishing_area_card_for_action", "fishing", "river-bend") as Dictionary
+	if river_after_auto_unlock.is_empty():
+		push_error("Fishing auto-unlock did not refresh/reveal the next River Bend area after Piling Line unlocked.")
+		quit(1)
+		return
+	if not auto_unlock_reveal_faded:
+		push_error("Fishing auto-unlock revealed River Bend without the preview fade ceremony.")
+		quit(1)
+		return
+	scene.set("auto_unlock_lockpads_enabled", false)
+
+	var advanced_skills := scene.get("skills") as Dictionary
+	var advanced_fishing := (advanced_skills.get("fishing", {}) as Dictionary).duplicate(true)
+	advanced_fishing["level"] = 11
+	advanced_fishing["xp"] = int(scene.call("_xp_for_level", 11))
+	advanced_skills["fishing"] = advanced_fishing
+	scene.set("skills", advanced_skills)
+	var advanced_stamina := scene.get("stamina") as Dictionary
+	advanced_stamina["fishing"] = float(scene.call("_max_stamina", "fishing"))
+	scene.set("stamina", advanced_stamina)
+	scene.call("_mark_action_manually_unlocked", "fishing", "beach-shallows")
+	scene.call("_mark_action_manually_unlocked", "fishing", "beach-rocks")
+	scene.call("_mark_action_manually_unlocked", "fishing", "pier-dock-edge")
+	scene.call("_mark_action_manually_unlocked", "fishing", "pier-piling-line")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "fishing")
+	scene.set("module_ui_sort_mode", "level")
+	scene.set("module_ui_pinned_order", [])
+	scene.set("module_ui_collapsed", {})
+	scene.set("_last_rendered_screen_key", "")
+	var advanced_render_result = scene.call("_render_screen", false, -1, false)
+	if advanced_render_result != null:
+		await advanced_render_result
+	for _frame in range(20):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	var pier_area_card := {}
+	for raw_card in (scene.get("action_cards") as Dictionary).values():
+		var candidate_area := raw_card as Dictionary
+		if bool(candidate_area.get("is_fishing_area", false)) and str(candidate_area.get("area_id", "")) == "pier":
+			var candidate_pier_root := candidate_area.get("root", null) as Control
+			if candidate_pier_root == null or not is_instance_valid(candidate_pier_root) or not candidate_pier_root.is_inside_tree():
+				continue
+			pier_area_card = candidate_area
+			break
+	if pier_area_card.is_empty():
+		push_error("Fishing click flow could not find the rendered Pier area card after level 11 unlocks.")
+		quit(1)
+		return
+	var piling_method_card := {}
+	for raw_method_card in (pier_area_card.get("method_slots", {}) as Dictionary).values():
+		var candidate_method := raw_method_card as Dictionary
+		if str(candidate_method.get("action_id", "")) == "pier-piling-line":
+			piling_method_card = candidate_method
+			break
+	var piling_button := piling_method_card.get("method_button", null) as Button
+	var piling_image := piling_method_card.get("method_image_hit_control", null) as Control
+	if piling_button == null or not is_instance_valid(piling_button) or piling_button.disabled or piling_image == null or not is_instance_valid(piling_image):
+		push_error("Fishing click flow could not find an enabled Piling Line button/image hit control.")
+		quit(1)
+		return
+	var piling_click_point := piling_image.get_global_rect().get_center()
+	if not bool(scene.call("_position_inside_detail_actions_viewport", piling_click_point)):
+		push_error("Fishing Piling Line click point is outside the activity viewport: %s rect=%s" % [
+			str(piling_click_point),
+			str(piling_image.get_global_rect())
+		])
+		quit(1)
+		return
+	if (scene.call("_fishing_method_button_hit", piling_click_point, true) as Dictionary).is_empty():
+		push_error("Fishing Piling Line click point is outside the fishing method hit route: %s rect=%s" % [
+			str(piling_click_point),
+			str(piling_image.get_global_rect())
+		])
+		quit(1)
+		return
+	scene.call("_clear_skill_swipe_button_suppression")
+	var advanced_detail_scroll := scene.get("detail_actions_scroll") as ScrollContainer
+	if advanced_detail_scroll != null and advanced_detail_scroll.has_method("prepare_child_tap"):
+		advanced_detail_scroll.call("prepare_child_tap")
+	var piling_press_routed := bool(scene.call("_route_fishing_method_button_global_input", _mouse_button_event(piling_click_point, true)))
+	scene.call("_route_fishing_method_button_global_input", _mouse_button_event(piling_click_point, false))
+	for _frame in range(20):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	if not piling_press_routed:
+		push_error("Fishing Piling Line press did not route through the fishing method tile.")
+		quit(1)
+		return
+	if str(scene.get("selected_skill_id")) != "fishing":
+		push_error("Fishing Piling Line tap navigated away from fishing to %s." % str(scene.get("selected_skill_id")))
+		quit(1)
+		return
+	if str(scene.get("running_skill_id")) != "fishing" or str(scene.get("running_action_id")) != "pier-piling-line":
+		push_error("Fishing Piling Line tap did not start Piling Line. running=%s:%s" % [
+			str(scene.get("running_skill_id")),
+			str(scene.get("running_action_id"))
 		])
 		quit(1)
 		return

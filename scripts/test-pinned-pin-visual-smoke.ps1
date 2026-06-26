@@ -38,13 +38,12 @@ function Assert-NoUnexpectedGodotErrors {
 
     foreach ($line in @($Output)) {
         $text = [string]$line
-        if ($text -notmatch '^(ERROR|SCRIPT ERROR):') {
+        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
             continue
         }
         $knownShutdownNoise = (
-            $text -match '^ERROR: Parameter "t" is null\.$' -or
-            $text -match '^ERROR: \d+ RID allocations of type .+ were leaked at exit\.$' -or
-            $text -match '^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$'
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
@@ -335,7 +334,7 @@ func _check_badge_visual_state(scene: Node, pop: Control, badge: TextureButton, 
 	if badge.texture_normal == null:
 		_record("pin badge texture is missing")
 	else:
-		var texture_path := str(badge.texture_normal.resource_path)
+		var texture_path := str(badge.get_meta("module_pin_texture_path", ""))
 		var expected_textures := [EXPECTED_PIN_TEXTURE]
 		expected_textures.append_array(EXPECTED_PIN_COLOR_TEXTURES)
 		if not expected_textures.has(texture_path):

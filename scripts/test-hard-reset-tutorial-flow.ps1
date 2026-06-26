@@ -5,7 +5,9 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\hard-reset-tutorial-flow"
 $testScript = Join-Path $testDir "hard_reset_tutorial_flow_test.gd"
 $savePath = Join-Path $env:APPDATA "Godot\app_userdata\Idle Elite\idle_elite_save.json"
+$saveBackupPath = Join-Path $env:APPDATA "Godot\app_userdata\Idle Elite\idle_elite_save.backup.json"
 $backupPath = Join-Path $testDir "idle_elite_save.backup.json"
+$backupSaveBackupPath = Join-Path $testDir "idle_elite_save.backup.backup.json"
 
 function Assert-True {
     param(
@@ -32,6 +34,12 @@ New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 $hadSave = Test-Path -LiteralPath $savePath
 if ($hadSave) {
     Copy-Item -LiteralPath $savePath -Destination $backupPath -Force
+    Remove-Item -LiteralPath $savePath -Force
+}
+$hadSaveBackup = Test-Path -LiteralPath $saveBackupPath
+if ($hadSaveBackup) {
+    Copy-Item -LiteralPath $saveBackupPath -Destination $backupSaveBackupPath -Force
+    Remove-Item -LiteralPath $saveBackupPath -Force
 }
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
@@ -170,7 +178,9 @@ func _run() -> void:
 	test_skills["fight"] = fight_state
 	scene.set("skills", test_skills)
 	scene.call("_recalculate_level", "fight", true)
-	await scene.call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
+	var lock_tip_refresh = scene.call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
+	if lock_tip_refresh != null:
+		await lock_tip_refresh
 	for _i in range(360):
 		await _wait_test_frame()
 		scene.call("_tutorial_check_progress")
@@ -193,6 +203,25 @@ func _run() -> void:
 	if bool(scene.call("_tutorial_level_two_unlock_should_use_fast_reveal", "fight", "wrestle-stuck-gate-latch")):
 		_fail("only the level 2 tutorial module should use the fast reveal path")
 		return
+	scene.call("_toggle_auto_unlock_lockpads_enabled")
+	for _i in range(240):
+		await _wait_test_frame()
+		scene.call("_tutorial_check_progress")
+	if not bool(scene.get("auto_unlock_lockpads_enabled")):
+		_fail("auto-unlock toggle did not turn on during onboarding: %s" % _summary(scene))
+		return
+	var level_two_action := scene.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
+	if bool(scene.call("_is_action_unlocked", "fight", level_two_action)):
+		_fail("auto-unlock should be paused during onboarding and must not unlock Kick Mud Off Boot: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
+		return
+	var rendered_after_auto_toggle := _rendered_action_ids(scene)
+	if rendered_after_auto_toggle.has("wrestle-stuck-gate-latch") or rendered_after_auto_toggle.has("box-suspicious-feed-sack"):
+		_fail("auto-unlock during onboarding revealed stacked future locks: %s" % str(rendered_after_auto_toggle))
+		return
+	if not _lock_click_tip_visible(scene):
+		_fail("auto-unlock during onboarding hid the lock-click tutorial tip before the player clicked the lock: %s" % _summary(scene))
+		return
+	scene.set("auto_unlock_lockpads_enabled", false)
 	print("hard-reset-tutorial-flow-stage starter-run-observed")
 	var manual_unlocks := scene.get("manual_activity_unlocks") as Dictionary
 	manual_unlocks["fight:kick-mud-off-boot"] = true
@@ -203,25 +232,32 @@ func _run() -> void:
 	scene.set("stamina_gauge_tip_seen", true)
 	scene.set("onboarding_fight_action_stats_revealed", true)
 	var test_stamina := scene.get("stamina") as Dictionary
-	test_stamina["fight"] = 0.0
+	test_stamina["fight"] = scene.call("_max_stamina", "fight")
 	scene.set("stamina", test_stamina)
-	scene.call("_mark_onboarding_swipe_navigation_unlocked")
 	scene.call("_maybe_trigger_onboarding_swipe_tip_at_zero_stamina", "fight")
-	await scene.call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
+	var swipe_tip_refresh = scene.call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
+	if swipe_tip_refresh != null:
+		await swipe_tip_refresh
 	for _i in range(720):
 		await _wait_test_frame()
 		scene.call("_tutorial_check_progress")
 		if _has_page_switch_module(scene) and _skill_swipe_tip_between_level_two_and_three(scene):
 			break
 	if not _has_page_switch_module(scene):
-		_fail("page-switch navigation did not appear when the swipe tutorial step became available: %s" % _summary(scene))
+		_fail("page-switch navigation did not appear when the swipe tutorial gate became available before stamina depletion: %s" % _summary(scene))
 		return
 	if not bool(scene.get("onboarding_swipe_navigation_unlocked")):
-		_fail("page-switch navigation appeared before onboarding swipe navigation was unlocked: %s" % _summary(scene))
+		_fail("page-switch navigation appeared before onboarding swipe navigation was unlocked by the gate prompt: %s" % _summary(scene))
 		return
 	if not _skill_swipe_tip_between_level_two_and_three(scene):
 		_fail("skill-swipe tutorial line was not placed between the level 2 and level 3 fight modules: %s tip_index=%s action_indices=%s" % [_summary(scene), str(_first_group_stack_index(scene, "skill_swipe_tip_notes")), str(_fight_action_stack_indices(scene))])
 		return
+	if not await _stale_page_switch_input_clears_on_suspend(scene):
+		_fail("stale page-switch input state kept stealing normal activity taps after suspend/resume: %s" % _summary(scene))
+		return
+	scene.set("running_skill_id", "")
+	scene.set("running_action_id", "")
+	scene.set("action_progress", 0.0)
 	if not await _press_first_page_switch_button(scene):
 		_fail("page-switch button press was not accepted during the swipe tutorial step: %s" % _summary(scene))
 		return
@@ -700,6 +736,63 @@ func _press_first_page_switch_button(scene: Node) -> bool:
 	return false
 
 
+func _stale_page_switch_input_clears_on_suspend(scene: Node) -> bool:
+	var button := _first_page_switch_button(scene)
+	if button == null:
+		return false
+	var button_center := button.get_global_rect().get_center()
+	scene.set("page_switch_press_active", true)
+	scene.set("page_switch_press_target_skill_id", str(button.get_meta("page_switch_target_skill_id", "")))
+	scene.set("page_switch_press_position", button_center)
+	scene.set("page_switch_press_dragged", false)
+	button.set_meta("page_switch_press_active", true)
+	button.set_meta("page_switch_press_position", button_center)
+	button.set_meta("page_switch_press_dragged", false)
+	button.set_meta("activity_button_hold_nav_press", true)
+	button.set_meta("activity_button_hold_nav_target_active", true)
+	scene.call("_save_for_app_suspend")
+	scene.call("_resume_from_app_suspend")
+	for _i in range(12):
+		await _wait_test_frame()
+	if bool(scene.get("page_switch_press_active")):
+		return false
+	if int(scene.get("page_switch_transition_button_id")) != 0:
+		return false
+	if bool(button.get_meta("page_switch_press_active", false)):
+		return false
+	var activity_position := _activity_card_center(scene, "fight:kick-mud-off-boot")
+	if activity_position == Vector2.INF:
+		return false
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = activity_position
+	press.global_position = activity_position
+	return not bool(scene.call("_route_page_switch_button_global_input", press))
+
+
+func _first_page_switch_button(scene: Node) -> Button:
+	var tree := scene.get_tree()
+	if tree == null:
+		return null
+	for raw_node in tree.get_nodes_in_group("page_switch_buttons"):
+		var button := raw_node as Button
+		if button != null and is_instance_valid(button) and button.is_visible_in_tree():
+			return button
+	return null
+
+
+func _activity_card_center(scene: Node, action_key: String) -> Vector2:
+	var cards := scene.get("action_cards") as Dictionary
+	if cards == null or not cards.has(action_key):
+		return Vector2.INF
+	var card := cards.get(action_key, {}) as Dictionary
+	var root := card.get("root") as Control
+	if root != null and is_instance_valid(root) and root.is_visible_in_tree():
+		return root.get_global_rect().get_center()
+	return Vector2.INF
+
+
 func _find_named_descendant(root_node: Node, node_name: String) -> Node:
 	if root_node == null:
 		return null
@@ -770,6 +863,11 @@ func _fail(message: String) -> void:
         Copy-Item -LiteralPath $backupPath -Destination $savePath -Force -ErrorAction SilentlyContinue
     } elseif (Test-Path -LiteralPath $savePath) {
         Remove-Item -LiteralPath $savePath -Force -ErrorAction SilentlyContinue
+    }
+    if ($hadSaveBackup) {
+        Copy-Item -LiteralPath $backupSaveBackupPath -Destination $saveBackupPath -Force -ErrorAction SilentlyContinue
+    } elseif (Test-Path -LiteralPath $saveBackupPath) {
+        Remove-Item -LiteralPath $saveBackupPath -Force -ErrorAction SilentlyContinue
     }
     if ($null -eq $previousTimeout) {
         Remove-Item Env:\GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue

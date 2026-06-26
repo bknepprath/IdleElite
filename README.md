@@ -16,6 +16,27 @@ Run a quick headless smoke test:
 .\scripts\check-project.ps1
 ```
 
+Run the broader whole-game validation sweep:
+
+```powershell
+.\scripts\test-everything.ps1
+```
+
+Run the crawler that stages major screens and clicks visible enabled buttons:
+
+```powershell
+.\scripts\test-button-census-clicks.ps1
+```
+
+Useful variants:
+
+```powershell
+.\scripts\test-everything.ps1 -List
+.\scripts\test-everything.ps1 -Mode smoke
+.\scripts\test-everything.ps1 -Aspect fishing,ui
+.\scripts\test-everything.ps1 -Mode release -IncludeExternal
+```
+
 Run a one-shot headless launch through the shared Godot safety wrapper:
 
 ```powershell

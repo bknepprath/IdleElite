@@ -358,6 +358,8 @@ func _set_ready_open_progress(progress: float) -> void:
 func _cropped_padlock_texture(source: Texture2D) -> Texture2D:
 	if source == null:
 		return null
+	if DisplayServer.get_name() == "headless":
+		return _placeholder_texture_for_source(source)
 	var source_size := source.get_size()
 	if source_size.x <= PADLOCK_SOURCE_CROP_RIGHT + 1.0:
 		return source
@@ -396,6 +398,8 @@ func _image_for_pixel_access(source: Texture2D) -> Image:
 func _alpha_mask_texture(source: Texture2D) -> Texture2D:
 	if source == null:
 		return null
+	if DisplayServer.get_name() == "headless":
+		return _placeholder_texture_for_source(source)
 	var image := _image_for_pixel_access(source)
 	if image == null:
 		return null
@@ -405,6 +409,13 @@ func _alpha_mask_texture(source: Texture2D) -> Texture2D:
 			var alpha := clampf(pixel.a, 0.0, 1.0)
 			image.set_pixel(x, y, Color(1, 1, 1, alpha))
 	return ImageTexture.create_from_image(image)
+
+
+func _placeholder_texture_for_source(source: Texture2D) -> Texture2D:
+	var placeholder := PlaceholderTexture2D.new()
+	var source_size := source.get_size() if source != null else Vector2(8, 8)
+	placeholder.size = Vector2(maxf(1.0, source_size.x), maxf(1.0, source_size.y))
+	return placeholder
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:

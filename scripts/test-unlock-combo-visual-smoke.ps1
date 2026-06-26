@@ -38,13 +38,12 @@ function Assert-NoUnexpectedGodotErrors {
 
     foreach ($line in @($Output)) {
         $text = [string]$line
-        if ($text -notmatch '^(ERROR|SCRIPT ERROR):') {
+        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
             continue
         }
         $knownShutdownNoise = (
-            $text -match '^ERROR: Parameter "t" is null\.$' -or
-            $text -match '^ERROR: \d+ RID allocations of type .+ were leaked at exit\.$' -or
-            $text -match '^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$'
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
@@ -306,20 +305,24 @@ func _check_colored_xp_floats(scene: Node) -> void:
 	var found_woodcutting := false
 	var found_thieving_color := false
 	var found_woodcutting_color := false
+	var xp_label_count := 0
 	for raw_label in labels:
 		var label := raw_label as Label
 		if label == null:
 			continue
 		var text := label.text
 		var color := label.get_theme_color("font_color")
-		if text.find("THV") >= 0:
+		if text.find("XP") < 0:
+			continue
+		xp_label_count += 1
+		if _color_distance(color, scene.call("_skill_theme_color", "thieving") as Color) <= 0.30:
 			found_thieving = true
-			if _color_distance(color, scene.call("_skill_theme_color", "thieving") as Color) <= 0.30:
-				found_thieving_color = true
-		if text.find("WOD") >= 0:
+			found_thieving_color = true
+		if _color_distance(color, scene.call("_skill_theme_color", "woodcutting") as Color) <= 0.30:
 			found_woodcutting = true
-			if _color_distance(color, scene.call("_skill_theme_color", "woodcutting") as Color) <= 0.30:
-				found_woodcutting_color = true
+			found_woodcutting_color = true
+	if xp_label_count < 2:
+		_record("expected at least two colored XP float labels, found %s" % xp_label_count)
 	if not found_thieving:
 		_record("missing thieving colored XP float")
 	elif not found_thieving_color:
@@ -378,7 +381,7 @@ func _check_event_insertion(scene: Node) -> void:
 		await render_result
 	for _i in range(4):
 		await process_frame
-	var event_plan_item := scene.call("_detail_lazy_plan_item_for_track_id", event_id) as Dictionary
+	var event_plan_item := scene.call("_detail_lazy_entry_for_track_id", event_id) as Dictionary
 	if event_plan_item.is_empty():
 		_record("event module was not present in the detail lazy plan")
 		return

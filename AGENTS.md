@@ -42,6 +42,8 @@ For visible game-only playtesting when explicitly requested:
   Get-CimInstance Win32_Process -Filter "Name='Godot.exe'" | Select-Object ProcessId,ParentProcessId,CommandLine
   ```
   Stop only the headless process that clearly belongs to your wrapper-launched command and should have exited. Leave visible game/debug/editor/project-manager windows alone.
+- For player-visible UI/layout screenshots, capture the real game at the dimensions the user is judging whenever possible. Do not rely only on tall synthetic/mobile captures if the user is looking at the desktop launch window. For this project, the desktop launch style is the `2160x3840` design viewport displayed in the `627x1115` window override from `project.godot`; use capture tooling that preserves that viewport/window pairing when validating desktop-visible layout.
+- Never present mockups, fallback images, generated approximations, or cropped helper renders as if they are real game screenshots. If a screenshot is not from the running Godot game through the safe wrapper/capture script, label it clearly or do not use it as visual proof.
 - For generated UI icons with a white subject on a white background, do not remove white globally; that will damage the subject. Use a border-connected flood fill or another method that removes only the connected background, then verify corner alpha and subject alpha before wiring the asset.
 - PowerShell image/file scripts should use `(Resolve-Path <path>).Path` when passing paths into .NET APIs. Parenthesize arithmetic inside array literals, for example `@(0, ($height - 1))`, to avoid accidental parser/object-array errors.
 

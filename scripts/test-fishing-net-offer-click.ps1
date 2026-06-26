@@ -89,6 +89,7 @@ func _run() -> void:
 	fishing["xp"] = 0
 	skills["fishing"] = fishing
 	scene.set("skills", skills)
+	scene.call("_god_mode_unlock_onboarding_state")
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fishing")
 	scene.set("fishing_net_collected", false)
@@ -246,7 +247,14 @@ func _run() -> void:
     Assert-True (($output -join "`n") -match "fishing-net-offer-click-ok") "Fishing net offer click test did not report success."
 }
 finally {
-    $headless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
+    $headless = @()
+    for ($attempt = 1; $attempt -le 10; $attempt++) {
+        $headless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
+        if ($headless.Count -eq 0) {
+            break
+        }
+        Start-Sleep -Milliseconds 500
+    }
     if ($headless.Count -gt 0) {
         $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
         throw "A headless Godot process is still running after fishing net offer validation."

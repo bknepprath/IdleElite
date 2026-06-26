@@ -68,6 +68,11 @@ if ($godotArgs -contains "--editor" -or $godotArgs -contains "-e" -or $godotArgs
 if (-not $visibleGame -and $godotArgs -notcontains "--headless") {
     $godotArgs = @("--headless") + $godotArgs
 }
+$previousAppData = $env:APPDATA
+if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {
+    $testUserDataDir = (New-Item -ItemType Directory -Force -Path $env:IDLE_ELITE_TEST_USER_DATA_DIR).FullName
+    $env:APPDATA = $testUserDataDir
+}
 
 function ConvertTo-ProcessArgument {
     param([Parameter(Mandatory = $true)][string]$Argument)
@@ -208,6 +213,14 @@ $newUnattributedIds = @(
 )
 if ($newUnattributedIds.Count -gt 0) {
     [Console]::Error.WriteLine("New Godot process(es) appeared during this command but were not confirmed as children of this run: $($newUnattributedIds -join ', '). They were not terminated.")
+}
+
+if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {
+    if ($null -eq $previousAppData) {
+        Remove-Item Env:\APPDATA -ErrorAction SilentlyContinue
+    } else {
+        $env:APPDATA = $previousAppData
+    }
 }
 
 Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue

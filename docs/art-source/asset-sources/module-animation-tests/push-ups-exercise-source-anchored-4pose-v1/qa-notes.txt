@@ -1,0 +1,1 @@
+Rejected fresh imagegen because it produced tall old body. This version uses only exercise source push-up cutouts. World foot anchor: (56, 184). Frames 2 and 3 are source-derived anchored near-key tweens, not fresh imagegen.

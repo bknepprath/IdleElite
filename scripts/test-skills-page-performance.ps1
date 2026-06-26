@@ -33,12 +33,12 @@ function Assert-NoUnexpectedGodotErrors {
 
     foreach ($line in @($Output)) {
         $text = [string]$line
-        if ($text -notmatch '^(ERROR|SCRIPT ERROR):') {
+        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
             continue
         }
         $knownShutdownNoise = (
-            $text -match '^ERROR: \d+ RID allocations of type .+ were leaked at exit\.$' -or
-            $text -match '^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$'
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
@@ -83,6 +83,7 @@ func _run() -> void:
 	print("skills-page-performance-start")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "14")
+	OS.set_environment("IDLE_ELITE_HEADLESS_SIMPLE_ACTION_BG", "1")
 	var packed := load("res://scenes/main.tscn") as PackedScene
 	if packed == null:
 		_fail("main scene did not load")

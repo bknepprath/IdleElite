@@ -893,9 +893,6 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     if ($silverTipActionRestoreMatches.Count -gt 1) {
         Add-Finding $errors 'scripts/main.gd still restores raw silver opportunity action keys outside _restore_tip_metadata_from_save().'
     }
-    if ($mainScript -match '(?m)^\s*"leaderboard_auth_provider":') {
-        Add-Finding $errors 'scripts/main.gd should not save ignored leaderboard_auth_provider state.'
-    }
     $leaderboardAuthRefreshRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_auth_refresh_token = str\(data\.get\("leaderboard_auth_refresh_token", ""\)\)\.strip_edges\(\)')
     if ($leaderboardAuthRefreshRestoreMatches.Count -gt 1) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard auth metadata instead of _restore_leaderboard_auth_metadata_from_save().'
@@ -908,9 +905,6 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         if ($mainScript.Contains($token)) {
             Add-Finding $errors "scripts/main.gd still contains obsolete raw mastery restore token: $token."
         }
-    }
-    if ($mainScript.Contains('data.get("leaderboard_auth_provider"')) {
-        Add-Finding $errors 'scripts/main.gd should not restore ignored leaderboard_auth_provider state from saves.'
     }
 }
 

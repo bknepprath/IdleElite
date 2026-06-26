@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite Blue Guy Action Art Review</title>
+  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG blue guy action art replacement checklist">
+  <link rel="stylesheet" href="docs-nav.css?v=20260616o">
+  <link rel="stylesheet" href="docs-theme.css?v=20260616o">
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f4ead8;
+      --paper: #fffaf1;
+      --panel: #fffdf8;
+      --line: #d6c3a2;
+      --ink: #1c1915;
+      --muted: #716756;
+      --blue: #237cd5;
+      --ok: #257a4c;
+      --bad: #b84432;
+      --keep: #8c6b20;
+      --shadow: rgba(54, 39, 18, 0.14);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      color: var(--ink);
+      background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.52), transparent 420px),
+        var(--bg);
+    }
+
+    body.drag-scroll-ready {
+      cursor: grab;
+    }
+
+    body.drag-scrolling {
+      cursor: grabbing;
+      user-select: none;
+    }
+
+    .review-header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 4px 8px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255, 250, 241, 0.94);
+      backdrop-filter: blur(14px);
+    }
+
+    h1 {
+      margin: 0;
+      flex: 0 0 auto;
+      font-size: 15px;
+      line-height: 1;
+      letter-spacing: 0;
+      white-space: nowrap;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 6px;
+      align-items: center;
+      min-width: 0;
+      flex: 1 1 auto;
+      margin-top: 0;
+      overflow-x: auto;
+      scrollbar-width: thin;
+    }
+
+    button,
+    select {
+      min-height: 30px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #efe0bf;
+      color: var(--ink);
+      padding: 5px 8px;
+      font: inherit;
+      font-weight: 800;
+      font-size: 13px;
+      line-height: 1.1;
+    }
+
+    button {
+      cursor: pointer;
+    }
+
+    button:hover,
+    select:hover,
+    button.is-active {
+      border-color: var(--blue);
+    }
+
+    button.is-active {
+      background: #d8ecff;
+      box-shadow: inset 0 0 0 2px rgba(35, 124, 213, 0.22);
+    }
+
+    .counter {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 900;
+      white-space: nowrap;
+    }
+
+    main {
+      padding: 4px clamp(8px, 2vw, 22px) 36px;
+    }
+
+    .grid {
+      display: grid;
+      gap: 10px;
+    }
+
+    .row {
+      display: grid;
+      grid-template-areas:
+        "current body proposed"
+        "current status proposed"
+        "comment comment proposed";
+      grid-template-columns: minmax(240px, 300px) minmax(210px, 260px) minmax(240px, 300px);
+      min-height: 238px;
+      overflow: clip;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--paper);
+      box-shadow: 0 12px 28px var(--shadow);
+    }
+
+    .row[data-status="accepted"] { border-color: rgba(37, 122, 76, 0.78); }
+    .row[data-status="rejected"] { border-color: rgba(184, 68, 50, 0.78); }
+    .row[data-status="keep-old"] { border-color: rgba(140, 107, 32, 0.78); }
+
+    .row[data-status="accepted"],
+    .row[data-status="keep-old"] {
+      background: #ececec;
+      filter: grayscale(1);
+      opacity: 0.58;
+    }
+
+    .row[data-status="accepted"]:hover,
+    .row[data-status="keep-old"]:hover {
+      opacity: 0.74;
+    }
+
+    .preview {
+      position: relative;
+      display: grid;
+      place-items: center;
+      min-height: 236px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      background:
+        linear-gradient(45deg, rgba(0, 0, 0, 0.04) 25%, transparent 25% 75%, rgba(0, 0, 0, 0.04) 75%),
+        linear-gradient(45deg, rgba(0, 0, 0, 0.04) 25%, transparent 25% 75%, rgba(0, 0, 0, 0.04) 75%),
+        #ead9b7;
+      background-position: 0 0, 12px 12px;
+      background-size: 24px 24px;
+    }
+
+    .preview.current {
+      grid-area: current;
+    }
+
+    .preview.proposed {
+      grid-area: proposed;
+      background: #f4fbfd;
+    }
+
+    .row[data-status="keep-old"] .preview.proposed {
+      background: #e6e6e6;
+    }
+
+    .preview img {
+      width: min(100%, 204px);
+      height: min(100%, 204px);
+      aspect-ratio: 1 / 1;
+      object-fit: contain;
+      border-radius: 6px;
+      filter: drop-shadow(0 4px 8px rgba(42, 30, 13, 0.22));
+    }
+
+    .badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      padding: 6px 8px;
+      border-radius: 8px;
+      background: rgba(24, 21, 17, 0.88);
+      color: #fff7e7;
+      font-size: 12px;
+      font-weight: 1000;
+    }
+
+    .empty {
+      color: #7d735f;
+      font-size: 12px;
+      font-weight: 1000;
+      letter-spacing: 0.08em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+
+    .body,
+    .status,
+    .comment-cell {
+      padding: 14px;
+    }
+
+    .body {
+      grid-area: body;
+      display: grid;
+      align-content: center;
+      gap: 9px;
+    }
+
+    .body h2 {
+      margin: 0;
+      font-size: 21px;
+      line-height: 1.08;
+      letter-spacing: 0;
+    }
+
+    .meta,
+    .path {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    .path {
+      overflow-wrap: anywhere;
+      font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+
+    .pill-line {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .pill {
+      padding: 5px 8px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: #fff5df;
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .status,
+    .comment-cell {
+      display: grid;
+      align-content: center;
+      gap: 8px;
+      border-left: 1px solid var(--line);
+    }
+
+    .status {
+      grid-area: status;
+      border-top: 1px solid var(--line);
+    }
+
+    .comment-cell {
+      grid-area: comment;
+      border-top: 1px solid var(--line);
+    }
+
+    label.choice {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      min-height: 42px;
+      padding: 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #efe0bf;
+      font-size: 13px;
+      font-weight: 900;
+      cursor: pointer;
+    }
+
+    .row[data-status="accepted"] label.accept { border-color: var(--ok); }
+    .row[data-status="rejected"] label.reject { border-color: var(--bad); }
+    .row[data-status="keep-old"] label.keep { border-color: var(--keep); }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--blue);
+      flex: 0 0 auto;
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 150px;
+      resize: vertical;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fffdf8;
+      color: var(--ink);
+      padding: 10px;
+      font: inherit;
+      font-size: 16px;
+      line-height: 1.35;
+      cursor: text;
+      touch-action: manipulation;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    @media (max-width: 1180px) {
+      .row {
+        grid-template-areas:
+          "current proposed"
+          "body body"
+          "status status"
+          "comment comment";
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      }
+
+      .body,
+      .status,
+      .comment-cell {
+        border-left: 0;
+        border-top: 1px solid var(--line);
+      }
+
+      .body,
+      .comment-cell {
+        grid-column: 1 / -1;
+      }
+
+      .status {
+        grid-column: 1 / -1;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+    }
+
+    @media (max-width: 720px) {
+      .review-header {
+        gap: 6px;
+      }
+
+      h1 {
+        font-size: 13px;
+      }
+
+      .row {
+        grid-template-areas:
+          "current"
+          "proposed"
+          "body"
+          "status"
+          "comment";
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .preview {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+
+      .status {
+        grid-template-columns: minmax(0, 1fr);
+      }
+
+      .counter {
+        margin-left: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="review-header">
+    <h1>Blue Guy Art</h1>
+    <div class="toolbar">
+      <select id="skillFilter" aria-label="Skill filter"></select>
+      <button type="button" data-filter="pending">Needs Review</button>
+      <button type="button" data-filter="generated">Generated</button>
+      <button type="button" data-filter="rejected">Rejected</button>
+      <button type="button" data-filter="all">Show All</button>
+      <button type="button" id="exportState">Export</button>
+      <span class="counter" id="counter">Loading...</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="grid" id="assetGrid" aria-label="Blue guy action art checklist"></section>
+  </main>
+
+  <script src="activity-database-data.js?v=blue-guy-review-20260623b"></script>
+  <script src="activity-docs.js"></script>
+  <script>
+    const stateKey = "idleEliteBlueGuyActionArtReview.v1";
+    const proposedRoot = "docs/art-source/asset-sources/blue-guy-action-art-review";
+    const highestProposalVersion = 24;
+    const grid = document.querySelector("#assetGrid");
+    const counter = document.querySelector("#counter");
+    const skillFilter = document.querySelector("#skillFilter");
+    const storedState = JSON.parse(localStorage.getItem(stateKey) || "{}");
+    let proposalManifest = {};
+    let rows = [];
+    let activeFilter = "all";
+
+    function escapeHtml(value) {
+      return String(value ?? "").replace(/[&<>"']/g, char => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': "&quot;",
+        "'": "&#39;"
+      }[char]));
+    }
+
+    function docsAsset(path) {
+      return ActivityDocs.docsAsset(path);
+    }
+
+    function reviewAsset(path) {
+      return ActivityDocs.docsAsset(path);
+    }
+
+    function slug(value) {
+      return String(value || "")
+        .toLowerCase()
+        .replace(/&/g, " and ")
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "");
+    }
+
+    function proposedPathFor(row, version = 1) {
+      return `${proposedRoot}/${row.skillId}-${row.actionId}-v${version}.png`;
+    }
+
+    function proposedCandidatePaths(row) {
+      const paths = [];
+      for (let version = highestProposalVersion; version >= 1; version -= 1) {
+        paths.push({ version, path: proposedPathFor(row, version) });
+      }
+      return paths;
+    }
+
+    function manifestCandidateFor(row) {
+      return proposedCandidatePaths(row).find(candidate => proposalManifest[candidate.path]);
+    }
+
+    function proposalSignature(candidate) {
+      const manifestEntry = proposalManifest[candidate?.path];
+      if (manifestEntry?.signature) return manifestEntry.signature;
+      return `v${candidate?.version || 0}`;
+    }
+
+    function proposalModifiedTime(row) {
+      const candidate = manifestCandidateFor(row);
+      const modified = candidate ? proposalManifest[candidate.path]?.modifiedUtc : "";
+      const time = Date.parse(modified || "");
+      return Number.isFinite(time) ? time : 0;
+    }
+
+    function rowSort(left, right) {
+      const freshDelta = proposalModifiedTime(right) - proposalModifiedTime(left);
+      if (freshDelta) return freshDelta;
+      const skillDelta = left.skillName.localeCompare(right.skillName);
+      if (skillDelta) return skillDelta;
+      return Number(left.unlock) - Number(right.unlock) || left.name.localeCompare(right.name);
+    }
+
+    function ensureRowState(id) {
+      storedState[id] ||= {};
+      return storedState[id];
+    }
+
+    function statusFor(id) {
+      const row = storedState[id] || {};
+      if (row.accepted) return "accepted";
+      if (row.rejected) return "rejected";
+      if (row.keepOld) return "keep-old";
+      return "pending";
+    }
+
+    function choiceChange(row, choice, checked, card) {
+      const item = ensureRowState(row.id);
+      if (choice === "accepted") item.accepted = checked;
+      if (choice === "rejected") item.rejected = checked;
+      if (choice === "keepOld") item.keepOld = checked;
+      item.reviewedVersion = row.generatedVersion || 0;
+      item.reviewedSignature = row.generatedSignature || `v${row.generatedVersion || 0}`;
+      if (checked) {
+        for (const key of ["accepted", "rejected", "keepOld"]) {
+          if (key !== choice) item[key] = false;
+        }
+        item.comment = "";
+        const textarea = card.querySelector("textarea");
+        if (textarea) textarea.value = "";
+      }
+      syncCard(card, row);
+      saveState({ reorder: false });
+    }
+
+    function saveState(options = {}) {
+      const { reorder = true } = options;
+      localStorage.setItem(stateKey, JSON.stringify(storedState, null, 2));
+      updateCounter({ reorder });
+    }
+
+    function persistState() {
+      localStorage.setItem(stateKey, JSON.stringify(storedState, null, 2));
+    }
+
+    function imageExists(path, img, empty, callback) {
+      img.onload = () => {
+        img.hidden = false;
+        empty.hidden = true;
+        callback?.(true);
+      };
+      img.onerror = () => {
+        img.hidden = true;
+        empty.hidden = false;
+        callback?.(false);
+      };
+      img.src = path;
+    }
+
+    function firstExistingImage(candidates, img, empty, callback) {
+      const [candidate, ...rest] = candidates;
+      if (!candidate) {
+        img.hidden = true;
+        empty.hidden = false;
+        callback?.(false, null);
+        return;
+      }
+      img.onload = () => {
+        img.hidden = false;
+        empty.hidden = true;
+        callback?.(true, candidate);
+      };
+      img.onerror = () => firstExistingImage(rest, img, empty, callback);
+      img.src = reviewAsset(candidate.path);
+    }
+
+    function applyProposedCandidate(row, card, img, empty, fallbackProposedPath, exists, candidate) {
+      row.generated = exists;
+      row.generatedVersion = candidate?.version || 0;
+      row.generatedPath = candidate?.path || fallbackProposedPath;
+      row.generatedSignature = exists ? proposalSignature(candidate) : "";
+      if (exists && candidate) {
+        img.onload = null;
+        img.onerror = null;
+        img.src = reviewAsset(candidate.path);
+        img.hidden = false;
+        empty.hidden = true;
+      }
+      const rowState = storedState[row.id];
+      const hasReviewedSignature = !!rowState?.reviewedSignature;
+      const staleBySignature = hasReviewedSignature && rowState.reviewedSignature !== row.generatedSignature;
+      const staleByVersion = !hasReviewedSignature && Number(rowState?.reviewedVersion || 0) !== row.generatedVersion;
+      let clearedStaleReject = false;
+      if (exists && rowState?.rejected && (staleBySignature || staleByVersion)) {
+        rowState.rejected = false;
+        rowState.reviewedVersion = row.generatedVersion;
+        rowState.reviewedSignature = row.generatedSignature;
+        clearedStaleReject = true;
+        saveState();
+        syncCard(card, row);
+      }
+      if (exists && !clearedStaleReject && restoreRejectedComment(row)) {
+        saveState();
+        syncCard(card, row);
+      }
+      syncCard(card, row);
+      updateCounter();
+    }
+
+    function syncCard(card, row) {
+      const rowState = storedState[row.id] || {};
+      card.dataset.status = statusFor(row.id);
+      card.querySelector(".accept input").checked = !!rowState.accepted;
+      card.querySelector(".reject input").checked = !!rowState.rejected;
+      card.querySelector(".keep input").checked = !!rowState.keepOld;
+      const proposedImg = card.querySelector(".proposed img");
+      const proposedEmpty = card.querySelector(".proposed .empty");
+      const proposedPath = card.querySelector(".proposed-path");
+      if (rowState.keepOld) {
+        proposedImg.hidden = true;
+        proposedEmpty.hidden = false;
+        proposedEmpty.textContent = "Keeping old art";
+        proposedPath.textContent = "Proposed: hidden because Keep old is set";
+      } else {
+        proposedEmpty.textContent = row.generated ? "" : "Not generated yet";
+        proposedImg.hidden = !row.generated;
+        proposedEmpty.hidden = !!row.generated;
+        proposedPath.textContent = row.generated ? `Proposed: ${row.generatedPath || proposedPathFor(row)}` : `Proposed: ${proposedPathFor(row)}`;
+      }
+    }
+
+    function restoreRejectedComment(row) {
+      const rowState = storedState[row.id];
+      if (!rowState?.comment?.trim()) return false;
+      if (rowState.accepted || rowState.keepOld || rowState.rejected) return false;
+      if (rowState.reviewedSignature && rowState.reviewedSignature === row.generatedSignature) return false;
+      if (rowState.commentRejectedSignature && rowState.commentRejectedSignature !== row.generatedSignature) return false;
+      rowState.rejected = true;
+      rowState.reviewedVersion = row.generatedVersion || 0;
+      rowState.reviewedSignature = row.generatedSignature || `v${row.generatedVersion || 0}`;
+      rowState.commentRejectedSignature = rowState.reviewedSignature;
+      return true;
+    }
+
+    function shouldShow(row) {
+      const skillValue = skillFilter.value;
+      if (skillValue !== "all" && row.skillId !== skillValue) return false;
+      if (activeFilter === "all") return true;
+      if (activeFilter === "pending") return true;
+      if (activeFilter === "rejected") return statusFor(row.id) === "rejected";
+      if (activeFilter === "generated") return row.generated;
+      return true;
+    }
+
+    function isAwaitingReview(row) {
+      return row.generated && statusFor(row.id) === "pending";
+    }
+
+    function orderedRowsForActiveFilter() {
+      if (activeFilter !== "pending") return rows;
+      return [...rows].sort((left, right) => {
+        const leftPending = isAwaitingReview(left) ? 0 : 1;
+        const rightPending = isAwaitingReview(right) ? 0 : 1;
+        return leftPending - rightPending || rowSort(left, right);
+      });
+    }
+
+    function updateCounter(options = {}) {
+      const { reorder = true } = options;
+      const total = rows.length;
+      const accepted = rows.filter(row => storedState[row.id]?.accepted).length;
+      const rejected = rows.filter(row => storedState[row.id]?.rejected).length;
+      const keepOld = rows.filter(row => storedState[row.id]?.keepOld).length;
+      const generated = rows.filter(row => row.generated).length;
+      const pending = rows.filter(isAwaitingReview).length;
+      let visible = 0;
+      if (reorder) {
+        orderedRowsForActiveFilter().forEach(row => {
+          const card = grid.querySelector(`[data-id="${CSS.escape(row.id)}"]`);
+          if (!card) return;
+          grid.appendChild(card);
+          const show = shouldShow(row);
+          card.hidden = !show;
+          if (show) visible += 1;
+        });
+      } else {
+        grid.querySelectorAll(".row").forEach(card => {
+          if (!card.hidden) visible += 1;
+        });
+      }
+      const filterLabel = activeFilter === "all" ? "" : activeFilter === "pending" ? `${pending} needs review first / ` : `${visible} shown / `;
+      counter.textContent = `${filterLabel}${accepted} accepted / ${rejected} rejected / ${keepOld} keep old / ${generated} generated / ${total} targets`;
+      document.querySelectorAll("[data-filter]").forEach(button => {
+        button.classList.toggle("is-active", button.dataset.filter === activeFilter);
+      });
+    }
+
+    function renderRow(row) {
+      const state = storedState[row.id] || {};
+      const fallbackProposedPath = proposedPathFor(row);
+      const card = document.createElement("article");
+      card.className = "row";
+      card.dataset.id = row.id;
+      card.dataset.status = statusFor(row.id);
+      card.innerHTML = `
+        <div class="preview current">
+          <span class="badge">Current</span>
+          <img src="${docsAsset(row.currentPath)}" alt="${escapeHtml(row.name)} current art">
+        </div>
+        <div class="body">
+          <h2>${escapeHtml(row.name)}</h2>
+          <div class="pill-line">
+            <span class="pill">${escapeHtml(row.skillName)}</span>
+            <span class="pill">Lv ${escapeHtml(row.unlock)}</span>
+            ${row.isEvent ? '<span class="pill">Event</span>' : ""}
+            ${row.isCombo ? '<span class="pill">Combo</span>' : ""}
+          </div>
+          <div class="meta">${escapeHtml(row.subtitle)}</div>
+          <div class="path">Current: ${escapeHtml(row.currentPath)}</div>
+          <div class="path proposed-path">Proposed: ${escapeHtml(fallbackProposedPath)}</div>
+        </div>
+        <div class="preview proposed">
+          <span class="badge">Proposed</span>
+          <img alt="${escapeHtml(row.name)} proposed art" hidden>
+          <span class="empty">Not generated yet</span>
+        </div>
+        <div class="status">
+          <label class="choice accept"><input type="checkbox" ${state.accepted ? "checked" : ""}> Accept</label>
+          <label class="choice reject"><input type="checkbox" ${state.rejected ? "checked" : ""}> Reject</label>
+          <label class="choice keep"><input type="checkbox" ${state.keepOld ? "checked" : ""}> Keep old</label>
+        </div>
+        <div class="comment-cell">
+          <textarea placeholder="Comments for next generation or replacement notes...">${escapeHtml(state.comment || "")}</textarea>
+        </div>
+      `;
+
+      const proposedImg = card.querySelector(".proposed img");
+      const proposedEmpty = card.querySelector(".proposed .empty");
+      const manifestCandidate = manifestCandidateFor(row);
+      if (manifestCandidate) {
+        applyProposedCandidate(row, card, proposedImg, proposedEmpty, fallbackProposedPath, true, manifestCandidate);
+      } else {
+        firstExistingImage(proposedCandidatePaths(row), proposedImg, proposedEmpty, (exists, candidate) => {
+          applyProposedCandidate(row, card, proposedImg, proposedEmpty, fallbackProposedPath, exists, candidate);
+        });
+      }
+
+      card.querySelector(".accept input").addEventListener("change", event => choiceChange(row, "accepted", event.target.checked, card));
+      card.querySelector(".reject input").addEventListener("change", event => choiceChange(row, "rejected", event.target.checked, card));
+      card.querySelector(".keep input").addEventListener("change", event => choiceChange(row, "keepOld", event.target.checked, card));
+      card.querySelector("textarea").addEventListener("input", event => {
+        ensureRowState(row.id).comment = event.target.value;
+        persistState();
+      });
+      return card;
+    }
+
+    function actionSortLevel(action) {
+      const level = Number(action.sort_unlock ?? action.unlock ?? 1);
+      return Number.isFinite(level) ? Math.max(1, level) : 1;
+    }
+
+    function actionRequirements(skill, action) {
+      if (Array.isArray(action.requirements) && action.requirements.length) return action.requirements;
+      return [{ skill: skill.id, level: action.unlock || 1 }];
+    }
+
+    function actionRewards(skill, action) {
+      if (action.xp_rewards && typeof action.xp_rewards === "object" && Object.keys(action.xp_rewards).length) return action.xp_rewards;
+      return { [skill.id]: action.xp || action.rewards?.xp || 0 };
+    }
+
+    function isComboAction(skill, action) {
+      const tags = [...(action.combo_tags || []), ...(action.display_tags || [])].map(tag => String(tag).toLowerCase());
+      return actionRequirements(skill, action).length > 1 || Object.keys(actionRewards(skill, action)).length > 1 || tags.includes("combo");
+    }
+
+    function buildRows(database) {
+      const skillNameById = Object.fromEntries((database.skills || []).map(skill => [skill.id, skill.name]));
+      const actionRows = (database.skills || []).flatMap(skill => {
+        return (skill.actions || [])
+          .filter(action => action.kind !== "passive_item_collect")
+          .filter(action => String(action.art || "").includes("/actions/"))
+          .map(action => ({
+            id: `${skill.id}:${action.id}`,
+            skillId: skill.id,
+            skillName: skill.name,
+            actionId: action.id || slug(action.name),
+            name: action.name || action.id,
+            subtitle: action.area ? String(action.area).replaceAll("_", " ") : skill.identity || skill.name,
+            unlock: actionSortLevel(action),
+            currentPath: action.art,
+            isCombo: isComboAction(skill, action),
+            isEvent: false,
+            generated: false
+          }));
+      });
+      const eventRows = (database.event_modules || [])
+        .filter(event => String(event.art || "").includes("/actions/"))
+        .map(event => {
+          const skillId = event.page || "events";
+          return {
+            id: `event:${event.id}`,
+            skillId,
+            skillName: skillNameById[skillId] || skillId,
+            actionId: event.id || slug(event.name),
+            name: event.name || event.id,
+            subtitle: "Temporary event action",
+            unlock: event.minimum_level || event.minimum_spawn_level || event.unlock || 1,
+            currentPath: event.art,
+            isCombo: false,
+            isEvent: true,
+            generated: false
+          };
+        });
+      return [...actionRows, ...eventRows].sort(rowSort);
+    }
+
+    function renderSkillFilter(database) {
+      const skills = [...new Map(rows.map(row => [row.skillId, row.skillName])).entries()]
+        .sort((left, right) => left[1].localeCompare(right[1]));
+      skillFilter.innerHTML = `<option value="all">All skills</option>` + skills
+        .map(([id, name]) => `<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`)
+        .join("");
+      skillFilter.addEventListener("change", updateCounter);
+    }
+
+    async function boot() {
+      try {
+        try {
+          const response = await fetch(reviewAsset(`${proposedRoot}/manifest.json`), { cache: "no-store" });
+          if (response.ok) proposalManifest = await response.json();
+        } catch (error) {
+          proposalManifest = {};
+        }
+        const database = ActivityDocs.embeddedDatabase() || await ActivityDocs.loadDatabase();
+        rows = buildRows(database);
+        renderSkillFilter(database);
+        grid.replaceChildren(...rows.map(renderRow));
+        updateCounter();
+      } catch (error) {
+        ActivityDocs.renderError(grid, error);
+        counter.textContent = "Unable to load activity data";
+      }
+    }
+
+    document.querySelectorAll("[data-filter]").forEach(button => {
+      button.addEventListener("click", () => {
+        activeFilter = button.dataset.filter;
+        updateCounter();
+        window.scrollTo({ top: 0, behavior: "auto" });
+      });
+    });
+
+    document.querySelector("#exportState").addEventListener("click", async () => {
+      const review = rows.map(row => ({
+        ...row,
+        proposedPath: row.generatedPath || proposedPathFor(row),
+        review: storedState[row.id] || {}
+      }));
+      await navigator.clipboard.writeText(JSON.stringify(review, null, 2));
+      counter.textContent = "Review JSON copied";
+      setTimeout(updateCounter, 1200);
+    });
+
+    boot();
+
+    function installDragScroll() {
+      const ignoredSelector = "button, select, option, input, textarea, label, a, [contenteditable='true']";
+      let activePointerId = null;
+      let startX = 0;
+      let startY = 0;
+      let startScrollX = 0;
+      let startScrollY = 0;
+      let dragged = false;
+
+      document.body.classList.add("drag-scroll-ready");
+
+      function shouldIgnoreDrag(event) {
+        return event.target?.closest?.(ignoredSelector);
+      }
+
+      function cancelDrag() {
+        activePointerId = null;
+        dragged = false;
+        document.body.classList.remove("drag-scrolling");
+      }
+
+      document.addEventListener("focusin", event => {
+        if (shouldIgnoreDrag(event)) cancelDrag();
+      });
+
+      document.addEventListener("keydown", event => {
+        if (shouldIgnoreDrag(event)) cancelDrag();
+      });
+
+      window.addEventListener("pointerdown", event => {
+        if (event.button !== 0 || shouldIgnoreDrag(event)) {
+          cancelDrag();
+          return;
+        }
+        activePointerId = event.pointerId;
+        startX = event.clientX;
+        startY = event.clientY;
+        startScrollX = window.scrollX;
+        startScrollY = window.scrollY;
+        dragged = false;
+        document.body.classList.add("drag-scrolling");
+      });
+
+      window.addEventListener("pointermove", event => {
+        if (activePointerId !== event.pointerId) return;
+        const deltaX = event.clientX - startX;
+        const deltaY = event.clientY - startY;
+        if (Math.abs(deltaX) > 3 || Math.abs(deltaY) > 3) dragged = true;
+        window.scrollTo(startScrollX - deltaX, startScrollY - deltaY);
+        event.preventDefault();
+      }, { passive: false });
+
+      function finishDrag(event) {
+        if (activePointerId !== event.pointerId) return;
+        cancelDrag();
+        document.body.classList.remove("drag-scrolling");
+        if (dragged) {
+          event.preventDefault();
+        }
+      }
+
+      window.addEventListener("pointerup", finishDrag);
+      window.addEventListener("pointercancel", finishDrag);
+    }
+
+    installDragScroll();
+  </script>
+  <script src="docs-nav.js?v=nav-blue-guy-review-20260623"></script>
+</body>
+</html>

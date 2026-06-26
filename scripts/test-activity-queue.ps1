@@ -33,20 +33,18 @@ function Assert-NoUnexpectedGodotErrors {
 
     foreach ($line in @($Output)) {
         $text = [string]$line
-        if ($text -notmatch '^(ERROR|SCRIPT ERROR):') {
+        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
             continue
         }
         $knownShutdownNoise = (
-            $text -match '^ERROR: Parameter "t" is null\.$' -or
-            $text -match '^ERROR: \d+ RID allocations of type .+ were leaked at exit\.$' -or
-            $text -match '^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$'
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
         }
     }
 }
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 if (Test-Path -LiteralPath $testDir) {
@@ -273,7 +271,7 @@ func _assert_queue_utility_button(scene: Node) -> void:
 	_assert(icon != null and is_instance_valid(icon), "queue utility button should render an icon")
 	var texture := icon.texture
 	_assert(texture != null, "queue utility icon texture should be loaded")
-	_assert(str(texture.resource_path) == "res://assets/content/ui/navigation-controls/queue.png", "queue utility icon should use queue.png")
+	_assert(str(icon.get_meta("source_texture_path", "")) == "res://assets/content/ui/navigation-controls/queue.png", "queue utility icon should use queue.png")
 
 
 func _assert_queue_utility_button_opens_queue(scene: Node) -> void:

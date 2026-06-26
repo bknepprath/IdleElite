@@ -33,20 +33,18 @@ function Assert-NoUnexpectedGodotErrors {
 
     foreach ($line in @($Output)) {
         $text = [string]$line
-        if ($text -notmatch '^(ERROR|SCRIPT ERROR):') {
+        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
             continue
         }
         $knownShutdownNoise = (
-            $text -match '^ERROR: Parameter "t" is null\.$' -or
-            $text -match '^ERROR: \d+ RID allocations of type .+ were leaked at exit\.$' -or
-            $text -match '^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$'
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
         }
     }
 }
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 if (Test-Path -LiteralPath $testDir) {
@@ -972,6 +970,18 @@ func _check_two_stage_collapse_input_flow(scene: Node, skill_id: String) -> void
 	if bool((scene.get("module_ui_collapsed") as Dictionary).get(first_key, false)):
 		_record("dragged collapse-zone press collapsed the module while scrolling")
 	scene.call("_input", _mouse_button_event(collapse_center, true))
+	scene.call("_input", _mouse_motion_event(collapse_center + Vector2(0, 96)))
+	scene.call("_input", _mouse_button_event(collapse_center + Vector2(0, 96), false))
+	for _i in range(2):
+		await process_frame
+	var routed_dragged_badge := _find_named_descendant(card_pop, "ModuleCollapseConfirmBadge") as Control
+	if routed_dragged_badge != null and is_instance_valid(routed_dragged_badge) and routed_dragged_badge.visible:
+		_record("routed dragged collapse-zone press showed confirm while scrolling")
+		routed_dragged_badge.visible = false
+		routed_dragged_badge.disabled = true
+	if bool((scene.get("module_ui_collapsed") as Dictionary).get(first_key, false)):
+		_record("routed dragged collapse-zone press collapsed the module while scrolling")
+	scene.call("_input", _mouse_button_event(collapse_center, true))
 	scene.call("_input", _mouse_button_event(collapse_center, false))
 	for _i in range(4):
 		await process_frame
@@ -1106,6 +1116,7 @@ func _check_pinned_page_action_card_registration(scene: Node, skill_id: String) 
 	scene.set("module_ui_sort_mode", "level")
 	scene.set("module_ui_pinned_order", [])
 	scene.set("module_ui_collapsed", {})
+	scene.set("thieving_trophies", {})
 	scene.call("_god_mode_max_skills_state")
 	scene.call("_god_mode_unlock_actions_state")
 	scene.call("_clear_running_activity_for_test_mode")
@@ -1279,6 +1290,7 @@ func _check_pinned_duplicates_ignore_source_collapse(scene: Node, skill_id: Stri
 	scene.set("module_ui_sort_mode", "level")
 	scene.set("module_ui_pinned_order", [])
 	scene.set("module_ui_collapsed", {})
+	scene.set("thieving_trophies", {})
 	scene.call("_god_mode_max_skills_state")
 	scene.call("_god_mode_unlock_actions_state")
 	var render_result = scene.call("_render_screen", false, -1, false)
@@ -2783,24 +2795,17 @@ func _check_rendered_locked_module_action_zones(scene: Node) -> void:
 	var locked_action_id := ""
 	for raw_skill_id in actions_by_skill.keys():
 		var candidate_skill_id := str(raw_skill_id)
-		var candidate_action_ids := []
 		for raw_action in actions_by_skill.get(candidate_skill_id, []) as Array:
 			var action := raw_action as Dictionary
 			if action.is_empty() or bool(scene.call("_is_passive_action", action)):
 				continue
+			if int(action.get("unlock", 1)) <= 1:
+				continue
 			var action_id := str(action.get("id", ""))
 			if not action_id.is_empty():
-				candidate_action_ids.append(action_id)
-		if candidate_action_ids.size() < 2:
-			continue
-		for index in range(1, candidate_action_ids.size()):
-			var candidate_id := str(candidate_action_ids[index])
-			var candidate_action := scene.call("_action_data", candidate_skill_id, candidate_id) as Dictionary
-			if candidate_action.is_empty():
-				continue
-			skill_id = candidate_skill_id
-			locked_action_id = candidate_id
-			break
+				skill_id = candidate_skill_id
+				locked_action_id = action_id
+				break
 		if not locked_action_id.is_empty():
 			break
 	if skill_id.is_empty() or locked_action_id.is_empty():
@@ -2821,8 +2826,17 @@ func _check_rendered_locked_module_action_zones(scene: Node) -> void:
 	manual_unlocks.erase(action_key)
 	scene.set("manual_activity_unlocks", manual_unlocks)
 	scene.call("_invalidate_manual_activity_unlock_trust")
+	var skills := scene.get("skills") as Dictionary
+	var skill_state := (skills.get(skill_id, {}) as Dictionary).duplicate(true)
+	var unlock_level := maxi(2, int(locked_action.get("unlock", 2)))
+	skill_state["level"] = unlock_level - 1
+	skill_state["xp"] = maxi(0, int(scene.call("_xp_for_level", unlock_level)) - 1)
+	skills[skill_id] = skill_state
+	scene.set("skills", skills)
+	scene.call("_recalculate_level", skill_id, false)
 	if bool(scene.call("_is_action_unlocked", skill_id, locked_action)):
 		_record("rendered locked-module zone smoke candidate stayed unlocked: %s" % module_key)
+		_restore_module_transition_god_state(scene)
 		return
 	var render_result = scene.call("_render_screen", false, -1, false)
 	if render_result != null:
@@ -2836,14 +2850,14 @@ func _check_rendered_locked_module_action_zones(scene: Node) -> void:
 	var host := _plan_host_for_track(scene, locked_action_id)
 	if host == null:
 		_record("rendered locked-module zone smoke could not find stack host for %s" % locked_action_id)
-		scene.call("_god_mode_unlock_actions_state")
+		_restore_module_transition_god_state(scene)
 		return
 	var locked_module := _find_control_with_meta(host, "module_ui_key", module_key)
 	if locked_module == null:
 		locked_module = _find_control_with_meta(host, "activity_action_id", locked_action_id)
 	if locked_module == null:
 		_record("rendered locked-module zone smoke could not find module control for %s" % module_key)
-		scene.call("_god_mode_unlock_actions_state")
+		_restore_module_transition_god_state(scene)
 		return
 	var zone_count := _control_meta_count(locked_module, "module_action_circle_zone", true)
 	if zone_count != 0:
@@ -2863,6 +2877,11 @@ func _check_rendered_locked_module_action_zones(scene: Node) -> void:
 	var collapse_hit := scene.call("_module_action_circle_at_position", collapse_point) as Dictionary
 	if not collapse_hit.is_empty():
 		_record("locked rendered module top-right point routed to action zone: %s" % collapse_hit)
+	_restore_module_transition_god_state(scene)
+
+
+func _restore_module_transition_god_state(scene: Node) -> void:
+	scene.call("_god_mode_max_skills_state")
 	scene.call("_god_mode_unlock_actions_state")
 
 

@@ -9,10 +9,10 @@
                                                   "name_claims":  {
                                                                       "$nameKey":  {
                                                                                        ".read":  false,
-                                                                                       ".write":  "newData.exists() && $nameKey.length > 0 && $nameKey.length <= 16 && newData.child('name_key').val() == $nameKey && ((auth != null && newData.child('uid').val() == auth.uid && (!data.exists() || data.child('uid').val() == auth.uid)) || (auth == null && newData.child('uid').isString() && newData.child('uid').val().length >= 8 && newData.child('uid').val().length <= 48 && (!data.exists() || data.child('uid').val() == newData.child('uid').val())))",
+                                                                                       ".write":  "newData.exists() && $nameKey.length > 0 && $nameKey.length <= 16 && newData.child('name_key').val() == $nameKey && ((auth != null && newData.child('uid').val() == auth.uid && (!data.exists() || data.child('uid').val() == auth.uid || (root.child('leaderboards').child('v1').child('name_recovery_tickets').child($nameKey).child('active').val() == true))) || (auth == null && newData.child('uid').isString() && newData.child('uid').val().length >= 8 && newData.child('uid').val().length <= 48 && (!data.exists() || data.child('uid').val() == newData.child('uid').val())))",
                                                                                        ".validate":  "newData.hasChildren(['uid', 'name', 'name_key', 'avatar_index', 'created_at', 'updated_at', 'submitted_at_unix'])",
                                                                                        "uid":  {
-                                                                                                   ".validate":  "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48 && (!data.exists() || newData.val() == data.val())"
+                                                                                                   ".validate":  "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48 && (!data.exists() || newData.val() == data.val() || (auth != null && newData.val() == auth.uid && root.child('leaderboards').child('v1').child('name_recovery_tickets').child($nameKey).child('active').val() == true))"
                                                                                                },
                                                                                        "name":  {
                                                                                                     ".validate":  "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
@@ -37,6 +37,12 @@
                                                                                                   }
                                                                                    }
                                                                   },
+                                                  "name_recovery_tickets":  {
+                                                                                "$nameKey":  {
+                                                                                                 ".read":  false,
+                                                                                                 ".write":  false
+                                                                                             }
+                                                                            },
                                                   "scores":  {
                                                                  "$category":  {
                                                                                    ".read":  "($category == 'total_level' || $category == 'skill_xp__fight' || $category == 'skill_xp__thieving' || $category == 'skill_xp__build' || $category == 'skill_xp__woodcutting' || $category == 'skill_xp__fishing' || $category == 'medals_earned' || $category == 'elite_heavenly') && query.orderByChild == 'score' && query.limitToLast != null && query.limitToLast > 0 && query.limitToLast <= 50",
@@ -94,6 +100,46 @@
                                                                          }
                                               }
                                    },
+                  "cloud_saves":  {
+                                      "v1":  {
+                                                 ".read":  false,
+                                                 ".write":  false,
+                                                 "users":  {
+                                                               "$uid":  {
+                                                                            ".read":  "auth != null && auth.uid == $uid",
+                                                                            ".write":  "auth != null && auth.uid == $uid && newData.exists()",
+                                                                            ".validate":  "newData.hasChildren(['uid', 'updated_at', 'updated_at_unix', 'save_schema_version', 'saved_at', 'total_skill_xp', 'total_level', 'payload_json'])",
+                                                                            "uid":  {
+                                                                                        ".validate":  "newData.isString() && newData.val() == auth.uid"
+                                                                                    },
+                                                                            "updated_at":  {
+                                                                                               ".validate":  "newData.isNumber() && newData.val() >= now - 10000 && newData.val() <= now + 60000"
+                                                                                           },
+                                                                            "updated_at_unix":  {
+                                                                                                    ".validate":  "newData.isNumber() && newData.val() > 0"
+                                                                                                },
+                                                                            "save_schema_version":  {
+                                                                                                        ".validate":  "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000"
+                                                                                                    },
+                                                                            "saved_at":  {
+                                                                                             ".validate":  "newData.isNumber() && newData.val() > 0"
+                                                                                         },
+                                                                            "total_skill_xp":  {
+                                                                                                   ".validate":  "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+                                                                                               },
+                                                                            "total_level":  {
+                                                                                                ".validate":  "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+                                                                                            },
+                                                                            "payload_json":  {
+                                                                                                 ".validate":  "newData.isString() && newData.val().length > 0 && newData.val().length <= 950000"
+                                                                                             },
+                                                                            "$other":  {
+                                                                                           ".validate":  false
+                                                                                       }
+                                                                        }
+                                                           }
+                                             }
+                                  },
                   "global_chat":  {
                                       "v1":  {
                                                  ".read":  false,
@@ -104,7 +150,7 @@
                                                                                    "created_at"
                                                                                ],
                                                                   "$messageId":  {
-                                                                                     ".write":  "((newData.exists() && !data.exists() && newData.child('sender_id').isString() && newData.child('sender_id').val().length >= 8 && newData.child('sender_id').val().length <= 48 && (auth == null || newData.child('sender_id').val() == auth.uid) && (newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('sender_id').val() || !newData.child('name_key').exists() && newData.child('name').isString() && newData.child('name').val().matches(/^guest[0-9]{4}$/)) && $messageId.length >= 8 && $messageId.length <= 64 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() <= now + 60000) || (data.exists() && newData.exists() && data.child('sender_id').val() == newData.child('sender_id').val() && (auth == null || data.child('sender_id').val() == auth.uid) && newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('sender_id').val() && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == data.child('deleted').val() && newData.child('deleted_at').val() == data.child('deleted_at').val() && newData.child('deleted_by').val() == data.child('deleted_by').val()) || (data.exists() && newData.exists() && auth.token.moderator == true && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('name').val() == data.child('name').val() && newData.child('name_key').val() == data.child('name_key').val() && newData.child('total_level').val() == data.child('total_level').val() && newData.child('avatar_index').val() == data.child('avatar_index').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == true && newData.child('deleted_at').val() == now && newData.child('deleted_by').val() == auth.uid))",
+                                                                                     ".write":  "((newData.exists() && !data.exists() && newData.child('sender_id').isString() && newData.child('sender_id').val().length >= 8 && newData.child('sender_id').val().length <= 48 && (auth == null || newData.child('sender_id').val() == auth.uid) && (newData.child('name_key').isString() || !newData.child('name_key').exists() && newData.child('name').isString() && newData.child('name').val().matches(/^guest[0-9]{4}$/)) && $messageId.length >= 8 && $messageId.length <= 64 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() <= now + 60000) || (data.exists() && newData.exists() && data.child('sender_id').val() == newData.child('sender_id').val() && (auth == null || data.child('sender_id').val() == auth.uid) && newData.child('name_key').isString() && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == data.child('deleted').val() && newData.child('deleted_at').val() == data.child('deleted_at').val() && newData.child('deleted_by').val() == data.child('deleted_by').val()) || (data.exists() && newData.exists() && auth.token.moderator == true && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('name').val() == data.child('name').val() && newData.child('name_key').val() == data.child('name_key').val() && newData.child('total_level').val() == data.child('total_level').val() && newData.child('avatar_index').val() == data.child('avatar_index').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == true && newData.child('deleted_at').val() == now && newData.child('deleted_by').val() == auth.uid))",
                                                                                      ".validate":  "newData.hasChildren(['sender_id', 'name', 'avatar_index', 'text', 'created_at', 'created_at_unix', 'deleted'])",
                                                                                      "sender_id":  {
                                                                                                        ".validate":  "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48"

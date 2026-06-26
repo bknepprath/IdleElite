@@ -65,14 +65,40 @@ func _init() -> void:
 	game.leaderboard_auth_in_flight = false
 	game.leaderboard_fetch_in_flight = false
 	game.leaderboard_submit_in_flight = false
+	game.cloud_save_fetch_in_flight = false
+	game.cloud_save_upload_in_flight = false
 	game.current_screen = "leaderboard"
 	game._leaderboard_fetch_category(game.LEADERBOARD_CATEGORY_TOTAL_LEVEL)
 	_expect_leaderboard_requests_idle(game, "fetch with absent config")
 	game._leaderboard_submit_scores()
 	_expect_leaderboard_requests_idle(game, "submit with absent config")
+	game._fetch_cloud_save()
+	_expect_leaderboard_requests_idle(game, "cloud fetch with absent config")
+	game._upload_cloud_save(true)
+	_expect_leaderboard_requests_idle(game, "cloud upload with absent config")
 	game._process_leaderboard_sync(31.0)
 	_expect_leaderboard_requests_idle(game, "sync with absent config")
 	_expect(game.leaderboard_status_message == "Online services are not connected yet.", "Absent config should produce the fail-closed leaderboard status.")
+	_expect(game._cloud_save_status_text() == "Cloud save is offline until Firebase is configured.", "Cloud-save status should clearly explain absent Firebase config.")
+	game.leaderboard_config_loaded = true
+	game.leaderboard_config_database_url = "https://idle-elite-default-rtdb.firebaseio.com/"
+	game.leaderboard_config_web_api_key = "AIzaSyValidationOnlyNotARealFirebaseKey123456"
+	game.google_auth_web_client_id = ""
+	game._start_google_account_sign_in()
+	_expect(game.google_auth_status_message == "Google sign-in needs google_web_client_id in firebase-leaderboard-config.json.", "Google sign-in without a client id should explain the missing config key.")
+	game.google_auth_web_client_id = "1234567890-validationonly.apps.googleusercontent.com"
+	game._start_google_account_sign_in()
+	_expect(game.google_auth_status_message == "Google sign-in is not available in this build yet.", "Non-Android Google sign-in should explain that this build has no native Google auth.")
+	game._on_google_sign_in_failed("")
+	_expect(game.google_auth_status_message == "Google sign-in was cancelled.", "Empty Google failure should read as a cancellation.")
+	game._on_google_sign_in_failed("androidx.credentials.exceptions.GetCredentialCancellationException: activity is canceled by the user")
+	_expect(game.google_auth_status_message == "Google sign-in was cancelled.", "Native cancellation text should be player-friendly.")
+	game._on_google_sign_in_failed("No credentials available")
+	_expect(game.google_auth_status_message == "No Google account was selected. Try Connect Google again.", "Missing credential text should tell the player what to do next.")
+	game._on_google_sign_in_failed("Network timeout")
+	_expect(game.google_auth_status_message == "Google sign-in needs an internet connection. Try again in a moment.", "Network Google failure should be actionable.")
+	game._on_google_sign_in_failed("provider exploded")
+	_expect(game.google_auth_status_message == "Google sign-in failed: provider exploded", "Unknown Google failure should preserve useful details.")
 	game.free()
 	if failures.is_empty():
 		print("firebase-runtime-guard-ok")
@@ -92,6 +118,8 @@ func _expect_leaderboard_requests_idle(game: Node, context: String) -> void:
 	_expect(not game.leaderboard_auth_in_flight, "%s should not start Firebase Auth." % context)
 	_expect(not game.leaderboard_fetch_in_flight, "%s should not start a leaderboard read." % context)
 	_expect(not game.leaderboard_submit_in_flight, "%s should not start a leaderboard write." % context)
+	_expect(not game.cloud_save_fetch_in_flight, "%s should not start a cloud save read." % context)
+	_expect(not game.cloud_save_upload_in_flight, "%s should not start a cloud save write." % context)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
     & $runner --headless --path $projectRoot --script $testScript

@@ -18,6 +18,10 @@ const ConvergenceMultiProgressBar = preload("res://scripts/ui/convergence_multi_
 const PassiveIconSprite = preload("res://scripts/ui/passive_icon_sprite.gd")
 const PassiveLogPileSprite = preload("res://scripts/ui/passive_log_pile_sprite.gd")
 const PassivePileShadow = preload("res://scripts/ui/passive_pile_shadow.gd")
+const FirepitFlameFx = preload("res://scripts/ui/firepit_flame_fx.gd")
+const FirepitFuelRing = preload("res://scripts/ui/firepit_fuel_ring.gd")
+const FirepitWarmthOverlay = preload("res://scripts/ui/firepit_warmth_overlay.gd")
+const FirepitDependencyConnector = preload("res://scripts/ui/firepit_dependency_connector.gd")
 const AchievementMedalSlotStrip = preload("res://scripts/ui/achievement_medal_slot_strip.gd")
 const ActivityStartHighlightRing = preload("res://scripts/ui/activity_start_highlight_ring.gd")
 const RoundedCornerCropOverlay = preload("res://scripts/ui/rounded_corner_crop_overlay.gd")
@@ -30,12 +34,14 @@ const BootFlexLoadingAnimationClass = preload("res://scripts/ui/boot_flex_loadin
 const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_border.gd")
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
+const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_rect.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
 const ActivityProgressOpportunityOverlay = preload("res://scripts/ui/activity_progress_opportunity_overlay.gd")
 const ActivityProgressRail = preload("res://scripts/ui/activity_progress_rail.gd")
 const FishingToolWalletOverlay = preload("res://scripts/ui/fishing_tool_wallet_overlay.gd")
+const BlueGuyChickenBrawlStageClass = preload("res://scripts/ui/blue_guy_chicken_brawl_stage.gd")
 
 class ModuleActionCircleZone:
 	extends Control
@@ -698,6 +704,7 @@ class RegenCircle:
 	const LIQUID_EDGE_SEAL_WIDTH_SCALE := 4.8
 	const THEME_COLOR_EASE_SPEED := 7.5
 	const THEME_COLOR_EPSILON := 0.002
+	const FIREPIT_WARMTH_COLOR := Color("#ff8f2b")
 
 	var value := 0.0
 	var target_value := 0.0
@@ -706,10 +713,12 @@ class RegenCircle:
 	var current := 0
 	var maximum := 1
 	var show_decimal := true
+	var dark_mode := false
 	var theme_color := Color("#36b8e8")
 	var target_theme_color := Color("#36b8e8")
 	var regen_ring_color := Color("#36b8e8")
 	var target_regen_ring_color := Color("#36b8e8")
+	var firepit_warmth := 0.0
 	var theme_color_initialized := false
 	var value_initialized := false
 	var stamina_initialized := false
@@ -912,10 +921,23 @@ class RegenCircle:
 		queue_redraw()
 		_ensure_animation_process()
 
+	func set_firepit_warmth(next_warmth: float) -> void:
+		var clamped_warmth := clampf(next_warmth, 0.0, 1.0)
+		if absf(firepit_warmth - clamped_warmth) <= 0.002:
+			return
+		firepit_warmth = clamped_warmth
+		queue_redraw()
+
 	func set_show_decimal(enabled: bool) -> void:
 		if show_decimal == enabled:
 			return
 		show_decimal = enabled
+		queue_redraw()
+
+	func set_dark_mode(enabled: bool) -> void:
+		if dark_mode == enabled:
+			return
+		dark_mode = enabled
 		queue_redraw()
 
 	func set_stamina(next_current: int, next_maximum: int, instant := false, regen_fraction := 0.0) -> void:
@@ -962,12 +984,49 @@ class RegenCircle:
 		if visible_value > VALUE_EPSILON and visible_value < MIN_VISIBLE_REGEN_RING:
 			visible_value = MIN_VISIBLE_REGEN_RING
 		if visible_value > VALUE_EPSILON:
-			draw_arc(center, ring_radius, -PI * 0.5, -PI * 0.5 + TAU * visible_value, RING_ARC_SEGMENTS, regen_ring_color, ring_width, true)
+			_draw_regen_progress_arc(center, ring_radius, visible_value, ring_width)
+		if firepit_warmth > 0.002:
+			_draw_firepit_regen_lower_half(center, ring_radius, ring_width)
 		_draw_inner_fill(center, inner_radius, draw_scale)
 		_draw_inner_bevel(center, inner_radius, draw_scale)
 		_draw_liquid_edge_seal(center, inner_radius, draw_scale)
 		draw_arc(center, inner_radius + gauge_stroke * 0.5, -PI * 0.5, PI * 1.5, RING_ARC_SEGMENTS, Color("#171615"), gauge_stroke, true)
 		_draw_center_text(center)
+
+	func _draw_regen_progress_arc(center: Vector2, radius: float, visible_value: float, width: float) -> void:
+		var start_angle := -PI * 0.5
+		var sweep := TAU * clampf(visible_value, 0.0, 1.0)
+		if firepit_warmth <= 0.002:
+			draw_arc(center, radius, start_angle, start_angle + sweep, RING_ARC_SEGMENTS, regen_ring_color, width, true)
+			return
+		var segments := maxi(16, int(ceil(absf(sweep) / TAU * 96.0)))
+		for segment in range(segments):
+			var a0 := start_angle + sweep * float(segment) / float(segments)
+			var a1 := start_angle + sweep * float(segment + 1) / float(segments)
+			var mid_angle := (a0 + a1) * 0.5
+			draw_arc(center, radius, a0, a1, 2, _firepit_regen_ring_color(mid_angle), width, true)
+
+
+	func _draw_firepit_regen_lower_half(center: Vector2, radius: float, width: float) -> void:
+		var start_angle := 0.0
+		var sweep := PI
+		var segments := 42
+		for segment in range(segments):
+			var a0 := start_angle + sweep * float(segment) / float(segments)
+			var a1 := start_angle + sweep * float(segment + 1) / float(segments)
+			var mid_angle := (a0 + a1) * 0.5
+			var lower_weight := clampf(sin(mid_angle), 0.0, 1.0)
+			var feather := smoothstep(0.0, 0.38, lower_weight)
+			var color := regen_ring_color.lerp(FIREPIT_WARMTH_COLOR, feather)
+			color.a = 0.18 + 0.78 * feather
+			draw_arc(center, radius, a0, a1, 2, color, width, true)
+
+
+	func _firepit_regen_ring_color(angle: float) -> Color:
+		var visual_warmth := lerpf(0.82, 1.0, firepit_warmth)
+		var lower_strength := smoothstep(-0.14, 0.30, sin(angle))
+		var warmth := FIREPIT_WARMTH_COLOR.lerp(Color("#ffd27a"), 0.16 * (1.0 - lower_strength))
+		return regen_ring_color.lerp(warmth, clampf(lower_strength * visual_warmth, 0.0, 1.0))
 
 	func _ensure_glass_bowl_texture() -> void:
 		if DisplayServer.get_name() == "headless":
@@ -1229,7 +1288,10 @@ class RegenCircle:
 		var current_stroke := maxi(CENTER_NUMBER_STROKE_MIN, int(round(CENTER_NUMBER_STROKE_SCALE * draw_scale)))
 		_draw_stroked_number_with_decimal_suffix(font, current_text, decimal_text, Vector2(center.x, current_center_y), large, Color.WHITE, current_stroke)
 		_draw_center_divider(center, divider_y, 106.0 * draw_scale, draw_scale)
-		_draw_text_centered(font, small_text, Vector2(center.x, max_center_y), small, Color(0, 0, 0, 0.8))
+		_draw_text_centered(font, small_text, Vector2(center.x, max_center_y), small, _readout_denominator_color())
+
+	func _readout_denominator_color() -> Color:
+		return Color.WHITE if dark_mode else Color(0, 0, 0, 0.8)
 
 	func _stamina_display_number_parts() -> Dictionary:
 		var display_value := clampf(displayed_current, 0.0, float(maximum))
@@ -1265,9 +1327,10 @@ class RegenCircle:
 		var start := Vector2(center.x - width * 0.5, y)
 		var finish := Vector2(center.x + width * 0.5, y)
 		var line_width := maxf(2.0, 4.5 * draw_scale)
-		draw_line(start, finish, Color("#171615"), line_width, true)
-		draw_circle(start, line_width * 0.5, Color("#171615"))
-		draw_circle(finish, line_width * 0.5, Color("#171615"))
+		var line_color := _readout_denominator_color()
+		draw_line(start, finish, line_color, line_width, true)
+		draw_circle(start, line_width * 0.5, line_color)
+		draw_circle(finish, line_width * 0.5, line_color)
 
 	func _draw_stroked_text_centered(font: Font, text: String, center: Vector2, font_size: int, fill_color: Color, stroke_size: int) -> void:
 		var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size)
@@ -1300,6 +1363,90 @@ class RegenCircle:
 		var baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
 		var text_position := Vector2(center.x - text_size.x * 0.5, baseline)
 		draw_string(font, text_position, text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
+
+
+class BlueGuyHealthHeartGauge:
+	extends Control
+
+	const HEART_POINTS := 96
+	const ARC_SEGMENTS := 40
+
+	var current := 0
+	var maximum := 30
+	var target_displayed := 30.0
+	var displayed := 30.0
+	var regen_fraction := 1.0
+	var initialized := false
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_process(false)
+
+	func set_health(next_current: int, next_maximum: int, instant := false, next_regen_fraction := 1.0) -> void:
+		var max_value := maxi(1, next_maximum)
+		var current_value := clampi(next_current, 0, max_value)
+		var fractional_current := clampf(float(current_value) + (clampf(next_regen_fraction, 0.0, 1.0) if current_value < max_value else 0.0), 0.0, float(max_value))
+		if initialized and current == current_value and maximum == max_value and absf(target_displayed - fractional_current) <= 0.01 and absf(regen_fraction - next_regen_fraction) <= 0.01:
+			return
+		current = current_value
+		maximum = max_value
+		target_displayed = fractional_current
+		regen_fraction = clampf(next_regen_fraction, 0.0, 1.0)
+		if instant or not initialized:
+			displayed = target_displayed
+			initialized = true
+		queue_redraw()
+		set_process(not instant and absf(displayed - target_displayed) > 0.01)
+
+	func _process(delta: float) -> void:
+		displayed = lerpf(displayed, target_displayed, 1.0 - exp(-9.0 * maxf(0.0, delta)))
+		queue_redraw()
+		if absf(displayed - target_displayed) <= 0.01:
+			displayed = target_displayed
+			set_process(false)
+
+	func _draw() -> void:
+		var draw_scale := minf(size.x, size.y) / 552.0
+		var center := size * 0.5
+		var radius := minf(size.x, size.y) * 0.36
+		var pct := clampf(displayed / float(maximum), 0.0, 1.0)
+		var heart := _heart_points(center + Vector2(0.0, 18.0) * draw_scale, radius)
+		draw_colored_polygon(heart, Color("#341317"))
+		var fill_scale := 0.40 + pct * 0.60
+		var fill_color := Color("#ef4054").lerp(Color("#ff7382"), pct * 0.35)
+		draw_colored_polygon(_heart_points(center + Vector2(0.0, 18.0) * draw_scale, radius * fill_scale), fill_color)
+		_draw_heart_outline(heart, Color("#171615"), maxf(6.0, 10.0 * draw_scale))
+		if current < maximum:
+			draw_arc(center, radius * 1.18, -PI * 0.5, -PI * 0.5 + TAU * regen_fraction, ARC_SEGMENTS, Color("#2bd775"), maxf(14.0, 20.0 * draw_scale), true)
+		var font := get_theme_default_font()
+		if font == null:
+			return
+		var number_text := "%d/%d" % [current, maximum]
+		var label_text := "HP"
+		var number_size := int(clampf(size.y * 0.19, 48.0, 82.0))
+		var label_size := int(clampf(size.y * 0.12, 34.0, 54.0))
+		_draw_center_text(font, number_text, center + Vector2(0.0, -8.0) * draw_scale, number_size, Color("#fffaf0"), Color("#171615"), int(maxf(8.0, number_size * 0.18)))
+		_draw_center_text(font, label_text, center + Vector2(0.0, 62.0) * draw_scale, label_size, Color("#fffaf0"), Color("#171615"), int(maxf(6.0, label_size * 0.18)))
+
+	func _heart_points(center: Vector2, radius: float) -> PackedVector2Array:
+		var points := PackedVector2Array()
+		for i in range(HEART_POINTS):
+			var t := TAU * float(i) / float(HEART_POINTS)
+			var x := 16.0 * pow(sin(t), 3.0)
+			var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
+			points.append(center + Vector2(x / 17.0, y / 17.0) * radius)
+		return points
+
+	func _draw_heart_outline(points: PackedVector2Array, color: Color, width: float) -> void:
+		for i in range(points.size()):
+			draw_line(points[i], points[(i + 1) % points.size()], color, width, true)
+
+	func _draw_center_text(font: Font, text: String, center: Vector2, font_size: int, fill: Color, outline: Color, outline_size: int) -> void:
+		var measured := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size)
+		var baseline := center.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
+		var position := Vector2(center.x - measured.x * 0.5, baseline)
+		draw_string_outline(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, outline_size, outline)
+		draw_string(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, fill)
 
 
 class FishCircle:
@@ -1392,14 +1539,27 @@ class FishCircle:
 		var node: Node = get_parent()
 		while node != null:
 			if node.has_method("_fishing_tool_icon_texture"):
-				return node.call("_fishing_tool_icon_texture", tool_icon_path) as Texture2D
+				var loaded_texture := node.call("_fishing_tool_icon_texture", tool_icon_path) as Texture2D
+				if loaded_texture != null:
+					return loaded_texture
 			node = node.get_parent()
-		return load(tool_icon_path) as Texture2D
+		return _fallback_texture(Vector2i(8, 8))
 
 	func _fish_currency_icon_texture() -> Texture2D:
-		if not ResourceLoader.exists(FISH_CURRENCY_ICON_TEXTURE):
-			return null
-		return load(FISH_CURRENCY_ICON_TEXTURE) as Texture2D
+		if DisplayServer.get_name() != "headless" and ResourceLoader.exists(FISH_CURRENCY_ICON_TEXTURE):
+			var loaded_texture := load(FISH_CURRENCY_ICON_TEXTURE) as Texture2D
+			if loaded_texture != null:
+				return loaded_texture
+		return _fallback_texture(Vector2i(8, 8))
+
+	func _fallback_texture(texture_size: Vector2i) -> Texture2D:
+		if DisplayServer.get_name() == "headless":
+			var placeholder := PlaceholderTexture2D.new()
+			placeholder.size = Vector2i(maxi(1, texture_size.x), maxi(1, texture_size.y))
+			return placeholder
+		var fallback_image := Image.create(maxi(1, texture_size.x), maxi(1, texture_size.y), false, Image.FORMAT_RGBA8)
+		fallback_image.fill(Color(1.0, 1.0, 1.0, 0.0))
+		return ImageTexture.create_from_image(fallback_image)
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
@@ -1765,6 +1925,8 @@ class FishCircle:
 
 
 const SAVE_PATH := "user://idle_elite_save.json"
+const SAVE_TEMP_PATH := "user://idle_elite_save.tmp.json"
+const SAVE_BACKUP_PATH := "user://idle_elite_save.backup.json"
 const SAVE_SCHEMA_VERSION := 1
 const SAVE_SCHEMA_MANUAL_ACTIVITY_UNLOCKS := 1
 const GUARANTEED_SUCCESS_ACTION_COMPLETIONS := 7
@@ -1833,6 +1995,23 @@ const WOODCUTTING_LOG_MODULE_ID := "stack-logs-1"
 const WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL := 2
 const WOODCUTTING_LOG_MODULE_INFO := "Legacy collector kept only for save compatibility."
 const WOODCUTTING_LOG_MODULE_TIP_TEXT := "Legacy passive collector removed."
+const WOODCUTTING_FIREPIT_MODULE_ID := "woodcutting-firepit"
+const WOODCUTTING_FIREPIT_UNLOCK_LEVEL := 2
+const WOODCUTTING_FIREPIT_TEXTURE := "res://assets/content/woodcutting/modules/woodcutting-firepit.png"
+const WOODCUTTING_FIREPIT_BACKGROUND_TEXTURE := "res://assets/content/woodcutting/modules/woodcutting-firepit-bg.png"
+const WOODCUTTING_FIREPIT_INFO := "Tap firepit to start. Burning Scrapwood rewards XP and increases your Woodcutting stamina regeneration rate."
+const WOODCUTTING_FIREPIT_CARD_HEIGHT := 940.0
+const WOODCUTTING_FIREPIT_DEPENDENCY_GAP := 34.0
+const WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT := 788.0
+const FIREPIT_SCRAPWOOD_PER_SECOND := 1.0 / 30.0
+const FIREPIT_MINIMUM_START_SCRAPWOOD := 0.2
+const FIREPIT_HEAT_TIER_SECONDS := 60.0
+const FIREPIT_MAX_HEAT_TIER := 15
+const FIREPIT_STAMINA_REGEN_PER_TIER := 0.04
+const FIREPIT_WOODCUTTING_XP_PER_SCRAPWOOD := 2
+const FIREPIT_START_SCRAPWOOD_COST := 1.0
+const FIREPIT_REGEN_DECAY_SECONDS_PER_PERCENT := 5.0
+const FIREPIT_STOP_HOLD_SECONDS := 0.8
 const SILVER_OPPORTUNITY_TIP_TEXT := "Silver medals unlock click opportunity windows.\nTap the activity while the progress bar is inside the window for a boost."
 const HERO_UNLOCK_TOTAL_LEVEL := 25
 const HERO_LOCKED_MESSAGE := "Total Lv 25 required!"
@@ -1905,6 +2084,8 @@ const MAT_COLLECTION_DEFS := {
 }
 const BASE_MAX_STAMINA := 30
 const STAMINA_REGEN_SECONDS := 12.0
+const BLUE_GUY_HEALTH_MAX := 30
+const BLUE_GUY_HEALTH_REGEN_SECONDS := 2.0
 const HONEY_STAMINA_REGEN_MULT := 2.0
 const STAMINA_GAUGE_REGEN_BOOST_MULT := 3.0
 const STAMINA_GAUGE_REGEN_EASE_SPEED := 7.5
@@ -2220,6 +2401,9 @@ const FISHING_MODULE_TITLE_FONT_SIZE := 82
 const FISHING_MODULE_TITLE_OUTLINE := 34
 const FISHING_MODULE_TITLE_TOP := 18
 const FISHING_MODULE_TITLE_BAND_HEIGHT := 106
+const FISHING_MODULE_TITLE_LEFT_INSET := 54.0
+const FISHING_MODULE_TITLE_RIGHT_INSET := 104.0
+const FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET := 88.0
 const FISHING_AREA_STAT_FADE_SECONDS := 0.22
 const FISHING_AREA_MAX_BUTTONS_PER_MODULE := 2
 const FISHING_AREA_CONTENT_TOP_MARGIN := FISHING_MODULE_TITLE_TOP
@@ -2333,6 +2517,41 @@ const FISHING_LOCATION_DEFS := {
 		{"id": "dock-cup", "name": "Dock Edge", "unlock": 7, "fish": "Minnow", "bg": "res://assets/content/fishing/backgrounds/01-pond-dock.png"},
 		{"id": "piling-line", "name": "Piling Line", "unlock": 11, "fish": "Panfish", "bg": "res://assets/content/fishing/backgrounds/01-pond-dock.png"},
 	],
+	"river": [
+		{"id": "bend", "name": "River Bend", "unlock": 14, "fish": "Trout", "bg": "res://assets/content/fishing/backgrounds/02-river-bend.png"},
+		{"id": "rapids", "name": "Rapids", "unlock": 18, "fish": "Salmon", "bg": "res://assets/content/fishing/backgrounds/02-river-bend.png"},
+	],
+	"sewers": [
+		{"id": "drain-gate", "name": "Drain Gate", "unlock": 22, "fish": "Eel", "bg": "res://assets/content/fishing/backgrounds/sewer-pipe-outlet.png"},
+		{"id": "tunnel-pool", "name": "Tunnel Pool", "unlock": 26, "fish": "Eel", "bg": "res://assets/content/fishing/backgrounds/sewer-pipe-outlet.png"},
+	],
+	"winter_lake": [
+		{"id": "ice-hole", "name": "Ice Hole", "unlock": 34, "fish": "Snowfish", "bg": "res://assets/content/fishing/backgrounds/04-frozen-lake.png"},
+	],
+	"reef": [
+		{"id": "pot", "name": "Reef Pot", "unlock": 30, "fish": "Crab", "bg": "res://assets/content/fishing/backgrounds/05-coral-reef-shallows.png"},
+		{"id": "cage", "name": "Reef Cage", "unlock": 46, "fish": "Lobster", "bg": "res://assets/content/fishing/backgrounds/05-coral-reef-shallows.png"},
+		{"id": "night-reef", "name": "Night Reef", "unlock": 58, "fish": "Reef Fish", "bg": "res://assets/content/fishing/backgrounds/05-coral-reef-shallows.png"},
+		{"id": "pearl-bed", "name": "Pearl Bed", "unlock": 74, "fish": "Pearl Oyster", "bg": "res://assets/content/fishing/backgrounds/05-coral-reef-shallows.png"},
+	],
+	"sea": [
+		{"id": "rowboat", "name": "Rowboat", "unlock": 50, "fish": "Bass", "bg": "res://assets/content/fishing/backgrounds/07-rowboat-offshore.png"},
+		{"id": "open-water", "name": "Open Water", "unlock": 52, "fish": "Tuna", "bg": "res://assets/content/fishing/backgrounds/07-rowboat-offshore.png"},
+		{"id": "chum-line", "name": "Chum Line", "unlock": 70, "fish": "Reef Fish", "bg": "res://assets/content/fishing/backgrounds/07-rowboat-offshore.png"},
+	],
+	"stormy_sea": [
+		{"id": "ripple", "name": "Storm Ripple", "unlock": 64, "fish": "Shark", "bg": "res://assets/content/fishing/backgrounds/10-storm-ocean.png"},
+		{"id": "storm-line", "name": "Storm Line", "unlock": 78, "fish": "Storm Ray", "bg": "res://assets/content/fishing/backgrounds/10-storm-ocean.png"},
+	],
+	"deep_sea": [
+		{"id": "wreck-drop", "name": "Wreck Drop", "unlock": 82, "fish": "Octopus", "bg": "res://assets/content/fishing/backgrounds/09-deep-sea-abyss.png"},
+		{"id": "abyss", "name": "Abyss", "unlock": 86, "fish": "Shark", "bg": "res://assets/content/fishing/backgrounds/09-deep-sea-abyss.png"},
+		{"id": "trench", "name": "Deep Trench", "unlock": 88, "fish": "Octopus", "bg": "res://assets/content/fishing/backgrounds/09-deep-sea-abyss.png"},
+	],
+	"space": [
+		{"id": "starlight", "name": "Starlight", "unlock": 90, "fish": "Cosmic Starfish", "bg": "res://assets/content/fishing/backgrounds/11-cosmic-dream-sea.png"},
+		{"id": "reflection", "name": "Reflection", "unlock": 95, "fish": "Cosmic Starfish", "bg": "res://assets/content/fishing/backgrounds/11-cosmic-dream-sea.png"},
+	],
 }
 const FISHING_TOOL_LOCATION_ACTIONS := {
 	"hands": {
@@ -2340,18 +2559,75 @@ const FISHING_TOOL_LOCATION_ACTIONS := {
 		"beach.rocky": "beach-rocks",
 		"pier.dock-cup": "pier-dock-edge",
 		"pier.piling-line": "pier-piling-line",
+		"river.bend": "river-bend",
+		"river.rapids": "river-rapids",
+		"sewers.drain-gate": "sewers-drain-gate",
+		"sewers.tunnel-pool": "sewers-tunnel-pool",
+		"winter_lake.ice-hole": "winter-lake-ice-hole",
+		"reef.pot": "reef-pot",
+		"reef.cage": "reef-cage",
+		"reef.night-reef": "reef-night-reef",
+		"reef.pearl-bed": "reef-pearl-bed",
+		"sea.rowboat": "sea-rowboat",
+		"sea.open-water": "sea-open-water",
+		"sea.chum-line": "sea-chum-line",
+		"stormy_sea.ripple": "stormy-sea-ripple",
+		"stormy_sea.storm-line": "stormy-sea-storm-line",
+		"deep_sea.wreck-drop": "deep-sea-wreck-drop",
+		"deep_sea.abyss": "deep-sea-abyss",
+		"deep_sea.trench": "deep-sea-trench",
+		"space.starlight": "space-starlight",
+		"space.reflection": "space-reflection",
 	},
 	"net": {
 		"beach.shallows": "beach-shallows",
 		"beach.rocky": "beach-rocks",
 		"pier.dock-cup": "pier-dock-edge",
 		"pier.piling-line": "pier-piling-line",
+		"river.bend": "river-bend",
+		"river.rapids": "river-rapids",
+		"sewers.drain-gate": "sewers-drain-gate",
+		"sewers.tunnel-pool": "sewers-tunnel-pool",
+		"winter_lake.ice-hole": "winter-lake-ice-hole",
+		"reef.pot": "reef-pot",
+		"reef.cage": "reef-cage",
+		"reef.night-reef": "reef-night-reef",
+		"reef.pearl-bed": "reef-pearl-bed",
+		"sea.rowboat": "sea-rowboat",
+		"sea.open-water": "sea-open-water",
+		"sea.chum-line": "sea-chum-line",
+		"stormy_sea.ripple": "stormy-sea-ripple",
+		"stormy_sea.storm-line": "stormy-sea-storm-line",
+		"deep_sea.wreck-drop": "deep-sea-wreck-drop",
+		"deep_sea.abyss": "deep-sea-abyss",
+		"deep_sea.trench": "deep-sea-trench",
+		"space.starlight": "space-starlight",
+		"space.reflection": "space-reflection",
 	},
 	"line": {
 		"beach.shallows": "beach-shallows",
 		"beach.rocky": "beach-rocks",
 		"pier.dock-cup": "pier-dock-edge",
 		"pier.piling-line": "pier-piling-line",
+		"river.bend": "river-bend",
+		"river.rapids": "river-rapids",
+		"sewers.drain-gate": "sewers-drain-gate",
+		"sewers.tunnel-pool": "sewers-tunnel-pool",
+		"winter_lake.ice-hole": "winter-lake-ice-hole",
+		"reef.pot": "reef-pot",
+		"reef.cage": "reef-cage",
+		"reef.night-reef": "reef-night-reef",
+		"reef.pearl-bed": "reef-pearl-bed",
+		"sea.rowboat": "sea-rowboat",
+		"sea.open-water": "sea-open-water",
+		"sea.chum-line": "sea-chum-line",
+		"stormy_sea.ripple": "stormy-sea-ripple",
+		"stormy_sea.storm-line": "stormy-sea-storm-line",
+		"deep_sea.wreck-drop": "deep-sea-wreck-drop",
+		"deep_sea.abyss": "deep-sea-abyss",
+		"deep_sea.trench": "deep-sea-trench",
+		"space.starlight": "space-starlight",
+		"space.reflection": "space-reflection",
 	},
 }
 const FISHING_ACTION_CATCH_TEXTURE_PATHS := {
@@ -2427,8 +2703,8 @@ const ACTION_CARD_TAP_RELEASE_SLOP := 120.0
 const ACTION_STAT_TAP_RELEASE_SLOP := 30.0
 const PASSIVE_BUTTON_TAP_RELEASE_SLOP := 52.0
 const ACTION_CARD_DUPLICATE_TAP_MSEC := 36
-const ACTION_STOP_HOLD_ARM_DELAY_SECONDS := 0.5
-const ACTION_STOP_HOLD_SECONDS := 0.9
+const ACTION_STOP_HOLD_ARM_DELAY_SECONDS := 0.16
+const ACTION_STOP_HOLD_SECONDS := 0.45
 const ACTION_STOP_HOLD_UNLOAD_SECONDS := 0.18
 const ACTION_STOP_HOLD_RING_SIZE := Vector2(380, 380)
 const HUB_HOTSPOT_DRAG_START_SLOP := 42.0
@@ -2648,6 +2924,12 @@ const SKILL_SWIPE_PAPER_FADE_ENABLED := false
 const SKILL_SWIPE_PAPER_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
 const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.08
 const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.12
+const SKILL_SWIPE_PAGE_SWITCH_FADE_OUT_SECONDS := 0.22
+const SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS := 0.28
+const SKILL_SWIPE_MODULE_UTILITY_FADE_OUT_SECONDS := 0.18
+const SKILL_SWIPE_MODULE_UTILITY_FADE_IN_SECONDS := 0.24
+const SKILL_SWIPE_SHELF_BACKGROUND_FADE_OUT_SECONDS := 0.18
+const SKILL_SWIPE_SHELF_BACKGROUND_FADE_IN_SECONDS := 0.24
 const DIRECT_SKILL_NAV_COVER_MIN_SECONDS := 0.24
 const DIRECT_SKILL_NAV_COVER_FADE_IN_SECONDS := 0.10
 const DIRECT_SKILL_NAV_COVER_FADE_SECONDS := 0.18
@@ -2795,6 +3077,15 @@ const CHAT_CENSORED_WORDS := [
 ]
 const FIREBASE_AUTH_SIGN_UP_URL := "https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=%s"
 const FIREBASE_AUTH_REFRESH_URL := "https://securetoken.googleapis.com/v1/token?key=%s"
+const FIREBASE_AUTH_SIGN_IN_WITH_IDP_URL := "https://identitytoolkit.googleapis.com/v1/accounts:signInWithIdp?key=%s"
+const GOOGLE_AUTH_ANDROID_SINGLETON := "IdleEliteGoogleAuth"
+const GOOGLE_AUTH_PROVIDER_ID := "google.com"
+const GOOGLE_AUTH_REQUEST_URI := "http://localhost"
+const GOOGLE_AUTH_WEB_CLIENT_ID_CONFIG_KEY := "google_web_client_id"
+const CLOUD_SAVE_FIREBASE_ROOT := "cloud_saves/v1"
+const CLOUD_SAVE_UPLOAD_INTERVAL_SECONDS := 5 * 60
+const CLOUD_SAVE_MAX_PAYLOAD_CHARS := 950000
+const LEADERBOARD_REPAIR_PUBLISH_VERSION := 1
 const LEADERBOARD_BOTTOM_SCROLL_PAD := 720
 const LEADERBOARD_BASE_FRAME_WIDTH := BASE_CANVAS.x
 const PROFILE_AVATAR_SHEETS := [
@@ -2911,6 +3202,21 @@ const CHAIN_SCROLL_AUDITION_DISTANCE := 1.35
 const PADLOCK_CLUSTER_SFX_PATH := "res://assets/sfx/padlock_cluster.wav"
 const FISHING_FAILURE_SFX_PATH := "res://assets/sfx/water_whoosh_subtle.wav"
 const FISHING_FAILURE_SFX_VOLUME_DB := -16.0
+const CHICKEN_DEATH_SFX_PATH := "res://assets/sfx/fight_chicken_death_squeak.wav"
+const CHICKEN_DEATH_SFX_VOLUME_DB := -18.0
+const FIGHT_PUNCH_SFX_PATHS := [
+	"res://assets/sfx/fight_punch_soft_body_whump.wav",
+	"res://assets/sfx/fight_punch_soft_body_thump_alt.wav",
+	"res://assets/sfx/fight_punch_crisp_glove_pop.wav",
+	"res://assets/sfx/fight_punch_feed_sack_crunch.wav",
+	"res://assets/sfx/fight_punch_short_uppercut_pop.wav",
+	"res://assets/sfx/fight_punch_rubber_bounce_hit.wav",
+]
+const FIGHT_PUNCH_SFX_VOLUME_DB := -17.0
+const FIGHT_PUNCH_SFX_PITCH_MIN := 0.94
+const FIGHT_PUNCH_SFX_PITCH_MAX := 1.08
+const FIGHT_PUNCH_SFX_VOLUME_VARIANCE_DB := 1.8
+const FIGHT_PUNCH_STAMINA_COST_CHANCE := 0.05
 const ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB := -18.0
 const ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB := -15.0
 const MODULE_PIN_ENTRY_SFX_PATH := "res://assets/sfx/pin-candidates/pin_exit_pull_04_bright_tick.wav"
@@ -2981,6 +3287,8 @@ const MUSIC_START_FADE_SECONDS := 14.4
 const MUSIC_BASE_ONLY_GUARD_SECONDS := 64.0
 const MUSIC_LAYER_VOLUME_BOOST_DB := [1.5, -3.5, 2.2]
 const MUSIC_OUTPUT_GAIN := 0.32
+const MUSIC_ENABLED := true
+const GAME_AUDIO_ENABLED := true
 const DEFAULT_MUSIC_VOLUME := 0.55
 const DEFAULT_SFX_VOLUME := 0.65
 const AUDIO_SETTINGS_VERSION := 4
@@ -3094,6 +3402,12 @@ const COLOR_PAPER := Color("#f8f1e5")
 const COLOR_PANEL := Color("#fffdf8")
 const COLOR_LINE := Color("#d9cfbc")
 const COLOR_MUTED := Color("#6e6658")
+const COLOR_DARK_PAPER := Color("#202329")
+const COLOR_DARK_PANEL := Color("#2b2f37")
+const COLOR_DARK_PANEL_ALT := Color("#343942")
+const COLOR_DARK_LINE := Color("#4b515c")
+const COLOR_DARK_INK := Color("#f4f1e8")
+const COLOR_DARK_MUTED := Color("#c7c0b4")
 const COLOR_GOLD := Color("#fff2a8")
 const COLOR_GREEN := Color("#35d86d")
 const COLOR_BLUE := Color("#3aa0ff")
@@ -3101,6 +3415,9 @@ const COLOR_NAV := Color("#444a5b")
 const COLOR_RED := Color("#e84d4d")
 const SKILL_DETAIL_SHELF_PASTEL_MIX := 0.62
 const SKILL_DETAIL_SHELF_PAPER_MIX := 0.62
+const SKILL_MENU_LIGHT_PASTEL_MIX := 0.68
+const SKILL_MENU_DARK_THEME_DARKEN := 0.18
+const SKILL_MENU_DARK_PANEL_MIX := 0.10
 const SKILL_THEME_COLORS := {
 	"fight": Color("#e84d4d"),
 	"thieving": Color("#8956bc"),
@@ -3132,7 +3449,11 @@ var selected_skill_id := "fight"
 var current_screen := "home"
 var running_skill_id := ""
 var running_action_id := ""
+var action_art_last_running_key := ""
 var action_progress := 0.0
+var event_running_skill_id := ""
+var event_running_action_id := ""
+var event_action_progress := 0.0
 var canceled_action_progress_by_key := {}
 var action_stop_hold_active := false
 var action_stop_hold_armed := false
@@ -3146,6 +3467,13 @@ var action_stop_hold_position := Vector2.ZERO
 var action_stop_hold_start_position := Vector2.ZERO
 var action_stop_hold_layer: CanvasLayer
 var action_stop_hold_circle: StopHoldCircle
+var firepit_stop_hold_active := false
+var firepit_stop_hold_armed := false
+var firepit_stop_hold_unloading := false
+var firepit_stop_hold_elapsed := 0.0
+var firepit_stop_hold_unload_elapsed := 0.0
+var firepit_stop_hold_position := Vector2.ZERO
+var firepit_stop_hold_start_position := Vector2.ZERO
 var action_opportunity_consumed := false
 var action_opportunity_missed := false
 var action_opportunity_boost_seconds := 0.0
@@ -3303,6 +3631,8 @@ var activity_streak_count := 0
 var mastery := {}
 var stamina := {}
 var stamina_bank := {}
+var blue_guy_health := float(BLUE_GUY_HEALTH_MAX)
+var blue_guy_health_bank := 0.0
 var stamina_gauge_regen_multiplier := 1.0
 var stamina_gauge_regen_target_multiplier := 1.0
 var stamina_gauge_boost_skill_id := ""
@@ -3336,6 +3666,9 @@ var sfx_volume := DEFAULT_SFX_VOLUME
 var music_muted := false
 var sfx_muted := false
 var show_stamina_decimal := false
+var offline_progress_cap_notifications_enabled := false
+var dark_mode_enabled := false
+var dark_mode_overlay: ColorRect
 var flow_actions_taken := 0
 var flow_heat := 0.0
 var flow_idle_seconds := MUSIC_FLOW_DEAD_SECONDS
@@ -3361,6 +3694,7 @@ var reset_data_buttons := []
 
 var app_font: Font
 var app_bold_font: Font
+var app_background_rect: ColorRect
 var mastery_medal_textures := {}
 var mastery_medal_silhouette_materials := {}
 var mastery_medal_dot_texture: Texture2D
@@ -3476,6 +3810,7 @@ var leaderboard_last_submitted_score := 0
 var leaderboard_last_submitted_total_xp := 0
 var leaderboard_last_submitted_scores_by_category := {}
 var leaderboard_last_submit_unix := 0
+var leaderboard_repair_publish_version := 0
 var leaderboard_display_name := ""
 var leaderboard_name_key := ""
 var leaderboard_avatar_index := 0
@@ -3486,10 +3821,14 @@ var leaderboard_rows_by_category := {}
 var leaderboard_fetch_unix_by_category := {}
 var leaderboard_fetch_retry_unix_by_category := {}
 var leaderboard_auth_request: HTTPRequest
+var google_auth_exchange_request: HTTPRequest
+var cloud_save_fetch_request: HTTPRequest
+var cloud_save_upload_request: HTTPRequest
 var leaderboard_fetch_request: HTTPRequest
 var leaderboard_total_xp_fetch_request: HTTPRequest
 var leaderboard_submit_request: HTTPRequest
 var leaderboard_name_claim_request: HTTPRequest
+var leaderboard_name_recovery_request: HTTPRequest
 var profile_reference_update_request: HTTPRequest
 var leaderboard_auth_in_flight := false
 var leaderboard_auth_mode := ""
@@ -3501,6 +3840,19 @@ var leaderboard_auth_provider := "anonymous"
 var leaderboard_config_loaded := false
 var leaderboard_config_database_url := ""
 var leaderboard_config_web_api_key := ""
+var google_auth_web_client_id := ""
+var google_auth_plugin: Object
+var google_auth_plugin_connected := false
+var google_auth_in_flight := false
+var google_auth_status_message := ""
+var cloud_save_fetch_in_flight := false
+var cloud_save_upload_in_flight := false
+var cloud_save_dirty := false
+var cloud_save_last_upload_unix := 0
+var cloud_save_last_fetch_unix := 0
+var cloud_save_last_remote_summary := {}
+var cloud_save_last_remote_payload := {}
+var cloud_save_status_message := ""
 var leaderboard_fetch_in_flight := false
 var leaderboard_fetch_category_id := ""
 var leaderboard_total_xp_fetch_in_flight := false
@@ -3508,9 +3860,11 @@ var leaderboard_pending_total_rows := []
 var leaderboard_submit_in_flight := false
 var leaderboard_submit_stage := ""
 var leaderboard_pending_score_updates := {}
+var leaderboard_pending_repair_publish_version := 0
 var leaderboard_name_claim_in_flight := false
 var leaderboard_name_claim_pending_name := ""
 var leaderboard_name_claim_pending_key := ""
+var leaderboard_name_recovery_in_flight := false
 var profile_reference_update_in_flight := false
 var leaderboard_process_seconds := 0.0
 var leaderboard_status_message := ""
@@ -3668,6 +4022,7 @@ var detail_regen_circle: RegenCircle
 var detail_regen_circle_host: Control
 var detail_regen_circle_fade_group: CanvasGroup
 var detail_fish_circle: FishCircle
+var detail_blue_guy_health_gauge: BlueGuyHealthHeartGauge
 var detail_auto_eat_fish_button: TextureButton
 var fishing_tool_wallet_layer: Control
 var fishing_tool_wallet_canvas: CanvasLayer
@@ -3857,6 +4212,8 @@ var activity_lock_input_active := false
 var active_activity_lock_rig: Control
 var settings_overlay: Control
 var settings_panel: PanelContainer
+var settings_notification_permission_notice: Control
+var settings_notification_permission_notice_tween: Tween
 var profile_overlay: Control
 var profile_overlay_layer: CanvasLayer
 var profile_panel: PanelContainer
@@ -3909,10 +4266,13 @@ var sfx_mute_labels := []
 var offline_progress_toggles := []
 var auto_unlock_lockpad_toggles := []
 var stamina_decimal_toggles := []
+var offline_progress_cap_notification_toggles := []
+var dark_mode_toggles := []
 var god_mode_controls := []
 var performance_monitor: Node
 var audio_controls_sync_key := ""
 var audio_slider_grabber_texture: Texture2D
+var audio_slider_grabber_highlight_texture: Texture2D
 var paper_button_style_textures := {}
 var activity_shade_style_cache := {}
 var action_art_style_cache: StyleBoxFlat
@@ -3950,6 +4310,9 @@ var success_players: Array[AudioStreamPlayer] = []
 var crit_success_players: Array[AudioStreamPlayer] = []
 var failure_player: AudioStreamPlayer
 var fishing_failure_player: AudioStreamPlayer
+var chicken_death_player: AudioStreamPlayer
+var fight_punch_players: Array[AudioStreamPlayer] = []
+var fight_punch_player_index := 0
 var opportunity_success_player: AudioStreamPlayer
 var opportunity_miss_player: AudioStreamPlayer
 var level_player: AudioStreamPlayer
@@ -3986,6 +4349,8 @@ var last_save_unix_time := 0
 var last_save_monotonic_msec := -1
 var save_dirty := false
 var save_dirty_reason := ""
+var allow_next_save_progress_regression := false
+var save_reset_generation := 0
 var passive_upgrade_player: AudioStreamPlayer
 var texture_cache := {}
 var atlas_texture_cache := {}
@@ -4030,9 +4395,11 @@ var boot_detail_scroll_locked := false
 var screen_render_in_progress := false
 var screen_render_target_key := ""
 var pending_screen_render_request := {}
+var pending_skill_detail_refresh_request := {}
 var detail_lazy_blank_repair_next_msec := 0
 var shutdown_cleanup_started := false
 var startup_initialized := false
+var app_resume_repair_pending := false
 
 
 func _ready() -> void:
@@ -4055,6 +4422,7 @@ func _ready() -> void:
 	_init_state()
 	await _boot_progress_step("Loading save...", 0.20)
 	load_game()
+	_apply_dark_mode_visual()
 	if _pending_crash_report_exists():
 		last_result = "Crash report ready in Settings."
 	_select_launch_skill_page()
@@ -4062,8 +4430,7 @@ func _ready() -> void:
 	deferred_skill_validation_pending = true
 	deferred_selected_skill_mastery_pending = true
 	await _build_ui_boot_async()
-	_dismiss_boot_splash_for_interactive()
-	call_deferred("_finish_boot_render_async")
+	await _finish_boot_render_async()
 	var timer := Timer.new()
 	timer.wait_time = AUTOSAVE_INTERVAL_SECONDS
 	timer.autostart = true
@@ -4221,6 +4588,9 @@ func _finish_boot_render_async():
 		startup_initialized = true
 		_write_crash_session_marker("running")
 	_update_ui(0.0, true)
+	_dismiss_boot_splash_for_play()
+	if app_resume_repair_pending:
+		call_deferred("_repair_after_app_resume")
 	call_deferred("_run_startup_auto_unlock_lockpads")
 	if DisplayServer.get_name() != "headless":
 		if not boot_early_services_started:
@@ -4281,7 +4651,7 @@ func _headless_boot_smoke_mode() -> bool:
 
 
 func _run_headless_boot_smoke() -> void:
-	var smoke_seconds := clampf(float(OS.get_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS")), 1.0, 14.0)
+	var smoke_seconds := clampf(float(OS.get_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS")), 1.0, 600.0)
 	await get_tree().create_timer(smoke_seconds).timeout
 	get_tree().quit()
 
@@ -4576,6 +4946,7 @@ func _process(delta: float) -> void:
 	_process_hub_hotspot_hold(delta)
 	_process_action(delta)
 	_process_action_stop_hold(delta)
+	_process_firepit_stop_hold(delta)
 	_process_temporary_event_scheduler(delta)
 	if trace_process:
 		var now_usec := Time.get_ticks_usec()
@@ -4629,6 +5000,7 @@ func _unhandled_input(_event: InputEvent) -> void:
 
 func _input(event: InputEvent) -> void:
 	_note_player_input(event)
+	var press_started_on_button := _primary_press_started_on_button(event)
 	if _input_event_releases_primary_pointer(event):
 		_release_all_depressed_buttons()
 	elif event is InputEventMouseMotion or event is InputEventScreenDrag:
@@ -4652,7 +5024,8 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if _fishing_detail_should_skip_generic_input(event):
-		_begin_fishing_detail_deferred_swipe_if_press(event)
+		if not press_started_on_button:
+			_begin_fishing_detail_deferred_swipe_if_press(event)
 		return
 	if _route_direct_module_action_zone_input(event):
 		get_viewport().set_input_as_handled()
@@ -4788,7 +5161,7 @@ func _input(event: InputEvent) -> void:
 					_begin_skill_swipe_tracking(event.global_position, -1)
 				get_viewport().set_input_as_handled()
 				return
-			if current_screen == "skill":
+			if current_screen == "skill" and not press_started_on_button:
 				_interrupt_skill_swipe_animation_for_input()
 				if skills_page != null and Rect2(skills_page.global_position, skills_page.size).has_point(event.global_position):
 					_begin_skill_swipe_tracking(event.global_position, -1)
@@ -4806,7 +5179,7 @@ func _input(event: InputEvent) -> void:
 					_begin_skill_swipe_tracking(event.position, event.index)
 				get_viewport().set_input_as_handled()
 				return
-			if current_screen == "skill":
+			if current_screen == "skill" and not press_started_on_button:
 				_interrupt_skill_swipe_animation_for_input()
 				_begin_skill_swipe_tracking(event.position, event.index)
 		elif skill_swipe_tracking and event.index == skill_swipe_touch_index:
@@ -5107,6 +5480,7 @@ func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) ->
 		skill_swipe_preview_prewarm_token += 1
 		skill_swipe_preview_prewarm_pending = false
 		_interrupt_skill_swipe_animation_for_input()
+		_park_skill_swipe_preview()
 	skill_swipe_tracking = true
 	skill_swipe_horizontal = false
 	skill_swipe_start = pointer_position
@@ -5621,7 +5995,8 @@ func _route_action_stop_hold_input(event: InputEvent) -> bool:
 		var event_position := (event as InputEventMouseMotion).global_position
 		if not action_stop_hold_armed:
 			return _handoff_action_stop_hold_to_swipe_if_needed(event_position)
-		_update_action_stop_hold_position(event_position)
+		if _cancel_action_stop_hold_if_pointer_left_start_circle(event_position):
+			return true
 		return true
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and action_stop_hold_pointer_id < 0:
 		if not event.pressed and action_stop_hold_active:
@@ -5633,7 +6008,8 @@ func _route_action_stop_hold_input(event: InputEvent) -> bool:
 		var event_position := (event as InputEventScreenDrag).position
 		if not action_stop_hold_armed:
 			return _handoff_action_stop_hold_to_swipe_if_needed(event_position)
-		_update_action_stop_hold_position(event_position)
+		if _cancel_action_stop_hold_if_pointer_left_start_circle(event_position):
+			return true
 		return true
 	if event is InputEventScreenTouch and event.index == action_stop_hold_pointer_id:
 		if not event.pressed and action_stop_hold_active:
@@ -5726,6 +6102,18 @@ func _handoff_action_stop_hold_to_swipe_if_needed(pointer_position: Vector2) -> 
 	return true
 
 
+func _cancel_action_stop_hold_if_pointer_left_start_circle(pointer_position: Vector2) -> bool:
+	if _action_stop_hold_pointer_inside_start_circle(pointer_position):
+		return false
+	_cancel_action_stop_hold()
+	return true
+
+
+func _action_stop_hold_pointer_inside_start_circle(pointer_position: Vector2) -> bool:
+	var radius := minf(ACTION_STOP_HOLD_RING_SIZE.x, ACTION_STOP_HOLD_RING_SIZE.y) * 0.5
+	return pointer_position.distance_to(action_stop_hold_start_position) <= radius
+
+
 func _finish_pending_action_stop_hold_click(release_position: Vector2) -> void:
 	if release_position.distance_to(action_stop_hold_start_position) > ACTION_CARD_TAP_RELEASE_SLOP:
 		return
@@ -5786,6 +6174,105 @@ func _clear_action_stop_hold_state() -> void:
 	action_stop_hold_unload_elapsed = 0.0
 	action_stop_hold_pointer_id = -1
 	action_stop_hold_start_position = Vector2.ZERO
+
+
+func _on_firepit_button_down(module_id := WOODCUTTING_FIREPIT_MODULE_ID, button: Button = null) -> void:
+	if not _is_firepit_module(module_id) or not _is_passive_module_unlocked(module_id):
+		return
+	_apply_firepit_fuel(_unix_now())
+	if not _firepit_active():
+		return
+	_cancel_action_stop_hold()
+	var center := get_viewport().get_mouse_position()
+	if button != null and is_instance_valid(button):
+		center = _control_local_point_to_global(button, button.size * 0.5)
+	_begin_firepit_stop_hold(center)
+
+
+func _on_firepit_button_up(module_id := WOODCUTTING_FIREPIT_MODULE_ID) -> void:
+	if not _is_firepit_module(module_id):
+		return
+	if firepit_stop_hold_unloading:
+		return
+	_cancel_firepit_stop_hold()
+
+
+func _begin_firepit_stop_hold(pointer_position: Vector2) -> void:
+	firepit_stop_hold_active = true
+	firepit_stop_hold_armed = false
+	firepit_stop_hold_unloading = false
+	firepit_stop_hold_elapsed = 0.0
+	firepit_stop_hold_unload_elapsed = 0.0
+	firepit_stop_hold_position = pointer_position
+	firepit_stop_hold_start_position = pointer_position
+	_hide_action_stop_hold_circle()
+
+
+func _process_firepit_stop_hold(delta: float) -> void:
+	if not firepit_stop_hold_active and not firepit_stop_hold_unloading:
+		return
+	if not _firepit_active():
+		_cancel_firepit_stop_hold()
+		return
+	if firepit_stop_hold_unloading:
+		firepit_stop_hold_unload_elapsed += delta
+		var unload := clampf(firepit_stop_hold_unload_elapsed / ACTION_STOP_HOLD_UNLOAD_SECONDS, 0.0, 1.0)
+		_sync_firepit_stop_hold_circle(1.0, unload, true)
+		if unload >= 1.0:
+			_hide_action_stop_hold_circle()
+			_clear_firepit_stop_hold_state()
+			_extinguish_firepit()
+		return
+	if not firepit_stop_hold_armed:
+		firepit_stop_hold_elapsed += delta
+		if firepit_stop_hold_elapsed < ACTION_STOP_HOLD_ARM_DELAY_SECONDS:
+			return
+		firepit_stop_hold_armed = true
+		firepit_stop_hold_elapsed = 0.0
+		_show_firepit_stop_hold_circle()
+		return
+	firepit_stop_hold_elapsed += delta
+	var progress := clampf(firepit_stop_hold_elapsed / FIREPIT_STOP_HOLD_SECONDS, 0.0, 1.0)
+	_sync_firepit_stop_hold_circle(progress, 0.0, false)
+	if progress >= 1.0:
+		firepit_stop_hold_active = false
+		firepit_stop_hold_unloading = true
+		firepit_stop_hold_unload_elapsed = 0.0
+		_sync_firepit_stop_hold_circle(1.0, 0.0, true)
+
+
+func _show_firepit_stop_hold_circle() -> void:
+	_ensure_action_stop_hold_circle()
+	if action_stop_hold_circle == null or not is_instance_valid(action_stop_hold_circle) or action_stop_hold_circle.is_queued_for_deletion():
+		return
+	action_stop_hold_circle.theme_color = Color("#ff9c2f")
+	action_stop_hold_circle.size = ACTION_STOP_HOLD_RING_SIZE
+	action_stop_hold_circle.position = firepit_stop_hold_position - ACTION_STOP_HOLD_RING_SIZE * 0.5
+	_set_canvas_item_modulate_if_changed(action_stop_hold_circle, Color.WHITE)
+	_set_canvas_item_visible_if_changed(action_stop_hold_circle, true)
+	action_stop_hold_circle.set_progress(0.0, 0.0, false)
+
+
+func _sync_firepit_stop_hold_circle(progress: float, unload: float, unloading: bool) -> void:
+	if action_stop_hold_circle == null or not is_instance_valid(action_stop_hold_circle) or action_stop_hold_circle.is_queued_for_deletion():
+		return
+	action_stop_hold_circle.position = firepit_stop_hold_position - ACTION_STOP_HOLD_RING_SIZE * 0.5
+	action_stop_hold_circle.set_progress(progress, unload, unloading)
+
+
+func _cancel_firepit_stop_hold() -> void:
+	_hide_action_stop_hold_circle()
+	_clear_firepit_stop_hold_state()
+
+
+func _clear_firepit_stop_hold_state() -> void:
+	firepit_stop_hold_active = false
+	firepit_stop_hold_armed = false
+	firepit_stop_hold_unloading = false
+	firepit_stop_hold_elapsed = 0.0
+	firepit_stop_hold_unload_elapsed = 0.0
+	firepit_stop_hold_position = Vector2.ZERO
+	firepit_stop_hold_start_position = Vector2.ZERO
 
 
 func _remember_canceled_action_progress(skill_id: String, action_id: String, progress: float) -> void:
@@ -5875,6 +6362,11 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 			_queue_action_card_3d_press(action_card_press_key)
 			return true
 		if running_skill_id == skill_id and running_action_id == action_id:
+			var card_key := str(card.get("card_key", _action_key(skill_id, action_id)))
+			var pinned_duplicate_body_press := current_screen == "pinned" or card_key.begins_with("pinned_shelf:")
+			if pinned_duplicate_body_press:
+				_begin_action_stop_hold(skill_id, action_id, routed_position, pointer_id)
+				return true
 			if _try_action_opportunity_click(skill_id, action_id, routed_position):
 				action_card_press_consumed = true
 				_cancel_action_stop_hold()
@@ -5941,23 +6433,26 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		return false
 	if page_switch_press_active:
 		return false
-	if event_position != Vector2.INF and _page_switch_button_at_position(event_position) != null:
+	var page_switch_button := _page_switch_button_at_position(event_position) if event_position != Vector2.INF else null
+	if page_switch_button != null and page_switch_button.get_global_rect().has_point(event_position):
 		return false
 	if _route_fishing_area_pin_corner_input(event):
 		return true
 	if _route_fishing_area_queue_selection_input(event):
 		return true
+	if _route_fishing_offer_button_global_input(event):
+		return true
 	if _route_fishing_location_image_priority_press(event):
 		return true
 	if _route_fishing_method_button_global_input(event):
 		return true
+	if page_switch_button != null:
+		return false
 	if current_screen == "pinned" or current_screen == "queue":
 		var action_hit := _module_action_circle_at_direct_position(event_position)
 		if not action_hit.is_empty() and _fishing_detail_module_key_is_fishing(str(action_hit.get("module_key", ""))):
 			if _route_module_action_zone_input(event):
 				return true
-	if _route_fishing_offer_button_global_input(event):
-		return true
 	if _route_fishing_active_tool_input(event):
 		return true
 	return false
@@ -6226,8 +6721,7 @@ func _action_card_at_position(event_position: Vector2) -> Dictionary:
 	if not _position_inside_detail_actions_viewport(event_position):
 		return {}
 	_prune_invalid_action_cards()
-	if not _module_action_circle_at_position(event_position).is_empty():
-		return {}
+	var action_circle_hit := _module_action_circle_at_position(event_position)
 	var keys := action_card_keys.duplicate()
 	keys.reverse()
 	for raw_key in keys:
@@ -6249,6 +6743,12 @@ func _action_card_at_position(event_position: Vector2) -> Dictionary:
 		var action := _action_data(skill_id, action_id)
 		if action.is_empty():
 			continue
+		if (
+			not action_circle_hit.is_empty()
+			and _module_action_hit_belongs_to_card(action_circle_hit, card)
+			and not _is_event_action(action)
+		):
+			continue
 		if _is_passive_action(action):
 			continue
 		if bool(card.get("unlock_ceremony_active", false)) or bool(card.get("unlock_ceremony_pending", false)):
@@ -6259,6 +6759,17 @@ func _action_card_at_position(event_position: Vector2) -> Dictionary:
 			"action_id": action_id
 		}
 	return {}
+
+
+func _module_action_hit_belongs_to_card(hit: Dictionary, card: Dictionary) -> bool:
+	if hit.is_empty() or card.is_empty():
+		return false
+	var hit_card = hit.get("card", {})
+	if typeof(hit_card) == TYPE_DICTIONARY and not (hit_card as Dictionary).is_empty():
+		return str((hit_card as Dictionary).get("card_key", "")) == str(card.get("card_key", ""))
+	var hit_host := _valid_control_ref(hit.get("host"))
+	var card_pop := _valid_control_ref(card.get("pop"))
+	return hit_host != null and card_pop != null and hit_host == card_pop
 
 
 func _route_action_card_release(event: InputEvent) -> bool:
@@ -6286,15 +6797,6 @@ func _route_action_card_release(event: InputEvent) -> bool:
 		return false
 	if not _position_inside_detail_actions_viewport(release_position):
 		return false
-	var close_to_press := _event_positions_close_to_press(release_positions)
-	if not stat_kind.is_empty():
-		close_to_press = _event_positions_within_press_slop(release_positions, ACTION_STAT_TAP_RELEASE_SLOP)
-	if dragged or not close_to_press:
-		return false
-	if _skill_swipe_suppresses_button_action():
-		if stat_kind.is_empty():
-			return false
-		_clear_skill_swipe_button_suppression()
 	if not action_cards.has(key):
 		return false
 	var card := action_cards[key] as Dictionary
@@ -6311,6 +6813,15 @@ func _route_action_card_release(event: InputEvent) -> bool:
 			return false
 	elif pop == null:
 		return false
+	var close_to_press := _event_positions_close_to_press(release_positions)
+	if not stat_kind.is_empty():
+		close_to_press = _event_positions_inside_activity_stat_box(card, stat_kind, release_positions)
+	if dragged or not close_to_press:
+		return false
+	if _skill_swipe_suppresses_button_action():
+		if stat_kind.is_empty():
+			return false
+		_clear_skill_swipe_button_suppression()
 	if queue_selection_mode and stat_kind.is_empty():
 		return _queue_selection_toggle_from_card(card)
 	var skill_id := str(card.get("skill_id", ""))
@@ -6401,7 +6912,7 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		_save_for_app_suspend()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
-		if _mobile_lifecycle_uses_focus_resume():
+		if _app_lifecycle_uses_focus_resume():
 			_resume_from_app_suspend()
 		else:
 			_write_crash_session_marker("running")
@@ -6426,6 +6937,7 @@ func _prepare_for_shutdown() -> void:
 	_write_crash_session_marker("clean")
 	_clear_detail_lazy_cached_roots()
 	_free_global_swipe_real_card_cache()
+	pending_skill_detail_refresh_request.clear()
 	startup_initialized = false
 	deferred_skill_validation_pending = false
 	boot_warmup_cancel_requested = true
@@ -6464,6 +6976,9 @@ func _prepare_for_shutdown() -> void:
 	action_stop_hold_circle = null
 	achievement_toast_layer = null
 	achievement_toast_root = null
+	_kill_tween_value(settings_notification_permission_notice_tween)
+	settings_notification_permission_notice = null
+	settings_notification_permission_notice_tween = null
 	tutorial_layer = null
 	tutorial_overlay = null
 	performance_monitor = null
@@ -6508,6 +7023,7 @@ func _prepare_for_shutdown() -> void:
 	thieving_heist_feather_shader = null
 	mastery_medal_dot_texture = null
 	audio_slider_grabber_texture = null
+	audio_slider_grabber_highlight_texture = null
 	thieving_action_jail_material = null
 	app_font = null
 	app_bold_font = null
@@ -6523,7 +7039,12 @@ func _mobile_lifecycle_uses_focus_resume() -> bool:
 	return OS.get_name() == "Android" or OS.get_name() == "iOS"
 
 
+func _app_lifecycle_uses_focus_resume() -> bool:
+	return _mobile_lifecycle_uses_focus_resume() or OS.get_name() == "Web" or OS.has_feature("web")
+
+
 func _save_for_app_suspend() -> void:
+	_clear_page_switch_input_state(true)
 	_pause_music_for_app_suspend()
 	if _runtime_save_is_safe():
 		save_game()
@@ -6533,6 +7054,11 @@ func _save_for_app_suspend() -> void:
 func _resume_from_app_suspend() -> void:
 	_write_crash_session_marker("running")
 	_record_battery_governor_activity()
+	_clear_page_switch_input_state(true)
+	if not startup_initialized:
+		app_resume_repair_pending = true
+		_restart_music_after_app_resume()
+		return
 	if not _runtime_save_is_safe():
 		_restart_music_after_app_resume()
 		return
@@ -6540,12 +7066,48 @@ func _resume_from_app_suspend() -> void:
 	var offline_progressed := _apply_offline_progress(last_save_unix_time) > 0
 	if offline_progress_enabled:
 		_apply_passive_module_production(now)
+		_apply_firepit_fuel(now)
 	else:
 		_reset_passive_module_timestamps(now)
 	if offline_progressed:
 		_update_ui(0.0, true)
 		save_game()
+	call_deferred("_repair_after_app_resume")
 	_restart_music_after_app_resume()
+
+
+func _repair_after_app_resume() -> void:
+	if not is_inside_tree():
+		return
+	if not startup_initialized:
+		app_resume_repair_pending = true
+		return
+	if boot_warmup_active or boot_detail_render_in_progress or screen_render_in_progress:
+		app_resume_repair_pending = true
+		call_deferred("_repair_after_app_resume")
+		return
+	app_resume_repair_pending = false
+	if home_page == null or skills_page == null:
+		return
+	if current_screen != "home" and skills_content != null and skills_content.get_child_count() == 0:
+		await _render_screen(false, -1, false)
+	elif current_screen == "skill":
+		var stack := _detail_actions_stack() as Control
+		if stack == null or not _skill_detail_stack_is_presentable(stack):
+			_force_skill_detail_reveal_mount_under_cover()
+			stack = _detail_actions_stack() as Control
+			if stack == null or not _skill_detail_stack_is_presentable(stack):
+				await _refresh_visible_skill_detail_action_list(-1, selected_skill_id, true, true)
+	_update_page_visibility()
+	_update_ui(0.0, true)
+	_queue_resume_redraw(self)
+
+
+func _queue_resume_redraw(node: Node) -> void:
+	if node is CanvasItem:
+		(node as CanvasItem).queue_redraw()
+	for child in node.get_children():
+		_queue_resume_redraw(child)
 
 
 func _free_shutdown_child_nodes() -> void:
@@ -6577,8 +7139,7 @@ func _kill_shutdown_global_tweens() -> void:
 		fishing_tool_wallet_pop_tween.kill()
 	fishing_tool_wallet_pop_tween = null
 	for tween in nav_pop_tweens.values():
-		if tween != null and (tween as Tween).is_valid():
-			(tween as Tween).kill()
+		_kill_tween_value(tween)
 	nav_pop_tweens.clear()
 
 
@@ -6596,10 +7157,19 @@ func _kill_action_card_shutdown_tweens() -> void:
 
 
 func _kill_card_tween(card: Dictionary, key: String) -> void:
-	var tween := card.get(key, null) as Tween
-	if tween != null and tween.is_valid():
-		tween.kill()
+	var tween = card.get(key, null)
+	_kill_tween_value(tween)
 	card.erase(key)
+
+
+func _card_tween_is_valid(card: Dictionary, key: String) -> bool:
+	var tween = card.get(key, null)
+	return tween != null and is_instance_valid(tween) and tween is Tween and tween.is_valid()
+
+
+func _kill_tween_value(tween) -> void:
+	if tween != null and is_instance_valid(tween) and tween is Tween and tween.is_valid():
+		tween.kill()
 
 
 func _free_skill_swipe_preview_shutdown_nodes() -> void:
@@ -6627,7 +7197,8 @@ func _free_skill_swipe_preview_shutdown_nodes() -> void:
 
 func _build_ui_shell() -> void:
 	var root := ColorRect.new()
-	root.color = COLOR_PAPER
+	app_background_rect = root
+	root.color = _theme_paper_color()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(root)
 	
@@ -6764,6 +7335,18 @@ func _build_leaderboard_http() -> void:
 	leaderboard_auth_request.timeout = 15.0
 	leaderboard_auth_request.request_completed.connect(_on_leaderboard_auth_completed)
 	add_child(leaderboard_auth_request)
+	google_auth_exchange_request = HTTPRequest.new()
+	google_auth_exchange_request.timeout = 15.0
+	google_auth_exchange_request.request_completed.connect(_on_google_auth_exchange_completed)
+	add_child(google_auth_exchange_request)
+	cloud_save_fetch_request = HTTPRequest.new()
+	cloud_save_fetch_request.timeout = 15.0
+	cloud_save_fetch_request.request_completed.connect(_on_cloud_save_fetch_completed)
+	add_child(cloud_save_fetch_request)
+	cloud_save_upload_request = HTTPRequest.new()
+	cloud_save_upload_request.timeout = 15.0
+	cloud_save_upload_request.request_completed.connect(_on_cloud_save_upload_completed)
+	add_child(cloud_save_upload_request)
 	leaderboard_fetch_request = HTTPRequest.new()
 	leaderboard_fetch_request.timeout = 15.0
 	leaderboard_fetch_request.request_completed.connect(_on_leaderboard_fetch_completed)
@@ -6780,6 +7363,10 @@ func _build_leaderboard_http() -> void:
 	leaderboard_name_claim_request.timeout = 15.0
 	leaderboard_name_claim_request.request_completed.connect(_on_leaderboard_name_claim_completed)
 	add_child(leaderboard_name_claim_request)
+	leaderboard_name_recovery_request = HTTPRequest.new()
+	leaderboard_name_recovery_request.timeout = 15.0
+	leaderboard_name_recovery_request.request_completed.connect(_on_leaderboard_name_recovery_completed)
+	add_child(leaderboard_name_recovery_request)
 	profile_reference_update_request = HTTPRequest.new()
 	profile_reference_update_request.timeout = 15.0
 	profile_reference_update_request.request_completed.connect(_on_profile_reference_update_completed)
@@ -6813,13 +7400,21 @@ func _leaderboard_load_firebase_config() -> void:
 	var file := FileAccess.open(FIREBASE_LOCAL_CONFIG_PATH, FileAccess.READ)
 	if file == null:
 		return
-	var parsed = JSON.parse_string(file.get_as_text())
+	var parsed = _parse_json_silent(file.get_as_text())
 	if typeof(parsed) != TYPE_DICTIONARY:
 		push_warning("Online leaderboard config must be a JSON object.")
 		return
 	var data := parsed as Dictionary
 	leaderboard_config_database_url = str(data.get("database_url", "")).strip_edges()
 	leaderboard_config_web_api_key = str(data.get("web_api_key", "")).strip_edges()
+	google_auth_web_client_id = str(data.get(GOOGLE_AUTH_WEB_CLIENT_ID_CONFIG_KEY, "")).strip_edges()
+
+
+func _parse_json_silent(raw_text: String) -> Variant:
+	var json := JSON.new()
+	if json.parse(raw_text) != OK:
+		return null
+	return json.data
 
 
 func _leaderboard_firebase_base_url() -> String:
@@ -6882,6 +7477,10 @@ func _leaderboard_firebase_url(path := "", query := "") -> String:
 
 func _chat_firebase_url(path := "", query := "") -> String:
 	return _firebase_database_url(CHAT_FIREBASE_ROOT, path, query)
+
+
+func _cloud_save_firebase_url(path := "", query := "") -> String:
+	return _firebase_database_url(CLOUD_SAVE_FIREBASE_ROOT, path, query)
 
 
 func _firebase_database_url(root_path: String, path := "", query := "") -> String:
@@ -6962,6 +7561,7 @@ func _leaderboard_note_submit_failure(message: String) -> void:
 	leaderboard_last_submit_unix = _unix_now()
 	leaderboard_last_submit_payload_categories.clear()
 	leaderboard_pending_score_updates.clear()
+	leaderboard_pending_repair_publish_version = 0
 	leaderboard_submit_stage = ""
 	_mark_save_dirty("leaderboard submit retry")
 
@@ -6977,7 +7577,7 @@ func _firebase_error_detail(body: PackedByteArray) -> String:
 	var raw := body.get_string_from_utf8().strip_edges()
 	if raw.is_empty():
 		return ""
-	var parsed = JSON.parse_string(raw)
+	var parsed = _parse_json_silent(raw)
 	if typeof(parsed) == TYPE_DICTIONARY:
 		var data := parsed as Dictionary
 		var error = data.get("error", "")
@@ -7057,6 +7657,373 @@ func _leaderboard_retry_chat_auth_without_refresh() -> bool:
 	return auth_ready or leaderboard_auth_in_flight
 
 
+func _google_auth_available() -> bool:
+	_ensure_google_auth_plugin()
+	return google_auth_plugin != null and is_instance_valid(google_auth_plugin) and google_auth_plugin.has_method("sign_in")
+
+
+func _ensure_google_auth_plugin() -> void:
+	if google_auth_plugin != null and is_instance_valid(google_auth_plugin):
+		return
+	if OS.get_name() != "Android":
+		return
+	if not Engine.has_singleton(GOOGLE_AUTH_ANDROID_SINGLETON):
+		return
+	google_auth_plugin = Engine.get_singleton(GOOGLE_AUTH_ANDROID_SINGLETON)
+	if google_auth_plugin == null or google_auth_plugin_connected:
+		return
+	if google_auth_plugin.has_signal("google_sign_in_succeeded"):
+		google_auth_plugin.connect("google_sign_in_succeeded", _on_google_sign_in_succeeded)
+	if google_auth_plugin.has_signal("google_sign_in_failed"):
+		google_auth_plugin.connect("google_sign_in_failed", _on_google_sign_in_failed)
+	google_auth_plugin_connected = true
+
+
+func _start_google_account_sign_in() -> void:
+	_ensure_leaderboard_http()
+	if google_auth_in_flight or leaderboard_auth_in_flight:
+		return
+	if not _leaderboard_firebase_enabled():
+		google_auth_status_message = "Online services are not connected yet."
+		_rebuild_profile_overlay_if_visible()
+		return
+	if google_auth_web_client_id.is_empty():
+		google_auth_status_message = "Google sign-in needs google_web_client_id in firebase-leaderboard-config.json."
+		_rebuild_profile_overlay_if_visible()
+		return
+	if not _google_auth_available():
+		google_auth_status_message = "Google sign-in is not available in this build yet."
+		_rebuild_profile_overlay_if_visible()
+		return
+	google_auth_in_flight = true
+	google_auth_status_message = "Opening Google sign-in..."
+	_rebuild_profile_overlay_if_visible()
+	var err := OK
+	if google_auth_plugin.has_method("sign_in_with_client_id"):
+		err = int(google_auth_plugin.call("sign_in_with_client_id", google_auth_web_client_id))
+	else:
+		err = int(google_auth_plugin.call("sign_in"))
+	if err != OK:
+		google_auth_in_flight = false
+		google_auth_status_message = "Google sign-in failed to start: %s" % error_string(err)
+		_rebuild_profile_overlay_if_visible()
+
+
+func _on_google_sign_in_succeeded(id_token: String, account_email := "", display_name := "") -> void:
+	google_auth_in_flight = false
+	var clean_token := id_token.strip_edges()
+	if clean_token.is_empty():
+		google_auth_status_message = "Google sign-in returned an empty token."
+		_rebuild_profile_overlay_if_visible()
+		return
+	_exchange_google_id_token_for_firebase(clean_token, account_email, display_name)
+
+
+func _on_google_sign_in_failed(message := "") -> void:
+	google_auth_in_flight = false
+	var detail := str(message).strip_edges()
+	google_auth_status_message = _friendly_google_auth_failure_message(detail)
+	_rebuild_profile_overlay_if_visible()
+
+
+func _friendly_google_auth_failure_message(detail: String) -> String:
+	var clean_detail := detail.strip_edges()
+	if clean_detail.is_empty():
+		return "Google sign-in was cancelled."
+	var lower_detail := clean_detail.to_lower()
+	if lower_detail.contains("cancel") or lower_detail.contains("canceled") or lower_detail.contains("cancelled"):
+		return "Google sign-in was cancelled."
+	if lower_detail.contains("no credentials") or lower_detail.contains("no credential"):
+		return "No Google account was selected. Try Connect Google again."
+	if lower_detail.contains("network") or lower_detail.contains("timeout"):
+		return "Google sign-in needs an internet connection. Try again in a moment."
+	return "Google sign-in failed: %s" % clean_detail
+
+
+func _exchange_google_id_token_for_firebase(google_id_token: String, account_email := "", display_name := "") -> void:
+	if google_auth_exchange_request == null or not is_instance_valid(google_auth_exchange_request):
+		google_auth_status_message = "Online login is still starting."
+		_rebuild_profile_overlay_if_visible()
+		return
+	var api_key := _leaderboard_firebase_api_key()
+	if api_key.is_empty():
+		google_auth_status_message = "Online services are not connected yet."
+		_rebuild_profile_overlay_if_visible()
+		return
+	leaderboard_auth_in_flight = true
+	leaderboard_auth_mode = "google"
+	leaderboard_auth_provider = "google"
+	google_auth_status_message = "Connecting Google account..."
+	var body := {
+		"postBody": "id_token=%s&providerId=%s" % [google_id_token.uri_encode(), GOOGLE_AUTH_PROVIDER_ID.uri_encode()],
+		"requestUri": GOOGLE_AUTH_REQUEST_URI,
+		"returnIdpCredential": true,
+		"returnSecureToken": true
+	}
+	if not leaderboard_auth_id_token.strip_edges().is_empty():
+		body["idToken"] = leaderboard_auth_id_token.strip_edges()
+	var err := google_auth_exchange_request.request(
+		FIREBASE_AUTH_SIGN_IN_WITH_IDP_URL % api_key.uri_encode(),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_POST,
+		JSON.stringify(body)
+	)
+	if err != OK:
+		leaderboard_auth_in_flight = false
+		leaderboard_auth_mode = ""
+		google_auth_status_message = "Google account link failed to start: %s" % error_string(err)
+		_rebuild_profile_overlay_if_visible()
+		return
+	if not str(display_name).strip_edges().is_empty() and not leaderboard_profile_claimed:
+		leaderboard_display_name = _sanitize_leaderboard_display_name(display_name)
+		_mark_save_dirty("google account display name")
+	elif not str(account_email).strip_edges().is_empty():
+		cloud_save_status_message = "Signing in as %s" % str(account_email).strip_edges()
+	_rebuild_profile_overlay_if_visible()
+
+
+func _on_google_auth_exchange_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	leaderboard_auth_in_flight = false
+	leaderboard_auth_mode = ""
+	if result != HTTPRequest.RESULT_SUCCESS:
+		google_auth_status_message = "Google account login failed."
+		_rebuild_profile_overlay_if_visible()
+		return
+	if response_code < 200 or response_code >= 300:
+		var detail := _firebase_error_detail(body)
+		google_auth_status_message = "Google account login returned HTTP %s%s" % [response_code, "." if detail.is_empty() else ": %s" % detail]
+		_rebuild_profile_overlay_if_visible()
+		return
+	var parsed = _parse_json_silent(body.get_string_from_utf8())
+	if typeof(parsed) != TYPE_DICTIONARY:
+		google_auth_status_message = "Google account login returned invalid JSON."
+		_rebuild_profile_overlay_if_visible()
+		return
+	_apply_firebase_auth_response(parsed as Dictionary, "google")
+	google_auth_status_message = "Google account connected."
+	cloud_save_dirty = true
+	_fetch_cloud_save()
+	_upload_cloud_save(false)
+	if _leaderboard_submit_ready():
+		_leaderboard_submit_scores()
+	_rebuild_profile_overlay_if_visible()
+
+
+func _apply_firebase_auth_response(data: Dictionary, provider: String) -> bool:
+	var id_token := str(data.get("idToken", data.get("id_token", "")))
+	var refresh_token := str(data.get("refreshToken", data.get("refresh_token", "")))
+	var local_id := str(data.get("localId", data.get("user_id", "")))
+	var expires_in := maxi(0, int(data.get("expiresIn", data.get("expires_in", 0))))
+	if id_token.is_empty() or refresh_token.is_empty() or local_id.is_empty() or expires_in <= 0:
+		_leaderboard_note_auth_failure("Online login was incomplete.", provider == "refresh")
+		return false
+	leaderboard_auth_id_token = id_token
+	leaderboard_auth_refresh_token = refresh_token
+	leaderboard_auth_expires_unix = _unix_now() + expires_in
+	leaderboard_auth_retry_after_unix = 0
+	leaderboard_auth_provider = provider if not provider.is_empty() else "anonymous"
+	leaderboard_player_id = _sanitize_leaderboard_player_id(local_id)
+	if leaderboard_player_id.is_empty():
+		_leaderboard_note_auth_failure("Online login id was invalid.", provider == "refresh")
+		return false
+	leaderboard_status_message = "Online login ready."
+	save_game()
+	return true
+
+
+func _cloud_save_account_ready() -> bool:
+	return _leaderboard_auth_ready() and leaderboard_auth_provider == "google"
+
+
+func _cloud_save_status_text() -> String:
+	if not _leaderboard_firebase_enabled():
+		return "Cloud save is offline until Firebase is configured."
+	if leaderboard_auth_provider != "google":
+		if google_auth_status_message.is_empty():
+			return "Connect Google to back up progress to your account."
+		return google_auth_status_message
+	if cloud_save_upload_in_flight:
+		return "Uploading cloud save..."
+	if cloud_save_fetch_in_flight:
+		return "Checking cloud save..."
+	if not cloud_save_status_message.is_empty():
+		return cloud_save_status_message
+	return "Google connected. Progress saves to your account automatically."
+
+
+func _cloud_save_summary(payload: Dictionary) -> Dictionary:
+	return {
+		"save_schema_version": int(payload.get("save_schema_version", 0)),
+		"saved_at": maxi(0, int(payload.get("saved_at", 0))),
+		"total_skill_xp": _save_total_skill_xp_evidence(payload),
+		"total_level": _global_level()
+	}
+
+
+func _cloud_save_payload_json(payload: Dictionary) -> String:
+	var text := JSON.stringify(payload)
+	if text.length() > CLOUD_SAVE_MAX_PAYLOAD_CHARS:
+		return ""
+	return text
+
+
+func _cloud_save_record(payload: Dictionary, now: int) -> Dictionary:
+	return {
+		"uid": leaderboard_player_id,
+		"updated_at": _firebase_server_timestamp(),
+		"updated_at_unix": now,
+		"save_schema_version": int(payload.get("save_schema_version", SAVE_SCHEMA_VERSION)),
+		"saved_at": maxi(0, int(payload.get("saved_at", now))),
+		"total_skill_xp": _save_total_skill_xp_evidence(payload),
+		"total_level": _global_level(),
+		"payload_json": _cloud_save_payload_json(payload)
+	}
+
+
+func _fetch_cloud_save() -> void:
+	_ensure_leaderboard_http()
+	if cloud_save_fetch_in_flight:
+		return
+	if not _cloud_save_account_ready():
+		cloud_save_status_message = "Connect Google before checking cloud save."
+		_rebuild_profile_overlay_if_visible()
+		return
+	cloud_save_fetch_in_flight = true
+	cloud_save_status_message = "Checking cloud save..."
+	var err := cloud_save_fetch_request.request(
+		_cloud_save_firebase_url("users/%s" % leaderboard_player_id, _leaderboard_authenticated_query()),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_GET
+	)
+	if err != OK:
+		cloud_save_fetch_in_flight = false
+		cloud_save_status_message = "Cloud save check failed: %s" % error_string(err)
+		_rebuild_profile_overlay_if_visible()
+
+
+func _upload_cloud_save(force := true) -> void:
+	_ensure_leaderboard_http()
+	if cloud_save_upload_in_flight:
+		return
+	if not _cloud_save_account_ready():
+		if force:
+			cloud_save_status_message = "Connect Google before uploading cloud save."
+			_rebuild_profile_overlay_if_visible()
+		return
+	var now := _unix_now()
+	if not force and cloud_save_last_upload_unix > 0 and now - cloud_save_last_upload_unix < CLOUD_SAVE_UPLOAD_INTERVAL_SECONDS:
+		return
+	var payload := _save_payload(now)
+	var record := _cloud_save_record(payload, now)
+	if str(record.get("payload_json", "")).is_empty():
+		cloud_save_status_message = "Cloud save is too large to upload."
+		_rebuild_profile_overlay_if_visible()
+		return
+	cloud_save_upload_in_flight = true
+	cloud_save_status_message = "Uploading cloud save..."
+	var err := cloud_save_upload_request.request(
+		_cloud_save_firebase_url("users/%s" % leaderboard_player_id, _leaderboard_authenticated_query("print=silent")),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_PUT,
+		JSON.stringify(record)
+	)
+	if err != OK:
+		cloud_save_upload_in_flight = false
+		cloud_save_status_message = "Cloud save upload failed: %s" % error_string(err)
+		_rebuild_profile_overlay_if_visible()
+
+
+func _download_cloud_save() -> void:
+	if cloud_save_last_remote_payload.is_empty():
+		cloud_save_status_message = "Check cloud save before downloading."
+		_fetch_cloud_save()
+		_rebuild_profile_overlay_if_visible()
+		return
+	if not _save_payload_can_replace_existing_save(cloud_save_last_remote_payload):
+		cloud_save_status_message = "Cloud save is older than this device."
+		_rebuild_profile_overlay_if_visible()
+		return
+	if not _write_save_payload_atomically(cloud_save_last_remote_payload):
+		cloud_save_status_message = "Cloud save download failed."
+		_rebuild_profile_overlay_if_visible()
+		return
+	allow_next_save_progress_regression = false
+	load_game()
+	cloud_save_status_message = "Cloud save downloaded."
+	_rebuild_profile_overlay_if_visible()
+	_update_ui(0.0, true)
+
+
+func _on_cloud_save_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	cloud_save_fetch_in_flight = false
+	cloud_save_last_fetch_unix = _unix_now()
+	if result != HTTPRequest.RESULT_SUCCESS:
+		cloud_save_status_message = "Cloud save check failed."
+		_rebuild_profile_overlay_if_visible()
+		return
+	if response_code == 404:
+		cloud_save_status_message = "No cloud save found yet."
+		cloud_save_last_remote_summary.clear()
+		cloud_save_last_remote_payload.clear()
+		_rebuild_profile_overlay_if_visible()
+		return
+	if response_code < 200 or response_code >= 300:
+		cloud_save_status_message = "Cloud save check returned HTTP %s." % response_code
+		_rebuild_profile_overlay_if_visible()
+		return
+	var parsed = _parse_json_silent(body.get_string_from_utf8())
+	if parsed == null:
+		cloud_save_status_message = "No cloud save found yet."
+		cloud_save_last_remote_summary.clear()
+		cloud_save_last_remote_payload.clear()
+		_rebuild_profile_overlay_if_visible()
+		return
+	if typeof(parsed) != TYPE_DICTIONARY:
+		cloud_save_status_message = "Cloud save record was invalid."
+		_rebuild_profile_overlay_if_visible()
+		return
+	var record := parsed as Dictionary
+	var payload_text := str(record.get("payload_json", ""))
+	var payload = _parse_json_silent(payload_text)
+	if typeof(payload) != TYPE_DICTIONARY:
+		cloud_save_status_message = "Cloud save payload was invalid."
+		_rebuild_profile_overlay_if_visible()
+		return
+	cloud_save_last_remote_payload = payload as Dictionary
+	cloud_save_last_remote_summary = _cloud_save_summary(cloud_save_last_remote_payload)
+	var remote_xp := int(cloud_save_last_remote_summary.get("total_skill_xp", 0))
+	var local_xp := _save_total_skill_xp_evidence(_save_payload(_unix_now()))
+	cloud_save_status_message = "Cloud save found. Remote XP: %s. This device XP: %s." % [_format_compact_number(float(remote_xp), 4), _format_compact_number(float(local_xp), 4)]
+	_rebuild_profile_overlay_if_visible()
+
+
+func _on_cloud_save_upload_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	cloud_save_upload_in_flight = false
+	if result != HTTPRequest.RESULT_SUCCESS:
+		cloud_save_status_message = "Cloud save upload failed."
+		_rebuild_profile_overlay_if_visible()
+		return
+	if response_code < 200 or response_code >= 300:
+		var detail := _firebase_error_detail(body)
+		cloud_save_status_message = "Cloud save upload returned HTTP %s%s" % [response_code, "." if detail.is_empty() else ": %s" % detail]
+		_rebuild_profile_overlay_if_visible()
+		return
+	cloud_save_last_upload_unix = _unix_now()
+	cloud_save_dirty = false
+	cloud_save_status_message = "Cloud save uploaded."
+	_rebuild_profile_overlay_if_visible()
+
+
+func _process_cloud_save_sync() -> void:
+	if cloud_save_dirty:
+		_upload_cloud_save(false)
+
+
+func _rebuild_profile_overlay_if_visible() -> void:
+	if profile_overlay != null and profile_overlay.visible:
+		_rebuild_profile_overlay()
+
+
 func _leaderboard_fetch_category(category_id: String, allow_recent_refresh := false) -> void:
 	_ensure_leaderboard_http()
 	var valid_id := _leaderboard_valid_category_id(category_id)
@@ -7121,7 +8088,7 @@ func _on_leaderboard_total_xp_fetch_completed(result: int, response_code: int, _
 	var rows := leaderboard_pending_total_rows
 	leaderboard_pending_total_rows = []
 	if result == HTTPRequest.RESULT_SUCCESS and response_code >= 200 and response_code < 300:
-		var parsed = JSON.parse_string(body.get_string_from_utf8())
+		var parsed = _parse_json_silent(body.get_string_from_utf8())
 		var xp_by_player := {}
 		if typeof(parsed) == TYPE_DICTIONARY:
 			for raw_player_id in (parsed as Dictionary).keys():
@@ -7152,10 +8119,12 @@ func _leaderboard_submit_scores() -> void:
 	if leaderboard_submit_in_flight or not _leaderboard_submit_ready():
 		return
 	_ensure_leaderboard_player_id()
+	var repair_publish_due := _leaderboard_repair_publish_due()
 	var now_unix := _unix_now()
 	var server_timestamp := _firebase_server_timestamp()
 	var score_updates := {}
 	leaderboard_last_submit_payload_categories.clear()
+	leaderboard_pending_repair_publish_version = 0
 	for raw_category in _leaderboard_categories():
 		var category := raw_category as Dictionary
 		var category_id := _leaderboard_valid_category_id(str(category.get("id", "")))
@@ -7163,7 +8132,9 @@ func _leaderboard_submit_scores() -> void:
 			continue
 		var score := maxi(0, _leaderboard_score_for_category(category_id))
 		var last_score := int(leaderboard_last_submitted_scores_by_category.get(category_id, 0))
-		if score <= 0 or score <= last_score:
+		if score <= 0:
+			continue
+		if not repair_publish_due and score <= last_score:
 			if not (category_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL and _leaderboard_score() > leaderboard_last_submitted_total_xp):
 				continue
 		var category_key := _leaderboard_category_key(category_id)
@@ -7180,9 +8151,13 @@ func _leaderboard_submit_scores() -> void:
 		leaderboard_last_submit_payload_categories.append(category_id)
 	if score_updates.is_empty():
 		leaderboard_last_submitted_score = _leaderboard_score()
+		if repair_publish_due:
+			leaderboard_repair_publish_version = LEADERBOARD_REPAIR_PUBLISH_VERSION
 		_mark_save_dirty("leaderboard submit checkpoint")
 		return
 	leaderboard_pending_score_updates = score_updates
+	if repair_publish_due:
+		leaderboard_pending_repair_publish_version = LEADERBOARD_REPAIR_PUBLISH_VERSION
 	leaderboard_submit_stage = "gate"
 	var gate_payload := {
 		"updated_at": server_timestamp,
@@ -7200,6 +8175,7 @@ func _leaderboard_submit_scores() -> void:
 		leaderboard_submit_in_flight = false
 		leaderboard_submit_stage = ""
 		leaderboard_pending_score_updates.clear()
+		leaderboard_pending_repair_publish_version = 0
 		_leaderboard_note_submit_failure("Leaderboard write failed: %s" % error_string(err))
 
 
@@ -7216,6 +8192,7 @@ func _process_leaderboard_sync(delta: float) -> void:
 		_chat_stream_connect()
 	if _leaderboard_submit_ready():
 		_leaderboard_submit_scores()
+	_process_cloud_save_sync()
 
 
 func _on_leaderboard_fetch_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -7228,7 +8205,7 @@ func _on_leaderboard_fetch_completed(result: int, response_code: int, _headers: 
 	if response_code < 200 or response_code >= 300:
 		_leaderboard_note_fetch_failure(category_id, "Leaderboard read returned HTTP %s." % response_code)
 		return
-	var parsed = JSON.parse_string(body.get_string_from_utf8())
+	var parsed = _parse_json_silent(body.get_string_from_utf8())
 	var rows := []
 	if typeof(parsed) == TYPE_DICTIONARY:
 		for raw_player_id in (parsed as Dictionary).keys():
@@ -7288,34 +8265,16 @@ func _on_leaderboard_auth_completed(result: int, response_code: int, _headers: P
 		else:
 			_leaderboard_note_auth_failure("Online login returned HTTP %s: %s" % [response_code, detail], mode == "refresh")
 		return
-	var parsed = JSON.parse_string(body.get_string_from_utf8())
+	var parsed = _parse_json_silent(body.get_string_from_utf8())
 	if typeof(parsed) != TYPE_DICTIONARY:
 		if mode == "refresh" and _leaderboard_retry_chat_auth_without_refresh():
 			return
 		_leaderboard_note_auth_failure("Online login returned invalid JSON.")
 		return
-	var data := parsed as Dictionary
-	var id_token := str(data.get("idToken", data.get("id_token", "")))
-	var refresh_token := str(data.get("refreshToken", data.get("refresh_token", "")))
-	var local_id := str(data.get("localId", data.get("user_id", "")))
-	var expires_in := maxi(0, int(data.get("expiresIn", data.get("expires_in", 0))))
-	if id_token.is_empty() or refresh_token.is_empty() or local_id.is_empty() or expires_in <= 0:
+	if not _apply_firebase_auth_response(parsed as Dictionary, "anonymous" if mode != "refresh" else str(leaderboard_auth_provider)):
 		if mode == "refresh" and _leaderboard_retry_chat_auth_without_refresh():
 			return
-		_leaderboard_note_auth_failure("Online login was incomplete.", mode == "refresh")
 		return
-	leaderboard_auth_id_token = id_token
-	leaderboard_auth_refresh_token = refresh_token
-	leaderboard_auth_expires_unix = _unix_now() + expires_in
-	leaderboard_auth_retry_after_unix = 0
-	if leaderboard_auth_provider.is_empty():
-		leaderboard_auth_provider = "anonymous"
-	leaderboard_player_id = _sanitize_leaderboard_player_id(local_id)
-	if leaderboard_player_id.is_empty():
-		_leaderboard_note_auth_failure("Online login id was invalid.", mode == "refresh")
-		return
-	leaderboard_status_message = "Online login ready."
-	save_game()
 	if profile_overlay != null and profile_overlay.visible:
 		_rebuild_profile_overlay()
 	if current_screen == "leaderboard":
@@ -7346,7 +8305,7 @@ func _claim_leaderboard_name(display_name: String) -> void:
 	var name_key := _leaderboard_name_key(display_name)
 	if name_key.is_empty():
 		if profile_status_label != null and is_instance_valid(profile_status_label):
-			profile_status_label.text = "Choose a real name before making an account. You cannot change it after this."
+			profile_status_label.text = "Choose a username first."
 		if profile_name_edit != null and is_instance_valid(profile_name_edit):
 			profile_name_edit.grab_focus()
 		return
@@ -7365,7 +8324,7 @@ func _claim_leaderboard_name(display_name: String) -> void:
 	leaderboard_name_claim_pending_key = name_key
 	leaderboard_name_claim_in_flight = true
 	if profile_status_label != null and is_instance_valid(profile_status_label):
-		profile_status_label.text = "Checking name..."
+		profile_status_label.text = "Checking username..."
 	var err := leaderboard_name_claim_request.request(
 		_leaderboard_firebase_url("name_claims/%s" % name_key, _leaderboard_authenticated_query("print=silent")),
 		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
@@ -7377,7 +8336,7 @@ func _claim_leaderboard_name(display_name: String) -> void:
 		leaderboard_name_claim_pending_name = ""
 		leaderboard_name_claim_pending_key = ""
 		if profile_status_label != null and is_instance_valid(profile_status_label):
-			profile_status_label.text = "Name check failed. Try again."
+			profile_status_label.text = "Username check failed. Try again."
 
 
 func _on_leaderboard_name_claim_completed(result: int, response_code: int, _headers: PackedStringArray, _body: PackedByteArray) -> void:
@@ -7388,17 +8347,17 @@ func _on_leaderboard_name_claim_completed(result: int, response_code: int, _head
 	leaderboard_name_claim_pending_key = ""
 	if result != HTTPRequest.RESULT_SUCCESS:
 		if profile_status_label != null and is_instance_valid(profile_status_label):
-			profile_status_label.text = "Name check failed. Try again."
+			profile_status_label.text = "Username check failed. Try again."
 		return
 	if response_code == 401 or response_code == 403:
 		if profile_status_label != null and is_instance_valid(profile_status_label):
-			profile_status_label.text = "name is taken!"
+			profile_status_label.text = "Username is taken."
 		if profile_name_edit != null and is_instance_valid(profile_name_edit):
 			profile_name_edit.grab_focus()
 		return
 	if response_code < 200 or response_code >= 300:
 		if profile_status_label != null and is_instance_valid(profile_status_label):
-			profile_status_label.text = "Name check failed. Try again."
+			profile_status_label.text = "Username check failed. Try again."
 		return
 	leaderboard_display_name = claimed_name
 	leaderboard_name_key = claimed_key
@@ -7412,6 +8371,68 @@ func _on_leaderboard_name_claim_completed(result: int, response_code: int, _head
 		_refresh_leaderboard_if_visible()
 	if _leaderboard_submit_ready():
 		_leaderboard_submit_scores()
+
+
+func _attempt_leaderboard_name_recovery() -> bool:
+	if leaderboard_name_recovery_in_flight:
+		return true
+	if not _leaderboard_firebase_enabled():
+		return false
+	if not _leaderboard_profile_claim_valid():
+		return false
+	if not _leaderboard_write_ready():
+		return false
+	if leaderboard_player_id.is_empty() or leaderboard_name_key.is_empty():
+		return false
+	var now_unix := _unix_now()
+	var server_timestamp := _firebase_server_timestamp()
+	var payload := {
+		"uid": leaderboard_player_id,
+		"name": leaderboard_display_name,
+		"name_key": leaderboard_name_key,
+		"avatar_index": leaderboard_avatar_index,
+		"created_at": server_timestamp,
+		"updated_at": server_timestamp,
+		"submitted_at_unix": now_unix
+	}
+	leaderboard_name_recovery_in_flight = true
+	var err := leaderboard_name_recovery_request.request(
+		_leaderboard_firebase_url("name_claims/%s" % leaderboard_name_key, _leaderboard_authenticated_query("print=silent")),
+		PackedStringArray([LEADERBOARD_HTTP_HEADER_JSON, LEADERBOARD_HTTP_HEADER_ACCEPT_JSON]),
+		HTTPClient.METHOD_PUT,
+		JSON.stringify(payload)
+	)
+	if err != OK:
+		leaderboard_name_recovery_in_flight = false
+		return false
+	leaderboard_status_message = "Checking name recovery..."
+	return true
+
+
+func _on_leaderboard_name_recovery_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
+	leaderboard_name_recovery_in_flight = false
+	if result != HTTPRequest.RESULT_SUCCESS:
+		leaderboard_status_message = "Name recovery check failed. Try again later."
+		return
+	if response_code >= 200 and response_code < 300:
+		leaderboard_profile_claimed = true
+		leaderboard_name_claim_verified = true
+		leaderboard_status_message = "Leaderboard name recovered. Try chat again."
+		leaderboard_repair_publish_version = 0
+		save_game()
+		_refresh_profile_references()
+		if profile_overlay != null and profile_overlay.visible:
+			_rebuild_profile_overlay()
+		if current_screen == "leaderboard":
+			_refresh_leaderboard_if_visible()
+		return
+	var detail := _firebase_error_detail(body)
+	if response_code == 401 or response_code == 403:
+		leaderboard_status_message = "Name recovery needs support approval."
+	else:
+		leaderboard_status_message = "Name recovery returned HTTP %s." % response_code
+	if not detail.is_empty() and response_code != 401 and response_code != 403:
+		leaderboard_status_message = "%s %s" % [leaderboard_status_message, detail]
 
 
 func _on_leaderboard_submit_completed(result: int, response_code: int, _headers: PackedStringArray, body: PackedByteArray) -> void:
@@ -7466,9 +8487,14 @@ func _on_leaderboard_submit_completed(result: int, response_code: int, _headers:
 	for raw_category_id in leaderboard_last_submit_payload_categories:
 		var category_id := _leaderboard_valid_category_id(str(raw_category_id))
 		leaderboard_last_submitted_scores_by_category[category_id] = _leaderboard_score_for_category(category_id)
+	if leaderboard_pending_repair_publish_version > leaderboard_repair_publish_version:
+		leaderboard_repair_publish_version = clampi(leaderboard_pending_repair_publish_version, 0, LEADERBOARD_REPAIR_PUBLISH_VERSION)
+		leaderboard_status_message = "Leaderboard rows repaired."
 	leaderboard_last_submit_payload_categories.clear()
 	leaderboard_pending_score_updates.clear()
-	leaderboard_status_message = "Leaderboard published."
+	leaderboard_pending_repair_publish_version = 0
+	if leaderboard_status_message != "Leaderboard rows repaired.":
+		leaderboard_status_message = "Leaderboard published."
 	save_game()
 	if current_screen == "leaderboard":
 		_leaderboard_fetch_category(leaderboard_category_id, true)
@@ -7653,7 +8679,7 @@ func _on_chat_fetch_completed(result: int, response_code: int, _headers: PackedS
 			_chat_note_stream_failure("Chat refresh returned HTTP %s: %s" % [response_code, detail])
 		_render_chat_if_visible()
 		return
-	var parsed = JSON.parse_string(body.get_string_from_utf8())
+	var parsed = _parse_json_silent(body.get_string_from_utf8())
 	if parsed == null:
 		chat_rows.clear()
 	elif typeof(parsed) == TYPE_DICTIONARY:
@@ -7799,8 +8825,18 @@ func _on_chat_send_completed(result: int, response_code: int, _headers: PackedSt
 		var detail := _firebase_error_detail(body)
 		if response_code == 401 or response_code == 403:
 			var rejection_message := "Online chat rejected this message. Please try again later."
+			if _leaderboard_profile_claim_valid():
+				if _attempt_leaderboard_name_recovery():
+					rejection_message = "Online chat is checking name recovery. Try again in a moment."
+				else:
+					rejection_message = "Online chat rejected this name. Ask support to approve name recovery."
 			if not detail.is_empty():
 				rejection_message = "Online chat rejected this message: %s" % detail
+				if _leaderboard_profile_claim_valid() and detail.to_lower().find("permission") >= 0:
+					if leaderboard_name_recovery_in_flight:
+						rejection_message = "Online chat is checking name recovery. Try again in a moment."
+					else:
+						rejection_message = "Online chat rejected this name. Ask support to approve name recovery."
 			_chat_note_send_rejected(rejection_message)
 			_render_chat_if_visible()
 			return
@@ -7885,7 +8921,7 @@ func _chat_stream_dispatch_event() -> void:
 		return
 	if data_text.is_empty():
 		return
-	var parsed = JSON.parse_string(data_text)
+	var parsed = _parse_json_silent(data_text)
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
 	_chat_apply_stream_payload(parsed as Dictionary, event_name)
@@ -8306,7 +9342,7 @@ func _build_boot_warmup_overlay() -> void:
 	boot_warmup_layer.add_child(boot_warmup_overlay)
 
 	boot_warmup_background = ColorRect.new()
-	boot_warmup_background.color = COLOR_PAPER
+	boot_warmup_background.color = _theme_paper_color()
 	boot_warmup_background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	boot_warmup_background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boot_warmup_overlay.add_child(boot_warmup_background)
@@ -8979,7 +10015,7 @@ func _on_bottom_nav_button_gui_input(event: InputEvent, target_screen: String, b
 		return
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
 		if bool(button.get_meta("bottom_nav_press_active", false)):
-			var press_position := button.get_meta("bottom_nav_press_position", event_position) as Vector2
+			var press_position := _meta_vector2(button, "bottom_nav_press_position", event_position)
 			if event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
 				button.set_meta("bottom_nav_press_dragged", true)
 		return
@@ -8987,7 +10023,7 @@ func _on_bottom_nav_button_gui_input(event: InputEvent, target_screen: String, b
 		return
 	var was_active := bool(button.get_meta("bottom_nav_press_active", false))
 	var was_dragged := bool(button.get_meta("bottom_nav_press_dragged", false))
-	var press_position := button.get_meta("bottom_nav_press_position", event_position) as Vector2
+	var press_position := _meta_vector2(button, "bottom_nav_press_position", event_position)
 	if button.has_meta("bottom_nav_press_active"):
 		button.remove_meta("bottom_nav_press_active")
 	if button.has_meta("bottom_nav_press_position"):
@@ -9000,6 +10036,7 @@ func _on_bottom_nav_button_gui_input(event: InputEvent, target_screen: String, b
 		return
 	if not button.get_global_rect().grow(24.0).has_point(event_position):
 		return
+	_arm_bottom_nav_clean_activation(button, target_screen)
 	if bool(button.get_meta("bottom_nav_builtin_pressed_route", false)):
 		_activate_bottom_nav_target(target_screen, button)
 		return
@@ -9074,6 +10111,27 @@ func _bottom_nav_target_for_button(button: Button) -> String:
 	return ""
 
 
+func _bottom_nav_target_locked(target_screen: String) -> bool:
+	match target_screen:
+		"home":
+			return not _hero_unlocked()
+		"hub":
+			return not _hub_unlocked()
+		"shop":
+			return not _shop_unlocked()
+	return false
+
+
+func _show_bottom_nav_locked_message(target_screen: String, source_button: Control) -> void:
+	match target_screen:
+		"home":
+			_show_hero_locked_message(source_button)
+		"hub":
+			_show_hub_locked_message(source_button)
+		"shop":
+			_show_shop_locked_message(source_button)
+
+
 func _is_bottom_nav_button(button: Control) -> bool:
 	if button == null or not is_instance_valid(button):
 		return false
@@ -9091,11 +10149,37 @@ func _bottom_nav_transition_input_locked(button: Button = null) -> bool:
 	return true
 
 
+func _arm_bottom_nav_clean_activation(button: Button, target_screen: String) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	button.set_meta("bottom_nav_clean_activation_target", target_screen)
+	button.set_meta("bottom_nav_clean_activation_until_frame", Engine.get_process_frames() + 2)
+
+
+func _consume_bottom_nav_clean_activation(button: Button, target_screen: String) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	var armed_target := str(button.get_meta("bottom_nav_clean_activation_target", ""))
+	var until_frame := int(button.get_meta("bottom_nav_clean_activation_until_frame", -1))
+	if button.has_meta("bottom_nav_clean_activation_target"):
+		button.remove_meta("bottom_nav_clean_activation_target")
+	if button.has_meta("bottom_nav_clean_activation_until_frame"):
+		button.remove_meta("bottom_nav_clean_activation_until_frame")
+	return armed_target == target_screen and Engine.get_process_frames() <= until_frame
+
+
 func _activate_bottom_nav_target(target_screen: String, source_button: Control) -> void:
 	var nav_button := source_button as Button
 	if bottom_nav_transition_button_id != 0 and _bottom_nav_transition_visual_active():
 		if nav_button != null and is_instance_valid(nav_button):
 			_force_button_unpressed(nav_button)
+		return
+	if _is_bottom_nav_button(nav_button) and _bottom_nav_target_locked(target_screen):
+		_force_button_unpressed(nav_button)
+		_show_bottom_nav_locked_message(target_screen, source_button)
+		return
+	if _is_bottom_nav_button(nav_button) and not _consume_bottom_nav_clean_activation(nav_button, target_screen):
+		_force_button_unpressed(nav_button)
 		return
 	if _is_bottom_nav_button(nav_button):
 		_hold_bottom_nav_transition_button(nav_button)
@@ -9265,6 +10349,7 @@ func _module_utility_button(label_text: String, icon_path: String, fill: Color) 
 	var icon := TextureRect.new()
 	icon.name = "ActivityButtonIcon"
 	icon.texture = _texture_or_visual_fallback(icon_path)
+	icon.set_meta("source_texture_path", _res_path(icon_path))
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -9306,14 +10391,34 @@ func _on_skills_utility_pressed() -> void:
 	if current_screen == "menu":
 		_return_from_skills_utility()
 		return
-	skills_utility_return_screen = current_screen
+	skills_utility_return_screen = _module_utility_return_screen_for_current()
 	skills_utility_return_skill_id = selected_skill_id
 	_show_skills()
 
 
+func _module_utility_screen_overlays_skill_detail(screen: String) -> bool:
+	return screen == "pinned" or screen == "queue" or screen == "menu"
+
+
+func _module_utility_return_screen_for_current() -> String:
+	if _module_utility_screen_overlays_skill_detail(current_screen):
+		return "skill"
+	return current_screen
+
+
+func _module_utility_return_detail_scroll_for_current() -> int:
+	if current_screen == "skill":
+		return _current_detail_scroll_for_pinned_return()
+	if current_screen == "pinned" and pinned_return_screen == "skill":
+		return pinned_return_detail_scroll
+	if current_screen == "queue" and queue_return_screen == "skill":
+		return queue_return_detail_scroll
+	return -1
+
+
 func _return_from_skills_utility() -> void:
 	var target_screen := skills_utility_return_screen
-	if target_screen.is_empty() or target_screen == "menu":
+	if target_screen.is_empty() or _module_utility_screen_overlays_skill_detail(target_screen):
 		target_screen = "skill"
 	if not _top_level_nav_allowed(target_screen):
 		return
@@ -9432,7 +10537,7 @@ func _on_module_utility_button_global_input(event: InputEvent, button: Button) -
 		return
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
 		if bool(button.get_meta("module_utility_press_active", false)):
-			var press_position := button.get_meta("module_utility_press_position", event_position) as Vector2
+			var press_position := _meta_vector2(button, "module_utility_press_position", event_position)
 			if event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
 				button.set_meta("module_utility_press_dragged", true)
 		return
@@ -9440,7 +10545,7 @@ func _on_module_utility_button_global_input(event: InputEvent, button: Button) -
 		return
 	var was_active := bool(button.get_meta("module_utility_press_active", false))
 	var was_dragged := bool(button.get_meta("module_utility_press_dragged", false))
-	var press_position := button.get_meta("module_utility_press_position", event_position) as Vector2
+	var press_position := _meta_vector2(button, "module_utility_press_position", event_position)
 	_clear_module_utility_button_press(button)
 	var valid_tap := (
 		was_active
@@ -9626,7 +10731,7 @@ func _activity_button_target_face_global_rect(button: Button, active: bool) -> R
 	if pop != null:
 		face_rect = pop.get_global_rect()
 		var current_offset := _activity_button_pop_depth_offset(pop)
-		var target_offset := button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2 if active else Vector2.ZERO
+		var target_offset := _meta_vector2(button, "activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) if active else Vector2.ZERO
 		face_rect.position += target_offset - current_offset
 	return face_rect
 
@@ -10241,7 +11346,7 @@ func _float_nav_locked_message(anchor: Control, text: String) -> void:
 		return
 	var holder_size := Vector2(430, 112)
 	var holder := Control.new()
-	holder.z_index = REWARD_FLOAT_Z
+	holder.z_index = CHAT_UI_Z + 20
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = holder_size
@@ -10321,12 +11426,16 @@ func _build_chat_strip() -> void:
 	chat_strip_line_one = _label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_strip_line_one.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
 	chat_strip_line_one.add_theme_constant_override("outline_size", 5)
+	chat_strip_line_one.autowrap_mode = TextServer.AUTOWRAP_OFF
+	chat_strip_line_one.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_one.clip_text = true
 	chat_strip_line_one.custom_minimum_size = Vector2(0, 84)
 	copy.add_child(chat_strip_line_one)
 	chat_strip_line_two = _label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_strip_line_two.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
 	chat_strip_line_two.add_theme_constant_override("outline_size", 5)
+	chat_strip_line_two.autowrap_mode = TextServer.AUTOWRAP_OFF
+	chat_strip_line_two.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_two.clip_text = true
 	chat_strip_line_two.custom_minimum_size = Vector2(0, 84)
 	copy.add_child(chat_strip_line_two)
@@ -10467,7 +11576,7 @@ func _chat_expanded_header() -> Control:
 	header.custom_minimum_size = Vector2(0, 330)
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var shelf := ColorRect.new()
-	shelf.color = COLOR_PAPER
+	shelf.color = _theme_paper_color()
 	shelf.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(shelf)
@@ -10576,7 +11685,7 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	meta.add_child(time)
 	var bubble := PanelContainer.new()
 	bubble.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bubble.add_theme_stylebox_override("panel", _chat_expanded_message_style(deleted))
+	bubble.add_theme_stylebox_override("panel", _chat_expanded_message_style(deleted, is_self))
 	copy.add_child(bubble)
 	var body_text := "Message removed by moderator." if deleted else str(row_data.get("text", ""))
 	var body := _label(body_text, 70, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
@@ -10758,6 +11867,8 @@ func _build_settings_overlay() -> void:
 	stack.add_child(_offline_progress_toggle_button(1120, 180))
 	stack.add_child(_auto_unlock_lockpad_toggle_button(1120, 180))
 	stack.add_child(_stamina_decimal_toggle_button(1120, 180))
+	stack.add_child(_offline_progress_cap_notification_toggle_button(1120, 180))
+	stack.add_child(_dark_mode_toggle_button(1120, 180))
 	var discord := _menu_button("Discord")
 	discord.pressed.connect(_settings_discord_pressed)
 	stack.add_child(discord)
@@ -10823,10 +11934,10 @@ func _rebuild_profile_overlay() -> void:
 	name_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_stack.add_theme_constant_override("separation", 18)
 	identity_row.add_child(name_stack)
-	name_stack.add_child(_label("Leaderboard name", 56, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT))
+	name_stack.add_child(_label("Choose Username", 56, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT))
 	profile_name_edit = LineEdit.new()
 	profile_name_edit.text = leaderboard_display_name
-	profile_name_edit.placeholder_text = "Your name"
+	profile_name_edit.placeholder_text = "Username"
 	profile_name_edit.max_length = PROFILE_DISPLAY_NAME_MAX_CHARS
 	profile_name_edit.custom_minimum_size = Vector2(0, 150)
 	profile_name_edit.focus_mode = Control.FOCUS_ALL
@@ -10843,15 +11954,42 @@ func _rebuild_profile_overlay() -> void:
 	profile_name_edit.add_theme_stylebox_override("normal", _profile_name_field_style(false))
 	profile_name_edit.add_theme_stylebox_override("focus", _profile_name_field_style(true))
 	profile_name_edit.add_theme_stylebox_override("read_only", _profile_name_field_style(false))
-	profile_name_edit.text_submitted.connect(func(_text: String): _save_profile_and_close())
+	profile_name_edit.text_submitted.connect(_on_profile_name_submitted)
 	name_stack.add_child(profile_name_edit)
 	profile_status_label = _label(_profile_status_text(), MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	profile_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	profile_status_label.custom_minimum_size = Vector2(0, 112)
 	name_stack.add_child(profile_status_label)
+	var support_row := HBoxContainer.new()
+	support_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	support_row.add_theme_constant_override("separation", 18)
+	name_stack.add_child(support_row)
+	var support_id_label := _label("Support ID: %s" % _leaderboard_support_id(), 48, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	support_id_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	support_id_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	support_id_label.custom_minimum_size = Vector2(0, 104)
+	support_row.add_child(support_id_label)
+	var copy_support_id := _menu_button("Copy ID")
+	copy_support_id.custom_minimum_size = Vector2(260, 124)
+	copy_support_id.pressed.connect(_copy_leaderboard_support_id)
+	support_row.add_child(copy_support_id)
+
+	var cloud_status := _label(_cloud_save_status_text(), MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	cloud_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	cloud_status.custom_minimum_size = Vector2(0, 136)
+	name_stack.add_child(cloud_status)
+	if leaderboard_auth_provider != "google":
+		var google_button := _menu_button("Connect Google")
+		google_button.custom_minimum_size = Vector2(0, 132)
+		google_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		google_button.disabled = google_auth_in_flight or leaderboard_auth_in_flight
+		if google_auth_in_flight or leaderboard_auth_in_flight:
+			google_button.text = "Connecting..."
+		google_button.pressed.connect(_start_google_account_sign_in)
+		name_stack.add_child(google_button)
 
 	if not leaderboard_profile_claimed:
-		var account_button := _menu_button("Save Leaderboard Name")
+		var account_button := _menu_button("Save Username")
 		account_button.custom_minimum_size = Vector2(0, 154)
 		account_button.disabled = leaderboard_name_claim_in_flight
 		if leaderboard_name_claim_in_flight:
@@ -10881,7 +12019,7 @@ func _profile_avatar_picker_button(index: int) -> Button:
 	button.focus_mode = Control.FOCUS_NONE
 	button.clip_contents = true
 	button.add_theme_stylebox_override("normal", _profile_avatar_button_style(selected, false))
-	button.add_theme_stylebox_override("hover", _profile_avatar_button_style(selected, false))
+	button.add_theme_stylebox_override("hover", _profile_avatar_button_style(selected, false, true))
 	button.add_theme_stylebox_override("pressed", _profile_avatar_button_style(selected, true))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	_attach_button_depress_animation(button, 0.94)
@@ -10959,7 +12097,7 @@ func _build_achievements_overlay() -> void:
 	elif app_font != null:
 		achievements_hide_completed.add_theme_font_override("font", app_font)
 	_attach_default_button_sfx(achievements_hide_completed)
-	achievements_hide_completed.toggled.connect(func(_pressed: bool): _rebuild_achievements_overlay())
+	achievements_hide_completed.toggled.connect(_on_achievements_hide_completed_toggled)
 	stack.add_child(achievements_hide_completed)
 
 	var scroll := MobileScrollContainer.new()
@@ -11037,6 +12175,7 @@ func _capture_page_state() -> Dictionary:
 		"detail_xp_bar": detail_xp_bar,
 		"detail_regen_circle": detail_regen_circle,
 		"detail_fish_circle": detail_fish_circle,
+		"detail_blue_guy_health_gauge": detail_blue_guy_health_gauge,
 		"detail_auto_eat_fish_button": detail_auto_eat_fish_button,
 		"detail_stamina_bar": detail_stamina_bar,
 		"detail_header_body": detail_header_body,
@@ -11082,6 +12221,8 @@ func _capture_page_state() -> Dictionary:
 		"offline_progress_toggles": offline_progress_toggles,
 		"auto_unlock_lockpad_toggles": auto_unlock_lockpad_toggles,
 		"stamina_decimal_toggles": stamina_decimal_toggles,
+		"offline_progress_cap_notification_toggles": offline_progress_cap_notification_toggles,
+		"dark_mode_toggles": dark_mode_toggles,
 		"god_mode_controls": god_mode_controls,
 		"audio_controls_sync_key": audio_controls_sync_key,
 		"reset_data_buttons": reset_data_buttons,
@@ -11104,6 +12245,8 @@ func _capture_skill_detail_page_state() -> Dictionary:
 	state["offline_progress_toggles"] = []
 	state["auto_unlock_lockpad_toggles"] = []
 	state["stamina_decimal_toggles"] = []
+	state["offline_progress_cap_notification_toggles"] = []
+	state["dark_mode_toggles"] = []
 	state["god_mode_controls"] = []
 	state["audio_controls_sync_key"] = ""
 	state["reset_data_buttons"] = []
@@ -11123,6 +12266,7 @@ func _apply_page_state(state: Dictionary) -> void:
 	detail_xp_bar = _state_object_ref(state.get("detail_xp_bar")) as CleanProgressBar
 	detail_regen_circle = _state_object_ref(state.get("detail_regen_circle")) as RegenCircle
 	detail_fish_circle = _state_object_ref(state.get("detail_fish_circle")) as FishCircle
+	detail_blue_guy_health_gauge = _state_object_ref(state.get("detail_blue_guy_health_gauge")) as BlueGuyHealthHeartGauge
 	detail_auto_eat_fish_button = _state_object_ref(state.get("detail_auto_eat_fish_button")) as TextureButton
 	detail_stamina_bar = _state_object_ref(state.get("detail_stamina_bar")) as CleanProgressBar
 	detail_header_body = _state_object_ref(state.get("detail_header_body")) as Control
@@ -11168,6 +12312,8 @@ func _apply_page_state(state: Dictionary) -> void:
 	offline_progress_toggles = state.get("offline_progress_toggles", []) as Array
 	auto_unlock_lockpad_toggles = state.get("auto_unlock_lockpad_toggles", []) as Array
 	stamina_decimal_toggles = state.get("stamina_decimal_toggles", []) as Array
+	offline_progress_cap_notification_toggles = state.get("offline_progress_cap_notification_toggles", []) as Array
+	dark_mode_toggles = state.get("dark_mode_toggles", []) as Array
 	god_mode_controls = state.get("god_mode_controls", []) as Array
 	audio_controls_sync_key = str(state.get("audio_controls_sync_key", ""))
 	reset_data_buttons = state.get("reset_data_buttons", []) as Array
@@ -11191,6 +12337,13 @@ func _valid_control_ref(value) -> Control:
 	return object as Control
 
 
+func _valid_node_ref(value) -> Node:
+	var object := _state_object_ref(value)
+	if object == null:
+		return null
+	return object as Node
+
+
 func _valid_canvas_item_ref(value) -> CanvasItem:
 	var object := _state_object_ref(value)
 	if object == null:
@@ -11198,11 +12351,41 @@ func _valid_canvas_item_ref(value) -> CanvasItem:
 	return object as CanvasItem
 
 
+func _valid_texture_rect_ref(value) -> TextureRect:
+	var control := _valid_control_ref(value)
+	if control == null:
+		return null
+	return control as TextureRect
+
+
+func _valid_label_ref(value) -> Label:
+	var control := _valid_control_ref(value)
+	if control == null:
+		return null
+	return control as Label
+
+
+func _valid_base_button_ref(value) -> BaseButton:
+	var object := _state_object_ref(value)
+	if object == null:
+		return null
+	return object as BaseButton
+
+
 func _valid_button_ref(value) -> Button:
 	var control := _valid_control_ref(value)
 	if control == null:
 		return null
 	return control as Button
+
+
+func _meta_vector2(node: Object, meta_name, fallback: Vector2 = Vector2.ZERO) -> Vector2:
+	if node == null or not is_instance_valid(node) or not node.has_meta(meta_name):
+		return fallback
+	var value = node.get_meta(meta_name)
+	if value is Vector2:
+		return value
+	return fallback
 
 
 func _weak_object_ref(value) -> WeakRef:
@@ -11328,6 +12511,7 @@ func _reset_page_control_refs() -> void:
 	detail_regen_circle_host = null
 	detail_regen_circle_fade_group = null
 	detail_fish_circle = null
+	detail_blue_guy_health_gauge = null
 	detail_auto_eat_fish_button = null
 	pinned_active_shelf_header = null
 	pinned_active_shelf_background = null
@@ -11984,7 +13168,7 @@ func _refresh_visible_skill_detail_action_list(restore_detail_scroll := -1, expe
 	if _skill_swipe_navigation_blocks_detail_refresh():
 		return
 	if screen_render_in_progress:
-		call_deferred("_refresh_visible_skill_detail_action_list", restore_detail_scroll, target_skill_id, allow_thieving_scroll_restore, suppress_layout_transition)
+		_store_pending_skill_detail_refresh_request(restore_detail_scroll, target_skill_id, allow_thieving_scroll_restore, suppress_layout_transition)
 		return
 	var layout_snapshot := {} if suppress_layout_transition else _capture_detail_module_layout_snapshot()
 	var effective_restore_scroll := restore_detail_scroll
@@ -12023,10 +13207,20 @@ func _store_pending_screen_render_request(scroll_latest_activity: bool, restore_
 	}
 
 
+func _store_pending_skill_detail_refresh_request(restore_detail_scroll: int, target_skill_id: String, allow_thieving_scroll_restore: bool, suppress_layout_transition: bool) -> void:
+	pending_skill_detail_refresh_request = {
+		"restore_detail_scroll": restore_detail_scroll,
+		"target_skill_id": target_skill_id,
+		"allow_thieving_scroll_restore": allow_thieving_scroll_restore,
+		"suppress_layout_transition": suppress_layout_transition
+	}
+
+
 func _finish_screen_render_request() -> void:
 	screen_render_in_progress = false
 	screen_render_target_key = ""
 	if pending_screen_render_request.is_empty():
+		_defer_pending_skill_detail_refresh_request()
 		return
 	var request := pending_screen_render_request
 	pending_screen_render_request = {}
@@ -12035,6 +13229,25 @@ func _finish_screen_render_request() -> void:
 		bool(request.get("scroll_latest_activity", false)),
 		int(request.get("restore_detail_scroll", -1)),
 		bool(request.get("boot_async", false))
+	)
+
+
+func _defer_pending_skill_detail_refresh_request() -> void:
+	if pending_skill_detail_refresh_request.is_empty():
+		return
+	call_deferred("_run_pending_skill_detail_refresh_request")
+
+
+func _run_pending_skill_detail_refresh_request() -> void:
+	if pending_skill_detail_refresh_request.is_empty() or screen_render_in_progress:
+		return
+	var request := pending_skill_detail_refresh_request
+	pending_skill_detail_refresh_request = {}
+	_refresh_visible_skill_detail_action_list(
+		int(request.get("restore_detail_scroll", -1)),
+		str(request.get("target_skill_id", "")),
+		bool(request.get("allow_thieving_scroll_restore", false)),
+		bool(request.get("suppress_layout_transition", false))
 	)
 
 
@@ -12156,7 +13369,7 @@ func _ensure_skill_swipe_paper_fade_overlay() -> void:
 		_apply_skill_page_cover_bounds(skill_swipe_paper_fade_overlay, true)
 		return
 	skill_swipe_paper_fade_overlay = ColorRect.new()
-	skill_swipe_paper_fade_overlay.color = COLOR_PAPER
+	skill_swipe_paper_fade_overlay.color = _theme_paper_color()
 	_apply_skill_page_cover_bounds(skill_swipe_paper_fade_overlay, true)
 	skill_swipe_paper_fade_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	skill_swipe_paper_fade_overlay.z_index = 0
@@ -12248,9 +13461,7 @@ func _sync_skill_swipe_live_page_fade(drag_x: float) -> void:
 		return
 	if not skill_strip_ids.is_empty():
 		return
-	var progress := _skill_swipe_fade_progress(absf(drag_x))
-	var alpha := lerpf(1.0, SKILL_SWIPE_PAGE_FADE_MIN_ALPHA, progress)
-	_set_skill_swipe_control_alpha(skill_swipe_page, alpha)
+	_set_skill_swipe_control_alpha(skill_swipe_page, 1.0)
 
 
 func _sync_skill_swipe_preview_page_fade(current_x: float) -> void:
@@ -12445,7 +13656,7 @@ func _show_hub_tutorial_tip(_auto_show := false) -> void:
 	_set_canvas_item_alpha_if_changed(hub_tutorial_tip_root, 0.0)
 	hub_tutorial_tip_tween = create_tween()
 	hub_tutorial_tip_tween.tween_property(hub_tutorial_tip_root, "modulate:a", 1.0, HUB_TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	hub_tutorial_tip_tween.finished.connect(func(): hub_tutorial_tip_tween = null)
+	hub_tutorial_tip_tween.finished.connect(_finish_hub_tutorial_tip_tween)
 
 
 func _hub_tutorial_tip_control() -> Control:
@@ -12512,8 +13723,8 @@ func _dismiss_hub_tutorial_tip() -> void:
 
 
 func _finish_hub_tutorial_tip_hide(root_id: int) -> void:
-	var root := instance_from_id(root_id) as Control
-	if root != null and is_instance_valid(root) and not root.is_queued_for_deletion():
+	var root := _valid_control_ref(instance_from_id(root_id))
+	if root != null and not root.is_queued_for_deletion():
 		_set_canvas_item_visible_if_changed(root, false)
 		root.queue_free()
 	if hub_tutorial_tip_root == root:
@@ -12537,6 +13748,10 @@ func _kill_hub_tutorial_tip_tween() -> void:
 	hub_tutorial_tip_tween = null
 
 
+func _finish_hub_tutorial_tip_tween() -> void:
+	hub_tutorial_tip_tween = null
+
+
 func _add_hub_build_mode_toggle(parent: Control) -> void:
 	var button := Button.new()
 	button.text = ""
@@ -12553,7 +13768,7 @@ func _add_hub_build_mode_toggle(parent: Control) -> void:
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.add_theme_stylebox_override("normal", _hub_build_mode_button_style(hub_build_mode))
-	button.add_theme_stylebox_override("hover", _hub_build_mode_button_style(hub_build_mode))
+	button.add_theme_stylebox_override("hover", _hub_build_mode_button_style(hub_build_mode, false, true))
 	button.add_theme_stylebox_override("pressed", _hub_build_mode_button_style(hub_build_mode, true))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.pressed.connect(_toggle_hub_build_mode)
@@ -12568,9 +13783,12 @@ func _add_hub_build_mode_toggle(parent: Control) -> void:
 	button.add_child(icon)
 
 
-func _hub_build_mode_button_style(active: bool, pressed := false) -> StyleBoxFlat:
+func _hub_build_mode_button_style(active: bool, pressed := false, hovered := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = (Color("#3cbf6d") if active else Color("#d7c8a4")).darkened(0.08 if pressed else 0.0)
+	var fill := Color("#3cbf6d") if active else Color("#d7c8a4")
+	if hovered and not pressed:
+		fill = fill.lightened(0.06)
+	style.bg_color = fill.darkened(0.08 if pressed else 0.0)
 	style.border_color = COLOR_INK
 	style.set_border_width_all(7)
 	style.corner_radius_top_left = 28
@@ -13567,10 +14785,7 @@ func _set_hub_decor_visibility_state(node: Control, should_show: bool, animate :
 	if previous_visible == should_show:
 		return
 	node.set_meta("hub_decor_logical_visible", should_show)
-	if node.has_meta("hub_decor_pop_tween"):
-		var old_tween := node.get_meta("hub_decor_pop_tween") as Tween
-		if old_tween != null and old_tween.is_valid():
-			old_tween.kill()
+	_kill_meta_tween(node, "hub_decor_pop_tween")
 	if not animate:
 		node.visible = should_show
 		node.modulate.a = 1.0 if should_show else 0.0
@@ -13598,8 +14813,8 @@ func _set_hub_decor_visibility_state(node: Control, should_show: bool, animate :
 
 
 func _finish_hub_decor_hide(node_id: int) -> void:
-	var node := instance_from_id(node_id) as Control
-	if node == null or not is_instance_valid(node):
+	var node := _valid_control_ref(instance_from_id(node_id))
+	if node == null:
 		return
 	if bool(node.get_meta("hub_decor_logical_visible", false)):
 		return
@@ -13841,13 +15056,7 @@ func _apply_close_hub_mission_board_popup() -> void:
 	var board := hub_detail_panel
 	hub_detail_motion_tween = create_tween()
 	hub_detail_motion_tween.tween_property(board, "position", _hub_mission_board_offscreen_position(), HUB_MISSION_BOARD_CLOSE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	hub_detail_motion_tween.finished.connect(func():
-		hub_detail_motion_tween = null
-		hub_detail_transition_pending = false
-		if hub_detail_open:
-			hub_detail_open = false
-			_render_screen()
-	)
+	hub_detail_motion_tween.finished.connect(_finish_close_hub_detail_popup_tween)
 
 
 func _apply_close_hub_detail_popup() -> void:
@@ -13867,16 +15076,26 @@ func _animate_hub_mission_board_open() -> void:
 	board.position = _hub_mission_board_offscreen_position()
 	hub_detail_motion_tween = create_tween()
 	hub_detail_motion_tween.tween_property(board, "position", _hub_mission_board_target_position(), HUB_MISSION_BOARD_OPEN_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	hub_detail_motion_tween.finished.connect(func():
-		hub_detail_motion_tween = null
-		hub_detail_transition_pending = false
-	)
+	hub_detail_motion_tween.finished.connect(_finish_open_hub_detail_popup_tween)
 
 
 func _kill_hub_detail_motion_tween() -> void:
 	if hub_detail_motion_tween != null and hub_detail_motion_tween.is_valid():
 		hub_detail_motion_tween.kill()
 	hub_detail_motion_tween = null
+
+
+func _finish_close_hub_detail_popup_tween() -> void:
+	hub_detail_motion_tween = null
+	hub_detail_transition_pending = false
+	if hub_detail_open:
+		hub_detail_open = false
+		_render_screen()
+
+
+func _finish_open_hub_detail_popup_tween() -> void:
+	hub_detail_motion_tween = null
+	hub_detail_transition_pending = false
 
 
 func _hub_mission_board_target_position() -> Vector2:
@@ -13978,8 +15197,8 @@ func _rect_overlap_area(a: Rect2, b: Rect2) -> float:
 
 func _hub_bubble_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PANEL
-	style.border_color = COLOR_INK
+	style.bg_color = _theme_surface_color(COLOR_PANEL)
+	style.border_color = _theme_outline_color(COLOR_INK, COLOR_PANEL)
 	style.set_border_width_all(9)
 	style.corner_radius_top_left = 34
 	style.corner_radius_top_right = 34
@@ -14031,7 +15250,7 @@ func _animate_hub_build_smoke(smoke: TextureRect, now_seconds: float, layer_inde
 	smoke.scale = Vector2(1.0 + stretch + breathe, 1.0 - stretch * 0.62 + breathe)
 	smoke.rotation = sin(phase * 0.48) * 0.025
 	if smoke.has_meta("hub_smoke_base_position"):
-		var base_position := smoke.get_meta("hub_smoke_base_position") as Vector2
+		var base_position := _meta_vector2(smoke, "hub_smoke_base_position", smoke.position)
 		smoke.position = base_position + Vector2(sin(phase * 0.42) * 8.0, sin(phase * 0.36 + 0.8) * 6.0)
 
 
@@ -15801,46 +17020,54 @@ func _render_settings_page() -> void:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 36)
+	stack.add_theme_constant_override("separation", 18)
 	content_scroll.add_child(stack)
 	var top_spacer := Control.new()
-	top_spacer.custom_minimum_size = Vector2(0, 150)
+	top_spacer.custom_minimum_size = Vector2(0, 32)
 	stack.add_child(top_spacer)
-	stack.add_child(_label("Settings", 132, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	stack.add_child(_label("Settings", 124, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
 	var audio_top_spacer := Control.new()
-	audio_top_spacer.custom_minimum_size = Vector2(0, 52)
+	audio_top_spacer.custom_minimum_size = Vector2(0, 8)
 	stack.add_child(audio_top_spacer)
-	stack.add_child(_audio_volume_control("Music", true, 1480))
-	stack.add_child(_audio_volume_control("SFX", false, 1480, 128))
-	stack.add_child(_offline_progress_toggle_button(1320, 164))
-	stack.add_child(_auto_unlock_lockpad_toggle_button(1320, 164))
-	stack.add_child(_stamina_decimal_toggle_button(1320, 164))
+	stack.add_child(_audio_volume_control("Music", true, 1400))
+	stack.add_child(_audio_volume_control("SFX", false, 1400))
+	stack.add_child(_offline_progress_toggle_button(1320, 132))
+	stack.add_child(_auto_unlock_lockpad_toggle_button(1320, 132))
+	stack.add_child(_stamina_decimal_toggle_button(1320, 132))
+	stack.add_child(_offline_progress_cap_notification_toggle_button(1320, 132))
+	stack.add_child(_dark_mode_toggle_button(1320, 132))
 	var fill_spacer := Control.new()
 	fill_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	fill_spacer.custom_minimum_size = Vector2(0, 480)
+	fill_spacer.custom_minimum_size = Vector2(0, 12)
 	stack.add_child(fill_spacer)
-	var discord := _settings_page_button("Contact the dev", DISCORD_LOGO_ICON_TEXTURE, 1320, 220, 286)
+	var action_stack := VBoxContainer.new()
+	action_stack.custom_minimum_size = Vector2(1320, 424)
+	action_stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	action_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	action_stack.add_theme_constant_override("separation", 28)
+	var discord := _settings_page_button("Contact the dev", DISCORD_LOGO_ICON_TEXTURE, 1320, 170, 220)
 	discord.add_theme_stylebox_override("normal", _paper_button_style(COLOR_BLUE, 54))
 	discord.add_theme_stylebox_override("hover", _paper_button_style(COLOR_BLUE, 54))
 	discord.add_theme_stylebox_override("pressed", _paper_button_style(COLOR_BLUE.darkened(0.10), 54, 72, true))
 	discord.pressed.connect(_settings_discord_pressed)
-	stack.add_child(discord)
 	if _pending_crash_report_exists():
-		var crash_report := _settings_page_button("Copy Crash Report", "", 1320, 128, 220)
+		var crash_report := _settings_page_button("Copy Crash Report", "", 1320, 128, 132)
 		crash_report.tooltip_text = ""
 		crash_report.add_theme_stylebox_override("normal", _paper_button_style(Color("#ffd94d"), 48))
 		crash_report.add_theme_stylebox_override("hover", _paper_button_style(Color("#ffd94d"), 48))
 		crash_report.add_theme_stylebox_override("pressed", _paper_button_style(Color("#f0c23a"), 48, 72, true))
 		crash_report.pressed.connect(_settings_copy_crash_report_pressed)
 		stack.add_child(crash_report)
-	var reset := _settings_page_button("Hard Reset", "", 940, 128, 236)
+	var reset := _settings_page_button("Hard Reset", "", 940, 128, 176)
 	reset.add_theme_stylebox_override("normal", _paper_button_style(Color("#ff6b6b"), 48))
 	reset.add_theme_stylebox_override("hover", _paper_button_style(Color("#ff6b6b"), 48))
 	reset.add_theme_stylebox_override("pressed", _paper_button_style(Color("#ef5656"), 48, 72, true))
 	_register_reset_button(reset, "Hard Reset")
-	stack.add_child(reset)
+	action_stack.add_child(reset)
+	action_stack.add_child(discord)
+	stack.add_child(action_stack)
 	var bottom_spacer := Control.new()
-	bottom_spacer.custom_minimum_size = Vector2(0, 192)
+	bottom_spacer.custom_minimum_size = Vector2(0, 12)
 	stack.add_child(bottom_spacer)
 
 
@@ -15919,7 +17146,7 @@ func _render_shop_page() -> void:
 		rate_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		rate_button.add_theme_font_size_override("font_size", 60)
 		rate_button.add_theme_stylebox_override("normal", _paper_button_style(Color("#48dd6c"), 42))
-		rate_button.add_theme_stylebox_override("hover", _paper_button_style(Color("#48dd6c"), 42))
+		rate_button.add_theme_stylebox_override("hover", _paper_button_style(Color("#5eed7c"), 42))
 		rate_button.add_theme_stylebox_override("pressed", _paper_button_style(Color("#38c45a"), 42, 64, true))
 		rate_button.pressed.connect(_shop_rate_pressed)
 		stack.add_child(rate_button)
@@ -15979,7 +17206,7 @@ func _render_achievements_page() -> void:
 	elif app_font != null:
 		achievements_hide_completed.add_theme_font_override("font", app_font)
 	_attach_default_button_sfx(achievements_hide_completed)
-	achievements_hide_completed.toggled.connect(func(_pressed: bool): _rebuild_achievements_overlay())
+	achievements_hide_completed.toggled.connect(_on_achievements_hide_completed_toggled)
 	stack.add_child(achievements_hide_completed)
 
 	achievements_list_stack = VBoxContainer.new()
@@ -16110,7 +17337,7 @@ func _leaderboard_category_dropdown() -> OptionButton:
 	if app_bold_font != null:
 		dropdown.add_theme_font_override("font", app_bold_font)
 	dropdown.add_theme_stylebox_override("normal", _leaderboard_dropdown_style(Color("#e8f6ff"), false))
-	dropdown.add_theme_stylebox_override("hover", _leaderboard_dropdown_style(Color("#e8f6ff"), false))
+	dropdown.add_theme_stylebox_override("hover", _leaderboard_dropdown_style(Color("#f4fbff"), false))
 	dropdown.add_theme_stylebox_override("pressed", _leaderboard_dropdown_style(Color("#cfefff"), true))
 	dropdown.add_theme_color_override("font_color", COLOR_INK)
 	dropdown.add_theme_color_override("font_pressed_color", COLOR_INK)
@@ -16154,7 +17381,7 @@ func _leaderboard_player_card() -> Control:
 	card.focus_mode = Control.FOCUS_NONE
 	card.mouse_filter = Control.MOUSE_FILTER_STOP
 	card.add_theme_stylebox_override("normal", _leaderboard_player_card_style(Color("#d8f5ff"), false))
-	card.add_theme_stylebox_override("hover", _leaderboard_player_card_style(Color("#d8f5ff"), false))
+	card.add_theme_stylebox_override("hover", _leaderboard_player_card_style(Color("#e7f9ff"), false))
 	card.add_theme_stylebox_override("pressed", _leaderboard_player_card_style(Color("#beeaff"), true))
 	card.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	card.pressed.connect(_open_profile_overlay)
@@ -16230,7 +17457,7 @@ func _leaderboard_score_card() -> PanelContainer:
 	score.add_theme_color_override("font_outline_color", COLOR_INK)
 	score.add_theme_constant_override("outline_size", 24)
 	copy.add_child(score)
-	var sub := _label("Total Lv %s  |  %s queued" % [_global_level(), _format_compact_number(float(_leaderboard_queued_score()), 3)], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
+	var sub := _label("Total Lv %s" % _global_level(), 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(sub)
 	return card
 
@@ -16254,7 +17481,7 @@ func _leaderboard_sync_card() -> PanelContainer:
 	var title := _label(_leaderboard_submit_status_title(), 68, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
-	var cadence := _label("1/hr", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var cadence := _label("Auto", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	cadence.custom_minimum_size = Vector2(190, 82)
 	cadence.add_theme_color_override("font_outline_color", COLOR_INK)
 	cadence.add_theme_constant_override("outline_size", 14)
@@ -16290,8 +17517,9 @@ func _leaderboard_row(rank: int, row_data: Dictionary) -> Control:
 	name_label.custom_minimum_size = Vector2(0, 108)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_child(name_label)
-	var score_label := _label(str(row_data.get("score_text", _format_compact_number(float(row_data.get("score", 0)), 4))), 76, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_LEFT)
+	var score_label := _label(str(row_data.get("score_text", _format_compact_number(float(row_data.get("score", 0)), 4))), 76, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_RIGHT)
 	score_label.custom_minimum_size = Vector2(0, 98)
+	score_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	score_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	score_label.add_theme_constant_override("outline_size", 28)
 	copy.add_child(score_label)
@@ -17246,7 +18474,7 @@ func _profile_reference_updates() -> Dictionary:
 
 func _render_skill_menu_shelf() -> void:
 	var shelf := ColorRect.new()
-	shelf.color = COLOR_PAPER
+	shelf.color = _theme_paper_color()
 	shelf.anchor_left = 0.0
 	shelf.anchor_right = 1.0
 	shelf.anchor_top = 0.0
@@ -17367,6 +18595,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 			"xp": xp_bar,
 			"stamina": side_gauge if side_gauge is RegenCircle else null,
 			"fish": side_gauge if side_gauge is FishCircle else null,
+			"health": side_gauge if side_gauge is BlueGuyHealthHeartGauge else null,
 		}
 		var accessible := _onboarding_skill_accessible(skill_id)
 		button.disabled = not accessible
@@ -17712,6 +18941,7 @@ func _build_skill_menu_side_gauge(skill_id: String, theme_color: Color) -> Contr
 	stamina_gauge.custom_minimum_size = Vector2(540, 540)
 	stamina_gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	stamina_gauge.mouse_filter = Control.MOUSE_FILTER_STOP
+	stamina_gauge.set_dark_mode(dark_mode_enabled)
 	stamina_gauge.set_theme_color(theme_color)
 	stamina_gauge.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, stamina_gauge))
 	return stamina_gauge
@@ -17902,12 +19132,18 @@ func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, i
 		if fish_gauge != null:
 			_set_fish_circle_for_skill(fish_gauge, skill_id, instant)
 		return
+	if skill_id == "fight":
+		var health_gauge := card.get("health") as BlueGuyHealthHeartGauge
+		if health_gauge != null:
+			_set_blue_guy_health_gauge(health_gauge, instant)
+		return
 	var stamina_gauge := card.get("stamina") as RegenCircle
 	if stamina_gauge != null:
 		var max_stamina := _max_stamina(skill_id)
 		var stamina_value := _stamina(skill_id)
 		var stamina_decimal_fraction := _stamina_fraction(skill_id)
 		var circle_value := _stamina_regen_fraction(skill_id)
+		stamina_gauge.set_dark_mode(dark_mode_enabled)
 		stamina_gauge.set_theme_color(_skill_theme_color(skill_id))
 		stamina_gauge.set_regen_ring_color(_stamina_regen_circle_color(skill_id))
 		stamina_gauge.set_show_decimal(show_stamina_decimal)
@@ -17919,6 +19155,9 @@ func _skill_menu_card_side_gauge(card: Dictionary) -> Control:
 	var fish_gauge := card.get("fish") as Control
 	if fish_gauge != null and is_instance_valid(fish_gauge):
 		return fish_gauge
+	var health_gauge := card.get("health") as Control
+	if health_gauge != null and is_instance_valid(health_gauge):
+		return health_gauge
 	return card.get("stamina") as Control
 
 
@@ -18104,6 +19343,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		detail_regen_circle = null
 		detail_regen_circle_host = null
 		detail_regen_circle_fade_group = null
+		detail_blue_guy_health_gauge = null
 		detail_auto_eat_fish_button = null
 		detail_fish_circle = FishCircle.new()
 		detail_fish_circle.custom_minimum_size = Vector2(552, 552)
@@ -18116,6 +19356,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, true)
 	else:
 		detail_fish_circle = null
+		detail_blue_guy_health_gauge = null
 		detail_regen_circle_host = Control.new()
 		detail_regen_circle_host.custom_minimum_size = Vector2(552, 552)
 		detail_regen_circle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -18126,6 +19367,7 @@ func _render_skill_detail(scroll_latest_activity := false, restore_detail_scroll
 		detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
 		detail_regen_circle.modulate = Color.WHITE
+		detail_regen_circle.set_dark_mode(dark_mode_enabled)
 		detail_regen_circle.gui_input.connect(_on_stamina_gauge_input.bind("", detail_regen_circle))
 		detail_regen_circle_fade_group.add_child(detail_regen_circle)
 		detail_regen_circle_host.add_child(detail_regen_circle_fade_group)
@@ -18402,7 +19644,7 @@ func _mat_honey_info_button() -> Button:
 	button.z_index = 32
 	button.add_to_group("skill_header_info_buttons")
 	button.add_theme_font_size_override("font_size", MIN_MOBILE_BODY_FONT_SIZE)
-	button.add_theme_color_override("font_color", COLOR_INK)
+	_apply_info_symbol_button_text_color(button)
 	button.add_theme_stylebox_override("normal", _passive_round_button_style(COLOR_PANEL))
 	button.add_theme_stylebox_override("hover", _passive_round_button_style(COLOR_PANEL.lightened(0.06)))
 	button.add_theme_stylebox_override("pressed", _passive_round_button_style(COLOR_GOLD.darkened(0.08)))
@@ -18468,6 +19710,7 @@ func _mat_collection_module_style(mat_id: String) -> StyleBoxFlat:
 func _build_detail_interactive_action_card(skill_id: String, action: Dictionary, content_width: float, _actions_width: float) -> Dictionary:
 	var action_id := str(action.get("id", ""))
 	var is_convergence_card := _is_convergence_action(action)
+	var uses_blue_guy_chicken_brawl_stage := _action_uses_blue_guy_chicken_brawl_stage(action)
 	var card_root := Control.new()
 	card_root.custom_minimum_size = Vector2(0, _activity_card_root_height())
 	card_root.custom_minimum_size.x = content_width
@@ -18493,8 +19736,17 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	pop_card.set_meta("activity_card_depth_node_id", depth.get_instance_id())
 	card_root.add_child(pop_card)
 	
+	pop_card.add_child(_action_card_background_edge_underlay(skill_id))
 	var bg := _action_card_background(skill_id, action)
 	pop_card.add_child(bg)
+	var blue_guy_chicken_stage: Control = null
+	if uses_blue_guy_chicken_brawl_stage:
+		blue_guy_chicken_stage = BlueGuyChickenBrawlStageClass.new()
+		blue_guy_chicken_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+		blue_guy_chicken_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		blue_guy_chicken_stage.z_index = 220
+		_configure_blue_guy_chicken_brawl_stage(blue_guy_chicken_stage)
+		pop_card.add_child(blue_guy_chicken_stage)
 
 	var shade: Panel = null
 	if not _is_action_unlocked(skill_id, action):
@@ -18508,6 +19760,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	margin.add_theme_constant_override("margin_bottom", 126)
 	margin.mouse_filter = Control.MOUSE_FILTER_PASS
 	margin.z_index = 200
+	margin.visible = not uses_blue_guy_chicken_brawl_stage
 	pop_card.add_child(margin)
 	
 	var row := HBoxContainer.new()
@@ -18526,6 +19779,13 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	art_slot.add_child(art_panel)
 	var art := _action_art_image(action)
 	art_panel.add_child(art)
+	if uses_blue_guy_chicken_brawl_stage:
+		art.visible = false
+		var chicken_stage := BlueGuyChickenBrawlStageClass.new()
+		chicken_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+		chicken_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		chicken_stage.z_index = 2
+		art_panel.add_child(chicken_stage)
 	_add_action_art_corner_badges(art_panel, action)
 	art_panel.add_child(_action_art_border_overlay())
 
@@ -18534,7 +19794,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	copy.add_theme_constant_override("separation", 38)
 	copy.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(copy)
-	if not is_convergence_card:
+	if not is_convergence_card and not uses_blue_guy_chicken_brawl_stage:
 		row.add_child(art_slot)
 	var action_name_label := _label(str(action["name"]), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -18564,10 +19824,18 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var success_label := _action_stat_label("")
 	var success_box := _action_stat_box(success_label, true, skill_id, action_id, "success")
 	stat_row.add_child(success_box)
+	var initial_xp_parts := _action_xp_reward_parts_for_display(skill_id, action)
+	_set_label_text_if_changed(xp_label, "+%s" % _format_info_chip_number(float(_action_xp_reward_total(initial_xp_parts))))
+	_set_label_text_if_changed(stamina_label, "%s" % _format_info_chip_number(_effective_stamina(skill_id, action)) if _action_shows_stamina_stat(skill_id, action) else "")
+	_set_label_text_if_changed(time_label, "%ss" % _format_info_chip_number(_action_cycle_seconds(skill_id, action)))
+	_set_label_text_if_changed(success_label, "%s%%" % _format_info_chip_number(_success_chance(skill_id, action)))
+	_sync_action_stat_chip_title(xp_label, "XP")
+	_sync_action_stat_chip_title(stamina_label, "STAM" if _action_shows_stamina_stat(skill_id, action) else "")
+	_sync_action_stat_chip_title(time_label, "TIME")
+	_sync_action_stat_chip_title(success_label, "RATE")
 	if is_convergence_card:
 		stamina_box.visible = false
 		success_box.visible = false
-	# Stat taps are routed from stat-row geometry; avoid four invisible Button nodes per fresh card.
 	var stat_hit_buttons := {}
 
 	var medal: TextureRect = null
@@ -18617,7 +19885,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		convergence_progress.z_index = 234
 		convergence_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(convergence_progress)
-	else:
+	elif not uses_blue_guy_chicken_brawl_stage:
 		progress = ActivityProgressRail.new()
 		_apply_activity_progress_rail_action_theme(progress, skill_id, action)
 		progress.anchor_left = 0.0
@@ -18700,11 +19968,6 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		border.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX
 		pop_card.add_child(border)
 	var mission_badge := {}
-	var event_badge: Control = null
-	if _is_event_action(action):
-		event_badge = _event_hourglass_badge()
-		pop_card.add_child(event_badge)
-
 	var lock_overlay := _activity_lock_overlay(pop_card, int(action.get("unlock", 1)), skill_id, _lock_requirements_for_overlay(skill_id, action)) if not _is_action_unlocked(skill_id, action) else {}
 	if not lock_overlay.is_empty():
 		_connect_activity_lock_handler(lock_overlay, skill_id, action_id)
@@ -18749,11 +20012,12 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"convergence_build_cta_title": convergence_build_cta_title,
 		"convergence_build_cta_meta": convergence_build_cta_meta,
 		"fluid_strip": fluid_strip,
+		"blue_guy_chicken_stage": blue_guy_chicken_stage,
 		"border": border,
 		"mission_badge_parent": pop_card,
 		"mission_badge": null,
 		"mission_badge_label": null,
-		"event_badge": event_badge,
+		"event_badge": null,
 		"lock_overlay": lock_overlay,
 		"medal_destination": Vector2(medal.offset_left, medal.offset_top) if medal != null else Vector2.ZERO
 	}
@@ -18783,6 +20047,8 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 	var pinned := {}
 	if running_skill_id == selected_skill_id and not running_action_id.is_empty():
 		pinned[running_action_id] = true
+	if event_running_skill_id == selected_skill_id and not event_running_action_id.is_empty():
+		pinned[event_running_action_id] = true
 	if selected_skill_id == "thieving":
 		for raw_action_id in thieving_action_jails.keys():
 			var jailed_action_id := str(raw_action_id)
@@ -18846,18 +20112,20 @@ func _detail_lazy_entry_is_pinned(lazy_entry: Dictionary, pinned: Dictionary) ->
 
 
 func _detail_lazy_entry_height(lazy_entry: Dictionary) -> float:
+	var entry_data := lazy_entry.get("entry", {}) as Dictionary
+	var action := entry_data.get("action", {}) as Dictionary
 	match str(lazy_entry.get("kind", "")):
 		"heist":
 			return float(THIEVING_HEIST_CARD_HEIGHT)
 		"passive":
-			return float(PASSIVE_MODULE_CARD_HEIGHT)
+			return _passive_action_card_height(action)
 		"fishing_area":
 			return float(ACTION_CARD_HEIGHT)
 		"fishing_offer":
 			return _fishing_offer_height(str(lazy_entry.get("offer_id", "")))
 		"lock_tip", "activity_start_tip", "skill_swipe_tip":
 			return DETAIL_LAZY_TIP_HEIGHT
-	return _activity_card_root_height()
+	return _activity_card_root_height() + _action_mat_collection_layout_height(selected_skill_id, action)
 
 
 func _detail_lazy_track_id_for_entry(entry_data: Dictionary) -> String:
@@ -19100,6 +20368,8 @@ func _detail_lazy_prepare_host_for_mount(stack_host: Control, placeholder: Contr
 
 
 func _detail_lazy_add_child_to_host(host: Control, child: Control, content_width: float, actions_width: float) -> void:
+	if DisplayServer.get_name() == "headless":
+		_fill_headless_null_textures(child)
 	var previous_height := maxf(host.custom_minimum_size.y, host.size.y)
 	var child_height := child.custom_minimum_size.y
 	if child_height <= 1.0:
@@ -19122,6 +20392,31 @@ func _detail_lazy_add_child_to_host(host: Control, child: Control, content_width
 	child.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	host.add_child(child)
 	_play_collapsed_host_squeeze_if_needed(host, child, previous_height, host_height)
+
+
+func _fill_headless_null_textures(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var fallback := _visual_fallback_texture()
+	if node is TextureRect:
+		var texture_rect := node as TextureRect
+		if texture_rect.texture == null:
+			texture_rect.texture = fallback
+		texture_rect.visible = false
+	if node is TextureButton:
+		var texture_button := node as TextureButton
+		if texture_button.texture_normal == null:
+			texture_button.texture_normal = fallback
+		if texture_button.texture_pressed == null:
+			texture_button.texture_pressed = texture_button.texture_normal
+		if texture_button.texture_hover == null:
+			texture_button.texture_hover = texture_button.texture_normal
+		if texture_button.texture_disabled == null:
+			texture_button.texture_disabled = texture_button.texture_normal
+		if texture_button.texture_focused == null:
+			texture_button.texture_focused = texture_button.texture_normal
+	for child in node.get_children():
+		_fill_headless_null_textures(child)
 
 
 func _play_collapsed_host_squeeze_if_needed(host: Control, child: Control, previous_height: float, target_height: float) -> void:
@@ -19148,27 +20443,31 @@ func _play_collapsed_host_squeeze_if_needed(host: Control, child: Control, previ
 	host.set_meta("module_list_transition_tween", tween)
 	var host_id := host.get_instance_id()
 	var child_id := child.get_instance_id()
-	var apply_height := func(value: float) -> void:
-		var live_host := instance_from_id(host_id) as Control
-		if live_host != null and is_instance_valid(live_host):
-			_set_module_root_layout_height(live_host, value)
-		var live_child := instance_from_id(child_id) as Control
-		if live_child != null and is_instance_valid(live_child):
-			live_child.size.y = value
-	tween.tween_method(apply_height, start_height, target_height, MODULE_COLLAPSE_SQUEEZE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_callback(func() -> void:
-		var live_host := instance_from_id(host_id) as Control
-		if live_host != null and is_instance_valid(live_host):
-			_set_module_root_layout_height(live_host, target_height)
-			live_host.clip_contents = original_clip
-			if live_host.has_meta("module_list_transition_tween"):
-				live_host.remove_meta("module_list_transition_tween")
-		var live_child := instance_from_id(child_id) as Control
-		if live_child != null and is_instance_valid(live_child):
-			live_child.size.y = target_height
-		if module_ui_animating_collapse_key == module_key:
-			module_ui_animating_collapse_key = ""
-	)
+	tween.tween_method(_apply_collapsed_host_squeeze_height.bind(host_id, child_id), start_height, target_height, MODULE_COLLAPSE_SQUEEZE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(_finish_collapsed_host_squeeze_animation.bind(host_id, child_id, module_key, target_height, original_clip))
+
+
+func _apply_collapsed_host_squeeze_height(value: float, host_id: int, child_id: int) -> void:
+	var live_host := _valid_control_ref(instance_from_id(host_id))
+	if live_host != null:
+		_set_module_root_layout_height(live_host, value)
+	var live_child := _valid_control_ref(instance_from_id(child_id))
+	if live_child != null:
+		live_child.size.y = value
+
+
+func _finish_collapsed_host_squeeze_animation(host_id: int, child_id: int, module_key: String, target_height: float, original_clip: bool) -> void:
+	var live_host := _valid_control_ref(instance_from_id(host_id))
+	if live_host != null:
+		_set_module_root_layout_height(live_host, target_height)
+		live_host.clip_contents = original_clip
+		if live_host.has_meta("module_list_transition_tween"):
+			live_host.remove_meta("module_list_transition_tween")
+	var live_child := _valid_control_ref(instance_from_id(child_id))
+	if live_child != null:
+		live_child.size.y = target_height
+	if module_ui_animating_collapse_key == module_key:
+		module_ui_animating_collapse_key = ""
 
 
 func _detail_lazy_module_ui_key(plan_item: Dictionary, skill_id: String) -> String:
@@ -19256,8 +20555,8 @@ func _find_marked_module_title_label(root: Node) -> Label:
 		return null
 	var control := root as Control
 	if control != null and control.has_meta("module_ui_title_label_id"):
-		var title := instance_from_id(int(control.get_meta("module_ui_title_label_id", 0))) as Label
-		if title != null and is_instance_valid(title):
+		var title := _valid_label_ref(instance_from_id(int(control.get_meta("module_ui_title_label_id", 0))))
+		if title != null:
 			return title
 	if root is Label and bool((root as Label).get_meta("module_ui_title_label", false)):
 		return root as Label
@@ -19298,12 +20597,7 @@ func _module_title_label_for_lift(root: Control) -> Label:
 
 
 func _kill_collapsed_module_title_tween(title: Label) -> void:
-	if title == null or not is_instance_valid(title) or not title.has_meta("module_collapsed_title_tween"):
-		return
-	var tween := title.get_meta("module_collapsed_title_tween") as Tween
-	if tween != null and tween.is_valid():
-		tween.kill()
-	title.remove_meta("module_collapsed_title_tween")
+	_kill_meta_tween(title, "module_collapsed_title_tween")
 
 
 func _set_collapsed_module_title_lift(root: Control, collapsed: bool, instant := true) -> void:
@@ -19312,7 +20606,7 @@ func _set_collapsed_module_title_lift(root: Control, collapsed: bool, instant :=
 		return
 	if not title.has_meta("module_title_base_position"):
 		title.set_meta("module_title_base_position", title.position)
-	var base_position := title.get_meta("module_title_base_position", title.position) as Vector2
+	var base_position := _meta_vector2(title, "module_title_base_position", title.position)
 	var target_position := base_position + Vector2(0.0, MODULE_COLLAPSED_TITLE_LIFT_Y if collapsed else 0.0)
 	_kill_collapsed_module_title_tween(title)
 	if instant:
@@ -19322,13 +20616,15 @@ func _set_collapsed_module_title_lift(root: Control, collapsed: bool, instant :=
 	title.set_meta("module_collapsed_title_tween", tween)
 	tween.tween_property(title, "position", target_position, MODULE_COLLAPSE_SQUEEZE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var title_id := title.get_instance_id()
-	tween.finished.connect(func() -> void:
-		var live_title := instance_from_id(title_id) as Control
-		if live_title != null and is_instance_valid(live_title):
-			live_title.position = target_position
-			if live_title.has_meta("module_collapsed_title_tween"):
-				live_title.remove_meta("module_collapsed_title_tween")
-	)
+	tween.finished.connect(_finish_collapsed_module_title_lift.bind(title_id, target_position))
+
+
+func _finish_collapsed_module_title_lift(title_id: int, target_position: Vector2) -> void:
+	var live_title := _valid_control_ref(instance_from_id(title_id))
+	if live_title != null:
+		live_title.position = target_position
+		if live_title.has_meta("module_collapsed_title_tween"):
+			live_title.remove_meta("module_collapsed_title_tween")
 
 
 func _set_collapsed_module_visual_clipping(root: Control, module_key: String, collapsed: bool, title_instant := true) -> void:
@@ -19368,12 +20664,12 @@ func _set_collapsed_module_visual_clipping(root: Control, module_key: String, co
 			restored_badge = child as TextureButton
 			break
 	if clip_host.has_meta("module_pin_original_parent_id"):
-		var parent := instance_from_id(int(clip_host.get_meta("module_pin_original_parent_id"))) as Control
-		if parent != null and is_instance_valid(parent) and clip_host.get_parent() != parent:
+		var parent := _valid_control_ref(instance_from_id(int(clip_host.get_meta("module_pin_original_parent_id"))))
+		if parent != null and clip_host.get_parent() != parent:
 			if clip_host.get_parent() != null:
 				clip_host.get_parent().remove_child(clip_host)
 			parent.add_child(clip_host)
-			clip_host.position = clip_host.get_meta("module_pin_original_position", clip_host.position) as Vector2
+			clip_host.position = _meta_vector2(clip_host, "module_pin_original_position", clip_host.position)
 		clip_host.remove_meta("module_pin_original_parent_id")
 		if clip_host.has_meta("module_pin_original_position"):
 			clip_host.remove_meta("module_pin_original_position")
@@ -19519,8 +20815,8 @@ func _play_detail_lazy_fade_in(target: Control) -> void:
 
 
 func _finish_detail_lazy_reveal(target_id: int, base_y: float, base_scale: Vector2) -> void:
-	var target := instance_from_id(target_id) as Control
-	if target == null or not is_instance_valid(target) or target.is_queued_for_deletion():
+	var target := _valid_control_ref(instance_from_id(target_id))
+	if target == null or target.is_queued_for_deletion():
 		return
 	target.modulate.a = 1.0
 	target.position.y = base_y
@@ -19536,16 +20832,12 @@ func _finish_detail_lazy_reveal(target_id: int, base_y: float, base_scale: Vecto
 func _kill_detail_lazy_reveal_tween(target: Control) -> void:
 	if target == null or not is_instance_valid(target):
 		return
-	if target.has_meta("detail_lazy_reveal_tween"):
-		var tween := target.get_meta("detail_lazy_reveal_tween") as Tween
-		if tween != null and tween.is_valid():
-			tween.kill()
-		target.remove_meta("detail_lazy_reveal_tween")
+	_kill_meta_tween(target, "detail_lazy_reveal_tween")
 	if target.has_meta("detail_lazy_reveal_base_y"):
 		target.position.y = float(target.get_meta("detail_lazy_reveal_base_y"))
 		target.remove_meta("detail_lazy_reveal_base_y")
 	if target.has_meta("detail_lazy_reveal_base_scale"):
-		target.scale = target.get_meta("detail_lazy_reveal_base_scale") as Vector2
+		target.scale = _meta_vector2(target, "detail_lazy_reveal_base_scale", target.scale)
 		target.remove_meta("detail_lazy_reveal_base_scale")
 
 
@@ -19626,6 +20918,7 @@ func _detail_eager_add_tutorial_note_after_action(action_id: String, note: Contr
 
 func _skill_swipe_tip_anchor_track_id(skill_id: String) -> String:
 	var visible_action_count := 0
+	var fallback_action_id := ""
 	for raw_entry in _visible_detail_entries_for_skill(skill_id):
 		var entry := raw_entry as Dictionary
 		if str(entry.get("kind", "")) != "action":
@@ -19634,10 +20927,12 @@ func _skill_swipe_tip_anchor_track_id(skill_id: String) -> String:
 		var action_id := str(action.get("id", ""))
 		if action_id.is_empty():
 			continue
+		if skill_id == TUTORIAL_STARTER_SKILL_ID and action_id == TUTORIAL_LEVEL_TWO_ACTION_ID:
+			return action_id
 		visible_action_count += 1
 		if visible_action_count == 2:
-			return action_id
-	return ""
+			fallback_action_id = action_id
+	return fallback_action_id
 
 
 func _detail_eager_add_smooth_tutorial_tip_after_action(action_id: String, note: Control, content_width: float, actions_width: float, group_name: String) -> Control:
@@ -19747,8 +21042,8 @@ func _detail_eager_add_smooth_tutorial_tip(stack: VBoxContainer, note: Control, 
 
 
 func _finish_smooth_tutorial_tip_entry_reveal(entry_id: int) -> void:
-	var entry := instance_from_id(entry_id) as Control
-	if entry != null and is_instance_valid(entry):
+	var entry := _valid_control_ref(instance_from_id(entry_id))
+	if entry != null:
 		entry.clip_contents = false
 
 
@@ -19871,6 +21166,7 @@ func _detail_lazy_fade_allowed(skill_id: String, action: Dictionary) -> bool:
 
 
 func _detail_lazy_finalize_action_card(card: Dictionary, skill_id: String, action: Dictionary, action_id: String) -> void:
+	_ensure_interactive_action_card_button(card, skill_id, action_id)
 	_prepare_locked_activity_preview_fade(card, skill_id, action)
 	_sync_locked_activity_preview_presence(card, skill_id, action)
 	if _action_has_pending_unlock_readiness(action_id):
@@ -19889,8 +21185,23 @@ func _detail_lazy_finalize_action_card(card: Dictionary, skill_id: String, actio
 	if _action_has_mastery(action):
 		_set_action_card_medal(card, medal, _mastery_level(skill_id, action_id), true)
 		_update_action_card_mastery_bar(card, skill_id, action_id, 0.0, true)
+	var running_here := (running_skill_id == skill_id and running_action_id == action_id) or (event_running_skill_id == skill_id and event_running_action_id == action_id)
+	_sync_mat_collection_card(card, running_here, true)
 	_apply_onboarding_fight_action_card_stats_visibility(card, skill_id)
 	_schedule_activity_start_highlight_if_needed(skill_id, action_id)
+
+
+func _ensure_interactive_action_card_button(card: Dictionary, skill_id: String, action_id: String) -> void:
+	if card.is_empty() or skill_id.is_empty() or action_id.is_empty():
+		return
+	var existing := card.get("button") as Button
+	if existing != null and is_instance_valid(existing):
+		existing.mouse_filter = Control.MOUSE_FILTER_STOP
+		return
+	var pop_card := card.get("pop") as Control
+	if pop_card == null or not is_instance_valid(pop_card):
+		return
+	_attach_swipe_preview_activity_button(card, skill_id, action_id, pop_card)
 
 
 func _detail_lazy_cache_parent() -> Control:
@@ -20329,6 +21640,8 @@ func _detail_lazy_unmount_item(lazy_entry: Dictionary, skill_id: String, content
 	var kind := str(lazy_entry.get("kind", ""))
 	var mounted_card := lazy_entry.get("card", {}) as Dictionary
 	_kill_transient_tweens_in_subtree(stack_host)
+	if DisplayServer.get_name() == "headless":
+		_fill_headless_null_textures(stack_host)
 	var cached_root: Control = null
 	if kind in ["action", "passive", "fishing_area", "fishing_offer"]:
 		for child in stack_host.get_children():
@@ -20715,19 +22028,19 @@ func _set_temporary_event_entry_height(host: Control, height: float) -> void:
 
 
 func _set_temporary_event_entry_height_safe(height: float, host_id: int) -> void:
-	var host := instance_from_id(host_id) as Control
+	var host := _valid_control_ref(instance_from_id(host_id))
 	_set_temporary_event_entry_height(host, height)
 
 
 func _finish_temporary_event_entry_reveal(host_id: int, fade_target_id: int, target_height: float) -> void:
-	var host := instance_from_id(host_id) as Control
-	if host != null and is_instance_valid(host) and not host.is_queued_for_deletion():
+	var host := _valid_control_ref(instance_from_id(host_id))
+	if host != null and not host.is_queued_for_deletion():
 		_set_temporary_event_entry_height(host, target_height)
 		host.clip_contents = false
 		if host.has_meta("temporary_event_entry_tween"):
 			host.remove_meta("temporary_event_entry_tween")
-	var fade_target := instance_from_id(fade_target_id) as Control
-	if fade_target != null and is_instance_valid(fade_target) and not fade_target.is_queued_for_deletion():
+	var fade_target := _valid_control_ref(instance_from_id(fade_target_id))
+	if fade_target != null and not fade_target.is_queued_for_deletion():
 		fade_target.modulate.a = 1.0
 	call_deferred("_sync_detail_actions_scroll_limit_deferred")
 
@@ -20735,10 +22048,7 @@ func _finish_temporary_event_entry_reveal(host_id: int, fade_target_id: int, tar
 func _play_temporary_event_entry_reveal(host: Control, fade_target: Control, target_height: float) -> void:
 	if host == null or not is_instance_valid(host):
 		return
-	if host.has_meta("temporary_event_entry_tween"):
-		var existing := host.get_meta("temporary_event_entry_tween") as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+	_kill_meta_tween(host, "temporary_event_entry_tween")
 	host.clip_contents = true
 	_set_temporary_event_entry_height(host, 0.0)
 	if fade_target != null and is_instance_valid(fade_target):
@@ -20936,12 +22246,7 @@ func _detail_module_transition_child_visible(control: Control) -> bool:
 
 
 func _kill_module_list_transition_tween(control: Control) -> void:
-	if control == null or not is_instance_valid(control) or not control.has_meta("module_list_transition_tween"):
-		return
-	var tween := control.get_meta("module_list_transition_tween") as Tween
-	if tween != null and tween.is_valid():
-		tween.kill()
-	control.remove_meta("module_list_transition_tween")
+	_kill_meta_tween(control, "module_list_transition_tween")
 
 
 func _clear_module_ui_animating_collapse_key(module_key: String) -> void:
@@ -20956,8 +22261,8 @@ func _finish_module_list_transition(
 	final_minimum_size := Vector2(-1.0, -1.0),
 	final_clip_contents := false
 ) -> void:
-	var control := instance_from_id(control_id) as Control
-	if control == null or not is_instance_valid(control) or control.is_queued_for_deletion():
+	var control := _valid_control_ref(instance_from_id(control_id))
+	if control == null or control.is_queued_for_deletion():
 		return
 	control.position = final_position
 	control.scale = final_scale
@@ -21624,9 +22929,9 @@ func _show_pinned_activities() -> void:
 		return
 	if not _top_level_nav_allowed("pinned"):
 		return
-	pinned_return_screen = current_screen
+	pinned_return_screen = _module_utility_return_screen_for_current()
 	pinned_return_skill_id = selected_skill_id
-	pinned_return_detail_scroll = _current_detail_scroll_for_pinned_return()
+	pinned_return_detail_scroll = _module_utility_return_detail_scroll_for_current()
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	_begin_direct_skill_nav_cover()
@@ -21649,7 +22954,7 @@ func _complete_show_pinned_activities() -> void:
 
 func _return_from_pinned_activities() -> void:
 	var target_screen := pinned_return_screen
-	if target_screen.is_empty() or target_screen == "pinned":
+	if target_screen.is_empty() or _module_utility_screen_overlays_skill_detail(target_screen):
 		target_screen = "skill"
 	if not _top_level_nav_allowed(target_screen):
 		return
@@ -21681,9 +22986,9 @@ func _show_activity_queue() -> void:
 		return
 	if not _top_level_nav_allowed("queue"):
 		return
-	queue_return_screen = current_screen
+	queue_return_screen = _module_utility_return_screen_for_current()
 	queue_return_skill_id = selected_skill_id
-	queue_return_detail_scroll = _current_detail_scroll_for_pinned_return()
+	queue_return_detail_scroll = _module_utility_return_detail_scroll_for_current()
 	if current_screen == "settings":
 		_disarm_reset_data_confirmation()
 	_begin_direct_skill_nav_cover()
@@ -21693,7 +22998,7 @@ func _show_activity_queue() -> void:
 
 func _return_from_activity_queue() -> void:
 	var target_screen := queue_return_screen
-	if target_screen.is_empty() or target_screen == "queue":
+	if target_screen.is_empty() or _module_utility_screen_overlays_skill_detail(target_screen):
 		target_screen = "skill"
 	if not _top_level_nav_allowed(target_screen):
 		return
@@ -22784,6 +24089,7 @@ func _build_pinned_active_shelf_stamina_strip() -> Control:
 		gauge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		gauge.mouse_filter = Control.MOUSE_FILTER_STOP
+		gauge.set_dark_mode(dark_mode_enabled)
 		gauge.set_theme_color(_skill_theme_color(skill_id))
 		gauge.set_regen_ring_color(_stamina_regen_circle_color(skill_id))
 		gauge.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, gauge))
@@ -22879,6 +24185,7 @@ func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String)
 		pinned_active_shelf_regen_circle.custom_minimum_size = Vector2(552, 552)
 		pinned_active_shelf_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		pinned_active_shelf_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
+		pinned_active_shelf_regen_circle.set_dark_mode(dark_mode_enabled)
 		pinned_active_shelf_regen_circle.set_theme_color(_skill_theme_color(skill_id))
 		pinned_active_shelf_regen_circle.set_regen_ring_color(_stamina_regen_circle_color(skill_id))
 		pinned_active_shelf_regen_circle.gui_input.connect(_on_stamina_gauge_input.bind(skill_id, pinned_active_shelf_regen_circle))
@@ -22994,7 +24301,7 @@ func _transition_pinned_active_shelf_to(skill_id: String, instant := false) -> v
 
 
 func _finish_pinned_active_shelf_fade_out(content_id: int, skill_id: String) -> void:
-	var content := instance_from_id(content_id) as Control
+	var content := _valid_control_ref(instance_from_id(content_id))
 	if content == null or content != pinned_active_shelf_content:
 		return
 	_rebuild_pinned_active_shelf_content(skill_id, false)
@@ -23188,9 +24495,13 @@ func _create_pinned_activities_empty_decor_pin_badge(decor_host: Control, index:
 	badge.name = "PinnedActivitiesEmptyDecorPinBadge_%s" % index
 	if badge.is_in_group("module_pin_badges"):
 		badge.remove_from_group("module_pin_badges")
-	badge.texture_normal = _texture_or_visual_fallback(_random_module_pin_texture_path())
+	var texture_path := _random_module_pin_texture_path()
+	badge.texture_normal = _texture_or_visual_fallback(texture_path)
 	badge.texture_pressed = badge.texture_normal
 	badge.texture_hover = badge.texture_normal
+	badge.texture_disabled = badge.texture_normal
+	badge.texture_focused = badge.texture_normal
+	badge.set_meta("module_pin_texture_path", texture_path)
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.disabled = true
 	badge.visible = true
@@ -23213,13 +24524,13 @@ func _on_pinned_activities_empty_decor_pin_gui_input(event: InputEvent, decor_ho
 		var touch_event := event as InputEventScreenTouch
 		if touch_event == null or not touch_event.pressed:
 			return
-	var hit_zone := instance_from_id(hit_zone_id) as Control
-	if hit_zone != null and is_instance_valid(hit_zone):
+	var hit_zone := _valid_control_ref(instance_from_id(hit_zone_id))
+	if hit_zone != null:
 		hit_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hit_zone.accept_event()
-	var decor_host := instance_from_id(decor_host_id) as Control
-	var badge := instance_from_id(badge_id) as TextureButton
-	if decor_host == null or badge == null or not is_instance_valid(decor_host) or not is_instance_valid(badge):
+	var decor_host := _valid_control_ref(instance_from_id(decor_host_id))
+	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
+	if decor_host == null or badge == null:
 		return
 	_play_pinned_activities_empty_decor_pin_exit_animation(badge, decor_host, hit_zone_id)
 
@@ -23425,7 +24736,208 @@ func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_
 	var module := _build_page_switch_module(skill_id, content_width)
 	if module == null:
 		return
-	stack.add_child(_detail_stack_entry(module, content_width, actions_width))
+	var entry := _detail_stack_entry(module, content_width, actions_width)
+	if entry != module:
+		entry.name = "PageSwitchModuleEntry"
+		entry.set_meta("page_switch_module_entry", true)
+	if _skill_swipe_page_switch_module_should_start_hidden():
+		_set_skill_page_switch_module_alpha(entry, 0.0)
+	stack.add_child(entry)
+
+
+func _skill_swipe_page_switch_module_should_start_hidden() -> bool:
+	return (
+		current_screen == "skill"
+		and skill_swipe_animating
+		and skill_swipe_animation_mode == "entry"
+	)
+
+
+func _collect_page_switch_modules(root_node: Node, modules: Array) -> void:
+	if root_node == null or not is_instance_valid(root_node):
+		return
+	if root_node is Control and (
+		root_node.name == "PageSwitchModule"
+		or bool(root_node.get_meta("page_switch_module_entry", false))
+	):
+		modules.append(root_node)
+		return
+	for raw_child in root_node.get_children():
+		_collect_page_switch_modules(raw_child as Node, modules)
+
+
+func _current_page_switch_modules() -> Array:
+	var modules := []
+	var root_node: Node = skill_swipe_page if skill_swipe_page != null and is_instance_valid(skill_swipe_page) else skills_content
+	_collect_page_switch_modules(root_node, modules)
+	return modules
+
+
+func _fade_skill_page_switch_modules(visible: bool, seconds: float) -> void:
+	for raw_module in _current_page_switch_modules():
+		var module := raw_module as Control
+		if module == null or not is_instance_valid(module):
+			continue
+		_kill_meta_tween(module, "skill_swipe_page_switch_fade_tween")
+		var target_alpha := 1.0 if visible else 0.0
+		if seconds <= 0.001:
+			_set_skill_page_switch_module_alpha(module, target_alpha)
+			continue
+		var tween := create_tween()
+		module.set_meta("skill_swipe_page_switch_fade_tween", tween)
+		var module_id := module.get_instance_id()
+		tween.tween_method(
+			func(alpha: float) -> void:
+				_set_skill_page_switch_module_alpha(module_id, alpha),
+			module.modulate.a,
+			target_alpha,
+			seconds
+		).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.tween_callback(_finish_skill_page_switch_module_fade.bind(module.get_instance_id()))
+
+
+func _finish_skill_page_switch_module_fade(module_id: int) -> void:
+	var module := _valid_control_ref(instance_from_id(module_id))
+	if module != null and module.has_meta("skill_swipe_page_switch_fade_tween"):
+		module.remove_meta("skill_swipe_page_switch_fade_tween")
+
+
+func _set_skill_page_switch_module_alpha(module_or_alpha, maybe_alpha = null) -> void:
+	var module: Control = null
+	var alpha := 1.0
+	if maybe_alpha == null:
+		module = _valid_control_ref(instance_from_id(int(module_or_alpha)))
+		alpha = 1.0
+	else:
+		if module_or_alpha is Control:
+			module = module_or_alpha as Control
+		else:
+			module = _valid_control_ref(instance_from_id(int(module_or_alpha)))
+		alpha = float(maybe_alpha)
+	if module == null:
+		return
+	var next_alpha := clampf(alpha, 0.0, 1.0)
+	var next_modulate := module.modulate
+	next_modulate.a = next_alpha
+	_set_canvas_item_modulate_if_changed(module, next_modulate)
+	if bool(module.get_meta("page_switch_module_entry", false)):
+		for raw_child in module.get_children():
+			var child := raw_child as Control
+			if child != null and child.name == "PageSwitchModule":
+				var child_modulate := child.modulate
+				child_modulate.a = 1.0
+				_set_canvas_item_modulate_if_changed(child, child_modulate)
+
+
+func _set_skill_page_switch_modules_alpha(alpha: float) -> void:
+	for raw_module in _current_page_switch_modules():
+		var module := raw_module as Control
+		if module == null or not is_instance_valid(module):
+			continue
+		_kill_meta_tween(module, "skill_swipe_page_switch_fade_tween")
+		_set_skill_page_switch_module_alpha(module, alpha)
+
+
+func _sync_skill_page_switch_modules_for_drag(abs_x: float) -> void:
+	_set_skill_page_switch_modules_alpha(1.0)
+
+
+func _set_skill_swipe_module_utility_alpha(alpha: float) -> void:
+	if module_utility_row == null or not is_instance_valid(module_utility_row):
+		return
+	var next_modulate := module_utility_row.modulate
+	next_modulate.a = clampf(alpha, 0.0, 1.0)
+	_set_canvas_item_modulate_if_changed(module_utility_row, next_modulate)
+
+
+func _fade_skill_swipe_module_utility_row(visible: bool, seconds: float) -> void:
+	if module_utility_row == null or not is_instance_valid(module_utility_row):
+		return
+	_kill_meta_tween(module_utility_row, "skill_swipe_module_utility_fade_tween")
+	var target_alpha := 1.0 if visible else 0.0
+	if seconds <= 0.001:
+		_set_skill_swipe_module_utility_alpha(target_alpha)
+		return
+	var tween := create_tween()
+	module_utility_row.set_meta("skill_swipe_module_utility_fade_tween", tween)
+	tween.tween_method(_set_skill_swipe_module_utility_alpha, module_utility_row.modulate.a, target_alpha, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(_finish_skill_swipe_module_utility_row_fade)
+
+
+func _finish_skill_swipe_module_utility_row_fade() -> void:
+	if module_utility_row != null and is_instance_valid(module_utility_row) and module_utility_row.has_meta("skill_swipe_module_utility_fade_tween"):
+		module_utility_row.remove_meta("skill_swipe_module_utility_fade_tween")
+
+
+func _sync_skill_swipe_module_utility_row_for_drag(abs_x: float) -> void:
+	_kill_meta_tween(module_utility_row, "skill_swipe_module_utility_fade_tween")
+	_set_skill_swipe_module_utility_alpha(1.0)
+
+
+func _collect_skill_shelf_backgrounds(root_node: Node, backgrounds: Array) -> void:
+	if root_node == null or not is_instance_valid(root_node):
+		return
+	if root_node is Control and root_node.name == "SkillDetailFullBleedShelfBackground":
+		backgrounds.append(root_node)
+		return
+	for raw_child in root_node.get_children():
+		_collect_skill_shelf_backgrounds(raw_child as Node, backgrounds)
+
+
+func _current_skill_shelf_backgrounds() -> Array:
+	var backgrounds := []
+	var root_node: Node = skill_swipe_page if skill_swipe_page != null and is_instance_valid(skill_swipe_page) else skills_content
+	_collect_skill_shelf_backgrounds(root_node, backgrounds)
+	return backgrounds
+
+
+func _skill_swipe_shelf_background_should_start_hidden() -> bool:
+	return (
+		current_screen == "skill"
+		and skill_swipe_animating
+		and skill_swipe_animation_mode == "entry"
+	)
+
+
+func _set_skill_shelf_background_alpha(background: Control, alpha: float) -> void:
+	if background == null or not is_instance_valid(background):
+		return
+	var next_modulate := background.modulate
+	next_modulate.a = clampf(alpha, 0.0, 1.0)
+	_set_canvas_item_modulate_if_changed(background, next_modulate)
+
+
+func _set_skill_shelf_background_alpha_by_id(background_id: int, alpha: float) -> void:
+	_set_skill_shelf_background_alpha(_valid_control_ref(instance_from_id(background_id)), alpha)
+
+
+func _fade_skill_shelf_backgrounds(visible: bool, seconds: float) -> void:
+	for raw_background in _current_skill_shelf_backgrounds():
+		var background := raw_background as Control
+		if background == null or not is_instance_valid(background):
+			continue
+		_kill_meta_tween(background, "skill_swipe_shelf_background_fade_tween")
+		var target_alpha := 1.0 if visible else 0.0
+		if seconds <= 0.001:
+			_set_skill_shelf_background_alpha(background, target_alpha)
+			continue
+		var tween := create_tween()
+		background.set_meta("skill_swipe_shelf_background_fade_tween", tween)
+		var background_id := background.get_instance_id()
+		tween.tween_method(
+			func(alpha: float) -> void:
+				_set_skill_shelf_background_alpha_by_id(background_id, alpha),
+			background.modulate.a,
+			target_alpha,
+			seconds
+		).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.tween_callback(_finish_skill_shelf_background_fade.bind(background_id))
+
+
+func _finish_skill_shelf_background_fade(background_id: int) -> void:
+	var background := _valid_control_ref(instance_from_id(background_id))
+	if background != null and background.has_meta("skill_swipe_shelf_background_fade_tween"):
+		background.remove_meta("skill_swipe_shelf_background_fade_tween")
 
 
 func _build_page_switch_module(skill_id: String, content_width: float) -> Control:
@@ -23452,8 +24964,10 @@ func _build_page_switch_module(skill_id: String, content_width: float) -> Contro
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
 	var previous_button := _page_switch_button(previous_skill, "right")
+	previous_button.set_meta("page_switch_owner_skill_id", skill_id)
 	row.add_child(previous_button)
 	var next_button := _page_switch_button(next_skill, "left")
+	next_button.set_meta("page_switch_owner_skill_id", skill_id)
 	row.add_child(next_button)
 	return module
 
@@ -23569,8 +25083,6 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 		or event is InputEventScreenDrag
 	):
 		return false
-	if _page_switch_input_locked():
-		return true
 	var event_position := _passive_button_event_position(event, null)
 	var is_press := (
 		(event is InputEventMouseButton and (event as InputEventMouseButton).pressed)
@@ -23580,6 +25092,10 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 		(event is InputEventMouseButton and not (event as InputEventMouseButton).pressed)
 		or (event is InputEventScreenTouch and not (event as InputEventScreenTouch).pressed)
 	)
+	_recover_stale_page_switch_input_lock()
+	if _page_switch_input_locked() and not page_switch_press_active:
+		var locked_button := _page_switch_button_at_position(event_position) if is_press else _active_page_switch_button()
+		return locked_button != null or _page_switch_scroll_cover_active()
 	if page_switch_press_active and (event is InputEventMouseMotion or event is InputEventScreenDrag):
 		if event_position.distance_to(page_switch_press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
 			page_switch_press_dragged = true
@@ -23597,9 +25113,7 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 		var active_release_button := _active_page_switch_button()
 		if active_release_button != null:
 			_clear_page_switch_button_press_state(active_release_button, valid_tap)
-			if valid_tap:
-				_hold_page_switch_transition_button(active_release_button, target_skill_id)
-			else:
+			if not valid_tap:
 				_release_page_switch_button_shell(active_release_button)
 			_suppress_page_switch_pressed_signal(active_release_button)
 		_clear_page_switch_press_state()
@@ -23628,6 +25142,38 @@ func _clear_page_switch_press_state() -> void:
 	page_switch_press_target_skill_id = ""
 	page_switch_press_position = Vector2.ZERO
 	page_switch_press_dragged = false
+
+
+func _clear_page_switch_input_state(clear_transition := false) -> void:
+	_clear_page_switch_press_state()
+	var tree := get_tree()
+	if tree != null:
+		for raw_node in tree.get_nodes_in_group("page_switch_buttons"):
+			var button := raw_node as Button
+			if button != null and is_instance_valid(button):
+				_clear_page_switch_button_press_state(button)
+				_force_button_unpressed(button)
+	if clear_transition:
+		page_switch_pending_transition.clear()
+		page_switch_release_when_render_idle = false
+		_release_page_switch_transition_button()
+		if _page_switch_scroll_cover_active():
+			_clear_skill_swipe_handoff_cover_immediate()
+
+
+func _recover_stale_page_switch_input_lock() -> void:
+	if page_switch_press_active and _active_page_switch_button() == null:
+		_clear_page_switch_press_state()
+	if page_switch_transition_button_id != 0:
+		var button := _valid_button_ref(instance_from_id(page_switch_transition_button_id))
+		if button == null or not button.is_inside_tree():
+			_clear_page_switch_input_state(true)
+	if not page_switch_pending_transition.is_empty():
+		var cover_id := int(page_switch_pending_transition.get("cover_id", 0))
+		if not _page_switch_cover_id_active(cover_id):
+			page_switch_pending_transition.clear()
+			page_switch_release_when_render_idle = false
+			_release_page_switch_transition_button()
 
 
 func _clear_page_switch_button_press_state(button: Button, keep_nav_hold := false) -> void:
@@ -23669,10 +25215,14 @@ func _page_switch_button_at_position(event_position: Vector2) -> Button:
 	var tree := get_tree()
 	if tree == null:
 		return null
+	if not _action_card_at_position(event_position).is_empty():
+		return null
 	var positions := _activity_input_position_candidates(event_position)
 	for raw_node in tree.get_nodes_in_group("page_switch_buttons"):
 		var button := raw_node as Button
 		if button == null or not is_instance_valid(button) or button.disabled:
+			continue
+		if not _page_switch_button_belongs_to_current_page(button):
 			continue
 		if not button.is_inside_tree() or not button.is_visible_in_tree():
 			continue
@@ -23687,15 +25237,27 @@ func _active_page_switch_button() -> Button:
 		return null
 	for raw_node in tree.get_nodes_in_group("page_switch_buttons"):
 		var button := raw_node as Button
-		if button != null and is_instance_valid(button) and bool(button.get_meta("page_switch_press_active", false)):
+		if (
+			button != null
+			and is_instance_valid(button)
+			and _page_switch_button_belongs_to_current_page(button)
+			and bool(button.get_meta("page_switch_press_active", false))
+		):
 			return button
 	return null
+
+
+func _page_switch_button_belongs_to_current_page(button: Button) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	var owner_skill_id := str(button.get_meta("page_switch_owner_skill_id", ""))
+	return owner_skill_id.is_empty() or owner_skill_id == selected_skill_id
 
 
 func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, button: Button) -> void:
 	if button == null or not is_instance_valid(button) or button.disabled:
 		return
-	if _page_switch_input_locked() and not bool(button.get_meta("page_switch_press_active", false)):
+	if not _page_switch_button_belongs_to_current_page(button):
 		return
 	var event_position := _passive_button_event_position(event, button)
 	var is_press := false
@@ -23706,6 +25268,10 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 	elif event is InputEventScreenTouch:
 		is_press = (event as InputEventScreenTouch).pressed
 		is_release = not (event as InputEventScreenTouch).pressed
+	if is_press and not _action_card_at_position(event_position).is_empty():
+		return
+	if _page_switch_input_locked() and not bool(button.get_meta("page_switch_press_active", false)):
+		return
 	if is_press:
 		button.set_meta("page_switch_press_active", true)
 		button.set_meta("page_switch_press_position", event_position)
@@ -23717,7 +25283,7 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		return
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
 		if bool(button.get_meta("page_switch_press_active", false)):
-			var press_position := button.get_meta("page_switch_press_position", event_position) as Vector2
+			var press_position := _meta_vector2(button, "page_switch_press_position", event_position)
 			if event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
 				button.set_meta("page_switch_press_dragged", true)
 		return
@@ -23725,7 +25291,7 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		return
 	var was_active := bool(button.get_meta("page_switch_press_active", false))
 	var was_dragged := bool(button.get_meta("page_switch_press_dragged", false))
-	var press_position := button.get_meta("page_switch_press_position", event_position) as Vector2
+	var press_position := _meta_vector2(button, "page_switch_press_position", event_position)
 	if button.has_meta("page_switch_press_active"):
 		button.remove_meta("page_switch_press_active")
 	if button.has_meta("page_switch_press_position"):
@@ -23745,7 +25311,6 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		_release_page_switch_button_shell(button)
 		return
 	_clear_page_switch_button_press_state(button, true)
-	_hold_page_switch_transition_button(button, skill_id)
 	_suppress_page_switch_pressed_signal(button)
 	_select_skill_from_page_switch(skill_id, button)
 
@@ -23755,14 +25320,11 @@ func _on_page_switch_button_pressed(skill_id: String, button: Button) -> void:
 		return
 	if current_screen != "skill":
 		return
+	if not _page_switch_button_belongs_to_current_page(button):
+		return
 	if _page_switch_pressed_signal_suppressed(button):
 		return
-	if page_switch_press_active or bool(button.get_meta("page_switch_press_active", false)):
-		return
-	if _page_switch_transition_active():
-		return
-	_hold_page_switch_transition_button(button, skill_id)
-	_select_skill_from_page_switch(skill_id, button)
+	_force_button_unpressed(button)
 
 
 func _page_switch_transition_active() -> bool:
@@ -23796,8 +25358,8 @@ func _release_page_switch_transition_button() -> void:
 	page_switch_transition_target_skill_id = ""
 	if button_id == 0:
 		return
-	var button := instance_from_id(button_id) as Button
-	if button == null or not is_instance_valid(button):
+	var button := _valid_button_ref(instance_from_id(button_id))
+	if button == null:
 		return
 	if button.has_meta("page_switch_transition_hold"):
 		button.remove_meta("page_switch_transition_hold")
@@ -23837,7 +25399,7 @@ func _hold_activity_button_shell_at_depth(button: Button) -> void:
 	var button_id := button.get_instance_id()
 	depressed_activity_shell_buttons[button_id] = button
 	_force_button_unpressed(button)
-	var depth_offset := button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
+	var depth_offset := _meta_vector2(button, "activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET)
 	var pop := _valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
 	_kill_activity_button_shell_tween(button)
 	if pop != null:
@@ -24368,6 +25930,10 @@ func _route_direct_module_action_zone_input(event: InputEvent) -> bool:
 		return true
 	if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
 		_update_pending_module_pin_drag(event)
+	if _update_pending_module_collapse_press(event):
+		return true
+	if module_ui_collapse_press_active and _module_collapse_press_event_belongs_to_active_press(event):
+		_update_pending_module_collapse_drag(event)
 	if not _is_primary_press_event(event):
 		return false
 	var event_position := _module_pin_press_event_position(event)
@@ -24382,6 +25948,10 @@ func _route_module_action_zone_input(event: InputEvent) -> bool:
 		return true
 	if module_ui_pin_press_active and _module_pin_press_event_belongs_to_active_press(event):
 		_update_pending_module_pin_drag(event)
+	if _update_pending_module_collapse_press(event):
+		return true
+	if module_ui_collapse_press_active and _module_collapse_press_event_belongs_to_active_press(event):
+		_update_pending_module_collapse_drag(event)
 	if not _is_primary_press_event(event):
 		return false
 	var event_position := Vector2.ZERO
@@ -24415,11 +25985,7 @@ func _handle_module_action_zone_hit(hit: Dictionary, event: InputEvent, event_po
 			if _module_ui_is_collapsed(module_key):
 				_expand_module_ui_key(module_key)
 				return true
-			var badge := _module_collapse_badge(card_host)
-			if badge != null and badge.visible and not badge.disabled:
-				_collapse_module_ui_key(module_key, card_host_id)
-			else:
-				_show_module_collapse_confirm(card_host, module_key)
+			_begin_module_collapse_press(module_key, card_host_id, event_position, _module_pin_press_touch_index_for_event(event))
 			return true
 	return false
 
@@ -24490,6 +26056,8 @@ func _fishing_area_pin_corner_hit(event_position: Vector2) -> Dictionary:
 
 func _route_collapsed_module_expand_input(event: InputEvent) -> bool:
 	if not _is_primary_press_event(event):
+		return false
+	if _detail_actions_scroll_suppresses_child_click():
 		return false
 	var press_position := Vector2.ZERO
 	if event is InputEventMouseButton:
@@ -24571,8 +26139,8 @@ func _on_module_collapse_zone_gui_input(event: InputEvent, module_key: String, c
 		_expand_module_ui_key(module_key)
 		accept_event()
 		return
-	var card_host := instance_from_id(card_host_id) as Control
-	if card_host == null or not is_instance_valid(card_host) or card_host.is_queued_for_deletion():
+	var card_host := _valid_control_ref(instance_from_id(card_host_id))
+	if card_host == null or card_host.is_queued_for_deletion():
 		return
 	var zone := _module_action_zone_for_card(card_host, "collapse")
 	if zone == null:
@@ -24678,8 +26246,8 @@ func _commit_module_collapse_tap(module_key: String, card_host_id: int) -> void:
 	if _module_ui_is_collapsed(normalized_key):
 		_expand_module_ui_key(normalized_key)
 		return
-	var card_host := instance_from_id(card_host_id) as Control
-	if card_host == null or not is_instance_valid(card_host) or card_host.is_queued_for_deletion():
+	var card_host := _valid_control_ref(instance_from_id(card_host_id))
+	if card_host == null or card_host.is_queued_for_deletion():
 		return
 	var badge := _module_collapse_badge(card_host)
 	if badge != null and badge.visible and not badge.disabled:
@@ -24712,15 +26280,15 @@ func _collapse_module_ui_key(module_key: String, card_host_id: int) -> void:
 		return
 	module_ui_collapsed[normalized_key] = true
 	module_ui_animating_collapse_key = normalized_key
-	var card_host := instance_from_id(card_host_id) as Control
-	if card_host != null and is_instance_valid(card_host) and not card_host.is_queued_for_deletion():
+	var card_host := _valid_control_ref(instance_from_id(card_host_id))
+	if card_host != null and not card_host.is_queued_for_deletion():
 		var badge := _module_collapse_badge(card_host)
 		if badge != null:
 			badge.disabled = true
 			badge.visible = false
 	_mark_save_dirty("module collapsed")
 	save_game()
-	if card_host != null and is_instance_valid(card_host) and _collapse_module_ui_key_in_place(normalized_key, card_host):
+	if card_host != null and _collapse_module_ui_key_in_place(normalized_key, card_host):
 		return
 	call_deferred("_refresh_visible_skill_detail_action_list", -1, selected_skill_id, true, true)
 
@@ -24775,22 +26343,22 @@ func _collapse_module_ui_key_in_place(module_key: String, card_host: Control) ->
 
 
 func _set_collapsed_module_squeeze_height_for_tween(value: float, row_id: int, layout_host_id: int) -> void:
-	var row := instance_from_id(row_id) as Control
-	if row != null and is_instance_valid(row):
+	var row := _valid_control_ref(instance_from_id(row_id))
+	if row != null:
 		_set_module_root_layout_height(row, value)
-	var host := instance_from_id(layout_host_id) as Control
-	if host != null and is_instance_valid(host):
+	var host := _valid_control_ref(instance_from_id(layout_host_id))
+	if host != null:
 		_set_module_root_layout_height(host, value)
 
 
 func _finish_collapsed_module_collapse_animation(row_id: int, layout_host_id: int, module_key: String, target_height: float) -> void:
-	var row := instance_from_id(row_id) as Control
-	var layout_host := instance_from_id(layout_host_id) as Control
-	if layout_host != null and is_instance_valid(layout_host):
+	var row := _valid_control_ref(instance_from_id(row_id))
+	var layout_host := _valid_control_ref(instance_from_id(layout_host_id))
+	if layout_host != null:
 		_set_module_root_layout_height(layout_host, target_height)
 		if layout_host.has_meta("module_list_transition_tween"):
 			layout_host.remove_meta("module_list_transition_tween")
-	if row != null and is_instance_valid(row):
+	if row != null:
 		_set_module_root_layout_height(row, target_height)
 		row.size.y = target_height
 		if row.has_meta("module_list_transition_tween"):
@@ -24802,7 +26370,7 @@ func _finish_collapsed_module_collapse_animation(row_id: int, layout_host_id: in
 func _module_collapse_badge(card_host: Control) -> Button:
 	if card_host == null or not is_instance_valid(card_host) or not card_host.has_meta("module_collapse_badge_id"):
 		return null
-	return instance_from_id(int(card_host.get_meta("module_collapse_badge_id", 0))) as Button
+	return _valid_button_ref(instance_from_id(int(card_host.get_meta("module_collapse_badge_id", 0))))
 
 
 func _ensure_module_collapse_badge(card_host: Control, module_key: String) -> Button:
@@ -25019,8 +26587,10 @@ func _collapsed_module_view(module_key: String, title_text: String, content_widt
 func _on_collapsed_module_row_gui_input(event: InputEvent, module_key: String, row_id: int) -> void:
 	if not _is_primary_press_event(event):
 		return
-	var row := instance_from_id(row_id) as Control
-	if row == null or not is_instance_valid(row) or row.is_queued_for_deletion():
+	if _detail_actions_scroll_suppresses_child_click():
+		return
+	var row := _valid_control_ref(instance_from_id(row_id))
+	if row == null or row.is_queued_for_deletion():
 		return
 	if _event_points_inside_bottom_interactive_ui(event, row) or not _event_points_inside_detail_actions_viewport(event, row):
 		return
@@ -25245,23 +26815,28 @@ func _play_collapsed_module_expand_animation(row: Control, module_key: String) -
 	if layout_host != null and layout_host != row:
 		layout_host.set_meta("module_list_transition_tween", tween)
 	var layout_host_id := layout_host.get_instance_id() if layout_host != null else 0
-	var apply_height := func(value: float) -> void:
+	var row_id := row.get_instance_id()
+	tween.tween_method(_apply_collapsed_module_expand_height.bind(row_id, layout_host_id), start_height, target_height, MODULE_COLLAPSE_SQUEEZE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(_finish_collapsed_module_expand_animation.bind(row_id, layout_host_id, normalized_key, target_height))
+
+
+func _apply_collapsed_module_expand_height(value: float, row_id: int, layout_host_id: int) -> void:
+	var row := _valid_control_ref(instance_from_id(row_id))
+	if row != null:
 		_set_module_root_layout_height(row, value)
-		var host := instance_from_id(layout_host_id) as Control
-		if host != null and is_instance_valid(host):
-			_set_module_root_layout_height(host, value)
-	tween.tween_method(apply_height, start_height, target_height, MODULE_COLLAPSE_SQUEEZE_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_callback(_finish_collapsed_module_expand_animation.bind(row.get_instance_id(), layout_host_id, normalized_key, target_height))
+	var host := _valid_control_ref(instance_from_id(layout_host_id))
+	if host != null:
+		_set_module_root_layout_height(host, value)
 
 
 func _finish_collapsed_module_expand_animation(row_id: int, layout_host_id: int, module_key: String, target_height: float) -> void:
-	var row := instance_from_id(row_id) as Control
-	var layout_host := instance_from_id(layout_host_id) as Control
-	if layout_host != null and is_instance_valid(layout_host):
+	var row := _valid_control_ref(instance_from_id(row_id))
+	var layout_host := _valid_control_ref(instance_from_id(layout_host_id))
+	if layout_host != null:
 		_set_module_root_layout_height(layout_host, target_height)
 		if layout_host.has_meta("module_list_transition_tween"):
 			layout_host.remove_meta("module_list_transition_tween")
-	if row != null and is_instance_valid(row):
+	if row != null:
 		_set_module_root_layout_height(row, target_height)
 		_set_collapsed_module_visual_clipping(row, module_key, false, true)
 		if row.has_meta("module_list_transition_tween"):
@@ -25269,7 +26844,7 @@ func _finish_collapsed_module_expand_animation(row_id: int, layout_host_id: int,
 		if row.has_meta("module_ui_expanding_from_collapsed"):
 			row.remove_meta("module_ui_expanding_from_collapsed")
 		_finish_expanded_module_row_in_place(row, module_key, layout_host, target_height)
-	_finish_expand_module_ui_key(module_key, row == null or not is_instance_valid(row))
+	_finish_expand_module_ui_key(module_key, row == null)
 
 
 func _finish_expanded_module_row_in_place(row: Control, module_key: String, layout_host: Control, target_height: float) -> void:
@@ -25330,8 +26905,8 @@ func _on_module_pin_zone_gui_input(event: InputEvent, module_key: String, card_h
 		return
 	if not _module_ui_key_allows_pin_or_collapse(module_key):
 		return
-	var card_host := instance_from_id(card_host_id) as Control
-	if card_host == null or not is_instance_valid(card_host) or card_host.is_queued_for_deletion():
+	var card_host := _valid_control_ref(instance_from_id(card_host_id))
+	if card_host == null or card_host.is_queued_for_deletion():
 		return
 	var zone := _module_action_zone_for_card(card_host, "pin")
 	if zone == null:
@@ -25463,8 +27038,8 @@ func _commit_module_pin_tap(module_key: String, card_host_id: int) -> void:
 	var normalized_key := _normalized_module_ui_key(module_key)
 	if normalized_key.is_empty() or not _module_ui_key_allows_pin_or_collapse(normalized_key):
 		return
-	var card_host := instance_from_id(card_host_id) as Control
-	if card_host == null or not is_instance_valid(card_host) or card_host.is_queued_for_deletion():
+	var card_host := _valid_control_ref(instance_from_id(card_host_id))
+	if card_host == null or card_host.is_queued_for_deletion():
 		return
 	if _module_pin_badge_is_exiting(card_host):
 		return
@@ -25487,10 +27062,7 @@ func _show_module_pin_preview(card_host: Control, module_key: String) -> void:
 	if badge == null:
 		return
 	if badge.has_meta("module_pin_preview_tween"):
-		var old_preview_tween := badge.get_meta("module_pin_preview_tween") as Tween
-		if old_preview_tween != null and old_preview_tween.is_valid():
-			old_preview_tween.kill()
-		badge.remove_meta("module_pin_preview_tween")
+		_kill_meta_tween(badge, "module_pin_preview_tween")
 	var token := int(module_ui_pin_preview_tokens.get(normalized_key, 0)) + 1
 	module_ui_pin_preview_tokens[normalized_key] = token
 	badge.visible = true
@@ -25512,8 +27084,8 @@ func _show_module_pin_preview(card_host: Control, module_key: String) -> void:
 
 
 func _finish_module_pin_preview_animation(badge_id: int) -> void:
-	var badge := instance_from_id(badge_id) as TextureButton
-	if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
+	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
+	if badge == null or badge.is_queued_for_deletion():
 		return
 	if badge.has_meta("module_pin_preview_tween"):
 		badge.remove_meta("module_pin_preview_tween")
@@ -25523,17 +27095,14 @@ func _expire_module_pin_preview_after_delay(module_key: String, card_host_id: in
 	await get_tree().create_timer(3.0).timeout
 	if int(module_ui_pin_preview_tokens.get(module_key, 0)) != token or _module_ui_is_pinned(module_key):
 		return
-	var card_host := instance_from_id(card_host_id) as Control
-	if card_host == null or not is_instance_valid(card_host) or card_host.is_queued_for_deletion():
+	var card_host := _valid_control_ref(instance_from_id(card_host_id))
+	if card_host == null or card_host.is_queued_for_deletion():
 		return
 	var badge := _module_pin_badge(card_host)
 	if badge == null:
 		return
 	if badge.has_meta("module_pin_preview_tween"):
-		var old_tween := badge.get_meta("module_pin_preview_tween") as Tween
-		if old_tween != null and old_tween.is_valid():
-			old_tween.kill()
-		badge.remove_meta("module_pin_preview_tween")
+		_kill_meta_tween(badge, "module_pin_preview_tween")
 	_set_canvas_item_alpha_if_changed(badge, 0.0)
 	badge.visible = false
 	module_ui_pin_preview_tokens.erase(module_key)
@@ -25550,13 +27119,13 @@ func _pin_module_ui_key(module_key: String, card_host_id: int) -> void:
 	if _module_ui_is_pinned(normalized_key):
 		_unpin_module_ui_key(normalized_key, card_host_id)
 		return
-	var card_host := instance_from_id(card_host_id) as Control
+	var card_host := _valid_control_ref(instance_from_id(card_host_id))
 	_assign_random_module_pin_texture_path(normalized_key)
 	module_ui_pinned_order.append(normalized_key)
 	_hold_recent_pinned_source_from_lazy_prune(normalized_key)
 	module_ui_pin_preview_tokens.erase(normalized_key)
 	var played_confirm_animation := false
-	if card_host != null and is_instance_valid(card_host) and not card_host.is_queued_for_deletion():
+	if card_host != null and not card_host.is_queued_for_deletion():
 		_sync_module_pin_badge(card_host, normalized_key)
 		var badge := _module_pin_badge(card_host)
 		if badge != null:
@@ -25574,13 +27143,13 @@ func _unpin_module_ui_key(module_key: String, card_host_id: int) -> void:
 	if not _module_ui_key_allows_pin_or_collapse(normalized_key):
 		module_ui_pin_preview_tokens.erase(normalized_key)
 		return
-	var card_host := instance_from_id(card_host_id) as Control
+	var card_host := _valid_control_ref(instance_from_id(card_host_id))
 	_hold_recent_pinned_source_from_lazy_prune(normalized_key)
 	module_ui_pinned_order.erase(normalized_key)
 	module_ui_pin_color_paths.erase(normalized_key)
 	module_ui_pin_preview_tokens.erase(normalized_key)
 	var played_unpin_animation := false
-	if card_host != null and is_instance_valid(card_host) and not card_host.is_queued_for_deletion():
+	if card_host != null and not card_host.is_queued_for_deletion():
 		var badge := _module_pin_badge(card_host)
 		if badge != null:
 			_play_module_pin_unpin_animation(badge, card_host, normalized_key)
@@ -25857,7 +27426,7 @@ func _build_pinned_activities_shelf_content(content_width: float) -> Control:
 func _module_pin_badge(card_host: Control) -> TextureButton:
 	if card_host == null or not is_instance_valid(card_host) or not card_host.has_meta("module_pin_badge_id"):
 		return null
-	return instance_from_id(int(card_host.get_meta("module_pin_badge_id", 0))) as TextureButton
+	return _valid_texture_button_ref(instance_from_id(int(card_host.get_meta("module_pin_badge_id", 0))))
 
 
 func _module_pin_badge_clip_host(badge: TextureButton) -> Control:
@@ -25884,7 +27453,7 @@ func _set_module_pin_badge_clip_enabled(raw_badge: Object, enabled: bool) -> voi
 
 
 func _set_module_pin_badge_clip_enabled_by_id(badge_id: int, enabled: bool) -> void:
-	var badge := instance_from_id(badge_id) as TextureButton
+	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
 	_set_module_pin_badge_clip_enabled(badge, enabled)
 
 
@@ -25914,9 +27483,13 @@ func _assign_random_module_pin_texture_path(module_key: String) -> void:
 func _apply_module_pin_badge_texture(badge: TextureButton, module_key: String) -> void:
 	if badge == null or not is_instance_valid(badge):
 		return
-	badge.texture_normal = _texture_or_visual_fallback(_module_pin_texture_path_for_key(module_key))
+	var texture_path := _module_pin_texture_path_for_key(module_key)
+	badge.texture_normal = _texture_or_visual_fallback(texture_path)
 	badge.texture_pressed = badge.texture_normal
 	badge.texture_hover = badge.texture_normal
+	badge.texture_disabled = badge.texture_normal
+	badge.texture_focused = badge.texture_normal
+	badge.set_meta("module_pin_texture_path", texture_path)
 
 
 func _ensure_module_pin_badge(card_host: Control, module_key: String) -> TextureButton:
@@ -25992,10 +27565,7 @@ func _place_module_pin_badge_settled(badge: TextureButton) -> void:
 	if badge == null or not is_instance_valid(badge):
 		return
 	if badge.has_meta("module_pin_preview_tween"):
-		var preview_tween := badge.get_meta("module_pin_preview_tween") as Tween
-		if preview_tween != null and preview_tween.is_valid():
-			preview_tween.kill()
-		badge.remove_meta("module_pin_preview_tween")
+		_kill_meta_tween(badge, "module_pin_preview_tween")
 	var clip_host := _module_pin_badge_clip_host(badge)
 	if clip_host != null:
 		clip_host.visible = true
@@ -26027,14 +27597,9 @@ func _play_module_pin_confirm_animation(badge: TextureButton, card_host: Control
 	if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
 		return
 	if badge.has_meta("module_pin_tween"):
-		var old_tween := badge.get_meta("module_pin_tween") as Tween
-		if old_tween != null and old_tween.is_valid():
-			old_tween.kill()
+		_kill_meta_tween(badge, "module_pin_tween")
 	if badge.has_meta("module_pin_preview_tween"):
-		var old_preview_tween := badge.get_meta("module_pin_preview_tween") as Tween
-		if old_preview_tween != null and old_preview_tween.is_valid():
-			old_preview_tween.kill()
-		badge.remove_meta("module_pin_preview_tween")
+		_kill_meta_tween(badge, "module_pin_preview_tween")
 	_set_module_pin_badge_clip_enabled(badge, false)
 	badge.visible = true
 	badge.disabled = true
@@ -26073,8 +27638,8 @@ func _play_module_pin_confirm_animation(badge: TextureButton, card_host: Control
 
 
 func _finish_module_pin_confirm_animation(badge_id: int) -> void:
-	var badge := instance_from_id(badge_id) as TextureButton
-	if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
+	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
+	if badge == null or badge.is_queued_for_deletion():
 		return
 	if badge.has_meta("module_pin_tween"):
 		badge.remove_meta("module_pin_tween")
@@ -26086,14 +27651,9 @@ func _play_module_pin_unpin_animation(badge: TextureButton, card_host: Control, 
 	if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
 		return
 	if badge.has_meta("module_pin_tween"):
-		var old_tween := badge.get_meta("module_pin_tween") as Tween
-		if old_tween != null and old_tween.is_valid():
-			old_tween.kill()
+		_kill_meta_tween(badge, "module_pin_tween")
 	if badge.has_meta("module_pin_preview_tween"):
-		var old_preview_tween := badge.get_meta("module_pin_preview_tween") as Tween
-		if old_preview_tween != null and old_preview_tween.is_valid():
-			old_preview_tween.kill()
-		badge.remove_meta("module_pin_preview_tween")
+		_kill_meta_tween(badge, "module_pin_preview_tween")
 	_set_module_pin_badge_clip_enabled(badge, true)
 	badge.visible = true
 	badge.disabled = true
@@ -26155,8 +27715,8 @@ func _play_pinned_activities_empty_decor_pin_exit_animation(badge: TextureButton
 
 
 func _keep_module_pin_badge_disabled(_progress: float, badge_id: int) -> void:
-	var badge := instance_from_id(badge_id) as TextureButton
-	if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
+	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
+	if badge == null or badge.is_queued_for_deletion():
 		return
 	if badge.has_meta("module_pin_tween"):
 		badge.disabled = true
@@ -26164,21 +27724,22 @@ func _keep_module_pin_badge_disabled(_progress: float, badge_id: int) -> void:
 
 func _disable_module_pin_badge_during_unpin(badge_id: int) -> void:
 	await get_tree().process_frame
-	var badge := instance_from_id(badge_id) as TextureButton
-	if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
+	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
+	if badge == null or badge.is_queued_for_deletion():
 		return
 	if badge.has_meta("module_pin_tween"):
 		badge.disabled = true
 	await get_tree().process_frame
-	if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
+	badge = _valid_texture_button_ref(instance_from_id(badge_id))
+	if badge == null or badge.is_queued_for_deletion():
 		return
 	if badge.has_meta("module_pin_tween"):
 		badge.disabled = true
 
 
 func _finish_module_pin_unpin_animation(badge_id: int, card_host_id: int, module_key: String) -> void:
-	var badge := instance_from_id(badge_id) as TextureButton
-	if badge != null and is_instance_valid(badge) and not badge.is_queued_for_deletion():
+	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
+	if badge != null and not badge.is_queued_for_deletion():
 		if badge.has_meta("module_pin_tween"):
 			badge.remove_meta("module_pin_tween")
 		badge.visible = false
@@ -26191,14 +27752,14 @@ func _finish_module_pin_unpin_animation(badge_id: int, card_host_id: int, module
 
 
 func _finish_pinned_activities_empty_decor_pin_exit_animation(badge_id: int, decor_host_id: int, hit_zone_id: int) -> void:
-	var hit_zone := instance_from_id(hit_zone_id) as Control
-	if hit_zone != null and is_instance_valid(hit_zone) and not hit_zone.is_queued_for_deletion():
+	var hit_zone := _valid_control_ref(instance_from_id(hit_zone_id))
+	if hit_zone != null and not hit_zone.is_queued_for_deletion():
 		hit_zone.queue_free()
-	var badge := instance_from_id(badge_id) as TextureButton
-	if badge != null and is_instance_valid(badge) and not badge.is_queued_for_deletion() and badge.has_meta("module_pin_tween"):
+	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
+	if badge != null and not badge.is_queued_for_deletion() and badge.has_meta("module_pin_tween"):
 		badge.remove_meta("module_pin_tween")
-	var decor_host := instance_from_id(decor_host_id) as Control
-	if decor_host != null and is_instance_valid(decor_host) and not decor_host.is_queued_for_deletion():
+	var decor_host := _valid_control_ref(instance_from_id(decor_host_id))
+	if decor_host != null and not decor_host.is_queued_for_deletion():
 		decor_host.queue_free()
 
 func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview_only := false, card_key_override := "") -> Control:
@@ -26376,7 +27937,7 @@ func _on_thieving_heist_button_input(event: InputEvent, heist_id: String, source
 	if is_release:
 		var was_active := bool(source.get_meta("thieving_heist_press_active", false))
 		var was_dragged := bool(source.get_meta("thieving_heist_press_dragged", false))
-		var press_position := source.get_meta("thieving_heist_press_position", event_position) as Vector2
+		var press_position := _meta_vector2(source, "thieving_heist_press_position", event_position)
 		if skill_swipe_tracking:
 			_route_skill_swipe_button_input(event, source)
 		if source.has_meta("thieving_heist_press_active"):
@@ -26449,7 +28010,7 @@ func _route_thieving_heist_button_global_input(event: InputEvent) -> bool:
 	if is_release:
 		var was_active := bool(source.get_meta("thieving_heist_press_active", false))
 		var was_dragged := bool(source.get_meta("thieving_heist_press_dragged", false))
-		var press_position := source.get_meta("thieving_heist_press_position", event_position) as Vector2
+		var press_position := _meta_vector2(source, "thieving_heist_press_position", event_position)
 		if skill_swipe_tracking:
 			_route_skill_swipe_button_input(event, source)
 		if source.has_meta("thieving_heist_press_active"):
@@ -26579,8 +28140,8 @@ func _set_thieving_heist_reveal_pop_offset(progress: float, pop: Control, target
 
 
 func _set_thieving_heist_reveal_pop_offset_safe(progress: float, pop_id: int, target_height: float) -> void:
-	var pop := instance_from_id(pop_id) as Control
-	if pop == null or not is_instance_valid(pop) or pop.is_queued_for_deletion():
+	var pop := _valid_control_ref(instance_from_id(pop_id))
+	if pop == null or pop.is_queued_for_deletion():
 		return
 	_set_thieving_heist_reveal_pop_offset(progress, pop, target_height)
 
@@ -26588,15 +28149,15 @@ func _set_thieving_heist_reveal_pop_offset_safe(progress: float, pop_id: int, ta
 func _finish_thieving_heist_preview_fade_in(heist_id: String, root_id: int, pop_id: int, target_height: float) -> void:
 	var key := _thieving_heist_card_key(heist_id)
 	var card := action_cards.get(key, {}) as Dictionary
-	var cb_root := instance_from_id(root_id) as Control
-	var cb_pop := instance_from_id(pop_id) as Control
-	if cb_root != null and is_instance_valid(cb_root) and not cb_root.is_queued_for_deletion():
+	var cb_root := _valid_control_ref(instance_from_id(root_id))
+	var cb_pop := _valid_control_ref(instance_from_id(pop_id))
+	if cb_root != null and not cb_root.is_queued_for_deletion():
 		var final_size := cb_root.custom_minimum_size
 		final_size.y = target_height
 		cb_root.custom_minimum_size = final_size
 		cb_root.clip_contents = bool(card.get("thieving_heist_reveal_original_root_clip", false))
 		_set_canvas_item_modulate_if_changed(cb_root, Color.WHITE)
-	if cb_pop != null and is_instance_valid(cb_pop) and not cb_pop.is_queued_for_deletion():
+	if cb_pop != null and not cb_pop.is_queued_for_deletion():
 		cb_pop.anchor_top = 0.0
 		cb_pop.anchor_bottom = float(card.get("thieving_heist_reveal_original_pop_anchor_bottom", 1.0))
 		cb_pop.offset_top = 0.0
@@ -26644,7 +28205,7 @@ void fragment() {
 
 func _thieving_heist_feather_band(top: bool) -> ColorRect:
 	var band := ColorRect.new()
-	band.color = COLOR_PAPER
+	band.color = _theme_paper_color()
 	band.anchor_left = 0.0
 	band.anchor_right = 1.0
 	band.anchor_top = 0.0 if top else 1.0
@@ -27104,11 +28665,7 @@ func _release_thieving_action_jail_overlay(card: Dictionary) -> void:
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var bars := card.get("jail_bars_shake_body") as Control
 	var timer := card.get("jail_label") as Control
-	if card.has("jail_appear_tween"):
-		var appear_tween := card.get("jail_appear_tween") as Tween
-		if appear_tween != null and appear_tween.is_valid():
-			appear_tween.kill()
-		card.erase("jail_appear_tween")
+	_kill_card_tween(card, "jail_appear_tween")
 	var tween := create_tween()
 	tween.set_parallel(true)
 	tween.tween_property(overlay, "modulate:a", 0.0, 0.28).set_delay(0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -27153,10 +28710,7 @@ func _play_thieving_action_jail_appear(card: Dictionary) -> void:
 		return
 	if not is_instance_valid(overlay) or not is_instance_valid(bars) or not is_instance_valid(timer):
 		return
-	if card.has("jail_appear_tween"):
-		var existing := card.get("jail_appear_tween") as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+	_kill_card_tween(card, "jail_appear_tween")
 	var jail_overlay_id := overlay.get_instance_id()
 	var jail_bars_id := bars.get_instance_id()
 	var jail_timer_id := timer.get_instance_id()
@@ -27171,15 +28725,15 @@ func _play_thieving_action_jail_appear(card: Dictionary) -> void:
 
 
 func _finish_thieving_action_jail_appear(card_key: String, jail_overlay_id: int, jail_bars_id: int, jail_timer_id: int) -> void:
-	var cb_overlay := instance_from_id(jail_overlay_id) as Control
-	var cb_bars := instance_from_id(jail_bars_id) as Control
-	var cb_timer := instance_from_id(jail_timer_id) as Control
-	if cb_overlay != null and is_instance_valid(cb_overlay):
+	var cb_overlay := _valid_control_ref(instance_from_id(jail_overlay_id))
+	var cb_bars := _valid_control_ref(instance_from_id(jail_bars_id))
+	var cb_timer := _valid_control_ref(instance_from_id(jail_timer_id))
+	if cb_overlay != null:
 		cb_overlay.modulate.a = 1.0
-	if cb_bars != null and is_instance_valid(cb_bars):
+	if cb_bars != null:
 		cb_bars.position.y = 0.0
 		cb_bars.scale = Vector2.ONE
-	if cb_timer != null and is_instance_valid(cb_timer):
+	if cb_timer != null:
 		cb_timer.modulate.a = 1.0
 		cb_timer.scale = Vector2.ONE
 	var card := action_cards.get(card_key, {}) as Dictionary
@@ -27267,10 +28821,7 @@ func _sync_onboarding_first_module_top_spacer(instant := true) -> void:
 		target_height,
 		ONBOARDING_FIRST_MODULE_CENTER_RELEASE_SECONDS
 	).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
-	onboarding_first_module_spacer_tween.finished.connect(func():
-		onboarding_first_module_spacer_tween = null
-		_sync_detail_actions_scroll_limit()
-	)
+	onboarding_first_module_spacer_tween.finished.connect(_finish_onboarding_first_module_spacer_tween)
 
 
 func _apply_onboarding_first_module_top_spacer_height(height: float) -> void:
@@ -27278,6 +28829,11 @@ func _apply_onboarding_first_module_top_spacer_height(height: float) -> void:
 		return
 	detail_actions_top_spacer.custom_minimum_size = Vector2(0, height)
 	detail_actions_top_spacer.update_minimum_size()
+
+
+func _finish_onboarding_first_module_spacer_tween() -> void:
+	onboarding_first_module_spacer_tween = null
+	_sync_detail_actions_scroll_limit()
 
 
 func _release_onboarding_first_module_centering() -> void:
@@ -27427,6 +28983,7 @@ func _activity_jump_button(path: String, top: bool) -> TextureButton:
 	button.texture_hover = button.texture_normal
 	button.texture_pressed = button.texture_normal
 	button.texture_disabled = button.texture_normal
+	button.texture_focused = button.texture_normal
 	button.ignore_texture_size = true
 	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	button.custom_minimum_size = ACTIVITY_JUMP_ARROW_SIZE
@@ -27545,9 +29102,10 @@ func _detail_jump_arrows_idle(top_button: TextureButton, bottom_button: TextureB
 
 
 func _valid_texture_button_ref(value) -> TextureButton:
-	if value == null or typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
+	var control := _valid_control_ref(value)
+	if control == null:
 		return null
-	return value as TextureButton
+	return control as TextureButton
 
 
 func _process_chain_proximity_audio(delta: float) -> void:
@@ -27625,13 +29183,14 @@ func _visible_detail_regen_gauge_needs_header_refresh() -> bool:
 
 func _skill_detail_needs_high_frequency_ui_update() -> bool:
 	if current_screen == "menu":
-		return not running_action_id.is_empty()
+		return not running_action_id.is_empty() or not event_running_action_id.is_empty()
 	if current_screen == "queue":
 		return true
 	if current_screen == "pinned":
 		var pinned_scroll := content_scroll as MobileScrollContainer
 		return (
 			not running_action_id.is_empty()
+			or not event_running_action_id.is_empty()
 			or action_stop_hold_active
 			or not action_card_press_key.is_empty()
 			or activity_start_highlight_active
@@ -27644,6 +29203,8 @@ func _skill_detail_needs_high_frequency_ui_update() -> bool:
 	if current_screen != "skill":
 		return false
 	if running_skill_id == selected_skill_id and not running_action_id.is_empty():
+		return true
+	if event_running_skill_id == selected_skill_id and not event_running_action_id.is_empty():
 		return true
 	if skill_swipe_tracking or skill_swipe_animating:
 		return true
@@ -27700,6 +29261,7 @@ func _update_ui(delta: float, instant := false) -> void:
 	var header_gauge_frame_refresh := skill_frame_refresh or _visible_detail_regen_gauge_needs_header_refresh()
 	var detail_header_gauge_refresh := _consume_detail_header_gauge_refresh(delta, instant, static_refresh, header_gauge_frame_refresh)
 	var passive_card_progress_refresh := _consume_passive_card_progress_refresh(delta, instant, static_refresh, skill_frame_refresh)
+	_sync_action_art_animations_for_running_state(instant or static_refresh)
 	if static_refresh and not boot_detail_render_in_progress and not screen_render_in_progress and _skill_detail_needs_action_list_refresh():
 		var refresh_restore_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
 		call_deferred("_refresh_visible_skill_detail_action_list", refresh_restore_scroll, selected_skill_id)
@@ -27749,11 +29311,14 @@ func _update_ui(delta: float, instant := false) -> void:
 		if detail_header_gauge_refresh and _fishing_rework_active_for_skill(selected_skill_id):
 			if detail_fish_circle != null:
 				_set_fish_circle_for_skill(detail_fish_circle, selected_skill_id, instant)
+		elif detail_header_gauge_refresh and selected_skill_id == "fight" and detail_blue_guy_health_gauge != null:
+			_set_blue_guy_health_gauge(detail_blue_guy_health_gauge, instant)
 		elif detail_header_gauge_refresh and detail_regen_circle != null:
 			var max_stamina := _max_stamina(selected_skill_id)
 			var stamina_value := _stamina(selected_skill_id)
 			var stamina_decimal_fraction := _stamina_fraction(selected_skill_id)
 			var circle_value := _stamina_regen_fraction(selected_skill_id)
+			detail_regen_circle.set_dark_mode(dark_mode_enabled)
 			detail_regen_circle.set_theme_color(_skill_theme_color(selected_skill_id))
 			detail_regen_circle.set_regen_ring_color(_stamina_regen_circle_color(selected_skill_id))
 			detail_regen_circle.set_show_decimal(show_stamina_decimal)
@@ -27789,7 +29354,15 @@ func _update_ui(delta: float, instant := false) -> void:
 				_discard_action_card_key(key)
 				continue
 			var skill_id := str(card.get("skill_id", ""))
-			if current_screen != "pinned" and current_screen != "queue" and not skill_strip_ids.is_empty() and not skill_id.is_empty() and skill_id != selected_skill_id and skill_id != running_skill_id:
+			if (
+				current_screen != "pinned"
+				and current_screen != "queue"
+				and not skill_strip_ids.is_empty()
+				and not skill_id.is_empty()
+				and skill_id != selected_skill_id
+				and skill_id != running_skill_id
+				and skill_id != event_running_skill_id
+			):
 				continue
 			var action_id := str(card.get("action_id", ""))
 			if skill_id.is_empty() or action_id.is_empty():
@@ -27832,13 +29405,16 @@ func _update_ui(delta: float, instant := false) -> void:
 				_update_fishing_method_slot(card, skill_id, action_id, method_action, method_unlocked, method_running, delta, instant)
 				continue
 			var action := _action_data(skill_id, action_id)
-			var running := running_skill_id == skill_id and running_action_id == action_id
+			var event_running := event_running_skill_id == skill_id and event_running_action_id == action_id
+			var running := (running_skill_id == skill_id and running_action_id == action_id) or event_running
+			var running_progress := event_action_progress if event_running else action_progress
 			if not running and not static_refresh and not instant:
 				continue
 			if not running and not static_refresh and (skill_swipe_tracking or skill_swipe_animating):
 				continue
 			if not running and not static_refresh and not skill_strip_ids.is_empty() and skill_id != selected_skill_id:
 				continue
+			_sync_blue_guy_chicken_brawl_stage_active(card, skill_id, action_id, running)
 			if bool(card.get("swipe_proxy", false)):
 				continue
 			var unlocked := _is_action_unlocked(skill_id, action)
@@ -27864,7 +29440,7 @@ func _update_ui(delta: float, instant := false) -> void:
 					_update_action_card_mastery_bar(card, skill_id, action_id, delta, instant)
 			if skill_id == "thieving":
 				_sync_thieving_action_jail_overlay(card, action_id)
-			_update_action_card_run_feedback(card, skill_id, running, delta, instant)
+			_update_action_card_run_feedback(card, skill_id, running, delta, instant, running_progress)
 		_sync_hidden_locked_activity_preview_layouts()
 	if locked_activity_preview_fade_play_pending:
 		_play_pending_locked_activity_preview_reveals()
@@ -28014,15 +29590,15 @@ func _set_mastery_bar(mastery_bar: Control, target: float, instant: bool) -> voi
 
 
 func _set_mastery_bar_value_bound(value: float, mastery_bar_id: int) -> void:
-	var mastery_bar := instance_from_id(mastery_bar_id) as Control
-	if mastery_bar == null or not is_instance_valid(mastery_bar):
+	var mastery_bar := _valid_control_ref(instance_from_id(mastery_bar_id))
+	if mastery_bar == null:
 		return
 	mastery_bar.call("set_value", value)
 
 
 func _finish_mastery_bar_tween(mastery_bar_id: int, clamped_target: float) -> void:
-	var callback_mastery_bar := instance_from_id(mastery_bar_id) as Control
-	if callback_mastery_bar == null or not is_instance_valid(callback_mastery_bar):
+	var callback_mastery_bar := _valid_control_ref(instance_from_id(mastery_bar_id))
+	if callback_mastery_bar == null:
 		return
 	callback_mastery_bar.call("set_value", clamped_target)
 	if callback_mastery_bar.has_meta("mastery_bar_tween"):
@@ -28030,13 +29606,7 @@ func _finish_mastery_bar_tween(mastery_bar_id: int, clamped_target: float) -> vo
 
 
 func _clear_mastery_bar_tween(mastery_bar: Control) -> void:
-	if mastery_bar == null or not is_instance_valid(mastery_bar):
-		return
-	if mastery_bar.has_meta("mastery_bar_tween"):
-		var tween := mastery_bar.get_meta("mastery_bar_tween") as Tween
-		if tween != null and tween.is_valid():
-			tween.kill()
-		mastery_bar.remove_meta("mastery_bar_tween")
+	_kill_meta_tween(mastery_bar, "mastery_bar_tween")
 
 
 func _place_action_card_medal(card: Dictionary, medal: TextureRect, mastery_level: int) -> void:
@@ -28071,10 +29641,7 @@ func _play_action_card_medal_tap_ceremony(card: Dictionary) -> void:
 
 
 func _play_action_card_medal_tap_pop(card: Dictionary, medal: TextureRect) -> void:
-	if medal.has_meta("medal_tap_pop_tween"):
-		var existing := medal.get_meta("medal_tap_pop_tween") as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+	_kill_meta_tween(medal, "medal_tap_pop_tween")
 	var destination := _action_card_medal_destination(card, medal)
 	medal.position = destination
 	medal.scale = Vector2.ONE
@@ -28092,8 +29659,8 @@ func _play_action_card_medal_tap_pop(card: Dictionary, medal: TextureRect) -> vo
 
 
 func _finish_action_card_medal_tap_pop(medal_id: int) -> void:
-	var medal := instance_from_id(medal_id) as TextureRect
-	if medal == null or not is_instance_valid(medal):
+	var medal := _valid_texture_rect_ref(instance_from_id(medal_id))
+	if medal == null:
 		return
 	medal.scale = Vector2.ONE
 	medal.rotation_degrees = 0.0
@@ -28272,36 +29839,33 @@ func _register_action_card_medal_tap_effect(card: Dictionary, node: Node, tween:
 
 
 func _finish_action_card_medal_tap_effect(card_key: String, effect_id: int) -> void:
-	var effect := instance_from_id(effect_id) as Node
-	if effect != null and is_instance_valid(effect):
+	var effect := _valid_node_ref(instance_from_id(effect_id))
+	if effect != null:
 		effect.queue_free()
 	var card := action_cards.get(card_key, {}) as Dictionary
 	if card.is_empty():
 		return
 	var remaining_effects := []
 	for raw_effect in card.get("medal_tap_effects", []) as Array:
-		var node := raw_effect as Node
-		if node != null and is_instance_valid(node) and node.get_instance_id() != effect_id:
-			remaining_effects.append(node)
+		if raw_effect != null and is_instance_valid(raw_effect) and raw_effect is Node and raw_effect.get_instance_id() != effect_id:
+			remaining_effects.append(raw_effect)
 	card["medal_tap_effects"] = remaining_effects
 
 
 func _clear_action_card_medal_tap_ceremony(card: Dictionary) -> void:
 	for raw_tween in card.get("medal_tap_tweens", []) as Array:
-		var tween := raw_tween as Tween
-		if tween != null and tween.is_valid():
-			tween.kill()
+		if raw_tween != null and is_instance_valid(raw_tween) and raw_tween is Tween and raw_tween.is_valid():
+			raw_tween.kill()
 	card.erase("medal_tap_tweens")
 	card.erase("medal_shine_active_count")
-	var medal := card.get("medal") as TextureRect
+	var medal = card.get("medal", null)
 	if medal != null and is_instance_valid(medal):
 		_restore_action_card_medal_material(medal)
 		if medal.has_meta("medal_tap_effect_tween"):
 			medal.remove_meta("medal_tap_effect_tween")
 	for raw_effect in card.get("medal_tap_effects", []) as Array:
-		var effect := raw_effect as Node
-		if effect != null and is_instance_valid(effect) and effect != medal:
-			effect.queue_free()
+		if raw_effect != null and is_instance_valid(raw_effect) and raw_effect is Node and raw_effect != medal:
+			raw_effect.queue_free()
 	card.erase("medal_tap_effects")
 
 
@@ -28333,8 +29897,8 @@ func _play_new_medal_ceremony(card: Dictionary, medal: TextureRect, old_texture:
 
 
 func _finish_new_medal_ceremony(card_key: String, medal_id: int, destination: Vector2) -> void:
-	var callback_medal := instance_from_id(medal_id) as TextureRect
-	if callback_medal != null and is_instance_valid(callback_medal) and not callback_medal.is_queued_for_deletion():
+	var callback_medal := _valid_texture_rect_ref(instance_from_id(medal_id))
+	if callback_medal != null and not callback_medal.is_queued_for_deletion():
 		callback_medal.position = destination
 		callback_medal.scale = Vector2.ONE
 		callback_medal.rotation_degrees = 0.0
@@ -28348,7 +29912,7 @@ func _finish_new_medal_ceremony(card_key: String, medal_id: int, destination: Ve
 func _play_earned_medal_tap_ceremony(card: Dictionary, medal: TextureRect) -> void:
 	if card.is_empty() or medal == null or not is_instance_valid(medal) or not medal.is_visible_in_tree():
 		return
-	var card_medal := card.get("medal", null) as TextureRect
+	var card_medal = card.get("medal", null)
 	if card_medal != medal:
 		return
 	_play_action_card_medal_tap_ceremony(card)
@@ -28386,8 +29950,8 @@ func _start_replaced_medal_fall(card: Dictionary, medal: TextureRect, old_textur
 
 
 func _finish_replaced_medal_fall(card_key: String, outgoing_id: int) -> void:
-	var callback_outgoing := instance_from_id(outgoing_id) as TextureRect
-	if callback_outgoing != null and is_instance_valid(callback_outgoing):
+	var callback_outgoing := _valid_texture_rect_ref(instance_from_id(outgoing_id))
+	if callback_outgoing != null:
 		callback_outgoing.queue_free()
 	var card := action_cards.get(card_key, {}) as Dictionary
 	if not card.is_empty():
@@ -28397,16 +29961,16 @@ func _finish_replaced_medal_fall(card_key: String, outgoing_id: int) -> void:
 
 func _clear_action_card_medal_ceremony(card: Dictionary) -> void:
 	_clear_action_card_medal_tap_ceremony(card)
-	var ceremony_tween := card.get("medal_ceremony_tween", null) as Tween
-	if ceremony_tween != null and ceremony_tween.is_valid():
+	var ceremony_tween = card.get("medal_ceremony_tween", null)
+	if ceremony_tween != null and is_instance_valid(ceremony_tween) and ceremony_tween is Tween and ceremony_tween.is_valid():
 		ceremony_tween.kill()
 	card.erase("medal_ceremony_tween")
-	var outgoing_tween := card.get("medal_outgoing_tween", null) as Tween
-	if outgoing_tween != null and outgoing_tween.is_valid():
+	var outgoing_tween = card.get("medal_outgoing_tween", null)
+	if outgoing_tween != null and is_instance_valid(outgoing_tween) and outgoing_tween is Tween and outgoing_tween.is_valid():
 		outgoing_tween.kill()
 	card.erase("medal_outgoing_tween")
-	var outgoing := card.get("medal_outgoing", null) as Node
-	if outgoing != null and is_instance_valid(outgoing):
+	var outgoing = card.get("medal_outgoing", null)
+	if outgoing != null and is_instance_valid(outgoing) and outgoing is Node:
 		outgoing.queue_free()
 	card.erase("medal_outgoing")
 
@@ -28609,10 +30173,7 @@ func _play_hub_mission_badge_success(card: Dictionary) -> void:
 	var badge := card.get("mission_badge") as Control
 	if badge == null or not is_instance_valid(badge) or not badge.is_visible_in_tree():
 		return
-	if card.has("mission_badge_tween"):
-		var existing := card.get("mission_badge_tween") as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+	_kill_card_tween(card, "mission_badge_tween")
 	badge.pivot_offset = badge.size * 0.5
 	badge.scale = Vector2.ONE
 	badge.modulate = Color("#93ff9e")
@@ -28627,8 +30188,8 @@ func _play_hub_mission_badge_success(card: Dictionary) -> void:
 
 
 func _finish_hub_mission_badge_success(card_key: String, badge_id: int) -> void:
-	var callback_badge := instance_from_id(badge_id) as Control
-	if callback_badge != null and is_instance_valid(callback_badge):
+	var callback_badge := _valid_control_ref(instance_from_id(badge_id))
+	if callback_badge != null:
 		callback_badge.scale = Vector2.ONE
 		callback_badge.modulate = Color.WHITE
 	var card := action_cards.get(card_key, {}) as Dictionary
@@ -28670,19 +30231,11 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		_set_canvas_item_visible_if_changed(button, true)
 		_set_canvas_item_modulate_if_changed(button, Color(1, 1, 1, 0))
 	var static_refresh_key := _action_card_static_refresh_key(skill_id, action, unlocked, ceremony_active)
-	if not static_refresh_key.is_empty() and str(card.get("action_card_static_refresh_key", "")) == static_refresh_key:
-		_sync_activity_lock_overlay(card, action, unlocked)
-		_sync_activity_card_title_layer(card, unlocked)
-		var cached_stat_boxes := card.get("stat_boxes", {}) as Dictionary
-		_sync_xp_reward_chips(cached_stat_boxes.get("xp") as Control, xp_label, skill_id, action)
-		_sync_locked_activity_preview_presence(card, skill_id, action)
-		return
-	if not static_refresh_key.is_empty():
-		card["action_card_static_refresh_key"] = static_refresh_key
 	var xp_reward_parts := _action_xp_reward_parts_for_display(skill_id, action)
 	var xp_text := "+%s" % _format_info_chip_number(float(_action_xp_reward_total(xp_reward_parts)))
-	var stamina_text := "%s" % _format_info_chip_number(_effective_stamina(skill_id, action))
-	var time_label := "FILL" if _fishing_batch_soak_active(skill_id) else "TIME"
+	var show_stamina_stat := _action_shows_stamina_stat(skill_id, action)
+	var stamina_text := "%s" % _format_info_chip_number(_effective_stamina(skill_id, action)) if show_stamina_stat else ""
+	var time_label := "FILL" if _fishing_batch_soak_active(skill_id) and not _is_event_action(action) else "TIME"
 	var time_text := "%ss" % _format_info_chip_number(_action_cycle_seconds(skill_id, action))
 	var success_text := "%s%%" % _format_info_chip_number(_success_chance(skill_id, action))
 	if _is_convergence_action(action):
@@ -28692,20 +30245,33 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		time_label = "CYCLE"
 		time_text = "%ss" % _format_info_chip_number(_convergence_total_cycle_seconds(action))
 		success_text = ""
-	if card.get("last_xp_text", "") != xp_text:
+	if not static_refresh_key.is_empty() and str(card.get("action_card_static_refresh_key", "")) == static_refresh_key:
 		_set_label_text_if_changed(xp_label, xp_text)
-		card["last_xp_text"] = xp_text
-	if card.get("last_stamina_text", "") != stamina_text:
 		_set_label_text_if_changed(stamina_label, stamina_text)
-		card["last_stamina_text"] = stamina_text
-	if card.get("last_time_text", "") != time_text:
 		_set_label_text_if_changed(time_value_label, time_text)
-		card["last_time_text"] = time_text
-	if card.get("last_success_text", "") != success_text:
 		_set_label_text_if_changed(success_label, success_text)
-		card["last_success_text"] = success_text
+		_sync_action_stat_chip_title(xp_label, "XP")
+		_sync_action_stat_chip_title(stamina_label, "STAM" if show_stamina_stat else "")
+		_sync_action_stat_chip_title(time_value_label, time_label)
+		_sync_action_stat_chip_title(success_label, "" if _is_convergence_action(action) else "RATE")
+		_sync_activity_lock_overlay(card, action, unlocked)
+		_sync_activity_card_title_layer(card, unlocked)
+		var cached_stat_boxes := card.get("stat_boxes", {}) as Dictionary
+		_sync_xp_reward_chips(cached_stat_boxes.get("xp") as Control, xp_label, skill_id, action)
+		_sync_locked_activity_preview_presence(card, skill_id, action)
+		return
+	if not static_refresh_key.is_empty():
+		card["action_card_static_refresh_key"] = static_refresh_key
+	_set_label_text_if_changed(xp_label, xp_text)
+	card["last_xp_text"] = xp_text
+	_set_label_text_if_changed(stamina_label, stamina_text)
+	card["last_stamina_text"] = stamina_text
+	_set_label_text_if_changed(time_value_label, time_text)
+	card["last_time_text"] = time_text
+	_set_label_text_if_changed(success_label, success_text)
+	card["last_success_text"] = success_text
 	_sync_action_stat_chip_title(xp_label, "XP")
-	_sync_action_stat_chip_title(stamina_label, "" if _is_convergence_action(action) else "STAM")
+	_sync_action_stat_chip_title(stamina_label, "STAM" if show_stamina_stat else "")
 	_sync_action_stat_chip_title(time_value_label, time_label)
 	_sync_action_stat_chip_title(success_label, "" if _is_convergence_action(action) else "RATE")
 	var stat_theme_color := _skill_theme_color(skill_id)
@@ -28715,13 +30281,21 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 	_sync_action_stat_chip_label_style(stamina_label, _action_stat_chip_buffed(skill_id, action, "stamina"), stat_theme_color, stat_boxes.get("stamina") as Control)
 	_sync_action_stat_chip_label_style(time_value_label, _action_stat_chip_buffed(skill_id, action, "time"), stat_theme_color, stat_boxes.get("time") as Control)
 	_sync_action_stat_chip_label_style(success_label, _action_stat_chip_buffed(skill_id, action, "success"), stat_theme_color, stat_boxes.get("success") as Control)
+	var stamina_box := stat_boxes.get("stamina") as Control
 	if _is_convergence_action(action):
-		var stamina_box := stat_boxes.get("stamina") as Control
 		if stamina_box != null:
 			stamina_box.visible = false
 		var success_box := stat_boxes.get("success") as Control
 		if success_box != null:
 			success_box.visible = false
+	elif _is_fishing_event_action(skill_id, action):
+		if stamina_box != null:
+			stamina_box.visible = false
+	elif not show_stamina_stat:
+		if stamina_box != null:
+			stamina_box.visible = false
+	elif stamina_box != null:
+		stamina_box.visible = true
 	_sync_hub_mission_badge(card, skill_id, action, unlocked)
 	_sync_activity_lock_overlay(card, action, unlocked)
 	if _is_convergence_action(action):
@@ -29054,7 +30628,7 @@ func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color:
 		box.set_meta("stat_box_buffed", buffed)
 		box.set_meta("stat_box_theme_color", theme_color)
 		_apply_action_stat_box_style(box, bool(box.get_meta("stat_box_style_active", false)))
-	var style_key := "%s:%s" % [buffed, theme_color.to_html(true)]
+	var style_key := "%s:%s:%s" % [buffed, theme_color.to_html(true), dark_mode_enabled]
 	if str(label.get_meta("stat_chip_style_key", "")) == style_key:
 		return
 	label.set_meta("stat_chip_style_key", style_key)
@@ -29066,10 +30640,10 @@ func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color:
 			title_label.add_theme_color_override("font_color", Color.WHITE)
 			title_label.add_theme_constant_override("outline_size", 0)
 	else:
-		label.add_theme_color_override("font_color", COLOR_INK)
+		label.add_theme_color_override("font_color", _theme_ink_color())
 		label.add_theme_constant_override("outline_size", 0)
 		if title_label != null:
-			title_label.add_theme_color_override("font_color", COLOR_INK)
+			title_label.add_theme_color_override("font_color", _theme_ink_color())
 			title_label.add_theme_constant_override("outline_size", 0)
 
 
@@ -29104,6 +30678,14 @@ func _action_stat_chip_buffed(skill_id: String, action: Dictionary, stat_kind: S
 		"success":
 			return _success_chance(skill_id, action) > _base_success_chance_for_chip(skill_id, action) + 0.001
 	return false
+
+
+func _action_shows_stamina_stat(skill_id: String, action: Dictionary) -> bool:
+	return not _is_convergence_action(action) and not _is_fishing_event_action(skill_id, action) and not (_fishing_rework_active_for_skill(skill_id) and not _is_event_action(action))
+
+
+func _is_fishing_event_action(skill_id: String, action: Dictionary) -> bool:
+	return skill_id == "fishing" and _is_event_action(action)
 
 
 func _action_stat_time_chip_buffed(skill_id: String, action: Dictionary) -> bool:
@@ -29158,6 +30740,17 @@ func _on_action_stat_box_input(event: InputEvent, skill_id: String, action_id: S
 func _on_action_stat_button_pressed(skill_id: String, action_id: String, stat_kind: String) -> void:
 	_toggle_activity_stat_popup(skill_id, action_id, stat_kind)
 	get_viewport().set_input_as_handled()
+
+
+func _on_action_stat_box_gui_input(event: InputEvent, skill_id: String, action_id: String, stat_kind: String) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_on_action_stat_button_pressed(skill_id, action_id, stat_kind)
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			_on_action_stat_button_pressed(skill_id, action_id, stat_kind)
 
 
 func _toggle_activity_stat_popup(skill_id: String, action_id: String, stat_kind: String) -> void:
@@ -29265,7 +30858,7 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 			var stat_kind := action_card_press_stat_kind
 			var close_to_press := _event_positions_close_to_press(event_positions)
 			if not stat_kind.is_empty():
-				close_to_press = _event_positions_within_press_slop(event_positions, ACTION_STAT_TAP_RELEASE_SLOP)
+				close_to_press = _event_positions_inside_activity_stat_box(card, stat_kind, event_positions)
 			action_card_press_key = ""
 			action_card_press_stat_kind = ""
 			_release_action_card_3d_press(key)
@@ -29323,7 +30916,7 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 			var stat_kind := action_card_press_stat_kind
 			var close_to_press := _event_positions_close_to_press(event_positions)
 			if not stat_kind.is_empty():
-				close_to_press = _event_positions_within_press_slop(event_positions, ACTION_STAT_TAP_RELEASE_SLOP)
+				close_to_press = _event_positions_inside_activity_stat_box(card, stat_kind, event_positions)
 			action_card_press_key = ""
 			action_card_press_stat_kind = ""
 			_release_action_card_3d_press(key)
@@ -29523,6 +31116,9 @@ func _passive_button_hit_at_position(event_position: Vector2) -> Dictionary:
 			var upgrade_hit := _passive_source_hit_dict(upgrade_buttons.get(stat_type, null), event_position, "upgrade", module_id, stat_type)
 			if not upgrade_hit.is_empty():
 				return upgrade_hit
+		var firepit_hit := _passive_source_hit_dict(card.get("toggle", null), event_position, "firepit", module_id)
+		if not firepit_hit.is_empty():
+			return firepit_hit
 		var loot := _valid_control_ref(card.get("loot", null))
 		if loot != null and loot.has_meta("passive_log_collect_hotspot_id"):
 			var hotspot := _valid_control_ref(instance_from_id(int(loot.get_meta("passive_log_collect_hotspot_id", 0))))
@@ -29599,6 +31195,8 @@ func _activate_passive_module_button(action_kind: String, module_id: String, sta
 		_toggle_plank_boost()
 	elif action_kind == "upgrade":
 		_upgrade_passive_module(module_id, stat_type)
+	elif action_kind == "firepit":
+		_toggle_firepit_pressed(module_id)
 
 
 func _on_passive_collect_pressed(module_id: String) -> void:
@@ -29659,8 +31257,8 @@ func _prewarm_passive_info_popover(info_popover: Control) -> void:
 
 
 func _prewarm_passive_info_popover_deferred(info_popover_id: int) -> void:
-	var info_popover := instance_from_id(info_popover_id) as Control
-	if info_popover == null or not is_instance_valid(info_popover):
+	var info_popover := _valid_control_ref(instance_from_id(info_popover_id))
+	if info_popover == null:
 		return
 	if info_popover.visible:
 		info_popover.set_meta("info_popover_prewarmed", true)
@@ -29669,7 +31267,8 @@ func _prewarm_passive_info_popover_deferred(info_popover_id: int) -> void:
 	info_popover.modulate.a = 0.0
 	for _i in range(INFO_POPOVER_PREWARM_FRAMES):
 		await get_tree().process_frame
-		if info_popover == null or not is_instance_valid(info_popover):
+		info_popover = _valid_control_ref(instance_from_id(info_popover_id))
+		if info_popover == null:
 			return
 	if not bool(info_popover.get_meta("info_popover_show_requested", false)):
 		info_popover.visible = false
@@ -29701,8 +31300,8 @@ func _fade_passive_info_popover(info_popover: Control) -> void:
 
 
 func _finish_passive_info_popover_fade(popover_id: int) -> void:
-	var cb_popover := instance_from_id(popover_id) as Control
-	if cb_popover != null and is_instance_valid(cb_popover):
+	var cb_popover := _valid_control_ref(instance_from_id(popover_id))
+	if cb_popover != null:
 		cb_popover.visible = false
 		cb_popover.modulate.a = 1.0
 		if cb_popover.has_meta("fade_tween"):
@@ -29715,8 +31314,7 @@ func _cancel_passive_info_fade(info_popover: Control) -> void:
 	info_popover.set_meta("dismiss_id", int(info_popover.get_meta("dismiss_id", 0)) + 1)
 	if info_popover.has_meta("fade_tween"):
 		var tween_variant = info_popover.get_meta("fade_tween")
-		if tween_variant is Tween and (tween_variant as Tween).is_valid():
-			(tween_variant as Tween).kill()
+		_kill_tween_value(tween_variant)
 		info_popover.remove_meta("fade_tween")
 	info_popover.modulate.a = 1.0
 
@@ -29838,6 +31436,22 @@ func _event_positions_within_press_slop(positions: Array[Vector2], slop: float) 
 	return false
 
 
+func _event_positions_inside_activity_stat_box(card: Dictionary, stat_kind: String, positions: Array[Vector2]) -> bool:
+	if stat_kind.is_empty() or card.is_empty():
+		return false
+	if stat_kind == ACTION_CARD_MEDAL_PRESS_KIND:
+		return _action_card_medal_hit_from_positions(card, positions)
+	var boxes := card.get("stat_boxes", {}) as Dictionary
+	var box := boxes.get(stat_kind, null) as Control
+	if box == null or not is_instance_valid(box) or not box.is_visible_in_tree():
+		return false
+	var rect := box.get_global_rect()
+	for event_position in positions:
+		if rect.has_point(event_position):
+			return true
+	return false
+
+
 func _activity_stat_clicks_should_start_action() -> bool:
 	return activity_start_count <= 0
 
@@ -29849,20 +31463,17 @@ func _activity_stat_kind_at_position(card: Dictionary, event_position: Vector2) 
 		return ""
 	if _action_info_chips_blocked_by_lock(card):
 		return ""
-	var stat_row := card.get("stat_row") as Control
-	var action := _action_data(str(card.get("skill_id", "")), str(card.get("action_id", "")))
-	if stat_row != null and is_instance_valid(stat_row) and stat_row.is_visible_in_tree() and not _is_convergence_action(action):
-		var row_rect := stat_row.get_global_rect()
-		var padded_row_rect := row_rect.grow(maxf(18.0, row_rect.size.y * 0.18))
-		if padded_row_rect.has_point(event_position):
-			var zone_width := row_rect.size.x / 4.0
-			if zone_width > 1.0:
-				var zone := clampi(int(floor((event_position.x - row_rect.position.x) / zone_width)), 0, 3)
-				return ["xp", "stamina", "time", "success"][zone]
+	var stat_row := card.get("stat_row", null) as Control
+	if stat_row != null and is_instance_valid(stat_row) and stat_row.is_visible_in_tree() and stat_row.get_global_rect().has_point(event_position):
+		var row_boxes := card.get("stat_boxes", {}) as Dictionary
+		for kind in ["xp", "stamina", "time", "success"]:
+			var row_box := row_boxes.get(kind) as Control
+			if row_box != null and is_instance_valid(row_box) and row_box.is_visible_in_tree() and row_box.get_global_rect().has_point(event_position):
+				return kind
 	var boxes := card.get("stat_boxes", {}) as Dictionary
 	for kind in ["xp", "stamina", "time", "success"]:
 		var box := boxes.get(kind) as Control
-		if box != null and is_instance_valid(box) and box.is_visible_in_tree() and _padded_activity_stat_rect(box).has_point(event_position):
+		if box != null and is_instance_valid(box) and box.is_visible_in_tree() and box.get_global_rect().has_point(event_position):
 			return kind
 	return ""
 
@@ -29972,10 +31583,7 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		return
 	var entry := card.get("entry") as Control
 	if bool(card.get("locked_preview_hidden", false)):
-		var existing_hidden_tween := card.get("bonus_tween", null) as Tween
-		if existing_hidden_tween != null and existing_hidden_tween.is_valid():
-			existing_hidden_tween.kill()
-		card.erase("bonus_tween")
+		_kill_card_tween(card, "bonus_tween")
 		card["bonus_expanded"] = false
 		_set_control_minimum_height(root, 0.0)
 		if entry != null and is_instance_valid(entry):
@@ -29995,10 +31603,7 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		if entry != null and is_instance_valid(entry):
 			_set_module_root_layout_height(entry, collapsed_height + mat_collection_height)
 			_update_detail_lazy_entry_height_for_card(card, collapsed_height + mat_collection_height)
-		var collapsed_existing_tween := card.get("bonus_tween", null) as Tween
-		if collapsed_existing_tween != null and collapsed_existing_tween.is_valid():
-			collapsed_existing_tween.kill()
-		card.erase("bonus_tween")
+		_kill_card_tween(card, "bonus_tween")
 		card["bonus_expanded"] = false
 		return
 	var target_height := _activity_card_root_height(expanded)
@@ -30012,14 +31617,12 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 		target_entry_size.x = entry.custom_minimum_size.x
 	var bonus := card.get("bonus_panel", {}) as Dictionary
 	var bonus_root := bonus.get("root") as Control
-	var existing_tween := card.get("bonus_tween", null) as Tween
 	var state_changed := bool(card.get("bonus_expanded", false)) != expanded
 	card["bonus_expanded"] = expanded
 	var entry_at_height := entry == null or not is_instance_valid(entry) or absf(entry.custom_minimum_size.y - target_entry_height) <= 0.5
 	if not state_changed and absf(root.custom_minimum_size.y - target_height) <= 0.5 and entry_at_height:
 		return
-	if existing_tween != null and existing_tween.is_valid():
-		existing_tween.kill()
+	_kill_card_tween(card, "bonus_tween")
 	if bonus_root != null:
 		bonus_root.visible = true
 	if instant:
@@ -30047,8 +31650,8 @@ func _set_activity_card_expanded(card: Dictionary, root: Control, expanded: bool
 
 func _finish_activity_card_expanded(card_key: String, bonus_root_id: int, expanded: bool) -> void:
 	if bonus_root_id != 0 and not expanded:
-		var cb_bonus_root := instance_from_id(bonus_root_id) as Control
-		if cb_bonus_root != null and is_instance_valid(cb_bonus_root):
+		var cb_bonus_root := _valid_control_ref(instance_from_id(bonus_root_id))
+		if cb_bonus_root != null:
 			cb_bonus_root.visible = false
 	var card := action_cards.get(card_key, {}) as Dictionary
 	if not card.is_empty():
@@ -30074,10 +31677,7 @@ func _update_activity_stat_bonus_panel(card: Dictionary, skill_id: String, actio
 func _transition_activity_stat_bonus_panel(card: Dictionary, skill_id: String, action: Dictionary, stat_kind: String, instant: bool) -> void:
 	var bonus := card.get("bonus_panel", {}) as Dictionary
 	var bonus_root := bonus.get("root") as Control
-	var existing := card.get("bonus_content_tween", null) as Tween
-	if existing != null and existing.is_valid():
-		existing.kill()
-	card.erase("bonus_content_tween")
+	_kill_card_tween(card, "bonus_content_tween")
 	card["bonus_pending_stat_kind"] = stat_kind
 	if instant or bonus_root == null or not bonus_root.visible or bonus_root.modulate.a <= 0.05:
 		_update_activity_stat_bonus_panel(card, skill_id, action, stat_kind)
@@ -30278,12 +31878,14 @@ func _update_skill_swipe_preview_state(state: Dictionary, delta: float, instant:
 			_update_passive_card_static_state(action_card, skill_id, action, unlocked)
 			continue
 		var running := running_skill_id == skill_id and running_action_id == action_id
+		_sync_blue_guy_chicken_brawl_stage_active(action_card, skill_id, action_id, running)
 		_update_action_card_static_state(action_card, skill_id, action, unlocked)
 		if _action_has_mastery(action):
 			var medal := action_card.get("medal") as TextureRect
 			var mastery_level := _mastery_level(skill_id, action_id)
 			_set_action_card_medal(action_card, medal, mastery_level, instant)
 			_update_action_card_mastery_bar(action_card, skill_id, action_id, delta, instant)
+		_sync_action_art_animation_state(action_card, running)
 		_update_action_card_run_feedback(action_card, skill_id, running, delta, instant)
 
 
@@ -30547,9 +32149,9 @@ func _on_achievement_medal_slot_input(event: InputEvent, strip_id: int, icon_id:
 		pressed = (event as InputEventScreenTouch).pressed
 	if not pressed:
 		return
-	var strip := instance_from_id(strip_id) as Control
-	var icon := instance_from_id(icon_id) as TextureRect
-	if strip == null or icon == null or not is_instance_valid(strip) or not is_instance_valid(icon):
+	var strip := _valid_control_ref(instance_from_id(strip_id))
+	var icon := _valid_texture_rect_ref(instance_from_id(icon_id))
+	if strip == null or icon == null:
 		return
 	_show_achievement_medal_popover(strip, icon, skill_id)
 
@@ -30715,11 +32317,7 @@ func _hide_achievement_medal_popovers() -> void:
 		var popover := raw_popover as Control
 		if popover == null or not is_instance_valid(popover):
 			continue
-		if popover.has_meta("achievement_medal_popover_tween"):
-			var tween := popover.get_meta("achievement_medal_popover_tween") as Tween
-			if tween != null and tween.is_valid():
-				tween.kill()
-			popover.remove_meta("achievement_medal_popover_tween")
+		_kill_meta_tween(popover, "achievement_medal_popover_tween")
 		popover.queue_free()
 
 
@@ -31355,6 +32953,9 @@ func _active_global_buff_lines() -> Array:
 		lines.append("+%s%% success" % success_bonus)
 	if crit_bonus > 0.0:
 		lines.append("+%s%% crit chance" % _format_percent_points(crit_bonus))
+	var firepit_regen_bonus := _firepit_stamina_regen_bonus("woodcutting")
+	if firepit_regen_bonus > 0.0:
+		lines.append(_firepit_comfort_text(_firepit_heat_tier()))
 	return lines
 
 
@@ -31600,9 +33201,11 @@ func _try_eat_fish_for_stamina(skill_id := "", source: RegenCircle = null) -> vo
 
 func _auto_eat_fish_for_action(skill_id: String, stamina_cost: float, source: RegenCircle = null, show_fail := false) -> bool:
 	_clear_auto_eat_fish_after_spend_delay(skill_id)
+	if stamina_cost <= 0.0:
+		return true
 	if not _auto_eat_fish_enabled_for_skill(skill_id) or skill_id.is_empty() or _fishing_rework_active_for_skill(skill_id):
 		return _stamina_value(skill_id) + 0.0001 >= stamina_cost
-	if stamina_cost <= 0.0 or _stamina_value(skill_id) + 0.0001 >= stamina_cost:
+	if _stamina_value(skill_id) + 0.0001 >= stamina_cost:
 		return true
 	var maximum := float(_max_stamina(skill_id))
 	if maximum <= 0.0 or stamina_cost > maximum + 0.0001:
@@ -31675,8 +33278,8 @@ func _auto_eat_fish_can_cover_action(skill_id: String, stamina_cost: float) -> b
 func _play_staggered_eaten_fish_icons(skill_id: String, target_id: int, fish_count: int) -> void:
 	var safe_count := clampi(fish_count, 0, 24)
 	for i in range(safe_count):
-		var target := instance_from_id(target_id) as Control
-		if target == null or not is_instance_valid(target):
+		var target := _valid_control_ref(instance_from_id(target_id))
+		if target == null:
 			target = _visible_stamina_gauge_for_skill(skill_id)
 		_float_eaten_fish_icon(skill_id, target)
 		_play_fish_eat_blip()
@@ -31732,7 +33335,7 @@ func _play_stamina_gauge_fail_shake(target: Control) -> void:
 	var rest_rotation_meta_key := "stamina_eat_fail_rest_rotation"
 	var base_position := target.position
 	if target.has_meta(rest_position_meta_key):
-		base_position = target.get_meta(rest_position_meta_key) as Vector2
+		base_position = _meta_vector2(target, rest_position_meta_key, target.position)
 	else:
 		target.set_meta(rest_position_meta_key, base_position)
 	var base_rotation := target.rotation
@@ -31740,11 +33343,7 @@ func _play_stamina_gauge_fail_shake(target: Control) -> void:
 		base_rotation = float(target.get_meta(rest_rotation_meta_key))
 	else:
 		target.set_meta(rest_rotation_meta_key, base_rotation)
-	if target.has_meta(tween_meta_key):
-		var existing := target.get_meta(tween_meta_key) as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
-		target.remove_meta(tween_meta_key)
+	_kill_meta_tween(target, tween_meta_key)
 	target.pivot_offset = target.size * 0.5
 	target.position = base_position
 	target.rotation = base_rotation
@@ -31754,33 +33353,33 @@ func _play_stamina_gauge_fail_shake(target: Control) -> void:
 	target.set_meta(tween_meta_key, tween)
 	var target_id := target.get_instance_id()
 	tween.set_parallel(true)
-	tween.tween_method(
-		func(progress: float) -> void:
-			var tween_target := instance_from_id(target_id) as Control
-			if tween_target == null or not is_instance_valid(tween_target):
-				return
-			var remaining := 1.0 - progress
-			var wave := sin(progress * PI * 7.0) * remaining * direction
-			tween_target.position = base_position + Vector2(wave * 14.0, absf(wave) * 3.0)
-			tween_target.rotation = base_rotation + wave * 0.035,
-		0.0,
-		1.0,
-		0.36
-	).set_trans(Tween.TRANS_LINEAR)
-	tween.finished.connect(func() -> void:
-		var tween_target := instance_from_id(target_id) as Control
-		if tween_target == null or not is_instance_valid(tween_target):
-			return
-		tween_target.position = base_position
-		tween_target.rotation = base_rotation
-		tween_target.modulate = Color(1.0, 1.0, 1.0, tween_target.modulate.a)
-		if tween_target.has_meta(tween_meta_key):
-			tween_target.remove_meta(tween_meta_key)
-		if tween_target.has_meta(rest_position_meta_key):
-			tween_target.remove_meta(rest_position_meta_key)
-		if tween_target.has_meta(rest_rotation_meta_key):
-			tween_target.remove_meta(rest_rotation_meta_key)
-	)
+	tween.tween_method(_apply_stamina_fail_shake_frame.bind(target_id, base_position, base_rotation, direction), 0.0, 1.0, 0.36).set_trans(Tween.TRANS_LINEAR)
+	tween.finished.connect(_finish_stamina_fail_shake.bind(target_id, base_position, base_rotation, tween_meta_key, rest_position_meta_key, rest_rotation_meta_key))
+
+
+func _apply_stamina_fail_shake_frame(progress: float, target_id: int, base_position: Vector2, base_rotation: float, direction: float) -> void:
+	var tween_target := _valid_control_ref(instance_from_id(target_id))
+	if tween_target == null:
+		return
+	var remaining := 1.0 - progress
+	var wave := sin(progress * PI * 7.0) * remaining * direction
+	tween_target.position = base_position + Vector2(wave * 14.0, absf(wave) * 3.0)
+	tween_target.rotation = base_rotation + wave * 0.035
+
+
+func _finish_stamina_fail_shake(target_id: int, base_position: Vector2, base_rotation: float, tween_meta_key: String, rest_position_meta_key: String, rest_rotation_meta_key: String) -> void:
+	var tween_target := _valid_control_ref(instance_from_id(target_id))
+	if tween_target == null:
+		return
+	tween_target.position = base_position
+	tween_target.rotation = base_rotation
+	tween_target.modulate = Color(1.0, 1.0, 1.0, tween_target.modulate.a)
+	if tween_target.has_meta(tween_meta_key):
+		tween_target.remove_meta(tween_meta_key)
+	if tween_target.has_meta(rest_position_meta_key):
+		tween_target.remove_meta(rest_position_meta_key)
+	if tween_target.has_meta(rest_rotation_meta_key):
+		tween_target.remove_meta(rest_rotation_meta_key)
 
 
 func _visible_stamina_gauge_for_skill(skill_id: String, fallback: RegenCircle = null) -> RegenCircle:
@@ -31881,8 +33480,8 @@ func _float_eaten_fish_icon(skill_id: String, target: Control) -> void:
 
 
 func _apply_fish_collection_fly_progress(progress: float, root_id: int, start: Vector2, control_point: Vector2, finish: Vector2, spin: float) -> void:
-	var node := instance_from_id(root_id) as Control
-	if node == null or not is_instance_valid(node):
+	var node := _valid_control_ref(instance_from_id(root_id))
+	if node == null:
 		return
 	var eased := progress * progress * (3.0 - 2.0 * progress)
 	var a := start.lerp(control_point, eased)
@@ -31910,10 +33509,7 @@ func _pop_stamina_gauge(source: RegenCircle = null) -> void:
 	detail_stamina_gauge_pop_tween.tween_property(target, "scale", STAMINA_GAUGE_POP_SCALE, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	detail_stamina_gauge_pop_tween.tween_property(target, "scale", STAMINA_GAUGE_SETTLE_SCALE, 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 	detail_stamina_gauge_pop_tween.tween_property(target, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	detail_stamina_gauge_pop_tween.finished.connect(func():
-		detail_stamina_gauge_pop_tween = null
-		detail_stamina_gauge_pop_source = null
-	)
+	detail_stamina_gauge_pop_tween.finished.connect(_finish_stamina_gauge_pop_tween)
 
 
 func _clear_stamina_gauge_pop_tween() -> void:
@@ -31921,6 +33517,11 @@ func _clear_stamina_gauge_pop_tween() -> void:
 		detail_stamina_gauge_pop_tween.kill()
 	if detail_stamina_gauge_pop_source != null and is_instance_valid(detail_stamina_gauge_pop_source):
 		detail_stamina_gauge_pop_source.scale = Vector2.ONE
+	detail_stamina_gauge_pop_tween = null
+	detail_stamina_gauge_pop_source = null
+
+
+func _finish_stamina_gauge_pop_tween() -> void:
 	detail_stamina_gauge_pop_tween = null
 	detail_stamina_gauge_pop_source = null
 
@@ -33144,11 +34745,13 @@ func _release_detail_unlock_extra_scroll_space() -> void:
 		return
 	detail_unlock_scroll_spacer_tween = create_tween()
 	detail_unlock_scroll_spacer_tween.tween_interval(ACTIVITY_UNLOCK_SPACER_SETTLE_SECONDS)
-	detail_unlock_scroll_spacer_tween.finished.connect(func():
-		_set_detail_unlock_scroll_spacer_height(0.0)
-		detail_unlock_auto_scroll_interrupted = false
-		detail_unlock_scroll_spacer_tween = null
-	)
+	detail_unlock_scroll_spacer_tween.finished.connect(_finish_detail_unlock_scroll_spacer_tween)
+
+
+func _finish_detail_unlock_scroll_spacer_tween() -> void:
+	_set_detail_unlock_scroll_spacer_height(0.0)
+	detail_unlock_auto_scroll_interrupted = false
+	detail_unlock_scroll_spacer_tween = null
 
 
 func _clamp_detail_actions_scroll_to_content() -> void:
@@ -33194,8 +34797,8 @@ func _finish_detail_actions_visual_scroll(stack_id: int, clamped_target: int, en
 	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 		detail_actions_scroll.drag_scroll_position = float(clamped_target)
 		detail_actions_scroll.scroll_vertical = clamped_target
-	var callback_stack := instance_from_id(stack_id) as Control
-	if callback_stack != null and is_instance_valid(callback_stack):
+	var callback_stack := _valid_control_ref(instance_from_id(stack_id))
+	if callback_stack != null:
 		callback_stack.position.y = end_y
 	activity_unlock_visual_scroll_tween = null
 
@@ -33314,13 +34917,13 @@ func _update_skill_swipe_feedback(pointer_position: Vector2) -> void:
 	if target == null:
 		return
 	var offset := 1 if delta.x < 0.0 else -1
-	if _swipe_offset_accessible(offset):
-		_ensure_skill_swipe_preview(offset)
-	else:
+	if not _swipe_offset_accessible(offset):
 		_park_skill_swipe_preview()
 	var page_direction := 1.0 if delta.x > 0.0 else -1.0
 	var page_visual_distance := _skill_swipe_visual_distance(abs_x)
 	_set_skill_swipe_positions(offset, skill_swipe_drag_base_x + page_direction * page_visual_distance)
+	_sync_skill_page_switch_modules_for_drag(abs_x)
+	_sync_skill_swipe_module_utility_row_for_drag(abs_x)
 
 
 func _skill_swipe_visual_target() -> Control:
@@ -33491,7 +35094,7 @@ func _begin_skill_swipe_handoff_cover() -> void:
 	_ensure_skill_nav_cover_layer().add_child(cover)
 
 	var backing := ColorRect.new()
-	backing.color = COLOR_PAPER
+	backing.color = _theme_paper_color()
 	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	backing.z_index = -1
@@ -33651,7 +35254,7 @@ func _begin_skill_detail_refresh_cover() -> void:
 	_ensure_skill_nav_cover_layer().add_child(cover)
 
 	var backing := ColorRect.new()
-	backing.color = COLOR_PAPER
+	backing.color = _theme_paper_color()
 	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	backing.z_index = -1
@@ -33694,7 +35297,7 @@ func _begin_direct_skill_nav_cover() -> void:
 	_ensure_skill_nav_cover_layer().add_child(cover)
 
 	var backing := ColorRect.new()
-	backing.color = COLOR_PAPER
+	backing.color = _theme_paper_color()
 	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backing.mouse_filter = Control.MOUSE_FILTER_STOP
 	cover.add_child(backing)
@@ -33727,7 +35330,7 @@ func _begin_pin_transition_blocker(target_screen: String) -> void:
 	if pin_transition_blocker == null or not is_instance_valid(pin_transition_blocker):
 		pin_transition_blocker = ColorRect.new()
 		pin_transition_blocker.name = "PinTransitionBlocker"
-		pin_transition_blocker.color = COLOR_PAPER
+		pin_transition_blocker.color = _theme_paper_color()
 		pin_transition_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 		pin_transition_blocker_layer.add_child(pin_transition_blocker)
 	pin_transition_blocker.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -33831,8 +35434,8 @@ func _start_skill_nav_cover_fade_in(cover: Control) -> void:
 func _finish_skill_nav_cover_fade_in(cover_id: int) -> void:
 	if skill_swipe_cover_fade_tween != null and not skill_swipe_cover_fade_tween.is_valid():
 		skill_swipe_cover_fade_tween = null
-	var cover := instance_from_id(cover_id) as Control
-	if cover == null or not is_instance_valid(cover) or cover != skill_swipe_handoff_cover:
+	var cover := _active_skill_swipe_cover_ref(cover_id)
+	if cover == null:
 		return
 	_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
 
@@ -33903,15 +35506,20 @@ func _begin_skill_swipe_outgoing_cover() -> Control:
 	_ensure_skill_nav_cover_layer().add_child(cover)
 
 	var backing := ColorRect.new()
-	backing.color = COLOR_PAPER
+	backing.color = _theme_paper_color()
 	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cover.add_child(backing)
 
 	var holder := Control.new()
+	var holder_size: Vector2 = skill_swipe_frame.size
+	if holder_size.x <= 1.0:
+		holder_size.x = _skill_content_width()
+	if holder_size.y <= 1.0:
+		holder_size.y = _current_canvas_size().y
 	holder.position = skill_swipe_frame.global_position
-	holder.size = skill_swipe_frame.size
-	holder.custom_minimum_size = skill_swipe_frame.size
+	holder.size = holder_size
+	holder.custom_minimum_size = holder_size
 	holder.clip_contents = true
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.modulate = Color(1.0, 1.0, 1.0, 0.0) if skill_swipe_paper_fade_hold_alpha >= 0.99 else Color.WHITE
@@ -33951,12 +35559,13 @@ func _fade_skill_swipe_cover_to_opaque(seconds: float):
 	var holder_id := int(cover.get_meta("swipe_outgoing_page_holder_id", 0))
 	var outgoing_holder: Control = null
 	if holder_id != 0:
-		outgoing_holder = instance_from_id(holder_id) as Control
-	if outgoing_holder != null and is_instance_valid(outgoing_holder):
+		outgoing_holder = _valid_control_ref(instance_from_id(holder_id))
+	if outgoing_holder != null:
 		var tween := create_tween()
 		tween.tween_property(outgoing_holder, "modulate:a", 0.0, maxf(0.01, seconds)).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
 		await tween.finished
-		if outgoing_holder != null and is_instance_valid(outgoing_holder):
+		outgoing_holder = _valid_control_ref(instance_from_id(holder_id))
+		if outgoing_holder != null:
 			_set_canvas_item_alpha_if_changed(outgoing_holder, 0.0)
 		return
 	var next_modulate := cover.modulate
@@ -34010,7 +35619,7 @@ func _begin_skill_swipe_rebuild_cover() -> void:
 	_ensure_skill_nav_cover_layer().add_child(cover)
 
 	var backing := ColorRect.new()
-	backing.color = COLOR_PAPER
+	backing.color = _theme_paper_color()
 	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	cover.add_child(backing)
@@ -34037,7 +35646,7 @@ func _begin_page_switch_scroll_cover(include_bottom_interactive_ui := false) -> 
 	_ensure_skill_nav_cover_layer().add_child(cover)
 
 	var backing := ColorRect.new()
-	backing.color = COLOR_PAPER
+	backing.color = _theme_paper_color()
 	backing.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backing.mouse_filter = Control.MOUSE_FILTER_STOP
 	cover.add_child(backing)
@@ -34075,13 +35684,23 @@ func _begin_page_switch_scroll_cover_timed(include_bottom_interactive_ui := fals
 
 
 func _page_switch_cover_id_active(cover_id: int) -> bool:
-	var cover := instance_from_id(cover_id) as Control
-	return (
-		cover != null
-		and is_instance_valid(cover)
-		and cover == skill_swipe_handoff_cover
-		and bool(cover.get_meta("page_switch_scroll_cover", false))
-	)
+	return _active_page_switch_cover_ref(cover_id) != null
+
+
+func _active_page_switch_cover_ref(cover_id: int) -> Control:
+	var cover := _valid_control_ref(instance_from_id(cover_id))
+	if cover == null or cover != skill_swipe_handoff_cover:
+		return null
+	if not bool(cover.get_meta("page_switch_scroll_cover", false)):
+		return null
+	return cover
+
+
+func _active_skill_swipe_cover_ref(cover_id: int) -> Control:
+	var cover := _valid_control_ref(instance_from_id(cover_id))
+	if cover == null or cover != skill_swipe_handoff_cover:
+		return null
+	return cover
 
 
 func _queue_page_switch_transition(kind: String, cover_id: int, payload := {}) -> void:
@@ -34110,8 +35729,8 @@ func _process_page_switch_pending_transition() -> void:
 		page_switch_release_when_render_idle = false
 		_release_page_switch_transition_button()
 		return
-	var cover := instance_from_id(cover_id) as Control
-	if cover == null or not is_instance_valid(cover) or not cover.visible:
+	var cover := _active_page_switch_cover_ref(cover_id)
+	if cover == null or not cover.visible:
 		return
 	if cover.modulate.a < 0.98:
 		return
@@ -34209,10 +35828,10 @@ func _wait_for_page_switch_cover_opaque(cover_id: int) -> bool:
 	var started_msec := Time.get_ticks_msec()
 	var max_wait_msec := int(round((PAGE_SWITCH_SCROLL_COVER_FADE_IN_SECONDS + 0.30) * 1000.0))
 	while Time.get_ticks_msec() - started_msec < max_wait_msec:
-		if not _page_switch_cover_id_active(cover_id):
+		var cover := _active_page_switch_cover_ref(cover_id)
+		if cover == null:
 			return false
-		var cover := instance_from_id(cover_id) as Control
-		if cover != null and is_instance_valid(cover) and cover.visible and cover.modulate.a >= 0.98:
+		if cover.visible and cover.modulate.a >= 0.98:
 			_force_page_switch_scroll_cover_opaque(cover_id)
 			await get_tree().process_frame
 			return _page_switch_cover_id_active(cover_id)
@@ -34352,8 +35971,8 @@ func _start_skill_swipe_cover_fade(seconds: float) -> void:
 
 
 func _apply_skill_swipe_cover_fade_alpha(alpha: float, cover_id: int, seconds: float) -> void:
-	var cover := instance_from_id(cover_id) as Control
-	if cover == null or not is_instance_valid(cover) or cover != skill_swipe_handoff_cover:
+	var cover := _active_skill_swipe_cover_ref(cover_id)
+	if cover == null:
 		return
 	if current_screen == "skill" and skill_swipe_defer_initial_lazy_mount:
 		_force_skill_swipe_cover_opaque_cream()
@@ -34379,8 +35998,8 @@ func _apply_skill_swipe_cover_fade_alpha(alpha: float, cover_id: int, seconds: f
 
 
 func _cancel_skill_swipe_cover_fade_until_ready(cover_id: int, seconds: float) -> void:
-	var cover := instance_from_id(cover_id) as Control
-	if cover == null or not is_instance_valid(cover) or cover != skill_swipe_handoff_cover:
+	var cover := _active_skill_swipe_cover_ref(cover_id)
+	if cover == null:
 		return
 	if not bool(cover.get_meta("swipe_cover_fade_cancel_requested", false)):
 		return
@@ -34444,8 +36063,8 @@ func _pinned_page_ready_to_reveal_under_cover() -> bool:
 
 
 func _cancel_skill_swipe_cover_fade_until_pinned_ready(cover_id: int, seconds: float) -> void:
-	var cover := instance_from_id(cover_id) as Control
-	if cover == null or not is_instance_valid(cover) or cover != skill_swipe_handoff_cover:
+	var cover := _active_skill_swipe_cover_ref(cover_id)
+	if cover == null:
 		return
 	if not bool(cover.get_meta("pinned_cover_fade_cancel_requested", false)):
 		return
@@ -34483,8 +36102,8 @@ func _finish_skill_swipe_rebuild_cover_fade(cover_id: int) -> void:
 	if skill_swipe_pending_full_finalize:
 		_hold_skill_swipe_cover_for_pending_finalize()
 		return
-	var cover := instance_from_id(cover_id) as Control
-	if cover == null or not is_instance_valid(cover):
+	var cover := _active_skill_swipe_cover_ref(cover_id)
+	if cover == null:
 		if skill_swipe_handoff_cover == null or not is_instance_valid(skill_swipe_handoff_cover):
 			skill_swipe_handoff_cover = null
 		skill_swipe_rebuild_cover_active = false
@@ -34534,6 +36153,9 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 	if animated and absf(skill_swipe_drag_offset_x) > 1.0:
 		skill_swipe_animating = true
 		skill_swipe_animation_mode = "cancel"
+		_fade_skill_page_switch_modules(true, SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS)
+		_fade_skill_swipe_module_utility_row(true, SKILL_SWIPE_MODULE_UTILITY_FADE_IN_SECONDS)
+		_fade_skill_shelf_backgrounds(true, SKILL_SWIPE_SHELF_BACKGROUND_FADE_IN_SECONDS)
 		skill_swipe_tween = create_tween()
 		skill_swipe_tween.set_parallel(true)
 		var start_drag := skill_swipe_drag_offset_x
@@ -34542,22 +36164,15 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 			var preview_exit := _skill_swipe_preview_rest_x(skill_swipe_preview_offset)
 			skill_swipe_tween.tween_property(skill_swipe_preview_page, "position:x", preview_exit, SKILL_SWIPE_CANCEL_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 			skill_swipe_tween.tween_property(skill_swipe_preview_page, "modulate:a", 0.0, SKILL_SWIPE_CANCEL_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		skill_swipe_tween.finished.connect(func():
-			skill_swipe_animating = false
-			skill_swipe_animation_mode = ""
-			_restore_skill_strip_wrap_page()
-			skill_swipe_strip_committed_crossfade = false
-			_apply_skill_swipe_drag_offset(0.0)
-			_sync_skill_strip_page_visibility(false)
-			_park_skill_swipe_preview()
-			if not _consume_queued_skill_swipe_navigation():
-				_queue_skill_swipe_preview_prewarm()
-		)
+		skill_swipe_tween.finished.connect(_finish_skill_swipe_cancel_tween)
 	else:
 		_restore_skill_strip_wrap_page()
 		_apply_skill_swipe_drag_offset(0.0)
 		_sync_skill_strip_page_visibility(false)
 		_park_skill_swipe_preview()
+		_fade_skill_page_switch_modules(true, SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS)
+		_fade_skill_swipe_module_utility_row(true, SKILL_SWIPE_MODULE_UTILITY_FADE_IN_SECONDS)
+		_fade_skill_shelf_backgrounds(true, SKILL_SWIPE_SHELF_BACKGROUND_FADE_IN_SECONDS)
 		_queue_skill_swipe_preview_prewarm()
 
 
@@ -34652,6 +36267,10 @@ func _clear_passive_button_press() -> void:
 
 func _commit_skill_swipe(offset: int) -> void:
 	skill_swipe_horizontal = false
+	if offset != 0 and skill_strip_ids.is_empty():
+		_fade_skill_page_switch_modules(false, SKILL_SWIPE_PAGE_SWITCH_FADE_OUT_SECONDS)
+		_fade_skill_swipe_module_utility_row(false, SKILL_SWIPE_MODULE_UTILITY_FADE_OUT_SECONDS)
+		_fade_skill_shelf_backgrounds(false, SKILL_SWIPE_SHELF_BACKGROUND_FADE_OUT_SECONDS)
 	var entry_x := signi(offset) * _skill_swipe_page_span()
 	entry_x = skill_swipe_drag_offset_x
 	var animate_commit_release := absf(entry_x) > 1.0 and absf(entry_x) < absf(_skill_swipe_commit_release_target_x(offset)) - 1.0
@@ -34697,9 +36316,7 @@ func _animate_skill_swipe_commit_release(offset: int, start_x: float) -> void:
 	if offset == 0 or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
 		_navigate_skill_page(offset, start_x, true, false)
 		return
-	if skill_strip_ids.is_empty():
-		_ensure_skill_swipe_preview(offset)
-	else:
+	if not skill_strip_ids.is_empty():
 		skill_swipe_strip_committed_crossfade = false
 	_kill_skill_swipe_tween()
 	skill_swipe_animating = true
@@ -34715,19 +36332,33 @@ func _animate_skill_swipe_commit_release(offset: int, start_x: float) -> void:
 		target_x,
 		settle_seconds
 	).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	skill_swipe_tween.finished.connect(func():
-		skill_swipe_animating = false
-		skill_swipe_animation_mode = ""
-		if skill_strip_ids.is_empty():
-			_hold_skill_swipe_paper_fade_for_commit()
-		else:
-			skill_swipe_strip_committed_crossfade = true
-		_navigate_skill_page(offset, target_x, true, false)
-	)
+	skill_swipe_tween.finished.connect(_finish_skill_swipe_commit_tween.bind(offset, target_x))
 
 
 func _skill_swipe_commit_release_span() -> float:
 	return _skill_content_width() if not skill_strip_ids.is_empty() else _skill_swipe_page_span()
+
+
+func _finish_skill_swipe_cancel_tween() -> void:
+	skill_swipe_animating = false
+	skill_swipe_animation_mode = ""
+	_restore_skill_strip_wrap_page()
+	skill_swipe_strip_committed_crossfade = false
+	_apply_skill_swipe_drag_offset(0.0)
+	_sync_skill_strip_page_visibility(false)
+	_park_skill_swipe_preview()
+	if not _consume_queued_skill_swipe_navigation():
+		_queue_skill_swipe_preview_prewarm()
+
+
+func _finish_skill_swipe_commit_tween(offset: int, target_x: float) -> void:
+	skill_swipe_animating = false
+	skill_swipe_animation_mode = ""
+	if skill_strip_ids.is_empty():
+		_hold_skill_swipe_paper_fade_for_commit()
+	else:
+		skill_swipe_strip_committed_crossfade = true
+	_navigate_skill_page(offset, target_x, true, false)
 
 
 func _skill_swipe_commit_release_target_x(offset: int) -> float:
@@ -34799,6 +36430,12 @@ func _extract_incoming_swipe_preview(offset: int) -> Dictionary:
 		"page": preview,
 		"state": state if state != null else {}
 	}
+
+
+func _discard_incoming_swipe_preview_for_animated_handoff(incoming_preview: Dictionary) -> void:
+	if incoming_preview.is_empty():
+		return
+	_discard_incoming_swipe_preview(incoming_preview)
 
 
 func _mount_swipe_preview_as_skill_detail(preview_page: Control, preview_state: Dictionary) -> void:
@@ -34909,6 +36546,7 @@ func _ensure_promoted_swipe_header_gauge(preview_page: Control, preview_state: D
 	detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
 	detail_regen_circle.modulate = Color.WHITE
+	detail_regen_circle.set_dark_mode(dark_mode_enabled)
 	detail_regen_circle.gui_input.connect(_on_stamina_gauge_input.bind("", detail_regen_circle))
 	detail_regen_circle_fade_group.add_child(detail_regen_circle)
 	detail_regen_circle_host.add_child(detail_regen_circle_fade_group)
@@ -35059,10 +36697,7 @@ func _detail_lazy_show_preview_modules(preview_state: Dictionary) -> void:
 
 func _cancel_skill_swipe_preview_modules_reveal(preview_state: Dictionary) -> void:
 	skill_swipe_preview_module_reveal_token += 1
-	var reveal_tween := preview_state.get("reveal_tween", null) as Tween
-	if reveal_tween != null and reveal_tween.is_valid():
-		reveal_tween.kill()
-	preview_state.erase("reveal_tween")
+	_kill_card_tween(preview_state, "reveal_tween")
 
 
 func _preview_actions_scroll_vertical(preview_state: Dictionary) -> int:
@@ -35364,7 +36999,17 @@ func _skill_detail_ready_to_reveal_under_cover() -> bool:
 
 
 func _skill_swipe_cover_reveal_blocked_by_animation() -> bool:
-	return current_screen == "skill" and skill_swipe_animating and not skill_swipe_animation_mode.is_empty()
+	if current_screen != "skill" or not skill_swipe_animating or skill_swipe_animation_mode.is_empty():
+		return false
+	var cover := skill_swipe_handoff_cover
+	if (
+		cover != null
+		and is_instance_valid(cover)
+		and skill_swipe_animation_mode == "entry"
+		and bool(cover.get_meta("swipe_gap_entry_reveal_allowed", false))
+	):
+		return false
+	return true
 
 
 func _force_skill_detail_reveal_mount_under_cover() -> void:
@@ -35637,6 +37282,9 @@ func _complete_skill_swipe_navigation() -> void:
 	elif not _consume_queued_skill_swipe_navigation():
 		_queue_skill_swipe_preview_prewarm()
 	if current_screen == "skill":
+		_fade_skill_page_switch_modules(true, SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS)
+		_fade_skill_swipe_module_utility_row(true, SKILL_SWIPE_MODULE_UTILITY_FADE_IN_SECONDS)
+		_fade_skill_shelf_backgrounds(true, SKILL_SWIPE_SHELF_BACKGROUND_FADE_IN_SECONDS)
 		_schedule_swipe_preview_finalize_after_navigation()
 		if not skill_swipe_pending_full_finalize:
 			call_deferred("_apply_pending_swipe_resume_scroll", selected_skill_id)
@@ -35676,8 +37324,6 @@ func _begin_skill_swipe_incoming_entry(start_x: float) -> void:
 	skill_swipe_animation_mode = "entry"
 	_hide_skill_swipe_paper_fade()
 	_apply_skill_swipe_drag_offset(start_x)
-	if skill_swipe_handoff_cover != null and is_instance_valid(skill_swipe_handoff_cover):
-		_fade_clear_skill_swipe_cover(SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS)
 	skill_swipe_tween = create_tween()
 	skill_swipe_tween.tween_method(
 		_apply_skill_swipe_drag_offset,
@@ -36248,8 +37894,11 @@ func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, pl
 		_clear_tutorial_gate_latch_only_after_skill_swipe(false)
 	if not play_click and not animate_entry and absf(entry_x) <= 1.0:
 		_begin_skill_swipe_handoff_cover()
-	var transition_cover := null if use_gap_load_transition else (_begin_skill_swipe_outgoing_cover() if use_outgoing_animation else null)
+	var transition_cover := _begin_skill_swipe_outgoing_cover() if use_outgoing_animation else null
+	var target_install_preview := incoming_preview
 	if use_outgoing_animation:
+		_discard_incoming_swipe_preview_for_animated_handoff(incoming_preview)
+		target_install_preview = {}
 		skill_swipe_animating = true
 		skill_swipe_animation_mode = "entry"
 		if transition_cover != null and is_instance_valid(transition_cover) and not use_gap_load_transition:
@@ -36263,20 +37912,34 @@ func _navigate_skill_page(offset: int, entry_x := 0.0, animate_entry := true, pl
 	current_screen = "skill"
 	var target_key := _skill_detail_cache_key(next_skill_id)
 	skill_swipe_gap_render_offset_x = gap_entry_x
-	await _skill_swipe_install_target_page(target_key, incoming_preview)
+	await _skill_swipe_install_target_page(target_key, target_install_preview)
 	if use_gap_load_transition:
 		_apply_skill_swipe_drag_offset(gap_entry_x)
-		await _wait_for_skill_swipe_gap_entry_ready(next_skill_id)
-		if current_screen != "skill" or selected_skill_id != next_skill_id:
-			skill_swipe_gap_render_offset_x = 0.0
-			return
+		if transition_cover != null and is_instance_valid(transition_cover):
+			transition_cover.set_meta("swipe_gap_entry_reveal_allowed", true)
 	skill_swipe_gap_render_offset_x = 0.0
 	_update_ui(0.0, true)
+	if use_gap_load_transition:
+		await _wait_for_skill_swipe_gap_entry_ready(next_skill_id)
 	if use_outgoing_animation:
 		_begin_skill_swipe_incoming_entry(gap_entry_x if use_gap_load_transition else float(signi(offset)) * _skill_swipe_page_span())
+		if use_gap_load_transition:
+			call_deferred("_release_skill_swipe_gap_cover_when_ready", next_skill_id)
 	else:
 		_reset_skill_swipe_entry_positions()
 		_complete_skill_swipe_navigation()
+
+
+func _release_skill_swipe_gap_cover_when_ready(target_skill_id: String) -> void:
+	await _wait_for_skill_swipe_gap_entry_ready(target_skill_id)
+	if current_screen != "skill" or selected_skill_id != target_skill_id:
+		return
+	var cover := skill_swipe_handoff_cover
+	if cover == null or not is_instance_valid(cover):
+		return
+	if not bool(cover.get_meta("swipe_gap_entry_reveal_allowed", false)):
+		return
+	_fade_clear_skill_swipe_cover(SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS)
 
 
 func _navigate_skill_strip(offset: int, entry_x: float, animate_entry: bool, play_click: bool) -> void:
@@ -36424,6 +38087,8 @@ func _graduate_onboarding_tutorial() -> void:
 	call_deferred("_sync_module_utility_row_visibility")
 	call_deferred("_sync_skill_detail_back_arrow_visibility")
 	call_deferred("_fade_in_post_onboarding_bottom_chrome")
+	if auto_unlock_lockpads_enabled:
+		call_deferred("_run_startup_auto_unlock_lockpads")
 
 
 func _fade_in_post_onboarding_bottom_chrome() -> void:
@@ -36503,6 +38168,14 @@ func _onboarding_fight_stamina_depleted() -> bool:
 	return _stamina_value(TUTORIAL_STARTER_SKILL_ID) < ONBOARDING_SWIPE_STAMINA_THRESHOLD
 
 
+func _onboarding_swipe_prompt_due() -> bool:
+	return (
+		onboarding_swipe_tip_eligible
+		or _onboarding_fight_stamina_depleted()
+		or tutorial_gate_latch_only_until_swipe
+	)
+
+
 func _ensure_onboarding_swipe_unlocked(from_user_attempt := false) -> bool:
 	if not _onboarding_path_active():
 		return true
@@ -36524,7 +38197,7 @@ func _ensure_onboarding_swipe_unlocked(from_user_attempt := false) -> bool:
 		return false
 	if onboarding_swipe_navigation_unlocked:
 		return true
-	if not _onboarding_fight_stamina_depleted():
+	if not _onboarding_swipe_prompt_due():
 		return false
 	if not onboarding_swipe_tip_eligible:
 		onboarding_swipe_tip_eligible = true
@@ -36547,10 +38220,7 @@ func _onboarding_swipe_tip_sequence_resumable() -> bool:
 		and selected_skill_id == TUTORIAL_STARTER_SKILL_ID
 		and _onboarding_swipe_intro_complete()
 		and _onboarding_combo_swipe_tip_context_ready()
-		and (
-			onboarding_swipe_tip_eligible
-			or _onboarding_fight_stamina_depleted()
-		)
+		and _onboarding_swipe_prompt_due()
 		and not skill_swipe_tip_seen
 	)
 
@@ -36564,7 +38234,7 @@ func _maybe_trigger_onboarding_swipe_tip_at_zero_stamina(skill_id: String) -> vo
 		return
 	if not _onboarding_combo_swipe_tip_context_ready():
 		return
-	if not _onboarding_fight_stamina_depleted():
+	if not _onboarding_swipe_prompt_due():
 		return
 	if not onboarding_swipe_tip_eligible:
 		onboarding_swipe_tip_eligible = true
@@ -36751,10 +38421,7 @@ func _skill_swipe_tip_available() -> bool:
 		and activity_start_tip_seen
 		and stamina_gauge_tip_seen
 		and _onboarding_combo_swipe_tip_context_ready()
-		and (
-			onboarding_swipe_tip_eligible
-			or _onboarding_fight_stamina_depleted()
-		)
+		and _onboarding_swipe_prompt_due()
 	)
 
 
@@ -36913,8 +38580,8 @@ func _mount_onboarding_explore_tip_note() -> Control:
 
 
 func _position_new_onboarding_explore_tip(tip_id: int) -> void:
-	var tip := instance_from_id(tip_id) as Control
-	if tip == null or not is_instance_valid(tip) or tip.is_queued_for_deletion():
+	var tip := _valid_control_ref(instance_from_id(tip_id))
+	if tip == null or tip.is_queued_for_deletion():
 		return
 	_position_onboarding_explore_tip(tip)
 	_set_canvas_item_visible_if_changed(tip, true)
@@ -37249,6 +38916,10 @@ func _process_detail_card_texture_prewarm() -> void:
 		var normalized := _res_path(path)
 		if normalized.is_empty() or texture_cache.has(normalized) or detail_texture_prewarm_pending.has(normalized):
 			continue
+		if DisplayServer.get_name() == "headless":
+			_texture(path)
+			requests_started += 1
+			continue
 		if not ResourceLoader.exists(normalized):
 			_texture(path)
 			requests_started += 1
@@ -37272,10 +38943,10 @@ func _collect_completed_detail_texture_prewarm_requests() -> void:
 		var status := ResourceLoader.load_threaded_get_status(normalized)
 		if status == ResourceLoader.THREAD_LOAD_LOADED:
 			var loaded := ResourceLoader.load_threaded_get(normalized)
-			texture_cache[normalized] = loaded if loaded is Texture2D else null
+			texture_cache[normalized] = _visual_fallback_texture() if DisplayServer.get_name() == "headless" else (loaded if loaded is Texture2D else _visual_fallback_texture())
 			completed.append(normalized)
 		elif status == ResourceLoader.THREAD_LOAD_FAILED or status == ResourceLoader.THREAD_LOAD_INVALID_RESOURCE:
-			texture_cache[normalized] = null
+			texture_cache[normalized] = _visual_fallback_texture()
 			completed.append(normalized)
 	for normalized in completed:
 		detail_texture_prewarm_pending.erase(normalized)
@@ -38102,6 +39773,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 			regen_circle.custom_minimum_size = Vector2(552, 552)
 			regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			regen_circle.set_dark_mode(dark_mode_enabled)
 			regen_circle.set_theme_color(_skill_theme_color(skill_id))
 			regen_circle.set_regen_ring_color(_stamina_regen_circle_color(skill_id))
 			header_row.add_child(regen_circle)
@@ -38260,8 +39932,8 @@ func _force_show_skill_swipe_preview_modules(offset: int) -> void:
 func _finish_skill_swipe_preview_modules_reveal(token: int, offset: int, modules_root_id: int) -> void:
 	if token != skill_swipe_preview_module_reveal_token or offset != skill_swipe_preview_offset:
 		return
-	var modules_root := instance_from_id(modules_root_id) as Control
-	if modules_root != null and is_instance_valid(modules_root):
+	var modules_root := _valid_control_ref(instance_from_id(modules_root_id))
+	if modules_root != null:
 		modules_root.modulate.a = 1.0
 
 
@@ -38955,8 +40627,8 @@ func _reparent_tip_to_unclipped_fade_layer(tip: Control) -> void:
 
 
 func _finish_onboarding_tip_fade(tip_id: int, tip_kind: String) -> void:
-	var tip := instance_from_id(tip_id) as Control
-	if tip != null and is_instance_valid(tip):
+	var tip := _valid_control_ref(instance_from_id(tip_id))
+	if tip != null:
 		tip.queue_free()
 	match tip_kind:
 		"mastery":
@@ -39484,8 +41156,8 @@ func _dismiss_activity_start_highlight(instant := false) -> void:
 
 
 func _finish_activity_start_highlight_fade(border_id: int) -> void:
-	var border := instance_from_id(border_id) as Node
-	if border != null and is_instance_valid(border):
+	var border := _valid_node_ref(instance_from_id(border_id))
+	if border != null:
 		border.queue_free()
 	_restore_activity_start_highlight_frame_clip()
 
@@ -39791,6 +41463,8 @@ func _fade_tip_group(group_name: String, preserve_layout := false, collapse_layo
 
 func _build_passive_module_card(skill_id: String, action: Dictionary, content_width: float, interactive: bool, defer_loot_render := false) -> Dictionary:
 	var module_id := str(action.get("id", WOODCUTTING_LOG_MODULE_ID))
+	if _is_firepit_module(module_id):
+		return _build_firepit_module_card(skill_id, action, content_width, interactive)
 	var passive_bar_height := ACTION_PROGRESS_RAIL_HEIGHT * 1.72
 	var passive_face_bottom_trim := passive_bar_height * 0.50
 	var card_root := Control.new()
@@ -39890,7 +41564,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	info_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	info_button.z_index = 221
 	info_button.add_theme_font_size_override("font_size", MIN_MOBILE_BODY_FONT_SIZE)
-	info_button.add_theme_color_override("font_color", COLOR_INK)
+	_apply_info_symbol_button_text_color(info_button)
 	info_button.add_theme_stylebox_override("normal", _passive_round_button_style(COLOR_PANEL))
 	info_button.add_theme_stylebox_override("hover", _passive_round_button_style(COLOR_PANEL))
 	info_button.add_theme_stylebox_override("pressed", _passive_round_button_style(COLOR_GOLD.darkened(0.08)))
@@ -40103,7 +41777,332 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	return {"root": card_root, "card": card}
 
 
+func _build_firepit_module_card(skill_id: String, action: Dictionary, content_width: float, interactive: bool) -> Dictionary:
+	var module_id := str(action.get("id", WOODCUTTING_FIREPIT_MODULE_ID))
+	var firepit_card_height := WOODCUTTING_FIREPIT_CARD_HEIGHT
+	var passive_face_bottom_trim := 0.0
+	var dependency_height := WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT
+	var root := Control.new()
+	root.name = "FirepitEntryRoot"
+	root.custom_minimum_size = Vector2(content_width, dependency_height + firepit_card_height)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	root.clip_contents = not interactive
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
+
+	var scrapwood_module := _mat_collection_module("scrapwood")
+	scrapwood_module.position = Vector2((content_width - MAT_COLLECTION_MODULE_SIZE.x) * 0.5, 0.0)
+	scrapwood_module.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	scrapwood_module.z_index = 16
+	root.add_child(scrapwood_module)
+	var scrapwood_icon := _valid_control_ref(instance_from_id(int(scrapwood_module.get_meta("icon_id", 0)))) as Control
+	var scrapwood_label := _valid_label_ref(instance_from_id(int(scrapwood_module.get_meta("amount_label_id", 0))))
+	var scrapwood_connector := _mat_collection_connector(_mat_color("scrapwood").lerp(Color("#ffe27a"), 0.38))
+	scrapwood_connector.position = Vector2(content_width * 0.5 - 12.0, MAT_COLLECTION_MODULE_SIZE.y - 8.0)
+	scrapwood_connector.custom_minimum_size = Vector2(24.0, WOODCUTTING_FIREPIT_DEPENDENCY_GAP + 18.0)
+	scrapwood_connector.size = scrapwood_connector.custom_minimum_size
+	scrapwood_connector.z_index = 8
+	root.add_child(scrapwood_connector)
+
+	var card_root := Control.new()
+	card_root.name = "FirepitCardRoot"
+	card_root.custom_minimum_size = Vector2(content_width, firepit_card_height)
+	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card_root.clip_contents = true
+	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
+	card_root.position = Vector2(0.0, dependency_height)
+	root.add_child(card_root)
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.offset_top = 0.0
+	pop_card.offset_bottom = 0.0
+	pop_card.clip_contents = true
+	pop_card.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
+	card_root.add_child(pop_card)
+
+	var bg_underlay := Panel.new()
+	bg_underlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg_underlay.offset_bottom = -passive_face_bottom_trim
+	bg_underlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg_underlay.z_index = 149
+	var underlay_style := _surface_style(Color("#8d5f3a"), 66, 0, false)
+	underlay_style.border_width_left = 0
+	underlay_style.border_width_right = 0
+	underlay_style.border_width_top = 0
+	underlay_style.border_width_bottom = 0
+	bg_underlay.add_theme_stylebox_override("panel", underlay_style)
+	pop_card.add_child(bg_underlay)
+
+	var bg := RoundedTextureRect.new()
+	bg.texture = _texture_or_visual_fallback(WOODCUTTING_FIREPIT_BACKGROUND_TEXTURE)
+	bg.radius = 66.0
+	bg.art_height = firepit_card_height
+	bg.feather_height = 0.0
+	bg.mask_inset = 0.0
+	bg.corner_mask_mode = 1
+	bg.aspect_mode = 2
+	bg.sample_zoom = 1.50
+	bg.fallback_color = Color("#8d5f3a")
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.offset_bottom = -passive_face_bottom_trim
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bg.z_index = 150
+	pop_card.add_child(bg)
+
+	var wash := Panel.new()
+	wash.add_theme_stylebox_override("panel", _activity_shade_style(0.30))
+	wash.set_anchors_preset(Control.PRESET_FULL_RECT)
+	wash.offset_bottom = -passive_face_bottom_trim
+	wash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	wash.z_index = 152
+	pop_card.add_child(wash)
+
+	var title := _label(str(action.get("name", "Firepit")), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_constant_override("outline_size", 34)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	title.position = Vector2(74, 48)
+	title.size = Vector2(760, 106)
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title.set_meta("module_ui_title_label", true)
+	title.set_meta("activity_card_locked_title_z_index", 200)
+	title.z_index = _activity_card_title_z_index(_is_action_unlocked(skill_id, action), title)
+	pop_card.add_child(title)
+	card_root.set_meta("module_ui_title_label_id", title.get_instance_id())
+	pop_card.set_meta("module_ui_title_label_id", title.get_instance_id())
+
+	var info_popover := PanelContainer.new()
+	info_popover.position = Vector2(74, 238)
+	info_popover.custom_minimum_size = Vector2(900, 360)
+	info_popover.size = info_popover.custom_minimum_size
+	info_popover.visible = false
+	info_popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_popover.z_index = 4095
+	info_popover.z_as_relative = false
+	info_popover.add_theme_stylebox_override("panel", _passive_popup_style())
+	pop_card.add_child(info_popover)
+	var info_label := _label(WOODCUTTING_FIREPIT_INFO, 52, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	info_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	info_label.custom_minimum_size = Vector2(840, 320)
+	info_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	info_popover.add_child(info_label)
+
+	var info_button := Button.new()
+	info_button.text = "i"
+	info_button.custom_minimum_size = Vector2(86, 86)
+	info_button.size = info_button.custom_minimum_size
+	info_button.position = Vector2(360, 58)
+	info_button.focus_mode = Control.FOCUS_NONE
+	info_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
+	info_button.z_index = 221
+	info_button.add_theme_font_size_override("font_size", MIN_MOBILE_BODY_FONT_SIZE)
+	_apply_info_symbol_button_text_color(info_button)
+	info_button.add_theme_stylebox_override("normal", _passive_round_button_style(COLOR_PANEL))
+	info_button.add_theme_stylebox_override("hover", _passive_round_button_style(COLOR_PANEL))
+	info_button.add_theme_stylebox_override("pressed", _passive_round_button_style(COLOR_GOLD.darkened(0.08)))
+	info_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	_attach_button_depress_animation(info_button, 0.90)
+	if app_bold_font != null:
+		info_button.add_theme_font_override("font", app_bold_font)
+	if interactive:
+		info_button.gui_input.connect(_on_passive_module_button_input.bind("info", module_id, "", info_popover, info_button))
+		info_button.pressed.connect(_on_passive_info_pressed.bind(module_id, info_popover))
+	pop_card.add_child(info_button)
+
+	var face_width := content_width - ACTION_CARD_POP_GUTTER * 2.0
+	var firepit_art_size := Vector2(540, 540)
+	var firepit_ring_size := Vector2(820, 820)
+	var art_root_size := Vector2(960, 900)
+	var module_center_x := face_width * 0.5
+	var firepit_layout_shift_x := -130.0
+
+	var art_root := Control.new()
+	art_root.position = Vector2(module_center_x - art_root_size.x * 0.5 + firepit_layout_shift_x, 40)
+	art_root.custom_minimum_size = art_root_size
+	art_root.size = art_root.custom_minimum_size
+	art_root.clip_contents = false
+	art_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	art_root.z_index = 210
+	pop_card.add_child(art_root)
+	var fuel_ring := FirepitFuelRing.new()
+	var firepit_art_position := Vector2((art_root_size.x - firepit_art_size.x) * 0.5, 170)
+	var firepit_art_center := firepit_art_position + firepit_art_size * 0.5
+	fuel_ring.position = firepit_art_center - firepit_ring_size * 0.5
+	fuel_ring.size = firepit_ring_size
+	fuel_ring.custom_minimum_size = fuel_ring.size
+	fuel_ring.fill_color = Color("#ff9c2f")
+	fuel_ring.empty_color = Color("#553220")
+	fuel_ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	fuel_ring.z_index = 3
+	art_root.add_child(fuel_ring)
+	var firepit_art := TextureRect.new()
+	firepit_art.texture = _texture_or_visual_fallback(WOODCUTTING_FIREPIT_TEXTURE)
+	firepit_art.expand_mode = TextureRect.EXPAND_FIT_WIDTH_PROPORTIONAL
+	firepit_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	firepit_art.position = firepit_art_position
+	firepit_art.size = firepit_art_size
+	firepit_art.custom_minimum_size = firepit_art.size
+	firepit_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	firepit_art.z_index = 1
+	art_root.add_child(firepit_art)
+	var active_dim := FirepitWarmthOverlay.new()
+	active_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	active_dim.offset_bottom = -passive_face_bottom_trim
+	active_dim.cutout_center = art_root.position + firepit_art.position + firepit_art.size * Vector2(0.5, 0.54)
+	active_dim.base_radius = 360.0
+	active_dim.feather_radius = 360.0
+	active_dim.flicker_radius = 42.0
+	active_dim.corner_radius = 66.0
+	active_dim.darkness = 0.58
+	active_dim.unlit_darkness = 0.46
+	active_dim.glow_alpha = 0.18
+	active_dim.z_index = 153
+	active_dim.set_active(false)
+	pop_card.add_child(active_dim)
+	var flame_fx := FirepitFlameFx.new()
+	flame_fx.position = Vector2((art_root_size.x - 620.0) * 0.5, 58)
+	flame_fx.size = Vector2(620, 620)
+	flame_fx.custom_minimum_size = flame_fx.size
+	flame_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	flame_fx.z_index = 4
+	art_root.add_child(flame_fx)
+
+	var status_panel := Control.new()
+	status_panel.custom_minimum_size = Vector2(500, 360)
+	status_panel.position = Vector2(1220.0, 104)
+	status_panel.size = status_panel.custom_minimum_size
+	status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_panel.z_index = 242
+	pop_card.add_child(status_panel)
+	var status_label := _label("", 74, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	status_label.position = Vector2(0, 0)
+	status_label.size = Vector2(490, 82)
+	status_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	status_label.add_theme_constant_override("outline_size", 20)
+	status_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_panel.add_child(status_label)
+	var buff_label := _label("", 52, Color("#ffe27a"), HORIZONTAL_ALIGNMENT_RIGHT)
+	buff_label.position = Vector2(0, 118)
+	buff_label.size = Vector2(490, 170)
+	buff_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	buff_label.add_theme_constant_override("outline_size", 14)
+	buff_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	buff_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	buff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_panel.add_child(buff_label)
+	var timer_label := _label("", 62, COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	timer_label.position = Vector2(0, 294)
+	timer_label.size = Vector2(490, 70)
+	timer_label.add_theme_color_override("font_outline_color", Color.WHITE)
+	timer_label.add_theme_constant_override("outline_size", 10)
+	timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	status_panel.add_child(timer_label)
+
+	var toggle_button := Button.new()
+	toggle_button.text = ""
+	toggle_button.flat = true
+	toggle_button.custom_minimum_size = art_root.size
+	toggle_button.size = toggle_button.custom_minimum_size
+	toggle_button.position = art_root.position
+	toggle_button.focus_mode = Control.FOCUS_NONE
+	toggle_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
+	toggle_button.z_index = 230
+	toggle_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	toggle_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	toggle_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
+	toggle_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
+	toggle_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	_attach_button_depress_animation(toggle_button, 0.94)
+	_attach_default_button_sfx(toggle_button)
+	if interactive:
+		toggle_button.gui_input.connect(_on_passive_module_button_input.bind("firepit", module_id, "", null, toggle_button))
+		toggle_button.button_down.connect(_on_firepit_button_down.bind(module_id, toggle_button))
+		toggle_button.button_up.connect(_on_firepit_button_up.bind(module_id))
+		toggle_button.pressed.connect(_toggle_firepit_pressed.bind(module_id))
+	pop_card.add_child(toggle_button)
+
+	var inner_shadow := ActivityCardInnerShadow.new()
+	inner_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
+	inner_shadow.offset_bottom = -passive_face_bottom_trim
+	inner_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	inner_shadow.z_index = 153
+	pop_card.add_child(inner_shadow)
+
+	var corner_crop := RoundedCornerCropOverlay.new()
+	corner_crop.radius = 66.0
+	corner_crop.cover_color = _theme_paper_color()
+	corner_crop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	corner_crop.offset_bottom = -passive_face_bottom_trim
+	corner_crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	corner_crop.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX - 1
+	pop_card.add_child(corner_crop)
+
+	var border := ActivityCardBorder.new()
+	border.set_anchors_preset(Control.PRESET_FULL_RECT)
+	border.offset_bottom = -passive_face_bottom_trim
+	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	border.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX
+	pop_card.add_child(border)
+	var shade := Panel.new()
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.50))
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.offset_bottom = -passive_face_bottom_trim
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade.visible = false
+	shade.z_index = 224
+	pop_card.add_child(shade)
+	var lock_overlay := _activity_lock_overlay(pop_card, int(action.get("unlock", WOODCUTTING_FIREPIT_UNLOCK_LEVEL)), skill_id, _lock_requirements_for_overlay(skill_id, action))
+	_connect_activity_lock_handler(lock_overlay, skill_id, module_id)
+
+	var card := {
+		"passive": true,
+		"firepit": true,
+		"root": card_root,
+		"firepit_entry_root": root,
+		"skill_id": skill_id,
+		"pop": pop_card,
+		"bg": bg,
+		"active_dim": active_dim,
+		"corner_crop": corner_crop,
+		"shade": shade,
+		"title": title,
+		"info_button": info_button,
+		"info_label": info_label,
+		"info_popover": info_popover,
+		"scrapwood_module": scrapwood_module,
+		"scrapwood_connector": scrapwood_connector,
+		"scrapwood_icon": scrapwood_icon,
+		"scrapwood_label": scrapwood_label,
+		"art_root": art_root,
+		"firepit_glow": active_dim,
+		"status_panel": status_panel,
+		"flame_fx": flame_fx,
+		"status": status_label,
+		"timer": timer_label,
+		"buff": buff_label,
+		"toggle": toggle_button,
+		"progress": fuel_ring,
+		"border": border,
+		"lock_overlay": lock_overlay,
+		"action": action
+	}
+	if interactive:
+		card["module_action_zones"] = _add_module_action_zones(pop_card, _module_ui_key_for_action(skill_id, action))
+	_update_firepit_card_static_state(card, skill_id, action, _is_action_unlocked(skill_id, action))
+	return {"root": root, "card": card}
+
+
 func _update_passive_card_static_state(card: Dictionary, _skill_id: String, action: Dictionary, unlocked: bool) -> void:
+	if bool(card.get("firepit", false)):
+		_update_firepit_card_static_state(card, _skill_id, action, unlocked)
+		return
 	_sync_module_action_zones_for_card(card, _module_ui_key_for_action(_skill_id, action))
 	var module_id := str(action.get("id", WOODCUTTING_LOG_MODULE_ID))
 	var state := _passive_module_state(module_id)
@@ -40217,6 +42216,204 @@ func _update_passive_card_progress(card: Dictionary, action: Dictionary, unlocke
 	var progress_target := _passive_production_progress_pct(module_id, state, unlocked)
 	var progress_instant := instant or (not unlocked) or progress_target + 5.0 < progress.value
 	progress.set_target_value(progress_target, progress_instant)
+
+
+func _update_firepit_card_static_state(card: Dictionary, skill_id: String, action: Dictionary, unlocked: bool, instant := false) -> void:
+	_sync_module_action_zones_for_card(card, _module_ui_key_for_action(skill_id, action))
+	var module_id := str(action.get("id", WOODCUTTING_FIREPIT_MODULE_ID))
+	var state := _firepit_state()
+	var ceremony_active := bool(card.get("unlock_ceremony_pending", false)) or bool(card.get("unlock_ceremony_active", false))
+	_sync_activity_lock_overlay(card, action, unlocked)
+	_sync_activity_card_title_layer(card, unlocked)
+	var active := _firepit_active()
+	var igniting := bool(state.get("igniting", false)) and not active
+	var regen_bonus := _firepit_stamina_regen_bonus(skill_id)
+	var cooling := (not active) and regen_bonus > 0.0001
+	_sync_firepit_dependency_layout(card, unlocked and (active or igniting) and not ceremony_active, instant)
+	var scrapwood := _mat_amount("scrapwood")
+	var heat_tier := _firepit_heat_tier()
+	var shade := card.get("shade") as Panel
+	if shade != null:
+		shade.visible = (not unlocked) or ceremony_active
+		if not unlocked:
+			shade.modulate = Color.WHITE
+		elif not ceremony_active:
+			shade.modulate = Color(1, 1, 1, 0)
+	var active_dim := card.get("active_dim") as FirepitWarmthOverlay
+	if active_dim != null:
+		active_dim.set_cover(unlocked and not ceremony_active, active)
+	var corner_crop := card.get("corner_crop") as RoundedCornerCropOverlay
+	if corner_crop != null:
+		var crop_color := _theme_paper_color()
+		if corner_crop.cover_color != crop_color:
+			corner_crop.cover_color = crop_color
+			corner_crop.queue_redraw()
+	var border := card.get("border") as Control
+	if border != null:
+		var next_color := Color("#ff9c2f") if active else COLOR_INK
+		var border_dirty := false
+		if border.get("border_color") != next_color:
+			border.set("border_color", next_color)
+			border_dirty = true
+		if absf(float(border.get("border_width")) - (10.0 if active else 8.0)) > 0.001:
+			border.set("border_width", 10.0 if active else 8.0)
+			border_dirty = true
+		if border_dirty:
+			border.queue_redraw()
+	var status_label := card.get("status") as Label
+	if status_label != null:
+		var status_text := _firepit_comfort_text(heat_tier) if active else "Starting fire" if igniting else "Warmth fading" if cooling else "Fire is out"
+		_set_label_text_if_changed(status_label, status_text)
+		status_label.add_theme_color_override("font_color", Color("#ffe27a") if active or cooling or igniting else Color.WHITE)
+	var scrapwood_label := card.get("scrapwood_label") as Label
+	if scrapwood_label != null:
+		_set_label_text_if_changed(scrapwood_label, _mat_amount_text("scrapwood", scrapwood))
+	var timer_label := card.get("timer") as Label
+	if timer_label != null:
+		var timer_text := ""
+		if active:
+			timer_text = "%s left" % _format_duration(_firepit_seconds_remaining())
+		elif igniting:
+			timer_text = "igniting"
+		elif cooling:
+			timer_text = "cooling"
+		_set_label_text_if_changed(timer_label, timer_text)
+		timer_label.visible = not timer_text.is_empty()
+	var buff_label := card.get("buff") as Label
+	if buff_label != null:
+		var buff_text := ""
+		if active or cooling:
+			buff_text = "+%s%% stamina\nregen boost" % _format_percent_points(regen_bonus * 100.0)
+		_set_label_text_if_changed(buff_label, buff_text)
+		buff_label.visible = active or cooling
+	var toggle_button := card.get("toggle") as Button
+	if toggle_button != null:
+		toggle_button.text = ""
+		toggle_button.disabled = (not unlocked) or ceremony_active or igniting or ((not active) and scrapwood < FIREPIT_START_SCRAPWOOD_COST)
+		toggle_button.modulate = Color(1, 1, 1, 0.42) if toggle_button.disabled else Color.WHITE
+	var flame_fx := card.get("flame_fx") as Control
+	if flame_fx != null and flame_fx.has_method("set_active"):
+		flame_fx.call("set_active", unlocked and active)
+	var progress := card.get("progress") as FirepitFuelRing
+	if progress != null:
+		var show_bonus_ring := unlocked and (active or cooling)
+		var progress_target := _firepit_heat_bonus_progress_pct() if show_bonus_ring else 0.0
+		progress.set_target_value(progress_target, (not unlocked) or ((not active) and (not cooling)) or progress_target + 8.0 < progress.value)
+		var next_scrapwood_target := _firepit_next_scrapwood_progress_pct(state) if (unlocked and active) else 0.0
+		var consume_hold_until := int(progress.get_meta("firepit_consume_hold_until_msec", 0))
+		if consume_hold_until > Time.get_ticks_msec() and unlocked and active:
+			progress.set_inner_value(0.0)
+		else:
+			if consume_hold_until > 0:
+				progress.remove_meta("firepit_consume_hold_until_msec")
+			progress.set_inner_target_value(next_scrapwood_target, (not unlocked) or (not active) or next_scrapwood_target + 8.0 < progress.inner_value)
+	var title := card.get("title") as Label
+	if title != null:
+		title.z_index = _activity_card_title_z_index(unlocked, title)
+	passive_modules[module_id] = state
+
+
+func _apply_firepit_dependency_layout_height(value: float, card_root_id: int, entry_root_id: int, entry_id: int, action_id: String) -> void:
+	var reveal_height := clampf(value, 0.0, WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT)
+	var target_height := WOODCUTTING_FIREPIT_CARD_HEIGHT + reveal_height
+	var card_root := _valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
+	if card_root != null:
+		card_root.position.y = reveal_height
+	var firepit_entry_root := _valid_control_ref(instance_from_id(entry_root_id)) if entry_root_id != 0 else null
+	if firepit_entry_root != null:
+		firepit_entry_root.custom_minimum_size.y = target_height
+		firepit_entry_root.size.y = target_height
+		firepit_entry_root.update_minimum_size()
+		var firepit_parent := firepit_entry_root.get_parent() as Container
+		if firepit_parent != null:
+			firepit_parent.queue_sort()
+	var entry := _valid_control_ref(instance_from_id(entry_id)) if entry_id != 0 else null
+	if entry != null:
+		entry.custom_minimum_size.y = target_height
+		entry.size.y = target_height
+		entry.update_minimum_size()
+		var entry_parent := entry.get_parent() as Container
+		if entry_parent != null:
+			entry_parent.queue_sort()
+	if not action_id.is_empty():
+		var lazy_entry := _detail_lazy_entry_for_track_id(action_id)
+		if not lazy_entry.is_empty():
+			lazy_entry["height"] = target_height
+
+
+func _clear_firepit_dependency_height_tween(card_root_id: int) -> void:
+	var card_root := _valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
+	if card_root != null and card_root.has_meta("firepit_dependency_height_tween"):
+		card_root.remove_meta("firepit_dependency_height_tween")
+
+
+func _finish_firepit_dependency_visuals(module_id: int, connector_id: int, show_dependency: bool) -> void:
+	var module := _valid_control_ref(instance_from_id(module_id)) if module_id != 0 else null
+	var connector := _valid_control_ref(instance_from_id(connector_id)) if connector_id != 0 else null
+	for node in [module, connector]:
+		if node == null:
+			continue
+		if node.has_meta("firepit_dependency_visual_tween"):
+			node.remove_meta("firepit_dependency_visual_tween")
+		if not show_dependency:
+			_set_canvas_item_visible_if_changed(node, false)
+
+
+func _sync_firepit_dependency_layout(card: Dictionary, show_dependency: bool, instant := false) -> void:
+	var firepit_entry_root := card.get("firepit_entry_root") as Control
+	var card_root := card.get("root") as Control
+	var scrapwood_module := card.get("scrapwood_module") as Control
+	var scrapwood_connector := card.get("scrapwood_connector") as Control
+	var entry := card.get("entry") as Control
+	var target_reveal_height := WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT if show_dependency else 0.0
+	var current_reveal_height := target_reveal_height
+	if card_root != null and is_instance_valid(card_root):
+		current_reveal_height = clampf(card_root.position.y, 0.0, WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT)
+	var action := card.get("action", {}) as Dictionary
+	var action_id := str(action.get("id", card.get("action_id", "")))
+	var seed_layout := not bool(card.get("firepit_dependency_layout_initialized", false))
+	var card_root_id := card_root.get_instance_id() if card_root != null and is_instance_valid(card_root) else 0
+	var entry_root_id := firepit_entry_root.get_instance_id() if firepit_entry_root != null and is_instance_valid(firepit_entry_root) else 0
+	var entry_id := entry.get_instance_id() if entry != null and is_instance_valid(entry) else 0
+	if absf(current_reveal_height - target_reveal_height) > 0.5:
+		if card_root != null and is_instance_valid(card_root):
+			_kill_meta_tween(card_root, "firepit_dependency_height_tween")
+		if instant or seed_layout or card_root == null or not is_instance_valid(card_root):
+			_apply_firepit_dependency_layout_height(target_reveal_height, card_root_id, entry_root_id, entry_id, action_id)
+		else:
+			var height_tween := card_root.create_tween()
+			card_root.set_meta("firepit_dependency_height_tween", height_tween)
+			height_tween.tween_method(Callable(self, "_apply_firepit_dependency_layout_height").bind(card_root_id, entry_root_id, entry_id, action_id), current_reveal_height, target_reveal_height, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
+			height_tween.finished.connect(Callable(self, "_clear_firepit_dependency_height_tween").bind(card_root_id))
+	else:
+		_apply_firepit_dependency_layout_height(target_reveal_height, card_root_id, entry_root_id, entry_id, action_id)
+	card["firepit_dependency_layout_initialized"] = true
+	var visual_nodes: Array[Control] = []
+	if scrapwood_module != null and is_instance_valid(scrapwood_module):
+		visual_nodes.append(scrapwood_module)
+	if scrapwood_connector != null and is_instance_valid(scrapwood_connector):
+		visual_nodes.append(scrapwood_connector)
+	for node in visual_nodes:
+		_kill_meta_tween(node, "firepit_dependency_visual_tween")
+		if show_dependency:
+			_set_canvas_item_visible_if_changed(node, true)
+	var target_alpha := 1.0 if show_dependency else 0.0
+	var target_scale := Vector2.ONE if show_dependency else Vector2(0.94, 0.94)
+	if instant or seed_layout:
+		for node in visual_nodes:
+			node.modulate.a = target_alpha
+			node.scale = target_scale
+			_set_canvas_item_visible_if_changed(node, show_dependency)
+		return
+	var module_id := scrapwood_module.get_instance_id() if scrapwood_module != null and is_instance_valid(scrapwood_module) else 0
+	var connector_id := scrapwood_connector.get_instance_id() if scrapwood_connector != null and is_instance_valid(scrapwood_connector) else 0
+	for node in visual_nodes:
+		var visual_tween := create_tween()
+		node.set_meta("firepit_dependency_visual_tween", visual_tween)
+		visual_tween.set_parallel(true)
+		visual_tween.tween_property(node, "modulate:a", target_alpha, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
+		visual_tween.tween_property(node, "scale", target_scale, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_BACK if show_dependency else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
+		visual_tween.finished.connect(_finish_firepit_dependency_visuals.bind(module_id, connector_id, show_dependency))
 
 
 func _passive_production_progress_pct(module_id: String, state: Dictionary, unlocked: bool) -> float:
@@ -40584,12 +42781,13 @@ func _passive_effect_parent() -> Control:
 
 
 func _passive_log_flyer_size(module_id: String, storage: Control = null) -> Vector2:
-	if storage != null and is_instance_valid(storage) and storage.has_meta("passive_log_flyer_size"):
-		return storage.get_meta("passive_log_flyer_size") as Vector2
 	var state := _passive_module_state(module_id)
 	var stored := maxi(1, int(state.get("stored", 1)))
 	var pile_config := _passive_log_pile_config(_passive_log_pile_tier(stored), stored)
-	return pile_config["icon_size"] as Vector2
+	var fallback_size := pile_config["icon_size"] as Vector2
+	if storage != null and is_instance_valid(storage) and storage.has_meta("passive_log_flyer_size"):
+		return _meta_vector2(storage, "passive_log_flyer_size", fallback_size)
+	return fallback_size
 
 
 func _passive_log_flyer_shadow_offset(flyer_size: Vector2) -> Vector2:
@@ -40656,7 +42854,7 @@ func _control_local_point_to_global(control: Control, local_point: Vector2) -> V
 
 
 func _on_passive_yield_log_stored_bound(target_id: int, module_id: String, index: int) -> void:
-	var target := instance_from_id(target_id) as Control
+	var target := _valid_control_ref(instance_from_id(target_id))
 	_on_passive_yield_log_stored(target, module_id, index)
 
 
@@ -40679,8 +42877,8 @@ func _refresh_passive_loot_for_module(module_id: String) -> void:
 
 
 func _on_passive_log_landed_bound(target_id: int, currency_icon_id: int, index: int) -> void:
-	var target := instance_from_id(target_id) as Control
-	var currency_icon := instance_from_id(currency_icon_id) as Control if currency_icon_id != 0 else null
+	var target := _valid_control_ref(instance_from_id(target_id))
+	var currency_icon := _valid_control_ref(instance_from_id(currency_icon_id)) if currency_icon_id != 0 else null
 	_on_passive_log_landed(target, currency_icon, index)
 
 
@@ -40831,6 +43029,7 @@ func _passive_upgrade_gain_text(stat_type: String, old_value: int, new_value: in
 
 
 func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, content_width: float) -> Dictionary:
+	var uses_blue_guy_chicken_brawl_stage := _action_uses_blue_guy_chicken_brawl_stage(action)
 	var card_root := Control.new()
 	card_root.custom_minimum_size = Vector2(content_width, _activity_card_root_height())
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -40856,8 +43055,17 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	pop_card.set_meta("activity_card_depth_node_id", depth.get_instance_id())
 	card_root.add_child(pop_card)
 
+	pop_card.add_child(_action_card_background_edge_underlay(skill_id))
 	var bg := _action_card_background(skill_id, action)
 	pop_card.add_child(bg)
+	var blue_guy_chicken_stage: Control = null
+	if uses_blue_guy_chicken_brawl_stage:
+		blue_guy_chicken_stage = BlueGuyChickenBrawlStageClass.new()
+		blue_guy_chicken_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+		blue_guy_chicken_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		blue_guy_chicken_stage.z_index = 220
+		_configure_blue_guy_chicken_brawl_stage(blue_guy_chicken_stage)
+		pop_card.add_child(blue_guy_chicken_stage)
 
 	var shade: Panel = null
 	if not _is_action_unlocked(skill_id, action):
@@ -40871,6 +43079,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	margin.add_theme_constant_override("margin_bottom", 126)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.z_index = 200
+	margin.visible = not uses_blue_guy_chicken_brawl_stage
 	pop_card.add_child(margin)
 
 	var row := HBoxContainer.new()
@@ -40890,6 +43099,8 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	art_slot.add_child(art_panel)
 	var art := _action_art_image(action)
 	art_panel.add_child(art)
+	if uses_blue_guy_chicken_brawl_stage:
+		art.visible = false
 	_add_action_art_corner_badges(art_panel, action)
 	art_panel.add_child(_action_art_border_overlay())
 
@@ -40950,7 +43161,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var fluid_strip: Control = null
 	if _fishing_rework_active_for_skill(skill_id) and not _fishing_action_should_render_standalone(skill_id, action):
 		fluid_strip = _attach_fishing_fluid_strip(pop_card, action)
-	else:
+	elif not uses_blue_guy_chicken_brawl_stage:
 		progress = ActivityProgressRail.new()
 		_apply_activity_progress_rail_action_theme(progress, skill_id, action)
 		progress.anchor_left = 0.0
@@ -40996,6 +43207,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		"mastery": mastery_progress,
 		"progress": progress,
 		"fluid_strip": fluid_strip,
+		"blue_guy_chicken_stage": blue_guy_chicken_stage,
 		"border": border,
 		"lock_overlay": lock_overlay,
 		"action": action,
@@ -41568,6 +43780,8 @@ func _queue_activity_unlock_readiness(trigger_skill_id: String, old_level: int, 
 func _auto_unlock_nonvisible_ready_lockpads(ready_by_skill: Dictionary) -> Dictionary:
 	if not auto_unlock_lockpads_enabled:
 		return ready_by_skill
+	if _auto_unlock_lockpads_paused_for_onboarding():
+		return ready_by_skill
 	var visible_ready_by_skill := {}
 	for raw_owner_skill_id in ready_by_skill.keys():
 		var owner_skill_id := str(raw_owner_skill_id)
@@ -41612,6 +43826,8 @@ func _ready_lockpads_for_current_state() -> Dictionary:
 func _auto_unlock_retroactive_lockpads() -> void:
 	if not auto_unlock_lockpads_enabled:
 		return
+	if _auto_unlock_lockpads_paused_for_onboarding():
+		return
 	var ready_by_skill := _ready_lockpads_for_current_state()
 	if ready_by_skill.is_empty():
 		return
@@ -41622,15 +43838,31 @@ func _auto_unlock_retroactive_lockpads() -> void:
 func _run_startup_auto_unlock_lockpads() -> void:
 	if not startup_initialized or not auto_unlock_lockpads_enabled:
 		return
+	if _auto_unlock_lockpads_paused_for_onboarding():
+		return
 	_auto_unlock_retroactive_lockpads()
 	_auto_unlock_pending_lockpads()
+
+
+func _auto_unlock_lockpads_paused_for_onboarding() -> bool:
+	return _onboarding_path_active()
 
 
 func _auto_finalize_ready_lockpad(skill_id: String, action_id: String) -> bool:
 	var action := _action_data(skill_id, action_id)
 	if action.is_empty() or _is_action_unlocked(skill_id, action) or not _can_unlock_action(skill_id, action):
 		return false
-	return _finalize_manual_activity_unlock(skill_id, action_id, _auto_unlock_lockpad_save_reason(skill_id))
+	var finalized := _finalize_manual_activity_unlock(skill_id, action_id, _auto_unlock_lockpad_save_reason(skill_id))
+	if finalized:
+		_request_current_skill_detail_unlock_refresh(skill_id)
+	return finalized
+
+
+func _request_current_skill_detail_unlock_refresh(skill_id: String) -> void:
+	if current_screen != "skill" or skill_id != selected_skill_id:
+		return
+	activity_unlock_detail_refresh_done = false
+	call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
 
 
 func _auto_unlock_lockpad_save_reason(skill_id: String) -> String:
@@ -41924,6 +44156,8 @@ func _apply_pending_activity_unlock_readiness() -> void:
 func _auto_unlock_visible_pending_lockpads(skill_id: String) -> void:
 	if not auto_unlock_lockpads_enabled:
 		return
+	if _auto_unlock_lockpads_paused_for_onboarding():
+		return
 	if current_screen != "skill" or skill_id != selected_skill_id:
 		return
 	if activity_unlock_ceremony_count > 0:
@@ -41972,6 +44206,8 @@ func _auto_unlock_visible_pending_lockpads(skill_id: String) -> void:
 
 func _auto_unlock_pending_lockpads() -> void:
 	if not auto_unlock_lockpads_enabled:
+		return
+	if _auto_unlock_lockpads_paused_for_onboarding():
 		return
 	var pages := _pending_activity_readiness_pages()
 	for raw_skill_id in pages.keys():
@@ -42063,6 +44299,8 @@ func _schedule_auto_unlock_pending_lockpads_after_delay(delay_seconds: float) ->
 
 func _schedule_auto_unlock_pending_lockpads() -> void:
 	if not auto_unlock_lockpads_enabled or pending_activity_unlock_ceremony.is_empty():
+		return
+	if _auto_unlock_lockpads_paused_for_onboarding():
 		return
 	call_deferred("_auto_unlock_pending_lockpads")
 
@@ -42359,7 +44597,7 @@ func _finish_activity_unlock_ceremony(card: Dictionary, overlay_root: Control, s
 	activity_unlock_ceremony_count = maxi(0, activity_unlock_ceremony_count - 1)
 	call_deferred("_finish_activity_unlock_card_static_state_deferred", card)
 	_schedule_auto_unlock_pending_lockpads()
-	if refresh_detail and activity_unlock_ceremony_count <= 0 and not activity_unlock_detail_refresh_done and (not activity_unlock_preview_after_ceremony_id.is_empty() or not activity_unlock_heist_preview_after_ceremony_id.is_empty()):
+	if refresh_detail and activity_unlock_ceremony_count <= 0 and not activity_unlock_detail_refresh_done:
 		call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
 
 
@@ -42522,8 +44760,8 @@ func _finish_activity_preview_fade_in(card_key: String, root_id: int, pop_id: in
 	var card := action_cards.get(card_key, {}) as Dictionary
 	if card.is_empty():
 		return
-	var callback_root := instance_from_id(root_id) as Control
-	if callback_root == null or not is_instance_valid(callback_root) or callback_root.is_queued_for_deletion():
+	var callback_root := _valid_control_ref(instance_from_id(root_id))
+	if callback_root == null or callback_root.is_queued_for_deletion():
 		card.erase("unlock_next_preview_smooth")
 		card.erase("stable_preview_fade")
 		card.erase("preview_fade_tween")
@@ -42537,8 +44775,8 @@ func _finish_activity_preview_fade_in(card_key: String, root_id: int, pop_id: in
 		card.erase("preview_enter_entry_target_height")
 		card.erase("preview_enter_original_clip")
 		_set_activity_preview_entry_height(card, callback_root, target_height)
-	var callback_pop := instance_from_id(pop_id) as Control if pop_id != 0 else null
-	if callback_pop != null and is_instance_valid(callback_pop) and not callback_pop.is_queued_for_deletion():
+	var callback_pop := _valid_control_ref(instance_from_id(pop_id)) if pop_id != 0 else null
+	if callback_pop != null and not callback_pop.is_queued_for_deletion():
 		_set_preview_pop_vertical_offset(callback_pop, 0.0)
 	card.erase("unlock_next_preview_smooth")
 	card.erase("stable_preview_fade")
@@ -42557,8 +44795,8 @@ func _finish_activity_preview_card_after_fade_deferred(card_key: String, skill_i
 	var root := _valid_control_ref(card.get("root"))
 	if root == null or root.is_queued_for_deletion():
 		return
-	var callback_lock_rig := instance_from_id(lock_rig_id) as Control if lock_rig_id != 0 else null
-	if callback_lock_rig != null and is_instance_valid(callback_lock_rig):
+	var callback_lock_rig := _valid_control_ref(instance_from_id(lock_rig_id)) if lock_rig_id != 0 else null
+	if callback_lock_rig != null:
 		_set_canvas_item_modulate_if_changed(callback_lock_rig, Color.WHITE)
 	var final_unlocked := _is_action_unlocked(skill_id, action)
 	if final_unlocked:
@@ -42587,10 +44825,7 @@ func _finish_locked_preview_overlay_without_resync(card: Dictionary, action: Dic
 
 
 func _kill_preview_fade_tween(card: Dictionary) -> void:
-	var active_tween := card.get("preview_fade_tween") as Tween
-	if active_tween != null and active_tween.is_valid():
-		active_tween.kill()
-	card.erase("preview_fade_tween")
+	_kill_card_tween(card, "preview_fade_tween")
 
 
 func _set_preview_pop_vertical_offset(pop: Control, offset_y: float) -> void:
@@ -42605,29 +44840,29 @@ func _set_preview_pop_vertical_offset(pop: Control, offset_y: float) -> void:
 
 
 func _set_preview_pop_vertical_offset_safe(offset_y: float, pop_id: int) -> void:
-	var pop := instance_from_id(pop_id) as Control
-	if pop == null or not is_instance_valid(pop) or pop.is_queued_for_deletion():
+	var pop := _valid_control_ref(instance_from_id(pop_id))
+	if pop == null or pop.is_queued_for_deletion():
 		return
 	_set_preview_pop_vertical_offset(pop, offset_y)
 
 
 func _set_control_position_y_safe(position_y: float, control_id: int) -> void:
-	var control := instance_from_id(control_id) as Control
-	if control == null or not is_instance_valid(control) or control.is_queued_for_deletion():
+	var control := _valid_control_ref(instance_from_id(control_id))
+	if control == null or control.is_queued_for_deletion():
 		return
 	control.position.y = position_y
 
 
 func _set_canvas_item_alpha_safe(alpha: float, canvas_item_id: int) -> void:
-	var canvas_item := instance_from_id(canvas_item_id) as CanvasItem
-	if canvas_item == null or not is_instance_valid(canvas_item) or canvas_item.is_queued_for_deletion():
+	var canvas_item := _valid_canvas_item_ref(instance_from_id(canvas_item_id))
+	if canvas_item == null or canvas_item.is_queued_for_deletion():
 		return
 	_set_canvas_item_alpha_if_changed(canvas_item, alpha)
 
 
 func _set_control_minimum_height_safe(height: float, control_id: int) -> void:
-	var control := instance_from_id(control_id) as Control
-	if control == null or not is_instance_valid(control) or control.is_queued_for_deletion():
+	var control := _valid_control_ref(instance_from_id(control_id))
+	if control == null or control.is_queued_for_deletion():
 		return
 	_set_control_minimum_height(control, height)
 
@@ -42787,9 +45022,9 @@ func _apply_detail_scroll_height_change_preserve_context(_progress: float, conte
 	if absi(detail_actions_scroll.scroll_vertical - last_scroll) > 4:
 		context["cancelled"] = true
 		return
-	var tracked := instance_from_id(int(context.get("tracked_id", 0))) as Control
+	var tracked := _valid_control_ref(instance_from_id(int(context.get("tracked_id", 0))))
 	var stack := _detail_actions_stack()
-	if tracked == null or stack == null or not is_instance_valid(tracked) or not is_instance_valid(stack):
+	if tracked == null or stack == null or not is_instance_valid(stack):
 		return
 	var after_rect := _detail_control_rect_in_stack(tracked, stack)
 	var height_delta := after_rect.size.y - float(context.get("before_height", 0.0))
@@ -42992,9 +45227,8 @@ func _apply_skill_level_unlock_refresh_in_place(skill_id: String, unlocked_ids: 
 func _activity_preview_reveal_animation_pending(card: Dictionary) -> bool:
 	if card.is_empty():
 		return false
-	var active_tween := card.get("preview_fade_tween") as Tween
 	return (
-		(active_tween != null and active_tween.is_valid())
+		_card_tween_is_valid(card, "preview_fade_tween")
 		or bool(card.get("fade_in_pending", false))
 		or bool(card.get("unlock_next_preview_pending", false))
 		or bool(card.get("locked_preview_fade_in_pending", false))
@@ -43042,6 +45276,8 @@ func _reveal_locked_activity_card_in_place(card: Dictionary, skill_id: String, a
 
 func _apply_skill_detail_unlock_refresh_in_place(preview_id: String) -> bool:
 	_hold_skill_detail_layout_refresh(0.35)
+	if _fishing_rework_active_for_skill(selected_skill_id):
+		return false
 	for raw_key in action_cards.keys():
 		var card := action_cards[raw_key] as Dictionary
 		if card == null:
@@ -43114,12 +45350,13 @@ func _refresh_skill_detail_after_activity_unlock_ceremony() -> void:
 	var ceremony_refresh_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
 	await _refresh_visible_skill_detail_action_list(ceremony_refresh_scroll, selected_skill_id)
 	if not preview_id.is_empty():
-		var preview_card := _activity_preview_card_for_action_id(preview_id)
-		if not preview_card.is_empty():
-			var preview_action := preview_card.get("action", {}) as Dictionary
-			if preview_action.is_empty():
-				preview_action = _action_data(selected_skill_id, preview_id)
-			_reveal_locked_activity_card_in_place(preview_card, selected_skill_id, preview_action)
+		if not _play_activity_unlock_preview_in_place(preview_id):
+			var preview_card := _activity_preview_card_for_action_id(preview_id)
+			if not preview_card.is_empty():
+				var preview_action := preview_card.get("action", {}) as Dictionary
+				if preview_action.is_empty():
+					preview_action = _action_data(selected_skill_id, preview_id)
+				_reveal_locked_activity_card_in_place(preview_card, selected_skill_id, preview_action)
 
 
 func _activity_preview_card_for_action_id(action_id: String, ensure_lazy_mount := false) -> Dictionary:
@@ -43342,6 +45579,7 @@ func _mat_reward_result_text(awarded_mats: Array) -> String:
 func _process_action(delta: float) -> void:
 	_process_canceled_action_progress(delta)
 	_process_activity_queue_runtime()
+	_process_temporary_event_action(delta)
 	if running_skill_id.is_empty():
 		if _action_opportunity_frame_work_needed():
 			_process_action_opportunity_boost(delta)
@@ -43363,6 +45601,11 @@ func _process_action(delta: float) -> void:
 		_reset_action_opportunity_state()
 		return
 	var active_key := _action_key(running_skill_id, running_action_id)
+	if _action_is_free_fighting_proto(running_skill_id, running_action_id):
+		action_progress = 0.0
+		action_opportunity_cycle_elapsed = 0.0
+		tired_activity_zero_float_action_key = ""
+		return
 	var fishing_rework_attempt := _fishing_rework_active_for_skill(running_skill_id) and not _is_event_action(action)
 	var cost := _effective_stamina(running_skill_id, action)
 	if not fishing_rework_attempt and not activity_queue_running:
@@ -43538,6 +45781,54 @@ func _process_action(delta: float) -> void:
 	_emphasize_visible_bonus_changes_deferred(bonus_snapshot_before)
 
 
+func _process_temporary_event_action(delta: float) -> void:
+	if event_running_skill_id.is_empty() or event_running_action_id.is_empty():
+		return
+	var action := _action_data(event_running_skill_id, event_running_action_id)
+	if action.is_empty() or not _is_action_unlocked(event_running_skill_id, action):
+		_stop_temporary_event_action_with_feedback(
+			event_running_skill_id,
+			event_running_action_id,
+			"Event stopped: it ended.",
+			"Stopped\nEvent ended",
+			Color("#ff9f7a")
+		)
+		return
+	var event_key := _action_key(event_running_skill_id, event_running_action_id)
+	var cost := _effective_stamina(event_running_skill_id, action)
+	var has_stamina_for_action := _stamina_value(event_running_skill_id) + 0.0001 >= cost
+	if not has_stamina_for_action:
+		var cost_text := _format_stamina_cost_detail(cost)
+		_stop_temporary_event_action_with_feedback(
+			event_running_skill_id,
+			event_running_action_id,
+			"Event stopped: %s" % _event_needs_stamina_text(event_running_skill_id, action),
+			"Stopped\nNeed %s STAM" % cost_text,
+			Color("#ffd95a")
+		)
+		return
+	var speed_mult := _action_progress_speed_multiplier(event_running_skill_id, action, has_stamina_for_action)
+	event_action_progress += delta / _action_cycle_seconds(event_running_skill_id, action) * speed_mult
+	if event_action_progress < 1.0:
+		return
+	var completed_skill_id := event_running_skill_id
+	var completed_action_id := event_running_action_id
+	var bonus_snapshot_before := _capture_visible_bonus_snapshot_if_needed(completed_skill_id, completed_action_id, action)
+	event_action_progress = 0.0
+	if _spend_action_stamina(completed_skill_id, cost):
+		_schedule_auto_eat_fish_after_spend_delay(completed_skill_id, cost)
+	_complete_temporary_event_action_attempt(completed_skill_id, completed_action_id, action, event_key, cost, bonus_snapshot_before)
+
+
+func _stop_temporary_event_action_with_feedback(skill_id: String, action_id: String, result_text: String, popup_text: String, color: Color) -> void:
+	var action_key := _action_key(skill_id, action_id)
+	_set_result(result_text)
+	if not popup_text.is_empty():
+		_float_action_card_warning_feedback(action_key, popup_text, color)
+	_clear_running_temporary_event_action(skill_id, action_id)
+	_update_ui(0.0, false)
+
+
 func _complete_temporary_event_action_attempt(skill_id: String, action_id: String, action: Dictionary, reward_key: String, cost: float, bonus_snapshot_before: Dictionary, clear_running_action_on_success := true) -> void:
 	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
 		return
@@ -43568,32 +45859,81 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		if clear_running_action_on_success:
 			_clear_running_temporary_event_action(skill_id, action_id)
 		_record_activity_completion_for_tips(skill_id, action_id)
-		_update_ui(0.0, false)
-		call_deferred("_refresh_skill_detail_after_temporary_event_despawn", skill_id)
+		_play_temporary_event_completion_exit(skill_id, action_id, xp_reward)
 	else:
 		consecutive_activity_crit_count = 0
 		_reset_activity_completion_streak()
-		last_result = "Event failed: %s remains active." % str(action.get("name", "Event"))
+		last_result = "Event failed: %s will try again." % str(action.get("name", "Event"))
 		_play_action_feedback(reward_key, false, 0, 0.0)
 		for achievement in _newly_completed_achievements(completed_achievements_before):
 			_show_achievement_unlocked(achievement)
 		_play(failure_player)
 		_record_music_flow_action(false, 0, false, false, false, cost)
 		_record_activity_completion_for_tips(skill_id, action_id)
-		if clear_running_action_on_success:
-			_clear_running_temporary_event_action(skill_id, action_id)
 		_update_ui(0.0, false)
 	_emphasize_visible_bonus_changes_deferred(bonus_snapshot_before)
 
 
 func _clear_running_temporary_event_action(skill_id: String, action_id: String) -> void:
-	if running_skill_id != skill_id or running_action_id != action_id:
+	if event_running_skill_id == skill_id and event_running_action_id == action_id:
+		event_running_skill_id = ""
+		event_running_action_id = ""
+		event_action_progress = 0.0
+	if running_skill_id == skill_id and running_action_id == action_id:
+		running_skill_id = ""
+		running_action_id = ""
+		action_progress = 0.0
+		tired_activity_zero_float_action_key = ""
+		_reset_action_opportunity_state()
+
+
+func _play_temporary_event_completion_exit(skill_id: String, action_id: String, xp_reward: int) -> void:
+	var action_key := _action_key(skill_id, action_id)
+	var card := action_cards.get(action_key, {}) as Dictionary
+	var root := _valid_control_ref(card.get("root"))
+	var pop := _valid_control_ref(card.get("pop"))
+	var art_panel := _valid_control_ref(card.get("art_panel"))
+	if root == null or not root.is_inside_tree():
+		call_deferred("_refresh_skill_detail_after_temporary_event_despawn", skill_id)
 		return
-	running_skill_id = ""
-	running_action_id = ""
-	action_progress = 0.0
-	tired_activity_zero_float_action_key = ""
-	_reset_action_opportunity_state()
+	_float_temporary_event_completion_popup(action_key, xp_reward)
+	_hold_skill_detail_layout_refresh(2.55)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.clip_contents = true
+	var restore_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
+	var start_height := maxf(root.custom_minimum_size.y, root.size.y)
+	var tint_target := pop if pop != null else root
+	if tint_target != null:
+		tint_target.pivot_offset = tint_target.size * 0.5
+		_set_canvas_item_modulate_if_changed(tint_target, Color("#9cff9e"))
+	if art_panel != null:
+		_flash_art_glow(art_panel, Color("#35d86d"))
+	var tween := create_tween()
+	tween.set_parallel(true)
+	if tint_target != null:
+		tween.tween_property(tint_target, "scale", Vector2(1.035, 1.035), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_property(tint_target, "modulate", Color.WHITE, 0.68).set_delay(0.28)
+	tween.tween_property(root, "modulate:a", 1.0, 0.01)
+	tween.chain().tween_interval(0.74)
+	if tint_target != null:
+		tween.tween_property(tint_target, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_property(root, "modulate:a", 0.0, 0.60).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(root, "custom_minimum_size:y", 0.0, 0.56).from(start_height).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_IN_OUT)
+	tween.chain().tween_callback(_finish_temporary_event_completion_exit.bind(skill_id, action_key, restore_scroll))
+
+
+func _float_temporary_event_completion_popup(action_key: String, xp_reward: int) -> void:
+	var reward_text := "+%s XP" % _format_compact_number(float(xp_reward), 4) if xp_reward > 0 else "Reward!"
+	_float_action_card_warning_feedback(action_key, "Complete!\n%s" % reward_text, Color("#35d86d"))
+
+
+func _finish_temporary_event_completion_exit(skill_id: String, action_key: String, restore_scroll: int) -> void:
+	var card := action_cards.get(action_key, {}) as Dictionary
+	var root := _valid_control_ref(card.get("root"))
+	if root != null:
+		root.visible = false
+		root.custom_minimum_size = Vector2(root.custom_minimum_size.x, 0.0)
+	_refresh_skill_detail_after_temporary_event_despawn(skill_id, restore_scroll)
 
 
 func _complete_temporary_event_action_state(event_id: String, completed_unix: int) -> bool:
@@ -43615,11 +45955,11 @@ func _complete_temporary_event_action_state(event_id: String, completed_unix: in
 	return true
 
 
-func _refresh_skill_detail_after_temporary_event_despawn(skill_id: String) -> void:
+func _refresh_skill_detail_after_temporary_event_despawn(skill_id: String, restore_scroll := -1) -> void:
 	if current_screen != "skill" or selected_skill_id != skill_id:
 		_update_ui(0.0, false)
 		return
-	var event_refresh_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
+	var event_refresh_scroll := restore_scroll if restore_scroll >= 0 else (detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1)
 	await _refresh_visible_skill_detail_action_list(event_refresh_scroll, skill_id, true)
 
 
@@ -44098,8 +46438,8 @@ func _flash_bonus_control(anchor: Control, delay := 0.0) -> void:
 
 
 func _flash_bonus_control_bound(anchor_id: int) -> void:
-	var anchor := instance_from_id(anchor_id) as Control
-	if anchor == null or not is_instance_valid(anchor):
+	var anchor := _valid_control_ref(instance_from_id(anchor_id))
+	if anchor == null:
 		return
 	_flash_bonus_control(anchor, 0.0)
 
@@ -44142,6 +46482,7 @@ func _flash_action_bonus_bottom_by_key(card_key: String) -> void:
 func _regen_stamina(delta: float) -> void:
 	_process_action_opportunity_regen(delta)
 	_apply_stamina_regen_seconds(delta, true)
+	_apply_blue_guy_health_regen_seconds(delta)
 
 
 func _apply_stamina_regen_seconds(seconds: float, allow_gauge_boost := false) -> void:
@@ -44160,6 +46501,7 @@ func _apply_stamina_regen_seconds_except(seconds: float, allow_gauge_boost := fa
 			stamina_bank[skill_id] = 0.0
 			continue
 		var regen_delta := seconds * (1.0 + _hub_pond_regen_bonus())
+		regen_delta *= 1.0 + _firepit_stamina_regen_bonus(skill_id)
 		regen_delta *= _honey_stamina_regen_multiplier()
 		if allow_gauge_boost and skill_id == stamina_gauge_boost_skill_id:
 			regen_delta *= stamina_gauge_regen_multiplier
@@ -44173,6 +46515,38 @@ func _apply_stamina_regen_seconds_except(seconds: float, allow_gauge_boost := fa
 		stamina[skill_id] = next_stamina
 		stamina_bank[skill_id] = 0.0 if next_stamina >= float(max_stamina) - 0.0001 else fmod(next_bank, STAMINA_REGEN_SECONDS)
 		_sync_stamina_bank(skill_id)
+
+
+func _apply_blue_guy_health_regen_seconds(seconds: float) -> void:
+	if seconds <= 0.0:
+		return
+	if blue_guy_health >= float(BLUE_GUY_HEALTH_MAX) - 0.0001:
+		blue_guy_health = float(BLUE_GUY_HEALTH_MAX)
+		blue_guy_health_bank = 0.0
+		return
+	var next_bank := clampf(blue_guy_health_bank, 0.0, BLUE_GUY_HEALTH_REGEN_SECONDS) + seconds
+	var recovered_hp := int(floor(next_bank / BLUE_GUY_HEALTH_REGEN_SECONDS))
+	if recovered_hp > 0:
+		blue_guy_health = minf(float(BLUE_GUY_HEALTH_MAX), blue_guy_health + float(recovered_hp))
+	blue_guy_health_bank = 0.0 if blue_guy_health >= float(BLUE_GUY_HEALTH_MAX) - 0.0001 else fmod(next_bank, BLUE_GUY_HEALTH_REGEN_SECONDS)
+
+
+func _blue_guy_health_value() -> float:
+	return clampf(blue_guy_health, 0.0, float(BLUE_GUY_HEALTH_MAX))
+
+
+func _blue_guy_health_int() -> int:
+	return clampi(int(floor(_blue_guy_health_value())), 0, BLUE_GUY_HEALTH_MAX)
+
+
+func _blue_guy_health_regen_fraction() -> float:
+	if _blue_guy_health_value() >= float(BLUE_GUY_HEALTH_MAX) - 0.0001:
+		return 1.0
+	return clampf(blue_guy_health_bank / BLUE_GUY_HEALTH_REGEN_SECONDS, 0.0, 1.0)
+
+
+func _blue_guy_health_full() -> bool:
+	return _blue_guy_health_value() >= float(BLUE_GUY_HEALTH_MAX) - 0.0001
 
 
 func _regen_ring_ease(raw_value: float) -> float:
@@ -44280,10 +46654,12 @@ func _attach_auto_eat_fish_toggle(host: Control, skill_id: String) -> TextureBut
 		return null
 	var button := TextureButton.new()
 	button.name = "AutoEatFishToggle"
-	button.texture_normal = null
-	button.texture_pressed = null
-	button.texture_hover = null
-	button.texture_disabled = null
+	var transparent_texture := _visual_fallback_texture()
+	button.texture_normal = transparent_texture
+	button.texture_pressed = transparent_texture
+	button.texture_hover = transparent_texture
+	button.texture_disabled = transparent_texture
+	button.texture_focused = transparent_texture
 	button.ignore_texture_size = true
 	button.stretch_mode = TextureButton.STRETCH_KEEP_ASPECT_CENTERED
 	button.custom_minimum_size = Vector2(198, 198)
@@ -44386,21 +46762,14 @@ func _play_auto_eat_fish_toggle_pop(skill_id: String) -> void:
 			continue
 		if str(button.get_meta("auto_eat_skill_id", "")) != skill_id:
 			continue
-		if button.has_meta("auto_eat_pop_tween"):
-			var existing := button.get_meta("auto_eat_pop_tween") as Tween
-			if existing != null and existing.is_valid():
-				existing.kill()
-			button.remove_meta("auto_eat_pop_tween")
+		_kill_meta_tween(button, "auto_eat_pop_tween")
 		button.pivot_offset = button.size * 0.5
 		button.scale = Vector2(1.0, 1.0)
 		var tween := create_tween()
 		button.set_meta("auto_eat_pop_tween", tween)
 		tween.tween_property(button, "scale", Vector2(1.15, 1.15), 0.08).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.tween_property(button, "scale", Vector2.ONE, 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		tween.finished.connect(func() -> void:
-			if button != null and is_instance_valid(button) and button.has_meta("auto_eat_pop_tween"):
-				button.remove_meta("auto_eat_pop_tween")
-		)
+		tween.finished.connect(_remove_meta_from_instance_id.bind(button.get_instance_id(), "auto_eat_pop_tween"))
 
 
 func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant := false) -> void:
@@ -44410,17 +46779,23 @@ func _set_regen_circle_for_skill(circle: RegenCircle, skill_id: String, instant 
 	var stamina_value := _stamina(skill_id)
 	var stamina_decimal_fraction := _stamina_fraction(skill_id)
 	var circle_value := _stamina_regen_fraction(skill_id)
+	circle.set_dark_mode(dark_mode_enabled)
 	circle.set_theme_color(_skill_theme_color(skill_id))
 	circle.set_regen_ring_color(_stamina_regen_circle_color(skill_id), instant)
+	circle.set_firepit_warmth(_firepit_stamina_regen_bonus(skill_id) / (FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER)))
 	circle.set_show_decimal(show_stamina_decimal)
 	circle.set_stamina(stamina_value, maximum, instant, stamina_decimal_fraction)
 	circle.set_value(circle_value, instant)
 
 
+func _set_blue_guy_health_gauge(gauge: BlueGuyHealthHeartGauge, instant := false) -> void:
+	if gauge == null or not is_instance_valid(gauge) or not gauge.is_inside_tree():
+		return
+	gauge.set_health(_blue_guy_health_int(), BLUE_GUY_HEALTH_MAX, instant, _blue_guy_health_regen_fraction())
+
+
 func _start_action(skill_id: String, action_id: String, select_page := true, respect_input_guards := true, from_activity_queue := false) -> bool:
 	_disarm_reset_data_confirmation()
-	if not from_activity_queue and activity_queue_running:
-		_stop_activity_queue_runtime(false)
 	if respect_input_guards:
 		if _skill_swipe_suppresses_button_action():
 			return false
@@ -44430,6 +46805,10 @@ func _start_action(skill_id: String, action_id: String, select_page := true, res
 	var action := _action_data(skill_id, action_id)
 	if action.is_empty() or not _is_action_unlocked(skill_id, action):
 		return false
+	if _is_event_action(action):
+		return _start_temporary_event_action(skill_id, action_id, action, select_page)
+	if not from_activity_queue and activity_queue_running:
+		_stop_activity_queue_runtime(false)
 	_unlock_audio_for_gameplay()
 	_play_activity_tap_sfx()
 	if skill_id == "thieving" and _thieving_action_is_jailed(action_id):
@@ -44453,6 +46832,8 @@ func _start_action(skill_id: String, action_id: String, select_page := true, res
 	_cancel_thieving_action_jail_resumes_for_started_action(skill_id, action_id)
 	var action_key := _action_key(skill_id, action_id)
 	var stamina_cost := _effective_stamina(skill_id, action)
+	if _action_is_free_fighting_proto(skill_id, action_id):
+		stamina_cost = 0.0
 	if _is_event_action(action) and not _auto_eat_fish_for_action(skill_id, stamina_cost, detail_regen_circle, true):
 		_set_result(_event_needs_stamina_text(skill_id, action))
 		_float_event_need_stamina_feedback(action_key, stamina_cost)
@@ -44491,6 +46872,36 @@ func _start_action(skill_id: String, action_id: String, select_page := true, res
 		_set_result(_low_stamina_training_text(action))
 	else:
 		_set_result("%s started." % action["name"])
+	_record_activity_start_for_tips()
+	_fade_out_onboarding_explore_tip()
+	_tutorial_on_action_started()
+	return true
+
+
+func _start_temporary_event_action(skill_id: String, action_id: String, action: Dictionary, select_page := true) -> bool:
+	_unlock_audio_for_gameplay()
+	_play_activity_tap_sfx()
+	if event_running_skill_id == skill_id and event_running_action_id == action_id:
+		_set_result("Event already underway: %s." % str(action.get("name", "Event")))
+		_pop_activity_button(_action_key(skill_id, action_id))
+		return false
+	var action_key := _action_key(skill_id, action_id)
+	var stamina_cost := _effective_stamina(skill_id, action)
+	if not _auto_eat_fish_for_action(skill_id, stamina_cost, detail_regen_circle, true):
+		_set_result(_event_needs_stamina_text(skill_id, action))
+		_float_event_need_stamina_feedback(action_key, stamina_cost)
+		return false
+	if select_page:
+		selected_skill_id = skill_id
+	event_running_skill_id = skill_id
+	event_running_action_id = action_id
+	event_action_progress = 0.0
+	if music_cycle_active:
+		flow_idle_seconds = 0.0
+		_record_music_flow_start()
+	_pop_activity_button(action_key)
+	_sync_visible_mat_collection_for_action(skill_id, action_id, true)
+	_set_result("Event started: %s." % str(action.get("name", "Event")))
 	_record_activity_start_for_tips()
 	_fade_out_onboarding_explore_tip()
 	_tutorial_on_action_started()
@@ -44603,9 +47014,7 @@ func _animate_activity_press_effect(control: Control, tween_key: String, pressed
 	if control == null or not is_instance_valid(control):
 		return
 	if action_pop_tweens.has(tween_key):
-		var existing := action_pop_tweens[tween_key] as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+		_kill_tween_value(action_pop_tweens[tween_key])
 	control.scale = Vector2.ONE
 	control.pivot_offset = control.size * 0.5
 	var tween := create_tween()
@@ -44756,16 +47165,14 @@ func _finish_action_card_depth_to(card_key: String, pop_id: int, target_offset: 
 
 func _clear_action_pop_tweens() -> void:
 	for tween in action_pop_tweens.values():
-		if tween != null and (tween as Tween).is_valid():
-			(tween as Tween).kill()
+		_kill_tween_value(tween)
 	action_pop_tweens.clear()
 
 
 func _clear_action_crit_tweens() -> void:
 	var had_crit_tweens := not action_crit_tweens.is_empty()
 	for tween in action_crit_tweens.values():
-		if tween != null and (tween as Tween).is_valid():
-			(tween as Tween).kill()
+		_kill_tween_value(tween)
 	action_crit_tweens.clear()
 	var group_nodes := []
 	if is_inside_tree():
@@ -44797,9 +47204,7 @@ func _pop_nav_button(button: Button) -> void:
 	_kill_button_depress_tween(button)
 	var key := button.get_instance_id()
 	if nav_pop_tweens.has(key):
-		var existing := nav_pop_tweens[key] as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+		_kill_tween_value(nav_pop_tweens[key])
 	button.scale = Vector2.ONE
 	button.pivot_offset = button.size * 0.5
 	var tween := create_tween()
@@ -44814,8 +47219,8 @@ func _finish_nav_button_pop(key: int) -> void:
 
 
 func _pop_nav_button_bound(button_id: int) -> void:
-	var button := instance_from_id(button_id) as Button
-	if button == null or not is_instance_valid(button):
+	var button := _valid_button_ref(instance_from_id(button_id))
+	if button == null:
 		return
 	_pop_nav_button(button)
 
@@ -44829,9 +47234,7 @@ func _hold_bottom_nav_transition_button(button: Button) -> void:
 	bottom_nav_transition_button_id = button_id
 	button.set_meta("bottom_nav_transition_hold", true)
 	if nav_pop_tweens.has(button_id):
-		var existing := nav_pop_tweens[button_id] as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+		_kill_tween_value(nav_pop_tweens[button_id])
 		nav_pop_tweens.erase(button_id)
 	_animate_button_depress(button, float(button.get_meta("depress_animation_scale", 0.92)))
 
@@ -44839,10 +47242,10 @@ func _hold_bottom_nav_transition_button(button: Button) -> void:
 func _release_bottom_nav_transition_button() -> void:
 	if bottom_nav_transition_button_id == 0:
 		return
-	var button := instance_from_id(bottom_nav_transition_button_id) as BaseButton
+	var button := _valid_base_button_ref(instance_from_id(bottom_nav_transition_button_id))
 	bottom_nav_transition_button_id = 0
 	bottom_nav_transition_release_queued = false
-	if button == null or not is_instance_valid(button):
+	if button == null:
 		return
 	if button.has_meta("bottom_nav_transition_hold"):
 		button.remove_meta("bottom_nav_transition_hold")
@@ -44908,26 +47311,26 @@ func _attach_default_button_sfx(button: BaseButton) -> void:
 
 
 func _sync_button_pivot_offset_bound(button_id: int) -> void:
-	var button := instance_from_id(button_id) as BaseButton
-	if button != null and is_instance_valid(button):
+	var button := _valid_base_button_ref(instance_from_id(button_id))
+	if button != null:
 		button.pivot_offset = button.size * 0.5
 
 
 func _animate_button_depress_bound(button_id: int, depressed_scale: float) -> void:
-	var button := instance_from_id(button_id) as BaseButton
-	if button != null and is_instance_valid(button):
+	var button := _valid_base_button_ref(instance_from_id(button_id))
+	if button != null:
 		_animate_button_depress(button, depressed_scale)
 
 
 func _animate_button_release_bound(button_id: int) -> void:
-	var button := instance_from_id(button_id) as BaseButton
-	if button != null and is_instance_valid(button):
+	var button := _valid_base_button_ref(instance_from_id(button_id))
+	if button != null:
 		_animate_button_release(button)
 
 
 func _play_default_button_sfx_for_button_bound(button_id: int) -> void:
-	var button := instance_from_id(button_id) as BaseButton
-	if button != null and is_instance_valid(button):
+	var button := _valid_base_button_ref(instance_from_id(button_id))
+	if button != null:
 		_play_default_button_sfx_for_button(button)
 
 
@@ -45003,8 +47406,8 @@ func _animate_button_release(button: BaseButton) -> void:
 
 
 func _finish_button_release_tween(button_id: int) -> void:
-	var button := instance_from_id(button_id) as BaseButton
-	if button != null and is_instance_valid(button) and button.has_meta("depress_tween"):
+	var button := _valid_base_button_ref(instance_from_id(button_id))
+	if button != null and button.has_meta("depress_tween"):
 		button.remove_meta("depress_tween")
 
 
@@ -45023,12 +47426,7 @@ func _is_dead_reset_confirm_press(button: BaseButton) -> bool:
 
 
 func _kill_button_depress_tween(button: BaseButton) -> void:
-	if button == null or not is_instance_valid(button) or not button.has_meta("depress_tween"):
-		return
-	var existing := button.get_meta("depress_tween") as Tween
-	if existing != null and existing.is_valid():
-		existing.kill()
-	button.remove_meta("depress_tween")
+	_kill_meta_tween(button, "depress_tween")
 
 
 func _input_event_releases_primary_pointer(event: InputEvent) -> bool:
@@ -45037,6 +47435,49 @@ func _input_event_releases_primary_pointer(event: InputEvent) -> bool:
 	if event is InputEventScreenTouch:
 		return not event.pressed
 	return false
+
+
+func _primary_press_started_on_button(event: InputEvent) -> bool:
+	var event_position := Vector2.INF
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index != MOUSE_BUTTON_LEFT or not mouse_event.pressed:
+			return false
+		event_position = mouse_event.global_position
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if not touch_event.pressed:
+			return false
+		event_position = touch_event.position
+	else:
+		return false
+	if event_position == Vector2.INF:
+		return false
+	return _button_at_global_position(self, event_position) != null
+
+
+func _button_at_global_position(node: Node, event_position: Vector2) -> BaseButton:
+	if node == null or not is_instance_valid(node) or node.is_queued_for_deletion():
+		return null
+	var control := node as Control
+	if control != null:
+		if not control.is_inside_tree() or not control.is_visible_in_tree():
+			return null
+		if control.clip_contents and not control.get_global_rect().grow(2.0).has_point(event_position):
+			return null
+	var children := node.get_children()
+	for index in range(children.size() - 1, -1, -1):
+		var child_button := _button_at_global_position(children[index] as Node, event_position)
+		if child_button != null:
+			return child_button
+	var button := node as BaseButton
+	if button == null:
+		return null
+	if button.disabled or button.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		return null
+	if not button.get_global_rect().grow(2.0).has_point(event_position):
+		return null
+	return button
 
 
 func _force_button_unpressed(button: BaseButton) -> void:
@@ -45246,10 +47687,8 @@ func _complete_onboarding_swipe_navigation_attempt(target_skill_id: String) -> v
 
 
 func _force_page_switch_scroll_cover_opaque(cover_id: int) -> void:
-	var cover := instance_from_id(cover_id) as Control
-	if cover == null or not is_instance_valid(cover) or cover != skill_swipe_handoff_cover:
-		return
-	if not bool(cover.get_meta("page_switch_scroll_cover", false)):
+	var cover := _active_page_switch_cover_ref(cover_id)
+	if cover == null:
 		return
 	_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
 
@@ -45259,10 +47698,8 @@ func _complete_select_skill_from_page_switch(cover_id: int, skill_id: String) ->
 
 
 func _begin_page_switch_selection_under_cover(cover_id: int, skill_id: String) -> void:
-	var cover := instance_from_id(cover_id) as Control
-	if cover == null or not is_instance_valid(cover) or cover != skill_swipe_handoff_cover:
-		return
-	if not bool(cover.get_meta("page_switch_scroll_cover", false)):
+	var cover := _active_page_switch_cover_ref(cover_id)
+	if cover == null:
 		return
 	_force_page_switch_scroll_cover_opaque(cover_id)
 	if not _page_switch_cover_id_active(cover_id):
@@ -45602,6 +48039,27 @@ func _close_settings() -> void:
 		_show_home()
 
 
+func _on_profile_name_submitted(_submitted_text: String) -> void:
+	_save_profile_and_close()
+
+
+func _leaderboard_support_id() -> String:
+	if leaderboard_player_id.is_empty():
+		_ensure_leaderboard_player_id()
+	return leaderboard_player_id
+
+
+func _copy_leaderboard_support_id() -> void:
+	var support_id := _leaderboard_support_id()
+	if support_id.is_empty():
+		if profile_status_label != null and is_instance_valid(profile_status_label):
+			profile_status_label.text = "Support ID is still starting. Try again in a moment."
+		return
+	DisplayServer.clipboard_set(support_id)
+	if profile_status_label != null and is_instance_valid(profile_status_label):
+		profile_status_label.text = "Support ID copied. Send it to support if chat or leaderboard is blocked."
+
+
 func _save_profile_and_close() -> void:
 	if not leaderboard_profile_claimed and profile_name_edit != null and is_instance_valid(profile_name_edit):
 		leaderboard_display_name = _sanitize_leaderboard_display_name(profile_name_edit.text)
@@ -45642,7 +48100,7 @@ func _create_leaderboard_account() -> void:
 		chosen_name = _sanitize_leaderboard_display_name(profile_name_edit.text)
 	if _is_guest_leaderboard_display_name(chosen_name):
 		if profile_status_label != null and is_instance_valid(profile_status_label):
-			profile_status_label.text = "Choose a real name before making an account. You cannot change it after this."
+			profile_status_label.text = "Choose a username first."
 		if profile_name_edit != null and is_instance_valid(profile_name_edit):
 			profile_name_edit.grab_focus()
 		return
@@ -45965,9 +48423,10 @@ func _close_offline_summary_overlay() -> void:
 
 func _apply_achievements_modal_tab_style(button: Button, active: bool) -> void:
 	var fill := Color("#959088") if active else COLOR_BLUE
+	var hover_fill := fill if active else fill.lightened(0.06)
 	var pressed := fill.darkened(0.10)
 	button.add_theme_stylebox_override("normal", _paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("hover", _paper_button_style(fill, 48))
+	button.add_theme_stylebox_override("hover", _paper_button_style(hover_fill, 48))
 	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed, 48, 72, true))
 
 
@@ -45975,6 +48434,10 @@ func _set_achievements_modal_tab(tab: String) -> void:
 	achievements_modal_tab = tab
 	_rebuild_achievements_overlay()
 	_play_default_button_sfx()
+
+
+func _on_achievements_hide_completed_toggled(_pressed: bool) -> void:
+	_rebuild_achievements_overlay()
 
 
 func _achievements_current_signature() -> String:
@@ -46683,7 +49146,7 @@ func _toggle_offline_progress_enabled() -> void:
 func _toggle_auto_unlock_lockpads_enabled() -> void:
 	auto_unlock_lockpads_enabled = not auto_unlock_lockpads_enabled
 	_refresh_auto_unlock_lockpad_controls()
-	if auto_unlock_lockpads_enabled:
+	if auto_unlock_lockpads_enabled and not _auto_unlock_lockpads_paused_for_onboarding():
 		_auto_unlock_retroactive_lockpads()
 		_auto_unlock_pending_lockpads()
 	save_game()
@@ -46694,6 +49157,144 @@ func _toggle_stamina_decimal_enabled() -> void:
 	_refresh_stamina_decimal_controls()
 	_sync_stamina_decimal_gauge_preference()
 	save_game()
+
+
+func _toggle_offline_progress_cap_notifications_enabled() -> void:
+	offline_progress_cap_notifications_enabled = not offline_progress_cap_notifications_enabled
+	if offline_progress_cap_notifications_enabled:
+		_request_notification_permission_if_available()
+		_show_notification_settings_notice()
+	_refresh_offline_progress_cap_notification_controls()
+	save_game()
+
+
+func _request_notification_permission_if_available() -> void:
+	if not OS.has_feature("android"):
+		return
+	if OS.has_method("request_permissions"):
+		OS.request_permissions()
+
+
+func _show_notification_settings_notice() -> void:
+	if not is_inside_tree():
+		return
+	_kill_tween_value(settings_notification_permission_notice_tween)
+	settings_notification_permission_notice_tween = null
+	if settings_notification_permission_notice != null and is_instance_valid(settings_notification_permission_notice):
+		settings_notification_permission_notice.queue_free()
+
+	var canvas_size := _current_canvas_size()
+	var base_size := Vector2(1180, 250)
+	var fitted_scale := _fit_scale_to_canvas(base_size, Vector2(48, 48))
+	var notice_size := base_size * fitted_scale
+	var target_position := Vector2(
+		(canvas_size.x - notice_size.x) * 0.5,
+		clampf(canvas_size.y * 0.50, 48.0, maxf(48.0, canvas_size.y - notice_size.y - 48.0))
+	)
+	var banner := Control.new()
+	banner.z_index = MODAL_OVERLAY_Z
+	banner.z_as_relative = false
+	banner.mouse_filter = Control.MOUSE_FILTER_STOP
+	banner.custom_minimum_size = notice_size
+	banner.size = notice_size
+	banner.position = target_position + Vector2(0, 62.0 * fitted_scale)
+	banner.pivot_offset = notice_size * 0.5
+	banner.modulate = Color(1, 1, 1, 0)
+	banner.scale = Vector2(0.94, 0.94)
+	banner.gui_input.connect(_on_notification_settings_notice_gui_input)
+	add_child(banner)
+	settings_notification_permission_notice = banner
+
+	var card := PanelContainer.new()
+	card.custom_minimum_size = base_size
+	card.size = base_size
+	card.scale = Vector2(fitted_scale, fitted_scale)
+	card.add_theme_stylebox_override("panel", _surface_style(Color("#fff6d8"), 42, 52, true))
+	banner.add_child(card)
+
+	var body := _label("Turn on notifications in your phone settings if they are not already on.", 56, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	card.add_child(body)
+
+	var tween := create_tween()
+	settings_notification_permission_notice_tween = tween
+	tween.set_parallel(true)
+	tween.tween_property(banner, "position", target_position, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(banner, "modulate:a", 1.0, 0.10)
+	tween.tween_property(banner, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.chain().tween_interval(4.0)
+	tween.chain().tween_callback(_dismiss_notification_settings_notice)
+
+
+func _on_notification_settings_notice_gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
+			_dismiss_notification_settings_notice()
+			get_viewport().set_input_as_handled()
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			_dismiss_notification_settings_notice()
+			get_viewport().set_input_as_handled()
+
+
+func _dismiss_notification_settings_notice() -> void:
+	var banner := settings_notification_permission_notice
+	if banner == null or not is_instance_valid(banner):
+		settings_notification_permission_notice = null
+		settings_notification_permission_notice_tween = null
+		return
+	_kill_tween_value(settings_notification_permission_notice_tween)
+	settings_notification_permission_notice_tween = create_tween()
+	settings_notification_permission_notice_tween.tween_property(banner, "modulate:a", 0.0, 0.12)
+	settings_notification_permission_notice_tween.tween_callback(_finish_notification_settings_notice)
+
+
+func _finish_notification_settings_notice() -> void:
+	if settings_notification_permission_notice != null and is_instance_valid(settings_notification_permission_notice):
+		settings_notification_permission_notice.queue_free()
+	settings_notification_permission_notice = null
+	settings_notification_permission_notice_tween = null
+
+
+func _toggle_dark_mode_enabled() -> void:
+	dark_mode_enabled = not dark_mode_enabled
+	_apply_dark_mode_visual()
+	_refresh_dark_mode_controls()
+	_rebuild_visible_ui_after_dark_mode_changed()
+	save_game()
+
+
+func _apply_dark_mode_visual() -> void:
+	if app_background_rect != null and is_instance_valid(app_background_rect):
+		app_background_rect.color = _theme_paper_color()
+	if boot_warmup_background != null and is_instance_valid(boot_warmup_background):
+		boot_warmup_background.color = _theme_paper_color()
+	_sync_stamina_gauge_dark_mode()
+	_sync_info_symbol_button_text_colors()
+
+
+func _rebuild_visible_ui_after_dark_mode_changed() -> void:
+	paper_button_style_textures.clear()
+	activity_shade_style_cache.clear()
+	skill_swipe_light_preview_card_style_cache.clear()
+	action_art_style_cache = null
+	action_art_border_style_cache = null
+	summary_style_cache = null
+	if not startup_initialized:
+		return
+	if current_screen == "home":
+		if home_page != null and is_instance_valid(home_page):
+			_clear(home_page)
+		home_page_built = false
+		_finish_show_home()
+	else:
+		_suppress_all_page_stash_buckets()
+		_render_screen(false, -1, false)
 
 
 func _on_audio_slider_gui_input(event: InputEvent, slider: HSlider, music: bool) -> void:
@@ -46783,6 +49384,8 @@ func _clear_settings_page_control_refs() -> void:
 	offline_progress_toggles.clear()
 	auto_unlock_lockpad_toggles.clear()
 	stamina_decimal_toggles.clear()
+	offline_progress_cap_notification_toggles.clear()
+	dark_mode_toggles.clear()
 	god_mode_controls.clear()
 	audio_controls_sync_key = ""
 
@@ -46796,6 +49399,8 @@ func _refresh_audio_volume_controls() -> void:
 		offline_progress_enabled,
 		auto_unlock_lockpads_enabled,
 		show_stamina_decimal,
+		offline_progress_cap_notifications_enabled,
+		dark_mode_enabled,
 		_control_array_ids(music_volume_sliders),
 		_control_array_ids(sfx_volume_sliders),
 		_control_array_ids(music_volume_labels),
@@ -46807,6 +49412,8 @@ func _refresh_audio_volume_controls() -> void:
 		_control_array_ids(offline_progress_toggles),
 		_control_array_ids(auto_unlock_lockpad_toggles),
 		_control_array_ids(stamina_decimal_toggles),
+		_control_array_ids(offline_progress_cap_notification_toggles),
+		_control_array_ids(dark_mode_toggles),
 		_control_array_ids(god_mode_controls),
 	]
 	var sync_key := ":".join(sync_key_parts.map(func(part): return str(part)))
@@ -46824,6 +49431,8 @@ func _refresh_audio_volume_controls() -> void:
 	_refresh_offline_progress_controls()
 	_refresh_auto_unlock_lockpad_controls()
 	_refresh_stamina_decimal_controls()
+	_refresh_offline_progress_cap_notification_controls()
+	_refresh_dark_mode_controls()
 	_refresh_god_mode_controls()
 
 
@@ -46883,6 +49492,34 @@ func _refresh_stamina_decimal_controls() -> void:
 	stamina_decimal_toggles = live
 
 
+func _refresh_offline_progress_cap_notification_controls() -> void:
+	var live := []
+	for raw_toggle in offline_progress_cap_notification_toggles:
+		if raw_toggle == null or not is_instance_valid(raw_toggle):
+			continue
+		var toggle := raw_toggle as Button
+		if toggle == null or not is_instance_valid(toggle):
+			continue
+		_set_button_text_if_changed(toggle, _offline_progress_cap_notification_toggle_text())
+		_apply_offline_progress_cap_notification_toggle_style(toggle)
+		live.append(toggle)
+	offline_progress_cap_notification_toggles = live
+
+
+func _refresh_dark_mode_controls() -> void:
+	var live := []
+	for raw_toggle in dark_mode_toggles:
+		if raw_toggle == null or not is_instance_valid(raw_toggle):
+			continue
+		var toggle := raw_toggle as Button
+		if toggle == null or not is_instance_valid(toggle):
+			continue
+		_set_button_text_if_changed(toggle, _dark_mode_toggle_text())
+		_apply_dark_mode_toggle_style(toggle)
+		live.append(toggle)
+	dark_mode_toggles = live
+
+
 func _sync_stamina_decimal_gauge_preference() -> void:
 	var seen := {}
 	_apply_stamina_decimal_preference_to_circle(detail_regen_circle, seen)
@@ -46904,6 +49541,29 @@ func _apply_stamina_decimal_preference_to_circle(circle: RegenCircle, seen: Dict
 		return
 	seen[instance_id] = true
 	circle.set_show_decimal(show_stamina_decimal)
+
+
+func _sync_stamina_gauge_dark_mode() -> void:
+	var seen := {}
+	_apply_stamina_gauge_dark_mode_to_circle(detail_regen_circle, seen)
+	_apply_stamina_gauge_dark_mode_to_circle(pinned_active_shelf_regen_circle, seen)
+	for raw_gauge in pinned_active_shelf_stamina_gauges.values():
+		_apply_stamina_gauge_dark_mode_to_circle(raw_gauge as RegenCircle, seen)
+	for raw_card in skill_cards.values():
+		if typeof(raw_card) != TYPE_DICTIONARY:
+			continue
+		var card := raw_card as Dictionary
+		_apply_stamina_gauge_dark_mode_to_circle(card.get("stamina") as RegenCircle, seen)
+
+
+func _apply_stamina_gauge_dark_mode_to_circle(circle: RegenCircle, seen: Dictionary) -> void:
+	if circle == null or not is_instance_valid(circle):
+		return
+	var instance_id := circle.get_instance_id()
+	if seen.has(instance_id):
+		return
+	seen[instance_id] = true
+	circle.set_dark_mode(dark_mode_enabled)
 
 
 func _sync_volume_sliders(sliders: Array, volume: float) -> Array:
@@ -47172,7 +49832,10 @@ func _settings_copy_crash_report_pressed() -> void:
 
 
 func _crash_report_clipboard_text(raw_report: String) -> String:
-	var parsed = JSON.parse_string(raw_report)
+	var json := JSON.new()
+	if json.parse(raw_report) != OK:
+		return raw_report
+	var parsed = json.data
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return raw_report
 	var report := parsed as Dictionary
@@ -47364,6 +50027,9 @@ func _crash_session_payload(status: String) -> Dictionary:
 		"running_skill_id": _running_skill_id_for_save(),
 		"running_action_id": _running_action_id_for_save(),
 		"action_progress": _action_progress_for_save(),
+		"event_running_skill_id": _event_running_skill_id_for_save(),
+		"event_running_action_id": _event_running_action_id_for_save(),
+		"event_action_progress": _event_action_progress_for_save(),
 		"chat_overlay_visible": chat_overlay != null and is_instance_valid(chat_overlay) and chat_overlay.visible,
 		"chat_rows": chat_rows.size(),
 		"chat_stream_connected": chat_stream_connected,
@@ -47431,7 +50097,7 @@ func _synthesize_unclean_session_crash_report() -> void:
 	if file == null:
 		return
 	var marker_text := file.get_as_text()
-	var parsed = JSON.parse_string(marker_text)
+	var parsed = _parse_json_silent(marker_text)
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
 	var marker := parsed as Dictionary
@@ -47471,8 +50137,8 @@ func _register_reset_button(button: Button, default_text: String) -> void:
 
 
 func _confirm_reset_data_bound(button_id: int) -> void:
-	var button := instance_from_id(button_id) as Button
-	if button == null or not is_instance_valid(button):
+	var button := _valid_button_ref(instance_from_id(button_id))
+	if button == null:
 		return
 	_confirm_reset_data(button)
 
@@ -47602,12 +50268,16 @@ func _reset_data(feedback_button: Button = null) -> void:
 	screen_render_in_progress = false
 	screen_render_target_key = ""
 	pending_screen_render_request.clear()
+	pending_skill_detail_refresh_request.clear()
 	_clear_reset_data_buttons_for_rebuild()
 	_init_state()
 	_reset_page_control_refs()
 	running_skill_id = ""
 	running_action_id = ""
 	action_progress = 0.0
+	event_running_skill_id = ""
+	event_running_action_id = ""
+	event_action_progress = 0.0
 	canceled_action_progress_by_key.clear()
 	selected_skill_id = TUTORIAL_STARTER_SKILL_ID
 	if settings_overlay != null:
@@ -47623,6 +50293,8 @@ func _reset_data(feedback_button: Button = null) -> void:
 	_prepare_selected_skill_for_render(false)
 	last_result = "Data wiped."
 	_last_rendered_screen_key = ""
+	save_reset_generation = maxi(save_reset_generation + 1, _unix_now_msec())
+	allow_next_save_progress_regression = true
 	save_game()
 	_start_tutorial()
 	_update_ui(0.0, true)
@@ -47639,7 +50311,7 @@ func _clear_pending_save_restore_work() -> void:
 
 
 func _play_reset_data_wiped_feedback_by_id(feedback_button_id: int = 0) -> void:
-	var feedback_button := instance_from_id(feedback_button_id) as Button if feedback_button_id != 0 else null
+	var feedback_button := _valid_button_ref(instance_from_id(feedback_button_id)) if feedback_button_id != 0 else null
 	_play_reset_data_wiped_feedback(feedback_button)
 
 
@@ -47663,11 +50335,7 @@ func _play_reset_data_wiped_feedback(feedback_button: Button = null) -> void:
 func _kill_reset_data_feedback_tween(button: Button) -> void:
 	if button == null or not is_instance_valid(button):
 		return
-	if button.has_meta("reset_feedback_tween"):
-		var existing := button.get_meta("reset_feedback_tween") as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
-		button.remove_meta("reset_feedback_tween")
+	_kill_meta_tween(button, "reset_feedback_tween")
 	if button.has_meta("reset_feedback_active"):
 		button.remove_meta("reset_feedback_active")
 
@@ -47798,15 +50466,21 @@ func _spawn_mat_collection_flyer(source: Control, target: Control, mat_id: Strin
 	).set_delay(delay + 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
 	tween.tween_property(flyer, "scale", Vector2(0.34, 0.34), 0.22).set_delay(delay + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.78).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.tween_property(flyer, "modulate:a", 0.0, 0.14).set_delay(delay + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.90)
-	tween.finished.connect(func():
-		if flyer != null and is_instance_valid(flyer):
-			flyer.queue_free()
-	)
+	tween.finished.connect(_finish_mat_collection_flyer_tween.bind(flyer.get_instance_id()))
+
+
+func _finish_mat_collection_flyer_tween(flyer_id: int) -> void:
+	var flyer := _valid_control_ref(instance_from_id(flyer_id))
+	if flyer == null:
+		return
+	if flyer.has_meta("mat_flyer_tween"):
+		flyer.remove_meta("mat_flyer_tween")
+	flyer.queue_free()
 
 
 func _apply_mat_collection_flyer_arc(progress: float, flyer_id: int, start: Vector2, control: Vector2, end: Vector2, start_rotation: float, end_rotation: float) -> void:
-	var flyer := instance_from_id(flyer_id) as Control
-	if flyer == null or not is_instance_valid(flyer):
+	var flyer := _valid_control_ref(instance_from_id(flyer_id))
+	if flyer == null:
 		return
 	var t := clampf(progress, 0.0, 1.0)
 	var a := start.lerp(control, t)
@@ -47818,13 +50492,10 @@ func _apply_mat_collection_flyer_arc(progress: float, flyer_id: int, start: Vect
 func _pulse_mat_collection_module(module: Control, index: int) -> void:
 	if module == null or not is_instance_valid(module):
 		return
-	if module.has_meta("mat_pulse_tween"):
-		var old_tween := module.get_meta("mat_pulse_tween") as Tween
-		if old_tween != null and old_tween.is_valid():
-			old_tween.kill()
+	_kill_meta_tween(module, "mat_pulse_tween")
 	var icon_id := int(module.get_meta("icon_id", 0))
-	var icon := instance_from_id(icon_id) as Control
-	if icon == null or not is_instance_valid(icon):
+	var icon := _valid_control_ref(instance_from_id(icon_id))
+	if icon == null:
 		return
 	module.scale = Vector2.ONE
 	icon.pivot_offset = icon.size * 0.5
@@ -47834,12 +50505,16 @@ func _pulse_mat_collection_module(module: Control, index: int) -> void:
 	var delay := float(index) * 0.055 + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.82
 	tween.tween_property(icon, "scale", Vector2(1.18, 1.18), 0.08).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(icon, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.finished.connect(func():
-		if icon != null and is_instance_valid(icon):
-			icon.scale = Vector2.ONE
-		if module != null and is_instance_valid(module) and module.has_meta("mat_pulse_tween"):
-			module.remove_meta("mat_pulse_tween")
-	)
+	tween.finished.connect(_finish_mat_collection_module_pulse_tween.bind(module.get_instance_id(), icon.get_instance_id()))
+
+
+func _finish_mat_collection_module_pulse_tween(module_id: int, icon_id: int) -> void:
+	var icon := _valid_control_ref(instance_from_id(icon_id))
+	if icon != null:
+		icon.scale = Vector2.ONE
+	var module := _valid_control_ref(instance_from_id(module_id))
+	if module != null and module.has_meta("mat_pulse_tween"):
+		module.remove_meta("mat_pulse_tween")
 
 
 func _play_action_mastery_feedback(key: String, mastery_amount: float) -> void:
@@ -47941,11 +50616,7 @@ func _clear_skill_reward_floats() -> void:
 		var node := raw_node as Node
 		if node == null or not is_instance_valid(node):
 			continue
-		if node.has_meta("reward_float_tween"):
-			var tween := node.get_meta("reward_float_tween") as Tween
-			if tween != null and tween.is_valid():
-				tween.kill()
-			node.remove_meta("reward_float_tween")
+		_kill_meta_tween(node, "reward_float_tween")
 		node.queue_free()
 
 
@@ -47954,9 +50625,7 @@ func _play_activity_crit_feedback(key: String, card: Dictionary, mega_crit := fa
 	if pop_card == null:
 		return
 	if action_crit_tweens.has(key):
-		var existing := action_crit_tweens[key] as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+		_kill_tween_value(action_crit_tweens[key])
 		if pop_card.has_meta("activity_crit_start_position"):
 			pop_card.position = pop_card.get_meta("activity_crit_start_position")
 		if pop_card.has_meta("activity_crit_start_scale"):
@@ -48015,8 +50684,8 @@ func _play_activity_crit_feedback(key: String, card: Dictionary, mega_crit := fa
 
 
 func _finish_activity_crit_feedback(key: String, pop_card_id: int, start_position: Vector2, start_scale: Vector2, highlight_id: int, art_burst_id: int) -> void:
-	var callback_pop_card := instance_from_id(pop_card_id) as Control
-	if callback_pop_card != null and is_instance_valid(callback_pop_card):
+	var callback_pop_card := _valid_control_ref(instance_from_id(pop_card_id))
+	if callback_pop_card != null:
 		callback_pop_card.position = start_position
 		callback_pop_card.scale = start_scale
 		callback_pop_card.remove_meta("activity_crit_start_position")
@@ -48025,11 +50694,11 @@ func _finish_activity_crit_feedback(key: String, pop_card_id: int, start_positio
 			callback_pop_card.remove_meta("activity_crit_highlight_node")
 		if callback_pop_card.has_meta("activity_crit_art_burst_node"):
 			callback_pop_card.remove_meta("activity_crit_art_burst_node")
-	var callback_highlight := instance_from_id(highlight_id) as CanvasItem
-	if callback_highlight != null and is_instance_valid(callback_highlight):
+	var callback_highlight := _valid_canvas_item_ref(instance_from_id(highlight_id))
+	if callback_highlight != null:
 		_hide_and_queue_free_activity_crit_node(callback_highlight)
-	var callback_art_burst := instance_from_id(art_burst_id) as TextureRect if art_burst_id != 0 else null
-	if callback_art_burst != null and is_instance_valid(callback_art_burst):
+	var callback_art_burst := _valid_texture_rect_ref(instance_from_id(art_burst_id)) if art_burst_id != 0 else null
+	if callback_art_burst != null:
 		_hide_and_queue_free_activity_crit_node(callback_art_burst)
 	action_crit_tweens.erase(key)
 
@@ -48118,11 +50787,11 @@ func _activity_crit_text_burst(pop_card: Control, mega_crit := false) -> Control
 
 
 func _finish_activity_crit_text_burst(pop_card_id: int, holder_id: int) -> void:
-	var callback_pop_card := instance_from_id(pop_card_id) as Control
-	var callback_holder := instance_from_id(holder_id) as Control
-	if callback_pop_card != null and is_instance_valid(callback_pop_card) and callback_pop_card.get_meta("activity_crit_text_node", null) == callback_holder:
+	var callback_pop_card := _valid_control_ref(instance_from_id(pop_card_id))
+	var callback_holder := _valid_control_ref(instance_from_id(holder_id))
+	if callback_pop_card != null and callback_pop_card.get_meta("activity_crit_text_node", null) == callback_holder:
 		callback_pop_card.remove_meta("activity_crit_text_node")
-	if callback_holder != null and is_instance_valid(callback_holder):
+	if callback_holder != null:
 		_hide_and_queue_free_activity_crit_node(callback_holder, "activity_crit_text_tween")
 
 
@@ -48137,8 +50806,8 @@ func _hide_and_queue_free_activity_crit_node(node: Node, tween_meta := "") -> vo
 
 
 func _apply_activity_crit_text_frame(progress: float, holder_id: int, start_position: Vector2, float_pixels: float, mega_crit: bool, quake_portion: float, start_rotation: float, settle_rotation: float, motion_seed: float) -> void:
-	var holder := instance_from_id(holder_id) as Control
-	if holder == null or not is_instance_valid(holder):
+	var holder := _valid_control_ref(instance_from_id(holder_id))
+	if holder == null:
 		return
 	if progress < quake_portion:
 		var quake_progress := clampf(progress / maxf(0.001, quake_portion), 0.0, 1.0)
@@ -48158,9 +50827,9 @@ func _apply_activity_crit_text_frame(progress: float, holder_id: int, start_posi
 
 
 func _apply_activity_crit_feedback_frame_bound(progress: float, pop_card_id: int, start_position: Vector2, start_scale: Vector2, highlight_id: int, art_burst_id: int, mega_crit := false) -> void:
-	var pop_card := instance_from_id(pop_card_id) as Control
-	var highlight := instance_from_id(highlight_id) as CanvasItem
-	var art_burst := instance_from_id(art_burst_id) as TextureRect if art_burst_id != 0 else null
+	var pop_card := _valid_control_ref(instance_from_id(pop_card_id))
+	var highlight := _valid_canvas_item_ref(instance_from_id(highlight_id))
+	var art_burst := _valid_texture_rect_ref(instance_from_id(art_burst_id)) if art_burst_id != 0 else null
 	_apply_activity_crit_feedback_frame(progress, pop_card, start_position, start_scale, highlight, art_burst, mega_crit)
 
 
@@ -48424,15 +51093,7 @@ func _play_thieving_trophy_hub_float(action_key: String, xp_amount: int) -> void
 	tween.tween_property(holder, "modulate:a", 1.0, 0.16)
 	tween.tween_property(glow, "modulate:a", 0.0, 1.30).set_delay(0.32).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_method(
-		func(progress: float) -> void:
-			var trophy_holder := instance_from_id(holder_id) as Control
-			if trophy_holder == null or not is_instance_valid(trophy_holder):
-				return
-			var p := clampf(progress, 0.0, 1.0)
-			var center := start_center.lerp(float_center, 1.0 - pow(1.0 - p, 2.2))
-			trophy_holder.position = center + Vector2(sin(p * TAU * 1.6) * 18.0, 0) - trophy_holder.size * 0.5
-			trophy_holder.rotation = lerpf(-0.08, 0.08, sin(p * PI))
-			trophy_holder.scale = Vector2.ONE * lerpf(0.86, 1.28, sin(p * PI * 0.5)),
+		_apply_thieving_trophy_float_frame.bind(holder_id, start_center, float_center),
 		0.0,
 		1.0,
 		0.72
@@ -48441,19 +51102,7 @@ func _play_thieving_trophy_hub_float(action_key: String, xp_amount: int) -> void
 	tween.tween_interval(0.22)
 	tween.chain()
 	tween.tween_method(
-		func(progress: float) -> void:
-			var trophy_holder := instance_from_id(holder_id) as Control
-			if trophy_holder == null or not is_instance_valid(trophy_holder):
-				return
-			var p := clampf(progress, 0.0, 1.0)
-			var q := 1.0 - p
-			var center := q * q * q * float_center + 3.0 * q * q * p * control_1 + 3.0 * q * p * p * control_2 + p * p * p * target_center
-			var bob := Vector2(sin(p * TAU * 3.0) * 34.0 * (1.0 - p), cos(p * TAU * 2.0) * 20.0 * (1.0 - p))
-			trophy_holder.position = center + bob - trophy_holder.size * 0.5
-			trophy_holder.rotation = sin(p * TAU * 2.4) * 0.16 * (1.0 - p) - 0.08 * (1.0 - p)
-			var zoom := lerpf(1.28, 0.22, pow(p, 2.2))
-			trophy_holder.scale = Vector2(zoom, zoom)
-			trophy_holder.modulate.a = 1.0 if p < 0.86 else lerpf(1.0, 0.0, (p - 0.86) / 0.14),
+		_apply_thieving_trophy_flight_frame.bind(holder_id, float_center, control_1, control_2, target_center),
 		0.0,
 		1.0,
 		1.48
@@ -48463,12 +51112,38 @@ func _play_thieving_trophy_hub_float(action_key: String, xp_amount: int) -> void
 	tween.chain().tween_callback(_finish_thieving_trophy_flight.bind(holder_id, action_key))
 
 
+func _apply_thieving_trophy_float_frame(progress: float, holder_id: int, start_center: Vector2, float_center: Vector2) -> void:
+	var trophy_holder := _valid_control_ref(instance_from_id(holder_id))
+	if trophy_holder == null:
+		return
+	var p := clampf(progress, 0.0, 1.0)
+	var center := start_center.lerp(float_center, 1.0 - pow(1.0 - p, 2.2))
+	trophy_holder.position = center + Vector2(sin(p * TAU * 1.6) * 18.0, 0) - trophy_holder.size * 0.5
+	trophy_holder.rotation = lerpf(-0.08, 0.08, sin(p * PI))
+	trophy_holder.scale = Vector2.ONE * lerpf(0.86, 1.28, sin(p * PI * 0.5))
+
+
+func _apply_thieving_trophy_flight_frame(progress: float, holder_id: int, float_center: Vector2, control_1: Vector2, control_2: Vector2, target_center: Vector2) -> void:
+	var trophy_holder := _valid_control_ref(instance_from_id(holder_id))
+	if trophy_holder == null:
+		return
+	var p := clampf(progress, 0.0, 1.0)
+	var q := 1.0 - p
+	var center := q * q * q * float_center + 3.0 * q * q * p * control_1 + 3.0 * q * p * p * control_2 + p * p * p * target_center
+	var bob := Vector2(sin(p * TAU * 3.0) * 34.0 * (1.0 - p), cos(p * TAU * 2.0) * 20.0 * (1.0 - p))
+	trophy_holder.position = center + bob - trophy_holder.size * 0.5
+	trophy_holder.rotation = sin(p * TAU * 2.4) * 0.16 * (1.0 - p) - 0.08 * (1.0 - p)
+	var zoom := lerpf(1.28, 0.22, pow(p, 2.2))
+	trophy_holder.scale = Vector2(zoom, zoom)
+	trophy_holder.modulate.a = 1.0 if p < 0.86 else lerpf(1.0, 0.0, (p - 0.86) / 0.14)
+
+
 func _finish_thieving_trophy_flight(holder_id: int, action_key: String) -> void:
-	var trophy_holder := instance_from_id(holder_id) as Control
-	if trophy_holder != null and is_instance_valid(trophy_holder):
+	var trophy_holder := _valid_control_ref(instance_from_id(holder_id))
+	if trophy_holder != null:
 		trophy_holder.queue_free()
-	_pop_nav_button(hub_tab)
-	_fade_completed_thieving_heist_card(action_key)
+		_pop_nav_button(hub_tab)
+		_fade_completed_thieving_heist_card(action_key)
 
 
 func _thieving_trophy_soft_glow_style() -> StyleBoxFlat:
@@ -48882,8 +51557,8 @@ func _achievement_toast_queue_badge_for_toast(toast: Control) -> Control:
 	if not _achievement_toast_live(toast) or not toast.has_meta("achievement_toast_queue_badge_id"):
 		return null
 	var badge_id := int(toast.get_meta("achievement_toast_queue_badge_id"))
-	var badge := instance_from_id(badge_id) as Control
-	if badge == null or not is_instance_valid(badge) or badge.is_queued_for_deletion():
+	var badge := _valid_control_ref(instance_from_id(badge_id))
+	if badge == null or badge.is_queued_for_deletion():
 		toast.remove_meta("achievement_toast_queue_badge_id")
 		return null
 	return badge
@@ -48920,8 +51595,8 @@ func _update_achievement_toast_queue_badge(toast: Control, badge: Control, queue
 		ACHIEVEMENT_TOAST_QUEUE_BADGE_OFFSET.y * fitted_scale
 	)
 	var label_id := int(badge.get_meta("achievement_toast_queue_badge_label_id", 0))
-	var label := instance_from_id(label_id) as Label
-	if label != null and is_instance_valid(label):
+	var label := _valid_label_ref(instance_from_id(label_id))
+	if label != null:
 		label.text = "+%s" % queued_count
 
 
@@ -48988,7 +51663,7 @@ func _present_achievement_toast(achievement: Dictionary) -> void:
 
 
 func _on_achievement_toast_gui_input_bound(event: InputEvent, banner_id: int, exit_offset: Vector2) -> void:
-	var banner := instance_from_id(banner_id) as Control
+	var banner := _valid_control_ref(instance_from_id(banner_id))
 	if not _achievement_toast_live(banner):
 		return
 	_on_achievement_toast_gui_input(event, banner, exit_offset)
@@ -49012,7 +51687,7 @@ func _route_achievement_toast_input(event: InputEvent) -> bool:
 		if not _achievement_toast_accepts_dismiss_event(event, toast):
 			continue
 		_block_background_input_briefly()
-		_dismiss_achievement_toast(toast, toast.get_meta("achievement_exit_offset", Vector2(0, 110.0)) as Vector2, false)
+		_dismiss_achievement_toast(toast, _meta_vector2(toast, "achievement_exit_offset", Vector2(0, 110.0)), false)
 		return true
 	return false
 
@@ -49142,15 +51817,15 @@ func _achievement_toast_card_for_banner(banner: Control) -> Control:
 	if not _achievement_toast_live(banner) or not banner.has_meta("achievement_toast_card_id"):
 		return null
 	var card_id := int(banner.get_meta("achievement_toast_card_id"))
-	var card := instance_from_id(card_id) as Control
-	if card == null or not is_instance_valid(card) or card.is_queued_for_deletion():
+	var card := _valid_control_ref(instance_from_id(card_id))
+	if card == null or card.is_queued_for_deletion():
 		banner.remove_meta("achievement_toast_card_id")
 		return null
 	return card
 
 
 func _finish_achievement_toast_card_transition(banner_id: int) -> void:
-	var banner := instance_from_id(banner_id) as Control
+	var banner := _valid_control_ref(instance_from_id(banner_id))
 	if not _achievement_toast_live(banner):
 		return
 	_apply_achievement_toast_card_transition_finished(banner)
@@ -49174,14 +51849,14 @@ func _apply_achievement_toast_card_transition_finished(banner: Control) -> void:
 
 
 func _dismiss_achievement_toast_bound(banner_id: int, exit_offset: Vector2, automatic := false) -> void:
-	var banner := instance_from_id(banner_id) as Control
+	var banner := _valid_control_ref(instance_from_id(banner_id))
 	if not _achievement_toast_live(banner):
 		return
 	_dismiss_achievement_toast(banner, exit_offset, automatic)
 
 
 func _finish_achievement_toast_exit(banner_id: int) -> void:
-	var banner := instance_from_id(banner_id) as Control
+	var banner := _valid_control_ref(instance_from_id(banner_id))
 	if not _achievement_toast_live(banner):
 		return
 	_apply_achievement_toast_exit_finished(banner)
@@ -49219,12 +51894,7 @@ func _achievement_toast_live(toast: Control) -> bool:
 func _kill_achievement_toast_tween(banner: Control) -> void:
 	if not _achievement_toast_live(banner):
 		return
-	if not banner.has_meta("achievement_tween"):
-		return
-	var active_tween := banner.get_meta("achievement_tween") as Tween
-	if active_tween != null and active_tween.is_valid():
-		active_tween.kill()
-	banner.remove_meta("achievement_tween")
+	_kill_meta_tween(banner, "achievement_tween")
 
 
 func _achievement_toast_card(achievement: Dictionary) -> Control:
@@ -49348,7 +52018,7 @@ func _load_activity_database() -> bool:
 	var file := FileAccess.open(ACTIVITY_DATABASE_PATH, FileAccess.READ)
 	if file == null:
 		return false
-	var data = JSON.parse_string(file.get_as_text())
+	var data = _parse_json_silent(file.get_as_text())
 	if typeof(data) != TYPE_DICTIONARY:
 		return false
 	var loaded_skills = data.get("skills", [])
@@ -49390,6 +52060,9 @@ func _load_activity_database() -> bool:
 					"art": _res_path(str(action.get("art", ""))),
 					"bg": _res_path(str(action.get("background", action.get("bg", ""))))
 				}
+				var art_animation := _normalized_action_art_animation_for_load(action.get("art_animation", {}))
+				if not art_animation.is_empty():
+					action_data["art_animation"] = art_animation
 				var requirements := _normalized_action_requirements_for_load(action, skill_id, unlock_level)
 				action_data["requirements"] = requirements
 				action_data["sort_unlock"] = int(action.get("sort_unlock", _max_requirement_level_for_load(requirements, unlock_level)))
@@ -49623,6 +52296,77 @@ func _normalized_string_array_for_load(value: Variant) -> Array:
 	return normalized
 
 
+func _normalized_action_art_animation_for_load(value: Variant) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	var source := value as Dictionary
+	var atlas_path := _res_path(str(source.get("atlas", "")))
+	var frame_count := maxi(1, int(source.get("frame_count", 1)))
+	var cell_width := maxi(1, int(source.get("cell_width", 256)))
+	var cell_height := maxi(1, int(source.get("cell_height", 256)))
+	var sequence := []
+	if typeof(source.get("sequence", [])) == TYPE_ARRAY:
+		for raw_index in source.get("sequence", []):
+			sequence.append(clampi(int(raw_index), 0, frame_count - 1))
+	if sequence.is_empty():
+		for frame_index in range(frame_count):
+			sequence.append(frame_index)
+	var durations := []
+	if typeof(source.get("durations", [])) == TYPE_ARRAY:
+		for raw_duration in source.get("durations", []):
+			durations.append(maxf(0.016, float(raw_duration)))
+	while durations.size() < sequence.size():
+		durations.append(0.1)
+	if atlas_path.is_empty():
+		return {}
+	return {
+		"atlas": atlas_path,
+		"frame_count": frame_count,
+		"cell_width": cell_width,
+		"cell_height": cell_height,
+		"sequence": sequence,
+		"durations": durations,
+		"sync": str(source.get("sync", "")),
+		"effects": _normalized_action_art_animation_effects_for_load(source.get("effects", {}))
+	}
+
+
+func _normalized_action_art_animation_effects_for_load(value: Variant) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	var source := value as Dictionary
+	var effect_name := str(source.get("name", "")).strip_edges()
+	if effect_name.is_empty():
+		return {}
+	var colors := []
+	if typeof(source.get("colors", [])) == TYPE_ARRAY:
+		for raw_color in source.get("colors", []):
+			var color_text := str(raw_color).strip_edges()
+			if not color_text.is_empty():
+				colors.append(color_text)
+	var scenario_palettes := []
+	if typeof(source.get("scenario_palettes", [])) == TYPE_ARRAY:
+		for raw_palette in source.get("scenario_palettes", []):
+			var palette := []
+			if typeof(raw_palette) == TYPE_ARRAY:
+				for raw_color in raw_palette:
+					var color_text := str(raw_color).strip_edges()
+					if not color_text.is_empty():
+						palette.append(color_text)
+			if not palette.is_empty():
+				scenario_palettes.append(palette)
+	return {
+		"name": effect_name,
+		"splash": bool(source.get("splash", source.get("brush", false))),
+		"random_scenario": bool(source.get("random_scenario", false)),
+		"cycle_seconds": maxf(0.25, float(source.get("cycle_seconds", 1.15))),
+		"paint_seconds": maxf(0.08, float(source.get("paint_seconds", 0.70))),
+		"hold_seconds": maxf(0.08, float(source.get("hold_seconds", 0.55))),
+		"colors": colors,
+		"scenario_palettes": scenario_palettes
+	}
+
+
 func _normalized_event_metadata_for_load(value: Variant) -> Dictionary:
 	if typeof(value) != TYPE_DICTIONARY:
 		return {}
@@ -49828,6 +52572,8 @@ func _fishing_method_should_show(skill_id: String, action_id: String) -> bool:
 		return false
 	if _is_action_unlocked(skill_id, action):
 		return true
+	if _action_has_pending_unlock_readiness(action_id):
+		return true
 	return action_id == _fishing_global_teaser_action_id(skill_id)
 
 
@@ -49891,10 +52637,21 @@ func _fishing_render_area_modules(skill_id: String) -> Array:
 		if not _fishing_area_should_show(skill_id, area_def):
 			continue
 		if _fishing_area_uses_location_tiles(area_def):
-			var location_module := area_def.duplicate(true)
-			location_module["render_order"] = render_order
-			modules.append(location_module)
-			render_order += 1
+			var area_id := str(area_def.get("id", ""))
+			var visible_locations: Array = []
+			for raw_location in _fishing_locations_for_area(area_id):
+				var location := raw_location as Dictionary
+				if _fishing_location_should_show(area_id, location):
+					visible_locations.append(location)
+			var chunk_index := 0
+			for start in range(0, visible_locations.size(), FISHING_AREA_MAX_BUTTONS_PER_MODULE):
+				var location_module := area_def.duplicate(true)
+				location_module["locations"] = visible_locations.slice(start, start + FISHING_AREA_MAX_BUTTONS_PER_MODULE)
+				location_module["module_index"] = chunk_index
+				location_module["render_order"] = render_order
+				modules.append(location_module)
+				render_order += 1
+				chunk_index += 1
 			continue
 		var visible_methods := _fishing_area_visible_method_ids(skill_id, area_def)
 		var chunk_index := 0
@@ -49933,7 +52690,7 @@ func _fishing_render_module_unlock(area_def: Dictionary) -> int:
 	var area_id := str(area_def.get("id", ""))
 	var best_unlock := 999999
 	if _fishing_area_uses_location_tiles(area_def):
-		for raw_location in _fishing_locations_for_area(area_id):
+		for raw_location in _fishing_locations_for_area_module(area_def):
 			var location := raw_location as Dictionary
 			if not _fishing_location_should_show(area_id, location):
 				continue
@@ -50035,7 +52792,9 @@ func _fishing_detail_render_signature() -> Array:
 		signature.append("area:%s" % str(area_def.get("id", "")))
 		if _fishing_area_uses_location_tiles(area_def):
 			var area_id := str(area_def.get("id", ""))
-			for raw_location in _fishing_locations_for_area(area_id):
+			if int(area_def.get("module_index", -1)) >= 0:
+				signature.append("area-module:%s:%s" % [area_id, int(area_def.get("module_index", 0))])
+			for raw_location in _fishing_locations_for_area_module(area_def):
 				var location := raw_location as Dictionary
 				if _fishing_location_should_show(area_id, location):
 					signature.append("location-tile:%s:%s" % [area_id, str(location.get("id", ""))])
@@ -50371,6 +53130,44 @@ func _fishing_location_thumbnail_path(area_id: String, location_id: String) -> S
 			return "res://assets/content/fishing/locations/location-dock-cup.png"
 		"pier.piling-line":
 			return "res://assets/content/fishing/locations/location-piling-line.png"
+		"river.bend":
+			return "res://assets/content/fishing/locations/river-bend.png"
+		"river.rapids":
+			return "res://assets/content/fishing/locations/river-rapids.png"
+		"sewers.drain-gate":
+			return "res://assets/content/fishing/locations/sewers-drain-gate.png"
+		"sewers.tunnel-pool":
+			return "res://assets/content/fishing/locations/sewers-tunnel-pool.png"
+		"winter_lake.ice-hole":
+			return "res://assets/content/fishing/locations/winter-lake-ice-hole.png"
+		"reef.pot":
+			return "res://assets/content/fishing/locations/reef-pot.png"
+		"reef.cage":
+			return "res://assets/content/fishing/locations/reef-cage.png"
+		"reef.night-reef":
+			return "res://assets/content/fishing/locations/reef-night-reef.png"
+		"reef.pearl-bed":
+			return "res://assets/content/fishing/locations/reef-pearl-bed.png"
+		"sea.rowboat":
+			return "res://assets/content/fishing/locations/sea-rowboat.png"
+		"sea.open-water":
+			return "res://assets/content/fishing/locations/sea-open-water.png"
+		"sea.chum-line":
+			return "res://assets/content/fishing/locations/sea-chum-line.png"
+		"stormy_sea.ripple":
+			return "res://assets/content/fishing/locations/stormy-sea-ripple.png"
+		"stormy_sea.storm-line":
+			return "res://assets/content/fishing/locations/stormy-sea-storm-line.png"
+		"deep_sea.wreck-drop":
+			return "res://assets/content/fishing/locations/deep-sea-wreck-drop.png"
+		"deep_sea.abyss":
+			return "res://assets/content/fishing/locations/deep-sea-abyss.png"
+		"deep_sea.trench":
+			return "res://assets/content/fishing/locations/deep-sea-trench.png"
+		"space.starlight":
+			return "res://assets/content/fishing/locations/space-starlight.png"
+		"space.reflection":
+			return "res://assets/content/fishing/locations/space-reflection.png"
 	return "res://assets/content/fishing/locations/location-shallows.png"
 
 
@@ -50389,6 +53186,9 @@ func _player_facing_action_art_path(skill_id: String, action: Dictionary) -> Str
 				var parts := str(raw_location_key).split(".")
 				if parts.size() == 2:
 					return _fishing_location_thumbnail_path(str(parts[0]), str(parts[1]))
+		var art := str(action.get("art", ""))
+		if not art.is_empty():
+			return art
 		var background := str(action.get("background", ""))
 		if not background.is_empty():
 			return background
@@ -50401,6 +53201,12 @@ func _fishing_area_uses_location_tiles(area_def: Dictionary) -> bool:
 
 func _fishing_locations_for_area(area_id: String) -> Array:
 	return FISHING_LOCATION_DEFS.get(area_id, []) as Array
+
+
+func _fishing_locations_for_area_module(area_def: Dictionary) -> Array:
+	if area_def.has("locations"):
+		return area_def.get("locations", []) as Array
+	return _fishing_locations_for_area(str(area_def.get("id", "")))
 
 
 func _fishing_location_key(area_id: String, location_id: String) -> String:
@@ -51177,10 +53983,21 @@ func _fishing_area_default_method(skill_id: String, area_def: Dictionary) -> Str
 		return running_action_id
 	if _fishing_area_uses_location_tiles(area_def):
 		var area_id := str(area_def.get("id", ""))
-		var location_id := _fishing_selected_location_id(area_def)
-		var action_id := _fishing_location_action_id(area_id, location_id)
-		if not action_id.is_empty():
-			return action_id
+		var saved_location_id := str(selected_fishing_locations.get(area_id, ""))
+		for raw_location in _fishing_locations_for_area_module(area_def):
+			var selected_location := raw_location as Dictionary
+			if str(selected_location.get("id", "")) != saved_location_id:
+				continue
+			var selected_action_id := _fishing_location_action_id(area_id, saved_location_id)
+			if not selected_action_id.is_empty():
+				return selected_action_id
+		for raw_location in _fishing_locations_for_area_module(area_def):
+			var fallback_location := raw_location as Dictionary
+			if not _fishing_location_should_show(area_id, fallback_location):
+				continue
+			var fallback_action_id := _fishing_location_action_id(area_id, str(fallback_location.get("id", "")))
+			if not fallback_action_id.is_empty():
+				return fallback_action_id
 	for method_id in area_def.get("methods", []):
 		var action_id := str(method_id)
 		var action := _action_data(skill_id, action_id)
@@ -51304,7 +54121,7 @@ func _fishing_area_module_method_ids(skill_id: String, area_def: Dictionary) -> 
 	var method_ids: Array = []
 	var area_id := str(area_def.get("id", ""))
 	if _fishing_area_uses_location_tiles(area_def):
-		for raw_location in _fishing_locations_for_area(area_id):
+		for raw_location in _fishing_locations_for_area_module(area_def):
 			var location := raw_location as Dictionary
 			if not _fishing_location_should_show(area_id, location):
 				continue
@@ -51584,14 +54401,14 @@ func _attach_fishing_area_module_title(pop_card: Control, title_text: String) ->
 	area_title.add_theme_color_override("font_outline_color", COLOR_INK)
 	area_title.add_theme_constant_override("outline_size", FISHING_MODULE_TITLE_OUTLINE)
 	area_title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	area_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	area_title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	area_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	area_title.anchor_left = 0.0
 	area_title.anchor_right = 1.0
 	area_title.anchor_top = 0.0
 	area_title.anchor_bottom = 0.0
-	area_title.offset_left = 54.0
-	area_title.offset_right = -54.0
+	area_title.offset_left = FISHING_MODULE_TITLE_LEFT_INSET
+	area_title.offset_right = -FISHING_MODULE_TITLE_RIGHT_INSET
 	area_title.offset_top = FISHING_MODULE_TITLE_TOP
 	area_title.offset_bottom = FISHING_MODULE_TITLE_TOP + FISHING_MODULE_TITLE_BAND_HEIGHT
 	area_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -51600,6 +54417,26 @@ func _attach_fishing_area_module_title(pop_card: Control, title_text: String) ->
 	area_title.visible = true
 	pop_card.add_child(area_title)
 	return area_title
+
+
+func _configure_fishing_equipment_offer_title(title: Label, font_size: int, outline_size: int) -> void:
+	if title == null:
+		return
+	title.add_theme_color_override("font_outline_color", COLOR_INK)
+	title.add_theme_constant_override("outline_size", outline_size)
+	title.add_theme_font_size_override("font_size", font_size)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title.anchor_left = 0.0
+	title.anchor_right = 1.0
+	title.anchor_top = 0.0
+	title.anchor_bottom = 0.0
+	title.offset_left = FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET
+	title.offset_right = -FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET
+	title.offset_top = 28
+	title.offset_bottom = 158
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _fishing_area_title_backing_style() -> StyleBoxFlat:
@@ -51668,18 +54505,27 @@ func _build_fishing_location_tile(
 	tile_motion_root.pivot_offset = FISHING_LOCATION_TILE_SIZE * 0.5
 	art_panel.add_child(tile_motion_root)
 
+	var tile_frame_clip := Control.new()
+	tile_frame_clip.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tile_frame_clip.clip_contents = true
+	tile_frame_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile_frame_clip.z_index = 1
+	tile_motion_root.add_child(tile_frame_clip)
+
 	var art_clip := Control.new()
 	art_clip.set_anchors_preset(Control.PRESET_FULL_RECT)
 	art_clip.clip_contents = true
 	art_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_clip.z_index = 1
-	tile_motion_root.add_child(art_clip)
+	tile_frame_clip.add_child(art_clip)
 
-	var location_art := TextureRect.new()
+	var location_art := RoundedTextureRect.new()
 	location_art.texture = _fishing_location_thumbnail_texture(area_id, location_id)
 	location_art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	location_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	location_art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	location_art.radius = 30.0
+	location_art.mask_inset = 10.0
+	location_art.aspect_mode = 2
+	location_art.fallback_color = Color("#224d45")
 	location_art.modulate = Color.WHITE if unlocked else Color(0.72, 0.72, 0.72, 0.82)
 	location_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	location_art.pivot_offset = FISHING_LOCATION_TILE_SIZE * 0.5
@@ -51691,7 +54537,7 @@ func _build_fishing_location_tile(
 	location_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	location_border.z_index = 20
 	location_border.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
-	tile_motion_root.add_child(location_border)
+	tile_frame_clip.add_child(location_border)
 
 	var medal := TextureRect.new()
 	medal.anchor_left = 0.0
@@ -52480,7 +55326,7 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 
 	if _fishing_area_uses_location_tiles(area_def):
 		method_source_ids = []
-		for raw_location in _fishing_locations_for_area(area_id):
+		for raw_location in _fishing_locations_for_area_module(area_def):
 			var location := raw_location as Dictionary
 			if not _fishing_location_should_show(area_id, location):
 				continue
@@ -52537,12 +55383,19 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		tile_motion_root.pivot_offset = FISHING_LOCATION_TILE_SIZE * 0.5
 		art_panel.add_child(tile_motion_root)
 
+		var tile_frame_clip := Control.new()
+		tile_frame_clip.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tile_frame_clip.clip_contents = true
+		tile_frame_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tile_frame_clip.z_index = 1
+		tile_motion_root.add_child(tile_frame_clip)
+
 		var art_clip := Control.new()
 		art_clip.set_anchors_preset(Control.PRESET_FULL_RECT)
 		art_clip.clip_contents = true
 		art_clip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		art_clip.z_index = 1
-		tile_motion_root.add_child(art_clip)
+		tile_frame_clip.add_child(art_clip)
 
 		var art := TextureRect.new()
 		art.texture = _texture_or_visual_fallback(str(action.get("background", area_bg_path)))
@@ -52560,7 +55413,7 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		location_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		location_border.z_index = 20
 		location_border.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
-		tile_motion_root.add_child(location_border)
+		tile_frame_clip.add_child(location_border)
 
 		var medal := TextureRect.new()
 		medal.anchor_left = 0.0
@@ -52861,17 +55714,7 @@ func _build_fishing_rod_offer_module(content_width: float) -> Control:
 	pop_card.add_child(shade)
 
 	var title := _label("Bamboo rod", 94, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	title.add_theme_color_override("font_outline_color", COLOR_INK)
-	title.add_theme_constant_override("outline_size", 24)
-	title.anchor_left = 0.0
-	title.anchor_right = 1.0
-	title.anchor_top = 0.0
-	title.anchor_bottom = 0.0
-	title.offset_left = 48
-	title.offset_right = -48
-	title.offset_top = 28
-	title.offset_bottom = 158
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_configure_fishing_equipment_offer_title(title, 88, 24)
 	pop_card.add_child(title)
 
 	var rod_button := Button.new()
@@ -52956,17 +55799,7 @@ func _build_fishing_mirror_offer_module(content_width: float) -> Control:
 	pop_card.add_child(shade)
 
 	var title := _label("Reflection mirror", 88, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	title.add_theme_color_override("font_outline_color", COLOR_INK)
-	title.add_theme_constant_override("outline_size", 23)
-	title.anchor_left = 0.0
-	title.anchor_right = 1.0
-	title.anchor_top = 0.0
-	title.anchor_bottom = 0.0
-	title.offset_left = 48
-	title.offset_right = -48
-	title.offset_top = 28
-	title.offset_bottom = 158
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_configure_fishing_equipment_offer_title(title, 80, 23)
 	pop_card.add_child(title)
 
 	var mirror_button := Button.new()
@@ -53055,17 +55888,7 @@ func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: Stri
 	pop_card.add_child(shade)
 
 	var title := _label(_fishing_rod_upgrade_title(tool_id), 88, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	title.add_theme_color_override("font_outline_color", COLOR_INK)
-	title.add_theme_constant_override("outline_size", 23)
-	title.anchor_left = 0.0
-	title.anchor_right = 1.0
-	title.anchor_top = 0.0
-	title.anchor_bottom = 0.0
-	title.offset_left = 48
-	title.offset_right = -48
-	title.offset_top = 28
-	title.offset_bottom = 158
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_configure_fishing_equipment_offer_title(title, 78 if tool_id == "reinforced_rod" else 84, 23)
 	pop_card.add_child(title)
 
 	var upgrade_button := Button.new()
@@ -53147,17 +55970,7 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	pop_card.add_child(shade)
 
 	var title := _label("Build boat", 94, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	title.add_theme_color_override("font_outline_color", COLOR_INK)
-	title.add_theme_constant_override("outline_size", 24)
-	title.anchor_left = 0.0
-	title.anchor_right = 1.0
-	title.anchor_top = 0.0
-	title.anchor_bottom = 0.0
-	title.offset_left = 48
-	title.offset_right = -48
-	title.offset_top = 28
-	title.offset_bottom = 158
-	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_configure_fishing_equipment_offer_title(title, 88, 24)
 	pop_card.add_child(title)
 
 	var boat_button := Button.new()
@@ -53215,7 +56028,7 @@ func _activate_fishing_offer_button(offer_id: String, source: Button) -> void:
 		return
 	match offer_id:
 		"net":
-			var net_art := instance_from_id(int(source.get_meta("fishing_net_art_id", 0))) as Control
+			var net_art := _valid_control_ref(instance_from_id(int(source.get_meta("fishing_net_art_id", 0))))
 			_on_fishing_net_offer_pressed(source, net_art)
 		"rod":
 			_on_fishing_rod_offer_pressed(source)
@@ -53224,7 +56037,7 @@ func _activate_fishing_offer_button(offer_id: String, source: Button) -> void:
 func _fishing_control_drag_is_vertical_scroll(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
 	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
 		return false
-	var press_position := source.get_meta(press_position_meta, event_position) as Vector2
+	var press_position := _meta_vector2(source, press_position_meta, event_position)
 	var drag_offset := event_position - press_position
 	return (
 		absf(drag_offset.y) >= ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE
@@ -53237,7 +56050,7 @@ func _fishing_control_drag_is_horizontal_swipe(source: Control, event_position: 
 		return false
 	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
 		return false
-	var press_position := source.get_meta(press_position_meta, event_position) as Vector2
+	var press_position := _meta_vector2(source, press_position_meta, event_position)
 	var drag_offset := event_position - press_position
 	return (
 		absf(drag_offset.x) >= ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE
@@ -53248,7 +56061,7 @@ func _fishing_control_drag_is_horizontal_swipe(source: Control, event_position: 
 func _fishing_control_drag_exceeds_tap_slop(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
 	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
 		return false
-	var press_position := source.get_meta(press_position_meta, event_position) as Vector2
+	var press_position := _meta_vector2(source, press_position_meta, event_position)
 	return event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP
 
 
@@ -53293,7 +56106,7 @@ func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source:
 			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_offer_press_position"):
 				return false
 			if _fishing_control_drag_is_horizontal_swipe(source, event_position, "fishing_offer_press_position"):
-				var offer_swipe_press_position := source.get_meta("fishing_offer_press_position", event_position) as Vector2
+				var offer_swipe_press_position := _meta_vector2(source, "fishing_offer_press_position", event_position)
 				var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
 				_clear_fishing_offer_button_press(source)
 				_begin_skill_swipe_tracking(offer_swipe_press_position, touch_index)
@@ -53308,7 +56121,7 @@ func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source:
 	if is_release:
 		var was_active := bool(source.get_meta("fishing_offer_press_active", false))
 		var was_dragged := bool(source.get_meta("fishing_offer_press_dragged", false))
-		var press_position := source.get_meta("fishing_offer_press_position", event_position) as Vector2
+		var press_position := _meta_vector2(source, "fishing_offer_press_position", event_position)
 		_clear_fishing_offer_button_press(source)
 		if not was_active:
 			return false
@@ -53317,7 +56130,6 @@ func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source:
 			and not was_dragged
 			and _position_inside_detail_actions_viewport(event_position)
 			and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
-			and not _detail_actions_scroll_suppresses_child_click()
 			and not _skill_swipe_suppresses_button_action()
 		):
 			_activate_fishing_offer_button(offer_id, source)
@@ -53384,8 +56196,8 @@ func _fishing_offer_button_contains_point(button: Button, event_position: Vector
 	for meta_name in ["fishing_offer_hit_id", "fishing_offer_root_id"]:
 		if not button.has_meta(meta_name):
 			continue
-		var hit_control := instance_from_id(int(button.get_meta(meta_name))) as Control
-		if hit_control == null or not is_instance_valid(hit_control):
+		var hit_control := _valid_control_ref(instance_from_id(int(button.get_meta(meta_name))))
+		if hit_control == null:
 			continue
 		if not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
 			continue
@@ -53547,8 +56359,8 @@ func _start_fishing_net_offer_idle_motion(net_root: Control) -> void:
 
 
 func _apply_fishing_net_offer_idle_frame(value: float, net_root_id: int, base_position: Vector2) -> void:
-	var net_root := instance_from_id(net_root_id) as Control
-	if net_root == null or not is_instance_valid(net_root):
+	var net_root := _valid_control_ref(instance_from_id(net_root_id))
+	if net_root == null:
 		return
 	var phase := value * TAU
 	var bob := sin(phase) * 10.0
@@ -53560,11 +56372,7 @@ func _apply_fishing_net_offer_idle_frame(value: float, net_root_id: int, base_po
 func _collect_fishing_net_offer_to_wallet(net_root: Control) -> bool:
 	if net_root == null or not is_instance_valid(net_root) or detail_fish_circle == null or not is_instance_valid(detail_fish_circle):
 		return false
-	if net_root.has_meta("fishing_net_offer_idle_tween"):
-		var idle_tween := net_root.get_meta("fishing_net_offer_idle_tween") as Tween
-		if idle_tween != null and idle_tween.is_valid():
-			idle_tween.kill()
-		net_root.remove_meta("fishing_net_offer_idle_tween")
+	_kill_meta_tween(net_root, "fishing_net_offer_idle_tween")
 	var source_rect := net_root.get_global_rect()
 	var target_rect := detail_fish_circle.get_global_rect()
 	var to_local := get_global_transform_with_canvas().affine_inverse()
@@ -53660,37 +56468,43 @@ func _play_staged_net_collect_to_wallet(art: Control, target: Vector2) -> void:
 	tween.tween_property(art, "scale", Vector2.ONE, 0.13).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.set_parallel(true)
 	tween.tween_property(glow, "modulate:a", 0.78, 0.20).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_method(func(value: float) -> void:
-		var flyer := instance_from_id(art_id) as Control
-		if flyer == null or not is_instance_valid(flyer):
-			return
-		var bob := sin(value * TAU * 2.0) * 10.0
-		var sway := sin(value * TAU * 1.35 + 0.7) * 8.0
-		flyer.position = start_position + Vector2(sway, bob)
-		flyer.rotation = sin(value * TAU * 1.6) * 0.075
-	, 0.0, 1.0, 0.82).set_trans(Tween.TRANS_LINEAR)
+	tween.tween_method(_apply_fishing_net_collect_start_hover_frame.bind(art_id, start_position), 0.0, 1.0, 0.82).set_trans(Tween.TRANS_LINEAR)
 	tween.chain().tween_property(glow, "modulate:a", 0.0, 0.22).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.chain().tween_callback(func() -> void:
-		var flyer := instance_from_id(art_id) as Control
-		if flyer != null and is_instance_valid(flyer):
-			flyer.scale = Vector2.ONE
-			flyer.modulate = Color.WHITE
-	)
+	tween.chain().tween_callback(_reset_fishing_net_collect_flyer_visuals.bind(art_id))
 	tween.chain().tween_property(art, "position", target_position, 1.05).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
 	tween.parallel().tween_property(art, "rotation", 0.0, 1.05).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.chain().tween_callback(_set_fish_circle_for_skill_bound.bind(detail_fish_circle.get_instance_id(), selected_skill_id, true))
-	tween.chain().tween_method(func(value: float) -> void:
-		var flyer := instance_from_id(art_id) as Control
-		if flyer == null or not is_instance_valid(flyer):
-			return
-		var bob := sin(value * TAU * 2.4) * 8.0
-		var sway := sin(value * TAU * 1.55) * 6.0
-		flyer.position = target_position + Vector2(sway, bob)
-		flyer.rotation = sin(value * TAU * 1.8) * 0.055
-	, 0.0, 1.0, 1.0).set_trans(Tween.TRANS_LINEAR)
+	tween.chain().tween_method(_apply_fishing_net_collect_target_hover_frame.bind(art_id, target_position), 0.0, 1.0, 1.0).set_trans(Tween.TRANS_LINEAR)
 	tween.chain().tween_property(art, "modulate:a", 0.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.chain().tween_callback(_finish_fishing_net_collect)
 	tween.chain().tween_callback(_queue_free_instance_id.bind(art.get_instance_id()))
+
+
+func _apply_fishing_net_collect_start_hover_frame(value: float, art_id: int, start_position: Vector2) -> void:
+	var flyer := _valid_control_ref(instance_from_id(art_id))
+	if flyer == null:
+		return
+	var bob := sin(value * TAU * 2.0) * 10.0
+	var sway := sin(value * TAU * 1.35 + 0.7) * 8.0
+	flyer.position = start_position + Vector2(sway, bob)
+	flyer.rotation = sin(value * TAU * 1.6) * 0.075
+
+
+func _reset_fishing_net_collect_flyer_visuals(art_id: int) -> void:
+	var flyer := _valid_control_ref(instance_from_id(art_id))
+	if flyer != null:
+		flyer.scale = Vector2.ONE
+		flyer.modulate = Color.WHITE
+
+
+func _apply_fishing_net_collect_target_hover_frame(value: float, art_id: int, target_position: Vector2) -> void:
+	var flyer := _valid_control_ref(instance_from_id(art_id))
+	if flyer == null:
+		return
+	var bob := sin(value * TAU * 2.4) * 8.0
+	var sway := sin(value * TAU * 1.55) * 6.0
+	flyer.position = target_position + Vector2(sway, bob)
+	flyer.rotation = sin(value * TAU * 1.8) * 0.055
 
 
 func _play_fishing_offer_collected_transition(source: Control, start_delay := 0.10, collapse_after_fade := false) -> void:
@@ -53723,8 +56537,8 @@ func _play_fishing_offer_collected_transition(source: Control, start_delay := 0.
 
 
 func _apply_fishing_offer_collected_height(value: float, root_id: int) -> void:
-	var root := instance_from_id(root_id) as Control
-	if root == null or not is_instance_valid(root) or root.is_queued_for_deletion():
+	var root := _valid_control_ref(instance_from_id(root_id))
+	if root == null or root.is_queued_for_deletion():
 		return
 	root.custom_minimum_size = Vector2(root.custom_minimum_size.x, value)
 	root.size.y = value
@@ -53735,8 +56549,8 @@ func _apply_fishing_offer_collected_height(value: float, root_id: int) -> void:
 
 
 func _hide_control_bound(control_id: int) -> void:
-	var control := instance_from_id(control_id) as Control
-	if control != null and is_instance_valid(control):
+	var control := _valid_control_ref(instance_from_id(control_id))
+	if control != null:
 		_set_canvas_item_visible_if_changed(control, false)
 
 
@@ -53836,41 +56650,38 @@ func _play_padlock_click_shake(shake_body: Control) -> void:
 	var rest_meta_key := "padlock_shake_rest_position"
 	if not shake_body.has_meta(rest_meta_key):
 		shake_body.set_meta(rest_meta_key, shake_body.position)
-	var base_position := shake_body.get_meta(rest_meta_key) as Vector2
+	var base_position := _meta_vector2(shake_body, rest_meta_key, shake_body.position)
 	var base_rotation := 0.0
 	var shake_direction := -1.0 if randf() < 0.5 else 1.0
 	var tween_meta_key := "padlock_shake_tween"
-	if shake_body.has_meta(tween_meta_key):
-		var existing := shake_body.get_meta(tween_meta_key) as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+	_kill_meta_tween(shake_body, tween_meta_key)
 	shake_body.position = base_position
 	shake_body.rotation = base_rotation
 	var tween := create_tween()
 	shake_body.set_meta(tween_meta_key, tween)
 	var shake_body_id := shake_body.get_instance_id()
-	tween.tween_method(
-		func(progress: float) -> void:
-			var body := instance_from_id(shake_body_id) as Control
-			if body == null or not is_instance_valid(body):
-				return
-			var shake_pct := 1.0 - progress
-			var shake_wave := sin((1.0 - shake_pct) * PI * 7.0) * shake_pct * shake_direction
-			body.position = base_position + Vector2(shake_wave * 10.0, absf(shake_wave) * 3.0)
-			body.rotation = base_rotation + shake_wave * 0.085,
-		0.0,
-		1.0,
-		ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS
-	).set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_OUT)
-	tween.finished.connect(func() -> void:
-		var body := instance_from_id(shake_body_id) as Control
-		if body == null or not is_instance_valid(body):
-			return
-		body.position = base_position
-		body.rotation = base_rotation
-		if body.has_meta(tween_meta_key):
-			body.remove_meta(tween_meta_key)
-	)
+	tween.tween_method(_apply_padlock_click_shake_frame.bind(shake_body_id, base_position, base_rotation, shake_direction), 0.0, 1.0, ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS).set_trans(Tween.TRANS_LINEAR).set_ease(Tween.EASE_OUT)
+	tween.finished.connect(_finish_padlock_click_shake.bind(shake_body_id, base_position, base_rotation, tween_meta_key))
+
+
+func _apply_padlock_click_shake_frame(progress: float, shake_body_id: int, base_position: Vector2, base_rotation: float, shake_direction: float) -> void:
+	var body := _valid_control_ref(instance_from_id(shake_body_id))
+	if body == null:
+		return
+	var shake_pct := 1.0 - progress
+	var shake_wave := sin((1.0 - shake_pct) * PI * 7.0) * shake_pct * shake_direction
+	body.position = base_position + Vector2(shake_wave * 10.0, absf(shake_wave) * 3.0)
+	body.rotation = base_rotation + shake_wave * 0.085
+
+
+func _finish_padlock_click_shake(shake_body_id: int, base_position: Vector2, base_rotation: float, tween_meta_key: String) -> void:
+	var body := _valid_control_ref(instance_from_id(shake_body_id))
+	if body == null:
+		return
+	body.position = base_position
+	body.rotation = base_rotation
+	if body.has_meta(tween_meta_key):
+		body.remove_meta(tween_meta_key)
 
 
 func _fishing_padlock_unlock_fall_progress(drop_progress: float) -> float:
@@ -53921,7 +56732,7 @@ func _apply_fishing_padlock_unlock_drop_frame(shake_body: Control, direction: fl
 
 
 func _apply_fishing_padlock_unlock_drop_frame_bound(progress: float, shake_body_id: int, direction: float) -> void:
-	var shake_body := instance_from_id(shake_body_id) as Control
+	var shake_body := _valid_control_ref(instance_from_id(shake_body_id))
 	_apply_fishing_padlock_unlock_drop_frame(shake_body, direction, progress)
 
 
@@ -53932,7 +56743,8 @@ func _finish_fishing_method_unlock_ceremony(method_card: Dictionary, refresh_det
 	var pending_skill_id := str(method_card.get("manual_unlock_pending_skill_id", method_card.get("skill_id", selected_skill_id)))
 	var pending_action_id := str(method_card.get("manual_unlock_pending_action_id", method_card.get("action_id", "")))
 	_clear_pending_activity_readiness_action(pending_skill_id, pending_action_id)
-	_finalize_manual_activity_unlock_for_card(method_card, "fishing method unlock")
+	if not _finalize_manual_activity_unlock_for_card(method_card, "fishing method unlock"):
+		_finalize_manual_activity_unlock(pending_skill_id, pending_action_id, "fishing method unlock")
 	var method_button := method_card.get("method_button") as Button
 	if method_button != null and is_instance_valid(method_button):
 		_activate_fishing_method_button(method_card)
@@ -53966,6 +56778,26 @@ func _activate_fishing_method_button(method_card: Dictionary, owner_area_pop_ins
 			art_panel.set_meta("fishing_method_art_pressed_connected", true)
 
 
+func _sync_fishing_method_card_unlocked_live(method_card: Dictionary, owner_area_pop_instance_id := 0) -> void:
+	if method_card.is_empty():
+		return
+	method_card["unlock_ready_pending"] = false
+	method_card["unlock_ceremony_pending"] = false
+	var art := method_card.get("art", null) as CanvasItem
+	if art != null and is_instance_valid(art):
+		art.modulate = Color.WHITE
+	var art_panel := method_card.get("art_panel", null) as Panel
+	if art_panel != null and is_instance_valid(art_panel):
+		art_panel.add_theme_stylebox_override("panel", _fishing_location_tile_style(true))
+	var lock_root := method_card.get("lock_root", null) as Control
+	if lock_root != null and is_instance_valid(lock_root):
+		var padlock_hit_area := lock_root.get_meta("padlock_button") as Control
+		if padlock_hit_area != null and is_instance_valid(padlock_hit_area):
+			padlock_hit_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		lock_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_activate_fishing_method_button(method_card, owner_area_pop_instance_id)
+
+
 func _run_fishing_method_unlock_drop_motion(method_card: Dictionary) -> void:
 	await get_tree().create_timer(ACTIVITY_UNLOCK_MOTION_START_DELAY).timeout
 	if method_card.is_empty() or bool(method_card.get("unlock_ceremony_finalized", false)):
@@ -53981,11 +56813,7 @@ func _run_fishing_method_unlock_drop_motion(method_card: Dictionary) -> void:
 	if shake_body == null or not is_instance_valid(shake_body) or shake_body.is_queued_for_deletion():
 		_finish_fishing_method_unlock_ceremony(method_card, true)
 		return
-	if shake_body.has_meta("padlock_shake_tween"):
-		var existing := shake_body.get_meta("padlock_shake_tween") as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
-		shake_body.remove_meta("padlock_shake_tween")
+	_kill_meta_tween(shake_body, "padlock_shake_tween")
 	_play_padlock_cluster_sfx()
 	shake_body.modulate = Color.WHITE
 	shake_body.position = Vector2.ZERO
@@ -54024,7 +56852,10 @@ func _play_fishing_method_unlock_ceremony(method_card: Dictionary) -> void:
 	activity_unlock_ceremony_count += 1
 	var method_button := method_card.get("method_button") as Button
 	if method_button != null and is_instance_valid(method_button):
-		_set_base_button_disabled_if_changed(method_button, true)
+		var skill_id := str(method_card.get("skill_id", "fishing"))
+		var action := _action_data(skill_id, str(method_card.get("action_id", "")))
+		if not _is_action_unlocked(skill_id, action):
+			_set_base_button_disabled_if_changed(method_button, true)
 	var lock_root := method_card.get("lock_root") as Control
 	if lock_root != null:
 		var padlock_hit_area := lock_root.get_meta("padlock_button") as Control
@@ -54202,11 +57033,7 @@ func _fishing_area_stat_fade_controls(area_card: Dictionary) -> Array:
 
 func _set_fishing_area_stats_visible(area_card: Dictionary, should_show: bool, _delta: float, instant: bool) -> void:
 	var target_alpha := 1.0 if should_show else 0.0
-	if area_card.has("stat_fade_tween"):
-		var existing := area_card.get("stat_fade_tween") as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
-		area_card.erase("stat_fade_tween")
+	_kill_card_tween(area_card, "stat_fade_tween")
 	var controls := _fishing_area_stat_fade_controls(area_card)
 	if controls.is_empty():
 		return
@@ -54433,6 +57260,7 @@ func _update_fishing_location_active_camera(
 	if art.size.x > 1.0 and art.size.y > 1.0:
 		art.pivot_offset = art.size * 0.5
 	art.rotation = 0.0
+	var rounded_art := art as RoundedTextureRect
 	if running:
 		card["active_camera_was_running"] = true
 		card["active_camera_returning"] = false
@@ -54453,6 +57281,24 @@ func _update_fishing_location_active_camera(
 			next_shift = randf_range(2.6, 4.4)
 		card["active_camera_next_shift"] = next_shift
 		var target_position := rest_position + (card.get("active_camera_target", Vector2.ZERO) as Vector2)
+		if rounded_art != null:
+			rounded_art.position = rest_position
+			rounded_art.scale = Vector2.ONE
+			var current_zoom := rounded_art.sample_zoom
+			if current_zoom <= 0.0:
+				current_zoom = 1.0
+			var current_offset := rounded_art.sample_offset_px
+			if instant:
+				current_zoom = camera_zoom
+				current_offset = target_position
+			else:
+				var blend := clampf(delta * FISHING_LOCATION_ACTIVE_CAMERA_EASE, 0.0, 1.0)
+				current_zoom = lerpf(current_zoom, camera_zoom, blend)
+				current_offset = current_offset.lerp(target_position, blend)
+			rounded_art.sample_zoom = current_zoom
+			rounded_art.sample_offset_px = current_offset
+			rounded_art.queue_redraw()
+			return
 		if instant:
 			art.position = target_position
 			art.scale = Vector2(camera_zoom, camera_zoom)
@@ -54464,6 +57310,31 @@ func _update_fishing_location_active_camera(
 	card["active_camera_was_running"] = false
 	card["active_camera_initialized"] = false
 	card["active_camera_target"] = Vector2.ZERO
+	if rounded_art != null:
+		rounded_art.position = rest_position
+		rounded_art.rotation = 0.0
+		rounded_art.scale = Vector2.ONE
+		if instant:
+			rounded_art.sample_zoom = 1.0
+			rounded_art.sample_offset_px = Vector2.ZERO
+			rounded_art.queue_redraw()
+			card["active_camera_returning"] = false
+			card.erase("active_camera_return_elapsed")
+			card.erase("active_camera_return_start_position")
+			card.erase("active_camera_return_start_scale")
+			return
+		var zoom_step := clampf(delta / maxf(0.001, FISHING_METHOD_ACTIVE_SWAY_RETURN_SECONDS), 0.0, 1.0)
+		rounded_art.sample_zoom = lerpf(rounded_art.sample_zoom, 1.0, zoom_step)
+		rounded_art.sample_offset_px = rounded_art.sample_offset_px.lerp(Vector2.ZERO, zoom_step)
+		if absf(rounded_art.sample_zoom - 1.0) <= 0.001 and rounded_art.sample_offset_px.length_squared() <= 0.25:
+			rounded_art.sample_zoom = 1.0
+			rounded_art.sample_offset_px = Vector2.ZERO
+			card["active_camera_returning"] = false
+			card.erase("active_camera_return_elapsed")
+			card.erase("active_camera_return_start_position")
+			card.erase("active_camera_return_start_scale")
+		rounded_art.queue_redraw()
+		return
 	if instant:
 		art.position = rest_position
 		art.rotation = 0.0
@@ -54503,10 +57374,7 @@ func _play_fishing_location_tile_wiggle(method_card: Dictionary) -> void:
 	if target == null or not is_instance_valid(target):
 		return
 	target.pivot_offset = target.size * 0.5
-	if target.has_meta("fishing_tile_wiggle_tween"):
-		var existing := target.get_meta("fishing_tile_wiggle_tween") as Tween
-		if existing != null and existing.is_valid():
-			existing.kill()
+	_kill_meta_tween(target, "fishing_tile_wiggle_tween")
 	target.rotation = 0.0
 	target.scale = Vector2.ONE
 	var direction := -1.0 if randf() < 0.5 else 1.0
@@ -54521,8 +57389,8 @@ func _play_fishing_location_tile_wiggle(method_card: Dictionary) -> void:
 
 
 func _finish_fishing_location_tile_wiggle(target_id: int) -> void:
-	var target := instance_from_id(target_id) as Control
-	if target != null and is_instance_valid(target):
+	var target := _valid_control_ref(instance_from_id(target_id))
+	if target != null:
 		target.rotation = 0.0
 		target.scale = Vector2.ONE
 		if target.has_meta("fishing_tile_wiggle_tween"):
@@ -54593,8 +57461,10 @@ func _on_fishing_method_button_input(
 	if is_press:
 		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
 			return false
+		var method_card_for_press := _fishing_method_card_for_action(skill_id, action_id)
+		var press_kind := ACTION_CARD_MEDAL_PRESS_KIND if _action_card_medal_hit_at_position(method_card_for_press, event_position) else ""
 		if running_skill_id == skill_id and running_action_id == action_id:
-			if _try_action_opportunity_click(skill_id, action_id, event_position):
+			if press_kind.is_empty() and _try_action_opportunity_click(skill_id, action_id, event_position):
 				action_card_press_consumed = true
 				_cancel_action_stop_hold()
 				skill_swipe_tracking = false
@@ -54602,7 +57472,7 @@ func _on_fishing_method_button_input(
 				skill_swipe_touch_index = -1
 				get_viewport().set_input_as_handled()
 				return true
-			if _miss_action_opportunity_click(skill_id, action_id, event_position):
+			if press_kind.is_empty() and _miss_action_opportunity_click(skill_id, action_id, event_position):
 				action_card_press_consumed = true
 				_cancel_action_stop_hold()
 				skill_swipe_tracking = false
@@ -54610,15 +57480,17 @@ func _on_fishing_method_button_input(
 				skill_swipe_touch_index = -1
 				get_viewport().set_input_as_handled()
 				return true
-			var pointer_id := (event as InputEventScreenTouch).index if event is InputEventScreenTouch else -1
-			_begin_action_stop_hold(skill_id, action_id, event_position, pointer_id)
-			get_viewport().set_input_as_handled()
-			return true
+			if press_kind.is_empty():
+				var pointer_id := (event as InputEventScreenTouch).index if event is InputEventScreenTouch else -1
+				_begin_action_stop_hold(skill_id, action_id, event_position, pointer_id)
+				get_viewport().set_input_as_handled()
+				return true
 		_prepare_fishing_control_tap()
 		fishing_method_button_press_active = true
 		source.set_meta("fishing_method_press_active", true)
 		source.set_meta("fishing_method_press_position", event_position)
 		source.set_meta("fishing_method_press_dragged", false)
+		source.set_meta("fishing_method_press_kind", press_kind)
 		get_viewport().set_input_as_handled()
 		return true
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
@@ -54628,7 +57500,7 @@ func _on_fishing_method_button_input(
 			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_method_press_position"):
 				return false
 			if _fishing_control_drag_is_horizontal_swipe(source, event_position, "fishing_method_press_position"):
-				var method_swipe_press_position := source.get_meta("fishing_method_press_position", event_position) as Vector2
+				var method_swipe_press_position := _meta_vector2(source, "fishing_method_press_position", event_position)
 				var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
 				if source.has_meta("fishing_method_press_active"):
 					source.remove_meta("fishing_method_press_active")
@@ -54636,6 +57508,8 @@ func _on_fishing_method_button_input(
 					source.remove_meta("fishing_method_press_position")
 				if source.has_meta("fishing_method_press_dragged"):
 					source.remove_meta("fishing_method_press_dragged")
+				if source.has_meta("fishing_method_press_kind"):
+					source.remove_meta("fishing_method_press_kind")
 				fishing_method_button_press_active = false
 				_begin_skill_swipe_tracking(method_swipe_press_position, touch_index)
 				if skill_swipe_tracking:
@@ -54649,13 +57523,16 @@ func _on_fishing_method_button_input(
 	if is_release:
 		var was_active := bool(source.get_meta("fishing_method_press_active", false))
 		var was_dragged := bool(source.get_meta("fishing_method_press_dragged", false))
-		var press_position := source.get_meta("fishing_method_press_position", event_position) as Vector2
+		var press_position := _meta_vector2(source, "fishing_method_press_position", event_position)
+		var press_kind := str(source.get_meta("fishing_method_press_kind", ""))
 		if source.has_meta("fishing_method_press_active"):
 			source.remove_meta("fishing_method_press_active")
 		if source.has_meta("fishing_method_press_position"):
 			source.remove_meta("fishing_method_press_position")
 		if source.has_meta("fishing_method_press_dragged"):
 			source.remove_meta("fishing_method_press_dragged")
+		if source.has_meta("fishing_method_press_kind"):
+			source.remove_meta("fishing_method_press_kind")
 		fishing_method_button_press_active = false
 		if not was_active:
 			return false
@@ -54668,7 +57545,10 @@ func _on_fishing_method_button_input(
 			and not _skill_swipe_suppresses_button_action()
 		):
 			var method_card := _fishing_method_card_for_action(skill_id, action_id)
-			if queue_selection_mode:
+			if press_kind == ACTION_CARD_MEDAL_PRESS_KIND:
+				if _action_card_medal_hit_at_position(method_card, event_position):
+					_play_action_card_medal_tap_ceremony(method_card)
+			elif queue_selection_mode:
 				var owner_area_card := _fishing_area_card_for_pop_instance_id(owner_area_pop_instance_id)
 				if owner_area_card.is_empty():
 					_queue_selection_toggle_from_card(method_card)
@@ -54787,6 +57667,7 @@ func _route_fishing_location_image_priority_press(event: InputEvent) -> bool:
 
 func _fishing_method_button_hit(event_position: Vector2, require_contains_point := true) -> Dictionary:
 	var positions := _activity_input_position_candidates(event_position)
+	var matched_hit := {}
 	for hit in _fishing_method_button_hit_candidates():
 		var button := hit.get("button", null) as Button
 		if button == null or not is_instance_valid(button) or button.disabled:
@@ -54800,8 +57681,8 @@ func _fishing_method_button_hit(event_position: Vector2, require_contains_point 
 			hit_control = button
 		if require_contains_point and _first_position_in_rect(positions, hit_control.get_global_rect()) == null:
 			continue
-		return hit
-	return {}
+		matched_hit = hit
+	return matched_hit
 
 
 func _event_inside_fishing_location_image(event: InputEvent) -> bool:
@@ -54851,6 +57732,8 @@ func _clear_active_fishing_method_button_press() -> void:
 			button.remove_meta("fishing_method_press_position")
 		if button.has_meta("fishing_method_press_dragged"):
 			button.remove_meta("fishing_method_press_dragged")
+		if button.has_meta("fishing_method_press_kind"):
+			button.remove_meta("fishing_method_press_kind")
 
 
 func _fishing_method_button_hit_candidates() -> Array:
@@ -54971,17 +57854,26 @@ func _on_fishing_method_lock_pressed(skill_id: String, action_id: String, prefer
 	if _lock_click_tip_remaining_collapse_seconds() > 0.0:
 		_stage_next_locked_activity_preview_after_tip_collapse(preview_id)
 	var ceremony_started := false
-	_clear_pending_activity_readiness_action(skill_id, action_id)
 	if method_card != null and method_card.get("lock_root") != null:
 		_queue_manual_activity_unlock_for_ceremony(method_card, skill_id, action_id)
+		_persist_fishing_method_unlock_click(skill_id, action_id)
+		var owner_area_card := _fishing_area_card_for_action(skill_id, action_id)
+		var owner_pop := owner_area_card.get("pop", null) as Control
+		var owner_area_pop_instance_id := owner_pop.get_instance_id() if owner_pop != null and is_instance_valid(owner_pop) else 0
+		_sync_fishing_method_card_unlocked_live(method_card, owner_area_pop_instance_id)
 		_play_fishing_method_unlock_ceremony(method_card)
 		ceremony_started = true
 	else:
-		_finalize_manual_activity_unlock(skill_id, action_id, "fishing method unlock")
+		_persist_fishing_method_unlock_click(skill_id, action_id)
 		call_deferred("_refresh_skill_detail_after_activity_unlock_ceremony")
 	_set_result("%s unlocked." % str(action.get("name", "Method")))
 	if not ceremony_started:
 		_mark_save_dirty("fishing method unlock")
+
+
+func _persist_fishing_method_unlock_click(skill_id: String, action_id: String) -> bool:
+	_clear_pending_activity_readiness_action(skill_id, action_id)
+	return _finalize_manual_activity_unlock(skill_id, action_id, "fishing method unlock")
 
 
 func _on_fishing_method_lock_hit_input(event: InputEvent, skill_id: String, action_id: String, shake_body: Control = null) -> void:
@@ -55115,7 +58007,42 @@ func _attach_fishing_fluid_strip(parent: Control, action: Dictionary) -> Control
 	return fluid
 
 
-func _update_action_card_run_feedback(card: Dictionary, skill_id: String, running: bool, delta: float, instant: bool) -> void:
+func _sync_action_art_animation_state(card: Dictionary, running: bool) -> void:
+	var art := _valid_control_ref(card.get("art"))
+	if art == null or not is_instance_valid(art) or not art.has_method("set_playing"):
+		return
+	art.call("set_playing", running)
+
+
+func _sync_action_art_animations_for_running_state(force := false) -> void:
+	var running_key := _action_key(running_skill_id, running_action_id) if not running_skill_id.is_empty() and not running_action_id.is_empty() else ""
+	var event_key := _action_key(event_running_skill_id, event_running_action_id) if not event_running_skill_id.is_empty() and not event_running_action_id.is_empty() else ""
+	var active_key := "%s|%s" % [running_key, event_key]
+	if not force and active_key == action_art_last_running_key:
+		return
+	action_art_last_running_key = active_key
+	for raw_key in action_card_keys:
+		var key := str(raw_key)
+		if not action_cards.has(key):
+			continue
+		var card := action_cards[key] as Dictionary
+		if card.is_empty():
+			continue
+		var skill_id := str(card.get("skill_id", ""))
+		var action_id := str(card.get("action_id", ""))
+		var running_here := (
+			(not running_key.is_empty() and skill_id == running_skill_id and action_id == running_action_id)
+			or (not event_key.is_empty() and skill_id == event_running_skill_id and action_id == event_running_action_id)
+		)
+		_sync_action_art_animation_state(card, running_here)
+
+
+func _update_action_card_run_feedback(card: Dictionary, skill_id: String, running: bool, delta: float, instant: bool, progress_override := -1.0) -> void:
+	_sync_action_art_animation_state(card, running)
+	var card_progress := clampf(progress_override if progress_override >= 0.0 else action_progress, 0.0, 1.0)
+	var art := _valid_control_ref(card.get("art"))
+	if art != null and is_instance_valid(art) and art.has_method("set_action_progress"):
+		art.call("set_action_progress", card_progress)
 	if _fishing_rework_active_for_skill(skill_id) and card.get("is_fishing_method"):
 		return
 	if _fishing_rework_active_for_skill(skill_id):
@@ -55124,7 +58051,7 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 			if fluid_strip.has_method("set_running"):
 				fluid_strip.call("set_running", running)
 			if running and fluid_strip.has_method("set_attempt_progress"):
-				fluid_strip.call("set_attempt_progress", action_progress)
+				fluid_strip.call("set_attempt_progress", card_progress)
 			if card.get("is_fishing_area"):
 				var water_strip_host := card.get("water_strip_host") as Control
 				if water_strip_host != null:
@@ -55140,7 +58067,7 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 	if _is_convergence_action(action_for_card):
 		var convergence_progress := card.get("convergence_progress") as ConvergenceMultiProgressBar
 		if convergence_progress != null:
-			var values := _convergence_segment_progress(action_for_card, action_progress if running else 0.0)
+			var values := _convergence_segment_progress(action_for_card, card_progress if running else 0.0)
 			var colors := []
 			for raw_skill_id in _convergence_skill_order(action_for_card):
 				colors.append(_skill_theme_color(str(raw_skill_id)))
@@ -55162,7 +58089,7 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 			opportunity_visible = true
 		progress_rail.set_opportunity_windows(opportunity_windows, opportunity_active, opportunity_visible, action_opportunity_missed)
 		var canceled_progress := 0.0 if running else _canceled_action_progress(skill_id, action_id)
-		var progress_target := (action_progress if running else canceled_progress) * 100.0
+		var progress_target := (card_progress if running else canceled_progress) * 100.0
 		var progress_instant := instant
 		if not running and canceled_progress > 0.0:
 			progress_instant = true
@@ -55183,8 +58110,8 @@ func _update_detail_lazy_entry_height_for_card(card: Dictionary, height: float) 
 
 func _apply_mat_collection_layout_height(value: float, entry_id: int, action_id: String) -> void:
 	var layout_height := maxf(1.0, value)
-	var entry := instance_from_id(entry_id) as Control if entry_id != 0 else null
-	if entry != null and is_instance_valid(entry):
+	var entry := _valid_control_ref(instance_from_id(entry_id)) if entry_id != 0 else null
+	if entry != null:
 		entry.custom_minimum_size.y = layout_height
 		entry.size.y = layout_height
 		entry.update_minimum_size()
@@ -55198,8 +58125,8 @@ func _apply_mat_collection_layout_height(value: float, entry_id: int, action_id:
 
 
 func _clear_mat_collection_height_tween_meta(card_root_id: int) -> void:
-	var card_root := instance_from_id(card_root_id) as Control if card_root_id != 0 else null
-	if card_root != null and is_instance_valid(card_root) and card_root.has_meta("mat_collection_height_tween"):
+	var card_root := _valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
+	if card_root != null and card_root.has_meta("mat_collection_height_tween"):
 		card_root.remove_meta("mat_collection_height_tween")
 
 
@@ -55212,6 +58139,7 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 	var visual_card_height := _module_collapsed_squeeze_height() if collapsed else _activity_card_root_height(bool(card.get("bonus_expanded", false)))
 	var target_height := visual_card_height + (MAT_COLLECTION_AREA_HEIGHT if running else 0.0)
 	_sync_mat_collection_row_position(card, visual_card_height)
+	var seed_layout := not bool(collection.get("layout_initialized", false)) or (running and not bool(collection.get("ever_visible", false)))
 	var entry := card.get("entry") as Control
 	var entry_id := entry.get_instance_id() if entry != null and is_instance_valid(entry) else 0
 	var action_id := str(card.get("action_id", ""))
@@ -55221,18 +58149,18 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 	elif card_root != null and is_instance_valid(card_root):
 		current_height = maxf(card_root.custom_minimum_size.y, card_root.size.y)
 	if absf(current_height - target_height) > 0.5:
-		if card_root != null and is_instance_valid(card_root) and card_root.has_meta("mat_collection_height_tween"):
-			var old_height_tween := card_root.get_meta("mat_collection_height_tween") as Tween
-			if old_height_tween != null and old_height_tween.is_valid():
-				old_height_tween.kill()
-			card_root.remove_meta("mat_collection_height_tween")
-		if instant or card_root == null or not is_instance_valid(card_root):
+		_kill_meta_tween(card_root, "mat_collection_height_tween")
+		if instant or seed_layout or card_root == null or not is_instance_valid(card_root):
 			_apply_mat_collection_layout_height(target_height, entry_id, action_id)
 		else:
 			var height_tween := card_root.create_tween()
 			card_root.set_meta("mat_collection_height_tween", height_tween)
 			height_tween.tween_method(Callable(self, "_apply_mat_collection_layout_height").bind(entry_id, action_id), current_height, target_height, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
 			height_tween.finished.connect(Callable(self, "_clear_mat_collection_height_tween_meta").bind(card_root.get_instance_id()))
+	collection["layout_initialized"] = true
+	if running:
+		collection["ever_visible"] = true
+	card["mat_collection"] = collection
 	var root := collection.get("root") as Control
 	if root == null or not is_instance_valid(root):
 		return
@@ -55243,18 +58171,14 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 		if module == null or not is_instance_valid(module):
 			continue
 		var amount_label_id := int(module.get_meta("amount_label_id", 0))
-		var amount_label := instance_from_id(amount_label_id) as Label
-		if amount_label != null and is_instance_valid(amount_label):
+		var amount_label := _valid_label_ref(instance_from_id(amount_label_id))
+		if amount_label != null:
 			_set_label_text_if_changed(amount_label, _mat_amount_text(mat_id))
 	if bool(collection.get("visible", false)) == running and not instant:
 		return
 	collection["visible"] = running
 	card["mat_collection"] = collection
-	if root.has_meta("mat_collection_tween"):
-		var old_tween := root.get_meta("mat_collection_tween") as Tween
-		if old_tween != null and old_tween.is_valid():
-			old_tween.kill()
-		root.remove_meta("mat_collection_tween")
+	_kill_meta_tween(root, "mat_collection_tween")
 	if instant:
 		root.modulate.a = 1.0 if running else 0.0
 		root.scale = Vector2.ONE if running else Vector2(0.94, 0.94)
@@ -55264,10 +58188,7 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 	tween.set_parallel(true)
 	tween.tween_property(root, "modulate:a", 1.0 if running else 0.0, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
 	tween.tween_property(root, "scale", Vector2.ONE if running else Vector2(0.94, 0.94), MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_BACK if running else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
-	tween.finished.connect(func():
-		if root != null and is_instance_valid(root) and root.has_meta("mat_collection_tween"):
-			root.remove_meta("mat_collection_tween")
-	)
+	tween.finished.connect(_remove_meta_from_instance_id.bind(root.get_instance_id(), "mat_collection_tween"))
 
 
 func _sync_visible_mat_collection_for_action(skill_id: String, action_id: String, running: bool) -> void:
@@ -55595,6 +58516,7 @@ func _init_state() -> void:
 	auto_eat_fish_enabled_by_skill.clear()
 	auto_unlock_lockpads_enabled = false
 	nav_symbol_seen_ids.clear()
+	offline_progress_cap_notifications_enabled = false
 	_reset_module_ui_preferences()
 	god_mode_enabled = false
 	god_mode_save_tainted = false
@@ -55671,6 +58593,7 @@ func _init_state() -> void:
 	silver_opportunity_tip_action_key = ""
 	stamina_gauge_pre_tip_hold_seconds = 0.0
 	show_stamina_decimal = false
+	offline_progress_cap_notifications_enabled = false
 	stamina_gauge_tip_root = null
 	onboarding_fight_summary_revealed = false
 	onboarding_fight_auto_run_message_shown = false
@@ -55712,6 +58635,7 @@ func _init_state() -> void:
 	leaderboard_last_submitted_total_xp = 0
 	leaderboard_last_submitted_scores_by_category.clear()
 	leaderboard_last_submit_unix = 0
+	leaderboard_repair_publish_version = 0
 	leaderboard_display_name = _make_guest_display_name()
 	leaderboard_name_key = ""
 	leaderboard_avatar_index = 0
@@ -55726,7 +58650,18 @@ func _init_state() -> void:
 	leaderboard_rows_by_category.clear()
 	leaderboard_fetch_unix_by_category.clear()
 	leaderboard_fetch_retry_unix_by_category.clear()
+	leaderboard_pending_repair_publish_version = 0
 	leaderboard_status_message = ""
+	google_auth_in_flight = false
+	google_auth_status_message = ""
+	cloud_save_fetch_in_flight = false
+	cloud_save_upload_in_flight = false
+	cloud_save_dirty = false
+	cloud_save_last_upload_unix = 0
+	cloud_save_last_fetch_unix = 0
+	cloud_save_last_remote_summary.clear()
+	cloud_save_last_remote_payload.clear()
+	cloud_save_status_message = ""
 	chat_rows.clear()
 	chat_stream_retry_unix = 0
 	chat_last_send_unix = 0
@@ -55952,28 +58887,131 @@ func save_game() -> void:
 		save_dirty = false
 		save_dirty_reason = ""
 		return
-	var file := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
-	if file == null:
-		var open_error := FileAccess.get_open_error()
+	var now := _unix_now()
+	var payload := _save_payload(now)
+	if not _save_payload_can_replace_existing_save(payload):
 		save_dirty = true
-		save_dirty_reason = "save file open failed"
-		last_result = "Save failed: %s." % error_string(open_error)
+		save_dirty_reason = "progress regression blocked"
+		last_result = "Save protected: progress regression blocked."
 		push_warning(
-			"Idle Elite save failed at %s: %s" % [
-				ProjectSettings.globalize_path(SAVE_PATH),
-				error_string(open_error)
-			]
+			"Idle Elite blocked a save that would reduce progress at %s" % ProjectSettings.globalize_path(SAVE_PATH)
 		)
 		return
-	var now := _unix_now()
-	last_save_unix_time = now
-	last_save_monotonic_msec = _monotonic_now_msec()
-	file.store_string(JSON.stringify(_save_payload(now)))
-	file.flush()
-	file.close()
+	if allow_next_save_progress_regression:
+		allow_next_save_progress_regression = false
+	if not _write_save_payload_atomically(payload):
+		save_dirty = true
+		save_dirty_reason = "save file write failed"
+		last_result = "Save failed."
+		push_warning(
+			"Idle Elite save failed at %s" % ProjectSettings.globalize_path(SAVE_PATH)
+		)
+		return
 	_sync_web_userfs_after_save()
+	if _cloud_save_account_ready():
+		cloud_save_dirty = true
+		_upload_cloud_save(false)
 	save_dirty = false
 	save_dirty_reason = ""
+	allow_next_save_progress_regression = false
+
+
+func _write_save_payload_atomically(payload: Dictionary) -> bool:
+	var payload_text := JSON.stringify(payload)
+	if FileAccess.file_exists(SAVE_PATH):
+		var existing := _load_save_dictionary_from_path(SAVE_PATH)
+		if not existing.is_empty():
+			var existing_text := _read_text_file(SAVE_PATH)
+			if not existing_text.is_empty():
+				_write_text_file(SAVE_BACKUP_PATH, existing_text)
+	if not _write_text_file(SAVE_TEMP_PATH, payload_text):
+		return false
+	var temp_data := _load_save_dictionary_from_path(SAVE_TEMP_PATH)
+	if temp_data.is_empty():
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_TEMP_PATH))
+		return false
+	if FileAccess.file_exists(SAVE_PATH):
+		var remove_error := DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
+		if remove_error != OK:
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_TEMP_PATH))
+			return false
+	var rename_error := DirAccess.rename_absolute(
+		ProjectSettings.globalize_path(SAVE_TEMP_PATH),
+		ProjectSettings.globalize_path(SAVE_PATH)
+	)
+	if rename_error != OK:
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_TEMP_PATH))
+		return false
+	last_save_unix_time = int(payload.get("saved_at", _unix_now()))
+	last_save_monotonic_msec = _monotonic_now_msec()
+	return true
+
+
+func _read_text_file(path: String) -> String:
+	var file := FileAccess.open(path, FileAccess.READ)
+	if file == null:
+		return ""
+	var text := file.get_as_text()
+	file.close()
+	return text
+
+
+func _write_text_file(path: String, text: String) -> bool:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return false
+	file.store_string(text)
+	file.flush()
+	file.close()
+	return true
+
+
+func _save_payload_can_replace_existing_save(next_payload: Dictionary) -> bool:
+	if allow_next_save_progress_regression:
+		return true
+	var existing := _best_local_save_dictionary()
+	if _save_reset_generation(next_payload) > _save_reset_generation(existing):
+		return true
+	return not _save_payload_regresses_progress(existing, next_payload)
+
+
+func _save_payload_regresses_progress(existing_payload: Dictionary, next_payload: Dictionary) -> bool:
+	if existing_payload.is_empty():
+		return false
+	var existing_reset_generation := _save_reset_generation(existing_payload)
+	var next_reset_generation := _save_reset_generation(next_payload)
+	if next_reset_generation > existing_reset_generation:
+		return false
+	if next_reset_generation < existing_reset_generation:
+		return true
+	var existing_xp := _save_total_skill_xp_evidence(existing_payload)
+	if existing_xp <= 0:
+		return false
+	var next_xp := _save_total_skill_xp_evidence(next_payload)
+	return next_xp < existing_xp
+
+
+func _save_reset_generation(data: Dictionary) -> int:
+	return maxi(0, int(data.get("save_reset_generation", 0)))
+
+
+func _save_total_skill_xp_evidence(data: Dictionary) -> int:
+	var loaded_skills = data.get("skills", {})
+	if typeof(loaded_skills) != TYPE_DICTIONARY:
+		return 0
+	var total_xp := 0
+	var source := loaded_skills as Dictionary
+	for raw_def in skill_defs:
+		var skill_def := raw_def as Dictionary
+		var skill_id := str(skill_def.get("id", ""))
+		if skill_id.is_empty() or not source.has(skill_id):
+			continue
+		var skill_state = source.get(skill_id, {})
+		if typeof(skill_state) != TYPE_DICTIONARY:
+			continue
+		var state := skill_state as Dictionary
+		total_xp += maxi(0, int(state.get("xp", 0)))
+	return total_xp
 
 
 func _sync_web_userfs_after_save() -> void:
@@ -55985,10 +59023,13 @@ func _sync_web_userfs_after_save() -> void:
 func _save_payload(now: int) -> Dictionary:
 	return {
 		"save_schema_version": SAVE_SCHEMA_VERSION,
+		"save_reset_generation": save_reset_generation,
 		"skills": _skills_for_save(),
 		"mastery": _mastery_for_save(),
 		"stamina": _stamina_for_save(),
 		"stamina_bank": _stamina_bank_for_save(),
+		"blue_guy_health": _blue_guy_health_value(),
+		"blue_guy_health_bank": 0.0 if _blue_guy_health_full() else clampf(blue_guy_health_bank, 0.0, BLUE_GUY_HEALTH_REGEN_SECONDS),
 		"mats": _mats_for_save(),
 		"log_currency": _log_currency_for_save(),
 		"fish_currency": _fish_currency_for_save(),
@@ -56035,6 +59076,9 @@ func _save_payload(now: int) -> Dictionary:
 		"running_skill_id": _running_skill_id_for_save(),
 		"running_action_id": _running_action_id_for_save(),
 		"action_progress": _action_progress_for_save(),
+		"event_running_skill_id": _event_running_skill_id_for_save(),
+		"event_running_action_id": _event_running_action_id_for_save(),
+		"event_action_progress": _event_action_progress_for_save(),
 		"activity_queue": _activity_queue_for_save(),
 		"module_ui_pinned_order": _module_ui_pinned_order_for_save(),
 		"module_ui_pin_color_paths": _module_ui_pin_color_paths_for_save(),
@@ -56049,6 +59093,8 @@ func _save_payload(now: int) -> Dictionary:
 		"music_muted": music_muted,
 		"sfx_muted": sfx_muted,
 		"show_stamina_decimal": show_stamina_decimal,
+		"offline_progress_cap_notifications_enabled": offline_progress_cap_notifications_enabled,
+		"dark_mode_enabled": dark_mode_enabled,
 		"offline_progress_enabled": offline_progress_enabled,
 		"auto_unlock_lockpads_enabled": auto_unlock_lockpads_enabled,
 		"nav_symbol_seen_ids": _nav_symbol_seen_ids_for_save(),
@@ -56088,12 +59134,14 @@ func _save_payload(now: int) -> Dictionary:
 		"leaderboard_last_submitted_total_xp": _leaderboard_last_submitted_total_xp_for_save(),
 		"leaderboard_last_submitted_scores_by_category": _leaderboard_last_submitted_scores_for_save(),
 		"leaderboard_last_submit_unix": _leaderboard_last_submit_unix_for_save(),
+		"leaderboard_repair_publish_version": _leaderboard_repair_publish_version_for_save(),
 		"leaderboard_display_name": _leaderboard_display_name_for_save(),
 		"leaderboard_name_key": _leaderboard_name_key_for_save(),
 		"leaderboard_avatar_index": _leaderboard_avatar_index_for_save(),
 		"leaderboard_profile_claimed": _leaderboard_profile_claimed_for_save(),
 		"leaderboard_name_claim_verified": _leaderboard_name_claim_verified_for_save(),
 		"leaderboard_player_id": _leaderboard_player_id_for_save(),
+		"leaderboard_auth_provider": _leaderboard_auth_provider_for_save(),
 		"leaderboard_auth_refresh_token": _leaderboard_auth_refresh_token_for_save(),
 		"leaderboard_auth_retry_after_unix": _leaderboard_auth_retry_after_unix_for_save(),
 		"leaderboard_fetch_retry_unix_by_category": _leaderboard_fetch_retry_unix_by_category_for_save(),
@@ -56132,6 +59180,8 @@ func _autosave_has_live_state_changes() -> bool:
 		var skill_id := str(raw_skill_id)
 		if _stamina_value(skill_id) < float(_max_stamina(skill_id)) - 0.0001:
 			return true
+	if _blue_guy_health_value() < float(BLUE_GUY_HEALTH_MAX) - 0.0001:
+		return true
 	if offline_progress_enabled:
 		for raw_action in actions_by_skill.get("woodcutting", []):
 			var action := raw_action as Dictionary
@@ -56174,6 +59224,7 @@ func _apply_offline_progress(saved_at_unix_time: int) -> int:
 	var active_result := _apply_offline_active_action(float(offline))
 	if not bool(active_result.get("handled", false)):
 		_apply_stamina_regen_seconds(float(offline), false)
+		_apply_blue_guy_health_regen_seconds(float(offline))
 	ad_bonus_seconds_remaining = maxf(0.0, ad_bonus_seconds_remaining - float(offline))
 	_set_offline_result_text(float(offline), active_result)
 	_maybe_show_offline_summary(float(offline), active_result)
@@ -56640,8 +59691,12 @@ func load_game() -> void:
 	pending_save_restore_data = {}
 	pending_save_has_achievement_toast_seen_ids = false
 	var save_data := {}
+	var recovered_save := false
 	if not FileAccess.file_exists(SAVE_PATH):
-		save_data = _legacy_desktop_save_for_recovery({})
+		save_data = _recovery_save_dictionary()
+		recovered_save = not save_data.is_empty()
+		if save_data.is_empty():
+			save_data = _legacy_desktop_save_for_recovery({})
 		if save_data.is_empty():
 			selected_skill_id = "fight"
 			current_screen = "skill"
@@ -56650,15 +59705,23 @@ func load_game() -> void:
 			return
 	else:
 		save_data = _load_save_dictionary_from_path(SAVE_PATH)
+		var recovery_data := _recovery_save_dictionary()
+		if _save_should_replace_best_save(save_data, recovery_data):
+			save_data = recovery_data
+			recovered_save = true
 	if save_data.is_empty():
-		save_data = _legacy_desktop_save_for_recovery({})
+		save_data = _recovery_save_dictionary()
+		recovered_save = not save_data.is_empty()
+		if save_data.is_empty():
+			save_data = _legacy_desktop_save_for_recovery({})
 		if save_data.is_empty():
 			selected_skill_id = "fight"
 			current_screen = "skill"
 			last_save_unix_time = _unix_now()
 			save_game()
 			return
-	save_repaired_this_boot = _repair_save_for_regular_play(save_data)
+	var save_needed_repair := _repair_save_for_regular_play(save_data)
+	save_repaired_this_boot = recovered_save or save_needed_repair
 	_load_game_core(save_data)
 	pending_save_has_achievement_toast_seen_ids = save_data.has("achievement_toast_seen_ids")
 	pending_save_restore_data = save_data
@@ -56680,6 +59743,46 @@ func _load_save_dictionary_from_path(path: String) -> Dictionary:
 	if typeof(data) != TYPE_DICTIONARY:
 		return {}
 	return data as Dictionary
+
+
+func _best_local_save_dictionary() -> Dictionary:
+	return _best_save_dictionary_from_paths([SAVE_PATH, SAVE_TEMP_PATH, SAVE_BACKUP_PATH])
+
+
+func _best_save_dictionary_from_paths(paths: Array) -> Dictionary:
+	var best_save := {}
+	for path in paths:
+		if not FileAccess.file_exists(path):
+			continue
+		var data := _load_save_dictionary_from_path(path)
+		if data.is_empty():
+			continue
+		if _save_should_replace_best_save(best_save, data):
+			best_save = data
+	return best_save
+
+
+func _save_should_replace_best_save(best_save: Dictionary, candidate: Dictionary) -> bool:
+	if candidate.is_empty():
+		return false
+	if best_save.is_empty():
+		return true
+	var candidate_reset_generation := _save_reset_generation(candidate)
+	var best_reset_generation := _save_reset_generation(best_save)
+	if candidate_reset_generation != best_reset_generation:
+		return candidate_reset_generation > best_reset_generation
+	var candidate_xp := _save_total_skill_xp_evidence(candidate)
+	var best_xp := _save_total_skill_xp_evidence(best_save)
+	if candidate_xp != best_xp:
+		return candidate_xp > best_xp
+	return int(candidate.get("saved_at", 0)) > int(best_save.get("saved_at", 0))
+
+
+func _recovery_save_dictionary() -> Dictionary:
+	var best_save := _best_save_dictionary_from_paths([SAVE_TEMP_PATH, SAVE_BACKUP_PATH])
+	if not best_save.is_empty():
+		push_warning("Idle Elite recovered save progress from backup storage.")
+	return best_save
 
 
 func _legacy_desktop_save_for_recovery(current_data: Dictionary) -> Dictionary:
@@ -57219,10 +60322,14 @@ func _restore_onboarding_progression_from_save(data: Dictionary) -> void:
 
 
 func _load_game_core(data: Dictionary) -> void:
+	save_reset_generation = _save_reset_generation(data)
 	selected_skill_id = str(data.get("selected_skill_id", selected_skill_id))
 	running_skill_id = str(data.get("running_skill_id", ""))
 	running_action_id = _canonical_action_id(running_skill_id, str(data.get("running_action_id", "")))
 	action_progress = _normalized_action_progress(data.get("action_progress", 0.0))
+	event_running_skill_id = str(data.get("event_running_skill_id", ""))
+	event_running_action_id = str(data.get("event_running_action_id", ""))
+	event_action_progress = _normalized_action_progress(data.get("event_action_progress", 0.0))
 	var loaded_skills = data.get("skills", {})
 	if typeof(loaded_skills) == TYPE_DICTIONARY:
 		for skill_id in loaded_skills.keys():
@@ -57232,6 +60339,21 @@ func _load_game_core(data: Dictionary) -> void:
 	_restore_manual_activity_unlocks(data.get("manual_activity_unlocks", {}))
 	_restore_manual_activity_requirement_unlocks(data.get("manual_activity_requirement_unlocks", {}))
 	_restore_temporary_events_from_save(data.get("temporary_events", {}))
+	var restored_running_action := _action_data(running_skill_id, running_action_id)
+	if not restored_running_action.is_empty() and _is_event_action(restored_running_action):
+		if event_running_skill_id.is_empty():
+			event_running_skill_id = running_skill_id
+			event_running_action_id = running_action_id
+			event_action_progress = action_progress
+		running_skill_id = ""
+		running_action_id = ""
+		action_progress = 0.0
+	if not event_running_skill_id.is_empty():
+		event_running_action_id = str(_action_data(event_running_skill_id, event_running_action_id).get("id", event_running_action_id))
+		if event_running_action_id.is_empty() or not _is_event_action(_action_data(event_running_skill_id, event_running_action_id)):
+			event_running_skill_id = ""
+			event_running_action_id = ""
+			event_action_progress = 0.0
 	_restore_thieving_action_jails_from_save(data.get("thieving_action_jails", {}))
 	if running_skill_id == "thieving" and _thieving_action_is_jailed(running_action_id):
 		running_skill_id = ""
@@ -57253,6 +60375,10 @@ func _load_game_core(data: Dictionary) -> void:
 			if stamina_bank.has(skill_id):
 				stamina_bank[skill_id] = float(loaded_bank[skill_id])
 				_sync_stamina_bank(str(skill_id))
+	blue_guy_health = clampf(float(data.get("blue_guy_health", BLUE_GUY_HEALTH_MAX)), 0.0, float(BLUE_GUY_HEALTH_MAX))
+	blue_guy_health_bank = clampf(float(data.get("blue_guy_health_bank", 0.0)), 0.0, BLUE_GUY_HEALTH_REGEN_SECONDS)
+	if _blue_guy_health_full():
+		blue_guy_health_bank = 0.0
 	log_currency = maxi(0, int(data.get("log_currency", log_currency)))
 	_restore_mats_from_save(data)
 	if _save_needs_fishing_restore(data):
@@ -57270,8 +60396,14 @@ func _load_game_core(data: Dictionary) -> void:
 	music_muted = bool(data.get("music_muted", false))
 	sfx_muted = bool(data.get("sfx_muted", false))
 	show_stamina_decimal = bool(data.get("show_stamina_decimal", false))
+	offline_progress_cap_notifications_enabled = bool(data.get(
+		"offline_progress_cap_notifications_enabled",
+		data.get("notifications_enabled", false)
+	))
+	dark_mode_enabled = bool(data.get("dark_mode_enabled", false))
 	last_result = str(data.get("last_result", last_result))
 	_apply_audio_bus_volumes()
+	_apply_dark_mode_visual()
 	pending_post_load_saved_at = int(data.get("saved_at", _unix_now()))
 	last_save_unix_time = pending_post_load_saved_at
 	last_save_monotonic_msec = -1
@@ -57509,6 +60641,8 @@ func _temporary_event_seconds_for_level(event_def: Dictionary, spawn_level: int)
 
 func _temporary_event_stamina_for_level(event_def: Dictionary, spawn_level: int) -> int:
 	var page := str(event_def.get("page", ""))
+	if page == "fishing":
+		return 0
 	var reference_action := _temporary_event_reference_action_for_level(page, spawn_level)
 	var reference_stamina := maxi(1, int(reference_action.get("stamina", event_def.get("stamina", 1)))) if not reference_action.is_empty() else maxi(1, int(event_def.get("stamina", 1)))
 	return maxi(1, int(round(float(reference_stamina) * TEMPORARY_EVENT_STAMINA_MULTIPLIER)))
@@ -57882,8 +61016,21 @@ func _normalized_passive_modules(loaded_modules: Variant) -> Dictionary:
 		var loaded_module = (loaded_modules as Dictionary).get(raw_module_id, {})
 		if module_id.is_empty() or typeof(loaded_module) != TYPE_DICTIONARY:
 			continue
-		normalized[module_id] = _passive_module_state_from_save(loaded_module as Dictionary)
+		normalized[module_id] = _firepit_state_from_save(loaded_module as Dictionary) if _is_firepit_module(module_id) else _passive_module_state_from_save(loaded_module as Dictionary)
 	return normalized
+
+
+func _firepit_state_from_save(loaded_module: Dictionary) -> Dictionary:
+	return {
+		"active": bool(loaded_module.get("active", false)),
+		"igniting": false,
+		"last_update": int(loaded_module.get("last_update", _unix_now())),
+		"started_unix": maxi(0, int(loaded_module.get("started_unix", 0))),
+		"burned_scrapwood": maxf(0.0, float(loaded_module.get("burned_scrapwood", 0.0))),
+		"cooling_bonus": clampf(float(loaded_module.get("cooling_bonus", 0.0)), 0.0, FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER)),
+		"cooling_started_unix": maxi(0, int(loaded_module.get("cooling_started_unix", 0))),
+		"shutdown_reason": str(loaded_module.get("shutdown_reason", ""))
+	}
 
 
 func _passive_module_state_from_save(loaded_module: Dictionary) -> Dictionary:
@@ -58105,7 +61252,9 @@ func _skill_theme_color(skill_id: String) -> Color:
 
 func _skill_paper_button_color(skill_id: String) -> Color:
 	var base := _skill_theme_color(skill_id)
-	return base.lerp(Color.WHITE, 0.68)
+	if dark_mode_enabled:
+		return base.darkened(SKILL_MENU_DARK_THEME_DARKEN).lerp(COLOR_DARK_PANEL, SKILL_MENU_DARK_PANEL_MIX)
+	return base.lerp(Color.WHITE, SKILL_MENU_LIGHT_PASTEL_MIX)
 
 
 func _global_level() -> int:
@@ -58253,6 +61402,21 @@ func _leaderboard_has_pending_category_score() -> bool:
 	return false
 
 
+func _leaderboard_repair_publish_due() -> bool:
+	if leaderboard_repair_publish_version >= LEADERBOARD_REPAIR_PUBLISH_VERSION:
+		return false
+	if not _leaderboard_profile_claim_valid():
+		return false
+	for raw_category in _leaderboard_categories():
+		var category := raw_category as Dictionary
+		var category_id := _leaderboard_valid_category_id(str(category.get("id", "")))
+		if category_id.is_empty():
+			continue
+		if _leaderboard_score_for_category(category_id) > 0:
+			return true
+	return false
+
+
 func _leaderboard_next_submit_seconds() -> int:
 	if leaderboard_last_submit_unix <= 0:
 		return 0
@@ -58263,62 +61427,68 @@ func _leaderboard_next_submit_seconds() -> int:
 func _leaderboard_submit_ready() -> bool:
 	if god_mode_save_tainted:
 		return false
-	return _leaderboard_profile_claim_valid() and _leaderboard_has_pending_category_score() and _leaderboard_next_submit_seconds() <= 0
+	return _leaderboard_profile_claim_valid() and (_leaderboard_has_pending_category_score() or _leaderboard_repair_publish_due()) and _leaderboard_next_submit_seconds() <= 0
 
 
 func _leaderboard_submit_status_title() -> String:
 	if god_mode_save_tainted:
 		return "Test save"
 	if not _leaderboard_firebase_enabled():
-		return "Online rankings unavailable"
+		return "Rankings offline"
 	if not _leaderboard_profile_claim_valid():
-		return "Name needed"
+		return "Choose Username"
 	if not _leaderboard_auth_ready():
-		return "Score publish waiting" if _leaderboard_has_pending_category_score() else "Online scores visible"
+		return "Scores ready"
 	if leaderboard_submit_in_flight:
-		return "Publishing..."
+		return "Updating..."
 	if leaderboard_last_submit_unix <= 0:
-		return "Ready for first publish"
+		return "Scores ready"
 	if _leaderboard_submit_ready():
-		return "Ready to publish"
-	return "Next publish in %s" % _format_duration(float(_leaderboard_next_submit_seconds()))
+		return "Scores ready"
+	return "Scores saved"
 
 
 func _leaderboard_submit_status_detail() -> String:
 	var queued := _leaderboard_queued_score()
 	if god_mode_save_tainted:
-		return "Leaderboard publishing is paused after using God Mode. Hard Reset starts a clean save."
+		return "Rankings are hidden for this test save."
 	if not _leaderboard_firebase_enabled():
-		return "Online rankings are not connected yet."
+		return "Online rankings are not available."
 	if not _leaderboard_profile_claim_valid():
-		return "Save a unique leaderboard name before scores publish."
+		return "Save a name to join rankings."
 	var category_pending := _leaderboard_has_pending_category_score()
 	var retry_wait := _leaderboard_auth_retry_wait_seconds()
 	if retry_wait > 0:
-		if category_pending:
-			return "Score publishing login failed recently. The next retry waits %s." % _format_duration(float(retry_wait))
-		return "Scores are visible. Publishing will retry online login when a new score is ready."
+		return "Will try again soon."
 	if leaderboard_auth_in_flight and not _leaderboard_auth_ready():
-		return "Score publishing login is starting."
+		return "Connecting..."
 	if not _leaderboard_auth_ready():
-		if category_pending:
-			return "Scores are visible. Publishing uses anonymous online login before sending updates."
-		return "Scores are visible without login. Publishing starts after a new score is ready."
+		return "Scores update automatically."
 	if leaderboard_submit_in_flight:
-		return "One capped write is in flight. The next write cannot start for 15 minutes."
-	if not leaderboard_status_message.is_empty() and leaderboard_status_message != "Leaderboard loaded.":
-		return leaderboard_status_message
+		return "Updating rankings..."
+	var simple_status := _leaderboard_simple_status_message()
+	if not simple_status.is_empty():
+		return simple_status
 	if leaderboard_last_submit_unix <= 0:
-		return "The game will keep the newest score and publish at most every 15 minutes."
+		return "Scores update automatically."
 	if queued <= 0 and not category_pending:
-		return "Your latest published score is current."
+		return "Your score is up to date."
 	if _leaderboard_submit_ready():
-		if queued > 0:
-			return "%s score is queued for the next online publish." % _format_compact_number(float(queued), 3)
-		return "A category score is queued for the next online publish."
-	if queued > 0:
-		return "%s score is queued. The game will publish every 15 minutes at most." % _format_compact_number(float(queued), 3)
-	return "A category score is queued. The game will publish every 15 minutes at most."
+		return "New score ready."
+	return "New score saved."
+
+
+func _leaderboard_simple_status_message() -> String:
+	var status := str(leaderboard_status_message).strip_edges()
+	if status.is_empty() or status == "Leaderboard loaded.":
+		return ""
+	if status == "Leaderboard published." or status == "Leaderboard name saved.":
+		return "Scores saved."
+	if status.findn("failed") >= 0 or status.findn("http") >= 0 or status.findn("denied") >= 0 or status.findn("retry") >= 0:
+		return "Will try again soon."
+	if status.findn("loading") >= 0 or status.findn("creating") >= 0 or status.findn("refreshing") >= 0 or status.findn("checking") >= 0:
+		return "Connecting..."
+	return ""
 
 
 func _leaderboard_rows() -> Array:
@@ -58335,7 +61505,7 @@ func _leaderboard_rows_for_category(category_id: String) -> Array:
 
 
 func _leaderboard_empty_state_detail_text() -> String:
-	var fallback := "Scores appear here after the first 15-minute publish."
+	var fallback := "Scores appear here after the first update."
 	var status := str(leaderboard_status_message).strip_edges()
 	if status.is_empty() or status == "Leaderboard loaded.":
 		return fallback
@@ -58362,8 +61532,8 @@ func _leaderboard_empty_state() -> Control:
 	var title_text := "Loading leaderboard..."
 	var detail_text := "Only this visible category is being read. There are no realtime listeners."
 	if not _leaderboard_firebase_enabled():
-		title_text = "Online rankings unavailable"
-		detail_text = "Online rankings are not connected yet."
+		title_text = "Rankings offline"
+		detail_text = "Online rankings are not available."
 	elif not leaderboard_fetch_in_flight:
 		title_text = "No scores yet"
 		detail_text = _leaderboard_empty_state_detail_text()
@@ -58570,6 +61740,8 @@ func _mastery_color(level: int) -> Color:
 
 
 func _mastery_medal_texture(level: int) -> Texture2D:
+	if DisplayServer.get_name() == "headless":
+		return _visual_fallback_texture()
 	var sheet := _texture(MASTERY_MEDALS_TEXTURE)
 	if sheet == null:
 		return null
@@ -58590,6 +61762,8 @@ func _mastery_medal_visual_texture(level: int) -> Texture2D:
 
 
 func _achievement_medal_texture(level: int) -> Texture2D:
+	if DisplayServer.get_name() == "headless":
+		return _visual_fallback_texture()
 	var sheet := _texture(MASTERY_MEDALS_TEXTURE)
 	if sheet == null:
 		return null
@@ -58704,7 +61878,7 @@ func _achievement_empty_medal_texture() -> Texture2D:
 			var alpha := source.get_pixel(region.position.x + x, region.position.y + y).a
 			if alpha <= 0.01:
 				continue
-			var fill := COLOR_PAPER
+			var fill := _theme_paper_color()
 			fill.a = alpha
 			image.set_pixel(x, y, fill)
 	achievement_empty_medal_texture = _create_image_texture(image)
@@ -58984,6 +62158,10 @@ func _activity_medal_rate_bonus(skill_id: String, action: Dictionary) -> float:
 func _effective_stamina(skill_id: String, action: Dictionary) -> float:
 	if _is_convergence_action(action):
 		return 0.0
+	if _is_fishing_event_action(skill_id, action):
+		return 0.0
+	if _fishing_rework_active_for_skill(skill_id) and not _is_event_action(action):
+		return 0.0
 	var cache_key := _action_stat_value_cache_key("stamina", skill_id, action)
 	if action_stat_value_cache.has(cache_key):
 		return float(action_stat_value_cache[cache_key])
@@ -58998,7 +62176,10 @@ func _effective_stamina(skill_id: String, action: Dictionary) -> float:
 func _display_stamina_cost(skill_id: String, action: Dictionary) -> int:
 	if _is_convergence_action(action):
 		return 0
-	return maxi(1, int(round(_effective_stamina(skill_id, action))))
+	var effective_cost := _effective_stamina(skill_id, action)
+	if effective_cost <= 0.0:
+		return 0
+	return maxi(1, int(round(effective_cost)))
 
 
 func _effective_seconds(skill_id: String, action: Dictionary) -> float:
@@ -59864,6 +63045,283 @@ func _is_passive_action(action: Dictionary) -> bool:
 	return str(action.get("kind", "activity")) == "passive_item_collect"
 
 
+func _is_firepit_module(module_id: String) -> bool:
+	return module_id == WOODCUTTING_FIREPIT_MODULE_ID
+
+
+func _firepit_state() -> Dictionary:
+	return _ensure_firepit_state(_unix_now())
+
+
+func _ensure_firepit_state(now: int) -> Dictionary:
+	if not passive_modules.has(WOODCUTTING_FIREPIT_MODULE_ID) or typeof(passive_modules[WOODCUTTING_FIREPIT_MODULE_ID]) != TYPE_DICTIONARY:
+		passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = {
+			"active": false,
+			"igniting": false,
+			"last_update": now,
+			"started_unix": 0,
+			"burned_scrapwood": 0.0,
+			"cooling_bonus": 0.0,
+			"cooling_started_unix": 0,
+			"shutdown_reason": ""
+		}
+	var state := passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] as Dictionary
+	state["active"] = bool(state.get("active", false))
+	state["igniting"] = bool(state.get("igniting", false)) and not bool(state.get("active", false))
+	var last_update := int(state.get("last_update", now))
+	if last_update <= 0 or last_update > now + 60:
+		last_update = now
+	state["last_update"] = last_update
+	state["started_unix"] = maxi(0, int(state.get("started_unix", 0)))
+	state["burned_scrapwood"] = maxf(0.0, float(state.get("burned_scrapwood", 0.0)))
+	state["cooling_bonus"] = clampf(float(state.get("cooling_bonus", 0.0)), 0.0, FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER))
+	state["cooling_started_unix"] = maxi(0, int(state.get("cooling_started_unix", 0)))
+	if not bool(state.get("active", false)) and float(state.get("cooling_bonus", 0.0)) > 0.0:
+		var decayed_bonus := _firepit_decayed_cooling_bonus_from_state(state, now)
+		state["cooling_bonus"] = decayed_bonus
+		if decayed_bonus <= 0.0001:
+			state["cooling_bonus"] = 0.0
+			state["cooling_started_unix"] = 0
+		else:
+			state["cooling_started_unix"] = now
+	state["shutdown_reason"] = str(state.get("shutdown_reason", ""))
+	passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+	return state
+
+
+func _firepit_active() -> bool:
+	return bool(_firepit_state().get("active", false)) and _is_passive_module_unlocked(WOODCUTTING_FIREPIT_MODULE_ID)
+
+
+func _firepit_heat_seconds(now := -1) -> float:
+	if not _firepit_active():
+		return 0.0
+	var state := _firepit_state()
+	var started_unix := int(state.get("started_unix", 0))
+	if started_unix <= 0:
+		return 0.0
+	var effective_now := _unix_now() if now < 0 else now
+	return maxf(0.0, float(effective_now - started_unix))
+
+
+func _firepit_heat_tier(now := -1) -> int:
+	if not _firepit_active():
+		return 0
+	var tier := int(floor(_firepit_heat_seconds(now) / FIREPIT_HEAT_TIER_SECONDS)) + 1
+	return clampi(tier, 1, FIREPIT_MAX_HEAT_TIER)
+
+
+func _firepit_active_regen_bonus(now := -1) -> float:
+	return float(_firepit_heat_tier(now)) * FIREPIT_STAMINA_REGEN_PER_TIER
+
+
+func _firepit_decayed_cooling_bonus_from_state(state: Dictionary, now: int) -> float:
+	var cooling_bonus := clampf(float(state.get("cooling_bonus", 0.0)), 0.0, FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER))
+	if cooling_bonus <= 0.0:
+		return 0.0
+	var cooling_started_unix := maxi(0, int(state.get("cooling_started_unix", 0)))
+	if cooling_started_unix <= 0:
+		return cooling_bonus
+	var decay_per_second := 0.01 / maxf(0.001, FIREPIT_REGEN_DECAY_SECONDS_PER_PERCENT)
+	var elapsed := maxf(0.0, float(now - cooling_started_unix))
+	return maxf(0.0, cooling_bonus - elapsed * decay_per_second)
+
+
+func _firepit_cooling_regen_bonus(now := -1) -> float:
+	var effective_now := _unix_now() if now < 0 else now
+	var state := _ensure_firepit_state(effective_now)
+	if bool(state.get("active", false)):
+		return 0.0
+	return _firepit_decayed_cooling_bonus_from_state(state, effective_now)
+
+
+func _set_firepit_cooling_from_bonus(state: Dictionary, now: int, bonus: float) -> Dictionary:
+	var clamped_bonus := clampf(bonus, 0.0, FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER))
+	state["cooling_bonus"] = clamped_bonus
+	state["cooling_started_unix"] = now if clamped_bonus > 0.0001 else 0
+	return state
+
+
+func _firepit_comfort_text(heat_tier: int) -> String:
+	if heat_tier >= FIREPIT_MAX_HEAT_TIER:
+		return "Feels perfect"
+	if heat_tier >= 12:
+		return "Feels powerful"
+	if heat_tier >= 8:
+		return "Feels wonderful"
+	if heat_tier >= 4:
+		return "Feels steady"
+	if heat_tier > 0:
+		return "Feels good"
+	return "Fire is out"
+
+
+func _firepit_stamina_regen_bonus(skill_id: String, now := -1) -> float:
+	if skill_id != "woodcutting":
+		return 0.0
+	if _firepit_active():
+		return _firepit_active_regen_bonus(now)
+	return _firepit_cooling_regen_bonus(now)
+
+
+func _firepit_seconds_available(scrapwood: float) -> float:
+	if FIREPIT_SCRAPWOOD_PER_SECOND <= 0.0:
+		return 0.0
+	return maxf(0.0, scrapwood) / FIREPIT_SCRAPWOOD_PER_SECOND
+
+
+func _firepit_seconds_remaining() -> float:
+	return _firepit_seconds_available(_mat_amount("scrapwood"))
+
+
+func _firepit_fuel_progress_pct(scrapwood: float) -> float:
+	return clampf(_firepit_seconds_available(scrapwood) / 600.0 * 100.0, 0.0, 100.0)
+
+
+func _firepit_heat_bonus_progress_pct() -> float:
+	var max_bonus := FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER)
+	if max_bonus <= 0.0:
+		return 0.0
+	if not _firepit_active():
+		return clampf(_firepit_cooling_regen_bonus() / max_bonus * 100.0, 0.0, 100.0)
+	var state := _firepit_state()
+	var started_unix := int(state.get("started_unix", 0))
+	if started_unix <= 0:
+		return 0.0
+	var max_heat_seconds := FIREPIT_HEAT_TIER_SECONDS * float(FIREPIT_MAX_HEAT_TIER)
+	if max_heat_seconds <= 0.0:
+		return 0.0
+	var live_heat_seconds := maxf(0.0, Time.get_unix_time_from_system() - float(started_unix))
+	var smooth_heat_seconds := clampf(FIREPIT_HEAT_TIER_SECONDS + live_heat_seconds, FIREPIT_HEAT_TIER_SECONDS, max_heat_seconds)
+	return clampf(smooth_heat_seconds / max_heat_seconds * 100.0, 0.0, 100.0)
+
+
+func _firepit_next_scrapwood_progress_pct(state: Dictionary) -> float:
+	if not _firepit_active():
+		return 0.0
+	var burned := maxf(0.0, float(state.get("burned_scrapwood", 0.0)))
+	var last_update := int(state.get("last_update", _unix_now()))
+	var live_elapsed := maxf(0.0, Time.get_unix_time_from_system() - float(last_update))
+	burned += live_elapsed * FIREPIT_SCRAPWOOD_PER_SECOND
+	var partial := fposmod(burned, 1.0)
+	return clampf((1.0 - partial) * 100.0, 0.0, 100.0)
+
+
+func _award_firepit_burn_xp(scrapwood_burned: int, animate := true) -> void:
+	if scrapwood_burned <= 0 or not skills.has("woodcutting"):
+		return
+	var xp_reward := scrapwood_burned * FIREPIT_WOODCUTTING_XP_PER_SCRAPWOOD
+	if xp_reward <= 0:
+		return
+	skills["woodcutting"]["xp"] = int(skills["woodcutting"].get("xp", 0)) + xp_reward
+	_recalculate_level("woodcutting")
+	_mark_save_dirty("firepit xp")
+	if animate and (startup_initialized or action_cards.has(_action_key("woodcutting", WOODCUTTING_FIREPIT_MODULE_ID))):
+		_hold_firepit_next_scrapwood_ring_empty()
+		_animate_firepit_scrapwood_to_fire(scrapwood_burned)
+
+
+func _hold_firepit_next_scrapwood_ring_empty() -> void:
+	var key := _action_key("woodcutting", WOODCUTTING_FIREPIT_MODULE_ID)
+	if not action_cards.has(key):
+		return
+	var card := action_cards[key] as Dictionary
+	var progress := card.get("progress") as FirepitFuelRing
+	if progress == null or not is_instance_valid(progress):
+		return
+	progress.set_inner_value(0.0)
+	progress.set_meta("firepit_consume_hold_until_msec", Time.get_ticks_msec() + 900)
+
+
+func _float_firepit_xp_reward_from_fire(index := 0) -> void:
+	var key := _action_key("woodcutting", WOODCUTTING_FIREPIT_MODULE_ID)
+	if not action_cards.has(key):
+		return
+	var card := action_cards[key] as Dictionary
+	var anchor := card.get("flame_fx") as Control
+	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
+		anchor = card.get("art_root") as Control
+	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
+		anchor = card.get("status_panel") as Control
+	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
+		return
+	var per_scrapwood_xp := FIREPIT_WOODCUTTING_XP_PER_SCRAPWOOD
+	var lane_x := float((index % 3) - 1) * 42.0
+	_float_reward(
+		self,
+		anchor,
+		"+%s XP" % per_scrapwood_xp,
+		66,
+		_skill_theme_color("woodcutting").lerp(Color("#ffb347"), 0.35),
+		Vector2(lane_x, -60.0 - float(index % 2) * 16.0),
+		Vector2(lane_x * 0.35, -176.0 - float(index % 2) * 18.0),
+		0.0,
+		false,
+		-1.0,
+		SKILL_REWARD_FLOAT_GROUP
+	)
+
+
+func _animate_firepit_scrapwood_to_fire(scrapwood_burned: int, pronounced := false, arrival_callback := Callable()) -> void:
+	if scrapwood_burned <= 0:
+		return
+	var key := _action_key("woodcutting", WOODCUTTING_FIREPIT_MODULE_ID)
+	if not action_cards.has(key):
+		return
+	var card := action_cards[key] as Dictionary
+	var source := card.get("scrapwood_icon") as Control
+	var fire := card.get("flame_fx") as Control
+	if fire == null or not is_instance_valid(fire) or not fire.is_visible_in_tree():
+		fire = card.get("art_root") as Control
+	if source == null or fire == null or not is_instance_valid(source) or not is_instance_valid(fire):
+		return
+	if not source.is_inside_tree() or not fire.is_inside_tree():
+		return
+	var visible_count := 1 if pronounced else mini(3, maxi(1, scrapwood_burned))
+	var start_center := _control_local_point_to_global(source, source.size * 0.5)
+	var fire_center := _control_local_point_to_global(fire, fire.size * Vector2(0.5, 0.62))
+	for index in range(visible_count):
+		var flyer_size := Vector2(230, 230) if pronounced else Vector2(122, 122)
+		var flyer := _image(_mat_icon_path("scrapwood"), flyer_size)
+		flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		flyer.z_index = REWARD_FLOAT_Z
+		flyer.z_as_relative = false
+		add_child(flyer)
+		var lane_offset := Vector2(float(index - visible_count / 2) * 28.0, float(index % 2) * -12.0)
+		var start := _control_global_point_to_local(self, start_center + lane_offset) - flyer.size * 0.5
+		var finish := _control_global_point_to_local(self, fire_center + Vector2(float(index % 3 - 1) * 36.0, float(index % 2) * 18.0)) - flyer.size * 0.5
+		var arc_mid := (start + finish) * 0.5 + Vector2(0, (-120.0 if pronounced else -230.0) - float(index) * 20.0)
+		flyer.position = start
+		flyer.scale = Vector2(0.72, 0.72)
+		flyer.modulate = Color(1, 1, 1, 0.0)
+		var tween := create_tween()
+		tween.set_parallel(true)
+		var delay := float(index) * 0.12
+		var flight_seconds := 0.96 if pronounced else 0.74
+		tween.tween_property(flyer, "modulate:a", 1.0, 0.12).set_delay(delay)
+		tween.tween_property(flyer, "scale", Vector2(1.38, 1.38) if pronounced else Vector2(1.10, 1.10), 0.24).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tween.tween_method(_move_firepit_scrapwood_flyer.bind(flyer.get_instance_id(), start, arc_mid, finish), 0.0, 1.0, flight_seconds).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+		tween.tween_property(flyer, "rotation_degrees", randf_range(-56.0, 56.0), flight_seconds).set_delay(delay)
+		if index == 0 and arrival_callback.is_valid():
+			tween.tween_callback(arrival_callback).set_delay(delay + flight_seconds * 0.94)
+		else:
+			tween.tween_callback(_float_firepit_xp_reward_from_fire.bind(index)).set_delay(delay + flight_seconds * 0.94)
+		tween.tween_property(flyer, "scale", Vector2(0.72, 0.72), 0.14).set_delay(delay + flight_seconds * 0.86)
+		tween.tween_property(flyer, "modulate:a", 0.0, 0.16).set_delay(delay + flight_seconds * 0.88)
+		tween.chain().tween_callback(_queue_free_instance_id.bind(flyer.get_instance_id()))
+
+
+func _move_firepit_scrapwood_flyer(progress: float, flyer_id: int, start: Vector2, arc_mid: Vector2, finish: Vector2) -> void:
+	var flyer := _valid_control_ref(instance_from_id(flyer_id))
+	if flyer == null:
+		return
+	var a := start.lerp(arc_mid, progress)
+	var b := arc_mid.lerp(finish, progress)
+	flyer.position = a.lerp(b, progress)
+
+
 func _passive_module_state(module_id: String) -> Dictionary:
 	return _ensure_passive_module_state(module_id, _unix_now())
 
@@ -59871,6 +63329,8 @@ func _passive_module_state(module_id: String) -> Dictionary:
 func _ensure_passive_module_state(module_id: String, now: int) -> Dictionary:
 	if module_id.is_empty():
 		module_id = WOODCUTTING_LOG_MODULE_ID
+	if _is_firepit_module(module_id):
+		return _ensure_firepit_state(now)
 	if not passive_modules.has(module_id) or typeof(passive_modules[module_id]) != TYPE_DICTIONARY:
 		passive_modules[module_id] = {
 			"stored": 0,
@@ -59897,6 +63357,8 @@ func _ensure_passive_module_state(module_id: String, now: int) -> Dictionary:
 func _is_passive_module_unlocked(module_id: String) -> bool:
 	var action := _action_data("woodcutting", module_id)
 	if action.is_empty():
+		if _is_firepit_module(module_id):
+			return _skill_level("woodcutting") >= WOODCUTTING_FIREPIT_UNLOCK_LEVEL
 		return _skill_level("woodcutting") >= WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL
 	return _is_action_unlocked("woodcutting", action)
 
@@ -59908,6 +63370,17 @@ func _sync_passive_module_unlocks(now: int) -> void:
 			continue
 		var module_id := str(action_data.get("id", WOODCUTTING_LOG_MODULE_ID))
 		var state := _ensure_passive_module_state(module_id, now)
+		if _is_firepit_module(module_id):
+			if not _is_passive_module_unlocked(module_id):
+				state["active"] = false
+				state["igniting"] = false
+				state["last_update"] = now
+				state["started_unix"] = 0
+				state["burned_scrapwood"] = 0.0
+				state["cooling_bonus"] = 0.0
+				state["cooling_started_unix"] = 0
+			passive_modules[module_id] = state
+			continue
 		if _is_passive_module_unlocked(module_id):
 			if not bool(state.get("seeded", false)):
 				state["stored"] = mini(int(state.get("capacity", PASSIVE_CAPACITY_START)), int(state.get("stored", 0)) + 3)
@@ -59925,6 +63398,7 @@ func _process_passive_modules() -> void:
 	last_passive_process_unix = now
 	_sync_passive_module_unlocks(now)
 	_apply_passive_module_production(now)
+	_apply_firepit_fuel(now)
 
 
 func _reset_passive_module_timestamps(now: int) -> void:
@@ -59944,6 +63418,8 @@ func _apply_passive_module_production(now: int) -> void:
 		if not _is_passive_action(action_data):
 			continue
 		var module_id := str(action_data.get("id", WOODCUTTING_LOG_MODULE_ID))
+		if _is_firepit_module(module_id):
+			continue
 		var state := _ensure_passive_module_state(module_id, now)
 		if not _is_passive_module_unlocked(module_id):
 			state["last_update"] = now
@@ -59974,6 +63450,224 @@ func _apply_passive_module_production(now: int) -> void:
 		passive_modules[module_id] = state
 		if gained > 0:
 			_float_passive_production_feedback(module_id, gained)
+
+
+func _apply_firepit_fuel(now: int) -> void:
+	var state := _ensure_firepit_state(now)
+	if not bool(state.get("active", false)):
+		state["last_update"] = now
+		passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+		return
+	if not _is_passive_module_unlocked(WOODCUTTING_FIREPIT_MODULE_ID):
+		var locked_bonus := _firepit_active_regen_bonus(now)
+		state["active"] = false
+		state["igniting"] = false
+		state["last_update"] = now
+		state["started_unix"] = 0
+		state["burned_scrapwood"] = 0.0
+		state = _set_firepit_cooling_from_bonus(state, now, locked_bonus)
+		state["shutdown_reason"] = "locked"
+		passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+		_invalidate_stat_caches()
+		return
+	var last_update := int(state.get("last_update", now))
+	var elapsed := maxi(0, mini(MAX_OFFLINE_SECONDS, now - last_update))
+	if elapsed <= 0:
+		passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+		return
+	var requested_fuel := float(elapsed) * FIREPIT_SCRAPWOOD_PER_SECOND
+	var available_fuel := _mat_amount("scrapwood")
+	if available_fuel <= 0.0001:
+		var empty_bonus := _firepit_active_regen_bonus(now)
+		state["active"] = false
+		state["igniting"] = false
+		state["last_update"] = now
+		state["started_unix"] = 0
+		state["burned_scrapwood"] = 0.0
+		state = _set_firepit_cooling_from_bonus(state, now, empty_bonus)
+		state["shutdown_reason"] = "no_fuel"
+		passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+		_invalidate_stat_caches()
+		_mark_save_dirty("firepit empty")
+		return
+	var burned := minf(available_fuel, requested_fuel)
+	if burned > 0.0001:
+		var previous_whole_scrapwood_burned := int(floor(maxf(0.0, float(state.get("burned_scrapwood", 0.0)))))
+		_set_mat_amount("scrapwood", available_fuel - burned)
+		state["burned_scrapwood"] = maxf(0.0, float(state.get("burned_scrapwood", 0.0))) + burned
+		var whole_scrapwood_burned := int(floor(maxf(0.0, float(state.get("burned_scrapwood", 0.0)))))
+		var newly_burned_whole_scrapwood := maxi(0, whole_scrapwood_burned - previous_whole_scrapwood_burned)
+		if newly_burned_whole_scrapwood > 0:
+			_award_firepit_burn_xp(newly_burned_whole_scrapwood)
+	if burned + 0.0001 < requested_fuel:
+		var out_of_fuel_bonus := _firepit_active_regen_bonus(now)
+		state["active"] = false
+		state["igniting"] = false
+		state["started_unix"] = 0
+		state["burned_scrapwood"] = 0.0
+		state = _set_firepit_cooling_from_bonus(state, now, out_of_fuel_bonus)
+		state["shutdown_reason"] = "no_fuel"
+		_invalidate_stat_caches()
+		_mark_save_dirty("firepit empty")
+	else:
+		state["shutdown_reason"] = ""
+	state["last_update"] = now
+	passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+
+
+func _toggle_firepit_pressed(module_id := WOODCUTTING_FIREPIT_MODULE_ID) -> void:
+	_cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
+	if not _is_firepit_module(module_id) or not _is_passive_module_unlocked(module_id):
+		return
+	_apply_firepit_fuel(_unix_now())
+	if _firepit_active():
+		last_result = "Hold the firepit to put the fire out."
+	else:
+		_begin_firepit_ignition()
+
+
+func _start_firepit() -> bool:
+	if _mat_amount("scrapwood") < FIREPIT_MINIMUM_START_SCRAPWOOD:
+		last_result = "Need Scrapwood to start the fire."
+		return false
+	var now := _unix_now()
+	var state := _ensure_firepit_state(now)
+	state["active"] = true
+	state["igniting"] = false
+	state["started_unix"] = now
+	state["last_update"] = now
+	state["burned_scrapwood"] = 0.0
+	state["cooling_bonus"] = 0.0
+	state["cooling_started_unix"] = 0
+	state["shutdown_reason"] = ""
+	passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+	last_result = "Firepit lit. Warm Momentum started at +4% Woodcutting stamina regen."
+	_invalidate_stat_caches()
+	_play_firepit_toggle_sfx(true)
+	_mark_save_dirty("firepit lit")
+	save_game()
+	_update_ui(0.0, false)
+	return true
+
+
+func _begin_firepit_ignition() -> bool:
+	if _mat_amount("scrapwood") < FIREPIT_START_SCRAPWOOD_COST:
+		last_result = "Need Scrapwood to start the fire."
+		_float_firepit_need_scrapwood()
+		return false
+	var now := _unix_now()
+	var state := _ensure_firepit_state(now)
+	if bool(state.get("igniting", false)):
+		return false
+	state["active"] = false
+	state["igniting"] = true
+	state["started_unix"] = 0
+	state["last_update"] = now
+	state["burned_scrapwood"] = 0.0
+	state["cooling_bonus"] = 0.0
+	state["cooling_started_unix"] = 0
+	state["shutdown_reason"] = "igniting"
+	passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+	last_result = "Feeding Scrapwood into the firepit..."
+	_mark_save_dirty("firepit ignition")
+	_update_ui(0.0, false)
+	call_deferred("_launch_firepit_ignition_flyer")
+	return true
+
+
+func _launch_firepit_ignition_flyer() -> void:
+	for _frame in range(10):
+		if not bool(_firepit_state().get("igniting", false)):
+			return
+		_update_ui(0.0, false)
+		await get_tree().process_frame
+	var key := _action_key("woodcutting", WOODCUTTING_FIREPIT_MODULE_ID)
+	if not action_cards.has(key):
+		_finish_firepit_ignition()
+		return
+	_animate_firepit_scrapwood_to_fire(1, true, Callable(self, "_finish_firepit_ignition"))
+
+
+func _finish_firepit_ignition() -> void:
+	var now := _unix_now()
+	var state := _ensure_firepit_state(now)
+	if not bool(state.get("igniting", false)) or bool(state.get("active", false)):
+		return
+	if _mat_amount("scrapwood") < FIREPIT_START_SCRAPWOOD_COST:
+		state["active"] = false
+		state["igniting"] = false
+		state["started_unix"] = 0
+		state["last_update"] = now
+		state["burned_scrapwood"] = 0.0
+		state["shutdown_reason"] = "no_fuel"
+		passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+		last_result = "Need Scrapwood to start the fire."
+		_float_firepit_need_scrapwood()
+		_update_ui(0.0, false)
+		return
+	_set_mat_amount("scrapwood", _mat_amount("scrapwood") - FIREPIT_START_SCRAPWOOD_COST)
+	_award_firepit_burn_xp(1, false)
+	state["active"] = true
+	state["igniting"] = false
+	state["started_unix"] = now
+	state["last_update"] = now
+	state["burned_scrapwood"] = 0.0
+	state["cooling_bonus"] = 0.0
+	state["cooling_started_unix"] = 0
+	state["shutdown_reason"] = ""
+	passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+	last_result = "Firepit lit. Warm Momentum started at +4% Woodcutting stamina regen."
+	_invalidate_stat_caches()
+	_play_firepit_toggle_sfx(true)
+	_float_firepit_xp_reward_from_fire(0)
+	_mark_save_dirty("firepit lit")
+	save_game()
+	_update_ui(0.0, false)
+
+
+func _float_firepit_need_scrapwood() -> void:
+	var key := _action_key("woodcutting", WOODCUTTING_FIREPIT_MODULE_ID)
+	var anchor: Control = null
+	if action_cards.has(key):
+		var card := action_cards[key] as Dictionary
+		anchor = card.get("art_root") as Control
+		if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
+			anchor = card.get("toggle") as Control
+	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
+		return
+	_float_reward(
+		self,
+		anchor,
+		"Need Scrapwood",
+		58,
+		Color("#ffd95a"),
+		Vector2(0, -54),
+		Vector2(0, -150),
+		0.0,
+		false,
+		-1.0,
+		SKILL_REWARD_FLOAT_GROUP
+	)
+
+
+func _extinguish_firepit() -> void:
+	var now := _unix_now()
+	var state := _ensure_firepit_state(now)
+	var cooling_bonus := _firepit_active_regen_bonus(now)
+	state["active"] = false
+	state["last_update"] = now
+	state["started_unix"] = 0
+	state["burned_scrapwood"] = 0.0
+	state = _set_firepit_cooling_from_bonus(state, now, cooling_bonus)
+	state["shutdown_reason"] = "manual"
+	passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
+	last_result = "Firepit stopped. Warm Momentum streak reset."
+	_invalidate_stat_caches()
+	_play_firepit_toggle_sfx(false)
+	_mark_save_dirty("firepit stopped")
+	save_game()
+	_update_ui(0.0, false)
 
 
 func _collect_passive_module(module_id: String) -> void:
@@ -61077,6 +64771,7 @@ func _restore_leaderboard_submission_metadata_from_save(data: Dictionary) -> voi
 	if _leaderboard_total_level_score_looks_legacy_xp(int(leaderboard_last_submitted_scores_by_category.get(LEADERBOARD_CATEGORY_TOTAL_LEVEL, 0))):
 		leaderboard_last_submitted_scores_by_category[LEADERBOARD_CATEGORY_TOTAL_LEVEL] = 0
 	leaderboard_last_submit_unix = maxi(0, int(data.get("leaderboard_last_submit_unix", 0)))
+	leaderboard_repair_publish_version = clampi(int(data.get("leaderboard_repair_publish_version", 0)), 0, LEADERBOARD_REPAIR_PUBLISH_VERSION)
 
 
 func _legacy_clock_guard_was_saved(data: Dictionary) -> bool:
@@ -61203,6 +64898,10 @@ func _leaderboard_last_submit_unix_for_save() -> int:
 	return maxi(0, int(leaderboard_last_submit_unix))
 
 
+func _leaderboard_repair_publish_version_for_save() -> int:
+	return clampi(int(leaderboard_repair_publish_version), 0, LEADERBOARD_REPAIR_PUBLISH_VERSION)
+
+
 func _leaderboard_display_name_for_save() -> String:
 	return _sanitize_leaderboard_display_name(str(leaderboard_display_name))
 
@@ -61274,6 +64973,10 @@ func _leaderboard_auth_refresh_token_for_save() -> String:
 	return str(leaderboard_auth_refresh_token).strip_edges()
 
 
+func _leaderboard_auth_provider_for_save() -> String:
+	return "google" if leaderboard_auth_provider == "google" else "anonymous"
+
+
 func _leaderboard_auth_retry_after_unix_for_save() -> int:
 	return maxi(0, int(leaderboard_auth_retry_after_unix))
 
@@ -61283,7 +64986,7 @@ func _restore_leaderboard_auth_metadata_from_save(data: Dictionary) -> void:
 	leaderboard_auth_refresh_token = str(data.get("leaderboard_auth_refresh_token", "")).strip_edges()
 	leaderboard_auth_expires_unix = 0
 	leaderboard_auth_retry_after_unix = maxi(0, int(data.get("leaderboard_auth_retry_after_unix", 0)))
-	leaderboard_auth_provider = "anonymous"
+	leaderboard_auth_provider = "google" if str(data.get("leaderboard_auth_provider", "")).strip_edges() == "google" else "anonymous"
 
 
 func _hub_missions_for_save() -> Array:
@@ -61415,6 +65118,15 @@ func _running_action_id_for_save() -> String:
 	return str(action.get("id", _canonical_action_id(running_skill_id, running_action_id)))
 
 
+func _event_running_action_id_for_save() -> String:
+	if event_running_skill_id.is_empty() or event_running_action_id.is_empty():
+		return ""
+	var action := _action_data(event_running_skill_id, event_running_action_id)
+	if action.is_empty() or not _is_event_action(action):
+		return ""
+	return str(action.get("id", event_running_action_id))
+
+
 func _selected_skill_id_for_save() -> String:
 	if _known_skill_id(selected_skill_id):
 		return selected_skill_id
@@ -61426,6 +65138,13 @@ func _running_skill_id_for_save() -> String:
 	if action_id.is_empty() or not _known_skill_id(running_skill_id):
 		return ""
 	return running_skill_id
+
+
+func _event_running_skill_id_for_save() -> String:
+	var action_id := _event_running_action_id_for_save()
+	if action_id.is_empty() or not _known_skill_id(event_running_skill_id):
+		return ""
+	return event_running_skill_id
 
 
 func _known_skill_id(skill_id: String) -> bool:
@@ -61448,6 +65167,10 @@ func _default_skill_id_for_save() -> String:
 
 func _action_progress_for_save() -> float:
 	return _normalized_action_progress(action_progress)
+
+
+func _event_action_progress_for_save() -> float:
+	return _normalized_action_progress(event_action_progress)
 
 
 func _normalized_action_progress(value: Variant) -> float:
@@ -61841,11 +65564,11 @@ func _can_create_image_textures() -> bool:
 	return DisplayServer.get_name() != "headless"
 
 
-func _create_image_texture(image: Image) -> ImageTexture:
+func _create_image_texture(image: Image) -> Texture2D:
 	if image == null or image.is_empty():
 		return null
-	if not _can_create_image_textures():
-		return null
+	if DisplayServer.get_name() == "headless":
+		return _placeholder_texture(Vector2i(image.get_width(), image.get_height()))
 	return ImageTexture.create_from_image(image)
 
 
@@ -61864,7 +65587,12 @@ func _format_percent(value: float) -> String:
 
 func _load_font() -> void:
 	if ResourceLoader.exists("res://assets/fonts/Fredoka.ttf"):
-		app_font = load("res://assets/fonts/Fredoka.ttf")
+		var loaded_font := load("res://assets/fonts/Fredoka.ttf") as Font
+		if loaded_font == null:
+			app_font = null
+			app_bold_font = null
+			return
+		app_font = loaded_font
 		var bold := FontVariation.new()
 		bold.base_font = app_font
 		bold.variation_embolden = 0.9
@@ -61877,7 +65605,7 @@ func _label(text: String, font_size: int, color: Color, align: HorizontalAlignme
 	label.horizontal_alignment = align
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_font_size_override("font_size", font_size)
-	label.add_theme_color_override("font_color", color)
+	label.add_theme_color_override("font_color", _theme_text_color(color))
 	if app_bold_font != null:
 		label.add_theme_font_override("font", app_bold_font)
 	elif app_font != null:
@@ -61885,10 +65613,88 @@ func _label(text: String, font_size: int, color: Color, align: HorizontalAlignme
 	return label
 
 
+func _theme_paper_color() -> Color:
+	return COLOR_DARK_PAPER if dark_mode_enabled else COLOR_PAPER
+
+
+func _theme_panel_color() -> Color:
+	return COLOR_DARK_PANEL if dark_mode_enabled else COLOR_PANEL
+
+
+func _theme_ink_color() -> Color:
+	return COLOR_DARK_INK if dark_mode_enabled else COLOR_INK
+
+
+func _theme_muted_color() -> Color:
+	return COLOR_DARK_MUTED if dark_mode_enabled else COLOR_MUTED
+
+
+func _theme_line_color() -> Color:
+	return COLOR_DARK_LINE if dark_mode_enabled else COLOR_LINE
+
+
+func _theme_text_color(color: Color) -> Color:
+	if not dark_mode_enabled:
+		return color
+	if _color_close(color, COLOR_INK):
+		return COLOR_DARK_INK
+	if _color_close(color, COLOR_MUTED):
+		return COLOR_DARK_MUTED
+	if _color_close(color, COLOR_LINE):
+		return COLOR_DARK_LINE
+	return color
+
+
+func _apply_info_symbol_button_text_color(button: Button) -> void:
+	if button == null or not is_instance_valid(button):
+		return
+	var glyph_color := _theme_text_color(COLOR_INK)
+	button.add_theme_color_override("font_color", glyph_color)
+	button.add_theme_color_override("font_hover_color", glyph_color)
+	button.add_theme_color_override("font_pressed_color", glyph_color)
+	button.add_theme_color_override("font_disabled_color", glyph_color)
+
+
+func _sync_info_symbol_button_text_colors() -> void:
+	if not is_inside_tree():
+		return
+	for raw_button in get_tree().get_nodes_in_group("skill_header_info_buttons"):
+		_apply_info_symbol_button_text_color(raw_button as Button)
+
+
+func _theme_surface_color(color: Color) -> Color:
+	if not dark_mode_enabled or color.a <= 0.0:
+		return color
+	if _color_close(color, COLOR_PAPER):
+		return COLOR_DARK_PAPER
+	if _color_close(color, COLOR_PANEL):
+		return COLOR_DARK_PANEL
+	if _color_close(color, COLOR_LINE):
+		return COLOR_DARK_LINE
+	if color.r >= 0.86 and color.g >= 0.82 and color.b >= 0.76:
+		var lightness := (color.r + color.g + color.b) / 3.0
+		return COLOR_DARK_PANEL_ALT if lightness < 0.94 else COLOR_DARK_PANEL
+	return color
+
+
+func _theme_outline_color(outline_color: Color, fill_color: Color) -> Color:
+	if not dark_mode_enabled:
+		return outline_color
+	if _color_close(outline_color, COLOR_INK) and _theme_surface_color(fill_color) != fill_color:
+		return COLOR_DARK_LINE
+	return outline_color
+
+
+func _color_close(a: Color, b: Color, tolerance := 0.018) -> bool:
+	return (
+		absf(a.r - b.r) <= tolerance
+		and absf(a.g - b.g) <= tolerance
+		and absf(a.b - b.b) <= tolerance
+		and absf(a.a - b.a) <= tolerance
+	)
+
+
 func _texture_from_image(path: String, image: Image) -> Texture2D:
-	if not _can_create_image_textures():
-		texture_cache[_res_path(path)] = null
-		return null
 	var texture := _create_image_texture(image)
 	texture_cache[_res_path(path)] = texture
 	return texture
@@ -61906,10 +65712,15 @@ func _atlas_texture(path: String, region: Rect2, filter_clip := false) -> Textur
 	]
 	if atlas_texture_cache.has(cache_key):
 		return atlas_texture_cache[cache_key] as Texture2D
+	if DisplayServer.get_name() == "headless":
+		var headless_fallback := _visual_fallback_texture()
+		atlas_texture_cache[cache_key] = headless_fallback
+		return headless_fallback
 	var source := _texture(normalized)
 	if source == null:
-		atlas_texture_cache[cache_key] = null
-		return null
+		var fallback := _visual_fallback_texture()
+		atlas_texture_cache[cache_key] = fallback
+		return fallback
 	var atlas := AtlasTexture.new()
 	atlas.atlas = source
 	atlas.region = region
@@ -61941,9 +65752,31 @@ func _spritesheet_or_visual_fallback(path: String, index: int, cell_size: Vector
 func _action_art_image(action: Dictionary) -> ActionArtTextureRect:
 	var path := str(action.get("art", ""))
 	var art_size := _action_art_display_size(action)
-	var image := ActionArtTextureRect.new()
-	image.texture = _texture_or_visual_fallback(path)
-	image.set_mask_material_enabled(_action_art_needs_texture_mask(path))
+	var animation := action.get("art_animation", {}) as Dictionary
+	var image: ActionArtTextureRect = ActionArtAnimationRect.new() if not animation.is_empty() else ActionArtTextureRect.new()
+	if DisplayServer.get_name() == "headless":
+		image.texture = _visual_fallback_texture()
+		image.set_mask_material_enabled(false)
+	else:
+		image.texture = _texture_or_visual_fallback(path)
+		image.set_mask_material_enabled(_action_art_needs_texture_mask(path))
+		if image is ActionArtAnimationRect:
+			var animated_image := image as ActionArtAnimationRect
+			var atlas_path := str(animation.get("atlas", ""))
+			var frame_count := int(animation.get("frame_count", 1))
+			var cell_size := Vector2(
+				float(animation.get("cell_width", 256.0)),
+				float(animation.get("cell_height", 256.0))
+			)
+			animated_image.configure_animation(
+				_texture_or_visual_fallback(atlas_path),
+				frame_count,
+				cell_size,
+				animation.get("sequence", []) as Array,
+				animation.get("durations", []) as Array,
+				str(animation.get("sync", "")),
+				animation.get("effects", {})
+			)
 	image.custom_minimum_size = art_size
 	image.size = art_size
 	image.position = _action_art_display_offset(action)
@@ -62022,11 +65855,85 @@ func _action_art_special_type_icon_path(action: Dictionary) -> String:
 
 
 func _action_art_display_size(action: Dictionary) -> Vector2:
-	return COMBO_ACTION_ART_SIZE if _uses_compact_action_art(action) else ACTION_ART_SIZE
+	return ACTION_ART_SIZE
 
 
 func _action_art_display_offset(action: Dictionary) -> Vector2:
-	return COMBO_ACTION_ART_OFFSET if _uses_compact_action_art(action) else ACTION_ART_OFFSET
+	return ACTION_ART_OFFSET
+
+
+func _action_uses_blue_guy_chicken_brawl_stage(action: Dictionary) -> bool:
+	return str(action.get("id", "")) == "chicken-sparring-pit"
+
+
+func _action_is_free_fighting_proto(skill_id: String, action_id: String) -> bool:
+	return skill_id == "fight" and action_id == "chicken-sparring-pit"
+
+
+func _configure_blue_guy_chicken_brawl_stage(stage: Control) -> void:
+	if stage == null:
+		return
+	if stage.has_method("setup_fighting_level"):
+		stage.call("setup_fighting_level", _skill_level("fight"))
+	if stage.has_method("setup_blue_guy_health"):
+		stage.call("setup_blue_guy_health", _blue_guy_health_int(), BLUE_GUY_HEALTH_MAX, _blue_guy_health_regen_fraction())
+	if stage.has_method("set_active_fight"):
+		stage.call("set_active_fight", running_skill_id == "fight" and running_action_id == "chicken-sparring-pit")
+	if stage.has_signal("chicken_killed"):
+		var callback := Callable(self, "_on_blue_guy_chicken_brawl_chicken_killed").bind(stage)
+		if not stage.is_connected("chicken_killed", callback):
+			stage.connect("chicken_killed", callback)
+	if stage.has_signal("punch_landed"):
+		var punch_callback := Callable(self, "_on_blue_guy_chicken_brawl_punch_landed")
+		if not stage.is_connected("punch_landed", punch_callback):
+			stage.connect("punch_landed", punch_callback)
+	if stage.has_signal("knocked_out"):
+		var ko_callback := Callable(self, "_on_blue_guy_chicken_brawl_knocked_out")
+		if not stage.is_connected("knocked_out", ko_callback):
+			stage.connect("knocked_out", ko_callback)
+
+
+func _on_blue_guy_chicken_brawl_punch_landed() -> void:
+	_play_fight_punch_sfx()
+	if randf() <= FIGHT_PUNCH_STAMINA_COST_CHANCE:
+		_spend_action_stamina("fight", 1.0)
+		_update_ui(0.0, false)
+
+
+func _on_blue_guy_chicken_brawl_knocked_out() -> void:
+	if not _spend_action_stamina("fight", 1.0):
+		stamina["fight"] = 0.0
+		_sync_stamina_bank("fight")
+	_set_result("Blue Guy was knocked out. -1 stamina.")
+	_update_ui(0.0, false)
+	save_game()
+
+
+func _on_blue_guy_chicken_brawl_chicken_killed(xp_amount: int, stage: Control) -> void:
+	var amount := maxi(0, xp_amount)
+	if amount <= 0:
+		return
+	_play_chicken_death_sfx()
+	if not skills.has("fight"):
+		skills["fight"] = {"xp": 0, "level": 1}
+	skills["fight"]["xp"] = int(skills["fight"].get("xp", 0)) + amount
+	_recalculate_level("fight")
+	if stage != null and is_instance_valid(stage) and stage.has_method("setup_fighting_level"):
+		stage.call("setup_fighting_level", _skill_level("fight"))
+	save_game()
+
+
+func _sync_blue_guy_chicken_brawl_stage_active(card: Dictionary, skill_id: String, action_id: String, running: bool) -> void:
+	var stage := card.get("blue_guy_chicken_stage") as Control
+	if stage == null or not is_instance_valid(stage):
+		return
+	if stage.has_method("setup_fighting_level"):
+		stage.call("setup_fighting_level", _skill_level("fight"))
+	if stage.has_method("setup_blue_guy_health"):
+		stage.call("setup_blue_guy_health", _blue_guy_health_int(), BLUE_GUY_HEALTH_MAX, _blue_guy_health_regen_fraction())
+	if stage.has_method("set_active_fight"):
+		var globally_running := running_skill_id == skill_id and running_action_id == action_id
+		stage.call("set_active_fight", (running or globally_running) and _action_is_free_fighting_proto(skill_id, action_id))
 
 
 func _uses_compact_action_art(action: Dictionary) -> bool:
@@ -62052,14 +65959,21 @@ func _visual_fallback_texture() -> Texture2D:
 	var cache_key := "__visual_fallback_texture__"
 	if texture_cache.has(cache_key):
 		return texture_cache[cache_key] as Texture2D
-	if not _can_create_image_textures():
-		texture_cache[cache_key] = null
-		return null
+	if DisplayServer.get_name() == "headless":
+		var placeholder := _placeholder_texture(Vector2i(8, 8))
+		texture_cache[cache_key] = placeholder
+		return placeholder
 	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 	image.fill(Color(1.0, 1.0, 1.0, 0.0))
-	var texture := _create_image_texture(image)
+	var texture := ImageTexture.create_from_image(image)
 	texture_cache[cache_key] = texture
 	return texture
+
+
+func _placeholder_texture(texture_size: Vector2i) -> Texture2D:
+	var placeholder := PlaceholderTexture2D.new()
+	placeholder.size = Vector2(maxi(1, texture_size.x), maxi(1, texture_size.y))
+	return placeholder
 
 
 func _texture_or_visual_fallback(path: String) -> Texture2D:
@@ -62083,8 +65997,37 @@ func _action_card_background_texture(action: Dictionary) -> Texture2D:
 	return _texture_or_visual_fallback(bg_path)
 
 
+func _action_card_background_edge_underlay(skill_id: String) -> Panel:
+	var underlay := Panel.new()
+	underlay.anchor_left = 0.0
+	underlay.anchor_right = 1.0
+	underlay.anchor_top = 0.0
+	underlay.anchor_bottom = 1.0
+	underlay.offset_left = -3.0
+	underlay.offset_right = 3.0
+	underlay.offset_top = -3.0
+	underlay.offset_bottom = 3.0
+	underlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	underlay.z_index = 149
+	var style := StyleBoxFlat.new()
+	style.bg_color = _themed_activity_card_fill_color(_skill_theme_color(skill_id))
+	style.border_color = Color.TRANSPARENT
+	style.set_border_width_all(0)
+	style.set_corner_radius_all(int(round(ACTION_CARD_FACE_RADIUS + 3.0)))
+	style.anti_aliasing = true
+	underlay.add_theme_stylebox_override("panel", style)
+	return underlay
+
+
 func _action_card_background(skill_id: String, action: Dictionary) -> Control:
 	var background_texture := _action_card_background_texture(action)
+	if DisplayServer.get_name() == "headless" and OS.get_environment("IDLE_ELITE_HEADLESS_SIMPLE_ACTION_BG") == "1":
+		var fallback_bg := ColorRect.new()
+		fallback_bg.color = _skill_theme_color(skill_id).darkened(0.08)
+		fallback_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+		fallback_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		fallback_bg.z_index = 150
+		return fallback_bg
 	if ACTION_CARD_SIMPLE_BACKGROUND_ENABLED and not _is_convergence_action(action):
 		var image := TextureRect.new()
 		image.texture = background_texture
@@ -62130,9 +66073,23 @@ func _activity_card_root_height(expanded := false) -> float:
 	return float(face_height) + ACTION_CARD_3D_DEPTH_OFFSET.y
 
 
+func _passive_action_card_height(action: Dictionary) -> float:
+	if _is_firepit_module(str(action.get("id", ""))):
+		var dependency_height := WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT if _firepit_active() else 0.0
+		return WOODCUTTING_FIREPIT_CARD_HEIGHT + dependency_height
+	return float(PASSIVE_MODULE_CARD_HEIGHT)
+
+
+func _action_mat_collection_layout_height(skill_id: String, action: Dictionary) -> float:
+	var action_id := str(action.get("id", ""))
+	if action_id.is_empty() or not _action_has_mat_rewards(action):
+		return 0.0
+	return MAT_COLLECTION_AREA_HEIGHT if running_skill_id == skill_id and running_action_id == action_id else 0.0
+
+
 func _activity_card_preview_root_height(card: Dictionary) -> float:
 	if bool(card.get("passive", false)):
-		return float(PASSIVE_MODULE_CARD_HEIGHT)
+		return _passive_action_card_height(card.get("action", {}) as Dictionary)
 	return _activity_card_root_height()
 
 
@@ -62168,8 +66125,8 @@ func _set_activity_card_depth_face_offset_from_pop(pop: Control, offset: Vector2
 			fill.set_face_offset(offset)
 	if pop.has_meta("activity_card_outline_node_id"):
 		var outline_id := int(pop.get_meta("activity_card_outline_node_id"))
-		var outline := instance_from_id(outline_id) as Control
-		if outline != null and is_instance_valid(outline):
+		var outline := _valid_control_ref(instance_from_id(outline_id))
+		if outline != null:
 			var gutter := float(pop.get_meta("activity_button_gutter", ACTION_CARD_POP_GUTTER))
 			var bottom_inset := float(pop.get_meta("activity_button_depth_bottom_inset", ACTION_CARD_3D_DEPTH_OFFSET.y))
 			outline.offset_left = gutter + offset.x
@@ -62185,6 +66142,7 @@ func _activity_card_depth_layer(theme_color := Color("#c8792c")) -> ActivityCard
 	depth.back_color = theme_color.darkened(0.36)
 	depth.side_color = theme_color.darkened(0.48)
 	depth.bottom_color = theme_color.darkened(0.24)
+	depth.draw_back_plate_bottom_outline = true
 	var highlight := theme_color.lightened(0.42)
 	highlight.a = 0.24
 	depth.highlight_color = highlight
@@ -62275,6 +66233,10 @@ func _profile_avatar_texture(index: int) -> Texture2D:
 	var valid_index := _valid_profile_avatar_index(index)
 	if profile_avatar_texture_cache.has(valid_index):
 		return profile_avatar_texture_cache[valid_index] as Texture2D
+	if DisplayServer.get_name() == "headless":
+		var headless_fallback := _visual_fallback_texture()
+		profile_avatar_texture_cache[valid_index] = headless_fallback
+		return headless_fallback
 	var sheet_index := clampi(int(floor(float(valid_index) / float(PROFILE_AVATAR_SHEET_CELL_COUNT))), 0, PROFILE_AVATAR_SHEETS.size() - 1)
 	var source := _texture(str(PROFILE_AVATAR_SHEETS[sheet_index]))
 	if source == null:
@@ -62405,10 +66367,10 @@ func _is_guest_leaderboard_display_name(display_name: String) -> bool:
 
 func _profile_status_text() -> String:
 	if leaderboard_name_claim_in_flight:
-		return "Checking name..."
+		return "Checking username..."
 	if leaderboard_profile_claimed:
-		return "Leaderboard name locked. This name cannot be changed."
-	return "Guest leaderboard profile. Choose carefully: this unique name locks after saving."
+		return "Username saved."
+	return "Choose a username for rankings."
 
 
 func _make_guest_display_name() -> String:
@@ -62481,7 +66443,7 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 	button.z_index = 12
 	button.add_to_group("skill_header_info_buttons")
 	button.add_theme_font_size_override("font_size", MIN_MOBILE_BODY_FONT_SIZE)
-	button.add_theme_color_override("font_color", COLOR_INK)
+	_apply_info_symbol_button_text_color(button)
 	button.add_theme_stylebox_override("normal", _passive_round_button_style(COLOR_PANEL))
 	button.add_theme_stylebox_override("hover", _passive_round_button_style(COLOR_PANEL.lightened(0.06)))
 	button.add_theme_stylebox_override("pressed", _passive_round_button_style(COLOR_GOLD.darkened(0.08)))
@@ -62658,6 +66620,7 @@ func _home_action_panel_button(text: String, icon_texture: Texture2D, icon_size:
 	button.add_child(margin)
 
 	var stack := VBoxContainer.new()
+	stack.set_anchors_preset(Control.PRESET_FULL_RECT)
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -62689,12 +66652,12 @@ func _home_action_panel_button(text: String, icon_texture: Texture2D, icon_size:
 
 
 func _audio_volume_control(title: String, music: bool, min_width := 1120, bottom_padding := 0) -> Control:
-	var mute_size := 142
-	var control_gap := 34
+	var mute_size := 128
+	var control_gap := 32
 	var stack := VBoxContainer.new()
-	stack.custom_minimum_size = Vector2(min_width, 292 + bottom_padding)
+	stack.custom_minimum_size = Vector2(min_width, 252 + bottom_padding)
 	stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	stack.add_theme_constant_override("separation", 14)
+	stack.add_theme_constant_override("separation", 10)
 	var label_row := HBoxContainer.new()
 	label_row.add_theme_constant_override("separation", 18)
 	stack.add_child(label_row)
@@ -62707,11 +66670,11 @@ func _audio_volume_control(title: String, music: bool, min_width := 1120, bottom
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label_row.add_child(name_label)
 	var value_label := _label("", 62, COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
-	value_label.custom_minimum_size = Vector2(210, 82)
+	value_label.custom_minimum_size = Vector2(210, 76)
 	label_row.add_child(value_label)
 	var control_padding := MarginContainer.new()
-	control_padding.add_theme_constant_override("margin_top", 8)
-	control_padding.add_theme_constant_override("margin_bottom", 14)
+	control_padding.add_theme_constant_override("margin_top", 6)
+	control_padding.add_theme_constant_override("margin_bottom", 10)
 	stack.add_child(control_padding)
 	var control_row := HBoxContainer.new()
 	control_row.add_theme_constant_override("separation", control_gap)
@@ -62730,12 +66693,12 @@ func _audio_volume_control(title: String, music: bool, min_width := 1120, bottom
 	mute_toggle.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	_attach_button_depress_animation(mute_toggle, 0.92)
 	control_row.add_child(mute_toggle)
-	var mute_mark := _label("", 84, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var mute_mark := _label("", 78, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	mute_mark.set_anchors_preset(Control.PRESET_FULL_RECT)
 	mute_mark.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mute_toggle.add_child(mute_mark)
 	var slider := HSlider.new()
-	slider.custom_minimum_size = Vector2(maxi(320, min_width - mute_size - control_gap), 142)
+	slider.custom_minimum_size = Vector2(maxi(320, min_width - mute_size - control_gap), 128)
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slider.min_value = 0.0
 	slider.max_value = 100.0
@@ -62771,8 +66734,10 @@ func _style_audio_slider(slider: HSlider) -> void:
 	var grabber := _audio_slider_grabber()
 	if grabber != null:
 		slider.add_theme_icon_override("grabber", grabber)
-		slider.add_theme_icon_override("grabber_highlight", grabber)
 		slider.add_theme_icon_override("grabber_disabled", grabber)
+	var grabber_highlight := _audio_slider_grabber(true)
+	if grabber_highlight != null:
+		slider.add_theme_icon_override("grabber_highlight", grabber_highlight)
 	var track := StyleBoxFlat.new()
 	track.bg_color = COLOR_INK
 	track.corner_radius_top_left = 7
@@ -62807,8 +66772,8 @@ func _apply_offline_progress_toggle_style(button: Button) -> void:
 	var pressed_fill := fill.darkened(0.10)
 	button.add_theme_stylebox_override("normal", _paper_button_style(fill, 48))
 	button.add_theme_stylebox_override("hover", _paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed_fill, 48))
-	button.add_theme_stylebox_override("hover_pressed", _paper_button_style(pressed_fill, 48))
+	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("hover_pressed", _paper_button_style(pressed_fill, 48, 72, true))
 
 
 func _auto_unlock_lockpad_toggle_button(min_width := 1120, min_height := 180) -> Control:
@@ -62829,8 +66794,8 @@ func _apply_auto_unlock_lockpad_toggle_style(button: Button) -> void:
 	var pressed_fill := fill.darkened(0.10)
 	button.add_theme_stylebox_override("normal", _paper_button_style(fill, 48))
 	button.add_theme_stylebox_override("hover", _paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed_fill, 48))
-	button.add_theme_stylebox_override("hover_pressed", _paper_button_style(pressed_fill, 48))
+	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("hover_pressed", _paper_button_style(pressed_fill, 48, 72, true))
 
 
 func _stamina_decimal_toggle_button(min_width := 1120, min_height := 180) -> Control:
@@ -62851,8 +66816,52 @@ func _apply_stamina_decimal_toggle_style(button: Button) -> void:
 	var pressed_fill := fill.darkened(0.10)
 	button.add_theme_stylebox_override("normal", _paper_button_style(fill, 48))
 	button.add_theme_stylebox_override("hover", _paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed_fill, 48))
-	button.add_theme_stylebox_override("hover_pressed", _paper_button_style(pressed_fill, 48))
+	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("hover_pressed", _paper_button_style(pressed_fill, 48, 72, true))
+
+
+func _offline_progress_cap_notification_toggle_button(min_width := 1120, min_height := 180) -> Control:
+	var row := _settings_labeled_toggle_row("Offline Cap Notification:", _offline_progress_cap_notification_toggle_text(), min_width, min_height)
+	var button := row.get_meta("toggle_button") as Button
+	_apply_offline_progress_cap_notification_toggle_style(button)
+	offline_progress_cap_notification_toggles.append(button)
+	button.pressed.connect(_toggle_offline_progress_cap_notifications_enabled)
+	return row
+
+
+func _offline_progress_cap_notification_toggle_text() -> String:
+	return "ON" if offline_progress_cap_notifications_enabled else "OFF"
+
+
+func _apply_offline_progress_cap_notification_toggle_style(button: Button) -> void:
+	var fill := Color("#48dd6c") if offline_progress_cap_notifications_enabled else COLOR_BLUE
+	var pressed_fill := fill.darkened(0.10)
+	button.add_theme_stylebox_override("normal", _paper_button_style(fill, 48))
+	button.add_theme_stylebox_override("hover", _paper_button_style(fill, 48))
+	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("hover_pressed", _paper_button_style(pressed_fill, 48, 72, true))
+
+
+func _dark_mode_toggle_button(min_width := 1120, min_height := 180) -> Control:
+	var row := _settings_labeled_toggle_row("Dark Mode:", _dark_mode_toggle_text(), min_width, min_height)
+	var button := row.get_meta("toggle_button") as Button
+	_apply_dark_mode_toggle_style(button)
+	dark_mode_toggles.append(button)
+	button.pressed.connect(_toggle_dark_mode_enabled)
+	return row
+
+
+func _dark_mode_toggle_text() -> String:
+	return "ON" if dark_mode_enabled else "OFF"
+
+
+func _apply_dark_mode_toggle_style(button: Button) -> void:
+	var fill := Color("#48dd6c") if dark_mode_enabled else COLOR_BLUE
+	var pressed_fill := fill.darkened(0.10)
+	button.add_theme_stylebox_override("normal", _paper_button_style(fill, 48))
+	button.add_theme_stylebox_override("hover", _paper_button_style(fill, 48))
+	button.add_theme_stylebox_override("pressed", _paper_button_style(pressed_fill, 48, 72, true))
+	button.add_theme_stylebox_override("hover_pressed", _paper_button_style(pressed_fill, 48, 72, true))
 
 
 func _settings_labeled_toggle_row(label_text: String, button_text: String, min_width := 1120, min_height := 180) -> HBoxContainer:
@@ -62863,7 +66872,7 @@ func _settings_labeled_toggle_row(label_text: String, button_text: String, min_w
 	row.add_theme_constant_override("separation", 48)
 	var label := _label(label_text, 84, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	label.custom_minimum_size = Vector2(0, min_height)
-	label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	row.add_child(label)
 	var button := _menu_button(button_text)
@@ -62876,23 +66885,31 @@ func _settings_labeled_toggle_row(label_text: String, button_text: String, min_w
 	return row
 
 
-func _audio_slider_grabber() -> Texture2D:
-	if audio_slider_grabber_texture != null:
+func _audio_slider_grabber(highlighted := false) -> Texture2D:
+	if highlighted and audio_slider_grabber_highlight_texture != null:
+		return audio_slider_grabber_highlight_texture
+	if not highlighted and audio_slider_grabber_texture != null:
 		return audio_slider_grabber_texture
 	if not _can_create_image_textures():
 		return null
-	var diameter := 96
+	var diameter := 106 if highlighted else 96
 	var radius := float(diameter) * 0.5
 	var border := 14.0
+	var border_color := COLOR_BLUE if highlighted else COLOR_INK
+	var fill_color := COLOR_PANEL.lightened(0.08) if highlighted else COLOR_PANEL
 	var image := Image.create(diameter, diameter, false, Image.FORMAT_RGBA8)
 	for y in range(diameter):
 		for x in range(diameter):
 			var point := Vector2(float(x) + 0.5, float(y) + 0.5)
 			var distance := point.distance_to(Vector2(radius, radius))
 			if distance <= radius - 1.0:
-				image.set_pixel(x, y, COLOR_INK if distance >= radius - border else COLOR_PANEL)
-	audio_slider_grabber_texture = _create_image_texture(image)
-	return audio_slider_grabber_texture
+				image.set_pixel(x, y, border_color if distance >= radius - border else fill_color)
+	var texture := _create_image_texture(image)
+	if highlighted:
+		audio_slider_grabber_highlight_texture = texture
+	else:
+		audio_slider_grabber_texture = texture
+	return texture
 
 
 func _settings_page_button(text: String, icon_path := "", min_width := 900, icon_max_width := 128, min_height := 250) -> Button:
@@ -63046,13 +67063,16 @@ func _action_stat_label(text: String) -> Label:
 	return label
 
 
-func _action_stat_box(label: Label, _interactive := false, _skill_id := "", _action_id := "", _stat_kind := "") -> Control:
-	var box := PanelContainer.new()
+func _action_stat_box(label: Label, interactive := false, skill_id := "", action_id := "", stat_kind := "") -> Control:
+	var box: Control = PanelContainer.new()
 	box.custom_minimum_size = Vector2(300, 222)
-	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.mouse_filter = Control.MOUSE_FILTER_STOP if interactive and not stat_kind.is_empty() else Control.MOUSE_FILTER_IGNORE
 	box.set_meta("action_stat_box", true)
+	box.set_meta("action_stat_box_interactive", interactive and not stat_kind.is_empty())
+	if interactive and not stat_kind.is_empty():
+		box.gui_input.connect(_on_action_stat_box_gui_input.bind(skill_id, action_id, stat_kind))
 	_apply_action_stat_box_style(box, false)
-	if _stat_kind.is_empty():
+	if stat_kind.is_empty():
 		box.add_child(label)
 		return box
 	var stack := VBoxContainer.new()
@@ -63068,9 +67088,9 @@ func _action_stat_box(label: Label, _interactive := false, _skill_id := "", _act
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	stack.add_child(label)
-	var title_label := _action_stat_label(str(_stat_kind).to_upper())
+	var title_label := _action_stat_label(str(stat_kind).to_upper())
 	title_label.add_theme_font_size_override("font_size", 48)
-	title_label.add_theme_color_override("font_color", COLOR_INK)
+	title_label.add_theme_color_override("font_color", _theme_ink_color())
 	title_label.add_theme_constant_override("outline_size", 0)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -63270,8 +67290,8 @@ func _set_bar(bar, target: float, delta: float, instant: bool) -> void:
 
 func _panel_style(color: Color, border: int, radius: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.border_color = COLOR_INK
+	style.bg_color = _theme_surface_color(color)
+	style.border_color = _theme_outline_color(COLOR_INK, color)
 	style.border_width_left = border
 	style.border_width_right = border
 	style.border_width_top = border
@@ -63343,11 +67363,12 @@ func _skill_menu_band_edge_feather(top_edge: bool) -> TextureRect:
 	feather.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	feather.z_index = 1
 	var gradient := Gradient.new()
-	var paper_edge := Color(COLOR_PAPER.r, COLOR_PAPER.g, COLOR_PAPER.b, 0.92)
-	var paper_strong := Color(COLOR_PAPER.r, COLOR_PAPER.g, COLOR_PAPER.b, 0.62)
-	var paper_mid := Color(COLOR_PAPER.r, COLOR_PAPER.g, COLOR_PAPER.b, 0.28)
-	var paper_soft := Color(COLOR_PAPER.r, COLOR_PAPER.g, COLOR_PAPER.b, 0.07)
-	var paper_clear := Color(COLOR_PAPER.r, COLOR_PAPER.g, COLOR_PAPER.b, 0.0)
+	var paper := _theme_paper_color()
+	var paper_edge := Color(paper.r, paper.g, paper.b, 0.92)
+	var paper_strong := Color(paper.r, paper.g, paper.b, 0.62)
+	var paper_mid := Color(paper.r, paper.g, paper.b, 0.28)
+	var paper_soft := Color(paper.r, paper.g, paper.b, 0.07)
+	var paper_clear := Color(paper.r, paper.g, paper.b, 0.0)
 	gradient.set_color(0, paper_edge if top_edge else paper_clear)
 	gradient.set_offset(0, 0.0)
 	gradient.add_point(0.12, paper_strong if top_edge else paper_soft)
@@ -63368,7 +67389,9 @@ func _skill_menu_band_edge_feather(top_edge: bool) -> TextureRect:
 
 
 func _paper_button_style_with_shape(color: Color, radius: int, margin := 72, pressed := false, disabled := false, outline_color := COLOR_INK, bevel_side_lift := 5.5) -> StyleBoxTexture:
-	var key := "%s:%s:%s:%s:%s:%s:%s" % [color.to_html(true), radius, margin, pressed, disabled, outline_color.to_html(true), bevel_side_lift]
+	var themed_color := _theme_surface_color(color)
+	var themed_outline := _theme_outline_color(outline_color, color)
+	var key := "%s:%s:%s:%s:%s:%s:%s:%s" % [dark_mode_enabled, themed_color.to_html(true), radius, margin, pressed, disabled, themed_outline.to_html(true), bevel_side_lift]
 	if paper_button_style_textures.has(key):
 		return paper_button_style_textures[key] as StyleBoxTexture
 	var style := StyleBoxTexture.new()
@@ -63382,15 +67405,15 @@ func _paper_button_style_with_shape(color: Color, radius: int, margin := 72, pre
 		var bevel_strength := 0.40 if not disabled else 0.22
 		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
 		image.fill(Color(0, 0, 0, 0))
-		var fill := color.darkened(0.08 if pressed else 0.0)
+		var fill := themed_color.darkened(0.08 if pressed else 0.0)
 		if disabled:
-			fill = color.darkened(0.12)
+			fill = themed_color.darkened(0.12)
 		for y in range(texture_size.y):
 			for x in range(texture_size.x):
 				var point := Vector2(float(x) + 0.5, float(y) + 0.5)
 				if not _button_texture_contains(point, outer, 22.0):
 					continue
-				var pixel := outline_color
+				var pixel := themed_outline
 				if _button_texture_contains(point, inner, inner_radius):
 					pixel = fill
 					var horizontal := absf((point.x - (inner.position.x + inner.size.x * 0.5)) / maxf(1.0, inner.size.x * 0.5))
@@ -63403,6 +67426,8 @@ func _paper_button_style_with_shape(color: Color, radius: int, margin := 72, pre
 						pixel = fill.lightened(0.12)
 				image.set_pixel(x, y, pixel)
 		style.texture = _create_image_texture(image)
+	else:
+		style.texture = _visual_fallback_texture()
 	style.texture_margin_left = 30
 	style.texture_margin_right = 30
 	style.texture_margin_top = 30
@@ -63422,12 +67447,17 @@ func _chunky_activity_button_style(color: Color, radius: int, margin := 42, pres
 		return paper_button_style_textures[key] as StyleBoxTexture
 	var style := StyleBoxTexture.new()
 	if _can_create_image_textures():
-		var texture_size := Vector2i(192, 132)
-		var border := 11.0
-		var bottom_lip := 34.0 if not pressed else 20.0
+		var final_texture_size := Vector2i(192, 132)
+		var supersample := 4.0
+		var texture_size := Vector2i(
+			int(final_texture_size.x * supersample),
+			int(final_texture_size.y * supersample)
+		)
+		var border := 11.0 * supersample
+		var bottom_lip := (34.0 if not pressed else 20.0) * supersample
 		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
 		var inner := outer.grow(-border)
-		var outer_radius := minf(float(radius), 54.0)
+		var outer_radius := minf(float(radius) * supersample, 54.0 * supersample)
 		var inner_radius := maxf(8.0, outer_radius - border)
 		var fill := color.darkened(0.07 if pressed else 0.0)
 		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
@@ -63441,17 +67471,20 @@ func _chunky_activity_button_style(color: Color, radius: int, margin := 42, pres
 				if _button_texture_contains(point, inner, inner_radius):
 					var horizontal := absf((point.x - inner.get_center().x) / maxf(1.0, inner.size.x * 0.5))
 					var side_curve := pow(clampf(horizontal, 0.0, 1.0), 1.75)
-					var bevel_top := inner.end.y - bottom_lip - 9.0 * side_curve + (7.0 if pressed else 0.0)
+					var bevel_top := inner.end.y - bottom_lip - 9.0 * supersample * side_curve + ((7.0 * supersample) if pressed else 0.0)
 					pixel = fill
 					if point.y >= bevel_top:
 						var shade_t := clampf((point.y - bevel_top) / maxf(1.0, inner.end.y - bevel_top), 0.0, 1.0)
 						pixel = fill.lerp(fill.darkened(0.58), 0.48 + shade_t * 0.46)
-					elif point.y <= inner.position.y + 7.0 and not pressed:
+					elif point.y <= inner.position.y + 7.0 * supersample and not pressed:
 						pixel = fill.lightened(0.12)
-					elif point.y <= inner.position.y + 18.0 and not pressed:
+					elif point.y <= inner.position.y + 18.0 * supersample and not pressed:
 						pixel = fill.lightened(0.05)
 				image.set_pixel(x, y, pixel)
+		image.resize(final_texture_size.x, final_texture_size.y, Image.INTERPOLATE_LANCZOS)
 		style.texture = _create_image_texture(image)
+	else:
+		style.texture = _visual_fallback_texture()
 	style.texture_margin_left = 42
 	style.texture_margin_right = 42
 	style.texture_margin_top = 36
@@ -63485,8 +67518,8 @@ func _button_texture_contains(point: Vector2, rect: Rect2, radius: float) -> boo
 
 func _button_style(color: Color, border: int, radius: int, margin := 72, pressed := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = color
-	style.border_color = COLOR_INK
+	style.bg_color = _theme_surface_color(color)
+	style.border_color = _theme_outline_color(COLOR_INK, color)
 	var top_border := maxi(4, border - (0 if pressed else 5))
 	var bottom_border := maxi(4, border + (0 if pressed else 8))
 	style.border_width_left = border
@@ -63497,7 +67530,7 @@ func _button_style(color: Color, border: int, radius: int, margin := 72, pressed
 	style.corner_radius_top_right = radius
 	style.corner_radius_bottom_left = radius
 	style.corner_radius_bottom_right = radius
-	style.shadow_color = Color(0.08, 0.07, 0.06, 0.38 if not pressed else 0.20)
+	style.shadow_color = Color(0.0, 0.0, 0.0, (0.52 if not pressed else 0.28) if dark_mode_enabled else (0.38 if not pressed else 0.20))
 	style.shadow_size = 14 if not pressed else 5
 	style.shadow_offset = Vector2(0, 14 if not pressed else 4)
 	style.content_margin_left = margin
@@ -63509,7 +67542,7 @@ func _button_style(color: Color, border: int, radius: int, margin := 72, pressed
 
 func _surface_style(color: Color, radius: int, margin := 28, elevated := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = color
+	style.bg_color = _theme_surface_color(color)
 	style.border_color = Color(0, 0, 0, 0)
 	style.border_width_left = PASSIVE_BORDER
 	style.border_width_right = PASSIVE_BORDER
@@ -63520,7 +67553,7 @@ func _surface_style(color: Color, radius: int, margin := 28, elevated := false) 
 	style.corner_radius_bottom_left = radius
 	style.corner_radius_bottom_right = radius
 	if elevated:
-		style.shadow_color = Color(0.09, 0.08, 0.07, 0.16)
+		style.shadow_color = Color(0.0, 0.0, 0.0, 0.34 if dark_mode_enabled else 0.16)
 		style.shadow_size = 12
 		style.shadow_offset = Vector2(0, 8)
 	style.content_margin_left = margin
@@ -63601,7 +67634,7 @@ func _leaderboard_rank_badge_style() -> StyleBoxFlat:
 
 func _profile_avatar_frame_background_style(selected := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#fffdf8") if not selected else Color("#fff1b8")
+	style.bg_color = _theme_surface_color(Color("#fffdf8")) if not selected else Color("#fff1b8")
 	style.border_color = Color.TRANSPARENT
 	style.set_border_width_all(0)
 	style.corner_radius_top_left = 24
@@ -63628,9 +67661,12 @@ func _profile_avatar_frame_style(_selected := false) -> StyleBoxFlat:
 	return style
 
 
-func _profile_avatar_button_style(selected := false, pressed := false) -> StyleBoxFlat:
+func _profile_avatar_button_style(selected := false, pressed := false, hovered := false) -> StyleBoxFlat:
 	var style := _profile_avatar_frame_background_style(selected)
-	style.bg_color = (Color("#fff1b8") if selected else Color("#fffdf8")).darkened(0.08 if pressed else 0.0)
+	var fill := Color("#fff1b8") if selected else _theme_surface_color(Color("#fffdf8"))
+	if hovered and not pressed:
+		fill = fill.lightened(0.04)
+	style.bg_color = fill.darkened(0.08 if pressed else 0.0)
 	if pressed:
 		style.shadow_size = 4
 		style.shadow_offset = Vector2(0, 3)
@@ -63643,8 +67679,8 @@ func _profile_avatar_border_overlay_style(selected := false) -> StyleBoxFlat:
 
 func _profile_name_field_style(focused := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#fffaf0")
-	style.border_color = COLOR_BLUE if focused else COLOR_INK
+	style.bg_color = _theme_surface_color(Color("#fffaf0"))
+	style.border_color = COLOR_BLUE if focused else _theme_outline_color(COLOR_INK, Color("#fffaf0"))
 	style.set_border_width_all(9)
 	style.corner_radius_top_left = 36
 	style.corner_radius_top_right = 36
@@ -63661,7 +67697,7 @@ func _summary_style() -> StyleBoxFlat:
 	if summary_style_cache != null:
 		return summary_style_cache
 	var style := StyleBoxFlat.new()
-	style.bg_color = COLOR_PAPER
+	style.bg_color = _theme_paper_color()
 	style.content_margin_left = 0
 	style.content_margin_right = 0
 	style.content_margin_top = 0
@@ -63702,12 +67738,14 @@ func _add_skill_detail_shelf_background(parent: Control, skill_id: String, conte
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background.z_index = -20
 	background.visible = not (tutorial_active or _onboarding_path_active())
+	if _skill_swipe_shelf_background_should_start_hidden():
+		background.modulate.a = 0.0
 	parent.add_child(background)
 	return background
 
 
 func _skill_detail_shelf_color(skill_id: String) -> Color:
-	return Color("#f1e7d7")
+	return COLOR_DARK_PANEL if dark_mode_enabled else Color("#f1e7d7")
 
 
 func _skill_detail_shelf_gradient_bottom_color(skill_id: String) -> Color:
@@ -63715,7 +67753,7 @@ func _skill_detail_shelf_gradient_bottom_color(skill_id: String) -> Color:
 
 
 func _skill_detail_shelf_border_color(skill_id: String) -> Color:
-	var border := _skill_theme_color(skill_id).lerp(COLOR_PAPER, 0.58)
+	var border := _skill_theme_color(skill_id).lerp(_theme_paper_color(), 0.58)
 	border.a = 0.82
 	return border
 
@@ -63995,15 +68033,15 @@ func _chat_unread_dot_style() -> StyleBoxFlat:
 	return style
 
 
-func _chat_expanded_message_style(deleted := false) -> StyleBoxFlat:
+func _chat_expanded_message_style(deleted := false, is_self := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#e8e8e8") if not deleted else Color("#ddd7cf")
+	style.bg_color = Color("#e7f5ff") if is_self and not deleted else Color("#e8e8e8") if not deleted else Color("#ddd7cf")
 	style.border_color = Color(0, 0, 0, 0)
 	style.set_border_width_all(0)
 	style.corner_radius_top_left = 18
 	style.corner_radius_top_right = 18
 	style.corner_radius_bottom_left = 18
-	style.corner_radius_bottom_right = 18
+	style.corner_radius_bottom_right = 10 if is_self and not deleted else 18
 	style.content_margin_left = 32
 	style.content_margin_right = 32
 	style.content_margin_top = 20
@@ -64188,7 +68226,7 @@ func _passive_pile_shadow_style() -> StyleBoxFlat:
 
 func _passive_round_button_style(fill: Color) -> StyleBoxFlat:
 	var style := _surface_style(fill, 999, 0, true)
-	style.border_color = COLOR_INK
+	style.border_color = _theme_outline_color(COLOR_INK, fill)
 	style.border_width_left = 8
 	style.border_width_right = 8
 	style.border_width_top = 6
@@ -64389,6 +68427,8 @@ func _activity_button_face_style(fill: Color, radius: float) -> StyleBoxFlat:
 	style.border_color = Color.TRANSPARENT
 	style.set_border_width_all(0)
 	style.set_corner_radius_all(int(round(radius)))
+	style.anti_aliasing = true
+	style.anti_aliasing_size = 1.25
 	return style
 
 
@@ -64477,7 +68517,7 @@ func _activity_button_shell_target_offset(button: Button) -> Vector2:
 	if button == null or not is_instance_valid(button):
 		return Vector2.ZERO
 	if bool(button.get_meta("activity_button_shell_active", false)):
-		return button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
+		return _meta_vector2(button, "activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET)
 	return Vector2.ZERO
 
 
@@ -64561,15 +68601,15 @@ func _attach_activity_button_press_animation(button: Button) -> void:
 
 
 func _press_activity_button_shell_bound(button_id: int) -> void:
-	var button := instance_from_id(button_id) as Button
-	if button == null or not is_instance_valid(button) or button.disabled:
+	var button := _valid_button_ref(instance_from_id(button_id))
+	if button == null or button.disabled:
 		return
 	if _is_module_utility_nav_button(button):
 		_prime_module_utility_nav_button_press_state(button)
 	if depressed_activity_shell_buttons.has(button_id):
 		return
 	depressed_activity_shell_buttons[button_id] = button
-	var depth_offset := button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
+	var depth_offset := _meta_vector2(button, "activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET)
 	var pop := _valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
 	if pop != null and _activity_button_pop_depth_offset(pop).distance_squared_to(depth_offset) <= 0.25:
 		return
@@ -64577,8 +68617,8 @@ func _press_activity_button_shell_bound(button_id: int) -> void:
 
 
 func _release_activity_button_shell_bound(button_id: int) -> void:
-	var button := instance_from_id(button_id) as Button
-	if button == null or not is_instance_valid(button):
+	var button := _valid_button_ref(instance_from_id(button_id))
+	if button == null:
 		return
 	if _page_switch_button_shell_release_preserved(button):
 		_hold_activity_button_shell_at_depth(button)
@@ -64588,7 +68628,7 @@ func _release_activity_button_shell_bound(button_id: int) -> void:
 	var target_offset := Vector2.ZERO
 	var target_active := bool(button.get_meta("activity_button_shell_active", false))
 	if target_active:
-		target_offset = button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
+		target_offset = _meta_vector2(button, "activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET)
 	var pop := _valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
 	if bool(button.get_meta("activity_button_hold_nav_press", false)):
 		var has_pending_nav_target := button.has_meta("activity_button_hold_nav_target_active")
@@ -64597,7 +68637,7 @@ func _release_activity_button_shell_bound(button_id: int) -> void:
 			button.remove_meta("activity_button_hold_nav_press")
 			button.remove_meta("activity_button_hold_nav_target_active")
 		else:
-			var depth_offset := button.get_meta("activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET) as Vector2
+			var depth_offset := _meta_vector2(button, "activity_button_depth_offset", ACTION_CARD_3D_DEPTH_OFFSET)
 			_kill_activity_button_shell_tween(button)
 			if pop != null:
 				_set_activity_button_pop_depth_offset_bound(depth_offset, pop.get_instance_id())
@@ -64653,20 +68693,15 @@ func _animate_activity_button_shell_to(button: Button, target_offset: Vector2, s
 
 
 func _finish_activity_button_shell_tween(button_id: int, pop_id: int, target_offset: Vector2) -> void:
-	var button := instance_from_id(button_id) as Button
-	if button != null and is_instance_valid(button) and button.has_meta("activity_button_depth_tween"):
+	var button := _valid_button_ref(instance_from_id(button_id))
+	if button != null and button.has_meta("activity_button_depth_tween"):
 		button.remove_meta("activity_button_depth_tween")
 	if target_offset == Vector2.ZERO:
 		_set_activity_button_pop_depth_offset_bound(Vector2.ZERO, pop_id)
 
 
 func _kill_activity_button_shell_tween(button: Button) -> void:
-	if button == null or not is_instance_valid(button) or not button.has_meta("activity_button_depth_tween"):
-		return
-	var existing := button.get_meta("activity_button_depth_tween") as Tween
-	if existing != null and existing.is_valid():
-		existing.kill()
-	button.remove_meta("activity_button_depth_tween")
+	_kill_meta_tween(button, "activity_button_depth_tween")
 
 
 func _module_utility_button_style(fill: Color, pressed := false, active := false) -> StyleBox:
@@ -64837,6 +68872,10 @@ func _texture(path: String) -> Texture2D:
 	var normalized := _res_path(path)
 	if texture_cache.has(normalized):
 		return texture_cache[normalized] as Texture2D
+	if DisplayServer.get_name() == "headless" and not _headless_should_load_real_texture(normalized):
+		var headless_fallback := _visual_fallback_texture()
+		texture_cache[normalized] = headless_fallback
+		return headless_fallback
 	if ResourceLoader.exists(normalized):
 		var loaded = load(normalized)
 		if loaded is Texture2D:
@@ -64844,9 +68883,14 @@ func _texture(path: String) -> Texture2D:
 			return loaded
 	var image := Image.new()
 	if image.load(normalized) != OK:
-		texture_cache[normalized] = null
-		return null
+		var fallback := _visual_fallback_texture()
+		texture_cache[normalized] = fallback
+		return fallback
 	return _texture_from_image(normalized, image)
+
+
+func _headless_should_load_real_texture(normalized_path: String) -> bool:
+	return false
 
 
 func _thieving_action_jail_material() -> ShaderMaterial:
@@ -64958,6 +69002,19 @@ func _build_extended_audio() -> void:
 	if fishing_failure_player == null:
 		fishing_failure_player = _sfx(FISHING_FAILURE_SFX_PATH)
 		fishing_failure_player.volume_db = FISHING_FAILURE_SFX_VOLUME_DB
+	if chicken_death_player == null:
+		chicken_death_player = _sfx(CHICKEN_DEATH_SFX_PATH)
+		chicken_death_player.volume_db = CHICKEN_DEATH_SFX_VOLUME_DB
+	if fight_punch_players.size() != FIGHT_PUNCH_SFX_PATHS.size():
+		for raw_player in fight_punch_players:
+			var old_player := raw_player as AudioStreamPlayer
+			if old_player != null and is_instance_valid(old_player):
+				old_player.queue_free()
+		fight_punch_players.clear()
+		for raw_path in FIGHT_PUNCH_SFX_PATHS:
+			var player := _sfx(str(raw_path))
+			player.volume_db = FIGHT_PUNCH_SFX_VOLUME_DB
+			fight_punch_players.append(player)
 	if opportunity_success_player == null:
 		opportunity_success_player = _sfx("res://assets/sfx/xp_spark.wav")
 		opportunity_success_player.volume_db = ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB
@@ -65050,6 +69107,25 @@ func _warm_extended_audio_async() -> void:
 	if fishing_failure_player == null:
 		fishing_failure_player = _sfx(FISHING_FAILURE_SFX_PATH)
 		fishing_failure_player.volume_db = FISHING_FAILURE_SFX_VOLUME_DB
+	last_yield_msec = await _audio_warm_tick(last_yield_msec)
+	if not extended_audio_warming or extended_audio_ready:
+		return
+	if chicken_death_player == null:
+		chicken_death_player = _sfx(CHICKEN_DEATH_SFX_PATH)
+		chicken_death_player.volume_db = CHICKEN_DEATH_SFX_VOLUME_DB
+	last_yield_msec = await _audio_warm_tick(last_yield_msec)
+	if not extended_audio_warming or extended_audio_ready:
+		return
+	if fight_punch_players.size() != FIGHT_PUNCH_SFX_PATHS.size():
+		for raw_player in fight_punch_players:
+			var old_player := raw_player as AudioStreamPlayer
+			if old_player != null and is_instance_valid(old_player):
+				old_player.queue_free()
+		fight_punch_players.clear()
+		for raw_path in FIGHT_PUNCH_SFX_PATHS:
+			var player := _sfx(str(raw_path))
+			player.volume_db = FIGHT_PUNCH_SFX_VOLUME_DB
+			fight_punch_players.append(player)
 	last_yield_msec = await _audio_warm_tick(last_yield_msec)
 	if not extended_audio_warming or extended_audio_ready:
 		return
@@ -65279,7 +69355,6 @@ func _choose_music_song_set() -> Dictionary:
 func _select_music_song_for_cycle() -> void:
 	var next_song_set := _choose_music_song_set()
 	if _music_players_match_song_set(next_song_set):
-		music_started = false
 		music_base_only_seconds = 0.0
 		for i in range(music_layer_gains.size()):
 			music_layer_gains[i] = 0.0
@@ -65291,6 +69366,11 @@ func _select_music_song_for_cycle() -> void:
 
 
 func _apply_audio_bus_volumes() -> void:
+	if not GAME_AUDIO_ENABLED:
+		_set_audio_bus_volume(MUSIC_BUS_NAME, 0.0)
+		_set_audio_bus_volume(SFX_BUS_NAME, 0.0)
+		AudioServer.set_bus_mute(0, true)
+		return
 	_set_audio_bus_volume(MUSIC_BUS_NAME, 0.0 if music_muted else music_volume * MUSIC_OUTPUT_GAIN)
 	_set_audio_bus_volume(SFX_BUS_NAME, 0.0 if sfx_muted else sfx_volume)
 	AudioServer.set_bus_mute(0, false)
@@ -65462,6 +69542,54 @@ func _play_passive_upgrade_sfx() -> void:
 	passive_upgrade_player.pitch_scale = 1.28
 	passive_upgrade_player.volume_db = -15.0
 	passive_upgrade_player.play()
+
+
+func _play_firepit_toggle_sfx(lit: bool) -> void:
+	_ensure_extended_audio()
+	if passive_upgrade_player == null or not passive_upgrade_player.is_inside_tree() or not _can_play_audio():
+		return
+	passive_upgrade_player.stop()
+	passive_upgrade_player.pitch_scale = 0.82 if lit else 0.68
+	passive_upgrade_player.volume_db = -20.0 if lit else -24.0
+	passive_upgrade_player.play()
+
+
+func _play_chicken_death_sfx() -> void:
+	_ensure_extended_audio()
+	if chicken_death_player == null or not chicken_death_player.is_inside_tree() or not _can_play_audio():
+		return
+	chicken_death_player.stop()
+	chicken_death_player.pitch_scale = randf_range(0.96, 1.03)
+	chicken_death_player.volume_db = CHICKEN_DEATH_SFX_VOLUME_DB
+	chicken_death_player.play()
+
+
+func _play_fight_punch_sfx() -> void:
+	_ensure_extended_audio()
+	if fight_punch_players.is_empty() or not _can_play_audio():
+		return
+	var player := _fight_punch_player_for_hit()
+	if player == null or not player.is_inside_tree():
+		return
+	player.stop()
+	player.pitch_scale = randf_range(FIGHT_PUNCH_SFX_PITCH_MIN, FIGHT_PUNCH_SFX_PITCH_MAX)
+	player.volume_db = FIGHT_PUNCH_SFX_VOLUME_DB + randf_range(-FIGHT_PUNCH_SFX_VOLUME_VARIANCE_DB, FIGHT_PUNCH_SFX_VOLUME_VARIANCE_DB)
+	player.play()
+
+
+func _fight_punch_player_for_hit() -> AudioStreamPlayer:
+	if fight_punch_players.is_empty():
+		return null
+	var count := fight_punch_players.size()
+	for offset in range(count):
+		var index := (fight_punch_player_index + offset) % count
+		var candidate := fight_punch_players[index] as AudioStreamPlayer
+		if candidate != null and is_instance_valid(candidate) and not candidate.playing:
+			fight_punch_player_index = (index + 1) % count
+			return candidate
+	var fallback := fight_punch_players[fight_punch_player_index % count] as AudioStreamPlayer
+	fight_punch_player_index = (fight_punch_player_index + 1) % count
+	return fallback
 
 
 func _play_action_opportunity_sfx(success: bool) -> void:
@@ -65704,11 +69832,7 @@ func _play_chain_jingle_mix(variant := 0, gain := 1.0, total_seconds := CHAIN_JI
 func _play_capped_chain_jingle(player: AudioStreamPlayer, pitch: float, volume_db: float, total_seconds := CHAIN_JINGLE_TOTAL_SECONDS, fade_seconds := CHAIN_JINGLE_FADE_SECONDS) -> void:
 	if player == null or not _can_play_audio():
 		return
-	var active_tween: Tween = null
-	if player.has_meta("chain_jingle_fade_tween"):
-		active_tween = player.get_meta("chain_jingle_fade_tween") as Tween
-	if active_tween != null and active_tween.is_valid():
-		active_tween.kill()
+	_kill_meta_tween(player, "chain_jingle_fade_tween")
 	player.stop()
 	player.pitch_scale = pitch
 	player.volume_db = volume_db
@@ -65759,13 +69883,26 @@ func _play_bonus_jingle() -> void:
 		return
 	var tween := create_tween()
 	tween.tween_interval(ACTIVITY_BONUS_JINGLE_DELAY)
-	tween.tween_callback(func():
-		if not _reward_sfx_blocks(REWARD_SFX_PRIORITY_BONUS):
-			_play_sfx_with_pitch_and_volume(bonus_jingle_echo_player, 1.42, BONUS_JINGLE_ECHO_SFX_VOLUME_DB)
-	)
+	tween.tween_callback(_play_bonus_jingle_echo_if_unblocked)
+
+
+func _play_bonus_jingle_echo_if_unblocked() -> void:
+	if not _reward_sfx_blocks(REWARD_SFX_PRIORITY_BONUS):
+		_play_sfx_with_pitch_and_volume(bonus_jingle_echo_player, 1.42, BONUS_JINGLE_ECHO_SFX_VOLUME_DB)
 
 
 func _process_music_flow(delta: float) -> void:
+	if not MUSIC_ENABLED:
+		music_cycle_active = false
+		music_lockout_seconds = MUSIC_QUIET_BREAK_LOCKOUT_SECONDS
+		music_start_fade_remaining = 0.0
+		music_ultimate_boost_seconds = 0.0
+		music_quiet_fade_remaining = 0.0
+		music_layer_target_gains = _music_targets_for_intensity(0)
+		for i in range(music_layer_gains.size()):
+			music_layer_gains[i] = 0.0
+		_stop_music_players()
+		return
 	if music_lockout_seconds > 0.0:
 		music_lockout_seconds = maxf(0.0, music_lockout_seconds - delta)
 	if music_start_fade_remaining > 0.0:
@@ -65884,6 +70021,8 @@ func _nudge_music_flow_down(amount: float) -> void:
 
 
 func _start_music_cycle() -> void:
+	if not MUSIC_ENABLED:
+		return
 	if music_lockout_seconds > 0.0:
 		return
 	_select_music_song_for_cycle()
@@ -65897,6 +70036,8 @@ func _start_music_cycle() -> void:
 
 
 func _maybe_start_music_cycle_on_launch() -> void:
+	if not MUSIC_ENABLED:
+		return
 	if not music_start_chance_unlocked or music_cycle_active or music_muted or music_lockout_seconds > 0.0:
 		return
 	if randf() >= MUSIC_LAUNCH_START_CHANCE:
@@ -66000,8 +70141,7 @@ func _apply_music_layer_fades(delta: float) -> void:
 			if music_quiet_fade_remaining <= 0.0 or next_gain < 0.002:
 				next_gain = 0.0
 			music_layer_gains[i] = next_gain
-			var layer_boost := float(MUSIC_LAYER_VOLUME_BOOST_DB[i]) if i < MUSIC_LAYER_VOLUME_BOOST_DB.size() else 0.0
-			player.volume_db = linear_to_db(maxf(0.0001, next_gain)) + layer_boost if next_gain > 0.0 else MUSIC_SILENCE_DB
+			_apply_music_layer_gain(player, i, next_gain)
 		return
 	for i in range(music_players.size()):
 		var player := music_players[i] as AudioStreamPlayer
@@ -66021,13 +70161,43 @@ func _apply_music_layer_fades(delta: float) -> void:
 		if absf(next_gain - target) < 0.002:
 			next_gain = target
 		music_layer_gains[i] = next_gain
-		var layer_boost := float(MUSIC_LAYER_VOLUME_BOOST_DB[i]) if i < MUSIC_LAYER_VOLUME_BOOST_DB.size() else 0.0
-		player.volume_db = linear_to_db(maxf(0.0001, next_gain)) + layer_boost if next_gain > 0.0 else MUSIC_SILENCE_DB
+		_apply_music_layer_gain(player, i, next_gain)
+
+
+func _apply_music_layer_gain(player: AudioStreamPlayer, layer_index: int, gain: float) -> void:
+	if player == null or not is_instance_valid(player):
+		return
+	if not player.playing:
+		player.stream_paused = false
+		player.play(_music_sync_position_for_layer(layer_index))
+	var layer_boost := float(MUSIC_LAYER_VOLUME_BOOST_DB[layer_index]) if layer_index < MUSIC_LAYER_VOLUME_BOOST_DB.size() else 0.0
+	player.volume_db = linear_to_db(maxf(0.0001, gain)) + layer_boost if gain > 0.0 else MUSIC_SILENCE_DB
+
+
+func _music_sync_position_for_layer(layer_index: int) -> float:
+	if layer_index <= 0:
+		return 0.0
+	for i in range(music_players.size()):
+		if i == layer_index:
+			continue
+		var player := music_players[i] as AudioStreamPlayer
+		if player == null or not is_instance_valid(player) or not player.playing:
+			continue
+		var stream_length := 0.0
+		if player.stream != null:
+			stream_length = player.stream.get_length()
+		var position := player.get_playback_position()
+		return fmod(position, stream_length) if stream_length > 0.0 else position
+	return 0.0
+
+
 func _can_play_audio() -> bool:
-	return audio_unlocked_by_input
+	return GAME_AUDIO_ENABLED and audio_unlocked_by_input
 
 
 func _play_audio_unlock_ping() -> void:
+	if not GAME_AUDIO_ENABLED:
+		return
 	if audio_unlock_ping_played:
 		return
 	audio_unlock_ping_played = true
@@ -66071,13 +70241,20 @@ func _clear(node: Node) -> void:
 
 
 func _queue_free_instance_id(instance_id: int) -> void:
-	var node := instance_from_id(instance_id) as Node
-	if node != null and is_instance_valid(node):
+	var node := _valid_node_ref(instance_from_id(instance_id))
+	if node != null:
 		node.queue_free()
+
+
+func _remove_meta_from_instance_id(instance_id: int, meta_name: StringName) -> void:
+	var node := _valid_node_ref(instance_from_id(instance_id))
+	if node != null and node.has_meta(meta_name):
+		node.remove_meta(meta_name)
 
 
 func _clear_page_transient_input_state() -> void:
 	_release_all_depressed_buttons()
+	_clear_page_switch_input_state(false)
 	_clear_hub_hotspot_hold()
 	_clear_active_audio_slider()
 	_clear_passive_button_press()
@@ -66117,6 +70294,8 @@ func _kill_transient_tweens_in_subtree(node: Node) -> void:
 	_kill_meta_tween(node, "mastery_bar_tween")
 	_kill_meta_tween(node, "activity_crit_text_tween")
 	_kill_meta_tween(node, "hub_decor_pop_tween")
+	_kill_meta_tween(node, "mat_flyer_tween")
+	_kill_meta_tween(node, "mat_pulse_tween")
 	for child in node.get_children():
 		_kill_transient_tweens_in_subtree(child)
 
@@ -66124,7 +70303,6 @@ func _kill_transient_tweens_in_subtree(node: Node) -> void:
 func _kill_meta_tween(node: Node, meta_name: String) -> void:
 	if node == null or not is_instance_valid(node) or not node.has_meta(meta_name):
 		return
-	var tween := node.get_meta(meta_name) as Tween
-	if tween != null and tween.is_valid():
-		tween.kill()
+	var tween = node.get_meta(meta_name)
+	_kill_tween_value(tween)
 	node.remove_meta(meta_name)

@@ -10,6 +10,7 @@ $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_borde
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
+$bootFlexLoadingAnimationPath = Join-Path $projectRoot "scripts\ui\boot_flex_loading_animation.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
 $hubPathDotsPath = Join-Path $projectRoot "scripts\ui\hub_path_dots.gd"
 $activityStartHighlightRingPath = Join-Path $projectRoot "scripts\ui\activity_start_highlight_ring.gd"
@@ -33,10 +34,15 @@ $activityDatabaseContractTestPath = Join-Path $projectRoot "scripts\check-activi
 $generatedFileHygieneTestPath = Join-Path $projectRoot "scripts\check-generated-file-hygiene.ps1"
 $uiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
 $activityUiBoundaryContractTestPath = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
+$crashAuditContractsTestPath = Join-Path $projectRoot "scripts\check-crash-audit-contracts.ps1"
 $activityDatabasePath = Join-Path $projectRoot "docs\activity-database.json"
 $skillsPagePerformancePath = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 $saveNormalizationPath = Join-Path $projectRoot "scripts\test-save-normalization.ps1"
 $tutorialStartScrollPath = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
+$homeAchievementMedalClickPath = Join-Path $projectRoot "scripts\test-home-achievement-medal-click.ps1"
+$pinnedPinVisualSmokePath = Join-Path $projectRoot "scripts\test-pinned-pin-visual-smoke.ps1"
+$actionCardMedalCeremonyCleanupPath = Join-Path $projectRoot "scripts\test-action-card-medal-ceremony-cleanup.ps1"
+$crashReportRecoveryPath = Join-Path $projectRoot "scripts\test-crash-report-recovery.ps1"
 
 function Assert-True {
     param(
@@ -55,7 +61,7 @@ function Get-FunctionBody {
         [Parameter(Mandatory = $true)][string]$Name
     )
 
-    $pattern = "(?ms)^func $([regex]::Escape($Name))\b.*?(?=^func |\z)"
+    $pattern = "(?ms)^(?:static\s+)?func $([regex]::Escape($Name))\b.*?(?=^(?:static\s+)?func |\z)"
     $match = [regex]::Match($Text, $pattern)
     Assert-True $match.Success "Could not find function $Name."
     $match.Value
@@ -91,6 +97,8 @@ Assert-True (Test-Path -LiteralPath $actionArtTextureRectPath) "Missing scripts\
 $actionArtTexture = Get-Content -LiteralPath $actionArtTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui\rounded_texture_rect.gd."
 $roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
+Assert-True (Test-Path -LiteralPath $bootFlexLoadingAnimationPath) "Missing scripts\ui\boot_flex_loading_animation.gd."
+$bootFlexLoadingAnimation = Get-Content -LiteralPath $bootFlexLoadingAnimationPath -Raw
 Assert-True (Test-Path -LiteralPath $mobileScrollContainerPath) "Missing scripts\ui\mobile_scroll_container.gd."
 $mobileScrollContainer = Get-Content -LiteralPath $mobileScrollContainerPath -Raw
 Assert-True (Test-Path -LiteralPath $hubPathDotsPath) "Missing scripts\ui\hub_path_dots.gd."
@@ -145,6 +153,16 @@ Assert-True (Test-Path -LiteralPath $saveNormalizationPath) "Missing scripts\tes
 $saveNormalization = Get-Content -LiteralPath $saveNormalizationPath -Raw
 Assert-True (Test-Path -LiteralPath $tutorialStartScrollPath) "Missing scripts\test-tutorial-start-scroll.ps1."
 $tutorialStartScroll = Get-Content -LiteralPath $tutorialStartScrollPath -Raw
+Assert-True (Test-Path -LiteralPath $homeAchievementMedalClickPath) "Missing scripts\test-home-achievement-medal-click.ps1."
+$homeAchievementMedalClick = Get-Content -LiteralPath $homeAchievementMedalClickPath -Raw
+Assert-True (Test-Path -LiteralPath $pinnedPinVisualSmokePath) "Missing scripts\test-pinned-pin-visual-smoke.ps1."
+$pinnedPinVisualSmoke = Get-Content -LiteralPath $pinnedPinVisualSmokePath -Raw
+Assert-True (Test-Path -LiteralPath $actionCardMedalCeremonyCleanupPath) "Missing scripts\test-action-card-medal-ceremony-cleanup.ps1."
+$actionCardMedalCeremonyCleanup = Get-Content -LiteralPath $actionCardMedalCeremonyCleanupPath -Raw
+Assert-True (Test-Path -LiteralPath $crashReportRecoveryPath) "Missing scripts\test-crash-report-recovery.ps1."
+$crashReportRecovery = Get-Content -LiteralPath $crashReportRecoveryPath -Raw
+Assert-True (Test-Path -LiteralPath $crashAuditContractsTestPath) "Missing scripts\check-crash-audit-contracts.ps1."
+$crashAuditContracts = Get-Content -LiteralPath $crashAuditContractsTestPath -Raw
 
 Assert-True ($main -match 'const DESKTOP_TARGET_FRAME_RATE := 120') "Desktop target frame rate should allow smooth 120 FPS on high-refresh displays."
 Assert-True ($main -match 'const MOBILE_TARGET_FRAME_RATE := 60') "Mobile target frame rate should stay capped at smooth 60 FPS."
@@ -210,6 +228,279 @@ Assert-True ($checkProject -match 'check-leaderboard-cost-safety\.ps1') "Project
 Assert-True ($checkProject -match 'test-skills-page-performance-repeat\.ps1') "Strict project validation should run the repeated skills-page performance gate."
 Assert-True ($checkProject -match 'Last failed non-strict skills page performance output follows') "Non-strict project validation should only print failed skills-page performance output after all retries fail."
 Assert-True ($checkProject -match 'Skills page performance attempt \$attempt failed with exit code \$exitCode') "Non-strict project validation should summarize failed skills-page performance attempts before retrying."
+Assert-True ($homeAchievementMedalClick -match 'for \(\$attempt = 1; \$attempt -le 10; \$attempt\+\+\)' -and $homeAchievementMedalClick -match 'Start-Sleep -Milliseconds 500') "Home achievement medal smoke should give wrapper-launched headless Godot processes a short exit grace window before failing orphan checks."
+Assert-True ($pinnedPinVisualSmoke -notmatch 'Parameter "t" is null') "Pinned pin visual smoke should fail on null texture RID errors instead of treating them as shutdown noise."
+$testHarnessesWithGodotErrorScanners = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot "scripts") -Filter "test-*.ps1" | Where-Object {
+    (Get-Content -LiteralPath $_.FullName -Raw) -match '(?m)^function Assert-NoUnexpectedGodotErrors'
+})
+Assert-True ($testHarnessesWithGodotErrorScanners.Count -gt 0) "Expected at least one standalone Godot test harness with an error scanner."
+foreach ($scannerScript in $testHarnessesWithGodotErrorScanners) {
+    $scannerText = Get-Content -LiteralPath $scannerScript.FullName -Raw
+    Assert-True ($scannerText -match '\(ERROR\|SCRIPT ERROR\|powershell\\\.exe : ERROR\):') "$($scannerScript.Name) should catch wrapped Godot error records, not only pristine line prefixes."
+    Assert-True ($scannerText -notmatch '\^\(ERROR\|SCRIPT ERROR\):' -and $scannerText -notmatch '\^ERROR:') "$($scannerScript.Name) should not rely on line-prefix-only Godot error matching."
+    Assert-True ($scannerText -notmatch 'Parameter "t" is null') "$($scannerScript.Name) should fail on null texture RID errors instead of treating them as shutdown noise."
+}
+Assert-True ($main -notmatch 'texture_cache\[normalized\] = null') "Threaded texture prewarm should cache a fallback texture instead of null, so later UI texture reads stay non-null."
+Assert-True ($checkProject -match 'function Assert-NoCrashLikeGodotErrors') "Project validation should scan non-strict skills-page performance failures for crash-like Godot errors."
+Assert-True ($checkProject -match 'check-crash-audit-contracts\.ps1' -and $checkProject -match 'crash-audit contracts validation') "Project validation should run crash-audit contracts before gameplay smokes."
+Assert-True ($crashAuditContracts -match 'Only run-godot-safe\.ps1 may reference Godot\.exe directly' -and $crashAuditContracts -match 'Android export preset is missing' -and $crashAuditContracts -match 'ConvertFrom-Json') "Crash-audit contracts should cover safe Godot launch policy, Android export settings, and JSON parseability."
+Assert-True ($checkProject -match 'test-action-card-medal-ceremony-cleanup\.ps1') "Project validation should include the action card medal ceremony freed-object cleanup smoke."
+Assert-True ($actionCardMedalCeremonyCleanup -match 'Trying to cast a freed object' -and $actionCardMedalCeremonyCleanup -match 'action-card-medal-ceremony-cleanup-ok') "Action card medal ceremony cleanup smoke should guard the freed-object cast crash reported from the debugger."
+Assert-True ($checkProject -match 'test-crash-report-recovery\.ps1' -and $crashReportRecovery -match 'crash-report-recovery-ok' -and $crashReportRecovery -match '\{not-json') "Project validation should include crash report recovery coverage for malformed and structured crash reports."
+$crashReportClipboardText = Get-FunctionBody -Text $main -Name "_crash_report_clipboard_text"
+Assert-True ($crashReportClipboardText -match 'JSON\.new\(\)' -and $crashReportClipboardText -match 'json\.parse\(raw_report\) != OK' -and $crashReportClipboardText -notmatch 'JSON\.parse_string\(raw_report\)') "Crash report clipboard formatting should parse malformed reports without emitting Godot JSON errors."
+$parseJsonSilent = Get-FunctionBody -Text $main -Name "_parse_json_silent"
+Assert-True ($parseJsonSilent -match 'JSON\.new\(\)' -and $parseJsonSilent -match 'json\.parse\(raw_text\) != OK' -and $main -notmatch 'JSON\.parse_string') "External JSON parsing should go through the silent JSON helper instead of JSON.parse_string, which emits parse errors on malformed text."
+Assert-True ($checkProject -match 'function Assert-NoUnexpectedGodotErrors[\s\S]*Out-String -Width 4096') "Project validation's general Godot error scanner should inspect rendered PowerShell ErrorRecord text."
+Assert-True ($checkProject -match 'Assert-NoCrashLikeGodotErrors \$lastFailureOutput "\$Context non-strict failure output"') "Project validation should not bury crash-like errors inside non-strict skills-page performance warning output."
+Assert-True ($checkProject -match '\(ERROR\|SCRIPT ERROR\|powershell\\\.exe : ERROR\):') "Project validation crash scanner should catch embedded ErrorRecord text, not only pristine line prefixes."
+Assert-True ($checkProject -match 'function Invoke-CapturedPowerShellScript' -and $checkProject -match 'RedirectStandardOutput' -and $checkProject -match 'RedirectStandardError') "Project validation should capture skills-page performance subprocess output as raw text to avoid stale native-error preambles."
+Assert-True ($checkProject -match '\$arguments = "-NoProfile -ExecutionPolicy Bypass -File `"\$escapedPath`""') "Project validation should quote captured subprocess script paths so workspace folders with spaces are valid."
+Assert-True ($checkProject -notmatch '& powershell\.exe -NoProfile -ExecutionPolicy Bypass -File \$Path 2>&1') "Project validation should not use PowerShell's native-command error wrapping for skills-page performance output."
+Assert-True ($checkProject -match 'Out-String -Width 4096') "Project validation crash scanner should inspect rendered PowerShell ErrorRecord text before allow-listing known performance failures."
+Assert-True ($checkProject -match 'skills-page-performance-start' -and $checkProject -match '\$renderedText\.Substring\(\$skillsPageStart\)') "Project validation should scan the rendered skills-page harness output from its start marker to avoid stale native-error preamble noise."
+Assert-True ($checkProject -match 'Assert-NoCrashLikeGodotErrors \$output "\$Context attempt \$attempt failure output"') "Project validation should fail immediately when any non-strict skills-page performance attempt contains crash-like Godot errors."
+Assert-True ($saveNormalization -match '_check_load_save_dictionary_rejects_corrupt_files' -and $saveNormalization -match '\{not-valid-json' -and $saveNormalization -match '\[1, 2, 3\]') "Save normalization should cover corrupt and non-dictionary local save payloads."
+$killTweenValue = Get-FunctionBody -Text $main -Name "_kill_tween_value"
+Assert-True ($killTweenValue -notmatch 'as Tween' -and $killTweenValue -match 'is_instance_valid\(tween\).*tween is Tween') "Shared tween-value cleanup should validate stored tween objects before killing."
+$killCardTween = Get-FunctionBody -Text $main -Name "_kill_card_tween"
+Assert-True ($killCardTween -notmatch 'as Tween' -and $killCardTween -match '_kill_tween_value\(tween\)') "Shared card tween cleanup should use variant-safe tween cleanup."
+$killMetaTween = Get-FunctionBody -Text $main -Name "_kill_meta_tween"
+Assert-True ($killMetaTween -notmatch 'as Tween' -and $killMetaTween -match '_kill_tween_value\(tween\)') "Shared meta tween cleanup should use variant-safe tween cleanup."
+Assert-True ($main -notmatch 'as Tween') "Main script should not directly cast cached tween variants, which can crash when stale freed tweens are stored in dictionaries or metadata."
+Assert-True ($main -notmatch 'tween_(?:method|callback)\(func|finished\.connect\(func') "Main script tween callbacks should use named methods with instance IDs instead of lambdas that can capture freed objects."
+$metaVector2 = Get-FunctionBody -Text $main -Name "_meta_vector2"
+Assert-True ($metaVector2 -match 'value is Vector2' -and $metaVector2 -match 'return fallback') "Vector2 metadata reads should use a type-checked helper so stale or malformed metadata cannot crash input/release paths."
+Assert-True ($main -notmatch 'get_meta\("[^"]*(?:press_position|depth_offset)"[^)]*\) as Vector2') "Press-position and depth-offset metadata should not be directly cast to Vector2 in input/navigation paths."
+Assert-True ($main -notmatch 'get_meta\([^\r\n]+\) as Vector2') "Main script metadata should not be directly cast to Vector2; malformed metadata should fall back through _meta_vector2."
+$validBaseButtonRef = Get-FunctionBody -Text $main -Name "_valid_base_button_ref"
+$validNodeRef = Get-FunctionBody -Text $main -Name "_valid_node_ref"
+Assert-True ($validBaseButtonRef -match '_state_object_ref\(value\)' -and $validBaseButtonRef -match 'return object as BaseButton') "Delayed BaseButton callbacks should resolve instance IDs through a validity-checked helper."
+Assert-True ($validNodeRef -match '_state_object_ref\(value\)' -and $validNodeRef -match 'return object as Node') "Delayed Node cleanup callbacks should resolve instance IDs through a validity-checked helper."
+foreach ($safeButtonCallbackName in @(
+    "_release_page_switch_transition_button",
+    "_pop_nav_button_bound",
+    "_release_bottom_nav_transition_button",
+    "_sync_button_pivot_offset_bound",
+    "_animate_button_depress_bound",
+    "_animate_button_release_bound",
+    "_play_default_button_sfx_for_button_bound",
+    "_finish_button_release_tween",
+    "_confirm_reset_data_bound",
+    "_press_activity_button_shell_bound",
+    "_release_activity_button_shell_bound",
+    "_finish_activity_button_shell_tween"
+)) {
+    $safeButtonCallback = Get-FunctionBody -Text $main -Name $safeButtonCallbackName
+    Assert-True ($safeButtonCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Button|BaseButton)') "$safeButtonCallbackName should not directly cast delayed button instance IDs."
+}
+foreach ($safeNodeCallbackName in @("_queue_free_instance_id", "_remove_meta_from_instance_id")) {
+    $safeNodeCallback = Get-FunctionBody -Text $main -Name $safeNodeCallbackName
+    Assert-True ($safeNodeCallback -match '_valid_node_ref\(instance_from_id\(instance_id\)\)' -and $safeNodeCallback -notmatch 'instance_from_id\(instance_id\) as Node') "$safeNodeCallbackName should use validity-checked node lookup before cleanup."
+}
+$activePageSwitchCoverRef = Get-FunctionBody -Text $main -Name "_active_page_switch_cover_ref"
+$activeSkillSwipeCoverRef = Get-FunctionBody -Text $main -Name "_active_skill_swipe_cover_ref"
+Assert-True ($activePageSwitchCoverRef -match '_valid_control_ref\(instance_from_id\(cover_id\)\)' -and $activePageSwitchCoverRef -match 'page_switch_scroll_cover') "Page-switch cover callbacks should resolve cover IDs through a validity-checked active-cover helper."
+Assert-True ($activeSkillSwipeCoverRef -match '_valid_control_ref\(instance_from_id\(cover_id\)\)' -and $activeSkillSwipeCoverRef -match 'cover != skill_swipe_handoff_cover') "Skill-swipe cover callbacks should resolve cover IDs through a validity-checked active-cover helper."
+foreach ($safeCoverCallbackName in @(
+    "_page_switch_cover_id_active",
+    "_process_page_switch_pending_transition",
+    "_wait_for_page_switch_cover_opaque",
+    "_force_page_switch_scroll_cover_opaque",
+    "_begin_page_switch_selection_under_cover",
+    "_finish_skill_nav_cover_fade_in",
+    "_apply_skill_swipe_cover_fade_alpha",
+    "_cancel_skill_swipe_cover_fade_until_ready",
+    "_cancel_skill_swipe_cover_fade_until_pinned_ready",
+    "_finish_skill_swipe_rebuild_cover_fade"
+)) {
+    $safeCoverCallback = Get-FunctionBody -Text $main -Name $safeCoverCallbackName
+    Assert-True ($safeCoverCallback -notmatch 'instance_from_id\(cover_id\) as Control') "$safeCoverCallbackName should not directly cast delayed cover IDs."
+}
+$validTextureRectRef = Get-FunctionBody -Text $main -Name "_valid_texture_rect_ref"
+Assert-True ($validTextureRectRef -match '_valid_control_ref\(value\)' -and $validTextureRectRef -match 'return control as TextureRect') "Delayed TextureRect callbacks should resolve instance IDs through a validity-checked helper."
+$validLabelRef = Get-FunctionBody -Text $main -Name "_valid_label_ref"
+Assert-True ($validLabelRef -match '_valid_control_ref\(value\)' -and $validLabelRef -match 'return control as Label') "Delayed Label callbacks should resolve instance IDs through a validity-checked helper."
+$validTextureButtonRef = Get-FunctionBody -Text $main -Name "_valid_texture_button_ref"
+Assert-True ($validTextureButtonRef -match '_valid_control_ref\(value\)' -and $validTextureButtonRef -match 'return control as TextureButton') "Delayed TextureButton callbacks should resolve instance IDs through a validity-checked helper."
+foreach ($safeModuleUiCallbackName in @(
+    "_on_pinned_activities_empty_decor_pin_gui_input",
+    "_on_module_collapse_zone_gui_input",
+    "_commit_module_collapse_tap",
+    "_collapse_module_ui_key",
+    "_set_collapsed_module_squeeze_height_for_tween",
+    "_finish_collapsed_module_collapse_animation",
+    "_module_collapse_badge",
+    "_on_collapsed_module_row_gui_input",
+    "_apply_collapsed_module_expand_height",
+    "_finish_collapsed_module_expand_animation",
+    "_on_module_pin_zone_gui_input",
+    "_commit_module_pin_tap",
+    "_finish_module_pin_preview_animation",
+    "_expire_module_pin_preview_after_delay",
+    "_pin_module_ui_key",
+    "_unpin_module_ui_key",
+    "_module_pin_badge",
+    "_set_module_pin_badge_clip_enabled_by_id",
+    "_finish_module_pin_confirm_animation",
+    "_keep_module_pin_badge_disabled",
+    "_disable_module_pin_badge_during_unpin",
+    "_finish_module_pin_unpin_animation",
+    "_finish_pinned_activities_empty_decor_pin_exit_animation"
+)) {
+    $safeModuleUiCallback = Get-FunctionBody -Text $main -Name $safeModuleUiCallbackName
+    Assert-True ($safeModuleUiCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Control|TextureButton|Button)') "$safeModuleUiCallbackName should not directly cast delayed module collapse/pin instance IDs."
+}
+foreach ($safeModuleAnimationCallbackName in @(
+    "_finish_hub_tutorial_tip_hide",
+    "_finish_hub_decor_hide",
+    "_apply_collapsed_host_squeeze_height",
+    "_finish_collapsed_host_squeeze_animation",
+    "_find_marked_module_title_label",
+    "_finish_collapsed_module_title_lift",
+    "_set_collapsed_module_visual_clipping",
+    "_finish_detail_lazy_reveal",
+    "_finish_smooth_tutorial_tip_entry_reveal",
+    "_set_temporary_event_entry_height_safe",
+    "_finish_temporary_event_entry_reveal",
+    "_finish_module_list_transition"
+)) {
+    $safeModuleAnimationCallback = Get-FunctionBody -Text $main -Name $safeModuleAnimationCallbackName
+    Assert-True ($safeModuleAnimationCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Control|Label)') "$safeModuleAnimationCallbackName should not directly cast delayed hub/module-list animation instance IDs."
+}
+foreach ($safeInteractionCallbackName in @(
+    "_set_thieving_heist_reveal_pop_offset_safe",
+    "_finish_thieving_heist_preview_fade_in",
+    "_finish_thieving_action_jail_appear",
+    "_prewarm_passive_info_popover_deferred",
+    "_finish_passive_info_popover_fade",
+    "_finish_activity_card_expanded",
+    "_on_achievement_medal_slot_input"
+)) {
+    $safeInteractionCallback = Get-FunctionBody -Text $main -Name $safeInteractionCallbackName
+    Assert-True ($safeInteractionCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Control|TextureRect)') "$safeInteractionCallbackName should not directly cast delayed thieving/passive/achievement instance IDs."
+}
+foreach ($safeStaminaAndScrollCallbackName in @(
+    "_play_staggered_eaten_fish_icons",
+    "_apply_stamina_fail_shake_frame",
+    "_finish_stamina_fail_shake",
+    "_apply_fish_collection_fly_progress",
+    "_finish_detail_actions_visual_scroll",
+    "_fade_skill_swipe_cover_to_opaque",
+    "_position_new_onboarding_explore_tip"
+)) {
+    $safeStaminaAndScrollCallback = Get-FunctionBody -Text $main -Name $safeStaminaAndScrollCallbackName
+    Assert-True ($safeStaminaAndScrollCallback -notmatch 'instance_from_id\([^\r\n]+\) as Control') "$safeStaminaAndScrollCallbackName should not directly cast delayed stamina/fish/scroll instance IDs."
+}
+foreach ($safePreviewAndPassiveCallbackName in @(
+    "_finish_skill_swipe_preview_modules_reveal",
+    "_finish_onboarding_tip_fade",
+    "_finish_activity_start_highlight_fade",
+    "_on_passive_yield_log_stored_bound",
+    "_on_passive_log_landed_bound"
+)) {
+    $safePreviewAndPassiveCallback = Get-FunctionBody -Text $main -Name $safePreviewAndPassiveCallbackName
+    Assert-True ($safePreviewAndPassiveCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Control|Node)') "$safePreviewAndPassiveCallbackName should not directly cast delayed preview/onboarding/passive instance IDs."
+}
+foreach ($safePreviewSharedCallbackName in @(
+    "_finish_activity_preview_fade_in",
+    "_finish_activity_preview_card_after_fade_deferred",
+    "_set_preview_pop_vertical_offset_safe",
+    "_set_control_position_y_safe",
+    "_set_canvas_item_alpha_safe",
+    "_set_control_minimum_height_safe",
+    "_apply_detail_scroll_height_change_preserve_context",
+    "_flash_bonus_control_bound"
+)) {
+    $safePreviewSharedCallback = Get-FunctionBody -Text $main -Name $safePreviewSharedCallbackName
+    Assert-True ($safePreviewSharedCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Control|CanvasItem)') "$safePreviewSharedCallbackName should not directly cast delayed preview/shared instance IDs."
+}
+foreach ($safeFeedbackCallbackName in @(
+    "_set_mastery_bar_value_bound",
+    "_finish_mastery_bar_tween",
+    "_finish_action_card_medal_tap_pop",
+    "_finish_action_card_medal_tap_effect",
+    "_finish_new_medal_ceremony",
+    "_finish_replaced_medal_fall",
+    "_finish_hub_mission_badge_success",
+    "_finish_mat_collection_flyer_tween",
+    "_apply_mat_collection_flyer_arc",
+    "_pulse_mat_collection_module",
+    "_finish_mat_collection_module_pulse_tween",
+    "_finish_activity_crit_feedback",
+    "_finish_activity_crit_text_burst",
+    "_apply_activity_crit_text_frame",
+    "_apply_activity_crit_feedback_frame_bound"
+)) {
+    $safeFeedbackCallback = Get-FunctionBody -Text $main -Name $safeFeedbackCallbackName
+    Assert-True ($safeFeedbackCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Control|TextureRect|CanvasItem|Node)') "$safeFeedbackCallbackName should not directly cast delayed feedback instance IDs."
+}
+foreach ($safeDelayedCallbackName in @(
+    "_finish_pinned_active_shelf_fade_out",
+    "_play_reset_data_wiped_feedback_by_id",
+    "_apply_mat_collection_layout_height",
+    "_clear_mat_collection_height_tween_meta",
+    "_sync_mat_collection_card",
+    "_set_activity_card_depth_face_offset_from_pop"
+)) {
+    $safeDelayedCallback = Get-FunctionBody -Text $main -Name $safeDelayedCallbackName
+    Assert-True ($safeDelayedCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Control|Button|Label)') "$safeDelayedCallbackName should not directly cast delayed instance IDs."
+}
+foreach ($safeToastCallbackName in @(
+    "_achievement_toast_queue_badge_for_toast",
+    "_update_achievement_toast_queue_badge",
+    "_on_achievement_toast_gui_input_bound",
+    "_achievement_toast_card_for_banner",
+    "_finish_achievement_toast_card_transition",
+    "_dismiss_achievement_toast_bound",
+    "_finish_achievement_toast_exit"
+)) {
+    $safeToastCallback = Get-FunctionBody -Text $main -Name $safeToastCallbackName
+    Assert-True ($safeToastCallback -notmatch 'instance_from_id\([^\r\n]+\) as (?:Control|Label)') "$safeToastCallbackName should not directly cast delayed achievement toast instance IDs."
+}
+foreach ($safeTrophyCallbackName in @("_apply_thieving_trophy_float_frame", "_apply_thieving_trophy_flight_frame", "_finish_thieving_trophy_flight")) {
+    $safeTrophyCallback = Get-FunctionBody -Text $main -Name $safeTrophyCallbackName
+    Assert-True ($safeTrophyCallback -match '_valid_control_ref\(instance_from_id\(holder_id\)\)' -and $safeTrophyCallback -notmatch 'instance_from_id\(holder_id\) as Control') "$safeTrophyCallbackName should use validity-checked holder lookup."
+}
+$playThievingTrophyHubFloat = Get-FunctionBody -Text $main -Name "_play_thieving_trophy_hub_float"
+Assert-True ($playThievingTrophyHubFloat -notmatch 'tween_method\(\s*func') "Thieving trophy flight should use named tween callbacks instead of closures that can capture stale state."
+Assert-True ($mobileScrollContainer -notmatch 'finished\.connect\(func') "Mobile scroll tweens should use named finish callbacks instead of lambdas that can capture stale control state."
+Assert-True ($mobileScrollContainer -match '_finish_scroll_to_vertical' -and $mobileScrollContainer -match '_finish_pull_snap') "Mobile scroll tween finish callbacks should remain named methods."
+Assert-True ($lockCluster -notmatch '\.connect\(func' -and $main -notmatch '\.connect\(func') "Runtime signal connections should use named callbacks instead of closures that can retain stale node state."
+$walletConfigure = Get-FunctionBody -Text $fishingToolWalletOverlay -Name "configure"
+Assert-True ($walletConfigure -match 'mini\(next_tool_button_rects\.size\(\), mini\(next_wallet_tool_ids\.size\(\), next_tool_unlocked_states\.size\(\)\)\)' -and $walletConfigure -match 'not \(raw_rect is Rect2\)') "Fishing tool wallet overlay should clamp and type-check parallel configure arrays before rebuilding UI."
+Assert-True ($fishingToolWalletOverlay -match 'func _tool_button_rect\(index: int\) -> Rect2' -and $fishingToolWalletOverlay -match 'index < wallet_tool_icons\.size\(\) and wallet_tool_icons\[index\] is Texture2D') "Fishing tool wallet overlay should guard rect and icon lookups against malformed or mismatched arrays."
+$runtimeGdScripts = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot "scripts") -Filter "*.gd" -Recurse)
+foreach ($runtimeGdScript in $runtimeGdScripts) {
+    $runtimeGdText = Get-Content -LiteralPath $runtimeGdScript.FullName -Raw
+    Assert-True ($runtimeGdText -notmatch '\.connect\(func|tween_(?:method|callback)\(func|finished\.connect\(func') "$($runtimeGdScript.Name) should avoid signal/tween closures in runtime scripts."
+}
+$detailLazyAddChildToHost = Get-FunctionBody -Text $main -Name "_detail_lazy_add_child_to_host"
+Assert-True ($detailLazyAddChildToHost -match '_fill_headless_null_textures\(child\)') "Detail lazy mounting should sanitize null textures before adding cached subtrees in headless validation."
+$fillHeadlessNullTextures = Get-FunctionBody -Text $main -Name "_fill_headless_null_textures"
+Assert-True ($fillHeadlessNullTextures -match 'node is TextureRect' -and $fillHeadlessNullTextures -match 'node is TextureButton' -and $fillHeadlessNullTextures -match '_visual_fallback_texture\(\)') "Headless null texture sanitizer should cover TextureRect and TextureButton nodes with visual fallback textures."
+Assert-True ($fillHeadlessNullTextures -match 'texture_rect\.visible = false') "Headless lazy-mounted TextureRect nodes should be hidden after fallback assignment so the dummy renderer does not initialize texture RIDs."
+$detailLazyUnmountItem = Get-FunctionBody -Text $main -Name "_detail_lazy_unmount_item"
+Assert-True ($detailLazyUnmountItem -match 'DisplayServer\.get_name\(\) == "headless"[\s\S]*_fill_headless_null_textures\(stack_host\)') "Detail lazy unmounting should sanitize headless texture nodes before parking or freeing cached card subtrees."
+$processDetailCardTexturePrewarm = Get-FunctionBody -Text $main -Name "_process_detail_card_texture_prewarm"
+Assert-True ($processDetailCardTexturePrewarm -match 'DisplayServer\.get_name\(\) == "headless"[\s\S]*_texture\(path\)[\s\S]*continue[\s\S]*ResourceLoader\.load_threaded_request') "Detail texture prewarm should populate placeholder cache and skip threaded real Texture2D loads in headless validation."
+$collectCompletedDetailTexturePrewarmRequests = Get-FunctionBody -Text $main -Name "_collect_completed_detail_texture_prewarm_requests"
+Assert-True ($collectCompletedDetailTexturePrewarmRequests -match 'DisplayServer\.get_name\(\) == "headless"[\s\S]*_visual_fallback_texture\(\)') "Completed texture prewarm requests should not cache real Texture2D resources in headless validation."
+$atlasTextureHelper = Get-FunctionBody -Text $main -Name "_atlas_texture"
+Assert-True ($atlasTextureHelper -match 'DisplayServer\.get_name\(\) == "headless"' -and $atlasTextureHelper -match '_visual_fallback_texture\(\)' -and $atlasTextureHelper.IndexOf('DisplayServer.get_name() == "headless"') -lt $atlasTextureHelper.IndexOf('AtlasTexture.new()')) "Atlas texture helper should return a fallback before creating atlas resources in headless validation."
+$masteryMedalTexture = Get-FunctionBody -Text $main -Name "_mastery_medal_texture"
+Assert-True ($masteryMedalTexture.IndexOf('DisplayServer.get_name() == "headless"') -lt $masteryMedalTexture.IndexOf('AtlasTexture.new()')) "Mastery medal atlas creation should be bypassed in headless validation."
+$profileAvatarTexture = Get-FunctionBody -Text $main -Name "_profile_avatar_texture"
+Assert-True ($profileAvatarTexture.IndexOf('DisplayServer.get_name() == "headless"') -lt $profileAvatarTexture.IndexOf('AtlasTexture.new()')) "Profile avatar atlas creation should be bypassed in headless validation."
+$collapsedHostSqueeze = Get-FunctionBody -Text $main -Name "_play_collapsed_host_squeeze_if_needed"
+Assert-True ($collapsedHostSqueeze -match '_apply_collapsed_host_squeeze_height' -and $collapsedHostSqueeze -match '_finish_collapsed_host_squeeze_animation') "Collapsed host squeeze should use named tween callbacks."
+$staminaFailShake = Get-FunctionBody -Text $main -Name "_play_stamina_gauge_fail_shake"
+Assert-True ($staminaFailShake -match '_apply_stamina_fail_shake_frame' -and $staminaFailShake -match '_finish_stamina_fail_shake') "Stamina fail shake should use named tween callbacks."
+$padlockClickShake = Get-FunctionBody -Text $main -Name "_play_padlock_click_shake"
+Assert-True ($padlockClickShake -match '_apply_padlock_click_shake_frame' -and $padlockClickShake -match '_finish_padlock_click_shake') "Padlock click shake should use named tween callbacks."
+$bootHeadlessMode = Get-FunctionBody -Text $bootFlexLoadingAnimation -Name "_headless_mode"
+Assert-True ($bootHeadlessMode -match 'DisplayServer\.get_name\(\) == "headless"') "Boot loading animation should have an explicit headless-mode guard."
+Assert-True ($bootFlexLoadingAnimation -match 'set_process\(not _headless_mode\(\)\)' -and $bootFlexLoadingAnimation -match 'if _headless_mode\(\):\s*\r?\n\s*return _transparent_fallback_texture') "Boot loading animation should avoid atlas animation and imported loading textures in headless validation."
 Assert-True ($agentCodebaseMap -notmatch 'assets/ui/\*\*') "Agent codebase map should not list the removed assets/ui split as active runtime art."
 Assert-True ($agentCodebaseMap -match 'assets/content/\*\*') "Agent codebase map should list the active runtime content tree."
 Assert-True ($agentCodebaseMap -match 'generated-file-hygiene-ok') "Agent codebase map should include the current generated-file hygiene validation baseline."
@@ -229,9 +520,12 @@ Assert-True ($agentOnboarding -match 'skills-page-performance-release-warning') 
 Assert-True ($agentOnboarding -match 'Remaining High-Risk Areas') "Agent onboarding checklist should list high-risk compatibility areas."
 Assert-True ($agentOnboarding -match 'Get-CimInstance Win32_Process') "Agent onboarding checklist should include the headless Godot sweep command."
 Assert-True ($agentOnboarding -match 'git status --short') "Agent onboarding checklist should tell agents to inspect dirty work before editing."
-Assert-True ($runtimeAssetPathTest -match 'project\.godot') "Runtime asset path validation should include project-level Godot references."
-Assert-True ($runtimeAssetPathTest -match 'export_presets\.cfg') "Runtime asset path validation should include Android export preset references."
-Assert-True ($runtimeAssetPathTest -match 'docs/activity-database\.json') "Runtime asset path validation should include activity database asset references."
+Assert-True ($runtimeAssetPathTest -match '\$sourceFileExtensions = @\(') "Runtime asset path validation should scan source files by extension instead of a narrow hand-picked list."
+Assert-True ($runtimeAssetPathTest -match '"\.gd"' -and $runtimeAssetPathTest -match '"\.tscn"' -and $runtimeAssetPathTest -match '"\.tres"') "Runtime asset path validation should include scripts, scenes, and Godot resources."
+Assert-True ($runtimeAssetPathTest -match '"\.godot"' -and $runtimeAssetPathTest -match '"\.cfg"' -and $runtimeAssetPathTest -match '"\.json"') "Runtime asset path validation should include project/export/data references."
+Assert-True ($runtimeAssetPathTest -match 'Get-ChildItem -LiteralPath \$projectRoot -File -Recurse') "Runtime asset path validation should discover checked project source files recursively."
+Assert-True ($runtimeAssetPathTest -match 'Test-IsIgnoredSourcePath') "Runtime asset path validation should avoid generated build/temp trees while scanning recursively."
+Assert-True ($runtimeAssetPathTest -match '\$null -eq \$text') "Runtime asset path validation should tolerate empty source files without crashing the checker."
 Assert-True ($activityDatabaseContractTest -match 'activity-database-data\.js must match docs/activity-database\.json') "Activity database contract validation should protect generated JS drift."
 Assert-True ($activityDatabaseContractTest -match 'ACTIVITY_DATABASE_PATH') "Activity database contract validation should protect runtime loading path."
 Assert-True ($activityDatabaseContractTest -match 'include_filter') "Activity database contract validation should protect export inclusion."
@@ -293,8 +587,21 @@ Assert-True ($saveNormalizationRun -match '_check_passive_module_save') "Save-no
 Assert-True ($saveNormalizationRun -match '_check_passive_module_restore') "Save-normalization validation should cover shared passive module restore behavior."
 $startAction = Get-FunctionBody -Text $main -Name "_start_action"
 Assert-True ($main -notmatch 'func _attempt_temporary_event_action_from_tap') "Temporary event card taps should not use the old instant-completion side-channel."
-Assert-True ($startAction -match 'if _is_event_action\(action\) and not _auto_eat_fish_for_action\(skill_id, stamina_cost, detail_regen_circle, true\):\s*\r?\n\s*_set_result\(_event_needs_stamina_text\(skill_id, action\)\)\s*\r?\n\s*_float_event_need_stamina_feedback\(action_key, stamina_cost\)\s*\r?\n\s*return false') "Temporary event card taps should clearly warn and refuse to start when stamina is short."
-Assert-True ($startAction -match 'running_skill_id = skill_id\s*\r?\n\s*running_action_id = action_id') "Temporary event card taps should use the normal timed running-action path once stamina is available."
+Assert-True ($startAction -match 'if _is_event_action\(action\):\s*\r?\n\s*return _start_temporary_event_action\(skill_id, action_id, action, select_page\)') "Temporary event card taps should enter the parallel timed event-action path."
+$startTemporaryEventAction = Get-FunctionBody -Text $main -Name "_start_temporary_event_action"
+Assert-True ($startTemporaryEventAction -match '_float_event_need_stamina_feedback\(action_key, stamina_cost\)') "Temporary event card taps should clearly warn and refuse to start when stamina is short."
+Assert-True ($startTemporaryEventAction -match 'event_running_skill_id = skill_id\s*\r?\n\s*event_running_action_id = action_id') "Temporary event card taps should use the parallel timed event-action path once stamina is available."
+$autoEatFishForAction = Get-FunctionBody -Text $main -Name "_auto_eat_fish_for_action"
+Assert-True ($autoEatFishForAction -match 'if stamina_cost <= 0\.0:\s*\r?\n\s*return true' -and $autoEatFishForAction.IndexOf('if stamina_cost <= 0.0:') -lt $autoEatFishForAction.IndexOf('_fishing_rework_active_for_skill(skill_id)')) "Zero-cost actions, including fishing events, should bypass auto-eat and stamina gates immediately."
+$temporaryEventStaminaForLevel = Get-FunctionBody -Text $main -Name "_temporary_event_stamina_for_level"
+Assert-True ($temporaryEventStaminaForLevel -match 'if page == "fishing":\s*\r?\n\s*return 0') "Fishing temporary event actions should be generated without a stamina cost."
+$effectiveStamina = Get-FunctionBody -Text $main -Name "_effective_stamina"
+Assert-True ($effectiveStamina -match 'if _is_fishing_event_action\(skill_id, action\):\s*\r?\n\s*return 0\.0') "Fishing temporary event actions should remain zero-cost at the effective stat layer."
+$processTemporaryEventAction = Get-FunctionBody -Text $main -Name "_process_temporary_event_action"
+Assert-True ($processTemporaryEventAction -match '_stop_temporary_event_action_with_feedback\([\s\S]*?"Stopped\\nEvent ended"') "Temporary event runs should float a stop reason when the active event ends or expires."
+Assert-True ($processTemporaryEventAction -match '_stop_temporary_event_action_with_feedback\([\s\S]*?"Stopped\\nNeed %s STAM"') "Temporary event runs should float a stop reason when stamina runs out."
+$stopTemporaryEventAction = Get-FunctionBody -Text $main -Name "_stop_temporary_event_action_with_feedback"
+Assert-True ($stopTemporaryEventAction -match '_set_result\(result_text\)' -and $stopTemporaryEventAction -match '_float_action_card_warning_feedback\(action_key, popup_text, color\)' -and $stopTemporaryEventAction -match '_clear_running_temporary_event_action\(skill_id, action_id\)') "Temporary event stops should report, float, and clear the running event action in one path."
 $actionOpportunityProgressHitTest = Get-FunctionBody -Text $main -Name "_action_opportunity_progress_hit_test"
 Assert-True ($actionOpportunityProgressHitTest -match 'for window in _action_opportunity_windows\(skill_id, action_id\):\s*\r?\n\s*if checked_progress >= window\.x and checked_progress <= window\.y:\s*\r?\n\s*return true') "Opportunity clicks should be accepted from canonical action progress before relying on rendered progress-rail state, so holding after a valid hit cannot route into stop-hold."
 $routeActionCardPress = Get-FunctionBody -Text $main -Name "_route_action_card_press"
@@ -304,14 +611,44 @@ Assert-True ($beginPinnedShelfActionCardPress.IndexOf('_try_action_opportunity_c
 $completeTemporaryEventAttempt = Get-FunctionBody -Text $main -Name "_complete_temporary_event_action_attempt"
 Assert-True ($completeTemporaryEventAttempt -match 'clear_running_action_on_success := true') "Temporary event completion should default to the legacy running-action cleanup for already-running events."
 Assert-True ($completeTemporaryEventAttempt -match 'if clear_running_action_on_success:\s*\r?\n\s*_clear_running_temporary_event_action\(skill_id, action_id\)') "Temporary event completion should clear running state only when explicitly requested."
-Assert-True ($completeTemporaryEventAttempt -match 'Event failed: %s remains active') "Failed temporary event attempts should stop the timed run while leaving the event active."
+Assert-True ($completeTemporaryEventAttempt -match 'Event failed: %s will try again') "Failed temporary event attempts should keep the timed event run active for the next retry."
+Assert-True ($completeTemporaryEventAttempt -notmatch 'Event failed[\s\S]*?if clear_running_action_on_success:\s*\r?\n\s*_clear_running_temporary_event_action\(skill_id, action_id\)') "Failed temporary event attempts should not clear the running event action."
 Assert-True ($completeTemporaryEventAttempt -match 'var log_reward := _temporary_event_roll_log_reward\(action\)') "Temporary event completion should roll configured resource rewards."
 Assert-True ($completeTemporaryEventAttempt -match '_add_mat_amount\("softwood", float\(log_reward\)\)') "Temporary event wood rewards should add to the player's Softwood mats."
+Assert-True ($completeTemporaryEventAttempt.IndexOf('_play_action_feedback(reward_key, true, xp_reward') -lt $completeTemporaryEventAttempt.IndexOf('_complete_temporary_event_action_state(action_id')) "Temporary event success should float XP/reward feedback before removing the active event state."
+Assert-True ($completeTemporaryEventAttempt -match '_play_temporary_event_completion_exit\(skill_id, action_id, xp_reward\)') "Temporary event success should leave the module visible for a completion celebration before despawn."
+$playTemporaryEventCompletionExit = Get-FunctionBody -Text $main -Name "_play_temporary_event_completion_exit"
+Assert-True ($playTemporaryEventCompletionExit -match '_float_temporary_event_completion_popup\(action_key, xp_reward\)') "Temporary event completion exit should pop a celebration label with the reward XP."
+Assert-True ($playTemporaryEventCompletionExit -match 'Color\("#9cff9e"\)' -and $playTemporaryEventCompletionExit -match '_flash_art_glow\(art_panel, Color\("#35d86d"\)\)') "Temporary event completion exit should tint the completed module green."
+Assert-True ($playTemporaryEventCompletionExit -match '_hold_skill_detail_layout_refresh\(2\.55\)' -and $playTemporaryEventCompletionExit -match 'tween_interval\(0\.74\)' -and $playTemporaryEventCompletionExit -match 'tween_property\(root, "modulate:a", 0\.0, 0\.60\)') "Temporary event completion exit should linger naturally for roughly 2.5 seconds before despawn."
+Assert-True ($playTemporaryEventCompletionExit -match 'tween_property\(root, "modulate:a", 0\.0' -and $playTemporaryEventCompletionExit -match 'tween_property\(root, "custom_minimum_size:y", 0\.0') "Temporary event completion exit should fade and collapse the module before refreshing it away."
+$floatTemporaryEventCompletionPopup = Get-FunctionBody -Text $main -Name "_float_temporary_event_completion_popup"
+Assert-True ($floatTemporaryEventCompletionPopup -match 'Complete!\\n%s' -and $floatTemporaryEventCompletionPopup -match '_format_compact_number\(float\(xp_reward\), 4\)') "Temporary event completion popup should include the compact XP reward amount."
+$finishTemporaryEventCompletionExit = Get-FunctionBody -Text $main -Name "_finish_temporary_event_completion_exit"
+Assert-True ($finishTemporaryEventCompletionExit -match '_refresh_skill_detail_after_temporary_event_despawn\(skill_id, restore_scroll\)') "Temporary event completion exit should refresh the event out after the fade while preserving scroll."
 $refreshEventDespawn = Get-FunctionBody -Text $main -Name "_refresh_skill_detail_after_temporary_event_despawn"
+Assert-True ($refreshEventDespawn -match 'restore_scroll if restore_scroll >= 0 else') "Temporary event despawn refreshes should accept an explicit scroll position after delayed celebrations."
 Assert-True ($refreshEventDespawn -match '_refresh_visible_skill_detail_action_list\(event_refresh_scroll, skill_id, true\)') "Temporary event despawn refreshes should preserve scroll position, including on Thieving pages."
+$actionCardAtPosition = Get-FunctionBody -Text $main -Name "_action_card_at_position"
+Assert-True ($actionCardAtPosition -match 'var action_circle_hit := _module_action_circle_at_position\(event_position\)' -and $actionCardAtPosition -match 'not _is_event_action\(action\)') "Event action cards should remain tappable even when their art or badge overlaps module action-circle hit regions."
+$moduleActionHitBelongsToCard = Get-FunctionBody -Text $main -Name "_module_action_hit_belongs_to_card"
+Assert-True ($moduleActionHitBelongsToCard -match 'hit_card' -and $moduleActionHitBelongsToCard -match 'card_key' -and $moduleActionHitBelongsToCard -match 'hit_host == card_pop') "Action-card hit testing should compare module action hits to their owning card before blocking normal card taps."
+$updateActionCardStaticState = Get-FunctionBody -Text $main -Name "_update_action_card_static_state"
+Assert-True ($updateActionCardStaticState -match 'var time_label := "FILL" if _fishing_batch_soak_active\(skill_id\) and not _is_event_action\(action\) else "TIME"') "Fishing event action cards should use TIME instead of the fishing batch FILL label."
+Assert-True ($updateActionCardStaticState -match 'var show_stamina_stat := _action_shows_stamina_stat\(skill_id, action\)' -and $updateActionCardStaticState -match 'elif _is_fishing_event_action\(skill_id, action\):[\s\S]*?stamina_box\.visible = false') "Fishing event action cards should hide their stamina stat chip."
+$actionShowsStaminaStat = Get-FunctionBody -Text $main -Name "_action_shows_stamina_stat"
+Assert-True ($actionShowsStaminaStat -match 'not _is_convergence_action\(action\) and not _is_fishing_event_action\(skill_id, action\)') "Stamina stat visibility should exclude fishing events."
+$detailLazyFinalizeActionCard = Get-FunctionBody -Text $main -Name "_detail_lazy_finalize_action_card"
+Assert-True ($detailLazyFinalizeActionCard -match '_ensure_interactive_action_card_button\(card, skill_id, action_id\)') "Finalized interactive action cards should always get their full-card input button."
+$ensureInteractiveActionCardButton = Get-FunctionBody -Text $main -Name "_ensure_interactive_action_card_button"
+Assert-True ($ensureInteractiveActionCardButton -match '_attach_swipe_preview_activity_button\(card, skill_id, action_id, pop_card\)') "Interactive action card button fallback should attach the shared transparent input button."
 $refreshVisibleSkillDetail = Get-FunctionBody -Text $main -Name "_refresh_visible_skill_detail_action_list"
 Assert-True ($refreshVisibleSkillDetail -match 'allow_thieving_scroll_restore := false') "Skill detail refresh should keep Thieving scroll preservation opt-in."
-Assert-True ($refreshVisibleSkillDetail -match 'call_deferred\("_refresh_visible_skill_detail_action_list", restore_detail_scroll, target_skill_id, allow_thieving_scroll_restore, suppress_layout_transition\)') "Deferred skill detail refresh should carry the Thieving scroll preservation and layout-transition flags."
+Assert-True ($refreshVisibleSkillDetail -match '_store_pending_skill_detail_refresh_request\(restore_detail_scroll, target_skill_id, allow_thieving_scroll_restore, suppress_layout_transition\)') "Skill detail refreshes requested during a screen render should be coalesced instead of recursively self-deferred."
+Assert-True ($main -match 'var pending_skill_detail_refresh_request := \{\}') "Skill detail refresh coalescing should have an explicit pending request record."
+Assert-True ($main -match 'func _store_pending_skill_detail_refresh_request\(restore_detail_scroll: int, target_skill_id: String, allow_thieving_scroll_restore: bool, suppress_layout_transition: bool\)') "Pending skill detail refresh requests should preserve scroll, skill, Thieving restore, and transition flags."
+Assert-True ($main -match 'func _run_pending_skill_detail_refresh_request\(\) -> void:[\s\S]*_refresh_visible_skill_detail_action_list\(') "Pending skill detail refresh requests should drain through the normal refresh path after the active render finishes."
+Assert-True ($main -match 'pending_skill_detail_refresh_request\.clear\(\)') "Pending skill detail refresh requests should be cleared during reset/shutdown cleanup."
 Assert-True ($refreshVisibleSkillDetail -match 'detail_thieving_scroll_restore_allowed = previous_thieving_scroll_restore_allowed or allow_thieving_scroll_restore') "Skill detail refresh should enable the one-shot Thieving scroll preservation flag around render."
 $detailRestoreScrollValue = Get-FunctionBody -Text $main -Name "_detail_restore_scroll_value"
 Assert-True ($detailRestoreScrollValue -match 'selected_skill_id == "thieving" and not detail_thieving_scroll_restore_allowed') "Thieving scroll restoration should still default to top outside explicit preservation flows."
@@ -333,7 +670,7 @@ Assert-True ($temporaryEventEntryFromSave -match 'not _temporary_event_page_leve
 $activateAllTemporaryEventsForArtReview = Get-FunctionBody -Text $main -Name "_activate_all_temporary_events_for_art_review_test"
 Assert-True ($activateAllTemporaryEventsForArtReview -match 'not _temporary_event_page_level_eligible\(event_def\)') "Art-review temporary event activation should still respect event minimum levels."
 $savePayloadCheck = Get-FunctionBody -Text $saveNormalization -Name "_check_save_payload"
-Assert-True ($savePayloadCheck -match 'not payload\.has\("leaderboard_auth_provider"\)') "Save payload validation should reject ignored leaderboard auth provider persistence."
+Assert-True ($savePayloadCheck -match 'payload\.get\("leaderboard_auth_provider", ""\)') "Save payload validation should cover leaderboard auth provider persistence."
 $passiveRestoreLoads = [regex]::Matches($main, 'var loaded_passive_modules = data\.get\("passive_modules", \{\}\)')
 Assert-True ($passiveRestoreLoads.Count -eq 0) "Passive module restore should not read raw passive_modules directly."
 Assert-True ($main -match 'func _passive_module_state_from_save\(loaded_module: Dictionary\) -> Dictionary:') "Passive module restore should share one state normalizer."
@@ -548,10 +885,30 @@ Assert-True ($perfMonitor -match 'OS\.is_debug_build\(\) and OS\.get_environment
 $consumeQueuedSwipe = Get-FunctionBody -Text $main -Name "_consume_queued_skill_swipe_navigation"
 Assert-True ($consumeQueuedSwipe -match '_ensure_skill_swipe_preview_page_cached\(offset\)') "Queued skill swipes should build a lightweight incoming preview before navigation."
 Assert-True ($consumeQueuedSwipe.IndexOf('_ensure_skill_swipe_preview_page_cached(offset)') -lt $consumeQueuedSwipe.IndexOf('_navigate_skill_page')) "Queued skill swipes must prepare the preview before navigating, avoiding a full detail render fallback."
+$cancelSwipeFeedback = Get-FunctionBody -Text $main -Name "_cancel_skill_swipe_feedback"
+Assert-True ($cancelSwipeFeedback -match 'skill_swipe_tween\.finished\.connect\(_finish_skill_swipe_cancel_tween\)') "Cancelled skill swipe completion should use a named callback instead of a lambda capture."
+$finishSkillSwipeCancelTween = Get-FunctionBody -Text $main -Name "_finish_skill_swipe_cancel_tween"
+Assert-True ($finishSkillSwipeCancelTween -match '_park_skill_swipe_preview\(\)' -and $finishSkillSwipeCancelTween -match '_consume_queued_skill_swipe_navigation\(\)') "Cancelled skill swipe completion should preserve queued navigation behavior."
+$animateSkillSwipeCommitRelease = Get-FunctionBody -Text $main -Name "_animate_skill_swipe_commit_release"
+Assert-True ($animateSkillSwipeCommitRelease -match 'skill_swipe_tween\.finished\.connect\(_finish_skill_swipe_commit_tween\.bind\(offset, target_x\)\)') "Committed skill swipe completion should use a named bound callback instead of a lambda capture."
+$finishSkillSwipeCommitTween = Get-FunctionBody -Text $main -Name "_finish_skill_swipe_commit_tween"
+Assert-True ($finishSkillSwipeCommitTween -match '_navigate_skill_page\(offset, target_x, true, false\)') "Committed skill swipe completion should still navigate through the normal page transition."
+$syncOnboardingFirstModuleTopSpacer = Get-FunctionBody -Text $main -Name "_sync_onboarding_first_module_top_spacer"
+Assert-True ($syncOnboardingFirstModuleTopSpacer -match 'onboarding_first_module_spacer_tween\.finished\.connect\(_finish_onboarding_first_module_spacer_tween\)') "Onboarding first-module spacer tween completion should use a named callback instead of a lambda capture."
+$finishOnboardingFirstModuleSpacerTween = Get-FunctionBody -Text $main -Name "_finish_onboarding_first_module_spacer_tween"
+Assert-True ($finishOnboardingFirstModuleSpacerTween -match 'onboarding_first_module_spacer_tween = null' -and $finishOnboardingFirstModuleSpacerTween -match '_sync_detail_actions_scroll_limit\(\)') "Onboarding first-module spacer completion should clear tween state and sync scroll limits."
+$popStaminaGauge = Get-FunctionBody -Text $main -Name "_pop_stamina_gauge"
+Assert-True ($popStaminaGauge -match 'detail_stamina_gauge_pop_tween\.finished\.connect\(_finish_stamina_gauge_pop_tween\)') "Stamina gauge pop tween completion should use a named callback instead of a lambda capture."
+$finishStaminaGaugePopTween = Get-FunctionBody -Text $main -Name "_finish_stamina_gauge_pop_tween"
+Assert-True ($finishStaminaGaugePopTween -match 'detail_stamina_gauge_pop_tween = null' -and $finishStaminaGaugePopTween -match 'detail_stamina_gauge_pop_source = null') "Stamina gauge pop completion should clear tracked tween state."
+$releaseDetailUnlockExtraScrollSpace = Get-FunctionBody -Text $main -Name "_release_detail_unlock_extra_scroll_space"
+Assert-True ($releaseDetailUnlockExtraScrollSpace -match 'detail_unlock_scroll_spacer_tween\.finished\.connect\(_finish_detail_unlock_scroll_spacer_tween\)') "Detail unlock spacer tween completion should use a named callback instead of a lambda capture."
+$finishDetailUnlockScrollSpacerTween = Get-FunctionBody -Text $main -Name "_finish_detail_unlock_scroll_spacer_tween"
+Assert-True ($finishDetailUnlockScrollSpacerTween -match '_set_detail_unlock_scroll_spacer_height\(0\.0\)' -and $finishDetailUnlockScrollSpacerTween -match 'detail_unlock_scroll_spacer_tween = null') "Detail unlock spacer completion should clear spacer height and tween state."
 
 $swipeOutgoingCover = Get-FunctionBody -Text $main -Name "_begin_skill_swipe_outgoing_cover"
 Assert-True ($swipeOutgoingCover -match 'ColorRect\.new\(\)') "Animated skill swipes should fade one full-page color cover instead of fading every page element."
-Assert-True ($swipeOutgoingCover -match 'backing\.color = COLOR_PAPER') "Animated skill swipe cover should match the cream page background."
+Assert-True ($swipeOutgoingCover -match 'backing\.color = (COLOR_PAPER|_theme_paper_color\(\))') "Animated skill swipe cover should match the page background."
 Assert-True ($swipeOutgoingCover -match 'swipe_cream_transition_cover') "Animated skill swipe cover should be tagged so navigation does not park it as page content."
 
 $holdSwipeCover = Get-FunctionBody -Text $main -Name "_hold_skill_swipe_cover_for_pending_finalize"
@@ -738,13 +1095,38 @@ Assert-True ($detailCardStylePrewarm -match '_stat_box_style\(false, false\)') "
 Assert-True ($detailCardStylePrewarm -match '_stat_box_style\(true, true\)') "Detail card style prewarm should allocate active pressed stat-box styles before lazy card construction."
 Assert-True ($detailCardStylePrewarm -match '_action_art_style\(\)') "Detail card style prewarm should warm cached action-art styles before lazy card construction."
 $canCreateImageTextures = Get-FunctionBody -Text $main -Name "_can_create_image_textures"
-Assert-True ($canCreateImageTextures -match 'DisplayServer\.get_name\(\) != "headless"') "Headless validation should not synthesize ImageTexture resources."
+Assert-True ($canCreateImageTextures -match 'DisplayServer\.get_name\(\) != "headless"') "Headless-only procedural drawing guards should remain explicit where a caller truly cannot draw."
 $textureFromImage = Get-FunctionBody -Text $main -Name "_texture_from_image"
-Assert-True ($textureFromImage -match 'not _can_create_image_textures\(\)') "Loaded image fallback textures should be skipped during headless validation."
+Assert-True ($textureFromImage -notmatch 'texture_cache\[_res_path\(path\)\] = null') "Loaded image fallback textures should not cache null during headless validation."
+$createImageTexture = Get-FunctionBody -Text $main -Name "_create_image_texture"
+Assert-True ($createImageTexture -match 'DisplayServer\.get_name\(\) == "headless"' -and $createImageTexture -match '_placeholder_texture') "Loaded image fallback textures should use placeholder textures in headless validation to avoid dummy-renderer RID initialization."
+$fishCircleIconTextureMatch = [regex]::Match($main, '(?m)^\s+func _fish_circle_icon_texture\(\) -> Texture2D:[\s\S]*?(?=^\s+func _fish_currency_icon_texture\(\) -> Texture2D:)')
+$fishCurrencyIconTextureMatch = [regex]::Match($main, '(?m)^\s+func _fish_currency_icon_texture\(\) -> Texture2D:[\s\S]*?(?=^\s+func _fallback_texture\(texture_size: Vector2i\) -> Texture2D:)')
+Assert-True $fishCircleIconTextureMatch.Success "Fish circle icon fallback helper should remain inspectable."
+Assert-True $fishCurrencyIconTextureMatch.Success "Fish currency icon fallback helper should remain inspectable."
+$fishCircleIconTexture = $fishCircleIconTextureMatch.Value
+$fishCurrencyIconTexture = $fishCurrencyIconTextureMatch.Value
+Assert-True ($fishCircleIconTexture -match '_fallback_texture\(Vector2i\(8, 8\)\)' -and $fishCircleIconTexture -notmatch 'ImageTexture\.create_from_image') "Fish circle icon fallback should use the inner headless-safe fallback texture helper."
+Assert-True ($fishCurrencyIconTexture -match 'DisplayServer\.get_name\(\) != "headless"' -and $fishCurrencyIconTexture -match '_fallback_texture\(Vector2i\(8, 8\)\)' -and $fishCurrencyIconTexture -notmatch 'ImageTexture\.create_from_image') "Fish currency icon loading should avoid real texture loads and ImageTexture fallbacks in headless validation."
+$textureHelper = Get-FunctionBody -Text $main -Name "_texture"
+Assert-True ($textureHelper -match 'DisplayServer\.get_name\(\) == "headless" and not _headless_should_load_real_texture\(normalized\)[\s\S]*texture_cache\[normalized\] = headless_fallback') "Texture loading should short-circuit to cached placeholder fallbacks in headless validation."
+$headlessShouldLoadRealTexture = Get-FunctionBody -Text $main -Name "_headless_should_load_real_texture"
+Assert-True ($headlessShouldLoadRealTexture -match 'return false') "Headless validation should avoid real texture loads consistently so dummy/export renderers do not initialize null texture RIDs."
+Assert-True ($main -match 'icon\.set_meta\("source_texture_path", _res_path\(icon_path\)\)') "Module utility icons should preserve their intended texture path as metadata for headless-safe assertions."
+Assert-True ($textureHelper -match 'texture_cache\[normalized\] = fallback' -and $textureHelper -match '_visual_fallback_texture\(\)') "Missing non-empty visual texture paths should cache a transparent fallback instead of null."
+$atlasTexture = Get-FunctionBody -Text $main -Name "_atlas_texture"
+Assert-True ($atlasTexture -match 'atlas_texture_cache\[cache_key\] = fallback' -and $atlasTexture -match '_visual_fallback_texture\(\)') "Atlas texture creation should fall back to a transparent texture when the source art is unavailable."
 $visualFallbackTexture = Get-FunctionBody -Text $main -Name "_visual_fallback_texture"
-Assert-True ($visualFallbackTexture -match 'not _can_create_image_textures\(\)') "Visual fallback textures should be skipped during headless validation."
+Assert-True ($visualFallbackTexture -notmatch 'texture_cache\[cache_key\] = null') "Visual fallback textures should stay non-null during headless validation for TextureButton-safe fallbacks."
+Assert-True ($visualFallbackTexture -match '_placeholder_texture\(Vector2i\(8, 8\)\)' -and $visualFallbackTexture -match 'DisplayServer\.get_name\(\) == "headless"') "Visual fallback textures should use placeholder textures in headless validation instead of allocating dummy-renderer ImageTexture RIDs."
+$loadFont = Get-FunctionBody -Text $main -Name "_load_font"
+Assert-True ($loadFont -match 'load\("res://assets/fonts/Fredoka\.ttf"\) as Font') "Font loading should only install real Font resources."
+Assert-True ($loadFont -match 'if loaded_font == null:[\s\S]*app_font = null[\s\S]*app_bold_font = null[\s\S]*return') "Font loading should fall back cleanly when the imported font is unavailable in headless/export contexts."
 $paperButtonStyle = Get-FunctionBody -Text $main -Name "_paper_button_style_with_shape"
 Assert-True ($paperButtonStyle -match 'if _can_create_image_textures\(\):[\s\S]*_create_image_texture\(image\)') "Generated paper button textures should use the shared headless-safe texture helper."
+Assert-True ($paperButtonStyle -match 'else:\s*\r?\n\s*style\.texture = _visual_fallback_texture\(\)') "Generated paper button styles should install a non-null fallback texture when procedural drawing is skipped."
+$chunkyActivityButtonStyle = Get-FunctionBody -Text $main -Name "_chunky_activity_button_style"
+Assert-True ($chunkyActivityButtonStyle -match 'else:\s*\r?\n\s*style\.texture = _visual_fallback_texture\(\)') "Chunky activity button styles should install a non-null fallback texture when procedural drawing is skipped."
 
 $beginDetailLazy = Get-FunctionBody -Text $main -Name "_begin_detail_lazy_card_list_render"
 $finishDetailLazy = Get-FunctionBody -Text $main -Name "_finish_detail_lazy_card_list_render"
@@ -810,7 +1192,11 @@ Assert-True ($updateUi -match 'var header_gauge_frame_refresh := skill_frame_ref
 Assert-True ($updateUi -match '_consume_detail_header_gauge_refresh\(delta, instant, static_refresh, header_gauge_frame_refresh\)') "Skill detail UI should throttle expensive header gauge target updates."
 Assert-True ($updateUi -match 'if detail_header_gauge_refresh and _fishing_rework_active_for_skill') "Fishing header gauge updates should use the throttled header-gauge cadence."
 Assert-True ($updateUi -match 'elif detail_header_gauge_refresh and detail_regen_circle != null') "Stamina header gauge updates should use the throttled header-gauge cadence."
-Assert-True ($updateUi -match 'var running := running_skill_id == skill_id and running_action_id == action_id\s*\r?\n\s*if not running and not static_refresh and not instant:\s*\r?\n\s*continue[\s\S]*?var unlocked := _is_action_unlocked\(skill_id, action\)') "High-frequency skill card refresh should skip non-running cards before expensive unlock checks."
+Assert-True ($updateUi -match 'var event_running := event_running_skill_id == skill_id and event_running_action_id == action_id\s*\r?\n\s*var running := \(running_skill_id == skill_id and running_action_id == action_id\) or event_running\s*\r?\n\s*var running_progress := event_action_progress if event_running else action_progress\s*\r?\n\s*if not running and not static_refresh and not instant:\s*\r?\n\s*continue[\s\S]*?var unlocked := _is_action_unlocked\(skill_id, action\)') "High-frequency skill card refresh should skip non-running cards before expensive unlock checks."
+$skillDetailHighFrequency = Get-FunctionBody -Text $main -Name "_skill_detail_needs_high_frequency_ui_update"
+Assert-True ($skillDetailHighFrequency -match 'current_screen == "menu":\s*\r?\n\s*return not running_action_id\.is_empty\(\) or not event_running_action_id\.is_empty\(\)') "Menu card refresh should stay high-frequency while a temporary event module is running."
+Assert-True ($skillDetailHighFrequency -match 'not running_action_id\.is_empty\(\)\s*\r?\n\s*or not event_running_action_id\.is_empty\(\)\s*\r?\n\s*or action_stop_hold_active') "Pinned card refresh should stay high-frequency while a temporary event module is running."
+Assert-True ($skillDetailHighFrequency -match 'if event_running_skill_id == selected_skill_id and not event_running_action_id\.is_empty\(\):\s*\r?\n\s*return true') "Skill detail refresh should stay high-frequency for running temporary event modules on the selected skill."
 Assert-True ($updateUi.IndexOf('_skill_detail_action_cards_hidden_by_transition_cover()') -lt $updateUi.IndexOf('_apply_pending_activity_unlock_readiness()')) "Skill card UI should not apply pending unlock readiness while the opaque swipe cover is rebuilding the page."
 Assert-True ($updateUi.IndexOf('_skill_detail_action_cards_hidden_by_transition_cover()') -lt $updateUi.IndexOf('for raw_key in action_card_keys:')) "Skill card UI should not refresh hidden action trees while the opaque swipe cover is rebuilding the page."
 $hiddenTransitionCover = Get-FunctionBody -Text $main -Name "_skill_detail_action_cards_hidden_by_transition_cover"
@@ -1434,13 +1820,13 @@ Assert-True ($actionArtMaskParams.Value -match 'mask_shader_params_size\.is_equa
 Assert-True ($actionArtMaskParams.Value.IndexOf('return') -lt $actionArtMaskParams.Value.IndexOf('set_shader_parameter')) "Action art images should return before writing unchanged shader parameters."
 
 $actionArtImage = Get-FunctionBody -Text $main -Name "_action_art_image"
-Assert-True ($actionArtImage -match '_texture_or_visual_fallback\(path\)') "Action art image creation should fall back to a non-null texture when asset loading fails under headless/dummy rendering."
-Assert-True ($actionArtImage -match 'set_mask_material_enabled\(_action_art_needs_texture_mask\(path\)\)') "Action art image creation should only enable the mask shader for paths that need rounded texture clipping."
+Assert-True ($actionArtImage -match 'DisplayServer\.get_name\(\) == "headless"[\s\S]*_visual_fallback_texture\(\)') "Headless action art should use a non-null transparent texture instead of imported textures that can expose null dummy-renderer RIDs."
+Assert-True ($actionArtImage -match 'set_mask_material_enabled\(false\)[\s\S]*set_mask_material_enabled\(_action_art_needs_texture_mask\(path\)\)') "Action art image creation should disable the mask shader in headless and enable it only for paths that need rounded texture clipping otherwise."
 Assert-True ($actionArtImage -notmatch 'image\.texture = _texture\(path\)') "Action art image creation must not assign a possibly-null texture directly."
 $actionArtNeedsMask = Get-FunctionBody -Text $main -Name "_action_art_needs_texture_mask"
 Assert-True ($actionArtNeedsMask -match 'contains\("/backgrounds/"\)') "Only full background-style art should keep the action-art mask shader."
 $visualFallbackTexture = Get-FunctionBody -Text $main -Name "_visual_fallback_texture"
-Assert-True ($visualFallbackTexture -match '_create_image_texture\(image\)') "Visual texture fallback should use the shared headless-safe ImageTexture helper."
+Assert-True ($visualFallbackTexture -match '_placeholder_texture\(Vector2i\(8, 8\)\)' -and $visualFallbackTexture -match 'ImageTexture\.create_from_image\(image\)') "Visual texture fallback should use placeholder textures in headless and tiny transparent ImageTextures otherwise."
 Assert-True ($visualFallbackTexture -match 'texture_cache\[cache_key\]') "Visual texture fallback should be cached instead of recreated per node."
 $textureOrVisualFallback = Get-FunctionBody -Text $main -Name "_texture_or_visual_fallback"
 Assert-True ($textureOrVisualFallback -match '_visual_fallback_texture\(\)') "Visual texture helper should return the cached fallback when loading fails."
@@ -1471,6 +1857,14 @@ Assert-True ($showBootWarmupOverlay -match '_set_canvas_item_alpha_if_changed\(b
 Assert-True ($showBootWarmupOverlay -match 'boot_warmup_splash\.call\("restart"\)') "Boot warmup show should restart the sprite loading animation."
 $dismissBootSplashForPlay = Get-FunctionBody -Text $main -Name "_dismiss_boot_splash_for_play"
 Assert-True ($dismissBootSplashForPlay -match '_set_canvas_item_visible_if_changed\(boot_warmup_footer, false\)') "Boot warmup dismiss should guard repeated footer hiding."
+$readyBody = Get-FunctionBody -Text $main -Name "_ready"
+Assert-True ($readyBody -match 'await _finish_boot_render_async\(\)' -and $readyBody -notmatch '_dismiss_boot_splash_for_interactive\(\)\s*\r?\n\s*call_deferred\("_finish_boot_render_async"\)') "Boot should keep the warmup overlay visible until the first skill screen render has completed."
+$finishBootRenderAsync = Get-FunctionBody -Text $main -Name "_finish_boot_render_async"
+Assert-True ($finishBootRenderAsync -match 'await _render_screen\(true, -1, true\)[\s\S]*_dismiss_boot_splash_for_play\(\)') "Boot render completion should dismiss the warmup overlay only after the first skill page render."
+$appLifecycleUsesFocusResume = Get-FunctionBody -Text $main -Name "_app_lifecycle_uses_focus_resume"
+Assert-True ($appLifecycleUsesFocusResume -match 'OS\.get_name\(\) == "Web"' -and $appLifecycleUsesFocusResume -match 'OS\.has_feature\("web"\)') "Web exports should use the app resume repair path when a backgrounded browser tab regains focus."
+$resumeFromAppSuspend = Get-FunctionBody -Text $main -Name "_resume_from_app_suspend"
+Assert-True ($resumeFromAppSuspend -match 'app_resume_repair_pending = true' -and $resumeFromAppSuspend -match 'call_deferred\("_repair_after_app_resume"\)') "App resume should queue a UI repair pass for delayed boot/render recovery."
 $hideBootWarmupOverlay = Get-FunctionBody -Text $main -Name "_hide_boot_warmup_overlay"
 Assert-True ($hideBootWarmupOverlay -match 'boot_warmup_overlay\.is_queued_for_deletion\(\)') "Boot warmup hide should skip overlays queued for deletion before starting a tween."
 Assert-True ($hideBootWarmupOverlay -match 'tween\.tween_property\(boot_warmup_overlay, "modulate:a", 0\.0, 0\.22\)') "Boot warmup hide fade should remain tween-owned."
@@ -1486,6 +1880,17 @@ Assert-True ($showHubTutorialTip -match 'hub_tutorial_tip_root\.is_queued_for_de
 Assert-True ($showHubTutorialTip -match '_set_canvas_item_visible_if_changed\(hub_tutorial_tip_root, true\)') "Hub tutorial tip show should guard repeated visibility writes."
 Assert-True ($showHubTutorialTip -match '_set_canvas_item_alpha_if_changed\(hub_tutorial_tip_root, 0\.0\)') "Hub tutorial tip show should guard repeated alpha resets before fade-in."
 Assert-True ($showHubTutorialTip -match 'tween_property\(hub_tutorial_tip_root, "modulate:a", 1\.0, HUB_TUTORIAL_TIP_FADE_SECONDS\)') "Hub tutorial tip fade-in should remain tween-owned."
+Assert-True ($showHubTutorialTip -match 'hub_tutorial_tip_tween\.finished\.connect\(_finish_hub_tutorial_tip_tween\)') "Hub tutorial tip fade-in completion should use a named callback instead of a lambda capture."
+$finishHubTutorialTipTween = Get-FunctionBody -Text $main -Name "_finish_hub_tutorial_tip_tween"
+Assert-True ($finishHubTutorialTipTween -match 'hub_tutorial_tip_tween = null') "Hub tutorial tip fade-in completion should clear the tracked tween."
+$applyCloseHubMissionBoardPopup = Get-FunctionBody -Text $main -Name "_apply_close_hub_mission_board_popup"
+Assert-True ($applyCloseHubMissionBoardPopup -match 'hub_detail_motion_tween\.finished\.connect\(_finish_close_hub_detail_popup_tween\)') "Hub detail close tween completion should use a named callback instead of a lambda capture."
+$animateHubMissionBoardOpen = Get-FunctionBody -Text $main -Name "_animate_hub_mission_board_open"
+Assert-True ($animateHubMissionBoardOpen -match 'hub_detail_motion_tween\.finished\.connect\(_finish_open_hub_detail_popup_tween\)') "Hub detail open tween completion should use a named callback instead of a lambda capture."
+$finishCloseHubDetailPopupTween = Get-FunctionBody -Text $main -Name "_finish_close_hub_detail_popup_tween"
+Assert-True ($finishCloseHubDetailPopupTween -match 'hub_detail_transition_pending = false' -and $finishCloseHubDetailPopupTween -match '_render_screen\(\)') "Hub detail close tween completion should preserve close/render behavior."
+$finishOpenHubDetailPopupTween = Get-FunctionBody -Text $main -Name "_finish_open_hub_detail_popup_tween"
+Assert-True ($finishOpenHubDetailPopupTween -match 'hub_detail_transition_pending = false') "Hub detail open tween completion should clear transition state."
 $dismissHubTutorialTip = Get-FunctionBody -Text $main -Name "_dismiss_hub_tutorial_tip"
 Assert-True ($dismissHubTutorialTip -match 'hub_tutorial_tip_root\.is_queued_for_deletion\(\)') "Hub tutorial tip dismiss should skip roots queued for deletion before starting a tween."
 Assert-True ($dismissHubTutorialTip -match 'tween_property\(root, "modulate:a", 0\.0, HUB_TUTORIAL_TIP_FADE_SECONDS\)') "Hub tutorial tip fade-out should remain tween-owned."
@@ -1539,6 +1944,8 @@ Assert-True ($addHubTrophyDisplay -match '_texture_or_visual_fallback\("res://as
 Assert-True ($addHubTrophyDisplay -match '_spritesheet_or_visual_fallback\(THIEVING_HEIST_TROPHY_SHEET') "Hub trophy display trophy art should keep its spritesheet visual fallback."
 $addHubMissionBoardPanel = Get-FunctionBody -Text $main -Name "_add_hub_mission_board_panel"
 Assert-True ($addHubMissionBoardPanel -match '_texture_or_visual_fallback\(HUB_MISSION_BOARD_TEXTURE\)') "Hub mission board art should not assign nullable loaded textures directly."
+$hubBubbleStyle = Get-FunctionBody -Text $main -Name "_hub_bubble_style"
+Assert-True ($hubBubbleStyle -match '_theme_surface_color\(COLOR_PANEL\)' -and $hubBubbleStyle -match '_theme_outline_color\(COLOR_INK, COLOR_PANEL\)') "Hub detail bubbles should use dark-mode-aware panel and outline colors so themed text stays readable."
 $hubMissionSlab = Get-FunctionBody -Text $main -Name "_hub_mission_slab"
 Assert-True ($hubMissionSlab -match '_texture_or_visual_fallback\(str\(action\.get\("art", ""\)\)\)') "Hub mission task art should not assign nullable loaded textures directly."
 $hubMissionBadge = Get-FunctionBody -Text $main -Name "_hub_mission_badge"
@@ -1588,6 +1995,13 @@ Assert-True ($playNewMedalCeremony -match '_set_canvas_item_modulate_if_changed\
 Assert-True ($playNewMedalCeremony -match 'tween\.parallel\(\)\.tween_property\(medal, "modulate:a", 1\.0, 0\.12\)') "Action card medal ceremony fade-in should remain tween-owned."
 $finishNewMedalCeremony = Get-FunctionBody -Text $main -Name "_finish_new_medal_ceremony"
 Assert-True ($finishNewMedalCeremony -match '_set_canvas_item_modulate_if_changed\(callback_medal, Color\.WHITE\)') "Action card medal ceremony completion should guard final opacity writes."
+$clearActionCardMedalCeremony = Get-FunctionBody -Text $main -Name "_clear_action_card_medal_ceremony"
+Assert-True ($clearActionCardMedalCeremony -notmatch 'as Tween|as Node') "Action card medal ceremony cleanup should not cast stale dictionary entries before checking validity."
+Assert-True ($clearActionCardMedalCeremony -match 'is_instance_valid\(ceremony_tween\).*ceremony_tween is Tween' -and $clearActionCardMedalCeremony -match 'is_instance_valid\(outgoing_tween\).*outgoing_tween is Tween') "Action card medal ceremony cleanup should validate stored tweens before killing them."
+Assert-True ($clearActionCardMedalCeremony -match 'is_instance_valid\(outgoing\).*outgoing is Node') "Action card medal ceremony cleanup should validate outgoing medal nodes before queue_free."
+$clearActionCardMedalTapCeremony = Get-FunctionBody -Text $main -Name "_clear_action_card_medal_tap_ceremony"
+Assert-True ($clearActionCardMedalTapCeremony -notmatch 'as Tween|as Node|card\.get\("medal"\) as TextureRect') "Action card medal tap cleanup should not cast stale tweens, effects, or medal references before checking validity."
+Assert-True ($clearActionCardMedalTapCeremony -match 'is_instance_valid\(raw_tween\).*raw_tween is Tween' -and $clearActionCardMedalTapCeremony -match 'is_instance_valid\(raw_effect\).*raw_effect is Node') "Action card medal tap cleanup should validate stored tween/effect objects before touching them."
 $configureAchievementMedalSlot = Get-FunctionBody -Text $main -Name "_configure_achievement_medal_slot"
 Assert-True ($configureAchievementMedalSlot -match '_mastery_medal_visual_texture\(mastery_level\)') "Achievement medal slots should not assign nullable mastery medal textures directly."
 $showAchievementMedalPopover = Get-FunctionBody -Text $main -Name "_show_achievement_medal_popover"
@@ -1643,23 +2057,48 @@ $applyFishingOfferCollectedHeight = Get-FunctionBody -Text $main -Name "_apply_f
 Assert-True ($applyFishingOfferCollectedHeight -match 'root\.is_queued_for_deletion\(\)') "Fishing offer height tween callbacks should skip queued-for-deletion roots."
 $hideControlBound = Get-FunctionBody -Text $main -Name "_hide_control_bound"
 Assert-True ($hideControlBound -match '_set_canvas_item_visible_if_changed\(control, false\)') "Bound control hiding should use the guarded visibility setter."
+foreach ($safeFishingDelayedCallbackName in @(
+	"_activate_fishing_offer_button",
+	"_fishing_offer_button_contains_point",
+	"_apply_fishing_net_offer_idle_frame",
+	"_apply_fishing_net_collect_start_hover_frame",
+	"_reset_fishing_net_collect_flyer_visuals",
+	"_apply_fishing_net_collect_target_hover_frame",
+	"_apply_fishing_offer_collected_height",
+	"_hide_control_bound",
+	"_apply_padlock_click_shake_frame",
+	"_finish_padlock_click_shake",
+	"_apply_fishing_padlock_unlock_drop_frame_bound",
+	"_finish_fishing_location_tile_wiggle"
+)) {
+	$safeFishingDelayedCallback = Get-FunctionBody -Text $main -Name $safeFishingDelayedCallbackName
+	Assert-True ($safeFishingDelayedCallback -notmatch 'instance_from_id\([^\r\n]+\) as Control') "$safeFishingDelayedCallbackName should not directly cast delayed fishing instance IDs."
+}
 $fishingOfferArtModulate = Get-FunctionBody -Text $main -Name "_fishing_offer_art_modulate"
 Assert-True ($main -match 'const FISHING_OFFER_UNAVAILABLE_ART_MODULATE := Color\(1, 1, 1, 0\.52\)') "Fishing offer unavailable art tint should have one named source of truth."
 Assert-True ($fishingOfferArtModulate -match 'FISHING_OFFER_UNAVAILABLE_ART_MODULATE') "Fishing offer art tint helper should own the unavailable tint fallback."
 $buildFishingNetOfferModule = Get-FunctionBody -Text $main -Name "_build_fishing_net_offer_module"
 Assert-True ($buildFishingNetOfferModule -match '_first_texture_or_visual_fallback') "Fishing net offer should preserve ordered background fallback through the shared helper."
+$attachFishingAreaModuleTitle = Get-FunctionBody -Text $main -Name "_attach_fishing_area_module_title"
+Assert-True ($attachFishingAreaModuleTitle -match 'OVERRUN_NO_TRIMMING' -and $attachFishingAreaModuleTitle -match 'FISHING_MODULE_TITLE_RIGHT_INSET') "Fishing module titles should avoid clipping right-aligned equipment/tool text."
+$configureFishingEquipmentOfferTitle = Get-FunctionBody -Text $main -Name "_configure_fishing_equipment_offer_title"
+Assert-True ($configureFishingEquipmentOfferTitle -match 'FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET' -and $configureFishingEquipmentOfferTitle -match 'OVERRUN_NO_TRIMMING') "Fishing equipment offer titles should use safe insets and avoid trimming."
 $buildFishingRodOfferModule = Get-FunctionBody -Text $main -Name "_build_fishing_rod_offer_module"
 Assert-True ($buildFishingRodOfferModule -match '_texture_or_visual_fallback') "Fishing rod offer backgrounds should use the shared visual fallback."
 Assert-True ($buildFishingRodOfferModule -match '_fishing_offer_art_modulate\(fish_currency >= FISHING_ROD_OFFER_COST\)') "Fishing rod offer art should use the shared affordability tint helper."
+Assert-True ($buildFishingRodOfferModule -match '_configure_fishing_equipment_offer_title\(title, 88, 24\)') "Fishing rod offer title should use the shared safe title layout."
 $buildFishingMirrorOfferModule = Get-FunctionBody -Text $main -Name "_build_fishing_mirror_offer_module"
 Assert-True ($buildFishingMirrorOfferModule -match '_texture_or_visual_fallback') "Fishing mirror offer backgrounds should use the shared visual fallback."
 Assert-True ($buildFishingMirrorOfferModule -match '_fishing_offer_art_modulate\(fish_currency >= FISHING_MIRROR_OFFER_COST\)') "Fishing mirror offer art should use the shared affordability tint helper."
+Assert-True ($buildFishingMirrorOfferModule -match '_configure_fishing_equipment_offer_title\(title, 80, 23\)') "Fishing mirror offer title should use the shared safe title layout."
 $buildFishingRodUpgradeOfferModule = Get-FunctionBody -Text $main -Name "_build_fishing_rod_upgrade_offer_module"
 Assert-True ($buildFishingRodUpgradeOfferModule -match '_texture_or_visual_fallback') "Fishing rod upgrade offer backgrounds should use the shared visual fallback."
 Assert-True ($buildFishingRodUpgradeOfferModule -match '_fishing_offer_art_modulate\(fish_currency >= cost, Color\("#dcf7ff"\) if tool_id == "star_rod" else Color\("#ffe8a8"\)\)') "Fishing rod upgrade offer art should use the shared affordability tint helper with its available tint."
+Assert-True ($buildFishingRodUpgradeOfferModule -match '_configure_fishing_equipment_offer_title\(title, 78 if tool_id == "reinforced_rod" else 84, 23\)') "Fishing rod upgrade offer titles should fit long equipment names."
 $buildFishingBoatOfferModule = Get-FunctionBody -Text $main -Name "_build_fishing_boat_offer_module"
 Assert-True ($buildFishingBoatOfferModule -match '_texture_or_visual_fallback') "Fishing boat offer backgrounds should use the shared visual fallback."
 Assert-True ($buildFishingBoatOfferModule -match '_fishing_offer_art_modulate\(can_build\)') "Fishing boat offer art should use the shared affordability tint helper."
+Assert-True ($buildFishingBoatOfferModule -match '_configure_fishing_equipment_offer_title\(title, 88, 24\)') "Fishing boat offer title should use the shared safe title layout."
 Assert-True ($main -match 'const FishingToolWalletOverlay = preload\("res://scripts/ui/fishing_tool_wallet_overlay\.gd"\)') "Fishing tool wallet overlay should live in a reusable UI control file."
 Assert-True ($fishingToolWalletOverlay -match 'class_name FishingToolWalletOverlay') "Fishing tool wallet overlay should expose one named reusable control."
 Assert-True ($fishingToolWalletOverlay -match 'func configure\(next_wallet_panel_size: Vector2, next_tool_button_rects: Array, next_wallet_tool_ids: Array, next_wallet_tool_icons: Array, next_tool_unlocked_states: Array, next_equipped_tool_id: String\)') "Fishing tool wallet overlay should keep its configure contract."
@@ -1806,16 +2245,35 @@ Assert-True ($matCollectionModule -match 'var chrome := Panel\.new\(\)[\s\S]*_ma
 $matCollectionModuleStyle = Get-FunctionBody -Text $main -Name "_mat_collection_module_style"
 Assert-True ($matCollectionModuleStyle -match 'style\.bg_color = Color\(1, 1, 1, 0\.0\)') "Mat collection panel chrome should preserve the texture fill instead of painting over it."
 $pulseMatCollectionModule = Get-FunctionBody -Text $main -Name "_pulse_mat_collection_module"
-Assert-True ($pulseMatCollectionModule -match 'var icon := instance_from_id\(icon_id\) as Control' -and $pulseMatCollectionModule -match 'tween\.tween_property\(icon, "scale"') "Mat collection reward landings should pop only the resource icon, not the whole mats module."
+Assert-True ($pulseMatCollectionModule -match 'var icon := _valid_control_ref\(instance_from_id\(icon_id\)\)' -and $pulseMatCollectionModule -match 'tween\.tween_property\(icon, "scale"') "Mat collection reward landings should pop only the resource icon, not the whole mats module."
+Assert-True ($main -match 'func _remove_meta_from_instance_id\(instance_id: int, meta_name: StringName\) -> void:') "Async UI cleanup should have a shared instance-id metadata helper."
 $matBackgroundPath = Get-FunctionBody -Text $main -Name "_mat_background_path"
 Assert-True ($matBackgroundPath -match 'MAT_COLLECTION_STONE_BACKGROUND_TEXTURE') "Unknown mat backgrounds should fall back to the selected stone background."
+$applyModulePinBadgeTexture = Get-FunctionBody -Text $main -Name "_apply_module_pin_badge_texture"
+Assert-True ($applyModulePinBadgeTexture -match 'badge\.set_meta\("module_pin_texture_path", texture_path\)') "Module pin badges should preserve texture identity in metadata instead of relying on synthetic texture resource paths."
+Assert-True ($applyModulePinBadgeTexture -match 'texture_disabled = badge\.texture_normal' -and $applyModulePinBadgeTexture -match 'texture_focused = badge\.texture_normal') "Module pin badges should set every TextureButton state to a non-null texture for dummy/export renderers."
+$showModulePinPreview = Get-FunctionBody -Text $main -Name "_show_module_pin_preview"
+Assert-True ($showModulePinPreview -match '_kill_meta_tween\(badge, "module_pin_preview_tween"\)' -and $showModulePinPreview -notmatch 'get_meta\("module_pin_preview_tween"\) as Tween') "Module pin preview should safely kill stale preview tween metadata before starting a new preview."
+$placeModulePinBadgeSettled = Get-FunctionBody -Text $main -Name "_place_module_pin_badge_settled"
+Assert-True ($placeModulePinBadgeSettled -match '_kill_meta_tween\(badge, "module_pin_preview_tween"\)' -and $placeModulePinBadgeSettled -notmatch 'get_meta\("module_pin_preview_tween"\) as Tween') "Settled module pin badges should safely clear preview tween metadata."
+$playModulePinConfirmAnimation = Get-FunctionBody -Text $main -Name "_play_module_pin_confirm_animation"
+Assert-True ($playModulePinConfirmAnimation -match '_kill_meta_tween\(badge, "module_pin_tween"\)' -and $playModulePinConfirmAnimation -match '_kill_meta_tween\(badge, "module_pin_preview_tween"\)') "Module pin confirm animation should safely kill stale pin tweens before starting."
+$playModulePinUnpinAnimation = Get-FunctionBody -Text $main -Name "_play_module_pin_unpin_animation"
+Assert-True ($playModulePinUnpinAnimation -match '_kill_meta_tween\(badge, "module_pin_tween"\)' -and $playModulePinUnpinAnimation -match '_kill_meta_tween\(badge, "module_pin_preview_tween"\)') "Module pin unpin animation should safely kill stale pin tweens before starting."
 $actionCardBackgroundTexture = Get-FunctionBody -Text $main -Name "_action_card_background_texture"
 Assert-True ($actionCardBackgroundTexture -match 'if bg_path\.is_empty\(\):\s*\r?\n\s*bg_path = str\(action\.get\("background", ""\)\)') "Action card backgrounds should fall back to the database background field when bg is empty."
+$actionCardBackground = Get-FunctionBody -Text $main -Name "_action_card_background"
+Assert-True ($actionCardBackground -match 'IDLE_ELITE_HEADLESS_SIMPLE_ACTION_BG' -and $actionCardBackground -match 'ColorRect\.new\(\)') "Skills-page performance validation should be able to bypass shader-backed rounded textures without disabling visual geometry tests."
+Assert-True ($skillsPagePerformance -match 'IDLE_ELITE_HEADLESS_SIMPLE_ACTION_BG", "1"') "Skills-page performance validation should opt into the simple headless action-card background."
 $syncMatCollectionCard = Get-FunctionBody -Text $main -Name "_sync_mat_collection_card"
 Assert-True ($syncMatCollectionCard -match '_activity_card_root_height\(bool\(card\.get\("bonus_expanded", false\)\)\)') "Mat collection layout should account for expanded activity cards."
 Assert-True ($syncMatCollectionCard -match 'MAT_COLLECTION_AREA_HEIGHT if running else 0\.0') "Mat collection rows should only reserve vertical space while their activity is running."
+Assert-True ($syncMatCollectionCard -match 'var seed_layout := not bool\(collection\.get\("layout_initialized", false\)\) or \(running and not bool\(collection\.get\("ever_visible", false\)\)\)' -and $syncMatCollectionCard -match 'instant or seed_layout or card_root == null') "First visible mats layout should snap instead of animating down from stale startup geometry."
+$detailLazyFinalizeActionCard = Get-FunctionBody -Text $main -Name "_detail_lazy_finalize_action_card"
+Assert-True ($detailLazyFinalizeActionCard -match 'var running_here := \(running_skill_id == skill_id and running_action_id == action_id\) or \(event_running_skill_id == skill_id and event_running_action_id == action_id\)\s*\r?\n\s*_sync_mat_collection_card\(card, running_here, true\)') "Lazy-mounted active mats cards should initialize their collection row before first paint instead of booting as a blank fat card."
 Assert-True ($syncMatCollectionCard -notmatch 'card_root\.size\.y = layout_height') "Mat collection reflow should not mutate the visual card root size and disturb anchored card art."
 Assert-True ($syncMatCollectionCard -notmatch 'card_root\.custom_minimum_size\.y = layout_height') "Mat collection reflow should not mutate the visual card root minimum height and disturb shared module layout."
+Assert-True ($syncMatCollectionCard -match '_remove_meta_from_instance_id\.bind\(root\.get_instance_id\(\), "mat_collection_tween"\)' -and $syncMatCollectionCard -notmatch 'tween\.finished\.connect\(func') "Mat collection show/hide completion should not capture a card root that may be freed during navigation."
 $setActivityCardExpanded = Get-FunctionBody -Text $main -Name "_set_activity_card_expanded"
 Assert-True ($setActivityCardExpanded -match 'var target_entry_height := target_height \+ mat_collection_height') "Expanded action card entry height should include visible mats module height."
 Assert-True ($setActivityCardExpanded -match '_sync_mat_collection_row_position\(card, target_height\)') "Expanded action cards should push mats rows below the expanded face."
@@ -1843,8 +2301,10 @@ Assert-True ($actionCardBuilder -notmatch 'var status := _label\("", 42, COLOR_R
 Assert-True ($actionCardBuilder -match 'var mission_badge := \{\}') "Fresh normal action cards should not eagerly allocate hidden mission badges."
 Assert-True ($actionCardBuilder -match '"mission_badge_parent": pop_card') "Normal action cards should retain a parent for lazy mission badge creation."
 Assert-True ($actionCardBuilder -notmatch '_hub_mission_badge\(\)') "Normal action cards must not build mission badges until a mission targets the action."
-Assert-True ($actionCardBuilder -match 'if _is_event_action\(action\):\s*\r?\n\s*event_badge = _event_hourglass_badge\(\)\s*\r?\n\s*pop_card\.add_child\(event_badge\)') "Event action cards should render the hourglass badge in the action-card top-right badge slot."
-Assert-True ($actionCardBuilder -match '"event_badge": event_badge') "Action card state should keep a reference to the event hourglass badge."
+Assert-True ($actionCardBuilder -notmatch '_event_hourglass_badge\(\)') "Event action cards should not duplicate the hourglass badge in the action-card top-right badge slot."
+Assert-True ($actionCardBuilder -match '"event_badge": null') "Action card state should not keep a duplicate card-face event hourglass badge."
+$actionArtSpecialTypeIconPath = Get-FunctionBody -Text $main -Name "_action_art_special_type_icon_path"
+Assert-True ($actionArtSpecialTypeIconPath -match 'if _is_event_action\(action\):\s*\r?\n\s*return EVENT_HOURGLASS_BADGE') "Event action cards should keep the hourglass badge in the action-art corner badge slot."
 $actionPreviewBuilder = Get-FunctionBody -Text $main -Name "_skill_swipe_preview_action_card"
 Assert-True ($actionPreviewBuilder -match '_action_card_background\(skill_id, action\)') "Swipe preview action cards should use the cheap shared background factory."
 Assert-True ($actionPreviewBuilder -notmatch 'RoundedTextureRect\.new\(\)') "Swipe preview action card builders must not directly allocate full-card rounded shader backgrounds."
@@ -1919,7 +2379,8 @@ Assert-True ($statBoxStyle -match 'return') "Action stat box styling should retu
 Assert-True ($main -match 'func _action_stat_box_style_key') "Action stat box style key helper should exist."
 $createImageTexture = Get-FunctionBody -Text $main -Name "_create_image_texture"
 Assert-True ($createImageTexture -match 'image == null or image\.is_empty\(\)') "Generated image texture helper should reject null or empty images."
-Assert-True ($createImageTexture -match '_can_create_image_textures\(\)') "Generated image texture helper should respect headless validation."
+Assert-True ($createImageTexture -notmatch '_can_create_image_textures\(\)') "Generated image texture helper should not return null solely because validation is headless."
+Assert-True ($createImageTexture -match 'ImageTexture\.create_from_image\(image\)') "Generated image texture helper should create non-null ImageTextures for valid images."
 $paperButtonStyleWithShape = Get-FunctionBody -Text $main -Name "_paper_button_style_with_shape"
 Assert-True ($paperButtonStyleWithShape -match '_create_image_texture\(image\)') "Generated paper button styles should use the shared headless-safe image texture helper."
 $textureFromImage = Get-FunctionBody -Text $main -Name "_texture_from_image"
@@ -1933,6 +2394,89 @@ Assert-True ($statChipTitle -match 'stat_title_outline_size') "Action stat chip 
 $statChipLabelStyle = Get-FunctionBody -Text $main -Name "_sync_action_stat_chip_label_style"
 Assert-True ($statChipLabelStyle -match 'stat_chip_style_key') "Action stat chip labels should cache their applied style key."
 Assert-True ($statChipLabelStyle -match 'return') "Action stat chip labels should return early when visual style is unchanged."
+
+$roundedFallbackTexture = Get-FunctionBody -Text $roundedTexture -Name "_fallback_texture"
+Assert-True ($roundedFallbackTexture -match 'DisplayServer\.get_name\(\) == "headless"' -and $roundedFallbackTexture -match 'PlaceholderTexture2D\.new\(\)') "RoundedTextureRect fallback texture should use a non-null placeholder in headless validation to avoid dummy-renderer null texture errors."
+Assert-True ($roundedFallbackTexture -match 'ImageTexture\.create_from_image\(image\)') "RoundedTextureRect should create a tiny transparent fallback texture for missing art."
+$visualFallbackTexture = Get-FunctionBody -Text $main -Name "_visual_fallback_texture"
+Assert-True ($visualFallbackTexture -notmatch 'texture_cache\[cache_key\] = null') "Shared visual fallback texture must be non-null in headless validation for TextureButton and other RID-backed controls."
+Assert-True ($visualFallbackTexture -match 'ImageTexture\.create_from_image\(image\)') "Shared visual fallback texture should create a tiny transparent image directly."
+$killTransientTweens = Get-FunctionBody -Text $main -Name "_kill_transient_tweens_in_subtree"
+Assert-True ($killTransientTweens -match '"mat_flyer_tween"') "Shutdown cleanup should kill material collection flyer tweens before their UI nodes can be freed."
+Assert-True ($killTransientTweens -match '"mat_pulse_tween"') "Shutdown cleanup should kill material collection pulse tweens before their UI nodes can be freed."
+$playMatCollectionFlyer = Get-FunctionBody -Text $main -Name "_spawn_mat_collection_flyer"
+$pulseMatCollectionModule = Get-FunctionBody -Text $main -Name "_pulse_mat_collection_module"
+$finishMatCollectionFlyer = Get-FunctionBody -Text $main -Name "_finish_mat_collection_flyer_tween"
+$finishMatCollectionPulse = Get-FunctionBody -Text $main -Name "_finish_mat_collection_module_pulse_tween"
+Assert-True ($playMatCollectionFlyer -match '_finish_mat_collection_flyer_tween\.bind\(flyer\.get_instance_id\(\)\)') "Material collection flyer completion should use instance-id cleanup instead of capturing the flyer node."
+Assert-True ($playMatCollectionFlyer -notmatch 'finished\.connect\(func\(\):\s*\r?\n\s*if flyer') "Material collection flyer completion should not capture a freed flyer node."
+Assert-True ($pulseMatCollectionModule -match '_finish_mat_collection_module_pulse_tween\.bind\(module\.get_instance_id\(\), icon\.get_instance_id\(\)\)') "Material collection pulse completion should use instance-id cleanup instead of capturing module/icon nodes."
+Assert-True ($pulseMatCollectionModule -notmatch 'finished\.connect\(func\(\):\s*\r?\n\s*if icon') "Material collection pulse completion should not capture freed module/icon nodes."
+Assert-True ($finishMatCollectionFlyer -match 'instance_from_id\(flyer_id\)') "Material collection flyer cleanup should resolve the node only when the callback fires."
+Assert-True ($finishMatCollectionPulse -match 'instance_from_id\(module_id\)' -and $finishMatCollectionPulse -match 'instance_from_id\(icon_id\)') "Material collection pulse cleanup should resolve nodes only when the callback fires."
+$autoEatFishToggle = Get-FunctionBody -Text $main -Name "_attach_auto_eat_fish_toggle"
+Assert-True ($autoEatFishToggle -match 'var transparent_texture := _visual_fallback_texture\(\)') "Auto-eat fish TextureButton should use a non-null transparent fallback texture."
+Assert-True ($autoEatFishToggle -match 'texture_focused = transparent_texture') "Auto-eat fish TextureButton focused state should use the non-null transparent fallback texture."
+Assert-True ($autoEatFishToggle -notmatch 'texture_normal = null|texture_pressed = null|texture_hover = null|texture_disabled = null|texture_focused = null') "Auto-eat fish TextureButton states must not be null because dummy/export renderers initialize texture RIDs for every state."
+$playAutoEatFishTogglePop = Get-FunctionBody -Text $main -Name "_play_auto_eat_fish_toggle_pop"
+Assert-True ($playAutoEatFishTogglePop -match '_remove_meta_from_instance_id\.bind\(button\.get_instance_id\(\), "auto_eat_pop_tween"\)' -and $playAutoEatFishTogglePop -notmatch 'tween\.finished\.connect\(func') "Auto-eat fish pop completion should not capture a detail-card button that may be freed during navigation."
+$activityJumpButton = Get-FunctionBody -Text $main -Name "_activity_jump_button"
+Assert-True ($activityJumpButton -match 'texture_focused = button\.texture_normal') "Activity jump TextureButtons should set a non-null focused texture for dummy/export renderers."
+$activityDepthFastRoundRect = Get-FunctionBody -Text $activityCardDepth -Name "_draw_fast_round_rect"
+Assert-True ($activityDepthFastRoundRect -match 'DisplayServer\.get_name\(\) == "headless"') "Activity card depth fast rounded rect should avoid draw_circle in headless validation."
+Assert-True ($activityDepthFastRoundRect -match '_draw_fast_round_rect_clipped\(rect, rect, color, corner_radius\)') "Activity card depth headless fallback should reuse the line-scan rounded rect path."
+$bootFlexReady = Get-FunctionBody -Text $bootFlexLoadingAnimation -Name "_ready"
+$bootFlexLoadTexture = Get-FunctionBody -Text $bootFlexLoadingAnimation -Name "_load_texture_or_fallback"
+$bootFlexFallbackTexture = Get-FunctionBody -Text $bootFlexLoadingAnimation -Name "_transparent_fallback_texture"
+$bootFlexFloatReward = Get-FunctionBody -Text $bootFlexLoadingAnimation -Name "_float_reward"
+Assert-True ($bootFlexReady -match '_load_texture_or_fallback\(SHEET_PATH' -and $bootFlexReady -match '_load_texture_or_fallback\(BUBBLE_PATH') "Boot flex loading animation should use non-null fallbacks for imported textures."
+Assert-True ($bootFlexLoadTexture -match 'loaded is Texture2D' -and $bootFlexLoadTexture -match '_transparent_fallback_texture\(fallback_size\)') "Boot flex texture loader should fall back when imported textures are unavailable in headless/export validation."
+Assert-True ($bootFlexFallbackTexture -match 'ImageTexture\.create_from_image\(image\)') "Boot flex fallback should create a tiny transparent texture directly."
+Assert-True ($bootFlexFloatReward -match '_queue_free_instance_id\.bind\(holder\.get_instance_id\(\)\)' -and $bootFlexFloatReward -notmatch 'holder\.queue_free') "Boot flex XP cleanup should use instance-id callbacks instead of capturing a freed holder node."
+
+$settingsToggleRow = Get-FunctionBody -Text $main -Name "_settings_labeled_toggle_row"
+Assert-True ($settingsToggleRow -match 'label\.size_flags_horizontal = Control::SIZE_EXPAND_FILL|label\.size_flags_horizontal = Control\.SIZE_EXPAND_FILL') "Settings toggle labels should expand so ON/OFF buttons align to a steady right edge."
+foreach ($settingsToggleStyleName in @("_apply_offline_progress_toggle_style", "_apply_auto_unlock_lockpad_toggle_style", "_apply_stamina_decimal_toggle_style")) {
+    $settingsToggleStyle = Get-FunctionBody -Text $main -Name $settingsToggleStyleName
+    Assert-True ($settingsToggleStyle -match '_paper_button_style\(pressed_fill, 48, 72, true\)') "$settingsToggleStyleName should use the same tactile pressed paper treatment as menu buttons."
+}
+$styleAudioSlider = Get-FunctionBody -Text $main -Name "_style_audio_slider"
+$audioSliderGrabber = Get-FunctionBody -Text $main -Name "_audio_slider_grabber"
+Assert-True ($styleAudioSlider -match '_audio_slider_grabber\(true\)') "Audio slider hover should use a distinct highlighted grabber texture."
+Assert-True ($audioSliderGrabber -match 'highlighted := false') "Audio slider grabber generation should keep the normal texture path as the default."
+Assert-True ($audioSliderGrabber -match 'audio_slider_grabber_highlight_texture') "Audio slider highlighted grabber should be cached separately from the normal grabber."
+$leaderboardDropdown = Get-FunctionBody -Text $main -Name "_leaderboard_category_dropdown"
+$leaderboardPlayerCard = Get-FunctionBody -Text $main -Name "_leaderboard_player_card"
+$leaderboardRow = Get-FunctionBody -Text $main -Name "_leaderboard_row"
+Assert-True ($leaderboardDropdown -match 'normal", _leaderboard_dropdown_style\(Color\("#e8f6ff"\), false\)') "Leaderboard category dropdown should keep its normal pale-blue style."
+Assert-True ($leaderboardDropdown -match 'hover", _leaderboard_dropdown_style\(Color\("#f4fbff"\), false\)') "Leaderboard category dropdown should have a subtle distinct hover state."
+Assert-True ($leaderboardPlayerCard -match 'normal", _leaderboard_player_card_style\(Color\("#d8f5ff"\), false\)') "Leaderboard player card should keep its normal pale-blue style."
+Assert-True ($leaderboardPlayerCard -match 'hover", _leaderboard_player_card_style\(Color\("#e7f9ff"\), false\)') "Leaderboard player card should have a subtle distinct hover state."
+Assert-True ($leaderboardRow -match 'HORIZONTAL_ALIGNMENT_RIGHT') "Leaderboard row scores should align to a steady right edge for easier numeric scanning."
+Assert-True ($leaderboardRow -match 'score_label\.size_flags_horizontal = Control::SIZE_EXPAND_FILL|score_label\.size_flags_horizontal = Control\.SIZE_EXPAND_FILL') "Leaderboard row score labels should fill the copy column before right-aligning."
+$chatExpandedRow = Get-FunctionBody -Text $main -Name "_chat_expanded_row"
+$chatExpandedMessageStyle = Get-FunctionBody -Text $main -Name "_chat_expanded_message_style"
+Assert-True ($chatExpandedRow -match '_chat_expanded_message_style\(deleted, is_self\)') "Expanded chat rows should pass ownership into message bubble styling."
+Assert-True ($chatExpandedMessageStyle -match 'is_self := false') "Expanded chat bubble styling should default to the non-self message appearance."
+Assert-True ($chatExpandedMessageStyle -match 'Color\("#e7f5ff"\)') "Expanded self chat bubbles should have a subtle blue tint."
+Assert-True ($chatExpandedMessageStyle -match 'corner_radius_bottom_right = 10 if is_self and not deleted else 18') "Expanded self chat bubbles should use a small asymmetric corner cue."
+$profileAvatarPickerButton = Get-FunctionBody -Text $main -Name "_profile_avatar_picker_button"
+$profileAvatarButtonStyle = Get-FunctionBody -Text $main -Name "_profile_avatar_button_style"
+Assert-True ($profileAvatarPickerButton -match 'hover", _profile_avatar_button_style\(selected, false, true\)') "Profile avatar picker buttons should use a distinct hover style."
+Assert-True ($profileAvatarButtonStyle -match 'hovered := false') "Profile avatar button style should default to non-hovered for existing call sites."
+Assert-True ($profileAvatarButtonStyle -match 'fill\.lightened\(0\.04\)') "Profile avatar hover should be a subtle lift, not a redesign."
+$renderShopPage = Get-FunctionBody -Text $main -Name "_render_shop_page"
+Assert-True ($renderShopPage -match 'normal", _paper_button_style\(Color\("#48dd6c"\), 42\)') "Shop rating CTA should keep its established green normal state."
+Assert-True ($renderShopPage -match 'hover", _paper_button_style\(Color\("#5eed7c"\), 42\)') "Shop rating CTA should have a subtle distinct hover state."
+Assert-True ($renderShopPage -match 'pressed", _paper_button_style\(Color\("#38c45a"\), 42, 64, true\)') "Shop rating CTA should keep its tactile pressed state."
+$achievementsTabStyle = Get-FunctionBody -Text $main -Name "_apply_achievements_modal_tab_style"
+Assert-True ($achievementsTabStyle -match 'var hover_fill := fill if active else fill\.lightened\(0\.06\)') "Inactive achievements tabs should have a subtle distinct hover fill while active tabs stay stable."
+Assert-True ($achievementsTabStyle -match 'hover", _paper_button_style\(hover_fill, 48\)') "Achievements tabs should apply the computed hover fill."
+$hubBuildModeToggle = Get-FunctionBody -Text $main -Name "_add_hub_build_mode_toggle"
+$hubBuildModeButtonStyle = Get-FunctionBody -Text $main -Name "_hub_build_mode_button_style"
+Assert-True ($hubBuildModeToggle -match 'hover", _hub_build_mode_button_style\(hub_build_mode, false, true\)') "Hub build-mode toggle should use a distinct hover style."
+Assert-True ($hubBuildModeButtonStyle -match 'hovered := false') "Hub build-mode button style should default to non-hovered."
+Assert-True ($hubBuildModeButtonStyle -match 'fill\.lightened\(0\.06\)') "Hub build-mode hover should be a subtle lift of the existing active/inactive fill."
 
 $setCanvasItemVisible = Get-FunctionBody -Text $main -Name "_set_canvas_item_visible_if_changed"
 Assert-True ($setCanvasItemVisible -match 'is_queued_for_deletion\(\)') "Shared visibility writes should skip nodes queued for deletion."
@@ -2016,8 +2560,7 @@ $achievementToastLive = Get-FunctionBody -Text $main -Name "_achievement_toast_l
 Assert-True ($achievementToastLive -match 'not toast\.is_queued_for_deletion\(\)') "Achievement toast live checks should reject queued-for-deletion controls."
 $killAchievementToastTween = Get-FunctionBody -Text $main -Name "_kill_achievement_toast_tween"
 Assert-True ($killAchievementToastTween -match '_achievement_toast_live\(banner\)') "Achievement toast tween cleanup should share the live-toast guard."
-Assert-True ($killAchievementToastTween -match 'active_tween\.kill\(\)') "Achievement toast tween cleanup should kill active tweens."
-Assert-True ($killAchievementToastTween -match 'banner\.remove_meta\("achievement_tween"\)') "Achievement toast tween cleanup should remove stale tween metadata."
+Assert-True ($killAchievementToastTween -match '_kill_meta_tween\(banner, "achievement_tween"\)') "Achievement toast tween cleanup should use the shared variant-safe meta tween cleanup."
 $syncAchievementToastQueueBadges = Get-FunctionBody -Text $main -Name "_sync_achievement_toast_queue_badges"
 Assert-True ($syncAchievementToastQueueBadges -match 'not _achievement_toast_live\(toast\)') "Achievement toast badge sync should skip queued or invalid toasts."
 $achievementToastQueueBadgeForToast = Get-FunctionBody -Text $main -Name "_achievement_toast_queue_badge_for_toast"
@@ -2110,7 +2653,7 @@ $syncSwipePreviewFade = Get-FunctionBody -Text $main -Name "_sync_skill_swipe_pr
 Assert-True ($syncSwipePreviewFade -match 'preview_page\.visible = false') "Incoming swipe previews should stay hidden while dragging."
 $navigateSkillPage = Get-FunctionBody -Text $main -Name "_navigate_skill_page"
 Assert-True ($navigateSkillPage -match 'use_gap_load_transition') "Skill swipe navigation should route animated swipes through the physical gap transition."
-Assert-True ($navigateSkillPage -match 'null if use_gap_load_transition else') "Skill swipe navigation should skip the opaque cream cover for physical gap transitions."
+Assert-True ($navigateSkillPage -match 'var transition_cover := _begin_skill_swipe_outgoing_cover\(\) if use_outgoing_animation else null') "Skill swipe navigation should keep an opaque cover while gap-loaded target pages settle."
 Assert-True ($navigateSkillPage -match 'if use_gap_load_transition:[\s\S]*_hide_skill_swipe_paper_fade\(\)') "Skill swipe navigation should keep the blank gap clean instead of fading over it."
 Assert-True ($navigateSkillPage -match 'skill_swipe_gap_render_offset_x = gap_entry_x[\s\S]*await _skill_swipe_install_target_page\(target_key, incoming_preview\)') "Gap swipes should install the target page while it is physically offscreen."
 Assert-True ($navigateSkillPage -match 'await _wait_for_skill_swipe_gap_entry_ready\(next_skill_id\)') "Gap swipes should wait for the incoming page to be presentable before sliding it in."
@@ -2137,7 +2680,7 @@ Assert-True ($cancelSwipe -match '"modulate:a", 0\.0') "Cancelled skill swipes s
 
 $outgoingCover = Get-FunctionBody -Text $main -Name "_begin_skill_swipe_outgoing_cover"
 Assert-True ($outgoingCover -match 'ColorRect\.new\(\)') "Swipe outgoing cover should use a lightweight paper stand-in."
-Assert-True ($outgoingCover -match 'backing\.color = COLOR_PAPER') "Swipe outgoing cover should match the cream page background."
+Assert-True ($outgoingCover -match 'backing\.color = (COLOR_PAPER|_theme_paper_color\(\))') "Swipe outgoing cover should match the page background."
 Assert-True ($outgoingCover -match 'swipe_cream_transition_cover') "Swipe outgoing cover should be tagged as a transient transition cover."
 Assert-True ($outgoingCover -notmatch 'holder\.add_child\(child\)') "Committed swipe navigation must not keep the full outgoing skill page mounted during the settle animation."
 

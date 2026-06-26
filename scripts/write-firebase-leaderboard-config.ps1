@@ -1,6 +1,7 @@
 param(
     [Parameter(Mandatory = $true)][string]$DatabaseUrl,
     [Parameter(Mandatory = $true)][string]$WebApiKey,
+    [string]$GoogleWebClientId = "",
     [string]$OutputPath = ""
 )
 
@@ -26,6 +27,7 @@ function Assert-True {
 
 $cleanUrl = $DatabaseUrl.Trim().TrimEnd("/")
 $cleanKey = $WebApiKey.Trim()
+$cleanGoogleWebClientId = $GoogleWebClientId.Trim()
 $firebaseDatabaseUrlPattern = '^https://([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$'
 
 Assert-True ($cleanUrl -cmatch $firebaseDatabaseUrlPattern) "DatabaseUrl must be a lowercase Firebase Realtime Database URL like https://your-project-id-default-rtdb.firebaseio.com or https://your-project-id-default-rtdb.europe-west1.firebasedatabase.app"
@@ -33,10 +35,16 @@ Assert-True ($cleanUrl -notmatch 'your-project-id|YOUR-PROJECT') "DatabaseUrl st
 Assert-True ($cleanKey.Length -ge 20) "WebApiKey looks too short."
 Assert-True ($cleanKey -ne "YOUR_FIREBASE_WEB_API_KEY") "WebApiKey is still the placeholder."
 Assert-True ($cleanKey -notmatch '\s') "WebApiKey must not contain whitespace."
+if (-not [string]::IsNullOrWhiteSpace($cleanGoogleWebClientId)) {
+    Assert-True ($cleanGoogleWebClientId -match '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') "GoogleWebClientId must look like an OAuth web client id ending in .apps.googleusercontent.com."
+}
 
 $config = [ordered]@{
     database_url = $cleanUrl
     web_api_key = $cleanKey
+}
+if (-not [string]::IsNullOrWhiteSpace($cleanGoogleWebClientId)) {
+    $config.google_web_client_id = $cleanGoogleWebClientId
 }
 
 $configDir = Split-Path -Parent $configPath

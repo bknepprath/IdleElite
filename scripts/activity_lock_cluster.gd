@@ -318,12 +318,12 @@ func _layout_for_count(index: int, count: int) -> Dictionary:
 			return {"x": xs[index], "y": 0.50, "scale": 1.0}
 		3:
 			var points := [
-				{"x": 0.24, "y": 0.58},
+				{"x": 0.20, "y": 0.58},
 				{"x": 0.50, "y": 0.42},
-				{"x": 0.76, "y": 0.58},
+				{"x": 0.80, "y": 0.58},
 			]
 			var point: Dictionary = points[index]
-			point["scale"] = 0.86
+			point["scale"] = 0.78
 			return point
 		4:
 			var points := [
@@ -510,22 +510,28 @@ func _create_rig(
 	rig.visible = true
 	rig.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rig.set_chain_visible(show_chain)
-	rig.chain_moved.connect(func(kind: String, intensity: float) -> void:
-		chain_moved.emit(kind, intensity)
-	)
-	rig.padlock_clicked.connect(func() -> void:
-		if not allow_padlock_events:
-			return
-		last_clicked_requirement_index = requirement_index
-		padlock_clicked.emit()
-	)
-	rig.padlock_hovered.connect(func() -> void:
-		if not allow_padlock_events:
-			return
-		padlock_hovered.emit()
-	)
+	rig.chain_moved.connect(_on_rig_chain_moved)
+	rig.padlock_clicked.connect(_on_rig_padlock_clicked.bind(allow_padlock_events, requirement_index))
+	rig.padlock_hovered.connect(_on_rig_padlock_hovered.bind(allow_padlock_events))
 	add_child(rig)
 	return rig
+
+
+func _on_rig_chain_moved(kind: String, intensity: float) -> void:
+	chain_moved.emit(kind, intensity)
+
+
+func _on_rig_padlock_clicked(allow_padlock_events: bool, requirement_index: int) -> void:
+	if not allow_padlock_events:
+		return
+	last_clicked_requirement_index = requirement_index
+	padlock_clicked.emit()
+
+
+func _on_rig_padlock_hovered(allow_padlock_events: bool) -> void:
+	if not allow_padlock_events:
+		return
+	padlock_hovered.emit()
 
 
 func _motion_source_rig() -> ActivityLockRig:

@@ -3,6 +3,7 @@ extends Control
 
 const DEFAULT_RADIUS := 66.0
 const FAST_DEPTH_SHAPE_ENABLED := true
+const OUTLINE_ARC_SEGMENTS := 20
 
 var depth_offset := Vector2(36.0, 40.0)
 var face_offset := Vector2.ZERO
@@ -72,18 +73,21 @@ func _draw_fast_depth(face_size: Vector2, front: Vector2, back: Vector2) -> void
 	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 8.0, draw_back_plate_bottom_outline)
 
 func _draw_depth_corner_connectors(face_size: Vector2, front: Vector2, back: Vector2) -> void:
-	var width := 8.0
+	var width := 10.0
 	var points := _depth_corner_connector_points(face_size, front, back, width)
 	if points.size() != 4:
 		return
 	var travel := back - front
 	var direction := travel.normalized() if travel.length_squared() > 0.01 else Vector2.ZERO
-	points[0] -= direction * 1.0
-	points[1] += direction * 1.5
-	points[2] -= direction * 1.0
-	points[3] += direction * 1.5
+	points[0] -= direction * 4.0
+	points[1] += direction * 4.0
+	points[2] -= direction * 4.0
+	points[3] += direction * 4.0
 	draw_line(points[0], points[1], lip_color, width, true)
 	draw_line(points[2], points[3], lip_color, width, true)
+	var cap_radius := width * 0.46
+	for point in points:
+		draw_circle(point, cap_radius, lip_color)
 
 func _depth_corner_connector_points(face_size: Vector2, front: Vector2, back: Vector2, width: float) -> PackedVector2Array:
 	var points := PackedVector2Array()
@@ -198,6 +202,9 @@ func _segment_depth_back_color(theme_color: Color) -> Color:
 
 func _draw_fast_round_rect(rect: Rect2, color: Color, corner_radius: float) -> void:
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return
+	if DisplayServer.get_name() == "headless":
+		_draw_fast_round_rect_clipped(rect, rect, color, corner_radius)
 		return
 	var r := _fast_round_rect_radius(rect, corner_radius)
 	if r <= 0.5:
@@ -357,12 +364,12 @@ func _draw_rounded_rect_outline(rect: Rect2, color: Color, width: float, draw_bo
 	draw_line(Vector2(left + r, top), Vector2(right - r, top), color, width, true)
 	draw_line(Vector2(left, top + r), Vector2(left, bottom - r), color, width, true)
 	draw_line(Vector2(right, top + r), Vector2(right, bottom - r), color, width, true)
-	draw_arc(Vector2(left + r, top + r), r, PI, PI * 1.5, 8, color, width, true)
-	draw_arc(Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0, 8, color, width, true)
+	draw_arc(Vector2(left + r, top + r), r, PI, PI * 1.5, OUTLINE_ARC_SEGMENTS, color, width, true)
+	draw_arc(Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0, OUTLINE_ARC_SEGMENTS, color, width, true)
 	if draw_bottom:
 		draw_line(Vector2(left + r, bottom), Vector2(right - r, bottom), color, width, true)
-		draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, 8, color, width, true)
-		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 8, color, width, true)
+		draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, OUTLINE_ARC_SEGMENTS, color, width, true)
+		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, OUTLINE_ARC_SEGMENTS, color, width, true)
 
 func _draw_soft_floor_shadow(face_size: Vector2, back: Vector2) -> void:
 	var r := minf(radius, minf(face_size.x, face_size.y) * 0.5)

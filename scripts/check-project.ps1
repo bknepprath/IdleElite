@@ -5,13 +5,17 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $performanceTest = Join-Path $projectRoot "scripts\test-performance-monitor.ps1"
 $performanceRegressionTest = Join-Path $projectRoot "scripts\test-performance-regressions.ps1"
 $runtimeAssetPathTest = Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1"
+$woodcuttingFirepitTest = Join-Path $projectRoot "scripts\test-woodcutting-firepit.ps1"
 $activityDatabaseContractTest = Join-Path $projectRoot "scripts\check-activity-database-contracts.ps1"
 $generatedFileHygieneTest = Join-Path $projectRoot "scripts\check-generated-file-hygiene.ps1"
 $uiBoundaryContractTest = Join-Path $projectRoot "scripts\check-ui-boundary-contracts.ps1"
 $activityUiBoundaryContractTest = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
 $leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
+$crashAuditContractsTest = Join-Path $projectRoot "scripts\check-crash-audit-contracts.ps1"
 $activityCardGeometryTest = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
 $homeAchievementMedalClickTest = Join-Path $projectRoot "scripts\test-home-achievement-medal-click.ps1"
+$actionCardMedalCeremonyCleanupTest = Join-Path $projectRoot "scripts\test-action-card-medal-ceremony-cleanup.ps1"
+$crashReportRecoveryTest = Join-Path $projectRoot "scripts\test-crash-report-recovery.ps1"
 $tutorialStartScrollTest = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
 $staminaGaugeFailShakeTest = Join-Path $projectRoot "scripts\test-stamina-gauge-fail-shake.ps1"
 $skillDetailBottomScrollPadTest = Join-Path $projectRoot "scripts\test-skill-detail-bottom-scroll-pad.ps1"
@@ -57,17 +61,59 @@ function Assert-NoUnexpectedGodotErrors {
         return
     }
 
-    foreach ($line in @($Output)) {
+    $renderedText = $Output | Out-String -Width 4096
+    $skillsPageStart = $renderedText.IndexOf("skills-page-performance-start")
+    if ($Context -match 'skills page performance' -and $skillsPageStart -ge 0) {
+        $renderedText = $renderedText.Substring($skillsPageStart)
+    }
+    foreach ($line in ($renderedText -split "\r?\n")) {
         $text = [string]$line
-        if ($text -notmatch '^(ERROR|SCRIPT ERROR):') {
+        if ($text -notmatch '(ERROR|SCRIPT ERROR):') {
+            if (
+                $text -match '^\s*At .+\.ps1:\d+ char:\d+' -or
+                $text -match 'OperationStopped' -or
+                $text -match 'did not report success'
+            ) {
+                throw "Unexpected PowerShell failure during ${Context}: $text"
+            }
             continue
         }
         $knownShutdownNoise = (
-            $text -match '^ERROR: \d+ RID allocations of type .+ were leaked at exit\.$' -or
-            $text -match '^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$'
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
+        }
+    }
+}
+
+function Assert-NoCrashLikeGodotErrors {
+    param(
+        [Parameter(Mandatory = $true)][AllowNull()]$Output,
+        [Parameter(Mandatory = $true)][string]$Context
+    )
+
+    if ($null -eq $Output) {
+        return
+    }
+
+    $renderedText = $Output | Out-String -Width 4096
+    foreach ($line in ($renderedText -split "\r?\n")) {
+        $text = [string]$line
+        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
+            continue
+        }
+        $knownPerformanceFailure = (
+            $text -match '(ERROR|powershell\.exe : ERROR): (idle|scroll|swipe|rapid_swipe)/.+(FPS budget|frame work exceeded)' -or
+            $text -match 'ERROR: Skills page performance test did not report success\.'
+        )
+        $knownShutdownNoise = (
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
+        )
+        if (-not ($knownPerformanceFailure -or $knownShutdownNoise)) {
+            throw "Crash-like Godot error during ${Context}: $text"
         }
     }
 }
@@ -92,6 +138,33 @@ function Invoke-ProjectValidationScript {
     Assert-NoHeadlessGodotProcesses $Context
 }
 
+function Invoke-CapturedPowerShellScript {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $stdoutPath = [IO.Path]::GetTempFileName()
+    $stderrPath = [IO.Path]::GetTempFileName()
+    try {
+        $escapedPath = $Path.Replace('"', '\"')
+        $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$escapedPath`""
+        $process = Start-Process `
+            -FilePath "powershell.exe" `
+            -ArgumentList $arguments `
+            -NoNewWindow `
+            -Wait `
+            -PassThru `
+            -RedirectStandardOutput $stdoutPath `
+            -RedirectStandardError $stderrPath
+        $stdout = @(Get-Content -LiteralPath $stdoutPath -ErrorAction SilentlyContinue)
+        $stderr = @(Get-Content -LiteralPath $stderrPath -ErrorAction SilentlyContinue)
+        return @{
+            "exit_code" = $process.ExitCode
+            "output" = @($stdout + $stderr)
+        }
+    } finally {
+        Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    }
+}
+
 function Invoke-SkillsPagePerformanceValidation {
     param(
         [Parameter(Mandatory = $true)][string]$Path,
@@ -106,11 +179,9 @@ function Invoke-SkillsPagePerformanceValidation {
 
     if ($Strict) {
         Write-Host "Strict skills page performance repeat is enabled."
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = "Continue"
-        $strictOutput = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Path 2>&1
-        $strictExitCode = $LASTEXITCODE
-        $ErrorActionPreference = $previousErrorActionPreference
+        $strictResult = Invoke-CapturedPowerShellScript $Path
+        $strictOutput = @($strictResult["output"])
+        $strictExitCode = [int]$strictResult["exit_code"]
         $strictOutput | Out-Host
         if ($strictExitCode -ne 0) {
             exit $strictExitCode
@@ -125,11 +196,9 @@ function Invoke-SkillsPagePerformanceValidation {
     $lastFailureExitCode = 0
     for ($attempt = 1; $attempt -le $attemptCount; $attempt++) {
         Write-Host "skills page performance validation attempt $attempt/$attemptCount"
-        $previousErrorActionPreference = $ErrorActionPreference
-        $ErrorActionPreference = "Continue"
-        $output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $Path 2>&1
-        $exitCode = $LASTEXITCODE
-        $ErrorActionPreference = $previousErrorActionPreference
+        $result = Invoke-CapturedPowerShellScript $Path
+        $output = @($result["output"])
+        $exitCode = [int]$result["exit_code"]
         Assert-NoHeadlessGodotProcesses "$Context attempt $attempt"
         if ($exitCode -eq 0) {
             $output | Out-Host
@@ -138,6 +207,7 @@ function Invoke-SkillsPagePerformanceValidation {
             $global:LASTEXITCODE = 0
             return
         }
+        Assert-NoCrashLikeGodotErrors $output "$Context attempt $attempt failure output"
         $lastFailureOutput = $output
         $lastFailureExitCode = $exitCode
         Write-Warning "Skills page performance attempt $attempt failed with exit code $exitCode; retrying in non-strict mode."
@@ -145,6 +215,7 @@ function Invoke-SkillsPagePerformanceValidation {
 
     Write-Warning "Skills page performance validation failed after $attemptCount attempts; continuing because strict skills performance is disabled."
     if ($null -ne $lastFailureOutput) {
+        Assert-NoCrashLikeGodotErrors $lastFailureOutput "$Context non-strict failure output"
         Write-Host "Last failed non-strict skills page performance output follows. exitCode=$lastFailureExitCode"
         $lastFailureOutput | Out-Host
     }
@@ -195,6 +266,11 @@ $runtimeAssetPathOutput | Out-Host
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
+
+Invoke-ProjectValidationScript `
+    -Path $woodcuttingFirepitTest `
+    -MissingMessage "Woodcutting Firepit test was not found at $woodcuttingFirepitTest" `
+    -Context "woodcutting firepit validation"
 
 if (-not (Test-Path -LiteralPath $activityDatabaseContractTest)) {
     throw "Activity database contract test was not found at $activityDatabaseContractTest"
@@ -247,6 +323,17 @@ if ($LASTEXITCODE -ne 0) {
 }
 Assert-NoUnexpectedGodotErrors $leaderboardCostSafetyOutput "leaderboard cost-safety validation"
 
+if (-not (Test-Path -LiteralPath $crashAuditContractsTest)) {
+    throw "Crash-audit contracts test was not found at $crashAuditContractsTest"
+}
+
+$crashAuditContractsOutput = & $crashAuditContractsTest 2>&1
+$crashAuditContractsOutput | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+Assert-NoUnexpectedGodotErrors $crashAuditContractsOutput "crash-audit contracts validation"
+
 if (-not (Test-Path -LiteralPath $activityCardGeometryTest)) {
     throw "Activity card geometry test was not found at $activityCardGeometryTest"
 }
@@ -263,6 +350,16 @@ Invoke-ProjectValidationScript `
     -Path $homeAchievementMedalClickTest `
     -MissingMessage "Home achievement medal click test was not found at $homeAchievementMedalClickTest" `
     -Context "home achievement medal click validation"
+
+Invoke-ProjectValidationScript `
+    -Path $actionCardMedalCeremonyCleanupTest `
+    -MissingMessage "Action card medal ceremony cleanup test was not found at $actionCardMedalCeremonyCleanupTest" `
+    -Context "action card medal ceremony cleanup validation"
+
+Invoke-ProjectValidationScript `
+    -Path $crashReportRecoveryTest `
+    -MissingMessage "Crash report recovery test was not found at $crashReportRecoveryTest" `
+    -Context "crash report recovery validation"
 
 if (-not (Test-Path -LiteralPath $tutorialStartScrollTest)) {
     throw "Tutorial start scroll test was not found at $tutorialStartScrollTest"

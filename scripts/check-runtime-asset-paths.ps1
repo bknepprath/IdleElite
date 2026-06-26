@@ -1,12 +1,22 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$sourceFiles = @(
-    "project.godot",
-    "export_presets.cfg",
-    "scripts/main.gd",
-    "scripts/ui/boot_flex_loading_animation.gd",
-    "docs/activity-database.json"
+$sourceFileExtensions = @(
+    ".cfg",
+    ".gd",
+    ".godot",
+    ".json",
+    ".tres",
+    ".tscn"
+)
+$ignoredSourcePathPrefixes = @(
+    ".codex-tmp",
+    ".codex-tools",
+    ".git",
+    "android/build",
+    "builds",
+    "play-store",
+    "release"
 )
 
 function Assert-True {
@@ -25,6 +35,18 @@ function Convert-ResourcePathToProjectPath {
 
     $relativePath = $ResourcePath.Substring("res://".Length).Replace("/", [IO.Path]::DirectorySeparatorChar)
     Join-Path $projectRoot $relativePath
+}
+
+function Convert-ToProjectRelativePath {
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $rootPath = (Resolve-Path -LiteralPath $projectRoot).Path.TrimEnd("\", "/")
+    $fullPath = (Resolve-Path -LiteralPath $Path).Path
+    if (-not $fullPath.StartsWith($rootPath, [System.StringComparison]::OrdinalIgnoreCase)) {
+        throw "Path is outside the project root: $Path"
+    }
+    $relativePath = $fullPath.Substring($rootPath.Length).TrimStart("\", "/")
+    $relativePath.Replace("\", "/")
 }
 
 function Add-ResourcePath {
@@ -46,14 +68,40 @@ function Add-ResourcePath {
     $PathsByResourcePath[$ResourcePath].Add($SourceFile)
 }
 
+function Test-IsIgnoredSourcePath {
+    param([Parameter(Mandatory = $true)][string]$RelativePath)
+
+    $normalized = $RelativePath.Replace("\", "/")
+    foreach ($prefix in $ignoredSourcePathPrefixes) {
+        if ($normalized -eq $prefix -or $normalized.StartsWith("$prefix/")) {
+            return $true
+        }
+    }
+    return $false
+}
+
 $pathsByResourcePath = @{}
 $exportExcludeFilters = New-Object System.Collections.Generic.List[string]
+$sourceFiles = @(
+    Get-ChildItem -LiteralPath $projectRoot -File -Recurse |
+        Where-Object {
+            $relativePath = Convert-ToProjectRelativePath $_.FullName
+            ($sourceFileExtensions -contains $_.Extension) -and -not (Test-IsIgnoredSourcePath $relativePath)
+        } |
+        ForEach-Object { Convert-ToProjectRelativePath $_.FullName } |
+        Sort-Object
+)
+
+Assert-True ($sourceFiles.Count -gt 0) "Runtime asset path check did not discover any source files."
 
 foreach ($sourceFile in $sourceFiles) {
     $sourcePath = Join-Path $projectRoot $sourceFile
     Assert-True (Test-Path -LiteralPath $sourcePath) "Missing asset path source file: $sourceFile"
 
     $text = Get-Content -LiteralPath $sourcePath -Raw
+    if ($null -eq $text) {
+        $text = ""
+    }
     if ($sourceFile -eq "export_presets.cfg") {
         foreach ($match in [regex]::Matches($text, 'exclude_filter="(?<filters>[^"]*)"')) {
             foreach ($filter in $match.Groups["filters"].Value.Split(",")) {

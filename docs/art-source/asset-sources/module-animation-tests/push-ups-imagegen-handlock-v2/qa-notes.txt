@@ -1,0 +1,1 @@
+Image-generated handlock v2. Targeted edit from the strong continuous-body candidate. Improvements requested: reduce hand sliding and smooth the mid-back/hip bump. Export uses shared scale and fixed baseline; diagnostic hand/toe dots are fixed overlays for review.

@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Push-Ups Animation Failure Timeline</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101214;
+      --panel: #181b1f;
+      --panel-2: #20242a;
+      --text: #eef3f7;
+      --muted: #aeb8c2;
+      --line: #343b44;
+      --bad: #ff6b5f;
+      --ok: #65d28a;
+      --warn: #ffd166;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.45 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    main {
+      max-width: 1180px;
+      margin: 0 auto;
+      padding: 32px 20px 56px;
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
+    .lede {
+      max-width: 850px;
+      margin: 0 0 24px;
+      color: var(--muted);
+      font-size: 16px;
+    }
+    .rules {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 12px;
+      margin: 0 0 26px;
+    }
+    .rule {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    .rule strong {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--warn);
+    }
+    .timeline {
+      display: grid;
+      gap: 16px;
+    }
+    article {
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 14px;
+    }
+    figure {
+      margin: 0;
+      background: #050607;
+      border-radius: 6px;
+      min-height: 210px;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+    }
+    img {
+      width: 100%;
+      max-height: 260px;
+      object-fit: contain;
+      image-rendering: auto;
+    }
+    h2 {
+      margin: 0 0 6px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
+    .meta {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 13px;
+      font-family: Consolas, "Liberation Mono", monospace;
+    }
+    ul {
+      margin: 8px 0 0;
+      padding-left: 20px;
+    }
+    li { margin: 4px 0; }
+    .status {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 8px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: var(--panel-2);
+      color: var(--bad);
+      font-weight: 700;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .lesson {
+      margin-top: 10px;
+      padding: 10px;
+      border-left: 3px solid var(--warn);
+      background: #171715;
+      color: #f6e6ae;
+      border-radius: 4px;
+    }
+    @media (max-width: 760px) {
+      article { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Push-Ups Animation Failure Timeline</h1>
+  <p class="lede">This page tracks the failed Push-Ups animation attempts in order so future passes can target the actual problems instead of repeating near-misses. The hard visual target is the source-of-truth blue guy doing a readable push-up: two visible legs, planted hands and toe pads, fixed guide only in diagnostics, and no body-to-leg seam.</p>
+
+  <section class="rules" aria-label="Current hard rules">
+    <div class="rule">
+      <strong>No body-to-leg seam</strong>
+      No black hip crease, butt seam, underside divider, or fat line below the body and above the legs.
+    </div>
+    <div class="rule">
+      <strong>Two visible legs</strong>
+      Do not solve the seam by creating a single merged unileg or tail. Show two simple legs that attach smoothly.
+    </div>
+    <div class="rule">
+      <strong>No bouncing guide</strong>
+      The diagnostic floor line is a fixed world reference added after slicing. It must not be generated per frame.
+    </div>
+    <div class="rule">
+      <strong>Stable contact patches</strong>
+      The visible hand pads and toe pads must stay planted, not just one hidden anchor pixel.
+    </div>
+  </section>
+
+  <section class="timeline">
+    <article>
+      <figure><img src="push-ups-smooth-rear/fight-push-ups-smooth-rear-preview.gif" alt="Smooth rear preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>1. Smooth Rear Pass</h2>
+        <p class="meta">push-ups-smooth-rear</p>
+        <ul>
+          <li>Good: smoother rear shape, closer to the requested blue-guy feel.</li>
+          <li>Wrong: feet floated and jumped frame to frame instead of rotating from planted toes.</li>
+          <li>Wrong: no real floor/contact plane was being obeyed.</li>
+        </ul>
+        <div class="lesson">Lesson: good silhouette is not enough. Push-ups need a physical contact plane before polish.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-guided-v4/fight-push-ups-guided-v4-floor-diagnostic.gif" alt="Guided diagnostic preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>2. Generated Red-Line Guide Passes</h2>
+        <p class="meta">push-ups-guided-v1 through push-ups-guided-v4</p>
+        <ul>
+          <li>Good: introduced a visible construction line to reason about the floor.</li>
+          <li>Wrong: the red line itself moved, bent, or was reinterpreted per frame.</li>
+          <li>Wrong: the character did not actually obey the line; it was just a ruler behind floating art.</li>
+        </ul>
+        <div class="lesson">Lesson: diagnostic guides must be code-authored fixed overlays, not hallucinated animation elements.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-floor-authored-v2/fight-push-ups-floor-authored-v2-anchorlocked-floor-diagnostic.gif" alt="Anchor locked diagnostic preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>3. Anchor-Locked Export</h2>
+        <p class="meta">push-ups-floor-authored-v2</p>
+        <ul>
+          <li>Good: tried to align the generated frames using contact anchors after slicing.</li>
+          <li>Wrong: the chosen anchor pixels were steadier, but the visible foot mass still crawled.</li>
+          <li>Wrong: the viewer reads the whole toe/foot pad, not a mathematical point.</li>
+        </ul>
+        <div class="lesson">Lesson: lock the visible contact patch, not just an invisible point.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-contact-dots-v1/fight-push-ups-contact-dots-v1-cleaned-floor-diagnostic.gif" alt="Contact dot diagnostic preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>4. Contact Dot Pass</h2>
+        <p class="meta">push-ups-contact-dots-v1</p>
+        <ul>
+          <li>Good: red contact dots made the feet and hands more physically anchored.</li>
+          <li>Wrong: the guide/dots read as animated marks and could appear to bounce.</li>
+          <li>Wrong: still did not fully solve the lower-body shape.</li>
+        </ul>
+        <div class="lesson">Lesson: source guide dots can help generation, but the review guide must still be a fixed post-process overlay.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-fused-plank-v1/fight-push-ups-fused-plank-v1-preview.gif" alt="Fused plank preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>5. Fused Plank Pass</h2>
+        <p class="meta">push-ups-fused-plank-v1</p>
+        <ul>
+          <li>Good: reduced the black butt/body-to-leg seam.</li>
+          <li>Wrong: overcorrected into a single unileg/tail lower body.</li>
+          <li>Wrong: the lower silhouette became awkward instead of reading as two blue-guy legs.</li>
+        </ul>
+        <div class="lesson">Lesson: the fix is not one fused tail. The correct target is two legs with a smooth body attachment.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-two-leg-v1/fight-push-ups-two-leg-v1-preview.gif" alt="Two leg preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>6. Two-Leg Pass</h2>
+        <p class="meta">push-ups-two-leg-v1</p>
+        <ul>
+          <li>Good: restored the two-leg read.</li>
+          <li>Wrong: added a fat black underside divider below the body and above the legs.</li>
+          <li>Wrong: that line is still a forbidden body-to-leg seam, even if it is not drawn as a round butt outline.</li>
+        </ul>
+        <div class="lesson">Lesson: allow only a subtle line between the two legs. Never allow a transverse underside line separating torso/body from legs.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-no-underside-v1/fight-push-ups-no-underside-v1-preview.gif" alt="Paint cleanup preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>7. Painted Underside Cleanup</h2>
+        <p class="meta">push-ups-no-underside-v1</p>
+        <ul>
+          <li>Good: directly removed the forbidden fat underside line in several frames.</li>
+          <li>Wrong: the paintover left obvious blue bands and damaged the art quality.</li>
+          <li>Wrong: cleanup solved the rule technically but looked patched instead of authored.</li>
+        </ul>
+        <div class="lesson">Lesson: manual cleanup can help, but broad paint strokes are not acceptable. Any cleanup must preserve the original shading and contour quality.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-hidden-upper-leg-v1/fight-push-ups-hidden-upper-leg-v1-preview.gif" alt="Hidden upper leg preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>8. Hidden Upper-Leg Prompt</h2>
+        <p class="meta">push-ups-hidden-upper-leg-v1</p>
+        <ul>
+          <li>Good: tried a new structure where upper legs are mostly hidden and two toe pads give the leg read.</li>
+          <li>Wrong: low frames still reintroduced the black underside/body-to-leg divider.</li>
+          <li>Wrong: prompt-only generation keeps using that black stroke to explain overlap in low push-up poses.</li>
+        </ul>
+        <div class="lesson">Lesson: the next real strategy should use either a cleaner pose reference with the lower body already solved, or a precise edit pass on only the seam with source-aware blending.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-two-leg-stable-body-v1/fight-push-ups-two-leg-stable-body-v1-preview.gif" alt="Two leg stable body preview"></figure>
+      <div>
+        <span class="status">Closest</span>
+        <h2>9. Two-Leg Stable Body Pass</h2>
+        <p class="meta">push-ups-two-leg-stable-body-v1</p>
+        <ul>
+          <li>Good: restores the two-leg/toe-pad read without returning to a full unileg shape.</li>
+          <li>Good: reduces the pronounced butt and belly compared with earlier two-leg attempts.</li>
+          <li>Better: torso length feels more stable, with less hip/butt crawling along the body.</li>
+          <li>Still wrong: low frames retain a small underside crease/body-to-leg divider, so it is not final.</li>
+        </ul>
+        <div class="lesson">Lesson: this is the current best direction. Next pass should preserve this body mass and two-leg read while removing the remaining underside crease in the low frames.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-two-leg-no-ass-v1/fight-push-ups-two-leg-no-ass-v1-preview.gif" alt="Two leg no ass preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>10. Two-Leg No-Ass Prompt</h2>
+        <p class="meta">push-ups-two-leg-no-ass-v1</p>
+        <ul>
+          <li>Good: made the rear legs more readable than the one-leg attempts.</li>
+          <li>Wrong: still showed rear/belly mass, especially in the higher frames.</li>
+          <li>Wrong: feet still did not feel fully stamped to one fixed contact patch in motion.</li>
+        </ul>
+        <div class="lesson">Lesson: asking for no ass is not enough; the construction must avoid tucking the legs under a belly/rear mass.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-two-leg-outside-v1/fight-push-ups-two-leg-outside-v1-preview.gif" alt="Two leg outside preview"></figure>
+      <div>
+        <span class="status">Closest</span>
+        <h2>11. Two-Leg Outside Pass</h2>
+        <p class="meta">push-ups-two-leg-outside-v1</p>
+        <ul>
+          <li>Good: clearest two-leg read so far; legs are more visible outside the body silhouette.</li>
+          <li>Better: foot shapes are easier to track and less one-leg/tail-like.</li>
+          <li>Still wrong: low frames retain a dark body-to-leg divider, and the torso still has some rear/belly mass.</li>
+        </ul>
+        <div class="lesson">Lesson: this is a better structural direction, but the low-pose body/leg overlap still needs a no-divider solution.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-slim-plank-v1/fight-push-ups-slim-plank-v1-preview.gif" alt="Slim plank preview"></figure>
+      <div>
+        <span class="status">Rejected</span>
+        <h2>12. Slim Plank Prompt</h2>
+        <p class="meta">push-ups-slim-plank-v1</p>
+        <ul>
+          <li>Good: tried to reduce the fat body by specifying a slim rounded-rectangle plank.</li>
+          <li>Wrong: low frames still created a fat body mass with a black line separating body from legs.</li>
+          <li>Wrong: feet still bounced and the legs appeared to extend in length during the animation.</li>
+        </ul>
+        <div class="lesson">Lesson: full-sheet image generation keeps changing the topology in the down pose. The next production strategy should animate consistent generated parts or a rigged single-source drawing rather than asking for a new complete 4-frame sheet.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-exercise-source-rig-v2/fight-push-ups-exercise-source-rig-v2-preview.gif" alt="Exercise source rig preview"></figure>
+      <div>
+        <span class="status">Best Source</span>
+        <h2>13. Exercise Source Rig</h2>
+        <p class="meta">push-ups-exercise-source-rig-v2</p>
+        <ul>
+          <li>Good: built from the actual exercise sprite sheet push-up poses instead of asking image generation to redraw topology.</li>
+          <li>Good: removes the fat generated torso, ass read, black body-to-leg seam, and leg-extension problem.</li>
+          <li>Good: two legs/toe pads come from the source-of-truth exercise pose.</li>
+          <li>Tradeoff: in-between motion is less fluid because frames 2 and 3 are near-key source-pose holds, not fully redrawn tweens.</li>
+        </ul>
+        <div class="lesson">Lesson: the source sheet solved the style/topology problem. Future polish should rig or redraw tweens from this source, not generate a new full sheet.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-exercise-foot-anchor-v1/fight-push-ups-exercise-foot-anchor-v1-preview.gif" alt="Exercise foot anchor preview"></figure>
+      <div>
+        <span class="status">Current Best</span>
+        <h2>14. Exercise Foot-Anchor Tweens</h2>
+        <p class="meta">push-ups-exercise-foot-anchor-v1</p>
+        <ul>
+          <li>Good: uses the exercise source push-up poses and keeps the same foot anchor across all exported frames.</li>
+          <li>Good: adds explicit near-key tweens: frame 2 is the 10% near-high pose, frame 3 is the 90% near-low pose.</li>
+          <li>Good: diagnostic red dot/line are code-authored and do not vertically bounce.</li>
+          <li>Tradeoff: tweens are transformed from source poses, so future polish can still redraw smoother in-betweens from this anchored base.</li>
+        </ul>
+        <div class="lesson">Lesson: anchor-first export fixes the foot bounce problem better than full-sheet generation. Keep this anchor workflow for the next polish pass.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-exercise-source-locked-v2/fight-push-ups-exercise-source-locked-v2-preview.gif" alt="Source locked push-up preview"></figure>
+      <div>
+        <span class="status">Source Locked</span>
+        <h2>15. Exercise Source-Locked V2</h2>
+        <p class="meta">push-ups-exercise-source-locked-v2</p>
+        <ul>
+          <li>Good: stops prompt-only redraws from inventing the tall blue guy and uses the exercise sheet push-up topology directly.</li>
+          <li>Good: keeps the compact exercise-sheet style, no fat generated body, no pronounced ass, and no black body-to-leg cutoff line.</li>
+          <li>Good: exports four unique ordered frames with a shared crop, fixed diagnostic floor overlay, and longer top-hold timing.</li>
+          <li>Tradeoff: this is a source-locked rig/export pass, not a fully fresh image-gen redraw; future polish should redraw tweens from this topology only after the source lock is preserved.</li>
+        </ul>
+        <div class="lesson">Lesson: for this animation, source-sheet topology wins over prompt-only generation. Image gen can polish later, but it should not be allowed to reinvent the body/leg structure.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-imagegen-continuous-body-v1/fight-push-ups-imagegen-continuous-body-v1-preview.gif" alt="Image-generated continuous-body push-up preview"></figure>
+      <div>
+        <span class="status">Best Image Gen</span>
+        <h2>16. Image-Generated Continuous Body</h2>
+        <p class="meta">push-ups-imagegen-continuous-body-v1</p>
+        <ul>
+          <li>Good: true image-generated sheet with four unique poses: 0%, 15%, 85%, and 100%.</li>
+          <li>Good: uses the exercise-sheet push-up orientation with feet on the left and head on the right.</li>
+          <li>Good: shared export scale and fixed baseline keep the toe/hand contact plane stable in the preview.</li>
+          <li>Improved: the long black body-to-leg separator from earlier generated passes is mostly gone; the lower contour reads closer to an outer silhouette.</li>
+          <li>Watch: low frames still have a heavy lower outline, so reject future regressions that turn that contour back into a body-over-leg divider.</li>
+        </ul>
+        <div class="lesson">Lesson: prompt generation only became usable after targeting one failure at a time, then packaging with shared-scale slicing and a fixed diagnostic overlay.</div>
+      </div>
+    </article>
+
+    <article>
+      <figure><img src="push-ups-imagegen-handlock-v3/fight-push-ups-imagegen-handlock-v3-preview.gif" alt="Image-generated hand-lock push-up preview"></figure>
+      <div>
+        <span class="status">Current Best</span>
+        <h2>17. Image-Generated Hand-Lock V3</h2>
+        <p class="meta">push-ups-imagegen-handlock-v3</p>
+        <ul>
+          <li>Good: keeps the strong feet-locked behavior from the previous image-generated candidate.</li>
+          <li>Better: hand contact patches stay much closer to the fixed support point during the lowering motion.</li>
+          <li>Better: reduces the raised mid-back/hip bump while keeping the body-to-leg connection continuous.</li>
+          <li>Watch: palms still change silhouette slightly as elbows bend, so future polish should keep using fixed hand dots during generation/review.</li>
+        </ul>
+        <div class="lesson">Lesson: once feet are solved, palms must become first-class anchors. The body should lower by elbow bend around planted hands, not by sliding the hands along the floor.</div>
+      </div>
+    </article>
+  </section>
+</main>
+</body>
+</html>

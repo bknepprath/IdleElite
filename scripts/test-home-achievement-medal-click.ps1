@@ -278,7 +278,14 @@ func _fail(message: String) -> void:
     }
     Assert-True (($output -join "`n") -match "home-achievement-medal-click-ok") "Home achievement medal click smoke did not report success."
 
-    $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
+    $newHeadless = @()
+    for ($attempt = 1; $attempt -le 10; $attempt++) {
+        $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
+        if ($newHeadless.Count -eq 0) {
+            break
+        }
+        Start-Sleep -Milliseconds 500
+    }
     if ($newHeadless.Count -gt 0) {
         $newHeadless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
         throw "A new headless Godot process is still running after home achievement medal click smoke."

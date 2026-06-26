@@ -33,12 +33,12 @@ function Assert-NoUnexpectedGodotErrors {
 
     foreach ($line in @($Output)) {
         $text = [string]$line
-        if ($text -notmatch '^(ERROR|SCRIPT ERROR):') {
+        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
             continue
         }
         $knownShutdownNoise = (
-            $text -match '^ERROR: \d+ RID allocations of type .+ were leaked at exit\.$' -or
-            $text -match '^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$'
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
@@ -115,6 +115,9 @@ func _run() -> void:
 	_check_achievement_toast_seen_ids_save_restore(game)
 	_check_scalar_progression_metadata_save(game)
 	_check_offline_progress_trust(game)
+	_check_load_save_dictionary_rejects_corrupt_files(game)
+	_check_best_save_dictionary_prefers_progress(game)
+	_check_save_payload_progress_regression_guard(game)
 	_check_save_payload(game)
 	_check_passive_module_save(game)
 	_check_passive_module_restore(game)
@@ -1206,12 +1209,17 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	game.call("_restore_leaderboard_auth_metadata_from_save", {
 		"leaderboard_auth_refresh_token": "  refresh-token  ",
 		"leaderboard_auth_retry_after_unix": -40,
+		"leaderboard_auth_provider": "google",
 	})
 	_expect(str(game.get("leaderboard_auth_id_token")).is_empty(), "Leaderboard auth restore should clear volatile id tokens.")
 	_expect(str(game.get("leaderboard_auth_refresh_token")) == "refresh-token", "Leaderboard auth restore should trim refresh tokens.")
 	_expect(int(game.get("leaderboard_auth_expires_unix")) == 0, "Leaderboard auth restore should clear volatile token expiry.")
 	_expect(int(game.get("leaderboard_auth_retry_after_unix")) == 0, "Leaderboard auth restore should clamp retry timestamps.")
-	_expect(str(game.get("leaderboard_auth_provider")) == "anonymous", "Leaderboard auth restore should reset the ignored provider.")
+	_expect(str(game.get("leaderboard_auth_provider")) == "google", "Leaderboard auth restore should preserve Google account providers.")
+	game.call("_restore_leaderboard_auth_metadata_from_save", {
+		"leaderboard_auth_provider": "stale-provider",
+	})
+	_expect(str(game.get("leaderboard_auth_provider")) == "anonymous", "Leaderboard auth restore should normalize unknown providers.")
 
 
 func _check_leaderboard_fetch_retry_save_restore(game: Node) -> void:
@@ -1698,6 +1706,56 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 	game.set("action_cards", {str(game.call("_action_key", "fishing", "beach-rocks")): method_card})
 	_expect(bool(game.call("_should_route_activity_unlock_to_fishing_method", {}, "fishing", "beach-rocks")), "Registered fishing methods should be recovered before generic unlock routing.")
 
+	var skills := game.get("skills") as Dictionary
+	var fishing := (skills.get("fishing", {}) as Dictionary).duplicate(true)
+	fishing["level"] = 4
+	fishing["xp"] = int(game.call("_xp_for_level", 4))
+	skills["fishing"] = fishing
+	game.set("skills", skills)
+	var manual_unlocks := game.get("manual_activity_unlocks") as Dictionary
+	manual_unlocks.erase(str(game.call("_action_key", "fishing", "beach-rocks")))
+	game.set("manual_activity_unlocks", manual_unlocks)
+	game.call("_invalidate_manual_activity_unlock_trust")
+	_expect(bool(game.call("_persist_fishing_method_unlock_click", "fishing", "beach-rocks")), "Fishing method lock click persistence should accept level-ready Rocks.")
+	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
+	_expect(bool(manual_unlocks.get("fishing:beach-rocks", false)), "Fishing method lock clicks should persist the unlock immediately before page/tool refresh can discard the ceremony node.")
+	var rocks_action := game.call("_action_data", "fishing", "beach-rocks") as Dictionary
+	_expect(bool(game.call("_is_action_unlocked", "fishing", rocks_action)), "Immediately persisted fishing method unlocks should render as unlocked on rebuilt fishing location tiles.")
+	var live_panel := Panel.new()
+	var live_button := Button.new()
+	live_button.disabled = true
+	live_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	live_panel.add_child(live_button)
+	var live_lock := Control.new()
+	live_lock.mouse_filter = Control.MOUSE_FILTER_STOP
+	var live_padlock_hit := Control.new()
+	live_padlock_hit.mouse_filter = Control.MOUSE_FILTER_STOP
+	live_lock.set_meta("padlock_button", live_padlock_hit)
+	live_lock.add_child(live_padlock_hit)
+	live_panel.add_child(live_lock)
+	var live_method_card := {
+		"is_fishing_method": true,
+		"skill_id": "fishing",
+		"action_id": "beach-rocks",
+		"fishing_area_key": "fishing:area-beach",
+		"method_button": live_button,
+		"art_panel": live_panel,
+		"lock_root": live_lock,
+		"unlock_ready_pending": true,
+		"unlock_ceremony_pending": true,
+	}
+	game.call("_sync_fishing_method_card_unlocked_live", live_method_card)
+	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_STOP, "Live fishing method cards should become tappable immediately after their lock is accepted.")
+	_expect(not bool(live_method_card.get("unlock_ready_pending", true)) and not bool(live_method_card.get("unlock_ceremony_pending", true)), "Live fishing method unlock sync should clear stale locked-card flags before a page rebuild.")
+	_expect(live_lock.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_padlock_hit.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Live fishing method unlock sync should stop the old padlock from stealing the next tap.")
+	_expect(str(game.call("_tutorial_preview_after_manual_unlock", "fishing", "beach-rocks")) == "pier-dock-edge", "Unlocking Rocks should target Pier Dock Edge as the next fishing module preview.")
+	_expect(str(game.call("_fishing_global_teaser_location_key", "fishing")) == "pier.dock-cup", "After Rocks is unlocked, the fishing teaser should move to the Pier Dock Edge location tile.")
+	var render_area_ids := []
+	for raw_area_def in game.call("_fishing_render_area_modules", "fishing") as Array:
+		var area_def := raw_area_def as Dictionary
+		render_area_ids.append(str(area_def.get("id", "")))
+	_expect(render_area_ids.has("pier"), "After Rocks is unlocked, the Pier area module should be included as the next locked fishing module.")
+
 
 func _check_module_ui_preferences_save_restore(game: Node) -> void:
 	_prime_core_skill_state(game)
@@ -1849,6 +1907,27 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 
 	_prime_core_skill_state(game)
 	game.set("startup_initialized", true)
+	game.set("current_screen", "home")
+	game.set("selected_skill_id", "fight")
+	game.set("auto_unlock_lockpads_enabled", true)
+	game.set("manual_activity_unlocks", {})
+	game.set("manual_activity_requirement_unlocks", {})
+	game.set("manual_activity_unlocks_trust_checked", false)
+	game.set("manual_activity_unlocks_trusted", true)
+	game.set("pending_activity_unlock_ceremony", {})
+	skills = game.get("skills") as Dictionary
+	var fishing := skills.get("fishing", {}) as Dictionary
+	fishing["xp"] = int(game.call("_xp_for_level", 4))
+	fishing["level"] = 4
+	skills["fishing"] = fishing
+	game.set("skills", skills)
+	game.call("_queue_activity_unlock_readiness", "fishing", 1, 4, {"fishing": ["beach-rocks"]})
+	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
+	_expect(bool(manual_unlocks.get("fishing:beach-rocks", false)), "Auto-unlock lockpads should immediately mark non-visible ready fishing methods unlocked.")
+	_expect((game.get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Auto-unlock lockpads should not leave non-visible fishing methods pending.")
+
+	_prime_core_skill_state(game)
+	game.set("startup_initialized", true)
 	game.set("current_screen", "skill")
 	game.set("selected_skill_id", "fight")
 	game.set("auto_unlock_lockpads_enabled", true)
@@ -1867,6 +1946,27 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
 	_expect(bool(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Startup with auto-unlock on should not leave ready lockpads alive until the setting is toggled.")
 	_expect((game.get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Startup with auto-unlock on should drain retroactive ready lockpads.")
+
+	_prime_core_skill_state(game)
+	game.set("startup_initialized", true)
+	game.set("current_screen", "home")
+	game.set("selected_skill_id", "fight")
+	game.set("auto_unlock_lockpads_enabled", true)
+	game.set("manual_activity_unlocks", {})
+	game.set("manual_activity_requirement_unlocks", {})
+	game.set("manual_activity_unlocks_trust_checked", false)
+	game.set("manual_activity_unlocks_trusted", true)
+	game.set("pending_activity_unlock_ceremony", {})
+	skills = game.get("skills") as Dictionary
+	fishing = skills.get("fishing", {}) as Dictionary
+	fishing["xp"] = int(game.call("_xp_for_level", 4))
+	fishing["level"] = 4
+	skills["fishing"] = fishing
+	game.set("skills", skills)
+	game.call("_run_startup_auto_unlock_lockpads")
+	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
+	_expect(bool(manual_unlocks.get("fishing:beach-rocks", false)), "Startup with auto-unlock on should drain retroactive ready fishing method lockpads.")
+	_expect((game.get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Startup with auto-unlock on should not leave ready fishing method lockpads pending.")
 
 	_prime_core_skill_state(game)
 	game.set("startup_initialized", true)
@@ -1900,6 +2000,35 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 	_expect(bool(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad toggle should enable the setting.")
 	_expect(bool(manual_unlocks.get("fight:kick-mud-off-boot", false)) and bool(manual_unlocks.get("fight:wrestle-stuck-gate-latch", false)), "Toggling auto-unlock on should clear all currently ready non-visible lockpads.")
 	_expect((game.get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Toggling auto-unlock on should drain the current ready lockpad queue.")
+
+	_prime_core_skill_state(game)
+	game.set("startup_initialized", true)
+	game.set("current_screen", "home")
+	game.set("selected_skill_id", "fight")
+	game.set("auto_unlock_lockpads_enabled", false)
+	game.set("manual_activity_unlocks", {})
+	game.set("manual_activity_requirement_unlocks", {})
+	game.set("manual_activity_unlocks_trust_checked", false)
+	game.set("manual_activity_unlocks_trusted", true)
+	game.set("pending_activity_unlock_ceremony", {
+		"pages": {
+			"fishing": {
+				"skill_id": "fishing",
+				"ready": ["beach-rocks"],
+				"applied": true
+			}
+		}
+	})
+	skills = game.get("skills") as Dictionary
+	fishing = skills.get("fishing", {}) as Dictionary
+	fishing["xp"] = int(game.call("_xp_for_level", 4))
+	fishing["level"] = 4
+	skills["fishing"] = fishing
+	game.set("skills", skills)
+	game.call("_toggle_auto_unlock_lockpads_enabled")
+	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
+	_expect(bool(manual_unlocks.get("fishing:beach-rocks", false)), "Toggling auto-unlock on should clear ready non-visible fishing method lockpads.")
+	_expect((game.get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Toggling auto-unlock on should drain pending fishing method lockpads.")
 	game.set("startup_initialized", previous_startup)
 	game.set("current_screen", previous_screen)
 	game.set("selected_skill_id", previous_selected)
@@ -2111,6 +2240,121 @@ func _check_offline_progress_trust(game: Node) -> void:
 	_expect(str(game.call("_leaderboard_submit_status_detail")).find("Hard Reset") < 0, "Saves should not tell players to hard reset for clock reasons.")
 
 
+func _check_load_save_dictionary_rejects_corrupt_files(game: Node) -> void:
+	var corrupt_path := "user://codex-corrupt-save-normalization.json"
+	var file := FileAccess.open(corrupt_path, FileAccess.WRITE)
+	_expect(file != null, "Corrupt save parser smoke should be able to create a temp user save file.")
+	if file != null:
+		file.store_string("{not-valid-json")
+		file.close()
+	_expect((game.call("_load_save_dictionary_from_path", corrupt_path) as Dictionary).is_empty(), "Save loader should return an empty dictionary for invalid JSON.")
+
+	file = FileAccess.open(corrupt_path, FileAccess.WRITE)
+	if file != null:
+		file.store_string("[1, 2, 3]")
+		file.close()
+	_expect((game.call("_load_save_dictionary_from_path", corrupt_path) as Dictionary).is_empty(), "Save loader should return an empty dictionary for non-dictionary JSON.")
+
+	file = FileAccess.open(corrupt_path, FileAccess.WRITE)
+	if file != null:
+		file.store_string("{\"skills\":{},\"saved_at\":123}")
+		file.close()
+	var valid := game.call("_load_save_dictionary_from_path", corrupt_path) as Dictionary
+	_expect(int(valid.get("saved_at", 0)) == 123, "Save loader should still return valid dictionary JSON from user storage.")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(corrupt_path))
+
+
+func _check_best_save_dictionary_prefers_progress(game: Node) -> void:
+	var reset_path := "user://codex-reset-save-normalization.json"
+	var marked_reset_path := "user://codex-marked-reset-save-normalization.json"
+	var backup_path := "user://codex-backup-save-normalization.json"
+	var temp_path := "user://codex-temp-save-normalization.json"
+	_write_temp_save(reset_path, {
+		"skills": {
+			"fight": {"xp": 0, "level": 1},
+			"thieving": {"xp": 0, "level": 1},
+		},
+		"saved_at": 100,
+	})
+	_write_temp_save(backup_path, {
+		"skills": {
+			"fight": {"xp": 2500, "level": 12},
+			"thieving": {"xp": 400, "level": 5},
+		},
+		"saved_at": 90,
+	})
+	_write_temp_save(temp_path, {
+		"skills": {
+			"fight": {"xp": 1200, "level": 9},
+			"thieving": {"xp": 100, "level": 2},
+		},
+		"saved_at": 110,
+	})
+	var best := game.call("_best_save_dictionary_from_paths", [reset_path, temp_path, backup_path]) as Dictionary
+	var best_skills := best.get("skills", {}) as Dictionary
+	var best_fight := best_skills.get("fight", {}) as Dictionary
+	_expect(int(best_fight.get("xp", 0)) == 2500, "Save recovery should prefer the highest-progress candidate over an unmarked lower-progress save.")
+	_write_temp_save(marked_reset_path, {
+		"save_reset_generation": 500,
+		"skills": {
+			"fight": {"xp": 0, "level": 1},
+			"thieving": {"xp": 0, "level": 1},
+		},
+		"saved_at": 120,
+	})
+	best = game.call("_best_save_dictionary_from_paths", [marked_reset_path, temp_path, backup_path]) as Dictionary
+	best_skills = best.get("skills", {}) as Dictionary
+	best_fight = best_skills.get("fight", {}) as Dictionary
+	_expect(int(best.get("save_reset_generation", 0)) == 500 and int(best_fight.get("xp", -1)) == 0, "Save recovery should honor a marked hard-reset save over older high-progress backups.")
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(reset_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(marked_reset_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(backup_path))
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(temp_path))
+
+
+func _check_save_payload_progress_regression_guard(game: Node) -> void:
+	var existing_progress := {
+		"skills": {
+			"fight": {"xp": 2500, "level": 12},
+			"thieving": {"xp": 400, "level": 5},
+		},
+		"saved_at": 200,
+	}
+	var reset_payload := {
+		"skills": {
+			"fight": {"xp": 0, "level": 1},
+			"thieving": {"xp": 0, "level": 1},
+		},
+		"saved_at": 300,
+	}
+	var marked_reset_payload := reset_payload.duplicate(true)
+	marked_reset_payload["save_reset_generation"] = 700
+	var post_reset_existing := marked_reset_payload.duplicate(true)
+	var equal_payload := {
+		"skills": {
+			"fight": {"xp": 2500, "level": 12},
+			"thieving": {"xp": 400, "level": 5},
+		},
+		"saved_at": 301,
+	}
+	var improved_payload := {
+		"skills": {
+			"fight": {"xp": 2600, "level": 12},
+			"thieving": {"xp": 400, "level": 5},
+		},
+		"saved_at": 302,
+	}
+	var stale_payload := improved_payload.duplicate(true)
+	stale_payload["save_reset_generation"] = 0
+	_expect(bool(game.call("_save_payload_regresses_progress", existing_progress, reset_payload)), "Autosave guard should detect a lower-progress reset payload.")
+	_expect(not bool(game.call("_save_payload_regresses_progress", existing_progress, marked_reset_payload)), "Autosave guard should allow marked hard-reset payloads.")
+	_expect(bool(game.call("_save_payload_regresses_progress", post_reset_existing, stale_payload)), "Autosave guard should reject stale pre-reset payloads after a marked hard reset.")
+	_expect(not bool(game.call("_save_payload_regresses_progress", existing_progress, equal_payload)), "Autosave guard should allow equal-progress save refreshes.")
+	_expect(not bool(game.call("_save_payload_regresses_progress", existing_progress, improved_payload)), "Autosave guard should allow improved progress.")
+	_expect(not bool(game.call("_save_payload_regresses_progress", {}, reset_payload)), "Autosave guard should allow first saves with no existing evidence.")
+	_expect(not bool(game.call("_save_payload_regresses_progress", {"skills": {}}, reset_payload)), "Autosave guard should allow saves when existing data has no progress evidence.")
+
+
 func _check_save_payload(game: Node) -> void:
 	var now := int(game.call("_unix_now"))
 	game.set("mastery", {
@@ -2225,7 +2469,7 @@ func _check_save_payload(game: Node) -> void:
 	game.set("running_action_id", "dip-a-tidepool-minnow")
 	game.set("action_progress", 1.5)
 	game.set("silver_opportunity_tip_action_key", "fishing:dip-a-tidepool-minnow")
-	game.set("leaderboard_auth_provider", "unused-provider")
+	game.set("leaderboard_auth_provider", "google")
 	game.set("achievement_toast_seen_ids", {
 		"total-level-25": true,
 		"activity-crit": false,
@@ -2263,6 +2507,7 @@ func _check_save_payload(game: Node) -> void:
 	game.set("flow_active_action_seconds", -8.0)
 
 	var payload := game.call("_save_payload", now) as Dictionary
+	_expect(int(payload.get("save_reset_generation", -1)) == int(game.get("save_reset_generation")), "Save payload should include the current hard-reset generation.")
 	var payload_mastery := payload.get("mastery", {}) as Dictionary
 	_expect(payload_mastery.has("fishing:beach-shallows"), "Save payload should include canonical mastery keys.")
 	_expect(not payload_mastery.has("fishing:dip-a-tidepool-minnow"), "Save payload should not include alias mastery keys.")
@@ -2360,6 +2605,7 @@ func _check_save_payload(game: Node) -> void:
 	_expect(not bool(payload.get("leaderboard_name_claim_verified", true)), "Save payload should clear invalid leaderboard profile verification.")
 	_expect(int(payload.get("leaderboard_avatar_index", -1)) == 19, "Save payload should clamp leaderboard avatar indexes.")
 	_expect(str(payload.get("leaderboard_player_id", "bad")).is_empty(), "Save payload should sanitize leaderboard player ids.")
+	_expect(str(payload.get("leaderboard_auth_provider", "")) == "google", "Save payload should preserve sanitized leaderboard auth providers.")
 	_expect(str(payload.get("leaderboard_auth_refresh_token", "")) == "refresh-token", "Save payload should trim leaderboard refresh tokens.")
 	_expect(int(payload.get("leaderboard_auth_retry_after_unix", -1)) == 0, "Save payload should clamp leaderboard auth retry timestamps.")
 	var payload_fetch_retry := payload.get("leaderboard_fetch_retry_unix_by_category", {}) as Dictionary
@@ -2389,7 +2635,6 @@ func _check_save_payload(game: Node) -> void:
 	_expect(float(payload.get("stamina_gauge_pre_tip_hold_seconds", 0.0)) == 4.0, "Save payload should cap stamina tip hold seconds.")
 	_expect(float(payload.get("flow_heat", 0.0)) == 36.0, "Save payload should cap music flow heat.")
 	_expect(float(payload.get("flow_active_action_seconds", -1.0)) == 0.0, "Save payload should clamp music flow active seconds.")
-	_expect(not payload.has("leaderboard_auth_provider"), "Save payload should not include ignored leaderboard auth provider state.")
 	_expect(int(payload.get("saved_at", 0)) == now, "Save payload should use the supplied timestamp.")
 
 
@@ -2512,6 +2757,15 @@ func _prime_core_skill_state(game: Node) -> void:
 	game.set("convergence_modules", {})
 
 
+func _write_temp_save(path: String, data: Dictionary) -> void:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	_expect(file != null, "Save recovery test should be able to create temp save file %s." % path)
+	if file == null:
+		return
+	file.store_string(JSON.stringify(data))
+	file.close()
+
+
 func _expect(condition: bool, message: String) -> void:
 	if not condition:
 		failures.append(message)
@@ -2527,6 +2781,8 @@ func _finish() -> void:
 		quit(1)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
+    $previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
+    $env:IDLE_ELITE_DISABLE_SAVE_WRITES = "1"
     $beforeHeadless = @(Get-HeadlessGodotProcesses)
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
     $output | Out-Host
@@ -2544,5 +2800,10 @@ func _finish() -> void:
         throw "A headless Godot process is still running after the save normalization test."
     }
 } finally {
+    if ($null -eq $previousDisableSaveWrites) {
+        Remove-Item Env:\IDLE_ELITE_DISABLE_SAVE_WRITES -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_DISABLE_SAVE_WRITES = $previousDisableSaveWrites
+    }
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
 }

@@ -23,6 +23,7 @@ Last updated: 2026-05-31 (in progress on branch / working tree)
 | Catch burst count/stagger tuned by archetype | Done |
 | JSON `rewards.fish_min/fish_max` drives fishing yield | Done |
 | Corner crop on area BG (RoundedTextureRect + UV crop) | Done |
+| Fishing-owned combo modules follow fishing rules: no stamina cost/spend | Done |
 | Archetype-specific art sway / fluid phase thresholds | Not started |
 
 ## Explicitly Deferred

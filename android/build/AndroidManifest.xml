@@ -28,6 +28,9 @@
             android:shell="true"
             android:enabled="true"
             tools:targetApi="29" />
+        <meta-data
+            android:name="org.godotengine.plugin.v2.IdleEliteGoogleAuth"
+            android:value="com.godot.game.IdleEliteGoogleAuth" />
 
         <activity
             android:name=".GodotApp"

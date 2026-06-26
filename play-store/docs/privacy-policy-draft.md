@@ -8,7 +8,7 @@ This draft is ready to paste into a hosted privacy policy page after replacing t
 
 ## Overview
 
-Idle Elite is an idle mobile game. The game stores progress locally on your device. If Firebase online features are enabled in the installed build, the game also uses Firebase Authentication and Firebase Realtime Database to publish and display leaderboard scores and global chat. Idle Elite does not currently provide cloud saves or in-app purchases.
+Idle Elite is an idle mobile game. The game stores progress locally on your device. If Firebase online features are enabled in the installed build, the game also uses Firebase Authentication and Firebase Realtime Database to publish and display leaderboard scores, global chat, and optional Google-backed cloud saves. Idle Elite does not currently provide in-app purchases.
 
 ## Information Stored By The Game
 
@@ -18,7 +18,7 @@ The developer does not receive this local save data unless you choose to share d
 
 ## Online Leaderboard And Chat
 
-When Firebase online features are enabled and you open leaderboard or chat, Idle Elite creates an anonymous Firebase identifier. The Firebase database may store:
+When Firebase online features are enabled and you open leaderboard or chat, Idle Elite creates an anonymous Firebase identifier. If you choose to connect Google, Firebase Authentication links that identifier to your Google account so progress can be backed up. The Firebase database may store:
 
 - Anonymous Firebase user id.
 - Leaderboard display name chosen in the game.
@@ -28,8 +28,9 @@ When Firebase online features are enabled and you open leaderboard or chat, Idle
 - Global chat messages.
 - Chat message timestamps.
 - Chat moderation/deletion tombstones.
+- Cloud save payload and summary fields, including save timestamp, total level, and total skill XP, when you choose Google-backed backup.
 
-The Firebase database does not store your email address. Leaderboard data is used to show rankings and protect the leaderboard from abuse. Chat data is used to show public global chat and moderate abusive messages. The game does not upload your full local save file. Leaderboard reads are limited to the visible category, score publishes are rate-limited, chat reads are limited to recent visible messages, and chat posts are rate-limited.
+Leaderboard data is used to show rankings and protect the leaderboard from abuse. Chat data is used to show public global chat and moderate abusive messages. Cloud save data is used to restore your game progress on devices signed into the same Google account. Leaderboard reads are limited to the visible category, score publishes are rate-limited, chat reads are limited to recent visible messages, chat posts are rate-limited, and cloud save sync uses finite authenticated reads and writes.
 
 ## Advertising
 
@@ -41,13 +42,13 @@ Learn more about how Google uses data at https://policies.google.com/technologie
 
 ## Data Sharing
 
-Idle Elite does not sell personal information. Leaderboard and chat data are stored by Firebase for online game features. Advertising-related data may be collected or shared by Google AdMob as described in Google's advertising and privacy documentation.
+Idle Elite does not sell personal information. Leaderboard, chat, and optional cloud save data are stored by Firebase for online game features. Advertising-related data may be collected or shared by Google AdMob as described in Google's advertising and privacy documentation.
 
 ## Data Deletion
 
 You can remove local game data by using the in-game reset option if available, clearing the app's storage in Android settings, or uninstalling the app.
 
-If Firebase online features are enabled, deleting local app data does not automatically delete already-published leaderboard rows or chat messages. Contact the developer to request removal of leaderboard or chat data associated with your leaderboard display name, Firebase user id, or other information you provide.
+If Firebase online features are enabled, deleting local app data does not automatically delete already-published leaderboard rows, chat messages, or cloud saves. Contact the developer to request removal of leaderboard, chat, or cloud save data associated with your leaderboard display name, Firebase user id, Google-linked account, or other information you provide.
 
 ## Children
 

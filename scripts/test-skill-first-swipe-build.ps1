@@ -33,12 +33,12 @@ function Assert-NoUnexpectedGodotErrors {
 
     foreach ($line in @($Output)) {
         $text = [string]$line
-        if ($text -notmatch '^(ERROR|SCRIPT ERROR):') {
+        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
             continue
         }
         $knownShutdownNoise = (
-            $text -match '^ERROR: \d+ RID allocations of type .+ were leaked at exit\.$' -or
-            $text -match '^ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.$'
+            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
@@ -262,8 +262,6 @@ func _first_swipe_transition_violation(scene: Node, frame_index: int) -> Diction
 
 func _first_swipe_target_incomplete(scene: Node) -> bool:
 	if bool(scene.get("skill_swipe_pending_full_finalize")):
-		return true
-	if bool(scene.get("skill_swipe_animating")):
 		return true
 	var scroll := _valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null:

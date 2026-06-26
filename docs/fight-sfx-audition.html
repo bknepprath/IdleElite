@@ -1,0 +1,498 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Idle Elite Fight SFX Audition</title>
+  <meta name="idle-elite-doc-scope" content="Godot 4 mobile idle RPG documentation and design reference">
+  <link rel="stylesheet" href="docs-nav.css?v=20260616o">
+  <link rel="stylesheet" href="docs-theme.css?v=20260616o">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #171713;
+      --panel: #24241e;
+      --panel-2: #303124;
+      --text: #fff4d4;
+      --muted: #c9bea2;
+      --line: #474532;
+      --gold: #ffd766;
+      --red: #ee6650;
+      --blue: #68b9ff;
+      --green: #76d66f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background:
+        radial-gradient(circle at 18% 8%, rgba(238, 102, 80, 0.18), transparent 28rem),
+        linear-gradient(135deg, #11120e 0%, var(--bg) 48%, #212515 100%);
+      color: var(--text);
+    }
+
+    main {
+      width: min(1180px, calc(100vw - 32px));
+      margin: 0 auto;
+      padding: 30px 0 48px;
+    }
+
+    header.local {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 24px;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: clamp(2rem, 5vw, 4rem);
+      line-height: 0.95;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      max-width: 720px;
+      color: var(--muted);
+      line-height: 1.45;
+    }
+
+    .volume {
+      width: min(280px, 100%);
+      display: grid;
+      gap: 8px;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(36, 36, 30, 0.82);
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--gold);
+    }
+
+    .section {
+      margin-top: 26px;
+    }
+
+    .section-title {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 1.18rem;
+      letter-spacing: 0;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+      gap: 14px;
+    }
+
+    .sound {
+      min-height: 212px;
+      display: grid;
+      gap: 14px;
+      align-content: space-between;
+      padding: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(180deg, var(--panel), var(--panel-2));
+      box-shadow: 0 14px 32px rgba(0, 0, 0, 0.24);
+    }
+
+    .sound[data-active="true"] {
+      border-color: var(--gold);
+      box-shadow: 0 0 0 2px rgba(255, 215, 102, 0.18), 0 18px 36px rgba(0, 0, 0, 0.28);
+    }
+
+    .topline {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    h3 {
+      margin: 0;
+      font-size: 1.05rem;
+      letter-spacing: 0;
+    }
+
+    .tag {
+      flex: 0 0 auto;
+      padding: 4px 8px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 215, 102, 0.55);
+      color: var(--gold);
+      font-size: 0.75rem;
+      font-weight: 800;
+    }
+
+    .note {
+      color: var(--muted);
+      font-size: 0.93rem;
+      line-height: 1.35;
+    }
+
+    .bars {
+      height: 44px;
+      display: grid;
+      grid-template-columns: repeat(14, 1fr);
+      align-items: end;
+      gap: 3px;
+    }
+
+    .bar {
+      height: calc(var(--h) * 1%);
+      min-height: 4px;
+      border-radius: 4px 4px 0 0;
+      background: linear-gradient(180deg, var(--red), var(--gold));
+      opacity: 0.78;
+    }
+
+    .sound[data-active="true"] .bar {
+      animation: pulse 320ms ease-out;
+    }
+
+    @keyframes pulse {
+      0% { transform: scaleY(0.45); opacity: 0.48; }
+      45% { transform: scaleY(1.16); opacity: 1; }
+      100% { transform: scaleY(1); opacity: 0.78; }
+    }
+
+    button {
+      width: 100%;
+      min-height: 44px;
+      border: 0;
+      border-radius: 8px;
+      background: linear-gradient(180deg, #ffe684, #e9aa2a);
+      color: #211805;
+      font: inherit;
+      font-weight: 850;
+      cursor: pointer;
+      box-shadow: inset 0 1px rgba(255,255,255,0.45), 0 6px 0 #8e6515;
+    }
+
+    button:active {
+      transform: translateY(4px);
+      box-shadow: inset 0 1px rgba(255,255,255,0.38), 0 2px 0 #8e6515;
+    }
+
+    .combos {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 12px;
+    }
+
+    .combos button {
+      background: linear-gradient(180deg, #ffffff, #d8ecff);
+      box-shadow: inset 0 1px rgba(255,255,255,0.58), 0 6px 0 #4c6d88;
+    }
+
+    code {
+      color: #ffe684;
+      font-family: "Cascadia Mono", Consolas, monospace;
+      font-size: 0.82rem;
+      overflow-wrap: anywhere;
+    }
+
+    @media (max-width: 720px) {
+      header.local,
+      .section-title {
+        display: grid;
+        align-items: start;
+      }
+
+      .volume {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body class="docs-theme-dark">
+  <header class="docs-bar">
+    <div class="docs-bar-head">
+      <p class="docs-eyebrow">Idle Elite Godot Docs</p>
+      <h1>Fight SFX Audition</h1>
+      <p class="docs-lead">First-pass candidate foley for fighting actions: short impacts, prop bonks, chicken squawks, and squeaky farm chaos.</p>
+    </div>
+    <nav data-docs-nav></nav>
+  </header>
+
+  <main>
+    <header class="local">
+      <div>
+        <h1>Fight SFX Candidates</h1>
+        <p>Audition-only WAVs in <code>assets/sfx-candidates/fight/</code>. These are intentionally dry and modest in level so they can be layered later without blasting over success, crit, or reward audio.</p>
+      </div>
+      <div class="volume">
+        <label for="volume">Audition volume</label>
+        <input id="volume" type="range" min="0" max="100" value="48">
+      </div>
+    </header>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Punches And Impacts</h2>
+        <p>Useful for hay bales, feed sacks, body slams, gates, buckets, and barn-door hits.</p>
+      </div>
+      <div class="grid" id="impactGrid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Creatures And Squeaks</h2>
+        <p>Chicken sparring, boot scuffs, hinge squeals, and small comic reactions.</p>
+      </div>
+      <div class="grid" id="creatureGrid"></div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <h2>Quick Combos</h2>
+        <p>Layer checks for likely fight-action moments.</p>
+      </div>
+      <div class="combos" id="comboGrid"></div>
+    </section>
+  </main>
+
+  <script src="docs-nav.js?v=20260616o"></script>
+  <script>
+    const sounds = {
+      softPunch: {
+        title: "Punch 01",
+        tag: "soft thump",
+        note: "Round body hit for hay bales, sacks, and low-stakes sparring.",
+        path: "../assets/sfx-candidates/fight/fight_punch_01_soft_body_thump.wav",
+        bars: [72, 100, 88, 62, 42, 29, 20, 14, 10, 7, 5, 3, 2, 1]
+      },
+      glovePop: {
+        title: "Punch 02",
+        tag: "crisp pop",
+        note: "Shorter glove-like contact with more slap, good for fast taps.",
+        path: "../assets/sfx-candidates/fight/fight_punch_02_crisp_glove_pop.wav",
+        bars: [88, 100, 70, 42, 25, 15, 9, 5, 3, 2, 1, 1, 1, 1]
+      },
+      heavyHit: {
+        title: "Punch 03",
+        tag: "heavy",
+        note: "Heavier barn hit with a low thud, still short enough for mobile.",
+        path: "../assets/sfx-candidates/fight/fight_punch_03_heavy_barn_hit.wav",
+        bars: [56, 92, 100, 82, 61, 44, 32, 23, 16, 11, 7, 4, 2, 1]
+      },
+      whooshThud: {
+        title: "Impact 04",
+        tag: "whoosh",
+        note: "Tiny wind-up into a thud for lunges, tackles, and big swings.",
+        path: "../assets/sfx-candidates/fight/fight_impact_04_whoosh_into_thud.wav",
+        bars: [5, 9, 16, 28, 48, 76, 100, 88, 62, 42, 27, 16, 8, 3]
+      },
+      woodClonk: {
+        title: "Impact 05",
+        tag: "wood",
+        note: "Hollow wood or bucket clonk for props that should sound goofy.",
+        path: "../assets/sfx-candidates/fight/fight_impact_05_wood_bucket_clonk.wav",
+        bars: [62, 100, 92, 64, 46, 32, 24, 19, 15, 11, 7, 4, 2, 1]
+      },
+      pailBonk: {
+        title: "Impact 06",
+        tag: "metal",
+        note: "Short metal pail bonk for milk pails, weather vanes, and tools.",
+        path: "../assets/sfx-candidates/fight/fight_impact_06_metal_pail_bonk.wav",
+        bars: [48, 88, 100, 86, 70, 56, 42, 31, 23, 16, 10, 6, 3, 1]
+      },
+      pillowWhump: {
+        title: "Punch 07",
+        tag: "pillow",
+        note: "Soft body whump with almost no edge, good under animation-heavy hits.",
+        path: "../assets/sfx-candidates/fight/fight_punch_07_pillow_body_whump.wav",
+        bars: [44, 78, 100, 89, 66, 48, 34, 24, 16, 10, 6, 3, 2, 1]
+      },
+      canvasJab: {
+        title: "Punch 08",
+        tag: "jab",
+        note: "Very fast canvas snap for light repeated punches.",
+        path: "../assets/sfx-candidates/fight/fight_punch_08_canvas_jab_snap.wav",
+        bars: [94, 100, 58, 31, 16, 8, 4, 2, 1, 1, 1, 1, 1, 1]
+      },
+      feedSackCrunch: {
+        title: "Punch 09",
+        tag: "crunch",
+        note: "Grainy feed-sack crunch with a dull center and papery noise.",
+        path: "../assets/sfx-candidates/fight/fight_punch_09_feed_sack_crunch.wav",
+        bars: [62, 94, 100, 83, 66, 50, 36, 25, 16, 10, 6, 3, 2, 1]
+      },
+      uppercutPop: {
+        title: "Punch 10",
+        tag: "uppercut",
+        note: "Short upward pop with a tiny rising contour.",
+        path: "../assets/sfx-candidates/fight/fight_punch_10_short_uppercut_pop.wav",
+        bars: [50, 78, 100, 86, 54, 31, 17, 9, 5, 3, 2, 1, 1, 1]
+      },
+      elbowKnock: {
+        title: "Punch 11",
+        tag: "elbow",
+        note: "Dull elbow-style knock, more bone-and-pad than slap.",
+        path: "../assets/sfx-candidates/fight/fight_punch_11_elbow_dull_knock.wav",
+        bars: [58, 92, 100, 76, 54, 38, 27, 18, 12, 8, 5, 3, 2, 1]
+      },
+      kneeBump: {
+        title: "Punch 12",
+        tag: "knee",
+        note: "Solid low bump with a second pressure bloom.",
+        path: "../assets/sfx-candidates/fight/fight_punch_12_knee_solid_bump.wav",
+        bars: [42, 76, 100, 88, 70, 62, 48, 34, 22, 14, 8, 5, 2, 1]
+      },
+      twoHitCombo: {
+        title: "Punch 13",
+        tag: "combo",
+        note: "Two distinct contacts in one file for quick flurry moments.",
+        path: "../assets/sfx-candidates/fight/fight_punch_13_two_hit_combo.wav",
+        bars: [66, 94, 52, 28, 72, 100, 84, 55, 34, 20, 12, 7, 3, 1]
+      },
+      woodPostPock: {
+        title: "Punch 14",
+        tag: "wood",
+        note: "Pocky wood-post hit with resonant body.",
+        path: "../assets/sfx-candidates/fight/fight_punch_14_wood_post_pock.wav",
+        bars: [54, 92, 100, 84, 66, 48, 35, 25, 17, 11, 7, 4, 2, 1]
+      },
+      mudBootSmack: {
+        title: "Punch 15",
+        tag: "mud",
+        note: "Wet boot-smack texture for muddy farm brawls.",
+        path: "../assets/sfx-candidates/fight/fight_punch_15_mud_boot_smack.wav",
+        bars: [48, 84, 100, 96, 76, 56, 38, 24, 14, 8, 5, 3, 1, 1]
+      },
+      tinyFastTap: {
+        title: "Punch 16",
+        tag: "tiny",
+        note: "Small fast tap for weak hits and comedic pecks.",
+        path: "../assets/sfx-candidates/fight/fight_punch_16_tiny_fast_tap.wav",
+        bars: [100, 76, 38, 17, 8, 4, 2, 1, 1, 1, 1, 1, 1, 1]
+      },
+      rubberBounce: {
+        title: "Punch 17",
+        tag: "bounce",
+        note: "Rubbery hit with two little rebounds, not a normal impact tail.",
+        path: "../assets/sfx-candidates/fight/fight_punch_17_rubber_bounce_hit.wav",
+        bars: [52, 86, 100, 72, 40, 28, 47, 58, 37, 22, 25, 18, 8, 2]
+      },
+      comicPow: {
+        title: "Punch 18",
+        tag: "pow",
+        note: "Largest comic impact in the batch, for rare bigger contact beats.",
+        path: "../assets/sfx-candidates/fight/fight_punch_18_big_comic_pow.wav",
+        bars: [38, 68, 96, 100, 88, 70, 54, 42, 30, 20, 12, 7, 3, 1]
+      },
+      chickenShort: {
+        title: "Chicken 01",
+        tag: "squawk",
+        note: "Quick chicken protest for the sparring pit or a comic interrupt.",
+        path: "../assets/sfx-candidates/fight/fight_chicken_squawk_01_short.wav",
+        bars: [10, 24, 54, 88, 100, 78, 54, 46, 62, 72, 48, 25, 11, 3]
+      },
+      chickenFlustered: {
+        title: "Chicken 02",
+        tag: "flustered",
+        note: "Longer two-part squawk, better as a rare accent than a looped tap.",
+        path: "../assets/sfx-candidates/fight/fight_chicken_squawk_02_flustered.wav",
+        bars: [8, 18, 38, 72, 100, 84, 62, 44, 36, 64, 88, 69, 34, 9]
+      },
+      bootScuff: {
+        title: "Squeak 01",
+        tag: "boot",
+        note: "Tiny rubbery scuff for pivots, dodges, and awkward footwork.",
+        path: "../assets/sfx-candidates/fight/fight_squeak_01_boot_scuff.wav",
+        bars: [19, 42, 75, 100, 92, 70, 48, 32, 20, 12, 7, 4, 2, 1]
+      },
+      gateHinge: {
+        title: "Squeak 02",
+        tag: "hinge",
+        note: "Longer farm-gate squeak for stuck latches and barn-door beats.",
+        path: "../assets/sfx-candidates/fight/fight_squeak_02_gate_hinge.wav",
+        bars: [8, 18, 36, 66, 92, 100, 86, 70, 52, 36, 22, 12, 6, 2]
+      }
+    };
+
+    const groups = {
+      impactGrid: ["softPunch", "glovePop", "heavyHit", "whooshThud", "woodClonk", "pailBonk", "pillowWhump", "canvasJab", "feedSackCrunch", "uppercutPop", "elbowKnock", "kneeBump", "twoHitCombo", "woodPostPock", "mudBootSmack", "tinyFastTap", "rubberBounce", "comicPow"],
+      creatureGrid: ["chickenShort", "chickenFlustered", "bootScuff", "gateHinge"]
+    };
+
+    const combos = [
+      { label: "Chicken spar", sequence: ["glovePop", "chickenShort"], delay: 155 },
+      { label: "Barn door shove", sequence: ["whooshThud", "heavyHit", "gateHinge"], delay: 130 },
+      { label: "Milk pail brawl", sequence: ["bootScuff", "pailBonk", "chickenFlustered"], delay: 145 },
+      { label: "Feed sack boxing", sequence: ["feedSackCrunch", "canvasJab", "softPunch"], delay: 120 },
+      { label: "Fence post combo", sequence: ["tinyFastTap", "woodPostPock", "rubberBounce"], delay: 105 },
+      { label: "Big comic finish", sequence: ["uppercutPop", "comicPow", "gateHinge"], delay: 145 }
+    ];
+
+    const volume = document.getElementById("volume");
+    let activeCard = null;
+
+    function play(path, card, delay = 0) {
+      window.setTimeout(() => {
+        const audio = new Audio(path);
+        audio.volume = Number(volume.value) / 100;
+        audio.play();
+        if (activeCard) activeCard.dataset.active = "false";
+        if (card) {
+          activeCard = card;
+          card.dataset.active = "true";
+          window.setTimeout(() => card.dataset.active = "false", 420);
+        }
+      }, delay);
+    }
+
+    function renderCard(key) {
+      const sound = sounds[key];
+      const card = document.createElement("article");
+      card.className = "sound";
+      card.dataset.active = "false";
+      card.innerHTML = `
+        <div>
+          <div class="topline"><h3>${sound.title}</h3><span class="tag">${sound.tag}</span></div>
+          <p class="note">${sound.note}</p>
+        </div>
+        <div class="bars">${sound.bars.map((h) => `<span class="bar" style="--h:${h}"></span>`).join("")}</div>
+        <div><button type="button">Play</button></div>
+        <code>${sound.path.replace("../", "")}</code>
+      `;
+      card.querySelector("button").addEventListener("click", () => play(sound.path, card));
+      return card;
+    }
+
+    Object.entries(groups).forEach(([id, keys]) => {
+      const grid = document.getElementById(id);
+      keys.forEach((key) => grid.appendChild(renderCard(key)));
+    });
+
+    const comboGrid = document.getElementById("comboGrid");
+    combos.forEach((combo) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = combo.label;
+      button.addEventListener("click", () => {
+        combo.sequence.forEach((key, index) => play(sounds[key].path, null, index * combo.delay));
+      });
+      comboGrid.appendChild(button);
+    });
+  </script>
+</body>
+</html>

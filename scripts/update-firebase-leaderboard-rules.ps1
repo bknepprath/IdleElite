@@ -52,14 +52,15 @@ $categoryExpression = New-CategoryExpression -CategoryKeys $categoryKeys
 $freshClientTimestampRule = "newData.isNumber() && newData.val() >= now - 10000 && newData.val() <= now + 60000"
 $freshGateTimestampExpr = "{0}.isNumber() && {0}.val() >= now - 10000 && {0}.val() <= now + 60000"
 $leaderboardWriterRule = "((auth != null && auth.uid == `$playerId) || auth == null)"
-$nameClaimWriterRule = "((auth != null && newData.child('uid').val() == auth.uid && (!data.exists() || data.child('uid').val() == auth.uid)) || (auth == null && newData.child('uid').isString() && newData.child('uid').val().length >= 8 && newData.child('uid').val().length <= 48 && (!data.exists() || data.child('uid').val() == newData.child('uid').val())))"
+$nameRecoveryTicketRule = "root.child('leaderboards').child('v1').child('name_recovery_tickets').child(`$nameKey).child('active').val() == true"
+$nameClaimWriterRule = "((auth != null && newData.child('uid').val() == auth.uid && (!data.exists() || data.child('uid').val() == auth.uid || ($nameRecoveryTicketRule))) || (auth == null && newData.child('uid').isString() && newData.child('uid').val().length >= 8 && newData.child('uid').val().length <= 48 && (!data.exists() || data.child('uid').val() == newData.child('uid').val())))"
 $leaderboardNameClaimRule = "root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == `$playerId"
 $leaderboardFreshGateRule = "root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').isNumber() && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() >= now - 10000 && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() <= now + 60000"
 $leaderboardLegacyRowCooldownRule = "newData.child('updated_at').isNumber() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
 $leaderboardLegacyTotalLevelScoreRule = "`$category == 'total_level' && data.exists() && data.child('score').isNumber() && data.child('score').val() > 999 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.child('score').val()"
 $chatSenderRule = "newData.child('sender_id').isString() && newData.child('sender_id').val().length >= 8 && newData.child('sender_id').val().length <= 48 && (auth == null || newData.child('sender_id').val() == auth.uid)"
 $chatFreshGateRule = "newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() <= now + 60000"
-$chatClaimedNameRule = "newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('sender_id').val()"
+$chatClaimedNameRule = "newData.child('name_key').isString()"
 $chatGuestNameRule = "!newData.child('name_key').exists() && newData.child('name').isString() && newData.child('name').val().matches(/^guest[0-9]{4}$/)"
 $chatCreateRule = "newData.exists() && !data.exists() && $chatSenderRule && ($chatClaimedNameRule || $chatGuestNameRule) && `$messageId.length >= 8 && `$messageId.length <= 64 && $chatFreshGateRule"
 $chatOwnerRefreshRule = "data.exists() && newData.exists() && data.child('sender_id').val() == newData.child('sender_id').val() && (auth == null || data.child('sender_id').val() == auth.uid) && $chatClaimedNameRule && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == data.child('deleted').val() && newData.child('deleted_at').val() == data.child('deleted_at').val() && newData.child('deleted_by').val() == data.child('deleted_by').val()"
@@ -79,7 +80,7 @@ $rulesObject = [ordered]@{
                         ".write" = "newData.exists() && `$nameKey.length > 0 && `$nameKey.length <= 16 && newData.child('name_key').val() == `$nameKey && $nameClaimWriterRule"
                         ".validate" = "newData.hasChildren(['uid', 'name', 'name_key', 'avatar_index', 'created_at', 'updated_at', 'submitted_at_unix'])"
                         uid = [ordered]@{
-                            ".validate" = "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48 && (!data.exists() || newData.val() == data.val())"
+                            ".validate" = "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48 && (!data.exists() || newData.val() == data.val() || (auth != null && newData.val() == auth.uid && $nameRecoveryTicketRule))"
                         }
                         name = [ordered]@{
                             ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
@@ -102,6 +103,12 @@ $rulesObject = [ordered]@{
                         '$other' = [ordered]@{
                             ".validate" = $false
                         }
+                    }
+                }
+                name_recovery_tickets = [ordered]@{
+                    '$nameKey' = [ordered]@{
+                        ".read" = $false
+                        ".write" = $false
                     }
                 }
                 scores = [ordered]@{
@@ -151,6 +158,46 @@ $rulesObject = [ordered]@{
                         }
                         submitted_at_unix = [ordered]@{
                             ".validate" = "newData.isNumber() && newData.val() > 0"
+                        }
+                        '$other' = [ordered]@{
+                            ".validate" = $false
+                        }
+                    }
+                }
+            }
+        }
+        cloud_saves = [ordered]@{
+            v1 = [ordered]@{
+                ".read" = $false
+                ".write" = $false
+                users = [ordered]@{
+                    '$uid' = [ordered]@{
+                        ".read" = "auth != null && auth.uid == `$uid"
+                        ".write" = "auth != null && auth.uid == `$uid && newData.exists()"
+                        ".validate" = "newData.hasChildren(['uid', 'updated_at', 'updated_at_unix', 'save_schema_version', 'saved_at', 'total_skill_xp', 'total_level', 'payload_json'])"
+                        uid = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val() == auth.uid"
+                        }
+                        updated_at = [ordered]@{
+                            ".validate" = $freshClientTimestampRule
+                        }
+                        updated_at_unix = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() > 0"
+                        }
+                        save_schema_version = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000"
+                        }
+                        saved_at = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() > 0"
+                        }
+                        total_skill_xp = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+                        }
+                        total_level = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+                        }
+                        payload_json = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 950000"
                         }
                         '$other' = [ordered]@{
                             ".validate" = $false

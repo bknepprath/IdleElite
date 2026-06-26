@@ -98,7 +98,7 @@ func _run() -> void:
 		return
 	var before_skill := str(scene.get("selected_skill_id"))
 	var target_button := buttons[1] as Button
-	target_button.emit_signal("pressed")
+	_press_page_switch_button(scene, target_button)
 	await process_frame
 	var entering_cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
 	result["enter_cover_alpha"] = 0.0 if entering_cover == null or not is_instance_valid(entering_cover) else entering_cover.modulate.a
@@ -117,7 +117,7 @@ func _run() -> void:
 	_expect(held_offset.length() > 0.5, "page switch button should remain depressed while the cover fades in: %s" % str(held_offset))
 	_expect(int(result.get("held_button_id_enter", 0)) == target_button.get_instance_id(), "page switch transition should remember the exiting button")
 	for _spam in range(4):
-		target_button.emit_signal("pressed")
+		_press_page_switch_button(scene, target_button)
 		await process_frame
 	var spam_cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
 	var spam_cover_id := 0 if spam_cover == null or not is_instance_valid(spam_cover) else spam_cover.get_instance_id()
@@ -202,6 +202,21 @@ func _select_skill(scene: Node, skill_id: String) -> void:
 		if str(scene.get("current_screen")) == "skill" and str(scene.get("selected_skill_id")) == skill_id and _valid_control(scene.get("detail_actions_scroll")) != null:
 			return
 	_fail("failed to select skill %s" % skill_id)
+
+
+func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.position = point
+	event.global_position = point
+	return event
+
+
+func _press_page_switch_button(scene: Node, button: Button) -> void:
+	var point := button.get_global_rect().get_center()
+	scene.call("_route_page_switch_button_global_input", _mouse_button_event(point, true))
+	scene.call("_route_page_switch_button_global_input", _mouse_button_event(point, false))
 
 
 func _scroll_detail_to_bottom(scene: Node) -> void:
@@ -375,15 +390,17 @@ func _fail(message: String) -> void:
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
     & $runner --visible-game --path $projectRoot --script $testScript
-    if ($LASTEXITCODE -ne 0) {
+    $runnerExitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+    if ($runnerExitCode -ne 0) {
         if (Test-Path -LiteralPath $resultPath) {
             Get-Content -LiteralPath $resultPath | Write-Host
         }
-        exit $LASTEXITCODE
+        throw "Page-switch visual Godot run failed with exit code $runnerExitCode."
     }
 
     Assert-True (Test-Path -LiteralPath $resultPath) "Page-switch visual test did not write result.json."
     $result = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
+    Assert-True (@($result.failures).Count -eq 0) "Page-switch visual test reported failures. result: $(Get-Content -LiteralPath $resultPath -Raw)"
     Assert-True ([double]$result.cover_rect_cream_ratio -ge 0.96) "Cover rect is not a plain cream sheet. result: $(Get-Content -LiteralPath $resultPath -Raw)"
     Assert-True ([double]$result.cover_nav_cream_ratio -lt 0.90) "Nav bar should remain visible above the cream cover. result: $(Get-Content -LiteralPath $resultPath -Raw)"
     Assert-True ([double]$result.cover_chat_cream_ratio -lt 0.90) "Chat strip should remain visible above the cream cover. result: $(Get-Content -LiteralPath $resultPath -Raw)"

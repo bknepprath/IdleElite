@@ -373,10 +373,11 @@ func scroll_to_vertical(target: int, duration := 0.26, transition := Tween.TRANS
 		return
 	scroll_tween = create_tween()
 	scroll_tween.tween_method(_set_scroll_vertical_float, float(scroll_vertical), float(clamped_target), duration).set_trans(transition).set_ease(ease_type)
-	scroll_tween.finished.connect(func():
-		_set_scroll_vertical_float(float(clamped_target))
-		scroll_tween = null
-	)
+	scroll_tween.finished.connect(_finish_scroll_to_vertical.bind(clamped_target))
+
+func _finish_scroll_to_vertical(clamped_target: int) -> void:
+	_set_scroll_vertical_float(float(clamped_target))
+	scroll_tween = null
 
 func is_child_click_suppressed() -> bool:
 	return child_click_suppressed or drag_scrolling or absf(velocity) >= 4.0
@@ -427,13 +428,14 @@ func _snap_pull_offset() -> void:
 	pull_offset_changed.emit(0.0)
 	pull_tween = create_tween()
 	pull_tween.tween_property(self, "position:y", pull_anchor_position_y, PULL_SNAP_SECONDS).set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
-	pull_tween.finished.connect(func():
-		pull_offset = 0.0
-		pull_raw_offset = 0.0
-		position.y = pull_anchor_position_y
-		pull_anchor_position_valid = false
-		pull_tween = null
-	)
+	pull_tween.finished.connect(_finish_pull_snap)
+
+func _finish_pull_snap() -> void:
+	pull_offset = 0.0
+	pull_raw_offset = 0.0
+	position.y = pull_anchor_position_y
+	pull_anchor_position_valid = false
+	pull_tween = null
 
 func _cancel_pull_tween() -> void:
 	if pull_tween != null and pull_tween.is_valid():

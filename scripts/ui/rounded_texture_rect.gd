@@ -21,6 +21,8 @@ var mask_inset := 6.0
 var corner_mask_mode := 0
 var fallback_color := Color("#3aa0ff")
 var aspect_mode := 0
+var sample_zoom := 1.0
+var sample_offset_px := Vector2.ZERO
 var mask_shader_params_initialized := false
 var mask_shader_params_texture: Texture2D
 var mask_shader_params_size := Vector2(-1.0, -1.0)
@@ -35,6 +37,8 @@ var mask_shader_params_inset := -1.0
 var mask_shader_params_corner_mode := -1
 var mask_shader_params_aspect_mode := -1
 var mask_shader_params_fallback_color := Color(0, 0, 0, 0)
+var mask_shader_params_sample_zoom := -1.0
+var mask_shader_params_sample_offset_px := Vector2.INF
 
 func _ready() -> void:
 	_ensure_mask_material()
@@ -69,6 +73,8 @@ uniform float mask_inset_px = 0.0;
 uniform int corner_mask_mode = 0;
 uniform int aspect_mode = 0;
 uniform vec4 fallback_color : source_color = vec4(0.2, 0.55, 0.9, 1.0);
+uniform float sample_zoom = 1.0;
+uniform vec2 sample_offset_px = vec2(0.0, 0.0);
 
 void fragment() {
 	vec2 p = UV * control_size;
@@ -101,6 +107,8 @@ void fragment() {
 			} else {
 				source_uv.y = 0.5 + (UV.y - 0.5) * (tex_aspect / control_aspect);
 			}
+			float zoom = max(1.0, sample_zoom);
+			source_uv = vec2(0.5) + (source_uv - vec2(0.5)) / zoom - sample_offset_px / max(vec2(1.0), control_size) / zoom;
 			bool in_bounds = (source_uv.x >= 0.0 && source_uv.x <= 1.0 && source_uv.y >= 0.0 && source_uv.y <= 1.0);
 			source_uv = clamp(source_uv, vec2(0.0), vec2(1.0));
 			vec4 art_sample = texture(bg_texture, source_uv);
@@ -177,6 +185,8 @@ func _update_mask_params() -> void:
 	shader_material.set_shader_parameter("corner_mask_mode", corner_mask_mode)
 	shader_material.set_shader_parameter("aspect_mode", aspect_mode)
 	shader_material.set_shader_parameter("fallback_color", fallback_color)
+	shader_material.set_shader_parameter("sample_zoom", sample_zoom)
+	shader_material.set_shader_parameter("sample_offset_px", sample_offset_px)
 	_store_mask_shader_params(current_texture)
 
 func _mask_shader_params_unchanged() -> bool:
@@ -195,6 +205,8 @@ func _mask_shader_params_unchanged() -> bool:
 		and mask_shader_params_corner_mode == corner_mask_mode
 		and mask_shader_params_aspect_mode == aspect_mode
 		and mask_shader_params_fallback_color.is_equal_approx(fallback_color)
+		and absf(mask_shader_params_sample_zoom - sample_zoom) <= 0.001
+		and mask_shader_params_sample_offset_px.is_equal_approx(sample_offset_px)
 	)
 
 func _mask_texture() -> Texture2D:
@@ -215,11 +227,16 @@ func _store_mask_shader_params(current_texture: Texture2D) -> void:
 	mask_shader_params_corner_mode = corner_mask_mode
 	mask_shader_params_aspect_mode = aspect_mode
 	mask_shader_params_fallback_color = fallback_color
+	mask_shader_params_sample_zoom = sample_zoom
+	mask_shader_params_sample_offset_px = sample_offset_px
 
 static func _fallback_texture() -> Texture2D:
-	if DisplayServer.get_name() == "headless":
-		return null
 	if shared_fallback_texture != null:
+		return shared_fallback_texture
+	if DisplayServer.get_name() == "headless":
+		var placeholder := PlaceholderTexture2D.new()
+		placeholder.size = Vector2(8, 8)
+		shared_fallback_texture = placeholder
 		return shared_fallback_texture
 	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 	image.fill(Color(1.0, 1.0, 1.0, 0.0))
