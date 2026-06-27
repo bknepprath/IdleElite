@@ -157,6 +157,12 @@ func _run() -> void:
 	if absf(honey_only_bank - 2.0) > 0.01:
 		_fail("honey regen should add 2 seconds per 1 second tick, got %.4f" % honey_only_bank)
 		return
+	if absf(float(scene.call("_mat_amount", "honey")) - 1.0) > 0.01:
+		_fail("starting honey regen should consume one honey, got %.4f" % float(scene.call("_mat_amount", "honey")))
+		return
+	if absf(float(scene.get("honey_stamina_seconds_remaining")) - 9.0) > 0.01:
+		_fail("one consumed honey should leave 9 boosted seconds after a 1 second tick, got %.4f" % float(scene.get("honey_stamina_seconds_remaining")))
+		return
 
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 5.0))
 	_set_stamina_bank(scene, "build", 0.0)
@@ -168,7 +174,26 @@ func _run() -> void:
 		_fail("honey and manual hold regen should multiply to 6 seconds per tick, got %.4f" % stacked_bank)
 		return
 
+	scene.call("_set_mat_amount", "honey", 2.0)
+	scene.set("honey_stamina_seconds_remaining", 0.0)
+	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 25.0))
+	_set_stamina_bank(scene, "build", 0.0)
+	scene.set("stamina_gauge_boost_skill_id", "")
+	scene.set("stamina_gauge_regen_multiplier", 1.0)
+	scene.call("_apply_stamina_regen_seconds", 11.0, true)
+	var expired_honey_bank := _stamina_bank(scene, "build")
+	if absf(expired_honey_bank - 10.0) > 0.01:
+		_fail("two honey should boost the full 11 second tick and leave bank 10, got %.4f" % expired_honey_bank)
+		return
+	if absf(float(scene.call("_mat_amount", "honey")) - 0.0) > 0.01:
+		_fail("expired honey regen should consume all available honey, got %.4f" % float(scene.call("_mat_amount", "honey")))
+		return
+	if absf(float(scene.get("honey_stamina_seconds_remaining")) - 9.0) > 0.01:
+		_fail("second honey should leave 9 boosted seconds after rollover, got %.4f" % float(scene.get("honey_stamina_seconds_remaining")))
+		return
+
 	scene.call("_set_mat_amount", "honey", 5.0)
+	scene.set("honey_stamina_seconds_remaining", 0.0)
 	_set_skill_stamina(scene, "build", max_stamina)
 	if not bool(scene.call("_spend_action_stamina", "build", 2.0)):
 		_fail("spending build stamina with honey should succeed")
@@ -176,17 +201,20 @@ func _run() -> void:
 	if absf(_skill_stamina(scene, "build") - (max_stamina - 2.0)) > 0.01:
 		_fail("spending two stamina should reduce build stamina by two")
 		return
-	if absf(float(scene.call("_mat_amount", "honey")) - 3.0) > 0.01:
-		_fail("spending two stamina should spend two honey, got %.4f" % float(scene.call("_mat_amount", "honey")))
+	if absf(float(scene.call("_mat_amount", "honey")) - 5.0) > 0.01:
+		_fail("spending stamina should not consume honey until regen, got %.4f" % float(scene.call("_mat_amount", "honey")))
 		return
 
 	scene.call("_set_mat_amount", "honey", 1.0)
-	_set_skill_stamina(scene, "build", max_stamina)
-	if not bool(scene.call("_spend_action_stamina", "build", 1.0)):
-		_fail("spending build stamina with inactive honey should succeed")
+	scene.set("honey_stamina_seconds_remaining", 0.0)
+	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 5.0))
+	_set_stamina_bank(scene, "build", 0.0)
+	scene.call("_apply_stamina_regen_seconds", 1.0, true)
+	if absf(float(scene.call("_mat_amount", "honey")) - 0.0) > 0.01:
+		_fail("final honey should be consumed by stamina regen, got %.4f" % float(scene.call("_mat_amount", "honey")))
 		return
-	if absf(float(scene.call("_mat_amount", "honey")) - 1.0) > 0.01:
-		_fail("inactive last honey should not be spent, got %.4f" % float(scene.call("_mat_amount", "honey")))
+	if absf(float(scene.get("honey_stamina_seconds_remaining")) - 9.0) > 0.01:
+		_fail("final honey should leave 9 boosted seconds after a 1 second tick, got %.4f" % float(scene.get("honey_stamina_seconds_remaining")))
 		return
 
 	print("honey-stamina-regen-ok honey_only=%.4f stacked=%.4f honey_after_spend=%.4f color=%s" % [honey_only_bank, stacked_bank, float(scene.call("_mat_amount", "honey")), str(circle.get("theme_color"))])

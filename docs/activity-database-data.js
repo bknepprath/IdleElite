@@ -3324,7 +3324,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 24,
           "sort_unlock": 24,
           "stamina": 3,
-          "seconds": 4,
+          "seconds": 12,
           "xp": 7,
           "success": 75.3,
           "rewards": {

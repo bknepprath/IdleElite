@@ -84,6 +84,16 @@ func _init() -> void:
 	game.leaderboard_config_database_url = "https://idle-elite-default-rtdb.firebaseio.com/"
 	game.leaderboard_config_web_api_key = "AIzaSyValidationOnlyNotARealFirebaseKey123456"
 	game.google_auth_web_client_id = ""
+	game.leaderboard_display_name = "guest1234"
+	game.leaderboard_name_key = ""
+	game.leaderboard_profile_claimed = false
+	game.leaderboard_name_claim_verified = false
+	game._start_google_account_sign_in()
+	_expect(game.google_auth_status_message == "Save a username before connecting Google.", "Google sign-in should require a claimed username first.")
+	game.leaderboard_display_name = "Validation Player"
+	game.leaderboard_name_key = "validation_player"
+	game.leaderboard_profile_claimed = true
+	game.leaderboard_name_claim_verified = true
 	game._start_google_account_sign_in()
 	_expect(game.google_auth_status_message == "Google sign-in needs google_web_client_id in firebase-leaderboard-config.json.", "Google sign-in without a client id should explain the missing config key.")
 	game.google_auth_web_client_id = "1234567890-validationonly.apps.googleusercontent.com"

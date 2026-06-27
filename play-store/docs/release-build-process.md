@@ -2,7 +2,7 @@
 <!-- Idle Elite Godot docs: maintained for the Godot 4 mobile idle RPG. HTML references document current Godot systems, data, release work, and implementation plans. -->
 
 
-Use this when preparing a new Google Play closed-test release. This project uses Godot, so all Godot validation and export commands must go through `run-godot-safe.ps1` or a script that calls it.
+Use this when preparing a new Google Play release upload. This project uses Godot, so all Godot validation and export commands must go through `run-godot-safe.ps1` or a script that calls it.
 
 ## Release Inputs
 
@@ -11,7 +11,7 @@ Decide these before editing files:
 - Version name, for example `0.1.10`
 - Android version code, for example `11`
 - Artifact base name, for example `idle-elite-release-v0.1.10-code11`
-- Closed-test pack name, for example `closed-test-upload-v0.1.10-code11`
+- Play Store upload pack name, for example `playstore-upload-v0.1.10-code11`
 
 Keep `version/code` monotonically increasing for Google Play.
 
@@ -122,7 +122,7 @@ Check that local release/build payloads were not packed into the AAB:
 
 ```powershell
 & "C:\Program Files\Android\Android Studio\jbr\bin\jar.exe" tf $aab |
-    Select-String -Pattern 'closed-test-upload','idle-elite-closed-test','release/idle-elite-upload','local-release-notes','\.codex'
+    Select-String -Pattern 'playstore-upload','idle-elite-playstore','closed-test-upload','idle-elite-closed-test','release/idle-elite-upload','local-release-notes','\.codex'
 ```
 
 Expected: no output.
@@ -191,9 +191,9 @@ Use `.\scripts\install-android-phone-debug.ps1` for future phone debug installs;
 
 If Play Store still cannot install after a clean uninstall, collect Play Store/package installer logs from the phone and inspect Play Console device compatibility.
 
-## Closed-Test Upload Pack
+## Play Store Upload Pack
 
-Create an ignored upload folder under `builds/closed-test-upload-v<version-name>-code<version-code>`.
+Create an ignored upload folder under `builds/playstore-upload-v<version-name>-code<version-code>`.
 
 Include:
 
@@ -224,9 +224,9 @@ Include:
 Zip the upload folder:
 
 ```powershell
-Compress-Archive -Path "builds\closed-test-upload-v<version-name>-code<version-code>\*" `
-    -DestinationPath "builds\idle-elite-closed-test-v<version-name>-code<version-code>.zip"
-Get-FileHash -Algorithm SHA256 "builds\idle-elite-closed-test-v<version-name>-code<version-code>.zip" | Format-List Path,Hash
+Compress-Archive -Path "builds\playstore-upload-v<version-name>-code<version-code>\*" `
+    -DestinationPath "builds\idle-elite-playstore-v<version-name>-code<version-code>.zip"
+Get-FileHash -Algorithm SHA256 "builds\idle-elite-playstore-v<version-name>-code<version-code>.zip" | Format-List Path,Hash
 ```
 
 Before finishing, confirm:

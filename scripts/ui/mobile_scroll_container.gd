@@ -244,6 +244,21 @@ func _apply_wheel_step(direction: int) -> void:
 	_set_pull_raw_offset(0.0)
 	_set_scroll_vertical_float(float(scroll_vertical) + float(direction) * 220.0)
 
+
+func apply_direct_wheel_delta(delta_y: float) -> void:
+	if not content_scroll_enabled:
+		_set_scroll_vertical_float(0.0)
+		return
+	if absf(delta_y) <= 0.01:
+		return
+	_cancel_scroll_tween()
+	_cancel_pull_tween()
+	velocity = 0.0
+	_set_pull_raw_offset(0.0)
+	var scroll_delta := clampf(delta_y, -420.0, 420.0)
+	_set_scroll_vertical_float(float(scroll_vertical) + scroll_delta)
+	_emit_user_scroll_direction_from_delta(scroll_delta)
+
 func _apply_drag_delta(delta_y: float) -> void:
 	if pull_resistance_enabled:
 		if absf(pull_raw_offset) > 0.0:
@@ -273,6 +288,31 @@ func _apply_drag_delta(delta_y: float) -> void:
 	_set_scroll_vertical_float(drag_scroll_position - delta_y)
 	_emit_user_scroll_direction_from_delta(drag_scroll_position - old_scroll)
 	velocity = -delta_y * 60.0
+
+
+func handoff_drag_scroll(press_position: Vector2, current_position: Vector2, touch_index := -1) -> void:
+	if not is_visible_in_tree() or not content_scroll_enabled:
+		return
+	if input_locked_by_activity_lock or _modal_blocks_this_scroll():
+		return
+	if not _contains_global_point(press_position) and not _contains_global_point(current_position):
+		return
+	_cancel_scroll_tween()
+	_cancel_pull_tween()
+	drag_tracking = true
+	drag_scrolling = true
+	drag_start = press_position
+	drag_last = press_position
+	drag_touch_index = touch_index
+	drag_scroll_position = float(scroll_vertical)
+	_reset_drag_velocity_samples(press_position)
+	velocity = 0.0
+	child_click_suppressed = true
+	_apply_drag_delta(current_position.y - press_position.y)
+	drag_last = current_position
+	_record_drag_velocity_sample(current_position)
+	get_viewport().set_input_as_handled()
+
 
 func _set_scroll_vertical_float(next_value: float) -> void:
 	if not content_scroll_enabled:

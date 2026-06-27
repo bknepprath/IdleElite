@@ -2612,6 +2612,11 @@ $syncActionStopHoldCircle = Get-FunctionBody -Text $main -Name "_sync_action_sto
 Assert-True ($syncActionStopHoldCircle -match 'is_queued_for_deletion\(\)') "Action stop-hold circle sync should skip queued-for-deletion nodes."
 $hideActionStopHoldCircle = Get-FunctionBody -Text $main -Name "_hide_action_stop_hold_circle"
 Assert-True ($hideActionStopHoldCircle -match '_set_canvas_item_visible_if_changed\(action_stop_hold_circle, false\)') "Action stop-hold circle hide should guard repeated visibility writes."
+$routeActionStopHoldInput = Get-FunctionBody -Text $main -Name "_route_action_stop_hold_input"
+Assert-True ($routeActionStopHoldInput -match '_action_stop_hold_motion_is_scroll_drag\(event_position\)[\s\S]*_cancel_action_stop_hold\(\)[\s\S]*return false') "Action stop-hold input should cancel and release handling when the active-card gesture becomes a vertical scroll."
+$actionStopHoldMotionIsScrollDrag = Get-FunctionBody -Text $main -Name "_action_stop_hold_motion_is_scroll_drag"
+Assert-True ($actionStopHoldMotionIsScrollDrag -match 'ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE') "Action stop-hold scroll cancellation should share the action-card scroll drag deadzone."
+Assert-True ($actionStopHoldMotionIsScrollDrag -match 'absf\(drag_offset\.y\) > absf\(drag_offset\.x\) \* 1\.15') "Action stop-hold scroll cancellation should require a clearly vertical drag."
 
 $syncHubHotspotHoldCircle = Get-FunctionBody -Text $main -Name "_sync_hub_hotspot_hold_circle"
 Assert-True ($syncHubHotspotHoldCircle -match 'is_queued_for_deletion\(\)') "Hub hotspot hold circle sync should skip queued-for-deletion nodes."
