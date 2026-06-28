@@ -1,6 +1,7 @@
 param(
     [switch] $SkipExport,
     [switch] $SkipValidation,
+    [switch] $SkipWebTouchScrollValidation,
     [switch] $Upload,
     [string] $ButlerTarget = $env:ITCH_BUTLER_TARGET
 )
@@ -13,6 +14,7 @@ $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $webBuildDir = Join-Path $projectRoot "builds\web"
 $itchBuildDir = Join-Path $projectRoot "builds\itch"
 $latestZipPath = Join-Path $itchBuildDir "idle-elite-itch-web-latest.zip"
+$webTouchScrollTest = Join-Path $projectRoot "scripts\test-fishing-web-touch-scroll.ps1"
 
 function Assert-True {
     param(
@@ -83,6 +85,14 @@ $requiredFiles = @(
 )
 foreach ($fileName in $requiredFiles) {
     Assert-True (Test-Path -LiteralPath (Join-Path $webBuildDir $fileName)) "Web export is missing $fileName in $webBuildDir"
+}
+
+if (-not $SkipValidation -and -not $SkipWebTouchScrollValidation) {
+    Assert-True (Test-Path -LiteralPath $webTouchScrollTest) "Fishing web touch scroll test was not found at $webTouchScrollTest"
+    & $webTouchScrollTest
+    if ($LASTEXITCODE -ne 0) {
+        throw "Fishing web touch scroll validation failed with exit code $LASTEXITCODE"
+    }
 }
 
 $versionedZipPath = Join-Path $itchBuildDir "idle-elite-itch-web-v$versionName-code$versionCode.zip"

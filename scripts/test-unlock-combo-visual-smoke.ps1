@@ -146,6 +146,25 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 	return false
 
 
+func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = MOUSE_BUTTON_LEFT
+	event.pressed = pressed
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
+	event.position = point
+	event.global_position = point
+	return event
+
+
+func _mouse_motion_event(point: Vector2, relative: Vector2) -> InputEventMouseMotion:
+	var event := InputEventMouseMotion.new()
+	event.button_mask = MOUSE_BUTTON_MASK_LEFT
+	event.position = point
+	event.global_position = point
+	event.relative = relative
+	return event
+
+
 func _check_mono_lock(scene: Node) -> void:
 	var action := _first_action_with_requirement_count(scene, "build", 1)
 	if action.is_empty():
@@ -456,6 +475,142 @@ func _check_fishing_combo_progress_rails(scene: Node) -> void:
 		if card.get("fluid_strip") != null:
 			_record("Fishing combo %s still has a Fishing fluid strip" % action_id)
 	stack.queue_free()
+	await _check_locked_fishing_combo_lock_input(scene, combo_actions[0] as Dictionary)
+
+
+func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> void:
+	var action_id := str(action.get("id", ""))
+	if action_id.is_empty():
+		_record("Fishing combo lock input check received an empty action id")
+		return
+	scene.call("_clear_activity_unlock_ceremony_test_state")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.set("auto_unlock_lockpads_enabled", false)
+	scene.call("_lock_test_action", "fishing", action_id)
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "fishing")
+	scene.set("_last_rendered_screen_key", "")
+	var render_result = scene.call("_render_screen", false, -1, false)
+	if render_result != null:
+		await render_result
+	for _i in range(8):
+		await process_frame
+	if bool(scene.call("_is_action_unlocked", "fishing", action)):
+		_record("Fishing combo %s should be locked for routed lock input check" % action_id)
+		return
+	if not bool(scene.call("_can_unlock_action", "fishing", action)):
+		_record("Fishing combo %s should be ready to unlock for routed lock input check" % action_id)
+		return
+	scene.call("_ensure_detail_lazy_entry_mounted", action_id)
+	await process_frame
+	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
+	if scroll == null:
+		_record("Fishing combo %s routed lock input check had no detail scroll" % action_id)
+		return
+	var target_scroll := int(scene.call("_detail_actions_scroll_target_for_action", action_id, true))
+	if target_scroll >= 0:
+		scroll.call("scroll_to_vertical", target_scroll, 0.0)
+		scroll.set("drag_scroll_position", float(target_scroll))
+		scroll.set("scroll_vertical", target_scroll)
+	for _i in range(6):
+		scene.call("_sync_detail_lazy_visible_cards", true, -1)
+		await process_frame
+	var card := _action_card_for_action_id(scene.get("action_cards") as Dictionary, action_id)
+	if card.is_empty():
+		_record("Fishing combo %s routed lock input check did not mount an action card" % action_id)
+		return
+	var overlay := card.get("lock_overlay", {}) as Dictionary
+	var overlay_root := overlay.get("root") as Control
+	var cluster := overlay.get("group") as Control
+	if overlay_root == null or cluster == null or not overlay_root.visible or not cluster.visible:
+		_record("Fishing combo %s routed lock input check did not expose a visible lock overlay" % action_id)
+		return
+	cluster.call("_layout_base")
+	await process_frame
+	var rig := _first_interactive_lock_rig(cluster)
+	if rig == null:
+		_record("Fishing combo %s routed lock input check found no interactive lock rig" % action_id)
+		return
+	var press_point := _lock_hit_global_point(rig)
+	if press_point == Vector2.INF:
+		_record("Fishing combo %s routed lock input check could not find a lock hit point" % action_id)
+		return
+	if not bool(scene.call("_position_inside_detail_actions_viewport", press_point, 8.0)):
+		_record("Fishing combo %s lock point was outside the detail viewport: %s" % [action_id, press_point])
+		return
+	scene.call("_input", _mouse_button_event(press_point, true))
+	await process_frame
+	if not bool(scene.get("activity_lock_input_active")):
+		_record("Fishing combo %s lock press was not captured by scene input routing" % action_id)
+		return
+	if scene.get("active_activity_lock_rig") != cluster:
+		_record("Fishing combo %s lock press captured the wrong active cluster" % action_id)
+	var drag_point := press_point + Vector2(92.0, 18.0)
+	scene.call("_input", _mouse_motion_event(drag_point, drag_point - press_point))
+	await process_frame
+	if not bool(scene.get("activity_lock_input_active")):
+		_record("Fishing combo %s lock drag lost active scene capture" % action_id)
+	if scene.get("active_activity_lock_rig") != cluster:
+		_record("Fishing combo %s lock drag did not stay on the captured cluster" % action_id)
+	if not _cluster_has_dragging_lock(cluster):
+		_record("Fishing combo %s lock drag did not reach the padlock rig" % action_id)
+	scene.call("_input", _mouse_button_event(drag_point, false))
+	await process_frame
+	if bool(scene.get("activity_lock_input_active")):
+		_record("Fishing combo %s lock drag release did not clear active capture" % action_id)
+	if scene.get("active_activity_lock_rig") != null:
+		_record("Fishing combo %s lock drag release left an active cluster reference" % action_id)
+	var click_point := _lock_hit_global_point(rig)
+	if click_point == Vector2.INF:
+		_record("Fishing combo %s routed lock input check lost the click hit point" % action_id)
+		return
+	scene.call("_input", _mouse_button_event(click_point, true))
+	await process_frame
+	if not bool(scene.get("activity_lock_input_active")):
+		_record("Fishing combo %s lock click press was not captured by scene input routing" % action_id)
+	scene.call("_input", _mouse_button_event(click_point, false))
+	await process_frame
+	if bool(scene.get("activity_lock_input_active")):
+		_record("Fishing combo %s lock click release did not clear active capture" % action_id)
+	if int(cluster.call("get_last_clicked_requirement_index")) < 0:
+		_record("Fishing combo %s lock click did not reach a requirement padlock" % action_id)
+
+
+func _first_interactive_lock_rig(cluster: Control) -> Control:
+	if cluster == null:
+		return null
+	var rigs := cluster.get("rigs") as Array
+	for raw_rig in rigs:
+		var rig := raw_rig as Control
+		if rig == null or not is_instance_valid(rig):
+			continue
+		if not rig.visible or str(rig.get("lock_state")) == ActivityLockRig.LOCK_STATE_GONE:
+			continue
+		return rig
+	return null
+
+
+func _cluster_has_dragging_lock(cluster: Control) -> bool:
+	if cluster == null:
+		return false
+	var rigs := cluster.get("rigs") as Array
+	for raw_rig in rigs:
+		var rig := raw_rig as Control
+		if rig != null and is_instance_valid(rig) and bool(rig.get("dragging_lock")):
+			return true
+	return false
+
+
+func _lock_hit_global_point(rig: Control) -> Vector2:
+	if rig == null or not is_instance_valid(rig):
+		return Vector2.INF
+	var body := rig.get("padlock") as Control
+	if body != null and is_instance_valid(body) and body.visible:
+		return body.get_global_rect().get_center()
+	var rect := _lock_visual_global_rect(rig)
+	if rect.size.x > 1.0 and rect.size.y > 1.0:
+		return rect.get_center()
+	return Vector2.INF
 
 
 func _render_live_fishing_page(scene: Node) -> void:

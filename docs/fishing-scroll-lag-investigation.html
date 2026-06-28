@@ -1,0 +1,430 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fishing Scroll Lag Investigation</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f7f4ee;
+      --ink: #1f2528;
+      --muted: #687174;
+      --panel: #ffffff;
+      --line: #d8d0c2;
+      --done: #2c7a45;
+      --open: #a45f16;
+      --blocked: #8b2f2f;
+      --code: #f0ece4;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.45;
+    }
+
+    main {
+      max-width: 1120px;
+      margin: 0 auto;
+      padding: 32px 22px 56px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 34px;
+      line-height: 1.1;
+    }
+
+    h2 {
+      margin: 34px 0 14px;
+      font-size: 22px;
+    }
+
+    p {
+      margin: 0 0 12px;
+    }
+
+    .note {
+      color: var(--muted);
+      max-width: 880px;
+    }
+
+    .rule {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 14px 16px;
+      margin: 18px 0 22px;
+    }
+
+    .suspect {
+      border: 1px solid var(--line);
+      background: var(--panel);
+      border-radius: 8px;
+      margin: 14px 0;
+      overflow: hidden;
+    }
+
+    .suspect header {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 12px;
+      align-items: start;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .suspect h3 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .status {
+      border-radius: 999px;
+      padding: 3px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      white-space: nowrap;
+    }
+
+    .status.done {
+      color: var(--done);
+      background: #e5f3e9;
+    }
+
+    .status.open {
+      color: var(--open);
+      background: #fff0dc;
+    }
+
+    .status.blocked {
+      color: var(--blocked);
+      background: #f7e4e4;
+    }
+
+    .body {
+      padding: 14px 16px 16px;
+    }
+
+    .method {
+      border-top: 1px dashed var(--line);
+      padding-top: 12px;
+      margin-top: 12px;
+    }
+
+    .method:first-child {
+      border-top: 0;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
+    .checkline {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      accent-color: var(--done);
+    }
+
+    ul {
+      margin: 8px 0 0 28px;
+      padding: 0;
+    }
+
+    li {
+      margin: 4px 0;
+    }
+
+    code {
+      background: var(--code);
+      border-radius: 5px;
+      padding: 1px 5px;
+      font-family: Consolas, "Courier New", monospace;
+      font-size: .95em;
+    }
+
+    .updated {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Fishing Scroll Lag Investigation</h1>
+  <p class="note">Purpose: keep the investigation from looping. Each suspect has one or more concrete methods. When a method has been attempted, it is checked off. Do not repeat a checked method unless a new, different method is added under the same suspect.</p>
+
+  <div class="rule">
+    <strong>Current confirmed symptom:</strong> manual click/touch drag has a large freeze before scroll starts, then scroll motion is mostly smooth. The cold drag probe captured press-frame spikes up to roughly <code>813ms</code>, while motion frames were usually around <code>8-9ms</code>.
+  </div>
+
+  <h2>Checked Methods</h2>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" checked disabled>
+      <h3>Suspect: fishing gear wallet taps are being swallowed by the scroll fast path</h3>
+      <span class="status done">checked</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: route fishing wallet press input before scroll-mode cleanup, deferred swipe startup, and fishing scroll bypass checks.</span></div>
+        <ul>
+          <li>Evidence: <code>_route_fishing_wallet_unhandled_input()</code> was late in <code>_input()</code>, after fishing deferred-scroll and detail-routing returns.</li>
+          <li>Failure mode: tapping the fish/gear circle could start scroll cleanup or deferred-swipe handling first, making the wallet appear dead while still doing laggy work.</li>
+          <li>Fix attempted: moved the wallet route immediately after <code>_note_player_input()</code> so wallet taps win before fishing scroll logic can claim the press.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" checked disabled>
+      <h3>Suspect: all fishing area modules being mounted at once is the core cause</h3>
+      <span class="status done">checked</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: run an all-mounted web stress path with every fishing module present.</span></div>
+        <ul>
+          <li>Evidence: web <code>no_lazy</code> stress held <code>21/21</code> modules mounted.</li>
+          <li>Result: worst Godot frame about <code>17.56ms</code>, worst browser RAF about <code>35.32ms</code>, no frames over <code>50ms</code>.</li>
+          <li>Conclusion: module count alone is not sufficient to explain the severe hitch.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" checked disabled>
+      <h3>Suspect: warmed scroll path is inherently slow</h3>
+      <span class="status done">checked</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: measure repeated production web touch and desktop mouse drags after setup.</span></div>
+        <ul>
+          <li>Evidence: production web drag probe passed with worst Godot frame about <code>32.89ms</code> and worst RAF about <code>35.32ms</code>.</li>
+          <li>Result: no visible placeholders, no culled modules overlapping the viewport, no frames over <code>50ms</code>.</li>
+          <li>Conclusion: warmed scroll motion can be smooth in the harness; the player-facing problem is likely before or during the first drag start.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" checked disabled>
+      <h3>Suspect: first drag motion frames are the expensive part</h3>
+      <span class="status done">checked</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: add cold drag probes that record press and motion samples separately.</span></div>
+        <ul>
+          <li>Evidence: worst samples were consistently <code>phase=press</code>, not <code>phase=motion</code>.</li>
+          <li>Result: press samples reached about <code>813ms</code>; motion samples stayed roughly <code>8-9ms</code>.</li>
+          <li>Conclusion: the freeze happens before useful drag scrolling starts.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" checked disabled>
+      <h3>Suspect: queued fishing settle warm mount is allowed to run during manual interaction</h3>
+      <span class="status done">checked</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: count primary pointer down as active fishing scroll interaction and add a hard warm-mount pause while interaction is active.</span></div>
+        <ul>
+          <li>Files touched: <code>scripts/main.gd</code>.</li>
+          <li>Evidence: after patch, cold drag test still showed press-frame spikes around <code>813ms</code>.</li>
+          <li>Conclusion: this exact method did not fix the freeze. Do not repeat it as-is.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" checked disabled>
+      <h3>Suspect: new fishing art size/background replacement is the only cause</h3>
+      <span class="status done">checked</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: switch fishing area/background rendering to flatter art path and compare scroll probes.</span></div>
+        <ul>
+          <li>Evidence: art quality changed, but user still reported lag; harness still reproduced cold press spikes.</li>
+          <li>Conclusion: art may contribute to mount cost, but flat art alone did not remove the freeze.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <h2>Open Suspects</h2>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" checked disabled>
+      <h3>Suspect: process-frame measurement is incorrectly charging idle warm work to the press sample</h3>
+      <span class="status done">checked</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: split the cold drag probe timing into direct input dispatch time and following frame process time.</span></div>
+        <ul>
+          <li>Evidence: worst sample was <code>mouse-up press</code> with <code>frame_ms=860.082</code>, <code>main_input_ms=859.73</code>, <code>scroll_input_ms=0.025</code>, and <code>process_frame_ms=0.293</code>.</li>
+          <li>Result: the bad time is inside <code>main._input(event)</code>, not the next frame and not the scroll container input handler.</li>
+          <li>Conclusion: pursue press-routing instrumentation next. Do not keep patching process-frame warm queues as the primary method.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" checked disabled>
+      <h3>Suspect: visible viewport fill is mounting too many modules synchronously during cold probe setup or first scroll settle</h3>
+      <span class="status done">checked</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: cap synchronous <code>visible_viewport_fill</code> callers to one module per frame during scroll settle and new press cleanup.</span></div>
+        <ul>
+          <li>Evidence: <code>_finish_fishing_scroll_perf_probe()</code> and <code>_set_fishing_scroll_mode_active(false)</code> called <code>_sync_fishing_detail_visible_viewport_cards(-1)</code>, which meant unbounded visible mounting.</li>
+          <li>Fix attempted: added <code>FISHING_DETAIL_VISIBLE_SETTLE_FILL_BUDGET := 1</code> and used it for scroll-settle and new-press cleanup fills.</li>
+          <li>Result: cold drag probe passed with <code>max_ms=17.782</code>, <code>p95_ms=8.378</code>, <code>over50=0</code>.</li>
+          <li>User report: after this change, desktop Godot scrolling felt smooth.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" disabled>
+      <h3>Suspect: web probe was run against a stale exported build</h3>
+      <span class="status open">open</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" disabled><span>Method to attempt: rebuild/export web after the visible-fill cap, then rerun production and all-mounted web probes.</span></div>
+        <ul>
+          <li>Evidence to investigate: after the local fix, production web probe reported one <code>50.408ms</code> Godot frame, but the web harness reads <code>builds\web</code>.</li>
+          <li>Risk: if <code>builds\web</code> was not re-exported after the final code change, the web result measured old code.</li>
+          <li>Success condition: fresh production web and all-mounted web probes both stay under <code>50ms</code>.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" disabled>
+      <h3>Suspect: active render-culling sync causes one web drag-frame hitch after all modules are mounted</h3>
+      <span class="status open">open</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: throttle active fishing render-culling updates more aggressively during drag.</span></div>
+        <ul>
+          <li>Evidence to investigate: fresh production web probe failed on first mobile drag with <code>mounted=21/21</code>, <code>rendered=11</code>, <code>culled=10</code>, <code>maxFrameMsec=53.165</code>, and <code>rafMaxMsec=52.895</code>.</li>
+          <li>Fix attempted: increased active culling step/minimum time to reduce culling frequency during drag.</li>
+          <li>Result: fresh production web still failed, worse, with <code>maxFrameMsec=62.952</code> and <code>rafMaxMsec=58.725</code>.</li>
+          <li>Conclusion: throttling active culling is not the right method.</li>
+        </ul>
+      </div>
+      <div class="method">
+        <div class="checkline"><input type="checkbox" disabled><span>Method to attempt: restore/disable fishing render culling once all lazy modules are mounted.</span></div>
+        <ul>
+          <li>Evidence to investigate: the web failure state already has <code>mounted=21/21</code>, while earlier all-mounted/no-culling ablation stayed under <code>50ms</code>.</li>
+          <li>Success condition: fresh production web and all-mounted web probes stay under <code>50ms</code> with no visible placeholders or visible culled modules.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" disabled>
+      <h3>Suspect: press input still routes through expensive hit scans for fishing area/method controls</h3>
+      <span class="status open">open</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: time high-level fishing press routing branches in <code>main._input</code>.</span></div>
+        <ul>
+          <li>Evidence: branch trace showed <code>input_defer_tap_check_false</code> and <code>input_defer_tap_check_true</code> samples around <code>130-206ms</code>.</li>
+          <li>Evidence: branch trace also showed <code>fishing_detail_route</code> samples around <code>125-208ms</code> after the defer check returned false.</li>
+          <li>Conclusion: the hot path is inside fishing press routing, but this method is too coarse to name the exact inner scan.</li>
+        </ul>
+      </div>
+      <div class="method">
+        <div class="checkline"><input type="checkbox" checked disabled><span>Method: time inside <code>_fishing_detail_primary_press_should_defer_tap_scan</code>, <code>_fishing_detail_primary_press_skips_global_button_scan</code>, and <code>_route_fishing_detail_input</code>.</span></div>
+        <ul>
+          <li>Evidence: <code>fishing_skip_scan_page_switch_false</code> took roughly <code>120-238ms</code> before the fishing press could proceed.</li>
+          <li>Fix attempted: added a page-switch-only helper so fishing press routing does not call the expensive <code>_action_card_at_position</code> scan just to exclude page-switch buttons.</li>
+          <li>Result: worst cold drag press sample dropped from about <code>981ms</code> to about <code>328ms</code>.</li>
+          <li>Conclusion: page-switch hit testing was a real offender, but not the last one.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" disabled>
+      <h3>Suspect: repeated mount/unmount thrashing rebuilds the same fishing area modules over and over</h3>
+      <span class="status open">open</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" disabled><span>Method to attempt: count per-track mount frequency during one drag test and fail if the same area is rebuilt repeatedly.</span></div>
+        <ul>
+          <li>Evidence to investigate: traces repeatedly show entries like <code>fishing:area-beach-0</code> being mounted in <code>settle_warm_process</code>.</li>
+          <li>Potential fix if proven: stop freeing fishing area nodes during the active page lifetime, or keep a lightweight root cache that does not re-run expensive construction.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="suspect">
+    <header>
+      <input type="checkbox" disabled>
+      <h3>Suspect: UI/style/theme synchronization after lazy mount is causing second-order frame spikes</h3>
+      <span class="status open">open</span>
+    </header>
+    <div class="body">
+      <div class="method">
+        <div class="checkline"><input type="checkbox" disabled><span>Method to attempt: isolate lazy mount construction time from post-mount UI synchronization time.</span></div>
+        <ul>
+          <li>Goal: separate <code>_detail_lazy_mount_item</code> construction cost from <code>_update_ui</code>, scroll-limit sync, render culling, and placeholder repair.</li>
+          <li>Potential fix if proven: batch or defer post-mount sync until after interaction settles.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <p class="updated">Last updated: 2026-06-27 by Codex during the 0.4.62 fishing scroll investigation.</p>
+</main>
+</body>
+</html>

@@ -12,6 +12,9 @@ $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_textur
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $bootFlexLoadingAnimationPath = Join-Path $projectRoot "scripts\ui\boot_flex_loading_animation.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
+$fishingWebTouchScrollTestPath = Join-Path $projectRoot "scripts\test-fishing-web-touch-scroll.ps1"
+$fishingDragSpikeTestPath = Join-Path $projectRoot "scripts\test-fishing-drag-spike.ps1"
+$fishingDragSpikeScenePath = Join-Path $projectRoot "scripts\tests\fishing_drag_spike.gd"
 $hubPathDotsPath = Join-Path $projectRoot "scripts\ui\hub_path_dots.gd"
 $activityStartHighlightRingPath = Join-Path $projectRoot "scripts\ui\activity_start_highlight_ring.gd"
 $activityCardDepthPath = Join-Path $projectRoot "scripts\ui\activity_card_depth.gd"
@@ -76,11 +79,27 @@ function Get-ClassBody {
     $pattern = "(?ms)^class $([regex]::Escape($Name)):\s*\r?\n.*?(?=^class |\z)"
     $match = [regex]::Match($Text, $pattern)
     Assert-True $match.Success "Could not find class $Name."
-    $match.Value
+	$match.Value
+}
+
+function Get-ExportPresetBlock {
+	param(
+		[Parameter(Mandatory = $true)][string]$Text,
+		[Parameter(Mandatory = $true)][string]$Name
+	)
+
+	$pattern = '(?ms)^\[preset\.\d+\]\s*\r?\n(?:(?!^\[preset\.\d+\]).)*?^name="' + [regex]::Escape($Name) + '"(?:(?!^\[preset\.\d+\]).)*'
+	$match = [regex]::Match($Text, $pattern)
+	Assert-True $match.Success "Could not find export preset $Name."
+	$match.Value
 }
 
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
 $main = Get-Content -LiteralPath $mainPath -Raw
+$exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
+Assert-True (Test-Path -LiteralPath $exportPresetsPath) "Missing export_presets.cfg."
+$exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
+$webExportPreset = Get-ExportPresetBlock -Text $exportPresets -Name "Web"
 Assert-True (Test-Path -LiteralPath $cleanProgressPath) "Missing scripts\ui\clean_progress_bar.gd."
 $cleanProgress = Get-Content -LiteralPath $cleanProgressPath -Raw
 Assert-True (Test-Path -LiteralPath $activityCardInnerShadowPath) "Missing scripts\ui\activity_card_inner_shadow.gd."
@@ -101,6 +120,9 @@ Assert-True (Test-Path -LiteralPath $bootFlexLoadingAnimationPath) "Missing scri
 $bootFlexLoadingAnimation = Get-Content -LiteralPath $bootFlexLoadingAnimationPath -Raw
 Assert-True (Test-Path -LiteralPath $mobileScrollContainerPath) "Missing scripts\ui\mobile_scroll_container.gd."
 $mobileScrollContainer = Get-Content -LiteralPath $mobileScrollContainerPath -Raw
+$fishingWebTouchScrollTest = Get-Content -LiteralPath $fishingWebTouchScrollTestPath -Raw
+$fishingDragSpikeTest = Get-Content -LiteralPath $fishingDragSpikeTestPath -Raw
+$fishingDragSpikeScene = Get-Content -LiteralPath $fishingDragSpikeScenePath -Raw
 Assert-True (Test-Path -LiteralPath $hubPathDotsPath) "Missing scripts\ui\hub_path_dots.gd."
 $hubPathDots = Get-Content -LiteralPath $hubPathDotsPath -Raw
 Assert-True (Test-Path -LiteralPath $activityStartHighlightRingPath) "Missing scripts\ui\activity_start_highlight_ring.gd."
@@ -199,7 +221,64 @@ Assert-True $initialMountMatch.Success "Missing skill detail initial lazy mount 
 Assert-True ([int]$initialMountMatch.Groups[1].Value -le 4) "Skill detail should not eagerly mount more than four initial activity cards."
 $fishingInitialMountMatch = [regex]::Match($main, 'const FISHING_DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := (\d+)')
 Assert-True $fishingInitialMountMatch.Success "Missing fishing detail initial lazy mount limit."
-Assert-True ([int]$fishingInitialMountMatch.Groups[1].Value -le 6) "Fishing detail should pre-mount only the visible scroll window plus two guard modules."
+Assert-True ([int]$fishingInitialMountMatch.Groups[1].Value -le 4) "Fishing detail should not synchronously mount the full page before first interaction."
+$processDetailLazyWindow = Get-FunctionBody -Text $main -Name "_process_detail_lazy_window"
+Assert-True ($processDetailLazyWindow -notmatch '_fishing_rework_active_for_skill\(selected_skill_id\) and _detail_lazy_all_mounted\(\)[\s\S]*?return 0') "Fishing detail lazy-window scans must keep pruning instead of exiting after every module has been mounted once."
+$detailLazyCanBuildOffscreenCachedEntry = Get-FunctionBody -Text $main -Name "_detail_lazy_can_build_offscreen_cached_entry"
+Assert-True ($detailLazyCanBuildOffscreenCachedEntry -match '_fishing_rework_active_for_skill\(skill_id\)[\s\S]*return false') "Fishing detail should not build offscreen cached module trees."
+$detailLazyAllMounted = Get-FunctionBody -Text $main -Name "_detail_lazy_all_mounted"
+Assert-True ($main -match 'var detail_lazy_all_mounted_cache_frame := -1') "Detail lazy all-mounted checks should keep a per-frame cache."
+Assert-True ($detailLazyAllMounted -match 'Engine\.get_process_frames\(\)[\s\S]*detail_lazy_all_mounted_cache_frame == current_frame') "Detail lazy all-mounted checks should reuse same-frame results instead of rescanning the plan."
+$fishingDetailRouteInput = Get-FunctionBody -Text $main -Name "_route_fishing_detail_input"
+Assert-True ($fishingDetailRouteInput -match '_try_handoff_fishing_deferred_vertical_scroll\(event, event_position\)[\s\S]*?_fishing_detail_plain_scroll_motion_can_skip_global_hit_tests\(event, event_position\)[\s\S]*?_route_fishing_area_pin_corner_input\(event\)') "Fishing drag motion should skip global button hit-tests after vertical-scroll handoff has first chance."
+Assert-True ($fishingDetailRouteInput -match '_route_active_fishing_control_drag_handoff\(event\)[\s\S]*?_try_handoff_fishing_deferred_vertical_scroll\(event, event_position\)') "Fishing drags that start on a location tile or offer should hand off before generic fishing hit-tests."
+$activeFishingControlDragHandoff = Get-FunctionBody -Text $main -Name "_route_active_fishing_control_drag_handoff"
+Assert-True ($activeFishingControlDragHandoff -match 'event is InputEventMouseMotion or event is InputEventScreenDrag') "Fishing active-control drag handoff should only apply to drag motion events."
+Assert-True ($activeFishingControlDragHandoff -match 'fishing_method_button_press_active[\s\S]*_route_fishing_method_button_global_input\(event\)' -and $activeFishingControlDragHandoff -match 'fishing_offer_button_press_active[\s\S]*_route_fishing_offer_button_global_input\(event\)') "Fishing active-control drag handoff should route active method and offer presses directly."
+$fishingPlainScrollSkip = Get-FunctionBody -Text $main -Name "_fishing_detail_plain_scroll_motion_can_skip_global_hit_tests"
+Assert-True ($fishingPlainScrollSkip -match 'event is InputEventMouseMotion or event is InputEventScreenDrag') "Fishing plain scroll skip should only apply to motion/drag events."
+Assert-True ($fishingPlainScrollSkip -match 'fishing_method_button_press_active or fishing_offer_button_press_active[\s\S]*return false') "Fishing plain scroll skip must preserve active method/offer drag handling."
+$processFunction = Get-FunctionBody -Text $main -Name "_process"
+Assert-True ($processFunction -match 'var defer_fishing_scroll_tail_work := _fishing_detail_can_defer_scroll_tail_work\(\)[\s\S]*?if not defer_fishing_scroll_tail_work:\s*\r?\n\s*_process_detail_jump_arrows\(delta\)[\s\S]*?if not defer_fishing_scroll_tail_work:\s*\r?\n\s*_maybe_repair_blank_detail_lazy_stack\(\)') "Fishing scroll frames should defer nonessential jump-arrow and blank-stack repair tail work."
+$fishingScrollTailWork = Get-FunctionBody -Text $main -Name "_fishing_detail_can_defer_scroll_tail_work"
+Assert-True ($fishingScrollTailWork -match 'selected_skill_id != "fishing"[\s\S]*return false') "Fishing scroll tail-work deferral should be scoped to the fishing page."
+Assert-True ($fishingScrollTailWork -match 'not detail_scroll_visual_work_this_frame[\s\S]*return false') "Fishing scroll tail-work deferral should only apply during active scroll frames."
+Assert-True ($fishingScrollTailWork -notmatch '_detail_lazy_all_mounted\(\)') "Fishing scroll tail-work deferral should not require every virtualized fishing module to be mounted."
+Assert-True ($fishingScrollTailWork -match '_detail_jump_arrows_need_processing\(\)[\s\S]*return false') "Fishing scroll tail-work deferral should keep active jump arrows processing while they fade or accept input."
+$publishWebFishingPerfProbeState = Get-FunctionBody -Text $main -Name "_publish_web_fishing_perf_probe_state"
+Assert-True ($publishWebFishingPerfProbeState -match 'web_fishing_perf_probe_last_publish_msec < 80') "Fishing web perf probe should throttle non-forced JS publishes during scroll measurement."
+Assert-True (
+    $publishWebFishingPerfProbeState -match 'publish_culling_detail := force or not fishing_scroll_perf_active' -and
+    $publishWebFishingPerfProbeState -match 'render_cull_state := _fishing_detail_render_cull_counts\(\) if publish_culling_detail else \{\}' -and
+    $publishWebFishingPerfProbeState -match 'visible_culled_state := _fishing_detail_visible_culled_count\(\) if publish_culling_detail else 0' -and
+    $publishWebFishingPerfProbeState -match '"renderCull": render_cull_state' -and
+    $publishWebFishingPerfProbeState -match '"visibleCulled": visible_culled_state'
+) "Fishing web perf probe should expose render-culling safety state without serializing culling details during active scroll."
+$visibleCulledCount = Get-FunctionBody -Text $main -Name "_fishing_detail_visible_culled_count"
+$syncFishingRenderCulling = Get-FunctionBody -Text $main -Name "_sync_fishing_detail_render_culling"
+Assert-True ($visibleCulledCount -match 'return fishing_detail_visible_culled_count_cache') "Fishing visible-cull audit should use cached culling telemetry instead of rescanning during web probe publishes."
+Assert-True ($syncFishingRenderCulling -match 'visible_culled_count' -and $syncFishingRenderCulling -match 'entry_bottom >= viewport_top and entry_top <= viewport_bottom') "Fishing render-culling sync should detect culled modules overlapping the viewport."
+$processFishingScrollPerfProbe = Get-FunctionBody -Text $main -Name "_process_fishing_scroll_perf_probe"
+Assert-True ($processFishingScrollPerfProbe -match '_publish_web_fishing_perf_probe_state\(\)') "Active fishing scroll perf sampling should use throttled web probe publishing."
+Assert-True ($processFishingScrollPerfProbe -notmatch '_publish_web_fishing_perf_probe_state\(true\)') "Active fishing scroll perf sampling should not force JS publishes every frame."
+Assert-True ($syncFishingRenderCulling -match 'var scroll_y := _detail_lazy_scroll_y\(\)' -and $syncFishingRenderCulling -match 'var next_culled := not should_render[\s\S]*_set_detail_lazy_render_culled\(content_root, next_culled\)') "Fishing render culling should stay active instead of rendering every mounted fishing module forever."
+Assert-True ($syncFishingRenderCulling -match 'FISHING_DETAIL_RENDER_REVEAL_BUFFER_PX[\s\S]*FISHING_DETAIL_RENDER_HIDE_BUFFER_PX') "Fishing render culling should use large reveal/hide buffers so offscreen visuals are warm before they enter view."
+$restoreFishingRenderCulling = Get-FunctionBody -Text $main -Name "_restore_fishing_detail_render_culling"
+Assert-True ($restoreFishingRenderCulling -match 'detail_lazy_render_cull_last_scroll <= -999998\.0[\s\S]*?return[\s\S]*?detail_lazy_render_cull_last_scroll = -999999\.0') "Fishing render-culling restore should no-op unless culling was previously active."
+Assert-True ($fishingDragSpikeTest -match 'MaxFrameMsec = 50') "Fishing drag spike test should enforce the 50ms scroll-response gate."
+Assert-True ($fishingDragSpikeTest -match 'MinSampleCount = 800') "Fishing drag spike test should sample all five 160-frame drag paths."
+Assert-True ($fishingDragSpikeScene -match '"touch-up"[\s\S]*"touch-down"[\s\S]*"mouse-up"') "Fishing drag spike scene should cover touch upward, touch downward, and mouse-drag paths."
+Assert-True ($fishingWebTouchScrollTest -match 'MaxRafMs = 50\.0') "Fishing web touch scroll test should fail browser RAF hitches over 50ms."
+Assert-True ($fishingWebTouchScrollTest -match 'RequireAllMounted') "Fishing web touch scroll test should verify the all-mounted fishing stress path."
+Assert-True ($fishingWebTouchScrollTest -match 'expected all fishing modules mounted') "Fishing web touch scroll test should fail if the full-page stress path is not actually all-mounted."
+Assert-True ($fishingWebTouchScrollTest -match 'RepeatCount = 3') "Fishing web touch scroll test should repeat real drag scenarios to catch intermittent hitches."
+Assert-True ($fishingWebTouchScrollTest -match 'Ablation = ""' -and $fishingWebTouchScrollTest -match 'fishing_ablation=') "Fishing web touch scroll test should support one-flag ablation runs against the same drag harness."
+Assert-True ($fishingWebTouchScrollTest -match 'visibleCulled' -and $fishingWebTouchScrollTest -match 'culled modules overlapping the viewport') "Fishing web touch scroll test should fail if render culling creates visible blanks."
+Assert-True ($fishingWebTouchScrollTest -match "desktop-mouse-drag") "Fishing web touch scroll test should cover desktop click-and-drag, not only touch events."
+Assert-True ($fishingWebTouchScrollTest -match "Input\.dispatchMouseEvent") "Fishing web touch scroll test should use browser-level mouse drag input for the itch desktop path."
+Assert-True ($fishingWebTouchScrollTest -match 'rafMaxMsec > maxRafMs') "Fishing web touch scroll test should fail when browser frame pacing exceeds the 50ms gate."
+Assert-True ($fishingWebTouchScrollTest -match 'worstRafMsec') "Fishing web touch scroll test should report worst browser frame across repeated drag runs."
+Assert-True ($fishingWebTouchScrollTest -match "last\.reason === 'settled'") "Fishing web touch scroll test should end its RAF window on the Godot settled-scroll summary."
 Assert-True ($main -match 'const DETAIL_LAZY_UNMOUNT_ENABLED := true') "Skill detail lazy unmounting should stay enabled."
 $unmountBufferMatch = [regex]::Match($main, 'const DETAIL_LAZY_UNMOUNT_BUFFER_PX := ([0-9]+(?:\.[0-9]+)?)')
 Assert-True $unmountBufferMatch.Success "Missing skill detail lazy unmount buffer."
@@ -614,7 +693,7 @@ Assert-True ($completeTemporaryEventAttempt -match 'if clear_running_action_on_s
 Assert-True ($completeTemporaryEventAttempt -match 'Event failed: %s will try again') "Failed temporary event attempts should keep the timed event run active for the next retry."
 Assert-True ($completeTemporaryEventAttempt -notmatch 'Event failed[\s\S]*?if clear_running_action_on_success:\s*\r?\n\s*_clear_running_temporary_event_action\(skill_id, action_id\)') "Failed temporary event attempts should not clear the running event action."
 Assert-True ($completeTemporaryEventAttempt -match 'var log_reward := _temporary_event_roll_log_reward\(action\)') "Temporary event completion should roll configured resource rewards."
-Assert-True ($completeTemporaryEventAttempt -match '_add_mat_amount\("softwood", float\(log_reward\)\)') "Temporary event wood rewards should add to the player's Softwood mats."
+Assert-True ($completeTemporaryEventAttempt -match 'var log_reward_mat_id := _temporary_event_log_reward_mat_id\(\)' -and $completeTemporaryEventAttempt -match 'var log_reward_amount := _buffed_log_collection_amount\(log_reward_mat_id, float\(log_reward\)\)' -and $completeTemporaryEventAttempt -match '_add_mat_amount\(log_reward_mat_id, log_reward_amount\)' -and $completeTemporaryEventAttempt -match '_mat_name\(log_reward_mat_id\)') "Temporary event wood rewards should pay the buffed highest unlocked log material and name that material in feedback."
 Assert-True ($completeTemporaryEventAttempt.IndexOf('_play_action_feedback(reward_key, true, xp_reward') -lt $completeTemporaryEventAttempt.IndexOf('_complete_temporary_event_action_state(action_id')) "Temporary event success should float XP/reward feedback before removing the active event state."
 Assert-True ($completeTemporaryEventAttempt -match '_play_temporary_event_completion_exit\(skill_id, action_id, xp_reward\)') "Temporary event success should leave the module visible for a completion celebration before despawn."
 $playTemporaryEventCompletionExit = Get-FunctionBody -Text $main -Name "_play_temporary_event_completion_exit"
@@ -657,6 +736,11 @@ $eventLogRange = Get-FunctionBody -Text $main -Name "_temporary_event_resource_r
 Assert-True ($eventLogRange -match 'float\(maxi\(1, spawn_level\)\) / float\(minimum_level\)') "Temporary event resource rewards should scale with spawn level from the configured minimum level."
 $eventLogRoll = Get-FunctionBody -Text $main -Name "_temporary_event_roll_log_reward"
 Assert-True ($eventLogRoll -match 'randi_range\(logs_min, logs_max\)') "Temporary event log rewards should roll within the scaled range."
+$eventLogMat = Get-FunctionBody -Text $main -Name "_temporary_event_log_reward_mat_id"
+Assert-True ($main -match 'const TEMPORARY_EVENT_LOG_REWARD_MAT_TIERS := \["scrapwood", "softwood", "hardwood"\]') "Temporary event log rewards should count Scrapwood as the base log material tier."
+Assert-True ($eventLogMat -match 'var best_mat_id := "scrapwood"' -and $eventLogMat -match 'TEMPORARY_EVENT_LOG_REWARD_MAT_TIERS' -and $eventLogMat -match '_is_action_unlocked\("woodcutting", woodcutting_action\)' -and $eventLogMat -match '_action_mat_reward_defs\(woodcutting_action\)') "Temporary event log rewards should select the highest unlocked woodcutting log material tier."
+$actionArtResourceIcon = Get-FunctionBody -Text $main -Name "_action_art_resource_icon_path"
+Assert-True ($actionArtResourceIcon -match '_mat_icon_path\(_temporary_event_log_reward_mat_id\(\)\)') "Temporary event log reward badges should show the selected material icon instead of the legacy Logs icon."
 $temporaryEventCanSpawn = Get-FunctionBody -Text $main -Name "_temporary_event_can_spawn"
 Assert-True ($temporaryEventCanSpawn -match '_temporary_event_page_level_eligible\(event_def\)') "Temporary event spawn eligibility should use the shared page-level gate."
 $temporaryEventMinimumLevel = Get-FunctionBody -Text $main -Name "_temporary_event_minimum_level"
@@ -1087,6 +1171,16 @@ $texturePrewarm = Get-FunctionBody -Text $main -Name "_process_detail_card_textu
 Assert-True ($texturePrewarm -match 'ResourceLoader\.load_threaded_request') "Detail texture prewarm should request card art/backgrounds asynchronously instead of loading them in scroll frames."
 Assert-True ($texturePrewarm -match 'DETAIL_TEXTURE_PREWARM_REQUESTS_PER_FRAME') "Detail texture prewarm should limit new threaded requests per frame."
 Assert-True ($texturePrewarm -notmatch 'selected_skill_id != detail_texture_prewarm_skill_id') "Swipe texture prewarm should survive navigation to a neighboring skill instead of canceling before target cards mount."
+$fishingDetailVisualTexturePaths = Get-FunctionBody -Text $main -Name "_add_fishing_detail_visual_texture_paths"
+Assert-True ($fishingDetailVisualTexturePaths -match 'FISHING_LOCATION_THUMBNAIL_SHEET') "Fishing detail prewarm should include the location thumbnail sheet."
+Assert-True ($fishingDetailVisualTexturePaths -match '_fishing_location_thumbnail_path') "Fishing detail prewarm should include every per-location tile texture."
+Assert-True ($fishingDetailVisualTexturePaths -match 'FISHING_ACTION_CATCH_TEXTURE_PATHS\.values\(\)') "Fishing detail prewarm should include catch icons used by fishing feedback."
+$detailCardTexturePaths = Get-FunctionBody -Text $main -Name "_detail_card_texture_paths_for_skill"
+Assert-True ($detailCardTexturePaths -match 'skill_id == "fishing"[\s\S]*_add_fishing_detail_visual_texture_paths') "Fishing detail texture prewarm should load area/location visuals before first scroll."
+$webFishingPerfProbeSetup = Get-FunctionBody -Text $main -Name "_run_web_fishing_perf_probe_setup"
+Assert-True ($webFishingPerfProbeSetup -match 'detail_texture_prewarm_request_queue\.is_empty\(\) and detail_texture_prewarm_pending\.is_empty\(\)') "Web fishing perf probe should wait for fishing texture prewarm before starting drag measurements."
+$publishWebFishingPerfProbeState = Get-FunctionBody -Text $main -Name "_publish_web_fishing_perf_probe_state"
+Assert-True ($publishWebFishingPerfProbeState -match '"texturePrewarmQueue"[\s\S]*detail_texture_prewarm_request_queue\.size\(\)' -and $publishWebFishingPerfProbeState -match '"texturePrewarmPending"[\s\S]*detail_texture_prewarm_pending\.size\(\)') "Web fishing perf probe should expose texture prewarm backlog."
 $texturePrewarmCollect = Get-FunctionBody -Text $main -Name "_collect_completed_detail_texture_prewarm_requests"
 Assert-True ($texturePrewarmCollect -match 'ResourceLoader\.load_threaded_get_status') "Detail texture prewarm should poll threaded request status before collecting resources."
 Assert-True ($texturePrewarmCollect -match 'texture_cache\[normalized\]') "Completed detail texture prewarm requests should populate the shared texture cache."
@@ -1311,7 +1405,8 @@ Assert-True ($renderSkillDetail -notmatch '_render_detail_eager_card_list\(stack
 $renderFishingModules = Get-FunctionBody -Text $main -Name "_render_fishing_area_modules"
 Assert-True ($renderFishingModules -match '_build_fishing_detail_lazy_plan\(skill_id\)') "Fishing detail renders should build a lazy area-module plan."
 Assert-True ($renderFishingModules -match '_detail_lazy_create_slots\(stack, skill_id, content_width, content_width\)') "Fishing detail renders should create fixed-height lazy slots."
-Assert-True ($renderFishingModules -match '_detail_lazy_mount_initial_window_sync\(true, FISHING_DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT\)') "Fishing detail renders should pre-mount the visible scroll window plus two guard modules."
+Assert-True ($renderFishingModules -match '_detail_lazy_mount_initial_window_sync\(true, initial_force_count\)') "Fishing detail renders should mount a bounded initial window before player scroll input."
+Assert-True ($renderFishingModules -match '_queue_detail_lazy_settle_warm_mount\(skill_id\)') "Fishing detail renders should warm remaining modules during idle frames."
 Assert-True ($renderFishingModules -notmatch '_build_fishing_area_module\(') "Fishing detail renders must not eagerly build every area module."
 $fishingLazyPlan = Get-FunctionBody -Text $main -Name "_build_fishing_detail_lazy_plan"
 Assert-True ($fishingLazyPlan -match '"kind": "fishing_area"') "Fishing lazy plans should represent area modules as lazy entries."
@@ -1331,9 +1426,12 @@ Assert-True ($lazyCreateSlotForEntry -notmatch '\bitem\b|\bplan_item\b') "Lazy s
 Assert-True ($main -notmatch '_detail_lazy_create_slot_for_item') "Lazy slot creation helper should use entry naming instead of item naming."
 $fishingGlobalTeaserAction = Get-FunctionBody -Text $main -Name "_fishing_global_teaser_action_id"
 $fishingGlobalTeaserLocation = Get-FunctionBody -Text $main -Name "_fishing_global_teaser_location_key"
+$fishingLocationShouldShow = Get-FunctionBody -Text $main -Name "_fishing_location_should_show"
 Assert-True ($main -match 'func _fishing_next_locked_teaser_target\(skill_id: String\) -> Dictionary') "Fishing locked preview selection should name the selected action/location as a teaser target."
 Assert-True ($fishingGlobalTeaserAction -match 'var teaser_target := _fishing_next_locked_teaser_target\(skill_id\)') "Fishing action teaser lookup should use a named teaser target."
 Assert-True ($fishingGlobalTeaserLocation -match 'var teaser_target := _fishing_next_locked_teaser_target\(skill_id\)') "Fishing location teaser lookup should use a named teaser target."
+Assert-True ($fishingLocationShouldShow -match 'return location_key == _fishing_next_locked_location_preview_key\(\)') "Fishing location tiles should show only the single global locked preview after unlocked locations."
+Assert-True ($fishingLocationShouldShow -notmatch '_fishing_next_locked_location_key') "Fishing location tiles should not show every started area's local next locked location."
 
 $pageReadyRefresh = Get-FunctionBody -Text $main -Name "_detail_lazy_refresh_after_page_ready"
 Assert-True ($pageReadyRefresh -match '_sync_detail_lazy_visible_cards\(true, -1\)') "Page-ready lazy refresh should mount only the visible lazy window."
@@ -1427,8 +1525,9 @@ Assert-True ($lazyUnmount -match '_valid_control_ref\(lazy_entry\.get\("stack_ho
 Assert-True ($lazyUnmount -match '_kill_transient_tweens_in_subtree\(stack_host\)') "Lazy unmounting should stop transient card tweens before freeing children."
 Assert-True ($lazyUnmount -notmatch 'stack_host\.remove_child\(cached_root\)') "Lazy unmounting should let the cache parking boundary detach cached roots."
 Assert-True ($lazyUnmount -notmatch 'cached_root\.modulate = Color\.WHITE') "Lazy unmounting should not mutate cached roots after detach."
-Assert-True ($lazyUnmount -match 'kind in \["action", "passive", "fishing_area", "fishing_offer"\]') "Lazy unmounting should park expensive Fishing modules for reuse."
-Assert-True ($lazyUnmount -match 'lazy_entry\["cached_built"\] = lazy_entry\.get\("built", \{\}\) as Dictionary') "Lazy unmounting should keep Fishing area module metadata with its cached root."
+Assert-True ($lazyUnmount -match 'should_cache_unmounted_root := not _fishing_rework_active_for_skill\(skill_id\)') "Fishing lazy unmounting should free far module trees instead of parking full offscreen UI roots."
+Assert-True ($lazyUnmount -match 'if should_cache_unmounted_root and kind in \["action", "passive", "fishing_area", "fishing_offer"\]') "Non-fishing lazy unmounting should keep the cached-root reuse path."
+Assert-True ($lazyUnmount -match 'if not should_cache_unmounted_root:[\s\S]*lazy_entry\.erase\("cached_root"\)[\s\S]*lazy_entry\.erase\("cached_built"\)') "Fishing lazy unmounting should clear cached-root metadata."
 Assert-True ($lazyUnmount -match 'placeholder\.set_meta\("detail_lazy_placeholder", true\)') "Lazy unmounting should leave a fixed-height placeholder."
 Assert-True ($lazyUnmount -match 'direct_stack_child') "Lazy unmounting should replace direct heist roots with placeholders instead of keeping empty shells."
 Assert-True ($lazyUnmount -match 'elif kind == "heist":\s*\r?\n\s*lazy_entry\.erase\("cached_root"\)\s*\r?\n\s*lazy_entry\.erase\("cached_card"\)') "Offscreen Thieving heists should not park cached direct roots that can later remount blank."
@@ -1791,6 +1890,8 @@ Assert-True ($mobileScrollContainer -match 'func set_scroll_enabled_by_content\(
 Assert-True ($mobileScrollContainer -match 'vertical_scroll_mode = ScrollContainer\.SCROLL_MODE_SHOW_NEVER if enabled else ScrollContainer\.SCROLL_MODE_DISABLED') "Disabled mobile scroll containers should turn off native scrolling."
 Assert-True ($mobileScrollContainer -match 'func _modal_blocks_this_scroll\(\) -> bool') "Mobile scroll containers should keep modal-overlay input blocking local to the control."
 Assert-True ($mobileScrollContainer -match 'get_nodes_in_group\("modal_overlay"\)') "Mobile scroll containers should respect the shared modal overlay group."
+Assert-True ($mobileScrollContainer -match 'drag_last_apply_frame == current_frame') "Mobile scroll drag motion should coalesce repeated same-frame pointer events."
+Assert-True ($mobileScrollContainer -match 'func _apply_pending_drag_motion') "Mobile scroll drag coalescing should flush the latest pending pointer position."
 Assert-True ($mobileScrollContainer -match 'func _set_pull_raw_offset\(next_raw_offset: float\)') "Mobile scroll containers should keep pull-resistance ownership in the reusable control."
 Assert-True ($mobileScrollContainer -match 'PULL_RESISTANCE_MAX \* \(1\.0 - exp\(-absf\(pull_raw_offset\) / PULL_RESISTANCE_MAX\)\)') "Mobile scroll pull resistance should retain the bounded exponential easing."
 Assert-True ($mobileScrollContainer -match 'pull_anchor_position_y') "Mobile scroll pull resistance should name its baseline as an anchor position."
@@ -2612,11 +2713,31 @@ $syncActionStopHoldCircle = Get-FunctionBody -Text $main -Name "_sync_action_sto
 Assert-True ($syncActionStopHoldCircle -match 'is_queued_for_deletion\(\)') "Action stop-hold circle sync should skip queued-for-deletion nodes."
 $hideActionStopHoldCircle = Get-FunctionBody -Text $main -Name "_hide_action_stop_hold_circle"
 Assert-True ($hideActionStopHoldCircle -match '_set_canvas_item_visible_if_changed\(action_stop_hold_circle, false\)') "Action stop-hold circle hide should guard repeated visibility writes."
+$inputFunction = Get-FunctionBody -Text $main -Name "_input"
+Assert-True ($inputFunction.IndexOf('_route_fishing_wallet_unhandled_input(event)') -ge 0) "Global input should route the fishing wallet explicitly."
+Assert-True ($inputFunction.IndexOf('_route_fishing_wallet_unhandled_input(event)') -lt $inputFunction.IndexOf('_maybe_end_fishing_scroll_mode_for_new_press(event)')) "Fishing wallet taps should be handled before fishing scroll-mode cleanup can claim the press."
+Assert-True ($inputFunction.IndexOf('_route_fishing_wallet_unhandled_input(event)') -lt $inputFunction.IndexOf('_fishing_detail_primary_press_should_defer_tap_scan(event)')) "Fishing wallet taps should be handled before deferred-scroll press handling."
+Assert-True ($inputFunction.IndexOf('_route_activity_lock_input(event)') -ge 0) "Global input should route activity locks explicitly."
+Assert-True ($inputFunction.IndexOf('_route_activity_lock_input(event)') -lt $inputFunction.IndexOf('_fishing_detail_scroll_container_should_own_event(event)')) "Fishing combo lock presses should be routed before the fishing scroll container can claim the event."
+Assert-True ($inputFunction.IndexOf('_route_activity_lock_input(event)') -lt $inputFunction.IndexOf('_fishing_detail_primary_press_should_defer_tap_scan(event)')) "Fishing combo lock presses should bypass deferred swipe/tap handling."
+Assert-True ($inputFunction.IndexOf('_cancel_action_stop_hold_if_scroll_drag_event(event)') -ge 0) "Global input should cancel active-card stop holds before fishing scroll bypasses can skip the stop-hold router."
+Assert-True ($inputFunction.IndexOf('_cancel_action_stop_hold_if_scroll_drag_event(event)') -lt $inputFunction.IndexOf('_fishing_detail_scroll_event_bypasses_global_input(event)')) "Active-card stop hold scroll cancellation should run before the fishing scroll bypass returns."
+Assert-True ($inputFunction.IndexOf('_route_page_switch_button_global_input(event)') -lt $inputFunction.IndexOf('_route_fishing_detail_deferred_swipe_input(event)')) "Fishing page-switch taps should route before expensive fishing detail input handlers."
+Assert-True ($main -match 'func _release_page_switch_transition_button_visual_hold\(\) -> void:[\s\S]*_release_activity_button_shell_bound\(button_id\)' -and $main -match 'func _queue_page_switch_transition[\s\S]*_release_page_switch_transition_button_visual_hold\(\)') "Page-switch transitions should release the visual button hold immediately after queuing the covered render."
 $routeActionStopHoldInput = Get-FunctionBody -Text $main -Name "_route_action_stop_hold_input"
 Assert-True ($routeActionStopHoldInput -match '_action_stop_hold_motion_is_scroll_drag\(event_position\)[\s\S]*_cancel_action_stop_hold\(\)[\s\S]*return false') "Action stop-hold input should cancel and release handling when the active-card gesture becomes a vertical scroll."
 $actionStopHoldMotionIsScrollDrag = Get-FunctionBody -Text $main -Name "_action_stop_hold_motion_is_scroll_drag"
 Assert-True ($actionStopHoldMotionIsScrollDrag -match 'ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE') "Action stop-hold scroll cancellation should share the action-card scroll drag deadzone."
 Assert-True ($actionStopHoldMotionIsScrollDrag -match 'absf\(drag_offset\.y\) > absf\(drag_offset\.x\) \* 1\.15') "Action stop-hold scroll cancellation should require a clearly vertical drag."
+$cancelActionStopHoldIfScrollDrag = Get-FunctionBody -Text $main -Name "_cancel_action_stop_hold_if_scroll_drag_event"
+Assert-True ($cancelActionStopHoldIfScrollDrag -match 'drag_event\.index != action_stop_hold_pointer_id') "Action stop-hold scroll cancellation should only react to the pointer that started the hold."
+Assert-True ($cancelActionStopHoldIfScrollDrag -match '_cancel_action_stop_hold\(\)') "Action stop-hold scroll cancellation helper should clear the active hold."
+$renderSkillDetail = Get-FunctionBody -Text $main -Name "_render_skill_detail"
+Assert-True ($renderSkillDetail -match 'actions_scroll\.user_scroll_direction\.connect\(_on_detail_actions_user_scroll_direction\)') "Detail action scroll should always connect its user-scroll direction signal."
+$onDetailActionsUserScrollDirection = Get-FunctionBody -Text $main -Name "_on_detail_actions_user_scroll_direction"
+Assert-True ($onDetailActionsUserScrollDirection -match 'if action_stop_hold_active:\s*\r?\n\s*_cancel_action_stop_hold\(\)') "Confirmed detail-page scrolling should cancel active-card stop holds even when the scroll container owns the drag event."
+$onDetailActionsPullOffsetChanged = Get-FunctionBody -Text $main -Name "_on_detail_actions_pull_offset_changed"
+Assert-True ($onDetailActionsPullOffsetChanged -match 'if action_stop_hold_active and absf\(offset_y\) >= ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE:\s*\r?\n\s*_cancel_action_stop_hold\(\)') "Detail pull-resistance drags should cancel active-card stop holds when the finger moves downward at the scroll edge."
 
 $syncHubHotspotHoldCircle = Get-FunctionBody -Text $main -Name "_sync_hub_hotspot_hold_circle"
 Assert-True ($syncHubHotspotHoldCircle -match 'is_queued_for_deletion\(\)') "Hub hotspot hold circle sync should skip queued-for-deletion nodes."
@@ -2748,12 +2869,29 @@ Assert-True ($lazyBottom -match '_valid_control_ref\(lazy_entry\.get\("stack_hos
 Assert-True ($lazyBottom -notmatch 'lazy_entry\.get\("stack_host"\) as Control') "Lazy scroll-limit measurement must not directly cast possibly freed stack_host refs."
 Assert-True ($lazyBottom -notmatch '\bplan_item\b') "Lazy scroll-limit measurement should not use stale plan-item wording internally."
 
+$jumpModuleCheck = Get-FunctionBody -Text $main -Name "_detail_jump_arrows_have_enough_modules"
+Assert-True ($jumpModuleCheck -match 'if not detail_lazy_plan\.is_empty\(\):\s*\r?\n\s*return _detail_jump_arrow_lazy_module_count\(\) >= ACTIVITY_JUMP_ARROW_MIN_MODULES') "Detail jump arrows should count the full lazy plan when cards are virtualized."
+$jumpLazyCount = Get-FunctionBody -Text $main -Name "_detail_jump_arrow_lazy_module_count"
+Assert-True ($jumpLazyCount -match '"action", "passive", "heist", "fishing_area", "fishing_offer"') "Detail jump arrow lazy counts should include only real module entry kinds."
+$jumpPress = Get-FunctionBody -Text $main -Name "_on_detail_jump_arrow_pressed"
+Assert-True ($jumpPress -match '_prepare_detail_jump_arrow_target_window\(0\)[\s\S]*detail_actions_scroll\.scroll_to_vertical\(0, 0\.24\)') "Top jump arrows should prefill the target lazy window before scrolling."
+Assert-True ($jumpPress -match 'bottom_scroll = _prepare_detail_jump_arrow_target_window\(bottom_scroll\)[\s\S]*detail_actions_scroll\.scroll_to_vertical\(bottom_scroll, 0\.24\)') "Bottom jump arrows should prefill the target lazy window before scrolling."
+$jumpPrepareTarget = Get-FunctionBody -Text $main -Name "_prepare_detail_jump_arrow_target_window"
+Assert-True ($jumpPrepareTarget -match '_sync_detail_lazy_cards_for_scroll_window\(float\(target_scroll\), ACTIVITY_JUMP_ARROW_LANDING_PREFILL_BUFFER_PX\)[\s\S]*_sync_detail_actions_scroll_limit\(\)') "Jump target preparation should mount landing cards before refreshing scroll limits."
+Assert-True ($jumpPrepareTarget -match 'clampi\(target_scroll, 0, detail_actions_scroll\.get_max_scroll_vertical\(\)\)') "Jump target preparation should clamp against the authoritative scroll limit after prefill."
+$jumpPrefill = Get-FunctionBody -Text $main -Name "_sync_detail_lazy_cards_for_scroll_window"
+Assert-True ($jumpPrefill -match 'detail_lazy_mount_trace_context = "jump_landing_prefill"') "Jump landing prefill should have a dedicated lazy mount trace context."
+Assert-True ($jumpPrefill -match '_detail_lazy_entry_intersects_scroll_window\(lazy_entry, target_scroll_y, viewport_buffer\)') "Jump landing prefill should mount only entries intersecting the requested scroll window."
+Assert-True ($jumpPrefill -match '_detail_lazy_mount_item\(lazy_entry, selected_skill_id, content_width, actions_width, false\)') "Jump landing prefill should mount destination cards without fade-delay placeholders."
+Assert-True ($jumpPrefill -notmatch '_detail_lazy_mount_all_sync') "Jump landing prefill must not mount the whole lazy page."
+
 $lockInput = Get-FunctionBody -Text $main -Name "_route_activity_lock_input"
 Assert-True ($lockInput -match '_valid_control_ref\(overlay\.get\("root"\)\)') "Activity lock input routing must validate overlay roots before use."
 Assert-True ($lockInput -match 'var rig := _valid_control_ref\(overlay\.get\("group"\)\)') "Activity lock input routing must validate lock clusters before use."
 Assert-True ($lockInput -match 'rig\.has_method\("pointer_over_lock_event"\)') "Activity lock input routing should delegate hover checks to the cluster."
 Assert-True ($lockInput -match 'rig\.has_method\("handle_pointer_event"\)') "Activity lock input routing should delegate pointer routing to the cluster."
 Assert-True ($lockInput -match 'active_activity_lock_rig = rig if activity_lock_input_active else null') "Activity lock input routing should keep the active cluster captured until release."
+Assert-True ($lockInput -match 'activity_lock_input_active[\s\S]*active_activity_lock_rig\.has_method\("handle_pointer_event"\)[\s\S]*active_activity_lock_rig\.call\("handle_pointer_event", event\)') "Activity lock drag routing should send motion to the captured cluster before scanning other overlays."
 Assert-True ($lockInput -notmatch 'overlay\.get\("root"\) as Control') "Activity lock input routing must not directly cast possibly freed overlay roots."
 Assert-True ($lockInput -notmatch 'overlay\.get\("group"\) as ActivityLockRig') "Activity lock input routing must not treat overlay groups as single lock rigs."
 

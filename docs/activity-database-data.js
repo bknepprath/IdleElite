@@ -110,6 +110,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "minimum_level": "Minimum owning-skill level required before this random event can spawn.",
       "requirements": "Optional runtime eligibility gates. Random event review cards show minimum_level instead of fixed lock levels.",
       "xp_rewards": "Reward map template for scaling. Random event review cards do not show fixed XP because rewards scale to player level.",
+      "xp_reward_cap": "Optional maximum total XP after player-level event scaling.",
       "spawn_weight": "Relative random weight when the scheduler rolls eligible events.",
       "active_duration_seconds": "How long the event remains active if not completed.",
       "respawn_cooldown_seconds": "Minimum cooldown after completion or expiry before this event can spawn again.",
@@ -170,6 +171,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "fight": 75,
         "thieving": 15
       },
+      "xp_reward_cap": 4800,
       "resource_rewards": {
         "logs_min": 30,
         "logs_max": 50
@@ -215,6 +217,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "thieving": 55,
         "fishing": 10
       },
+      "xp_reward_cap": 4200,
       "spawn_weight": 1.1,
       "active_duration_seconds": 3000,
       "respawn_cooldown_seconds": 18000,
@@ -256,6 +259,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "build": 90,
         "fishing": 18
       },
+      "xp_reward_cap": 5600,
       "spawn_weight": 0.9,
       "active_duration_seconds": 4200,
       "respawn_cooldown_seconds": 25200,
@@ -297,6 +301,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "woodcutting": 100,
         "fight": 22
       },
+      "xp_reward_cap": 6000,
       "spawn_weight": 0.8,
       "active_duration_seconds": 3600,
       "respawn_cooldown_seconds": 28800,
@@ -338,6 +343,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
         "fishing": 65,
         "thieving": 14
       },
+      "xp_reward_cap": 4400,
       "spawn_weight": 1,
       "active_duration_seconds": 3000,
       "respawn_cooldown_seconds": 21600,
@@ -1888,10 +1894,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 11,
           "stamina": 3,
           "seconds": 3.03,
-          "xp": 11,
+          "xp": 15,
           "success": 95.2,
           "rewards": {
-            "xp": 11
+            "xp": 15
           },
           "costs": {
             "stamina": 2
@@ -1906,10 +1912,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 14,
           "stamina": 3,
           "seconds": 3.28,
-          "xp": 14,
+          "xp": 19,
           "success": 92.5,
           "rewards": {
-            "xp": 14
+            "xp": 19
           },
           "costs": {
             "stamina": 3
@@ -1925,10 +1931,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "sort_unlock": 16,
           "stamina": 3,
           "seconds": 3.5,
-          "xp": 16,
+          "xp": 24,
           "success": 90.9,
           "rewards": {
-            "xp": 16
+            "xp": 24
           },
           "costs": {
             "stamina": 3
@@ -1944,8 +1950,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             }
           ],
           "xp_rewards": {
-            "build": 16,
-            "woodcutting": 4
+            "build": 24,
+            "woodcutting": 6
           },
           "combo_tags": [
             "first_wave",
@@ -1965,10 +1971,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 17,
           "stamina": 3,
           "seconds": 3.78,
-          "xp": 19,
+          "xp": 29,
           "success": 89.8,
           "rewards": {
-            "xp": 19
+            "xp": 29
           },
           "costs": {
             "stamina": 3
@@ -1983,10 +1989,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 21,
           "stamina": 3,
           "seconds": 4.47,
-          "xp": 23,
+          "xp": 37,
           "success": 87.4,
           "rewards": {
-            "xp": 23
+            "xp": 37
           },
           "costs": {
             "stamina": 3
@@ -2002,8 +2008,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             }
           ],
           "xp_rewards": {
-            "build": 23,
-            "fight": 6
+            "build": 37,
+            "fight": 10
           },
           "combo_tags": [
             "user_requested",
@@ -2024,10 +2030,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "sort_unlock": 22,
           "stamina": 3,
           "seconds": 4.72,
-          "xp": 26,
+          "xp": 41,
           "success": 86.7,
           "rewards": {
-            "xp": 26
+            "xp": 41
           },
           "costs": {
             "stamina": 4
@@ -2043,8 +2049,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             }
           ],
           "xp_rewards": {
-            "build": 26,
-            "thieving": 6
+            "build": 41,
+            "thieving": 10
           },
           "combo_tags": [
             "user_requested",
@@ -2064,10 +2070,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 25,
           "stamina": 3,
           "seconds": 5.18,
-          "xp": 29,
+          "xp": 49,
           "success": 86.5,
           "rewards": {
-            "xp": 29
+            "xp": 49
           },
           "costs": {
             "stamina": 4
@@ -2083,8 +2089,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             }
           ],
           "xp_rewards": {
-            "build": 29,
-            "fishing": 7
+            "build": 49,
+            "fishing": 12
           },
           "combo_tags": [
             "user_requested",
@@ -2104,10 +2110,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 29,
           "stamina": 3,
           "seconds": 5.61,
-          "xp": 38,
+          "xp": 64,
           "success": 86.1,
           "rewards": {
-            "xp": 38
+            "xp": 64
           },
           "costs": {
             "stamina": 4
@@ -2122,10 +2128,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 34,
           "stamina": 5,
           "seconds": 6.46,
-          "xp": 49,
+          "xp": 83,
           "success": 84.1,
           "rewards": {
-            "xp": 49
+            "xp": 83
           },
           "costs": {
             "stamina": 4
@@ -2140,10 +2146,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 39,
           "stamina": 7,
           "seconds": 6.99,
-          "xp": 61,
+          "xp": 106,
           "success": 79.3,
           "rewards": {
-            "xp": 61
+            "xp": 106
           },
           "costs": {
             "stamina": 5
@@ -2158,10 +2164,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 44,
           "stamina": 7,
           "seconds": 8.02,
-          "xp": 74,
+          "xp": 132,
           "success": 76.6,
           "rewards": {
-            "xp": 74
+            "xp": 132
           },
           "costs": {
             "stamina": 5
@@ -2176,10 +2182,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 49,
           "stamina": 7,
           "seconds": 8.59,
-          "xp": 88,
+          "xp": 159,
           "success": 75.4,
           "rewards": {
-            "xp": 88
+            "xp": 159
           },
           "costs": {
             "stamina": 5
@@ -2194,10 +2200,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 55,
           "stamina": 8,
           "seconds": 9.58,
-          "xp": 107,
+          "xp": 191,
           "success": 74.2,
           "rewards": {
-            "xp": 107
+            "xp": 191
           },
           "costs": {
             "stamina": 6
@@ -2212,10 +2218,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 60,
           "stamina": 9,
           "seconds": 10.41,
-          "xp": 128,
+          "xp": 229,
           "success": 72.2,
           "rewards": {
-            "xp": 128
+            "xp": 229
           },
           "costs": {
             "stamina": 6
@@ -2230,10 +2236,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 65,
           "stamina": 9,
           "seconds": 11.26,
-          "xp": 149,
+          "xp": 266,
           "success": 69.1,
           "rewards": {
-            "xp": 149
+            "xp": 266
           },
           "costs": {
             "stamina": 6
@@ -2248,10 +2254,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 70,
           "stamina": 11,
           "seconds": 11.79,
-          "xp": 176,
+          "xp": 312,
           "success": 64.7,
           "rewards": {
-            "xp": 176
+            "xp": 312
           },
           "costs": {
             "stamina": 7
@@ -2266,10 +2272,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 73,
           "stamina": 12,
           "seconds": 12.28,
-          "xp": 199,
+          "xp": 349,
           "success": 64.4,
           "rewards": {
-            "xp": 199
+            "xp": 349
           },
           "costs": {
             "stamina": 7
@@ -2284,10 +2290,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 75,
           "stamina": 12,
           "seconds": 12.7,
-          "xp": 219,
+          "xp": 376,
           "success": 64.3,
           "rewards": {
-            "xp": 219
+            "xp": 376
           },
           "costs": {
             "stamina": 7
@@ -2302,10 +2308,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 77,
           "stamina": 12,
           "seconds": 13.14,
-          "xp": 238,
+          "xp": 398,
           "success": 63.9,
           "rewards": {
-            "xp": 238
+            "xp": 398
           },
           "costs": {
             "stamina": 8
@@ -2320,10 +2326,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 78,
           "stamina": 12,
           "seconds": 13.15,
-          "xp": 251,
+          "xp": 411,
           "success": 62.3,
           "rewards": {
-            "xp": 251
+            "xp": 411
           },
           "costs": {
             "stamina": 8
@@ -2338,10 +2344,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 79,
           "stamina": 12,
           "seconds": 13.45,
-          "xp": 269,
+          "xp": 427,
           "success": 61.1,
           "rewards": {
-            "xp": 269
+            "xp": 427
           },
           "costs": {
             "stamina": 8
@@ -2356,10 +2362,10 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "unlock": 80,
           "stamina": 12,
           "seconds": 13.45,
-          "xp": 287,
+          "xp": 449,
           "success": 59.8,
           "rewards": {
-            "xp": 287
+            "xp": 449
           },
           "costs": {
             "stamina": 9
@@ -2503,8 +2509,8 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "mat_rewards": [
             {
               "id": "scrapwood",
-              "min": 0.15,
-              "max": 0.65,
+              "min": 0.27,
+              "max": 1.17,
               "zero_chance": 0.1
             }
           ]
@@ -2554,33 +2560,6 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
-          "id": "fell-skinny-pine",
-          "tier": 7,
-          "name": "Fell Skinny Pine",
-          "unlock": 10,
-          "stamina": 3,
-          "seconds": 2.43,
-          "xp": 11,
-          "success": 95,
-          "rewards": {
-            "xp": 11
-          },
-          "mat_rewards": [
-            {
-              "id": "softwood",
-              "min": 1,
-              "max": 2,
-              "zero_chance": 0.2,
-              "whole": true
-            }
-          ],
-          "costs": {
-            "stamina": 2
-          },
-          "art": "assets/content/woodcutting/actions/06-fell-skinny-pine.png",
-          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
-        },
-        {
           "id": "prune-orchard-row",
           "tier": 8,
           "name": "Prune Orchard Row",
@@ -2596,6 +2575,33 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "stamina": 3
           },
           "art": "assets/content/woodcutting/actions/07-prune-orchard-row.png",
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
+        },
+        {
+          "id": "fell-skinny-pine",
+          "tier": 9,
+          "name": "Fell Skinny Pine",
+          "unlock": 15,
+          "stamina": 3,
+          "seconds": 2.82,
+          "xp": 16,
+          "success": 91.4,
+          "rewards": {
+            "xp": 16
+          },
+          "mat_rewards": [
+            {
+              "id": "softwood",
+              "min": 1,
+              "max": 2,
+              "zero_chance": 0.2,
+              "whole": true
+            }
+          ],
+          "costs": {
+            "stamina": 3
+          },
+          "art": "assets/content/woodcutting/actions/06-fell-skinny-pine.png",
           "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
@@ -2623,33 +2629,6 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
             "stamina": 3
           },
           "art": "assets/content/woodcutting/actions/08-chop-knotty-maple.png",
-          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
-        },
-        {
-          "id": "fell-oak-tree",
-          "tier": 10,
-          "name": "Fell Oak Tree",
-          "unlock": 20,
-          "stamina": 3,
-          "seconds": 3.61,
-          "xp": 23,
-          "success": 87.7,
-          "rewards": {
-            "xp": 23
-          },
-          "mat_rewards": [
-            {
-              "id": "hardwood",
-              "min": 1,
-              "max": 3,
-              "zero_chance": 0.15,
-              "whole": true
-            }
-          ],
-          "costs": {
-            "stamina": 3
-          },
-          "art": "assets/content/woodcutting/actions/09-fell-oak-tree.png",
           "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
@@ -2684,6 +2663,33 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
               "whole": true
             }
           ]
+        },
+        {
+          "id": "fell-oak-tree",
+          "tier": 12,
+          "name": "Fell Oak Tree",
+          "unlock": 26,
+          "stamina": 3,
+          "seconds": 4.38,
+          "xp": 34,
+          "success": 86.6,
+          "rewards": {
+            "xp": 34
+          },
+          "mat_rewards": [
+            {
+              "id": "hardwood",
+              "min": 1,
+              "max": 3,
+              "zero_chance": 0.15,
+              "whole": true
+            }
+          ],
+          "costs": {
+            "stamina": 4
+          },
+          "art": "assets/content/woodcutting/actions/09-fell-oak-tree.png",
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
           "id": "split-lightning-struck-cedar",

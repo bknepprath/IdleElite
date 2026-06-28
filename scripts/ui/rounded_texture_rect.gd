@@ -5,6 +5,8 @@ extends Control
 static var shared_mask_shader: Shader
 static var shared_fallback_texture: Texture2D
 
+var mask_material: ShaderMaterial
+var fast_flat_render_enabled := false
 var texture: Texture2D = null:
 	set(value):
 		texture = value if value != null else _fallback_texture()
@@ -46,6 +48,9 @@ func _ready() -> void:
 func _draw() -> void:
 	if size.x < 1.0 or size.y < 1.0:
 		return
+	if fast_flat_render_enabled:
+		_draw_fast_flat_texture()
+		return
 	_update_mask_params()
 	draw_rect(Rect2(Vector2.ZERO, size), Color.WHITE)
 
@@ -54,6 +59,8 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 func _ensure_mask_material() -> void:
+	if fast_flat_render_enabled:
+		return
 	if material == null:
 		if shared_mask_shader == null:
 			shared_mask_shader = Shader.new()
@@ -156,10 +163,63 @@ void fragment() {
 	COLOR = color;
 }
 """
-		var shader_material := ShaderMaterial.new()
-		shader_material.shader = shared_mask_shader
-		material = shader_material
+		if mask_material == null:
+			var shader_material := ShaderMaterial.new()
+			shader_material.shader = shared_mask_shader
+			mask_material = shader_material
+		material = mask_material
 	_update_mask_params()
+
+
+func set_fast_flat_render_enabled(enabled: bool) -> void:
+	if fast_flat_render_enabled == enabled:
+		return
+	fast_flat_render_enabled = enabled
+	if enabled:
+		material = null
+	else:
+		_ensure_mask_material()
+	queue_redraw()
+
+
+func _draw_fast_flat_texture() -> void:
+	var current_texture := _mask_texture()
+	if current_texture == null:
+		draw_rect(Rect2(Vector2.ZERO, size), fallback_color)
+		return
+	var texture_size := current_texture.get_size()
+	if texture_size.x < 1.0 or texture_size.y < 1.0:
+		draw_rect(Rect2(Vector2.ZERO, size), fallback_color)
+		return
+	var source_rect := Rect2(Vector2.ZERO, texture_size)
+	if aspect_mode == 2:
+		var control_aspect := size.x / maxf(size.y, 1.0)
+		var texture_aspect := texture_size.x / maxf(texture_size.y, 1.0)
+		if control_aspect > texture_aspect:
+			var source_height := texture_size.x / control_aspect
+			source_rect.position.y = (texture_size.y - source_height) * 0.5
+			source_rect.size.y = source_height
+		else:
+			var source_width := texture_size.y * control_aspect
+			source_rect.position.x = (texture_size.x - source_width) * 0.5
+			source_rect.size.x = source_width
+		var zoom := maxf(1.0, sample_zoom)
+		if zoom > 1.0:
+			var zoomed_size := source_rect.size / zoom
+			source_rect.position += (source_rect.size - zoomed_size) * 0.5
+			source_rect.size = zoomed_size
+		var safe_control_size := Vector2(maxf(size.x, 1.0), maxf(size.y, 1.0))
+		source_rect.position += sample_offset_px * texture_size / safe_control_size
+	else:
+		source_rect.position.x = texture_size.x * crop_left
+		source_rect.position.y = texture_size.y * crop_top
+		source_rect.size.x = texture_size.x * maxf(0.001, 1.0 - crop_left - crop_right)
+		source_rect.size.y = texture_size.y * maxf(0.001, 1.0 - crop_top - crop_bottom)
+	source_rect.position.x = clampf(source_rect.position.x, 0.0, maxf(0.0, texture_size.x - 1.0))
+	source_rect.position.y = clampf(source_rect.position.y, 0.0, maxf(0.0, texture_size.y - 1.0))
+	source_rect.size.x = clampf(source_rect.size.x, 1.0, texture_size.x - source_rect.position.x)
+	source_rect.size.y = clampf(source_rect.size.y, 1.0, texture_size.y - source_rect.position.y)
+	draw_texture_rect_region(current_texture, Rect2(Vector2.ZERO, size), source_rect, Color.WHITE)
 
 func _update_mask_params() -> void:
 	var shader_material := material as ShaderMaterial

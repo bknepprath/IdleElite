@@ -615,7 +615,42 @@ func _expected_temporary_event_total_for_projection(game: Node, page: String, ev
 	var reference_total := maxi(1, int(game.call("_reward_map_total", reference_rewards)))
 	var reference_seconds := maxf(0.1, float(reference_action.get("seconds", 1.0)))
 	var event_seconds := maxf(0.1, float(event_action.get("seconds", reference_seconds)))
-	return maxi(1, int(round(float(reference_total) / reference_seconds * event_seconds * 12.0)))
+	var expected_total := maxi(1, int(round(float(reference_total) / reference_seconds * event_seconds * 12.0)))
+	var xp_reward_cap := int(event_action.get("xp_reward_cap", 0))
+	if xp_reward_cap > 0:
+		expected_total = mini(expected_total, xp_reward_cap)
+	return expected_total
+
+
+func _check_temporary_event_xp_caps(game: Node) -> void:
+	var event_defs := game.get("event_module_defs") as Array
+	for raw_event_def in event_defs:
+		var event_def := raw_event_def as Dictionary
+		var event_id := str(event_def.get("id", ""))
+		var page := str(event_def.get("page", ""))
+		var xp_reward_cap := int(event_def.get("xp_reward_cap", 0))
+		_expect(xp_reward_cap > 0, "Temporary event %s should define an XP cap." % event_id)
+		var event_action := game.call("_temporary_event_action_for_entry", event_def, {
+			"id": event_id,
+			"page": page,
+			"spawn_level": 98,
+			"spawned_unix": 0,
+			"expires_unix": 3600,
+			"completed": false,
+			"completed_unix": 0,
+		}) as Dictionary
+		var base_rewards := game.call("_base_xp_reward_map", event_action, page) as Dictionary
+		_expect(int(game.call("_reward_map_total", base_rewards)) <= xp_reward_cap, "Temporary event %s base XP should stay under its cap." % event_id)
+		var inflated_event := event_action.duplicate(true)
+		var inflated_rewards := {}
+		for raw_skill_id in base_rewards.keys():
+			inflated_rewards[raw_skill_id] = maxi(xp_reward_cap * 2, int(base_rewards.get(raw_skill_id, 0)) * 10)
+		if inflated_rewards.is_empty():
+			inflated_rewards[page] = xp_reward_cap * 10
+		inflated_event["xp_rewards"] = inflated_rewards
+		inflated_event["event_stats_scaled"] = true
+		var capped_rewards := game.call("_effective_xp_reward_map", inflated_event, page) as Dictionary
+		_expect(int(game.call("_reward_map_total", capped_rewards)) == xp_reward_cap, "Temporary event %s effective XP should clamp boosted rewards to its cap." % event_id)
 
 
 func _expected_temporary_event_stamina_for_projection(game: Node, page: String, event_action: Dictionary) -> int:
@@ -788,6 +823,11 @@ func _check_temporary_event_page_insertion(game: Node) -> void:
 
 	var fishing_signature := game.call("_fishing_detail_render_signature") as Array
 	_expect(fishing_signature.has("washed-up-locked-crate"), "Fishing detail signature should include active temporary events.")
+	var fishing_event := game.call("_action_data", "fishing", "washed-up-locked-crate") as Dictionary
+	var fishing_event_rewards := game.call("_base_xp_reward_map", fishing_event, "fishing") as Dictionary
+	var fishing_event_total := int(game.call("_reward_map_total", fishing_event_rewards))
+	_expect(fishing_event_total >= 3500 and fishing_event_total <= 4200, "Washed-Up Locked Crate base XP should stay in the 4k range when spawned at high level.")
+	_check_temporary_event_xp_caps(game)
 	var fishing_plan := game.call("_build_fishing_detail_lazy_plan", "fishing") as Array
 	var fishing_event_index := _plan_index_for_track_id(fishing_plan, "washed-up-locked-crate")
 	_expect(fishing_event_index >= 0, "Fishing lazy plan should include an active temporary event card.")
@@ -865,12 +905,31 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	var reward_map := game.call("_completion_xp_reward_map", event_action, "fight", false, false, false, false) as Dictionary
 	var expected_fight_xp := int(reward_map.get("fight", 0))
 	var expected_thieving_xp := int(reward_map.get("thieving", 0))
+	_expect(str(game.call("_temporary_event_log_reward_mat_id")) == "scrapwood", "Covered wagon should treat Scrapwood as the base log material before higher log tiers are unlocked.")
+	_expect(str(game.call("_action_art_resource_icon_path", event_action)) == str(game.call("_mat_icon_path", "scrapwood")), "Covered wagon art badge should show the Scrapwood icon when Scrapwood is the awarded log material.")
+	skills = game.get("skills") as Dictionary
+	var woodcutting_state := skills.get("woodcutting", {}) as Dictionary
+	woodcutting_state["xp"] = int(game.call("_xp_for_level", 80))
+	skills["woodcutting"] = woodcutting_state
+	game.set("skills", skills)
+	game.call("_recalculate_level", "woodcutting")
+	game.call("_mark_action_manually_unlocked", "woodcutting", "chop-knotty-maple")
+	_expect(str(game.call("_temporary_event_log_reward_mat_id")) == "hardwood", "Covered wagon should choose Hardwood once a Hardwood-yielding woodcutting action is unlocked.")
+	_expect(str(game.call("_action_art_resource_icon_path", event_action)) == str(game.call("_mat_icon_path", "hardwood")), "Covered wagon art badge should show the Hardwood icon when Hardwood is the awarded log material.")
+	var log_range := event_action.get("resource_rewards", {}) as Dictionary
+	var expected_log_min := int(log_range.get("logs_min", 0))
+	var expected_log_max := int(log_range.get("logs_max", expected_log_min))
+	var expected_log_multiplier := float(game.call("_woodcutting_log_collection_multiplier"))
+	var expected_log_min_buffed := float(expected_log_min) * expected_log_multiplier
+	var expected_log_max_buffed := float(expected_log_max) * expected_log_multiplier
 	skills = game.get("skills") as Dictionary
 	fight_state = skills.get("fight", {}) as Dictionary
 	var thieving_state := skills.get("thieving", {}) as Dictionary
 	var fight_xp_before := int(fight_state.get("xp", 0))
 	var thieving_xp_before := int(thieving_state.get("xp", 0))
 	var stamina_before := float((game.get("stamina") as Dictionary).get("fight", 0.0))
+	var softwood_before := float(game.call("_mat_amount", "softwood"))
+	var hardwood_before := float(game.call("_mat_amount", "hardwood"))
 	game.set("running_skill_id", "fight")
 	game.set("running_action_id", "covered-wagon-ambush-drill")
 	game.set("action_progress", 1.0)
@@ -892,14 +951,20 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	skills = game.get("skills") as Dictionary
 	fight_state = skills.get("fight", {}) as Dictionary
 	thieving_state = skills.get("thieving", {}) as Dictionary
+	var softwood_after := float(game.call("_mat_amount", "softwood"))
+	var hardwood_after := float(game.call("_mat_amount", "hardwood"))
+	var hardwood_delta := hardwood_after - hardwood_before
 	_expect(active.is_empty(), "Successful temporary event completion should despawn the event.")
 	_expect(cooldowns.has("covered-wagon-ambush-drill"), "Successful temporary event completion should set a respawn cooldown.")
 	_expect(int(fight_state.get("xp", 0)) - fight_xp_before == expected_fight_xp, "Successful temporary event completion should grant owner-skill XP before despawning.")
 	_expect(int(thieving_state.get("xp", 0)) - thieving_xp_before == expected_thieving_xp, "Successful temporary event completion should grant secondary event XP before despawning.")
+	_expect(absf(softwood_after - softwood_before) <= 0.0001, "Covered wagon should not award Softwood once Hardwood logs are unlocked.")
+	_expect(hardwood_delta >= expected_log_min_buffed - 0.0001 and hardwood_delta <= expected_log_max_buffed + 0.0001, "Covered wagon should award buffed Hardwood within its scaled log reward range, delta=%s expected=%s-%s multiplier=%s." % [hardwood_delta, expected_log_min_buffed, expected_log_max_buffed, expected_log_multiplier])
 	_expect(float((game.get("stamina") as Dictionary).get("fight", 0.0)) < stamina_before, "Successful temporary event completion should charge stamina.")
 	_expect(str(game.get("running_skill_id")).is_empty(), "Successful temporary event completion should clear the running skill.")
 	_expect(str(game.get("running_action_id")).is_empty(), "Successful temporary event completion should clear the running action.")
 	_expect(str(game.get("last_result")).begins_with("Event complete:"), "Successful temporary event completion should show event completion feedback text.")
+	_expect(str(game.get("last_result")).contains("Hardwood"), "Successful covered wagon feedback should name the awarded highest unlocked log material.")
 
 
 func _check_combo_xp_reward_map(game: Node) -> void:
@@ -1745,7 +1810,7 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 		"unlock_ceremony_pending": true,
 	}
 	game.call("_sync_fishing_method_card_unlocked_live", live_method_card)
-	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_STOP, "Live fishing method cards should become tappable immediately after their lock is accepted.")
+	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_panel.mouse_filter == Control.MOUSE_FILTER_STOP, "Live fishing method cards should become tappable immediately after their lock is accepted through the manual fishing hit route.")
 	_expect(not bool(live_method_card.get("unlock_ready_pending", true)) and not bool(live_method_card.get("unlock_ceremony_pending", true)), "Live fishing method unlock sync should clear stale locked-card flags before a page rebuild.")
 	_expect(live_lock.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_padlock_hit.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Live fishing method unlock sync should stop the old padlock from stealing the next tap.")
 	_expect(str(game.call("_tutorial_preview_after_manual_unlock", "fishing", "beach-rocks")) == "pier-dock-edge", "Unlocking Rocks should target Pier Dock Edge as the next fishing module preview.")
@@ -1887,6 +1952,7 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 	var previous_screen := str(game.get("current_screen"))
 	var previous_selected := str(game.get("selected_skill_id"))
 	var previous_auto_unlock := bool(game.get("auto_unlock_lockpads_enabled"))
+	game.call("_god_mode_unlock_onboarding_state")
 	_prime_core_skill_state(game)
 	game.set("startup_initialized", true)
 	game.set("current_screen", "home")

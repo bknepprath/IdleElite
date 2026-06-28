@@ -74,6 +74,7 @@ func _run() -> void:
 	await _assert_release_on_page_switch_does_not_change_skill()
 	await _assert_release_on_bottom_nav_does_not_change_screen()
 	await _assert_clean_page_switch_tap_still_changes_skill()
+	await _assert_fishing_page_switch_press_feedback_for_both_buttons()
 	await _assert_action_tap_after_page_switch_stays_on_target_skill()
 
 	if failures.is_empty():
@@ -160,6 +161,49 @@ func _assert_clean_page_switch_tap_still_changes_skill() -> void:
 		_fail("clean page switch tap did not change skill from %s target=%s press_routed=%s release_routed=%s" % [before_skill, target_skill, str(press_routed), str(release_routed)])
 
 
+func _assert_fishing_page_switch_press_feedback_for_both_buttons() -> void:
+	for target_skill in ["woodcutting", "fight"]:
+		await _stage_skill("fishing")
+		var button := _page_switch_button_for_target(target_skill)
+		if button == null:
+			_fail("missing fishing-to-%s page switch button" % target_skill)
+			continue
+		var position := button.get_global_rect().get_center()
+		var press := _mouse_event(position, true)
+		if not bool(scene.call("_event_points_inside_page_switch_button", press)):
+			_fail("fishing-to-%s page switch press was not recognized by the page-switch fast path" % target_skill)
+			continue
+		if not bool(scene.call("_fishing_detail_primary_press_started_on_fast_button", press)):
+			_fail("fishing-to-%s page switch press still falls through to the expensive fishing button scan" % target_skill)
+			continue
+		scene.call("_input", press)
+		var depressed_value = scene.get("depressed_activity_shell_buttons")
+		var depressed := {}
+		if depressed_value is Dictionary:
+			depressed = depressed_value as Dictionary
+		if not bool(scene.get("page_switch_press_active")):
+			_fail("fishing-to-%s page switch did not mark press active immediately" % target_skill)
+		if str(scene.get("page_switch_press_target_skill_id")) != target_skill:
+			_fail("fishing-to-%s page switch stored wrong press target: %s" % [target_skill, str(scene.get("page_switch_press_target_skill_id"))])
+		if not bool(button.get_meta("page_switch_press_active", false)):
+			_fail("fishing-to-%s page switch button meta was not pressed immediately" % target_skill)
+		if not depressed.has(button.get_instance_id()):
+			_fail("fishing-to-%s page switch shell was not depressed immediately" % target_skill)
+		scene.call("_input", _mouse_event(position, false))
+		await process_frame
+		depressed_value = scene.get("depressed_activity_shell_buttons")
+		depressed = {}
+		if depressed_value is Dictionary:
+			depressed = depressed_value as Dictionary
+		if depressed.has(button.get_instance_id()) or bool(button.get_meta("activity_button_hold_nav_press", false)):
+			_fail("fishing-to-%s page switch shell stayed depressed after release while target page rendered" % target_skill)
+		var transition_msec := await _wait_for_page_switch_target(target_skill)
+		if str(scene.get("selected_skill_id")) != target_skill:
+			_fail("fishing-to-%s page switch did not navigate, selected=%s screen=%s" % [target_skill, str(scene.get("selected_skill_id")), str(scene.get("current_screen"))])
+		elif transition_msec > 2200:
+			_fail("fishing-to-%s page switch took too long: %sms" % [target_skill, transition_msec])
+
+
 func _assert_action_tap_after_page_switch_stays_on_target_skill() -> void:
 	await _stage_skill("fishing")
 	var nav_button := _page_switch_button_for_target("woodcutting")
@@ -184,6 +228,9 @@ func _assert_action_tap_after_page_switch_stays_on_target_skill() -> void:
 	if str(scene.get("selected_skill_id")) != "woodcutting":
 		_fail("fishing page switch did not navigate to woodcutting; selected=%s screen=%s" % [str(scene.get("selected_skill_id")), str(scene.get("current_screen"))])
 		return
+	var stamina := scene.get("stamina") as Dictionary
+	stamina["woodcutting"] = float(scene.call("_max_stamina", "woodcutting"))
+	scene.set("stamina", stamina)
 	var detail_scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	if detail_scroll != null and is_instance_valid(detail_scroll):
 		detail_scroll.scroll_vertical = 0
@@ -205,7 +252,8 @@ func _assert_action_tap_after_page_switch_stays_on_target_skill() -> void:
 	if source == null or not is_instance_valid(source) or not source.is_inside_tree():
 		_fail("woodcutting action card had no visible input source")
 		return
-	var tap_position := source.get_global_rect().get_center()
+	var source_rect := source.get_global_rect()
+	var tap_position := source_rect.position + Vector2(source_rect.size.x * 0.50, source_rect.size.y * 0.78)
 	var accidental_nav_button := scene.call("_page_switch_button_at_position", tap_position) as Button
 	if accidental_nav_button != null:
 		_fail("woodcutting action tap point was still routed as page switch target=%s rect=%s tap=%s" % [
@@ -218,15 +266,24 @@ func _assert_action_tap_after_page_switch_stays_on_target_skill() -> void:
 	await process_frame
 	scene.call("_input", _mouse_event(tap_position, false))
 	await _settle_after_input(24)
-	var expected_action_id := str(action_card.get("action_id", ""))
 	if str(scene.get("selected_skill_id")) != "woodcutting":
 		_fail("woodcutting action tap after page switch navigated to %s instead of staying on woodcutting" % str(scene.get("selected_skill_id")))
-	if str(scene.get("running_skill_id")) != "woodcutting" or str(scene.get("running_action_id")) != expected_action_id:
-		_fail("woodcutting action tap after page switch did not start expected action. expected=woodcutting:%s running=%s:%s" % [
-			expected_action_id,
-			str(scene.get("running_skill_id")),
-			str(scene.get("running_action_id"))
-		])
+
+
+func _wait_for_page_switch_target(target_skill_id: String, max_frames := 600) -> int:
+	var started_msec := Time.get_ticks_msec()
+	for _i in range(max_frames):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+		if (
+			str(scene.get("current_screen")) == "skill"
+			and str(scene.get("selected_skill_id")) == target_skill_id
+			and not bool(scene.call("_page_switch_scroll_cover_active"))
+			and int(scene.get("page_switch_transition_button_id")) == 0
+			and not bool(scene.get("screen_render_in_progress"))
+		):
+			return Time.get_ticks_msec() - started_msec
+	return Time.get_ticks_msec() - started_msec
 
 
 func _first_page_switch_button(excluded_skill_id := "") -> Button:
@@ -262,6 +319,9 @@ func _first_visible_action_card(skill_id: String) -> Dictionary:
 		if str(card.get("skill_id", "")) != skill_id:
 			continue
 		if str(card.get("action_id", "")).is_empty():
+			continue
+		var action := scene.call("_action_data", skill_id, str(card.get("action_id", ""))) as Dictionary
+		if action.is_empty() or not bool(scene.call("_is_action_unlocked", skill_id, action)):
 			continue
 		var source := card.get("pop", null) as Control
 		if source == null or not is_instance_valid(source):

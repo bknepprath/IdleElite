@@ -1320,18 +1320,29 @@ func _run() -> void:
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
 	var multi_area_piling_card := scene.call("_fishing_area_card_for_action", "fishing", "pier-piling-line") as Dictionary
 	if multi_area_piling_card.is_empty():
-		push_error("Fishing next-teaser regression: started Pier area did not keep Piling Line visible as its next locked tile.")
+		push_error("Fishing next-teaser regression: Piling Line should be the only visible next locked tile.")
 		quit(1)
 		return
 	var multi_area_rapids_card := scene.call("_fishing_area_card_for_action", "fishing", "river-rapids") as Dictionary
-	if multi_area_rapids_card.is_empty():
-		push_error("Fishing next-teaser regression: started River area did not keep Rapids visible as its next locked tile.")
+	if not multi_area_rapids_card.is_empty():
+		push_error("Fishing next-teaser regression: River Rapids appeared before the earlier Piling Line lockpad was cleared.")
 		quit(1)
 		return
 	var multi_area_piling_action := scene.call("_action_data", "fishing", "pier-piling-line") as Dictionary
 	var multi_area_rapids_action := scene.call("_action_data", "fishing", "river-rapids") as Dictionary
 	if bool(scene.call("_is_action_unlocked", "fishing", multi_area_piling_action)) or bool(scene.call("_is_action_unlocked", "fishing", multi_area_rapids_action)):
 		push_error("Fishing next-teaser regression setup accidentally unlocked one of the next locked tiles.")
+		quit(1)
+		return
+	scene.call("_on_fishing_method_lock_pressed", "fishing", "pier-piling-line")
+	if not await _wait_for_fishing_sequence_action_unlocked(scene, "pier-piling-line"):
+		push_error("Fishing next-teaser regression could not unlock Piling Line before checking River Rapids reveal.")
+		quit(1)
+		return
+	await _render_fishing_sequence_page(scene)
+	multi_area_rapids_card = scene.call("_fishing_area_card_for_action", "fishing", "river-rapids") as Dictionary
+	if multi_area_rapids_card.is_empty():
+		push_error("Fishing next-teaser regression: River Rapids did not appear after the earlier Piling Line teaser unlocked.")
 		quit(1)
 		return
 

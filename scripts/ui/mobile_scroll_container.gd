@@ -11,6 +11,10 @@ const FLICK_MAX_VELOCITY := 4200.0
 const INERTIA_DECAY := 5.4
 const PULL_RESISTANCE_MAX := 210.0
 const PULL_SNAP_SECONDS := 0.34
+const WHEEL_STEP := 220.0
+const WHEEL_MAX_IMMEDIATE_DELTA := 36.0
+const WHEEL_VELOCITY_SCALE := 12.0
+const WHEEL_MAX_VELOCITY := 7200.0
 
 var drag_tracking := false
 var drag_scrolling := false
@@ -31,6 +35,13 @@ var max_scroll_override := -1
 var content_scroll_enabled := true
 var scroll_tween: Tween
 var pull_tween: Tween
+var drag_last_apply_frame := -1
+var drag_pending_position := Vector2.ZERO
+var drag_pending_valid := false
+var modal_block_cache_frame := -1
+var modal_block_cache_value := false
+var max_scroll_cache_frame := -1
+var max_scroll_cache_value := 0
 
 func _ready() -> void:
 	set_process(false)
@@ -66,11 +77,13 @@ func set_input_locked_by_activity_lock(locked: bool) -> void:
 		drag_touch_index = -1
 		velocity = 0.0
 		child_click_suppressed = false
+		_clear_pending_drag_motion()
 		_cancel_scroll_tween()
 		_cancel_pull_tween()
 
 func set_max_scroll_override(next_max_scroll: int) -> void:
 	max_scroll_override = next_max_scroll
+	max_scroll_cache_frame = -1
 	_clamp_to_current_content_height()
 
 func set_scroll_enabled_by_content(enabled: bool) -> void:
@@ -95,6 +108,7 @@ func _input(event: InputEvent) -> void:
 		drag_touch_index = -1
 		velocity = 0.0
 		child_click_suppressed = false
+		_clear_pending_drag_motion()
 		_set_pull_raw_offset(0.0)
 		_set_scroll_vertical_float(0.0)
 		return
@@ -102,6 +116,7 @@ func _input(event: InputEvent) -> void:
 		drag_tracking = false
 		drag_scrolling = false
 		velocity = 0.0
+		_clear_pending_drag_motion()
 		_cancel_scroll_tween()
 		return
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -116,15 +131,18 @@ func _input(event: InputEvent) -> void:
 				drag_touch_index = -1
 				drag_scroll_position = float(scroll_vertical)
 				_reset_drag_velocity_samples(event.global_position)
+				_clear_pending_drag_motion()
 				velocity = 0.0
 		elif drag_tracking:
 			if drag_scrolling:
+				_apply_pending_drag_motion()
 				child_click_suppressed = true
 				_apply_release_velocity(event.global_position)
 				get_viewport().set_input_as_handled()
 			drag_tracking = false
 			drag_scrolling = false
 			drag_touch_index = -1
+			_clear_pending_drag_motion()
 			_snap_pull_offset()
 			if child_click_suppressed:
 				call_deferred("_clear_child_click_suppression")
@@ -138,10 +156,7 @@ func _input(event: InputEvent) -> void:
 			drag_scrolling = true
 		if drag_scrolling:
 			child_click_suppressed = true
-			var delta_y: float = event.global_position.y - drag_last.y
-			_apply_drag_delta(delta_y)
-			drag_last = event.global_position
-			_record_drag_velocity_sample(event.global_position)
+			_apply_or_queue_drag_motion(event.global_position)
 			get_viewport().set_input_as_handled()
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -155,15 +170,18 @@ func _input(event: InputEvent) -> void:
 				drag_touch_index = event.index
 				drag_scroll_position = float(scroll_vertical)
 				_reset_drag_velocity_samples(event.position)
+				_clear_pending_drag_motion()
 				velocity = 0.0
 		elif drag_tracking and event.index == drag_touch_index:
 			if drag_scrolling:
+				_apply_pending_drag_motion()
 				child_click_suppressed = true
 				_apply_release_velocity(event.position)
 				get_viewport().set_input_as_handled()
 			drag_tracking = false
 			drag_scrolling = false
 			drag_touch_index = -1
+			_clear_pending_drag_motion()
 			_snap_pull_offset()
 			if child_click_suppressed:
 				call_deferred("_clear_child_click_suppression")
@@ -177,10 +195,7 @@ func _input(event: InputEvent) -> void:
 			drag_scrolling = true
 		if drag_scrolling:
 			child_click_suppressed = true
-			var delta_y: float = event.position.y - drag_last.y
-			_apply_drag_delta(delta_y)
-			drag_last = event.position
-			_record_drag_velocity_sample(event.position)
+			_apply_or_queue_drag_motion(event.position)
 			get_viewport().set_input_as_handled()
 	if event is InputEventMouseButton and event.pressed and _contains_global_point(event.global_position):
 		if event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -201,15 +216,19 @@ func _process(delta: float) -> void:
 		drag_touch_index = -1
 		velocity = 0.0
 		child_click_suppressed = false
+		_clear_pending_drag_motion()
 		_set_pull_raw_offset(0.0)
 		_set_scroll_vertical_float(0.0)
 		set_process(false)
 		return
 	if input_locked_by_activity_lock or _modal_blocks_this_scroll():
 		velocity = 0.0
+		_clear_pending_drag_motion()
 		set_process(false)
 		return
 	_clamp_to_current_content_height()
+	if drag_tracking and drag_scrolling and drag_pending_valid:
+		_apply_pending_drag_motion()
 	if drag_tracking or absf(pull_offset) > 0.0 or absf(velocity) < 4.0:
 		if not drag_tracking and absf(pull_offset) <= 0.0 and absf(velocity) < 4.0:
 			velocity = 0.0
@@ -238,11 +257,26 @@ func _apply_wheel_step(direction: int) -> void:
 	if not content_scroll_enabled:
 		_set_scroll_vertical_float(0.0)
 		return
+	_apply_wheel_scroll_delta(float(direction) * WHEEL_STEP)
+
+
+func _apply_wheel_scroll_delta(scroll_delta: float) -> void:
+	if absf(scroll_delta) <= 0.01:
+		return
 	_cancel_scroll_tween()
 	_cancel_pull_tween()
-	velocity = 0.0
 	_set_pull_raw_offset(0.0)
-	_set_scroll_vertical_float(float(scroll_vertical) + float(direction) * 220.0)
+	var immediate_delta := clampf(scroll_delta, -WHEEL_MAX_IMMEDIATE_DELTA, WHEEL_MAX_IMMEDIATE_DELTA)
+	var old_scroll := drag_scroll_position
+	_set_scroll_vertical_float(float(scroll_vertical) + immediate_delta)
+	_emit_user_scroll_direction_from_delta(drag_scroll_position - old_scroll)
+	var residual_delta := scroll_delta - immediate_delta
+	if absf(residual_delta) <= 0.01:
+		velocity = 0.0
+		return
+	velocity = clampf(velocity + residual_delta * WHEEL_VELOCITY_SCALE, -WHEEL_MAX_VELOCITY, WHEEL_MAX_VELOCITY)
+	if absf(velocity) >= 4.0:
+		set_process(true)
 
 
 func apply_direct_wheel_delta(delta_y: float) -> void:
@@ -251,13 +285,8 @@ func apply_direct_wheel_delta(delta_y: float) -> void:
 		return
 	if absf(delta_y) <= 0.01:
 		return
-	_cancel_scroll_tween()
-	_cancel_pull_tween()
-	velocity = 0.0
-	_set_pull_raw_offset(0.0)
 	var scroll_delta := clampf(delta_y, -420.0, 420.0)
-	_set_scroll_vertical_float(float(scroll_vertical) + scroll_delta)
-	_emit_user_scroll_direction_from_delta(scroll_delta)
+	_apply_wheel_scroll_delta(scroll_delta)
 
 func _apply_drag_delta(delta_y: float) -> void:
 	if pull_resistance_enabled:
@@ -308,10 +337,41 @@ func handoff_drag_scroll(press_position: Vector2, current_position: Vector2, tou
 	_reset_drag_velocity_samples(press_position)
 	velocity = 0.0
 	child_click_suppressed = true
-	_apply_drag_delta(current_position.y - press_position.y)
-	drag_last = current_position
-	_record_drag_velocity_sample(current_position)
+	_clear_pending_drag_motion()
+	_apply_drag_motion_position(current_position)
 	get_viewport().set_input_as_handled()
+
+
+func _apply_or_queue_drag_motion(pointer_position: Vector2) -> void:
+	var current_frame := Engine.get_process_frames()
+	if drag_last_apply_frame == current_frame:
+		drag_pending_position = pointer_position
+		drag_pending_valid = true
+		set_process(true)
+		return
+	_apply_drag_motion_position(pointer_position)
+
+
+func _apply_pending_drag_motion() -> void:
+	if not drag_pending_valid:
+		return
+	var pending_position := drag_pending_position
+	drag_pending_valid = false
+	_apply_drag_motion_position(pending_position)
+
+
+func _apply_drag_motion_position(pointer_position: Vector2) -> void:
+	drag_last_apply_frame = Engine.get_process_frames()
+	var delta_y: float = pointer_position.y - drag_last.y
+	_apply_drag_delta(delta_y)
+	drag_last = pointer_position
+	_record_drag_velocity_sample(pointer_position)
+
+
+func _clear_pending_drag_motion() -> void:
+	drag_pending_valid = false
+	drag_pending_position = Vector2.ZERO
+	drag_last_apply_frame = -1
 
 
 func _set_scroll_vertical_float(next_value: float) -> void:
@@ -363,12 +423,18 @@ func _apply_release_velocity(pointer_position: Vector2) -> void:
 		set_process(true)
 
 func _modal_blocks_this_scroll() -> bool:
+	var current_frame := Engine.get_process_frames()
+	if modal_block_cache_frame == current_frame:
+		return modal_block_cache_value
+	modal_block_cache_frame = current_frame
+	modal_block_cache_value = false
 	var tree := get_tree()
 	if tree == null:
 		return false
 	for node in tree.get_nodes_in_group("modal_overlay"):
 		var modal := node as Control
 		if modal != null and modal.visible and modal.is_visible_in_tree() and not _is_descendant_of(modal):
+			modal_block_cache_value = true
 			return true
 	return false
 
@@ -383,6 +449,9 @@ func _is_descendant_of(node: Node) -> bool:
 func get_max_scroll_vertical() -> int:
 	if not content_scroll_enabled:
 		return 0
+	var current_frame := Engine.get_process_frames()
+	if max_scroll_cache_frame == current_frame:
+		return max_scroll_cache_value
 	var scroll_bar := get_v_scroll_bar()
 	var natural_max := 0
 	if scroll_bar != null:
@@ -397,8 +466,11 @@ func get_max_scroll_vertical() -> int:
 				max_scroll = maxf(max_scroll, control.position.y + control.size.y)
 		natural_max = maxi(0, int(ceil(max_scroll - size.y)))
 	if max_scroll_override >= 0:
-		return mini(natural_max, max_scroll_override)
-	return natural_max
+		max_scroll_cache_value = mini(natural_max, max_scroll_override)
+	else:
+		max_scroll_cache_value = natural_max
+	max_scroll_cache_frame = current_frame
+	return max_scroll_cache_value
 
 func scroll_to_vertical(target: int, duration := 0.26, transition := Tween.TRANS_CUBIC, ease_type := Tween.EASE_OUT) -> void:
 	_cancel_scroll_tween()

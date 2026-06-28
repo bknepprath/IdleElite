@@ -89,6 +89,7 @@ func _run() -> void:
 	await _check_regular_skill_detail_level_up_float(scene)
 	await _check_pinned_page_level_up_float(scene)
 	await _check_pinned_page_start_animates_visible_card(scene)
+	await _check_pinned_page_material_reward_action_stays_compact(scene)
 	await _check_pinned_page_switches_between_text_actions(scene)
 	await _check_pinned_page_stop_leaves_blank_active_shelf(scene)
 	await _check_pinned_page_opportunity_feedback_targets_visible_card(scene)
@@ -292,6 +293,82 @@ func _check_pinned_page_start_animates_visible_card(scene: Node) -> void:
 	if str(scene.get("running_skill_id")) != str(parts[0]) or str(scene.get("running_action_id")) != str(parts[1]):
 		_record("pinned-page action did not start from visible card button gui_input")
 	for _i in range(2):
+		await process_frame
+
+
+func _check_pinned_page_material_reward_action_stays_compact(scene: Node) -> void:
+	var reward_actions := _material_reward_action_modules(scene)
+	if reward_actions.is_empty():
+		_record("pinned-page material reward smoke could not find any unlocked collection actions")
+		return
+	for reward_entry in reward_actions:
+		await _check_pinned_page_material_reward_entry_stays_compact(scene, reward_entry as Dictionary)
+
+
+func _material_reward_action_modules(scene: Node) -> Array[Dictionary]:
+	var reward_actions: Array[Dictionary] = []
+	var actions_by_skill := scene.get("actions_by_skill") as Dictionary
+	for raw_skill_id in actions_by_skill.keys():
+		var skill_id := str(raw_skill_id)
+		for raw_action in actions_by_skill.get(raw_skill_id, []):
+			var action := raw_action as Dictionary
+			if action.is_empty() or bool(scene.call("_is_passive_action", action)):
+				continue
+			if not bool(scene.call("_is_action_unlocked", skill_id, action)):
+				continue
+			if not bool(scene.call("_action_has_mat_rewards", action)):
+				continue
+			var action_id := str(action.get("id", ""))
+			var module_key := str(scene.call("_module_ui_key_for_action", skill_id, action))
+			if action_id.is_empty() or module_key.is_empty():
+				continue
+			reward_actions.append({
+				"skill_id": skill_id,
+				"action_id": action_id,
+				"module_key": module_key,
+			})
+	return reward_actions
+
+
+func _check_pinned_page_material_reward_entry_stays_compact(scene: Node, reward_entry: Dictionary) -> void:
+	var skill_id := str(reward_entry.get("skill_id", ""))
+	var action_id := str(reward_entry.get("action_id", ""))
+	var module_key := str(reward_entry.get("module_key", ""))
+	if skill_id.is_empty() or action_id.is_empty() or module_key.is_empty():
+		_record("pinned-page material reward smoke had malformed collection entry: %s" % str(reward_entry))
+		return
+	scene.set("current_screen", "pinned")
+	scene.set("selected_skill_id", skill_id)
+	scene.set("module_ui_pinned_order", [module_key])
+	scene.set("_last_rendered_screen_key", "")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_start_action", skill_id, action_id, false)
+	await scene.call("_render_screen", false, -1, false)
+	for _i in range(10):
+		scene.call("_update_ui", 0.016, false)
+		await process_frame
+	var card_key := str(scene.call("_pinned_page_card_key", module_key))
+	var action_cards := scene.get("action_cards") as Dictionary
+	if not action_cards.has(card_key):
+		_record("pinned-page material reward card was not registered: %s:%s key=%s keys=%s" % [skill_id, action_id, card_key, str(action_cards.keys())])
+		return
+	var card := action_cards.get(card_key, {}) as Dictionary
+	if not bool(card.get("page_copy_suppresses_collection_modules", false)):
+		_record("pinned-page material reward card did not suppress page-copy collection modules for %s:%s" % [skill_id, action_id])
+	var collection := card.get("mat_collection", {}) as Dictionary
+	if not collection.is_empty() and bool(collection.get("visible", false)):
+		_record("pinned-page material reward collection became visible inside the page action copy for %s:%s" % [skill_id, action_id])
+	var entry := card.get("entry", null) as Control
+	if entry == null or not is_instance_valid(entry):
+		_record("pinned-page material reward card did not expose an entry for %s:%s" % [skill_id, action_id])
+		return
+	var compact_height := float(scene.call("_activity_card_root_height", false))
+	var actual_height := maxf(entry.custom_minimum_size.y, entry.size.y)
+	if actual_height > compact_height + 140.0:
+		_record("pinned-page material reward card expanded into a fat page module for %s:%s. expected<=%s actual=%s" % [skill_id, action_id, compact_height + 140.0, actual_height])
+	scene.call("_clear_running_activity_for_test_mode")
+	for _i in range(2):
+		scene.call("_update_ui", 0.016, false)
 		await process_frame
 
 
@@ -582,6 +659,10 @@ func _check_pinned_page_thieving_jail_bars_reduce_time(scene: Node) -> void:
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(3):
 		await process_frame
+	if not bool(scene.call("_skill_detail_needs_high_frequency_ui_update")):
+		_record("pinned-page jailed thieving state did not keep high-frequency pinned shelf refresh active")
+	if not bool(scene.call("_battery_governor_visual_work_active")):
+		_record("pinned-page jailed thieving state did not keep the battery governor in visual-work mode")
 	var content_scroll := scene.get("content_scroll") as Control
 	var shelf := _find_named_descendant(scene, "PinnedActivitiesActiveShelf") as Control
 	if shelf == null or not is_instance_valid(shelf):

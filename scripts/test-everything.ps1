@@ -210,6 +210,7 @@ $tests = @(
 
     New-TestCase "fishing" "fishing click flow" "scripts\test-fishing-click-flow.ps1" @("full", "release") 900
     New-TestCase "fishing" "fishing net offer click" "scripts\test-fishing-net-offer-click.ps1" @("full", "release") 600
+    New-TestCase "fishing" "fishing drag spike" "scripts\test-fishing-drag-spike.ps1" @("full", "release") 240
 
     New-TestCase "thieving" "thieving heist click flow" "scripts\test-thieving-heist-click-flow.ps1" @("full", "release") 600
 

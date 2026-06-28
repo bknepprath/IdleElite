@@ -35,13 +35,13 @@ const BLUE_GUY_KO_PATH := "res://assets/content/fight/prototype/blue-guy-ko.png"
 const BLUE_GUY_UPPERCUT_PATH := "res://assets/content/fight/prototype/blue-guy-uppercut.png"
 const COOKED_CHICKEN_DROP_PATH := "res://assets/content/fight/prototype/cooked-chicken-drop.png"
 
-const HERO_BASE_MAX_HP := 30.0
+const HERO_BASE_MAX_HP := 33.0
 const HERO_BASE_ATTACK_DAMAGE_MIN := 8.0
 const HERO_BASE_ATTACK_DAMAGE_MAX := 11.0
 const HERO_BASE_UPPERCUT_DAMAGE_MIN := 22.0
 const HERO_BASE_UPPERCUT_DAMAGE_MAX := 30.0
 const HERO_BASE_ATTACK_INTERVAL := 1.05
-const HERO_LEVEL_MULT := 1.025
+const HERO_LEVEL_MULT := 1.03
 const HERO_STAT_BASELINE_LEVEL := 5
 const HERO_HITBOX_RANGE := 0.205
 const HERO_HITBOX_RADIUS := 0.142
@@ -65,12 +65,14 @@ const END_WAVE_TOTAL := 34
 const END_WAVE_MAX_CHICKENS := 24
 const END_WAVE_SOFT_KILL_SECONDS := 1.55
 const END_WAVE_SPAWN_INTERVAL := 0.055
+const END_WAVE_CLEAR_BONUS_XP := 100
+const AREA_CLEAR_RESTART_DELAY := 1.45
 const HERO_KO_DURATION := 3.4
 const HERO_KO_FADE_SECONDS := 0.48
 const HERO_KO_FALL_SECONDS := 0.52
 const HERO_KO_STAND_SECONDS := 0.62
 const COVER_OPEN_SPEED := 4.8
-const COOKED_CHICKEN_DROP_CHANCE := 0.055
+const COOKED_CHICKEN_DROP_CHANCE := 0.07
 const COOKED_CHICKEN_HEAL_RATIO := 0.16
 const COOKED_CHICKEN_PICKUP_RADIUS := 0.12
 const COOKED_CHICKEN_LIFETIME := 8.0
@@ -132,6 +134,7 @@ var wave_spawn_phase_duration_current := 1.0
 var displayed_wave_progress := 0.0
 var end_wave_active := false
 var end_wave_soft_kill_timer := 0.0
+var area_clear_restart_timer := 0.0
 var fighting_level := 1
 var cover_health_current := 30
 var cover_health_maximum := 30
@@ -308,6 +311,7 @@ func _seed_fight() -> void:
 	displayed_wave_progress = 0.0
 	end_wave_active = false
 	end_wave_soft_kill_timer = 0.0
+	area_clear_restart_timer = 0.0
 	hit_stop_timer = 0.0
 	module_shake_timer = 0.0
 	_start_wave_spawning(true)
@@ -340,6 +344,7 @@ func _seed_inactive_state() -> void:
 	displayed_wave_progress = 0.0
 	end_wave_active = false
 	end_wave_soft_kill_timer = 0.0
+	area_clear_restart_timer = 0.0
 	hit_stop_timer = 0.0
 	module_shake_timer = 0.0
 	var positions := [
@@ -390,6 +395,10 @@ func _step_fight(delta: float) -> void:
 		hero_ko_timer = maxf(0.0, hero_ko_timer - delta)
 		if hero_ko_timer <= 0.0:
 			_seed_fight()
+		return
+
+	if area_clear_restart_timer > 0.0:
+		_step_area_clear_restart(delta)
 		return
 
 	wave_elapsed_current = minf(wave_duration_current, wave_elapsed_current + delta)
@@ -478,6 +487,7 @@ func _spawn_chicken(lane: int) -> void:
 func _start_wave_spawning(immediate: bool) -> void:
 	end_wave_active = false
 	end_wave_soft_kill_timer = 0.0
+	area_clear_restart_timer = 0.0
 	wave_spawn_total = _wave_spawn_total_for_wave()
 	wave_spawn_remaining = wave_spawn_total
 	wave_spawned_count = 0
@@ -494,6 +504,7 @@ func _start_wave_spawning(immediate: bool) -> void:
 func _start_end_wave() -> void:
 	end_wave_active = true
 	end_wave_soft_kill_timer = END_WAVE_SOFT_KILL_SECONDS
+	area_clear_restart_timer = 0.0
 	wave_index = NORMAL_WAVE_COUNT
 	wave_kills = 0
 	wave_spawn_total = END_WAVE_TOTAL
@@ -635,16 +646,17 @@ func _start_hero_attack() -> bool:
 				_spawn_feather_burst(chicken_pos, 7, true)
 				chicken["dead_timer"] = 0.01
 				ko_count += 1
+				wave_kills += 1
+				var xp_reward := _xp_reward_for_chicken_variant(str(chicken.get("variant", "white")))
+				chicken_killed.emit(xp_reward)
+				_add_float("+%d XP" % xp_reward, _norm_to_stage(chicken_pos) + Vector2(10.0, -72.0) * _stage_scale(), XP_GOLD)
 				if not end_wave_active:
-					wave_kills += 1
-					chicken_killed.emit(1)
-					_add_float("+1 XP", _norm_to_stage(chicken_pos) + Vector2(10.0, -72.0) * _stage_scale(), XP_GOLD)
 					_maybe_spawn_food_drop(chicken_pos)
-				else:
-					_add_float("NO XP", _norm_to_stage(chicken_pos) + Vector2(10.0, -72.0) * _stage_scale(), DANGER, 0.58)
 			else:
 				_add_float("-%d" % int(hero_damage), _norm_to_stage(chicken_pos) + Vector2(0.0, -92.0 if use_uppercut else -74.0) * _stage_scale(), Color("#fff27b") if use_uppercut else Color("#ffef7a"), 0.82 if use_uppercut else 0.72)
 			chickens[i] = chicken
+			if hp <= 0.0 and end_wave_active:
+				_try_complete_end_wave()
 			did_hit = true
 	for i in range(food_drops.size()):
 		var food_drop := food_drops[i]
@@ -775,6 +787,37 @@ func _living_chicken_count() -> int:
 	return count
 
 
+func _try_complete_end_wave() -> void:
+	if not end_wave_active or area_clear_restart_timer > 0.0:
+		return
+	if wave_spawn_remaining > 0 or _living_chicken_count() > 0:
+		return
+	_complete_end_wave()
+
+
+func _complete_end_wave() -> void:
+	end_wave_active = false
+	end_wave_soft_kill_timer = 0.0
+	spawn_timer = 0.0
+	wave_rest_timer = 0.0
+	wave_elapsed_current = wave_duration_current
+	displayed_wave_progress = 1.0
+	area_clear_restart_timer = AREA_CLEAR_RESTART_DELAY
+	chicken_killed.emit(END_WAVE_CLEAR_BONUS_XP)
+	var clear_center := _norm_to_stage(Vector2(0.5, 0.30))
+	_add_float("area cleared!", clear_center, XP_GOLD, 1.32)
+	_add_float("+%d XP" % END_WAVE_CLEAR_BONUS_XP, clear_center + Vector2(0.0, 62.0) * _stage_scale(), XP_GOLD, 1.28)
+
+
+func _step_area_clear_restart(delta: float) -> void:
+	_step_food_drops(delta)
+	hero_attack_timer = maxf(0.0, hero_attack_timer - delta)
+	hero_uppercut_cd = maxf(0.0, hero_uppercut_cd - delta)
+	area_clear_restart_timer = maxf(0.0, area_clear_restart_timer - delta)
+	if area_clear_restart_timer <= 0.0:
+		_seed_fight()
+
+
 func _variant_for_spawn(serial: int) -> String:
 	if end_wave_active:
 		return "black" if serial % 3 != 0 else "gray"
@@ -794,6 +837,14 @@ func _variant_for_spawn(serial: int) -> String:
 				return "white"
 			return "black" if serial % 3 != 0 else "gray"
 	return "white"
+
+
+func _xp_reward_for_chicken_variant(variant: String) -> int:
+	if variant == "black":
+		return 3
+	if variant == "gray":
+		return 2
+	return 1
 
 
 func _wave_stat_mult(variant: String) -> float:
@@ -1066,7 +1117,7 @@ func _draw_wave_indicator(s: float) -> void:
 	var arena := _arena_rect(s)
 	var progress := clampf(displayed_wave_progress, 0.0, 1.0)
 	var fill_color := _wave_indicator_color(progress)
-	var label := "End Wave" if end_wave_active else "Wave %d" % (wave_index + 1)
+	var label := "Cleared" if area_clear_restart_timer > 0.0 else ("End Wave" if end_wave_active else "Wave %d" % (wave_index + 1))
 	var label_size := int(clampf(arena.size.y * 0.20, 46.0, 58.0))
 	var rail_size := Vector2(maxf(34.0, 44.0 * s), maxf(122.0, arena.size.y * 0.58))
 	var rail := Rect2(Vector2(arena.end.x - rail_size.x - 28.0 * s, arena.end.y - rail_size.y - 30.0 * s), rail_size)
@@ -1222,6 +1273,8 @@ func _wave_indicator_progress() -> float:
 
 
 func _wave_indicator_color(progress: float) -> Color:
+	if area_clear_restart_timer > 0.0:
+		return XP_GOLD
 	if end_wave_active:
 		return DANGER
 	var spawn_ratio := clampf(wave_spawn_phase_duration_current / maxf(0.01, wave_duration_current), 0.08, 0.92)

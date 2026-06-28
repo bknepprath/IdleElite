@@ -6,6 +6,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
+$buildGradlePath = Join-Path $projectRoot "android\build\build.gradle"
 $adb = Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb.exe"
 $java = Join-Path "C:\Program Files\Android\Android Studio\jbr\bin" "java.exe"
 $bundletool = Join-Path $projectRoot ".codex-tools\bundletool-all-1.18.3.jar"
@@ -22,7 +23,7 @@ function Assert-CommandSucceeded {
     }
 }
 
-foreach ($path in @($runner, $exportPresetsPath, $adb, $java, $bundletool, $ks)) {
+foreach ($path in @($runner, $exportPresetsPath, $buildGradlePath, $adb, $java, $bundletool, $ks)) {
     if (-not (Test-Path -LiteralPath $path)) {
         throw "Required file not found: $path"
     }
@@ -37,15 +38,22 @@ if ($devices.Count -eq 0) {
 New-Item -ItemType Directory -Force -Path (Split-Path -Parent $aab) | Out-Null
 
 $originalExportPresets = Get-Content -Raw -LiteralPath $exportPresetsPath
+$originalBuildGradle = Get-Content -Raw -LiteralPath $buildGradlePath
 try {
     $patched = $originalExportPresets `
         -replace '(?m)^package/unique_name="com\.idleelite\.game"$', 'package/unique_name="com.idleelite.game.preview"' `
         -replace '(?m)^package/name="Idle Elite"$', 'package/name="Idle Elite Preview"'
     Set-Content -LiteralPath $exportPresetsPath -Value $patched -NoNewline
+    $patchedBuildGradle = $originalBuildGradle -replace 'applicationId getExportPackageName\(\)', 'applicationId "com.idleelite.game.preview"'
+    if ($patchedBuildGradle -eq $originalBuildGradle) {
+        throw "Could not patch Android applicationId for preview export."
+    }
+    Set-Content -LiteralPath $buildGradlePath -Value $patchedBuildGradle -NoNewline
     Push-Location $projectRoot
     & $runner --path . --export-debug $presetName $aab 2>&1 | Out-Host
     Assert-CommandSucceeded "Godot export-debug"
 } finally {
+    Set-Content -LiteralPath $buildGradlePath -Value $originalBuildGradle -NoNewline
     Set-Content -LiteralPath $exportPresetsPath -Value $originalExportPresets -NoNewline
     Pop-Location
 }

@@ -86,7 +86,7 @@ func _run() -> void:
 	var skills := scene.get("skills") as Dictionary
 	var fishing := (skills.get("fishing", {}) as Dictionary).duplicate(true)
 	fishing["level"] = 3
-	fishing["xp"] = 0
+	fishing["xp"] = int(scene.call("_xp_for_level", 3))
 	skills["fishing"] = fishing
 	scene.set("skills", skills)
 	scene.call("_god_mode_unlock_onboarding_state")
@@ -190,11 +190,16 @@ func _run() -> void:
 
 	net_offer_button.size = saved_net_button_size
 
+	skills = scene.get("skills") as Dictionary
+	fishing = (skills.get("fishing", {}) as Dictionary).duplicate(true)
 	fishing["level"] = 19
+	fishing["xp"] = int(scene.call("_xp_for_level", 19))
 	skills["fishing"] = fishing
 	scene.set("skills", skills)
 	scene.set("fishing_net_collected", true)
 	scene.set("fishing_rod_collected", false)
+	scene.set("fishing_reinforced_rod_collected", false)
+	scene.set("fishing_star_rod_collected", false)
 	scene.set("fish_currency", 1000.0)
 	await _render_fishing_page(scene)
 
