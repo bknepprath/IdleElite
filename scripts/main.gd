@@ -12541,34 +12541,6 @@ func _finish_hub_tutorial_tip_tween() -> void:
 	hub_tutorial_tip_tween = null
 
 
-func _hub_build_mode_button_style(active: bool, pressed := false, hovered := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	var fill := Color("#3cbf6d") if active else Color("#d7c8a4")
-	if hovered and not pressed:
-		fill = fill.lightened(0.06)
-	style.bg_color = fill.darkened(0.08 if pressed else 0.0)
-	style.border_color = COLOR_INK
-	style.set_border_width_all(7)
-	style.corner_radius_top_left = 28
-	style.corner_radius_top_right = 28
-	style.corner_radius_bottom_left = 28
-	style.corner_radius_bottom_right = 28
-	style.shadow_color = Color(0, 0, 0, 0.22)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 6)
-	return style
-
-
-func _toggle_hub_build_mode() -> void:
-	hub_build_mode = not hub_build_mode
-	hub_detail_open = false
-	hub_drag_module_id = ""
-	hub_drag_pointer_id = -1
-	hub_drag_valid = true
-	_play_default_button_sfx()
-	_render_screen()
-
-
 func _add_hub_decor(parent: Control) -> void:
 	_ensure_hub_decor_layout()
 	var sorted_layout := hub_decor_layout.duplicate()
@@ -13020,25 +12992,6 @@ func _clear_hub_hotspot_hold() -> void:
 	hub_hotspot_hold_start_global = Vector2.ZERO
 	hub_hotspot_hold_current_global = Vector2.ZERO
 	hub_hotspot_hold_move_armed = false
-
-
-func _sync_hub_hotspot_hold_circle() -> void:
-	if hub_hotspot_hold_module_id.is_empty() or hub_hotspot_hold_move_armed:
-		_hide_hub_hotspot_hold_circle()
-		return
-	var button := _valid_hub_module_button(hub_hotspot_hold_module_id)
-	if button == null:
-		_hide_hub_hotspot_hold_circle()
-		return
-	_ensure_hub_hotspot_hold_circle()
-	if hub_hotspot_hold_circle == null or not is_instance_valid(hub_hotspot_hold_circle) or hub_hotspot_hold_circle.is_queued_for_deletion():
-		return
-	var rect := _hub_hotspot_hold_ring_rect(hub_hotspot_hold_module_id, button)
-	hub_hotspot_hold_circle.position = rect.position
-	hub_hotspot_hold_circle.size = rect.size
-	hub_hotspot_hold_circle.theme_color = Color("#ffd84a")
-	_set_canvas_item_visible_if_changed(hub_hotspot_hold_circle, true)
-	hub_hotspot_hold_circle.set_progress(0.0, 0.0, false)
 
 
 func _ensure_hub_hotspot_hold_circle() -> void:
@@ -16029,31 +15982,6 @@ func _chat_sender_label(row_data: Dictionary) -> String:
 	if total_level > 0:
 		return "%s - %s" % [name_text, total_level]
 	return name_text
-
-
-func _chat_row(row_data: Dictionary) -> Control:
-	var row := PanelContainer.new()
-	var deleted := bool(row_data.get("deleted", false))
-	row.custom_minimum_size = Vector2(0, 230)
-	row.add_theme_stylebox_override("panel", _surface_style(Color("#ececec") if not deleted else Color("#ddd7cf"), 30, 24, false))
-	var h := HBoxContainer.new()
-	h.alignment = BoxContainer.ALIGNMENT_CENTER
-	h.add_theme_constant_override("separation", 28)
-	row.add_child(h)
-	h.add_child(_profile_avatar_frame(int(row_data.get("avatar_index", 0)), Vector2(168, 168), str(row_data.get("sender_id", "")) == leaderboard_player_id))
-	var copy := VBoxContainer.new()
-	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 2)
-	h.add_child(copy)
-	var name_text := _chat_sender_label(row_data)
-	var chat_name_label := _label("%s  %s" % [name_text, _chat_time_text(row_data)], 54, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-	copy.add_child(chat_name_label)
-	var body_text := "Message removed by moderator." if deleted else str(row_data.get("text", ""))
-	var body := _label(body_text, 66, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
-	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(0, 120)
-	copy.add_child(body)
-	return row
 
 
 func _chat_status_title() -> String:
@@ -25271,31 +25199,6 @@ func _module_ui_is_pinned(module_key: String) -> bool:
 	return _module_ui_key_allows_pin_or_collapse(normalized_key) and module_ui_pinned_order.has(normalized_key)
 
 
-func _finish_module_pin_preview_animation(badge_id: int) -> void:
-	var badge := _valid_texture_button_ref(instance_from_id(badge_id))
-	if badge == null or badge.is_queued_for_deletion():
-		return
-	if badge.has_meta("module_pin_preview_tween"):
-		badge.remove_meta("module_pin_preview_tween")
-
-
-func _expire_module_pin_preview_after_delay(module_key: String, card_host_id: int, token: int) -> void:
-	await get_tree().create_timer(3.0).timeout
-	if int(module_ui_pin_preview_tokens.get(module_key, 0)) != token or _module_ui_is_pinned(module_key):
-		return
-	var card_host := _valid_control_ref(instance_from_id(card_host_id))
-	if card_host == null or card_host.is_queued_for_deletion():
-		return
-	var badge := _module_pin_badge(card_host)
-	if badge == null:
-		return
-	if badge.has_meta("module_pin_preview_tween"):
-		_kill_meta_tween(badge, "module_pin_preview_tween")
-	_set_canvas_item_alpha_if_changed(badge, 0.0)
-	badge.visible = false
-	module_ui_pin_preview_tokens.erase(module_key)
-
-
 func _on_module_pin_badge_pressed(module_key: String, card_host_id: int) -> void:
 	_pin_module_ui_key(module_key, card_host_id)
 
@@ -28093,20 +27996,6 @@ func _hub_mission_badge() -> Dictionary:
 	root.add_child(label)
 	_add_action_card_type_badge_help(root, HUB_MISSION_BADGE_TITLE, HUB_MISSION_BADGE_INFO)
 	return {"root": root, "label": label}
-
-
-func _event_hourglass_badge() -> Control:
-	var root := Control.new()
-	_configure_action_card_type_badge_root(root)
-	var icon := TextureRect.new()
-	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-	icon.texture = _texture_or_visual_fallback(EVENT_HOURGLASS_BADGE)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.add_child(icon)
-	_add_action_card_type_badge_help(root, EVENT_HOURGLASS_BADGE_TITLE, EVENT_HOURGLASS_BADGE_INFO)
-	return root
 
 
 func _configure_action_card_type_badge_root(root: Control) -> void:
@@ -31731,13 +31620,6 @@ func _visible_thieving_heists_for_render() -> Array:
 			continue
 		visible_heists.append(heist)
 	return visible_heists
-
-
-func _thieving_heist_preceding_action_unlocked(heist: Dictionary) -> bool:
-	var preceding_action := _thieving_heist_preceding_action(heist)
-	if preceding_action.is_empty():
-		return true
-	return _is_action_unlocked("thieving", preceding_action)
 
 
 func _thieving_heist_preceding_action(heist: Dictionary) -> Dictionary:
@@ -36240,14 +36122,6 @@ func _mount_onboarding_explore_tip_note() -> Control:
 	return note
 
 
-func _position_new_onboarding_explore_tip(tip_id: int) -> void:
-	var tip := _valid_control_ref(instance_from_id(tip_id))
-	if tip == null or tip.is_queued_for_deletion():
-		return
-	_position_onboarding_explore_tip(tip)
-	_set_canvas_item_visible_if_changed(tip, true)
-
-
 func _position_onboarding_explore_tip(tip: Control) -> void:
 	if tip == null or not is_instance_valid(tip):
 		return
@@ -37451,23 +37325,6 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	_sync_skill_swipe_preview_scroll_state(state)
 	_update_skill_swipe_preview_state(state, 0.0, true)
 	return page
-
-
-func _prime_skill_swipe_preview_modules(offset: int) -> void:
-	if not skill_swipe_preview_states.has(offset):
-		return
-	var state := skill_swipe_preview_states[offset] as Dictionary
-	if state == null:
-		return
-	var modules_root := state.get("modules_root") as Control
-	if modules_root == null or not is_instance_valid(modules_root):
-		return
-	skill_swipe_preview_module_reveal_token += 1
-	var token := skill_swipe_preview_module_reveal_token
-	modules_root.visible = true
-	modules_root.modulate.a = 0.0
-	_update_skill_swipe_preview_state(state, 0.0, true)
-	call_deferred("_reveal_skill_swipe_preview_modules", offset, token)
 
 
 func _reveal_skill_swipe_preview_modules(offset: int, token: int) -> void:
@@ -42525,13 +42382,6 @@ func _set_preview_pop_vertical_offset_safe(offset_y: float, pop_id: int) -> void
 	if pop == null or pop.is_queued_for_deletion():
 		return
 	_set_preview_pop_vertical_offset(pop, offset_y)
-
-
-func _set_control_position_y_safe(position_y: float, control_id: int) -> void:
-	var control := _valid_control_ref(instance_from_id(control_id))
-	if control == null or control.is_queued_for_deletion():
-		return
-	control.position.y = position_y
 
 
 func _set_canvas_item_alpha_safe(alpha: float, canvas_item_id: int) -> void:
@@ -50631,19 +50481,6 @@ func _fishing_tool_xp_multiplier() -> float:
 
 func _fishing_tool_yield_bonus() -> int:
 	return 0
-
-
-func _fishing_wallet_selectable_tools() -> Array:
-	var selectable_tools: Array = []
-	for raw_tool in _fishing_visible_wallet_tool_defs():
-		var tool := raw_tool as Dictionary
-		var tool_id := str(tool.get("id", ""))
-		if tool_id == equipped_fishing_tool_id:
-			continue
-		if not _fishing_tool_is_unlocked(tool_id):
-			continue
-		selectable_tools.append(tool)
-	return selectable_tools
 
 
 func _fishing_tool_icon_texture(tool_id_or_path: String) -> Texture2D:
@@ -63661,22 +63498,6 @@ func _skill_header_info_popover(title_text: String, body_text: String) -> PanelC
 	return popover
 
 
-func _icon_button(path: String) -> Button:
-	var button := Button.new()
-	button.text = ""
-	button.custom_minimum_size = Vector2(300, 300)
-	button.focus_mode = Control.FOCUS_NONE
-	button.icon = _texture_or_visual_fallback(path)
-	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.expand_icon = true
-	button.add_theme_constant_override("icon_max_width", 180)
-	button.add_theme_stylebox_override("normal", _button_style(COLOR_PANEL, SECONDARY_BUTTON_BORDER, 72, 28))
-	button.add_theme_stylebox_override("hover", _button_style(COLOR_PANEL, SECONDARY_BUTTON_BORDER, 72, 28))
-	button.add_theme_stylebox_override("pressed", _button_style(COLOR_GOLD.darkened(0.08), SECONDARY_BUTTON_BORDER, 72, 28, true))
-	_attach_button_depress_animation(button, 0.94)
-	return button
-
-
 func _ensure_nav_bar_icons() -> void:
 	for button in [hero_tab, hub_tab, skills_tab, settings_tab, shop_tab]:
 		if button == null or not is_instance_valid(button):
@@ -64709,19 +64530,6 @@ func _profile_name_field_style(focused := false) -> StyleBoxFlat:
 	style.content_margin_right = 34
 	style.content_margin_top = 18
 	style.content_margin_bottom = 18
-	return style
-
-
-func _summary_style() -> StyleBoxFlat:
-	if summary_style_cache != null:
-		return summary_style_cache
-	var style := StyleBoxFlat.new()
-	style.bg_color = _theme_paper_color()
-	style.content_margin_left = 0
-	style.content_margin_right = 0
-	style.content_margin_top = 0
-	style.content_margin_bottom = 0
-	summary_style_cache = style
 	return style
 
 

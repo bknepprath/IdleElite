@@ -433,8 +433,6 @@ foreach ($safeModuleUiCallbackName in @(
     "_finish_collapsed_module_expand_animation",
     "_on_module_pin_zone_gui_input",
     "_commit_module_pin_tap",
-    "_finish_module_pin_preview_animation",
-    "_expire_module_pin_preview_after_delay",
     "_pin_module_ui_key",
     "_unpin_module_ui_key",
     "_module_pin_badge",
@@ -483,8 +481,7 @@ foreach ($safeStaminaAndScrollCallbackName in @(
     "_finish_stamina_fail_shake",
     "_apply_fish_collection_fly_progress",
     "_finish_detail_actions_visual_scroll",
-    "_fade_skill_swipe_cover_to_opaque",
-    "_position_new_onboarding_explore_tip"
+    "_fade_skill_swipe_cover_to_opaque"
 )) {
     $safeStaminaAndScrollCallback = Get-FunctionBody -Text $main -Name $safeStaminaAndScrollCallbackName
     Assert-True ($safeStaminaAndScrollCallback -notmatch 'instance_from_id\([^\r\n]+\) as Control') "$safeStaminaAndScrollCallbackName should not directly cast delayed stamina/fish/scroll instance IDs."
@@ -503,7 +500,6 @@ foreach ($safePreviewSharedCallbackName in @(
     "_finish_activity_preview_fade_in",
     "_finish_activity_preview_card_after_fade_deferred",
     "_set_preview_pop_vertical_offset_safe",
-    "_set_control_position_y_safe",
     "_set_canvas_item_alpha_safe",
     "_set_control_minimum_height_safe",
     "_apply_detail_scroll_height_change_preserve_context",
@@ -1714,7 +1710,6 @@ Assert-True ($main -notmatch '_ensure_activity_unlock_preview_lazy_plan_item') "
 $visibleThievingHeists = Get-FunctionBody -Text $main -Name "_visible_thieving_heists_for_render"
 Assert-True ($visibleThievingHeists -match '_skill_level\("thieving"\) < int\(heist\.get\("unlock", 1\)\)') "Thieving trophy heists should remain gated by their unlock level."
 Assert-True ($visibleThievingHeists -match 'i > 0 and not _thieving_trophy_stolen') "Later Thieving trophy heists should remain gated by the previous stolen trophy."
-Assert-True ($visibleThievingHeists -notmatch '_thieving_heist_preceding_action_unlocked') "Thieving trophy heists should not be hidden behind regular action unlock ceremonies."
 
 $removeThievingHeist = Get-FunctionBody -Text $main -Name "_remove_thieving_heist_card_from_detail"
 Assert-True ($removeThievingHeist -match '_discard_action_card_key\(action_key\)') "Removing Thieving heist cards should clear both action card maps and ordered keys."
@@ -2067,8 +2062,6 @@ $imageFactory = Get-FunctionBody -Text $main -Name "_image"
 Assert-True ($imageFactory -match '_texture_or_visual_fallback\(path\)') "General image creation should not assign nullable loaded textures directly."
 $imageFromTexture = Get-FunctionBody -Text $main -Name "_image_from_texture"
 Assert-True ($imageFromTexture -match '_visual_fallback_texture\(\)') "Image creation from optional textures should fall back to a non-null visual texture."
-$iconButton = Get-FunctionBody -Text $main -Name "_icon_button"
-Assert-True ($iconButton -match '_texture_or_visual_fallback\(path\)') "Generic icon buttons should not assign nullable icon textures directly."
 $ensureNavBarIcons = Get-FunctionBody -Text $main -Name "_ensure_nav_bar_icons"
 Assert-True ($ensureNavBarIcons -match '_texture_or_visual_fallback\(path\)') "Deferred nav button icons should not assign nullable icon textures directly."
 $navButton = Get-FunctionBody -Text $main -Name "_nav_button"
@@ -2099,11 +2092,8 @@ Assert-True ($hubMissionSlab -match '_texture_or_visual_fallback\(str\(action\.g
 $hubMissionBadge = Get-FunctionBody -Text $main -Name "_hub_mission_badge"
 Assert-True ($hubMissionBadge -match '_texture_or_visual_fallback\(HUB_MISSION_PAPER_BADGE\)') "Hub mission badge art should not assign nullable loaded textures directly."
 Assert-True ($hubMissionBadge -match '_add_action_card_type_badge_help\(root, HUB_MISSION_BADGE_TITLE, HUB_MISSION_BADGE_INFO\)') "Hub mission badges should explain mission tasks when tapped."
-$eventHourglassBadge = Get-FunctionBody -Text $main -Name "_event_hourglass_badge"
 Assert-True ($main -match 'const EVENT_HOURGLASS_BADGE := "res://assets/content/ui/event-hourglass-badge\.png"') "Event cards should use the generated hourglass badge asset."
 Assert-True ($main -match 'const ACTION_CARD_TYPE_BADGE_OFFSET_LEFT := -197\.0[\s\S]*const ACTION_CARD_TYPE_BADGE_OFFSET_RIGHT := 34\.0[\s\S]*const ACTION_CARD_TYPE_BADGE_OFFSET_TOP := -68\.0[\s\S]*const ACTION_CARD_TYPE_BADGE_OFFSET_BOTTOM := 163\.0') "Action-card type badges should sit farther right and 10% larger than the previous 210px badge box."
-Assert-True ($eventHourglassBadge -match '_texture_or_visual_fallback\(EVENT_HOURGLASS_BADGE\)') "Event hourglass badge art should not assign nullable loaded textures directly."
-Assert-True ($eventHourglassBadge -match '_add_action_card_type_badge_help\(root, EVENT_HOURGLASS_BADGE_TITLE, EVENT_HOURGLASS_BADGE_INFO\)') "Event hourglass badges should explain random events when tapped."
 $configureActionCardTypeBadgeRoot = Get-FunctionBody -Text $main -Name "_configure_action_card_type_badge_root"
 Assert-True ($configureActionCardTypeBadgeRoot -match 'root\.offset_left = ACTION_CARD_TYPE_BADGE_OFFSET_LEFT[\s\S]*root\.offset_right = ACTION_CARD_TYPE_BADGE_OFFSET_RIGHT[\s\S]*root\.offset_top = ACTION_CARD_TYPE_BADGE_OFFSET_TOP[\s\S]*root\.offset_bottom = ACTION_CARD_TYPE_BADGE_OFFSET_BOTTOM') "Event and mission badges should share the same tuned top-right badge placement."
 $addActionCardTypeBadgeHelp = Get-FunctionBody -Text $main -Name "_add_action_card_type_badge_help"
@@ -2290,10 +2280,7 @@ Assert-True ($fishingToolWalletOverlay -match 'const COLOR_GOLD := Color\("#fff2
 Assert-True ($fishingToolWalletOverlay -match 'const COLOR_MUTED := Color\("#6e6658"\)') "Fishing tool wallet overlay should preserve its locked-tool border color after extraction."
 Assert-True ($fishingToolWalletOverlay -match 'texture_rect\.modulate = Color\.WHITE if unlocked else Color\(1, 1, 1, 0\.42\)') "Fishing tool wallet overlay should dim locked tool icons."
 $fishingVisibleWalletTools = Get-FunctionBody -Text $main -Name "_fishing_visible_wallet_tool_defs"
-$fishingWalletSelectableTools = Get-FunctionBody -Text $main -Name "_fishing_wallet_selectable_tools"
 Assert-True ($fishingVisibleWalletTools -match 'var visible_wallet_tools: Array = \[\]') "Fishing wallet visible tool helper should name its returned slots by wallet domain."
-Assert-True ($fishingWalletSelectableTools -match '_fishing_visible_wallet_tool_defs\(\)') "Fishing wallet selectable tools should derive from visible wallet tool slots."
-Assert-True ($fishingWalletSelectableTools -match 'var selectable_tools: Array = \[\]') "Fishing wallet selectable tool helper should distinguish selectable tools from visible locked slots."
 Assert-True ($main -notmatch '_fishing_wallet_choice_tools') "Fishing wallet helpers should not use vague choice-tool naming."
 $commitSkillSwipe = Get-FunctionBody -Text $main -Name "_commit_skill_swipe"
 Assert-True ($commitSkillSwipe -match 'outgoing_skill_id == "fishing" and fishing_tool_wallet_open') "Skill swipes away from fishing should close the floating tool wallet."
@@ -2665,9 +2652,6 @@ Assert-True ($renderShopPage -match 'pressed", _paper_button_style\(Color\("#38c
 $achievementsTabStyle = Get-FunctionBody -Text $main -Name "_apply_achievements_modal_tab_style"
 Assert-True ($achievementsTabStyle -match 'var hover_fill := fill if active else fill\.lightened\(0\.06\)') "Inactive achievements tabs should have a subtle distinct hover fill while active tabs stay stable."
 Assert-True ($achievementsTabStyle -match 'hover", _paper_button_style\(hover_fill, 48\)') "Achievements tabs should apply the computed hover fill."
-$hubBuildModeButtonStyle = Get-FunctionBody -Text $main -Name "_hub_build_mode_button_style"
-Assert-True ($hubBuildModeButtonStyle -match 'hovered := false') "Hub build-mode button style should default to non-hovered."
-Assert-True ($hubBuildModeButtonStyle -match 'fill\.lightened\(0\.06\)') "Hub build-mode hover should be a subtle lift of the existing active/inactive fill."
 
 $setCanvasItemVisible = Get-FunctionBody -Text $main -Name "_set_canvas_item_visible_if_changed"
 Assert-True ($setCanvasItemVisible -match 'is_queued_for_deletion\(\)') "Shared visibility writes should skip nodes queued for deletion."
@@ -2841,9 +2825,6 @@ Assert-True ($onDetailActionsUserScrollDirection -match 'if action_stop_hold_act
 $onDetailActionsPullOffsetChanged = Get-FunctionBody -Text $main -Name "_on_detail_actions_pull_offset_changed"
 Assert-True ($onDetailActionsPullOffsetChanged -match 'if action_stop_hold_active and absf\(offset_y\) >= ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE:\s*\r?\n\s*_cancel_action_stop_hold\(\)') "Detail pull-resistance drags should cancel active-card stop holds when the finger moves downward at the scroll edge."
 
-$syncHubHotspotHoldCircle = Get-FunctionBody -Text $main -Name "_sync_hub_hotspot_hold_circle"
-Assert-True ($syncHubHotspotHoldCircle -match 'is_queued_for_deletion\(\)') "Hub hotspot hold circle sync should skip queued-for-deletion nodes."
-Assert-True ($syncHubHotspotHoldCircle -match '_set_canvas_item_visible_if_changed\(hub_hotspot_hold_circle, true\)') "Hub hotspot hold circle sync should guard repeated visibility writes."
 $hideHubHotspotHoldCircle = Get-FunctionBody -Text $main -Name "_hide_hub_hotspot_hold_circle"
 Assert-True ($hideHubHotspotHoldCircle -match '_set_canvas_item_visible_if_changed\(hub_hotspot_hold_circle, false\)') "Hub hotspot hold circle hide should guard repeated visibility writes."
 
@@ -2948,10 +2929,6 @@ Assert-True ($lightPreviewCard -notmatch '_activity_lock_overlay') "Rich lightwe
 $lightPreviewCardStyle = Get-FunctionBody -Text $main -Name "_skill_swipe_light_preview_card_style"
 Assert-True ($lightPreviewCardStyle -match 'skill_swipe_light_preview_card_style_cache\.has\(key\)') "Lightweight swipe preview shell styles should be cached."
 Assert-True ($lightPreviewCardStyle -match 'skill_swipe_light_preview_card_style_cache\[key\] = style') "Lightweight swipe preview shell styles should store their cached resource."
-
-$summaryStyle = Get-FunctionBody -Text $main -Name "_summary_style"
-Assert-True ($summaryStyle -match 'summary_style_cache != null') "Skill detail summary style should reuse its cached StyleBoxFlat."
-Assert-True ($summaryStyle -match 'summary_style_cache = style') "Skill detail summary style should populate its cache once."
 
 $applyNavStyle = Get-FunctionBody -Text $main -Name "_apply_nav_style"
 Assert-True ($applyNavStyle -match 'nav_empty_style_applied') "Bottom nav style should be applied once per button."
