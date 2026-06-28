@@ -162,10 +162,6 @@ func _draw_braid_paths(paths: Array, base_width: float, outline_width: float) ->
 		if fill_pct > 0.0:
 			_draw_path(path, segment_colors[index] as Color, base_width, fill_pct, Vector2.ZERO, false, false)
 
-func _cubic_point(a: Vector2, b: Vector2, c: Vector2, d: Vector2, t: float) -> Vector2:
-	var one_minus_t := 1.0 - t
-	return a * pow(one_minus_t, 3.0) + b * 3.0 * pow(one_minus_t, 2.0) * t + c * 3.0 * one_minus_t * t * t + d * t * t * t
-
 func _catmull_point(a: Vector2, b: Vector2, c: Vector2, d: Vector2, t: float) -> Vector2:
 	var t2 := t * t
 	var t3 := t2 * t

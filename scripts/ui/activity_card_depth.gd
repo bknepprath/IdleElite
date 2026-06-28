@@ -279,11 +279,6 @@ func _draw_visible_outline_path(path: PackedVector2Array) -> void:
 		return
 	draw_polyline(path, lip_color, 7.0, true)
 
-func _draw_depth_cap_line(point: Vector2, front: Vector2, back: Vector2, face_size: Vector2) -> void:
-	if not _depth_cap_should_draw(point, face_size):
-		return
-	draw_line(front + point, _depth_back_point(point, front, back, face_size), lip_color, 7.0, true)
-
 func _edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
 	var edge := p1 - p0
 	if edge.length_squared() <= 0.001:
@@ -294,9 +289,6 @@ func _depth_edge_visible(normal: Vector2, travel: Vector2, _p0: Vector2, _p1: Ve
 	if normal.length_squared() <= 0.001 or normal.dot(travel) <= 0.15:
 		return false
 	return normal.x > 0.08 or normal.y > 0.56
-
-func _depth_cap_should_draw(point: Vector2, face_size: Vector2) -> bool:
-	return point.x >= face_size.x - radius * 0.68 or point.y <= radius * 0.68
 
 func _depth_back_point(point: Vector2, _front: Vector2, back: Vector2, _face_size: Vector2) -> Vector2:
 	return back + point
@@ -347,13 +339,6 @@ func _rounded_body_style(fill: Color, border: Color, border_width: int, face_siz
 	style.set_corner_radius_all(corner)
 	return style
 
-func _draw_polygon_outline(points: PackedVector2Array, color: Color, width: float) -> void:
-	if points.size() < 2:
-		return
-	var closed := PackedVector2Array(points)
-	closed.append(points[0])
-	draw_polyline(closed, color, width, true)
-
 func _draw_rounded_rect_outline(rect: Rect2, color: Color, width: float, draw_bottom := true) -> void:
 	var half := width * 0.5
 	var left := rect.position.x + half
@@ -370,22 +355,4 @@ func _draw_rounded_rect_outline(rect: Rect2, color: Color, width: float, draw_bo
 		draw_line(Vector2(left + r, bottom), Vector2(right - r, bottom), color, width, true)
 		draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, OUTLINE_ARC_SEGMENTS, color, width, true)
 		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, OUTLINE_ARC_SEGMENTS, color, width, true)
-
-func _draw_soft_floor_shadow(face_size: Vector2, back: Vector2) -> void:
-	var r := minf(radius, minf(face_size.x, face_size.y) * 0.5)
-	var left := back.x + r * 0.58
-	var right := back.x + face_size.x - r * 0.48
-	var start_y := back.y + face_size.y - 5.0
-	for i in range(4):
-		var t := float(i) / 3.0
-		var alpha := shadow_color.a * pow(1.0 - t, 1.8)
-		draw_line(
-			Vector2(left + t * 16.0, start_y + t * 7.0),
-			Vector2(right - t * 22.0, start_y + t * 7.0),
-			Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha),
-			3.0,
-			true
-		)
-
-
 

@@ -1,4 +1,3 @@
-class_name FishingAttemptBar
 extends Control
 
 const PHASE_CALM := Color("#9ad4e8")

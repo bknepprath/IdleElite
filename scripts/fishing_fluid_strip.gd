@@ -1,4 +1,3 @@
-class_name FishingFluidStrip
 extends Control
 
 enum Phase { CALM, BITE, REVEAL }

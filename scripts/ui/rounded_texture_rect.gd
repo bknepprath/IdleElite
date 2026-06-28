@@ -171,17 +171,6 @@ void fragment() {
 	_update_mask_params()
 
 
-func set_fast_flat_render_enabled(enabled: bool) -> void:
-	if fast_flat_render_enabled == enabled:
-		return
-	fast_flat_render_enabled = enabled
-	if enabled:
-		material = null
-	else:
-		_ensure_mask_material()
-	queue_redraw()
-
-
 func _draw_fast_flat_texture() -> void:
 	var current_texture := _mask_texture()
 	if current_texture == null:

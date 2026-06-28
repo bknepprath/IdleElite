@@ -62,7 +62,7 @@ Mistake:
 - Focused tests passed because they asserted pin state and card behavior, not the absence of a visible transition blocker.
 - Scroll-anchor preservation code from an older rebuild-based pin flow was left active after pins no longer needed to rebuild the skill page.
 
-Root cause: `_pin_module_ui_key()` and `_unpin_module_ui_key()` still started pin-time transition blockers and an opaque pin refresh cover (`_begin_pin_transition_blocker("skill")`, `module_ui_pin_refresh_cover_requested`, and `_begin_module_pin_refresh_hard_cover()`) before the badge animation played. Even after replacing the delayed refresh with in-place badge/shelf sync, this immediate cover still blanked the page on every pin.
+Root cause: `_pin_module_ui_key()` and `_unpin_module_ui_key()` still started pin-time transition blockers and an opaque pin refresh cover before the badge animation played. Even after replacing the delayed refresh with in-place badge/shelf sync, this immediate cover still blanked the page on every pin.
 
 Fix:
 

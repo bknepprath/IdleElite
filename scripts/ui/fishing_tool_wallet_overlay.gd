@@ -112,23 +112,6 @@ func _wallet_style(fill: Color, border: Color, border_width: float, radius: floa
 	style.shadow_offset = Vector2(4, 6)
 	return style
 
-func _draw_pill(rect: Rect2, fill: Color, border: Color, border_width: float) -> void:
-	_draw_filled_pill(rect, border)
-	_draw_filled_pill(rect.grow(-border_width), fill)
-
-func _draw_filled_pill(rect: Rect2, color: Color) -> void:
-	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
-		return
-	var radius := minf(rect.size.x, rect.size.y) * 0.5
-	if rect.size.y >= rect.size.x:
-		draw_rect(Rect2(rect.position.x, rect.position.y + radius, rect.size.x, maxf(0.0, rect.size.y - radius * 2.0)), color)
-		draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
-		draw_circle(Vector2(rect.position.x + radius, rect.end.y - radius), radius, color)
-	else:
-		draw_rect(Rect2(rect.position.x + radius, rect.position.y, maxf(0.0, rect.size.x - radius * 2.0), rect.size.y), color)
-		draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
-		draw_circle(Vector2(rect.end.x - radius, rect.position.y + radius), radius, color)
-
 func _fit_texture_rect(texture: Texture2D, bounds: Rect2) -> Rect2:
 	var texture_size := texture.get_size()
 	if texture_size.x <= 0.0 or texture_size.y <= 0.0:

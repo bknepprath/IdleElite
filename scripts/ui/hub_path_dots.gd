@@ -131,13 +131,6 @@ func _collect_trunk_segment(start: Vector2, destination: Vector2, route_seed: fl
 		return point
 	)
 
-func _collect_dotted_path(start: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
-	var control := Vector2(start.x, lerpf(start.y, destination.y, 0.54))
-	_collect_sampled_dotted_path(start, destination, route_seed, next_dots, func(t: float) -> Vector2:
-		var q := 1.0 - t
-		return q * q * start + 2.0 * q * t * control + t * t * destination
-	)
-
 func _branch_arrival_point(start: Vector2, destination: Vector2, route_seed: float) -> Vector2:
 	var side := signf(destination.x - start.x)
 	if absf(side) < 0.001:
@@ -386,20 +379,6 @@ func _draw_dirt_patch(center: Vector2, radius_x: float, radius_y: float, color: 
 		var offset := Vector2(lerpf(-0.24, 0.24, _unit(noise_seed + 43.0)) * radius_x, lerpf(-0.22, 0.22, _unit(noise_seed + 47.0)) * radius_y)
 		_draw_irregular_oval(center + offset, radius_x * lerpf(0.22, 0.42, _unit(noise_seed + 53.0)), radius_y * lerpf(0.32, 0.58, _unit(noise_seed + 59.0)), cool, noise_seed + 61.0, 0.20)
 
-func _draw_feathered_oval(center: Vector2, radius_x: float, radius_y: float, color: Color) -> void:
-	var fade_color := color
-	var fade_steps := [
-		{"scale": 1.20, "alpha": 0.09},
-		{"scale": 1.10, "alpha": 0.25},
-		{"scale": 1.03, "alpha": 0.52},
-		{"scale": 1.00, "alpha": 0.94}
-	]
-	for raw_step in fade_steps:
-		var step := raw_step as Dictionary
-		fade_color.a = float(step.get("alpha", 1.0))
-		var step_scale := float(step.get("scale", 1.0))
-		_draw_oval(center, radius_x * step_scale, radius_y * step_scale, fade_color)
-
 func _draw_irregular_oval(center: Vector2, radius_x: float, radius_y: float, color: Color, noise_seed: float, wobble: float) -> void:
 	var oval_points := PackedVector2Array()
 	var count := 32
@@ -409,13 +388,6 @@ func _draw_irregular_oval(center: Vector2, radius_x: float, radius_y: float, col
 		var tangent_noise := lerpf(-wobble * 0.18, wobble * 0.18, _unit(noise_seed + float(i) * 7.77))
 		var radial := 1.0 + edge_noise
 		oval_points.append(center + Vector2(cos(angle + tangent_noise) * radius_x * radial, sin(angle + tangent_noise) * radius_y * radial))
-	draw_colored_polygon(oval_points, color)
-
-func _draw_oval(center: Vector2, radius_x: float, radius_y: float, color: Color) -> void:
-	var oval_points := PackedVector2Array()
-	for i in range(28):
-		var angle := TAU * float(i) / 28.0
-		oval_points.append(center + Vector2(cos(angle) * radius_x, sin(angle) * radius_y))
 	draw_colored_polygon(oval_points, color)
 
 func _dot_rect(dot: Dictionary, padding: float) -> Rect2:

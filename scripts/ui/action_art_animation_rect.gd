@@ -224,14 +224,6 @@ func _sequence_index_for_frame(frame_index: int) -> int:
 	return clampi(frame_index, 0, maxi(0, frame_sequence.size() - 1))
 
 
-func _effect_color_for_progress(progress: float) -> Color:
-	if effect_colors.is_empty():
-		return Color.WHITE
-	var scaled := clampf(progress, 0.0, 0.9999) * float(effect_colors.size())
-	var index := clampi(int(floor(scaled)), 0, effect_colors.size() - 1)
-	return effect_colors[index]
-
-
 func _effect_color_for_step() -> Color:
 	if effect_colors.is_empty():
 		return Color.WHITE

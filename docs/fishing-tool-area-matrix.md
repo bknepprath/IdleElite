@@ -163,7 +163,7 @@ Resolve at attempt time:
 ## What changes
 
 - Replace per-action art rows with **`locations[]` nested under each region** in `fishing.areas[]`.
-- Add **`_render_fishing_tool_rack()`** — persistent module; `equipped_tool_id` in save/state.
+- Keep the tool picker in the persistent fishing wallet/popup path; `equipped_tool_id` remains the save/state field.
 - Region module renders **location tiles** (1–3); attempts = **equipped tool × selected location**.
 - Authoring: **~8–12 tools** + **~10 regions** + **~2–4 locations each** + sparse **tool×location** affinity (not 23 flat actions).
 

@@ -39,7 +39,7 @@ Line numbers move, so search symbols instead of trusting exact offsets.
 | Runtime state | `music_volume`, `sfx_volume`, `flow_heat`, `music_players`, `audio_stream_cache`, `music_stream_cache` | Persistent settings and transient audio state. |
 | Audio settings UI | `_audio_volume_control`, `_set_music_volume_from_slider`, `_set_sfx_muted_from_toggle` | Settings screen sliders and mute buttons. |
 | Save/load | `_save_payload`, `_restore_audio_settings_from_save`, `_restore_music_flow_state_from_save` | Persisted audio settings and partial music-flow state. |
-| Audio build/warmup | `_build_boot_audio`, `_build_extended_audio`, `_warm_extended_audio_async`, `_build_audio` | Player creation and deferred warmup. |
+| Audio build/warmup | `_build_extended_audio`, `_warm_extended_audio_async`, `_ensure_extended_audio`, `_ensure_audio_buses` | Player creation and deferred warmup. |
 | Core helpers | `_sfx`, `_load_sfx_stream`, `_play`, `_play_with_pitch`, `_can_play_audio` | Shared player creation and playback gating. |
 | Music flow | `_process_music_flow`, `_record_music_flow_start`, `_record_music_flow_action`, `_start_music_cycle` | Layered adaptive music state machine. |
 | Gameplay SFX | `_play_activity_success_sound`, `_play_chain_move_jingle_mix`, `_play_fishing_attempt_reveal` | Actual gameplay sound entry points. |
@@ -98,7 +98,6 @@ There are three build levels:
 
 | Function | What it builds | Why |
 | --- | --- | --- |
-| `_build_boot_audio()` | Buses, default click player, audio unlock ping player | Cheap sounds needed immediately. |
 | `_build_extended_audio()` | Success, crit, failure, lock, chain-adjacent, passive, pin, bonus, fishing players | Full gameplay sound set. |
 | `_warm_extended_audio_async()` | Same extended set, but spread across frames using `EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC` | Avoids a large frame hitch after boot. |
 
@@ -435,7 +434,7 @@ Use this checklist.
 3. Decide whether this is a replacement or a new sound family.
 4. Put shipped assets under `assets/sfx/` or `assets/music/`, not a candidate folder.
 5. Add a named constant for the path if the sound is feature-owned.
-6. Add a player in `_build_extended_audio()` or `_build_boot_audio()` as appropriate.
+6. Add a player in `_build_extended_audio()` as appropriate, then make sure any needed bus/player setup still flows through `_ensure_extended_audio()`.
 7. Add the same player setup to `_warm_extended_audio_async()` if it belongs to extended audio.
 8. Route playback through `_play()` or `_play_with_pitch()` unless you need custom capped/faded behavior.
 9. Respect `_can_play_audio()`.

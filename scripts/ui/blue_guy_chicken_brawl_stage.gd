@@ -1,4 +1,3 @@
-class_name BlueGuyChickenBrawlStage
 extends "res://scripts/ui/fighting_module_stage.gd"
 
 signal chicken_killed(xp_amount: int)
@@ -8,7 +7,6 @@ signal knocked_out
 const INK := Color("#171615")
 const PAPER := Color("#fff1bd")
 const BAR_EMPTY := Color("#3f2b25")
-const HERO_HP := Color("#32db7c")
 const HERO_HP_BLUE := Color("#4fc3ff")
 const CHICKEN_HP := Color("#ffcf35")
 const DANGER := Color("#ee4b38")
@@ -1559,185 +1557,6 @@ func _draw_closed_cover_shell(rect: Rect2, radius: float, fill: Color, shadow: C
 	draw_round_outline(rect.grow(-1.0 * s), maxf(1.0, radius - 1.0 * s), Color(shadow.r, shadow.g, shadow.b, 0.76), 2.0 * s)
 
 
-func _draw_cover_health_badge(arena: Rect2, s: float, open_t: float) -> void:
-	var alpha := clampf(1.0 - open_t * 2.0, 0.0, 1.0)
-	if alpha <= 0.01:
-		return
-	var pct := clampf(float(cover_health_current) / float(maxi(1, cover_health_maximum)), 0.0, 1.0)
-	var center := Vector2(arena.position.x + arena.size.x * 0.74, arena.position.y + arena.size.y * 0.54)
-	var heart_radius := clampf(arena.size.y * 0.62, 138.0, 220.0)
-	var heart_center := center + Vector2(0.0, 6.0 * s)
-	var heart_points := _cover_heart_points(heart_center, heart_radius)
-	var shadow_points := _cover_heart_points(heart_center + Vector2(0.0, 10.0 * s), heart_radius)
-	draw_colored_polygon(shadow_points, Color(0, 0, 0, 0.22 * alpha))
-	draw_colored_polygon(heart_points, Color("#321416", alpha))
-	_draw_heart_fill_rows(heart_points, pct, Color("#ff5368", alpha), maxf(3.0, 4.5 * s))
-	if pct > 0.01 and pct < 0.995:
-		_draw_heart_liquid_surface(heart_points, pct, Color("#ffb2bd", alpha), maxf(3.0, 5.0 * s))
-	_draw_cover_heart_highlight(heart_center, heart_radius, alpha)
-	_draw_heart_outline_path(heart_points, Color("#fff1bd", 0.55 * alpha), maxf(15.0, heart_radius * 0.11))
-	for i in range(heart_points.size()):
-		draw_line(heart_points[i], heart_points[(i + 1) % heart_points.size()], Color("#171615", alpha), maxf(7.0, heart_radius * 0.09), true)
-	if cover_health_current < cover_health_maximum:
-		_draw_heart_path_progress(heart_points, cover_health_regen_fraction, Color("#35e67c", alpha), maxf(8.0, heart_radius * 0.062))
-	var text_color := Color("#fffaf0", alpha)
-	var outline_color := Color("#171615", alpha)
-	_draw_heart_stacked_readout(str(cover_health_current), str(cover_health_maximum), heart_center + Vector2(0.0, -heart_radius * 0.02), heart_radius, text_color, Color("#ffe9b0", alpha), outline_color)
-	_draw_centered_text("HP", heart_center + Vector2(0.0, heart_radius * 0.43), int(clampf(heart_radius * 0.17, 30.0, 38.0)), Color("#ffe9b0", alpha), int(maxf(4.0, heart_radius * 0.04)), outline_color)
-
-
-func _draw_cover_heart_highlight(center: Vector2, radius: float, alpha: float) -> void:
-	var highlight := PackedVector2Array()
-	var start := -2.78
-	var finish := -1.42
-	for i in range(18):
-		var t := float(i) / 17.0
-		var angle := lerpf(start, finish, t)
-		var x := cos(angle) * radius * (0.34 + 0.035 * sin(t * PI))
-		var y := sin(angle) * radius * 0.35
-		highlight.append(center + Vector2(-radius * 0.12 + x, -radius * 0.02 + y))
-	for i in range(17, -1, -1):
-		var t := float(i) / 17.0
-		var angle := lerpf(start, finish, t)
-		var x := cos(angle) * radius * (0.23 + 0.025 * sin(t * PI))
-		var y := sin(angle) * radius * 0.24
-		highlight.append(center + Vector2(-radius * 0.12 + x, -radius * 0.02 + y))
-	draw_colored_polygon(highlight, Color(1, 1, 1, 0.22 * alpha))
-
-
-func _draw_heart_fill_rows(points: PackedVector2Array, pct: float, color: Color, row_height: float) -> void:
-	if points.size() < 3:
-		return
-	var min_y := points[0].y
-	var max_y := points[0].y
-	for point in points:
-		min_y = minf(min_y, point.y)
-		max_y = maxf(max_y, point.y)
-	var fill_top := lerpf(max_y, min_y, clampf(pct, 0.0, 1.0))
-	var y := fill_top
-	while y <= max_y:
-		var xs: Array[float] = []
-		for i in range(points.size()):
-			var a := points[i]
-			var b := points[(i + 1) % points.size()]
-			if absf(a.y - b.y) < 0.001:
-				continue
-			if (a.y <= y and b.y > y) or (b.y <= y and a.y > y):
-				var t := (y - a.y) / (b.y - a.y)
-				xs.append(lerpf(a.x, b.x, t))
-		xs.sort()
-		var pair_count := int(xs.size() / 2)
-		for i in range(pair_count):
-			var left_x := xs[i * 2]
-			var right_x := xs[i * 2 + 1]
-			draw_line(Vector2(left_x, y), Vector2(right_x, y), color, row_height, false)
-		y += row_height
-
-
-func _draw_heart_liquid_surface(points: PackedVector2Array, pct: float, color: Color, width: float) -> void:
-	if points.size() < 3:
-		return
-	var min_y := points[0].y
-	var max_y := points[0].y
-	for point in points:
-		min_y = minf(min_y, point.y)
-		max_y = maxf(max_y, point.y)
-	var y := lerpf(max_y, min_y, clampf(pct, 0.0, 1.0))
-	var xs: Array[float] = []
-	for i in range(points.size()):
-		var a := points[i]
-		var b := points[(i + 1) % points.size()]
-		if absf(a.y - b.y) < 0.001:
-			continue
-		if (a.y <= y and b.y > y) or (b.y <= y and a.y > y):
-			var t := (y - a.y) / (b.y - a.y)
-			xs.append(lerpf(a.x, b.x, t))
-	xs.sort()
-	if xs.size() >= 2:
-		draw_line(Vector2(xs[0], y), Vector2(xs[xs.size() - 1], y), color, width, true)
-
-
-func _draw_heart_stacked_readout(numerator: String, denominator: String, center: Vector2, heart_radius: float, numerator_color: Color, denominator_color: Color, outline_color: Color) -> void:
-	var font := ThemeDB.fallback_font
-	var numerator_size := int(clampf(heart_radius * 0.38, 58.0, 78.0))
-	var denominator_size := int(clampf(heart_radius * 0.22, 34.0, 46.0))
-	var numerator_stroke := int(maxf(6.0, heart_radius * 0.052))
-	var denominator_stroke := int(maxf(4.0, heart_radius * 0.036))
-	_draw_centered_text(numerator, center + Vector2(0.0, -heart_radius * 0.17), numerator_size, numerator_color, numerator_stroke, outline_color)
-	var divider_half_width := heart_radius * 0.30
-	var divider_y := center.y + heart_radius * 0.035
-	draw_line(Vector2(center.x - divider_half_width, divider_y), Vector2(center.x + divider_half_width, divider_y), outline_color, maxf(4.0, heart_radius * 0.035), true)
-	draw_line(Vector2(center.x - divider_half_width * 0.86, divider_y - heart_radius * 0.015), Vector2(center.x + divider_half_width * 0.86, divider_y - heart_radius * 0.015), Color("#fff2c9", numerator_color.a * 0.55), maxf(2.0, heart_radius * 0.014), true)
-	_draw_centered_text(denominator, center + Vector2(0.0, heart_radius * 0.21), denominator_size, denominator_color, denominator_stroke, outline_color)
-
-
-func _small_heart_points(center: Vector2, radius: float) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	for i in range(48):
-		var t := TAU * float(i) / 48.0
-		var x := 16.0 * pow(sin(t), 3.0)
-		var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
-		points.append(center + Vector2(x / 17.0, y / 17.0) * radius)
-	return points
-
-
-func _cover_heart_points(center: Vector2, radius: float) -> PackedVector2Array:
-	var points := PackedVector2Array()
-	var segments := [
-		[Vector2(0.0, -0.43), Vector2(0.20, -0.69), Vector2(0.62, -0.73), Vector2(0.83, -0.48)],
-		[Vector2(0.83, -0.48), Vector2(1.05, -0.22), Vector2(1.02, 0.28), Vector2(0.77, 0.48)],
-		[Vector2(0.77, 0.48), Vector2(0.54, 0.66), Vector2(0.23, 0.80), Vector2(0.0, 0.88)],
-		[Vector2(0.0, 0.88), Vector2(-0.23, 0.80), Vector2(-0.54, 0.66), Vector2(-0.77, 0.48)],
-		[Vector2(-0.77, 0.48), Vector2(-1.02, 0.28), Vector2(-1.05, -0.22), Vector2(-0.83, -0.48)],
-		[Vector2(-0.83, -0.48), Vector2(-0.62, -0.73), Vector2(-0.20, -0.69), Vector2(0.0, -0.43)]
-	]
-	for segment_index in range(segments.size()):
-		var segment: Array = segments[segment_index]
-		for i in range(12):
-			if segment_index > 0 and i == 0:
-				continue
-			var t := float(i) / 11.0
-			var local := _cubic_bezier_point(segment[0] as Vector2, segment[1] as Vector2, segment[2] as Vector2, segment[3] as Vector2, t)
-			points.append(center + Vector2(local.x * radius, local.y * radius))
-	return points
-
-
-func _cubic_bezier_point(a: Vector2, b: Vector2, c: Vector2, d: Vector2, t: float) -> Vector2:
-	var u := 1.0 - t
-	return a * (u * u * u) + b * (3.0 * u * u * t) + c * (3.0 * u * t * t) + d * (t * t * t)
-
-
-func _draw_heart_outline_path(points: PackedVector2Array, color: Color, width: float) -> void:
-	for i in range(points.size()):
-		draw_line(points[i], points[(i + 1) % points.size()], color, width, true)
-
-
-func _draw_heart_path_progress(points: PackedVector2Array, progress: float, color: Color, width: float) -> void:
-	if points.size() < 2:
-		return
-	var target := clampf(progress, 0.0, 1.0)
-	var total_length := 0.0
-	for i in range(points.size()):
-		total_length += points[i].distance_to(points[(i + 1) % points.size()])
-	var remaining := total_length * target
-	var start_index := int(points.size() * 0.75)
-	for step in range(points.size()):
-		if remaining <= 0.0:
-			break
-		var i := (start_index + step) % points.size()
-		var a := points[i]
-		var b := points[(i + 1) % points.size()]
-		var segment_length := a.distance_to(b)
-		if segment_length <= 0.001:
-			continue
-		if remaining >= segment_length:
-			draw_line(a, b, color, width, true)
-			remaining -= segment_length
-		else:
-			draw_line(a, a.lerp(b, remaining / segment_length), color, width, true)
-			break
-
-
 func _draw_cover_panel_face(rect: Rect2, radius: float, fill: Color, s: float, top_panel: bool, round_top: bool, round_bottom: bool) -> void:
 	var row_height := maxf(2.0, 5.0 * s)
 	var y := rect.position.y
@@ -1965,15 +1784,6 @@ func _ko_banner_rect(s: float) -> Rect2:
 	return Rect2(Vector2((size.x - width) * 0.5, size.y * 0.24), Vector2(width, height))
 
 
-func _draw_burst(center: Vector2, inner_radius: float, outer_radius: float, points: int, color: Color, rotation := 0.0) -> void:
-	var vertices := PackedVector2Array()
-	for i in range(points * 2):
-		var radius := outer_radius if i % 2 == 0 else inner_radius
-		var angle := rotation + TAU * float(i) / float(points * 2)
-		vertices.append(center + Vector2(cos(angle), sin(angle)) * radius)
-	draw_colored_polygon(vertices, color)
-
-
 func _draw_centered_text(text: String, center: Vector2, font_size: int, fill: Color, outline_size: int, outline: Color) -> void:
 	var font := get_theme_default_font()
 	if font == null:
@@ -1988,14 +1798,6 @@ func _draw_centered_text(text: String, center: Vector2, font_size: int, fill: Co
 func _draw_left_text(font: Font, text: String, anchor: Vector2, font_size: int, fill: Color, outline_size: float, outline: Color) -> void:
 	var baseline := anchor.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
 	var position := Vector2(anchor.x, baseline)
-	draw_string_outline(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, int(round(outline_size)), outline)
-	draw_string(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, fill)
-
-
-func _draw_right_text(font: Font, text: String, anchor: Vector2, font_size: int, fill: Color, outline_size: float, outline: Color) -> void:
-	var text_size := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size)
-	var baseline := anchor.y + (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
-	var position := Vector2(anchor.x - text_size.x, baseline)
 	draw_string_outline(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, int(round(outline_size)), outline)
 	draw_string(font, position, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, fill)
 
@@ -2058,11 +1860,6 @@ func _stage_scale() -> float:
 
 func _stage_corner_radius(s: float) -> float:
 	return 66.0 * s
-
-
-func _ease_out_cubic(t: float) -> float:
-	var clamped := clampf(t, 0.0, 1.0)
-	return 1.0 - pow(1.0 - clamped, 3.0)
 
 
 func _smooth01(t: float) -> float:

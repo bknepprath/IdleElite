@@ -3541,7 +3541,7 @@ Behavior intentionally preserved:
 Behavior intentionally removed:
 - Action-card static refresh no longer clears `art_panel.material`.
 - Action-card static refresh no longer clears `art.material`.
-- The unused `locked_activity_material` variable and `_locked_activity_material()` shader factory were removed.
+- The unused locked-activity shader material variable and factory were removed.
 
 Validation:
 - `.\scripts\audit-activity-database.ps1` passed.

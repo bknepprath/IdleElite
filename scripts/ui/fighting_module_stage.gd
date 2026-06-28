@@ -1,4 +1,3 @@
-class_name FightingModuleStage
 extends Control
 
 

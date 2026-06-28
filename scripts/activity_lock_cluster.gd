@@ -609,13 +609,6 @@ func _chain_carried_influence(source: ActivityLockRig, target: ActivityLockRig) 
 	return clampf(0.82 - distance_ratio * 0.72, 0.34, 0.64)
 
 
-func _clear_shared_chain_motion() -> void:
-	shared_drag_active = false
-	shared_motion_source = null
-	if shared_chain_rig != null and is_instance_valid(shared_chain_rig):
-		shared_chain_rig.sync_shared_motion(Vector2.ZERO, Vector2.ZERO, 0.0)
-
-
 func _rig_can_share_motion(rig: ActivityLockRig) -> bool:
 	if rig == null or not is_instance_valid(rig):
 		return false

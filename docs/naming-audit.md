@@ -56,7 +56,7 @@ Do not rename these categories through simple refactors:
 - Preserve `class_name PascalCase` for extracted controls and snake_case file names that match the class.
 - Preserve Godot-style private helper prefixes such as `_build_*`, `_render_*`, `_sync_*`, `_restore_*_from_save`, `_apply_*`, `_clear_*`, `_ensure_*`, `_queue_*`, and `_finish_*`.
 - Preserve domain prefixes such as `fishing_`, `activity_unlock_`, `detail_lazy_`, `skill_swipe_`, and `action_opportunity_` where they make reference search and ownership clear.
-- Preserve `_for_save` and `_from_save` suffixes at compatibility boundaries.
+- Preserve save/restore suffixes at compatibility boundaries.
 - Prefer names that identify the domain object before the implementation detail: `progress_rail`, `tool_button_rects`, `readiness_action_ids`, `lazy_entry`, `transition_cover`.
 - Keep rename commits grouped by concept, with reference inspection before each commit and regression coverage when a rename touches behavior-sensitive paths.
 
@@ -74,19 +74,19 @@ Do not rename these categories through simple refactors:
    - Scope: `scripts/ui/fishing_tool_wallet_overlay.gd` and immediate call sites.
    - Safety: extracted UI control internals; avoid changing user-facing tool IDs.
 
-3. Rename `_pending_activity_ready_ids` to `_pending_activity_readiness_action_ids`.
+3. Done: rename the pending activity ready-id helper to `_pending_activity_readiness_action_ids`.
    - Why: the current name reads like generic pending activity IDs, but the values represent action IDs currently eligible for unlock readiness treatment.
    - Scope: internal `scripts/main.gd` helper and tests/assertions that reference it.
    - Safety: private helper; inspect with `rg` before editing.
 
-4. Rename pending unlock matcher helpers to clarify readiness versus preview.
-   - Candidate names: `_pending_activity_unlock_matches` to `_action_has_pending_unlock_readiness` and `_pending_activity_unlock_preview_matches` to `_action_matches_pending_unlock_preview`.
+4. Done: rename pending unlock matcher helpers to clarify readiness versus preview.
+   - Current names: `_action_has_pending_unlock_readiness` and `_action_matches_pending_unlock_preview`.
    - Why: "pending unlock matches" does not say whether it checks actual readiness state or preview display state.
    - Scope: internal `scripts/main.gd` helpers and direct references.
    - Safety: private helpers; behavior-sensitive, so update focused regression assertions if present.
 
-5. Rename the first small slice of `detail_lazy_*plan_item*` helpers to `detail_lazy_*entry*`.
-   - Candidate names: `_detail_lazy_plan_item_pinned` to `_detail_lazy_entry_is_pinned`, `_detail_lazy_plan_item_for_track_id` to `_detail_lazy_entry_for_track_id`, and `_detail_lazy_plan_item_matches_track_id` to `_detail_lazy_entry_matches_track_id`.
+5. Done: rename the first small slice of `detail_lazy_*plan_item*` helpers to `detail_lazy_*entry*`.
+   - Current names: `_detail_lazy_entry_is_pinned`, `_detail_lazy_entry_for_track_id`, and `_detail_lazy_entry_matches_track_id`.
    - Why: "entry" better describes one lazy render-plan record, while "plan item" is verbose and inconsistently used with local variables.
    - Scope: helper functions and local call sites in `scripts/main.gd`.
    - Safety: private helpers; larger reference surface, so keep as its own commit.

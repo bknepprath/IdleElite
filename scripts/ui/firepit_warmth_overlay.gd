@@ -78,36 +78,3 @@ func _draw_rounded_cover(color: Color) -> void:
 			inset = r - sqrt(maxf(0.0, r * r - dy_bottom * dy_bottom))
 		draw_rect(Rect2(Vector2(inset, y), Vector2(maxf(0.0, size.x - inset * 2.0), step)), color)
 		y += step
-
-
-func _draw_outer_cover(center: Vector2, outer_radius: float, cover_color: Color) -> void:
-	var left := maxf(0.0, center.x - outer_radius)
-	var right := minf(size.x, center.x + outer_radius)
-	var top := maxf(0.0, center.y - outer_radius)
-	var bottom := minf(size.y, center.y + outer_radius)
-	if left > 0.0:
-		draw_rect(Rect2(Vector2.ZERO, Vector2(left, size.y)), cover_color)
-	if right < size.x:
-		draw_rect(Rect2(Vector2(right, 0.0), Vector2(size.x - right, size.y)), cover_color)
-	if top > 0.0 and right > left:
-		draw_rect(Rect2(Vector2(left, 0.0), Vector2(right - left, top)), cover_color)
-	if bottom < size.y and right > left:
-		draw_rect(Rect2(Vector2(left, bottom), Vector2(right - left, size.y - bottom)), cover_color)
-
-
-func _draw_feather(center: Vector2, radius: float, feather: float) -> void:
-	var steps := 18
-	var segments := 96
-	for step in range(steps):
-		var inner_radius := radius + feather * (float(step) / float(steps))
-		var outer_radius := radius + feather * (float(step + 1) / float(steps))
-		var alpha_t := pow(float(step + 1) / float(steps), 1.55)
-		var ring_color := Color(0.03, 0.022, 0.014, darkness * alpha_t)
-		var points: PackedVector2Array = []
-		for segment in range(segments + 1):
-			var angle := TAU * float(segment) / float(segments)
-			points.append(center + Vector2(cos(angle), sin(angle)) * outer_radius)
-		for segment in range(segments, -1, -1):
-			var angle := TAU * float(segment) / float(segments)
-			points.append(center + Vector2(cos(angle), sin(angle)) * inner_radius)
-		draw_colored_polygon(points, ring_color)
