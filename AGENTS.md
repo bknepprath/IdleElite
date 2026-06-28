@@ -1,5 +1,12 @@
 # Agent Instructions
 
+## Push Requests
+
+- When the user asks to push, prioritize publishing the current project state instead of starting new implementation work.
+- Do only the minimum necessary pre-push checks: inspect `git status`, summarize staged/unstaged changes if needed, run a quick validation only when it is clearly expected or required, then commit/push or push the existing commit.
+- Do not spend time writing additional code, refactoring, polishing, or expanding scope unless the user explicitly asks for that before the push.
+- If the worktree has unrelated or risky changes, ask a concise question or push only the clearly requested branch/commit path; otherwise keep the push flow moving.
+
 ## Godot Process Safety
 
 This project uses Godot, and this machine can overheat if too many Godot instances run at once.

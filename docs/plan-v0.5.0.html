@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plan v0.5.0</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101316;
+      --panel: #171d22;
+      --panel-soft: #1f272d;
+      --text: #edf2f4;
+      --muted: #aab5bd;
+      --line: #33404a;
+      --accent: #6fd6b5;
+      --accent-2: #ffcf70;
+      --danger: #ff8b8b;
+      --code: #0b0f12;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+    }
+
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 32px 0 56px;
+    }
+
+    header {
+      display: grid;
+      gap: 14px;
+      margin-bottom: 22px;
+      padding: 24px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0;
+      line-height: 1.15;
+    }
+
+    h1 {
+      font-size: clamp(2rem, 4vw, 3.5rem);
+      letter-spacing: 0;
+    }
+
+    h2 {
+      font-size: 1.35rem;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 1rem;
+      color: var(--accent-2);
+      margin-top: 18px;
+      margin-bottom: 8px;
+    }
+
+    p {
+      margin: 0 0 12px;
+      color: var(--muted);
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .meter {
+      flex: 1 1 220px;
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #0d1114;
+      border: 1px solid var(--line);
+    }
+
+    .meter span {
+      display: block;
+      width: 0%;
+      height: 100%;
+      background: var(--accent);
+      transition: width 160ms ease;
+    }
+
+    button {
+      min-height: 40px;
+      padding: 0 14px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: var(--panel-soft);
+      color: var(--text);
+      font: inherit;
+      cursor: pointer;
+    }
+
+    button:hover {
+      border-color: var(--accent);
+    }
+
+    .summary {
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      align-items: start;
+    }
+
+    section {
+      padding: 20px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .wide {
+      grid-column: 1 / -1;
+    }
+
+    ul,
+    ol {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 8px;
+    }
+
+    .check {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 10px;
+      align-items: start;
+      padding: 9px 10px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.025);
+    }
+
+    .check:hover {
+      border-color: rgba(111, 214, 181, 0.35);
+    }
+
+    input[type="checkbox"] {
+      width: 19px;
+      height: 19px;
+      margin: 2px 0 0;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    label {
+      cursor: pointer;
+    }
+
+    input[type="checkbox"]:checked + label {
+      color: var(--muted);
+      text-decoration: line-through;
+      text-decoration-thickness: 1px;
+    }
+
+    code,
+    pre {
+      font-family: "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+    }
+
+    code {
+      color: var(--accent-2);
+    }
+
+    pre {
+      margin: 10px 0 0;
+      padding: 14px;
+      overflow: auto;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      background: var(--code);
+      color: #dbe7ee;
+      font-size: 0.9rem;
+    }
+
+    .note {
+      padding: 12px;
+      border-left: 4px solid var(--accent);
+      border-radius: 6px;
+      background: rgba(111, 214, 181, 0.08);
+      color: var(--text);
+    }
+
+    .question {
+      border-left: 4px solid var(--danger);
+    }
+
+    @media (max-width: 640px) {
+      main {
+        width: min(100% - 20px, 1120px);
+        padding-top: 16px;
+      }
+
+      header,
+      section {
+        padding: 16px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Plan v0.5.0</h1>
+      <p>Skill page cleanup, buildable modules, recovery modules, combat progression, boss gates, and the berries apply system.</p>
+      <div class="toolbar" aria-label="Checklist controls">
+        <div class="meter" aria-hidden="true"><span id="progress-bar"></span></div>
+        <strong id="progress-text" class="summary">0 of 0 checked</strong>
+        <button type="button" id="reset-checks">Reset checks</button>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="wide">
+        <h2>Intent</h2>
+        <p>v0.5.0 should make the skill pages feel more authored, more gated, and less bloated internally.</p>
+        <ul>
+          <li class="check"><input id="intent-1" type="checkbox"><label for="intent-1">Clean up existing code so future systems are easier to extend.</label></li>
+          <li class="check"><input id="intent-2" type="checkbox"><label for="intent-2">Add buildable modules that start as blueprints and become normal modules after a one-tap resource build.</label></li>
+          <li class="check"><input id="intent-3" type="checkbox"><label for="intent-3">Add low-XP recovery modules whose main value is stamina restoration.</label></li>
+          <li class="check"><input id="intent-4" type="checkbox"><label for="intent-4">Expand combat progression with better fighting module shapes, monster waves, and boss fights.</label></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Non-Goals</h2>
+        <ul>
+          <li class="check"><input id="non-goal-1" type="checkbox"><label for="non-goal-1">Do not rewrite the whole skill system in one pass.</label></li>
+          <li class="check"><input id="non-goal-2" type="checkbox"><label for="non-goal-2">Do not rename save keys, public action IDs, asset paths, or serialized data without compatibility handling.</label></li>
+          <li class="check"><input id="non-goal-3" type="checkbox"><label for="non-goal-3">Do not ship final monster or boss art until the module systems and gameplay contracts are stable.</label></li>
+          <li class="check"><input id="non-goal-4" type="checkbox"><label for="non-goal-4">Do not rebalance the whole game economy before build costs, recovery value, and berry bonuses can be tested together.</label></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Phase 0: Refactor Cleanup</h2>
+        <p>Goal: remove obvious bloat before adding new systems, while keeping scope controlled.</p>
+        <h3>Tasks</h3>
+        <ul>
+          <li class="check"><input id="phase-0-1" type="checkbox"><label for="phase-0-1">Audit <code>scripts/main.gd</code> for unreferenced helpers, duplicate module UI branches, stale one-off fixes, and confusing local names.</label></li>
+          <li class="check"><input id="phase-0-2" type="checkbox"><label for="phase-0-2">Prioritize dead code removal where <code>rg</code> proves no references remain.</label></li>
+          <li class="check"><input id="phase-0-3" type="checkbox"><label for="phase-0-3">Collapse repeated module/action checks into small domain helpers only when repetition justifies it.</label></li>
+          <li class="check"><input id="phase-0-4" type="checkbox"><label for="phase-0-4">Shorten giant sentence-like variables into clear role names.</label></li>
+          <li class="check"><input id="phase-0-5" type="checkbox"><label for="phase-0-5">Keep behavior changes separate from pure cleanup whenever possible.</label></li>
+        </ul>
+        <h3>Validation</h3>
+        <ul>
+          <li class="check"><input id="phase-0-v1" type="checkbox"><label for="phase-0-v1">Run static searches for renamed or removed symbols.</label></li>
+          <li class="check"><input id="phase-0-v2" type="checkbox"><label for="phase-0-v2">Run <code>.\scripts\check-project.ps1</code>.</label></li>
+          <li class="check"><input id="phase-0-v3" type="checkbox"><label for="phase-0-v3">Screenshot any player-visible UI touched by cleanup.</label></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Phase 1: Buildable Modules</h2>
+        <p>Goal: modules can appear as blueprints, then require one tap and a resource cost before becoming usable.</p>
+        <h3>Player Flow</h3>
+        <ul>
+          <li class="check"><input id="phase-1-flow-1" type="checkbox"><label for="phase-1-flow-1">Show locked buildable modules as blueprints.</label></li>
+          <li class="check"><input id="phase-1-flow-2" type="checkbox"><label for="phase-1-flow-2">Let the player tap once to spend resources and build.</label></li>
+          <li class="check"><input id="phase-1-flow-3" type="checkbox"><label for="phase-1-flow-3">Grant a satisfying build XP reward.</label></li>
+          <li class="check"><input id="phase-1-flow-4" type="checkbox"><label for="phase-1-flow-4">Convert the module into a normal permanent module after building.</label></li>
+        </ul>
+        <h3>Rules</h3>
+        <ul>
+          <li class="check"><input id="phase-1-rule-1" type="checkbox"><label for="phase-1-rule-1">Save build state per module/action ID.</label></li>
+          <li class="check"><input id="phase-1-rule-2" type="checkbox"><label for="phase-1-rule-2">Pay build cost once.</label></li>
+          <li class="check"><input id="phase-1-rule-3" type="checkbox"><label for="phase-1-rule-3">Make build XP meaningful but weaker than repeat activity farming.</label></li>
+          <li class="check"><input id="phase-1-rule-4" type="checkbox"><label for="phase-1-rule-4">Use existing normal module flow after construction.</label></li>
+          <li class="check"><input id="phase-1-rule-5" type="checkbox"><label for="phase-1-rule-5">Make blueprint visuals distinct without creating a permanent separate activity type.</label></li>
+        </ul>
+        <h3>Data Contract</h3>
+        <pre><code>{
+  "build": {
+    "cost": { "softwood": 5 },
+    "xp": 20,
+    "label": "Build"
+  }
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Phase 2: Recovery Modules</h2>
+        <p>Goal: add low-XP modules whose primary value is stamina restoration.</p>
+        <h3>Behavior</h3>
+        <ul>
+          <li class="check"><input id="phase-2-behavior-1" type="checkbox"><label for="phase-2-behavior-1">Give low XP rewards.</label></li>
+          <li class="check"><input id="phase-2-behavior-2" type="checkbox"><label for="phase-2-behavior-2">Make stamina recharge the primary reward.</label></li>
+          <li class="check"><input id="phase-2-behavior-3" type="checkbox"><label for="phase-2-behavior-3">Support current-skill-only recovery.</label></li>
+          <li class="check"><input id="phase-2-behavior-4" type="checkbox"><label for="phase-2-behavior-4">Support another-skill or lowest-stamina recovery.</label></li>
+          <li class="check"><input id="phase-2-behavior-5" type="checkbox"><label for="phase-2-behavior-5">Reserve multi-skill recovery for rare higher-tier modules.</label></li>
+        </ul>
+        <h3>Examples</h3>
+        <ul>
+          <li class="check"><input id="phase-2-example-1" type="checkbox"><label for="phase-2-example-1">Fitness: Steam Sauna, Cold Shower, Ice Bath, Mobility Flow.</label></li>
+          <li class="check"><input id="phase-2-example-2" type="checkbox"><label for="phase-2-example-2">Woodcutting: Truffle Hunting, Forest Picnic, Sap Tea Break.</label></li>
+          <li class="check"><input id="phase-2-example-3" type="checkbox"><label for="phase-2-example-3">Fishing: Dock Nap, Warm Chowder, Tidepool Breather.</label></li>
+          <li class="check"><input id="phase-2-example-4" type="checkbox"><label for="phase-2-example-4">Fighting: Wrap Hands, Recovery Bath, Monk Breathing.</label></li>
+          <li class="check"><input id="phase-2-example-5" type="checkbox"><label for="phase-2-example-5">Thieving: Safehouse Nap, Quiet Alley Reset.</label></li>
+          <li class="check"><input id="phase-2-example-6" type="checkbox"><label for="phase-2-example-6">Mining: Lantern Break, Hot Spring Tunnel.</label></li>
+          <li class="check"><input id="phase-2-example-7" type="checkbox"><label for="phase-2-example-7">Crafting/Smithing-style pages: Workshop Tea, Tool Polishing.</label></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Phase 3: Fighting Progression</h2>
+        <p>Goal: turn the Fight Chickens prototype into a real fighting progression.</p>
+        <h3>Shape Direction</h3>
+        <ul>
+          <li class="check"><input id="phase-3-shape-1" type="checkbox"><label for="phase-3-shape-1">Make vampire-survivor-style fighting modules diamond-shaped.</label></li>
+          <li class="check"><input id="phase-3-shape-2" type="checkbox"><label for="phase-3-shape-2">Use the diamond shape to separate combat arenas from normal rectangular activities.</label></li>
+          <li class="check"><input id="phase-3-shape-3" type="checkbox"><label for="phase-3-shape-3">Hold final visual details for the next design pass.</label></li>
+        </ul>
+        <h3>Progression Draft</h3>
+        <ul>
+          <li class="check"><input id="phase-3-enemy-1" type="checkbox"><label for="phase-3-enemy-1">Chickens: first chaotic swarm prototype.</label></li>
+          <li class="check"><input id="phase-3-enemy-2" type="checkbox"><label for="phase-3-enemy-2">Angry Roosters: faster, more aggressive chicken variant.</label></li>
+          <li class="check"><input id="phase-3-enemy-3" type="checkbox"><label for="phase-3-enemy-3">Street Rats: small swarm pressure.</label></li>
+          <li class="check"><input id="phase-3-enemy-4" type="checkbox"><label for="phase-3-enemy-4">Giant Rats: tougher early enemy.</label></li>
+          <li class="check"><input id="phase-3-enemy-5" type="checkbox"><label for="phase-3-enemy-5">Coyotes: faster mid-tier threat.</label></li>
+          <li class="check"><input id="phase-3-enemy-6" type="checkbox"><label for="phase-3-enemy-6">Werewolves: bigger, more dangerous, night-themed.</label></li>
+          <li class="check"><input id="phase-3-enemy-7" type="checkbox"><label for="phase-3-enemy-7">Cave Trolls: slow heavy pressure.</label></li>
+          <li class="check"><input id="phase-3-enemy-8" type="checkbox"><label for="phase-3-enemy-8">Wyverns: flying or lunging pressure.</label></li>
+          <li class="check"><input id="phase-3-enemy-9" type="checkbox"><label for="phase-3-enemy-9">Dragons: late-tier spectacle enemy.</label></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Phase 4: Boss Fight Modules</h2>
+        <p>Goal: create a unique module type for major progression blockers.</p>
+        <h3>Player Fantasy</h3>
+        <ul>
+          <li class="check"><input id="phase-4-fantasy-1" type="checkbox"><label for="phase-4-fantasy-1">First-person idle fight.</label></li>
+          <li class="check"><input id="phase-4-fantasy-2" type="checkbox"><label for="phase-4-fantasy-2">Boss monster centered in the module.</label></li>
+          <li class="check"><input id="phase-4-fantasy-3" type="checkbox"><label for="phase-4-fantasy-3">Blue fists punch into view.</label></li>
+          <li class="check"><input id="phase-4-fantasy-4" type="checkbox"><label for="phase-4-fantasy-4">Player clears the boss to unlock later modules.</label></li>
+        </ul>
+        <h3>Rules</h3>
+        <ul>
+          <li class="check"><input id="phase-4-rule-1" type="checkbox"><label for="phase-4-rule-1">Give boss modules a unique shape.</label></li>
+          <li class="check"><input id="phase-4-rule-2" type="checkbox"><label for="phase-4-rule-2">Gate later modules that depend on the boss.</label></li>
+          <li class="check"><input id="phase-4-rule-3" type="checkbox"><label for="phase-4-rule-3">Allow boss modules on any skill page, usually with fighting-level dependency.</label></li>
+          <li class="check"><input id="phase-4-rule-4" type="checkbox"><label for="phase-4-rule-4">Communicate boss modules as barriers, not optional side activities.</label></li>
+          <li class="check"><input id="phase-4-rule-5" type="checkbox"><label for="phase-4-rule-5">First fighting boss: Rooster.</label></li>
+          <li class="check"><input id="phase-4-rule-6" type="checkbox"><label for="phase-4-rule-6">Later example boss: Rat King.</label></li>
+        </ul>
+        <h3>Data Contract</h3>
+        <pre><code>{
+  "kind": "boss_fight",
+  "boss": {
+    "id": "rooster",
+    "name": "Rooster",
+    "hp": 100,
+    "requires": [{ "skill": "fighting", "level": 3 }]
+  },
+  "blocks_after": true
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Phase 5: Berries Apply System</h2>
+        <p>Goal: add berries as a woodcutting resource with a unique prep/buff identity.</p>
+        <h3>Resource Source</h3>
+        <ul>
+          <li class="check"><input id="phase-5-source-1" type="checkbox"><label for="phase-5-source-1">Reward berries from woodcutting activity.</label></li>
+          <li class="check"><input id="phase-5-source-2" type="checkbox"><label for="phase-5-source-2">Make the early berry source simple and visible.</label></li>
+          <li class="check"><input id="phase-5-source-3" type="checkbox"><label for="phase-5-source-3">Tie later berry sources to rarer forest-themed modules.</label></li>
+        </ul>
+        <h3>Core Idea</h3>
+        <ul>
+          <li class="check"><input id="phase-5-core-1" type="checkbox"><label for="phase-5-core-1">Tapping berries opens an apply screen.</label></li>
+          <li class="check"><input id="phase-5-core-2" type="checkbox"><label for="phase-5-core-2">Player chooses one module to apply berries to.</label></li>
+          <li class="check"><input id="phase-5-core-3" type="checkbox"><label for="phase-5-core-3">Next completion of that module consumes berry stock for a bonus.</label></li>
+        </ul>
+        <h3>Possible Effects</h3>
+        <ul>
+          <li class="check"><input id="phase-5-effect-1" type="checkbox"><label for="phase-5-effect-1">Bonus XP on the selected module.</label></li>
+          <li class="check"><input id="phase-5-effect-2" type="checkbox"><label for="phase-5-effect-2">Increased critical chance.</label></li>
+          <li class="check"><input id="phase-5-effect-3" type="checkbox"><label for="phase-5-effect-3">Reduced stamina cost.</label></li>
+          <li class="check"><input id="phase-5-effect-4" type="checkbox"><label for="phase-5-effect-4">Extra material roll.</label></li>
+          <li class="check"><input id="phase-5-effect-5" type="checkbox"><label for="phase-5-effect-5">Better failure consolation reward.</label></li>
+        </ul>
+        <h3>Data Contract</h3>
+        <pre><code>{
+  "berry_prep": {
+    "target_action": "fight_chickens",
+    "servings": 3,
+    "effect": "xp_bonus"
+  }
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Phase 6: Validation</h2>
+        <h3>Required Checks</h3>
+        <ul>
+          <li class="check"><input id="phase-6-check-1" type="checkbox"><label for="phase-6-check-1">Run <code>.\scripts\check-project.ps1</code>.</label></li>
+          <li class="check"><input id="phase-6-check-2" type="checkbox"><label for="phase-6-check-2">For Godot one-off validation, use <code>.\run-godot-safe.ps1 --path . --quit-after 1</code>.</label></li>
+          <li class="check"><input id="phase-6-check-3" type="checkbox"><label for="phase-6-check-3">Verify no headless Godot process is left behind after validation.</label></li>
+          <li class="check"><input id="phase-6-check-4" type="checkbox"><label for="phase-6-check-4">Capture screenshots for module shape, blueprint state, boss module, recovery module, and apply screen changes.</label></li>
+          <li class="check"><input id="phase-6-check-5" type="checkbox"><label for="phase-6-check-5">Check mobile readability for all new visible text.</label></li>
+        </ul>
+        <h3>Data Checks</h3>
+        <ul>
+          <li class="check"><input id="phase-6-data-1" type="checkbox"><label for="phase-6-data-1">If fishing data is touched, run <code>python scripts\sync-activity-database-js.py</code>.</label></li>
+          <li class="check"><input id="phase-6-data-2" type="checkbox"><label for="phase-6-data-2">If fishing data is touched, run <code>.\scripts\audit-activity-database.ps1</code>.</label></li>
+          <li class="check"><input id="phase-6-data-3" type="checkbox"><label for="phase-6-data-3">Audit new activity IDs, unlock levels, requirements, and rewards before wiring UI.</label></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Open Questions</h2>
+        <ul>
+          <li class="check question"><input id="question-1" type="checkbox"><label for="question-1">Should buildable modules be available immediately at unlock level, or can they appear before the player can afford them?</label></li>
+          <li class="check question"><input id="question-2" type="checkbox"><label for="question-2">Should build XP go to the module's skill, construction-style global XP, or both?</label></li>
+          <li class="check question"><input id="question-3" type="checkbox"><label for="question-3">Should recovery modules have cooldowns, stamina costs, or only opportunity cost through low XP?</label></li>
+          <li class="check question"><input id="question-4" type="checkbox"><label for="question-4">Should boss gates block every later module by list position, or only modules that explicitly reference the boss?</label></li>
+          <li class="check question"><input id="question-5" type="checkbox"><label for="question-5">Should berries apply to one completion, a fixed number of servings, or a timed buff window?</label></li>
+          <li class="check question"><input id="question-6" type="checkbox"><label for="question-6">Should berry effects be chosen by berry type later, or stay as one universal berries resource for v0.5.0?</label></li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Suggested Build Order</h2>
+        <ol>
+          <li class="check"><input id="order-1" type="checkbox"><label for="order-1">Refactor and dead-code audit.</label></li>
+          <li class="check"><input id="order-2" type="checkbox"><label for="order-2">Buildable module data/state/UI.</label></li>
+          <li class="check"><input id="order-3" type="checkbox"><label for="order-3">Recovery module flavor and first content pass.</label></li>
+          <li class="check"><input id="order-4" type="checkbox"><label for="order-4">Berries resource and apply screen.</label></li>
+          <li class="check"><input id="order-5" type="checkbox"><label for="order-5">Fighting diamond shape.</label></li>
+          <li class="check"><input id="order-6" type="checkbox"><label for="order-6">Chicken prototype variations.</label></li>
+          <li class="check"><input id="order-7" type="checkbox"><label for="order-7">Boss fight module shell.</label></li>
+          <li class="check"><input id="order-8" type="checkbox"><label for="order-8">Rooster boss and first boss gate.</label></li>
+          <li class="check"><input id="order-9" type="checkbox"><label for="order-9">Balance pass and screenshots.</label></li>
+        </ol>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const storageKey = "idle-elite-plan-v0.5.0-checks";
+    const checks = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+    const progressBar = document.getElementById("progress-bar");
+    const progressText = document.getElementById("progress-text");
+    const resetButton = document.getElementById("reset-checks");
+
+    function loadState() {
+      try {
+        return JSON.parse(localStorage.getItem(storageKey) || "{}");
+      } catch (_error) {
+        return {};
+      }
+    }
+
+    function saveState() {
+      const state = {};
+      checks.forEach((check) => {
+        state[check.id] = check.checked;
+      });
+      localStorage.setItem(storageKey, JSON.stringify(state));
+    }
+
+    function updateProgress() {
+      const checked = checks.filter((check) => check.checked).length;
+      const total = checks.length;
+      const percent = total === 0 ? 0 : Math.round((checked / total) * 100);
+      progressBar.style.width = `${percent}%`;
+      progressText.textContent = `${checked} of ${total} checked`;
+    }
+
+    const saved = loadState();
+    checks.forEach((check) => {
+      check.checked = Boolean(saved[check.id]);
+      check.addEventListener("change", () => {
+        saveState();
+        updateProgress();
+      });
+    });
+
+    resetButton.addEventListener("click", () => {
+      checks.forEach((check) => {
+        check.checked = false;
+      });
+      saveState();
+      updateProgress();
+    });
+
+    updateProgress();
+  </script>
+</body>
+</html>
