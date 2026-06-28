@@ -1236,6 +1236,7 @@ $queueDetailAndSwipeTexturePrewarm = Get-FunctionBody -Text $main -Name "_queue_
 Assert-True ($queueDetailAndSwipeTexturePrewarm -match '_prewarm_detail_card_style_resources\(\)') "Swipe detail texture prewarm should also warm procedural detail-card style textures."
 $queueSettleWarmMount = Get-FunctionBody -Text $main -Name "_queue_detail_lazy_settle_warm_mount"
 Assert-True ($queueSettleWarmMount -match '_prewarm_detail_card_style_resources\(\)') "Settle-warm lazy mounting should not own first-time detail-card style texture allocation."
+Assert-True ($main -notmatch 'detail_lazy_settle_warm_mount_token') "Settle-warm lazy mounting should not keep unused async token state."
 
 $invalidateCaches = Get-FunctionBody -Text $main -Name "_invalidate_stat_caches"
 Assert-True ($invalidateCaches -match 'activity_medal_buff_total_cache\.clear\(\)') "Stat invalidation should clear cached neighbor medal buff totals."

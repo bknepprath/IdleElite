@@ -4093,7 +4093,6 @@ var fishing_scroll_mode_active := false
 var fishing_scroll_mode_release_msec := 0
 var fishing_detail_primary_pointer_down := false
 var fishing_method_button_press_source_id := 0
-var detail_lazy_settle_warm_mount_token := 0
 var detail_lazy_refresh_token := 0
 var detail_lazy_cache_bin: Control = null
 var skill_swipe_real_card_cache_by_skill := {}
@@ -22934,12 +22933,10 @@ func _queue_detail_lazy_settle_warm_mount(skill_id: String) -> void:
 	if detail_lazy_plan.is_empty() or _valid_control_ref(detail_lazy_stack) == null:
 		return
 	_prewarm_detail_card_style_resources()
-	detail_lazy_settle_warm_mount_token += 1
 	detail_lazy_settle_warm_mount_skill_id = skill_id
 
 
 func _cancel_detail_lazy_settle_warm_mount() -> void:
-	detail_lazy_settle_warm_mount_token += 1
 	detail_lazy_settle_warm_mount_skill_id = ""
 
 
@@ -37043,7 +37040,6 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 	action_card_keys.clear()
 	detail_action_card_nodes.clear()
 	detail_rendered_action_ids.clear()
-	detail_lazy_settle_warm_mount_token += 1
 	_clear_detail_lazy_cache_bin()
 	detail_lazy_plan.clear()
 	detail_lazy_last_scroll = -1.0
