@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
+
 $skillsPagePerformanceTest = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 
 function Assert-True {
@@ -11,21 +13,6 @@ function Assert-True {
 
     if (-not $Condition) {
         throw $Message
-    }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
-
-function Assert-NoHeadlessGodotProcesses {
-    param([Parameter(Mandatory = $true)][string]$Context)
-
-    $headless = @(Get-HeadlessGodotProcesses)
-    if ($headless.Count -gt 0) {
-        $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
-        throw "A headless Godot process is still running after $Context."
     }
 }
 

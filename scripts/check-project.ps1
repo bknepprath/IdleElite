@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
+
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $performanceTest = Join-Path $projectRoot "scripts\test-performance-monitor.ps1"
 $performanceRegressionTest = Join-Path $projectRoot "scripts\test-performance-regressions.ps1"
@@ -28,28 +30,6 @@ $pinnedScrollAnchorTest = Join-Path $projectRoot "scripts\test-pinned-scroll-anc
 $pinnedPageInteractionsTest = Join-Path $projectRoot "scripts\test-pinned-page-interactions.ps1"
 $skillsPagePerformanceTest = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 $skillsPagePerformanceRepeatTest = Join-Path $projectRoot "scripts\test-skills-page-performance-repeat.ps1"
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
-
-function Assert-NoHeadlessGodotProcesses {
-    param([Parameter(Mandatory = $true)][string]$Context)
-
-    $headless = @()
-    for ($attempt = 1; $attempt -le 30; $attempt++) {
-        $headless = @(Get-HeadlessGodotProcesses)
-        if ($headless.Count -eq 0) {
-            return
-        }
-        Start-Sleep -Milliseconds 500
-    }
-    if ($headless.Count -gt 0) {
-        $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
-        throw "A headless Godot process is still running after $Context."
-    }
-}
 
 function Assert-NoUnexpectedGodotErrors {
     param(
