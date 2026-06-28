@@ -30,6 +30,7 @@ const ActivityCardInnerShadow = preload("res://scripts/ui/activity_card_inner_sh
 const SkillDetailPageShelfShadow = preload("res://scripts/ui/skill_detail_page_shelf_shadow.gd")
 const SkillDetailGradientShelf = preload("res://scripts/ui/skill_detail_gradient_shelf.gd")
 const SkillMenuPanelChrome = preload("res://scripts/ui/skill_menu_panel_chrome.gd")
+const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
 const BootFlexLoadingAnimationClass = preload("res://scripts/ui/boot_flex_loading_animation.gd")
 const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_border.gd")
@@ -2365,6 +2366,7 @@ const COMBO_ACTION_ART_SIZE := Vector2(352, 352)
 const COMBO_ACTION_ART_OFFSET := (ACTION_ART_PANEL_SIZE - COMBO_ACTION_ART_SIZE) * 0.5
 const ACTION_ART_CORNER_ICON_SIZE := Vector2(172, 172)
 const ACTION_ART_CORNER_ICON_EDGE_OVERLAP := 60.0
+const ACTION_ART_CORNER_ICON_LIST_STEP := 104.0
 const ACTION_ART_CORNER_ICON_STROKE_PIXELS := 14.0
 const FISHING_BACKGROUND_CROP_LEFT := 0.06
 const FISHING_BACKGROUND_CROP_TOP := 0.06
@@ -4859,9 +4861,7 @@ func _screen_capped_frame_rate(frame_cap: int) -> int:
 
 
 func _mobile_battery_governor_enabled() -> bool:
-	if OS.get_environment(BATTERY_GOVERNOR_FORCE_ENV) == "1":
-		return true
-	return OS.get_name() == "Android" or OS.get_name() == "iOS"
+	return OS.get_environment(BATTERY_GOVERNOR_FORCE_ENV) == "1" or OS.get_name() in ["Android", "iOS"]
 
 
 func _mobile_active_frame_rate() -> int:
@@ -8155,10 +8155,10 @@ func _leaderboard_load_firebase_config() -> void:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		push_warning("Online leaderboard config must be a JSON object.")
 		return
-	var data := parsed as Dictionary
-	leaderboard_config_database_url = str(data.get("database_url", "")).strip_edges()
-	leaderboard_config_web_api_key = str(data.get("web_api_key", "")).strip_edges()
-	google_auth_web_client_id = str(data.get(GOOGLE_AUTH_WEB_CLIENT_ID_CONFIG_KEY, "")).strip_edges()
+	var firebase_config := parsed as Dictionary
+	leaderboard_config_database_url = str(firebase_config.get("database_url", "")).strip_edges()
+	leaderboard_config_web_api_key = str(firebase_config.get("web_api_key", "")).strip_edges()
+	google_auth_web_client_id = str(firebase_config.get(GOOGLE_AUTH_WEB_CLIENT_ID_CONFIG_KEY, "")).strip_edges()
 
 
 func _parse_json_silent(raw_text: String) -> Variant:
@@ -8330,13 +8330,13 @@ func _firebase_error_detail(body: PackedByteArray) -> String:
 		return ""
 	var parsed = _parse_json_silent(raw)
 	if typeof(parsed) == TYPE_DICTIONARY:
-		var data := parsed as Dictionary
-		var error = data.get("error", "")
+		var error_payload := parsed as Dictionary
+		var error = error_payload.get("error", "")
 		if typeof(error) == TYPE_DICTIONARY:
 			var error_message := str((error as Dictionary).get("message", "")).strip_edges()
 			if not error_message.is_empty():
 				return error_message
-		var data_message := str(data.get("message", "")).strip_edges()
+		var data_message := str(error_payload.get("message", "")).strip_edges()
 		if not data_message.is_empty():
 			return data_message
 	return raw.substr(0, 120)
@@ -9659,14 +9659,14 @@ func _chat_stream_dispatch_event() -> void:
 
 func _chat_apply_stream_payload(payload: Dictionary, event_name := "") -> void:
 	var path := str(payload.get("path", "/"))
-	var data = payload.get("data", null)
+	var stream_data = payload.get("data", null)
 	var is_patch_event := event_name == "patch"
 	if path == "/":
-		if typeof(data) == TYPE_DICTIONARY and is_patch_event:
-			_chat_merge_rows(data as Dictionary)
-		elif typeof(data) == TYPE_DICTIONARY:
-			_chat_replace_rows(data as Dictionary)
-		elif data == null and not is_patch_event:
+		if typeof(stream_data) == TYPE_DICTIONARY and is_patch_event:
+			_chat_merge_rows(stream_data as Dictionary)
+		elif typeof(stream_data) == TYPE_DICTIONARY:
+			_chat_replace_rows(stream_data as Dictionary)
+		elif stream_data == null and not is_patch_event:
 			chat_rows.clear()
 		return
 	var clean_path := path.substr(1) if path.begins_with("/") else path
@@ -9676,22 +9676,22 @@ func _chat_apply_stream_payload(payload: Dictionary, event_name := "") -> void:
 	var message_id := str(parts[0])
 	if message_id.is_empty():
 		return
-	if data == null:
+	if stream_data == null:
 		_chat_remove_row(message_id)
 		return
-	if typeof(data) == TYPE_DICTIONARY:
+	if typeof(stream_data) == TYPE_DICTIONARY:
 		if is_patch_event and parts.size() == 1:
 			var existing := _chat_existing_row(message_id)
-			for key in (data as Dictionary).keys():
-				existing[str(key)] = (data as Dictionary).get(key)
+			for key in (stream_data as Dictionary).keys():
+				existing[str(key)] = (stream_data as Dictionary).get(key)
 			_chat_upsert_row(message_id, existing)
 		elif parts.size() == 1:
-			_chat_upsert_row(message_id, data as Dictionary)
+			_chat_upsert_row(message_id, stream_data as Dictionary)
 		else:
 			var existing := _chat_existing_row(message_id)
 			if existing.is_empty():
 				return
-			existing[str(parts[1])] = data
+			existing[str(parts[1])] = stream_data
 			_chat_upsert_row(message_id, existing)
 
 
@@ -10671,41 +10671,16 @@ func _on_bottom_nav_button_gui_input(event: InputEvent, target_screen: String, b
 	if _bottom_nav_transition_input_locked(button):
 		return
 	var event_position := _passive_button_event_position(event, button)
-	var is_press := false
-	var is_release := false
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		is_press = event.pressed
-		is_release = not event.pressed
-	elif event is InputEventScreenTouch:
-		is_press = (event as InputEventScreenTouch).pressed
-		is_release = not (event as InputEventScreenTouch).pressed
-	if is_press:
-		button.set_meta("bottom_nav_press_active", true)
-		button.set_meta("bottom_nav_press_position", event_position)
-		button.set_meta("bottom_nav_press_dragged", false)
+	var event_kind := ButtonPressState.event_kind(event)
+	if event_kind == "press":
+		ButtonPressState.begin(button, "bottom_nav", event_position)
 		return
-	if event is InputEventMouseMotion or event is InputEventScreenDrag:
-		if bool(button.get_meta("bottom_nav_press_active", false)):
-			var press_position := _meta_vector2(button, "bottom_nav_press_position", event_position)
-			if event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
-				button.set_meta("bottom_nav_press_dragged", true)
+	if event_kind == "drag":
+		ButtonPressState.update_drag(button, "bottom_nav", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 		return
-	if not is_release:
+	if event_kind != "release":
 		return
-	var was_active := bool(button.get_meta("bottom_nav_press_active", false))
-	var was_dragged := bool(button.get_meta("bottom_nav_press_dragged", false))
-	var press_position := _meta_vector2(button, "bottom_nav_press_position", event_position)
-	if button.has_meta("bottom_nav_press_active"):
-		button.remove_meta("bottom_nav_press_active")
-	if button.has_meta("bottom_nav_press_position"):
-		button.remove_meta("bottom_nav_press_position")
-	if button.has_meta("bottom_nav_press_dragged"):
-		button.remove_meta("bottom_nav_press_dragged")
-	if not was_active or was_dragged:
-		return
-	if event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
-		return
-	if not button.get_global_rect().grow(24.0).has_point(event_position):
+	if not ButtonPressState.finish(button, "bottom_nav", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP, 24.0):
 		return
 	_arm_bottom_nav_clean_activation(button, target_screen)
 	if bool(button.get_meta("bottom_nav_builtin_pressed_route", false)):
@@ -10763,7 +10738,7 @@ func _bottom_nav_button_at_position(event_position: Vector2) -> Button:
 func _active_bottom_nav_button() -> Button:
 	for raw_button in [hero_tab, hub_tab, skills_tab, settings_tab, shop_tab]:
 		var button := raw_button as Button
-		if button != null and is_instance_valid(button) and bool(button.get_meta("bottom_nav_press_active", false)):
+		if ButtonPressState.active(button, "bottom_nav"):
 			return button
 	return null
 
@@ -11161,7 +11136,7 @@ func _module_sort_button_at_position(event_position: Vector2) -> Button:
 func _active_module_utility_button() -> Button:
 	for raw_button in [pinned_utility_tab, queue_utility_tab, skills_utility_tab, sort_utility_tab, module_utility_collapse_toggle]:
 		var button := raw_button as Button
-		if button != null and is_instance_valid(button) and bool(button.get_meta("module_utility_press_active", false)):
+		if ButtonPressState.active(button, "module_utility"):
 			return button
 	return null
 
@@ -11178,52 +11153,25 @@ func _on_module_utility_button_global_input(event: InputEvent, button: Button) -
 	if button == null or not is_instance_valid(button) or button.disabled:
 		return
 	var event_position := _passive_button_event_position(event, null)
-	var is_press := false
-	var is_release := false
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		is_press = event.pressed
-		is_release = not event.pressed
-	elif event is InputEventScreenTouch:
-		is_press = (event as InputEventScreenTouch).pressed
-		is_release = not (event as InputEventScreenTouch).pressed
-	if is_press:
-		button.set_meta("module_utility_press_active", true)
-		button.set_meta("module_utility_press_position", event_position)
-		button.set_meta("module_utility_press_dragged", false)
+	var event_kind := ButtonPressState.event_kind(event)
+	if event_kind == "press":
+		ButtonPressState.begin(button, "module_utility", event_position)
 		_play_default_button_sfx()
 		_press_activity_button_shell_bound(button.get_instance_id())
 		return
-	if event is InputEventMouseMotion or event is InputEventScreenDrag:
-		if bool(button.get_meta("module_utility_press_active", false)):
-			var press_position := _meta_vector2(button, "module_utility_press_position", event_position)
-			if event_position.distance_to(press_position) > PASSIVE_BUTTON_TAP_RELEASE_SLOP:
-				button.set_meta("module_utility_press_dragged", true)
+	if event_kind == "drag":
+		ButtonPressState.update_drag(button, "module_utility", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 		return
-	if not is_release:
+	if event_kind != "release":
 		return
-	var was_active := bool(button.get_meta("module_utility_press_active", false))
-	var was_dragged := bool(button.get_meta("module_utility_press_dragged", false))
-	var press_position := _meta_vector2(button, "module_utility_press_position", event_position)
-	_clear_module_utility_button_press(button)
-	var valid_tap := (
-		was_active
-		and not was_dragged
-		and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
-	)
+	var valid_tap := ButtonPressState.finish(button, "module_utility", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 	_release_activity_button_shell_bound(button.get_instance_id())
 	if valid_tap:
 		_activate_module_utility_button(button)
 
 
 func _clear_module_utility_button_press(button: Button) -> void:
-	if button == null or not is_instance_valid(button):
-		return
-	if button.has_meta("module_utility_press_active"):
-		button.remove_meta("module_utility_press_active")
-	if button.has_meta("module_utility_press_position"):
-		button.remove_meta("module_utility_press_position")
-	if button.has_meta("module_utility_press_dragged"):
-		button.remove_meta("module_utility_press_dragged")
+	ButtonPressState.clear(button, "module_utility")
 
 
 func _activate_module_utility_button(button: Button) -> void:
@@ -48438,11 +48386,11 @@ func _play_pending_offline_summary_achievement_toasts() -> void:
 func _show_offline_summary_achievement_toasts(achievements: Array) -> void:
 	var showed_toast := false
 	for achievement in achievements:
-		var data := achievement as Dictionary
-		var id := str(data.get("id", ""))
+		var achievement_def := achievement as Dictionary
+		var id := str(achievement_def.get("id", ""))
 		if id.is_empty() or bool(achievement_toast_seen_ids.get(id, false)):
 			continue
-		_show_achievement_unlocked(data)
+		_show_achievement_unlocked(achievement_def)
 		showed_toast = true
 	if showed_toast:
 		save_game()
@@ -51653,10 +51601,10 @@ func _load_activity_database() -> bool:
 	var file := FileAccess.open(ACTIVITY_DATABASE_PATH, FileAccess.READ)
 	if file == null:
 		return false
-	var data = _parse_json_silent(file.get_as_text())
-	if typeof(data) != TYPE_DICTIONARY:
+	var activity_database = _parse_json_silent(file.get_as_text())
+	if typeof(activity_database) != TYPE_DICTIONARY:
 		return false
-	var loaded_skills = data.get("skills", [])
+	var loaded_skills = activity_database.get("skills", [])
 	if typeof(loaded_skills) != TYPE_ARRAY or loaded_skills.is_empty():
 		return false
 	for raw_skill in loaded_skills:
@@ -51724,7 +51672,7 @@ func _load_activity_database() -> bool:
 		actions_by_skill[skill_id] = actions
 		if skill_id == "fishing":
 			_load_fishing_area_definitions_from_skill(skill, actions)
-	_load_event_module_definitions(data)
+	_load_event_module_definitions(activity_database)
 	return not skill_defs.is_empty()
 
 
@@ -51924,13 +51872,13 @@ func _normalized_string_array_for_load(value: Variant) -> Array:
 	var normalized := []
 	if typeof(value) == TYPE_ARRAY:
 		for raw_item in value:
-			var item := str(raw_item).strip_edges()
-			if not item.is_empty() and not normalized.has(item):
-				normalized.append(item)
+			var normalized_item := str(raw_item).strip_edges()
+			if not normalized_item.is_empty() and not normalized.has(normalized_item):
+				normalized.append(normalized_item)
 	elif typeof(value) == TYPE_STRING:
-		var item := str(value).strip_edges()
-		if not item.is_empty():
-			normalized.append(item)
+		var normalized_item := str(value).strip_edges()
+		if not normalized_item.is_empty():
+			normalized.append(normalized_item)
 	return normalized
 
 
@@ -52638,25 +52586,12 @@ func _restore_fishing_unlock_from_equipped_tool(tool_id: String) -> void:
 			fishing_mirror_collected = true
 
 
-func _fishing_equipped_rod_power() -> int:
-	match equipped_fishing_tool_id:
-		"reinforced_rod":
-			return 1
-		"star_rod":
-			return 2
-	return 0
-
-
 func _fishing_tool_is_rod(tool_id: String) -> bool:
 	return tool_id in ["line", "reinforced_rod", "star_rod"]
 
 
 func _fishing_action_is_space(action_id: String) -> bool:
 	return action_id.begins_with("space-")
-
-
-func _fishing_reflect_net_gives_food(action_id: String) -> bool:
-	return _fishing_action_is_space(action_id)
 
 
 func _fishing_tool_catches_nothing_for_action(tool_id: String, action_id: String) -> bool:
@@ -52673,10 +52608,10 @@ func _fishing_tool_is_bad_for_action(tool_id: String, action_id: String) -> bool
 
 
 func _fishing_tool_success_bonus() -> float:
-	match _fishing_equipped_rod_power():
-		1:
+	match equipped_fishing_tool_id:
+		"reinforced_rod":
 			return 5.0
-		2:
+		"star_rod":
 			return 10.0
 	return 0.0
 
@@ -53519,7 +53454,7 @@ func _fishing_food_value_for_catches(action_id: String, catch_count: int) -> flo
 
 
 func _fishing_tool_food_value_for_catches(tool_id: String, action_id: String, catch_count: int) -> float:
-	if tool_id == "mirror" and not _fishing_reflect_net_gives_food(action_id):
+	if tool_id == "mirror" and not _fishing_action_is_space(action_id):
 		return 0.0
 	return _fishing_food_value_for_catches(action_id, catch_count)
 
@@ -58494,7 +58429,7 @@ func _write_text_file(path: String, text: String) -> bool:
 func _save_payload_can_replace_existing_save(next_payload: Dictionary) -> bool:
 	if allow_next_save_progress_regression:
 		return true
-	var existing := _best_local_save_dictionary()
+	var existing := _best_save_dictionary_from_paths([SAVE_PATH, SAVE_TEMP_PATH, SAVE_BACKUP_PATH])
 	if _save_reset_generation(next_payload) > _save_reset_generation(existing):
 		return true
 	return not _save_payload_regresses_progress(existing, next_payload)
@@ -58553,24 +58488,24 @@ func _save_payload(now: int) -> Dictionary:
 		"mastery": _mastery_for_save(),
 		"stamina": _stamina_for_save(),
 		"stamina_bank": _stamina_bank_for_save(),
-		"honey_stamina_seconds_remaining": _honey_stamina_seconds_remaining_for_save(),
+		"honey_stamina_seconds_remaining": clampf(honey_stamina_seconds_remaining, 0.0, HONEY_STAMINA_SECONDS_PER_CONSUMPTION),
 		"blue_guy_health": _blue_guy_health_value(),
 		"blue_guy_health_bank": 0.0 if _blue_guy_health_full() else clampf(blue_guy_health_bank, 0.0, BLUE_GUY_HEALTH_REGEN_SECONDS),
 		"mats": _mats_for_save(),
-		"log_currency": _log_currency_for_save(),
-		"fish_currency": _fish_currency_for_save(),
+		"log_currency": maxi(0, log_currency),
+		"fish_currency": maxf(0.0, fish_currency),
 		"fish_currency_ever_earned": fish_currency_ever_earned or fish_currency > 0.0,
 		"auto_eat_fish_enabled": not _auto_eat_fish_enabled_by_skill_for_save().is_empty(),
 		"auto_eat_fish_enabled_by_skill": _auto_eat_fish_enabled_by_skill_for_save(),
 		"equipped_fishing_tool_id": _equipped_fishing_tool_id_for_save(),
-		"fishing_net_stored_fish": _fishing_net_stored_fish_for_save(),
-		"fishing_net_successes": _fishing_net_successes_for_save(),
-		"fishing_net_stored_xp": _fishing_net_stored_xp_for_save(),
-		"fishing_net_stored_mastery": _fishing_net_stored_mastery_for_save(),
-		"fishing_boat_stored_fish": _fishing_boat_stored_fish_for_save(),
-		"fishing_boat_successes": _fishing_boat_successes_for_save(),
-		"fishing_boat_stored_xp": _fishing_boat_stored_xp_for_save(),
-		"fishing_boat_stored_mastery": _fishing_boat_stored_mastery_for_save(),
+		"fishing_net_stored_fish": clampi(fishing_net_stored_fish, 0, FISHING_NET_HAUL_THRESHOLD - 1),
+		"fishing_net_successes": maxi(0, fishing_net_successes),
+		"fishing_net_stored_xp": maxi(0, fishing_net_stored_xp),
+		"fishing_net_stored_mastery": maxf(0.0, fishing_net_stored_mastery),
+		"fishing_boat_stored_fish": clampi(fishing_boat_stored_fish, 0, FISHING_BOAT_HAUL_THRESHOLD - 1),
+		"fishing_boat_successes": maxi(0, fishing_boat_successes),
+		"fishing_boat_stored_xp": maxi(0, fishing_boat_stored_xp),
+		"fishing_boat_stored_mastery": maxf(0.0, fishing_boat_stored_mastery),
 		"fishing_net_collect_completed": fishing_net_collected,
 		"fishing_rod_collected": _fishing_rod_collected_for_save(),
 		"fishing_reinforced_rod_collected": _fishing_reinforced_rod_collected_for_save(),
@@ -58588,15 +58523,15 @@ func _save_payload(now: int) -> Dictionary:
 		"hub_module_positions": _hub_module_positions_for_save(),
 		"hub_decor_layout": _hub_decor_layout_for_save(),
 		"hub_missions": _hub_missions_for_save(),
-		"hub_mission_cooldown_until_unix": _hub_mission_cooldown_until_unix_for_save(),
+		"hub_mission_cooldown_until_unix": maxi(0, hub_mission_cooldown_until_unix),
 		"hub_tutorial_tip_seen": hub_tutorial_tip_seen,
 		"manual_activity_unlocks": _manual_activity_unlocks_for_save(),
 		"manual_activity_requirement_unlocks": _manual_activity_requirement_unlocks_for_save(),
-		"plank_boost_enabled": _plank_boost_enabled_for_save(),
+		"plank_boost_enabled": bool(plank_boost_enabled),
 		"activity_crit_seen": activity_crit_seen,
 		"activity_mega_crit_seen": activity_mega_crit_seen,
 		"achievement_toast_seen_ids": _achievement_toast_seen_ids_for_save(),
-		"ad_bonus_seconds_remaining": _ad_bonus_seconds_remaining_for_save(),
+		"ad_bonus_seconds_remaining": clampf(ad_bonus_seconds_remaining, 0.0, float(AD_BONUS_MAX_SECONDS)),
 		"shop_rate_prompt_dismissed": shop_rate_prompt_dismissed,
 		"selected_skill_id": _selected_skill_id_for_save(),
 		"running_skill_id": _running_skill_id_for_save(),
@@ -58614,8 +58549,8 @@ func _save_payload(now: int) -> Dictionary:
 		"module_ui_combo_first": module_ui_combo_first,
 		"module_ui_collection_first": module_ui_collection_first,
 		"audio_settings_version": AUDIO_SETTINGS_VERSION,
-		"music_volume": _music_volume_for_save(),
-		"sfx_volume": _sfx_volume_for_save(),
+		"music_volume": clampf(music_volume, 0.0, 1.0),
+		"sfx_volume": clampf(sfx_volume, 0.0, 1.0),
 		"music_muted": music_muted,
 		"sfx_muted": sfx_muted,
 		"show_stamina_decimal": show_stamina_decimal,
@@ -58624,13 +58559,13 @@ func _save_payload(now: int) -> Dictionary:
 		"offline_progress_enabled": offline_progress_enabled,
 		"auto_unlock_lockpads_enabled": auto_unlock_lockpads_enabled,
 		"nav_symbol_seen_ids": _nav_symbol_seen_ids_for_save(),
-		"god_mode_enabled": _god_mode_enabled_for_save(),
+		"god_mode_enabled": god_mode_enabled and _god_mode_available(),
 		"god_mode_save_tainted": god_mode_save_tainted,
 		"activity_start_tip_seen": activity_start_tip_seen,
-		"activity_start_count": _activity_start_count_for_save(),
-		"activity_completion_count": _activity_completion_count_for_save(),
-		"guaranteed_success_action_completions": _guaranteed_success_action_completions_for_save(),
-		"onboarding_starter_action_completion_count": _onboarding_starter_action_completion_count_for_save(),
+		"activity_start_count": maxi(0, activity_start_count),
+		"activity_completion_count": maxi(0, activity_completion_count),
+		"guaranteed_success_action_completions": clampi(guaranteed_success_action_completions, 0, GUARANTEED_SUCCESS_ACTION_COMPLETIONS),
+		"onboarding_starter_action_completion_count": maxi(0, onboarding_starter_action_completion_count),
 		"onboarding_first_module_center_released": onboarding_first_module_center_released,
 		"onboarding_header_reveal_after_progress": onboarding_header_reveal_after_progress,
 		"onboarding_swipe_tip_eligible": onboarding_swipe_tip_eligible,
@@ -58640,7 +58575,7 @@ func _save_payload(now: int) -> Dictionary:
 		"onboarding_tutorial_complete": onboarding_tutorial_complete,
 		"tutorial_active": tutorial_active,
 		"tutorial_step": tutorial_step,
-		"tutorial_gate_latch_only_until_swipe": _tutorial_gate_latch_only_until_swipe_for_save(),
+		"tutorial_gate_latch_only_until_swipe": tutorial_gate_latch_only_until_swipe and not onboarding_tutorial_complete and not skill_swipe_tip_seen,
 		"stamina_gauge_tip_seen": stamina_gauge_tip_seen,
 		"onboarding_fight_summary_revealed": onboarding_fight_summary_revealed,
 		"onboarding_fight_auto_run_message_shown": onboarding_fight_auto_run_message_shown,
@@ -58652,15 +58587,15 @@ func _save_payload(now: int) -> Dictionary:
 		"silver_opportunity_tip_seen": silver_opportunity_tip_seen,
 		"silver_opportunity_tip_action_key": _action_key_for_save(silver_opportunity_tip_action_key),
 		"detail_pull_recent_tip_texts": _detail_pull_recent_tip_texts_for_save(),
-		"stamina_gauge_pre_tip_hold_seconds": _stamina_gauge_pre_tip_hold_seconds_for_save(),
+		"stamina_gauge_pre_tip_hold_seconds": clampf(stamina_gauge_pre_tip_hold_seconds, 0.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS),
 		"music_start_chance_unlocked": music_start_chance_unlocked,
-		"flow_heat": _flow_heat_for_save(),
-		"flow_active_action_seconds": _flow_active_action_seconds_for_save(),
-		"leaderboard_last_submitted_score": _leaderboard_last_submitted_score_for_save(),
-		"leaderboard_last_submitted_total_xp": _leaderboard_last_submitted_total_xp_for_save(),
+		"flow_heat": clampf(flow_heat, 0.0, 36.0),
+		"flow_active_action_seconds": maxf(0.0, flow_active_action_seconds),
+		"leaderboard_last_submitted_score": maxi(0, int(leaderboard_last_submitted_score)),
+		"leaderboard_last_submitted_total_xp": maxi(0, int(leaderboard_last_submitted_total_xp)),
 		"leaderboard_last_submitted_scores_by_category": _leaderboard_last_submitted_scores_for_save(),
-		"leaderboard_last_submit_unix": _leaderboard_last_submit_unix_for_save(),
-		"leaderboard_repair_publish_version": _leaderboard_repair_publish_version_for_save(),
+		"leaderboard_last_submit_unix": maxi(0, int(leaderboard_last_submit_unix)),
+		"leaderboard_repair_publish_version": clampi(int(leaderboard_repair_publish_version), 0, LEADERBOARD_REPAIR_PUBLISH_VERSION),
 		"leaderboard_display_name": _leaderboard_display_name_for_save(),
 		"leaderboard_name_key": _leaderboard_name_key_for_save(),
 		"leaderboard_avatar_index": _leaderboard_avatar_index_for_save(),
@@ -58669,14 +58604,14 @@ func _save_payload(now: int) -> Dictionary:
 		"leaderboard_player_id": _leaderboard_player_id_for_save(),
 		"leaderboard_auth_provider": _leaderboard_auth_provider_for_save(),
 		"leaderboard_auth_refresh_token": _leaderboard_auth_refresh_token_for_save(),
-		"leaderboard_auth_retry_after_unix": _leaderboard_auth_retry_after_unix_for_save(),
+		"leaderboard_auth_retry_after_unix": maxi(0, int(leaderboard_auth_retry_after_unix)),
 		"leaderboard_fetch_retry_unix_by_category": _leaderboard_fetch_retry_unix_by_category_for_save(),
 		# Chat rows are not saved; the realtime stream is reopened only while the skills chat strip is visible.
-		"chat_last_send_unix": _chat_last_send_unix_for_save(),
+		"chat_last_send_unix": maxi(0, int(chat_last_send_unix)),
 		"chat_stream_retry_unix": _chat_stream_retry_unix_for_save(now),
 		"chat_stream_next_connect_unix": _chat_stream_next_connect_unix_for_save(now),
-		"chat_last_opened_created_at": _chat_last_opened_created_at_for_save(),
-		"chat_last_opened_message_id": _chat_last_opened_message_id_for_save(),
+		"chat_last_opened_created_at": maxi(0, int(chat_last_opened_created_at)),
+		"chat_last_opened_message_id": _normalized_chat_last_opened_message_id(chat_last_opened_message_id),
 		"last_result": last_result,
 		"saved_at": now
 	}
@@ -59262,14 +59197,10 @@ func _load_save_dictionary_from_path(path: String) -> Dictionary:
 	var json := JSON.new()
 	if json.parse(raw) != OK:
 		return {}
-	var data: Variant = json.data
-	if typeof(data) != TYPE_DICTIONARY:
+	var save_payload: Variant = json.data
+	if typeof(save_payload) != TYPE_DICTIONARY:
 		return {}
-	return data as Dictionary
-
-
-func _best_local_save_dictionary() -> Dictionary:
-	return _best_save_dictionary_from_paths([SAVE_PATH, SAVE_TEMP_PATH, SAVE_BACKUP_PATH])
+	return save_payload as Dictionary
 
 
 func _best_save_dictionary_from_paths(paths: Array) -> Dictionary:
@@ -59277,11 +59208,11 @@ func _best_save_dictionary_from_paths(paths: Array) -> Dictionary:
 	for path in paths:
 		if not FileAccess.file_exists(path):
 			continue
-		var data := _load_save_dictionary_from_path(path)
-		if data.is_empty():
+		var candidate_save := _load_save_dictionary_from_path(path)
+		if candidate_save.is_empty():
 			continue
-		if _save_should_replace_best_save(best_save, data):
-			best_save = data
+		if _save_should_replace_best_save(best_save, candidate_save):
+			best_save = candidate_save
 	return best_save
 
 
@@ -60494,10 +60425,10 @@ func _restore_temporary_events_from_save(value: Variant) -> void:
 	temporary_event_next_roll_unix = 0
 	if typeof(value) != TYPE_DICTIONARY:
 		return
-	var data := value as Dictionary
-	temporary_event_active = _normalized_temporary_event_active(data.get("active", {}))
-	temporary_event_cooldowns = _normalized_temporary_event_cooldowns(data.get("cooldowns", {}))
-	temporary_event_next_roll_unix = maxi(0, int(data.get("next_roll_unix", data.get("next_roll", 0))))
+	var temporary_events_save := value as Dictionary
+	temporary_event_active = _normalized_temporary_event_active(temporary_events_save.get("active", {}))
+	temporary_event_cooldowns = _normalized_temporary_event_cooldowns(temporary_events_save.get("cooldowns", {}))
+	temporary_event_next_roll_unix = maxi(0, int(temporary_events_save.get("next_roll_unix", temporary_events_save.get("next_roll", 0))))
 
 
 func _temporary_event_active_for_save() -> Dictionary:
@@ -60666,44 +60597,44 @@ func _restore_fishing_state_from_save(data: Dictionary) -> void:
 func _load_game_secondary_restore() -> void:
 	if pending_save_restore_data.is_empty():
 		return
-	var data := pending_save_restore_data
+	var restored_save := pending_save_restore_data
 	pending_save_restore_data = {}
-	_restore_achievement_toast_seen_ids(data)
+	_restore_achievement_toast_seen_ids(restored_save)
 	if not pending_save_has_achievement_toast_seen_ids:
 		_mark_completed_achievement_toasts_seen(["activity-crit", "activity-mega-crit"])
 	pending_save_has_achievement_toast_seen_ids = false
-	_restore_thieving_trophies_from_save(data)
-	_restore_activity_crit_metadata_from_save(data)
-	if not _save_needs_fishing_restore(data):
-		fish_currency = maxf(0.0, float(data.get("fish_currency", fish_currency)))
-		fish_currency_ever_earned = bool(data.get("fish_currency_ever_earned", fish_currency_ever_earned or fish_currency > 0.0))
-		_restore_auto_eat_fish_enabled_from_save(data)
-		_restore_fishing_state_from_save(data)
-	_restore_passive_modules_from_save(data, true)
+	_restore_thieving_trophies_from_save(restored_save)
+	_restore_activity_crit_metadata_from_save(restored_save)
+	if not _save_needs_fishing_restore(restored_save):
+		fish_currency = maxf(0.0, float(restored_save.get("fish_currency", fish_currency)))
+		fish_currency_ever_earned = bool(restored_save.get("fish_currency_ever_earned", fish_currency_ever_earned or fish_currency > 0.0))
+		_restore_auto_eat_fish_enabled_from_save(restored_save)
+		_restore_fishing_state_from_save(restored_save)
+	_restore_passive_modules_from_save(restored_save, true)
 	if convergence_modules.is_empty():
-		_restore_convergence_modules_from_save(data)
-	_restore_hub_modules_from_save(data.get("hub_modules", {}))
-	_restore_hub_selected_module_id_from_save(data)
-	_restore_hub_module_positions(data.get("hub_module_positions", {}))
-	_restore_hub_decor_layout(data.get("hub_decor_layout", []))
-	_restore_hub_missions_from_save(data.get("hub_missions", []))
-	_restore_hub_mission_cooldown_until_unix_from_save(data)
-	_restore_boot_visible_tip_flags_from_save(data)
-	_restore_plank_boost_enabled_from_save(data)
-	_restore_ad_bonus_seconds_remaining_from_save(data)
-	_restore_activity_progress_counts_from_save(data)
-	_restore_onboarding_progression_from_save(data)
-	_restore_tip_metadata_from_save(data)
-	_restore_stamina_gauge_pre_tip_hold_seconds_from_save(data)
-	_restore_music_flow_state_from_save(data)
-	_restore_leaderboard_submission_metadata_from_save(data)
-	_restore_leaderboard_profile_metadata_from_save(data)
-	_restore_leaderboard_auth_metadata_from_save(data)
-	_restore_leaderboard_fetch_metadata_from_save(data)
-	_restore_chat_last_send_unix_from_save(data)
-	_restore_chat_stream_retry_metadata_from_save(data)
-	_restore_chat_opened_cursor_from_save(data)
-	_apply_legacy_clock_guard_leaderboard_forgiveness(data)
+		_restore_convergence_modules_from_save(restored_save)
+	_restore_hub_modules_from_save(restored_save.get("hub_modules", {}))
+	_restore_hub_selected_module_id_from_save(restored_save)
+	_restore_hub_module_positions(restored_save.get("hub_module_positions", {}))
+	_restore_hub_decor_layout(restored_save.get("hub_decor_layout", []))
+	_restore_hub_missions_from_save(restored_save.get("hub_missions", []))
+	_restore_hub_mission_cooldown_until_unix_from_save(restored_save)
+	_restore_boot_visible_tip_flags_from_save(restored_save)
+	_restore_plank_boost_enabled_from_save(restored_save)
+	_restore_ad_bonus_seconds_remaining_from_save(restored_save)
+	_restore_activity_progress_counts_from_save(restored_save)
+	_restore_onboarding_progression_from_save(restored_save)
+	_restore_tip_metadata_from_save(restored_save)
+	_restore_stamina_gauge_pre_tip_hold_seconds_from_save(restored_save)
+	_restore_music_flow_state_from_save(restored_save)
+	_restore_leaderboard_submission_metadata_from_save(restored_save)
+	_restore_leaderboard_profile_metadata_from_save(restored_save)
+	_restore_leaderboard_auth_metadata_from_save(restored_save)
+	_restore_leaderboard_fetch_metadata_from_save(restored_save)
+	_restore_chat_last_send_unix_from_save(restored_save)
+	_restore_chat_stream_retry_metadata_from_save(restored_save)
+	_restore_chat_opened_cursor_from_save(restored_save)
+	_apply_legacy_clock_guard_leaderboard_forgiveness(restored_save)
 	_refresh_shop_nav_unlock_state()
 	if save_repaired_this_boot:
 		save_repaired_this_boot = false
@@ -60864,9 +60795,9 @@ func _leaderboard_valid_category_id(category_id: String) -> String:
 func _leaderboard_category_label(category_id: String) -> String:
 	var valid_id := _leaderboard_valid_category_id(category_id)
 	for category in _leaderboard_categories():
-		var data := category as Dictionary
-		if str(data.get("id", "")) == valid_id:
-			return str(data.get("label", valid_id))
+		var category_def := category as Dictionary
+		if str(category_def.get("id", "")) == valid_id:
+			return str(category_def.get("label", valid_id))
 	return "Total"
 
 
@@ -63910,10 +63841,6 @@ func _hub_modules_for_save() -> Dictionary:
 	return _normalized_hub_modules(hub_modules)
 
 
-func _fish_currency_for_save() -> float:
-	return maxf(0.0, fish_currency)
-
-
 func _equipped_fishing_tool_id_for_save() -> String:
 	var tool_id := str(equipped_fishing_tool_id)
 	if _fishing_tool_is_rod(tool_id):
@@ -64074,18 +64001,6 @@ func _restore_mats_from_save(data: Dictionary) -> void:
 		log_currency = maxi(0, int(floor(_mat_amount("softwood") + 0.0001)))
 
 
-func _log_currency_for_save() -> int:
-	return maxi(0, log_currency)
-
-
-func _music_volume_for_save() -> float:
-	return clampf(music_volume, 0.0, 1.0)
-
-
-func _sfx_volume_for_save() -> float:
-	return clampf(sfx_volume, 0.0, 1.0)
-
-
 func _restore_audio_settings_from_save(data: Dictionary) -> void:
 	music_volume = _saved_audio_volume(data, "music_volume", DEFAULT_MUSIC_VOLUME)
 	sfx_volume = _saved_audio_volume(data, "sfx_volume", DEFAULT_SFX_VOLUME)
@@ -64098,10 +64013,6 @@ func _saved_audio_volume(data: Dictionary, key: String, fallback: float) -> floa
 	if typeof(raw_value) != TYPE_FLOAT and typeof(raw_value) != TYPE_INT:
 		return clampf(fallback, 0.0, 1.0)
 	return clampf(float(raw_value), 0.0, 1.0)
-
-
-func _god_mode_enabled_for_save() -> bool:
-	return god_mode_enabled and _god_mode_available()
 
 
 func _skills_for_save() -> Dictionary:
@@ -64147,42 +64058,6 @@ func _stamina_bank_for_save() -> Dictionary:
 	return normalized
 
 
-func _honey_stamina_seconds_remaining_for_save() -> float:
-	return clampf(honey_stamina_seconds_remaining, 0.0, HONEY_STAMINA_SECONDS_PER_CONSUMPTION)
-
-
-func _fishing_net_stored_fish_for_save() -> int:
-	return clampi(fishing_net_stored_fish, 0, FISHING_NET_HAUL_THRESHOLD - 1)
-
-
-func _fishing_net_successes_for_save() -> int:
-	return maxi(0, fishing_net_successes)
-
-
-func _fishing_net_stored_xp_for_save() -> int:
-	return maxi(0, fishing_net_stored_xp)
-
-
-func _fishing_net_stored_mastery_for_save() -> float:
-	return maxf(0.0, fishing_net_stored_mastery)
-
-
-func _fishing_boat_stored_fish_for_save() -> int:
-	return clampi(fishing_boat_stored_fish, 0, FISHING_BOAT_HAUL_THRESHOLD - 1)
-
-
-func _fishing_boat_successes_for_save() -> int:
-	return maxi(0, fishing_boat_successes)
-
-
-func _fishing_boat_stored_xp_for_save() -> int:
-	return maxi(0, fishing_boat_stored_xp)
-
-
-func _fishing_boat_stored_mastery_for_save() -> float:
-	return maxf(0.0, fishing_boat_stored_mastery)
-
-
 func _hub_selected_module_id_for_save() -> String:
 	return hub_selected_module_id if HUB_MODULE_DEFS.has(hub_selected_module_id) else "pond"
 
@@ -64193,40 +64068,16 @@ func _restore_hub_selected_module_id_from_save(data: Dictionary) -> void:
 		hub_selected_module_id = "pond"
 
 
-func _hub_mission_cooldown_until_unix_for_save() -> int:
-	return maxi(0, hub_mission_cooldown_until_unix)
-
-
 func _restore_hub_mission_cooldown_until_unix_from_save(data: Dictionary) -> void:
 	hub_mission_cooldown_until_unix = maxi(0, int(data.get("hub_mission_cooldown_until_unix", 0)))
-
-
-func _plank_boost_enabled_for_save() -> bool:
-	return bool(plank_boost_enabled)
 
 
 func _restore_plank_boost_enabled_from_save(data: Dictionary) -> void:
 	plank_boost_enabled = bool(data.get("plank_boost_enabled", false))
 
 
-func _ad_bonus_seconds_remaining_for_save() -> float:
-	return clampf(ad_bonus_seconds_remaining, 0.0, float(AD_BONUS_MAX_SECONDS))
-
-
 func _restore_ad_bonus_seconds_remaining_from_save(data: Dictionary) -> void:
 	ad_bonus_seconds_remaining = clampf(float(data.get("ad_bonus_seconds_remaining", 0.0)), 0.0, float(AD_BONUS_MAX_SECONDS))
-
-
-func _activity_start_count_for_save() -> int:
-	return maxi(0, activity_start_count)
-
-
-func _activity_completion_count_for_save() -> int:
-	return maxi(0, activity_completion_count)
-
-
-func _guaranteed_success_action_completions_for_save() -> int:
-	return clampi(guaranteed_success_action_completions, 0, GUARANTEED_SUCCESS_ACTION_COMPLETIONS)
 
 
 func _restore_activity_progress_counts_from_save(data: Dictionary) -> void:
@@ -64243,32 +64094,12 @@ func _restore_guaranteed_success_action_completions_from_save(data: Dictionary, 
 	)
 
 
-func _onboarding_starter_action_completion_count_for_save() -> int:
-	return maxi(0, onboarding_starter_action_completion_count)
-
-
-func _tutorial_gate_latch_only_until_swipe_for_save() -> bool:
-	return tutorial_gate_latch_only_until_swipe and not onboarding_tutorial_complete and not skill_swipe_tip_seen
-
-
-func _stamina_gauge_pre_tip_hold_seconds_for_save() -> float:
-	return clampf(stamina_gauge_pre_tip_hold_seconds, 0.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS)
-
-
 func _restore_stamina_gauge_pre_tip_hold_seconds_from_save(data: Dictionary) -> void:
 	stamina_gauge_pre_tip_hold_seconds = clampf(float(data.get("stamina_gauge_pre_tip_hold_seconds", 0.0)), 0.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS)
 
 
 func _detail_pull_recent_tip_texts_for_save() -> Array:
 	return _normalized_detail_pull_recent_tip_texts(detail_pull_recent_tip_texts)
-
-
-func _flow_heat_for_save() -> float:
-	return clampf(flow_heat, 0.0, 36.0)
-
-
-func _flow_active_action_seconds_for_save() -> float:
-	return maxf(0.0, flow_active_action_seconds)
 
 
 func _restore_music_flow_state_from_save(data: Dictionary) -> void:
@@ -64415,22 +64246,6 @@ func _hub_module_state_from_save(loaded_state: Dictionary) -> Dictionary:
 	}
 
 
-func _leaderboard_last_submitted_score_for_save() -> int:
-	return maxi(0, int(leaderboard_last_submitted_score))
-
-
-func _leaderboard_last_submitted_total_xp_for_save() -> int:
-	return maxi(0, int(leaderboard_last_submitted_total_xp))
-
-
-func _leaderboard_last_submit_unix_for_save() -> int:
-	return maxi(0, int(leaderboard_last_submit_unix))
-
-
-func _leaderboard_repair_publish_version_for_save() -> int:
-	return clampi(int(leaderboard_repair_publish_version), 0, LEADERBOARD_REPAIR_PUBLISH_VERSION)
-
-
 func _leaderboard_display_name_for_save() -> String:
 	return _sanitize_leaderboard_display_name(str(leaderboard_display_name))
 
@@ -64506,10 +64321,6 @@ func _leaderboard_auth_provider_for_save() -> String:
 	return "google" if leaderboard_auth_provider == "google" else "anonymous"
 
 
-func _leaderboard_auth_retry_after_unix_for_save() -> int:
-	return maxi(0, int(leaderboard_auth_retry_after_unix))
-
-
 func _restore_leaderboard_auth_metadata_from_save(data: Dictionary) -> void:
 	leaderboard_auth_id_token = ""
 	leaderboard_auth_refresh_token = str(data.get("leaderboard_auth_refresh_token", "")).strip_edges()
@@ -64539,10 +64350,6 @@ func _normalized_hub_missions(loaded_missions: Variant) -> Array:
 	return normalized
 
 
-func _chat_last_send_unix_for_save() -> int:
-	return maxi(0, int(chat_last_send_unix))
-
-
 func _restore_chat_last_send_unix_from_save(data: Dictionary) -> void:
 	chat_last_send_unix = maxi(0, int(data.get("chat_last_send_unix", 0)))
 
@@ -64560,14 +64367,6 @@ func _restore_chat_stream_retry_metadata_from_save(data: Dictionary) -> void:
 	var max_chat_retry_unix := _unix_now() + CHAT_STREAM_RETRY_INTERVAL_SECONDS
 	chat_stream_retry_unix = mini(maxi(0, int(data.get("chat_stream_retry_unix", data.get("chat_fetch_retry_unix", 0)))), max_chat_retry_unix)
 	chat_stream_next_connect_unix = mini(maxi(chat_stream_retry_unix, int(data.get("chat_stream_next_connect_unix", 0))), max_chat_retry_unix)
-
-
-func _chat_last_opened_created_at_for_save() -> int:
-	return maxi(0, int(chat_last_opened_created_at))
-
-
-func _chat_last_opened_message_id_for_save() -> String:
-	return _normalized_chat_last_opened_message_id(chat_last_opened_message_id)
 
 
 func _restore_chat_opened_cursor_from_save(data: Dictionary) -> void:
@@ -65276,22 +65075,22 @@ func _add_action_art_corner_badges(art_panel: Control, action: Dictionary) -> vo
 	if art_panel == null or not is_instance_valid(art_panel):
 		return
 	art_panel.clip_contents = false
-	var resource_icon_path := _action_art_resource_icon_path(action)
-	if not resource_icon_path.is_empty():
-		art_panel.add_child(_action_art_corner_badge(resource_icon_path, false))
+	var resource_icon_paths := _action_art_resource_icon_paths(action)
+	for i in resource_icon_paths.size():
+		art_panel.add_child(_action_art_corner_badge(str(resource_icon_paths[i]), false, i))
 	var special_type_icon_path := _action_art_special_type_icon_path(action)
 	if not special_type_icon_path.is_empty():
-		art_panel.add_child(_action_art_corner_badge(special_type_icon_path, true))
+		art_panel.add_child(_action_art_corner_badge(special_type_icon_path, true, 0))
 
 
-func _action_art_corner_badge(icon_path: String, align_right: bool) -> Control:
+func _action_art_corner_badge(icon_path: String, align_right: bool, index := 0) -> Control:
 	var host := Control.new()
 	host.custom_minimum_size = ACTION_ART_CORNER_ICON_SIZE
 	host.size = ACTION_ART_CORNER_ICON_SIZE
 	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.z_index = 30
+	host.z_index = 30 + index
 	var overlap := ACTION_ART_CORNER_ICON_EDGE_OVERLAP
-	var x := ACTION_ART_PANEL_SIZE.x - ACTION_ART_CORNER_ICON_SIZE.x + overlap if align_right else -overlap
+	var x := ACTION_ART_PANEL_SIZE.x - ACTION_ART_CORNER_ICON_SIZE.x + overlap if align_right else -overlap + ACTION_ART_CORNER_ICON_LIST_STEP * index
 	host.position = Vector2(x, ACTION_ART_PANEL_SIZE.y - ACTION_ART_CORNER_ICON_SIZE.y + overlap)
 
 	var stroke := TextureRect.new()
@@ -65320,18 +65119,23 @@ func _action_art_corner_badge(icon_path: String, align_right: bool) -> Control:
 	return host
 
 
-func _action_art_resource_icon_path(action: Dictionary) -> String:
+func _action_art_resource_icon_paths(action: Dictionary) -> Array:
+	var icon_paths := []
 	var mat_rewards := _action_mat_reward_defs(action)
-	if not mat_rewards.is_empty():
-		var first_reward := mat_rewards[0] as Dictionary
-		return _mat_icon_path(str(first_reward.get("id", "")))
+	for raw_reward in mat_rewards:
+		var reward := raw_reward as Dictionary
+		var icon_path := _mat_icon_path(str(reward.get("id", "")))
+		if not icon_path.is_empty() and not icon_paths.has(icon_path):
+			icon_paths.append(icon_path)
+	if not icon_paths.is_empty():
+		return icon_paths
 	var raw_resource_rewards = action.get("resource_rewards", {})
 	if typeof(raw_resource_rewards) != TYPE_DICTIONARY:
-		return ""
+		return icon_paths
 	var resource_rewards := raw_resource_rewards as Dictionary
 	if int(resource_rewards.get("logs_max", resource_rewards.get("logs_min", resource_rewards.get("logs", 0)))) > 0:
-		return _mat_icon_path(_temporary_event_log_reward_mat_id())
-	return ""
+		icon_paths.append(_mat_icon_path(_temporary_event_log_reward_mat_id()))
+	return icon_paths
 
 
 func _action_art_special_type_icon_path(action: Dictionary) -> String:
