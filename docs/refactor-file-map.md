@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 188 files / about 100,134 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 189 files / about 100,796 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 61,248 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target. |
+| `scripts/main.gd` * | 68,517 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target; `RegenCircle` now preloads from `scripts/ui/regen_circle.gd`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -56,6 +56,7 @@ Legend:
 | --- | ---: | --- |
 | `scripts/ui/mobile_scroll_container.gd` | 515 | Mobile-friendly scroll behavior. |
 | `scripts/ui/button_press_state.gd` * | 54 | Shared press/drag/release metadata helper for passive button routing. Extracted from `scripts/main.gd` this session. |
+| `scripts/ui/regen_circle.gd` * | 662 | Extracted stamina/regen gauge drawing class used by skill headers, pinned shelves, and detail stamina gauges. |
 | `scripts/ui/blue_guy_chicken_brawl_stage.gd` | 1,689 | Fighting/chicken brawl stage visual. |
 | `scripts/ui/activity_card_depth.gd` | 326 | Activity card pressed/elevation visual. |
 | `scripts/ui/activity_card_border.gd` | 34 | Activity card border drawing. |
@@ -97,7 +98,7 @@ Legend:
 | Path | Lines | What lives here |
 | --- | ---: | --- |
 | `scripts/check-project.ps1` | 381 | Preferred broad project validation entrypoint. |
-| `scripts/test-performance-regressions.ps1` * | 2,922 | Static/runtime regression assertions for performance-sensitive code and UI contracts. |
+| `scripts/test-performance-regressions.ps1` * | 3,056 | Static/runtime regression assertions for performance-sensitive code and UI contracts; now reads extracted `scripts/ui/regen_circle.gd`. |
 | `scripts/test-save-normalization.ps1` * | 2,671 | Save/load normalization regression assertions. |
 | `scripts/test-module-list-transitions.ps1` | 3,289 | Module list transition behavioral validation. |
 | `scripts/test-page-switch-cover-visual.ps1` | 375 | Page-switch cover/depressed visual validation. Currently failing in this session. |
@@ -130,9 +131,10 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted for bottom nav, module utility, fishing offer, fishing method, and thieving heist buttons; activity-module clipping restored. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted for bottom nav, module utility, fishing offer, fishing method, and thieving heist buttons; activity-module clipping restored; `RegenCircle` local class moved behind a preload. |
 | `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata, including optional extra metadata fields. |
-| `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf. Also contains pre-existing save/refactor assertion edits from active worktree. |
+| `scripts/ui/regen_circle.gd` | added | New extracted stamina/regen gauge drawing class. |
+| `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf; RegenCircle assertions now target the extracted script. Also contains pre-existing save/refactor assertion edits from active worktree. |
 | `scripts/test-save-normalization.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
 | `scripts/check-leaderboard-cost-safety.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
 | `docs/plan-v0.5.0.md` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
@@ -147,8 +149,8 @@ Legend:
    - Next lazy win: keep page-switch separate until its visual regression is understood.
 
 2. Activity/skill UI ownership
-   - Current: many shelf, module, card, and action rendering paths still live in `scripts/main.gd`.
-   - Next lazy win: extract pure UI helper scripts only where Godot node ownership is already clear.
+   - Current: many shelf, module, card, and action rendering paths still live in `scripts/main.gd`; `RegenCircle` gauge drawing is now isolated in `scripts/ui/regen_circle.gd`.
+   - Next lazy win: inspect the remaining local drawing classes, starting with `FishCircle`, and extract only if dependencies stay simple.
 
 3. Save normalization
    - Current: many tiny save helper wrappers have been inlined or renamed in active worktree changes.
@@ -173,5 +175,10 @@ Legend:
 | `.\scripts\test-performance-regressions.ps1` | passed after fishing offer/method press-state reuse. |
 | `.\scripts\test-thieving-heist-click-flow.ps1` | passed after thieving heist press-state reuse; runner emitted existing save-protection/leak-at-exit warnings. |
 | `.\scripts\test-performance-regressions.ps1` | passed after thieving heist press-state reuse. |
+| `git diff --check -- scripts/main.gd scripts/ui/regen_circle.gd scripts/test-performance-regressions.ps1 docs/refactor-file-map.md` | passed after extracting `scripts/ui/regen_circle.gd`. |
+| `.\scripts\test-stamina-gauge-offpage-smooth.ps1` | passed after extracting `scripts/ui/regen_circle.gd`; a parallel validation warning was followed by a clean Godot process check. |
+| `.\scripts\test-stamina-gauge-fail-shake.ps1` | passed after extracting `scripts/ui/regen_circle.gd`. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting `scripts/ui/regen_circle.gd`. |
+| Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified header stamina gauge and firepit gauge rendering after extracting `scripts/ui/regen_circle.gd`. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |

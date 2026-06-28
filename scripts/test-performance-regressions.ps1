@@ -6,6 +6,7 @@ $cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
 $activityCardInnerShadowPath = Join-Path $projectRoot "scripts\ui\activity_card_inner_shadow.gd"
 $skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detail_page_shelf_shadow.gd"
 $skillMenuPanelChromePath = Join-Path $projectRoot "scripts\ui\skill_menu_panel_chrome.gd"
+$regenCirclePath = Join-Path $projectRoot "scripts\ui\regen_circle.gd"
 $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_border.gd"
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
@@ -78,7 +79,7 @@ function Get-ClassBody {
         [Parameter(Mandatory = $true)][string]$Name
     )
 
-    $pattern = "(?ms)^class $([regex]::Escape($Name)):\s*\r?\n.*?(?=^class |\z)"
+    $pattern = "(?ms)^class $([regex]::Escape($Name)):\s*\r?\n.*?(?=^(?:class |const |var |func )|\z)"
     $match = [regex]::Match($Text, $pattern)
     Assert-True $match.Success "Could not find class $Name."
 	$match.Value
@@ -110,6 +111,8 @@ Assert-True (Test-Path -LiteralPath $skillDetailPageShelfShadowPath) "Missing sc
 $skillDetailPageShelfShadow = Get-Content -LiteralPath $skillDetailPageShelfShadowPath -Raw
 Assert-True (Test-Path -LiteralPath $skillMenuPanelChromePath) "Missing scripts\ui\skill_menu_panel_chrome.gd."
 $skillMenuChrome = Get-Content -LiteralPath $skillMenuPanelChromePath -Raw
+Assert-True (Test-Path -LiteralPath $regenCirclePath) "Missing scripts\ui\regen_circle.gd."
+$regenCircle = Get-Content -LiteralPath $regenCirclePath -Raw
 Assert-True (Test-Path -LiteralPath $activityCardBorderPath) "Missing scripts\ui\activity_card_border.gd."
 $activityCardBorder = Get-Content -LiteralPath $activityCardBorderPath -Raw
 Assert-True (Test-Path -LiteralPath $passiveModuleCardBorderPath) "Missing scripts\ui\passive_module_card_border.gd."
@@ -2321,7 +2324,7 @@ Assert-True $fluidReady.Success "Could not find FishingFluidStrip ready hook."
 Assert-True ($fluidReady.Value -match '_sync_strip_visibility\(\)\s*\r?\n\s*set_process\(false\)') "Idle Fishing fluid strips should sleep immediately after creation."
 Assert-True ($fluidReady.Value -notmatch 'set_process\(true\)') "Fishing fluid strips must not start processing while hidden and idle."
 
-$regenCircle = Get-ClassBody -Text $main -Name "RegenCircle"
+Assert-True ($main -match 'const RegenCircle = preload\("res://scripts/ui/regen_circle\.gd"\)') "Skill header regen circle should live in its extracted UI script."
 Assert-True ($regenCircle -match 'const VALUE_EPSILON := 0\.0015') "Skill header regen circle should ignore imperceptibly small ring target changes."
 Assert-True ($regenCircle -match 'const RING_ARC_SEGMENTS := 40') "Skill header regen circle should keep ring arcs low-detail for frame stability."
 Assert-True ($regenCircle -match 'const BEVEL_ARC_SEGMENTS := 32') "Skill header regen circle should keep bevel arcs low-detail for frame stability."
@@ -2336,14 +2339,14 @@ Assert-True $centerNumberStrokeMin.Success "Small skill header regen circles sho
 Assert-True ([int]$centerNumberStrokeMin.Groups[1].Value -ge 13) "Small skill header regen circles should keep the thicker stamina number outline readable."
 Assert-True ($regenCircle -notmatch 'ring_track_color') "Skill header regen circle should not draw a colored empty regen track."
 Assert-True ($regenCircle -notmatch 'draw_arc\([^\r\n]*,\s*(64|48),') "Skill header regen circle must not return to high-segment arc draws."
-$regenTheme = [regex]::Match($regenCircle, "(?ms)^\s+func set_theme_color\b.*?(?=^\s+func |\z)")
+$regenTheme = [regex]::Match($regenCircle, "(?ms)^\s*func set_theme_color\b.*?(?=^\s*func |\z)")
 Assert-True $regenTheme.Success "Could not find regen circle theme setter."
 Assert-True ($regenTheme.Value -match 'theme_color\.is_equal_approx\(next_color\)') "Skill header regen circle should skip redraws when the theme color is unchanged."
-$regenValue = [regex]::Match($regenCircle, "(?ms)^\s+func set_value\b.*?(?=^\s+func |\z)")
+$regenValue = [regex]::Match($regenCircle, "(?ms)^\s*func set_value\b.*?(?=^\s*func |\z)")
 Assert-True $regenValue.Success "Could not find regen circle value setter."
 Assert-True ($regenValue.Value -match 'absf\(target_value - clamped_value\) <= VALUE_EPSILON') "Skill header regen circle should skip tiny ring target drifts."
 Assert-True ($regenValue.Value -match '_maybe_sleep_animation_process\(\)\s*\r?\n\s*return') "Skill header regen circle should return before redraw for tiny ring target drifts."
-$regenStamina = [regex]::Match($regenCircle, "(?ms)^\s+func set_stamina\b.*?(?=^\s+func |\z)")
+$regenStamina = [regex]::Match($regenCircle, "(?ms)^\s*func set_stamina\b.*?(?=^\s*func |\z)")
 Assert-True $regenStamina.Success "Could not find regen circle stamina setter."
 Assert-True ($regenStamina.Value -match 'next_target_current') "Skill header regen circle should compute target stamina before deciding to redraw."
 Assert-True ($regenStamina.Value -match 'return') "Skill header regen circle should return early when stamina display state is unchanged."
@@ -2361,17 +2364,17 @@ Assert-True ($regenInnerFill.Value -match 'if pct <= VALUE_EPSILON:\s*\r?\n\s*re
 Assert-True ($regenInnerFill.Value -match '_draw_liquid_segment') "Skill header regen circle should use the restored shaded liquid segment."
 Assert-True ($regenInnerFill.Value -match 'top_color') "Skill header regen circle liquid should retain top/bottom color grading."
 Assert-True ($regenInnerFill.Value -notmatch 'while\s+') "Skill header regen circle liquid fill must keep bounded for-range drawing."
-$regenFullFill = [regex]::Match($regenCircle, "(?ms)^\s+func _draw_full_liquid_sphere\b.*?(?=^\s+func |\z)")
+$regenFullFill = [regex]::Match($regenCircle, "(?ms)^\s*func _draw_full_liquid_sphere\b.*?(?=^\s*func |\z)")
 Assert-True $regenFullFill.Success "Could not find regen circle full liquid fill renderer."
 Assert-True ($regenFullFill.Value -match 'FULL_LIQUID_FILL_ROWS') "Full skill header regen liquid should use a bounded row-gradient fill."
 Assert-True ($regenFullFill.Value -match 'draw_line') "Full skill header regen liquid should restore visible vertical shading."
 Assert-True ($regenFullFill.Value -notmatch 'while\s+') "Full skill header regen liquid must keep bounded for-range drawing."
-$regenLiquidSegment = [regex]::Match($regenCircle, "(?ms)^\s+func _draw_liquid_segment\b.*?(?=^\s+func |\z)")
+$regenLiquidSegment = [regex]::Match($regenCircle, "(?ms)^\s*func _draw_liquid_segment\b.*?(?=^\s*func |\z)")
 Assert-True $regenLiquidSegment.Success "Could not find regen circle liquid segment renderer."
 Assert-True ($regenLiquidSegment.Value -match 'LIQUID_FILL_ROWS') "Partial skill header regen liquid should draw shaded rows with a fixed budget."
 Assert-True ($regenLiquidSegment.Value -match 'edge_shadow') "Partial skill header regen liquid should restore side shadowing."
 Assert-True ($regenLiquidSegment.Value -match 'chord <= 0\.5') "Partial skill header regen liquid should skip degenerate zero-width rows."
-$regenSurfaceOval = [regex]::Match($regenCircle, "(?ms)^\s+func _draw_liquid_surface_oval\b.*?(?=^\s+func |\z)")
+$regenSurfaceOval = [regex]::Match($regenCircle, "(?ms)^\s*func _draw_liquid_surface_oval\b.*?(?=^\s*func |\z)")
 Assert-True $regenSurfaceOval.Success "Could not find regen circle liquid surface renderer."
 Assert-True ($regenSurfaceOval.Value -match 'half_width <= 0\.5') "Skill header regen liquid surface should skip degenerate oval polygons."
 Assert-True ($regenSurfaceOval.Value -match 'SURFACE_OVAL_ROWS') "Skill header regen liquid surface should use a bounded row sheen."
@@ -2582,7 +2585,7 @@ $paperButtonStyleWithShape = Get-FunctionBody -Text $main -Name "_paper_button_s
 Assert-True ($paperButtonStyleWithShape -match '_create_image_texture\(image\)') "Generated paper button styles should use the shared headless-safe image texture helper."
 $textureFromImage = Get-FunctionBody -Text $main -Name "_texture_from_image"
 Assert-True ($textureFromImage -match '_create_image_texture\(image\)') "Loaded image fallback textures should use the shared headless-safe image texture helper."
-Assert-True ($main -match 'DisplayServer\.get_name\(\) == "headless" or image == null or image\.is_empty\(\)[\s\S]*?_glass_bowl_texture = ImageTexture\.create_from_image\(image\)') "Fish circle glass bowl texture generation should skip headless validation locally."
+Assert-True ($regenCircle -match 'DisplayServer\.get_name\(\) == "headless" or image == null or image\.is_empty\(\)[\s\S]*?_glass_bowl_texture = ImageTexture\.create_from_image\(image\)') "Regen circle glass bowl texture generation should skip headless validation locally."
 
 $statChipTitle = Get-FunctionBody -Text $main -Name "_sync_action_stat_chip_title"
 Assert-True ($statChipTitle -match 'stat_title_text') "Action stat chip titles should skip repeated label text writes."
