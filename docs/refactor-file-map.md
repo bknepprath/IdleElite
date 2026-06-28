@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 193 files / about 112,281 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 196 files / about 112,279 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 67,670 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target; recent UI drawing controls now preload from `scripts/ui/`. |
+| `scripts/main.gd` * | 67,499 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target; recent UI drawing controls now preload from `scripts/ui/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -60,6 +60,9 @@ Legend:
 | `scripts/ui/fish_circle.gd` * | 478 | Extracted fishing header currency/tool/wallet circle control. |
 | `scripts/ui/page_switch_button_face.gd` * | 129 | Extracted page-switch/action-card shaped face drawing control. |
 | `scripts/ui/prism_connector_overlay.gd` * | 241 | Extracted prism/depth connector drawing control. |
+| `scripts/ui/page_switch_chevron_icon.gd` * | 54 | Extracted page-switch chevron icon drawing control. |
+| `scripts/ui/module_utility_collapse_arrow.gd` * | 33 | Extracted module utility collapse arrow drawing control. |
+| `scripts/ui/blue_guy_health_heart_gauge.gd` * | 82 | Extracted fight header health/regen heart gauge control. |
 | `scripts/ui/blue_guy_chicken_brawl_stage.gd` | 1,689 | Fighting/chicken brawl stage visual. |
 | `scripts/ui/activity_card_depth.gd` | 326 | Activity card pressed/elevation visual. |
 | `scripts/ui/activity_card_border.gd` | 34 | Activity card border drawing. |
@@ -140,6 +143,9 @@ Legend:
 | `scripts/ui/fish_circle.gd` | added | New extracted fishing header circle control. |
 | `scripts/ui/page_switch_button_face.gd` | added | New extracted shaped page-switch/action-card face control. |
 | `scripts/ui/prism_connector_overlay.gd` | added | New extracted prism/depth connector overlay control. |
+| `scripts/ui/page_switch_chevron_icon.gd` | added | New extracted page-switch chevron icon control. |
+| `scripts/ui/module_utility_collapse_arrow.gd` | added | New extracted module utility collapse arrow control. |
+| `scripts/ui/blue_guy_health_heart_gauge.gd` | added | New extracted fighting health heart gauge control. |
 | `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf; RegenCircle and FishCircle assertions now target extracted scripts. Also contains pre-existing save/refactor assertion edits from active worktree. |
 | `scripts/test-save-normalization.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
 | `scripts/check-leaderboard-cost-safety.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
@@ -155,8 +161,8 @@ Legend:
    - Next lazy win: keep page-switch separate until its visual regression is understood.
 
 2. Activity/skill UI ownership
-   - Current: many shelf, module, card, and action rendering paths still live in `scripts/main.gd`; `RegenCircle`, `FishCircle`, page-switch face drawing, and prism connector drawing are now isolated in `scripts/ui/`.
-   - Next lazy win: inspect the remaining small local drawing classes, but skip any extraction that would create dependency plumbing larger than the class itself.
+   - Current: many shelf, module, card, and action rendering paths still live in `scripts/main.gd`; the reusable local drawing controls larger than tiny glyphs are now isolated in `scripts/ui/`.
+   - Next lazy win: skip the remaining 8-45 line local glyph helpers unless they need real behavior changes; extracting them would add more file plumbing than architecture.
 
 3. Save normalization
    - Current: many tiny save helper wrappers have been inlined or renamed in active worktree changes.
@@ -195,5 +201,9 @@ Legend:
 | `.\scripts\check-ui-boundary-contracts.ps1` | passed after extracting page-switch face and prism connector controls. |
 | `.\scripts\test-performance-regressions.ps1` | passed after extracting page-switch face and prism connector controls. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified header/card/module rendering after extracting page-switch face and prism connector controls. |
+| `git diff --check -- scripts/main.gd scripts/ui/page_switch_chevron_icon.gd scripts/ui/module_utility_collapse_arrow.gd scripts/ui/blue_guy_health_heart_gauge.gd` | passed after extracting chevron, collapse arrow, and health gauge controls. |
+| `.\scripts\check-ui-boundary-contracts.ps1` | passed after extracting chevron, collapse arrow, and health gauge controls. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting chevron, collapse arrow, and health gauge controls. |
+| Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified header/card/module rendering after extracting chevron, collapse arrow, and health gauge controls. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
