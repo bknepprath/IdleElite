@@ -15119,23 +15119,6 @@ func _clear_activity_unlock_ceremony_test_state() -> void:
 		card.erase("lock_overlay_sync_key")
 
 
-func _unlock_prior_test_actions(skill_id: String, target_action: Dictionary) -> void:
-	var target_id := str(target_action.get("id", ""))
-	var target_sort := int(target_action.get("sort_unlock", target_action.get("unlock", 1)))
-	for raw_action in actions_by_skill.get(skill_id, []) as Array:
-		var action := raw_action as Dictionary
-		var action_id := str(action.get("id", ""))
-		if action_id.is_empty() or action_id == target_id:
-			continue
-		if _is_passive_action(action) or _is_convergence_action(action) or _is_event_action(action):
-			continue
-		var sort_level := int(action.get("sort_unlock", action.get("unlock", 1)))
-		if sort_level >= target_sort:
-			continue
-		if _can_unlock_action(skill_id, action):
-			_mark_action_manually_unlocked(skill_id, action_id)
-
-
 func _lock_test_action(skill_id: String, action_id: String) -> void:
 	var key := _canonical_manual_activity_unlock_key(_action_key(skill_id, action_id))
 	if not key.is_empty():
@@ -32002,33 +31985,6 @@ func _restore_skill_strip_wrap_page() -> void:
 	page.offset_right = float(page_idx) * content_width + content_width
 
 
-func _capture_skill_strip_page_refs() -> Dictionary:
-	return {
-		"page": skill_swipe_page,
-		"xp_label": detail_xp_label,
-		"xp_bar": detail_xp_bar,
-		"regen_circle": detail_regen_circle,
-		"regen_circle_host": detail_regen_circle_host,
-		"regen_circle_fade_group": detail_regen_circle_fade_group,
-		"fish_circle": detail_fish_circle,
-		"auto_eat_fish_button": detail_auto_eat_fish_button,
-		"stamina_bar": detail_stamina_bar,
-		"header_body": detail_header_body,
-		"header_left_block": detail_header_left_block,
-		"actions_scroll": detail_actions_scroll,
-		"unlock_scroll_spacer": detail_unlock_scroll_spacer,
-		"shelf_shadow_overlay": detail_shelf_shadow_overlay,
-		"back_button": detail_back_button,
-		"jump_top_button": detail_jump_top_button,
-		"jump_bottom_button": detail_jump_bottom_button,
-		"action_card_nodes": detail_action_card_nodes.duplicate(),
-		"rendered_action_ids": detail_rendered_action_ids.duplicate(),
-		"lazy_plan": detail_lazy_plan.duplicate(),
-		"lazy_stack": detail_lazy_stack,
-		"lazy_last_scroll": detail_lazy_last_scroll,
-	}
-
-
 func _swap_skill_strip_refs(sid: String) -> void:
 	if not skill_strip_refs.has(sid):
 		return
@@ -36997,34 +36953,6 @@ func _finish_skill_swipe_preview_prewarm(token: int) -> void:
 	if token == skill_swipe_preview_prewarm_token:
 		skill_swipe_preview_prewarm_pending = false
 		_hide_parked_skill_swipe_preview_pages(skill_swipe_preview_page)
-
-
-func _ensure_skill_swipe_preview(offset: int) -> void:
-	if not _swipe_offset_accessible(offset):
-		return
-	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
-		return
-	if skill_swipe_preview_page != null and is_instance_valid(skill_swipe_preview_page) and skill_swipe_preview_offset == offset:
-		return
-	_park_skill_swipe_preview()
-	var cached_page := _skill_swipe_preview_control(skill_swipe_preview_pages.get(offset))
-	if cached_page == null:
-		skill_swipe_preview_pages.erase(offset)
-		cached_page = _ensure_skill_swipe_preview_page_cached(offset)
-	if cached_page == null:
-		return
-	skill_swipe_preview_page = cached_page
-	skill_swipe_preview_offset = offset
-	skill_swipe_preview_page.position.x = _skill_swipe_preview_rest_x(offset)
-	skill_swipe_preview_page.visible = SKILL_SWIPE_SHOW_INCOMING_PREVIEW_DURING_DRAG
-	_sync_skill_swipe_preview_page_fade(skill_swipe_drag_offset_x)
-	_hide_parked_skill_swipe_preview_pages(skill_swipe_preview_page)
-	var state := skill_swipe_preview_states.get(offset, {}) as Dictionary
-	if state != null and bool(state.get("prewarmed", false)):
-		_sync_skill_swipe_preview_scroll_state(state)
-		_force_show_skill_swipe_preview_modules(offset)
-	else:
-		_prime_skill_swipe_preview_modules(offset)
 
 
 func _ensure_skill_swipe_preview_page_cached(offset: int) -> Control:
