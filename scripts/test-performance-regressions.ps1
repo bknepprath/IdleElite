@@ -27,6 +27,7 @@ $lockClusterPath = Join-Path $projectRoot "scripts\activity_lock_cluster.gd"
 $lockRigPath = Join-Path $projectRoot "scripts\activity_lock_rig.gd"
 $fluidStripPath = Join-Path $projectRoot "scripts\fishing_fluid_strip.gd"
 $perfMonitorPath = Join-Path $projectRoot "scripts\perf_monitor.gd"
+$performanceMonitorTestPath = Join-Path $projectRoot "scripts\test-performance-monitor.ps1"
 $checkProjectPath = Join-Path $projectRoot "scripts\check-project.ps1"
 $agentOnboardingPath = Join-Path $projectRoot "docs\agent-onboarding-checklist.md"
 $agentCodebaseMapPath = Join-Path $projectRoot "docs\agent-codebase-map.md"
@@ -42,6 +43,7 @@ $activityDatabasePath = Join-Path $projectRoot "docs\activity-database.json"
 $skillsPagePerformancePath = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 $saveNormalizationPath = Join-Path $projectRoot "scripts\test-save-normalization.ps1"
 $tutorialStartScrollPath = Join-Path $projectRoot "scripts\test-tutorial-start-scroll.ps1"
+$activityCardGeometryPath = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
 $homeAchievementMedalClickPath = Join-Path $projectRoot "scripts\test-home-achievement-medal-click.ps1"
 $pinnedPinVisualSmokePath = Join-Path $projectRoot "scripts\test-pinned-pin-visual-smoke.ps1"
 $actionCardMedalCeremonyCleanupPath = Join-Path $projectRoot "scripts\test-action-card-medal-ceremony-cleanup.ps1"
@@ -147,6 +149,8 @@ Assert-True (Test-Path -LiteralPath $fluidStripPath) "Missing scripts\fishing_fl
 $fluidStrip = Get-Content -LiteralPath $fluidStripPath -Raw
 Assert-True (Test-Path -LiteralPath $perfMonitorPath) "Missing scripts\perf_monitor.gd."
 $perfMonitor = Get-Content -LiteralPath $perfMonitorPath -Raw
+Assert-True (Test-Path -LiteralPath $performanceMonitorTestPath) "Missing scripts\test-performance-monitor.ps1."
+$performanceMonitorTest = Get-Content -LiteralPath $performanceMonitorTestPath -Raw
 Assert-True (Test-Path -LiteralPath $checkProjectPath) "Missing scripts\check-project.ps1."
 $checkProject = Get-Content -LiteralPath $checkProjectPath -Raw
 Assert-True (Test-Path -LiteralPath $agentOnboardingPath) "Missing docs\agent-onboarding-checklist.md."
@@ -175,6 +179,8 @@ Assert-True (Test-Path -LiteralPath $saveNormalizationPath) "Missing scripts\tes
 $saveNormalization = Get-Content -LiteralPath $saveNormalizationPath -Raw
 Assert-True (Test-Path -LiteralPath $tutorialStartScrollPath) "Missing scripts\test-tutorial-start-scroll.ps1."
 $tutorialStartScroll = Get-Content -LiteralPath $tutorialStartScrollPath -Raw
+Assert-True (Test-Path -LiteralPath $activityCardGeometryPath) "Missing scripts\test-activity-card-geometry.ps1."
+$activityCardGeometry = Get-Content -LiteralPath $activityCardGeometryPath -Raw
 Assert-True (Test-Path -LiteralPath $homeAchievementMedalClickPath) "Missing scripts\test-home-achievement-medal-click.ps1."
 $homeAchievementMedalClick = Get-Content -LiteralPath $homeAchievementMedalClickPath -Raw
 Assert-True (Test-Path -LiteralPath $pinnedPinVisualSmokePath) "Missing scripts\test-pinned-pin-visual-smoke.ps1."
@@ -307,6 +313,8 @@ Assert-True ($checkProject -match 'check-leaderboard-cost-safety\.ps1') "Project
 Assert-True ($checkProject -match 'test-skills-page-performance-repeat\.ps1') "Strict project validation should run the repeated skills-page performance gate."
 Assert-True ($checkProject -match 'Last failed non-strict skills page performance output follows') "Non-strict project validation should only print failed skills-page performance output after all retries fail."
 Assert-True ($checkProject -match 'Skills page performance attempt \$attempt failed with exit code \$exitCode') "Non-strict project validation should summarize failed skills-page performance attempts before retrying."
+Assert-True ($performanceMonitorTest -match 'for \(\$attempt = 1; \$attempt -le 10; \$attempt\+\+\)' -and $performanceMonitorTest -match 'Start-Sleep -Milliseconds 500') "Performance monitor smoke should give wrapper-launched headless Godot processes a short exit grace window before failing orphan checks."
+Assert-True ($activityCardGeometry -match 'for \(\$attempt = 1; \$attempt -le 10; \$attempt\+\+\)' -and $activityCardGeometry -match 'Start-Sleep -Milliseconds 500') "Activity card geometry smoke should give wrapper-launched headless Godot processes a short exit grace window before failing orphan checks."
 Assert-True ($homeAchievementMedalClick -match 'for \(\$attempt = 1; \$attempt -le 10; \$attempt\+\+\)' -and $homeAchievementMedalClick -match 'Start-Sleep -Milliseconds 500') "Home achievement medal smoke should give wrapper-launched headless Godot processes a short exit grace window before failing orphan checks."
 Assert-True ($pinnedPinVisualSmoke -notmatch 'Parameter "t" is null') "Pinned pin visual smoke should fail on null texture RID errors instead of treating them as shutdown noise."
 $testHarnessesWithGodotErrorScanners = @(Get-ChildItem -LiteralPath (Join-Path $projectRoot "scripts") -Filter "test-*.ps1" | Where-Object {
@@ -1073,8 +1081,17 @@ Assert-True ($stageThievingHeistPreview -match '_set_canvas_item_modulate_if_cha
 $buildThievingHeistCard = Get-FunctionBody -Text $main -Name "_build_thieving_heist_card"
 Assert-True ($buildThievingHeistCard -match 'button\.pressed\.connect\(_attempt_thieving_heist\.bind\(heist_id\)\)') "Thieving heist steal buttons should have a direct pressed activation path."
 $mainInput = Get-FunctionBody -Text $main -Name "_input"
-Assert-True ($mainInput -match '_route_thieving_heist_button_global_input\(event\)') "Thieving heist steal buttons should be routed through the global input path."
-Assert-True ($mainInput.IndexOf('_route_thieving_heist_button_global_input(event)') -lt $mainInput.IndexOf('_event_points_inside_bottom_interactive_ui(event)')) "Thieving heist input should run before the bottom UI exclusion early return."
+$activitySurfaceInputMatch = [regex]::Match($main, '(?ms)^func _route_input_activity_surface\b.*?(?=^func |\z)')
+$activitySurfaceInput = $activitySurfaceInputMatch.Value
+$heistInputRouter = $activitySurfaceInput
+if (-not $activitySurfaceInputMatch.Success) {
+	$heistInputRouter = $mainInput
+}
+Assert-True ($heistInputRouter -match '_route_thieving_heist_button_global_input\(event\)') "Thieving heist steal buttons should be routed through the global input path."
+Assert-True ($heistInputRouter.IndexOf('_route_thieving_heist_button_global_input(event)') -lt $heistInputRouter.IndexOf('_event_points_inside_bottom_interactive_ui(event)')) "Thieving heist input should run before the bottom UI exclusion early return."
+if ($activitySurfaceInputMatch.Success) {
+	Assert-True ($mainInput -match '_route_input_activity_surface\(event, press_started_on_button\)') "Extracted input activity-surface router should stay connected from _input."
+}
 $routeThievingHeistButtonGlobalInput = Get-FunctionBody -Text $main -Name "_route_thieving_heist_button_global_input"
 Assert-True ($routeThievingHeistButtonGlobalInput -match '_attempt_thieving_heist\(heist_id\)') "Thieving heist global input should attempt the heist on a clean release."
 Assert-True ($routeThievingHeistButtonGlobalInput -match '_position_inside_detail_actions_viewport\(event_position\)') "Thieving heist global input should validate taps against the detail actions viewport."
@@ -1668,6 +1685,10 @@ Assert-True ($processLazySettleWarmMount -match '_detail_lazy_kind_is_module\(ki
 Assert-True ($processLazySettleWarmMount -match 'lazy_entry\.has\("cached_root"\)') "Lazy settle warm-mount should keep cached-root skips through entry naming."
 Assert-True ($processLazySettleWarmMount -notmatch '\bplan_item\b') "Lazy settle warm-mount should not use stale plan-item wording internally."
 Assert-True ($main -notmatch 'func _detail_lazy_settle_warm_mount\(') "Lazy settle warm-mount should use the live process path instead of the retired async coroutine."
+$idleWarmMountCanMount = Get-FunctionBody -Text $main -Name "_detail_lazy_idle_warm_mount_can_mount"
+Assert-True ($main -notmatch 'func _detail_lazy_idle_warm_mount_card_cost\(') "Lazy settle warm-mount should not keep a one-use card-cost helper."
+Assert-True ($idleWarmMountCanMount -match 'kind == "fishing_area"[\s\S]*method_ids') "Fishing area warm-mount cost should stay local to the card-budget predicate."
+Assert-True ($idleWarmMountCanMount -match 'kind in \["action", "passive", "heist"\]') "Action-backed warm-mount costs should stay visible in the card-budget predicate."
 $lazyMountThievingHeists = Get-FunctionBody -Text $main -Name "_detail_lazy_mount_thieving_heists_sync"
 Assert-True ($lazyMountThievingHeists -match 'var lazy_entry := raw_lazy_entry as Dictionary') "Thieving heist lazy mounting should name scanned render records as lazy entries."
 Assert-True ($lazyMountThievingHeists -match 'str\(lazy_entry\.get\("kind", ""\)\) != "heist"') "Thieving heist lazy mounting should keep the heist-kind filter through entry naming."
@@ -1755,8 +1776,15 @@ Assert-True ($passiveCardBorder -notmatch 'draw_arc\(') "Passive card borders mu
 Assert-True ($passiveCardBorder -notmatch 'draw_line\(') "Passive card borders must not return to separate line draw calls."
 Assert-True ($main -match 'const PASSIVE_PROGRESS_BAR_Z_INDEX := ACTION_CARD_FACE_BORDER_Z_INDEX \+ 1') "Passive woodcutting progress bars should draw above their face border."
 $passiveCardBuilder = Get-FunctionBody -Text $main -Name "_build_passive_module_card"
-Assert-True ($passiveCardBuilder -match 'progress\.z_index = PASSIVE_PROGRESS_BAR_Z_INDEX') "Passive module progress bars should be layered above the passive card border when built."
-Assert-True ($passiveCardBuilder -match 'border\.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX') "Passive module face borders should keep the normal face-border layer."
+$passiveCardAssembly = $passiveCardBuilder
+foreach ($helperName in @("_passive_module_shell", "_passive_collect_button", "_passive_module_title", "_passive_info_controls", "_passive_module_resource_controls", "_passive_module_loot_and_chrome")) {
+	$helperMatch = [regex]::Match($main, "(?ms)^func $([regex]::Escape($helperName))\b.*?(?=^func |\z)")
+	if ($helperMatch.Success) {
+		$passiveCardAssembly += "`n" + $helperMatch.Value
+	}
+}
+Assert-True ($passiveCardAssembly -match 'progress\.z_index = PASSIVE_PROGRESS_BAR_Z_INDEX') "Passive module progress bars should be layered above the passive card border when built."
+Assert-True ($passiveCardAssembly -match 'border\.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX') "Passive module face borders should keep the normal face-border layer."
 $passiveCardStatic = Get-FunctionBody -Text $main -Name "_update_passive_card_static_state"
 Assert-True ($passiveCardStatic -match 'progress\.z_index = PASSIVE_PROGRESS_BAR_Z_INDEX') "Passive module refresh should not reset the progress bar below the border."
 
@@ -2026,8 +2054,8 @@ Assert-True ($actionCardBackground -match 'RoundedTextureRect\.new\(\)') "Normal
 $actionCardBackgroundTexture = Get-FunctionBody -Text $main -Name "_action_card_background_texture"
 Assert-True ($actionCardBackgroundTexture -match '_texture_or_visual_fallback') "Action-card background textures should use the shared visual fallback helper."
 $buildPassiveModuleCard = Get-FunctionBody -Text $main -Name "_build_passive_module_card"
-Assert-True ($buildPassiveModuleCard -match '_texture_or_visual_fallback\(str\(action\.get\("bg", "res://assets/content/woodcutting/backgrounds/01-early\.png"\)\)\)') "Passive module card backgrounds should not assign nullable loaded textures directly."
-Assert-True ($buildPassiveModuleCard -match '_texture_or_visual_fallback\(PLANK_ICON_TEXTURE\)') "Passive module plank boost buttons should not assign nullable icon textures directly."
+Assert-True ($passiveCardAssembly -match '_texture_or_visual_fallback\(str\(action\.get\("bg", "res://assets/content/woodcutting/backgrounds/01-early\.png"\)\)\)') "Passive module card backgrounds should not assign nullable loaded textures directly."
+Assert-True ($passiveCardAssembly -match '_texture_or_visual_fallback\(PLANK_ICON_TEXTURE\)') "Passive module plank boost buttons should not assign nullable icon textures directly."
 $imageFactory = Get-FunctionBody -Text $main -Name "_image"
 Assert-True ($imageFactory -match '_texture_or_visual_fallback\(path\)') "General image creation should not assign nullable loaded textures directly."
 $imageFromTexture = Get-FunctionBody -Text $main -Name "_image_from_texture"
@@ -2095,7 +2123,12 @@ Assert-True ($masteryMedalVisualTexture -match '_visual_fallback_texture\(\)') "
 $actionCardMedalTextureForLevel = Get-FunctionBody -Text $main -Name "_action_card_medal_texture_for_level"
 Assert-True ($actionCardMedalTextureForLevel -match '_mastery_medal_visual_texture\(mastery_level\) if mastery_level > 0 else _visual_fallback_texture\(\)') "Action card medal textures should use a non-null fallback for zero-level hidden medals."
 $buildDetailInteractiveActionCard = Get-FunctionBody -Text $main -Name "_build_detail_interactive_action_card"
-Assert-True ($buildDetailInteractiveActionCard -match 'medal\.texture = _action_card_medal_texture_for_level\(0\)') "Action card medals should not enter the scene tree with a null texture."
+$actionCardMasteryWidgetsMatch = [regex]::Match($main, '(?ms)^func _detail_action_mastery_widgets\b.*?(?=^func |\z)')
+$actionCardMasteryWidgets = $actionCardMasteryWidgetsMatch.Value
+if (-not $actionCardMasteryWidgetsMatch.Success) {
+	$actionCardMasteryWidgets = $buildDetailInteractiveActionCard
+}
+Assert-True ($actionCardMasteryWidgets -match 'medal\.texture = _action_card_medal_texture_for_level\(0\)') "Action card medals should not enter the scene tree with a null texture."
 $placeActionCardMedal = Get-FunctionBody -Text $main -Name "_place_action_card_medal"
 Assert-True ($placeActionCardMedal -match '_set_canvas_item_visible_if_changed\(medal, mastery_level > 0\)') "Action card medal placement should guard repeated visibility writes."
 Assert-True ($placeActionCardMedal -match 'medal\.texture = _action_card_medal_texture_for_level\(mastery_level\)') "Action card medal placement should keep hidden zero-level medals on a fallback texture."
@@ -2139,8 +2172,15 @@ Assert-True ($addThievingHeistJailOverlay -match '_texture_or_visual_fallback\(T
 $addThievingActionJailOverlay = Get-FunctionBody -Text $main -Name "_add_thieving_action_jail_overlay"
 Assert-True ($addThievingActionJailOverlay -match '_texture_or_visual_fallback\(THIEVING_HEIST_JAIL_BARS_TEXTURE\)') "Thieving action jail overlays should not assign nullable jail-bar textures."
 $buildFishingAreaModule = Get-FunctionBody -Text $main -Name "_build_fishing_area_module"
-Assert-True ($buildFishingAreaModule -match '_texture_or_visual_fallback\(area_bg_path\)') "Fishing area card backgrounds should not assign nullable background textures."
-Assert-True ($buildFishingAreaModule -match '_texture_or_visual_fallback\(str\(action\.get\("background", area_bg_path\)\)\)') "Fishing method tile backgrounds should not assign nullable action textures."
+$fishingAreaAssembly = $buildFishingAreaModule
+foreach ($helperName in @("_fishing_area_module_shell", "_fishing_area_module_layout", "_fishing_area_runtime_layers", "_build_fishing_area_action_method_tile")) {
+	$helperMatch = [regex]::Match($main, "(?ms)^func $([regex]::Escape($helperName))\b.*?(?=^func |\z)")
+	if ($helperMatch.Success) {
+		$fishingAreaAssembly += "`n" + $helperMatch.Value
+	}
+}
+Assert-True ($fishingAreaAssembly -match '_texture_or_visual_fallback\(area_bg_path\)') "Fishing area card backgrounds should not assign nullable background textures."
+Assert-True ($fishingAreaAssembly -match '_texture_or_visual_fallback\(str\(action\.get\("background", area_bg_path\)\)\)') "Fishing method tile backgrounds should not assign nullable action textures."
 $fishingToolIconTexture = Get-FunctionBody -Text $main -Name "_fishing_tool_icon_texture"
 Assert-True ($fishingToolIconTexture -match '_texture_or_visual_fallback') "Fishing tool icon lookup should use the shared visual fallback boundary."
 Assert-True ($fishingToolIconTexture -notmatch 'return _texture\(') "Fishing tool icon lookup must not return nullable loaded textures directly."
@@ -2324,12 +2364,19 @@ Assert-True ($fishStrokeNumber.Value -match 'CENTER_DECIMAL_SUFFIX_SCALE') "Fish
 Assert-True ($fishStrokeNumber.Value -match 'CENTER_DECIMAL_SUFFIX_ALPHA') "Fishing header circle decimal suffix should share stamina-style faded alpha."
 
 $actionCardBuilder = Get-FunctionBody -Text $main -Name "_build_detail_interactive_action_card"
-Assert-True ($actionCardBuilder -match '_action_card_background\(skill_id, action\)') "Normal action cards should use the cheap shared background factory."
-Assert-True ($actionCardBuilder -match 'var action_card_base_height := _activity_card_root_height\(\)') "Normal action cards should keep a fixed base-card height separate from optional mats row space."
-Assert-True ($actionCardBuilder -match 'pop_card\.anchor_bottom = 1\.0[\s\S]*pop_card\.offset_bottom = _activity_card_pop_base_bottom_offset\(pop_card\)') "Normal action card faces should keep the shared full-height module layout."
-Assert-True ($actionCardBuilder -notmatch 'depth\.anchor_bottom = 0\.0[\s\S]*depth\.offset_bottom = action_card_base_height') "Normal action card depth slabs should not be forced into a mats-specific fixed-size layout."
-Assert-True ($actionCardBuilder -notmatch 'custom_minimum_size\.y \+= MAT_COLLECTION_AREA_HEIGHT') "Mat-producing action cards should not reserve expanded height while idle."
-Assert-True ($actionCardBuilder -match 'card_root\.add_child\(mat_collection\.get\("root"\) as Control\)') "Mat collection UI should be a separate child row under the activity card."
+$actionCardAssembly = $actionCardBuilder
+foreach ($helperName in @("_detail_action_card_shell", "_detail_action_card_body", "_detail_action_progress_widgets", "_detail_action_convergence_overlay", "_detail_action_mastery_widgets")) {
+	$helperMatch = [regex]::Match($main, "(?ms)^func $([regex]::Escape($helperName))\b.*?(?=^func |\z)")
+	if ($helperMatch.Success) {
+		$actionCardAssembly += "`n" + $helperMatch.Value
+	}
+}
+Assert-True ($actionCardAssembly -match '_action_card_background\(skill_id, action\)') "Normal action cards should use the cheap shared background factory."
+Assert-True (($actionCardAssembly -match 'var action_card_base_height := _activity_card_root_height\(\)') -or ($actionCardAssembly -match 'card_root\.custom_minimum_size = Vector2\(content_width, _activity_card_root_height\(\)\)')) "Normal action cards should keep a fixed base-card height separate from optional mats row space."
+Assert-True ($actionCardAssembly -match 'pop_card\.anchor_bottom = 1\.0[\s\S]*pop_card\.offset_bottom = _activity_card_pop_base_bottom_offset\(pop_card\)') "Normal action card faces should keep the shared full-height module layout."
+Assert-True ($actionCardAssembly -notmatch 'depth\.anchor_bottom = 0\.0[\s\S]*depth\.offset_bottom = action_card_base_height') "Normal action card depth slabs should not be forced into a mats-specific fixed-size layout."
+Assert-True ($actionCardAssembly -notmatch 'custom_minimum_size\.y \+= MAT_COLLECTION_AREA_HEIGHT') "Mat-producing action cards should not reserve expanded height while idle."
+Assert-True ($actionCardAssembly -match 'card_root\.add_child\(mat_collection\.get\("root"\) as Control\)') "Mat collection UI should be a separate child row under the activity card."
 $matCollectionRow = Get-FunctionBody -Text $main -Name "_build_mat_collection_row"
 Assert-True ($main -match 'const MAT_COLLECTION_CONNECTOR_TOP_OVERLAP := 3\.0') "Mat collection connectors should overlap the activity card edge enough to avoid visible gaps."
 Assert-True ($main -match 'const MAT_COLLECTION_FLYER_ARC_SECONDS := 0\.68') "Mat collection reward flyers should linger long enough for the arc to read."
@@ -2390,32 +2437,32 @@ Assert-True ($syncMatCollectionCard -match '_remove_meta_from_instance_id\.bind\
 $setActivityCardExpanded = Get-FunctionBody -Text $main -Name "_set_activity_card_expanded"
 Assert-True ($setActivityCardExpanded -match 'var target_entry_height := target_height \+ mat_collection_height') "Expanded action card entry height should include visible mats module height."
 Assert-True ($setActivityCardExpanded -match '_sync_mat_collection_row_position\(card, target_height\)') "Expanded action cards should push mats rows below the expanded face."
-Assert-True ($actionCardBuilder -notmatch 'RoundedTextureRect\.new\(\)') "Normal action card builders must not directly allocate full-card rounded shader backgrounds."
-Assert-True ($actionCardBuilder -match '"button": null') "Fresh normal action cards should not allocate an ignored full-card Button node."
-Assert-True ($actionCardBuilder -match 'ACTION_CARD_TITLE_OUTLINE_SIZE') "Normal action card titles should use the capped outline constant."
-Assert-True ($actionCardBuilder -match 'var border: ActivityCardBorder = null') "Fresh normal action cards should not always allocate a face border node."
-Assert-True ($actionCardBuilder -match 'if ACTION_CARD_FACE_BORDER_ENABLED:\s*\r?\n\s*border = ActivityCardBorder\.new\(\)') "Normal action card face borders should stay behind the performance flag."
-Assert-True ($actionCardBuilder -match 'border\.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX') "Normal action card face borders should draw over progress rails."
-Assert-True ($actionCardBuilder -match '_activity_card_depth_layer\(_skill_theme_color\(skill_id\)\)') "Normal action cards should use the restored fast 3D depth layer."
-Assert-True ($actionCardBuilder -match 'activity_card_depth_node_id') "Normal action cards should keep depth-node metadata for press feedback."
-Assert-True ($actionCardBuilder -match 'card_root\.add_child\(depth\)') "Normal action cards should attach the restored depth node behind the face."
-Assert-True ($actionCardBuilder -match 'outline_size", ACTION_CARD_TITLE_OUTLINE_SIZE') "Normal action card titles should use the restored outline constant."
-Assert-True ($actionCardBuilder -match 'var shade: Panel = null') "Fresh normal action cards should not always allocate a shade panel."
-Assert-True ($actionCardBuilder -match '_activity_card_shade_layer\(pop_card, 0\.50\)') "Locked normal action cards should still create their shade layer."
-Assert-True ($actionCardBuilder -notmatch 'var shade := Panel\.new\(\)') "Normal action card shade creation should stay lazy."
-Assert-True ($actionCardBuilder -notmatch 'ActivityCardInnerShadow\.new\(\)') "Normal action cards should avoid a separate inner-shadow draw node."
-Assert-True ($actionCardBuilder -match '_action_art_border_overlay\(\)') "Normal action cards should keep the visible art panel border overlay."
-Assert-True ($actionCardBuilder -match '_activity_lock_overlay\(pop_card, int\(action\.get\("unlock", 1\)\), skill_id, _lock_requirements_for_overlay\(skill_id, action\)\) if not _is_action_unlocked\(skill_id, action\) else \{\}') "Unlocked normal action cards should not eagerly allocate lock overlay clusters."
-Assert-True ($actionCardBuilder -match 'var bonus_panel := \{\}') "Fresh normal action cards should not eagerly allocate hidden stat bonus panels."
-Assert-True ($actionCardBuilder -match '"bonus_parent": copy') "Normal action cards should retain a parent for lazy stat bonus panel creation."
-Assert-True ($actionCardBuilder -notmatch '_activity_stat_bonus_panel\(\)') "Normal action cards must not build stat bonus panels until a stat is expanded."
-Assert-True ($actionCardBuilder -match 'var status: Label = null') "Fresh normal action cards should not allocate unused status labels."
-Assert-True ($actionCardBuilder -notmatch 'var status := _label\("", 42, COLOR_RED') "Normal action cards must not return to creating unused status labels."
-Assert-True ($actionCardBuilder -match 'var mission_badge := \{\}') "Fresh normal action cards should not eagerly allocate hidden mission badges."
-Assert-True ($actionCardBuilder -match '"mission_badge_parent": pop_card') "Normal action cards should retain a parent for lazy mission badge creation."
-Assert-True ($actionCardBuilder -notmatch '_hub_mission_badge\(\)') "Normal action cards must not build mission badges until a mission targets the action."
-Assert-True ($actionCardBuilder -notmatch '_event_hourglass_badge\(\)') "Event action cards should not duplicate the hourglass badge in the action-card top-right badge slot."
-Assert-True ($actionCardBuilder -match '"event_badge": null') "Action card state should not keep a duplicate card-face event hourglass badge."
+Assert-True ($actionCardAssembly -notmatch 'RoundedTextureRect\.new\(\)') "Normal action card builders must not directly allocate full-card rounded shader backgrounds."
+Assert-True ($actionCardAssembly -match '"button": null') "Fresh normal action cards should not allocate an ignored full-card Button node."
+Assert-True ($actionCardAssembly -match 'ACTION_CARD_TITLE_OUTLINE_SIZE') "Normal action card titles should use the capped outline constant."
+Assert-True ($actionCardAssembly -match 'var border: ActivityCardBorder = null') "Fresh normal action cards should not always allocate a face border node."
+Assert-True ($actionCardAssembly -match 'if ACTION_CARD_FACE_BORDER_ENABLED:\s*\r?\n\s*border = ActivityCardBorder\.new\(\)') "Normal action card face borders should stay behind the performance flag."
+Assert-True ($actionCardAssembly -match 'border\.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX') "Normal action card face borders should draw over progress rails."
+Assert-True ($actionCardAssembly -match '_activity_card_depth_layer\(_skill_theme_color\(skill_id\)\)') "Normal action cards should use the restored fast 3D depth layer."
+Assert-True ($actionCardAssembly -match 'activity_card_depth_node_id') "Normal action cards should keep depth-node metadata for press feedback."
+Assert-True ($actionCardAssembly -match 'card_root\.add_child\(depth\)') "Normal action cards should attach the restored depth node behind the face."
+Assert-True ($actionCardAssembly -match 'outline_size", ACTION_CARD_TITLE_OUTLINE_SIZE') "Normal action card titles should use the restored outline constant."
+Assert-True ($actionCardAssembly -match 'var shade: Panel = null') "Fresh normal action cards should not always allocate a shade panel."
+Assert-True ($actionCardAssembly -match '_activity_card_shade_layer\(pop_card, 0\.50\)') "Locked normal action cards should still create their shade layer."
+Assert-True ($actionCardAssembly -notmatch 'var shade := Panel\.new\(\)') "Normal action card shade creation should stay lazy."
+Assert-True ($actionCardAssembly -notmatch 'ActivityCardInnerShadow\.new\(\)') "Normal action cards should avoid a separate inner-shadow draw node."
+Assert-True ($actionCardAssembly -match '_action_art_border_overlay\(\)') "Normal action cards should keep the visible art panel border overlay."
+Assert-True ($actionCardAssembly -match '_activity_lock_overlay\(pop_card, int\(action\.get\("unlock", 1\)\), skill_id, _lock_requirements_for_overlay\(skill_id, action\)\) if not _is_action_unlocked\(skill_id, action\) else \{\}') "Unlocked normal action cards should not eagerly allocate lock overlay clusters."
+Assert-True ($actionCardAssembly -match 'var bonus_panel := \{\}') "Fresh normal action cards should not eagerly allocate hidden stat bonus panels."
+Assert-True ($actionCardAssembly -match '"bonus_parent": copy') "Normal action cards should retain a parent for lazy stat bonus panel creation."
+Assert-True ($actionCardAssembly -notmatch '_activity_stat_bonus_panel\(\)') "Normal action cards must not build stat bonus panels until a stat is expanded."
+Assert-True ($actionCardAssembly -match 'var status: Label = null') "Fresh normal action cards should not allocate unused status labels."
+Assert-True ($actionCardAssembly -notmatch 'var status := _label\("", 42, COLOR_RED') "Normal action cards must not return to creating unused status labels."
+Assert-True ($actionCardAssembly -match 'var mission_badge := \{\}') "Fresh normal action cards should not eagerly allocate hidden mission badges."
+Assert-True ($actionCardAssembly -match '"mission_badge_parent": pop_card') "Normal action cards should retain a parent for lazy mission badge creation."
+Assert-True ($actionCardAssembly -notmatch '_hub_mission_badge\(\)') "Normal action cards must not build mission badges until a mission targets the action."
+Assert-True ($actionCardAssembly -notmatch '_event_hourglass_badge\(\)') "Event action cards should not duplicate the hourglass badge in the action-card top-right badge slot."
+Assert-True ($actionCardAssembly -match '"event_badge": null') "Action card state should not keep a duplicate card-face event hourglass badge."
 $actionArtSpecialTypeIconPath = Get-FunctionBody -Text $main -Name "_action_art_special_type_icon_path"
 Assert-True ($actionArtSpecialTypeIconPath -match 'if _is_event_action\(action\):\s*\r?\n\s*return EVENT_HOURGLASS_BADGE') "Event action cards should keep the hourglass badge in the action-art corner badge slot."
 $actionPreviewBuilder = Get-FunctionBody -Text $main -Name "_skill_swipe_preview_action_card"
@@ -2433,15 +2480,22 @@ Assert-True ($actionPreviewBuilder -notmatch 'ActivityCardInnerShadow\.new\(\)')
 Assert-True ($actionPreviewBuilder -match '_action_art_border_overlay\(\)') "Swipe preview action cards should keep the visible art panel border overlay."
 Assert-True ($actionPreviewBuilder -match '_activity_lock_overlay\(pop_card, int\(action\.get\("unlock", 1\)\), skill_id, _lock_requirements_for_overlay\(skill_id, action\)\) if not _is_action_unlocked\(skill_id, action\) else \{\}') "Unlocked swipe preview action cards should not eagerly allocate lock overlay clusters."
 $fishingAreaModule = Get-FunctionBody -Text $main -Name "_build_fishing_area_module"
-Assert-True ($fishingAreaModule -match 'var border: ActivityCardBorder = null') "Fishing area modules should not always allocate a face border node."
-Assert-True ($fishingAreaModule -match 'if ACTION_CARD_FACE_BORDER_ENABLED:\s*\r?\n\s*border = ActivityCardBorder\.new\(\)') "Fishing area module face borders should stay behind the performance flag."
-Assert-True ($fishingAreaModule -match 'border\.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX') "Fishing area module face borders should draw over progress rails."
-Assert-True ($fishingAreaModule -notmatch 'StyleBoxEmpty\.new\(\)') "Fishing area method buttons should reuse the shared empty style resource."
+$fishingAreaModuleAssembly = $fishingAreaModule
+foreach ($helperName in @("_fishing_area_module_shell", "_fishing_area_module_layout", "_fishing_area_runtime_layers", "_build_fishing_area_action_method_tile")) {
+	$helperMatch = [regex]::Match($main, "(?ms)^func $([regex]::Escape($helperName))\b.*?(?=^func |\z)")
+	if ($helperMatch.Success) {
+		$fishingAreaModuleAssembly += "`n" + $helperMatch.Value
+	}
+}
+Assert-True ($fishingAreaModuleAssembly -match 'var border: ActivityCardBorder = null') "Fishing area modules should not always allocate a face border node."
+Assert-True ($fishingAreaModuleAssembly -match 'if ACTION_CARD_FACE_BORDER_ENABLED:\s*\r?\n\s*border = ActivityCardBorder\.new\(\)') "Fishing area module face borders should stay behind the performance flag."
+Assert-True ($fishingAreaModuleAssembly -match 'border\.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX') "Fishing area module face borders should draw over progress rails."
+Assert-True ($fishingAreaModuleAssembly -notmatch 'StyleBoxEmpty\.new\(\)') "Fishing area method buttons should reuse the shared empty style resource."
 $fishingLocationTile = Get-FunctionBody -Text $main -Name "_build_fishing_location_tile"
 Assert-True ($fishingLocationTile -notmatch 'StyleBoxEmpty\.new\(\)') "Fishing location tile buttons should reuse the shared empty style resource."
 $normalStatRouter = Get-FunctionBody -Text $main -Name "_activity_stat_kind_at_position"
-Assert-True ($actionCardBuilder -match 'var stat_hit_buttons := \{\}') "Fresh normal action cards should not allocate invisible stat-hit Button overlays."
-Assert-True ($actionCardBuilder -notmatch '_activity_stat_hit_buttons\(pop_card') "Fresh normal action cards should route stat taps without per-card hit Button nodes."
+Assert-True ($actionCardAssembly -match 'var stat_hit_buttons := \{\}') "Fresh normal action cards should not allocate invisible stat-hit Button overlays."
+Assert-True ($actionCardAssembly -notmatch '_activity_stat_hit_buttons\(pop_card') "Fresh normal action cards should route stat taps without per-card hit Button nodes."
 Assert-True ($normalStatRouter -match 'stat_row\.get_global_rect\(\)') "Normal activity stat taps should be routed from stat-row geometry."
 Assert-True ($normalStatRouter -match 'card\.get\("stat_boxes", \{\}\)') "Normal activity stat taps should retain stat-box geometry fallback."
 
@@ -2726,15 +2780,27 @@ Assert-True ($syncActionStopHoldCircle -match 'is_queued_for_deletion\(\)') "Act
 $hideActionStopHoldCircle = Get-FunctionBody -Text $main -Name "_hide_action_stop_hold_circle"
 Assert-True ($hideActionStopHoldCircle -match '_set_canvas_item_visible_if_changed\(action_stop_hold_circle, false\)') "Action stop-hold circle hide should guard repeated visibility writes."
 $inputFunction = Get-FunctionBody -Text $main -Name "_input"
-Assert-True ($inputFunction.IndexOf('_route_fishing_wallet_unhandled_input(event)') -ge 0) "Global input should route the fishing wallet explicitly."
-Assert-True ($inputFunction.IndexOf('_route_fishing_wallet_unhandled_input(event)') -lt $inputFunction.IndexOf('_maybe_end_fishing_scroll_mode_for_new_press(event)')) "Fishing wallet taps should be handled before fishing scroll-mode cleanup can claim the press."
-Assert-True ($inputFunction.IndexOf('_route_fishing_wallet_unhandled_input(event)') -lt $inputFunction.IndexOf('_fishing_detail_primary_press_should_defer_tap_scan(event)')) "Fishing wallet taps should be handled before deferred-scroll press handling."
-Assert-True ($inputFunction.IndexOf('_route_activity_lock_input(event)') -ge 0) "Global input should route activity locks explicitly."
-Assert-True ($inputFunction.IndexOf('_route_activity_lock_input(event)') -lt $inputFunction.IndexOf('_fishing_detail_scroll_container_should_own_event(event)')) "Fishing combo lock presses should be routed before the fishing scroll container can claim the event."
-Assert-True ($inputFunction.IndexOf('_route_activity_lock_input(event)') -lt $inputFunction.IndexOf('_fishing_detail_primary_press_should_defer_tap_scan(event)')) "Fishing combo lock presses should bypass deferred swipe/tap handling."
-Assert-True ($inputFunction.IndexOf('_cancel_action_stop_hold_if_scroll_drag_event(event)') -ge 0) "Global input should cancel active-card stop holds before fishing scroll bypasses can skip the stop-hold router."
-Assert-True ($inputFunction.IndexOf('_cancel_action_stop_hold_if_scroll_drag_event(event)') -lt $inputFunction.IndexOf('_fishing_detail_scroll_event_bypasses_global_input(event)')) "Active-card stop hold scroll cancellation should run before the fishing scroll bypass returns."
-Assert-True ($inputFunction.IndexOf('_route_page_switch_button_global_input(event)') -lt $inputFunction.IndexOf('_route_fishing_detail_deferred_swipe_input(event)')) "Fishing page-switch taps should route before expensive fishing detail input handlers."
+$inputFishingPreflightMatch = [regex]::Match($main, '(?ms)^func _route_input_fishing_preflight\b.*?(?=^func |\z)')
+$inputFishingPreflight = $inputFunction
+if ($inputFishingPreflightMatch.Success) {
+	$inputFishingPreflight = $inputFishingPreflightMatch.Value
+	Assert-True ($inputFunction -match '_route_input_fishing_preflight\(event, fishing_input_trace, fishing_input_total_started_usec\)') "Global input should stay connected to the extracted fishing preflight router."
+}
+$inputTopLevelMatch = [regex]::Match($main, '(?ms)^func _route_input_top_level_controls\b.*?(?=^func |\z)')
+$inputTopLevel = $inputFunction
+if ($inputTopLevelMatch.Success) {
+	$inputTopLevel = $inputTopLevelMatch.Value
+	Assert-True ($inputFunction -match '_route_input_top_level_controls\(event, press_started_on_button\)') "Global input should stay connected to the extracted top-level router."
+}
+Assert-True ($inputFishingPreflight.IndexOf('_route_fishing_wallet_unhandled_input(event)') -ge 0) "Global input should route the fishing wallet explicitly."
+Assert-True ($inputFishingPreflight.IndexOf('_route_fishing_wallet_unhandled_input(event)') -lt $inputFishingPreflight.IndexOf('_maybe_end_fishing_scroll_mode_for_new_press(event)')) "Fishing wallet taps should be handled before fishing scroll-mode cleanup can claim the press."
+Assert-True ($inputFishingPreflight.IndexOf('_route_fishing_wallet_unhandled_input(event)') -lt $inputFishingPreflight.IndexOf('_fishing_detail_primary_press_should_defer_tap_scan(event)')) "Fishing wallet taps should be handled before deferred-scroll press handling."
+Assert-True ($inputFishingPreflight.IndexOf('_route_activity_lock_input(event)') -ge 0) "Global input should route activity locks explicitly."
+Assert-True ($inputFishingPreflight.IndexOf('_route_activity_lock_input(event)') -lt $inputFishingPreflight.IndexOf('_fishing_detail_scroll_container_should_own_event(event)')) "Fishing combo lock presses should be routed before the fishing scroll container can claim the event."
+Assert-True ($inputFishingPreflight.IndexOf('_route_activity_lock_input(event)') -lt $inputFishingPreflight.IndexOf('_fishing_detail_primary_press_should_defer_tap_scan(event)')) "Fishing combo lock presses should bypass deferred swipe/tap handling."
+Assert-True ($inputTopLevel.IndexOf('_cancel_action_stop_hold_if_scroll_drag_event(event)') -ge 0) "Global input should cancel active-card stop holds before fishing scroll bypasses can skip the stop-hold router."
+Assert-True ($inputTopLevel.IndexOf('_cancel_action_stop_hold_if_scroll_drag_event(event)') -lt $inputTopLevel.IndexOf('_fishing_detail_scroll_event_bypasses_global_input(event)')) "Active-card stop hold scroll cancellation should run before the fishing scroll bypass returns."
+Assert-True ($inputTopLevel.IndexOf('_route_page_switch_button_global_input(event)') -lt $inputTopLevel.IndexOf('_route_fishing_detail_deferred_swipe_input(event)')) "Fishing page-switch taps should route before expensive fishing detail input handlers."
 Assert-True ($main -match 'func _release_page_switch_transition_button_visual_hold\(\) -> void:[\s\S]*_release_activity_button_shell_bound\(button_id\)' -and $main -match 'func _queue_page_switch_transition[\s\S]*_release_page_switch_transition_button_visual_hold\(\)') "Page-switch transitions should release the visual button hold immediately after queuing the covered render."
 $routeActionStopHoldInput = Get-FunctionBody -Text $main -Name "_route_action_stop_hold_input"
 Assert-True ($routeActionStopHoldInput -match '_action_stop_hold_motion_is_scroll_drag\(event_position\)[\s\S]*_cancel_action_stop_hold\(\)[\s\S]*return false') "Action stop-hold input should cancel and release handling when the active-card gesture becomes a vertical scroll."

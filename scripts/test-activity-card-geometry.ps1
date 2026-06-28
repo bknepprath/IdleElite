@@ -47,6 +47,11 @@ function Assert-NoUnexpectedGodotErrors {
 }
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
+$baselineHeadlessProcessIds = @{}
+foreach ($process in @(Get-HeadlessGodotProcesses)) {
+    $baselineHeadlessProcessIds[[int]$process.ProcessId] = $true
+}
+
 if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
 }
@@ -263,10 +268,17 @@ func _finish() -> void:
     Assert-True (($output -join "`n") -match "activity-card-geometry-ok") "Activity card geometry test did not report success."
     Assert-NoUnexpectedGodotErrors $output "activity card geometry validation"
 
-    $headless = @(Get-HeadlessGodotProcesses)
-    if ($headless.Count -gt 0) {
-        $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
-        throw "A headless Godot process is still running after the activity card geometry test."
+    $newHeadless = @()
+    for ($attempt = 1; $attempt -le 10; $attempt++) {
+        $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
+        if ($newHeadless.Count -eq 0) {
+            break
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    if ($newHeadless.Count -gt 0) {
+        $newHeadless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
+        throw "A new headless Godot process is still running after the activity card geometry test."
     }
 } finally {
     if ($null -eq $previousTimeout) {
