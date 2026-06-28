@@ -55468,15 +55468,8 @@ func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source:
 	if source == null or not is_instance_valid(source) or source.disabled:
 		return false
 	var event_position := _passive_button_event_position(event, source)
-	var is_press := false
-	var is_release := false
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		is_press = event.pressed
-		is_release = not event.pressed
-	elif event is InputEventScreenTouch:
-		is_press = (event as InputEventScreenTouch).pressed
-		is_release = not (event as InputEventScreenTouch).pressed
-	if is_press:
+	var event_kind := ButtonPressState.event_kind(event)
+	if event_kind == "press":
 		if (
 			(_position_inside_bottom_interactive_ui(event_position) and not _fishing_offer_button_contains_point(source, event_position))
 			or not _position_inside_detail_actions_viewport(event_position)
@@ -55484,15 +55477,13 @@ func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source:
 			return false
 		_prepare_fishing_control_tap()
 		fishing_offer_button_press_active = true
-		source.set_meta("fishing_offer_press_active", true)
-		source.set_meta("fishing_offer_press_position", event_position)
-		source.set_meta("fishing_offer_press_dragged", false)
+		ButtonPressState.begin(source, "fishing_offer", event_position)
 		get_viewport().set_input_as_handled()
 		return true
-	if event is InputEventMouseMotion or event is InputEventScreenDrag:
-		if bool(source.get_meta("fishing_offer_press_active", false)):
+	if event_kind == "drag":
+		if ButtonPressState.active(source, "fishing_offer"):
 			if _fishing_control_drag_exceeds_tap_slop(source, event_position, "fishing_offer_press_position"):
-				source.set_meta("fishing_offer_press_dragged", true)
+				ButtonPressState.update_drag(source, "fishing_offer", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_offer_press_position"):
 				var offer_scroll_press_position := _meta_vector2(source, "fishing_offer_press_position", event_position)
 				_clear_fishing_offer_button_press(source)
@@ -55507,22 +55498,19 @@ func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source:
 					_update_skill_swipe_feedback(event_position)
 				get_viewport().set_input_as_handled()
 				return true
-			source.set_meta("fishing_offer_press_dragged", true)
+			ButtonPressState.update_drag(source, "fishing_offer", event_position, -1.0)
 			get_viewport().set_input_as_handled()
 			return true
 		return false
-	if is_release:
-		var was_active := bool(source.get_meta("fishing_offer_press_active", false))
-		var was_dragged := bool(source.get_meta("fishing_offer_press_dragged", false))
-		var press_position := _meta_vector2(source, "fishing_offer_press_position", event_position)
-		_clear_fishing_offer_button_press(source)
+	if event_kind == "release":
+		var was_active := ButtonPressState.active(source, "fishing_offer")
+		var valid_tap := ButtonPressState.finish(source, "fishing_offer", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
+		fishing_offer_button_press_active = false
 		if not was_active:
 			return false
 		if (
-			was_active
-			and not was_dragged
+			valid_tap
 			and _position_inside_detail_actions_viewport(event_position)
-			and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
 			and not _skill_swipe_suppresses_button_action()
 		):
 			_activate_fishing_offer_button(offer_id, source)
@@ -55607,21 +55595,14 @@ func _fishing_offer_button_contains_point(button: Button, event_position: Vector
 func _active_fishing_offer_button() -> Button:
 	for raw_button in get_tree().get_nodes_in_group("fishing_offer_buttons"):
 		var button := raw_button as Button
-		if button != null and is_instance_valid(button) and bool(button.get_meta("fishing_offer_press_active", false)):
+		if ButtonPressState.active(button, "fishing_offer"):
 			return button
 	return null
 
 
 func _clear_fishing_offer_button_press(source: Button) -> void:
 	fishing_offer_button_press_active = false
-	if source == null or not is_instance_valid(source):
-		return
-	if source.has_meta("fishing_offer_press_active"):
-		source.remove_meta("fishing_offer_press_active")
-	if source.has_meta("fishing_offer_press_position"):
-		source.remove_meta("fishing_offer_press_position")
-	if source.has_meta("fishing_offer_press_dragged"):
-		source.remove_meta("fishing_offer_press_dragged")
+	ButtonPressState.clear(source, "fishing_offer")
 
 
 func _on_fishing_net_offer_pressed(net_button: Control, net_art: Control = null) -> void:
@@ -56862,15 +56843,8 @@ func _on_fishing_method_button_input(
 	if source == null or not is_instance_valid(source) or source.disabled:
 		return false
 	var event_position := _passive_button_event_position(event, source)
-	var is_press := false
-	var is_release := false
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		is_press = event.pressed
-		is_release = not event.pressed
-	elif event is InputEventScreenTouch:
-		is_press = (event as InputEventScreenTouch).pressed
-		is_release = not (event as InputEventScreenTouch).pressed
-	if is_press:
+	var event_kind := ButtonPressState.event_kind(event)
+	if event_kind == "press":
 		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
 			return false
 		var method_card_for_press := _fishing_method_card_for_action(skill_id, action_id)
@@ -56902,16 +56876,14 @@ func _on_fishing_method_button_input(
 		fishing_method_button_press_active = true
 		fishing_method_button_press_source_id = source.get_instance_id()
 		source.set_meta("fishing_method_owner_pop_instance_id", owner_area_pop_instance_id)
-		source.set_meta("fishing_method_press_active", true)
-		source.set_meta("fishing_method_press_position", event_position)
-		source.set_meta("fishing_method_press_dragged", false)
+		ButtonPressState.begin(source, "fishing_method", event_position)
 		source.set_meta("fishing_method_press_kind", press_kind)
 		get_viewport().set_input_as_handled()
 		return true
-	if event is InputEventMouseMotion or event is InputEventScreenDrag:
-		if bool(source.get_meta("fishing_method_press_active", false)):
+	if event_kind == "drag":
+		if ButtonPressState.active(source, "fishing_method"):
 			if _fishing_control_drag_exceeds_tap_slop(source, event_position, "fishing_method_press_position"):
-				source.set_meta("fishing_method_press_dragged", true)
+				ButtonPressState.update_drag(source, "fishing_method", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_method_press_position"):
 				var method_scroll_press_position := _meta_vector2(source, "fishing_method_press_position", event_position)
 				_clear_active_fishing_method_button_press()
@@ -56920,14 +56892,7 @@ func _on_fishing_method_button_input(
 			if _fishing_control_drag_is_horizontal_swipe(source, event_position, "fishing_method_press_position"):
 				var method_swipe_press_position := _meta_vector2(source, "fishing_method_press_position", event_position)
 				var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
-				if source.has_meta("fishing_method_press_active"):
-					source.remove_meta("fishing_method_press_active")
-				if source.has_meta("fishing_method_press_position"):
-					source.remove_meta("fishing_method_press_position")
-				if source.has_meta("fishing_method_press_dragged"):
-					source.remove_meta("fishing_method_press_dragged")
-				if source.has_meta("fishing_method_press_kind"):
-					source.remove_meta("fishing_method_press_kind")
+				ButtonPressState.clear(source, "fishing_method", ["kind"])
 				fishing_method_button_press_active = false
 				fishing_method_button_press_source_id = 0
 				_begin_skill_swipe_tracking(method_swipe_press_position, touch_index)
@@ -56935,32 +56900,21 @@ func _on_fishing_method_button_input(
 					_update_skill_swipe_feedback(event_position)
 				get_viewport().set_input_as_handled()
 				return true
-			source.set_meta("fishing_method_press_dragged", true)
+			ButtonPressState.update_drag(source, "fishing_method", event_position, -1.0)
 			get_viewport().set_input_as_handled()
 			return true
 		return false
-	if is_release:
-		var was_active := bool(source.get_meta("fishing_method_press_active", false))
-		var was_dragged := bool(source.get_meta("fishing_method_press_dragged", false))
-		var press_position := _meta_vector2(source, "fishing_method_press_position", event_position)
+	if event_kind == "release":
+		var was_active := ButtonPressState.active(source, "fishing_method")
 		var press_kind := str(source.get_meta("fishing_method_press_kind", ""))
-		if source.has_meta("fishing_method_press_active"):
-			source.remove_meta("fishing_method_press_active")
-		if source.has_meta("fishing_method_press_position"):
-			source.remove_meta("fishing_method_press_position")
-		if source.has_meta("fishing_method_press_dragged"):
-			source.remove_meta("fishing_method_press_dragged")
-		if source.has_meta("fishing_method_press_kind"):
-			source.remove_meta("fishing_method_press_kind")
+		var valid_tap := ButtonPressState.finish(source, "fishing_method", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP, -1.0, ["kind"])
 		fishing_method_button_press_active = false
 		fishing_method_button_press_source_id = 0
 		if not was_active:
 			return false
 		if (
-			was_active
-			and not was_dragged
+			valid_tap
 			and _position_inside_detail_actions_viewport(event_position)
-			and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
 			and not _detail_actions_scroll_suppresses_child_click()
 			and not _skill_swipe_suppresses_button_action()
 		):
@@ -57187,7 +57141,7 @@ func _fishing_location_image_hit_at_position(event_position: Vector2) -> bool:
 func _active_fishing_method_button_hit() -> Dictionary:
 	if fishing_method_button_press_source_id != 0:
 		var active_button := instance_from_id(fishing_method_button_press_source_id) as Button
-		if active_button != null and is_instance_valid(active_button) and bool(active_button.get_meta("fishing_method_press_active", false)):
+		if ButtonPressState.active(active_button, "fishing_method"):
 			var method_card := active_button.get_meta("fishing_method_card", {}) as Dictionary
 			if not method_card.is_empty():
 				var hit_control := method_card.get("method_hit_control", active_button) as Control
@@ -57200,7 +57154,7 @@ func _active_fishing_method_button_hit() -> Dictionary:
 				}
 	for hit in _fishing_method_button_hit_candidates():
 		var button := hit.get("button", null) as Button
-		if button != null and is_instance_valid(button) and bool(button.get_meta("fishing_method_press_active", false)):
+		if ButtonPressState.active(button, "fishing_method"):
 			return hit
 	return {}
 
@@ -57212,14 +57166,7 @@ func _clear_active_fishing_method_button_press() -> void:
 		var button := hit.get("button", null) as Button
 		if button == null or not is_instance_valid(button):
 			continue
-		if button.has_meta("fishing_method_press_active"):
-			button.remove_meta("fishing_method_press_active")
-		if button.has_meta("fishing_method_press_position"):
-			button.remove_meta("fishing_method_press_position")
-		if button.has_meta("fishing_method_press_dragged"):
-			button.remove_meta("fishing_method_press_dragged")
-		if button.has_meta("fishing_method_press_kind"):
-			button.remove_meta("fishing_method_press_kind")
+		ButtonPressState.clear(button, "fishing_method", ["kind"])
 
 
 func _fishing_method_button_hit_candidates() -> Array:

@@ -29,7 +29,7 @@ static func update_drag(button: Button, prefix: String, event_position: Vector2,
 		button.set_meta(_meta_key(prefix, "dragged"), true)
 
 
-static func finish(button: Button, prefix: String, event_position: Vector2, release_slop: float, hit_grow := -1.0) -> bool:
+static func finish(button: Button, prefix: String, event_position: Vector2, release_slop: float, hit_grow := -1.0, extra_fields := []) -> bool:
 	if button == null or not is_instance_valid(button):
 		return false
 	var active_key := _meta_key(prefix, "active")
@@ -38,7 +38,7 @@ static func finish(button: Button, prefix: String, event_position: Vector2, rele
 	var was_active := bool(button.get_meta(active_key, false))
 	var was_dragged := bool(button.get_meta(dragged_key, false))
 	var press_position := _meta_vector2(button, position_key, event_position)
-	clear(button, prefix)
+	clear(button, prefix, extra_fields)
 	if not was_active or was_dragged:
 		return false
 	if event_position.distance_to(press_position) > release_slop:
@@ -46,11 +46,15 @@ static func finish(button: Button, prefix: String, event_position: Vector2, rele
 	return hit_grow < 0.0 or button.get_global_rect().grow(hit_grow).has_point(event_position)
 
 
-static func clear(button: Button, prefix: String) -> void:
+static func clear(button: Button, prefix: String, extra_fields := []) -> void:
 	if button == null or not is_instance_valid(button):
 		return
 	for field in ["active", "position", "dragged"]:
 		var key := _meta_key(prefix, field)
+		if button.has_meta(key):
+			button.remove_meta(key)
+	for field in extra_fields:
+		var key := _meta_key(prefix, str(field))
 		if button.has_meta(key):
 			button.remove_meta(key)
 

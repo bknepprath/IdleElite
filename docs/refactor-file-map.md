@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 61,328 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target. |
+| `scripts/main.gd` * | 61,275 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -55,7 +55,7 @@ Legend:
 | Path | Lines | What lives here |
 | --- | ---: | --- |
 | `scripts/ui/mobile_scroll_container.gd` | 515 | Mobile-friendly scroll behavior. |
-| `scripts/ui/button_press_state.gd` * | 50 | Shared press/drag/release metadata helper for passive button routing. Extracted from `scripts/main.gd` this session. |
+| `scripts/ui/button_press_state.gd` * | 54 | Shared press/drag/release metadata helper for passive button routing. Extracted from `scripts/main.gd` this session. |
 | `scripts/ui/blue_guy_chicken_brawl_stage.gd` | 1,689 | Fighting/chicken brawl stage visual. |
 | `scripts/ui/activity_card_depth.gd` | 326 | Activity card pressed/elevation visual. |
 | `scripts/ui/activity_card_border.gd` | 34 | Activity card border drawing. |
@@ -130,8 +130,8 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted for bottom nav and module utility buttons; activity-module clipping restored. Also contains pre-existing refactor edits from the active worktree. |
-| `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted for bottom nav, module utility, fishing offer, and fishing method buttons; activity-module clipping restored. |
+| `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata, including optional extra metadata fields. |
 | `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf. Also contains pre-existing save/refactor assertion edits from active worktree. |
 | `scripts/test-save-normalization.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
 | `scripts/check-leaderboard-cost-safety.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
@@ -143,7 +143,7 @@ Legend:
 ## Extraction Queue
 
 1. Button press state
-   - Current: shared metadata helper lives in `scripts/ui/button_press_state.gd`; bottom nav and module utility buttons use it.
+   - Current: shared metadata helper lives in `scripts/ui/button_press_state.gd`; bottom nav, module utility, fishing offer, and fishing method buttons use it.
    - Next lazy win: keep page-switch separate until its visual regression is understood.
 
 2. Activity/skill UI ownership
@@ -167,5 +167,9 @@ Legend:
 | `.\scripts\test-performance-regressions.ps1` | passed after extracting `scripts/ui/button_press_state.gd`. |
 | `.\scripts\test-module-list-transitions.ps1` | passed after extracting `scripts/ui/button_press_state.gd`; runner emitted existing save-protection/leak-at-exit warnings. |
 | `.\scripts\test-page-switch-cover-visual.ps1` | failing: page-switch button depressed-state assertions report `(0.0, 0.0)`. |
+| `.\scripts\test-fishing-net-offer-click.ps1` | passed after fishing offer/method press-state reuse; runner emitted existing save-protection/leak-at-exit warnings. |
+| `.\scripts\test-fishing-web-touch-scroll.ps1` | passed after fishing offer/method press-state reuse. |
+| `.\scripts\test-fishing-click-flow.ps1` | failing against the last committed baseline and after the current fishing reuse: thieving settings bottom-nav click remains on `skill`. |
+| `.\scripts\test-performance-regressions.ps1` | passed after fishing offer/method press-state reuse. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
