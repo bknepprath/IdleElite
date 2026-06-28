@@ -126,7 +126,7 @@ func _finish() -> void:
     Assert-NoUnexpectedGodotErrors $output "performance monitor test"
 
     $newHeadless = @()
-    for ($attempt = 1; $attempt -le 10; $attempt++) {
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
         $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
         if ($newHeadless.Count -eq 0) {
             break

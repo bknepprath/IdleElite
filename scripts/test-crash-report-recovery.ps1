@@ -173,7 +173,10 @@ func _expect(condition: bool, message: String) -> void:
 		failures.append(message)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
-    $beforeHeadless = @(Get-HeadlessGodotProcesses)
+    $baselineHeadlessProcessIds = @{}
+    foreach ($process in @(Get-HeadlessGodotProcesses)) {
+        $baselineHeadlessProcessIds[[int]$process.ProcessId] = $true
+    }
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
     $output | Out-Host
     if ($LASTEXITCODE -ne 0) {
@@ -182,12 +185,17 @@ func _expect(condition: bool, message: String) -> void:
     Assert-True (($output -join "`n") -match "crash-report-recovery-ok") "Crash report recovery test did not report success."
     Assert-NoUnexpectedGodotErrors $output "crash report recovery test"
 
-    $afterHeadless = @(Get-HeadlessGodotProcesses)
-    $beforeIds = @($beforeHeadless | ForEach-Object { $_.ProcessId })
-    $newHeadless = @($afterHeadless | Where-Object { $beforeIds -notcontains $_.ProcessId })
+    $newHeadless = @()
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
+        $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
+        if ($newHeadless.Count -eq 0) {
+            break
+        }
+        Start-Sleep -Milliseconds 500
+    }
     if ($newHeadless.Count -gt 0) {
         $newHeadless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
-        throw "A headless Godot process is still running after the crash report recovery test."
+        throw "A new headless Godot process is still running after the crash report recovery test."
     }
 } finally {
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue

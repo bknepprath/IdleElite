@@ -23454,6 +23454,7 @@ func _show_activity_queue() -> void:
 	_begin_direct_skill_nav_cover()
 	current_screen = "queue"
 	_render_screen()
+	_sync_module_utility_row_visibility()
 
 
 func _return_from_activity_queue() -> void:
@@ -23469,6 +23470,7 @@ func _return_from_activity_queue() -> void:
 	_begin_direct_skill_nav_cover()
 	current_screen = target_screen
 	_render_screen(false, restore_scroll)
+	_sync_module_utility_row_visibility()
 
 
 func _current_detail_scroll_for_pinned_return() -> int:
@@ -54008,6 +54010,103 @@ func _configure_fishing_equipment_offer_title(title: Label, font_size: int, outl
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+func _fishing_offer_shell(content_width: float, offer_height: float, texture: Texture2D, shade_alpha: float, clip_contents := false, fallback_color := Color.TRANSPARENT, feather_height := 120.0) -> Dictionary:
+	var root := Control.new()
+	root.custom_minimum_size = Vector2(content_width, offer_height)
+	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
+	var pop_card := Control.new()
+	pop_card.anchor_left = 0.0
+	pop_card.anchor_right = 1.0
+	pop_card.anchor_top = 0.0
+	pop_card.anchor_bottom = 1.0
+	pop_card.offset_left = ACTION_CARD_POP_GUTTER
+	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
+	pop_card.clip_contents = clip_contents
+	root.add_child(pop_card)
+
+	var bg := RoundedTextureRect.new()
+	bg.texture = texture
+	bg.radius = 64.0
+	bg.art_height = offer_height
+	bg.feather_height = feather_height
+	if fallback_color.a > 0.0:
+		bg.fallback_color = fallback_color
+	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(bg)
+
+	var shade := Panel.new()
+	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade.add_theme_stylebox_override("panel", _activity_shade_style(shade_alpha))
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(shade)
+
+	return {"root": root, "pop": pop_card, "bg": bg, "shade": shade}
+
+
+func _fishing_offer_base_button() -> Button:
+	var button := Button.new()
+	button.text = ""
+	button.focus_mode = Control.FOCUS_NONE
+	button.flat = true
+	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_apply_empty_button_style(button)
+	_attach_default_button_sfx(button)
+	return button
+
+
+func _register_fishing_offer_button(button: Button, root: Control, pop_card: Control, offer_id: String, connect_gui_input := false) -> void:
+	button.set_meta("fishing_offer_id", offer_id)
+	button.set_meta("fishing_offer_root_id", root.get_instance_id())
+	button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
+	button.add_to_group("fishing_offer_buttons")
+	if connect_gui_input:
+		button.gui_input.connect(_on_fishing_offer_button_input.bind(offer_id, button))
+
+
+func _fishing_equipment_offer_button(pop_card: Control, root: Control, offer_id: String, connect_gui_input := false) -> Button:
+	var button := _fishing_offer_base_button()
+	button.anchor_left = 0.5
+	button.anchor_right = 0.5
+	button.anchor_top = 0.5
+	button.anchor_bottom = 0.5
+	button.offset_left = -280
+	button.offset_right = 280
+	button.offset_top = -170
+	button.offset_bottom = 220
+	pop_card.add_child(button)
+	_register_fishing_offer_button(button, root, pop_card, offer_id, connect_gui_input)
+	return button
+
+
+func _fishing_full_offer_button(pop_card: Control, root: Control, offer_id: String, connect_gui_input := false) -> Button:
+	var button := _fishing_offer_base_button()
+	button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pop_card.add_child(button)
+	_register_fishing_offer_button(button, root, pop_card, offer_id, connect_gui_input)
+	return button
+
+
+func _fishing_offer_hint(pop_card: Control, hint_text: String, available: bool, outline_size := 20, offset_top := -156.0, offset_bottom := -34.0, vertical_alignment := VERTICAL_ALIGNMENT_TOP) -> Label:
+	var hint := _label(hint_text, 68, Color.WHITE if available else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
+	hint.add_theme_color_override("font_outline_color", COLOR_INK)
+	hint.add_theme_constant_override("outline_size", outline_size)
+	hint.anchor_left = 0.0
+	hint.anchor_right = 1.0
+	hint.anchor_top = 1.0
+	hint.anchor_bottom = 1.0
+	hint.offset_left = 48
+	hint.offset_right = -48
+	hint.offset_top = offset_top
+	hint.offset_bottom = offset_bottom
+	hint.vertical_alignment = vertical_alignment
+	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pop_card.add_child(hint)
+	return hint
+
+
 func _build_fishing_location_tile(
 	skill_id: String,
 	area_id: String,
@@ -55184,38 +55283,12 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 
 
 func _build_fishing_net_offer_module(content_width: float) -> Control:
-	var root := Control.new()
-	root.custom_minimum_size = Vector2(content_width, FISHING_NET_OFFER_HEIGHT)
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var pop_card := Control.new()
-	pop_card.anchor_left = 0.0
-	pop_card.anchor_right = 1.0
-	pop_card.anchor_top = 0.0
-	pop_card.anchor_bottom = 1.0
-	pop_card.offset_left = ACTION_CARD_POP_GUTTER
-	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
-	pop_card.clip_contents = false
-	root.add_child(pop_card)
-
-	var bg := RoundedTextureRect.new()
-	bg.texture = _first_texture_or_visual_fallback([
+	var shell := _fishing_offer_shell(content_width, FISHING_NET_OFFER_HEIGHT, _first_texture_or_visual_fallback([
 		"res://assets/content/fishing/backgrounds/beach-rocky-zoom.png",
 		"res://assets/content/fishing/backgrounds/00-tide-pool-shallows.png"
-	])
-	bg.radius = 64.0
-	bg.art_height = FISHING_NET_OFFER_HEIGHT
-	bg.feather_height = 0.0
-	bg.fallback_color = _skill_theme_color("fishing").darkened(0.12)
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(bg)
-
-	var shade := Panel.new()
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.06))
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(shade)
+	]), 0.06, false, _skill_theme_color("fishing").darkened(0.12), 0.0)
+	var root := shell.get("root") as Control
+	var pop_card := shell.get("pop") as Control
 
 	var title := _label("You find an old net on the beach", 62, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -55235,20 +55308,7 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.add_child(title)
 
-	var net_button := Button.new()
-	net_button.text = ""
-	net_button.focus_mode = Control.FOCUS_NONE
-	net_button.flat = true
-	net_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	net_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-	net_button.set_anchors_preset(Control.PRESET_FULL_RECT)
-	net_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	net_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
-	net_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-	net_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
-	net_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_attach_default_button_sfx(net_button)
-	pop_card.add_child(net_button)
+	var net_button := _fishing_full_offer_button(pop_card, root, "net", true)
 
 	var net_motion_root := Control.new()
 	net_motion_root.anchor_left = 0.5
@@ -55275,27 +55335,8 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	net_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	net_motion_root.add_child(net_art)
 	_start_fishing_net_offer_idle_motion(net_motion_root)
-	net_button.set_meta("fishing_offer_id", "net")
-	net_button.set_meta("fishing_offer_root_id", root.get_instance_id())
-	net_button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
 	net_button.set_meta("fishing_net_art_id", net_motion_root.get_instance_id())
-	net_button.add_to_group("fishing_offer_buttons")
-	net_button.gui_input.connect(_on_fishing_offer_button_input.bind("net", net_button))
-
-	var hint := _label("Tap the net", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	hint.add_theme_color_override("font_outline_color", COLOR_INK)
-	hint.add_theme_constant_override("outline_size", 14)
-	hint.anchor_left = 0.0
-	hint.anchor_right = 1.0
-	hint.anchor_top = 1.0
-	hint.anchor_bottom = 1.0
-	hint.offset_left = 48
-	hint.offset_right = -48
-	hint.offset_top = -132
-	hint.offset_bottom = -48
-	hint.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(hint)
+	_fishing_offer_hint(pop_card, "Tap the net", true, 14, -132.0, -48.0, VERTICAL_ALIGNMENT_CENTER)
 
 	return root
 
@@ -55305,172 +55346,51 @@ func _fishing_offer_art_modulate(available: bool, available_modulate := Color.WH
 
 
 func _build_fishing_rod_offer_module(content_width: float) -> Control:
-	var root := Control.new()
-	root.custom_minimum_size = Vector2(content_width, FISHING_ROD_OFFER_HEIGHT)
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var pop_card := Control.new()
-	pop_card.anchor_left = 0.0
-	pop_card.anchor_right = 1.0
-	pop_card.anchor_top = 0.0
-	pop_card.anchor_bottom = 1.0
-	pop_card.offset_left = ACTION_CARD_POP_GUTTER
-	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
-	pop_card.clip_contents = false
-	root.add_child(pop_card)
-
-	var bg := RoundedTextureRect.new()
-	bg.texture = _texture_or_visual_fallback("res://assets/content/fishing/backgrounds/02-river-bend.png")
-	bg.radius = 64.0
-	bg.art_height = FISHING_ROD_OFFER_HEIGHT
-	bg.feather_height = 120.0
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(bg)
-
-	var shade := Panel.new()
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.28))
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(shade)
+	var shell := _fishing_offer_shell(content_width, FISHING_ROD_OFFER_HEIGHT, _texture_or_visual_fallback("res://assets/content/fishing/backgrounds/02-river-bend.png"), 0.28)
+	var root := shell.get("root") as Control
+	var pop_card := shell.get("pop") as Control
 
 	var title := _label("Bamboo rod", 94, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_configure_fishing_equipment_offer_title(title, 88, 24)
 	pop_card.add_child(title)
 
-	var rod_button := Button.new()
-	rod_button.text = ""
-	rod_button.focus_mode = Control.FOCUS_NONE
-	rod_button.flat = true
-	rod_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	rod_button.anchor_left = 0.5
-	rod_button.anchor_right = 0.5
-	rod_button.anchor_top = 0.5
-	rod_button.anchor_bottom = 0.5
-	rod_button.offset_left = -280
-	rod_button.offset_right = 280
-	rod_button.offset_top = -170
-	rod_button.offset_bottom = 220
-	rod_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	rod_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
-	rod_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-	rod_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
-	rod_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_attach_default_button_sfx(rod_button)
-	pop_card.add_child(rod_button)
+	var rod_button := _fishing_equipment_offer_button(pop_card, root, "rod", true)
 
 	var rod_art := _image("res://assets/content/fishing/tools/tool-bamboo-rod.png", Vector2(520, 360))
 	rod_art.position = Vector2(20, 10)
 	rod_art.modulate = _fishing_offer_art_modulate(fish_currency >= FISHING_ROD_OFFER_COST)
 	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rod_button.add_child(rod_art)
-	rod_button.set_meta("fishing_offer_id", "rod")
-	rod_button.set_meta("fishing_offer_root_id", root.get_instance_id())
-	rod_button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
-	rod_button.add_to_group("fishing_offer_buttons")
-	rod_button.gui_input.connect(_on_fishing_offer_button_input.bind("rod", rod_button))
 
 	var hint_text := "Buy for %s fish" % _format_compact_number(float(FISHING_ROD_OFFER_COST), 3)
 	if fish_currency < FISHING_ROD_OFFER_COST:
 		hint_text = "%s fish needed" % _format_compact_number(float(FISHING_ROD_OFFER_COST), 3)
-	var hint := _label(hint_text, 68, Color.WHITE if fish_currency >= FISHING_ROD_OFFER_COST else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
-	hint.add_theme_color_override("font_outline_color", COLOR_INK)
-	hint.add_theme_constant_override("outline_size", 20)
-	hint.anchor_left = 0.0
-	hint.anchor_right = 1.0
-	hint.anchor_top = 1.0
-	hint.anchor_bottom = 1.0
-	hint.offset_left = 48
-	hint.offset_right = -48
-	hint.offset_top = -156
-	hint.offset_bottom = -34
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(hint)
+	_fishing_offer_hint(pop_card, hint_text, fish_currency >= FISHING_ROD_OFFER_COST)
 
 	return root
 
 
 func _build_fishing_mirror_offer_module(content_width: float) -> Control:
-	var root := Control.new()
-	root.custom_minimum_size = Vector2(content_width, FISHING_MIRROR_OFFER_HEIGHT)
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var pop_card := Control.new()
-	pop_card.anchor_left = 0.0
-	pop_card.anchor_right = 1.0
-	pop_card.anchor_top = 0.0
-	pop_card.anchor_bottom = 1.0
-	pop_card.offset_left = ACTION_CARD_POP_GUTTER
-	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
-	pop_card.clip_contents = false
-	root.add_child(pop_card)
-
-	var bg := RoundedTextureRect.new()
-	bg.texture = _texture_or_visual_fallback("res://assets/content/fishing/backgrounds/11-cosmic-dream-sea.png")
-	bg.radius = 64.0
-	bg.art_height = FISHING_MIRROR_OFFER_HEIGHT
-	bg.feather_height = 120.0
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(bg)
-
-	var shade := Panel.new()
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.34))
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(shade)
+	var shell := _fishing_offer_shell(content_width, FISHING_MIRROR_OFFER_HEIGHT, _texture_or_visual_fallback("res://assets/content/fishing/backgrounds/11-cosmic-dream-sea.png"), 0.34)
+	var root := shell.get("root") as Control
+	var pop_card := shell.get("pop") as Control
 
 	var title := _label("Reflection mirror", 88, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_configure_fishing_equipment_offer_title(title, 80, 23)
 	pop_card.add_child(title)
 
-	var mirror_button := Button.new()
-	mirror_button.text = ""
-	mirror_button.focus_mode = Control.FOCUS_NONE
-	mirror_button.flat = true
-	mirror_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mirror_button.anchor_left = 0.5
-	mirror_button.anchor_right = 0.5
-	mirror_button.anchor_top = 0.5
-	mirror_button.anchor_bottom = 0.5
-	mirror_button.offset_left = -280
-	mirror_button.offset_right = 280
-	mirror_button.offset_top = -170
-	mirror_button.offset_bottom = 220
-	mirror_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	mirror_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
-	mirror_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-	mirror_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
-	mirror_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_attach_default_button_sfx(mirror_button)
-	pop_card.add_child(mirror_button)
+	var mirror_button := _fishing_equipment_offer_button(pop_card, root, "mirror")
 
 	var mirror_art := _image("res://assets/content/fishing/tools/reflection-net.png", Vector2(520, 360))
 	mirror_art.position = Vector2(20, 10)
 	mirror_art.modulate = _fishing_offer_art_modulate(fish_currency >= FISHING_MIRROR_OFFER_COST)
 	mirror_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mirror_button.add_child(mirror_art)
-	mirror_button.set_meta("fishing_offer_id", "mirror")
-	mirror_button.set_meta("fishing_offer_root_id", root.get_instance_id())
-	mirror_button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
-	mirror_button.add_to_group("fishing_offer_buttons")
 
 	var hint_text := "Buy for %s fish" % _format_compact_number(float(FISHING_MIRROR_OFFER_COST), 3)
 	if fish_currency < FISHING_MIRROR_OFFER_COST:
 		hint_text = "%s fish needed" % _format_compact_number(float(FISHING_MIRROR_OFFER_COST), 3)
-	var hint := _label(hint_text, 68, Color.WHITE if fish_currency >= FISHING_MIRROR_OFFER_COST else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
-	hint.add_theme_color_override("font_outline_color", COLOR_INK)
-	hint.add_theme_constant_override("outline_size", 20)
-	hint.anchor_left = 0.0
-	hint.anchor_right = 1.0
-	hint.anchor_top = 1.0
-	hint.anchor_bottom = 1.0
-	hint.offset_left = 48
-	hint.offset_right = -48
-	hint.offset_top = -156
-	hint.offset_bottom = -34
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(hint)
+	_fishing_offer_hint(pop_card, hint_text, fish_currency >= FISHING_MIRROR_OFFER_COST)
 
 	return root
 
@@ -55484,59 +55404,15 @@ func _fishing_rod_upgrade_title(tool_id: String) -> String:
 
 
 func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: String) -> Control:
-	var root := Control.new()
-	root.custom_minimum_size = Vector2(content_width, FISHING_ROD_UPGRADE_OFFER_HEIGHT)
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var pop_card := Control.new()
-	pop_card.anchor_left = 0.0
-	pop_card.anchor_right = 1.0
-	pop_card.anchor_top = 0.0
-	pop_card.anchor_bottom = 1.0
-	pop_card.offset_left = ACTION_CARD_POP_GUTTER
-	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
-	pop_card.clip_contents = true
-	root.add_child(pop_card)
-
-	var bg := RoundedTextureRect.new()
-	bg.texture = _texture_or_visual_fallback("res://assets/content/fishing/backgrounds/04-frozen-lake.png" if tool_id == "star_rod" else "res://assets/content/fishing/backgrounds/05-coral-reef-shallows.png")
-	bg.radius = 64.0
-	bg.art_height = FISHING_ROD_UPGRADE_OFFER_HEIGHT
-	bg.feather_height = 120.0
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(bg)
-
-	var shade := Panel.new()
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.30))
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(shade)
+	var shell := _fishing_offer_shell(content_width, FISHING_ROD_UPGRADE_OFFER_HEIGHT, _texture_or_visual_fallback("res://assets/content/fishing/backgrounds/04-frozen-lake.png" if tool_id == "star_rod" else "res://assets/content/fishing/backgrounds/05-coral-reef-shallows.png"), 0.30, true)
+	var root := shell.get("root") as Control
+	var pop_card := shell.get("pop") as Control
 
 	var title := _label(_fishing_rod_upgrade_title(tool_id), 88, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_configure_fishing_equipment_offer_title(title, 78 if tool_id == "reinforced_rod" else 84, 23)
 	pop_card.add_child(title)
 
-	var upgrade_button := Button.new()
-	upgrade_button.text = ""
-	upgrade_button.focus_mode = Control.FOCUS_NONE
-	upgrade_button.flat = true
-	upgrade_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	upgrade_button.anchor_left = 0.5
-	upgrade_button.anchor_right = 0.5
-	upgrade_button.anchor_top = 0.5
-	upgrade_button.anchor_bottom = 0.5
-	upgrade_button.offset_left = -280
-	upgrade_button.offset_right = 280
-	upgrade_button.offset_top = -170
-	upgrade_button.offset_bottom = 220
-	upgrade_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	upgrade_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
-	upgrade_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-	upgrade_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
-	upgrade_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_attach_default_button_sfx(upgrade_button)
-	pop_card.add_child(upgrade_button)
+	var upgrade_button := _fishing_equipment_offer_button(pop_card, root, tool_id)
 
 	var cost := _fishing_rod_upgrade_cost(tool_id)
 	var rod_art := _image("res://assets/content/fishing/tools/tool-bamboo-rod.png", Vector2(520, 360))
@@ -55544,85 +55420,25 @@ func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: Stri
 	rod_art.modulate = _fishing_offer_art_modulate(fish_currency >= cost, Color("#dcf7ff") if tool_id == "star_rod" else Color("#ffe8a8"))
 	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	upgrade_button.add_child(rod_art)
-	upgrade_button.set_meta("fishing_offer_id", tool_id)
-	upgrade_button.set_meta("fishing_offer_root_id", root.get_instance_id())
-	upgrade_button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
-	upgrade_button.add_to_group("fishing_offer_buttons")
 
 	var hint_text := "Upgrade for %s fish" % _format_compact_number(float(cost), 3)
 	if fish_currency < cost:
 		hint_text = "%s fish needed" % _format_compact_number(float(cost), 3)
-	var hint := _label(hint_text, 68, Color.WHITE if fish_currency >= cost else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
-	hint.add_theme_color_override("font_outline_color", COLOR_INK)
-	hint.add_theme_constant_override("outline_size", 20)
-	hint.anchor_left = 0.0
-	hint.anchor_right = 1.0
-	hint.anchor_top = 1.0
-	hint.anchor_bottom = 1.0
-	hint.offset_left = 48
-	hint.offset_right = -48
-	hint.offset_top = -156
-	hint.offset_bottom = -34
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(hint)
+	_fishing_offer_hint(pop_card, hint_text, fish_currency >= cost)
 
 	return root
 
 
 func _build_fishing_boat_offer_module(content_width: float) -> Control:
-	var root := Control.new()
-	root.custom_minimum_size = Vector2(content_width, FISHING_BOAT_OFFER_HEIGHT)
-	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	var pop_card := Control.new()
-	pop_card.anchor_left = 0.0
-	pop_card.anchor_right = 1.0
-	pop_card.anchor_top = 0.0
-	pop_card.anchor_bottom = 1.0
-	pop_card.offset_left = ACTION_CARD_POP_GUTTER
-	pop_card.offset_right = -ACTION_CARD_POP_GUTTER
-	pop_card.clip_contents = true
-	root.add_child(pop_card)
-
-	var bg := RoundedTextureRect.new()
-	bg.texture = _texture_or_visual_fallback("res://assets/content/fishing/backgrounds/07-rowboat-offshore.png")
-	bg.radius = 64.0
-	bg.art_height = FISHING_BOAT_OFFER_HEIGHT
-	bg.feather_height = 120.0
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(bg)
-
-	var shade := Panel.new()
-	shade.set_anchors_preset(Control.PRESET_FULL_RECT)
-	shade.add_theme_stylebox_override("panel", _activity_shade_style(0.30))
-	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(shade)
+	var shell := _fishing_offer_shell(content_width, FISHING_BOAT_OFFER_HEIGHT, _texture_or_visual_fallback("res://assets/content/fishing/backgrounds/07-rowboat-offshore.png"), 0.30, true)
+	var root := shell.get("root") as Control
+	var pop_card := shell.get("pop") as Control
 
 	var title := _label("Build boat", 94, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	_configure_fishing_equipment_offer_title(title, 88, 24)
 	pop_card.add_child(title)
 
-	var boat_button := Button.new()
-	boat_button.text = ""
-	boat_button.focus_mode = Control.FOCUS_NONE
-	boat_button.flat = true
-	boat_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	boat_button.anchor_left = 0.5
-	boat_button.anchor_right = 0.5
-	boat_button.anchor_top = 0.5
-	boat_button.anchor_bottom = 0.5
-	boat_button.offset_left = -280
-	boat_button.offset_right = 280
-	boat_button.offset_top = -170
-	boat_button.offset_bottom = 220
-	boat_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	boat_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
-	boat_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-	boat_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
-	boat_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	_attach_default_button_sfx(boat_button)
-	pop_card.add_child(boat_button)
+	var boat_button := _fishing_equipment_offer_button(pop_card, root, "boat")
 
 	var boat_art := _image("res://assets/content/fishing/tools/tool-boat.png", Vector2(520, 360))
 	boat_art.position = Vector2(20, 10)
@@ -55630,29 +55446,13 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	boat_art.modulate = _fishing_offer_art_modulate(can_build)
 	boat_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boat_button.add_child(boat_art)
-	boat_button.set_meta("fishing_offer_id", "boat")
-	boat_button.set_meta("fishing_offer_root_id", root.get_instance_id())
-	boat_button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
-	boat_button.add_to_group("fishing_offer_buttons")
 
 	var hint_text := "Build for %s Softwood" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3)
 	if _skill_level("build") < FISHING_BOAT_BUILD_REQUIRED_LEVEL:
 		hint_text = "Requires Building Lv %s" % FISHING_BOAT_BUILD_REQUIRED_LEVEL
 	elif _mat_amount("softwood") < float(FISHING_BOAT_OFFER_COST):
 		hint_text = "%s Softwood needed" % _format_compact_number(float(FISHING_BOAT_OFFER_COST), 3)
-	var hint := _label(hint_text, 68, Color.WHITE if can_build else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
-	hint.add_theme_color_override("font_outline_color", COLOR_INK)
-	hint.add_theme_constant_override("outline_size", 20)
-	hint.anchor_left = 0.0
-	hint.anchor_right = 1.0
-	hint.anchor_top = 1.0
-	hint.anchor_bottom = 1.0
-	hint.offset_left = 48
-	hint.offset_right = -48
-	hint.offset_top = -156
-	hint.offset_bottom = -34
-	hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	pop_card.add_child(hint)
+	_fishing_offer_hint(pop_card, hint_text, can_build)
 
 	return root
 

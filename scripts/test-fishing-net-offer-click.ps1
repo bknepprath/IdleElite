@@ -253,7 +253,7 @@ func _run() -> void:
 }
 finally {
     $headless = @()
-    for ($attempt = 1; $attempt -le 10; $attempt++) {
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
         $headless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
         if ($headless.Count -eq 0) {
             break

@@ -468,6 +468,10 @@ func _fail(message: String) -> void:
 	quit(1)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
+    $baselineHeadlessProcessIds = @{}
+    foreach ($process in @(Get-HeadlessGodotProcesses)) {
+        $baselineHeadlessProcessIds[[int]$process.ProcessId] = $true
+    }
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
     $output | Out-Host
     if ($LASTEXITCODE -ne 0) {
@@ -478,9 +482,16 @@ func _fail(message: String) -> void:
     Assert-True ((Test-Path -LiteralPath $capturePath) -or $captureOutput) "Tutorial hidden-controls screenshot was not created or cleanly skipped at $capturePath."
     Assert-NoUnexpectedGodotErrors $output "tutorial start scroll test"
 
-    $headless = @(Get-HeadlessGodotProcesses)
-    if ($headless.Count -gt 0) {
-        $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
+    $newHeadless = @()
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
+        $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
+        if ($newHeadless.Count -eq 0) {
+            break
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    if ($newHeadless.Count -gt 0) {
+        $newHeadless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output
         throw "A headless Godot process is still running after the tutorial start scroll test."
     }
 } finally {

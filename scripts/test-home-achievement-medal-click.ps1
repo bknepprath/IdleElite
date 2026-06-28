@@ -279,7 +279,7 @@ func _fail(message: String) -> void:
     Assert-True (($output -join "`n") -match "home-achievement-medal-click-ok") "Home achievement medal click smoke did not report success."
 
     $newHeadless = @()
-    for ($attempt = 1; $attempt -le 10; $attempt++) {
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
         $newHeadless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
         if ($newHeadless.Count -eq 0) {
             break

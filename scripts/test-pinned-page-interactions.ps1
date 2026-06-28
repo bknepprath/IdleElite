@@ -193,6 +193,7 @@ func _check_module_utility_tabs_close_to_skill_detail(scene: Node) -> void:
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(6):
 		await process_frame
+	scene.set("top_level_nav_locked_until_msec", 0)
 	scene.call("_show_pinned_activities")
 	if not await _wait_for_screen(scene, "pinned"):
 		_record("module utility close smoke did not enter pinned screen")

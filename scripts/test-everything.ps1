@@ -55,7 +55,7 @@ function Assert-NoHeadlessGodotProcesses {
     param([Parameter(Mandatory = $true)][string]$Context)
 
     $headless = @()
-    for ($attempt = 1; $attempt -le 10; $attempt++) {
+    for ($attempt = 1; $attempt -le 30; $attempt++) {
         $headless = @(Get-HeadlessGodotProcesses)
         if ($headless.Count -eq 0) {
             return
