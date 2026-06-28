@@ -10,7 +10,7 @@ Legend:
 
 ## Session Notes
 
-- Current main target: shrink `scripts/main.gd` without changing gameplay behavior.
+- Current main target: delete provably dead `scripts/main.gd` code, not just move it.
 - Active extraction rule: only extract repeated code with a real second caller or a clear ownership boundary.
 - Current known visual regression check: `scripts/test-page-switch-cover-visual.ps1` is failing on page-switch depressed-state assertions; leave page-switch press handling bespoke until that is understood.
 - Prior UI fix this session: activity modules are clipped below the skill info shelf again.
@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 196 files / about 112,279 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 196 files / about 111,959 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 67,499 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target; recent UI drawing controls now preload from `scripts/ui/`. |
+| `scripts/main.gd` * | 67,191 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -104,12 +104,12 @@ Legend:
 | Path | Lines | What lives here |
 | --- | ---: | --- |
 | `scripts/check-project.ps1` | 381 | Preferred broad project validation entrypoint. |
-| `scripts/test-performance-regressions.ps1` * | 3,059 | Static/runtime regression assertions for performance-sensitive code and UI contracts; now reads extracted `scripts/ui/regen_circle.gd` and `scripts/ui/fish_circle.gd`. |
+| `scripts/test-performance-regressions.ps1` * | 3,047 | Static/runtime regression assertions for performance-sensitive code and UI contracts; stale dead-helper preservation assertions removed. |
 | `scripts/test-save-normalization.ps1` * | 2,671 | Save/load normalization regression assertions. |
 | `scripts/test-module-list-transitions.ps1` | 3,289 | Module list transition behavioral validation. |
 | `scripts/test-page-switch-cover-visual.ps1` | 375 | Page-switch cover/depressed visual validation. Currently failing in this session. |
-| `scripts/check-ui-boundary-contracts.ps1` | 85 | UI boundary static contracts. |
-| `scripts/check-activity-ui-boundary-contracts.ps1` | 47 | Activity UI boundary contracts. |
+| `scripts/check-ui-boundary-contracts.ps1` * | 96 | UI boundary static contracts. |
+| `scripts/check-activity-ui-boundary-contracts.ps1` * | 59 | Activity UI boundary contracts. |
 | `scripts/check-activity-database-contracts.ps1` | 48 | Activity database static contracts. |
 | `scripts/audit-activity-database.ps1` | 870 | Activity database audit. |
 | `scripts/capture-woodcutting-firepit.ps1` | 482 | Screenshot capture for firepit/skill-detail layout. |
@@ -137,7 +137,7 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted for bottom nav, module utility, fishing offer, fishing method, and thieving heist buttons; activity-module clipping restored; several local UI drawing classes moved behind preloads. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; dead helper functions deleted. |
 | `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata, including optional extra metadata fields. |
 | `scripts/ui/regen_circle.gd` | added | New extracted stamina/regen gauge drawing class. |
 | `scripts/ui/fish_circle.gd` | added | New extracted fishing header circle control. |
@@ -147,6 +147,10 @@ Legend:
 | `scripts/ui/module_utility_collapse_arrow.gd` | added | New extracted module utility collapse arrow control. |
 | `scripts/ui/blue_guy_health_heart_gauge.gd` | added | New extracted fighting health heart gauge control. |
 | `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf; RegenCircle and FishCircle assertions now target extracted scripts. Also contains pre-existing save/refactor assertion edits from active worktree. |
+| `scripts/check-ui-boundary-contracts.ps1` | modified | Chat presentation boundary now tracks the live expanded composer instead of deleted `_chat_composer`. |
+| `scripts/check-activity-ui-boundary-contracts.ps1` | modified | Unlock boundary no longer preserves deleted test-only `_unlock_prior_test_actions` listing. |
+| `docs/ui-runtime-boundary-map.md` | modified | Chat boundary updated for live composer helper. |
+| `docs/activity-ui-boundary-map.md` | modified | Unlock boundary map no longer lists deleted test helper. |
 | `scripts/test-save-normalization.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
 | `scripts/check-leaderboard-cost-safety.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
 | `docs/plan-v0.5.0.md` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
@@ -155,6 +159,10 @@ Legend:
 | `docs/refactor-file-map.md` | added | New live architecture/refactor sidecar. |
 
 ## Extraction Queue
+
+0. Dead-code deletion
+   - Current: deleted stale helpers `_build_hero`, `_add_hub_build_mode_toggle`, `_chat_composer`, `_detail_lazy_mount_initial_window_async`, `_render_detail_eager_card_list`, `_show_module_pin_preview`, `_build_skill_strip`, `_wait_for_page_switch_cover_opaque`, and `_activity_stat_hit_buttons`.
+   - Next lazy win: continue only with functions that have no runtime/test callers after checking dynamic `scene.call(...)` use.
 
 1. Button press state
    - Current: shared metadata helper lives in `scripts/ui/button_press_state.gd`; bottom nav, module utility, fishing offer, fishing method, and thieving heist buttons use it.
@@ -205,5 +213,10 @@ Legend:
 | `.\scripts\check-ui-boundary-contracts.ps1` | passed after extracting chevron, collapse arrow, and health gauge controls. |
 | `.\scripts\test-performance-regressions.ps1` | passed after extracting chevron, collapse arrow, and health gauge controls. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified header/card/module rendering after extracting chevron, collapse arrow, and health gauge controls. |
+| `git diff --check -- scripts/main.gd scripts/test-performance-regressions.ps1 scripts/check-ui-boundary-contracts.ps1 scripts/check-activity-ui-boundary-contracts.ps1 docs/ui-runtime-boundary-map.md docs/activity-ui-boundary-map.md` | passed after deleting stale helpers. |
+| `.\scripts\check-ui-boundary-contracts.ps1` | passed after deleting stale helpers. |
+| `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting stale helpers. |
+| `.\scripts\test-performance-regressions.ps1` | passed after deleting stale helpers. |
+| Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after deleting stale helpers. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |

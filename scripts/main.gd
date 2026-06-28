@@ -8805,64 +8805,6 @@ func _achievement_skill_section(skill_id: String) -> Control:
 	return card
 
 
-func _build_hero(parent: PanelContainer) -> void:
-	var scene := Control.new()
-	scene.clip_contents = true
-	parent.add_child(scene)
-
-	var stage := Control.new()
-	stage.anchor_right = 1.0
-	stage.anchor_bottom = 0.0
-	stage.offset_bottom = 1530
-	scene.add_child(stage)
-	
-	var hero := TextureRect.new()
-	hero.texture = _texture_or_visual_fallback("res://assets/content/characters/stick-hero.png")
-	hero.anchor_left = 0.03
-	hero.anchor_right = 0.80
-	hero.anchor_top = 0.30
-	hero.anchor_bottom = 1.48
-	hero.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	hero.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	stage.add_child(hero)
-	
-	var bubble := Control.new()
-	bubble.anchor_left = 0.02
-	bubble.anchor_right = 0.82
-	bubble.anchor_top = 0.12
-	bubble.anchor_bottom = 0.40
-	stage.add_child(bubble)
-	var bubble_art := TextureRect.new()
-	bubble_art.texture = _texture_or_visual_fallback(HERO_SPEECH_BUBBLE_TEXTURE)
-	bubble_art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bubble_art.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	bubble_art.stretch_mode = TextureRect.STRETCH_SCALE
-	bubble.add_child(bubble_art)
-	hero_message = _label("I MUST BECOME AN IDLE ELITIST!", 72, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	hero_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	hero_message.anchor_left = 0.08
-	hero_message.anchor_right = 0.92
-	hero_message.anchor_top = 0.08
-	hero_message.anchor_bottom = 0.68
-	hero_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bubble.add_child(hero_message)
-	
-	var tools := VBoxContainer.new()
-	tools.anchor_left = 0.80
-	tools.anchor_right = 1.0
-	tools.anchor_top = 0.16
-	tools.anchor_bottom = 0.64
-	tools.alignment = BoxContainer.ALIGNMENT_CENTER
-	tools.add_theme_constant_override("separation", 58)
-	stage.add_child(tools)
-	var settings := _icon_button(SETTINGS_GEAR_ICON_TEXTURE)
-	settings.pressed.connect(_open_settings)
-	tools.add_child(settings)
-	var discord := _icon_button(DISCORD_LOGO_ICON_TEXTURE)
-	discord.pressed.connect(_settings_discord_pressed)
-	tools.add_child(discord)
-
-
 func _build_skills_page() -> void:
 	skills_content = Control.new()
 	skills_content.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -12599,37 +12541,6 @@ func _finish_hub_tutorial_tip_tween() -> void:
 	hub_tutorial_tip_tween = null
 
 
-func _add_hub_build_mode_toggle(parent: Control) -> void:
-	var button := Button.new()
-	button.text = ""
-	button.anchor_left = 1.0
-	button.anchor_right = 1.0
-	button.anchor_top = 0.0
-	button.anchor_bottom = 0.0
-	button.offset_left = -246
-	button.offset_right = -46
-	button.offset_top = 96
-	button.offset_bottom = 296
-	button.z_index = HUB_OVERLAY_Z + 40
-	button.z_as_relative = false
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.add_theme_stylebox_override("normal", _hub_build_mode_button_style(hub_build_mode))
-	button.add_theme_stylebox_override("hover", _hub_build_mode_button_style(hub_build_mode, false, true))
-	button.add_theme_stylebox_override("pressed", _hub_build_mode_button_style(hub_build_mode, true))
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	button.pressed.connect(_toggle_hub_build_mode)
-	parent.add_child(button)
-	var icon := HubMoveIcon.new()
-	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
-	icon.offset_left = 30
-	icon.offset_right = -30
-	icon.offset_top = 30
-	icon.offset_bottom = -30
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	button.add_child(icon)
-
-
 func _hub_build_mode_button_style(active: bool, pressed := false, hovered := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	var fill := Color("#3cbf6d") if active else Color("#d7c8a4")
@@ -16135,46 +16046,6 @@ func _chat_sender_label(row_data: Dictionary) -> String:
 	if total_level > 0:
 		return "%s - %s" % [name_text, total_level]
 	return name_text
-
-
-func _chat_composer() -> PanelContainer:
-	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(1540, 350)
-	card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	card.add_theme_stylebox_override("panel", _surface_style(Color("#fff6e1"), 42, 34, false))
-	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 22)
-	card.add_child(stack)
-	var input_row := HBoxContainer.new()
-	input_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	input_row.add_theme_constant_override("separation", 22)
-	stack.add_child(input_row)
-	chat_message_edit = LineEdit.new()
-	chat_message_edit.placeholder_text = "Message"
-	chat_message_edit.max_length = CHAT_MESSAGE_MAX_CHARS
-	chat_message_edit.custom_minimum_size = Vector2(0, 150)
-	chat_message_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chat_message_edit.focus_mode = Control.FOCUS_ALL
-	chat_message_edit.add_theme_font_size_override("font_size", 62)
-	if app_bold_font != null:
-		chat_message_edit.add_theme_font_override("font", app_bold_font)
-	elif app_font != null:
-		chat_message_edit.add_theme_font_override("font", app_font)
-	chat_message_edit.add_theme_color_override("font_color", COLOR_INK)
-	chat_message_edit.add_theme_color_override("font_placeholder_color", Color("#8a8175"))
-	chat_message_edit.add_theme_color_override("caret_color", COLOR_BLUE)
-	chat_message_edit.add_theme_stylebox_override("normal", _profile_name_field_style(false))
-	chat_message_edit.add_theme_stylebox_override("focus", _profile_name_field_style(true))
-	chat_message_edit.text_changed.connect(_on_chat_draft_changed)
-	chat_message_edit.gui_input.connect(_on_chat_input_gui_input)
-	chat_message_edit.text_submitted.connect(_chat_text_submitted)
-	input_row.add_child(chat_message_edit)
-	input_row.add_child(_chat_send_button())
-	var hint := _label("One message every %s. Full chat shows the latest %s messages." % [_format_duration(float(CHAT_SEND_INTERVAL_SECONDS)), CHAT_FULL_VISIBLE_COUNT], MIN_MOBILE_BODY_FONT_SIZE, COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-	hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	hint.custom_minimum_size = Vector2(0, 100)
-	stack.add_child(hint)
-	return card
 
 
 func _chat_row(row_data: Dictionary) -> Control:
@@ -21523,45 +21394,6 @@ func _maybe_repair_blank_detail_lazy_stack() -> void:
 	_repair_blank_detail_lazy_stack()
 
 
-func _detail_lazy_mount_initial_window_async(instant := true, mount_count: int = DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT) -> void:
-	var target := mini(mount_count, detail_lazy_plan.size())
-	for plan_index in range(target):
-		var lazy_entry := detail_lazy_plan[plan_index] as Dictionary
-		if bool(lazy_entry.get("mounted", false)):
-			continue
-		var pinned := _detail_lazy_pinned_track_ids()
-		if not _detail_lazy_should_mount_entry(lazy_entry, pinned, plan_index):
-			continue
-		var content_width := _skill_content_width()
-		var actions_width := content_width
-		_detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, not instant)
-		await get_tree().process_frame
-
-
-func _render_detail_eager_card_list(stack: VBoxContainer, content_width: float, actions_width: float, max_main_entries: int = -1) -> void:
-	detail_lazy_plan.clear()
-	detail_lazy_last_scroll = -1.0
-	detail_lazy_stack = stack
-	boot_detail_render_queue.clear()
-	var skill_id := selected_skill_id
-	if max_main_entries < 0:
-		detail_rendered_action_ids.clear()
-		for entry in _visible_detail_entries_for_skill(skill_id):
-			_append_detail_eager_entry(stack, skill_id, entry as Dictionary, content_width, actions_width)
-		_append_detail_eager_trailing_tips(stack, content_width, actions_width)
-		detail_lazy_stack = null
-		return
-	detail_rendered_action_ids.clear()
-	var main_rendered := 0
-	for entry in _visible_detail_entries_for_skill(skill_id):
-		var entry_data := entry as Dictionary
-		if main_rendered >= max_main_entries:
-			boot_detail_render_queue.append(entry_data)
-			continue
-		_append_detail_eager_entry(stack, skill_id, entry_data, content_width, actions_width)
-		main_rendered += 1
-
-
 func _render_detail_eager_card_list_async(stack: VBoxContainer, content_width: float, actions_width: float, max_main_entries: int = -1):
 	detail_lazy_plan.clear()
 	detail_lazy_last_scroll = -1.0
@@ -25454,35 +25286,6 @@ func _commit_module_pin_tap(module_key: String, card_host_id: int) -> void:
 func _module_ui_is_pinned(module_key: String) -> bool:
 	var normalized_key := _normalized_module_ui_key(module_key)
 	return _module_ui_key_allows_pin_or_collapse(normalized_key) and module_ui_pinned_order.has(normalized_key)
-
-
-func _show_module_pin_preview(card_host: Control, module_key: String) -> void:
-	var normalized_key := _normalized_module_ui_key(module_key)
-	if normalized_key.is_empty() or not _module_ui_key_allows_pin_or_collapse(normalized_key):
-		return
-	var badge := _ensure_module_pin_badge(card_host, normalized_key)
-	if badge == null:
-		return
-	if badge.has_meta("module_pin_preview_tween"):
-		_kill_meta_tween(badge, "module_pin_preview_tween")
-	var token := int(module_ui_pin_preview_tokens.get(normalized_key, 0)) + 1
-	module_ui_pin_preview_tokens[normalized_key] = token
-	badge.visible = true
-	badge.disabled = false
-	badge.position = MODULE_PIN_BADGE_SPAWN_POSITION
-	badge.rotation_degrees = -13.0
-	badge.scale = Vector2(1.025, 1.025)
-	_set_canvas_item_alpha_if_changed(badge, 0.0)
-	var preview_tween := create_tween()
-	badge.set_meta("module_pin_preview_tween", preview_tween)
-	preview_tween.set_parallel(true)
-	preview_tween.tween_property(badge, "position", MODULE_PIN_BADGE_ARMED_POSITION, 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	preview_tween.tween_property(badge, "rotation_degrees", -8.0, 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	preview_tween.tween_property(badge, "scale", Vector2.ONE, 0.11).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	preview_tween.tween_property(badge, "modulate:a", 1.0, 0.09).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	preview_tween.set_parallel(false)
-	preview_tween.tween_callback(_finish_module_pin_preview_animation.bind(badge.get_instance_id()))
-	_expire_module_pin_preview_after_delay(normalized_key, card_host.get_instance_id(), token)
 
 
 func _finish_module_pin_preview_animation(badge_id: int) -> void:
@@ -32199,66 +32002,6 @@ func _restore_skill_strip_wrap_page() -> void:
 	page.offset_right = float(page_idx) * content_width + content_width
 
 
-func _build_skill_strip(scroll_latest_activity: bool, restore_detail_scroll: int):
-	skill_swipe_drag_offset_x = 0.0
-	var content_width := _skill_content_width()
-	var clip := Control.new()
-	clip.anchor_left = 0.0
-	clip.anchor_right = 0.0
-	clip.anchor_top = 0.0
-	clip.anchor_bottom = 1.0
-	clip.offset_left = float(PAGE_PAD)
-	clip.offset_right = float(PAGE_PAD) + content_width
-	clip.offset_top = 0.0
-	clip.offset_bottom = 0.0
-	clip.clip_contents = true
-	skills_content.add_child(clip)
-	var strip := Control.new()
-	strip.anchor_top = 0.0
-	strip.anchor_bottom = 1.0
-	strip.offset_top = 0.0
-	strip.offset_bottom = 0.0
-	strip.offset_left = 0.0
-	strip.offset_right = content_width
-	strip.clip_contents = false
-	skill_swipe_frame = strip
-	clip.add_child(strip)
-	skill_strip_refs.clear()
-	skill_strip_ids.clear()
-	for def in skill_defs:
-		skill_strip_ids.append(str(def.get("id", "")))
-	skill_strip_index = maxi(0, skill_strip_ids.find(selected_skill_id))
-	var saved_boot_yield := boot_detail_card_yield
-	# Always build synchronously in strip mode to avoid deferred-call timing issues.
-	boot_detail_card_yield = false
-	for i in skill_strip_ids.size():
-		var sid: String = str(skill_strip_ids[i])
-		selected_skill_id = sid
-		detail_action_card_nodes.clear()
-		detail_rendered_action_ids.clear()
-		await _render_skill_detail(false, -1, false, i)
-		skill_strip_refs[sid] = _capture_skill_strip_page_refs()
-	boot_detail_card_yield = saved_boot_yield
-	if boot_detail_card_yield:
-		boot_detail_render_in_progress = false
-		boot_detail_scroll_locked = false
-	selected_skill_id = str(skill_strip_ids[skill_strip_index])
-	_swap_skill_strip_refs(selected_skill_id)
-	_apply_skill_swipe_drag_offset(0.0)
-	_ensure_finalized_skill_detail_presentable(selected_skill_id)
-	call_deferred("_sync_detail_actions_scroll_limit_deferred")
-	if _suppress_detail_auto_scroll_for_first_module():
-		call_deferred("_sync_onboarding_first_module_top_spacer", true)
-	elif restore_detail_scroll >= 0 and detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
-		var strip_restore_scroll := 0 if selected_skill_id == "thieving" else maxi(0, restore_detail_scroll)
-		detail_actions_scroll.drag_scroll_position = float(strip_restore_scroll)
-		detail_actions_scroll.scroll_vertical = strip_restore_scroll
-		call_deferred("_restore_detail_actions_scroll", strip_restore_scroll)
-	elif scroll_latest_activity:
-		call_deferred("_scroll_to_resume_activity", false)
-	call_deferred("_ensure_skill_swipe_frame_centered")
-
-
 func _capture_skill_strip_page_refs() -> Dictionary:
 	return {
 		"page": skill_swipe_page,
@@ -33857,25 +33600,6 @@ func _start_select_skill_under_page_switch_cover(skill_id: String, scroll_latest
 	else:
 		_render_screen(scroll_latest_activity, restore_detail_scroll)
 	_mark_page_switch_release_after_render()
-
-
-func _wait_for_page_switch_cover_opaque(cover_id: int) -> bool:
-	var started_msec := Time.get_ticks_msec()
-	var max_wait_msec := int(round((PAGE_SWITCH_SCROLL_COVER_FADE_IN_SECONDS + 0.30) * 1000.0))
-	while Time.get_ticks_msec() - started_msec < max_wait_msec:
-		var cover := _active_page_switch_cover_ref(cover_id)
-		if cover == null:
-			return false
-		if cover.visible and cover.modulate.a >= 0.98:
-			_force_page_switch_scroll_cover_opaque(cover_id)
-			await get_tree().process_frame
-			return _page_switch_cover_id_active(cover_id)
-		await get_tree().process_frame
-	if not _page_switch_cover_id_active(cover_id):
-		return false
-	_force_page_switch_scroll_cover_opaque(cover_id)
-	await get_tree().process_frame
-	return _page_switch_cover_id_active(cover_id)
 
 
 func _fade_clear_skill_swipe_rebuild_cover() -> void:
@@ -64556,38 +64280,6 @@ func _action_stat_box(label: Label, interactive := false, skill_id := "", action
 	stack.add_child(title_label)
 	label.set_meta("stat_title_label", title_label)
 	return box
-
-
-func _activity_stat_hit_buttons(parent: Control, _skill_id: String, _action_id: String) -> Dictionary:
-	var hit_buttons := {}
-	var kinds := ["xp", "stamina", "time", "success"]
-	var button_size := Vector2(300, 222)
-	var left := 54.0 + 410.0 + 56.0
-	var top := 46.0 + 82.0 + 38.0
-	var step := button_size.x + 28.0
-	for i in range(kinds.size()):
-		var kind := str(kinds[i])
-		var button := Button.new()
-		button.text = ""
-		button.focus_mode = Control.FOCUS_NONE
-		button.flat = true
-		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		button.anchor_left = 0.0
-		button.anchor_right = 0.0
-		button.anchor_top = 0.0
-		button.anchor_bottom = 0.0
-		button.offset_left = left + float(i) * step
-		button.offset_right = button.offset_left + button_size.x
-		button.offset_top = top
-		button.offset_bottom = top + button_size.y
-		button.z_index = 219
-		button.add_theme_stylebox_override("normal", empty_style_cache)
-		button.add_theme_stylebox_override("hover", empty_style_cache)
-		button.add_theme_stylebox_override("pressed", empty_style_cache)
-		button.add_theme_stylebox_override("focus", empty_style_cache)
-		parent.add_child(button)
-		hit_buttons[kind] = button
-	return hit_buttons
 
 
 func _apply_action_stat_box_style(box: Control, active := false, pressed := false) -> void:

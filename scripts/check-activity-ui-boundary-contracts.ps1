@@ -36,7 +36,7 @@ $boundaries = @{
     "action cards" = @("_build_detail_interactive_action_card", "_activity_card_root_height", "_activity_card_preview_root_height", "_activity_card_depth_layer", "_activity_card_shade_layer")
     "passive and special modules" = @("_build_passive_module_card", "_build_thieving_heist_card", "_build_fishing_area_module", "_build_fishing_offer_module")
     "mastery medals" = @("_mastery_level", "_mastery_progress_pct", "_mastery_medal_texture", "_mastery_medal_visual_texture", "_mastery_for_save")
-    "unlocks and lockpads" = @("_unlock_prior_test_actions", "_unlock_padlock_pulse_texture", "_unlock_padlock_tint_mask_texture", "_action_has_pending_unlock_readiness", "_apply_pending_activity_unlock_readiness")
+    "unlocks and lockpads" = @("_unlock_padlock_pulse_texture", "_unlock_padlock_tint_mask_texture", "_action_has_pending_unlock_readiness", "_apply_pending_activity_unlock_readiness")
     "offline summary" = @("_maybe_show_offline_summary", "_offline_summary_activity_card", "_offline_summary_stat_card", "_offline_summary_mastery_row", "_offline_summary_unlock_card")
     "offline rewards" = @("_offline_active_cycle_seconds", "_offline_xp_reward", "_offline_mastery_reward", "_offline_unlocked_actions")
 }

@@ -403,7 +403,6 @@ Assert-True ($activeSkillSwipeCoverRef -match '_valid_control_ref\(instance_from
 foreach ($safeCoverCallbackName in @(
     "_page_switch_cover_id_active",
     "_process_page_switch_pending_transition",
-    "_wait_for_page_switch_cover_opaque",
     "_force_page_switch_scroll_cover_opaque",
     "_begin_page_switch_selection_under_cover",
     "_finish_skill_nav_cover_fade_in",
@@ -1708,10 +1707,7 @@ $lazyMountThievingHeists = Get-FunctionBody -Text $main -Name "_detail_lazy_moun
 Assert-True ($lazyMountThievingHeists -match 'var lazy_entry := raw_lazy_entry as Dictionary') "Thieving heist lazy mounting should name scanned render records as lazy entries."
 Assert-True ($lazyMountThievingHeists -match 'str\(lazy_entry\.get\("kind", ""\)\) != "heist"') "Thieving heist lazy mounting should keep the heist-kind filter through entry naming."
 Assert-True ($lazyMountThievingHeists -notmatch '\bplan_item\b') "Thieving heist lazy mounting should not use stale plan-item wording internally."
-$lazyMountInitialWindowAsync = Get-FunctionBody -Text $main -Name "_detail_lazy_mount_initial_window_async"
-Assert-True ($lazyMountInitialWindowAsync -match 'var lazy_entry := detail_lazy_plan\[plan_index\] as Dictionary') "Async initial lazy-window mounting should name scanned render records as lazy entries."
-Assert-True ($lazyMountInitialWindowAsync -match '_detail_lazy_should_mount_entry\(lazy_entry, pinned, plan_index\)') "Async initial lazy-window mounting should preserve pinned mount decisions through entry naming."
-Assert-True ($lazyMountInitialWindowAsync -notmatch '\bplan_item\b') "Async initial lazy-window mounting should not use stale plan-item wording internally."
+Assert-True ($main -notmatch 'func _detail_lazy_mount_initial_window_async\(') "Initial lazy-window mounting should not keep the retired async duplicate."
 Assert-True ($main -match 'func _ensure_activity_unlock_preview_lazy_entry') "Activity unlock preview helper should use lazy-entry naming."
 Assert-True ($main -notmatch '_ensure_activity_unlock_preview_lazy_plan_item') "Activity unlock preview helper should not use stale lazy-plan-item naming."
 
@@ -2055,10 +2051,6 @@ Assert-True ($finishHubTutorialTipHide -match 'root\.is_queued_for_deletion\(\)'
 Assert-True ($finishHubTutorialTipHide -match '_set_canvas_item_visible_if_changed\(root, false\)') "Hub tutorial tip hide completion should guard repeated visibility writes."
 $hubTutorialTipVisible = Get-FunctionBody -Text $main -Name "_hub_tutorial_tip_visible"
 Assert-True ($hubTutorialTipVisible -match 'not hub_tutorial_tip_root\.is_queued_for_deletion\(\)') "Hub tutorial tip visibility checks should ignore roots queued for deletion."
-$buildHero = Get-FunctionBody -Text $main -Name "_build_hero"
-Assert-True ($buildHero -match '_texture_or_visual_fallback\("res://assets/content/characters/stick-hero\.png"\)') "Home hero art should not assign nullable loaded textures directly."
-Assert-True ($buildHero -match '_texture_or_visual_fallback\(HERO_SPEECH_BUBBLE_TEXTURE\)') "Home hero speech bubble should not assign nullable loaded textures directly."
-
 $actionCardBackground = Get-FunctionBody -Text $main -Name "_action_card_background"
 Assert-True ($actionCardBackground -match '_action_card_background_texture\(action\)') "Action-card backgrounds should normalize missing textures before creating visual nodes."
 Assert-True ($actionCardBackground -notmatch '_texture\(str\(action\.get\("bg", ""\)\)\)') "Action-card backgrounds must not assign possibly-null textures directly."
@@ -2448,8 +2440,6 @@ Assert-True ($matBackgroundPath -match 'MAT_COLLECTION_STONE_BACKGROUND_TEXTURE'
 $applyModulePinBadgeTexture = Get-FunctionBody -Text $main -Name "_apply_module_pin_badge_texture"
 Assert-True ($applyModulePinBadgeTexture -match 'badge\.set_meta\("module_pin_texture_path", texture_path\)') "Module pin badges should preserve texture identity in metadata instead of relying on synthetic texture resource paths."
 Assert-True ($applyModulePinBadgeTexture -match 'texture_disabled = badge\.texture_normal' -and $applyModulePinBadgeTexture -match 'texture_focused = badge\.texture_normal') "Module pin badges should set every TextureButton state to a non-null texture for dummy/export renderers."
-$showModulePinPreview = Get-FunctionBody -Text $main -Name "_show_module_pin_preview"
-Assert-True ($showModulePinPreview -match '_kill_meta_tween\(badge, "module_pin_preview_tween"\)' -and $showModulePinPreview -notmatch 'get_meta\("module_pin_preview_tween"\) as Tween') "Module pin preview should safely kill stale preview tween metadata before starting a new preview."
 $placeModulePinBadgeSettled = Get-FunctionBody -Text $main -Name "_place_module_pin_badge_settled"
 Assert-True ($placeModulePinBadgeSettled -match '_kill_meta_tween\(badge, "module_pin_preview_tween"\)' -and $placeModulePinBadgeSettled -notmatch 'get_meta\("module_pin_preview_tween"\) as Tween') "Settled module pin badges should safely clear preview tween metadata."
 $playModulePinConfirmAnimation = Get-FunctionBody -Text $main -Name "_play_module_pin_confirm_animation"
@@ -2675,9 +2665,7 @@ Assert-True ($renderShopPage -match 'pressed", _paper_button_style\(Color\("#38c
 $achievementsTabStyle = Get-FunctionBody -Text $main -Name "_apply_achievements_modal_tab_style"
 Assert-True ($achievementsTabStyle -match 'var hover_fill := fill if active else fill\.lightened\(0\.06\)') "Inactive achievements tabs should have a subtle distinct hover fill while active tabs stay stable."
 Assert-True ($achievementsTabStyle -match 'hover", _paper_button_style\(hover_fill, 48\)') "Achievements tabs should apply the computed hover fill."
-$hubBuildModeToggle = Get-FunctionBody -Text $main -Name "_add_hub_build_mode_toggle"
 $hubBuildModeButtonStyle = Get-FunctionBody -Text $main -Name "_hub_build_mode_button_style"
-Assert-True ($hubBuildModeToggle -match 'hover", _hub_build_mode_button_style\(hub_build_mode, false, true\)') "Hub build-mode toggle should use a distinct hover style."
 Assert-True ($hubBuildModeButtonStyle -match 'hovered := false') "Hub build-mode button style should default to non-hovered."
 Assert-True ($hubBuildModeButtonStyle -match 'fill\.lightened\(0\.06\)') "Hub build-mode hover should be a subtle lift of the existing active/inactive fill."
 
