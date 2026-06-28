@@ -27963,46 +27963,29 @@ func _on_thieving_heist_button_input(event: InputEvent, heist_id: String, source
 	if source == null or not is_instance_valid(source) or source.disabled:
 		return
 	var event_position := _passive_button_event_position(event, source)
-	var is_press := false
-	var is_release := false
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		is_press = event.pressed
-		is_release = not event.pressed
-	elif event is InputEventScreenTouch:
-		is_press = (event as InputEventScreenTouch).pressed
-		is_release = not (event as InputEventScreenTouch).pressed
-	if is_press:
+	var event_kind := ButtonPressState.event_kind(event)
+	if event_kind == "press":
 		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
 			return
-		source.set_meta("thieving_heist_press_active", true)
-		source.set_meta("thieving_heist_press_position", event_position)
-		source.set_meta("thieving_heist_press_dragged", false)
+		ButtonPressState.begin(source, "thieving_heist", event_position)
 		_route_skill_swipe_button_input(event, source)
 		get_viewport().set_input_as_handled()
 		return
-	if event is InputEventMouseMotion or event is InputEventScreenDrag:
-		if bool(source.get_meta("thieving_heist_press_active", false)) or skill_swipe_tracking:
-			source.set_meta("thieving_heist_press_dragged", true)
+	if event_kind == "drag":
+		if ButtonPressState.active(source, "thieving_heist") or skill_swipe_tracking:
+			ButtonPressState.update_drag(source, "thieving_heist", event_position, -1.0)
 			_route_skill_swipe_button_input(event, source)
 			get_viewport().set_input_as_handled()
 		return
-	if is_release:
-		var was_active := bool(source.get_meta("thieving_heist_press_active", false))
-		var was_dragged := bool(source.get_meta("thieving_heist_press_dragged", false))
-		var press_position := _meta_vector2(source, "thieving_heist_press_position", event_position)
+	if event_kind == "release":
+		var was_active := ButtonPressState.active(source, "thieving_heist")
 		if skill_swipe_tracking:
 			_route_skill_swipe_button_input(event, source)
-		if source.has_meta("thieving_heist_press_active"):
-			source.remove_meta("thieving_heist_press_active")
-		if source.has_meta("thieving_heist_press_position"):
-			source.remove_meta("thieving_heist_press_position")
-		if source.has_meta("thieving_heist_press_dragged"):
-			source.remove_meta("thieving_heist_press_dragged")
+		var valid_tap := ButtonPressState.finish(source, "thieving_heist", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 		if (
 			was_active
-			and not was_dragged
+			and valid_tap
 			and _position_inside_detail_actions_viewport(event_position)
-			and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
 			and not _skill_swipe_suppresses_button_action()
 		):
 			_attempt_thieving_heist(heist_id)
@@ -28048,34 +28031,24 @@ func _route_thieving_heist_button_global_input(event: InputEvent) -> bool:
 	if is_press:
 		if not _position_inside_detail_actions_viewport(event_position):
 			return false
-		source.set_meta("thieving_heist_press_active", true)
-		source.set_meta("thieving_heist_press_position", event_position)
-		source.set_meta("thieving_heist_press_dragged", false)
+		ButtonPressState.begin(source, "thieving_heist", event_position)
 		_route_skill_swipe_button_input(event, source)
 		return true
 	if is_motion:
-		if bool(source.get_meta("thieving_heist_press_active", false)) or skill_swipe_tracking:
-			source.set_meta("thieving_heist_press_dragged", true)
+		if ButtonPressState.active(source, "thieving_heist") or skill_swipe_tracking:
+			ButtonPressState.update_drag(source, "thieving_heist", event_position, -1.0)
 			_route_skill_swipe_button_input(event, source)
 			return true
 		return false
 	if is_release:
-		var was_active := bool(source.get_meta("thieving_heist_press_active", false))
-		var was_dragged := bool(source.get_meta("thieving_heist_press_dragged", false))
-		var press_position := _meta_vector2(source, "thieving_heist_press_position", event_position)
+		var was_active := ButtonPressState.active(source, "thieving_heist")
 		if skill_swipe_tracking:
 			_route_skill_swipe_button_input(event, source)
-		if source.has_meta("thieving_heist_press_active"):
-			source.remove_meta("thieving_heist_press_active")
-		if source.has_meta("thieving_heist_press_position"):
-			source.remove_meta("thieving_heist_press_position")
-		if source.has_meta("thieving_heist_press_dragged"):
-			source.remove_meta("thieving_heist_press_dragged")
+		var valid_tap := ButtonPressState.finish(source, "thieving_heist", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 		if (
 			was_active
-			and not was_dragged
+			and valid_tap
 			and _position_inside_detail_actions_viewport(event_position)
-			and event_position.distance_to(press_position) <= PASSIVE_BUTTON_TAP_RELEASE_SLOP
 			and not _skill_swipe_suppresses_button_action()
 		):
 			_attempt_thieving_heist(heist_id)
@@ -28101,7 +28074,7 @@ func _thieving_heist_button_hit(event_position: Vector2, require_contains_point 
 func _active_thieving_heist_button_hit() -> Dictionary:
 	for hit in _thieving_heist_button_hit_candidates():
 		var button := hit.get("button", null) as Button
-		if button != null and is_instance_valid(button) and bool(button.get_meta("thieving_heist_press_active", false)):
+		if ButtonPressState.active(button, "thieving_heist"):
 			return hit
 	return {}
 

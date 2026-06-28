@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 61,275 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target. |
+| `scripts/main.gd` * | 61,248 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary extraction target. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -130,7 +130,7 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted for bottom nav, module utility, fishing offer, and fishing method buttons; activity-module clipping restored. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted for bottom nav, module utility, fishing offer, fishing method, and thieving heist buttons; activity-module clipping restored. |
 | `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata, including optional extra metadata fields. |
 | `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf. Also contains pre-existing save/refactor assertion edits from active worktree. |
 | `scripts/test-save-normalization.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
@@ -143,7 +143,7 @@ Legend:
 ## Extraction Queue
 
 1. Button press state
-   - Current: shared metadata helper lives in `scripts/ui/button_press_state.gd`; bottom nav, module utility, fishing offer, and fishing method buttons use it.
+   - Current: shared metadata helper lives in `scripts/ui/button_press_state.gd`; bottom nav, module utility, fishing offer, fishing method, and thieving heist buttons use it.
    - Next lazy win: keep page-switch separate until its visual regression is understood.
 
 2. Activity/skill UI ownership
@@ -171,5 +171,7 @@ Legend:
 | `.\scripts\test-fishing-web-touch-scroll.ps1` | passed after fishing offer/method press-state reuse. |
 | `.\scripts\test-fishing-click-flow.ps1` | failing against the last committed baseline and after the current fishing reuse: thieving settings bottom-nav click remains on `skill`. |
 | `.\scripts\test-performance-regressions.ps1` | passed after fishing offer/method press-state reuse. |
+| `.\scripts\test-thieving-heist-click-flow.ps1` | passed after thieving heist press-state reuse; runner emitted existing save-protection/leak-at-exit warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after thieving heist press-state reuse. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
