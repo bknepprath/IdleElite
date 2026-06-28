@@ -7,6 +7,7 @@ $activityCardInnerShadowPath = Join-Path $projectRoot "scripts\ui\activity_card_
 $skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detail_page_shelf_shadow.gd"
 $skillMenuPanelChromePath = Join-Path $projectRoot "scripts\ui\skill_menu_panel_chrome.gd"
 $regenCirclePath = Join-Path $projectRoot "scripts\ui\regen_circle.gd"
+$fishCirclePath = Join-Path $projectRoot "scripts\ui\fish_circle.gd"
 $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_border.gd"
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
@@ -113,6 +114,8 @@ Assert-True (Test-Path -LiteralPath $skillMenuPanelChromePath) "Missing scripts\
 $skillMenuChrome = Get-Content -LiteralPath $skillMenuPanelChromePath -Raw
 Assert-True (Test-Path -LiteralPath $regenCirclePath) "Missing scripts\ui\regen_circle.gd."
 $regenCircle = Get-Content -LiteralPath $regenCirclePath -Raw
+Assert-True (Test-Path -LiteralPath $fishCirclePath) "Missing scripts\ui\fish_circle.gd."
+$fishCircle = Get-Content -LiteralPath $fishCirclePath -Raw
 Assert-True (Test-Path -LiteralPath $activityCardBorderPath) "Missing scripts\ui\activity_card_border.gd."
 $activityCardBorder = Get-Content -LiteralPath $activityCardBorderPath -Raw
 Assert-True (Test-Path -LiteralPath $passiveModuleCardBorderPath) "Missing scripts\ui\passive_module_card_border.gd."
@@ -1223,8 +1226,8 @@ $textureFromImage = Get-FunctionBody -Text $main -Name "_texture_from_image"
 Assert-True ($textureFromImage -notmatch 'texture_cache\[_res_path\(path\)\] = null') "Loaded image fallback textures should not cache null during headless validation."
 $createImageTexture = Get-FunctionBody -Text $main -Name "_create_image_texture"
 Assert-True ($createImageTexture -match 'DisplayServer\.get_name\(\) == "headless"' -and $createImageTexture -match '_placeholder_texture') "Loaded image fallback textures should use placeholder textures in headless validation to avoid dummy-renderer RID initialization."
-$fishCircleIconTextureMatch = [regex]::Match($main, '(?m)^\s+func _fish_circle_icon_texture\(\) -> Texture2D:[\s\S]*?(?=^\s+func _fish_currency_icon_texture\(\) -> Texture2D:)')
-$fishCurrencyIconTextureMatch = [regex]::Match($main, '(?m)^\s+func _fish_currency_icon_texture\(\) -> Texture2D:[\s\S]*?(?=^\s+func _fallback_texture\(texture_size: Vector2i\) -> Texture2D:)')
+$fishCircleIconTextureMatch = [regex]::Match($fishCircle, '(?m)^\s*func _fish_circle_icon_texture\(\) -> Texture2D:[\s\S]*?(?=^\s*func _fish_currency_icon_texture\(\) -> Texture2D:)')
+$fishCurrencyIconTextureMatch = [regex]::Match($fishCircle, '(?m)^\s*func _fish_currency_icon_texture\(\) -> Texture2D:[\s\S]*?(?=^\s*func _fallback_texture\(texture_size: Vector2i\) -> Texture2D:)')
 Assert-True $fishCircleIconTextureMatch.Success "Fish circle icon fallback helper should remain inspectable."
 Assert-True $fishCurrencyIconTextureMatch.Success "Fish currency icon fallback helper should remain inspectable."
 $fishCircleIconTexture = $fishCircleIconTextureMatch.Value
@@ -2379,19 +2382,19 @@ Assert-True $regenSurfaceOval.Success "Could not find regen circle liquid surfac
 Assert-True ($regenSurfaceOval.Value -match 'half_width <= 0\.5') "Skill header regen liquid surface should skip degenerate oval polygons."
 Assert-True ($regenSurfaceOval.Value -match 'SURFACE_OVAL_ROWS') "Skill header regen liquid surface should use a bounded row sheen."
 
-$fishCircle = Get-ClassBody -Text $main -Name "FishCircle"
+Assert-True ($main -match 'const FishCircle = preload\("res://scripts/ui/fish_circle\.gd"\)') "Fishing header circle should live in its extracted UI script."
 Assert-True ($fishCircle -match 'const RING_ARC_SEGMENTS := 40') "Fishing header circle should keep ring arcs low-detail for frame stability."
 Assert-True ($fishCircle -match 'const BEVEL_ARC_SEGMENTS := 32') "Fishing header circle should keep bevel arcs low-detail for frame stability."
 Assert-True ($fishCircle -notmatch 'draw_arc\([^\r\n]*,\s*(64|48),') "Fishing header circle must not return to high-segment arc draws."
-$fishStrokeText = [regex]::Match($fishCircle, "(?ms)^\s+func _draw_stroked_text_centered\b.*?(?=^\s+func |\z)")
+$fishStrokeText = [regex]::Match($fishCircle, "(?ms)^\s*func _draw_stroked_text_centered\b.*?(?=^\s*func |\z)")
 Assert-True $fishStrokeText.Success "Could not find fish circle stroked text renderer."
 Assert-True ($fishStrokeText.Value -match 'draw_string_outline') "Fishing header circle should use the engine text-outline draw path."
 Assert-True ($fishStrokeText.Value -notmatch 'for x in range') "Fishing header circle must not redraw text outlines with a per-pixel offset loop."
-$fishSplitDecimalText = [regex]::Match($fishCircle, "(?ms)^\s+func _split_decimal_text\b.*?(?=^\s+func |\z)")
+$fishSplitDecimalText = [regex]::Match($fishCircle, "(?ms)^\s*func _split_decimal_text\b.*?(?=^\s*func |\z)")
 Assert-True $fishSplitDecimalText.Success "Could not find fish circle decimal split helper."
 Assert-True ($fishSplitDecimalText.Value -notmatch 'main_text != "0" and main_text != "-0"') "Fishing header circle should shrink decimal suffixes for whole-number fish counts too."
 Assert-True ($fishSplitDecimalText.Value -match 'not label_text\.is_valid_float\(\)') "Fishing header circle should keep compact suffix labels like 1.1K as full-size text."
-$fishStrokeNumber = [regex]::Match($fishCircle, "(?ms)^\s+func _draw_stroked_number_with_decimal_suffix\b.*?(?=^\s+func |\z)")
+$fishStrokeNumber = [regex]::Match($fishCircle, "(?ms)^\s*func _draw_stroked_number_with_decimal_suffix\b.*?(?=^\s*func |\z)")
 Assert-True $fishStrokeNumber.Success "Could not find fish circle decimal suffix renderer."
 Assert-True ($fishStrokeNumber.Value -match 'CENTER_DECIMAL_SUFFIX_SCALE') "Fishing header circle decimal suffix should share stamina-style scale."
 Assert-True ($fishStrokeNumber.Value -match 'CENTER_DECIMAL_SUFFIX_ALPHA') "Fishing header circle decimal suffix should share stamina-style faded alpha."
