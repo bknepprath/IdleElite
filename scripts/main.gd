@@ -20821,18 +20821,18 @@ func _detail_lazy_kind_is_module(kind: String) -> bool:
 	return kind == "heist" or _detail_lazy_kind_is_fishing_module(kind)
 
 
-func _detail_lazy_module_ui_key(plan_item: Dictionary, skill_id: String) -> String:
-	match _detail_lazy_entry_kind(plan_item):
+func _detail_lazy_module_ui_key(lazy_entry: Dictionary, skill_id: String) -> String:
+	match _detail_lazy_entry_kind(lazy_entry):
 		"heist":
-			var heist := (plan_item.get("entry") as Dictionary).get("heist", {}) as Dictionary
+			var heist := (lazy_entry.get("entry") as Dictionary).get("heist", {}) as Dictionary
 			return _module_ui_thieving_heist_key(str(heist.get("id", "")))
 		"passive", "action":
-			var action := (plan_item.get("entry") as Dictionary).get("action", {}) as Dictionary
+			var action := (lazy_entry.get("entry") as Dictionary).get("action", {}) as Dictionary
 			return _module_ui_key_for_action(skill_id, action)
 		"fishing_area":
-			return _module_ui_fishing_area_key(skill_id, plan_item.get("area_def", {}) as Dictionary)
+			return _module_ui_fishing_area_key(skill_id, lazy_entry.get("area_def", {}) as Dictionary)
 		"fishing_offer":
-			return _module_ui_fishing_offer_key(str(plan_item.get("offer_id", "")))
+			return _module_ui_fishing_offer_key(str(lazy_entry.get("offer_id", "")))
 	return ""
 
 
@@ -21065,8 +21065,8 @@ func _apply_collapsed_module_squeeze(root: Control, module_key: String, collapse
 	return root
 
 
-func _apply_plan_item_module_squeeze(root: Control, plan_item: Dictionary, skill_id: String) -> Control:
-	var module_key := _detail_lazy_module_ui_key(plan_item, skill_id)
+func _apply_lazy_entry_module_squeeze(root: Control, lazy_entry: Dictionary, skill_id: String) -> Control:
+	var module_key := _detail_lazy_module_ui_key(lazy_entry, skill_id)
 	if module_key.is_empty():
 		return root
 	return _apply_collapsed_module_squeeze(root, module_key, _module_ui_is_collapsed(module_key))
@@ -21650,7 +21650,7 @@ func _detail_lazy_mount_cached_item(
 		lazy_entry["placeholder"] = null
 		if cached_root.get_parent() != null:
 			cached_root.get_parent().remove_child(cached_root)
-		cached_root = _apply_plan_item_module_squeeze(cached_root, lazy_entry, skill_id)
+		cached_root = _apply_lazy_entry_module_squeeze(cached_root, lazy_entry, skill_id)
 		cached_root.visible = true
 		_enable_interactive_control_tree(cached_root)
 		_detail_lazy_add_child_to_host(stack_host, cached_root, content_width, actions_width)
@@ -21677,7 +21677,7 @@ func _detail_lazy_mount_cached_item(
 		lazy_entry["placeholder"] = null
 		if cached_root.get_parent() != null:
 			cached_root.get_parent().remove_child(cached_root)
-		cached_root = _apply_plan_item_module_squeeze(cached_root, lazy_entry, skill_id)
+		cached_root = _apply_lazy_entry_module_squeeze(cached_root, lazy_entry, skill_id)
 		cached_root.visible = true
 		_enable_interactive_control_tree(cached_root)
 		_detail_lazy_add_child_to_host(stack_host, cached_root, content_width, actions_width)
@@ -21693,7 +21693,7 @@ func _detail_lazy_mount_cached_item(
 	lazy_entry["placeholder"] = null
 	if cached_root.get_parent() != null:
 		cached_root.get_parent().remove_child(cached_root)
-	cached_root = _apply_plan_item_module_squeeze(cached_root, lazy_entry, skill_id)
+	cached_root = _apply_lazy_entry_module_squeeze(cached_root, lazy_entry, skill_id)
 	cached_root.visible = true
 	_enable_interactive_control_tree(cached_root)
 	_detail_lazy_add_child_to_host(stack_host, cached_root, content_width, actions_width)
@@ -21747,7 +21747,7 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 		"heist":
 			var heist := (lazy_entry.get("entry") as Dictionary).get("heist", {}) as Dictionary
 			var heist_root := _build_thieving_heist_card(heist, actions_width)
-			heist_root = _apply_plan_item_module_squeeze(heist_root, lazy_entry, skill_id)
+			heist_root = _apply_lazy_entry_module_squeeze(heist_root, lazy_entry, skill_id)
 			var parent := stack_host.get_parent()
 			var slot_index := stack_host.get_index()
 			if parent != null and is_instance_valid(parent):
@@ -21766,7 +21766,7 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 			var defer_passive_loot := skill_swipe_pending_full_finalize or _skill_swipe_handoff_cover_is_opaque_cream_transition()
 			var passive_card := _build_passive_module_card(skill_id, action, content_width, true, defer_passive_loot)
 			var passive_root := passive_card["root"] as Control
-			passive_root = _apply_plan_item_module_squeeze(passive_root, lazy_entry, skill_id)
+			passive_root = _apply_lazy_entry_module_squeeze(passive_root, lazy_entry, skill_id)
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
 			lazy_entry["placeholder"] = null
 			_detail_lazy_add_child_to_host(stack_host, passive_root, content_width, actions_width)
@@ -21783,7 +21783,7 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 			var action := (lazy_entry.get("entry") as Dictionary).get("action", {}) as Dictionary
 			var built := _build_detail_interactive_action_card(skill_id, action, content_width, actions_width)
 			var card_root := built["card_root"] as Control
-			card_root = _apply_plan_item_module_squeeze(card_root, lazy_entry, skill_id)
+			card_root = _apply_lazy_entry_module_squeeze(card_root, lazy_entry, skill_id)
 			_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
 			lazy_entry["placeholder"] = null
 			_detail_lazy_add_child_to_host(stack_host, card_root, content_width, actions_width)
@@ -21802,7 +21802,7 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 				var built := _build_fishing_area_module(skill_id, area_def, content_width)
 				var root := built.get("root") as Control
 				if root != null and is_instance_valid(root):
-					root = _apply_plan_item_module_squeeze(root, lazy_entry, skill_id)
+					root = _apply_lazy_entry_module_squeeze(root, lazy_entry, skill_id)
 					_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
 					lazy_entry["placeholder"] = null
 					_detail_lazy_add_child_to_host(stack_host, root, content_width, actions_width)
@@ -21821,7 +21821,7 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 			var offer_root := _build_fishing_offer_module(str(lazy_entry.get("offer_id", "")), content_width)
 			if offer_root != null and is_instance_valid(offer_root):
 				offer_root.set_meta("detail_lazy_track_id", track_id)
-				offer_root = _apply_plan_item_module_squeeze(offer_root, lazy_entry, skill_id)
+				offer_root = _apply_lazy_entry_module_squeeze(offer_root, lazy_entry, skill_id)
 				_detail_lazy_prepare_host_for_mount(stack_host, placeholder)
 				lazy_entry["placeholder"] = null
 				_detail_lazy_add_child_to_host(stack_host, offer_root, content_width, actions_width)
@@ -22087,8 +22087,8 @@ func _detail_lazy_all_mounted() -> bool:
 func _detail_lazy_entry_for_track_id(track_id: String) -> Dictionary:
 	if track_id.is_empty():
 		return {}
-	for raw_item in detail_lazy_plan:
-		var lazy_entry := raw_item as Dictionary
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
 		if _detail_lazy_entry_matches_track_id(lazy_entry, track_id):
 			return lazy_entry
 	return {}
@@ -22177,8 +22177,8 @@ func _remount_detail_lazy_action_card(track_id: String, skill_id: String) -> boo
 func _ensure_detail_lazy_entry_mounted(track_id: String) -> void:
 	if track_id.is_empty() or detail_lazy_plan.is_empty():
 		return
-	for raw_item in detail_lazy_plan:
-		var lazy_entry := raw_item as Dictionary
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
 		if not _detail_lazy_entry_matches_track_id(lazy_entry, track_id):
 			continue
 		if bool(lazy_entry.get("mounted", false)):
@@ -22241,8 +22241,8 @@ func _detail_lazy_plan_and_signature_for_skill(skill_id: String) -> Dictionary:
 
 func _detail_lazy_runtime_entries_by_track_id(plan: Array) -> Dictionary:
 	var lazy_entries_by_track_id := {}
-	for raw_item in plan:
-		var lazy_entry := raw_item as Dictionary
+	for raw_lazy_entry in plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
 		var track_id := str(lazy_entry.get("track_id", ""))
 		if not track_id.is_empty():
 			lazy_entries_by_track_id[track_id] = lazy_entry
@@ -23069,10 +23069,10 @@ func _detail_lazy_settle_warm_mount(skill_id: String, token: int) -> void:
 		var content_width := _skill_content_width()
 		var actions_width := content_width
 		var reached_warm_mount_limit := false
-		for raw_item in detail_lazy_plan:
+		for raw_lazy_entry in detail_lazy_plan:
 			if cached_count >= warm_mount_budget:
 				break
-			var lazy_entry := raw_item as Dictionary
+			var lazy_entry := raw_lazy_entry as Dictionary
 			var kind := str(lazy_entry.get("kind", ""))
 			if kind not in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
 				continue
@@ -23120,8 +23120,8 @@ func _detail_lazy_mount_thieving_heists_sync(instant := true) -> int:
 	var mounted_count := 0
 	var content_width := _skill_content_width()
 	var actions_width := content_width
-	for raw_item in detail_lazy_plan:
-		var lazy_entry := raw_item as Dictionary
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
 		if bool(lazy_entry.get("mounted", false)):
 			continue
 		if str(lazy_entry.get("kind", "")) != "heist":
@@ -34331,8 +34331,8 @@ func _detail_lazy_plan_module_content_bottom() -> Dictionary:
 	var count := 0
 	var top_spacer_height := _detail_actions_top_spacer_height()
 	var stack_separation := float(stack.get_theme_constant("separation"))
-	for raw_item in detail_lazy_plan:
-		var lazy_entry := raw_item as Dictionary
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
 		var kind := str(lazy_entry.get("kind", ""))
 		if not kind in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
 			continue
@@ -38904,8 +38904,8 @@ func _apply_global_swipe_real_card_cache_to_lazy_plan(skill_id: String) -> void:
 	var cache := skill_swipe_real_card_cache_by_skill.get(skill_id, {}) as Dictionary
 	if cache == null or cache.is_empty():
 		return
-	for raw_item in detail_lazy_plan:
-		var lazy_entry := raw_item as Dictionary
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
 		var track_id := str(lazy_entry.get("track_id", ""))
 		if track_id.is_empty() or not cache.has(track_id) or lazy_entry.has("cached_root"):
 			continue
@@ -38928,8 +38928,8 @@ func _apply_swipe_preview_real_card_cache_to_lazy_plan(preview_state: Dictionary
 	if cache == null or cache.is_empty():
 		preview_state.erase("real_card_cache")
 		return
-	for raw_item in detail_lazy_plan:
-		var lazy_entry := raw_item as Dictionary
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
 		var track_id := str(lazy_entry.get("track_id", ""))
 		if track_id.is_empty() or not cache.has(track_id):
 			continue
