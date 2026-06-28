@@ -1663,6 +1663,7 @@ Assert-True ($lazyMountInitialWindowSync -match '_detail_lazy_entry_is_pinned\(l
 Assert-True ($lazyMountInitialWindowSync -notmatch '\bplan_item\b') "Initial lazy-window mounting should not use stale plan-item wording internally."
 $lazySettleWarmMount = Get-FunctionBody -Text $main -Name "_detail_lazy_settle_warm_mount"
 Assert-True ($lazySettleWarmMount -match 'var lazy_entry := raw_lazy_entry as Dictionary') "Lazy settle warm-mount should name scanned render records as lazy entries."
+Assert-True ($lazySettleWarmMount -match '_detail_lazy_kind_is_module\(kind\)') "Lazy settle warm-mount should use the shared lazy module kind helper."
 Assert-True ($lazySettleWarmMount -match 'lazy_entry\.has\("cached_root"\)') "Lazy settle warm-mount should keep cached-root skips through entry naming."
 Assert-True ($lazySettleWarmMount -notmatch '\bplan_item\b') "Lazy settle warm-mount should not use stale plan-item wording internally."
 $lazyMountThievingHeists = Get-FunctionBody -Text $main -Name "_detail_lazy_mount_thieving_heists_sync"
@@ -2875,6 +2876,7 @@ Assert-True ($scrollTarget -notmatch 'detail_action_card_nodes\[action_id\] as C
 
 $lazyBottom = Get-FunctionBody -Text $main -Name "_detail_lazy_plan_module_content_bottom"
 Assert-True ($lazyBottom -match '_valid_control_ref\(lazy_entry\.get\("stack_host"\)\)') "Lazy scroll-limit measurement must validate stack_host refs through entry naming."
+Assert-True ($lazyBottom -match '_detail_lazy_kind_is_module\(kind\)') "Lazy scroll-limit measurement should use the shared lazy module kind helper."
 Assert-True ($lazyBottom -notmatch 'lazy_entry\.get\("stack_host"\) as Control') "Lazy scroll-limit measurement must not directly cast possibly freed stack_host refs."
 Assert-True ($lazyBottom -notmatch '\bplan_item\b') "Lazy scroll-limit measurement should not use stale plan-item wording internally."
 

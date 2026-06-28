@@ -23017,7 +23017,7 @@ func _process_detail_lazy_settle_warm_mount() -> void:
 			break
 		var lazy_entry := raw_lazy_entry as Dictionary
 		var kind := str(lazy_entry.get("kind", ""))
-		if kind not in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
+		if not _detail_lazy_kind_is_module(kind):
 			continue
 		if bool(lazy_entry.get("mounted", false)):
 			continue
@@ -23074,7 +23074,7 @@ func _detail_lazy_settle_warm_mount(skill_id: String, token: int) -> void:
 				break
 			var lazy_entry := raw_lazy_entry as Dictionary
 			var kind := str(lazy_entry.get("kind", ""))
-			if kind not in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
+			if not _detail_lazy_kind_is_module(kind):
 				continue
 			if bool(lazy_entry.get("mounted", false)):
 				continue
@@ -34334,7 +34334,7 @@ func _detail_lazy_plan_module_content_bottom() -> Dictionary:
 	for raw_lazy_entry in detail_lazy_plan:
 		var lazy_entry := raw_lazy_entry as Dictionary
 		var kind := str(lazy_entry.get("kind", ""))
-		if not kind in ["action", "passive", "heist", "fishing_area", "fishing_offer"]:
+		if not _detail_lazy_kind_is_module(kind):
 			continue
 		var host := _valid_control_ref(lazy_entry.get("stack_host"))
 		var host_bottom := -1.0
