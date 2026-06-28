@@ -1,6 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
+
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\battery-governor"
 $testScript = Join-Path $testDir "battery_governor_test.gd"
@@ -14,11 +16,6 @@ function Assert-True {
     if (-not $Condition) {
         throw $Message
     }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
 }
 
 function Assert-NoUnexpectedGodotErrors {
