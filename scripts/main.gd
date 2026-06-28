@@ -23049,61 +23049,6 @@ func _process_detail_lazy_settle_warm_mount() -> void:
 	_finish_detail_lazy_settle_warm_mount(skill_id)
 
 
-func _detail_lazy_settle_warm_mount(skill_id: String, token: int) -> void:
-	await get_tree().process_frame
-	while token == detail_lazy_settle_warm_mount_token:
-		if current_screen != "skill" or selected_skill_id != skill_id:
-			return
-		if _skill_swipe_loading_transition_active() or _skill_swipe_handoff_cover_is_cream_transition():
-			return
-		if detail_lazy_plan.is_empty() or _valid_control_ref(detail_lazy_stack) == null:
-			return
-		if _fishing_rework_active_for_skill(skill_id) and _fishing_detail_scroll_is_actively_moving():
-			await get_tree().process_frame
-			continue
-		if detail_scroll_visual_work_this_frame and (not _fishing_rework_active_for_skill(skill_id) or _fishing_detail_scroll_is_actively_moving()):
-			await get_tree().process_frame
-			continue
-		var cached_count := 0
-		var warm_mount_budget := FISHING_DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME if _fishing_rework_active_for_skill(skill_id) else DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME
-		var content_width := _skill_content_width()
-		var actions_width := content_width
-		var reached_warm_mount_limit := false
-		for raw_lazy_entry in detail_lazy_plan:
-			if cached_count >= warm_mount_budget:
-				break
-			var lazy_entry := raw_lazy_entry as Dictionary
-			var kind := str(lazy_entry.get("kind", ""))
-			if not _detail_lazy_kind_is_module(kind):
-				continue
-			if bool(lazy_entry.get("mounted", false)):
-				continue
-			if not _detail_lazy_idle_warm_mount_can_mount(skill_id, lazy_entry):
-				reached_warm_mount_limit = true
-				break
-			if lazy_entry.has("cached_root"):
-				if _fishing_rework_active_for_skill(skill_id):
-					if _detail_lazy_mount_item(lazy_entry, skill_id, content_width, actions_width, false):
-						cached_count += 1
-				continue
-			if _fishing_rework_active_for_skill(skill_id):
-				if _detail_lazy_mount_item(lazy_entry, skill_id, content_width, actions_width, false):
-					cached_count += 1
-				continue
-			if (
-				_detail_lazy_can_build_offscreen_cached_entry(skill_id)
-				and _detail_lazy_build_cached_entry(lazy_entry, skill_id, content_width, actions_width)
-			):
-				cached_count += 1
-		if reached_warm_mount_limit:
-			break
-		if cached_count <= 0:
-			break
-		await get_tree().create_timer(0.001, false).timeout
-	if token == detail_lazy_settle_warm_mount_token and current_screen == "skill" and selected_skill_id == skill_id:
-		_finish_detail_lazy_settle_warm_mount(skill_id)
-
-
 func _prewarm_detail_card_style_resources() -> void:
 	_stat_box_style(false, false)
 	_stat_box_style(false, true)

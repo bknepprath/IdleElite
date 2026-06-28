@@ -2828,7 +2828,7 @@ Validation:
 - `.\scripts\test-performance-regressions.ps1` passed. It now asserts hub hotspot hold-circle sync uses the shared guarded visibility setter and skips queued-for-deletion nodes.
 - `.\scripts\check-leaderboard-cost-safety.ps1` passed.
 - `.\scripts\test-save-normalization.ps1` passed with clean output.
-- `.\scripts\check-project.ps1` exited successfully and covered the save-normalization and skills page performance gates. Two full runs also repeated an unrelated dummy-renderer `Parameter "t" is null` backtrace from lazy action-card construction (`_build_detail_interactive_action_card()` via `_detail_lazy_settle_warm_mount()`), so that should be isolated in a separate phase before treating full validation output as clean.
+- `.\scripts\check-project.ps1` exited successfully and covered the save-normalization and skills page performance gates. Two full runs also repeated an unrelated dummy-renderer `Parameter "t" is null` backtrace from lazy action-card construction (`_build_detail_interactive_action_card()` via settle-warm lazy mounting), so that should be isolated in a separate phase before treating full validation output as clean.
 - Verified no headless Godot process remained after each Godot validation command.
 
 Remaining risks:
@@ -2838,7 +2838,7 @@ Remaining risks:
 
 ## Completed Phase 75: Detail Card Style Resource Prewarm
 
-Risk reduced: lazy action-card construction owned first-time creation of procedural detail-card StyleBoxTexture resources for stat chips. Under headless dummy rendering, full validation repeatedly logged `Parameter "t" is null` from `_build_detail_interactive_action_card()` while `_detail_lazy_settle_warm_mount()` was constructing cards. Moving those style allocations into the explicit detail-card prewarm boundary keeps lazy mounting focused on node assembly instead of renderer texture initialization.
+Risk reduced: lazy action-card construction owned first-time creation of procedural detail-card StyleBoxTexture resources for stat chips. Under headless dummy rendering, full validation repeatedly logged `Parameter "t" is null` from `_build_detail_interactive_action_card()` while settle-warm lazy mounting was constructing cards. Moving those style allocations into the explicit detail-card prewarm boundary keeps lazy mounting focused on node assembly instead of renderer texture initialization.
 
 Files changed:
 - `scripts/main.gd`
@@ -3394,7 +3394,7 @@ Validation:
 
 Remaining risks:
 - The full project check still emits shutdown/resource warnings, including CanvasItem and texture/resource leaks.
-- The dummy-renderer null texture warning still appears, so this phase reduced one nullable TextureRect boundary but did not close the root warning. The latest full run included a GDScript backtrace through `_build_detail_interactive_action_card()`, `_detail_lazy_mount_item()`, and `_detail_lazy_settle_warm_mount()`, making action-card construction the next texture ownership investigation target.
+- The dummy-renderer null texture warning still appears, so this phase reduced one nullable TextureRect boundary but did not close the root warning. The latest full run included a GDScript backtrace through `_build_detail_interactive_action_card()`, `_detail_lazy_mount_item()`, and settle-warm lazy mounting, making action-card construction the next texture ownership investigation target.
 - Hub tutorial tip, swipe-cover, ceremony, toast, and preview reveal paths still mix direct visibility and alpha writes with animation ownership; each needs a separate ownership review before conversion.
 - Skills page performance remains a watchpoint because swipe/build passed on this run but still logged slow lazy-card construction samples.
 
