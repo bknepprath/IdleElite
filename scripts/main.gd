@@ -17,6 +17,7 @@ const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
 const CrashReports = preload("res://scripts/diagnostics/crash_reports.gd")
 const FirebaseRuntime = preload("res://scripts/firebase/runtime.gd")
+const GameFormatting = preload("res://scripts/core/formatting.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const MedalBuffs = preload("res://scripts/progression/medal_buffs.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
@@ -60550,60 +60551,27 @@ func _res_path(path: String) -> String:
 
 
 func _format_stamina_cost_detail(value: float) -> String:
-	return "%.2f" % maxf(0.0, value)
+	return GameFormatting.stamina_cost_detail(value)
 
 
 func _format_info_chip_number(value: float) -> String:
-	var absolute := absf(value)
-	if absolute > 0.000001 and absolute < 1.0:
-		return _trim_trailing_decimal_zeroes("%.2f" % value)
-	return _format_significant_digits(value, 3)
+	return GameFormatting.info_chip_number(value)
 
 
 func _format_significant_digits(value: float, digits := 3) -> String:
-	var safe_digits := maxi(1, digits)
-	var absolute := absf(value)
-	if absolute < 0.000001:
-		return "0"
-	var places := safe_digits - 1 - int(floor(log(absolute) / log(10.0)))
-	if places < 0:
-		var factor := pow(10.0, float(-places))
-		return "%.0f" % (round(value / factor) * factor)
-	places = mini(places, 6)
-	var format := "%." + str(places) + "f"
-	return _trim_trailing_decimal_zeroes(format % value)
+	return GameFormatting.significant_digits(value, digits)
 
 
 func _format_compact_number(value: float, digits := 3) -> String:
-	var absolute := absf(value)
-	if absolute < 1000.0:
-		return _trim_trailing_decimal_zeroes(_format_significant_digits(value, digits))
-	var suffixes := ["K", "M", "B", "T", "Qa", "Qi"]
-	var scaled := value
-	var suffix_index := -1
-	while absf(scaled) >= 1000.0 and suffix_index < suffixes.size() - 1:
-		scaled /= 1000.0
-		suffix_index += 1
-	var text := _trim_trailing_decimal_zeroes(_format_significant_digits(scaled, digits))
-	if (text == "1000" or text == "-1000") and suffix_index < suffixes.size() - 1:
-		scaled /= 1000.0
-		suffix_index += 1
-		text = _trim_trailing_decimal_zeroes(_format_significant_digits(scaled, digits))
-	return "%s%s" % [text, suffixes[suffix_index]]
+	return GameFormatting.compact_number(value, digits)
 
 
 func _format_percent_points(value: float, digits := 3) -> String:
-	return _trim_trailing_decimal_zeroes(_format_significant_digits(value, digits))
+	return GameFormatting.percent_points(value, digits)
 
 
 func _trim_trailing_decimal_zeroes(text: String) -> String:
-	if text.find(".") == -1:
-		return text
-	while text.ends_with("0"):
-		text = text.substr(0, text.length() - 1)
-	if text.ends_with("."):
-		text = text.substr(0, text.length() - 1)
-	return "0" if text == "-0" else text
+	return GameFormatting.trim_trailing_decimal_zeroes(text)
 
 
 func _can_create_image_textures() -> bool:
@@ -60619,12 +60587,7 @@ func _create_image_texture(image: Image) -> Texture2D:
 
 
 func _format_duration(seconds: float) -> String:
-	var total_seconds := maxi(0, int(ceil(seconds)))
-	var hours := int(floor(float(total_seconds) / 3600.0))
-	var minutes := int(floor(float(total_seconds % 3600) / 60.0))
-	if hours > 0:
-		return "%sh %sm" % [hours, minutes]
-	return "%sm" % maxi(1, minutes)
+	return GameFormatting.duration(seconds)
 
 
 func _load_font() -> void:
