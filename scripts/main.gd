@@ -60697,37 +60697,30 @@ func _rounded_mat_amount(mat_id: String, amount: float) -> float:
 
 
 func _mat_amount(mat_id: String) -> float:
-	var normalized := _normalized_mat_id(mat_id)
-	if normalized == "softwood":
-		return maxf(float(log_currency), float(mat_wallet.get(normalized, 0.0)))
-	return maxf(0.0, float(mat_wallet.get(normalized, 0.0)))
+	return MaterialDefs.amount(mat_id, mat_wallet, log_currency)
 
 
 func _set_mat_amount(mat_id: String, amount: float) -> void:
-	var normalized := _normalized_mat_id(mat_id)
-	if not MAT_COLLECTION_DEFS.has(normalized):
-		return
-	var safe_amount := _rounded_mat_amount(normalized, amount)
-	mat_wallet[normalized] = safe_amount
-	if normalized == "softwood":
-		log_currency = maxi(0, int(floor(safe_amount + 0.0001)))
+	var result := MaterialDefs.set_amount(mat_wallet, MAT_COLLECTION_DEFS, mat_id, amount)
+	if int(result.get("legacy_softwood_amount", -1)) >= 0:
+		log_currency = int(result.get("legacy_softwood_amount", 0))
 
 
 func _add_mat_amount(mat_id: String, amount: float) -> float:
-	var normalized := _normalized_mat_id(mat_id)
-	if not MAT_COLLECTION_DEFS.has(normalized):
+	var result := MaterialDefs.add_amount(mat_wallet, MAT_COLLECTION_DEFS, mat_id, amount, log_currency)
+	if result.is_empty():
 		return 0.0
-	var gained := _rounded_mat_amount(normalized, amount)
-	_set_mat_amount(normalized, _mat_amount(normalized) + gained)
-	return gained
+	if int(result.get("legacy_softwood_amount", -1)) >= 0:
+		log_currency = int(result.get("legacy_softwood_amount", 0))
+	return float(result.get("gained", 0.0))
 
 
 func _spend_mat_amount(mat_id: String, amount: float) -> bool:
-	var normalized := _normalized_mat_id(mat_id)
-	var safe_amount := maxf(0.0, amount)
-	if _mat_amount(normalized) + 0.0001 < safe_amount:
+	var result := MaterialDefs.spend_amount(mat_wallet, MAT_COLLECTION_DEFS, mat_id, amount, log_currency)
+	if result.is_empty():
 		return false
-	_set_mat_amount(normalized, _mat_amount(normalized) - safe_amount)
+	if int(result.get("legacy_softwood_amount", -1)) >= 0:
+		log_currency = int(result.get("legacy_softwood_amount", 0))
 	return true
 
 
@@ -60742,29 +60735,13 @@ func _mat_amount_text(mat_id: String, amount: float = -1.0) -> String:
 
 
 func _mats_for_save() -> Dictionary:
-	var normalized := {}
-	for raw_mat_id in MAT_COLLECTION_DEFS.keys():
-		var mat_id := str(raw_mat_id)
-		var amount := _mat_amount(mat_id)
-		if amount > 0.0001:
-			normalized[mat_id] = amount
-	return normalized
+	return MaterialDefs.save_wallet(mat_wallet, MAT_COLLECTION_DEFS, log_currency)
 
 
 func _restore_mats_from_save(data: Dictionary) -> void:
-	mat_wallet.clear()
-	var loaded = data.get("mats", {})
-	if typeof(loaded) == TYPE_DICTIONARY:
-		for raw_mat_id in (loaded as Dictionary).keys():
-			var mat_id := _normalized_mat_id(str(raw_mat_id))
-			if not MAT_COLLECTION_DEFS.has(mat_id):
-				continue
-			_set_mat_amount(mat_id, float((loaded as Dictionary).get(raw_mat_id, 0.0)))
-	var legacy_logs := maxi(0, int(data.get("log_currency", log_currency)))
-	if legacy_logs > 0 and _mat_amount("softwood") <= 0.0001:
-		_set_mat_amount("softwood", float(legacy_logs))
-	elif _mat_amount("softwood") > 0.0001:
-		log_currency = maxi(0, int(floor(_mat_amount("softwood") + 0.0001)))
+	var restored := MaterialDefs.restored_wallet(data, MAT_COLLECTION_DEFS, log_currency)
+	mat_wallet = restored.get("wallet", {}) as Dictionary
+	log_currency = int(restored.get("legacy_softwood_amount", log_currency))
 
 
 func _restore_audio_settings_from_save(data: Dictionary) -> void:
