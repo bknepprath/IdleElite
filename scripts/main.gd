@@ -7,6 +7,7 @@ const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
+const ChatState = preload("res://scripts/chat/state.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
@@ -56031,7 +56032,7 @@ func _save_payload(now: int) -> Dictionary:
 		"chat_stream_retry_unix": _chat_stream_retry_unix_for_save(now),
 		"chat_stream_next_connect_unix": _chat_stream_next_connect_unix_for_save(now),
 		"chat_last_opened_created_at": maxi(0, int(chat_last_opened_created_at)),
-		"chat_last_opened_message_id": _normalized_chat_last_opened_message_id(chat_last_opened_message_id),
+		"chat_last_opened_message_id": ChatState.normalized_message_id(chat_last_opened_message_id),
 		"last_result": last_result,
 		"saved_at": now
 	}
@@ -61763,30 +61764,22 @@ func _restore_chat_last_send_unix_from_save(data: Dictionary) -> void:
 
 
 func _chat_stream_retry_unix_for_save(now: int) -> int:
-	return mini(maxi(0, int(chat_stream_retry_unix)), now + CHAT_STREAM_RETRY_INTERVAL_SECONDS)
+	return ChatState.retry_unix_for_save(chat_stream_retry_unix, now, CHAT_STREAM_RETRY_INTERVAL_SECONDS)
 
 
 func _chat_stream_next_connect_unix_for_save(now: int) -> int:
-	var retry_unix := _chat_stream_retry_unix_for_save(now)
-	return mini(maxi(retry_unix, int(chat_stream_next_connect_unix)), now + CHAT_STREAM_RETRY_INTERVAL_SECONDS)
+	return ChatState.next_connect_unix_for_save(chat_stream_retry_unix, chat_stream_next_connect_unix, now, CHAT_STREAM_RETRY_INTERVAL_SECONDS)
 
 
 func _restore_chat_stream_retry_metadata_from_save(data: Dictionary) -> void:
-	var max_chat_retry_unix := _unix_now() + CHAT_STREAM_RETRY_INTERVAL_SECONDS
-	chat_stream_retry_unix = mini(maxi(0, int(data.get("chat_stream_retry_unix", data.get("chat_fetch_retry_unix", 0)))), max_chat_retry_unix)
-	chat_stream_next_connect_unix = mini(maxi(chat_stream_retry_unix, int(data.get("chat_stream_next_connect_unix", 0))), max_chat_retry_unix)
+	var restored := ChatState.restored_retry_metadata(data, _unix_now(), CHAT_STREAM_RETRY_INTERVAL_SECONDS)
+	chat_stream_retry_unix = int(restored.get("retry_unix", 0))
+	chat_stream_next_connect_unix = int(restored.get("next_connect_unix", 0))
 
 
 func _restore_chat_opened_cursor_from_save(data: Dictionary) -> void:
 	chat_last_opened_created_at = maxi(0, int(data.get("chat_last_opened_created_at", 0)))
-	chat_last_opened_message_id = _normalized_chat_last_opened_message_id(data.get("chat_last_opened_message_id", ""))
-
-
-func _normalized_chat_last_opened_message_id(raw_message_id: Variant) -> String:
-	var message_id := str(raw_message_id).strip_edges()
-	if message_id.length() > 64:
-		return message_id.substr(0, 64)
-	return message_id
+	chat_last_opened_message_id = ChatState.normalized_message_id(data.get("chat_last_opened_message_id", ""))
 
 
 func _normalized_thieving_trophies(loaded_trophies: Variant, accept_legacy_bool := false) -> Dictionary:

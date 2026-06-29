@@ -896,7 +896,7 @@ Assert-True ($savePayload -match '"leaderboard_fetch_retry_unix_by_category": _l
 Assert-True ($savePayload -match '"chat_stream_retry_unix": _chat_stream_retry_unix_for_save\(now\)') "Save payload should serialize capped chat retry timestamps."
 Assert-True ($savePayload -match '"chat_stream_next_connect_unix": _chat_stream_next_connect_unix_for_save\(now\)') "Save payload should serialize capped chat next-connect timestamps."
 Assert-True ($savePayload -match '"chat_last_opened_created_at": maxi\(0, int\(chat_last_opened_created_at\)\)') "Save payload should serialize clamped chat opened cursor timestamps."
-Assert-True ($savePayload -match '"chat_last_opened_message_id": _normalized_chat_last_opened_message_id\(chat_last_opened_message_id\)') "Save payload should serialize trimmed chat opened message ids."
+Assert-True ($savePayload -match '"chat_last_opened_message_id": ChatState\.normalized_message_id\(chat_last_opened_message_id\)') "Save payload should serialize trimmed chat opened message ids."
 $loadGameSecondaryRestore = Get-FunctionBody -Text $main -Name "_load_game_secondary_restore"
 Assert-True ($loadGameSecondaryRestore -match '_restore_activity_crit_metadata_from_save\(restored_save\)') "Secondary save restore should use the shared activity crit metadata restore helper."
 Assert-True ($loadGameSecondaryRestore -match '_restore_boot_visible_tip_flags_from_save\(restored_save\)') "Secondary save restore should use the shared boot-visible tip flag restore helper."
