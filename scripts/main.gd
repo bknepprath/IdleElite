@@ -54,6 +54,7 @@ const PassiveSerpentineProgressBar = preload("res://scripts/ui/passive_serpentin
 const ConvergenceMultiProgressBar = preload("res://scripts/ui/convergence_multi_progress_bar.gd")
 const PassiveIconSprite = preload("res://scripts/ui/passive_icon_sprite.gd")
 const PassiveLogPileSprite = preload("res://scripts/ui/passive_log_pile_sprite.gd")
+const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
 const FirepitFlameFx = preload("res://scripts/ui/firepit_flame_fx.gd")
 const FirepitFuelRing = preload("res://scripts/ui/firepit_fuel_ring.gd")
 const FirepitWarmthOverlay = preload("res://scripts/ui/firepit_warmth_overlay.gd")
@@ -62507,104 +62508,31 @@ func _tutorial_target_ring_style() -> StyleBoxFlat:
 
 
 func _passive_currency_style() -> StyleBoxFlat:
-	var style := _surface_style(COLOR_PANEL, 28, 14, true)
-	style.border_color = COLOR_INK
-	style.border_width_left = 12
-	style.border_width_right = 12
-	style.border_width_top = 12
-	style.border_width_bottom = 12
-	style.content_margin_left = 22
-	style.content_margin_right = 16
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
-	return style
+	return PassiveModuleStyles.currency(COLOR_PANEL, COLOR_INK, Callable(self, "_surface_style"))
 
 
 func _passive_stat_style() -> StyleBoxFlat:
-	var style := _surface_style(Color.WHITE, 22, 18, true)
-	style.border_color = COLOR_INK
-	style.border_width_left = 10
-	style.border_width_right = 10
-	style.border_width_top = 10
-	style.border_width_bottom = 10
-	style.content_margin_left = 24
-	style.content_margin_right = 20
-	style.content_margin_top = 6
-	style.content_margin_bottom = 6
-	return style
+	return PassiveModuleStyles.stat(COLOR_INK, Callable(self, "_surface_style"))
 
 
 func _passive_popup_style() -> StyleBoxFlat:
-	var style := _surface_style(COLOR_PANEL, 22, 20, true)
-	style.border_color = COLOR_INK
-	style.border_width_left = 8
-	style.border_width_right = 8
-	style.border_width_top = 8
-	style.border_width_bottom = 8
-	return style
+	return PassiveModuleStyles.popup(COLOR_PANEL, COLOR_INK, Callable(self, "_surface_style"))
 
 
 func _passive_icon_button_style(active := false, hovered := false) -> StyleBoxFlat:
-	var fill := Color("#bff4c9") if active else Color("#f3eee0")
-	if hovered:
-		fill = Color("#d3ffd9") if active else COLOR_GOLD
-	var style := _surface_style(fill, 24, 8, true)
-	style.border_color = Color("#178b38") if active else COLOR_INK
-	var border_width := 14 if active else 10
-	style.border_width_left = border_width
-	style.border_width_right = border_width
-	style.border_width_top = border_width
-	style.border_width_bottom = border_width
-	if active:
-		style.shadow_color = Color(0.05, 0.30, 0.12, 0.42)
-		style.shadow_size = 8
-	return style
+	return PassiveModuleStyles.icon_button(active, hovered, COLOR_INK, COLOR_GOLD, Callable(self, "_surface_style"))
 
 
 func _passive_plank_light_style(active: bool) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#44f078") if active else Color("#e63d35")
-	style.border_color = COLOR_INK
-	style.border_width_left = 6
-	style.border_width_right = 6
-	style.border_width_top = 6
-	style.border_width_bottom = 6
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
-	style.shadow_color = Color(0.18, 0.82, 0.28, 0.48) if active else Color(0.78, 0.12, 0.09, 0.42)
-	style.shadow_size = 6
-	style.shadow_offset = Vector2.ZERO
-	return style
+	return PassiveModuleStyles.plank_light(active, COLOR_INK)
 
 
 func _passive_round_button_style(fill: Color) -> StyleBoxFlat:
-	var style := _surface_style(fill, 999, 0, true)
-	style.border_color = _theme_outline_color(COLOR_INK, fill)
-	style.border_width_left = 8
-	style.border_width_right = 8
-	style.border_width_top = 6
-	style.border_width_bottom = 11
-	style.shadow_color = Color(0.08, 0.07, 0.06, 0.30)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 8)
-	style.content_margin_left = 0
-	style.content_margin_right = 0
-	style.content_margin_top = 0
-	style.content_margin_bottom = 0
-	return style
+	return PassiveModuleStyles.round_button(fill, COLOR_INK, Callable(self, "_surface_style"), Callable(self, "_theme_outline_color"))
 
 
 func _passive_upgrade_button_style(_disabled := false, _hovered := false, _pressed := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color.TRANSPARENT
-	style.border_color = Color.TRANSPARENT
-	style.content_margin_left = 0
-	style.content_margin_right = 0
-	style.content_margin_top = 0
-	style.content_margin_bottom = 0
-	return style
+	return PassiveModuleStyles.upgrade_button()
 
 
 func _activity_crit_glow_style(mega_crit := false) -> StyleBoxFlat:

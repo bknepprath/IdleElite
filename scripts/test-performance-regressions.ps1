@@ -16,6 +16,7 @@ $regenCirclePath = Join-Path $projectRoot "scripts\ui\regen_circle.gd"
 $fishCirclePath = Join-Path $projectRoot "scripts\ui\fish_circle.gd"
 $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_border.gd"
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
+$passiveModuleStylesPath = Join-Path $projectRoot "scripts\ui\passive_module_styles.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
 $actionArtUiPath = Join-Path $projectRoot "scripts\ui\action_art_ui.gd"
 $moduleUtilityRowUiPath = Join-Path $projectRoot "scripts\ui\module_utility_row_ui.gd"
@@ -142,6 +143,8 @@ Assert-True (Test-Path -LiteralPath $activityCardBorderPath) "Missing scripts\ui
 $activityCardBorder = Get-Content -LiteralPath $activityCardBorderPath -Raw
 Assert-True (Test-Path -LiteralPath $passiveModuleCardBorderPath) "Missing scripts\ui\passive_module_card_border.gd."
 $passiveCardBorder = Get-Content -LiteralPath $passiveModuleCardBorderPath -Raw
+Assert-True (Test-Path -LiteralPath $passiveModuleStylesPath) "Missing scripts\ui\passive_module_styles.gd."
+$passiveModuleStyles = Get-Content -LiteralPath $passiveModuleStylesPath -Raw
 Assert-True (Test-Path -LiteralPath $actionArtTextureRectPath) "Missing scripts\ui\action_art_texture_rect.gd."
 $actionArtTexture = Get-Content -LiteralPath $actionArtTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $actionArtUiPath) "Missing scripts\ui\action_art_ui.gd."
@@ -1815,6 +1818,10 @@ Assert-True ($passiveCardBorder -match 'maxf\(0\.0, minf\(radius') "Passive card
 Assert-True ($passiveCardBorder -match 'draw_polyline') "Passive card borders should render as one polyline path instead of separate line/arc draws."
 Assert-True ($passiveCardBorder -notmatch 'draw_arc\(') "Passive card borders must not return to separate arc draw calls."
 Assert-True ($passiveCardBorder -notmatch 'draw_line\(') "Passive card borders must not return to separate line draw calls."
+$passiveIconButtonStyle = Get-FunctionBody -Text $main -Name "_passive_icon_button_style"
+Assert-True ($passiveIconButtonStyle -match 'PassiveModuleStyles\.icon_button') "Passive module icon button style construction should live in scripts\ui\passive_module_styles.gd."
+$passiveIconButtonStyleHelper = Get-FunctionBody -Text $passiveModuleStyles -Name "icon_button"
+Assert-True ($passiveIconButtonStyleHelper -match 'Color\("#d3ffd9"\) if active else gold_color') "Passive module style helper should own active/hover fill selection."
 Assert-True ($main -match 'const PASSIVE_PROGRESS_BAR_Z_INDEX := ACTION_CARD_FACE_BORDER_Z_INDEX \+ 1') "Passive woodcutting progress bars should draw above their face border."
 $passiveCardBuilder = Get-FunctionBody -Text $main -Name "_build_passive_module_card"
 $passiveCardAssembly = $passiveCardBuilder
