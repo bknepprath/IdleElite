@@ -5,6 +5,7 @@ const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
+const AchievementState = preload("res://scripts/achievements/state.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
@@ -30363,7 +30364,7 @@ func _newly_completed_achievements(before: Dictionary) -> Array:
 
 
 func _restore_achievement_toast_seen_ids(data: Dictionary) -> void:
-	achievement_toast_seen_ids = _normalized_achievement_toast_seen_ids(data.get("achievement_toast_seen_ids", {}))
+	achievement_toast_seen_ids = AchievementState.normalized_seen_ids(data.get("achievement_toast_seen_ids", {}))
 
 
 func _mark_completed_achievement_toasts_seen(excluded_ids: Array = []) -> void:
@@ -61163,19 +61164,7 @@ func _canonical_manual_activity_requirement_unlock_key(key: String) -> String:
 
 
 func _achievement_toast_seen_ids_for_save() -> Dictionary:
-	return _normalized_achievement_toast_seen_ids(achievement_toast_seen_ids)
-
-
-func _normalized_achievement_toast_seen_ids(loaded_seen_ids: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_seen_ids) != TYPE_DICTIONARY:
-		return normalized
-	for raw_id in (loaded_seen_ids as Dictionary).keys():
-		var id := str(raw_id)
-		if id.is_empty() or not bool((loaded_seen_ids as Dictionary).get(raw_id, false)):
-			continue
-		normalized[id] = true
-	return normalized
+	return AchievementState.normalized_seen_ids(achievement_toast_seen_ids)
 
 
 func _restore_mastery_from_save(loaded_mastery: Variant) -> void:

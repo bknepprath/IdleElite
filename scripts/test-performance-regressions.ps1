@@ -952,7 +952,7 @@ Assert-True ($restoreHubDecorLayout -match '_normalized_hub_decor_layout\(raw_la
 $restoreHubMissions = Get-FunctionBody -Text $main -Name "_restore_hub_missions_from_save"
 Assert-True ($restoreHubMissions -match '_normalized_hub_missions\(loaded_missions\)') "Hub mission restore should use the shared mission-list normalizer."
 $restoreAchievementToastSeenIds = Get-FunctionBody -Text $main -Name "_restore_achievement_toast_seen_ids"
-Assert-True ($restoreAchievementToastSeenIds -match '_normalized_achievement_toast_seen_ids\(data\.get\("achievement_toast_seen_ids", \{\}\)\)') "Achievement toast seen-id restore should use the shared normalizer."
+Assert-True ($restoreAchievementToastSeenIds -match 'AchievementState\.normalized_seen_ids\(data\.get\("achievement_toast_seen_ids", \{\}\)\)') "Achievement toast seen-id restore should use the shared normalizer."
 $skillsPageCheckSample = Get-FunctionBody -Text $skillsPagePerformance -Name "_check_sample"
 Assert-True ($skillsPageCheckSample -match 'over120_frames') "Skills page performance validation should fail on any 120 FPS budget miss, not only print it."
 Assert-True ($skillsPageCheckSample -match 'frames over the 120 FPS budget') "Skills page performance validation should explain 120 FPS budget failures clearly."
