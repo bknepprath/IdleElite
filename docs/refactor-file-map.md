@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 201 files / about 111,401 counted text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 207 files / about 111,404 counted text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 65,358 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, fishing save-state helpers now preload from `scripts/fishing/`, tutorial/tip save-state helpers now preload from `scripts/tutorial/`, audio player-set construction and settings normalization now preload from `scripts/audio/`, leaderboard profile/save/restore rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, progression skill save-state and medal buff math now preload from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and save file I/O, shared save-state normalizers, save-progress predicates, generic field clamps, plus autosave regression evidence now preload from `scripts/save_state/`. |
+| `scripts/main.gd` * | 65,228 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls and remaining inline draw classes now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, fishing save-state helpers now preload from `scripts/fishing/`, tutorial/tip save-state helpers now preload from `scripts/tutorial/`, audio player-set construction and settings normalization now preload from `scripts/audio/`, leaderboard profile/save/restore rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, progression skill save-state and medal buff math now preload from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and save file I/O, shared save-state normalizers, save-progress predicates, generic field clamps, plus autosave regression evidence now preload from `scripts/save_state/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -94,6 +94,12 @@ Legend:
 | `scripts/ui/shop_ad_stack_light.gd` | 58 | Shop ad stack light visual. |
 | `scripts/ui/feathered_collect_glow.gd` | 19 | Collect glow visual. |
 | `scripts/ui/achievement_medal_slot_strip.gd` | 101 | Achievement medal strip. |
+| `scripts/ui/module_action_circle_zone.gd` * | 6 | Circular action-card hit zone formerly embedded in `scripts/main.gd`. |
+| `scripts/ui/skill_icon_badge_mask.gd` * | 18 | Skill icon badge mask control formerly embedded in `scripts/main.gd`. |
+| `scripts/ui/skill_icon_symbol_draw.gd` * | 14 | Skill icon texture draw control formerly embedded in `scripts/main.gd`. |
+| `scripts/ui/module_collapse_minus_glyph.gd` * | 19 | Module collapse minus glyph formerly embedded in `scripts/main.gd`. |
+| `scripts/ui/medal_sparkle_star.gd` * | 30 | Achievement medal sparkle star control formerly embedded in `scripts/main.gd`. |
+| `scripts/ui/medal_shine_slash.gd` * | 46 | Achievement medal shine slash animation control formerly embedded in `scripts/main.gd`. |
 
 ## Module UI Helper Scripts
 
@@ -217,7 +223,7 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; fishing save-state helpers moved out; tutorial/tip save-state helpers moved out; audio settings normalization, repeated audio player-set lifecycle, and one-off SFX player creation moved out; extended audio async warmup cancellation collapsed behind one helper; leaderboard profile save/restore metadata rules moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; progression skill save-state and medal buff math moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display/wallet helpers moved out; save-file I/O, passive/leaderboard/convergence/hub save-state normalizers, save-progress predicates, generic save field clamps, and autosave regression evidence moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, stale save-state pass-through wrappers, save-file pass-through wrappers, `_clear_module_utility_button_press`, and `_open_settings` deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; local UI drawing classes moved behind preloads, including the remaining inline class block; module UI key helpers moved out; fishing save-state helpers moved out; tutorial/tip save-state helpers moved out; audio settings normalization, repeated audio player-set lifecycle, and one-off SFX player creation moved out; extended audio async warmup cancellation collapsed behind one helper; leaderboard profile save/restore metadata rules moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; progression skill save-state and medal buff math moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display/wallet helpers moved out; save-file I/O, passive/leaderboard/convergence/hub save-state normalizers, save-progress predicates, generic save field clamps, and autosave regression evidence moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, stale save-state pass-through wrappers, save-file pass-through wrappers, `_clear_module_utility_button_press`, and `_open_settings` deleted. |
 | `scripts/tutorial/tip_state.gd` | added | New extracted tutorial helper for tip metadata normalization. |
 | `scripts/progression/skill_state.gd` | added | New extracted progression helper for skill, stamina, and stamina-bank save payload normalization. |
 | `scripts/fishing/state.gd` | added | New extracted fishing save-state helper for selected location and rod/tool normalization. |
@@ -244,6 +250,12 @@ Legend:
 | `scripts/ui/page_switch_chevron_icon.gd` | added | New extracted page-switch chevron icon control. |
 | `scripts/ui/module_utility_collapse_arrow.gd` | added | New extracted module utility collapse arrow control. |
 | `scripts/ui/blue_guy_health_heart_gauge.gd` | added | New extracted fighting health heart gauge control. |
+| `scripts/ui/module_action_circle_zone.gd` | added | New extracted circular action-card hit zone. |
+| `scripts/ui/skill_icon_badge_mask.gd` | added | New extracted skill icon badge mask control. |
+| `scripts/ui/skill_icon_symbol_draw.gd` | added | New extracted skill icon texture draw control. |
+| `scripts/ui/module_collapse_minus_glyph.gd` | added | New extracted module collapse minus glyph control. |
+| `scripts/ui/medal_sparkle_star.gd` | added | New extracted medal sparkle star control. |
+| `scripts/ui/medal_shine_slash.gd` | added | New extracted medal shine slash animation control. |
 | `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf; RegenCircle and FishCircle assertions now target extracted scripts. Also contains pre-existing save/refactor assertion edits from active worktree. |
 | `scripts/check-ui-boundary-contracts.ps1` | modified | Chat presentation boundary now tracks the live expanded composer instead of deleted `_chat_composer`. |
 | `scripts/check-activity-ui-boundary-contracts.ps1` | modified | Unlock boundary no longer preserves deleted test-only `_unlock_prior_test_actions` listing. |
@@ -531,5 +543,9 @@ Legend:
 | `git diff --check -- scripts/main.gd scripts/save_state/normalizers.gd` | passed after extracting save-progress predicates into `SaveStateNormalizers`. |
 | `.\scripts\test-save-normalization.ps1` | passed after extracting save-progress predicates; runner emitted existing CanvasItem/RID/ObjectDB leak-at-exit warnings. |
 | `.\scripts\test-performance-regressions.ps1` | passed after extracting save-progress predicates. |
+| `git diff --check -- scripts/main.gd scripts/ui/module_action_circle_zone.gd scripts/ui/skill_icon_badge_mask.gd scripts/ui/skill_icon_symbol_draw.gd scripts/ui/module_collapse_minus_glyph.gd scripts/ui/medal_sparkle_star.gd scripts/ui/medal_shine_slash.gd` | passed after extracting the remaining inline UI draw classes. |
+| `.\scripts\check-ui-boundary-contracts.ps1` | passed after extracting the remaining inline UI draw classes. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting the remaining inline UI draw classes. |
+| `.\scripts\capture-woodcutting-firepit.ps1` | passed after extracting the remaining inline UI draw classes; screenshot written to `.codex-tmp\woodcutting-firepit\woodcutting-firepit-card.png`. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
