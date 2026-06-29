@@ -1,6 +1,6 @@
 # Idle Slop 1 Refactor Map
 
-Last updated: 2026-06-28
+Last updated: 2026-06-29
 
 Purpose: living sidecar for the refactor. Keep this file updated when code moves, files are extracted, or session-touched files change.
 
@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 183 files / about 110,569 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 184 files / about 110,589 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 66,567 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, and module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`. |
+| `scripts/main.gd` * | 66,546 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, and achievement reward constants/formulas now preload from `scripts/achievements/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -101,6 +101,12 @@ Legend:
 | --- | ---: | --- |
 | `scripts/module_ui/keys.gd` * | 133 | Module UI key prefixes, normalization, action key construction, ownership checks, lazy track-id parsing, saved order/flag/path normalization, and fishing action alias canonicalization. Extracted so module UI code can use local names like `action_id`, `prefix`, and `key` without mega-script prefixes. |
 
+## Achievement Helper Scripts
+
+| Path | Lines | What lives here |
+| --- | ---: | --- |
+| `scripts/achievements/rewards.gd` * | 41 | Achievement art paths, target tables, and stamina reward formulas. First achievement ownership cut; live milestone state remains in `scripts/main.gd` for now. |
+
 ## Validation And Tooling
 
 | Path | Lines | What lives here |
@@ -140,7 +146,8 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; five now-redundant module UI pass-through wrappers deleted; dead helper functions deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement reward constants/formulas moved out; five now-redundant module UI pass-through wrappers deleted; dead helper functions deleted. |
+| `scripts/achievements/rewards.gd` | added | New extracted achievement reward helper for art paths, target tables, and reward amount formulas. |
 | `scripts/module_ui/keys.gd` | added | New extracted module UI key helper for action, fishing area, fishing offer, thieving heist, hub keys, skill ownership checks, lazy track-id parsing, and saved key collection normalization. |
 | `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata, including optional extra metadata fields. |
 | `scripts/ui/regen_circle.gd` | added | New extracted stamina/regen gauge drawing class. |
@@ -187,11 +194,15 @@ Legend:
    - Current: deleted the lowest-call pass-through wrappers once callers could use `ModuleUiKeys` directly.
    - Next lazy win: leave `_normalized_module_ui_key()` in place until a whole module UI state/routing slice can move; it still has dozens of callers, so renaming it now would be churn.
 
-4. Save normalization
+4. Achievements
+   - Current: achievement art paths, target tables, and reward formulas live in `scripts/achievements/rewards.gd`.
+   - Next lazy win: move milestone construction only after state access is bundled cleanly; do not create a giant `achievements.gd`.
+
+5. Save normalization
    - Current: many tiny save helper wrappers have been inlined or renamed in active worktree changes.
    - Next lazy win: keep exact static tests around any save-payload simplification.
 
-5. Activity database
+6. Activity database
    - Current: data source is already externalized in `docs/activity-database.json`.
    - Next lazy win: do not move data again; reduce loader glue in `scripts/main.gd` instead.
 
@@ -252,6 +263,10 @@ Legend:
 | `.\scripts\check-ui-boundary-contracts.ps1` | passed after deleting low-call module UI pass-through wrappers. |
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting low-call module UI pass-through wrappers. |
 | `.\scripts\test-module-list-transitions.ps1` | passed after deleting low-call module UI pass-through wrappers; runner emitted existing save-protection/leak-at-exit warnings. |
+| `git diff --check -- scripts/main.gd scripts/achievements/rewards.gd docs/refactor-file-map.md` | passed after extracting achievement reward constants and formulas. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting achievement reward constants and formulas. |
+| `.\scripts\check-ui-boundary-contracts.ps1` | passed after extracting achievement reward constants and formulas. |
+| `.\scripts\test-home-achievement-medal-click.ps1` | first run caught an indentation parse error in `_boot_warmup_texture_paths`; passed after fixing it. Runner emitted existing save-protection/shutdown warnings. |
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting stale helpers. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting stale helpers. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after deleting stale helpers. |

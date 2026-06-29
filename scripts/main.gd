@@ -4,6 +4,7 @@ const FishingFluidStripClass = preload("res://scripts/fishing_fluid_strip.gd")
 const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
+const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
@@ -266,10 +267,6 @@ const UNLOCK_LOCK_SHACKLE_CLOSED_TEXTURE := "res://assets/content/ui/unlock-lock
 const UNLOCK_LOCK_SHACKLE_OPEN_TEXTURE := "res://assets/content/ui/unlock-lock-shackle-open.png"
 const UNLOCK_LOCK_TINT_MASK_TEXTURE := "res://assets/content/ui/unlock-lock-tint-mask.png"
 const UNLOCK_LOCK_PULSE_MASK_TEXTURE := "res://assets/content/ui/unlock-lock-pulse-mask.png"
-const ACHIEVEMENT_TOTAL_LEVEL_ART := "res://assets/content/achievements/achievement-total-level.png"
-const ACHIEVEMENT_CRIT_ART := "res://assets/content/achievements/achievement-crit.png"
-const ACHIEVEMENT_CREDIT_ART := "res://assets/content/achievements/achievement-credit.png"
-const ACHIEVEMENT_CUMULATIVE_MEDALS_ART := "res://assets/content/achievements/achievement-cumulative-medals.png"
 const LOG_CURRENCY_ICON_TEXTURE := "res://assets/content/icons/resources/log-currency.png"
 const SCRAPWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/scrapwood.png"
 const SOFTWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/softwood.png"
@@ -505,8 +502,6 @@ const MASTERY_MAX_LEVEL := 20
 const ACHIEVEMENT_MEDAL_ART_COUNT := 20
 const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(62, 62)
 const ACTION_CARD_MEDAL_PRESS_KIND := "__medal__"
-const TOTAL_LEVEL_ACHIEVEMENT_TARGETS := [25, 50, 100, 150, 250, 375, 495]
-const TIER_COUNT_ACHIEVEMENT_STEP := 5
 const MASTERY_MEDAL_NAMES := [
 	"Bronze",
 	"Silver",
@@ -30220,7 +30215,7 @@ func _achievement_milestones(include_log_only := true) -> Array:
 	var cumulative_possible := int(total_counts["possible"])
 	var total_level := _global_level()
 	var max_total_level := _max_total_level()
-	for target in TOTAL_LEVEL_ACHIEVEMENT_TARGETS:
+	for target in AchievementRewards.TOTAL_LEVEL_TARGETS:
 		if max_total_level < int(target) and total_level < int(target):
 			continue
 		milestones.append({
@@ -30443,7 +30438,7 @@ func _visible_achievement_milestones_fast() -> Array:
 	var medal_summary := _all_medal_summary()
 	var total_level := _global_level()
 	var max_total_level := _max_total_level()
-	for target in TOTAL_LEVEL_ACHIEVEMENT_TARGETS:
+	for target in AchievementRewards.TOTAL_LEVEL_TARGETS:
 		var target_int := int(target)
 		if max_total_level < target_int and total_level < target_int:
 			continue
@@ -30567,35 +30562,19 @@ func _skill_level_achievement_targets() -> Array:
 
 
 func _total_level_achievement_stamina_reward(target: int) -> int:
-	if target >= 250:
-		return 4
-	if target >= 100:
-		return 3
-	if target >= 50:
-		return 2
-	return 1
+	return AchievementRewards.total_level_stamina(target)
 
 
 func _cumulative_medal_achievement_stamina_reward(target: int) -> int:
-	if target >= 500:
-		return 5
-	if target >= 100:
-		return 3
-	if target >= 25:
-		return 2
-	return 1
+	return AchievementRewards.cumulative_medal_stamina(target)
 
 
 func _tier_count_achievement_target(tier: int) -> int:
-	return maxi(1, tier) * TIER_COUNT_ACHIEVEMENT_STEP
+	return AchievementRewards.tier_count_target(tier)
 
 
 func _tier_count_achievement_stamina_reward(tier: int) -> int:
-	if tier >= 9:
-		return 3
-	if tier >= 5:
-		return 2
-	return 1
+	return AchievementRewards.tier_count_stamina(tier)
 
 
 func _mastery_medal_accent(tier: int) -> Color:
@@ -36057,10 +36036,10 @@ func _boot_warmup_cancelled() -> bool:
 
 func _boot_warmup_texture_paths() -> Array:
 	var paths := _boot_shared_texture_paths()
-	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_TOTAL_LEVEL_ART)
-	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_CRIT_ART)
-	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_CREDIT_ART)
-	_add_boot_warmup_texture_path(paths, ACHIEVEMENT_CUMULATIVE_MEDALS_ART)
+	_add_boot_warmup_texture_path(paths, AchievementRewards.TOTAL_LEVEL_ART)
+	_add_boot_warmup_texture_path(paths, AchievementRewards.CRIT_ART)
+	_add_boot_warmup_texture_path(paths, AchievementRewards.CREDIT_ART)
+	_add_boot_warmup_texture_path(paths, AchievementRewards.CUMULATIVE_MEDALS_ART)
 	_add_boot_warmup_texture_path(paths, LOG_CURRENCY_ICON_TEXTURE)
 	_add_boot_warmup_texture_path(paths, PLANK_ICON_TEXTURE)
 	_add_boot_warmup_texture_path(paths, UPGRADE_ARROW_ICON_TEXTURE)
@@ -46107,7 +46086,7 @@ func _achievement_art(achievement: Dictionary) -> Control:
 			_add_achievement_art_image(art, _texture(str(achievement.get("art", ""))), Vector2(0, 6), Vector2(132, 132), 1)
 			_add_achievement_art_image(art, _achievement_medal_texture(int(achievement.get("medal_level", 1))), Vector2(96, 58), Vector2(86, 86), 2)
 		"total_level":
-			_add_achievement_art_image(art, _texture(ACHIEVEMENT_TOTAL_LEVEL_ART), Vector2(6, -7), Vector2(166, 166), 1)
+			_add_achievement_art_image(art, _texture(AchievementRewards.TOTAL_LEVEL_ART), Vector2(6, -7), Vector2(166, 166), 1)
 		"tier_count":
 			var tier := int(achievement.get("tier", achievement.get("medal_level", 1)))
 			var levels := []
@@ -46116,12 +46095,12 @@ func _achievement_art(achievement: Dictionary) -> Control:
 			_populate_achievement_medal_cluster(art, levels)
 		"cumulative_medals":
 			art.custom_minimum_size = Vector2(220, 172)
-			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CUMULATIVE_MEDALS_ART), Vector2(0, -4), Vector2(172, 172), 1)
+			_add_achievement_art_image(art, _texture(AchievementRewards.CUMULATIVE_MEDALS_ART), Vector2(0, -4), Vector2(172, 172), 1)
 		"activity_crit":
 			art.custom_minimum_size = Vector2(236, 180)
-			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CRIT_ART), Vector2(0, 2), Vector2(236, 176), 1)
+			_add_achievement_art_image(art, _texture(AchievementRewards.CRIT_ART), Vector2(0, 2), Vector2(236, 176), 1)
 		_:
-			_add_achievement_art_image(art, _texture(ACHIEVEMENT_CREDIT_ART), Vector2(12, 0), Vector2(154, 144), 1)
+			_add_achievement_art_image(art, _texture(AchievementRewards.CREDIT_ART), Vector2(12, 0), Vector2(154, 144), 1)
 	return art
 
 
