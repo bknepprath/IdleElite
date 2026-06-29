@@ -35981,10 +35981,6 @@ func _show_lock_click_tip_note_if_needed() -> void:
 		return
 
 
-func _boot_warmup_cancelled() -> bool:
-	return boot_warmup_cancel_requested or not is_inside_tree()
-
-
 func _boot_warmup_texture_paths() -> Array:
 	var paths := _boot_shared_texture_paths()
 	_add_boot_warmup_texture_path(paths, AchievementRewards.TOTAL_LEVEL_ART)
@@ -61881,10 +61877,6 @@ func _res_path(path: String) -> String:
 	if path.is_empty() or path.begins_with("res://"):
 		return path
 	return "res://%s" % path
-
-
-func _slug(text: String) -> String:
-	return text.to_lower().replace("'", "").replace(",", "").replace(" ", "-")
 
 
 func _format_stamina_cost_detail(value: float) -> String:
