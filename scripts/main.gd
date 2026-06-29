@@ -6,6 +6,7 @@ const ActivityDataNormalizers = preload("res://scripts/activity_data/normalizers
 const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
+const AchievementMilestones = preload("res://scripts/achievements/milestones.gd")
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
@@ -30187,144 +30188,58 @@ func _max_total_level() -> int:
 	return skill_defs.size() * 99
 
 
-func _total_level_milestone_medal(target: int, max_total: int) -> int:
-	if max_total <= 0:
-		return 1
-	var scaled := int(ceil(float(target) / float(max_total) * float(MASTERY_MAX_LEVEL)))
-	return clampi(scaled, 1, MASTERY_MAX_LEVEL)
-
-
 func _achievement_milestones(include_log_only := true) -> Array:
-	var milestones := []
-	var total_counts := _all_medal_counts()
-	var cumulative := int(total_counts["earned"])
-	var cumulative_possible := int(total_counts["possible"])
-	var total_level := _global_level()
-	var max_total_level := _max_total_level()
-	for target in AchievementRewards.TOTAL_LEVEL_TARGETS:
-		if max_total_level < int(target) and total_level < int(target):
+	return AchievementMilestones.build_all(_achievement_milestone_context(), include_log_only)
+
+
+func _achievement_milestone_context(include_action_records := true) -> Dictionary:
+	return {
+		"total_counts": _all_medal_counts(),
+		"total_level": _global_level(),
+		"max_total_level": _max_total_level(),
+		"action_medal_records": _achievement_action_medal_records() if include_action_records else [],
+		"tier_counts": _all_medal_tier_counts(),
+		"total_activity_count": _total_activity_count(),
+		"activity_crit_seen": activity_crit_seen,
+		"activity_mega_crit_seen": activity_mega_crit_seen,
+		"crit_reward_text": "Reward: +%s%% crit chance" % _format_percent_points(ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT * 100.0),
+		"crit_reward_amount": ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT,
+		"max_mastery_level": MASTERY_MAX_LEVEL,
+		"medal_names": MASTERY_MEDAL_NAMES,
+		"medal_accents": _achievement_medal_accent_hexes()
+	}
+
+
+func _achievement_action_medal_records() -> Array:
+	var records := []
+	for skill_def in skill_defs:
+		var skill_id := str((skill_def as Dictionary).get("id", ""))
+		if skill_id.is_empty():
 			continue
-		milestones.append({
-			"id": "total-level-%s" % target,
-			"chain_key": "total-level",
-			"kind": "total_level",
-			"title": "Total Level %s" % target,
-			"subtitle": "Total Lv %s of %s" % [mini(total_level, int(target)), target],
-			"reward": _total_level_achievement_reward_text(int(target)),
-			"reward_stat": "max_stamina",
-			"reward_amount": _total_level_achievement_stamina_reward(int(target)),
-			"current": total_level,
-			"target": int(target),
-			"completed": total_level >= int(target),
-			"medal_level": _total_level_milestone_medal(int(target), max_total_level),
-			"accent": "#f4bf35"
-			})
-	if include_log_only:
-		for skill_def in skill_defs:
-			var skill_id := str((skill_def as Dictionary).get("id", ""))
-			if skill_id.is_empty():
+		for raw_action in _mastery_actions_for_skill(skill_id):
+			var action := raw_action as Dictionary
+			var action_id := str(action.get("id", ""))
+			if action_id.is_empty():
 				continue
-			for raw_action in _mastery_actions_for_skill(skill_id):
-				var action := raw_action as Dictionary
-				var action_id := str(action.get("id", ""))
-				if action_id.is_empty():
-					continue
-				var current_level := _mastery_level(skill_id, action_id)
-				if current_level <= 0:
-					continue
-				for medal_level in range(1, current_level + 1):
-					var medal_name := _mastery_medal_name(medal_level)
-					milestones.append({
-						"id": "action-medal-%s-%s-%s" % [skill_id, action_id, medal_level],
-						"chain_key": "action-medal-%s-%s" % [skill_id, action_id],
-						"kind": "action_medal",
-						"skill_id": skill_id,
-						"action_id": action_id,
-						"title": "%s %s" % [str(action.get("name", "Activity")), medal_name],
-						"subtitle": "Earned %s mastery on %s." % [medal_name, _skill_name(skill_id)],
-						"reward": "Reward: permanent mastery credit",
-						"current": medal_level,
-						"target": medal_level,
-						"completed": true,
-						"log_only": true,
-						"medal_level": medal_level,
-						"art": str(action.get("art", "")),
-						"accent": "#" + _mastery_medal_accent(medal_level).to_html(false)
-					})
-	var tier_counts := _all_medal_tier_counts()
-	var total_activity_count := _total_activity_count()
-	for tier_index in range(mini(MASTERY_MAX_LEVEL, tier_counts.size())):
-		var tier := tier_index + 1
-		var target := _tier_count_achievement_target(tier)
-		var current := int(tier_counts[tier_index])
-		if total_activity_count < target and current < target:
-			continue
-		var medal_name := str(MASTERY_MEDAL_NAMES[tier_index])
-		milestones.append({
-			"id": "tier-count-%s-%s" % [tier, target],
-			"chain_key": "tier-count-medals",
-			"kind": "tier_count",
-			"tier": tier,
-			"title": "%s Medals" % medal_name,
-			"subtitle": "%s of %s %s medals earned" % [mini(current, target), target, medal_name],
-			"reward": _tier_count_achievement_reward_text(tier),
-			"reward_stat": "max_stamina",
-			"reward_amount": _tier_count_achievement_stamina_reward(tier),
-			"current": current,
-			"target": target,
-			"completed": current >= target,
-			"medal_level": tier,
-			"accent": "#" + _mastery_medal_accent(tier).to_html(false)
-		})
-	for target in [10, 25, 50, 100, 250, 500, 1000]:
-		if cumulative_possible < target and cumulative < target:
-			continue
-		milestones.append({
-			"id": "cumulative-%s" % target,
-			"chain_key": "cumulative-medals",
-			"kind": "cumulative_medals",
-			"title": "Cumulative Medals",
-			"subtitle": "%s of %s total medals earned" % [mini(cumulative, target), target],
-			"reward": _cumulative_medal_achievement_reward_text(int(target)),
-			"reward_stat": "max_stamina",
-			"reward_amount": _cumulative_medal_achievement_stamina_reward(int(target)),
-			"current": cumulative,
-			"target": int(target),
-			"completed": cumulative >= target,
-			"medal_level": 1,
-			"accent": "#f4bf35"
-		})
-	milestones.append({
-		"id": "activity-crit",
-		"chain_key": "activity-crits",
-		"kind": "activity_crit",
-		"title": "Critical Success",
-		"subtitle": "Land your first CRIT!!",
-		"reward": _crit_chance_achievement_reward_text(),
-		"reward_stat": "crit_chance_mult",
-		"reward_amount": ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT,
-		"current": 1 if activity_crit_seen else 0,
-		"target": 1,
-		"completed": activity_crit_seen,
-		"medal_level": 1,
-		"accent": "#67b8ff"
-	})
-	milestones.append({
-		"id": "activity-mega-crit",
-		"chain_key": "activity-crits",
-		"kind": "activity_crit",
-		"title": "Mega Critical Success",
-		"subtitle": "Land your first MEGA CRIT!!!!",
-		"reward": _crit_chance_achievement_reward_text(),
-		"reward_stat": "crit_chance_mult",
-		"reward_amount": ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT,
-		"current": 1 if activity_mega_crit_seen else 0,
-		"target": 1,
-		"completed": activity_mega_crit_seen,
-		"medal_level": 2,
-		"accent": "#fff052"
-	})
-	return milestones
+			var current_level := _mastery_level(skill_id, action_id)
+			if current_level <= 0:
+				continue
+			records.append({
+				"skill_id": skill_id,
+				"action_id": action_id,
+				"action_name": str(action.get("name", "Activity")),
+				"skill_name": _skill_name(skill_id),
+				"current_level": current_level,
+				"art": str(action.get("art", ""))
+			})
+	return records
+
+
+func _achievement_medal_accent_hexes() -> Array:
+	var accents := []
+	for accent in MASTERY_MEDAL_ACCENTS:
+		accents.append("#" + (accent as Color).to_html(false))
+	return accents
 
 
 func _completed_achievement_ids() -> Dictionary:
@@ -30394,117 +30309,15 @@ func _visible_achievement_milestones(hide_completed: bool) -> Array:
 
 
 func _visible_achievement_milestones_fast() -> Array:
-	var visible_milestones := []
+	var context := _achievement_milestone_context(false)
 	var medal_summary := _all_medal_summary()
-	var total_level := _global_level()
-	var max_total_level := _max_total_level()
-	for target in AchievementRewards.TOTAL_LEVEL_TARGETS:
-		var target_int := int(target)
-		if max_total_level < target_int and total_level < target_int:
-			continue
-		if total_level >= target_int:
-			continue
-		visible_milestones.append({
-			"id": "total-level-%s" % target_int,
-			"chain_key": "total-level",
-			"kind": "total_level",
-			"title": "Total Level %s" % target_int,
-			"subtitle": "Total Lv %s of %s" % [mini(total_level, target_int), target_int],
-			"reward": _total_level_achievement_reward_text(target_int),
-			"reward_stat": "max_stamina",
-			"reward_amount": _total_level_achievement_stamina_reward(target_int),
-			"current": total_level,
-			"target": target_int,
-			"completed": false,
-			"medal_level": _total_level_milestone_medal(target_int, max_total_level),
-			"accent": "#f4bf35"
-		})
-		break
-	var tier_counts: Array = medal_summary["tiers"]
-	var total_activity_count := int(medal_summary["activity_count"])
-	for tier_index in range(mini(MASTERY_MAX_LEVEL, tier_counts.size())):
-		var tier := tier_index + 1
-		var target := _tier_count_achievement_target(tier)
-		var current := int(tier_counts[tier_index])
-		if total_activity_count < target and current < target:
-			continue
-		if current >= target:
-			continue
-		var medal_name := str(MASTERY_MEDAL_NAMES[tier_index])
-		visible_milestones.append({
-			"id": "tier-count-%s-%s" % [tier, target],
-			"chain_key": "tier-count-medals",
-			"kind": "tier_count",
-			"tier": tier,
-			"title": "%s Medals" % medal_name,
-			"subtitle": "%s of %s %s medals earned" % [mini(current, target), target, medal_name],
-			"reward": _tier_count_achievement_reward_text(tier),
-			"reward_stat": "max_stamina",
-			"reward_amount": _tier_count_achievement_stamina_reward(tier),
-			"current": current,
-			"target": target,
-			"completed": false,
-			"medal_level": tier,
-			"accent": "#" + _mastery_medal_accent(tier).to_html(false)
-		})
-		break
-	var cumulative := int(medal_summary["earned"])
-	var cumulative_possible := int(medal_summary["possible"])
-	for target in [10, 25, 50, 100, 250, 500, 1000]:
-		var target_int := int(target)
-		if cumulative_possible < target_int and cumulative < target_int:
-			continue
-		if cumulative >= target_int:
-			continue
-		visible_milestones.append({
-			"id": "cumulative-%s" % target_int,
-			"chain_key": "cumulative-medals",
-			"kind": "cumulative_medals",
-			"title": "Cumulative Medals",
-			"subtitle": "%s of %s total medals earned" % [mini(cumulative, target_int), target_int],
-			"reward": _cumulative_medal_achievement_reward_text(target_int),
-			"reward_stat": "max_stamina",
-			"reward_amount": _cumulative_medal_achievement_stamina_reward(target_int),
-			"current": cumulative,
-			"target": target_int,
-			"completed": false,
-			"medal_level": 1,
-			"accent": "#f4bf35"
-		})
-		break
-	if not activity_crit_seen:
-		visible_milestones.append({
-			"id": "activity-crit",
-			"chain_key": "activity-crits",
-			"kind": "activity_crit",
-			"title": "Critical Success",
-			"subtitle": "Land your first CRIT!!",
-			"reward": _crit_chance_achievement_reward_text(),
-			"reward_stat": "crit_chance_mult",
-			"reward_amount": ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT,
-			"current": 0,
-			"target": 1,
-			"completed": false,
-			"medal_level": 1,
-			"accent": "#67b8ff"
-		})
-	elif not activity_mega_crit_seen:
-		visible_milestones.append({
-			"id": "activity-mega-crit",
-			"chain_key": "activity-crits",
-			"kind": "activity_crit",
-			"title": "Mega Critical Success",
-			"subtitle": "Land your first MEGA CRIT!!!!",
-			"reward": _crit_chance_achievement_reward_text(),
-			"reward_stat": "crit_chance_mult",
-			"reward_amount": ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT,
-			"current": 0,
-			"target": 1,
-			"completed": false,
-			"medal_level": 2,
-			"accent": "#fff052"
-		})
-	return visible_milestones
+	context["total_counts"] = {
+		"earned": int(medal_summary["earned"]),
+		"possible": int(medal_summary["possible"])
+	}
+	context["tier_counts"] = medal_summary["tiers"]
+	context["total_activity_count"] = int(medal_summary["activity_count"])
+	return AchievementMilestones.build_visible_fast(context)
 
 
 func _skill_level_achievement_targets() -> Array:
@@ -30512,47 +30325,6 @@ func _skill_level_achievement_targets() -> Array:
 	for level in range(2, 100):
 		targets.append(level)
 	return targets
-
-
-func _total_level_achievement_stamina_reward(target: int) -> int:
-	return AchievementRewards.total_level_stamina(target)
-
-
-func _cumulative_medal_achievement_stamina_reward(target: int) -> int:
-	return AchievementRewards.cumulative_medal_stamina(target)
-
-
-func _tier_count_achievement_target(tier: int) -> int:
-	return AchievementRewards.tier_count_target(tier)
-
-
-func _tier_count_achievement_stamina_reward(tier: int) -> int:
-	return AchievementRewards.tier_count_stamina(tier)
-
-
-func _mastery_medal_accent(tier: int) -> Color:
-	var index := clampi(tier - 1, 0, MASTERY_MEDAL_ACCENTS.size() - 1)
-	return MASTERY_MEDAL_ACCENTS[index]
-
-
-func _stamina_reward_text(amount: int) -> String:
-	return "+%s max stamina" % maxi(1, amount)
-
-
-func _total_level_achievement_reward_text(target: int) -> String:
-	return "Reward: %s" % _stamina_reward_text(_total_level_achievement_stamina_reward(target))
-
-
-func _cumulative_medal_achievement_reward_text(target: int) -> String:
-	return "Reward: %s" % _stamina_reward_text(_cumulative_medal_achievement_stamina_reward(target))
-
-
-func _tier_count_achievement_reward_text(tier: int) -> String:
-	return "Reward: %s" % _stamina_reward_text(_tier_count_achievement_stamina_reward(tier))
-
-
-func _crit_chance_achievement_reward_text() -> String:
-	return "Reward: +%s%% crit chance" % _format_percent_points(ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT * 100.0)
 
 
 func _achievement_reward_bonus(stat: String, skill_id := "") -> float:
