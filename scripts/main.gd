@@ -45053,35 +45053,6 @@ func _force_page_switch_scroll_cover_opaque(cover_id: int) -> void:
 	_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
 
 
-func _select_skill_with_initial_scroll_under_page_switch_cover(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
-	if screen_render_in_progress or (_skill_swipe_loading_transition_active() and not _page_switch_scroll_cover_active()):
-		return
-	if not _onboarding_skill_accessible(skill_id):
-		var card := skill_cards.get(skill_id, {}) as Dictionary
-		var source := card.get("button") as Control
-		_show_onboarding_skill_locked_message(source)
-		_fade_clear_page_switch_scroll_cover()
-		return
-	if current_screen == "settings":
-		_disarm_reset_data_confirmation()
-	if skill_id != selected_skill_id and selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
-		_clear_tutorial_gate_latch_only_after_skill_swipe(false)
-	selected_skill_id = skill_id
-	current_screen = "skill"
-	if play_nav_sfx:
-		_play_default_button_sfx()
-	if tutorial_active:
-		action_cards.clear()
-		action_card_keys.clear()
-		detail_action_card_nodes.clear()
-		detail_rendered_action_ids.clear()
-		detail_lazy_plan.clear()
-		await _render_screen(false, 0)
-	else:
-		await _render_screen(scroll_latest_activity, restore_detail_scroll)
-	_fade_clear_page_switch_scroll_cover()
-
-
 func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
 	if screen_render_in_progress or (_skill_swipe_loading_transition_active() and not _page_switch_scroll_cover_active()):
 		return
