@@ -11,6 +11,7 @@ const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
+const MedalBuffs = preload("res://scripts/progression/medal_buffs.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
 const ThievingState = preload("res://scripts/thieving/state.gd")
@@ -58287,40 +58288,21 @@ func _activity_medal_buff_total(skill_id: String, action: Dictionary, effect: St
 
 
 func _activity_medal_buff_contributions(skill_id: String, action: Dictionary, effect: String) -> Array:
-	var contributions := []
 	var action_id := str(action.get("id", ""))
 	if skill_id.is_empty() or action_id.is_empty():
-		return contributions
+		return []
 	if _is_passive_action(action):
-		return contributions
+		return []
 	var is_event_target := _is_event_action(action)
 	var playable_actions := _playable_actions_for_medal_buffs_including_event(skill_id, action) if is_event_target else _playable_actions_for_medal_buffs(skill_id)
 	var target_index := _playable_action_index(playable_actions, action_id) if is_event_target else _playable_action_index_cached(skill_id, playable_actions, action_id)
-	if target_index < 0:
-		return contributions
-	for i in range(playable_actions.size()):
-		if i == target_index:
-			continue
-		var source_action := playable_actions[i] as Dictionary
-		var source_action_id := str(source_action.get("id", ""))
-		if source_action_id.is_empty():
-			continue
-		var medal_tier := clampi(_mastery_level(skill_id, source_action_id), 0, MASTERY_MAX_LEVEL)
-		if medal_tier <= 0:
-			continue
-		var distance := target_index - i
-		var per_tier := _activity_medal_buff_per_tier(distance, effect)
-		if per_tier <= 0.0:
-			continue
-		contributions.append({
-			"source_id": source_action_id,
-			"source_name": str(source_action.get("name", source_action_id.capitalize())),
-			"level": medal_tier,
-			"distance": distance,
-			"per_tier": per_tier,
-			"amount": per_tier * float(medal_tier)
-		})
-	return contributions
+	return MedalBuffs.contributions(
+		playable_actions,
+		target_index,
+		effect,
+		func(source_action_id: String) -> int: return _mastery_level(skill_id, source_action_id),
+		MASTERY_MAX_LEVEL
+	)
 
 
 func _playable_actions_for_medal_buffs(skill_id: String) -> Array:
@@ -58373,26 +58355,6 @@ func _playable_action_index(playable_actions: Array, action_id: String) -> int:
 		if str(action.get("id", "")) == action_id:
 			return i
 	return -1
-
-
-func _activity_medal_buff_per_tier(distance: int, effect: String) -> float:
-	if distance > 0:
-		if effect == "stamina" or effect == "time":
-			if distance == 1:
-				return 0.02
-			if distance == 2:
-				return 0.01
-			if distance == 3:
-				return 0.005
-		return 0.0
-	if distance < 0:
-		if effect != "stamina" and effect != "accuracy":
-			return 0.0
-		var prior_distance := -distance
-		if prior_distance >= 1 and prior_distance <= 10:
-			var prior_percent := float(11 - prior_distance) * 0.1
-			return prior_percent if effect == "accuracy" else prior_percent * 0.01
-	return 0.0
 
 
 func _activity_medal_buff_lines(skill_id: String, action: Dictionary, effect: String, label: String) -> Array:
