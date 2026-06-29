@@ -18,6 +18,7 @@ $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_borde
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
 $actionArtUiPath = Join-Path $projectRoot "scripts\ui\action_art_ui.gd"
+$moduleUtilityRowUiPath = Join-Path $projectRoot "scripts\ui\module_utility_row_ui.gd"
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $bootFlexLoadingAnimationPath = Join-Path $projectRoot "scripts\ui\boot_flex_loading_animation.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
@@ -143,6 +144,8 @@ Assert-True (Test-Path -LiteralPath $actionArtTextureRectPath) "Missing scripts\
 $actionArtTexture = Get-Content -LiteralPath $actionArtTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $actionArtUiPath) "Missing scripts\ui\action_art_ui.gd."
 $actionArtUi = Get-Content -LiteralPath $actionArtUiPath -Raw
+Assert-True (Test-Path -LiteralPath $moduleUtilityRowUiPath) "Missing scripts\ui\module_utility_row_ui.gd."
+$moduleUtilityRowUi = Get-Content -LiteralPath $moduleUtilityRowUiPath -Raw
 Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui\rounded_texture_rect.gd."
 $roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $bootFlexLoadingAnimationPath) "Missing scripts\ui\boot_flex_loading_animation.gd."
@@ -1255,7 +1258,7 @@ $textureHelper = Get-FunctionBody -Text $main -Name "_texture"
 Assert-True ($textureHelper -match 'DisplayServer\.get_name\(\) == "headless" and not _headless_should_load_real_texture\(normalized\)[\s\S]*texture_cache\[normalized\] = headless_fallback') "Texture loading should short-circuit to cached placeholder fallbacks in headless validation."
 $headlessShouldLoadRealTexture = Get-FunctionBody -Text $main -Name "_headless_should_load_real_texture"
 Assert-True ($headlessShouldLoadRealTexture -match 'return false') "Headless validation should avoid real texture loads consistently so dummy/export renderers do not initialize null texture RIDs."
-Assert-True ($main -match 'icon\.set_meta\("source_texture_path", _res_path\(icon_path\)\)') "Module utility icons should preserve their intended texture path as metadata for headless-safe assertions."
+Assert-True ($main -match '"res_path": Callable\(self, "_res_path"\)' -and $moduleUtilityRowUi -match 'icon\.set_meta\("source_texture_path", res_path\.call\(icon_path\)') "Module utility icons should preserve their intended texture path as metadata for headless-safe assertions."
 Assert-True ($textureHelper -match 'texture_cache\[normalized\] = fallback' -and $textureHelper -match '_visual_fallback_texture\(\)') "Missing non-empty visual texture paths should cache a transparent fallback instead of null."
 $atlasTexture = Get-FunctionBody -Text $main -Name "_atlas_texture"
 Assert-True ($atlasTexture -match 'atlas_texture_cache\[cache_key\] = fallback' -and $atlasTexture -match '_visual_fallback_texture\(\)') "Atlas texture creation should fall back to a transparent texture when the source art is unavailable."

@@ -73,6 +73,7 @@ const BuildableModuleOverlay = preload("res://scripts/ui/buildable_module_overla
 const ConvergenceBuildOverlay = preload("res://scripts/ui/convergence_build_overlay.gd")
 const ActionArtUi = preload("res://scripts/ui/action_art_ui.gd")
 const ModuleSortMenuUi = preload("res://scripts/ui/module_sort_menu_ui.gd")
+const ModuleUtilityRowUi = preload("res://scripts/ui/module_utility_row_ui.gd")
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
 const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_rect.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
@@ -8875,114 +8876,42 @@ func _route_onboarding_settings_nav_input(event: InputEvent) -> bool:
 
 
 func _build_module_utility_row() -> void:
-	module_utility_row = Control.new()
-	module_utility_row.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	module_utility_row.offset_top = -BOTTOM_NAV_HEIGHT - CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP - MODULE_UTILITY_ROW_HEIGHT
-	module_utility_row.offset_bottom = -BOTTOM_NAV_HEIGHT - CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP
-	module_utility_row.z_index = CHAT_UI_Z + 1
-	module_utility_row.z_as_relative = false
-	module_utility_row.visible = false
-	module_utility_row.mouse_filter = Control.MOUSE_FILTER_STOP
+	var built := ModuleUtilityRowUi.build({
+		"bottom_nav_height": BOTTOM_NAV_HEIGHT,
+		"chat_strip_height": CHAT_STRIP_HEIGHT,
+		"gap": MODULE_UTILITY_ROW_GAP,
+		"height": MODULE_UTILITY_ROW_HEIGHT,
+		"z_index": CHAT_UI_Z + 1,
+		"button_size": MODULE_UTILITY_BUTTON_SIZE,
+		"collapse_size": MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE,
+		"texture": Callable(self, "_texture_or_visual_fallback"),
+		"res_path": Callable(self, "_res_path"),
+		"install_shell": Callable(self, "_install_activity_button_shell"),
+		"attach_press": Callable(self, "_attach_activity_button_press_animation"),
+		"collapse_style": Callable(self, "_module_utility_collapse_toggle_style"),
+		"buttons": [
+			{"id": "pinned", "label": "Pinned", "icon": MODULE_PIN_ICON_TEXTURE, "fill": Color.WHITE},
+			{"id": "queue", "label": "Queue", "icon": MODULE_QUEUE_ICON_TEXTURE, "fill": Color.WHITE},
+			{"id": "skills", "label": "Skills", "icon": "res://assets/content/ui/navigation-controls/skills-overview.png", "fill": Color.WHITE},
+			{"id": "sort", "label": "Sort", "icon": "res://assets/content/ui/navigation-controls/sort-list.png", "fill": Color.WHITE}
+		]
+	})
+	module_utility_row = built.get("root") as Control
+	module_utility_buttons_row = built.get("row") as HBoxContainer
 	add_child(module_utility_row)
 
-	var row := HBoxContainer.new()
-	module_utility_buttons_row = row
-	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 36)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	module_utility_row.add_child(row)
-
-	pinned_utility_tab = _module_utility_button(
-		"Pinned",
-		MODULE_PIN_ICON_TEXTURE,
-		Color.WHITE
-	)
+	var buttons := built.get("buttons", {}) as Dictionary
+	pinned_utility_tab = buttons.get("pinned") as Button
 	pinned_utility_tab.pressed.connect(_on_pinned_utility_pressed)
-	row.add_child(pinned_utility_tab)
-
-	queue_utility_tab = _module_utility_button(
-		"Queue",
-		MODULE_QUEUE_ICON_TEXTURE,
-		Color.WHITE
-	)
+	queue_utility_tab = buttons.get("queue") as Button
 	queue_utility_tab.pressed.connect(_on_queue_utility_pressed)
-	row.add_child(queue_utility_tab)
-
-	skills_utility_tab = _module_utility_button(
-		"Skills",
-		"res://assets/content/ui/navigation-controls/skills-overview.png",
-		Color.WHITE
-	)
+	skills_utility_tab = buttons.get("skills") as Button
 	skills_utility_tab.pressed.connect(_on_skills_utility_pressed)
-	row.add_child(skills_utility_tab)
-
-	sort_utility_tab = _module_utility_button(
-		"Sort",
-		"res://assets/content/ui/navigation-controls/sort-list.png",
-		Color("#ffffff")
-	)
+	sort_utility_tab = buttons.get("sort") as Button
 	sort_utility_tab.pressed.connect(_on_sort_utility_pressed)
-	row.add_child(sort_utility_tab)
-
-	module_utility_collapse_toggle = Button.new()
-	module_utility_collapse_toggle.name = "ModuleUtilityCollapseToggle"
-	module_utility_collapse_toggle.custom_minimum_size = MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE
-	module_utility_collapse_toggle.size = MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE
-	module_utility_collapse_toggle.clip_contents = false
-	module_utility_collapse_toggle.focus_mode = Control.FOCUS_NONE
-	module_utility_collapse_toggle.mouse_filter = Control.MOUSE_FILTER_STOP
-	module_utility_collapse_toggle.add_theme_stylebox_override("normal", _module_utility_collapse_toggle_style(false))
-	module_utility_collapse_toggle.add_theme_stylebox_override("hover", _module_utility_collapse_toggle_style(false))
-	module_utility_collapse_toggle.add_theme_stylebox_override("pressed", _module_utility_collapse_toggle_style(true))
-	module_utility_collapse_toggle.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	var collapse_arrow := ModuleUtilityCollapseArrow.new()
-	collapse_arrow.name = "ActivityButtonArrow"
-	collapse_arrow.set_anchors_preset(Control.PRESET_FULL_RECT)
-	collapse_arrow.offset_left = 28
-	collapse_arrow.offset_right = -28
-	collapse_arrow.offset_top = 28
-	collapse_arrow.offset_bottom = -28
-	collapse_arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	collapse_arrow.z_index = 210
-	module_utility_collapse_toggle.add_child(collapse_arrow)
-	_attach_activity_button_press_animation(module_utility_collapse_toggle)
+	module_utility_collapse_toggle = built.get("collapse_toggle") as Button
 	module_utility_collapse_toggle.pressed.connect(_toggle_module_utility_collapsed)
-	module_utility_row.add_child(module_utility_collapse_toggle)
 	_sync_module_utility_row_visibility()
-
-
-func _module_utility_button(label_text: String, icon_path: String, fill: Color) -> Button:
-	var button := Button.new()
-	button.text = ""
-	button.tooltip_text = ""
-	button.custom_minimum_size = MODULE_UTILITY_BUTTON_SIZE
-	button.clip_contents = false
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	var pop := _install_activity_button_shell(button, fill, 36.0)
-	var icon := TextureRect.new()
-	icon.name = "ActivityButtonIcon"
-	icon.texture = _texture_or_visual_fallback(icon_path)
-	icon.set_meta("source_texture_path", _res_path(icon_path))
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	icon.anchor_left = 0.0
-	icon.anchor_right = 1.0
-	icon.anchor_top = 0.0
-	icon.anchor_bottom = 1.0
-	icon.offset_left = 24
-	icon.offset_right = -24
-	icon.offset_top = 18
-	icon.offset_bottom = -34
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.z_index = 210
-	pop.add_child(icon)
-	button.set_meta("module_utility_fill", fill)
-	button.set_meta("module_utility_nav_button", true)
-	_attach_activity_button_press_animation(button)
-	return button
 
 
 func _on_pinned_utility_pressed() -> void:
