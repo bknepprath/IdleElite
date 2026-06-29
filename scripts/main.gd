@@ -4,6 +4,7 @@ const FishingFluidStripClass = preload("res://scripts/fishing_fluid_strip.gd")
 const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
+const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
 const FeatheredCollectGlow = preload("res://scripts/ui/feathered_collect_glow.gd")
@@ -62110,13 +62111,7 @@ func _normalized_module_ui_sort_mode(value: Variant) -> String:
 
 
 func _normalized_module_ui_key(value: Variant) -> String:
-	var key := str(value).strip_edges()
-	if key.is_empty():
-		return ""
-	for prefix in ["action:", "thieving_heist:", "fishing_area:", "fishing_offer:", "hub:"]:
-		if key.begins_with(prefix) and key.length() > prefix.length():
-			return key
-	return ""
+	return ModuleUiKeys.normalize(value)
 
 
 func _action_key_for_save(key: String) -> String:
@@ -62178,48 +62173,31 @@ func _action_key(skill_id: String, action_id: String) -> String:
 
 
 func _module_ui_action_key(skill_id: String, action_id: String) -> String:
-	var canonical_key := _action_key(skill_id, action_id)
-	if canonical_key == ":" or skill_id.is_empty() or action_id.is_empty():
-		return ""
-	return "action:%s" % canonical_key
+	return ModuleUiKeys.action(skill_id, action_id, FISHING_ACTION_ID_ALIASES)
 
 
 func _module_ui_key_for_action(skill_id: String, action: Dictionary) -> String:
-	var action_id := str(action.get("id", ""))
-	if action_id.is_empty():
-		return ""
-	return _module_ui_action_key(skill_id, action_id)
+	return ModuleUiKeys.action_for_record(skill_id, action, FISHING_ACTION_ID_ALIASES)
 
 
 func _module_ui_thieving_heist_key(heist_id: String) -> String:
-	if heist_id.is_empty():
-		return ""
-	return "thieving_heist:%s" % heist_id
+	return ModuleUiKeys.thieving_heist(heist_id)
 
 
 func _module_ui_fishing_area_key(skill_id: String, area_def: Dictionary) -> String:
-	var area_key := _fishing_area_module_key(skill_id, area_def)
-	if area_key.is_empty():
-		return ""
-	return "fishing_area:%s" % area_key
+	return ModuleUiKeys.fishing_area(_fishing_area_module_key(skill_id, area_def))
 
 
 func _module_ui_fishing_offer_key(offer_id: String) -> String:
-	if offer_id.is_empty():
-		return ""
-	return "fishing_offer:%s" % offer_id
+	return ModuleUiKeys.fishing_offer(offer_id)
 
 
 func _module_ui_hub_key(module_id: String) -> String:
-	if module_id.is_empty():
-		return ""
-	return "hub:%s" % module_id
+	return ModuleUiKeys.hub(module_id)
 
 
 func _canonical_action_id(skill_id: String, action_id: String) -> String:
-	if skill_id == "fishing" and FISHING_ACTION_ID_ALIASES.has(action_id):
-		return str(FISHING_ACTION_ID_ALIASES[action_id])
-	return action_id
+	return ModuleUiKeys.canonical_action_id(skill_id, action_id, FISHING_ACTION_ID_ALIASES)
 
 
 func _canonical_action_key(key: String) -> String:

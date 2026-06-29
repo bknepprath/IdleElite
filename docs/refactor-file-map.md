@@ -10,8 +10,8 @@ Legend:
 
 ## Session Notes
 
-- Current main target: delete provably dead `scripts/main.gd` code, not just move it.
-- Active extraction rule: only extract repeated code with a real second caller or a clear ownership boundary.
+- Current main target: shrink `scripts/main.gd` by moving real ownership boundaries out, then delete dead code when proven.
+- Active extraction rule: only extract code with a real second caller, a clear ownership boundary, or a naming win that lets local code use short names honestly.
 - Current known visual regression check: `scripts/test-page-switch-cover-visual.ps1` is failing on page-switch depressed-state assertions; leave page-switch press handling bespoke until that is understood.
 - Prior UI fix this session: activity modules are clipped below the skill info shelf again.
 
@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 183 files / about 110,977 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 183 files / about 110,569 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 66,661 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`. |
+| `scripts/main.gd` * | 66,639 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, and module UI key construction now preloads from `scripts/module_ui/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -95,6 +95,12 @@ Legend:
 | `scripts/ui/feathered_collect_glow.gd` | 19 | Collect glow visual. |
 | `scripts/ui/achievement_medal_slot_strip.gd` | 101 | Achievement medal strip. |
 
+## Module UI Helper Scripts
+
+| Path | Lines | What lives here |
+| --- | ---: | --- |
+| `scripts/module_ui/keys.gd` * | 61 | Module UI key prefixes, normalization, action key construction, and fishing action alias canonicalization. Extracted so module UI code can use local names like `action_id`, `prefix`, and `key` without mega-script prefixes. |
+
 ## Validation And Tooling
 
 | Path | Lines | What lives here |
@@ -135,6 +141,7 @@ Legend:
 | Path | Status | Notes |
 | --- | --- | --- |
 | `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; dead helper functions deleted. |
+| `scripts/module_ui/keys.gd` | added | New extracted module UI key helper for action, fishing area, fishing offer, thieving heist, and hub keys. |
 | `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata, including optional extra metadata fields. |
 | `scripts/ui/regen_circle.gd` | added | New extracted stamina/regen gauge drawing class. |
 | `scripts/ui/fish_circle.gd` | added | New extracted fishing header circle control. |
@@ -175,11 +182,15 @@ Legend:
    - Current: many shelf, module, card, and action rendering paths still live in `scripts/main.gd`; the reusable local drawing controls larger than tiny glyphs are now isolated in `scripts/ui/`.
    - Next lazy win: skip the remaining 8-45 line local glyph helpers unless they need real behavior changes; extracting them would add more file plumbing than architecture.
 
-3. Save normalization
+3. Module UI identity
+   - Current: module UI key building and normalization live in `scripts/module_ui/keys.gd`; `scripts/main.gd` keeps thin wrappers to avoid broad call-site churn.
+   - Next lazy win: move the callers when a whole module UI state/routing slice can move with them, not as a rename-only churn pass.
+
+4. Save normalization
    - Current: many tiny save helper wrappers have been inlined or renamed in active worktree changes.
    - Next lazy win: keep exact static tests around any save-payload simplification.
 
-4. Activity database
+5. Activity database
    - Current: data source is already externalized in `docs/activity-database.json`.
    - Next lazy win: do not move data again; reduce loader glue in `scripts/main.gd` instead.
 
@@ -218,6 +229,11 @@ Legend:
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified header/card/module rendering after extracting chevron, collapse arrow, and health gauge controls. |
 | `git diff --check -- scripts/main.gd scripts/test-performance-regressions.ps1 scripts/check-ui-boundary-contracts.ps1 scripts/check-activity-ui-boundary-contracts.ps1 docs/ui-runtime-boundary-map.md docs/activity-ui-boundary-map.md` | passed after deleting stale helpers. |
 | `.\scripts\check-ui-boundary-contracts.ps1` | passed after deleting stale helpers. |
+| `git diff --check -- scripts/main.gd scripts/module_ui/keys.gd` | passed after extracting module UI key helpers. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting module UI key helpers. |
+| `.\scripts\check-ui-boundary-contracts.ps1` | passed after extracting module UI key helpers. |
+| `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after extracting module UI key helpers. |
+| `.\scripts\test-module-list-transitions.ps1` | passed after extracting module UI key helpers; runner emitted existing save-protection/leak-at-exit warnings. |
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting stale helpers. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting stale helpers. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after deleting stale helpers. |
