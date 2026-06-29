@@ -62038,44 +62038,15 @@ func _module_ui_collapsed_unlocked_only(source: Dictionary) -> Dictionary:
 
 
 func _normalized_module_ui_pinned_order(value: Variant) -> Array:
-	var normalized: Array = []
-	if typeof(value) != TYPE_ARRAY:
-		return normalized
-	var seen := {}
-	for raw_key in value:
-		var key := _normalized_module_ui_key(raw_key)
-		if key.is_empty() or seen.has(key):
-			continue
-		seen[key] = true
-		normalized.append(key)
-	return normalized
+	return ModuleUiKeys.normalized_order(value)
 
 
 func _normalized_module_ui_collapsed(value: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(value) != TYPE_DICTIONARY:
-		return normalized
-	var source := value as Dictionary
-	for raw_key in source.keys():
-		var key := _normalized_module_ui_key(raw_key)
-		if key.is_empty() or not bool(source.get(raw_key, false)):
-			continue
-		normalized[key] = true
-	return normalized
+	return ModuleUiKeys.normalized_flags(value)
 
 
 func _normalized_module_ui_pin_color_paths(value: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(value) != TYPE_DICTIONARY:
-		return normalized
-	var source := value as Dictionary
-	for raw_key in source.keys():
-		var key := _normalized_module_ui_key(raw_key)
-		var path := str(source.get(raw_key, ""))
-		if key.is_empty() or not MODULE_PIN_COLOR_TEXTURES.has(path):
-			continue
-		normalized[key] = path
-	return normalized
+	return ModuleUiKeys.normalized_paths(value, MODULE_PIN_COLOR_TEXTURES)
 
 
 func _normalized_module_ui_sort_mode(value: Variant) -> String:

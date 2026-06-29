@@ -82,6 +82,47 @@ static func lazy_track_id(module_key: String, skill_id: String) -> String:
 	return ""
 
 
+static func normalized_order(value: Variant) -> Array:
+	var order: Array = []
+	if typeof(value) != TYPE_ARRAY:
+		return order
+	var seen := {}
+	for raw_key in value:
+		var key := normalize(raw_key)
+		if key.is_empty() or seen.has(key):
+			continue
+		seen[key] = true
+		order.append(key)
+	return order
+
+
+static func normalized_flags(value: Variant) -> Dictionary:
+	var flags := {}
+	if typeof(value) != TYPE_DICTIONARY:
+		return flags
+	var source := value as Dictionary
+	for raw_key in source.keys():
+		var key := normalize(raw_key)
+		if key.is_empty() or not bool(source.get(raw_key, false)):
+			continue
+		flags[key] = true
+	return flags
+
+
+static func normalized_paths(value: Variant, valid_paths: Array) -> Dictionary:
+	var paths := {}
+	if typeof(value) != TYPE_DICTIONARY:
+		return paths
+	var source := value as Dictionary
+	for raw_key in source.keys():
+		var key := normalize(raw_key)
+		var path := str(source.get(raw_key, ""))
+		if key.is_empty() or not valid_paths.has(path):
+			continue
+		paths[key] = path
+	return paths
+
+
 static func canonical_action_id(skill_id: String, action_id: String, aliases := {}) -> String:
 	if skill_id == "fishing" and aliases.has(action_id):
 		return str(aliases[action_id])

@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 183 files / about 110,577 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 183 files / about 110,589 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 66,616 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, and module UI key construction/parsing now preloads from `scripts/module_ui/`. |
+| `scripts/main.gd` * | 66,587 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, and module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -99,7 +99,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/module_ui/keys.gd` * | 92 | Module UI key prefixes, normalization, action key construction, ownership checks, lazy track-id parsing, and fishing action alias canonicalization. Extracted so module UI code can use local names like `action_id`, `prefix`, and `key` without mega-script prefixes. |
+| `scripts/module_ui/keys.gd` * | 133 | Module UI key prefixes, normalization, action key construction, ownership checks, lazy track-id parsing, saved order/flag/path normalization, and fishing action alias canonicalization. Extracted so module UI code can use local names like `action_id`, `prefix`, and `key` without mega-script prefixes. |
 
 ## Validation And Tooling
 
@@ -141,7 +141,7 @@ Legend:
 | Path | Status | Notes |
 | --- | --- | --- |
 | `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; dead helper functions deleted. |
-| `scripts/module_ui/keys.gd` | added | New extracted module UI key helper for action, fishing area, fishing offer, thieving heist, hub keys, skill ownership checks, and lazy track-id parsing. |
+| `scripts/module_ui/keys.gd` | added | New extracted module UI key helper for action, fishing area, fishing offer, thieving heist, hub keys, skill ownership checks, lazy track-id parsing, and saved key collection normalization. |
 | `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata, including optional extra metadata fields. |
 | `scripts/ui/regen_circle.gd` | added | New extracted stamina/regen gauge drawing class. |
 | `scripts/ui/fish_circle.gd` | added | New extracted fishing header circle control. |
@@ -183,7 +183,7 @@ Legend:
    - Next lazy win: skip the remaining 8-45 line local glyph helpers unless they need real behavior changes; extracting them would add more file plumbing than architecture.
 
 3. Module UI identity
-   - Current: module UI key building, normalization, ownership checks, and lazy track-id parsing live in `scripts/module_ui/keys.gd`; `scripts/main.gd` keeps thin wrappers to avoid broad call-site churn.
+   - Current: module UI key building, normalization, ownership checks, lazy track-id parsing, and saved key collection normalization live in `scripts/module_ui/keys.gd`; `scripts/main.gd` keeps thin wrappers to avoid broad call-site churn.
    - Next lazy win: move the callers when a whole module UI state/routing slice can move with them, not as a rename-only churn pass.
 
 4. Save normalization
@@ -239,6 +239,12 @@ Legend:
 | `.\scripts\check-ui-boundary-contracts.ps1` | passed after moving module UI ownership and lazy track-id parsing. |
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after moving module UI ownership and lazy track-id parsing. |
 | `.\scripts\test-module-list-transitions.ps1` | passed after moving module UI ownership and lazy track-id parsing; runner emitted existing save-protection/leak-at-exit warnings. |
+| `git diff --check -- scripts/main.gd scripts/module_ui/keys.gd docs/refactor-file-map.md` | passed after moving module UI saved key collection normalization into `scripts/module_ui/keys.gd`. |
+| `.\scripts\test-save-normalization.ps1` | passed after moving module UI saved key collection normalization; runner emitted existing leak-at-exit warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after moving module UI saved key collection normalization. |
+| `.\scripts\check-ui-boundary-contracts.ps1` | passed after moving module UI saved key collection normalization. |
+| `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after moving module UI saved key collection normalization. |
+| `.\scripts\test-module-list-transitions.ps1` | passed after moving module UI saved key collection normalization; runner emitted existing save-protection/leak-at-exit warnings. |
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting stale helpers. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting stale helpers. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after deleting stale helpers. |
