@@ -85,6 +85,7 @@ const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_re
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
+const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ActivityProgressRail = preload("res://scripts/ui/activity_progress_rail.gd")
 const ActionStatusLines = preload("res://scripts/ui/action_status_lines.gd")
 const BlueGuyChickenBrawlStageClass = preload("res://scripts/ui/blue_guy_chicken_brawl_stage.gd")
@@ -62209,29 +62210,14 @@ func _offline_summary_stat_style(accent: Color) -> StyleBoxFlat:
 
 
 func _featured_activity_art_style() -> StyleBoxFlat:
-	var style := _surface_style(Color("#fffaf0"), 24, 8, true)
-	style.border_color = COLOR_LINE
-	style.border_width_left = 4
-	style.border_width_right = 4
-	style.border_width_top = 4
-	style.border_width_bottom = 4
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
-	return style
+	return ActivityCardStyles.featured_art(Callable(self, "_surface_style"), COLOR_LINE)
 
 
 func _activity_shade_style(alpha: float) -> StyleBoxFlat:
 	var key := int(round(alpha * 1000.0))
 	if activity_shade_style_cache.has(key):
 		return activity_shade_style_cache[key] as StyleBoxFlat
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.5, 0.5, 0.5, alpha)
-	style.corner_radius_top_left = 66
-	style.corner_radius_top_right = 66
-	style.corner_radius_bottom_left = 66
-	style.corner_radius_bottom_right = 66
+	var style := ActivityCardStyles.shade(alpha)
 	activity_shade_style_cache[key] = style
 	return style
 
@@ -62239,16 +62225,7 @@ func _activity_shade_style(alpha: float) -> StyleBoxFlat:
 func _action_art_style() -> StyleBoxFlat:
 	if action_art_style_cache != null:
 		return action_art_style_cache
-	var style := _surface_style(Color.WHITE, 56, 16, true)
-	style.border_color = Color("#eee2ce")
-	style.border_width_left = 5
-	style.border_width_right = 5
-	style.border_width_top = 5
-	style.border_width_bottom = 5
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 14
-	style.content_margin_bottom = 14
+	var style := ActivityCardStyles.action_art(Callable(self, "_surface_style"))
 	action_art_style_cache = style
 	return action_art_style_cache
 
@@ -62256,61 +62233,21 @@ func _action_art_style() -> StyleBoxFlat:
 func _action_art_border_style() -> StyleBoxFlat:
 	if action_art_border_style_cache != null:
 		return action_art_border_style_cache
-	var style := _action_art_style().duplicate() as StyleBoxFlat
-	style.draw_center = false
+	var style := ActivityCardStyles.action_art_border(_action_art_style())
 	action_art_border_style_cache = style
 	return style
 
 
 func _art_glow_style(color: Color) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(color.r, color.g, color.b, 0.28)
-	style.border_color = Color(color.r, color.g, color.b, 0.95)
-	style.border_width_left = 24
-	style.border_width_right = 24
-	style.border_width_top = 24
-	style.border_width_bottom = 24
-	style.corner_radius_top_left = 56
-	style.corner_radius_top_right = 56
-	style.corner_radius_bottom_left = 56
-	style.corner_radius_bottom_right = 56
-	return style
+	return ActivityCardStyles.art_glow(color)
 
 
 func _bonus_emphasis_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.20)
-	style.border_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.88)
-	style.border_width_left = 18
-	style.border_width_right = 18
-	style.border_width_top = 18
-	style.border_width_bottom = 18
-	style.corner_radius_top_left = 38
-	style.corner_radius_top_right = 38
-	style.corner_radius_bottom_left = 38
-	style.corner_radius_bottom_right = 38
-	style.shadow_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.42)
-	style.shadow_size = 18
-	style.shadow_offset = Vector2.ZERO
-	return style
+	return ActivityCardStyles.bonus_emphasis(BONUS_EMPHASIS_FLASH_COLOR)
 
 
 func _bonus_bottom_highlight_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.28)
-	style.border_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.95)
-	style.border_width_left = 14
-	style.border_width_right = 14
-	style.border_width_top = 14
-	style.border_width_bottom = 14
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
-	style.shadow_color = Color(BONUS_EMPHASIS_FLASH_COLOR.r, BONUS_EMPHASIS_FLASH_COLOR.g, BONUS_EMPHASIS_FLASH_COLOR.b, 0.34)
-	style.shadow_size = 16
-	style.shadow_offset = Vector2.ZERO
-	return style
+	return ActivityCardStyles.bonus_bottom_highlight(BONUS_EMPHASIS_FLASH_COLOR)
 
 
 func _hub_tutorial_info_button_style(pressed := false, hovered := false) -> StyleBoxFlat:
@@ -62361,19 +62298,7 @@ func _chat_strip_style() -> StyleBoxFlat:
 
 
 func _tutorial_target_ring_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1.0, 0.89, 0.24, 0.0)
-	style.draw_center = false
-	style.border_color = Color("#ffd94d")
-	style.set_border_width_all(12)
-	style.corner_radius_top_left = 54
-	style.corner_radius_top_right = 54
-	style.corner_radius_bottom_left = 54
-	style.corner_radius_bottom_right = 54
-	style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
-	style.shadow_size = 18
-	style.shadow_offset = Vector2(0, 8)
-	return style
+	return ActivityCardStyles.tutorial_target_ring()
 
 
 func _passive_currency_style() -> StyleBoxFlat:
@@ -62405,26 +62330,7 @@ func _passive_upgrade_button_style(_disabled := false, _hovered := false, _press
 
 
 func _activity_crit_glow_style(mega_crit := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	var fill := Color("#fff052") if mega_crit else Color("#67b8ff")
-	var border := Color("#ffbf1f") if mega_crit else Color("#1f9dff")
-	style.draw_center = true
-	style.bg_color = Color(fill.r, fill.g, fill.b, 0.34 if mega_crit else 0.31)
-	style.border_color = Color(border.r, border.g, border.b, 1.0 if mega_crit else 0.96)
-	var border_width := 68 if mega_crit else 46
-	style.border_width_left = border_width
-	style.border_width_right = border_width
-	style.border_width_top = border_width
-	style.border_width_bottom = border_width
-	style.shadow_color = Color(1.0, 0.70, 0.0, 0.82) if mega_crit else Color(0.10, 0.58, 1.0, 0.62)
-	style.shadow_size = 68 if mega_crit else 42
-	style.shadow_offset = Vector2.ZERO
-	var corner_radius := 82 if mega_crit else 66
-	style.corner_radius_top_left = corner_radius
-	style.corner_radius_top_right = corner_radius
-	style.corner_radius_bottom_left = corner_radius
-	style.corner_radius_bottom_right = corner_radius
-	return style
+	return ActivityCardStyles.crit_glow(mega_crit)
 
 
 func _stat_box_style_for_box(box: Control, active := false, pressed := false) -> StyleBoxTexture:
@@ -62574,14 +62480,7 @@ func _install_activity_button_shell(button: Button, fill: Color, radius := ACTIO
 
 
 func _activity_button_face_style(fill: Color, radius: float) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = fill
-	style.border_color = Color.TRANSPARENT
-	style.set_border_width_all(0)
-	style.set_corner_radius_all(int(round(radius)))
-	style.anti_aliasing = true
-	style.anti_aliasing_size = 1.25
-	return style
+	return ActivityCardStyles.button_face(fill, radius)
 
 
 func _set_activity_button_shell_theme(button: Button, fill: Color, active := false, animate_state_change := false) -> void:

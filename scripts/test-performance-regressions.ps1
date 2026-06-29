@@ -18,6 +18,7 @@ $skillMenuPanelChromePath = Join-Path $projectRoot "scripts\ui\skill_menu_panel_
 $regenCirclePath = Join-Path $projectRoot "scripts\ui\regen_circle.gd"
 $fishCirclePath = Join-Path $projectRoot "scripts\ui\fish_circle.gd"
 $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_border.gd"
+$activityCardStylesPath = Join-Path $projectRoot "scripts\ui\activity_card_styles.gd"
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $passiveModuleStylesPath = Join-Path $projectRoot "scripts\ui\passive_module_styles.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
@@ -150,6 +151,8 @@ Assert-True (Test-Path -LiteralPath $fishCirclePath) "Missing scripts\ui\fish_ci
 $fishCircle = Get-Content -LiteralPath $fishCirclePath -Raw
 Assert-True (Test-Path -LiteralPath $activityCardBorderPath) "Missing scripts\ui\activity_card_border.gd."
 $activityCardBorder = Get-Content -LiteralPath $activityCardBorderPath -Raw
+Assert-True (Test-Path -LiteralPath $activityCardStylesPath) "Missing scripts\ui\activity_card_styles.gd."
+$activityCardStyles = Get-Content -LiteralPath $activityCardStylesPath -Raw
 Assert-True (Test-Path -LiteralPath $passiveModuleCardBorderPath) "Missing scripts\ui\passive_module_card_border.gd."
 $passiveCardBorder = Get-Content -LiteralPath $passiveModuleCardBorderPath -Raw
 Assert-True (Test-Path -LiteralPath $passiveModuleStylesPath) "Missing scripts\ui\passive_module_styles.gd."
@@ -2042,13 +2045,16 @@ Assert-True ($hubSheetOrVisualFallback -match '_visual_fallback_texture\(\)') "H
 
 $actionArtStyle = Get-FunctionBody -Text $main -Name "_action_art_style"
 Assert-True ($actionArtStyle -match 'action_art_style_cache') "Action art panel frames should reuse a cached StyleBox resource."
-Assert-True ($actionArtStyle -match '_surface_style\(Color\.WHITE, 56, 16, true\)') "Action art panel frames should keep their elevated look while reusing one cached StyleBox."
+Assert-True ($actionArtStyle -match 'ActivityCardStyles\.action_art') "Action art panel frames should delegate style construction to ActivityCardStyles."
+$actionArtStyleHelper = Get-FunctionBody -Text $activityCardStyles -Name "action_art"
+Assert-True ($actionArtStyleHelper -match 'surface_style\.call\(Color\.WHITE, 56, 16, true\)') "Action art panel frames should keep their elevated look while reusing one cached StyleBox."
 Assert-True ($actionArtStyle -notmatch '_surface_style\(Color\.WHITE, 56, 16, false\)') "Action art panel frames should not fall back to the flattened style."
 $actionArtBorderOverlay = Get-FunctionBody -Text $main -Name "_action_art_border_overlay"
 Assert-True ($actionArtBorderOverlay -match '_action_art_border_style\(\)') "Action art border overlays should use their own cached no-center StyleBox."
 Assert-True ($actionArtBorderOverlay -notmatch 'style\.draw_center = false') "Action art border overlays must not mutate the shared panel StyleBox."
 $activityShadeStyle = Get-FunctionBody -Text $main -Name "_activity_shade_style"
 Assert-True ($activityShadeStyle -match 'activity_shade_style_cache') "Repeated activity shade panels should reuse cached StyleBox resources."
+Assert-True ($activityShadeStyle -match 'ActivityCardStyles\.shade') "Activity shade StyleBox construction should live in ActivityCardStyles."
 
 $buildBootWarmupOverlay = Get-FunctionBody -Text $main -Name "_build_boot_warmup_overlay"
 Assert-True ($buildBootWarmupOverlay -match 'BootFlexLoadingAnimationClass\.new\(\)') "Boot warmup splash should mount the sprite loading animation instead of the old static art."
