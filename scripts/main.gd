@@ -16201,61 +16201,23 @@ func _on_chat_send_button_gui_input(event: InputEvent, button: Button) -> void:
 
 
 func _sanitize_chat_message(raw_text: String) -> String:
-	var clean := raw_text.strip_edges()
-	clean = clean.replace("\n", " ").replace("\r", " ").replace("\t", " ")
-	while clean.contains("  "):
-		clean = clean.replace("  ", " ")
-	clean = _censor_chat_message(clean)
-	if clean.length() > CHAT_MESSAGE_MAX_CHARS:
-		clean = clean.substr(0, CHAT_MESSAGE_MAX_CHARS).strip_edges()
-	return clean
+	return ChatState.sanitize_message(raw_text, CHAT_MESSAGE_MAX_CHARS, CHAT_CENSORED_WORDS)
 
 
 func _censor_chat_message(raw_text: String) -> String:
-	var output := ""
-	var token := ""
-	for i in range(raw_text.length()):
-		var ch := raw_text.substr(i, 1)
-		if _is_chat_word_char(ch):
-			token += ch
-		else:
-			output += _censor_chat_token(token)
-			token = ""
-			output += ch
-	output += _censor_chat_token(token)
-	return output
+	return ChatState.censored_message(raw_text, CHAT_CENSORED_WORDS)
 
 
 func _censor_chat_token(token: String) -> String:
-	if token.is_empty():
-		return ""
-	if CHAT_CENSORED_WORDS.has(token.to_lower()):
-		var mask := ""
-		for _i in range(token.length()):
-			mask += "*"
-		return mask
-	return token
+	return ChatState.censored_token(token, CHAT_CENSORED_WORDS)
 
 
 func _is_chat_word_char(ch: String) -> bool:
-	if ch.length() != 1:
-		return false
-	var code := ch.unicode_at(0)
-	return (
-		(code >= 48 and code <= 57)
-		or (code >= 65 and code <= 90)
-		or (code >= 97 and code <= 122)
-	)
+	return ChatState.is_word_char(ch)
 
 
 func _make_chat_message_id() -> String:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var alphabet := "0123456789abcdef"
-	var suffix := ""
-	for _i in range(12):
-		suffix += alphabet.substr(rng.randi_range(0, alphabet.length() - 1), 1)
-	return "m%s_%s" % [_unix_now(), suffix]
+	return ChatState.make_message_id(_unix_now())
 
 
 func _chat_time_text(row_data: Dictionary) -> String:
