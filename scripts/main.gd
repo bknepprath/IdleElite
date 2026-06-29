@@ -70,6 +70,7 @@ const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_border.gd")
 const BerryPrepControls = preload("res://scripts/ui/berry_prep_controls.gd")
 const BuildableModuleOverlay = preload("res://scripts/ui/buildable_module_overlay.gd")
+const ConvergenceBuildOverlay = preload("res://scripts/ui/convergence_build_overlay.gd")
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
 const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_rect.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
@@ -17560,69 +17561,9 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 
 
 func _detail_action_convergence_overlay(pop_card: Control, action: Dictionary) -> Dictionary:
-	var convergence_overlay: Control = null
-	var convergence_overlay_label: Label = null
-	var convergence_build_cta: PanelContainer = null
-	var convergence_build_cta_title: Label = null
-	var convergence_build_cta_meta: Label = null
 	if _is_convergence_action(action):
-		convergence_overlay = ColorRect.new()
-		(convergence_overlay as ColorRect).color = CONVERGENCE_BUILD_OVERLAY_COLOR
-		convergence_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-		convergence_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		convergence_overlay.z_index = 231
-		pop_card.add_child(convergence_overlay)
-		convergence_overlay_label = _label("", 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-		convergence_overlay_label.add_theme_color_override("font_outline_color", COLOR_INK)
-		convergence_overlay_label.add_theme_constant_override("outline_size", 26)
-		convergence_overlay_label.set_anchors_preset(Control.PRESET_FULL_RECT)
-		convergence_overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		convergence_overlay_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		convergence_overlay_label.z_index = 232
-		pop_card.add_child(convergence_overlay_label)
-		convergence_build_cta = PanelContainer.new()
-		convergence_build_cta.custom_minimum_size = Vector2(620, 210)
-		convergence_build_cta.anchor_left = 0.5
-		convergence_build_cta.anchor_right = 0.5
-		convergence_build_cta.anchor_top = 0.5
-		convergence_build_cta.anchor_bottom = 0.5
-		convergence_build_cta.offset_left = -310
-		convergence_build_cta.offset_right = 310
-		convergence_build_cta.offset_top = -105
-		convergence_build_cta.offset_bottom = 105
-		convergence_build_cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		convergence_build_cta.z_index = 233
-		convergence_build_cta.add_theme_stylebox_override("panel", _convergence_build_cta_style())
-		pop_card.add_child(convergence_build_cta)
-		var cta_margin := MarginContainer.new()
-		cta_margin.add_theme_constant_override("margin_left", 34)
-		cta_margin.add_theme_constant_override("margin_right", 34)
-		cta_margin.add_theme_constant_override("margin_top", 24)
-		cta_margin.add_theme_constant_override("margin_bottom", 24)
-		cta_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		convergence_build_cta.add_child(cta_margin)
-		var cta_stack := VBoxContainer.new()
-		cta_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-		cta_stack.add_theme_constant_override("separation", 8)
-		cta_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cta_margin.add_child(cta_stack)
-		convergence_build_cta_title = _label("BUILD SHRINE", 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-		convergence_build_cta_title.add_theme_color_override("font_outline_color", COLOR_INK)
-		convergence_build_cta_title.add_theme_constant_override("outline_size", 18)
-		convergence_build_cta_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cta_stack.add_child(convergence_build_cta_title)
-		convergence_build_cta_meta = _label("", MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-		convergence_build_cta_meta.add_theme_color_override("font_outline_color", COLOR_INK)
-		convergence_build_cta_meta.add_theme_constant_override("outline_size", 12)
-		convergence_build_cta_meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		cta_stack.add_child(convergence_build_cta_meta)
-	return {
-		"convergence_overlay": convergence_overlay,
-		"convergence_overlay_label": convergence_overlay_label,
-		"convergence_build_cta": convergence_build_cta,
-		"convergence_build_cta_title": convergence_build_cta_title,
-		"convergence_build_cta_meta": convergence_build_cta_meta,
-	}
+		return ConvergenceBuildOverlay.build(pop_card, CONVERGENCE_BUILD_OVERLAY_COLOR, COLOR_INK, app_bold_font, app_font, MIN_MOBILE_BODY_FONT_SIZE)
+	return {}
 
 
 func _build_detail_interactive_action_card(skill_id: String, action: Dictionary, content_width: float, _actions_width: float) -> Dictionary:
@@ -28046,21 +27987,6 @@ func _sync_action_stat_chip_title(value_label: Label, title_text: String) -> voi
 	if int(title_label.get_meta("stat_title_outline_size", -1)) != 0:
 		title_label.set_meta("stat_title_outline_size", 0)
 		title_label.add_theme_constant_override("outline_size", 0)
-
-
-func _convergence_build_cta_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#2f8f58")
-	style.border_color = COLOR_INK
-	style.set_border_width_all(8)
-	style.corner_radius_top_left = 34
-	style.corner_radius_top_right = 34
-	style.corner_radius_bottom_left = 34
-	style.corner_radius_bottom_right = 34
-	style.shadow_color = Color(0, 0, 0, 0.34)
-	style.shadow_size = 10
-	style.shadow_offset = Vector2(0, 8)
-	return style
 
 
 func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color: Color, box: Control = null) -> void:
