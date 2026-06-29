@@ -20,6 +20,7 @@ $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_textur
 $actionArtUiPath = Join-Path $projectRoot "scripts\ui\action_art_ui.gd"
 $moduleUtilityRowUiPath = Join-Path $projectRoot "scripts\ui\module_utility_row_ui.gd"
 $paperButtonStylesPath = Join-Path $projectRoot "scripts\ui\paper_button_styles.gd"
+$chatStylesPath = Join-Path $projectRoot "scripts\chat\styles.gd"
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $bootFlexLoadingAnimationPath = Join-Path $projectRoot "scripts\ui\boot_flex_loading_animation.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
@@ -149,6 +150,8 @@ Assert-True (Test-Path -LiteralPath $moduleUtilityRowUiPath) "Missing scripts\ui
 $moduleUtilityRowUi = Get-Content -LiteralPath $moduleUtilityRowUiPath -Raw
 Assert-True (Test-Path -LiteralPath $paperButtonStylesPath) "Missing scripts\ui\paper_button_styles.gd."
 $paperButtonStyles = Get-Content -LiteralPath $paperButtonStylesPath -Raw
+Assert-True (Test-Path -LiteralPath $chatStylesPath) "Missing scripts\chat\styles.gd."
+$chatStyles = Get-Content -LiteralPath $chatStylesPath -Raw
 Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui\rounded_texture_rect.gd."
 $roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $bootFlexLoadingAnimationPath) "Missing scripts\ui\boot_flex_loading_animation.gd."
@@ -2663,10 +2666,11 @@ Assert-True ($leaderboardRow -match 'HORIZONTAL_ALIGNMENT_RIGHT') "Leaderboard r
 Assert-True ($leaderboardRow -match 'score_label\.size_flags_horizontal = Control::SIZE_EXPAND_FILL|score_label\.size_flags_horizontal = Control\.SIZE_EXPAND_FILL') "Leaderboard row score labels should fill the copy column before right-aligning."
 $chatExpandedRow = Get-FunctionBody -Text $main -Name "_chat_expanded_row"
 $chatExpandedMessageStyle = Get-FunctionBody -Text $main -Name "_chat_expanded_message_style"
+$chatExpandedMessageStyleHelper = Get-FunctionBody -Text $chatStyles -Name "expanded_message"
 Assert-True ($chatExpandedRow -match '_chat_expanded_message_style\(deleted, is_self\)') "Expanded chat rows should pass ownership into message bubble styling."
 Assert-True ($chatExpandedMessageStyle -match 'is_self := false') "Expanded chat bubble styling should default to the non-self message appearance."
-Assert-True ($chatExpandedMessageStyle -match 'Color\("#e7f5ff"\)') "Expanded self chat bubbles should have a subtle blue tint."
-Assert-True ($chatExpandedMessageStyle -match 'corner_radius_bottom_right = 10 if is_self and not deleted else 18') "Expanded self chat bubbles should use a small asymmetric corner cue."
+Assert-True ($chatExpandedMessageStyleHelper -match 'Color\("#e7f5ff"\)') "Expanded self chat bubbles should have a subtle blue tint."
+Assert-True ($chatExpandedMessageStyleHelper -match 'corner_radius_bottom_right = 10 if is_self and not deleted else 18') "Expanded self chat bubbles should use a small asymmetric corner cue."
 $profileAvatarPickerButton = Get-FunctionBody -Text $main -Name "_profile_avatar_picker_button"
 $profileAvatarButtonStyle = Get-FunctionBody -Text $main -Name "_profile_avatar_button_style"
 Assert-True ($profileAvatarPickerButton -match 'hover", _profile_avatar_button_style\(selected, false, true\)') "Profile avatar picker buttons should use a distinct hover style."
@@ -2696,6 +2700,10 @@ Assert-True ($updateSkillDetailShadow -match '(?s)_set_canvas_item_visible_if_ch
 
 $syncChatUnreadDot = Get-FunctionBody -Text $main -Name "_sync_chat_unread_dot"
 Assert-True ($syncChatUnreadDot -match '_set_canvas_item_visible_if_changed\(chat_unread_dot, should_show\)') "Chat unread dot sync should guard repeated visibility writes."
+$chatInputStyle = Get-FunctionBody -Text $main -Name "_chat_input_style"
+Assert-True ($chatInputStyle -match 'ChatStyles\.input') "Chat input style construction should live in scripts\chat\styles.gd."
+$chatStyleInputHelper = Get-FunctionBody -Text $chatStyles -Name "input"
+Assert-True ($chatStyleInputHelper -match 'focus_color if focused else ink_color') "Chat style helper should own focused input border color selection."
 $chatStripCommittedVisible = Get-FunctionBody -Text $main -Name "_chat_strip_committed_visible"
 Assert-True ($chatStripCommittedVisible -match '_set_canvas_item_visible_if_changed\(chat_strip, true\)') "Chat strip show should guard repeated visibility writes."
 Assert-True ($chatStripCommittedVisible -match '_set_canvas_item_visible_if_changed\(chat_strip, false\)') "Chat strip hide should guard repeated visibility writes."
