@@ -2072,8 +2072,6 @@ $addActivityBackArrow = Get-FunctionBody -Text $main -Name "_add_activity_back_a
 Assert-True ($addActivityBackArrow -match '_texture_or_visual_fallback\(ACTIVITY_BACK_TEXTURE\)') "Activity back-arrow art should not assign nullable loaded textures directly."
 $activityJumpButton = Get-FunctionBody -Text $main -Name "_activity_jump_button"
 Assert-True ($activityJumpButton -match '_texture_or_visual_fallback\(path\)') "Activity jump-arrow buttons should not assign nullable loaded textures directly."
-$activityLockPiece = Get-FunctionBody -Text $main -Name "_activity_lock_piece"
-Assert-True ($activityLockPiece -match '_texture_or_visual_fallback\(path\)') "Activity lock pieces should not assign nullable loaded textures directly."
 $hubSheetImage = Get-FunctionBody -Text $main -Name "_hub_sheet_image"
 Assert-True ($hubSheetImage -match '_hub_sheet_or_visual_fallback\(path, index, cell_size\)') "Hub sheet images should not assign nullable atlas textures to TextureRects."
 $refreshHubModuleArt = Get-FunctionBody -Text $main -Name "_refresh_hub_module_art"
@@ -2845,9 +2843,6 @@ Assert-True ($main -match 'var skill_swipe_gap_render_offset_x := 0\.0') "Gap sw
 $renderSkillDetail = Get-FunctionBody -Text $main -Name "_render_skill_detail"
 Assert-True ($renderSkillDetail -match 'initial_drag_x := 0\.0 if strip_mode else skill_swipe_gap_render_offset_x') "Gap swipes should render incoming detail pages offscreen from their first frame."
 
-$swipeFadeProgress = Get-FunctionBody -Text $main -Name "_skill_swipe_fade_progress"
-Assert-True ($swipeFadeProgress -match 'SKILL_SWIPE_PAGE_FADE_DISTANCE') "Skill swipe fade progress should use the bounded fade distance."
-Assert-True ($swipeFadeProgress -match 't \* t \* \(3\.0 - 2\.0 \* t\)') "Skill swipe fade should use a smoothstep curve."
 $previewFadeProgress = Get-FunctionBody -Text $main -Name "_skill_swipe_preview_fade_progress"
 Assert-True ($previewFadeProgress -match 'SKILL_SWIPE_PREVIEW_FADE_DISTANCE') "Incoming swipe previews should use the faster preview fade distance."
 $syncSwipeDragFrameFade = Get-FunctionBody -Text $main -Name "_sync_skill_swipe_drag_frame_fade"

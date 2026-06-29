@@ -12126,13 +12126,6 @@ func _apply_skill_column_layout(frame: Control, content_width: float, drag_x: fl
 	frame.offset_right = left + content_width
 
 
-func _skill_swipe_fade_progress(abs_x: float, force_enabled := false) -> float:
-	if not force_enabled and not SKILL_SWIPE_PAGE_FADE_ENABLED:
-		return 0.0
-	var t := clampf(abs_x / maxf(1.0, SKILL_SWIPE_PAGE_FADE_DISTANCE), 0.0, 1.0)
-	return t * t * (3.0 - 2.0 * t)
-
-
 func _skill_swipe_preview_fade_progress(abs_x: float) -> float:
 	var t := clampf(abs_x / maxf(1.0, SKILL_SWIPE_PREVIEW_FADE_DISTANCE), 0.0, 1.0)
 	return t * t * (3.0 - 2.0 * t)
@@ -12992,30 +12985,6 @@ func _clear_hub_hotspot_hold() -> void:
 	hub_hotspot_hold_start_global = Vector2.ZERO
 	hub_hotspot_hold_current_global = Vector2.ZERO
 	hub_hotspot_hold_move_armed = false
-
-
-func _ensure_hub_hotspot_hold_circle() -> void:
-	if hub_hotspot_hold_layer == null or not is_instance_valid(hub_hotspot_hold_layer):
-		hub_hotspot_hold_layer = CanvasLayer.new()
-		hub_hotspot_hold_layer.layer = 139
-		add_child(hub_hotspot_hold_layer)
-	if hub_hotspot_hold_circle == null or not is_instance_valid(hub_hotspot_hold_circle):
-		hub_hotspot_hold_circle = StopHoldCircle.new()
-		_set_canvas_item_visible_if_changed(hub_hotspot_hold_circle, false)
-		hub_hotspot_hold_layer.add_child(hub_hotspot_hold_circle)
-
-
-func _hub_hotspot_hold_ring_rect(module_id: String, button: Control) -> Rect2:
-	var global_rect := button.get_global_rect()
-	var diameter := maxf(global_rect.size.x, global_rect.size.y) + HUB_HOTSPOT_MOVE_HOLD_RING_PADDING * 2.0
-	var center := global_rect.get_center()
-	if module_id == "pond":
-		var visible_rect := _hub_module_visible_art_rect(module_id)
-		var button_field_position := _hub_module_center(module_id) - button.size * 0.5
-		center = button.get_global_transform_with_canvas() * (visible_rect.get_center() - button_field_position)
-		diameter = maxf(diameter * 0.72, 460.0)
-	var ring_size := Vector2(diameter, diameter)
-	return Rect2(center - ring_size * 0.5, ring_size)
 
 
 func _hide_hub_hotspot_hold_circle() -> void:
@@ -37327,30 +37296,6 @@ func _build_skill_swipe_preview_page(skill_id: String, offset := 0) -> Control:
 	return page
 
 
-func _reveal_skill_swipe_preview_modules(offset: int, token: int) -> void:
-	if token != skill_swipe_preview_module_reveal_token:
-		return
-	if offset != skill_swipe_preview_offset:
-		return
-	if not skill_swipe_preview_states.has(offset):
-		return
-	var state := skill_swipe_preview_states[offset] as Dictionary
-	if state == null:
-		return
-	await get_tree().process_frame
-	if token != skill_swipe_preview_module_reveal_token or offset != skill_swipe_preview_offset:
-		return
-	_update_skill_swipe_preview_state(state, 0.0, true)
-	var modules_root := state.get("modules_root") as Control
-	if modules_root != null and is_instance_valid(modules_root):
-		modules_root.visible = true
-		modules_root.modulate.a = 0.0
-		var tween := create_tween()
-		state["reveal_tween"] = tween
-		tween.tween_property(modules_root, "modulate:a", 1.0, ACTIVITY_PREVIEW_FADE_IN_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		tween.finished.connect(_finish_skill_swipe_preview_modules_reveal.bind(token, offset, modules_root.get_instance_id()))
-
-
 func _force_show_skill_swipe_preview_modules(offset: int) -> void:
 	if not skill_swipe_preview_states.has(offset):
 		return
@@ -40987,16 +40932,6 @@ func _stage_next_locked_activity_preview_after_tip_collapse(action_id: String) -
 		return
 	if _stage_next_locked_activity_preview(false):
 		_fade_staged_next_locked_activity_preview(action_id)
-
-
-func _activity_lock_piece(path: String, minimum_size: Vector2) -> TextureRect:
-	var piece := TextureRect.new()
-	piece.texture = _texture_or_visual_fallback(path)
-	piece.custom_minimum_size = minimum_size
-	piece.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	piece.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	piece.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return piece
 
 
 func _lock_requirements_for_overlay(skill_id: String, action: Dictionary) -> Array:
@@ -64373,30 +64308,6 @@ func _button_texture_contains(point: Vector2, rect: Rect2, radius: float) -> boo
 		and point.y >= rect.position.y + clamped_radius
 		and point.y <= rect.end.y - clamped_radius
 	)
-
-
-func _button_style(color: Color, border: int, radius: int, margin := 72, pressed := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = _theme_surface_color(color)
-	style.border_color = _theme_outline_color(COLOR_INK, color)
-	var top_border := maxi(4, border - (0 if pressed else 5))
-	var bottom_border := maxi(4, border + (0 if pressed else 8))
-	style.border_width_left = border
-	style.border_width_right = border
-	style.border_width_top = top_border
-	style.border_width_bottom = bottom_border
-	style.corner_radius_top_left = radius
-	style.corner_radius_top_right = radius
-	style.corner_radius_bottom_left = radius
-	style.corner_radius_bottom_right = radius
-	style.shadow_color = Color(0.0, 0.0, 0.0, (0.52 if not pressed else 0.28) if dark_mode_enabled else (0.38 if not pressed else 0.20))
-	style.shadow_size = 14 if not pressed else 5
-	style.shadow_offset = Vector2(0, 14 if not pressed else 4)
-	style.content_margin_left = margin
-	style.content_margin_right = margin
-	style.content_margin_top = max(18, margin - 18 + (6 if pressed else 0))
-	style.content_margin_bottom = max(18, margin - 10 - (4 if pressed else 0))
-	return style
 
 
 func _surface_style(color: Color, radius: int, margin := 28, elevated := false) -> StyleBoxFlat:
