@@ -65,3 +65,13 @@ static func duration(seconds: float) -> String:
 	if hours > 0:
 		return "%sh %sm" % [hours, minutes]
 	return "%sm" % maxi(1, minutes)
+
+
+static func countdown(seconds: int) -> String:
+	var total := maxi(0, seconds)
+	var hours := int(floor(float(total) / 3600.0))
+	var minutes := int(floor(float(total % 3600) / 60.0))
+	var secs := total % 60
+	if hours > 0:
+		return "%d:%02d:%02d" % [hours, minutes, secs]
+	return "%d:%02d" % [minutes, secs]
