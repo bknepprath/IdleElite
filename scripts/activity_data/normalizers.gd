@@ -1,6 +1,50 @@
 class_name ActivityDataNormalizers
 
 
+static func action_for_load(source: Dictionary, owner_skill_id: String, database_order: int, mat_rewards: Array = []) -> Dictionary:
+	var action_id := str(source.get("id", ""))
+	if action_id.is_empty():
+		action_id = slug(str(source.get("name", "Action")))
+	var unlock_level := int(source.get("unlock", 1))
+	var xp_value := int(source.get("xp", source.get("rewards", {}).get("xp", 1)))
+	var action_data := {
+		"id": action_id,
+		"name": str(source.get("name", action_id.capitalize())),
+		"unlock": unlock_level,
+		"tier": int(source.get("tier", 1)),
+		"seconds": float(source.get("seconds", 1.0)),
+		"xp": xp_value,
+		"stamina": int(source.get("stamina", source.get("costs", {}).get("stamina", 1))),
+		"success": float(source.get("success", 90.0)),
+		"art": res_path(str(source.get("art", ""))),
+		"bg": res_path(str(source.get("background", source.get("bg", ""))))
+	}
+	var art_animation := action_art_animation_for_load(source.get("art_animation", {}))
+	if not art_animation.is_empty():
+		action_data["art_animation"] = art_animation
+	var requirements := action_requirements_for_load(source, owner_skill_id, unlock_level)
+	action_data["requirements"] = requirements
+	action_data["sort_unlock"] = int(source.get("sort_unlock", max_requirement_level(requirements, unlock_level)))
+	action_data["database_order"] = database_order
+	action_data["xp_rewards"] = action_xp_rewards_for_load(source, owner_skill_id, xp_value)
+	if not mat_rewards.is_empty():
+		action_data["mat_rewards"] = mat_rewards
+	action_data["combo_tags"] = string_array_for_load(source.get("combo_tags", []))
+	action_data["display_tags"] = string_array_for_load(source.get("display_tags", source.get("tags", [])))
+	var event_metadata := event_metadata_for_load(source.get("event", {}))
+	if not event_metadata.is_empty():
+		action_data["event"] = event_metadata
+	var kind := str(source.get("kind", source.get("type", "activity")))
+	action_data["kind"] = kind
+	if owner_skill_id == "fishing":
+		action_data["area"] = str(source.get("area", ""))
+	if kind == "passive_item_collect":
+		action_data["passive"] = source.get("passive", {})
+		action_data["stamina"] = 0
+		action_data["success"] = 100.0
+	return action_data
+
+
 static func event_module_for_load(source: Dictionary, definition_order: int) -> Dictionary:
 	var page := str(source.get("page", source.get("skill", source.get("skill_id", "")))).strip_edges()
 	if page.is_empty():

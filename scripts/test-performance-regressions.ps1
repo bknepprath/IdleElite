@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
+$activityDataNormalizersPath = Join-Path $projectRoot "scripts\activity_data\normalizers.gd"
 $leaderboardProfilePath = Join-Path $projectRoot "scripts\leaderboard\profile.gd"
 $tipStatePath = Join-Path $projectRoot "scripts\tutorial\tip_state.gd"
 $cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
@@ -102,6 +103,8 @@ function Get-ExportPresetBlock {
 
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
 $main = Get-Content -LiteralPath $mainPath -Raw
+Assert-True (Test-Path -LiteralPath $activityDataNormalizersPath) "Missing scripts\activity_data\normalizers.gd."
+$activityDataNormalizers = Get-Content -LiteralPath $activityDataNormalizersPath -Raw
 Assert-True (Test-Path -LiteralPath $leaderboardProfilePath) "Missing scripts\leaderboard\profile.gd."
 $leaderboardProfile = Get-Content -LiteralPath $leaderboardProfilePath -Raw
 Assert-True (Test-Path -LiteralPath $tipStatePath) "Missing scripts\tutorial\tip_state.gd."
@@ -797,7 +800,8 @@ Assert-True ($savePayload -match '"stamina": _stamina_for_save\(\)') "Save paylo
 Assert-True ($savePayload -match '"stamina_bank": _stamina_bank_for_save\(\)') "Save payload should serialize derived stamina bank state."
 Assert-True ($savePayload -match '"mats": _mats_for_save\(\)' -and $savePayload -match '"log_currency": maxi\(0, log_currency\)') "Save payload should serialize mats and the legacy Softwood mirror."
 $loadActivityDatabase = Get-FunctionBody -Text $main -Name "_load_activity_database"
-Assert-True ($loadActivityDatabase -match 'action_data\["mat_rewards"\] = mat_rewards') "Activity database loading should preserve mat reward definitions at runtime."
+$activityDataActionForLoad = Get-FunctionBody -Text $activityDataNormalizers -Name "action_for_load"
+Assert-True ($loadActivityDatabase -match 'ActivityDataNormalizers\.action_for_load\(action, skill_id, actions\.size\(\), _action_mat_reward_defs\(action\)\)' -and $activityDataActionForLoad -match 'action_data\["mat_rewards"\] = mat_rewards') "Activity database loading should preserve mat reward definitions through the extracted action normalizer."
 $woodcuttingSkill = @($activityDatabase.skills | Where-Object { $_.id -eq "woodcutting" })[0]
 Assert-True ($null -ne $woodcuttingSkill) "Activity database should include Woodcutting."
 $woodcuttingActionIds = @($woodcuttingSkill.actions | ForEach-Object { $_.id })

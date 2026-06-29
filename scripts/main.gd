@@ -48616,47 +48616,7 @@ func _load_activity_database() -> bool:
 				if typeof(raw_action) != TYPE_DICTIONARY:
 					continue
 				var action := raw_action as Dictionary
-				var action_id := str(action.get("id", ""))
-				if action_id.is_empty():
-					action_id = ActivityDataNormalizers.slug(str(action.get("name", "Action")))
-				var unlock_level := int(action.get("unlock", 1))
-				var xp_value := int(action.get("xp", action.get("rewards", {}).get("xp", 1)))
-				var action_data := {
-					"id": action_id,
-					"name": str(action.get("name", action_id.capitalize())),
-					"unlock": unlock_level,
-					"tier": int(action.get("tier", 1)),
-					"seconds": float(action.get("seconds", 1.0)),
-					"xp": xp_value,
-					"stamina": int(action.get("stamina", action.get("costs", {}).get("stamina", 1))),
-					"success": float(action.get("success", 90.0)),
-					"art": ActivityDataNormalizers.res_path(str(action.get("art", ""))),
-					"bg": ActivityDataNormalizers.res_path(str(action.get("background", action.get("bg", ""))))
-				}
-				var art_animation := ActivityDataNormalizers.action_art_animation_for_load(action.get("art_animation", {}))
-				if not art_animation.is_empty():
-					action_data["art_animation"] = art_animation
-				var requirements := ActivityDataNormalizers.action_requirements_for_load(action, skill_id, unlock_level)
-				action_data["requirements"] = requirements
-				action_data["sort_unlock"] = int(action.get("sort_unlock", ActivityDataNormalizers.max_requirement_level(requirements, unlock_level)))
-				action_data["database_order"] = actions.size()
-				action_data["xp_rewards"] = ActivityDataNormalizers.action_xp_rewards_for_load(action, skill_id, xp_value)
-				var mat_rewards := _action_mat_reward_defs(action)
-				if not mat_rewards.is_empty():
-					action_data["mat_rewards"] = mat_rewards
-				action_data["combo_tags"] = ActivityDataNormalizers.string_array_for_load(action.get("combo_tags", []))
-				action_data["display_tags"] = ActivityDataNormalizers.string_array_for_load(action.get("display_tags", action.get("tags", [])))
-				var event_metadata := ActivityDataNormalizers.event_metadata_for_load(action.get("event", {}))
-				if not event_metadata.is_empty():
-					action_data["event"] = event_metadata
-				var kind := str(action.get("kind", action.get("type", "activity")))
-				action_data["kind"] = kind
-				if skill_id == "fishing":
-					action_data["area"] = str(action.get("area", ""))
-				if kind == "passive_item_collect":
-					action_data["passive"] = action.get("passive", {})
-					action_data["stamina"] = 0
-					action_data["success"] = 100.0
+				var action_data := ActivityDataNormalizers.action_for_load(action, skill_id, actions.size(), _action_mat_reward_defs(action))
 				actions.append(action_data)
 		_sort_activity_actions_for_page(skill_id, actions)
 		actions_by_skill[skill_id] = actions
