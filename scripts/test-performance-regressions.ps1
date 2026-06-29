@@ -6,6 +6,7 @@ $activityDataNormalizersPath = Join-Path $projectRoot "scripts\activity_data\nor
 $leaderboardProfilePath = Join-Path $projectRoot "scripts\leaderboard\profile.gd"
 $tipStatePath = Join-Path $projectRoot "scripts\tutorial\tip_state.gd"
 $temporaryEventStatePath = Join-Path $projectRoot "scripts\temporary_events\state.gd"
+$firebaseRuntimePath = Join-Path $projectRoot "scripts\firebase\runtime.gd"
 $cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
 $activityCardInnerShadowPath = Join-Path $projectRoot "scripts\ui\activity_card_inner_shadow.gd"
 $skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detail_page_shelf_shadow.gd"
@@ -112,6 +113,8 @@ Assert-True (Test-Path -LiteralPath $tipStatePath) "Missing scripts\tutorial\tip
 $tipState = Get-Content -LiteralPath $tipStatePath -Raw
 Assert-True (Test-Path -LiteralPath $temporaryEventStatePath) "Missing scripts\temporary_events\state.gd."
 $temporaryEventState = Get-Content -LiteralPath $temporaryEventStatePath -Raw
+Assert-True (Test-Path -LiteralPath $firebaseRuntimePath) "Missing scripts\firebase\runtime.gd."
+$firebaseRuntime = Get-Content -LiteralPath $firebaseRuntimePath -Raw
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 Assert-True (Test-Path -LiteralPath $exportPresetsPath) "Missing export_presets.cfg."
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
@@ -358,8 +361,8 @@ Assert-True ($actionCardMedalCeremonyCleanup -match 'Trying to cast a freed obje
 Assert-True ($checkProject -match 'test-crash-report-recovery\.ps1' -and $crashReportRecovery -match 'crash-report-recovery-ok' -and $crashReportRecovery -match '\{not-json') "Project validation should include crash report recovery coverage for malformed and structured crash reports."
 $crashReportClipboardText = Get-FunctionBody -Text $main -Name "_crash_report_clipboard_text"
 Assert-True ($crashReportClipboardText -match 'JSON\.new\(\)' -and $crashReportClipboardText -match 'json\.parse\(raw_report\) != OK' -and $crashReportClipboardText -notmatch 'JSON\.parse_string\(raw_report\)') "Crash report clipboard formatting should parse malformed reports without emitting Godot JSON errors."
-$parseJsonSilent = Get-FunctionBody -Text $main -Name "_parse_json_silent"
-Assert-True ($parseJsonSilent -match 'JSON\.new\(\)' -and $parseJsonSilent -match 'json\.parse\(raw_text\) != OK' -and $main -notmatch 'JSON\.parse_string') "External JSON parsing should go through the silent JSON helper instead of JSON.parse_string, which emits parse errors on malformed text."
+$parseJsonSilent = Get-FunctionBody -Text $firebaseRuntime -Name "parse_json_silent"
+Assert-True ($parseJsonSilent -match 'JSON\.new\(\)' -and $parseJsonSilent -match 'json\.parse\(raw_text\) != OK' -and $main -notmatch 'JSON\.parse_string' -and $firebaseRuntime -notmatch 'JSON\.parse_string') "External JSON parsing should go through the silent JSON helper instead of JSON.parse_string, which emits parse errors on malformed text."
 Assert-True ($checkProject -match 'function Assert-NoUnexpectedGodotErrors[\s\S]*Out-String -Width 4096') "Project validation's general Godot error scanner should inspect rendered PowerShell ErrorRecord text."
 Assert-True ($checkProject -match 'Assert-NoCrashLikeGodotErrors \$lastFailureOutput "\$Context non-strict failure output"') "Project validation should not bury crash-like errors inside non-strict skills-page performance warning output."
 Assert-True ($checkProject -match '\(ERROR\|SCRIPT ERROR\|powershell\\\.exe : ERROR\):') "Project validation crash scanner should catch embedded ErrorRecord text, not only pristine line prefixes."

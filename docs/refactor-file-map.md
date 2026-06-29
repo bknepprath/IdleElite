@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 209 files / about 99,254 counted text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 214 files / about 112,469 counted text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 65,045 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls and remaining inline draw classes now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, fishing save-state helpers now preload from `scripts/fishing/`, tutorial/tip save-state helpers now preload from `scripts/tutorial/`, temporary-event save-state helpers now preload from `scripts/temporary_events/`, audio player-set construction and settings normalization now preload from `scripts/audio/`, leaderboard profile/save/restore rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state/presentation helpers now preload from `scripts/achievements/`, progression skill save-state and medal buff math now preload from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, timestamp, and outbound payload helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser/action-shape helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and save file I/O, shared save-state normalizers, save-progress predicates, generic field clamps, plus autosave regression evidence now preload from `scripts/save_state/`; boot save selection is split into focused helpers. |
+| `scripts/main.gd` * | 65,276 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls and remaining inline draw classes now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, fishing save-state helpers now preload from `scripts/fishing/`, tutorial/tip save-state helpers now preload from `scripts/tutorial/`, temporary-event save-state helpers now preload from `scripts/temporary_events/`, audio player-set construction and settings normalization now preload from `scripts/audio/`, leaderboard profile/save/restore rules now preload from `scripts/leaderboard/`, Firebase URL/key/runtime primitives now preload from `scripts/firebase/`, achievement milestone/reward/state/presentation helpers now preload from `scripts/achievements/`, progression skill save-state and medal buff math now preload from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, timestamp, and outbound payload helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser/action-shape helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and save file I/O, shared save-state normalizers, save-progress predicates, generic field clamps, plus autosave regression evidence now preload from `scripts/save_state/`; boot save selection is split into focused helpers. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -129,6 +129,12 @@ Legend:
 | --- | ---: | --- |
 | `scripts/leaderboard/profile.gd` * | 156 | Leaderboard profile avatar clamping, display-name cleanup, name-key generation/validation, guest-name detection/generation, player-id generation/sanitization, profile save/restore metadata, auth provider normalization, and refresh-token cleanup. |
 
+## Firebase Helper Scripts
+
+| Path | Lines | What lives here |
+| --- | ---: | --- |
+| `scripts/firebase/runtime.gd` * | 122 | Firebase runtime primitives: silent JSON parsing, database URL/API-key sanitization, official Realtime Database host allowlisting, REST URL construction, server timestamp payloads, error-body detail extraction, and stream target parsing. |
+
 ## Audio Helper Scripts
 
 | Path | Lines | What lives here |
@@ -176,7 +182,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/activity_data/normalizers.gd` * | 277 | Pure activity/event database load normalization: action dictionary construction, event module records, requirements, XP/resource rewards, tag arrays, art animation metadata, resource paths, and slugs. |
+| `scripts/activity_data/normalizers.gd` * | 321 | Pure activity/event database load normalization: action dictionary construction, event module records, requirements, XP/resource rewards, tag arrays, art animation metadata, resource paths, and slugs. |
 
 ## Material Helper Scripts
 
@@ -196,7 +202,7 @@ Legend:
 | Path | Lines | What lives here |
 | --- | ---: | --- |
 | `scripts/check-project.ps1` | 381 | Preferred broad project validation entrypoint. |
-| `scripts/test-performance-regressions.ps1` * | 3,030 | Static/runtime regression assertions for performance-sensitive code and UI contracts; achievement/chat/leaderboard/tip/temporary-event state restore and activity-data action normalization now assert extracted helpers. |
+| `scripts/test-performance-regressions.ps1` * | 3,033 | Static/runtime regression assertions for performance-sensitive code and UI contracts; achievement/chat/leaderboard/tip/temporary-event state restore, Firebase silent JSON parsing, and activity-data action normalization now assert extracted helpers. |
 | `scripts/test-save-normalization.ps1` * | 2,883 | Save/load normalization regression assertions; save-file parser/recovery assertions now target `SaveStateFiles`. |
 | `scripts/test-module-list-transitions.ps1` | 3,289 | Module list transition behavioral validation. |
 | `scripts/test-unlock-combo-visual-smoke.ps1` * | 1,012 | Unlock/lock visual smoke test; now owns its fishing combo setup helpers instead of calling production-only hooks. |
@@ -206,7 +212,7 @@ Legend:
 | `scripts/check-activity-database-contracts.ps1` | 48 | Activity database static contracts. |
 | `scripts/audit-activity-database.ps1` | 870 | Activity database audit. |
 | `scripts/capture-woodcutting-firepit.ps1` | 482 | Screenshot capture for firepit/skill-detail layout. |
-| `scripts/check-leaderboard-cost-safety.ps1` * | 371 | Leaderboard cost and safety assertions. |
+| `scripts/check-leaderboard-cost-safety.ps1` * | 391 | Leaderboard cost and safety assertions; Firebase host/API-key guards now assert the extracted runtime helper. |
 | `scripts/test-everything.ps1` | 213 | Broad validation orchestrator. |
 | `scripts/lib/godot-processes.ps1` | 20 | Godot process helper functions. |
 
@@ -250,6 +256,7 @@ Legend:
 | `scripts/achievements/rewards.gd` | added | New extracted achievement reward helper for art paths, target tables, and reward amount formulas. |
 | `scripts/achievements/state.gd` | added | New extracted achievement state helper for save-shape normalization, milestone filtering, reward bonuses, and completed/new id selection. |
 | `scripts/achievements/presentation.gd` | added | New extracted achievement presentation helper for pure badge/progress layout math. |
+| `scripts/firebase/runtime.gd` | added | New extracted Firebase runtime helper for silent JSON parsing, sanitized config, allowlisted database URL construction, server timestamps, error detail extraction, and stream target parsing. |
 | `scripts/module_ui/keys.gd` | added | New extracted module UI key helper for action, fishing area, fishing offer, thieving heist, hub keys, skill ownership checks, lazy track-id parsing, and saved key collection normalization. |
 | `scripts/ui/button_press_state.gd` | added | New extracted helper for button press-state metadata, including optional extra metadata fields. |
 | `scripts/ui/regen_circle.gd` | added | New extracted stamina/regen gauge drawing class. |
@@ -265,13 +272,13 @@ Legend:
 | `scripts/ui/module_collapse_minus_glyph.gd` | added | New extracted module collapse minus glyph control. |
 | `scripts/ui/medal_sparkle_star.gd` | added | New extracted medal sparkle star control. |
 | `scripts/ui/medal_shine_slash.gd` | added | New extracted medal shine slash animation control. |
-| `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf; RegenCircle and FishCircle assertions now target extracted scripts. Also contains pre-existing save/refactor assertion edits from active worktree. |
+| `scripts/test-performance-regressions.ps1` | modified | Static assertion updated so skill detail action viewport must clip below the skill info shelf; RegenCircle and FishCircle assertions now target extracted scripts; silent JSON parsing assertion now targets `scripts/firebase/runtime.gd`. Also contains pre-existing save/refactor assertion edits from active worktree. |
 | `scripts/check-ui-boundary-contracts.ps1` | modified | Chat presentation boundary now tracks the live expanded composer instead of deleted `_chat_composer`. |
 | `scripts/check-activity-ui-boundary-contracts.ps1` | modified | Unlock boundary no longer preserves deleted test-only `_unlock_prior_test_actions` listing. |
 | `docs/ui-runtime-boundary-map.md` | modified | Chat boundary updated for live composer helper. |
 | `docs/activity-ui-boundary-map.md` | modified | Unlock boundary map no longer lists deleted test helper. |
 | `scripts/test-save-normalization.ps1` | modified | Save-file parser/recovery checks now preload `SaveStateFiles` instead of calling deleted `main.gd` pass-through wrappers. |
-| `scripts/check-leaderboard-cost-safety.ps1` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
+| `scripts/check-leaderboard-cost-safety.ps1` | modified | Firebase URL/API-key safety assertions now target `scripts/firebase/runtime.gd`. |
 | `docs/plan-v0.5.0.md` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
 | `docs/plan-v0.5.0.html` | modified | Pre-existing active worktree changes; not yet owned by this map pass. |
 | `docs/ponytail-line-reductions.md` | untracked | Pre-existing line-reduction notes. |
@@ -318,7 +325,8 @@ Legend:
 
 7. Leaderboard
    - Current: local profile name/id/avatar rules live in `scripts/leaderboard/profile.gd`.
-   - Next lazy win: keep Firebase/network sync in `scripts/main.gd` until leaderboard request state can move as a full boundary.
+   - Current: Firebase URL/API-key/runtime primitives live in `scripts/firebase/runtime.gd`.
+   - Next lazy win: keep Firebase request state in `scripts/main.gd` until leaderboard/chat/cloud-save network state can move as a full boundary.
 
 8. Activity queue
    - Current: queue normalization and circular next-index math live in `scripts/activity_queue/state.gd`.
@@ -398,6 +406,10 @@ Legend:
 | `.\scripts\test-performance-regressions.ps1` | passed after moving module UI saved key collection normalization. |
 | `.\scripts\check-ui-boundary-contracts.ps1` | passed after moving module UI saved key collection normalization. |
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after moving module UI saved key collection normalization. |
+| `git diff --check -- scripts/main.gd scripts/firebase/runtime.gd scripts/test-performance-regressions.ps1 scripts/check-leaderboard-cost-safety.ps1` | passed after extracting Firebase runtime helpers. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting Firebase runtime helpers. |
+| `.\scripts\test-firebase-leaderboard-runtime-guard.ps1` | passed after extracting Firebase runtime helpers. |
+| `.\scripts\check-leaderboard-cost-safety.ps1` | passed after extracting Firebase runtime helpers. |
 | `.\scripts\test-module-list-transitions.ps1` | passed after moving module UI saved key collection normalization; runner emitted existing save-protection/leak-at-exit warnings. |
 | `git diff --check -- scripts/main.gd scripts/module_ui/keys.gd docs/refactor-file-map.md` | passed after deleting low-call module UI pass-through wrappers. |
 | `.\scripts\test-save-normalization.ps1` | first rerun failed on unrelated chat retry timestamp assertions, then passed on immediate rerun after deleting low-call module UI pass-through wrappers; runner emitted existing leak-at-exit warnings. |

@@ -15,6 +15,7 @@ const AchievementPresentation = preload("res://scripts/achievements/presentation
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
+const FirebaseRuntime = preload("res://scripts/firebase/runtime.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const MedalBuffs = preload("res://scripts/progression/medal_buffs.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
@@ -1244,10 +1245,6 @@ const LEADERBOARD_CATEGORY_SKILL_PREFIX := "skill_xp:"
 const LEADERBOARD_HTTP_HEADER_JSON := "Content-Type: application/json"
 const LEADERBOARD_HTTP_HEADER_ACCEPT_JSON := "Accept: application/json"
 const LEADERBOARD_HTTP_HEADER_FORM := "Content-Type: application/x-www-form-urlencoded"
-const LEADERBOARD_FIREBASE_URL_SCHEME := "https://"
-const LEADERBOARD_FIREBASE_US_HOST_SUFFIX := ".firebaseio.com"
-const LEADERBOARD_FIREBASE_REGIONAL_HOST_SUFFIX := ".firebasedatabase.app"
-const LEADERBOARD_FIREBASE_HOST_CHARS := "abcdefghijklmnopqrstuvwxyz0123456789-"
 const AD_BONUS_SECONDS := 2 * 60 * 60
 const AD_BONUS_WARN_THRESHOLD_SECONDS := 4 * 60 * 60
 const AD_BONUS_MAX_SECONDS := 6 * 60 * 60
@@ -6280,64 +6277,25 @@ func _leaderboard_load_firebase_config() -> void:
 
 
 func _parse_json_silent(raw_text: String) -> Variant:
-	var json := JSON.new()
-	if json.parse(raw_text) != OK:
-		return null
-	return json.data
+	return FirebaseRuntime.parse_json_silent(raw_text)
 
 
 func _leaderboard_firebase_base_url() -> String:
 	_leaderboard_load_firebase_config()
-	var url := leaderboard_config_database_url if not leaderboard_config_database_url.is_empty() else FIREBASE_DATABASE_URL.strip_edges()
-	while url.ends_with("/"):
-		url = url.substr(0, url.length() - 1)
-	if url == "https://YOUR-PROJECT-default-rtdb.firebaseio.com":
-		return ""
-	if not _leaderboard_database_url_allowed(url):
-		return ""
-	return url
+	return FirebaseRuntime.sanitized_database_url(leaderboard_config_database_url, FIREBASE_DATABASE_URL)
 
 
 func _leaderboard_firebase_api_key() -> String:
 	_leaderboard_load_firebase_config()
-	var key := leaderboard_config_web_api_key if not leaderboard_config_web_api_key.is_empty() else FIREBASE_WEB_API_KEY.strip_edges()
-	if key == "YOUR_FIREBASE_WEB_API_KEY":
-		return ""
-	if key.length() < 20 or key.find(" ") >= 0 or key.find("\t") >= 0 or key.find("\n") >= 0 or key.find("\r") >= 0:
-		return ""
-	return key
+	return FirebaseRuntime.sanitized_api_key(leaderboard_config_web_api_key, FIREBASE_WEB_API_KEY)
 
 
 func _leaderboard_database_url_allowed(url: String) -> bool:
-	if url.is_empty() or not url.begins_with(LEADERBOARD_FIREBASE_URL_SCHEME):
-		return false
-	var host := url.substr(LEADERBOARD_FIREBASE_URL_SCHEME.length()).to_lower()
-	if host.is_empty() or host.find("/") >= 0 or host.find(":") >= 0:
-		return false
-	if host.find("your-project") >= 0 or host.find("your_project") >= 0:
-		return false
-	if host.ends_with(LEADERBOARD_FIREBASE_US_HOST_SUFFIX):
-		var database_name := host.substr(0, host.length() - LEADERBOARD_FIREBASE_US_HOST_SUFFIX.length())
-		return _leaderboard_firebase_host_label_allowed(database_name)
-	if host.ends_with(LEADERBOARD_FIREBASE_REGIONAL_HOST_SUFFIX):
-		var database_and_region := host.substr(0, host.length() - LEADERBOARD_FIREBASE_REGIONAL_HOST_SUFFIX.length())
-		var separator := database_and_region.find(".")
-		if separator <= 0 or separator >= database_and_region.length() - 1:
-			return false
-		return (
-			_leaderboard_firebase_host_label_allowed(database_and_region.substr(0, separator))
-			and _leaderboard_firebase_host_label_allowed(database_and_region.substr(separator + 1))
-		)
-	return false
+	return FirebaseRuntime.database_url_allowed(url)
 
 
 func _leaderboard_firebase_host_label_allowed(value: String) -> bool:
-	if value.is_empty() or value.begins_with("-") or value.ends_with("-"):
-		return false
-	for i in range(value.length()):
-		if LEADERBOARD_FIREBASE_HOST_CHARS.find(value.substr(i, 1)) < 0:
-			return false
-	return true
+	return FirebaseRuntime.host_label_allowed(value)
 
 
 func _leaderboard_firebase_url(path := "", query := "") -> String:
@@ -6353,21 +6311,7 @@ func _cloud_save_firebase_url(path := "", query := "") -> String:
 
 
 func _firebase_database_url(root_path: String, path := "", query := "") -> String:
-	var root := root_path.strip_edges()
-	while root.begins_with("/"):
-		root = root.substr(1)
-	while root.ends_with("/"):
-		root = root.substr(0, root.length() - 1)
-	var clean_path := path.strip_edges()
-	while clean_path.begins_with("/"):
-		clean_path = clean_path.substr(1)
-	var url := "%s/%s" % [_leaderboard_firebase_base_url(), root]
-	if not clean_path.is_empty():
-		url = "%s/%s" % [url, clean_path]
-	url = "%s.json" % url
-	if not query.is_empty():
-		url = "%s?%s" % [url, query]
-	return url
+	return FirebaseRuntime.database_url(_leaderboard_firebase_base_url(), root_path, path, query)
 
 
 func _leaderboard_authenticated_query(query := "") -> String:
@@ -6383,7 +6327,7 @@ func _leaderboard_authenticated_query(query := "") -> String:
 
 
 func _firebase_server_timestamp() -> Dictionary:
-	return {".sv": "timestamp"}
+	return FirebaseRuntime.server_timestamp()
 
 
 func _leaderboard_web_authless_writes_enabled() -> bool:
@@ -6443,21 +6387,7 @@ func _leaderboard_note_fetch_failure(category_id: String, message: String) -> vo
 
 
 func _firebase_error_detail(body: PackedByteArray) -> String:
-	var raw := body.get_string_from_utf8().strip_edges()
-	if raw.is_empty():
-		return ""
-	var parsed = _parse_json_silent(raw)
-	if typeof(parsed) == TYPE_DICTIONARY:
-		var error_payload := parsed as Dictionary
-		var error = error_payload.get("error", "")
-		if typeof(error) == TYPE_DICTIONARY:
-			var error_message := str((error as Dictionary).get("message", "")).strip_edges()
-			if not error_message.is_empty():
-				return error_message
-		var data_message := str(error_payload.get("message", "")).strip_edges()
-		if not data_message.is_empty():
-			return data_message
-	return raw.substr(0, 120)
+	return FirebaseRuntime.error_detail(body)
 
 
 func _leaderboard_ensure_auth() -> bool:
@@ -7938,16 +7868,7 @@ func _sync_chat_unread_dot() -> void:
 
 
 func _firebase_stream_target(url: String) -> Dictionary:
-	if not url.begins_with(LEADERBOARD_FIREBASE_URL_SCHEME):
-		return {}
-	var rest := url.substr(LEADERBOARD_FIREBASE_URL_SCHEME.length())
-	var slash := rest.find("/")
-	if slash <= 0:
-		return {}
-	return {
-		"host": rest.substr(0, slash),
-		"path": rest.substr(slash)
-	}
+	return FirebaseRuntime.stream_target(url)
 
 
 func _chat_note_send_failure(message: String) -> void:

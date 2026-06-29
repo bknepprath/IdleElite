@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
+$firebaseRuntimePath = Join-Path $projectRoot "scripts\firebase\runtime.gd"
 $rulesPath = Join-Path $projectRoot "firebase-realtime-database.rules.json"
 $activityDatabasePath = Join-Path $projectRoot "docs\activity-database.json"
 $setupGuidePath = Join-Path $projectRoot "docs\firebase-leaderboard-setup.md"
@@ -60,6 +61,7 @@ Assert-True (Test-Path -LiteralPath $chatDeleteToolPath) "Missing scripts\remove
 Assert-True (Test-Path -LiteralPath $chatPruneToolPath) "Missing scripts\prune-firebase-chat-messages.ps1"
 
 $main = Get-Content -LiteralPath $mainPath -Raw
+$firebaseRuntime = Get-Content -LiteralPath $firebaseRuntimePath -Raw
 $rules = Get-Content -LiteralPath $rulesPath -Raw | ConvertFrom-Json
 $rulesRaw = Get-Content -LiteralPath $rulesPath -Raw
 $setupGuide = Get-Content -LiteralPath $setupGuidePath -Raw
@@ -103,12 +105,12 @@ Assert-True ($main -match 'const FIREBASE_DATABASE_URL := ""') "Firebase URL mus
 Assert-True ($main -match 'const FIREBASE_WEB_API_KEY := ""') "Firebase Web API key must default to blank so fresh builds make no leaderboard auth calls."
 Assert-True ($main -match 'const FIREBASE_LOCAL_CONFIG_PATH := "res://firebase-leaderboard-config\.json"') "Firebase config must use the expected local opt-in config file."
 Assert-True ($main -match '_leaderboard_load_firebase_config') "Leaderboard must load Firebase values from the local opt-in config file."
-Assert-True ($main -match 'const LEADERBOARD_FIREBASE_US_HOST_SUFFIX := "\.firebaseio\.com"') "Game runtime must explicitly allow official US Realtime Database URLs."
-Assert-True ($main -match 'const LEADERBOARD_FIREBASE_REGIONAL_HOST_SUFFIX := "\.firebasedatabase\.app"') "Game runtime must explicitly allow official regional Realtime Database URLs."
+Assert-True ($firebaseRuntime -match 'const US_HOST_SUFFIX := "\.firebaseio\.com"') "Firebase runtime must explicitly allow official US Realtime Database URLs."
+Assert-True ($firebaseRuntime -match 'const REGIONAL_HOST_SUFFIX := "\.firebasedatabase\.app"') "Firebase runtime must explicitly allow official regional Realtime Database URLs."
 Assert-True ($main -match 'func _leaderboard_database_url_allowed\(url: String\) -> bool:') "Game runtime must reject malformed Firebase database URLs before any network call."
-Assert-True ($main -match 'if not _leaderboard_database_url_allowed\(url\):\s*\r?\n\s*return ""') "Firebase base URL must be blanked when the configured database URL is not allowlisted."
-Assert-True ($main -match 'host\.find\("your-project"\) >= 0 or host\.find\("your_project"\) >= 0') "Game runtime must reject placeholder Firebase database URLs."
-Assert-True ($main -match 'if key\.length\(\) < 20 or key\.find\(" "\) >= 0 or key\.find\("\\t"\) >= 0 or key\.find\("\\n"\) >= 0 or key\.find\("\\r"\) >= 0:\s*\r?\n\s*return ""') "Game runtime must reject placeholder or whitespace-damaged Firebase Web API keys."
+Assert-True ($firebaseRuntime -match 'if not database_url_allowed\(url\):\s*\r?\n\s*return ""') "Firebase base URL must be blanked when the configured database URL is not allowlisted."
+Assert-True ($firebaseRuntime -match 'host\.find\("your-project"\) >= 0 or host\.find\("your_project"\) >= 0') "Firebase runtime must reject placeholder Firebase database URLs."
+Assert-True ($firebaseRuntime -match 'if key\.length\(\) < 20 or key\.find\(" "\) >= 0 or key\.find\("\\t"\) >= 0 or key\.find\("\\n"\) >= 0 or key\.find\("\\r"\) >= 0:\s*\r?\n\s*return ""') "Firebase runtime must reject placeholder or whitespace-damaged Firebase Web API keys."
 Assert-True ($gitignore -match '(?m)^firebase-leaderboard-config\.json$') "Local Firebase config must be ignored by git."
 Assert-True ($exportPresets -match 'include_filter="[^"]*firebase-leaderboard-config\.json') "Android export must explicitly include the local Firebase config when present."
 Assert-True ($exportPresets -match 'include_filter="[^"]*docs/activity-database\.json') "Android export must explicitly include the activity database JSON."
