@@ -30,6 +30,7 @@ const TemporaryEventState = preload("res://scripts/temporary_events/state.gd")
 const ThievingState = preload("res://scripts/thieving/state.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const LeaderboardProfile = preload("res://scripts/leaderboard/profile.gd")
+const LeaderboardPresentation = preload("res://scripts/leaderboard/presentation.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
 const FeatheredCollectGlow = preload("res://scripts/ui/feathered_collect_glow.gd")
 const StopHoldCircle = preload("res://scripts/ui/stop_hold_circle.gd")
@@ -56931,31 +56932,22 @@ func _skill_level_from_total_xp(total_xp: int) -> int:
 
 func _leaderboard_format_score(category_id: String, score: int, skill_level := 0, total_xp := 0) -> String:
 	var valid_id := _leaderboard_valid_category_id(category_id)
-	if valid_id == LEADERBOARD_CATEGORY_TOTAL_LEVEL:
-		if total_xp > 0:
-			return "Lv %s  |  %s XP" % [score, _format_compact_number(float(total_xp), 4)]
-		return "Lv %s" % score
-	if valid_id == LEADERBOARD_CATEGORY_MEDALS:
-		return "%s medals" % score
-	if valid_id == LEADERBOARD_CATEGORY_ELITE_HEAVENLY:
-		return "%s medals" % score
-	if valid_id.begins_with(LEADERBOARD_CATEGORY_SKILL_PREFIX):
-		var level := skill_level if skill_level > 0 else _skill_level_from_total_xp(score)
-		return "Lv %s  |  %s XP" % [level, _format_compact_number(float(score), 4)]
-	return "%s XP" % _format_compact_number(float(score), 4)
+	return LeaderboardPresentation.format_score(
+		valid_id,
+		score,
+		skill_level,
+		total_xp,
+		LEADERBOARD_CATEGORY_TOTAL_LEVEL,
+		LEADERBOARD_CATEGORY_MEDALS,
+		LEADERBOARD_CATEGORY_ELITE_HEAVENLY,
+		LEADERBOARD_CATEGORY_SKILL_PREFIX,
+		Callable(self, "_skill_level_from_total_xp")
+	)
 
 
 func _leaderboard_player_rank_text(category_id: String) -> String:
 	var score := _leaderboard_score_for_category(category_id)
-	if score <= 0:
-		return "unranked"
-	var rank := 1
-	for row in _leaderboard_rows_for_category(category_id):
-		if int((row as Dictionary).get("score", 0)) > score:
-			rank += 1
-	if rank > LEADERBOARD_TOP_COUNT:
-		return "#%s+" % LEADERBOARD_TOP_COUNT
-	return "#%s" % rank
+	return LeaderboardPresentation.player_rank_text(score, _leaderboard_rows_for_category(category_id), LEADERBOARD_TOP_COUNT)
 
 
 func _leaderboard_queued_score() -> int:
@@ -57008,64 +57000,36 @@ func _leaderboard_submit_ready() -> bool:
 
 
 func _leaderboard_submit_status_title() -> String:
-	if god_mode_save_tainted:
-		return "Test save"
-	if not _leaderboard_firebase_enabled():
-		return "Rankings offline"
-	if not _leaderboard_profile_claim_valid():
-		return "Choose Username"
-	if not _leaderboard_auth_ready():
-		return "Scores ready"
-	if leaderboard_submit_in_flight:
-		return "Updating..."
-	if leaderboard_last_submit_unix <= 0:
-		return "Scores ready"
-	if _leaderboard_submit_ready():
-		return "Scores ready"
-	return "Scores saved"
+	return LeaderboardPresentation.submit_status_title(
+		god_mode_save_tainted,
+		_leaderboard_firebase_enabled(),
+		_leaderboard_profile_claim_valid(),
+		_leaderboard_auth_ready(),
+		leaderboard_submit_in_flight,
+		leaderboard_last_submit_unix,
+		_leaderboard_submit_ready()
+	)
 
 
 func _leaderboard_submit_status_detail() -> String:
-	var queued := _leaderboard_queued_score()
-	if god_mode_save_tainted:
-		return "Rankings are hidden for this test save."
-	if not _leaderboard_firebase_enabled():
-		return "Online rankings are not available."
-	if not _leaderboard_profile_claim_valid():
-		return "Save a name to join rankings."
-	var category_pending := _leaderboard_has_pending_category_score()
-	var retry_wait := _leaderboard_auth_retry_wait_seconds()
-	if retry_wait > 0:
-		return "Will try again soon."
-	if leaderboard_auth_in_flight and not _leaderboard_auth_ready():
-		return "Connecting..."
-	if not _leaderboard_auth_ready():
-		return "Scores update automatically."
-	if leaderboard_submit_in_flight:
-		return "Updating rankings..."
-	var simple_status := _leaderboard_simple_status_message()
-	if not simple_status.is_empty():
-		return simple_status
-	if leaderboard_last_submit_unix <= 0:
-		return "Scores update automatically."
-	if queued <= 0 and not category_pending:
-		return "Your score is up to date."
-	if _leaderboard_submit_ready():
-		return "New score ready."
-	return "New score saved."
+	return LeaderboardPresentation.submit_status_detail(
+		god_mode_save_tainted,
+		_leaderboard_firebase_enabled(),
+		_leaderboard_profile_claim_valid(),
+		_leaderboard_auth_retry_wait_seconds(),
+		leaderboard_auth_in_flight,
+		_leaderboard_auth_ready(),
+		leaderboard_submit_in_flight,
+		_leaderboard_simple_status_message(),
+		leaderboard_last_submit_unix,
+		_leaderboard_queued_score(),
+		_leaderboard_has_pending_category_score(),
+		_leaderboard_submit_ready()
+	)
 
 
 func _leaderboard_simple_status_message() -> String:
-	var status := str(leaderboard_status_message).strip_edges()
-	if status.is_empty() or status == "Leaderboard loaded.":
-		return ""
-	if status == "Leaderboard published." or status == "Leaderboard name saved.":
-		return "Scores saved."
-	if status.findn("failed") >= 0 or status.findn("http") >= 0 or status.findn("denied") >= 0 or status.findn("retry") >= 0:
-		return "Will try again soon."
-	if status.findn("loading") >= 0 or status.findn("creating") >= 0 or status.findn("refreshing") >= 0 or status.findn("checking") >= 0:
-		return "Connecting..."
-	return ""
+	return LeaderboardPresentation.simple_status_message(str(leaderboard_status_message))
 
 
 func _leaderboard_rows() -> Array:
@@ -57082,13 +57046,7 @@ func _leaderboard_rows_for_category(category_id: String) -> Array:
 
 
 func _leaderboard_empty_state_detail_text() -> String:
-	var fallback := "Scores appear here after the first update."
-	var status := str(leaderboard_status_message).strip_edges()
-	if status.is_empty() or status == "Leaderboard loaded.":
-		return fallback
-	if status.begins_with("Leaderboard read"):
-		return status
-	return fallback
+	return LeaderboardPresentation.empty_state_detail_text(str(leaderboard_status_message))
 
 
 func _leaderboard_empty_state() -> Control:
