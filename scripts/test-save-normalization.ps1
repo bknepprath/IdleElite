@@ -126,6 +126,11 @@ func _run() -> void:
 	_finish()
 
 
+func _save_payload_value(game: Node, key: String) -> Variant:
+	var payload := game.call("_save_payload", int(game.call("_unix_now"))) as Dictionary
+	return payload.get(key)
+
+
 func _check_mastery_restore(game: Node) -> void:
 	game.call("_restore_mastery_from_save", {
 		"fishing:dip-a-tidepool-minnow": {"xp": 12},
@@ -287,23 +292,23 @@ func _check_fishing_rod_collection_save_restore(game: Node) -> void:
 
 func _check_fishing_numeric_state_save(game: Node) -> void:
 	game.set("fish_currency", -10.0)
-	_expect(float(game.call("_fish_currency_for_save")) == 0.0, "Fishing currency save should clamp negative values.")
+	_expect(float(_save_payload_value(game, "fish_currency")) == 0.0, "Fishing currency save should clamp negative values.")
 	game.set("fishing_net_stored_fish", 999)
-	_expect(int(game.call("_fishing_net_stored_fish_for_save")) == 9, "Fishing net stored-fish save should cap below the haul threshold.")
+	_expect(int(_save_payload_value(game, "fishing_net_stored_fish")) == 9, "Fishing net stored-fish save should cap below the haul threshold.")
 	game.set("fishing_net_successes", -2)
-	_expect(int(game.call("_fishing_net_successes_for_save")) == 0, "Fishing net successes save should clamp negative counts.")
+	_expect(int(_save_payload_value(game, "fishing_net_successes")) == 0, "Fishing net successes save should clamp negative counts.")
 	game.set("fishing_net_stored_xp", -3)
-	_expect(int(game.call("_fishing_net_stored_xp_for_save")) == 0, "Fishing net stored XP save should clamp negative values.")
+	_expect(int(_save_payload_value(game, "fishing_net_stored_xp")) == 0, "Fishing net stored XP save should clamp negative values.")
 	game.set("fishing_net_stored_mastery", -4.0)
-	_expect(float(game.call("_fishing_net_stored_mastery_for_save")) == 0.0, "Fishing net stored mastery save should clamp negative values.")
+	_expect(float(_save_payload_value(game, "fishing_net_stored_mastery")) == 0.0, "Fishing net stored mastery save should clamp negative values.")
 	game.set("fishing_boat_stored_fish", 999)
-	_expect(int(game.call("_fishing_boat_stored_fish_for_save")) == 199, "Fishing boat stored-fish save should cap below the haul threshold.")
+	_expect(int(_save_payload_value(game, "fishing_boat_stored_fish")) == 199, "Fishing boat stored-fish save should cap below the haul threshold.")
 	game.set("fishing_boat_successes", -5)
-	_expect(int(game.call("_fishing_boat_successes_for_save")) == 0, "Fishing boat successes save should clamp negative counts.")
+	_expect(int(_save_payload_value(game, "fishing_boat_successes")) == 0, "Fishing boat successes save should clamp negative counts.")
 	game.set("fishing_boat_stored_xp", -6)
-	_expect(int(game.call("_fishing_boat_stored_xp_for_save")) == 0, "Fishing boat stored XP save should clamp negative values.")
+	_expect(int(_save_payload_value(game, "fishing_boat_stored_xp")) == 0, "Fishing boat stored XP save should clamp negative values.")
 	game.set("fishing_boat_stored_mastery", -7.0)
-	_expect(float(game.call("_fishing_boat_stored_mastery_for_save")) == 0.0, "Fishing boat stored mastery save should clamp negative values.")
+	_expect(float(_save_payload_value(game, "fishing_boat_stored_mastery")) == 0.0, "Fishing boat stored mastery save should clamp negative values.")
 
 
 func _check_fishing_net_collection_save_restore(game: Node) -> void:
@@ -906,7 +911,8 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	var expected_fight_xp := int(reward_map.get("fight", 0))
 	var expected_thieving_xp := int(reward_map.get("thieving", 0))
 	_expect(str(game.call("_temporary_event_log_reward_mat_id")) == "scrapwood", "Covered wagon should treat Scrapwood as the base log material before higher log tiers are unlocked.")
-	_expect(str(game.call("_action_art_resource_icon_path", event_action)) == str(game.call("_mat_icon_path", "scrapwood")), "Covered wagon art badge should show the Scrapwood icon when Scrapwood is the awarded log material.")
+	var badge_icons := game.call("_action_art_resource_icon_paths", event_action) as Array
+	_expect(not badge_icons.is_empty() and str(badge_icons[0]) == str(game.call("_mat_icon_path", "scrapwood")), "Covered wagon art badge should show the Scrapwood icon when Scrapwood is the awarded log material.")
 	skills = game.get("skills") as Dictionary
 	var woodcutting_state := skills.get("woodcutting", {}) as Dictionary
 	woodcutting_state["xp"] = int(game.call("_xp_for_level", 80))
@@ -915,7 +921,8 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	game.call("_recalculate_level", "woodcutting")
 	game.call("_mark_action_manually_unlocked", "woodcutting", "chop-knotty-maple")
 	_expect(str(game.call("_temporary_event_log_reward_mat_id")) == "hardwood", "Covered wagon should choose Hardwood once a Hardwood-yielding woodcutting action is unlocked.")
-	_expect(str(game.call("_action_art_resource_icon_path", event_action)) == str(game.call("_mat_icon_path", "hardwood")), "Covered wagon art badge should show the Hardwood icon when Hardwood is the awarded log material.")
+	badge_icons = game.call("_action_art_resource_icon_paths", event_action) as Array
+	_expect(not badge_icons.is_empty() and str(badge_icons[0]) == str(game.call("_mat_icon_path", "hardwood")), "Covered wagon art badge should show the Hardwood icon when Hardwood is the awarded log material.")
 	var log_range := event_action.get("resource_rewards", {}) as Dictionary
 	var expected_log_min := int(log_range.get("logs_min", 0))
 	var expected_log_max := int(log_range.get("logs_max", expected_log_min))
@@ -1200,9 +1207,9 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	game.set("leaderboard_player_id", " bad id! ")
 	game.set("leaderboard_auth_refresh_token", "  refresh-token  ")
 	game.set("leaderboard_auth_retry_after_unix", -40)
-	_expect(int(game.call("_leaderboard_last_submitted_score_for_save")) == 0, "Leaderboard last score save should clamp negative values.")
-	_expect(int(game.call("_leaderboard_last_submitted_total_xp_for_save")) == 0, "Leaderboard last total XP save should clamp negative values.")
-	_expect(int(game.call("_leaderboard_last_submit_unix_for_save")) == 0, "Leaderboard submit timestamp save should clamp negative values.")
+	_expect(int(_save_payload_value(game, "leaderboard_last_submitted_score")) == 0, "Leaderboard last score save should clamp negative values.")
+	_expect(int(_save_payload_value(game, "leaderboard_last_submitted_total_xp")) == 0, "Leaderboard last total XP save should clamp negative values.")
+	_expect(int(_save_payload_value(game, "leaderboard_last_submit_unix")) == 0, "Leaderboard submit timestamp save should clamp negative values.")
 	_expect(str(game.call("_leaderboard_display_name_for_save")) == "A Name That Is T", "Leaderboard display-name save should sanitize and truncate names.")
 	_expect(str(game.call("_leaderboard_name_key_for_save")).is_empty(), "Leaderboard name-key save should drop invalid keys.")
 	_expect(not bool(game.call("_leaderboard_profile_claimed_for_save")), "Leaderboard profile save should clear unverified claims.")
@@ -1227,7 +1234,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 	_expect(int(game.call("_leaderboard_avatar_index_for_save")) == 19, "Leaderboard avatar save should clamp to a valid avatar index.")
 	_expect(str(game.call("_leaderboard_player_id_for_save")).is_empty(), "Leaderboard player-id save should drop invalid ids.")
 	_expect(str(game.call("_leaderboard_auth_refresh_token_for_save")) == "refresh-token", "Leaderboard refresh-token save should strip whitespace.")
-	_expect(int(game.call("_leaderboard_auth_retry_after_unix_for_save")) == 0, "Leaderboard auth retry save should clamp negative timestamps.")
+	_expect(int(_save_payload_value(game, "leaderboard_auth_retry_after_unix")) == 0, "Leaderboard auth retry save should clamp negative timestamps.")
 
 	game.call("_restore_leaderboard_profile_metadata_from_save", {
 		"leaderboard_display_name": "Mira Stone",
@@ -1336,11 +1343,11 @@ func _check_chat_metadata_save_restore(game: Node) -> void:
 	game.set("chat_stream_next_connect_unix", -5)
 	game.set("chat_last_opened_created_at", -20)
 	game.set("chat_last_opened_message_id", long_id)
-	_expect(int(game.call("_chat_last_send_unix_for_save")) == 0, "Chat last-send save should clamp negative timestamps.")
+	_expect(int(_save_payload_value(game, "chat_last_send_unix")) == 0, "Chat last-send save should clamp negative timestamps.")
 	_expect(int(game.call("_chat_stream_retry_unix_for_save", now)) == now + 30, "Chat retry save should cap future retry timestamps.")
 	_expect(int(game.call("_chat_stream_next_connect_unix_for_save", now)) == now + 30, "Chat next-connect save should stay at least the retry timestamp and cap future timestamps.")
-	_expect(int(game.call("_chat_last_opened_created_at_for_save")) == 0, "Chat opened cursor save should clamp negative timestamps.")
-	var saved_id := str(game.call("_chat_last_opened_message_id_for_save"))
+	_expect(int(_save_payload_value(game, "chat_last_opened_created_at")) == 0, "Chat opened cursor save should clamp negative timestamps.")
+	var saved_id := str(_save_payload_value(game, "chat_last_opened_message_id"))
 	_expect(saved_id.length() == 64, "Chat opened message id save should truncate long ids.")
 	_expect(saved_id.begins_with("abcdefghij"), "Chat opened message id save should strip surrounding whitespace.")
 
@@ -1382,15 +1389,15 @@ func _check_chat_metadata_save_restore(game: Node) -> void:
 
 func _check_resource_and_audio_settings_save(game: Node) -> void:
 	game.set("log_currency", -20)
-	_expect(int(game.call("_log_currency_for_save")) == 0, "Log currency save should clamp negative values.")
+	_expect(int(_save_payload_value(game, "log_currency")) == 0, "Log currency save should clamp negative values.")
 	game.set("music_volume", 1.5)
-	_expect(float(game.call("_music_volume_for_save")) == 1.0, "Music volume save should cap values above one.")
+	_expect(float(_save_payload_value(game, "music_volume")) == 1.0, "Music volume save should cap values above one.")
 	game.set("music_volume", -0.25)
-	_expect(float(game.call("_music_volume_for_save")) == 0.0, "Music volume save should clamp negative values.")
+	_expect(float(_save_payload_value(game, "music_volume")) == 0.0, "Music volume save should clamp negative values.")
 	game.set("sfx_volume", 1.25)
-	_expect(float(game.call("_sfx_volume_for_save")) == 1.0, "SFX volume save should cap values above one.")
+	_expect(float(_save_payload_value(game, "sfx_volume")) == 1.0, "SFX volume save should cap values above one.")
 	game.set("sfx_volume", -0.5)
-	_expect(float(game.call("_sfx_volume_for_save")) == 0.0, "SFX volume save should clamp negative values.")
+	_expect(float(_save_payload_value(game, "sfx_volume")) == 0.0, "SFX volume save should clamp negative values.")
 	game.set("auto_unlock_lockpads_enabled", true)
 	var payload := game.call("_save_payload", int(game.call("_unix_now"))) as Dictionary
 	_expect(bool(payload.get("auto_unlock_lockpads_enabled", false)), "Auto-unlock lockpad setting should be saved when enabled.")
@@ -1477,7 +1484,7 @@ func _check_audio_settings_restore(game: Node) -> void:
 
 func _check_god_mode_save(game: Node) -> void:
 	game.set("god_mode_enabled", true)
-	_expect(not bool(game.call("_god_mode_enabled_for_save")), "God mode enabled save should be gated by availability.")
+	_expect(not bool(_save_payload_value(game, "god_mode_enabled")), "God mode enabled save should be gated by availability.")
 
 
 func _check_test_profile_save_repair(game: Node) -> void:
@@ -2192,19 +2199,19 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	game.call("_restore_hub_selected_module_id_from_save", {"hub_selected_module_id": "barn"})
 	_expect(str(game.get("hub_selected_module_id")) == "barn", "Hub selected-module restore should preserve persisted hub modules.")
 	game.set("hub_mission_cooldown_until_unix", -12)
-	_expect(int(game.call("_hub_mission_cooldown_until_unix_for_save")) == 0, "Hub mission cooldown save should clamp negative timestamps.")
+	_expect(int(_save_payload_value(game, "hub_mission_cooldown_until_unix")) == 0, "Hub mission cooldown save should clamp negative timestamps.")
 	game.call("_restore_hub_mission_cooldown_until_unix_from_save", {"hub_mission_cooldown_until_unix": -12})
 	_expect(int(game.get("hub_mission_cooldown_until_unix")) == 0, "Hub mission cooldown restore should clamp negative timestamps.")
 	game.call("_restore_hub_mission_cooldown_until_unix_from_save", {"hub_mission_cooldown_until_unix": 1234})
 	_expect(int(game.get("hub_mission_cooldown_until_unix")) == 1234, "Hub mission cooldown restore should preserve nonnegative timestamps.")
 	game.set("plank_boost_enabled", true)
-	_expect(bool(game.call("_plank_boost_enabled_for_save")), "Plank boost save should preserve enabled state.")
+	_expect(bool(_save_payload_value(game, "plank_boost_enabled")), "Plank boost save should preserve enabled state.")
 	game.call("_restore_plank_boost_enabled_from_save", {"plank_boost_enabled": true})
 	_expect(bool(game.get("plank_boost_enabled")), "Plank boost restore should preserve enabled state.")
 	game.call("_restore_plank_boost_enabled_from_save", {})
 	_expect(not bool(game.get("plank_boost_enabled")), "Plank boost restore should default missing state to disabled.")
 	game.set("ad_bonus_seconds_remaining", 999999.0)
-	_expect(float(game.call("_ad_bonus_seconds_remaining_for_save")) == 21600.0, "Ad bonus save should cap remaining seconds.")
+	_expect(float(_save_payload_value(game, "ad_bonus_seconds_remaining")) == 21600.0, "Ad bonus save should cap remaining seconds.")
 	game.call("_restore_ad_bonus_seconds_remaining_from_save", {"ad_bonus_seconds_remaining": -5.0})
 	_expect(float(game.get("ad_bonus_seconds_remaining")) == 0.0, "Ad bonus restore should clamp negative remaining seconds.")
 	game.call("_restore_ad_bonus_seconds_remaining_from_save", {"ad_bonus_seconds_remaining": 999999.0})
@@ -2212,11 +2219,11 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	game.call("_restore_ad_bonus_seconds_remaining_from_save", {"ad_bonus_seconds_remaining": 42.5})
 	_expect(float(game.get("ad_bonus_seconds_remaining")) == 42.5, "Ad bonus restore should preserve valid remaining seconds.")
 	game.set("activity_start_count", -3)
-	_expect(int(game.call("_activity_start_count_for_save")) == 0, "Activity start-count save should clamp negative counts.")
+	_expect(int(_save_payload_value(game, "activity_start_count")) == 0, "Activity start-count save should clamp negative counts.")
 	game.set("activity_completion_count", -4)
-	_expect(int(game.call("_activity_completion_count_for_save")) == 0, "Activity completion-count save should clamp negative counts.")
+	_expect(int(_save_payload_value(game, "activity_completion_count")) == 0, "Activity completion-count save should clamp negative counts.")
 	game.set("guaranteed_success_action_completions", 999)
-	_expect(int(game.call("_guaranteed_success_action_completions_for_save")) == 7, "Guaranteed-success save should cap completion counts.")
+	_expect(int(_save_payload_value(game, "guaranteed_success_action_completions")) == 7, "Guaranteed-success save should cap completion counts.")
 	game.call("_restore_activity_progress_counts_from_save", {
 		"activity_start_count": -3,
 		"activity_completion_count": -4,
@@ -2235,7 +2242,7 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	game.call("_restore_guaranteed_success_action_completions_from_save", {}, 6)
 	_expect(int(game.get("guaranteed_success_action_completions")) == 6, "Guaranteed-success restore should use the supplied fallback completion count.")
 	game.set("onboarding_starter_action_completion_count", -5)
-	_expect(int(game.call("_onboarding_starter_action_completion_count_for_save")) == 0, "Onboarding starter-count save should clamp negative counts.")
+	_expect(int(_save_payload_value(game, "onboarding_starter_action_completion_count")) == 0, "Onboarding starter-count save should clamp negative counts.")
 	game.call("_restore_onboarding_progression_from_save", {"onboarding_fight_auto_run_message_shown": true})
 	_expect(int(game.get("onboarding_starter_action_completion_count")) == 1, "Onboarding restore should backfill starter completions from the auto-run message.")
 	game.call("_restore_onboarding_progression_from_save", {"onboarding_starter_action_completion_count": 2})
@@ -2265,15 +2272,15 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 	game.call("_restore_onboarding_progression_from_save", {"onboarding_medal_tip_shown": true})
 	_expect(bool(game.get("onboarding_mastery_tip_dismissed")), "Onboarding restore should keep medal tips dismissing the mastery tip.")
 	game.set("stamina_gauge_pre_tip_hold_seconds", 99.0)
-	_expect(float(game.call("_stamina_gauge_pre_tip_hold_seconds_for_save")) == 4.0, "Stamina tip hold save should cap discovery hold seconds.")
+	_expect(float(_save_payload_value(game, "stamina_gauge_pre_tip_hold_seconds")) == 4.0, "Stamina tip hold save should cap discovery hold seconds.")
 	game.call("_restore_stamina_gauge_pre_tip_hold_seconds_from_save", {"stamina_gauge_pre_tip_hold_seconds": -5.0})
 	_expect(float(game.get("stamina_gauge_pre_tip_hold_seconds")) == 0.0, "Stamina tip hold restore should clamp negative seconds.")
 	game.call("_restore_stamina_gauge_pre_tip_hold_seconds_from_save", {"stamina_gauge_pre_tip_hold_seconds": 99.0})
 	_expect(float(game.get("stamina_gauge_pre_tip_hold_seconds")) == 4.0, "Stamina tip hold restore should cap discovery hold seconds.")
 	game.set("flow_heat", 99.0)
-	_expect(float(game.call("_flow_heat_for_save")) == 36.0, "Music flow heat save should cap heat.")
+	_expect(float(_save_payload_value(game, "flow_heat")) == 36.0, "Music flow heat save should cap heat.")
 	game.set("flow_active_action_seconds", -8.0)
-	_expect(float(game.call("_flow_active_action_seconds_for_save")) == 0.0, "Music flow active seconds save should clamp negative seconds.")
+	_expect(float(_save_payload_value(game, "flow_active_action_seconds")) == 0.0, "Music flow active seconds save should clamp negative seconds.")
 	game.set("flow_actions_taken", 12)
 	game.call("_restore_music_flow_state_from_save", {
 		"music_start_chance_unlocked": true,

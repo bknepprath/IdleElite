@@ -26,6 +26,8 @@ Tasks:
 - Prioritize dead code removal where `rg` proves no references remain.
 - Collapse repeated module/action checks into small domain helpers only when the pattern is already repeated enough to justify it.
 - Shorten giant sentence-like variables into clear role names.
+- Refactor the tutorial flow to remove jank.
+- Explore replacing click input maps with real buttons where possible.
 - Keep behavior changes separate from pure cleanup whenever possible.
 
 Validation:
@@ -64,6 +66,7 @@ Rules:
 - Build XP should be meaningful but not better than doing the main activity repeatedly.
 - Built modules should use the existing normal module flow after construction.
 - Blueprint visuals should be distinct but not treated as a separate activity type forever.
+- Experiment with a new slide-in animation for newly revealed modules instead of fade-in.
 
 Initial candidates:
 
@@ -82,6 +85,7 @@ Behavior:
 - Some restore the current skill only.
 - Some restore another skill or the lowest stamina skill.
 - Rare higher-tier versions can restore multiple skills.
+- Firepit cooldown restart should preserve the current cooling-down regen bonus and build upward from there instead of resetting to 4%.
 
 Examples:
 
@@ -213,6 +217,7 @@ Possible effects:
 - Increased critical chance.
 - Reduced stamina cost.
 - Extra material roll.
+- Double resource collection amount.
 - Better failure consolation reward.
 
 Suggested rules:
@@ -256,6 +261,12 @@ Data checks:
   - `.\scripts\audit-activity-database.ps1`
 - For new activity data, audit IDs, unlock levels, requirements, and rewards before wiring UI.
 
+## Phase 7: Mission Board Polish
+
+Goal: make mission board task completion feel like a real reward moment.
+
+- Add a ceremony animation for completing mission board tasks.
+
 ## Open Questions
 
 - Should buildable modules be available immediately at unlock level, or can they appear before the player can afford them?
@@ -275,4 +286,5 @@ Data checks:
 6. Chicken prototype variations.
 7. Boss fight module shell.
 8. Rooster boss and first boss gate.
-9. Balance pass and screenshots.
+9. Mission board task completion ceremony animation.
+10. Balance pass and screenshots.
