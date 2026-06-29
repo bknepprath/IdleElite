@@ -67,6 +67,7 @@ const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
 const BootFlexLoadingAnimationClass = preload("res://scripts/ui/boot_flex_loading_animation.gd")
 const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_border.gd")
+const BuildableModuleOverlay = preload("res://scripts/ui/buildable_module_overlay.gd")
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
 const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_rect.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
@@ -17645,6 +17646,12 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var convergence_build_cta := convergence_widgets.get("convergence_build_cta") as PanelContainer
 	var convergence_build_cta_title := convergence_widgets.get("convergence_build_cta_title") as Label
 	var convergence_build_cta_meta := convergence_widgets.get("convergence_build_cta_meta") as Label
+	var buildable_widgets := _detail_action_buildable_overlay(pop_card, skill_id, action)
+	var build_overlay := buildable_widgets.get("build_overlay") as Control
+	var build_cta := buildable_widgets.get("build_cta") as PanelContainer
+	var build_cta_title := buildable_widgets.get("build_cta_title") as Label
+	var build_cta_meta := buildable_widgets.get("build_cta_meta") as Label
+	var build_cta_xp := buildable_widgets.get("build_cta_xp") as Label
 
 	var border: ActivityCardBorder = null
 	if ACTION_CARD_FACE_BORDER_ENABLED:
@@ -17692,6 +17699,11 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"convergence_build_cta": convergence_build_cta,
 		"convergence_build_cta_title": convergence_build_cta_title,
 		"convergence_build_cta_meta": convergence_build_cta_meta,
+		"build_overlay": build_overlay,
+		"build_cta": build_cta,
+		"build_cta_title": build_cta_title,
+		"build_cta_meta": build_cta_meta,
+		"build_cta_xp": build_cta_xp,
 		"fluid_strip": fluid_strip,
 		"blue_guy_chicken_stage": blue_guy_chicken_stage,
 		"border": border,
@@ -17708,6 +17720,15 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"card": card,
 		"action_id": action_id
 	}
+
+
+func _detail_action_buildable_overlay(pop_card: Control, skill_id: String, action: Dictionary) -> Dictionary:
+	if pop_card == null or not _action_is_buildable(action) or _action_is_built(skill_id, action):
+		return {}
+	var cost_text := _build_cost_text(action)
+	var meta_text := "Cost: %s" % cost_text if not cost_text.is_empty() else "Ready to build"
+	var xp_text := "+%s %s XP" % [_build_xp_reward(action), _skill_name(skill_id)]
+	return BuildableModuleOverlay.build(pop_card, _build_label(action).to_upper(), meta_text, xp_text, _can_pay_build_cost(action), COLOR_INK, app_bold_font, app_font, MIN_MOBILE_BODY_FONT_SIZE)
 
 
 func _detail_lazy_scroll_y() -> float:
