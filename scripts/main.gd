@@ -18,6 +18,7 @@ const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const MedalBuffs = preload("res://scripts/progression/medal_buffs.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
+const SaveStateFiles = preload("res://scripts/save_state/files.gd")
 const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
 const ThievingState = preload("res://scripts/thieving/state.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
@@ -55225,59 +55226,17 @@ func save_game() -> void:
 
 
 func _write_save_payload_atomically(payload: Dictionary) -> bool:
-	var payload_text := JSON.stringify(payload)
-	if FileAccess.file_exists(SAVE_PATH):
-		var existing := _load_save_dictionary_from_path(SAVE_PATH)
-		if not existing.is_empty():
-			var existing_text := _read_text_file(SAVE_PATH)
-			if not existing_text.is_empty():
-				_write_text_file(SAVE_BACKUP_PATH, existing_text)
-	if not _write_text_file(SAVE_TEMP_PATH, payload_text):
-		return false
-	var temp_data := _load_save_dictionary_from_path(SAVE_TEMP_PATH)
-	if temp_data.is_empty():
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_TEMP_PATH))
-		return false
-	if FileAccess.file_exists(SAVE_PATH):
-		var remove_error := DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_PATH))
-		if remove_error != OK:
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_TEMP_PATH))
-			return false
-	var rename_error := DirAccess.rename_absolute(
-		ProjectSettings.globalize_path(SAVE_TEMP_PATH),
-		ProjectSettings.globalize_path(SAVE_PATH)
-	)
-	if rename_error != OK:
-		DirAccess.remove_absolute(ProjectSettings.globalize_path(SAVE_TEMP_PATH))
+	if not SaveStateFiles.write_payload_atomically(payload, SAVE_PATH, SAVE_TEMP_PATH, SAVE_BACKUP_PATH):
 		return false
 	last_save_unix_time = int(payload.get("saved_at", _unix_now()))
 	last_save_monotonic_msec = _monotonic_now_msec()
 	return true
 
 
-func _read_text_file(path: String) -> String:
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		return ""
-	var text := file.get_as_text()
-	file.close()
-	return text
-
-
-func _write_text_file(path: String, text: String) -> bool:
-	var file := FileAccess.open(path, FileAccess.WRITE)
-	if file == null:
-		return false
-	file.store_string(text)
-	file.flush()
-	file.close()
-	return true
-
-
 func _save_payload_can_replace_existing_save(next_payload: Dictionary) -> bool:
 	if allow_next_save_progress_regression:
 		return true
-	var existing := _best_save_dictionary_from_paths([SAVE_PATH, SAVE_TEMP_PATH, SAVE_BACKUP_PATH])
+	var existing := SaveStateFiles.best_dictionary_from_paths([SAVE_PATH, SAVE_TEMP_PATH, SAVE_BACKUP_PATH], skill_defs)
 	if _save_reset_generation(next_payload) > _save_reset_generation(existing):
 		return true
 	return not _save_payload_regresses_progress(existing, next_payload)
@@ -55983,9 +55942,9 @@ func load_game() -> void:
 			save_game()
 			return
 	else:
-		save_data = _load_save_dictionary_from_path(SAVE_PATH)
+		save_data = SaveStateFiles.load_dictionary(SAVE_PATH)
 		var recovery_data := _recovery_save_dictionary()
-		if _save_should_replace_best_save(save_data, recovery_data):
+		if SaveStateFiles.should_replace_best_save(save_data, recovery_data, skill_defs):
 			save_data = recovery_data
 			recovered_save = true
 	if save_data.is_empty():
@@ -56010,51 +55969,8 @@ func load_game() -> void:
 		selected_skill_id = running_skill_id
 
 
-func _load_save_dictionary_from_path(path: String) -> Dictionary:
-	var file := FileAccess.open(path, FileAccess.READ)
-	if file == null:
-		return {}
-	var raw := file.get_buffer(file.get_length()).get_string_from_utf8()
-	var json := JSON.new()
-	if json.parse(raw) != OK:
-		return {}
-	var save_payload: Variant = json.data
-	if typeof(save_payload) != TYPE_DICTIONARY:
-		return {}
-	return save_payload as Dictionary
-
-
-func _best_save_dictionary_from_paths(paths: Array) -> Dictionary:
-	var best_save := {}
-	for path in paths:
-		if not FileAccess.file_exists(path):
-			continue
-		var candidate_save := _load_save_dictionary_from_path(path)
-		if candidate_save.is_empty():
-			continue
-		if _save_should_replace_best_save(best_save, candidate_save):
-			best_save = candidate_save
-	return best_save
-
-
-func _save_should_replace_best_save(best_save: Dictionary, candidate: Dictionary) -> bool:
-	if candidate.is_empty():
-		return false
-	if best_save.is_empty():
-		return true
-	var candidate_reset_generation := _save_reset_generation(candidate)
-	var best_reset_generation := _save_reset_generation(best_save)
-	if candidate_reset_generation != best_reset_generation:
-		return candidate_reset_generation > best_reset_generation
-	var candidate_xp := _save_total_skill_xp_evidence(candidate)
-	var best_xp := _save_total_skill_xp_evidence(best_save)
-	if candidate_xp != best_xp:
-		return candidate_xp > best_xp
-	return int(candidate.get("saved_at", 0)) > int(best_save.get("saved_at", 0))
-
-
 func _recovery_save_dictionary() -> Dictionary:
-	var best_save := _best_save_dictionary_from_paths([SAVE_TEMP_PATH, SAVE_BACKUP_PATH])
+	var best_save := SaveStateFiles.best_dictionary_from_paths([SAVE_TEMP_PATH, SAVE_BACKUP_PATH], skill_defs)
 	if not best_save.is_empty():
 		push_warning("Idle Elite recovered save progress from backup storage.")
 	return best_save
@@ -56064,7 +55980,7 @@ func _legacy_desktop_save_for_recovery(current_data: Dictionary) -> Dictionary:
 	for path in _legacy_desktop_save_paths():
 		if not FileAccess.file_exists(path):
 			continue
-		var legacy_data := _load_save_dictionary_from_path(path)
+		var legacy_data := SaveStateFiles.load_dictionary(path)
 		if _save_should_use_legacy_desktop_recovery(current_data, legacy_data):
 			return _prepare_legacy_desktop_save_for_recovery(legacy_data)
 	return {}

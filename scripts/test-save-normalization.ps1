@@ -58,6 +58,7 @@ try {
 extends SceneTree
 
 const MainScript := preload("res://scripts/main.gd")
+const SaveStateFiles := preload("res://scripts/save_state/files.gd")
 
 var failures: Array[String] = []
 
@@ -2320,19 +2321,19 @@ func _check_load_save_dictionary_rejects_corrupt_files(game: Node) -> void:
 	if file != null:
 		file.store_string("{not-valid-json")
 		file.close()
-	_expect((game.call("_load_save_dictionary_from_path", corrupt_path) as Dictionary).is_empty(), "Save loader should return an empty dictionary for invalid JSON.")
+	_expect(SaveStateFiles.load_dictionary(corrupt_path).is_empty(), "Save loader should return an empty dictionary for invalid JSON.")
 
 	file = FileAccess.open(corrupt_path, FileAccess.WRITE)
 	if file != null:
 		file.store_string("[1, 2, 3]")
 		file.close()
-	_expect((game.call("_load_save_dictionary_from_path", corrupt_path) as Dictionary).is_empty(), "Save loader should return an empty dictionary for non-dictionary JSON.")
+	_expect(SaveStateFiles.load_dictionary(corrupt_path).is_empty(), "Save loader should return an empty dictionary for non-dictionary JSON.")
 
 	file = FileAccess.open(corrupt_path, FileAccess.WRITE)
 	if file != null:
 		file.store_string("{\"skills\":{},\"saved_at\":123}")
 		file.close()
-	var valid := game.call("_load_save_dictionary_from_path", corrupt_path) as Dictionary
+	var valid := SaveStateFiles.load_dictionary(corrupt_path)
 	_expect(int(valid.get("saved_at", 0)) == 123, "Save loader should still return valid dictionary JSON from user storage.")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(corrupt_path))
 
@@ -2363,7 +2364,7 @@ func _check_best_save_dictionary_prefers_progress(game: Node) -> void:
 		},
 		"saved_at": 110,
 	})
-	var best := game.call("_best_save_dictionary_from_paths", [reset_path, temp_path, backup_path]) as Dictionary
+	var best := SaveStateFiles.best_dictionary_from_paths([reset_path, temp_path, backup_path], game.skill_defs)
 	var best_skills := best.get("skills", {}) as Dictionary
 	var best_fight := best_skills.get("fight", {}) as Dictionary
 	_expect(int(best_fight.get("xp", 0)) == 2500, "Save recovery should prefer the highest-progress candidate over an unmarked lower-progress save.")
@@ -2375,7 +2376,7 @@ func _check_best_save_dictionary_prefers_progress(game: Node) -> void:
 		},
 		"saved_at": 120,
 	})
-	best = game.call("_best_save_dictionary_from_paths", [marked_reset_path, temp_path, backup_path]) as Dictionary
+	best = SaveStateFiles.best_dictionary_from_paths([marked_reset_path, temp_path, backup_path], game.skill_defs)
 	best_skills = best.get("skills", {}) as Dictionary
 	best_fight = best_skills.get("fight", {}) as Dictionary
 	_expect(int(best.get("save_reset_generation", 0)) == 500 and int(best_fight.get("xp", -1)) == 0, "Save recovery should honor a marked hard-reset save over older high-progress backups.")
