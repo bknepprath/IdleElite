@@ -14906,18 +14906,6 @@ func _hub_offline_cap_seconds() -> int:
 	return MAX_OFFLINE_SECONDS + _hub_module_level("garden") * HUB_OFFLINE_SECONDS_PER_GARDEN_LEVEL
 
 
-func _stage_art_review_test_save() -> void:
-	_mark_god_mode_save_tainted("art review test")
-	_clear_running_activity_for_test_mode()
-	_clear_activity_unlock_ceremony_test_state()
-	_apply_art_review_test_unlock_all_state()
-	auto_unlock_lockpads_enabled = false
-	_refresh_auto_unlock_lockpad_controls()
-	selected_skill_id = "fishing" if _known_skill_id("fishing") else TUTORIAL_STARTER_SKILL_ID
-	current_screen = "skill"
-	_set_result("Art Review Test staged. Everything is unlocked; Auto Unlock Lockpads is OFF.")
-
-
 func _clear_running_activity_for_test_mode() -> void:
 	running_skill_id = ""
 	running_action_id = ""
@@ -14951,16 +14939,6 @@ func _clear_activity_unlock_ceremony_test_state() -> void:
 		card["unlock_ceremony_finalized"] = false
 		card["unlock_ready_pending"] = false
 		card.erase("lock_overlay_sync_key")
-
-
-func _lock_test_action(skill_id: String, action_id: String) -> void:
-	var key := _canonical_manual_activity_unlock_key(_action_key(skill_id, action_id))
-	if not key.is_empty():
-		manual_activity_unlocks.erase(key)
-	_clear_activity_requirement_manual_unlocks(skill_id, action_id)
-	_clear_pending_activity_readiness_action(skill_id, action_id)
-	manual_activity_unlocks_trust_checked = true
-	manual_activity_unlocks_trusted = true
 
 
 func _god_mode_available() -> bool:

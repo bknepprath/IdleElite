@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 183 files / about 110,975 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 183 files / about 110,977 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 66,683 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`. |
+| `scripts/main.gd` * | 66,661 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -103,6 +103,7 @@ Legend:
 | `scripts/test-performance-regressions.ps1` * | 3,013 | Static/runtime regression assertions for performance-sensitive code and UI contracts; stale dead-helper preservation assertions removed. |
 | `scripts/test-save-normalization.ps1` * | 2,671 | Save/load normalization regression assertions. |
 | `scripts/test-module-list-transitions.ps1` | 3,289 | Module list transition behavioral validation. |
+| `scripts/test-unlock-combo-visual-smoke.ps1` * | 1,012 | Unlock/lock visual smoke test; now owns its fishing combo setup helpers instead of calling production-only hooks. |
 | `scripts/test-page-switch-cover-visual.ps1` | 375 | Page-switch cover/depressed visual validation. Currently failing in this session. |
 | `scripts/check-ui-boundary-contracts.ps1` * | 96 | UI boundary static contracts. |
 | `scripts/check-activity-ui-boundary-contracts.ps1` * | 59 | Activity UI boundary contracts. |
@@ -163,6 +164,7 @@ Legend:
    - Current: deleted four newly orphaned script files: `scripts/fishing_attempt_bar.gd`, `scripts/ui/hub_move_icon.gd`, `scripts/ui/passive_pile_shadow.gd`, and `scripts/ui/firepit_dependency_connector.gd`.
    - Current: deleted two orphaned Godot probe scene scripts and their `.uid` files from `scripts/tests/`.
    - Current: deleted five orphaned `.uid` metadata files whose `.gd` scripts no longer exist.
+   - Current: moved two fishing-combo smoke setup hooks out of `scripts/main.gd` and into `scripts/test-unlock-combo-visual-smoke.ps1`.
    - Next lazy win: continue only with functions that have no runtime/test callers after checking dynamic `scene.call(...)` use.
 
 1. Button press state
@@ -268,5 +270,8 @@ Legend:
 | Orphan `.uid` scan | found no remaining script UID files without matching script files after metadata cleanup. |
 | `git diff --check -- deleted uid files` | passed after metadata cleanup. |
 | `.\scripts\check-runtime-asset-paths.ps1` | passed after metadata cleanup. |
+| `git diff --check -- scripts/main.gd scripts/test-unlock-combo-visual-smoke.ps1` | passed after moving fishing-combo smoke setup out of `scripts/main.gd`. |
+| `.\scripts\test-unlock-combo-visual-smoke.ps1 -FishingComboOnly` | passed after moving fishing-combo smoke setup out of `scripts/main.gd`; runner emitted existing save-protection/leak-at-exit warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after moving fishing-combo smoke setup out of `scripts/main.gd`. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |

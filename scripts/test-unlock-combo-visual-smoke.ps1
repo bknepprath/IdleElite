@@ -130,6 +130,30 @@ func _run() -> void:
 		quit(1)
 
 
+func _stage_art_review_test_save(scene: Node) -> void:
+	scene.call("_mark_god_mode_save_tainted", "art review test")
+	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_clear_activity_unlock_ceremony_test_state")
+	scene.call("_apply_art_review_test_unlock_all_state")
+	scene.set("auto_unlock_lockpads_enabled", false)
+	scene.call("_refresh_auto_unlock_lockpad_controls")
+	scene.set("selected_skill_id", "fishing" if bool(scene.call("_known_skill_id", "fishing")) else "fight")
+	scene.set("current_screen", "skill")
+	scene.call("_set_result", "Art Review Test staged. Everything is unlocked; Auto Unlock Lockpads is OFF.")
+
+
+func _lock_test_action(scene: Node, skill_id: String, action_id: String) -> void:
+	var key := str(scene.call("_canonical_manual_activity_unlock_key", scene.call("_action_key", skill_id, action_id)))
+	if not key.is_empty():
+		var manual_unlocks := scene.get("manual_activity_unlocks") as Dictionary
+		manual_unlocks.erase(key)
+		scene.set("manual_activity_unlocks", manual_unlocks)
+	scene.call("_clear_activity_requirement_manual_unlocks", skill_id, action_id)
+	scene.call("_clear_pending_activity_readiness_action", skill_id, action_id)
+	scene.set("manual_activity_unlocks_trust_checked", true)
+	scene.set("manual_activity_unlocks_trusted", true)
+
+
 func _wait_for_boot_ready(scene: Node) -> bool:
 	for _frame in range(BOOT_TIMEOUT_FRAMES):
 		await process_frame
@@ -431,7 +455,7 @@ func _check_event_insertion(scene: Node) -> void:
 
 
 func _check_fishing_combo_progress_rails(scene: Node) -> void:
-	scene.call("_stage_art_review_test_save")
+	_stage_art_review_test_save(scene)
 	await _render_live_fishing_page(scene)
 	await _check_fishing_scroll_limit_reaches_lazy_bottom(scene)
 	var combo_actions := scene.call("_fishing_visible_standalone_actions", "fishing") as Array
@@ -486,7 +510,7 @@ func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> 
 	scene.call("_clear_activity_unlock_ceremony_test_state")
 	scene.call("_clear_running_activity_for_test_mode")
 	scene.set("auto_unlock_lockpads_enabled", false)
-	scene.call("_lock_test_action", "fishing", action_id)
+	_lock_test_action(scene, "fishing", action_id)
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fishing")
 	scene.set("_last_rendered_screen_key", "")
