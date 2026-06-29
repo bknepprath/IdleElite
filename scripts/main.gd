@@ -1,6 +1,7 @@
 extends Control
 
 const FishingFluidStripClass = preload("res://scripts/fishing_fluid_strip.gd")
+const ActivityQueueState = preload("res://scripts/activity_queue/state.gd")
 const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
@@ -21629,12 +21630,12 @@ func _activity_queue_active_shelf_skill_id() -> String:
 
 
 func get_activity_queue() -> Array:
-	activity_queue = _activity_queue_unlocked_only(_normalized_activity_queue(activity_queue))
+	activity_queue = _activity_queue_unlocked_only(ActivityQueueState.normalized_queue(activity_queue))
 	return activity_queue.duplicate()
 
 
 func set_activity_queue(entries) -> void:
-	activity_queue = _activity_queue_unlocked_only(_normalized_activity_queue(entries))
+	activity_queue = _activity_queue_unlocked_only(ActivityQueueState.normalized_queue(entries))
 	_mark_save_dirty("activity queue changed")
 	save_game()
 	_refresh_activity_queue_visuals()
@@ -21647,7 +21648,7 @@ func add_activity_to_queue(entry) -> bool:
 	if activity_queue.has(key):
 		return false
 	activity_queue.append(key)
-	activity_queue = _activity_queue_unlocked_only(_normalized_activity_queue(activity_queue))
+	activity_queue = _activity_queue_unlocked_only(ActivityQueueState.normalized_queue(activity_queue))
 	_mark_save_dirty("activity queued")
 	save_game()
 	_refresh_activity_queue_visuals()
@@ -21694,29 +21695,15 @@ func clear_activity_queue() -> void:
 
 
 func _activity_queue_for_save() -> Array:
-	return _activity_queue_unlocked_only(_normalized_activity_queue(activity_queue))
+	return _activity_queue_unlocked_only(ActivityQueueState.normalized_queue(activity_queue))
 
 
 func _restore_activity_queue_from_save(data: Dictionary) -> void:
-	activity_queue = _activity_queue_unlocked_only(_normalized_activity_queue(data.get("activity_queue", [])))
+	activity_queue = _activity_queue_unlocked_only(ActivityQueueState.normalized_queue(data.get("activity_queue", [])))
 	activity_queue_running = false
 	activity_queue_index = -1
 	activity_queue_attempt_key = ""
 	queue_selection_mode = false
-
-
-func _normalized_activity_queue(value: Variant) -> Array:
-	var normalized: Array = []
-	if typeof(value) != TYPE_ARRAY:
-		return normalized
-	var seen := {}
-	for raw_key in value:
-		var key := _normalized_module_ui_key(raw_key)
-		if key.is_empty() or seen.has(key):
-			continue
-		seen[key] = true
-		normalized.append(key)
-	return normalized
 
 
 func _activity_queue_unlocked_only(keys: Array) -> Array:
@@ -21995,14 +21982,14 @@ func _process_activity_queue_runtime() -> void:
 		return
 	var action := _action_data(running_skill_id, running_action_id)
 	if action.is_empty() or not _is_action_unlocked(running_skill_id, action):
-		activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+		activity_queue_index = ActivityQueueState.next_index(activity_queue_index, queue.size())
 		_advance_activity_queue_to_runnable()
 		return
 	if _fishing_rework_active_for_skill(running_skill_id) and not _is_event_action(action):
 		return
 	var cost := _effective_stamina(running_skill_id, action)
 	if _stamina_value(running_skill_id) + 0.0001 < cost:
-		activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+		activity_queue_index = ActivityQueueState.next_index(activity_queue_index, queue.size())
 		_advance_activity_queue_to_runnable()
 
 
@@ -22019,25 +22006,25 @@ func _advance_activity_queue_to_runnable() -> bool:
 		var module_key := _normalized_module_ui_key(queue[activity_queue_index])
 		var target := _activity_queue_target_for_key(module_key)
 		if target.is_empty():
-			activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+			activity_queue_index = ActivityQueueState.next_index(activity_queue_index, queue.size())
 			attempts_remaining -= 1
 			continue
 		var skill_id := str(target.get("skill_id", ""))
 		var action_id := str(target.get("action_id", ""))
 		var action := _action_data(skill_id, action_id)
 		if action.is_empty() or _is_passive_action(action) or not _is_action_unlocked(skill_id, action):
-			activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+			activity_queue_index = ActivityQueueState.next_index(activity_queue_index, queue.size())
 			attempts_remaining -= 1
 			continue
 		if skill_id == "thieving" and _thieving_action_is_jailed(action_id):
-			activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+			activity_queue_index = ActivityQueueState.next_index(activity_queue_index, queue.size())
 			attempts_remaining -= 1
 			continue
 		var fishing_rework_attempt := _fishing_rework_active_for_skill(skill_id) and not _is_event_action(action)
 		if not fishing_rework_attempt:
 			var cost := _effective_stamina(skill_id, action)
 			if _stamina_value(skill_id) + 0.0001 < cost:
-				activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+				activity_queue_index = ActivityQueueState.next_index(activity_queue_index, queue.size())
 				attempts_remaining -= 1
 				continue
 		activity_queue_attempt_key = module_key
@@ -22045,18 +22032,12 @@ func _advance_activity_queue_to_runnable() -> bool:
 			_set_result("Queue: %s started." % str(action.get("name", "Activity")))
 			_update_ui(0.0, true)
 			return true
-		activity_queue_index = _activity_queue_next_index(activity_queue_index, queue.size())
+		activity_queue_index = ActivityQueueState.next_index(activity_queue_index, queue.size())
 		attempts_remaining -= 1
 	_stop_activity_queue_runtime(true)
 	_set_result("Queue finished.")
 	_update_ui(0.0, true)
 	return false
-
-
-func _activity_queue_next_index(current_index: int, queue_size: int) -> int:
-	if queue_size <= 0:
-		return -1
-	return (current_index + 1) % queue_size
 
 
 func _activity_queue_target_for_key(module_key: String) -> Dictionary:
