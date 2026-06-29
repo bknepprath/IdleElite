@@ -51,6 +51,37 @@ static func hub(module_id: String) -> String:
 	return _prefix(PREFIX_HUB, module_id)
 
 
+static func belongs_to_skill(module_key: String, skill_id: String) -> bool:
+	var key := normalize(module_key)
+	if key.is_empty() or skill_id.is_empty():
+		return false
+	if key.begins_with(PREFIX_ACTION):
+		return key.begins_with("%s%s:" % [PREFIX_ACTION, skill_id])
+	if key.begins_with(PREFIX_THIEVING_HEIST):
+		return skill_id == "thieving"
+	if key.begins_with(PREFIX_FISHING_AREA) or key.begins_with(PREFIX_FISHING_OFFER):
+		return skill_id == "fishing"
+	return false
+
+
+static func lazy_track_id(module_key: String, skill_id: String) -> String:
+	var key := normalize(module_key)
+	if key.is_empty() or skill_id.is_empty() or not belongs_to_skill(key, skill_id):
+		return ""
+	if key.begins_with(PREFIX_ACTION):
+		var action_key := key.substr(PREFIX_ACTION.length())
+		var parts := action_key.split(":", false, 2)
+		if parts.size() >= 2:
+			return str(parts[1])
+	if key.begins_with(PREFIX_THIEVING_HEIST) and skill_id == "thieving":
+		return "heist:%s" % key.substr(PREFIX_THIEVING_HEIST.length())
+	if key.begins_with(PREFIX_FISHING_AREA) and skill_id == "fishing":
+		return key.substr(PREFIX_FISHING_AREA.length())
+	if key.begins_with(PREFIX_FISHING_OFFER) and skill_id == "fishing":
+		return "offer:%s" % key.substr(PREFIX_FISHING_OFFER.length())
+	return ""
+
+
 static func canonical_action_id(skill_id: String, action_id: String, aliases := {}) -> String:
 	if skill_id == "fishing" and aliases.has(action_id):
 		return str(aliases[action_id])

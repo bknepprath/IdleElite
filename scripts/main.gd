@@ -21243,34 +21243,11 @@ func _render_detail_lazy_card_list_batched(stack: VBoxContainer, content_width: 
 
 
 func _module_ui_key_belongs_to_skill(module_key: String, skill_id: String) -> bool:
-	var key := _normalized_module_ui_key(module_key)
-	if key.is_empty() or skill_id.is_empty():
-		return false
-	if key.begins_with("action:"):
-		return key.begins_with("action:%s:" % skill_id)
-	if key.begins_with("thieving_heist:"):
-		return skill_id == "thieving"
-	if key.begins_with("fishing_area:") or key.begins_with("fishing_offer:"):
-		return skill_id == "fishing"
-	return false
+	return ModuleUiKeys.belongs_to_skill(module_key, skill_id)
 
 
 func _module_ui_lazy_track_id_for_key(module_key: String, skill_id: String) -> String:
-	var key := _normalized_module_ui_key(module_key)
-	if key.is_empty() or skill_id.is_empty() or not _module_ui_key_belongs_to_skill(key, skill_id):
-		return ""
-	if key.begins_with("action:"):
-		var action_key := key.substr("action:".length())
-		var parts := action_key.split(":", false, 2)
-		if parts.size() >= 2:
-			return str(parts[1])
-	if key.begins_with("thieving_heist:") and skill_id == "thieving":
-		return "heist:%s" % key.substr("thieving_heist:".length())
-	if key.begins_with("fishing_area:") and skill_id == "fishing":
-		return key.substr("fishing_area:".length())
-	if key.begins_with("fishing_offer:") and skill_id == "fishing":
-		return "offer:%s" % key.substr("fishing_offer:".length())
-	return ""
+	return ModuleUiKeys.lazy_track_id(module_key, skill_id)
 
 
 func _hold_recent_pinned_source_from_lazy_prune(module_key: String) -> void:
