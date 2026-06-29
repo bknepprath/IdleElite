@@ -39,6 +39,7 @@ const ThievingState = preload("res://scripts/thieving/state.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const LeaderboardProfile = preload("res://scripts/leaderboard/profile.gd")
 const LeaderboardPresentation = preload("res://scripts/leaderboard/presentation.gd")
+const LeaderboardStyles = preload("res://scripts/leaderboard/styles.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
 const FeatheredCollectGlow = preload("res://scripts/ui/feathered_collect_glow.gd")
 const StopHoldCircle = preload("res://scripts/ui/stop_hold_circle.gd")
@@ -62080,94 +62081,27 @@ func _surface_style(color: Color, radius: int, margin := 28, elevated := false) 
 
 
 func _leaderboard_dropdown_style(color: Color, pressed := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color.darkened(0.06 if pressed else 0.0)
-	style.border_color = COLOR_INK
-	style.set_border_width_all(18)
-	style.corner_radius_top_left = 46
-	style.corner_radius_top_right = 46
-	style.corner_radius_bottom_left = 46
-	style.corner_radius_bottom_right = 46
-	style.content_margin_left = 70
-	style.content_margin_right = 70
-	style.content_margin_top = 42 + (6 if pressed else 0)
-	style.content_margin_bottom = 42 - (4 if pressed else 0)
-	style.shadow_color = Color(0.08, 0.07, 0.06, 0.28 if not pressed else 0.14)
-	style.shadow_size = 10 if not pressed else 4
-	style.shadow_offset = Vector2(0, 8 if not pressed else 3)
-	return style
+	return LeaderboardStyles.dropdown(color, pressed, COLOR_INK)
 
 
 func _leaderboard_player_card_style(color: Color, pressed := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = color.darkened(0.06 if pressed else 0.0)
-	style.border_color = COLOR_INK
-	style.set_border_width_all(16)
-	style.corner_radius_top_left = 58
-	style.corner_radius_top_right = 58
-	style.corner_radius_bottom_left = 58
-	style.corner_radius_bottom_right = 58
-	style.content_margin_left = 48
-	style.content_margin_right = 48
-	style.content_margin_top = 40 + (6 if pressed else 0)
-	style.content_margin_bottom = 40 - (4 if pressed else 0)
-	style.shadow_color = Color(0.08, 0.07, 0.06, 0.32 if not pressed else 0.16)
-	style.shadow_size = 12 if not pressed else 5
-	style.shadow_offset = Vector2(0, 9 if not pressed else 4)
-	return style
+	return LeaderboardStyles.player_card(color, pressed, COLOR_INK)
 
 
 func _leaderboard_rank_badge_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1, 1, 1, 0)
-	style.border_color = Color(0, 0, 0, 0)
-	style.set_border_width_all(0)
-	style.content_margin_left = 0
-	style.content_margin_right = 0
-	style.content_margin_top = 0
-	style.content_margin_bottom = 0
-	return style
+	return LeaderboardStyles.rank_badge()
 
 
 func _profile_avatar_frame_background_style(selected := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = _theme_surface_color(Color("#fffdf8")) if not selected else Color("#fff1b8")
-	style.border_color = Color.TRANSPARENT
-	style.set_border_width_all(0)
-	style.corner_radius_top_left = 24
-	style.corner_radius_top_right = 24
-	style.corner_radius_bottom_left = 24
-	style.corner_radius_bottom_right = 24
-	if selected:
-		style.shadow_color = Color(0.09, 0.08, 0.07, 0.22)
-		style.shadow_size = 10
-		style.shadow_offset = Vector2(0, 8)
-	return style
+	return LeaderboardStyles.avatar_frame_background(selected, Callable(self, "_theme_surface_color"))
 
 
 func _profile_avatar_frame_style(_selected := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color.TRANSPARENT
-	style.draw_center = false
-	style.border_color = COLOR_INK
-	style.set_border_width_all(PROFILE_AVATAR_FRAME_BORDER)
-	style.corner_radius_top_left = 24
-	style.corner_radius_top_right = 24
-	style.corner_radius_bottom_left = 24
-	style.corner_radius_bottom_right = 24
-	return style
+	return LeaderboardStyles.avatar_frame(_selected, COLOR_INK, PROFILE_AVATAR_FRAME_BORDER)
 
 
 func _profile_avatar_button_style(selected := false, pressed := false, hovered := false) -> StyleBoxFlat:
-	var style := _profile_avatar_frame_background_style(selected)
-	var fill := Color("#fff1b8") if selected else _theme_surface_color(Color("#fffdf8"))
-	if hovered and not pressed:
-		fill = fill.lightened(0.04)
-	style.bg_color = fill.darkened(0.08 if pressed else 0.0)
-	if pressed:
-		style.shadow_size = 4
-		style.shadow_offset = Vector2(0, 3)
-	return style
+	return LeaderboardStyles.avatar_button(selected, pressed, hovered, Callable(self, "_theme_surface_color"))
 
 
 func _profile_avatar_border_overlay_style(selected := false) -> StyleBoxFlat:
@@ -62175,19 +62109,13 @@ func _profile_avatar_border_overlay_style(selected := false) -> StyleBoxFlat:
 
 
 func _profile_name_field_style(focused := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = _theme_surface_color(Color("#fffaf0"))
-	style.border_color = COLOR_BLUE if focused else _theme_outline_color(COLOR_INK, Color("#fffaf0"))
-	style.set_border_width_all(9)
-	style.corner_radius_top_left = 36
-	style.corner_radius_top_right = 36
-	style.corner_radius_bottom_left = 36
-	style.corner_radius_bottom_right = 36
-	style.content_margin_left = 34
-	style.content_margin_right = 34
-	style.content_margin_top = 18
-	style.content_margin_bottom = 18
-	return style
+	return LeaderboardStyles.name_field(
+		focused,
+		COLOR_INK,
+		COLOR_BLUE,
+		Callable(self, "_theme_surface_color"),
+		Callable(self, "_theme_outline_color")
+	)
 
 
 func _skill_detail_shelf_style(skill_id: String, draw_bottom_border := true) -> StyleBoxFlat:
