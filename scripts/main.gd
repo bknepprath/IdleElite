@@ -56001,30 +56001,11 @@ func _legacy_desktop_save_paths() -> Array:
 
 
 func _save_should_use_legacy_desktop_recovery(current_data: Dictionary, legacy_data: Dictionary) -> bool:
-	if legacy_data.is_empty() or not _save_has_known_skill_progress(legacy_data):
+	if legacy_data.is_empty() or not SaveStateNormalizers.has_known_skill_progress(legacy_data, skill_defs):
 		return false
 	if _save_has_unmarked_maxed_skills(legacy_data):
 		return false
-	return not _save_has_known_skill_progress(current_data)
-
-
-func _save_has_known_skill_progress(data: Dictionary) -> bool:
-	var loaded_skills = data.get("skills", {})
-	if typeof(loaded_skills) != TYPE_DICTIONARY:
-		return false
-	var source := loaded_skills as Dictionary
-	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
-		if skill_id.is_empty() or not source.has(skill_id):
-			continue
-		var skill_state = source.get(skill_id, {})
-		if typeof(skill_state) != TYPE_DICTIONARY:
-			continue
-		var state := skill_state as Dictionary
-		if int(state.get("level", 1)) > 1 or int(state.get("xp", 0)) > 0:
-			return true
-	return false
+	return not SaveStateNormalizers.has_known_skill_progress(current_data, skill_defs)
 
 
 func _prepare_legacy_desktop_save_for_recovery(data: Dictionary) -> Dictionary:
@@ -56125,64 +56106,10 @@ func _saved_skill_level_for_repair(data: Dictionary, skill_id: String) -> int:
 func _repair_onboarding_progress_mismatch(data: Dictionary) -> bool:
 	if bool(data.get("onboarding_tutorial_complete", false)):
 		return false
-	if not _save_has_progress_beyond_onboarding(data):
+	if not SaveStateNormalizers.has_progress_beyond_onboarding(data, skill_defs, TUTORIAL_STARTER_SKILL_ID):
 		return false
-	_mark_save_onboarding_complete(data)
+	SaveStateNormalizers.mark_onboarding_complete(data)
 	return true
-
-
-func _save_has_progress_beyond_onboarding(data: Dictionary) -> bool:
-	if _save_has_non_tutorial_skill_progress(data):
-		return true
-	return _save_manual_activity_unlock_count(data) >= 2
-
-
-func _save_has_non_tutorial_skill_progress(data: Dictionary) -> bool:
-	var loaded_skills = data.get("skills", {})
-	if typeof(loaded_skills) != TYPE_DICTIONARY:
-		return false
-	var source := loaded_skills as Dictionary
-	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
-		if skill_id.is_empty() or skill_id == TUTORIAL_STARTER_SKILL_ID or not source.has(skill_id):
-			continue
-		var skill_state = source.get(skill_id, {})
-		if typeof(skill_state) != TYPE_DICTIONARY:
-			continue
-		var state := skill_state as Dictionary
-		if int(state.get("level", 1)) > 1 or int(state.get("xp", 0)) > 0:
-			return true
-	return false
-
-
-func _save_manual_activity_unlock_count(data: Dictionary) -> int:
-	var raw_manual = data.get("manual_activity_unlocks", {})
-	if typeof(raw_manual) != TYPE_DICTIONARY:
-		return 0
-	var manual := raw_manual as Dictionary
-	var count := 0
-	for raw_key in manual.keys():
-		if bool(manual.get(raw_key, false)):
-			count += 1
-	return count
-
-
-func _mark_save_onboarding_complete(data: Dictionary) -> void:
-	data["onboarding_tutorial_complete"] = true
-	data["onboarding_explore_tip_seen"] = true
-	data["skill_swipe_tip_seen"] = true
-	data["stamina_gauge_tip_seen"] = true
-	data["onboarding_swipe_tip_eligible"] = true
-	data["onboarding_swipe_navigation_unlocked"] = true
-	data["tutorial_active"] = false
-	data["tutorial_step"] = 4
-	data["tutorial_gate_latch_only_until_swipe"] = false
-	data["onboarding_fight_summary_revealed"] = true
-	data["onboarding_fight_auto_run_message_shown"] = true
-	data["onboarding_fight_stamina_revealed"] = true
-	data["onboarding_fight_action_stats_revealed"] = true
-	data["onboarding_header_reveal_after_progress"] = false
 
 
 func _repair_onboarding_gate_latch_checkpoint(data: Dictionary) -> bool:

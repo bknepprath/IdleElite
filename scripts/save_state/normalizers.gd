@@ -152,6 +152,79 @@ static func total_skill_xp_evidence(data: Dictionary, skill_defs: Array) -> int:
 	return total_xp
 
 
+static func has_known_skill_progress(data: Dictionary, skill_defs: Array) -> bool:
+	var loaded_skills = data.get("skills", {})
+	if typeof(loaded_skills) != TYPE_DICTIONARY:
+		return false
+	var source := loaded_skills as Dictionary
+	for raw_def in skill_defs:
+		var skill_def := raw_def as Dictionary
+		var skill_id := str(skill_def.get("id", ""))
+		if skill_id.is_empty() or not source.has(skill_id):
+			continue
+		var skill_state = source.get(skill_id, {})
+		if typeof(skill_state) != TYPE_DICTIONARY:
+			continue
+		var state := skill_state as Dictionary
+		if int(state.get("level", 1)) > 1 or int(state.get("xp", 0)) > 0:
+			return true
+	return false
+
+
+static func has_progress_beyond_onboarding(data: Dictionary, skill_defs: Array, tutorial_starter_skill_id: String) -> bool:
+	if has_non_tutorial_skill_progress(data, skill_defs, tutorial_starter_skill_id):
+		return true
+	return manual_activity_unlock_count(data) >= 2
+
+
+static func has_non_tutorial_skill_progress(data: Dictionary, skill_defs: Array, tutorial_starter_skill_id: String) -> bool:
+	var loaded_skills = data.get("skills", {})
+	if typeof(loaded_skills) != TYPE_DICTIONARY:
+		return false
+	var source := loaded_skills as Dictionary
+	for raw_def in skill_defs:
+		var skill_def := raw_def as Dictionary
+		var skill_id := str(skill_def.get("id", ""))
+		if skill_id.is_empty() or skill_id == tutorial_starter_skill_id or not source.has(skill_id):
+			continue
+		var skill_state = source.get(skill_id, {})
+		if typeof(skill_state) != TYPE_DICTIONARY:
+			continue
+		var state := skill_state as Dictionary
+		if int(state.get("level", 1)) > 1 or int(state.get("xp", 0)) > 0:
+			return true
+	return false
+
+
+static func manual_activity_unlock_count(data: Dictionary) -> int:
+	var raw_manual = data.get("manual_activity_unlocks", {})
+	if typeof(raw_manual) != TYPE_DICTIONARY:
+		return 0
+	var manual := raw_manual as Dictionary
+	var count := 0
+	for raw_key in manual.keys():
+		if bool(manual.get(raw_key, false)):
+			count += 1
+	return count
+
+
+static func mark_onboarding_complete(data: Dictionary) -> void:
+	data["onboarding_tutorial_complete"] = true
+	data["onboarding_explore_tip_seen"] = true
+	data["skill_swipe_tip_seen"] = true
+	data["stamina_gauge_tip_seen"] = true
+	data["onboarding_swipe_tip_eligible"] = true
+	data["onboarding_swipe_navigation_unlocked"] = true
+	data["tutorial_active"] = false
+	data["tutorial_step"] = 4
+	data["tutorial_gate_latch_only_until_swipe"] = false
+	data["onboarding_fight_summary_revealed"] = true
+	data["onboarding_fight_auto_run_message_shown"] = true
+	data["onboarding_fight_stamina_revealed"] = true
+	data["onboarding_fight_action_stats_revealed"] = true
+	data["onboarding_header_reveal_after_progress"] = false
+
+
 static func valid_dictionary_key(raw_key: Variant, valid_defs: Dictionary, fallback: String) -> String:
 	var key := str(raw_key)
 	return key if valid_defs.has(key) else fallback
