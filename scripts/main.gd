@@ -16204,18 +16204,6 @@ func _sanitize_chat_message(raw_text: String) -> String:
 	return ChatState.sanitize_message(raw_text, CHAT_MESSAGE_MAX_CHARS, CHAT_CENSORED_WORDS)
 
 
-func _censor_chat_message(raw_text: String) -> String:
-	return ChatState.censored_message(raw_text, CHAT_CENSORED_WORDS)
-
-
-func _censor_chat_token(token: String) -> String:
-	return ChatState.censored_token(token, CHAT_CENSORED_WORDS)
-
-
-func _is_chat_word_char(ch: String) -> bool:
-	return ChatState.is_word_char(ch)
-
-
 func _make_chat_message_id() -> String:
 	return ChatState.make_message_id(_unix_now())
 
@@ -60769,10 +60757,6 @@ func _buffed_log_collection_amount(mat_id: String, amount: float) -> float:
 	return safe_amount * _woodcutting_log_collection_multiplier()
 
 
-func _mat_def(mat_id: String) -> Dictionary:
-	return MaterialDefs.definition(mat_id, MAT_COLLECTION_DEFS)
-
-
 func _mat_name(mat_id: String) -> String:
 	return MaterialDefs.display_name(mat_id, MAT_COLLECTION_DEFS)
 
@@ -61047,16 +61031,8 @@ func _normalized_convergence_modules(loaded_modules: Variant) -> Dictionary:
 	return SaveStateNormalizers.normalized_convergence_modules(loaded_modules, Callable(self, "_action_data"), Callable(self, "_is_convergence_action"))
 
 
-func _convergence_module_state_from_save(loaded_state: Dictionary) -> Dictionary:
-	return SaveStateNormalizers.convergence_module_state(loaded_state)
-
-
 func _normalized_hub_modules(loaded_modules: Variant) -> Dictionary:
 	return SaveStateNormalizers.normalized_hub_modules(loaded_modules, HUB_MODULE_DEFS, HUB_MODULE_MAX_LEVEL)
-
-
-func _hub_module_state_from_save(loaded_state: Dictionary) -> Dictionary:
-	return SaveStateNormalizers.hub_module_state(loaded_state, HUB_MODULE_MAX_LEVEL)
 
 
 func _leaderboard_display_name_for_save() -> String:
