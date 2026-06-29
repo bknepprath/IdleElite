@@ -14,6 +14,7 @@ const AchievementMilestones = preload("res://scripts/achievements/milestones.gd"
 const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
+const AdBonus = preload("res://scripts/monetization/ad_bonus.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
 const CrashReports = preload("res://scripts/diagnostics/crash_reports.gd")
 const FirebaseRuntime = preload("res://scripts/firebase/runtime.gd")
@@ -30018,17 +30019,15 @@ func _active_global_buff_lines() -> Array:
 
 
 func _ad_bonus_xp_mult() -> float:
-	return AD_BONUS_XP_MULT if ad_bonus_seconds_remaining > 0.0 else 0.0
+	return AdBonus.xp_mult(ad_bonus_seconds_remaining, AD_BONUS_XP_MULT)
 
 
 func _ad_bonus_speed_mult() -> float:
-	return AD_BONUS_SPEED_MULT if ad_bonus_seconds_remaining > 0.0 else 0.0
+	return AdBonus.speed_mult(ad_bonus_seconds_remaining, AD_BONUS_SPEED_MULT)
 
 
 func _shop_bonus_status_text() -> String:
-	if ad_bonus_seconds_remaining <= 0.0:
-		return "No bonus active."
-	return "Bonus remaining: %s" % _format_duration(ad_bonus_seconds_remaining)
+	return AdBonus.status_text(ad_bonus_seconds_remaining)
 
 
 func _shop_bonus_label_text() -> String:
@@ -42054,10 +42053,7 @@ func _skill_index(skill_id: String) -> int:
 
 
 func _process_ad_bonus(delta: float) -> void:
-	if ad_bonus_seconds_remaining <= 0.0:
-		ad_bonus_seconds_remaining = 0.0
-		return
-	ad_bonus_seconds_remaining = maxf(0.0, ad_bonus_seconds_remaining - delta)
+	ad_bonus_seconds_remaining = AdBonus.tick(ad_bonus_seconds_remaining, delta)
 
 
 func _action_opportunity_frame_work_needed() -> bool:
@@ -46179,7 +46175,7 @@ func _on_rewarded_ad_user_earned_reward(_item: RewardedItem) -> void:
 
 func _grant_ad_bonus(message: String) -> void:
 	var bonus_snapshot_before := _capture_visible_bonus_snapshot()
-	ad_bonus_seconds_remaining = minf(float(AD_BONUS_MAX_SECONDS), ad_bonus_seconds_remaining + float(AD_BONUS_SECONDS))
+	ad_bonus_seconds_remaining = AdBonus.grant_seconds(ad_bonus_seconds_remaining, float(AD_BONUS_SECONDS), float(AD_BONUS_MAX_SECONDS))
 	shop_bonus_notice_text = message
 	_set_result(message)
 	if shop_bonus_label != null:
@@ -61854,18 +61850,15 @@ func _shop_ad_stack_meter() -> Control:
 
 
 func _shop_ad_stack_max_count() -> int:
-	return maxi(1, int(ceil(float(AD_BONUS_MAX_SECONDS) / maxf(1.0, float(AD_BONUS_SECONDS)))))
+	return AdBonus.stack_max_count(float(AD_BONUS_MAX_SECONDS), float(AD_BONUS_SECONDS))
 
 
 func _shop_ad_stack_units() -> float:
-	return clampf(ad_bonus_seconds_remaining / maxf(1.0, float(AD_BONUS_SECONDS)), 0.0, float(_shop_ad_stack_max_count()))
+	return AdBonus.stack_units(ad_bonus_seconds_remaining, float(AD_BONUS_SECONDS), float(AD_BONUS_MAX_SECONDS))
 
 
 func _shop_ad_stack_active_count() -> int:
-	var units := _shop_ad_stack_units()
-	if units <= 0.0:
-		return 0
-	return clampi(int(ceil(units - 0.001)), 0, _shop_ad_stack_max_count())
+	return AdBonus.stack_active_count(ad_bonus_seconds_remaining, float(AD_BONUS_SECONDS), float(AD_BONUS_MAX_SECONDS))
 
 
 func _sync_shop_ad_stack_meter(force := false) -> void:
