@@ -111,3 +111,42 @@ static func normalized_hub_missions(loaded_missions: Variant, normalize_mission:
 		if not mission.is_empty():
 			normalized.append(mission)
 	return normalized
+
+
+static func payload_regresses_progress(existing_payload: Dictionary, next_payload: Dictionary, skill_defs: Array) -> bool:
+	if existing_payload.is_empty():
+		return false
+	var existing_reset_generation := save_reset_generation(existing_payload)
+	var next_reset_generation := save_reset_generation(next_payload)
+	if next_reset_generation > existing_reset_generation:
+		return false
+	if next_reset_generation < existing_reset_generation:
+		return true
+	var existing_xp := total_skill_xp_evidence(existing_payload, skill_defs)
+	if existing_xp <= 0:
+		return false
+	var next_xp := total_skill_xp_evidence(next_payload, skill_defs)
+	return next_xp < existing_xp
+
+
+static func save_reset_generation(data: Dictionary) -> int:
+	return maxi(0, int(data.get("save_reset_generation", 0)))
+
+
+static func total_skill_xp_evidence(data: Dictionary, skill_defs: Array) -> int:
+	var loaded_skills = data.get("skills", {})
+	if typeof(loaded_skills) != TYPE_DICTIONARY:
+		return 0
+	var total_xp := 0
+	var source := loaded_skills as Dictionary
+	for raw_def in skill_defs:
+		var skill_def := raw_def as Dictionary
+		var skill_id := str(skill_def.get("id", ""))
+		if skill_id.is_empty() or not source.has(skill_id):
+			continue
+		var skill_state = source.get(skill_id, {})
+		if typeof(skill_state) != TYPE_DICTIONARY:
+			continue
+		var state := skill_state as Dictionary
+		total_xp += maxi(0, int(state.get("xp", 0)))
+	return total_xp

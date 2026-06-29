@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 65,658 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, audio player-set construction and settings normalization now preload from `scripts/audio/`, leaderboard profile rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, progression medal buff math now preloads from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and shared save-state normalizers now preload from `scripts/save_state/`. |
+| `scripts/main.gd` * | 65,631 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, audio player-set construction and settings normalization now preload from `scripts/audio/`, leaderboard profile rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, progression medal buff math now preloads from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and shared save-state normalizers plus autosave regression evidence now preload from `scripts/save_state/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -162,7 +162,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/save_state/normalizers.gd` * | 113 | Pure save-shape normalization for passive/firepit module states, leaderboard category integer maps, convergence modules, hub modules, and hub mission lists. Runtime restore orchestration remains in `scripts/main.gd`. |
+| `scripts/save_state/normalizers.gd` * | 152 | Pure save-shape normalization for passive/firepit module states, leaderboard category integer maps, convergence modules, hub modules, hub mission lists, reset-generation lookup, total skill-XP evidence, and autosave progress-regression detection. Runtime restore orchestration remains in `scripts/main.gd`. |
 
 ## Validation And Tooling
 
@@ -203,7 +203,7 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; audio settings normalization and repeated audio player-set lifecycle moved out; extended audio async warmup cancellation collapsed behind one helper; leaderboard profile rules moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; progression medal buff math moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display/wallet helpers moved out; passive/leaderboard/convergence/hub save-state normalizers moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, and stale save-state pass-through wrappers deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; audio settings normalization and repeated audio player-set lifecycle moved out; extended audio async warmup cancellation collapsed behind one helper; leaderboard profile rules moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; progression medal buff math moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display/wallet helpers moved out; passive/leaderboard/convergence/hub save-state normalizers and autosave regression evidence moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, and stale save-state pass-through wrappers deleted. |
 | `scripts/audio/player_sets.gd` | added | New extracted audio helper for repeated player-list lifecycle used by sync and async extended audio warmup. |
 | `scripts/audio/settings.gd` | added | New extracted audio settings helper for save/restore volume clamping. |
 | `scripts/leaderboard/profile.gd` | added | New extracted leaderboard profile helper for local name/id/avatar rules. |
@@ -480,5 +480,8 @@ Legend:
 | `git diff --check -- scripts/main.gd scripts/audio/player_sets.gd docs/refactor-file-map.md` | passed after extracting audio player-set lifecycle helpers. |
 | `.\scripts\test-save-normalization.ps1` | passed after extracting audio player-set lifecycle helpers; runner emitted existing CanvasItem/RID/ObjectDB leak-at-exit warnings. |
 | `.\scripts\test-performance-regressions.ps1` | passed after extracting audio player-set lifecycle helpers. |
+| `git diff --check -- scripts/main.gd scripts/save_state/normalizers.gd` | passed after moving autosave progress-regression evidence into `scripts/save_state/normalizers.gd`. |
+| `.\scripts\test-save-normalization.ps1` | passed after moving autosave progress-regression evidence; runner emitted existing CanvasItem/RID/ObjectDB leak-at-exit warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after moving autosave progress-regression evidence. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
