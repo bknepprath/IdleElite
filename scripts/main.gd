@@ -7577,27 +7577,10 @@ func _chat_send(raw_text: String) -> void:
 		leaderboard_display_name = _make_guest_display_name()
 		leaderboard_name_key = ""
 		save_game()
-	var chat_payload := {
-		"sender_id": leaderboard_player_id,
-		"name": leaderboard_display_name,
-		"total_level": _global_level(),
-		"avatar_index": leaderboard_avatar_index,
-		"text": clean_text,
-		"created_at": now_msec,
-		"created_at_unix": now_unix,
-		"deleted": false
-	}
-	if has_claimed_chat_name:
-		chat_payload["name_key"] = leaderboard_name_key
-	var remote_chat_payload := chat_payload.duplicate(true)
-	remote_chat_payload["created_at"] = server_timestamp
-	var updates := {
-		"messages/%s" % message_id: remote_chat_payload,
-		"user_write_gates/%s" % leaderboard_player_id: {
-			"updated_at": server_timestamp,
-			"submitted_at_unix": now_unix
-		}
-	}
+	var chat_name_key := leaderboard_name_key if has_claimed_chat_name else ""
+	var chat_payload := ChatState.outgoing_message_payload(leaderboard_player_id, leaderboard_display_name, _global_level(), leaderboard_avatar_index, clean_text, now_msec, now_unix, chat_name_key)
+	var remote_chat_payload := ChatState.remote_message_payload(chat_payload, server_timestamp)
+	var updates := ChatState.firebase_write_updates(message_id, leaderboard_player_id, remote_chat_payload, server_timestamp, now_unix)
 	chat_send_in_flight = true
 	chat_send_stage = "patch"
 	chat_pending_send_message_id = message_id

@@ -82,6 +82,47 @@ static func make_message_id(now_unix: int) -> String:
 	return "m%s_%s" % [now_unix, suffix]
 
 
+static func outgoing_message_payload(
+	sender_id: String,
+	display_name: String,
+	total_level: int,
+	avatar_index: int,
+	text: String,
+	created_at_msec: int,
+	created_at_unix: int,
+	name_key := ""
+) -> Dictionary:
+	var payload := {
+		"sender_id": sender_id,
+		"name": display_name,
+		"total_level": total_level,
+		"avatar_index": avatar_index,
+		"text": text,
+		"created_at": created_at_msec,
+		"created_at_unix": created_at_unix,
+		"deleted": false
+	}
+	if not name_key.is_empty():
+		payload["name_key"] = name_key
+	return payload
+
+
+static func remote_message_payload(local_payload: Dictionary, server_timestamp: Variant) -> Dictionary:
+	var remote_payload := local_payload.duplicate(true)
+	remote_payload["created_at"] = server_timestamp
+	return remote_payload
+
+
+static func firebase_write_updates(message_id: String, sender_id: String, remote_payload: Dictionary, server_timestamp: Variant, submitted_at_unix: int) -> Dictionary:
+	return {
+		"messages/%s" % message_id: remote_payload,
+		"user_write_gates/%s" % sender_id: {
+			"updated_at": server_timestamp,
+			"submitted_at_unix": submitted_at_unix
+		}
+	}
+
+
 static func time_text(row_data: Dictionary) -> String:
 	var created := maxi(0, int(row_data.get("created_at_unix", 0)))
 	if created <= 0:
