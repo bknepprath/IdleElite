@@ -16,6 +16,7 @@ const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const AdBonus = preload("res://scripts/monetization/ad_bonus.gd")
 const BerryPrep = preload("res://scripts/materials/berry_prep.gd")
+const BossGates = preload("res://scripts/gameplay/boss_gates.gd")
 const BuildableModules = preload("res://scripts/gameplay/buildable_modules.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
 const CrashReports = preload("res://scripts/diagnostics/crash_reports.gd")
@@ -56112,66 +56113,35 @@ func _berry_prep_result_text(result: Dictionary) -> String:
 
 
 func _is_boss_fight_action(action: Dictionary) -> bool:
-	return str(action.get("kind", "")) == "boss_fight" and typeof(action.get("boss", {})) == TYPE_DICTIONARY and not (action.get("boss", {}) as Dictionary).is_empty()
+	return BossGates.is_boss_fight(action)
 
 
 func _boss_id(action: Dictionary) -> String:
-	if not _is_boss_fight_action(action):
-		return ""
-	return str((action.get("boss", {}) as Dictionary).get("id", "")).strip_edges()
+	return BossGates.boss_id(action)
 
 
 func _boss_name(action: Dictionary) -> String:
-	if not _is_boss_fight_action(action):
-		return ""
-	return str((action.get("boss", {}) as Dictionary).get("name", str(action.get("name", "Boss")))).strip_edges()
+	return BossGates.boss_name(action)
 
 
 func _boss_is_completed(action: Dictionary) -> bool:
-	var boss_id := _boss_id(action)
-	return not boss_id.is_empty() and bool(completed_bosses.get(boss_id, false))
+	return BossGates.is_completed(completed_bosses, action)
 
 
 func _completed_bosses_for_save() -> Dictionary:
-	var saved := {}
-	for raw_boss_id in completed_bosses.keys():
-		var boss_id := str(raw_boss_id)
-		if not boss_id.is_empty() and bool(completed_bosses.get(raw_boss_id, false)):
-			saved[boss_id] = true
-	return saved
+	return BossGates.completed_for_save(completed_bosses)
 
 
 func _restore_completed_bosses_from_save(value: Variant) -> void:
-	completed_bosses.clear()
-	if typeof(value) != TYPE_DICTIONARY:
-		return
-	for raw_boss_id in (value as Dictionary).keys():
-		var boss_id := str(raw_boss_id).strip_edges()
-		if not boss_id.is_empty() and bool((value as Dictionary).get(raw_boss_id, false)):
-			completed_bosses[boss_id] = true
+	completed_bosses = BossGates.restored_from_save(value)
 
 
 func _action_boss_requirements_met(action: Dictionary) -> bool:
-	var raw_requirements = action.get("requires_bosses", [])
-	if typeof(raw_requirements) != TYPE_ARRAY:
-		return true
-	for raw_boss_id in raw_requirements as Array:
-		var boss_id := str(raw_boss_id).strip_edges()
-		if not boss_id.is_empty() and not bool(completed_bosses.get(boss_id, false)):
-			return false
-	return true
+	return BossGates.requirements_met(completed_bosses, action)
 
 
 func _action_missing_boss_requirements(action: Dictionary) -> Array:
-	var missing := []
-	var raw_requirements = action.get("requires_bosses", [])
-	if typeof(raw_requirements) != TYPE_ARRAY:
-		return missing
-	for raw_boss_id in raw_requirements as Array:
-		var boss_id := str(raw_boss_id).strip_edges()
-		if not boss_id.is_empty() and not bool(completed_bosses.get(boss_id, false)):
-			missing.append(boss_id)
-	return missing
+	return BossGates.missing_requirements(completed_bosses, action)
 
 
 func _complete_boss_if_needed(action: Dictionary) -> String:
