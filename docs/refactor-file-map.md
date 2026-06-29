@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 192 files / about 111,172 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 188 files / about 110,980 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -161,6 +161,7 @@ Legend:
    - Current: also deleted definition-only constants/preloads/state fields after restoring intentional performance-contract anchors.
    - Current: moved reusable-control ownership assertions out of `scripts/main.gd`, then deleted the now-redundant main preload/constant anchors.
    - Current: deleted four newly orphaned script files: `scripts/fishing_attempt_bar.gd`, `scripts/ui/hub_move_icon.gd`, `scripts/ui/passive_pile_shadow.gd`, and `scripts/ui/firepit_dependency_connector.gd`.
+   - Current: deleted two orphaned Godot probe scene scripts and their `.uid` files from `scripts/tests/`.
    - Next lazy win: continue only with functions that have no runtime/test callers after checking dynamic `scene.call(...)` use.
 
 1. Button press state
@@ -259,5 +260,9 @@ Legend:
 | `git diff --check -- deleted script files` | passed after deleting newly orphaned script files. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting newly orphaned script files. |
 | `.\scripts\check-runtime-asset-paths.ps1` | passed after deleting newly orphaned script files. |
+| `rg -n "fishing_wallet_press_probe|verify_live_fishing_save" .` | found no references after deleting orphaned probe scene scripts. |
+| `git diff --check -- deleted probe scene files` | passed after deleting orphaned probe scene scripts. |
+| `.\scripts\check-runtime-asset-paths.ps1` | passed after deleting orphaned probe scene scripts. |
+| `.\scripts\test-performance-regressions.ps1` | passed after deleting orphaned probe scene scripts. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
