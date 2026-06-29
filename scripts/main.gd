@@ -15,6 +15,7 @@ const AchievementPresentation = preload("res://scripts/achievements/presentation
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
+const CrashReports = preload("res://scripts/diagnostics/crash_reports.gd")
 const FirebaseRuntime = preload("res://scripts/firebase/runtime.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const MedalBuffs = preload("res://scripts/progression/medal_buffs.gd")
@@ -130,8 +131,6 @@ const PLAY_STORE_RATING_ANDROID_URL := "market://details?id=com.idleelite.game"
 const MAX_CRASH_REPORT_CLIPBOARD_CHARS := 1800
 const MAX_ANDROID_DIAGNOSTIC_EVENTS_IN_REPORT := 80
 const CRASH_SESSION_HEARTBEAT_SECONDS := 15.0
-const ANDROID_LIFECYCLE_EVENTS := ["create", "start", "restart", "resume", "pause", "stop", "destroy"]
-const ANDROID_CLEAN_LIFECYCLE_EVENTS := ["pause", "stop", "destroy"]
 const AUTOSAVE_INTERVAL_SECONDS := 15.0
 const RESET_DATA_CONFIRM_SECONDS := 8.0
 const RESET_DATA_CONFIRM_MIN_SECONDS := 0.08
@@ -46254,134 +46253,7 @@ func _settings_copy_crash_report_pressed() -> void:
 
 
 func _crash_report_clipboard_text(raw_report: String) -> String:
-	var json := JSON.new()
-	if json.parse(raw_report) != OK:
-		return raw_report
-	var parsed = json.data
-	if typeof(parsed) != TYPE_DICTIONARY:
-		return raw_report
-	var report := parsed as Dictionary
-	var lines := ["Idle Elite crash report v2"]
-	var kind := str(report.get("kind", "java_exception"))
-	var events := _crash_report_diagnostic_events(report)
-	lines.append("type: %s" % kind)
-	if report.has("reason"):
-		lines.append("reason: %s" % str(report.get("reason", "")))
-	var metadata_summary := _crash_report_android_metadata_summary(report, events)
-	if not metadata_summary.is_empty():
-		lines.append(metadata_summary)
-	if report.has("timestamp_unix"):
-		lines.append("time_unix: %s" % int(report.get("timestamp_unix", 0)))
-	elif report.has("timestamp"):
-		lines.append("time: %s" % str(report.get("timestamp", "")))
-	if kind == "unclean_previous_session" and typeof(report.get("previous_session", {})) == TYPE_DICTIONARY:
-		_append_previous_session_crash_summary(lines, report.get("previous_session", {}) as Dictionary, events, int(report.get("timestamp_unix", 0)))
-	elif report.has("exception"):
-		lines.append("exception: %s" % str(report.get("exception", "")))
-		lines.append("thread: %s" % str(report.get("thread", "unknown")))
-		_append_crash_report_stack_summary(lines, str(report.get("stack_trace", "")))
-	if not events.is_empty():
-		lines.append("events:")
-		_append_crash_report_event_summary(lines, events, 8)
-	return "\n".join(lines)
-
-
-func _append_previous_session_crash_summary(lines: Array, previous: Dictionary, events: Array, report_time_unix: int) -> void:
-	lines.append("prev_status: %s startup=%s os=%s" % [
-		str(previous.get("status", "")),
-		str(previous.get("startup_initialized", false)),
-		str(previous.get("os", ""))
-	])
-	if previous.has("timestamp_unix"):
-		var previous_time_unix := int(previous.get("timestamp_unix", 0))
-		var age_text := _format_duration(float(maxi(0, report_time_unix - previous_time_unix))) if report_time_unix > 0 else "unknown"
-		lines.append("prev_marker: %s age=%s" % [previous_time_unix, age_text])
-	lines.append("screen: %s selected=%s" % [
-		str(previous.get("current_screen", "")),
-		str(previous.get("selected_skill_id", ""))
-	])
-	lines.append("running: %s/%s progress=%s" % [
-		str(previous.get("running_skill_id", "")),
-		str(previous.get("running_action_id", "")),
-		_format_significant_digits(float(previous.get("action_progress", 0.0)), 4)
-	])
-	var last := str(previous.get("last_result", ""))
-	if not last.is_empty():
-		lines.append("last: %s" % last)
-	var previous_lifecycle := _previous_android_lifecycle_before_launch(events)
-	if not previous_lifecycle.is_empty():
-		var lifecycle_clean := previous_lifecycle in ANDROID_CLEAN_LIFECYCLE_EVENTS
-		lines.append("verdict: %s before relaunch; %s" % [
-			previous_lifecycle,
-			"clean lifecycle exit" if lifecycle_clean else "unclean/native-or-OS-kill suspect"
-		])
-
-
-func _append_crash_report_stack_summary(lines: Array, stack_trace: String) -> void:
-	var stack_lines := []
-	for line in stack_trace.split("\n", false):
-		var trimmed := str(line).strip_edges()
-		if trimmed.is_empty():
-			continue
-		stack_lines.append(trimmed)
-		if stack_lines.size() >= 3:
-			break
-	if stack_lines.is_empty():
-		return
-	lines.append("stack:")
-	for stack_line in stack_lines:
-		lines.append("- %s" % stack_line)
-
-
-func _append_crash_report_event_summary(lines: Array, events: Array, max_count: int) -> void:
-	var start := maxi(0, events.size() - max_count)
-	for i in range(start, events.size()):
-		lines.append("- %s" % _compact_android_diagnostic_event(str(events[i])))
-
-
-func _compact_android_diagnostic_event(line: String) -> String:
-	var event := str(line).strip_edges()
-	var timestamp_separator := event.find(" ")
-	var time_text := ""
-	if timestamp_separator >= 0:
-		var timestamp := event.substr(0, timestamp_separator)
-		var time_separator := timestamp.find("T")
-		time_text = timestamp.substr(time_separator + 1) if time_separator >= 0 else timestamp
-		var millis_separator := time_text.find(".")
-		if millis_separator >= 0:
-			time_text = time_text.substr(0, millis_separator)
-	var event_name := _android_diagnostic_event_name(event)
-	return "%s %s" % [time_text, event_name] if not time_text.is_empty() else event_name
-
-
-func _crash_report_android_metadata_summary(report: Dictionary, events: Array) -> String:
-	if report.has("version_name") or report.has("device"):
-		var parts := []
-		if report.has("version_name"):
-			parts.append("build=%s(%s)" % [str(report.get("version_name", "")), int(report.get("version_code", 0))])
-		if report.has("device"):
-			parts.append("device=%s android=%s" % [str(report.get("device", "")), int(report.get("android_sdk", 0))])
-		return " ".join(parts)
-	for i in range(events.size() - 1, -1, -1):
-		var line := str(events[i])
-		var version_index := line.find(" version=")
-		if version_index < 0:
-			continue
-		var device_index := line.find(" device=", version_index)
-		var build_text := line.substr(version_index + " version=".length(), device_index - version_index - " version=".length()) if device_index >= 0 else line.substr(version_index + " version=".length())
-		var device_text := line.substr(device_index + " device=".length()) if device_index >= 0 else ""
-		return "build=%s device=%s" % [build_text, device_text] if not device_text.is_empty() else "build=%s" % build_text
-	return ""
-
-
-func _crash_report_diagnostic_events(report: Dictionary) -> Array:
-	var events = report.get("android_diagnostic_events", [])
-	if typeof(events) == TYPE_ARRAY and not (events as Array).is_empty():
-		return events as Array
-	events = report.get("diagnostic_events", [])
-	if typeof(events) == TYPE_ARRAY:
-		return events as Array
-	return []
+	return CrashReports.clipboard_text(raw_report)
 
 
 func _pending_crash_report_exists() -> bool:
@@ -46476,32 +46348,15 @@ func _load_android_diagnostic_events() -> Array:
 
 
 func _android_diagnostic_event_name(line: String) -> String:
-	var event := line.strip_edges()
-	var timestamp_separator := event.find(" ")
-	if timestamp_separator >= 0:
-		event = event.substr(timestamp_separator + 1)
-	var metadata_separator := event.find(" version=")
-	if metadata_separator >= 0:
-		event = event.substr(0, metadata_separator)
-	return event.strip_edges()
+	return CrashReports.android_diagnostic_event_name(line)
 
 
 func _previous_android_lifecycle_before_launch(events: Array) -> String:
-	var launch_index := -1
-	for i in range(events.size()):
-		if _android_diagnostic_event_name(str(events[i])) == "create":
-			launch_index = i
-	if launch_index <= 0:
-		return ""
-	for i in range(launch_index - 1, -1, -1):
-		var event_name := _android_diagnostic_event_name(str(events[i]))
-		if event_name in ANDROID_LIFECYCLE_EVENTS:
-			return event_name
-	return ""
+	return CrashReports.previous_android_lifecycle_before_launch(events)
 
 
 func _previous_android_lifecycle_was_clean(events: Array) -> bool:
-	return _previous_android_lifecycle_before_launch(events) in ANDROID_CLEAN_LIFECYCLE_EVENTS
+	return CrashReports.previous_android_lifecycle_was_clean(events)
 
 
 func _synthesize_unclean_session_crash_report() -> void:
