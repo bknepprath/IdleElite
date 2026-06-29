@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 187 files / about 110,613 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 188 files / about 110,625 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 66,509 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, and chat save-state helpers now preload from `scripts/chat/`. |
+| `scripts/main.gd` * | 66,288 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state helpers now preload from `scripts/chat/`, and activity data parser helpers now preload from `scripts/activity_data/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -120,6 +120,12 @@ Legend:
 | --- | ---: | --- |
 | `scripts/chat/state.gd` * | 24 | Chat save-state clamping and normalization for retry timestamps and last-opened message ids. Stream/UI behavior remains in `scripts/main.gd`. |
 
+## Activity Data Helper Scripts
+
+| Path | Lines | What lives here |
+| --- | ---: | --- |
+| `scripts/activity_data/normalizers.gd` * | 233 | Pure activity/event database load normalization: event module records, requirements, XP/resource rewards, tag arrays, art animation metadata, resource paths, and slugs. |
+
 ## Validation And Tooling
 
 | Path | Lines | What lives here |
@@ -159,7 +165,8 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement reward constants/formulas and toast seen-id normalization moved out; activity queue state normalization moved out; chat save-state helpers moved out; five now-redundant module UI pass-through wrappers deleted; dead helper functions deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement reward constants/formulas and toast seen-id normalization moved out; activity queue state normalization moved out; chat save-state helpers moved out; activity data load normalizers moved out; five now-redundant module UI pass-through wrappers deleted; dead helper functions deleted. |
+| `scripts/activity_data/normalizers.gd` | added | New extracted activity/event database parser helper. |
 | `scripts/chat/state.gd` | added | New extracted chat state helper for retry timestamp clamping and opened-message id normalization. |
 | `scripts/activity_queue/state.gd` | added | New extracted activity queue state helper for queue normalization and next-index math. |
 | `scripts/achievements/rewards.gd` | added | New extracted achievement reward helper for art paths, target tables, and reward amount formulas. |
@@ -223,11 +230,15 @@ Legend:
    - Current: retry timestamp save/restore clamping and opened message-id normalization live in `scripts/chat/state.gd`.
    - Next lazy win: keep stream connection and row/composer UI in `scripts/main.gd` until a full chat runtime boundary can move.
 
-7. Save normalization
+7. Activity data loading
+   - Current: pure activity/event database normalizers live in `scripts/activity_data/normalizers.gd`.
+   - Next lazy win: fishing area parsing is still nearby, but it has more live database/state coupling and should move only with its dependent helpers.
+
+8. Save normalization
    - Current: many tiny save helper wrappers have been inlined or renamed in active worktree changes.
    - Next lazy win: keep exact static tests around any save-payload simplification.
 
-8. Activity database
+9. Activity database
    - Current: data source is already externalized in `docs/activity-database.json`.
    - Next lazy win: do not move data again; reduce loader glue in `scripts/main.gd` instead.
 
@@ -302,6 +313,10 @@ Legend:
 | `git diff --check -- scripts/main.gd scripts/chat/state.gd scripts/test-performance-regressions.ps1` | passed after extracting chat save-state helpers. |
 | `.\scripts\test-save-normalization.ps1` | passed after extracting chat save-state helpers; runner emitted existing leak-at-exit warnings. |
 | `.\scripts\test-performance-regressions.ps1` | passed after extracting chat save-state helpers. |
+| `git diff --check -- scripts/main.gd scripts/activity_data/normalizers.gd` | passed after extracting activity data load normalizers. |
+| `.\scripts\check-activity-database-contracts.ps1` | passed after extracting activity data load normalizers. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting activity data load normalizers. |
+| `.\scripts\test-save-normalization.ps1` | passed after extracting activity data load normalizers; runner emitted existing leak-at-exit warnings. |
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting stale helpers. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting stale helpers. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after deleting stale helpers. |
