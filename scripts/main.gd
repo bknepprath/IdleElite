@@ -30388,33 +30388,7 @@ func _show_pending_completed_achievement_toasts() -> void:
 func _visible_achievement_milestones(hide_completed: bool) -> Array:
 	if hide_completed:
 		return _visible_achievement_milestones_fast()
-	var chain_order := []
-	var chains := {}
-	for achievement in _achievement_milestones(false):
-		if not _achievement_should_show_in_bonus_log(achievement):
-			continue
-		var chain_key := str(achievement.get("chain_key", achievement.get("id", "")))
-		if chain_key.is_empty():
-			continue
-		if not chains.has(chain_key):
-			chains[chain_key] = []
-			chain_order.append(chain_key)
-		(chains[chain_key] as Array).append(achievement)
-	var visible_achievements := []
-	for chain_key in chain_order:
-		var chain: Array = chains[chain_key]
-		var next_achievement := {}
-		for achievement in chain:
-			if bool(achievement.get("completed", false)):
-				if not hide_completed:
-					visible_achievements.append(achievement)
-				continue
-			if next_achievement.is_empty():
-				next_achievement = achievement
-		if next_achievement.is_empty():
-			continue
-		visible_achievements.append(next_achievement)
-	return visible_achievements
+	return AchievementState.visible_milestones(_achievement_milestones(false), hide_completed)
 
 
 func _visible_achievement_milestones_fast() -> Array:
@@ -30529,13 +30503,6 @@ func _visible_achievement_milestones_fast() -> Array:
 			"accent": "#fff052"
 		})
 	return visible_milestones
-
-
-func _achievement_should_show_in_bonus_log(achievement: Dictionary) -> bool:
-	return (
-		not bool(achievement.get("log_only", false))
-		and not str(achievement.get("reward_stat", "")).is_empty()
-	)
 
 
 func _skill_level_achievement_targets() -> Array:

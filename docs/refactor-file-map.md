@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 188 files / about 110,625 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 188 files / about 110,631 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 66,288 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state helpers now preload from `scripts/chat/`, and activity data parser helpers now preload from `scripts/activity_data/`. |
+| `scripts/main.gd` * | 66,255 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state helpers now preload from `scripts/chat/`, and activity data parser helpers now preload from `scripts/activity_data/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -106,7 +106,7 @@ Legend:
 | Path | Lines | What lives here |
 | --- | ---: | --- |
 | `scripts/achievements/rewards.gd` * | 41 | Achievement art paths, target tables, and stamina reward formulas. First achievement ownership cut; live milestone state remains in `scripts/main.gd` for now. |
-| `scripts/achievements/state.gd` * | 14 | Achievement save-state normalization, currently toast seen-id cleanup. |
+| `scripts/achievements/state.gd` * | 53 | Achievement save-state normalization and visible milestone filtering. |
 
 ## Activity Queue Helper Scripts
 
@@ -165,7 +165,7 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement reward constants/formulas and toast seen-id normalization moved out; activity queue state normalization moved out; chat save-state helpers moved out; activity data load normalizers moved out; five now-redundant module UI pass-through wrappers deleted; dead helper functions deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; activity queue state normalization moved out; chat save-state helpers moved out; activity data load normalizers moved out; five now-redundant module UI pass-through wrappers deleted; dead helper functions deleted. |
 | `scripts/activity_data/normalizers.gd` | added | New extracted activity/event database parser helper. |
 | `scripts/chat/state.gd` | added | New extracted chat state helper for retry timestamp clamping and opened-message id normalization. |
 | `scripts/activity_queue/state.gd` | added | New extracted activity queue state helper for queue normalization and next-index math. |
@@ -219,7 +219,7 @@ Legend:
 
 4. Achievements
    - Current: achievement art paths, target tables, and reward formulas live in `scripts/achievements/rewards.gd`.
-   - Current: achievement toast seen-id normalization lives in `scripts/achievements/state.gd`.
+   - Current: achievement toast seen-id normalization and visible milestone filtering live in `scripts/achievements/state.gd`.
    - Next lazy win: move milestone construction only after state access is bundled cleanly; do not create a giant `achievements.gd`.
 
 5. Activity queue
@@ -317,6 +317,9 @@ Legend:
 | `.\scripts\check-activity-database-contracts.ps1` | passed after extracting activity data load normalizers. |
 | `.\scripts\test-performance-regressions.ps1` | passed after extracting activity data load normalizers. |
 | `.\scripts\test-save-normalization.ps1` | passed after extracting activity data load normalizers; runner emitted existing leak-at-exit warnings. |
+| `git diff --check -- scripts/main.gd scripts/achievements/state.gd` | passed after moving achievement visible milestone filtering into `AchievementState`. |
+| `.\scripts\test-home-achievement-medal-click.ps1` | passed after moving achievement visible milestone filtering; runner emitted existing save-protection/shutdown warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after moving achievement visible milestone filtering. |
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting stale helpers. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting stale helpers. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after deleting stale helpers. |
