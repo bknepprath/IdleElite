@@ -17,6 +17,7 @@ $fishCirclePath = Join-Path $projectRoot "scripts\ui\fish_circle.gd"
 $activityCardBorderPath = Join-Path $projectRoot "scripts\ui\activity_card_border.gd"
 $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module_card_border.gd"
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
+$actionArtUiPath = Join-Path $projectRoot "scripts\ui\action_art_ui.gd"
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $bootFlexLoadingAnimationPath = Join-Path $projectRoot "scripts\ui\boot_flex_loading_animation.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
@@ -140,6 +141,8 @@ Assert-True (Test-Path -LiteralPath $passiveModuleCardBorderPath) "Missing scrip
 $passiveCardBorder = Get-Content -LiteralPath $passiveModuleCardBorderPath -Raw
 Assert-True (Test-Path -LiteralPath $actionArtTextureRectPath) "Missing scripts\ui\action_art_texture_rect.gd."
 $actionArtTexture = Get-Content -LiteralPath $actionArtTextureRectPath -Raw
+Assert-True (Test-Path -LiteralPath $actionArtUiPath) "Missing scripts\ui\action_art_ui.gd."
+$actionArtUi = Get-Content -LiteralPath $actionArtUiPath -Raw
 Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui\rounded_texture_rect.gd."
 $roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $bootFlexLoadingAnimationPath) "Missing scripts\ui\boot_flex_loading_animation.gd."
@@ -1982,10 +1985,12 @@ Assert-True ($actionArtMaskParams.Value -match 'mask_shader_params_size\.is_equa
 Assert-True ($actionArtMaskParams.Value.IndexOf('return') -lt $actionArtMaskParams.Value.IndexOf('set_shader_parameter')) "Action art images should return before writing unchanged shader parameters."
 
 $actionArtImage = Get-FunctionBody -Text $main -Name "_action_art_image"
-Assert-True ($actionArtImage -match 'DisplayServer\.get_name\(\) == "headless"[\s\S]*_visual_fallback_texture\(\)') "Headless action art should use a non-null transparent texture instead of imported textures that can expose null dummy-renderer RIDs."
-Assert-True ($actionArtImage -match 'set_mask_material_enabled\(false\)[\s\S]*set_mask_material_enabled\(_action_art_needs_texture_mask\(path\)\)') "Action art image creation should disable the mask shader in headless and enable it only for paths that need rounded texture clipping otherwise."
-Assert-True ($actionArtImage -notmatch 'image\.texture = _texture\(path\)') "Action art image creation must not assign a possibly-null texture directly."
-$actionArtNeedsMask = Get-FunctionBody -Text $main -Name "_action_art_needs_texture_mask"
+Assert-True ($actionArtImage -match 'ActionArtUi\.image' -and $actionArtImage -match '_texture_or_visual_fallback' -and $actionArtImage -match '_visual_fallback_texture') "Action art image creation should delegate texture-safe UI construction to ActionArtUi."
+$actionArtUiImage = Get-FunctionBody -Text $actionArtUi -Name "image"
+Assert-True ($actionArtUiImage -match 'if headless:[\s\S]*visual_fallback\.call\(\)') "Headless action art should use a non-null transparent texture instead of imported textures that can expose null dummy-renderer RIDs."
+Assert-True ($actionArtUiImage -match 'set_mask_material_enabled\(false\)[\s\S]*set_mask_material_enabled\(needs_texture_mask\(path\)\)') "Action art image creation should disable the mask shader in headless and enable it only for paths that need rounded texture clipping otherwise."
+Assert-True ($actionArtUiImage -notmatch 'node\.texture = _texture\(path\)|image\.texture = _texture\(path\)') "Action art image creation must not assign a possibly-null texture directly."
+$actionArtNeedsMask = Get-FunctionBody -Text $actionArtUi -Name "needs_texture_mask"
 Assert-True ($actionArtNeedsMask -match 'contains\("/backgrounds/"\)') "Only full background-style art should keep the action-art mask shader."
 $visualFallbackTexture = Get-FunctionBody -Text $main -Name "_visual_fallback_texture"
 Assert-True ($visualFallbackTexture -match '_placeholder_texture\(Vector2i\(8, 8\)\)' -and $visualFallbackTexture -match 'ImageTexture\.create_from_image\(image\)') "Visual texture fallback should use placeholder textures in headless and tiny transparent ImageTextures otherwise."

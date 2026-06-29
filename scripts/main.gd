@@ -71,6 +71,7 @@ const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_bo
 const BerryPrepControls = preload("res://scripts/ui/berry_prep_controls.gd")
 const BuildableModuleOverlay = preload("res://scripts/ui/buildable_module_overlay.gd")
 const ConvergenceBuildOverlay = preload("res://scripts/ui/convergence_build_overlay.gd")
+const ActionArtUi = preload("res://scripts/ui/action_art_ui.gd")
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
 const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_rect.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
@@ -60914,88 +60915,11 @@ func _spritesheet_or_visual_fallback(path: String, index: int, cell_size: Vector
 
 
 func _action_art_image(action: Dictionary) -> ActionArtTextureRect:
-	var path := str(action.get("art", ""))
-	var art_size := _action_art_display_size(action)
-	var animation := action.get("art_animation", {}) as Dictionary
-	var image: ActionArtTextureRect = ActionArtAnimationRect.new() if not animation.is_empty() else ActionArtTextureRect.new()
-	if DisplayServer.get_name() == "headless":
-		image.texture = _visual_fallback_texture()
-		image.set_mask_material_enabled(false)
-	else:
-		image.texture = _texture_or_visual_fallback(path)
-		image.set_mask_material_enabled(_action_art_needs_texture_mask(path))
-		if image is ActionArtAnimationRect:
-			var animated_image := image as ActionArtAnimationRect
-			var atlas_path := str(animation.get("atlas", ""))
-			var frame_count := int(animation.get("frame_count", 1))
-			var cell_size := Vector2(
-				float(animation.get("cell_width", 256.0)),
-				float(animation.get("cell_height", 256.0))
-			)
-			animated_image.configure_animation(
-				_texture_or_visual_fallback(atlas_path),
-				frame_count,
-				cell_size,
-				animation.get("sequence", []) as Array,
-				animation.get("durations", []) as Array,
-				str(animation.get("sync", "")),
-				animation.get("effects", {})
-			)
-	image.custom_minimum_size = art_size
-	image.size = art_size
-	image.position = _action_art_display_offset(action)
-	image.radius = 56.0
-	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	image.z_index = 1
-	return image
+	return ActionArtUi.image(action, _action_art_display_size(action), _action_art_display_offset(action), Callable(self, "_texture_or_visual_fallback"), Callable(self, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
 
 
 func _add_action_art_corner_badges(art_panel: Control, action: Dictionary) -> void:
-	if art_panel == null or not is_instance_valid(art_panel):
-		return
-	art_panel.clip_contents = false
-	var resource_icon_paths := _action_art_resource_icon_paths(action)
-	for i in resource_icon_paths.size():
-		art_panel.add_child(_action_art_corner_badge(str(resource_icon_paths[i]), false, i))
-	var special_type_icon_path := _action_art_special_type_icon_path(action)
-	if not special_type_icon_path.is_empty():
-		art_panel.add_child(_action_art_corner_badge(special_type_icon_path, true, 0))
-
-
-func _action_art_corner_badge(icon_path: String, align_right: bool, index := 0) -> Control:
-	var host := Control.new()
-	host.custom_minimum_size = ACTION_ART_CORNER_ICON_SIZE
-	host.size = ACTION_ART_CORNER_ICON_SIZE
-	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.z_index = 30 + index
-	var overlap := ACTION_ART_CORNER_ICON_EDGE_OVERLAP
-	var x := ACTION_ART_PANEL_SIZE.x - ACTION_ART_CORNER_ICON_SIZE.x + overlap if align_right else -overlap + ACTION_ART_CORNER_ICON_LIST_STEP * index
-	host.position = Vector2(x, ACTION_ART_PANEL_SIZE.y - ACTION_ART_CORNER_ICON_SIZE.y + overlap)
-
-	var stroke := TextureRect.new()
-	stroke.texture = _texture_or_visual_fallback(icon_path)
-	stroke.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	stroke.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	stroke.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	stroke.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var stroke_expand := ACTION_ART_CORNER_ICON_STROKE_PIXELS
-	stroke.size = ACTION_ART_CORNER_ICON_SIZE + Vector2(stroke_expand, stroke_expand)
-	stroke.position = Vector2(-stroke_expand, -stroke_expand) * 0.5
-	stroke.modulate = Color(0.05, 0.035, 0.02, 0.9)
-	stroke.z_index = 0
-	host.add_child(stroke)
-
-	var icon := TextureRect.new()
-	icon.texture = _texture_or_visual_fallback(icon_path)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.custom_minimum_size = ACTION_ART_CORNER_ICON_SIZE
-	icon.size = ACTION_ART_CORNER_ICON_SIZE
-	icon.z_index = 1
-	host.add_child(icon)
-	return host
+	ActionArtUi.add_corner_badges(art_panel, _action_art_resource_icon_paths(action), _action_art_special_type_icon_path(action), ACTION_ART_PANEL_SIZE, ACTION_ART_CORNER_ICON_SIZE, ACTION_ART_CORNER_ICON_EDGE_OVERLAP, ACTION_ART_CORNER_ICON_LIST_STEP, ACTION_ART_CORNER_ICON_STROKE_PIXELS, Callable(self, "_texture_or_visual_fallback"))
 
 
 func _action_art_resource_icon_paths(action: Dictionary) -> Array:
@@ -61110,8 +61034,7 @@ func _sync_blue_guy_chicken_brawl_stage_active(card: Dictionary, skill_id: Strin
 
 
 func _action_art_needs_texture_mask(path: String) -> bool:
-	var normalized := _res_path(path).to_lower()
-	return normalized.contains("/backgrounds/")
+	return ActionArtUi.needs_texture_mask(_res_path(path))
 
 
 func _visual_fallback_texture() -> Texture2D:
@@ -61219,12 +61142,7 @@ func _action_card_background(skill_id: String, action: Dictionary) -> Control:
 
 
 func _action_art_border_overlay() -> Panel:
-	var border := Panel.new()
-	border.set_anchors_preset(Control.PRESET_FULL_RECT)
-	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	border.z_index = 20
-	border.add_theme_stylebox_override("panel", _action_art_border_style())
-	return border
+	return ActionArtUi.border_overlay(_action_art_border_style())
 
 
 func _activity_card_root_height(expanded := false) -> float:
