@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 191 files / about 110,674 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 192 files / about 110,692 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 65,831 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display helpers now preload from `scripts/materials/`, and shared save-state normalizers now preload from `scripts/save_state/`. |
+| `scripts/main.gd` * | 65,788 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display helpers now preload from `scripts/materials/`, and shared save-state normalizers now preload from `scripts/save_state/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -121,6 +121,12 @@ Legend:
 | --- | ---: | --- |
 | `scripts/chat/state.gd` * | 131 | Chat save-state clamping, last-opened message id normalization, message whitespace/censor/max-length sanitation, message id generation, and Central-time timestamp formatting. Stream/UI behavior remains in `scripts/main.gd`. |
 
+## Thieving Helper Scripts
+
+| Path | Lines | What lives here |
+| --- | ---: | --- |
+| `scripts/thieving/state.gd` * | 61 | Thieving trophy and action-jail save-state normalization. Runtime heist/action lookup remains in `scripts/main.gd`. |
+
 ## Activity Data Helper Scripts
 
 | Path | Lines | What lives here |
@@ -178,7 +184,8 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; activity data load normalizers moved out; material definition/display helpers moved out; passive/leaderboard/convergence/hub save-state normalizers moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, and stale save-state pass-through wrappers deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display helpers moved out; passive/leaderboard/convergence/hub save-state normalizers moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, and stale save-state pass-through wrappers deleted. |
+| `scripts/thieving/state.gd` | added | New extracted thieving helper for trophy and action jail save normalization. |
 | `scripts/achievements/milestones.gd` | added | New extracted achievement milestone builder fed by a live progress context from `scripts/main.gd`. |
 | `scripts/save_state/normalizers.gd` | added | New extracted save-state helper for pure dictionary/list normalization across several save domains. |
 | `scripts/materials/defs.gd` | added | New extracted material helper for id aliases, metadata lookup, display names/icons/backgrounds/colors, and amount rounding. |
@@ -247,19 +254,23 @@ Legend:
    - Current: retry timestamp save/restore clamping, opened message-id normalization, message sanitation/censoring, message id generation, and chat row timestamp formatting live in `scripts/chat/state.gd`.
    - Next lazy win: keep stream connection and row/composer UI in `scripts/main.gd` until a full chat runtime boundary can move.
 
-7. Activity data loading
+7. Thieving
+   - Current: trophy and action jail save normalization lives in `scripts/thieving/state.gd`.
+   - Next lazy win: move heist card/state chunks only if a whole thieving UI/runtime boundary can move, not one-off callbacks.
+
+8. Activity data loading
    - Current: pure activity/event database normalizers live in `scripts/activity_data/normalizers.gd`.
    - Next lazy win: fishing area parsing is still nearby, but it has more live database/state coupling and should move only with its dependent helpers.
 
-8. Save normalization
+9. Save normalization
    - Current: passive/firepit module state, leaderboard category integer maps, convergence module state, hub module state, and hub mission list normalization live in `scripts/save_state/normalizers.gd`.
    - Next lazy win: keep exact static tests around any save-payload simplification; do not move restore orchestration until a whole save subsystem boundary exists.
 
-9. Activity database
+10. Activity database
    - Current: data source is already externalized in `docs/activity-database.json`.
    - Next lazy win: do not move data again; reduce loader glue in `scripts/main.gd` instead.
 
-10. Materials
+11. Materials
    - Current: material definition lookup, aliases, display metadata, color lookup, and amount rounding live in `scripts/materials/defs.gd`.
    - Next lazy win: keep live wallet mutation in `scripts/main.gd` until a wallet boundary can move with all callers.
 
@@ -416,5 +427,8 @@ Legend:
 | `git diff --check -- scripts/main.gd scripts/chat/state.gd` | passed after moving chat timestamp helpers. |
 | `.\scripts\test-performance-regressions.ps1` | passed after moving chat timestamp helpers. |
 | `.\scripts\test-save-normalization.ps1` | passed after moving chat timestamp helpers; runner emitted existing leak-at-exit warnings. |
+| `git diff --check -- scripts/main.gd scripts/thieving/state.gd` | passed after extracting thieving save-state helpers. |
+| `.\scripts\test-save-normalization.ps1` | passed after extracting thieving save-state helpers; runner emitted existing leak-at-exit warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting thieving save-state helpers. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |

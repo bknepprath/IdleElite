@@ -13,6 +13,7 @@ const ChatState = preload("res://scripts/chat/state.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
+const ThievingState = preload("res://scripts/thieving/state.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
 const FeatheredCollectGlow = preload("res://scripts/ui/feathered_collect_glow.gd")
@@ -61109,24 +61110,7 @@ func _restore_chat_opened_cursor_from_save(data: Dictionary) -> void:
 
 
 func _normalized_thieving_trophies(loaded_trophies: Variant, accept_legacy_bool := false) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_trophies) != TYPE_DICTIONARY:
-		return normalized
-	var source := loaded_trophies as Dictionary
-	for raw_trophy_id in source.keys():
-		var trophy_id := str(raw_trophy_id)
-		if _thieving_heist_def(trophy_id).is_empty():
-			continue
-		var raw_trophy_state = source.get(raw_trophy_id, {})
-		if typeof(raw_trophy_state) == TYPE_DICTIONARY:
-			var state := raw_trophy_state as Dictionary
-			normalized[trophy_id] = {
-				"stolen": bool(state.get("stolen", false)),
-				"cooldown_until_unix": maxi(0, int(state.get("cooldown_until_unix", state.get("cooldown_until_unix_msec", 0))))
-			}
-		elif accept_legacy_bool and typeof(raw_trophy_state) == TYPE_BOOL:
-			normalized[trophy_id] = {"stolen": bool(raw_trophy_state), "cooldown_until_unix": 0}
-	return normalized
+	return ThievingState.normalized_trophies(loaded_trophies, Callable(self, "_thieving_heist_def"), accept_legacy_bool)
 
 
 func _restore_thieving_action_jails_from_save(loaded_jails: Variant) -> void:
@@ -61134,34 +61118,7 @@ func _restore_thieving_action_jails_from_save(loaded_jails: Variant) -> void:
 
 
 func _normalized_thieving_action_jails(loaded_jails: Variant, now: int, accept_legacy_scalar := false) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_jails) != TYPE_DICTIONARY:
-		return normalized
-	var source := loaded_jails as Dictionary
-	for raw_action_id in source.keys():
-		var action_id := _canonical_action_id("thieving", str(raw_action_id))
-		if action_id.is_empty() or _action_data("thieving", action_id).is_empty():
-			continue
-		var raw_state = source.get(raw_action_id, {})
-		var cooldown_until := 0
-		var resume_when_free := false
-		if typeof(raw_state) == TYPE_DICTIONARY:
-			var state := raw_state as Dictionary
-			if state.has("show_bars") and not bool(state.get("show_bars", true)):
-				continue
-			cooldown_until = maxi(0, int(state.get("cooldown_until_unix", 0)))
-			resume_when_free = bool(state.get("resume_when_free", false))
-		elif accept_legacy_scalar:
-			cooldown_until = maxi(0, int(raw_state))
-		else:
-			continue
-		if cooldown_until <= now:
-			continue
-		normalized[action_id] = {
-			"cooldown_until_unix": cooldown_until,
-			"resume_when_free": resume_when_free
-		}
-	return normalized
+	return ThievingState.normalized_action_jails(loaded_jails, now, Callable(self, "_canonical_action_id"), Callable(self, "_action_data"), accept_legacy_scalar)
 
 
 func _running_action_id_for_save() -> String:
