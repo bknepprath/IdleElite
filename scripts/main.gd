@@ -5360,7 +5360,7 @@ func _pinned_fishing_detail_event_relevant(event_position: Vector2) -> bool:
 
 
 func _fishing_detail_module_key_is_fishing(module_key: String) -> bool:
-	return _module_ui_key_belongs_to_skill(_normalized_module_ui_key(module_key), "fishing")
+	return ModuleUiKeys.belongs_to_skill(module_key, "fishing")
 
 
 func _fishing_detail_event_position(event: InputEvent) -> Vector2:
@@ -18090,7 +18090,7 @@ func _detail_lazy_pinned_track_ids() -> Dictionary:
 	for raw_module_key in module_ui_pin_preview_tokens.keys():
 		if int(module_ui_pin_preview_tokens.get(raw_module_key, 0)) <= 0:
 			continue
-		var preview_track_id := _module_ui_lazy_track_id_for_key(str(raw_module_key), selected_skill_id)
+		var preview_track_id := ModuleUiKeys.lazy_track_id(str(raw_module_key), selected_skill_id)
 		if not preview_track_id.is_empty():
 			pinned[preview_track_id] = true
 	var now_msec := Time.get_ticks_msec()
@@ -21242,16 +21242,8 @@ func _render_detail_lazy_card_list_batched(stack: VBoxContainer, content_width: 
 	return true
 
 
-func _module_ui_key_belongs_to_skill(module_key: String, skill_id: String) -> bool:
-	return ModuleUiKeys.belongs_to_skill(module_key, skill_id)
-
-
-func _module_ui_lazy_track_id_for_key(module_key: String, skill_id: String) -> String:
-	return ModuleUiKeys.lazy_track_id(module_key, skill_id)
-
-
 func _hold_recent_pinned_source_from_lazy_prune(module_key: String) -> void:
-	var track_id := _module_ui_lazy_track_id_for_key(module_key, selected_skill_id)
+	var track_id := ModuleUiKeys.lazy_track_id(module_key, selected_skill_id)
 	if track_id.is_empty():
 		return
 	module_ui_recent_pin_prune_hold_skill_id = selected_skill_id
@@ -61973,15 +61965,15 @@ func _normalized_action_progress(value: Variant) -> float:
 
 
 func _module_ui_pinned_order_for_save() -> Array:
-	return _module_ui_pinned_order_unlocked_only(_normalized_module_ui_pinned_order(module_ui_pinned_order))
+	return _module_ui_pinned_order_unlocked_only(ModuleUiKeys.normalized_order(module_ui_pinned_order))
 
 
 func _module_ui_pin_color_paths_for_save() -> Dictionary:
-	return _module_ui_pin_color_paths_unlocked_only(_normalized_module_ui_pin_color_paths(module_ui_pin_color_paths))
+	return _module_ui_pin_color_paths_unlocked_only(ModuleUiKeys.normalized_paths(module_ui_pin_color_paths, MODULE_PIN_COLOR_TEXTURES))
 
 
 func _module_ui_collapsed_for_save() -> Dictionary:
-	return _module_ui_collapsed_unlocked_only(_normalized_module_ui_collapsed(module_ui_collapsed))
+	return _module_ui_collapsed_unlocked_only(ModuleUiKeys.normalized_flags(module_ui_collapsed))
 
 
 func _module_ui_sort_mode_for_save() -> String:
@@ -61989,15 +61981,15 @@ func _module_ui_sort_mode_for_save() -> String:
 
 
 func _restore_module_ui_preferences_from_save(data: Dictionary) -> void:
-	module_ui_pinned_order = _module_ui_pinned_order_unlocked_only(_normalized_module_ui_pinned_order(data.get("module_ui_pinned_order", [])))
-	module_ui_pin_color_paths = _module_ui_pin_color_paths_unlocked_only(_normalized_module_ui_pin_color_paths(data.get("module_ui_pin_color_paths", {})))
+	module_ui_pinned_order = _module_ui_pinned_order_unlocked_only(ModuleUiKeys.normalized_order(data.get("module_ui_pinned_order", [])))
+	module_ui_pin_color_paths = _module_ui_pin_color_paths_unlocked_only(ModuleUiKeys.normalized_paths(data.get("module_ui_pin_color_paths", {}), MODULE_PIN_COLOR_TEXTURES))
 	for raw_key in module_ui_pinned_order:
 		var key := _normalized_module_ui_key(raw_key)
 		if not key.is_empty() and not module_ui_pin_color_paths.has(key):
 			module_ui_pin_color_paths[key] = _random_module_pin_texture_path()
 	module_ui_pin_preview_tokens.clear()
 	var collapse_save_version := int(data.get("module_ui_collapse_save_version", 0))
-	var loaded_collapsed := _normalized_module_ui_collapsed(data.get("module_ui_collapsed", {}))
+	var loaded_collapsed := ModuleUiKeys.normalized_flags(data.get("module_ui_collapsed", {}))
 	if collapse_save_version >= MODULE_UI_COLLAPSE_SAVE_VERSION:
 		module_ui_collapsed = _module_ui_collapsed_unlocked_only(loaded_collapsed)
 	else:
@@ -62035,18 +62027,6 @@ func _module_ui_collapsed_unlocked_only(source: Dictionary) -> Dictionary:
 		if not key.is_empty() and bool(source.get(raw_key, false)) and _module_ui_key_allows_pin_or_collapse(key):
 			filtered[key] = true
 	return filtered
-
-
-func _normalized_module_ui_pinned_order(value: Variant) -> Array:
-	return ModuleUiKeys.normalized_order(value)
-
-
-func _normalized_module_ui_collapsed(value: Variant) -> Dictionary:
-	return ModuleUiKeys.normalized_flags(value)
-
-
-func _normalized_module_ui_pin_color_paths(value: Variant) -> Dictionary:
-	return ModuleUiKeys.normalized_paths(value, MODULE_PIN_COLOR_TEXTURES)
 
 
 func _normalized_module_ui_sort_mode(value: Variant) -> String:
