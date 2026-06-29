@@ -15,6 +15,7 @@ const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const MedalBuffs = preload("res://scripts/progression/medal_buffs.gd")
+const SkillState = preload("res://scripts/progression/skill_state.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
 const ThievingState = preload("res://scripts/thieving/state.gd")
@@ -60708,46 +60709,15 @@ func _saved_audio_volume(data: Dictionary, key: String, fallback: float) -> floa
 
 
 func _skills_for_save() -> Dictionary:
-	var normalized := {}
-	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
-		if skill_id.is_empty():
-			continue
-		var skill_state = skills.get(skill_id, {})
-		var xp := 0
-		if typeof(skill_state) == TYPE_DICTIONARY:
-			xp = maxi(0, int((skill_state as Dictionary).get("xp", 0)))
-		normalized[skill_id] = {
-			"xp": xp,
-			"level": _skill_level_for_xp(xp)
-		}
-	return normalized
+	return SkillState.skills_for_save(skill_defs, skills, Callable(self, "_skill_level_for_xp"))
 
 
 func _stamina_for_save() -> Dictionary:
-	var normalized := {}
-	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
-		if skill_id.is_empty():
-			continue
-		normalized[skill_id] = _stamina_value(skill_id)
-	return normalized
+	return SkillState.stamina_for_save(skill_defs, Callable(self, "_stamina_value"))
 
 
 func _stamina_bank_for_save() -> Dictionary:
-	var normalized := {}
-	for raw_def in skill_defs:
-		var skill_def := raw_def as Dictionary
-		var skill_id := str(skill_def.get("id", ""))
-		if skill_id.is_empty():
-			continue
-		if _stamina_value(skill_id) >= float(_max_stamina(skill_id)) - 0.0001:
-			normalized[skill_id] = 0.0
-		else:
-			normalized[skill_id] = clampf(float(stamina_bank.get(skill_id, 0.0)), 0.0, STAMINA_REGEN_SECONDS)
-	return normalized
+	return SkillState.stamina_bank_for_save(skill_defs, stamina_bank, Callable(self, "_stamina_value"), Callable(self, "_max_stamina"), STAMINA_REGEN_SECONDS)
 
 
 func _hub_selected_module_id_for_save() -> String:
