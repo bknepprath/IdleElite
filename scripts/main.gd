@@ -9,6 +9,7 @@ const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
+const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
@@ -61028,10 +61029,7 @@ func _reconcile_fishing_rod_collection_state() -> void:
 
 
 func _normalized_mat_id(mat_id: String) -> String:
-	var normalized := mat_id.strip_edges().to_lower()
-	if normalized == "logs" or normalized == "log":
-		return "softwood"
-	return normalized
+	return MaterialDefs.normalize_id(mat_id)
 
 
 func _woodcutting_log_collection_multiplier() -> float:
@@ -61050,35 +61048,27 @@ func _buffed_log_collection_amount(mat_id: String, amount: float) -> float:
 
 
 func _mat_def(mat_id: String) -> Dictionary:
-	var normalized := _normalized_mat_id(mat_id)
-	return MAT_COLLECTION_DEFS.get(normalized, {}) as Dictionary
+	return MaterialDefs.definition(mat_id, MAT_COLLECTION_DEFS)
 
 
 func _mat_name(mat_id: String) -> String:
-	var def := _mat_def(mat_id)
-	return str(def.get("name", mat_id.capitalize()))
+	return MaterialDefs.display_name(mat_id, MAT_COLLECTION_DEFS)
 
 
 func _mat_icon_path(mat_id: String) -> String:
-	var def := _mat_def(mat_id)
-	return str(def.get("icon", LOG_CURRENCY_ICON_TEXTURE))
+	return MaterialDefs.icon_path(mat_id, MAT_COLLECTION_DEFS, LOG_CURRENCY_ICON_TEXTURE)
 
 
 func _mat_background_path(mat_id: String) -> String:
-	var def := _mat_def(mat_id)
-	return str(def.get("background", MAT_COLLECTION_STONE_BACKGROUND_TEXTURE))
+	return MaterialDefs.background_path(mat_id, MAT_COLLECTION_DEFS, MAT_COLLECTION_STONE_BACKGROUND_TEXTURE)
 
 
 func _mat_color(mat_id: String) -> Color:
-	var def := _mat_def(mat_id)
-	return def.get("color", Color("#b98245")) as Color
+	return MaterialDefs.color(mat_id, MAT_COLLECTION_DEFS, Color("#b98245"))
 
 
 func _rounded_mat_amount(mat_id: String, amount: float) -> float:
-	var normalized := _normalized_mat_id(mat_id)
-	if normalized == "scrapwood":
-		return floor(maxf(0.0, amount) * 10.0 + 0.5) / 10.0
-	return maxf(0.0, amount)
+	return MaterialDefs.rounded_amount(mat_id, amount)
 
 
 func _mat_amount(mat_id: String) -> float:

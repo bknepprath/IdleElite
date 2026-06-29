@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 188 files / about 110,623 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 189 files / about 110,651 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 66,247 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state helpers now preload from `scripts/chat/`, and activity data parser helpers now preload from `scripts/activity_data/`. |
+| `scripts/main.gd` * | 66,237 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state helpers now preload from `scripts/chat/`, activity data parser helpers now preload from `scripts/activity_data/`, and material definition/display helpers now preload from `scripts/materials/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -126,6 +126,12 @@ Legend:
 | --- | ---: | --- |
 | `scripts/activity_data/normalizers.gd` * | 233 | Pure activity/event database load normalization: event module records, requirements, XP/resource rewards, tag arrays, art animation metadata, resource paths, and slugs. |
 
+## Material Helper Scripts
+
+| Path | Lines | What lives here |
+| --- | ---: | --- |
+| `scripts/materials/defs.gd` * | 38 | Pure material id normalization, definition lookup, display metadata, color lookup, and amount rounding. Live wallet mutation remains in `scripts/main.gd`. |
+
 ## Validation And Tooling
 
 | Path | Lines | What lives here |
@@ -165,7 +171,8 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; activity queue state normalization moved out; chat save-state helpers moved out; activity data load normalizers moved out; five now-redundant module UI pass-through wrappers plus `_slug` and `_boot_warmup_cancelled` deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; achievement reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; activity queue state normalization moved out; chat save-state helpers moved out; activity data load normalizers moved out; material definition/display helpers moved out; five now-redundant module UI pass-through wrappers plus `_slug` and `_boot_warmup_cancelled` deleted. |
+| `scripts/materials/defs.gd` | added | New extracted material helper for id aliases, metadata lookup, display names/icons/backgrounds/colors, and amount rounding. |
 | `scripts/activity_data/normalizers.gd` | added | New extracted activity/event database parser helper. |
 | `scripts/chat/state.gd` | added | New extracted chat state helper for retry timestamp clamping and opened-message id normalization. |
 | `scripts/activity_queue/state.gd` | added | New extracted activity queue state helper for queue normalization and next-index math. |
@@ -241,6 +248,10 @@ Legend:
 9. Activity database
    - Current: data source is already externalized in `docs/activity-database.json`.
    - Next lazy win: do not move data again; reduce loader glue in `scripts/main.gd` instead.
+
+10. Materials
+   - Current: material definition lookup, aliases, display metadata, color lookup, and amount rounding live in `scripts/materials/defs.gd`.
+   - Next lazy win: keep live wallet mutation in `scripts/main.gd` until a wallet boundary can move with all callers.
 
 ## Validation Log
 
@@ -377,5 +388,8 @@ Legend:
 | `git diff --check -- scripts/main.gd scripts/test-unlock-combo-visual-smoke.ps1` | passed after moving fishing-combo smoke setup out of `scripts/main.gd`. |
 | `.\scripts\test-unlock-combo-visual-smoke.ps1 -FishingComboOnly` | passed after moving fishing-combo smoke setup out of `scripts/main.gd`; runner emitted existing save-protection/leak-at-exit warnings. |
 | `.\scripts\test-performance-regressions.ps1` | passed after moving fishing-combo smoke setup out of `scripts/main.gd`. |
+| `git diff --check -- scripts/main.gd scripts/materials/defs.gd` | passed after extracting material definition helpers. |
+| `.\scripts\test-save-normalization.ps1` | passed after extracting material definition helpers; runner emitted existing leak-at-exit warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting material definition helpers. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
