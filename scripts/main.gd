@@ -3,6 +3,7 @@ extends Control
 const FishingFluidStripClass = preload("res://scripts/fishing_fluid_strip.gd")
 const ActivityQueueState = preload("res://scripts/activity_queue/state.gd")
 const ActivityDataNormalizers = preload("res://scripts/activity_data/normalizers.gd")
+const AudioSettings = preload("res://scripts/audio/settings.gd")
 const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
@@ -9009,6 +9010,7 @@ func _activate_bottom_nav_target(target_screen: String, source_button: Control) 
 	if _is_bottom_nav_button(nav_button) and not _consume_bottom_nav_clean_activation(nav_button, target_screen):
 		_force_button_unpressed(nav_button)
 		return
+	_clear_queued_skill_swipe_navigation()
 	if _is_bottom_nav_button(nav_button):
 		_hold_bottom_nav_transition_button(nav_button)
 		_schedule_bottom_nav_transition_button_idle_release()
@@ -32079,6 +32081,10 @@ func _kill_skill_swipe_tween() -> void:
 	skill_swipe_animation_mode = ""
 
 
+func _clear_queued_skill_swipe_navigation() -> void:
+	skill_swipe_queued_offset = 0
+
+
 func _skill_swipe_preview_control(value) -> Control:
 	if value == null:
 		return null
@@ -44682,6 +44688,7 @@ func _show_settings() -> void:
 		return
 	_remember_settings_return_context()
 	_disarm_reset_data_confirmation()
+	_clear_queued_skill_swipe_navigation()
 	_kill_skill_swipe_tween()
 	_cancel_skill_swipe_finalize_for_navigation()
 	_suppress_all_page_stash_buckets()
@@ -60750,12 +60757,7 @@ func _restore_audio_settings_from_save(data: Dictionary) -> void:
 
 
 func _saved_audio_volume(data: Dictionary, key: String, fallback: float) -> float:
-	if not data.has(key):
-		return clampf(fallback, 0.0, 1.0)
-	var raw_value: Variant = data.get(key, fallback)
-	if typeof(raw_value) != TYPE_FLOAT and typeof(raw_value) != TYPE_INT:
-		return clampf(fallback, 0.0, 1.0)
-	return clampf(float(raw_value), 0.0, 1.0)
+	return AudioSettings.saved_volume(data, key, fallback)
 
 
 func _skills_for_save() -> Dictionary:

@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 194 files / about 110,788 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 195 files / about 110,794 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 65,658 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, leaderboard profile rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, progression medal buff math now preloads from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and shared save-state normalizers now preload from `scripts/save_state/`. |
+| `scripts/main.gd` * | 65,654 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, audio settings normalization now preloads from `scripts/audio/`, leaderboard profile rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, progression medal buff math now preloads from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and shared save-state normalizers now preload from `scripts/save_state/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -121,6 +121,12 @@ Legend:
 | --- | ---: | --- |
 | `scripts/leaderboard/profile.gd` * | 107 | Leaderboard profile avatar clamping, display-name cleanup, name-key generation/validation, guest-name detection/generation, and player-id generation/sanitization. |
 
+## Audio Helper Scripts
+
+| Path | Lines | What lives here |
+| --- | ---: | --- |
+| `scripts/audio/settings.gd` * | 10 | Audio settings save/restore volume normalization. Runtime playback and bus sync remain in `scripts/main.gd`. |
+
 ## Activity Queue Helper Scripts
 
 | Path | Lines | What lives here |
@@ -196,7 +202,8 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; leaderboard profile rules moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; progression medal buff math moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display/wallet helpers moved out; passive/leaderboard/convergence/hub save-state normalizers moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, and stale save-state pass-through wrappers deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; audio settings normalization moved out; leaderboard profile rules moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; progression medal buff math moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display/wallet helpers moved out; passive/leaderboard/convergence/hub save-state normalizers moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, and stale save-state pass-through wrappers deleted. |
+| `scripts/audio/settings.gd` | added | New extracted audio settings helper for save/restore volume clamping. |
 | `scripts/leaderboard/profile.gd` | added | New extracted leaderboard profile helper for local name/id/avatar rules. |
 | `scripts/progression/medal_buffs.gd` | added | New extracted progression helper for neighbor medal buff contribution math. |
 | `scripts/thieving/state.gd` | added | New extracted thieving helper for trophy and action jail save normalization. |
@@ -264,35 +271,39 @@ Legend:
    - Current: neighbor medal buff contribution and per-tier math live in `scripts/progression/medal_buffs.gd`.
    - Next lazy win: keep mastery/action lookup and stat caches in `scripts/main.gd` until a larger progression service boundary can move.
 
-6. Leaderboard
+6. Audio
+   - Current: audio settings save/restore volume normalization lives in `scripts/audio/settings.gd`.
+   - Next lazy win: keep runtime playback/bus sync in `scripts/main.gd` until a whole audio runtime boundary can move.
+
+7. Leaderboard
    - Current: local profile name/id/avatar rules live in `scripts/leaderboard/profile.gd`.
    - Next lazy win: keep Firebase/network sync in `scripts/main.gd` until leaderboard request state can move as a full boundary.
 
-7. Activity queue
+8. Activity queue
    - Current: queue normalization and circular next-index math live in `scripts/activity_queue/state.gd`.
    - Next lazy win: keep queue UI/runtime in `scripts/main.gd` until queue target resolution can move with unlock/action access.
 
-8. Chat
+9. Chat
    - Current: retry timestamp save/restore clamping, opened message-id normalization, message sanitation/censoring, message id generation, and chat row timestamp formatting live in `scripts/chat/state.gd`.
    - Next lazy win: keep stream connection and row/composer UI in `scripts/main.gd` until a full chat runtime boundary can move.
 
-9. Thieving
+10. Thieving
    - Current: trophy and action jail save normalization lives in `scripts/thieving/state.gd`.
    - Next lazy win: move heist card/state chunks only if a whole thieving UI/runtime boundary can move, not one-off callbacks.
 
-10. Activity data loading
+11. Activity data loading
    - Current: pure activity/event database normalizers live in `scripts/activity_data/normalizers.gd`.
    - Next lazy win: fishing area parsing is still nearby, but it has more live database/state coupling and should move only with its dependent helpers.
 
-11. Save normalization
+12. Save normalization
    - Current: passive/firepit module state, leaderboard category integer maps, convergence module state, hub module state, and hub mission list normalization live in `scripts/save_state/normalizers.gd`.
    - Next lazy win: keep exact static tests around any save-payload simplification; do not move restore orchestration until a whole save subsystem boundary exists.
 
-12. Activity database
+13. Activity database
    - Current: data source is already externalized in `docs/activity-database.json`.
    - Next lazy win: do not move data again; reduce loader glue in `scripts/main.gd` instead.
 
-13. Materials
+14. Materials
    - Current: material definition lookup, aliases, display metadata, color lookup, amount rounding, wallet mutation, and wallet save/restore normalization live in `scripts/materials/defs.gd`.
    - Next lazy win: keep amount display text in `scripts/main.gd` until shared number formatting moves.
 
@@ -461,5 +472,8 @@ Legend:
 | `git diff --check -- scripts/main.gd scripts/materials/defs.gd` | passed after moving material wallet rules. |
 | `.\scripts\test-save-normalization.ps1` | passed after moving material wallet rules; runner emitted existing leak-at-exit warnings. |
 | `.\scripts\test-performance-regressions.ps1` | passed after moving material wallet rules. |
+| `git diff --check -- scripts/main.gd scripts/audio/settings.gd` | passed after extracting audio settings normalization. |
+| `.\scripts\test-save-normalization.ps1` | passed after extracting audio settings normalization; runner emitted existing leak-at-exit warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after extracting audio settings normalization. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
