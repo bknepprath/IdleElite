@@ -28036,7 +28036,7 @@ func _activity_xp_bonus_lines_for_rewards(owner_skill_id: String, action: Dictio
 	if ad_xp > 0.0:
 		lines.append("+%s%% ad XP" % _format_percent_points(ad_xp * 100.0))
 	for reward_skill_id in _ordered_xp_reward_skill_ids(owner_skill_id, rewards):
-		var achievement_xp := _achievement_reward_bonus("xp_mult", reward_skill_id)
+		var achievement_xp := AchievementState.reward_bonus(_achievement_milestones(), "xp_mult", reward_skill_id)
 		if achievement_xp > 0.0:
 			lines.append("+%s%% %s achievement XP" % [_format_percent_points(achievement_xp * 100.0), _skill_name(reward_skill_id)])
 	if rewards.has(owner_skill_id) and _plank_bonus_applies(owner_skill_id):
@@ -29253,7 +29253,7 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			var base_seconds := maxf(0.1, float(action.get("seconds", 1.0)))
 			var time_lines := []
 			var medal_speed := _global_medal_bonus("speed_mult")
-			var achievement_speed := _achievement_reward_bonus("speed_mult", skill_id)
+			var achievement_speed := AchievementState.reward_bonus(_achievement_milestones(), "speed_mult", skill_id)
 			var ad_speed := _ad_bonus_speed_mult()
 			var activity_medal_speed := _activity_medal_time_reduction(skill_id, action)
 			if medal_speed > 0.0:
@@ -29278,7 +29278,7 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			var base_success := clampf(float(action.get("success", 90.0)), 5.0, 100.0)
 			var success_lines := []
 			var medal_success := _global_medal_bonus("success_bonus")
-			var achievement_success := _achievement_reward_bonus("success_bonus", skill_id)
+			var achievement_success := AchievementState.reward_bonus(_achievement_milestones(), "success_bonus", skill_id)
 			if medal_success > 0.0:
 				success_lines.append("+%s%% global medal success" % _format_percent_points(medal_success))
 			if achievement_success > 0.0:
@@ -30007,41 +30007,12 @@ func _achievement_medal_accent_hexes() -> Array:
 	return accents
 
 
-func _completed_achievement_ids() -> Dictionary:
-	var completed := {}
-	for achievement in _achievement_milestones(false):
-		if bool(achievement.get("completed", false)) and not bool(achievement.get("log_only", false)):
-			completed[str(achievement.get("id", ""))] = true
-	return completed
-
-
-func _newly_completed_achievements(before: Dictionary) -> Array:
-	var unlocked := []
-	for achievement in _achievement_milestones(false):
-		var id := str(achievement.get("id", ""))
-		if id.is_empty() or not bool(achievement.get("completed", false)):
-			continue
-		if bool(achievement.get("log_only", false)):
-			continue
-		if not bool(before.get(id, false)):
-			unlocked.append(achievement)
-	return unlocked
-
-
 func _restore_achievement_toast_seen_ids(data: Dictionary) -> void:
 	achievement_toast_seen_ids = AchievementState.normalized_seen_ids(data.get("achievement_toast_seen_ids", {}))
 
 
 func _mark_completed_achievement_toasts_seen(excluded_ids: Array = []) -> void:
-	for achievement in _achievement_milestones(false):
-		var id := str(achievement.get("id", ""))
-		if id.is_empty() or not bool(achievement.get("completed", false)):
-			continue
-		if bool(achievement.get("log_only", false)):
-			continue
-		if excluded_ids.has(id):
-			continue
-		achievement_toast_seen_ids[id] = true
+	AchievementState.mark_completed_seen_ids(_achievement_milestones(false), achievement_toast_seen_ids, excluded_ids)
 
 
 func _show_pending_completed_achievement_toasts() -> void:
@@ -30085,25 +30056,11 @@ func _visible_achievement_milestones_fast() -> Array:
 	return AchievementMilestones.build_visible_fast(context)
 
 
-func _achievement_reward_bonus(stat: String, skill_id := "") -> float:
-	var total := 0.0
-	for achievement in _achievement_milestones():
-		if not bool(achievement.get("completed", false)) or str(achievement.get("reward_stat", "")) != stat:
-			continue
-		var reward_skill_id := str(achievement.get("reward_skill_id", ""))
-		if not skill_id.is_empty() and not reward_skill_id.is_empty() and reward_skill_id != skill_id:
-			continue
-		if skill_id.is_empty() and not reward_skill_id.is_empty():
-			continue
-		total += float(achievement.get("reward_amount", 0.0))
-	return total
-
-
 func _global_reward_bonus(stat: String, skill_id := "") -> float:
 	var cache_key := "%s|%s|%s" % [stat_cache_version, stat, skill_id]
 	if reward_bonus_cache.has(cache_key):
 		return float(reward_bonus_cache[cache_key])
-	var value := _global_medal_bonus(stat) + _achievement_reward_bonus(stat, skill_id)
+	var value := _global_medal_bonus(stat) + AchievementState.reward_bonus(_achievement_milestones(), stat, skill_id)
 	reward_bonus_cache[cache_key] = value
 	return value
 
@@ -42383,7 +42340,7 @@ func _process_action(delta: float) -> void:
 	var tiers_unlocked_before := {}
 	for tier in range(1, MASTERY_MAX_LEVEL + 1):
 		tiers_unlocked_before[tier] = _global_medal_tier_unlocked(tier)
-	var completed_achievements_before := _completed_achievement_ids()
+	var completed_achievements_before := AchievementState.completed_ids(_achievement_milestones(false))
 	var old_skill_level := _skill_level(running_skill_id)
 	var locked_preview_available_before := _locked_activity_preview_available()
 	var success := _roll_action_success(running_skill_id, action)
@@ -42444,7 +42401,7 @@ func _process_action(delta: float) -> void:
 		_play_mat_collection_feedback(reward_key, awarded_mats)
 		if plank_bonus_used:
 			_play_build_log_spend_feedback(reward_key)
-		for achievement in _newly_completed_achievements(completed_achievements_before):
+		for achievement in AchievementState.newly_completed(_achievement_milestones(false), completed_achievements_before):
 			_show_achievement_unlocked(achievement)
 		_play_activity_success_sound(streak_step, new_mastery_level > old_mastery_level, streak_bonus, xp_crit, mega_crit, consecutive_activity_crit_count)
 		_record_music_flow_action(true, streak_step, streak_bonus, new_mastery_level > old_mastery_level, any_reward_skill_level_up or new_skill_level > old_skill_level, cost)
@@ -42467,7 +42424,7 @@ func _process_action(delta: float) -> void:
 		if not failure_global_buffs.is_empty():
 			last_result += " " + " ".join(failure_global_buffs)
 		_play_action_feedback(reward_key, false, 0, failure_mastery_reward)
-		for achievement in _newly_completed_achievements(completed_achievements_before):
+		for achievement in AchievementState.newly_completed(_achievement_milestones(false), completed_achievements_before):
 			_show_achievement_unlocked(achievement)
 		_play(failure_player)
 		_record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, cost)
@@ -42541,7 +42498,7 @@ func _stop_temporary_event_action_with_feedback(skill_id: String, action_id: Str
 func _complete_temporary_event_action_attempt(skill_id: String, action_id: String, action: Dictionary, reward_key: String, cost: float, bonus_snapshot_before: Dictionary, clear_running_action_on_success := true) -> void:
 	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
 		return
-	var completed_achievements_before := _completed_achievement_ids()
+	var completed_achievements_before := AchievementState.completed_ids(_achievement_milestones(false))
 	var old_reward_skill_levels := _skill_levels_for_reward_map(skill_id, _base_xp_reward_map(action, skill_id))
 	var success := _roll_action_success(skill_id, action)
 	if success:
@@ -42562,7 +42519,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		if log_reward > 0:
 			last_result += " +%s %s." % [_mat_amount_text(log_reward_mat_id, log_reward_amount), _mat_name(log_reward_mat_id)]
 		_play_action_feedback(reward_key, true, xp_reward, 0.0, false, false, xp_reward_map)
-		for achievement in _newly_completed_achievements(completed_achievements_before):
+		for achievement in AchievementState.newly_completed(_achievement_milestones(false), completed_achievements_before):
 			_show_achievement_unlocked(achievement)
 		_play_activity_success_sound(1, false, false, false, false, 0)
 		_record_music_flow_action(true, 1, false, false, any_reward_skill_level_up, cost)
@@ -42576,7 +42533,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		_reset_activity_completion_streak()
 		last_result = "Event failed: %s will try again." % str(action.get("name", "Event"))
 		_play_action_feedback(reward_key, false, 0, 0.0)
-		for achievement in _newly_completed_achievements(completed_achievements_before):
+		for achievement in AchievementState.newly_completed(_achievement_milestones(false), completed_achievements_before):
 			_show_achievement_unlocked(achievement)
 		_play(failure_player)
 		_record_music_flow_action(false, 0, false, false, false, cost)
@@ -54412,7 +54369,7 @@ func _complete_fishing_action_attempt(action: Dictionary, active_key: String, bo
 	var tiers_unlocked_before := {}
 	for tier in range(1, MASTERY_MAX_LEVEL + 1):
 		tiers_unlocked_before[tier] = _global_medal_tier_unlocked(tier)
-	var completed_achievements_before := _completed_achievement_ids()
+	var completed_achievements_before := AchievementState.completed_ids(_achievement_milestones(false))
 	var old_skill_level := _skill_level(skill_id)
 	var locked_preview_available_before := _locked_activity_preview_available()
 	var direct_fish_currency_reward := _fishing_has_direct_fish_currency_reward(action)
@@ -54551,7 +54508,7 @@ func _complete_fishing_action_attempt(action: Dictionary, active_key: String, bo
 			_play_action_feedback(reward_key, false, 0, 0.0, false, false)
 			_play(fishing_failure_player if fishing_failure_player != null else failure_player)
 		_record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, 0.0)
-	for achievement in _newly_completed_achievements(completed_achievements_before):
+	for achievement in AchievementState.newly_completed(_achievement_milestones(false), completed_achievements_before):
 		_show_achievement_unlocked(achievement)
 	_record_activity_completion_for_tips(skill_id, action_id)
 	_update_ui(0.0, false)
@@ -55267,7 +55224,7 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 	var old_skill_level := _skill_level(skill_id)
 	var old_global_level := _global_level()
 	var old_mastery_level := _mastery_level(skill_id, mastery_action_id)
-	var completed_achievements_before := _completed_achievement_ids()
+	var completed_achievements_before := AchievementState.completed_ids(_achievement_milestones(false))
 	var remaining := offline_seconds
 	var completions := 0
 	var successes := 0
@@ -55355,7 +55312,7 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 		"old_mastery_level": old_mastery_level,
 		"new_mastery_level": new_mastery_level,
 		"unlocked_actions": _offline_unlocked_actions(skill_id, old_skill_level, new_skill_level),
-		"achievements": _newly_completed_achievements(completed_achievements_before)
+		"achievements": AchievementState.newly_completed(_achievement_milestones(false), completed_achievements_before)
 	}
 
 
@@ -55409,7 +55366,7 @@ func _apply_offline_convergence_action(offline_seconds: float, module_id: String
 		action_progress = 0.0
 		return {"handled": false}
 	var old_levels := {}
-	var completed_achievements_before := _completed_achievement_ids()
+	var completed_achievements_before := AchievementState.completed_ids(_achievement_milestones(false))
 	for raw_skill_id in _convergence_skill_order(action):
 		old_levels[str(raw_skill_id)] = _skill_level(str(raw_skill_id))
 	var cycle_seconds := _convergence_total_cycle_seconds(action)
@@ -55449,7 +55406,7 @@ func _apply_offline_convergence_action(offline_seconds: float, module_id: String
 		convergence_modules[module_id] = state
 		completions += 1
 		xp_total += xp_reward * _convergence_skill_order(action).size()
-	var completed_achievements := _newly_completed_achievements(completed_achievements_before)
+	var completed_achievements := AchievementState.newly_completed(_achievement_milestones(false), completed_achievements_before)
 	return {
 		"handled": true,
 		"skill_id": "build",
@@ -58813,7 +58770,7 @@ func _complete_convergence_cycle(module_id: String) -> int:
 	if action.is_empty():
 		return 0
 	var old_levels := {}
-	var completed_achievements_before := _completed_achievement_ids()
+	var completed_achievements_before := AchievementState.completed_ids(_achievement_milestones(false))
 	for raw_skill_id in _convergence_skill_order(action):
 		old_levels[str(raw_skill_id)] = _skill_level(str(raw_skill_id))
 	var xp_reward := _convergence_current_xp(module_id)
@@ -58828,7 +58785,7 @@ func _complete_convergence_cycle(module_id: String) -> int:
 	convergence_modules[module_id] = state
 	_sync_passive_module_unlocks(_unix_now())
 	last_result = "%s complete: +%s XP to every skill." % [str(action.get("name", "Shrine")), xp_reward]
-	for achievement in _newly_completed_achievements(completed_achievements_before):
+	for achievement in AchievementState.newly_completed(_achievement_milestones(false), completed_achievements_before):
 		_show_achievement_unlocked(achievement)
 	var leveled := false
 	for raw_skill_id in _convergence_skill_order(action):
@@ -60859,7 +60816,7 @@ func _consume_guaranteed_success_action_completion(skill_id: String, action: Dic
 
 func _activity_crit_chance(streak_bonus: bool) -> float:
 	var base_chance := ACTIVITY_STREAK_CRIT_CHANCE if streak_bonus else ACTIVITY_NORMAL_CRIT_CHANCE
-	var bonus_mult := _achievement_reward_bonus("crit_chance_mult")
+	var bonus_mult := AchievementState.reward_bonus(_achievement_milestones(), "crit_chance_mult")
 	return clampf(base_chance * (1.0 + bonus_mult), 0.0, 1.0)
 
 
