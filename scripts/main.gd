@@ -15,6 +15,8 @@ const AchievementPresentation = preload("res://scripts/achievements/presentation
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const AdBonus = preload("res://scripts/monetization/ad_bonus.gd")
+const BerryPrep = preload("res://scripts/materials/berry_prep.gd")
+const BuildableModules = preload("res://scripts/gameplay/buildable_modules.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
 const CrashReports = preload("res://scripts/diagnostics/crash_reports.gd")
 const FirebaseCloudSave = preload("res://scripts/firebase/cloud_save.gd")
@@ -22,6 +24,7 @@ const FirebaseRuntime = preload("res://scripts/firebase/runtime.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const MedalBuffs = preload("res://scripts/progression/medal_buffs.gd")
+const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const SaveStateFiles = preload("res://scripts/save_state/files.gd")
@@ -230,6 +233,7 @@ const MAT_COLLECTION_CONNECTOR_TOP_OVERLAP := 3.0
 const MAT_COLLECTION_APPEAR_SECONDS := 0.28
 const MAT_COLLECTION_FLYER_ARC_SECONDS := 0.68
 const WOODCUTTING_LOG_COLLECTION_MAT_IDS := ["scrapwood", "softwood", "hardwood"]
+const BERRY_PREP_XP_BONUS_MULT := 0.5
 const MAT_COLLECTION_DEFS := {
 	"scrapwood": {
 		"name": "Scrapwood",
@@ -1662,6 +1666,9 @@ var fishing_mirror_collected := false
 var selected_fishing_locations := {}
 var passive_modules := {}
 var convergence_modules := {}
+var built_modules := {}
+var berry_prep := {}
+var completed_bosses := {}
 var thieving_trophies := {}
 var thieving_action_jails := {}
 var pending_thieving_trophy_reward_float := {}
@@ -56036,6 +56043,160 @@ func _passive_modules_for_save() -> Dictionary:
 	return _normalized_passive_modules(passive_modules)
 
 
+func _build_module_key(skill_id: String, action: Dictionary) -> String:
+	return BuildableModules.key(skill_id, action, Callable(self, "_action_key"))
+
+
+func _action_is_buildable(action: Dictionary) -> bool:
+	return BuildableModules.is_buildable(action)
+
+
+func _action_is_built(skill_id: String, action: Dictionary) -> bool:
+	return BuildableModules.is_built(built_modules, skill_id, action, Callable(self, "_action_key"))
+
+
+func _built_modules_for_save() -> Dictionary:
+	return BuildableModules.normalized_for_save(built_modules, Callable(self, "_action_data"))
+
+
+func _restore_built_modules_from_save(value: Variant) -> void:
+	built_modules = BuildableModules.restored_from_save(value, Callable(self, "_action_data"))
+
+
+func _berry_prep_target_key(skill_id: String, action_id: String) -> String:
+	return BerryPrep.target_key(skill_id, action_id, Callable(self, "_action_data"), Callable(self, "_action_key"))
+
+
+func _berry_prep_for_save() -> Dictionary:
+	return BerryPrep.save_state(berry_prep, Callable(self, "_action_data"))
+
+
+func _restore_berry_prep_from_save(value: Variant) -> void:
+	berry_prep = BerryPrep.restored_state(value, Callable(self, "_action_data"), Callable(self, "_action_key"))
+
+
+func _berry_prep_matches(skill_id: String, action_id: String) -> bool:
+	return BerryPrep.matches(berry_prep, skill_id, action_id, Callable(self, "_action_data"), Callable(self, "_action_key"))
+
+
+func _attempt_apply_berry_prep(skill_id: String, action_id: String, popover_id := 0) -> void:
+	var target_key := _berry_prep_target_key(skill_id, action_id)
+	if target_key.is_empty():
+		_set_result("Berry Prep needs a valid module.")
+		return
+	if _mat_amount("berries") < 1.0:
+		_set_result("Need 1 Berries to prep this module.")
+		return
+	berry_prep["target_key"] = target_key
+	var action := _action_data(skill_id, action_id)
+	_set_result("Berry Prep ready for %s. Next success gains +50%% XP." % str(action.get("name", "this module")))
+	_mark_save_dirty("berry prep")
+	save_game()
+	_sync_berry_prep_badges()
+	var popover := _valid_control_ref(instance_from_id(popover_id)) if popover_id != 0 else null
+	if popover != null:
+		popover.visible = false
+
+
+func _consume_berry_prep_bonus(skill_id: String, action_id: String, reward_map: Dictionary) -> Dictionary:
+	if not _berry_prep_matches(skill_id, action_id):
+		return {}
+	if _mat_amount("berries") < 1.0 or not _spend_mat_amount("berries", 1.0):
+		berry_prep.clear()
+		return {}
+	return BerryPrep.consume_bonus(berry_prep, skill_id, action_id, reward_map, BERRY_PREP_XP_BONUS_MULT, Callable(self, "_action_data"), Callable(self, "_action_key"))
+
+
+func _berry_prep_result_text(result: Dictionary) -> String:
+	return BerryPrep.result_text(result)
+
+
+func _is_boss_fight_action(action: Dictionary) -> bool:
+	return str(action.get("kind", "")) == "boss_fight" and typeof(action.get("boss", {})) == TYPE_DICTIONARY and not (action.get("boss", {}) as Dictionary).is_empty()
+
+
+func _boss_id(action: Dictionary) -> String:
+	if not _is_boss_fight_action(action):
+		return ""
+	return str((action.get("boss", {}) as Dictionary).get("id", "")).strip_edges()
+
+
+func _boss_name(action: Dictionary) -> String:
+	if not _is_boss_fight_action(action):
+		return ""
+	return str((action.get("boss", {}) as Dictionary).get("name", str(action.get("name", "Boss")))).strip_edges()
+
+
+func _boss_is_completed(action: Dictionary) -> bool:
+	var boss_id := _boss_id(action)
+	return not boss_id.is_empty() and bool(completed_bosses.get(boss_id, false))
+
+
+func _completed_bosses_for_save() -> Dictionary:
+	var saved := {}
+	for raw_boss_id in completed_bosses.keys():
+		var boss_id := str(raw_boss_id)
+		if not boss_id.is_empty() and bool(completed_bosses.get(raw_boss_id, false)):
+			saved[boss_id] = true
+	return saved
+
+
+func _restore_completed_bosses_from_save(value: Variant) -> void:
+	completed_bosses.clear()
+	if typeof(value) != TYPE_DICTIONARY:
+		return
+	for raw_boss_id in (value as Dictionary).keys():
+		var boss_id := str(raw_boss_id).strip_edges()
+		if not boss_id.is_empty() and bool((value as Dictionary).get(raw_boss_id, false)):
+			completed_bosses[boss_id] = true
+
+
+func _action_boss_requirements_met(action: Dictionary) -> bool:
+	var raw_requirements = action.get("requires_bosses", [])
+	if typeof(raw_requirements) != TYPE_ARRAY:
+		return true
+	for raw_boss_id in raw_requirements as Array:
+		var boss_id := str(raw_boss_id).strip_edges()
+		if not boss_id.is_empty() and not bool(completed_bosses.get(boss_id, false)):
+			return false
+	return true
+
+
+func _action_missing_boss_requirements(action: Dictionary) -> Array:
+	var missing := []
+	var raw_requirements = action.get("requires_bosses", [])
+	if typeof(raw_requirements) != TYPE_ARRAY:
+		return missing
+	for raw_boss_id in raw_requirements as Array:
+		var boss_id := str(raw_boss_id).strip_edges()
+		if not boss_id.is_empty() and not bool(completed_bosses.get(boss_id, false)):
+			missing.append(boss_id)
+	return missing
+
+
+func _complete_boss_if_needed(action: Dictionary) -> String:
+	if not _is_boss_fight_action(action):
+		return ""
+	var boss_id := _boss_id(action)
+	if boss_id.is_empty() or bool(completed_bosses.get(boss_id, false)):
+		return ""
+	completed_bosses[boss_id] = true
+	return "%s cleared." % _boss_name(action)
+
+
+func _sync_berry_prep_badges() -> void:
+	for raw_button in get_tree().get_nodes_in_group("berry_prep_buttons"):
+		var button := raw_button as Button
+		if button == null or not is_instance_valid(button):
+			continue
+		var label := _valid_label_ref(instance_from_id(int(button.get_meta("berry_prep_hint_label_id", 0))))
+		if label == null:
+			continue
+		var skill_id := str(button.get_meta("skill_id", ""))
+		var action_id := str(button.get_meta("action_id", ""))
+		_set_label_text_if_changed(label, "PREPPED" if _berry_prep_matches(skill_id, action_id) else "TAP TO PREP")
+
+
 func _event_module_def(event_id: String) -> Dictionary:
 	if event_id.is_empty():
 		return {}
@@ -57163,6 +57324,47 @@ func _spend_action_stamina(skill_id: String, stamina_cost: float) -> bool:
 	stamina[skill_id] = maxf(0.0, _stamina_value(skill_id) - stamina_cost)
 	_sync_stamina_bank(skill_id)
 	return true
+
+
+func _restore_action_stamina(skill_id: String, amount: float) -> float:
+	if skill_id.is_empty() or amount <= 0.0 or not stamina.has(skill_id):
+		return 0.0
+	var before := _stamina_value(skill_id)
+	var restored := minf(float(_max_stamina(skill_id)), before + amount)
+	stamina[skill_id] = restored
+	_sync_stamina_bank(skill_id)
+	return maxf(0.0, restored - before)
+
+
+func _action_recovery_contract(action: Dictionary) -> Dictionary:
+	return RecoveryModules.contract(action)
+
+
+func _action_has_recovery(action: Dictionary) -> bool:
+	return RecoveryModules.has_recovery(action)
+
+
+func _recovery_target_skill_id(owner_skill_id: String, action: Dictionary) -> String:
+	return RecoveryModules.target_skill_id(owner_skill_id, action, skill_defs, stamina, Callable(self, "_stamina_value"), Callable(self, "_max_stamina"))
+
+
+func _apply_action_recovery(owner_skill_id: String, action: Dictionary) -> Dictionary:
+	var recovery := _action_recovery_contract(action)
+	if recovery.is_empty():
+		return {}
+	var target_skill_id := _recovery_target_skill_id(owner_skill_id, action)
+	var amount := maxf(0.0, float(recovery.get("stamina", 0.0)))
+	var restored := _restore_action_stamina(target_skill_id, amount)
+	if restored <= 0.0001:
+		return {}
+	return {
+		"skill_id": target_skill_id,
+		"amount": restored
+	}
+
+
+func _recovery_result_text(recovery_result: Dictionary) -> String:
+	return RecoveryModules.result_text(recovery_result, Callable(self, "_skill_name"), Callable(self, "_format_stamina_cost_detail"))
 
 
 func _honey_stamina_regen_multiplier() -> float:
@@ -59909,6 +60111,76 @@ func _spend_mat_amount(mat_id: String, amount: float) -> bool:
 		return false
 	if int(result.get("legacy_softwood_amount", -1)) >= 0:
 		log_currency = int(result.get("legacy_softwood_amount", 0))
+	return true
+
+
+func _build_cost(action: Dictionary) -> Dictionary:
+	return BuildableModules.cost(action)
+
+
+func _build_label(action: Dictionary) -> String:
+	return BuildableModules.label(action)
+
+
+func _build_xp_reward(action: Dictionary) -> int:
+	return BuildableModules.xp_reward(action)
+
+
+func _build_cost_text(action: Dictionary) -> String:
+	var parts := []
+	for raw_mat_id in _build_cost(action).keys():
+		var mat_id := str(raw_mat_id)
+		var amount := float(_build_cost(action).get(raw_mat_id, 0.0))
+		if amount > 0.0:
+			parts.append("%s %s" % [_mat_amount_text(mat_id, amount), _mat_name(mat_id)])
+	return ", ".join(parts)
+
+
+func _can_pay_build_cost(action: Dictionary) -> bool:
+	for raw_mat_id in _build_cost(action).keys():
+		var mat_id := str(raw_mat_id)
+		var amount := float(_build_cost(action).get(raw_mat_id, 0.0))
+		if amount > 0.0 and _mat_amount(mat_id) + 0.0001 < amount:
+			return false
+	return true
+
+
+func _spend_build_cost(action: Dictionary) -> bool:
+	if not _can_pay_build_cost(action):
+		return false
+	for raw_mat_id in _build_cost(action).keys():
+		var mat_id := str(raw_mat_id)
+		var amount := float(_build_cost(action).get(raw_mat_id, 0.0))
+		if amount > 0.0 and not _spend_mat_amount(mat_id, amount):
+			return false
+	return true
+
+
+func _attempt_buildable_module_build(skill_id: String, action: Dictionary) -> bool:
+	if not _action_is_buildable(action):
+		return false
+	var key := _build_module_key(skill_id, action)
+	if key.is_empty():
+		return false
+	if _action_is_built(skill_id, action):
+		return true
+	if not _can_pay_build_cost(action):
+		_set_result("Need %s to %s %s." % [_build_cost_text(action), _build_label(action).to_lower(), str(action.get("name", "module"))])
+		return false
+	if not _spend_build_cost(action):
+		_set_result("Need %s to %s %s." % [_build_cost_text(action), _build_label(action).to_lower(), str(action.get("name", "module"))])
+		return false
+	var xp_reward := _build_xp_reward(action)
+	if xp_reward > 0 and skills.has(skill_id):
+		skills[skill_id]["xp"] = int(skills[skill_id].get("xp", 0)) + xp_reward
+		_recalculate_level(skill_id)
+	built_modules[key] = true
+	_set_result("%s built: +%s %s XP." % [str(action.get("name", "Module")), xp_reward, _skill_name(skill_id)])
+	_mark_save_dirty("module built")
+	save_game()
+	var refresh_scroll := detail_actions_scroll.scroll_vertical if detail_actions_scroll != null else -1
+	_render_screen(false, refresh_scroll)
+	_update_ui(0.0, true)
 	return true
 
 
