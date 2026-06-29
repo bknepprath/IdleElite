@@ -26,3 +26,12 @@ static func append_repeated_path_players(players, path: String, count: int, make
 			continue
 		player.volume_db = base_volume_db + float(i) * volume_step_db
 		players.append(player)
+
+
+static func ensure_path_player(player: AudioStreamPlayer, path: String, make_player: Callable, volume_db := 0.0) -> AudioStreamPlayer:
+	if player != null and is_instance_valid(player):
+		return player
+	var next_player := make_player.call(path) as AudioStreamPlayer
+	if next_player != null:
+		next_player.volume_db = volume_db
+	return next_player
