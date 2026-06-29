@@ -14,6 +14,7 @@ const AchievementMilestones = preload("res://scripts/achievements/milestones.gd"
 const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
+const AchievementStyles = preload("res://scripts/achievements/styles.gd")
 const AdBonus = preload("res://scripts/monetization/ad_bonus.gd")
 const BerryPrep = preload("res://scripts/materials/berry_prep.gd")
 const BossGates = preload("res://scripts/gameplay/boss_gates.gd")
@@ -62282,24 +62283,11 @@ func _skill_detail_shelf_border_color(skill_id: String) -> Color:
 
 
 func _achievement_card_style(color: Color, radius: int, margin: int) -> StyleBoxFlat:
-	var style := _surface_style(color, radius, margin, true)
-	return style
+	return AchievementStyles.card(color, radius, margin, Callable(self, "_surface_style"))
 
 
 func _achievement_toast_queue_badge_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#2f2a21")
-	style.border_color = Color("#fff2c4")
-	style.set_border_width_all(7)
-	style.set_corner_radius_all(999)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 8
-	style.content_margin_bottom = 10
-	style.shadow_color = Color(0.0, 0.0, 0.0, 0.28)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 5)
-	return style
+	return AchievementStyles.toast_queue_badge()
 
 
 func _offline_summary_info_style() -> StyleBoxFlat:
@@ -62316,14 +62304,7 @@ func _offline_summary_info_style() -> StyleBoxFlat:
 
 
 func _achievement_skill_section_style() -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1, 1, 1, 0)
-	style.draw_center = false
-	style.content_margin_left = 38
-	style.content_margin_right = 38
-	style.content_margin_top = 22
-	style.content_margin_bottom = 30
-	return style
+	return AchievementStyles.skill_section()
 
 
 func _offline_summary_stat_style(accent: Color) -> StyleBoxFlat:

@@ -4,6 +4,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $activityDataNormalizersPath = Join-Path $projectRoot "scripts\activity_data\normalizers.gd"
 $leaderboardProfilePath = Join-Path $projectRoot "scripts\leaderboard\profile.gd"
+$achievementStylesPath = Join-Path $projectRoot "scripts\achievements\styles.gd"
 $tipStatePath = Join-Path $projectRoot "scripts\tutorial\tip_state.gd"
 $temporaryEventStatePath = Join-Path $projectRoot "scripts\temporary_events\state.gd"
 $firebaseRuntimePath = Join-Path $projectRoot "scripts\firebase\runtime.gd"
@@ -115,6 +116,8 @@ Assert-True (Test-Path -LiteralPath $activityDataNormalizersPath) "Missing scrip
 $activityDataNormalizers = Get-Content -LiteralPath $activityDataNormalizersPath -Raw
 Assert-True (Test-Path -LiteralPath $leaderboardProfilePath) "Missing scripts\leaderboard\profile.gd."
 $leaderboardProfile = Get-Content -LiteralPath $leaderboardProfilePath -Raw
+Assert-True (Test-Path -LiteralPath $achievementStylesPath) "Missing scripts\achievements\styles.gd."
+$achievementStyles = Get-Content -LiteralPath $achievementStylesPath -Raw
 Assert-True (Test-Path -LiteralPath $tipStatePath) "Missing scripts\tutorial\tip_state.gd."
 $tipState = Get-Content -LiteralPath $tipStatePath -Raw
 Assert-True (Test-Path -LiteralPath $temporaryEventStatePath) "Missing scripts\temporary_events\state.gd."
@@ -2196,6 +2199,10 @@ Assert-True ($achievementMedalSlotStrip -match 'var medal_icons := \[\]') "Achie
 Assert-True ($achievementMedalSlotStrip -match 'var medal_shadows := \[\]') "Achievement medal slot strip should name its shadow array by medal domain."
 Assert-True ($achievementMedalSlotStrip -notmatch 'var icons := \[\]') "Achievement medal slot strip should not keep a generic icons array."
 Assert-True ($achievementMedalSlotStrip -notmatch 'var shadows := \[\]') "Achievement medal slot strip should not keep a generic shadows array."
+$achievementToastQueueBadgeStyle = Get-FunctionBody -Text $main -Name "_achievement_toast_queue_badge_style"
+Assert-True ($achievementToastQueueBadgeStyle -match 'AchievementStyles\.toast_queue_badge') "Achievement toast queue badge style construction should live in scripts\achievements\styles.gd."
+$achievementToastQueueBadgeStyleHelper = Get-FunctionBody -Text $achievementStyles -Name "toast_queue_badge"
+Assert-True ($achievementToastQueueBadgeStyleHelper -match 'set_corner_radius_all\(999\)') "Achievement style helper should own toast queue badge shape."
 Assert-True ($passiveLogPileSprite -match 'var log_slots: Array = \[\]') "Passive log pile sprite should name stored pile slots by log domain."
 Assert-True ($passiveLogPileSprite -match 'var log_rotations: Array = \[\]') "Passive log pile sprite should name stored rotations by log domain."
 Assert-True ($passiveLogPileSprite -notmatch 'var slots: Array = \[\]') "Passive log pile sprite should not keep a generic slots array."
