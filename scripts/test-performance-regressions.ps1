@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
+$leaderboardProfilePath = Join-Path $projectRoot "scripts\leaderboard\profile.gd"
 $cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
 $activityCardInnerShadowPath = Join-Path $projectRoot "scripts\ui\activity_card_inner_shadow.gd"
 $skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detail_page_shelf_shadow.gd"
@@ -100,6 +101,8 @@ function Get-ExportPresetBlock {
 
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
 $main = Get-Content -LiteralPath $mainPath -Raw
+Assert-True (Test-Path -LiteralPath $leaderboardProfilePath) "Missing scripts\leaderboard\profile.gd."
+$leaderboardProfile = Get-Content -LiteralPath $leaderboardProfilePath -Raw
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 Assert-True (Test-Path -LiteralPath $exportPresetsPath) "Missing export_presets.cfg."
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
@@ -920,8 +923,10 @@ Assert-True ($loadGameSecondaryRestore -match '_restore_tip_metadata_from_save\(
 $restoreTipMetadata = Get-FunctionBody -Text $main -Name "_restore_tip_metadata_from_save"
 Assert-True ($restoreTipMetadata -match 'silver_opportunity_tip_action_key = _action_key_for_save') "Tip metadata restore should use the shared action-key normalizer."
 $restoreLeaderboardProfileMetadata = Get-FunctionBody -Text $main -Name "_restore_leaderboard_profile_metadata_from_save"
-Assert-True ($restoreLeaderboardProfileMetadata -match 'leaderboard_avatar_index = _valid_profile_avatar_index') "Leaderboard profile restore should own avatar index normalization."
-Assert-True ($restoreLeaderboardProfileMetadata -match 'leaderboard_player_id = _sanitize_leaderboard_player_id') "Leaderboard profile restore should own player-id sanitization."
+Assert-True ($restoreLeaderboardProfileMetadata -match 'LeaderboardProfile\.restored_metadata') "Leaderboard profile restore should delegate profile state normalization to the helper."
+$restoredLeaderboardProfileMetadata = Get-FunctionBody -Text $leaderboardProfile -Name "restored_metadata"
+Assert-True ($restoredLeaderboardProfileMetadata -match 'valid_avatar_index') "Leaderboard profile helper should own avatar index normalization."
+Assert-True ($restoredLeaderboardProfileMetadata -match 'sanitize_player_id') "Leaderboard profile helper should own player-id sanitization."
 Assert-True ($restoreLeaderboardProfileMetadata -match '_make_leaderboard_player_id\(\)') "Leaderboard profile restore should regenerate missing player ids."
 Assert-True ($savePayload -match '"selected_skill_id": _selected_skill_id_for_save\(\)') "Save payload should serialize normalized selected skill ids."
 Assert-True ($savePayload -match '"running_skill_id": _running_skill_id_for_save\(\)') "Save payload should serialize normalized running skill ids."

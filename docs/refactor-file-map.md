@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 198 files / about 109,711 counted text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 198 files / about 109,739 counted text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 65,577 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, fishing save-state helpers now preload from `scripts/fishing/`, audio player-set construction and settings normalization now preload from `scripts/audio/`, leaderboard profile/save rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, progression medal buff math now preloads from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and shared save-state normalizers plus autosave regression evidence now preload from `scripts/save_state/`. |
+| `scripts/main.gd` * | 65,571 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, fishing save-state helpers now preload from `scripts/fishing/`, audio player-set construction and settings normalization now preload from `scripts/audio/`, leaderboard profile/save/restore rules now preload from `scripts/leaderboard/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, progression medal buff math now preloads from `scripts/progression/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, thieving save-state helpers now preload from `scripts/thieving/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display/wallet helpers now preload from `scripts/materials/`, and shared save-state normalizers plus autosave regression evidence now preload from `scripts/save_state/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -119,7 +119,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/leaderboard/profile.gd` * | 127 | Leaderboard profile avatar clamping, display-name cleanup, name-key generation/validation, guest-name detection/generation, player-id generation/sanitization, profile save metadata, auth provider normalization, and refresh-token cleanup. |
+| `scripts/leaderboard/profile.gd` * | 156 | Leaderboard profile avatar clamping, display-name cleanup, name-key generation/validation, guest-name detection/generation, player-id generation/sanitization, profile save/restore metadata, auth provider normalization, and refresh-token cleanup. |
 
 ## Audio Helper Scripts
 
@@ -175,7 +175,7 @@ Legend:
 | Path | Lines | What lives here |
 | --- | ---: | --- |
 | `scripts/check-project.ps1` | 381 | Preferred broad project validation entrypoint. |
-| `scripts/test-performance-regressions.ps1` * | 3,013 | Static/runtime regression assertions for performance-sensitive code and UI contracts; achievement/chat state restore now asserts extracted state helpers. |
+| `scripts/test-performance-regressions.ps1` * | 3,018 | Static/runtime regression assertions for performance-sensitive code and UI contracts; achievement/chat/leaderboard state restore now asserts extracted state helpers. |
 | `scripts/test-save-normalization.ps1` * | 2,671 | Save/load normalization regression assertions. |
 | `scripts/test-module-list-transitions.ps1` | 3,289 | Module list transition behavioral validation. |
 | `scripts/test-unlock-combo-visual-smoke.ps1` * | 1,012 | Unlock/lock visual smoke test; now owns its fishing combo setup helpers instead of calling production-only hooks. |
@@ -209,7 +209,7 @@ Legend:
 
 | Path | Status | Notes |
 | --- | --- | --- |
-| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; fishing save-state helpers moved out; audio settings normalization, repeated audio player-set lifecycle, and one-off SFX player creation moved out; extended audio async warmup cancellation collapsed behind one helper; leaderboard profile and save metadata rules moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; progression medal buff math moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display/wallet helpers moved out; passive/leaderboard/convergence/hub save-state normalizers and autosave regression evidence moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, and stale save-state pass-through wrappers deleted. |
+| `scripts/main.gd` | modified | Shared button press-state helpers extracted; several local UI drawing classes moved behind preloads; module UI key helpers moved out; fishing save-state helpers moved out; audio settings normalization, repeated audio player-set lifecycle, and one-off SFX player creation moved out; extended audio async warmup cancellation collapsed behind one helper; leaderboard profile save/restore metadata rules moved out; achievement milestone builders, reward constants/formulas, toast seen-id normalization, and visible milestone filtering moved out; progression medal buff math moved out; activity queue state normalization moved out; chat save-state and message-rule helpers moved out; thieving save-state helpers moved out; activity data load normalizers moved out; material definition/display/wallet helpers moved out; passive/leaderboard/convergence/hub save-state normalizers and autosave regression evidence moved out; five now-redundant module UI pass-through wrappers plus `_slug`, `_boot_warmup_cancelled`, stale chat censor wrappers, `_mat_def`, and stale save-state pass-through wrappers deleted. |
 | `scripts/fishing/state.gd` | added | New extracted fishing save-state helper for selected location and rod/tool normalization. |
 | `scripts/audio/player_sets.gd` | added | New extracted audio helper for repeated player-list lifecycle used by sync and async extended audio warmup. |
 | `scripts/audio/settings.gd` | added | New extracted audio settings helper for save/restore volume clamping. |
@@ -499,5 +499,8 @@ Legend:
 | `git diff --check -- scripts/main.gd scripts/leaderboard/profile.gd` | passed after moving leaderboard profile save metadata into `scripts/leaderboard/profile.gd`. |
 | `.\scripts\test-save-normalization.ps1` | passed after moving leaderboard profile save metadata; runner emitted existing CanvasItem/RID/ObjectDB leak-at-exit warnings. |
 | `.\scripts\test-performance-regressions.ps1` | passed after moving leaderboard profile save metadata. |
+| `git diff --check -- scripts/main.gd scripts/leaderboard/profile.gd scripts/test-performance-regressions.ps1` | passed after moving leaderboard profile restore metadata into `scripts/leaderboard/profile.gd`. |
+| `.\scripts\test-save-normalization.ps1` | passed after moving leaderboard profile restore metadata; runner emitted existing CanvasItem/RID/ObjectDB leak-at-exit warnings. |
+| `.\scripts\test-performance-regressions.ps1` | passed after moving leaderboard profile restore metadata and updating the ownership assertion. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |

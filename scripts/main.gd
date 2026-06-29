@@ -60917,32 +60917,26 @@ func _leaderboard_profile_metadata_for_save() -> Dictionary:
 
 
 func _restore_leaderboard_profile_metadata_from_save(data: Dictionary) -> void:
-	leaderboard_display_name = _sanitize_leaderboard_display_name(str(data.get("leaderboard_display_name", leaderboard_display_name)))
-	leaderboard_name_key = _sanitize_leaderboard_name_key(str(data.get("leaderboard_name_key", leaderboard_name_key)))
-	leaderboard_profile_claimed = bool(data.get("leaderboard_profile_claimed", false))
-	leaderboard_name_claim_verified = bool(data.get("leaderboard_name_claim_verified", false))
-	_reconcile_leaderboard_profile_metadata_after_restore()
-	leaderboard_avatar_index = _valid_profile_avatar_index(int(data.get("leaderboard_avatar_index", leaderboard_avatar_index)))
-	leaderboard_player_id = _sanitize_leaderboard_player_id(str(data.get("leaderboard_player_id", leaderboard_player_id)))
+	var metadata := LeaderboardProfile.restored_metadata(
+		data,
+		str(leaderboard_display_name),
+		str(leaderboard_name_key),
+		int(leaderboard_avatar_index),
+		str(leaderboard_player_id),
+		Callable(self, "_make_guest_display_name"),
+		PROFILE_GUEST_NAME_PREFIX,
+		PROFILE_DISPLAY_NAME_MAX_CHARS,
+		PROFILE_NAME_KEY_MAX_CHARS,
+		PROFILE_AVATAR_COUNT
+	)
+	leaderboard_display_name = str(metadata.get("display_name", leaderboard_display_name))
+	leaderboard_name_key = str(metadata.get("name_key", ""))
+	leaderboard_profile_claimed = bool(metadata.get("profile_claimed", false))
+	leaderboard_name_claim_verified = bool(metadata.get("name_claim_verified", false))
+	leaderboard_avatar_index = int(metadata.get("avatar_index", leaderboard_avatar_index))
+	leaderboard_player_id = str(metadata.get("player_id", ""))
 	if leaderboard_player_id.is_empty():
 		leaderboard_player_id = _make_leaderboard_player_id()
-
-
-func _reconcile_leaderboard_profile_metadata_after_restore() -> void:
-	if _is_default_leaderboard_display_name(leaderboard_display_name):
-		leaderboard_display_name = _make_guest_display_name()
-		leaderboard_profile_claimed = false
-		leaderboard_name_claim_verified = false
-		leaderboard_name_key = ""
-	if _is_guest_leaderboard_display_name(leaderboard_display_name):
-		leaderboard_profile_claimed = false
-		leaderboard_name_claim_verified = false
-		leaderboard_name_key = ""
-	if leaderboard_profile_claimed and leaderboard_name_key.is_empty():
-		leaderboard_name_key = _leaderboard_name_key(leaderboard_display_name)
-	if leaderboard_profile_claimed and not leaderboard_name_claim_verified:
-		leaderboard_profile_claimed = false
-		leaderboard_name_key = ""
 
 
 func _leaderboard_avatar_index_for_save() -> int:
@@ -60963,10 +60957,10 @@ func _leaderboard_auth_provider_for_save() -> String:
 
 func _restore_leaderboard_auth_metadata_from_save(data: Dictionary) -> void:
 	leaderboard_auth_id_token = ""
-	leaderboard_auth_refresh_token = str(data.get("leaderboard_auth_refresh_token", "")).strip_edges()
+	leaderboard_auth_refresh_token = LeaderboardProfile.refresh_token_for_save(str(data.get("leaderboard_auth_refresh_token", "")))
 	leaderboard_auth_expires_unix = 0
 	leaderboard_auth_retry_after_unix = maxi(0, int(data.get("leaderboard_auth_retry_after_unix", 0)))
-	leaderboard_auth_provider = "google" if str(data.get("leaderboard_auth_provider", "")).strip_edges() == "google" else "anonymous"
+	leaderboard_auth_provider = LeaderboardProfile.auth_provider_for_save(str(data.get("leaderboard_auth_provider", "")).strip_edges())
 
 
 func _hub_missions_for_save() -> Array:

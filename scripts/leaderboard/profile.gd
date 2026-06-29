@@ -119,6 +119,35 @@ static func metadata_for_save(display_name: String, raw_name_key: String, claime
 	return {"name_key": safe_name_key, "profile_claimed": true, "name_claim_verified": true}
 
 
+static func restored_metadata(data: Dictionary, current_display_name: String, current_name_key: String, current_avatar_index: int, current_player_id: String, make_guest: Callable, guest_prefix: String, display_max_chars: int, key_max_chars: int, avatar_count: int) -> Dictionary:
+	var display_name := sanitize_display_name(str(data.get("leaderboard_display_name", current_display_name)), display_max_chars)
+	var safe_name_key := sanitize_name_key(str(data.get("leaderboard_name_key", current_name_key)), key_max_chars)
+	var claimed := bool(data.get("leaderboard_profile_claimed", false))
+	var verified := bool(data.get("leaderboard_name_claim_verified", false))
+	if is_default_display_name(display_name, display_max_chars):
+		display_name = str(make_guest.call())
+		claimed = false
+		verified = false
+		safe_name_key = ""
+	if is_guest_display_name(display_name, guest_prefix, display_max_chars):
+		claimed = false
+		verified = false
+		safe_name_key = ""
+	if claimed and safe_name_key.is_empty():
+		safe_name_key = name_key(display_name, display_max_chars, key_max_chars)
+	if claimed and not verified:
+		claimed = false
+		safe_name_key = ""
+	return {
+		"display_name": display_name,
+		"name_key": safe_name_key,
+		"profile_claimed": claimed,
+		"name_claim_verified": verified,
+		"avatar_index": valid_avatar_index(int(data.get("leaderboard_avatar_index", current_avatar_index)), avatar_count),
+		"player_id": sanitize_player_id(str(data.get("leaderboard_player_id", current_player_id)))
+	}
+
+
 static func refresh_token_for_save(refresh_token: String) -> String:
 	return refresh_token.strip_edges()
 
