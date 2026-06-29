@@ -72,6 +72,7 @@ const BerryPrepControls = preload("res://scripts/ui/berry_prep_controls.gd")
 const BuildableModuleOverlay = preload("res://scripts/ui/buildable_module_overlay.gd")
 const ConvergenceBuildOverlay = preload("res://scripts/ui/convergence_build_overlay.gd")
 const ActionArtUi = preload("res://scripts/ui/action_art_ui.gd")
+const ModuleSortMenuUi = preload("res://scripts/ui/module_sort_menu_ui.gd")
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
 const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_rect.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
@@ -9246,34 +9247,14 @@ func _kill_module_sort_menu_tween() -> void:
 
 
 func _build_module_sort_menu() -> void:
-	module_sort_menu = Control.new()
-	module_sort_menu.custom_minimum_size = Vector2(560, 720)
-	module_sort_menu.size = module_sort_menu.custom_minimum_size
-	module_sort_menu.z_index = CHAT_UI_Z + 2
-	module_sort_menu.z_as_relative = false
-	module_sort_menu.visible = false
-	module_sort_menu.mouse_filter = Control.MOUSE_FILTER_STOP
-	add_child(module_sort_menu)
-
-	module_sort_menu_visual = Control.new()
-	module_sort_menu_visual.name = "ModuleSortMenuVisual"
-	module_sort_menu_visual.set_anchors_preset(Control.PRESET_FULL_RECT)
-	module_sort_menu_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	module_sort_menu.add_child(module_sort_menu_visual)
-
-	var row := VBoxContainer.new()
-	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 34)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	module_sort_menu_visual.add_child(row)
-	module_sort_low_level_button = _module_sort_level_toggle_button()
-	row.add_child(module_sort_low_level_button)
+	var built := ModuleSortMenuUi.build(CHAT_UI_Z + 2, Callable(self, "_toggle_module_ui_level_sort"), Callable(self, "_toggle_module_ui_sort_priority"), Callable(self, "_attach_button_depress_animation"), app_font, app_bold_font, COLOR_INK)
+	module_sort_menu = built.get("menu") as Control
+	module_sort_menu_visual = built.get("visual") as Control
+	module_sort_low_level_button = built.get("low_level_button") as Button
 	module_sort_high_level_button = null
-	module_sort_combo_button = _module_sort_priority_button("Combo", "combo")
-	row.add_child(module_sort_combo_button)
-	module_sort_collection_button = _module_sort_priority_button("Collection", "collection")
-	row.add_child(module_sort_collection_button)
+	module_sort_combo_button = built.get("combo_button") as Button
+	module_sort_collection_button = built.get("collection_button") as Button
+	add_child(module_sort_menu)
 
 
 func _layout_module_sort_menu() -> void:
@@ -9306,69 +9287,8 @@ func _activity_button_target_face_global_rect(button: Button, active: bool) -> R
 	return face_rect
 
 
-func _module_sort_level_toggle_button() -> Button:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(560, 195)
-	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_module_sort_flat_button_text(button, "Level: Low", 60)
-	button.pressed.connect(Callable(self, "_toggle_module_ui_level_sort"))
-	_attach_button_depress_animation(button, 0.975)
-	return button
-
-
-func _module_sort_priority_button(label_text: String, priority_kind: String) -> Button:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(560, 195)
-	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	_apply_module_sort_flat_button_text(button, label_text, 60)
-	button.pressed.connect(Callable(self, "_toggle_module_ui_sort_priority").bind(priority_kind))
-	_attach_button_depress_animation(button, 0.975)
-	button.set_meta("module_sort_priority_kind", priority_kind)
-	button.set_meta("module_sort_label", label_text)
-	return button
-
-
-func _apply_module_sort_flat_button_text(button: Button, label_text: String, font_size: int) -> void:
-	button.text = label_text
-	button.clip_contents = false
-	button.add_theme_font_size_override("font_size", font_size)
-	button.add_theme_color_override("font_color", COLOR_INK)
-	button.add_theme_color_override("font_hover_color", COLOR_INK)
-	button.add_theme_color_override("font_pressed_color", COLOR_INK)
-	button.add_theme_color_override("font_outline_color", Color.WHITE)
-	button.add_theme_constant_override("outline_size", 6)
-	if app_bold_font != null:
-		button.add_theme_font_override("font", app_bold_font)
-	elif app_font != null:
-		button.add_theme_font_override("font", app_font)
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-
-
-func _sync_module_sort_text_button_shell(button: Button, label_text: String, active: bool) -> void:
-	button.text = label_text
-	button.add_theme_stylebox_override("normal", _module_sort_flat_button_style(active, false))
-	button.add_theme_stylebox_override("hover", _module_sort_flat_button_style(active, false))
-	button.add_theme_stylebox_override("pressed", _module_sort_flat_button_style(active, true))
-	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-
-
 func _sync_module_sort_menu_buttons() -> void:
-	if module_sort_low_level_button != null and is_instance_valid(module_sort_low_level_button):
-		var level_label := "Level: High" if module_ui_sort_mode == MODULE_UI_SORT_LEVEL_REVERSE else "Level: Low"
-		_sync_module_sort_text_button_shell(module_sort_low_level_button, level_label, false)
-	for button in [module_sort_combo_button, module_sort_collection_button]:
-		if button == null or not is_instance_valid(button):
-			continue
-		var priority_kind := str(button.get_meta("module_sort_priority_kind", ""))
-		var label_text := str(button.get_meta("module_sort_label", "Combo"))
-		var active := _module_ui_sort_priority_active(priority_kind)
-		_sync_module_sort_text_button_shell(button, label_text, active)
-		_sync_module_sort_text_button_shell(button, "âœ“  %s" % label_text if active else label_text, active)
-		_sync_module_sort_text_button_shell(button, label_text, active)
+	ModuleSortMenuUi.sync_buttons(module_sort_low_level_button, module_sort_combo_button, module_sort_collection_button, module_ui_sort_mode == MODULE_UI_SORT_LEVEL_REVERSE, module_ui_combo_first, module_ui_collection_first, COLOR_INK)
 
 
 func _set_module_ui_sort_mode(next_mode: String) -> void:
@@ -9393,15 +9313,6 @@ func _toggle_module_ui_sort_priority(priority_kind: String) -> void:
 		_:
 			return
 	_apply_module_ui_sort_preference_change()
-
-
-func _module_ui_sort_priority_active(priority_kind: String) -> bool:
-	match priority_kind:
-		"combo":
-			return module_ui_combo_first
-		"collection":
-			return module_ui_collection_first
-	return false
 
 
 func _apply_module_ui_sort_preference_change() -> void:
@@ -63425,21 +63336,6 @@ func _module_utility_collapse_toggle_style(pressed := false) -> StyleBox:
 	return style
 
 
-func _module_sort_flat_button_style(active: bool, pressed := false) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#d8d8d8") if active else Color("#ffffff")
-	if pressed:
-		style.bg_color = style.bg_color.darkened(0.06)
-	style.border_color = COLOR_INK
-	style.set_border_width_all(10)
-	style.set_corner_radius_all(999)
-	style.content_margin_left = 44
-	style.content_margin_right = 44
-	style.content_margin_top = 20
-	style.content_margin_bottom = 20
-	style.shadow_size = 0
-	style.shadow_color = Color.TRANSPARENT
-	return style
 
 
 func _apply_nav_style(button: Button, _active: bool) -> void:
