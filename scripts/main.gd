@@ -16,6 +16,7 @@ const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
 const ThievingState = preload("res://scripts/thieving/state.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
+const LeaderboardProfile = preload("res://scripts/leaderboard/profile.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
 const FeatheredCollectGlow = preload("res://scripts/ui/feathered_collect_glow.gd")
 const StopHoldCircle = preload("res://scripts/ui/stop_hold_circle.gd")
@@ -62134,9 +62135,7 @@ func _profile_avatar_border_overlay(selected := false) -> PanelContainer:
 
 
 func _valid_profile_avatar_index(index: int) -> int:
-	if PROFILE_AVATAR_COUNT <= 0:
-		return 0
-	return clampi(index, 0, PROFILE_AVATAR_COUNT - 1)
+	return LeaderboardProfile.valid_avatar_index(index, PROFILE_AVATAR_COUNT)
 
 
 func _profile_avatar_has_colored_background(index: int) -> bool:
@@ -62144,51 +62143,15 @@ func _profile_avatar_has_colored_background(index: int) -> bool:
 
 
 func _sanitize_leaderboard_display_name(raw_name: String) -> String:
-	var clean := raw_name.strip_edges()
-	clean = clean.replace("\n", " ").replace("\r", " ").replace("\t", " ")
-	while clean.contains("  "):
-		clean = clean.replace("  ", " ")
-	if clean.length() > PROFILE_DISPLAY_NAME_MAX_CHARS:
-		clean = clean.substr(0, PROFILE_DISPLAY_NAME_MAX_CHARS).strip_edges()
-	return clean
+	return LeaderboardProfile.sanitize_display_name(raw_name, PROFILE_DISPLAY_NAME_MAX_CHARS)
 
 
 func _leaderboard_name_key(display_name: String) -> String:
-	var clean := _sanitize_leaderboard_display_name(display_name).to_lower()
-	var key := ""
-	var last_was_separator := false
-	for i in range(clean.length()):
-		var code := clean.unicode_at(i)
-		var is_digit := code >= 48 and code <= 57
-		var is_lower := code >= 97 and code <= 122
-		if is_digit or is_lower:
-			key += char(code)
-			last_was_separator = false
-		elif code == 32 or code == 45 or code == 95:
-			if not key.is_empty() and not last_was_separator:
-				key += "_"
-				last_was_separator = true
-	while key.ends_with("_"):
-		key = key.substr(0, key.length() - 1)
-	if key.length() > PROFILE_NAME_KEY_MAX_CHARS:
-		key = key.substr(0, PROFILE_NAME_KEY_MAX_CHARS)
-		while key.ends_with("_"):
-			key = key.substr(0, key.length() - 1)
-	return _sanitize_leaderboard_name_key(key)
+	return LeaderboardProfile.name_key(display_name, PROFILE_DISPLAY_NAME_MAX_CHARS, PROFILE_NAME_KEY_MAX_CHARS)
 
 
 func _sanitize_leaderboard_name_key(raw_key: String) -> String:
-	var clean := raw_key.strip_edges().to_lower()
-	if clean.length() <= 0 or clean.length() > PROFILE_NAME_KEY_MAX_CHARS:
-		return ""
-	for i in range(clean.length()):
-		var code := clean.unicode_at(i)
-		var is_digit := code >= 48 and code <= 57
-		var is_lower := code >= 97 and code <= 122
-		var is_underscore := code == 95
-		if not (is_digit or is_lower or is_underscore):
-			return ""
-	return clean
+	return LeaderboardProfile.sanitize_name_key(raw_key, PROFILE_NAME_KEY_MAX_CHARS)
 
 
 func _leaderboard_profile_claim_valid() -> bool:
@@ -62200,23 +62163,11 @@ func _leaderboard_profile_claim_valid() -> bool:
 
 
 func _is_default_leaderboard_display_name(display_name: String) -> bool:
-	var clean := _sanitize_leaderboard_display_name(display_name)
-	return clean.is_empty() or clean == "You"
+	return LeaderboardProfile.is_default_display_name(display_name, PROFILE_DISPLAY_NAME_MAX_CHARS)
 
 
 func _is_guest_leaderboard_display_name(display_name: String) -> bool:
-	var clean := _sanitize_leaderboard_display_name(display_name)
-	if clean.is_empty() or clean == "You":
-		return true
-	if not clean.begins_with(PROFILE_GUEST_NAME_PREFIX):
-		return false
-	if clean.length() != PROFILE_GUEST_NAME_PREFIX.length() + 4:
-		return false
-	for i in range(PROFILE_GUEST_NAME_PREFIX.length(), clean.length()):
-		var code := clean.unicode_at(i)
-		if code < 48 or code > 57:
-			return false
-	return true
+	return LeaderboardProfile.is_guest_display_name(display_name, PROFILE_GUEST_NAME_PREFIX, PROFILE_DISPLAY_NAME_MAX_CHARS)
 
 
 func _profile_status_text() -> String:
@@ -62228,35 +62179,15 @@ func _profile_status_text() -> String:
 
 
 func _make_guest_display_name() -> String:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	return "%s%04d" % [PROFILE_GUEST_NAME_PREFIX, rng.randi_range(0, 9999)]
+	return LeaderboardProfile.make_guest_display_name(PROFILE_GUEST_NAME_PREFIX)
 
 
 func _make_leaderboard_player_id() -> String:
-	var rng := RandomNumberGenerator.new()
-	rng.randomize()
-	var alphabet := "0123456789abcdef"
-	var token := ""
-	for _i in range(32):
-		token += alphabet.substr(rng.randi_range(0, alphabet.length() - 1), 1)
-	return "p%s" % token
+	return LeaderboardProfile.make_player_id()
 
 
 func _sanitize_leaderboard_player_id(raw_id: String) -> String:
-	var clean := raw_id.strip_edges()
-	if clean.length() < 8 or clean.length() > 48:
-		return ""
-	for i in range(clean.length()):
-		var code := clean.unicode_at(i)
-		var is_digit := code >= 48 and code <= 57
-		var is_lower := code >= 97 and code <= 122
-		var is_upper := code >= 65 and code <= 90
-		var is_dash := code == 45
-		var is_underscore := code == 95
-		if not (is_digit or is_lower or is_upper or is_dash or is_underscore):
-			return ""
-	return clean
+	return LeaderboardProfile.sanitize_player_id(raw_id)
 
 
 func _skill_detail_icon(skill_id: String) -> Control:
