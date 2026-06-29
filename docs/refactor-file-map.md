@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 191 files / about 110,670 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 191 files / about 110,674 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 65,876 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state and message-rule helpers now preload from `scripts/chat/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display helpers now preload from `scripts/materials/`, and shared save-state normalizers now preload from `scripts/save_state/`. |
+| `scripts/main.gd` * | 65,831 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`, module UI key construction/parsing/save-shape normalization now preloads from `scripts/module_ui/`, achievement milestone/reward/state helpers now preload from `scripts/achievements/`, activity queue state helpers now preload from `scripts/activity_queue/`, chat save-state, message-rule, and timestamp helpers now preload from `scripts/chat/`, activity data parser helpers now preload from `scripts/activity_data/`, material definition/display helpers now preload from `scripts/materials/`, and shared save-state normalizers now preload from `scripts/save_state/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -119,7 +119,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/chat/state.gd` * | 82 | Chat save-state clamping, last-opened message id normalization, message whitespace/censor/max-length sanitation, and message id generation. Stream/UI behavior remains in `scripts/main.gd`. |
+| `scripts/chat/state.gd` * | 131 | Chat save-state clamping, last-opened message id normalization, message whitespace/censor/max-length sanitation, message id generation, and Central-time timestamp formatting. Stream/UI behavior remains in `scripts/main.gd`. |
 
 ## Activity Data Helper Scripts
 
@@ -244,7 +244,7 @@ Legend:
    - Next lazy win: keep queue UI/runtime in `scripts/main.gd` until queue target resolution can move with unlock/action access.
 
 6. Chat
-   - Current: retry timestamp save/restore clamping, opened message-id normalization, message sanitation/censoring, and message id generation live in `scripts/chat/state.gd`.
+   - Current: retry timestamp save/restore clamping, opened message-id normalization, message sanitation/censoring, message id generation, and chat row timestamp formatting live in `scripts/chat/state.gd`.
    - Next lazy win: keep stream connection and row/composer UI in `scripts/main.gd` until a full chat runtime boundary can move.
 
 7. Activity data loading
@@ -413,5 +413,8 @@ Legend:
 | `rg -n "_censor_chat_message|_censor_chat_token|_is_chat_word_char|_mat_def|_convergence_module_state_from_save|_hub_module_state_from_save" .` | found no references after deleting dead wrappers. |
 | `git diff --check -- scripts/main.gd` | passed after deleting dead wrappers. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting dead wrappers. |
+| `git diff --check -- scripts/main.gd scripts/chat/state.gd` | passed after moving chat timestamp helpers. |
+| `.\scripts\test-performance-regressions.ps1` | passed after moving chat timestamp helpers. |
+| `.\scripts\test-save-normalization.ps1` | passed after moving chat timestamp helpers; runner emitted existing leak-at-exit warnings. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |

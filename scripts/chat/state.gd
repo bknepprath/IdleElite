@@ -80,3 +80,52 @@ static func make_message_id(now_unix: int) -> String:
 	for _i in range(12):
 		suffix += alphabet.substr(rng.randi_range(0, alphabet.length() - 1), 1)
 	return "m%s_%s" % [now_unix, suffix]
+
+
+static func time_text(row_data: Dictionary) -> String:
+	var created := maxi(0, int(row_data.get("created_at_unix", 0)))
+	if created <= 0:
+		return ""
+	var timestamp := central_datetime_from_unix_time(created)
+	return "%02d:%02d" % [int(timestamp.get("hour", 0)), int(timestamp.get("minute", 0))]
+
+
+static func central_datetime_from_unix_time(unix_time: int) -> Dictionary:
+	var offset_seconds := -5 * 60 * 60 if central_daylight_time_active(unix_time) else -6 * 60 * 60
+	return Time.get_datetime_dict_from_unix_time(unix_time + offset_seconds)
+
+
+static func central_daylight_time_active(unix_time: int) -> bool:
+	var utc := Time.get_datetime_dict_from_unix_time(unix_time)
+	var year := int(utc.get("year", 1970))
+	var dst_start_utc := central_dst_transition_utc(year, 3, 2, 2, -6)
+	var dst_end_utc := central_dst_transition_utc(year, 11, 1, 2, -5)
+	return unix_time >= dst_start_utc and unix_time < dst_end_utc
+
+
+static func central_dst_transition_utc(year: int, month: int, sunday_ordinal: int, local_hour: int, offset_hours_before_transition: int) -> int:
+	var day := nth_sunday_day_of_month(year, month, sunday_ordinal)
+	var local_unix := Time.get_unix_time_from_datetime_dict({
+		"year": year,
+		"month": month,
+		"day": day,
+		"hour": local_hour,
+		"minute": 0,
+		"second": 0
+	})
+	return int(local_unix) - offset_hours_before_transition * 60 * 60
+
+
+static func nth_sunday_day_of_month(year: int, month: int, sunday_ordinal: int) -> int:
+	var first_day_unix := Time.get_unix_time_from_datetime_dict({
+		"year": year,
+		"month": month,
+		"day": 1,
+		"hour": 0,
+		"minute": 0,
+		"second": 0
+	})
+	var first_day := Time.get_datetime_dict_from_unix_time(first_day_unix)
+	var first_weekday := int(first_day.get("weekday", 0))
+	var first_sunday := 1 if first_weekday == 0 else 8 - first_weekday
+	return first_sunday + (maxi(1, sunday_ordinal) - 1) * 7
