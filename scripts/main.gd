@@ -11,6 +11,7 @@ const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
+const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const ShopAdStackLight = preload("res://scripts/ui/shop_ad_stack_light.gd")
 const FeatheredCollectGlow = preload("res://scripts/ui/feathered_collect_glow.gd")
@@ -57661,39 +57662,26 @@ func _normalized_temporary_event_cooldowns(value: Variant) -> Dictionary:
 
 
 func _normalized_passive_modules(loaded_modules: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_modules) != TYPE_DICTIONARY:
-		return normalized
-	for raw_module_id in (loaded_modules as Dictionary).keys():
-		var module_id := str(raw_module_id)
-		var loaded_module = (loaded_modules as Dictionary).get(raw_module_id, {})
-		if module_id.is_empty() or typeof(loaded_module) != TYPE_DICTIONARY:
-			continue
-		normalized[module_id] = _firepit_state_from_save(loaded_module as Dictionary) if _is_firepit_module(module_id) else _passive_module_state_from_save(loaded_module as Dictionary)
-	return normalized
+	return SaveStateNormalizers.normalized_passive_modules(loaded_modules, Callable(self, "_is_firepit_module"), _unix_now(), _save_state_normalizer_limits())
 
 
 func _firepit_state_from_save(loaded_module: Dictionary) -> Dictionary:
-	return {
-		"active": bool(loaded_module.get("active", false)),
-		"igniting": false,
-		"last_update": int(loaded_module.get("last_update", _unix_now())),
-		"started_unix": maxi(0, int(loaded_module.get("started_unix", 0))),
-		"burned_scrapwood": maxf(0.0, float(loaded_module.get("burned_scrapwood", 0.0))),
-		"cooling_bonus": clampf(float(loaded_module.get("cooling_bonus", 0.0)), 0.0, FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER)),
-		"cooling_started_unix": maxi(0, int(loaded_module.get("cooling_started_unix", 0))),
-		"shutdown_reason": str(loaded_module.get("shutdown_reason", ""))
-	}
+	return SaveStateNormalizers.firepit_state(loaded_module, _unix_now(), _save_state_normalizer_limits())
 
 
 func _passive_module_state_from_save(loaded_module: Dictionary) -> Dictionary:
+	return SaveStateNormalizers.passive_module_state(loaded_module, _unix_now(), _save_state_normalizer_limits())
+
+
+func _save_state_normalizer_limits() -> Dictionary:
 	return {
-		"stored": clampi(int(loaded_module.get("stored", 0)), 0, PASSIVE_CAPACITY_MAX),
-		"time_seconds": clampi(int(loaded_module.get("time_seconds", PASSIVE_TIME_START)), PASSIVE_TIME_MAX, PASSIVE_TIME_START),
-		"yield": clampi(int(loaded_module.get("yield", PASSIVE_YIELD_START)), PASSIVE_YIELD_START, PASSIVE_YIELD_MAX),
-		"capacity": clampi(int(loaded_module.get("capacity", PASSIVE_CAPACITY_START)), PASSIVE_CAPACITY_START, PASSIVE_CAPACITY_MAX),
-		"seeded": bool(loaded_module.get("seeded", false)),
-		"last_update": int(loaded_module.get("last_update", _unix_now()))
+		"passive_capacity_max": PASSIVE_CAPACITY_MAX,
+		"passive_time_start": PASSIVE_TIME_START,
+		"passive_time_max": PASSIVE_TIME_MAX,
+		"passive_yield_start": PASSIVE_YIELD_START,
+		"passive_yield_max": PASSIVE_YIELD_MAX,
+		"passive_capacity_start": PASSIVE_CAPACITY_START,
+		"firepit_max_cooling_bonus": FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER)
 	}
 
 
@@ -61300,16 +61288,7 @@ func _apply_legacy_clock_guard_leaderboard_forgiveness(data: Dictionary) -> void
 
 
 func _normalized_leaderboard_last_submitted_scores(loaded_scores: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_scores) != TYPE_DICTIONARY:
-		return normalized
-	var source := loaded_scores as Dictionary
-	for raw_category_id in source.keys():
-		var category_id := _leaderboard_valid_category_id(str(raw_category_id))
-		var score := maxi(0, int(source.get(raw_category_id, 0)))
-		var existing := int(normalized.get(category_id, 0))
-		normalized[category_id] = maxi(existing, score)
-	return normalized
+	return SaveStateNormalizers.normalized_leaderboard_category_values(loaded_scores, Callable(self, "_leaderboard_valid_category_id"))
 
 
 func _leaderboard_fetch_retry_unix_by_category_for_save() -> Dictionary:
@@ -61327,64 +61306,23 @@ func _restore_leaderboard_fetch_retry_unix_by_category_from_save(loaded_retry_un
 
 
 func _normalized_leaderboard_fetch_retry_unix_by_category(loaded_retry_unix: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_retry_unix) != TYPE_DICTIONARY:
-		return normalized
-	var source := loaded_retry_unix as Dictionary
-	for raw_category_id in source.keys():
-		var category_id := _leaderboard_valid_category_id(str(raw_category_id))
-		var retry_unix := maxi(0, int(source.get(raw_category_id, 0)))
-		var existing := int(normalized.get(category_id, 0))
-		normalized[category_id] = maxi(existing, retry_unix)
-	return normalized
+	return SaveStateNormalizers.normalized_leaderboard_category_values(loaded_retry_unix, Callable(self, "_leaderboard_valid_category_id"))
 
 
 func _normalized_convergence_modules(loaded_modules: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_modules) != TYPE_DICTIONARY:
-		return normalized
-	var source := loaded_modules as Dictionary
-	for raw_module_id in source.keys():
-		var module_id := str(raw_module_id)
-		var action := _action_data("build", module_id)
-		if action.is_empty() or not _is_convergence_action(action):
-			continue
-		var loaded_state = source.get(raw_module_id, {})
-		if typeof(loaded_state) != TYPE_DICTIONARY:
-			continue
-		normalized[module_id] = _convergence_module_state_from_save(loaded_state as Dictionary)
-	return normalized
+	return SaveStateNormalizers.normalized_convergence_modules(loaded_modules, Callable(self, "_action_data"), Callable(self, "_is_convergence_action"))
 
 
 func _convergence_module_state_from_save(loaded_state: Dictionary) -> Dictionary:
-	return {
-		"built": bool(loaded_state.get("built", false)),
-		"building": bool(loaded_state.get("building", false)),
-		"build_started_unix": maxi(0, int(loaded_state.get("build_started_unix", 0))),
-		"completions": maxi(0, int(loaded_state.get("completions", 0)))
-	}
+	return SaveStateNormalizers.convergence_module_state(loaded_state)
 
 
 func _normalized_hub_modules(loaded_modules: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_modules) != TYPE_DICTIONARY:
-		return normalized
-	var source := loaded_modules as Dictionary
-	for raw_module_id in source.keys():
-		var module_id := str(raw_module_id)
-		var loaded_state = source.get(raw_module_id, {})
-		if not HUB_MODULE_DEFS.has(module_id) or typeof(loaded_state) != TYPE_DICTIONARY:
-			continue
-		normalized[module_id] = _hub_module_state_from_save(loaded_state as Dictionary)
-	return normalized
+	return SaveStateNormalizers.normalized_hub_modules(loaded_modules, HUB_MODULE_DEFS, HUB_MODULE_MAX_LEVEL)
 
 
 func _hub_module_state_from_save(loaded_state: Dictionary) -> Dictionary:
-	return {
-		"level": clampi(int(loaded_state.get("level", 0)), 0, HUB_MODULE_MAX_LEVEL),
-		"building": bool(loaded_state.get("building", false)),
-		"build_started_unix_msec": maxi(0, int(loaded_state.get("build_started_unix_msec", loaded_state.get("build_started_msec", 0))))
-	}
+	return SaveStateNormalizers.hub_module_state(loaded_state, HUB_MODULE_MAX_LEVEL)
 
 
 func _leaderboard_display_name_for_save() -> String:
@@ -61479,16 +61417,7 @@ func _restore_hub_missions_from_save(loaded_missions: Variant) -> void:
 
 
 func _normalized_hub_missions(loaded_missions: Variant) -> Array:
-	var normalized := []
-	if typeof(loaded_missions) != TYPE_ARRAY:
-		return normalized
-	for raw_mission in (loaded_missions as Array):
-		if typeof(raw_mission) != TYPE_DICTIONARY:
-			continue
-		var mission := _normalized_hub_mission(raw_mission as Dictionary)
-		if not mission.is_empty():
-			normalized.append(mission)
-	return normalized
+	return SaveStateNormalizers.normalized_hub_missions(loaded_missions, Callable(self, "_normalized_hub_mission"))
 
 
 func _restore_chat_last_send_unix_from_save(data: Dictionary) -> void:
