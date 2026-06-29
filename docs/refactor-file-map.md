@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 196 files / about 111,417 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 192 files / about 111,172 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -45,7 +45,6 @@ Legend:
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
 | `scripts/activity_lock_number.gd` | 30 | Activity lock number rendering. |
-| `scripts/fishing_attempt_bar.gd` | 145 | Fishing attempt progress/control drawing. |
 | `scripts/fishing_fluid_strip.gd` | 276 | Fishing fluid strip visual. |
 | `scripts/fishing_fluid_strip.gdshader` | 50 | Fishing strip shader. |
 | `scripts/fishing_fluid_strip_underlay.gdshader` | 34 | Fishing strip underlay shader. |
@@ -54,8 +53,8 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/ui/mobile_scroll_container.gd` | 515 | Mobile-friendly scroll behavior. |
-| `scripts/ui/button_press_state.gd` * | 54 | Shared press/drag/release metadata helper for passive button routing. Extracted from `scripts/main.gd` this session. |
+| `scripts/ui/mobile_scroll_container.gd` | 567 | Mobile-friendly scroll behavior. |
+| `scripts/ui/button_press_state.gd` * | 70 | Shared press/drag/release metadata helper for passive button routing. Extracted from `scripts/main.gd` this session. |
 | `scripts/ui/regen_circle.gd` * | 662 | Extracted stamina/regen gauge drawing class used by skill headers, pinned shelves, and detail stamina gauges. |
 | `scripts/ui/fish_circle.gd` * | 478 | Extracted fishing header currency/tool/wallet circle control. |
 | `scripts/ui/page_switch_button_face.gd` * | 129 | Extracted page-switch/action-card shaped face drawing control. |
@@ -66,8 +65,8 @@ Legend:
 | `scripts/ui/blue_guy_chicken_brawl_stage.gd` | 1,689 | Fighting/chicken brawl stage visual. |
 | `scripts/ui/activity_card_depth.gd` | 326 | Activity card pressed/elevation visual. |
 | `scripts/ui/activity_card_border.gd` | 34 | Activity card border drawing. |
-| `scripts/ui/activity_progress_rail.gd` | 267 | Activity progress rail drawing. |
-| `scripts/ui/activity_progress_opportunity_overlay.gd` | 195 | Opportunity overlay drawing. |
+| `scripts/ui/activity_progress_rail.gd` | 295 | Activity progress rail drawing. |
+| `scripts/ui/activity_progress_opportunity_overlay.gd` | 206 | Opportunity overlay drawing. |
 | `scripts/ui/action_art_texture_rect.gd` | 178 | Action art texture display helper. |
 | `scripts/ui/action_art_animation_rect.gd` | 243 | Animated action art display helper. |
 | `scripts/ui/skill_detail_gradient_shelf.gd` | 21 | Skill detail shelf gradient. |
@@ -78,21 +77,18 @@ Legend:
 | `scripts/ui/firepit_flame_fx.gd` | 160 | Firepit flame visual. |
 | `scripts/ui/firepit_fuel_ring.gd` | 141 | Firepit fuel ring drawing. |
 | `scripts/ui/firepit_warmth_overlay.gd` | 66 | Firepit warmth overlay. |
-| `scripts/ui/firepit_dependency_connector.gd` | 23 | Firepit dependency connector visual. |
-| `scripts/ui/fishing_tool_wallet_overlay.gd` | 111 | Fishing tool wallet overlay. |
+| `scripts/ui/fishing_tool_wallet_overlay.gd` | 121 | Fishing tool wallet overlay. |
 | `scripts/ui/convergence_multi_progress_bar.gd` | 192 | Convergence progress bar drawing. |
 | `scripts/ui/clean_progress_bar.gd` | 80 | Shared clean progress bar drawing. |
 | `scripts/ui/boot_flex_loading_animation.gd` | 270 | Boot loading animation. |
 | `scripts/ui/hub_path_dots.gd` | 372 | Hub path/dot visual. |
 | `scripts/ui/hub_build_progress_bar.gd` | 24 | Hub build progress bar. |
-| `scripts/ui/hub_move_icon.gd` | 17 | Hub move icon. |
 | `scripts/ui/mission_cooldown_ring.gd` | 19 | Mission cooldown ring. |
 | `scripts/ui/organic_leaderboard_border.gd` | 44 | Leaderboard border. |
 | `scripts/ui/passive_serpentine_progress_bar.gd` | 165 | Passive module progress bar. |
 | `scripts/ui/passive_module_card_border.gd` | 30 | Passive module border. |
 | `scripts/ui/passive_icon_sprite.gd` | 37 | Passive icon sprite helper. |
 | `scripts/ui/passive_log_pile_sprite.gd` | 52 | Passive log pile sprite helper. |
-| `scripts/ui/passive_pile_shadow.gd` | 22 | Passive pile shadow. |
 | `scripts/ui/rounded_texture_rect.gd` | 276 | Rounded texture rect drawing. |
 | `scripts/ui/rounded_corner_crop_overlay.gd` | 20 | Rounded corner crop overlay. |
 | `scripts/ui/shop_ad_stack_light.gd` | 58 | Shop ad stack light visual. |
@@ -104,7 +100,7 @@ Legend:
 | Path | Lines | What lives here |
 | --- | ---: | --- |
 | `scripts/check-project.ps1` | 381 | Preferred broad project validation entrypoint. |
-| `scripts/test-performance-regressions.ps1` * | 3,024 | Static/runtime regression assertions for performance-sensitive code and UI contracts; stale dead-helper preservation assertions removed. |
+| `scripts/test-performance-regressions.ps1` * | 3,013 | Static/runtime regression assertions for performance-sensitive code and UI contracts; stale dead-helper preservation assertions removed. |
 | `scripts/test-save-normalization.ps1` * | 2,671 | Save/load normalization regression assertions. |
 | `scripts/test-module-list-transitions.ps1` | 3,289 | Module list transition behavioral validation. |
 | `scripts/test-page-switch-cover-visual.ps1` | 375 | Page-switch cover/depressed visual validation. Currently failing in this session. |
@@ -164,6 +160,7 @@ Legend:
    - Current: deleted stale helpers `_build_hero`, `_add_hub_build_mode_toggle`, `_chat_composer`, `_detail_lazy_mount_initial_window_async`, `_render_detail_eager_card_list`, `_show_module_pin_preview`, `_build_skill_strip`, `_wait_for_page_switch_cover_opaque`, `_activity_stat_hit_buttons`, `_ensure_skill_swipe_preview`, `_capture_skill_strip_page_refs`, `_unlock_prior_test_actions`, `_chat_row`, `_sync_hub_hotspot_hold_circle`, `_hub_build_mode_button_style`, `_toggle_hub_build_mode`, `_expire_module_pin_preview_after_delay`, `_finish_module_pin_preview_animation`, `_prime_skill_swipe_preview_modules`, `_icon_button`, `_event_hourglass_badge`, `_fishing_wallet_selectable_tools`, `_summary_style`, `_thieving_heist_preceding_action_unlocked`, `_set_control_position_y_safe`, `_position_new_onboarding_explore_tip`, `_reveal_skill_swipe_preview_modules`, `_button_style`, `_hub_hotspot_hold_ring_rect`, `_ensure_hub_hotspot_hold_circle`, `_activity_lock_piece`, `_skill_swipe_fade_progress`, `_finish_detail_actions_visual_scroll`, `_finish_boot_warmup_overlay`, `_finish_skill_swipe_preview_modules_reveal`, `_begin_page_switch_selection_under_cover`, and `_select_skill_with_initial_scroll_under_page_switch_cover`.
    - Current: also deleted definition-only constants/preloads/state fields after restoring intentional performance-contract anchors.
    - Current: moved reusable-control ownership assertions out of `scripts/main.gd`, then deleted the now-redundant main preload/constant anchors.
+   - Current: deleted four newly orphaned script files: `scripts/fishing_attempt_bar.gd`, `scripts/ui/hub_move_icon.gd`, `scripts/ui/passive_pile_shadow.gd`, and `scripts/ui/firepit_dependency_connector.gd`.
    - Next lazy win: continue only with functions that have no runtime/test callers after checking dynamic `scene.call(...)` use.
 
 1. Button press state
@@ -258,5 +255,9 @@ Legend:
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after removing redundant main ownership anchors. |
 | `git diff --check -- scripts/main.gd` | passed after deleting the final opportunity-window anchor constants. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting the final opportunity-window anchor constants. |
+| `rg -n "fishing_attempt_bar|hub_move_icon|passive_pile_shadow|firepit_dependency_connector" .` | found only docs references after deleting newly orphaned script files. |
+| `git diff --check -- deleted script files` | passed after deleting newly orphaned script files. |
+| `.\scripts\test-performance-regressions.ps1` | passed after deleting newly orphaned script files. |
+| `.\scripts\check-runtime-asset-paths.ps1` | passed after deleting newly orphaned script files. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |
