@@ -17,6 +17,7 @@ const AchievementState = preload("res://scripts/achievements/state.gd")
 const AdBonus = preload("res://scripts/monetization/ad_bonus.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
 const CrashReports = preload("res://scripts/diagnostics/crash_reports.gd")
+const FirebaseCloudSave = preload("res://scripts/firebase/cloud_save.gd")
 const FirebaseRuntime = preload("res://scripts/firebase/runtime.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
@@ -6636,54 +6637,40 @@ func _apply_firebase_auth_response(data: Dictionary, provider: String) -> bool:
 
 
 func _cloud_save_account_ready() -> bool:
-	return _leaderboard_auth_ready() and leaderboard_auth_provider == "google"
+	return FirebaseCloudSave.account_ready(_leaderboard_auth_ready(), leaderboard_auth_provider)
 
 
 func _cloud_save_status_text() -> String:
-	if not _leaderboard_firebase_enabled():
-		return "Cloud save is offline until Firebase is configured."
-	if leaderboard_auth_provider != "google":
-		if not _leaderboard_profile_claim_valid():
-			return "Save a username before connecting Google."
-		if google_auth_status_message.is_empty():
-			return "Connect Google to back up progress to your account."
-		return google_auth_status_message
-	if cloud_save_upload_in_flight:
-		return "Uploading cloud save..."
-	if cloud_save_fetch_in_flight:
-		return "Checking cloud save..."
-	if not cloud_save_status_message.is_empty():
-		return cloud_save_status_message
-	return "Google connected. Progress saves to your account automatically."
+	return FirebaseCloudSave.status_text(
+		_leaderboard_firebase_enabled(),
+		leaderboard_auth_provider,
+		_leaderboard_profile_claim_valid(),
+		google_auth_status_message,
+		cloud_save_upload_in_flight,
+		cloud_save_fetch_in_flight,
+		cloud_save_status_message
+	)
 
 
 func _cloud_save_summary(payload: Dictionary) -> Dictionary:
-	return {
-		"save_schema_version": int(payload.get("save_schema_version", 0)),
-		"saved_at": maxi(0, int(payload.get("saved_at", 0))),
-		"total_skill_xp": _save_total_skill_xp_evidence(payload),
-		"total_level": _global_level()
-	}
+	return FirebaseCloudSave.summary(payload, _save_total_skill_xp_evidence(payload), _global_level())
 
 
 func _cloud_save_payload_json(payload: Dictionary) -> String:
-	var text := JSON.stringify(payload)
-	if text.length() > CLOUD_SAVE_MAX_PAYLOAD_CHARS:
-		return ""
-	return text
+	return FirebaseCloudSave.payload_json(payload, CLOUD_SAVE_MAX_PAYLOAD_CHARS)
 
 
 func _cloud_save_record(payload: Dictionary, now: int) -> Dictionary:
-	return {
-		"uid": leaderboard_player_id,
-		"updated_at": _firebase_server_timestamp(),
-		"updated_at_unix": now,
-		"save_schema_version": int(payload.get("save_schema_version", SAVE_SCHEMA_VERSION)),
-		"saved_at": maxi(0, int(payload.get("saved_at", now))),
-		"total_skill_xp": _save_total_skill_xp_evidence(payload),
-		"total_level": _global_level(),
-		"payload_json": _cloud_save_payload_json(payload)
-	}
+	return FirebaseCloudSave.record(
+		payload,
+		now,
+		leaderboard_player_id,
+		_firebase_server_timestamp(),
+		_save_total_skill_xp_evidence(payload),
+		_global_level(),
+		SAVE_SCHEMA_VERSION,
+		CLOUD_SAVE_MAX_PAYLOAD_CHARS
+	)
 
 
 func _fetch_cloud_save() -> void:
