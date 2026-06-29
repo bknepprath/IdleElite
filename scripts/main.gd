@@ -67,6 +67,7 @@ const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
 const BootFlexLoadingAnimationClass = preload("res://scripts/ui/boot_flex_loading_animation.gd")
 const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_border.gd")
+const BerryPrepControls = preload("res://scripts/ui/berry_prep_controls.gd")
 const BuildableModuleOverlay = preload("res://scripts/ui/buildable_module_overlay.gd")
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
 const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_rect.gd")
@@ -17213,6 +17214,8 @@ func _mat_collection_module(mat_id: String) -> Control:
 	stack.add_child(amount_label)
 	if mat_id == "honey":
 		panel.add_child(_mat_honey_info_button())
+	elif mat_id == "berries" and not skill_id.is_empty() and not action_id.is_empty():
+		panel.add_child(_mat_berry_prep_button(skill_id, action_id))
 	panel.set_meta("icon_id", icon.get_instance_id())
 	panel.set_meta("amount_label_id", amount_label.get_instance_id())
 	return panel
@@ -17276,6 +17279,26 @@ func _mat_honey_info_popover() -> PanelContainer:
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover
+
+
+func _mat_berry_prep_button(skill_id: String, action_id: String) -> Button:
+	var action := _action_data(skill_id, action_id)
+	var action_name := str(action.get("name", "this module"))
+	return BerryPrepControls.build_button(
+		skill_id,
+		action_id,
+		action_name,
+		_mat_amount_text("berries"),
+		_berry_prep_matches(skill_id, action_id),
+		COLOR_INK,
+		_passive_popup_style(),
+		app_bold_font,
+		app_font,
+		Callable(self, "_attach_button_depress_animation"),
+		Callable(self, "_prewarm_passive_info_popover"),
+		Callable(self, "_toggle_passive_info_popover"),
+		Callable(self, "_attempt_apply_berry_prep")
+	)
 
 
 func _mat_collection_module_style(mat_id: String) -> StyleBoxFlat:
