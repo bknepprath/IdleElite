@@ -5,6 +5,7 @@ $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $activityDataNormalizersPath = Join-Path $projectRoot "scripts\activity_data\normalizers.gd"
 $leaderboardProfilePath = Join-Path $projectRoot "scripts\leaderboard\profile.gd"
 $achievementStylesPath = Join-Path $projectRoot "scripts\achievements\styles.gd"
+$masteryStatePath = Join-Path $projectRoot "scripts\progression\mastery_state.gd"
 $tipStatePath = Join-Path $projectRoot "scripts\tutorial\tip_state.gd"
 $temporaryEventStatePath = Join-Path $projectRoot "scripts\temporary_events\state.gd"
 $firebaseRuntimePath = Join-Path $projectRoot "scripts\firebase\runtime.gd"
@@ -118,6 +119,8 @@ Assert-True (Test-Path -LiteralPath $leaderboardProfilePath) "Missing scripts\le
 $leaderboardProfile = Get-Content -LiteralPath $leaderboardProfilePath -Raw
 Assert-True (Test-Path -LiteralPath $achievementStylesPath) "Missing scripts\achievements\styles.gd."
 $achievementStyles = Get-Content -LiteralPath $achievementStylesPath -Raw
+Assert-True (Test-Path -LiteralPath $masteryStatePath) "Missing scripts\progression\mastery_state.gd."
+$masteryState = Get-Content -LiteralPath $masteryStatePath -Raw
 Assert-True (Test-Path -LiteralPath $tipStatePath) "Missing scripts\tutorial\tip_state.gd."
 $tipState = Get-Content -LiteralPath $tipStatePath -Raw
 Assert-True (Test-Path -LiteralPath $temporaryEventStatePath) "Missing scripts\temporary_events\state.gd."
@@ -681,6 +684,12 @@ Assert-True ($tutorialStartScroll -notmatch 'detail_shelf_shadow_overlay"\) as C
 $saveNormalizationRun = Get-FunctionBody -Text $saveNormalization -Name "_run"
 Assert-True ($saveNormalizationRun -match '_check_mastery_restore') "Save-normalization validation should cover mastery restore."
 Assert-True ($saveNormalizationRun -match '_check_mastery_save') "Save-normalization validation should cover mastery serialization."
+$restoreMasteryFromSave = Get-FunctionBody -Text $main -Name "_restore_mastery_from_save"
+Assert-True ($restoreMasteryFromSave -match 'MasteryState\.restored_from_save') "Mastery restore normalization should live in scripts\progression\mastery_state.gd."
+$masteryForSave = Get-FunctionBody -Text $main -Name "_mastery_for_save"
+Assert-True ($masteryForSave -match 'MasteryState\.for_save') "Mastery save normalization should live in scripts\progression\mastery_state.gd."
+$masteryStateNormalize = Get-FunctionBody -Text $masteryState -Name "_normalized_entries"
+Assert-True ($masteryStateNormalize -match 'canonical_key\.call' -and $masteryStateNormalize -match '_entry_for_xp') "Mastery state helper should own canonical key normalization and level calculation."
 Assert-True ($saveNormalizationRun -match '_check_skills_save') "Save-normalization validation should cover skill XP/level serialization."
 Assert-True ($saveNormalizationRun -match '_check_stamina_save') "Save-normalization validation should cover stamina serialization."
 Assert-True ($saveNormalizationRun -match '_check_fishing_location_save') "Save-normalization validation should cover fishing location serialization."

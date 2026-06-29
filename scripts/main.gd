@@ -27,6 +27,7 @@ const FirebaseCloudSave = preload("res://scripts/firebase/cloud_save.gd")
 const FirebaseRuntime = preload("res://scripts/firebase/runtime.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const MaterialDefs = preload("res://scripts/materials/defs.gd")
+const MasteryState = preload("res://scripts/progression/mastery_state.gd")
 const MedalBuffs = preload("res://scripts/progression/medal_buffs.gd")
 const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
@@ -59741,52 +59742,11 @@ func _achievement_toast_seen_ids_for_save() -> Dictionary:
 
 
 func _restore_mastery_from_save(loaded_mastery: Variant) -> void:
-	mastery.clear()
-	if typeof(loaded_mastery) != TYPE_DICTIONARY:
-		return
-	for raw_key in (loaded_mastery as Dictionary).keys():
-		var key := _canonical_action_key(str(raw_key))
-		if key.is_empty():
-			continue
-		var loaded_entry = (loaded_mastery as Dictionary).get(raw_key, {})
-		if typeof(loaded_entry) != TYPE_DICTIONARY:
-			continue
-		_set_restored_mastery_xp(key, int((loaded_entry as Dictionary).get("xp", 0)))
+	mastery = MasteryState.restored_from_save(loaded_mastery, Callable(self, "_canonical_action_key"), MASTERY_MAX_LEVEL, Callable(self, "_mastery_xp_for_level"))
 
 
 func _mastery_for_save() -> Dictionary:
-	var normalized := {}
-	for raw_key in mastery.keys():
-		var key := _canonical_action_key(str(raw_key))
-		if key.is_empty():
-			continue
-		var entry = mastery.get(raw_key, {})
-		if typeof(entry) != TYPE_DICTIONARY:
-			continue
-		var xp := int((entry as Dictionary).get("xp", 0))
-		var existing = normalized.get(key, null)
-		if typeof(existing) == TYPE_DICTIONARY:
-			xp = maxi(xp, int((existing as Dictionary).get("xp", 0)))
-		normalized[key] = {"xp": xp, "level": 0}
-	for key in normalized.keys():
-		var normalized_entry := normalized[key] as Dictionary
-		var xp_total := float(normalized_entry.get("xp", 0))
-		var level := 0
-		while level < MASTERY_MAX_LEVEL and xp_total >= _mastery_xp_for_level(level + 1):
-			level += 1
-		normalized_entry["level"] = level
-		normalized_entry["xp"] = minf(xp_total, float(_mastery_xp_for_level(MASTERY_MAX_LEVEL)))
-	return normalized
-
-
-func _set_restored_mastery_xp(key: String, xp: int) -> void:
-	if key.is_empty():
-		return
-	var existing_xp := 0
-	if mastery.has(key) and typeof(mastery[key]) == TYPE_DICTIONARY:
-		existing_xp = int((mastery[key] as Dictionary).get("xp", 0))
-	mastery[key] = {"xp": maxi(existing_xp, xp), "level": 0}
-	_recalculate_mastery(key)
+	return MasteryState.for_save(mastery, Callable(self, "_canonical_action_key"), MASTERY_MAX_LEVEL, Callable(self, "_mastery_xp_for_level"))
 
 
 func _selected_fishing_locations_for_save() -> Dictionary:
