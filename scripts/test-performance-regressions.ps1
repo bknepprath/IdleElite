@@ -404,7 +404,6 @@ foreach ($safeCoverCallbackName in @(
     "_page_switch_cover_id_active",
     "_process_page_switch_pending_transition",
     "_force_page_switch_scroll_cover_opaque",
-    "_begin_page_switch_selection_under_cover",
     "_finish_skill_nav_cover_fade_in",
     "_apply_skill_swipe_cover_fade_alpha",
     "_cancel_skill_swipe_cover_fade_until_ready",
@@ -480,14 +479,12 @@ foreach ($safeStaminaAndScrollCallbackName in @(
     "_apply_stamina_fail_shake_frame",
     "_finish_stamina_fail_shake",
     "_apply_fish_collection_fly_progress",
-    "_finish_detail_actions_visual_scroll",
     "_fade_skill_swipe_cover_to_opaque"
 )) {
     $safeStaminaAndScrollCallback = Get-FunctionBody -Text $main -Name $safeStaminaAndScrollCallbackName
     Assert-True ($safeStaminaAndScrollCallback -notmatch 'instance_from_id\([^\r\n]+\) as Control') "$safeStaminaAndScrollCallbackName should not directly cast delayed stamina/fish/scroll instance IDs."
 }
 foreach ($safePreviewAndPassiveCallbackName in @(
-    "_finish_skill_swipe_preview_modules_reveal",
     "_finish_onboarding_tip_fade",
     "_finish_activity_start_highlight_fade",
     "_on_passive_yield_log_stored_bound",

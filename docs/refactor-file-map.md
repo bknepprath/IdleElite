@@ -25,7 +25,7 @@ Legend:
 | `run-godot-safe.ps1` | 197 lines | Required Godot launcher wrapper; use this instead of `Godot.exe`. |
 | `export_presets.cfg` | 267 lines | Godot export presets. |
 | `scenes/main.tscn` | 10 lines | Root scene that attaches the main script. |
-| `scripts/` | 196 files / about 111,578 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
+| `scripts/` | 196 files / about 111,537 text lines | Game runtime script, UI drawing helpers, validation, build, and maintenance scripts. |
 | `docs/` | 1,508 files (collapsed) | Design docs, audits, data viewers, generated art-source records. |
 | `assets/` | 1,089 files (collapsed) | Runtime art, sound candidates, Godot import metadata. |
 | `addons/` | 333 files (collapsed) | Third-party Godot addons, mainly AdMob. |
@@ -40,7 +40,7 @@ Legend:
 
 | Path | Lines | What lives here |
 | --- | ---: | --- |
-| `scripts/main.gd` * | 66,838 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`. |
+| `scripts/main.gd` * | 66,800 | Monolithic game controller: save/load, activity data, skill UI, navigation, fishing, leaderboard, chat, hub, audio, and most orchestration. Primary deletion/refactor target; recent UI drawing controls now preload from `scripts/ui/`. |
 | `scripts/perf_monitor.gd` | 206 | Runtime performance monitor. |
 | `scripts/activity_lock_rig.gd` | 1,141 | Activity lock rig drawing/animation support. |
 | `scripts/activity_lock_cluster.gd` | 550 | Activity lock cluster rendering. |
@@ -161,7 +161,7 @@ Legend:
 ## Extraction Queue
 
 0. Dead-code deletion
-   - Current: deleted stale helpers `_build_hero`, `_add_hub_build_mode_toggle`, `_chat_composer`, `_detail_lazy_mount_initial_window_async`, `_render_detail_eager_card_list`, `_show_module_pin_preview`, `_build_skill_strip`, `_wait_for_page_switch_cover_opaque`, `_activity_stat_hit_buttons`, `_ensure_skill_swipe_preview`, `_capture_skill_strip_page_refs`, `_unlock_prior_test_actions`, `_chat_row`, `_sync_hub_hotspot_hold_circle`, `_hub_build_mode_button_style`, `_toggle_hub_build_mode`, `_expire_module_pin_preview_after_delay`, `_finish_module_pin_preview_animation`, `_prime_skill_swipe_preview_modules`, `_icon_button`, `_event_hourglass_badge`, `_fishing_wallet_selectable_tools`, `_summary_style`, `_thieving_heist_preceding_action_unlocked`, `_set_control_position_y_safe`, `_position_new_onboarding_explore_tip`, `_reveal_skill_swipe_preview_modules`, `_button_style`, `_hub_hotspot_hold_ring_rect`, `_ensure_hub_hotspot_hold_circle`, `_activity_lock_piece`, and `_skill_swipe_fade_progress`.
+   - Current: deleted stale helpers `_build_hero`, `_add_hub_build_mode_toggle`, `_chat_composer`, `_detail_lazy_mount_initial_window_async`, `_render_detail_eager_card_list`, `_show_module_pin_preview`, `_build_skill_strip`, `_wait_for_page_switch_cover_opaque`, `_activity_stat_hit_buttons`, `_ensure_skill_swipe_preview`, `_capture_skill_strip_page_refs`, `_unlock_prior_test_actions`, `_chat_row`, `_sync_hub_hotspot_hold_circle`, `_hub_build_mode_button_style`, `_toggle_hub_build_mode`, `_expire_module_pin_preview_after_delay`, `_finish_module_pin_preview_animation`, `_prime_skill_swipe_preview_modules`, `_icon_button`, `_event_hourglass_badge`, `_fishing_wallet_selectable_tools`, `_summary_style`, `_thieving_heist_preceding_action_unlocked`, `_set_control_position_y_safe`, `_position_new_onboarding_explore_tip`, `_reveal_skill_swipe_preview_modules`, `_button_style`, `_hub_hotspot_hold_ring_rect`, `_ensure_hub_hotspot_hold_circle`, `_activity_lock_piece`, `_skill_swipe_fade_progress`, `_finish_detail_actions_visual_scroll`, `_finish_boot_warmup_overlay`, `_finish_skill_swipe_preview_modules_reveal`, and `_begin_page_switch_selection_under_cover`.
    - Next lazy win: continue only with functions that have no runtime/test callers after checking dynamic `scene.call(...)` use.
 
 1. Button press state
@@ -232,5 +232,10 @@ Legend:
 | `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting fourth stale-helper batch. |
 | `.\scripts\test-performance-regressions.ps1` | passed after deleting fourth stale-helper batch. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after deleting fourth stale-helper batch. |
+| `git diff --check -- scripts/main.gd scripts/test-performance-regressions.ps1` | passed after deleting dead callback remnants. |
+| `.\scripts\check-ui-boundary-contracts.ps1` | passed after deleting dead callback remnants. |
+| `.\scripts\check-activity-ui-boundary-contracts.ps1` | passed after deleting dead callback remnants. |
+| `.\scripts\test-performance-regressions.ps1` | passed after deleting dead callback remnants. |
+| Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified visible skill detail rendering after deleting dead callback remnants. |
 | Autoreview | no project/tool `autoreview` runner found; manual diff review of the extraction found no new issue. |
 | Screenshot | `.codex-tmp\woodcutting-firepit\woodcutting-firepit-header-desktop-627x1115.png` verified shelf/module clipping after prior UI fix. |

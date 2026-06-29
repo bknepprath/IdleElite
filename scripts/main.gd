@@ -32445,16 +32445,6 @@ func _clamp_detail_actions_scroll_to_content_deferred() -> void:
 	_clamp_detail_actions_scroll_to_content()
 
 
-func _finish_detail_actions_visual_scroll(stack_id: int, clamped_target: int, end_y: float) -> void:
-	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
-		detail_actions_scroll.drag_scroll_position = float(clamped_target)
-		detail_actions_scroll.scroll_vertical = clamped_target
-	var callback_stack := _valid_control_ref(instance_from_id(stack_id))
-	if callback_stack != null:
-		callback_stack.position.y = end_y
-	activity_unlock_visual_scroll_tween = null
-
-
 func _detail_actions_stack() -> Control:
 	if detail_actions_scroll == null or detail_actions_scroll.get_child_count() <= 0:
 		return null
@@ -36201,16 +36191,6 @@ func _show_lock_click_tip_note_if_needed() -> void:
 		return
 
 
-func _finish_boot_warmup_overlay() -> void:
-	if _boot_warmup_cancelled():
-		return
-	_set_boot_warmup_progress("Ready", 1.0)
-	await get_tree().process_frame
-	if _boot_warmup_cancelled():
-		return
-	_hide_boot_warmup_overlay()
-
-
 func _boot_warmup_cancelled() -> bool:
 	return boot_warmup_cancel_requested or not is_inside_tree()
 
@@ -37308,14 +37288,6 @@ func _force_show_skill_swipe_preview_modules(offset: int) -> void:
 	var modules_root := state.get("modules_root") as Control
 	if modules_root != null and is_instance_valid(modules_root):
 		modules_root.visible = true
-		modules_root.modulate.a = 1.0
-
-
-func _finish_skill_swipe_preview_modules_reveal(token: int, offset: int, modules_root_id: int) -> void:
-	if token != skill_swipe_preview_module_reveal_token or offset != skill_swipe_preview_offset:
-		return
-	var modules_root := _valid_control_ref(instance_from_id(modules_root_id))
-	if modules_root != null:
 		modules_root.modulate.a = 1.0
 
 
@@ -45079,16 +45051,6 @@ func _force_page_switch_scroll_cover_opaque(cover_id: int) -> void:
 	if cover == null:
 		return
 	_set_canvas_item_modulate_if_changed(cover, Color.WHITE)
-
-
-func _begin_page_switch_selection_under_cover(cover_id: int, skill_id: String) -> void:
-	var cover := _active_page_switch_cover_ref(cover_id)
-	if cover == null:
-		return
-	_force_page_switch_scroll_cover_opaque(cover_id)
-	if not _page_switch_cover_id_active(cover_id):
-		return
-	await _select_skill_with_initial_scroll_under_page_switch_cover(skill_id, false, DETAIL_RESTORE_SCROLL_BOTTOM, false)
 
 
 func _select_skill_with_initial_scroll_under_page_switch_cover(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
