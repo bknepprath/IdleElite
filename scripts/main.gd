@@ -1,6 +1,7 @@
 extends Control
 
 const FishingFluidStripClass = preload("res://scripts/fishing_fluid_strip.gd")
+const FishingState = preload("res://scripts/fishing/state.gd")
 const ActivityQueueState = preload("res://scripts/activity_queue/state.gd")
 const ActivityDataNormalizers = preload("res://scripts/activity_data/normalizers.gd")
 const AudioPlayerSets = preload("res://scripts/audio/player_sets.gd")
@@ -60563,20 +60564,12 @@ func _restore_selected_fishing_locations_from_save(loaded_locations: Variant) ->
 
 
 func _normalized_selected_fishing_locations(loaded_locations: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(loaded_locations) != TYPE_DICTIONARY:
-		return normalized
-	var source := loaded_locations as Dictionary
-	for raw_area_id in source.keys():
-		var area_id := _canonical_fishing_area_id(str(raw_area_id))
-		if area_id.is_empty() or not _fishing_area_metadata_loaded(area_id):
-			continue
-		var location_id := str(source.get(raw_area_id, ""))
-		if location_id.is_empty():
-			continue
-		if _fishing_location_id_valid(area_id, location_id):
-			normalized[area_id] = location_id
-	return normalized
+	return FishingState.normalized_selected_locations(
+		loaded_locations,
+		Callable(self, "_canonical_fishing_area_id"),
+		Callable(self, "_fishing_area_metadata_loaded"),
+		Callable(self, "_fishing_location_id_valid")
+	)
 
 
 func _fishing_location_id_valid(area_id: String, location_id: String) -> bool:
@@ -60604,38 +60597,26 @@ func _hub_modules_for_save() -> Dictionary:
 
 
 func _equipped_fishing_tool_id_for_save() -> String:
-	var tool_id := str(equipped_fishing_tool_id)
-	if _fishing_tool_is_rod(tool_id):
-		if fishing_star_rod_collected:
-			return "star_rod"
-		if fishing_reinforced_rod_collected:
-			return "reinforced_rod"
-		if fishing_rod_collected:
-			return "line"
-		return "hands"
-	if _fishing_tool_is_unlocked(tool_id):
-		return tool_id
-	return "hands"
+	return FishingState.equipped_tool_id_for_save(str(equipped_fishing_tool_id), fishing_rod_collected, fishing_reinforced_rod_collected, fishing_star_rod_collected, Callable(self, "_fishing_tool_is_rod"), Callable(self, "_fishing_tool_is_unlocked"))
 
 
 func _fishing_rod_collected_for_save() -> bool:
-	return fishing_rod_collected or fishing_reinforced_rod_collected or fishing_star_rod_collected
+	return FishingState.rod_collected_for_save(fishing_rod_collected, fishing_reinforced_rod_collected, fishing_star_rod_collected)
 
 
 func _fishing_reinforced_rod_collected_for_save() -> bool:
-	return fishing_reinforced_rod_collected or fishing_star_rod_collected
+	return FishingState.reinforced_rod_collected_for_save(fishing_reinforced_rod_collected, fishing_star_rod_collected)
 
 
 func _fishing_star_rod_collected_for_save() -> bool:
-	return fishing_star_rod_collected
+	return FishingState.star_rod_collected_for_save(fishing_star_rod_collected)
 
 
 func _reconcile_fishing_rod_collection_state() -> void:
-	if fishing_star_rod_collected:
-		fishing_reinforced_rod_collected = true
-		fishing_rod_collected = true
-	elif fishing_reinforced_rod_collected:
-		fishing_rod_collected = true
+	var rod_state := FishingState.reconciled_rod_collection(fishing_rod_collected, fishing_reinforced_rod_collected, fishing_star_rod_collected)
+	fishing_rod_collected = bool(rod_state.get("rod", false))
+	fishing_reinforced_rod_collected = bool(rod_state.get("reinforced", false))
+	fishing_star_rod_collected = bool(rod_state.get("star", false))
 
 
 func _normalized_mat_id(mat_id: String) -> String:
