@@ -60905,17 +60905,15 @@ func _leaderboard_name_claim_verified_for_save() -> bool:
 
 
 func _leaderboard_profile_metadata_for_save() -> Dictionary:
-	var display_name := _leaderboard_display_name_for_save()
-	var name_key := _sanitize_leaderboard_name_key(str(leaderboard_name_key))
-	var claimed := bool(leaderboard_profile_claimed)
-	var verified := bool(leaderboard_name_claim_verified)
-	if _is_default_leaderboard_display_name(display_name) or _is_guest_leaderboard_display_name(display_name):
-		return {"name_key": "", "profile_claimed": false, "name_claim_verified": false}
-	if claimed and name_key.is_empty():
-		name_key = _leaderboard_name_key(display_name)
-	if not claimed or not verified or name_key.is_empty():
-		return {"name_key": "", "profile_claimed": false, "name_claim_verified": false}
-	return {"name_key": name_key, "profile_claimed": true, "name_claim_verified": true}
+	return LeaderboardProfile.metadata_for_save(
+		str(leaderboard_display_name),
+		str(leaderboard_name_key),
+		bool(leaderboard_profile_claimed),
+		bool(leaderboard_name_claim_verified),
+		PROFILE_GUEST_NAME_PREFIX,
+		PROFILE_DISPLAY_NAME_MAX_CHARS,
+		PROFILE_NAME_KEY_MAX_CHARS
+	)
 
 
 func _restore_leaderboard_profile_metadata_from_save(data: Dictionary) -> void:
@@ -60956,11 +60954,11 @@ func _leaderboard_player_id_for_save() -> String:
 
 
 func _leaderboard_auth_refresh_token_for_save() -> String:
-	return str(leaderboard_auth_refresh_token).strip_edges()
+	return LeaderboardProfile.refresh_token_for_save(str(leaderboard_auth_refresh_token))
 
 
 func _leaderboard_auth_provider_for_save() -> String:
-	return "google" if leaderboard_auth_provider == "google" else "anonymous"
+	return LeaderboardProfile.auth_provider_for_save(str(leaderboard_auth_provider))
 
 
 func _restore_leaderboard_auth_metadata_from_save(data: Dictionary) -> void:

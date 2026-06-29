@@ -105,3 +105,23 @@ static func sanitize_player_id(raw_id: String) -> String:
 		if not (is_digit or is_lower or is_upper or is_dash or is_underscore):
 			return ""
 	return clean
+
+
+static func metadata_for_save(display_name: String, raw_name_key: String, claimed: bool, verified: bool, guest_prefix: String, display_max_chars: int, key_max_chars: int) -> Dictionary:
+	var safe_display_name := sanitize_display_name(display_name, display_max_chars)
+	var safe_name_key := sanitize_name_key(raw_name_key, key_max_chars)
+	if is_default_display_name(safe_display_name, display_max_chars) or is_guest_display_name(safe_display_name, guest_prefix, display_max_chars):
+		return {"name_key": "", "profile_claimed": false, "name_claim_verified": false}
+	if claimed and safe_name_key.is_empty():
+		safe_name_key = name_key(safe_display_name, display_max_chars, key_max_chars)
+	if not claimed or not verified or safe_name_key.is_empty():
+		return {"name_key": "", "profile_claimed": false, "name_claim_verified": false}
+	return {"name_key": safe_name_key, "profile_claimed": true, "name_claim_verified": true}
+
+
+static func refresh_token_for_save(refresh_token: String) -> String:
+	return refresh_token.strip_edges()
+
+
+static func auth_provider_for_save(provider: String) -> String:
+	return "google" if provider == "google" else "anonymous"
