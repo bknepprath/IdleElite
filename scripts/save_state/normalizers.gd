@@ -150,3 +150,24 @@ static func total_skill_xp_evidence(data: Dictionary, skill_defs: Array) -> int:
 		var state := skill_state as Dictionary
 		total_xp += maxi(0, int(state.get("xp", 0)))
 	return total_xp
+
+
+static func valid_dictionary_key(raw_key: Variant, valid_defs: Dictionary, fallback: String) -> String:
+	var key := str(raw_key)
+	return key if valid_defs.has(key) else fallback
+
+
+static func nonnegative_int(data: Dictionary, key: String, fallback: Variant = 0) -> int:
+	return maxi(0, int(data.get(key, fallback)))
+
+
+static func bool_value(data: Dictionary, key: String, fallback := false) -> bool:
+	return bool(data.get(key, fallback))
+
+
+static func clamped_float(data: Dictionary, key: String, minimum: float, maximum: float, fallback: Variant = 0.0) -> float:
+	return clampf(float(data.get(key, fallback)), minimum, maximum)
+
+
+static func clamped_int(data: Dictionary, key: String, minimum: int, maximum: int, fallback: Variant = 0) -> int:
+	return clampi(int(data.get(key, fallback)), minimum, maximum)

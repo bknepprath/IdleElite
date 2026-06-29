@@ -60722,43 +60722,37 @@ func _stamina_bank_for_save() -> Dictionary:
 
 
 func _hub_selected_module_id_for_save() -> String:
-	return hub_selected_module_id if HUB_MODULE_DEFS.has(hub_selected_module_id) else "pond"
+	return SaveStateNormalizers.valid_dictionary_key(hub_selected_module_id, HUB_MODULE_DEFS, "pond")
 
 
 func _restore_hub_selected_module_id_from_save(data: Dictionary) -> void:
-	hub_selected_module_id = str(data.get("hub_selected_module_id", hub_selected_module_id))
-	if not HUB_MODULE_DEFS.has(hub_selected_module_id):
-		hub_selected_module_id = "pond"
+	hub_selected_module_id = SaveStateNormalizers.valid_dictionary_key(data.get("hub_selected_module_id", hub_selected_module_id), HUB_MODULE_DEFS, "pond")
 
 
 func _restore_hub_mission_cooldown_until_unix_from_save(data: Dictionary) -> void:
-	hub_mission_cooldown_until_unix = maxi(0, int(data.get("hub_mission_cooldown_until_unix", 0)))
+	hub_mission_cooldown_until_unix = SaveStateNormalizers.nonnegative_int(data, "hub_mission_cooldown_until_unix")
 
 
 func _restore_plank_boost_enabled_from_save(data: Dictionary) -> void:
-	plank_boost_enabled = bool(data.get("plank_boost_enabled", false))
+	plank_boost_enabled = SaveStateNormalizers.bool_value(data, "plank_boost_enabled")
 
 
 func _restore_ad_bonus_seconds_remaining_from_save(data: Dictionary) -> void:
-	ad_bonus_seconds_remaining = clampf(float(data.get("ad_bonus_seconds_remaining", 0.0)), 0.0, float(AD_BONUS_MAX_SECONDS))
+	ad_bonus_seconds_remaining = SaveStateNormalizers.clamped_float(data, "ad_bonus_seconds_remaining", 0.0, float(AD_BONUS_MAX_SECONDS))
 
 
 func _restore_activity_progress_counts_from_save(data: Dictionary) -> void:
-	activity_start_count = maxi(0, int(data.get("activity_start_count", 0)))
-	activity_completion_count = maxi(0, int(data.get("activity_completion_count", 0)))
+	activity_start_count = SaveStateNormalizers.nonnegative_int(data, "activity_start_count")
+	activity_completion_count = SaveStateNormalizers.nonnegative_int(data, "activity_completion_count")
 	_restore_guaranteed_success_action_completions_from_save(data, activity_completion_count)
 
 
 func _restore_guaranteed_success_action_completions_from_save(data: Dictionary, fallback_completion_count: Variant) -> void:
-	guaranteed_success_action_completions = clampi(
-		int(data.get("guaranteed_success_action_completions", fallback_completion_count)),
-		0,
-		GUARANTEED_SUCCESS_ACTION_COMPLETIONS
-	)
+	guaranteed_success_action_completions = SaveStateNormalizers.clamped_int(data, "guaranteed_success_action_completions", 0, GUARANTEED_SUCCESS_ACTION_COMPLETIONS, fallback_completion_count)
 
 
 func _restore_stamina_gauge_pre_tip_hold_seconds_from_save(data: Dictionary) -> void:
-	stamina_gauge_pre_tip_hold_seconds = clampf(float(data.get("stamina_gauge_pre_tip_hold_seconds", 0.0)), 0.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS)
+	stamina_gauge_pre_tip_hold_seconds = SaveStateNormalizers.clamped_float(data, "stamina_gauge_pre_tip_hold_seconds", 0.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS)
 
 
 func _detail_pull_recent_tip_texts_for_save() -> Array:
