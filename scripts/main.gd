@@ -21,6 +21,7 @@ const SkillState = preload("res://scripts/progression/skill_state.gd")
 const ModuleUiKeys = preload("res://scripts/module_ui/keys.gd")
 const SaveStateFiles = preload("res://scripts/save_state/files.gd")
 const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
+const TemporaryEventState = preload("res://scripts/temporary_events/state.gd")
 const ThievingState = preload("res://scripts/thieving/state.gd")
 const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const LeaderboardProfile = preload("res://scripts/leaderboard/profile.gd")
@@ -56806,23 +56807,14 @@ func _temporary_event_spawn_entry(event_def: Dictionary, now_unix: int, roll_uni
 
 
 func _temporary_events_for_save() -> Dictionary:
-	return {
-		"active": _temporary_event_active_for_save(),
-		"cooldowns": _temporary_event_cooldowns_for_save(),
-		"next_roll_unix": maxi(0, temporary_event_next_roll_unix)
-	}
+	return TemporaryEventState.save_payload(_temporary_event_active_for_save(), _temporary_event_cooldowns_for_save(), temporary_event_next_roll_unix)
 
 
 func _restore_temporary_events_from_save(value: Variant) -> void:
-	temporary_event_active.clear()
-	temporary_event_cooldowns.clear()
-	temporary_event_next_roll_unix = 0
-	if typeof(value) != TYPE_DICTIONARY:
-		return
-	var temporary_events_save := value as Dictionary
-	temporary_event_active = _normalized_temporary_event_active(temporary_events_save.get("active", {}))
-	temporary_event_cooldowns = _normalized_temporary_event_cooldowns(temporary_events_save.get("cooldowns", {}))
-	temporary_event_next_roll_unix = maxi(0, int(temporary_events_save.get("next_roll_unix", temporary_events_save.get("next_roll", 0))))
+	var restored := TemporaryEventState.restored_state(value, Callable(self, "_event_module_def"), Callable(self, "_temporary_event_page_level_eligible"), Callable(self, "_temporary_event_spawn_level_from_entry"))
+	temporary_event_active = restored.get("active", {}) as Dictionary
+	temporary_event_cooldowns = restored.get("cooldowns", {}) as Dictionary
+	temporary_event_next_roll_unix = maxi(0, int(restored.get("next_roll_unix", 0)))
 
 
 func _temporary_event_active_for_save() -> Dictionary:
@@ -56834,60 +56826,15 @@ func _temporary_event_cooldowns_for_save() -> Dictionary:
 
 
 func _normalized_temporary_event_active(value: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(value) == TYPE_ARRAY:
-		for raw_entry in (value as Array):
-			var entry := _temporary_event_active_entry_from_save("", raw_entry)
-			if not entry.is_empty():
-				normalized[str(entry.get("id", ""))] = entry
-		return normalized
-	if typeof(value) != TYPE_DICTIONARY:
-		return normalized
-	for raw_event_id in (value as Dictionary).keys():
-		var event_id := str(raw_event_id)
-		var entry := _temporary_event_active_entry_from_save(event_id, (value as Dictionary).get(raw_event_id, {}))
-		if not entry.is_empty():
-			normalized[str(entry.get("id", ""))] = entry
-	return normalized
+	return TemporaryEventState.normalized_active(value, Callable(self, "_event_module_def"), Callable(self, "_temporary_event_page_level_eligible"), Callable(self, "_temporary_event_spawn_level_from_entry"))
 
 
 func _temporary_event_active_entry_from_save(event_id_hint: String, value: Variant) -> Dictionary:
-	if typeof(value) != TYPE_DICTIONARY:
-		return {}
-	var source := value as Dictionary
-	var event_id := str(source.get("id", event_id_hint)).strip_edges()
-	var event_def := _event_module_def(event_id)
-	if event_def.is_empty():
-		return {}
-	if not bool(source.get("completed", source.get("completion_state", false))) and not _temporary_event_page_level_eligible(event_def):
-		return {}
-	var event_meta := event_def.get("event", {}) as Dictionary
-	var spawned_unix := maxi(0, int(source.get("spawned_unix", source.get("spawn_time", 0))))
-	var default_duration := maxi(1, int(event_meta.get("active_duration_seconds", 3600)))
-	var expires_unix := maxi(spawned_unix, int(source.get("expires_unix", source.get("expiry_time", spawned_unix + default_duration))))
-	var completed := bool(source.get("completed", source.get("completion_state", false)))
-	var spawn_level := _temporary_event_spawn_level_from_entry(source, event_def)
-	return {
-		"id": event_id,
-		"page": str(event_def.get("page", "")),
-		"spawn_level": spawn_level,
-		"spawned_unix": spawned_unix,
-		"expires_unix": expires_unix,
-		"completed": completed,
-		"completed_unix": maxi(0, int(source.get("completed_unix", 0)))
-	}
+	return TemporaryEventState.active_entry_from_save(event_id_hint, value, Callable(self, "_event_module_def"), Callable(self, "_temporary_event_page_level_eligible"), Callable(self, "_temporary_event_spawn_level_from_entry"))
 
 
 func _normalized_temporary_event_cooldowns(value: Variant) -> Dictionary:
-	var normalized := {}
-	if typeof(value) != TYPE_DICTIONARY:
-		return normalized
-	for raw_event_id in (value as Dictionary).keys():
-		var event_id := str(raw_event_id).strip_edges()
-		if _event_module_def(event_id).is_empty():
-			continue
-		normalized[event_id] = maxi(0, int((value as Dictionary).get(raw_event_id, 0)))
-	return normalized
+	return TemporaryEventState.normalized_cooldowns(value, Callable(self, "_event_module_def"))
 
 
 func _normalized_passive_modules(loaded_modules: Variant) -> Dictionary:

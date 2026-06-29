@@ -5,6 +5,7 @@ $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $activityDataNormalizersPath = Join-Path $projectRoot "scripts\activity_data\normalizers.gd"
 $leaderboardProfilePath = Join-Path $projectRoot "scripts\leaderboard\profile.gd"
 $tipStatePath = Join-Path $projectRoot "scripts\tutorial\tip_state.gd"
+$temporaryEventStatePath = Join-Path $projectRoot "scripts\temporary_events\state.gd"
 $cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
 $activityCardInnerShadowPath = Join-Path $projectRoot "scripts\ui\activity_card_inner_shadow.gd"
 $skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detail_page_shelf_shadow.gd"
@@ -109,6 +110,8 @@ Assert-True (Test-Path -LiteralPath $leaderboardProfilePath) "Missing scripts\le
 $leaderboardProfile = Get-Content -LiteralPath $leaderboardProfilePath -Raw
 Assert-True (Test-Path -LiteralPath $tipStatePath) "Missing scripts\tutorial\tip_state.gd."
 $tipState = Get-Content -LiteralPath $tipStatePath -Raw
+Assert-True (Test-Path -LiteralPath $temporaryEventStatePath) "Missing scripts\temporary_events\state.gd."
+$temporaryEventState = Get-Content -LiteralPath $temporaryEventStatePath -Raw
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 Assert-True (Test-Path -LiteralPath $exportPresetsPath) "Missing export_presets.cfg."
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
@@ -772,8 +775,8 @@ $temporaryEventPageLevelEligible = Get-FunctionBody -Text $main -Name "_temporar
 Assert-True ($temporaryEventPageLevelEligible -match '_temporary_event_highest_unlocked_page_level\(page\) >= _temporary_event_minimum_level\(event_def\)') "Temporary events should not be eligible before the owning page reaches the event minimum level."
 $activeEventActionsForSkill = Get-FunctionBody -Text $main -Name "_active_event_actions_for_skill"
 Assert-True ($activeEventActionsForSkill -match 'not _temporary_event_page_level_eligible\(event_def\)') "Forced active temporary events should not render or resolve below the event minimum level."
-$temporaryEventEntryFromSave = Get-FunctionBody -Text $main -Name "_temporary_event_active_entry_from_save"
-Assert-True ($temporaryEventEntryFromSave -match 'not _temporary_event_page_level_eligible\(event_def\)') "Restored active temporary events should be dropped below the event minimum level."
+$temporaryEventEntryFromSave = Get-FunctionBody -Text $temporaryEventState -Name "active_entry_from_save"
+Assert-True ($temporaryEventEntryFromSave -match 'not bool\(page_level_eligible\.call\(definition\)\)') "Restored active temporary events should be dropped below the event minimum level."
 $activateAllTemporaryEventsForArtReview = Get-FunctionBody -Text $main -Name "_activate_all_temporary_events_for_art_review_test"
 Assert-True ($activateAllTemporaryEventsForArtReview -match 'not _temporary_event_page_level_eligible\(event_def\)') "Art-review temporary event activation should still respect event minimum levels."
 $savePayloadCheck = Get-FunctionBody -Text $saveNormalization -Name "_check_save_payload"
