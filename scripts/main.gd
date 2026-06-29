@@ -19,6 +19,7 @@ const BerryPrep = preload("res://scripts/materials/berry_prep.gd")
 const BossGates = preload("res://scripts/gameplay/boss_gates.gd")
 const BuildableModules = preload("res://scripts/gameplay/buildable_modules.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
+const CombatArenas = preload("res://scripts/gameplay/combat_arenas.gd")
 const CrashReports = preload("res://scripts/diagnostics/crash_reports.gd")
 const FirebaseCloudSave = preload("res://scripts/firebase/cloud_save.gd")
 const FirebaseRuntime = preload("res://scripts/firebase/runtime.gd")
@@ -61083,6 +61084,10 @@ func _action_art_display_offset(action: Dictionary) -> Vector2:
 
 func _action_uses_blue_guy_chicken_brawl_stage(action: Dictionary) -> bool:
 	return str(action.get("id", "")) == "chicken-sparring-pit"
+
+
+func _action_uses_diamond_combat_arena(action: Dictionary) -> bool:
+	return CombatArenas.uses_diamond_arena(action)
 
 
 func _action_is_free_fighting_proto(skill_id: String, action_id: String) -> bool:
