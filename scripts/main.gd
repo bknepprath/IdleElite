@@ -9356,10 +9356,6 @@ func _on_module_utility_button_global_input(event: InputEvent, button: Button) -
 		_activate_module_utility_button(button)
 
 
-func _clear_module_utility_button_press(button: Button) -> void:
-	ButtonPressState.clear(button, "module_utility")
-
-
 func _activate_module_utility_button(button: Button) -> void:
 	if button == pinned_utility_tab:
 		_on_pinned_utility_pressed()
@@ -44739,10 +44735,6 @@ func _scroll_home_to_top() -> void:
 		return
 	home_scroll.drag_scroll_position = 0.0
 	home_scroll.scroll_vertical = 0
-
-
-func _open_settings() -> void:
-	_show_settings()
 
 
 func _open_profile_overlay() -> void:
