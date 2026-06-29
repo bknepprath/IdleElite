@@ -3,6 +3,7 @@ extends Control
 const FishingFluidStripClass = preload("res://scripts/fishing_fluid_strip.gd")
 const ActivityQueueState = preload("res://scripts/activity_queue/state.gd")
 const ActivityDataNormalizers = preload("res://scripts/activity_data/normalizers.gd")
+const AudioPlayerSets = preload("res://scripts/audio/player_sets.gd")
 const AudioSettings = preload("res://scripts/audio/settings.gd")
 const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
@@ -64339,22 +64340,13 @@ func _build_extended_audio() -> void:
 	_ensure_click_player()
 	Callable(self, "_ensure_activity_start_players").call()
 	if success_players.is_empty():
-		for path in ACTIVITY_SUCCESS_SFX_PATHS:
-			var player := _sfx(path)
-			player.volume_db = ACTIVITY_SUCCESS_SFX_VOLUME_DB
-			success_players.append(player)
+		AudioPlayerSets.append_path_players(success_players, ACTIVITY_SUCCESS_SFX_PATHS, Callable(self, "_sfx"), ACTIVITY_SUCCESS_SFX_VOLUME_DB)
 	if crit_success_players.is_empty():
-		for path in ACTIVITY_CRIT_SFX_PATHS:
-			var player := _sfx(path)
-			player.volume_db = ACTIVITY_CRIT_SFX_VOLUME_DB
-			crit_success_players.append(player)
+		AudioPlayerSets.append_path_players(crit_success_players, ACTIVITY_CRIT_SFX_PATHS, Callable(self, "_sfx"), ACTIVITY_CRIT_SFX_VOLUME_DB)
 	if padlock_cluster_player == null:
 		padlock_cluster_player = _sfx(PADLOCK_CLUSTER_SFX_PATH)
 	if info_chip_upgrade_players.is_empty():
-		for i in range(INFO_CHIP_UPGRADE_SFX_PLAYER_COUNT):
-			var player := _sfx("res://assets/sfx/xp_spark.wav")
-			player.volume_db = INFO_CHIP_UPGRADE_SFX_VOLUME_DB
-			info_chip_upgrade_players.append(player)
+		AudioPlayerSets.append_repeated_path_players(info_chip_upgrade_players, "res://assets/sfx/xp_spark.wav", INFO_CHIP_UPGRADE_SFX_PLAYER_COUNT, Callable(self, "_sfx"), INFO_CHIP_UPGRADE_SFX_VOLUME_DB)
 	if failure_player == null:
 		failure_player = _sfx("res://assets/sfx/warm_reject.wav")
 	if fishing_failure_player == null:
@@ -64364,15 +64356,8 @@ func _build_extended_audio() -> void:
 		chicken_death_player = _sfx(CHICKEN_DEATH_SFX_PATH)
 		chicken_death_player.volume_db = CHICKEN_DEATH_SFX_VOLUME_DB
 	if fight_punch_players.size() != FIGHT_PUNCH_SFX_PATHS.size():
-		for raw_player in fight_punch_players:
-			var old_player := raw_player as AudioStreamPlayer
-			if old_player != null and is_instance_valid(old_player):
-				old_player.queue_free()
-		fight_punch_players.clear()
-		for raw_path in FIGHT_PUNCH_SFX_PATHS:
-			var player := _sfx(str(raw_path))
-			player.volume_db = FIGHT_PUNCH_SFX_VOLUME_DB
-			fight_punch_players.append(player)
+		AudioPlayerSets.dispose(fight_punch_players)
+		AudioPlayerSets.append_path_players(fight_punch_players, FIGHT_PUNCH_SFX_PATHS, Callable(self, "_sfx"), FIGHT_PUNCH_SFX_VOLUME_DB)
 	if opportunity_success_player == null:
 		opportunity_success_player = _sfx("res://assets/sfx/xp_spark.wav")
 		opportunity_success_player.volume_db = ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB
@@ -64395,10 +64380,7 @@ func _build_extended_audio() -> void:
 		fish_eat_player = _sfx("res://assets/sfx/xp_spark.wav")
 		fish_eat_player.volume_db = -16.0
 	if passive_log_land_players.is_empty():
-		for i in range(4):
-			var player := _sfx("res://assets/sfx/click.wav")
-			player.volume_db = -18.0 - float(i) * 1.5
-			passive_log_land_players.append(player)
+		AudioPlayerSets.append_repeated_path_players(passive_log_land_players, "res://assets/sfx/click.wav", 4, Callable(self, "_sfx"), -18.0, -1.5)
 	if passive_upgrade_player == null:
 		passive_upgrade_player = _sfx("res://assets/sfx/click.wav")
 		passive_upgrade_player.volume_db = -15.0
@@ -64421,139 +64403,147 @@ func _warm_extended_audio_async() -> void:
 		return
 	var last_yield_msec := Time.get_ticks_msec()
 	_ensure_click_player()
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	Callable(self, "_ensure_activity_start_players").call()
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if success_players.is_empty():
-		for path in ACTIVITY_SUCCESS_SFX_PATHS:
-			var player := _sfx(path)
-			player.volume_db = ACTIVITY_SUCCESS_SFX_VOLUME_DB
-			success_players.append(player)
-			last_yield_msec = await _audio_warm_tick(last_yield_msec)
-			if not extended_audio_warming or extended_audio_ready:
-				return
+		last_yield_msec = await _audio_warm_path_players(success_players, ACTIVITY_SUCCESS_SFX_PATHS, ACTIVITY_SUCCESS_SFX_VOLUME_DB, last_yield_msec)
+		if last_yield_msec < 0:
+			return
 	if crit_success_players.is_empty():
-		for path in ACTIVITY_CRIT_SFX_PATHS:
-			var player := _sfx(path)
-			player.volume_db = ACTIVITY_CRIT_SFX_VOLUME_DB
-			crit_success_players.append(player)
-			last_yield_msec = await _audio_warm_tick(last_yield_msec)
-			if not extended_audio_warming or extended_audio_ready:
-				return
+		last_yield_msec = await _audio_warm_path_players(crit_success_players, ACTIVITY_CRIT_SFX_PATHS, ACTIVITY_CRIT_SFX_VOLUME_DB, last_yield_msec)
+		if last_yield_msec < 0:
+			return
 	if padlock_cluster_player == null:
 		padlock_cluster_player = _sfx(PADLOCK_CLUSTER_SFX_PATH)
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if info_chip_upgrade_players.is_empty():
-		for i in range(INFO_CHIP_UPGRADE_SFX_PLAYER_COUNT):
-			var player := _sfx("res://assets/sfx/xp_spark.wav")
-			player.volume_db = INFO_CHIP_UPGRADE_SFX_VOLUME_DB
-			info_chip_upgrade_players.append(player)
-			last_yield_msec = await _audio_warm_tick(last_yield_msec)
-			if not extended_audio_warming or extended_audio_ready:
-				return
+		last_yield_msec = await _audio_warm_repeated_path_players(info_chip_upgrade_players, "res://assets/sfx/xp_spark.wav", INFO_CHIP_UPGRADE_SFX_PLAYER_COUNT, INFO_CHIP_UPGRADE_SFX_VOLUME_DB, last_yield_msec)
+		if last_yield_msec < 0:
+			return
 	if failure_player == null:
 		failure_player = _sfx("res://assets/sfx/warm_reject.wav")
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if fishing_failure_player == null:
 		fishing_failure_player = _sfx(FISHING_FAILURE_SFX_PATH)
 		fishing_failure_player.volume_db = FISHING_FAILURE_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if chicken_death_player == null:
 		chicken_death_player = _sfx(CHICKEN_DEATH_SFX_PATH)
 		chicken_death_player.volume_db = CHICKEN_DEATH_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if fight_punch_players.size() != FIGHT_PUNCH_SFX_PATHS.size():
-		for raw_player in fight_punch_players:
-			var old_player := raw_player as AudioStreamPlayer
-			if old_player != null and is_instance_valid(old_player):
-				old_player.queue_free()
-		fight_punch_players.clear()
-		for raw_path in FIGHT_PUNCH_SFX_PATHS:
-			var player := _sfx(str(raw_path))
-			player.volume_db = FIGHT_PUNCH_SFX_VOLUME_DB
-			fight_punch_players.append(player)
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+		AudioPlayerSets.dispose(fight_punch_players)
+		last_yield_msec = await _audio_warm_path_players(fight_punch_players, FIGHT_PUNCH_SFX_PATHS, FIGHT_PUNCH_SFX_VOLUME_DB, last_yield_msec)
+		if last_yield_msec < 0:
+			return
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if opportunity_success_player == null:
 		opportunity_success_player = _sfx("res://assets/sfx/xp_spark.wav")
 		opportunity_success_player.volume_db = ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if opportunity_miss_player == null:
 		opportunity_miss_player = _sfx("res://assets/sfx/warm_reject.wav")
 		opportunity_miss_player.volume_db = ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if level_player == null:
 		level_player = _sfx("res://assets/sfx/level_up_jingle.wav")
 		level_player.volume_db = LEVEL_UP_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if medal_player == null:
 		medal_player = _sfx("res://assets/sfx/xp_spark.wav")
 		medal_player.volume_db = MEDAL_REWARD_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if bonus_jingle_player == null:
 		bonus_jingle_player = _sfx("res://assets/sfx/xp_spark.wav")
 		bonus_jingle_player.volume_db = BONUS_JINGLE_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if bonus_jingle_echo_player == null:
 		bonus_jingle_echo_player = _sfx("res://assets/sfx/xp_spark.wav")
 		bonus_jingle_echo_player.volume_db = BONUS_JINGLE_ECHO_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if fish_eat_player == null:
 		fish_eat_player = _sfx("res://assets/sfx/xp_spark.wav")
 		fish_eat_player.volume_db = -16.0
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if passive_log_land_players.is_empty():
-		for i in range(4):
-			var player := _sfx("res://assets/sfx/click.wav")
-			player.volume_db = -18.0 - float(i) * 1.5
-			passive_log_land_players.append(player)
-			last_yield_msec = await _audio_warm_tick(last_yield_msec)
-			if not extended_audio_warming or extended_audio_ready:
-				return
+		last_yield_msec = await _audio_warm_repeated_path_players(passive_log_land_players, "res://assets/sfx/click.wav", 4, -18.0, last_yield_msec, -1.5)
+		if last_yield_msec < 0:
+			return
 	if passive_upgrade_player == null:
 		passive_upgrade_player = _sfx("res://assets/sfx/click.wav")
 		passive_upgrade_player.volume_db = -15.0
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if module_pin_entry_player == null:
 		module_pin_entry_player = _sfx(MODULE_PIN_ENTRY_SFX_PATH)
 		module_pin_entry_player.volume_db = MODULE_PIN_ENTRY_SFX_VOLUME_DB
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
 		return
 	if module_pin_exit_player == null:
 		module_pin_exit_player = _sfx(MODULE_PIN_EXIT_SFX_PATH)
 		module_pin_exit_player.volume_db = MODULE_PIN_EXIT_SFX_VOLUME_DB
 	extended_audio_ready = true
 	extended_audio_warming = false
+
+
+func _audio_warm_path_players(players, paths: Array, volume_db: float, last_yield_msec: int) -> int:
+	for raw_path in paths:
+		var player := _sfx(str(raw_path))
+		player.volume_db = volume_db
+		players.append(player)
+		last_yield_msec = await _audio_warm_next(last_yield_msec)
+		if last_yield_msec < 0:
+			return -1
+	return last_yield_msec
+
+
+func _audio_warm_repeated_path_players(players, path: String, count: int, base_volume_db: float, last_yield_msec: int, volume_step_db := 0.0) -> int:
+	for i in range(count):
+		var player := _sfx(path)
+		player.volume_db = base_volume_db + float(i) * volume_step_db
+		players.append(player)
+		last_yield_msec = await _audio_warm_next(last_yield_msec)
+		if last_yield_msec < 0:
+			return -1
+	return last_yield_msec
+
+
+func _audio_warm_next(last_yield_msec: int) -> int:
+	last_yield_msec = await _audio_warm_tick(last_yield_msec)
+	if not extended_audio_warming or extended_audio_ready:
+		return -1
+	return last_yield_msec
 
 
 func _audio_warm_tick(last_yield_msec: int) -> int:
