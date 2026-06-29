@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $leaderboardProfilePath = Join-Path $projectRoot "scripts\leaderboard\profile.gd"
+$tipStatePath = Join-Path $projectRoot "scripts\tutorial\tip_state.gd"
 $cleanProgressPath = Join-Path $projectRoot "scripts\ui\clean_progress_bar.gd"
 $activityCardInnerShadowPath = Join-Path $projectRoot "scripts\ui\activity_card_inner_shadow.gd"
 $skillDetailPageShelfShadowPath = Join-Path $projectRoot "scripts\ui\skill_detail_page_shelf_shadow.gd"
@@ -103,6 +104,8 @@ Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
 $main = Get-Content -LiteralPath $mainPath -Raw
 Assert-True (Test-Path -LiteralPath $leaderboardProfilePath) "Missing scripts\leaderboard\profile.gd."
 $leaderboardProfile = Get-Content -LiteralPath $leaderboardProfilePath -Raw
+Assert-True (Test-Path -LiteralPath $tipStatePath) "Missing scripts\tutorial\tip_state.gd."
+$tipState = Get-Content -LiteralPath $tipStatePath -Raw
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 Assert-True (Test-Path -LiteralPath $exportPresetsPath) "Missing export_presets.cfg."
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
@@ -921,7 +924,9 @@ Assert-True ($loadGameSecondaryRestore -match '_restore_leaderboard_auth_metadat
 Assert-True ($loadGameSecondaryRestore -match '_restore_leaderboard_fetch_metadata_from_save\(restored_save\)') "Secondary save restore should use the shared leaderboard fetch metadata restore helper."
 Assert-True ($loadGameSecondaryRestore -match '_restore_tip_metadata_from_save\(restored_save\)') "Secondary save restore should use the shared tip metadata restore helper."
 $restoreTipMetadata = Get-FunctionBody -Text $main -Name "_restore_tip_metadata_from_save"
-Assert-True ($restoreTipMetadata -match 'silver_opportunity_tip_action_key = _action_key_for_save') "Tip metadata restore should use the shared action-key normalizer."
+Assert-True ($restoreTipMetadata -match 'TipState\.restored_metadata') "Tip metadata restore should delegate state normalization to the helper."
+$tipStateRestore = Get-FunctionBody -Text $tipState -Name "restored_metadata"
+Assert-True ($tipStateRestore -match 'action_key_for_save\.call') "Tip metadata helper should use the shared action-key normalizer callback."
 $restoreLeaderboardProfileMetadata = Get-FunctionBody -Text $main -Name "_restore_leaderboard_profile_metadata_from_save"
 Assert-True ($restoreLeaderboardProfileMetadata -match 'LeaderboardProfile\.restored_metadata') "Leaderboard profile restore should delegate profile state normalization to the helper."
 $restoredLeaderboardProfileMetadata = Get-FunctionBody -Text $leaderboardProfile -Name "restored_metadata"

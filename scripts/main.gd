@@ -6,6 +6,7 @@ const ActivityQueueState = preload("res://scripts/activity_queue/state.gd")
 const ActivityDataNormalizers = preload("res://scripts/activity_data/normalizers.gd")
 const AudioPlayerSets = preload("res://scripts/audio/player_sets.gd")
 const AudioSettings = preload("res://scripts/audio/settings.gd")
+const TipState = preload("res://scripts/tutorial/tip_state.gd")
 const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
@@ -61123,29 +61124,16 @@ func _action_key_for_save(key: String) -> String:
 
 
 func _restore_tip_metadata_from_save(data: Dictionary) -> void:
-	lock_click_tip_seen = bool(data.get("lock_click_tip_seen", false))
-	passive_module_tip_seen = bool(data.get("passive_module_tip_seen", false))
-	silver_opportunity_tip_seen = bool(data.get("silver_opportunity_tip_seen", false))
-	silver_opportunity_tip_action_key = _action_key_for_save(str(data.get("silver_opportunity_tip_action_key", "")))
-	detail_pull_recent_tip_texts = _normalized_detail_pull_recent_tip_texts(data.get("detail_pull_recent_tip_texts", []))
+	var tip_metadata := TipState.restored_metadata(data, DETAIL_PULL_TIP_TEXTS, Callable(self, "_action_key_for_save"))
+	lock_click_tip_seen = bool(tip_metadata.get("lock_click_tip_seen", false))
+	passive_module_tip_seen = bool(tip_metadata.get("passive_module_tip_seen", false))
+	silver_opportunity_tip_seen = bool(tip_metadata.get("silver_opportunity_tip_seen", false))
+	silver_opportunity_tip_action_key = str(tip_metadata.get("silver_opportunity_tip_action_key", ""))
+	detail_pull_recent_tip_texts = tip_metadata.get("detail_pull_recent_tip_texts", []) as Array
 
 
 func _normalized_detail_pull_recent_tip_texts(value: Variant) -> Array:
-	var normalized: Array = []
-	if typeof(value) != TYPE_ARRAY:
-		return normalized
-	var valid_tips := {}
-	for raw_tip in DETAIL_PULL_TIP_TEXTS:
-		valid_tips[str(raw_tip)] = true
-	for raw_tip in value:
-		var tip := str(raw_tip).strip_edges()
-		if tip.is_empty() or not valid_tips.has(tip):
-			continue
-		normalized.erase(tip)
-		normalized.append(tip)
-		while normalized.size() > 3:
-			normalized.pop_front()
-	return normalized
+	return TipState.normalized_recent_tip_texts(value, DETAIL_PULL_TIP_TEXTS)
 
 
 func _canonical_manual_activity_unlock_key(key: String) -> String:
