@@ -77,6 +77,7 @@ const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
 const ActivityProgressRail = preload("res://scripts/ui/activity_progress_rail.gd")
+const ActionStatusLines = preload("res://scripts/ui/action_status_lines.gd")
 const BlueGuyChickenBrawlStageClass = preload("res://scripts/ui/blue_guy_chicken_brawl_stage.gd")
 const ModuleActionCircleZone = preload("res://scripts/ui/module_action_circle_zone.gd")
 const SkillIconBadgeMask = preload("res://scripts/ui/skill_icon_badge_mask.gd")
@@ -17486,6 +17487,24 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 	}
 
 
+func _detail_action_recovery_line(copy: VBoxContainer, skill_id: String, action: Dictionary) -> Label:
+	if copy == null or not _action_has_recovery(action):
+		return null
+	var recovery := _action_recovery_contract(action)
+	var target_skill_id := _recovery_target_skill_id(skill_id, action)
+	var amount := maxf(0.0, float(recovery.get("stamina", 0.0)))
+	var text := "RECOVERS +%s %s STAMINA" % [_format_stamina_cost_detail(amount), _skill_name(target_skill_id).to_upper()]
+	return ActionStatusLines.add_line(copy, text, Color("#fff0a6"), COLOR_INK, app_bold_font, app_font, MIN_MOBILE_INFO_TITLE_FONT_SIZE, 16)
+
+
+func _detail_action_boss_line(copy: VBoxContainer, action: Dictionary) -> Label:
+	if copy == null or not _is_boss_fight_action(action):
+		return null
+	var boss := action.get("boss", {}) as Dictionary
+	var cleared_text := "CLEARED" if _boss_is_completed(action) else "BOSS GATE"
+	var text := "%s: %s  %s HP" % [cleared_text, _boss_name(action).to_upper(), int(boss.get("hp", 100))]
+	return ActionStatusLines.add_line(copy, text, Color("#ffe56b"), COLOR_INK, app_bold_font, app_font, MIN_MOBILE_INFO_TITLE_FONT_SIZE, 18)
+
 func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill_id: String, action: Dictionary) -> Dictionary:
 	var medal: TextureRect = null
 	var mastery_progress: CleanProgressBar = null
@@ -17590,6 +17609,8 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var success_label := stat_widgets.get("success") as Label
 	var stat_boxes := stat_widgets.get("stat_boxes") as Dictionary
 	var stat_hit_buttons := {}
+	var recovery_label := _detail_action_recovery_line(copy, skill_id, action)
+	var boss_label := _detail_action_boss_line(copy, action)
 
 	var mastery_widgets := _detail_action_mastery_widgets(copy, art_panel, skill_id, action)
 	var medal := mastery_widgets.get("medal") as TextureRect
@@ -17648,6 +17669,8 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"stamina": stamina_label,
 		"time": time_label,
 		"success": success_label,
+		"recovery_label": recovery_label,
+		"boss_label": boss_label,
 		"stat_row": stat_row,
 		"stat_boxes": stat_boxes,
 		"bonus_parent": copy,
