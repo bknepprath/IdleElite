@@ -55741,36 +55741,12 @@ func load_game() -> void:
 	loaded_save_this_boot = false
 	pending_save_restore_data = {}
 	pending_save_has_achievement_toast_seen_ids = false
-	var save_data := {}
-	var recovered_save := false
-	if not FileAccess.file_exists(SAVE_PATH):
-		save_data = _recovery_save_dictionary()
-		recovered_save = not save_data.is_empty()
-		if save_data.is_empty():
-			save_data = _legacy_desktop_save_for_recovery({})
-		if save_data.is_empty():
-			selected_skill_id = "fight"
-			current_screen = "skill"
-			last_save_unix_time = _unix_now()
-			save_game()
-			return
-	else:
-		save_data = SaveStateFiles.load_dictionary(SAVE_PATH)
-		var recovery_data := _recovery_save_dictionary()
-		if SaveStateFiles.should_replace_best_save(save_data, recovery_data, skill_defs):
-			save_data = recovery_data
-			recovered_save = true
+	var boot_save := _boot_save_dictionary()
+	var save_data := boot_save.get("data", {}) as Dictionary
 	if save_data.is_empty():
-		save_data = _recovery_save_dictionary()
-		recovered_save = not save_data.is_empty()
-		if save_data.is_empty():
-			save_data = _legacy_desktop_save_for_recovery({})
-		if save_data.is_empty():
-			selected_skill_id = "fight"
-			current_screen = "skill"
-			last_save_unix_time = _unix_now()
-			save_game()
-			return
+		_start_new_save_file()
+		return
+	var recovered_save := bool(boot_save.get("recovered", false))
 	var save_needed_repair := _repair_save_for_regular_play(save_data)
 	save_repaired_this_boot = recovered_save or save_needed_repair
 	_load_game_core(save_data)
@@ -55780,6 +55756,28 @@ func load_game() -> void:
 	_restore_boot_render_save_fields(save_data)
 	if not _onboarding_path_active() and not running_skill_id.is_empty() and skills.has(running_skill_id) and not _action_data(running_skill_id, running_action_id).is_empty():
 		selected_skill_id = running_skill_id
+
+
+func _boot_save_dictionary() -> Dictionary:
+	if FileAccess.file_exists(SAVE_PATH):
+		var save_data := SaveStateFiles.load_dictionary(SAVE_PATH)
+		var recovery_data := _recovery_save_dictionary()
+		if SaveStateFiles.should_replace_best_save(save_data, recovery_data, skill_defs):
+			return {"data": recovery_data, "recovered": true}
+		if not save_data.is_empty():
+			return {"data": save_data, "recovered": false}
+	var recovered_save := _recovery_save_dictionary()
+	if not recovered_save.is_empty():
+		return {"data": recovered_save, "recovered": true}
+	var legacy_save := _legacy_desktop_save_for_recovery({})
+	return {"data": legacy_save, "recovered": not legacy_save.is_empty()}
+
+
+func _start_new_save_file() -> void:
+	selected_skill_id = "fight"
+	current_screen = "skill"
+	last_save_unix_time = _unix_now()
+	save_game()
 
 
 func _recovery_save_dictionary() -> Dictionary:
