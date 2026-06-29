@@ -19,6 +19,7 @@ $passiveModuleCardBorderPath = Join-Path $projectRoot "scripts\ui\passive_module
 $actionArtTextureRectPath = Join-Path $projectRoot "scripts\ui\action_art_texture_rect.gd"
 $actionArtUiPath = Join-Path $projectRoot "scripts\ui\action_art_ui.gd"
 $moduleUtilityRowUiPath = Join-Path $projectRoot "scripts\ui\module_utility_row_ui.gd"
+$paperButtonStylesPath = Join-Path $projectRoot "scripts\ui\paper_button_styles.gd"
 $roundedTextureRectPath = Join-Path $projectRoot "scripts\ui\rounded_texture_rect.gd"
 $bootFlexLoadingAnimationPath = Join-Path $projectRoot "scripts\ui\boot_flex_loading_animation.gd"
 $mobileScrollContainerPath = Join-Path $projectRoot "scripts\ui\mobile_scroll_container.gd"
@@ -146,6 +147,8 @@ Assert-True (Test-Path -LiteralPath $actionArtUiPath) "Missing scripts\ui\action
 $actionArtUi = Get-Content -LiteralPath $actionArtUiPath -Raw
 Assert-True (Test-Path -LiteralPath $moduleUtilityRowUiPath) "Missing scripts\ui\module_utility_row_ui.gd."
 $moduleUtilityRowUi = Get-Content -LiteralPath $moduleUtilityRowUiPath -Raw
+Assert-True (Test-Path -LiteralPath $paperButtonStylesPath) "Missing scripts\ui\paper_button_styles.gd."
+$paperButtonStyles = Get-Content -LiteralPath $paperButtonStylesPath -Raw
 Assert-True (Test-Path -LiteralPath $roundedTextureRectPath) "Missing scripts\ui\rounded_texture_rect.gd."
 $roundedTexture = Get-Content -LiteralPath $roundedTextureRectPath -Raw
 Assert-True (Test-Path -LiteralPath $bootFlexLoadingAnimationPath) "Missing scripts\ui\boot_flex_loading_animation.gd."
@@ -1269,10 +1272,14 @@ $loadFont = Get-FunctionBody -Text $main -Name "_load_font"
 Assert-True ($loadFont -match 'load\("res://assets/fonts/Fredoka\.ttf"\) as Font') "Font loading should only install real Font resources."
 Assert-True ($loadFont -match 'if loaded_font == null:[\s\S]*app_font = null[\s\S]*app_bold_font = null[\s\S]*return') "Font loading should fall back cleanly when the imported font is unavailable in headless/export contexts."
 $paperButtonStyle = Get-FunctionBody -Text $main -Name "_paper_button_style_with_shape"
-Assert-True ($paperButtonStyle -match 'if _can_create_image_textures\(\):[\s\S]*_create_image_texture\(image\)') "Generated paper button textures should use the shared headless-safe texture helper."
-Assert-True ($paperButtonStyle -match 'else:\s*\r?\n\s*style\.texture = _visual_fallback_texture\(\)') "Generated paper button styles should install a non-null fallback texture when procedural drawing is skipped."
+Assert-True ($paperButtonStyle -match 'PaperButtonStyles\.paper_button_style_with_shape' -and $paperButtonStyle -match '_create_image_texture' -and $paperButtonStyle -match '_visual_fallback_texture') "Generated paper button styles should delegate procedural texture generation to PaperButtonStyles."
+$paperButtonStyleHelper = Get-FunctionBody -Text $paperButtonStyles -Name "paper_button_style_with_shape"
+Assert-True ($paperButtonStyleHelper -match 'if can_create\.call\(\):[\s\S]*create_texture\.call\(image\)') "Generated paper button textures should use the shared headless-safe texture helper."
+Assert-True ($paperButtonStyleHelper -match 'else:\s*\r?\n\s*style\.texture = fallback_texture\.call\(\)') "Generated paper button styles should install a non-null fallback texture when procedural drawing is skipped."
 $chunkyActivityButtonStyle = Get-FunctionBody -Text $main -Name "_chunky_activity_button_style"
-Assert-True ($chunkyActivityButtonStyle -match 'else:\s*\r?\n\s*style\.texture = _visual_fallback_texture\(\)') "Chunky activity button styles should install a non-null fallback texture when procedural drawing is skipped."
+Assert-True ($chunkyActivityButtonStyle -match 'PaperButtonStyles\.chunky_activity_button_style' -and $chunkyActivityButtonStyle -match '_visual_fallback_texture') "Chunky activity button styles should delegate procedural texture generation to PaperButtonStyles."
+$chunkyActivityButtonStyleHelper = Get-FunctionBody -Text $paperButtonStyles -Name "chunky_activity_button_style"
+Assert-True ($chunkyActivityButtonStyleHelper -match 'else:\s*\r?\n\s*style\.texture = fallback_texture\.call\(\)') "Chunky activity button styles should install a non-null fallback texture when procedural drawing is skipped."
 
 $beginDetailLazy = Get-FunctionBody -Text $main -Name "_begin_detail_lazy_card_list_render"
 $finishDetailLazy = Get-FunctionBody -Text $main -Name "_finish_detail_lazy_card_list_render"
@@ -2582,7 +2589,7 @@ Assert-True ($createImageTexture -match 'image == null or image\.is_empty\(\)') 
 Assert-True ($createImageTexture -notmatch '_can_create_image_textures\(\)') "Generated image texture helper should not return null solely because validation is headless."
 Assert-True ($createImageTexture -match 'ImageTexture\.create_from_image\(image\)') "Generated image texture helper should create non-null ImageTextures for valid images."
 $paperButtonStyleWithShape = Get-FunctionBody -Text $main -Name "_paper_button_style_with_shape"
-Assert-True ($paperButtonStyleWithShape -match '_create_image_texture\(image\)') "Generated paper button styles should use the shared headless-safe image texture helper."
+Assert-True ($paperButtonStyleWithShape -match 'PaperButtonStyles\.paper_button_style_with_shape' -and $paperButtonStyleWithShape -match '_create_image_texture') "Generated paper button styles should use the shared headless-safe image texture helper."
 $textureFromImage = Get-FunctionBody -Text $main -Name "_texture_from_image"
 Assert-True ($textureFromImage -match '_create_image_texture\(image\)') "Loaded image fallback textures should use the shared headless-safe image texture helper."
 Assert-True ($regenCircle -match 'DisplayServer\.get_name\(\) == "headless" or image == null or image\.is_empty\(\)[\s\S]*?_glass_bowl_texture = ImageTexture\.create_from_image\(image\)') "Regen circle glass bowl texture generation should skip headless validation locally."
