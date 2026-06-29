@@ -11,6 +11,7 @@ const ActivityLockNumber = preload("res://scripts/activity_lock_number.gd")
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
 const ActivityLockCluster = preload("res://scripts/activity_lock_cluster.gd")
 const AchievementMilestones = preload("res://scripts/achievements/milestones.gd")
+const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const AchievementRewards = preload("res://scripts/achievements/rewards.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const ChatState = preload("res://scripts/chat/state.gd")
@@ -29851,7 +29852,7 @@ func _skill_level_completion_counts() -> Dictionary:
 	var earned := 0
 	var possible := 0
 	for def in skill_defs:
-		var level_targets := _skill_level_achievement_targets()
+		var level_targets := AchievementPresentation.skill_level_targets()
 		possible += level_targets.size()
 		for target in level_targets:
 			if _skill_level(str(def["id"])) >= int(target):
@@ -30082,13 +30083,6 @@ func _visible_achievement_milestones_fast() -> Array:
 	context["tier_counts"] = medal_summary["tiers"]
 	context["total_activity_count"] = int(medal_summary["activity_count"])
 	return AchievementMilestones.build_visible_fast(context)
-
-
-func _skill_level_achievement_targets() -> Array:
-	var targets := []
-	for level in range(2, 100):
-		targets.append(level)
-	return targets
 
 
 func _achievement_reward_bonus(stat: String, skill_id := "") -> float:
@@ -45576,7 +45570,7 @@ func _achievement_art(achievement: Dictionary) -> Control:
 		"tier_count":
 			var tier := int(achievement.get("tier", achievement.get("medal_level", 1)))
 			var levels := []
-			for _i in range(_same_tier_achievement_medal_count(int(achievement.get("target", 1)))):
+			for _i in range(AchievementPresentation.same_tier_medal_count(int(achievement.get("target", 1)))):
 				levels.append(tier)
 			_populate_achievement_medal_cluster(art, levels)
 		"cumulative_medals":
@@ -45602,21 +45596,9 @@ func _skill_icon_path(skill_id: String) -> String:
 	return "res://assets/content/icons/skill-symbols/%s.png" % skill_id
 
 
-func _same_tier_achievement_medal_count(target: int) -> int:
-	if target <= 1:
-		return 1
-	if target <= 10:
-		return 3
-	if target <= 25:
-		return 5
-	if target <= 50:
-		return 7
-	return 9
-
-
 func _populate_achievement_medal_cluster(parent: Control, levels: Array) -> void:
 	var count := levels.size()
-	var positions := _achievement_medal_cluster_positions(count)
+	var positions := AchievementPresentation.medal_cluster_positions(count)
 	var medal_size := 144.0
 	if count >= 9:
 		medal_size = 56.0
@@ -45630,26 +45612,6 @@ func _populate_achievement_medal_cluster(parent: Control, levels: Array) -> void
 		var center: Vector2 = positions[i] if i < positions.size() else Vector2(89, 72)
 		var icon_size := Vector2(medal_size, medal_size)
 		_add_achievement_art_image(parent, _achievement_medal_texture(int(levels[i])), center - icon_size * 0.5, icon_size, i + 1)
-
-
-func _achievement_medal_cluster_positions(count: int) -> Array:
-	if count <= 1:
-		return [Vector2(89, 72)]
-	if count <= 3:
-		return [Vector2(48, 88), Vector2(94, 48), Vector2(140, 88)]
-	if count <= 5:
-		return [Vector2(42, 88), Vector2(70, 50), Vector2(112, 50), Vector2(140, 88), Vector2(91, 112)]
-	if count <= 7:
-		return [Vector2(34, 88), Vector2(58, 56), Vector2(92, 42), Vector2(126, 56), Vector2(150, 88), Vector2(68, 116), Vector2(116, 116)]
-	if count <= 8:
-		return [Vector2(28, 88), Vector2(50, 58), Vector2(78, 42), Vector2(110, 42), Vector2(138, 58), Vector2(160, 88), Vector2(68, 116), Vector2(120, 116)]
-	return [Vector2(24, 88), Vector2(44, 62), Vector2(68, 44), Vector2(94, 38), Vector2(120, 44), Vector2(144, 62), Vector2(164, 88), Vector2(58, 116), Vector2(94, 122), Vector2(130, 116)]
-
-
-func _achievement_progress_pct(achievement: Dictionary) -> float:
-	var target := maxi(1, int(achievement.get("target", 1)))
-	var current := clampi(int(achievement.get("current", 0)), 0, target)
-	return clampf(float(current) / float(target) * 100.0, 0.0, 100.0)
 
 
 func _achievement_log_card(achievement: Dictionary, show_progress := true) -> Control:
@@ -45682,7 +45644,7 @@ func _achievement_log_card(achievement: Dictionary, show_progress := true) -> Co
 	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(reward_label)
 	if show_progress:
-		stack.add_child(_progress(accent, 36, _achievement_progress_pct(achievement)))
+		stack.add_child(_progress(accent, 36, AchievementPresentation.progress_pct(achievement)))
 	return card
 
 
