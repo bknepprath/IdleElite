@@ -77,9 +77,9 @@ func _run() -> void:
 		_fail("boot splash did not hide before visual capture")
 		return
 
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
@@ -110,8 +110,9 @@ func _run() -> void:
 		enter_cover_started_msec = int(entering_cover.get_meta("page_switch_scroll_cover_started_msec", 0))
 	var held_pop := instance_from_id(int(target_button.get_meta("activity_button_pop_id", 0))) as Control
 	var held_offset := Vector2.ZERO
+	var activity_surface = scene.call("_skill_swipe_activity_surface")
 	if held_pop != null and is_instance_valid(held_pop):
-		held_offset = scene.call("_activity_button_pop_depth_offset", held_pop) as Vector2
+		held_offset = activity_surface.call("_activity_button_pop_depth_offset", held_pop) as Vector2
 	result["held_offset_enter"] = str(held_offset)
 	result["held_button_id_enter"] = int(scene.get("page_switch_transition_button_id"))
 	_expect(held_offset.length() > 0.5, "page switch button should remain depressed while the cover fades in: %s" % str(held_offset))
@@ -125,7 +126,7 @@ func _run() -> void:
 	var spam_held_pop := instance_from_id(int(target_button.get_meta("activity_button_pop_id", 0))) as Control
 	var spam_held_offset := Vector2.ZERO
 	if spam_held_pop != null and is_instance_valid(spam_held_pop):
-		spam_held_offset = scene.call("_activity_button_pop_depth_offset", spam_held_pop) as Vector2
+		spam_held_offset = activity_surface.call("_activity_button_pop_depth_offset", spam_held_pop) as Vector2
 	result["spam_same_cover"] = spam_cover_id == enter_cover_id
 	result["spam_same_started_msec"] = spam_cover_started_msec == enter_cover_started_msec
 	result["spam_skill"] = str(scene.get("selected_skill_id"))
@@ -215,8 +216,8 @@ func _mouse_button_event(point: Vector2, pressed: bool) -> InputEventMouseButton
 
 func _press_page_switch_button(scene: Node, button: Button) -> void:
 	var point := button.get_global_rect().get_center()
-	scene.call("_route_page_switch_button_global_input", _mouse_button_event(point, true))
-	scene.call("_route_page_switch_button_global_input", _mouse_button_event(point, false))
+	scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", _mouse_button_event(point, true))
+	scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", _mouse_button_event(point, false))
 
 
 func _scroll_detail_to_bottom(scene: Node) -> void:

@@ -25,14 +25,18 @@ static func build(config: Dictionary) -> Dictionary:
 	var install_shell := config.get("install_shell") as Callable
 	var attach_press := config.get("attach_press") as Callable
 	var button_size := config.get("button_size", Vector2.ZERO) as Vector2
+	var radius := float(config.get("radius", 36.0))
+	var gutter := float(config.get("gutter", 0.0))
+	var depth_offset := config.get("depth_offset", Vector2.ZERO) as Vector2
+	var diagonal_side := str(config.get("diagonal_side", ""))
 	var buttons := {}
 	for raw_def in config.get("buttons", []):
 		var button_def := raw_def as Dictionary
-		var button := nav_button(str(button_def.get("label", "")), str(button_def.get("icon", "")), button_def.get("fill", Color.WHITE) as Color, button_size, texture, res_path, install_shell, attach_press)
+		var button := nav_button(str(button_def.get("label", "")), str(button_def.get("icon", "")), button_def.get("fill", Color.WHITE) as Color, button_size, texture, res_path, install_shell, attach_press, radius, gutter, depth_offset, diagonal_side)
 		buttons[str(button_def.get("id", ""))] = button
 		row.add_child(button)
 
-	var collapse := collapse_toggle(config.get("collapse_size", Vector2.ZERO) as Vector2, config.get("collapse_style") as Callable, attach_press)
+	var collapse := collapse_toggle(config.get("collapse_size", Vector2.ZERO) as Vector2, attach_press)
 	root.add_child(collapse)
 
 	return {
@@ -43,15 +47,15 @@ static func build(config: Dictionary) -> Dictionary:
 	}
 
 
-static func nav_button(label_text: String, icon_path: String, fill: Color, button_size: Vector2, texture: Callable, res_path: Callable, install_shell: Callable, attach_press: Callable) -> Button:
+static func nav_button(label_text: String, icon_path: String, fill: Color, button_size: Vector2, texture: Callable, res_path: Callable, install_shell: Callable, attach_press: Callable, radius: float, gutter: float, depth_offset: Vector2, diagonal_side: String) -> Button:
 	var button := Button.new()
 	button.text = ""
 	button.tooltip_text = ""
 	button.custom_minimum_size = button_size
 	button.clip_contents = false
 	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	var pop := install_shell.call(button, fill, 36.0) as Control
+	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pop := install_shell.call(button, fill, radius, gutter, depth_offset, diagonal_side) as Control
 	var icon := TextureRect.new()
 	icon.name = "ActivityButtonIcon"
 	icon.texture = texture.call(icon_path)
@@ -76,17 +80,17 @@ static func nav_button(label_text: String, icon_path: String, fill: Color, butto
 	return button
 
 
-static func collapse_toggle(toggle_size: Vector2, style: Callable, attach_press: Callable) -> Button:
+static func collapse_toggle(toggle_size: Vector2, attach_press: Callable) -> Button:
 	var button := Button.new()
 	button.name = "ModuleUtilityCollapseToggle"
 	button.custom_minimum_size = toggle_size
 	button.size = toggle_size
 	button.clip_contents = false
 	button.focus_mode = Control.FOCUS_NONE
-	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.add_theme_stylebox_override("normal", style.call(false))
-	button.add_theme_stylebox_override("hover", style.call(false))
-	button.add_theme_stylebox_override("pressed", style.call(true))
+	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	button.add_theme_stylebox_override("normal", collapse_toggle_style(false))
+	button.add_theme_stylebox_override("hover", collapse_toggle_style(false))
+	button.add_theme_stylebox_override("pressed", collapse_toggle_style(true))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 
 	var arrow := ModuleUtilityCollapseArrow.new()
@@ -101,3 +105,16 @@ static func collapse_toggle(toggle_size: Vector2, style: Callable, attach_press:
 	button.add_child(arrow)
 	attach_press.call(button)
 	return button
+
+
+static func collapse_toggle_style(pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#eadfca") if pressed else Color("#fff4dd")
+	style.border_color = Color("#8a6f4e")
+	style.set_border_width_all(10)
+	style.set_corner_radius_all(999)
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	return style

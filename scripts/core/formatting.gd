@@ -48,6 +48,11 @@ static func percent_points(value: float, digits := 3) -> String:
 	return trim_trailing_decimal_zeroes(significant_digits(value, digits))
 
 
+static func bonus_percent_delta(delta: float) -> String:
+	var prefix := "+" if delta >= 0.0 else "-"
+	return "%s%s%%" % [prefix, percent_points(absf(delta))]
+
+
 static func trim_trailing_decimal_zeroes(text: String) -> String:
 	if text.find(".") == -1:
 		return text
@@ -75,3 +80,13 @@ static func countdown(seconds: int) -> String:
 	if hours > 0:
 		return "%d:%02d:%02d" % [hours, minutes, secs]
 	return "%d:%02d" % [minutes, secs]
+
+
+static func passive_time(seconds: int) -> String:
+	if seconds >= 60:
+		var minutes := int(floor(float(seconds) / 60.0))
+		var remainder := seconds % 60
+		if remainder > 0:
+			return "%sm%ss" % [minutes, remainder]
+		return "%sm" % minutes
+	return "%ss" % seconds

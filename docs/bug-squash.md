@@ -341,8 +341,8 @@ Root cause: normal transparent action cutout PNGs were all getting the custom `A
 Fix:
 
 - `ActionArtTextureRect` now defaults to the plain `TextureRect` render path.
-- `_action_art_image()` calls `set_mask_material_enabled(_action_art_needs_texture_mask(path))`.
-- `_action_art_needs_texture_mask()` only enables the shader for `/backgrounds/` paths, where a full background-style image may still need rounded texture clipping.
+- The action-art image builder calls `set_mask_material_enabled(...)` from the owner.
+- The action-art mask check only enables the shader for `/backgrounds/` paths, where a full background-style image may still need rounded texture clipping.
 - Normal transparent cutout PNGs render with `material = null`.
 - The regression guard rejects shared action-art shader color math such as saturation/value/luma shifts.
 

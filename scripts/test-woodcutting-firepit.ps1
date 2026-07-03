@@ -61,7 +61,15 @@ try {
     @'
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
+const AchievementState := preload("res://scripts/achievements/state.gd")
+
 var test_failed := false
+
+
+func _firepit_active(scene) -> bool:
+	return scene.call("_passive_modules_runtime").firepit_active(int(scene.call("_unix_now")))
 
 func _init() -> void:
 	call_deferred("_run")
@@ -78,20 +86,20 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
-	scene.call("_load_action_data")
+	scene.call("_activity_data_catalog").call("load_action_data", scene)
 	scene.call("_init_state")
 	print("woodcutting-firepit-scene-ready")
 	_unlock_firepit(scene)
-	scene.call("_set_mat_amount", "scrapwood", 3.0)
-	if not scene.call("_start_firepit"):
+	scene.material_runtime.set_amount("scrapwood", 3.0)
+	if not scene.call("_passive_modules_runtime").start_firepit(int(scene.call("_unix_now"))):
 		_fail("firepit did not start with available Scrapwood")
 		return
 	print("woodcutting-firepit-started")
-	_expect(bool(scene.call("_firepit_active")), "firepit should be active after start")
-	_expect(absf(float(scene.call("_mat_amount", "scrapwood")) - 3.0) < 0.001, "starting should not immediately consume fuel")
+	_expect(_firepit_active(scene), "firepit should be active after start")
+	_expect(absf(scene.material_runtime.amount("scrapwood") - 3.0) < 0.001, "starting should not immediately consume fuel")
 	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting")) - 0.04) < 0.001, "Warm Momentum should start at +4% Woodcutting stamina regen")
 	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "fight"))) < 0.001, "Warm Momentum should not buff other skills")
-	_expect(absf(float(scene.call("_global_reward_bonus", "xp_mult", "fight"))) < 0.001, "Warm Momentum should not be a global XP bonus")
+	_expect(absf(float(AchievementState.global_reward_bonus(scene, "xp_mult", "fight"))) < 0.001, "Warm Momentum should not be a global XP bonus")
 	print("woodcutting-firepit-buff-ok")
 	var starting_woodcutting_xp := int((scene.skills["woodcutting"] as Dictionary).get("xp", 0))
 	var now := int(scene.call("_unix_now"))
@@ -99,9 +107,9 @@ func _run() -> void:
 	firepit_state["last_update"] = now - 30
 	firepit_state["started_unix"] = now - 30
 	scene.passive_modules["woodcutting-firepit"] = firepit_state
-	scene.call("_apply_firepit_fuel", now)
-	_expect(bool(scene.call("_firepit_active")), "firepit should remain active after partial fuel burn")
-	_expect(absf(float(scene.call("_mat_amount", "scrapwood")) - 2.0) < 0.05, "firepit should burn about one Scrapwood in 30 seconds")
+	scene.call("_passive_modules_runtime").apply_firepit_fuel(now)
+	_expect(_firepit_active(scene), "firepit should remain active after partial fuel burn")
+	_expect(absf(scene.material_runtime.amount("scrapwood") - 2.0) < 0.05, "firepit should burn about one Scrapwood in 30 seconds")
 	_expect(int((scene.skills["woodcutting"] as Dictionary).get("xp", 0)) == starting_woodcutting_xp + 2, "firepit should award 2 Woodcutting XP per whole Scrapwood burned")
 	firepit_state = scene.passive_modules["woodcutting-firepit"] as Dictionary
 	firepit_state["started_unix"] = now - 60
@@ -111,15 +119,21 @@ func _run() -> void:
 	firepit_state = scene.passive_modules["woodcutting-firepit"] as Dictionary
 	firepit_state["last_update"] = now - 90
 	scene.passive_modules["woodcutting-firepit"] = firepit_state
-	scene.call("_apply_firepit_fuel", now)
-	_expect(not bool(scene.call("_firepit_active")), "firepit should shut down when Scrapwood runs out")
-	_expect(float(scene.call("_mat_amount", "scrapwood")) <= 0.001, "firepit should spend remaining Scrapwood on shutdown")
+	scene.call("_passive_modules_runtime").apply_firepit_fuel(now)
+	_expect(not _firepit_active(scene), "firepit should shut down when Scrapwood runs out")
+	_expect(scene.material_runtime.amount("scrapwood") <= 0.001, "firepit should spend remaining Scrapwood on shutdown")
 	_expect(int((scene.skills["woodcutting"] as Dictionary).get("xp", 0)) == starting_woodcutting_xp + 6, "firepit should award XP for every whole Scrapwood burned before shutdown")
 	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", now)) - 0.08) < 0.001, "Warm Momentum should begin decaying instead of vanishing after shutdown")
-	_expect(absf(float(scene.call("_firepit_heat_bonus_progress_pct")) - (0.08 / 0.60 * 100.0)) < 0.25, "Firepit bonus ring should show remaining cooling bonus after shutdown")
-	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", now + 20)) - 0.04) < 0.001, "Warm Momentum should decay by 1 percentage point every 5 seconds")
-	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", now + 40))) < 0.001, "Warm Momentum should fully fade after enough cooling time")
+	_expect(absf(float(scene.call("_passive_modules_runtime").firepit_heat_bonus_progress_pct(now)) - (0.08 / 0.60 * 100.0)) < 0.25, "Firepit bonus ring should show remaining cooling bonus after shutdown")
 	print("woodcutting-firepit-shutdown-ok")
+	scene.material_runtime.set_amount("scrapwood", 3.0)
+	_expect(bool(scene.call("_passive_modules_runtime").start_firepit(int(scene.call("_unix_now")))), "firepit should restart from a cooling state with available Scrapwood")
+	var restart_now := int(scene.call("_unix_now"))
+	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", restart_now)) - 0.08) < 0.001, "Warm Momentum restart should preserve the cooling warmth tier instead of resetting to +4%")
+	scene.call("_passive_modules_runtime").extinguish_firepit(int(scene.call("_unix_now")))
+	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", restart_now + 20)) - 0.04) < 0.001, "Warm Momentum should decay by 1 percentage point every 5 seconds")
+	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", restart_now + 40))) < 0.001, "Warm Momentum should fully fade after enough cooling time")
+	print("woodcutting-firepit-restart-warmth-ok")
 	_check_save_roundtrip(scene)
 	print("woodcutting-firepit-save-ok")
 	await _check_card_ui(scene)
@@ -139,13 +153,13 @@ func _run() -> void:
 
 
 func _unlock_firepit(scene: Node) -> void:
-	if scene.has_method("_god_mode_unlock_actions_state"):
-		scene.call("_god_mode_unlock_actions_state")
+	if scene.has_method("_test_state_runtime"):
+		scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	var woodcutting := scene.skills["woodcutting"] as Dictionary
 	woodcutting["level"] = maxi(2, int(woodcutting.get("level", 1)))
-	woodcutting["xp"] = maxi(int(woodcutting.get("xp", 0)), int(scene.call("_xp_for_level", 2)))
+	woodcutting["xp"] = maxi(int(woodcutting.get("xp", 0)), SkillState.xp_for_level(2))
 	scene.skills["woodcutting"] = woodcutting
-	scene.call("_finalize_manual_activity_unlock", "woodcutting", "woodcutting-firepit", "woodcutting firepit test unlock")
+	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "woodcutting", "woodcutting-firepit", "woodcutting firepit test unlock")
 
 
 func _check_save_roundtrip(scene: Node) -> void:
@@ -159,7 +173,7 @@ func _check_save_roundtrip(scene: Node) -> void:
 		"cooling_started_unix": -2,
 		"shutdown_reason": "manual"
 	}
-	var normalized := scene.call("_firepit_state_from_save", loaded) as Dictionary
+	var normalized := scene.call("_passive_modules_runtime").firepit_state_from_save(loaded, int(scene.call("_unix_now"))) as Dictionary
 	_expect(bool(normalized.get("active", false)), "save normalization should preserve active flag")
 	_expect(not bool(normalized.get("igniting", true)), "save normalization should not restore transient ignition")
 	_expect(int(normalized.get("started_unix", -1)) == 0, "save normalization should clamp started_unix")
@@ -169,7 +183,7 @@ func _check_save_roundtrip(scene: Node) -> void:
 
 
 func _check_card_ui(scene: Node) -> void:
-	scene.call("_set_mat_amount", "scrapwood", 6.0)
+	scene.material_runtime.set_amount("scrapwood", 6.0)
 	var now := int(scene.call("_unix_now"))
 	scene.passive_modules["woodcutting-firepit"] = {
 		"active": true,
@@ -179,7 +193,7 @@ func _check_card_ui(scene: Node) -> void:
 		"shutdown_reason": ""
 	}
 	var action := scene.call("_action_data", "woodcutting", "woodcutting-firepit") as Dictionary
-	var result := scene.call("_build_firepit_module_card", "woodcutting", action, 1080.0, true) as Dictionary
+	var result := scene.call("_passive_firepit_surface")._build_firepit_module_card("woodcutting", action, 1080.0, true) as Dictionary
 	var card := result.get("card", {}) as Dictionary
 	_expect(str((card.get("status") as Label).text).contains("Feels"), "card should show active Firepit comfort status")
 	_expect(not card.has("fuel"), "card should not show a boxed fuel line")
@@ -218,7 +232,7 @@ func _check_card_ui(scene: Node) -> void:
 		if burn_progress != null:
 			_expect(absf(float(burn_progress.get("inner_value"))) < 0.001, "firepit XP timing should hold the yellow next-Scrapwood ring empty")
 			_expect(int(burn_progress.get_meta("firepit_consume_hold_until_msec", 0)) > Time.get_ticks_msec(), "firepit yellow ring empty hold should be active when XP pops")
-		scene.call("_float_firepit_xp_reward_from_fire", 0)
+		scene.call("_passive_firepit_surface").call("_float_firepit_xp_reward_from_fire", 0)
 		var after_floats := get_node_count_in_group("skill_reward_float")
 		_expect(after_floats >= before_floats + 1, "firepit should spawn visible +XP floats from the fire anchor")
 	if root != null:
@@ -230,7 +244,7 @@ func _check_lazy_layout_heights(scene: Node) -> void:
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	var firepit_action := scene.call("_action_data", "woodcutting", "woodcutting-firepit") as Dictionary
-	var firepit_result := scene.call("_build_firepit_module_card", "woodcutting", firepit_action, 1080.0, true) as Dictionary
+	var firepit_result := scene.call("_passive_firepit_surface")._build_firepit_module_card("woodcutting", firepit_action, 1080.0, true) as Dictionary
 	var firepit_root := firepit_result.get("root") as Control
 	var firepit_height := firepit_root.custom_minimum_size.y if firepit_root != null else 0.0
 	if firepit_root != null:
@@ -303,7 +317,7 @@ func _alpha_bounds(image: Image, start_x: int, start_y: int, width: int, height:
 
 func _check_button_activation(scene: Node) -> void:
 	_unlock_firepit(scene)
-	scene.call("_set_mat_amount", "scrapwood", 3.0)
+	scene.material_runtime.set_amount("scrapwood", 3.0)
 	var now := int(scene.call("_unix_now"))
 	scene.passive_modules["woodcutting-firepit"] = {
 		"active": false,
@@ -316,14 +330,14 @@ func _check_button_activation(scene: Node) -> void:
 		"shutdown_reason": "manual"
 	}
 	var action := scene.call("_action_data", "woodcutting", "woodcutting-firepit") as Dictionary
-	var result := scene.call("_build_firepit_module_card", "woodcutting", action, 1080.0, true) as Dictionary
+	var result := scene.call("_passive_firepit_surface")._build_firepit_module_card("woodcutting", action, 1080.0, true) as Dictionary
 	var card := result.get("card", {}) as Dictionary
 	var root := result.get("root") as Control
 	var toggle := card.get("toggle") as Button
 	if toggle == null:
 		_fail("firepit toggle button was not created")
 		return
-	_expect(bool(scene.call("_is_passive_module_unlocked", "woodcutting-firepit")), "firepit should be passively unlocked before button signal testing")
+	_expect(bool(scene.call("_passive_modules_runtime").is_passive_module_unlocked("woodcutting-firepit")), "firepit should be passively unlocked before button signal testing")
 	_expect(not toggle.disabled, "firepit toggle should be enabled when Scrapwood is available")
 	_expect(toggle.pressed.get_connections().size() > 0, "firepit toggle should connect pressed signal")
 	_expect(toggle.button_down.get_connections().size() > 0, "firepit toggle should connect button_down signal")
@@ -341,36 +355,43 @@ func _check_button_activation(scene: Node) -> void:
 	toggle.emit_signal("pressed")
 	var ignition_state := scene.passive_modules.get("woodcutting-firepit", {}) as Dictionary
 	_expect(bool(ignition_state.get("igniting", false)), "Start Fire button signal should begin the ignition sequence")
-	_expect(not bool(scene.call("_firepit_active")), "firepit should not become active until Scrapwood reaches the fire")
-	scene.call("_finish_firepit_ignition")
-	_expect(bool(scene.call("_firepit_active")), "firepit should become active after the ignition Scrapwood lands")
-	_expect(absf(float(scene.call("_mat_amount", "scrapwood")) - 2.0) < 0.001, "ignition should consume one Scrapwood")
+	_expect(not _firepit_active(scene), "firepit should not become active until Scrapwood reaches the fire")
+	scene.call("_passive_modules_runtime").finish_firepit_ignition(int(scene.call("_unix_now")))
+	_expect(_firepit_active(scene), "firepit should become active after the ignition Scrapwood lands")
+	_expect(absf(scene.material_runtime.amount("scrapwood") - 2.0) < 0.001, "ignition should consume one Scrapwood")
 	_expect(int((scene.skills["woodcutting"] as Dictionary).get("xp", 0)) == starting_xp + 2, "ignition should award Woodcutting XP for the burned Scrapwood")
 	toggle.emit_signal("pressed")
-	_expect(bool(scene.call("_firepit_active")), "tap should not put out an active firepit")
+	_expect(_firepit_active(scene), "tap should not put out an active firepit")
+	var firepit_surface = scene.call("_passive_firepit_surface")
 	toggle.emit_signal("button_down")
-	scene.call("_process_firepit_stop_hold", 0.20)
+	firepit_surface._process_firepit_stop_hold(0.20)
 	toggle.emit_signal("button_up")
-	_expect(bool(scene.call("_firepit_active")), "releasing the firepit before hold completion should keep the fire active")
+	_expect(_firepit_active(scene), "releasing the firepit before hold completion should keep the fire active")
 	toggle.emit_signal("button_down")
-	scene.call("_process_firepit_stop_hold", 0.20)
-	scene.call("_process_firepit_stop_hold", 0.90)
-	scene.call("_process_firepit_stop_hold", 0.25)
+	firepit_surface._process_firepit_stop_hold(0.20)
+	firepit_surface._process_firepit_stop_hold(0.90)
+	firepit_surface._process_firepit_stop_hold(0.25)
 	toggle.emit_signal("button_up")
-	_expect(not bool(scene.call("_firepit_active")), "completed firepit button hold should put out the active fire")
+	_expect(not _firepit_active(scene), "completed firepit button hold should put out the active fire")
 	_expect(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", now)) > 0.0, "completed firepit button hold should leave a decaying Woodcutting regen bonus")
-	scene.call("_start_firepit")
-	scene.call("_extinguish_firepit")
-	_expect(not bool(scene.call("_firepit_active")), "manual extinguish should stop the active firepit")
+	scene.call("_passive_modules_runtime").start_firepit(int(scene.call("_unix_now")))
+	scene.call("_passive_modules_runtime").extinguish_firepit(int(scene.call("_unix_now")))
+	_expect(not _firepit_active(scene), "manual extinguish should stop the active firepit")
 	_expect(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", now)) > 0.0, "manual extinguish should leave a decaying Woodcutting regen bonus")
+	scene.material_runtime.set_amount("scrapwood", 3.0)
+	scene.call("_passive_modules_runtime").begin_firepit_ignition(int(scene.call("_unix_now")))
+	scene.call("_passive_modules_runtime").finish_firepit_ignition(int(scene.call("_unix_now")))
+	var ignition_restart_now := int(scene.call("_unix_now"))
+	_expect(absf(float(scene.call("_firepit_stamina_regen_bonus", "woodcutting", ignition_restart_now)) - 0.04) < 0.001, "ignition restart should keep the cooling warmth tier instead of dropping below it")
+	scene.call("_passive_modules_runtime").extinguish_firepit(int(scene.call("_unix_now")))
 	if root != null and not root.is_inside_tree():
 		scene.add_child(root)
 		await process_frame
 		var action_key := str(scene.call("_action_key", "woodcutting", "woodcutting-firepit"))
 		scene.action_cards[action_key] = card
-	scene.call("_set_mat_amount", "scrapwood", 0.0)
+	scene.material_runtime.set_amount("scrapwood", 0.0)
 	var floats_before_need := get_node_count_in_group("skill_reward_float")
-	scene.call("_begin_firepit_ignition")
+	scene.call("_passive_modules_runtime").begin_firepit_ignition(int(scene.call("_unix_now")))
 	var floats_after_need := get_node_count_in_group("skill_reward_float")
 	_expect(floats_after_need >= floats_before_need + 1, "failed firepit start should pop visible Need Scrapwood text")
 	scene.passive_modules["woodcutting-firepit"] = {

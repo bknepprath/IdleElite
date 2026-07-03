@@ -1,5 +1,41 @@
 extends RefCounted
 
+const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
+const PrismConnectorOverlay = preload("res://scripts/ui/prism_connector_overlay.gd")
+
+static var activity_shade_style_cache := {}
+static var action_art_style_cache: StyleBoxFlat
+static var action_art_border_style_cache: StyleBoxFlat
+
+
+static func cached_shade(alpha: float) -> StyleBoxFlat:
+	var key := int(round(alpha * 1000.0))
+	if activity_shade_style_cache.has(key):
+		return activity_shade_style_cache[key] as StyleBoxFlat
+	var style := shade(alpha)
+	activity_shade_style_cache[key] = style
+	return style
+
+
+static func cached_action_art(surface_style: Callable) -> StyleBoxFlat:
+	if action_art_style_cache != null:
+		return action_art_style_cache
+	action_art_style_cache = action_art(surface_style)
+	return action_art_style_cache
+
+
+static func cached_action_art_border(surface_style: Callable) -> StyleBoxFlat:
+	if action_art_border_style_cache != null:
+		return action_art_border_style_cache
+	action_art_border_style_cache = action_art_border(cached_action_art(surface_style))
+	return action_art_border_style_cache
+
+
+static func clear_cache() -> void:
+	activity_shade_style_cache.clear()
+	action_art_style_cache = null
+	action_art_border_style_cache = null
+
 
 static func featured_art(surface_style: Callable, line_color: Color) -> StyleBoxFlat:
 	var style := surface_style.call(Color("#fffaf0"), 24, 8, true) as StyleBoxFlat
@@ -17,6 +53,93 @@ static func shade(alpha: float) -> StyleBoxFlat:
 	style.bg_color = Color(0.5, 0.5, 0.5, alpha)
 	style.set_corner_radius_all(66)
 	return style
+
+
+static func action_card_background_edge_underlay(fill_color: Color, radius: float) -> Panel:
+	var underlay := Panel.new()
+	underlay.anchor_left = 0.0
+	underlay.anchor_right = 1.0
+	underlay.anchor_top = 0.0
+	underlay.anchor_bottom = 1.0
+	underlay.offset_left = -3.0
+	underlay.offset_right = 3.0
+	underlay.offset_top = -3.0
+	underlay.offset_bottom = 3.0
+	underlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	underlay.z_index = 149
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill_color
+	style.border_color = Color.TRANSPARENT
+	style.set_border_width_all(0)
+	style.set_corner_radius_all(int(round(radius + 3.0)))
+	style.anti_aliasing = true
+	underlay.add_theme_stylebox_override("panel", style)
+	return underlay
+
+
+static func activity_card_depth_layer(theme_color: Color, depth_offset: Vector2, radius: float, gutter: float) -> ActivityCardDepth:
+	var depth := ActivityCardDepth.new()
+	depth.depth_offset = depth_offset
+	depth.radius = radius
+	depth.back_color = theme_color.darkened(0.36)
+	depth.side_color = theme_color.darkened(0.48)
+	depth.bottom_color = theme_color.darkened(0.24)
+	depth.draw_back_plate_bottom_outline = true
+	var highlight := theme_color.lightened(0.42)
+	highlight.a = 0.24
+	depth.highlight_color = highlight
+	var themed_shadow := theme_color.darkened(0.72)
+	themed_shadow.a = 0.28
+	depth.shadow_color = themed_shadow
+	depth.anchor_left = 0.0
+	depth.anchor_right = 1.0
+	depth.anchor_top = 0.0
+	depth.anchor_bottom = 1.0
+	depth.offset_left = gutter
+	depth.offset_right = -gutter + depth_offset.x
+	depth.offset_top = 0.0
+	depth.offset_bottom = 0.0
+	depth.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	depth.z_index = 0
+	return depth
+
+
+static func prism_connector_overlay(depth_offset: Vector2, radius: float, side: String, stroke_width: float, ink_color: Color) -> PrismConnectorOverlay:
+	var connector := PrismConnectorOverlay.new()
+	connector.side = side
+	connector.depth_offset = depth_offset
+	connector.radius = radius
+	connector.diagonal_radius = 32.0
+	connector.stroke_width = stroke_width
+	connector.ink_color = ink_color
+	connector.set_anchors_preset(Control.PRESET_FULL_RECT)
+	connector.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return connector
+
+
+static func activity_card_shade_layer(pop_card: Control, alpha := 0.50) -> Panel:
+	if pop_card == null:
+		return null
+	var shade_panel := Panel.new()
+	shade_panel.add_theme_stylebox_override("panel", cached_shade(alpha))
+	shade_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
+	shade_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shade_panel.visible = false
+	shade_panel.z_index = 224
+	pop_card.add_child(shade_panel)
+	return shade_panel
+
+
+static func ensure_activity_card_shade(card: Dictionary, alpha := 0.50) -> Panel:
+	var existing_panel := card.get("shade") as Panel
+	if existing_panel != null and is_instance_valid(existing_panel):
+		return existing_panel
+	var pop_card := card.get("pop") as Control
+	if pop_card == null or not is_instance_valid(pop_card):
+		return null
+	var shade_panel := activity_card_shade_layer(pop_card, alpha)
+	card["shade"] = shade_panel
+	return shade_panel
 
 
 static func action_art(surface_style: Callable) -> StyleBoxFlat:

@@ -118,9 +118,9 @@ func _run() -> void:
 	if not await _wait_for_boot_ready(scene):
 		_fail("boot did not become ready")
 		return
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	Engine.max_fps = 0
 	var sample := await _sample_skill_scroll(scene, skill_id)
 	print("SCROLL_ABLATION_RESULT variant=%s skill=%s action=%s avg_us=%.1f p50_us=%s p95_us=%s p99_us=%s max_us=%s over120=%s/%s cards=%s mounted=%s/%s real=%s visible_placeholders=%s objects=%s nodes=%s" % [
@@ -205,7 +205,7 @@ func _prepare_skill_page(scene: Node, skill_id: String) -> String:
 	scene.set("action_progress", 0.0)
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	scene.call("_sync_passive_module_unlocks", int(scene.call("_unix_now")))
+	scene.call("_passive_modules_runtime").sync_passive_module_unlocks(int(scene.call("_unix_now")))
 	var render_result = scene.call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
@@ -218,6 +218,7 @@ func _prepare_skill_page(scene: Node, skill_id: String) -> String:
 
 
 func _start_first_available_action(scene: Node, skill_id: String) -> String:
+	var convergence_runtime: Object = scene.call("_convergence_runtime") as Object
 	for raw_action in scene.call("_visible_actions_for_skill", skill_id):
 		var action := raw_action as Dictionary
 		var action_id := str(action.get("id", ""))
@@ -227,12 +228,12 @@ func _start_first_available_action(scene: Node, skill_id: String) -> String:
 			continue
 		if bool(scene.call("_is_passive_action", action)):
 			continue
-		if bool(scene.call("_is_convergence_action", action)):
+		if bool(convergence_runtime.call("_is_convergence_action", action)):
 			continue
 		var stamina := scene.get("stamina") as Dictionary
 		stamina[skill_id] = float(scene.call("_max_stamina", skill_id))
 		scene.set("stamina", stamina)
-		if bool(scene.call("_start_action", skill_id, action_id, false)):
+		if bool(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)):
 			return action_id
 	return ""
 

@@ -88,6 +88,8 @@ try {
     @'
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -121,10 +123,9 @@ func _run() -> void:
 		return
 	if OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_DARK_MODE") == "1":
 		scene.set("dark_mode_enabled", true)
-		if scene.has_method("_apply_dark_mode_visual"):
-			scene.call("_apply_dark_mode_visual")
-	if scene.has_method("_god_mode_unlock_onboarding_state"):
-		scene.call("_god_mode_unlock_onboarding_state")
+		scene.call("_settings_surface").call("apply_dark_mode_visual")
+	if scene.has_method("_test_state_runtime"):
+		scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
 	var capture_locked := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_LOCKED") == "1"
 	var capture_inactive := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_INACTIVE") == "1"
 	var capture_xp_popup := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_XP_POPUP") == "1"
@@ -132,18 +133,18 @@ func _run() -> void:
 	var capture_cooling := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_COOLING") == "1"
 	var capture_need_scrapwood := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_NEED_SCRAPWOOD") == "1"
 	var capture_empty_stamina := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_EMPTY_STAMINA") == "1"
-	if (not capture_locked) and scene.has_method("_god_mode_unlock_actions_state"):
-		scene.call("_god_mode_unlock_actions_state")
+	if (not capture_locked) and scene.has_method("_test_state_runtime"):
+		scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	var woodcutting := scene.skills["woodcutting"] as Dictionary
 	woodcutting["level"] = 1 if capture_locked else maxi(2, int(woodcutting.get("level", 1)))
-	if not capture_locked and scene.has_method("_xp_for_level"):
-		woodcutting["xp"] = maxi(int(woodcutting.get("xp", 0)), int(scene.call("_xp_for_level", 2)))
+	if not capture_locked:
+		woodcutting["xp"] = maxi(int(woodcutting.get("xp", 0)), SkillState.xp_for_level(2))
 	scene.skills["woodcutting"] = woodcutting
 	if capture_locked:
-		scene.call("_set_mat_amount", "scrapwood", 0.1)
+		scene.material_runtime.set_amount("scrapwood", 0.1)
 	else:
-		scene.call("_mark_action_manually_unlocked", "woodcutting", "woodcutting-firepit")
-		scene.call("_set_mat_amount", "scrapwood", 0.0 if capture_need_scrapwood else 3.8 if capture_inactive else 6.0)
+		scene.call("_activity_unlock_runtime").call("_mark_action_manually_unlocked", "woodcutting", "woodcutting-firepit")
+		scene.material_runtime.set_amount("scrapwood", 0.0 if capture_need_scrapwood else 3.8 if capture_inactive else 6.0)
 		if capture_cooling:
 			var cooling_now := int(scene.call("_unix_now"))
 			scene.passive_modules["woodcutting-firepit"] = {
@@ -156,7 +157,7 @@ func _run() -> void:
 				"cooling_started_unix": cooling_now,
 				"shutdown_reason": "manual"
 			}
-		elif (not capture_inactive) and (not capture_ignition) and (not capture_need_scrapwood) and not bool(scene.call("_start_firepit")):
+		elif (not capture_inactive) and (not capture_ignition) and (not capture_need_scrapwood) and not bool(scene.call("_passive_modules_runtime").start_firepit(int(scene.call("_unix_now")))):
 			_fail("firepit did not start for capture")
 			return
 	scene.set("current_screen", "skill")
@@ -190,7 +191,7 @@ func _run() -> void:
 					scene.call("_update_ui", 0.0, true)
 				await process_frame
 		elif capture_ignition:
-			scene.call("_begin_firepit_ignition")
+			scene.call("_passive_modules_runtime").begin_firepit_ignition(int(scene.call("_unix_now")))
 			await create_timer(0.62).timeout
 			for _ignite_frame in range(6):
 				_hide_boot_overlay_for_capture(scene)
@@ -198,7 +199,7 @@ func _run() -> void:
 					scene.call("_update_ui", 0.0, true)
 				await process_frame
 		elif capture_need_scrapwood:
-			scene.call("_begin_firepit_ignition")
+			scene.call("_passive_modules_runtime").begin_firepit_ignition(int(scene.call("_unix_now")))
 			for _need_frame in range(12):
 				_hide_boot_overlay_for_capture(scene)
 				if scene.has_method("_update_ui"):

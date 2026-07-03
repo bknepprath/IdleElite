@@ -17,7 +17,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/icon"
         android:isGame="true"
-        android:hasFragileUserData="false"
+        android:hasFragileUserData="true"
         android:requestLegacyExternalStorage="false"
         android:appCategory="game"
         tools:replace="android:allowBackup,android:appCategory,android:isGame,android:hasFragileUserData,android:requestLegacyExternalStorage"

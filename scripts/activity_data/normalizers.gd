@@ -27,6 +27,20 @@ static func action_for_load(source: Dictionary, owner_skill_id: String, database
 	action_data["sort_unlock"] = int(source.get("sort_unlock", max_requirement_level(requirements, unlock_level)))
 	action_data["database_order"] = database_order
 	action_data["xp_rewards"] = action_xp_rewards_for_load(source, owner_skill_id, xp_value)
+	var build := build_contract_for_load(source.get("build", {}))
+	if not build.is_empty():
+		action_data["build"] = build
+	var recovery := recovery_contract_for_load(source.get("recovery", {}))
+	if not recovery.is_empty():
+		action_data["recovery"] = recovery
+	var combat := combat_contract_for_load(source.get("combat", {}))
+	if not combat.is_empty():
+		action_data["combat"] = combat
+	var boss := boss_contract_for_load(source.get("boss", {}))
+	if not boss.is_empty():
+		action_data["boss"] = boss
+	action_data["requires_bosses"] = string_array_for_load(source.get("requires_bosses", []))
+	action_data["blocks_after"] = bool(source.get("blocks_after", false))
 	if not mat_rewards.is_empty():
 		action_data["mat_rewards"] = mat_rewards
 	action_data["combo_tags"] = string_array_for_load(source.get("combo_tags", []))
@@ -43,6 +57,95 @@ static func action_for_load(source: Dictionary, owner_skill_id: String, database
 		action_data["stamina"] = 0
 		action_data["success"] = 100.0
 	return action_data
+
+
+static func build_contract_for_load(value: Variant) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	var source := value as Dictionary
+	var cost := {}
+	var raw_cost = source.get("cost", {})
+	if typeof(raw_cost) == TYPE_DICTIONARY:
+		for raw_mat_id in (raw_cost as Dictionary).keys():
+			var mat_id := str(raw_mat_id).strip_edges()
+			var amount := maxf(0.0, float((raw_cost as Dictionary).get(raw_mat_id, 0.0)))
+			if not mat_id.is_empty() and amount > 0.0:
+				cost[mat_id] = amount
+	if cost.is_empty():
+		return {}
+	return {
+		"cost": cost,
+		"xp": maxi(0, int(source.get("xp", 0))),
+		"label": str(source.get("label", "Build")).strip_edges()
+	}
+
+
+static func recovery_contract_for_load(value: Variant) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	var source := value as Dictionary
+	var amount := maxf(0.0, float(source.get("stamina", source.get("amount", 0.0))))
+	if amount <= 0.0:
+		return {}
+	var target := str(source.get("target", "self")).strip_edges()
+	if target.is_empty():
+		target = "self"
+	return {
+		"target": target,
+		"stamina": amount,
+		"label": str(source.get("label", "Recover")).strip_edges()
+	}
+
+
+static func combat_contract_for_load(value: Variant) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	var source := value as Dictionary
+	var enemy_id := str(source.get("enemy_id", source.get("enemy", ""))).strip_edges()
+	var arena_shape := str(source.get("arena_shape", "")).strip_edges().to_lower()
+	if enemy_id.is_empty() and arena_shape.is_empty():
+		return {}
+	var combat := {
+		"enemy_id": enemy_id,
+		"arena_shape": arena_shape,
+		"enemy_kind": str(source.get("enemy_kind", "swarm")).strip_edges(),
+		"art_ref": str(source.get("art_ref", "")).strip_edges()
+	}
+	for numeric_key in ["speed", "health", "spawn_rhythm", "contact_damage", "reward_xp"]:
+		if source.has(numeric_key):
+			combat[numeric_key] = maxf(0.0, float(source.get(numeric_key, 0.0)))
+	return combat
+
+
+static func boss_contract_for_load(value: Variant) -> Dictionary:
+	if typeof(value) != TYPE_DICTIONARY:
+		return {}
+	var source := value as Dictionary
+	var boss_id := str(source.get("id", "")).strip_edges()
+	if boss_id.is_empty():
+		return {}
+	var boss_name := str(source.get("name", boss_id.capitalize())).strip_edges()
+	var boss := {
+		"id": boss_id,
+		"name": boss_name,
+		"hp": maxi(1, int(source.get("hp", 100)))
+	}
+	var requires := []
+	var raw_requires = source.get("requires", [])
+	if typeof(raw_requires) == TYPE_ARRAY:
+		for raw_requirement in raw_requires:
+			if typeof(raw_requirement) != TYPE_DICTIONARY:
+				continue
+			var requirement := raw_requirement as Dictionary
+			var requirement_skill := str(requirement.get("skill", requirement.get("skill_id", ""))).strip_edges()
+			if not requirement_skill.is_empty():
+				requires.append({
+					"skill": requirement_skill,
+					"level": maxi(1, int(requirement.get("level", 1)))
+				})
+	if not requires.is_empty():
+		boss["requires"] = requires
+	return boss
 
 
 static func event_module_for_load(source: Dictionary, definition_order: int) -> Dictionary:

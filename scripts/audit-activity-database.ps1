@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $databasePath = Join-Path $projectRoot "docs\activity-database.json"
 $mainScriptPath = Join-Path $projectRoot "scripts\main.gd"
+$hubSurfaceScriptPath = Join-Path $projectRoot "scripts\ui\hub_surface.gd"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 
 if (-not (Test-Path -LiteralPath $databasePath)) {
@@ -13,6 +14,10 @@ $database = Get-Content -LiteralPath $databasePath -Raw | ConvertFrom-Json
 $mainScript = ""
 if (Test-Path -LiteralPath $mainScriptPath) {
     $mainScript = Get-Content -LiteralPath $mainScriptPath -Raw
+}
+$hubSurfaceScript = ""
+if (Test-Path -LiteralPath $hubSurfaceScriptPath) {
+    $hubSurfaceScript = Get-Content -LiteralPath $hubSurfaceScriptPath -Raw
 }
 $exportPresets = ""
 if (Test-Path -LiteralPath $exportPresetsPath) {
@@ -612,29 +617,29 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still saves raw mastery instead of _mastery_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"skills":\s*skills,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw skills instead of _skills_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw skills instead of SkillState.skills_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"stamina":\s*stamina,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw stamina instead of _stamina_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw stamina instead of SkillState.stamina_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"stamina_bank":\s*stamina_bank,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw stamina_bank instead of _stamina_bank_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw stamina_bank instead of SkillState.stamina_bank_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"selected_fishing_locations":\s*selected_fishing_locations,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw selected_fishing_locations instead of _selected_fishing_locations_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw selected_fishing_locations instead of FishingState.save_payload().'
     }
     foreach ($rawFishingSave in @(
-        @{ Pattern = '(?m)^\s*"equipped_fishing_tool_id":\s*equipped_fishing_tool_id,'; Helper = '_equipped_fishing_tool_id_for_save()' },
+        @{ Pattern = '(?m)^\s*"equipped_fishing_tool_id":\s*equipped_fishing_tool_id,'; Helper = 'FishingState.save_payload()' },
         @{ Pattern = '(?m)^\s*"log_currency":\s*log_currency,'; Helper = '_log_currency_for_save()' },
         @{ Pattern = '(?m)^\s*"fish_currency":\s*fish_currency,'; Helper = '_fish_currency_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_net_stored_fish":\s*fishing_net_stored_fish,'; Helper = '_fishing_net_stored_fish_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_net_successes":\s*fishing_net_successes,'; Helper = '_fishing_net_successes_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_net_stored_xp":\s*fishing_net_stored_xp,'; Helper = '_fishing_net_stored_xp_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_net_stored_mastery":\s*fishing_net_stored_mastery,'; Helper = '_fishing_net_stored_mastery_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_boat_stored_fish":\s*fishing_boat_stored_fish,'; Helper = '_fishing_boat_stored_fish_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_boat_successes":\s*fishing_boat_successes,'; Helper = '_fishing_boat_successes_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_boat_stored_xp":\s*fishing_boat_stored_xp,'; Helper = '_fishing_boat_stored_xp_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_boat_stored_mastery":\s*fishing_boat_stored_mastery,'; Helper = '_fishing_boat_stored_mastery_for_save()' }
+        @{ Pattern = '(?m)^\s*"fishing_net_stored_fish":\s*fishing_net_stored_fish,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_net_successes":\s*fishing_net_successes,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_net_stored_xp":\s*fishing_net_stored_xp,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_net_stored_mastery":\s*fishing_net_stored_mastery,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_boat_stored_fish":\s*fishing_boat_stored_fish,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_boat_successes":\s*fishing_boat_successes,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_boat_stored_xp":\s*fishing_boat_stored_xp,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_boat_stored_mastery":\s*fishing_boat_stored_mastery,'; Helper = 'FishingState.save_payload()' }
     )) {
         if ($mainScript -match $rawFishingSave.Pattern) {
             Add-Finding $errors "scripts/main.gd still saves raw fishing numeric state instead of $($rawFishingSave.Helper)."
@@ -644,9 +649,9 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd should not save legacy fishing_net_collected; use fishing_net_collect_completed only.'
     }
     foreach ($rawRodSave in @(
-        @{ Pattern = '(?m)^\s*"fishing_rod_collected":\s*fishing_rod_collected,'; Helper = '_fishing_rod_collected_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_reinforced_rod_collected":\s*fishing_reinforced_rod_collected,'; Helper = '_fishing_reinforced_rod_collected_for_save()' },
-        @{ Pattern = '(?m)^\s*"fishing_star_rod_collected":\s*fishing_star_rod_collected,'; Helper = '_fishing_star_rod_collected_for_save()' }
+        @{ Pattern = '(?m)^\s*"fishing_rod_collected":\s*fishing_rod_collected,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_reinforced_rod_collected":\s*fishing_reinforced_rod_collected,'; Helper = 'FishingState.save_payload()' },
+        @{ Pattern = '(?m)^\s*"fishing_star_rod_collected":\s*fishing_star_rod_collected,'; Helper = 'FishingState.save_payload()' }
     )) {
         if ($mainScript -match $rawRodSave.Pattern) {
             Add-Finding $errors "scripts/main.gd still saves raw fishing rod collection state instead of $($rawRodSave.Helper)."
@@ -667,16 +672,16 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still saves raw god_mode_enabled instead of _god_mode_enabled_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"passive_modules":\s*passive_modules,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw passive_modules instead of _passive_modules_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw passive_modules instead of PassiveModulesRuntime.for_save().'
     }
     if ($mainScript -match '(?m)^\s*"convergence_modules":\s*convergence_modules,') {
         Add-Finding $errors 'scripts/main.gd still saves raw convergence_modules instead of _convergence_modules_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"hub_modules":\s*hub_modules,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw hub_modules instead of _hub_modules_for_save().'
+        Add-Finding $errors 'Save payload still saves raw hub_modules instead of HubRuntime.modules_for_save().'
     }
     foreach ($rawScalarSave in @(
-        @{ Pattern = '(?m)^\s*"hub_selected_module_id":\s*hub_selected_module_id,'; Helper = '_hub_selected_module_id_for_save()' },
+        @{ Pattern = '(?m)^\s*"hub_selected_module_id":\s*hub_selected_module_id,'; Helper = 'HubRuntime.selected_module_id_for_save()' },
         @{ Pattern = '(?m)^\s*"hub_mission_cooldown_until_unix":\s*hub_mission_cooldown_until_unix,'; Helper = '_hub_mission_cooldown_until_unix_for_save()' },
         @{ Pattern = '(?m)^\s*"plank_boost_enabled":\s*plank_boost_enabled,'; Helper = '_plank_boost_enabled_for_save()' },
         @{ Pattern = '(?m)^\s*"ad_bonus_seconds_remaining":\s*ad_bonus_seconds_remaining,'; Helper = '_ad_bonus_seconds_remaining_for_save()' },
@@ -694,11 +699,11 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     }
     $hubSelectedRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*hub_selected_module_id = str\(data\.get\("hub_selected_module_id", hub_selected_module_id\)\)')
     if ($hubSelectedRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw hub_selected_module_id outside _restore_hub_selected_module_id_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw hub_selected_module_id outside HubRuntime.restore_selected_module_id().'
     }
     $hubMissionCooldownRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*hub_mission_cooldown_until_unix = maxi\(0, int\(data\.get\("hub_mission_cooldown_until_unix", 0\)\)\)')
     if ($hubMissionCooldownRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw hub_mission_cooldown_until_unix outside _restore_hub_mission_cooldown_until_unix_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw hub_mission_cooldown_until_unix outside HubRuntime.restore_mission_cooldown().'
     }
     $plankBoostRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*plank_boost_enabled = bool\(data\.get\("plank_boost_enabled", false\)\)')
     if ($plankBoostRestoreMatches.Count -gt 1) {
@@ -706,7 +711,7 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     }
     $adBonusRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*ad_bonus_seconds_remaining = clampf\(float\(data\.get\("ad_bonus_seconds_remaining", 0\.0\)\), 0\.0, float\(AD_BONUS_MAX_SECONDS\)\)')
     if ($adBonusRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw ad_bonus_seconds_remaining outside _restore_ad_bonus_seconds_remaining_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw ad_bonus_seconds_remaining outside AdBonus.restore_seconds_from_save().'
     }
     $activityStartRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*activity_start_count = maxi\(0, int\(data\.get\("activity_start_count", 0\)\)\)')
     if ($activityStartRestoreMatches.Count -gt 1) {
@@ -722,17 +727,17 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     }
     $flowHeatRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*flow_heat = clampf\(float\(data\.get\("flow_heat", flow_heat\)\), 0\.0, 36\.0\)')
     if ($flowHeatRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw music flow state outside _restore_music_flow_state_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw music flow state outside AudioDirector.'
     }
     $flowActiveSecondsRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*flow_active_action_seconds = maxf\(0\.0, float\(data\.get\("flow_active_action_seconds", flow_active_action_seconds\)\)\)')
     if ($flowActiveSecondsRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw music flow active seconds outside _restore_music_flow_state_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw music flow active seconds outside AudioDirector.'
     }
     if ($mainScript -match '(?m)^\s*"hub_decor_layout":\s*hub_decor_layout,') {
         Add-Finding $errors 'scripts/main.gd still saves raw hub_decor_layout instead of _hub_decor_layout_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"hub_module_positions":\s*hub_module_positions,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw hub_module_positions instead of _hub_module_positions_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw hub_module_positions instead of HubSurface serialization.'
     }
     if ($mainScript -match '(?m)^\s*"achievement_toast_seen_ids":\s*achievement_toast_seen_ids,') {
         Add-Finding $errors 'scripts/main.gd still saves raw achievement_toast_seen_ids instead of _achievement_toast_seen_ids_for_save().'
@@ -749,41 +754,38 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     if ($hubTutorialTipRestoreMatches.Count -gt 1) {
         Add-Finding $errors 'scripts/main.gd still restores raw hub tutorial tip state outside _restore_boot_visible_tip_flags_from_save().'
     }
-    if ($mainScript.Contains('selected_fishing_locations[_canonical_fishing_area_id')) {
-        Add-Finding $errors 'scripts/main.gd still restores raw selected_fishing_locations instead of _restore_selected_fishing_locations_from_save().'
-    }
     if ($mainScript -match '(?m)^\s*"thieving_action_jails":\s*thieving_action_jails,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw thieving_action_jails instead of _thieving_action_jails_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw thieving_action_jails instead of ThievingState.action_jails_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"thieving_trophies":\s*thieving_trophies,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw thieving_trophies instead of _thieving_trophies_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw thieving_trophies instead of ThievingState.trophies_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"hub_missions":\s*hub_missions,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw hub_missions instead of _hub_missions_for_save().'
+        Add-Finding $errors 'Save payload still saves raw hub_missions instead of HubRuntime.missions_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"leaderboard_last_submitted_scores_by_category":\s*leaderboard_last_submitted_scores_by_category,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw leaderboard category scores instead of _leaderboard_last_submitted_scores_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw leaderboard category scores instead of LeaderboardState serialization.'
     }
     $leaderboardScoreRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_last_submitted_score = maxi\(0, int\(data\.get\("leaderboard_last_submitted_score", 0\)\)\)')
     if ($leaderboardScoreRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard submission metadata outside _restore_leaderboard_submission_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard submission metadata outside LeaderboardState.'
     }
     if ($mainScript.Contains('var submitted_scores = data.get("leaderboard_last_submitted_scores_by_category", {})')) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard category scores outside _restore_leaderboard_submission_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard category scores outside LeaderboardState.'
     }
     foreach ($rawLeaderboardSave in @(
         @{ Pattern = '(?m)^\s*"leaderboard_last_submitted_score":\s*leaderboard_last_submitted_score,'; Helper = '_leaderboard_last_submitted_score_for_save()' },
         @{ Pattern = '(?m)^\s*"leaderboard_last_submitted_total_xp":\s*leaderboard_last_submitted_total_xp,'; Helper = '_leaderboard_last_submitted_total_xp_for_save()' },
         @{ Pattern = '(?m)^\s*"leaderboard_last_submit_unix":\s*leaderboard_last_submit_unix,'; Helper = '_leaderboard_last_submit_unix_for_save()' },
-        @{ Pattern = '(?m)^\s*"leaderboard_display_name":\s*leaderboard_display_name,'; Helper = '_leaderboard_display_name_for_save()' },
-        @{ Pattern = '(?m)^\s*"leaderboard_name_key":\s*leaderboard_name_key,'; Helper = '_leaderboard_name_key_for_save()' },
-        @{ Pattern = '(?m)^\s*"leaderboard_avatar_index":\s*leaderboard_avatar_index,'; Helper = '_leaderboard_avatar_index_for_save()' },
-        @{ Pattern = '(?m)^\s*"leaderboard_profile_claimed":\s*leaderboard_profile_claimed,'; Helper = '_leaderboard_profile_claimed_for_save()' },
-        @{ Pattern = '(?m)^\s*"leaderboard_name_claim_verified":\s*leaderboard_name_claim_verified,'; Helper = '_leaderboard_name_claim_verified_for_save()' },
-        @{ Pattern = '(?m)^\s*"leaderboard_player_id":\s*leaderboard_player_id,'; Helper = '_leaderboard_player_id_for_save()' },
-        @{ Pattern = '(?m)^\s*"leaderboard_auth_refresh_token":\s*leaderboard_auth_refresh_token,'; Helper = '_leaderboard_auth_refresh_token_for_save()' },
+        @{ Pattern = '(?m)^\s*"leaderboard_display_name":\s*leaderboard_display_name,'; Helper = 'LeaderboardProfile.display_name_for_save()' },
+        @{ Pattern = '(?m)^\s*"leaderboard_name_key":\s*leaderboard_name_key,'; Helper = 'LeaderboardProfile.name_key_for_save()' },
+        @{ Pattern = '(?m)^\s*"leaderboard_avatar_index":\s*leaderboard_avatar_index,'; Helper = 'LeaderboardProfile.avatar_index_for_save()' },
+        @{ Pattern = '(?m)^\s*"leaderboard_profile_claimed":\s*leaderboard_profile_claimed,'; Helper = 'LeaderboardProfile.profile_claimed_for_save()' },
+        @{ Pattern = '(?m)^\s*"leaderboard_name_claim_verified":\s*leaderboard_name_claim_verified,'; Helper = 'LeaderboardProfile.name_claim_verified_for_save()' },
+        @{ Pattern = '(?m)^\s*"leaderboard_player_id":\s*leaderboard_player_id,'; Helper = 'LeaderboardProfile.player_id_for_save()' },
+        @{ Pattern = '(?m)^\s*"leaderboard_auth_refresh_token":\s*leaderboard_auth_refresh_token,'; Helper = 'LeaderboardProfile.auth_refresh_token_for_save()' },
         @{ Pattern = '(?m)^\s*"leaderboard_auth_retry_after_unix":\s*leaderboard_auth_retry_after_unix,'; Helper = '_leaderboard_auth_retry_after_unix_for_save()' },
-        @{ Pattern = '(?m)^\s*"leaderboard_fetch_retry_unix_by_category":\s*leaderboard_fetch_retry_unix_by_category,'; Helper = '_leaderboard_fetch_retry_unix_by_category_for_save()' }
+        @{ Pattern = '(?m)^\s*"leaderboard_fetch_retry_unix_by_category":\s*leaderboard_fetch_retry_unix_by_category,'; Helper = 'LeaderboardState fetch retry serialization' }
     )) {
         if ($mainScript -match $rawLeaderboardSave.Pattern) {
             Add-Finding $errors "scripts/main.gd still saves raw leaderboard metadata instead of $($rawLeaderboardSave.Helper)."
@@ -791,37 +793,37 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     }
     $leaderboardProfileDisplayRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_display_name = _sanitize_leaderboard_display_name\(str\(data\.get\("leaderboard_display_name", leaderboard_display_name\)\)\)')
     if ($leaderboardProfileDisplayRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard profile metadata instead of _restore_leaderboard_profile_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard profile metadata instead of LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     $leaderboardProfileClaimRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_profile_claimed = bool\(data\.get\("leaderboard_profile_claimed", false\)\)')
     if ($leaderboardProfileClaimRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard profile claim state instead of _restore_leaderboard_profile_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard profile claim state instead of LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     $leaderboardAvatarRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_avatar_index = _valid_profile_avatar_index\(int\(data\.get\("leaderboard_avatar_index", leaderboard_avatar_index\)\)\)')
     if ($leaderboardAvatarRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard avatar indexes outside _restore_leaderboard_profile_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard avatar indexes outside LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     $leaderboardPlayerIdRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_player_id = _sanitize_leaderboard_player_id\(str\(data\.get\("leaderboard_player_id", leaderboard_player_id\)\)\)')
     if ($leaderboardPlayerIdRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard player ids outside _restore_leaderboard_profile_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard player ids outside LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     if ($mainScript -match '(?m)^\s*"chat_stream_retry_unix":\s*chat_stream_retry_unix,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_retry_unix instead of _chat_stream_retry_unix_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_retry_unix instead of ChatState.retry_unix_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"chat_stream_next_connect_unix":\s*chat_stream_next_connect_unix,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_next_connect_unix instead of _chat_stream_next_connect_unix_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_next_connect_unix instead of ChatState.next_connect_unix_for_save().'
     }
     $chatLastSendRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_last_send_unix = maxi\(0, int\(data\.get\("chat_last_send_unix", 0\)\)\)')
     if ($chatLastSendRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_send_unix instead of _restore_chat_last_send_unix_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_send_unix outside SaveRuntime.'
     }
     $chatStreamRetryRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_stream_retry_unix = mini\(maxi\(0, int\(data\.get\("chat_stream_retry_unix", data\.get\("chat_fetch_retry_unix", 0\)\)\)\), max_chat_retry_unix\)')
     if ($chatStreamRetryRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_retry_unix instead of _restore_chat_stream_retry_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_retry_unix outside SaveRuntime.'
     }
     $chatStreamNextConnectRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_stream_next_connect_unix = mini\(maxi\(chat_stream_retry_unix, int\(data\.get\("chat_stream_next_connect_unix", 0\)\)\), max_chat_retry_unix\)')
     if ($chatStreamNextConnectRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_next_connect_unix instead of _restore_chat_stream_retry_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_next_connect_unix outside SaveRuntime.'
     }
     if ($mainScript -match '(?m)^\s*"chat_last_opened_created_at":\s*chat_last_opened_created_at,') {
         Add-Finding $errors 'scripts/main.gd still saves raw chat_last_opened_created_at instead of _chat_last_opened_created_at_for_save().'
@@ -831,13 +833,13 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     }
     $chatOpenedCreatedAtRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_last_opened_created_at = maxi\(0, int\(data\.get\("chat_last_opened_created_at", 0\)\)\)')
     if ($chatOpenedCreatedAtRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_created_at instead of _restore_chat_opened_cursor_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_created_at outside SaveRuntime.'
     }
     if ($mainScript -match '(?m)^\s*chat_last_opened_message_id = str\(data\.get\("chat_last_opened_message_id", ""\)\)\.strip_edges\(\)') {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_message_id instead of _restore_chat_opened_cursor_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_message_id outside SaveRuntime.'
     }
     if ($mainScript.Contains('var loaded_thieving_action_jails = data.get("thieving_action_jails", {})')) {
-        Add-Finding $errors 'scripts/main.gd still restores raw thieving_action_jails instead of _restore_thieving_action_jails_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw thieving_action_jails instead of ThievingState.restore_action_jails().'
     }
     if ($mainScript.Contains('var loaded_thieving_trophies = data.get("thieving_trophies", {})')) {
         Add-Finding $errors 'scripts/main.gd still restores raw thieving_trophies instead of _restore_thieving_trophies_from_save().'
@@ -846,26 +848,26 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still restores raw convergence_modules instead of _restore_convergence_modules_from_save().'
     }
     if ($mainScript.Contains('var loaded_hub_modules = data.get("hub_modules", {})')) {
-        Add-Finding $errors 'scripts/main.gd still restores raw hub_modules instead of _restore_hub_modules_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw hub_modules instead of HubRuntime.restore_modules().'
     }
     if ($mainScript.Contains('var saved_fetch_retry_unix = data.get("leaderboard_fetch_retry_unix_by_category", {})')) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard_fetch_retry_unix_by_category instead of _restore_leaderboard_fetch_retry_unix_by_category_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard_fetch_retry_unix_by_category instead of LeaderboardState.'
     }
     $leaderboardFetchSuccessClearMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_fetch_unix_by_category\.clear\(\)')
     if ($leaderboardFetchSuccessClearMatches.Count -gt 2) {
-        Add-Finding $errors 'scripts/main.gd still clears leaderboard successful fetch timestamps outside _restore_leaderboard_fetch_metadata_from_save() and reset paths.'
+        Add-Finding $errors 'scripts/main.gd still clears leaderboard successful fetch timestamps outside LeaderboardState and reset paths.'
     }
     if ($mainScript.Contains('var loaded_seen = data.get("achievement_toast_seen_ids", {})')) {
         Add-Finding $errors 'scripts/main.gd still restores raw achievement_toast_seen_ids instead of _normalized_achievement_toast_seen_ids().'
     }
-    if ($mainScript.Contains('hub_module_positions.clear()') -and -not $mainScript.Contains('func _normalized_hub_module_positions(raw_positions: Variant) -> Dictionary:')) {
-        Add-Finding $errors 'scripts/main.gd restores hub_module_positions inline instead of _normalized_hub_module_positions().'
+    if ($mainScript.Contains('hub_module_positions.clear()') -and -not $hubSurfaceScript.Contains('func _normalized_hub_module_positions(raw_positions: Variant) -> Dictionary:')) {
+        Add-Finding $errors 'scripts/main.gd restores hub_module_positions inline instead of HubSurface._normalized_hub_module_positions().'
     }
-    if ($mainScript.Contains('hub_decor_layout.clear()') -and -not $mainScript.Contains('func _normalized_hub_decor_layout(raw_layout: Variant) -> Array:')) {
-        Add-Finding $errors 'scripts/main.gd restores hub_decor_layout inline instead of _normalized_hub_decor_layout().'
+    if ($mainScript.Contains('hub_decor_layout.clear()') -and -not $hubSurfaceScript.Contains('func _normalized_hub_decor_layout(raw_layout: Variant) -> Array:')) {
+        Add-Finding $errors 'scripts/main.gd restores hub_decor_layout inline instead of HubSurface._normalized_hub_decor_layout().'
     }
     if ($mainScript.Contains('var loaded_hub_missions = data.get("hub_missions", [])')) {
-        Add-Finding $errors 'scripts/main.gd still restores raw hub_missions instead of _restore_hub_missions_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw hub_missions instead of HubRuntime.restore_missions().'
     }
     if ($mainScript -match '(?m)^\s*"running_action_id":\s*running_action_id,') {
         Add-Finding $errors 'scripts/main.gd still saves raw running_action_id instead of _running_action_id_for_save().'
@@ -895,11 +897,11 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     }
     $leaderboardAuthRefreshRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_auth_refresh_token = str\(data\.get\("leaderboard_auth_refresh_token", ""\)\)\.strip_edges\(\)')
     if ($leaderboardAuthRefreshRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard auth metadata instead of _restore_leaderboard_auth_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard auth metadata instead of LeaderboardProfile.restore_auth_metadata_from_save().'
     }
     $leaderboardAuthRetryRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_auth_retry_after_unix = maxi\(0, int\(data\.get\("leaderboard_auth_retry_after_unix", 0\)\)\)')
     if ($leaderboardAuthRetryRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard auth retry state instead of _restore_leaderboard_auth_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw leaderboard auth retry state instead of LeaderboardProfile.restore_auth_metadata_from_save().'
     }
     foreach ($token in @('var loaded_mastery = data.get("mastery", {})')) {
         if ($mainScript.Contains($token)) {

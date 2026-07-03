@@ -144,7 +144,7 @@ func _sample_case(scene: Node, case_name: String, preview_available: bool) -> vo
 			_fail("%s/%s hidden locked preview root still reserves %.1fpx of scroll height; %s" % [case_name, skill_id, float(stats.get("max_root_height", 0.0)), str(stats.get("sample_detail", ""))])
 			return
 		if int(stats.get("content_count", 0)) <= 1 and int(stats.get("max_scroll", 0)) > 96:
-			_fail("%s/%s fresh hidden-preview page still scrolls too far: max=%s; %s" % [case_name, skill_id, str(stats.get("max_scroll", 0)), str(stats.get("sample_detail", ""))])
+			_fail("%s/%s fresh hidden-preview page still scrolls too far: max=%s; %s; stack=%s" % [case_name, skill_id, str(stats.get("max_scroll", 0)), str(stats.get("sample_detail", "")), str(stats.get("stack_detail", ""))])
 			return
 
 
@@ -214,11 +214,12 @@ func _sample_live_build_to_woodcutting_swipe(scene: Node) -> void:
 	if int(start_stats.get("visible_modules", 0)) <= 0:
 		_fail("live build->woodcutting test started with a blank build page: %s" % str(start_stats))
 		return
-	var target_skill := str(scene.call("_skill_id_for_swipe_offset_from", "build", 1))
+	var activity_surface = scene.call("_skill_swipe_activity_surface")
+	var target_skill := str(activity_surface.call("_skill_id_for_swipe_offset_from", "build", 1))
 	if target_skill != "woodcutting":
 		_fail("live swipe expected build +1 to be woodcutting, got %s" % target_skill)
 		return
-	if not bool(scene.call("_swipe_offset_accessible", 1)):
+	if not bool(scene.call("_onboarding_runtime").call("_swipe_offset_accessible", 1)):
 		_fail("live build->woodcutting target was not accessible")
 		return
 
@@ -295,7 +296,7 @@ func _render_and_measure(scene: Node, skill_id: String) -> Dictionary:
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
-	scene.call("_sync_passive_module_unlocks", int(scene.call("_unix_now")))
+	scene.call("_passive_modules_runtime").sync_passive_module_unlocks(int(scene.call("_unix_now")))
 	var render_result = scene.call("_render_screen", false, 0, false)
 	if render_result != null:
 		await render_result
@@ -340,14 +341,38 @@ func _render_and_measure(scene: Node, skill_id: String) -> Dictionary:
 		max_entry_height = maxf(max_entry_height, _allocated_control_height(entry_control))
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	var visible_content := scene.call("_detail_authoritative_scrollable_module_bottom") as Dictionary
+	var stack_detail := _stack_detail(scene)
 	return {
 		"hidden_count": hidden_count,
 		"max_entry_height": max_entry_height,
 		"max_root_height": max_root_height,
 		"max_scroll": 0 if scroll == null else int(scroll.call("get_max_scroll_vertical")),
 		"content_count": int(visible_content.get("count", 0)),
-		"sample_detail": sample_detail
+		"sample_detail": sample_detail,
+		"stack_detail": stack_detail
 	}
+
+
+func _stack_detail(scene: Node) -> String:
+	var stack := scene.call("_detail_actions_stack") as Control
+	if stack == null:
+		return "no-stack"
+	var parts: Array[String] = []
+	for raw_child in stack.get_children():
+		var child := raw_child as Control
+		if child == null:
+			continue
+		parts.append("%s vis=%s meta=%s min=%.1f size=%.1f mod=%.2f module=%s bottom=%.1f" % [
+			child.name,
+			str(child.visible),
+			str(child.get_meta("detail_stack_entry_wrapper", false)),
+			child.custom_minimum_size.y,
+			child.size.y,
+			child.modulate.a,
+			str(scene.call("_detail_stack_child_is_module_content", child)),
+			float(scene.call("_detail_control_bottom_in_stack", child, stack))
+		])
+	return " | ".join(parts)
 
 
 func _control_height(control: Control) -> float:

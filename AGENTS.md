@@ -51,6 +51,8 @@ For visible game-only playtesting when explicitly requested:
   Stop only the headless process that clearly belongs to your wrapper-launched command and should have exited. Leave visible game/debug/editor/project-manager windows alone.
 - For player-visible UI/layout screenshots, capture the real game at the dimensions the user is judging whenever possible. Do not rely only on tall synthetic/mobile captures if the user is looking at the desktop launch window. For this project, the desktop launch style is the `2160x3840` design viewport displayed in the `627x1115` window override from `project.godot`; use capture tooling that preserves that viewport/window pairing when validating desktop-visible layout.
 - Never present mockups, fallback images, generated approximations, or cropped helper renders as if they are real game screenshots. If a screenshot is not from the running Godot game through the safe wrapper/capture script, label it clearly or do not use it as visual proof.
+- For presentation/review screenshots, open and visually inspect the exact PNG after capture before updating HTML or saying it is ready. File existence, byte size, and decode checks are not enough. If the exact image was not visually inspected, label it unverified.
+- During visual inspection, reject screenshots with art, fills, textures, sprites, or custom draw colors spilling past rounded module corners or clipped play-area masks. Fix the clipping/drawing first, then recapture.
 - For generated UI icons with a white subject on a white background, do not remove white globally; that will damage the subject. Use a border-connected flood fill or another method that removes only the connected background, then verify corner alpha and subject alpha before wiring the asset.
 - PowerShell image/file scripts should use `(Resolve-Path <path>).Path` when passing paths into .NET APIs. Parenthesize arithmetic inside array literals, for example `@(0, ($height - 1))`, to avoid accidental parser/object-array errors.
 
@@ -60,6 +62,7 @@ For visible game-only playtesting when explicitly requested:
 - For Godot UI, avoid font sizes below 48 for player-facing body text. Popover/help body text should usually be 52 or larger, with titles around 60 or larger. Only use smaller text for decorative/nonessential labels after verifying it is still readable on a phone screenshot.
 - Info boxes, help popovers, tutorial boxes, and explanatory status panels must use at least 52px body text and at least 60px title text. If the text no longer fits, enlarge the popover/window or shorten the copy; do not shrink below the minimum.
 - When adding or changing phone-visible text, check the rendered screenshot for readability, wrapping, and overlap. If the screenshot text looks remotely like fine print, increase the font and resize the container.
+- Player-facing module art must stay inside the module's visible shape. Sprites, generated art, custom draw calls, and decorative textures must not protrude past rounded corners, diamond masks, or clipped play areas unless the user explicitly asks for an overhanging effect.
 
 ## Activity Database (fishing rework)
 

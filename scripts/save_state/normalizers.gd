@@ -122,11 +122,10 @@ static func payload_regresses_progress(existing_payload: Dictionary, next_payloa
 		return false
 	if next_reset_generation < existing_reset_generation:
 		return true
-	var existing_xp := total_skill_xp_evidence(existing_payload, skill_defs)
-	if existing_xp <= 0:
+	var existing_progress := progress_evidence_score(existing_payload, skill_defs)
+	if existing_progress <= 0:
 		return false
-	var next_xp := total_skill_xp_evidence(next_payload, skill_defs)
-	return next_xp < existing_xp
+	return progress_evidence_score(next_payload, skill_defs) < existing_progress
 
 
 static func save_reset_generation(data: Dictionary) -> int:
@@ -150,6 +149,84 @@ static func total_skill_xp_evidence(data: Dictionary, skill_defs: Array) -> int:
 		var state := skill_state as Dictionary
 		total_xp += maxi(0, int(state.get("xp", 0)))
 	return total_xp
+
+
+static func progress_evidence_score(data: Dictionary, skill_defs: Array) -> int:
+	return total_skill_xp_evidence(data, skill_defs) * 100000 + non_xp_progress_evidence(data)
+
+
+static func non_xp_progress_evidence(data: Dictionary) -> int:
+	var evidence := 0
+	evidence += _positive_number_evidence(data, [
+		"log_currency",
+		"fish_currency",
+		"activity_start_count",
+		"activity_completion_count",
+		"onboarding_starter_action_completion_count"
+	])
+	evidence += _dictionary_true_evidence(data.get("manual_activity_unlocks", {}))
+	evidence += _dictionary_true_evidence(data.get("manual_activity_requirement_unlocks", {}))
+	evidence += _dictionary_true_evidence(data.get("built_modules", {}))
+	evidence += _dictionary_true_evidence(data.get("completed_bosses", {}))
+	evidence += _mastery_evidence(data.get("mastery", {}))
+	evidence += _hub_module_evidence(data.get("hub_modules", {}))
+	evidence += _thieving_trophy_evidence(data.get("thieving_trophies", {}))
+	if bool(data.get("onboarding_tutorial_complete", false)):
+		evidence += 1
+	return evidence
+
+
+static func _positive_number_evidence(data: Dictionary, keys: Array) -> int:
+	var evidence := 0
+	for key in keys:
+		if float(data.get(str(key), 0.0)) > 0.0:
+			evidence += 1
+	return evidence
+
+
+static func _dictionary_true_evidence(value: Variant) -> int:
+	if typeof(value) != TYPE_DICTIONARY:
+		return 0
+	var evidence := 0
+	for raw_key in (value as Dictionary).keys():
+		if bool((value as Dictionary).get(raw_key, false)):
+			evidence += 1
+	return evidence
+
+
+static func _mastery_evidence(value: Variant) -> int:
+	if typeof(value) != TYPE_DICTIONARY:
+		return 0
+	var evidence := 0
+	for raw_state in (value as Dictionary).values():
+		if typeof(raw_state) == TYPE_DICTIONARY and float((raw_state as Dictionary).get("xp", 0.0)) > 0.0:
+			evidence += 1
+	return evidence
+
+
+static func _hub_module_evidence(value: Variant) -> int:
+	if typeof(value) != TYPE_DICTIONARY:
+		return 0
+	var evidence := 0
+	for raw_state in (value as Dictionary).values():
+		if typeof(raw_state) != TYPE_DICTIONARY:
+			continue
+		var state := raw_state as Dictionary
+		if int(state.get("level", 0)) > 0 or bool(state.get("building", false)):
+			evidence += 1
+	return evidence
+
+
+static func _thieving_trophy_evidence(value: Variant) -> int:
+	if typeof(value) != TYPE_DICTIONARY:
+		return 0
+	var evidence := 0
+	for raw_state in (value as Dictionary).values():
+		if typeof(raw_state) == TYPE_DICTIONARY and bool((raw_state as Dictionary).get("stolen", false)):
+			evidence += 1
+		elif typeof(raw_state) == TYPE_BOOL and bool(raw_state):
+			evidence += 1
+	return evidence
 
 
 static func has_known_skill_progress(data: Dictionary, skill_defs: Array) -> bool:

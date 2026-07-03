@@ -87,18 +87,18 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
-	scene.call("_sync_passive_module_unlocks", int(scene.call("_unix_now")))
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
+	scene.call("_passive_modules_runtime").sync_passive_module_unlocks(int(scene.call("_unix_now")))
 	Engine.max_fps = 0
 
 	await _prepare_skill_page_from_menu(scene, "build")
-	var expected_target := str(scene.call("_skill_id_for_swipe_offset_from", "build", 1))
+	var activity_surface = scene.call("_skill_swipe_activity_surface")
+	var expected_target := str(activity_surface.call("_skill_id_for_swipe_offset_from", "build", 1))
 	_expect(expected_target == "woodcutting", "Build +1 swipe target should be woodcutting, got %s." % expected_target)
-	_expect(bool(scene.call("_swipe_offset_accessible", 1)), "Build +1 swipe target should be accessible before the first swipe: %s" % _state_summary(scene))
-	scene.call("_discard_skill_detail_cache_entry", scene.call("_skill_detail_cache_key", "woodcutting"))
-	scene.call("_ensure_skill_swipe_preview_page_cached", 1)
+	_expect(bool(scene.call("_onboarding_runtime").call("_swipe_offset_accessible", 1)), "Build +1 swipe target should be accessible before the first swipe: %s" % _state_summary(scene))
+	activity_surface.call("_ensure_skill_swipe_preview_page_cacoed", 1)
 	_expect(_preview_page_count(scene) > 0, "Hidden Woodcutting preview was not seeded before first swipe: %s" % _state_summary(scene))
 
 	await _run_first_swipe_drag(scene)
@@ -133,7 +133,7 @@ func _prepare_skill_page(scene: Node, skill_id: String) -> void:
 	scene.set("action_progress", 0.0)
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	scene.call("_sync_passive_module_unlocks", int(scene.call("_unix_now")))
+	scene.call("_passive_modules_runtime").sync_passive_module_unlocks(int(scene.call("_unix_now")))
 	var render_result = scene.call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
@@ -307,7 +307,7 @@ func _state_summary(scene: Node) -> String:
 		str(scene.get("skill_swipe_queued_offset")),
 		float(scene.get("skill_swipe_drag_offset_x")),
 		str(scene.get("skill_strip_index")),
-		str(scene.call("_swipe_offset_accessible", 1)),
+		str(scene.call("_onboarding_runtime").call("_swipe_offset_accessible", 1)),
 		str(0 if cards == null else cards.size()),
 		str(counts.get("real", 0)),
 		str(counts.get("visible_placeholders", 0)),
@@ -344,7 +344,7 @@ func _counts(scene: Node) -> Dictionary:
 
 
 func _preview_page_count(scene: Node) -> int:
-	var pages := scene.get("skill_swipe_preview_pages") as Dictionary
+	var pages := scene.call("_skill_swipe_activity_surface").get("preview_pages") as Dictionary
 	return 0 if pages == null else pages.size()
 
 

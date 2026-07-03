@@ -38,7 +38,7 @@ Line numbers move, so search symbols instead of trusting exact offsets.
 | Audio constants | `ACTIVITY_SUCCESS_SFX_PATHS`, `MUSIC_SONG_SETS`, `MUSIC_BUS_NAME`, `SFX_BUS_NAME` | Asset lists, volumes, music weights, bus names, timing knobs. |
 | Runtime state | `music_volume`, `sfx_volume`, `flow_heat`, `music_players`, `audio_stream_cache`, `music_stream_cache` | Persistent settings and transient audio state. |
 | Audio settings UI | `_audio_volume_control`, `_set_music_volume_from_slider`, `_set_sfx_muted_from_toggle` | Settings screen sliders and mute buttons. |
-| Save/load | `_save_payload`, `_restore_audio_settings_from_save`, `_restore_music_flow_state_from_save` | Persisted audio settings and partial music-flow state. |
+| Save/load | `_save_payload`, `AudioDirector.apply_settings_from_save`, `AudioDirector.restore_music_flow_state` | Persisted audio settings and partial music-flow state. |
 | Audio build/warmup | `_build_extended_audio`, `_warm_extended_audio_async`, `_ensure_extended_audio`, `_ensure_audio_buses` | Player creation and deferred warmup. |
 | Core helpers | `_sfx`, `_load_sfx_stream`, `_play`, `_play_with_pitch`, `_can_play_audio` | Shared player creation and playback gating. |
 | Music flow | `_process_music_flow`, `_record_music_flow_start`, `_record_music_flow_action`, `_start_music_cycle` | Layered adaptive music state machine. |
@@ -257,8 +257,8 @@ Important helpers:
 - `_play_fishing_attempt_reveal(skill_id, action_id, success)` handles attempt result presentation.
 - `_play_fishing_catch_burst()` and `_play_fishing_catch_burst_for_action()` handle catch visuals and may accompany success flow.
 - `_play_fishing_wallet_circle_pop(delay)` plays delayed wallet collection feedback.
-- `_play_fishing_wallet_open_sfx()` uses chain impact plus a very short, quiet chain jingle.
-- `_play_fishing_gear_selected_sfx()` uses a single chain click.
+- Fishing wallet open flow calls `AudioDirector` chain impact plus a very short, quiet chain jingle.
+- Fishing gear selection calls `AudioDirector` for a single chain click.
 - `_play_fishing_method_unlock_ceremony()` uses padlock and unlock motion sounds.
 - `_play_padlock_click_shake()` plays `padlock_cluster_player`.
 
@@ -376,9 +376,9 @@ Saved audio fields in `_save_payload()`:
 
 Restore paths:
 
-- `_restore_audio_settings_from_save(data)` restores `music_volume` and `sfx_volume`.
+- `AudioDirector.apply_settings_from_save(data)` restores `music_volume` and `sfx_volume`.
 - `_load_game_core(data)` restores `music_muted` and `sfx_muted`.
-- `_restore_music_flow_state_from_save(data)` restores `music_start_chance_unlocked`, `flow_heat`, and `flow_active_action_seconds`.
+- `AudioDirector.restore_music_flow_state(data)` restores `music_start_chance_unlocked`, `flow_heat`, and `flow_active_action_seconds`.
 - `_load_game_core(data)` calls `_apply_audio_bus_volumes()` after restore.
 
 Not saved:

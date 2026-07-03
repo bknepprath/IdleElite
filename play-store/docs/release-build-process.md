@@ -176,15 +176,15 @@ If no device is connected, note that the device install smoke test was not run.
 
 If Play Store shows an `Update` button but then says it cannot install Idle Elite, first suspect a signing mismatch from a locally installed build. Earlier local debug/release tests used the real package name `com.idleelite.game`, while Play Store distributes the app with the Play App Signing certificate. Android will not update an installed package if the existing app was signed by a different certificate.
 
-Fix on the phone:
+Fix on the phone without throwing away the save:
 
-1. Uninstall `Idle Elite` completely from Android settings or Play Store.
+1. If Android offers **Keep app data**, choose it when uninstalling `Idle Elite`.
 2. Install it fresh from Play Store closed testing.
 
 ADB equivalent:
 
 ```powershell
-& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" shell pm uninstall com.idleelite.game
+& "$env:LOCALAPPDATA\Android\Sdk\platform-tools\adb.exe" shell pm uninstall -k com.idleelite.game
 ```
 
 Use `.\scripts\install-android-phone-debug.ps1` for future phone debug installs; it uses the preview package `com.idleelite.game.preview` so it can coexist with the Play-signed release app.

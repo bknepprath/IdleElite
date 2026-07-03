@@ -58,6 +58,8 @@ try {
     @'
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 
 var _failed := false
@@ -94,12 +96,12 @@ func _run() -> void:
 		_fail("could not find queueable build/fight actions")
 		return
 
-	scene.call("set_activity_queue", [build_key, fight_key])
-	_assert((scene.call("get_activity_queue") as Array) == [build_key, fight_key], "queue order should be preserved")
-	_assert(int(scene.call("get_queue_index", fight_key)) == 1, "queue index should be list order")
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [build_key, fight_key], "queue order should be preserved")
+	_assert(int(scene.call("_activity_queue_runtime").call("get_queue_index", fight_key)) == 1, "queue index should be list order")
 	for raw_sort_mode in ["level", "level_desc", "name", "name_desc"]:
 		scene.set("module_ui_sort_mode", str(raw_sort_mode))
-		_assert((scene.call("get_activity_queue") as Array) == [build_key, fight_key], "queue order should ignore sort mode %s" % str(raw_sort_mode))
+		_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [build_key, fight_key], "queue order should ignore sort mode %s" % str(raw_sort_mode))
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	_assert_queue_page(scene)
@@ -108,7 +110,7 @@ func _run() -> void:
 	scene.set("running_action_id", "")
 	_assert(bool(scene.call("_skill_detail_needs_high_frequency_ui_update")), "queue page should keep visible stamina gauges on frame refresh even while idle")
 	_assert_queue_page_clear_button(scene, build_key, fight_key)
-	scene.call("set_activity_queue", [build_key, fight_key])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	await _assert_queue_page_card_can_start_queue(scene, build_key)
@@ -116,14 +118,14 @@ func _run() -> void:
 	if mat_collection_key.is_empty():
 		_fail("could not find a queueable material collection action")
 		return
-	scene.call("set_activity_queue", [mat_collection_key])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [mat_collection_key])
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	await _assert_queue_page_mat_collection_expands(scene, mat_collection_key)
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	await _assert_add_to_queue_opens_skills_page(scene)
-	scene.call("set_activity_queue", [build_key, fight_key])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
 	var selection_render = scene.call("_render_screen", false, -1, false)
@@ -131,80 +133,105 @@ func _run() -> void:
 		await selection_render
 	for _i in range(8):
 		await process_frame
-	scene.call("_enter_queue_selection_mode")
+	scene.call("_skill_swipe_activity_surface").call("_enter_queue_selection_mode")
 	for _i in range(20):
 		await process_frame
 	_assert_queue_selection(scene)
-	scene.call("_finish_queue_selection_mode")
+	scene.call("_skill_swipe_activity_surface").call("_finish_queue_selection_mode")
 	await _assert_queue_selection_toggles_rendered_cards(scene, build_key)
-	scene.call("set_activity_queue", [build_key, fight_key])
-	_assert(bool(scene.call("remove_activity_from_queue", build_key)), "remove should succeed")
-	_assert((scene.call("get_activity_queue") as Array) == [fight_key], "remove should renumber by list order")
-	_assert(bool(scene.call("add_activity_to_queue", build_key)), "add should append")
-	_assert((scene.call("get_activity_queue") as Array) == [fight_key, build_key], "add should append to end")
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
+	_assert(bool(scene.call("_activity_queue_runtime").call("remove_activity_from_queue", build_key)), "remove should succeed")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [fight_key], "remove should renumber by list order")
+	_assert(bool(scene.call("_activity_queue_runtime").call("add_activity_to_queue", build_key)), "add should append")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [fight_key, build_key], "add should append to end")
 
 	var passive_key := _first_passive_action_key(scene, "woodcutting")
 	if not passive_key.is_empty():
-		_assert(not bool(scene.call("add_activity_to_queue", passive_key)), "passive action should not be queueable")
+		_assert(not bool(scene.call("_activity_queue_runtime").call("add_activity_to_queue", passive_key)), "passive action should not be queueable")
 
-	var saved_queue := scene.call("_activity_queue_for_save") as Array
+	var saved_queue := scene.call("_activity_queue_runtime").call("_activity_queue_for_save") as Array
 	var payload := scene.call("_save_payload", int(scene.call("_unix_now"))) as Dictionary
 	_assert(payload.has("activity_queue"), "save payload should include activity_queue")
 	_assert((payload.get("activity_queue", []) as Array) == saved_queue, "save payload should store queue keys in order")
-	scene.call("clear_activity_queue")
-	scene.call("_restore_activity_queue_from_save", {"activity_queue": saved_queue})
-	_assert((scene.call("get_activity_queue") as Array) == saved_queue, "queue should restore from save data")
-	scene.call("_restore_activity_queue_from_save", {})
-	_assert((scene.call("get_activity_queue") as Array).is_empty(), "missing save queue should restore as empty")
+	scene.call("_activity_queue_runtime").call("clear_activity_queue")
+	scene.call("_activity_queue_runtime").call("_restore_activity_queue_from_save", {"activity_queue": saved_queue})
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == saved_queue, "queue should restore from save data")
+	scene.call("_activity_queue_runtime").call("_restore_activity_queue_from_save", {})
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array).is_empty(), "missing save queue should restore as empty")
 
-	scene.call("set_activity_queue", [build_key, fight_key])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	_set_skill_stamina(scene, "build", 0.0)
 	_set_skill_stamina(scene, "fight", float(scene.call("_max_stamina", "fight")))
 	scene.set("fish_currency", 5.0)
 	scene.call("_set_auto_eat_fish_enabled_for_skill", "build", true)
-	_assert(bool(scene.call("_start_activity_queue_from_key", build_key)), "queue should start from first runnable entry")
+	_assert(bool(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", build_key)), "queue should start from first runnable entry")
 	_assert(str(scene.get("running_skill_id")) == "fight", "queue should skip low-stamina first entry")
 	_assert(str(scene.get("activity_queue_attempt_key")) == fight_key, "queue attempt key should be skipped-to entry")
 	_assert(absf(float(scene.get("fish_currency")) - 5.0) < 0.001, "queue should not auto-eat fish while skipping low-stamina entries")
 	_set_skill_stamina(scene, "build", float(scene.call("_max_stamina", "build")))
 	_set_skill_stamina(scene, "fight", 0.0)
-	scene.call("_process_activity_queue_runtime")
+	scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
 	_assert(bool(scene.get("activity_queue_running")), "queue should keep running after wrapping to an earlier runnable entry")
 	_assert(str(scene.get("activity_queue_attempt_key")) == build_key, "queue should loop back to first entry after the last entry runs low")
 	_assert(str(scene.get("running_skill_id")) == "build", "queue wrap should start the recovered first skill")
 	_set_skill_stamina(scene, "build", 0.0)
-	scene.call("_process_activity_queue_runtime")
+	scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
 	_assert(not bool(scene.get("activity_queue_running")), "queue should stop gracefully if a full loop has no runnable entries")
 	_assert(str(scene.get("running_skill_id")).is_empty(), "queue exhaustion should clear running action")
 
-	scene.call("set_activity_queue", [build_key, fight_key])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	_set_skill_stamina(scene, "build", float(scene.call("_max_stamina", "build")))
 	_set_skill_stamina(scene, "fight", float(scene.call("_max_stamina", "fight")))
-	_assert(bool(scene.call("_start_activity_queue_from_key", fight_key)), "queue should start from selected second entry")
+	_assert(bool(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", fight_key)), "queue should start from selected second entry")
 	_assert(str(scene.get("activity_queue_attempt_key")) == fight_key, "selected second queue entry should be attempted first")
 	_assert(str(scene.get("running_skill_id")) == "fight", "selected second queue entry should start its skill")
-	scene.call("_stop_activity_queue_runtime", true)
-	_assert(bool(scene.call("_start_activity_queue_from_key", build_key)), "queue should start build entry")
-	var fight_target := scene.call("_activity_queue_target_for_key", fight_key) as Dictionary
-	_assert(bool(scene.call("_start_action", "fight", str(fight_target.get("action_id", "")), true, false, false)), "manual action should start")
+	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
+	_assert(bool(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", build_key)), "queue should start build entry")
+	var fight_target := scene.call("_activity_queue_runtime").call("_activity_queue_target_for_key", fight_key) as Dictionary
+	_assert(bool(scene.call("_action_runtime").call("_start_action", "fight", str(fight_target.get("action_id", "")), true, false, false)), "manual action should start")
 	_assert(not bool(scene.get("activity_queue_running")), "manual non-queue start should stop queue mode")
+
+	var recovery_key := _first_queueable_recovery_action_key(scene)
+	if recovery_key.is_empty():
+		_fail("could not find a queueable recovery action")
+		return
+	var recovery_target := scene.call("_activity_queue_runtime").call("_activity_queue_target_for_key", recovery_key) as Dictionary
+	var recovery_skill_id := str(recovery_target.get("skill_id", ""))
+	var recovery_action_id := str(recovery_target.get("action_id", ""))
+	var recovery_action := scene.call("_action_data", recovery_skill_id, recovery_action_id) as Dictionary
+	var recovery_next_key := build_key if build_key != recovery_key else fight_key
+	_set_all_stamina_full(scene)
+	_set_skill_stamina(scene, recovery_skill_id, maxf(0.0, float(scene.call("_max_stamina", recovery_skill_id)) - 2.0))
+	var recovery_target_skill_id := _recovery_target_skill_id(scene, recovery_skill_id, recovery_action)
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [recovery_key, recovery_next_key])
+	_assert(bool(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", recovery_key)), "queue should start a recovery entry while its target skill is not full")
+	_assert(str(scene.get("activity_queue_attempt_key")) == recovery_key, "queue should keep recovery active while target stamina is not full")
+	_set_skill_stamina(scene, recovery_target_skill_id, float(scene.call("_max_stamina", recovery_target_skill_id)))
+	scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
+	_assert(str(scene.get("activity_queue_attempt_key")) == recovery_next_key, "queue should advance from recovery when target stamina is full")
+	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
+	_set_all_stamina_full(scene)
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [recovery_key, recovery_next_key])
+	_assert(bool(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", recovery_key)), "queue should skip full recovery entry to the next task")
+	_assert(str(scene.get("activity_queue_attempt_key")) == recovery_next_key, "full recovery target should make queue start the next task")
+	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 
 	var fishing_area_key := _first_queueable_fishing_area_key(scene)
 	if not fishing_area_key.is_empty():
 		await _assert_fishing_queue_overlay_uses_area_host(scene, fishing_area_key)
 		await _assert_fishing_area_tap_adds_queue_entry(scene, fishing_area_key)
-		scene.call("set_activity_queue", [fishing_area_key, build_key])
+		scene.call("_activity_queue_runtime").call("set_activity_queue", [fishing_area_key, build_key])
 		_set_skill_stamina(scene, "fishing", 0.0)
-		_assert(bool(scene.call("_start_activity_queue_from_key", fishing_area_key)), "fishing queue entry should start")
+		_assert(bool(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", fishing_area_key)), "fishing queue entry should start")
 		_assert(str(scene.get("running_skill_id")) == "fishing", "fishing queue entry should run as fishing")
-		scene.call("_process_activity_queue_runtime")
+		scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
 		_assert(bool(scene.get("activity_queue_running")), "fishing should not advance because of stamina")
 		_assert(str(scene.get("running_skill_id")) == "fishing", "fishing should keep running and block later queue entries")
 
 	if _failed:
 		return
 	print("activity-queue-test-ok")
-	scene.call("_stop_activity_queue_runtime", true)
+	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 	scene.set("onboarding_tutorial_complete", false)
 	scene.set("current_screen", "menu")
 	scene.set("selected_skill_id", "")
@@ -219,16 +246,16 @@ func _prepare_state(scene: Node) -> void:
 	scene.set("boot_splash_dismissed_early", true)
 	if scene.has_method("_reveal_game_under_boot_splash"):
 		scene.call("_reveal_game_under_boot_splash")
-	if scene.has_method("_dismiss_boot_splash_for_play"):
-		scene.call("_dismiss_boot_splash_for_play")
-	if scene.has_method("_close_offline_summary_overlay"):
-		scene.call("_close_offline_summary_overlay")
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	if scene.has_method("_boot_warmup_runtime"):
+		scene.call("_boot_warmup_runtime").call("_dismiss_boot_splash_for_play")
+	if scene.has_method("_achievement_overlay_surface"):
+		scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	for raw_skill_id in scene.skills.keys():
 		var skill_id := str(raw_skill_id)
-		scene.skills[skill_id]["xp"] = scene.call("_xp_for_level", 18)
+		scene.skills[skill_id]["xp"] = SkillState.xp_for_level(18)
 		scene.call("_recalculate_level", skill_id)
 		_set_skill_stamina(scene, skill_id, float(scene.call("_max_stamina", skill_id)))
 	scene.set("running_skill_id", "")
@@ -287,7 +314,7 @@ func _assert_queue_utility_button_opens_queue(scene: Node) -> void:
 		await process_frame
 	_assert(str(scene.get("current_screen")) == "queue", "queue utility button should open the Queue page")
 	var module_utility_row := scene.get("module_utility_row") as Control
-	_assert(bool(scene.call("_chat_strip_visible_on_current_screen")), "queue page should reserve bottom chrome")
+	_assert(bool(scene.call("_profile_chat_overlay_surface").call("_chat_strip_visible_on_current_screen")), "queue page should reserve bottom chrome")
 	_assert(module_utility_row != null and is_instance_valid(module_utility_row) and module_utility_row.visible, "queue page should keep module utility buttons visible")
 	_assert(bool(queue_button.get_meta("activity_button_shell_active", false)), "queue utility button should show active state on Queue page")
 	queue_button.emit_signal("pressed")
@@ -300,15 +327,15 @@ func _force_queue_page_render(scene: Node) -> void:
 	var skills_content := scene.get("skills_content") as Control
 	if skills_content != null and scene.has_method("_clear"):
 		scene.call("_clear", skills_content)
-	if scene.has_method("_reset_page_control_refs"):
-		scene.call("_reset_page_control_refs")
+	if scene.has_method("_navigation_shell"):
+		scene.call("_navigation_shell")._reset_page_control_refs()
 	if scene.has_method("_apply_skills_content_layout_for_screen"):
 		scene.call("_apply_skills_content_layout_for_screen")
-	scene.call("_render_activity_queue_page")
+	scene.call("_skill_swipe_activity_surface").call("_render_activity_queue_page")
 
 
 func _assert_queue_page(scene: Node) -> void:
-	var queue := scene.call("get_activity_queue") as Array
+	var queue := scene.call("_activity_queue_runtime").call("get_activity_queue") as Array
 	_assert(queue.size() == 2, "queue page test expected two queued entries")
 	_assert(_find_named(scene, "ActivityQueuePage") != null, "queue page should render ActivityQueuePage")
 	_assert(_count_named(scene, "ActivityQueueNumberOverlay") == 0, "queue page should not render selection order overlays")
@@ -326,12 +353,12 @@ func _assert_queue_page(scene: Node) -> void:
 
 
 func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -> void:
-	var target := scene.call("_activity_queue_target_for_key", module_key) as Dictionary
+	var target := scene.call("_activity_queue_runtime").call("_activity_queue_target_for_key", module_key) as Dictionary
 	var skill_id := str(target.get("skill_id", ""))
 	var action_id := str(target.get("action_id", ""))
 	_assert(not skill_id.is_empty() and not action_id.is_empty(), "queue active shelf fish control test should resolve a queued action")
 	_set_skill_stamina(scene, skill_id, float(scene.call("_max_stamina", skill_id)))
-	_assert(bool(scene.call("_start_activity_queue_from_key", module_key)), "queue active shelf fish control test should start the queued action")
+	_assert(bool(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", module_key)), "queue active shelf fish control test should start the queued action")
 	_assert(str(scene.get("running_skill_id")) == skill_id and str(scene.get("running_action_id")) == action_id, "queue active shelf fish control test should run the expected action")
 	scene.set("fish_currency_ever_earned", true)
 	scene.set("fish_currency", 2.0)
@@ -345,7 +372,7 @@ func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -
 	var toggle := _find_named(scene, "AutoEatFishToggle") as TextureButton
 	_assert(toggle != null and is_instance_valid(toggle) and toggle.is_visible_in_tree(), "queue active shelf should render the Auto Fish Eat toggle")
 	if gauge == null or toggle == null:
-		scene.call("_stop_activity_queue_runtime", true)
+		scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 		return
 	_assert(str(toggle.get_meta("auto_eat_skill_id", "")) == skill_id, "queue Auto Fish Eat toggle should target the active queue skill")
 	scene.call("_set_auto_eat_fish_enabled_for_skill", skill_id, false)
@@ -362,7 +389,7 @@ func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -
 		await process_frame
 	_assert(absf(float(scene.call("_stamina_value", skill_id)) - (before_stamina + 1.0)) < 0.001, "queue active shelf Gage tap should eat one fish into stamina")
 	_assert(absf(float(scene.get("fish_currency")) - (before_fish - 1.0)) < 0.001, "queue active shelf Gage tap should spend one fish")
-	scene.call("_stop_activity_queue_runtime", true)
+	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 
 
 func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
@@ -386,17 +413,17 @@ func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
 
 
 func _assert_queue_page_clear_button(scene: Node, first_key: String, second_key: String) -> void:
-	scene.call("set_activity_queue", [first_key, second_key])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [first_key, second_key])
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
-	_assert((scene.call("get_activity_queue") as Array).size() == 2, "clear button test should still have queued items before render lookup")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array).size() == 2, "clear button test should still have queued items before render lookup")
 	var clear_button := _find_named(scene, "ActivityQueueClearQueueButton") as Button
 	_assert(clear_button != null and is_instance_valid(clear_button), "Clear Queue should appear when queue has items")
 	if clear_button == null:
 		return
 	_assert(clear_button.get_signal_connection_list("pressed").size() > 0, "Clear Queue button should be connected")
 	scene.set("activity_queue", [])
-	_assert((scene.call("get_activity_queue") as Array).is_empty(), "Clear Queue should clear queued items")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array).is_empty(), "Clear Queue should clear queued items")
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	var set_button := _find_named(scene, "ActivityQueueSetQueueButton") as Button
@@ -410,7 +437,7 @@ func _assert_queue_page_clear_button(scene: Node, first_key: String, second_key:
 func _assert_queue_page_card_can_start_queue(scene: Node, module_key: String) -> void:
 	var card := _registered_card_for_module_key(scene, str(module_key))
 	_assert(not card.is_empty(), "queue page should register queued module card")
-	_assert(str(scene.call("_activity_queue_module_key_for_card", card)) == str(module_key), "queue page card should resolve to queued module key")
+	_assert(str(scene.call("_skill_swipe_activity_surface").call("_activity_queue_module_key_for_card", card)) == str(module_key), "queue page card should resolve to queued module key")
 	var pop := card.get("pop", null) as Control
 	_assert(pop != null and is_instance_valid(pop), "queue page card should have a visible pop control")
 	var press_position := pop.get_global_rect().get_center()
@@ -423,7 +450,7 @@ func _assert_queue_page_card_can_start_queue(scene: Node, module_key: String) ->
 		await process_frame
 	_assert(bool(scene.get("activity_queue_running")), "pressing queue page card through normal input should enter queue runtime")
 	_assert(bool(scene.call("_skill_detail_needs_high_frequency_ui_update")), "queue page should use high-frequency live card updates while an action is running")
-	scene.call("_stop_activity_queue_runtime", true)
+	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 
 
 func _assert_queue_page_mat_collection_expands(scene: Node, module_key: String) -> void:
@@ -449,7 +476,7 @@ func _assert_queue_page_mat_collection_expands(scene: Node, module_key: String) 
 	_assert(bool(collection.get("visible", false)), "queue page material drawer should become visible while the collection action runs")
 	_assert(root.modulate.a > 0.05, "queue page material drawer should fade in while running")
 	_assert(entry.custom_minimum_size.y > initial_height + 100.0, "queue page material drawer should expand the module height")
-	scene.call("_stop_activity_queue_runtime", true)
+	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 
 
 func _assert_queue_selection(scene: Node) -> void:
@@ -459,10 +486,10 @@ func _assert_queue_selection(scene: Node) -> void:
 
 
 func _assert_queue_selection_toggles_rendered_cards(scene: Node, module_key: String) -> void:
-	var target := scene.call("_activity_queue_target_for_key", module_key) as Dictionary
+	var target := scene.call("_activity_queue_runtime").call("_activity_queue_target_for_key", module_key) as Dictionary
 	var skill_id := str(target.get("skill_id", ""))
 	_assert(not skill_id.is_empty(), "selection toggle test should resolve a skill id")
-	scene.call("set_activity_queue", [module_key])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [module_key])
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
 	var render_result = scene.call("_render_screen", false, -1, false)
@@ -471,29 +498,29 @@ func _assert_queue_selection_toggles_rendered_cards(scene: Node, module_key: Str
 	for _i in range(8):
 		await process_frame
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
-	scene.call("_enter_queue_selection_mode")
+	scene.call("_skill_swipe_activity_surface").call("_enter_queue_selection_mode")
 	var card := _registered_card_for_module_key(scene, module_key)
 	_assert(not card.is_empty(), "selection toggle test should find a rendered card")
 	var action_id := str(target.get("action_id", ""))
-	_assert(bool(scene.call("_start_action", skill_id, action_id, false, false, false)), "selection toggle test should start active action")
+	_assert(bool(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false, false, false)), "selection toggle test should start active action")
 	var pop := card.get("pop", null) as Control
 	_assert(pop != null and is_instance_valid(pop), "selection toggle test should have a pop control")
 	var press_position := pop.get_global_rect().get_center()
-	_assert(bool(scene.call("_route_action_card_press", press_position, 12)), "selection mode should route press on active action")
-	_assert(bool(scene.call("_route_action_card_release", _mouse_release(press_position))), "selection mode should route release on active action")
-	_assert((scene.call("get_activity_queue") as Array).is_empty(), "selection mode tap should remove active queued card")
-	_assert(bool(scene.call("_queue_selection_toggle_from_card", card)), "selection toggle should remove a queued card")
-	_assert((scene.call("get_activity_queue") as Array) == [module_key], "selection toggle should add active unqueued card")
-	_assert(bool(scene.call("_queue_selection_toggle_from_card", card)), "selection toggle should remove a queued card")
-	_assert((scene.call("get_activity_queue") as Array).is_empty(), "selection toggle should remove queued card")
-	_assert(bool(scene.call("_queue_selection_toggle_from_card", card)), "selection toggle should add an unqueued card")
-	_assert((scene.call("get_activity_queue") as Array) == [module_key], "selection toggle should append unqueued card")
-	scene.call("_finish_queue_selection_mode")
+	_assert(bool(scene.call("_input_routing_shell").call("_route_action_card_press", press_position, 12)), "selection mode should route press on active action")
+	_assert(bool(scene.call("_input_routing_shell").call("_route_action_card_release", _mouse_release(press_position))), "selection mode should route release on active action")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array).is_empty(), "selection mode tap should remove active queued card")
+	_assert(bool(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should remove a queued card")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [module_key], "selection toggle should add active unqueued card")
+	_assert(bool(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should remove a queued card")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array).is_empty(), "selection toggle should remove queued card")
+	_assert(bool(scene.call("_skill_swipe_activity_surface").call("_queue_selection_toggle_from_card", card)), "selection toggle should add an unqueued card")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [module_key], "selection toggle should append unqueued card")
+	scene.call("_skill_swipe_activity_surface").call("_finish_queue_selection_mode")
 
 
 func _registered_card_for_module_key(scene: Node, module_key: String) -> Dictionary:
 	var normalized_key := str(scene.call("_normalized_module_ui_key", module_key))
-	var target := scene.call("_activity_queue_target_for_key", normalized_key) as Dictionary
+	var target := scene.call("_activity_queue_runtime").call("_activity_queue_target_for_key", normalized_key) as Dictionary
 	var target_skill_id := str(target.get("skill_id", ""))
 	var target_action_id := str(target.get("action_id", ""))
 	var action_cards := scene.get("action_cards") as Dictionary
@@ -506,7 +533,7 @@ func _registered_card_for_module_key(scene: Node, module_key: String) -> Diction
 			var pop_key := str(scene.call("_normalized_module_ui_key", pop.get_meta("module_ui_key", "")))
 			if pop_key == normalized_key:
 				return card
-		var card_module_key := str(scene.call("_activity_queue_module_key_for_card", card))
+		var card_module_key := str(scene.call("_skill_swipe_activity_surface").call("_activity_queue_module_key_for_card", card))
 		if card_module_key == normalized_key:
 			return card
 		if str(card.get("skill_id", "")) == target_skill_id and str(card.get("action_id", "")) == target_action_id:
@@ -515,7 +542,7 @@ func _registered_card_for_module_key(scene: Node, module_key: String) -> Diction
 
 
 func _assert_fishing_queue_overlay_uses_area_host(scene: Node, fishing_area_key: String) -> void:
-	scene.call("set_activity_queue", [fishing_area_key])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [fishing_area_key])
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fishing")
 	var render_result = scene.call("_render_screen", false, -1, false)
@@ -524,7 +551,7 @@ func _assert_fishing_queue_overlay_uses_area_host(scene: Node, fishing_area_key:
 	for _i in range(16):
 		await process_frame
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
-	scene.call("_enter_queue_selection_mode")
+	scene.call("_skill_swipe_activity_surface").call("_enter_queue_selection_mode")
 	for _i in range(8):
 		await process_frame
 	var area_card := _registered_card_for_module_key(scene, fishing_area_key)
@@ -536,11 +563,11 @@ func _assert_fishing_queue_overlay_uses_area_host(scene: Node, fishing_area_key:
 	_assert(_direct_child_count_named(area_host, "ActivityQueueNumberOverlay") == 1, "fishing queue overlay should be placed on the area host")
 	if pop != null and is_instance_valid(pop):
 		_assert(_direct_child_count_named(pop, "ActivityQueueNumberOverlay") == 0, "fishing queue overlay should not be centered on the full fishing module")
-	scene.call("_finish_queue_selection_mode")
+	scene.call("_skill_swipe_activity_surface").call("_finish_queue_selection_mode")
 
 
 func _assert_fishing_area_tap_adds_queue_entry(scene: Node, fishing_area_key: String) -> void:
-	scene.call("set_activity_queue", [])
+	scene.call("_activity_queue_runtime").call("set_activity_queue", [])
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fishing")
 	var render_result = scene.call("_render_screen", false, -1, false)
@@ -549,7 +576,7 @@ func _assert_fishing_area_tap_adds_queue_entry(scene: Node, fishing_area_key: St
 	for _i in range(16):
 		await process_frame
 	scene.call("_sync_detail_lazy_visible_cards", true, -1)
-	scene.call("_enter_queue_selection_mode")
+	scene.call("_skill_swipe_activity_surface").call("_enter_queue_selection_mode")
 	for _i in range(8):
 		await process_frame
 	var area_card := _registered_card_for_module_key(scene, fishing_area_key)
@@ -564,8 +591,8 @@ func _assert_fishing_area_tap_adds_queue_entry(scene: Node, fishing_area_key: St
 	scene.call("_input", _mouse_button_event(press_position, false))
 	for _i in range(8):
 		await process_frame
-	_assert((scene.call("get_activity_queue") as Array) == [fishing_area_key], "tapping a fishing area in queue selection should add that area to the queue")
-	scene.call("_finish_queue_selection_mode")
+	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [fishing_area_key], "tapping a fishing area in queue selection should add that area to the queue")
+	scene.call("_skill_swipe_activity_surface").call("_finish_queue_selection_mode")
 
 
 func _find_named(root_node: Node, node_name: String) -> Node:
@@ -641,7 +668,7 @@ func _first_queueable_action_key(scene: Node, skill_id: String) -> String:
 			continue
 		var action_id := str(action.get("id", ""))
 		var key := str(scene.call("_module_ui_action_key", skill_id, action_id))
-		if bool(scene.call("_activity_queue_key_is_queueable", key)):
+		if bool(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
 			return key
 	return ""
 
@@ -652,11 +679,26 @@ func _first_queueable_mat_collection_action_key(scene: Node) -> String:
 		var skill_id := str(raw_skill_id)
 		for raw_action in actions_by_skill.get(raw_skill_id, []):
 			var action := raw_action as Dictionary
-			if action.is_empty() or not bool(scene.call("_action_has_mat_rewards", action)):
+			if action.is_empty() or not bool(scene.call("_action_runtime").call("_action_has_mat_rewards", action)):
 				continue
 			var action_id := str(action.get("id", ""))
 			var key := str(scene.call("_module_ui_action_key", skill_id, action_id))
-			if bool(scene.call("_activity_queue_key_is_queueable", key)):
+			if bool(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
+				return key
+	return ""
+
+
+func _first_queueable_recovery_action_key(scene: Node) -> String:
+	var actions_by_skill := scene.get("actions_by_skill") as Dictionary
+	for raw_skill_id in actions_by_skill.keys():
+		var skill_id := str(raw_skill_id)
+		for raw_action in actions_by_skill.get(raw_skill_id, []):
+			var action := raw_action as Dictionary
+			if action.is_empty() or typeof(action.get("recovery", {})) != TYPE_DICTIONARY or (action.get("recovery", {}) as Dictionary).is_empty():
+				continue
+			var action_id := str(action.get("id", ""))
+			var key := str(scene.call("_module_ui_action_key", skill_id, action_id))
+			if bool(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
 				return key
 	return ""
 
@@ -675,7 +717,7 @@ func _first_queueable_fishing_area_key(scene: Node) -> String:
 	for raw_area_def in scene.call("_fishing_render_area_modules", "fishing"):
 		var area_def := raw_area_def as Dictionary
 		var key := str(scene.call("_module_ui_fishing_area_key", "fishing", area_def))
-		if bool(scene.call("_activity_queue_key_is_queueable", key)):
+		if bool(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
 			return key
 	return ""
 
@@ -686,6 +728,31 @@ func _set_skill_stamina(scene: Node, skill_id: String, amount: float) -> void:
 	scene.set("stamina", stamina)
 	if scene.has_method("_sync_stamina_bank"):
 		scene.call("_sync_stamina_bank", skill_id)
+
+
+func _set_all_stamina_full(scene: Node) -> void:
+	for raw_skill_id in (scene.get("skills") as Dictionary).keys():
+		var skill_id := str(raw_skill_id)
+		_set_skill_stamina(scene, skill_id, float(scene.call("_max_stamina", skill_id)))
+
+
+func _recovery_target_skill_id(scene: Node, owner_skill_id: String, action: Dictionary) -> String:
+	var recovery := action.get("recovery", {}) as Dictionary
+	var target := str(recovery.get("target", "self")).strip_edges()
+	if target.is_empty() or target == "self":
+		return owner_skill_id
+	if target == "lowest":
+		var lowest_skill_id := owner_skill_id
+		var lowest_fraction := 2.0
+		for raw_skill_id in (scene.get("skills") as Dictionary).keys():
+			var skill_id := str(raw_skill_id)
+			var max_stamina := maxf(1.0, float(scene.call("_max_stamina", skill_id)))
+			var fraction := float(scene.call("_stamina_value", skill_id)) / max_stamina
+			if fraction < lowest_fraction:
+				lowest_fraction = fraction
+				lowest_skill_id = skill_id
+		return lowest_skill_id
+	return target if (scene.get("stamina") as Dictionary).has(target) else owner_skill_id
 
 
 func _assert(condition: bool, message: String) -> void:

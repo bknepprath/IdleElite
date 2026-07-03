@@ -58,7 +58,7 @@ func _assert_drag_frame(scene: Node, frame_index: int) -> void:
 	if page.modulate.a < 0.995:
 		_fail("real swipe page faded during drag frame %s alpha=%.3f" % [frame_index, page.modulate.a])
 		return
-	var preview := _valid_control(scene.get("skill_swipe_preview_page"))
+	var preview := _valid_control(scene.call("_skill_swipe_activity_surface").get("preview_page"))
 	if preview != null and preview.visible and preview.modulate.a > 0.01:
 		_fail("lightweight preview became visible during drag frame %s alpha=%.3f" % [frame_index, preview.modulate.a])
 		return

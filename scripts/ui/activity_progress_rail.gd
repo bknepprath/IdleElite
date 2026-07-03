@@ -32,6 +32,8 @@ var bottom_radius := 66.0
 var edge_inset := 6.0
 var bottom_inset := 0.0
 var corner_guard := 0.0
+var bottom_shape := "round"
+var wide_u_bottom_rise := 58.0
 var opportunity_overlay: ActivityProgressOpportunityOverlay
 
 func _ready() -> void:
@@ -153,6 +155,9 @@ func has_opportunity_progress(progress_pct: float) -> bool:
 func _draw() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
+	if bottom_shape == "wide_u":
+		_draw_wide_u_progress()
+		return
 	draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, top_lip_height)), top_lip_color)
 	var track_rect := _activity_progress_track_rect()
 	if empty_segments.is_empty():
@@ -242,6 +247,8 @@ func _draw_bottom_round_segment(rect: Rect2, color: Color, start_pct: float, fin
 	var corner_center_y := rect.end.y - radius
 	for i in range(row_count):
 		var y := rect.position.y + (float(i) + 0.5) * row_height
+		var row_progress := clampf((y - rect.position.y) / maxf(1.0, rect.size.y), 0.0, 1.0)
+		var u_side_trim := rect.size.x * 0.18 * maxf(0.0, row_progress - 0.50) / 0.50 if bottom_shape == "wide_u" else 0.0
 		var left_clip := rect.position.x
 		var right_clip := rect.end.x
 		if radius > 0.0 and y >= corner_center_y:
@@ -249,17 +256,43 @@ func _draw_bottom_round_segment(rect: Rect2, color: Color, start_pct: float, fin
 			var corner_inset := radius - sqrt(maxf(0.0, radius * radius - dy * dy))
 			left_clip += corner_inset
 			right_clip -= corner_inset
+		left_clip += u_side_trim
+		right_clip -= u_side_trim
 		var line_left := maxf(left_clip, raw_start_x)
 		var line_right := minf(right_clip, raw_finish_x)
 		if line_right <= line_left:
 			continue
-		draw_line(
-			Vector2(line_left, y),
-			Vector2(line_right, y),
-			color,
-			row_height + 1.0,
-			false
-		)
+		draw_line(Vector2(line_left, y), Vector2(line_right, y), color, row_height + 1.0, false)
+
+func _draw_wide_u_progress() -> void:
+	var fill_pct := clampf(value / 100.0, 0.0, 1.0)
+	var width := maxf(72.0, minf(size.y * 0.90, 88.0))
+	var outline_width := width + 12.0
+	_draw_wide_u_progress_segment(top_lip_color, 0.0, 1.0, outline_width)
+	_draw_wide_u_progress_segment(empty_color, 0.0, 1.0, width)
+	if fill_pct > 0.0:
+		_draw_wide_u_progress_segment(fill_color, 0.0, fill_pct, width)
+
+func _draw_wide_u_progress_segment(color: Color, start_pct: float, finish_pct: float, stroke_width: float) -> void:
+	var start := clampf(start_pct, 0.0, 1.0)
+	var finish := clampf(finish_pct, 0.0, 1.0)
+	if finish <= start:
+		return
+	var points := PackedVector2Array()
+	var steps := maxi(8, int(ceil((finish - start) * 34.0)))
+	for index in range(steps + 1):
+		var pct := lerpf(start, finish, float(index) / float(steps))
+		points.append(_wide_u_progress_point(pct, stroke_width))
+	if points.size() >= 2:
+		draw_polyline(points, color, stroke_width, false)
+
+func _wide_u_progress_point(pct: float, stroke_width: float) -> Vector2:
+	var half_stroke := stroke_width * 0.5
+	var x := lerpf(0.0, size.x, clampf(pct, 0.0, 1.0))
+	var bottom_y := maxf(stroke_width * 0.52 + 8.0, size.y - stroke_width * 0.50)
+	var side_y := maxf(stroke_width * 0.52, bottom_y - wide_u_bottom_rise)
+	var y := lerpf(side_y, bottom_y, sin(clampf(pct, 0.0, 1.0) * PI))
+	return Vector2(x, y)
 
 func _rounded_fill_row_count(rect: Rect2) -> int:
 	return maxi(6, mini(ROUNDED_FILL_ROWS, int(ceil(rect.size.y / 4.0))))

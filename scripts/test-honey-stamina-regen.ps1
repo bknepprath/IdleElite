@@ -84,7 +84,8 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	var honey_module := scene.call("_mat_collection_module", "honey") as Control
+	var material_surface: RefCounted = scene.call("_material_collection_surface")
+	var honey_module := material_surface.call("_mat_collection_module", "honey") as Control
 	root.add_child(honey_module)
 	var honey_info_button := _find_button_with_text(honey_module, "i")
 	if honey_info_button == null:
@@ -100,8 +101,8 @@ func _run() -> void:
 		_fail("honey info popover should become visible when the info button is pressed")
 		return
 
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
 	var render_result = scene.call("_render_screen", false, -1, false)
@@ -113,14 +114,14 @@ func _run() -> void:
 		return
 
 	var skill_color := scene.call("_skill_theme_color", "build") as Color
-	var honey_color := scene.call("_mat_color", "honey") as Color
-	scene.call("_set_mat_amount", "honey", 1.0)
+	var honey_color: Color = scene.material_runtime.color("honey")
+	scene.material_runtime.set_amount("honey", 1.0)
 	scene.call("_set_regen_circle_for_skill", circle, "build", true)
 	if not _colors_close(circle.get("theme_color") as Color, skill_color):
 		_fail("exactly one honey should not activate stamina honey color: %s" % str(circle.get("theme_color")))
 		return
 
-	scene.call("_set_mat_amount", "honey", 2.0)
+	scene.material_runtime.set_amount("honey", 2.0)
 	scene.call("_set_regen_circle_for_skill", circle, "build", true)
 	if not _colors_close(circle.get("target_theme_color") as Color, skill_color):
 		_fail("honey stamina gauge changed the inner fill target: actual=%s expected=%s" % [str(circle.get("target_theme_color")), str(skill_color)])
@@ -154,8 +155,8 @@ func _run() -> void:
 	if absf(honey_only_bank - 2.0) > 0.01:
 		_fail("honey regen should add 2 seconds per 1 second tick, got %.4f" % honey_only_bank)
 		return
-	if absf(float(scene.call("_mat_amount", "honey")) - 1.0) > 0.01:
-		_fail("starting honey regen should consume one honey, got %.4f" % float(scene.call("_mat_amount", "honey")))
+	if absf(scene.material_runtime.amount("honey") - 1.0) > 0.01:
+		_fail("starting honey regen should consume one honey, got %.4f" % scene.material_runtime.amount("honey"))
 		return
 	if absf(float(scene.get("honey_stamina_seconds_remaining")) - 9.0) > 0.01:
 		_fail("one consumed honey should leave 9 boosted seconds after a 1 second tick, got %.4f" % float(scene.get("honey_stamina_seconds_remaining")))
@@ -171,7 +172,7 @@ func _run() -> void:
 		_fail("honey and manual hold regen should multiply to 6 seconds per tick, got %.4f" % stacked_bank)
 		return
 
-	scene.call("_set_mat_amount", "honey", 2.0)
+	scene.material_runtime.set_amount("honey", 2.0)
 	scene.set("honey_stamina_seconds_remaining", 0.0)
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 25.0))
 	_set_stamina_bank(scene, "build", 0.0)
@@ -182,14 +183,14 @@ func _run() -> void:
 	if absf(expired_honey_bank - 10.0) > 0.01:
 		_fail("two honey should boost the full 11 second tick and leave bank 10, got %.4f" % expired_honey_bank)
 		return
-	if absf(float(scene.call("_mat_amount", "honey")) - 0.0) > 0.01:
-		_fail("expired honey regen should consume all available honey, got %.4f" % float(scene.call("_mat_amount", "honey")))
+	if absf(scene.material_runtime.amount("honey") - 0.0) > 0.01:
+		_fail("expired honey regen should consume all available honey, got %.4f" % scene.material_runtime.amount("honey"))
 		return
 	if absf(float(scene.get("honey_stamina_seconds_remaining")) - 9.0) > 0.01:
 		_fail("second honey should leave 9 boosted seconds after rollover, got %.4f" % float(scene.get("honey_stamina_seconds_remaining")))
 		return
 
-	scene.call("_set_mat_amount", "honey", 5.0)
+	scene.material_runtime.set_amount("honey", 5.0)
 	scene.set("honey_stamina_seconds_remaining", 0.0)
 	_set_skill_stamina(scene, "build", max_stamina)
 	if not bool(scene.call("_spend_action_stamina", "build", 2.0)):
@@ -198,23 +199,23 @@ func _run() -> void:
 	if absf(_skill_stamina(scene, "build") - (max_stamina - 2.0)) > 0.01:
 		_fail("spending two stamina should reduce build stamina by two")
 		return
-	if absf(float(scene.call("_mat_amount", "honey")) - 5.0) > 0.01:
-		_fail("spending stamina should not consume honey until regen, got %.4f" % float(scene.call("_mat_amount", "honey")))
+	if absf(scene.material_runtime.amount("honey") - 5.0) > 0.01:
+		_fail("spending stamina should not consume honey until regen, got %.4f" % scene.material_runtime.amount("honey"))
 		return
 
-	scene.call("_set_mat_amount", "honey", 1.0)
+	scene.material_runtime.set_amount("honey", 1.0)
 	scene.set("honey_stamina_seconds_remaining", 0.0)
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 5.0))
 	_set_stamina_bank(scene, "build", 0.0)
 	scene.call("_apply_stamina_regen_seconds", 1.0, true)
-	if absf(float(scene.call("_mat_amount", "honey")) - 0.0) > 0.01:
-		_fail("final honey should be consumed by stamina regen, got %.4f" % float(scene.call("_mat_amount", "honey")))
+	if absf(scene.material_runtime.amount("honey") - 0.0) > 0.01:
+		_fail("final honey should be consumed by stamina regen, got %.4f" % scene.material_runtime.amount("honey"))
 		return
 	if absf(float(scene.get("honey_stamina_seconds_remaining")) - 9.0) > 0.01:
 		_fail("final honey should leave 9 boosted seconds after a 1 second tick, got %.4f" % float(scene.get("honey_stamina_seconds_remaining")))
 		return
 
-	print("honey-stamina-regen-ok honey_only=%.4f stacked=%.4f honey_after_spend=%.4f color=%s" % [honey_only_bank, stacked_bank, float(scene.call("_mat_amount", "honey")), str(circle.get("theme_color"))])
+	print("honey-stamina-regen-ok honey_only=%.4f stacked=%.4f honey_after_spend=%.4f color=%s" % [honey_only_bank, stacked_bank, scene.material_runtime.amount("honey"), str(circle.get("theme_color"))])
 	quit(0)
 
 

@@ -21,6 +21,20 @@ static func target_skill_id(owner_skill_id: String, action: Dictionary, skill_de
 	return target if stamina.has(target) else owner_skill_id
 
 
+static func apply(owner_skill_id: String, action: Dictionary, skill_defs: Array, stamina: Dictionary, stamina_value: Callable, max_stamina: Callable, restore_stamina: Callable) -> Dictionary:
+	var recovery := contract(action)
+	if recovery.is_empty():
+		return {}
+	var skill_id := target_skill_id(owner_skill_id, action, skill_defs, stamina, stamina_value, max_stamina)
+	var restored := float(restore_stamina.call(skill_id, maxf(0.0, float(recovery.get("stamina", 0.0)))))
+	if restored <= 0.0001:
+		return {}
+	return {
+		"skill_id": skill_id,
+		"amount": restored
+	}
+
+
 static func result_text(result: Dictionary, skill_name: Callable, stamina_amount_text: Callable) -> String:
 	if result.is_empty():
 		return ""

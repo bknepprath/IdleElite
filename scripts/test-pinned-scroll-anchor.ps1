@@ -77,9 +77,9 @@ func _run() -> void:
 	if not await _wait_for_boot_hidden(scene):
 		_fail("boot splash did not hide before scroll-anchor capture")
 		return
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	await _check_top_pin_does_not_render_pinned_shelf(scene)
 	await _check_pin_unpin_preserves_mid_scroll(scene)
 	await _check_multiple_pins_can_scroll_to_bottom_clearance(scene)

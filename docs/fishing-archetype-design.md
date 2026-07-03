@@ -198,7 +198,7 @@ Same four fills for every archetype; **meaning depends on archetype** (see table
 
 ## Implementation phases
 
-1. **Done / starting:** Per-method `FishingAttemptBar` under art; archetype display curves; expanded `_fishing_method_archetype()`.
+1. **Done / starting:** Per-method `FishingAttemptBar` under art; archetype display curves; expanded `FishingState.method_archetype()`.
 2. **Next:** Per-archetype `calm_end` / `bite_end` on fluid strip *optional* ambient boost only.
 3. **Next:** Archetype sway profiles on active art.
 4. **Next:** `archetype` field in `activity-database.json` (optional; code map remains fallback).

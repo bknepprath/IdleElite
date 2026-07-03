@@ -518,6 +518,17 @@
           "display_tags": [
             "Prototype"
           ],
+          "combat": {
+            "enemy_id": "chicken-swarm",
+            "enemy_kind": "swarm",
+            "arena_shape": "diamond",
+            "speed": 1,
+            "health": 38,
+            "spawn_rhythm": 0.9,
+            "contact_damage": 8,
+            "reward_xp": 8,
+            "art_ref": "assets/content/fight/prototype/chicken-idle.png"
+          },
           "art": "assets/content/fight/actions/fight-chicken-sparring-pit.png",
           "background": "assets/content/fight/backgrounds/01-early.png"
         },
@@ -536,14 +547,82 @@
           "costs": {
             "stamina": 2
           },
+          "build": {
+            "cost": {
+              "scrapwood": 3
+            },
+            "label": "Build"
+          },
           "art": "assets/content/fight/actions/05-duel-leaning-fence-post.png",
           "background": "assets/content/fight/backgrounds/01-early.png"
+        },
+        {
+          "id": "wrap-hands",
+          "tier": 5,
+          "name": "Wrap Hands",
+          "unlock": 7,
+          "stamina": -3,
+          "seconds": 10.2,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -3
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 3,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/fight/actions/02-kick-mud-off-boot.png",
+          "background": "assets/content/fight/backgrounds/01-early.png"
+        },
+        {
+          "id": "face-the-rooster",
+          "tier": 6,
+          "kind": "boss_fight",
+          "name": "Face The Rooster",
+          "unlock": 8,
+          "sort_unlock": 8,
+          "stamina": 2,
+          "seconds": 3.2,
+          "xp": 18,
+          "success": 100,
+          "rewards": {
+            "xp": 18
+          },
+          "costs": {
+            "stamina": 2
+          },
+          "boss": {
+            "id": "rooster",
+            "name": "Rooster",
+            "hp": 100,
+            "requires": [
+              {
+                "skill": "fight",
+                "level": 8
+              }
+            ]
+          },
+          "blocks_after": true,
+          "display_tags": [
+            "Boss",
+            "Gate"
+          ],
+          "art": "assets/content/fight/actions/fight-chicken-sparring-pit.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
           "id": "outmuscle-angry-wheelbarrow",
           "tier": 6,
           "name": "Outmuscle Angry Wheelbarrow",
-          "unlock": 8,
+          "unlock": 9,
           "stamina": 2,
           "seconds": 1.9,
           "xp": 11,
@@ -554,8 +633,12 @@
           "costs": {
             "stamina": 2
           },
+          "requires_bosses": [
+            "rooster"
+          ],
           "art": "assets/content/fight/actions/06-outmuscle-angry-wheelbarrow.png",
-          "background": "assets/content/fight/backgrounds/02-rising.png"
+          "background": "assets/content/fight/backgrounds/02-rising.png",
+          "sort_unlock": 9
         },
         {
           "id": "brawl-with-kicking-milk-pail",
@@ -635,10 +718,43 @@
           "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
+          "id": "fight-goblins",
+          "tier": 9,
+          "name": "Fight Goblins",
+          "unlock": 16,
+          "sort_unlock": 16,
+          "stamina": 2,
+          "seconds": 2.5,
+          "xp": 22,
+          "success": 86.8,
+          "rewards": {
+            "xp": 22
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "combat": {
+            "enemy_id": "goblins",
+            "enemy_kind": "skirmisher",
+            "speed": 1.12,
+            "health": 99,
+            "spawn_rhythm": 0.84,
+            "contact_damage": 14,
+            "reward_xp": 22,
+            "art_ref": "assets/content/fight/enemies/goblins/goblins-states-source.png",
+            "arena_shape": "diamond"
+          },
+          "display_tags": [
+            "Combat"
+          ],
+          "art": "assets/content/fight/enemies/goblins/goblins-idle.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png"
+        },
+        {
           "id": "grapple-overfull-compost-bin",
           "tier": 9,
           "name": "Grapple Compost Bin",
-          "unlock": 16,
+          "unlock": 17,
           "stamina": 2,
           "seconds": 2.43,
           "xp": 21,
@@ -650,6 +766,33 @@
             "stamina": 3
           },
           "art": "assets/content/fight/actions/09-grapple-overfull-compost-bin.png",
+          "background": "assets/content/fight/backgrounds/02-rising.png",
+          "sort_unlock": 17
+        },
+        {
+          "id": "catch-breath-between-rounds",
+          "tier": 12,
+          "name": "Catch Breath Between Rounds",
+          "unlock": 19,
+          "stamina": -4,
+          "seconds": 12.0,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -4
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 4,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/fight/actions/08-square-up-with-rake-in-grass.png",
           "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
@@ -689,6 +832,39 @@
           "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
+          "id": "fight-rouses",
+          "tier": 12,
+          "name": "Fight R.O.U.S.es",
+          "unlock": 24,
+          "sort_unlock": 24,
+          "stamina": 3,
+          "seconds": 3.55,
+          "xp": 36,
+          "success": 85.5,
+          "rewards": {
+            "xp": 36
+          },
+          "costs": {
+            "stamina": 4
+          },
+          "combat": {
+            "enemy_id": "rouses",
+            "enemy_kind": "brute",
+            "speed": 0.88,
+            "health": 173,
+            "spawn_rhythm": 1.05,
+            "contact_damage": 20,
+            "reward_xp": 36,
+            "art_ref": "assets/content/fight/enemies/rouses/rouses-states-source.png",
+            "arena_shape": "diamond"
+          },
+          "display_tags": [
+            "Combat"
+          ],
+          "art": "assets/content/fight/enemies/rouses/rouses-idle.png",
+          "background": "assets/content/fight/backgrounds/03-mid.png"
+        },
+        {
           "id": "fight-the-barn-door-at-midnight",
           "tier": 12,
           "name": "Fight Barn Door",
@@ -722,6 +898,65 @@
             "stamina": 5
           },
           "art": "assets/content/fight/actions/13-challenge-the-silo-echo.png",
+          "background": "assets/content/fight/backgrounds/03-mid.png"
+        },
+        {
+          "id": "fight-guys",
+          "tier": 14,
+          "name": "Fight Guys",
+          "unlock": 32,
+          "sort_unlock": 32,
+          "stamina": 4,
+          "seconds": 4.22,
+          "xp": 58,
+          "success": 81.5,
+          "rewards": {
+            "xp": 58
+          },
+          "costs": {
+            "stamina": 5
+          },
+          "combat": {
+            "enemy_id": "guys",
+            "enemy_kind": "duelist",
+            "speed": 1.05,
+            "health": 299,
+            "spawn_rhythm": 0.92,
+            "contact_damage": 26,
+            "reward_xp": 58,
+            "art_ref": "assets/content/fight/enemies/guys/guys-states-source.png",
+            "arena_shape": "diamond"
+          },
+          "display_tags": [
+            "Combat"
+          ],
+          "art": "assets/content/fight/enemies/guys/guys-idle.png",
+          "background": "assets/content/fight/backgrounds/03-mid.png"
+        },
+        {
+          "id": "shake-out-the-gloves",
+          "tier": 19,
+          "name": "Shake Out The Gloves",
+          "unlock": 36,
+          "stamina": -5,
+          "seconds": 14.4,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -5
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 5,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/fight/actions/14-survive-the-hayloft-ambush.png",
           "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
@@ -823,6 +1058,39 @@
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
+          "id": "fight-werewolves",
+          "tier": 17,
+          "name": "Fight Werewolves",
+          "unlock": 47,
+          "sort_unlock": 47,
+          "stamina": 7,
+          "seconds": 5.95,
+          "xp": 96,
+          "success": 73.8,
+          "rewards": {
+            "xp": 96
+          },
+          "costs": {
+            "stamina": 6
+          },
+          "combat": {
+            "enemy_id": "werewolves",
+            "enemy_kind": "charger",
+            "speed": 1.28,
+            "health": 743,
+            "spawn_rhythm": 0.7,
+            "contact_damage": 44,
+            "reward_xp": 96,
+            "art_ref": "assets/content/fight/enemies/werewolves/werewolves-states-source.png",
+            "arena_shape": "diamond"
+          },
+          "display_tags": [
+            "Combat"
+          ],
+          "art": "assets/content/fight/enemies/werewolves/werewolves-idle.png",
+          "background": "assets/content/fight/backgrounds/04-late.png"
+        },
+        {
           "id": "trade-blows-with-the-weather-vane",
           "tier": 17,
           "name": "Parry Weather Vane",
@@ -837,6 +1105,32 @@
           "costs": {
             "stamina": 6
           },
+          "art": "assets/content/fight/actions/17-trade-blows-with-the-weather-vane.png",
+          "background": "assets/content/fight/backgrounds/04-late.png"
+        },
+        {
+          "id": "ice-the-bruises",
+          "tier": 27,
+          "name": "Ice The Bruises",
+          "unlock": 56,
+          "stamina": -7,
+          "seconds": 16.8,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -7
+          },
+          "recovery": {
+            "target": "lowest",
+            "stamina": 7,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
           "art": "assets/content/fight/actions/17-trade-blows-with-the-weather-vane.png",
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
@@ -856,6 +1150,39 @@
             "stamina": 6
           },
           "art": "assets/content/fight/actions/18-dodge-the-irrigation-betrayal.png",
+          "background": "assets/content/fight/backgrounds/04-late.png"
+        },
+        {
+          "id": "fight-cave-trolls",
+          "tier": 19,
+          "name": "Fight Cave Trolls",
+          "unlock": 59,
+          "sort_unlock": 59,
+          "stamina": 8,
+          "seconds": 7.12,
+          "xp": 124,
+          "success": 68.5,
+          "rewards": {
+            "xp": 124
+          },
+          "costs": {
+            "stamina": 7
+          },
+          "combat": {
+            "enemy_id": "cave-trolls",
+            "enemy_kind": "heavy",
+            "speed": 0.7,
+            "health": 1211,
+            "spawn_rhythm": 1.25,
+            "contact_damage": 65,
+            "reward_xp": 124,
+            "art_ref": "assets/content/fight/enemies/cave-trolls/cave-trolls-states-source.png",
+            "arena_shape": "diamond"
+          },
+          "display_tags": [
+            "Combat"
+          ],
+          "art": "assets/content/fight/enemies/cave-trolls/cave-trolls-idle.png",
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
@@ -909,6 +1236,65 @@
           "costs": {
             "stamina": 7
           },
+          "art": "assets/content/fight/actions/21-hold-the-line-at-the-pumpkin-patch.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
+        },
+        {
+          "id": "fight-giants",
+          "tier": 22,
+          "name": "Fight Giants",
+          "unlock": 74,
+          "sort_unlock": 74,
+          "stamina": 11,
+          "seconds": 8.7,
+          "xp": 198,
+          "success": 61.5,
+          "rewards": {
+            "xp": 198
+          },
+          "costs": {
+            "stamina": 8
+          },
+          "combat": {
+            "enemy_id": "giants",
+            "enemy_kind": "scaled_guy",
+            "speed": 0.76,
+            "health": 2123,
+            "spawn_rhythm": 1.12,
+            "contact_damage": 105,
+            "reward_xp": 198,
+            "art_ref": "assets/content/fight/enemies/guys/guys-states-source.png",
+            "arena_shape": "diamond"
+          },
+          "display_tags": [
+            "Combat"
+          ],
+          "art": "assets/content/fight/enemies/guys/guys-idle.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
+        },
+        {
+          "id": "slow-shadow-boxing",
+          "tier": 34,
+          "name": "Slow Shadow Boxing",
+          "unlock": 75,
+          "stamina": -9,
+          "seconds": 19.2,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -9
+          },
+          "recovery": {
+            "target": "lowest",
+            "stamina": 9,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
           "art": "assets/content/fight/actions/21-hold-the-line-at-the-pumpkin-patch.png",
           "background": "assets/content/fight/backgrounds/05-finale.png"
         },
@@ -982,6 +1368,72 @@
             "stamina": 9
           },
           "art": "assets/content/fight/actions/25-rematch-the-same-hay-bale-somehow-stronger.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
+        },
+        {
+          "id": "fight-vampires",
+          "tier": 25,
+          "name": "Fight Vampires",
+          "unlock": 88,
+          "sort_unlock": 88,
+          "stamina": 13,
+          "seconds": 10,
+          "xp": 330,
+          "success": 54.5,
+          "rewards": {
+            "xp": 330
+          },
+          "costs": {
+            "stamina": 9
+          },
+          "combat": {
+            "enemy_id": "vampires",
+            "enemy_kind": "elusive",
+            "speed": 1.38,
+            "health": 3211,
+            "spawn_rhythm": 0.62,
+            "contact_damage": 120,
+            "reward_xp": 330,
+            "art_ref": "assets/content/fight/enemies/vampires/vampires-states-source.png",
+            "arena_shape": "diamond"
+          },
+          "display_tags": [
+            "Combat"
+          ],
+          "art": "assets/content/fight/enemies/vampires/vampires-idle.png",
+          "background": "assets/content/fight/backgrounds/05-finale.png"
+        },
+        {
+          "id": "fight-dragons",
+          "tier": 26,
+          "name": "Fight Dragons",
+          "unlock": 98,
+          "sort_unlock": 98,
+          "stamina": 15,
+          "seconds": 11.2,
+          "xp": 440,
+          "success": 50.5,
+          "rewards": {
+            "xp": 440
+          },
+          "costs": {
+            "stamina": 10
+          },
+          "combat": {
+            "enemy_id": "dragons",
+            "enemy_kind": "boss_wave",
+            "speed": 0.95,
+            "health": 5754,
+            "spawn_rhythm": 0.98,
+            "contact_damage": 230,
+            "reward_xp": 440,
+            "art_ref": "assets/content/fight/enemies/dragons/dragons-states-source.png",
+            "arena_shape": "diamond"
+          },
+          "display_tags": [
+            "Combat"
+          ],
+          "art": "assets/content/fight/enemies/dragons/dragons-idle.png",
           "background": "assets/content/fight/backgrounds/05-finale.png"
         }
       ]
@@ -1120,6 +1572,32 @@
           "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
+          "id": "count-the-coins",
+          "tier": 7,
+          "name": "Count The Coins",
+          "unlock": 6,
+          "stamina": -2,
+          "seconds": 6.8,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -2
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 2,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/thieving/actions/05-distract-fruit-stand-with-jazz-hands.png",
+          "background": "assets/content/thieving/backgrounds/01-early.png"
+        },
+        {
           "id": "distract-fruit-stand-with-jazz-hands",
           "tier": 6,
           "name": "Jazz Hands Diversion",
@@ -1153,24 +1631,6 @@
             "stamina": 2
           },
           "art": "assets/content/thieving/actions/06-pick-the-world-s-friendliest-lock.png",
-          "background": "assets/content/thieving/backgrounds/02-rising.png"
-        },
-        {
-          "id": "swap-price-tags-at-the-broom-store",
-          "tier": 8,
-          "name": "Swap Broom Price Tags",
-          "unlock": 12,
-          "stamina": 2,
-          "seconds": 1.91,
-          "xp": 14,
-          "success": 90,
-          "rewards": {
-            "xp": 14
-          },
-          "costs": {
-            "stamina": 3
-          },
-          "art": "assets/content/thieving/actions/07-swap-price-tags-at-the-broom-store.png",
           "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
@@ -1222,6 +1682,24 @@
           "background": "assets/content/combo/thieving/backgrounds/lift-honey-from-beehive.png"
         },
         {
+          "id": "swap-price-tags-at-the-broom-store",
+          "tier": 8,
+          "name": "Swap Broom Price Tags",
+          "unlock": 12,
+          "stamina": 2,
+          "seconds": 1.91,
+          "xp": 14,
+          "success": 90,
+          "rewards": {
+            "xp": 14
+          },
+          "costs": {
+            "stamina": 3
+          },
+          "art": "assets/content/thieving/actions/07-swap-price-tags-at-the-broom-store.png",
+          "background": "assets/content/thieving/backgrounds/02-rising.png"
+        },
+        {
           "id": "steal-a-wallet-from-a-mannequin",
           "tier": 9,
           "name": "Steal Mannequin Wallet",
@@ -1254,6 +1732,32 @@
           "costs": {
             "stamina": 3
           },
+          "art": "assets/content/thieving/actions/09-rob-the-tiny-bank-desk.png",
+          "background": "assets/content/thieving/backgrounds/02-rising.png"
+        },
+        {
+          "id": "hide-in-plain-sight",
+          "tier": 12,
+          "name": "Hide In Plain Sight",
+          "unlock": 18,
+          "stamina": -4,
+          "seconds": 12.0,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -4
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 4,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
           "art": "assets/content/thieving/actions/09-rob-the-tiny-bank-desk.png",
           "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
@@ -1367,6 +1871,32 @@
           "costs": {
             "stamina": 5
           },
+          "art": "assets/content/thieving/actions/thieving-swipe-the-banks-practice-vault.png",
+          "background": "assets/content/thieving/backgrounds/03-mid.png"
+        },
+        {
+          "id": "case-the-quiet-corner",
+          "tier": 17,
+          "name": "Case The Quiet Corner",
+          "unlock": 33,
+          "stamina": -5,
+          "seconds": 14.4,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -5
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 5,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
           "art": "assets/content/thieving/actions/thieving-swipe-the-banks-practice-vault.png",
           "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
@@ -1534,6 +2064,32 @@
           "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
+          "id": "lay-low-until-morning",
+          "tier": 24,
+          "name": "Lay Low Until Morning",
+          "unlock": 52,
+          "stamina": -7,
+          "seconds": 16.8,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -7
+          },
+          "recovery": {
+            "target": "lowest",
+            "stamina": 7,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/thieving/actions/17-pickpocket-the-security-camera.png",
+          "background": "assets/content/thieving/backgrounds/04-late.png"
+        },
+        {
           "id": "pickpocket-the-security-camera",
           "tier": 17,
           "name": "Pickpocket Camera",
@@ -1621,6 +2177,32 @@
             "stamina": 7
           },
           "art": "assets/content/thieving/actions/21-burgle-the-dream-of-a-sleeping-wizard.png",
+          "background": "assets/content/thieving/backgrounds/05-finale.png"
+        },
+        {
+          "id": "nap-behind-the-market-stall",
+          "tier": 29,
+          "name": "Nap Behind The Market Stall",
+          "unlock": 72,
+          "stamina": -9,
+          "seconds": 19.2,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -9
+          },
+          "recovery": {
+            "target": "lowest",
+            "stamina": 9,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/thieving/actions/22-shoplift-from-the-concept-of-money.png",
           "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
@@ -1868,6 +2450,32 @@
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
+          "id": "sharpen-the-pencil",
+          "tier": 7,
+          "name": "Sharpen The Pencil",
+          "unlock": 8,
+          "stamina": -4,
+          "seconds": 13.6,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -4
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 4,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/build/actions/03-study-blueprint.png",
+          "background": "assets/content/build/backgrounds/01-early.png"
+        },
+        {
           "id": "install-door-that-mostly-opens",
           "tier": 5,
           "name": "Install Door That Mostly Opens",
@@ -1978,6 +2586,32 @@
             "stamina": 3
           },
           "art": "assets/content/build/actions/08-pour-questionable-foundation.png",
+          "background": "assets/content/build/backgrounds/02-rising.png"
+        },
+        {
+          "id": "sit-on-the-toolbox",
+          "tier": 12,
+          "name": "Sit On The Toolbox",
+          "unlock": 22,
+          "stamina": -4,
+          "seconds": 12.0,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -4
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 4,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/build/actions/09-upgrade-training-yard.png",
           "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
@@ -2138,6 +2772,32 @@
           "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
+          "id": "sweep-the-worksite",
+          "tier": 18,
+          "name": "Sweep The Worksite",
+          "unlock": 38,
+          "stamina": -5,
+          "seconds": 14.4,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -5
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 5,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/build/actions/12-build-town-notice-board.png",
+          "background": "assets/content/build/backgrounds/03-mid.png"
+        },
+        {
           "id": "assemble-windmill-that-judges-you",
           "tier": 14,
           "name": "Assemble Windmill",
@@ -2190,6 +2850,32 @@
           },
           "art": "assets/content/build/actions/15-raise-guild-hall.png",
           "background": "assets/content/build/backgrounds/03-mid.png"
+        },
+        {
+          "id": "inspect-the-blueprints-again",
+          "tier": 23,
+          "name": "Inspect The Blueprints Again",
+          "unlock": 58,
+          "stamina": -7,
+          "seconds": 16.8,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -7
+          },
+          "recovery": {
+            "target": "lowest",
+            "stamina": 7,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/build/actions/15-raise-guild-hall.png",
+          "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
           "id": "build-market-stall",
@@ -2280,6 +2966,32 @@
           },
           "art": "assets/content/build/actions/20-add-second-elite-tower-on-top.png",
           "background": "assets/content/build/backgrounds/04-late.png"
+        },
+        {
+          "id": "measure-twice-again",
+          "tier": 28,
+          "name": "Measure Twice Again",
+          "unlock": 78,
+          "stamina": -9,
+          "seconds": 19.2,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -9
+          },
+          "recovery": {
+            "target": "lowest",
+            "stamina": 9,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/build/actions/21-construct-underground-town.png",
+          "background": "assets/content/build/backgrounds/05-finale.png"
         },
         {
           "id": "construct-underground-town",
@@ -2438,7 +3150,7 @@
           ],
           "passive": {
             "resource": "scrapwood",
-            "rate_per_minute": 1.0,
+            "rate_per_minute": 1,
             "buff": "Warm Momentum",
             "buff_targets": "non_woodcutting_activities"
           },
@@ -2532,6 +3244,32 @@
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
+          "id": "lean-on-the-axe",
+          "tier": 7,
+          "name": "Lean On The Axe",
+          "unlock": 7,
+          "stamina": -3,
+          "seconds": 10.2,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -3
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 3,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/woodcutting/actions/04-chop-softwood-tree.png",
+          "background": "assets/content/woodcutting/backgrounds/01-early.png"
+        },
+        {
           "id": "chop-softwood-tree",
           "tier": 6,
           "name": "Chop Softwood Tree",
@@ -2573,7 +3311,16 @@
             "stamina": 3
           },
           "art": "assets/content/woodcutting/actions/07-prune-orchard-row.png",
-          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png",
+          "mat_rewards": [
+            {
+              "id": "berries",
+              "min": 1,
+              "max": 1,
+              "whole": true,
+              "chance": 1.0
+            }
+          ]
         },
         {
           "id": "fell-skinny-pine",
@@ -2627,6 +3374,32 @@
             "stamina": 3
           },
           "art": "assets/content/woodcutting/actions/08-chop-knotty-maple.png",
+          "background": "assets/content/woodcutting/backgrounds/02-rising.png"
+        },
+        {
+          "id": "snack-on-trail-mix",
+          "tier": 12,
+          "name": "Snack On Trail Mix",
+          "unlock": 21,
+          "stamina": -4,
+          "seconds": 12.0,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -4
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 4,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/woodcutting/actions/10-clear-dense-grove.png",
           "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
@@ -2726,6 +3499,32 @@
           "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
+          "id": "oil-the-axe-handle",
+          "tier": 17,
+          "name": "Oil The Axe Handle",
+          "unlock": 36,
+          "stamina": -5,
+          "seconds": 14.4,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -5
+          },
+          "recovery": {
+            "target": "self",
+            "stamina": 5,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/woodcutting/actions/12-carve-through-fallen-giant.png",
+          "background": "assets/content/woodcutting/backgrounds/03-mid.png"
+        },
+        {
           "id": "chop-ancient-tree",
           "tier": 14,
           "name": "Chop Ancient Tree",
@@ -2811,6 +3610,32 @@
           "costs": {
             "stamina": 6
           },
+          "art": "assets/content/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
+          "background": "assets/content/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "stretch-the-splinters-out",
+          "tier": 23,
+          "name": "Stretch The Splinters Out",
+          "unlock": 55,
+          "stamina": -7,
+          "seconds": 16.8,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -7
+          },
+          "recovery": {
+            "target": "lowest",
+            "stamina": 7,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
           "art": "assets/content/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
           "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
@@ -3031,6 +3856,32 @@
           ],
           "art": "assets/content/woodcutting/actions/20-clear-the-forest-s-legal-department.png",
           "background": "assets/content/woodcutting/backgrounds/04-late.png"
+        },
+        {
+          "id": "rest-under-the-stump",
+          "tier": 27,
+          "name": "Rest Under The Stump",
+          "unlock": 76,
+          "stamina": -9,
+          "seconds": 19.2,
+          "xp": 1,
+          "success": 100,
+          "rewards": {
+            "xp": 1
+          },
+          "costs": {
+            "stamina": -9
+          },
+          "recovery": {
+            "target": "lowest",
+            "stamina": 9,
+            "label": "Recover"
+          },
+          "display_tags": [
+            "Recovery"
+          ],
+          "art": "assets/content/woodcutting/actions/19-harvest-moonlit-silverwood.png",
+          "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
           "id": "axe-the-world-trees-paperwork",

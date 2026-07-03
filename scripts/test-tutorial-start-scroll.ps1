@@ -89,8 +89,8 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
@@ -101,13 +101,13 @@ func _run() -> void:
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
 
-	scene.call("_reset_data")
+	scene.call("_save_runtime").call("reset_data")
 	for _i in range(8):
 		await _wait_test_frame()
-	scene.call("_tutorial_check_progress")
+	scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _tutorial_skill_page_ready(scene):
 			break
 

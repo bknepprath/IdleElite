@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
 const DEFAULT_RESULT_PATH := "res://.codex-tmp/fishing-cold-render-probe/result.json"
 
 
@@ -75,8 +77,8 @@ func _force_level_99_fishing_state(main: Node) -> void:
 	for skill_id in ["fight", "build", "woodcutting", "thieving"]:
 		_set_skill_level(main, skill_id, 1)
 	_set_skill_level(main, "fishing", 99)
-	main.call("_god_mode_unlock_actions_state")
-	main.call("_god_mode_unlock_fishing_tools_state")
+	main.call("_test_state_runtime")._god_mode_unlock_actions_state()
+	main.call("_test_state_runtime")._god_mode_unlock_fishing_tools_state()
 	main.call("_sync_manual_activity_unlocks_from_levels")
 	main.set("current_screen", "skill")
 	main.set("selected_skill_id", "fishing")
@@ -95,7 +97,7 @@ func _set_skill_level(main: Node, skill_id: String, level: int) -> void:
 	var skills := main.get("skills") as Dictionary
 	if not skills.has(skill_id):
 		skills[skill_id] = {"xp": 0, "level": 1}
-	(skills[skill_id] as Dictionary)["xp"] = int(main.call("_xp_for_level", level))
+	(skills[skill_id] as Dictionary)["xp"] = SkillState.xp_for_level(level)
 	(skills[skill_id] as Dictionary)["level"] = level
 	main.set("skills", skills)
 	main.call("_recalculate_level", skill_id, false)

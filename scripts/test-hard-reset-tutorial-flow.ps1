@@ -53,6 +53,8 @@ try {
     @'
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 120
 const TEST_FRAME_SECONDS := 1.0 / 120.0
@@ -73,17 +75,17 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	scene.call("_show_settings")
+	scene.call("_settings_surface").call("_show_settings")
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
 	if str(scene.get("current_screen")) != "settings":
 		_fail("settings screen did not open before reset: %s" % _summary(scene))
 		return
 
-	scene.call("_reset_data")
+	scene.call("_save_runtime").call("reset_data")
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if bool(scene.get("tutorial_active")) and _tutorial_skill_page_ready(scene):
 			break
 
@@ -117,7 +119,7 @@ func _run() -> void:
 		return
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if not str(scene.get("running_action_id")).is_empty():
 			break
 	if str(scene.get("running_action_id")).is_empty():
@@ -147,7 +149,7 @@ func _run() -> void:
 	print("hard-reset-tutorial-flow-stage starter-clicked")
 	for _i in range(360):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if nav_bar == null or not nav_bar.visible:
 			_fail("bottom nav shell disappeared while the first tutorial activity was running: %s" % _summary(scene))
 			return
@@ -165,7 +167,7 @@ func _run() -> void:
 			return
 	for _i in range(960):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _mastery_tip_visible(scene):
 			break
 	if not _mastery_tip_visible(scene):
@@ -174,7 +176,7 @@ func _run() -> void:
 	print("hard-reset-tutorial-flow-stage mastery-tip-observed")
 	var test_skills := scene.get("skills") as Dictionary
 	var fight_state := test_skills.get("fight", {}) as Dictionary
-	fight_state["xp"] = scene.call("_xp_for_level", 2)
+	fight_state["xp"] = SkillState.xp_for_level(2)
 	test_skills["fight"] = fight_state
 	scene.set("skills", test_skills)
 	scene.call("_recalculate_level", "fight", true)
@@ -183,7 +185,7 @@ func _run() -> void:
 		await lock_tip_refresh
 	for _i in range(360):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _lock_click_tip_visible(scene):
 			break
 	if not _lock_click_tip_visible(scene):
@@ -203,10 +205,10 @@ func _run() -> void:
 	if bool(scene.call("_tutorial_level_two_unlock_should_use_fast_reveal", "fight", "wrestle-stuck-gate-latch")):
 		_fail("only the level 2 tutorial module should use the fast reveal path")
 		return
-	scene.call("_toggle_auto_unlock_lockpads_enabled")
+	scene.call("_settings_surface").call("toggle_auto_unlock_lockpads_enabled")
 	for _i in range(240):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 	if not bool(scene.get("auto_unlock_lockpads_enabled")):
 		_fail("auto-unlock toggle did not turn on during onboarding: %s" % _summary(scene))
 		return
@@ -234,13 +236,14 @@ func _run() -> void:
 	var test_stamina := scene.get("stamina") as Dictionary
 	test_stamina["fight"] = scene.call("_max_stamina", "fight")
 	scene.set("stamina", test_stamina)
-	scene.call("_maybe_trigger_onboarding_swipe_tip_at_zero_stamina", "fight")
+	var onboarding_runtime := scene.call("_onboarding_runtime") as Object
+	onboarding_runtime.call("_maybe_trigger_onboarding_swipe_tip_at_zero_stamina", "fight")
 	var swipe_tip_refresh = scene.call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
 	if swipe_tip_refresh != null:
 		await swipe_tip_refresh
 	for _i in range(720):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _has_page_switch_module(scene) and _skill_swipe_tip_between_level_two_and_three(scene):
 			break
 	if not _has_page_switch_module(scene):
@@ -282,7 +285,7 @@ func _run() -> void:
 		return
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _tutorial_skill_page_ready(scene):
 			break
 	if bool(scene.get("tutorial_active")):
@@ -296,7 +299,8 @@ func _run() -> void:
 		return
 	print("hard-reset-tutorial-flow-stage reload-ok")
 
-	scene.call("_graduate_onboarding_tutorial")
+	onboarding_runtime = scene.call("_onboarding_runtime") as Object
+	onboarding_runtime.call("_graduate_onboarding_tutorial")
 	for _i in range(8):
 		await _wait_test_frame()
 	if not _completion_bottom_chrome_fade_started(scene):
@@ -314,10 +318,10 @@ func _run() -> void:
 		return
 	print("hard-reset-tutorial-flow-stage graduation-ok")
 
-	scene.call("_reset_data")
+	scene.call("_save_runtime").call("reset_data")
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if bool(scene.get("tutorial_active")) and _tutorial_skill_page_ready(scene):
 			break
 	if not bool(scene.get("tutorial_active")) or int(scene.get("tutorial_step")) != 1:
@@ -354,7 +358,8 @@ func _instantiate_main(packed: PackedScene) -> Node:
 
 
 func _press_tutorial_target(scene: Node) -> bool:
-	var target := scene.call("_tutorial_target_control") as Control
+	var tutorial_overlay_surface := scene.call("_tutorial_overlay_surface") as Object
+	var target := tutorial_overlay_surface.call("_tutorial_target_control") as Control
 	if target == null or not is_instance_valid(target) or not target.is_visible_in_tree():
 		return false
 	var position := target.get_global_rect().get_center()
@@ -363,13 +368,13 @@ func _press_tutorial_target(scene: Node) -> bool:
 	press.pressed = true
 	press.position = position
 	press.global_position = position
-	var accepted := bool(scene.call("_route_tutorial_panel_input", press))
+	var accepted := bool(tutorial_overlay_surface.call("_route_tutorial_panel_input", press))
 	var release := InputEventMouseButton.new()
 	release.button_index = MOUSE_BUTTON_LEFT
 	release.pressed = false
 	release.position = position
 	release.global_position = position
-	scene.call("_route_tutorial_panel_input", release)
+	tutorial_overlay_surface.call("_route_tutorial_panel_input", release)
 	return accepted
 
 
@@ -583,7 +588,7 @@ func _hover_level_two_lock_without_click(scene: Node) -> bool:
 	var motion := InputEventMouseMotion.new()
 	motion.position = position
 	motion.global_position = position
-	scene.call("_route_activity_lock_input", motion)
+	scene.call("_input_routing_shell").call("_route_activity_lock_input", motion)
 	scene.get_viewport().push_input(motion, false)
 	return true
 
@@ -721,13 +726,13 @@ func _press_first_page_switch_button(scene: Node) -> bool:
 		press.pressed = true
 		press.position = position
 		press.global_position = position
-		scene.call("_on_page_switch_button_gui_input", press, target_skill_id, button)
+		scene.call("_navigation_shell").call("_on_page_switch_button_gui_input", press, target_skill_id, button)
 		var release := InputEventMouseButton.new()
 		release.button_index = MOUSE_BUTTON_LEFT
 		release.pressed = false
 		release.position = position
 		release.global_position = position
-		scene.call("_on_page_switch_button_gui_input", release, target_skill_id, button)
+		scene.call("_navigation_shell").call("_on_page_switch_button_gui_input", release, target_skill_id, button)
 		for _i in range(180):
 			await _wait_test_frame()
 			if str(scene.get("selected_skill_id")) != "fight":
@@ -750,8 +755,8 @@ func _stale_page_switch_input_clears_on_suspend(scene: Node) -> bool:
 	button.set_meta("page_switch_press_dragged", false)
 	button.set_meta("activity_button_hold_nav_press", true)
 	button.set_meta("activity_button_hold_nav_target_active", true)
-	scene.call("_save_for_app_suspend")
-	scene.call("_resume_from_app_suspend")
+	scene.call("_app_lifecycle_runtime").call("_save_for_app_suspend")
+	scene.call("_app_lifecycle_runtime").call("_resume_from_app_suspend")
 	for _i in range(12):
 		await _wait_test_frame()
 	if bool(scene.get("page_switch_press_active")):
@@ -768,7 +773,7 @@ func _stale_page_switch_input_clears_on_suspend(scene: Node) -> bool:
 	press.pressed = true
 	press.position = activity_position
 	press.global_position = activity_position
-	return not bool(scene.call("_route_page_switch_button_global_input", press))
+	return not bool(scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", press))
 
 
 func _first_page_switch_button(scene: Node) -> Button:

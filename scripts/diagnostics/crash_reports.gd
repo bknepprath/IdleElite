@@ -45,7 +45,7 @@ static func append_previous_session_summary(lines: Array, previous: Dictionary, 
 	])
 	if previous.has("timestamp_unix"):
 		var previous_time_unix := int(previous.get("timestamp_unix", 0))
-		var age_text := _format_duration(float(maxi(0, report_time_unix - previous_time_unix))) if report_time_unix > 0 else "unknown"
+		var age_text := GameFormatting.duration(float(maxi(0, report_time_unix - previous_time_unix))) if report_time_unix > 0 else "unknown"
 		lines.append("prev_marker: %s age=%s" % [previous_time_unix, age_text])
 	lines.append("screen: %s selected=%s" % [
 		str(previous.get("current_screen", "")),
@@ -54,7 +54,7 @@ static func append_previous_session_summary(lines: Array, previous: Dictionary, 
 	lines.append("running: %s/%s progress=%s" % [
 		str(previous.get("running_skill_id", "")),
 		str(previous.get("running_action_id", "")),
-		_format_significant_digits(float(previous.get("action_progress", 0.0)), 4)
+		GameFormatting.significant_digits(float(previous.get("action_progress", 0.0)), 4)
 	])
 	var last := str(previous.get("last_result", ""))
 	if not last.is_empty():
@@ -162,36 +162,3 @@ static func previous_android_lifecycle_before_launch(events: Array) -> String:
 
 static func previous_android_lifecycle_was_clean(events: Array) -> bool:
 	return previous_android_lifecycle_before_launch(events) in ANDROID_CLEAN_LIFECYCLE_EVENTS
-
-
-static func _format_significant_digits(value: float, digits := 3) -> String:
-	var safe_digits := maxi(1, digits)
-	var absolute := absf(value)
-	if absolute < 0.000001:
-		return "0"
-	var places := safe_digits - 1 - int(floor(log(absolute) / log(10.0)))
-	if places < 0:
-		var factor := pow(10.0, float(-places))
-		return "%.0f" % (round(value / factor) * factor)
-	places = mini(places, 6)
-	var format := "%." + str(places) + "f"
-	return _trim_trailing_decimal_zeroes(format % value)
-
-
-static func _trim_trailing_decimal_zeroes(text: String) -> String:
-	if text.find(".") == -1:
-		return text
-	while text.ends_with("0"):
-		text = text.substr(0, text.length() - 1)
-	if text.ends_with("."):
-		text = text.substr(0, text.length() - 1)
-	return "0" if text == "-0" else text
-
-
-static func _format_duration(seconds: float) -> String:
-	var total_seconds := maxi(0, int(ceil(seconds)))
-	var hours := int(floor(float(total_seconds) / 3600.0))
-	var minutes := int(floor(float(total_seconds % 3600) / 60.0))
-	if hours > 0:
-		return "%sh %sm" % [hours, minutes]
-	return "%sm" % maxi(1, minutes)

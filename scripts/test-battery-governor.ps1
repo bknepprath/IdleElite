@@ -53,7 +53,18 @@ try {
     @'
 extends SceneTree
 
-const MainScript := preload("res://scripts/main.gd")
+const PerformanceRuntime := preload("res://scripts/app/performance_runtime.gd")
+
+class FakeHost:
+	extends Node
+
+	var visual_work_active := false
+
+	func _battery_governor_visual_work_active() -> bool:
+		return visual_work_active
+
+	func _refresh_god_mode_controls() -> void:
+		pass
 
 var failures: Array[String] = []
 
@@ -68,32 +79,32 @@ func _run() -> void:
 	var previous_fps := Engine.max_fps
 	var previous_low_processor := OS.low_processor_usage_mode
 	var previous_sleep_usec := OS.low_processor_usage_mode_sleep_usec
-	var game := MainScript.new()
+	var host := FakeHost.new()
+	var runtime := PerformanceRuntime.new(host)
 
-	game.call("_configure_performance_mode")
+	runtime._configure_performance_mode()
 	_expect(Engine.max_fps == 60, "Expected active mobile frame cap to be 60, got %s." % str(Engine.max_fps))
 	_expect(not OS.low_processor_usage_mode, "Expected active governor state to disable low processor mode.")
 
-	game.set("battery_governor_last_activity_msec", Time.get_ticks_msec() - 100000)
-	game.call("_process_battery_governor")
+	runtime.battery_governor_last_activity_msec = Time.get_ticks_msec() - 100000
+	runtime._process_battery_governor()
 	_expect(Engine.max_fps == 30, "Expected idle mobile frame cap to be 30, got %s." % str(Engine.max_fps))
 	_expect(OS.low_processor_usage_mode, "Expected idle governor state to enable low processor mode.")
 	_expect(OS.low_processor_usage_mode_sleep_usec == 8000, "Expected idle governor sleep usec to be 8000.")
 
-	game.call("_record_battery_governor_activity")
+	runtime._record_battery_governor_activity()
 	_expect(Engine.max_fps == 60, "Expected governor activity to restore 60 FPS, got %s." % str(Engine.max_fps))
 	_expect(not OS.low_processor_usage_mode, "Expected governor activity to disable low processor mode.")
 
-	game.set("current_screen", "skill")
-	game.set("skill_swipe_tracking", true)
-	game.set("battery_governor_last_activity_msec", Time.get_ticks_msec() - 100000)
-	game.call("_process_battery_governor")
+	host.visual_work_active = true
+	runtime.battery_governor_last_activity_msec = Time.get_ticks_msec() - 100000
+	runtime._process_battery_governor()
 	_expect(Engine.max_fps == 60, "Expected swipe work to keep active 60 FPS, got %s." % str(Engine.max_fps))
 	_expect(not OS.low_processor_usage_mode, "Expected swipe work to keep low processor mode disabled.")
 
-	game.set("skill_swipe_tracking", false)
-	game.set("battery_governor_last_activity_msec", Time.get_ticks_msec() - 100000)
-	game.call("_process_battery_governor")
+	host.visual_work_active = false
+	runtime.battery_governor_last_activity_msec = Time.get_ticks_msec() - 100000
+	runtime._process_battery_governor()
 	_expect(Engine.max_fps == 30, "Expected governor to return to idle after swipe work ended.")
 
 	OS.set_environment("IDLE_ELITE_FORCE_MOBILE_BATTERY_GOVERNOR", "0")

@@ -10,7 +10,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $configPath = Join-Path $projectRoot "addons\admob\android\config.gd"
-$mainPath = Join-Path $projectRoot "scripts\main.gd"
+$adBonusPath = Join-Path $projectRoot "scripts\monetization\ad_bonus.gd"
 
 if ($AdMobAppId -notmatch '^ca-app-pub-\d+~\d+$') {
     throw "AdMobAppId must look like ca-app-pub-0000000000000000~0000000000"
@@ -24,8 +24,8 @@ if (-not (Test-Path -LiteralPath $configPath)) {
     throw "Could not find $configPath"
 }
 
-if (-not (Test-Path -LiteralPath $mainPath)) {
-    throw "Could not find $mainPath"
+if (-not (Test-Path -LiteralPath $adBonusPath)) {
+    throw "Could not find $adBonusPath"
 }
 
 $configText = Get-Content -LiteralPath $configPath -Raw
@@ -40,18 +40,18 @@ $configText = [regex]::Replace(
 )
 Set-Content -LiteralPath $configPath -Value $configText -NoNewline
 
-$mainText = Get-Content -LiteralPath $mainPath -Raw
-if ($mainText -notmatch 'const AD_LIVE_UNIT_ANDROID_REWARDED := "[^"]*"') {
-    throw "Could not find AD_LIVE_UNIT_ANDROID_REWARDED constant in $mainPath"
+$adBonusText = Get-Content -LiteralPath $adBonusPath -Raw
+if ($adBonusText -notmatch 'const AD_LIVE_UNIT_ANDROID_REWARDED := "[^"]*"') {
+    throw "Could not find AD_LIVE_UNIT_ANDROID_REWARDED constant in $adBonusPath"
 }
-$mainText = [regex]::Replace(
-    $mainText,
+$adBonusText = [regex]::Replace(
+    $adBonusText,
     'const AD_LIVE_UNIT_ANDROID_REWARDED := "[^"]*"',
     "const AD_LIVE_UNIT_ANDROID_REWARDED := `"$RewardedUnitId`"",
     1
 )
-Set-Content -LiteralPath $mainPath -Value $mainText -NoNewline
+Set-Content -LiteralPath $adBonusPath -Value $adBonusText -NoNewline
 
 Write-Output "Updated Android AdMob app ID in $configPath"
-Write-Output "Updated Android rewarded ad unit ID in $mainPath"
+Write-Output "Updated Android rewarded ad unit ID in $adBonusPath"
 Write-Output "Next: run .\scripts\check-project.ps1, then .\scripts\build-android-release.ps1"

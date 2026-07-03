@@ -44,6 +44,8 @@ try {
     @'
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
 const SETTLE_FRAMES := 120
 const CLICK_SETTLE_FRAMES := 20
 const TEST_FRAME_SECONDS := 1.0 / 120.0
@@ -69,10 +71,10 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	scene.call("_reset_data")
+	scene.call("_save_runtime").call("reset_data")
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if scene.get("tutorial_active") == true and _tutorial_skill_page_ready(scene):
 			break
 	if not _tutorial_skill_page_ready(scene):
@@ -111,7 +113,7 @@ func _run() -> void:
 		return
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if scene.get("tutorial_active") == true and _tutorial_skill_page_ready(scene):
 			break
 	if not _tutorial_skill_page_ready(scene) or scene.get("tutorial_active") != true:
@@ -131,7 +133,7 @@ func _run() -> void:
 		return
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if scene.get("tutorial_active") == true and _tutorial_skill_page_ready(scene):
 			break
 	if not _tutorial_skill_page_ready(scene) or scene.get("tutorial_active") != true:
@@ -162,7 +164,7 @@ func _run() -> void:
 	await _capture_viewport(click_capture, "tutorial-visible-after-click-capture")
 	for _i in range(1800):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _group_has_visible_node(scene, "onboarding_mastery_tip_notes"):
 			break
 	if not _group_has_visible_node(scene, "onboarding_mastery_tip_notes"):
@@ -171,14 +173,14 @@ func _run() -> void:
 	print("tutorial-visible-flow-stage mastery-tip-observed")
 	var test_skills := scene.get("skills") as Dictionary
 	var fight_state := test_skills.get("fight", {}) as Dictionary
-	fight_state["xp"] = scene.call("_xp_for_level", 2)
+	fight_state["xp"] = SkillState.xp_for_level(2)
 	test_skills["fight"] = fight_state
 	scene.set("skills", test_skills)
 	scene.call("_recalculate_level", "fight", true)
 	await scene.call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
 	for _i in range(360):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _group_has_visible_node(scene, "lock_click_tip_notes"):
 			break
 	if not _group_has_visible_node(scene, "lock_click_tip_notes"):
@@ -191,7 +193,8 @@ func _run() -> void:
 
 
 func _click_tutorial_target_via_viewport(scene: Node) -> bool:
-	var target := scene.call("_tutorial_target_control") as Control
+	var tutorial_overlay_surface := scene.call("_tutorial_overlay_surface") as Object
+	var target := tutorial_overlay_surface.call("_tutorial_target_control") as Control
 	if target == null or not is_instance_valid(target) or not target.is_visible_in_tree():
 		return false
 	var position := target.get_global_rect().get_center()
@@ -217,13 +220,13 @@ func _click_tutorial_target_via_viewport(scene: Node) -> bool:
 	routed_press.pressed = true
 	routed_press.position = position
 	routed_press.global_position = position
-	var accepted: bool = scene.call("_route_tutorial_panel_input", routed_press) == true
+	var accepted: bool = tutorial_overlay_surface.call("_route_tutorial_panel_input", routed_press) == true
 	var routed_release := InputEventMouseButton.new()
 	routed_release.button_index = MOUSE_BUTTON_LEFT
 	routed_release.pressed = false
 	routed_release.position = position
 	routed_release.global_position = position
-	scene.call("_route_tutorial_panel_input", routed_release)
+	tutorial_overlay_surface.call("_route_tutorial_panel_input", routed_release)
 	for _i in range(CLICK_SETTLE_FRAMES):
 		await _wait_test_frame()
 	return accepted and str(scene.get("running_action_id")) == "shove-wobbly-hay-bale"
@@ -250,7 +253,7 @@ func _click_settings_nav_via_viewport(scene: Node) -> bool:
 		await _wait_test_frame()
 		if str(scene.get("current_screen")) == "settings":
 			return true
-	if scene.call("_route_onboarding_settings_nav_input", press):
+	if scene.call("_settings_surface").call("_route_onboarding_settings_nav_input", press):
 		for _i in range(CLICK_SETTLE_FRAMES):
 			await _wait_test_frame()
 			if str(scene.get("current_screen")) == "settings":
@@ -279,22 +282,23 @@ func _click_settings_red_x_via_viewport(scene: Node) -> bool:
 	scene.get_viewport().push_input(release, false)
 	for _i in range(CLICK_SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _tutorial_skill_page_ready(scene):
 			return true
-	if scene.call("_route_onboarding_settings_nav_input", press):
+	if scene.call("_settings_surface").call("_route_onboarding_settings_nav_input", press):
 		for _i in range(CLICK_SETTLE_FRAMES):
 			await _wait_test_frame()
-			scene.call("_tutorial_check_progress")
+			scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 			if _tutorial_skill_page_ready(scene):
 				return true
 	if str(scene.get("current_screen")) != "settings":
 		return _tutorial_skill_page_ready(scene)
-	scene.call("_on_bottom_nav_button_gui_input", press, "settings", settings)
-	scene.call("_on_bottom_nav_button_gui_input", release, "settings", settings)
+	var navigation_shell := scene.call("_navigation_shell") as Object
+	navigation_shell.call("_on_bottom_nav_button_gui_input", press, "settings", settings)
+	navigation_shell.call("_on_bottom_nav_button_gui_input", release, "settings", settings)
 	for _i in range(CLICK_SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _tutorial_skill_page_ready(scene):
 			return true
 	return false
@@ -318,7 +322,7 @@ func _hard_reset_from_settings_page(scene: Node) -> bool:
 		return false
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		scene.call("_tutorial_check_progress")
+		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if scene.get("tutorial_active") == true and _tutorial_skill_page_ready(scene):
 			return true
 	return false
@@ -373,13 +377,14 @@ func _click_settings_nav_via_nav_handler(scene: Node) -> bool:
 	press.pressed = true
 	press.position = position
 	press.global_position = position
-	scene.call("_on_bottom_nav_button_gui_input", press, "settings", settings)
+	var navigation_shell := scene.call("_navigation_shell") as Object
+	navigation_shell.call("_on_bottom_nav_button_gui_input", press, "settings", settings)
 	var release := InputEventMouseButton.new()
 	release.button_index = MOUSE_BUTTON_LEFT
 	release.pressed = false
 	release.position = position
 	release.global_position = position
-	scene.call("_on_bottom_nav_button_gui_input", release, "settings", settings)
+	navigation_shell.call("_on_bottom_nav_button_gui_input", release, "settings", settings)
 	for _i in range(CLICK_SETTLE_FRAMES):
 		await _wait_test_frame()
 		if str(scene.get("current_screen")) == "settings":

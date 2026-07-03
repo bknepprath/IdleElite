@@ -78,6 +78,7 @@ try {
 extends SceneTree
 
 const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
+const FishingState = preload("res://scripts/fishing/state.gd")
 const BOOT_TIMEOUT_FRAMES := 720
 const LOCK_ALPHA_THRESHOLD := 0.08
 
@@ -103,9 +104,9 @@ func _run() -> void:
 	if not await _wait_for_boot_ready(scene):
 		_fail("boot did not become ready")
 		return
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 
 	if OS.get_environment("IDLE_ELITE_FISHING_COMBO_SMOKE_ONLY") == "1":
 		await _check_fishing_combo_progress_rails(scene)
@@ -131,10 +132,10 @@ func _run() -> void:
 
 
 func _stage_art_review_test_save(scene: Node) -> void:
-	scene.call("_mark_god_mode_save_tainted", "art review test")
-	scene.call("_clear_running_activity_for_test_mode")
-	scene.call("_clear_activity_unlock_ceremony_test_state")
-	scene.call("_apply_art_review_test_unlock_all_state")
+	scene.call("_test_state_runtime")._mark_god_mode_save_tainted("art review test")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
+	scene.call("_test_state_runtime")._clear_activity_unlock_ceremony_test_state()
+	scene.call("_test_state_runtime")._apply_art_review_test_unlock_all_state()
 	scene.set("auto_unlock_lockpads_enabled", false)
 	scene.call("_refresh_auto_unlock_lockpad_controls")
 	scene.set("selected_skill_id", "fishing" if bool(scene.call("_known_skill_id", "fishing")) else "fight")
@@ -143,12 +144,13 @@ func _stage_art_review_test_save(scene: Node) -> void:
 
 
 func _lock_test_action(scene: Node, skill_id: String, action_id: String) -> void:
-	var key := str(scene.call("_canonical_manual_activity_unlock_key", scene.call("_action_key", skill_id, action_id)))
+	var activity_unlock_runtime = scene.call("_activity_unlock_runtime")
+	var key := str(activity_unlock_runtime.call("_canonical_manual_activity_unlock_key", scene.call("_action_key", skill_id, action_id)))
 	if not key.is_empty():
 		var manual_unlocks := scene.get("manual_activity_unlocks") as Dictionary
 		manual_unlocks.erase(key)
 		scene.set("manual_activity_unlocks", manual_unlocks)
-	scene.call("_clear_activity_requirement_manual_unlocks", skill_id, action_id)
+	activity_unlock_runtime.call("_clear_activity_requirement_manual_unlocks", skill_id, action_id)
 	scene.call("_clear_pending_activity_readiness_action", skill_id, action_id)
 	scene.set("manual_activity_unlocks_trust_checked", true)
 	scene.set("manual_activity_unlocks_trusted", true)
@@ -339,7 +341,7 @@ func _check_colored_xp_floats(scene: Node) -> void:
 	anchor.size = Vector2(320, 220)
 	anchor.position = Vector2(720, 620)
 	parent.add_child(anchor)
-	scene.call("_float_xp_rewards", parent, anchor, {"thieving": 120, "woodcutting": 30}, "thieving")
+	scene.call("_reward_feedback_surface").call("_float_xp_rewards", parent, anchor, {"thieving": 120, "woodcutting": 30}, "thieving")
 	await process_frame
 	var labels := []
 	for raw_node in get_nodes_in_group("skill_reward_float"):
@@ -378,8 +380,9 @@ func _check_colored_xp_floats(scene: Node) -> void:
 
 
 func _check_event_insertion(scene: Node) -> void:
+	var runtime = scene.call("_temporary_event_runtime")
 	var event_id := "covered-wagon-ambush-drill"
-	var event_def := scene.call("_event_module_def", event_id) as Dictionary
+	var event_def := runtime.call("_event_module_def", event_id) as Dictionary
 	if event_def.is_empty():
 		_record("missing covered wagon event definition")
 		return
@@ -393,7 +396,7 @@ func _check_event_insertion(scene: Node) -> void:
 		"completed": false,
 	}
 	scene.set("temporary_event_active", active)
-	var event_actions := scene.call("_active_event_actions_for_skill", page) as Array
+	var event_actions := runtime.call("_active_event_actions_for_skill", page) as Array
 	if event_actions.is_empty():
 		_record("active event action did not appear for %s" % page)
 		return
@@ -408,14 +411,15 @@ func _check_event_insertion(scene: Node) -> void:
 	if event_index < 0:
 		_record("event module was not inserted into visible detail entries")
 		return
-	var event_sort := int(scene.call("_activity_action_display_sort_level", event_def))
+	var catalog = scene.call("_activity_data_catalog")
+	var event_sort := int(catalog.call("activity_action_display_sort_level", event_def))
 	if event_index > 0:
 		var prev_action := (entries[event_index - 1] as Dictionary).get("action", {}) as Dictionary
-		if not prev_action.is_empty() and int(scene.call("_activity_action_display_sort_level", prev_action)) > event_sort:
+		if not prev_action.is_empty() and int(catalog.call("activity_action_display_sort_level", prev_action)) > event_sort:
 			_record("event module sorted before a higher-level previous action")
 	if event_index < entries.size() - 1:
 		var next_action := (entries[event_index + 1] as Dictionary).get("action", {}) as Dictionary
-		if not next_action.is_empty() and int(scene.call("_activity_action_display_sort_level", next_action)) < event_sort:
+		if not next_action.is_empty() and int(catalog.call("activity_action_display_sort_level", next_action)) < event_sort:
 			_record("event module sorted after a lower-level next action")
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", page)
@@ -458,7 +462,7 @@ func _check_fishing_combo_progress_rails(scene: Node) -> void:
 	_stage_art_review_test_save(scene)
 	await _render_live_fishing_page(scene)
 	await _check_fishing_scroll_limit_reaches_lazy_bottom(scene)
-	var combo_actions := scene.call("_fishing_visible_standalone_actions", "fishing") as Array
+	var combo_actions := (scene.get("fishing_runtime") as FishingState).visible_standalone_actions(scene, "fishing")
 	if combo_actions.is_empty():
 		_record("no Fishing standalone combo actions available for progress rail check")
 		return
@@ -507,8 +511,8 @@ func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> 
 	if action_id.is_empty():
 		_record("Fishing combo lock input check received an empty action id")
 		return
-	scene.call("_clear_activity_unlock_ceremony_test_state")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_activity_unlock_ceremony_test_state()
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	scene.set("auto_unlock_lockpads_enabled", false)
 	_lock_test_action(scene, "fishing", action_id)
 	scene.set("current_screen", "skill")
@@ -522,7 +526,7 @@ func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> 
 	if bool(scene.call("_is_action_unlocked", "fishing", action)):
 		_record("Fishing combo %s should be locked for routed lock input check" % action_id)
 		return
-	if not bool(scene.call("_can_unlock_action", "fishing", action)):
+	if not bool(scene.call("_activity_unlock_runtime")._can_unlock_action("fishing", action)):
 		_record("Fishing combo %s should be ready to unlock for routed lock input check" % action_id)
 		return
 	scene.call("_ensure_detail_lazy_entry_mounted", action_id)
@@ -564,25 +568,26 @@ func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> 
 		return
 	scene.call("_input", _mouse_button_event(press_point, true))
 	await process_frame
-	if not bool(scene.get("activity_lock_input_active")):
+	var input_shell = scene.call("_input_routing_shell")
+	if not bool(input_shell.get("activity_lock_input_active")):
 		_record("Fishing combo %s lock press was not captured by scene input routing" % action_id)
 		return
-	if scene.get("active_activity_lock_rig") != cluster:
+	if input_shell.get("active_activity_lock_rig") != cluster:
 		_record("Fishing combo %s lock press captured the wrong active cluster" % action_id)
 	var drag_point := press_point + Vector2(92.0, 18.0)
 	scene.call("_input", _mouse_motion_event(drag_point, drag_point - press_point))
 	await process_frame
-	if not bool(scene.get("activity_lock_input_active")):
+	if not bool(input_shell.get("activity_lock_input_active")):
 		_record("Fishing combo %s lock drag lost active scene capture" % action_id)
-	if scene.get("active_activity_lock_rig") != cluster:
+	if input_shell.get("active_activity_lock_rig") != cluster:
 		_record("Fishing combo %s lock drag did not stay on the captured cluster" % action_id)
 	if not _cluster_has_dragging_lock(cluster):
 		_record("Fishing combo %s lock drag did not reach the padlock rig" % action_id)
 	scene.call("_input", _mouse_button_event(drag_point, false))
 	await process_frame
-	if bool(scene.get("activity_lock_input_active")):
+	if bool(input_shell.get("activity_lock_input_active")):
 		_record("Fishing combo %s lock drag release did not clear active capture" % action_id)
-	if scene.get("active_activity_lock_rig") != null:
+	if input_shell.get("active_activity_lock_rig") != null:
 		_record("Fishing combo %s lock drag release left an active cluster reference" % action_id)
 	var click_point := _lock_hit_global_point(rig)
 	if click_point == Vector2.INF:
@@ -590,11 +595,11 @@ func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> 
 		return
 	scene.call("_input", _mouse_button_event(click_point, true))
 	await process_frame
-	if not bool(scene.get("activity_lock_input_active")):
+	if not bool(input_shell.get("activity_lock_input_active")):
 		_record("Fishing combo %s lock click press was not captured by scene input routing" % action_id)
 	scene.call("_input", _mouse_button_event(click_point, false))
 	await process_frame
-	if bool(scene.get("activity_lock_input_active")):
+	if bool(input_shell.get("activity_lock_input_active")):
 		_record("Fishing combo %s lock click release did not clear active capture" % action_id)
 	if int(cluster.call("get_last_clicked_requirement_index")) < 0:
 		_record("Fishing combo %s lock click did not reach a requirement padlock" % action_id)

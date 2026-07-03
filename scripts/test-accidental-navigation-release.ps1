@@ -64,11 +64,11 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		quit(1)
 		return
-	scene.call("_close_offline_summary_overlay")
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	await _stage_skill("woodcutting")
 
 	await _assert_release_on_page_switch_does_not_change_skill()
@@ -90,7 +90,7 @@ func _stage_skill(skill_id: String) -> void:
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_page_switch_input_state", true)
+	scene.call("_navigation_shell").call("_clear_page_switch_input_state", true)
 	var render_result = scene.call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
@@ -151,10 +151,10 @@ func _assert_clean_page_switch_tap_still_changes_skill() -> void:
 	var target_skill := str(button.get_meta("page_switch_target_skill_id", ""))
 	var position := button.get_global_rect().get_center()
 	var press := _mouse_event(position, true)
-	var press_routed = scene.call("_route_page_switch_button_global_input", press)
+	var press_routed = scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", press)
 	await process_frame
 	var release := _mouse_event(position, false)
-	var release_routed = scene.call("_route_page_switch_button_global_input", release)
+	var release_routed = scene.call("_input_routing_shell").call("_route_page_switch_button_global_input", release)
 	await _settle_after_input(96)
 	var after_skill := str(scene.get("selected_skill_id"))
 	if after_skill == before_skill:
@@ -220,7 +220,7 @@ func _assert_action_tap_after_page_switch_stays_on_target_skill() -> void:
 		if (
 			str(scene.get("current_screen")) == "skill"
 			and str(scene.get("selected_skill_id")) == "woodcutting"
-			and not bool(scene.call("_page_switch_scroll_cover_active"))
+			and not bool(scene.call("_navigation_shell").call("_page_switch_scroll_cover_active"))
 			and int(scene.get("page_switch_transition_button_id")) == 0
 			and not bool(scene.get("screen_render_in_progress"))
 		):
@@ -254,7 +254,7 @@ func _assert_action_tap_after_page_switch_stays_on_target_skill() -> void:
 		return
 	var source_rect := source.get_global_rect()
 	var tap_position := source_rect.position + Vector2(source_rect.size.x * 0.50, source_rect.size.y * 0.78)
-	var accidental_nav_button := scene.call("_page_switch_button_at_position", tap_position) as Button
+	var accidental_nav_button := scene.call("_input_routing_shell").call("_page_switch_button_at_position", tap_position) as Button
 	if accidental_nav_button != null:
 		_fail("woodcutting action tap point was still routed as page switch target=%s rect=%s tap=%s" % [
 			str(accidental_nav_button.get_meta("page_switch_target_skill_id", "")),
@@ -278,7 +278,7 @@ func _wait_for_page_switch_target(target_skill_id: String, max_frames := 600) ->
 		if (
 			str(scene.get("current_screen")) == "skill"
 			and str(scene.get("selected_skill_id")) == target_skill_id
-			and not bool(scene.call("_page_switch_scroll_cover_active"))
+			and not bool(scene.call("_navigation_shell").call("_page_switch_scroll_cover_active"))
 			and int(scene.get("page_switch_transition_button_id")) == 0
 			and not bool(scene.get("screen_render_in_progress"))
 		):

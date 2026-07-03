@@ -379,7 +379,7 @@ Behavior intentionally removed:
 
 Validation:
 - `.\scripts\audit-activity-database.ps1` passed. It now rejects the old raw thieving jail restore token.
-- `.\scripts\test-performance-regressions.ps1` passed. It now asserts thieving jail save and restore use `_normalized_thieving_action_jails()`.
+- `.\scripts\test-performance-regressions.ps1` passed. It now asserts thieving jail save and restore use `ThievingState.normalized_action_jails()`.
 - `.\scripts\test-save-normalization.ps1` passed. It now verifies malformed jail data clears state, valid dictionary jail entries survive, and legacy scalar cooldowns still restore.
 - `.\scripts\check-project.ps1` passed, including the save-normalization gate and skills page performance gate.
 - Verified no headless Godot process remained after each Godot validation command.
@@ -418,7 +418,7 @@ Behavior intentionally removed:
 
 Validation:
 - `.\scripts\audit-activity-database.ps1` passed. It now rejects raw thieving trophy save/restore tokens.
-- `.\scripts\test-performance-regressions.ps1` passed. It now asserts trophy payload and restore paths use `_normalized_thieving_trophies()`.
+- `.\scripts\test-performance-regressions.ps1` passed. It now asserts trophy payload and restore paths use `ThievingState.normalized_trophies()`.
 - `.\scripts\test-save-normalization.ps1` passed. It now verifies dictionary trophy restore, legacy boolean restore, unknown id dropping, and normalized trophy payload output.
 - `.\scripts\check-project.ps1` passed, including the save-normalization gate and skills page performance gate.
 - Verified no headless Godot process remained after each Godot validation command.
@@ -1727,7 +1727,7 @@ Behavior intentionally removed:
 
 Validation:
 - `.\scripts\audit-activity-database.ps1` passed. It now rejects duplicate inline stamina-tip and music-flow restore assignments outside the shared helpers.
-- `.\scripts\test-performance-regressions.ps1` passed. It now asserts secondary restore uses `_restore_stamina_gauge_pre_tip_hold_seconds_from_save(data)` and `_restore_music_flow_state_from_save(data)`.
+- `.\scripts\test-performance-regressions.ps1` passed. It now asserts secondary restore uses `_restore_stamina_gauge_pre_tip_hold_seconds_from_save(data)` and the audio owner for music flow state.
 - `.\scripts\check-leaderboard-cost-safety.ps1` passed.
 - `.\scripts\test-save-normalization.ps1` passed with clean output. It now verifies stamina-tip restore bounds, music-flow heat and active-seconds bounds, missing-key defaults, unlock restoration, and unsaved flow action counter reset.
 - `.\scripts\check-project.ps1` passed, including `leaderboard-cost-safety-ok`, the save-normalization gate, and skills page performance gate.
@@ -2150,7 +2150,7 @@ Behavior intentionally preserved:
 - Action-card backgrounds still use the same fallback-color behavior when art is missing.
 
 Behavior intentionally removed:
-- `_image()`, `_image_from_texture()`, `_action_art_image()`, and `_action_card_background_texture()` no longer each own separate nullable-texture handling.
+- General image helpers, action-art image construction, and action-card background loading no longer each own separate nullable-texture handling.
 
 Validation:
 - `.\scripts\audit-activity-database.ps1` passed.

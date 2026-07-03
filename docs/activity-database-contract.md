@@ -11,7 +11,8 @@
 | `scripts/sync-activity-database-js.py` | JSON-to-JS sync tool. | Keep the generated header clear and stable. |
 | `scripts/audit-activity-database.ps1` | Structural/content audit for the source JSON and related runtime/export contracts. | Run after JSON changes and after sync. |
 | `scripts/check-activity-database-contracts.ps1` | Fast source/generated ownership check. | Run when changing data, sync tooling, export filters, or runtime database loading. |
-| `scripts/main.gd` | Runtime loader via `ACTIVITY_DATABASE_PATH`. | The path must stay `res://docs/activity-database.json` unless runtime loading and exports move together. |
+| `scripts/activity_data/catalog.gd` | Runtime catalog owner via `ACTIVITY_DATABASE_PATH`; owns live skill/action lookup collections. | The path must stay `res://docs/activity-database.json` unless runtime loading and exports move together. |
+| `scripts/main.gd` | Public activity data aliases and compatibility wrappers. | Keep `skill_defs`, `actions_by_skill`, `actions_by_key`, and `convergence_action_ids` aliased to catalog-owned live collections until direct callers migrate. |
 | `export_presets.cfg` | Android export include filter for the source JSON. | Must include `docs/activity-database.json` so exported builds can load the source data. |
 
 ## Required Change Flow

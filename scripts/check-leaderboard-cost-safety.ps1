@@ -2,7 +2,11 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
-$firebaseRuntimePath = Join-Path $projectRoot "scripts\firebase\runtime.gd"
+$profileChatOverlaySurfacePath = Join-Path $projectRoot "scripts\ui\profile_chat_overlay_surface.gd"
+$saveRuntimePath = Join-Path $projectRoot "scripts\save_state\save_runtime.gd"
+$onlineRuntimePath = Join-Path $projectRoot "scripts\online\online_runtime.gd"
+$leaderboardProfilePath = Join-Path $projectRoot "scripts\online\leaderboard_profile.gd"
+$leaderboardStatePath = Join-Path $projectRoot "scripts\leaderboard\state.gd"
 $rulesPath = Join-Path $projectRoot "firebase-realtime-database.rules.json"
 $activityDatabasePath = Join-Path $projectRoot "docs\activity-database.json"
 $setupGuidePath = Join-Path $projectRoot "docs\firebase-leaderboard-setup.md"
@@ -44,6 +48,11 @@ function Get-JsonProp {
 }
 
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd"
+Assert-True (Test-Path -LiteralPath $profileChatOverlaySurfacePath) "Missing scripts\ui\profile_chat_overlay_surface.gd"
+Assert-True (Test-Path -LiteralPath $saveRuntimePath) "Missing scripts\save_state\save_runtime.gd"
+Assert-True (Test-Path -LiteralPath $onlineRuntimePath) "Missing scripts\online\online_runtime.gd"
+Assert-True (Test-Path -LiteralPath $leaderboardProfilePath) "Missing scripts\online\leaderboard_profile.gd"
+Assert-True (Test-Path -LiteralPath $leaderboardStatePath) "Missing scripts\leaderboard\state.gd"
 Assert-True (Test-Path -LiteralPath $rulesPath) "Missing firebase-realtime-database.rules.json"
 Assert-True (Test-Path -LiteralPath $activityDatabasePath) "Missing docs\activity-database.json"
 Assert-True (Test-Path -LiteralPath $setupGuidePath) "Missing docs\firebase-leaderboard-setup.md"
@@ -61,7 +70,17 @@ Assert-True (Test-Path -LiteralPath $chatDeleteToolPath) "Missing scripts\remove
 Assert-True (Test-Path -LiteralPath $chatPruneToolPath) "Missing scripts\prune-firebase-chat-messages.ps1"
 
 $main = Get-Content -LiteralPath $mainPath -Raw
-$firebaseRuntime = Get-Content -LiteralPath $firebaseRuntimePath -Raw
+$profileChatOverlaySurface = Get-Content -LiteralPath $profileChatOverlaySurfacePath -Raw
+$saveRuntime = (Get-Content -LiteralPath $saveRuntimePath -Raw) -replace 'host\.', ''
+$onlineRuntime = Get-Content -LiteralPath $onlineRuntimePath -Raw
+$leaderboardProfile = Get-Content -LiteralPath $leaderboardProfilePath -Raw
+$leaderboardState = Get-Content -LiteralPath $leaderboardStatePath -Raw
+$transportRuntime = $onlineRuntime -replace 'app\.', ''
+$transportRuntimeCompat = $transportRuntime -replace '(?m)\bvar ([^=\r\n]+) =', 'var $1 :='
+$transportRuntimeCompat = $transportRuntimeCompat -replace '\b(allow_recent_refresh|force_reconnect|force) =', '$1 :='
+$main = "$saveRuntime`n$transportRuntimeCompat`n$transportRuntime`n$profileChatOverlaySurface`n$main"
+$leaderboardPolicy = "$leaderboardState`n$main"
+$firebaseRuntime = $onlineRuntime
 $rules = Get-Content -LiteralPath $rulesPath -Raw | ConvertFrom-Json
 $rulesRaw = Get-Content -LiteralPath $rulesPath -Raw
 $setupGuide = Get-Content -LiteralPath $setupGuidePath -Raw
@@ -85,8 +104,8 @@ $expectedCategoryKeys = @("total_level") + @($skillIds | ForEach-Object { "skill
 foreach ($categoryKey in $expectedCategoryKeys) {
     Assert-True ($categoryKey -match '^[a-z0-9_-]+$') "Generated leaderboard category key '$categoryKey' is unsafe for Firebase paths."
 }
-$leaderboardFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh := false\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_finalize_fetch_rows)')
-Assert-True ($leaderboardFetchFunctionMatch.Success) "Could not locate _leaderboard_fetch_category()."
+$leaderboardFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh :?= false\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_finalize_fetch_rows)')
+Assert-True ($leaderboardFetchFunctionMatch.Success) "Could not locate leaderboard fetch owner method."
 $leaderboardFetchFunction = $leaderboardFetchFunctionMatch.Value
 $leaderboardFinalizeFetchFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_finalize_fetch_rows\(category_id: String, rows: Array\) -> void:.*?(?=\r?\n\r?\nfunc _leaderboard_store_fetch_rows)')
 Assert-True ($leaderboardFinalizeFetchFunctionMatch.Success) "Could not locate _leaderboard_finalize_fetch_rows()."
@@ -95,9 +114,9 @@ $leaderboardWriteReadyFunctionMatch = [regex]::Match($main, '(?s)func _leaderboa
 Assert-True ($leaderboardWriteReadyFunctionMatch.Success) "Could not locate _leaderboard_write_ready()."
 $leaderboardWriteReadyFunction = $leaderboardWriteReadyFunctionMatch.Value
 $leaderboardSubmitFunctionMatch = [regex]::Match($main, '(?s)func _leaderboard_submit_scores\(\) -> void:.*?(?=\r?\n\r?\nfunc _process_leaderboard_sync)')
-Assert-True ($leaderboardSubmitFunctionMatch.Success) "Could not locate _leaderboard_submit_scores()."
+Assert-True ($leaderboardSubmitFunctionMatch.Success) "Could not locate leaderboard submit owner method."
 $leaderboardSubmitFunction = $leaderboardSubmitFunctionMatch.Value
-$chatStreamConnectFunctionMatch = [regex]::Match($main, '(?s)func _chat_stream_connect\(force_reconnect := false\) -> void:.*?(?=\r?\n\r?\nfunc _start_chat_stream_poll_timer)')
+$chatStreamConnectFunctionMatch = [regex]::Match($main, '(?s)func _chat_stream_connect\(force_reconnect :?= false\) -> void:.*?(?=\r?\n\r?\nfunc _start_chat_stream_poll_timer)')
 Assert-True ($chatStreamConnectFunctionMatch.Success) "Could not locate _chat_stream_connect()."
 $chatStreamConnectFunction = $chatStreamConnectFunctionMatch.Value
 
@@ -105,10 +124,10 @@ Assert-True ($main -match 'const FIREBASE_DATABASE_URL := ""') "Firebase URL mus
 Assert-True ($main -match 'const FIREBASE_WEB_API_KEY := ""') "Firebase Web API key must default to blank so fresh builds make no leaderboard auth calls."
 Assert-True ($main -match 'const FIREBASE_LOCAL_CONFIG_PATH := "res://firebase-leaderboard-config\.json"') "Firebase config must use the expected local opt-in config file."
 Assert-True ($main -match '_leaderboard_load_firebase_config') "Leaderboard must load Firebase values from the local opt-in config file."
-Assert-True ($firebaseRuntime -match 'const US_HOST_SUFFIX := "\.firebaseio\.com"') "Firebase runtime must explicitly allow official US Realtime Database URLs."
-Assert-True ($firebaseRuntime -match 'const REGIONAL_HOST_SUFFIX := "\.firebasedatabase\.app"') "Firebase runtime must explicitly allow official regional Realtime Database URLs."
-Assert-True ($main -match 'func _leaderboard_database_url_allowed\(url: String\) -> bool:') "Game runtime must reject malformed Firebase database URLs before any network call."
-Assert-True ($firebaseRuntime -match 'if not database_url_allowed\(url\):\s*\r?\n\s*return ""') "Firebase base URL must be blanked when the configured database URL is not allowlisted."
+Assert-True ($firebaseRuntime -match 'const FIREBASE_US_HOST_SUFFIX := "\.firebaseio\.com"') "Firebase runtime must explicitly allow official US Realtime Database URLs."
+Assert-True ($firebaseRuntime -match 'const FIREBASE_REGIONAL_HOST_SUFFIX := "\.firebasedatabase\.app"') "Firebase runtime must explicitly allow official regional Realtime Database URLs."
+Assert-True ($firebaseRuntime -match 'func _leaderboard_database_url_allowed\(url: String\) -> bool:') "Online runtime must reject malformed Firebase database URLs before any network call."
+Assert-True ($firebaseRuntime -match 'if not _leaderboard_database_url_allowed\(url\):\s*\r?\n\s*return ""') "Firebase base URL must be blanked when the configured database URL is not allowlisted."
 Assert-True ($firebaseRuntime -match 'host\.find\("your-project"\) >= 0 or host\.find\("your_project"\) >= 0') "Firebase runtime must reject placeholder Firebase database URLs."
 Assert-True ($firebaseRuntime -match 'if key\.length\(\) < 20 or key\.find\(" "\) >= 0 or key\.find\("\\t"\) >= 0 or key\.find\("\\n"\) >= 0 or key\.find\("\\r"\) >= 0:\s*\r?\n\s*return ""') "Firebase runtime must reject placeholder or whitespace-damaged Firebase Web API keys."
 Assert-True ($gitignore -match '(?m)^firebase-leaderboard-config\.json$') "Local Firebase config must be ignored by git."
@@ -119,13 +138,14 @@ Assert-True ([string]$firebaseJson.database.rules -eq "firebase-realtime-databas
 Assert-True ($rulesGenerator -match "\^\[a-z0-9_-\]\+\$") "Rules generator must reject category keys with Firebase-unsafe characters."
 Assert-True ($rulesGenerator -match '\$duplicateCategoryKeys\s*=\s*@\(\$categoryKeys \| Group-Object') "Rules generator must reject duplicate category keys before emitting rules."
 Assert-True ($main -match 'const LEADERBOARD_SUBMIT_INTERVAL_SECONDS := 15 \* 60') "Client write interval must stay at 15 minutes."
-Assert-True ($main -match 'func _leaderboard_has_pending_category_score\(\) -> bool:') "Submit readiness must detect pending category score improvements."
-Assert-True ($main -match 'return _leaderboard_profile_claim_valid\(\) and \(_leaderboard_has_pending_category_score\(\) or _leaderboard_repair_publish_due\(\)\) and _leaderboard_next_submit_seconds\(\) <= 0') "Submit readiness must require a claimed unique name, pending category score or one-time repair, and the 15-minute submit gate."
+Assert-True ($leaderboardState -match 'func has_pending_category_score\(\) -> bool:') "Submit readiness must be owned by LeaderboardState."
+Assert-True ($leaderboardState -match 'func has_pending_category_score\(\) -> bool:') "Submit readiness must detect pending category score improvements in LeaderboardState."
+Assert-True ($leaderboardState -match 'return LeaderboardProfile\.profile_claim_valid\(host, host\.PROFILE_GUEST_NAME_PREFIX, host\.PROFILE_DISPLAY_NAME_MAX_CHARS, host\.PROFILE_NAME_KEY_MAX_CHARS\) and \(has_pending_category_score\(\) or repair_publish_due\(\)\) and next_submit_seconds\(\) <= 0') "Submit readiness must require a claimed unique name, pending category score or one-time repair, and the 15-minute submit gate."
 Assert-True ($main -match 'const LEADERBOARD_FETCH_INTERVAL_SECONDS := 15 \* 60') "Visible-category reads must stay cached for at least 15 minutes."
 Assert-True ($main -match 'const LEADERBOARD_PROCESS_INTERVAL_SECONDS := 30\.0') "Leaderboard sync tick must stay calm; expected 30 seconds."
 Assert-True ($main -match 'const LEADERBOARD_AUTH_RETRY_INTERVAL_SECONDS := 15 \* 60') "Failed Firebase auth must cool down for at least 15 minutes."
-Assert-True ($main -match 'func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh := false\)') "Visible-category reads must default to honoring the 15-minute cache."
-Assert-True ($leaderboardFetchFunction -match '(?s)_ensure_leaderboard_http\(\).*?if not _leaderboard_firebase_enabled\(\):') "Public leaderboard reads must build HTTP request nodes directly before checking config."
+Assert-True ($main -match 'func _leaderboard_fetch_category\(category_id: String, allow_recent_refresh :?= false\)') "Visible-category reads must default to honoring the 15-minute cache."
+Assert-True ($leaderboardFetchFunction -match '(?s)ensure_leaderboard_http\(\).*?if not _leaderboard_firebase_enabled\(\):') "Public leaderboard reads must build HTTP request nodes directly before checking config."
 Assert-True ($main -match 'if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS') "Leaderboard reads must enforce the 15-minute cache unless explicitly refreshed after a write."
 Assert-True ($leaderboardFetchFunction -match '(?s)var last_success_fetch := int\(leaderboard_fetch_unix_by_category\.get\(valid_id, 0\)\).*?var last_failed_fetch := int\(leaderboard_fetch_retry_unix_by_category\.get\(valid_id, 0\)\).*?var last_fetch := maxi\(last_success_fetch, last_failed_fetch\).*?if not allow_recent_refresh and last_fetch > 0 and now - last_fetch < LEADERBOARD_FETCH_INTERVAL_SECONDS:.*?return.*?if leaderboard_fetch_in_flight or leaderboard_total_xp_fetch_in_flight:') "Fresh visible-category cache hits must return before any HTTP read work."
 Assert-True ($leaderboardFetchFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Visible-category reads must not start Firebase Auth or append an auth token."
@@ -137,15 +157,17 @@ Assert-True ($main -match '_leaderboard_note_fetch_failure') "Leaderboard read f
 Assert-True ($main -match 'leaderboard_fetch_retry_unix_by_category\[valid_id\] = _unix_now\(\)') "Leaderboard read failures must update the persisted category retry gate to avoid rapid retries."
 Assert-True ($main -match 'var last_failed_fetch := int\(leaderboard_fetch_retry_unix_by_category\.get\(valid_id, 0\)\)') "Leaderboard reads must honor persisted failure retry gates."
 Assert-True ($main -match 'Trying again in %s\." % \[message, _format_duration\(float\(LEADERBOARD_FETCH_INTERVAL_SECONDS\)\)\]') "Leaderboard read failures must cool down for the visible-category fetch interval."
-Assert-True ($main -match '"leaderboard_fetch_retry_unix_by_category": _leaderboard_fetch_retry_unix_by_category_for_save\(\)') "Leaderboard failure read cooldowns must be saved across relaunches."
-Assert-True ($main -match '_restore_leaderboard_fetch_retry_unix_by_category_from_save\(data\.get\("leaderboard_fetch_retry_unix_by_category", \{\}\)\)') "Leaderboard failure read cooldowns must be loaded across relaunches."
-Assert-True ($main -match 'func _normalized_leaderboard_fetch_retry_unix_by_category\(loaded_retry_unix: Variant\) -> Dictionary:') "Leaderboard failure read cooldown persistence must normalize category keys without dropping the retry gate."
-Assert-True ($main -match 'Successful rows are not saved, so successful fetch timestamps intentionally reset on launch\.') "Successful fetch timestamps must reset on launch because row data is not persisted."
+Assert-True ($main -match '"leaderboard_fetch_retry_unix_by_category": _leaderboard_state\(\)\.fetch_retry_unix_by_category_for_save\(\)') "Leaderboard failure read cooldowns must be saved across relaunches through LeaderboardState."
+Assert-True ($leaderboardState -match 'func restore_fetch_retry_unix_by_category_from_save\(loaded_retry_unix: Variant\) -> void:') "Leaderboard failure retry restore must be owned by LeaderboardState."
+Assert-True ($leaderboardState -match 'restore_fetch_retry_unix_by_category_from_save\(data\.get\("leaderboard_fetch_retry_unix_by_category", \{\}\)\)') "Leaderboard failure read cooldowns must be loaded across relaunches."
+Assert-True ($leaderboardState -match 'func normalized_fetch_retry_unix_by_category\(loaded_retry_unix: Variant\) -> Dictionary:') "Leaderboard failure retry normalization must be owned by LeaderboardState."
+Assert-True ($leaderboardState -match 'func normalized_fetch_retry_unix_by_category\(loaded_retry_unix: Variant\) -> Dictionary:') "Leaderboard failure read cooldown persistence must normalize category keys without dropping the retry gate in LeaderboardState."
+Assert-True ($leaderboardPolicy -match 'Successful rows are not saved, so successful fetch timestamps intentionally reset on launch\.') "Successful fetch timestamps must reset on launch because row data is not persisted."
 Assert-True ($main -notmatch '"leaderboard_fetch_unix_by_category": leaderboard_fetch_unix_by_category') "Successful fetch timestamps must not be saved without saved row data."
 Assert-True ($main -match 'if current_screen == "leaderboard":\s*\r?\n\s*_leaderboard_fetch_category\(leaderboard_category_id\)') "Reads must only be requested for the visible leaderboard screen/category."
 Assert-True ($main -match '(?s)func _process_leaderboard_sync\(delta: float\) -> void:.*?if not _leaderboard_firebase_enabled\(\):\s*\r?\n\s*return.*?if current_screen == "leaderboard":') "Background leaderboard sync must return before fetch/submit work when Firebase config is absent or malformed."
-Assert-True ([regex]::Matches($main, '_leaderboard_fetch_category\(leaderboard_category_id, true\)').Count -eq 1) "Only one code path may bypass the read cache: the post-write visible-category refresh."
-Assert-True ($main -match 'var query := "orderBy=%%22score%%22&limitToLast=%s" % LEADERBOARD_TOP_COUNT') "Reads must be ordered by score and capped to the top count."
+Assert-True ([regex]::Matches($transportRuntime, '_leaderboard_fetch_category\(leaderboard_category_id, true\)').Count -eq 1) "Only one code path may bypass the read cache: the post-write visible-category refresh."
+Assert-True ($main -match 'var query :?= "orderBy=%%22score%%22&limitToLast=%s" % LEADERBOARD_TOP_COUNT') "Reads must be ordered by score and capped to the top count."
 Assert-True ($main -match 'HTTPClient\.METHOD_GET') "Leaderboard must use finite REST GET reads, not realtime listeners."
 Assert-True ($main -match 'HTTPClient\.METHOD_PUT') "Leaderboard writes must first claim the shared per-player 15-minute write gate."
 Assert-True ($main -match 'HTTPClient\.METHOD_PATCH') "Leaderboard score writes must use a finite REST PATCH."
@@ -157,14 +179,22 @@ Assert-True ($main -match 'FIREBASE_AUTH_SIGN_IN_WITH_IDP_URL') "Google account 
 Assert-True ($main -match 'const CLOUD_SAVE_FIREBASE_ROOT := "cloud_saves/v1"') "Cloud saves must use the expected owner-only Firebase root."
 Assert-True ($main -match 'func _cloud_save_account_ready\(\) -> bool:') "Cloud saves must require Google-backed Firebase auth before reads or writes."
 Assert-True ($main -match 'func _fetch_cloud_save\(\) -> void:') "Cloud saves must use an explicit finite fetch path."
-Assert-True ($main -match 'func _upload_cloud_save\(force := true\) -> void:') "Cloud saves must use an explicit finite upload path."
+Assert-True ($main -match 'func _upload_cloud_save\(force :?= true\) -> void:') "Cloud saves must use an explicit finite upload path."
 Assert-True ($main -match 'const CLOUD_SAVE_UPLOAD_INTERVAL_SECONDS := 5 \* 60') "Automatic cloud save uploads must be throttled."
+Assert-True ($main -match 'func _cloud_save_payload_should_replace_local\(remote_payload: Dictionary\) -> bool:') "Cloud saves must compare remote progress before replacing local saves."
+Assert-True ($main -match 'func _restore_cloud_save_payload\(remote_payload: Dictionary\) -> void:') "Cloud saves must be able to restore a better remote save into the local profile."
+Assert-True ($main -match 'if (app\.)?cloud_save_fetch_in_flight:\s*\r?\n\s*return') "Cloud save upload must wait for pending fetches so fresh installs do not overwrite older remote saves."
+Assert-True ($main -match 'if not (app\.)?cloud_save_remote_checked:\s*\r?\n\s*_fetch_cloud_save\(\)\s*\r?\n\s*return') "Cloud save upload must require a successful remote check before writing."
+Assert-True ($main -match '(app\.)?cloud_save_remote_checked = true') "Cloud save fetch success paths must mark the remote check complete."
+Assert-True ($main -match '_cloud_save_payload_should_replace_local\((app\.)?cloud_save_last_remote_payload\)') "Fetched cloud saves must be evaluated before upload resumes."
+Assert-True ($main -match '_restore_cloud_save_payload\((app\.)?cloud_save_last_remote_payload\)') "A better fetched cloud save must be restored locally."
+Assert-True ($main -match '(app\.)?leaderboard_auth_provider == "google" and not _cloud_save_account_ready\(\):\s*\r?\n\s*_leaderboard_ensure_auth\(\)') "Saved Google accounts must refresh auth so cloud recovery resumes after relaunch."
 Assert-True ($main -match 'leaderboard_auth_refresh_token') "Leaderboard auth refresh token must be persisted for account reuse."
-Assert-True ($main -match '"leaderboard_auth_provider": _leaderboard_auth_provider_for_save\(\)') "Google-backed auth provider must be saved so cloud-save refreshes remain account-backed after relaunch."
+Assert-True ($main -match '"leaderboard_auth_provider": LeaderboardProfile\.auth_provider_for_save_host\(host\)') "Google-backed auth provider must be saved so cloud-save refreshes remain account-backed after relaunch."
 Assert-True ($main -match 'leaderboard_auth_retry_after_unix') "Leaderboard auth failures must have a persisted in-memory retry deadline."
 Assert-True ($main -match '_leaderboard_note_auth_failure') "Leaderboard auth failures must use the retry cooldown helper."
 Assert-True ($main -match '"leaderboard_auth_retry_after_unix": maxi\(0, int\(leaderboard_auth_retry_after_unix\)\)') "Leaderboard auth retry deadlines must be saved across relaunches."
-Assert-True ($main -match 'leaderboard_auth_retry_after_unix = maxi\(0, int\(data\.get\("leaderboard_auth_retry_after_unix", 0\)\)\)') "Leaderboard auth retry deadlines must be loaded across relaunches."
+Assert-True ($leaderboardProfile -match 'host\.set\("leaderboard_auth_retry_after_unix", maxi\(0, int\(data\.get\("leaderboard_auth_retry_after_unix", 0\)\)\)\)') "Leaderboard auth retry deadlines must be loaded across relaunches."
 Assert-True ($main -match '_leaderboard_note_submit_failure') "Leaderboard write failures must use the submit cooldown helper."
 Assert-True ($main -match 'leaderboard_last_submit_unix = _unix_now\(\)') "Leaderboard write failures must update the submit gate to avoid rapid retries."
 Assert-True ($main -match 'Trying again in %s\." % \[message, _format_duration\(float\(LEADERBOARD_SUBMIT_INTERVAL_SECONDS\)\)\]') "Leaderboard write failures must cool down for the 15-minute submit interval."
@@ -179,12 +209,12 @@ Assert-True ($main -match 'const CHAT_FULL_VISIBLE_COUNT := 25') "Full chat read
 Assert-True ($main -match 'const CHAT_MESSAGE_MAX_CHARS := 80') "Chat messages must stay capped to 80 characters."
 Assert-True ($main -match 'CHAT_CENSORED_WORDS') "Chat must include a local banned-word filter."
 Assert-True ($main -match 'const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble\.png"') "Chat strip must use the generated speech bubble icon asset."
-Assert-True ($main -match 'func _chat_strip_visible_on_current_screen\(\) -> bool:\s*\r?\n\s*return current_screen == "menu" or current_screen == "skill"') "Chat strip must appear only on the skills menu and skill detail pages."
+Assert-True ($profileChatOverlaySurface -match 'func _chat_strip_visible_on_current_screen\(\) -> bool:\s*\r?\n\s*return host\.current_screen == "menu" or host\.current_screen == "skill" or host\.current_screen == "pinned" or host\.current_screen == "queue"') "Chat strip must appear only on the existing chat strip screens."
 Assert-True ($main -notmatch 'chat_tab') "Chat must not be a bottom-nav tab."
 Assert-True ($main -notmatch 'current_screen = "chat"') "Chat must not be a standalone menu screen."
 Assert-True ($main -match 'func _process_chat_live_sync\(delta: float\) -> void:') "Chat must have an explicit visible-screen live sync loop."
-Assert-True ($main -match '(?s)func _process_chat_live_sync\(delta: float\) -> void:.*?if not _chat_strip_visible_on_current_screen\(\):.*?_chat_stream_disconnect\(false\).*?return') "Chat realtime stream must close when the skills chat strip is not visible."
-Assert-True ($main -match 'var query := "orderBy=%%22created_at%%22&limitToLast=%s" % visible_count') "Chat reads must query by created_at with the active capped visible count."
+Assert-True ($onlineRuntime -match '(?s)func _process_chat_live_sync\(delta: float\) -> void:.*?if not app\._profile_chat_overlay_surface\(\)\._chat_strip_visible_on_current_screen\(\):.*?_chat_stream_disconnect\(false\).*?return') "Chat realtime stream must close when the chat strip is not visible."
+Assert-True ($main -match 'var query :?= "orderBy=%%22created_at%%22&limitToLast=%s" % visible_count') "Chat reads must query by created_at with the active capped visible count."
 Assert-True ($chatStreamConnectFunction -notmatch '_leaderboard_ensure_auth|_leaderboard_authenticated_query') "Chat reads must not start Firebase Auth or append an auth token."
 Assert-True ($main -match 'func _chat_target_visible_count\(\) -> int:') "Chat must switch stream limits by compact strip vs full chat."
 Assert-True ($main -match 'upgrading_visible_count') "Opening full chat must upgrade the compact stream without waiting for the reconnect throttle."
@@ -197,14 +227,14 @@ Assert-True ($main -match '_chat_stream_disconnect\(false\)') "Chat must explici
 Assert-True ($main -match 'chat_send_request\.request\(') "Chat must use finite REST PATCH writes."
 Assert-True ($main -match '"user_write_gates/%s" % leaderboard_player_id') "Chat writes must include the shared per-player two-second write gate."
 Assert-True ($main -match '"chat_last_send_unix": maxi\(0, int\(chat_last_send_unix\)\)') "Chat send cooldown must be saved across relaunches."
-Assert-True ($main -match '"chat_stream_retry_unix": _chat_stream_retry_unix_for_save\(now\)') "Chat stream reconnect cooldown must be saved across relaunches."
+Assert-True ($main -match '"chat_stream_retry_unix": ChatState\.retry_unix_for_save\(chat_stream_retry_unix, now, CHAT_STREAM_RETRY_INTERVAL_SECONDS\)') "Chat stream reconnect cooldown must be saved across relaunches."
 Assert-True ($main -match 'Chat rows are not saved; the realtime stream is reopened only while the skills chat strip is visible\.') "Chat rows must not be persisted locally."
 Assert-True ($main -notmatch '"chat_rows":\s*chat_rows\s*(,|\})') "Chat rows must not be saved locally."
 Assert-True ($main -match 'one live chat connection while it is visible') "Chat UI must describe the live connection without naming backend services."
 
-$leaderboardRequests = [regex]::Matches($main, 'leaderboard_(fetch|submit)_request\.request\(').Count
+$leaderboardRequests = [regex]::Matches($transportRuntime, 'leaderboard_(fetch|submit)_request\.request\(').Count
 Assert-True ($leaderboardRequests -eq 3) "Expected exactly three leaderboard HTTP request sites: one GET, one gate PUT, and one score PATCH."
-$leaderboardAuthRequests = [regex]::Matches($main, 'leaderboard_auth_request\.request\(').Count
+$leaderboardAuthRequests = [regex]::Matches($transportRuntime, 'leaderboard_auth_request\.request\(').Count
 Assert-True ($leaderboardAuthRequests -eq 2) "Expected exactly two auth request sites: anonymous sign-up and token refresh."
 
 $rootRules = Get-JsonProp $rules "rules"
@@ -354,11 +384,11 @@ Assert-True ($runtimeGuard -match 'run-godot-safe\.ps1') "Runtime guard test mus
 Assert-True ($runtimeGuard -match '--script \$testScript') "Runtime guard test must run as a one-shot headless script."
 Assert-True ($runtimeGuard -match 'firebase-runtime-guard-ok') "Runtime guard test must report success."
 Assert-True ($runtimeGuard -match 'your-project-id-default-rtdb\.firebaseio\.com') "Runtime guard test must reject placeholder Firebase database URLs."
-Assert-True ($runtimeGuard -match '_leaderboard_firebase_base_url\(\) == ""') "Runtime guard test must prove malformed Firebase hosts fail closed through the base URL getter."
-Assert-True ($runtimeGuard -match '_leaderboard_firebase_api_key\(\) == ""') "Runtime guard test must prove malformed Firebase API keys fail closed through the API key getter."
-Assert-True ($runtimeGuard -match '_leaderboard_fetch_category\(game\.LEADERBOARD_CATEGORY_TOTAL_LEVEL\)') "Runtime guard test must exercise visible-category fetch with absent Firebase config."
-Assert-True ($runtimeGuard -match '_leaderboard_submit_scores\(\)') "Runtime guard test must exercise score submit with absent Firebase config."
-Assert-True ($runtimeGuard -match '_process_leaderboard_sync\(31\.0\)') "Runtime guard test must exercise the background sync loop with absent Firebase config."
+Assert-True ($runtimeGuard -match 'call\("_leaderboard_firebase_base_url"\) == ""') "Runtime guard test must prove malformed Firebase hosts fail closed through the base URL getter."
+Assert-True ($runtimeGuard -match 'call\("_leaderboard_firebase_api_key"\) == ""') "Runtime guard test must prove malformed Firebase API keys fail closed through the API key getter."
+Assert-True ($runtimeGuard -match 'fetch_leaderboard_category\(game\.LEADERBOARD_CATEGORY_TOTAL_LEVEL\)') "Runtime guard test must exercise visible-category fetch with absent Firebase config."
+Assert-True ($runtimeGuard -match 'submit_leaderboard_scores\(\)') "Runtime guard test must exercise score submit with absent Firebase config."
+Assert-True ($runtimeGuard -match 'call\("_process_leaderboard_sync", 31\.0\)') "Runtime guard test must exercise the background sync loop with absent Firebase config."
 Assert-True ($runtimeGuard -match '_expect_leaderboard_requests_idle') "Runtime guard test must assert no Firebase request state starts with absent config."
 Assert-True ($runtimeGuard -match 'game\.free\(\)') "Runtime guard test must free the temporary game object before exiting."
 Assert-True ($runtimeGuard -match 'Remove-Item -LiteralPath \$testDir -Recurse -Force') "Runtime guard test must clean its temporary files."

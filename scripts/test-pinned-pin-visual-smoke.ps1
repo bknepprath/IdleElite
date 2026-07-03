@@ -54,37 +54,45 @@ function Assert-NoUnexpectedGodotErrors {
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 $mainScriptPath = Join-Path $projectRoot "scripts\main.gd"
+$audioDirectorPath = Join-Path $projectRoot "scripts\audio\audio_director.gd"
+$inputRoutingShellPath = Join-Path $projectRoot "scripts\ui\input_routing_shell.gd"
+$navigationShellPath = Join-Path $projectRoot "scripts\ui\navigation_shell.gd"
+$skillDetailSurfacePath = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
 $mainScriptText = Get-Content -LiteralPath $mainScriptPath -Raw
+$audioDirectorText = Get-Content -LiteralPath $audioDirectorPath -Raw
+$inputRoutingShellText = Get-Content -LiteralPath $inputRoutingShellPath -Raw
+$navigationShellText = Get-Content -LiteralPath $navigationShellPath -Raw
+$skillDetailSurfaceText = Get-Content -LiteralPath $skillDetailSurfacePath -Raw
 Assert-True ($mainScriptText -match "func\s+_play_module_pin_confirm_animation") "Confirmed pin animation helper should exist."
 Assert-True ($mainScriptText -match "MODULE_PIN_CONFIRM_ANIMATION_SECONDS") "Confirmed pin animation duration constant should exist."
-Assert-True ($mainScriptText -match 'const MODULE_PIN_ENTRY_SFX_PATH := "res://assets/sfx/pin-candidates/pin_exit_pull_04_bright_tick\.wav"') "Pin entry SFX should use the Exit 04 audition sound."
+Assert-True ($audioDirectorText -match 'const MODULE_PIN_ENTRY_SFX_PATH := "res://assets/sfx/pin-candidates/pin_exit_pull_04_bright_tick\.wav"') "Pin entry SFX should use the Exit 04 audition sound."
 $confirmAnimationMatch = [regex]::Match($mainScriptText, 'func\s+_play_module_pin_confirm_animation[\s\S]*?func\s+_finish_module_pin_confirm_animation')
 Assert-True $confirmAnimationMatch.Success "Confirmed pin animation block should be inspectable."
 $confirmAnimationText = $confirmAnimationMatch.Value
 $pokeIndex = $confirmAnimationText.IndexOf('MODULE_PIN_CONFIRM_POKE_SECONDS')
-$entrySfxIndex = $confirmAnimationText.IndexOf('_play_module_pin_entry_sfx')
+$entrySfxIndex = $confirmAnimationText.IndexOf('_audio_director()._play_module_pin_entry_sfx')
 Assert-True (($pokeIndex -ge 0) -and ($entrySfxIndex -gt $pokeIndex)) "Pin entry SFX should fire after the poke motion reaches the module."
 $trackerPath = Join-Path $projectRoot "docs\ui-navigation-controls-plan.html"
 $trackerText = Get-Content -LiteralPath $trackerPath -Raw
 Assert-True ($trackerText -notmatch "pin-poke-in") "Tracker demo should not show confirmed pin animation while placement is paused."
-$directRouteIndex = $mainScriptText.IndexOf("if _route_direct_module_action_zone_input(event):")
-$bottomNavRouteIndex = $mainScriptText.IndexOf("if _route_bottom_nav_button_global_input(event):")
-$utilityRouteIndex = $mainScriptText.IndexOf("if _route_module_utility_button_global_input(event):")
+$directRouteIndex = $inputRoutingShellText.IndexOf("if host._route_direct_module_action_zone_input(event):")
+$bottomNavRouteIndex = $inputRoutingShellText.IndexOf("if host._navigation_shell()._route_bottom_nav_button_global_input(event):")
+$utilityRouteIndex = $inputRoutingShellText.IndexOf("if host._navigation_shell()._route_module_utility_button_global_input(event):")
 Assert-True ($directRouteIndex -ge 0) "Direct module action routing should exist."
 Assert-True (($bottomNavRouteIndex -ge 0) -and ($directRouteIndex -lt $bottomNavRouteIndex)) "Direct module action routing should run before bottom nav global routing."
 Assert-True (($utilityRouteIndex -ge 0) -and ($directRouteIndex -lt $utilityRouteIndex)) "Direct module action routing should run before module utility global routing."
-$bottomNavHitMatch = [regex]::Match($mainScriptText, 'func\s+_bottom_nav_button_at_position[\s\S]*?func\s+_active_bottom_nav_button')
+$bottomNavHitMatch = [regex]::Match($navigationShellText, 'func\s+_bottom_nav_button_at_position[\s\S]*?func\s+_active_bottom_nav_button')
 Assert-True $bottomNavHitMatch.Success "Bottom nav hit-test block should be inspectable."
 Assert-True ($bottomNavHitMatch.Value -notmatch "_activity_input_position_candidates") "Bottom nav buttons should not accept scaled fallback coordinates."
-$bottomNavContainmentMatch = [regex]::Match($mainScriptText, 'func\s+_add_bottom_nav_event_position_candidates[\s\S]*?func\s+_position_inside_bottom_nav')
+$bottomNavContainmentMatch = [regex]::Match($navigationShellText, 'func\s+_event_points_inside_bottom_nav[\s\S]*?func\s+_build_nav_bar')
 Assert-True $bottomNavContainmentMatch.Success "Bottom nav containment block should be inspectable."
 Assert-True ($bottomNavContainmentMatch.Value -notmatch "_activity_input_position_candidates") "Bottom nav containment should not accept scaled fallback coordinates."
-$utilityHitMatch = [regex]::Match($mainScriptText, 'func\s+_module_utility_button_at_position[\s\S]*?func\s+_active_module_utility_button')
+$utilityHitMatch = [regex]::Match($navigationShellText, 'func\s+_module_utility_button_at_position[\s\S]*?func\s+_active_module_utility_button')
 Assert-True $utilityHitMatch.Success "Module utility hit-test block should be inspectable."
 Assert-True ($utilityHitMatch.Value -notmatch "_activity_input_position_candidates") "Module utility buttons should not accept scaled fallback coordinates."
-$actionHitMatch = [regex]::Match($mainScriptText, 'func\s+_module_action_circle_at_position[\s\S]*?func\s+_module_action_circle_at_direct_position')
+$actionHitMatch = [regex]::Match($skillDetailSurfaceText, 'func\s+_module_action_circle_at_position[\s\S]*?func\s+_module_action_circle_at_direct_position')
 Assert-True $actionHitMatch.Success "Module action circle hit-test block should be inspectable."
-$bottomGuardIndex = $actionHitMatch.Value.IndexOf("_position_inside_bottom_interactive_ui(event_position)")
+$bottomGuardIndex = $actionHitMatch.Value.IndexOf("._position_inside_bottom_interactive_ui(event_position)")
 $directHitIndex = $actionHitMatch.Value.IndexOf("_module_action_circle_at_direct_position(event_position)")
 Assert-True (($bottomGuardIndex -ge 0) -and ($directHitIndex -gt $bottomGuardIndex)) "Module action hit testing should reject bottom chrome before checking direct card hits."
 
@@ -148,9 +156,9 @@ func _run() -> void:
 	if not await _wait_for_boot_hidden(scene):
 		_fail("boot overlay did not hide")
 		return
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	await _check_pin_visuals(scene, "thieving")
 	await _capture_viewport_if_possible()
 
@@ -197,7 +205,7 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 	scene.set("module_ui_pinned_order", [])
 	scene.set("module_ui_pin_color_paths", {})
 	scene.set("module_ui_collapsed", {})
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	var render_result = scene.call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
@@ -253,7 +261,8 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 		_record("first pin tap should start the poke-in animation before the page refresh")
 	if not badge.disabled:
 		_record("first pin tap badge should be disabled while its poke-in animation plays")
-	if badge.position.is_equal_approx(scene.get("MODULE_PIN_BADGE_ARMED_POSITION")) or badge.position.is_equal_approx(scene.get("MODULE_PIN_BADGE_SETTLED_POSITION")):
+	var entry_settled_position := Vector2(198, 128)
+	if badge.position.is_equal_approx(entry_settled_position):
 		_record("first pin tap badge should move through an in-between animation pose before settling. position=%s" % badge.position)
 	for _i in range(2):
 		await process_frame
@@ -306,10 +315,10 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 		_record("unpin should keep the pin visible while it first pulls free")
 	for _i in range(10):
 		await process_frame
-	var pull_position: Vector2 = scene.get("MODULE_PIN_BADGE_PULL_OUT_POSITION")
-	var settled_position: Vector2 = scene.get("MODULE_PIN_BADGE_SETTLED_POSITION")
-	if not (settled_badge.position.x > settled_position.x and settled_badge.position.y < settled_position.y):
-		_record("unpin should pull the pin up/right from the settled spot. settled=%s actual=%s" % [settled_position, settled_badge.position])
+	var pull_position := Vector2(236, 14)
+	var exit_settled_position := Vector2(198, 128)
+	if not (settled_badge.position.x > exit_settled_position.x and settled_badge.position.y < exit_settled_position.y):
+		_record("unpin should pull the pin up/right from the settled spot. settled=%s actual=%s pull=%s" % [exit_settled_position, settled_badge.position, pull_position])
 	await _capture_viewport_if_possible("exit")
 	for _i in range(5):
 		await process_frame
@@ -324,10 +333,10 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 
 
 func _check_badge_visual_state(scene: Node, pop: Control, badge: TextureButton, module_key: String, armed: bool) -> void:
-	var expected_size: Vector2 = scene.get("MODULE_PIN_BADGE_SIZE")
-	var armed_position: Vector2 = scene.get("MODULE_PIN_BADGE_ARMED_POSITION")
-	var settled_position: Vector2 = scene.get("MODULE_PIN_BADGE_SETTLED_POSITION")
-	var spawn_position: Vector2 = scene.get("MODULE_PIN_BADGE_SPAWN_POSITION")
+	var expected_size := Vector2(320, 320)
+	var armed_position := Vector2(224, 50)
+	var settled_position := Vector2(198, 128)
+	var spawn_position := armed_position
 	var expected_position := armed_position if armed else settled_position
 	if not badge.visible:
 		_record("pin badge should be visible while %s" % ("armed" if armed else "pinned"))
@@ -363,7 +372,7 @@ func _check_badge_visual_state(scene: Node, pop: Control, badge: TextureButton, 
 		_record("settled pin badge should overhang the card top-left while still poking into it")
 	var tip_point := badge.get_global_transform() * (expected_size * Vector2(0.235, 0.82))
 	if armed:
-		var clip_origin: Vector2 = scene.get("MODULE_PIN_BADGE_CLIP_ORIGIN")
+		var clip_origin := Vector2(-220, -330)
 		var settled_tip_point := pop.get_global_transform() * (clip_origin + settled_position + expected_size * Vector2(0.235, 0.82))
 		if not (tip_point.x > settled_tip_point.x + 45.0 and tip_point.y < settled_tip_point.y - 45.0):
 			_record("armed pin tip should sit clearly up/right from the settled target")

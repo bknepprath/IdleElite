@@ -48,6 +48,9 @@ try {
     @'
 extends SceneTree
 
+const MasteryState := preload("res://scripts/progression/mastery_state.gd")
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 
 var failures: Array[String] = []
@@ -74,13 +77,13 @@ func _run() -> void:
 	if not await _wait_for_boot_hidden(scene):
 		_fail("boot splash did not hide before pinned-page interaction capture")
 		return
-	scene.call("_close_offline_summary_overlay")
+	scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
 	for _i in range(3):
 		await process_frame
 
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	await _capture_clean_pinned_page_if_requested(scene)
 	await _check_empty_pinned_page_decor_pins(scene)
 	await _check_pinned_page_navigation_start_input(scene)
@@ -102,6 +105,18 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
+
+
+func _module_ui_runtime(scene: Node) -> Object:
+	return scene.get("module_ui_runtime") as Object
+
+
+func _set_module_ui_pinned_order(scene: Node, order: Array) -> void:
+	_module_ui_runtime(scene).set("pinned_order", order)
+
+
+func _module_ui_pinned_order(scene: Node) -> Array:
+	return _module_ui_runtime(scene).get("pinned_order") as Array
 
 
 func _wait_for_boot_ready(scene: Node) -> bool:
@@ -140,9 +155,9 @@ func _check_pinned_page_navigation_start_input(scene: Node) -> void:
 		return
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "woodcutting")
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(6):
 		scene.call("_update_ui", 0.016, false)
@@ -199,7 +214,7 @@ func _check_module_utility_tabs_close_to_skill_detail(scene: Node) -> void:
 		_record("module utility close smoke did not enter pinned screen")
 		return
 	scene.set("top_level_nav_locked_until_msec", 0)
-	scene.call("_on_queue_utility_pressed")
+	scene.call("_navigation_shell").call("_on_queue_utility_pressed")
 	if not await _wait_for_screen(scene, "queue"):
 		_record("module utility close smoke did not enter queue screen from pinned")
 		return
@@ -207,7 +222,7 @@ func _check_module_utility_tabs_close_to_skill_detail(scene: Node) -> void:
 		_record("queue utility stored another utility page as its return screen: %s" % str(scene.get("queue_return_screen")))
 		return
 	scene.set("top_level_nav_locked_until_msec", 0)
-	scene.call("_on_queue_utility_pressed")
+	scene.call("_navigation_shell").call("_on_queue_utility_pressed")
 	if not await _wait_for_screen(scene, "skill"):
 		_record("active queue utility button returned to %s instead of skill detail" % str(scene.get("current_screen")))
 		return
@@ -239,9 +254,9 @@ func _check_pinned_page_start_animates_visible_card(scene: Node) -> void:
 		return
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", "woodcutting")
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(6):
 		await process_frame
@@ -284,7 +299,7 @@ func _check_pinned_page_start_animates_visible_card(scene: Node) -> void:
 		_record("pinned-page action did not start from real card press. inside=%s press_key_after_down=%s press_stat_after_down=%s final_press_key=%s" % [inside_viewport, press_key_after_down, press_stat_after_down, str(scene.get("action_card_press_key"))])
 	if not card.has("depth_press_tween") and not (scene.get("action_pop_tweens") as Dictionary).has(card_key):
 		_record("pinned-page action start did not animate the visible pinned-page card")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	var button_local_press_position := button.get_global_transform().affine_inverse() * press_position
 	scene.call("_on_action_card_input", _mouse_button_event(button_local_press_position, true, press_position), str(parts[0]), str(parts[1]), button)
 	await process_frame
@@ -317,7 +332,7 @@ func _material_reward_action_modules(scene: Node) -> Array[Dictionary]:
 				continue
 			if not bool(scene.call("_is_action_unlocked", skill_id, action)):
 				continue
-			if not bool(scene.call("_action_has_mat_rewards", action)):
+			if not bool(scene.call("_action_runtime").call("_action_has_mat_rewards", action)):
 				continue
 			var action_id := str(action.get("id", ""))
 			var module_key := str(scene.call("_module_ui_key_for_action", skill_id, action))
@@ -340,10 +355,10 @@ func _check_pinned_page_material_reward_entry_stays_compact(scene: Node, reward_
 		return
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
-	scene.call("_start_action", skill_id, action_id, false)
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
+	scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(10):
 		scene.call("_update_ui", 0.016, false)
@@ -367,7 +382,7 @@ func _check_pinned_page_material_reward_entry_stays_compact(scene: Node, reward_
 	var actual_height := maxf(entry.custom_minimum_size.y, entry.size.y)
 	if actual_height > compact_height + 140.0:
 		_record("pinned-page material reward card expanded into a fat page module for %s:%s. expected<=%s actual=%s" % [skill_id, action_id, compact_height + 140.0, actual_height])
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	for _i in range(2):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
@@ -387,10 +402,10 @@ func _check_pinned_page_switches_between_text_actions(scene: Node) -> void:
 		return
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", "woodcutting")
-	scene.set("module_ui_pinned_order", [first_key, second_key])
+	_set_module_ui_pinned_order(scene, [first_key, second_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
-	scene.call("_start_action", str(first_parts[0]), str(first_parts[1]), false)
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
+	scene.call("_action_runtime").call("_start_action", str(first_parts[0]), str(first_parts[1]), false)
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(8):
 		scene.call("_update_ui", 0.016, false)
@@ -448,10 +463,10 @@ func _check_pinned_page_stop_leaves_blank_active_shelf(scene: Node) -> void:
 		return
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", str(parts[0]))
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
-	scene.call("_start_action", str(parts[0]), str(parts[1]), false)
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
+	scene.call("_action_runtime").call("_start_action", str(parts[0]), str(parts[1]), false)
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(8):
 		scene.call("_update_ui", 0.016, false)
@@ -462,7 +477,7 @@ func _check_pinned_page_stop_leaves_blank_active_shelf(scene: Node) -> void:
 		return
 	if shelf.custom_minimum_size.y < 650.0:
 		_record("pinned-page stop shelf smoke did not expand before stop. height=%s" % shelf.custom_minimum_size.y)
-	scene.call("_stop_running_action", str(parts[0]), str(parts[1]))
+	scene.call("_action_runtime").call("_stop_running_action", str(parts[0]), str(parts[1]))
 	for _i in range(24):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
@@ -498,15 +513,15 @@ func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -
 	var action_id := str(parts[1])
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
-	var silver_xp := int(scene.call("_mastery_xp_for_level", 2))
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
+	var silver_xp := MasteryState.xp_for_level(2)
 	scene.call("_add_mastery_xp", skill_id, action_id, silver_xp)
 	scene.set("fish_currency_ever_earned", true)
 	scene.set("fish_currency", 2.0)
 	scene.call("_sync_auto_eat_fish_toggle_buttons")
-	scene.call("_start_action", skill_id, action_id, false)
+	scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)
 	scene.set("action_progress", 0.60)
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(8):
@@ -527,7 +542,7 @@ func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -
 	if not rail.has_opportunity_progress(float(scene.get("action_progress"))):
 		_record("pinned-page opportunity rail did not expose a hittable opportunity window. windows=%s progress=%s" % [str(rail.opportunity_windows), str(scene.get("action_progress"))])
 		return
-	var hit := bool(scene.call("_try_action_opportunity_click", skill_id, action_id, rail.get_global_rect().get_center()))
+	var hit := bool(scene.call("_action_runtime").call("_try_action_opportunity_click", skill_id, action_id, rail.get_global_rect().get_center()))
 	for _i in range(3):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
@@ -538,7 +553,7 @@ func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -
 	if _find_text_descendant(scene, "nice!") == null:
 		_record("pinned-page opportunity click did not create visible opportunity text feedback")
 	var reward_float_count_before := _count_nodes_in_group(scene, "skill_reward_float")
-	scene.call("_play_action_feedback", scene.call("_action_key", skill_id, action_id), true, 7, 1.0)
+	scene.call("_reward_feedback_surface").call("_play_action_feedback", scene.call("_action_key", skill_id, action_id), true, 7, 1.0)
 	for _i in range(3):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
@@ -553,9 +568,9 @@ func _check_regular_skill_detail_level_up_float(scene: Node) -> void:
 	_stage_skill_one_xp_before_level(scene, skill_id, 2)
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_pinned_order", [])
+	_set_module_ui_pinned_order(scene, [])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(8):
 		scene.call("_update_ui", 0.016, false)
@@ -564,7 +579,7 @@ func _check_regular_skill_detail_level_up_float(scene: Node) -> void:
 	if xp_bar == null or not is_instance_valid(xp_bar) or not xp_bar.is_visible_in_tree():
 		_record("regular skill detail level-up smoke did not render a visible XP bar")
 		return
-	if not bool(scene.call("_skill_level_up_float_bar_visible", skill_id)):
+	if not bool(scene.call("_reward_feedback_surface").call("_skill_level_up_float_bar_visible", skill_id)):
 		_record("regular skill detail level-up smoke did not consider the detail XP bar visible")
 	var level_up_text_count_before := _count_text_descendants(scene, "LEVEL UP!")
 	_grant_skill_level_crossing_xp(scene, skill_id, 2)
@@ -595,11 +610,11 @@ func _check_pinned_page_level_up_float(scene: Node) -> void:
 	_stage_skill_one_xp_before_level(scene, skill_id, 2)
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	await scene.call("_render_screen", false, -1, false)
-	scene.call("_start_action", skill_id, action_id, false)
+	scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)
 	for _i in range(30):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
@@ -609,7 +624,7 @@ func _check_pinned_page_level_up_float(scene: Node) -> void:
 		return
 	if str(scene.get("pinned_active_shelf_skill_id")) != skill_id:
 		_record("pinned-page level-up smoke active shelf skill mismatch. expected=%s actual=%s" % [skill_id, str(scene.get("pinned_active_shelf_skill_id"))])
-	if not bool(scene.call("_skill_level_up_float_bar_visible", skill_id)):
+	if not bool(scene.call("_reward_feedback_surface").call("_skill_level_up_float_bar_visible", skill_id)):
 		_record("pinned-page level-up smoke did not consider the active shelf XP bar visible")
 	var level_up_text_count_before := _count_text_descendants(scene, "LEVEL UP!")
 	_grant_skill_level_crossing_xp(scene, skill_id, 2)
@@ -623,9 +638,9 @@ func _check_pinned_page_level_up_float(scene: Node) -> void:
 	if not capture_path.is_empty():
 		await _capture_viewport_if_requested(capture_path.replace(".png", "-pinned-level-up.png"))
 	await _clear_skill_reward_floats(scene)
-	scene.call("_clear_running_activity_for_test_mode")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 
 
 func _find_action_body_press_position(scene: Node, card: Dictionary, source_rect: Rect2) -> Vector2:
@@ -653,10 +668,10 @@ func _check_pinned_page_thieving_jail_bars_reduce_time(scene: Node) -> void:
 	var action_id := str(module_key.substr("action:thieving:".length()))
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", "build")
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
-	scene.call("_jail_thieving_action", action_id, true, 30)
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
+	scene.call("_thieving_surface").call("_jail_thieving_action", action_id, true, 30)
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(3):
 		await process_frame
@@ -688,11 +703,11 @@ func _check_pinned_page_thieving_jail_bars_reduce_time(scene: Node) -> void:
 	if overlay == null or not is_instance_valid(overlay) or not overlay.is_inside_tree():
 		_record("pinned-page jailed thieving card did not render jail bars")
 		return
-	var before := int(scene.call("_thieving_action_jail_remaining", action_id))
-	scene.call("_on_thieving_action_jail_overlay_input", _mouse_button_event(overlay.get_global_rect().get_center(), true), action_id, card_key)
+	var before := int(scene.call("_thieving_surface").call("_thieving_action_jail_remaining", action_id))
+	scene.call("_thieving_surface").call("_on_thieving_action_jail_overlay_input", _mouse_button_event(overlay.get_global_rect().get_center(), true), action_id, card_key)
 	for _i in range(3):
 		await process_frame
-	var after := int(scene.call("_thieving_action_jail_remaining", action_id))
+	var after := int(scene.call("_thieving_surface").call("_thieving_action_jail_remaining", action_id))
 	if after >= before:
 		_record("pinned-page jail bar tap did not reduce jail time. before=%s after=%s" % [before, after])
 	var shake_body := card.get("jail_bars_shake_body", null) as Control
@@ -710,9 +725,9 @@ func _capture_clean_pinned_page_if_requested(scene: Node) -> void:
 		return
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", "woodcutting")
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(8):
 		await process_frame
@@ -723,9 +738,9 @@ func _capture_clean_pinned_page_if_requested(scene: Node) -> void:
 func _check_empty_pinned_page_decor_pins(scene: Node) -> void:
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", "woodcutting")
-	scene.set("module_ui_pinned_order", [])
+	_set_module_ui_pinned_order(scene, [])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(8):
 		await process_frame
@@ -736,7 +751,7 @@ func _check_empty_pinned_page_decor_pins(scene: Node) -> void:
 	var capture_path := OS.get_environment("IDLE_ELITE_PINNED_PAGE_INTERACTIONS_PNG")
 	if not capture_path.is_empty():
 		await _capture_viewport_if_requested(capture_path.replace(".png", "-empty-decor.png"))
-	var expected_count := int(scene.get("PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT"))
+	var expected_count := int(scene.call("_navigation_shell").PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT)
 	var actual_count := _count_named_descendants_with_prefix(content_scroll, "PinnedActivitiesEmptyDecorPin_")
 	if actual_count != expected_count:
 		_record("empty pinned page decor pin count mismatch. expected=%s actual=%s" % [expected_count, actual_count])
@@ -788,13 +803,13 @@ func _check_empty_pinned_page_decor_pins(scene: Node) -> void:
 	var first_hit_zone := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPinHit_0") as Control
 	var first_badge := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPinBadge_0") as TextureButton
 	if first_host != null and first_hit_zone != null and first_badge != null:
-		var pinned_before := (scene.get("module_ui_pinned_order") as Array).duplicate()
+		var pinned_before := _module_ui_pinned_order(scene).duplicate()
 		first_hit_zone.emit_signal("gui_input", _mouse_button_event(Vector2(16, 16), true))
 		for _i in range(3):
 			await process_frame
 		if not first_badge.has_meta("module_pin_tween"):
 			_record("empty pinned page decor pin click did not start the exit animation")
-		if (scene.get("module_ui_pinned_order") as Array) != pinned_before:
+		if _module_ui_pinned_order(scene) != pinned_before:
 			_record("empty pinned page decor pin click should not mutate pinned activities")
 		for _i in range(40):
 			await process_frame
@@ -852,9 +867,9 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 	var action_id := str(parts[1])
 	scene.set("current_screen", "pinned")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_pinned_order", [module_key])
+	_set_module_ui_pinned_order(scene, [module_key])
 	scene.set("_last_rendered_screen_key", "")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	await scene.call("_render_screen", false, -1, false)
 	for _i in range(5):
 		await process_frame
@@ -878,7 +893,7 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 		_record("inactive pinned shelf did not keep a background gradient")
 	elif initial_background.modulate.a < 0.9:
 		_record("inactive pinned shelf background gradient was hidden. alpha=%s" % initial_background.modulate.a)
-	scene.call("_start_action", skill_id, action_id, false)
+	scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)
 	for _i in range(30):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
@@ -966,7 +981,7 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 	var capture_path := OS.get_environment("IDLE_ELITE_PINNED_PAGE_INTERACTIONS_PNG")
 	if not capture_path.is_empty():
 		await _capture_viewport_if_requested(capture_path.replace(".png", "-active-shelf.png"))
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	for _i in range(3):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
@@ -1000,7 +1015,7 @@ func _first_action_module_keys(scene: Node, skill_id: String, count: int) -> Arr
 func _stage_skill_one_xp_before_level(scene: Node, skill_id: String, target_level: int) -> void:
 	var skills := scene.get("skills") as Dictionary
 	var skill_state := (skills.get(skill_id, {}) as Dictionary).duplicate(true)
-	skill_state["xp"] = maxi(0, int(scene.call("_xp_for_level", target_level)) - 1)
+	skill_state["xp"] = maxi(0, SkillState.xp_for_level(target_level) - 1)
 	skill_state["level"] = maxi(1, target_level - 1)
 	skills[skill_id] = skill_state
 	scene.set("skills", skills)
@@ -1010,7 +1025,7 @@ func _stage_skill_one_xp_before_level(scene: Node, skill_id: String, target_leve
 func _grant_skill_level_crossing_xp(scene: Node, skill_id: String, target_level: int) -> void:
 	var skills := scene.get("skills") as Dictionary
 	var skill_state := (skills.get(skill_id, {}) as Dictionary).duplicate(true)
-	skill_state["xp"] = int(scene.call("_xp_for_level", target_level))
+	skill_state["xp"] = SkillState.xp_for_level(target_level)
 	skills[skill_id] = skill_state
 	scene.set("skills", skills)
 	scene.call("_recalculate_level", skill_id, true)

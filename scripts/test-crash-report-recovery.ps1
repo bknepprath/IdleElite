@@ -57,6 +57,8 @@ try {
 extends SceneTree
 
 const MainScript := preload("res://scripts/main.gd")
+const CrashReports := preload("res://scripts/diagnostics/crash_reports.gd")
+const CrashReportRuntime := preload("res://scripts/diagnostics/crash_report_runtime.gd")
 
 var failures: Array[String] = []
 
@@ -84,18 +86,19 @@ func _run() -> void:
 
 
 func _check_silent_json_parser_handles_malformed_external_text(game: Node) -> void:
-	_expect(game.call("_parse_json_silent", "{not-json") == null, "Silent JSON parser should return null for malformed external text.")
-	_expect(game.call("_parse_json_silent", "") == null, "Silent JSON parser should return null for empty external text.")
-	var parsed_object = game.call("_parse_json_silent", "{\"ok\":true}")
+	var crash_runtime := CrashReportRuntime.new(game)
+	_expect(crash_runtime.call("_parse_json_silent", "{not-json") == null, "Silent JSON parser should return null for malformed external text.")
+	_expect(crash_runtime.call("_parse_json_silent", "") == null, "Silent JSON parser should return null for empty external text.")
+	var parsed_object = crash_runtime.call("_parse_json_silent", "{\"ok\":true}")
 	_expect(typeof(parsed_object) == TYPE_DICTIONARY and bool((parsed_object as Dictionary).get("ok", false)), "Silent JSON parser should preserve valid JSON objects.")
-	var parsed_array = game.call("_parse_json_silent", "[1,2,3]")
+	var parsed_array = crash_runtime.call("_parse_json_silent", "[1,2,3]")
 	_expect(typeof(parsed_array) == TYPE_ARRAY and (parsed_array as Array).size() == 3, "Silent JSON parser should preserve valid JSON arrays.")
 
 
 func _check_malformed_report_falls_back_to_raw_text(game: Node) -> void:
 	var raw := "{not-json"
-	_expect(str(game.call("_crash_report_clipboard_text", raw)) == raw, "Malformed crash reports should be copied as raw text instead of throwing.")
-	_expect(str(game.call("_crash_report_clipboard_text", "[1,2,3]")) == "[1,2,3]", "Non-dictionary crash reports should be copied as raw text.")
+	_expect(CrashReports.clipboard_text(raw) == raw, "Malformed crash reports should be copied as raw text instead of throwing.")
+	_expect(CrashReports.clipboard_text("[1,2,3]") == "[1,2,3]", "Non-dictionary crash reports should be copied as raw text.")
 
 
 func _check_java_exception_report_is_compacted(game: Node) -> void:
@@ -114,7 +117,7 @@ func _check_java_exception_report_is_compacted(game: Node) -> void:
 			"2026-01-01T00:00:02.000 resume"
 		]
 	}
-	var text := str(game.call("_crash_report_clipboard_text", JSON.stringify(report)))
+	var text := CrashReports.clipboard_text(JSON.stringify(report))
 	_expect(text.find("Idle Elite crash report v2") >= 0, "Structured crash report should include the report header.")
 	_expect(text.find("type: java_exception") >= 0, "Structured crash report should include the crash type.")
 	_expect(text.find("build=0.test(99)") >= 0, "Structured crash report should include build metadata.")
@@ -145,7 +148,7 @@ func _check_unclean_session_report_is_summarized(game: Node) -> void:
 			"2026-01-01T00:00:02.000 create"
 		]
 	}
-	var text := str(game.call("_crash_report_clipboard_text", JSON.stringify(report)))
+	var text := CrashReports.clipboard_text(JSON.stringify(report))
 	_expect(text.find("type: unclean_previous_session") >= 0, "Unclean session report should include the crash type.")
 	_expect(text.find("prev_status: running startup=true os=Android") >= 0, "Unclean session report should summarize the previous marker.")
 	_expect(text.find("screen: skill selected=fight") >= 0, "Unclean session report should include screen context.")
@@ -163,9 +166,9 @@ func _check_android_lifecycle_helpers(game: Node) -> void:
 		"2026-01-01T00:00:01.000 resume",
 		"2026-01-01T00:00:02.000 create"
 	]
-	_expect(str(game.call("_previous_android_lifecycle_before_launch", clean_events)) == "stop", "Lifecycle helper should find the previous lifecycle event before relaunch.")
-	_expect(bool(game.call("_previous_android_lifecycle_was_clean", clean_events)), "Lifecycle helper should treat stop as a clean pre-relaunch lifecycle.")
-	_expect(not bool(game.call("_previous_android_lifecycle_was_clean", dirty_events)), "Lifecycle helper should treat resume before relaunch as unclean.")
+	_expect(CrashReports.previous_android_lifecycle_before_launch(clean_events) == "stop", "Lifecycle helper should find the previous lifecycle event before relaunch.")
+	_expect(CrashReports.previous_android_lifecycle_was_clean(clean_events), "Lifecycle helper should treat stop as a clean pre-relaunch lifecycle.")
+	_expect(not CrashReports.previous_android_lifecycle_was_clean(dirty_events), "Lifecycle helper should treat resume before relaunch as unclean.")
 
 
 func _expect(condition: bool, message: String) -> void:

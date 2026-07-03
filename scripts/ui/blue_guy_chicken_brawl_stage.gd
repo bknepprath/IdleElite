@@ -75,6 +75,8 @@ const COOKED_CHICKEN_HEAL_RATIO := 0.16
 const COOKED_CHICKEN_PICKUP_RADIUS := 0.12
 const COOKED_CHICKEN_LIFETIME := 8.0
 const COOKED_CHICKEN_CONSUME_SECONDS := 0.62
+const DIAMOND_HERO_DRAW_SCALE := 0.62
+const DIAMOND_ENEMY_DRAW_SCALE := 0.54
 
 var elapsed_seconds := 0.0
 var arena_floor: Texture2D
@@ -118,6 +120,7 @@ var food_drops: Array[Dictionary] = []
 var feather_particles: Array[Dictionary] = []
 var smoke_puffs: Array[Dictionary] = []
 var ko_count := 0
+var arena_shape := "round"
 var wave_index := 0
 var wave_kills := 0
 var wave_spawn_total := 0
@@ -143,10 +146,20 @@ var hit_stop_timer := 0.0
 var module_shake_timer := 0.0
 var module_shake_duration := 0.0
 var module_shake_strength := 0.0
+var diamond_stats_tucked := false
+var stage_title := "Fight Chickens"
+var enemy_base_hp_min := CHICKEN_BASE_HP_MIN
+var enemy_base_hp_max := CHICKEN_BASE_HP_MAX
+var enemy_damage := CHICKEN_DAMAGE
+var enemy_speed_scale := 1.0
+var enemy_spawn_rhythm := 1.0
+var enemy_idle_art_path := ""
+var enemy_sprite_scale := 1.0
+var enemy_art_faces_right := false
 
 
 func _ready() -> void:
-	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	mouse_filter = Control.MOUSE_FILTER_PASS
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	clip_contents = true
 	arena_floor = load_png_texture(ARENA_FLOOR_PATH)
@@ -168,12 +181,33 @@ func _ready() -> void:
 	blue_guy_ko = load_png_texture(BLUE_GUY_KO_PATH)
 	blue_guy_uppercut = load_png_texture(BLUE_GUY_UPPERCUT_PATH)
 	cooked_chicken_drop = load_png_texture(COOKED_CHICKEN_DROP_PATH)
+	_apply_enemy_art_path(enemy_idle_art_path)
 	_ensure_labels()
 	if active:
 		_seed_fight()
 	else:
 		_seed_inactive_state()
 	set_process(true)
+
+
+func _gui_input(event: InputEvent) -> void:
+	if arena_shape != "diamond":
+		return
+	var tap_pos := Vector2.INF
+	if event is InputEventMouseButton and (event as InputEventMouseButton).pressed:
+		tap_pos = (event as InputEventMouseButton).position
+	elif event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed:
+		tap_pos = (event as InputEventScreenTouch).position
+	if tap_pos != Vector2.INF and _toggle_diamond_stats_if_tapped(tap_pos):
+		accept_event()
+
+
+func _toggle_diamond_stats_if_tapped(tap_pos: Vector2) -> bool:
+	if arena_shape != "diamond" or not _diamond_stats_plate_draw_rect(_stage_scale()).has_point(tap_pos):
+		return false
+	diamond_stats_tucked = not diamond_stats_tucked
+	queue_redraw()
+	return true
 
 
 func setup_fighting_level(level: int) -> void:
@@ -189,6 +223,67 @@ func setup_blue_guy_health(current_hp: int, maximum_hp: int, regen_fraction: flo
 	cover_health_current = clampi(current_hp, 0, cover_health_maximum)
 	cover_health_regen_fraction = clampf(regen_fraction, 0.0, 1.0)
 	queue_redraw()
+
+
+func setup_action(action: Dictionary) -> void:
+	stage_title = str(action.get("name", stage_title))
+	if title_label != null:
+		title_label.text = stage_title
+	var combat: Variant = action.get("combat", {})
+	if combat is Dictionary:
+		var combat_stats: Dictionary = combat as Dictionary
+		var base_health := maxf(1.0, float(combat_stats.get("health", CHICKEN_BASE_HP_MAX)))
+		enemy_base_hp_min = maxf(1.0, base_health * 0.85)
+		enemy_base_hp_max = maxf(enemy_base_hp_min, base_health * 1.15)
+		enemy_damage = maxf(1.0, float(combat_stats.get("contact_damage", CHICKEN_DAMAGE)))
+		enemy_speed_scale = maxf(0.1, float(combat_stats.get("speed", 1.0)))
+		enemy_spawn_rhythm = maxf(0.1, float(combat_stats.get("spawn_rhythm", 1.0)))
+		var enemy_id := str(combat_stats.get("enemy_id", ""))
+		enemy_sprite_scale = 10.0 / 3.0 if enemy_id == "dragons" else 1.0
+		enemy_art_faces_right = not (enemy_id in ["chicken-swarm", "dragons"])
+	enemy_idle_art_path = str(action.get("art", ""))
+	_apply_enemy_art_path(enemy_idle_art_path)
+	if active:
+		_seed_fight()
+	else:
+		_seed_inactive_state()
+	queue_redraw()
+
+
+func _apply_enemy_art_path(idle_art_path: String) -> void:
+	if idle_art_path.is_empty():
+		return
+	var idle_res := _asset_to_res_path(idle_art_path)
+	if not idle_res.ends_with("-idle.png"):
+		return
+	var loaded_idle := load_png_texture(idle_res)
+	if loaded_idle == null:
+		return
+	idle_chicken = loaded_idle
+	cover_clean_chicken = loaded_idle
+	hit_chicken = load_png_texture(idle_res.replace("-idle.png", "-hit.png"))
+	dizzy_chicken = load_png_texture(idle_res.replace("-idle.png", "-dizzy.png"))
+	defeated_chicken = load_png_texture(idle_res.replace("-idle.png", "-defeated.png"))
+	if hit_chicken == null:
+		hit_chicken = idle_chicken
+	if dizzy_chicken == null:
+		dizzy_chicken = idle_chicken
+	if defeated_chicken == null:
+		defeated_chicken = idle_chicken
+	gray_idle_chicken = null
+	gray_hit_chicken = null
+	gray_dizzy_chicken = null
+	gray_defeated_chicken = null
+	black_idle_chicken = null
+	black_hit_chicken = null
+	black_dizzy_chicken = null
+	black_defeated_chicken = null
+
+
+func _asset_to_res_path(path: String) -> String:
+	if path.begins_with("res://"):
+		return path
+	return "res://%s" % path
 
 
 func set_active_fight(active_fight: bool) -> void:
@@ -233,7 +328,7 @@ func _notification(what: int) -> void:
 func _ensure_labels() -> void:
 	if title_label != null:
 		return
-	title_label = _stage_label("Fight Chickens", 58, HORIZONTAL_ALIGNMENT_LEFT, 22)
+	title_label = _stage_label(stage_title, 58, HORIZONTAL_ALIGNMENT_LEFT, 22)
 	add_child(title_label)
 	ko_label = _stage_label("", 84, HORIZONTAL_ALIGNMENT_CENTER, 28)
 	add_child(ko_label)
@@ -369,7 +464,8 @@ func _seed_inactive_state() -> void:
 			"speed": 0.0,
 			"variant": "white",
 			"wave": 0,
-			"damage": CHICKEN_DAMAGE
+			"damage": CHICKEN_DAMAGE,
+			"face_right": pos.x < hero_pos.x
 		})
 
 
@@ -475,10 +571,11 @@ func _spawn_chicken(lane: int) -> void:
 		"uppercut_pop": 0.0,
 		"dead_timer": 0.0,
 		"damage_done": false,
-		"speed": (0.088 + edge_t * 0.026) * _wave_speed_mult(variant),
+		"speed": (0.088 + edge_t * 0.026) * _wave_speed_mult(variant) * enemy_speed_scale,
 		"variant": variant,
 		"wave": wave_index,
-		"damage": CHICKEN_DAMAGE * _wave_damage_mult(variant)
+		"damage": enemy_damage * _wave_damage_mult(variant),
+		"face_right": pos.x < hero_pos.x
 	})
 
 
@@ -543,6 +640,7 @@ func _step_chicken(chicken: Dictionary, delta: float) -> void:
 	var hp := float(chicken.get("hp", 0.0))
 	var dead_timer := float(chicken.get("dead_timer", 0.0))
 	var pos := chicken.get("pos", Vector2.ZERO) as Vector2
+	var old_pos := pos
 	var knock_timer := maxf(0.0, float(chicken.get("uppercut_knock_timer", 0.0)) - delta)
 	if knock_timer > 0.0:
 		var knock_dir := chicken.get("uppercut_knock_dir", Vector2.ZERO) as Vector2
@@ -552,7 +650,9 @@ func _step_chicken(chicken: Dictionary, delta: float) -> void:
 	else:
 		chicken["uppercut_knock_timer"] = 0.0
 	if hp <= 0.0:
-		chicken["pos"] = _clamp_norm_to_arena(pos)
+		var dead_pos := _clamp_norm_to_arena(pos)
+		_update_chicken_facing(chicken, dead_pos - old_pos)
+		chicken["pos"] = dead_pos
 		chicken["dead_timer"] = dead_timer + delta
 		chicken["hit_flash"] = maxf(0.0, float(chicken.get("hit_flash", 0.0)) - delta)
 		chicken["uppercut_pop"] = maxf(0.0, float(chicken.get("uppercut_pop", 0.0)) - delta)
@@ -584,11 +684,18 @@ func _step_chicken(chicken: Dictionary, delta: float) -> void:
 			chicken["damage_done"] = false
 			_spawn_smoke_puffs(pos, dir)
 
-	chicken["pos"] = _clamp_norm_to_arena(pos)
+	var next_pos := _clamp_norm_to_arena(pos)
+	_update_chicken_facing(chicken, next_pos - old_pos)
+	chicken["pos"] = next_pos
 	chicken["attack_cd"] = attack_cd
 	chicken["lunge_timer"] = lunge_timer
 	chicken["hit_flash"] = maxf(0.0, float(chicken.get("hit_flash", 0.0)) - delta)
 	chicken["uppercut_pop"] = maxf(0.0, float(chicken.get("uppercut_pop", 0.0)) - delta)
+
+
+func _update_chicken_facing(chicken: Dictionary, travel: Vector2) -> void:
+	if absf(travel.x) > 0.001:
+		chicken["face_right"] = travel.x > 0.0
 
 
 func _start_hero_attack() -> bool:
@@ -889,20 +996,22 @@ func _wave_speed_mult(variant: String) -> float:
 
 
 func _spawn_interval_for_wave() -> float:
+	var interval := 0.70
 	if end_wave_active:
-		return END_WAVE_SPAWN_INTERVAL
-	match _wave_style_index():
-		0:
-			return 0.82
-		1:
-			return 0.70
-		2:
-			return 0.58
-		3:
-			return 0.48
-		4:
-			return 0.38
-	return 0.70
+		interval = END_WAVE_SPAWN_INTERVAL
+	else:
+		match _wave_style_index():
+			0:
+				interval = 0.82
+			1:
+				interval = 0.70
+			2:
+				interval = 0.58
+			3:
+				interval = 0.48
+			4:
+				interval = 0.38
+	return maxf(0.02, interval * enemy_spawn_rhythm)
 
 
 func _max_chickens_for_wave() -> int:
@@ -1057,12 +1166,13 @@ func _draw() -> void:
 	var shake_offset := _module_shake_offset(s)
 	draw_set_transform(shake_offset, 0.0, Vector2.ONE)
 	_draw_arena(s)
-	_draw_smoke_puffs(s)
-	_draw_actors(s)
-	_draw_food_drops(s)
-	_draw_feather_particles(s)
-	if hero_attack_timer > 0.0 and hero_ko_timer <= 0.0:
-		_draw_hero_attack_flash(s)
+	if active or arena_shape != "diamond":
+		_draw_smoke_puffs(s)
+		_draw_actors(s)
+		_draw_food_drops(s)
+		_draw_feather_particles(s)
+		if hero_attack_timer > 0.0 and hero_ko_timer <= 0.0:
+			_draw_hero_attack_flash(s)
 	_draw_wave_indicator(s)
 	_draw_player_stat_hud(s)
 	_draw_low_hp_danger_tint(s)
@@ -1075,6 +1185,10 @@ func _draw() -> void:
 
 func _draw_arena(s: float) -> void:
 	var arena := _arena_rect(s)
+	if arena_shape == "diamond":
+		_draw_diamond_module_backplate(s)
+		_draw_diamond_arena_floor(arena, s)
+		return
 	if arena_floor != null:
 		_draw_rounded_texture_cover(arena_floor, arena, _stage_corner_radius(s), Color("#74bd57"), s)
 	else:
@@ -1082,6 +1196,276 @@ func _draw_arena(s: float) -> void:
 		for i in range(8):
 			var y := arena.position.y + arena.size.y * (0.16 + float(i) * 0.10)
 			draw_line(Vector2(arena.position.x + 10.0 * s, y), Vector2(arena.end.x - 10.0 * s, y), Color(0, 0, 0, 0.055), 3.0 * s, false)
+
+
+func _draw_diamond_arena_floor(arena: Rect2, s: float) -> void:
+	var points := _diamond_arena_points()
+	var rounded_points := _rounded_diamond_points(points, 72.0 * s, 10)
+	_draw_diamond_button_depth(rounded_points, s)
+	if arena_floor != null:
+		_draw_diamond_texture_cover(arena_floor, arena, rounded_points, Color("#74bd57"), s)
+	else:
+		draw_colored_polygon(rounded_points, Color("#74bd57"))
+	_draw_diamond_front_and_depth_outline(rounded_points, s)
+	_draw_diamond_depth_corner_connectors(rounded_points, _diamond_depth_offset(s), s)
+	for i in range(8):
+		var y := arena.position.y + arena.size.y * (0.18 + float(i) * 0.09)
+		var half_width := _diamond_half_width_at_y(y, rounded_points)
+		var center_x := arena.get_center().x
+		draw_line(Vector2(center_x - half_width + 22.0 * s, y), Vector2(center_x + half_width - 22.0 * s, y), Color(0, 0, 0, 0.055), 3.0 * s, false)
+
+
+func _draw_diamond_arena_mask() -> void:
+	pass
+
+
+func _draw_diamond_module_backplate(s: float) -> void:
+	var rect := _diamond_stats_plate_draw_rect(s)
+	draw_round_rect(rect, 16.0 * s, Color("#5f090d"))
+	draw_round_outline(rect, 16.0 * s, INK, 8.0 * s)
+
+
+func _diamond_stats_plate_rect(s: float) -> Rect2:
+	var points := _diamond_arena_points()
+	var left := points[3]
+	var bottom := points[2]
+	return Rect2(
+		Vector2(left.x + 56.0 * s, left.y - 38.0 * s),
+		Vector2(maxf(1.0, bottom.x - left.x - 56.0 * s), maxf(1.0, bottom.y - left.y - 4.0 * s))
+	)
+
+
+func _diamond_stats_plate_draw_rect(s: float) -> Rect2:
+	var rect := _diamond_stats_plate_rect(s)
+	if not diamond_stats_tucked:
+		return rect
+	return Rect2(rect.position + Vector2(rect.size.x * 0.31, -rect.size.y * 0.31), rect.size)
+
+
+func _diamond_arena_points() -> PackedVector2Array:
+	var s := _stage_scale()
+	var inset := maxf(12.0 * s, 10.0)
+	var side_inset := maxf(16.0 * s, 12.0)
+	var center := size * 0.5
+	return PackedVector2Array([
+		Vector2(center.x, inset),
+		Vector2(size.x - side_inset, center.y),
+		Vector2(center.x, size.y - inset),
+		Vector2(side_inset, center.y),
+	])
+
+
+func _draw_diamond_button_depth(points: PackedVector2Array, s: float) -> void:
+	if points.size() < 4:
+		return
+	var offset := _diamond_depth_offset(s)
+	var back := PackedVector2Array()
+	for point in points:
+		back.append(point + offset)
+	_draw_diamond_prism_faces(points, back, offset, s)
+	_draw_diamond_depth_caps(points, offset, s)
+	_draw_diamond_visible_depth_outline(back, s)
+
+
+func _draw_diamond_prism_faces(front: PackedVector2Array, back: PackedVector2Array, offset: Vector2, s: float) -> void:
+	for i in range(front.size()):
+		var next := (i + 1) % front.size()
+		var normal := _diamond_edge_outward_normal(front[i], front[next])
+		if normal.dot(offset) <= 0.15:
+			continue
+		var color := Color("#244815") if normal.x > 0.35 else Color("#315d1d")
+		draw_colored_polygon(PackedVector2Array([front[i], front[next], back[next], back[i]]), color)
+
+
+func _draw_diamond_depth_caps(front: PackedVector2Array, offset: Vector2, s: float) -> void:
+	var bottom := _diamond_extreme_y_point(front, true) + offset
+	var right := _diamond_extreme_x_point(front, true) + offset
+	_draw_ellipse(bottom, Vector2(26.0, 15.0) * s, Color("#315d1d"))
+	_draw_ellipse(right, Vector2(20.0, 24.0) * s, Color("#244815"))
+
+
+func _draw_diamond_visible_back_outline(front: PackedVector2Array, back: PackedVector2Array, offset: Vector2, s: float) -> void:
+	for i in range(front.size()):
+		var next := (i + 1) % front.size()
+		var normal := _diamond_edge_outward_normal(front[i], front[next])
+		if normal.dot(offset) > 0.15:
+			draw_line(back[i], back[next], INK, 8.0 * s, true)
+
+
+func _draw_diamond_front_and_depth_outline(front: PackedVector2Array, s: float) -> void:
+	draw_polyline(front, INK, 8.0 * s, true)
+
+
+func _draw_diamond_bottom_back_outline(front: PackedVector2Array, offset: Vector2, s: float) -> void:
+	for i in range(front.size()):
+		var next := (i + 1) % front.size()
+		if not _diamond_depth_edge_visible(front[i], front[next], offset):
+			continue
+		draw_line(front[i] + offset, front[next] + offset, INK, 8.0 * s, true)
+
+
+func _draw_diamond_visible_depth_outline(back: PackedVector2Array, s: float) -> void:
+	if back.size() < 4:
+		return
+	var center := size * 0.5 + _diamond_depth_offset(s)
+	var path := PackedVector2Array()
+	for point in back:
+		if point.x >= center.x or point.y >= center.y:
+			path.append(point)
+	if path.size() >= 2:
+		draw_polyline(path, INK, 8.0 * s, true)
+
+
+func _diamond_lower_depth_path(points: PackedVector2Array, cutoff_y: float) -> PackedVector2Array:
+	var path := PackedVector2Array()
+	for i in range(points.size()):
+		var current := points[i]
+		var next := points[(i + 1) % points.size()]
+		if current.y >= cutoff_y:
+			path.append(current)
+		if (current.y < cutoff_y and next.y >= cutoff_y) or (current.y >= cutoff_y and next.y < cutoff_y):
+			var t := (cutoff_y - current.y) / (next.y - current.y)
+			path.append(current.lerp(next, t))
+	if path.size() > 1 and path[0].x > path[path.size() - 1].x:
+		path.reverse()
+	return path
+
+
+func _draw_diamond_depth_corner_connectors(front: PackedVector2Array, offset: Vector2, s: float) -> void:
+	var top_right := _diamond_extreme_depth_connector_point(front, true)
+	var bottom_left := _diamond_extreme_depth_connector_point(front, false)
+	draw_line(top_right, top_right + offset, INK, 8.0 * s, true)
+	draw_line(bottom_left, bottom_left + offset, INK, 8.0 * s, true)
+
+
+func _diamond_depth_offset(s: float) -> Vector2:
+	return Vector2(38.0, 46.0) * s
+
+
+func _diamond_extreme_x_point(points: PackedVector2Array, right_side: bool) -> Vector2:
+	var best := points[0]
+	for point in points:
+		if (right_side and point.x > best.x) or (not right_side and point.x < best.x):
+			best = point
+	return best
+
+
+func _diamond_extreme_y_point(points: PackedVector2Array, bottom_side: bool) -> Vector2:
+	var best := points[0]
+	for point in points:
+		if (bottom_side and point.y > best.y) or (not bottom_side and point.y < best.y):
+			best = point
+	return best
+
+
+func _diamond_extreme_depth_connector_point(points: PackedVector2Array, positive: bool) -> Vector2:
+	var best := points[0]
+	var best_score := best.x - best.y
+	for point in points:
+		var score := point.x - point.y
+		if (positive and score > best_score) or (not positive and score < best_score):
+			best = point
+			best_score = score
+	return best
+
+
+func _rounded_diamond_points(points: PackedVector2Array, corner_radius: float, segments: int) -> PackedVector2Array:
+	var rounded := PackedVector2Array()
+	if points.size() < 4:
+		return points
+	var safe_segments := maxi(2, segments)
+	for i in range(points.size()):
+		var previous := points[(i - 1 + points.size()) % points.size()]
+		var corner := points[i]
+		var next := points[(i + 1) % points.size()]
+		var effective_radius := corner_radius * (0.42 if i == 1 or i == 3 else 1.0)
+		var cut := minf(effective_radius, minf(corner.distance_to(previous), corner.distance_to(next)) * 0.34)
+		var start := corner.move_toward(previous, cut)
+		var finish := corner.move_toward(next, cut)
+		for step in range(safe_segments + 1):
+			var t := float(step) / float(safe_segments)
+			var a := start.lerp(corner, t)
+			var b := corner.lerp(finish, t)
+			rounded.append(a.lerp(b, t))
+	return rounded
+
+
+func _draw_diamond_depth_outlines(front: PackedVector2Array, back: PackedVector2Array, visible_edges: Array[bool], travel: Vector2, s: float) -> void:
+	var width := 8.0 * s
+	for i in range(front.size()):
+		if not bool(visible_edges[i]):
+			continue
+		var next := (i + 1) % front.size()
+		draw_line(back[i], back[next], INK, width, true)
+
+
+func _diamond_edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
+	var edge := p1 - p0
+	if edge.length_squared() <= 0.001:
+		return Vector2.ZERO
+	return Vector2(edge.y, -edge.x).normalized()
+
+
+func _diamond_depth_edge_visible(p0: Vector2, p1: Vector2, travel: Vector2) -> bool:
+	var normal := _diamond_edge_outward_normal(p0, p1)
+	return normal.dot(travel) > 0.15 and minf(p0.y, p1.y) > size.y * 0.5 + 28.0 * _stage_scale()
+
+
+func _diamond_side_face_visible(normal: Vector2, travel: Vector2) -> bool:
+	if normal.length_squared() <= 0.001 or normal.dot(travel) <= 0.15:
+		return false
+	return normal.x > 0.08 or normal.y > 0.56
+
+
+func _diamond_half_width_at_y(y: float, points: PackedVector2Array) -> float:
+	if points.size() > 4:
+		return _polygon_half_width_at_y(y, points)
+	var top := points[0]
+	var right := points[1]
+	var bottom := points[2]
+	var center_y := right.y
+	var sharp := lerpf(0.0, right.x - top.x, clampf((y - top.y) / maxf(1.0, center_y - top.y), 0.0, 1.0)) if y <= center_y else lerpf(right.x - bottom.x, 0.0, clampf((y - center_y) / maxf(1.0, bottom.y - center_y), 0.0, 1.0))
+	var r := maxf(20.0, 72.0 * _stage_scale())
+	if y < top.y + r:
+		var dy_top := y - (top.y + r)
+		sharp = minf(sharp, sqrt(maxf(0.0, r * r - dy_top * dy_top)))
+	elif y > bottom.y - r:
+		var dy_bottom := y - (bottom.y - r)
+		sharp = minf(sharp, sqrt(maxf(0.0, r * r - dy_bottom * dy_bottom)))
+	if absf(y - center_y) < r:
+		var dy_side := y - center_y
+		var side_cap := right.x - top.x - (r - sqrt(maxf(0.0, r * r - dy_side * dy_side)))
+		sharp = minf(sharp, side_cap)
+	return sharp
+
+
+func _polygon_half_width_at_y(y: float, points: PackedVector2Array) -> float:
+	var intersections: Array[float] = []
+	for i in range(points.size()):
+		var a := points[i]
+		var b := points[(i + 1) % points.size()]
+		if is_equal_approx(a.y, b.y):
+			continue
+		var min_y := minf(a.y, b.y)
+		var max_y := maxf(a.y, b.y)
+		if y < min_y or y >= max_y:
+			continue
+		var t := (y - a.y) / (b.y - a.y)
+		intersections.append(lerpf(a.x, b.x, t))
+	if intersections.size() < 2:
+		return 0.0
+	intersections.sort()
+	return maxf(0.0, (float(intersections[intersections.size() - 1]) - float(intersections[0])) * 0.5)
+
+
+func _clamp_stage_point_to_diamond(point: Vector2, margin: float) -> Vector2:
+	var points := _diamond_arena_points()
+	var top := points[0]
+	var bottom := points[2]
+	var clamped_y := clampf(point.y, top.y + margin, bottom.y - margin)
+	var half_width := maxf(1.0, _diamond_half_width_at_y(clamped_y, points) - margin)
+	var center_x := size.x * 0.5
+	return Vector2(clampf(point.x, center_x - half_width, center_x + half_width), clamped_y)
 
 
 func _module_shake_offset(s: float) -> Vector2:
@@ -1116,6 +1500,9 @@ func _draw_wave_indicator(s: float) -> void:
 	var progress := clampf(displayed_wave_progress, 0.0, 1.0)
 	var fill_color := _wave_indicator_color(progress)
 	var label := "Cleared" if area_clear_restart_timer > 0.0 else ("End Wave" if end_wave_active else "Wave %d" % (wave_index + 1))
+	if arena_shape == "diamond":
+		_draw_diamond_wave_indicator(progress, fill_color, label, s)
+		return
 	var label_size := int(clampf(arena.size.y * 0.20, 46.0, 58.0))
 	var rail_size := Vector2(maxf(34.0, 44.0 * s), maxf(122.0, arena.size.y * 0.58))
 	var rail := Rect2(Vector2(arena.end.x - rail_size.x - 28.0 * s, arena.end.y - rail_size.y - 30.0 * s), rail_size)
@@ -1131,23 +1518,55 @@ func _draw_wave_indicator(s: float) -> void:
 	_draw_centered_text(label, label_center, label_size, WHITE, int(maxf(10.0, 14.0 * s)), INK)
 
 
+func _draw_diamond_wave_indicator(progress: float, fill_color: Color, label: String, s: float) -> void:
+	var points := _diamond_arena_points()
+	var top := points[0]
+	var left := points[3]
+	var edge := top - left
+	if edge.length_squared() <= 1.0:
+		return
+	var direction := edge.normalized()
+	var inward := direction.rotated(PI * 0.5)
+	var angle := direction.angle()
+	var rail_center := left.lerp(top, 0.44) - inward * 30.0 * s
+	var rail_size := Vector2(clampf(edge.length() * 0.48, 160.0 * s, 236.0 * s), 28.0 * s)
+	var radius := rail_size.y * 0.5
+	draw_set_transform(rail_center, angle, Vector2.ONE)
+	var rail := Rect2(-rail_size * 0.5, rail_size)
+	draw_round_rect(Rect2(rail.position + Vector2(0.0, 4.0 * s), rail.size), radius, Color(0, 0, 0, 0.28))
+	draw_round_rect(rail, radius, Color("#211411", 0.94))
+	var fill := Rect2(rail.position, Vector2(rail.size.x * clampf(progress, 0.0, 1.0), rail.size.y))
+	if fill.size.x > 0.5:
+		draw_round_rect(fill, radius, fill_color)
+	draw_round_outline(rail, radius, INK, maxf(5.0, 7.0 * s))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_centered_fit_text_rotated(label, rail_center - inward * 48.0 * s, rail_size.x * 1.24, int(clampf(50.0 * s, 40.0, 58.0)), WHITE, int(maxf(10.0, 14.0 * s)), INK, angle, 1.0)
+
+
 func _draw_player_stat_hud(s: float) -> void:
 	if not active or hero_ko_timer > 0.0:
+		return
+	if arena_shape == "diamond" and diamond_stats_tucked:
 		return
 	var arena := _arena_rect(s)
 	var font := get_theme_default_font()
 	if font == null:
 		return
-	var text_size := int(clampf(arena.size.y * 0.148, 34.0, 46.0))
+	var text_size := int(clampf(arena.size.y * (0.188 if arena_shape == "diamond" else 0.148), 34.0, 57.0))
 	var values := [
+		"HP %d" % int(round(_hero_max_hp())),
+		"DMG %s" % _hero_attack_damage_range_text(),
+		"SPD %.2f/s" % (1.0 / maxf(0.01, _hero_attack_interval()))
+	] if arena_shape == "diamond" else [
 		"DMG %s" % _hero_attack_damage_range_text(),
 		"SPD %.2f/s" % (1.0 / maxf(0.01, _hero_attack_interval())),
 		"HP %d" % int(round(_hero_max_hp()))
 	]
-	var left_x := arena.position.x + clampf(arena.size.x * 0.052, 36.0, 54.0)
-	var row_gap := clampf(arena.size.y * 0.150, 36.0, 46.0)
-	var bottom_pad := clampf(arena.size.y * 0.108, 26.0, 36.0)
-	var top_y := arena.end.y - bottom_pad - row_gap * 2.0
+	var stats_plate := _diamond_stats_plate_rect(s) if arena_shape == "diamond" else Rect2()
+	var left_x := stats_plate.position.x + 18.0 * s if arena_shape == "diamond" else arena.position.x + clampf(arena.size.x * 0.052, 36.0, 54.0)
+	var row_gap := clampf(arena.size.y * 0.165, 48.0, 58.0) if arena_shape == "diamond" else clampf(arena.size.y * 0.150, 36.0, 46.0)
+	var bottom_pad := 34.0 * s if arena_shape == "diamond" else clampf(arena.size.y * 0.108, 26.0, 36.0)
+	var top_y := stats_plate.end.y - bottom_pad - row_gap * 2.0 if arena_shape == "diamond" else arena.end.y - bottom_pad - row_gap * 2.0
 	var text_stroke := int(maxf(10.0, 14.0 * s))
 	for i in range(3):
 		var y := top_y + row_gap * float(i)
@@ -1303,6 +1722,8 @@ func _draw_actors(s: float) -> void:
 
 
 func _draw_hero(center: Vector2, s: float) -> void:
+	if arena_shape == "diamond":
+		center = _clamp_stage_point_to_diamond(center, 92.0 * s)
 	var ko := hero_ko_timer > 0.0
 	var attack_duration := 0.34 if hero_attack_is_uppercut else 0.24
 	var pulse := clampf(hero_attack_timer / attack_duration, 0.0, 1.0)
@@ -1318,10 +1739,17 @@ func _draw_hero(center: Vector2, s: float) -> void:
 		var rise := Vector2(0.0, -34.0 * sin(pulse * PI)) * s if hero_attack_is_uppercut else Vector2.ZERO
 		var rotation := 0.08 * float(hero_facing) * pulse if hero_attack_is_uppercut else 0.04 * float(hero_facing) * pulse
 		rotation += sin(elapsed_seconds * 4.2) * 0.012 * (1.0 - pulse)
-		var hero_draw_size := Vector2(270, 270) * s if hero_attack_is_uppercut and is_striking else (Vector2(238, 238) * s if is_striking else Vector2(198, 198) * s)
-		_draw_ellipse(center + Vector2(16, 98) * s, Vector2(82, 19) * s, Color(0, 0, 0, 0.20))
-		_draw_character_texture(texture, center + Vector2(0, 30) * s + Vector2(0, idle_bob) + lunge + rise, hero_draw_size, rotation, 1.0, hero_facing < 0, true)
-	_draw_local_health(center + Vector2(0, -118) * s, 132.0 * s, hero_hp / _hero_max_hp(), HERO_HP_BLUE, s)
+		var diamond_scale := DIAMOND_HERO_DRAW_SCALE if arena_shape == "diamond" else 1.0
+		var hero_draw_size := (Vector2(270, 270) if hero_attack_is_uppercut and is_striking else (Vector2(238, 238) if is_striking else Vector2(198, 198))) * s * diamond_scale
+		var hero_sprite_center := center + Vector2(0, -12) * s + Vector2(0, idle_bob) + lunge + rise
+		var shadow_center := center + Vector2(-10, 42) * s
+		_draw_ellipse(shadow_center, Vector2(92, 23) * s, Color(0, 0, 0, 0.055))
+		_draw_ellipse(shadow_center, Vector2(78, 19) * s, Color(0, 0, 0, 0.075))
+		_draw_ellipse(shadow_center, Vector2(62, 15) * s, Color(0, 0, 0, 0.095))
+		_draw_character_texture(texture, hero_sprite_center, hero_draw_size, rotation, 1.0, hero_facing < 0, true)
+	var hero_health_offset := Vector2(0, -86) * s if arena_shape == "diamond" else Vector2(0, -118) * s
+	var hero_health_width := 94.0 * s if arena_shape == "diamond" else 132.0 * s
+	_draw_local_health(center + hero_health_offset, hero_health_width, hero_hp / _hero_max_hp(), HERO_HP_BLUE, s)
 
 
 func _draw_ko_hero(center: Vector2, s: float) -> void:
@@ -1349,7 +1777,8 @@ func _draw_ko_hero(center: Vector2, s: float) -> void:
 
 func _draw_chicken(chicken: Dictionary, s: float) -> void:
 	var pos := chicken.get("pos", Vector2.ZERO) as Vector2
-	var center := _norm_to_stage(pos)
+	if arena_shape == "diamond" and not _diamond_contains_norm(pos):
+		return
 	var hp := float(chicken.get("hp", 0.0))
 	var max_hp := maxf(1.0, float(chicken.get("max_hp", CHICKEN_BASE_HP_MAX)))
 	var hit_flash := float(chicken.get("hit_flash", 0.0))
@@ -1368,6 +1797,8 @@ func _draw_chicken(chicken: Dictionary, s: float) -> void:
 		texture = _chicken_texture(variant, "hit")
 	elif hp / max_hp < 0.38:
 		texture = _chicken_texture(variant, "dizzy")
+	var scale := (0.82 + pos.y * 0.34) * (DIAMOND_ENEMY_DRAW_SCALE if arena_shape == "diamond" else 1.0) * enemy_sprite_scale
+	var center := _norm_to_stage(pos) - Vector2(0, 64) * s * scale
 	var lunge_dir := chicken.get("lunge_dir", Vector2.ZERO) as Vector2
 	var id_phase := float(int(chicken.get("id", 0))) * 1.71
 	var hop := 0.0 if not active else sin(elapsed_seconds * 7.0 + id_phase) * 4.0 * s
@@ -1385,8 +1816,7 @@ func _draw_chicken(chicken: Dictionary, s: float) -> void:
 		var pop_t := clampf(uppercut_pop / 0.36, 0.0, 1.0)
 		arc_lift = -46.0 * sin(pop_t * PI)
 	center += Vector2(0.0, arc_lift) * s
-	var face_left := pos.x < hero_pos.x
-	var scale := 0.82 + pos.y * 0.34
+	var face_right := bool(chicken.get("face_right", pos.x < hero_pos.x))
 	var alpha := clampf(1.0 - float(chicken.get("dead_timer", 0.0)) * 0.75, 0.0, 1.0)
 	var death_tilt := float(chicken.get("dead_timer", 0.0)) * 0.70
 	var lunge_scale := 1.0 + lunge_alpha * 0.06
@@ -1394,7 +1824,7 @@ func _draw_chicken(chicken: Dictionary, s: float) -> void:
 	var knock_rotation := 0.0
 	if knock_timer > 0.0:
 		var knock_t := 1.0 - clampf(knock_timer / knock_duration, 0.0, 1.0)
-		knock_rotation = sin(knock_t * PI) * 0.22 * (-1.0 if face_left else 1.0)
+		knock_rotation = sin(knock_t * PI) * 0.22 * (-1.0 if face_right else 1.0)
 	if dead:
 		state_scale = 1.26
 	elif knock_timer > 0.0 or uppercut_pop > 0.0:
@@ -1402,9 +1832,11 @@ func _draw_chicken(chicken: Dictionary, s: float) -> void:
 	elif hit_flash > 0.0 or lunge_timer > 0.0:
 		state_scale = 1.08
 	_draw_ellipse(center + Vector2(0, 64) * s * scale, Vector2(58, 17) * s * scale, Color(0, 0, 0, 0.17 * alpha))
-	_draw_character_texture(texture, center, Vector2(172, 156) * s * scale * lunge_scale * state_scale, -hit_flash * 0.10 + death_tilt + knock_rotation, alpha, face_left)
+	_draw_character_texture(texture, center, Vector2(172, 156) * s * scale * lunge_scale * state_scale, -hit_flash * 0.10 + death_tilt + knock_rotation, alpha, face_right != enemy_art_faces_right)
 	if not dead:
-		_draw_local_health(center + Vector2(0, -82) * s * scale, 78.0 * s * scale, hp / max_hp, CHICKEN_HP if hp / max_hp > 0.35 else DANGER, s)
+		var health_offset := Vector2(0, -58) * s if arena_shape == "diamond" else Vector2(0, -82) * s * scale
+		var health_width := 64.0 * s if arena_shape == "diamond" else 78.0 * s * scale
+		_draw_local_health(center + health_offset, health_width, hp / max_hp, CHICKEN_HP if hp / max_hp > 0.35 else DANGER, s)
 
 
 func _draw_food_drops(s: float) -> void:
@@ -1460,6 +1892,9 @@ func _draw_hero_attack_flash(s: float) -> void:
 
 
 func _draw_inactive_cover(s: float) -> void:
+	if arena_shape == "diamond":
+		_draw_diamond_inactive_cover(s)
+		return
 	var arena := _arena_rect(s)
 	var t := _ease_garage_door(cover_open_amount)
 	var top_rect := _cover_top_rect(s)
@@ -1485,6 +1920,30 @@ func _draw_inactive_cover(s: float) -> void:
 		var chicken_size := Vector2(arena.size.y * 0.42, arena.size.y * 0.38)
 		_draw_ellipse(badge_center + Vector2(0, chicken_size.y * 0.37), Vector2(chicken_size.x * 0.35, chicken_size.y * 0.11), Color(0, 0, 0, 0.18 * badge_alpha))
 		_draw_character_texture(cover_chicken, badge_center, chicken_size, sin(elapsed_seconds * 0.8) * 0.010, badge_alpha, false, false)
+
+
+func _draw_diamond_inactive_cover(s: float) -> void:
+	var t := _ease_garage_door(cover_open_amount)
+	var points := _rounded_diamond_points(_diamond_arena_points(), 72.0 * s, 10)
+	var offset := _diamond_depth_offset(s)
+	var closed_points := PackedVector2Array()
+	for point in points:
+		closed_points.append(point.lerp(point + offset, t))
+	draw_colored_polygon(closed_points, Color("#8d171d"))
+	for i in range(7):
+		var line_y := size.y * (0.29 + float(i) * 0.065)
+		var half_width := _diamond_half_width_at_y(line_y, closed_points)
+		var center_x := size.x * 0.5
+		draw_line(Vector2(center_x - half_width + 26.0 * s, line_y), Vector2(center_x + half_width - 26.0 * s, line_y), Color(0.12, 0.018, 0.02, 0.20), 3.0 * s, true)
+	draw_polyline(closed_points, INK, 8.0 * s, true)
+	var cover_chicken := cover_clean_chicken if cover_clean_chicken != null else idle_chicken
+	if cover_chicken == null:
+		return
+	var badge_alpha := clampf(1.0 - t * 1.8, 0.0, 1.0)
+	var badge_center := size * 0.5 + Vector2(0.0, 5.0) * s
+	var chicken_size := Vector2(size.x * 0.30, size.y * 0.28)
+	_draw_ellipse(badge_center + Vector2(0, chicken_size.y * 0.35), Vector2(chicken_size.x * 0.34, chicken_size.y * 0.10), Color(0, 0, 0, 0.22 * badge_alpha))
+	_draw_character_texture(cover_chicken, badge_center, chicken_size, sin(elapsed_seconds * 0.8) * 0.010, badge_alpha, false, false)
 
 
 func _layout_title_label(s: float) -> void:
@@ -1747,6 +2206,28 @@ func _draw_rounded_texture_cover(texture: Texture2D, rect: Rect2, radius: float,
 		y = next_y
 
 
+func _draw_diamond_texture_cover(texture: Texture2D, rect: Rect2, points: PackedVector2Array, fallback_color: Color, s: float) -> void:
+	draw_colored_polygon(points, fallback_color)
+	var texture_size := Vector2(float(texture.get_width()), float(texture.get_height()))
+	if texture_size.x <= 1.0 or texture_size.y <= 1.0:
+		return
+	var cover_scale := maxf(rect.size.x / texture_size.x, rect.size.y / texture_size.y)
+	var source_size := rect.size / cover_scale
+	var source_origin := (texture_size - source_size) * 0.5
+	var center_x := rect.get_center().x
+	var strip_h := maxf(1.0, 3.0 * s)
+	var y := rect.position.y
+	while y < rect.end.y:
+		var next_y := minf(rect.end.y, y + strip_h)
+		var mid_y := (y + next_y) * 0.5
+		var half_width := _diamond_half_width_at_y(mid_y, points)
+		var dest := Rect2(Vector2(center_x - half_width, y), Vector2(half_width * 2.0, next_y - y))
+		if dest.size.x > 0.5 and dest.size.y > 0.5:
+			var source := Rect2(source_origin + (dest.position - rect.position) / cover_scale, dest.size / cover_scale)
+			draw_texture_rect_region(texture, dest, source, Color.WHITE, false, true)
+		y = next_y
+
+
 func _draw_punishment_overlay(s: float) -> void:
 	var arena := _arena_rect(s)
 	var screen_alpha := _ko_screen_alpha()
@@ -1915,7 +2396,7 @@ func _roll_hero_uppercut_damage() -> float:
 
 
 func _roll_chicken_max_hp(stat_mult: float) -> float:
-	return randf_range(CHICKEN_BASE_HP_MIN, CHICKEN_BASE_HP_MAX) * stat_mult
+	return randf_range(enemy_base_hp_min, enemy_base_hp_max) * stat_mult
 
 
 func _hero_attack_damage_range_text() -> String:
@@ -1936,4 +2417,19 @@ func _norm_to_stage(pos: Vector2) -> Vector2:
 
 
 func _clamp_norm_to_arena(pos: Vector2) -> Vector2:
+	if arena_shape == "diamond":
+		return _clamp_norm_to_diamond(pos, 0.055)
 	return Vector2(clampf(pos.x, 0.035, 0.965), clampf(pos.y, 0.07, 0.93))
+
+
+func _clamp_norm_to_diamond(pos: Vector2, margin: float) -> Vector2:
+	var y := clampf(pos.y, 0.07 + margin, 0.93 - margin)
+	var half_width := (0.5 - margin) * (1.0 - absf(y - 0.5) / 0.43)
+	return Vector2(clampf(pos.x, 0.5 - half_width, 0.5 + half_width), y)
+
+
+func _diamond_contains_norm(pos: Vector2) -> bool:
+	if pos.y < 0.07 or pos.y > 0.93:
+		return false
+	var half_width := 0.5 * (1.0 - absf(pos.y - 0.5) / 0.43)
+	return absf(pos.x - 0.5) <= half_width

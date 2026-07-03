@@ -118,21 +118,45 @@ Goal: take the Fight Chickens prototype and turn it into a real fighting progres
 
 Shape direction:
 
-- Vampire-survivor-style fighting modules should become diamond-shaped.
-- The diamond shape should visually separate combat arenas from normal rectangular activity modules.
-- Final visual details can wait until the next design pass.
+- Fighting monster modules should use the same diamond arena presentation style as Fight Chickens.
+- The diamond shape visually separates combat arenas from normal rectangular activity modules.
+- Enemy type still controls stats, art, speed, and behavior tuning inside that shared shell.
+- Final visual details can wait until each enemy pattern is designed.
 
 Progression draft:
 
-- Chickens: first chaotic swarm prototype.
-- Angry Roosters: faster, more aggressive chicken variant.
-- Street Rats: small swarm pressure.
-- Giant Rats: tougher early enemy.
-- Coyotes: faster mid-tier threat.
-- Werewolves: bigger, more dangerous, night-themed.
-- Cave Trolls: slow heavy pressure.
-- Wyverns: flying or lunging pressure.
-- Dragons: late-tier spectacle enemy.
+- Level 5 - Chickens: first chaotic swarm prototype.
+- Sewer Rats: small swarm pressure; keep outside the fighting skill.
+- Level 16 - Goblins: basic coordinated enemy pressure.
+- Level 24 - R.O.U.S.es: tougher early enemy.
+- Level 32 - Guys: Blue Guy-style opponents with the same source-of-truth proportions in a different color.
+- Level 47 - Werewolves: bigger, more dangerous, night-themed.
+- Level 59 - Cave Trolls: slow heavy pressure.
+- Level 74 - Giants: scaled-up Guys; no unique source sprites.
+- Level 88 - Vampires: fast late-tier pressure.
+- Level 98 - Dragons: late-tier spectacle enemy.
+
+Placement note:
+
+- Goblins claim fighting level 16; Grapple Compost Bin now moves to level 17 to avoid a Fighting unlock collision.
+
+Player Blue Guy scaling note:
+
+- The chicken-fight stage scales player Blue Guy stats from the level 5 baseline by `1.03^(Fighting level - 5)`.
+- Level 5: 33 HP, 8-11 punch damage, 22-30 uppercut damage, 1.05s attack interval.
+- Level 16: 46 HP, 11-15 punch damage, 30-42 uppercut damage, 0.76s attack interval.
+- Level 24: 58 HP, 14-19 punch damage, 39-53 uppercut damage, 0.60s attack interval.
+- Level 32: 73 HP, 18-24 punch damage, 49-67 uppercut damage, 0.47s attack interval.
+- Level 47: 114 HP, 28-38 punch damage, 76-104 uppercut damage, 0.34s attack interval.
+- Level 59: 163 HP, 39-54 punch damage, 109-148 uppercut damage, 0.34s attack interval.
+- Level 74: 254 HP, 61-85 punch damage, 169-231 uppercut damage, 0.34s attack interval.
+- Level 88: 384 HP, 93-128 punch damage, 256-349 uppercut damage, 0.34s attack interval.
+- Level 98: 516 HP, 125-172 punch damage, 344-469 uppercut damage, 0.34s attack interval.
+- Attack speed reaches the 0.34s interval cap by level 47, or about 2.94 attacks per second.
+- Rough punch DPS by Fighting level, before uppercuts: level 5 = 9, level 16 = 17, level 24 = 28, level 32 = 45, level 47 = 97, level 59 = 138, level 74 = 215, level 88 = 325, level 98 = 437.
+- Late enemies, especially Vampires and Dragons, must be tuned around the capped attack speed; Dragons at level 98 should assume Blue Guy is effectively machine-gunning heavy punches unless the combat shell adds movement, blocking, phases, or downtime.
+- Expected DPS including uppercut chance/cooldown is roughly: level 16 = 20, level 24 = 31, level 32 = 50, level 47 = 106, level 59 = 151, level 74 = 236, level 88 = 357, level 98 = 480.
+- Combat HP targets use that expected DPS: Goblins 99 (~5s), R.O.U.S.es 173 (~5.5s), Guys 299 (~6s), Werewolves 743 (~7s), Cave Trolls 1211 (~8s), Giants 2123 (~9s), Vampires 3211 (~9s), Dragons 5754 (~12s).
 
 Implementation direction:
 
@@ -143,6 +167,20 @@ Implementation direction:
 
 Asset plan:
 
+- Source-of-truth enemy sprite states follow the chicken fight module: `idle`, `hit`, `dizzy`, and `defeated`.
+- Each enemy keeps a source sheet at `assets/content/fight/enemies/{enemy}/{enemy}-states-source.png`, equivalent to the chicken `chicken-states-source.png`.
+- Sprites should be transparent PNGs with the same chunky outline/readability style as the chicken prototype. Exact canvas can vary by enemy silhouette; keep in-game draw scale stable.
+- Chicken source paths already exist under `assets/content/fight/prototype/chicken-{state}.png`, with gray/black state variants optional for swarm variety.
+- Planned enemy sprite paths:
+  - Sewer Rats: outside the fighting skill; if reused as combat elsewhere, use `assets/content/fight/enemies/sewer-rats/sewer-rats-{state}.png`.
+  - Goblins: `assets/content/fight/enemies/goblins/goblins-{state}.png`.
+  - R.O.U.S.es: `assets/content/fight/enemies/rouses/rouses-{state}.png`.
+  - Guys: source sheet `assets/content/fight/enemies/guys/guys-states-source.png`; same proportions as the Blue Guy source of truth, different color.
+  - Werewolves: `assets/content/fight/enemies/werewolves/werewolves-{state}.png`.
+  - Cave Trolls: `assets/content/fight/enemies/cave-trolls/cave-trolls-{state}.png`.
+  - Giants: reuse the Guys source sheet at larger runtime scale; do not create unique Giants sprites.
+  - Vampires: `assets/content/fight/enemies/vampires/vampires-{state}.png`.
+  - Dragons: `assets/content/fight/enemies/dragons/dragons-{state}.png`.
 - Use placeholder silhouettes only while tuning behavior.
 - Generate or create final assets after enemy scale, module framing, and animation needs are known.
 - Validate each fighting module with screenshots because shape and readability are player-visible.
@@ -167,8 +205,7 @@ Rules:
 
 First bosses:
 
-- Fighting page first boss: Rooster.
-- Later example: Rat King.
+- Fighting page first boss: Rat King.
 
 Suggested data contract:
 
@@ -176,8 +213,8 @@ Suggested data contract:
 {
   "kind": "boss_fight",
   "boss": {
-    "id": "rooster",
-    "name": "Rooster",
+    "id": "rat_king",
+    "name": "Rat King",
     "hp": 100,
     "requires": [{ "skill": "fighting", "level": 3 }]
   },
@@ -285,6 +322,6 @@ Goal: make mission board task completion feel like a real reward moment.
 5. Fighting diamond shape.
 6. Chicken prototype variations.
 7. Boss fight module shell.
-8. Rooster boss and first boss gate.
+8. Rat King boss and first boss gate.
 9. Mission board task completion ceremony animation.
 10. Balance pass and screenshots.

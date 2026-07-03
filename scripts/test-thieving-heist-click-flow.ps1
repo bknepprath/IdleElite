@@ -66,6 +66,8 @@ try {
     @'
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
 const BOOT_TIMEOUT_FRAMES := 720
 const TARGET_HEIST_ID := "complimentary_spoon"
 
@@ -114,19 +116,19 @@ func _run() -> void:
 	scene.set("module_ui_collapsed", {})
 	var skills := scene.get("skills") as Dictionary
 	var thieving := (skills.get("thieving", {}) as Dictionary).duplicate(true)
-	thieving["xp"] = int(scene.call("_xp_for_level", 8))
+	thieving["xp"] = SkillState.xp_for_level(8)
 	thieving["level"] = 8
 	skills["thieving"] = thieving
 	scene.set("skills", skills)
 	scene.call("_recalculate_level", "thieving")
 	scene.call("_ensure_all_thieving_trophy_state")
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	var render_result = scene.call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _frame in range(40):
 		await process_frame
-	scene.call("_detail_lazy_mount_thieving_heists_sync", true)
+	scene.call("_skill_detail_surface").call("_detail_lazy_mount_thieving_heists_sync", true)
 	for _frame in range(10):
 		await process_frame
 
@@ -160,7 +162,7 @@ func _run() -> void:
 
 	var trophy_state := ((scene.get("thieving_trophies") as Dictionary).get(TARGET_HEIST_ID, {}) as Dictionary)
 	var xp_after := int(((scene.get("skills") as Dictionary).get("thieving", {}) as Dictionary).get("xp", 0))
-	var cooldown_remaining := int(scene.call("_thieving_heist_cooldown_remaining", TARGET_HEIST_ID))
+	var cooldown_remaining := int(scene.thieving_state.heist_cooldown_remaining(TARGET_HEIST_ID, int(scene.call("_unix_now"))))
 	var interacted := bool(trophy_state.get("stolen", false)) or cooldown_remaining > 0 or xp_after > xp_before
 	if not interacted:
 		_fail("STEAL click did not change trophy state, cooldown, or XP. result=%s xp_before=%s xp_after=%s trophy=%s" % [

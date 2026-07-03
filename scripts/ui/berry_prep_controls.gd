@@ -22,15 +22,12 @@ static func build_button(skill_id: String, action_id: String, action_name: Strin
 	button.add_child(hint)
 	button.set_meta("berry_prep_hint_label_id", hint.get_instance_id())
 
-	var popover := build_popover(skill_id, action_id, action_name, berry_amount_text, prepped, ink_color, popup_style, bold_font, regular_font, attach_depress, apply_prep)
-	button.add_child(popover)
-	prewarm_popover.call(popover)
-	button.pressed.connect(toggle_popover.bind(popover))
+	button.pressed.connect(apply_prep.bind(skill_id, action_id, 0))
 	return button
 
 
 static func hint_label(prepped: bool, ink_color: Color, bold_font: Font, regular_font: Font) -> Label:
-	var node := label("PREPPED" if prepped else "TAP TO PREP", 54, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+	var node := label("", 54, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 	node.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	node.offset_left = 44.0
 	node.offset_right = -44.0

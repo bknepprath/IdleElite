@@ -80,8 +80,8 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
 	var render_result = scene.call("_render_screen", false, -1, false)

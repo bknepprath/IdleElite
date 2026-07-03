@@ -21,6 +21,8 @@ var art_height := 0.0
 var feather_height := 150.0
 var mask_inset := 6.0
 var corner_mask_mode := 0
+var bottom_shape := "round"
+var wide_u_bottom_rise := 58.0
 var fallback_color := Color("#3aa0ff")
 var aspect_mode := 0
 var sample_zoom := 1.0
@@ -37,6 +39,8 @@ var mask_shader_params_feather_height := -1.0
 var mask_shader_params_art_height := -1.0
 var mask_shader_params_inset := -1.0
 var mask_shader_params_corner_mode := -1
+var mask_shader_params_bottom_shape := -1
+var mask_shader_params_wide_u_bottom_rise := -1.0
 var mask_shader_params_aspect_mode := -1
 var mask_shader_params_fallback_color := Color(0, 0, 0, 0)
 var mask_shader_params_sample_zoom := -1.0
@@ -78,6 +82,8 @@ uniform float feather_px = 150.0;
 uniform float art_height_px = 0.0;
 uniform float mask_inset_px = 0.0;
 uniform int corner_mask_mode = 0;
+uniform int bottom_shape = 0;
+uniform float wide_u_bottom_rise_px = 58.0;
 uniform int aspect_mode = 0;
 uniform vec4 fallback_color : source_color = vec4(0.2, 0.55, 0.9, 1.0);
 uniform float sample_zoom = 1.0;
@@ -98,6 +104,22 @@ void fragment() {
 	vec2 q = abs(mask_p - half_size) - (half_size - vec2(r));
 	float distance = length(max(q, vec2(0.0))) + min(max(q.x, q.y), 0.0) - r;
 	float alpha = 1.0 - smoothstep(0.0, corner_mask_mode == 1 ? 1.0 : 2.0, distance);
+	if (bottom_shape == 1) {
+		float side_y = max(0.0, control_size.y - wide_u_bottom_rise_px);
+		float x_pct = clamp(p.x / max(1.0, control_size.x), 0.0, 1.0);
+		float corner_r = min(radius_px * 0.62, control_size.x * 0.14);
+		float curve_x = clamp((p.x - corner_r) / max(1.0, control_size.x - corner_r * 2.0), 0.0, 1.0);
+		float curve_y = mix(side_y, control_size.y, sin(curve_x * 3.14159265));
+		if (p.x < corner_r && p.y > side_y - corner_r) {
+			vec2 corner_center = vec2(corner_r, side_y - corner_r);
+			curve_y = side_y - corner_r + sqrt(max(0.0, corner_r * corner_r - pow(p.x - corner_center.x, 2.0)));
+		}
+		if (p.x > control_size.x - corner_r && p.y > side_y - corner_r) {
+			vec2 corner_center = vec2(control_size.x - corner_r, side_y - corner_r);
+			curve_y = side_y - corner_r + sqrt(max(0.0, corner_r * corner_r - pow(p.x - corner_center.x, 2.0)));
+		}
+		alpha *= 1.0 - smoothstep(curve_y - 1.0, curve_y + 1.0, p.y);
+	}
 	vec4 fill_color = vec4(fallback_color.rgb, 1.0);
 	vec4 color;
 
@@ -232,6 +254,8 @@ func _update_mask_params() -> void:
 	shader_material.set_shader_parameter("art_height_px", art_height)
 	shader_material.set_shader_parameter("mask_inset_px", mask_inset)
 	shader_material.set_shader_parameter("corner_mask_mode", corner_mask_mode)
+	shader_material.set_shader_parameter("bottom_shape", 1 if bottom_shape == "wide_u" else 0)
+	shader_material.set_shader_parameter("wide_u_bottom_rise_px", wide_u_bottom_rise)
 	shader_material.set_shader_parameter("aspect_mode", aspect_mode)
 	shader_material.set_shader_parameter("fallback_color", fallback_color)
 	shader_material.set_shader_parameter("sample_zoom", sample_zoom)
@@ -252,6 +276,8 @@ func _mask_shader_params_unchanged() -> bool:
 		and absf(mask_shader_params_art_height - art_height) <= 0.001
 		and absf(mask_shader_params_inset - mask_inset) <= 0.001
 		and mask_shader_params_corner_mode == corner_mask_mode
+		and mask_shader_params_bottom_shape == (1 if bottom_shape == "wide_u" else 0)
+		and absf(mask_shader_params_wide_u_bottom_rise - wide_u_bottom_rise) <= 0.001
 		and mask_shader_params_aspect_mode == aspect_mode
 		and mask_shader_params_fallback_color.is_equal_approx(fallback_color)
 		and absf(mask_shader_params_sample_zoom - sample_zoom) <= 0.001
@@ -274,6 +300,8 @@ func _store_mask_shader_params(current_texture: Texture2D) -> void:
 	mask_shader_params_art_height = art_height
 	mask_shader_params_inset = mask_inset
 	mask_shader_params_corner_mode = corner_mask_mode
+	mask_shader_params_bottom_shape = 1 if bottom_shape == "wide_u" else 0
+	mask_shader_params_wide_u_bottom_rise = wide_u_bottom_rise
 	mask_shader_params_aspect_mode = aspect_mode
 	mask_shader_params_fallback_color = fallback_color
 	mask_shader_params_sample_zoom = sample_zoom

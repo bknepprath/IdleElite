@@ -37,29 +37,30 @@ var failures: Array[String] = []
 func _init() -> void:
 	var main_script = load("res://scripts/main.gd")
 	var game = main_script.new()
-	_expect(game._leaderboard_database_url_allowed("https://idle-elite-default-rtdb.firebaseio.com"), "US Realtime Database URL should be accepted.")
-	_expect(game._leaderboard_database_url_allowed("https://idle-elite-default-rtdb.europe-west1.firebasedatabase.app"), "Regional Realtime Database URL should be accepted.")
-	_expect(not game._leaderboard_database_url_allowed("http://idle-elite-default-rtdb.firebaseio.com"), "HTTP database URL should be rejected.")
-	_expect(not game._leaderboard_database_url_allowed("https://idle-elite.example.com"), "Non-Firebase host should be rejected.")
-	_expect(not game._leaderboard_database_url_allowed("https://idle-elite-default-rtdb.firebaseio.com.evil.example"), "Firebase-looking suffix on another host should be rejected.")
-	_expect(not game._leaderboard_database_url_allowed("https://your-project-id-default-rtdb.firebaseio.com"), "Placeholder database URL should be rejected.")
-	_expect(not game._leaderboard_database_url_allowed("https://idle_elite-default-rtdb.firebaseio.com"), "Unsafe database host characters should be rejected.")
-	_expect(game._leaderboard_firebase_host_label_allowed("europe-west1"), "Firebase region label should be accepted.")
-	_expect(not game._leaderboard_firebase_host_label_allowed("-europe-west1"), "Leading hyphen should be rejected.")
-	_expect(not game._leaderboard_firebase_host_label_allowed("europe-west1-"), "Trailing hyphen should be rejected.")
+	var online = game._online_runtime()
+	_expect(online.call("_leaderboard_database_url_allowed", "https://idle-elite-default-rtdb.firebaseio.com"), "US Realtime Database URL should be accepted.")
+	_expect(online.call("_leaderboard_database_url_allowed", "https://idle-elite-default-rtdb.europe-west1.firebasedatabase.app"), "Regional Realtime Database URL should be accepted.")
+	_expect(not online.call("_leaderboard_database_url_allowed", "http://idle-elite-default-rtdb.firebaseio.com"), "HTTP database URL should be rejected.")
+	_expect(not online.call("_leaderboard_database_url_allowed", "https://idle-elite.example.com"), "Non-Firebase host should be rejected.")
+	_expect(not online.call("_leaderboard_database_url_allowed", "https://idle-elite-default-rtdb.firebaseio.com.evil.example"), "Firebase-looking suffix on another host should be rejected.")
+	_expect(not online.call("_leaderboard_database_url_allowed", "https://your-project-id-default-rtdb.firebaseio.com"), "Placeholder database URL should be rejected.")
+	_expect(not online.call("_leaderboard_database_url_allowed", "https://idle_elite-default-rtdb.firebaseio.com"), "Unsafe database host characters should be rejected.")
+	_expect(online.call("_leaderboard_firebase_host_label_allowed", "europe-west1"), "Firebase region label should be accepted.")
+	_expect(not online.call("_leaderboard_firebase_host_label_allowed", "-europe-west1"), "Leading hyphen should be rejected.")
+	_expect(not online.call("_leaderboard_firebase_host_label_allowed", "europe-west1-"), "Trailing hyphen should be rejected.")
 	game.leaderboard_config_loaded = true
 	game.leaderboard_config_database_url = "https://idle-elite-default-rtdb.firebaseio.com/"
-	_expect(game._leaderboard_firebase_base_url() == "https://idle-elite-default-rtdb.firebaseio.com", "Runtime base URL getter should trim valid Firebase URLs.")
+	_expect(online.call("_leaderboard_firebase_base_url") == "https://idle-elite-default-rtdb.firebaseio.com", "Runtime base URL getter should trim valid Firebase URLs.")
 	game.leaderboard_config_database_url = "https://idle-elite.example.com"
-	_expect(game._leaderboard_firebase_base_url() == "", "Runtime base URL getter should fail closed for malformed hosts.")
+	_expect(online.call("_leaderboard_firebase_base_url") == "", "Runtime base URL getter should fail closed for malformed hosts.")
 	game.leaderboard_config_database_url = "https://your-project-id-default-rtdb.firebaseio.com"
-	_expect(game._leaderboard_firebase_base_url() == "", "Runtime base URL getter should fail closed for placeholder hosts.")
+	_expect(online.call("_leaderboard_firebase_base_url") == "", "Runtime base URL getter should fail closed for placeholder hosts.")
 	game.leaderboard_config_web_api_key = "AIzaSyValidationOnlyNotARealFirebaseKey123456"
-	_expect(game._leaderboard_firebase_api_key() == "AIzaSyValidationOnlyNotARealFirebaseKey123456", "Runtime API key getter should accept plausible Firebase keys.")
+	_expect(online.call("_leaderboard_firebase_api_key") == "AIzaSyValidationOnlyNotARealFirebaseKey123456", "Runtime API key getter should accept plausible Firebase keys.")
 	game.leaderboard_config_web_api_key = "too-short"
-	_expect(game._leaderboard_firebase_api_key() == "", "Runtime API key getter should reject short keys.")
+	_expect(online.call("_leaderboard_firebase_api_key") == "", "Runtime API key getter should reject short keys.")
 	game.leaderboard_config_web_api_key = "AIzaSy Validation Only Key"
-	_expect(game._leaderboard_firebase_api_key() == "", "Runtime API key getter should reject whitespace-damaged keys.")
+	_expect(online.call("_leaderboard_firebase_api_key") == "", "Runtime API key getter should reject whitespace-damaged keys.")
 	game.leaderboard_config_database_url = ""
 	game.leaderboard_config_web_api_key = ""
 	game.leaderboard_auth_in_flight = false
@@ -68,18 +69,18 @@ func _init() -> void:
 	game.cloud_save_fetch_in_flight = false
 	game.cloud_save_upload_in_flight = false
 	game.current_screen = "leaderboard"
-	game._leaderboard_fetch_category(game.LEADERBOARD_CATEGORY_TOTAL_LEVEL)
+	online.fetch_leaderboard_category(game.LEADERBOARD_CATEGORY_TOTAL_LEVEL)
 	_expect_leaderboard_requests_idle(game, "fetch with absent config")
-	game._leaderboard_submit_scores()
+	online.submit_leaderboard_scores()
 	_expect_leaderboard_requests_idle(game, "submit with absent config")
-	game._fetch_cloud_save()
+	online.fetch_cloud_save()
 	_expect_leaderboard_requests_idle(game, "cloud fetch with absent config")
-	game._upload_cloud_save(true)
+	online.call("_upload_cloud_save", true)
 	_expect_leaderboard_requests_idle(game, "cloud upload with absent config")
-	game._process_leaderboard_sync(31.0)
+	online.call("_process_leaderboard_sync", 31.0)
 	_expect_leaderboard_requests_idle(game, "sync with absent config")
 	_expect(game.leaderboard_status_message == "Online services are not connected yet.", "Absent config should produce the fail-closed leaderboard status.")
-	_expect(game._cloud_save_status_text() == "Cloud save is offline until Firebase is configured.", "Cloud-save status should clearly explain absent Firebase config.")
+	_expect(online.call("_cloud_save_status_text") == "Cloud save is offline until Firebase is configured.", "Cloud-save status should clearly explain absent Firebase config.")
 	game.leaderboard_config_loaded = true
 	game.leaderboard_config_database_url = "https://idle-elite-default-rtdb.firebaseio.com/"
 	game.leaderboard_config_web_api_key = "AIzaSyValidationOnlyNotARealFirebaseKey123456"
@@ -88,26 +89,26 @@ func _init() -> void:
 	game.leaderboard_name_key = ""
 	game.leaderboard_profile_claimed = false
 	game.leaderboard_name_claim_verified = false
-	game._start_google_account_sign_in()
+	online.call("_start_google_account_sign_in")
 	_expect(game.google_auth_status_message == "Save a username before connecting Google.", "Google sign-in should require a claimed username first.")
 	game.leaderboard_display_name = "Validation Player"
 	game.leaderboard_name_key = "validation_player"
 	game.leaderboard_profile_claimed = true
 	game.leaderboard_name_claim_verified = true
-	game._start_google_account_sign_in()
+	online.call("_start_google_account_sign_in")
 	_expect(game.google_auth_status_message == "Google sign-in needs google_web_client_id in firebase-leaderboard-config.json.", "Google sign-in without a client id should explain the missing config key.")
 	game.google_auth_web_client_id = "1234567890-validationonly.apps.googleusercontent.com"
-	game._start_google_account_sign_in()
+	online.call("_start_google_account_sign_in")
 	_expect(game.google_auth_status_message == "Google sign-in is not available in this build yet.", "Non-Android Google sign-in should explain that this build has no native Google auth.")
-	game._on_google_sign_in_failed("")
+	online.call("_on_google_sign_in_failed", "")
 	_expect(game.google_auth_status_message == "Google sign-in was cancelled.", "Empty Google failure should read as a cancellation.")
-	game._on_google_sign_in_failed("androidx.credentials.exceptions.GetCredentialCancellationException: activity is canceled by the user")
+	online.call("_on_google_sign_in_failed", "androidx.credentials.exceptions.GetCredentialCancellationException: activity is canceled by the user")
 	_expect(game.google_auth_status_message == "Google sign-in was cancelled.", "Native cancellation text should be player-friendly.")
-	game._on_google_sign_in_failed("No credentials available")
+	online.call("_on_google_sign_in_failed", "No credentials available")
 	_expect(game.google_auth_status_message == "No Google account was selected. Try Connect Google again.", "Missing credential text should tell the player what to do next.")
-	game._on_google_sign_in_failed("Network timeout")
+	online.call("_on_google_sign_in_failed", "Network timeout")
 	_expect(game.google_auth_status_message == "Google sign-in needs an internet connection. Try again in a moment.", "Network Google failure should be actionable.")
-	game._on_google_sign_in_failed("provider exploded")
+	online.call("_on_google_sign_in_failed", "provider exploded")
 	_expect(game.google_auth_status_message == "Google sign-in failed: provider exploded", "Unknown Google failure should preserve useful details.")
 	game.free()
 	if failures.is_empty():

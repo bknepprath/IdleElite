@@ -91,10 +91,10 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
-	scene.call("_sync_passive_module_unlocks", int(scene.call("_unix_now")))
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
+	scene.call("_passive_modules_runtime").sync_passive_module_unlocks(int(scene.call("_unix_now")))
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
@@ -232,15 +232,16 @@ func _select_skill_from_menu(scene: Node, skill_id: String) -> void:
 
 
 func _force_idle_preview_prewarm(scene: Node) -> void:
-	var next_token := int(scene.get("skill_swipe_preview_prewarm_token")) + 1
-	scene.set("skill_swipe_preview_prewarm_token", next_token)
-	scene.set("skill_swipe_preview_prewarm_pending", true)
+	var preview_surface = scene.call("_skill_swipe_activity_surface")
+	var next_token := int(preview_surface.get("preview_prewarm_token")) + 1
+	preview_surface.set("preview_prewarm_token", next_token)
+	preview_surface.set("preview_prewarm_pending", true)
 	var prewarm_result = scene.call("_prewarm_skill_swipe_neighbor_previews", "build", next_token)
 	if prewarm_result != null:
 		await prewarm_result
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
-		if _preview_page_count(scene) > 0 and not bool(scene.get("skill_swipe_preview_prewarm_pending")):
+		if _preview_page_count(scene) > 0 and not bool(preview_surface.get("preview_prewarm_pending")):
 			return
 	_expect(_preview_page_count(scene) > 0, "Live-style idle prewarm did not cache Woodcutting preview: %s" % _state_summary(scene))
 
@@ -262,14 +263,14 @@ func _scroll_current_detail_to_bottom(scene: Node) -> void:
 
 
 func _clear_swipe_preview_cache(scene: Node) -> void:
-	scene.set("skill_swipe_preview_prewarm_token", int(scene.get("skill_swipe_preview_prewarm_token")) + 1)
-	scene.set("skill_swipe_preview_prewarm_pending", false)
-	scene.call("_clear_skill_swipe_preview")
-	scene.call("_discard_skill_detail_cache_entry", scene.call("_skill_detail_cache_key", "woodcutting"))
+	var preview_surface = scene.call("_skill_swipe_activity_surface")
+	preview_surface.set("preview_prewarm_token", int(preview_surface.get("preview_prewarm_token")) + 1)
+	preview_surface.set("preview_prewarm_pending", false)
+	preview_surface.call("_clear_skill_swipe_preview")
 	await _wait_test_frame()
-	scene.set("skill_swipe_preview_prewarm_token", int(scene.get("skill_swipe_preview_prewarm_token")) + 1)
-	scene.set("skill_swipe_preview_prewarm_pending", false)
-	scene.call("_clear_skill_swipe_preview")
+	preview_surface.set("preview_prewarm_token", int(preview_surface.get("preview_prewarm_token")) + 1)
+	preview_surface.set("preview_prewarm_pending", false)
+	preview_surface.call("_clear_skill_swipe_preview")
 	_expect(_preview_page_count(scene) == 0, "Cold swipe test started with cached preview pages: %s" % _state_summary(scene))
 
 
@@ -633,7 +634,7 @@ func _collect_marked_control_counts(control: Control, viewport_rect: Rect2, mark
 
 
 func _preview_page_count(scene: Node) -> int:
-	var pages := scene.get("skill_swipe_preview_pages") as Dictionary
+	var pages := scene.call("_skill_swipe_activity_surface").get("preview_pages") as Dictionary
 	return 0 if pages == null else pages.size()
 
 

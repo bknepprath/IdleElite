@@ -66,11 +66,11 @@ func _run() -> void:
 	if not await _wait_for_boot_hidden(scene):
 		_fail("boot splash did not hide before home achievement medal test")
 		return
-	scene.call("_close_offline_summary_overlay")
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
-	scene.call("_god_mode_max_medals_state")
+	scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
+	scene.call("_test_state_runtime")._god_mode_max_medals_state()
 	scene.call("_show_home")
 	if not await _wait_for_home_medals(scene):
 		_fail("home medals did not become visible")
@@ -100,7 +100,7 @@ func _run() -> void:
 
 	if not await _click_icon_expect_home_popover(scene, featured_icon, home_page, "featured home medal"):
 		return
-	scene.call("_hide_achievement_medal_popovers")
+	(scene.call("_achievement_overlay_surface") as Object).call("_hide_achievement_medal_popovers")
 	await process_frame
 	if not await _click_icon_expect_home_popover(scene, icon, home_page, "skill row home medal"):
 		return
@@ -206,7 +206,7 @@ func _click_icon_expect_home_popover(scene: Node, icon: TextureRect, home_page: 
 	var press_event := _mouse_button_event(click_point, true)
 	scene.call("_input", press_event)
 	if _single_visible_medal_popover(scene, false) == null:
-		scene.call("_route_achievement_medal_press", press_event)
+		(scene.call("_achievement_overlay_surface") as Object).call("_route_achievement_medal_press", press_event)
 	await process_frame
 	scene.call("_input", _mouse_button_event(click_point, false))
 	for _frame in range(8):

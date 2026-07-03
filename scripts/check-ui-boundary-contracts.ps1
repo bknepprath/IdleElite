@@ -2,6 +2,12 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
+$navigationShellPath = Join-Path $projectRoot "scripts\ui\navigation_shell.gd"
+$profileChatOverlaySurfacePath = Join-Path $projectRoot "scripts\ui\profile_chat_overlay_surface.gd"
+$fishingUiSurfacePath = Join-Path $projectRoot "scripts\fishing\ui_surface.gd"
+$onlineRuntimePath = Join-Path $projectRoot "scripts\online\online_runtime.gd"
+$leaderboardPresentationPath = Join-Path $projectRoot "scripts\leaderboard\presentation.gd"
+$leaderboardStatePath = Join-Path $projectRoot "scripts\leaderboard\state.gd"
 $boundaryMapPath = Join-Path $projectRoot "docs\ui-runtime-boundary-map.md"
 
 function Assert-True {
@@ -26,24 +32,55 @@ function Assert-FunctionExists {
 }
 
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd"
+Assert-True (Test-Path -LiteralPath $navigationShellPath) "Missing scripts\ui\navigation_shell.gd"
+Assert-True (Test-Path -LiteralPath $profileChatOverlaySurfacePath) "Missing scripts\ui\profile_chat_overlay_surface.gd"
+Assert-True (Test-Path -LiteralPath $fishingUiSurfacePath) "Missing scripts\fishing\ui_surface.gd"
+Assert-True (Test-Path -LiteralPath $onlineRuntimePath) "Missing scripts\online\online_runtime.gd"
+Assert-True (Test-Path -LiteralPath $leaderboardPresentationPath) "Missing scripts\leaderboard\presentation.gd"
+Assert-True (Test-Path -LiteralPath $leaderboardStatePath) "Missing scripts\leaderboard\state.gd"
 Assert-True (Test-Path -LiteralPath $boundaryMapPath) "Missing docs\ui-runtime-boundary-map.md"
 
 $main = Get-Content -LiteralPath $mainPath -Raw
+$navigationShell = Get-Content -LiteralPath $navigationShellPath -Raw
+$profileChatOverlaySurface = Get-Content -LiteralPath $profileChatOverlaySurfacePath -Raw
+$fishingUiSurface = Get-Content -LiteralPath $fishingUiSurfacePath -Raw
+$onlineRuntime = Get-Content -LiteralPath $onlineRuntimePath -Raw
+$leaderboardPresentation = Get-Content -LiteralPath $leaderboardPresentationPath -Raw
+$leaderboardState = Get-Content -LiteralPath $leaderboardStatePath -Raw
 $boundaryMap = Get-Content -LiteralPath $boundaryMapPath -Raw
 
 $boundaries = @{
-    "home/navigation" = @("_build_home_page", "_build_nav_bar", "_nav_button", "_apply_nav_style", "_show_skills", "_show_shop")
-    "shop/ads" = @("_shop_unlocked", "_shop_ad_offer_button", "_shop_ad_pressed")
+    "home/navigation" = @("_build_home_page", "_build_nav_bar", "_show_skills", "_show_shop")
+    "shop/ads" = @("_shop_unlocked")
     "chat transport" = @("_chat_stream_connect", "_chat_send", "_chat_apply_stream_payload", "_chat_sort_and_trim_rows")
-    "chat presentation" = @("_build_chat_strip", "_build_chat_overlay", "_chat_strip_visible_on_current_screen", "_chat_expanded_row", "_chat_expanded_composer")
-    "leaderboard networking/data" = @("_leaderboard_fetch_category", "_leaderboard_submit_scores", "_leaderboard_categories", "_leaderboard_score_for_category")
-    "leaderboard page" = @("_render_leaderboard_page", "_leaderboard_page_frame", "_leaderboard_player_card", "_leaderboard_row")
+    "chat presentation" = @("_build_chat_strip", "_build_chat_overlay", "_chat_strip_visible_on_current_screen", "_chat_expanded_row", "_chat_expanded_composer", "_process_chat_keyboard_lift", "_update_chat_keyboard_preview")
+    "leaderboard networking/data" = @("_leaderboard_fetch_category", "_leaderboard_submit_scores", "categories", "score_for_category")
+    "leaderboard page" = @("_render_leaderboard_page")
     "profile/avatar" = @("_build_profile_overlay", "_profile_avatar_picker_button", "_profile_avatar_texture", "_profile_avatar_frame")
 }
 
 foreach ($boundary in ($boundaries.Keys | Sort-Object)) {
     foreach ($functionName in $boundaries[$boundary]) {
-        Assert-FunctionExists $main $functionName $boundary
+        $sourceText = $main
+        if ($boundary -eq "chat transport" -or $functionName -in @("_leaderboard_fetch_category", "_leaderboard_submit_scores")) {
+            $sourceText = $onlineRuntime
+        }
+        if ($boundary -eq "leaderboard networking/data" -and $functionName -in @("categories", "score_for_category")) {
+            $sourceText = $leaderboardState
+        }
+        if ($boundary -eq "home/navigation" -and $functionName -eq "_build_nav_bar") {
+            $sourceText = $navigationShell
+        }
+        if ($boundary -eq "chat presentation" -and $functionName -in @("_build_chat_strip", "_build_chat_overlay", "_chat_strip_visible_on_current_screen", "_chat_expanded_row", "_chat_expanded_composer", "_process_chat_keyboard_lift", "_update_chat_keyboard_preview")) {
+            $sourceText = $profileChatOverlaySurface
+        }
+        if ($boundary -eq "leaderboard page") {
+            $sourceText = $leaderboardPresentation
+        }
+        if ($boundary -eq "profile/avatar") {
+            $sourceText = $profileChatOverlaySurface
+        }
+        Assert-FunctionExists $sourceText $functionName $boundary
         Assert-True ($boundaryMap -match [regex]::Escape($functionName)) "UI boundary map must mention $functionName."
     }
 }
@@ -51,18 +88,18 @@ foreach ($boundary in ($boundaries.Keys | Sort-Object)) {
 Assert-True ($boundaryMap -match 'current_screen') "UI boundary map should call out top-level screen routing risk."
 Assert-True ($boundaryMap -match 'Firebase') "UI boundary map should call out Firebase coupling for chat and leaderboard."
 Assert-True ($boundaryMap -match 'saved avatar/profile keys') "UI boundary map should call out profile save compatibility."
-Assert-True ($main -match 'hero_tab\.pressed\.connect\(_activate_bottom_nav_target\.bind\("home", hero_tab\)\)') "Bottom gray Home nav button must route pressed through the active red-X dispatcher."
-Assert-True ($main -match 'hub_tab\.pressed\.connect\(_activate_bottom_nav_target\.bind\("hub", hub_tab\)\)') "Bottom gray Hub nav button must route pressed through the active red-X dispatcher."
-Assert-True ($main -match 'settings_tab\.pressed\.connect\(_activate_bottom_nav_target\.bind\("settings", settings_tab\)\)') "Bottom gray Settings nav button must route pressed through the active red-X dispatcher."
-Assert-True ($main -match 'shop_tab\.pressed\.connect\(_activate_bottom_nav_target\.bind\("shop", shop_tab\)\)') "Bottom gray Shop nav button must route pressed through the active red-X dispatcher."
-Assert-True ($main -notmatch 'settings_tab\.pressed\.connect\(_show_settings\)') "Bottom gray Settings red-X must not be wired directly back to Settings."
-Assert-True ($main -match 'skills_tab\.pressed\.connect\(_show_skills_module\)') "Bottom gray Skills nav button must open the selected skill module page."
-Assert-True ($main -notmatch 'skills_tab\.pressed\.connect\(_show_skills\)') "Bottom gray Skills nav button must not open the skills overview."
-$activateBottomNavMatch = [regex]::Match($main, '(?s)func _activate_bottom_nav_target\(target_screen: String, source_button: Control\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+Assert-True ($navigationShell -match 'host\.hero_tab\.pressed\.connect\(_activate_bottom_nav_target\.bind\("home", host\.hero_tab\)\)') "Bottom gray Home nav button must route pressed through the active red-X dispatcher."
+Assert-True ($navigationShell -match 'host\.hub_tab\.pressed\.connect\(_activate_bottom_nav_target\.bind\("hub", host\.hub_tab\)\)') "Bottom gray Hub nav button must route pressed through the active red-X dispatcher."
+Assert-True ($navigationShell -match 'host\.settings_tab\.pressed\.connect\(_activate_bottom_nav_target\.bind\("settings", host\.settings_tab\)\)') "Bottom gray Settings nav button must route pressed through the active red-X dispatcher."
+Assert-True ($navigationShell -match 'host\.shop_tab\.pressed\.connect\(_activate_bottom_nav_target\.bind\("shop", host\.shop_tab\)\)') "Bottom gray Shop nav button must route pressed through the active red-X dispatcher."
+Assert-True ($navigationShell -notmatch 'settings_tab\.pressed\.connect\(host\._show_settings\)') "Bottom gray Settings red-X must not be wired directly back to Settings."
+Assert-True ($navigationShell -match 'host\.skills_tab\.pressed\.connect\(host\._show_skills_module\)') "Bottom gray Skills nav button must open the selected skill module page."
+Assert-True ($navigationShell -notmatch 'skills_tab\.pressed\.connect\(host\._show_skills\)') "Bottom gray Skills nav button must not open the skills overview."
+$activateBottomNavMatch = [regex]::Match($navigationShell, '(?s)func _activate_bottom_nav_target\(target_screen: String, source_button: Control\) -> void:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($activateBottomNavMatch.Success) "Missing _activate_bottom_nav_target body for bottom nav routing contract."
 Assert-True ($activateBottomNavMatch.Groups[1].Value -match '_bottom_nav_open_close_returns_to_skill\(target_screen, source_button\)') "Active red-X bottom nav buttons must route back to the selected skill detail page."
-Assert-True ($activateBottomNavMatch.Groups[1].Value -match '_show_skills_module\(\)') "Active red-X bottom nav buttons must use the skill module/detail route, not the skills overview."
-$bottomNavCloseMatch = [regex]::Match($main, '(?s)func _bottom_nav_open_close_returns_to_skill\(target_screen: String, source_button: Control\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+Assert-True ($activateBottomNavMatch.Groups[1].Value -match 'host\._show_skills_module\(\)') "Active red-X bottom nav buttons must use the skill module/detail route, not the skills overview."
+$bottomNavCloseMatch = [regex]::Match($navigationShell, '(?s)func _bottom_nav_open_close_returns_to_skill\(target_screen: String, source_button: Control\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($bottomNavCloseMatch.Success) "Missing _bottom_nav_open_close_returns_to_skill body for red-X bottom nav routing contract."
 Assert-True ($bottomNavCloseMatch.Groups[1].Value -match 'target_screen == "skill"') "Stats/skills nav button must remain exempt from red-X close routing."
 Assert-True ($bottomNavCloseMatch.Groups[1].Value -match '_is_bottom_nav_button\(nav_button\)') "Red-X close routing must only apply to built-in bottom nav buttons."
@@ -89,7 +126,7 @@ $incomingEntryMatch = [regex]::Match($main, '(?s)func _begin_skill_swipe_incomin
 Assert-True ($incomingEntryMatch.Success) "Missing _begin_skill_swipe_incoming_entry body for directional swipe entry contract."
 Assert-True ($incomingEntryMatch.Groups[1].Value -match 'tween_method\(\s*_apply_skill_swipe_drag_offset,\s*start_x,\s*0\.0,') "Incoming skill page must slide from the swipe direction into center."
 Assert-True ($main -match '_begin_skill_swipe_incoming_entry\((?:gap_entry_x if use_gap_load_transition else )?float\(signi\(offset\)\) \* _skill_swipe_page_span\(\)\)') "Normal skill swipe navigation must use a directional incoming entry."
-$fishingOfferRouterMatch = [regex]::Match($main, '(?s)func _route_fishing_offer_button_global_input\(event: InputEvent\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+$fishingOfferRouterMatch = [regex]::Match($fishingUiSurface, '(?s)func _route_fishing_offer_button_global_input\(event: InputEvent\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True ($fishingOfferRouterMatch.Success) "Missing fishing offer global input router."
 Assert-True ($fishingOfferRouterMatch.Groups[1].Value -match '_position_inside_bottom_interactive_ui\(event_position\)') "Fishing offer global input must not consume module utility, chat, or nav taps."
 

@@ -62,6 +62,8 @@ try {
 extends SceneTree
 
 const MainScript := preload("res://scripts/main.gd")
+const ActivityProgressRailClass := preload("res://scripts/ui/activity_progress_rail.gd")
+const ActivityProgressOpportunityOverlayClass := preload("res://scripts/ui/activity_progress_opportunity_overlay.gd")
 
 var failures: Array[String] = []
 
@@ -102,12 +104,12 @@ func _run() -> void:
 		_expect(marker_right <= clip.y + 0.01, "Opportunity marker should not bleed right of its rounded row clip.")
 
 	rail.set_opportunity_windows([Vector2(0.78, 0.88)], true, true, false)
-	var overlay := rail.get_child(0) as MainScript.ActivityProgressOpportunityOverlay
+	var overlay := rail.get_child(0) as ActivityProgressOpportunityOverlayClass
 	_expect(overlay != null, "Activity progress rail should create a separate opportunity-window overlay.")
 	if overlay != null:
-		_expect(overlay.z_index == MainScript.ACTION_OPPORTUNITY_WINDOW_OVERLAY_Z, "Opportunity-window overlay should draw above the activity-card face border.")
-		_expect(_near(overlay.offset_top, -MainScript.ACTION_OPPORTUNITY_WINDOW_VERTICAL_OUTSET), "Opportunity-window overlay should extend above the rail.")
-		_expect(_near(overlay.offset_bottom, MainScript.ACTION_OPPORTUNITY_WINDOW_VERTICAL_OUTSET), "Opportunity-window overlay should extend below the rail.")
+		_expect(overlay.z_index == ActivityProgressRailClass.OPPORTUNITY_WINDOW_OVERLAY_Z, "Opportunity-window overlay should draw above the activity-card face border.")
+		_expect(_near(overlay.offset_top, -ActivityProgressRailClass.OPPORTUNITY_WINDOW_VERTICAL_OUTSET), "Opportunity-window overlay should extend above the rail.")
+		_expect(_near(overlay.offset_bottom, ActivityProgressRailClass.OPPORTUNITY_WINDOW_VERTICAL_OUTSET), "Opportunity-window overlay should extend below the rail.")
 
 	var depth := MainScript.ActivityCardDepth.new()
 	_expect(MainScript.ACTION_CARD_3D_PRESS_OFFSET.is_equal_approx(MainScript.ACTION_CARD_3D_DEPTH_OFFSET), "Activity-card press offset should fully seat the face onto the back slab.")
@@ -174,7 +176,8 @@ func _run() -> void:
 	if bg != null:
 		bg.free()
 	var probe_module_key := "action:fight:shove-wobbly-hay-bale"
-	var pin_zone := main_node.call("_module_action_zone", "pin", probe_module_key, true) as Control
+	var skill_detail_surface: Object = main_node.call("_skill_detail_surface")
+	var pin_zone := skill_detail_surface.call("_module_action_zone", "pin", probe_module_key, true) as Control
 	_expect(pin_zone != null, "Module pin action zone should be constructible.")
 	if pin_zone != null:
 		_expect(pin_zone.mouse_filter == Control.MOUSE_FILTER_PASS, "Module pin zone should pass non-accepted touches through to the card.")
@@ -184,7 +187,7 @@ func _run() -> void:
 		_expect(pin_zone.offset_top == MainScript.MODULE_ACTION_ZONE_TOP_OFFSET, "Module pin zone should use the shared top offset.")
 		_expect(pin_zone.offset_right - pin_zone.offset_left == MainScript.MODULE_ACTION_ZONE_SIZE.x, "Module pin zone width should match the configured circular bounds.")
 		_expect(pin_zone.offset_bottom - pin_zone.offset_top == MainScript.MODULE_ACTION_ZONE_SIZE.y, "Module pin zone height should match the configured circular bounds.")
-	var collapse_zone := main_node.call("_module_action_zone", "collapse", probe_module_key, false) as Control
+	var collapse_zone := skill_detail_surface.call("_module_action_zone", "collapse", probe_module_key, false) as Control
 	_expect(collapse_zone != null, "Module collapse action zone should be constructible.")
 	if collapse_zone != null:
 		_expect(collapse_zone.mouse_filter == Control.MOUSE_FILTER_STOP, "Module collapse zone should claim top-right circle touches before the card.")
@@ -207,12 +210,12 @@ func _run() -> void:
 		var collapse_rect := collapse_zone.get_global_rect()
 		var pin_near_edge_outside_circle := pin_rect.position + pin_rect.size * Vector2(0.96, 0.04)
 		var collapse_near_edge_outside_circle := collapse_rect.position + collapse_rect.size * Vector2(0.04, 0.04)
-		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, pin_rect.get_center())) == "pin", "Module pin zone center should hit the circular pin action.")
-		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, pin_rect.position)) == "", "Module pin zone outer corner should not hit outside its circular bounds.")
-		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, pin_near_edge_outside_circle)) == "", "Module pin zone rectangular edge should not steal taps outside its circle.")
-		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_rect.get_center())) == "collapse", "Module collapse zone center should hit the circular collapse action.")
-		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_rect.position)) == "", "Module collapse zone outer corner should not hit outside its circular bounds.")
-		_expect(str(main_node.call("_module_action_zone_kind_at_position", zone_host, collapse_near_edge_outside_circle)) == "", "Module collapse zone rectangular edge should not steal taps outside its circle.")
+		_expect(str(skill_detail_surface.call("_module_action_zone_kind_at_position", zone_host, pin_rect.get_center())) == "pin", "Module pin zone center should hit the circular pin action.")
+		_expect(str(skill_detail_surface.call("_module_action_zone_kind_at_position", zone_host, pin_rect.position)) == "", "Module pin zone outer corner should not hit outside its circular bounds.")
+		_expect(str(skill_detail_surface.call("_module_action_zone_kind_at_position", zone_host, pin_near_edge_outside_circle)) == "", "Module pin zone rectangular edge should not steal taps outside its circle.")
+		_expect(str(skill_detail_surface.call("_module_action_zone_kind_at_position", zone_host, collapse_rect.get_center())) == "collapse", "Module collapse zone center should hit the circular collapse action.")
+		_expect(str(skill_detail_surface.call("_module_action_zone_kind_at_position", zone_host, collapse_rect.position)) == "", "Module collapse zone outer corner should not hit outside its circular bounds.")
+		_expect(str(skill_detail_surface.call("_module_action_zone_kind_at_position", zone_host, collapse_near_edge_outside_circle)) == "", "Module collapse zone rectangular edge should not steal taps outside its circle.")
 		var badge := main_node.call("_ensure_module_pin_badge", zone_host, probe_module_key) as TextureButton
 		_expect(badge != null, "Module pin badge should be constructible for badge hit geometry.")
 		if badge != null:
@@ -223,10 +226,10 @@ func _run() -> void:
 			await process_frame
 			var transparent_corner := badge.get_global_rect().position
 			var visible_art_point := badge.get_global_transform() * Vector2(MainScript.MODULE_PIN_BADGE_SIZE.x * 0.36, MainScript.MODULE_PIN_BADGE_SIZE.y * 0.34)
-			_expect(str(main_node.call("_module_action_badge_kind_at_position", zone_host, transparent_corner)) == "", "Oversized pin badge transparent corner should not count as a pin hit.")
-			_expect(str(main_node.call("_module_action_badge_kind_at_position", zone_host, visible_art_point)) == "pin", "Oversized pin badge visible art should count as a pin hit even outside the old circular zone.")
+			_expect(str(skill_detail_surface.call("_module_action_badge_kind_at_position", zone_host, transparent_corner)) == "", "Oversized pin badge transparent corner should not count as a pin hit.")
+			_expect(str(skill_detail_surface.call("_module_action_badge_kind_at_position", zone_host, visible_art_point)) == "pin", "Oversized pin badge visible art should count as a pin hit even outside the old circular zone.")
 			main_node.set("action_cards", {"probe": {"pop": zone_host}})
-			var visible_art_action_hit := main_node.call("_module_action_circle_at_position", visible_art_point) as Dictionary
+			var visible_art_action_hit := skill_detail_surface.call("_module_action_circle_at_position", visible_art_point) as Dictionary
 			_expect(str(visible_art_action_hit.get("kind", "")) == "pin", "Oversized pin badge visible art should route a module pin action.")
 		zone_host.free()
 	else:

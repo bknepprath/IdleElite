@@ -16,6 +16,8 @@ var highlight_color := Color(1.0, 0.73, 0.36, 0.22)
 var shadow_color := Color(0.06, 0.045, 0.03, 0.32)
 var segment_theme_colors: Array[Color] = []
 var draw_back_plate_bottom_outline := false
+var bottom_shape := "round"
+var wide_u_bottom_rise := 58.0
 
 func set_face_offset(next_offset: Vector2) -> void:
 	var clamped_offset := Vector2(
@@ -69,8 +71,15 @@ func _draw() -> void:
 
 func _draw_fast_depth(face_size: Vector2, front: Vector2, back: Vector2) -> void:
 	_draw_fast_back_plate(face_size, back)
-	_draw_depth_corner_connectors(face_size, front, back)
-	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 8.0, draw_back_plate_bottom_outline)
+	if bottom_shape != "wide_u":
+		_draw_depth_corner_connectors(face_size, front, back)
+	if bottom_shape == "wide_u":
+		_draw_top_right_depth_connector(face_size, front, back)
+		_draw_wide_u_bottom_connector(face_size, front, back)
+	if bottom_shape == "wide_u":
+		_draw_wide_u_back_outline(Rect2(back, face_size), lip_color, 8.0)
+	else:
+		_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 8.0, draw_back_plate_bottom_outline)
 
 func _draw_depth_corner_connectors(face_size: Vector2, front: Vector2, back: Vector2) -> void:
 	var width := 10.0
@@ -88,6 +97,17 @@ func _draw_depth_corner_connectors(face_size: Vector2, front: Vector2, back: Vec
 	var cap_radius := width * 0.46
 	for point in points:
 		draw_circle(point, cap_radius, lip_color)
+
+func _draw_top_right_depth_connector(face_size: Vector2, front: Vector2, back: Vector2) -> void:
+	var width := 10.0
+	var points := _depth_corner_connector_points(face_size, front, back, width)
+	if points.size() < 2:
+		return
+	var travel := back - front
+	var direction := travel.normalized() if travel.length_squared() > 0.01 else Vector2.ZERO
+	draw_line(points[0] - direction * 4.0, points[1] + direction * 4.0, lip_color, width, true)
+	draw_circle(points[0], width * 0.46, lip_color)
+	draw_circle(points[1], width * 0.46, lip_color)
 
 func _depth_corner_connector_points(face_size: Vector2, front: Vector2, back: Vector2, width: float) -> PackedVector2Array:
 	var points := PackedVector2Array()
@@ -110,6 +130,10 @@ func _depth_corner_connector_points(face_size: Vector2, front: Vector2, back: Ve
 	var back_top_right := Vector2(back_right - r, back_top + r) + top_right_unit * r
 	var front_bottom_left := Vector2(front_left + r, front_bottom - r) + bottom_left_unit * r
 	var back_bottom_left := Vector2(back_left + r, back_bottom - r) + bottom_left_unit * r
+	if bottom_shape == "wide_u":
+		var u_corner_r := minf(radius * 0.62, face_size.x * 0.14)
+		front_bottom_left = Vector2(front_left + u_corner_r, front.y + face_size.y - wide_u_bottom_rise)
+		back_bottom_left = Vector2(back_left + u_corner_r, back.y + face_size.y - wide_u_bottom_rise)
 	points.append(front_top_right)
 	points.append(back_top_right)
 	points.append(front_bottom_left)
@@ -159,11 +183,14 @@ func _draw_fast_round_rect_depth_segment(full_rect: Rect2, start_x: float, finis
 				var inset_top := r - sqrt(maxf(0.0, r * r - dy_top * dy_top))
 				left_clip += inset_top
 				right_clip -= inset_top
-			elif y > corner_center_bottom:
+			elif y > corner_center_bottom and bottom_shape != "wide_u":
 				var dy_bottom := y - corner_center_bottom
 				var inset_bottom := r - sqrt(maxf(0.0, r * r - dy_bottom * dy_bottom))
 				left_clip += inset_bottom
 				right_clip -= inset_bottom
+		var u_trim := _wide_u_bottom_trim(full_rect, y)
+		left_clip += u_trim
+		right_clip -= u_trim
 		var line_left := maxf(left_clip, start_x + slant_offset)
 		var line_right := minf(right_clip, finish_x + slant_offset)
 		if line_right <= line_left:
@@ -186,11 +213,14 @@ func _draw_fast_round_rect_clipped(full_rect: Rect2, clip_rect: Rect2, color: Co
 				var inset_top := r - sqrt(maxf(0.0, r * r - dy_top * dy_top))
 				left_clip += inset_top
 				right_clip -= inset_top
-			elif y > corner_center_bottom:
+			elif y > corner_center_bottom and bottom_shape != "wide_u":
 				var dy_bottom := y - corner_center_bottom
 				var inset_bottom := r - sqrt(maxf(0.0, r * r - dy_bottom * dy_bottom))
 				left_clip += inset_bottom
 				right_clip -= inset_bottom
+		var u_trim := _wide_u_bottom_trim(full_rect, y)
+		left_clip += u_trim
+		right_clip -= u_trim
 		var line_left := maxf(left_clip, clip_rect.position.x)
 		var line_right := minf(right_clip, clip_rect.end.x)
 		if line_right <= line_left:
@@ -203,7 +233,7 @@ func _segment_depth_back_color(theme_color: Color) -> Color:
 func _draw_fast_round_rect(rect: Rect2, color: Color, corner_radius: float) -> void:
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return
-	if DisplayServer.get_name() == "headless":
+	if DisplayServer.get_name() == "headless" or bottom_shape == "wide_u":
 		_draw_fast_round_rect_clipped(rect, rect, color, corner_radius)
 		return
 	var r := _fast_round_rect_radius(rect, corner_radius)
@@ -219,6 +249,51 @@ func _draw_fast_round_rect(rect: Rect2, color: Color, corner_radius: float) -> v
 
 func _fast_round_rect_radius(rect: Rect2, corner_radius: float) -> float:
 	return maxf(0.0, minf(corner_radius, minf(rect.size.x, rect.size.y) * 0.5))
+
+func _wide_u_bottom_trim(rect: Rect2, y: float) -> float:
+	if bottom_shape != "wide_u" or rect.size.x <= 1.0 or rect.size.y <= 1.0:
+		return 0.0
+	var side_y := rect.end.y - wide_u_bottom_rise
+	var corner_r := minf(radius * 0.62, rect.size.x * 0.14)
+	if y <= side_y - corner_r:
+		return 0.0
+	if y <= side_y:
+		var dy := y - (side_y - corner_r)
+		return corner_r - sqrt(maxf(0.0, corner_r * corner_r - dy * dy))
+	var progress := clampf((y - side_y) / maxf(1.0, rect.end.y - side_y), 0.0, 1.0)
+	return corner_r + maxf(0.0, rect.size.x - corner_r * 2.0) * asin(progress) / PI
+
+func _wide_u_bottom_points(rect: Rect2, steps := 34) -> PackedVector2Array:
+	var points := PackedVector2Array()
+	var side_y := rect.end.y - wide_u_bottom_rise
+	var corner_r := minf(radius * 0.72, rect.size.x * 0.16)
+	for index in range(steps + 1):
+		var t := float(index) / float(steps)
+		points.append(Vector2(lerpf(rect.position.x + corner_r, rect.end.x - corner_r, t), lerpf(side_y, rect.end.y, sin(t * PI))))
+	return points
+
+func _draw_wide_u_bottom_connector(face_size: Vector2, front: Vector2, back: Vector2) -> void:
+	var front_curve := _wide_u_bottom_points(Rect2(front, face_size))
+	var back_curve := _wide_u_bottom_points(Rect2(back, face_size))
+	if front_curve.size() != back_curve.size() or front_curve.size() < 2:
+		return
+	for index in range(front_curve.size() - 1):
+		var quad := PackedVector2Array([front_curve[index], front_curve[index + 1], back_curve[index + 1], back_curve[index]])
+		draw_polygon(quad, PackedColorArray([side_color.lerp(bottom_color, 0.35)]))
+	draw_polyline(back_curve, lip_color, 8.0, true)
+
+func _draw_wide_u_back_outline(rect: Rect2, color: Color, width: float) -> void:
+	var half := width * 0.5
+	var left := rect.position.x + half
+	var right := rect.end.x - half
+	var top := rect.position.y + half
+	var r := maxf(0.0, minf(radius, minf(rect.size.x, rect.size.y) * 0.5 - half))
+	var side_y := maxf(top + r, rect.end.y - half - wide_u_bottom_rise)
+	draw_line(Vector2(left + r, top), Vector2(right - r, top), color, width, true)
+	draw_arc(Vector2(left + r, top + r), r, PI, PI * 1.5, OUTLINE_ARC_SEGMENTS, color, width, true)
+	draw_arc(Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0, OUTLINE_ARC_SEGMENTS, color, width, true)
+	draw_line(Vector2(left, top + r), Vector2(left, side_y), color, width, true)
+	draw_line(Vector2(right, top + r), Vector2(right, side_y), color, width, true)
 
 func _draw_back_plate(face_size: Vector2, back: Vector2) -> void:
 	var style := _rounded_body_style(back_color, lip_color, 0, face_size)

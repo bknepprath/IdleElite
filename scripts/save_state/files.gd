@@ -91,4 +91,8 @@ static func should_replace_best_save(best_save: Dictionary, candidate: Dictionar
 	var best_xp := SaveStateNormalizers.total_skill_xp_evidence(best_save, skill_defs)
 	if candidate_xp != best_xp:
 		return candidate_xp > best_xp
+	var candidate_progress := SaveStateNormalizers.progress_evidence_score(candidate, skill_defs)
+	var best_progress := SaveStateNormalizers.progress_evidence_score(best_save, skill_defs)
+	if candidate_progress != best_progress:
+		return candidate_progress > best_progress
 	return int(candidate.get("saved_at", 0)) > int(best_save.get("saved_at", 0))

@@ -1,5 +1,7 @@
 extends SceneTree
 
+const SkillState := preload("res://scripts/progression/skill_state.gd")
+
 const DEFAULT_RESULT_PATH := "res://.codex-tmp/fishing-drag-spike/result.json"
 
 var samples: Array = []
@@ -54,8 +56,8 @@ func _wait_for_startup(main: Node) -> void:
 func _force_level_99_fishing_state(main: Node) -> void:
 	for skill_id in ["fight", "build", "woodcutting", "thieving", "fishing"]:
 		_set_skill_level(main, skill_id, 99)
-	main.call("_god_mode_unlock_actions_state")
-	main.call("_god_mode_unlock_fishing_tools_state")
+	main.call("_test_state_runtime")._god_mode_unlock_actions_state()
+	main.call("_test_state_runtime")._god_mode_unlock_fishing_tools_state()
 	main.call("_sync_manual_activity_unlocks_from_levels")
 	main.set("current_screen", "skill")
 	main.set("selected_skill_id", "fishing")
@@ -74,7 +76,7 @@ func _set_skill_level(main: Node, skill_id: String, level: int) -> void:
 	var skills := main.get("skills") as Dictionary
 	if not skills.has(skill_id):
 		skills[skill_id] = {"xp": 0, "level": 1}
-	(skills[skill_id] as Dictionary)["xp"] = int(main.call("_xp_for_level", level)) + 1000
+	(skills[skill_id] as Dictionary)["xp"] = SkillState.xp_for_level(level) + 1000
 	(skills[skill_id] as Dictionary)["level"] = level
 	main.set("skills", skills)
 	main.call("_recalculate_level", skill_id, false)
@@ -88,10 +90,10 @@ func _render_fishing(main: Node) -> void:
 	if render_result != null:
 		await render_result
 	main.call("_cancel_detail_lazy_settle_warm_mount")
-	main.call("_detail_lazy_mount_initial_window_sync", true, 4)
-	main.call("_sync_detail_lazy_visible_cards", true, 8)
+	main.call("_skill_detail_surface").call("_detail_lazy_mount_initial_window_sync", true, 4)
+	main.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, 8)
 	main.call("_sync_detail_actions_scroll_limit")
-	main.call("_sync_fishing_detail_render_culling", true)
+	main.call("_fishing_ui_surface").call("_sync_fishing_detail_render_culling", true)
 	await process_frame
 
 
@@ -102,14 +104,14 @@ func _warmup(main: Node) -> void:
 	for target in [0, scroll.get_max_scroll_vertical() / 2, 0]:
 		scroll.scroll_vertical = int(target)
 		scroll.set("drag_scroll_position", float(target))
-		main.call("_sync_detail_lazy_visible_cards", true, 8)
-		main.call("_sync_fishing_detail_render_culling", true)
+		main.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, 8)
+		main.call("_fishing_ui_surface").call("_sync_fishing_detail_render_culling", true)
 		for _i in range(12):
 			await process_frame
 	scroll.scroll_vertical = 0
 	scroll.set("drag_scroll_position", 0.0)
-	main.call("_sync_detail_lazy_visible_cards", true, 8)
-	main.call("_sync_fishing_detail_render_culling", true)
+	main.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, 8)
+	main.call("_fishing_ui_surface").call("_sync_fishing_detail_render_culling", true)
 	for _i in range(8):
 		await process_frame
 
@@ -158,15 +160,15 @@ func _scroll_until_location_tile_visible(main: Node, scroll: ScrollContainer) ->
 		for _i in range(4):
 			await process_frame
 			if not bool(main.get("detail_scroll_visual_work_this_frame")):
-				main.call("_sync_detail_lazy_visible_cards", true, 8)
-				main.call("_sync_fishing_detail_render_culling", true)
+				main.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, 8)
+				main.call("_fishing_ui_surface").call("_sync_fishing_detail_render_culling", true)
 		if _first_visible_location_tile_center(main, scroll) != Vector2.INF:
 			return
 		target += step
 	scroll.scroll_vertical = 0
 	scroll.set("drag_scroll_position", 0.0)
-	main.call("_sync_detail_lazy_visible_cards", true, 8)
-	main.call("_sync_fishing_detail_render_culling", true)
+	main.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, 8)
+	main.call("_fishing_ui_surface").call("_sync_fishing_detail_render_culling", true)
 	await process_frame
 
 
@@ -245,7 +247,7 @@ func _location_tile_diagnostics(main: Node, scroll: ScrollContainer) -> Dictiona
 		"hit_controls_visible": visible,
 		"hit_controls_intersecting": intersecting,
 		"scroll": int(scroll.scroll_vertical),
-		"mounted": int(main.call("_web_fishing_perf_probe_mounted_count")),
+		"mounted": int(main.call("_fishing_ui_surface").call("_web_fishing_perf_probe_mounted_count")),
 	}
 
 
@@ -434,7 +436,7 @@ func _summary(main: Node) -> Dictionary:
 		probe_scroll_deltas[str(raw_probe)] = int(range_entry.get("max", 0)) - int(range_entry.get("min", 0))
 	return {
 		"status": "ok",
-		"mounted": int(main.call("_web_fishing_perf_probe_mounted_count")),
+		"mounted": int(main.call("_fishing_ui_surface").call("_web_fishing_perf_probe_mounted_count")),
 		"sample_count": values.size(),
 		"probe_scroll_deltas": probe_scroll_deltas,
 		"probe_first_scroll_frames": probe_first_scroll_frames,

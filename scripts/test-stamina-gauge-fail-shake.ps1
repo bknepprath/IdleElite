@@ -84,8 +84,8 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("fish_currency", 0.0)
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")

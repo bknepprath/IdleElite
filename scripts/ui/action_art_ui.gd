@@ -3,8 +3,16 @@ class_name ActionArtUi
 const ActionArtTextureRect = preload("res://scripts/ui/action_art_texture_rect.gd")
 const ActionArtAnimationRect = preload("res://scripts/ui/action_art_animation_rect.gd")
 
+const EVENT_HOURGLASS_BADGE := "res://assets/content/ui/event-hourglass-badge.png"
+const ACTION_ART_PANEL_SIZE := Vector2(410, 410)
+const ACTION_ART_SIZE := Vector2(427.2, 427.2)
+const ACTION_ART_OFFSET := Vector2(-8.6, -8.6)
+const ACTION_ART_CORNER_ICON_SIZE := Vector2(172, 172)
+const ACTION_ART_CORNER_ICON_EDGE_OVERLAP := 60.0
+const ACTION_ART_CORNER_ICON_LIST_STEP := 104.0
+const ACTION_ART_CORNER_ICON_STROKE_PIXELS := 14.0
 
-static func image(action: Dictionary, art_size: Vector2, art_offset: Vector2, texture_or_fallback: Callable, visual_fallback: Callable, headless: bool) -> ActionArtTextureRect:
+static func image(action: Dictionary, texture_or_fallback: Callable, visual_fallback: Callable, headless: bool) -> ActionArtTextureRect:
 	var path := str(action.get("art", ""))
 	var animation := action.get("art_animation", {}) as Dictionary
 	var node: ActionArtTextureRect = ActionArtAnimationRect.new() if not animation.is_empty() else ActionArtTextureRect.new()
@@ -29,33 +37,34 @@ static func image(action: Dictionary, art_size: Vector2, art_offset: Vector2, te
 				str(animation.get("sync", "")),
 				animation.get("effects", {})
 			)
+	var art_size := display_size(action)
 	node.custom_minimum_size = art_size
 	node.size = art_size
-	node.position = art_offset
+	node.position = display_offset(action)
 	node.radius = 56.0
 	node.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	node.z_index = 1
 	return node
 
 
-static func add_corner_badges(art_panel: Control, resource_icon_paths: Array, special_type_icon_path: String, panel_size: Vector2, icon_size: Vector2, edge_overlap: float, list_step: float, stroke_pixels: float, texture_or_fallback: Callable) -> void:
+static func add_corner_badges(art_panel: Control, resource_icon_paths: Array, special_type_icon_path: String, texture_or_fallback: Callable) -> void:
 	if art_panel == null or not is_instance_valid(art_panel):
 		return
 	art_panel.clip_contents = false
 	for index in resource_icon_paths.size():
-		art_panel.add_child(corner_badge(str(resource_icon_paths[index]), false, index, panel_size, icon_size, edge_overlap, list_step, stroke_pixels, texture_or_fallback))
+		art_panel.add_child(corner_badge(str(resource_icon_paths[index]), false, index, texture_or_fallback))
 	if not special_type_icon_path.is_empty():
-		art_panel.add_child(corner_badge(special_type_icon_path, true, 0, panel_size, icon_size, edge_overlap, list_step, stroke_pixels, texture_or_fallback))
+		art_panel.add_child(corner_badge(special_type_icon_path, true, 0, texture_or_fallback))
 
 
-static func corner_badge(icon_path: String, align_right: bool, index: int, panel_size: Vector2, icon_size: Vector2, edge_overlap: float, list_step: float, stroke_pixels: float, texture_or_fallback: Callable) -> Control:
+static func corner_badge(icon_path: String, align_right: bool, index: int, texture_or_fallback: Callable) -> Control:
 	var host := Control.new()
-	host.custom_minimum_size = icon_size
-	host.size = icon_size
+	host.custom_minimum_size = ACTION_ART_CORNER_ICON_SIZE
+	host.size = ACTION_ART_CORNER_ICON_SIZE
 	host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host.z_index = 30 + index
-	var x := panel_size.x - icon_size.x + edge_overlap if align_right else -edge_overlap + list_step * index
-	host.position = Vector2(x, panel_size.y - icon_size.y + edge_overlap)
+	var x := ACTION_ART_PANEL_SIZE.x - ACTION_ART_CORNER_ICON_SIZE.x + ACTION_ART_CORNER_ICON_EDGE_OVERLAP if align_right else -ACTION_ART_CORNER_ICON_EDGE_OVERLAP + ACTION_ART_CORNER_ICON_LIST_STEP * index
+	host.position = Vector2(x, ACTION_ART_PANEL_SIZE.y - ACTION_ART_CORNER_ICON_SIZE.y + ACTION_ART_CORNER_ICON_EDGE_OVERLAP)
 
 	var stroke := TextureRect.new()
 	stroke.texture = texture_or_fallback.call(icon_path)
@@ -63,8 +72,8 @@ static func corner_badge(icon_path: String, align_right: bool, index: int, panel
 	stroke.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	stroke.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	stroke.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stroke.size = icon_size + Vector2(stroke_pixels, stroke_pixels)
-	stroke.position = Vector2(-stroke_pixels, -stroke_pixels) * 0.5
+	stroke.size = ACTION_ART_CORNER_ICON_SIZE + Vector2(ACTION_ART_CORNER_ICON_STROKE_PIXELS, ACTION_ART_CORNER_ICON_STROKE_PIXELS)
+	stroke.position = Vector2(-ACTION_ART_CORNER_ICON_STROKE_PIXELS, -ACTION_ART_CORNER_ICON_STROKE_PIXELS) * 0.5
 	stroke.modulate = Color(0.05, 0.035, 0.02, 0.9)
 	stroke.z_index = 0
 	host.add_child(stroke)
@@ -75,11 +84,44 @@ static func corner_badge(icon_path: String, align_right: bool, index: int, panel
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	icon.custom_minimum_size = icon_size
-	icon.size = icon_size
+	icon.custom_minimum_size = ACTION_ART_CORNER_ICON_SIZE
+	icon.size = ACTION_ART_CORNER_ICON_SIZE
 	icon.z_index = 1
 	host.add_child(icon)
 	return host
+
+
+static func resource_icon_paths(action: Dictionary, action_mat_reward_defs: Callable, mat_icon_path: Callable, temporary_event_log_reward_mat_id: Callable) -> Array:
+	var icon_paths := []
+	var mat_rewards := action_mat_reward_defs.call(action) as Array
+	for raw_reward in mat_rewards:
+		var reward := raw_reward as Dictionary
+		var icon_path := str(mat_icon_path.call(str(reward.get("id", ""))))
+		if not icon_path.is_empty() and not icon_paths.has(icon_path):
+			icon_paths.append(icon_path)
+	if not icon_paths.is_empty():
+		return icon_paths
+	var raw_resource_rewards = action.get("resource_rewards", {})
+	if typeof(raw_resource_rewards) != TYPE_DICTIONARY:
+		return icon_paths
+	var resource_rewards := raw_resource_rewards as Dictionary
+	if int(resource_rewards.get("logs_max", resource_rewards.get("logs_min", resource_rewards.get("logs", 0)))) > 0:
+		icon_paths.append(str(mat_icon_path.call(str(temporary_event_log_reward_mat_id.call()))))
+	return icon_paths
+
+
+static func special_type_icon_path(action: Dictionary, is_event_action: Callable) -> String:
+	if bool(is_event_action.call(action)):
+		return EVENT_HOURGLASS_BADGE
+	return ""
+
+
+static func display_size(action: Dictionary) -> Vector2:
+	return ACTION_ART_SIZE
+
+
+static func display_offset(action: Dictionary) -> Vector2:
+	return ACTION_ART_OFFSET
 
 
 static func border_overlay(style: StyleBox) -> Panel:

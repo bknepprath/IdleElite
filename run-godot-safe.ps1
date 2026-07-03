@@ -86,7 +86,7 @@ function ConvertTo-ProcessArgument {
 
 $stdoutPath = Join-Path $env:TEMP ("godot-safe-{0}.stdout.log" -f ([guid]::NewGuid()))
 $stderrPath = Join-Path $env:TEMP ("godot-safe-{0}.stderr.log" -f ([guid]::NewGuid()))
-$mutex = New-Object System.Threading.Mutex($false, "Global\IdleSlopGodotLaunchGate")
+$mutex = New-Object System.Threading.Mutex($false, "Global\IdleEliteGodotLaunchGate")
 $deadline = (Get-Date).AddSeconds($waitSeconds)
 $process = $null
 $mutexHeld = $false

@@ -67,13 +67,13 @@ func _run() -> void:
 	if not await _wait_for_boot_ready():
 		_fail("boot did not become ready")
 		return
-	scene.call("_close_offline_summary_overlay")
-	scene.call("_god_mode_unlock_onboarding_state")
-	scene.call("_god_mode_max_skills_state")
-	scene.call("_god_mode_unlock_actions_state")
+	scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
+	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
+	scene.call("_test_state_runtime")._god_mode_max_skills_state()
+	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("module_utility_collapsed", false)
 	scene.set("module_ui_pinned_order", _first_module_keys(["woodcutting", "fishing", "thieving"], 4))
-	scene.call("_clear_running_activity_for_test_mode")
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	for _i in range(8):
 		await process_frame
 
@@ -147,11 +147,11 @@ func _exercise_scenario(scenario: Dictionary) -> void:
 func _stage_scenario(scenario: Dictionary) -> bool:
 	if scene == null or not is_instance_valid(scene):
 		return false
-	scene.call("_close_offline_summary_overlay")
-	scene.call("_close_settings")
-	scene.call("_close_chat_overlay")
-	scene.call("_clear_running_activity_for_test_mode")
-	scene.call("_disarm_reset_data_confirmation")
+	scene.call("_achievement_overlay_surface").call("_close_offline_summary_overlay")
+	scene.call("_settings_surface")._close_settings()
+	scene.call("_profile_chat_overlay_surface")._close_chat_overlay()
+	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
+	scene.call("_settings_surface").call("_disarm_reset_data_confirmation")
 	scene.set("fishing_tool_wallet_open", false)
 	scene.set("hub_detail_open", false)
 	scene.set("module_utility_collapsed", false)
@@ -359,7 +359,7 @@ func _scene_summary() -> String:
 		str(scene.get("running_skill_id")),
 		str(scene.get("running_action_id")),
 		str(scene.get("screen_render_in_progress")),
-		str(scene.call("_any_modal_overlay_visible")),
+		str(scene.call("_input_routing_shell").call("_any_modal_overlay_visible")),
 	]
 
 
