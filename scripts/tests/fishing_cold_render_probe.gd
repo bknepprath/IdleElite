@@ -25,12 +25,13 @@ func _run() -> void:
 	await _wait_for_startup(main)
 	_force_level_99_fishing_state(main)
 	var render_started_usec := Time.get_ticks_usec()
-	var render_result = main.call("_render_screen", false, -1, false)
+	var render_result = main.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	var render_msec := float(Time.get_ticks_usec() - render_started_usec) / 1000.0
 	var immediate_mounted := _mounted_count(main)
-	var plan_count := (main.get("detail_lazy_plan") as Array).size()
+	var detail_surface = main.call("_skill_detail_surface")
+	var plan_count := (detail_surface.detail_lazy_plan as Array).size()
 	var visible_placeholders := bool(main.call("_skill_detail_has_visible_lazy_placeholders"))
 	var warm_frames := 0
 	var max_warm_frame_msec := 0.0
@@ -54,8 +55,8 @@ func _run() -> void:
 		"warm_frames": warm_frames,
 		"max_warm_frame_msec": max_warm_frame_msec,
 		"warm_over_50": warm_over_50,
-		"warm_skill_id": str(main.get("detail_lazy_settle_warm_mount_skill_id")),
-		"lazy_all_mounted": bool(main.call("_detail_lazy_all_mounted")),
+		"warm_skill_id": str(detail_surface.detail_lazy_settle_warm_mount_skill_id),
+		"lazy_all_mounted": bool(detail_surface.call("_detail_lazy_all_mounted")),
 		"visible_placeholders": visible_placeholders,
 		"warmed_visible_placeholders": warmed_visible_placeholders,
 		"unmounted_entries": _unmounted_entries(main)
@@ -79,18 +80,18 @@ func _force_level_99_fishing_state(main: Node) -> void:
 	_set_skill_level(main, "fishing", 99)
 	main.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	main.call("_test_state_runtime")._god_mode_unlock_fishing_tools_state()
-	main.call("_sync_manual_activity_unlocks_from_levels")
+	main.call("_activity_unlock_runtime").sync_manual_activity_unlocks_from_levels()
 	main.set("current_screen", "skill")
 	main.set("selected_skill_id", "fishing")
 	main.set("module_ui_sort_mode", "level")
 	main.set("module_ui_collapsed", {})
-	main.set("equipped_fishing_tool_id", "star_rod")
-	main.set("fishing_net_collected", true)
-	main.set("fishing_rod_collected", true)
-	main.set("fishing_reinforced_rod_collected", true)
-	main.set("fishing_star_rod_collected", true)
-	main.set("fishing_boat_built", true)
-	main.set("fishing_mirror_collected", true)
+	main.fishing_runtime.equipped_tool_id = "star_rod"
+	main.fishing_runtime.net_collected = true
+	main.fishing_runtime.rod_collected = true
+	main.fishing_runtime.reinforced_rod_collected = true
+	main.fishing_runtime.star_rod_collected = true
+	main.fishing_runtime.boat_built = true
+	main.fishing_runtime.mirror_collected = true
 
 
 func _set_skill_level(main: Node, skill_id: String, level: int) -> void:
@@ -100,15 +101,16 @@ func _set_skill_level(main: Node, skill_id: String, level: int) -> void:
 	(skills[skill_id] as Dictionary)["xp"] = SkillState.xp_for_level(level)
 	(skills[skill_id] as Dictionary)["level"] = level
 	main.set("skills", skills)
-	main.call("_recalculate_level", skill_id, false)
+	SkillState.recalculate_level(main, skill_id, false)
 	var stamina := main.get("stamina") as Dictionary
-	stamina[skill_id] = float(main.call("_max_stamina", skill_id))
+	stamina[skill_id] = float(SkillState.max_stamina(main, skill_id))
 	main.set("stamina", stamina)
 
 
 func _mounted_count(main: Node) -> int:
 	var mounted := 0
-	for raw_entry in main.get("detail_lazy_plan") as Array:
+	var detail_surface = main.call("_skill_detail_surface")
+	for raw_entry in detail_surface.detail_lazy_plan as Array:
 		var lazy_entry := raw_entry as Dictionary
 		if bool(lazy_entry.get("mounted", false)):
 			mounted += 1
@@ -117,7 +119,8 @@ func _mounted_count(main: Node) -> int:
 
 func _unmounted_entries(main: Node) -> Array:
 	var entries: Array = []
-	for raw_entry in main.get("detail_lazy_plan") as Array:
+	var detail_surface = main.call("_skill_detail_surface")
+	for raw_entry in detail_surface.detail_lazy_plan as Array:
 		var lazy_entry := raw_entry as Dictionary
 		if bool(lazy_entry.get("mounted", false)):
 			continue

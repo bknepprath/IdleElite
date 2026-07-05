@@ -87,13 +87,13 @@ func _run() -> void:
 		_fail("boot did not become ready")
 		return
 
-	scene.call("_init_state")
-	scene.call("_validate_state")
+	scene.call("_save_runtime").call("_init_state")
+	scene.call("_boot_warmup_runtime").call("validate_state")
 	await _sample_case(scene, "hard_reset", false)
 	if failed:
 		return
-	scene.call("_init_state")
-	scene.call("_validate_state")
+	scene.call("_save_runtime").call("_init_state")
+	scene.call("_boot_warmup_runtime").call("validate_state")
 	await _sample_case(scene, "post_tutorial_swipe", true)
 	if failed:
 		return
@@ -122,7 +122,7 @@ func _sample_case(scene: Node, case_name: String, preview_available: bool) -> vo
 		scene.set("onboarding_fight_action_stats_revealed", true)
 		scene.set("onboarding_swipe_navigation_unlocked", true)
 		scene.set("onboarding_swipe_tip_eligible", true)
-		scene.call("_validate_state")
+		scene.call("_boot_warmup_runtime").call("validate_state")
 
 	for skill_id in SKILLS_TO_SAMPLE:
 		var stats := await _render_and_measure(scene, skill_id)
@@ -149,8 +149,8 @@ func _sample_case(scene: Node, case_name: String, preview_available: bool) -> vo
 
 
 func _sample_swipe_load(scene: Node) -> void:
-	scene.call("_init_state")
-	scene.call("_validate_state")
+	scene.call("_save_runtime").call("_init_state")
+	scene.call("_boot_warmup_runtime").call("validate_state")
 	var skills := scene.get("skills") as Dictionary
 	var starter_state := skills.get("fight", {"xp": 0, "level": 1}) as Dictionary
 	starter_state["xp"] = 16
@@ -165,21 +165,21 @@ func _sample_swipe_load(scene: Node) -> void:
 	scene.set("skill_swipe_tip_seen", true)
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fight")
-	scene.call("_validate_state")
-	var render_result = scene.call("_render_screen", false, 0, false)
+	scene.call("_boot_warmup_runtime").call("validate_state")
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, 0, false)
 	if render_result != null:
 		await render_result
 	for _i in range(SETTLE_FRAMES):
 		await process_frame
-		scene.call("_sync_detail_actions_scroll_limit")
+		scene.call("_skill_detail_surface").call("_sync_detail_actions_scroll_limit")
 	var start_skill := str(scene.get("selected_skill_id"))
-	scene.call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
-	scene.call("_update_skill_swipe_feedback", Vector2(240, 1500))
-	scene.call("_finish_skill_swipe", Vector2(240, 1500))
+	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
+	scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(240, 1500))
+	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(240, 1500))
 	for _i in range(SETTLE_FRAMES * 2):
 		await process_frame
-		scene.call("_sync_detail_lazy_visible_cards", true, -1)
-		scene.call("_sync_detail_actions_scroll_limit")
+		scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
+		scene.call("_skill_detail_surface").call("_sync_detail_actions_scroll_limit")
 	var stats := _current_page_stats(scene)
 	print("HIDDEN_PREVIEW_SWIPE selected=%s start=%s visible_modules=%s visible_area=%.1f scroll_max=%s stack_present=%s" % [
 		str(scene.get("selected_skill_id")),
@@ -204,8 +204,8 @@ func _sample_live_build_to_woodcutting_swipe(scene: Node) -> void:
 	_prepare_post_tutorial_swipe_state(scene)
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
-	scene.call("_validate_state")
-	var render_result = scene.call("_render_screen", false, 0, false)
+	scene.call("_boot_warmup_runtime").call("validate_state")
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, 0, false)
 	if render_result != null:
 		await render_result
 	for _i in range(SETTLE_FRAMES):
@@ -223,12 +223,12 @@ func _sample_live_build_to_woodcutting_swipe(scene: Node) -> void:
 		_fail("live build->woodcutting target was not accessible")
 		return
 
-	scene.call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
+	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
 	for step in range(24):
 		var t := float(step + 1) / 24.0
-		scene.call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(240, 1500), t))
+		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(240, 1500), t))
 		await process_frame
-	scene.call("_finish_skill_swipe", Vector2(240, 1500))
+	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(240, 1500))
 
 	var first_seen_frame := -1
 	var first_seen_stats := {}
@@ -270,8 +270,8 @@ func _sample_live_build_to_woodcutting_swipe(scene: Node) -> void:
 
 
 func _prepare_post_tutorial_swipe_state(scene: Node) -> void:
-	scene.call("_init_state")
-	scene.call("_validate_state")
+	scene.call("_save_runtime").call("_init_state")
+	scene.call("_boot_warmup_runtime").call("validate_state")
 	var skills := scene.get("skills") as Dictionary
 	var starter_state := skills.get("fight", {"xp": 0, "level": 1}) as Dictionary
 	starter_state["xp"] = 16
@@ -287,7 +287,7 @@ func _prepare_post_tutorial_swipe_state(scene: Node) -> void:
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
-	scene.call("_validate_state")
+	scene.call("_boot_warmup_runtime").call("validate_state")
 
 
 func _render_and_measure(scene: Node, skill_id: String) -> Dictionary:
@@ -297,15 +297,15 @@ func _render_and_measure(scene: Node, skill_id: String) -> Dictionary:
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
 	scene.call("_passive_modules_runtime").sync_passive_module_unlocks(int(scene.call("_unix_now")))
-	var render_result = scene.call("_render_screen", false, 0, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, 0, false)
 	if render_result != null:
 		await render_result
 	for _i in range(SETTLE_FRAMES):
 		await process_frame
-		scene.call("_sync_detail_lazy_visible_cards", true, -1)
-		scene.call("_sync_detail_actions_scroll_limit")
-	scene.call("_detail_lazy_mount_all_sync", true)
-	scene.call("_sync_detail_actions_scroll_limit")
+		scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
+		scene.call("_skill_detail_surface").call("_sync_detail_actions_scroll_limit")
+	scene.call("_skill_detail_surface").call("_detail_lazy_mount_all_sync", true)
+	scene.call("_skill_detail_surface").call("_sync_detail_actions_scroll_limit")
 	await process_frame
 
 	var hidden_count := 0
@@ -340,7 +340,8 @@ func _render_and_measure(scene: Node, skill_id: String) -> Dictionary:
 		max_root_height = maxf(max_root_height, _allocated_control_height(root_control))
 		max_entry_height = maxf(max_entry_height, _allocated_control_height(entry_control))
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
-	var visible_content := scene.call("_detail_authoritative_scrollable_module_bottom") as Dictionary
+	var detail_surface = scene.call("_skill_detail_surface")
+	var visible_content := detail_surface.call("_detail_authoritative_scrollable_module_bottom") as Dictionary
 	var stack_detail := _stack_detail(scene)
 	return {
 		"hidden_count": hidden_count,
@@ -354,7 +355,8 @@ func _render_and_measure(scene: Node, skill_id: String) -> Dictionary:
 
 
 func _stack_detail(scene: Node) -> String:
-	var stack := scene.call("_detail_actions_stack") as Control
+	var detail_surface = scene.call("_skill_detail_surface")
+	var stack := detail_surface.call("_detail_actions_stack") as Control
 	if stack == null:
 		return "no-stack"
 	var parts: Array[String] = []
@@ -369,8 +371,8 @@ func _stack_detail(scene: Node) -> String:
 			child.custom_minimum_size.y,
 			child.size.y,
 			child.modulate.a,
-			str(scene.call("_detail_stack_child_is_module_content", child)),
-			float(scene.call("_detail_control_bottom_in_stack", child, stack))
+			str(detail_surface.call("_detail_stack_child_is_module_content", child)),
+			float(detail_surface.call("_detail_control_bottom_in_stack", child, stack))
 		])
 	return " | ".join(parts)
 
@@ -389,22 +391,22 @@ func _allocated_control_height(control: Control) -> float:
 
 func _current_page_stats(scene: Node) -> Dictionary:
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
-	var stack = scene.call("_detail_actions_stack")
-	var visible_stats := scene.call("_skill_detail_visible_module_stats") as Dictionary
+	var stack = scene.call("_skill_detail_surface").call("_detail_actions_stack")
+	var visible_stats := scene.call("_skill_swipe_activity_surface").call("_skill_detail_visible_module_stats") as Dictionary
 	return {
 		"stack_present": stack != null and is_instance_valid(stack),
 		"visible_modules": int(visible_stats.get("visible_modules", 0)),
 		"visible_module_area": float(visible_stats.get("visible_module_area", 0.0)),
 		"max_scroll": 0 if scroll == null else int(scroll.call("get_max_scroll_vertical")),
-		"ready": bool(scene.call("_skill_detail_ready_to_reveal_under_cover")),
-		"visible_placeholders": bool(scene.call("_skill_detail_has_visible_lazy_placeholders")),
+		"ready": bool(scene.call("_skill_swipe_activity_surface").call("_skill_detail_ready_to_reveal_under_cover")),
+		"visible_placeholders": bool(scene.call("_skill_swipe_activity_surface").call("_skill_detail_has_visible_lazy_placeholders")),
 		"placeholder_detail": _placeholder_summary(scene)
 	}
 
 
 func _placeholder_summary(scene: Node) -> String:
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
-	var stack = scene.call("_detail_actions_stack")
+	var stack = scene.call("_skill_detail_surface").call("_detail_actions_stack")
 	if scroll == null or stack == null or not is_instance_valid(stack):
 		return ""
 	var viewport_rect := scroll.get_global_rect()

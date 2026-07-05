@@ -1,9 +1,41 @@
 extends RefCounted
 
-const SkillIconBadgeMask = preload("res://scripts/ui/skill_icon_badge_mask.gd")
-const SkillIconSymbolDraw = preload("res://scripts/ui/skill_icon_symbol_draw.gd")
-
 static var symbol_clip_shader: Shader
+
+class SkillIconBadgeMask:
+	extends Control
+
+	var fill_style: StyleBoxFlat
+
+	func _ready() -> void:
+		clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		if fill_style == null or size.x <= 1.0 or size.y <= 1.0:
+			return
+		draw_style_box(fill_style, Rect2(Vector2.ZERO, size))
+
+class SkillIconSymbolDraw:
+	extends Control
+
+	var texture: Texture2D
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		if texture == null or size.x <= 1.0 or size.y <= 1.0:
+			return
+		draw_texture_rect(texture, Rect2(Vector2.ZERO, size), false)
+
+
+static func icon_path(skill_id: String) -> String:
+	return "res://assets/content/icons/skill-symbols/%s.png" % skill_id
 
 
 static func menu_icon_badge(host, skill_id: String, theme_color: Color) -> Control:
@@ -12,7 +44,7 @@ static func menu_icon_badge(host, skill_id: String, theme_color: Color) -> Contr
 
 static func achievement_icon_badge(host, skill_id: String, badge_size: Vector2) -> Control:
 	var symbol_base_size: Vector2 = host.SKILL_MENU_ICON_SYMBOL_SIZE * (badge_size.x / maxf(1.0, host.SKILL_MENU_ICON_BADGE_SIZE.x))
-	return icon_badge(host, skill_id, host._skill_theme_color(skill_id), badge_size, symbol_size(skill_id, symbol_base_size))
+	return icon_badge(host, skill_id, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), badge_size, symbol_size(skill_id, symbol_base_size))
 
 
 static func detail_icon(host, skill_id: String) -> Control:
@@ -21,10 +53,22 @@ static func detail_icon(host, skill_id: String) -> Control:
 	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var detail_symbol_base_size: Vector2 = host.SKILL_MENU_ICON_SYMBOL_SIZE * (host.SKILL_DETAIL_ICON_SIZE.x / maxf(1.0, host.SKILL_MENU_ICON_BADGE_SIZE.x))
-	var icon := icon_badge(host, skill_id, host._skill_theme_color(skill_id), host.SKILL_DETAIL_ICON_SIZE, symbol_size(skill_id, detail_symbol_base_size))
+	var icon := icon_badge(host, skill_id, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.SKILL_DETAIL_ICON_SIZE, symbol_size(skill_id, detail_symbol_base_size))
 	icon.position.y = host.SKILL_DETAIL_ICON_Y_OFFSET
 	holder.add_child(icon)
 	return holder
+
+
+static func symbol_control(host, skill_id: String) -> Control:
+	if skill_id == "fishing":
+		var drawn_symbol := SkillIconSymbolDraw.new()
+		drawn_symbol.texture = host.visual_texture_cache._texture_or_visual_fallback(icon_path(skill_id))
+		return drawn_symbol
+	var texture_symbol := TextureRect.new()
+	texture_symbol.texture = host.visual_texture_cache._texture_or_visual_fallback(icon_path(skill_id))
+	texture_symbol.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	texture_symbol.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	return texture_symbol
 
 
 static func icon_badge(host, skill_id: String, theme_color: Color, badge_size: Vector2, icon_symbol_size: Vector2) -> Control:
@@ -40,17 +84,7 @@ static func icon_badge(host, skill_id: String, theme_color: Color, badge_size: V
 	mask.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.add_child(mask)
 
-	var symbol: Control
-	if skill_id == "fishing":
-		var drawn_symbol := SkillIconSymbolDraw.new()
-		drawn_symbol.texture = host.visual_texture_cache._texture_or_visual_fallback(host._skill_icon_path(skill_id))
-		symbol = drawn_symbol
-	else:
-		var texture_symbol := TextureRect.new()
-		texture_symbol.texture = host.visual_texture_cache._texture_or_visual_fallback(host._skill_icon_path(skill_id))
-		texture_symbol.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		texture_symbol.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		symbol = texture_symbol
+	var symbol := symbol_control(host, skill_id)
 	symbol.custom_minimum_size = icon_symbol_size
 	symbol.size = icon_symbol_size
 	symbol.position = symbol_position(skill_id, badge_size, icon_symbol_size, host.SKILL_MENU_ICON_BADGE_SIZE)

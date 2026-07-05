@@ -98,7 +98,7 @@ func _run() -> void:
 	var expected_target := str(activity_surface.call("_skill_id_for_swipe_offset_from", "build", 1))
 	_expect(expected_target == "woodcutting", "Build +1 swipe target should be woodcutting, got %s." % expected_target)
 	_expect(bool(scene.call("_onboarding_runtime").call("_swipe_offset_accessible", 1)), "Build +1 swipe target should be accessible before the first swipe: %s" % _state_summary(scene))
-	activity_surface.call("_ensure_skill_swipe_preview_page_cacoed", 1)
+	activity_surface.call("_ensure_skill_swipe_preview_page_cached", 1)
 	_expect(_preview_page_count(scene) > 0, "Hidden Woodcutting preview was not seeded before first swipe: %s" % _state_summary(scene))
 
 	await _run_first_swipe_drag(scene)
@@ -134,7 +134,7 @@ func _prepare_skill_page(scene: Node, skill_id: String) -> void:
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
 	scene.call("_passive_modules_runtime").sync_passive_module_unlocks(int(scene.call("_unix_now")))
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _i in range(SETTLE_FRAMES):
@@ -146,7 +146,7 @@ func _prepare_skill_page_from_menu(scene: Node, skill_id: String) -> void:
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
 	scene.set("current_screen", "menu")
-	var menu_render = scene.call("_render_screen", false, -1, false)
+	var menu_render = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if menu_render != null:
 		await menu_render
 	for _i in range(SETTLE_FRAMES):
@@ -177,12 +177,12 @@ func _selected_skill_ready(scene: Node, skill_id: String) -> bool:
 func _run_first_swipe_drag(scene: Node) -> void:
 	var start := Vector2(900.0, 520.0)
 	var end := start + Vector2(-640.0, 0.0)
-	scene.call("_begin_skill_swipe_tracking", start, -1)
+	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", start, -1)
 	for step in range(24):
 		var t := float(step + 1) / 24.0
-		scene.call("_update_skill_swipe_feedback", start.lerp(end, t))
+		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", start.lerp(end, t))
 		await _wait_test_frame()
-	scene.call("_finish_skill_swipe", end)
+	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", end)
 
 
 func _wait_test_frame() -> void:
@@ -214,7 +214,7 @@ func _first_swipe_page_ready(scene: Node, target_skill_id: String) -> bool:
 	var cards := scene.get("action_cards") as Dictionary
 	if cards == null or cards.size() <= 0:
 		return false
-	if _valid_control(scene.get("detail_regen_circle")) == null:
+	if _valid_control(scene._skill_detail_surface().detail_regen_circle) == null:
 		return false
 	if _detail_header_gauge_slot_count(scene) != 1:
 		return false
@@ -279,7 +279,7 @@ func _first_swipe_target_incomplete(scene: Node) -> bool:
 		return true
 	if int(counts.get("visible_placeholders", 0)) > 0:
 		return true
-	if _valid_control(scene.get("detail_regen_circle")) == null:
+	if _valid_control(scene._skill_detail_surface().detail_regen_circle) == null:
 		return true
 	if _detail_header_gauge_slot_count(scene) != 1:
 		return true
@@ -305,7 +305,7 @@ func _state_summary(scene: Node) -> String:
 		str(scene.get("skill_swipe_tracking")),
 		str(scene.get("skill_swipe_horizontal")),
 		str(scene.get("skill_swipe_queued_offset")),
-		float(scene.get("skill_swipe_drag_offset_x")),
+		float(scene.call("_skill_swipe_activity_surface").get("skill_swipe_drag_offset_x")),
 		str(scene.get("skill_strip_index")),
 		str(scene.call("_onboarding_runtime").call("_swipe_offset_accessible", 1)),
 		str(0 if cards == null else cards.size()),
@@ -314,7 +314,7 @@ func _state_summary(scene: Node) -> String:
 		str(page != null and page.visible and page.is_visible_in_tree()),
 		str(scroll != null and scroll.visible and scroll.is_visible_in_tree()),
 		str(stack != null and stack.visible and stack.is_visible_in_tree()),
-		str(_valid_control(scene.get("detail_regen_circle")) != null),
+		str(_valid_control(scene._skill_detail_surface().detail_regen_circle) != null),
 		str(_detail_header_gauge_slot_count(scene)),
 		str(scroll != null),
 		scroll_ratio,
@@ -394,7 +394,7 @@ func _placeholder_count(control: Control) -> int:
 
 
 func _detail_header_gauge_slot_count(scene: Node) -> int:
-	var header_body := _valid_control(scene.get("detail_header_body"))
+	var header_body := _valid_control(scene._skill_detail_surface().detail_header_body)
 	if header_body == null:
 		return 0
 	var row := _find_first_descendant_of_class(header_body, "HBoxContainer")

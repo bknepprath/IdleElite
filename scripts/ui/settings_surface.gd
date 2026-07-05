@@ -3,10 +3,14 @@ extends RefCounted
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
 const RegenCircle = preload("res://scripts/ui/regen_circle.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
+const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const RESET_DATA_CONFIRM_SECONDS := 8.0
 const RESET_DATA_CONFIRM_MIN_SECONDS := 0.08
 const RESET_DATA_CONFIRM_TEXT := "Are you sure?"
+const DISCORD_INVITE_URL := "https://discord.com/invite/NHvsGdGfVW"
+const MAX_CRASH_REPORT_CLIPBOARD_CHARS := 1800
+const DISCORD_LOGO_ICON_TEXTURE := "res://assets/content/ui/discord-logo-icon.png"
 
 var host
 var reset_data_confirm_until := 0.0
@@ -42,17 +46,18 @@ var notification_permission_notice_tween: Tween
 func _init(host_ref) -> void:
 	host = host_ref
 
+
 func _show_settings() -> void:
-	if not host._top_level_nav_allowed("settings"):
+	if not host._navigation_shell()._top_level_nav_allowed("settings"):
 		return
 	_remember_settings_return_context()
 	_disarm_reset_data_confirmation()
-	host._clear_queued_skill_swipe_navigation()
-	host._kill_skill_swipe_tween()
-	host._cancel_skill_swipe_finalize_for_navigation()
-	host._clear_skill_swipe_handoff_cover_immediate()
+	host._skill_swipe_activity_surface()._clear_queued_skill_swipe_navigation()
+	host._skill_swipe_activity_surface()._kill_skill_swipe_tween()
+	host._skill_swipe_activity_surface()._cancel_skill_swipe_finalize_for_navigation()
+	host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
 	host.current_screen = "settings"
-	host._render_screen()
+	host._navigation_shell()._render_screen()
 
 
 func _remember_settings_return_context() -> void:
@@ -61,14 +66,14 @@ func _remember_settings_return_context() -> void:
 	settings_return_screen = host.current_screen
 	settings_return_skill_id = host.selected_skill_id if SkillState.has_skill_id(host.skill_defs, host.selected_skill_id) else ""
 	settings_return_detail_scroll = -1
-	if host.current_screen == "skill" and host.detail_actions_scroll != null and is_instance_valid(host.detail_actions_scroll):
-		settings_return_detail_scroll = maxi(0, int(round(host.detail_actions_scroll.scroll_vertical)))
+	if host.current_screen == "skill" and host._skill_detail_surface().detail_actions_scroll != null and is_instance_valid(host._skill_detail_surface().detail_actions_scroll):
+		settings_return_detail_scroll = maxi(0, int(round(host._skill_detail_surface().detail_actions_scroll.scroll_vertical)))
 
 
 func _return_from_settings_page() -> void:
 	_disarm_reset_data_confirmation()
 	if host.settings_overlay != null and host.settings_overlay.visible:
-		host._set_canvas_item_visible_if_changed(host.settings_overlay, false)
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(host.settings_overlay, false)
 	var target_screen := settings_return_screen
 	var target_skill_id := settings_return_skill_id
 	var restore_detail_scroll := settings_return_detail_scroll if target_screen == "skill" else -1
@@ -78,32 +83,32 @@ func _return_from_settings_page() -> void:
 	if not target_skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, target_skill_id):
 		host.selected_skill_id = target_skill_id
 	if target_screen == "home":
-		host.top_level_nav_locked_until_msec = 0
-		host._show_home()
+		host._navigation_shell()._clear_top_level_nav_lock()
+		host._navigation_shell()._show_home()
 		return
 	if not ["skill", "menu", "pinned", "leaderboard", "hub", "shop", "achievements"].has(target_screen):
 		target_screen = "skill"
 	if target_screen == "skill" and not SkillState.has_skill_id(host.skill_defs, host.selected_skill_id):
 		host.selected_skill_id = host._save_runtime()._default_skill_id_for_save()
-	host.top_level_nav_locked_until_msec = 0
+	host._navigation_shell()._clear_top_level_nav_lock()
 	host.current_screen = target_screen
-	host._render_screen(false, restore_detail_scroll)
+	host._navigation_shell()._render_screen(false, restore_detail_scroll)
 
 
 func _close_settings() -> void:
 	_disarm_reset_data_confirmation()
 	var closed_overlay := false
 	if host.settings_overlay != null and host.settings_overlay.visible:
-		host._set_canvas_item_visible_if_changed(host.settings_overlay, false)
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(host.settings_overlay, false)
 		closed_overlay = true
 	if host.current_screen == "settings":
 		_return_from_settings_page()
 	elif not closed_overlay:
-		host._show_home()
+		host._navigation_shell()._show_home()
 
 
 func _route_onboarding_settings_nav_input(event: InputEvent) -> bool:
-	if not host._onboarding_runtime()._onboarding_path_active():
+	if not (host._onboarding_runtime().tutorial_active or host._onboarding_runtime()._onboarding_path_active()):
 		return false
 	if host.settings_tab == null or not is_instance_valid(host.settings_tab) or not host.settings_tab.is_visible_in_tree():
 		return false
@@ -122,11 +127,11 @@ func _route_onboarding_settings_nav_input(event: InputEvent) -> bool:
 	if not hit_settings:
 		return false
 	if host.current_screen == "settings":
-		host.top_level_nav_locked_until_msec = 0
+		host._navigation_shell()._clear_top_level_nav_lock()
 		if host._navigation_shell()._bottom_nav_open_close_returns_to_skill("settings", host.settings_tab):
-			host.bottom_nav_open_close_return_to_skill_active = true
-			host._show_skills_module()
-			host.bottom_nav_open_close_return_to_skill_active = false
+			host._navigation_shell().bottom_nav_open_close_return_to_skill_active = true
+			host._navigation_shell()._show_skills_module()
+			host._navigation_shell().bottom_nav_open_close_return_to_skill_active = false
 			return true
 		_return_from_settings_page()
 		return true
@@ -135,33 +140,33 @@ func _route_onboarding_settings_nav_input(event: InputEvent) -> bool:
 
 
 func _settings_discord_pressed() -> void:
-	var err := OS.shell_open(host.DISCORD_INVITE_URL)
+	var err := OS.shell_open(DISCORD_INVITE_URL)
 	if err == OK:
-		host._set_result("Opening Discord invite.")
+		host._reward_feedback_surface()._set_result("Opening Discord invite.")
 	else:
-		host._set_result("Couldn't open Discord invite.")
+		host._reward_feedback_surface()._set_result("Couldn't open Discord invite.")
 
 
 func _settings_copy_crash_report_pressed() -> void:
 	var crash_runtime = host._crash_report_runtime()
 	if not crash_runtime.pending_report_exists():
-		host._set_result("No crash report found.")
+		host._reward_feedback_surface()._set_result("No crash report found.")
 		return
 	var report: String = crash_runtime.pending_report_clipboard_text()
 	if report.is_empty():
-		host._set_result("Couldn't read crash report.")
+		host._reward_feedback_surface()._set_result("Couldn't read crash report.")
 		return
-	if report.length() > host.MAX_CRASH_REPORT_CLIPBOARD_CHARS:
-		report = report.substr(0, host.MAX_CRASH_REPORT_CLIPBOARD_CHARS) + "\n\n[Crash report truncated for clipboard.]"
+	if report.length() > MAX_CRASH_REPORT_CLIPBOARD_CHARS:
+		report = report.substr(0, MAX_CRASH_REPORT_CLIPBOARD_CHARS) + "\n\n[Crash report truncated for clipboard.]"
 	DisplayServer.clipboard_set(report)
 	crash_runtime.clear_pending_report()
-	var err := OS.shell_open(host.DISCORD_INVITE_URL)
+	var err := OS.shell_open(DISCORD_INVITE_URL)
 	if err == OK:
-		host._set_result("Crash report copied. Paste it to the dev. Local report cleared.")
+		host._reward_feedback_surface()._set_result("Crash report copied. Paste it to the dev. Local report cleared.")
 	else:
-		host._set_result("Crash report copied. Local report cleared.")
+		host._reward_feedback_surface()._set_result("Crash report copied. Local report cleared.")
 	if host.current_screen == "settings":
-		host._render_screen()
+		host._navigation_shell()._render_screen()
 
 
 func _apply_god_mode_toggle_style(button: Button) -> void:
@@ -182,18 +187,18 @@ func _refresh_god_mode_controls() -> void:
 		var kind := str(control.get_meta("god_mode_kind", ""))
 		if kind == "toggle" and control is Button:
 			var button := control as Button
-			host._set_button_text_if_changed(button, host._test_state_runtime()._god_mode_toggle_text())
+			host._app_lifecycle_runtime().set_button_text_if_changed(button, host._test_state_runtime()._god_mode_toggle_text())
 			_apply_god_mode_toggle_style(button)
 		elif kind == "performance" and control is Button:
-			host._set_button_text_if_changed(control as Button, host._performance_runtime()._performance_overlay_toggle_text())
+			host._app_lifecycle_runtime().set_button_text_if_changed(control as Button, host._performance_runtime()._performance_overlay_toggle_text())
 		elif kind == "status" and control is Label:
-			host._set_label_text_if_changed(control as Label, host._test_state_runtime()._god_mode_status_text())
+			host._app_lifecycle_runtime().set_label_text_if_changed(control as Label, host._test_state_runtime()._god_mode_status_text())
 		live.append(control)
 	god_mode_controls = live
 
 
 func render_page() -> void:
-	host._clear_skill_swipe_handoff_cover_immediate()
+	host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
 	_clear_reset_data_buttons_for_rebuild()
 	_clear_settings_page_control_refs()
 	host.content_scroll = MobileScrollContainer.new()
@@ -205,7 +210,7 @@ func render_page() -> void:
 	stack.custom_minimum_size.x = host._skill_content_width()
 	var settings_page_height = host.skills_page.size.y - host.SKILLS_PAGE_TOP_PAD
 	if settings_page_height <= 1.0:
-		settings_page_height = host.BASE_CANVAS.y - host.BOTTOM_NAV_HEIGHT - host.SKILLS_PAGE_TOP_PAD
+		settings_page_height = host.BASE_CANVAS.y - NavigationShell.BOTTOM_NAV_HEIGHT - host.SKILLS_PAGE_TOP_PAD
 	stack.custom_minimum_size.y = settings_page_height
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -235,7 +240,7 @@ func render_page() -> void:
 	action_stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	action_stack.alignment = BoxContainer.ALIGNMENT_CENTER
 	action_stack.add_theme_constant_override("separation", 28)
-	var discord := settings_page_button("Contact the dev", host.DISCORD_LOGO_ICON_TEXTURE, 1320, 170, 220)
+	var discord := settings_page_button("Contact the dev", DISCORD_LOGO_ICON_TEXTURE, 1320, 170, 220)
 	discord.add_theme_stylebox_override("normal", host._paper_button_style(host.COLOR_BLUE, 54))
 	discord.add_theme_stylebox_override("hover", host._paper_button_style(host.COLOR_BLUE, 54))
 	discord.add_theme_stylebox_override("pressed", host._paper_button_style(host.COLOR_BLUE.darkened(0.10), 54, 72, true))
@@ -300,7 +305,7 @@ func audio_volume_control(title: String, music: bool, min_width := 1120, bottom_
 	mute_toggle.add_theme_stylebox_override("pressed", audio_mute_toggle_style(true, false))
 	mute_toggle.add_theme_stylebox_override("hover_pressed", audio_mute_toggle_style(true, true))
 	mute_toggle.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	host._button_press_runtime().attach_button_depress_animation(mute_toggle, 0.92)
+	host.button_press_runtime.attach_button_depress_animation(mute_toggle, 0.92)
 	control_row.add_child(mute_toggle)
 	var mute_mark: Label = host._label("", 78, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	mute_mark.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -411,7 +416,7 @@ func apply_offline_progress_toggle_style(button: Button) -> void:
 func _toggle_offline_progress_enabled() -> void:
 	host.offline_progress_enabled = not host.offline_progress_enabled
 	var now: int = host._unix_now()
-	host.last_save_unix_time = now
+	host._save_runtime().last_save_unix_time = now
 	if not host.offline_progress_enabled:
 		host._passive_modules_runtime().reset_passive_module_timestamps(now)
 	_refresh_offline_progress_controls()
@@ -440,8 +445,8 @@ func toggle_auto_unlock_lockpads_enabled() -> void:
 	host.auto_unlock_lockpads_enabled = not host.auto_unlock_lockpads_enabled
 	_refresh_auto_unlock_lockpad_controls()
 	if host.auto_unlock_lockpads_enabled and not host._onboarding_runtime()._onboarding_path_active():
-		host._auto_unlock_retroactive_lockpads()
-		host._auto_unlock_pending_lockpads()
+		host._activity_unlock_runtime()._auto_unlock_retroactive_lockpads()
+		host._activity_unlock_runtime()._auto_unlock_pending_lockpads()
 	host.save_game()
 
 func stamina_decimal_toggle_button(min_width := 1120, min_height := 180) -> Control:
@@ -535,10 +540,9 @@ func toggle_dark_mode_enabled() -> void:
 func apply_dark_mode_visual() -> void:
 	if host.app_background_rect != null and is_instance_valid(host.app_background_rect):
 		host.app_background_rect.color = host._theme_paper_color()
-	if host.boot_warmup_background != null and is_instance_valid(host.boot_warmup_background):
-		host.boot_warmup_background.color = host._theme_paper_color()
+	host._boot_warmup_runtime().apply_theme_background()
 	_sync_stamina_gauge_dark_mode()
-	host._sync_info_symbol_button_text_colors()
+	host._skill_detail_surface()._sync_info_symbol_button_text_colors()
 
 
 func rebuild_visible_ui_after_dark_mode_changed() -> void:
@@ -551,10 +555,10 @@ func rebuild_visible_ui_after_dark_mode_changed() -> void:
 	if host.current_screen == "home":
 		if host.home_page != null and is_instance_valid(host.home_page):
 			host._clear(host.home_page)
-		host.home_page_built = false
-		host._finish_show_home()
+		host._achievement_overlay_surface().invalidate_home_page()
+		host._navigation_shell()._finish_show_home()
 	else:
-		host._render_screen(false, -1, false)
+		host._navigation_shell()._render_screen(false, -1, false)
 
 func settings_labeled_toggle_row(label_text: String, button_text: String, min_width := 1120, min_height := 180) -> HBoxContainer:
 	var row := HBoxContainer.new()
@@ -763,7 +767,7 @@ func _refresh_offline_progress_controls() -> void:
 		var toggle := raw_toggle as Button
 		if toggle == null or not is_instance_valid(toggle):
 			continue
-		host._set_button_text_if_changed(toggle, offline_progress_toggle_text())
+		host._app_lifecycle_runtime().set_button_text_if_changed(toggle, offline_progress_toggle_text())
 		apply_offline_progress_toggle_style(toggle)
 		live.append(toggle)
 	offline_progress_toggles = live
@@ -777,7 +781,7 @@ func _refresh_auto_unlock_lockpad_controls() -> void:
 		var toggle := raw_toggle as Button
 		if toggle == null or not is_instance_valid(toggle):
 			continue
-		host._set_button_text_if_changed(toggle, auto_unlock_lockpad_toggle_text())
+		host._app_lifecycle_runtime().set_button_text_if_changed(toggle, auto_unlock_lockpad_toggle_text())
 		apply_auto_unlock_lockpad_toggle_style(toggle)
 		live.append(toggle)
 	auto_unlock_lockpad_toggles = live
@@ -791,7 +795,7 @@ func _refresh_stamina_decimal_controls() -> void:
 		var toggle := raw_toggle as Button
 		if toggle == null or not is_instance_valid(toggle):
 			continue
-		host._set_button_text_if_changed(toggle, stamina_decimal_toggle_text())
+		host._app_lifecycle_runtime().set_button_text_if_changed(toggle, stamina_decimal_toggle_text())
 		apply_stamina_decimal_toggle_style(toggle)
 		live.append(toggle)
 	stamina_decimal_toggles = live
@@ -799,9 +803,10 @@ func _refresh_stamina_decimal_controls() -> void:
 
 func _sync_stamina_decimal_gauge_preference() -> void:
 	var seen := {}
-	_apply_stamina_decimal_preference_to_circle(host.detail_regen_circle, seen)
-	_apply_stamina_decimal_preference_to_circle(host.pinned_active_shelf_regen_circle, seen)
-	for raw_gauge in host.pinned_active_shelf_stamina_gauges.values():
+	var navigation_shell = host._navigation_shell()
+	_apply_stamina_decimal_preference_to_circle(host._skill_detail_surface().detail_regen_circle, seen)
+	_apply_stamina_decimal_preference_to_circle(navigation_shell.pinned_active_shelf_regen_circle, seen)
+	for raw_gauge in navigation_shell.pinned_active_shelf_stamina_gauges.values():
 		_apply_stamina_decimal_preference_to_circle(raw_gauge as RegenCircle, seen)
 	for raw_card in host.skill_cards.values():
 		if typeof(raw_card) != TYPE_DICTIONARY:
@@ -828,7 +833,7 @@ func _refresh_offline_progress_cap_notification_controls() -> void:
 		var toggle := raw_toggle as Button
 		if toggle == null or not is_instance_valid(toggle):
 			continue
-		host._set_button_text_if_changed(toggle, offline_progress_cap_notification_toggle_text())
+		host._app_lifecycle_runtime().set_button_text_if_changed(toggle, offline_progress_cap_notification_toggle_text())
 		apply_offline_progress_cap_notification_toggle_style(toggle)
 		live.append(toggle)
 	offline_progress_cap_notification_toggles = live
@@ -842,7 +847,7 @@ func _refresh_dark_mode_controls() -> void:
 		var toggle := raw_toggle as Button
 		if toggle == null or not is_instance_valid(toggle):
 			continue
-		host._set_button_text_if_changed(toggle, dark_mode_toggle_text())
+		host._app_lifecycle_runtime().set_button_text_if_changed(toggle, dark_mode_toggle_text())
 		apply_dark_mode_toggle_style(toggle)
 		live.append(toggle)
 	dark_mode_toggles = live
@@ -850,9 +855,10 @@ func _refresh_dark_mode_controls() -> void:
 
 func _sync_stamina_gauge_dark_mode() -> void:
 	var seen := {}
-	_apply_stamina_gauge_dark_mode_to_circle(host.detail_regen_circle, seen)
-	_apply_stamina_gauge_dark_mode_to_circle(host.pinned_active_shelf_regen_circle, seen)
-	for raw_gauge in host.pinned_active_shelf_stamina_gauges.values():
+	var navigation_shell = host._navigation_shell()
+	_apply_stamina_gauge_dark_mode_to_circle(host._skill_detail_surface().detail_regen_circle, seen)
+	_apply_stamina_gauge_dark_mode_to_circle(navigation_shell.pinned_active_shelf_regen_circle, seen)
+	for raw_gauge in navigation_shell.pinned_active_shelf_stamina_gauges.values():
 		_apply_stamina_gauge_dark_mode_to_circle(raw_gauge as RegenCircle, seen)
 	for raw_card in host.skill_cards.values():
 		if typeof(raw_card) != TYPE_DICTIONARY:
@@ -894,7 +900,7 @@ func _sync_mute_labels(labels: Array, muted: bool) -> Array:
 		var label := raw_label as Label
 		if label == null or not is_instance_valid(label):
 			continue
-		host._set_label_text_if_changed(label, "X" if muted else "")
+		host._app_lifecycle_runtime().set_label_text_if_changed(label, "X" if muted else "")
 		live.append(label)
 	return live
 
@@ -907,7 +913,7 @@ func _sync_volume_labels(labels: Array, volume: float) -> Array:
 		var label := raw_label as Label
 		if label == null or not is_instance_valid(label):
 			continue
-		host._set_label_text_if_changed(label, "%s%%" % int(round(clampf(volume, 0.0, 1.0) * 100.0)))
+		host._app_lifecycle_runtime().set_label_text_if_changed(label, "%s%%" % int(round(clampf(volume, 0.0, 1.0) * 100.0)))
 		live.append(label)
 	return live
 
@@ -1083,7 +1089,7 @@ func _apply_navigation_state(state: Dictionary) -> void:
 	reset_data_buttons = state.get("reset_data_buttons", []) as Array
 	reset_data_confirm_until = float(state.get("reset_data_confirm_until", 0.0))
 	reset_data_confirm_armed_at = float(state.get("reset_data_confirm_armed_at", 0.0))
-	reset_data_confirm_button = host._state_object_ref(state.get("reset_data_confirm_button")) as Button
+	reset_data_confirm_button = host._app_lifecycle_runtime().state_object_ref(state.get("reset_data_confirm_button")) as Button
 
 
 func _register_reset_button(button: Button, default_text: String) -> void:
@@ -1097,7 +1103,7 @@ func _register_reset_button(button: Button, default_text: String) -> void:
 
 
 func _confirm_reset_data_bound(button_id: int) -> void:
-	var button: Button = host._valid_button_ref(instance_from_id(button_id))
+	var button: Button = host._app_lifecycle_runtime().valid_button_ref(instance_from_id(button_id))
 	if button == null:
 		return
 	_confirm_reset_data(button)
@@ -1124,7 +1130,7 @@ func _confirm_reset_data(_button: Button) -> void:
 	_button.set_meta("reset_confirm_armed_at", now)
 	_button.set_meta("reset_confirm_until", reset_data_confirm_until)
 	_button.text = RESET_DATA_CONFIRM_TEXT
-	host._set_result("Tap again to confirm hard reset.")
+	host._reward_feedback_surface()._set_result("Tap again to confirm hard reset.")
 	_refresh_reset_data_buttons()
 
 
@@ -1160,11 +1166,11 @@ func _disarm_reset_data_confirmation_on_outside_press(event: InputEvent) -> void
 	var pressed := false
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		var mouse_event := event as InputEventMouseButton
-		press_position = host._global_event_position(mouse_event.position, mouse_event.global_position)
+		press_position = host._input_routing_shell()._global_event_position(mouse_event.position, mouse_event.global_position)
 		pressed = event.pressed
 	elif event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
-		press_position = host._global_event_position(touch_event.position, touch_event.position)
+		press_position = host._input_routing_shell()._global_event_position(touch_event.position, touch_event.position)
 		pressed = event.pressed
 	if not pressed:
 		return
@@ -1182,7 +1188,7 @@ func _disarm_reset_data_confirmation_on_outside_press(event: InputEvent) -> void
 				var button_rect := button.get_global_rect()
 				if button_rect.has_point(press_position):
 					return
-				for candidate in host._activity_input_position_candidates(press_position):
+				for candidate in host._input_routing_shell()._activity_input_position_candidates(press_position):
 					if button_rect.has_point(candidate):
 						return
 	if not any_armed:
@@ -1239,7 +1245,7 @@ func _is_dead_reset_confirm_press(button: BaseButton) -> bool:
 
 
 func _play_reset_data_wiped_feedback_by_id(feedback_button_id: int = 0) -> void:
-	var feedback_button: Button = host._valid_button_ref(instance_from_id(feedback_button_id)) if feedback_button_id != 0 else null
+	var feedback_button: Button = host._app_lifecycle_runtime().valid_button_ref(instance_from_id(feedback_button_id)) if feedback_button_id != 0 else null
 	_play_reset_data_wiped_feedback(feedback_button)
 
 
@@ -1263,7 +1269,7 @@ func _play_reset_data_wiped_feedback(feedback_button: Button = null) -> void:
 func _kill_reset_data_feedback_tween(button: Button) -> void:
 	if button == null or not is_instance_valid(button):
 		return
-	host._kill_meta_tween(button, "reset_feedback_tween")
+	host._app_lifecycle_runtime()._kill_meta_tween(button, "reset_feedback_tween")
 	if button.has_meta("reset_feedback_active"):
 		button.remove_meta("reset_feedback_active")
 

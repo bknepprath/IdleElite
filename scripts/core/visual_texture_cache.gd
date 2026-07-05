@@ -1,5 +1,3 @@
-class_name VisualTextureCache
-
 var texture_cache := {}
 var atlas_texture_cache := {}
 var fishing_ablation_enabled := Callable()
@@ -104,6 +102,31 @@ func _visual_fallback_texture() -> Texture2D:
 	var texture := ImageTexture.create_from_image(image)
 	texture_cache[cache_key] = texture
 	return texture
+
+
+func _fill_headless_null_textures(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	var fallback := _visual_fallback_texture()
+	if node is TextureRect:
+		var texture_rect := node as TextureRect
+		if texture_rect.texture == null:
+			texture_rect.texture = fallback
+		texture_rect.visible = false
+	if node is TextureButton:
+		var texture_button := node as TextureButton
+		if texture_button.texture_normal == null:
+			texture_button.texture_normal = fallback
+		if texture_button.texture_pressed == null:
+			texture_button.texture_pressed = texture_button.texture_normal
+		if texture_button.texture_hover == null:
+			texture_button.texture_hover = texture_button.texture_normal
+		if texture_button.texture_disabled == null:
+			texture_button.texture_disabled = texture_button.texture_normal
+		if texture_button.texture_focused == null:
+			texture_button.texture_focused = texture_button.texture_normal
+	for child in node.get_children():
+		_fill_headless_null_textures(child)
 
 
 func _placeholder_texture(texture_size: Vector2i) -> Texture2D:

@@ -1,6 +1,3 @@
-class_name RecoveryModules
-
-
 static func contract(action: Dictionary) -> Dictionary:
 	if typeof(action.get("recovery", {})) != TYPE_DICTIONARY:
 		return {}
@@ -19,6 +16,13 @@ static func target_skill_id(owner_skill_id: String, action: Dictionary, skill_de
 	if target == "lowest":
 		return lowest_stamina_skill(owner_skill_id, skill_defs, stamina_value, max_stamina)
 	return target if stamina.has(target) else owner_skill_id
+
+
+static func recovery_target_is_full(owner_skill_id: String, action: Dictionary, skill_defs: Array, stamina: Dictionary, stamina_value: Callable, max_stamina: Callable) -> bool:
+	if not has_recovery(action):
+		return false
+	var skill_id := target_skill_id(owner_skill_id, action, skill_defs, stamina, stamina_value, max_stamina)
+	return not skill_id.is_empty() and float(stamina_value.call(skill_id)) + 0.0001 >= float(max_stamina.call(skill_id))
 
 
 static func apply(owner_skill_id: String, action: Dictionary, skill_defs: Array, stamina: Dictionary, stamina_value: Callable, max_stamina: Callable, restore_stamina: Callable) -> Dictionary:

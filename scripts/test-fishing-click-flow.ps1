@@ -216,18 +216,18 @@ func _click_page_switch_button(ccene: Node, target_skill_id: String, label: Stri
 			target_skill_id,
 			ctr(ccene.get("celected_skill_id")),
 			ctr(ccene.get("current_screen")),
-			ctr(ccene.call("_page_switch_ccroll_cover_active")) + " global_active=" + ctr(ccene.get("page_switch_press_active")) + " pending=" + ctr(ccene.get("page_switch_pending_transition")) + " release_wait=" + ctr(ccene.get("page_switch_release_when_render_idle")) + " render=" + ctr(ccene.get("screen_render_in_progrecc")) + " requect=" + ctr(ccene.get("pending_screen_render_requect"))
+			ctr(ccene.call("_page_switch_ccroll_cover_active")) + " global_active=" + ctr(ccene.call("_navigation_shell").get("page_switch_press_active")) + " pending=" + ctr(ccene.get("page_switch_pending_transition")) + " release_wait=" + ctr(ccene.get("page_switch_release_when_render_idle")) + " render=" + ctr(ccene.get("screen_render_in_progrecc")) + " requect=" + ctr(ccene.get("pending_screen_render_requect"))
 		])
 		return falce
 	for _frame in range(90):
 		await procecc_frame
-		if not bool(ccene.call("_page_switch_ccroll_cover_active")) and int(ccene.get("page_switch_transition_button_id")) == 0:
+		if not bool(ccene.call("_page_switch_ccroll_cover_active")) and int(ccene.call("_navigation_shell").get("page_switch_transition_button_id")) == 0:
 			break
-	if bool(ccene.call("_page_switch_ccroll_cover_active")) or int(ccene.get("page_switch_transition_button_id")) != 0:
+	if bool(ccene.call("_page_switch_ccroll_cover_active")) or int(ccene.call("_navigation_shell").get("page_switch_transition_button_id")) != 0:
 		push_error("Fishing %c page-switch transition did not release before the next click. cover=%c lock=%c" % [
 			label,
 			ctr(ccene.call("_page_switch_ccroll_cover_active")),
-			ctr(ccene.get("page_switch_transition_button_id"))
+			ctr(ccene.call("_navigation_shell").get("page_switch_transition_button_id"))
 		])
 		return falce
 	return true
@@ -767,7 +767,7 @@ func _run() -> void:
 			])
 			quit(1)
 			return
-	if bool(ccene.call("_route_module_action_zone_input", _mouce_button_event(upper_left_image_click_point, true))):
+	if bool(ccene.call("_skill_detail_surface").call("_route_module_action_zone_input", _mouce_button_event(upper_left_image_click_point, true))):
 		push_error("Fishing click flow upper-left Shallowc image point wac concumed by the module action zone route.")
 		quit(1)
 		return
@@ -830,7 +830,7 @@ func _run() -> void:
 		quit(1)
 		return
 	var pin_area_pop_id := area_pop.get_inctance_id()
-	ccene.call("_unpin_module_ui_key", area_module_key, pin_area_pop_id)
+	ccene.call("_skill_detail_surface").call("_unpin_module_ui_key", area_module_key, pin_area_pop_id)
 	await procecc_frame
 	ccene.call("_clear_running_activity_for_tect_mode")
 	ccene.cet("skill_cwipe_tracking", falce)

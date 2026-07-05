@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $mainScript = Join-Path $projectRoot "scripts\main.gd"
+$skillDetailScript = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
 
 function Assert-True {
     param(
@@ -27,15 +28,17 @@ function Read-ConstNumber {
 }
 
 Assert-True (Test-Path -LiteralPath $mainScript) "Missing scripts\main.gd."
+Assert-True (Test-Path -LiteralPath $skillDetailScript) "Missing scripts\ui\skill_detail_surface.gd."
 
 $source = Get-Content -LiteralPath $mainScript -Raw
+$skillDetailSource = Get-Content -LiteralPath $skillDetailScript -Raw
 $standardPad = Read-ConstNumber -Source $source -Name "SKILL_DETAIL_BOTTOM_SCROLL_PAD"
 $thievingPad = Read-ConstNumber -Source $source -Name "THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD"
 
 Assert-True ($standardPad -ge 24 -and $standardPad -le 64) "Skill detail bottom scroll pad should stay small enough to avoid blank space; got $standardPad."
 Assert-True ($thievingPad -ge 24 -and $thievingPad -le 64) "Thieving detail bottom scroll pad should stay small enough to avoid blank space; got $thievingPad."
 
-$scrollTargetMatch = [regex]::Match($source, '(?s)func _detail_actions_scroll_target_for_card\(card: Control, centered := false\) -> int:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
+$scrollTargetMatch = [regex]::Match($skillDetailSource, '(?s)func _detail_actions_scroll_target_for_card\(card: Control, centered := false\) -> int:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
 Assert-True $scrollTargetMatch.Success "Missing skill detail action-card scroll target helper."
 $scrollTargetBody = $scrollTargetMatch.Groups[1].Value
 Assert-True ($scrollTargetBody -match '_detail_actions_scroll_viewport_height\(\)') "Centered skill detail scroll targets must use the visible viewport height above chat/nav."

@@ -44,6 +44,27 @@ static func compact_number(value: float, digits := 3) -> String:
 	return "%s%s" % [text, suffixes[suffix_index]]
 
 
+static func compact_number_range(min_value: float, max_value: float, digits := 3) -> String:
+	var safe_min := maxf(0.0, min_value)
+	var safe_max := maxf(safe_min, max_value)
+	var suffixes := ["K", "M", "B", "T", "Qa", "Qi"]
+	var min_scaled := safe_min
+	var max_scaled := safe_max
+	var min_suffix := -1
+	var max_suffix := -1
+	while absf(min_scaled) >= 1000.0 and min_suffix < suffixes.size() - 1:
+		min_scaled /= 1000.0
+		min_suffix += 1
+	while absf(max_scaled) >= 1000.0 and max_suffix < suffixes.size() - 1:
+		max_scaled /= 1000.0
+		max_suffix += 1
+	if min_suffix >= 0 and min_suffix == max_suffix:
+		var min_text := trim_trailing_decimal_zeroes(significant_digits(min_scaled, digits))
+		var max_text := trim_trailing_decimal_zeroes(significant_digits(max_scaled, digits))
+		return "%s-%s%s" % [min_text, max_text, suffixes[min_suffix]]
+	return "%s-%s" % [compact_number(safe_min, digits), compact_number(safe_max, digits)]
+
+
 static func percent_points(value: float, digits := 3) -> String:
 	return trim_trailing_decimal_zeroes(significant_digits(value, digits))
 

@@ -60,6 +60,8 @@ try {
     @'
 extends SceneTree
 
+const ThemeStyles := preload("res://scripts/ui/theme_styles.gd")
+const SkillState := preload("res://scripts/progression/skill_state.gd")
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 120
 const TEST_FRAME_SECONDS := 1.0 / 120.0
@@ -105,7 +107,7 @@ func _run() -> void:
 	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	var circle := await _wait_for_regen_circle(scene, "build")
@@ -113,16 +115,16 @@ func _run() -> void:
 		_fail("build stamina gauge did not become ready")
 		return
 
-	var skill_color := scene.call("_skill_theme_color", "build") as Color
+	var skill_color := ThemeStyles.skill_theme_color("build", scene.COLOR_BLUE)
 	var honey_color: Color = scene.material_runtime.color("honey")
 	scene.material_runtime.set_amount("honey", 1.0)
-	scene.call("_set_regen_circle_for_skill", circle, "build", true)
+	circle.call("sync_for_skill", scene, "build", true)
 	if not _colors_close(circle.get("theme_color") as Color, skill_color):
 		_fail("exactly one honey should not activate stamina honey color: %s" % str(circle.get("theme_color")))
 		return
 
 	scene.material_runtime.set_amount("honey", 2.0)
-	scene.call("_set_regen_circle_for_skill", circle, "build", true)
+	circle.call("sync_for_skill", scene, "build", true)
 	if not _colors_close(circle.get("target_theme_color") as Color, skill_color):
 		_fail("honey stamina gauge changed the inner fill target: actual=%s expected=%s" % [str(circle.get("target_theme_color")), str(skill_color)])
 		return
@@ -145,12 +147,13 @@ func _run() -> void:
 		_fail("honey stamina screenshot was not captured")
 		return
 
-	var max_stamina := float(scene.call("_max_stamina", "build"))
+	var max_stamina := float(SkillState.max_stamina(scene, "build"))
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 5.0))
 	_set_stamina_bank(scene, "build", 0.0)
-	scene.set("stamina_gauge_boost_skill_id", "")
-	scene.set("stamina_gauge_regen_multiplier", 1.0)
-	scene.call("_apply_stamina_regen_seconds", 1.0, true)
+	scene.set("honey_stamina_seconds_remaining", 0.0)
+	scene.call("_action_runtime").set("stamina_gauge_boost_skill_id", "")
+	scene.call("_action_runtime").set("stamina_gauge_regen_multiplier", 1.0)
+	scene.call("_action_runtime").call("_apply_stamina_regen_seconds", 1.0, true)
 	var honey_only_bank := _stamina_bank(scene, "build")
 	if absf(honey_only_bank - 2.0) > 0.01:
 		_fail("honey regen should add 2 seconds per 1 second tick, got %.4f" % honey_only_bank)
@@ -164,9 +167,9 @@ func _run() -> void:
 
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 5.0))
 	_set_stamina_bank(scene, "build", 0.0)
-	scene.set("stamina_gauge_boost_skill_id", "build")
-	scene.set("stamina_gauge_regen_multiplier", 3.0)
-	scene.call("_apply_stamina_regen_seconds", 1.0, true)
+	scene.call("_action_runtime").set("stamina_gauge_boost_skill_id", "build")
+	scene.call("_action_runtime").set("stamina_gauge_regen_multiplier", 3.0)
+	scene.call("_action_runtime").call("_apply_stamina_regen_seconds", 1.0, true)
 	var stacked_bank := _stamina_bank(scene, "build")
 	if absf(stacked_bank - 6.0) > 0.01:
 		_fail("honey and manual hold regen should multiply to 6 seconds per tick, got %.4f" % stacked_bank)
@@ -176,9 +179,9 @@ func _run() -> void:
 	scene.set("honey_stamina_seconds_remaining", 0.0)
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 25.0))
 	_set_stamina_bank(scene, "build", 0.0)
-	scene.set("stamina_gauge_boost_skill_id", "")
-	scene.set("stamina_gauge_regen_multiplier", 1.0)
-	scene.call("_apply_stamina_regen_seconds", 11.0, true)
+	scene.call("_action_runtime").set("stamina_gauge_boost_skill_id", "")
+	scene.call("_action_runtime").set("stamina_gauge_regen_multiplier", 1.0)
+	scene.call("_action_runtime").call("_apply_stamina_regen_seconds", 11.0, true)
 	var expired_honey_bank := _stamina_bank(scene, "build")
 	if absf(expired_honey_bank - 10.0) > 0.01:
 		_fail("two honey should boost the full 11 second tick and leave bank 10, got %.4f" % expired_honey_bank)
@@ -193,7 +196,7 @@ func _run() -> void:
 	scene.material_runtime.set_amount("honey", 5.0)
 	scene.set("honey_stamina_seconds_remaining", 0.0)
 	_set_skill_stamina(scene, "build", max_stamina)
-	if not bool(scene.call("_spend_action_stamina", "build", 2.0)):
+	if not SkillState.spend_action_stamina(scene.stamina, scene.stamina_bank, "build", 2.0, Callable(SkillState, "host_max_stamina").bind(scene)):
 		_fail("spending build stamina with honey should succeed")
 		return
 	if absf(_skill_stamina(scene, "build") - (max_stamina - 2.0)) > 0.01:
@@ -207,7 +210,7 @@ func _run() -> void:
 	scene.set("honey_stamina_seconds_remaining", 0.0)
 	_set_skill_stamina(scene, "build", maxf(0.0, max_stamina - 5.0))
 	_set_stamina_bank(scene, "build", 0.0)
-	scene.call("_apply_stamina_regen_seconds", 1.0, true)
+	scene.call("_action_runtime").call("_apply_stamina_regen_seconds", 1.0, true)
 	if absf(scene.material_runtime.amount("honey") - 0.0) > 0.01:
 		_fail("final honey should be consumed by stamina regen, got %.4f" % scene.material_runtime.amount("honey"))
 		return
@@ -224,7 +227,7 @@ func _wait_for_regen_circle(scene: Node, skill_id: String) -> Control:
 		await _wait_test_frame()
 		if str(scene.get("current_screen")) != "skill" or str(scene.get("selected_skill_id")) != skill_id:
 			continue
-		var circle := scene.get("detail_regen_circle") as Control
+		var circle := scene._skill_detail_surface().detail_regen_circle as Control
 		if circle != null and circle.is_inside_tree() and circle.visible:
 			return circle
 	return null

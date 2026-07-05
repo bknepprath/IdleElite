@@ -84,7 +84,7 @@ func _run() -> void:
 	scene.call("_render_screen", false, -1, false)
 	for _frame in range(6):
 		await process_frame
-	scene.call("_ensure_detail_lazy_entry_mounted", "wrap-hands")
+	scene.call("_skill_detail_surface").call("_ensure_detail_lazy_entry_mounted", "wrap-hands")
 	for _frame in range(12):
 		await process_frame
 	var scroll_target := int(scene.call("_detail_actions_scroll_target_for_action", "wrap-hands", true))

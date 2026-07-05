@@ -1,7 +1,7 @@
-class_name RoosterPunchOutStage
 extends Control
 
 signal stamina_damage(amount: int)
+signal boss_defeated
 
 const INK := Color("#171615")
 const ROOSTER_IDLE_PATH := "res://assets/content/fight/boss/rooster-idle.png"
@@ -43,6 +43,7 @@ var hand_guard_right: Texture2D
 var hand_punch_left: Texture2D
 var hand_punch_right: Texture2D
 var active_fight := false
+var boss_defeat_reported := false
 
 
 func _ready() -> void:
@@ -148,6 +149,9 @@ func _start_player_punch(side: String, manual: bool) -> void:
 	if rooster_hp <= 0.0:
 		reset_timer = 1.45
 		_add_floater("KO", Vector2(size.x * 0.5, size.y * 0.25), Color("#fff1bd"), 0.92)
+		if not boss_defeat_reported:
+			boss_defeat_reported = true
+			boss_defeated.emit()
 
 
 func _start_rooster_attack() -> void:
@@ -174,6 +178,7 @@ func _reset_fight() -> void:
 	reset_timer = 0.0
 	lost_fight = false
 	cover_close_amount = 0.0
+	boss_defeat_reported = false
 
 
 func _visual_state() -> String:

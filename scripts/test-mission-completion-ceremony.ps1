@@ -43,13 +43,14 @@ func _run() -> void:
 	root.add_child(scene)
 	scene.call("_activity_data_catalog").call("load_action_data", scene)
 	scene.call("_save_runtime").call("_init_state")
-	scene.hub_missions = [{
+	var hub_runtime := scene.call("_hub_runtime") as Object
+	hub_runtime.set("hub_missions", [{
 		"skill_id": "fight",
 		"action_id": "kick-mud-off-boot",
 		"target": 1,
 		"remaining": 1,
 		"assigned_unix": int(scene.call("_unix_now"))
-	}]
+	}])
 	var action := scene.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
 	_expect(not action.is_empty(), "mission action should load")
 	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
@@ -57,9 +58,9 @@ func _run() -> void:
 	scene.call("_register_action_card", scene.call("_action_key", "fight", "kick-mud-off-boot"), card)
 	var hub_surface := scene.call("_hub_surface") as Object
 	hub_surface.call("_sync_hub_mission_badge", card, "fight", action, true)
-	var recorded := bool((scene.call("_hub_runtime") as Object).call("record_mission_action_completion", "fight", "kick-mud-off-boot"))
+	var recorded := bool(hub_runtime.call("record_mission_action_completion", "fight", "kick-mud-off-boot"))
 	_expect(recorded, "mission completion should be recorded")
-	_expect(scene.hub_missions.is_empty(), "completed one-count mission should be removed")
+	_expect((hub_runtime.get("hub_missions") as Array).is_empty(), "completed one-count mission should be removed")
 	_expect(str(scene.last_hub_mission_completion_ceremony_text) == "MISSION ICON POP", "mission completion should trigger icon-pop ceremony, not player-facing text")
 	var badge := card.get("mission_badge") as Control
 	_expect(badge != null, "mission completion should use the module mission badge")

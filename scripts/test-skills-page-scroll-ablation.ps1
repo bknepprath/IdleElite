@@ -96,6 +96,18 @@ const INTERACTION_SAMPLE_FRAMES := 210
 const FRAME_120_BUDGET_US := 8334
 
 
+func _truthy(value: Variant) -> bool:
+	if value == null:
+		return false
+	if value is bool:
+		return value
+	if value is int or value is float:
+		return value != 0
+	if value is String:
+		return not value.is_empty()
+	return true
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -219,21 +231,21 @@ func _prepare_skill_page(scene: Node, skill_id: String) -> String:
 
 func _start_first_available_action(scene: Node, skill_id: String) -> String:
 	var convergence_runtime: Object = scene.call("_convergence_runtime") as Object
-	for raw_action in scene.call("_visible_actions_for_skill", skill_id):
+	for raw_action in scene.call("_activity_unlock_runtime").call("_visible_actions_for_skill", skill_id):
 		var action := raw_action as Dictionary
 		var action_id := str(action.get("id", ""))
 		if action_id.is_empty():
 			continue
-		if not bool(scene.call("_is_action_unlocked", skill_id, action)):
+		if not _truthy(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", skill_id, action)):
 			continue
-		if bool(scene.call("_is_passive_action", action)):
+		if _truthy(scene.call("_passive_modules_runtime").is_passive_action(action)):
 			continue
-		if bool(convergence_runtime.call("_is_convergence_action", action)):
+		if _truthy(convergence_runtime.call("_is_convergence_action", action)):
 			continue
 		var stamina := scene.get("stamina") as Dictionary
 		stamina[skill_id] = float(scene.call("_max_stamina", skill_id))
 		scene.set("stamina", stamina)
-		if bool(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)):
+		if _truthy(scene.call("_action_runtime").call("_start_action", skill_id, action_id, false)):
 			return action_id
 	return ""
 
@@ -245,9 +257,9 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 			return false
 		var queue := scene.get("boot_detail_render_queue") as Array
 		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
+			_truthy(scene.get("startup_initialized"))
+			and not _truthy(scene.get("boot_detail_render_in_progress"))
+			and not _truthy(scene.get("boot_detail_scroll_locked"))
 			and (queue == null or queue.is_empty())
 		):
 			return true
@@ -274,7 +286,7 @@ func _counts(scene: Node) -> Dictionary:
 		result["plan"] = plan.size()
 		for raw_item in plan:
 			var item := raw_item as Dictionary
-			if bool(item.get("mounted", false)):
+			if _truthy(item.get("mounted", false)):
 				result["mounted"] = int(result["mounted"]) + 1
 	var scroll := _valid_control(scene.get("detail_actions_scroll"))
 	if scroll == null or scroll.get_child_count() <= 0:
@@ -306,14 +318,14 @@ func _control_intersects_viewport(control: Control, viewport_rect: Rect2) -> boo
 
 
 func _has_real_content(control: Control) -> bool:
-	if bool(control.get_meta("detail_lazy_placeholder", false)):
+	if _truthy(control.get_meta("detail_lazy_placeholder", false)):
 		return false
 	if not control.visible or control.modulate.a <= 0.01:
 		return false
-	if bool(control.get_meta("detail_stack_entry_wrapper", false)):
+	if _truthy(control.get_meta("detail_stack_entry_wrapper", false)):
 		for raw_child in control.get_children():
 			var child := _valid_control(raw_child)
-			if child != null and not bool(child.get_meta("detail_lazy_placeholder", false)) and child.visible and child.modulate.a > 0.01:
+			if child != null and not _truthy(child.get_meta("detail_lazy_placeholder", false)) and child.visible and child.modulate.a > 0.01:
 				return true
 		return false
 	return maxf(control.size.y, control.custom_minimum_size.y) > 1.0
@@ -321,7 +333,7 @@ func _has_real_content(control: Control) -> bool:
 
 func _placeholder_count(control: Control) -> int:
 	var count := 0
-	if bool(control.get_meta("detail_lazy_placeholder", false)):
+	if _truthy(control.get_meta("detail_lazy_placeholder", false)):
 		count += 1
 	for raw_child in control.get_children():
 		var child := _valid_control(raw_child)

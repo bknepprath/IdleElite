@@ -1,4 +1,3 @@
-class_name ThievingState
 extends RefCounted
 
 const HEIST_BACKGROUND_SHEET := "res://assets/content/thieving/heists/thieving-trophy-heist-backgrounds-wide.png"
@@ -206,7 +205,7 @@ func restore_trophies(loaded_trophies: Variant, accept_legacy_bool := true) -> v
 
 
 func _skill_level() -> int:
-	return host._skill_level("thieving") if host != null else 1
+	return SkillState.host_skill_level(host, "thieving") if host != null else 1
 
 
 static func normalized_trophies(loaded_trophies: Variant, heist_def: Callable, accept_legacy_bool := false) -> Dictionary:

@@ -22,6 +22,9 @@ function Get-HeadlessGodotProcesses {
 }
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
+Assert-True (-not (Test-Path -LiteralPath (Join-Path $projectRoot "scripts\ui\diamond_arena_frame.gd"))) "Stale diamond_arena_frame.gd should stay folded into skill_detail_surface.gd."
+Assert-True (-not (Test-Path -LiteralPath (Join-Path $projectRoot "scripts\ui\diamond_arena_frame.gd.uid"))) "Stale diamond_arena_frame.gd.uid should stay deleted."
+Assert-True (-not (Select-String -LiteralPath (Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd") -Pattern 'preload("res://scripts/ui/diamond_arena_frame.gd")' -Quiet)) "SkillDetailSurface should not preload the external diamond frame script."
 
 if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
@@ -36,9 +39,8 @@ try {
     @'
 extends SceneTree
 
+const ActivityCardStyles := preload("res://scripts/ui/activity_card_styles.gd")
 const SkillState := preload("res://scripts/progression/skill_state.gd")
-
-const DiamondArenaFrameClass = preload("res://scripts/ui/diamond_arena_frame.gd")
 
 var test_failed := false
 
@@ -57,7 +59,7 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
-	scene.call("_activity_data_catalog").call("load_action_data", scene)
+	scene.get("activity_data_catalog").call("load_action_data", scene)
 	scene.call("_save_runtime").call("_init_state")
 	var fight := scene.skills["fight"] as Dictionary
 	fight["level"] = 5
@@ -73,14 +75,15 @@ func _run() -> void:
 	_expect(float(combat.get("contact_damage", 0.0)) == 8.0, "combat contact damage should be preserved")
 	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
 	var root_control := built.get("card_root") as Control
+	var normal_card_height := ActivityCardStyles.root_height(false, 720.0, 1080.0, 34.0)
 	_expect(root_control != null and str(root_control.get_meta("combat_arena_shape", "")) == "diamond", "card root should mark diamond combat arena shape")
-	_expect(root_control.custom_minimum_size.y > scene.call("_activity_card_root_height") * 1.4, "diamond combat arena should stay larger than a normal card")
-	_expect(root_control.custom_minimum_size.y < scene.call("_activity_card_root_height") * 1.7, "diamond combat arena should not be double-height")
+	_expect(root_control.custom_minimum_size.y > normal_card_height * 1.4, "diamond combat arena should stay larger than a normal card")
+	_expect(root_control.custom_minimum_size.y < normal_card_height * 1.7, "diamond combat arena should not be double-height")
 	var card := built.get("card", {}) as Dictionary
-	scene.call("_set_activity_card_expanded", card, root_control, false, true)
-	_expect(root_control.custom_minimum_size.y > scene.call("_activity_card_root_height") * 1.4, "diamond combat arena should not shrink to normal card height after stat sync")
+	scene.call("_skill_detail_surface").call("_set_activity_card_expanded", card, root_control, false, true)
+	_expect(root_control.custom_minimum_size.y > normal_card_height * 1.4, "diamond combat arena should not shrink to normal card height after stat sync")
 	var pop := card.get("pop") as Control
-	_expect(_has_diamond_frame(pop), "diamond combat arena should attach a DiamondArenaFrame overlay")
+	_expect(_has_diamond_frame(pop), "diamond combat arena should attach a local diamond frame overlay")
 	var stage := card.get("blue_guy_chicken_stage") as Control
 	_expect(stage != null and str(stage.get("arena_shape")) == "diamond", "chicken brawl gameplay should render inside the diamond arena")
 	stage.size = Vector2(1080.0, 1080.0)
@@ -104,7 +107,7 @@ func _has_diamond_frame(root_control: Control) -> bool:
 	if root_control == null:
 		return false
 	for child in root_control.get_children():
-		if child is DiamondArenaFrameClass:
+		if child is Control and child.has_method("_diamond_points") and child.has_method("_rounded_diamond_points"):
 			return true
 	return false
 

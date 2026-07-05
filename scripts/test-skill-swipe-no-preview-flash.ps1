@@ -29,13 +29,13 @@ func _run() -> void:
 	await _wait_frames(180)
 	_prepare_swipe_state(scene)
 	await _wait_frames(8)
-	scene.call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
+	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
 	for i in range(1, 7):
 		var t := float(i) / 6.0
-		scene.call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(260, 1500), t))
+		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(260, 1500), t))
 		await _wait_frames(1)
 		_assert_drag_frame(scene, i)
-	scene.call("_finish_skill_swipe", Vector2(260, 1500))
+	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(260, 1500))
 	await _wait_until_settled(scene, 180)
 	if not _failed:
 		print("skill-swipe-no-preview-flash-ok")

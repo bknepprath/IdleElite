@@ -709,7 +709,7 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     if ($plankBoostRestoreMatches.Count -gt 1) {
         Add-Finding $errors 'scripts/main.gd still restores raw plank_boost_enabled outside _restore_plank_boost_enabled_from_save().'
     }
-    $adBonusRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*ad_bonus_seconds_remaining = clampf\(float\(data\.get\("ad_bonus_seconds_remaining", 0\.0\)\), 0\.0, float\(AD_BONUS_MAX_SECONDS\)\)')
+    $adBonusRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*ad_bonus_seconds_remaining = clampf\(float\(data\.get\("ad_bonus_seconds_remaining", 0\.0\)\), 0\.0, float\(AdBonus\.AD_BONUS_MAX_SECONDS\)\)')
     if ($adBonusRestoreMatches.Count -gt 1) {
         Add-Finding $errors 'scripts/main.gd still restores raw ad_bonus_seconds_remaining outside AdBonus.restore_seconds_from_save().'
     }
@@ -808,35 +808,35 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard player ids outside LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     if ($mainScript -match '(?m)^\s*"chat_stream_retry_unix":\s*chat_stream_retry_unix,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_retry_unix instead of ChatState.retry_unix_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_retry_unix instead of ChatState.metadata_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"chat_stream_next_connect_unix":\s*chat_stream_next_connect_unix,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_next_connect_unix instead of ChatState.next_connect_unix_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_next_connect_unix instead of ChatState.metadata_for_save().'
     }
     $chatLastSendRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_last_send_unix = maxi\(0, int\(data\.get\("chat_last_send_unix", 0\)\)\)')
     if ($chatLastSendRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_send_unix outside SaveRuntime.'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_send_unix outside ChatState.restore_metadata_to_host().'
     }
     $chatStreamRetryRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_stream_retry_unix = mini\(maxi\(0, int\(data\.get\("chat_stream_retry_unix", data\.get\("chat_fetch_retry_unix", 0\)\)\)\), max_chat_retry_unix\)')
     if ($chatStreamRetryRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_retry_unix outside SaveRuntime.'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_retry_unix outside ChatState.restore_metadata_to_host().'
     }
     $chatStreamNextConnectRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_stream_next_connect_unix = mini\(maxi\(chat_stream_retry_unix, int\(data\.get\("chat_stream_next_connect_unix", 0\)\)\), max_chat_retry_unix\)')
     if ($chatStreamNextConnectRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_next_connect_unix outside SaveRuntime.'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_next_connect_unix outside ChatState.restore_metadata_to_host().'
     }
     if ($mainScript -match '(?m)^\s*"chat_last_opened_created_at":\s*chat_last_opened_created_at,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw chat_last_opened_created_at instead of _chat_last_opened_created_at_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw chat_last_opened_created_at instead of ChatState.metadata_for_save().'
     }
     if ($mainScript -match '(?m)^\s*"chat_last_opened_message_id":\s*chat_last_opened_message_id,') {
-        Add-Finding $errors 'scripts/main.gd still saves raw chat_last_opened_message_id instead of _chat_last_opened_message_id_for_save().'
+        Add-Finding $errors 'scripts/main.gd still saves raw chat_last_opened_message_id instead of ChatState.metadata_for_save().'
     }
     $chatOpenedCreatedAtRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_last_opened_created_at = maxi\(0, int\(data\.get\("chat_last_opened_created_at", 0\)\)\)')
     if ($chatOpenedCreatedAtRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_created_at outside SaveRuntime.'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_created_at outside ChatState.restore_metadata_to_host().'
     }
     if ($mainScript -match '(?m)^\s*chat_last_opened_message_id = str\(data\.get\("chat_last_opened_message_id", ""\)\)\.strip_edges\(\)') {
-        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_message_id outside SaveRuntime.'
+        Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_message_id outside ChatState.restore_metadata_to_host().'
     }
     if ($mainScript.Contains('var loaded_thieving_action_jails = data.get("thieving_action_jails", {})')) {
         Add-Finding $errors 'scripts/main.gd still restores raw thieving_action_jails instead of ThievingState.restore_action_jails().'
@@ -889,11 +889,11 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
     }
     $lockClickTipRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*lock_click_tip_seen = bool\(data\.get\("lock_click_tip_seen", false\)\)')
     if ($lockClickTipRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw tip metadata outside _restore_tip_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw tip metadata outside SaveRuntime tip metadata restore.'
     }
     $silverTipActionRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*silver_opportunity_tip_action_key = _action_key_for_save\(str\(data\.get\("silver_opportunity_tip_action_key", ""\)\)\)')
     if ($silverTipActionRestoreMatches.Count -gt 1) {
-        Add-Finding $errors 'scripts/main.gd still restores raw silver opportunity action keys outside _restore_tip_metadata_from_save().'
+        Add-Finding $errors 'scripts/main.gd still restores raw silver opportunity action keys outside SaveRuntime tip metadata restore.'
     }
     $leaderboardAuthRefreshRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_auth_refresh_token = str\(data\.get\("leaderboard_auth_refresh_token", ""\)\)\.strip_edges\(\)')
     if ($leaderboardAuthRefreshRestoreMatches.Count -gt 1) {

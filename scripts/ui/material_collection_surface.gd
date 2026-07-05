@@ -1,11 +1,19 @@
 extends RefCounted
 
-const BerryPrepControls = preload("res://scripts/ui/berry_prep_controls.gd")
 const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
+const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
+const RewardFeedbackSurface = preload("res://scripts/ui/reward_feedback_surface.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 
 const BERRY_MODE_BORDER_TEXTURE := "res://assets/content/ui/berry-mode-borders-source.png"
+const MAT_COLLECTION_MODULE_SIZE := Vector2(754, 754)
+const MAT_COLLECTION_MODULE_GAP := 28.0
+const MAT_COLLECTION_AREA_HEIGHT := 870.0
+const MAT_COLLECTION_CONNECTOR_HEIGHT := 74.0
+const MAT_COLLECTION_CONNECTOR_TOP_OVERLAP := 3.0
+const MAT_COLLECTION_APPEAR_SECONDS := 0.28
+const MAT_COLLECTION_FLYER_ARC_SECONDS := 0.68
 
 var host
 var berry_mode_enabled := false
@@ -16,6 +24,14 @@ func _init(host_ref) -> void:
 	host = host_ref
 
 
+func layout_height_for_action(skill_id: String, action: Dictionary, has_mat_rewards: bool, running_skill_id: String, running_action_id: String) -> float:
+	return ActivityCardStyles.mat_collection_layout_height(skill_id, action, has_mat_rewards, running_skill_id, running_action_id, MAT_COLLECTION_AREA_HEIGHT)
+
+
+func visible_collection_height(collection: Dictionary) -> float:
+	return MAT_COLLECTION_AREA_HEIGHT if (not collection.is_empty() and bool(collection.get("visible", false))) else 0.0
+
+
 func toggle_berry_mode() -> void:
 	set_berry_mode_enabled(not berry_mode_enabled)
 
@@ -24,7 +40,7 @@ func set_berry_mode_enabled(enabled: bool) -> void:
 	berry_mode_enabled = enabled
 	sync_berry_mode_overlay()
 	sync_berry_prep_badges()
-	host._set_result("Berry mode: tap modules to toggle berry." if berry_mode_enabled else "Berry mode off.")
+	host._reward_feedback_surface()._set_result("Berry mode: tap modules to toggle berry." if berry_mode_enabled else "Berry mode off.")
 
 
 func toggle_berry_prep_for_action(skill_id: String, action_id: String) -> void:
@@ -32,9 +48,9 @@ func toggle_berry_prep_for_action(skill_id: String, action_id: String) -> void:
 	if target_key.is_empty():
 		return
 	if not host.material_runtime.toggle_berry_prep_target(skill_id, action_id, Callable(host, "_action_data"), Callable(host, "_action_key")):
-		host._set_result("Berry disabled for %s." % str(host._action_data(skill_id, action_id).get("name", "this module")))
+		host._reward_feedback_surface()._set_result("Berry disabled for %s." % str(host._action_data(skill_id, action_id).get("name", "this module")))
 	else:
-		host._set_result("Berry enabled for %s." % str(host._action_data(skill_id, action_id).get("name", "this module")))
+		host._reward_feedback_surface()._set_result("Berry enabled for %s." % str(host._action_data(skill_id, action_id).get("name", "this module")))
 	host._mark_save_dirty("berry mode")
 	host.save_game()
 	sync_berry_prep_badges()
@@ -61,7 +77,7 @@ func route_berry_mode_leave_button_input(event: InputEvent) -> bool:
 		if not button.get_global_rect().grow(24.0).has_point(event_position):
 			return false
 		ButtonPressState.begin(button, "berry_leave", event_position)
-		host._button_press_runtime().animate_button_depress(button, float(button.get_meta("depress_animation_scale", 0.96)))
+		host.button_press_runtime.animate_button_depress(button, float(button.get_meta("depress_animation_scale", 0.96)))
 		return true
 	if kind == "drag":
 		ButtonPressState.update_drag(button, "berry_leave", event_position, host.PASSIVE_BUTTON_TAP_RELEASE_SLOP)
@@ -70,7 +86,7 @@ func route_berry_mode_leave_button_input(event: InputEvent) -> bool:
 		if not ButtonPressState.active(button, "berry_leave"):
 			return false
 		var should_leave := ButtonPressState.finish(button, "berry_leave", event_position, host.PASSIVE_BUTTON_TAP_RELEASE_SLOP, 24.0)
-		host._button_press_runtime().animate_button_release(button)
+		host.button_press_runtime.animate_button_release(button)
 		if should_leave:
 			set_berry_mode_enabled(false)
 		return true
@@ -98,7 +114,7 @@ func _berry_mode_pointer_position(event: InputEvent) -> Vector2:
 	return Vector2.INF
 
 
-func attempt_apply_berry_prep(skill_id: String, action_id: String, _popover_id := 0) -> void:
+func attempt_apply_berry_prep(skill_id: String, action_id: String) -> void:
 	toggle_berry_mode()
 
 
@@ -112,10 +128,10 @@ func sync_berry_prep_badges() -> void:
 		var button := raw_button as Button
 		if button == null or not is_instance_valid(button):
 			continue
-		var label: Label = host._valid_label_ref(instance_from_id(int(button.get_meta("berry_prep_hint_label_id", 0))))
+		var label: Label = host._app_lifecycle_runtime().valid_label_ref(instance_from_id(int(button.get_meta("berry_prep_hint_label_id", 0))))
 		if label == null:
 			continue
-		host._set_label_text_if_changed(label, "")
+		host._app_lifecycle_runtime().set_label_text_if_changed(label, "")
 	for raw_box in tree.get_nodes_in_group("berry_prep_xp_chip_boxes"):
 		_sync_berry_prep_xp_chip(raw_box as Control)
 
@@ -386,7 +402,7 @@ func _add_berry_mode_leave_button() -> void:
 	button.add_theme_stylebox_override("hover", _berry_mode_leave_button_style(false))
 	button.add_theme_stylebox_override("pressed", _berry_mode_leave_button_style(true))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	host._button_press_runtime().attach_button_depress_animation(button, 0.96)
+	host.button_press_runtime.attach_button_depress_animation(button, 0.96)
 	button.pressed.connect(set_berry_mode_enabled.bind(false))
 	berry_mode_overlay.add_child(button)
 
@@ -418,27 +434,27 @@ func _build_mat_collection_row(skill_id: String, action: Dictionary, content_wid
 	root.anchor_bottom = 0.0
 	root.offset_left = host.ACTION_CARD_POP_GUTTER
 	root.offset_right = -host.ACTION_CARD_POP_GUTTER
-	root.offset_top = host._activity_card_root_height() - host.MAT_COLLECTION_CONNECTOR_TOP_OVERLAP
-	root.offset_bottom = root.offset_top + host.MAT_COLLECTION_AREA_HEIGHT
+	root.offset_top = ActivityCardStyles.root_height(false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.ACTION_CARD_3D_DEPTH_OFFSET.y) - MAT_COLLECTION_CONNECTOR_TOP_OVERLAP
+	root.offset_bottom = root.offset_top + MAT_COLLECTION_AREA_HEIGHT
 	root.clip_contents = false
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.modulate.a = 0.0
 	root.scale = Vector2(0.94, 0.94)
-	root.pivot_offset = Vector2(content_width * 0.5, host.MAT_COLLECTION_CONNECTOR_HEIGHT + host.MAT_COLLECTION_MODULE_SIZE.y * 0.5)
+	root.pivot_offset = Vector2(content_width * 0.5, MAT_COLLECTION_CONNECTOR_HEIGHT + MAT_COLLECTION_MODULE_SIZE.y * 0.5)
 	root.z_index = 0
 
 	var modules = {}
-	var total_width = float(reward_defs.size()) * host.MAT_COLLECTION_MODULE_SIZE.x + maxf(0.0, float(reward_defs.size() - 1)) * host.MAT_COLLECTION_MODULE_GAP
+	var total_width = float(reward_defs.size()) * MAT_COLLECTION_MODULE_SIZE.x + maxf(0.0, float(reward_defs.size() - 1)) * MAT_COLLECTION_MODULE_GAP
 	var start_x = (content_width - host.ACTION_CARD_POP_GUTTER * 2.0 - total_width) * 0.5
 	for index in range(reward_defs.size()):
 		var reward = reward_defs[index] as Dictionary
 		var mat_id = str(reward.get("id", ""))
-		var module_x = start_x + float(index) * (host.MAT_COLLECTION_MODULE_SIZE.x + host.MAT_COLLECTION_MODULE_GAP)
-		var connector = _mat_collection_connector(host.material_runtime.color(mat_id).lerp(host._skill_theme_color(skill_id), 0.28))
-		connector.position = Vector2(module_x + host.MAT_COLLECTION_MODULE_SIZE.x * 0.5 - 7.0, 0.0)
+		var module_x = start_x + float(index) * (MAT_COLLECTION_MODULE_SIZE.x + MAT_COLLECTION_MODULE_GAP)
+		var connector = _mat_collection_connector(host.material_runtime.color(mat_id).lerp(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), 0.28))
+		connector.position = Vector2(module_x + MAT_COLLECTION_MODULE_SIZE.x * 0.5 - 7.0, 0.0)
 		root.add_child(connector)
 		var module = _mat_collection_module(mat_id, skill_id, str(action.get("id", "")))
-		module.position = Vector2(module_x, host.MAT_COLLECTION_CONNECTOR_HEIGHT)
+		module.position = Vector2(module_x, MAT_COLLECTION_CONNECTOR_HEIGHT)
 		root.add_child(module)
 		modules[mat_id] = module
 	return {
@@ -451,7 +467,7 @@ func _build_mat_collection_row(skill_id: String, action: Dictionary, content_wid
 
 func _mat_collection_connector(color: Color) -> Control:
 	var line = ColorRect.new()
-	line.custom_minimum_size = Vector2(14, host.MAT_COLLECTION_CONNECTOR_HEIGHT + 10.0)
+	line.custom_minimum_size = Vector2(14, MAT_COLLECTION_CONNECTOR_HEIGHT + 10.0)
 	line.size = line.custom_minimum_size
 	line.color = color.darkened(0.34)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -466,14 +482,14 @@ func _sync_mat_collection_row_position(card: Dictionary, visual_card_height: flo
 	var root = collection.get("root") as Control
 	if root == null or not is_instance_valid(root):
 		return
-	root.offset_top = maxf(1.0, visual_card_height - host.MAT_COLLECTION_CONNECTOR_TOP_OVERLAP)
-	root.offset_bottom = root.offset_top + host.MAT_COLLECTION_AREA_HEIGHT
+	root.offset_top = maxf(1.0, visual_card_height - MAT_COLLECTION_CONNECTOR_TOP_OVERLAP)
+	root.offset_bottom = root.offset_top + MAT_COLLECTION_AREA_HEIGHT
 
 
 func _mat_collection_module(mat_id: String, skill_id := "", action_id := "") -> Control:
 	var panel = Control.new()
-	panel.custom_minimum_size = host.MAT_COLLECTION_MODULE_SIZE
-	panel.size = host.MAT_COLLECTION_MODULE_SIZE
+	panel.custom_minimum_size = MAT_COLLECTION_MODULE_SIZE
+	panel.size = MAT_COLLECTION_MODULE_SIZE
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.set_meta("mat_id", mat_id)
 	var background = RoundedTextureRect.new()
@@ -481,7 +497,7 @@ func _mat_collection_module(mat_id: String, skill_id := "", action_id := "") -> 
 	background.radius = 42.0
 	background.mask_inset = 0.0
 	background.corner_mask_mode = 1
-	background.art_height = host.MAT_COLLECTION_MODULE_SIZE.y
+	background.art_height = MAT_COLLECTION_MODULE_SIZE.y
 	background.feather_height = 0.0
 	background.fallback_color = Color.WHITE
 	background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -541,20 +557,20 @@ func _mat_honey_info_button() -> Button:
 	button.tooltip_text = ""
 	button.custom_minimum_size = Vector2(86, 86)
 	button.size = button.custom_minimum_size
-	button.position = Vector2(host.MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
+	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 32
 	button.add_to_group("skill_header_info_buttons")
 	button.add_theme_font_size_override("font_size", host.MIN_MOBILE_BODY_FONT_SIZE)
-	host._apply_info_symbol_button_text_color(button)
+	host._skill_detail_surface()._apply_info_symbol_button_text_color(button)
 	button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL.lightened(0.06), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("pressed", PassiveModuleStyles.round_button(host.COLOR_GOLD.darkened(0.08), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	if host.app_bold_font != null:
 		button.add_theme_font_override("font", host.app_bold_font)
-	host._button_press_runtime().attach_button_depress_animation(button, 0.90)
+	host.button_press_runtime.attach_button_depress_animation(button, 0.90)
 	var popover = _mat_honey_info_popover()
 	button.add_child(popover)
 	host._passive_firepit_surface()._prewarm_passive_info_popover(popover)
@@ -601,20 +617,20 @@ func _mat_berry_info_button() -> Button:
 	button.tooltip_text = ""
 	button.custom_minimum_size = Vector2(86, 86)
 	button.size = button.custom_minimum_size
-	button.position = Vector2(host.MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
+	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 40
 	button.add_to_group("skill_header_info_buttons")
 	button.add_theme_font_size_override("font_size", host.MIN_MOBILE_BODY_FONT_SIZE)
-	host._apply_info_symbol_button_text_color(button)
+	host._skill_detail_surface()._apply_info_symbol_button_text_color(button)
 	button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL.lightened(0.06), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("pressed", PassiveModuleStyles.round_button(host.COLOR_GOLD.darkened(0.08), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	if host.app_bold_font != null:
 		button.add_theme_font_override("font", host.app_bold_font)
-	host._button_press_runtime().attach_button_depress_animation(button, 0.90)
+	host.button_press_runtime.attach_button_depress_animation(button, 0.90)
 	var popover = _mat_berry_info_popover()
 	button.add_child(popover)
 	host._passive_firepit_surface()._prewarm_passive_info_popover(popover)
@@ -656,23 +672,53 @@ func _mat_berry_info_popover() -> PanelContainer:
 
 
 func _mat_berry_prep_button(skill_id: String, action_id: String) -> Button:
-	var action = host._action_data(skill_id, action_id)
-	var action_name = str(action.get("name", "this module"))
-	return BerryPrepControls.build_button(
-		skill_id,
-		action_id,
-		action_name,
-		host.material_runtime.amount_text_for_host("berries", -1.0, host),
-		host.material_runtime.berry_prep_matches(skill_id, action_id, Callable(host, "_action_data"), Callable(host, "_action_key")),
-		host.COLOR_INK,
-		PassiveModuleStyles.popup(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style")),
-		host.app_bold_font,
-		host.app_font,
-		Callable(host._button_press_runtime(), "attach_button_depress_animation"),
-		Callable(host._passive_firepit_surface(), "_prewarm_passive_info_popover"),
-		Callable(host._passive_firepit_surface(), "_toggle_passive_info_popover"),
-		Callable(self, "attempt_apply_berry_prep")
-	)
+	var button := Button.new()
+	button.text = ""
+	button.tooltip_text = ""
+	button.set_anchors_preset(Control.PRESET_FULL_RECT)
+	button.focus_mode = Control.FOCUS_NONE
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.z_index = 34
+	button.add_to_group("berry_prep_buttons")
+	button.set_meta("skill_id", skill_id)
+	button.set_meta("action_id", action_id)
+	button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
+	button.add_theme_stylebox_override("hover", _berry_prep_hover_style(false))
+	button.add_theme_stylebox_override("pressed", _berry_prep_hover_style(true))
+	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	host.button_press_runtime.attach_button_depress_animation(button, 0.98)
+
+	var hint := _berry_prep_hint_label(host.material_runtime.berry_prep_matches(skill_id, action_id, Callable(host, "_action_data"), Callable(host, "_action_key")))
+	button.add_child(hint)
+	button.set_meta("berry_prep_hint_label_id", hint.get_instance_id())
+
+	button.pressed.connect(attempt_apply_berry_prep.bind(skill_id, action_id))
+	return button
+
+
+func _berry_prep_hint_label(_prepped: bool) -> Label:
+	var node := host._label("", 54, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER) as Label
+	node.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	node.offset_left = 44.0
+	node.offset_right = -44.0
+	node.offset_top = -126.0
+	node.offset_bottom = -42.0
+	node.add_theme_color_override("font_outline_color", host.COLOR_INK)
+	node.add_theme_constant_override("outline_size", 16)
+	node.z_index = 35
+	return node
+
+
+func _berry_prep_hover_style(pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.25, 0.45, 0.14 if pressed else 0.07)
+	style.border_color = Color(1.0, 0.86, 0.50, 0.42 if pressed else 0.28)
+	style.set_border_width_all(8 if pressed else 0)
+	style.corner_radius_top_left = 42
+	style.corner_radius_top_right = 42
+	style.corner_radius_bottom_left = 42
+	style.corner_radius_bottom_right = 42
+	return style
 
 
 func _mat_collection_module_style(mat_id: String) -> StyleBoxFlat:
@@ -696,9 +742,9 @@ func _play_mat_collection_feedback(key: String, awarded_mats: Array) -> void:
 	var card = host._reward_feedback_surface()._reward_feedback_card_for_key(key)
 	if card.is_empty():
 		return
-	var art = host._valid_control_ref(card.get("art"))
+	var art = host._app_lifecycle_runtime().valid_control_ref(card.get("art"))
 	if art == null:
-		art = host._valid_control_ref(card.get("art_panel"))
+		art = host._app_lifecycle_runtime().valid_control_ref(card.get("art_panel"))
 	var collection = card.get("mat_collection", {}) as Dictionary
 	if art == null or collection.is_empty():
 		return
@@ -728,7 +774,7 @@ func _spawn_mat_collection_flyer(source: Control, target: Control, mat_id: Strin
 	flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	flyer.z_index = host.REWARD_FLOAT_Z + 16
+	flyer.z_index = RewardFeedbackSurface.REWARD_FLOAT_Z + 16
 	flyer.z_as_relative = false
 	flyer.size = Vector2(360, 360)
 	flyer.pivot_offset = flyer.size * 0.5
@@ -760,15 +806,15 @@ func _spawn_mat_collection_flyer(source: Control, target: Control, mat_id: Strin
 		Callable(self, "_apply_mat_collection_flyer_arc").bind(flyer.get_instance_id(), start, arc_control, end, flyer.rotation_degrees, flyer.rotation_degrees + randf_range(-34.0, 34.0)),
 		0.0,
 		1.0,
-		host.MAT_COLLECTION_FLYER_ARC_SECONDS
+		MAT_COLLECTION_FLYER_ARC_SECONDS
 	).set_delay(delay + 0.08).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tween.tween_property(flyer, "scale", Vector2(0.34, 0.34), 0.22).set_delay(delay + host.MAT_COLLECTION_FLYER_ARC_SECONDS * 0.78).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.tween_property(flyer, "modulate:a", 0.0, 0.14).set_delay(delay + host.MAT_COLLECTION_FLYER_ARC_SECONDS * 0.90)
+	tween.tween_property(flyer, "scale", Vector2(0.34, 0.34), 0.22).set_delay(delay + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.78).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	tween.tween_property(flyer, "modulate:a", 0.0, 0.14).set_delay(delay + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.90)
 	tween.finished.connect(_finish_mat_collection_flyer_tween.bind(flyer.get_instance_id()))
 
 
 func _finish_mat_collection_flyer_tween(flyer_id: int) -> void:
-	var flyer = host._valid_control_ref(instance_from_id(flyer_id))
+	var flyer = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(flyer_id))
 	if flyer == null:
 		return
 	if flyer.has_meta("mat_flyer_tween"):
@@ -777,7 +823,7 @@ func _finish_mat_collection_flyer_tween(flyer_id: int) -> void:
 
 
 func _apply_mat_collection_flyer_arc(progress: float, flyer_id: int, start: Vector2, control: Vector2, end: Vector2, start_rotation: float, end_rotation: float) -> void:
-	var flyer = host._valid_control_ref(instance_from_id(flyer_id))
+	var flyer = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(flyer_id))
 	if flyer == null:
 		return
 	var t = clampf(progress, 0.0, 1.0)
@@ -790,9 +836,9 @@ func _apply_mat_collection_flyer_arc(progress: float, flyer_id: int, start: Vect
 func _pulse_mat_collection_module(module: Control, index: int) -> void:
 	if module == null or not is_instance_valid(module):
 		return
-	host._kill_meta_tween(module, "mat_pulse_tween")
+	host._app_lifecycle_runtime()._kill_meta_tween(module, "mat_pulse_tween")
 	var icon_id = int(module.get_meta("icon_id", 0))
-	var icon = host._valid_control_ref(instance_from_id(icon_id))
+	var icon = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(icon_id))
 	if icon == null:
 		return
 	module.scale = Vector2.ONE
@@ -800,24 +846,24 @@ func _pulse_mat_collection_module(module: Control, index: int) -> void:
 	icon.scale = Vector2.ONE
 	var tween = host.create_tween()
 	module.set_meta("mat_pulse_tween", tween)
-	var delay = float(index) * 0.055 + host.MAT_COLLECTION_FLYER_ARC_SECONDS * 0.82
+	var delay = float(index) * 0.055 + MAT_COLLECTION_FLYER_ARC_SECONDS * 0.82
 	tween.tween_property(icon, "scale", Vector2(1.18, 1.18), 0.08).set_delay(delay).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(icon, "scale", Vector2.ONE, 0.14).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.finished.connect(_finish_mat_collection_module_pulse_tween.bind(module.get_instance_id(), icon.get_instance_id()))
 
 
 func _finish_mat_collection_module_pulse_tween(module_id: int, icon_id: int) -> void:
-	var icon = host._valid_control_ref(instance_from_id(icon_id))
+	var icon = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(icon_id))
 	if icon != null:
 		icon.scale = Vector2.ONE
-	var module = host._valid_control_ref(instance_from_id(module_id))
+	var module = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(module_id))
 	if module != null and module.has_meta("mat_pulse_tween"):
 		module.remove_meta("mat_pulse_tween")
 
 
 func _apply_mat_collection_layout_height(value: float, entry_id: int, action_id: String) -> void:
 	var layout_height = maxf(1.0, value)
-	var entry = host._valid_control_ref(instance_from_id(entry_id)) if entry_id != 0 else null
+	var entry = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(entry_id)) if entry_id != 0 else null
 	if entry != null:
 		entry.custom_minimum_size.y = layout_height
 		entry.size.y = layout_height
@@ -826,13 +872,13 @@ func _apply_mat_collection_layout_height(value: float, entry_id: int, action_id:
 		if entry_parent != null:
 			entry_parent.queue_sort()
 	if not action_id.is_empty():
-		var lazy_entry = host._detail_lazy_entry_for_track_id(action_id)
+		var lazy_entry = host._skill_detail_surface()._detail_lazy_entry_for_track_id(action_id)
 		if not lazy_entry.is_empty():
 			lazy_entry["height"] = layout_height
 
 
 func _clear_mat_collection_height_tween_meta(card_root_id: int) -> void:
-	var card_root = host._valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
+	var card_root = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
 	if card_root != null and card_root.has_meta("mat_collection_height_tween"):
 		card_root.remove_meta("mat_collection_height_tween")
 
@@ -858,8 +904,8 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 		return
 	var card_root = card.get("root") as Control
 	var collapsed = card_root != null and is_instance_valid(card_root) and bool(card_root.get_meta("module_ui_collapsed_squeeze", false))
-	var visual_card_height = host._module_collapsed_squeeze_height() if collapsed else host._activity_card_root_height(bool(card.get("bonus_expanded", false)))
-	var target_height = visual_card_height + (host.MAT_COLLECTION_AREA_HEIGHT if running else 0.0)
+	var visual_card_height = host._module_collapsed_squeeze_height() if collapsed else ActivityCardStyles.root_height(bool(card.get("bonus_expanded", false)), host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.ACTION_CARD_3D_DEPTH_OFFSET.y)
+	var target_height = visual_card_height + (MAT_COLLECTION_AREA_HEIGHT if running else 0.0)
 	_sync_mat_collection_row_position(card, visual_card_height)
 	var seed_layout = not bool(collection.get("layout_initialized", false)) or (running and not bool(collection.get("ever_visible", false)))
 	var entry = card.get("entry") as Control
@@ -871,13 +917,13 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 	elif card_root != null and is_instance_valid(card_root):
 		current_height = maxf(card_root.custom_minimum_size.y, card_root.size.y)
 	if absf(current_height - target_height) > 0.5:
-		host._kill_meta_tween(card_root, "mat_collection_height_tween")
+		host._app_lifecycle_runtime()._kill_meta_tween(card_root, "mat_collection_height_tween")
 		if instant or seed_layout or card_root == null or not is_instance_valid(card_root):
 			_apply_mat_collection_layout_height(target_height, entry_id, action_id)
 		else:
 			var height_tween = card_root.create_tween()
 			card_root.set_meta("mat_collection_height_tween", height_tween)
-			height_tween.tween_method(Callable(self, "_apply_mat_collection_layout_height").bind(entry_id, action_id), current_height, target_height, host.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
+			height_tween.tween_method(Callable(self, "_apply_mat_collection_layout_height").bind(entry_id, action_id), current_height, target_height, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
 			height_tween.finished.connect(Callable(self, "_clear_mat_collection_height_tween_meta").bind(card_root.get_instance_id()))
 	collection["layout_initialized"] = true
 	if running:
@@ -893,14 +939,14 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 		if module == null or not is_instance_valid(module):
 			continue
 		var amount_label_id = int(module.get_meta("amount_label_id", 0))
-		var amount_label = host._valid_label_ref(instance_from_id(amount_label_id))
+		var amount_label = host._app_lifecycle_runtime().valid_label_ref(instance_from_id(amount_label_id))
 		if amount_label != null:
-			host._set_label_text_if_changed(amount_label, host.material_runtime.amount_text_for_host(mat_id, -1.0, host))
+			host._app_lifecycle_runtime().set_label_text_if_changed(amount_label, host.material_runtime.amount_text_for_host(mat_id, -1.0, host))
 	if bool(collection.get("visible", false)) == running and not instant:
 		return
 	collection["visible"] = running
 	card["mat_collection"] = collection
-	host._kill_meta_tween(root, "mat_collection_tween")
+	host._app_lifecycle_runtime()._kill_meta_tween(root, "mat_collection_tween")
 	if instant:
 		root.modulate.a = 1.0 if running else 0.0
 		root.scale = Vector2.ONE if running else Vector2(0.94, 0.94)
@@ -908,6 +954,6 @@ func _sync_mat_collection_card(card: Dictionary, running: bool, instant := false
 	var tween = host.create_tween()
 	root.set_meta("mat_collection_tween", tween)
 	tween.set_parallel(true)
-	tween.tween_property(root, "modulate:a", 1.0 if running else 0.0, host.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
-	tween.tween_property(root, "scale", Vector2.ONE if running else Vector2(0.94, 0.94), host.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_BACK if running else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
-	tween.finished.connect(host._remove_meta_from_instance_id.bind(root.get_instance_id(), "mat_collection_tween"))
+	tween.tween_property(root, "modulate:a", 1.0 if running else 0.0, MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
+	tween.tween_property(root, "scale", Vector2.ONE if running else Vector2(0.94, 0.94), MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_BACK if running else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if running else Tween.EASE_IN)
+	tween.finished.connect(host._app_lifecycle_runtime()._remove_meta_from_instance_id.bind(root.get_instance_id(), "mat_collection_tween"))

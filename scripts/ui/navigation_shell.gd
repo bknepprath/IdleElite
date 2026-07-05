@@ -1,31 +1,464 @@
-class_name NavigationShell
 extends RefCounted
 
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
 const RegenCircle = preload("res://scripts/ui/regen_circle.gd")
 const FishCircle = preload("res://scripts/ui/fish_circle.gd")
-const BlueGuyHealthHeartGauge = preload("res://scripts/ui/blue_guy_health_heart_gauge.gd")
 const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
-const ModuleSortMenuUi = preload("res://scripts/ui/module_sort_menu_ui.gd")
-const ModuleUtilityRowUi = preload("res://scripts/ui/module_utility_row_ui.gd")
-const PageSwitchButtonFace = preload("res://scripts/ui/page_switch_button_face.gd")
-const PageSwitchChevronIcon = preload("res://scripts/ui/page_switch_chevron_icon.gd")
+const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
+const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
+const ActivityProgressRail = preload("res://scripts/ui/activity_progress_rail.gd")
 const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
-const SkillIconSymbolDraw = preload("res://scripts/ui/skill_icon_symbol_draw.gd")
-const ChatStyles = preload("res://scripts/chat/styles.gd")
+const ProfileChatOverlaySurface = preload("res://scripts/ui/profile_chat_overlay_surface.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
+const AchievementState = preload("res://scripts/achievements/state.gd")
+const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
+const HERO_UNLOCK_TOTAL_LEVEL := 25
+const HERO_LOCKED_MESSAGE := "Total Lv 25 required!"
+const HUB_UNLOCK_BUILD_LEVEL := 3
+const HUB_LOCKED_MESSAGE := "Lv 3 Building required!"
+const SHOP_UNLOCK_BRONZE_MEDALS := 5
+const SHOP_LOCKED_MESSAGE := "5 Bronze medals\nrequired!"
+const HUB_NAV_LOCKED_MODULATE := Color("#3f3f3f")
+const HUB_NAV_UNLOCK_FADE_SECONDS := 0.62
+const TOP_LEVEL_NAV_DEBOUNCE_MSEC := 120
+const MODULE_UTILITY_ROW_HEIGHT := 344
+const MODULE_UTILITY_ROW_GAP := 28
+const MODULE_UTILITY_BUTTON_SIZE := Vector2(390, 289)
+const MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE := Vector2(146, 146)
+const MODULE_UTILITY_BUTTONS_SLIDE_PIXELS := 156.0
+const MODULE_UTILITY_BUTTONS_ENTER_SECONDS := 0.26
+const MODULE_UTILITY_BUTTONS_EXIT_SECONDS := 0.18
+const MODULE_UTILITY_BUTTONS_STAGGER_STEP := 0.16
+const MODULE_UTILITY_BUTTONS_STAGGER_MIN_SCALE := 0.86
+const MODULE_SORT_MENU_UNWRAP_SECONDS := 0.24
+const MODULE_SORT_MENU_WRAP_SECONDS := 0.16
+const MODULE_SORT_MENU_COLLAPSED_SCALE_Y := 0.14
+const MODULE_UTILITY_ACTIVE_FILL := Color("#d8d8d8")
 const MODULE_QUEUE_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/queue.png"
+const BOTTOM_NAV_HEIGHT := 420
+const BOTTOM_NAV_SAFE_PAD := 96
+const NAV_OPEN_CLOSE_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/nav-open-close.png"
 const PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT := 7
+const SKILL_MENU_COPY_WIDTH := 840
+const SKILL_MENU_SHELF_HEIGHT := 368
+const SKILL_MENU_TOP_SCROLL_PAD := 54
+const SKILL_MENU_BOTTOM_SCROLL_CLEARANCE := 180
+const SKILL_MENU_HEADER_HEIGHT := 610
+const SKILL_MENU_ACTIVE_DRAWER_TOP_PAD := 18
+const SKILL_MENU_ACTIVE_DRAWER_BOTTOM_PAD := 44
+const SKILL_MENU_LIGHT_PASTEL_MIX := 0.68
+const SKILL_MENU_DARK_THEME_DARKEN := 0.18
+const SKILL_MENU_DARK_PANEL_MIX := 0.10
 const PAGE_SWITCH_MODULE_HEIGHT := 340
 const PAGE_SWITCH_SKILL_ICON_STAGE_SIZE := Vector2(430, 430)
 const PAGE_SWITCH_SKILL_ICON_SYMBOL_BASE_SIZE := Vector2(446, 446)
 const PAGE_SWITCH_SKILL_ICON_EDGE_CROP := 54.0
 const PAGE_SWITCH_SKILL_ICON_VERTICAL_SHIFT := -4.0
 
+class _ModuleSortMenuBuilder:
+	static func build(z_index: int, level_toggle: Callable, priority_toggle: Callable, depress: Callable, app_font: Font, bold_font: Font, ink: Color) -> Dictionary:
+		var menu := Control.new()
+		menu.custom_minimum_size = Vector2(560, 720)
+		menu.size = menu.custom_minimum_size
+		menu.z_index = z_index
+		menu.z_as_relative = false
+		menu.visible = false
+		menu.mouse_filter = Control.MOUSE_FILTER_STOP
+
+		var visual := Control.new()
+		visual.name = "ModuleSortMenuVisual"
+		visual.set_anchors_preset(Control.PRESET_FULL_RECT)
+		visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		menu.add_child(visual)
+
+		var row := VBoxContainer.new()
+		row.set_anchors_preset(Control.PRESET_FULL_RECT)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 34)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		visual.add_child(row)
+
+		var low_level_button := _button("Level: Low", level_toggle, depress, app_font, bold_font, ink)
+		row.add_child(low_level_button)
+
+		var combo_button := _button("Combo", priority_toggle.bind("combo"), depress, app_font, bold_font, ink)
+		combo_button.set_meta("module_sort_priority_kind", "combo")
+		combo_button.set_meta("module_sort_label", "Combo")
+		row.add_child(combo_button)
+
+		var collection_button := _button("Collection", priority_toggle.bind("collection"), depress, app_font, bold_font, ink)
+		collection_button.set_meta("module_sort_priority_kind", "collection")
+		collection_button.set_meta("module_sort_label", "Collection")
+		row.add_child(collection_button)
+
+		return {
+			"menu": menu,
+			"visual": visual,
+			"low_level_button": low_level_button,
+			"combo_button": combo_button,
+			"collection_button": collection_button
+		}
+
+	static func sync_buttons(low_level_button: Button, combo_button: Button, collection_button: Button, high_level_first: bool, combo_first: bool, collection_first: bool, ink: Color) -> void:
+		if low_level_button != null and is_instance_valid(low_level_button):
+			_sync_button(low_level_button, "Level: High" if high_level_first else "Level: Low", false, ink)
+		_sync_priority_button(combo_button, combo_first, ink)
+		_sync_priority_button(collection_button, collection_first, ink)
+
+	static func _sync_priority_button(button: Button, active: bool, ink: Color) -> void:
+		if button == null or not is_instance_valid(button):
+			return
+		_sync_button(button, str(button.get_meta("module_sort_label", "Combo")), active, ink)
+
+	static func _button(label_text: String, callback: Callable, depress: Callable, app_font: Font, bold_font: Font, ink: Color) -> Button:
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(560, 195)
+		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		button.focus_mode = Control.FOCUS_NONE
+		button.mouse_filter = Control.MOUSE_FILTER_STOP
+		_apply_text(button, label_text, 60, app_font, bold_font, ink)
+		if callback.is_valid():
+			button.pressed.connect(callback)
+		if depress.is_valid():
+			depress.call(button, 0.975)
+		return button
+
+	static func _apply_text(button: Button, label_text: String, font_size: int, app_font: Font, bold_font: Font, ink: Color) -> void:
+		button.text = label_text
+		button.clip_contents = false
+		button.add_theme_font_size_override("font_size", font_size)
+		button.add_theme_color_override("font_color", ink)
+		button.add_theme_color_override("font_hover_color", ink)
+		button.add_theme_color_override("font_pressed_color", ink)
+		button.add_theme_color_override("font_outline_color", Color.WHITE)
+		button.add_theme_constant_override("outline_size", 6)
+		if bold_font != null:
+			button.add_theme_font_override("font", bold_font)
+		elif app_font != null:
+			button.add_theme_font_override("font", app_font)
+		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+	static func _sync_button(button: Button, label_text: String, active: bool, ink: Color) -> void:
+		button.text = label_text
+		button.add_theme_stylebox_override("normal", _style(active, false, ink))
+		button.add_theme_stylebox_override("hover", _style(active, false, ink))
+		button.add_theme_stylebox_override("pressed", _style(active, true, ink))
+		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+	static func _style(active: bool, pressed := false, ink := Color.BLACK) -> StyleBoxFlat:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color("#d8d8d8") if active else Color("#ffffff")
+		if pressed:
+			style.bg_color = style.bg_color.darkened(0.06)
+		style.border_color = ink
+		style.set_border_width_all(10)
+		style.set_corner_radius_all(999)
+		style.content_margin_left = 44
+		style.content_margin_right = 44
+		style.content_margin_top = 20
+		style.content_margin_bottom = 20
+		style.shadow_size = 0
+		style.shadow_color = Color.TRANSPARENT
+		return style
+
+class _UtilityCollapseArrow:
+	extends Control
+
+	var direction := -1
+	var ink_color := Color("#8a6f4e")
+	var stroke_width := 13.0
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func set_direction(next_direction: int) -> void:
+		direction = 1 if next_direction >= 0 else -1
+		queue_redraw()
+
+	func _draw() -> void:
+		if size.x <= 1.0 or size.y <= 1.0:
+			return
+		var center := size * 0.5
+		var width := size.x * 0.34
+		var height := size.y * 0.42
+		var points := PackedVector2Array()
+		if direction < 0:
+			points.append(Vector2(center.x + width * 0.42, center.y - height * 0.5))
+			points.append(Vector2(center.x - width * 0.42, center.y))
+			points.append(Vector2(center.x + width * 0.42, center.y + height * 0.5))
+		else:
+			points.append(Vector2(center.x - width * 0.42, center.y - height * 0.5))
+			points.append(Vector2(center.x + width * 0.42, center.y))
+			points.append(Vector2(center.x - width * 0.42, center.y + height * 0.5))
+		draw_polyline(points, ink_color, stroke_width, true)
+		for point in points:
+			draw_circle(point, stroke_width * 0.5, ink_color)
+
+class _ModuleUtilityRowBuilder:
+	static func build(config: Dictionary) -> Dictionary:
+		var root := Control.new()
+		root.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+		root.offset_top = -float(config.get("bottom_nav_height", 0.0)) - float(config.get("chat_strip_height", 0.0)) - float(config.get("gap", 0.0)) - float(config.get("height", 0.0))
+		root.offset_bottom = -float(config.get("bottom_nav_height", 0.0)) - float(config.get("chat_strip_height", 0.0)) - float(config.get("gap", 0.0))
+		root.z_index = int(config.get("z_index", 0))
+		root.z_as_relative = false
+		root.visible = false
+		root.mouse_filter = Control.MOUSE_FILTER_STOP
+
+		var row := HBoxContainer.new()
+		row.set_anchors_preset(Control.PRESET_FULL_RECT)
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 36)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		root.add_child(row)
+
+		var texture := config.get("texture") as Callable
+		var res_path := config.get("res_path") as Callable
+		var install_shell := config.get("install_shell") as Callable
+		var attach_press := config.get("attach_press") as Callable
+		var button_size := config.get("button_size", Vector2.ZERO) as Vector2
+		var radius := float(config.get("radius", 36.0))
+		var gutter := float(config.get("gutter", 0.0))
+		var depth_offset := config.get("depth_offset", Vector2.ZERO) as Vector2
+		var diagonal_side := str(config.get("diagonal_side", ""))
+		var buttons := {}
+		for raw_def in config.get("buttons", []):
+			var button_def := raw_def as Dictionary
+			var button := nav_button(str(button_def.get("label", "")), str(button_def.get("icon", "")), button_def.get("fill", Color.WHITE) as Color, button_size, texture, res_path, install_shell, attach_press, radius, gutter, depth_offset, diagonal_side)
+			buttons[str(button_def.get("id", ""))] = button
+			row.add_child(button)
+
+		var collapse := collapse_toggle(config.get("collapse_size", Vector2.ZERO) as Vector2, attach_press)
+		root.add_child(collapse)
+
+		return {
+			"root": root,
+			"row": row,
+			"buttons": buttons,
+			"collapse_toggle": collapse
+		}
+
+	static func nav_button(label_text: String, icon_path: String, fill: Color, button_size: Vector2, texture: Callable, res_path: Callable, install_shell: Callable, attach_press: Callable, radius: float, gutter: float, depth_offset: Vector2, diagonal_side: String) -> Button:
+		var button := Button.new()
+		button.text = ""
+		button.tooltip_text = ""
+		button.custom_minimum_size = button_size
+		button.clip_contents = false
+		button.focus_mode = Control.FOCUS_NONE
+		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var pop := install_shell.call(button, fill, radius, gutter, depth_offset, diagonal_side) as Control
+		var icon := TextureRect.new()
+		icon.name = "ActivityButtonIcon"
+		icon.texture = texture.call(icon_path)
+		icon.set_meta("source_texture_path", res_path.call(icon_path) if res_path.is_valid() else icon_path)
+		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		icon.anchor_left = 0.0
+		icon.anchor_right = 1.0
+		icon.anchor_top = 0.0
+		icon.anchor_bottom = 1.0
+		icon.offset_left = 24
+		icon.offset_right = -24
+		icon.offset_top = 18
+		icon.offset_bottom = -34
+		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		icon.z_index = 210
+		pop.add_child(icon)
+		button.set_meta("module_utility_fill", fill)
+		button.set_meta("module_utility_nav_button", true)
+		attach_press.call(button)
+		return button
+
+	static func collapse_toggle(toggle_size: Vector2, attach_press: Callable) -> Button:
+		var button := Button.new()
+		button.name = "ModuleUtilityCollapseToggle"
+		button.custom_minimum_size = toggle_size
+		button.size = toggle_size
+		button.clip_contents = false
+		button.focus_mode = Control.FOCUS_NONE
+		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		button.add_theme_stylebox_override("normal", collapse_toggle_style(false))
+		button.add_theme_stylebox_override("hover", collapse_toggle_style(false))
+		button.add_theme_stylebox_override("pressed", collapse_toggle_style(true))
+		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+
+		var arrow := _UtilityCollapseArrow.new()
+		arrow.name = "ActivityButtonArrow"
+		arrow.set_anchors_preset(Control.PRESET_FULL_RECT)
+		arrow.offset_left = 28
+		arrow.offset_right = -28
+		arrow.offset_top = 28
+		arrow.offset_bottom = -28
+		arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		arrow.z_index = 210
+		button.add_child(arrow)
+		attach_press.call(button)
+		return button
+
+	static func collapse_toggle_style(pressed := false) -> StyleBoxFlat:
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color("#eadfca") if pressed else Color("#fff4dd")
+		style.border_color = Color("#8a6f4e")
+		style.set_border_width_all(10)
+		style.set_corner_radius_all(999)
+		style.content_margin_left = 0
+		style.content_margin_right = 0
+		style.content_margin_top = 0
+		style.content_margin_bottom = 0
+		return style
+
+class PageSwitchChevronIcon:
+	extends Control
+
+	var direction := -1
+	var ink_color := Color("#171615")
+	var fill_color := Color.WHITE
+	var shadow_color := Color(0.0, 0.0, 0.0, 0.18)
+	var stroke_width := 50.0
+	var fill_width := 31.0
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func set_direction(next_direction: int) -> void:
+		direction = 1 if next_direction >= 0 else -1
+		queue_redraw()
+
+	func _draw() -> void:
+		if size.x <= 1.0 or size.y <= 1.0:
+			return
+		var points := _chevron_points()
+		if points.size() != 3:
+			return
+		var shadow_points := PackedVector2Array()
+		for point in points:
+			shadow_points.append(point + Vector2(7.0, 8.0))
+		_draw_round_chevron(shadow_points, shadow_color, stroke_width)
+		_draw_round_chevron(points, ink_color, stroke_width)
+		_draw_round_chevron(points, fill_color, fill_width)
+
+	func _chevron_points() -> PackedVector2Array:
+		var center := size * 0.5
+		var half_width := size.x * 0.18
+		var half_height := size.y * 0.36
+		var points := PackedVector2Array()
+		if direction < 0:
+			points.append(Vector2(center.x + half_width, center.y - half_height))
+			points.append(Vector2(center.x - half_width, center.y))
+			points.append(Vector2(center.x + half_width, center.y + half_height))
+		else:
+			points.append(Vector2(center.x - half_width, center.y - half_height))
+			points.append(Vector2(center.x + half_width, center.y))
+			points.append(Vector2(center.x - half_width, center.y + half_height))
+		return points
+
+	func _draw_round_chevron(points: PackedVector2Array, color: Color, width: float) -> void:
+		if points.size() != 3:
+			return
+		var radius := width * 0.5
+		draw_line(points[0], points[1], color, width, true)
+		draw_line(points[1], points[2], color, width, true)
+		for point in points:
+			draw_circle(point, radius, color)
+
+class SkillMenuPanelChrome:
+	extends Control
+
+	var radius := 64.0
+	var border_width := 9.0
+	var shadow_height := 24.0
+	var border_color := Color("#171615")
+	var shadow_color := Color(0.05, 0.04, 0.03, 0.18)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		if size.x <= 1.0 or size.y <= 1.0:
+			return
+		if radius <= 0.0:
+			return
+		_draw_bottom_shadow()
+		_draw_border()
+
+	func _draw_bottom_shadow() -> void:
+		var bottom := maxf(0.0, size.y - border_width * 1.35)
+		var top := maxf(0.0, bottom - shadow_height)
+		var r := minf(radius, minf(size.x, size.y) * 0.5)
+		var curve_top := size.y - r
+		var lines := maxi(1, int(minf(8.0, shadow_height)))
+		var step_y := shadow_height / float(lines)
+		for i in range(lines):
+			var y := top + float(i) * step_y
+			var depth := float(i) / maxf(1.0, float(lines - 1))
+			var alpha := shadow_color.a * depth * depth
+			var line_left := border_width
+			var line_right := size.x - border_width
+			if y > curve_top:
+				var dy := y - curve_top
+				var chord := sqrt(maxf(0.0, r * r - dy * dy))
+				var corner_inset := r - chord
+				var shadow_corner_guard := border_width + 10.0
+				line_left = maxf(line_left, corner_inset + shadow_corner_guard)
+				line_right = minf(line_right, size.x - corner_inset - shadow_corner_guard)
+			if line_right > line_left:
+				draw_line(Vector2(line_left, y), Vector2(line_right, y), Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha), step_y + 1.0, false)
+
+	func _draw_border() -> void:
+		var half := border_width * 0.5
+		var left := half
+		var right := maxf(half, size.x - half)
+		var top := half
+		var bottom := maxf(half, size.y - half)
+		var r := minf(radius, minf(size.x, size.y) * 0.5 - half)
+		draw_line(Vector2(left + r, top), Vector2(right - r, top), border_color, border_width, true)
+		draw_line(Vector2(left + r, bottom), Vector2(right - r, bottom), border_color, border_width, true)
+		draw_line(Vector2(left, top + r), Vector2(left, bottom - r), border_color, border_width, true)
+		draw_line(Vector2(right, top + r), Vector2(right, bottom - r), border_color, border_width, true)
+		draw_arc(Vector2(left + r, top + r), r, PI, PI * 1.5, 8, border_color, border_width, true)
+		draw_arc(Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0, 8, border_color, border_width, true)
+		draw_arc(Vector2(right - r, bottom - r), r, 0.0, PI * 0.5, 8, border_color, border_width, true)
+		draw_arc(Vector2(left + r, bottom - r), r, PI * 0.5, PI, 8, border_color, border_width, true)
+
 var host
+var screen_render_in_progress := false
+var screen_render_target_key := ""
+var last_rendered_screen_key := ""
+var pending_screen_render_request := {}
+var pending_skill_detail_refresh_request := {}
 var queue_return_screen := "skill"
 var queue_return_skill_id := ""
 var queue_return_detail_scroll := -1
+var pinned_return_screen := "skill"
+var pinned_return_skill_id := ""
+var pinned_return_detail_scroll := -1
+var skills_utility_return_screen := "skill"
+var skills_utility_return_skill_id := ""
+var pinned_active_shelf_header: Control
+var pinned_active_shelf_background: Control
+var pinned_active_shelf_skill_id := ""
+var pinned_active_shelf_transition_skill_id := ""
+var pinned_active_shelf_transition_active := false
+var pinned_active_shelf_content: Control
+var pinned_active_shelf_stamina_strip: Control
+var pinned_active_shelf_stamina_gauges := {}
+var pinned_active_shelf_xp_label: Label
+var pinned_active_shelf_xp_bar: CleanProgressBar
+var pinned_active_shelf_regen_circle: RegenCircle
+var pinned_active_shelf_fish_circle: FishCircle
+var pinned_active_shelf_tween: Tween
+var pinned_active_shelf_height_tween: Tween
+var pin_transition_blocker: ColorRect
+var pin_transition_blocker_tween: Tween
+var pin_transition_blocker_target_screen := ""
+var pin_transition_blocker_started_msec := 0
+var pin_transition_blocker_release_started := false
+var pin_transition_blocker_fade_in_done := false
+var top_level_nav_locked_until_msec := 0
 var module_utility_row: Control
 var module_utility_buttons_row: HBoxContainer
 var module_utility_collapse_toggle: Button
@@ -51,6 +484,16 @@ var module_sort_low_level_button: Button
 var module_sort_high_level_button: Button
 var module_sort_combo_button: Button
 var module_sort_collection_button: Button
+var nav_bar: PanelContainer
+var bottom_nav_buttons_row: HBoxContainer
+var hero_tab: Button
+var hub_tab: Button
+var chat_home_tab: Button
+var chat_hub_tab: Button
+var chat_shop_tab: Button
+var shop_tab: Button
+var bottom_nav_open_close_return_to_skill_active := false
+var post_onboarding_bottom_chrome_fade_tween: Tween
 var nav_symbol_seen_ids := {}
 var hero_nav_unlocked := false
 var hero_nav_fade_tween: Tween
@@ -66,60 +509,152 @@ var page_switch_press_active := false
 var page_switch_press_target_skill_id := ""
 var page_switch_press_position := Vector2.ZERO
 var page_switch_press_dragged := false
+var skill_menu_active_drawers := {}
 
 func _init(next_host) -> void:
 	host = next_host
 
 
+func cancel_post_onboarding_bottom_chrome_fade() -> void:
+	if post_onboarding_bottom_chrome_fade_tween != null and post_onboarding_bottom_chrome_fade_tween.is_valid():
+		post_onboarding_bottom_chrome_fade_tween.kill()
+	post_onboarding_bottom_chrome_fade_tween = null
+
+
+func _fade_in_post_onboarding_bottom_chrome() -> void:
+	if not host._onboarding_runtime().onboarding_tutorial_complete:
+		return
+	module_utility_collapsed = true
+	host._profile_chat_overlay_surface()._ensure_chat_strip()
+	host._profile_chat_overlay_surface()._update_chat_strip(true)
+	_sync_module_utility_row_visibility(false)
+	cancel_post_onboarding_bottom_chrome_fade()
+	var fade_targets := []
+	for raw_control in [host._profile_chat_overlay_surface().chat_strip_control(), module_utility_row]:
+		var control := raw_control as Control
+		if control == null or not is_instance_valid(control) or not control.visible:
+			continue
+		control.modulate.a = 0.0
+		fade_targets.append(control)
+	if fade_targets.is_empty():
+		return
+	post_onboarding_bottom_chrome_fade_tween = host.create_tween()
+	var first := fade_targets[0] as Control
+	post_onboarding_bottom_chrome_fade_tween.tween_property(first, "modulate:a", 1.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	for index in range(1, fade_targets.size()):
+		var control := fade_targets[index] as Control
+		post_onboarding_bottom_chrome_fade_tween.parallel().tween_property(control, "modulate:a", 1.0, 0.34).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	post_onboarding_bottom_chrome_fade_tween.finished.connect(_finish_post_onboarding_bottom_chrome_fade)
+
+
+func _finish_post_onboarding_bottom_chrome_fade() -> void:
+	post_onboarding_bottom_chrome_fade_tween = null
+
+
+func _intro_bottom_controls_unlocked() -> bool:
+	return host._onboarding_runtime().onboarding_tutorial_complete and not host._onboarding_runtime().tutorial_active
+
+
+func _hero_unlocked() -> bool:
+	return SkillState.global_level(host.skills) >= HERO_UNLOCK_TOTAL_LEVEL
+
+
+func _hub_unlocked() -> bool:
+	return SkillState.host_skill_level(host, "build") >= HUB_UNLOCK_BUILD_LEVEL
+
+
+func _shop_unlocked() -> bool:
+	var tiers := AchievementState.all_medal_tier_counts(host)
+	if tiers.is_empty():
+		return false
+	return int(tiers[0]) >= SHOP_UNLOCK_BRONZE_MEDALS
+
+
 func _event_points_inside_bottom_nav(event: InputEvent, source: Control = null) -> bool:
-	return host._event_points_inside_bottom_interactive_ui(event, source, true)
+	return host._input_routing_shell()._event_points_inside_bottom_interactive_ui(event, source, true)
 
 
 func _position_inside_bottom_nav(event_position: Vector2) -> bool:
-	if host.nav_bar == null or not is_instance_valid(host.nav_bar) or not host.nav_bar.is_visible_in_tree():
+	if nav_bar == null or not is_instance_valid(nav_bar) or not nav_bar.is_visible_in_tree():
 		return false
-	var nav_rect: Rect2 = host.nav_bar.get_global_rect().grow(4.0)
+	var nav_rect: Rect2 = nav_bar.get_global_rect().grow(4.0)
 	return nav_rect.has_point(event_position)
 
 
+func _build_ui_shell() -> void:
+	var root := ColorRect.new()
+	host.app_background_rect = root
+	root.color = host._theme_paper_color()
+	root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	host.add_child(root)
+
+	host.home_page = Control.new()
+	host.home_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	host.home_page.offset_bottom = -BOTTOM_NAV_HEIGHT
+	host.add_child(host.home_page)
+
+	host.skills_page = Control.new()
+	host.skills_page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	host.skills_page.offset_bottom = -BOTTOM_NAV_HEIGHT
+	host.skills_page.clip_contents = true
+	host.add_child(host.skills_page)
+	host._skill_swipe_activity_surface()._ensure_skill_swipe_paper_fade_overlay()
+
+
+func _update_page_visibility() -> void:
+	host.home_page.visible = host.current_screen == "home"
+	host.skills_page.visible = host.current_screen != "home"
+	_refresh_hero_nav_unlock_state()
+	_refresh_hub_nav_unlock_state()
+	_refresh_shop_nav_unlock_state()
+	_apply_nav_style(hero_tab, host.current_screen == "home" or host.current_screen == "achievements")
+	_apply_nav_style(hub_tab, host.current_screen == "hub")
+	_apply_nav_style(host.skills_tab, host.current_screen == "menu" or host.current_screen == "skill" or host.current_screen == "pinned")
+	_apply_nav_style(shop_tab, host.current_screen == "shop")
+	_apply_nav_style(host.settings_tab, host.current_screen == "settings")
+	host._profile_chat_overlay_surface()._update_chat_strip()
+	host._onboarding_runtime()._tutorial_check_progress()
+	host._tutorial_overlay_surface()._sync_tutorial_target_indicator()
+
+
 func _build_nav_bar() -> void:
-	host.nav_bar = PanelContainer.new()
-	host.nav_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	host.nav_bar.offset_top = -host.BOTTOM_NAV_HEIGHT
-	host.nav_bar.z_index = host.CHAT_UI_Z
-	host.nav_bar.z_as_relative = false
-	host.nav_bar.clip_contents = true
-	host.nav_bar.add_theme_stylebox_override("panel", _nav_style())
-	host.add_child(host.nav_bar)
+	nav_bar = PanelContainer.new()
+	nav_bar.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	nav_bar.offset_top = -BOTTOM_NAV_HEIGHT
+	nav_bar.z_index = ProfileChatOverlaySurface.CHAT_UI_Z
+	nav_bar.z_as_relative = false
+	nav_bar.clip_contents = true
+	nav_bar.add_theme_stylebox_override("panel", _nav_style())
+	host.add_child(nav_bar)
 	var row := HBoxContainer.new()
 	row.name = "BottomNavButtonsRow"
-	host.bottom_nav_buttons_row = row
+	bottom_nav_buttons_row = row
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 120)
 	row.clip_contents = true
-	row.custom_minimum_size = Vector2(0, host.BOTTOM_NAV_HEIGHT - host.BOTTOM_NAV_SAFE_PAD)
-	host.nav_bar.add_child(row)
-	host.hero_tab = _nav_button(host.PROGRESS_STAR_ICON_TEXTURE, true)
-	host.hero_tab.custom_minimum_size = Vector2(318, 318)
-	host.hero_tab.add_theme_constant_override("icon_max_width", 244)
-	_register_nav_new_symbol_dot(host.hero_tab, "hero")
-	host.hero_tab.set_meta("bottom_nav_builtin_pressed_route", true)
-	host.hero_tab.pressed.connect(_activate_bottom_nav_target.bind("home", host.hero_tab))
-	host.hero_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("home", host.hero_tab))
-	row.add_child(host.hero_tab)
+	row.custom_minimum_size = Vector2(0, BOTTOM_NAV_HEIGHT - BOTTOM_NAV_SAFE_PAD)
+	nav_bar.add_child(row)
+	hero_tab = _nav_button(host.PROGRESS_STAR_ICON_TEXTURE, true)
+	hero_tab.custom_minimum_size = Vector2(318, 318)
+	hero_tab.add_theme_constant_override("icon_max_width", 244)
+	_register_nav_new_symbol_dot(hero_tab, "hero")
+	hero_tab.set_meta("bottom_nav_builtin_pressed_route", true)
+	hero_tab.pressed.connect(_activate_bottom_nav_target.bind("home", hero_tab))
+	hero_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("home", hero_tab))
+	row.add_child(hero_tab)
 	_sync_hero_nav_button(true)
-	host.hub_tab = _nav_button("res://assets/content/hub/hub-nav-barn.png", true)
-	host.hub_tab.add_theme_constant_override("icon_max_width", 220)
-	_register_nav_new_symbol_dot(host.hub_tab, "hub")
-	host.hub_tab.set_meta("bottom_nav_builtin_pressed_route", true)
-	host.hub_tab.pressed.connect(_activate_bottom_nav_target.bind("hub", host.hub_tab))
-	host.hub_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("hub", host.hub_tab))
-	row.add_child(host.hub_tab)
+	hub_tab = _nav_button("res://assets/content/hub/hub-nav-barn.png", true)
+	hub_tab.add_theme_constant_override("icon_max_width", 220)
+	_register_nav_new_symbol_dot(hub_tab, "hub")
+	hub_tab.set_meta("bottom_nav_builtin_pressed_route", true)
+	hub_tab.pressed.connect(_activate_bottom_nav_target.bind("hub", hub_tab))
+	hub_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("hub", hub_tab))
+	row.add_child(hub_tab)
 	_sync_hub_nav_button(true)
 	host.skills_tab = _nav_button(host.TOTAL_LEVEL_BARGRAPH_TEXTURE, true)
 	host.skills_tab.set_meta("nav_open_icon_disabled", true)
 	host.skills_tab.set_meta("bottom_nav_builtin_pressed_route", true)
-	host.skills_tab.pressed.connect(host._show_skills_module)
+	host.skills_tab.pressed.connect(_show_skills_module)
 	host.skills_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("skill", host.skills_tab))
 	row.add_child(host.skills_tab)
 	host.settings_tab = _nav_button(host.SETTINGS_GEAR_ICON_TEXTURE, true)
@@ -127,20 +662,20 @@ func _build_nav_bar() -> void:
 	host.settings_tab.pressed.connect(_activate_bottom_nav_target.bind("settings", host.settings_tab))
 	host.settings_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("settings", host.settings_tab))
 	row.add_child(host.settings_tab)
-	host.shop_tab = _nav_button(host.SHOP_ICON_TEXTURE, true)
-	host.shop_tab.add_theme_constant_override("icon_max_width", 232)
-	_register_nav_new_symbol_dot(host.shop_tab, "shop")
-	host.shop_tab.set_meta("bottom_nav_builtin_pressed_route", true)
-	host.shop_tab.pressed.connect(_activate_bottom_nav_target.bind("shop", host.shop_tab))
-	host.shop_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("shop", host.shop_tab))
-	row.add_child(host.shop_tab)
+	shop_tab = _nav_button(host.SHOP_ICON_TEXTURE, true)
+	shop_tab.add_theme_constant_override("icon_max_width", 232)
+	_register_nav_new_symbol_dot(shop_tab, "shop")
+	shop_tab.set_meta("bottom_nav_builtin_pressed_route", true)
+	shop_tab.pressed.connect(_activate_bottom_nav_target.bind("shop", shop_tab))
+	shop_tab.gui_input.connect(Callable(self, "_on_bottom_nav_button_gui_input").bind("shop", shop_tab))
+	row.add_child(shop_tab)
 	shop_nav_unlocked = false
-	host.shop_tab.modulate = host.HUB_NAV_LOCKED_MODULATE
+	shop_tab.modulate = HUB_NAV_LOCKED_MODULATE
 	_sync_bottom_nav_visibility()
 
 
 func _ensure_nav_bar_icons() -> void:
-	for button in [host.hero_tab, host.hub_tab, host.skills_tab, host.settings_tab, host.shop_tab]:
+	for button in [hero_tab, hub_tab, host.skills_tab, host.settings_tab, shop_tab]:
 		if button == null or not is_instance_valid(button):
 			continue
 		var path := str(button.get_meta("deferred_icon_path", ""))
@@ -168,8 +703,8 @@ func _nav_button(path: String, defer_icon := false) -> Button:
 	button.add_theme_constant_override("icon_max_width", 184)
 	_apply_nav_style(button, false)
 	var button_id := button.get_instance_id()
-	host._button_press_runtime().attach_button_depress_animation(button, 0.92, false)
-	button.pressed.connect(host._button_press_runtime()._pop_nav_button_bound.bind(button_id))
+	host.button_press_runtime.attach_button_depress_animation(button, 0.92, false)
+	button.pressed.connect(host.button_press_runtime._pop_nav_button_bound.bind(button_id))
 	return button
 
 
@@ -188,7 +723,7 @@ func _sync_nav_button_open_icon(button: Button, active: bool) -> void:
 		return
 	var target_path := default_path
 	if active and not bool(button.get_meta("nav_open_icon_disabled", false)):
-		target_path = host.NAV_OPEN_CLOSE_ICON_TEXTURE
+		target_path = NAV_OPEN_CLOSE_ICON_TEXTURE
 	if button.has_meta("deferred_icon_path"):
 		button.remove_meta("deferred_icon_path")
 		_set_nav_button_icon(button, target_path)
@@ -206,7 +741,7 @@ func _nav_style() -> StyleBoxFlat:
 	style.content_margin_left = 96
 	style.content_margin_right = 96
 	style.content_margin_top = 36
-	style.content_margin_bottom = host.BOTTOM_NAV_SAFE_PAD
+	style.content_margin_bottom = BOTTOM_NAV_SAFE_PAD
 	return style
 
 
@@ -223,23 +758,23 @@ func _apply_nav_style(button: Button, _active: bool) -> void:
 
 
 func _sync_bottom_nav_visibility() -> void:
-	if host.nav_bar == null or not is_instance_valid(host.nav_bar):
+	if nav_bar == null or not is_instance_valid(nav_bar):
 		return
-	var controls_unlocked: bool = host._intro_bottom_controls_unlocked()
-	host.nav_bar.visible = true
-	if host.bottom_nav_buttons_row != null and is_instance_valid(host.bottom_nav_buttons_row):
-		host.bottom_nav_buttons_row.visible = true
+	var controls_unlocked: bool = _intro_bottom_controls_unlocked()
+	nav_bar.visible = true
+	if bottom_nav_buttons_row != null and is_instance_valid(bottom_nav_buttons_row):
+		bottom_nav_buttons_row.visible = true
 	if controls_unlocked:
-		if host.hero_tab != null and is_instance_valid(host.hero_tab):
-			host.hero_tab.visible = true
-			host.hero_tab.disabled = false
-			host.hero_tab.mouse_filter = Control.MOUSE_FILTER_STOP
-			host.hero_tab.self_modulate = Color.WHITE
-		if host.hub_tab != null and is_instance_valid(host.hub_tab):
-			host.hub_tab.visible = true
-			host.hub_tab.disabled = false
-			host.hub_tab.mouse_filter = Control.MOUSE_FILTER_STOP
-			host.hub_tab.self_modulate = Color.WHITE
+		if hero_tab != null and is_instance_valid(hero_tab):
+			hero_tab.visible = true
+			hero_tab.disabled = false
+			hero_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+			hero_tab.self_modulate = Color.WHITE
+		if hub_tab != null and is_instance_valid(hub_tab):
+			hub_tab.visible = true
+			hub_tab.disabled = false
+			hub_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+			hub_tab.self_modulate = Color.WHITE
 		if host.skills_tab != null and is_instance_valid(host.skills_tab):
 			host.skills_tab.visible = true
 			host.skills_tab.disabled = false
@@ -252,16 +787,16 @@ func _sync_bottom_nav_visibility() -> void:
 			host.settings_tab.mouse_filter = Control.MOUSE_FILTER_STOP
 			host.settings_tab.self_modulate = Color.WHITE
 			host.settings_tab.modulate = Color.WHITE
-		if host.shop_tab != null and is_instance_valid(host.shop_tab):
-			host.shop_tab.visible = true
-			host.shop_tab.disabled = false
-			host.shop_tab.mouse_filter = Control.MOUSE_FILTER_STOP
-			host.shop_tab.self_modulate = Color.WHITE
+		if shop_tab != null and is_instance_valid(shop_tab):
+			shop_tab.visible = true
+			shop_tab.disabled = false
+			shop_tab.mouse_filter = Control.MOUSE_FILTER_STOP
+			shop_tab.self_modulate = Color.WHITE
 		_sync_hero_nav_button(true)
 		_sync_hub_nav_button(true)
 		_sync_shop_nav_button(true)
 		return
-	for raw_button in [host.hero_tab, host.hub_tab, host.skills_tab, host.settings_tab, host.shop_tab]:
+	for raw_button in [hero_tab, hub_tab, host.skills_tab, host.settings_tab, shop_tab]:
 		var button := raw_button as Button
 		if button == null or not is_instance_valid(button):
 			continue
@@ -272,7 +807,7 @@ func _sync_bottom_nav_visibility() -> void:
 		if controls_unlocked or settings_button or skills_button:
 			button.modulate = Color.WHITE
 		else:
-			button.modulate = host.HUB_NAV_LOCKED_MODULATE
+			button.modulate = HUB_NAV_LOCKED_MODULATE
 		button.disabled = false
 		button.mouse_filter = Control.MOUSE_FILTER_STOP if controls_unlocked or settings_button or skills_button else Control.MOUSE_FILTER_IGNORE
 
@@ -282,13 +817,15 @@ func _on_bottom_nav_button_gui_input(event: InputEvent, target_screen: String, b
 		return
 	if _bottom_nav_transition_input_locked(button):
 		return
-	var event_position: Vector2 = host._passive_button_event_position(event, button)
+	var event_position: Vector2 = host._input_routing_shell()._passive_button_event_position(event, button)
 	var event_kind := ButtonPressState.event_kind(event)
 	if event_kind == "press":
 		ButtonPressState.begin(button, "bottom_nav", event_position)
 		return
 	if event_kind == "drag":
 		ButtonPressState.update_drag(button, "bottom_nav", event_position, host.PASSIVE_BUTTON_TAP_RELEASE_SLOP)
+		if _handoff_bottom_nav_drag_to_skill_swipe(button, event, event_position):
+			return
 		return
 	if event_kind != "release":
 		return
@@ -298,10 +835,29 @@ func _on_bottom_nav_button_gui_input(event: InputEvent, target_screen: String, b
 	_activate_bottom_nav_target(target_screen, button)
 
 
-func _route_bottom_nav_button_global_input(event: InputEvent) -> bool:
-	if host.nav_bar == null or not is_instance_valid(host.nav_bar):
+func _handoff_bottom_nav_drag_to_skill_swipe(button: Button, event: InputEvent, event_position: Vector2) -> bool:
+	if host.current_screen != "skill":
 		return false
-	if not host.nav_bar.is_inside_tree() or not host.nav_bar.is_visible_in_tree():
+	if not ButtonPressState.active(button, "bottom_nav"):
+		return false
+	var press_position = button.get_meta("bottom_nav_press_position", event_position)
+	if not (press_position is Vector2):
+		return false
+	if event_position.distance_to(press_position) <= host.PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+		return false
+	ButtonPressState.clear(button, "bottom_nav")
+	host.button_press_runtime.animate_button_release(button)
+	var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
+	host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(press_position, touch_index)
+	if host._skill_swipe_activity_surface().skill_swipe_tracking:
+		host._skill_swipe_activity_surface()._update_skill_swipe_feedback(event_position)
+	return true
+
+
+func _route_bottom_nav_button_global_input(event: InputEvent) -> bool:
+	if nav_bar == null or not is_instance_valid(nav_bar):
+		return false
+	if not nav_bar.is_inside_tree() or not nav_bar.is_visible_in_tree():
 		return false
 	if not (
 		event is InputEventMouseButton
@@ -310,7 +866,7 @@ func _route_bottom_nav_button_global_input(event: InputEvent) -> bool:
 		or event is InputEventScreenDrag
 	):
 		return false
-	var event_position: Vector2 = host._passive_button_event_position(event, null)
+	var event_position: Vector2 = host._input_routing_shell()._passive_button_event_position(event, null)
 	var is_press: bool = _module_utility_event_is_press(event)
 	if is_press and _position_inside_module_utility_interactive_ui(event_position):
 		return false
@@ -323,14 +879,15 @@ func _route_bottom_nav_button_global_input(event: InputEvent) -> bool:
 	if target_screen.is_empty():
 		return false
 	_on_bottom_nav_button_gui_input(event, target_screen, button)
-	host._cancel_skill_swipe_feedback(false)
-	host._clear_active_fishing_method_button_press()
-	host.action_card_press_key = ""
+	if not host._skill_swipe_activity_surface().skill_swipe_tracking:
+		host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
+	host._fishing_ui_surface()._clear_active_fishing_method_button_press()
+	host._skill_detail_surface().action_card_press_key = ""
 	return true
 
 
 func _bottom_nav_button_at_position(event_position: Vector2) -> Button:
-	for raw_button in [host.hero_tab, host.hub_tab, host.skills_tab, host.settings_tab, host.shop_tab]:
+	for raw_button in [hero_tab, hub_tab, host.skills_tab, host.settings_tab, shop_tab]:
 		var button := raw_button as Button
 		if button == null or not is_instance_valid(button) or button.disabled:
 			continue
@@ -345,7 +902,7 @@ func _bottom_nav_button_at_position(event_position: Vector2) -> Button:
 
 
 func _active_bottom_nav_button() -> Button:
-	for raw_button in [host.hero_tab, host.hub_tab, host.skills_tab, host.settings_tab, host.shop_tab]:
+	for raw_button in [hero_tab, hub_tab, host.skills_tab, host.settings_tab, shop_tab]:
 		var button := raw_button as Button
 		if ButtonPressState.active(button, "bottom_nav"):
 			return button
@@ -353,15 +910,15 @@ func _active_bottom_nav_button() -> Button:
 
 
 func _bottom_nav_target_for_button(button: Button) -> String:
-	if button == host.hero_tab:
+	if button == hero_tab:
 		return "home"
-	if button == host.hub_tab:
+	if button == hub_tab:
 		return "hub"
 	if button == host.skills_tab:
 		return "skill"
 	if button == host.settings_tab:
 		return "settings"
-	if button == host.shop_tab:
+	if button == shop_tab:
 		return "shop"
 	return ""
 
@@ -369,11 +926,11 @@ func _bottom_nav_target_for_button(button: Button) -> String:
 func _bottom_nav_target_locked(target_screen: String) -> bool:
 	match target_screen:
 		"home":
-			return not host._hero_unlocked()
+			return not _hero_unlocked()
 		"hub":
-			return not host._hub_unlocked()
+			return not _hub_unlocked()
 		"shop":
-			return not host._shop_unlocked()
+			return not _shop_unlocked()
 	return false
 
 
@@ -397,7 +954,7 @@ func _register_nav_new_symbol_dot(button: Button, nav_id: String) -> void:
 
 func _nav_new_symbol_dot(button: Button) -> PanelContainer:
 	var dot := PanelContainer.new()
-	var diameter: float = host.CHAT_UNREAD_DOT_DIAMETER
+	var diameter: float = ProfileChatOverlaySurface.CHAT_UNREAD_DOT_DIAMETER
 	var inset := 28.0
 	dot.anchor_left = 1.0
 	dot.anchor_right = 1.0
@@ -410,7 +967,7 @@ func _nav_new_symbol_dot(button: Button) -> PanelContainer:
 	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	dot.visible = false
 	dot.z_index = 20
-	dot.add_theme_stylebox_override("panel", ChatStyles.unread_dot())
+	dot.add_theme_stylebox_override("panel", ProfileChatOverlaySurface.chat_unread_dot_style())
 	button.add_child(dot)
 	return dot
 
@@ -418,11 +975,11 @@ func _nav_new_symbol_dot(button: Button) -> PanelContainer:
 func _nav_symbol_unlocked(nav_id: String) -> bool:
 	match nav_id:
 		"hero":
-			return host._hero_unlocked()
+			return _hero_unlocked()
 		"hub":
-			return host._hub_unlocked()
+			return _hub_unlocked()
 		"shop":
-			return host._shop_unlocked()
+			return _shop_unlocked()
 	return true
 
 
@@ -467,42 +1024,42 @@ func _sync_nav_new_symbol_dot(nav_id: String = "") -> void:
 				continue
 			var dot := button.get_meta("nav_new_symbol_dot", null) as CanvasItem
 			if dot != null and is_instance_valid(dot):
-				host._set_canvas_item_visible_if_changed(dot, should_show)
+				host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(dot, should_show)
 
 
 func _nav_symbol_buttons(nav_id: String) -> Array:
 	match nav_id:
 		"hero":
-			return [host.hero_tab, host.chat_home_tab]
+			return [hero_tab, chat_home_tab]
 		"hub":
-			return [host.hub_tab, host.chat_hub_tab]
+			return [hub_tab, chat_hub_tab]
 		"shop":
-			return [host.shop_tab, host.chat_shop_tab]
+			return [shop_tab, chat_shop_tab]
 	return []
 
 
 func _sync_hero_nav_button(instant := false) -> void:
-	if host.hero_tab == null or not is_instance_valid(host.hero_tab):
+	if hero_tab == null or not is_instance_valid(hero_tab):
 		return
-	var unlocked: bool = host._hero_unlocked()
-	var target_modulate: Color = Color.WHITE if unlocked else host.HUB_NAV_LOCKED_MODULATE
+	var unlocked: bool = _hero_unlocked()
+	var target_modulate: Color = Color.WHITE if unlocked else HUB_NAV_LOCKED_MODULATE
 	hero_nav_unlocked = unlocked
-	host.hero_tab.tooltip_text = ""
-	if host.chat_home_tab != null and is_instance_valid(host.chat_home_tab):
-		host.chat_home_tab.tooltip_text = ""
+	hero_tab.tooltip_text = ""
+	if chat_home_tab != null and is_instance_valid(chat_home_tab):
+		chat_home_tab.tooltip_text = ""
 	if hero_nav_fade_tween != null and hero_nav_fade_tween.is_valid():
 		hero_nav_fade_tween.kill()
 		hero_nav_fade_tween = null
 	if instant:
-		host.hero_tab.modulate = target_modulate
-		if host.chat_home_tab != null and is_instance_valid(host.chat_home_tab):
-			host.chat_home_tab.modulate = target_modulate
+		hero_tab.modulate = target_modulate
+		if chat_home_tab != null and is_instance_valid(chat_home_tab):
+			chat_home_tab.modulate = target_modulate
 		_sync_nav_new_symbol_dot("hero")
 		return
 	hero_nav_fade_tween = host.create_tween()
-	hero_nav_fade_tween.tween_property(host.hero_tab, "modulate", target_modulate, host.HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	if host.chat_home_tab != null and is_instance_valid(host.chat_home_tab):
-		hero_nav_fade_tween.parallel().tween_property(host.chat_home_tab, "modulate", target_modulate, host.HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	hero_nav_fade_tween.tween_property(hero_tab, "modulate", target_modulate, HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if chat_home_tab != null and is_instance_valid(chat_home_tab):
+		hero_nav_fade_tween.parallel().tween_property(chat_home_tab, "modulate", target_modulate, HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_sync_nav_new_symbol_dot("hero")
 	hero_nav_fade_tween.finished.connect(_finish_hero_nav_fade_tween)
 
@@ -512,45 +1069,45 @@ func _finish_hero_nav_fade_tween() -> void:
 
 
 func _refresh_hero_nav_unlock_state() -> void:
-	if host.hero_tab == null or not is_instance_valid(host.hero_tab):
+	if hero_tab == null or not is_instance_valid(hero_tab):
 		return
-	var unlocked: bool = host._hero_unlocked()
+	var unlocked: bool = _hero_unlocked()
 	if unlocked == hero_nav_unlocked:
 		return
 	_sync_hero_nav_button(not unlocked)
 
 
 func _show_hero_locked_message(source_button: Control = null) -> void:
-	host._set_result(host.HERO_LOCKED_MESSAGE, false)
+	host._reward_feedback_surface()._set_result(HERO_LOCKED_MESSAGE, false)
 	var anchor: Control = source_button
 	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
-		anchor = host.hero_tab
+		anchor = hero_tab
 	if anchor != null and is_instance_valid(anchor) and anchor.is_visible_in_tree():
-		_float_nav_locked_message(anchor, host.HERO_LOCKED_MESSAGE)
+		_float_nav_locked_message(anchor, HERO_LOCKED_MESSAGE)
 
 
 func _sync_shop_nav_button(instant := false) -> void:
-	if host.shop_tab == null or not is_instance_valid(host.shop_tab):
+	if shop_tab == null or not is_instance_valid(shop_tab):
 		return
-	var unlocked: bool = host._shop_unlocked()
-	var target_modulate: Color = Color.WHITE if unlocked else host.HUB_NAV_LOCKED_MODULATE
+	var unlocked: bool = _shop_unlocked()
+	var target_modulate: Color = Color.WHITE if unlocked else HUB_NAV_LOCKED_MODULATE
 	shop_nav_unlocked = unlocked
-	host.shop_tab.tooltip_text = ""
-	if host.chat_shop_tab != null and is_instance_valid(host.chat_shop_tab):
-		host.chat_shop_tab.tooltip_text = ""
+	shop_tab.tooltip_text = ""
+	if chat_shop_tab != null and is_instance_valid(chat_shop_tab):
+		chat_shop_tab.tooltip_text = ""
 	if shop_nav_fade_tween != null and shop_nav_fade_tween.is_valid():
 		shop_nav_fade_tween.kill()
 		shop_nav_fade_tween = null
 	if instant:
-		host.shop_tab.modulate = target_modulate
-		if host.chat_shop_tab != null and is_instance_valid(host.chat_shop_tab):
-			host.chat_shop_tab.modulate = target_modulate
+		shop_tab.modulate = target_modulate
+		if chat_shop_tab != null and is_instance_valid(chat_shop_tab):
+			chat_shop_tab.modulate = target_modulate
 		_sync_nav_new_symbol_dot("shop")
 		return
 	shop_nav_fade_tween = host.create_tween()
-	shop_nav_fade_tween.tween_property(host.shop_tab, "modulate", target_modulate, host.HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	if host.chat_shop_tab != null and is_instance_valid(host.chat_shop_tab):
-		shop_nav_fade_tween.parallel().tween_property(host.chat_shop_tab, "modulate", target_modulate, host.HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	shop_nav_fade_tween.tween_property(shop_tab, "modulate", target_modulate, HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if chat_shop_tab != null and is_instance_valid(chat_shop_tab):
+		shop_nav_fade_tween.parallel().tween_property(chat_shop_tab, "modulate", target_modulate, HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_sync_nav_new_symbol_dot("shop")
 	shop_nav_fade_tween.finished.connect(_finish_shop_nav_fade_tween)
 
@@ -560,45 +1117,45 @@ func _finish_shop_nav_fade_tween() -> void:
 
 
 func _refresh_shop_nav_unlock_state() -> void:
-	if host.shop_tab == null or not is_instance_valid(host.shop_tab):
+	if shop_tab == null or not is_instance_valid(shop_tab):
 		return
-	var unlocked: bool = host._shop_unlocked()
+	var unlocked: bool = _shop_unlocked()
 	if unlocked == shop_nav_unlocked:
 		return
 	_sync_shop_nav_button(not unlocked)
 
 
 func _show_shop_locked_message(source_button: Control = null) -> void:
-	host._set_result(host.SHOP_LOCKED_MESSAGE, false)
+	host._reward_feedback_surface()._set_result(SHOP_LOCKED_MESSAGE, false)
 	var anchor: Control = source_button
 	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
-		anchor = host.shop_tab
+		anchor = shop_tab
 	if anchor != null and is_instance_valid(anchor) and anchor.is_visible_in_tree():
-		_float_nav_locked_message(anchor, host.SHOP_LOCKED_MESSAGE)
+		_float_nav_locked_message(anchor, SHOP_LOCKED_MESSAGE)
 
 
 func _sync_hub_nav_button(instant := false) -> void:
-	if host.hub_tab == null or not is_instance_valid(host.hub_tab):
+	if hub_tab == null or not is_instance_valid(hub_tab):
 		return
-	var unlocked: bool = host._hub_unlocked()
-	var target_modulate: Color = Color.WHITE if unlocked else host.HUB_NAV_LOCKED_MODULATE
+	var unlocked: bool = _hub_unlocked()
+	var target_modulate: Color = Color.WHITE if unlocked else HUB_NAV_LOCKED_MODULATE
 	hub_nav_unlocked = unlocked
-	host.hub_tab.tooltip_text = ""
-	if host.chat_hub_tab != null and is_instance_valid(host.chat_hub_tab):
-		host.chat_hub_tab.tooltip_text = ""
+	hub_tab.tooltip_text = ""
+	if chat_hub_tab != null and is_instance_valid(chat_hub_tab):
+		chat_hub_tab.tooltip_text = ""
 	if hub_nav_fade_tween != null and hub_nav_fade_tween.is_valid():
 		hub_nav_fade_tween.kill()
 		hub_nav_fade_tween = null
 	if instant:
-		host.hub_tab.modulate = target_modulate
-		if host.chat_hub_tab != null and is_instance_valid(host.chat_hub_tab):
-			host.chat_hub_tab.modulate = target_modulate
+		hub_tab.modulate = target_modulate
+		if chat_hub_tab != null and is_instance_valid(chat_hub_tab):
+			chat_hub_tab.modulate = target_modulate
 		_sync_nav_new_symbol_dot("hub")
 		return
 	hub_nav_fade_tween = host.create_tween()
-	hub_nav_fade_tween.tween_property(host.hub_tab, "modulate", target_modulate, host.HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	if host.chat_hub_tab != null and is_instance_valid(host.chat_hub_tab):
-		hub_nav_fade_tween.parallel().tween_property(host.chat_hub_tab, "modulate", target_modulate, host.HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	hub_nav_fade_tween.tween_property(hub_tab, "modulate", target_modulate, HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	if chat_hub_tab != null and is_instance_valid(chat_hub_tab):
+		hub_nav_fade_tween.parallel().tween_property(chat_hub_tab, "modulate", target_modulate, HUB_NAV_UNLOCK_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	_sync_nav_new_symbol_dot("hub")
 	hub_nav_fade_tween.finished.connect(_finish_hub_nav_fade_tween)
 
@@ -608,21 +1165,21 @@ func _finish_hub_nav_fade_tween() -> void:
 
 
 func _refresh_hub_nav_unlock_state() -> void:
-	if host.hub_tab == null or not is_instance_valid(host.hub_tab):
+	if hub_tab == null or not is_instance_valid(hub_tab):
 		return
-	var unlocked: bool = host._hub_unlocked()
+	var unlocked: bool = _hub_unlocked()
 	if unlocked == hub_nav_unlocked:
 		return
 	_sync_hub_nav_button(not unlocked)
 
 
 func _show_hub_locked_message(source_button: Control = null) -> void:
-	host._set_result(host.HUB_LOCKED_MESSAGE, false)
+	host._reward_feedback_surface()._set_result(HUB_LOCKED_MESSAGE, false)
 	var anchor: Control = source_button
 	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
-		anchor = host.hub_tab
+		anchor = hub_tab
 	if anchor != null and is_instance_valid(anchor) and anchor.is_visible_in_tree():
-		_float_nav_locked_message(anchor, host.HUB_LOCKED_MESSAGE)
+		_float_nav_locked_message(anchor, HUB_LOCKED_MESSAGE)
 
 
 func _float_nav_locked_message(anchor: Control, text: String) -> void:
@@ -635,7 +1192,7 @@ func _float_nav_locked_message(anchor: Control, text: String) -> void:
 		return
 	var holder_size := Vector2(430, 112)
 	var holder := Control.new()
-	holder.z_index = host.CHAT_UI_Z + 20
+	holder.z_index = ProfileChatOverlaySurface.CHAT_UI_Z + 20
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = holder_size
@@ -665,18 +1222,29 @@ func _float_nav_locked_message(anchor: Control, text: String) -> void:
 func _is_bottom_nav_button(button: Control) -> bool:
 	if button == null or not is_instance_valid(button):
 		return false
-	return button == host.hero_tab or button == host.hub_tab or button == host.skills_tab or button == host.settings_tab or button == host.shop_tab
+	return button == hero_tab or button == hub_tab or button == host.skills_tab or button == host.settings_tab or button == shop_tab
 
 
 func _bottom_nav_transition_input_locked(button: Button = null) -> bool:
-	if host.bottom_nav_transition_button_id == 0:
+	var button_press_runtime: ButtonPressState = host.button_press_runtime
+	if not button_press_runtime.bottom_nav_transition_active():
 		return false
-	if not host._bottom_nav_transition_visual_active():
-		host._button_press_runtime()._release_bottom_nav_transition_button()
+	if not _bottom_nav_transition_visual_active():
+		button_press_runtime.release_bottom_nav_transition_button()
 		return false
 	if button != null and is_instance_valid(button):
-		host._button_press_runtime().force_button_unpressed(button)
+		button_press_runtime.force_button_unpressed(button)
 	return true
+
+
+func _bottom_nav_transition_visual_active() -> bool:
+	if host._skill_swipe_activity_surface().direct_skill_nav_cover_active or host._skill_swipe_activity_surface().skill_swipe_outgoing_cover_active or host._skill_swipe_activity_surface().skill_swipe_rebuild_cover_active or host._skill_swipe_activity_surface().skill_detail_refresh_cover_active:
+		return true
+	if host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition() or _page_switch_scroll_cover_active():
+		return true
+	if pin_transition_blocker != null and is_instance_valid(pin_transition_blocker) and pin_transition_blocker.visible:
+		return true
+	return screen_render_in_progress or not pending_screen_render_request.is_empty()
 
 
 func _arm_bottom_nav_clean_activation(button: Button, target_screen: String) -> void:
@@ -700,42 +1268,270 @@ func _consume_bottom_nav_clean_activation(button: Button, target_screen: String)
 
 func _activate_bottom_nav_target(target_screen: String, source_button: Control) -> void:
 	var nav_button := source_button as Button
-	if host.bottom_nav_transition_button_id != 0 and host._bottom_nav_transition_visual_active():
+	var button_press_runtime: ButtonPressState = host.button_press_runtime
+	if button_press_runtime.bottom_nav_transition_visual_active(Callable(self, "_bottom_nav_transition_visual_active")):
 		if nav_button != null and is_instance_valid(nav_button):
-			host._button_press_runtime().force_button_unpressed(nav_button)
+			button_press_runtime.force_button_unpressed(nav_button)
 		return
 	if _is_bottom_nav_button(nav_button) and _bottom_nav_target_locked(target_screen):
-		host._button_press_runtime().force_button_unpressed(nav_button)
+		button_press_runtime.force_button_unpressed(nav_button)
 		_show_bottom_nav_locked_message(target_screen, source_button)
 		return
 	if _is_bottom_nav_button(nav_button) and not _consume_bottom_nav_clean_activation(nav_button, target_screen):
-		host._button_press_runtime().force_button_unpressed(nav_button)
+		button_press_runtime.force_button_unpressed(nav_button)
 		return
-	host._clear_queued_skill_swipe_navigation()
+	host._skill_swipe_activity_surface()._clear_queued_skill_swipe_navigation()
 	if _is_bottom_nav_button(nav_button):
-		host._hold_bottom_nav_transition_button(nav_button)
-		host._button_press_runtime()._schedule_bottom_nav_transition_button_idle_release()
+		button_press_runtime.hold_bottom_nav_transition_button(nav_button)
+		button_press_runtime._schedule_bottom_nav_transition_button_idle_release()
 	if _bottom_nav_open_close_returns_to_skill(target_screen, source_button):
-		host.top_level_nav_locked_until_msec = 0
-		host.bottom_nav_open_close_return_to_skill_active = true
-		host._show_skills_module()
-		host.bottom_nav_open_close_return_to_skill_active = false
+		_clear_top_level_nav_lock()
+		bottom_nav_open_close_return_to_skill_active = true
+		_show_skills_module()
+		bottom_nav_open_close_return_to_skill_active = false
 		return
 	if target_screen == "settings" and host.current_screen == "settings":
-		host.top_level_nav_locked_until_msec = 0
+		_clear_top_level_nav_lock()
 		host._settings_surface()._return_from_settings_page()
 		return
 	match target_screen:
 		"home":
-			host._show_home(source_button)
+			_show_home(source_button)
 		"hub":
-			host._show_hub(source_button)
+			_show_hub(source_button)
 		"skill":
-			host._show_skills_module()
+			_show_skills_module()
 		"settings":
 			host._settings_surface()._show_settings()
 		"shop":
-			host._show_shop(source_button)
+			_show_shop(source_button)
+
+
+func _show_home(source_button: Control = null) -> void:
+	if not _top_level_nav_allowed("home"):
+		return
+	if not _hero_unlocked():
+		_show_hero_locked_message(source_button)
+		return
+	_mark_nav_symbol_seen("hero")
+	if host.current_screen == "settings":
+		host._settings_surface()._disarm_reset_data_confirmation()
+	if host.current_screen == "skill":
+		host._onboarding_runtime()._complete_passive_module_tip_page_visit()
+		host._onboarding_runtime()._complete_silver_opportunity_tip_page_visit()
+	host.current_screen = "home"
+	host._reward_feedback_surface()._clear_skill_reward_floats()
+	_update_page_visibility()
+	if not host._achievement_overlay_surface().home_page_built:
+		call_deferred("_finish_show_home")
+		return
+	_finish_show_home()
+
+
+func _finish_show_home() -> void:
+	if host.current_screen != "home":
+		return
+	host._achievement_overlay_surface().ensure_home_page(host.home_page)
+	_update_page_visibility()
+	host._achievement_overlay_surface().scroll_home_to_top()
+	host._achievement_overlay_surface()._queue_home_achievement_refresh()
+
+
+func _show_skills(use_page_cover := false) -> void:
+	if host.current_screen == "menu":
+		return
+	if not _top_level_nav_allowed("menu"):
+		return
+	if host.current_screen == "settings":
+		host._settings_surface()._disarm_reset_data_confirmation()
+	if host.current_screen == "skill":
+		host._onboarding_runtime()._complete_passive_module_tip_page_visit()
+		host._onboarding_runtime()._complete_silver_opportunity_tip_page_visit()
+	if use_page_cover:
+		var cover_id := _begin_page_switch_scroll_cover_timed()
+		if cover_id == 0:
+			_complete_show_skills()
+		else:
+			_queue_page_switch_transition("show_skills", cover_id)
+		return
+	_complete_show_skills()
+
+
+func _complete_show_skills() -> void:
+	host.current_screen = "menu"
+	await _render_screen()
+	_fade_clear_page_switch_scroll_cover()
+
+
+func _select_launch_skill_page() -> void:
+	if host._onboarding_runtime()._onboarding_path_active():
+		host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
+		host.current_screen = "skill"
+		return
+	if not host.running_skill_id.is_empty() and host.skills.has(host.running_skill_id) and not host._action_data(host.running_skill_id, host.running_action_id).is_empty():
+		host.selected_skill_id = host.running_skill_id
+		host.current_screen = "skill"
+		return
+	var best_skill_id: String = host.selected_skill_id
+	var best_level := -1
+	var best_xp := -1
+	for def in host.skill_defs:
+		var skill_id := str(def["id"])
+		var skill_level := SkillState.host_skill_level(host, skill_id)
+		var skill_xp := int(host.skills.get(skill_id, {}).get("xp", 0))
+		if best_skill_id.is_empty() or skill_level > best_level or (skill_level == best_level and skill_xp > best_xp):
+			best_skill_id = skill_id
+			best_level = skill_level
+			best_xp = skill_xp
+	if host.skills.has(best_skill_id):
+		host.selected_skill_id = best_skill_id
+	host.current_screen = "skill"
+
+
+func _select_skill(skill_id: String) -> void:
+	if host._consume_skill_menu_gauge_parent_suppression(skill_id):
+		return
+	_select_skill_with_initial_scroll(skill_id, true, -1)
+
+
+func _select_skill_from_page_switch(skill_id: String, source_button: Button = null) -> void:
+	if _page_switch_transition_active():
+		return
+	if host._onboarding_runtime()._onboarding_path_active() and not host._onboarding_runtime()._onboarding_swipe_to_other_skills_allowed():
+		if not host._onboarding_runtime().onboarding_swipe_tip_sequence_running:
+			host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
+		_release_page_switch_transition_button()
+		return
+	_complete_onboarding_swipe_navigation_attempt(skill_id)
+	if source_button != null and is_instance_valid(source_button) and page_switch_transition_button_id == 0:
+		_hold_page_switch_transition_button(source_button, skill_id)
+	_begin_page_switch_scroll_cover()
+	var cover: Control = host._skill_swipe_activity_surface().skill_swipe_handoff_cover
+	if cover == null or not is_instance_valid(cover):
+		_release_page_switch_transition_button()
+		_select_skill_with_initial_scroll(skill_id, false, host.DETAIL_RESTORE_SCROLL_BOTTOM, false)
+		return
+	var cover_id: int = cover.get_instance_id()
+	_queue_page_switch_transition("select_skill", cover_id, {
+		"skill_id": skill_id,
+		"scroll_latest_activity": false,
+		"restore_detail_scroll": host.DETAIL_RESTORE_SCROLL_BOTTOM,
+		"play_nav_sfx": false,
+	})
+
+
+func _complete_onboarding_swipe_navigation_attempt(target_skill_id: String) -> void:
+	if not host._onboarding_runtime()._onboarding_path_active():
+		return
+	if host.selected_skill_id != host.TUTORIAL_STARTER_SKILL_ID or target_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
+		return
+	if not host._onboarding_runtime().onboarding_swipe_navigation_unlocked:
+		return
+	host._tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
+	host._tutorial_overlay_surface().fade_out_onboarding_swipe_overlay_tip()
+	host._onboarding_runtime()._mark_skill_swipe_tip_seen()
+
+
+func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity: bool, restore_detail_scroll: int, play_nav_sfx := true) -> void:
+	if screen_render_in_progress or (host._skill_swipe_loading_transition_active() and not _page_switch_scroll_cover_active()):
+		return
+	if not host._onboarding_runtime()._onboarding_skill_accessible(skill_id):
+		var card := host.skill_cards.get(skill_id, {}) as Dictionary
+		var source := card.get("button") as Control
+		host._onboarding_runtime()._show_onboarding_skill_locked_message(source)
+		return
+	if host.current_screen == "settings":
+		host._settings_surface()._disarm_reset_data_confirmation()
+	if skill_id != host.selected_skill_id and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
+		host._onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
+	if host.current_screen != "skill":
+		host._skill_swipe_activity_surface()._begin_direct_skill_nav_cover()
+	host.selected_skill_id = skill_id
+	host.current_screen = "skill"
+	if play_nav_sfx:
+		host.button_press_runtime.play_default_button_sfx()
+	if host._onboarding_runtime().tutorial_active and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
+		host.action_cards.clear()
+		host.action_card_keys.clear()
+		host._skill_detail_surface().detail_action_card_nodes.clear()
+		host._skill_detail_surface().detail_rendered_action_ids.clear()
+		host._skill_detail_surface().detail_lazy_plan.clear()
+		_render_screen(false, 0)
+	else:
+		_render_screen(scroll_latest_activity, restore_detail_scroll)
+	if _page_switch_scroll_cover_active():
+		call_deferred("_fade_clear_page_switch_scroll_cover")
+
+
+func _show_skills_module() -> void:
+	if host.current_screen == "skill":
+		return
+	if not _top_level_nav_allowed("skill"):
+		return
+	var previous_screen: String = host.current_screen
+	var can_reveal_current_skill_page: bool = previous_screen == "home" or previous_screen == "achievements"
+	if host.current_screen == "settings":
+		host._settings_surface()._disarm_reset_data_confirmation()
+		if bottom_nav_open_close_return_to_skill_active:
+			if not host._settings_surface().settings_return_skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, host._settings_surface().settings_return_skill_id):
+				host.selected_skill_id = host._settings_surface().settings_return_skill_id
+			host.current_screen = "skill"
+		else:
+			_select_launch_skill_page()
+	elif not SkillState.has_skill_id(host.skill_defs, host.selected_skill_id):
+		_select_launch_skill_page()
+	else:
+		host.current_screen = "skill"
+	if can_reveal_current_skill_page and not host._onboarding_runtime()._onboarding_path_active():
+		if _try_reveal_current_skill_page(_screen_page_cache_key(host.current_screen), true):
+			return
+	_render_screen(true)
+	if host._onboarding_runtime()._onboarding_path_active():
+		host._onboarding_runtime().call_deferred("_resync_onboarding_skill_detail_after_navigation")
+
+
+func _show_hub(source_button: Control = null) -> void:
+	if not _top_level_nav_allowed("hub"):
+		return
+	if not _hub_unlocked():
+		_show_hub_locked_message(source_button)
+		return
+	_mark_nav_symbol_seen("hub")
+	if host.current_screen == "settings":
+		host._settings_surface()._disarm_reset_data_confirmation()
+	host.current_screen = "hub"
+	host._hub_surface().hub_detail_open = false
+	_render_screen()
+
+
+func _show_shop(source_button: Control = null) -> void:
+	if not _top_level_nav_allowed("shop"):
+		return
+	if source_button != null and not _shop_unlocked():
+		_show_shop_locked_message(source_button)
+		return
+	if _shop_unlocked():
+		_mark_nav_symbol_seen("shop")
+	if host.current_screen == "settings":
+		host._settings_surface()._disarm_reset_data_confirmation()
+	host.current_screen = "shop"
+	_render_screen()
+
+
+func _clear_top_level_nav_lock() -> void:
+	top_level_nav_locked_until_msec = 0
+
+
+func _top_level_nav_allowed(target_screen: String) -> bool:
+	var now := Time.get_ticks_msec()
+	if screen_render_in_progress or host._skill_swipe_loading_transition_active():
+		return false
+	if now < top_level_nav_locked_until_msec:
+		return false
+	if host.current_screen == target_screen:
+		return false
+	top_level_nav_locked_until_msec = now + TOP_LEVEL_NAV_DEBOUNCE_MSEC
+	return true
 
 
 func _bottom_nav_open_close_returns_to_skill(target_screen: String, source_button: Control) -> bool:
@@ -764,22 +1560,20 @@ func _capture_page_state() -> Dictionary:
 		"action_cards": host.action_cards,
 		"action_card_keys": host.action_card_keys,
 		"content_scroll": host.content_scroll,
-		"detail_xp_label": host.detail_xp_label,
-		"detail_xp_bar": host.detail_xp_bar,
-		"detail_regen_circle": host.detail_regen_circle,
-		"detail_fish_circle": host.detail_fish_circle,
-		"detail_blue_guy_health_gauge": host.detail_blue_guy_health_gauge,
-		"detail_auto_eat_fish_button": host.detail_auto_eat_fish_button,
-		"detail_stamina_bar": host.detail_stamina_bar,
-		"detail_header_body": host.detail_header_body,
-		"detail_header_left_block": host.detail_header_left_block,
-		"detail_actions_scroll": host.detail_actions_scroll,
-		"detail_actions_top_spacer": host.detail_actions_top_spacer,
-		"detail_unlock_scroll_spacer": host.detail_unlock_scroll_spacer,
-		"detail_shelf_shadow_overlay": host.detail_shelf_shadow_overlay,
-		"detail_back_button": host.detail_back_button,
-		"detail_back_press_active": host.detail_back_press_active,
-		"detail_back_press_touch_index": host.detail_back_press_touch_index,
+		"detail_xp_label": host._skill_detail_surface().detail_xp_label,
+		"detail_xp_bar": host._skill_detail_surface().detail_xp_bar,
+		"detail_regen_circle": host._skill_detail_surface().detail_regen_circle,
+		"detail_fish_circle": host._skill_detail_surface().detail_fish_circle,
+		"detail_blue_guy_health_gauge": host._skill_detail_surface().detail_blue_guy_health_gauge,
+		"detail_auto_eat_fish_button": host._skill_detail_surface().detail_auto_eat_fish_button,
+		"detail_stamina_bar": host._skill_detail_surface().detail_stamina_bar,
+		"detail_header_body": host._skill_detail_surface().detail_header_body,
+		"detail_header_left_block": host._skill_detail_surface().detail_header_left_block,
+		"detail_actions_scroll": host._skill_detail_surface().detail_actions_scroll,
+		"detail_actions_top_spacer": host._skill_detail_surface().detail_actions_top_spacer,
+		"detail_unlock_scroll_spacer": host._skill_detail_surface().detail_unlock_scroll_spacer,
+		"detail_shelf_shadow_overlay": host._skill_detail_surface().detail_shelf_shadow_overlay,
+		"detail_back_state": host._skill_detail_surface()._navigation_detail_back_state(),
 		"detail_jump_top_button": host.detail_jump_top_button,
 		"detail_jump_bottom_button": host.detail_jump_bottom_button,
 		"detail_jump_top_hold": host.detail_jump_top_hold,
@@ -788,17 +1582,17 @@ func _capture_page_state() -> Dictionary:
 		"detail_jump_bottom_hovered": host.detail_jump_bottom_hovered,
 		"chain_audio_scroll_direction": host._audio_director().chain_audio_scroll_direction,
 		"chain_audio_scroll_focus_seconds": host._audio_director().chain_audio_scroll_focus_seconds,
-		"detail_action_card_nodes": host.detail_action_card_nodes,
-		"detail_rendered_action_ids": host.detail_rendered_action_ids,
-		"detail_lazy_plan": host.detail_lazy_plan,
-		"detail_lazy_stack": host.detail_lazy_stack,
-		"detail_lazy_last_scroll": host.detail_lazy_last_scroll,
-		"skill_swipe_frame": host.skill_swipe_frame,
-		"skill_swipe_page": host.skill_swipe_page,
-		"skill_swipe_animating": host.skill_swipe_animating,
-		"skill_strip_ids": host.skill_strip_ids.duplicate(),
-		"skill_strip_index": host.skill_strip_index,
-		"skill_strip_refs": host.skill_strip_refs.duplicate(),
+		"detail_action_card_nodes": host._skill_detail_surface().detail_action_card_nodes,
+		"detail_rendered_action_ids": host._skill_detail_surface().detail_rendered_action_ids,
+		"detail_lazy_plan": host._skill_detail_surface().detail_lazy_plan,
+		"detail_lazy_stack": host._skill_detail_surface().detail_lazy_stack,
+		"detail_lazy_last_scroll": host._skill_detail_surface().detail_lazy_last_scroll,
+		"skill_swipe_frame": host._skill_swipe_activity_surface().skill_swipe_frame,
+		"skill_swipe_page": host._skill_swipe_activity_surface().skill_swipe_page,
+		"skill_swipe_animating": host._skill_swipe_activity_surface().skill_swipe_animating,
+		"skill_strip_ids": host._skill_swipe_activity_surface().skill_strip_ids.duplicate(),
+		"skill_strip_index": host._skill_swipe_activity_surface().skill_strip_index,
+		"skill_strip_refs": host._skill_swipe_activity_surface().skill_strip_refs.duplicate(),
 		"skill_swipe_preview_state": host._skill_swipe_activity_surface()._navigation_state(),
 		"settings_surface_state": host._settings_surface()._navigation_state(),
 		"god_mode_controls": host.god_mode_controls,
@@ -809,43 +1603,41 @@ func _apply_page_state(state: Dictionary) -> void:
 	host.skill_cards = state.get("skill_cards", {}) as Dictionary
 	host.action_cards = state.get("action_cards", {}) as Dictionary
 	host.action_card_keys = state.get("action_card_keys", []) as Array
-	host._prune_invalid_action_cards()
-	host.content_scroll = host._state_object_ref(state.get("content_scroll"))
-	host.detail_xp_label = host._state_object_ref(state.get("detail_xp_label"))
-	host.detail_xp_bar = host._state_object_ref(state.get("detail_xp_bar"))
-	host.detail_regen_circle = host._state_object_ref(state.get("detail_regen_circle"))
-	host.detail_fish_circle = host._state_object_ref(state.get("detail_fish_circle"))
-	host.detail_blue_guy_health_gauge = host._state_object_ref(state.get("detail_blue_guy_health_gauge"))
-	host.detail_auto_eat_fish_button = host._state_object_ref(state.get("detail_auto_eat_fish_button"))
-	host.detail_stamina_bar = host._state_object_ref(state.get("detail_stamina_bar"))
-	host.detail_header_body = host._state_object_ref(state.get("detail_header_body"))
-	host.detail_header_left_block = host._state_object_ref(state.get("detail_header_left_block"))
-	host.detail_actions_scroll = host._state_object_ref(state.get("detail_actions_scroll"))
-	host.detail_actions_top_spacer = host._state_object_ref(state.get("detail_actions_top_spacer"))
-	host.detail_unlock_scroll_spacer = host._state_object_ref(state.get("detail_unlock_scroll_spacer"))
-	host.detail_shelf_shadow_overlay = host._state_object_ref(state.get("detail_shelf_shadow_overlay"))
-	host.detail_back_button = host._state_object_ref(state.get("detail_back_button"))
-	host.detail_back_press_active = bool(state.get("detail_back_press_active", false))
-	host.detail_back_press_touch_index = int(state.get("detail_back_press_touch_index", -1))
-	host.detail_jump_top_button = host._state_object_ref(state.get("detail_jump_top_button"))
-	host.detail_jump_bottom_button = host._state_object_ref(state.get("detail_jump_bottom_button"))
+	host._skill_detail_surface()._prune_invalid_action_cards()
+	host.content_scroll = host._app_lifecycle_runtime().state_object_ref(state.get("content_scroll"))
+	host._skill_detail_surface().detail_xp_label = host._app_lifecycle_runtime().state_object_ref(state.get("detail_xp_label"))
+	host._skill_detail_surface().detail_xp_bar = host._app_lifecycle_runtime().state_object_ref(state.get("detail_xp_bar"))
+	host._skill_detail_surface().detail_regen_circle = host._app_lifecycle_runtime().state_object_ref(state.get("detail_regen_circle"))
+	host._skill_detail_surface().detail_fish_circle = host._app_lifecycle_runtime().state_object_ref(state.get("detail_fish_circle"))
+	host._skill_detail_surface().detail_blue_guy_health_gauge = host._app_lifecycle_runtime().state_object_ref(state.get("detail_blue_guy_health_gauge"))
+	host._skill_detail_surface().detail_auto_eat_fish_button = host._app_lifecycle_runtime().state_object_ref(state.get("detail_auto_eat_fish_button"))
+	host._skill_detail_surface().detail_stamina_bar = host._app_lifecycle_runtime().state_object_ref(state.get("detail_stamina_bar"))
+	host._skill_detail_surface().detail_header_body = host._app_lifecycle_runtime().state_object_ref(state.get("detail_header_body"))
+	host._skill_detail_surface().detail_header_left_block = host._app_lifecycle_runtime().state_object_ref(state.get("detail_header_left_block"))
+	host._skill_detail_surface().detail_actions_scroll = host._app_lifecycle_runtime().state_object_ref(state.get("detail_actions_scroll"))
+	host._skill_detail_surface().detail_actions_top_spacer = host._app_lifecycle_runtime().state_object_ref(state.get("detail_actions_top_spacer"))
+	host._skill_detail_surface().detail_unlock_scroll_spacer = host._app_lifecycle_runtime().state_object_ref(state.get("detail_unlock_scroll_spacer"))
+	host._skill_detail_surface().detail_shelf_shadow_overlay = host._app_lifecycle_runtime().state_object_ref(state.get("detail_shelf_shadow_overlay"))
+	host._skill_detail_surface()._apply_navigation_detail_back_state(state.get("detail_back_state", {}) as Dictionary)
+	host.detail_jump_top_button = host._app_lifecycle_runtime().state_object_ref(state.get("detail_jump_top_button"))
+	host.detail_jump_bottom_button = host._app_lifecycle_runtime().state_object_ref(state.get("detail_jump_bottom_button"))
 	host.detail_jump_top_hold = float(state.get("detail_jump_top_hold", 0.0))
 	host.detail_jump_bottom_hold = float(state.get("detail_jump_bottom_hold", 0.0))
 	host.detail_jump_top_hovered = bool(state.get("detail_jump_top_hovered", false))
 	host.detail_jump_bottom_hovered = bool(state.get("detail_jump_bottom_hovered", false))
 	host._audio_director().chain_audio_scroll_direction = int(state.get("chain_audio_scroll_direction", 0))
 	host._audio_director().chain_audio_scroll_focus_seconds = float(state.get("chain_audio_scroll_focus_seconds", 0.0))
-	host.detail_action_card_nodes = state.get("detail_action_card_nodes", {}) as Dictionary
-	host.detail_rendered_action_ids = state.get("detail_rendered_action_ids", []) as Array
-	host.detail_lazy_plan = state.get("detail_lazy_plan", []) as Array
-	host.detail_lazy_stack = host._state_object_ref(state.get("detail_lazy_stack"))
-	host.detail_lazy_last_scroll = float(state.get("detail_lazy_last_scroll", -1.0))
-	host.skill_swipe_frame = host._state_object_ref(state.get("skill_swipe_frame"))
-	host.skill_swipe_page = host._state_object_ref(state.get("skill_swipe_page"))
-	host.skill_swipe_animating = bool(state.get("skill_swipe_animating", false))
-	host.skill_strip_ids = state.get("skill_strip_ids", []) as Array
-	host.skill_strip_index = int(state.get("skill_strip_index", 0))
-	host.skill_strip_refs = state.get("skill_strip_refs", {}) as Dictionary
+	host._skill_detail_surface().detail_action_card_nodes = state.get("detail_action_card_nodes", {}) as Dictionary
+	host._skill_detail_surface().detail_rendered_action_ids = state.get("detail_rendered_action_ids", []) as Array
+	host._skill_detail_surface().detail_lazy_plan = state.get("detail_lazy_plan", []) as Array
+	host._skill_detail_surface().detail_lazy_stack = host._app_lifecycle_runtime().state_object_ref(state.get("detail_lazy_stack"))
+	host._skill_detail_surface().detail_lazy_last_scroll = float(state.get("detail_lazy_last_scroll", -1.0))
+	host._skill_swipe_activity_surface().skill_swipe_frame = host._app_lifecycle_runtime().state_object_ref(state.get("skill_swipe_frame"))
+	host._skill_swipe_activity_surface().skill_swipe_page = host._app_lifecycle_runtime().state_object_ref(state.get("skill_swipe_page"))
+	host._skill_swipe_activity_surface().skill_swipe_animating = bool(state.get("skill_swipe_animating", false))
+	host._skill_swipe_activity_surface().skill_strip_ids = state.get("skill_strip_ids", []) as Array
+	host._skill_swipe_activity_surface().skill_strip_index = int(state.get("skill_strip_index", 0))
+	host._skill_swipe_activity_surface().skill_strip_refs = state.get("skill_strip_refs", {}) as Dictionary
 	host._skill_swipe_activity_surface()._apply_navigation_state(state.get("skill_swipe_preview_state", {}) as Dictionary)
 	host._settings_surface()._apply_navigation_state(state.get("settings_surface_state", {}) as Dictionary)
 	host.god_mode_controls = state.get("god_mode_controls", []) as Array
@@ -853,81 +1645,71 @@ func _apply_page_state(state: Dictionary) -> void:
 
 func _reset_page_control_refs() -> void:
 	host.skill_cards.clear()
-	host.skill_menu_active_drawers.clear()
-	host._clear_detail_lazy_cache_bin()
-	host._clear_action_pop_tweens()
+	skill_menu_active_drawers.clear()
+	host._skill_detail_surface()._clear_detail_lazy_cache_bin()
+	host._skill_swipe_activity_surface()._clear_action_pop_tweens()
 	host._reward_feedback_surface()._clear_action_crit_tweens()
-	host._clear_stamina_gauge_pop_tween()
-	host._clear_activity_unlock_visual_scroll_tween()
+	host._reward_feedback_surface()._clear_stamina_gauge_pop_tween()
+	host._activity_unlock_ceremony_surface().clear_visual_scroll_tween()
 	host.action_cards.clear()
 	host.action_card_keys.clear()
 	host.content_scroll = null
-	host.detail_xp_label = null
-	host.detail_xp_bar = null
-	host.detail_regen_circle = null
-	host.detail_regen_circle_host = null
-	host.detail_regen_circle_fade_group = null
-	host.detail_fish_circle = null
-	host.detail_blue_guy_health_gauge = null
-	host.detail_auto_eat_fish_button = null
-	host.pinned_active_shelf_header = null
-	host.pinned_active_shelf_background = null
-	host.pinned_active_shelf_skill_id = ""
-	host.pinned_active_shelf_transition_skill_id = ""
-	host.pinned_active_shelf_transition_active = false
-	host.pinned_active_shelf_content = null
-	host.pinned_active_shelf_stamina_strip = null
-	host.pinned_active_shelf_stamina_gauges.clear()
-	host.pinned_active_shelf_xp_label = null
-	host.pinned_active_shelf_xp_bar = null
-	host.pinned_active_shelf_regen_circle = null
-	host.pinned_active_shelf_fish_circle = null
-	if host.pinned_active_shelf_tween != null and host.pinned_active_shelf_tween.is_valid():
-		host.pinned_active_shelf_tween.kill()
-	host.pinned_active_shelf_tween = null
-	if host.pinned_active_shelf_height_tween != null and host.pinned_active_shelf_height_tween.is_valid():
-		host.pinned_active_shelf_height_tween.kill()
-	host.pinned_active_shelf_height_tween = null
-	host.detail_stamina_bar = null
-	host.detail_header_body = null
-	host.detail_header_left_block = null
-	host.detail_actions_scroll = null
-	host.detail_actions_top_spacer = null
-	if host.onboarding_first_module_spacer_tween != null and host.onboarding_first_module_spacer_tween.is_valid():
-		host.onboarding_first_module_spacer_tween.kill()
-	host.onboarding_first_module_spacer_tween = null
-	host.detail_unlock_scroll_spacer = null
-	host.detail_shelf_shadow_overlay = null
-	host.detail_back_button = null
-	host.detail_back_press_active = false
-	host.detail_back_press_touch_index = -1
+	host._skill_detail_surface().detail_xp_label = null
+	host._skill_detail_surface().detail_xp_bar = null
+	host._skill_detail_surface().detail_regen_circle = null
+	host._skill_detail_surface().detail_regen_circle_host = null
+	host._skill_detail_surface().detail_regen_circle_fade_group = null
+	host._skill_detail_surface().detail_fish_circle = null
+	host._skill_detail_surface().detail_blue_guy_health_gauge = null
+	host._skill_detail_surface().detail_auto_eat_fish_button = null
+	pinned_active_shelf_header = null
+	pinned_active_shelf_background = null
+	pinned_active_shelf_skill_id = ""
+	pinned_active_shelf_transition_skill_id = ""
+	pinned_active_shelf_transition_active = false
+	pinned_active_shelf_content = null
+	pinned_active_shelf_stamina_strip = null
+	pinned_active_shelf_stamina_gauges.clear()
+	pinned_active_shelf_xp_label = null
+	pinned_active_shelf_xp_bar = null
+	pinned_active_shelf_regen_circle = null
+	pinned_active_shelf_fish_circle = null
+	if pinned_active_shelf_tween != null and pinned_active_shelf_tween.is_valid():
+		pinned_active_shelf_tween.kill()
+	pinned_active_shelf_tween = null
+	if pinned_active_shelf_height_tween != null and pinned_active_shelf_height_tween.is_valid():
+		pinned_active_shelf_height_tween.kill()
+	pinned_active_shelf_height_tween = null
+	host._skill_detail_surface().detail_stamina_bar = null
+	host._skill_detail_surface().detail_header_body = null
+	host._skill_detail_surface().detail_header_left_block = null
+	host._skill_detail_surface().detail_actions_scroll = null
+	host._skill_detail_surface().detail_actions_top_spacer = null
+	if host._skill_detail_surface().onboarding_first_module_spacer_tween != null and host._skill_detail_surface().onboarding_first_module_spacer_tween.is_valid():
+		host._skill_detail_surface().onboarding_first_module_spacer_tween.kill()
+	host._skill_detail_surface().onboarding_first_module_spacer_tween = null
+	host._skill_detail_surface().detail_unlock_scroll_spacer = null
+	host._skill_detail_surface().detail_shelf_shadow_overlay = null
+	host._skill_detail_surface()._clear_detail_back_arrow_state()
 	host._skill_detail_surface()._clear_detail_jump_arrow_state()
 	host._audio_director().chain_audio_scroll_direction = 0
 	host._audio_director().chain_audio_scroll_focus_seconds = 0.0
-	host.detail_action_card_nodes.clear()
-	host.detail_rendered_action_ids.clear()
-	host.detail_lazy_plan.clear()
-	host.detail_lazy_last_scroll = -1.0
-	host.detail_lazy_stack = null
-	host.detail_lazy_refresh_token += 1
+	host._skill_detail_surface().detail_action_card_nodes.clear()
+	host._skill_detail_surface().detail_rendered_action_ids.clear()
+	host._skill_detail_surface().detail_lazy_plan.clear()
+	host._skill_detail_surface().detail_lazy_last_scroll = -1.0
+	host._skill_detail_surface().detail_lazy_stack = null
+	host._skill_detail_surface().detail_lazy_refresh_token += 1
 	host._skill_detail_surface()._cancel_detail_card_texture_prewarm()
-	host.activity_start_highlight_token += 1
-	host.activity_start_highlight_pending = false
-	host.activity_start_highlight_active = false
-	if host.activity_start_highlight_fade_tween != null:
-		host.activity_start_highlight_fade_tween.kill()
-	host.activity_start_highlight_fade_tween = null
-	host.activity_start_highlight_border = null
-	host.activity_start_highlight_card_key = ""
-	host._restore_activity_start_highlight_frame_clip()
-	host.skill_swipe_frame = null
-	host.skill_swipe_page = null
-	host.skill_swipe_drag_offset_x = 0.0
-	host.skill_swipe_gap_render_offset_x = 0.0
-	host.skill_swipe_animating = false
-	host.skill_strip_ids.clear()
-	host.skill_strip_index = 0
-	host.skill_strip_refs.clear()
+	host._tutorial_overlay_surface()._dismiss_activity_start_highlight(true)
+	host._skill_swipe_activity_surface().skill_swipe_frame = null
+	host._skill_swipe_activity_surface().skill_swipe_page = null
+	host._skill_swipe_activity_surface().skill_swipe_drag_offset_x = 0.0
+	host._skill_swipe_activity_surface().skill_swipe_gap_render_offset_x = 0.0
+	host._skill_swipe_activity_surface().skill_swipe_animating = false
+	host._skill_swipe_activity_surface().skill_strip_ids.clear()
+	host._skill_swipe_activity_surface().skill_strip_index = 0
+	host._skill_swipe_activity_surface().skill_strip_refs.clear()
 	host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
 	host._hub_surface()._clear_hub_page_control_refs()
 	host._settings_surface()._clear_settings_page_control_refs()
@@ -944,44 +1726,110 @@ func _skill_detail_cache_key(skill_id: String = "") -> String:
 	return "skill:%s" % id
 
 
+func _flush_skill_swipe_handoff_for_navigation() -> void:
+	host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
+
+
+func reset_navigation_render_state() -> void:
+	last_rendered_screen_key = ""
+	host._skill_swipe_activity_surface()._kill_skill_swipe_tween()
+	host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
+	host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
+	host._skill_swipe_activity_surface().skill_swipe_frame = null
+	host._skill_swipe_activity_surface().skill_swipe_page = null
+	host._skill_swipe_activity_surface().skill_swipe_drag_offset_x = 0.0
+	host._skill_swipe_activity_surface().skill_swipe_gap_render_offset_x = 0.0
+
+
+func _try_reveal_current_skill_page(target_key: String, scroll_latest_activity: bool) -> bool:
+	if target_key.is_empty() or not target_key.begins_with("skill:"):
+		return false
+	if last_rendered_screen_key != target_key:
+		return false
+	if host.skills_content == null or not is_instance_valid(host.skills_content) or host.skills_content.get_child_count() == 0:
+		return false
+	if host._skill_swipe_activity_surface().skill_swipe_frame == null or not is_instance_valid(host._skill_swipe_activity_surface().skill_swipe_frame):
+		return false
+	var stack: Control = host._skill_detail_surface()._detail_actions_stack()
+	if stack == null or not is_instance_valid(stack) or not host._skill_swipe_activity_surface()._skill_detail_stack_has_visible_modules(stack):
+		return false
+	if not _detail_render_signature_current(host.selected_skill_id):
+		return false
+	host._clear_page_transient_input_state()
+	host._skill_swipe_activity_surface().skill_swipe_animating = false
+	host._skill_swipe_activity_surface().skill_swipe_animation_mode = ""
+	host._skill_swipe_activity_surface()._kill_skill_swipe_tween()
+	_apply_skills_content_layout_for_screen()
+	host._skill_detail_surface()._sync_skill_detail_back_arrow_visibility()
+	if host._skill_detail_surface().detail_actions_scroll != null and is_instance_valid(host._skill_detail_surface().detail_actions_scroll):
+		Callable(host._skill_detail_surface(), "_sync_detail_actions_scroll_limit_deferred").call_deferred()
+		if scroll_latest_activity:
+			host._skill_detail_surface().call_deferred("_scroll_to_resume_activity", false)
+	_finish_render_screen_transition(target_key)
+	return true
+
+
+func _detail_render_signature_current(skill_id: String) -> bool:
+	var plan_data: Dictionary = host._skill_detail_surface()._detail_lazy_plan_and_signature_for_skill(skill_id)
+	var expected := plan_data.get("signature", []) as Array
+	if expected.size() != host._skill_detail_surface().detail_rendered_action_ids.size():
+		return false
+	for index in range(expected.size()):
+		if str(expected[index]) != str(host._skill_detail_surface().detail_rendered_action_ids[index]):
+			return false
+	var expected_plan := plan_data.get("plan", []) as Array
+	if expected_plan.size() != host._skill_detail_surface().detail_lazy_plan.size():
+		return false
+	for index in range(expected_plan.size()):
+		var expected_entry: Dictionary = expected_plan[index] as Dictionary
+		var rendered_entry: Dictionary = host._skill_detail_surface().detail_lazy_plan[index] as Dictionary
+		if str(expected_entry.get("kind", "")) != str(rendered_entry.get("kind", "")):
+			return false
+		if str(expected_entry.get("track_id", "")) != str(rendered_entry.get("track_id", "")):
+			return false
+		if absf(float(expected_entry.get("height", 0.0)) - float(rendered_entry.get("height", 0.0))) > 0.5:
+			return false
+	return true
+
+
 func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1, boot_async := false):
 	host.module_ui_refresh_token += 1
-	host.detail_lazy_refresh_token += 1
+	host._skill_detail_surface().detail_lazy_refresh_token += 1
 	var requested_key: String = _screen_page_cache_key(host.current_screen)
-	if host.screen_render_in_progress:
-		if requested_key != host.screen_render_target_key:
-			host._store_pending_screen_render_request(scroll_latest_activity, restore_detail_scroll, boot_async, requested_key)
+	if screen_render_in_progress:
+		if requested_key != screen_render_target_key:
+			_store_pending_screen_render_request(scroll_latest_activity, restore_detail_scroll, boot_async, requested_key)
 		return
-	host.screen_render_in_progress = true
-	host.screen_render_target_key = requested_key
+	screen_render_in_progress = true
+	screen_render_target_key = requested_key
 	if host.skills_content == null:
-		host._finish_screen_render_request()
+		_finish_screen_render_request()
 		return
-	if host.current_screen == "skill" and host._skill_swipe_navigation_blocks_detail_refresh():
-		host._finish_screen_render_request()
+	if host.current_screen == "skill" and host._skill_swipe_activity_surface()._skill_swipe_navigation_blocks_detail_refresh():
+		_finish_screen_render_request()
 		return
 	var target_key: String = requested_key
-	if host.current_screen == "skill" and host._try_reveal_current_skill_page(target_key, scroll_latest_activity):
-		host._finish_screen_render_request()
+	if host.current_screen == "skill" and _try_reveal_current_skill_page(target_key, scroll_latest_activity):
+		_finish_screen_render_request()
 		return
-	host.skill_swipe_animating = false
-	host.skill_swipe_animation_mode = ""
-	host._kill_skill_swipe_tween()
+	host._skill_swipe_activity_surface().skill_swipe_animating = false
+	host._skill_swipe_activity_surface().skill_swipe_animation_mode = ""
+	host._skill_swipe_activity_surface()._kill_skill_swipe_tween()
 	host._clear_page_transient_input_state()
 	if host.current_screen != "skill":
 		host._reward_feedback_surface()._clear_skill_reward_floats()
-		host._cancel_activity_unlock_transients_for_navigation()
-	host._prepare_skills_page_transition(target_key)
+		host._activity_unlock_ceremony_surface().cancel_transients_for_navigation()
+	_prepare_skills_page_transition(target_key)
 	if host.current_screen != "settings":
 		host._settings_surface()._clear_settings_page_control_refs()
 	host._hub_surface()._kill_hub_detail_motion_tween()
-	host._kill_transient_tweens_in_subtree(host.skills_content)
-	host._apply_skills_content_layout_for_screen()
+	host._app_lifecycle_runtime()._kill_transient_tweens_in_subtree(host.skills_content)
+	_apply_skills_content_layout_for_screen()
 	host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
-	host.skill_swipe_frame = null
-	host.skill_swipe_page = null
+	host._skill_swipe_activity_surface().skill_swipe_frame = null
+	host._skill_swipe_activity_surface().skill_swipe_page = null
 	_reset_page_control_refs()
-	host._clear_skills_content_orphans()
+	_clear_skills_content_orphans()
 	if host.current_screen == "skill":
 		await host._skill_detail_surface()._render_skill_detail(scroll_latest_activity, restore_detail_scroll, boot_async)
 	elif host.current_screen == "pinned":
@@ -989,7 +1837,7 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	elif host.current_screen == "queue":
 		host._skill_swipe_activity_surface()._render_activity_queue_page()
 	elif host.current_screen == "leaderboard":
-		host._leaderboard_presentation()._render_leaderboard_page()
+		host.leaderboard_presentation._render_leaderboard_page()
 	elif host.current_screen == "hub":
 		host._hub_surface()._render_hub_page()
 	elif host.current_screen == "settings":
@@ -1001,8 +1849,172 @@ func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1
 	else:
 		_render_skill_menu_shelf()
 		_render_skill_menu_page()
-	host._finish_render_screen_transition(target_key)
-	host._finish_screen_render_request()
+	_finish_render_screen_transition(target_key)
+	_finish_screen_render_request()
+
+
+func _clear_skills_content_orphans() -> void:
+	if host.skills_content == null or host.skills_content.get_child_count() == 0:
+		return
+	host._app_lifecycle_runtime()._kill_transient_tweens_in_subtree(host.skills_content)
+	host._clear(host.skills_content)
+
+
+func _finish_render_screen_transition(target_key: String) -> void:
+	_apply_skills_content_layout_for_screen()
+	last_rendered_screen_key = target_key
+	if host.current_screen == "skill" and not host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition() and not host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount:
+		host._skill_detail_surface()._repair_blank_detail_lazy_stack()
+		host._skill_detail_surface().call_deferred("_repair_blank_detail_lazy_stack")
+	if (
+		host._skill_swipe_activity_surface().skill_detail_refresh_cover_active
+		and not host._skill_swipe_activity_surface().skill_swipe_pending_full_finalize
+		and host._skill_detail_surface().module_ui_pending_pin_scroll_anchor.is_empty()
+		and not host._skill_detail_surface().module_ui_pin_refresh_cover_requested
+	):
+		host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
+	elif host._skill_swipe_activity_surface().direct_skill_nav_cover_active and not host._skill_swipe_activity_surface().skill_swipe_pending_full_finalize:
+		host._skill_swipe_activity_surface()._fade_clear_direct_skill_nav_cover()
+	elif (
+		not host._skill_swipe_activity_surface().skill_swipe_pending_full_finalize
+		and
+		not host._skill_swipe_activity_surface().skill_swipe_outgoing_cover_active
+		and not host._skill_swipe_activity_surface().skill_swipe_rebuild_cover_active
+		and not host._skill_swipe_activity_surface().skill_swipe_animating
+		and host._skill_swipe_activity_surface().skill_swipe_handoff_cover != null
+		and is_instance_valid(host._skill_swipe_activity_surface().skill_swipe_handoff_cover)
+		and not _page_switch_scroll_cover_active()
+	):
+		host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
+	_update_page_visibility()
+	host._profile_chat_overlay_surface()._update_chat_strip(true)
+	host.call_deferred("_update_ui", 0.0, true)
+	if host.current_screen == "skill":
+		if host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
+			if host._onboarding_runtime()._onboarding_swipe_tip_sequence_resumable() and not host._onboarding_runtime().onboarding_swipe_tip_sequence_running:
+				host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
+		else:
+			host._onboarding_runtime().call_deferred("_maybe_show_onboarding_explore_tip")
+	elif host.current_screen == "hub":
+		host._hub_surface().call_deferred("_maybe_show_hub_tutorial_tip")
+	if (
+		host.current_screen == "skill"
+		and not host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition()
+		and not host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount
+	):
+		if host._skill_detail_surface().detail_lazy_plan.size() > 0 and not host._skill_detail_surface()._detail_lazy_all_mounted():
+			host._skill_detail_surface().call_deferred("_detail_lazy_refresh_after_page_ready", host._skill_detail_surface().detail_lazy_refresh_token)
+
+
+func _apply_skills_content_layout_for_screen() -> void:
+	host.skills_content.offset_left = 0.0
+	host.skills_content.offset_right = 0.0
+	host.skills_content.offset_bottom = 0.0
+	if host.current_screen == "hub" or host.current_screen == "menu" or host.current_screen == "pinned" or host.current_screen == "queue":
+		host.skills_content.offset_top = 0.0
+	else:
+		host.skills_content.offset_top = host.SKILLS_PAGE_TOP_PAD
+	if host.current_screen == "skill":
+		host._skill_swipe_activity_surface()._ensure_skill_swipe_frame_centered()
+		if not host._skill_swipe_activity_surface().skill_swipe_animating:
+			host._skill_swipe_activity_surface()._normalize_skill_detail_page_layout()
+
+
+func _prepare_skills_page_transition(target_key: String) -> void:
+	host._skill_detail_surface()._cancel_boot_detail_completion()
+	var leaving_skill: bool = not target_key.begins_with("skill:")
+	host._skill_swipe_activity_surface()._cancel_skill_swipe_finalize_for_navigation()
+	if not target_key.begins_with("skill:"):
+		_flush_skill_swipe_handoff_for_navigation()
+	var previous_key: String = last_rendered_screen_key
+	if previous_key.begins_with("skill:") and target_key.begins_with("skill:") and previous_key != target_key:
+		host._reward_feedback_surface()._clear_skill_reward_floats()
+	if previous_key == target_key:
+		if host.skills_content.get_child_count() > 0 or host._skill_swipe_activity_surface().skill_swipe_handoff_cover != null:
+			var preserve_pin_anchor_cover: bool = host._skill_swipe_activity_surface().skill_detail_refresh_cover_active and not host._skill_detail_surface().module_ui_pending_pin_scroll_anchor.is_empty()
+			if not preserve_pin_anchor_cover:
+				host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
+			if host.skills_content.get_child_count() > 0:
+				host._app_lifecycle_runtime()._kill_transient_tweens_in_subtree(host.skills_content)
+				host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
+				host._clear(host.skills_content)
+				_reset_page_control_refs()
+		return
+	if previous_key.is_empty():
+		return
+	if previous_key.begins_with("skill:"):
+		if host.skills_content.get_child_count() > 0:
+			host._app_lifecycle_runtime()._kill_transient_tweens_in_subtree(host.skills_content)
+			host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
+			host._clear(host.skills_content)
+			_reset_page_control_refs()
+		elif (
+			host._skill_swipe_activity_surface().skill_swipe_handoff_cover != null
+			and is_instance_valid(host._skill_swipe_activity_surface().skill_swipe_handoff_cover)
+			and not host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition()
+		):
+			_flush_skill_swipe_handoff_for_navigation()
+		if leaving_skill:
+			host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
+		return
+	if host.skills_content.get_child_count() > 0:
+		host._app_lifecycle_runtime()._kill_transient_tweens_in_subtree(host.skills_content)
+		host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
+		host._clear(host.skills_content)
+		_reset_page_control_refs()
+
+
+func _store_pending_screen_render_request(scroll_latest_activity: bool, restore_detail_scroll: int, boot_async: bool, requested_key := "") -> void:
+	pending_screen_render_request = {
+		"scroll_latest_activity": scroll_latest_activity,
+		"restore_detail_scroll": restore_detail_scroll,
+		"boot_async": boot_async,
+		"requested_key": requested_key
+	}
+
+
+func _store_pending_skill_detail_refresh_request(restore_detail_scroll: int, target_skill_id: String, allow_thieving_scroll_restore: bool, suppress_layout_transition: bool) -> void:
+	pending_skill_detail_refresh_request = {
+		"restore_detail_scroll": restore_detail_scroll,
+		"target_skill_id": target_skill_id,
+		"allow_thieving_scroll_restore": allow_thieving_scroll_restore,
+		"suppress_layout_transition": suppress_layout_transition
+	}
+
+
+func _finish_screen_render_request() -> void:
+	screen_render_in_progress = false
+	screen_render_target_key = ""
+	if pending_screen_render_request.is_empty():
+		_defer_pending_skill_detail_refresh_request()
+		return
+	var request := pending_screen_render_request
+	pending_screen_render_request = {}
+	call_deferred(
+		"_render_screen",
+		bool(request.get("scroll_latest_activity", false)),
+		int(request.get("restore_detail_scroll", -1)),
+		bool(request.get("boot_async", false))
+	)
+
+
+func _defer_pending_skill_detail_refresh_request() -> void:
+	if pending_skill_detail_refresh_request.is_empty():
+		return
+	call_deferred("_run_pending_skill_detail_refresh_request")
+
+
+func _run_pending_skill_detail_refresh_request() -> void:
+	if pending_skill_detail_refresh_request.is_empty() or screen_render_in_progress:
+		return
+	var request := pending_skill_detail_refresh_request
+	pending_skill_detail_refresh_request = {}
+	host._skill_detail_surface()._refresh_visible_skill_detail_action_list(
+		int(request.get("restore_detail_scroll", -1)),
+		str(request.get("target_skill_id", "")),
+		bool(request.get("allow_thieving_scroll_restore", false)),
+		bool(request.get("suppress_layout_transition", false))
+	)
 
 
 func _page_switch_pending_transition_queued() -> bool:
@@ -1036,12 +2048,56 @@ func _recover_stale_page_switch_transition() -> void:
 	_release_page_switch_transition_button()
 
 
+func _apply_skill_page_cover_bounds(cover: Control, include_bottom_interactive_ui := false) -> void:
+	if cover == null or not is_instance_valid(cover):
+		return
+	cover.set_anchors_preset(Control.PRESET_FULL_RECT)
+	cover.offset_left = 0.0
+	cover.offset_top = 0.0
+	cover.offset_right = 0.0
+	cover.offset_bottom = _skill_page_cover_bottom_offset(include_bottom_interactive_ui)
+
+
+func _skill_page_cover_bottom_offset(include_bottom_interactive_ui := false) -> float:
+	if include_bottom_interactive_ui or host._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen():
+		return _global_chat_nav_cover_bottom_offset()
+	if host.skills_page == null or not is_instance_valid(host.skills_page):
+		return -_skills_content_bottom_inset_for_screen()
+	var page_rect: Rect2 = host.skills_page.get_global_rect()
+	var cover_bottom_y: float = page_rect.end.y - _skills_content_bottom_inset_for_screen()
+	for raw_control in [host._profile_chat_overlay_surface().chat_strip_control(), nav_bar]:
+		var control := raw_control as Control
+		if control == null or not is_instance_valid(control) or not control.visible:
+			continue
+		var rect: Rect2 = control.get_global_rect()
+		if rect.size.y <= 1.0:
+			continue
+		cover_bottom_y = minf(cover_bottom_y, rect.position.y)
+	return minf(0.0, cover_bottom_y - page_rect.end.y)
+
+
+func _global_chat_nav_cover_bottom_offset() -> float:
+	var viewport_bottom: float = host._current_canvas_size().y
+	var cover_bottom_y: float = viewport_bottom
+	for raw_control in [host._profile_chat_overlay_surface().chat_strip_control(), nav_bar]:
+		var control := raw_control as Control
+		if control == null or not is_instance_valid(control) or not control.visible:
+			continue
+		var rect: Rect2 = control.get_global_rect()
+		if rect.size.y <= 1.0:
+			continue
+		cover_bottom_y = minf(cover_bottom_y, rect.position.y)
+	if cover_bottom_y >= viewport_bottom - 1.0:
+		cover_bottom_y = maxf(0.0, viewport_bottom - float(BOTTOM_NAV_HEIGHT))
+	return minf(0.0, cover_bottom_y - viewport_bottom)
+
+
 func _begin_page_switch_scroll_cover(include_bottom_interactive_ui := false) -> void:
 	if _page_switch_scroll_cover_active():
 		return
-	host._clear_skill_swipe_handoff_cover_immediate()
+	host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
 	var cover := Control.new()
-	host._apply_skill_page_cover_bounds(cover, include_bottom_interactive_ui)
+	_apply_skill_page_cover_bounds(cover, include_bottom_interactive_ui)
 	cover.mouse_filter = Control.MOUSE_FILTER_STOP
 	cover.z_index = 0
 	cover.z_as_relative = false
@@ -1051,7 +2107,7 @@ func _begin_page_switch_scroll_cover(include_bottom_interactive_ui := false) -> 
 	cover.set_meta("page_switch_scroll_cover", true)
 	cover.set_meta("page_switch_scroll_cover_started_msec", Time.get_ticks_msec())
 	cover.set_meta("page_switch_scroll_cover_includes_bottom_interactive_ui", include_bottom_interactive_ui)
-	host._ensure_skill_nav_cover_layer().add_child(cover)
+	host._skill_swipe_activity_surface()._ensure_skill_nav_cover_layer().add_child(cover)
 
 	var backing := ColorRect.new()
 	backing.color = host._theme_paper_color()
@@ -1059,27 +2115,30 @@ func _begin_page_switch_scroll_cover(include_bottom_interactive_ui := false) -> 
 	backing.mouse_filter = Control.MOUSE_FILTER_STOP
 	cover.add_child(backing)
 
-	host.skill_swipe_handoff_cover = cover
+	host._skill_swipe_activity_surface().skill_swipe_handoff_cover = cover
 	_start_page_switch_scroll_cover_fade_in(cover)
+	host.get_tree().create_timer(host.PAGE_SWITCH_SCROLL_COVER_FADE_IN_SECONDS, true, false, true).timeout.connect(
+		_force_page_switch_scroll_cover_opaque.bind(cover.get_instance_id())
+	)
 
 
 func _start_page_switch_scroll_cover_fade_in(cover: Control) -> void:
 	if cover == null or not is_instance_valid(cover):
 		return
-	host._kill_skill_swipe_cover_fade_tween()
-	host.skill_swipe_cover_fade_tween = host.create_tween()
-	host.skill_swipe_cover_fade_tween.tween_property(
+	host._skill_swipe_activity_surface()._kill_skill_swipe_cover_fade_tween()
+	host._skill_swipe_activity_surface().skill_swipe_cover_fade_tween = host.create_tween()
+	host._skill_swipe_activity_surface().skill_swipe_cover_fade_tween.tween_property(
 		cover,
 		"modulate:a",
 		1.0,
 		host.PAGE_SWITCH_SCROLL_COVER_FADE_IN_SECONDS
 	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	host.skill_swipe_cover_fade_tween.tween_callback(Callable(host, "_finish_skill_nav_cover_fade_in").bind(cover.get_instance_id()))
+	host._skill_swipe_activity_surface().skill_swipe_cover_fade_tween.tween_callback(host._skill_swipe_activity_surface()._finish_skill_nav_cover_fade_in.bind(cover.get_instance_id()))
 
 
 func _begin_page_switch_scroll_cover_timed(include_bottom_interactive_ui := false) -> int:
 	_begin_page_switch_scroll_cover(include_bottom_interactive_ui)
-	var cover: Control = host.skill_swipe_handoff_cover
+	var cover: Control = host._skill_swipe_activity_surface().skill_swipe_handoff_cover
 	if cover == null or not is_instance_valid(cover):
 		return 0
 	if not bool(cover.get_meta("page_switch_scroll_cover", false)):
@@ -1096,8 +2155,8 @@ func _page_switch_cover_id_active(cover_id: int) -> bool:
 
 
 func _active_page_switch_cover_ref(cover_id: int) -> Control:
-	var cover: Control = host._valid_control_ref(instance_from_id(cover_id))
-	if cover == null or cover != host.skill_swipe_handoff_cover:
+	var cover: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(cover_id))
+	if cover == null or cover != host._skill_swipe_activity_surface().skill_swipe_handoff_cover:
 		return null
 	if not bool(cover.get_meta("page_switch_scroll_cover", false)):
 		return null
@@ -1108,11 +2167,11 @@ func _force_page_switch_scroll_cover_opaque(cover_id: int) -> void:
 	var cover := _active_page_switch_cover_ref(cover_id)
 	if cover == null:
 		return
-	host._set_canvas_item_modulate_if_changed(cover, Color.WHITE)
+	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(cover, Color.WHITE)
 
 
 func _fade_clear_page_switch_scroll_cover() -> void:
-	var cover: Control = host.skill_swipe_handoff_cover
+	var cover: Control = host._skill_swipe_activity_surface().skill_swipe_handoff_cover
 	if cover == null or not is_instance_valid(cover) or not bool(cover.get_meta("page_switch_scroll_cover", false)):
 		if not _page_switch_render_cover_transition_waiting():
 			_release_page_switch_transition_button()
@@ -1128,12 +2187,12 @@ func _fade_clear_page_switch_scroll_cover() -> void:
 		cover.set_meta("page_switch_scroll_cover_release_pending", true)
 		call_deferred("_fade_clear_page_switch_scroll_cover_after_delay", remaining_seconds)
 		return
-	host._fade_clear_skill_swipe_cover(host.PAGE_SWITCH_SCROLL_COVER_FADE_SECONDS)
+	host._skill_swipe_activity_surface()._fade_clear_skill_swipe_cover(host.PAGE_SWITCH_SCROLL_COVER_FADE_SECONDS)
 
 
 func _fade_clear_page_switch_scroll_cover_after_delay(delay_seconds: float) -> void:
 	await host.get_tree().create_timer(maxf(0.01, delay_seconds), true, false, true).timeout
-	var cover: Control = host.skill_swipe_handoff_cover
+	var cover: Control = host._skill_swipe_activity_surface().skill_swipe_handoff_cover
 	if cover == null or not is_instance_valid(cover) or not bool(cover.get_meta("page_switch_scroll_cover", false)):
 		return
 	cover.remove_meta("page_switch_scroll_cover_release_pending")
@@ -1142,9 +2201,9 @@ func _fade_clear_page_switch_scroll_cover_after_delay(delay_seconds: float) -> v
 
 func _page_switch_scroll_cover_active() -> bool:
 	return (
-		host.skill_swipe_handoff_cover != null
-		and is_instance_valid(host.skill_swipe_handoff_cover)
-		and bool(host.skill_swipe_handoff_cover.get_meta("page_switch_scroll_cover", false))
+		host._skill_swipe_activity_surface().skill_swipe_handoff_cover != null
+		and is_instance_valid(host._skill_swipe_activity_surface().skill_swipe_handoff_cover)
+		and bool(host._skill_swipe_activity_surface().skill_swipe_handoff_cover.get_meta("page_switch_scroll_cover", false))
 	)
 
 
@@ -1180,6 +2239,324 @@ func _build_page_switch_module(skill_id: String, content_width: float) -> Contro
 	return module
 
 
+func _render_page_switch_module(stack: VBoxContainer, skill_id: String, content_width: float, actions_width: float) -> void:
+	if (host._onboarding_runtime().tutorial_active or host._onboarding_runtime()._onboarding_path_active()) and not _onboarding_page_switch_module_visible():
+		_remove_page_switch_modules(stack)
+		return
+	var entry: Control = null
+	for child in stack.get_children():
+		var control := child as Control
+		if control == null:
+			continue
+		if control.name == "PageSwitchModule" or bool(control.get_meta("page_switch_module_entry", false)):
+			entry = control
+			break
+	if entry == null:
+		var module := _build_page_switch_module(skill_id, content_width)
+		if module == null:
+			return
+		entry = host._skill_detail_surface()._detail_stack_entry(module, content_width, actions_width)
+		if entry != module:
+			entry.name = "PageSwitchModuleEntry"
+			entry.set_meta("page_switch_module_entry", true)
+		stack.add_child(entry)
+	if _skill_swipe_page_switch_module_should_start_hidden():
+		_set_skill_page_switch_module_alpha(entry, 0.0)
+	for i in range(stack.get_child_count()):
+		var child := stack.get_child(i)
+		if child != entry and child.name == "DetailActionsBottomSpacer":
+			stack.move_child(entry, i)
+			return
+
+
+func _ensure_onboarding_page_switch_module_faded_in(stack: VBoxContainer) -> Control:
+	if stack == null or not is_instance_valid(stack):
+		return null
+	if not _onboarding_page_switch_module_visible():
+		return null
+	for raw_child in stack.get_children():
+		var child := raw_child as Control
+		if child == null:
+			continue
+		if child.name == "PageSwitchModule" or child.find_child("PageSwitchModule", true, false) != null:
+			return child
+	var content_width: float = host._skill_content_width()
+	var module: Control = _build_page_switch_module(host.selected_skill_id, content_width)
+	if module == null:
+		return null
+	var entry: Control = host._skill_detail_surface()._detail_stack_entry(module, content_width, content_width)
+	var target_height := maxf(1.0, entry.custom_minimum_size.y)
+	entry.custom_minimum_size.y = 0.0
+	entry.modulate.a = 0.0
+	entry.clip_contents = true
+	stack.add_child(entry)
+	var insert_index := maxi(0, stack.get_child_count() - 1)
+	for i in range(stack.get_child_count()):
+		var child := stack.get_child(i)
+		if child == entry:
+			continue
+		if child.name == "DetailActionsBottomSpacer":
+			insert_index = i
+			break
+	stack.move_child(entry, clampi(insert_index, 0, maxi(0, stack.get_child_count() - 1)))
+	var tween: Tween = host.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(entry, "custom_minimum_size:y", target_height, host.TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_property(entry, "modulate:a", 1.0, host.TUTORIAL_TIP_FADE_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.set_parallel(false)
+	tween.tween_callback(Callable(host._skill_detail_surface(), "_finish_smooth_tutorial_tip_entry_reveal").bind(entry.get_instance_id()))
+	Callable(host._skill_detail_surface(), "_sync_detail_actions_scroll_limit_deferred").call_deferred()
+	return entry
+
+
+func _remove_page_switch_modules(root_node: Node) -> void:
+	if root_node == null or not is_instance_valid(root_node):
+		return
+	for raw_child in root_node.get_children():
+		var child := raw_child as Node
+		if child == null:
+			continue
+		if child.name == "PageSwitchModule" or bool(child.get_meta("page_switch_module_entry", false)):
+			child.queue_free()
+			continue
+		_remove_page_switch_modules(child)
+
+
+func _skill_swipe_page_switch_module_should_start_hidden() -> bool:
+	return (
+		host.current_screen == "skill"
+		and host._skill_swipe_activity_surface().skill_swipe_animating
+		and host._skill_swipe_activity_surface().skill_swipe_animation_mode == "entry"
+	)
+
+
+func _collect_page_switch_modules(root_node: Node, modules: Array) -> void:
+	if root_node == null or not is_instance_valid(root_node):
+		return
+	if root_node is Control and (
+		root_node.name == "PageSwitchModule"
+		or bool(root_node.get_meta("page_switch_module_entry", false))
+	):
+		modules.append(root_node)
+		return
+	for raw_child in root_node.get_children():
+		_collect_page_switch_modules(raw_child as Node, modules)
+
+
+func _current_page_switch_modules() -> Array:
+	var modules := []
+	var root_node: Node = host._skill_swipe_activity_surface().skill_swipe_page if host._skill_swipe_activity_surface().skill_swipe_page != null and is_instance_valid(host._skill_swipe_activity_surface().skill_swipe_page) else host.skills_content
+	_collect_page_switch_modules(root_node, modules)
+	return modules
+
+
+func _fade_skill_page_switch_modules(visible: bool, seconds: float) -> void:
+	for raw_module in _current_page_switch_modules():
+		var module := raw_module as Control
+		if module == null or not is_instance_valid(module):
+			continue
+		host._app_lifecycle_runtime()._kill_meta_tween(module, "skill_swipe_page_switch_fade_tween")
+		var target_alpha := 1.0 if visible else 0.0
+		if seconds <= 0.001:
+			_set_skill_page_switch_module_alpha(module, target_alpha)
+			continue
+		var tween: Tween = host.create_tween()
+		module.set_meta("skill_swipe_page_switch_fade_tween", tween)
+		var module_id := module.get_instance_id()
+		tween.tween_method(
+			func(alpha: float) -> void:
+				_set_skill_page_switch_module_alpha(module_id, alpha),
+			module.modulate.a,
+			target_alpha,
+			seconds
+		).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		tween.tween_callback(_finish_skill_page_switch_module_fade.bind(module.get_instance_id()))
+
+
+func _finish_skill_page_switch_module_fade(module_id: int) -> void:
+	var module: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(module_id))
+	if module != null and module.has_meta("skill_swipe_page_switch_fade_tween"):
+		module.remove_meta("skill_swipe_page_switch_fade_tween")
+
+
+func _set_skill_page_switch_module_alpha(module_or_alpha, maybe_alpha = null) -> void:
+	var module: Control = null
+	var alpha := 1.0
+	if maybe_alpha == null:
+		module = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(module_or_alpha)))
+		alpha = 1.0
+	else:
+		if module_or_alpha is Control:
+			module = module_or_alpha as Control
+		else:
+			module = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(module_or_alpha)))
+		alpha = float(maybe_alpha)
+	if module == null:
+		return
+	var next_alpha := clampf(alpha, 0.0, 1.0)
+	var next_modulate := module.modulate
+	next_modulate.a = next_alpha
+	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(module, next_modulate)
+	if bool(module.get_meta("page_switch_module_entry", false)):
+		for raw_child in module.get_children():
+			var child := raw_child as Control
+			if child != null and child.name == "PageSwitchModule":
+				var child_modulate := child.modulate
+				child_modulate.a = 1.0
+				host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(child, child_modulate)
+
+
+func _set_skill_page_switch_modules_alpha(alpha: float) -> void:
+	for raw_module in _current_page_switch_modules():
+		var module := raw_module as Control
+		if module == null or not is_instance_valid(module):
+			continue
+		host._app_lifecycle_runtime()._kill_meta_tween(module, "skill_swipe_page_switch_fade_tween")
+		_set_skill_page_switch_module_alpha(module, alpha)
+
+
+func _sync_skill_page_switch_modules_for_drag(abs_x: float) -> void:
+	_set_skill_page_switch_modules_alpha(1.0)
+
+
+func _onboarding_page_switch_module_visible() -> bool:
+	return (
+		host._onboarding_runtime()._onboarding_path_active()
+		and not host._onboarding_runtime().tutorial_active
+		and host._onboarding_runtime().onboarding_swipe_navigation_unlocked
+	)
+
+
+func _build_queue_activities_module(module_key: String, content_width: float) -> Control:
+	return _build_page_activity_module_copy(module_key, content_width, _queue_page_card_key(module_key))
+
+
+func _build_pinned_activities_module(module_key: String, content_width: float) -> Control:
+	return _build_page_activity_module_copy(module_key, content_width, _pinned_page_card_key(module_key))
+
+
+func _prepare_page_activity_module_copy_card(card: Dictionary, suppress_collection_modules := false) -> Dictionary:
+	if card.is_empty():
+		return card
+	if suppress_collection_modules and not (card.get("mat_collection", {}) as Dictionary).is_empty():
+		card["page_copy_suppresses_collection_modules"] = true
+	return card
+
+
+func _build_page_activity_module_copy(module_key: String, content_width: float, page_card_key: String) -> Control:
+	if page_card_key.is_empty():
+		return null
+	if module_key.begins_with("action:"):
+		var action_key := module_key.substr("action:".length())
+		var parts := action_key.split(":", false, 2)
+		if parts.size() < 2:
+			return null
+		var skill_id := str(parts[0])
+		var action_id := str(parts[1])
+		var action: Dictionary = host._action_data(skill_id, action_id)
+		if action.is_empty():
+			return null
+		if host._passive_modules_runtime().is_passive_action(action):
+			var passive_card: Dictionary = host._passive_firepit_surface()._build_passive_module_card(skill_id, action, content_width, true)
+			var passive_root := passive_card.get("root") as Control
+			var passive_dict := passive_card.get("card", {}) as Dictionary
+			passive_dict["entry"] = passive_root
+			passive_dict["action_id"] = action_id
+			passive_dict = _prepare_page_activity_module_copy_card(passive_dict, page_card_key.begins_with("pinned_page:"))
+			host._skill_detail_surface()._register_action_card(page_card_key, passive_dict)
+			host._skill_detail_surface()._detail_lazy_finalize_action_card(passive_dict, skill_id, action, action_id)
+			return passive_root
+		var built: Dictionary = host._skill_detail_surface()._build_detail_interactive_action_card(skill_id, action, content_width, content_width)
+		var card_root := built.get("card_root") as Control
+		var card := _prepare_page_activity_module_copy_card(built.get("card", {}) as Dictionary, page_card_key.begins_with("pinned_page:"))
+		var pop_card := card.get("pop") as Control
+		if pop_card != null and is_instance_valid(pop_card):
+			host._skill_swipe_activity_surface()._attach_swipe_preview_activity_button(card, skill_id, action_id, pop_card)
+		var page_entry: Control = card_root
+		if page_card_key.begins_with("queue_page:"):
+			page_entry = _page_activity_module_copy_entry(card_root, content_width)
+		card["entry"] = page_entry
+		host._skill_detail_surface()._register_action_card(page_card_key, card)
+		host._skill_detail_surface()._detail_lazy_finalize_action_card(card, skill_id, action, action_id)
+		return page_entry
+	if module_key.begins_with("thieving_heist:"):
+		var heist_id := module_key.substr("thieving_heist:".length())
+		var heist: Dictionary = host.thieving_state.heist_def(heist_id)
+		if heist.is_empty():
+			return null
+		return host._thieving_surface()._build_thieving_heist_card(heist, content_width, false, page_card_key)
+	if module_key.begins_with("fishing_area:"):
+		var area_key := module_key.substr("fishing_area:".length())
+		for raw_area_def in host._fishing_ui_surface().render_area_modules("fishing"):
+			var area_def := raw_area_def as Dictionary
+			if host.fishing_runtime.area_module_key("fishing", area_def) != area_key:
+				continue
+			var built: Dictionary = host._fishing_ui_surface()._build_fishing_area_module("fishing", area_def, content_width)
+			var area_card := built.get("area_card", {}) as Dictionary
+			if not area_card.is_empty():
+				host._skill_detail_surface()._register_action_card(page_card_key, area_card)
+			return built.get("root") as Control
+	if module_key.begins_with("fishing_offer:"):
+		return host._fishing_ui_surface()._build_fishing_offer_module(module_key.substr("fishing_offer:".length()), content_width)
+	return null
+
+
+func _page_activity_module_copy_entry(module_root: Control, content_width: float) -> Control:
+	if module_root == null:
+		return null
+	var entry := Control.new()
+	entry.set_meta("detail_stack_entry_wrapper", true)
+	entry.set_meta("page_activity_module_copy_entry", true)
+	var module_height := maxf(1.0, module_root.custom_minimum_size.y)
+	if module_height <= 1.0:
+		module_height = maxf(1.0, module_root.size.y)
+	entry.custom_minimum_size = Vector2(content_width, module_height)
+	entry.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.clip_contents = false
+	module_root.anchor_left = 0.0
+	module_root.anchor_right = 1.0
+	module_root.anchor_top = 0.0
+	module_root.anchor_bottom = 0.0
+	module_root.offset_left = 0.0
+	module_root.offset_right = 0.0
+	module_root.offset_top = 0.0
+	module_root.offset_bottom = module_height
+	module_root.custom_minimum_size = Vector2(content_width, module_height)
+	module_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	entry.add_child(module_root)
+	return entry
+
+
+func _pinned_page_card_key(module_key: String) -> String:
+	var normalized_key := ModuleUiRuntime.normalize(module_key)
+	if normalized_key.is_empty():
+		return ""
+	return "pinned_page:%s" % normalized_key
+
+
+func _queue_page_card_key(module_key: String) -> String:
+	var normalized_key := ModuleUiRuntime.normalize(module_key)
+	if normalized_key.is_empty():
+		return ""
+	return "queue_page:%s" % normalized_key
+
+
+func _remove_registered_card_collapse_zone(card_key: String) -> void:
+	if card_key.is_empty() or not host.action_cards.has(card_key):
+		return
+	var card := host.action_cards.get(card_key, {}) as Dictionary
+	if card.is_empty():
+		return
+	var zones := card.get("module_action_zones", {}) as Dictionary
+	if zones.is_empty():
+		return
+	zones.erase("collapse")
+	if zones.is_empty():
+		card.erase("module_action_zones")
+	else:
+		card["module_action_zones"] = zones
+
+
 func _page_switch_button(skill_id: String, diagonal_side := "") -> Button:
 	var button := Button.new()
 	button.text = ""
@@ -1193,7 +2570,7 @@ func _page_switch_button(skill_id: String, diagonal_side := "") -> Button:
 	button.add_to_group("page_switch_buttons")
 	button.gui_input.connect(Callable(self, "_on_page_switch_button_gui_input").bind(skill_id, button))
 	button.pressed.connect(Callable(self, "_on_page_switch_button_pressed").bind(skill_id, button))
-	var theme: Color = host._skill_theme_color(skill_id)
+	var theme: Color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 	var activity_surface = host._skill_swipe_activity_surface()
 	var pop: Control = activity_surface._install_activity_button_shell(button, theme, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER, host.ACTION_CARD_3D_DEPTH_OFFSET, diagonal_side)
 	if diagonal_side == "right" or diagonal_side == "left":
@@ -1238,19 +2615,19 @@ func _clear_page_switch_input_state(clear_transition := false) -> void:
 			var button := raw_node as Button
 			if button != null and is_instance_valid(button):
 				_clear_page_switch_button_press_state(button)
-				host._button_press_runtime().force_button_unpressed(button)
+				host.button_press_runtime.force_button_unpressed(button)
 	if clear_transition:
 		_clear_page_switch_render_cover_transition_state()
 		_release_page_switch_transition_button()
 		if _page_switch_scroll_cover_active():
-			host._clear_skill_swipe_handoff_cover_immediate()
+			host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover_immediate()
 
 
 func _recover_stale_page_switch_input_lock() -> void:
 	if page_switch_press_active and _active_page_switch_button() == null:
 		_clear_page_switch_press_state()
 	if page_switch_transition_button_id != 0:
-		var button: Button = host._valid_button_ref(instance_from_id(page_switch_transition_button_id))
+		var button: Button = host._app_lifecycle_runtime().valid_button_ref(instance_from_id(page_switch_transition_button_id))
 		if button == null or not button.is_inside_tree():
 			_clear_page_switch_input_state(true)
 	_recover_stale_page_switch_transition()
@@ -1319,7 +2696,7 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		return
 	if not _page_switch_button_belongs_to_current_page(button):
 		return
-	var event_position: Vector2 = host._passive_button_event_position(event, button)
+	var event_position: Vector2 = host._input_routing_shell()._passive_button_event_position(event, button)
 	var is_press := false
 	var is_release := false
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
@@ -1338,12 +2715,12 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		button.set_meta("page_switch_press_dragged", false)
 		button.set_meta("activity_button_hold_nav_press", true)
 		button.set_meta("activity_button_hold_nav_target_active", true)
-		host._button_press_runtime().play_default_button_sfx()
+		host.button_press_runtime.play_default_button_sfx()
 		_press_page_switch_button_shell(button)
 		return
 	if event is InputEventMouseMotion or event is InputEventScreenDrag:
 		if bool(button.get_meta("page_switch_press_active", false)):
-			var press_position: Vector2 = host._meta_vector2(button, "page_switch_press_position", event_position)
+			var press_position: Vector2 = host._app_lifecycle_runtime().meta_vector2(button, "page_switch_press_position", event_position)
 			if event_position.distance_to(press_position) > host.PASSIVE_BUTTON_TAP_RELEASE_SLOP:
 				button.set_meta("page_switch_press_dragged", true)
 		return
@@ -1351,7 +2728,7 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		return
 	var was_active := bool(button.get_meta("page_switch_press_active", false))
 	var was_dragged := bool(button.get_meta("page_switch_press_dragged", false))
-	var press_position: Vector2 = host._meta_vector2(button, "page_switch_press_position", event_position)
+	var press_position: Vector2 = host._app_lifecycle_runtime().meta_vector2(button, "page_switch_press_position", event_position)
 	if button.has_meta("page_switch_press_active"):
 		button.remove_meta("page_switch_press_active")
 	if button.has_meta("page_switch_press_position"):
@@ -1372,7 +2749,7 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 		return
 	_clear_page_switch_button_press_state(button, true)
 	_suppress_page_switch_pressed_signal(button)
-	host._select_skill_from_page_switch(skill_id, button)
+	_select_skill_from_page_switch(skill_id, button)
 
 
 func _on_page_switch_button_pressed(skill_id: String, button: Button) -> void:
@@ -1384,7 +2761,7 @@ func _on_page_switch_button_pressed(skill_id: String, button: Button) -> void:
 		return
 	if _page_switch_pressed_signal_suppressed(button):
 		return
-	host._button_press_runtime().force_button_unpressed(button)
+	host.button_press_runtime.force_button_unpressed(button)
 
 
 func _page_switch_input_locked() -> bool:
@@ -1410,7 +2787,7 @@ func _release_page_switch_transition_button() -> void:
 	page_switch_transition_target_skill_id = ""
 	if button_id == 0:
 		return
-	var button: Button = host._valid_button_ref(instance_from_id(button_id))
+	var button: Button = host._app_lifecycle_runtime().valid_button_ref(instance_from_id(button_id))
 	if button == null:
 		return
 	if button.has_meta("page_switch_transition_hold"):
@@ -1420,7 +2797,7 @@ func _release_page_switch_transition_button() -> void:
 	if button.has_meta("activity_button_hold_nav_target_active"):
 		button.remove_meta("activity_button_hold_nav_target_active")
 	_clear_page_switch_button_press_state(button)
-	host._button_press_runtime().force_button_unpressed(button)
+	host.button_press_runtime.force_button_unpressed(button)
 	host._skill_swipe_activity_surface()._release_activity_button_shell_bound(button_id, true)
 
 
@@ -1428,7 +2805,7 @@ func _release_page_switch_transition_button_visual_hold() -> void:
 	var button_id := page_switch_transition_button_id
 	if button_id == 0:
 		return
-	var button: Button = host._valid_button_ref(instance_from_id(button_id))
+	var button: Button = host._app_lifecycle_runtime().valid_button_ref(instance_from_id(button_id))
 	if button == null:
 		return
 	if _page_switch_scroll_cover_active():
@@ -1437,7 +2814,7 @@ func _release_page_switch_transition_button_visual_hold() -> void:
 		if button.has_meta("activity_button_hold_nav_target_active"):
 			button.remove_meta("activity_button_hold_nav_target_active")
 		_clear_page_switch_button_press_state(button, false)
-		host._button_press_runtime().force_button_unpressed(button)
+		host.button_press_runtime.force_button_unpressed(button)
 		host._skill_swipe_activity_surface()._release_activity_button_shell_bound(button_id, true)
 		return
 	if button.has_meta("activity_button_hold_nav_press"):
@@ -1445,9 +2822,9 @@ func _release_page_switch_transition_button_visual_hold() -> void:
 	if button.has_meta("activity_button_hold_nav_target_active"):
 		button.remove_meta("activity_button_hold_nav_target_active")
 	_clear_page_switch_button_press_state(button, false)
-	host._button_press_runtime().force_button_unpressed(button)
-	host.depressed_activity_shell_buttons.erase(button_id)
-	var pop := host._valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
+	host.button_press_runtime.force_button_unpressed(button)
+	host._skill_swipe_activity_surface().forget_depressed_activity_shell_button(button_id)
+	var pop := host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control
 	if pop != null:
 		host._skill_swipe_activity_surface()._kill_activity_button_shell_tween(button)
 		host._skill_swipe_activity_surface()._set_activity_button_pop_depth_offset_bound(Vector2.ZERO, pop.get_instance_id())
@@ -1458,7 +2835,7 @@ func _press_page_switch_button_shell(button: Button) -> void:
 	if button == null or not is_instance_valid(button):
 		return
 	var button_id := button.get_instance_id()
-	if host.depressed_activity_shell_buttons.has(button_id):
+	if host._skill_swipe_activity_surface().has_depressed_activity_shell_button(button_id):
 		return
 	host._skill_swipe_activity_surface()._press_activity_button_shell_bound(button_id)
 
@@ -1479,7 +2856,7 @@ func _release_page_switch_button_shell(button: Button) -> void:
 	if button == null or not is_instance_valid(button):
 		return
 	var button_id := button.get_instance_id()
-	if not host.depressed_activity_shell_buttons.has(button_id):
+	if not host._skill_swipe_activity_surface().has_depressed_activity_shell_button(button_id):
 		return
 	host._skill_swipe_activity_surface()._release_activity_button_shell_bound(button_id)
 
@@ -1507,7 +2884,7 @@ func _add_page_switch_skill_icon(parent: Control, skill_id: String, diagonal_sid
 
 
 func _add_page_switch_outline_overlay(parent: Control, diagonal_side: String) -> void:
-	var outline := PageSwitchButtonFace.new()
+	var outline := ActivityCardStyles.page_switch_button_face()
 	outline.name = "PageSwitchOutlineOverlay"
 	outline.side = diagonal_side
 	outline.fill_color = Color.TRANSPARENT
@@ -1543,17 +2920,7 @@ func _page_switch_skill_symbol(skill_id: String, diagonal_side: String) -> Contr
 	stage.clip_contents = false
 
 	var symbol_size: Vector2 = SkillIconBadge.symbol_size(skill_id, _page_switch_skill_symbol_base_size(skill_id, diagonal_side))
-	var symbol: Control
-	if skill_id == "fishing":
-		var drawn_symbol := SkillIconSymbolDraw.new()
-		drawn_symbol.texture = host.visual_texture_cache._texture_or_visual_fallback(host._skill_icon_path(skill_id))
-		symbol = drawn_symbol
-	else:
-		var texture_symbol := TextureRect.new()
-		texture_symbol.texture = host.visual_texture_cache._texture_or_visual_fallback(host._skill_icon_path(skill_id))
-		texture_symbol.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		texture_symbol.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		symbol = texture_symbol
+	var symbol := SkillIconBadge.symbol_control(host, skill_id)
 	symbol.name = "PageSwitchSkillIconSymbol"
 	symbol.custom_minimum_size = symbol_size
 	symbol.size = symbol_size
@@ -1618,12 +2985,11 @@ func _queue_page_switch_transition(kind: String, cover_id: int, payload := {}) -
 		"payload": payload,
 	}
 	page_switch_release_when_render_idle = false
-	_release_page_switch_transition_button_visual_hold()
 
 
 func _process_page_switch_pending_transition() -> void:
 	if page_switch_release_when_render_idle:
-		if host.screen_render_in_progress or not host.pending_screen_render_request.is_empty():
+		if screen_render_in_progress or not pending_screen_render_request.is_empty():
 			return
 		page_switch_release_when_render_idle = false
 		_fade_clear_page_switch_scroll_cover()
@@ -1640,7 +3006,7 @@ func _process_page_switch_pending_transition() -> void:
 		return
 	if cover.modulate.a < 0.98:
 		return
-	if host.screen_render_in_progress or not host.pending_screen_render_request.is_empty():
+	if screen_render_in_progress or not pending_screen_render_request.is_empty():
 		return
 	_force_page_switch_scroll_cover_opaque(cover_id)
 	var transition := page_switch_pending_transition
@@ -1678,25 +3044,25 @@ func _mark_page_switch_release_after_render() -> void:
 
 func _start_show_skills_under_page_switch_cover() -> void:
 	host.current_screen = "menu"
-	host._render_screen()
+	_render_screen()
 	_mark_page_switch_release_after_render()
 
 
 func _start_return_from_skills_utility_under_page_switch_cover(target_screen: String) -> void:
 	host.current_screen = target_screen
-	host._render_screen()
+	_render_screen()
 	_mark_page_switch_release_after_render()
 
 
 func _start_show_pinned_activities_under_page_switch_cover() -> void:
 	host.current_screen = "pinned"
-	host._render_screen()
+	_render_screen()
 	_mark_page_switch_release_after_render()
 
 
 func _start_return_from_pinned_activities_under_page_switch_cover(target_screen: String, restore_scroll: int) -> void:
 	host.current_screen = target_screen
-	host._render_screen(false, restore_scroll)
+	_render_screen(false, restore_scroll)
 	_mark_page_switch_release_after_render()
 
 
@@ -1716,18 +3082,18 @@ func _start_select_skill_under_page_switch_cover(skill_id: String, scroll_latest
 		host._onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
 	host.selected_skill_id = skill_id
 	host.current_screen = "skill"
-	host._clear_skill_swipe_button_suppression()
+	host._skill_swipe_activity_surface()._clear_skill_swipe_button_suppression()
 	if play_nav_sfx:
-		host._button_press_runtime().play_default_button_sfx()
-	if host.tutorial_active:
+		host.button_press_runtime.play_default_button_sfx()
+	if host._onboarding_runtime().tutorial_active:
 		host.action_cards.clear()
 		host.action_card_keys.clear()
-		host.detail_action_card_nodes.clear()
-		host.detail_rendered_action_ids.clear()
-		host.detail_lazy_plan.clear()
-		host._render_screen(false, 0)
+		host._skill_detail_surface().detail_action_card_nodes.clear()
+		host._skill_detail_surface().detail_rendered_action_ids.clear()
+		host._skill_detail_surface().detail_lazy_plan.clear()
+		_render_screen(false, 0)
 	else:
-		host._render_screen(scroll_latest_activity, restore_detail_scroll)
+		_render_screen(scroll_latest_activity, restore_detail_scroll)
 	_mark_page_switch_release_after_render()
 
 
@@ -1742,7 +3108,7 @@ func _render_skill_menu_page() -> void:
 	host.content_scroll.offset_right = 0.0
 	host.content_scroll.offset_bottom = 0.0
 	host.skills_content.add_child(host.content_scroll)
-	host.content_scroll.offset_top = host.SKILL_MENU_SHELF_HEIGHT
+	host.content_scroll.offset_top = SKILL_MENU_SHELF_HEIGHT
 	var stack := VBoxContainer.new()
 	stack.custom_minimum_size.x = _skill_menu_active_drawer_content_width()
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1761,7 +3127,7 @@ func _render_skill_menu_shelf() -> void:
 	shelf.offset_left = 0.0
 	shelf.offset_right = 0.0
 	shelf.offset_top = 0.0
-	shelf.offset_bottom = host.SKILL_MENU_SHELF_HEIGHT
+	shelf.offset_bottom = SKILL_MENU_SHELF_HEIGHT
 	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shelf.z_index = 420
 	host.skills_content.add_child(shelf)
@@ -1774,7 +3140,7 @@ func _render_skill_menu_shelf() -> void:
 	total_level_header.offset_left = 0.0
 	total_level_header.offset_right = 0.0
 	total_level_header.offset_top = 0.0
-	total_level_header.offset_bottom = host.SKILL_MENU_SHELF_HEIGHT
+	total_level_header.offset_bottom = SKILL_MENU_SHELF_HEIGHT
 	total_level_header.add_theme_constant_override("margin_top", 150)
 	total_level_header.add_theme_constant_override("margin_bottom", 12)
 	total_level_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1787,20 +3153,20 @@ func _render_skill_menu_shelf() -> void:
 	var total_icon: TextureRect = host.visual_texture_cache._image(host.TOTAL_LEVEL_BARGRAPH_TEXTURE, Vector2(118, 118))
 	total_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	total_row.add_child(total_icon)
-	total_row.add_child(host._label("Total Lv %s" % host._global_level(), 154, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
-	host.detail_shelf_shadow_alpha = 0.0
-	host.detail_shelf_shadow_overlay = host._add_skill_detail_shadow_overlay_to(host.skills_content, host.SKILL_MENU_SHELF_HEIGHT, host.detail_shelf_shadow_alpha)
+	total_row.add_child(host._label("Total Lv %s" % SkillState.global_level(host.skills), 154, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER))
+	host._skill_detail_surface().detail_shelf_shadow_alpha = 0.0
+	host._skill_detail_surface().detail_shelf_shadow_overlay = host._skill_detail_surface()._add_skill_detail_shadow_overlay_to(host.skills_content, SKILL_MENU_SHELF_HEIGHT, host._skill_detail_surface().detail_shelf_shadow_alpha)
 
 
 func _render_skill_menu(stack: VBoxContainer) -> void:
 	var top_spacer := Control.new()
-	top_spacer.custom_minimum_size = Vector2(0, host.SKILL_MENU_TOP_SCROLL_PAD)
+	top_spacer.custom_minimum_size = Vector2(0, SKILL_MENU_TOP_SCROLL_PAD)
 	stack.add_child(top_spacer)
 	for def in host.skill_defs:
 		var skill_id := str(def["id"])
-		var theme_color: Color = host._skill_theme_color(skill_id)
+		var theme_color: Color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 		var card_slot := Control.new()
-		card_slot.custom_minimum_size = Vector2(0, host.SKILL_MENU_HEADER_HEIGHT)
+		card_slot.custom_minimum_size = Vector2(0, SKILL_MENU_HEADER_HEIGHT)
 		card_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		stack.add_child(card_slot)
 
@@ -1817,12 +3183,12 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		button.focus_mode = Control.FOCUS_NONE
 		button.set_meta("depress_release_no_overshoot", true)
 		button.set_meta("skill_menu_card_skill_id", skill_id)
-		var card_fill: Color = host._skill_paper_button_color(skill_id)
+		var card_fill: Color = ThemeStyles.skill_paper_button_color(skill_id, host.dark_mode_enabled, SKILL_MENU_LIGHT_PASTEL_MIX, SKILL_MENU_DARK_THEME_DARKEN, host.COLOR_DARK_PANEL, SKILL_MENU_DARK_PANEL_MIX, host.COLOR_BLUE)
 		button.add_theme_stylebox_override("normal", _skill_menu_band_style(card_fill))
 		button.add_theme_stylebox_override("hover", _skill_menu_band_style(card_fill))
 		button.add_theme_stylebox_override("pressed", _skill_menu_band_style(card_fill.darkened(0.08), true))
-		host._button_press_runtime().attach_button_depress_animation(button, 0.982)
-		button.pressed.connect(host._select_skill.bind(skill_id))
+		host.button_press_runtime.attach_button_depress_animation(button, 0.982)
+		button.pressed.connect(_select_skill.bind(skill_id))
 		card_slot.add_child(button)
 		
 		var margin := MarginContainer.new()
@@ -1842,7 +3208,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		margin.add_child(row)
 		row.add_child(SkillIconBadge.menu_icon_badge(host, skill_id, theme_color))
 		var copy := VBoxContainer.new()
-		copy.custom_minimum_size.x = host.SKILL_MENU_COPY_WIDTH
+		copy.custom_minimum_size.x = SKILL_MENU_COPY_WIDTH
 		copy.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		copy.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		copy.add_theme_constant_override("separation", 30)
@@ -1852,8 +3218,8 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		copy.add_child(title)
 		var meta: Label = host._label("", 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		copy.add_child(meta)
-		var xp_bar: Control = host._progress(theme_color, 62)
-		host._apply_xp_progress_bar_theme(xp_bar, theme_color)
+		var xp_bar: Control = ThemeStyles.progress_bar(theme_color, 62)
+		ThemeStyles.apply_xp_progress_bar_theme(xp_bar, theme_color, host.COLOR_INK)
 		xp_bar.custom_minimum_size.x = 760
 		xp_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		copy.add_child(xp_bar)
@@ -1874,11 +3240,10 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 			"xp": xp_bar,
 			"stamina": side_gauge if side_gauge is RegenCircle else null,
 			"fish": side_gauge if side_gauge is FishCircle else null,
-			"health": side_gauge if side_gauge is BlueGuyHealthHeartGauge else null,
 		}
 		var accessible: bool = host._onboarding_runtime()._onboarding_skill_accessible(skill_id)
 		button.disabled = not accessible
-		button.modulate = Color.WHITE if accessible else host.HUB_NAV_LOCKED_MODULATE
+		button.modulate = Color.WHITE if accessible else HUB_NAV_LOCKED_MODULATE
 		var drawer_slot := Control.new()
 		drawer_slot.name = "SkillMenuActiveDrawer_%s" % skill_id
 		drawer_slot.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1886,7 +3251,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		drawer_slot.visible = false
 		drawer_slot.clip_contents = false
 		stack.add_child(drawer_slot)
-		host.skill_menu_active_drawers[skill_id] = {
+		skill_menu_active_drawers[skill_id] = {
 			"slot": drawer_slot,
 			"module_key": "",
 			"card_key": ""
@@ -1912,12 +3277,59 @@ func _build_skill_menu_side_gauge(skill_id: String, theme_color: Color) -> Contr
 	stamina_gauge.mouse_filter = Control.MOUSE_FILTER_STOP
 	stamina_gauge.set_dark_mode(host.dark_mode_enabled)
 	stamina_gauge.set_theme_color(theme_color)
-	stamina_gauge.gui_input.connect(Callable(host, "_on_stamina_gauge_input").bind(skill_id, stamina_gauge))
+	stamina_gauge.gui_input.connect(Callable(host._action_runtime(), "_on_stamina_gauge_input").bind(skill_id, stamina_gauge))
 	return stamina_gauge
 
 
+func _normalize_skill_menu_card_button(card: Dictionary) -> void:
+	var button := card.get("button") as BaseButton
+	if button == null or not is_instance_valid(button):
+		return
+	if button.scale.x <= 1.0001 and button.scale.y <= 1.0001:
+		return
+	host.button_press_runtime.kill_button_depress_tween(button)
+	button.scale = Vector2.ONE
+	button.pivot_offset = button.size * 0.5
+
+
+func _sync_skill_menu_page(delta: float, instant: bool, static_refresh: bool) -> void:
+	host._skill_detail_surface()._update_skill_detail_shadow(delta, instant)
+	for skill_id in host.skill_cards.keys():
+		var skill_id_text := str(skill_id)
+		var card: Dictionary = host.skill_cards[skill_id]
+		if static_refresh:
+			_normalize_skill_menu_card_button(card)
+			host._app_lifecycle_runtime().set_label_text_if_changed(card["title"] as Label, "%s" % SkillState.skill_name(host.skill_defs, skill_id_text))
+			host._app_lifecycle_runtime().set_label_text_if_changed(card["meta"] as Label, SkillState.level_xp_text(host.skills, skill_id_text, SkillState.host_skill_level(host, skill_id_text)))
+			ThemeStyles.apply_xp_progress_bar_theme(card["xp"] as CleanProgressBar, ThemeStyles.skill_theme_color(skill_id_text, host.COLOR_BLUE), host.COLOR_INK)
+		var xp := SkillState.xp_progress(host.skills, skill_id_text, SkillState.host_skill_level(host, skill_id_text))
+		ThemeStyles.set_progress_bar_value(card["xp"], float(xp["pct"]), delta, instant)
+		_update_skill_menu_card(card, skill_id_text, delta, instant)
+		_sync_skill_menu_active_drawer(skill_id_text, instant)
+
+
+func _update_skill_menu_card(card: Dictionary, skill_id: String, delta: float, instant: bool) -> void:
+	var button := card.get("button") as Button
+	if button != null and is_instance_valid(button):
+		var accessible: bool = host._onboarding_runtime()._onboarding_skill_accessible(skill_id)
+		host._app_lifecycle_runtime().set_base_button_disabled_if_changed(button, not accessible)
+		host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(button, Color.WHITE if accessible else HUB_NAV_LOCKED_MODULATE)
+	var activity_running := false
+	var activity_progress := card.get("activity") as ActivityProgressRail
+	if activity_progress != null and is_instance_valid(activity_progress):
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(activity_progress, activity_running)
+	if host._fishing_rework_active_for_skill(skill_id):
+		var fish_gauge := card.get("fish") as FishCircle
+		if fish_gauge != null:
+			host._fishing_ui_surface()._set_fish_circle_for_skill(fish_gauge, skill_id, instant)
+		return
+	var stamina_gauge := card.get("stamina") as RegenCircle
+	if stamina_gauge != null:
+		stamina_gauge.sync_for_skill(host, skill_id, instant)
+
+
 func _skill_menu_bottom_scroll_pad() -> float:
-	return host._bottom_ui_reserved_height_for_current_screen() + float(host.SKILL_MENU_BOTTOM_SCROLL_CLEARANCE)
+	return _bottom_ui_reserved_height_for_current_screen() + float(SKILL_MENU_BOTTOM_SCROLL_CLEARANCE)
 
 
 func _skill_menu_active_drawer_card_key(skill_id: String, action_id: String) -> String:
@@ -1930,7 +3342,7 @@ func _skill_menu_active_drawer_module_key(skill_id: String, action_id: String) -
 	if skill_id.is_empty() or action_id.is_empty():
 		return ""
 	if host._fishing_rework_active_for_skill(skill_id):
-		var area_def: Dictionary = host._fishing_render_area_module_for_action(skill_id, action_id)
+		var area_def: Dictionary = host._fishing_ui_surface().render_area_module_for_action(skill_id, action_id)
 		if not area_def.is_empty():
 			return ModuleUiRuntime.fishing_area(host.fishing_runtime.area_module_key(skill_id, area_def))
 	return ModuleUiRuntime.action_for_record(skill_id, host._action_data(skill_id, action_id), host.FISHING_ACTION_ID_ALIASES)
@@ -1942,10 +3354,10 @@ func _skill_menu_active_drawer_content_width() -> float:
 
 func _clear_skill_menu_active_drawer(drawer: Dictionary) -> void:
 	for raw_card_key in drawer.get("card_keys", []) as Array:
-		host._discard_action_card_key(str(raw_card_key))
+		host._skill_detail_surface()._discard_action_card_key(str(raw_card_key))
 	var card_key := str(drawer.get("card_key", ""))
 	if not card_key.is_empty():
-		host._discard_action_card_key(card_key)
+		host._skill_detail_surface()._discard_action_card_key(card_key)
 	var slot := drawer.get("slot") as Control
 	if slot != null and is_instance_valid(slot):
 		for child in slot.get_children():
@@ -1959,9 +3371,9 @@ func _clear_skill_menu_active_drawer(drawer: Dictionary) -> void:
 
 
 func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
-	if skill_id.is_empty() or not host.skill_menu_active_drawers.has(skill_id):
+	if skill_id.is_empty() or not skill_menu_active_drawers.has(skill_id):
 		return
-	var drawer := host.skill_menu_active_drawers.get(skill_id, {}) as Dictionary
+	var drawer := skill_menu_active_drawers.get(skill_id, {}) as Dictionary
 	var slot := drawer.get("slot", null) as Control
 	if slot == null or not is_instance_valid(slot):
 		return
@@ -1974,11 +3386,11 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 		_clear_skill_menu_active_drawer(drawer)
 		return
 	var module_key := _skill_menu_active_drawer_module_key(skill_id, action_id)
-	var collapsed: bool = host._module_ui_is_collapsed(module_key)
+	var collapsed: bool = host._skill_detail_surface()._module_ui_is_collapsed(module_key)
 	var card_key := _skill_menu_active_drawer_card_key(skill_id, action_id)
 	var active_fishing_area_def := {}
 	if host._fishing_rework_active_for_skill(skill_id):
-		active_fishing_area_def = host._fishing_render_area_module_for_action(skill_id, action_id)
+		active_fishing_area_def = host._fishing_ui_surface().render_area_module_for_action(skill_id, action_id)
 		if not active_fishing_area_def.is_empty():
 			card_key = host.fishing_runtime.area_module_key(skill_id, active_fishing_area_def)
 	if (
@@ -1994,14 +3406,14 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 	var module_root: Control = null
 	var registered_card_key := ""
 	var registered_card_keys: Array = []
-	if host._is_passive_action(action):
+	if host._passive_modules_runtime().is_passive_action(action):
 		var passive_card: Dictionary = host._passive_firepit_surface()._build_passive_module_card(skill_id, action, content_width, true)
 		module_root = passive_card.get("root") as Control
 		var passive_dict := passive_card.get("card", {}) as Dictionary
 		passive_dict["entry"] = module_root
 		passive_dict["action_id"] = action_id
-		host._register_action_card(card_key, passive_dict)
-		host._detail_lazy_finalize_action_card(passive_dict, skill_id, action, action_id)
+		host._skill_detail_surface()._register_action_card(card_key, passive_dict)
+		host._skill_detail_surface()._detail_lazy_finalize_action_card(passive_dict, skill_id, action, action_id)
 		registered_card_key = card_key
 		registered_card_keys.append(card_key)
 	elif not active_fishing_area_def.is_empty():
@@ -2011,14 +3423,14 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 		var area_card := built.get("area_card", {}) as Dictionary
 		if not area_key.is_empty() and not area_card.is_empty():
 			area_card["entry"] = module_root
-			host._register_action_card(area_key, area_card)
+			host._skill_detail_surface()._register_action_card(area_key, area_card)
 			registered_card_key = area_key
 			registered_card_keys.append(area_key)
 			for raw_method_id in built.get("method_ids", []) as Array:
 				var method_key: String = host._action_key(skill_id, str(raw_method_id))
 				if host.action_cards.has(method_key):
 					registered_card_keys.append(method_key)
-				var method_card: Dictionary = host._fishing_method_card_for_action(skill_id, str(raw_method_id))
+				var method_card: Dictionary = host._fishing_ui_surface()._fishing_method_card_for_action(skill_id, str(raw_method_id))
 				if bool(method_card.get("is_fishing_location", false)):
 					var location_key := "%s:location-%s-%s" % [
 						skill_id,
@@ -2032,15 +3444,15 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 		module_root = built.get("card_root") as Control
 		var card := built.get("card", {}) as Dictionary
 		card["entry"] = module_root
-		host._register_action_card(card_key, card)
-		host._detail_lazy_finalize_action_card(card, skill_id, action, action_id)
+		host._skill_detail_surface()._register_action_card(card_key, card)
+		host._skill_detail_surface()._detail_lazy_finalize_action_card(card, skill_id, action, action_id)
 		registered_card_key = card_key
 		registered_card_keys.append(card_key)
 	if module_root == null:
 		return
-	module_root = host._apply_collapsed_module_squeeze(module_root, module_key, collapsed)
+	module_root = host._skill_detail_surface()._apply_collapsed_module_squeeze(module_root, module_key, collapsed)
 	var module_height := maxf(1.0, module_root.custom_minimum_size.y)
-	slot.custom_minimum_size = Vector2(slot_width, module_height + host.SKILL_MENU_ACTIVE_DRAWER_TOP_PAD + host.SKILL_MENU_ACTIVE_DRAWER_BOTTOM_PAD)
+	slot.custom_minimum_size = Vector2(slot_width, module_height + SKILL_MENU_ACTIVE_DRAWER_TOP_PAD + SKILL_MENU_ACTIVE_DRAWER_BOTTOM_PAD)
 	slot.visible = true
 	var module_left := maxf(0.0, (slot_width - content_width) * 0.5)
 	module_root.anchor_left = 0.0
@@ -2049,8 +3461,8 @@ func _sync_skill_menu_active_drawer(skill_id: String, instant := false) -> void:
 	module_root.anchor_bottom = 0.0
 	module_root.offset_left = module_left
 	module_root.offset_right = module_left + content_width
-	module_root.offset_top = host.SKILL_MENU_ACTIVE_DRAWER_TOP_PAD
-	module_root.offset_bottom = host.SKILL_MENU_ACTIVE_DRAWER_TOP_PAD + module_height
+	module_root.offset_top = SKILL_MENU_ACTIVE_DRAWER_TOP_PAD
+	module_root.offset_bottom = SKILL_MENU_ACTIVE_DRAWER_TOP_PAD + module_height
 	module_root.size = Vector2(content_width, module_height)
 	slot.add_child(module_root)
 	drawer["module_key"] = module_key
@@ -2064,7 +3476,7 @@ func _render_pinned_activities_page() -> void:
 	var frame := Control.new()
 	frame.name = "PinnedActivitiesFrame"
 	frame.clip_contents = false
-	host._apply_skill_column_layout(frame, content_width, 0.0)
+	host._skill_swipe_activity_surface()._apply_skill_column_layout(frame, content_width, 0.0)
 	host.skills_content.add_child(frame)
 
 	var page := VBoxContainer.new()
@@ -2100,7 +3512,7 @@ func _render_pinned_activities_page() -> void:
 	host.content_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	host.content_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	host.content_scroll.set_pull_resistance_enabled(true)
-	host.content_scroll.gui_input.connect(host._on_pinned_activities_action_scroll_input)
+	host.content_scroll.gui_input.connect(_on_pinned_activities_action_scroll_input)
 	actions_clip.add_child(host.content_scroll)
 
 	var stack := VBoxContainer.new()
@@ -2114,6 +3526,57 @@ func _render_pinned_activities_page() -> void:
 	shelf_clearance.custom_minimum_size = Vector2(content_width, host.SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT)
 	shelf_clearance.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(shelf_clearance)
+	stack.add_child(_build_pinned_activities_shelf_content(content_width))
+	var bottom_spacer := Control.new()
+	bottom_spacer.custom_minimum_size = Vector2(0, _skills_content_bottom_inset_for_screen() + 52.0)
+	bottom_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(bottom_spacer)
+	_add_pinned_active_shelf_shadow_overlay()
+
+
+func _refresh_pinned_activities_shelf_after_pin_change() -> void:
+	if host.current_screen != "pinned" or host.content_scroll == null or not is_instance_valid(host.content_scroll):
+		return
+	var existing_shelf: Control = host._find_named_control_descendant(host.content_scroll, "PinnedActivitiesShelf")
+	var existing_empty: Control = host._find_named_control_descendant(host.content_scroll, "PinnedActivitiesEmptyState")
+	var anchor: Control = existing_shelf if existing_shelf != null else existing_empty
+	if anchor == null:
+		return
+	var stack := anchor.get_parent() as VBoxContainer
+	if stack == null or not is_instance_valid(stack):
+		return
+	var insert_index: int = anchor.get_index()
+	var previous_scroll := int(round(host.content_scroll.scroll_vertical))
+	var old_keys: Array[String] = []
+	for child in stack.get_children():
+		var child_control := child as Control
+		if child_control == null:
+			continue
+		if child_control.name == "PinnedActivitiesShelf":
+			for raw_module in child_control.get_children():
+				var module_control := raw_module as Control
+				if module_control == null:
+					continue
+				var module_key := ModuleUiRuntime.normalize(module_control.get_meta("module_ui_key", ""))
+				if not module_key.is_empty():
+					old_keys.append(module_key)
+			stack.remove_child(child_control)
+			child_control.queue_free()
+		elif child_control.name == "PinnedActivitiesEmptyState":
+			stack.remove_child(child_control)
+			child_control.queue_free()
+	for old_key in old_keys:
+		host.action_cards.erase(_pinned_page_card_key(old_key))
+	var content_width: float = host._skill_content_width()
+	var replacement := _build_pinned_activities_shelf_content(content_width)
+	stack.add_child(replacement)
+	stack.move_child(replacement, clampi(insert_index, 0, maxi(0, stack.get_child_count() - 1)))
+	host.content_scroll.scroll_vertical = previous_scroll
+	if host.content_scroll is MobileScrollContainer:
+		(host.content_scroll as MobileScrollContainer).drag_scroll_position = float(previous_scroll)
+
+
+func _build_pinned_activities_shelf_content(content_width: float) -> Control:
 	var shelf := VBoxContainer.new()
 	shelf.name = "PinnedActivitiesShelf"
 	shelf.custom_minimum_size = Vector2(content_width, 0)
@@ -2121,27 +3584,92 @@ func _render_pinned_activities_page() -> void:
 	shelf.add_theme_constant_override("separation", 34)
 	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for raw_key in host.module_ui_runtime.pinned_order:
-		var module_key: String = ModuleUiRuntime.normalize(raw_key)
+		var module_key := ModuleUiRuntime.normalize(raw_key)
 		if module_key.is_empty():
 			continue
-		var module_root: Control = host._build_pinned_activities_module(module_key, content_width)
+		var module_root := _build_pinned_activities_module(module_key, content_width)
 		if module_root == null:
 			continue
 		module_root.set_meta("module_ui_pinned_page_copy", true)
 		module_root.set_meta("module_ui_force_expanded", true)
 		module_root.set_meta("module_ui_key", module_key)
 		host._skill_detail_surface()._remove_module_collapse_zones(module_root)
-		host._remove_registered_card_collapse_zone(host._pinned_page_card_key(module_key))
+		_remove_registered_card_collapse_zone(_pinned_page_card_key(module_key))
 		shelf.add_child(module_root)
 	if shelf.get_child_count() <= 0:
-		stack.add_child(_pinned_activities_empty_state(content_width))
-	else:
-		stack.add_child(shelf)
-	var bottom_spacer := Control.new()
-	bottom_spacer.custom_minimum_size = Vector2(0, host._skills_content_bottom_inset_for_screen() + 52.0)
-	bottom_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_child(bottom_spacer)
-	_add_pinned_active_shelf_shadow_overlay()
+		shelf.queue_free()
+		return _pinned_activities_empty_state(content_width)
+	return shelf
+
+
+func _on_pinned_activities_action_scroll_input(event: InputEvent) -> void:
+	if host.current_screen != "pinned" and host.current_screen != "queue":
+		return
+	var routed_event := _pinned_activities_globalized_scroll_event(event)
+	if routed_event == null:
+		return
+	if host._input_routing_shell()._event_points_inside_bottom_interactive_ui(routed_event):
+		return
+	if host._input_routing_shell()._route_action_card_release(routed_event):
+		host.accept_event()
+		return
+	host._skill_detail_surface()._update_action_card_press_drag_state(routed_event)
+	if routed_event is InputEventMouseButton and routed_event.button_index == MOUSE_BUTTON_LEFT and routed_event.pressed:
+		host.action_card_press_consumed = false
+		var routed_mouse_event := routed_event as InputEventMouseButton
+		var press_position: Vector2 = routed_mouse_event.global_position
+		if host._input_routing_shell()._route_action_card_press(press_position):
+			host.accept_event()
+			return
+	elif routed_event is InputEventScreenTouch and routed_event.pressed:
+		host.action_card_press_consumed = false
+		var routed_touch_event := routed_event as InputEventScreenTouch
+		var touch_position: Vector2 = routed_touch_event.position
+		if host._input_routing_shell()._route_action_card_press(touch_position, routed_touch_event.index):
+			host.accept_event()
+			return
+
+
+func _pinned_activities_globalized_scroll_event(event: InputEvent) -> InputEvent:
+	if host.content_scroll == null or not is_instance_valid(host.content_scroll):
+		return null
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		var global_position: Vector2 = host._input_routing_shell()._global_event_position(mouse_event.position, mouse_event.global_position, host.content_scroll)
+		var routed := InputEventMouseButton.new()
+		routed.button_index = mouse_event.button_index
+		routed.pressed = mouse_event.pressed
+		routed.button_mask = mouse_event.button_mask
+		routed.position = global_position
+		routed.global_position = global_position
+		return routed
+	if event is InputEventMouseMotion:
+		var motion_event := event as InputEventMouseMotion
+		var global_position: Vector2 = host._input_routing_shell()._global_event_position(motion_event.position, motion_event.global_position, host.content_scroll)
+		var routed := InputEventMouseMotion.new()
+		routed.position = global_position
+		routed.global_position = global_position
+		routed.relative = motion_event.relative
+		routed.velocity = motion_event.velocity
+		return routed
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		var global_position: Vector2 = host.content_scroll.get_global_transform() * touch_event.position
+		var routed := InputEventScreenTouch.new()
+		routed.index = touch_event.index
+		routed.pressed = touch_event.pressed
+		routed.position = global_position
+		return routed
+	if event is InputEventScreenDrag:
+		var drag_event := event as InputEventScreenDrag
+		var global_position: Vector2 = host.content_scroll.get_global_transform() * drag_event.position
+		var routed := InputEventScreenDrag.new()
+		routed.index = drag_event.index
+		routed.position = global_position
+		routed.relative = drag_event.relative
+		routed.velocity = drag_event.velocity
+		return routed
+	return event
 
 
 func _pinned_activities_empty_state(content_width: float) -> Control:
@@ -2181,10 +3709,10 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	rng.seed = int(Time.get_ticks_usec()) + int(Engine.get_process_frames()) * 104729
-	var badge_top_left_offset: Vector2 = host.MODULE_PIN_BADGE_CLIP_ORIGIN + host.MODULE_PIN_BADGE_SETTLED_POSITION
-	var badge_visible_height: float = host.MODULE_PIN_BADGE_CLIP_SIZE.y - host.MODULE_PIN_BADGE_SETTLED_POSITION.y
-	var hit_zone_size: Vector2 = host.MODULE_PIN_BADGE_HIT_MAX - host.MODULE_PIN_BADGE_HIT_MIN
-	hit_zone_size.y = minf(hit_zone_size.y, badge_visible_height - host.MODULE_PIN_BADGE_HIT_MIN.y)
+	var badge_top_left_offset: Vector2 = ModuleUiRuntime.MODULE_PIN_BADGE_CLIP_ORIGIN + ModuleUiRuntime.MODULE_PIN_BADGE_SETTLED_POSITION
+	var badge_visible_height: float = ModuleUiRuntime.MODULE_PIN_BADGE_CLIP_SIZE.y - ModuleUiRuntime.MODULE_PIN_BADGE_SETTLED_POSITION.y
+	var hit_zone_size: Vector2 = ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MAX - ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MIN
+	hit_zone_size.y = minf(hit_zone_size.y, badge_visible_height - ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MIN.y)
 	var horizontal_margin := 30.0
 	var vertical_margin := 26.0
 	var occupied_rects: Array[Rect2] = []
@@ -2193,7 +3721,7 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 			rng,
 			content_width,
 			empty_height,
-			host.MODULE_PIN_BADGE_SIZE.x,
+			ModuleUiRuntime.MODULE_PIN_BADGE_SIZE.x,
 			badge_visible_height,
 			horizontal_margin,
 			vertical_margin,
@@ -2201,7 +3729,7 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 		)
 		var badge_left := badge_position.x
 		var badge_top := badge_position.y
-		occupied_rects.append(Rect2(badge_position, Vector2(host.MODULE_PIN_BADGE_SIZE.x, badge_visible_height)).grow(18.0))
+		occupied_rects.append(Rect2(badge_position, Vector2(ModuleUiRuntime.MODULE_PIN_BADGE_SIZE.x, badge_visible_height)).grow(18.0))
 		var decor_host := Control.new()
 		decor_host.name = "PinnedActivitiesEmptyDecorPin_%s" % index
 		decor_host.anchor_left = 0.0
@@ -2209,8 +3737,8 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 		decor_host.anchor_top = 0.0
 		decor_host.anchor_bottom = 0.0
 		decor_host.position = Vector2(badge_left, badge_top) - badge_top_left_offset
-		decor_host.size = host.MODULE_PIN_BADGE_CLIP_SIZE
-		decor_host.custom_minimum_size = host.MODULE_PIN_BADGE_CLIP_SIZE
+		decor_host.size = ModuleUiRuntime.MODULE_PIN_BADGE_CLIP_SIZE
+		decor_host.custom_minimum_size = ModuleUiRuntime.MODULE_PIN_BADGE_CLIP_SIZE
 		decor_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		decor_host.clip_contents = false
 		decor_host.z_index = 4 + index
@@ -2224,7 +3752,7 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 		hit_zone.anchor_right = 0.0
 		hit_zone.anchor_top = 0.0
 		hit_zone.anchor_bottom = 0.0
-		hit_zone.position = decor_host.position + badge_top_left_offset + host.MODULE_PIN_BADGE_HIT_MIN
+		hit_zone.position = decor_host.position + badge_top_left_offset + ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MIN
 		hit_zone.size = hit_zone_size
 		hit_zone.custom_minimum_size = hit_zone_size
 		hit_zone.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -2281,13 +3809,13 @@ func _pinned_activities_empty_decor_pin_position(
 func _create_pinned_activities_empty_decor_pin_badge(decor_host: Control, index: int) -> TextureButton:
 	if decor_host == null or not is_instance_valid(decor_host):
 		return null
-	var badge: TextureButton = host._ensure_module_pin_badge(decor_host, "")
+	var badge: TextureButton = host._skill_detail_surface()._ensure_module_pin_badge(decor_host, "")
 	if badge == null:
 		return null
 	badge.name = "PinnedActivitiesEmptyDecorPinBadge_%s" % index
 	if badge.is_in_group("module_pin_badges"):
 		badge.remove_from_group("module_pin_badges")
-	var texture_path: String = host.module_ui_runtime.random_pin_texture_path(host.MODULE_PIN_COLOR_TEXTURES, host.MODULE_PIN_ICON_TEXTURE)
+	var texture_path: String = host.module_ui_runtime.random_pin_texture_path(ModuleUiRuntime.MODULE_PIN_COLOR_TEXTURES, ModuleUiRuntime.MODULE_PIN_ICON_TEXTURE)
 	badge.texture_normal = host.visual_texture_cache._texture_or_visual_fallback(texture_path)
 	badge.texture_pressed = badge.texture_normal
 	badge.texture_hover = badge.texture_normal
@@ -2297,13 +3825,13 @@ func _create_pinned_activities_empty_decor_pin_badge(decor_host: Control, index:
 	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.disabled = true
 	badge.visible = true
-	badge.position = host.MODULE_PIN_BADGE_SETTLED_POSITION
+	badge.position = ModuleUiRuntime.MODULE_PIN_BADGE_SETTLED_POSITION
 	badge.rotation_degrees = 0.0
 	badge.scale = Vector2.ONE
 	badge.set_meta("module_pin_module_key", "")
 	badge.set_meta("pinned_activities_empty_decor_pin", true)
-	host._set_canvas_item_alpha_if_changed(badge, 1.0)
-	host._set_module_pin_badge_clip_enabled(badge, true)
+	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(badge, 1.0)
+	host._skill_detail_surface()._set_module_pin_badge_clip_enabled(badge, true)
 	return badge
 
 
@@ -2316,12 +3844,12 @@ func _on_pinned_activities_empty_decor_pin_gui_input(event: InputEvent, decor_ho
 		var touch_event := event as InputEventScreenTouch
 		if touch_event == null or not touch_event.pressed:
 			return
-	var hit_zone: Control = host._valid_control_ref(instance_from_id(hit_zone_id))
+	var hit_zone: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(hit_zone_id))
 	if hit_zone != null:
 		hit_zone.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		hit_zone.accept_event()
-	var decor_host: Control = host._valid_control_ref(instance_from_id(decor_host_id))
-	var badge: TextureButton = host._valid_texture_button_ref(instance_from_id(badge_id))
+	var decor_host: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(decor_host_id))
+	var badge: TextureButton = host._app_lifecycle_runtime().valid_texture_button_ref(instance_from_id(badge_id))
 	if decor_host == null or badge == null:
 		return
 	_play_pinned_activities_empty_decor_pin_exit_animation(badge, decor_host, hit_zone_id)
@@ -2330,7 +3858,7 @@ func _on_pinned_activities_empty_decor_pin_gui_input(event: InputEvent, decor_ho
 func _pinned_activities_empty_state_height() -> float:
 	var active_shelf_height: float = _pinned_active_shelf_target_height(_pinned_active_shelf_skill_id())
 	var content_top_reserved: float = active_shelf_height + host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT + host.SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT
-	var visible_bottom: float = host.BASE_CANVAS.y - float(host.BOTTOM_NAV_HEIGHT) - host._skills_content_bottom_inset_for_screen()
+	var visible_bottom: float = host.BASE_CANVAS.y - float(BOTTOM_NAV_HEIGHT) - _skills_content_bottom_inset_for_screen()
 	return maxf(860.0, visible_bottom - content_top_reserved)
 
 
@@ -2339,26 +3867,26 @@ func _play_pinned_activities_empty_decor_pin_exit_animation(badge: TextureButton
 		return
 	if badge.is_queued_for_deletion() or decor_host.is_queued_for_deletion() or badge.has_meta("module_pin_tween"):
 		return
-	host._set_module_pin_badge_clip_enabled(badge, true)
+	host._skill_detail_surface()._set_module_pin_badge_clip_enabled(badge, true)
 	badge.visible = true
 	badge.disabled = true
-	badge.position = host.MODULE_PIN_BADGE_SETTLED_POSITION
+	badge.position = ModuleUiRuntime.MODULE_PIN_BADGE_SETTLED_POSITION
 	badge.rotation_degrees = 0.0
 	badge.scale = Vector2.ONE
-	host._set_canvas_item_alpha_if_changed(badge, 1.0)
+	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(badge, 1.0)
 	host._audio_director()._play_module_pin_exit_sfx()
 	var tween: Tween = host.create_tween()
 	badge.set_meta("module_pin_tween", tween)
 	var badge_id := badge.get_instance_id()
 	tween.set_parallel(true)
-	tween.tween_method(host._keep_module_pin_badge_disabled.bind(badge_id), 0.0, 1.0, 0.075)
-	tween.tween_property(badge, "position", host.MODULE_PIN_BADGE_SETTLED_POSITION + host.MODULE_PIN_EXIT_LIFT_OFFSET, 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_method(host._skill_detail_surface()._keep_module_pin_badge_disabled.bind(badge_id), 0.0, 1.0, 0.075)
+	tween.tween_property(badge, "position", ModuleUiRuntime.MODULE_PIN_BADGE_SETTLED_POSITION + ModuleUiRuntime.MODULE_PIN_EXIT_LIFT_OFFSET, 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.tween_property(badge, "rotation_degrees", 0.0, 0.075).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 	tween.chain()
-	tween.tween_callback(host._set_module_pin_badge_clip_enabled_by_id.bind(badge.get_instance_id(), false))
+	tween.tween_callback(host._skill_detail_surface()._set_module_pin_badge_clip_enabled_by_id.bind(badge.get_instance_id(), false))
 	tween.set_parallel(true)
-	tween.tween_method(host._keep_module_pin_badge_disabled.bind(badge_id), 0.0, 1.0, 0.195)
-	tween.tween_property(badge, "position", host.MODULE_PIN_BADGE_PULL_OUT_POSITION, 0.195).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tween.tween_method(host._skill_detail_surface()._keep_module_pin_badge_disabled.bind(badge_id), 0.0, 1.0, 0.195)
+	tween.tween_property(badge, "position", ModuleUiRuntime.MODULE_PIN_BADGE_PULL_OUT_POSITION, 0.195).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tween.tween_property(badge, "rotation_degrees", 0.0, 0.195).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tween.tween_property(badge, "scale", Vector2(0.96, 0.96), 0.195).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 	tween.tween_property(badge, "modulate:a", 0.0, 0.15).set_delay(0.045).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -2367,13 +3895,13 @@ func _play_pinned_activities_empty_decor_pin_exit_animation(badge: TextureButton
 
 
 func _finish_pinned_activities_empty_decor_pin_exit_animation(badge_id: int, decor_host_id: int, hit_zone_id: int) -> void:
-	var hit_zone: Control = host._valid_control_ref(instance_from_id(hit_zone_id))
+	var hit_zone: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(hit_zone_id))
 	if hit_zone != null and not hit_zone.is_queued_for_deletion():
 		hit_zone.queue_free()
-	var badge: TextureButton = host._valid_texture_button_ref(instance_from_id(badge_id))
+	var badge: TextureButton = host._app_lifecycle_runtime().valid_texture_button_ref(instance_from_id(badge_id))
 	if badge != null and not badge.is_queued_for_deletion() and badge.has_meta("module_pin_tween"):
 		badge.remove_meta("module_pin_tween")
-	var decor_host: Control = host._valid_control_ref(instance_from_id(decor_host_id))
+	var decor_host: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(decor_host_id))
 	if decor_host != null and not decor_host.is_queued_for_deletion():
 		decor_host.queue_free()
 
@@ -2386,23 +3914,23 @@ func _activity_queue_active_shelf(content_width: float) -> Control:
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_theme_stylebox_override("panel", _pinned_active_shelf_panel_style(active_skill_id))
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.pinned_active_shelf_header = header
+	pinned_active_shelf_header = header
 
 	var body := Control.new()
 	body.set_anchors_preset(Control.PRESET_FULL_RECT)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(body)
-	host.pinned_active_shelf_background = _add_pinned_active_shelf_background(body, active_skill_id, content_width)
+	pinned_active_shelf_background = _add_pinned_active_shelf_background(body, active_skill_id, content_width)
 	body.add_child(_activity_queue_static_title())
-	host.pinned_active_shelf_stamina_strip = _build_pinned_active_shelf_stamina_strip()
-	body.add_child(host.pinned_active_shelf_stamina_strip)
+	pinned_active_shelf_stamina_strip = _build_pinned_active_shelf_stamina_strip()
+	body.add_child(pinned_active_shelf_stamina_strip)
 
-	host.pinned_active_shelf_content = Control.new()
-	host.pinned_active_shelf_content.name = "ActivityQueueActiveShelfContent"
-	host.pinned_active_shelf_content.set_anchors_preset(Control.PRESET_FULL_RECT)
-	host.pinned_active_shelf_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.pinned_active_shelf_content.z_index = 20
-	body.add_child(host.pinned_active_shelf_content)
+	pinned_active_shelf_content = Control.new()
+	pinned_active_shelf_content.name = "ActivityQueueActiveShelfContent"
+	pinned_active_shelf_content.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pinned_active_shelf_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pinned_active_shelf_content.z_index = 20
+	body.add_child(pinned_active_shelf_content)
 
 	_rebuild_pinned_active_shelf_content(active_skill_id, true)
 	return header
@@ -2431,23 +3959,23 @@ func _pinned_activities_active_shelf(content_width: float) -> Control:
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_theme_stylebox_override("panel", _pinned_active_shelf_panel_style(active_skill_id))
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.pinned_active_shelf_header = header
+	pinned_active_shelf_header = header
 
 	var body := Control.new()
 	body.set_anchors_preset(Control.PRESET_FULL_RECT)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(body)
-	host.pinned_active_shelf_background = _add_pinned_active_shelf_background(body, active_skill_id, content_width)
+	pinned_active_shelf_background = _add_pinned_active_shelf_background(body, active_skill_id, content_width)
 	body.add_child(_pinned_activities_static_title())
-	host.pinned_active_shelf_stamina_strip = _build_pinned_active_shelf_stamina_strip()
-	body.add_child(host.pinned_active_shelf_stamina_strip)
+	pinned_active_shelf_stamina_strip = _build_pinned_active_shelf_stamina_strip()
+	body.add_child(pinned_active_shelf_stamina_strip)
 
-	host.pinned_active_shelf_content = Control.new()
-	host.pinned_active_shelf_content.name = "PinnedActivitiesActiveShelfContent"
-	host.pinned_active_shelf_content.set_anchors_preset(Control.PRESET_FULL_RECT)
-	host.pinned_active_shelf_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	host.pinned_active_shelf_content.z_index = 20
-	body.add_child(host.pinned_active_shelf_content)
+	pinned_active_shelf_content = Control.new()
+	pinned_active_shelf_content.name = "PinnedActivitiesActiveShelfContent"
+	pinned_active_shelf_content.set_anchors_preset(Control.PRESET_FULL_RECT)
+	pinned_active_shelf_content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pinned_active_shelf_content.z_index = 20
+	body.add_child(pinned_active_shelf_content)
 
 	_rebuild_pinned_active_shelf_content(active_skill_id, true)
 	return header
@@ -2459,18 +3987,18 @@ func _pinned_active_shelf_target_height(skill_id: String) -> float:
 	return _pinned_active_shelf_expanded_height()
 
 func _pinned_active_shelf_shadow_top_y() -> float:
-	if host.pinned_active_shelf_header != null and is_instance_valid(host.pinned_active_shelf_header):
-		return maxf(1.0, host.pinned_active_shelf_header.custom_minimum_size.y + host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
+	if pinned_active_shelf_header != null and is_instance_valid(pinned_active_shelf_header):
+		return maxf(1.0, pinned_active_shelf_header.custom_minimum_size.y + host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT)
 	return _pinned_active_shelf_target_height(_pinned_active_shelf_skill_id()) + host.SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT
 
 func _add_pinned_active_shelf_shadow_overlay() -> void:
 	if host.skills_content == null:
 		return
-	host.detail_shelf_shadow_alpha = host._skill_detail_shadow_target_alpha()
-	host.detail_shelf_shadow_overlay = host._add_skill_detail_shadow_overlay_to(host.skills_content, _pinned_active_shelf_shadow_top_y(), host.detail_shelf_shadow_alpha)
+	host._skill_detail_surface().detail_shelf_shadow_alpha = host._skill_detail_surface()._skill_detail_shadow_target_alpha()
+	host._skill_detail_surface().detail_shelf_shadow_overlay = host._skill_detail_surface()._add_skill_detail_shadow_overlay_to(host.skills_content, _pinned_active_shelf_shadow_top_y(), host._skill_detail_surface().detail_shelf_shadow_alpha)
 
 func _add_pinned_active_shelf_background(parent: Control, skill_id: String, content_width: float) -> Control:
-	var background: Control = host._add_skill_detail_shelf_background(parent, _pinned_active_shelf_theme_skill_id(skill_id), content_width)
+	var background: Control = host._skill_detail_surface()._add_skill_detail_shelf_background(parent, _pinned_active_shelf_theme_skill_id(skill_id), content_width)
 	background.name = "PinnedActivitiesFullBleedShelfBackground"
 	background.z_index = 0
 	return background
@@ -2497,13 +4025,13 @@ func _pinned_active_shelf_skill_id() -> String:
 	return _pinned_active_shelf_jailed_skill_id()
 
 func _pinned_active_shelf_jailed_skill_id() -> String:
-	if host.thieving_action_jails.is_empty():
+	if host.thieving_state.action_jails.is_empty():
 		return ""
-	for raw_action_id in host.thieving_action_jails.keys():
+	for raw_action_id in host.thieving_state.action_jails.keys():
 		var action_id := str(raw_action_id)
 		if action_id.is_empty() or host._thieving_surface()._thieving_action_jail_remaining(action_id) <= 0:
 			continue
-		var state := host.thieving_action_jails.get(action_id, {}) as Dictionary
+		var state := host.thieving_state.action_jails.get(action_id, {}) as Dictionary
 		if not bool(state.get("resume_when_free", false)):
 			continue
 		var module_key: String = ModuleUiRuntime.normalize("action:thieving:%s" % action_id)
@@ -2528,40 +4056,40 @@ func _running_action_is_pinned() -> bool:
 			return true
 		if module_key.begins_with("fishing_area:") and host.running_skill_id == "fishing":
 			var area_key: String = module_key.substr("fishing_area:".length())
-			for raw_area_def in host._fishing_render_area_modules("fishing"):
+			for raw_area_def in host._fishing_ui_surface().render_area_modules("fishing"):
 				var area_def := raw_area_def as Dictionary
 				if host.fishing_runtime.area_module_key("fishing", area_def) == area_key and host.fishing_runtime.action_belongs_to_area(host, str(area_def.get("id", "")), host.running_action_id):
 					return true
 	return false
 
 func _rebuild_pinned_active_shelf_content(skill_id: String, instant := false) -> void:
-	if host.pinned_active_shelf_content == null or not is_instance_valid(host.pinned_active_shelf_content):
+	if pinned_active_shelf_content == null or not is_instance_valid(pinned_active_shelf_content):
 		return
-	if host.pinned_active_shelf_tween != null and host.pinned_active_shelf_tween.is_valid():
-		host.pinned_active_shelf_tween.kill()
-	host.pinned_active_shelf_tween = null
-	host._clear(host.pinned_active_shelf_content)
-	host.pinned_active_shelf_skill_id = skill_id
-	host.pinned_active_shelf_transition_skill_id = ""
-	host.pinned_active_shelf_transition_active = false
-	host.pinned_active_shelf_xp_label = null
-	host.pinned_active_shelf_xp_bar = null
-	host.pinned_active_shelf_regen_circle = null
-	host.pinned_active_shelf_fish_circle = null
+	if pinned_active_shelf_tween != null and pinned_active_shelf_tween.is_valid():
+		pinned_active_shelf_tween.kill()
+	pinned_active_shelf_tween = null
+	host._clear(pinned_active_shelf_content)
+	pinned_active_shelf_skill_id = skill_id
+	pinned_active_shelf_transition_skill_id = ""
+	pinned_active_shelf_transition_active = false
+	pinned_active_shelf_xp_label = null
+	pinned_active_shelf_xp_bar = null
+	pinned_active_shelf_regen_circle = null
+	pinned_active_shelf_fish_circle = null
 	_apply_pinned_active_shelf_theme(skill_id, instant)
 	if skill_id.is_empty():
-		host._set_canvas_item_alpha_if_changed(host.pinned_active_shelf_content, 0.0)
+		host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(pinned_active_shelf_content, 0.0)
 		_set_pinned_active_shelf_stamina_strip_visible(true)
 		_sync_pinned_active_shelf_stamina_gauges(0.0, true)
 		return
 	_set_pinned_active_shelf_stamina_strip_visible(false)
-	_build_pinned_active_shelf_skill_content(host.pinned_active_shelf_content, skill_id)
-	host._set_canvas_item_alpha_if_changed(host.pinned_active_shelf_content, 1.0 if instant else 0.0)
+	_build_pinned_active_shelf_skill_content(pinned_active_shelf_content, skill_id)
+	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(pinned_active_shelf_content, 1.0 if instant else 0.0)
 	if not instant:
-		host.pinned_active_shelf_tween = host.create_tween()
-		host.pinned_active_shelf_tween.tween_property(host.pinned_active_shelf_content, "modulate:a", 1.0, 0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-		if host.pinned_active_shelf_background != null and is_instance_valid(host.pinned_active_shelf_background):
-			host.pinned_active_shelf_tween.parallel().tween_property(host.pinned_active_shelf_background, "modulate:a", 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		pinned_active_shelf_tween = host.create_tween()
+		pinned_active_shelf_tween.tween_property(pinned_active_shelf_content, "modulate:a", 1.0, 0.10).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		if pinned_active_shelf_background != null and is_instance_valid(pinned_active_shelf_background):
+			pinned_active_shelf_tween.parallel().tween_property(pinned_active_shelf_background, "modulate:a", 1.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 
 func _build_pinned_active_shelf_stamina_strip() -> Control:
 	var strip := Control.new()
@@ -2569,7 +4097,7 @@ func _build_pinned_active_shelf_stamina_strip() -> Control:
 	strip.set_anchors_preset(Control.PRESET_FULL_RECT)
 	strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	strip.z_index = 12
-	host.pinned_active_shelf_stamina_gauges.clear()
+	pinned_active_shelf_stamina_gauges.clear()
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2594,12 +4122,10 @@ func _build_pinned_active_shelf_stamina_strip() -> Control:
 		gauge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		gauge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		gauge.mouse_filter = Control.MOUSE_FILTER_STOP
-		gauge.set_dark_mode(host.dark_mode_enabled)
-		gauge.set_theme_color(host._skill_theme_color(skill_id))
-		gauge.set_regen_ring_color(host._stamina_regen_circle_color(skill_id))
-		gauge.gui_input.connect(Callable(host, "_on_stamina_gauge_input").bind(skill_id, gauge))
+		gauge.gui_input.connect(Callable(host._action_runtime(), "_on_stamina_gauge_input").bind(skill_id, gauge))
 		row.add_child(gauge)
-		host.pinned_active_shelf_stamina_gauges[skill_id] = gauge
+		gauge.sync_for_skill(host, skill_id, true)
+		pinned_active_shelf_stamina_gauges[skill_id] = gauge
 	return strip
 
 func _pinned_activities_stamina_skill_ids() -> Array:
@@ -2613,21 +4139,21 @@ func _pinned_activities_stamina_skill_ids() -> Array:
 	return ids
 
 func _set_pinned_active_shelf_stamina_strip_visible(visible: bool) -> void:
-	if host.pinned_active_shelf_stamina_strip == null or not is_instance_valid(host.pinned_active_shelf_stamina_strip):
+	if pinned_active_shelf_stamina_strip == null or not is_instance_valid(pinned_active_shelf_stamina_strip):
 		return
-	host._set_canvas_item_visible_if_changed(host.pinned_active_shelf_stamina_strip, visible)
-	host._set_canvas_item_alpha_if_changed(host.pinned_active_shelf_stamina_strip, 1.0 if visible else 0.0)
+	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(pinned_active_shelf_stamina_strip, visible)
+	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(pinned_active_shelf_stamina_strip, 1.0 if visible else 0.0)
 
 func _sync_pinned_active_shelf_stamina_gauges(_delta: float, instant := false) -> void:
 	var live := {}
-	for raw_skill_id in host.pinned_active_shelf_stamina_gauges.keys():
+	for raw_skill_id in pinned_active_shelf_stamina_gauges.keys():
 		var skill_id := str(raw_skill_id)
-		var gauge := host.pinned_active_shelf_stamina_gauges.get(raw_skill_id, null) as RegenCircle
+		var gauge := pinned_active_shelf_stamina_gauges.get(raw_skill_id, null) as RegenCircle
 		if gauge == null or not is_instance_valid(gauge):
 			continue
 		live[skill_id] = gauge
-		host._set_regen_circle_for_skill(gauge, skill_id, instant)
-	host.pinned_active_shelf_stamina_gauges = live
+		gauge.sync_for_skill(host, skill_id, instant)
+	pinned_active_shelf_stamina_gauges = live
 
 func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String) -> void:
 	var margin := MarginContainer.new()
@@ -2659,85 +4185,81 @@ func _build_pinned_active_shelf_skill_content(parent: Control, skill_id: String)
 	title_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_block.add_child(title_stack)
 
-	var title: Label = host._label(host._skill_name(skill_id), host._skill_detail_title_font_size(skill_id), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title: Label = host._label(SkillState.skill_name(host.skill_defs, skill_id), SkillState.skill_detail_title_font_size(skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_stack.add_child(title)
-	host.pinned_active_shelf_xp_label = host._label(host._skill_level_xp_text(skill_id), host.SKILL_DETAIL_XP_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
-	host.pinned_active_shelf_xp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title_stack.add_child(host.pinned_active_shelf_xp_label)
-	var xp: Dictionary = SkillState.xp_progress(host.skills, skill_id, host._skill_level(skill_id))
-	host.pinned_active_shelf_xp_bar = host._skill_detail_xp_bar(skill_id, float(xp["pct"]))
-	title_stack.add_child(host.pinned_active_shelf_xp_bar)
+	pinned_active_shelf_xp_label = host._label(SkillState.level_xp_text(host.skills, skill_id, SkillState.host_skill_level(host, skill_id)), host.SKILL_DETAIL_XP_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	pinned_active_shelf_xp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_stack.add_child(pinned_active_shelf_xp_label)
+	var xp: Dictionary = SkillState.xp_progress(host.skills, skill_id, SkillState.host_skill_level(host, skill_id))
+	pinned_active_shelf_xp_bar = ThemeStyles.skill_detail_xp_bar(skill_id, float(xp["pct"]), host.COLOR_BLUE, host.COLOR_INK, host.SKILL_DETAIL_XP_BAR_HEIGHT, host.SKILL_DETAIL_XP_BAR_WIDTH)
+	title_stack.add_child(pinned_active_shelf_xp_bar)
 
 	if host._fishing_rework_active_for_skill(skill_id):
-		host.pinned_active_shelf_fish_circle = FishCircle.new()
-		host.pinned_active_shelf_fish_circle.custom_minimum_size = Vector2(552, 552)
-		host.pinned_active_shelf_fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		host.pinned_active_shelf_fish_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		header_row.add_child(host.pinned_active_shelf_fish_circle)
-		host._set_fish_circle_for_skill(host.pinned_active_shelf_fish_circle, skill_id, true)
+		pinned_active_shelf_fish_circle = FishCircle.new()
+		pinned_active_shelf_fish_circle.custom_minimum_size = Vector2(552, 552)
+		pinned_active_shelf_fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pinned_active_shelf_fish_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		header_row.add_child(pinned_active_shelf_fish_circle)
+		host._fishing_ui_surface()._set_fish_circle_for_skill(pinned_active_shelf_fish_circle, skill_id, true)
 	else:
 		var regen_circle_host := Control.new()
 		regen_circle_host.custom_minimum_size = Vector2(552, 552)
 		regen_circle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		regen_circle_host.clip_contents = false
 		header_row.add_child(regen_circle_host)
-		host.pinned_active_shelf_regen_circle = RegenCircle.new()
-		host.pinned_active_shelf_regen_circle.custom_minimum_size = Vector2(552, 552)
-		host.pinned_active_shelf_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		host.pinned_active_shelf_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
-		host.pinned_active_shelf_regen_circle.set_dark_mode(host.dark_mode_enabled)
-		host.pinned_active_shelf_regen_circle.set_theme_color(host._skill_theme_color(skill_id))
-		host.pinned_active_shelf_regen_circle.set_regen_ring_color(host._stamina_regen_circle_color(skill_id))
-		host.pinned_active_shelf_regen_circle.gui_input.connect(Callable(host, "_on_stamina_gauge_input").bind(skill_id, host.pinned_active_shelf_regen_circle))
-		regen_circle_host.add_child(host.pinned_active_shelf_regen_circle)
+		pinned_active_shelf_regen_circle = RegenCircle.new()
+		pinned_active_shelf_regen_circle.custom_minimum_size = Vector2(552, 552)
+		pinned_active_shelf_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pinned_active_shelf_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
+		pinned_active_shelf_regen_circle.gui_input.connect(Callable(host._action_runtime(), "_on_stamina_gauge_input").bind(skill_id, pinned_active_shelf_regen_circle))
+		regen_circle_host.add_child(pinned_active_shelf_regen_circle)
 		host._fishing_ui_surface()._attach_auto_eat_fish_toggle(regen_circle_host, skill_id)
-		host._set_regen_circle_for_skill(host.pinned_active_shelf_regen_circle, skill_id, true)
+		pinned_active_shelf_regen_circle.sync_for_skill(host, skill_id, true)
 
 func _apply_pinned_active_shelf_theme(skill_id: String, instant := false) -> void:
-	if host.pinned_active_shelf_content == null or not is_instance_valid(host.pinned_active_shelf_content):
+	if pinned_active_shelf_content == null or not is_instance_valid(pinned_active_shelf_content):
 		return
-	var body := host.pinned_active_shelf_content.get_parent() as Control
+	var body := pinned_active_shelf_content.get_parent() as Control
 	if body == null:
 		return
 	var header := body.get_parent() as PanelContainer
 	if header != null:
 		header.add_theme_stylebox_override("panel", _pinned_active_shelf_panel_style(skill_id))
-	var background: Control = host.pinned_active_shelf_background
+	var background: Control = pinned_active_shelf_background
 	if background == null or not is_instance_valid(background):
 		for child in body.get_children():
 			var panel := child as Control
 			if panel != null and panel.name == "PinnedActivitiesFullBleedShelfBackground":
 				background = panel
-				host.pinned_active_shelf_background = panel
+				pinned_active_shelf_background = panel
 				break
 	if background == null:
 		return
 	_apply_pinned_active_shelf_background_colors(background, skill_id)
 	var target_alpha := 1.0
-	host._set_canvas_item_alpha_if_changed(background, target_alpha if instant or skill_id.is_empty() else 0.0)
+	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(background, target_alpha if instant or skill_id.is_empty() else 0.0)
 
 func _apply_pinned_active_shelf_background_colors(background: Control, skill_id: String) -> void:
-	var gradient := background as SkillDetailGradientShelf
-	if gradient == null:
+	if not background.has_method("set_colors"):
 		return
 	if skill_id.is_empty():
-		gradient.set_colors(Color("#ececea"), Color("#d4d2cc"))
+		background.call("set_colors", Color("#ececea"), Color("#d4d2cc"))
 		return
 	var theme_skill_id := _pinned_active_shelf_theme_skill_id(skill_id)
-	gradient.set_colors(host._skill_detail_shelf_color(theme_skill_id), host._skill_detail_shelf_gradient_bottom_color(theme_skill_id))
+	background.call("set_colors", host._skill_detail_surface()._skill_detail_shelf_color(theme_skill_id), host._skill_detail_surface()._skill_detail_shelf_gradient_bottom_color(theme_skill_id))
 
 func _pinned_active_shelf_theme_skill_id(skill_id: String) -> String:
 	return skill_id if not skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, skill_id) else "woodcutting"
 
 func _pinned_active_shelf_panel_style(skill_id: String) -> StyleBoxFlat:
 	if not skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, skill_id):
-		return host._skill_detail_shelf_style(skill_id, false)
+		return host._skill_detail_surface()._skill_detail_shelf_style(skill_id, false)
 	return _pinned_active_shelf_style("", false)
 
 func _pinned_active_shelf_style(skill_id: String, draw_bottom_border := true) -> StyleBoxFlat:
 	if not skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, skill_id):
-		return host._skill_detail_shelf_style(skill_id, draw_bottom_border)
+		return host._skill_detail_surface()._skill_detail_shelf_style(skill_id, draw_bottom_border)
 	var style := StyleBoxFlat.new()
 	style.bg_color = host.COLOR_PAPER
 	style.border_color = Color(0.09, 0.08, 0.07, 0.12)
@@ -2749,81 +4271,267 @@ func _pinned_active_shelf_style(skill_id: String, draw_bottom_border := true) ->
 	return style
 
 func _sync_pinned_active_shelf(delta: float, instant := false) -> void:
-	if (host.current_screen != "pinned" and host.current_screen != "queue") or host.pinned_active_shelf_content == null or not is_instance_valid(host.pinned_active_shelf_content):
+	if (host.current_screen != "pinned" and host.current_screen != "queue") or pinned_active_shelf_content == null or not is_instance_valid(pinned_active_shelf_content):
 		return
 	_sync_pinned_active_shelf_stamina_gauges(delta, instant)
 	var active_skill_id: String = host._activity_queue_runtime()._activity_queue_active_shelf_skill_id() if host.current_screen == "queue" else _pinned_active_shelf_skill_id()
-	if host.pinned_active_shelf_transition_active and active_skill_id == host.pinned_active_shelf_transition_skill_id:
+	if pinned_active_shelf_transition_active and active_skill_id == pinned_active_shelf_transition_skill_id:
 		return
-	if active_skill_id != host.pinned_active_shelf_skill_id:
+	if active_skill_id != pinned_active_shelf_skill_id:
 		_transition_pinned_active_shelf_to(active_skill_id, instant)
 		return
 	if active_skill_id.is_empty():
 		return
-	var xp: Dictionary = SkillState.xp_progress(host.skills, active_skill_id, host._skill_level(active_skill_id))
-	if host.pinned_active_shelf_xp_label != null:
-		host._set_label_text_if_changed(host.pinned_active_shelf_xp_label, host._skill_level_xp_text(active_skill_id))
-	if host.pinned_active_shelf_xp_bar != null:
-		host._apply_xp_progress_bar_theme(host.pinned_active_shelf_xp_bar, host._skill_theme_color(active_skill_id))
-		host._set_bar(host.pinned_active_shelf_xp_bar, float(xp["pct"]), delta, instant)
-	if host.pinned_active_shelf_fish_circle != null:
-		host._set_fish_circle_for_skill(host.pinned_active_shelf_fish_circle, active_skill_id, instant)
-	elif host.pinned_active_shelf_regen_circle != null:
-		host._set_regen_circle_for_skill(host.pinned_active_shelf_regen_circle, active_skill_id, instant)
+	var xp: Dictionary = SkillState.xp_progress(host.skills, active_skill_id, SkillState.host_skill_level(host, active_skill_id))
+	if pinned_active_shelf_xp_label != null:
+		host._app_lifecycle_runtime().set_label_text_if_changed(pinned_active_shelf_xp_label, SkillState.level_xp_text(host.skills, active_skill_id, SkillState.host_skill_level(host, active_skill_id)))
+	if pinned_active_shelf_xp_bar != null:
+		ThemeStyles.apply_xp_progress_bar_theme(pinned_active_shelf_xp_bar, ThemeStyles.skill_theme_color(active_skill_id, host.COLOR_BLUE), host.COLOR_INK)
+		ThemeStyles.set_progress_bar_value(pinned_active_shelf_xp_bar, float(xp["pct"]), delta, instant)
+	if pinned_active_shelf_fish_circle != null:
+		host._fishing_ui_surface()._set_fish_circle_for_skill(pinned_active_shelf_fish_circle, active_skill_id, instant)
+	elif pinned_active_shelf_regen_circle != null:
+		pinned_active_shelf_regen_circle.sync_for_skill(host, active_skill_id, instant)
 
 func _transition_pinned_active_shelf_to(skill_id: String, instant := false) -> void:
-	if host.pinned_active_shelf_content == null or not is_instance_valid(host.pinned_active_shelf_content):
+	if pinned_active_shelf_content == null or not is_instance_valid(pinned_active_shelf_content):
 		return
-	if host.pinned_active_shelf_tween != null and host.pinned_active_shelf_tween.is_valid():
-		host.pinned_active_shelf_tween.kill()
-	host.pinned_active_shelf_tween = null
+	if pinned_active_shelf_tween != null and pinned_active_shelf_tween.is_valid():
+		pinned_active_shelf_tween.kill()
+	pinned_active_shelf_tween = null
 	_animate_pinned_active_shelf_height(skill_id, instant)
 	if instant:
 		_rebuild_pinned_active_shelf_content(skill_id, true)
 		return
-	var current_alpha: float = host.pinned_active_shelf_content.modulate.a
+	var current_alpha: float = pinned_active_shelf_content.modulate.a
 	if current_alpha <= 0.001:
 		_rebuild_pinned_active_shelf_content(skill_id, false)
 		return
-	host.pinned_active_shelf_transition_skill_id = skill_id
-	host.pinned_active_shelf_transition_active = true
-	var content_id: int = host.pinned_active_shelf_content.get_instance_id()
-	host.pinned_active_shelf_tween = host.create_tween()
+	pinned_active_shelf_transition_skill_id = skill_id
+	pinned_active_shelf_transition_active = true
+	var content_id: int = pinned_active_shelf_content.get_instance_id()
+	pinned_active_shelf_tween = host.create_tween()
 	var fade_out_seconds := 0.10
-	host.pinned_active_shelf_tween.tween_property(host.pinned_active_shelf_content, "modulate:a", 0.0, fade_out_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	host.pinned_active_shelf_tween.tween_callback(Callable(self, "_finish_pinned_active_shelf_fade_out").bind(content_id, skill_id))
+	pinned_active_shelf_tween.tween_property(pinned_active_shelf_content, "modulate:a", 0.0, fade_out_seconds).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	pinned_active_shelf_tween.tween_callback(Callable(self, "_finish_pinned_active_shelf_fade_out").bind(content_id, skill_id))
 
 func _finish_pinned_active_shelf_fade_out(content_id: int, skill_id: String) -> void:
-	var content: Control = host._valid_control_ref(instance_from_id(content_id))
-	if content == null or content != host.pinned_active_shelf_content:
+	var content: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(content_id))
+	if content == null or content != pinned_active_shelf_content:
 		return
 	_rebuild_pinned_active_shelf_content(skill_id, false)
 
 func _animate_pinned_active_shelf_height(skill_id: String, instant := false) -> void:
-	if host.pinned_active_shelf_header == null or not is_instance_valid(host.pinned_active_shelf_header):
+	if pinned_active_shelf_header == null or not is_instance_valid(pinned_active_shelf_header):
 		return
-	if host.pinned_active_shelf_height_tween != null and host.pinned_active_shelf_height_tween.is_valid():
-		host.pinned_active_shelf_height_tween.kill()
-	host.pinned_active_shelf_height_tween = null
+	if pinned_active_shelf_height_tween != null and pinned_active_shelf_height_tween.is_valid():
+		pinned_active_shelf_height_tween.kill()
+	pinned_active_shelf_height_tween = null
 	var target_height := _pinned_active_shelf_target_height(skill_id)
 	if instant:
 		_set_pinned_active_shelf_height(target_height)
 		return
-	var current_height: float = host.pinned_active_shelf_header.custom_minimum_size.y
+	var current_height: float = pinned_active_shelf_header.custom_minimum_size.y
 	if absf(current_height - target_height) <= 0.5:
 		_set_pinned_active_shelf_height(target_height)
 		return
-	host.pinned_active_shelf_height_tween = host.create_tween()
-	host.pinned_active_shelf_height_tween.tween_method(Callable(self, "_set_pinned_active_shelf_height"), current_height, target_height, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
+	pinned_active_shelf_height_tween = host.create_tween()
+	pinned_active_shelf_height_tween.tween_method(Callable(self, "_set_pinned_active_shelf_height"), current_height, target_height, 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN_OUT)
 
 func _set_pinned_active_shelf_height(height: float) -> void:
-	if host.pinned_active_shelf_header == null or not is_instance_valid(host.pinned_active_shelf_header):
+	if pinned_active_shelf_header == null or not is_instance_valid(pinned_active_shelf_header):
 		return
-	host.pinned_active_shelf_header.custom_minimum_size = Vector2(host.pinned_active_shelf_header.custom_minimum_size.x, maxf(1.0, height))
-	if host.detail_shelf_shadow_overlay != null and is_instance_valid(host.detail_shelf_shadow_overlay):
+	pinned_active_shelf_header.custom_minimum_size = Vector2(pinned_active_shelf_header.custom_minimum_size.x, maxf(1.0, height))
+	if host._skill_detail_surface().detail_shelf_shadow_overlay != null and is_instance_valid(host._skill_detail_surface().detail_shelf_shadow_overlay):
 		var shadow_top := _pinned_active_shelf_shadow_top_y()
-		host.detail_shelf_shadow_overlay.offset_top = shadow_top
-		host.detail_shelf_shadow_overlay.offset_bottom = shadow_top + 116.0
+		host._skill_detail_surface().detail_shelf_shadow_overlay.offset_top = shadow_top
+		host._skill_detail_surface().detail_shelf_shadow_overlay.offset_bottom = shadow_top + 116.0
+
+func _route_pinned_shelf_action_card_input(event: InputEvent) -> bool:
+	if host.current_screen != "skill":
+		return false
+	if host._input_routing_shell()._is_primary_press_event(event) and host._input_routing_shell()._event_points_inside_bottom_interactive_ui(event):
+		return false
+	if host.selected_skill_id == "fishing" and not host._skill_detail_surface().action_card_press_key.begins_with("pinned_shelf:"):
+		var fishing_event_position: Vector2 = host._input_routing_shell()._fishing_detail_event_position(event)
+		if fishing_event_position != Vector2.INF and host._input_routing_shell()._position_inside_detail_actions_viewport(fishing_event_position):
+			return false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var mouse_event := event as InputEventMouseButton
+		var event_position: Vector2 = host._input_routing_shell()._global_event_position(mouse_event.position, mouse_event.global_position)
+		if mouse_event.pressed:
+			var action_hit: Dictionary = host._skill_detail_surface()._module_action_circle_at_position(event_position)
+			if _non_shelf_pin_center_hit(action_hit, event_position):
+				return false
+			var card_hit := _pinned_shelf_action_card_at_position(event_position)
+			if card_hit.is_empty():
+				return false
+			var card := card_hit.get("card", {}) as Dictionary
+			host.action_card_press_consumed = false
+			var routed := _begin_pinned_shelf_action_card_press(card, event_position, -1)
+			return routed
+		if host._skill_detail_surface().action_card_press_key.begins_with("pinned_shelf:"):
+			return host._input_routing_shell()._route_action_card_release(event)
+	if event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		if touch_event.pressed:
+			var action_hit: Dictionary = host._skill_detail_surface()._module_action_circle_at_position(touch_event.position)
+			if _non_shelf_pin_center_hit(action_hit, touch_event.position):
+				return false
+			var card_hit := _pinned_shelf_action_card_at_position(touch_event.position)
+			if card_hit.is_empty():
+				return false
+			var card := card_hit.get("card", {}) as Dictionary
+			host.action_card_press_consumed = false
+			var routed := _begin_pinned_shelf_action_card_press(card, touch_event.position, touch_event.index)
+			return routed
+		if host._skill_detail_surface().action_card_press_key.begins_with("pinned_shelf:"):
+			return host._input_routing_shell()._route_action_card_release(event)
+	return false
+
+
+func _non_shelf_pin_center_hit(action_hit: Dictionary, _event_position: Vector2) -> bool:
+	if action_hit.is_empty():
+		return false
+	if str(action_hit.get("kind", "")) != "pin":
+		return false
+	if str(action_hit.get("module_key", "")).begins_with("pinned_shelf:"):
+		return false
+	var hit_host: Control = host._app_lifecycle_runtime().valid_control_ref(action_hit.get("host", null))
+	return hit_host != null
+
+
+func _pinned_shelf_action_card_at_position(event_position: Vector2) -> Dictionary:
+	if host.current_screen != "skill" or not host._input_routing_shell()._position_inside_detail_actions_viewport(event_position):
+		return {}
+	var keys: Array = host.action_card_keys.duplicate()
+	keys.reverse()
+	for raw_action_key in host.action_cards.keys():
+		var action_key := str(raw_action_key)
+		if action_key.begins_with("pinned_shelf:") and not keys.has(action_key):
+			keys.push_front(action_key)
+	for raw_key in keys:
+		var key := str(raw_key)
+		if not key.begins_with("pinned_shelf:") or not host.action_cards.has(key):
+			continue
+		var card := host.action_cards[key] as Dictionary
+		var pop: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("pop", null))
+		if pop == null or not pop.is_inside_tree() or not pop.is_visible_in_tree():
+			continue
+		if not pop.get_global_rect().has_point(event_position):
+			continue
+		var skill_id := str(card.get("skill_id", ""))
+		var action_id := str(card.get("action_id", ""))
+		if skill_id.is_empty() or action_id.is_empty():
+			continue
+		var action: Dictionary = host._action_data(skill_id, action_id)
+		if action.is_empty() or host._passive_modules_runtime().is_passive_action(action):
+			continue
+		if bool(card.get("unlock_ceremony_active", false)) or bool(card.get("unlock_ceremony_pending", false)):
+			continue
+		if not host._skill_detail_surface()._module_action_zone_kind_at_position(pop, event_position).is_empty():
+			return {}
+		return {
+			"card": card,
+			"skill_id": skill_id,
+			"action_id": action_id
+		}
+	return {}
+
+
+func _begin_pinned_shelf_action_card_press(card: Dictionary, press_position: Vector2, pointer_id := -1) -> bool:
+	var skill_id := str(card.get("skill_id", ""))
+	var action_id := str(card.get("action_id", ""))
+	var action: Dictionary = host._action_data(skill_id, action_id)
+	if host._input_routing_shell()._activity_card_is_locked_or_covered(skill_id, action, card):
+		host._action_stop_hold().cancel_action()
+		return false
+	if host.running_skill_id == skill_id and host.running_action_id == action_id:
+		if host._action_runtime()._try_action_opportunity_click(skill_id, action_id, press_position):
+			host.action_card_press_consumed = true
+			host._action_stop_hold().cancel_action()
+			host._skill_swipe_activity_surface().skill_swipe_tracking = false
+			host._skill_swipe_activity_surface().skill_swipe_horizontal = false
+			host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
+			return true
+	var stat_kind: String = host._skill_detail_surface()._activity_stat_kind_at_position(card, press_position)
+	if stat_kind.is_empty() and host._skill_swipe_activity_surface()._action_card_medal_hit_at_position(card, press_position):
+		stat_kind = host.ACTION_CARD_MEDAL_PRESS_KIND
+	if stat_kind.is_empty() and host.running_skill_id == skill_id and host.running_action_id == action_id:
+		if host._action_runtime()._miss_action_opportunity_click(skill_id, action_id, press_position):
+			host.action_card_press_consumed = true
+			host._action_stop_hold().cancel_action()
+			host._skill_swipe_activity_surface().skill_swipe_tracking = false
+			host._skill_swipe_activity_surface().skill_swipe_horizontal = false
+			host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
+			return true
+		host._action_stop_hold().begin_action(skill_id, action_id, press_position, pointer_id)
+		return true
+	var scroll := host._app_lifecycle_runtime().valid_control_ref(host._skill_detail_surface().detail_actions_scroll) as MobileScrollContainer
+	if scroll != null:
+		scroll.prepare_child_tap()
+	host._skill_detail_surface().action_card_press_key = str(card.get("card_key", host._action_key(skill_id, action_id)))
+	host._skill_detail_surface().action_card_press_position = press_position
+	host._skill_detail_surface().action_card_press_stat_kind = stat_kind
+	host._skill_detail_surface().action_card_press_dragged = false
+	if stat_kind.is_empty():
+		host._skill_swipe_activity_surface()._queue_action_card_3d_press(host._skill_detail_surface().action_card_press_key)
+	return true
+
+
+func _process_pin_transition_blocker() -> void:
+	if pin_transition_blocker == null or not is_instance_valid(pin_transition_blocker):
+		return
+	if not pin_transition_blocker.visible or pin_transition_blocker_release_started:
+		return
+	pin_transition_blocker.offset_bottom = _global_chat_nav_cover_bottom_offset()
+	if not pin_transition_blocker_fade_in_done:
+		return
+	var elapsed_seconds := float(maxi(0, Time.get_ticks_msec() - pin_transition_blocker_started_msec)) / 1000.0
+	if elapsed_seconds < host.PIN_TRANSITION_BLOCKER_MIN_SECONDS:
+		return
+	if not _pin_transition_blocker_target_ready():
+		return
+	pin_transition_blocker_release_started = true
+	if pin_transition_blocker_tween != null and pin_transition_blocker_tween.is_valid():
+		pin_transition_blocker_tween.kill()
+	pin_transition_blocker_tween = host.create_tween()
+	pin_transition_blocker_tween.tween_property(
+		pin_transition_blocker,
+		"modulate:a",
+		0.0,
+		host.PIN_TRANSITION_BLOCKER_FADE_SECONDS
+	).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	pin_transition_blocker_tween.tween_callback(_finish_pin_transition_blocker_fade)
+
+
+func _pin_transition_blocker_target_ready() -> bool:
+	if screen_render_in_progress:
+		return false
+	if not pending_screen_render_request.is_empty():
+		return false
+	if pin_transition_blocker_target_screen == "pinned":
+		return host.current_screen == "pinned" and host._skill_swipe_activity_surface()._pinned_page_ready_to_reveal_under_cover()
+	if pin_transition_blocker_target_screen == "skill":
+		return (
+			host.current_screen == "skill"
+			and host._skill_detail_surface().detail_actions_scroll != null
+			and is_instance_valid(host._skill_detail_surface().detail_actions_scroll)
+			and host._skill_detail_surface().detail_actions_scroll.is_inside_tree()
+			and host._skill_detail_surface().detail_lazy_stack != null
+			and is_instance_valid(host._skill_detail_surface().detail_lazy_stack)
+		)
+	return host.current_screen == pin_transition_blocker_target_screen
+
+
+func _finish_pin_transition_blocker_fade() -> void:
+	pin_transition_blocker_tween = null
+	if pin_transition_blocker != null and is_instance_valid(pin_transition_blocker):
+		pin_transition_blocker.visible = false
+		pin_transition_blocker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pin_transition_blocker_target_screen = ""
+	pin_transition_blocker_release_started = false
+	pin_transition_blocker_fade_in_done = false
 
 func _position_inside_module_utility_interactive_ui(event_position: Vector2) -> bool:
 	if _module_sort_button_at_position(event_position) != null:
@@ -2842,28 +4550,59 @@ func _layout_module_utility_row() -> void:
 	if module_utility_row == null or not is_instance_valid(module_utility_row):
 		return
 	module_utility_row.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	module_utility_row.offset_top = -host.BOTTOM_NAV_HEIGHT - host.CHAT_STRIP_HEIGHT - host.MODULE_UTILITY_ROW_GAP - host.MODULE_UTILITY_ROW_HEIGHT
-	module_utility_row.offset_bottom = -host.BOTTOM_NAV_HEIGHT - host.CHAT_STRIP_HEIGHT - host.MODULE_UTILITY_ROW_GAP
+	module_utility_row.offset_top = -BOTTOM_NAV_HEIGHT - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP - MODULE_UTILITY_ROW_HEIGHT
+	module_utility_row.offset_bottom = -BOTTOM_NAV_HEIGHT - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP
+
+func _set_skill_swipe_module_utility_alpha(alpha: float) -> void:
+	if module_utility_row == null or not is_instance_valid(module_utility_row):
+		return
+	var next_modulate := module_utility_row.modulate
+	next_modulate.a = clampf(alpha, 0.0, 1.0)
+	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(module_utility_row, next_modulate)
+
+
+func _fade_skill_swipe_module_utility_row(visible: bool, seconds: float) -> void:
+	if module_utility_row == null or not is_instance_valid(module_utility_row):
+		return
+	host._app_lifecycle_runtime()._kill_meta_tween(module_utility_row, "skill_swipe_module_utility_fade_tween")
+	var target_alpha := 1.0 if visible else 0.0
+	if seconds <= 0.001:
+		_set_skill_swipe_module_utility_alpha(target_alpha)
+		return
+	var tween: Tween = host.create_tween()
+	module_utility_row.set_meta("skill_swipe_module_utility_fade_tween", tween)
+	tween.tween_method(_set_skill_swipe_module_utility_alpha, module_utility_row.modulate.a, target_alpha, seconds).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_callback(_finish_skill_swipe_module_utility_row_fade)
+
+
+func _finish_skill_swipe_module_utility_row_fade() -> void:
+	if module_utility_row != null and is_instance_valid(module_utility_row) and module_utility_row.has_meta("skill_swipe_module_utility_fade_tween"):
+		module_utility_row.remove_meta("skill_swipe_module_utility_fade_tween")
+
+
+func _sync_skill_swipe_module_utility_row_for_drag(abs_x: float) -> void:
+	host._app_lifecycle_runtime()._kill_meta_tween(module_utility_row, "skill_swipe_module_utility_fade_tween")
+	_set_skill_swipe_module_utility_alpha(1.0)
 
 func _build_module_utility_row() -> void:
-	var built := ModuleUtilityRowUi.build({
-		"bottom_nav_height": host.BOTTOM_NAV_HEIGHT,
-		"chat_strip_height": host.CHAT_STRIP_HEIGHT,
-		"gap": host.MODULE_UTILITY_ROW_GAP,
-		"height": host.MODULE_UTILITY_ROW_HEIGHT,
-		"z_index": host.CHAT_UI_Z + 1,
-		"button_size": host.MODULE_UTILITY_BUTTON_SIZE,
+	var built := _ModuleUtilityRowBuilder.build({
+		"bottom_nav_height": BOTTOM_NAV_HEIGHT,
+		"chat_strip_height": ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT,
+		"gap": MODULE_UTILITY_ROW_GAP,
+		"height": MODULE_UTILITY_ROW_HEIGHT,
+		"z_index": ProfileChatOverlaySurface.CHAT_UI_Z + 1,
+		"button_size": MODULE_UTILITY_BUTTON_SIZE,
 		"radius": 36.0,
 		"gutter": host.ACTION_CARD_POP_GUTTER,
 		"depth_offset": host.ACTION_CARD_3D_DEPTH_OFFSET,
 		"diagonal_side": "",
-		"collapse_size": host.MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE,
-		"texture": Callable(host, "_texture_or_visual_fallback"),
+		"collapse_size": MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE,
+		"texture": Callable(host.visual_texture_cache, "_texture_or_visual_fallback"),
 		"res_path": Callable(host.visual_texture_cache, "_res_path"),
 		"install_shell": Callable(host._skill_swipe_activity_surface(), "_install_activity_button_shell"),
 		"attach_press": Callable(host._skill_swipe_activity_surface(), "_attach_activity_button_press_animation"),
 		"buttons": [
-			{"id": "pinned", "label": "Pinned", "icon": host.MODULE_PIN_ICON_TEXTURE, "fill": Color.WHITE},
+			{"id": "pinned", "label": "Pinned", "icon": ModuleUiRuntime.MODULE_PIN_ICON_TEXTURE, "fill": Color.WHITE},
 			{"id": "queue", "label": "Queue", "icon": MODULE_QUEUE_ICON_TEXTURE, "fill": Color.WHITE},
 			{"id": "skills", "label": "Skills", "icon": "res://assets/content/ui/navigation-controls/skills-overview.png", "fill": Color.WHITE},
 			{"id": "sort", "label": "Sort", "icon": "res://assets/content/ui/navigation-controls/sort-list.png", "fill": Color.WHITE}
@@ -2890,7 +4629,7 @@ func _build_module_utility_row() -> void:
 func _on_pinned_utility_pressed() -> void:
 	if pinned_utility_tab != null and is_instance_valid(pinned_utility_tab):
 		_prime_module_utility_nav_button_press_state(pinned_utility_tab)
-	host._show_pinned_activities()
+	_show_pinned_activities()
 
 func _on_queue_utility_pressed() -> void:
 	if queue_utility_tab != null and is_instance_valid(queue_utility_tab):
@@ -2904,32 +4643,61 @@ func _show_activity_queue() -> void:
 	if host.current_screen == "queue":
 		_return_from_activity_queue()
 		return
-	if not host._top_level_nav_allowed("queue"):
+	if not _top_level_nav_allowed("queue"):
 		return
 	queue_return_screen = _module_utility_return_screen_for_current()
 	queue_return_skill_id = host.selected_skill_id
 	queue_return_detail_scroll = _module_utility_return_detail_scroll_for_current()
 	if host.current_screen == "settings":
 		host._settings_surface()._disarm_reset_data_confirmation()
-	host._begin_direct_skill_nav_cover()
+	host._skill_swipe_activity_surface()._begin_direct_skill_nav_cover()
 	host.current_screen = "queue"
-	host._render_screen()
+	_render_screen()
 	_sync_module_utility_row_visibility()
 
 func _return_from_activity_queue() -> void:
 	var target_screen := queue_return_screen
 	if target_screen.is_empty() or _module_utility_screen_overlays_skill_detail(target_screen):
 		target_screen = "skill"
-	if not host._top_level_nav_allowed(target_screen):
+	if not _top_level_nav_allowed(target_screen):
 		return
 	if not queue_return_skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, queue_return_skill_id):
 		host.selected_skill_id = queue_return_skill_id
 	var restore_scroll := queue_return_detail_scroll if target_screen == "skill" else -1
 	queue_return_detail_scroll = -1
-	host._begin_direct_skill_nav_cover()
+	host._skill_swipe_activity_surface()._begin_direct_skill_nav_cover()
 	host.current_screen = target_screen
-	host._render_screen(false, restore_scroll)
+	_render_screen(false, restore_scroll)
 	_sync_module_utility_row_visibility()
+
+func _show_pinned_activities() -> void:
+	if host.current_screen == "pinned":
+		_return_from_pinned_activities()
+		return
+	if not _top_level_nav_allowed("pinned"):
+		return
+	pinned_return_screen = _module_utility_return_screen_for_current()
+	pinned_return_skill_id = host.selected_skill_id
+	pinned_return_detail_scroll = _module_utility_return_detail_scroll_for_current()
+	if host.current_screen == "settings":
+		host._settings_surface()._disarm_reset_data_confirmation()
+		host._skill_swipe_activity_surface()._begin_direct_skill_nav_cover()
+	host.current_screen = "pinned"
+	_render_screen()
+
+func _return_from_pinned_activities() -> void:
+	var target_screen: String = pinned_return_screen
+	if target_screen.is_empty() or _module_utility_screen_overlays_skill_detail(target_screen):
+		target_screen = "skill"
+	if not _top_level_nav_allowed(target_screen):
+		return
+	if not pinned_return_skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, pinned_return_skill_id):
+		host.selected_skill_id = pinned_return_skill_id
+	var restore_scroll: int = pinned_return_detail_scroll if target_screen == "skill" else -1
+	pinned_return_detail_scroll = -1
+	host._skill_swipe_activity_surface()._begin_direct_skill_nav_cover()
+	host.current_screen = target_screen
+	_render_screen(false, restore_scroll)
 
 func _on_skills_utility_pressed() -> void:
 	if skills_utility_tab != null and is_instance_valid(skills_utility_tab):
@@ -2937,9 +4705,9 @@ func _on_skills_utility_pressed() -> void:
 	if host.current_screen == "menu":
 		_return_from_skills_utility()
 		return
-	host.skills_utility_return_screen = _module_utility_return_screen_for_current()
-	host.skills_utility_return_skill_id = host.selected_skill_id
-	host._show_skills()
+	skills_utility_return_screen = _module_utility_return_screen_for_current()
+	skills_utility_return_skill_id = host.selected_skill_id
+	_show_skills()
 
 func _module_utility_screen_overlays_skill_detail(screen: String) -> bool:
 	return screen == "pinned" or screen == "queue" or screen == "menu"
@@ -2951,23 +4719,25 @@ func _module_utility_return_screen_for_current() -> String:
 
 func _module_utility_return_detail_scroll_for_current() -> int:
 	if host.current_screen == "skill":
-		return host._current_detail_scroll_for_pinned_return()
-	if host.current_screen == "pinned" and host.pinned_return_screen == "skill":
-		return host.pinned_return_detail_scroll
+		if host._skill_detail_surface().detail_actions_scroll == null or not is_instance_valid(host._skill_detail_surface().detail_actions_scroll):
+			return -1
+		return maxi(0, int(round(host._skill_detail_surface().detail_actions_scroll.scroll_vertical)))
+	if host.current_screen == "pinned" and pinned_return_screen == "skill":
+		return pinned_return_detail_scroll
 	if host.current_screen == "queue" and queue_return_screen == "skill":
 		return queue_return_detail_scroll
 	return -1
 
 func _return_from_skills_utility() -> void:
-	var target_screen: String = host.skills_utility_return_screen
+	var target_screen: String = skills_utility_return_screen
 	if target_screen.is_empty() or _module_utility_screen_overlays_skill_detail(target_screen):
 		target_screen = "skill"
-	if not host._top_level_nav_allowed(target_screen):
+	if not _top_level_nav_allowed(target_screen):
 		return
-	if not host.skills_utility_return_skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, host.skills_utility_return_skill_id):
-		host.selected_skill_id = host.skills_utility_return_skill_id
+	if not skills_utility_return_skill_id.is_empty() and SkillState.has_skill_id(host.skill_defs, skills_utility_return_skill_id):
+		host.selected_skill_id = skills_utility_return_skill_id
 	host.current_screen = target_screen
-	host._render_screen()
+	_render_screen()
 
 func _on_sort_utility_pressed() -> void:
 	_toggle_module_sort_menu()
@@ -2984,7 +4754,7 @@ func _route_module_utility_button_global_input(event: InputEvent) -> bool:
 		or event is InputEventScreenDrag
 	):
 		return false
-	var event_position: Vector2 = host._passive_button_event_position(event, null)
+	var event_position: Vector2 = host._input_routing_shell()._passive_button_event_position(event, null)
 	var is_press := _module_utility_event_is_press(event)
 	var button := _module_utility_button_at_position(event_position) if is_press else _active_module_utility_button()
 	if button == null:
@@ -3040,11 +4810,11 @@ func _module_utility_event_is_press(event: InputEvent) -> bool:
 func _on_module_utility_button_global_input(event: InputEvent, button: Button) -> void:
 	if button == null or not is_instance_valid(button) or button.disabled:
 		return
-	var event_position: Vector2 = host._passive_button_event_position(event, null)
+	var event_position: Vector2 = host._input_routing_shell()._passive_button_event_position(event, null)
 	var event_kind := ButtonPressState.event_kind(event)
 	if event_kind == "press":
 		ButtonPressState.begin(button, "module_utility", event_position)
-		host._button_press_runtime().play_default_button_sfx()
+		host.button_press_runtime.play_default_button_sfx()
 		host._skill_swipe_activity_surface()._press_activity_button_shell_bound(button.get_instance_id())
 		return
 	if event_kind == "drag":
@@ -3103,7 +4873,7 @@ func _toggle_module_sort_menu() -> void:
 		_show_module_sort_menu()
 
 func _show_module_sort_menu() -> void:
-	if not host._intro_bottom_controls_unlocked():
+	if not _intro_bottom_controls_unlocked():
 		_hide_module_sort_menu(false)
 		return
 	if module_sort_menu == null or not is_instance_valid(module_sort_menu):
@@ -3129,12 +4899,12 @@ func _animate_module_sort_menu_unwrap() -> void:
 	module_sort_menu.visible = true
 	var visual := _module_sort_menu_visual()
 	visual.pivot_offset = Vector2(visual.size.x * 0.5, visual.size.y)
-	visual.scale = Vector2(1.0, host.MODULE_SORT_MENU_COLLAPSED_SCALE_Y)
+	visual.scale = Vector2(1.0, MODULE_SORT_MENU_COLLAPSED_SCALE_Y)
 	visual.modulate.a = 0.0
 	module_sort_menu_tween = host.create_tween()
 	module_sort_menu_tween.set_parallel(true)
-	module_sort_menu_tween.tween_property(visual, "scale:y", 1.0, host.MODULE_SORT_MENU_UNWRAP_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	module_sort_menu_tween.tween_property(visual, "modulate:a", 1.0, host.MODULE_SORT_MENU_UNWRAP_SECONDS * 0.72).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	module_sort_menu_tween.tween_property(visual, "scale:y", 1.0, MODULE_SORT_MENU_UNWRAP_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	module_sort_menu_tween.tween_property(visual, "modulate:a", 1.0, MODULE_SORT_MENU_UNWRAP_SECONDS * 0.72).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	module_sort_menu_tween.finished.connect(_finish_module_sort_menu_unwrap)
 
 func _animate_module_sort_menu_wrap() -> void:
@@ -3148,8 +4918,8 @@ func _animate_module_sort_menu_wrap() -> void:
 	visual.modulate.a = 1.0
 	module_sort_menu_tween = host.create_tween()
 	module_sort_menu_tween.set_parallel(true)
-	module_sort_menu_tween.tween_property(visual, "scale:y", host.MODULE_SORT_MENU_COLLAPSED_SCALE_Y, host.MODULE_SORT_MENU_WRAP_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
-	module_sort_menu_tween.tween_property(visual, "modulate:a", 0.0, host.MODULE_SORT_MENU_WRAP_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	module_sort_menu_tween.tween_property(visual, "scale:y", MODULE_SORT_MENU_COLLAPSED_SCALE_Y, MODULE_SORT_MENU_WRAP_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	module_sort_menu_tween.tween_property(visual, "modulate:a", 0.0, MODULE_SORT_MENU_WRAP_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	module_sort_menu_tween.finished.connect(_finish_module_sort_menu_wrap)
 
 func _finish_module_sort_menu_unwrap() -> void:
@@ -3182,7 +4952,7 @@ func _kill_module_sort_menu_tween() -> void:
 	module_sort_menu_tween = null
 
 func _build_module_sort_menu() -> void:
-	var built := ModuleSortMenuUi.build(host.CHAT_UI_Z + 2, Callable(self, "_toggle_module_ui_level_sort"), Callable(self, "_toggle_module_ui_sort_priority"), Callable(host._button_press_runtime(), "attach_button_depress_animation"), host.app_font, host.app_bold_font, host.COLOR_INK)
+	var built := _ModuleSortMenuBuilder.build(ProfileChatOverlaySurface.CHAT_UI_Z + 2, Callable(self, "_toggle_module_ui_level_sort"), Callable(self, "_toggle_module_ui_sort_priority"), Callable(host.button_press_runtime, "attach_button_depress_animation"), host.app_font, host.app_bold_font, host.COLOR_INK)
 	module_sort_menu = built.get("menu") as Control
 	module_sort_menu_visual = built.get("visual") as Control
 	module_sort_low_level_button = built.get("low_level_button") as Button
@@ -3197,7 +4967,7 @@ func _layout_module_sort_menu() -> void:
 	var menu_size: Vector2 = module_sort_menu.custom_minimum_size
 	module_sort_menu.size = menu_size
 	var center_x: float = host.size.x * 0.5
-	var top_y: float = host.size.y - host.BOTTOM_NAV_HEIGHT - host.CHAT_STRIP_HEIGHT - host.MODULE_UTILITY_ROW_GAP - host.MODULE_UTILITY_ROW_HEIGHT - menu_size.y - 22.0
+	var top_y: float = host.size.y - BOTTOM_NAV_HEIGHT - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP - MODULE_UTILITY_ROW_HEIGHT - menu_size.y - 22.0
 	if sort_utility_tab != null and is_instance_valid(sort_utility_tab):
 		var sort_rect: Rect2 = host._skill_swipe_activity_surface()._activity_button_target_face_global_rect(sort_utility_tab, true)
 		center_x = sort_rect.position.x + sort_rect.size.x * 0.5
@@ -3208,7 +4978,7 @@ func _layout_module_sort_menu() -> void:
 	)
 
 func _sync_module_sort_menu_buttons() -> void:
-	ModuleSortMenuUi.sync_buttons(module_sort_low_level_button, module_sort_combo_button, module_sort_collection_button, host.module_ui_runtime.sort_mode == host.MODULE_UI_SORT_LEVEL_REVERSE, host.module_ui_runtime.combo_first, host.module_ui_runtime.collection_first, host.COLOR_INK)
+	_ModuleSortMenuBuilder.sync_buttons(module_sort_low_level_button, module_sort_combo_button, module_sort_collection_button, host.module_ui_runtime.sort_mode == ModuleUiRuntime.SORT_LEVEL_REVERSE, host.module_ui_runtime.combo_first, host.module_ui_runtime.collection_first, host.COLOR_INK)
 
 func _toggle_module_ui_level_sort() -> void:
 	if host.module_ui_runtime.toggle_level_sort():
@@ -3223,17 +4993,17 @@ func _apply_module_ui_sort_preference_change() -> void:
 	host.save_game()
 	_sync_module_sort_menu_buttons()
 	if host.current_screen == "skill":
-		if not host._try_refresh_detail_module_order_in_place():
-			host.call_deferred("_refresh_visible_skill_detail_action_list", host.detail_actions_scroll.scroll_vertical if host.detail_actions_scroll != null else -1, host.selected_skill_id, true)
+		if not host._skill_detail_surface()._try_refresh_detail_module_order_in_place():
+			host._skill_detail_surface().call_deferred("_refresh_visible_skill_detail_action_list", host._skill_detail_surface().detail_actions_scroll.scroll_vertical if host._skill_detail_surface().detail_actions_scroll != null else -1, host.selected_skill_id, true)
 	elif host.current_screen == "menu":
-		host._render_screen()
+		_render_screen()
 
 func _sync_module_utility_row_visibility(animate_buttons := false) -> void:
 	if module_utility_row == null or not is_instance_valid(module_utility_row):
 		return
 	_layout_module_utility_row()
 	module_utility_row.visible = (
-		host._intro_bottom_controls_unlocked()
+		_intro_bottom_controls_unlocked()
 		and host._profile_chat_overlay_surface()._global_chat_allowed()
 		and host._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen()
 	)
@@ -3260,7 +5030,7 @@ func _set_module_utility_buttons_row_expanded(expanded: bool, animate_buttons: b
 	if module_utility_buttons_row == null or not is_instance_valid(module_utility_buttons_row):
 		return
 	_cancel_module_utility_buttons_row_motion()
-	var slide_offset := Vector2(-host.MODULE_UTILITY_BUTTONS_SLIDE_PIXELS, 0)
+	var slide_offset := Vector2(-MODULE_UTILITY_BUTTONS_SLIDE_PIXELS, 0)
 	if not animate_buttons:
 		_finish_module_utility_buttons_row_motion(expanded)
 		return
@@ -3269,9 +5039,9 @@ func _set_module_utility_buttons_row_expanded(expanded: bool, animate_buttons: b
 	module_utility_buttons_motion_started_msec = Time.get_ticks_msec()
 	if expanded:
 		module_utility_buttons_row.visible = true
-		module_utility_buttons_motion_duration_msec = int(host.MODULE_UTILITY_BUTTONS_ENTER_SECONDS * 1000.0)
+		module_utility_buttons_motion_duration_msec = int(MODULE_UTILITY_BUTTONS_ENTER_SECONDS * 1000.0)
 		module_utility_buttons_motion_frame = 0
-		module_utility_buttons_motion_total_frames = maxi(1, int(ceil(host.MODULE_UTILITY_BUTTONS_ENTER_SECONDS * 60.0)))
+		module_utility_buttons_motion_total_frames = maxi(1, int(ceil(MODULE_UTILITY_BUTTONS_ENTER_SECONDS * 60.0)))
 		module_utility_buttons_motion_from_offset = slide_offset.x
 		module_utility_buttons_motion_to_offset = 0.0
 		module_utility_buttons_motion_from_alpha = 0.0
@@ -3280,9 +5050,9 @@ func _set_module_utility_buttons_row_expanded(expanded: bool, animate_buttons: b
 		module_utility_buttons_row.modulate.a = 0.0
 	else:
 		module_utility_buttons_row.visible = true
-		module_utility_buttons_motion_duration_msec = int(host.MODULE_UTILITY_BUTTONS_EXIT_SECONDS * 1000.0)
+		module_utility_buttons_motion_duration_msec = int(MODULE_UTILITY_BUTTONS_EXIT_SECONDS * 1000.0)
 		module_utility_buttons_motion_frame = 0
-		module_utility_buttons_motion_total_frames = maxi(1, int(ceil(host.MODULE_UTILITY_BUTTONS_EXIT_SECONDS * 60.0)))
+		module_utility_buttons_motion_total_frames = maxi(1, int(ceil(MODULE_UTILITY_BUTTONS_EXIT_SECONDS * 60.0)))
 		module_utility_buttons_motion_from_offset = 0.0
 		module_utility_buttons_motion_to_offset = slide_offset.x
 		module_utility_buttons_motion_from_alpha = 1.0
@@ -3323,19 +5093,19 @@ func _apply_module_utility_buttons_stagger(progress: float, entering: bool) -> v
 	var count := controls.size()
 	if count <= 0:
 		return
-	var max_delay: float = host.MODULE_UTILITY_BUTTONS_STAGGER_STEP * float(maxi(0, count - 1))
+	var max_delay: float = MODULE_UTILITY_BUTTONS_STAGGER_STEP * float(maxi(0, count - 1))
 	var active_span := maxf(0.001, 1.0 - max_delay)
 	for index in range(count):
 		var button := controls[index] as Control
 		if button == null or not is_instance_valid(button):
 			continue
 		button.pivot_offset = button.size * 0.5
-		var delayed_progress := clampf((progress - host.MODULE_UTILITY_BUTTONS_STAGGER_STEP * float(index)) / active_span, 0.0, 1.0)
+		var delayed_progress := clampf((progress - MODULE_UTILITY_BUTTONS_STAGGER_STEP * float(index)) / active_span, 0.0, 1.0)
 		var local_progress := _module_utility_buttons_motion_ease(delayed_progress, true)
 		var visibility_progress := delayed_progress if entering else 1.0 - delayed_progress
 		button.modulate.a = smoothstep(0.0, 1.0, visibility_progress)
 		var scale_progress := local_progress if entering else 1.0 - local_progress
-		var button_scale := lerpf(host.MODULE_UTILITY_BUTTONS_STAGGER_MIN_SCALE, 1.0, scale_progress)
+		var button_scale := lerpf(MODULE_UTILITY_BUTTONS_STAGGER_MIN_SCALE, 1.0, scale_progress)
 		button.scale = Vector2(button_scale, button_scale)
 
 func _module_utility_button_controls() -> Array:
@@ -3381,37 +5151,51 @@ func _layout_module_utility_collapse_toggle() -> void:
 		return
 	module_utility_collapse_toggle.visible = module_utility_row.visible
 	var arrow = host._skill_swipe_activity_surface()._activity_button_arrow(module_utility_collapse_toggle)
-	if arrow != null:
+	if arrow != null and arrow.has_method("set_direction"):
 		arrow.set_direction(1 if module_utility_collapsed else -1)
-	module_utility_collapse_toggle.size = host.MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE
+	module_utility_collapse_toggle.size = MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE
 	var expanded_x := 46.0
 	var collapsed_x := 46.0
 	module_utility_collapse_toggle.position = Vector2(
 		collapsed_x if module_utility_collapsed else expanded_x,
-		(host.MODULE_UTILITY_ROW_HEIGHT - host.MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE.y) * 0.5
+		(MODULE_UTILITY_ROW_HEIGHT - MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE.y) * 0.5
 	)
 
 func _sync_module_utility_button_states() -> void:
 	if pinned_utility_tab != null and is_instance_valid(pinned_utility_tab):
 		var fill := pinned_utility_tab.get_meta("module_utility_fill", Color.WHITE) as Color
 		var active: bool = host.current_screen == "pinned"
-		var active_fill: Color = host.MODULE_UTILITY_ACTIVE_FILL if active else fill
+		var active_fill: Color = MODULE_UTILITY_ACTIVE_FILL if active else fill
 		host._skill_swipe_activity_surface()._set_activity_button_shell_theme(pinned_utility_tab, active_fill, active, true)
 	if queue_utility_tab != null and is_instance_valid(queue_utility_tab):
 		var fill := queue_utility_tab.get_meta("module_utility_fill", Color.WHITE) as Color
 		var active: bool = host.current_screen == "queue"
-		var active_fill: Color = host.MODULE_UTILITY_ACTIVE_FILL if active else fill
+		var active_fill: Color = MODULE_UTILITY_ACTIVE_FILL if active else fill
 		host._skill_swipe_activity_surface()._set_activity_button_shell_theme(queue_utility_tab, active_fill, active, true)
 	if skills_utility_tab != null and is_instance_valid(skills_utility_tab):
 		var fill := skills_utility_tab.get_meta("module_utility_fill", Color.WHITE) as Color
 		var active: bool = host.current_screen == "menu"
-		var active_fill: Color = host.MODULE_UTILITY_ACTIVE_FILL if active else fill
+		var active_fill: Color = MODULE_UTILITY_ACTIVE_FILL if active else fill
 		host._skill_swipe_activity_surface()._set_activity_button_shell_theme(skills_utility_tab, active_fill, active, true)
 	if sort_utility_tab != null and is_instance_valid(sort_utility_tab):
 		var fill := sort_utility_tab.get_meta("module_utility_fill", Color.WHITE) as Color
 		var active: bool = module_sort_menu != null and is_instance_valid(module_sort_menu) and module_sort_menu.visible
-		var active_fill: Color = host.MODULE_UTILITY_ACTIVE_FILL if active else fill
+		var active_fill: Color = MODULE_UTILITY_ACTIVE_FILL if active else fill
 		host._skill_swipe_activity_surface()._set_activity_button_shell_theme(sort_utility_tab, active_fill, active, true)
+
+
+func _module_utility_row_reserved_height_for_screen() -> float:
+	return float(MODULE_UTILITY_ROW_HEIGHT + MODULE_UTILITY_ROW_GAP) if host._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen() else 0.0
+
+
+func _skills_content_bottom_inset_for_screen() -> float:
+	if not host._profile_chat_overlay_surface()._chat_strip_visible_on_current_screen():
+		return 0.0
+	return float(ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT) + _module_utility_row_reserved_height_for_screen()
+
+
+func _bottom_ui_reserved_height_for_current_screen() -> float:
+	return float(BOTTOM_NAV_HEIGHT) + _skills_content_bottom_inset_for_screen()
 
 
 func _skill_menu_band_style(color: Color, pressed := false) -> StyleBoxFlat:

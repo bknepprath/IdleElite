@@ -54,19 +54,21 @@ function Assert-NoUnexpectedGodotErrors {
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 $mainScriptPath = Join-Path $projectRoot "scripts\main.gd"
+$moduleUiRuntimePath = Join-Path $projectRoot "scripts\module_ui\runtime.gd"
 $audioDirectorPath = Join-Path $projectRoot "scripts\audio\audio_director.gd"
 $inputRoutingShellPath = Join-Path $projectRoot "scripts\ui\input_routing_shell.gd"
 $navigationShellPath = Join-Path $projectRoot "scripts\ui\navigation_shell.gd"
 $skillDetailSurfacePath = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
 $mainScriptText = Get-Content -LiteralPath $mainScriptPath -Raw
+$moduleUiRuntimeText = Get-Content -LiteralPath $moduleUiRuntimePath -Raw
 $audioDirectorText = Get-Content -LiteralPath $audioDirectorPath -Raw
 $inputRoutingShellText = Get-Content -LiteralPath $inputRoutingShellPath -Raw
 $navigationShellText = Get-Content -LiteralPath $navigationShellPath -Raw
 $skillDetailSurfaceText = Get-Content -LiteralPath $skillDetailSurfacePath -Raw
-Assert-True ($mainScriptText -match "func\s+_play_module_pin_confirm_animation") "Confirmed pin animation helper should exist."
-Assert-True ($mainScriptText -match "MODULE_PIN_CONFIRM_ANIMATION_SECONDS") "Confirmed pin animation duration constant should exist."
+Assert-True ($skillDetailSurfaceText -match "func\s+_play_module_pin_confirm_animation") "Confirmed pin animation helper should exist."
+Assert-True ($moduleUiRuntimeText -match "MODULE_PIN_CONFIRM_ANIMATION_SECONDS") "Confirmed pin animation duration constant should exist in ModuleUiRuntime."
 Assert-True ($audioDirectorText -match 'const MODULE_PIN_ENTRY_SFX_PATH := "res://assets/sfx/pin-candidates/pin_exit_pull_04_bright_tick\.wav"') "Pin entry SFX should use the Exit 04 audition sound."
-$confirmAnimationMatch = [regex]::Match($mainScriptText, 'func\s+_play_module_pin_confirm_animation[\s\S]*?func\s+_finish_module_pin_confirm_animation')
+$confirmAnimationMatch = [regex]::Match($skillDetailSurfaceText, 'func\s+_play_module_pin_confirm_animation[\s\S]*?func\s+_finish_module_pin_confirm_animation')
 Assert-True $confirmAnimationMatch.Success "Confirmed pin animation block should be inspectable."
 $confirmAnimationText = $confirmAnimationMatch.Value
 $pokeIndex = $confirmAnimationText.IndexOf('MODULE_PIN_CONFIRM_POKE_SECONDS')
@@ -75,7 +77,7 @@ Assert-True (($pokeIndex -ge 0) -and ($entrySfxIndex -gt $pokeIndex)) "Pin entry
 $trackerPath = Join-Path $projectRoot "docs\ui-navigation-controls-plan.html"
 $trackerText = Get-Content -LiteralPath $trackerPath -Raw
 Assert-True ($trackerText -notmatch "pin-poke-in") "Tracker demo should not show confirmed pin animation while placement is paused."
-$directRouteIndex = $inputRoutingShellText.IndexOf("if host._route_direct_module_action_zone_input(event):")
+$directRouteIndex = $inputRoutingShellText.IndexOf("if host._skill_detail_surface()._route_direct_module_action_zone_input(event):")
 $bottomNavRouteIndex = $inputRoutingShellText.IndexOf("if host._navigation_shell()._route_bottom_nav_button_global_input(event):")
 $utilityRouteIndex = $inputRoutingShellText.IndexOf("if host._navigation_shell()._route_module_utility_button_global_input(event):")
 Assert-True ($directRouteIndex -ge 0) "Direct module action routing should exist."
@@ -178,9 +180,9 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 			return false
 		var queue := scene.get("boot_detail_render_queue") as Array
 		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
+			scene.get("startup_initialized") == true
+			and scene.get("boot_detail_render_in_progress") != true
+			and scene.get("boot_detail_scroll_locked") != true
 			and (queue == null or queue.is_empty())
 		):
 			return true
@@ -193,7 +195,7 @@ func _wait_for_boot_hidden(scene: Node) -> bool:
 		if not is_instance_valid(scene):
 			return false
 		var overlay := scene.get("boot_warmup_overlay") as Control
-		if not bool(scene.get("boot_warmup_active")) and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
+		if scene.get("boot_warmup_active") != true and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
 			return true
 	return false
 
@@ -201,17 +203,18 @@ func _wait_for_boot_hidden(scene: Node) -> bool:
 func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_sort_mode", "level")
-	scene.set("module_ui_pinned_order", [])
-	scene.set("module_ui_pin_color_paths", {})
-	scene.set("module_ui_collapsed", {})
+	var module_runtime := scene.get("module_ui_runtime") as Object
+	module_runtime.set("sort_mode", "level")
+	module_runtime.set("pinned_order", [])
+	module_runtime.set("pin_color_paths", {})
+	module_runtime.set("collapsed", {})
 	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _i in range(14):
 		await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 	var live_card := _live_action_card_at_index(scene, skill_id, 0)
 	if live_card.is_empty():
 		live_card = _first_live_action_card(scene, skill_id)
@@ -241,21 +244,21 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 	scene.call("_input", _mouse_button_event(drag_release, false))
 	for _i in range(4):
 		await process_frame
-	if (scene.get("module_ui_pinned_order") as Array).has(module_key):
+	if (module_runtime.get("pinned_order") as Array).has(module_key):
 		_record("pin drag should not pin the module")
-	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(module_key, 0)) > 0:
+	if int((module_runtime.get("pin_preview_tokens") as Dictionary).get(module_key, 0)) > 0:
 		_record("pin drag should not arm the pin preview")
 	scene.call("_input", _mouse_button_event(pin_center, true))
 	scene.call("_input", _mouse_button_event(pin_center, false))
 	for _i in range(3):
 		await process_frame
-	var badge := scene.call("_module_pin_badge", pop) as TextureButton
+	var badge := (scene.call("_skill_detail_surface") as Object).call("_module_pin_badge", pop) as TextureButton
 	if badge == null or not is_instance_valid(badge):
 		_record("pin visual smoke did not create the confirmed badge")
 		return
-	if not (scene.get("module_ui_pinned_order") as Array).has(module_key):
+	if not (module_runtime.get("pinned_order") as Array).has(module_key):
 		_record("pin visual smoke first tap did not pin the module")
-	if int((scene.get("module_ui_pin_preview_tokens") as Dictionary).get(module_key, 0)) > 0:
+	if int((module_runtime.get("pin_preview_tokens") as Dictionary).get(module_key, 0)) > 0:
 		_record("pin visual smoke first tap should commit immediately without arming a preview token")
 	if not badge.has_meta("module_pin_tween"):
 		_record("first pin tap should start the poke-in animation before the page refresh")
@@ -285,7 +288,7 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 			break
 	if badge != null and is_instance_valid(badge) and badge.has_meta("module_pin_tween"):
 		_record("confirmed pin entry animation did not finish within the smoke wait window")
-	if not (scene.get("module_ui_pinned_order") as Array).has(module_key):
+	if not (module_runtime.get("pinned_order") as Array).has(module_key):
 		_record("pin visual smoke first tap did not keep the module pinned")
 	var settled_live_card := _live_action_card_for_action(scene, skill_id, action_id)
 	var settled_card := settled_live_card.get("card", {}) as Dictionary
@@ -293,7 +296,7 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 	if settled_pop == null or not is_instance_valid(settled_pop) or not settled_pop.is_inside_tree():
 		_record("pin visual smoke could not reacquire the settled pinned card after refresh")
 		return
-	var settled_badge := scene.call("_module_pin_badge", settled_pop) as TextureButton
+	var settled_badge := (scene.call("_skill_detail_surface") as Object).call("_module_pin_badge", settled_pop) as TextureButton
 	if settled_badge == null or not is_instance_valid(settled_badge):
 		_record("pin visual smoke could not reacquire the settled pinned badge after refresh")
 		return
@@ -328,7 +331,7 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 		await process_frame
 	if settled_badge.visible or settled_badge.modulate.a > 0.01:
 		_record("unpin should hide the badge after the pull-away fade")
-	if (scene.get("module_ui_pinned_order") as Array).has(module_key):
+	if (module_runtime.get("pinned_order") as Array).has(module_key):
 		_record("unpin visual smoke did not remove the module from pinned order")
 
 

@@ -5,6 +5,7 @@ const SaveStateNormalizers = preload("res://scripts/save_state/normalizers.gd")
 const HUB_BUILD_SECONDS := 15.0
 const HUB_OFFLINE_SECONDS_PER_GARDEN_LEVEL := 60 * 60
 const HUB_MODULE_MAX_LEVEL := 4
+const HUB_TROPHY_SUCCESS_BONUS_BY_TIER := [0.0, 0.01, 0.02, 0.03, 0.05]
 const HUB_MODULE_DEFS := {
 	"barn": {
 		"name": "Barn",
@@ -144,7 +145,7 @@ func module_build_progress(module_id: String) -> float:
 	var started := int(state.get("build_started_unix_msec", 0))
 	if started <= 0:
 		return 0.0
-	var elapsed := float(host._unix_now_msec() - started) / 1000.0
+	var elapsed := float(int(round(Time.get_unix_time_from_system() * 1000.0)) - started) / 1000.0
 	return clampf(elapsed / HUB_BUILD_SECONDS, 0.0, 1.0)
 
 
@@ -155,7 +156,7 @@ func module_build_remaining_seconds(module_id: String) -> int:
 	var started := int(state.get("build_started_unix_msec", 0))
 	if started <= 0:
 		return ceili(HUB_BUILD_SECONDS)
-	var elapsed := float(host._unix_now_msec() - started) / 1000.0
+	var elapsed := float(int(round(Time.get_unix_time_from_system() * 1000.0)) - started) / 1000.0
 	return maxi(0, ceili(HUB_BUILD_SECONDS - elapsed))
 
 
@@ -218,7 +219,7 @@ func normalized_mission(mission: Dictionary) -> Dictionary:
 	var action: Dictionary = host._action_data(skill_id, action_id)
 	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
 		return {}
-	if not host._is_action_unlocked(skill_id, action) or host._is_passive_action(action):
+	if not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action) or host._passive_modules_runtime().is_passive_action(action):
 		return {}
 	var target := maxi(1, int(mission.get("target", mission.get("count", 1))))
 	var remaining := clampi(int(mission.get("remaining", target)), 1, target)
@@ -260,17 +261,17 @@ func mission_eligible_actions(existing_keys: Dictionary) -> Array:
 		for raw_action in host.actions_by_skill.get(skill_id, []):
 			var action := raw_action as Dictionary
 			var action_id := str(action.get("id", ""))
-			if action_id.is_empty() or host._is_passive_action(action):
+			if action_id.is_empty() or host._passive_modules_runtime().is_passive_action(action):
 				continue
 			if existing_keys.has(host._action_key(skill_id, action_id)):
 				continue
-			if host._is_action_unlocked(skill_id, action):
+			if host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
 				choices.append({"skill_id": skill_id, "action_id": action_id})
 	return choices
 
 
 func mission_level() -> int:
-	if not host._hub_unlocked():
+	if not host._navigation_shell()._hub_unlocked():
 		return 0
 	return clampi(module_level("mission"), 0, HUB_MODULE_MAX_LEVEL)
 
@@ -349,7 +350,7 @@ func record_mission_action_completion(skill_id: String, action_id: String) -> bo
 
 
 func next_trophy_def() -> Dictionary:
-	for raw_heist in host.THIEVING_HEIST_DEFS:
+	for raw_heist in host.thieving_state.HEIST_DEFS:
 		var heist := raw_heist as Dictionary
 		var heist_id := str(heist.get("id", ""))
 		if not heist_id.is_empty() and not host.thieving_state.trophy_stolen(heist_id):
@@ -365,9 +366,9 @@ func best_trophy_tier() -> int:
 func best_trophy_def() -> Dictionary:
 	var best_def := {}
 	var best_tier := 0
-	for def in host.THIEVING_HEIST_DEFS:
+	for def in host.thieving_state.HEIST_DEFS:
 		var trophy_id := str((def as Dictionary).get("id", ""))
-		var state = host.thieving_trophies.get(trophy_id, {})
+		var state = host.thieving_state.trophies.get(trophy_id, {})
 		var stolen := bool((state as Dictionary).get("stolen", false)) if typeof(state) == TYPE_DICTIONARY else bool(state)
 		var tier := int((def as Dictionary).get("tier", 0))
 		if stolen and tier >= best_tier:
@@ -377,8 +378,8 @@ func best_trophy_def() -> Dictionary:
 
 
 func trophy_success_bonus() -> float:
-	var tier := clampi(best_trophy_tier(), 0, host.HUB_TROPHY_SUCCESS_BONUS_BY_TIER.size() - 1)
-	return float(host.HUB_TROPHY_SUCCESS_BONUS_BY_TIER[tier])
+	var tier := clampi(best_trophy_tier(), 0, HUB_TROPHY_SUCCESS_BONUS_BY_TIER.size() - 1)
+	return float(HUB_TROPHY_SUCCESS_BONUS_BY_TIER[tier])
 
 
 func module_wood_currency_for_level(module_id: String, level: int) -> String:
@@ -405,11 +406,11 @@ func can_afford_module(module_id: String) -> bool:
 		return false
 	var cost := int((HUB_MODULE_DEFS[module_id] as Dictionary).get("costs", [])[level])
 	if module_id == "pond":
-		return host.fish_currency >= float(cost)
+		return host.fishing_runtime.fish_currency >= float(cost)
 	var wood_currency := module_wood_currency_for_level(module_id, level)
 	if module_id == "garden":
 		var fish_costs := (HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", []) as Array
-		return host.material_runtime.amount(wood_currency) >= float(cost) and host.fish_currency >= float(int(fish_costs[level]))
+		return host.material_runtime.amount(wood_currency) >= float(cost) and host.fishing_runtime.fish_currency >= float(int(fish_costs[level]))
 	return host.material_runtime.amount(wood_currency) >= float(cost)
 
 
@@ -424,7 +425,7 @@ func module_next_unlock_level(module_id: String) -> int:
 
 
 func module_next_level_unlocked(module_id: String) -> bool:
-	return host._skill_level("build") >= module_next_unlock_level(module_id)
+	return SkillState.host_skill_level(host, "build") >= module_next_unlock_level(module_id)
 
 
 func upgrade_module(module_id: String) -> Dictionary:
@@ -441,19 +442,19 @@ func upgrade_module(module_id: String) -> Dictionary:
 	var spent_logs := 0
 	var spent_fish := 0
 	if module_id == "pond":
-		host.fish_currency = maxf(0.0, host.fish_currency - float(cost))
+		host.fishing_runtime.fish_currency = maxf(0.0, host.fishing_runtime.fish_currency - float(cost))
 		spent_fish = cost
 	elif module_id == "garden":
 		var fish_cost := int((HUB_MODULE_DEFS[module_id] as Dictionary).get("fish_costs", [])[level])
 		host.material_runtime.spend_amount(wood_currency, float(cost))
-		host.fish_currency = maxf(0.0, host.fish_currency - float(fish_cost))
+		host.fishing_runtime.fish_currency = maxf(0.0, host.fishing_runtime.fish_currency - float(fish_cost))
 		spent_logs = cost
 		spent_fish = fish_cost
 	else:
 		host.material_runtime.spend_amount(wood_currency, float(cost))
 		spent_logs = cost
 	state["building"] = true
-	state["build_started_unix_msec"] = host._unix_now_msec()
+	state["build_started_unix_msec"] = int(round(Time.get_unix_time_from_system() * 1000.0))
 	hub_modules[module_id] = state
 	return {"spent_logs": spent_logs, "spent_fish": spent_fish}
 

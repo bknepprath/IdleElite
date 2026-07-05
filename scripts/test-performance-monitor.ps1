@@ -66,13 +66,13 @@ func _init() -> void:
 
 
 func _run() -> void:
-	var monitor_script = load("res://scripts/app/perf_monitor.gd")
-	_expect(monitor_script != null, "Performance monitor script should load.")
-	if monitor_script == null:
+	var runtime_script = load("res://scripts/app/performance_runtime.gd")
+	_expect(runtime_script != null, "Performance runtime script should load.")
+	if runtime_script == null:
 		_finish()
 		return
 
-	var monitor = monitor_script.new()
+	var monitor = runtime_script._PerfMonitor.new()
 	root.add_child(monitor)
 	monitor.set_process(false)
 	monitor.set_overlay_visible(true)

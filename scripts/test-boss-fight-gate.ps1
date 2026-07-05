@@ -57,7 +57,7 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
-	scene.call("_activity_data_catalog").call("load_action_data", scene)
+	scene.get("activity_data_catalog").call("load_action_data", scene)
 	scene.call("_save_runtime").call("_init_state")
 	scene.startup_initialized = true
 	var fight := scene.skills["fight"] as Dictionary
@@ -71,7 +71,7 @@ func _run() -> void:
 	_expect(str((boss_action.get("boss", {}) as Dictionary).get("id", "")) == "rooster", "Boss id should normalize")
 	var blocked_action := scene.call("_action_data", "fight", "outmuscle-angry-wheelbarrow") as Dictionary
 	_expect(not blocked_action.is_empty(), "blocked post-boss action should load")
-	_expect(not scene.call("_is_action_unlocked", "fight", blocked_action), "post-boss action should remain locked before Rooster is cleared")
+	_expect(not scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", blocked_action), "post-boss action should remain locked before Rooster is cleared")
 	_expect(str(scene.call("_missing_action_requirements_text", "fight", blocked_action)).contains("Rooster cleared"), "missing requirements should mention Rooster clear")
 	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", boss_action, 1080.0, 1080.0) as Dictionary
 	var root_control := built.get("card_root") as Control
@@ -81,7 +81,7 @@ func _run() -> void:
 	_expect(boss_label == null, "Rooster Punch-Out boss should not use a boss info chip")
 	var rooster_stage: Control = _rooster_stage(card.get("pop") as Control) as Control
 	_expect(rooster_stage != null, "Rooster boss card should render the Punch-Out stage")
-	_expect(rooster_stage.mouse_filter == Control.MOUSE_FILTER_IGNORE, "inactive Rooster stage should let card taps start the boss action")
+	_expect(rooster_stage.mouse_filter == Control.MOUSE_FILTER_IGNORE, "inactive Rooster stage should let card taps start the boss")
 	var inactive_hp := float(rooster_stage.get("rooster_hp"))
 	var inactive_stamina := float(rooster_stage.get("player_stamina"))
 	rooster_stage.call("_process", 2.0)
@@ -92,14 +92,22 @@ func _run() -> void:
 	scene.call("_sync_stamina_bank", "fight")
 	var boss_key := str(scene.call("_action_key", "fight", "face-the-rooster"))
 	scene.call("_register_action_card", boss_key, card)
-	var started := bool(scene.call("_start_action_from_card_tap", "fight", "face-the-rooster", boss_key))
-	_expect(started, "Rooster boss should start from the card tap once its level requirement is manually opened")
+	scene.call("_fighting_runtime").call("sync_rooster_punch_out_stage_active", card, "fight", "face-the-rooster", false)
+	var started := bool(scene.call("_action_runtime").call("_start_action_from_card_tap", "fight", "face-the-rooster", boss_key))
+	_expect(started, "Rooster boss should start from the card tap")
+	_expect(scene.running_skill_id == "fight" and scene.running_action_id == "face-the-rooster", "Rooster card tap should start the boss fight")
+	_expect(rooster_stage.mouse_filter == Control.MOUSE_FILTER_STOP, "running Rooster stage should own punch taps")
+	var xp_before_timer := int((scene.skills["fight"] as Dictionary).get("xp", 0))
 	scene.call("_action_runtime").call("_process_action", 4.0)
-	_expect(bool(scene.completed_bosses.get("rooster", false)), "Rooster should be saved as completed after success")
+	_expect(int((scene.skills["fight"] as Dictionary).get("xp", 0)) == xp_before_timer, "Rooster boss should not grant normal timed activity XP")
+	_expect(not bool(scene.completed_bosses.get("rooster", false)), "Rooster should not clear from the normal activity timer")
+	rooster_stage.emit_signal("boss_defeated")
+	_expect(bool(scene.completed_bosses.get("rooster", false)), "Rooster should be saved as completed after KO")
 	_expect(str(scene.last_result).contains("Rooster cleared"), "completion result should mention the boss clear")
+	_expect(int((scene.skills["fight"] as Dictionary).get("xp", 0)) > xp_before_timer, "Rooster KO should grant one XP reward")
 	_expect((scene.call("_pending_activity_readiness_action_ids", "fight") as Array).has("outmuscle-angry-wheelbarrow"), "post-boss action lockpad should be queued after Rooster is cleared")
 	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "outmuscle-angry-wheelbarrow", "boss gate test unlock")
-	_expect(scene.call("_is_action_unlocked", "fight", blocked_action), "post-boss action should unlock after Rooster is cleared")
+	_expect(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", blocked_action), "post-boss action should unlock after Rooster is cleared")
 	var payload := scene.call("_save_runtime").call("_save_payload", int(scene.call("_unix_now"))) as Dictionary
 	_expect(bool((payload.get("completed_bosses", {}) as Dictionary).get("rooster", false)), "completed boss should save")
 	scene.queue_free()

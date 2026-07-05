@@ -1,15 +1,18 @@
-class_name HubSurface
 extends Node
 
-const HubBuildProgressBar = preload("res://scripts/ui/hub_build_progress_bar.gd")
-const HubPathDots = preload("res://scripts/ui/hub_path_dots.gd")
 const HubRuntime = preload("res://scripts/gameplay/hub_runtime.gd")
+const FishCircle = preload("res://scripts/ui/fish_circle.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ActionArtUi = preload("res://scripts/ui/action_art_ui.gd")
-const MedalSparkleStar = preload("res://scripts/ui/medal_sparkle_star.gd")
-const MissionCooldownRing = preload("res://scripts/ui/mission_cooldown_ring.gd")
+const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
+const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
+const ProfileChatOverlaySurface = preload("res://scripts/ui/profile_chat_overlay_surface.gd")
+const RewardFeedbackSurface = preload("res://scripts/ui/reward_feedback_surface.gd")
 const StopHoldCircle = preload("res://scripts/ui/stop_hold_circle.gd")
+const ThievingState = preload("res://scripts/thieving/state.gd")
+const SaveRuntime = preload("res://scripts/save_state/save_runtime.gd")
+const MaterialRuntime = preload("res://scripts/materials/runtime.gd")
 
 const HUB_BUILD_SMOKE_SHEET := "res://assets/content/hub/hub-build-cloud-solid-sheet.png"
 const HUB_BUILD_SMOKE_FRAME_COUNT := 4
@@ -26,7 +29,10 @@ const HUB_MISSION_BOARD_TARGET_Y := 0.0
 const HUB_MISSION_BOARD_OPEN_SECONDS := 0.34
 const HUB_MISSION_BOARD_CLOSE_SECONDS := 0.24
 const HUB_HOTSPOT_DRAG_START_SLOP := 42.0
+const HUB_TUTORIAL_TITLE := "Player Hub"
+const HUB_TUTORIAL_BODY := "Upgrade buildings here for bonuses across the whole game.\nTap a building to upgrade it.\nDrag a building to move it."
 const HUB_TUTORIAL_TIP_FADE_SECONDS := 0.18
+const HUB_TROPHY_DEFAULT_CENTER := Vector2(1725, 1190)
 const HUB_MISSION_PAPER_BADGE := "res://assets/content/hub/hub-mission-paper-badge-v3.png"
 const HUB_MISSION_BADGE_TITLE := "Mission Task"
 const HUB_MISSION_BADGE_INFO := "This action is on your Mission Board. Completing it advances the mission and grants the board's boosted task bonuses."
@@ -36,6 +42,468 @@ const ACTION_CARD_TYPE_BADGE_OFFSET_TOP := -68.0
 const ACTION_CARD_TYPE_BADGE_OFFSET_BOTTOM := 163.0
 const ACTION_CARD_TYPE_BADGE_POPOVER_SIZE := Vector2(860, 360)
 const ACTION_CARD_TYPE_BADGE_POPOVER_OFFSET := Vector2(-820, 172)
+
+class HubPathDots:
+	extends Control
+
+
+	var path_destinations := []
+	var obstacle_rects := []
+	var path_dots := []
+	var origin := Vector2.ZERO
+	var dot_radius := 68.0
+	var dot_step := 132.0
+	var dot_height_scale := 0.34
+	var path_color := Color("#a97943")
+	var edge_color := Color("#6f4c2e")
+	var stone_color := Color("#9d9485")
+
+	func set_paths(next_origin: Vector2, next_destinations: Array, next_obstacle_rects: Array) -> void:
+		origin = next_origin
+		path_destinations = next_destinations.duplicate()
+		obstacle_rects = next_obstacle_rects.duplicate()
+		_rebuild_dots()
+		queue_redraw()
+
+	func _rebuild_dots() -> void:
+		path_dots.clear()
+		var routes := _path_routes()
+		if routes.is_empty():
+			return
+		var trunk_top_y := _central_trunk_top_y(routes)
+		routes.sort_custom(func(a, b): return _route_destination_y(a) > _route_destination_y(b))
+		var route_entries := []
+		for route in routes:
+			var destination := route.get("target", origin) as Vector2
+			var route_seed := float(route.get("seed", 1.0))
+			var join := _central_trunk_join(destination, trunk_top_y, route_seed)
+			route_entries.append({"target": destination, "seed": route_seed, "join": join})
+		_collect_trunk_path(route_entries, path_dots)
+		for route_entry in route_entries:
+			var destination := route_entry.get("target", origin) as Vector2
+			var route_seed := float(route_entry.get("seed", 1.0))
+			var join := route_entry.get("join", origin) as Vector2
+			var arrival := _branch_arrival_point(join, destination, route_seed)
+			_add_terminal_dot(join, route_seed + 23.0, path_dots)
+			_collect_branch_path(join, arrival, destination, route_seed, path_dots)
+			if arrival.distance_to(destination) > dot_step * 0.22:
+				_collect_arrival_tail(arrival, destination, route_seed + 67.0, path_dots)
+			_add_terminal_dot(arrival, route_seed, path_dots)
+		_merge_overlapping_dots(path_dots)
+
+	func _path_routes() -> Array:
+		var routes := []
+		for raw_point in path_destinations:
+			if typeof(raw_point) == TYPE_DICTIONARY:
+				var route := raw_point as Dictionary
+				var destination = route.get("target", Vector2.ZERO)
+				if destination is Vector2:
+					routes.append({"target": destination as Vector2, "seed": float(route.get("seed", 1.0))})
+			elif raw_point is Vector2:
+				routes.append({"target": raw_point as Vector2, "seed": origin.x * 0.017 + origin.y * 0.023})
+		return routes
+
+	func _central_trunk_top_y(routes: Array) -> float:
+		var top_y := origin.y
+		for raw_route in routes:
+			var route := raw_route as Dictionary
+			var destination := route.get("target", origin) as Vector2
+			top_y = minf(top_y, destination.y)
+		return top_y + dot_step * 0.38
+
+	func _central_trunk_join(destination: Vector2, trunk_top_y: float, route_seed: float) -> Vector2:
+		var destination_pull := clampf((destination.x - origin.x) * 0.16, -92.0, 92.0)
+		var x_jitter := lerpf(-28.0, 28.0, _unit(route_seed + 5.11))
+		var join_y := clampf(destination.y + dot_step * lerpf(0.44, 1.02, _unit(route_seed + 8.37)), trunk_top_y, origin.y - dot_step * 0.75)
+		return Vector2(origin.x + destination_pull + x_jitter, join_y)
+
+	func _route_destination_y(route: Variant) -> float:
+		if typeof(route) == TYPE_DICTIONARY:
+			var destination = (route as Dictionary).get("target", origin)
+			if destination is Vector2:
+				return (destination as Vector2).y
+		if route is Vector2:
+			return (route as Vector2).y
+		return origin.y
+
+	func _draw() -> void:
+		for dot in path_dots:
+			_draw_path_dot(dot)
+
+	func occupied_rects() -> Array:
+		var rects := []
+		for dot in path_dots:
+			rects.append(_dot_rect(dot as Dictionary, 16.0))
+		return rects
+
+	func _collect_trunk_path(route_entries: Array, next_dots: Array) -> void:
+		var trunk_nodes := [origin]
+		var trunk_seed := origin.x * 0.017 + origin.y * 0.023
+		for raw_entry in route_entries:
+			var entry := raw_entry as Dictionary
+			var join := entry.get("join", origin) as Vector2
+			_append_trunk_node_with_detour(trunk_nodes, join, trunk_seed + float(trunk_nodes.size()) * 13.0)
+		if trunk_nodes.size() < 2:
+			return
+		for i in range(trunk_nodes.size() - 1):
+			var start := trunk_nodes[i] as Vector2
+			var destination := trunk_nodes[i + 1] as Vector2
+			_collect_trunk_segment(start, destination, trunk_seed + float(i) * 19.0, next_dots)
+		_add_terminal_dot(trunk_nodes[trunk_nodes.size() - 1] as Vector2, trunk_seed + 73.0, next_dots)
+
+	func _append_trunk_node_with_detour(trunk_nodes: Array, join: Vector2, route_seed: float) -> void:
+		var start := trunk_nodes[trunk_nodes.size() - 1] as Vector2
+		var obstacle_rect = _obstacle_rect_for_segment(start, join)
+		if obstacle_rect is Rect2:
+			var rect := obstacle_rect as Rect2
+			var side := _detour_side_for_obstacle(rect, route_seed)
+			var detour_y := clampf(lerpf(start.y, join.y, 0.52), rect.position.y - dot_step * 0.42, rect.end.y + dot_step * 0.58)
+			var detour := Vector2(rect.get_center().x + side * (rect.size.x * 0.5 + dot_step * 0.70), detour_y)
+			if detour.distance_to(start) > dot_step * 0.34:
+				trunk_nodes.append(detour)
+		if join.distance_to(trunk_nodes[trunk_nodes.size() - 1] as Vector2) > dot_step * 0.42:
+			trunk_nodes.append(join)
+
+	func _collect_trunk_segment(start: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
+		var vertical := destination.y - start.y
+		var control_a := start + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 1.0)), vertical * 0.42)
+		var control_b := destination + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 3.0)), -vertical * 0.30)
+		_collect_sampled_dotted_path(start, destination, route_seed, next_dots, func(t: float) -> Vector2:
+			var q := 1.0 - t
+			var wave := sin(t * PI) * lerpf(-22.0, 22.0, _unit(route_seed + 7.0))
+			var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * destination
+			point.x += wave
+			return point
+		)
+
+	func _branch_arrival_point(start: Vector2, destination: Vector2, route_seed: float) -> Vector2:
+		var side := signf(destination.x - start.x)
+		if absf(side) < 0.001:
+			side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
+		var destination_obstacle = _obstacle_rect_near_point(destination)
+		if destination_obstacle is Rect2:
+			var rect := destination_obstacle as Rect2
+			var centered_hotspot := absf(rect.get_center().x - origin.x) < dot_step * 1.18
+			if centered_hotspot:
+				side = _detour_side_for_obstacle(rect, route_seed + 37.0)
+				return Vector2(rect.get_center().x + side * (rect.size.x * 0.5 + dot_step * 0.28), rect.end.y + dot_step * lerpf(0.18, 0.40, _unit(route_seed + 41.0)))
+		var bottom_bias := _unit(route_seed + 71.0)
+		if bottom_bias > 0.36:
+			var bottom_drop := dot_step * lerpf(0.34, 0.72, _unit(route_seed + 73.0))
+			var side_nudge := -side * dot_step * lerpf(0.04, 0.20, _unit(route_seed + 79.0))
+			return destination + Vector2(side_nudge, bottom_drop)
+		if bottom_bias > 0.14:
+			return destination + Vector2(-side * dot_step * lerpf(0.22, 0.42, _unit(route_seed + 83.0)), dot_step * lerpf(0.02, 0.18, _unit(route_seed + 89.0)))
+		return destination
+
+	func _collect_branch_path(start: Vector2, arrival: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
+		var horizontal := absf(arrival.x - start.x)
+		var vertical := absf(arrival.y - start.y)
+		var side := signf(arrival.x - start.x)
+		if absf(side) < 0.001:
+			side = 1.0 if _unit(route_seed + 17.0) > 0.5 else -1.0
+		var y_direction := signf(destination.y - start.y)
+		if absf(y_direction) < 0.001:
+			y_direction = -1.0
+		var trunk_launch := clampf(absf(vertical) * 0.62 + horizontal * 0.08, dot_step * 1.05, dot_step * 2.45)
+		var destination_ease := clampf(absf(vertical) * 0.34 + horizontal * 0.16, dot_step * 0.72, dot_step * 1.95)
+		var s_curve := _unit(route_seed + 97.0) > 0.48
+		var s_strength := dot_step * lerpf(0.32, 0.78, _unit(route_seed + 101.0))
+		var control_a := start + Vector2(side * horizontal * (0.08 if not s_curve else -0.24) + lerpf(-12.0, 12.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
+		var control_b := arrival + Vector2(-side * horizontal * (0.18 if not s_curve else 0.44), -y_direction * destination_ease)
+		_collect_sampled_dotted_path(start, arrival, route_seed, next_dots, func(t: float) -> Vector2:
+			var q := 1.0 - t
+			var sag := sin(t * PI) * dot_step * lerpf(0.06, 0.18, _unit(route_seed + 31.0))
+			var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * arrival
+			if s_curve:
+				point.x += sin(t * TAU) * s_strength
+			point.y += sag
+			return point
+		)
+
+	func _collect_arrival_tail(start: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
+		var control := start.lerp(destination, 0.68) + Vector2(lerpf(-14.0, 14.0, _unit(route_seed + 3.0)), dot_step * lerpf(-0.04, 0.12, _unit(route_seed + 5.0)))
+		_collect_sampled_dotted_path(start, destination, route_seed, next_dots, func(t: float) -> Vector2:
+			var q := 1.0 - t
+			return q * q * start + 2.0 * q * t * control + t * t * destination
+		)
+
+	func _obstacle_rect_for_segment(start: Vector2, destination: Vector2) -> Variant:
+		for raw_obstacle_rect in obstacle_rects:
+			if not raw_obstacle_rect is Rect2:
+				continue
+			var rect := (raw_obstacle_rect as Rect2).grow(dot_radius * 0.72)
+			for i in range(1, 18):
+				var t := float(i) / 18.0
+				var point := start.lerp(destination, t)
+				if rect.has_point(point):
+					return raw_obstacle_rect
+		return null
+
+	func _obstacle_rect_near_point(point: Vector2) -> Variant:
+		for raw_obstacle_rect in obstacle_rects:
+			if raw_obstacle_rect is Rect2 and (raw_obstacle_rect as Rect2).grow(dot_step * 0.45).has_point(point):
+				return raw_obstacle_rect
+		return null
+
+	func _detour_side_for_obstacle(rect: Rect2, route_seed: float) -> float:
+		var center_delta := rect.get_center().x - origin.x
+		if absf(center_delta) > dot_step * 0.28:
+			return -signf(center_delta)
+		return -1.0 if _unit(route_seed + 113.0) < 0.5 else 1.0
+
+	func _collect_sampled_dotted_path(start: Vector2, _destination: Vector2, route_seed: float, next_dots: Array, sampler: Callable) -> void:
+		var previous := start
+		var distance_bank := 0.0
+		var dot_index := 0
+		for i in range(1, 80):
+			var t := float(i) / 79.0
+			var point := sampler.call(t) as Vector2
+			var segment := point - previous
+			var segment_length := segment.length()
+			var next_step := dot_step * lerpf(0.78, 1.24, _unit(route_seed + float(dot_index) * 9.13))
+			while distance_bank + segment_length >= next_step and segment_length > 0.001:
+				var needed := next_step - distance_bank
+				var ratio := needed / segment_length
+				var dot := previous + segment * ratio
+				var direction := segment.normalized()
+				var normal := Vector2(-direction.y, direction.x)
+				var scatter := normal * lerpf(-46.0, 46.0, _unit(route_seed + float(dot_index) * 13.71))
+				scatter += direction * lerpf(-24.0, 24.0, _unit(route_seed + float(dot_index) * 17.89))
+				var radius := dot_radius * lerpf(0.90, 1.14, _unit(route_seed + float(dot_index) * 19.41))
+				var fill := _path_dot_color(route_seed, dot_index)
+				var dot_center := dot + scatter
+				_add_or_merge_dot(next_dots, {"center": dot_center, "radius": radius, "fill": fill})
+				_add_path_clump_dots(next_dots, dot_center, radius, direction, normal, route_seed, dot_index)
+				_add_tiny_path_dots(next_dots, dot_center, radius, route_seed, dot_index)
+				dot_index += 1
+				previous = dot
+				segment = point - previous
+				segment_length = segment.length()
+				distance_bank = 0.0
+				next_step = dot_step * lerpf(0.78, 1.24, _unit(route_seed + float(dot_index) * 9.13))
+			distance_bank += segment_length
+			previous = point
+
+	func _add_or_merge_dot(dot_list: Array, dot: Dictionary) -> void:
+		var center := dot.get("center", Vector2.ZERO) as Vector2
+		var radius := float(dot.get("radius", dot_radius))
+		if _dot_hits_obstacle_rect(center, radius):
+			return
+		_add_or_merge_unblocked_dot(dot_list, dot)
+
+	func _add_terminal_dot(center: Vector2, route_seed: float, next_dots: Array) -> void:
+		var radius := dot_radius * lerpf(0.94, 1.08, _unit(route_seed + 41.0))
+		var fill := stone_color if _unit(route_seed + 59.0) > 0.78 else _varied_path_color(route_seed + 59.0)
+		_add_or_merge_unblocked_dot(next_dots, {"center": center, "radius": radius, "fill": fill})
+		_add_tiny_path_dots(next_dots, center, radius, route_seed + 91.0, 0)
+
+	func _path_dot_color(route_seed: float, dot_index: int) -> Color:
+		var dot_seed := route_seed + float(dot_index) * 29.33
+		if _unit(dot_seed) > 0.88:
+			return stone_color
+		return _varied_path_color(dot_seed)
+
+	func _varied_path_color(noise_seed: float) -> Color:
+		var low := Color("#94683e")
+		var high := Color("#bd8851")
+		return low.lerp(high, _unit(noise_seed + 7.17))
+
+	func _add_path_clump_dots(next_dots: Array, center: Vector2, radius: float, direction: Vector2, normal: Vector2, route_seed: float, dot_index: int) -> void:
+		if _unit(route_seed + float(dot_index) * 23.61) < 0.28:
+			return
+		var count := 1 + int(_unit(route_seed + float(dot_index) * 47.31) > 0.62)
+		for clump_index in range(count):
+			var clump_seed := route_seed + float(dot_index) * 71.29 + float(clump_index) * 17.41
+			var side := -1.0 if _unit(clump_seed + 1.0) < 0.5 else 1.0
+			var offset := normal * side * radius * lerpf(0.32, 0.76, _unit(clump_seed + 2.0))
+			offset += direction * radius * lerpf(-0.46, 0.54, _unit(clump_seed + 3.0))
+			var clump_center := center + offset
+			var clump_radius := radius * lerpf(0.58, 0.88, _unit(clump_seed + 4.0))
+			if _dot_hits_obstacle_rect(clump_center, clump_radius):
+				continue
+			_add_unmerged_dot(next_dots, {"center": clump_center, "radius": clump_radius, "fill": _varied_path_color(clump_seed + 5.0), "keep_separate": true})
+
+	func _add_tiny_path_dots(next_dots: Array, center: Vector2, radius: float, route_seed: float, dot_index: int) -> void:
+		if _unit(route_seed + float(dot_index) * 31.7) < 0.38:
+			return
+		var count := 1 + int(_unit(route_seed + float(dot_index) * 43.9) > 0.72)
+		for tiny_index in range(count):
+			var tiny_seed := route_seed + float(dot_index) * 67.3 + float(tiny_index) * 19.1
+			var angle := TAU * _unit(tiny_seed)
+			var distance := radius * lerpf(0.72, 1.34, _unit(tiny_seed + 3.0))
+			var tiny_radius := radius * lerpf(0.18, 0.31, _unit(tiny_seed + 5.0))
+			var tiny_center := center + Vector2(cos(angle), sin(angle) * dot_height_scale * 1.6) * distance
+			if _dot_hits_obstacle_rect(tiny_center, tiny_radius):
+				continue
+			var fill := stone_color if _unit(tiny_seed + 11.0) > 0.82 else _varied_path_color(tiny_seed + 13.0)
+			_add_unmerged_dot(next_dots, {"center": tiny_center, "radius": tiny_radius, "fill": fill, "keep_separate": true})
+
+	func _add_unmerged_dot(dot_list: Array, dot: Dictionary) -> void:
+		dot_list.append(dot)
+
+	func _add_or_merge_unblocked_dot(dot_list: Array, dot: Dictionary) -> void:
+		var center := dot.get("center", Vector2.ZERO) as Vector2
+		var radius := float(dot.get("radius", dot_radius))
+		for i in range(dot_list.size()):
+			var existing := dot_list[i] as Dictionary
+			if bool(existing.get("keep_separate", false)) or bool(dot.get("keep_separate", false)):
+				continue
+			var existing_center := existing.get("center", Vector2.ZERO) as Vector2
+			var existing_radius := float(existing.get("radius", dot_radius))
+			if not _dot_rect(dot, 10.0).intersects(_dot_rect(existing, 10.0)):
+				continue
+			if center.distance_to(existing_center) > maxf(radius, existing_radius) * 0.84:
+				continue
+			var radius_weight := radius * radius
+			var existing_weight := existing_radius * existing_radius
+			existing["center"] = (existing_center * existing_weight + center * radius_weight) / (existing_weight + radius_weight)
+			existing["radius"] = maxf(existing_radius, radius) + minf(existing_radius, radius) * 0.05
+			if dot.get("fill", path_color) == stone_color or existing.get("fill", path_color) == stone_color:
+				existing["fill"] = stone_color
+			dot_list[i] = existing
+			return
+		dot_list.append(dot)
+
+	func _merge_overlapping_dots(next_dots: Array) -> void:
+		var changed := true
+		var guard := 0
+		while changed and guard < 12:
+			changed = false
+			guard += 1
+			var i := 0
+			while i < next_dots.size():
+				var j := i + 1
+				while j < next_dots.size():
+					var a := next_dots[i] as Dictionary
+					var b := next_dots[j] as Dictionary
+					if bool(a.get("keep_separate", false)) or bool(b.get("keep_separate", false)):
+						j += 1
+						continue
+					if _dot_rect(a, -6.0).intersects(_dot_rect(b, -6.0)):
+						var a_radius := float(a.get("radius", dot_radius))
+						var b_radius := float(b.get("radius", dot_radius))
+						var a_weight := a_radius * a_radius
+						var b_weight := b_radius * b_radius
+						a["center"] = ((a.get("center", Vector2.ZERO) as Vector2) * a_weight + (b.get("center", Vector2.ZERO) as Vector2) * b_weight) / (a_weight + b_weight)
+						a["radius"] = maxf(a_radius, b_radius) + minf(a_radius, b_radius) * 0.08
+						if a.get("fill", path_color) == stone_color or b.get("fill", path_color) == stone_color:
+							a["fill"] = stone_color
+						next_dots[i] = a
+						next_dots.remove_at(j)
+						changed = true
+						continue
+					j += 1
+				i += 1
+
+	func _draw_path_dot(dot: Dictionary) -> void:
+		var center := dot.get("center", Vector2.ZERO) as Vector2
+		var radius := float(dot.get("radius", dot_radius))
+		var fill := dot.get("fill", path_color) as Color
+		var patch_seed := center.x * 0.013 + center.y * 0.019 + radius * 0.071
+		_draw_dirt_patch(center, radius, radius * dot_height_scale, fill, patch_seed)
+
+	func _draw_dirt_patch(center: Vector2, radius_x: float, radius_y: float, color: Color, noise_seed: float) -> void:
+		var underpaint := color.lerp(Color("#7b5b3c"), 0.20)
+		underpaint.a = 0.10
+		_draw_irregular_oval(center, radius_x * 1.38, radius_y * 1.52, underpaint, noise_seed + 1.0, 0.22)
+		var glaze := color.lerp(Color("#c1935d"), 0.15)
+		glaze.a = 0.20
+		_draw_irregular_oval(center + Vector2(lerpf(-5.0, 5.0, _unit(noise_seed + 2.0)), lerpf(-1.4, 1.4, _unit(noise_seed + 3.0))), radius_x * 1.12, radius_y * 1.16, glaze, noise_seed + 5.0, 0.15)
+		var body := color
+		body.a = 0.34
+		_draw_irregular_oval(center, radius_x * 0.96, radius_y * 0.92, body, noise_seed + 11.0, 0.11)
+		if _unit(noise_seed + 17.0) > 0.34:
+			var warm := color.lerp(Color("#c48747"), 0.28)
+			warm.a = 0.16
+			var offset := Vector2(lerpf(-0.18, 0.20, _unit(noise_seed + 19.0)) * radius_x, lerpf(-0.18, 0.20, _unit(noise_seed + 23.0)) * radius_y)
+			_draw_irregular_oval(center + offset, radius_x * lerpf(0.34, 0.56, _unit(noise_seed + 29.0)), radius_y * lerpf(0.44, 0.72, _unit(noise_seed + 31.0)), warm, noise_seed + 37.0, 0.18)
+		if _unit(noise_seed + 41.0) > 0.46:
+			var cool := color.lerp(Color("#85694f"), 0.32)
+			cool.a = 0.12
+			var offset := Vector2(lerpf(-0.24, 0.24, _unit(noise_seed + 43.0)) * radius_x, lerpf(-0.22, 0.22, _unit(noise_seed + 47.0)) * radius_y)
+			_draw_irregular_oval(center + offset, radius_x * lerpf(0.22, 0.42, _unit(noise_seed + 53.0)), radius_y * lerpf(0.32, 0.58, _unit(noise_seed + 59.0)), cool, noise_seed + 61.0, 0.20)
+
+	func _draw_irregular_oval(center: Vector2, radius_x: float, radius_y: float, color: Color, noise_seed: float, wobble: float) -> void:
+		var oval_points := PackedVector2Array()
+		var count := 32
+		for i in range(count):
+			var angle := TAU * float(i) / float(count)
+			var edge_noise := lerpf(-wobble, wobble, _unit(noise_seed + float(i) * 5.31))
+			var tangent_noise := lerpf(-wobble * 0.18, wobble * 0.18, _unit(noise_seed + float(i) * 7.77))
+			var radial := 1.0 + edge_noise
+			oval_points.append(center + Vector2(cos(angle + tangent_noise) * radius_x * radial, sin(angle + tangent_noise) * radius_y * radial))
+		draw_colored_polygon(oval_points, color)
+
+	func _dot_rect(dot: Dictionary, padding: float) -> Rect2:
+		var center := dot.get("center", Vector2.ZERO) as Vector2
+		var radius := float(dot.get("radius", dot_radius)) + padding
+		var half_size := Vector2(radius, radius * dot_height_scale)
+		return Rect2(center - half_size, half_size * 2.0)
+
+	func _dot_hits_obstacle_rect(center: Vector2, radius: float) -> bool:
+		var rect := Rect2(center - Vector2(radius + 12.0, radius * dot_height_scale + 12.0), Vector2((radius + 12.0) * 2.0, (radius * dot_height_scale + 12.0) * 2.0))
+		for raw_obstacle_rect in obstacle_rects:
+			if raw_obstacle_rect is Rect2 and rect.intersects(raw_obstacle_rect as Rect2):
+				return true
+		return false
+
+	func _unit(noise_seed: float) -> float:
+		return fposmod(sin(noise_seed * 12.9898 + 78.233) * 43758.5453, 1.0)
+
+
+class HubBuildProgressBar:
+	extends Label
+
+	var remaining_seconds := -1
+	var total_seconds := 15.0
+
+	func _init() -> void:
+		text = ""
+		horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		autowrap_mode = TextServer.AUTOWRAP_OFF
+		text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_theme_color_override("font_color", Color.BLACK)
+		add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.42))
+		add_theme_constant_override("outline_size", 8)
+
+	func set_progress(next_value: float) -> void:
+		set_countdown(maxi(0, ceili((1.0 - clampf(next_value, 0.0, 1.0)) * total_seconds)))
+
+	func set_total_seconds(seconds: float) -> void:
+		total_seconds = maxf(0.001, seconds)
+
+	func set_countdown(seconds: int) -> void:
+		var clamped := maxi(0, seconds)
+		if remaining_seconds == clamped:
+			return
+		remaining_seconds = clamped
+		text = "%ss" % remaining_seconds
+
+class MissionCooldownRing:
+	extends Control
+
+	var progress := 0.0
+
+	func set_progress(next_progress: float) -> void:
+		progress = clampf(next_progress, 0.0, 1.0)
+		queue_redraw()
+
+	func _draw() -> void:
+		var center := size * 0.5
+		var radius := minf(size.x, size.y) * 0.34
+		var width := maxf(13.0, radius * 0.24)
+		var outer_radius := radius + width * 0.72
+		draw_circle(center + Vector2(0, 4), outer_radius, Color(0.04, 0.035, 0.03, 0.36))
+		draw_circle(center, outer_radius, Color.BLACK)
+		draw_circle(center, maxf(0.0, outer_radius - 9.0), Color("#6f6a5e"))
+		draw_arc(center, radius, -PI * 0.5, PI * 1.5, 48, Color("#2e2a24"), width + 8.0, true)
+		draw_arc(center, radius, -PI * 0.5, PI * 1.5, 48, Color("#a8a096"), width, true)
+		if progress > 0.001:
+			draw_arc(center, radius, -PI * 0.5, -PI * 0.5 + TAU * progress, 48, Color("#35d86d"), width, true)
+		draw_circle(center, maxf(0.0, radius - width * 0.82), Color("#77736c"))
 
 var host: Node
 
@@ -102,12 +570,7 @@ var ACTION_CARD_FACE_BORDER_Z_INDEX:
 	set(value): host.ACTION_CARD_FACE_BORDER_Z_INDEX = value
 
 var BOTTOM_NAV_HEIGHT:
-	get: return host.BOTTOM_NAV_HEIGHT
-	set(value): host.BOTTOM_NAV_HEIGHT = value
-
-var CHAT_STRIP_HEIGHT:
-	get: return host.CHAT_STRIP_HEIGHT
-	set(value): host.CHAT_STRIP_HEIGHT = value
+	get: return NavigationShell.BOTTOM_NAV_HEIGHT
 
 var COLOR_INK:
 	get: return host.COLOR_INK
@@ -125,10 +588,6 @@ var current_screen:
 	get: return host.current_screen
 	set(value): host.current_screen = value
 
-var FISH_CURRENCY_ICON_TEXTURE:
-	get: return host.FISH_CURRENCY_ICON_TEXTURE
-	set(value): host.FISH_CURRENCY_ICON_TEXTURE = value
-
 var HUB_BARN_FAILURE_GAP_FACTORS:
 	get: return HubRuntime.HUB_BARN_FAILURE_GAP_FACTORS
 
@@ -137,10 +596,6 @@ var HUB_BUILD_SECONDS:
 
 var HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL:
 	get: return HubRuntime.HUB_MISSION_COOLDOWN_SECONDS_BY_LEVEL
-
-var hub_mission_cooldown_until_unix:
-	get: return _hub_runtime().hub_mission_cooldown_until_unix
-	set(value): _hub_runtime().hub_mission_cooldown_until_unix = int(value)
 
 var HUB_MISSION_SLOT_COUNT_BY_LEVEL:
 	get: return HubRuntime.HUB_MISSION_SLOT_COUNT_BY_LEVEL
@@ -153,10 +608,6 @@ var HUB_MISSION_TIME_REDUCTION_BY_LEVEL:
 
 var HUB_MISSION_XP_BONUS_BY_LEVEL:
 	get: return HubRuntime.HUB_MISSION_XP_BONUS_BY_LEVEL
-
-var hub_missions:
-	get: return _hub_runtime().hub_missions
-	set(value): _hub_runtime().hub_missions = value
 
 var HUB_MODULE_DEFS:
 	get: return HubRuntime.HUB_MODULE_DEFS
@@ -177,41 +628,13 @@ var HUB_POND_REGEN_BONUS_BY_LEVEL:
 var HUB_POSITION_ORDER:
 	get: return HubRuntime.HUB_POSITION_ORDER
 
-var hub_selected_module_id:
-	get: return _hub_runtime().hub_selected_module_id
-	set(value): _hub_runtime().hub_selected_module_id = str(value)
-
-var HUB_TROPHY_DEFAULT_CENTER:
-	get: return host.HUB_TROPHY_DEFAULT_CENTER
-	set(value): host.HUB_TROPHY_DEFAULT_CENTER = value
-
-var HUB_TROPHY_SUCCESS_BONUS_BY_TIER:
-	get: return host.HUB_TROPHY_SUCCESS_BONUS_BY_TIER
-	set(value): host.HUB_TROPHY_SUCCESS_BONUS_BY_TIER = value
-
-var HUB_TUTORIAL_BODY:
-	get: return host.HUB_TUTORIAL_BODY
-	set(value): host.HUB_TUTORIAL_BODY = value
-
-var HUB_TUTORIAL_TITLE:
-	get: return host.HUB_TUTORIAL_TITLE
-	set(value): host.HUB_TUTORIAL_TITLE = value
-
 var last_hub_mission_completion_ceremony_text:
 	get: return host.last_hub_mission_completion_ceremony_text
 	set(value): host.last_hub_mission_completion_ceremony_text = value
 
 var leaderboard_player_id:
-	get: return host.leaderboard_player_id
-	set(value): host.leaderboard_player_id = value
-
-var LOG_CURRENCY_ICON_TEXTURE:
-	get: return host.LOG_CURRENCY_ICON_TEXTURE
-	set(value): host.LOG_CURRENCY_ICON_TEXTURE = value
-
-var MAT_COLLECTION_DEFS:
-	get: return host.MAT_COLLECTION_DEFS
-	set(value): host.MAT_COLLECTION_DEFS = value
+	get: return host.leaderboard_profile.player_id
+	set(value): host.leaderboard_profile.player_id = value
 
 var MIN_MOBILE_BODY_FONT_SIZE:
 	get: return host.MIN_MOBILE_BODY_FONT_SIZE
@@ -221,17 +644,12 @@ var MIN_MOBILE_INFO_TITLE_FONT_SIZE:
 	get: return host.MIN_MOBILE_INFO_TITLE_FONT_SIZE
 	set(value): host.MIN_MOBILE_INFO_TITLE_FONT_SIZE = value
 
-var SAVE_PATH:
-	get: return host.SAVE_PATH
-	set(value): host.SAVE_PATH = value
-
 var selected_skill_id:
 	get: return host.selected_skill_id
 	set(value): host.selected_skill_id = value
 
 var SKILL_REWARD_FLOAT_GROUP:
-	get: return host.SKILL_REWARD_FLOAT_GROUP
-	set(value): host.SKILL_REWARD_FLOAT_GROUP = value
+	get: return RewardFeedbackSurface.SKILL_REWARD_FLOAT_GROUP
 
 var skills_content:
 	get: return host.skills_content
@@ -240,14 +658,6 @@ var skills_content:
 var stamina:
 	get: return host.stamina
 	set(value): host.stamina = value
-
-var THIEVING_HEIST_TROPHY_CELL:
-	get: return host.THIEVING_HEIST_TROPHY_CELL
-	set(value): host.THIEVING_HEIST_TROPHY_CELL = value
-
-var THIEVING_HEIST_TROPHY_SHEET:
-	get: return host.THIEVING_HEIST_TROPHY_SHEET
-	set(value): host.THIEVING_HEIST_TROPHY_SHEET = value
 
 # End host state proxies.
 
@@ -268,13 +678,7 @@ func _hub_runtime() -> HubRuntime:
 	return host._hub_runtime()
 
 func _hub_unlocked() -> bool:
-	return host._hub_unlocked()
-
-func _is_primary_press_event(event: InputEvent) -> bool:
-	return host._is_primary_press_event(event)
-
-func _kill_meta_tween(node: Node, meta_name: String) -> void:
-	host._kill_meta_tween(node, meta_name)
+	return host._navigation_shell()._hub_unlocked()
 
 func _label(text: String, font_size: int, color: Color, align: HorizontalAlignment) -> Label:
 	return host._label(text, font_size, color, align)
@@ -283,31 +687,25 @@ func _menu_button(text: String) -> Button:
 	return host._menu_button(text)
 
 func _meta_vector2(node: Object, meta_name, fallback: Vector2 = Vector2.ZERO) -> Vector2:
-	return host._meta_vector2(node, meta_name, fallback)
-
-func _render_screen(scroll_latest_activity := false, restore_detail_scroll := -1, _boot_async := false):
-	return host._render_screen(scroll_latest_activity, restore_detail_scroll, _boot_async)
+	return host._app_lifecycle_runtime().meta_vector2(node, meta_name, fallback)
 
 func _scroll_to_activity_card(action_id: String, animated := true, centered := false):
-	return host._scroll_to_activity_card(action_id, animated, centered)
+	return host._skill_detail_surface()._scroll_to_activity_card(action_id, animated, centered)
 
 func _set_label_text_if_changed(label: Label, next_text: String) -> void:
-	host._set_label_text_if_changed(label, next_text)
+	host._app_lifecycle_runtime().set_label_text_if_changed(label, next_text)
 
 func _set_canvas_item_alpha_if_changed(item: CanvasItem, next_alpha: float) -> void:
-	host._set_canvas_item_alpha_if_changed(item, next_alpha)
+	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(item, next_alpha)
 
 func _set_canvas_item_visible_if_changed(item: CanvasItem, should_show: bool) -> void:
-	host._set_canvas_item_visible_if_changed(item, should_show)
+	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(item, should_show)
 
 func _skill_level(skill_id: String) -> int:
-	return host._skill_level(skill_id)
-
-func _skill_name(skill_id: String) -> String:
-	return host._skill_name(skill_id)
+	return SkillState.host_skill_level(host, skill_id)
 
 func _state_object_ref(value) -> Object:
-	return host._state_object_ref(value)
+	return host._app_lifecycle_runtime().state_object_ref(value)
 
 func _surface_style(color: Color, radius: int, margin := 28, elevated := false) -> StyleBoxFlat:
 	return host._surface_style(color, radius, margin, elevated)
@@ -322,11 +720,8 @@ func _unix_now() -> int:
 	return host._unix_now()
 
 func _valid_control_ref(value) -> Control:
-	return host._valid_control_ref(value)
+	return host._app_lifecycle_runtime().valid_control_ref(value)
 
-
-func _queue_free_instance_id(instance_id: int) -> void:
-	host._queue_free_instance_id(instance_id)
 
 func save_game() -> void:
 	host.save_game()
@@ -489,7 +884,7 @@ func _add_hub_tutorial_info_button(parent: Control) -> void:
 	button.add_theme_stylebox_override("hover", _hub_tutorial_info_button_style(false, true))
 	button.add_theme_stylebox_override("pressed", _hub_tutorial_info_button_style(true))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	host._button_press_runtime().attach_button_depress_animation(button, 0.92)
+	host.button_press_runtime.attach_button_depress_animation(button, 0.92)
 	button.pressed.connect(_on_hub_tutorial_info_pressed)
 	parent.add_child(button)
 
@@ -682,7 +1077,7 @@ func _hub_random_decor_position(rng: RandomNumberGenerator, display_size: Vector
 	var min_x := margin
 	var max_x := maxf(min_x, HUB_FIELD_SIZE.x - display_size.x - margin)
 	var min_y := 80.0
-	var max_y := maxf(min_y, HUB_FIELD_SIZE.y - CHAT_STRIP_HEIGHT - display_size.y - (74.0 if tree else 40.0))
+	var max_y := maxf(min_y, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - display_size.y - (74.0 if tree else 40.0))
 	var x := rng.randf_range(min_x, max_x)
 	var y := rng.randf_range(min_y, max_y)
 	if tree and rng.randf() < 0.58:
@@ -695,7 +1090,7 @@ func _hub_random_decor_position(rng: RandomNumberGenerator, display_size: Vector
 func _hub_clamp_decor_position(decor_type: String, decor_position: Vector2, display_size: Vector2) -> Vector2:
 	var margin := 46.0 if decor_type == "tree" else 24.0
 	var max_x := maxf(margin, HUB_FIELD_SIZE.x - display_size.x - margin)
-	var max_y := maxf(80.0, HUB_FIELD_SIZE.y - CHAT_STRIP_HEIGHT - display_size.y - (74.0 if decor_type == "tree" else 40.0))
+	var max_y := maxf(80.0, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - display_size.y - (74.0 if decor_type == "tree" else 40.0))
 	return Vector2(
 		clampf(decor_position.x, margin, max_x),
 		clampf(decor_position.y, 80.0, max_y)
@@ -742,7 +1137,7 @@ func _hub_decor_block_rect(decor_type: String, decor_position: Vector2, display_
 func _hub_decor_seed() -> int:
 	var basis := str(leaderboard_player_id)
 	if basis.is_empty():
-		basis = "%s:%s:%s" % [SAVE_PATH, OS.get_unique_id(), _unix_now()]
+		basis = "%s:%s:%s" % [SaveRuntime.SAVE_PATH, OS.get_unique_id(), _unix_now()]
 	var decor_hash := 2166136261
 	for i in range(basis.length()):
 		decor_hash = int((decor_hash ^ basis.unicode_at(i)) * 16777619) & 0x7fffffff
@@ -812,7 +1207,7 @@ func _add_hub_trophy_display(parent: Control) -> void:
 	var trophy_def := _hub_best_trophy_def()
 	if not trophy_def.is_empty():
 		var trophy := TextureRect.new()
-		trophy.texture = host.visual_texture_cache._spritesheet_or_visual_fallback(THIEVING_HEIST_TROPHY_SHEET, int(trophy_def.get("cell", 0)), THIEVING_HEIST_TROPHY_CELL)
+		trophy.texture = host.visual_texture_cache._spritesheet_or_visual_fallback(ThievingState.HEIST_TROPHY_SHEET, int(trophy_def.get("cell", 0)), ThievingState.HEIST_TROPHY_CELL)
 		trophy.custom_minimum_size = Vector2(315, 315)
 		trophy.size = trophy.custom_minimum_size
 		trophy.position = Vector2((button.size.x - trophy.size.x) * 0.5, -58.0)
@@ -1106,7 +1501,7 @@ func _hub_default_module_center(module_id: String) -> Vector2:
 func _clamp_hub_module_center(module_position: Vector2) -> Vector2:
 	return Vector2(
 		clampf(module_position.x, 160.0, HUB_FIELD_SIZE.x - 160.0),
-		clampf(module_position.y, 180.0, HUB_FIELD_SIZE.y - CHAT_STRIP_HEIGHT - HUB_MODULE_BOTTOM_DRAG_MARGIN)
+		clampf(module_position.y, 180.0, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - HUB_MODULE_BOTTOM_DRAG_MARGIN)
 	)
 
 func _hub_module_position_valid(module_id: String, center: Vector2) -> bool:
@@ -1397,7 +1792,7 @@ func _set_hub_decor_visibility_state(node: Control, should_show: bool, animate :
 	if previous_visible == should_show:
 		return
 	node.set_meta("hub_decor_logical_visible", should_show)
-	_kill_meta_tween(node, "hub_decor_pop_tween")
+	host._app_lifecycle_runtime()._kill_meta_tween(node, "hub_decor_pop_tween")
 	if not animate:
 		node.visible = should_show
 		node.modulate.a = 1.0 if should_show else 0.0
@@ -1432,11 +1827,11 @@ func _finish_hub_decor_hide(node_id: int) -> void:
 	node.visible = false
 
 func _add_hub_detail_panel(parent: Control) -> void:
-	if hub_selected_module_id == "mission":
+	if _hub_runtime().hub_selected_module_id == "mission":
 		_add_hub_mission_board_panel(parent)
 		return
 	_add_hub_detail_dismiss_layer(parent)
-	var layout := _hub_detail_bubble_layout(hub_selected_module_id)
+	var layout := _hub_detail_bubble_layout(_hub_runtime().hub_selected_module_id)
 	var panel_pos := layout.get("position", Vector2(590, 360)) as Vector2
 	var panel_size := layout.get("size", Vector2(980, 430)) as Vector2
 	hub_detail_panel = PanelContainer.new()
@@ -1617,14 +2012,14 @@ func _add_hub_detail_dismiss_layer(parent: Control) -> void:
 	parent.add_child(dismiss_layer)
 
 func _on_hub_detail_dismiss_gui_input(event: InputEvent) -> void:
-	if _is_primary_press_event(event):
+	if host._input_routing_shell()._is_primary_press_event(event):
 		_close_hub_detail_popup()
 		accept_event()
 
 func _on_hub_detail_panel_gui_input(event: InputEvent) -> void:
-	if not _is_primary_press_event(event):
+	if not host._input_routing_shell()._is_primary_press_event(event):
 		return
-	if hub_selected_module_id == "mission":
+	if _hub_runtime().hub_selected_module_id == "mission":
 		accept_event()
 		return
 	if hub_detail_button != null and is_instance_valid(hub_detail_button) and hub_detail_button.visible:
@@ -1642,7 +2037,7 @@ func _on_hub_detail_panel_gui_input(event: InputEvent) -> void:
 func _close_hub_detail_popup() -> void:
 	if not hub_detail_open or hub_detail_transition_pending:
 		return
-	if hub_selected_module_id == "mission":
+	if _hub_runtime().hub_selected_module_id == "mission":
 		hub_detail_transition_pending = true
 		call_deferred("_apply_close_hub_mission_board_popup")
 		return
@@ -1667,7 +2062,7 @@ func _apply_close_hub_detail_popup() -> void:
 	if not hub_detail_open:
 		return
 	hub_detail_open = false
-	_render_screen()
+	host._navigation_shell()._render_screen()
 
 func _animate_hub_mission_board_open() -> void:
 	if hub_detail_panel == null or not is_instance_valid(hub_detail_panel):
@@ -1690,7 +2085,7 @@ func _finish_close_hub_detail_popup_tween() -> void:
 	hub_detail_transition_pending = false
 	if hub_detail_open:
 		hub_detail_open = false
-		_render_screen()
+		host._navigation_shell()._render_screen()
 
 func _finish_open_hub_detail_popup_tween() -> void:
 	hub_detail_motion_tween = null
@@ -1746,7 +2141,7 @@ func _hub_detail_bubble_layout(module_id: String) -> Dictionary:
 
 func _hub_clamped_bubble_position(pos: Vector2, panel_size: Vector2) -> Vector2:
 	pos.x = clampf(pos.x, 48.0, HUB_FIELD_SIZE.x - panel_size.x - 48.0)
-	pos.y = clampf(pos.y, 130.0, HUB_FIELD_SIZE.y - CHAT_STRIP_HEIGHT - panel_size.y - 72.0)
+	pos.y = clampf(pos.y, 130.0, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - panel_size.y - 72.0)
 	return pos
 
 func _hub_detail_avoid_rect(module_id: String, padding: float) -> Rect2:
@@ -2135,7 +2530,7 @@ func _spawn_hub_mission_completion_sparkles(badge: Control) -> void:
 	var center := badge.position + badge.size * 0.5
 	for i in range(8):
 		var angle := TAU * float(i) / 8.0
-		var star := MedalSparkleStar.new()
+		var star := AchievementPresentation.MedalSparkleStar.new()
 		star.fill_color = Color("#ffe56b") if i % 2 == 0 else Color("#93ff9e")
 		star.outline_color = COLOR_INK
 		star.size = Vector2(58, 58)
@@ -2176,8 +2571,8 @@ func _hub_mission_summary_text() -> String:
 			GameFormatting.percent_points(_hub_runtime().mission_time_reduction() * 100.0)
 		]
 	]
-	if hub_missions.is_empty():
-		var wait := maxi(0, hub_mission_cooldown_until_unix - _unix_now())
+	if _hub_runtime().hub_missions.is_empty():
+		var wait := maxi(0, _hub_runtime().hub_mission_cooldown_until_unix - _unix_now())
 		lines.append("Next mission in %s." % GameFormatting.duration(float(wait)))
 	return "\n".join(lines)
 
@@ -2194,22 +2589,22 @@ func _jump_to_hub_mission_task(mission_index := 0) -> void:
 	hub_detail_transition_pending = false
 	selected_skill_id = skill_id
 	current_screen = "skill"
-	_render_screen(false, -1)
+	host._navigation_shell()._render_screen(false, -1)
 	await _scroll_to_activity_card(action_id, true, true)
 
 func _hub_mission_at_index(mission_index: int) -> Dictionary:
 	if _hub_runtime().sync_missions():
 		save_game()
-	if mission_index < 0 or mission_index >= hub_missions.size():
+	if mission_index < 0 or mission_index >= _hub_runtime().hub_missions.size():
 		return {}
-	return hub_missions[mission_index] as Dictionary
+	return _hub_runtime().hub_missions[mission_index] as Dictionary
 
 func _sync_hub_detail_mission_cards() -> void:
 	if hub_detail_missions_box == null or not is_instance_valid(hub_detail_missions_box):
 		return
 	for child in hub_detail_missions_box.get_children():
 		child.queue_free()
-	var show_cards = hub_selected_module_id == "mission"
+	var show_cards = _hub_runtime().hub_selected_module_id == "mission"
 	hub_detail_missions_box.visible = show_cards
 	if not show_cards:
 		hub_mission_detail_wait_last_seconds = -1
@@ -2222,28 +2617,28 @@ func _sync_hub_detail_mission_cards() -> void:
 		if i >= active_slots:
 			hub_detail_missions_box.add_child(_hub_mission_locked_slab(i))
 			continue
-		if i >= hub_missions.size():
+		if i >= _hub_runtime().hub_missions.size():
 			hub_detail_missions_box.add_child(_hub_mission_wait_slab(i))
 			continue
-		var mission := hub_missions[i] as Dictionary
+		var mission := _hub_runtime().hub_missions[i] as Dictionary
 		var action := _action_data(str(mission.get("skill_id", "")), str(mission.get("action_id", "")))
 		if action.is_empty():
 			hub_detail_missions_box.add_child(_hub_mission_wait_slab(i))
 			continue
 		hub_detail_missions_box.add_child(_hub_mission_slab(mission, action, i))
-	hub_mission_detail_wait_last_seconds = maxi(0, hub_mission_cooldown_until_unix - _unix_now()) if hub_missions.size() < active_slots else -1
+	hub_mission_detail_wait_last_seconds = maxi(0, _hub_runtime().hub_mission_cooldown_until_unix - _unix_now()) if _hub_runtime().hub_missions.size() < active_slots else -1
 
 func _hub_mission_detail_wait_refresh_needed() -> bool:
-	if current_screen != "hub" or not hub_detail_open or hub_selected_module_id != "mission":
+	if current_screen != "hub" or not hub_detail_open or _hub_runtime().hub_selected_module_id != "mission":
 		hub_mission_detail_wait_last_seconds = -1
 		return false
-	if _hub_runtime().mission_level() <= 0 or hub_mission_cooldown_until_unix <= 0:
+	if _hub_runtime().mission_level() <= 0 or _hub_runtime().hub_mission_cooldown_until_unix <= 0:
 		hub_mission_detail_wait_last_seconds = -1
 		return false
-	if hub_missions.size() >= _hub_runtime().mission_slot_count():
+	if _hub_runtime().hub_missions.size() >= _hub_runtime().mission_slot_count():
 		hub_mission_detail_wait_last_seconds = -1
 		return false
-	var wait := maxi(0, hub_mission_cooldown_until_unix - _unix_now())
+	var wait := maxi(0, _hub_runtime().hub_mission_cooldown_until_unix - _unix_now())
 	if wait == hub_mission_detail_wait_last_seconds:
 		return false
 	hub_mission_detail_wait_last_seconds = wait
@@ -2268,7 +2663,7 @@ func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(row)
 
-	var wait := maxi(0, hub_mission_cooldown_until_unix - _unix_now())
+	var wait := maxi(0, _hub_runtime().hub_mission_cooldown_until_unix - _unix_now())
 	if wait > 0:
 		var ring := MissionCooldownRing.new()
 		ring.custom_minimum_size = Vector2(190, 190)
@@ -2365,7 +2760,7 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 	button.add_theme_stylebox_override("disabled", _hub_mission_slab_style(false, true))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	button.pressed.connect(_jump_to_hub_mission_task.bind(mission_index))
-	host._button_press_runtime().attach_button_depress_animation(button, 0.98)
+	host.button_press_runtime.attach_button_depress_animation(button, 0.98)
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2403,7 +2798,7 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 		art_panel,
 		ActionArtUi.resource_icon_paths(action, Callable(host._action_runtime(), "_action_mat_reward_defs"), Callable(host.material_runtime, "icon_path"), Callable(host._temporary_event_runtime(), "_temporary_event_log_reward_mat_id")),
 		ActionArtUi.special_type_icon_path(action, Callable(host, "_is_event_action")),
-		Callable(host, "_texture_or_visual_fallback")
+		Callable(host.visual_texture_cache, "_texture_or_visual_fallback")
 	)
 	art_panel.add_child(ActionArtUi.border_overlay(ActivityCardStyles.cached_action_art_border(Callable(host, "_surface_style"))))
 
@@ -2422,7 +2817,7 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 	title.add_theme_constant_override("outline_size", 24)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(title)
-	var meta := _label("%s task" % _skill_name(str(mission.get("skill_id", ""))), 54, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var meta := _label("%s task" % SkillState.skill_name(host.skill_defs, str(mission.get("skill_id", ""))), 54, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
 	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	meta.add_theme_color_override("font_outline_color", Color.BLACK)
@@ -2494,10 +2889,10 @@ func _apply_open_hub_detail_popup(module_id: String) -> void:
 	if current_screen != "hub" or hub_build_mode:
 		hub_detail_transition_pending = false
 		return
-	hub_selected_module_id = module_id
+	_hub_runtime().hub_selected_module_id = module_id
 	hub_detail_open = true
 	hub_detail_transition_pending = module_id == "mission"
-	_render_screen()
+	host._navigation_shell()._render_screen()
 	_pop_hub_module(module_id)
 	_update_hub_detail_panel()
 	if module_id == "mission":
@@ -2527,7 +2922,7 @@ func _pop_hub_module(module_id: String) -> void:
 func _update_hub_detail_panel() -> void:
 	if hub_detail_panel == null or not is_instance_valid(hub_detail_panel):
 		return
-	var module_id = hub_selected_module_id
+	var module_id = _hub_runtime().hub_selected_module_id
 	if module_id == "trophy":
 		hub_detail_title.text = "Trophy Platform"
 		hub_detail_body.text = "%s\n%s" % [_hub_trophy_current_bonus_text(), _hub_trophy_next_bonus_text()]
@@ -2543,7 +2938,7 @@ func _update_hub_detail_panel() -> void:
 	hub_detail_button.visible = true
 	if not HUB_MODULE_DEFS.has(module_id):
 		module_id = "pond"
-		hub_selected_module_id = module_id
+		_hub_runtime().hub_selected_module_id = module_id
 	var def := HUB_MODULE_DEFS[module_id] as Dictionary
 	var level := _hub_module_level(module_id)
 	var building := _hub_module_building(module_id)
@@ -2670,11 +3065,11 @@ func _hub_trophy_next_bonus_text() -> String:
 	var unlock_level := int(next_heist.get("unlock", 1))
 	if _skill_level("thieving") < unlock_level:
 		return "Next: requires level %s Thieving." % unlock_level
-	var trophy_tier := clampi(int(next_heist.get("tier", 0)), 0, HUB_TROPHY_SUCCESS_BONUS_BY_TIER.size() - 1)
+	var trophy_tier := clampi(int(next_heist.get("tier", 0)), 0, HubRuntime.HUB_TROPHY_SUCCESS_BONUS_BY_TIER.size() - 1)
 	var trophy_name := str(next_heist.get("trophy", "next trophy"))
 	return "Next: %s, +%s%% success chance." % [
 		trophy_name,
-		GameFormatting.percent_points(float(HUB_TROPHY_SUCCESS_BONUS_BY_TIER[trophy_tier]) * 100.0)
+		GameFormatting.percent_points(float(HubRuntime.HUB_TROPHY_SUCCESS_BONUS_BY_TIER[trophy_tier]) * 100.0)
 	]
 
 func _hub_next_trophy_def() -> Dictionary:
@@ -2691,7 +3086,7 @@ func _hub_module_wood_currency_for_level(module_id: String, level: int) -> Strin
 
 func _hub_module_wood_currency_name(module_id: String, level: int) -> String:
 	var wood_currency := _hub_module_wood_currency_for_level(module_id, level)
-	var mat_def := MAT_COLLECTION_DEFS.get(wood_currency, {}) as Dictionary
+	var mat_def := MaterialRuntime.MAT_COLLECTION_DEFS.get(wood_currency, {}) as Dictionary
 	return str(mat_def.get("name", "Softwood"))
 
 func _hub_module_cost_text(module_id: String) -> String:
@@ -2723,9 +3118,9 @@ func _hub_build_level() -> int:
 	return _skill_level("build")
 
 func _upgrade_selected_hub_module() -> void:
-	if hub_selected_module_id == "trophy":
+	if _hub_runtime().hub_selected_module_id == "trophy":
 		return
-	_upgrade_hub_module(hub_selected_module_id)
+	_upgrade_hub_module(_hub_runtime().hub_selected_module_id)
 
 func _upgrade_hub_module(module_id: String) -> void:
 	var result = _hub_runtime().upgrade_module(module_id)
@@ -2736,7 +3131,7 @@ func _upgrade_hub_module(module_id: String) -> void:
 		return
 	hub_detail_open = false
 	save_game()
-	_render_screen()
+	host._navigation_shell()._render_screen()
 	_play_hub_module_build_spend_burst(module_id, int(result.get("spent_logs", 0)), int(result.get("spent_fish", 0)))
 
 func _play_hub_module_build_spend_burst(module_id: String, spent_logs: int, spent_fish: int) -> void:
@@ -2749,13 +3144,13 @@ func _play_hub_module_build_spend_burst(module_id: String, spent_logs: int, spen
 	var burst_specs := []
 	if spent_logs > 0:
 		burst_specs.append({
-			"path": LOG_CURRENCY_ICON_TEXTURE,
+			"path": MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE,
 			"count": _hub_spend_burst_icon_count(spent_logs),
 			"bias": -0.42 if spent_fish > 0 else 0.0
 		})
 	if spent_fish > 0:
 		burst_specs.append({
-			"path": FISH_CURRENCY_ICON_TEXTURE,
+			"path": FishCircle.FISH_CURRENCY_ICON_TEXTURE,
 			"count": _hub_spend_burst_icon_count(spent_fish),
 			"bias": 0.42 if spent_logs > 0 else 0.0
 		})
@@ -2816,7 +3211,7 @@ func _spawn_hub_spend_burst_icon(texture: Texture2D, start_local: Vector2, side_
 	tween.tween_property(icon, "rotation", target_rotation, 0.84).set_delay(delay).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.tween_property(icon, "modulate:a", 1.0, 0.08).set_delay(delay)
 	tween.tween_property(icon, "modulate:a", 0.0, 0.36).set_delay(delay + 0.48).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-	tween.chain().tween_callback(_queue_free_instance_id.bind(icon.get_instance_id()))
+	tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(icon.get_instance_id()))
 
 func _hub_barn_failure_factor() -> float:
 	return _hub_runtime().barn_failure_factor()

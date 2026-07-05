@@ -1,4 +1,3 @@
-class_name RoundedCornerCropOverlay
 extends Control
 
 

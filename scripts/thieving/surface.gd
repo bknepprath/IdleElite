@@ -1,41 +1,31 @@
-class_name ThievingSurface
 extends Node
 
 const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
+const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
+const RewardFeedbackSurface = preload("res://scripts/ui/reward_feedback_surface.gd")
+const ThievingState = preload("res://scripts/thieving/state.gd")
+
+const THIEVING_HEIST_CARD_HEIGHT := 880.0
+const THIEVING_HEIST_BACKGROUND_SHEET := ThievingState.HEIST_BACKGROUND_SHEET
+const THIEVING_HEIST_TROPHY_SHEET := ThievingState.HEIST_TROPHY_SHEET
+const THIEVING_HEIST_JAIL_BARS_TEXTURE := ThievingState.HEIST_JAIL_BARS_TEXTURE
+const THIEVING_HEIST_BACKGROUND_CELL := ThievingState.HEIST_BACKGROUND_CELL
+const THIEVING_HEIST_TROPHY_CELL := ThievingState.HEIST_TROPHY_CELL
+const THIEVING_HEIST_HORIZONTAL_BLEED := 0.0
+const THIEVING_HEIST_UI_SAFE_INSET := 228.0
+const THIEVING_HEIST_LEVEL_SUCCESS_BONUS := ThievingState.HEIST_LEVEL_SUCCESS_BONUS
+const THIEVING_HEIST_MAX_SUCCESS := ThievingState.HEIST_MAX_SUCCESS
+const THIEVING_ACTION_JAIL_BASE_SECONDS := ThievingState.ACTION_JAIL_BASE_SECONDS
+const THIEVING_ACTION_JAIL_SECONDS_PER_UNLOCK_LEVEL := ThievingState.ACTION_JAIL_SECONDS_PER_UNLOCK_LEVEL
+const THIEVING_ACTION_JAIL_MIN_SECONDS := ThievingState.ACTION_JAIL_MIN_SECONDS
 
 var host: Node
 
-var THIEVING_HEIST_CARD_HEIGHT: float:
-	get: return host.THIEVING_HEIST_CARD_HEIGHT
-var THIEVING_HEIST_HORIZONTAL_BLEED: float:
-	get: return host.THIEVING_HEIST_HORIZONTAL_BLEED
-var THIEVING_HEIST_BACKGROUND_SHEET:
-	get: return host.THIEVING_HEIST_BACKGROUND_SHEET
-var THIEVING_HEIST_BACKGROUND_CELL:
-	get: return host.THIEVING_HEIST_BACKGROUND_CELL
-var THIEVING_HEIST_UI_SAFE_INSET: float:
-	get: return host.THIEVING_HEIST_UI_SAFE_INSET
-var THIEVING_HEIST_TROPHY_SHEET:
-	get: return host.THIEVING_HEIST_TROPHY_SHEET
-var THIEVING_HEIST_TROPHY_CELL:
-	get: return host.THIEVING_HEIST_TROPHY_CELL
-var THIEVING_HEIST_JAIL_BARS_TEXTURE:
-	get: return host.THIEVING_HEIST_JAIL_BARS_TEXTURE
 var THIEVING_JAIL_SECONDS_BY_LEVEL:
 	get: return host.THIEVING_JAIL_SECONDS_BY_LEVEL
-var THIEVING_ACTION_JAIL_BASE_SECONDS: int:
-	get: return host.THIEVING_ACTION_JAIL_BASE_SECONDS
-var THIEVING_ACTION_JAIL_SECONDS_PER_UNLOCK_LEVEL: int:
-	get: return host.THIEVING_ACTION_JAIL_SECONDS_PER_UNLOCK_LEVEL
-var THIEVING_ACTION_JAIL_MIN_SECONDS: int:
-	get: return host.THIEVING_ACTION_JAIL_MIN_SECONDS
-var THIEVING_HEIST_LEVEL_SUCCESS_BONUS: float:
-	get: return host.THIEVING_HEIST_LEVEL_SUCCESS_BONUS
-var THIEVING_HEIST_MAX_SUCCESS: float:
-	get: return host.THIEVING_HEIST_MAX_SUCCESS
 var MODULE_TITLE_OVER_PIN_Z_INDEX: int:
 	get: return host.MODULE_TITLE_OVER_PIN_Z_INDEX
 var COLOR_INK:
@@ -45,61 +35,66 @@ var COLOR_GOLD:
 var PASSIVE_BUTTON_TAP_RELEASE_SLOP: float:
 	get: return host.PASSIVE_BUTTON_TAP_RELEASE_SLOP
 var BOTTOM_NAV_HEIGHT: float:
-	get: return host.BOTTOM_NAV_HEIGHT
+	get: return NavigationShell.BOTTOM_NAV_HEIGHT
 var REWARD_FLOAT_Z: int:
-	get: return host.REWARD_FLOAT_Z
+	get: return RewardFeedbackSurface.REWARD_FLOAT_Z
 var TAU: float:
 	get: return PI * 2.0
 
 var detail_action_card_nodes:
-	get: return host.detail_action_card_nodes
+	get: return host._skill_detail_surface().detail_action_card_nodes
 var action_cards:
 	get: return host.action_cards
 var activity_unlock_heist_preview_after_ceremony_id:
-	get: return host.activity_unlock_heist_preview_after_ceremony_id
-	set(value): host.activity_unlock_heist_preview_after_ceremony_id = value
-var thieving_heist_feather_shader:
-	get: return host.thieving_heist_feather_shader
-	set(value): host.thieving_heist_feather_shader = value
+	get: return host._activity_unlock_ceremony_surface().heist_preview_after_ceremony_id
+	set(value): host._activity_unlock_ceremony_surface().heist_preview_after_ceremony_id = value
+var thieving_heist_feather_shader: Shader
 var current_screen:
 	get: return host.current_screen
 var selected_skill_id:
 	get: return host.selected_skill_id
 var skill_swipe_tracking:
-	get: return host.skill_swipe_tracking
+	get: return host._skill_swipe_activity_surface().skill_swipe_tracking
 var thieving_trophies:
-	get: return host.thieving_trophies
-var thieving_action_jails:
-	get: return host.thieving_action_jails
-var last_thieving_action_jail_process_unix:
-	get: return host.last_thieving_action_jail_process_unix
-	set(value): host.last_thieving_action_jail_process_unix = value
+	get: return host.thieving_state.trophies
 var skills:
 	get: return host.skills
 var pending_thieving_trophy_reward_float:
-	get: return host.pending_thieving_trophy_reward_float
-	set(value): host.pending_thieving_trophy_reward_float = value
+	get: return host.thieving_state.pending_trophy_reward_float
+	set(value): host.thieving_state.pending_trophy_reward_float = value
 var detail_actions_scroll:
-	get: return host.detail_actions_scroll
+	get: return host._skill_detail_surface().detail_actions_scroll
 var content_scroll:
 	get: return host.content_scroll
-var consecutive_activity_crit_count:
-	get: return host.consecutive_activity_crit_count
-	set(value): host.consecutive_activity_crit_count = value
 var hub_tab:
-	get: return host.hub_tab
+	get: return host._navigation_shell().hub_tab
 var detail_rendered_action_ids:
-	get: return host.detail_rendered_action_ids
+	get: return host._skill_detail_surface().detail_rendered_action_ids
 var running_skill_id:
 	get: return host.running_skill_id
 var running_action_id:
 	get: return host.running_action_id
-var thieving_action_jail_material:
-	get: return host.thieving_action_jail_material
-	set(value): host.thieving_action_jail_material = value
+var thieving_action_jail_material: ShaderMaterial
 
 func setup(next_host: Node) -> void:
 	host = next_host
+
+
+func card_height() -> float:
+	return THIEVING_HEIST_CARD_HEIGHT
+
+
+func warmup_texture_paths() -> Array:
+	return [
+		THIEVING_HEIST_BACKGROUND_SHEET,
+		THIEVING_HEIST_TROPHY_SHEET,
+		THIEVING_HEIST_JAIL_BARS_TEXTURE,
+	]
+
+
+func clear_visual_caches() -> void:
+	thieving_heist_feather_shader = null
+	thieving_action_jail_material = null
 
 func _missing_host_call(method: String, args: Array = []):
 	return host.callv(method, args)
@@ -252,25 +247,25 @@ func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview
 func _on_thieving_heist_button_input(event: InputEvent, heist_id: String, source: Button) -> void:
 	if source == null or not is_instance_valid(source) or source.disabled:
 		return
-	var event_position := _passive_button_event_position(event, source)
+	var event_position: Vector2 = host._input_routing_shell()._passive_button_event_position(event, source)
 	var event_kind := ButtonPressState.event_kind(event)
 	if event_kind == "press":
 		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
 			return
 		ButtonPressState.begin(source, "thieving_heist", event_position)
-		_route_skill_swipe_button_input(event, source)
+		host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
 		get_viewport().set_input_as_handled()
 		return
 	if event_kind == "drag":
 		if ButtonPressState.active(source, "thieving_heist") or skill_swipe_tracking:
 			ButtonPressState.update_drag(source, "thieving_heist", event_position, -1.0)
-			_route_skill_swipe_button_input(event, source)
+			host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
 			get_viewport().set_input_as_handled()
 		return
 	if event_kind == "release":
 		var was_active := ButtonPressState.active(source, "thieving_heist")
 		if skill_swipe_tracking:
-			_route_skill_swipe_button_input(event, source)
+			host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
 		var valid_tap := ButtonPressState.finish(source, "thieving_heist", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 		if (
 			was_active
@@ -323,18 +318,18 @@ func _route_thieving_heist_button_global_input(event: InputEvent) -> bool:
 		if not _position_inside_detail_actions_viewport(event_position):
 			return false
 		ButtonPressState.begin(source, "thieving_heist", event_position)
-		_route_skill_swipe_button_input(event, source)
+		host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
 		return true
 	if is_motion:
 		if ButtonPressState.active(source, "thieving_heist") or skill_swipe_tracking:
 			ButtonPressState.update_drag(source, "thieving_heist", event_position, -1.0)
-			_route_skill_swipe_button_input(event, source)
+			host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
 			return true
 		return false
 	if is_release:
 		var was_active := ButtonPressState.active(source, "thieving_heist")
 		if skill_swipe_tracking:
-			_route_skill_swipe_button_input(event, source)
+			host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
 		var valid_tap := ButtonPressState.finish(source, "thieving_heist", event_position, PASSIVE_BUTTON_TAP_RELEASE_SLOP)
 		if (
 			was_active
@@ -640,7 +635,7 @@ func _on_thieving_heist_jail_overlay_input(event: InputEvent, heist_id: String) 
 	if remaining > 0:
 		_reduce_thieving_heist_jail_timer(heist_id, card)
 		var updated_remaining: int = host.thieving_state.heist_cooldown_remaining(heist_id, _unix_now())
-		_set_result("Still jailed: %s." % _format_countdown(updated_remaining))
+		host._reward_feedback_surface()._set_result("Still jailed: %s." % _format_countdown(updated_remaining))
 	get_viewport().set_input_as_handled()
 
 
@@ -711,14 +706,14 @@ func _float_thieving_jail_timer_reduction(card: Dictionary) -> void:
 	tween.tween_property(holder, "scale", Vector2.ONE * randf_range(1.02, 1.18), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
 	tween.tween_property(holder, "modulate:a", 0.0, 0.48).set_delay(randf_range(0.34, 0.52))
-	tween.chain().tween_callback(_queue_free_instance_id.bind(holder.get_instance_id()))
+	tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(holder.get_instance_id()))
 
 
 
 func _thieving_action_jail_remaining(action_id: String) -> int:
-	if action_id.is_empty() or not thieving_action_jails.has(action_id):
+	if action_id.is_empty() or not host.thieving_state.action_jails.has(action_id):
 		return 0
-	var state := thieving_action_jails.get(action_id, {}) as Dictionary
+	var state := host.thieving_state.action_jails.get(action_id, {}) as Dictionary
 	return maxi(0, int(state.get("cooldown_until_unix", 0)) - _unix_now())
 
 
@@ -748,10 +743,10 @@ func _jail_thieving_action(action_id: String, resume_when_free := true, jail_sec
 	if jail_seconds < 0:
 		jail_seconds = _thieving_action_jail_seconds(_action_data("thieving", action_id))
 	if jail_seconds <= 0:
-		if thieving_action_jails.has(action_id):
+		if host.thieving_state.action_jails.has(action_id):
 			_clear_thieving_action_jail(action_id, false)
 		return
-	thieving_action_jails[action_id] = {
+	host.thieving_state.action_jails[action_id] = {
 		"cooldown_until_unix": _unix_now() + jail_seconds,
 		"resume_when_free": resume_when_free
 	}
@@ -763,17 +758,17 @@ func _jail_thieving_action(action_id: String, resume_when_free := true, jail_sec
 
 
 func _cancel_thieving_action_jail_resumes_for_started_action(skill_id: String, action_id: String) -> void:
-	if thieving_action_jails.is_empty():
+	if host.thieving_state.action_jails.is_empty():
 		return
 	var changed := false
-	for raw_jailed_action_id in thieving_action_jails.keys():
+	for raw_jailed_action_id in host.thieving_state.action_jails.keys():
 		var jailed_action_id := str(raw_jailed_action_id)
-		var state := thieving_action_jails.get(jailed_action_id, {}) as Dictionary
+		var state := host.thieving_state.action_jails.get(jailed_action_id, {}) as Dictionary
 		if skill_id == "thieving" and action_id == jailed_action_id:
 			continue
 		if bool(state.get("resume_when_free", false)):
 			state["resume_when_free"] = false
-			thieving_action_jails[jailed_action_id] = state
+			host.thieving_state.action_jails[jailed_action_id] = state
 			changed = true
 	if changed:
 		save_game()
@@ -781,11 +776,11 @@ func _cancel_thieving_action_jail_resumes_for_started_action(skill_id: String, a
 
 
 func _clear_thieving_action_jail(action_id: String, resume_if_free := true) -> void:
-	if action_id.is_empty() or not thieving_action_jails.has(action_id):
+	if action_id.is_empty() or not host.thieving_state.action_jails.has(action_id):
 		return
-	var state := thieving_action_jails.get(action_id, {}) as Dictionary
+	var state := host.thieving_state.action_jails.get(action_id, {}) as Dictionary
 	var should_resume := resume_if_free and bool(state.get("resume_when_free", false))
-	thieving_action_jails.erase(action_id)
+	host.thieving_state.action_jails.erase(action_id)
 	for card in _thieving_action_cards_for_action(action_id):
 		_release_thieving_action_jail_overlay(card)
 		card["jail_overlay"] = null
@@ -800,14 +795,14 @@ func _clear_thieving_action_jail(action_id: String, resume_if_free := true) -> v
 
 
 func _process_thieving_action_jails() -> void:
-	if thieving_action_jails.is_empty():
+	if host.thieving_state.action_jails.is_empty():
 		return
 	var now := _unix_now()
-	if now == last_thieving_action_jail_process_unix:
+	if now == host.thieving_state.last_action_jail_process_unix:
 		return
-	last_thieving_action_jail_process_unix = now
+	host.thieving_state.last_action_jail_process_unix = now
 	var expired: Array[String] = []
-	for raw_action_id in thieving_action_jails.keys():
+	for raw_action_id in host.thieving_state.action_jails.keys():
 		var action_id := str(raw_action_id)
 		if _thieving_action_jail_remaining(action_id) <= 0:
 			expired.append(action_id)
@@ -964,19 +959,19 @@ func _reduce_thieving_action_jail_from_card(action_id: String, card: Dictionary)
 	_reduce_thieving_action_jail_timer(action_id, card)
 	var updated_remaining := _thieving_action_jail_remaining(action_id)
 	if updated_remaining > 0:
-		_set_result("Still jailed: %s." % _format_countdown(updated_remaining))
+		host._reward_feedback_surface()._set_result("Still jailed: %s." % _format_countdown(updated_remaining))
 
 
 
 func _reduce_thieving_action_jail_timer(action_id: String, card: Dictionary) -> void:
-	if action_id.is_empty() or not thieving_action_jails.has(action_id):
+	if action_id.is_empty() or not host.thieving_state.action_jails.has(action_id):
 		return
-	var state := thieving_action_jails.get(action_id, {}) as Dictionary
+	var state := host.thieving_state.action_jails.get(action_id, {}) as Dictionary
 	var cooldown_until := maxi(0, int(state.get("cooldown_until_unix", 0)))
 	if cooldown_until <= 0:
 		return
 	state["cooldown_until_unix"] = maxi(_unix_now(), cooldown_until - 1)
-	thieving_action_jails[action_id] = state
+	host.thieving_state.action_jails[action_id] = state
 	_float_thieving_jail_timer_reduction(card)
 	for duplicate_card in _thieving_action_cards_for_action(action_id):
 		_sync_thieving_action_jail_overlay(duplicate_card, action_id)
@@ -1006,7 +1001,7 @@ func _release_thieving_action_jail_overlay(card: Dictionary) -> void:
 	if timer != null and is_instance_valid(timer):
 		tween.tween_property(timer, "modulate:a", 0.0, 0.12).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 		tween.tween_property(timer, "scale", Vector2(0.78, 0.78), 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-	tween.chain().tween_callback(_queue_free_instance_id.bind(overlay.get_instance_id()))
+	tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(overlay.get_instance_id()))
 
 
 
@@ -1132,7 +1127,7 @@ func _attempt_thieving_heist(heist_id: String) -> void:
 		return
 	host._audio_director()._unlock_audio_for_gameplay()
 	var key := _thieving_heist_card_key(heist_id)
-	_pop_activity_button(key)
+	host._skill_swipe_activity_surface()._pop_activity_button(key)
 	var success := randf() * 100.0 <= _thieving_heist_success_chance(heist)
 	if success:
 		state["stolen"] = true
@@ -1143,7 +1138,7 @@ func _attempt_thieving_heist(heist_id: String) -> void:
 		var old_level := _skill_level("thieving")
 		_recalculate_level("thieving")
 		host._hub_runtime().sync_trophy_level_from_thieving()
-		_set_result("%s +%s XP." % [str(heist.get("success_text", "Trophy stolen.")), xp_reward])
+		host._reward_feedback_surface()._set_result("%s +%s XP." % [str(heist.get("success_text", "Trophy stolen.")), xp_reward])
 		pending_thieving_trophy_reward_float = {"key": key, "xp": xp_reward}
 		host._audio_director()._play_activity_success_sound(1, false, false, false, false, 0)
 		host._audio_director()._record_music_flow_action(true, 1, false, _skill_level("thieving") > old_level, _skill_level("thieving") > old_level, 0.0)
@@ -1154,9 +1149,9 @@ func _attempt_thieving_heist(heist_id: String) -> void:
 		var failure_xp := maxi(1, int(round(float(heist.get("xp", 1)) * 0.20)))
 		skills["thieving"]["xp"] = int(skills.get("thieving", {}).get("xp", 0)) + failure_xp
 		_recalculate_level("thieving")
-		_reset_activity_completion_streak()
-		consecutive_activity_crit_count = 0
-		_set_result("%s +%s XP. Try again in %s." % [str(heist.get("failure_text", "Heist failed.")), failure_xp, GameFormatting.duration(float(heist.get("cooldown_seconds", 60)))])
+		host._action_runtime().reset_activity_completion_streak()
+		host._action_runtime().reset_consecutive_activity_crits()
+		host._reward_feedback_surface()._set_result("%s +%s XP. Try again in %s." % [str(heist.get("failure_text", "Heist failed.")), failure_xp, GameFormatting.duration(float(heist.get("cooldown_seconds", 60)))])
 		host._reward_feedback_surface()._play_action_feedback(key, false, failure_xp, 0.0)
 		host._audio_director()._play_failure_sfx()
 		host._audio_director()._record_music_flow_action(false, 0, false, false, false, 0.0)
@@ -1220,7 +1215,7 @@ func _play_thieving_trophy_hub_float(action_key: String, xp_amount: int) -> void
 	holder.z_index = REWARD_FLOAT_Z
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fishing_collection_canvas().add_child(holder)
+	host._fishing_ui_surface()._fishing_collection_canvas().add_child(holder)
 	_float_thieving_heist_xp_reward(start_center, xp_amount)
 
 	var glow := Panel.new()
@@ -1316,7 +1311,7 @@ func _finish_thieving_trophy_flight(holder_id: int, action_key: String) -> void:
 	var trophy_holder := _valid_control_ref(instance_from_id(holder_id))
 	if trophy_holder != null:
 		trophy_holder.queue_free()
-		host._button_press_runtime()._pop_nav_button(hub_tab)
+		host.button_press_runtime._pop_nav_button(hub_tab)
 		_fade_completed_thieving_heist_card(action_key)
 
 
@@ -1353,7 +1348,7 @@ func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> v
 	holder.z_index = REWARD_FLOAT_Z
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_fishing_collection_canvas().add_child(holder)
+	host._fishing_ui_surface()._fishing_collection_canvas().add_child(holder)
 
 	var shadow := _label("+%s XP!" % xp_amount, 82, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = reward_size
@@ -1376,7 +1371,7 @@ func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> v
 	tween.tween_property(holder, "rotation", holder.rotation + randf_range(-0.06, 0.06), 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "modulate:a", 1.0, 0.10)
 	tween.tween_property(holder, "modulate:a", 0.0, 0.56).set_delay(0.66).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.chain().tween_callback(_queue_free_instance_id.bind(holder.get_instance_id()))
+	tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(holder.get_instance_id()))
 
 
 
@@ -1501,61 +1496,47 @@ func _add_module_action_zones(parent: Control, module_key: String) -> Dictionary
 	return host._skill_detail_surface()._add_module_action_zones(parent, module_key)
 
 func _register_action_card(card_key: String, card: Dictionary) -> void:
-	host._register_action_card(card_key, card)
+	host._skill_detail_surface()._register_action_card(card_key, card)
 
 func _theme_paper_color() -> Color:
 	return host._theme_paper_color()
 
 func _valid_control_ref(value) -> Control:
-	return host._valid_control_ref(value)
+	return host._app_lifecycle_runtime().valid_control_ref(value)
 
 func _state_object_ref(value):
-	return host._state_object_ref(value)
+	return host._app_lifecycle_runtime().state_object_ref(value)
 
 func _set_canvas_item_visible_if_changed(item: CanvasItem, visible: bool) -> void:
-	host._set_canvas_item_visible_if_changed(item, visible)
+	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(item, visible)
 
 func _set_canvas_item_modulate_if_changed(item: CanvasItem, color: Color) -> void:
-	host._set_canvas_item_modulate_if_changed(item, color)
+	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(item, color)
 
 func _hold_skill_detail_layout_refresh(seconds: float) -> void:
-	host._hold_skill_detail_layout_refresh(seconds)
+	host._skill_detail_surface()._hold_skill_detail_layout_refresh(seconds)
 
 func _release_detail_unlock_extra_scroll_space() -> void:
 	host._release_detail_unlock_extra_scroll_space()
 
 func _position_inside_bottom_interactive_ui(point: Vector2) -> bool:
-	return host._position_inside_bottom_interactive_ui(point)
+	return host._input_routing_shell()._position_inside_bottom_interactive_ui(point)
 
 func _position_inside_detail_actions_viewport(point: Vector2) -> bool:
-	return host._position_inside_detail_actions_viewport(point)
-
-func _passive_button_event_position(event: InputEvent, source: Control) -> Vector2:
-	return host._passive_button_event_position(event, source)
-
-func _route_skill_swipe_button_input(event: InputEvent, source: Control) -> void:
-	host._route_skill_swipe_button_input(event, source)
+	return host._input_routing_shell()._position_inside_detail_actions_viewport(point)
 
 func _skill_swipe_suppresses_button_action() -> bool:
-	return host._skill_swipe_suppresses_button_action()
+	return host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action()
 
 func _skill_level(skill_id: String) -> int:
-	return host._skill_level(skill_id)
-
-func _pop_activity_button(action_key: String) -> void:
-	host._pop_activity_button(action_key)
+	return SkillState.host_skill_level(host, skill_id)
 
 func _recalculate_level(skill_id: String) -> void:
-	host._recalculate_level(skill_id)
+	SkillState.recalculate_level(host, skill_id)
 
-func _set_result(text: String) -> void:
-	host._set_result(text)
 
 func _unix_now() -> int:
 	return host._unix_now()
-
-func _reset_activity_completion_streak() -> void:
-	host._reset_activity_completion_streak()
 
 func save_game() -> void:
 	host.save_game()
@@ -1564,10 +1545,10 @@ func _update_ui(delta: float, instant: bool) -> void:
 	host._update_ui(delta, instant)
 
 func _render_screen(transition: bool, restore_scroll := -1) -> void:
-	host._render_screen(transition, restore_scroll)
+	host._navigation_shell()._render_screen(transition, restore_scroll)
 
 func _discard_action_card_key(action_key: String) -> void:
-	host._discard_action_card_key(action_key)
+	host._skill_detail_surface()._discard_action_card_key(action_key)
 
 func _clamp_detail_actions_scroll_to_content_deferred() -> void:
 	host._clamp_detail_actions_scroll_to_content_deferred()
@@ -1577,13 +1558,6 @@ func _set_detail_unlock_scroll_spacer_height(height: float) -> void:
 
 func _current_canvas_size() -> Vector2:
 	return host._current_canvas_size()
-
-func _fishing_collection_canvas() -> CanvasLayer:
-	return host._fishing_collection_canvas()
-
-
-func _queue_free_instance_id(instance_id: int) -> void:
-	host._queue_free_instance_id(instance_id)
 
 func _action_data(skill_id: String, action_id: String) -> Dictionary:
 	return host._action_data(skill_id, action_id)
@@ -1595,7 +1569,10 @@ func _action_card_key(skill_id: String, action_id: String, visual_card_key := ""
 	return host._action_card_key(skill_id, action_id, visual_card_key)
 
 func _valid_texture_progress_ref(value) -> TextureProgressBar:
-	return host._valid_texture_progress_ref(value)
+	var control: Control = host._app_lifecycle_runtime().valid_control_ref(value)
+	if control == null:
+		return null
+	return control as TextureProgressBar
 
 func _dim_action_card(card: Dictionary, dimmed: bool) -> void:
 	host._dim_action_card(card, dimmed)
@@ -1603,20 +1580,17 @@ func _dim_action_card(card: Dictionary, dimmed: bool) -> void:
 func _started_action_matches(skill_id: String, action_id: String) -> bool:
 	return host._started_action_matches(skill_id, action_id)
 
-func _start_action_from_card_tap(skill_id: String, action_id: String, visual_card_key := "") -> bool:
-	return host._start_action_from_card_tap(skill_id, action_id, visual_card_key)
-
 func _play_padlock_click_shake(target: Control) -> void:
-	host._play_padlock_click_shake(target)
+	host._fishing_ui_surface()._play_padlock_click_shake(target)
 
 func _format_countdown(seconds: int) -> String:
 	return GameFormatting.countdown(seconds)
 
 func _set_label_text_if_changed(label: Label, text: String) -> void:
-	host._set_label_text_if_changed(label, text)
+	host._app_lifecycle_runtime().set_label_text_if_changed(label, text)
 
 func _set_button_text_if_changed(button: Button, text: String) -> void:
-	host._set_button_text_if_changed(button, text)
+	host._app_lifecycle_runtime().set_button_text_if_changed(button, text)
 
 func _set_base_button_disabled_if_changed(button: BaseButton, disabled: bool) -> void:
-	host._set_base_button_disabled_if_changed(button, disabled)
+	host._app_lifecycle_runtime().set_base_button_disabled_if_changed(button, disabled)

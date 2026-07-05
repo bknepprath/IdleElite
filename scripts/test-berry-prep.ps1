@@ -55,7 +55,7 @@ func _run() -> void:
 		return
 	var scene: Node = packed.instantiate()
 	root.add_child(scene)
-	scene.call("_activity_data_catalog").call("load_action_data", scene)
+	scene.get("activity_data_catalog").call("load_action_data", scene)
 	scene.call("_save_runtime").call("_init_state")
 	var woodcutting := scene.skills["woodcutting"] as Dictionary
 	woodcutting["level"] = 13

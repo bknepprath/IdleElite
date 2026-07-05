@@ -2,19 +2,15 @@ extends RefCounted
 
 const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
-const ActivityCardInnerShadow = preload("res://scripts/ui/activity_card_inner_shadow.gd")
-const FirepitFlameFx = preload("res://scripts/ui/firepit_flame_fx.gd")
-const FirepitFuelRing = preload("res://scripts/ui/firepit_fuel_ring.gd")
-const FirepitWarmthOverlay = preload("res://scripts/ui/firepit_warmth_overlay.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
-const PassiveIconSprite = preload("res://scripts/ui/passive_icon_sprite.gd")
-const PassiveLogPileSprite = preload("res://scripts/ui/passive_log_pile_sprite.gd")
+const MaterialRuntime = preload("res://scripts/materials/runtime.gd")
+const MaterialCollectionSurface = preload("res://scripts/ui/material_collection_surface.gd")
 const PassiveModulesRuntime = preload("res://scripts/gameplay/passive_modules_runtime.gd")
-const PassiveModuleCardBorder = preload("res://scripts/ui/passive_module_card_border.gd")
 const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
-const PassiveSerpentineProgressBar = preload("res://scripts/ui/passive_serpentine_progress_bar.gd")
+const RewardFeedbackSurface = preload("res://scripts/ui/reward_feedback_surface.gd")
 const RoundedCornerCropOverlay = preload("res://scripts/ui/rounded_corner_crop_overlay.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
+const StopHoldCircle = preload("res://scripts/ui/stop_hold_circle.gd")
 
 const WOODCUTTING_LOG_MODULE_INFO := "Legacy collector kept only for save compatibility."
 const WOODCUTTING_LOG_MODULE_TIP_TEXT := "Legacy passive collector removed."
@@ -33,6 +29,596 @@ const PASSIVE_LOG_PILE_CLICK_PROMPT := "tap!"
 const PASSIVE_LOG_PILE_CLICK_PROMPT_FONT_SIZE := 82
 const PASSIVE_LOG_PILE_CLICK_PROMPT_SIZE := Vector2(340, 118)
 const PASSIVE_LOG_PILE_CLICK_PROMPT_OFFSET := Vector2(-58, -46)
+const PASSIVE_INFO_CLICK_AWAY_SECONDS := 2.0
+const INFO_POPOVER_PREWARM_FRAMES := 2
+
+
+class _FirepitFuelRing:
+	extends Control
+
+	var value := 0.0
+	var target_value := 0.0
+	var inner_value := 0.0
+	var inner_target_value := 0.0
+	var easing_speed := 6.0
+	var fill_color := Color("#ff9c2f")
+	var empty_color := Color("#553220")
+	var inner_fill_color := Color("#ffd55f")
+	var inner_empty_color := Color("#3a251b")
+	var outline_color := Color("#171615")
+	var shadow_color := Color(0.08, 0.07, 0.06, 0.32)
+	var heat_gradient_colors := [
+		Color("#d63a16"),
+		Color("#ff641f"),
+		Color("#ff9c2f"),
+		Color("#ffd45a"),
+		Color("#fff08c"),
+	]
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_process(false)
+
+	func set_value(next_value: float) -> void:
+		var clamped := clampf(next_value, 0.0, 100.0)
+		if absf(value - clamped) <= 0.001 and absf(target_value - clamped) <= 0.001:
+			return
+		value = clamped
+		target_value = clamped
+		queue_redraw()
+		_maybe_sleep()
+
+	func set_inner_value(next_value: float) -> void:
+		var clamped := clampf(next_value, 0.0, 100.0)
+		if absf(inner_value - clamped) <= 0.001 and absf(inner_target_value - clamped) <= 0.001:
+			return
+		inner_value = clamped
+		inner_target_value = clamped
+		queue_redraw()
+		_maybe_sleep()
+
+	func set_target_value(next_value: float, instant := false) -> void:
+		var clamped := clampf(next_value, 0.0, 100.0)
+		if instant:
+			set_value(clamped)
+			return
+		if absf(target_value - clamped) <= 0.001:
+			return
+		target_value = clamped
+		if not is_processing():
+			set_process(true)
+
+	func set_inner_target_value(next_value: float, instant := false) -> void:
+		var clamped := clampf(next_value, 0.0, 100.0)
+		if instant:
+			set_inner_value(clamped)
+			return
+		if absf(inner_target_value - clamped) <= 0.001:
+			return
+		inner_target_value = clamped
+		if not is_processing():
+			set_process(true)
+
+	func _process(delta: float) -> void:
+		if absf(value - target_value) <= 0.001 and absf(inner_value - inner_target_value) <= 0.001:
+			value = target_value
+			inner_value = inner_target_value
+			_maybe_sleep()
+			return
+		var speed := easing_speed if target_value >= value else easing_speed * 0.9
+		value = lerpf(value, target_value, 1.0 - exp(-speed * minf(delta, 0.1)))
+		var inner_speed := easing_speed * 1.45 if inner_target_value >= inner_value else easing_speed * 0.85
+		inner_value = lerpf(inner_value, inner_target_value, 1.0 - exp(-inner_speed * minf(delta, 0.1)))
+		queue_redraw()
+
+	func _maybe_sleep() -> void:
+		if absf(value - target_value) <= 0.001 and absf(inner_value - inner_target_value) <= 0.001:
+			set_process(false)
+
+	func _draw() -> void:
+		if size.x <= 8.0 or size.y <= 8.0:
+			return
+		var center := size * 0.5
+		var radius := minf(size.x, size.y) * 0.42
+		var tube_width := maxf(22.0, radius * 0.13)
+		var outline_width := tube_width + maxf(9.0, tube_width * 0.34)
+		var inner_radius := radius - outline_width * 1.06
+		var inner_tube_width := maxf(20.0, tube_width * 0.70)
+		var inner_outline_width := inner_tube_width + maxf(7.0, inner_tube_width * 0.34)
+		var start_angle := deg_to_rad(-75.0)
+		var sweep := deg_to_rad(330.0)
+		var fill_pct := clampf(value / 100.0, 0.0, 1.0)
+		var inner_fill_pct := clampf(inner_value / 100.0, 0.0, 1.0)
+		_draw_round_arc(center + Vector2(0.0, 5.0), radius, start_angle, sweep, shadow_color, outline_width + 4.0)
+		_draw_round_arc(center, radius, start_angle, sweep, outline_color, outline_width)
+		_draw_round_arc(center, radius, start_angle, sweep, empty_color, tube_width)
+		if fill_pct > 0.001:
+			_draw_heat_arc(center, radius, start_angle, sweep * fill_pct, sweep, tube_width)
+		if inner_radius > inner_outline_width:
+			_draw_round_arc(center + Vector2(0.0, 3.0), inner_radius, start_angle, sweep, shadow_color.darkened(0.2), inner_outline_width + 3.0)
+			_draw_round_arc(center, inner_radius, start_angle, sweep, outline_color, inner_outline_width)
+			_draw_round_arc(center, inner_radius, start_angle, sweep, inner_empty_color, inner_tube_width)
+			if inner_fill_pct > 0.001:
+				_draw_round_arc(center, inner_radius, start_angle, sweep * inner_fill_pct, inner_fill_color, inner_tube_width)
+
+	func _draw_round_arc(center: Vector2, radius: float, start_angle: float, sweep: float, color: Color, width: float) -> void:
+		if sweep <= 0.001 or color.a <= 0.0 or width <= 0.0:
+			return
+		var segments := maxi(12, int(ceil(absf(sweep) / TAU * 96.0)))
+		var end_angle := start_angle + sweep
+		draw_arc(center, radius, start_angle, end_angle, segments, color, width, true)
+		var start_point := center + Vector2(cos(start_angle), sin(start_angle)) * radius
+		var end_point := center + Vector2(cos(end_angle), sin(end_angle)) * radius
+		draw_circle(start_point, width * 0.5, color)
+		draw_circle(end_point, width * 0.5, color)
+
+	func _draw_heat_arc(center: Vector2, radius: float, start_angle: float, filled_sweep: float, full_sweep: float, width: float) -> void:
+		if filled_sweep <= 0.001 or full_sweep <= 0.001 or width <= 0.0:
+			return
+		var segments := maxi(18, int(ceil(absf(filled_sweep) / TAU * 128.0)))
+		for segment in range(segments):
+			var start_t := float(segment) / float(segments)
+			var end_t := float(segment + 1) / float(segments)
+			var segment_start := start_angle + filled_sweep * start_t
+			var segment_end := start_angle + filled_sweep * end_t
+			var full_ring_t := clampf(((segment_start + segment_end) * 0.5 - start_angle) / full_sweep, 0.0, 1.0)
+			draw_arc(
+				center,
+				radius,
+				segment_start,
+				segment_end,
+				3,
+				_heat_gradient_color(full_ring_t),
+				width,
+				true
+			)
+		var end_angle := start_angle + filled_sweep
+		var end_t := clampf(filled_sweep / full_sweep, 0.0, 1.0)
+		draw_circle(center + Vector2(cos(start_angle), sin(start_angle)) * radius, width * 0.5, _heat_gradient_color(0.0))
+		draw_circle(center + Vector2(cos(end_angle), sin(end_angle)) * radius, width * 0.5, _heat_gradient_color(end_t))
+
+	func _heat_gradient_color(t: float) -> Color:
+		if heat_gradient_colors.is_empty():
+			return fill_color
+		if heat_gradient_colors.size() == 1:
+			return heat_gradient_colors[0]
+		var scaled := clampf(t, 0.0, 1.0) * float(heat_gradient_colors.size() - 1)
+		var left_index := clampi(int(floor(scaled)), 0, heat_gradient_colors.size() - 1)
+		var right_index := clampi(left_index + 1, 0, heat_gradient_colors.size() - 1)
+		return heat_gradient_colors[left_index].lerp(heat_gradient_colors[right_index], scaled - float(left_index))
+
+
+class _FirepitWarmthOverlay:
+	extends Control
+
+	var cutout_center := Vector2.ZERO
+	var base_radius := 520.0
+	var feather_radius := 260.0
+	var flicker_radius := 46.0
+	var darkness := 0.46
+	var unlit_darkness := 0.42
+	var glow_alpha := 0.16
+	var active := false
+	var cover_visible := false
+	var corner_radius := 66.0
+
+	var _time := 0.0
+
+	func set_active(is_active: bool) -> void:
+		set_cover(is_active, is_active)
+
+	func set_cover(is_visible: bool, is_fire_lit: bool) -> void:
+		cover_visible = is_visible
+		active = is_fire_lit
+		visible = cover_visible
+		set_process(cover_visible and active)
+		queue_redraw()
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		set_process(active)
+
+	func _process(delta: float) -> void:
+		_time += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		if not cover_visible:
+			return
+		if not active:
+			_draw_rounded_cover(Color(0.03, 0.022, 0.014, unlit_darkness))
+			return
+		var flicker := sin(_time * 4.8) * 0.52 + sin(_time * 9.7 + 1.4) * 0.31 + sin(_time * 15.3 + 0.6) * 0.17
+		var radius := base_radius + flicker * flicker_radius
+		var feather := feather_radius + sin(_time * 3.3 + 0.8) * 24.0
+		var outer_radius := radius + feather
+		var center := cutout_center
+		_draw_rounded_cover(Color(0.03, 0.022, 0.014, darkness))
+		var steps := 72
+		for step in range(steps):
+			var t := float(step) / float(maxi(1, steps - 1))
+			var circle_radius := lerpf(outer_radius, radius * 0.22, t)
+			var alpha := glow_alpha * pow(t, 1.18) * 0.28
+			var glow_color := Color(1.0, 0.50 + 0.22 * t, 0.16, alpha)
+			draw_circle(center, circle_radius, glow_color)
+
+	func _draw_rounded_cover(color: Color) -> void:
+		if color.a <= 0.0 or size.x <= 1.0 or size.y <= 1.0:
+			return
+		var r := minf(corner_radius, minf(size.x, size.y) * 0.5)
+		if r <= 0.0:
+			draw_rect(Rect2(Vector2.ZERO, size), color)
+			return
+		var step := 1.0
+		var y := 0.0
+		while y < size.y:
+			var sample_y := y + step * 0.5
+			var inset := 0.0
+			if sample_y < r:
+				var dy_top := sample_y - r
+				inset = r - sqrt(maxf(0.0, r * r - dy_top * dy_top))
+			elif sample_y > size.y - r:
+				var dy_bottom := sample_y - (size.y - r)
+				inset = r - sqrt(maxf(0.0, r * r - dy_bottom * dy_bottom))
+			draw_rect(Rect2(Vector2(inset, y), Vector2(maxf(0.0, size.x - inset * 2.0), step)), color)
+			y += step
+
+
+class FirepitFlameFx:
+	extends Control
+
+	const FLAME_ATLAS_PATH := "res://assets/content/woodcutting/modules/woodcutting-firepit-flame-sheet.png"
+	const SMOKE_ATLAS_PATH := "res://assets/content/woodcutting/modules/woodcutting-firepit-smoke-sheet.png"
+	const FRAME_COUNT := 4
+	const SMOKE_FRAME_COUNT := 8
+	const FLAME_CELL_SIZE := Vector2(512, 512)
+	const SMOKE_CELL_SIZE := Vector2(256, 256)
+	const FRAME_SEQUENCE := [0, 1, 2, 3]
+	const FRAME_DURATION_SECONDS := 1.5
+	const SMOKE_PUFF_COUNT := 4
+	const FLAME_WARBLE_SHADER := """
+shader_type canvas_item;
+uniform float heat = 0.0;
+void fragment() {
+	vec2 uv = UV;
+	float sway = sin(TIME * 2.4 + uv.y * 8.0) * 0.006;
+	float flutter = sin(TIME * 3.7 + uv.y * 15.0) * 0.003;
+	uv.x += (sway + flutter) * heat * smoothstep(0.16, 0.92, uv.y);
+	COLOR = texture(TEXTURE, uv) * COLOR;
+}
+"""
+
+	var active := false
+	var heat := 0.0
+	var sequence_index := 0
+	var frame_elapsed := 0.0
+	var frame_textures: Array[Texture2D] = []
+	var smoke_textures: Array[Texture2D] = []
+	var flame_rect: TextureRect
+	var flame_material: ShaderMaterial
+	var smoke_puffs: Array[TextureRect] = []
+
+	func set_active(next_active: bool) -> void:
+		if active == next_active:
+			if active and not is_processing():
+				set_process(true)
+			return
+		active = next_active
+		set_process(active or heat > 0.01)
+
+	func _ready() -> void:
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_build_frame_textures()
+		flame_rect = TextureRect.new()
+		flame_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		flame_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		flame_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		flame_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		flame_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		flame_rect.z_index = 1
+		_build_flame_material()
+		if flame_material != null:
+			flame_rect.material = flame_material
+		add_child(flame_rect)
+		_build_smoke_puffs()
+		_apply_frame(0)
+		_sync_visual_transform()
+		set_process(active or heat > 0.01)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED and flame_rect != null:
+			flame_rect.pivot_offset = size * Vector2(0.5, 0.80)
+
+	func _build_flame_material() -> void:
+		var shader := Shader.new()
+		shader.code = FLAME_WARBLE_SHADER
+		flame_material = ShaderMaterial.new()
+		flame_material.shader = shader
+
+	func _process(delta: float) -> void:
+		var target := 1.0 if active else 0.0
+		heat = lerpf(heat, target, 1.0 - exp(-delta * 5.0))
+		if active:
+			_advance_frame(delta)
+		_sync_visual_transform()
+		if not active and heat <= 0.01:
+			heat = 0.0
+			set_process(false)
+
+	func _build_frame_textures() -> void:
+		frame_textures.clear()
+		var atlas := load(FLAME_ATLAS_PATH) as Texture2D
+		if atlas == null:
+			return
+		for frame_index in range(FRAME_COUNT):
+			var frame := AtlasTexture.new()
+			frame.atlas = atlas
+			frame.region = Rect2(Vector2(float(frame_index) * FLAME_CELL_SIZE.x, 0.0), FLAME_CELL_SIZE)
+			frame.filter_clip = true
+			frame_textures.append(frame)
+
+	func _advance_frame(delta: float) -> void:
+		if frame_textures.is_empty():
+			return
+		frame_elapsed += maxf(0.0, delta)
+		var guard := 0
+		while guard < 8 and frame_elapsed >= _current_duration():
+			frame_elapsed -= _current_duration()
+			sequence_index = (sequence_index + 1) % FRAME_SEQUENCE.size()
+			_apply_frame(sequence_index)
+			guard += 1
+
+	func _current_duration() -> float:
+		return FRAME_DURATION_SECONDS
+
+	func _apply_frame(next_sequence_index: int) -> void:
+		if flame_rect == null or frame_textures.is_empty():
+			return
+		sequence_index = clampi(next_sequence_index, 0, FRAME_SEQUENCE.size() - 1)
+		var frame_index := clampi(int(FRAME_SEQUENCE[sequence_index]), 0, frame_textures.size() - 1)
+		flame_rect.texture = frame_textures[frame_index]
+
+	func _build_smoke_puffs() -> void:
+		smoke_puffs.clear()
+		_build_smoke_textures()
+		if smoke_textures.is_empty():
+			return
+		for index in range(SMOKE_PUFF_COUNT):
+			var puff := TextureRect.new()
+			puff.texture = smoke_textures[index % smoke_textures.size()]
+			puff.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			puff.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			puff.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+			puff.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			puff.z_index = 2
+			add_child(puff)
+			smoke_puffs.append(puff)
+
+	func _build_smoke_textures() -> void:
+		smoke_textures.clear()
+		var atlas := load(SMOKE_ATLAS_PATH) as Texture2D
+		if atlas == null:
+			return
+		for frame_index in range(SMOKE_FRAME_COUNT):
+			var frame := AtlasTexture.new()
+			frame.atlas = atlas
+			frame.region = Rect2(Vector2(float(frame_index) * SMOKE_CELL_SIZE.x, 0.0), SMOKE_CELL_SIZE)
+			frame.filter_clip = true
+			smoke_textures.append(frame)
+
+	func _sync_visual_transform() -> void:
+		if flame_rect == null:
+			return
+		var t := float(Time.get_ticks_msec()) / 1000.0
+		flame_rect.modulate = Color(1.0, 1.0, 1.0, clampf(heat, 0.0, 1.0))
+		flame_rect.pivot_offset = size * Vector2(0.5, 0.80)
+		var warm_scale := 0.96 + sin(t * 2.1) * 0.012 * heat
+		var side_scale := 1.0 + sin(t * 2.8 + 0.6) * 0.018 * heat
+		var height_scale := 1.0 + sin(t * 2.4 + 1.1) * 0.014 * heat
+		flame_rect.scale = Vector2(warm_scale * side_scale, warm_scale * height_scale)
+		flame_rect.rotation = sin(t * 1.7 + 0.4) * 0.018 * heat
+		if flame_material != null:
+			flame_material.set_shader_parameter("heat", clampf(heat, 0.0, 1.0))
+		_sync_smoke_puffs(t)
+
+	func _sync_smoke_puffs(t: float) -> void:
+		if smoke_puffs.is_empty():
+			return
+		var base := size * Vector2(0.5, 0.44)
+		for index in range(smoke_puffs.size()):
+			var puff := smoke_puffs[index]
+			var phase := float(index) * 0.23
+			var cycle := fmod(t * (0.12 + float(index % 2) * 0.025) + phase, 1.0)
+			var fade := sin(cycle * PI)
+			var lane := float(index) - float(smoke_puffs.size() - 1) * 0.5
+			var side := lane * 52.0 + sin(t * 0.95 + float(index) * 1.7) * 28.0
+			var rise := cycle * (220.0 + float(index % 2) * 28.0)
+			var puff_size := 178.0 + cycle * 126.0 + float(index % 2) * 28.0
+			puff.size = Vector2(puff_size, puff_size)
+			puff.position = base + Vector2(side, -rise + 24.0) - puff.size * 0.5
+			puff.pivot_offset = puff.size * 0.5
+			puff.rotation = sin(t * 0.58 + float(index)) * 0.13
+			puff.scale = Vector2.ONE * (0.9 + cycle * 0.18)
+			puff.modulate = Color(1.0, 1.0, 1.0, clampf(heat * fade * 0.36, 0.0, 0.36))
+
+
+class _ActivityCardInnerShadow:
+	extends Control
+
+	var radius := 66.0
+	var inset := 14.0
+	var shadow_height := 42.0
+	var side_lift := 10.0
+	var shadow_color := Color(0.05, 0.04, 0.03, 0.24)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		if size.x <= 1.0 or size.y <= 1.0:
+			return
+		var left := inset
+		var right := maxf(left, size.x - inset)
+		var bottom := maxf(inset, size.y - inset * 0.62)
+		var lines := maxi(1, int(minf(8.0, shadow_height)))
+		var step_y := shadow_height / float(lines)
+		for i in range(lines):
+			var y := bottom - shadow_height + float(i) * step_y
+			var depth := float(i) / maxf(1.0, float(lines - 1))
+			var alpha := shadow_color.a * depth * depth
+			var lift := side_lift * (1.0 - depth)
+			var side_curve := clampf((y - (bottom - shadow_height - lift)) / maxf(1.0, shadow_height + lift), 0.0, 1.0)
+			var x_inset := (1.0 - side_curve) * radius * 0.26
+			var line_left := left + x_inset
+			var line_right := right - x_inset
+			if y > size.y - radius:
+				var dy := y - (size.y - radius)
+				var chord := sqrt(maxf(0.0, radius * radius - dy * dy))
+				var corner_inset := radius - chord
+				line_left = maxf(line_left, corner_inset + 18.0)
+				line_right = minf(line_right, size.x - corner_inset - 18.0)
+			if line_right > line_left:
+				draw_line(Vector2(line_left, y), Vector2(line_right, y), Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha), step_y + 1.0, false)
+		draw_line(Vector2(left + radius * 0.35, bottom - shadow_height - side_lift * 0.44), Vector2(right - radius * 0.35, bottom - shadow_height - side_lift * 0.44), Color(1, 1, 1, 0.08), 4.0, true)
+
+
+class _CardBorder:
+	extends Control
+
+	const FAST_ARC_SEGMENTS := 8
+
+	var border_color := Color("#171615")
+	var border_width := 8.0
+	var radius := 66.0
+	var bottom_trim := 0.0
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		var half := border_width * 0.5
+		var left := half
+		var right := maxf(half, size.x - half)
+		var top := half
+		var bottom := maxf(top + radius, size.y - half - maxf(0.0, bottom_trim))
+		var r := maxf(0.0, minf(radius, minf(size.x, size.y) * 0.5 - half))
+		var points := PackedVector2Array()
+		points.append(Vector2(left, bottom))
+		points.append(Vector2(left, top + r))
+		_append_arc_points(points, Vector2(left + r, top + r), r, PI, PI * 1.5)
+		points.append(Vector2(right - r, top))
+		_append_arc_points(points, Vector2(right - r, top + r), r, PI * 1.5, PI * 2.0)
+		points.append(Vector2(right, bottom))
+		draw_polyline(points, border_color, border_width, true)
+
+	func _append_arc_points(points: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, end_angle: float) -> void:
+		for i in range(1, FAST_ARC_SEGMENTS + 1):
+			var t := float(i) / float(FAST_ARC_SEGMENTS)
+			var angle := lerpf(start_angle, end_angle, t)
+			points.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
+
+
+class PassiveIconSprite:
+	extends Control
+
+	var texture: Texture2D
+	var draw_size := Vector2(48, 48)
+	var draw_offset := Vector2.ZERO
+	var shadow_offset := Vector2.ZERO
+	var shadow_alpha := 0.0
+	var stroke_color := Color.TRANSPARENT
+	var stroke_width := 0.0
+
+	func configure(next_texture: Texture2D, next_size: Vector2, next_offset := Vector2.ZERO) -> void:
+		texture = next_texture
+		draw_size = next_size
+		draw_offset = next_offset
+		custom_minimum_size = draw_size + Vector2(absf(draw_offset.x), absf(draw_offset.y)) * 2.0
+		size = custom_minimum_size
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		queue_redraw()
+
+	func _draw() -> void:
+		if texture == null:
+			return
+		var rect := Rect2(draw_offset, draw_size)
+		if shadow_alpha > 0.0:
+			draw_texture_rect(texture, Rect2(draw_offset + shadow_offset, draw_size), false, Color(0, 0, 0, shadow_alpha))
+		if stroke_width > 0.0 and stroke_color.a > 0.0:
+			var stroke_offsets: Array[Vector2] = [
+				Vector2(-stroke_width, 0),
+				Vector2(stroke_width, 0),
+				Vector2(0, -stroke_width),
+				Vector2(0, stroke_width),
+				Vector2(-stroke_width * 0.72, -stroke_width * 0.72),
+				Vector2(stroke_width * 0.72, -stroke_width * 0.72),
+				Vector2(-stroke_width * 0.72, stroke_width * 0.72),
+				Vector2(stroke_width * 0.72, stroke_width * 0.72)
+			]
+			for offset in stroke_offsets:
+				draw_texture_rect(texture, Rect2(draw_offset + offset, draw_size), false, stroke_color)
+		draw_texture_rect(texture, rect, false, Color.WHITE)
+
+
+class PassiveLogPileSprite:
+	extends Control
+
+	var texture: Texture2D
+	var icon_size := Vector2(48, 48)
+	var log_slots: Array = []
+	var log_rotations: Array = []
+	var visible_logs := 0
+	var shadow_rect := Rect2()
+	var shadow_color := Color(0.10, 0.07, 0.04, 0.20)
+
+	func configure(
+		next_texture: Texture2D,
+		next_icon_size: Vector2,
+		next_log_slots: Array,
+		next_log_rotations: Array,
+		next_visible_logs: int,
+		next_shadow_rect: Rect2
+	) -> void:
+		texture = next_texture
+		icon_size = next_icon_size
+		log_slots = next_log_slots
+		log_rotations = next_log_rotations
+		visible_logs = next_visible_logs
+		shadow_rect = next_shadow_rect
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+		queue_redraw()
+
+	func _draw() -> void:
+		_draw_shadow()
+		if texture == null:
+			return
+		var count := mini(visible_logs, log_slots.size())
+		for i in range(count):
+			var base_position := log_slots[i] as Vector2
+			var rotation := deg_to_rad(float(log_rotations[i])) if i < log_rotations.size() else 0.0
+			draw_set_transform(base_position + icon_size * 0.5, rotation, Vector2.ONE)
+			draw_texture_rect(texture, Rect2(-icon_size * 0.5, icon_size), false, Color.WHITE)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	func _draw_shadow() -> void:
+		if shadow_rect.size.x <= 1.0 or shadow_rect.size.y <= 1.0:
+			return
+		var center := shadow_rect.position + shadow_rect.size * 0.5
+		var radius_x := shadow_rect.size.x * 0.5
+		var radius_y := shadow_rect.size.y * 0.5
+		var line_count := maxi(10, int(ceil(shadow_rect.size.y)))
+		for i in range(line_count):
+			var t := float(i) / maxf(1.0, float(line_count - 1))
+			var y := lerpf(-radius_y, radius_y, t)
+			var normalized_y := y / maxf(1.0, radius_y)
+			var width := radius_x * sqrt(maxf(0.0, 1.0 - normalized_y * normalized_y))
+			var center_weight := 1.0 - absf(normalized_y)
+			var alpha := shadow_color.a * pow(center_weight, 2.15)
+			var color := Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha)
+			draw_line(Vector2(center.x - width, center.y + y), Vector2(center.x + width, center.y + y), color, 2.0, true)
+
 
 var host
 var firepit_stop_hold_active = false
@@ -42,10 +628,391 @@ var firepit_stop_hold_elapsed = 0.0
 var firepit_stop_hold_unload_elapsed = 0.0
 var firepit_stop_hold_position = Vector2.ZERO
 var firepit_stop_hold_start_position = Vector2.ZERO
+var passive_button_press_source: Control
+var passive_button_press_kind := ""
+var passive_button_press_module_id := ""
+var passive_button_press_stat_type := ""
+var passive_button_press_popover: Control
+var passive_button_press_position := Vector2.ZERO
+var passive_button_press_dragged := false
+var passive_button_press_touch_index := -1
+var passive_button_pending_tap_id := 0
 
 
 func _init(host_ref) -> void:
 	host = host_ref
+
+
+func _route_passive_button_global_input(event: InputEvent) -> bool:
+	if passive_button_press_source == null or not is_instance_valid(passive_button_press_source):
+		return false
+	var event_position := Vector2.ZERO
+	var is_drag := false
+	var is_release := false
+	if event is InputEventMouseMotion:
+		event_position = (event as InputEventMouseMotion).global_position
+		is_drag = true
+	elif event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		event_position = (event as InputEventMouseButton).global_position
+		is_release = not (event as InputEventMouseButton).pressed
+	elif event is InputEventScreenDrag:
+		event_position = (event as InputEventScreenDrag).position
+		is_drag = true
+	elif event is InputEventScreenTouch and (passive_button_press_touch_index < 0 or (event as InputEventScreenTouch).index == passive_button_press_touch_index):
+		event_position = (event as InputEventScreenTouch).position
+		is_release = not (event as InputEventScreenTouch).pressed
+	if not is_drag and not is_release:
+		return false
+	if event_position.distance_to(passive_button_press_position) > host.PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+		passive_button_press_dragged = true
+		_invalidate_passive_button_tap()
+		host._skill_swipe_activity_surface().skill_swipe_button_suppressed_until_msec = Time.get_ticks_msec() + host.SKILL_SWIPE_BUTTON_SUPPRESS_MSEC
+	if is_release and passive_button_press_dragged:
+		_clear_passive_button_press()
+		return true
+	return false
+
+
+func _route_passive_info_button_press(event: InputEvent) -> bool:
+	var event_position := Vector2.ZERO
+	var touch_index := -1
+	var pressed := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var mouse_event := event as InputEventMouseButton
+		event_position = mouse_event.global_position
+		pressed = mouse_event.pressed
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		event_position = touch_event.position
+		touch_index = touch_event.index
+		pressed = touch_event.pressed
+	if not pressed:
+		return false
+	if host._input_routing_shell()._position_inside_bottom_interactive_ui(event_position):
+		return false
+	if not host._input_routing_shell()._position_inside_detail_actions_viewport(event_position):
+		return false
+	for raw_card in host.action_cards.values():
+		var card := raw_card as Dictionary
+		if not bool(card.get("passive", false)):
+			continue
+		var info_button: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("info_button"))
+		var info_popover: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("info_popover"))
+		var action := card.get("action", {}) as Dictionary
+		if info_button == null or info_popover == null or action.is_empty():
+			continue
+		if not info_button.is_visible_in_tree():
+			continue
+		if not info_button.get_global_rect().grow(8.0).has_point(event_position):
+			continue
+		var module_id := str(action.get("id", PassiveModulesRuntime.WOODCUTTING_LOG_MODULE_ID))
+		passive_button_press_source = info_button
+		passive_button_press_kind = "info"
+		passive_button_press_module_id = module_id
+		passive_button_press_stat_type = ""
+		passive_button_press_popover = info_popover
+		passive_button_press_position = event_position
+		passive_button_press_dragged = false
+		passive_button_press_touch_index = touch_index
+		host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(event_position, touch_index)
+		return true
+	return false
+
+
+func _schedule_passive_info_click_away_dismiss(event: InputEvent) -> void:
+	var event_position := Vector2.ZERO
+	var pressed := false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		var mouse_event := event as InputEventMouseButton
+		event_position = mouse_event.global_position
+		pressed = mouse_event.pressed
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		event_position = touch_event.position
+		pressed = touch_event.pressed
+	if not pressed:
+		return
+	for raw_card in host.action_cards.values():
+		var card := raw_card as Dictionary
+		if not bool(card.get("passive", false)):
+			continue
+		var info_popover: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("info_popover"))
+		if info_popover == null or not info_popover.visible:
+			continue
+		var info_button: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("info_button"))
+		if info_button != null and info_button.get_global_rect().grow(8.0).has_point(event_position):
+			continue
+		if info_popover.get_global_rect().grow(8.0).has_point(event_position):
+			continue
+		_schedule_passive_info_popover_dismiss(info_popover)
+
+
+func _on_passive_module_button_input(event: InputEvent, action_kind: String, module_id: String, stat_type: String, info_popover: Control, source: Control) -> void:
+	var event_position: Vector2 = host._input_routing_shell()._passive_button_event_position(event, source)
+	var is_press := false
+	var is_release := false
+	var touch_index := -1
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		is_press = event.pressed
+		is_release = not event.pressed
+	elif event is InputEventScreenTouch:
+		var touch_event := event as InputEventScreenTouch
+		is_press = touch_event.pressed
+		is_release = not touch_event.pressed
+		touch_index = touch_event.index
+	if is_press:
+		if host._input_routing_shell()._position_inside_bottom_interactive_ui(event_position):
+			return
+		if not host._input_routing_shell()._position_inside_detail_actions_viewport(event_position):
+			return
+		if action_kind != "info" and _route_passive_info_button_press(event):
+			host.get_viewport().set_input_as_handled()
+			return
+		passive_button_press_source = source
+		passive_button_press_kind = action_kind
+		passive_button_press_module_id = module_id
+		passive_button_press_stat_type = stat_type
+		passive_button_press_popover = info_popover
+		passive_button_press_position = event_position
+		passive_button_press_dragged = false
+		passive_button_press_touch_index = touch_index
+		host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
+		host.get_viewport().set_input_as_handled()
+		return
+	if event is InputEventMouseMotion or event is InputEventScreenDrag:
+		if passive_button_press_source == source or host._skill_swipe_activity_surface().skill_swipe_tracking:
+			if passive_button_press_source == source:
+				if event_position.distance_to(passive_button_press_position) > host.PASSIVE_BUTTON_TAP_RELEASE_SLOP:
+					passive_button_press_dragged = true
+					_invalidate_passive_button_tap()
+			host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
+			host.get_viewport().set_input_as_handled()
+		return
+	if is_release:
+		var matches_press := passive_button_press_source == source and passive_button_press_kind == action_kind
+		if host._skill_swipe_activity_surface().skill_swipe_tracking:
+			host._skill_swipe_activity_surface()._route_skill_swipe_button_input(event, source)
+		var tap_like: bool = (
+			matches_press
+			and not passive_button_press_dragged
+			and host._input_routing_shell()._position_inside_detail_actions_viewport(event_position)
+			and event_position.distance_to(passive_button_press_position) <= host.PASSIVE_BUTTON_TAP_RELEASE_SLOP
+		)
+		if tap_like and not host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action():
+			_schedule_passive_module_button_activation(action_kind, module_id, stat_type, info_popover, source)
+		else:
+			_clear_passive_button_press()
+		host.get_viewport().set_input_as_handled()
+
+
+func _route_passive_module_button_input_by_position(event: InputEvent) -> bool:
+	if host.current_screen != "skill" and host.current_screen != "pinned" and host.current_screen != "menu":
+		return false
+	if passive_button_press_source != null and is_instance_valid(passive_button_press_source):
+		if event is InputEventMouseMotion or event is InputEventScreenDrag or host.button_press_runtime._input_event_releases_primary_pointer(event):
+			var active_source := passive_button_press_source
+			var routed_event := _passive_button_event_for_source(event, active_source)
+			_on_passive_module_button_input(
+				routed_event,
+				passive_button_press_kind,
+				passive_button_press_module_id,
+				passive_button_press_stat_type,
+				passive_button_press_popover,
+				active_source
+			)
+			return true
+	if not host._input_routing_shell()._is_primary_press_event(event):
+		return false
+	var event_position := _passive_button_global_event_position(event)
+	if event_position == Vector2.INF:
+		return false
+	if host._input_routing_shell()._position_inside_bottom_interactive_ui(event_position) or not host._input_routing_shell()._position_inside_detail_actions_viewport(event_position):
+		return false
+	var hit := _passive_button_hit_at_position(event_position)
+	if hit.is_empty():
+		return false
+	var source := hit.get("source", null) as Control
+	if source == null or not is_instance_valid(source):
+		return false
+	_on_passive_module_button_input(
+		_passive_button_event_for_source(event, source),
+		str(hit.get("kind", "")),
+		str(hit.get("module_id", "")),
+		str(hit.get("stat_type", "")),
+		hit.get("popover", null) as Control,
+		source
+	)
+	return true
+
+
+func _passive_button_global_event_position(event: InputEvent) -> Vector2:
+	if event is InputEventMouseButton:
+		return (event as InputEventMouseButton).global_position
+	if event is InputEventMouseMotion:
+		return (event as InputEventMouseMotion).global_position
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).position
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).position
+	return Vector2.INF
+
+
+func _passive_button_event_for_source(event: InputEvent, source: Control) -> InputEvent:
+	if source == null or not is_instance_valid(source):
+		return event
+	var global_position := _passive_button_global_event_position(event)
+	if global_position == Vector2.INF:
+		return event
+	var local_position := source.get_global_transform().affine_inverse() * global_position
+	var duplicate_event := event.duplicate()
+	if duplicate_event is InputEventMouseButton:
+		var mouse_button := duplicate_event as InputEventMouseButton
+		mouse_button.position = local_position
+		mouse_button.global_position = global_position
+	elif duplicate_event is InputEventMouseMotion:
+		var mouse_motion := duplicate_event as InputEventMouseMotion
+		mouse_motion.position = local_position
+		mouse_motion.global_position = global_position
+	elif duplicate_event is InputEventScreenTouch:
+		(duplicate_event as InputEventScreenTouch).position = global_position
+	elif duplicate_event is InputEventScreenDrag:
+		(duplicate_event as InputEventScreenDrag).position = global_position
+	return duplicate_event
+
+
+func _passive_button_hit_at_position(event_position: Vector2) -> Dictionary:
+	host._skill_detail_surface()._prune_invalid_action_cards()
+	var keys: Array = host.action_card_keys.duplicate()
+	keys.reverse()
+	for raw_action_key in host.action_cards.keys():
+		var action_key := str(raw_action_key)
+		if not keys.has(action_key):
+			keys.push_front(action_key)
+	for raw_key in keys:
+		var key := str(raw_key)
+		if not host.action_cards.has(key):
+			continue
+		var card := host.action_cards.get(key, {}) as Dictionary
+		if not bool(card.get("passive", false)):
+			continue
+		var pop: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("pop", null))
+		if pop == null or not pop.is_inside_tree() or not pop.is_visible_in_tree():
+			continue
+		if not pop.get_global_rect().has_point(event_position):
+			continue
+		var action := card.get("action", {}) as Dictionary
+		var module_id := str(action.get("id", card.get("action_id", PassiveModulesRuntime.WOODCUTTING_LOG_MODULE_ID)))
+		var info_hit := _passive_source_hit_dict(card.get("info_button", null), event_position, "info", module_id, "", card.get("info_popover", null))
+		if not info_hit.is_empty():
+			return info_hit
+		var plank_hit := _passive_source_hit_dict(card.get("plank", null), event_position, "plank", module_id)
+		if not plank_hit.is_empty():
+			return plank_hit
+		var upgrade_buttons := card.get("upgrade_buttons", {}) as Dictionary
+		for raw_stat_type in ["time", "yield", "capacity"]:
+			var stat_type := str(raw_stat_type)
+			var upgrade_hit := _passive_source_hit_dict(upgrade_buttons.get(stat_type, null), event_position, "upgrade", module_id, stat_type)
+			if not upgrade_hit.is_empty():
+				return upgrade_hit
+		var firepit_hit := _passive_source_hit_dict(card.get("toggle", null), event_position, "firepit", module_id)
+		if not firepit_hit.is_empty():
+			return firepit_hit
+		var loot: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("loot", null))
+		if loot != null and loot.has_meta("passive_log_collect_hotspot_id"):
+			var hotspot: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(loot.get_meta("passive_log_collect_hotspot_id", 0))))
+			var hotspot_hit := _passive_source_hit_dict(hotspot, event_position, "collect", module_id)
+			if not hotspot_hit.is_empty():
+				return hotspot_hit
+		var collect_hit := _passive_source_hit_dict(card.get("button", null), event_position, "collect", module_id)
+		if not collect_hit.is_empty():
+			return collect_hit
+	return {}
+
+
+func _passive_source_hit_dict(source_variant, event_position: Vector2, action_kind: String, module_id: String, stat_type := "", info_popover_variant = null) -> Dictionary:
+	var source: Control = host._app_lifecycle_runtime().valid_control_ref(source_variant)
+	if source == null or not source.is_inside_tree() or not source.is_visible_in_tree():
+		return {}
+	if source.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+		return {}
+	if source is BaseButton and (source as BaseButton).disabled:
+		return {}
+	if not source.get_global_rect().has_point(event_position):
+		return {}
+	return {
+		"source": source,
+		"kind": action_kind,
+		"module_id": module_id,
+		"stat_type": stat_type,
+		"popover": host._app_lifecycle_runtime().valid_control_ref(info_popover_variant)
+	}
+
+
+func _schedule_passive_module_button_activation(action_kind: String, module_id: String, stat_type: String, info_popover: Control, source: Control) -> void:
+	_invalidate_passive_button_tap()
+	var tap_id := passive_button_pending_tap_id
+	var source_id := source.get_instance_id() if source != null and is_instance_valid(source) else 0
+	var popover_id := info_popover.get_instance_id() if info_popover != null and is_instance_valid(info_popover) else 0
+	await host.get_tree().create_timer(host.PASSIVE_BUTTON_TAP_CONFIRM_SECONDS).timeout
+	if tap_id != passive_button_pending_tap_id:
+		return
+	var source_ref: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(source_id)) if source_id != 0 else null
+	if source_ref == null or passive_button_press_source != source_ref or passive_button_press_kind != action_kind:
+		return
+	if passive_button_press_dragged or host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action():
+		_clear_passive_button_press()
+		return
+	_clear_passive_button_press()
+	var popover_ref: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(popover_id)) if popover_id != 0 else null
+	_activate_passive_module_button(action_kind, module_id, stat_type, popover_ref)
+	host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
+
+
+func _activate_passive_module_button(action_kind: String, module_id: String, stat_type: String, info_popover: Control) -> void:
+	if action_kind == "collect":
+		host._passive_modules_runtime().collect_passive_module(module_id, host._unix_now())
+	elif action_kind == "info":
+		_toggle_passive_info_popover(info_popover)
+	elif action_kind == "plank":
+		host._passive_modules_runtime().toggle_plank_boost()
+	elif action_kind == "upgrade":
+		host._passive_modules_runtime().upgrade_passive_module(module_id, stat_type, host._unix_now())
+	elif action_kind == "firepit":
+		host._passive_modules_runtime().toggle_firepit_pressed(module_id, host._unix_now())
+
+
+func _on_passive_collect_pressed(module_id: String) -> void:
+	host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
+	host._passive_modules_runtime().collect_passive_module(module_id, host._unix_now())
+
+
+func _on_passive_plank_pressed(module_id := PassiveModulesRuntime.WOODCUTTING_LOG_MODULE_ID) -> void:
+	host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
+	host._passive_modules_runtime().toggle_plank_boost()
+
+
+func _on_passive_upgrade_pressed(module_id: String, stat_type: String) -> void:
+	host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
+	host._passive_modules_runtime().upgrade_passive_module(module_id, stat_type, host._unix_now())
+
+
+func _invalidate_passive_button_tap() -> void:
+	passive_button_pending_tap_id += 1
+
+
+func _clear_passive_button_press() -> void:
+	_invalidate_passive_button_tap()
+	passive_button_press_source = null
+	passive_button_press_kind = ""
+	passive_button_press_module_id = ""
+	passive_button_press_stat_type = ""
+	passive_button_press_popover = null
+	passive_button_press_position = Vector2.ZERO
+	passive_button_press_dragged = false
+	passive_button_press_touch_index = -1
 
 
 func _on_firepit_button_down(module_id := "", button: Button = null) -> void:
@@ -58,7 +1025,7 @@ func _on_firepit_button_down(module_id := "", button: Button = null) -> void:
 	passive_runtime.apply_firepit_fuel(now)
 	if not passive_runtime.firepit_active(now):
 		return
-	host._cancel_action_stop_hold()
+	host._action_stop_hold().cancel_action()
 	var center = host.get_viewport().get_mouse_position()
 	if button != null and is_instance_valid(button):
 		center = _control_local_point_to_global(button, button.size * 0.5)
@@ -83,7 +1050,7 @@ func _begin_firepit_stop_hold(pointer_position: Vector2) -> void:
 	firepit_stop_hold_unload_elapsed = 0.0
 	firepit_stop_hold_position = pointer_position
 	firepit_stop_hold_start_position = pointer_position
-	host._hide_action_stop_hold_circle()
+	host._action_stop_hold().hide_ring()
 
 
 func _process_firepit_stop_hold(delta: float) -> void:
@@ -94,16 +1061,16 @@ func _process_firepit_stop_hold(delta: float) -> void:
 		return
 	if firepit_stop_hold_unloading:
 		firepit_stop_hold_unload_elapsed += delta
-		var unload = clampf(firepit_stop_hold_unload_elapsed / host.ACTION_STOP_HOLD_UNLOAD_SECONDS, 0.0, 1.0)
+		var unload = clampf(firepit_stop_hold_unload_elapsed / StopHoldCircle.ACTION_STOP_HOLD_UNLOAD_SECONDS, 0.0, 1.0)
 		_sync_firepit_stop_hold_circle(1.0, unload, true)
 		if unload >= 1.0:
-			host._hide_action_stop_hold_circle()
+			host._action_stop_hold().hide_ring()
 			_clear_firepit_stop_hold_state()
 			host._passive_modules_runtime().extinguish_firepit(host._unix_now())
 		return
 	if not firepit_stop_hold_armed:
 		firepit_stop_hold_elapsed += delta
-		if firepit_stop_hold_elapsed < host.ACTION_STOP_HOLD_ARM_DELAY_SECONDS:
+		if firepit_stop_hold_elapsed < StopHoldCircle.ACTION_STOP_HOLD_ARM_DELAY_SECONDS:
 			return
 		firepit_stop_hold_armed = true
 		firepit_stop_hold_elapsed = 0.0
@@ -120,26 +1087,15 @@ func _process_firepit_stop_hold(delta: float) -> void:
 
 
 func _show_firepit_stop_hold_circle() -> void:
-	host._ensure_action_stop_hold_circle()
-	if host.action_stop_hold_circle == null or not is_instance_valid(host.action_stop_hold_circle) or host.action_stop_hold_circle.is_queued_for_deletion():
-		return
-	host.action_stop_hold_circle.theme_color = Color("#ff9c2f")
-	host.action_stop_hold_circle.size = host.ACTION_STOP_HOLD_RING_SIZE
-	host.action_stop_hold_circle.position = firepit_stop_hold_position - host.ACTION_STOP_HOLD_RING_SIZE * 0.5
-	host._set_canvas_item_modulate_if_changed(host.action_stop_hold_circle, Color.WHITE)
-	host._set_canvas_item_visible_if_changed(host.action_stop_hold_circle, true)
-	host.action_stop_hold_circle.set_progress(0.0, 0.0, false)
+	host._action_stop_hold().show_ring(Color("#ff9c2f"), firepit_stop_hold_position)
 
 
 func _sync_firepit_stop_hold_circle(progress: float, unload: float, unloading: bool) -> void:
-	if host.action_stop_hold_circle == null or not is_instance_valid(host.action_stop_hold_circle) or host.action_stop_hold_circle.is_queued_for_deletion():
-		return
-	host.action_stop_hold_circle.position = firepit_stop_hold_position - host.ACTION_STOP_HOLD_RING_SIZE * 0.5
-	host.action_stop_hold_circle.set_progress(progress, unload, unloading)
+	host._action_stop_hold().sync_ring(firepit_stop_hold_position, progress, unload, unloading)
 
 
 func _cancel_firepit_stop_hold() -> void:
-	host._hide_action_stop_hold_circle()
+	host._action_stop_hold().hide_ring()
 	_clear_firepit_stop_hold_state()
 
 
@@ -177,7 +1133,7 @@ func _passive_module_shell(skill_id: String, action: Dictionary, content_width: 
 	bg.texture = host.visual_texture_cache._texture_or_visual_fallback(str(action.get("bg", "res://assets/content/woodcutting/backgrounds/01-early.png")))
 	bg.radius = 66.0
 	bg.art_height = host.PASSIVE_MODULE_CARD_HEIGHT
-	bg.fallback_color = host._skill_theme_color(skill_id)
+	bg.fallback_color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
 	bg.offset_bottom = -passive_face_bottom_trim
 	bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -209,10 +1165,10 @@ func _passive_collect_button(pop_card: Control, module_id: String, interactive: 
 	collect_button.set_anchors_preset(Control.PRESET_FULL_RECT)
 	host._apply_empty_button_style(collect_button)
 	collect_button.z_index = 180
-	host._button_press_runtime().attach_default_button_sfx(collect_button)
+	host.button_press_runtime.attach_default_button_sfx(collect_button)
 	if interactive:
-		collect_button.gui_input.connect(host._on_passive_module_button_input.bind("collect", module_id, "", null, collect_button))
-		collect_button.pressed.connect(host._on_passive_collect_pressed.bind(module_id))
+		collect_button.gui_input.connect(_on_passive_module_button_input.bind("collect", module_id, "", null, collect_button))
+		collect_button.pressed.connect(_on_passive_collect_pressed.bind(module_id))
 	pop_card.add_child(collect_button)
 	return collect_button
 
@@ -228,7 +1184,7 @@ func _passive_module_title(card_root: Control, pop_card: Control, skill_id: Stri
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.set_meta("module_ui_title_label", true)
 	title.set_meta("activity_card_locked_title_z_index", 200)
-	title.z_index = host._activity_card_title_z_index(host._is_action_unlocked(skill_id, action), title)
+	title.z_index = ActivityCardStyles.activity_card_title_z_index(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action), title, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
 	pop_card.add_child(title)
 	card_root.set_meta("module_ui_title_label_id", title.get_instance_id())
 	pop_card.set_meta("module_ui_title_label_id", title.get_instance_id())
@@ -261,24 +1217,24 @@ func _passive_info_controls(pop_card: Control, module_id: String, info_text: Str
 	info_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	info_button.z_index = 221
 	info_button.add_theme_font_size_override("font_size", host.MIN_MOBILE_BODY_FONT_SIZE)
-	host._apply_info_symbol_button_text_color(info_button)
+	host._skill_detail_surface()._apply_info_symbol_button_text_color(info_button)
 	info_button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	info_button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	info_button.add_theme_stylebox_override("pressed", PassiveModuleStyles.round_button(host.COLOR_GOLD.darkened(0.08), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	info_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	host._button_press_runtime().attach_button_depress_animation(info_button, 0.90)
+	host.button_press_runtime.attach_button_depress_animation(info_button, 0.90)
 	if host.app_bold_font != null:
 		info_button.add_theme_font_override("font", host.app_bold_font)
 	if interactive:
-		info_button.gui_input.connect(host._on_passive_module_button_input.bind("info", module_id, "", info_popover, info_button))
+		info_button.gui_input.connect(_on_passive_module_button_input.bind("info", module_id, "", info_popover, info_button))
 		info_button.pressed.connect(_toggle_passive_info_popover.bind(info_popover))
 	pop_card.add_child(info_button)
 	return {"button": info_button, "popover": info_popover, "label": info_label}
 
 
 func _toggle_passive_info_popover(info_popover: Control) -> void:
-	host._cancel_skill_swipe_feedback(false)
-	host._clear_passive_button_press()
+	host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
+	_clear_passive_button_press()
 	if info_popover != null and is_instance_valid(info_popover):
 		if info_popover.visible:
 			_hide_passive_info_popover(info_popover)
@@ -312,7 +1268,7 @@ func _prewarm_passive_info_popover(info_popover: Control) -> void:
 
 
 func _prewarm_passive_info_popover_deferred(info_popover_id: int) -> void:
-	var info_popover: Control = host._valid_control_ref(instance_from_id(info_popover_id))
+	var info_popover: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(info_popover_id))
 	if info_popover == null:
 		return
 	if info_popover.visible:
@@ -320,9 +1276,9 @@ func _prewarm_passive_info_popover_deferred(info_popover_id: int) -> void:
 		return
 	info_popover.visible = true
 	info_popover.modulate.a = 0.0
-	for _i in range(host.INFO_POPOVER_PREWARM_FRAMES):
+	for _i in range(INFO_POPOVER_PREWARM_FRAMES):
 		await host.get_tree().process_frame
-		info_popover = host._valid_control_ref(instance_from_id(info_popover_id))
+		info_popover = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(info_popover_id))
 		if info_popover == null:
 			return
 	if not bool(info_popover.get_meta("info_popover_show_requested", false)):
@@ -337,7 +1293,7 @@ func _schedule_passive_info_popover_dismiss(info_popover: Control) -> void:
 	_cancel_passive_info_fade(info_popover)
 	var dismiss_id := int(info_popover.get_meta("dismiss_id", 0)) + 1
 	info_popover.set_meta("dismiss_id", dismiss_id)
-	await host.get_tree().create_timer(host.PASSIVE_INFO_CLICK_AWAY_SECONDS).timeout
+	await host.get_tree().create_timer(PASSIVE_INFO_CLICK_AWAY_SECONDS).timeout
 	if info_popover == null or not is_instance_valid(info_popover) or not info_popover.visible:
 		return
 	if int(info_popover.get_meta("dismiss_id", 0)) != dismiss_id:
@@ -355,7 +1311,7 @@ func _fade_passive_info_popover(info_popover: Control) -> void:
 
 
 func _finish_passive_info_popover_fade(popover_id: int) -> void:
-	var cb_popover: Control = host._valid_control_ref(instance_from_id(popover_id))
+	var cb_popover: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(popover_id))
 	if cb_popover != null:
 		cb_popover.visible = false
 		cb_popover.modulate.a = 1.0
@@ -377,7 +1333,7 @@ func _cancel_passive_info_fade(info_popover: Control) -> void:
 func _passive_module_resource_controls(pop_card: Control, module_id: String, interactive: bool) -> Dictionary:
 	var plank_button = Button.new()
 	plank_button.text = ""
-	plank_button.icon = host.visual_texture_cache._texture_or_visual_fallback(host.PLANK_ICON_TEXTURE)
+	plank_button.icon = host.visual_texture_cache._texture_or_visual_fallback(MaterialRuntime.PLANK_ICON_TEXTURE)
 	plank_button.expand_icon = true
 	plank_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	plank_button.custom_minimum_size = Vector2(192, 168)
@@ -392,10 +1348,10 @@ func _passive_module_resource_controls(pop_card: Control, module_id: String, int
 	plank_button.z_index = 220
 	plank_button.tooltip_text = ""
 	plank_button.add_theme_constant_override("icon_max_width", 146)
-	host._button_press_runtime().attach_button_depress_animation(plank_button, 0.94)
+	host.button_press_runtime.attach_button_depress_animation(plank_button, 0.94)
 	if interactive:
-		plank_button.gui_input.connect(host._on_passive_module_button_input.bind("plank", module_id, "", null, plank_button))
-		plank_button.pressed.connect(host._on_passive_plank_pressed.bind(module_id))
+		plank_button.gui_input.connect(_on_passive_module_button_input.bind("plank", module_id, "", null, plank_button))
+		plank_button.pressed.connect(_on_passive_plank_pressed.bind(module_id))
 	pop_card.add_child(plank_button)
 
 	var plank_light = Panel.new()
@@ -432,7 +1388,7 @@ func _passive_module_resource_controls(pop_card: Control, module_id: String, int
 	currency_label.custom_minimum_size = Vector2(270, 134)
 	currency_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	currency_row.add_child(currency_label)
-	var currency_icon = host.visual_texture_cache._image(host.LOG_CURRENCY_ICON_TEXTURE, Vector2(112, 112))
+	var currency_icon = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(112, 112))
 	currency_row.add_child(currency_icon)
 	return {
 		"plank": plank_button,
@@ -488,7 +1444,7 @@ func _passive_module_stat_upgrade_controls(pop_card: Control, module_id: String,
 		upgrade.add_theme_stylebox_override("pressed", PassiveModuleStyles.upgrade_button())
 		upgrade.add_theme_stylebox_override("disabled", PassiveModuleStyles.upgrade_button())
 		upgrade.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-		host._button_press_runtime().attach_button_depress_animation(upgrade, 0.94)
+		host.button_press_runtime.attach_button_depress_animation(upgrade, 0.94)
 		var upgrade_visual = HBoxContainer.new()
 		upgrade_visual.alignment = BoxContainer.ALIGNMENT_BEGIN
 		upgrade_visual.add_theme_constant_override("separation", 8)
@@ -503,14 +1459,14 @@ func _passive_module_stat_upgrade_controls(pop_card: Control, module_id: String,
 		cost_label.custom_minimum_size = Vector2(70, 168)
 		cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		upgrade_visual.add_child(cost_label)
-		var cost_icon = host.visual_texture_cache._image(host.LOG_CURRENCY_ICON_TEXTURE, Vector2(94, 94))
+		var cost_icon = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(94, 94))
 		cost_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		cost_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		upgrade_visual.add_child(cost_icon)
 		upgrade.set_meta("cost_label", cost_label)
 		if interactive:
-			upgrade.gui_input.connect(host._on_passive_module_button_input.bind("upgrade", module_id, stat_type, null, upgrade))
-			upgrade.pressed.connect(host._on_passive_upgrade_pressed.bind(module_id, stat_type))
+			upgrade.gui_input.connect(_on_passive_module_button_input.bind("upgrade", module_id, stat_type, null, upgrade))
+			upgrade.pressed.connect(_on_passive_upgrade_pressed.bind(module_id, stat_type))
 		pop_card.add_child(upgrade)
 		upgrade_buttons[stat_type] = upgrade
 	return {"stats": stats, "stat_panels": stat_panels, "upgrade_buttons": upgrade_buttons}
@@ -526,9 +1482,9 @@ func _passive_module_loot_and_chrome(pop_card: Control, skill_id: String, conten
 	loot.z_index = 223
 	pop_card.add_child(loot)
 
-	var progress = PassiveSerpentineProgressBar.new()
-	progress.fill_color = host._themed_progress_fill_color(host._skill_theme_color(skill_id))
-	progress.unlocked_empty_color = host._themed_progress_empty_color(host._skill_theme_color(skill_id))
+	var progress = PassiveModuleStyles.SerpentineProgressBar.new()
+	progress.fill_color = ThemeStyles.progress_fill_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+	progress.unlocked_empty_color = ThemeStyles.progress_empty_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
 	progress.anchor_left = 0.0
 	progress.anchor_right = 1.0
 	progress.anchor_top = 1.0
@@ -541,14 +1497,14 @@ func _passive_module_loot_and_chrome(pop_card: Control, skill_id: String, conten
 	progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.add_child(progress)
 
-	var inner_shadow = ActivityCardInnerShadow.new()
+	var inner_shadow = _ActivityCardInnerShadow.new()
 	inner_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
 	inner_shadow.offset_bottom = -passive_face_bottom_trim
 	inner_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	inner_shadow.z_index = 153
 	pop_card.add_child(inner_shadow)
 
-	var border = PassiveModuleCardBorder.new()
+	var border = _CardBorder.new()
 	border.set_anchors_preset(Control.PRESET_FULL_RECT)
 	border.offset_bottom = -passive_face_bottom_trim
 	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -614,7 +1570,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 		card["module_action_zones"] = host._skill_detail_surface()._add_module_action_zones(pop_card, ModuleUiRuntime.action_for_record(skill_id, action, host.FISHING_ACTION_ID_ALIASES))
 	if defer_loot_render:
 		card["passive_loot_render_deferred"] = true
-	_update_passive_card_static_state(card, skill_id, action, host._is_action_unlocked(skill_id, action))
+	_update_passive_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
 	return {"root": card_root, "card": card}
 
 
@@ -627,14 +1583,14 @@ func _firepit_entry_shell(content_width: float, firepit_card_height: float, depe
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE if not interactive else Control.MOUSE_FILTER_PASS
 
 	var scrapwood_module = host._material_collection_surface()._mat_collection_module("scrapwood")
-	scrapwood_module.position = Vector2((content_width - host.MAT_COLLECTION_MODULE_SIZE.x) * 0.5, 0.0)
+	scrapwood_module.position = Vector2((content_width - MaterialCollectionSurface.MAT_COLLECTION_MODULE_SIZE.x) * 0.5, 0.0)
 	scrapwood_module.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	scrapwood_module.z_index = 16
 	root.add_child(scrapwood_module)
-	var scrapwood_icon = host._valid_control_ref(instance_from_id(int(scrapwood_module.get_meta("icon_id", 0)))) as Control
-	var scrapwood_label = host._valid_label_ref(instance_from_id(int(scrapwood_module.get_meta("amount_label_id", 0))))
+	var scrapwood_icon = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(scrapwood_module.get_meta("icon_id", 0)))) as Control
+	var scrapwood_label = host._app_lifecycle_runtime().valid_label_ref(instance_from_id(int(scrapwood_module.get_meta("amount_label_id", 0))))
 	var scrapwood_connector = host._material_collection_surface()._mat_collection_connector(host.material_runtime.color("scrapwood").lerp(Color("#ffe27a"), 0.38))
-	scrapwood_connector.position = Vector2(content_width * 0.5 - 12.0, host.MAT_COLLECTION_MODULE_SIZE.y - 8.0)
+	scrapwood_connector.position = Vector2(content_width * 0.5 - 12.0, MaterialCollectionSurface.MAT_COLLECTION_MODULE_SIZE.y - 8.0)
 	scrapwood_connector.custom_minimum_size = Vector2(24.0, WOODCUTTING_FIREPIT_DEPENDENCY_GAP + 18.0)
 	scrapwood_connector.size = scrapwood_connector.custom_minimum_size
 	scrapwood_connector.z_index = 8
@@ -730,7 +1686,7 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 	art_root.z_index = 210
 	pop_card.add_child(art_root)
 
-	var fuel_ring = FirepitFuelRing.new()
+	var fuel_ring = _FirepitFuelRing.new()
 	var firepit_art_position = Vector2((art_root_size.x - firepit_art_size.x) * 0.5, 170)
 	var firepit_art_center = firepit_art_position + firepit_art_size * 0.5
 	fuel_ring.position = firepit_art_center - firepit_ring_size * 0.5
@@ -753,7 +1709,7 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 	firepit_art.z_index = 1
 	art_root.add_child(firepit_art)
 
-	var active_dim = FirepitWarmthOverlay.new()
+	var active_dim = _FirepitWarmthOverlay.new()
 	active_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	active_dim.offset_bottom = -passive_face_bottom_trim
 	active_dim.cutout_center = art_root.position + firepit_art.position + firepit_art.size * Vector2(0.5, 0.54)
@@ -825,10 +1781,10 @@ func _firepit_toggle_button(pop_card: Control, module_id: String, art_root: Cont
 	toggle_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	toggle_button.z_index = 230
 	host._apply_empty_button_style(toggle_button)
-	host._button_press_runtime().attach_button_depress_animation(toggle_button, 0.94)
-	host._button_press_runtime().attach_default_button_sfx(toggle_button)
+	host.button_press_runtime.attach_button_depress_animation(toggle_button, 0.94)
+	host.button_press_runtime.attach_default_button_sfx(toggle_button)
 	if interactive:
-		toggle_button.gui_input.connect(host._on_passive_module_button_input.bind("firepit", module_id, "", null, toggle_button))
+		toggle_button.gui_input.connect(_on_passive_module_button_input.bind("firepit", module_id, "", null, toggle_button))
 		toggle_button.button_down.connect(_on_firepit_button_down.bind(module_id, toggle_button))
 		toggle_button.button_up.connect(_on_firepit_button_up.bind(module_id))
 		toggle_button.pressed.connect(_on_firepit_toggle_pressed.bind(module_id))
@@ -841,7 +1797,7 @@ func _on_firepit_toggle_pressed(module_id: String) -> void:
 
 
 func _firepit_chrome(pop_card: Control, passive_face_bottom_trim: float) -> Dictionary:
-	var inner_shadow = ActivityCardInnerShadow.new()
+	var inner_shadow = _ActivityCardInnerShadow.new()
 	inner_shadow.set_anchors_preset(Control.PRESET_FULL_RECT)
 	inner_shadow.offset_bottom = -passive_face_bottom_trim
 	inner_shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -897,7 +1853,7 @@ func _build_firepit_module_card(skill_id: String, action: Dictionary, content_wi
 	var art_root = art_bundle.get("art_root") as Control
 	var active_dim = art_bundle.get("active_dim") as Control
 	var flame_fx = art_bundle.get("flame_fx") as Control
-	var fuel_ring = art_bundle.get("progress") as FirepitFuelRing
+	var fuel_ring = art_bundle.get("progress") as _FirepitFuelRing
 	var status_controls = _firepit_status_controls(pop_card)
 	var status_panel = status_controls.get("panel") as Control
 	var status_label = status_controls.get("status") as Label
@@ -945,7 +1901,7 @@ func _build_firepit_module_card(skill_id: String, action: Dictionary, content_wi
 	}
 	if interactive:
 		card["module_action_zones"] = host._skill_detail_surface()._add_module_action_zones(pop_card, ModuleUiRuntime.action_for_record(skill_id, action, host.FISHING_ACTION_ID_ALIASES))
-	_update_firepit_card_static_state(card, skill_id, action, host._is_action_unlocked(skill_id, action))
+	_update_firepit_card_static_state(card, skill_id, action, host._activity_unlock_runtime()._is_action_unlocked(skill_id, action))
 	return {"root": root, "card": card}
 
 
@@ -954,7 +1910,7 @@ func _hold_firepit_next_scrapwood_ring_empty() -> void:
 	if not host.action_cards.has(key):
 		return
 	var card := host.action_cards[key] as Dictionary
-	var progress := card.get("progress") as FirepitFuelRing
+	var progress := card.get("progress") as _FirepitFuelRing
 	if progress == null or not is_instance_valid(progress):
 		return
 	progress.set_inner_value(0.0)
@@ -980,13 +1936,13 @@ func _float_firepit_xp_reward_from_fire(index := 0) -> void:
 		anchor,
 		"+%s XP" % per_scrapwood_xp,
 		66,
-		host._skill_theme_color("woodcutting").lerp(Color("#ffb347"), 0.35),
+		ThemeStyles.skill_theme_color("woodcutting", host.COLOR_BLUE).lerp(Color("#ffb347"), 0.35),
 		Vector2(lane_x, -60.0 - float(index % 2) * 16.0),
 		Vector2(lane_x * 0.35, -176.0 - float(index % 2) * 18.0),
 		0.0,
 		false,
 		-1.0,
-		host.SKILL_REWARD_FLOAT_GROUP
+		RewardFeedbackSurface.SKILL_REWARD_FLOAT_GROUP
 	)
 
 
@@ -1014,7 +1970,7 @@ func _animate_firepit_scrapwood_to_fire(scrapwood_burned: int, pronounced := fal
 		flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		flyer.z_index = host.REWARD_FLOAT_Z
+		flyer.z_index = RewardFeedbackSurface.REWARD_FLOAT_Z
 		flyer.z_as_relative = false
 		host.add_child(flyer)
 		var lane_offset := Vector2(float(index - visible_count / 2) * 28.0, float(index % 2) * -12.0)
@@ -1038,11 +1994,11 @@ func _animate_firepit_scrapwood_to_fire(scrapwood_burned: int, pronounced := fal
 			tween.tween_callback(_float_firepit_xp_reward_from_fire.bind(index)).set_delay(delay + flight_seconds * 0.94)
 		tween.tween_property(flyer, "scale", Vector2(0.72, 0.72), 0.14).set_delay(delay + flight_seconds * 0.86)
 		tween.tween_property(flyer, "modulate:a", 0.0, 0.16).set_delay(delay + flight_seconds * 0.88)
-		tween.chain().tween_callback(host._queue_free_instance_id.bind(flyer.get_instance_id()))
+		tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(flyer.get_instance_id()))
 
 
 func _move_firepit_scrapwood_flyer(progress: float, flyer_id: int, start: Vector2, arc_mid: Vector2, finish: Vector2) -> void:
-	var flyer: Control = host._valid_control_ref(instance_from_id(flyer_id))
+	var flyer: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(flyer_id))
 	if flyer == null:
 		return
 	var a := start.lerp(arc_mid, progress)
@@ -1084,7 +2040,7 @@ func _float_firepit_need_scrapwood() -> void:
 		0.0,
 		false,
 		-1.0,
-		host.SKILL_REWARD_FLOAT_GROUP
+		RewardFeedbackSurface.SKILL_REWARD_FLOAT_GROUP
 	)
 
 
@@ -1127,7 +2083,7 @@ func _render_passive_loot(card: Dictionary, module_id: String, unlocked: bool) -
 	log_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	log_layer.pivot_offset = loot.size * 0.5
 	log_layer.z_index = 1
-	log_layer.configure(host.visual_texture_cache._texture(host.LOG_CURRENCY_ICON_TEXTURE), icon_size, pile_slots, pile_rotations, visible_logs, shadow_rect)
+	log_layer.configure(host.visual_texture_cache._texture(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE), icon_size, pile_slots, pile_rotations, visible_logs, shadow_rect)
 	loot.add_child(log_layer)
 	var click_prompt: Label = host._label(PASSIVE_LOG_PILE_CLICK_PROMPT, PASSIVE_LOG_PILE_CLICK_PROMPT_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	click_prompt.position = (pile_config["count_position"] as Vector2) + PASSIVE_LOG_PILE_CLICK_PROMPT_OFFSET
@@ -1165,8 +2121,8 @@ func _add_passive_log_collect_hotspot(loot: Control, module_id: String, visible_
 	collect_hotspot.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	collect_hotspot.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
 	collect_hotspot.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	collect_hotspot.pressed.connect(host._on_passive_collect_pressed.bind(module_id))
-	collect_hotspot.gui_input.connect(host._on_passive_module_button_input.bind("collect", module_id, "", null, collect_hotspot))
+	collect_hotspot.pressed.connect(_on_passive_collect_pressed.bind(module_id))
+	collect_hotspot.gui_input.connect(_on_passive_module_button_input.bind("collect", module_id, "", null, collect_hotspot))
 	loot.add_child(collect_hotspot)
 	loot.set_meta("passive_log_collect_hotspot_id", collect_hotspot.get_instance_id())
 
@@ -1285,7 +2241,7 @@ func _animate_passive_log_pile(log_layer: Control, shadow: Control, tier_changed
 
 func _passive_log_sprite(sprite_size: Vector2, shadow_offset: Vector2, shadow_alpha: float) -> Control:
 	var sprite := PassiveIconSprite.new()
-	sprite.configure(host.visual_texture_cache._texture(host.LOG_CURRENCY_ICON_TEXTURE), sprite_size)
+	sprite.configure(host.visual_texture_cache._texture(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE), sprite_size)
 	sprite.shadow_offset = shadow_offset
 	sprite.shadow_alpha = shadow_alpha
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1294,7 +2250,7 @@ func _passive_log_sprite(sprite_size: Vector2, shadow_offset: Vector2, shadow_al
 
 func _passive_upgrade_arrow_icon(icon_size: Vector2) -> Control:
 	var sprite := PassiveIconSprite.new()
-	sprite.configure(host.visual_texture_cache._texture(host.UPGRADE_ARROW_ICON_TEXTURE), icon_size)
+	sprite.configure(host.visual_texture_cache._texture(MaterialRuntime.UPGRADE_ARROW_ICON_TEXTURE), icon_size)
 	sprite.stroke_color = host.COLOR_INK
 	sprite.stroke_width = 8.0
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1313,7 +2269,7 @@ func _float_log_currency_feedback(module_id: String, amount: int) -> void:
 		_arc_passive_collection_logs(loot, panel, currency_icon, amount, module_id)
 	if panel != null and is_instance_valid(panel) and panel.is_inside_tree():
 		host._reward_feedback_surface()._flash_bonus_control(panel)
-		host._reward_feedback_surface()._float_reward(host, panel, "+%s Softwood" % amount, 58, host.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -146), 0.0)
+		host._reward_feedback_surface()._float_reward(host, panel, "+%s Softwood" % amount, 58, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -146), 0.0)
 
 
 func _play_build_log_spend_feedback(action_key: String) -> void:
@@ -1331,7 +2287,7 @@ func _float_log_spend(anchor: Control, cost: int) -> void:
 	var text := "-%s" % cost
 	var reward_size := Vector2(300, 116)
 	var holder := Control.new()
-	holder.z_index = host.REWARD_FLOAT_Z
+	holder.z_index = RewardFeedbackSurface.REWARD_FLOAT_Z
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = reward_size
@@ -1348,7 +2304,7 @@ func _float_log_spend(anchor: Control, cost: int) -> void:
 	label.add_theme_constant_override("outline_size", 14)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)
-	var icon: TextureRect = host.visual_texture_cache._image(host.LOG_CURRENCY_ICON_TEXTURE, Vector2(74, 74))
+	var icon: TextureRect = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(74, 74))
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(icon)
 	var local_pos: Vector2 = anchor.global_position - host.global_position
@@ -1365,13 +2321,13 @@ func _float_log_spend(anchor: Control, cost: int) -> void:
 	tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
 	tween.tween_property(holder, "modulate:a", 0.0, 0.70).set_delay(0.45)
-	tween.chain().tween_callback(host._queue_free_instance_id.bind(holder.get_instance_id()))
+	tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(holder.get_instance_id()))
 
 
 func _float_build_log_spend(anchor: Control) -> void:
 	var reward_size := Vector2(220, 104)
 	var holder := Control.new()
-	holder.z_index = host.REWARD_FLOAT_Z
+	holder.z_index = RewardFeedbackSurface.REWARD_FLOAT_Z
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = reward_size
@@ -1388,7 +2344,7 @@ func _float_build_log_spend(anchor: Control) -> void:
 	label.add_theme_constant_override("outline_size", 16)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)
-	var icon: TextureRect = host.visual_texture_cache._image(host.LOG_CURRENCY_ICON_TEXTURE, Vector2(82, 82))
+	var icon: TextureRect = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(82, 82))
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon)
@@ -1406,7 +2362,7 @@ func _float_build_log_spend(anchor: Control) -> void:
 	tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
 	tween.tween_property(holder, "modulate:a", 0.0, 0.62).set_delay(0.48)
-	tween.chain().tween_callback(host._queue_free_instance_id.bind(holder.get_instance_id()))
+	tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(holder.get_instance_id()))
 
 
 func _float_passive_production_feedback(module_id: String, amount: int) -> void:
@@ -1421,11 +2377,11 @@ func _float_passive_production_feedback(module_id: String, amount: int) -> void:
 	var yield_panel := stat_panels.get("yield") as Control
 	if yield_panel == null or not is_instance_valid(yield_panel) or not yield_panel.is_visible_in_tree():
 		host._reward_feedback_surface()._flash_bonus_control(loot)
-		host._reward_feedback_surface()._float_reward(host, loot, "+%s" % amount, 50, host.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -18), Vector2(0, -104), 0.0)
+		host._reward_feedback_surface()._float_reward(host, loot, "+%s" % amount, 50, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -18), Vector2(0, -104), 0.0)
 		return
 	host._reward_feedback_surface()._flash_bonus_control(yield_panel)
 	_pop_passive_control(yield_panel)
-	host._reward_feedback_surface()._float_reward(host, yield_panel, "+%s" % amount, 46, host.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -26), Vector2(0, -98), 0.0)
+	host._reward_feedback_surface()._float_reward(host, yield_panel, "+%s" % amount, 46, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -26), Vector2(0, -98), 0.0)
 	_arc_passive_yield_logs(yield_panel, loot, amount, module_id)
 
 
@@ -1457,7 +2413,7 @@ func _arc_passive_yield_logs(source: Control, target: Control, amount: int, modu
 		tween.parallel().tween_property(flyer, "rotation_degrees", flyer.rotation_degrees + 54.0, 0.24)
 		tween.tween_callback(_on_passive_yield_log_stored_bound.bind(target.get_instance_id(), module_id, i))
 		tween.tween_property(flyer, "modulate:a", 0.0, 0.06)
-		tween.tween_callback(host._queue_free_instance_id.bind(flyer.get_instance_id()))
+		tween.tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(flyer.get_instance_id()))
 
 
 func _arc_passive_collection_logs(source: Control, target: Control, currency_icon: Control, amount: int, module_id: String) -> void:
@@ -1494,7 +2450,7 @@ func _arc_passive_collection_logs(source: Control, target: Control, currency_ico
 		var currency_icon_id := currency_icon.get_instance_id() if currency_icon != null and is_instance_valid(currency_icon) else 0
 		tween.tween_callback(_on_passive_log_landed_bound.bind(target.get_instance_id(), currency_icon_id, i))
 		tween.tween_property(flyer, "modulate:a", 0.0, 0.08)
-		tween.tween_callback(host._queue_free_instance_id.bind(flyer.get_instance_id()))
+		tween.tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(flyer.get_instance_id()))
 
 
 func _passive_effect_parent() -> Control:
@@ -1510,7 +2466,7 @@ func _passive_log_flyer_size(module_id: String, storage: Control = null) -> Vect
 	var pile_config := _passive_log_pile_config(_passive_log_pile_tier(stored), stored)
 	var fallback_size := pile_config["icon_size"] as Vector2
 	if storage != null and is_instance_valid(storage) and storage.has_meta("passive_log_flyer_size"):
-		return host._meta_vector2(storage, "passive_log_flyer_size", fallback_size)
+		return host._app_lifecycle_runtime().meta_vector2(storage, "passive_log_flyer_size", fallback_size)
 	return fallback_size
 
 
@@ -1578,7 +2534,7 @@ func _control_local_point_to_global(control: Control, local_point: Vector2) -> V
 
 
 func _on_passive_yield_log_stored_bound(target_id: int, module_id: String, index: int) -> void:
-	var target: Control = host._valid_control_ref(instance_from_id(target_id))
+	var target: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(target_id))
 	_on_passive_yield_log_stored(target, module_id, index)
 
 
@@ -1601,8 +2557,8 @@ func _refresh_passive_loot_for_module(module_id: String) -> void:
 
 
 func _on_passive_log_landed_bound(target_id: int, currency_icon_id: int, index: int) -> void:
-	var target: Control = host._valid_control_ref(instance_from_id(target_id))
-	var currency_icon: Control = host._valid_control_ref(instance_from_id(currency_icon_id)) if currency_icon_id != 0 else null
+	var target: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(target_id))
+	var currency_icon: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(currency_icon_id)) if currency_icon_id != 0 else null
 	_on_passive_log_landed(target, currency_icon, index)
 
 
@@ -1612,7 +2568,7 @@ func _on_passive_log_landed(target: Control, currency_icon: Control, index: int)
 	host._audio_director()._play_passive_log_land_sfx(index)
 	var pop_anchor := currency_icon if currency_icon != null and is_instance_valid(currency_icon) and currency_icon.is_inside_tree() else target
 	_pop_passive_currency_icon(pop_anchor)
-	host._reward_feedback_surface()._float_reward(_passive_effect_parent(), pop_anchor, "+1", 46, host.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -28), Vector2(0, -86), 0.0)
+	host._reward_feedback_surface()._float_reward(_passive_effect_parent(), pop_anchor, "+1", 46, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -28), Vector2(0, -86), 0.0)
 
 
 func _pop_passive_currency_icon(anchor: Control) -> void:
@@ -1645,7 +2601,7 @@ func _float_passive_upgrade_feedback(module_id: String, stat_type: String, cost:
 	if gain_text.is_empty():
 		return
 	host._reward_feedback_surface()._flash_bonus_control(stat_anchor)
-	host._reward_feedback_surface()._float_reward(host, stat_anchor, gain_text, 54, host.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -138), 0.0)
+	host._reward_feedback_surface()._float_reward(host, stat_anchor, gain_text, 54, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -138), 0.0)
 
 
 func _passive_upgrade_gain_text(stat_type: String, old_value: int, new_value: int) -> String:
@@ -1678,7 +2634,7 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 	host._skill_swipe_activity_surface()._update_passive_card_static_state(card, _skill_id, action, unlocked)
 
 func _update_passive_card_progress(card: Dictionary, action: Dictionary, unlocked: bool, instant := false) -> void:
-	var progress = card.get("progress") as PassiveSerpentineProgressBar
+	var progress = card.get("progress") as PassiveModuleStyles.SerpentineProgressBar
 	if progress == null:
 		return
 	var module_id = str(action.get("id", PassiveModulesRuntime.WOODCUTTING_LOG_MODULE_ID))
@@ -1704,10 +2660,10 @@ func _passive_action_card_height(action: Dictionary) -> float:
 func _apply_firepit_dependency_layout_height(value: float, card_root_id: int, entry_root_id: int, entry_id: int, action_id: String) -> void:
 	var reveal_height = clampf(value, 0.0, WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT)
 	var target_height = WOODCUTTING_FIREPIT_CARD_HEIGHT + reveal_height
-	var card_root = host._valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
+	var card_root = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
 	if card_root != null:
 		card_root.position.y = reveal_height
-	var firepit_entry_root = host._valid_control_ref(instance_from_id(entry_root_id)) if entry_root_id != 0 else null
+	var firepit_entry_root = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(entry_root_id)) if entry_root_id != 0 else null
 	if firepit_entry_root != null:
 		firepit_entry_root.custom_minimum_size.y = target_height
 		firepit_entry_root.size.y = target_height
@@ -1715,7 +2671,7 @@ func _apply_firepit_dependency_layout_height(value: float, card_root_id: int, en
 		var firepit_parent = firepit_entry_root.get_parent() as Container
 		if firepit_parent != null:
 			firepit_parent.queue_sort()
-	var entry = host._valid_control_ref(instance_from_id(entry_id)) if entry_id != 0 else null
+	var entry = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(entry_id)) if entry_id != 0 else null
 	if entry != null:
 		entry.custom_minimum_size.y = target_height
 		entry.size.y = target_height
@@ -1724,27 +2680,27 @@ func _apply_firepit_dependency_layout_height(value: float, card_root_id: int, en
 		if entry_parent != null:
 			entry_parent.queue_sort()
 	if not action_id.is_empty():
-		var lazy_entry = host._detail_lazy_entry_for_track_id(action_id)
+		var lazy_entry = host._skill_detail_surface()._detail_lazy_entry_for_track_id(action_id)
 		if not lazy_entry.is_empty():
 			lazy_entry["height"] = target_height
 
 
 func _clear_firepit_dependency_height_tween(card_root_id: int) -> void:
-	var card_root = host._valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
+	var card_root = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(card_root_id)) if card_root_id != 0 else null
 	if card_root != null and card_root.has_meta("firepit_dependency_height_tween"):
 		card_root.remove_meta("firepit_dependency_height_tween")
 
 
 func _finish_firepit_dependency_visuals(module_id: int, connector_id: int, show_dependency: bool) -> void:
-	var module = host._valid_control_ref(instance_from_id(module_id)) if module_id != 0 else null
-	var connector = host._valid_control_ref(instance_from_id(connector_id)) if connector_id != 0 else null
+	var module = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(module_id)) if module_id != 0 else null
+	var connector = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(connector_id)) if connector_id != 0 else null
 	for node in [module, connector]:
 		if node == null:
 			continue
 		if node.has_meta("firepit_dependency_visual_tween"):
 			node.remove_meta("firepit_dependency_visual_tween")
 		if not show_dependency:
-			host._set_canvas_item_visible_if_changed(node, false)
+			host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(node, false)
 
 
 func _sync_firepit_dependency_layout(card: Dictionary, show_dependency: bool, instant := false) -> void:
@@ -1765,13 +2721,13 @@ func _sync_firepit_dependency_layout(card: Dictionary, show_dependency: bool, in
 	var entry_id = entry.get_instance_id() if entry != null and is_instance_valid(entry) else 0
 	if absf(current_reveal_height - target_reveal_height) > 0.5:
 		if card_root != null and is_instance_valid(card_root):
-			host._kill_meta_tween(card_root, "firepit_dependency_height_tween")
+			host._app_lifecycle_runtime()._kill_meta_tween(card_root, "firepit_dependency_height_tween")
 		if instant or seed_layout or card_root == null or not is_instance_valid(card_root):
 			_apply_firepit_dependency_layout_height(target_reveal_height, card_root_id, entry_root_id, entry_id, action_id)
 		else:
 			var height_tween = card_root.create_tween()
 			card_root.set_meta("firepit_dependency_height_tween", height_tween)
-			height_tween.tween_method(Callable(self, "_apply_firepit_dependency_layout_height").bind(card_root_id, entry_root_id, entry_id, action_id), current_reveal_height, target_reveal_height, host.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
+			height_tween.tween_method(Callable(self, "_apply_firepit_dependency_layout_height").bind(card_root_id, entry_root_id, entry_id, action_id), current_reveal_height, target_reveal_height, MaterialCollectionSurface.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
 			height_tween.finished.connect(Callable(self, "_clear_firepit_dependency_height_tween").bind(card_root_id))
 	else:
 		_apply_firepit_dependency_layout_height(target_reveal_height, card_root_id, entry_root_id, entry_id, action_id)
@@ -1782,16 +2738,16 @@ func _sync_firepit_dependency_layout(card: Dictionary, show_dependency: bool, in
 	if scrapwood_connector != null and is_instance_valid(scrapwood_connector):
 		visual_nodes.append(scrapwood_connector)
 	for node in visual_nodes:
-		host._kill_meta_tween(node, "firepit_dependency_visual_tween")
+		host._app_lifecycle_runtime()._kill_meta_tween(node, "firepit_dependency_visual_tween")
 		if show_dependency:
-			host._set_canvas_item_visible_if_changed(node, true)
+			host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(node, true)
 	var target_alpha = 1.0 if show_dependency else 0.0
 	var target_scale = Vector2.ONE if show_dependency else Vector2(0.94, 0.94)
 	if instant or seed_layout:
 		for node in visual_nodes:
 			node.modulate.a = target_alpha
 			node.scale = target_scale
-			host._set_canvas_item_visible_if_changed(node, show_dependency)
+			host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(node, show_dependency)
 		return
 	var module_id = scrapwood_module.get_instance_id() if scrapwood_module != null and is_instance_valid(scrapwood_module) else 0
 	var connector_id = scrapwood_connector.get_instance_id() if scrapwood_connector != null and is_instance_valid(scrapwood_connector) else 0
@@ -1799,6 +2755,6 @@ func _sync_firepit_dependency_layout(card: Dictionary, show_dependency: bool, in
 		var visual_tween = host.create_tween()
 		node.set_meta("firepit_dependency_visual_tween", visual_tween)
 		visual_tween.set_parallel(true)
-		visual_tween.tween_property(node, "modulate:a", target_alpha, host.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
-		visual_tween.tween_property(node, "scale", target_scale, host.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_BACK if show_dependency else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
+		visual_tween.tween_property(node, "modulate:a", target_alpha, MaterialCollectionSurface.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
+		visual_tween.tween_property(node, "scale", target_scale, MaterialCollectionSurface.MAT_COLLECTION_APPEAR_SECONDS).set_trans(Tween.TRANS_BACK if show_dependency else Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT if show_dependency else Tween.EASE_IN)
 		visual_tween.finished.connect(_finish_firepit_dependency_visuals.bind(module_id, connector_id, show_dependency))

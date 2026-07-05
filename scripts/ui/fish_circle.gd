@@ -32,6 +32,7 @@ var wallet_unlocked_states: Array = []
 var wallet_equipped_tool_id := ""
 var wallet_button_rects: Array = []
 var wallet_visual_root: Control
+var tool_icon_texture_resolver := Callable()
 
 func _ready() -> void:
 	text = ""
@@ -90,13 +91,14 @@ func _trigger_circle_pressed() -> void:
 	wallet_pressed.emit()
 
 func _fish_circle_icon_texture() -> Texture2D:
-	var node: Node = get_parent()
-	while node != null:
-		if node.has_method("_fishing_tool_icon_texture"):
-			var loaded_texture := node.call("_fishing_tool_icon_texture", tool_icon_path) as Texture2D
-			if loaded_texture != null:
-				return loaded_texture
-		node = node.get_parent()
+	if tool_icon_texture_resolver.is_valid():
+		var resolved_texture := tool_icon_texture_resolver.call(tool_icon_path) as Texture2D
+		if resolved_texture != null:
+			return resolved_texture
+	if DisplayServer.get_name() != "headless" and ResourceLoader.exists(tool_icon_path):
+		var loaded_texture := load(tool_icon_path) as Texture2D
+		if loaded_texture != null:
+			return loaded_texture
 	return _fallback_texture(Vector2i(8, 8))
 
 func _fish_currency_icon_texture() -> Texture2D:
@@ -162,6 +164,11 @@ func set_tool_text(next_tool_text: String) -> void:
 		return
 	tool_text = next_tool_text
 	queue_redraw()
+
+func set_tool_icon_texture_resolver(resolver: Callable) -> void:
+	tool_icon_texture_resolver = resolver
+	if fish_icon != null and is_instance_valid(fish_icon):
+		fish_icon.texture = _fish_circle_icon_texture()
 
 func set_tool_icon(path: String) -> void:
 	if tool_icon_path == path:

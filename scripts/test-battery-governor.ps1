@@ -58,10 +58,89 @@ const PerformanceRuntime := preload("res://scripts/app/performance_runtime.gd")
 class FakeHost:
 	extends Node
 
-	var visual_work_active := false
+	class FakeHubSurface:
+		var hub_drag_module_id := ""
+		var hub_hotspot_hold_module_id := ""
 
-	func _battery_governor_visual_work_active() -> bool:
-		return visual_work_active
+	class FakeBootWarmupRuntime:
+		var active := false
+
+	class FakeActionStopHold:
+		var hold_active := false
+
+		func active() -> bool:
+			return hold_active
+
+	class FakeProfileChatOverlaySurface:
+		var keyboard_active := false
+
+		func keyboard_lift_active() -> bool:
+			return keyboard_active
+
+	class FakeTutorialOverlaySurface:
+		var activity_start_highlight_active := false
+		var activity_start_highlight_pending := false
+
+	class FakeAchievementToastSurface:
+		func transient_work_active() -> bool:
+			return false
+
+	class FakeNavigationShell:
+		var pin_transition_blocker: Control = null
+		var screen_render_in_progress := false
+
+		func _page_switch_pending_transition_queued() -> bool:
+			return false
+
+		func _pinned_active_shelf_has_jailed_action() -> bool:
+			return false
+
+	class FakeSkillDetailSurface:
+		var detail_scroll_visual_work_this_frame := false
+		var detail_lazy_mounted_this_frame := false
+		var action_card_press_key := ""
+
+		func _detail_jump_arrows_need_processing() -> bool:
+			return false
+
+	var boot_detail_render_in_progress := false
+	var module_ui_animating_collapse_key := ""
+	var current_screen := ""
+	var boot_warmup_runtime := FakeBootWarmupRuntime.new()
+	var action_stop_hold := FakeActionStopHold.new()
+	var hub_surface := FakeHubSurface.new()
+	var profile_chat_overlay_surface := FakeProfileChatOverlaySurface.new()
+	var tutorial_overlay_surface := FakeTutorialOverlaySurface.new()
+	var achievement_toast_surface := FakeAchievementToastSurface.new()
+	var navigation_shell := FakeNavigationShell.new()
+	var skill_detail_surface := FakeSkillDetailSurface.new()
+
+	func _skill_swipe_loading_transition_active() -> bool:
+		return false
+
+	func _boot_warmup_runtime():
+		return boot_warmup_runtime
+
+	func _action_stop_hold():
+		return action_stop_hold
+
+	func _hub_surface():
+		return hub_surface
+
+	func _profile_chat_overlay_surface():
+		return profile_chat_overlay_surface
+
+	func _tutorial_overlay_surface():
+		return tutorial_overlay_surface
+
+	func _achievement_toast_surface():
+		return achievement_toast_surface
+
+	func _navigation_shell():
+		return navigation_shell
+
+	func _skill_detail_surface():
+		return skill_detail_surface
 
 	func _refresh_god_mode_controls() -> void:
 		pass
@@ -96,13 +175,13 @@ func _run() -> void:
 	_expect(Engine.max_fps == 60, "Expected governor activity to restore 60 FPS, got %s." % str(Engine.max_fps))
 	_expect(not OS.low_processor_usage_mode, "Expected governor activity to disable low processor mode.")
 
-	host.visual_work_active = true
+	host.boot_warmup_runtime.active = true
 	runtime.battery_governor_last_activity_msec = Time.get_ticks_msec() - 100000
 	runtime._process_battery_governor()
 	_expect(Engine.max_fps == 60, "Expected swipe work to keep active 60 FPS, got %s." % str(Engine.max_fps))
 	_expect(not OS.low_processor_usage_mode, "Expected swipe work to keep low processor mode disabled.")
 
-	host.visual_work_active = false
+	host.boot_warmup_runtime.active = false
 	runtime.battery_governor_last_activity_msec = Time.get_ticks_msec() - 100000
 	runtime._process_battery_governor()
 	_expect(Engine.max_fps == 30, "Expected governor to return to idle after swipe work ended.")

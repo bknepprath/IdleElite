@@ -1,4 +1,3 @@
-class_name AdBonus
 extends RefCounted
 
 const GameFormatting = preload("res://scripts/core/formatting.gd")
@@ -107,23 +106,23 @@ func _load_rewarded_ad(show_when_loaded: bool) -> void:
 		return
 	var unit_id := _rewarded_ad_unit_id()
 	if unit_id.is_empty():
-		host._set_result("Ad Not Configured")
+		host._reward_feedback_surface()._set_result("Ad Not Configured")
 		return
 	if not _ads_supported():
-		host._set_result("Ads need an Android build.")
+		host._reward_feedback_surface()._set_result("Ads need an Android build.")
 		return
 	if not _ensure_ads_initialized():
-		host._set_result("Ads unavailable.")
+		host._reward_feedback_surface()._set_result("Ads unavailable.")
 		return
 	if ad_loading:
 		ad_show_after_load = ad_show_after_load or show_when_loaded
 		if show_when_loaded:
-			host._set_result("Ad loading...")
+			host._reward_feedback_surface()._set_result("Ad loading...")
 		return
 	ad_loading = true
 	ad_show_after_load = show_when_loaded
 	if show_when_loaded:
-		host._set_result("Ad loading...")
+		host._reward_feedback_surface()._set_result("Ad loading...")
 	RewardedAdLoader.new().load(unit_id, AdRequest.new(), ad_load_callback)
 
 
@@ -137,7 +136,7 @@ func _show_rewarded_ad() -> void:
 		return
 	ad_showing = true
 	ad_reward_earned_for_show = false
-	host._set_result("Opening ad...")
+	host._reward_feedback_surface()._set_result("Opening ad...")
 	rewarded_ad.show(ad_reward_listener)
 
 
@@ -166,7 +165,7 @@ func _on_rewarded_ad_failed_to_load(error: LoadAdError) -> void:
 	var message := "Ad failed to load."
 	if error != null and not error.message.is_empty():
 		message = "Ad failed to load: %s" % error.message
-	host._set_result(message)
+	host._reward_feedback_surface()._set_result(message)
 
 
 func _on_rewarded_ad_showed() -> void:
@@ -179,7 +178,7 @@ func _on_rewarded_ad_failed_to_show(error: AdError) -> void:
 	var message := "Ad failed to show."
 	if error != null and not error.message.is_empty():
 		message = "Ad failed to show: %s" % error.message
-	host._set_result(message)
+	host._reward_feedback_surface()._set_result(message)
 	_destroy_rewarded_ad()
 	_load_rewarded_ad(false)
 
@@ -188,7 +187,7 @@ func _on_rewarded_ad_dismissed() -> void:
 	ad_showing = false
 	_destroy_rewarded_ad()
 	if not ad_reward_earned_for_show:
-		host._set_result("Ad closed before reward.")
+		host._reward_feedback_surface()._set_result("Ad closed before reward.")
 	_load_rewarded_ad(false)
 
 
@@ -198,26 +197,24 @@ func _on_rewarded_ad_user_earned_reward(_item: RewardedItem) -> void:
 
 
 func _grant_ad_bonus(message: String) -> void:
-	var bonus_snapshot_before: Dictionary = host._capture_visible_bonus_snapshot()
+	var bonus_snapshot_before: Dictionary = host._reward_feedback_surface()._capture_visible_bonus_snapshot()
 	seconds_remaining = grant_seconds(seconds_remaining, float(AD_BONUS_SECONDS), float(AD_BONUS_MAX_SECONDS))
 	shop_bonus_notice_text = message
-	host._set_result(message)
-	if host.shop_bonus_label != null:
-		host.shop_bonus_label.text = shop_label_text()
+	host._reward_feedback_surface()._set_result(message)
+	host._shop_surface().sync_bonus_display()
 	host._update_ui(0.0, false)
-	host._emphasize_visible_bonus_changes_deferred(bonus_snapshot_before)
+	host._reward_feedback_surface()._emphasize_visible_bonus_changes_deferred(bonus_snapshot_before)
 	host._shop_surface().emphasize_bonus_award()
 	host.save_game()
 
 
 func press_shop_ad() -> void:
 	if seconds_remaining > float(AD_BONUS_WARN_THRESHOLD_SECONDS):
-		host._set_result("Max stackable bonus time is 6 hours.")
-		if host.shop_bonus_label != null:
-			host.shop_bonus_label.text = shop_label_text()
+		host._reward_feedback_surface()._set_result("Max stackable bonus time is 6 hours.")
+		host._shop_surface().sync_bonus_display()
 		return
 	if ad_showing:
-		host._set_result("Ad already open.")
+		host._reward_feedback_surface()._set_result("Ad already open.")
 		return
 	if rewarded_ad != null:
 		_show_rewarded_ad()

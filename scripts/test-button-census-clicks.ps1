@@ -152,7 +152,7 @@ func _stage_scenario(scenario: Dictionary) -> bool:
 	scene.call("_profile_chat_overlay_surface")._close_chat_overlay()
 	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	scene.call("_settings_surface").call("_disarm_reset_data_confirmation")
-	scene.set("fishing_tool_wallet_open", false)
+	scene.call("_fishing_ui_surface")._clear_fishing_tool_circle_menu()
 	scene.set("hub_detail_open", false)
 	scene.set("module_utility_collapsed", false)
 	scene.set("module_ui_pinned_order", _first_module_keys(["woodcutting", "fishing", "thieving"], 4))
@@ -169,7 +169,7 @@ func _stage_scenario(scenario: Dictionary) -> bool:
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
 	if screen == "skill":
-		scene.call("_sync_detail_lazy_visible_cards", true, -1)
+		scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 		for _i in range(6):
 			scene.call("_update_ui", 0.016, false)
 			await process_frame
@@ -295,12 +295,12 @@ func _click_button(button: BaseButton, context: String) -> void:
 	if scene == null or not is_instance_valid(scene):
 		_record("%s: scene was freed after clicking %s" % [context, _button_label(button)])
 		return
-	if bool(scene.get("screen_render_in_progress")):
+	if bool(scene.call("_navigation_shell").get("screen_render_in_progress")):
 		for _i in range(120):
 			await process_frame
-			if not bool(scene.get("screen_render_in_progress")):
+			if not bool(scene.call("_navigation_shell").get("screen_render_in_progress")):
 				break
-	if bool(scene.get("screen_render_in_progress")):
+	if bool(scene.call("_navigation_shell").get("screen_render_in_progress")):
 		_record("%s: screen render stayed in progress after clicking %s before=%s after=%s" % [context, _button_label(button), before_summary, _scene_summary()])
 		return
 	clicked_count += 1
@@ -322,7 +322,7 @@ func _first_module_keys(skill_ids: Array[String], max_count: int) -> Array[Strin
 	for skill_id in skill_ids:
 		for raw_action in actions_by_skill.get(skill_id, []):
 			var action := raw_action as Dictionary
-			if action.is_empty() or bool(scene.call("_is_passive_action", action)):
+			if action.is_empty() or bool(scene.call("_passive_modules_runtime").is_passive_action(action)):
 				continue
 			var action_id := str(action.get("id", ""))
 			if action_id.is_empty():
@@ -343,7 +343,7 @@ func _wait_for_boot_ready() -> bool:
 			bool(scene.get("startup_initialized"))
 			and not bool(scene.get("boot_detail_render_in_progress"))
 			and not bool(scene.get("boot_detail_scroll_locked"))
-			and not bool(scene.get("screen_render_in_progress"))
+			and not bool(scene.call("_navigation_shell").get("screen_render_in_progress"))
 			and (queue == null or queue.is_empty())
 		):
 			return true
@@ -358,7 +358,7 @@ func _scene_summary() -> String:
 		str(scene.get("selected_skill_id")),
 		str(scene.get("running_skill_id")),
 		str(scene.get("running_action_id")),
-		str(scene.get("screen_render_in_progress")),
+		str(scene.call("_navigation_shell").get("screen_render_in_progress")),
 		str(scene.call("_input_routing_shell").call("_any_modal_overlay_visible")),
 	]
 

@@ -85,7 +85,7 @@ func _run() -> void:
 	stale_tap_effect.free()
 	stale_medal.free()
 
-	scene.call("_clear_action_card_medal_ceremony", card)
+	scene.call("_skill_swipe_activity_surface").call("_clear_action_card_medal_ceremony", card)
 	if card.has("medal_ceremony_tween"):
 		_record("medal_ceremony_tween was not erased")
 	if card.has("medal_outgoing_tween"):
@@ -114,10 +114,10 @@ func _run() -> void:
 	}
 	var medal_center := medal.get_global_rect().get_center()
 	var medal_positions: Array[Vector2] = [medal_center]
-	if not bool(scene.call("_event_positions_inside_activity_stat_box", elite_heavenly_card, "__medal__", medal_positions)):
+	if not bool(scene.call("_skill_detail_surface").call("_event_positions_inside_activity_stat_box", elite_heavenly_card, "__medal__", medal_positions)):
 		_record("Elite Heavenly medal release was not accepted as a medal hit")
 	var off_medal_positions: Array[Vector2] = [Vector2(20, 20)]
-	if bool(scene.call("_event_positions_inside_activity_stat_box", elite_heavenly_card, "__medal__", off_medal_positions)):
+	if bool(scene.call("_skill_detail_surface").call("_event_positions_inside_activity_stat_box", elite_heavenly_card, "__medal__", off_medal_positions)):
 		_record("Off-medal release was incorrectly accepted as a medal hit")
 	medal.queue_free()
 
@@ -157,12 +157,12 @@ func _run() -> void:
 	scene.set("action_cards", action_cards)
 	var fishing_medal_center := fishing_medal.get_global_rect().get_center()
 	var press_event := _mouse_button_event(fishing_medal_center, true)
-	if not bool(scene.call("_on_fishing_method_button_input", press_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
+	if not bool(scene.call("_fishing_ui_surface")._on_fishing_method_button_input(press_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
 		_record("Fishing medal press was not handled")
 	if str(fishing_button.get_meta("fishing_method_press_kind", "")) != "__medal__":
 		_record("Fishing medal press did not store medal press kind")
 	var release_event := _mouse_button_event(fishing_medal_center, false)
-	if not bool(scene.call("_on_fishing_method_button_input", release_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
+	if not bool(scene.call("_fishing_ui_surface")._on_fishing_method_button_input(release_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
 		_record("Fishing medal release was not handled")
 	if fishing_button.has_meta("fishing_method_press_kind"):
 		_record("Fishing medal press kind was not cleared after release")

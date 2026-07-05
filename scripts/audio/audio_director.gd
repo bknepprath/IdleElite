@@ -1,5 +1,4 @@
 extends Node
-class_name AudioDirector
 
 const DEFAULT_BUTTON_SFX_DEBOUNCE_MSEC := 180
 const DEFAULT_BUTTON_SFX_PATH := "res://assets/sfx/Sample_0029 bowling ui snap.wav"
@@ -298,7 +297,7 @@ func _host_string(property_name: String) -> String:
 	return str(host.get(property_name)) if host != null else ""
 
 func _host_activity_streak_count() -> int:
-	return int(host.get("activity_streak_count")) if host != null else 0
+	return int(host._action_runtime().activity_streak_count) if host != null else 0
 
 func _host_dict(property_name: String) -> Dictionary:
 	var value = host.get(property_name) if host != null else {}
@@ -1409,7 +1408,7 @@ func _music_flow_target_intensity() -> int:
 		return 0
 	var effective_heat := flow_heat + float(_host_activity_streak_count()) * 0.72 - flow_failure_drag
 	var intensity := 1
-	if effective_heat >= 15.0 or _host_activity_streak_count() >= ACTIVITY_STREAK_BONUS_STEP or _active_action_stamina_cost() >= 4:
+	if effective_heat >= 15.0 or _host_activity_streak_count() >= ACTIVITY_STREAK_BONUS_STEP or (float(host._action_runtime()._active_action_stamina_cost()) if host != null else 0.0) >= 4:
 		intensity = 2
 	if music_ultimate_boost_seconds > 0.0 and effective_heat >= 11.0:
 		intensity = 3
@@ -1418,10 +1417,6 @@ func _music_flow_target_intensity() -> int:
 	if flow_failure_drag >= 2.7:
 		intensity = maxi(0, intensity - 1)
 	return intensity
-
-
-func _active_action_stamina_cost() -> float:
-	return float(host.call("_active_action_stamina_cost")) if host != null else 0.0
 
 func _music_targets_for_intensity(intensity: int) -> Array:
 	match intensity:

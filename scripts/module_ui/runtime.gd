@@ -16,6 +16,35 @@ const VALID_PREFIXES := [
 const SORT_LEVEL := "level"
 const SORT_LEVEL_REVERSE := "level_reverse"
 const COLLAPSE_SAVE_VERSION := 3
+const MODULE_PIN_ICON_TEXTURE := "res://assets/content/ui/navigation-controls/pin.png"
+const MODULE_PIN_COLOR_TEXTURES := [
+	"res://assets/content/ui/navigation-controls/pin-color/pin-color-blue.png",
+	"res://assets/content/ui/navigation-controls/pin-color/pin-color-green.png",
+	"res://assets/content/ui/navigation-controls/pin-color/pin-color-orange.png",
+	"res://assets/content/ui/navigation-controls/pin-color/pin-color-pink.png",
+	"res://assets/content/ui/navigation-controls/pin-color/pin-color-purple.png",
+	"res://assets/content/ui/navigation-controls/pin-color/pin-color-red.png",
+	"res://assets/content/ui/navigation-controls/pin-color/pin-color-teal.png",
+	"res://assets/content/ui/navigation-controls/pin-color/pin-color-yellow.png",
+]
+const MODULE_PIN_BADGE_SIZE := Vector2(320, 320)
+const MODULE_PIN_BADGE_HIT_MIN := Vector2(35, 2)
+const MODULE_PIN_BADGE_HIT_MAX := Vector2(284, 316)
+const MODULE_PIN_BADGE_CLIP_ORIGIN := Vector2(-220, -330)
+const MODULE_PIN_BADGE_CLIP_SIZE := Vector2(520, 388)
+const MODULE_PIN_BADGE_SETTLED_POSITION := Vector2(198, 128)
+const MODULE_PIN_BADGE_PULL_OUT_POSITION := Vector2(236, 14)
+const MODULE_PIN_CONFIRM_ANIMATION_SECONDS := 0.315
+const MODULE_PIN_UNPIN_ANIMATION_SECONDS := 0.27
+const MODULE_PIN_SOURCE_PRUNE_HOLD_SECONDS := 4.0
+const MODULE_PIN_BADGE_Z_INDEX := 350
+const MODULE_PIN_CONFIRM_STILL_SECONDS := 0.07
+const MODULE_PIN_CONFIRM_ANTICIPATION_SECONDS := 0.075
+const MODULE_PIN_CONFIRM_TURNAROUND_SECONDS := 0.03
+const MODULE_PIN_CONFIRM_POKE_SECONDS := 0.14
+const MODULE_PIN_CONFIRM_APPEAR_OFFSET := Vector2(26, -78)
+const MODULE_PIN_CONFIRM_ANTICIPATION_OFFSET := Vector2(34, -104)
+const MODULE_PIN_EXIT_LIFT_OFFSET := Vector2(9, -29)
 
 var pinned_order: Array = []
 var pin_color_paths := {}
@@ -24,6 +53,21 @@ var sort_mode := SORT_LEVEL
 var combo_first := false
 var collection_first := false
 var pin_preview_tokens := {}
+var recent_pin_prune_hold_skill_id := ""
+var recent_pin_prune_hold_track_id := ""
+var recent_pin_prune_hold_until_msec := 0
+var module_ui_pin_press_active := false
+var module_ui_pin_press_module_key := ""
+var module_ui_pin_press_card_host_id := 0
+var module_ui_pin_press_position := Vector2.ZERO
+var module_ui_pin_press_touch_index := -1
+var module_ui_pin_press_dragged := false
+var module_ui_collapse_press_active := false
+var module_ui_collapse_press_module_key := ""
+var module_ui_collapse_press_card_host_id := 0
+var module_ui_collapse_press_position := Vector2.ZERO
+var module_ui_collapse_press_touch_index := -1
+var module_ui_collapse_press_dragged := false
 
 
 static func normalize(value: Variant) -> String:
@@ -150,6 +194,221 @@ static func normalized_sort_mode(value: Variant) -> String:
 			return SORT_LEVEL
 
 
+static func press_event_position(event: InputEvent) -> Vector2:
+	if event is InputEventMouseButton:
+		return (event as InputEventMouseButton).global_position
+	if event is InputEventMouseMotion:
+		return (event as InputEventMouseMotion).global_position
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).position
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).position
+	return Vector2.INF
+
+
+static func press_event_is_release(event: InputEvent) -> bool:
+	if event is InputEventMouseButton:
+		var mouse_event := event as InputEventMouseButton
+		return mouse_event.button_index == MOUSE_BUTTON_LEFT and not mouse_event.pressed
+	if event is InputEventScreenTouch:
+		return not (event as InputEventScreenTouch).pressed
+	return false
+
+
+static func press_touch_index_for_event(event: InputEvent) -> int:
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).index
+	return -1
+
+
+static func action_is_collection_module(owner_skill_id: String, action: Dictionary) -> bool:
+	return (
+		owner_skill_id == "woodcutting"
+		and str(action.get("kind", "")) == "passive_item_collect"
+		and int(action.get("unlock", 0)) == 2
+	)
+
+
+static func action_is_combo_module(owner_skill_id: String, action: Dictionary, unlock_requirements := Callable()) -> bool:
+	if action.is_empty():
+		return false
+	var combo_tags = action.get("combo_tags", [])
+	if typeof(combo_tags) == TYPE_ARRAY and not (combo_tags as Array).is_empty():
+		return true
+	var display_tags = action.get("display_tags", [])
+	if typeof(display_tags) == TYPE_ARRAY:
+		for raw_tag in display_tags:
+			if str(raw_tag).to_lower() == "combo":
+				return true
+	var xp_rewards = action.get("xp_rewards", {})
+	if typeof(xp_rewards) == TYPE_DICTIONARY and (xp_rewards as Dictionary).size() > 1:
+		return true
+	if not unlock_requirements.is_valid():
+		return false
+	for raw_requirement in unlock_requirements.call(owner_skill_id, action):
+		if typeof(raw_requirement) != TYPE_DICTIONARY:
+			continue
+		var requirement := raw_requirement as Dictionary
+		if str(requirement.get("skill", owner_skill_id)) != owner_skill_id:
+			return true
+	return false
+
+
+func pin_press_active() -> bool:
+	return module_ui_pin_press_active
+
+
+func pin_press_module_key() -> String:
+	return module_ui_pin_press_module_key
+
+
+func collapse_press_active() -> bool:
+	return module_ui_collapse_press_active
+
+
+func begin_module_pin_press(module_key: String, card_host_id: int, press_position: Vector2, touch_index: int, allow_key: Callable) -> bool:
+	var normalized_key := normalize(module_key)
+	if not _allowed(normalized_key, allow_key):
+		return false
+	module_ui_pin_press_active = true
+	module_ui_pin_press_module_key = normalized_key
+	module_ui_pin_press_card_host_id = card_host_id
+	module_ui_pin_press_position = press_position
+	module_ui_pin_press_touch_index = touch_index
+	module_ui_pin_press_dragged = false
+	return true
+
+
+func update_pending_module_pin_press(event: InputEvent, tap_slop: float, drag_suppressed: bool, commit_tap: Callable) -> bool:
+	if not module_ui_pin_press_active:
+		return false
+	if not module_pin_press_event_belongs_to_active_press(event):
+		return false
+	var event_position := press_event_position(event)
+	var is_release := press_event_is_release(event)
+	var is_motion := event is InputEventMouseMotion or event is InputEventScreenDrag
+	if event_position != Vector2.INF and (is_motion or is_release):
+		update_pending_module_pin_drag_at_position(event_position, tap_slop, drag_suppressed)
+	if not is_release:
+		return false
+	var should_commit := (
+		not module_ui_pin_press_dragged
+		and event_position != Vector2.INF
+		and event_position.distance_to(module_ui_pin_press_position) <= tap_slop
+	)
+	var module_key := module_ui_pin_press_module_key
+	var card_host_id := module_ui_pin_press_card_host_id
+	clear_module_pin_press()
+	if should_commit and commit_tap.is_valid():
+		commit_tap.call(module_key, card_host_id)
+	return true
+
+
+func update_pending_module_pin_drag(event: InputEvent, tap_slop: float, drag_suppressed: bool) -> void:
+	var event_position := press_event_position(event)
+	if event_position == Vector2.INF:
+		return
+	update_pending_module_pin_drag_at_position(event_position, tap_slop, drag_suppressed)
+
+
+func update_pending_module_pin_drag_at_position(event_position: Vector2, tap_slop: float, drag_suppressed: bool) -> void:
+	if not module_ui_pin_press_active:
+		return
+	if event_position.distance_to(module_ui_pin_press_position) > tap_slop or drag_suppressed:
+		module_ui_pin_press_dragged = true
+
+
+func module_pin_press_event_belongs_to_active_press(event: InputEvent) -> bool:
+	if module_ui_pin_press_touch_index < 0:
+		return event is InputEventMouseButton or event is InputEventMouseMotion
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).index == module_ui_pin_press_touch_index
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).index == module_ui_pin_press_touch_index
+	return false
+
+
+func clear_module_pin_press() -> void:
+	module_ui_pin_press_active = false
+	module_ui_pin_press_module_key = ""
+	module_ui_pin_press_card_host_id = 0
+	module_ui_pin_press_position = Vector2.ZERO
+	module_ui_pin_press_touch_index = -1
+	module_ui_pin_press_dragged = false
+
+
+func begin_module_collapse_press(module_key: String, card_host_id: int, press_position: Vector2, touch_index: int, allow_key: Callable) -> bool:
+	var normalized_key := normalize(module_key)
+	if not _allowed(normalized_key, allow_key):
+		return false
+	module_ui_collapse_press_active = true
+	module_ui_collapse_press_module_key = normalized_key
+	module_ui_collapse_press_card_host_id = card_host_id
+	module_ui_collapse_press_position = press_position
+	module_ui_collapse_press_touch_index = touch_index
+	module_ui_collapse_press_dragged = false
+	return true
+
+
+func update_pending_module_collapse_press(event: InputEvent, tap_slop: float, drag_suppressed: bool, click_suppressed: bool, commit_tap: Callable) -> bool:
+	if not module_ui_collapse_press_active:
+		return false
+	if not module_collapse_press_event_belongs_to_active_press(event):
+		return false
+	var event_position := press_event_position(event)
+	var is_release := press_event_is_release(event)
+	var is_motion := event is InputEventMouseMotion or event is InputEventScreenDrag
+	if event_position != Vector2.INF and (is_motion or is_release):
+		update_pending_module_collapse_drag_at_position(event_position, tap_slop, drag_suppressed)
+	if not is_release:
+		return false
+	var should_commit := (
+		not module_ui_collapse_press_dragged
+		and event_position != Vector2.INF
+		and event_position.distance_to(module_ui_collapse_press_position) <= tap_slop
+		and not click_suppressed
+	)
+	var pressed_module_key := module_ui_collapse_press_module_key
+	var pressed_card_host_id := module_ui_collapse_press_card_host_id
+	clear_module_collapse_press()
+	if should_commit and commit_tap.is_valid():
+		commit_tap.call(pressed_module_key, pressed_card_host_id)
+	return true
+
+
+func update_pending_module_collapse_drag(event: InputEvent, tap_slop: float, drag_suppressed: bool) -> void:
+	var event_position := press_event_position(event)
+	if event_position == Vector2.INF:
+		return
+	update_pending_module_collapse_drag_at_position(event_position, tap_slop, drag_suppressed)
+
+
+func update_pending_module_collapse_drag_at_position(event_position: Vector2, tap_slop: float, drag_suppressed: bool) -> void:
+	if not module_ui_collapse_press_active:
+		return
+	if event_position.distance_to(module_ui_collapse_press_position) > tap_slop or drag_suppressed:
+		module_ui_collapse_press_dragged = true
+
+
+func module_collapse_press_event_belongs_to_active_press(event: InputEvent) -> bool:
+	if module_ui_collapse_press_touch_index < 0:
+		return event is InputEventMouseButton or event is InputEventMouseMotion
+	if event is InputEventScreenTouch:
+		return (event as InputEventScreenTouch).index == module_ui_collapse_press_touch_index
+	if event is InputEventScreenDrag:
+		return (event as InputEventScreenDrag).index == module_ui_collapse_press_touch_index
+	return false
+
+
+func clear_module_collapse_press() -> void:
+	module_ui_collapse_press_active = false
+	module_ui_collapse_press_module_key = ""
+	module_ui_collapse_press_card_host_id = 0
+	module_ui_collapse_press_position = Vector2.ZERO
+	module_ui_collapse_press_touch_index = -1
+	module_ui_collapse_press_dragged = false
+
+
 func reset() -> void:
 	pinned_order.clear()
 	pin_color_paths.clear()
@@ -158,6 +417,11 @@ func reset() -> void:
 	combo_first = false
 	collection_first = false
 	pin_preview_tokens.clear()
+	recent_pin_prune_hold_skill_id = ""
+	recent_pin_prune_hold_track_id = ""
+	recent_pin_prune_hold_until_msec = 0
+	clear_module_pin_press()
+	clear_module_collapse_press()
 
 
 func set_sort_mode(next_mode: String) -> bool:
@@ -183,13 +447,13 @@ func toggle_sort_priority(priority_kind: String) -> bool:
 	return true
 
 
-func sort_detail_entries(entries: Array, skill_id: String, level_sort_value: Callable, combo_module: Callable, collection_module: Callable) -> Array:
+func sort_detail_entries(entries: Array, skill_id: String, level_sort_value: Callable, unlock_requirements: Callable) -> Array:
 	if entries.size() > 1:
-		entries.sort_custom(func(left, right): return _detail_entry_sort_less(left, right, skill_id, level_sort_value, combo_module, collection_module))
+		entries.sort_custom(func(left, right): return _detail_entry_sort_less(left, right, skill_id, level_sort_value, unlock_requirements))
 	return entries
 
 
-func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: float, level_sort_value: Callable, combo_module: Callable, collection_module: Callable) -> Array:
+func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: float, level_sort_value: Callable, unlock_requirements: Callable) -> Array:
 	if plan.size() > 1:
 		plan.sort_custom(func(left, right):
 			return _detail_entry_sort_less(
@@ -197,8 +461,7 @@ func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: flo
 				_lazy_entry_detail_sort_proxy(right as Dictionary),
 				skill_id,
 				level_sort_value,
-				combo_module,
-				collection_module
+				unlock_requirements
 			)
 		)
 	var y := 0.0
@@ -212,6 +475,22 @@ func sort_fishing_lazy_plan(plan: Array, skill_id: String, stack_separation: flo
 func is_collapsed(module_key: String, allow_key: Callable) -> bool:
 	var key := normalize(module_key)
 	return _allowed(key, allow_key) and bool(collapsed.get(key, false))
+
+
+func collapse_key(module_key: String, allow_key: Callable) -> String:
+	var key := normalize(module_key)
+	if not _allowed(key, allow_key) or bool(collapsed.get(key, false)):
+		return ""
+	collapsed[key] = true
+	return key
+
+
+func expand_key(module_key: String) -> String:
+	var key := normalize(module_key)
+	if key.is_empty():
+		return ""
+	collapsed.erase(key)
+	return key
 
 
 func is_pinned(module_key: String, allow_key: Callable) -> bool:
@@ -256,6 +535,67 @@ func clear_pin_texture_path(module_key: String) -> void:
 	var key := normalize(module_key)
 	if not key.is_empty():
 		pin_color_paths.erase(key)
+
+
+func pin_module_key(module_key: String, skill_id: String, valid_paths: Array, fallback_path: String) -> void:
+	var key := normalize(module_key)
+	if key.is_empty():
+		return
+	assign_random_pin_texture_path(key, valid_paths, fallback_path)
+	pinned_order.append(key)
+	hold_recent_pinned_source(key, skill_id)
+	pin_preview_tokens.erase(key)
+
+
+func unpin_module_key(module_key: String, skill_id: String) -> void:
+	var key := normalize(module_key)
+	if key.is_empty():
+		return
+	hold_recent_pinned_source(key, skill_id)
+	pinned_order.erase(key)
+	clear_pin_texture_path(key)
+	pin_preview_tokens.erase(key)
+
+
+func clear_pin_preview_token(module_key: String) -> void:
+	var key := normalize(module_key)
+	if not key.is_empty():
+		pin_preview_tokens.erase(key)
+
+
+func hold_recent_pinned_source(module_key: String, skill_id: String) -> void:
+	var track_id := lazy_track_id(module_key, skill_id)
+	if track_id.is_empty():
+		return
+	recent_pin_prune_hold_skill_id = skill_id
+	recent_pin_prune_hold_track_id = track_id
+	recent_pin_prune_hold_until_msec = Time.get_ticks_msec() + int(round(MODULE_PIN_SOURCE_PRUNE_HOLD_SECONDS * 1000.0))
+
+
+func preview_pinned_track_ids(skill_id: String) -> Array:
+	var track_ids: Array = []
+	for raw_module_key in pin_preview_tokens.keys():
+		if int(pin_preview_tokens.get(raw_module_key, 0)) <= 0:
+			continue
+		var preview_track_id := lazy_track_id(str(raw_module_key), skill_id)
+		if not preview_track_id.is_empty():
+			track_ids.append(preview_track_id)
+	return track_ids
+
+
+func recent_pinned_track_id(skill_id: String) -> String:
+	var now_msec := Time.get_ticks_msec()
+	if (
+		not recent_pin_prune_hold_track_id.is_empty()
+		and recent_pin_prune_hold_skill_id == skill_id
+		and now_msec < recent_pin_prune_hold_until_msec
+	):
+		return recent_pin_prune_hold_track_id
+	if now_msec >= recent_pin_prune_hold_until_msec:
+		recent_pin_prune_hold_skill_id = ""
+		recent_pin_prune_hold_track_id = ""
+		recent_pin_prune_hold_until_msec = 0
+	return ""
 
 
 func apply_pin_badge_texture(badge: TextureButton, module_key: String, valid_paths: Array, fallback_path: String, texture_for_path: Callable) -> void:
@@ -342,11 +682,11 @@ static func _prefix(prefix: String, id: String) -> String:
 	return "" if id.is_empty() else "%s%s" % [prefix, id]
 
 
-func _detail_entry_priority_bucket(entry: Dictionary, skill_id: String, combo_module: Callable, collection_module: Callable) -> int:
+func _detail_entry_priority_bucket(entry: Dictionary, skill_id: String, unlock_requirements: Callable) -> int:
 	var action := entry.get("action", {}) as Dictionary
-	if combo_first and not action.is_empty() and bool(combo_module.call(skill_id, action)):
+	if combo_first and not action.is_empty() and ModuleUiRuntime.action_is_combo_module(skill_id, action, unlock_requirements):
 		return 0
-	if collection_first and not action.is_empty() and bool(collection_module.call(skill_id, action)):
+	if collection_first and not action.is_empty() and ModuleUiRuntime.action_is_collection_module(skill_id, action):
 		return 1 if combo_first else 0
 	return 2 if combo_first or collection_first else 0
 
@@ -365,15 +705,15 @@ func _detail_entry_tiebreaker(entry: Dictionary) -> String:
 	return "%09d:%s" % [int(action.get("database_order", action.get("unlock", 0))), str(action.get("id", ""))]
 
 
-func _detail_entry_sort_less(left: Variant, right: Variant, skill_id: String, level_sort_value: Callable, combo_module: Callable, collection_module: Callable) -> bool:
+func _detail_entry_sort_less(left: Variant, right: Variant, skill_id: String, level_sort_value: Callable, unlock_requirements: Callable) -> bool:
 	if typeof(left) != TYPE_DICTIONARY:
 		return false
 	if typeof(right) != TYPE_DICTIONARY:
 		return true
 	var left_entry := left as Dictionary
 	var right_entry := right as Dictionary
-	var left_bucket := _detail_entry_priority_bucket(left_entry, skill_id, combo_module, collection_module)
-	var right_bucket := _detail_entry_priority_bucket(right_entry, skill_id, combo_module, collection_module)
+	var left_bucket := _detail_entry_priority_bucket(left_entry, skill_id, unlock_requirements)
+	var right_bucket := _detail_entry_priority_bucket(right_entry, skill_id, unlock_requirements)
 	if left_bucket != right_bucket:
 		return left_bucket < right_bucket
 	var left_level := int(level_sort_value.call(left_entry, skill_id))

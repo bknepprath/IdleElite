@@ -219,7 +219,7 @@ func _expect_no_preview_content(stats: Dictionary, context: String, scene: Node)
 
 func _select_skill_from_menu(scene: Node, skill_id: String) -> void:
 	scene.set("current_screen", "menu")
-	var render = scene.call("_render_screen", false, -1, false)
+	var render = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render != null:
 		await render
 	for _i in range(SETTLE_FRAMES):
@@ -236,7 +236,7 @@ func _force_idle_preview_prewarm(scene: Node) -> void:
 	var next_token := int(preview_surface.get("preview_prewarm_token")) + 1
 	preview_surface.set("preview_prewarm_token", next_token)
 	preview_surface.set("preview_prewarm_pending", true)
-	var prewarm_result = scene.call("_prewarm_skill_swipe_neighbor_previews", "build", next_token)
+	var prewarm_result = await preview_surface.call("_prewarm_skill_swipe_neighbor_previews", "build", next_token)
 	if prewarm_result != null:
 		await prewarm_result
 	for _i in range(SETTLE_FRAMES):
@@ -327,12 +327,12 @@ func _run_real_input_swipe_reverse(scene: Node) -> void:
 func _run_direct_swipe(scene: Node, reverse := false) -> void:
 	var start := Vector2(900.0, 520.0)
 	var end := start + (Vector2(640.0, 0.0) if reverse else Vector2(-640.0, 0.0))
-	scene.call("_begin_skill_swipe_tracking", start, -1)
+	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", start, -1)
 	for step in range(24):
 		var t := float(step + 1) / 24.0
-		scene.call("_update_skill_swipe_feedback", start.lerp(end, t))
+		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", start.lerp(end, t))
 		await _wait_test_frame()
-	scene.call("_finish_skill_swipe", end)
+	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", end)
 
 
 func _wait_for_first_uncovered_woodcutting_frame(scene: Node) -> Dictionary:

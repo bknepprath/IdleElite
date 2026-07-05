@@ -1,6 +1,3 @@
-class_name PaperButtonStyles
-
-
 static func paper_button_style_with_shape(color: Color, radius: int, margin: int, pressed: bool, disabled: bool, outline_color: Color, bevel_side_lift: float, cache: Dictionary, dark_mode: bool, outline_width: float, theme_surface: Callable, theme_outline: Callable, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
 	var themed_color: Color = theme_surface.call(color)
 	var themed_outline: Color = theme_outline.call(outline_color, color)

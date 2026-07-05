@@ -174,8 +174,7 @@ func _run() -> void:
 		await render_result
 	for _frame in range(30):
 		_hide_boot_overlay_for_capture(scene)
-		if scene.has_method("_sync_detail_lazy_visible_cards"):
-			scene.call("_sync_detail_lazy_visible_cards", true, -1)
+		_sync_detail_lazy_visible_cards(scene)
 		if scene.has_method("_update_ui"):
 			scene.call("_update_ui", 0.0, true)
 		await process_frame
@@ -184,7 +183,7 @@ func _run() -> void:
 			_fail("could not scroll real Woodcutting screen to firepit")
 			return
 		if capture_xp_popup:
-			scene.call("_award_firepit_burn_xp", 1)
+			scene.call("_passive_modules_runtime").call("award_firepit_burn_xp", 1)
 			for _xp_frame in range(44):
 				_hide_boot_overlay_for_capture(scene)
 				if scene.has_method("_update_ui"):
@@ -207,8 +206,7 @@ func _run() -> void:
 				await process_frame
 	for _frame in range(12):
 		_hide_boot_overlay_for_capture(scene)
-		if scene.has_method("_sync_detail_lazy_visible_cards"):
-			scene.call("_sync_detail_lazy_visible_cards", true, -1)
+		_sync_detail_lazy_visible_cards(scene)
 		if scene.has_method("_update_ui"):
 			scene.call("_update_ui", 0.0, true)
 		await process_frame
@@ -301,8 +299,7 @@ func _scroll_real_screen_to_firepit(scene: Node) -> bool:
 			await native_scroll
 		for _native_settle in range(24):
 			_hide_boot_overlay_for_capture(scene)
-			if scene.has_method("_sync_detail_lazy_visible_cards"):
-				scene.call("_sync_detail_lazy_visible_cards", true, -1)
+			_sync_detail_lazy_visible_cards(scene)
 			if scene.has_method("_update_ui"):
 				scene.call("_update_ui", 0.0, true)
 			await process_frame
@@ -315,8 +312,7 @@ func _scroll_real_screen_to_firepit(scene: Node) -> bool:
 			_set_scroll_vertical(scroll, int(raw_target))
 			for _target_settle in range(18):
 				_hide_boot_overlay_for_capture(scene)
-				if scene.has_method("_sync_detail_lazy_visible_cards"):
-					scene.call("_sync_detail_lazy_visible_cards", true, -1)
+				_sync_detail_lazy_visible_cards(scene)
 				if scene.has_method("_update_ui"):
 					scene.call("_update_ui", 0.0, true)
 				await process_frame
@@ -325,8 +321,7 @@ func _scroll_real_screen_to_firepit(scene: Node) -> bool:
 				pass
 	for attempt in range(48):
 		_hide_boot_overlay_for_capture(scene)
-		if scene.has_method("_sync_detail_lazy_visible_cards"):
-			scene.call("_sync_detail_lazy_visible_cards", true, -1)
+		_sync_detail_lazy_visible_cards(scene)
 		if scene.has_method("_update_ui"):
 			scene.call("_update_ui", 0.0, true)
 		await process_frame
@@ -339,8 +334,7 @@ func _scroll_real_screen_to_firepit(scene: Node) -> bool:
 			_set_scroll_vertical(scroll, raw_target_scroll)
 			for _settle in range(18):
 				_hide_boot_overlay_for_capture(scene)
-				if scene.has_method("_sync_detail_lazy_visible_cards"):
-					scene.call("_sync_detail_lazy_visible_cards", true, -1)
+				_sync_detail_lazy_visible_cards(scene)
 				if scene.has_method("_update_ui"):
 					scene.call("_update_ui", 0.0, true)
 				await process_frame
@@ -367,6 +361,14 @@ func _control_is_in_capture_view(scroll: ScrollContainer, control: Control) -> b
 		and rect.position.y < viewport.position.y + viewport.size.y - 160.0
 		and rect.end.y > viewport.position.y + 80.0
 	)
+
+
+func _sync_detail_lazy_visible_cards(scene: Node) -> void:
+	if not scene.has_method("_skill_detail_surface"):
+		return
+	var detail_surface = scene.call("_skill_detail_surface")
+	if detail_surface != null and detail_surface.has_method("_sync_detail_lazy_visible_cards"):
+		detail_surface.call("_sync_detail_lazy_visible_cards", true, -1)
 
 
 func _set_scroll_vertical(scroll: ScrollContainer, target_scroll: int) -> void:

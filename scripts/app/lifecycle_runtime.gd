@@ -1,12 +1,244 @@
 extends RefCounted
 
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
+const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
+const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
 
 var host
+var lazy_overlays_built := {}
 
 
 func _init(host_ref) -> void:
 	host = host_ref
+
+
+func lazy_overlay_built(key: String) -> bool:
+	return bool(lazy_overlays_built.get(key, false))
+
+
+func mark_lazy_overlay_built(key: String) -> void:
+	lazy_overlays_built[key] = true
+
+
+func clear_lazy_overlay_registry() -> void:
+	lazy_overlays_built.clear()
+
+
+func state_object_ref(value) -> Object:
+	if value == null:
+		return null
+	if typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
+		return null
+	return value
+
+
+func valid_control_ref(value) -> Control:
+	var object := state_object_ref(value)
+	if object == null:
+		return null
+	return object as Control
+
+
+func valid_texture_button_ref(value) -> TextureButton:
+	var control := valid_control_ref(value)
+	if control == null:
+		return null
+	return control as TextureButton
+
+
+func valid_node_ref(value) -> Node:
+	var object := state_object_ref(value)
+	if object == null:
+		return null
+	return object as Node
+
+
+func valid_canvas_item_ref(value) -> CanvasItem:
+	var object := state_object_ref(value)
+	if object == null:
+		return null
+	return object as CanvasItem
+
+
+func valid_texture_rect_ref(value) -> TextureRect:
+	var control := valid_control_ref(value)
+	if control == null:
+		return null
+	return control as TextureRect
+
+
+func valid_texture_progress_ref(value) -> TextureProgressBar:
+	var control := valid_control_ref(value)
+	if control == null:
+		return null
+	return control as TextureProgressBar
+
+
+func valid_label_ref(value) -> Label:
+	var control := valid_control_ref(value)
+	if control == null:
+		return null
+	return control as Label
+
+
+func valid_base_button_ref(value) -> BaseButton:
+	var object := state_object_ref(value)
+	if object == null:
+		return null
+	return object as BaseButton
+
+
+func valid_button_ref(value) -> Button:
+	var control := valid_control_ref(value)
+	if control == null:
+		return null
+	return control as Button
+
+
+func meta_vector2(node: Object, meta_name, fallback: Vector2 = Vector2.ZERO) -> Vector2:
+	if node == null or not is_instance_valid(node) or not node.has_meta(meta_name):
+		return fallback
+	var value = node.get_meta(meta_name)
+	if value is Vector2:
+		return value
+	return fallback
+
+
+func weak_object_ref(value) -> WeakRef:
+	var object := state_object_ref(value)
+	if object == null:
+		return null
+	return weakref(object)
+
+
+func weak_ref_value(weak_ref: WeakRef) -> Variant:
+	if weak_ref == null:
+		return null
+	return weak_ref.get_ref()
+
+
+func control_effectively_visible(control: Control, minimum_alpha := 0.05) -> bool:
+	if control == null or not is_instance_valid(control) or not control.is_visible_in_tree():
+		return false
+	var alpha := 1.0
+	var current: Node = control
+	while current != null:
+		if current is CanvasItem:
+			var canvas_item := current as CanvasItem
+			alpha *= canvas_item.modulate.a
+			if alpha <= minimum_alpha:
+				return false
+		current = current.get_parent()
+	return true
+
+
+func set_label_text_if_changed(label: Label, next_text: String) -> void:
+	if label != null and label.text != next_text:
+		label.text = next_text
+
+
+func set_button_text_if_changed(button: Button, next_text: String) -> void:
+	if button != null and button.text != next_text:
+		button.text = next_text
+
+
+func colors_close_enough(current: Color, next: Color) -> bool:
+	return (
+		absf(current.r - next.r) <= 0.001
+		and absf(current.g - next.g) <= 0.001
+		and absf(current.b - next.b) <= 0.001
+		and absf(current.a - next.a) <= 0.001
+	)
+
+
+func set_canvas_item_visible_if_changed(item: CanvasItem, should_show: bool) -> void:
+	if item != null and is_instance_valid(item) and not item.is_queued_for_deletion() and item.visible != should_show:
+		item.visible = should_show
+
+
+func set_canvas_item_modulate_if_changed(item: CanvasItem, next_modulate: Color) -> void:
+	if item != null and is_instance_valid(item) and not item.is_queued_for_deletion() and not colors_close_enough(item.modulate, next_modulate):
+		item.modulate = next_modulate
+
+
+func set_canvas_item_alpha_if_changed(item: CanvasItem, next_alpha: float) -> void:
+	if item == null or not is_instance_valid(item) or item.is_queued_for_deletion():
+		return
+	var clamped_alpha := clampf(next_alpha, 0.0, 1.0)
+	if absf(item.modulate.a - clamped_alpha) <= 0.001:
+		return
+	var next_modulate := item.modulate
+	next_modulate.a = clamped_alpha
+	item.modulate = next_modulate
+
+
+func set_base_button_disabled_if_changed(button: BaseButton, should_disable: bool) -> void:
+	if button != null and is_instance_valid(button) and not button.is_queued_for_deletion() and button.disabled != should_disable:
+		button.disabled = should_disable
+
+
+func set_canvas_item_alpha_safe(alpha: float, canvas_item_id: int) -> void:
+	var canvas_item := valid_canvas_item_ref(instance_from_id(canvas_item_id))
+	if canvas_item == null or canvas_item.is_queued_for_deletion():
+		return
+	set_canvas_item_alpha_if_changed(canvas_item, alpha)
+
+
+func set_control_minimum_height_safe(height: float, control_id: int) -> void:
+	var control := valid_control_ref(instance_from_id(control_id))
+	if control == null or control.is_queued_for_deletion():
+		return
+	set_control_minimum_height(control, height)
+
+
+func set_control_minimum_height(control: Control, height: float) -> void:
+	if control == null or not is_instance_valid(control) or control.is_queued_for_deletion():
+		return
+	var clamped_height := maxf(0.0, height)
+	var next_minimum_size := control.custom_minimum_size
+	var changed := absf(next_minimum_size.y - clamped_height) > 0.5
+	if changed:
+		next_minimum_size.y = clamped_height
+		control.custom_minimum_size = next_minimum_size
+	if clamped_height <= 1.0 or control.size.y < clamped_height:
+		control.size.y = clamped_height
+		changed = true
+	if changed:
+		control.update_minimum_size()
+
+
+func process_background_maintenance(delta: float) -> void:
+	host.background_maintenance_elapsed += maxf(0.0, delta)
+	if host.background_maintenance_pending_delta <= 0.0:
+		if host.background_maintenance_elapsed < host.BACKGROUND_MAINTENANCE_INTERVAL_SECONDS:
+			return
+		host.background_maintenance_pending_delta = host.background_maintenance_elapsed
+		host.background_maintenance_elapsed = 0.0
+		host.background_maintenance_step_index = 0
+	var step_index: int = host.background_maintenance_step_index % host.BACKGROUND_MAINTENANCE_STEP_COUNT
+	process_background_maintenance_step(step_index, host.background_maintenance_pending_delta)
+	host.background_maintenance_step_index = step_index + 1
+	if host.background_maintenance_step_index >= host.BACKGROUND_MAINTENANCE_STEP_COUNT:
+		host.background_maintenance_step_index = 0
+		host.background_maintenance_pending_delta = 0.0
+
+
+func process_background_maintenance_step(step_index: int, maintenance_delta: float) -> void:
+	match step_index:
+		0:
+			host._crash_report_runtime().process_session_heartbeat(maintenance_delta)
+		1:
+			host._ad_bonus_runtime().process(maintenance_delta)
+		2:
+			host._passive_modules_runtime().process_passive_modules(host._unix_now())
+		3:
+			host._convergence_runtime()._process_convergence_modules()
+		4:
+			host._hub_surface()._process_hub_modules(maintenance_delta)
+		5:
+			host._thieving_surface()._process_thieving_action_jails()
+		6:
+			host._online_runtime().process(maintenance_delta)
 
 
 func handle_notification(what: int) -> void:
@@ -37,44 +269,34 @@ func _prepare_for_shutdown() -> void:
 	if _runtime_save_is_safe():
 		host.save_game()
 	host._crash_report_runtime().write_session_marker("clean")
-	host._clear_detail_lazy_cached_roots()
+	host._skill_detail_surface()._clear_detail_lazy_cached_roots()
 	host._skill_swipe_activity_surface()._free_global_swipe_real_card_cache()
-	host.pending_skill_detail_refresh_request.clear()
+	host._navigation_shell().pending_skill_detail_refresh_request.clear()
 	host.startup_initialized = false
 	host.deferred_skill_validation_pending = false
-	host.boot_warmup_cancel_requested = true
-	host.boot_warmup_active = false
-	host.boot_warmup_game_revealed = false
-	host.boot_warmup_show_msec = 0
-	host.boot_warmup_hide_requested = false
+	host._boot_warmup_runtime().reset_for_shutdown()
 	host._online_runtime()._chat_stream_disconnect(false)
-	host._kill_transient_tweens_in_subtree(host)
+	_kill_transient_tweens_in_subtree(host)
 	_kill_shutdown_global_tweens()
 	_kill_action_card_shutdown_tweens()
+	if host.achievement_overlay_surface != null:
+		host.achievement_overlay_surface.invalidate_home_page()
 	host._skill_swipe_activity_surface()._cancel_preview_prewarm()
 	host._skill_swipe_activity_surface().preview_module_reveal_token += 1
-	host.boot_warmup_layer = null
-	host.boot_warmup_overlay = null
-	host.boot_warmup_background = null
-	host.boot_warmup_splash = null
-	host.boot_warmup_shade = null
-	host.boot_warmup_footer = null
-	host.boot_warmup_label = null
-	host.boot_warmup_progress = null
-	host.boot_warmup_runtime = null
-	host.lazy_overlays_built.clear()
-	host.home_page_built = false
-	host.pending_post_load_saved_at = -1
-	host.pending_save_restore_data = {}
+	host.app_boot_warmup_runtime = null
+	clear_lazy_overlay_registry()
+	host._save_runtime().pending_post_load_saved_at = -1
+	host._save_runtime().pending_save_restore_data = {}
 	host._save_runtime().pending_save_has_achievement_toast_seen_ids = false
-	host.save_repaired_this_boot = false
-	host.leaderboard_http_built = false
+	host._save_runtime().save_repaired_this_boot = false
+	host._online_runtime().leaderboard_http_built = false
 	host.online_runtime = null
 	if host.audio_director != null and is_instance_valid(host.audio_director):
 		host.audio_director.reset_runtime_caches()
 	host.audio_director = null
-	host.action_stop_hold_layer = null
-	host.action_stop_hold_circle = null
+	var stop_hold_layer: Node = host.get_node_or_null("ActionStopHoldLayer")
+	if stop_hold_layer != null:
+		stop_hold_layer.queue_free()
 	host._achievement_toast_surface().reset_for_shutdown()
 	if host.settings_surface != null:
 		host.settings_surface._clear_notification_settings_notice_immediate()
@@ -83,38 +305,27 @@ func _prepare_for_shutdown() -> void:
 	host.tutorial_overlay = null
 	host._performance_runtime().clear_monitor_reference()
 	host.performance_runtime = null
-	host.chat_overlay_layer = null
-	host.chat_overlay = null
-	host.chat_overlay_body = null
-	host.chat_overlay_scroll = null
-	host.chat_overlay_list = null
-	host.chat_overlay_notice = null
-	host.chat_overlay_row_nodes.clear()
-	host.chat_overlay_row_signatures.clear()
-	host.chat_overlay_shell_ready = false
-	host.chat_profile_button = null
-	host.chat_stream_poll_timer = null
+	host._online_runtime().chat_stream_poll_timer = null
+	host._profile_chat_overlay_surface().reset_chat_overlay_refs()
 	host._profile_chat_overlay_surface()._reset_profile_overlay_refs()
-	host.fishing_collection_canvas = null
-	host.fishing_tool_wallet_canvas = null
-	host.fishing_tool_wallet_layer = null
-	host.fishing_tool_wallet_popup = null
+	host._fishing_ui_surface().clear_fishing_collection_canvas_cache()
+	host._fishing_ui_surface().reset_wallet_refs_for_shutdown()
 	host.home_page = null
 	host.skills_page = null
-	host.nav_bar = null
+	host._navigation_shell().nav_bar = null
 	host.content_scroll = null
-	host.home_scroll = null
+	if host.achievement_overlay_surface != null:
+		host.achievement_overlay_surface.reset_home_scroll_ref()
 	host.skills_content = null
-	host.texture_cache.clear()
-	host.atlas_texture_cache.clear()
-	host.AchievementPresentation.clear_cache()
+	host.visual_texture_cache.texture_cache.clear()
+	host.visual_texture_cache.atlas_texture_cache.clear()
+	AchievementPresentation.clear_cache()
 	host.paper_button_style_textures.clear()
 	ActivityCardStyles.clear_cache()
 	host.summary_style_cache = null
 	host._skill_swipe_activity_surface()._clear_light_preview_style_cache()
-	host.thieving_heist_feather_shader = null
+	host._thieving_surface().clear_visual_caches()
 	host.mastery_medal_dot_texture = null
-	host.thieving_action_jail_material = null
 	host.app_font = null
 	host.app_bold_font = null
 	if DisplayServer.get_name() == "headless" and host.is_inside_tree():
@@ -134,7 +345,7 @@ func _app_lifecycle_uses_focus_resume() -> bool:
 
 
 func _save_for_app_suspend() -> void:
-	host._clear_page_switch_input_state(true)
+	host._navigation_shell()._clear_page_switch_input_state(true)
 	host._audio_director()._pause_music_for_app_suspend()
 	if _runtime_save_is_safe():
 		host.save_game()
@@ -144,7 +355,7 @@ func _save_for_app_suspend() -> void:
 func _resume_from_app_suspend() -> void:
 	host._crash_report_runtime().write_session_marker("running")
 	host._performance_runtime()._record_battery_governor_activity()
-	host._clear_page_switch_input_state(true)
+	host._navigation_shell()._clear_page_switch_input_state(true)
 	if not host.startup_initialized:
 		host.app_resume_repair_pending = true
 		host._audio_director()._restart_music_after_app_resume()
@@ -153,7 +364,7 @@ func _resume_from_app_suspend() -> void:
 		host._audio_director()._restart_music_after_app_resume()
 		return
 	var now: int = host._unix_now()
-	var offline_progressed: bool = host._save_runtime()._apply_offline_progress(host.last_save_unix_time) > 0
+	var offline_progressed: bool = host._save_runtime()._apply_offline_progress(host._save_runtime().last_save_unix_time) > 0
 	if host.offline_progress_enabled:
 		host._passive_modules_runtime().apply_passive_module_production(now)
 		host._passive_modules_runtime().apply_firepit_fuel(now)
@@ -172,7 +383,7 @@ func _repair_after_app_resume():
 	if not host.startup_initialized:
 		host.app_resume_repair_pending = true
 		return
-	if host.boot_warmup_active or host.boot_detail_render_in_progress or host.screen_render_in_progress:
+	if host._boot_warmup_runtime().active or host.boot_detail_render_in_progress or host._navigation_shell().screen_render_in_progress:
 		host.app_resume_repair_pending = true
 		call_deferred("_repair_after_app_resume")
 		return
@@ -180,15 +391,15 @@ func _repair_after_app_resume():
 	if host.home_page == null or host.skills_page == null:
 		return
 	if host.current_screen != "home" and host.skills_content != null and host.skills_content.get_child_count() == 0:
-		await host._render_screen(false, -1, false)
+		await host._navigation_shell()._render_screen(false, -1, false)
 	elif host.current_screen == "skill":
 		var stack := host._detail_actions_stack() as Control
 		if stack == null or not host._skill_detail_stack_is_presentable(stack):
-			host._force_skill_detail_reveal_mount_under_cover()
+			host._skill_swipe_activity_surface()._force_skill_detail_reveal_mount_under_cover()
 			stack = host._detail_actions_stack() as Control
 			if stack == null or not host._skill_detail_stack_is_presentable(stack):
-				await host._refresh_visible_skill_detail_action_list(-1, host.selected_skill_id, true, true)
-	host._update_page_visibility()
+				await host._skill_detail_surface()._refresh_visible_skill_detail_action_list(-1, host.selected_skill_id, true, true)
+	host._navigation_shell()._update_page_visibility()
 	host._update_ui(0.0, true)
 	_queue_resume_redraw(host)
 
@@ -200,15 +411,49 @@ func _queue_resume_redraw(node: Node) -> void:
 		_queue_resume_redraw(child)
 
 
+func _kill_transient_tweens_in_subtree(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	if node is Control:
+		host._skill_detail_surface()._kill_detail_lazy_reveal_tween(node as Control)
+	_kill_meta_tween(node, "depress_tween")
+	if node is Button:
+		host._settings_surface()._kill_reset_data_feedback_tween(node as Button)
+	else:
+		_kill_meta_tween(node, "reset_feedback_tween")
+	_kill_meta_tween(node, "bonus_tween")
+	_kill_meta_tween(node, "bonus_content_tween")
+	_kill_meta_tween(node, "medal_ceremony_tween")
+	_kill_meta_tween(node, "medal_outgoing_tween")
+	_kill_meta_tween(node, "medal_tap_pop_tween")
+	_kill_meta_tween(node, "medal_tap_effect_tween")
+	_kill_meta_tween(node, "mastery_bar_tween")
+	_kill_meta_tween(node, "activity_crit_text_tween")
+	_kill_meta_tween(node, "hub_decor_pop_tween")
+	_kill_meta_tween(node, "mat_flyer_tween")
+	_kill_meta_tween(node, "mat_pulse_tween")
+	for child in node.get_children():
+		_kill_transient_tweens_in_subtree(child)
+
+
+func _clear_children(node: Node) -> void:
+	if node == null or not is_instance_valid(node):
+		return
+	for child in node.get_children():
+		_kill_transient_tweens_in_subtree(child)
+		node.remove_child(child)
+		child.queue_free()
+
+
 func _kill_shutdown_global_tweens() -> void:
-	host._clear_action_pop_tweens()
+	host._skill_swipe_activity_surface()._clear_action_pop_tweens()
 	host._reward_feedback_surface()._clear_action_crit_tweens()
-	host._clear_stamina_gauge_pop_tween()
-	host._clear_activity_unlock_visual_scroll_tween()
-	host._kill_skill_swipe_tween()
-	if host.detail_unlock_scroll_spacer_tween != null and host.detail_unlock_scroll_spacer_tween.is_valid():
-		host.detail_unlock_scroll_spacer_tween.kill()
-	host.detail_unlock_scroll_spacer_tween = null
+	host._reward_feedback_surface()._clear_stamina_gauge_pop_tween()
+	host._activity_unlock_ceremony_surface().clear_visual_scroll_tween()
+	host._skill_swipe_activity_surface()._kill_skill_swipe_tween()
+	if host._skill_detail_surface().detail_unlock_scroll_spacer_tween != null and host._skill_detail_surface().detail_unlock_scroll_spacer_tween.is_valid():
+		host._skill_detail_surface().detail_unlock_scroll_spacer_tween.kill()
+	host._skill_detail_surface().detail_unlock_scroll_spacer_tween = null
 	var nav: NavigationShell = host._navigation_shell()
 	if nav.hero_nav_fade_tween != null and nav.hero_nav_fade_tween.is_valid():
 		nav.hero_nav_fade_tween.kill()
@@ -219,16 +464,14 @@ func _kill_shutdown_global_tweens() -> void:
 	if nav.shop_nav_fade_tween != null and nav.shop_nav_fade_tween.is_valid():
 		nav.shop_nav_fade_tween.kill()
 	nav.shop_nav_fade_tween = null
-	if host.fishing_tool_wallet_pop_tween != null and host.fishing_tool_wallet_pop_tween.is_valid():
-		host.fishing_tool_wallet_pop_tween.kill()
-	host.fishing_tool_wallet_pop_tween = null
-	host._button_press_runtime().clear_all_nav_pop_tweens()
+	host._fishing_ui_surface().kill_wallet_pop_tween()
+	host.button_press_runtime.clear_all_nav_pop_tweens()
 
 
 func _kill_action_card_shutdown_tweens() -> void:
 	for raw_card in host.action_cards.values():
 		var card := raw_card as Dictionary
-		host._clear_action_card_medal_tap_ceremony(card)
+		host._skill_swipe_activity_surface()._clear_action_card_medal_tap_ceremony(card)
 		_kill_card_tween(card, "preview_fade_tween")
 		_kill_card_tween(card, "medal_ceremony_tween")
 		_kill_card_tween(card, "medal_outgoing_tween")
@@ -242,6 +485,32 @@ func _kill_card_tween(card: Dictionary, key: String) -> void:
 	var tween = card.get(key, null)
 	_kill_tween_value(tween)
 	card.erase(key)
+
+
+func _queue_free_instance_id(instance_id: int) -> void:
+	var node: Node = valid_node_ref(instance_from_id(instance_id))
+	if node != null:
+		node.queue_free()
+
+
+func _remove_meta_from_instance_id(instance_id: int, meta_name: StringName) -> void:
+	var node: Node = valid_node_ref(instance_from_id(instance_id))
+	if node != null and node.has_meta(meta_name):
+		node.remove_meta(meta_name)
+
+
+func _kill_meta_tween(node: Node, meta_name: String) -> void:
+	if node == null or not is_instance_valid(node) or not node.has_meta(meta_name):
+		return
+	var tween = node.get_meta(meta_name)
+	_kill_tween_value(tween)
+	node.remove_meta(meta_name)
+
+
+func _hide_control_bound(control_id: int) -> void:
+	var control: Control = valid_control_ref(instance_from_id(control_id))
+	if control != null:
+		set_canvas_item_visible_if_changed(control, false)
 
 
 func _kill_tween_value(tween) -> void:

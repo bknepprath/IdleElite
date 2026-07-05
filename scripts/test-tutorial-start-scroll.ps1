@@ -95,7 +95,7 @@ func _run() -> void:
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
 	scene.set("current_screen", "menu")
-	var menu_render = scene.call("_render_screen", false, -1, false)
+	var menu_render = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if menu_render != null:
 		await menu_render
 	for _i in range(SETTLE_FRAMES):
@@ -114,28 +114,30 @@ func _run() -> void:
 	if not _tutorial_skill_page_ready(scene):
 		_fail("tutorial starter skill page was not ready: %s" % _summary(scene))
 		return
-	if int(scene.get("tutorial_step")) != 1:
+	if int(scene._onboarding_runtime().tutorial_step) != 1:
 		_fail("tutorial should start on the fight activity step: %s" % _summary(scene))
 		return
-	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
-	var shadow := scene.get("detail_shelf_shadow_overlay") as CanvasItem
+	var scroll := scene._skill_detail_surface().detail_actions_scroll as ScrollContainer
+	var shadow := scene._skill_detail_surface().detail_shelf_shadow_overlay as CanvasItem
 	var scroll_y := int(scroll.scroll_vertical)
 	var drag_y := float(scroll.get("drag_scroll_position"))
 	var shadow_alpha := _shelf_shadow_alpha(shadow)
 	var shadow_visible := false if shadow == null else shadow.visible
-	var nav_bar := scene.get("nav_bar") as Control
-	var module_utility_row := scene.get("module_utility_row") as Control
-	var module_sort_menu := scene.get("module_sort_menu") as Control
+	var nav_bar := scene._navigation_shell().nav_bar as Control
+	var module_utility_row := scene._navigation_shell().module_utility_row as Control
+	var module_sort_menu := scene._navigation_shell().module_sort_menu as Control
 	var auto_fish_toggle := scene.get("detail_auto_eat_fish_button") as Control
-	var shelf_background := _find_named_descendant(scene.get("detail_header_body") as Node, "SkillDetailFullBleedShelfBackground") as Control
+	var shelf_background := _find_named_descendant(scene._skill_detail_surface().detail_header_body as Node, "SkillDetailFullBleedShelfBackground") as Control
 	var tutorial_panel := scene.get("tutorial_panel") as Control
 	var tutorial_target_ring := scene.get("tutorial_target_ring") as Control
 	var tutorial_target_label := scene.get("tutorial_target_label") as Control
+	var tutorial_instruction_label := scene._tutorial_overlay_surface().tutorial_instruction_label as Label
 	var detail_header_left_block := scene.get("detail_header_left_block") as Control
 	var detail_xp_label := scene.get("detail_xp_label") as Control
-	var detail_xp_bar := scene.get("detail_xp_bar") as Control
-	var detail_regen_circle := scene.get("detail_regen_circle") as Control
-	var activity_start_highlight := scene.get("activity_start_highlight_border") as Control
+	var detail_xp_bar := scene._skill_detail_surface().detail_xp_bar as Control
+	var detail_regen_circle := scene._skill_detail_surface().detail_regen_circle as Control
+	var tutorial_surface = scene._tutorial_overlay_surface()
+	var activity_start_highlight := tutorial_surface.activity_start_highlight_border as Control
 	if scroll_y != 0 or absf(drag_y) > 0.01:
 		_fail("tutorial starter skill page should start at top scroll, got scroll=%s drag=%.3f %s" % [str(scroll_y), drag_y, _summary(scene)])
 		return
@@ -168,6 +170,12 @@ func _run() -> void:
 		return
 	if tutorial_target_label != null and _effective_canvas_alpha(tutorial_target_label) > 0.01:
 		_fail("tutorial starter skill page should not show the legacy target label: %s" % _summary(scene))
+		return
+	if tutorial_instruction_label == null or not tutorial_instruction_label.is_visible_in_tree() or _effective_canvas_alpha(tutorial_instruction_label) <= 0.95:
+		_fail("tutorial starter skill page should show readable instruction text: %s" % _summary(scene))
+		return
+	if tutorial_instruction_label.text != "Tap Push-Ups to start training.":
+		_fail("tutorial starter skill page instruction text changed unexpectedly: %s %s" % [tutorial_instruction_label.text, _summary(scene)])
 		return
 	if detail_header_left_block != null and _effective_canvas_alpha(detail_header_left_block) > 0.01:
 		_fail("tutorial starter skill page should hide the fighting icon and title: alpha=%.3f %s" % [_effective_canvas_alpha(detail_header_left_block), _summary(scene)])
@@ -211,7 +219,7 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 		return false
 	if str(scene.get("selected_skill_id")) != "fight":
 		return false
-	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
+	var scroll := scene._skill_detail_surface().detail_actions_scroll as ScrollContainer
 	if scroll == null or not scroll.is_inside_tree():
 		return false
 	var cards := scene.get("action_cards") as Dictionary
@@ -219,17 +227,7 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 
 
 func _tutorial_module_count(scene: Node) -> int:
-	var stack := _tutorial_detail_stack(scene)
-	if stack == null:
-		return 0
-	var module_count := 0
-	for raw_child in stack.get_children():
-		var child := raw_child as Control
-		if child == null:
-			continue
-		if bool(scene.call("_detail_stack_child_is_module_content", child)):
-			module_count += 1
-	return module_count
+	return _rendered_action_ids(scene).size()
 
 
 func _only_starter_activity_rendered(scene: Node) -> bool:
@@ -252,19 +250,20 @@ func _tutorial_blocks_info_chip_expansion(scene: Node) -> bool:
 		_fail("tutorial info-chip block smoke could not find starter XP chip box: %s" % _summary(scene))
 		return false
 	var stat_center := stat_box.get_global_rect().get_center()
-	if not str(scene.call("_activity_stat_kind_at_position", card, stat_center)).is_empty():
+	var skill_detail_surface = scene.call("_skill_detail_surface")
+	if not str(skill_detail_surface.call("_activity_stat_kind_at_position", card, stat_center)).is_empty():
 		_fail("tutorial info-chip hit test should ignore hidden starter stat chips: %s" % _summary(scene))
 		return false
-	scene.call("_toggle_activity_stat_popup_for_card", card, "fight", "shove-wobbly-hay-bale", "xp")
+	skill_detail_surface.call("_toggle_activity_stat_popup_for_card", card, "fight", "shove-wobbly-hay-bale", "xp")
 	scene.call("_update_ui", 0.0, true)
-	if str(scene.get("expanded_activity_stat_key")) != "" or str(scene.get("expanded_activity_stat_kind")) != "":
+	if str(skill_detail_surface.get("expanded_activity_stat_key")) != "" or str(skill_detail_surface.get("expanded_activity_stat_kind")) != "":
 		_fail("tutorial info-chip tap expanded the starter module: key=%s kind=%s %s" % [
-			str(scene.get("expanded_activity_stat_key")),
-			str(scene.get("expanded_activity_stat_kind")),
+			str(skill_detail_surface.get("expanded_activity_stat_key")),
+			str(skill_detail_surface.get("expanded_activity_stat_kind")),
 			_summary(scene)
 		])
 		return false
-	if bool(card.get("bonus_expanded", false)):
+	if card.get("bonus_expanded", false) == true:
 		_fail("tutorial info-chip tap left the starter card bonus panel expanded: %s" % _summary(scene))
 		return false
 	return true
@@ -275,10 +274,10 @@ func _bottom_nav_locked_controls_ok(scene: Node) -> bool:
 
 
 func _bottom_nav_row_visible(scene: Node) -> bool:
-	var nav_bar := scene.get("nav_bar") as Control
+	var nav_bar := scene._navigation_shell().nav_bar as Control
 	if nav_bar == null or not is_instance_valid(nav_bar):
 		return false
-	var row := scene.get("bottom_nav_buttons_row") as Control
+	var row := scene._navigation_shell().bottom_nav_buttons_row as Control
 	if row == null:
 		row = _find_named_descendant(nav_bar, "BottomNavButtonsRow") as Control
 	return row != null and row.is_visible_in_tree() and _effective_canvas_alpha(row) > 0.01
@@ -286,25 +285,25 @@ func _bottom_nav_row_visible(scene: Node) -> bool:
 
 func _all_nav_buttons_visible(scene: Node) -> bool:
 	for raw_name in ["hero_tab", "hub_tab", "skills_tab", "settings_tab", "shop_tab"]:
-		var button := scene.get(raw_name) as Control
+		var button := _nav_button(scene, raw_name) as Control
 		if button == null or not button.is_visible_in_tree() or _effective_canvas_alpha(button) <= 0.01:
 			return false
 	return true
 
 
 func _settings_nav_button_enabled(scene: Node) -> bool:
-	var settings := scene.get("settings_tab") as Button
+	var settings := _nav_button(scene, "settings_tab") as Button
 	return settings != null and settings.is_visible_in_tree() and _effective_canvas_alpha(settings) > 0.01 and not settings.disabled and settings.mouse_filter == Control.MOUSE_FILTER_STOP
 
 
 func _skills_nav_button_enabled(scene: Node) -> bool:
-	var skills := scene.get("skills_tab") as Button
+	var skills := _nav_button(scene, "skills_tab") as Button
 	return skills != null and skills.is_visible_in_tree() and _effective_canvas_alpha(skills) > 0.01 and not skills.disabled and skills.mouse_filter == Control.MOUSE_FILTER_STOP and _color_nearly_equal(skills.modulate, Color.WHITE)
 
 
 func _non_settings_nav_buttons_locked(scene: Node) -> bool:
 	for raw_name in ["hero_tab", "hub_tab", "shop_tab"]:
-		var button := scene.get(raw_name) as Button
+		var button := _nav_button(scene, raw_name) as Button
 		if button == null or not button.is_visible_in_tree() or _effective_canvas_alpha(button) <= 0.01:
 			return false
 		if button.disabled or button.mouse_filter != Control.MOUSE_FILTER_IGNORE:
@@ -312,6 +311,14 @@ func _non_settings_nav_buttons_locked(scene: Node) -> bool:
 		if not _color_nearly_equal(button.modulate, Color("#3f3f3f")):
 			return false
 	return true
+
+
+func _nav_button(scene: Node, button_name: String) -> Button:
+	match button_name:
+		"hero_tab", "hub_tab", "shop_tab":
+			return scene._navigation_shell().get(button_name) as Button
+		_:
+			return scene.get(button_name) as Button
 
 
 func _color_nearly_equal(a: Color, b: Color) -> bool:
@@ -360,7 +367,7 @@ func _effective_canvas_alpha(node: Node) -> float:
 
 
 func _tutorial_detail_stack(scene: Node) -> VBoxContainer:
-	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
+	var scroll := scene._skill_detail_surface().detail_actions_scroll as ScrollContainer
 	if scroll == null or not scroll.is_inside_tree() or scroll.get_child_count() <= 0:
 		return null
 	return scroll.get_child(0) as VBoxContainer
@@ -413,19 +420,19 @@ func _capture_if_requested() -> void:
 
 
 func _summary(scene: Node) -> String:
-	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
+	var scroll := scene._skill_detail_surface().detail_actions_scroll as ScrollContainer
 	var scroll_text := "none"
 	if scroll != null:
 		scroll_text = "%s/%.3f max=%s" % [str(scroll.scroll_vertical), float(scroll.get("drag_scroll_position")), str(scroll.call("get_max_scroll_vertical")) if scroll.has_method("get_max_scroll_vertical") else "?"]
-	var shadow := scene.get("detail_shelf_shadow_overlay") as CanvasItem
+	var shadow := scene._skill_detail_surface().detail_shelf_shadow_overlay as CanvasItem
 	var shadow_text := "none"
 	if shadow != null:
 		shadow_text = "visible=%s alpha=%.4f" % [str(shadow.visible), _shelf_shadow_alpha(shadow)]
 	return "screen=%s selected=%s tutorial=%s step=%s scroll=%s shadow=%s" % [
 		str(scene.get("current_screen")),
 		str(scene.get("selected_skill_id")),
-		str(scene.get("tutorial_active")),
-		str(scene.get("tutorial_step")),
+		str(scene._onboarding_runtime().tutorial_active),
+		str(scene._onboarding_runtime().tutorial_step),
 		scroll_text,
 		shadow_text
 	]
@@ -449,9 +456,9 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 			return false
 		var queue := scene.get("boot_detail_render_queue") as Array
 		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
+			scene.get("startup_initialized") == true
+			and scene.get("boot_detail_render_in_progress") != true
+			and scene.get("boot_detail_scroll_locked") != true
 			and (queue == null or queue.is_empty())
 		):
 			return true

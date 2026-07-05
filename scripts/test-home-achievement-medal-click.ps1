@@ -43,10 +43,18 @@ extends SceneTree
 const BOOT_TIMEOUT_FRAMES := 720
 
 var failures: Array[String] = []
+var watchdog_frames := 0
 
 
 func _init() -> void:
+	process_frame.connect(_watchdog)
 	call_deferred("_run")
+
+
+func _watchdog() -> void:
+	watchdog_frames += 1
+	if watchdog_frames > BOOT_TIMEOUT_FRAMES * 2:
+		_fail("home achievement medal click smoke timed out")
 
 
 func _run() -> void:
@@ -71,7 +79,7 @@ func _run() -> void:
 	scene.call("_test_state_runtime")._god_mode_max_skills_state()
 	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.call("_test_state_runtime")._god_mode_max_medals_state()
-	scene.call("_show_home")
+	scene.call("_navigation_shell").call("_show_home")
 	if not await _wait_for_home_medals(scene):
 		_fail("home medals did not become visible")
 		return
@@ -80,7 +88,7 @@ func _run() -> void:
 	if icon == null:
 		_fail("no visible home medal icon found")
 		return
-	var featured_icon := scene.get("achievement_best_medal") as TextureRect
+	var featured_icon := (scene.call("_achievement_overlay_surface") as Object).get("achievement_best_medal") as TextureRect
 	if (
 		featured_icon == null
 		or not is_instance_valid(featured_icon)
@@ -123,9 +131,9 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 			return false
 		var queue := scene.get("boot_detail_render_queue") as Array
 		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
+			scene.get("startup_initialized") == true
+			and scene.get("boot_detail_render_in_progress") != true
+			and scene.get("boot_detail_scroll_locked") != true
 			and (queue == null or queue.is_empty())
 		):
 			return true
@@ -136,7 +144,7 @@ func _wait_for_boot_hidden(scene: Node) -> bool:
 	for _frame in range(BOOT_TIMEOUT_FRAMES):
 		await process_frame
 		var overlay := scene.get("boot_warmup_overlay") as Control
-		if not bool(scene.get("boot_warmup_active")) and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
+		if scene.get("boot_warmup_active") != true and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
 			return true
 	return false
 
@@ -151,7 +159,7 @@ func _wait_for_home_medals(scene: Node) -> bool:
 
 
 func _visible_featured_home_medal_icon(scene: Node) -> TextureRect:
-	var featured_icon := scene.get("achievement_best_medal") as TextureRect
+	var featured_icon := (scene.call("_achievement_overlay_surface") as Object).get("achievement_best_medal") as TextureRect
 	if (
 		featured_icon != null
 		and is_instance_valid(featured_icon)
@@ -165,7 +173,8 @@ func _visible_featured_home_medal_icon(scene: Node) -> TextureRect:
 
 
 func _first_visible_home_medal_icon(scene: Node) -> TextureRect:
-	var icon_rows_by_skill := scene.get("achievement_medal_slot_icons") as Dictionary
+	var achievement_surface := scene.call("_achievement_overlay_surface") as Object
+	var icon_rows_by_skill := achievement_surface.get("achievement_medal_slot_icons") as Dictionary
 	if icon_rows_by_skill == null:
 		return null
 	for raw_skill_id in icon_rows_by_skill.keys():

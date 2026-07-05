@@ -102,7 +102,7 @@ func _run() -> void:
 		return
 
 	scene.call("_clear_pending_save_restore_work")
-	scene.call("_init_state")
+	scene.call("_save_runtime").call("_init_state")
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "thieving")
 	scene.set("onboarding_tutorial_complete", true)
@@ -121,7 +121,8 @@ func _run() -> void:
 	skills["thieving"] = thieving
 	scene.set("skills", skills)
 	scene.call("_recalculate_level", "thieving")
-	scene.call("_ensure_all_thieving_trophy_state")
+	scene.thieving_state.ensure_all_trophy_state()
+	scene.call("_hub_runtime").sync_trophy_level_from_thieving()
 	scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 	var render_result = scene.call("_render_screen", false, -1, false)
 	if render_result != null:
@@ -146,7 +147,7 @@ func _run() -> void:
 		_fail("rendered heist STEAL button is disabled")
 		return
 	var click_point := button.get_global_rect().get_center()
-	if not bool(scene.call("_position_inside_detail_actions_viewport", click_point)):
+	if not bool(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", click_point)):
 		_fail("heist STEAL click point is outside the activity viewport: %s" % str(click_point))
 		return
 
@@ -160,7 +161,7 @@ func _run() -> void:
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
 
-	var trophy_state := ((scene.get("thieving_trophies") as Dictionary).get(TARGET_HEIST_ID, {}) as Dictionary)
+	var trophy_state := (scene.thieving_state.trophies.get(TARGET_HEIST_ID, {}) as Dictionary)
 	var xp_after := int(((scene.get("skills") as Dictionary).get("thieving", {}) as Dictionary).get("xp", 0))
 	var cooldown_remaining := int(scene.thieving_state.heist_cooldown_remaining(TARGET_HEIST_ID, int(scene.call("_unix_now"))))
 	var interacted := bool(trophy_state.get("stolen", false)) or cooldown_remaining > 0 or xp_after > xp_before

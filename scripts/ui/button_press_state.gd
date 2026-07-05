@@ -2,9 +2,13 @@ extends RefCounted
 
 const AudioDirector = preload("res://scripts/audio/audio_director.gd")
 
+const STAMINA_GAUGE_PARENT_BUTTON_SUPPRESS_MSEC := 650
+
 var host
 var depressed_buttons := {}
 var nav_pop_tweens := {}
+var bottom_nav_transition_button_id := 0
+var bottom_nav_transition_release_queued := false
 
 
 func _init(host_ref = null) -> void:
@@ -175,12 +179,32 @@ func clear_all_nav_pop_tweens() -> void:
 	nav_pop_tweens.clear()
 
 
-func _release_bottom_nav_transition_button() -> void:
-	if host.bottom_nav_transition_button_id == 0:
+func hold_bottom_nav_transition_button(button: Button) -> void:
+	if button == null or not is_instance_valid(button) or button.disabled:
 		return
-	var button := _valid_base_button_ref(instance_from_id(host.bottom_nav_transition_button_id))
-	host.bottom_nav_transition_button_id = 0
-	host.bottom_nav_transition_release_queued = false
+	if bottom_nav_transition_button_id != 0 and bottom_nav_transition_button_id != button.get_instance_id():
+		release_bottom_nav_transition_button()
+	var button_id := button.get_instance_id()
+	bottom_nav_transition_button_id = button_id
+	button.set_meta("bottom_nav_transition_hold", true)
+	clear_nav_pop_tween(button_id)
+	animate_button_depress(button, float(button.get_meta("depress_animation_scale", 0.92)))
+
+
+func bottom_nav_transition_active() -> bool:
+	return bottom_nav_transition_button_id != 0
+
+
+func bottom_nav_transition_visual_active(visual_blocker: Callable) -> bool:
+	return bottom_nav_transition_active() and visual_blocker.is_valid() and bool(visual_blocker.call())
+
+
+func release_bottom_nav_transition_button() -> void:
+	if bottom_nav_transition_button_id == 0:
+		return
+	var button := _valid_base_button_ref(instance_from_id(bottom_nav_transition_button_id))
+	bottom_nav_transition_button_id = 0
+	bottom_nav_transition_release_queued = false
 	if button == null:
 		return
 	if button.has_meta("bottom_nav_transition_hold"):
@@ -188,22 +212,26 @@ func _release_bottom_nav_transition_button() -> void:
 	animate_button_release(button)
 
 
+func _release_bottom_nav_transition_button() -> void:
+	release_bottom_nav_transition_button()
+
+
 func _schedule_bottom_nav_transition_button_idle_release() -> void:
-	if host.bottom_nav_transition_release_queued:
+	if bottom_nav_transition_release_queued:
 		return
-	host.bottom_nav_transition_release_queued = true
+	bottom_nav_transition_release_queued = true
 	call_deferred("_release_bottom_nav_transition_button_when_idle")
 
 
 func _release_bottom_nav_transition_button_when_idle() -> void:
 	await host.get_tree().process_frame
-	host.bottom_nav_transition_release_queued = false
-	if host.bottom_nav_transition_button_id == 0:
+	bottom_nav_transition_release_queued = false
+	if bottom_nav_transition_button_id == 0:
 		return
-	if host._bottom_nav_transition_visual_active():
+	if bottom_nav_transition_visual_active(Callable(host._navigation_shell(), "_bottom_nav_transition_visual_active")):
 		_schedule_bottom_nav_transition_button_idle_release()
 		return
-	_release_bottom_nav_transition_button()
+	release_bottom_nav_transition_button()
 
 
 func play_default_button_sfx() -> void:
@@ -220,12 +248,41 @@ func play_default_button_sfx_for_button(button: BaseButton) -> void:
 	if is_dead_reset_confirm_press(button):
 		button.set_meta("suppress_current_press_animation", true)
 		return
-	if host._button_has_active_stamina_gauge_parent_suppression(button):
+	if _button_has_active_stamina_gauge_parent_suppression(button):
 		button.set_meta("suppress_current_press_animation", true)
 		return
 	if button_sfx_is_active_action_tap(button):
 		return
 	play_default_button_sfx()
+
+
+func _suppress_stamina_gauge_parent_button(source: Control) -> void:
+	var button := _stamina_gauge_parent_button(source)
+	if button == null:
+		return
+	button.set_meta("stamina_gauge_suppress_parent_until_msec", Time.get_ticks_msec() + STAMINA_GAUGE_PARENT_BUTTON_SUPPRESS_MSEC)
+	button.set_meta("suppress_current_press_animation", true)
+
+
+func _stamina_gauge_parent_button(source: Control) -> BaseButton:
+	var node := source as Node
+	while node != null:
+		if node is BaseButton:
+			return node as BaseButton
+		node = node.get_parent()
+	return null
+
+
+func _button_has_active_stamina_gauge_parent_suppression(button: BaseButton) -> bool:
+	if button == null or not is_instance_valid(button):
+		return false
+	var until_msec := int(button.get_meta("stamina_gauge_suppress_parent_until_msec", 0))
+	if until_msec <= 0:
+		return false
+	if Time.get_ticks_msec() <= until_msec:
+		return true
+	button.remove_meta("stamina_gauge_suppress_parent_until_msec")
+	return false
 
 
 func button_sfx_is_active_action_tap(button: BaseButton) -> bool:
@@ -289,7 +346,7 @@ func is_dead_reset_confirm_press(button: BaseButton) -> bool:
 
 
 func kill_button_depress_tween(button: BaseButton) -> void:
-	host._kill_meta_tween(button, "depress_tween")
+	host._app_lifecycle_runtime()._kill_meta_tween(button, "depress_tween")
 
 
 func force_button_unpressed(button: BaseButton) -> void:
@@ -332,7 +389,7 @@ func pointer_inside_button_release_rect(event_position: Vector2, button: Control
 	if button == null or not is_instance_valid(button) or not button.is_visible_in_tree():
 		return false
 	var rect := button.get_global_rect().grow(42.0)
-	for candidate in host._activity_input_position_candidates(event_position):
+	for candidate in host._input_routing_shell()._activity_input_position_candidates(event_position):
 		if rect.has_point(candidate):
 			return true
 	return false
@@ -410,7 +467,7 @@ func _button_at_global_position(node: Node, event_position: Vector2) -> BaseButt
 
 func _valid_base_button_ref(value) -> BaseButton:
 	if host != null and host.has_method("_valid_base_button_ref"):
-		return host._valid_base_button_ref(value)
+		return host._app_lifecycle_runtime().valid_base_button_ref(value)
 	if value == null or typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
 		return null
 	return value as BaseButton
@@ -418,7 +475,7 @@ func _valid_base_button_ref(value) -> BaseButton:
 
 func _valid_button_ref(value) -> Button:
 	if host != null and host.has_method("_valid_button_ref"):
-		return host._valid_button_ref(value)
+		return host._app_lifecycle_runtime().valid_button_ref(value)
 	if value == null or typeof(value) != TYPE_OBJECT or not is_instance_valid(value):
 		return null
 	return value as Button

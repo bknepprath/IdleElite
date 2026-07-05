@@ -32,7 +32,7 @@ func _run() -> void:
 	scene.call("_render_screen")
 	await _wait_frames(12)
 
-	var utility_row := _valid_control(scene.get("module_utility_row"))
+	var utility_row := _valid_control(scene.call("_navigation_shell").module_utility_row)
 	if utility_row == null:
 		_fail("module_utility_row missing")
 		return
@@ -50,9 +50,9 @@ func _run() -> void:
 		_fail("skill shelf background did not start opaque: alpha=%.3f" % shelf_background.modulate.a)
 		return
 
-	scene.call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
+	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
 	for i in range(1, 7):
-		scene.call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(260, 1500), float(i) / 6.0))
+		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(260, 1500), float(i) / 6.0))
 		await _wait_frames(1)
 
 	var drag_alpha := utility_row.modulate.a
@@ -64,7 +64,7 @@ func _run() -> void:
 		_fail("skill shelf background faded before swipe release: alpha=%.3f" % shelf_drag_alpha)
 		return
 
-	scene.call("_finish_skill_swipe", Vector2(260, 1500))
+	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(260, 1500))
 	var release_min_alpha := utility_row.modulate.a
 	var shelf_release_min_alpha := shelf_background.modulate.a
 	var settled := false

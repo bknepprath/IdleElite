@@ -36,18 +36,18 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
-	scene.call("_activity_data_catalog").call("load_action_data", scene)
+	scene.get("activity_data_catalog").call("load_action_data", scene)
 	scene.call("_save_runtime").call("_init_state")
 	_unlock_fight(scene)
 	var tested := 0
 	var skipped_locked := 0
-	var fight_actions := scene.call("_visible_actions_for_skill", "fight") as Array
+	var fight_actions := scene.call("_activity_unlock_runtime").call("_visible_actions_for_skill", "fight") as Array
 	for raw_action in fight_actions:
 		var action := raw_action as Dictionary
 		var action_id := str(action.get("id", ""))
 		if action_id.is_empty():
 			continue
-		if not bool(scene.call("_is_action_unlocked", "fight", action)):
+		if not bool(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", action)):
 			skipped_locked += 1
 			continue
 		var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
@@ -58,7 +58,7 @@ func _run() -> void:
 		var key := str(scene.call("_action_key", "fight", action_id))
 		scene.call("_register_action_card", key, card)
 		var was_built := BuildableModules.is_built(scene.built_modules, "fight", action, Callable(scene, "_action_key"))
-		var started := bool(scene.call("_start_action_from_card_tap", "fight", action_id, key))
+		var started := bool(scene.call("_action_runtime").call("_start_action_from_card_tap", "fight", action_id, key))
 		var is_buildable := BuildableModules.is_buildable(action)
 		var now_built := BuildableModules.is_built(scene.built_modules, "fight", action, Callable(scene, "_action_key"))
 		var built_from_tap := is_buildable and not was_built and now_built
@@ -86,7 +86,7 @@ func _unlock_fight(scene: Node) -> void:
 	scene.stamina["fight"] = 999.0
 	scene.completed_bosses["rooster"] = true
 	scene.completed_bosses["chicken"] = true
-	scene.call("_sync_manual_activity_unlocks_from_levels")
+	scene.call("_activity_unlock_runtime").sync_manual_activity_unlocks_from_levels()
 	if scene.has_method("_sync_stamina_bank"):
 		scene.call("_sync_stamina_bank", "fight")
 	for mat_id in ["scrapwood", "softwood", "hardwood", "wood", "stone", "berries"]:

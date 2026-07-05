@@ -106,7 +106,7 @@ func _convergence_is_building(module_id: String) -> bool:
 
 func _start_convergence_build(module_id: String) -> bool:
 	var action: Dictionary = host._action_data("build", module_id)
-	if action.is_empty() or not host._is_action_unlocked("build", action):
+	if action.is_empty() or not host._activity_unlock_runtime()._is_action_unlocked("build", action):
 		return false
 	if not _convergence_requires_build(action):
 		var ready_state := _ensure_convergence_state(module_id)
@@ -118,18 +118,18 @@ func _start_convergence_build(module_id: String) -> bool:
 	if bool(state.get("built", false)):
 		return true
 	if bool(state.get("building", false)):
-		host._set_result("%s building: %s left." % [str(action.get("name", "Shrine")), GameFormatting.countdown(_convergence_build_remaining(module_id))])
+		host._reward_feedback_surface()._set_result("%s building: %s left." % [str(action.get("name", "Shrine")), GameFormatting.countdown(_convergence_build_remaining(module_id))])
 		return false
 	var cost := _convergence_log_cost(action)
 	if host.material_runtime.amount("softwood") < float(cost):
-		host._set_result("%s needs %s Softwood." % [str(action.get("name", "Shrine")), cost])
+		host._reward_feedback_surface()._set_result("%s needs %s Softwood." % [str(action.get("name", "Shrine")), cost])
 		return false
 	host.material_runtime.spend_amount("softwood", float(cost))
 	state["building"] = true
 	state["built"] = false
 	state["build_started_unix"] = host._unix_now()
 	convergence_modules[module_id] = state
-	host._set_result("%s construction started. %s left." % [str(action.get("name", "Shrine")), GameFormatting.countdown(_convergence_build_seconds(action))])
+	host._reward_feedback_surface()._set_result("%s construction started. %s left." % [str(action.get("name", "Shrine")), GameFormatting.countdown(_convergence_build_seconds(action))])
 	host.save_game()
 	return false
 
@@ -162,7 +162,7 @@ func _convergence_total_cycle_seconds(action: Dictionary) -> float:
 func _convergence_segment_seconds(skill_id: String, action: Dictionary) -> float:
 	var config := _convergence_config(action)
 	var level_10_seconds := maxf(1.0, float(config.get("segment_level_10_seconds", 20.0)))
-	var level := maxf(1.0, float(host._skill_level(skill_id)))
+	var level := maxf(1.0, float(SkillState.host_skill_level(host, skill_id)))
 	return maxf(3.0, level_10_seconds * 10.0 / level)
 
 
@@ -184,14 +184,14 @@ func _complete_convergence_cycle(module_id: String) -> int:
 	var old_levels := {}
 	var completed_achievements_before: Dictionary = AchievementState.completed_ids(AchievementState.milestones(host, false))
 	for raw_skill_id in _convergence_skill_order(action):
-		old_levels[str(raw_skill_id)] = host._skill_level(str(raw_skill_id))
+		old_levels[str(raw_skill_id)] = SkillState.host_skill_level(host, str(raw_skill_id))
 	var xp_reward := _convergence_current_xp(module_id)
 	for raw_skill_id in _convergence_skill_order(action):
 		var skill_id := str(raw_skill_id)
 		if not host.skills.has(skill_id):
 			continue
 		host.skills[skill_id]["xp"] = int(host.skills[skill_id].get("xp", 0)) + xp_reward
-		host._recalculate_level(skill_id)
+		SkillState.recalculate_level(host, skill_id)
 	var state := _ensure_convergence_state(module_id)
 	state["completions"] = int(state.get("completions", 0)) + 1
 	convergence_modules[module_id] = state
@@ -202,7 +202,7 @@ func _complete_convergence_cycle(module_id: String) -> int:
 	var leveled := false
 	for raw_skill_id in _convergence_skill_order(action):
 		var skill_id := str(raw_skill_id)
-		if host._skill_level(skill_id) > int(old_levels.get(skill_id, 1)):
+		if SkillState.host_skill_level(host, skill_id) > int(old_levels.get(skill_id, 1)):
 			leveled = true
 			break
 	host._reward_feedback_surface()._play_action_feedback(host._action_key("build", module_id), true, xp_reward, 0.0, false, false)

@@ -110,41 +110,6 @@ static func spend(action: Dictionary, mat_amount: Callable, spend_mat_amount: Ca
 	return true
 
 
-static func attempt_build(host, skill_id: String, action: Dictionary) -> bool:
-	if not is_buildable(action):
-		return false
-	var module_key := key(skill_id, action, Callable(host, "_action_key"))
-	if module_key.is_empty():
-		return false
-	if is_built(host.built_modules, skill_id, action, Callable(host, "_action_key")):
-		return true
-	var need_text := "Need %s to %s %s." % [
-		cost_text(action, Callable(host.material_runtime, "amount_text_for_host").bind(host), Callable(host.material_runtime, "display_name")),
-		label(action).to_lower(),
-		str(action.get("name", "module"))
-	]
-	if not can_pay(action, Callable(host.material_runtime, "amount")):
-		host._set_result(need_text)
-		return false
-	if not spend(action, Callable(host.material_runtime, "amount"), Callable(host.material_runtime, "spend_amount")):
-		host._set_result(need_text)
-		return false
-	var reward_xp := xp_reward(action)
-	if reward_xp > 0 and host.skills.has("build"):
-		host.skills["build"]["xp"] = int(host.skills["build"].get("xp", 0)) + reward_xp
-		host._recalculate_level("build")
-	host.built_modules[module_key] = true
-	host._set_result("%s built: +%s Building XP." % [str(action.get("name", "Module")), reward_xp])
-	host._mark_save_dirty("module built")
-	host.save_game()
-	var refresh_scroll: int = host.detail_actions_scroll.scroll_vertical if host.detail_actions_scroll != null else -1
-	if host._skill_detail_surface()._play_buildable_module_built_animation(skill_id, action, refresh_scroll):
-		return true
-	host._render_screen(false, refresh_scroll)
-	host._update_ui(0.0, true)
-	return true
-
-
 static func action_from_key(module_key: String, action_lookup: Callable) -> Dictionary:
 	var parts := module_key.split(":", false, 1)
 	if parts.size() != 2:

@@ -58,18 +58,18 @@ func _force_level_99_fishing_state(main: Node) -> void:
 		_set_skill_level(main, skill_id, 99)
 	main.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	main.call("_test_state_runtime")._god_mode_unlock_fishing_tools_state()
-	main.call("_sync_manual_activity_unlocks_from_levels")
+	main.call("_activity_unlock_runtime").sync_manual_activity_unlocks_from_levels()
 	main.set("current_screen", "skill")
 	main.set("selected_skill_id", "fishing")
 	main.set("module_ui_sort_mode", "level")
 	main.set("module_ui_collapsed", {})
-	main.set("equipped_fishing_tool_id", "star_rod")
-	main.set("fishing_net_collected", true)
-	main.set("fishing_rod_collected", true)
-	main.set("fishing_reinforced_rod_collected", true)
-	main.set("fishing_star_rod_collected", true)
-	main.set("fishing_boat_built", true)
-	main.set("fishing_mirror_collected", true)
+	main.fishing_runtime.equipped_tool_id = "star_rod"
+	main.fishing_runtime.net_collected = true
+	main.fishing_runtime.rod_collected = true
+	main.fishing_runtime.reinforced_rod_collected = true
+	main.fishing_runtime.star_rod_collected = true
+	main.fishing_runtime.boat_built = true
+	main.fishing_runtime.mirror_collected = true
 
 
 func _set_skill_level(main: Node, skill_id: String, level: int) -> void:
@@ -79,26 +79,27 @@ func _set_skill_level(main: Node, skill_id: String, level: int) -> void:
 	(skills[skill_id] as Dictionary)["xp"] = SkillState.xp_for_level(level) + 1000
 	(skills[skill_id] as Dictionary)["level"] = level
 	main.set("skills", skills)
-	main.call("_recalculate_level", skill_id, false)
+	SkillState.recalculate_level(main, skill_id, false)
 	var stamina := main.get("stamina") as Dictionary
-	stamina[skill_id] = float(main.call("_max_stamina", skill_id))
+	stamina[skill_id] = float(SkillState.max_stamina(main, skill_id))
 	main.set("stamina", stamina)
 
 
 func _render_fishing(main: Node) -> void:
-	var render_result = main.call("_render_screen", false, -1, false)
+	var render_result = main.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
-	main.call("_cancel_detail_lazy_settle_warm_mount")
+	main.call("_skill_detail_surface").call("_cancel_detail_lazy_settle_warm_mount")
 	main.call("_skill_detail_surface").call("_detail_lazy_mount_initial_window_sync", true, 4)
 	main.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, 8)
-	main.call("_sync_detail_actions_scroll_limit")
+	main.call("_skill_detail_surface").call("_sync_detail_actions_scroll_limit")
 	main.call("_fishing_ui_surface").call("_sync_fishing_detail_render_culling", true)
 	await process_frame
 
 
 func _warmup(main: Node) -> void:
-	var scroll := main.get("detail_actions_scroll") as ScrollContainer
+	var detail_surface = main.call("_skill_detail_surface")
+	var scroll := detail_surface.detail_actions_scroll as ScrollContainer
 	if scroll == null:
 		return
 	for target in [0, scroll.get_max_scroll_vertical() / 2, 0]:
@@ -117,7 +118,8 @@ func _warmup(main: Node) -> void:
 
 
 func _drag_probe(main: Node, label: String, use_touch: bool, drag_distance_y: float) -> void:
-	var scroll := main.get("detail_actions_scroll") as ScrollContainer
+	var detail_surface = main.call("_skill_detail_surface")
+	var scroll := detail_surface.detail_actions_scroll as ScrollContainer
 	if scroll == null:
 		samples.append({"probe": label, "error": "missing_scroll"})
 		return
@@ -133,7 +135,8 @@ func _drag_probe(main: Node, label: String, use_touch: bool, drag_distance_y: fl
 
 
 func _drag_probe_from_first_location_tile(main: Node, label: String, use_touch: bool, drag_distance_y: float) -> void:
-	var scroll := main.get("detail_actions_scroll") as ScrollContainer
+	var detail_surface = main.call("_skill_detail_surface")
+	var scroll := detail_surface.detail_actions_scroll as ScrollContainer
 	if scroll == null:
 		samples.append({"probe": label, "error": "missing_scroll"})
 		return
@@ -159,7 +162,7 @@ func _scroll_until_location_tile_visible(main: Node, scroll: ScrollContainer) ->
 		scroll.set("drag_scroll_position", float(target))
 		for _i in range(4):
 			await process_frame
-			if not bool(main.get("detail_scroll_visual_work_this_frame")):
+			if not bool(main.call("_skill_detail_surface").detail_scroll_visual_work_this_frame):
 				main.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, 8)
 				main.call("_fishing_ui_surface").call("_sync_fishing_detail_render_culling", true)
 		if _first_visible_location_tile_center(main, scroll) != Vector2.INF:
@@ -277,7 +280,7 @@ func _run_drag_sequence(
 		"process_frame_ms": float(after_press_frame - after_press_input) / 1000.0,
 		"scroll": int(scroll.scroll_vertical),
 		"start_scroll": start_scroll,
-		"mode": bool(main.get("fishing_scroll_mode_active")),
+		"mode": bool(main._fishing_ui_surface().fishing_scroll_mode_active),
 	})
 	var previous := start
 	for index in range(1, 161):
@@ -299,7 +302,7 @@ func _run_drag_sequence(
 			"process_frame_ms": float(after_motion_frame - after_motion_input) / 1000.0,
 			"scroll": int(scroll.scroll_vertical),
 			"start_scroll": start_scroll,
-			"mode": bool(main.get("fishing_scroll_mode_active")),
+			"mode": bool(main._fishing_ui_surface().fishing_scroll_mode_active),
 		})
 		previous = pos
 	_push_pointer_press(main, scroll, end, false, use_touch)

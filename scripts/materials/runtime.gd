@@ -1,4 +1,3 @@
-class_name MaterialRuntime
 extends RefCounted
 
 const GameFormatting = preload("res://scripts/core/formatting.gd")
@@ -10,6 +9,11 @@ const HONEY_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/honey.png"
 const BERRIES_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/berries.png"
 const MAT_COLLECTION_STONE_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-stone.png"
 const MAT_COLLECTION_WOOD_BACKGROUND_TEXTURE := "res://assets/content/ui/mats/mat-bg-wood.png"
+const BUILD_REQUIRED_PLANK_PIECE_TEXTURES := [
+	"res://assets/content/ui/build-required-wide-plank.png"
+]
+const PLANK_ICON_TEXTURE := "res://assets/content/icons/resources/plank.png"
+const UPGRADE_ARROW_ICON_TEXTURE := "res://assets/content/icons/upgrades/upgrade-arrow.png"
 const WOODCUTTING_LOG_COLLECTION_MAT_IDS := ["scrapwood", "softwood", "hardwood"]
 
 const MAT_COLLECTION_DEFS := {
@@ -186,7 +190,7 @@ func woodcutting_log_collection_multiplier(woodcutting_level: int) -> float:
 
 
 func buffed_log_collection_amount_for_host(mat_id: String, amount: float, host) -> float:
-	return buffed_log_collection_amount(mat_id, amount, woodcutting_log_collection_multiplier(host._skill_level("woodcutting")))
+	return buffed_log_collection_amount(mat_id, amount, woodcutting_log_collection_multiplier(SkillState.host_skill_level(host, "woodcutting")))
 
 
 func berry_prep_target_key(skill_id: String, action_id: String, action_lookup: Callable, action_key: Callable) -> String:

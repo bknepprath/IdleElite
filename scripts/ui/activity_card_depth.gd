@@ -1,4 +1,3 @@
-class_name ActivityCardDepth
 extends Control
 
 const DEFAULT_RADIUS := 66.0

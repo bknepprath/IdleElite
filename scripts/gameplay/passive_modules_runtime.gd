@@ -13,6 +13,7 @@ const FIREPIT_STAMINA_REGEN_PER_TIER := 0.04
 const FIREPIT_WOODCUTTING_XP_PER_SCRAPWOOD := 2
 const FIREPIT_START_SCRAPWOOD_COST := 1.0
 const FIREPIT_REGEN_DECAY_SECONDS_PER_PERCENT := 5.0
+const PLANK_BUILD_XP_MULT := 0.05
 const PASSIVE_TIME_START := 240
 const PASSIVE_TIME_MAX := 30
 const PASSIVE_YIELD_START := 2
@@ -140,6 +141,17 @@ func firepit_active_regen_bonus(now: int) -> float:
 	return float(firepit_heat_tier(now)) * FIREPIT_STAMINA_REGEN_PER_TIER
 
 
+func firepit_shutdown_regen_bonus_from_state(state: Dictionary, now: int) -> float:
+	if bool(state.get("active", false)):
+		var started_unix := int(state.get("started_unix", 0))
+		if started_unix <= 0:
+			return FIREPIT_STAMINA_REGEN_PER_TIER
+		var heat_seconds := maxf(0.0, float(now - started_unix))
+		var tier := clampi(int(floor(heat_seconds / FIREPIT_HEAT_TIER_SECONDS)) + 1, 1, FIREPIT_MAX_HEAT_TIER)
+		return float(tier) * FIREPIT_STAMINA_REGEN_PER_TIER
+	return firepit_decayed_cooling_bonus_from_state(state, now)
+
+
 func firepit_decayed_cooling_bonus_from_state(state: Dictionary, now: int) -> float:
 	var cooling_bonus := clampf(float(state.get("cooling_bonus", 0.0)), 0.0, FIREPIT_STAMINA_REGEN_PER_TIER * float(FIREPIT_MAX_HEAT_TIER))
 	if cooling_bonus <= 0.0:
@@ -193,6 +205,30 @@ func firepit_stamina_regen_bonus(skill_id: String, now: int) -> float:
 	if firepit_active(now):
 		return firepit_active_regen_bonus(now)
 	return firepit_cooling_regen_bonus(now)
+
+
+func award_firepit_burn_xp(scrapwood_burned: int, animate := true) -> void:
+	if scrapwood_burned <= 0 or not host.skills.has("woodcutting"):
+		return
+	var xp_reward := scrapwood_burned * FIREPIT_WOODCUTTING_XP_PER_SCRAPWOOD
+	if xp_reward <= 0:
+		return
+	host.skills["woodcutting"]["xp"] = int(host.skills["woodcutting"].get("xp", 0)) + xp_reward
+	SkillState.recalculate_level(host, "woodcutting")
+	host._mark_save_dirty("firepit xp")
+	if animate and (host.startup_initialized or host.action_cards.has(host._action_key("woodcutting", WOODCUTTING_FIREPIT_MODULE_ID))):
+		host._passive_firepit_surface()._hold_firepit_next_scrapwood_ring_empty()
+		host._passive_firepit_surface()._animate_firepit_scrapwood_to_fire(scrapwood_burned)
+
+
+func toggle_plank_boost() -> void:
+	host.plank_boost_enabled = not host.plank_boost_enabled
+	host.save_game()
+	host._update_ui(0.0, false)
+
+
+func plank_bonus_applies(skill_id: String) -> bool:
+	return skill_id == "build" and host.plank_boost_enabled and host.material_runtime.amount("softwood") >= 1.0
 
 
 func firepit_seconds_available(scrapwood: float) -> float:
@@ -266,9 +302,9 @@ func is_passive_module_unlocked(module_id: String) -> bool:
 	var action: Dictionary = host._action_data("woodcutting", module_id)
 	if action.is_empty():
 		if is_firepit_module(module_id):
-			return host._skill_level("woodcutting") >= WOODCUTTING_FIREPIT_UNLOCK_LEVEL
-		return host._skill_level("woodcutting") >= WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL
-	return host._is_action_unlocked("woodcutting", action)
+			return SkillState.host_skill_level(host, "woodcutting") >= WOODCUTTING_FIREPIT_UNLOCK_LEVEL
+		return SkillState.host_skill_level(host, "woodcutting") >= WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL
+	return host._activity_unlock_runtime()._is_action_unlocked("woodcutting", action)
 
 
 func sync_passive_module_unlocks(now: int) -> void:
@@ -378,7 +414,7 @@ func apply_firepit_fuel(now: int) -> void:
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 		return
 	if not is_passive_module_unlocked(WOODCUTTING_FIREPIT_MODULE_ID):
-		var locked_bonus := firepit_active_regen_bonus(now)
+		var locked_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
 		state["active"] = false
 		state["igniting"] = false
 		state["last_update"] = now
@@ -387,7 +423,7 @@ func apply_firepit_fuel(now: int) -> void:
 		state = set_firepit_cooling_from_bonus(state, now, locked_bonus)
 		state["shutdown_reason"] = "locked"
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
-		host._invalidate_stat_caches()
+		SkillState.invalidate_stat_caches(host)
 		return
 	var last_update := int(state.get("last_update", now))
 	var elapsed := maxi(0, mini(MAX_OFFLINE_SECONDS, now - last_update))
@@ -397,7 +433,7 @@ func apply_firepit_fuel(now: int) -> void:
 	var requested_fuel := float(elapsed) * FIREPIT_SCRAPWOOD_PER_SECOND
 	var available_fuel: float = host.material_runtime.amount("scrapwood")
 	if available_fuel <= 0.0001:
-		var empty_bonus := firepit_active_regen_bonus(now)
+		var empty_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
 		state["active"] = false
 		state["igniting"] = false
 		state["last_update"] = now
@@ -406,7 +442,7 @@ func apply_firepit_fuel(now: int) -> void:
 		state = set_firepit_cooling_from_bonus(state, now, empty_bonus)
 		state["shutdown_reason"] = "no_fuel"
 		host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
-		host._invalidate_stat_caches()
+		SkillState.invalidate_stat_caches(host)
 		host._mark_save_dirty("firepit empty")
 		return
 	var burned := minf(available_fuel, requested_fuel)
@@ -417,16 +453,16 @@ func apply_firepit_fuel(now: int) -> void:
 		var whole_scrapwood_burned := int(floor(maxf(0.0, float(state.get("burned_scrapwood", 0.0)))))
 		var newly_burned_whole_scrapwood := maxi(0, whole_scrapwood_burned - previous_whole_scrapwood_burned)
 		if newly_burned_whole_scrapwood > 0:
-			host._award_firepit_burn_xp(newly_burned_whole_scrapwood)
+			award_firepit_burn_xp(newly_burned_whole_scrapwood)
 	if burned + 0.0001 < requested_fuel:
-		var out_of_fuel_bonus := firepit_active_regen_bonus(now)
+		var out_of_fuel_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
 		state["active"] = false
 		state["igniting"] = false
 		state["started_unix"] = 0
 		state["burned_scrapwood"] = 0.0
 		state = set_firepit_cooling_from_bonus(state, now, out_of_fuel_bonus)
 		state["shutdown_reason"] = "no_fuel"
-		host._invalidate_stat_caches()
+		SkillState.invalidate_stat_caches(host)
 		host._mark_save_dirty("firepit empty")
 	else:
 		state["shutdown_reason"] = ""
@@ -435,8 +471,8 @@ func apply_firepit_fuel(now: int) -> void:
 
 
 func toggle_firepit_pressed(module_id: String, now: int) -> void:
-	host._cancel_skill_swipe_feedback(false)
-	host._clear_passive_button_press()
+	host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
+	host._passive_firepit_surface()._clear_passive_button_press()
 	if not is_firepit_module(module_id) or not is_passive_module_unlocked(module_id):
 		return
 	apply_firepit_fuel(now)
@@ -462,7 +498,7 @@ func start_firepit(now: int) -> bool:
 	state["shutdown_reason"] = ""
 	host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 	host.last_result = "Firepit lit. Warm Momentum started at +4% Woodcutting stamina regen."
-	host._invalidate_stat_caches()
+	SkillState.invalidate_stat_caches(host)
 	host._audio_director()._play_firepit_toggle_sfx(true)
 	host._mark_save_dirty("firepit lit")
 	host.save_game()
@@ -511,7 +547,7 @@ func finish_firepit_ignition(now: int) -> void:
 		host._update_ui(0.0, false)
 		return
 	host.material_runtime.set_amount("scrapwood", host.material_runtime.amount("scrapwood") - FIREPIT_START_SCRAPWOOD_COST)
-	host._award_firepit_burn_xp(1, false)
+	award_firepit_burn_xp(1, false)
 	var restart_heat_offset := firepit_restart_heat_offset_seconds(float(state.get("cooling_bonus", 0.0)))
 	state["active"] = true
 	state["igniting"] = false
@@ -523,7 +559,7 @@ func finish_firepit_ignition(now: int) -> void:
 	state["shutdown_reason"] = ""
 	host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 	host.last_result = "Firepit lit. Warm Momentum started at +4% Woodcutting stamina regen."
-	host._invalidate_stat_caches()
+	SkillState.invalidate_stat_caches(host)
 	host._audio_director()._play_firepit_toggle_sfx(true)
 	host._passive_firepit_surface()._float_firepit_xp_reward_from_fire(0)
 	host._mark_save_dirty("firepit lit")
@@ -533,7 +569,7 @@ func finish_firepit_ignition(now: int) -> void:
 
 func extinguish_firepit(now: int) -> void:
 	var state := ensure_firepit_state(now)
-	var cooling_bonus := firepit_active_regen_bonus(now)
+	var cooling_bonus := firepit_shutdown_regen_bonus_from_state(state, now)
 	state["active"] = false
 	state["last_update"] = now
 	state["started_unix"] = 0
@@ -542,7 +578,7 @@ func extinguish_firepit(now: int) -> void:
 	state["shutdown_reason"] = "manual"
 	host.passive_modules[WOODCUTTING_FIREPIT_MODULE_ID] = state
 	host.last_result = "Firepit stopped. Warm Momentum streak reset."
-	host._invalidate_stat_caches()
+	SkillState.invalidate_stat_caches(host)
 	host._audio_director()._play_firepit_toggle_sfx(false)
 	host._mark_save_dirty("firepit stopped")
 	host.save_game()

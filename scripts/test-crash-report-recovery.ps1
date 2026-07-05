@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
@@ -57,7 +57,6 @@ try {
 extends SceneTree
 
 const MainScript := preload("res://scripts/main.gd")
-const CrashReports := preload("res://scripts/diagnostics/crash_reports.gd")
 const CrashReportRuntime := preload("res://scripts/diagnostics/crash_report_runtime.gd")
 
 var failures: Array[String] = []
@@ -97,8 +96,8 @@ func _check_silent_json_parser_handles_malformed_external_text(game: Node) -> vo
 
 func _check_malformed_report_falls_back_to_raw_text(game: Node) -> void:
 	var raw := "{not-json"
-	_expect(CrashReports.clipboard_text(raw) == raw, "Malformed crash reports should be copied as raw text instead of throwing.")
-	_expect(CrashReports.clipboard_text("[1,2,3]") == "[1,2,3]", "Non-dictionary crash reports should be copied as raw text.")
+	_expect(CrashReportRuntime.clipboard_text(raw) == raw, "Malformed crash reports should be copied as raw text instead of throwing.")
+	_expect(CrashReportRuntime.clipboard_text("[1,2,3]") == "[1,2,3]", "Non-dictionary crash reports should be copied as raw text.")
 
 
 func _check_java_exception_report_is_compacted(game: Node) -> void:
@@ -117,7 +116,7 @@ func _check_java_exception_report_is_compacted(game: Node) -> void:
 			"2026-01-01T00:00:02.000 resume"
 		]
 	}
-	var text := CrashReports.clipboard_text(JSON.stringify(report))
+	var text := CrashReportRuntime.clipboard_text(JSON.stringify(report))
 	_expect(text.find("Idle Elite crash report v2") >= 0, "Structured crash report should include the report header.")
 	_expect(text.find("type: java_exception") >= 0, "Structured crash report should include the crash type.")
 	_expect(text.find("build=0.test(99)") >= 0, "Structured crash report should include build metadata.")
@@ -148,7 +147,7 @@ func _check_unclean_session_report_is_summarized(game: Node) -> void:
 			"2026-01-01T00:00:02.000 create"
 		]
 	}
-	var text := CrashReports.clipboard_text(JSON.stringify(report))
+	var text := CrashReportRuntime.clipboard_text(JSON.stringify(report))
 	_expect(text.find("type: unclean_previous_session") >= 0, "Unclean session report should include the crash type.")
 	_expect(text.find("prev_status: running startup=true os=Android") >= 0, "Unclean session report should summarize the previous marker.")
 	_expect(text.find("screen: skill selected=fight") >= 0, "Unclean session report should include screen context.")
@@ -166,9 +165,9 @@ func _check_android_lifecycle_helpers(game: Node) -> void:
 		"2026-01-01T00:00:01.000 resume",
 		"2026-01-01T00:00:02.000 create"
 	]
-	_expect(CrashReports.previous_android_lifecycle_before_launch(clean_events) == "stop", "Lifecycle helper should find the previous lifecycle event before relaunch.")
-	_expect(CrashReports.previous_android_lifecycle_was_clean(clean_events), "Lifecycle helper should treat stop as a clean pre-relaunch lifecycle.")
-	_expect(not CrashReports.previous_android_lifecycle_was_clean(dirty_events), "Lifecycle helper should treat resume before relaunch as unclean.")
+	_expect(CrashReportRuntime.previous_android_lifecycle_before_launch(clean_events) == "stop", "Lifecycle helper should find the previous lifecycle event before relaunch.")
+	_expect(CrashReportRuntime.previous_android_lifecycle_was_clean(clean_events), "Lifecycle helper should treat stop as a clean pre-relaunch lifecycle.")
+	_expect(not CrashReportRuntime.previous_android_lifecycle_was_clean(dirty_events), "Lifecycle helper should treat resume before relaunch as unclean.")
 
 
 func _expect(condition: bool, message: String) -> void:

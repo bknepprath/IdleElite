@@ -1,9 +1,130 @@
 class_name MasteryState
 
+const MEDAL_NAMES := [
+	"Bronze",
+	"Silver",
+	"Gold",
+	"Platinum",
+	"Sapphire",
+	"Emerald",
+	"Ruby",
+	"Diamond",
+	"Demonic",
+	"Heavenly",
+	"Elite Bronze",
+	"Elite Silver",
+	"Elite Gold",
+	"Elite Platinum",
+	"Elite Sapphire",
+	"Elite Emerald",
+	"Elite Ruby",
+	"Elite Diamond",
+	"Elite Demonic",
+	"Elite Heavenly"
+]
+const MEDAL_ACCENTS := [
+	Color("#b77938"),
+	Color("#a9adb7"),
+	Color("#f4bf35"),
+	Color("#a7d6e8"),
+	Color("#3aa0ff"),
+	Color("#35d86d"),
+	Color("#e84d4d"),
+	Color("#8fdcff"),
+	Color("#9b54ff"),
+	Color("#fff2a8"),
+	Color("#c06d2c"),
+	Color("#b8bec8"),
+	Color("#ffd32f"),
+	Color("#f1ebe0"),
+	Color("#1f82ff"),
+	Color("#22cc58"),
+	Color("#ff2430"),
+	Color("#aeeeff"),
+	Color("#8a2cff"),
+	Color("#fff0b8")
+]
+const GLOBAL_MEDAL_BUFFS := [
+	{"level": 1, "stat": "max_stamina", "amount": 1.0},
+	{"level": 2, "stat": "xp_mult", "amount": 0.02},
+	{"level": 3, "stat": "speed_mult", "amount": 0.02},
+	{"level": 4, "stat": "success_bonus", "amount": 1.0},
+	{"level": 5, "stat": "max_stamina", "amount": 1.0},
+	{"level": 6, "stat": "xp_mult", "amount": 0.03},
+	{"level": 7, "stat": "speed_mult", "amount": 0.03},
+	{"level": 8, "stat": "success_bonus", "amount": 1.0},
+	{"level": 9, "stat": "max_stamina", "amount": 2.0},
+	{"level": 10, "stat": "xp_mult", "amount": 0.05},
+	{"level": 11, "stat": "max_stamina", "amount": 2.0},
+	{"level": 12, "stat": "xp_mult", "amount": 0.05},
+	{"level": 13, "stat": "speed_mult", "amount": 0.04},
+	{"level": 14, "stat": "success_bonus", "amount": 1.0},
+	{"level": 15, "stat": "max_stamina", "amount": 2.0},
+	{"level": 16, "stat": "xp_mult", "amount": 0.05},
+	{"level": 17, "stat": "speed_mult", "amount": 0.04},
+	{"level": 18, "stat": "success_bonus", "amount": 1.0},
+	{"level": 19, "stat": "max_stamina", "amount": 3.0},
+	{"level": 20, "stat": "xp_mult", "amount": 0.08}
+]
+
+
+static func medal_name(level: int) -> String:
+	if level <= 0:
+		return "Unranked"
+	return str(MEDAL_NAMES[clampi(level, 1, MEDAL_NAMES.size()) - 1])
+
+
+static func xp_reward(_action: Dictionary) -> float:
+	return 1.0
+
+
+static func action_has_mastery(host, action: Dictionary) -> bool:
+	if action.is_empty():
+		return false
+	return not host._is_event_action(action) and not host._passive_modules_runtime().is_passive_action(action) and not host._convergence_runtime()._is_convergence_action(action)
+
+
+static func reward_for_action(host, skill_id: String, action_id: String, action: Dictionary) -> float:
+	if not action_has_mastery(host, action):
+		return 0.0
+	if not host._onboarding_runtime()._onboarding_mastery_rewards_allowed(skill_id):
+		return 0.0
+	if is_maxed(host.mastery, host._action_key(skill_id, action_id), host.MASTERY_MAX_LEVEL):
+		return 0.0
+	return xp_reward(action)
+
+
+static func add_host_xp(host, skill_id: String, action_id: String, amount: float) -> void:
+	var key: String = host._action_key(skill_id, action_id)
+	if amount <= 0.0 or is_maxed(host.mastery, key, host.MASTERY_MAX_LEVEL):
+		return
+	if not host._onboarding_runtime()._onboarding_mastery_rewards_allowed(skill_id):
+		return
+	_refresh_host_after_level_change(host, add_xp(host.mastery, key, amount, host.MASTERY_MAX_LEVEL))
+
+
+static func recalculate_host(host, key: String) -> void:
+	_refresh_host_after_level_change(host, recalculate_entry(host.mastery, key, host.MASTERY_MAX_LEVEL))
+
 
 static func xp_for_level(level: int) -> int:
 	if level <= 0:
 		return 0
+	if level <= 3:
+		return _legacy_xp_for_level(level)
+	var total := _legacy_xp_for_level(3)
+	for medal_level in range(4, level + 1):
+		var old_gap := _legacy_xp_for_level(medal_level) - _legacy_xp_for_level(medal_level - 1)
+		var gap_multiplier := 1.0 + 0.08 * float(medal_level - 3)
+		var elite_entry_jump := 0
+		if medal_level > 10:
+			gap_multiplier = (1.65 + 0.12 * float(medal_level - 11)) * pow(float(medal_level) / 11.0, 0.12)
+			elite_entry_jump = 900 if medal_level == 11 else 0
+		total += int(round(float(old_gap) * gap_multiplier)) + elite_entry_jump
+	return total
+
+
+static func _legacy_xp_for_level(level: int) -> int:
 	return int(round(18.0 * pow(float(level), 2.05)))
 
 
@@ -97,3 +218,9 @@ static func _entry_for_xp(xp: float, max_level: int, clamp_to_zero: bool) -> Dic
 		"xp": minf(xp_total, float(xp_for_level(max_level))),
 		"level": current_level
 	}
+
+
+static func _refresh_host_after_level_change(host, result: Dictionary) -> void:
+	if bool(result.get("level_changed", false)):
+		SkillState.invalidate_stat_caches(host)
+		host._navigation_shell()._refresh_shop_nav_unlock_state()

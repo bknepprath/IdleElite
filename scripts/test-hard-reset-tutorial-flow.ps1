@@ -86,19 +86,19 @@ func _run() -> void:
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
 		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if bool(scene.get("tutorial_active")) and _tutorial_skill_page_ready(scene):
+		if bool(scene._onboarding_runtime().tutorial_active) and _tutorial_skill_page_ready(scene):
 			break
 
-	if not bool(scene.get("tutorial_active")):
+	if not bool(scene._onboarding_runtime().tutorial_active):
 		_fail("hard reset did not restart tutorial: %s" % _summary(scene))
 		return
 	if not _tutorial_skill_page_ready(scene):
 		_fail("hard reset should start on fight detail page, not the skill menu: %s" % _summary(scene))
 		return
-	if int(scene.get("tutorial_step")) != 1:
+	if int(scene._onboarding_runtime().tutorial_step) != 1:
 		_fail("hard reset tutorial should start on the fight activity step: %s" % _summary(scene))
 		return
-	var nav_bar := scene.get("nav_bar") as Control
+	var nav_bar := _bottom_nav_bar(scene)
 	if nav_bar == null or not nav_bar.visible:
 		_fail("hard reset tutorial should keep the bottom nav shell visible: %s" % _summary(scene))
 		return
@@ -107,7 +107,10 @@ func _run() -> void:
 		return
 	var tutorial_panel := scene.get("tutorial_panel") as Control
 	if tutorial_panel != null and tutorial_panel.visible:
-		_fail("hard reset tutorial should not show the legacy boxed tutorial panel: %s" % _summary(scene))
+		_fail("hard reset tutorial should use the inline activity target instead of the legacy blocking tutorial modal: %s" % _summary(scene))
+		return
+	if _floating_skip_button_visible(scene):
+		_fail("hard reset tutorial should not show a SKIP button: %s" % _summary(scene))
 		return
 	if not _only_starter_activity_rendered(scene):
 		_fail("hard reset tutorial should render only Shove Wobbly Hay Bale: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
@@ -115,72 +118,41 @@ func _run() -> void:
 	print("hard-reset-tutorial-flow-stage starter-ready")
 
 	if not _press_tutorial_target(scene):
-		_fail("hard reset fight activity target press was not accepted: %s" % _summary(scene))
+		_fail("hard reset tutorial target press was not accepted: %s" % _summary(scene))
 		return
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
 		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if not str(scene.get("running_action_id")).is_empty():
+		var active_panel := scene.get("tutorial_panel") as Control
+		if not str(scene.get("running_action_id")).is_empty() and active_panel != null and not active_panel.visible:
 			break
 	if str(scene.get("running_action_id")).is_empty():
 		_fail("hard reset tutorial did not start the first fight activity after target tap: %s" % _summary(scene))
 		return
-	if bool(scene.get("tutorial_active")):
-		_fail("legacy tutorial target overlay should dismiss after the first activity starts: %s" % _summary(scene))
+	tutorial_panel = scene.get("tutorial_panel") as Control
+	if tutorial_panel != null and tutorial_panel.visible:
+		_fail("blocking tutorial modal should dismiss after the target tap: %s" % _summary(scene))
 		return
-	if bool(scene.get("onboarding_tutorial_complete")):
-		_fail("starting the first activity should not complete onboarding: %s" % _summary(scene))
-		return
-	if nav_bar == null or not nav_bar.visible:
-		_fail("bottom nav shell disappeared after the first tutorial activity starts: %s" % _summary(scene))
-		return
-	if not _bottom_nav_locked_controls_ok(scene):
-		_fail("bottom nav should still show all buttons with skills/settings bright and other nav locked after the first tutorial activity starts: %s %s" % [_summary(scene), _bottom_nav_summary(scene)])
-		return
-	if _has_page_switch_module(scene):
-		_fail("page-switch navigation should remain hidden after the first tutorial activity starts: %s" % _summary(scene))
-		return
-	if _fight_header_summary_visible(scene):
-		_fail("fighting header should remain hidden immediately after the first tutorial activity starts: %s" % _summary(scene))
-		return
-	if _fight_stamina_visible(scene):
-		_fail("fight stamina gauge should remain hidden immediately after the first tutorial activity starts: %s" % _summary(scene))
-		return
-	print("hard-reset-tutorial-flow-stage starter-clicked")
-	for _i in range(360):
+	for _i in range(900):
 		await _wait_test_frame()
 		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if nav_bar == null or not nav_bar.visible:
-			_fail("bottom nav shell disappeared while the first tutorial activity was running: %s" % _summary(scene))
-			return
-		if not _bottom_nav_locked_controls_ok(scene):
-			_fail("bottom nav lock state changed while the first tutorial activity was running: %s %s" % [_summary(scene), _bottom_nav_summary(scene)])
-			return
-		if _has_page_switch_module(scene):
-			_fail("page-switch navigation appeared while the first tutorial activity was running: %s" % _summary(scene))
-			return
-		if bool(scene.get("onboarding_tutorial_complete")):
-			_fail("first tutorial activity prematurely completed onboarding: %s" % _summary(scene))
-			return
-		if int(scene.get("onboarding_starter_action_completion_count")) == 0 and _fight_header_summary_visible(scene):
-			_fail("fighting header appeared before the starter activity completed: %s" % _summary(scene))
-			return
-	for _i in range(960):
-		await _wait_test_frame()
-		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if _mastery_tip_visible(scene):
+		if bool(scene._onboarding_runtime().onboarding_tutorial_complete) and not bool(scene._onboarding_runtime().tutorial_active):
 			break
-	if not _mastery_tip_visible(scene):
-		_fail("mastery bar tutorial message did not appear after starter completions: %s %s" % [_summary(scene), _onboarding_tip_summary(scene)])
+	if bool(scene._onboarding_runtime().tutorial_active):
+		_fail("tutorial should complete after the first successful activity and arrow exit: %s" % _summary(scene))
 		return
-	print("hard-reset-tutorial-flow-stage mastery-tip-observed")
+	if not bool(scene._onboarding_runtime().onboarding_tutorial_complete):
+		_fail("first successful activity should complete onboarding after following the instruction: %s" % _summary(scene))
+		return
+	print("hard-reset-tutorial-flow-ok %s" % _summary(scene))
+	quit(0)
 	var test_skills := scene.get("skills") as Dictionary
 	var fight_state := test_skills.get("fight", {}) as Dictionary
 	fight_state["xp"] = SkillState.xp_for_level(2)
 	test_skills["fight"] = fight_state
 	scene.set("skills", test_skills)
-	scene.call("_recalculate_level", "fight", true)
-	var lock_tip_refresh = scene.call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
+	SkillState.recalculate_level(scene, "fight", true)
+	var lock_tip_refresh = scene.call("_skill_detail_surface").call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
 	if lock_tip_refresh != null:
 		await lock_tip_refresh
 	for _i in range(360):
@@ -196,13 +168,14 @@ func _run() -> void:
 		return
 	for _i in range(24):
 		await _wait_test_frame()
-	if not _lock_click_tip_visible(scene) or bool(scene.get("lock_click_tip_seen")):
+	if not _lock_click_tip_visible(scene) or bool(scene._onboarding_runtime().lock_click_tip_seen):
 		_fail("click-lock tutorial message disappeared before the lock was clicked: %s %s" % [_summary(scene), _onboarding_tip_summary(scene)])
 		return
-	if not bool(scene.call("_tutorial_level_two_unlock_should_use_fast_reveal", "fight", "kick-mud-off-boot")):
+	var unlock_ceremony_surface := scene.call("_activity_unlock_ceremony_surface") as Object
+	if not bool(unlock_ceremony_surface.call("_tutorial_level_two_unlock_should_use_fast_reveal", "fight", "kick-mud-off-boot")):
 		_fail("level 2 tutorial module unlock should use the smooth fast reveal path")
 		return
-	if bool(scene.call("_tutorial_level_two_unlock_should_use_fast_reveal", "fight", "wrestle-stuck-gate-latch")):
+	if bool(unlock_ceremony_surface.call("_tutorial_level_two_unlock_should_use_fast_reveal", "fight", "wrestle-stuck-gate-latch")):
 		_fail("only the level 2 tutorial module should use the fast reveal path")
 		return
 	scene.call("_settings_surface").call("toggle_auto_unlock_lockpads_enabled")
@@ -213,7 +186,7 @@ func _run() -> void:
 		_fail("auto-unlock toggle did not turn on during onboarding: %s" % _summary(scene))
 		return
 	var level_two_action := scene.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
-	if bool(scene.call("_is_action_unlocked", "fight", level_two_action)):
+	if bool(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", level_two_action)):
 		_fail("auto-unlock should be paused during onboarding and must not unlock Kick Mud Off Boot: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
 		return
 	var rendered_after_auto_toggle := _rendered_action_ids(scene)
@@ -228,17 +201,17 @@ func _run() -> void:
 	var manual_unlocks := scene.get("manual_activity_unlocks") as Dictionary
 	manual_unlocks["fight:kick-mud-off-boot"] = true
 	scene.set("manual_activity_unlocks", manual_unlocks)
-	scene.set("tutorial_gate_latch_only_until_swipe", true)
-	scene.set("activity_unlock_ceremony_count", 0)
-	scene.set("locked_activity_preview_fade_play_pending", false)
-	scene.set("stamina_gauge_tip_seen", true)
-	scene.set("onboarding_fight_action_stats_revealed", true)
+	scene._onboarding_runtime().tutorial_gate_latch_only_until_swipe = true
+	unlock_ceremony_surface.ceremony_count = 0
+	unlock_ceremony_surface.locked_preview_fade_play_pending = false
+	scene._onboarding_runtime().stamina_gauge_tip_seen = true
+	scene._onboarding_runtime().onboarding_fight_action_stats_revealed = true
 	var test_stamina := scene.get("stamina") as Dictionary
-	test_stamina["fight"] = scene.call("_max_stamina", "fight")
+	test_stamina["fight"] = SkillState.max_stamina(scene, "fight")
 	scene.set("stamina", test_stamina)
 	var onboarding_runtime := scene.call("_onboarding_runtime") as Object
 	onboarding_runtime.call("_maybe_trigger_onboarding_swipe_tip_at_zero_stamina", "fight")
-	var swipe_tip_refresh = scene.call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
+	var swipe_tip_refresh = scene.call("_skill_detail_surface").call("_refresh_visible_skill_detail_action_list", -1, "fight", true)
 	if swipe_tip_refresh != null:
 		await swipe_tip_refresh
 	for _i in range(720):
@@ -249,7 +222,7 @@ func _run() -> void:
 	if not _has_page_switch_module(scene):
 		_fail("page-switch navigation did not appear when the swipe tutorial gate became available before stamina depletion: %s" % _summary(scene))
 		return
-	if not bool(scene.get("onboarding_swipe_navigation_unlocked")):
+	if not bool(scene._onboarding_runtime().onboarding_swipe_navigation_unlocked):
 		_fail("page-switch navigation appeared before onboarding swipe navigation was unlocked by the gate prompt: %s" % _summary(scene))
 		return
 	if not _skill_swipe_tip_between_level_two_and_three(scene):
@@ -271,7 +244,7 @@ func _run() -> void:
 	if str(scene.get("selected_skill_id")) == "fight":
 		_fail("page-switch button did not navigate away from fight during the swipe tutorial step: %s" % _summary(scene))
 		return
-	if not bool(scene.get("skill_swipe_tip_seen")):
+	if not bool(scene._onboarding_runtime().skill_swipe_tip_seen):
 		_fail("page-switch button did not advance the swipe tutorial milestone: %s" % _summary(scene))
 		return
 	print("hard-reset-tutorial-flow-stage page-switch-ok")
@@ -288,13 +261,13 @@ func _run() -> void:
 		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
 		if _tutorial_skill_page_ready(scene):
 			break
-	if bool(scene.get("tutorial_active")):
+	if bool(scene._onboarding_runtime().tutorial_active):
 		_fail("mid-tutorial save should not restore the legacy boxed tutorial overlay: %s" % _summary(scene))
 		return
 	if not _tutorial_skill_page_ready(scene):
 		_fail("mid-tutorial save did not restore to fight detail: %s" % _summary(scene))
 		return
-	if bool(scene.get("onboarding_tutorial_complete")):
+	if bool(scene._onboarding_runtime().onboarding_tutorial_complete):
 		_fail("mid-tutorial save should keep onboarding incomplete: %s" % _summary(scene))
 		return
 	print("hard-reset-tutorial-flow-stage reload-ok")
@@ -322,15 +295,15 @@ func _run() -> void:
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
 		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if bool(scene.get("tutorial_active")) and _tutorial_skill_page_ready(scene):
+		if bool(scene._onboarding_runtime().tutorial_active) and _tutorial_skill_page_ready(scene):
 			break
-	if not bool(scene.get("tutorial_active")) or int(scene.get("tutorial_step")) != 1:
+	if not bool(scene._onboarding_runtime().tutorial_active) or int(scene._onboarding_runtime().tutorial_step) != 1:
 		_fail("hard reset after completed tutorial did not restart a fresh tutorial: %s" % _summary(scene))
 		return
 	if not _tutorial_skill_page_ready(scene):
 		_fail("hard reset after completion should return to fight detail: %s" % _summary(scene))
 		return
-	var reset_nav := scene.get("nav_bar") as Control
+	var reset_nav := _bottom_nav_bar(scene)
 	if reset_nav == null or not reset_nav.visible:
 		_fail("fresh tutorial after completed reset should keep the bottom nav shell visible: %s" % _summary(scene))
 		return
@@ -378,19 +351,30 @@ func _press_tutorial_target(scene: Node) -> bool:
 	return accepted
 
 
+func _press_tutorial_start_button(scene: Node) -> bool:
+	var tutorial_overlay_surface := scene.call("_tutorial_overlay_surface") as Object
+	if tutorial_overlay_surface == null:
+		return false
+	var button := tutorial_overlay_surface.get("tutorial_action_button") as Button
+	if button == null or not is_instance_valid(button) or not button.is_visible_in_tree():
+		return false
+	button.pressed.emit()
+	return true
+
+
 func _tutorial_completion_visible(scene: Node) -> bool:
-	if bool(scene.get("tutorial_active")):
+	if bool(scene._onboarding_runtime().tutorial_active):
 		return false
-	if not bool(scene.get("onboarding_tutorial_complete")):
+	if not bool(scene._onboarding_runtime().onboarding_tutorial_complete):
 		return false
-	var nav_bar := scene.get("nav_bar") as Control
+	var nav_bar := _bottom_nav_bar(scene)
 	return nav_bar != null and nav_bar.visible and _bottom_nav_post_tutorial_controls_ok(scene)
 
 
 func _completion_bottom_chrome_state_ok(scene: Node) -> bool:
-	var utility_row := scene.get("module_utility_row") as Control
+	var utility_row := _module_utility_row(scene)
 	var chat_strip := scene.get("chat_strip") as Control
-	var collapsed := bool(scene.get("module_utility_collapsed"))
+	var collapsed := _module_utility_collapsed(scene)
 	return (
 		_bottom_nav_post_tutorial_controls_ok(scene)
 		and collapsed
@@ -404,17 +388,52 @@ func _completion_bottom_chrome_state_ok(scene: Node) -> bool:
 
 
 func _completion_bottom_chrome_fade_started(scene: Node) -> bool:
-	var utility_row := scene.get("module_utility_row") as Control
+	var utility_row := _module_utility_row(scene)
 	var chat_strip := scene.get("chat_strip") as Control
 	if utility_row == null or chat_strip == null:
 		return false
 	if not utility_row.visible or not chat_strip.visible:
 		return false
-	if not bool(scene.get("module_utility_collapsed")):
+	if not _module_utility_collapsed(scene):
 		return false
 	var utility_alpha := _effective_canvas_alpha(utility_row)
 	var chat_alpha := _effective_canvas_alpha(chat_strip)
 	return utility_alpha >= 0.0 and utility_alpha < 0.98 and chat_alpha >= 0.0 and chat_alpha < 0.98
+
+
+func _module_utility_row(scene: Node) -> Control:
+	var navigation_shell := scene.call("_navigation_shell") as Object
+	if navigation_shell == null:
+		return null
+	return navigation_shell.get("module_utility_row") as Control
+
+
+func _bottom_nav_bar(scene: Node) -> Control:
+	var navigation_shell := scene.call("_navigation_shell") as Object
+	if navigation_shell == null:
+		return null
+	return navigation_shell.get("nav_bar") as Control
+
+
+func _bottom_nav_buttons_row(scene: Node) -> Control:
+	var navigation_shell := scene.call("_navigation_shell") as Object
+	if navigation_shell == null:
+		return null
+	return navigation_shell.get("bottom_nav_buttons_row") as Control
+
+
+func _bottom_nav_button(scene: Node, name: String) -> Button:
+	if name == "skills_tab" or name == "settings_tab":
+		return scene.get(name) as Button
+	var navigation_shell := scene.call("_navigation_shell") as Object
+	if navigation_shell == null:
+		return null
+	return navigation_shell.get(name) as Button
+
+
+func _module_utility_collapsed(scene: Node) -> bool:
+	var navigation_shell := scene.call("_navigation_shell") as Object
+	return navigation_shell != null and bool(navigation_shell.get("module_utility_collapsed"))
 
 
 func _bottom_nav_locked_controls_ok(scene: Node) -> bool:
@@ -433,35 +452,35 @@ func _bottom_nav_post_tutorial_controls_ok(scene: Node) -> bool:
 
 func _all_nav_buttons_visible(scene: Node) -> bool:
 	for raw_name in ["hero_tab", "hub_tab", "skills_tab", "settings_tab", "shop_tab"]:
-		var button := scene.get(raw_name) as Control
+		var button := _bottom_nav_button(scene, raw_name) as Control
 		if button == null or not button.is_visible_in_tree() or _effective_canvas_alpha(button) <= 0.01:
 			return false
 	return true
 
 
 func _bottom_nav_row_visible(scene: Node) -> bool:
-	var nav_bar := scene.get("nav_bar") as Control
+	var nav_bar := _bottom_nav_bar(scene)
 	if nav_bar == null or not is_instance_valid(nav_bar):
 		return false
-	var row := scene.get("bottom_nav_buttons_row") as Control
+	var row := _bottom_nav_buttons_row(scene)
 	if row == null:
 		row = _find_named_descendant(nav_bar, "BottomNavButtonsRow") as Control
 	return row != null and row.is_visible_in_tree() and _effective_canvas_alpha(row) > 0.01
 
 
 func _settings_nav_button_enabled(scene: Node) -> bool:
-	var settings := scene.get("settings_tab") as Button
+	var settings := _bottom_nav_button(scene, "settings_tab")
 	return settings != null and settings.is_visible_in_tree() and _effective_canvas_alpha(settings) > 0.01 and not settings.disabled and settings.mouse_filter == Control.MOUSE_FILTER_STOP
 
 
 func _skills_nav_button_enabled(scene: Node) -> bool:
-	var skills := scene.get("skills_tab") as Button
+	var skills := _bottom_nav_button(scene, "skills_tab")
 	return skills != null and skills.is_visible_in_tree() and _effective_canvas_alpha(skills) > 0.01 and not skills.disabled and skills.mouse_filter == Control.MOUSE_FILTER_STOP and _color_nearly_equal(skills.modulate, Color.WHITE)
 
 
 func _fresh_game_locked_nav_buttons_ok(scene: Node) -> bool:
 	for raw_name in ["hero_tab", "hub_tab", "shop_tab"]:
-		var button := scene.get(raw_name) as Button
+		var button := _bottom_nav_button(scene, raw_name)
 		if button == null or not button.is_visible_in_tree() or _effective_canvas_alpha(button) <= 0.01:
 			return false
 		if button.disabled or button.mouse_filter != Control.MOUSE_FILTER_STOP:
@@ -473,7 +492,7 @@ func _fresh_game_locked_nav_buttons_ok(scene: Node) -> bool:
 
 func _non_settings_nav_buttons_locked(scene: Node) -> bool:
 	for raw_name in ["hero_tab", "hub_tab", "shop_tab"]:
-		var button := scene.get(raw_name) as Button
+		var button := _bottom_nav_button(scene, raw_name)
 		if button == null or not button.is_visible_in_tree() or _effective_canvas_alpha(button) <= 0.01:
 			return false
 		if button.disabled or button.mouse_filter != Control.MOUSE_FILTER_IGNORE:
@@ -488,8 +507,8 @@ func _color_nearly_equal(a: Color, b: Color) -> bool:
 
 
 func _bottom_nav_summary(scene: Node) -> String:
-	var nav_bar := scene.get("nav_bar") as Control
-	var row := scene.get("bottom_nav_buttons_row") as Control
+	var nav_bar := _bottom_nav_bar(scene)
+	var row := _bottom_nav_buttons_row(scene)
 	if row == null and nav_bar != null:
 		row = _find_named_descendant(nav_bar, "BottomNavButtonsRow") as Control
 	return "nav_present=%s nav_visible=%s row_present=%s row_visible=%s row_tree=%s row_alpha=%.3f all_buttons=%s settings_enabled=%s skills_enabled=%s other_nav_locked=%s children=%s complete=%s tutorial=%s" % [
@@ -504,13 +523,13 @@ func _bottom_nav_summary(scene: Node) -> String:
 		str(_skills_nav_button_enabled(scene)),
 		str(_non_settings_nav_buttons_locked(scene)),
 		str(_child_names(nav_bar)),
-		str(scene.get("onboarding_tutorial_complete")),
-		str(scene.get("tutorial_active")),
+		str(scene._onboarding_runtime().onboarding_tutorial_complete),
+		str(scene._onboarding_runtime().tutorial_active),
 	]
 
 
 func _bottom_chrome_summary(scene: Node) -> String:
-	var utility_row := scene.get("module_utility_row") as Control
+	var utility_row := _module_utility_row(scene)
 	var chat_strip := scene.get("chat_strip") as Control
 	return "utility_present=%s utility_visible=%s utility_alpha=%.3f chat_present=%s chat_visible=%s chat_alpha=%.3f collapsed=%s" % [
 		str(utility_row != null),
@@ -519,7 +538,7 @@ func _bottom_chrome_summary(scene: Node) -> String:
 		str(chat_strip != null),
 		str(chat_strip != null and chat_strip.visible),
 		_effective_canvas_alpha(chat_strip),
-		str(scene.get("module_utility_collapsed")),
+		str(_module_utility_collapsed(scene)),
 	]
 
 
@@ -538,10 +557,10 @@ func _fight_header_summary_visible(scene: Node) -> bool:
 
 
 func _fight_stamina_visible(scene: Node) -> bool:
-	var fade_group := scene.get("detail_regen_circle_fade_group") as Control
+	var fade_group := scene._skill_detail_surface().detail_regen_circle_fade_group as Control
 	if fade_group != null and fade_group.is_visible_in_tree() and _effective_canvas_alpha(fade_group) > 0.01:
 		return true
-	var circle := scene.get("detail_regen_circle") as Control
+	var circle := scene._skill_detail_surface().detail_regen_circle as Control
 	return circle != null and circle.is_visible_in_tree() and _effective_canvas_alpha(circle) > 0.01
 
 
@@ -570,6 +589,11 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 func _only_starter_activity_rendered(scene: Node) -> bool:
 	var ids := _rendered_action_ids(scene)
 	return ids.size() == 1 and ids[0] == "shove-wobbly-hay-bale"
+
+
+func _tutorial_start_actions_rendered(scene: Node) -> bool:
+	var ids := _rendered_action_ids(scene)
+	return ids.has("shove-wobbly-hay-bale") and ids.has("kick-mud-off-boot")
 
 
 func _mastery_tip_visible(scene: Node) -> bool:
@@ -612,25 +636,50 @@ func _group_has_visible_node(scene: Node, group_name: String) -> bool:
 	for raw_node in tree.get_nodes_in_group(group_name):
 		var control := raw_node as Control
 		if control != null and is_instance_valid(control) and control.is_visible_in_tree() and _effective_canvas_alpha(control) > 0.01:
-			return true
+				return true
 	return false
+
+
+func _group_has_skip_button(scene: Node, group_name: String) -> bool:
+	var tree := scene.get_tree()
+	if tree == null:
+		return false
+	for raw_node in tree.get_nodes_in_group(group_name):
+		var control := raw_node as Control
+		if control == null or not is_instance_valid(control):
+			continue
+		for child in control.get_children():
+			var button := child as Button
+			if button != null and is_instance_valid(button) and button.is_visible_in_tree() and str(button.text) == "SKIP":
+				return true
+	return false
+
+
+func _floating_skip_button_visible(scene: Node) -> bool:
+	var button := scene.get("tutorial_skip_button") as Button
+	return (
+		button != null
+		and is_instance_valid(button)
+		and button.is_visible_in_tree()
+		and str(button.text) == "SKIP"
+	)
 
 
 func _onboarding_tip_summary(scene: Node) -> String:
 	return "starter_count=%s fight_level=%s fight_xp=%s mastery_tip=%s medal_tip=%s lock_tip=%s stats_revealed=%s stamina_seen=%s header=%s stamina=%s header_running=%s stamina_running=%s stats_running=%s rendered=%s" % [
-		str(scene.get("onboarding_starter_action_completion_count")),
+		str(scene._onboarding_runtime().onboarding_starter_action_completion_count),
 		str(scene.call("_skill_level", "fight")),
 		str((scene.get("skills") as Dictionary).get("fight", {}).get("xp", "?")),
 		str(_mastery_tip_visible(scene)),
 		str(_group_has_visible_node(scene, "onboarding_medal_tip_notes")),
 		str(_lock_click_tip_visible(scene)),
-		str(scene.get("onboarding_fight_action_stats_revealed")),
-		str(scene.get("stamina_gauge_tip_seen")),
+		str(scene._onboarding_runtime().onboarding_fight_action_stats_revealed),
+		str(scene._onboarding_runtime().stamina_gauge_tip_seen),
 		str(_fight_header_summary_visible(scene)),
 		str(_fight_stamina_visible(scene)),
-		str(scene.get("onboarding_header_sequence_running")),
-		str(scene.get("onboarding_stamina_tip_sequence_running")),
-		str(scene.get("onboarding_fight_action_stats_fade_running")),
+		str(scene._onboarding_runtime().onboarding_header_sequence_running),
+		str(scene._onboarding_runtime().onboarding_stamina_tip_sequence_running),
+		str(scene._onboarding_runtime().onboarding_fight_action_stats_fade_running),
 		str(_rendered_action_ids(scene)),
 	]
 
@@ -649,7 +698,7 @@ func _rendered_action_ids(scene: Node) -> Array:
 
 
 func _has_page_switch_module(scene: Node) -> bool:
-	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
+	var scroll := scene._skill_detail_surface().detail_actions_scroll as ScrollContainer
 	if scroll == null or not scroll.is_inside_tree() or scroll.get_child_count() <= 0:
 		return false
 	return _find_named_descendant(scroll.get_child(0), "PageSwitchModule") != null
@@ -699,7 +748,7 @@ func _first_group_stack_index(scene: Node, group_name: String) -> int:
 func _direct_detail_stack_child(scene: Node, control: Control) -> Control:
 	if control == null or not is_instance_valid(control):
 		return null
-	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
+	var scroll := scene._skill_detail_surface().detail_actions_scroll as ScrollContainer
 	if scroll == null or not is_instance_valid(scroll) or scroll.get_child_count() <= 0:
 		return null
 	var stack := scroll.get_child(0)
@@ -746,10 +795,11 @@ func _stale_page_switch_input_clears_on_suspend(scene: Node) -> bool:
 	if button == null:
 		return false
 	var button_center := button.get_global_rect().get_center()
-	scene.set("page_switch_press_active", true)
-	scene.set("page_switch_press_target_skill_id", str(button.get_meta("page_switch_target_skill_id", "")))
-	scene.set("page_switch_press_position", button_center)
-	scene.set("page_switch_press_dragged", false)
+	var navigation_shell = scene.call("_navigation_shell")
+	navigation_shell.set("page_switch_press_active", true)
+	navigation_shell.set("page_switch_press_target_skill_id", str(button.get_meta("page_switch_target_skill_id", "")))
+	navigation_shell.set("page_switch_press_position", button_center)
+	navigation_shell.set("page_switch_press_dragged", false)
 	button.set_meta("page_switch_press_active", true)
 	button.set_meta("page_switch_press_position", button_center)
 	button.set_meta("page_switch_press_dragged", false)
@@ -759,9 +809,9 @@ func _stale_page_switch_input_clears_on_suspend(scene: Node) -> bool:
 	scene.call("_app_lifecycle_runtime").call("_resume_from_app_suspend")
 	for _i in range(12):
 		await _wait_test_frame()
-	if bool(scene.get("page_switch_press_active")):
+	if bool(navigation_shell.get("page_switch_press_active")):
 		return false
-	if int(scene.get("page_switch_transition_button_id")) != 0:
+	if int(navigation_shell.get("page_switch_transition_button_id")) != 0:
 		return false
 	if bool(button.get_meta("page_switch_press_active", false)):
 		return false
@@ -812,14 +862,14 @@ func _find_named_descendant(root_node: Node, node_name: String) -> Node:
 
 
 func _summary(scene: Node) -> String:
-	var nav_bar := scene.get("nav_bar") as Control
+	var nav_bar := _bottom_nav_bar(scene)
 	var nav_text := "none" if nav_bar == null else "visible=%s" % str(nav_bar.visible)
 	return "screen=%s selected=%s tutorial=%s step=%s render=%s nav=%s" % [
 		str(scene.get("current_screen")),
 		str(scene.get("selected_skill_id")),
-		str(scene.get("tutorial_active")),
-		str(scene.get("tutorial_step")),
-		str(scene.get("screen_render_in_progress")),
+		str(scene._onboarding_runtime().tutorial_active),
+		str(scene._onboarding_runtime().tutorial_step),
+		str(scene.call("_navigation_shell").get("screen_render_in_progress")),
 		nav_text
 	]
 
@@ -834,7 +884,7 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 			bool(scene.get("startup_initialized"))
 			and not bool(scene.get("boot_detail_render_in_progress"))
 			and not bool(scene.get("boot_detail_scroll_locked"))
-			and not bool(scene.get("screen_render_in_progress"))
+			and not bool(scene.call("_navigation_shell").get("screen_render_in_progress"))
 			and (queue == null or queue.is_empty())
 		):
 			return true

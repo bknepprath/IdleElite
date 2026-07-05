@@ -100,7 +100,7 @@ func _run() -> void:
 	var target_button := buttons[1] as Button
 	_press_page_switch_button(scene, target_button)
 	await process_frame
-	var entering_cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var entering_cover := _skill_swipe_handoff_cover(scene)
 	result["enter_cover_alpha"] = 0.0 if entering_cover == null or not is_instance_valid(entering_cover) else entering_cover.modulate.a
 	result["enter_skill"] = str(scene.get("selected_skill_id"))
 	var enter_cover_id := 0
@@ -114,13 +114,13 @@ func _run() -> void:
 	if held_pop != null and is_instance_valid(held_pop):
 		held_offset = activity_surface.call("_activity_button_pop_depth_offset", held_pop) as Vector2
 	result["held_offset_enter"] = str(held_offset)
-	result["held_button_id_enter"] = int(scene.get("page_switch_transition_button_id"))
+	result["held_button_id_enter"] = int(scene.call("_navigation_shell").get("page_switch_transition_button_id"))
 	_expect(held_offset.length() > 0.5, "page switch button should remain depressed while the cover fades in: %s" % str(held_offset))
 	_expect(int(result.get("held_button_id_enter", 0)) == target_button.get_instance_id(), "page switch transition should remember the exiting button")
 	for _spam in range(4):
 		_press_page_switch_button(scene, target_button)
 		await process_frame
-	var spam_cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var spam_cover := _skill_swipe_handoff_cover(scene)
 	var spam_cover_id := 0 if spam_cover == null or not is_instance_valid(spam_cover) else spam_cover.get_instance_id()
 	var spam_cover_started_msec := 0 if spam_cover == null or not is_instance_valid(spam_cover) else int(spam_cover.get_meta("page_switch_scroll_cover_started_msec", 0))
 	var spam_held_pop := instance_from_id(int(target_button.get_meta("activity_button_pop_id", 0))) as Control
@@ -141,7 +141,7 @@ func _run() -> void:
 		_fail("page switch cover did not finish fading in")
 		return
 	var cover_stats := await _capture("cover")
-	var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var cover := _skill_swipe_handoff_cover(scene)
 	result["before_skill"] = before_skill
 	result["during_skill"] = str(scene.get("selected_skill_id"))
 	result["cover_exists"] = cover != null and is_instance_valid(cover)
@@ -152,12 +152,14 @@ func _run() -> void:
 	var cover_rect_stats := _rect_cream_stats_from_viewport(cover.get_global_rect()) if cover != null and cover.visible else {"cream_ratio": 0.0, "average": ""}
 	result["cover_rect_cream_ratio"] = cover_rect_stats.get("cream_ratio", 0.0)
 	result["cover_offset_bottom"] = 0.0 if cover == null or not is_instance_valid(cover) else cover.offset_bottom
-	result["expected_cover_offset_bottom"] = scene.call("_global_chat_nav_cover_bottom_offset")
-	var nav_bar := _valid_control(scene.get("nav_bar"))
+	var navigation_shell = scene.call("_navigation_shell")
+	result["expected_cover_offset_bottom"] = navigation_shell.call("_global_chat_nav_cover_bottom_offset")
+	var nav_bar := _valid_control(navigation_shell.get("nav_bar"))
 	var nav_cover_stats := _rect_cream_stats_from_viewport(nav_bar.get_global_rect()) if nav_bar != null and nav_bar.visible else {"cream_ratio": 0.0, "average": ""}
 	result["cover_nav_cream_ratio"] = nav_cover_stats.get("cream_ratio", 0.0)
 	result["cover_nav_average"] = nav_cover_stats.get("average", "")
-	var chat_strip := _valid_control(scene.get("chat_strip"))
+	var profile_chat = scene.call("_profile_chat_overlay_surface")
+	var chat_strip := _valid_control(profile_chat.get("chat_strip") if profile_chat != null else null)
 	var chat_cover_stats := _rect_cream_stats_from_viewport(chat_strip.get_global_rect()) if chat_strip != null and chat_strip.visible else {"cream_ratio": 0.0, "average": ""}
 	result["cover_chat_cream_ratio"] = chat_cover_stats.get("cream_ratio", 0.0)
 	result["cover_chat_average"] = chat_cover_stats.get("average", "")
@@ -179,9 +181,9 @@ func _run() -> void:
 	var after_stats := await _capture("after")
 	result["after_skill"] = str(scene.get("selected_skill_id"))
 	result["after_cream_ratio"] = after_stats.get("cream_ratio", 0.0)
-	var after_cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+	var after_cover := _skill_swipe_handoff_cover(scene)
 	result["after_cover_visible"] = after_cover != null and is_instance_valid(after_cover) and after_cover.visible
-	result["after_page_switch_button_lock"] = int(scene.get("page_switch_transition_button_id"))
+	result["after_page_switch_button_lock"] = int(scene.call("_navigation_shell").get("page_switch_transition_button_id"))
 	_expect(str(result.get("after_skill", "")) != before_skill, "page switch did not change selected skill")
 	_expect(not bool(result.get("after_cover_visible", false)), "page switch cover is still visible after settle")
 	_expect(int(result.get("after_page_switch_button_lock", 0)) == 0, "page switch button lock did not release after settle")
@@ -358,8 +360,9 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 func _wait_for_boot_hidden(scene: Node) -> bool:
 	for _frame in range(BOOT_TIMEOUT_FRAMES):
 		await _wait_test_frame()
-		var overlay := _valid_control(scene.get("boot_warmup_overlay"))
-		if not bool(scene.get("boot_warmup_active")) and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
+		var boot_warmup = scene.call("_boot_warmup_runtime")
+		var overlay := _valid_control(boot_warmup.get("overlay") if boot_warmup != null else null)
+		if (boot_warmup == null or not bool(boot_warmup.get("active"))) and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
 			return true
 	return false
 
@@ -367,7 +370,7 @@ func _wait_for_boot_hidden(scene: Node) -> bool:
 func _wait_for_cover_alpha(scene: Node, target_alpha: float) -> bool:
 	for _frame in range(90):
 		await _wait_test_frame()
-		var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+		var cover := _skill_swipe_handoff_cover(scene)
 		if cover != null and cover.visible and cover.modulate.a >= target_alpha:
 			return true
 	return false
@@ -377,6 +380,13 @@ func _valid_control(value: Variant) -> Control:
 	if value == null or not is_instance_valid(value):
 		return null
 	return value as Control
+
+
+func _skill_swipe_handoff_cover(scene: Node) -> Control:
+	var activity_surface = scene.call("_skill_swipe_activity_surface")
+	if activity_surface == null:
+		return null
+	return _valid_control(activity_surface.get("skill_swipe_handoff_cover"))
 
 
 func _expect(condition: bool, message: String) -> void:

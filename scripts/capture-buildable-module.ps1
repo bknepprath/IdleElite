@@ -54,8 +54,6 @@ extends SceneTree
 
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
-const BuildableModuleOverlay = preload("res://scripts/ui/buildable_module_overlay.gd")
-
 func _init() -> void:
 	call_deferred("_run")
 

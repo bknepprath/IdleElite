@@ -1,14 +1,78 @@
-class_name AchievementPresentation
-
 const MASTERY_MEDALS_TEXTURE := "res://assets/content/ui/mastery-medals-spritesheet.png"
+const TOTAL_LEVEL_ART := "res://assets/content/achievements/achievement-total-level.png"
+const CRIT_ART := "res://assets/content/achievements/achievement-crit.png"
+const CREDIT_ART := "res://assets/content/achievements/achievement-credit.png"
+const CUMULATIVE_MEDALS_ART := "res://assets/content/achievements/achievement-cumulative-medals.png"
 
 static var mastery_medal_textures := {}
 static var mastery_medal_silhouette_materials := {}
 
 
+class MedalSparkleStar:
+	extends Control
+
+	var fill_color := Color.WHITE
+	var outline_color := Color("#171615", 0.66)
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			pivot_offset = size * 0.5
+			queue_redraw()
+
+	func _draw() -> void:
+		if size.x <= 1.0 or size.y <= 1.0:
+			return
+		var center := size * 0.5
+		var outer := minf(size.x, size.y) * 0.48
+		var inner := outer * 0.34
+		var points := PackedVector2Array()
+		for i in range(8):
+			var radius := outer if i % 2 == 0 else inner
+			var angle := -PI * 0.5 + float(i) * PI * 0.25
+			points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+		draw_polygon(points, PackedColorArray([outline_color]))
+		var inner_points := PackedVector2Array()
+		for i in range(8):
+			var radius := (outer - 3.5) if i % 2 == 0 else maxf(1.0, inner - 2.0)
+			var angle := -PI * 0.5 + float(i) * PI * 0.25
+			inner_points.append(center + Vector2(cos(angle), sin(angle)) * radius)
+		draw_polygon(inner_points, PackedColorArray([fill_color]))
+
+
 static func clear_cache() -> void:
 	mastery_medal_textures.clear()
 	mastery_medal_silhouette_materials.clear()
+
+
+static func card(color: Color, radius: int, margin: int, surface_style: Callable) -> StyleBoxFlat:
+	return surface_style.call(color, radius, margin, true) as StyleBoxFlat
+
+
+static func toast_queue_badge() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#2f2a21")
+	style.border_color = Color("#fff2c4")
+	style.set_border_width_all(7)
+	style.set_corner_radius_all(999)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 8
+	style.content_margin_bottom = 10
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.28)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 5)
+	return style
+
+
+static func skill_section() -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1, 1, 1, 0)
+	style.draw_center = false
+	style.content_margin_left = 38
+	style.content_margin_right = 38
+	style.content_margin_top = 22
+	style.content_margin_bottom = 30
+	return style
 
 
 static func skill_level_targets() -> Array:

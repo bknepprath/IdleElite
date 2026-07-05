@@ -52,6 +52,8 @@ try {
 extends SceneTree
 
 const BOOT_TIMEOUT_FRAMES := 720
+const PAGE_SWITCH_BOTTOM_CLEARANCE_MAX_GAP := 700.0
+const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
 
 var failures: Array[String] = []
 
@@ -100,9 +102,9 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 			return false
 		var queue := scene.get("boot_detail_render_queue") as Array
 		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
+			scene.get("startup_initialized") == true
+			and scene.get("boot_detail_render_in_progress") != true
+			and scene.get("boot_detail_scroll_locked") != true
 			and (queue == null or queue.is_empty())
 		):
 			return true
@@ -113,25 +115,26 @@ func _wait_for_boot_hidden(scene: Node) -> bool:
 	for _frame in range(BOOT_TIMEOUT_FRAMES):
 		await process_frame
 		var overlay := scene.get("boot_warmup_overlay") as Control
-		if not bool(scene.get("boot_warmup_active")) and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
+		if scene.get("boot_warmup_active") != true and (overlay == null or not overlay.visible or overlay.modulate.a <= 0.01):
 			return true
 	return false
 
 
 func _check_pin_unpin_preserves_mid_scroll(scene: Node) -> void:
 	var skill_id := "build"
+	var module_runtime := scene.get("module_ui_runtime") as Object
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_sort_mode", "level")
-	scene.set("module_ui_pinned_order", [])
-	scene.set("module_ui_collapsed", {})
+	module_runtime.set("sort_mode", "level")
+	module_runtime.set("pinned_order", [])
+	module_runtime.set("collapsed", {})
 	scene.set("module_ui_pending_pin_scroll_anchor", {})
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _i in range(8):
 		await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 	var module_key := _first_action_module_key(scene, skill_id)
 	if module_key.is_empty():
 		_record("could not find build action module for pin scroll-anchor smoke")
@@ -161,15 +164,15 @@ func _check_pin_unpin_preserves_mid_scroll(scene: Node) -> void:
 	var before_pin_y := source.get_global_rect().position.y
 	var before_pin_x := source.get_global_rect().position.x
 	var before_pin_scroll := scroll.scroll_vertical
-	scene.call("_pin_module_ui_key", module_key, source.get_instance_id())
+	scene.call("_skill_detail_surface").call("_pin_module_ui_key", module_key, source.get_instance_id())
 	for _i in range(36):
 		await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 	var pinned_scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	if pinned_scroll == null or not is_instance_valid(pinned_scroll):
 		_record("missing detail scroll after pin")
 		return
-	var pinned_source := scene.call("_find_normal_module_ui_control_for_scroll_anchor", pinned_scroll, module_key) as Control
+	var pinned_source := scene.call("_skill_detail_surface").call("_find_normal_module_ui_control_for_scroll_anchor", pinned_scroll, module_key) as Control
 	if pinned_source == null or not is_instance_valid(pinned_source):
 		_record("could not find normal source module after pin")
 		return
@@ -195,15 +198,15 @@ func _check_pin_unpin_preserves_mid_scroll(scene: Node) -> void:
 	var before_unpin_y := pinned_source.get_global_rect().position.y
 	var before_unpin_x := pinned_source.get_global_rect().position.x
 	var before_unpin_scroll := pinned_scroll.scroll_vertical
-	scene.call("_unpin_module_ui_key", module_key, pinned_source.get_instance_id())
+	scene.call("_skill_detail_surface").call("_unpin_module_ui_key", module_key, pinned_source.get_instance_id())
 	for _i in range(44):
 		await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 	var unpinned_scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	if unpinned_scroll == null or not is_instance_valid(unpinned_scroll):
 		_record("missing detail scroll after unpin")
 		return
-	var unpinned_source := scene.call("_find_normal_module_ui_control_for_scroll_anchor", unpinned_scroll, module_key) as Control
+	var unpinned_source := scene.call("_skill_detail_surface").call("_find_normal_module_ui_control_for_scroll_anchor", unpinned_scroll, module_key) as Control
 	if unpinned_source == null or not is_instance_valid(unpinned_source):
 		_record("could not find normal source module after unpin")
 		return
@@ -230,18 +233,19 @@ func _check_pin_unpin_preserves_mid_scroll(scene: Node) -> void:
 
 func _check_top_pin_does_not_render_pinned_shelf(scene: Node) -> void:
 	var skill_id := "build"
+	var module_runtime := scene.get("module_ui_runtime") as Object
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_sort_mode", "level")
-	scene.set("module_ui_pinned_order", [])
-	scene.set("module_ui_collapsed", {})
+	module_runtime.set("sort_mode", "level")
+	module_runtime.set("pinned_order", [])
+	module_runtime.set("collapsed", {})
 	scene.set("module_ui_pending_pin_scroll_anchor", {})
-	var render_result = scene.call("_render_screen", false, 0, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, 0, false)
 	if render_result != null:
 		await render_result
 	for _i in range(8):
 		await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 	var module_key := _first_action_module_key(scene, skill_id)
 	if module_key.is_empty():
 		_record("could not find build action module for top pin no-shelf smoke")
@@ -254,12 +258,12 @@ func _check_top_pin_does_not_render_pinned_shelf(scene: Node) -> void:
 	scroll.set("scroll_vertical", 0)
 	for _i in range(3):
 		await process_frame
-	var source := scene.call("_find_normal_module_ui_control_for_scroll_anchor", scroll, module_key) as Control
+	var source := scene.call("_skill_detail_surface").call("_find_normal_module_ui_control_for_scroll_anchor", scroll, module_key) as Control
 	if source == null or not is_instance_valid(source):
 		_record("could not find normal source module before top pin")
 		return
 	var before_y := source.get_global_rect().position.y
-	scene.call("_pin_module_ui_key", module_key, source.get_instance_id())
+	scene.call("_skill_detail_surface").call("_pin_module_ui_key", module_key, source.get_instance_id())
 	for _i in range(30):
 		await process_frame
 	await _capture("top-after-pin")
@@ -272,14 +276,14 @@ func _check_top_pin_does_not_render_pinned_shelf(scene: Node) -> void:
 	var shelf := _find_node_named(pinned_scroll, "PinnedModuleShelf") as Control
 	if shelf != null and is_instance_valid(shelf) and shelf.is_visible_in_tree():
 		_record("top pin rendered a pinned shelf on the skill page even though pins should only appear in the pin menu")
-	var pinned_source := scene.call("_find_normal_module_ui_control_for_scroll_anchor", pinned_scroll, module_key) as Control
+	var pinned_source := scene.call("_skill_detail_surface").call("_find_normal_module_ui_control_for_scroll_anchor", pinned_scroll, module_key) as Control
 	if pinned_source == null or not is_instance_valid(pinned_source):
 		_record("could not find normal source module after top pin")
 	elif absf(pinned_source.get_global_rect().position.y - before_y) > 5.0:
 		_record("top pin moved the source module on the skill page. before_y=%s after_y=%s" % [before_y, pinned_source.get_global_rect().position.y])
-	scene.set("module_ui_pinned_order", [])
+	module_runtime.set("pinned_order", [])
 	scene.set("module_ui_pending_pin_scroll_anchor", {})
-	var cleanup_result = scene.call("_render_screen", false, 0, false)
+	var cleanup_result = scene.call("_navigation_shell").call("_render_screen", false, 0, false)
 	if cleanup_result != null:
 		await cleanup_result
 	for _i in range(4):
@@ -287,17 +291,18 @@ func _check_top_pin_does_not_render_pinned_shelf(scene: Node) -> void:
 
 func _check_multiple_pins_can_scroll_to_bottom_clearance(scene: Node) -> void:
 	var skill_id := "build"
+	var module_runtime := scene.get("module_ui_runtime") as Object
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", skill_id)
-	scene.set("module_ui_sort_mode", "level")
-	scene.set("module_ui_collapsed", {})
+	module_runtime.set("sort_mode", "level")
+	module_runtime.set("collapsed", {})
 	scene.set("module_ui_pending_pin_scroll_anchor", {})
 	var pinned_keys: Array[String] = []
-	for raw_action in scene.call("_visible_actions_for_skill", skill_id):
+	for raw_action in scene.call("_activity_unlock_runtime").call("_visible_actions_for_skill", skill_id):
 		var action := raw_action as Dictionary
-		if action.is_empty() or bool(scene.call("_is_passive_action", action)):
+		if action.is_empty() or scene.call("_passive_modules_runtime").is_passive_action(action) == true:
 			continue
-		var key := str(scene.call("_module_ui_key_for_action", skill_id, action))
+		var key := ModuleUiRuntime.action_for_record(skill_id, action)
 		if not key.is_empty():
 			pinned_keys.append(key)
 		if pinned_keys.size() >= 4:
@@ -305,14 +310,14 @@ func _check_multiple_pins_can_scroll_to_bottom_clearance(scene: Node) -> void:
 	if pinned_keys.size() < 3:
 		_record("bottom clearance smoke could not find enough build modules to pin")
 		return
-	scene.set("module_ui_pinned_order", pinned_keys)
-	var render_result = scene.call("_render_screen", false, -1, false)
+	module_runtime.set("pinned_order", pinned_keys)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _i in range(10):
 		await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
-	scene.call("_sync_detail_actions_scroll_limit")
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_sync_detail_actions_scroll_limit")
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	if scroll == null or not is_instance_valid(scroll):
 		_record("bottom clearance smoke missing detail scroll")
@@ -331,18 +336,23 @@ func _check_multiple_pins_can_scroll_to_bottom_clearance(scene: Node) -> void:
 	if page_switch == null or not is_instance_valid(page_switch):
 		_record("bottom clearance smoke could not find PageSwitchModule after scrolling to bottom")
 		return
-	var nav_bar := scene.get("nav_bar") as Control
-	var chat_strip := scene.get("chat_strip") as Control
+	var nav_shell := scene.call("_navigation_shell") as Object
+	var nav_bar := nav_shell.get("nav_bar") as Control if nav_shell != null else null
+	var chat_surface := scene.call("_profile_chat_overlay_surface") as Object
+	var chat_strip := chat_surface.call("chat_strip_control") as Control if chat_surface != null else null
 	var utility_row := scene.get("module_utility_row") as Control
 	var visible_rect := root.get_visible_rect()
 	var obscured_top := visible_rect.position.y + visible_rect.size.y
 	for control in [nav_bar, chat_strip, utility_row]:
 		if control != null and is_instance_valid(control) and control.visible:
 			obscured_top = minf(obscured_top, control.get_global_rect().position.y)
-	var page_bottom := page_switch.get_global_rect().position.y + page_switch.get_global_rect().size.y
+	var page_rect := _visible_descendant_bounds(page_switch)
+	if page_rect.size == Vector2.ZERO:
+		page_rect = page_switch.get_global_rect()
+	var page_bottom := page_rect.position.y + page_rect.size.y
 	if page_bottom > obscured_top - 12.0:
 		_record("bottom clearance smoke could not scroll page-switch controls above bottom UI. page_rect=%s scroll_rect=%s scroll_y=%s drag=%s obscured_top=%s max_scroll=%s nav=%s chat=%s utility=%s" % [
-			page_switch.get_global_rect(),
+			page_rect,
 			scroll.get_global_rect(),
 			scroll.scroll_vertical,
 			scroll.get("drag_scroll_position"),
@@ -352,16 +362,16 @@ func _check_multiple_pins_can_scroll_to_bottom_clearance(scene: Node) -> void:
 			chat_strip.get_global_rect() if chat_strip != null and is_instance_valid(chat_strip) else Rect2(),
 			utility_row.get_global_rect() if utility_row != null and is_instance_valid(utility_row) else Rect2()
 		])
-	if page_bottom < obscured_top - 280.0:
+	if page_bottom < obscured_top - PAGE_SWITCH_BOTTOM_CLEARANCE_MAX_GAP:
 		_record("bottom clearance smoke left excessive dead space below page-switch controls. page_bottom=%s obscured_top=%s gap=%s max_scroll=%s" % [
 			page_bottom,
 			obscured_top,
 			obscured_top - page_bottom,
 			max_scroll
 		])
-	scene.set("module_ui_pinned_order", [])
+	module_runtime.set("pinned_order", [])
 	scene.set("module_ui_pending_pin_scroll_anchor", {})
-	var cleanup_result = scene.call("_render_screen", false, 0, false)
+	var cleanup_result = scene.call("_navigation_shell").call("_render_screen", false, 0, false)
 	if cleanup_result != null:
 		await cleanup_result
 	for _i in range(4):
@@ -380,6 +390,26 @@ func _find_node_named(root_node: Node, target_name: String) -> Node:
 	return null
 
 
+func _visible_descendant_bounds(root_node: Node) -> Rect2:
+	var merged := Rect2()
+	var found := false
+	var stack: Array[Node] = [root_node]
+	while not stack.is_empty():
+		var node: Node = stack.pop_back()
+		if node == null or not is_instance_valid(node):
+			continue
+		if node is Control:
+			var control := node as Control
+			if control.visible and control.modulate.a > 0.01:
+				var rect := control.get_global_rect()
+				if rect.size.x > 1.0 and rect.size.y > 1.0:
+					merged = rect if not found else merged.merge(rect)
+					found = true
+		for child_node in node.get_children():
+			stack.append(child_node as Node)
+	return merged if found else Rect2()
+
+
 func _assert_no_exposed_anchor_jump_during_frames(scene: Node, module_key: String, expected_x: float, expected_y: float, frame_count: int, label: String) -> void:
 	var observed_uncovered_anchor := false
 	var observed_cover_anchor := false
@@ -388,12 +418,12 @@ func _assert_no_exposed_anchor_jump_during_frames(scene: Node, module_key: Strin
 		var scroll := scene.get("detail_actions_scroll") as ScrollContainer
 		if scroll == null or not is_instance_valid(scroll):
 			continue
-		var source := scene.call("_find_normal_module_ui_control_for_scroll_anchor", scroll, module_key) as Control
+		var source := scene.call("_skill_detail_surface").call("_find_normal_module_ui_control_for_scroll_anchor", scroll, module_key) as Control
 		if source == null or not is_instance_valid(source):
 			continue
-		if bool(scene.get("skill_detail_refresh_cover_active")):
+		if scene.get("skill_detail_refresh_cover_active") == true:
 			var cover := scene.get("skill_swipe_handoff_cover") as Control
-			var covered_source := scene.call("_find_normal_module_ui_control_for_scroll_anchor", cover, module_key) as Control
+			var covered_source := scene.call("_skill_detail_surface").call("_find_normal_module_ui_control_for_scroll_anchor", cover, module_key) as Control
 			if covered_source == null or not is_instance_valid(covered_source):
 				continue
 			observed_cover_anchor = true
@@ -456,17 +486,17 @@ func _assert_no_exposed_anchor_jump_during_frames(scene: Node, module_key: Strin
 func _visible_normal_module_pair(scene: Node, scroll: ScrollContainer, skill_id: String) -> Dictionary:
 	var viewport_rect := scroll.get_global_rect()
 	var keys: Array[String] = []
-	for raw_action in scene.call("_visible_actions_for_skill", skill_id):
+	for raw_action in scene.call("_activity_unlock_runtime").call("_visible_actions_for_skill", skill_id):
 		var action := raw_action as Dictionary
-		if action.is_empty() or bool(scene.call("_is_passive_action", action)):
+		if action.is_empty() or scene.call("_passive_modules_runtime").is_passive_action(action) == true:
 			continue
-		var key := str(scene.call("_module_ui_key_for_action", skill_id, action))
+		var key := ModuleUiRuntime.action_for_record(skill_id, action)
 		if not key.is_empty():
 			keys.append(key)
 	for key in keys:
 		if key == "action:build:stack-bricks":
 			continue
-		var control := scene.call("_find_normal_module_ui_control_for_scroll_anchor", scroll, key) as Control
+		var control := scene.call("_skill_detail_surface").call("_find_normal_module_ui_control_for_scroll_anchor", scroll, key) as Control
 		if control == null or not is_instance_valid(control):
 			continue
 		var rect := control.get_global_rect()
@@ -480,11 +510,11 @@ func _visible_normal_module_pair(scene: Node, scroll: ScrollContainer, skill_id:
 
 
 func _first_action_module_key(scene: Node, skill_id: String) -> String:
-	for raw_action in scene.call("_visible_actions_for_skill", skill_id):
+	for raw_action in scene.call("_activity_unlock_runtime").call("_visible_actions_for_skill", skill_id):
 		var action := raw_action as Dictionary
-		if action.is_empty() or bool(scene.call("_is_passive_action", action)):
+		if action.is_empty() or scene.call("_passive_modules_runtime").is_passive_action(action) == true:
 			continue
-		var key := str(scene.call("_module_ui_key_for_action", skill_id, action))
+		var key := ModuleUiRuntime.action_for_record(skill_id, action)
 		if not key.is_empty():
 			return key
 	return ""

@@ -77,8 +77,10 @@ try {
     @'
 extends SceneTree
 
-const ActivityLockRig = preload("res://scripts/activity_lock_rig.gd")
+const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
 const FishingState = preload("res://scripts/fishing/state.gd")
+const SkillState = preload("res://scripts/progression/skill_state.gd")
+const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
 const BOOT_TIMEOUT_FRAMES := 720
 const LOCK_ALPHA_THRESHOLD := 0.08
 
@@ -137,8 +139,8 @@ func _stage_art_review_test_save(scene: Node) -> void:
 	scene.call("_test_state_runtime")._clear_activity_unlock_ceremony_test_state()
 	scene.call("_test_state_runtime")._apply_art_review_test_unlock_all_state()
 	scene.set("auto_unlock_lockpads_enabled", false)
-	scene.call("_refresh_auto_unlock_lockpad_controls")
-	scene.set("selected_skill_id", "fishing" if bool(scene.call("_known_skill_id", "fishing")) else "fight")
+	scene.call("_settings_surface").call("_refresh_auto_unlock_lockpad_controls")
+	scene.set("selected_skill_id", "fishing" if SkillState.has_skill_id(scene.get("skill_defs") as Array, "fishing") else "fight")
 	scene.set("current_screen", "skill")
 	scene.call("_set_result", "Art Review Test staged. Everything is unlocked; Auto Unlock Lockpads is OFF.")
 
@@ -152,8 +154,8 @@ func _lock_test_action(scene: Node, skill_id: String, action_id: String) -> void
 		scene.set("manual_activity_unlocks", manual_unlocks)
 	activity_unlock_runtime.call("_clear_activity_requirement_manual_unlocks", skill_id, action_id)
 	scene.call("_clear_pending_activity_readiness_action", skill_id, action_id)
-	scene.set("manual_activity_unlocks_trust_checked", true)
-	scene.set("manual_activity_unlocks_trusted", true)
+	activity_unlock_runtime.set("manual_activity_unlocks_trust_checked", true)
+	activity_unlock_runtime.set("manual_activity_unlocks_trusted", true)
 
 
 func _wait_for_boot_ready(scene: Node) -> bool:
@@ -196,7 +198,7 @@ func _check_mono_lock(scene: Node) -> void:
 	if action.is_empty():
 		_record("no mono build action available for visual smoke")
 		return
-	var requirements := scene.call("_lock_requirements_for_overlay", "build", action) as Array
+	var requirements := scene.call("_skill_detail_surface").call("_lock_requirements_for_overlay", "build", action) as Array
 	var cluster := await _build_lock_cluster(scene, "mono", int(action.get("unlock", 1)), "build", requirements)
 	if cluster == null:
 		return
@@ -204,7 +206,7 @@ func _check_mono_lock(scene: Node) -> void:
 	var rigs := cluster.get("rigs") as Array
 	if not rigs.is_empty():
 		var rig := rigs[0] as Control
-		_expect_color_close(_rig_tint_color(rig), scene.call("_skill_theme_color", "build") as Color, "mono lock build tint")
+		_expect_color_close(_rig_tint_color(rig), ThemeStyles.skill_theme_color("build", scene.COLOR_BLUE), "mono lock build tint")
 
 
 func _check_two_lock_combo(scene: Node) -> void:
@@ -212,7 +214,7 @@ func _check_two_lock_combo(scene: Node) -> void:
 	if action.is_empty():
 		_record("missing thieving/build combo action scope-out-a-heist")
 		return
-	var requirements := scene.call("_lock_requirements_for_overlay", "thieving", action) as Array
+	var requirements := scene.call("_skill_detail_surface").call("_lock_requirements_for_overlay", "thieving", action) as Array
 	var cluster := await _build_lock_cluster(scene, "two-lock", int(action.get("unlock", 1)), "thieving", requirements)
 	if cluster == null:
 		return
@@ -226,8 +228,8 @@ func _check_two_lock_combo(scene: Node) -> void:
 	if rigs.size() >= 2:
 		_expect_equal(str((rigs[0] as Control).get("lock_state")), ActivityLockRig.LOCK_STATE_READY_OPEN, "first combo lock ready-open")
 		_expect_equal(str((rigs[1] as Control).get("lock_state")), ActivityLockRig.LOCK_STATE_CLOSED, "second combo lock closed")
-		_expect_color_close(_rig_tint_color(rigs[0] as Control), scene.call("_skill_theme_color", "thieving") as Color, "thieving lock tint")
-		_expect_color_close(_rig_tint_color(rigs[1] as Control), scene.call("_skill_theme_color", "build") as Color, "build lock tint")
+		_expect_color_close(_rig_tint_color(rigs[0] as Control), ThemeStyles.skill_theme_color("thieving", scene.COLOR_BLUE), "thieving lock tint")
+		_expect_color_close(_rig_tint_color(rigs[1] as Control), ThemeStyles.skill_theme_color("build", scene.COLOR_BLUE), "build lock tint")
 		_expect_ready_open_lock_kinematics(rigs[0] as Control)
 
 
@@ -244,7 +246,7 @@ func _check_three_lock_combo_action(scene: Node, found: Dictionary) -> void:
 	var skill_id := str(found.get("skill_id", ""))
 	var action := found.get("action", {}) as Dictionary
 	var action_id := str(action.get("id", ""))
-	var requirements := scene.call("_lock_requirements_for_overlay", skill_id, action) as Array
+	var requirements := scene.call("_skill_detail_surface").call("_lock_requirements_for_overlay", skill_id, action) as Array
 	var label := "three-lock combo %s:%s" % [skill_id, action_id]
 	print("triple-lock-action=%s:%s" % [skill_id, action_id])
 	var cluster := await _build_lock_cluster(scene, "three-lock-%s" % action_id, int(action.get("unlock", 1)), skill_id, requirements)
@@ -271,7 +273,7 @@ func _check_three_lock_combo_action(scene: Node, found: Dictionary) -> void:
 		var requirement_skill := str(requirement.get("skill", skill_id))
 		var expected_state := ActivityLockRig.LOCK_STATE_CLOSED if index == 1 else ActivityLockRig.LOCK_STATE_READY_OPEN
 		_expect_equal(str(rig.get("lock_state")), expected_state, "%s rig %s state" % [label, index])
-		_expect_color_close(_rig_tint_color(rig), scene.call("_skill_theme_color", requirement_skill) as Color, "%s %s tint" % [label, requirement_skill])
+		_expect_color_close(_rig_tint_color(rig), ThemeStyles.skill_theme_color(requirement_skill, scene.COLOR_BLUE), "%s %s tint" % [label, requirement_skill])
 		if index != 1:
 			_expect_ready_open_lock_kinematics(rig)
 		var key := "%0.2f:%0.2f" % [rig.position.x, rig.position.y]
@@ -295,7 +297,7 @@ func _check_five_lock_cluster(scene: Node) -> void:
 		requirements.append({
 			"skill": skill_id,
 			"level": 10 + index,
-			"theme_color": scene.call("_skill_theme_color", skill_id) as Color,
+			"theme_color": ThemeStyles.skill_theme_color(skill_id, scene.COLOR_BLUE),
 		})
 	var cluster := await _build_lock_cluster(scene, "five-lock", 20, "fight", requirements)
 	if cluster == null:
@@ -315,7 +317,7 @@ func _check_five_lock_cluster(scene: Node) -> void:
 
 func _check_drop_animation(scene: Node) -> void:
 	var action := scene.call("_action_data", "thieving", "scope-out-a-heist") as Dictionary
-	var requirements := scene.call("_lock_requirements_for_overlay", "thieving", action) as Array
+	var requirements := scene.call("_skill_detail_surface").call("_lock_requirements_for_overlay", "thieving", action) as Array
 	var cluster := await _build_lock_cluster(scene, "drop", int(action.get("unlock", 1)), "thieving", requirements)
 	if cluster == null:
 		return
@@ -360,10 +362,10 @@ func _check_colored_xp_floats(scene: Node) -> void:
 		if text.find("XP") < 0:
 			continue
 		xp_label_count += 1
-		if _color_distance(color, scene.call("_skill_theme_color", "thieving") as Color) <= 0.30:
+		if _color_distance(color, ThemeStyles.skill_theme_color("thieving", scene.COLOR_BLUE)) <= 0.30:
 			found_thieving = true
 			found_thieving_color = true
-		if _color_distance(color, scene.call("_skill_theme_color", "woodcutting") as Color) <= 0.30:
+		if _color_distance(color, ThemeStyles.skill_theme_color("woodcutting", scene.COLOR_BLUE)) <= 0.30:
 			found_woodcutting = true
 			found_woodcutting_color = true
 	if xp_label_count < 2:
@@ -400,7 +402,7 @@ func _check_event_insertion(scene: Node) -> void:
 	if event_actions.is_empty():
 		_record("active event action did not appear for %s" % page)
 		return
-	var entries := scene.call("_visible_detail_entries_for_skill", page) as Array
+	var entries := scene.call("_skill_detail_surface").call("_visible_detail_entries_for_skill", page) as Array
 	var event_index := -1
 	for index in range(entries.size()):
 		var entry := entries[index] as Dictionary
@@ -411,7 +413,7 @@ func _check_event_insertion(scene: Node) -> void:
 	if event_index < 0:
 		_record("event module was not inserted into visible detail entries")
 		return
-	var catalog = scene.call("_activity_data_catalog")
+	var catalog = scene.get("activity_data_catalog")
 	var event_sort := int(catalog.call("activity_action_display_sort_level", event_def))
 	if event_index > 0:
 		var prev_action := (entries[event_index - 1] as Dictionary).get("action", {}) as Dictionary
@@ -428,7 +430,7 @@ func _check_event_insertion(scene: Node) -> void:
 		await render_result
 	for _i in range(4):
 		await process_frame
-	var event_plan_item := scene.call("_detail_lazy_entry_for_track_id", event_id) as Dictionary
+	var event_plan_item := scene.call("_skill_detail_surface").call("_detail_lazy_entry_for_track_id", event_id) as Dictionary
 	if event_plan_item.is_empty():
 		_record("event module was not present in the detail lazy plan")
 		return
@@ -442,8 +444,8 @@ func _check_event_insertion(scene: Node) -> void:
 		scroll.set("drag_scroll_position", float(target_scroll))
 		scroll.set("scroll_vertical", target_scroll)
 		await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
-	scene.call("_ensure_detail_lazy_entry_mounted", event_id)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_ensure_detail_lazy_entry_mounted", event_id)
 	var cards := scene.get("action_cards") as Dictionary
 	var card_key := "%s:%s" % [page, event_id]
 	if not cards.has(card_key):
@@ -493,7 +495,7 @@ func _check_fishing_combo_progress_rails(scene: Node) -> void:
 			for raw_method_id in item.get("method_ids", []) as Array:
 				if str(raw_method_id) == action_id:
 					_record("Fishing combo %s was still owned by an area method tile" % action_id)
-		scene.call("_ensure_detail_lazy_entry_mounted", action_id)
+		scene.call("_skill_detail_surface").call("_ensure_detail_lazy_entry_mounted", action_id)
 		var card := _action_card_for_action_id(scene.get("action_cards") as Dictionary, action_id)
 		if card.is_empty():
 			_record("Fishing combo %s did not mount an action card" % action_id)
@@ -523,25 +525,25 @@ func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> 
 		await render_result
 	for _i in range(8):
 		await process_frame
-	if bool(scene.call("_is_action_unlocked", "fishing", action)):
+	if bool(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fishing", action)):
 		_record("Fishing combo %s should be locked for routed lock input check" % action_id)
 		return
 	if not bool(scene.call("_activity_unlock_runtime")._can_unlock_action("fishing", action)):
 		_record("Fishing combo %s should be ready to unlock for routed lock input check" % action_id)
 		return
-	scene.call("_ensure_detail_lazy_entry_mounted", action_id)
+	scene.call("_skill_detail_surface").call("_ensure_detail_lazy_entry_mounted", action_id)
 	await process_frame
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	if scroll == null:
 		_record("Fishing combo %s routed lock input check had no detail scroll" % action_id)
 		return
-	var target_scroll := int(scene.call("_detail_actions_scroll_target_for_action", action_id, true))
+	var target_scroll := int(scene.call("_skill_detail_surface").call("_detail_actions_scroll_target_for_action", action_id, true))
 	if target_scroll >= 0:
 		scroll.call("scroll_to_vertical", target_scroll, 0.0)
 		scroll.set("drag_scroll_position", float(target_scroll))
 		scroll.set("scroll_vertical", target_scroll)
 	for _i in range(6):
-		scene.call("_sync_detail_lazy_visible_cards", true, -1)
+		scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 		await process_frame
 	var card := _action_card_for_action_id(scene.get("action_cards") as Dictionary, action_id)
 	if card.is_empty():
@@ -563,7 +565,7 @@ func _check_locked_fishing_combo_lock_input(scene: Node, action: Dictionary) -> 
 	if press_point == Vector2.INF:
 		_record("Fishing combo %s routed lock input check could not find a lock hit point" % action_id)
 		return
-	if not bool(scene.call("_position_inside_detail_actions_viewport", press_point, 8.0)):
+	if not bool(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", press_point, 8.0)):
 		_record("Fishing combo %s lock point was outside the detail viewport: %s" % [action_id, press_point])
 		return
 	scene.call("_input", _mouse_button_event(press_point, true))
@@ -669,6 +671,9 @@ func _check_fishing_scroll_limit_reaches_lazy_bottom(scene: Node) -> void:
 		0.0,
 		float(scene.call("_skill_detail_bottom_scroll_pad", "fishing")) - float(scene.call("_skills_content_bottom_inset_for_screen"))
 	)
+	if float(scene.call("_detail_stack_page_switch_bottom")) >= 0.0:
+		# Matches _sync_detail_actions_scroll_limit: page gap 48 plus 12px when the page switch module is in-stack.
+		bottom_gap = maxf(0.0, bottom_gap - 60.0)
 	var expected_max := maxi(0, int(ceil(expected_bottom + bottom_gap - viewport_height)))
 	var actual_max := int(scroll.call("get_max_scroll_vertical"))
 	if actual_max + 2 < expected_max:
@@ -684,7 +689,7 @@ func _check_fishing_scroll_limit_reaches_lazy_bottom(scene: Node) -> void:
 	scroll.set("drag_scroll_position", float(actual_max))
 	scroll.set("scroll_vertical", actual_max)
 	await process_frame
-	scene.call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 	await process_frame
 	var last_item := _last_scrollable_fishing_plan_item(plan)
 	if last_item.is_empty():
@@ -749,7 +754,7 @@ func _build_lock_cluster(scene: Node, name: String, unlock_level: int, skill_id:
 	parent.name = "VisualSmoke%sParent" % name.capitalize()
 	parent.size = Vector2(1800, 900)
 	root.add_child(parent)
-	var overlay := scene.call("_activity_lock_overlay", parent, unlock_level, skill_id, requirements) as Dictionary
+	var overlay := scene.call("_skill_detail_surface").call("_activity_lock_overlay", parent, unlock_level, skill_id, requirements) as Dictionary
 	var overlay_root := overlay.get("root") as Control
 	var cluster := overlay.get("group") as Control
 	if overlay_root == null or cluster == null:
@@ -769,7 +774,7 @@ func _first_action_with_requirement_count(scene: Node, skill_id: String, count: 
 	var actions_by_skill := scene.get("actions_by_skill") as Dictionary
 	for raw_action in actions_by_skill.get(skill_id, []) as Array:
 		var action := raw_action as Dictionary
-		var requirements := scene.call("_action_unlock_requirements", skill_id, action) as Array
+		var requirements := scene.call("_activity_unlock_runtime").call("_action_unlock_requirements", skill_id, action) as Array
 		if requirements.size() == count:
 			return action
 	return {}
@@ -798,7 +803,7 @@ func _action_refs_with_requirement_count(scene: Node, count: int) -> Array:
 		var skill_id := str(skill_def.get("id", ""))
 		for raw_action in actions_by_skill.get(skill_id, []) as Array:
 			var action := raw_action as Dictionary
-			var requirements := scene.call("_action_unlock_requirements", skill_id, action) as Array
+			var requirements := scene.call("_activity_unlock_runtime").call("_action_unlock_requirements", skill_id, action) as Array
 			if requirements.size() == count:
 				result.append({
 					"skill_id": skill_id,

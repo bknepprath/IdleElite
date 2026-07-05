@@ -1,8 +1,13 @@
 extends Control
 
+const PassiveModulesRuntime = preload("res://scripts/gameplay/passive_modules_runtime.gd")
+const SkillState = preload("res://scripts/progression/skill_state.gd")
+const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
+
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const STAMINA_GAUGE_UNFILL_SECONDS := 0.34
-
+const STAMINA_GAUGE_POP_SCALE := Vector2(1.018, 1.018)
+const STAMINA_GAUGE_SETTLE_SCALE := Vector2(0.997, 0.997)
 
 const VALUE_EPSILON := 0.0015
 const RING_ARC_SEGMENTS := 40
@@ -46,6 +51,7 @@ var regen_unfill_elapsed := 0.0
 var readout_font: Font
 var _glass_bowl_texture: ImageTexture
 var _glass_bowl_cached_size := Vector2.ZERO
+var _pop_tween: Tween
 static var _shared_glass_bowl_textures := {}
 
 func _ready() -> void:
@@ -56,9 +62,99 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_invalidate_glass_bowl_cache()
 
+func sync_for_skill(host, skill_id: String, instant := false) -> void:
+	if not is_instance_valid(self) or not is_inside_tree():
+		return
+	var maximum: int = SkillState.max_stamina(host, skill_id)
+	var stamina_value: int = SkillState.host_stamina_int(skill_id, host)
+	var stamina_decimal_fraction: float = SkillState.stamina_fraction(host.stamina, skill_id, Callable(SkillState, "host_max_stamina").bind(host))
+	var circle_value: float = SkillState.stamina_regen_fraction(host.stamina, host.stamina_bank, skill_id, Callable(SkillState, "host_max_stamina").bind(host))
+	set_dark_mode(host.dark_mode_enabled)
+	set_theme_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+	set_regen_ring_color(_regen_ring_color(host, skill_id), instant)
+	set_firepit_warmth(host._passive_modules_runtime().firepit_stamina_regen_bonus(skill_id, host._unix_now()) / (PassiveModulesRuntime.FIREPIT_STAMINA_REGEN_PER_TIER * float(PassiveModulesRuntime.FIREPIT_MAX_HEAT_TIER)))
+	set_show_decimal(host.show_stamina_decimal)
+	set_stamina(stamina_value, maximum, instant, stamina_decimal_fraction)
+	set_value(circle_value, instant)
+
+func _regen_ring_color(host, skill_id: String) -> Color:
+	return host.material_runtime.color("honey") if host._action_runtime().player_has_stamina_honey() else ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
+
 func _invalidate_glass_bowl_cache() -> void:
 	_glass_bowl_texture = null
 	_glass_bowl_cached_size = Vector2.ZERO
+
+func play_pop() -> void:
+	clear_pop_tween()
+	pivot_offset = size * 0.5
+	scale = Vector2.ONE
+	_pop_tween = create_tween()
+	_pop_tween.tween_property(self, "scale", STAMINA_GAUGE_POP_SCALE, 0.08).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	_pop_tween.tween_property(self, "scale", STAMINA_GAUGE_SETTLE_SCALE, 0.07).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN_OUT)
+	_pop_tween.tween_property(self, "scale", Vector2.ONE, 0.10).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	_pop_tween.finished.connect(_finish_stamina_gauge_pop_tween)
+
+func clear_pop_tween() -> void:
+	if _pop_tween != null and _pop_tween.is_valid():
+		_pop_tween.kill()
+	scale = Vector2.ONE
+	_pop_tween = null
+
+func play_fail_shake() -> void:
+	var tween_meta_key := "stamina_eat_fail_tween"
+	var rest_position_meta_key := "stamina_eat_fail_rest_position"
+	var rest_rotation_meta_key := "stamina_eat_fail_rest_rotation"
+	var base_position := position
+	if has_meta(rest_position_meta_key):
+		var raw_position = get_meta(rest_position_meta_key)
+		if raw_position is Vector2:
+			base_position = raw_position
+	else:
+		set_meta(rest_position_meta_key, base_position)
+	var base_rotation := rotation
+	if has_meta(rest_rotation_meta_key):
+		base_rotation = float(get_meta(rest_rotation_meta_key))
+	else:
+		set_meta(rest_rotation_meta_key, base_rotation)
+	_kill_meta_tween(tween_meta_key)
+	pivot_offset = size * 0.5
+	position = base_position
+	rotation = base_rotation
+	modulate = Color(1.0, 1.0, 1.0, modulate.a)
+	var direction := -1.0 if randf() < 0.5 else 1.0
+	var tween := create_tween()
+	set_meta(tween_meta_key, tween)
+	tween.set_parallel(true)
+	tween.tween_method(_apply_stamina_fail_shake_frame.bind(base_position, base_rotation, direction), 0.0, 1.0, 0.36).set_trans(Tween.TRANS_LINEAR)
+	tween.finished.connect(_finish_stamina_fail_shake.bind(base_position, base_rotation, tween_meta_key, rest_position_meta_key, rest_rotation_meta_key))
+
+func _apply_stamina_fail_shake_frame(progress: float, base_position: Vector2, base_rotation: float, direction: float) -> void:
+	var remaining := 1.0 - progress
+	var wave := sin(progress * PI * 7.0) * remaining * direction
+	position = base_position + Vector2(wave * 14.0, absf(wave) * 3.0)
+	rotation = base_rotation + wave * 0.035
+
+func _finish_stamina_fail_shake(base_position: Vector2, base_rotation: float, tween_meta_key: String, rest_position_meta_key: String, rest_rotation_meta_key: String) -> void:
+	position = base_position
+	rotation = base_rotation
+	modulate = Color(1.0, 1.0, 1.0, modulate.a)
+	if has_meta(tween_meta_key):
+		remove_meta(tween_meta_key)
+	if has_meta(rest_position_meta_key):
+		remove_meta(rest_position_meta_key)
+	if has_meta(rest_rotation_meta_key):
+		remove_meta(rest_rotation_meta_key)
+
+func _finish_stamina_gauge_pop_tween() -> void:
+	_pop_tween = null
+
+func _kill_meta_tween(meta_name: String) -> void:
+	if not has_meta(meta_name):
+		return
+	var tween := get_meta(meta_name) as Tween
+	if tween != null and tween.is_valid():
+		tween.kill()
+	remove_meta(meta_name)
 
 func set_value(next_value: float, instant := false) -> void:
 	var clamped_value := clampf(next_value, 0.0, 1.0)

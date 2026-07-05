@@ -84,7 +84,7 @@ func _run() -> void:
 	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	var circle := await _wait_for_regen_circle(scene, "build")
@@ -129,7 +129,7 @@ func _wait_for_regen_circle(scene: Node, skill_id: String) -> Control:
 		await _wait_test_frame()
 		if str(scene.get("current_screen")) != "skill" or str(scene.get("selected_skill_id")) != skill_id:
 			continue
-		var circle := scene.get("detail_regen_circle") as Control
+		var circle := scene._skill_detail_surface().detail_regen_circle as Control
 		if circle != null and circle.is_inside_tree() and circle.visible:
 			return circle
 	return null

@@ -63,6 +63,7 @@ extends SceneTree
 const BOOT_TIMEOUT_FRAMES := 720
 const SETTLE_FRAMES := 120
 const TEST_FRAME_SECONDS := 1.0 / 120.0
+const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 
 func _init() -> void:
@@ -86,18 +87,18 @@ func _run() -> void:
 
 	scene.call("_test_state_runtime")._god_mode_unlock_onboarding_state()
 	scene.call("_test_state_runtime")._god_mode_unlock_actions_state()
-	scene.set("fish_currency", 0.0)
+	_set_fish_currency(scene, 0.0)
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	scene.set("action_progress", 0.0)
 	scene.set("current_screen", "menu")
-	var menu_render = scene.call("_render_screen", false, -1, false)
+	var menu_render = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if menu_render != null:
 		await menu_render
 	for _i in range(SETTLE_FRAMES):
 		await _wait_test_frame()
 
-	scene.call("_select_skill", "build")
+	scene.call("_navigation_shell").call("_select_skill", "build")
 	var circle := await _wait_for_regen_circle(scene, "build")
 	if circle == null:
 		_fail("build stamina gauge did not become ready")
@@ -105,10 +106,10 @@ func _run() -> void:
 
 	var rest_position := circle.position
 	var rest_rotation := circle.rotation
-	_set_skill_stamina(scene, "build", maxf(0.0, float(scene.call("_max_stamina", "build")) - 1.0))
+	_set_skill_stamina(scene, "build", maxf(0.0, float(SkillState.max_stamina(scene, "build")) - 1.0))
 	circle.modulate = Color(1.0, 0.25, 0.25, 1.0)
 	for i in range(6):
-		scene.call("_try_eat_fish_for_stamina", "build", circle)
+		scene.call("_action_runtime").call("_try_eat_fish_for_stamina", "build", circle)
 		await _wait_test_frame()
 		if not _is_white_rgb(circle.modulate):
 			_fail("stamina gauge fail shake tinted red on click %s: modulate=%s" % [str(i), str(circle.modulate)])
@@ -135,20 +136,20 @@ func _run() -> void:
 	if circle.has_meta("stamina_eat_fail_tween"):
 		_fail("stamina gauge fail tween meta was left behind")
 		return
-	if absf(float(scene.get("fish_currency"))) > 0.001:
-		_fail("no-food stamina gauge click changed food: %s" % str(scene.get("fish_currency")))
+	if absf(_fish_currency(scene)) > 0.001:
+		_fail("no-food stamina gauge click changed food: %s" % str(_fish_currency(scene)))
 		return
 
 	var popup_count_before_full := _count_need_fish_popups()
-	scene.set("fish_currency", 3.0)
-	_set_skill_stamina(scene, "build", float(scene.call("_max_stamina", "build")))
+	_set_fish_currency(scene, 3.0)
+	_set_skill_stamina(scene, "build", float(SkillState.max_stamina(scene, "build")))
 	circle.position = rest_position
 	circle.rotation = rest_rotation
 	circle.modulate = Color.WHITE
-	scene.call("_try_eat_fish_for_stamina", "build", circle)
+	scene.call("_action_runtime").call("_try_eat_fish_for_stamina", "build", circle)
 	await _wait_test_frame()
-	if absf(float(scene.get("fish_currency")) - 3.0) > 0.001:
-		_fail("full stamina gauge click spent fish: %s" % str(scene.get("fish_currency")))
+	if absf(_fish_currency(scene) - 3.0) > 0.001:
+		_fail("full stamina gauge click spent fish: %s" % str(_fish_currency(scene)))
 		return
 	if not circle.has_meta("stamina_eat_fail_tween"):
 		_fail("full stamina gauge click did not start fail shake tween")
@@ -177,7 +178,7 @@ func _wait_for_regen_circle(scene: Node, skill_id: String) -> Control:
 		await _wait_test_frame()
 		if str(scene.get("current_screen")) != "skill" or str(scene.get("selected_skill_id")) != skill_id:
 			continue
-		var circle := scene.get("detail_regen_circle") as Control
+		var circle := scene._skill_detail_surface().detail_regen_circle as Control
 		if circle != null and circle.is_inside_tree() and circle.visible:
 			return circle
 	return null
@@ -185,6 +186,28 @@ func _wait_for_regen_circle(scene: Node, skill_id: String) -> Control:
 
 func _is_white_rgb(color: Color) -> bool:
 	return color.r >= 0.98 and color.g >= 0.98 and color.b >= 0.98
+
+
+func _number(value: Variant, fallback := 0.0) -> float:
+	match typeof(value):
+		TYPE_FLOAT, TYPE_INT:
+			return value
+	return fallback
+
+
+func _fish_currency(scene: Node) -> float:
+	var fishing_runtime := scene.get("fishing_runtime") as Object
+	if fishing_runtime != null:
+		return _number(fishing_runtime.get("fish_currency"))
+	return _number(scene.get("fish_currency"))
+
+
+func _set_fish_currency(scene: Node, value: float) -> void:
+	var fishing_runtime := scene.get("fishing_runtime") as Object
+	if fishing_runtime != null:
+		fishing_runtime.set("fish_currency", value)
+	else:
+		scene.set("fish_currency", value)
 
 
 func _set_skill_stamina(scene: Node, skill_id: String, value: float) -> void:
@@ -223,9 +246,9 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 			return false
 		var queue := scene.get("boot_detail_render_queue") as Array
 		if (
-			bool(scene.get("startup_initialized"))
-			and not bool(scene.get("boot_detail_render_in_progress"))
-			and not bool(scene.get("boot_detail_scroll_locked"))
+			_truthy(scene.get("startup_initialized"))
+			and not _truthy(scene.get("boot_detail_render_in_progress"))
+			and not _truthy(scene.get("boot_detail_scroll_locked"))
 			and (queue == null or queue.is_empty())
 		):
 			return true
@@ -235,6 +258,20 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 func _wait_test_frame() -> void:
 	await process_frame
 	await create_timer(TEST_FRAME_SECONDS, true, false, true).timeout
+
+
+func _truthy(value: Variant) -> bool:
+	match typeof(value):
+		TYPE_BOOL:
+			return value
+		TYPE_INT:
+			return int(value) != 0
+		TYPE_FLOAT:
+			return not is_zero_approx(float(value))
+		TYPE_STRING:
+			return not str(value).is_empty()
+		_:
+			return value != null
 
 
 func _fail(message: String) -> void:

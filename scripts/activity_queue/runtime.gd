@@ -138,12 +138,12 @@ func _activity_queue_key_is_queueable(module_key: String) -> bool:
 		var action: Dictionary = host._action_data(skill_id, str(action_parts[1]))
 		return (
 			not action.is_empty()
-			and host._is_action_unlocked(skill_id, action)
-			and not host._is_passive_action(action)
+			and host._activity_unlock_runtime()._is_action_unlocked(skill_id, action)
+			and not host._passive_modules_runtime().is_passive_action(action)
 			and not host._is_event_action(action)
 		)
 	if key.begins_with("fishing_area:"):
-		return host._module_ui_fishing_area_is_unlocked(key)
+		return host._skill_detail_surface()._module_ui_fishing_area_is_unlocked(key)
 	return false
 
 
@@ -189,7 +189,7 @@ func _process_activity_queue_runtime() -> void:
 		_stop_activity_queue_runtime()
 		return
 	var action: Dictionary = host._action_data(host.running_skill_id, host.running_action_id)
-	if action.is_empty() or not host._is_action_unlocked(host.running_skill_id, action):
+	if action.is_empty() or not host._activity_unlock_runtime()._is_action_unlocked(host.running_skill_id, action):
 		activity_queue_index = _next_index(activity_queue_index, queue.size())
 		_advance_activity_queue_to_runnable()
 		return
@@ -204,7 +204,7 @@ func _advance_activity_queue_to_runnable() -> bool:
 	var queue := get_activity_queue()
 	if queue.is_empty() or activity_queue_index < 0:
 		_stop_activity_queue_runtime(true)
-		host._set_result("Queue finished.")
+		host._reward_feedback_surface()._set_result("Queue finished.")
 		host._update_ui(0.0, true)
 		return false
 	activity_queue_index = activity_queue_index % queue.size()
@@ -219,7 +219,7 @@ func _advance_activity_queue_to_runnable() -> bool:
 		var skill_id := str(target.get("skill_id", ""))
 		var action_id := str(target.get("action_id", ""))
 		var action: Dictionary = host._action_data(skill_id, action_id)
-		if action.is_empty() or host._is_passive_action(action) or not host._is_action_unlocked(skill_id, action):
+		if action.is_empty() or host._passive_modules_runtime().is_passive_action(action) or not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
 			activity_queue_index = _next_index(activity_queue_index, queue.size())
 			attempts_remaining -= 1
 			continue
@@ -234,23 +234,22 @@ func _advance_activity_queue_to_runnable() -> bool:
 			continue
 		activity_queue_attempt_key = module_key
 		if host._action_runtime()._start_action(skill_id, action_id, true, false, true):
-			host._set_result("Queue: %s started." % str(action.get("name", "Activity")))
+			host._reward_feedback_surface()._set_result("Queue: %s started." % str(action.get("name", "Activity")))
 			host._update_ui(0.0, true)
 			return true
 		activity_queue_index = _next_index(activity_queue_index, queue.size())
 		attempts_remaining -= 1
 	_stop_activity_queue_runtime(true)
-	host._set_result("Queue finished.")
+	host._reward_feedback_surface()._set_result("Queue finished.")
 	host._update_ui(0.0, true)
 	return false
 
 
 func _activity_queue_should_advance_for_action(skill_id: String, action: Dictionary) -> bool:
 	if RecoveryModules.has_recovery(action):
-		var recovery_skill_id := RecoveryModules.target_skill_id(skill_id, action, host.skill_defs, host.stamina, Callable(host, "_stamina_value"), Callable(host, "_max_stamina"))
-		return not recovery_skill_id.is_empty() and host._stamina_value(recovery_skill_id) + 0.0001 >= float(host._max_stamina(recovery_skill_id))
+		return RecoveryModules.recovery_target_is_full(skill_id, action, host.skill_defs, host.stamina, Callable(SkillState, "host_stamina_value").bind(host), Callable(SkillState, "host_max_stamina").bind(host))
 	var cost: float = host._action_runtime()._effective_stamina(skill_id, action)
-	return host._stamina_value(skill_id) + 0.0001 < cost
+	return SkillState.host_stamina_value(skill_id, host) + 0.0001 < cost
 
 
 func _activity_queue_target_for_key(module_key: String) -> Dictionary:
@@ -263,7 +262,7 @@ func _activity_queue_target_for_key(module_key: String) -> Dictionary:
 		return {"skill_id": str(parts[0]), "action_id": str(parts[1])}
 	if normalized_key.begins_with("fishing_area:"):
 		var area_key: String = normalized_key.substr("fishing_area:".length())
-		for raw_area_def in host._fishing_render_area_modules("fishing"):
+		for raw_area_def in host._fishing_ui_surface().render_area_modules("fishing"):
 			var area_def := raw_area_def as Dictionary
 			if host.fishing_runtime.area_module_key("fishing", area_def) != area_key:
 				continue
@@ -287,10 +286,10 @@ func _activity_queue_selected_fishing_action_for_area(area_def: Dictionary) -> S
 		var selected_id: String = str(area_card.get("selected_action_id", ""))
 		if not selected_id.is_empty():
 			return selected_id
-	for raw_method_id in host._fishing_area_module_method_ids("fishing", area_def):
+	for raw_method_id in host._fishing_ui_surface().area_module_method_ids("fishing", area_def):
 		var action_id: String = str(raw_method_id)
 		var action: Dictionary = host._action_data("fishing", action_id)
-		if not action.is_empty() and host._is_action_unlocked("fishing", action):
+		if not action.is_empty() and host._activity_unlock_runtime()._is_action_unlocked("fishing", action):
 			return action_id
 	return ""
 

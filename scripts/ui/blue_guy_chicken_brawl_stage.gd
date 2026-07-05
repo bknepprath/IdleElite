@@ -1,4 +1,4 @@
-extends "res://scripts/ui/fighting_module_stage.gd"
+extends Control
 
 signal chicken_killed(xp_amount: int)
 signal punch_landed
@@ -158,6 +158,42 @@ var enemy_sprite_scale := 1.0
 var enemy_art_faces_right := false
 
 
+func load_png_texture(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		var loaded = load(path)
+		if loaded is Texture2D:
+			return loaded as Texture2D
+	var image := Image.new()
+	var result := image.load(ProjectSettings.globalize_path(path))
+	if result != OK:
+		result = image.load(path)
+	if result != OK:
+		return null
+	return ImageTexture.create_from_image(image)
+
+
+func draw_round_rect(rect: Rect2, radius: float, color: Color) -> void:
+	var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
+	draw_rect(Rect2(rect.position + Vector2(r, 0.0), Vector2(maxf(0.0, rect.size.x - r * 2.0), rect.size.y)), color)
+	draw_rect(Rect2(rect.position + Vector2(0.0, r), Vector2(rect.size.x, maxf(0.0, rect.size.y - r * 2.0))), color)
+	draw_circle(rect.position + Vector2(r, r), r, color)
+	draw_circle(rect.position + Vector2(rect.size.x - r, r), r, color)
+	draw_circle(rect.position + Vector2(rect.size.x - r, rect.size.y - r), r, color)
+	draw_circle(rect.position + Vector2(r, rect.size.y - r), r, color)
+
+
+func draw_round_outline(rect: Rect2, radius: float, color: Color, width: float) -> void:
+	var r := minf(radius, minf(rect.size.x, rect.size.y) * 0.5)
+	draw_line(Vector2(rect.position.x + r, rect.position.y), Vector2(rect.end.x - r, rect.position.y), color, width, true)
+	draw_line(Vector2(rect.position.x + r, rect.end.y), Vector2(rect.end.x - r, rect.end.y), color, width, true)
+	draw_line(Vector2(rect.position.x, rect.position.y + r), Vector2(rect.position.x, rect.end.y - r), color, width, true)
+	draw_line(Vector2(rect.end.x, rect.position.y + r), Vector2(rect.end.x, rect.end.y - r), color, width, true)
+	draw_arc(rect.position + Vector2(r, r), r, PI, PI * 1.5, 12, color, width, true)
+	draw_arc(Vector2(rect.end.x - r, rect.position.y + r), r, PI * 1.5, TAU, 12, color, width, true)
+	draw_arc(Vector2(rect.end.x - r, rect.end.y - r), r, 0.0, PI * 0.5, 12, color, width, true)
+	draw_arc(Vector2(rect.position.x + r, rect.end.y - r), r, PI * 0.5, PI, 12, color, width, true)
+
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -239,7 +275,7 @@ func setup_action(action: Dictionary) -> void:
 		enemy_speed_scale = maxf(0.1, float(combat_stats.get("speed", 1.0)))
 		enemy_spawn_rhythm = maxf(0.1, float(combat_stats.get("spawn_rhythm", 1.0)))
 		var enemy_id := str(combat_stats.get("enemy_id", ""))
-		enemy_sprite_scale = 10.0 / 3.0 if enemy_id == "dragons" else 1.0
+		enemy_sprite_scale = _enemy_sprite_scale_for_id(enemy_id)
 		enemy_art_faces_right = not (enemy_id in ["chicken-swarm", "dragons"])
 	enemy_idle_art_path = str(action.get("art", ""))
 	_apply_enemy_art_path(enemy_idle_art_path)
@@ -1727,7 +1763,7 @@ func _draw_hero(center: Vector2, s: float) -> void:
 	var ko := hero_ko_timer > 0.0
 	var attack_duration := 0.34 if hero_attack_is_uppercut else 0.24
 	var pulse := clampf(hero_attack_timer / attack_duration, 0.0, 1.0)
-	var idle_bob := 0.0 if not active else sin(elapsed_seconds * 6.0) * 5.0 * s
+	var idle_bob := 0.0
 	if ko:
 		_draw_ko_hero(center, s)
 	else:
@@ -1742,6 +1778,8 @@ func _draw_hero(center: Vector2, s: float) -> void:
 		var diamond_scale := DIAMOND_HERO_DRAW_SCALE if arena_shape == "diamond" else 1.0
 		var hero_draw_size := (Vector2(270, 270) if hero_attack_is_uppercut and is_striking else (Vector2(238, 238) if is_striking else Vector2(198, 198))) * s * diamond_scale
 		var hero_sprite_center := center + Vector2(0, -12) * s + Vector2(0, idle_bob) + lunge + rise
+		if arena_shape == "diamond" and is_striking and not hero_attack_is_uppercut:
+			hero_sprite_center += Vector2(0.0, -20.0) * s * diamond_scale
 		var shadow_center := center + Vector2(-10, 42) * s
 		_draw_ellipse(shadow_center, Vector2(92, 23) * s, Color(0, 0, 0, 0.055))
 		_draw_ellipse(shadow_center, Vector2(78, 19) * s, Color(0, 0, 0, 0.075))
@@ -2397,6 +2435,27 @@ func _roll_hero_uppercut_damage() -> float:
 
 func _roll_chicken_max_hp(stat_mult: float) -> float:
 	return randf_range(enemy_base_hp_min, enemy_base_hp_max) * stat_mult
+
+
+func _enemy_sprite_scale_for_id(enemy_id: String) -> float:
+	match enemy_id:
+		"goblins":
+			return 1.30
+		"rouses":
+			return 1.36
+		"guys":
+			return 1.30
+		"werewolves":
+			return 1.38
+		"cave-trolls":
+			return 1.46
+		"giants":
+			return 1.70
+		"vampires":
+			return 1.36
+		"dragons":
+			return 10.0 / 3.0
+	return 1.0
 
 
 func _hero_attack_damage_range_text() -> String:

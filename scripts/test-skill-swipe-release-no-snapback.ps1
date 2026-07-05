@@ -29,17 +29,17 @@ func _run() -> void:
 	scene.call("_test_state_runtime")._god_mode_max_skills_state()
 	scene.set("selected_skill_id", "build")
 	scene.set("current_screen", "skill")
-	scene.call("_render_screen")
+	scene.call("_navigation_shell").call("_render_screen")
 	await _wait_frames(12)
 
-	scene.call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
+	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
 	for i in range(1, 7):
-		scene.call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(260, 1500), float(i) / 6.0))
+		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(260, 1500), float(i) / 6.0))
 		await _wait_frames(1)
-	scene.call("_finish_skill_swipe", Vector2(260, 1500))
+	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(260, 1500))
 	for frame in range(60):
 		await _wait_frames(1)
-		var cover := _valid_control(scene.get("skill_swipe_handoff_cover"))
+		var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
 		if cover == null:
 			continue
 		var holder_id := int(cover.get_meta("swipe_outgoing_page_holder_id", 0))
