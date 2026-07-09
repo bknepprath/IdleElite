@@ -1,19 +1,9 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $mainScript = Join-Path $projectRoot "scripts\main.gd"
 $skillDetailScript = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Read-ConstNumber {
     param(

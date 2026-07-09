@@ -6,16 +6,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 
 $cleanProjectId = $ProjectId.Trim()
 $safeKeep = [Math]::Min([Math]::Max($Keep, 1), 500)
@@ -71,4 +62,3 @@ foreach ($row in $toRemove) {
     }
     Write-Output "removed $path"
 }
-

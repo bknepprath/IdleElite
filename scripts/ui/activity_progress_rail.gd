@@ -363,6 +363,21 @@ func _draw() -> void:
 		return
 	draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, top_lip_height)), top_lip_color)
 	var track_rect := _activity_progress_track_rect()
+	if top_lip_height <= 0.5:
+		var radius := minf(track_rect.size.y * 0.5, bottom_radius)
+		draw_rect(Rect2(track_rect.position + Vector2(radius, 0.0), Vector2(maxf(0.0, track_rect.size.x - radius * 2.0), track_rect.size.y)), top_lip_color)
+		draw_circle(track_rect.position + Vector2(radius, radius), radius, top_lip_color)
+		draw_circle(track_rect.position + Vector2(track_rect.size.x - radius, radius), radius, top_lip_color)
+		var inner := track_rect.grow(-edge_inset)
+		var inner_radius := minf(inner.size.y * 0.5, maxf(1.0, radius - edge_inset))
+		draw_rect(Rect2(inner.position + Vector2(inner_radius, 0.0), Vector2(maxf(0.0, inner.size.x - inner_radius * 2.0), inner.size.y)), empty_color)
+		draw_circle(inner.position + Vector2(inner_radius, inner_radius), inner_radius, empty_color)
+		draw_circle(inner.position + Vector2(inner.size.x - inner_radius, inner_radius), inner_radius, empty_color)
+		var fill_width := inner.size.x * clampf(value / 100.0, 0.0, 1.0)
+		if fill_width > 0.0:
+			var fill_rect := Rect2(inner.position, Vector2(fill_width, inner.size.y))
+			_draw_round_fill(fill_rect, fill_color, 1.0)
+		return
 	if empty_segments.is_empty():
 		_draw_bottom_round_fill(track_rect, empty_color, 1.0)
 	else:
@@ -436,6 +451,57 @@ func _draw_bottom_round_segments(rect: Rect2, colors: Array[Color], fill_pct: fl
 			start,
 			visible_finish
 		)
+
+func _draw_round_fill(rect: Rect2, color: Color, fill_pct: float) -> void:
+	var pct := clampf(fill_pct, 0.0, 1.0)
+	if pct <= 0.0 or rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return
+	_draw_round_segment(rect, color, 0.0, pct)
+
+func _draw_round_segments(rect: Rect2, colors: Array[Color], fill_pct: float) -> void:
+	var pct := clampf(fill_pct, 0.0, 1.0)
+	if pct <= 0.0 or colors.is_empty() or rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return
+	var count := colors.size()
+	for index in range(count):
+		var start := float(index) / float(count)
+		var finish := float(index + 1) / float(count)
+		var visible_finish := minf(finish, pct)
+		if visible_finish <= start:
+			continue
+		_draw_round_segment(rect, colors[index] as Color, start, visible_finish)
+
+func _draw_round_segment(rect: Rect2, color: Color, start_pct: float, finish_pct: float) -> void:
+	var start := clampf(start_pct, 0.0, 1.0)
+	var finish := clampf(finish_pct, 0.0, 1.0)
+	if finish <= start or rect.size.x <= 0.0 or rect.size.y <= 0.0:
+		return
+	var row_count := _rounded_fill_row_count(rect)
+	var row_height := rect.size.y / float(row_count)
+	var raw_start_x := rect.position.x + rect.size.x * start
+	var raw_finish_x := rect.position.x + rect.size.x * finish
+	var radius := minf(bottom_radius, minf(rect.size.x, rect.size.y) * 0.5)
+	var top_center_y := rect.position.y + radius
+	var bottom_center_y := rect.end.y - radius
+	for i in range(row_count):
+		var y := rect.position.y + (float(i) + 0.5) * row_height
+		var left_clip := rect.position.x
+		var right_clip := rect.end.x
+		if radius > 0.0 and y < top_center_y:
+			var top_dy := top_center_y - y
+			var top_inset := radius - sqrt(maxf(0.0, radius * radius - top_dy * top_dy))
+			left_clip += top_inset
+			right_clip -= top_inset
+		elif radius > 0.0 and y > bottom_center_y:
+			var bottom_dy := y - bottom_center_y
+			var bottom_inset := radius - sqrt(maxf(0.0, radius * radius - bottom_dy * bottom_dy))
+			left_clip += bottom_inset
+			right_clip -= bottom_inset
+		var line_left := maxf(left_clip, raw_start_x)
+		var line_right := minf(right_clip, raw_finish_x)
+		if line_right <= line_left:
+			continue
+		draw_line(Vector2(line_left, y), Vector2(line_right, y), color, row_height + 1.0, false)
 
 func _draw_bottom_round_segment(rect: Rect2, color: Color, start_pct: float, finish_pct: float, offset_x := 0.0) -> void:
 	var start := clampf(start_pct, 0.0, 1.0)

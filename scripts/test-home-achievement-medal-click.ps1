@@ -8,17 +8,6 @@ $testDir = Join-Path $projectRoot ".codex-tmp\home-achievement-medal-click"
 $testScript = Join-Path $testDir "home_achievement_medal_click.gd"
 $capturePath = Join-Path $testDir "home-achievement-medal-popover.png"
 
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 if (Test-Path -LiteralPath $testDir) {

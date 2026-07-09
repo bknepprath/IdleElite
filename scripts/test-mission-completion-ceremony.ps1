@@ -1,19 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\mission-ceremony"
 $testScript = Join-Path $testDir "mission_completion_ceremony_test.gd"
-
-function Assert-True {
-    param([bool]$Condition, [string]$Message)
-    if (-not $Condition) { throw $Message }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 if (Test-Path -LiteralPath $testDir) { Remove-Item -LiteralPath $testDir -Recurse -Force }

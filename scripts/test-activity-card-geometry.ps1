@@ -7,17 +7,6 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\activity-card-geometry"
 $testScript = Join-Path $testDir "activity_card_geometry_probe.gd"
 
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
 function Assert-NoUnexpectedGodotErrors {
     param(
         [Parameter(Mandatory = $true)][AllowNull()]$Output,
@@ -115,7 +104,9 @@ func _run() -> void:
 		_expect(_near(overlay.offset_bottom, ActivityProgressRailClass.OPPORTUNITY_WINDOW_VERTICAL_OUTSET), "Opportunity-window overlay should extend below the rail.")
 
 	var depth := ActivityCardDepthClass.new()
-	_expect(MainScript.ACTION_CARD_3D_PRESS_OFFSET.is_equal_approx(MainScript.ACTION_CARD_3D_DEPTH_OFFSET), "Activity-card press offset should fully seat the face onto the back slab.")
+	_expect(MainScript.ACTION_CARD_3D_DEPTH_OFFSET.is_equal_approx(Vector2(14.0, 16.0)), "Shared activity button shells should keep the compact default depth.")
+	_expect(MainScript.ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.is_equal_approx(Vector2(36.0, 58.0)), "Normal activity cards should use the thick reference-style depth.")
+	_expect(MainScript.ACTION_CARD_3D_PRESS_OFFSET.is_equal_approx(Vector2(28.0, 34.0)), "Activity-card press offset should visibly compress the back slab.")
 	var face_rect := Rect2(Vector2(28.0, 34.0), Vector2(1156.0, 720.0))
 	var normal_radius := float(depth.call("_fast_round_rect_radius", face_rect, 66.0))
 	_expect(_near(normal_radius, 66.0), "Fast activity-card back plate should preserve the intended rounded corner radius.")

@@ -180,7 +180,10 @@ static func normalized_paths(value: Variant, valid_paths: Array) -> Dictionary:
 
 
 static func canonical_action_id(skill_id: String, action_id: String, aliases := {}) -> String:
-	if skill_id == "fishing" and aliases.has(action_id):
+	var qualified_id := "%s:%s" % [skill_id, action_id]
+	if aliases.has(qualified_id):
+		return str(aliases[qualified_id])
+	if aliases.has(action_id):
 		return str(aliases[action_id])
 	return action_id
 

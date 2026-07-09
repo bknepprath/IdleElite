@@ -5,20 +5,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $configPath = Join-Path $projectRoot "firebase-leaderboard-config.json"
 $activityDatabasePath = Join-Path $projectRoot "docs\activity-database.json"
 $firebaseDatabaseUrlPattern = '^https://([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$'
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 Assert-True (Test-Path -LiteralPath $configPath) "Missing firebase-leaderboard-config.json. Create it with scripts\write-firebase-leaderboard-config.ps1 after publishing rules."
 Assert-True (Test-Path -LiteralPath $activityDatabasePath) "Missing docs\activity-database.json."

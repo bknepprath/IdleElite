@@ -2966,6 +2966,7 @@ func _apply_recovery_card_depth_shape(depth: ActivityCardDepth, action: Dictiona
 	if depth == null or not RecoveryModules.has_recovery(action):
 		return
 	depth.bottom_shape = "wide_u"
+	depth.draw_lip_lines = true
 	depth.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
 	depth.queue_redraw()
 
@@ -3210,17 +3211,21 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 	if progress_rail != null:
 		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(progress_rail, true)
 		ThemeStyles.sync_action_card_progress_rail_theme(card, progress_rail, skill_id, action_for_card, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE, host.COLOR_INK)
+		if not RecoveryModules.has_recovery(action_for_card):
+			progress_rail.fill_color = Color("#e3323b")
+			progress_rail.empty_color = Color("#5a1918")
+			progress_rail.set_color_segments([], [])
 		var action_id := str(card.get("action_id", ""))
 		var opportunity_windows: Array[Vector2] = []
 		var opportunity_active := false
 		var opportunity_visible := false
-		if running and not action_id.is_empty():
+		if running and not action_id.is_empty() and RecoveryModules.has_recovery(action_for_card):
 			opportunity_windows = host._action_runtime()._action_opportunity_pattern_windows(skill_id, action_id)
 			opportunity_active = host._action_runtime()._action_opportunity_active(skill_id, action_id)
 			opportunity_visible = true
 		progress_rail.set_opportunity_windows(opportunity_windows, opportunity_active, opportunity_visible, host._action_runtime().action_opportunity_missed)
 		var canceled_progress: float = 0.0 if running else host._action_runtime()._canceled_action_progress(skill_id, action_id)
-		var progress_target: float = (card_progress if running else canceled_progress) * 100.0
+		var progress_target: float = card_progress * 100.0 if not RecoveryModules.has_recovery(action_for_card) else (card_progress if running else canceled_progress) * 100.0
 		var progress_instant := instant
 		if not running and canceled_progress > 0.0:
 			progress_instant = true
@@ -3255,6 +3260,18 @@ func _update_action_card_mastery_bar(card: Dictionary, skill_id: String, action_
 	if mastery_bar == null or not is_instance_valid(mastery_bar):
 		return
 	var action: Dictionary = host._action_data(skill_id, action_id)
+	if not RecoveryModules.has_recovery(action):
+		var mastery_ring := card.get("mastery_ring") as Control
+		var normal_mastery_action_id := str(card.get("mastery_action_id", action_id))
+		var normal_mastery_level: int = MasteryState.level(host.mastery, host._action_key(skill_id, normal_mastery_action_id))
+		var normal_maxed: bool = normal_mastery_level >= host.MASTERY_MAX_LEVEL
+		if mastery_ring != null and is_instance_valid(mastery_ring):
+			mastery_ring.visible = not normal_maxed
+			if mastery_ring.has_method("set_progress"):
+				var ring_progress := 1.0 if normal_maxed else MasteryState.progress_pct(host.mastery, host._action_key(skill_id, normal_mastery_action_id), host.MASTERY_MAX_LEVEL) / 100.0
+				mastery_ring.call("set_progress", ring_progress)
+		mastery_bar.visible = false
+		return
 	if host._convergence_runtime()._is_convergence_action(action):
 		if bool(card.get("mastery_hidden_for_convergence", false)) and not mastery_bar.visible:
 			return
@@ -3346,6 +3363,9 @@ func _place_action_card_medal(card: Dictionary, medal: TextureRect, mastery_leve
 	var destination := _action_card_medal_destination(card, medal)
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(medal, mastery_level > 0)
 	medal.texture = _action_card_medal_texture_for_level(mastery_level)
+	if mastery_level > 0 and medal.texture == null:
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(medal, false)
+		return
 	medal.position = destination
 	medal.scale = Vector2.ONE
 	medal.rotation_degrees = 0.0
@@ -3810,10 +3830,10 @@ func _activity_queue_list_button(content_width: float, node_name: String, label_
 	button.add_theme_font_override("font", host.app_bold_font)
 	button.add_theme_font_size_override("font_size", 88)
 	button.add_theme_color_override("font_color", Color.WHITE)
-	button.add_theme_color_override("font_oover_color", Color.WHITE)
+	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
 	button.add_theme_stylebox_override("normal", _module_utility_button_style(fill, false, false))
-	button.add_theme_stylebox_override("oover", _module_utility_button_style(fill.lightened(0.06), false, false))
+	button.add_theme_stylebox_override("hover", _module_utility_button_style(fill.lightened(0.06), false, false))
 	button.add_theme_stylebox_override("pressed", _module_utility_button_style(fill, true, false))
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	if node_name == "ActivityQueueSetQueueButton":
@@ -4220,6 +4240,14 @@ func _sync_xp_reward_chips(xp_box: Control, xp_label: Label, skill_id: String, a
 
 
 func _action_stat_chip_buffed(skill_id: String, action: Dictionary, stat_kind: String) -> bool:
+	var action_id := str(action.get("id", ""))
+	if stat_kind != "xp" and not action_id.is_empty():
+		var temporary_events = host._temporary_event_runtime()
+		if (
+			(host.running_skill_id == skill_id and host.running_action_id == action_id)
+			or (temporary_events.event_running_skill_id == skill_id and temporary_events.event_running_action_id == action_id)
+		):
+			return true
 	match stat_kind:
 		"xp":
 			var base_rewards: Dictionary = host._action_runtime()._base_xp_reward_map(action, skill_id)
@@ -4339,6 +4367,7 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		ActivityCardStyles.sync_activity_card_title_layer(card, unlocked, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
 		var cached_stat_boxes = card.get("stat_boxes", {}) as Dictionary
 		_sync_xp_reward_chips(cached_stat_boxes.get("xp") as Control, xp_label, skill_id, action)
+		host._skill_detail_surface()._sync_normal_activity_stat_text(card, show_stamina_stat, time_label)
 		host._activity_unlock_ceremony_surface().sync_locked_preview_presence(card, skill_id, action)
 		return
 	if not static_refresh_key.is_empty():
@@ -4358,6 +4387,7 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 	var stat_theme_color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 	var stat_boxes = card.get("stat_boxes", {}) as Dictionary
 	_sync_xp_reward_chips(stat_boxes.get("xp") as Control, xp_label, skill_id, action)
+	host._skill_detail_surface()._sync_normal_activity_stat_text(card, show_stamina_stat, time_label)
 	host._skill_detail_surface()._sync_action_stat_chip_label_style(xp_label, _action_stat_chip_buffed(skill_id, action, "xp"), stat_theme_color, stat_boxes.get("xp") as Control)
 	host._skill_detail_surface()._sync_action_stat_chip_label_style(stamina_label, _action_stat_chip_buffed(skill_id, action, "stamina"), stat_theme_color, stat_boxes.get("stamina") as Control)
 	host._skill_detail_surface()._sync_action_stat_chip_label_style(time_value_label, _action_stat_chip_buffed(skill_id, action, "time"), stat_theme_color, stat_boxes.get("time") as Control)
@@ -4841,23 +4871,6 @@ func _park_skill_swipe_preview() -> void:
 			parked_page.queue_free()
 	preview_page = null
 	preview_offset = 0
-
-func _take_preview_for_oandoff(clear_active := true) -> Control:
-	var page = _preview_control(preview_page)
-	if page == null:
-		return null
-	_force_show_skill_swipe_preview_modules(preview_offset)
-	for raw_offset in preview_pages.keys():
-		if preview_pages[raw_offset] == page:
-			preview_pages.erase(raw_offset)
-			break
-	if preview_states.has(preview_offset):
-		_free_swipe_preview_real_card_cache(preview_states[preview_offset] as Dictionary)
-		preview_states.erase(preview_offset)
-	if clear_active:
-		preview_page = null
-		preview_offset = 0
-	return page
 
 func _extract_incoming_swipe_preview(offset: int) -> Dictionary:
 	if offset == 0 or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
@@ -5604,31 +5617,32 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 			border.queue_redraw()
 	var currency_label = card.get("currency") as Label
 	if currency_label != null:
-		var currency_text = str(host.log_currency) if host.log_currency < 1000 else GameFormatting.compact_number(float(host.log_currency))
+		var log_currency: float = host.material_runtime.amount("softwood")
+		var currency_text = str(int(floor(log_currency + 0.0001))) if log_currency < 1000 else GameFormatting.compact_number(log_currency)
 		var currency_font_size = 82 if currency_text.length() <= 6 else 74
 		if currency_label.get_theme_font_size("font_size") != currency_font_size:
 			currency_label.add_theme_font_size_override("font_size", currency_font_size)
 		host._app_lifecycle_runtime().set_label_text_if_changed(currency_label, currency_text)
 	var plank_button = card.get("plank") as Button
 	if plank_button != null:
-		plank_button.button_pressed = host.plank_bhost_enabled
+		plank_button.button_pressed = host.plank_boost_enabled
 		plank_button.disabled = (not unlocked) or ceremony_active
-		if not plank_button.has_meta("passive_style_active") or bool(plank_button.get_meta("passive_style_active", false)) != host.plank_bhost_enabled:
-			plank_button.set_meta("passive_style_active", host.plank_bhost_enabled)
-			plank_button.add_theme_stylebox_override("normal", PassiveModuleStyles.icon_button(host.plank_bhost_enabled, false, host.COLOR_INK, host.COLOR_GOLD, Callable(host, "_surface_style")))
-			plank_button.add_theme_stylebox_override("oover", PassiveModuleStyles.icon_button(host.plank_bhost_enabled, false, host.COLOR_INK, host.COLOR_GOLD, Callable(host, "_surface_style")))
+		if not plank_button.has_meta("passive_style_active") or bool(plank_button.get_meta("passive_style_active", false)) != host.plank_boost_enabled:
+			plank_button.set_meta("passive_style_active", host.plank_boost_enabled)
+			plank_button.add_theme_stylebox_override("normal", PassiveModuleStyles.icon_button(host.plank_boost_enabled, false, host.COLOR_INK, host.COLOR_GOLD, Callable(host, "_surface_style")))
+			plank_button.add_theme_stylebox_override("hover", PassiveModuleStyles.icon_button(host.plank_boost_enabled, false, host.COLOR_INK, host.COLOR_GOLD, Callable(host, "_surface_style")))
 			plank_button.add_theme_stylebox_override("pressed", PassiveModuleStyles.icon_button(true, true, host.COLOR_INK, host.COLOR_GOLD, Callable(host, "_surface_style")))
 			plank_button.add_theme_stylebox_override("disabled", PassiveModuleStyles.icon_button(false, false, host.COLOR_INK, host.COLOR_GOLD, Callable(host, "_surface_style")))
 	var plank_light = card.get("plank_light") as Panel
 	if plank_light != null:
-		var light_active = host.plank_bhost_enabled and unlocked
+		var light_active = host.plank_boost_enabled and unlocked
 		if bool(plank_light.get_meta("passive_light_active", false)) != light_active:
 			plank_light.set_meta("passive_light_active", light_active)
 			plank_light.add_theme_stylebox_override("panel", PassiveModuleStyles.plank_light(light_active, host.COLOR_INK))
 	var stats = card.get("stats", {}) as Dictionary
-	host._app_lifecycle_runtime().set_label_text_if_changed(stats.get("time") as Label, host._format_passive_time(int(state.get("time_seconds", host.PASSIVE_TIME_START))))
-	host._app_lifecycle_runtime().set_label_text_if_changed(stats.get("yield") as Label, "+%s" % int(state.get("yield", host.PASSIVE_YIELD_START)))
-	host._app_lifecycle_runtime().set_label_text_if_changed(stats.get("capacity") as Label, "%s" % int(state.get("capacity", host.PASSIVE_CAPACITY_START)))
+	host._app_lifecycle_runtime().set_label_text_if_changed(stats.get("time") as Label, GameFormatting.duration(float(state.get("time_seconds", PassiveModulesRuntime.PASSIVE_TIME_START))))
+	host._app_lifecycle_runtime().set_label_text_if_changed(stats.get("yield") as Label, "+%s" % int(state.get("yield", PassiveModulesRuntime.PASSIVE_YIELD_START)))
+	host._app_lifecycle_runtime().set_label_text_if_changed(stats.get("capacity") as Label, "%s" % int(state.get("capacity", PassiveModulesRuntime.PASSIVE_CAPACITY_START)))
 	var upgrade_buttons = card.get("upgrade_buttons", {}) as Dictionary
 	for stat_type in ["time", "yield", "capacity"]:
 		var upgrade = upgrade_buttons.get(stat_type) as Button
@@ -5637,7 +5651,7 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 		var maxed = passive_runtime.passive_upgrade_maxed(module_id, stat_type, now)
 		var cost = passive_runtime.passive_upgrade_cost(module_id, stat_type, now)
 		upgrade.visible = not maxed
-		upgrade.disabled = (not unlocked) or ceremony_active or maxed or host.log_currency < cost
+		upgrade.disabled = (not unlocked) or ceremony_active or maxed or host.material_runtime.amount("softwood") < float(cost)
 		upgrade.modulate = Color(1, 1, 1, 0.42) if upgrade.disabled else Color.WHITE
 		var cost_label = upgrade.get_meta("cost_label", null) as Label
 		if cost_label != null:
@@ -5748,7 +5762,7 @@ func _update_firepit_card_static_state(card: Dictionary, skill_id: String, actio
 	if buff_label != null:
 		var buff_text = ""
 		if active or cooling:
-			buff_text = "+%s%% host.stamina\nregen bhost" % GameFormatting.percent_points(regen_bonus * 100.0)
+			buff_text = "+%s%% stamina\nregen boost" % GameFormatting.percent_points(regen_bonus * 100.0)
 		host._app_lifecycle_runtime().set_label_text_if_changed(buff_label, buff_text)
 		buff_label.visible = active or cooling
 	var toggle_button = card.get("toggle") as Button
@@ -5782,8 +5796,11 @@ func _update_firepit_card_static_state(card: Dictionary, skill_id: String, actio
 
 func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, content_width: float) -> Dictionary:
 	var uses_blue_guy_chicken_brawl_stage = host._fighting_runtime().action_uses_blue_guy_chicken_brawl_stage(action)
+	var uses_recovery_card := RecoveryModules.has_recovery(action)
+	var uses_flat_normal_card := not uses_recovery_card
+	var card_depth_offset: Vector2 = ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET if uses_flat_normal_card else host.ACTION_CARD_3D_DEPTH_OFFSET
 	var card_root = Control.new()
-	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height(false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.ACTION_CARD_3D_DEPTH_OFFSET.y))
+	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height(false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, card_depth_offset.y))
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card_root.clip_contents = false
 	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5796,24 +5813,64 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	pop_card.offset_left = host.ACTION_CARD_POP_GUTTER
 	pop_card.offset_right = -host.ACTION_CARD_POP_GUTTER
 	pop_card.offset_top = 0.0
-	pop_card.set_meta("activity_card_depth_bottom_inset", host.ACTION_CARD_3D_DEPTH_OFFSET.y)
+	pop_card.set_meta("activity_card_depth_bottom_inset", card_depth_offset.y)
 	pop_card.offset_bottom = ActivityCardStyles.activity_card_pop_base_bottom_offset(pop_card)
 	pop_card.clip_contents = false
 	pop_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.z_index = 1
-	var depth = ActivityCardStyles.activity_card_depth_layer(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.ACTION_CARD_3D_DEPTH_OFFSET, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER)
+	var depth = ActivityCardStyles.activity_card_depth_layer(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), card_depth_offset, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER)
 	ThemeStyles.apply_activity_card_depth_action_theme(depth, skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE)
 	_apply_recovery_card_depth_shape(depth, action)
+	depth.visible = true
+	if uses_flat_normal_card:
+		ActivityCardStyles.apply_normal_activity_card_depth(depth)
+		depth.visible = false
 	card_root.add_child(depth)
 	pop_card.set_meta("activity_card_depth_node_id", depth.get_instance_id())
 	card_root.add_child(pop_card)
 
-	var background_underlay: Panel = ActivityCardStyles.action_card_background_edge_underlay(ThemeStyles.activity_card_fill_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)), host.ACTION_CARD_FACE_RADIUS)
-	background_underlay.visible = not RecoveryModules.has_recovery(action)
+	var background_underlay_fill: Color = ThemeStyles.activity_card_fill_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+	if uses_flat_normal_card:
+		background_underlay_fill = Color(0, 0, 0, 0)
+	var background_underlay: Panel = ActivityCardStyles.action_card_background_edge_underlay(background_underlay_fill, host.ACTION_CARD_FACE_RADIUS)
+	background_underlay.add_theme_stylebox_override("panel", ActivityCardStyles.activity_card_face_skin(background_underlay_fill, host.ACTION_CARD_FACE_RADIUS, host.paper_button_style_textures, host.COLOR_INK, host.COLOR_BLUE, Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")))
+	background_underlay.visible = false
 	pop_card.add_child(background_underlay)
+	if uses_flat_normal_card:
+		var body_plate := Panel.new()
+		body_plate.set_anchors_preset(Control.PRESET_FULL_RECT)
+		body_plate.offset_left = card_depth_offset.x
+		body_plate.offset_right = card_depth_offset.x
+		body_plate.offset_top = card_depth_offset.y
+		body_plate.offset_bottom = 0.0
+		body_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		body_plate.z_index = 145
+		body_plate.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_body(host.ACTION_CARD_FACE_RADIUS))
+		pop_card.add_child(body_plate)
+		var body_connectors := ActivityCardStyles.normal_activity_card_body_connectors(card_depth_offset, host.ACTION_CARD_FACE_RADIUS)
+		body_connectors.z_index = 146
+		pop_card.add_child(body_connectors)
 	var bg = host._skill_detail_surface()._action_card_background(skill_id, action)
 	_apply_recovery_card_background_shape(bg, action)
+	if uses_flat_normal_card:
+		var face_art_inset := 0.0
+		bg.offset_left = face_art_inset
+		bg.offset_right = -face_art_inset
+		bg.offset_top = face_art_inset
+		bg.offset_bottom = -card_depth_offset.y - face_art_inset
+		if bg is RoundedTextureRect:
+			(bg as RoundedTextureRect).radius = maxf(1.0, host.ACTION_CARD_FACE_RADIUS - face_art_inset)
 	pop_card.add_child(bg)
+	if uses_flat_normal_card:
+		var face_outline := ActivityCardBorder.new()
+		face_outline.set_anchors_preset(Control.PRESET_FULL_RECT)
+		face_outline.offset_bottom = -card_depth_offset.y
+		face_outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		face_outline.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
+		face_outline.radius = host.ACTION_CARD_FACE_RADIUS
+		face_outline.border_width = 16.0
+		face_outline.border_color = Color("#171615")
+		pop_card.add_child(face_outline)
 	var blue_guy_chicken_stage: Control = null
 	if uses_blue_guy_chicken_brawl_stage:
 		blue_guy_chicken_stage = BlueGuyChickenBrawlStageClass.new()
@@ -5830,7 +5887,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var margin = MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 54)
-	margin.add_theme_constant_override("margin_right", 54)
+	margin.add_theme_constant_override("margin_right", 260 if uses_flat_normal_card else 54)
 	margin.add_theme_constant_override("margin_top", 46)
 	margin.add_theme_constant_override("margin_bottom", 126)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5844,16 +5901,22 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	margin.add_child(row)
 
 	var art_slot = MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 42)
+	art_slot.add_theme_constant_override("margin_top", 18 if uses_flat_normal_card else 42)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel = Panel.new()
-	art_panel.custom_minimum_size = ActionArtUi.ACTION_ART_PANEL_SIZE
+	var art_panel_size := Vector2(382, 382) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
+	art_panel.custom_minimum_size = art_panel_size
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	art_panel.add_theme_stylebox_override("panel", ActivityCardStyles.cached_action_art(Callable(host, "_surface_style")))
 	art_panel.modulate = Color.WHITE
+	art_panel.clip_contents = false
 	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_slot.add_child(art_panel)
 	var art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
+	if uses_flat_normal_card:
+		art.custom_minimum_size = Vector2(398, 398)
+		art.size = Vector2(398, 398)
+		art.position = Vector2(-8, -8)
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
 		art.visible = false
@@ -5873,8 +5936,11 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	row.add_child(art_slot)
 
 	var action_name_label = host._label(str(action["name"]), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	if uses_flat_normal_card:
+		action_name_label.add_theme_font_size_override("font_size", 112)
 	action_name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
+	action_name_label.self_modulate = Color.WHITE
 	action_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	action_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	action_name_label.set_meta("activity_card_locked_title_z_index", 0)
@@ -5882,33 +5948,67 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	copy.add_child(action_name_label)
 
 	var stat_row = HBoxContainer.new()
-	stat_row.add_theme_constant_override("separation", 28)
+	stat_row.add_theme_constant_override("separation", 18 if uses_flat_normal_card else 28)
 	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(stat_row)
 	var skill_detail_surface = host._skill_detail_surface()
 	var xp_label = skill_detail_surface._action_stat_label("")
-	stat_row.add_child(skill_detail_surface._action_stat_box(xp_label))
 	var stamina_label = skill_detail_surface._action_stat_label("")
-	stat_row.add_child(skill_detail_surface._action_stat_box(stamina_label))
 	var time_label = skill_detail_surface._action_stat_label("")
-	stat_row.add_child(skill_detail_surface._action_stat_box(time_label))
 	var success_label = skill_detail_surface._action_stat_label("")
-	stat_row.add_child(skill_detail_surface._action_stat_box(success_label))
+	var xp_box: Control = null
+	var stamina_box: Control = null
+	var time_box: Control = null
+	var success_box: Control = null
+	var normal_stat_top: Label = null
+	var normal_stat_bottom: Label = null
+	if uses_flat_normal_card:
+		var normal_stat_panel: PanelContainer = skill_detail_surface._normal_activity_stat_panel(Vector2(900, 262))
+		var normal_stat_items := GridContainer.new()
+		normal_stat_items.columns = 2
+		normal_stat_items.add_theme_constant_override("h_separation", 10)
+		normal_stat_items.add_theme_constant_override("v_separation", 2)
+		normal_stat_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		xp_box = skill_detail_surface._normal_activity_stat_icon_item(xp_label, "xp")
+		stamina_box = skill_detail_surface._normal_activity_stat_icon_item(stamina_label, "stamina")
+		time_box = skill_detail_surface._normal_activity_stat_icon_item(time_label, "time")
+		success_box = skill_detail_surface._normal_activity_stat_icon_item(success_label, "success")
+		normal_stat_items.add_child(xp_box)
+		normal_stat_items.add_child(stamina_box)
+		normal_stat_items.add_child(time_box)
+		normal_stat_items.add_child(success_box)
+		normal_stat_panel.add_child(normal_stat_items)
+		stat_row.add_child(normal_stat_panel)
+	else:
+		xp_box = skill_detail_surface._action_stat_box(xp_label)
+		stat_row.add_child(xp_box)
+		stamina_box = skill_detail_surface._action_stat_box(stamina_label)
+		stat_row.add_child(stamina_box)
+		time_box = skill_detail_surface._action_stat_box(time_label)
+		stat_row.add_child(time_box)
+		success_box = skill_detail_surface._action_stat_box(success_label)
+		stat_row.add_child(success_box)
 
 	var medal: TextureRect = null
 	var mastery_progress: CleanProgressBar = null
+	var mastery_ring: Control = null
 	if MasteryState.action_has_mastery(host, action):
+		if not RecoveryModules.has_recovery(action):
+			mastery_ring = ActivityCardStyles.action_art_mastery_ring()
+			mastery_ring.z_index = 20
+			art_panel.add_child(mastery_ring)
 		medal = TextureRect.new()
 		medal.anchor_left = 0.0
 		medal.anchor_right = 0.0
 		medal.anchor_top = 0.0
 		medal.anchor_bottom = 0.0
-		medal.offset_left = -80
-		medal.offset_right = 110
+		medal.offset_left = -132
+		medal.offset_right = 168
 		medal.offset_top = -62
 		medal.offset_bottom = 128
 		medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		medal.stretco_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		medal.z_index = 21
 		art_panel.add_child(medal)
@@ -5918,6 +6018,8 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		mastery_progress.easing_speed = 5.0
 		mastery_progress.z_index = 20
 		copy.add_child(mastery_progress)
+		if not RecoveryModules.has_recovery(action):
+			mastery_progress.visible = false
 		if RecoveryModules.has_recovery(action):
 			copy.remove_child(mastery_progress)
 			pop_card.add_child(mastery_progress)
@@ -5936,29 +6038,38 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		fluid_strip = host._fishing_ui_surface()._attach_fishing_fluid_strip(pop_card, action)
 	elif not uses_blue_guy_chicken_brawl_stage:
 		progress = ActivityProgressRail.new()
+		progress.visible = true
 		ThemeStyles.apply_activity_progress_rail_action_theme(progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), ThemeStyles.combo_progress_segment_theme_colors(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE), host.COLOR_INK)
+		if not RecoveryModules.has_recovery(action):
+			progress.fill_color = Color("#e3323b")
+			progress.empty_color = Color("#5a1918")
+			progress.set_color_segments([], [])
 		progress.anchor_left = 0.0
 		progress.anchor_right = 1.0
 		progress.anchor_top = 1.0
 		progress.anchor_bottom = 1.0
-		progress.offset_left = 0.0 if RecoveryModules.has_recovery(action) else host.ACTION_PROGRESS_RAIL_INSET
-		progress.offset_right = 0.0 if RecoveryModules.has_recovery(action) else -host.ACTION_PROGRESS_RAIL_INSET
-		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT
-		progress.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET
+		progress.offset_left = 0.0 if RecoveryModules.has_recovery(action) else -4.0
+		progress.offset_right = 0.0 if RecoveryModules.has_recovery(action) else 4.0
+		var normal_progress_height := 96.0
+		var normal_progress_bottom_margin := 0.0
+		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin - normal_progress_height
+		progress.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin
+		progress.top_lip_height = 7.0 if RecoveryModules.has_recovery(action) else 0.0
+		if skill_id == host.running_skill_id and str(action.get("id", "")) == host.running_action_id:
+			progress.set_value(clampf(host.action_progress, 0.0, 1.0) * 100.0)
 		_apply_recovery_progress_rail_shape(progress, action)
 		progress.z_index = 232
 		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(progress)
 
 	var border: ActivityCardBorder = null
-	if host.ACTION_CARD_FACE_BORDER_ENABLED:
+	if host.ACTION_CARD_FACE_BORDER_ENABLED and RecoveryModules.has_recovery(action):
 		border = ActivityCardBorder.new()
 		border.set_anchors_preset(Control.PRESET_FULL_RECT)
 		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		border.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
-		if RecoveryModules.has_recovery(action):
-			border.bottom_shape = "wide_u"
-			border.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+		border.bottom_shape = "wide_u"
+		border.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
 		pop_card.add_child(border)
 	var action_id = str(action.get("id", ""))
 	var lock_overlay = host._skill_detail_surface()._activity_lock_overlay(pop_card, int(action.get("unlock", 1)), skill_id, host._skill_detail_surface()._lock_requirements_for_overlay(skill_id, action)) if not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action) else {}
@@ -5979,10 +6090,20 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		"stamina": stamina_label,
 		"time": time_label,
 		"success": success_label,
+		"normal_stat_top": normal_stat_top,
+		"normal_stat_bottom": normal_stat_bottom,
 		"status": null,
 		"medal": medal,
 		"mastery": mastery_progress,
+		"mastery_ring": mastery_ring,
 		"progress": progress,
+		"stat_row": stat_row,
+		"stat_boxes": {
+			"xp": xp_box,
+			"stamina": stamina_box,
+			"time": time_box,
+			"success": success_box,
+		},
 		"fluid_strip": fluid_strip,
 		"blue_guy_chicken_stage": blue_guy_chicken_stage,
 		"border": border,

@@ -1,22 +1,12 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\page-switch-cover-visual"
 $testScript = Join-Path $testDir "page_switch_cover_visual_test.gd"
 $captureDir = Join-Path $projectRoot ".codex-tmp\page-switch-cover-visual-captures"
 $resultPath = Join-Path $captureDir "result.json"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Get-GodotProcesses {
     @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)

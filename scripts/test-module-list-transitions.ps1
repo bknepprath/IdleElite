@@ -1,25 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\module-list-transitions"
 $testScript = Join-Path $testDir "module_list_transitions_smoke.gd"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
 
 function Assert-NoUnexpectedGodotErrors {
     param(
@@ -2708,7 +2693,7 @@ func _check_pinned_page_return_restores_skill_scroll(scene: Node, skill_id: Stri
 
 func _check_event_insertion_transition(scene: Node) -> void:
 	var runtime = scene.call("_temporary_event_runtime")
-	var event_id := "covered-wagon-ambush-drill"
+	var event_id := "ambush-log-wagon"
 	var event_def := runtime.call("_event_module_def", event_id) as Dictionary
 	if event_def.is_empty():
 		_record("missing covered wagon event definition for transition smoke")

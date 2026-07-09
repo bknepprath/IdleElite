@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $actionRuntimePath = Join-Path $projectRoot "scripts\gameplay\action_runtime.gd"
 $activityUnlockRuntimePath = Join-Path $projectRoot "scripts\gameplay\activity_unlock_runtime.gd"
@@ -16,17 +17,6 @@ $fishingUiSurfacePath = Join-Path $projectRoot "scripts\fishing\ui_surface.gd"
 $passiveFirepitSurfacePath = Join-Path $projectRoot "scripts\ui\passive_firepit_surface.gd"
 $thievingSurfacePath = Join-Path $projectRoot "scripts\thieving\surface.gd"
 $boundaryMapPath = Join-Path $projectRoot "docs\activity-ui-boundary-map.md"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Assert-FunctionExists {
     param(

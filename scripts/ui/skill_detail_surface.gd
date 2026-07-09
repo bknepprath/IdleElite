@@ -2107,6 +2107,9 @@ func _sync_action_stat_chip_title(value_label: Label, title_text: String) -> voi
 	if str(value_label.get_meta("stat_title_text", "")) != title_text:
 		value_label.set_meta("stat_title_text", title_text)
 		host._app_lifecycle_runtime().set_label_text_if_changed(title_label, title_text)
+	if bool(value_label.get_meta("normal_activity_stat_text", false)):
+		title_label.visible = not title_text.is_empty()
+		return
 	if int(title_label.get_meta("stat_title_outline_size", -1)) != 0:
 		title_label.set_meta("stat_title_outline_size", 0)
 		title_label.add_theme_constant_override("outline_size", 0)
@@ -2343,6 +2346,150 @@ func _action_stat_box(label: Label, interactive := false, skill_id := "", action
 	return box
 
 
+func _compact_action_stat_box(box: Control, value_label: Label) -> void:
+	if box == null or value_label == null:
+		return
+	box.custom_minimum_size = Vector2(214, 142)
+	value_label.add_theme_font_size_override("font_size", 52)
+	var title_label := (value_label.get_meta("stat_title_label") as Label) if value_label.has_meta("stat_title_label") else null
+	if title_label != null:
+		title_label.add_theme_font_size_override("font_size", 36)
+
+
+func _normal_activity_stat_icon_item(value_label: Label, stat_kind: String, interactive := false, skill_id := "", action_id := "") -> Control:
+	var icon_size := 104.0
+	var value_width := 216.0 if stat_kind == "success" else 158.0
+	var item := Panel.new()
+	item.custom_minimum_size = Vector2(410, 118)
+	item.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	item.mouse_filter = Control.MOUSE_FILTER_STOP if interactive and not stat_kind.is_empty() else Control.MOUSE_FILTER_IGNORE
+	item.set_meta("action_stat_box", true)
+	item.set_meta("action_stat_box_interactive", interactive and not stat_kind.is_empty())
+	item.set_meta("normal_activity_stat_box", true)
+	if interactive and not stat_kind.is_empty():
+		item.gui_input.connect(_on_action_stat_box_gui_input.bind(skill_id, action_id, stat_kind))
+	_apply_action_stat_box_style(item, false)
+	value_label.add_theme_font_size_override("font_size", 72)
+	value_label.add_theme_color_override("font_color", Color.WHITE)
+	value_label.add_theme_color_override("font_outline_color", COLOR_INK)
+	value_label.add_theme_constant_override("outline_size", 18)
+	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	value_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	value_label.custom_minimum_size = Vector2(value_width, 88)
+	var content_width := icon_size + 14.0 + value_width
+	var content_x := floorf((item.custom_minimum_size.x - content_width) * 0.5)
+	value_label.position = Vector2(content_x + icon_size + 14.0, 15.0)
+	value_label.size = value_label.custom_minimum_size
+	value_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	value_label.set_meta("normal_activity_stat_text", true)
+	var icon := _normal_activity_stat_icon(_normal_activity_stat_icon_path(stat_kind), icon_size)
+	icon.position = Vector2(content_x, 7.0)
+	icon.size = icon.custom_minimum_size
+	item.add_child(icon)
+	item.add_child(value_label)
+	return item
+
+
+func _normal_activity_stat_icon(texture_path: String, icon_size: float) -> Control:
+	var slot := Control.new()
+	slot.custom_minimum_size = Vector2(icon_size, icon_size)
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var texture: Texture2D = host.visual_texture_cache._texture_or_visual_fallback(texture_path)
+	for offset in [Vector2(-4, 0), Vector2(4, 0), Vector2(0, -4), Vector2(0, 4)]:
+		var outline := TextureRect.new()
+		outline.set_anchors_preset(Control.PRESET_FULL_RECT)
+		outline.position = offset
+		outline.texture = texture
+		outline.modulate = COLOR_INK
+		outline.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		outline.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		slot.add_child(outline)
+	var icon := TextureRect.new()
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.texture = texture
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(icon)
+	return slot
+
+
+func _normal_activity_stat_icon_path(stat_kind: String) -> String:
+	if stat_kind == "xp":
+		return "res://assets/content/ui/infochip-icon-xp.png"
+	if stat_kind == "stamina":
+		return "res://assets/content/ui/infochip-icon-stamina.png"
+	if stat_kind == "time":
+		return "res://assets/content/ui/infochip-icon-time.png"
+	return "res://assets/content/ui/infochip-icon-rate.png"
+
+
+func _normal_activity_stat_row_label() -> Label:
+	var label := host._label("", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", 10)
+	label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return label
+
+
+func _normal_activity_stat_panel(minimum_size := Vector2(920, 92)) -> PanelContainer:
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = minimum_size
+	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	panel.z_index = 20
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.02, 0.03, 0.02, 0.52)
+	style.set_border_width_all(0)
+	style.set_corner_radius_all(24)
+	style.content_margin_left = 22
+	style.content_margin_right = 22
+	style.content_margin_top = 0
+	style.content_margin_bottom = 2
+	style.anti_aliasing = true
+	panel.add_theme_stylebox_override("panel", style)
+	return panel
+
+
+func _sync_normal_activity_stat_text(card: Dictionary, show_stamina_stat: bool, time_title: String) -> void:
+	var top_label := card.get("normal_stat_top") as Label
+	var bottom_label := card.get("normal_stat_bottom") as Label
+	if top_label == null or bottom_label == null:
+		return
+	var xp_label := card.get("xp") as Label
+	var stamina_label := card.get("stamina") as Label
+	var time_label := card.get("time") as Label
+	var success_label := card.get("success") as Label
+	if xp_label == null or time_label == null or success_label == null:
+		return
+	var top_text := "%s XP  •  %s %s" % [xp_label.text, time_label.text, time_title]
+	var normal_separator := "  •  "
+	top_text = "%s XP%s%s %s" % [xp_label.text, normal_separator, time_label.text, time_title]
+	var bottom_parts := []
+	if show_stamina_stat and stamina_label != null and not stamina_label.text.is_empty():
+		bottom_parts.append("%s STAM" % stamina_label.text)
+	if not success_label.text.is_empty():
+		bottom_parts.append("%s RATE" % success_label.text)
+	var bottom_text := ""
+	for part_index in range(bottom_parts.size()):
+		if part_index > 0:
+			bottom_text += "  •  "
+		bottom_text += str(bottom_parts[part_index])
+	bottom_text = ""
+	for part_index in range(bottom_parts.size()):
+		if part_index > 0:
+			bottom_text += normal_separator
+		bottom_text += str(bottom_parts[part_index])
+	host._app_lifecycle_runtime().set_label_text_if_changed(top_label, top_text)
+	host._app_lifecycle_runtime().set_label_text_if_changed(bottom_label, bottom_text)
+
+
 func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color: Color, box: Control = null) -> void:
 	if label == null:
 		return
@@ -2357,6 +2504,15 @@ func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color:
 		return
 	label.set_meta("stat_chip_style_key", style_key)
 	var title_label := (label.get_meta("stat_title_label") as Label) if label.has_meta("stat_title_label") else null
+	if bool(label.get_meta("normal_activity_stat_text", false)):
+		label.add_theme_color_override("font_color", Color.WHITE)
+		label.add_theme_color_override("font_outline_color", COLOR_INK)
+		label.add_theme_constant_override("outline_size", 10)
+		if title_label != null:
+			title_label.add_theme_color_override("font_color", Color.WHITE)
+			title_label.add_theme_color_override("font_outline_color", COLOR_INK)
+			title_label.add_theme_constant_override("outline_size", 8)
+		return
 	if buffed:
 		label.add_theme_color_override("font_color", Color.WHITE)
 		label.add_theme_constant_override("outline_size", 0)
@@ -2404,18 +2560,35 @@ func _apply_action_stat_box_style(box: Control, active := false, pressed := fals
 
 
 func _action_stat_box_style_key(box: Control, active := false, pressed := false) -> String:
+	var normal_activity_stat_box := box != null and bool(box.get_meta("normal_activity_stat_box", false))
 	var buffed := box != null and bool(box.get_meta("stat_box_buffed", false))
 	var theme_variant = box.get_meta("stat_box_theme_color", host.COLOR_BLUE) if box != null else host.COLOR_BLUE
 	var theme_color := theme_variant as Color
-	return "%s:%s:%s:%s" % [active, pressed, buffed, theme_color.to_html(true)]
+	return "%s:%s:%s:%s:%s" % [active, pressed, buffed, normal_activity_stat_box, theme_color.to_html(true)]
 
 
-func _stat_box_style_for_box(box: Control, active := false, pressed := false) -> StyleBoxTexture:
+func _stat_box_style_for_box(box: Control, active := false, pressed := false) -> StyleBox:
+	if box != null and bool(box.get_meta("normal_activity_stat_box", false)):
+		return _normal_activity_stat_box_style(pressed)
 	if box != null and bool(box.get_meta("stat_box_buffed", false)):
 		var theme_variant = box.get_meta("stat_box_theme_color", host.COLOR_BLUE)
 		var theme_color := theme_variant as Color
 		return _stat_box_style(active, pressed, theme_color)
 	return _stat_box_style(active, pressed)
+
+
+func _normal_activity_stat_box_style(pressed := false) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#8f9694") if pressed else Color("#aeb5b3")
+	style.border_color = COLOR_INK
+	style.set_border_width_all(8)
+	style.set_corner_radius_all(22)
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	style.anti_aliasing = true
+	return style
 
 
 func _stat_box_style(active := false, pressed := false, fill := Color.WHITE) -> StyleBoxTexture:
@@ -2561,6 +2734,7 @@ func _apply_recovery_card_depth_shape(depth: ActivityCardDepth, action: Dictiona
 	if depth == null or not RecoveryModules.has_recovery(action):
 		return
 	depth.bottom_shape = "wide_u"
+	depth.draw_lip_lines = true
 	depth.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
 	depth.queue_redraw()
 
@@ -3598,6 +3772,8 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var time_label = stat_widgets.get("time") as Label
 	var success_label = stat_widgets.get("success") as Label
 	var stat_boxes = stat_widgets.get("stat_boxes") as Dictionary
+	var normal_stat_top = stat_widgets.get("normal_stat_top") as Label
+	var normal_stat_bottom = stat_widgets.get("normal_stat_bottom") as Label
 	var stat_hit_buttons = {}
 	var recovery_label: Label = null
 	var boss_label = _detail_action_boss_line(copy, action)
@@ -3605,6 +3781,9 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var mastery_widgets = _detail_action_mastery_widgets(copy, art_panel, skill_id, action)
 	var medal = mastery_widgets.get("medal") as TextureRect
 	var mastery_progress = mastery_widgets.get("mastery") as CleanProgressBar
+	var mastery_ring = mastery_widgets.get("mastery_ring") as Control
+	if not RecoveryModules.has_recovery(action) and mastery_progress != null:
+		mastery_progress.visible = false
 	if RecoveryModules.has_recovery(action) and mastery_progress != null:
 		copy.remove_child(mastery_progress)
 		pop_card.add_child(mastery_progress)
@@ -3647,14 +3826,13 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var build_plank_nodes = buildable_widgets.get("build_plank_nodes", [])
 
 	var border: ActivityCardBorder = null
-	if ACTION_CARD_FACE_BORDER_ENABLED and not host._fighting_runtime().action_uses_diamond_combat_arena(action):
+	if ACTION_CARD_FACE_BORDER_ENABLED and RecoveryModules.has_recovery(action) and not host._fighting_runtime().action_uses_diamond_combat_arena(action):
 		border = ActivityCardBorder.new()
 		border.set_anchors_preset(Control.PRESET_FULL_RECT)
 		border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		border.z_index = ACTION_CARD_FACE_BORDER_Z_INDEX
-		if RecoveryModules.has_recovery(action):
-			border.bottom_shape = "wide_u"
-			border.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+		border.bottom_shape = "wide_u"
+		border.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
 		pop_card.add_child(border)
 	var mission_badge = {}
 	var lock_overlay = _activity_lock_overlay(pop_card, int(action.get("unlock", 1)), skill_id, _lock_requirements_for_overlay(skill_id, action)) if build_overlay == null and not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action) else {}
@@ -3682,6 +3860,8 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"recovery_label": recovery_label,
 		"boss_label": boss_label,
 		"stat_row": stat_row,
+		"normal_stat_top": normal_stat_top,
+		"normal_stat_bottom": normal_stat_bottom,
 		"stat_boxes": stat_boxes,
 		"bonus_parent": copy,
 		"stat_hit_buttons": stat_hit_buttons,
@@ -3689,6 +3869,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"status": status,
 		"medal": medal,
 		"mastery": mastery_progress,
+		"mastery_ring": mastery_ring,
 		"progress": progress,
 		"mat_collection": mat_collection,
 		"convergence_progress": convergence_progress,
@@ -5601,8 +5782,12 @@ func _action_card_background(skill_id: String, action: Dictionary) -> Control:
 
 
 func _detail_action_card_shell(skill_id: String, action: Dictionary, content_width: float, uses_blue_guy_chicken_brawl_stage: bool) -> Dictionary:
+	var uses_diamond_arena: bool = host._fighting_runtime().action_uses_diamond_combat_arena(action)
+	var uses_recovery_card := RecoveryModules.has_recovery(action)
+	var uses_flat_normal_card := not uses_recovery_card and not uses_diamond_arena
+	var card_depth_offset: Vector2 = ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET if uses_flat_normal_card else host.ACTION_CARD_3D_DEPTH_OFFSET
 	var card_root := Control.new()
-	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height_for_action(action, false, host._fighting_runtime().action_uses_diamond_combat_arena(action), host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, host.ACTION_CARD_3D_DEPTH_OFFSET.y))
+	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, card_depth_offset.y))
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card_root.clip_contents = false
 
@@ -5614,21 +5799,23 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	pop_card.offset_left = host.ACTION_CARD_POP_GUTTER
 	pop_card.offset_right = -host.ACTION_CARD_POP_GUTTER
 	pop_card.offset_top = 0.0
-	pop_card.set_meta("activity_card_depth_bottom_inset", host.ACTION_CARD_3D_DEPTH_OFFSET.y)
+	pop_card.set_meta("activity_card_depth_bottom_inset", card_depth_offset.y)
 	pop_card.offset_bottom = ActivityCardStyles.activity_card_pop_base_bottom_offset(pop_card)
 	pop_card.clip_contents = false
 	pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
 	pop_card.z_index = 1
 
-	var uses_diamond_arena: bool = host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var depth: ActivityCardDepth = null
 	if uses_diamond_arena:
 		pop_card.set_meta("activity_card_depth_bottom_inset", 0.0)
 		pop_card.offset_bottom = ActivityCardStyles.activity_card_pop_base_bottom_offset(pop_card)
 	else:
-		depth = ActivityCardStyles.activity_card_depth_layer(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.ACTION_CARD_3D_DEPTH_OFFSET, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER)
+		depth = ActivityCardStyles.activity_card_depth_layer(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), card_depth_offset, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER)
 		ThemeStyles.apply_activity_card_depth_action_theme(depth, skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE)
 		_apply_recovery_card_depth_shape(depth, action)
+		if uses_flat_normal_card:
+			ActivityCardStyles.apply_normal_activity_card_depth(depth)
+			depth.visible = false
 		if BuildableModules.is_buildable(action) and not BuildableModules.is_built(host.built_modules, skill_id, action, Callable(host, "_action_key")):
 			depth.back_color = Color("#14758e")
 			depth.side_color = Color("#0f5e75")
@@ -5639,13 +5826,49 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		pop_card.set_meta("activity_card_depth_node_id", depth.get_instance_id())
 	card_root.add_child(pop_card)
 
-	var background_underlay: Panel = ActivityCardStyles.action_card_background_edge_underlay(ThemeStyles.activity_card_fill_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)), host.ACTION_CARD_FACE_RADIUS)
-	background_underlay.visible = not RecoveryModules.has_recovery(action) and not uses_diamond_arena
+	var background_underlay_fill: Color = ThemeStyles.activity_card_fill_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+	if uses_flat_normal_card:
+		background_underlay_fill = Color(0, 0, 0, 0)
+	var background_underlay: Panel = ActivityCardStyles.action_card_background_edge_underlay(background_underlay_fill, host.ACTION_CARD_FACE_RADIUS)
+	background_underlay.add_theme_stylebox_override("panel", ActivityCardStyles.activity_card_face_skin(background_underlay_fill, host.ACTION_CARD_FACE_RADIUS, host.paper_button_style_textures, host.COLOR_INK, host.COLOR_BLUE, Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")))
+	background_underlay.visible = false
 	pop_card.add_child(background_underlay)
+	if uses_flat_normal_card:
+		var body_plate := Panel.new()
+		body_plate.set_anchors_preset(Control.PRESET_FULL_RECT)
+		body_plate.offset_left = card_depth_offset.x
+		body_plate.offset_right = card_depth_offset.x
+		body_plate.offset_top = card_depth_offset.y
+		body_plate.offset_bottom = 0.0
+		body_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		body_plate.z_index = 145
+		body_plate.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_body(host.ACTION_CARD_FACE_RADIUS))
+		pop_card.add_child(body_plate)
+		var body_connectors := ActivityCardStyles.normal_activity_card_body_connectors(card_depth_offset, host.ACTION_CARD_FACE_RADIUS)
+		body_connectors.z_index = 146
+		pop_card.add_child(body_connectors)
 	var bg = _action_card_background(skill_id, action)
 	_apply_recovery_card_background_shape(bg, action)
+	if uses_flat_normal_card:
+		var face_art_inset := 0.0
+		bg.offset_left = face_art_inset
+		bg.offset_right = -face_art_inset
+		bg.offset_top = face_art_inset
+		bg.offset_bottom = -card_depth_offset.y - face_art_inset
+		if bg is RoundedTextureRect:
+			(bg as RoundedTextureRect).radius = maxf(1.0, host.ACTION_CARD_FACE_RADIUS - face_art_inset)
 	bg.visible = not uses_diamond_arena
 	pop_card.add_child(bg)
+	if uses_flat_normal_card:
+		var face_outline := ActivityCardBorder.new()
+		face_outline.set_anchors_preset(Control.PRESET_FULL_RECT)
+		face_outline.offset_bottom = -card_depth_offset.y
+		face_outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		face_outline.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
+		face_outline.radius = host.ACTION_CARD_FACE_RADIUS
+		face_outline.border_width = 16.0
+		face_outline.border_color = Color("#171615")
+		pop_card.add_child(face_outline)
 
 	var rooster_boss_stage: Control = null
 	if host._fighting_runtime().action_uses_rooster_punch_out_stage(action):
@@ -5711,11 +5934,12 @@ func _attach_diamond_combat_arena_frame(pop_card: Control) -> _DiamondArenaFrame
 
 func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: String, action: Dictionary, is_convergence_card: bool, uses_blue_guy_chicken_brawl_stage: bool) -> Dictionary:
 	var uses_rooster_boss_stage = host._fighting_runtime().action_uses_rooster_punch_out_stage(action)
+	var uses_flat_normal_card: bool = not RecoveryModules.has_recovery(action) and not host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 54)
-	margin.add_theme_constant_override("margin_right", 54)
-	margin.add_theme_constant_override("margin_top", 46)
+	margin.add_theme_constant_override("margin_left", 68 if uses_flat_normal_card else 54)
+	margin.add_theme_constant_override("margin_right", 220 if uses_flat_normal_card else 54)
+	margin.add_theme_constant_override("margin_top", 38 if uses_flat_normal_card else 46)
 	margin.add_theme_constant_override("margin_bottom", 126)
 	margin.mouse_filter = Control.MOUSE_FILTER_PASS
 	margin.z_index = 200
@@ -5723,20 +5947,26 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	pop_card.add_child(margin)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 56)
+	row.add_theme_constant_override("separation", 48 if uses_flat_normal_card else 56)
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	margin.add_child(row)
 
 	var art_slot := MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 42)
+	art_slot.add_theme_constant_override("margin_top", 48 if uses_flat_normal_card else 42)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel := Panel.new()
-	art_panel.custom_minimum_size = ActionArtUi.ACTION_ART_PANEL_SIZE
+	var art_panel_size := Vector2(400, 400) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
+	art_panel.custom_minimum_size = art_panel_size
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	art_panel.add_theme_stylebox_override("panel", ActivityCardStyles.cached_action_art(Callable(host, "_surface_style")))
+	art_panel.clip_contents = false
 	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_slot.add_child(art_panel)
 	var art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
+	if uses_flat_normal_card:
+		art.custom_minimum_size = Vector2(416, 416)
+		art.size = Vector2(416, 416)
+		art.position = Vector2(-8, -8)
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
 		art.visible = false
@@ -5755,7 +5985,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 38)
+	copy.add_theme_constant_override("separation", 18 if uses_flat_normal_card else 38)
 	copy.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(copy)
 	if not is_convergence_card and not uses_blue_guy_chicken_brawl_stage:
@@ -5774,8 +6004,11 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		copy.add_child(title_row)
 
 	var action_name_label = host._label(str(action["name"]), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	if uses_flat_normal_card:
+		action_name_label.add_theme_font_size_override("font_size", 112)
 	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
+	action_name_label.self_modulate = Color.WHITE
 	action_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	action_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	action_name_label.set_meta("module_ui_title_label", true)
@@ -5816,23 +6049,48 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 
 
 func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: Dictionary, action_id: String, is_convergence_card: bool) -> Dictionary:
+	var uses_flat_normal_card: bool = not RecoveryModules.has_recovery(action) and not host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var stat_row := HBoxContainer.new()
-	stat_row.add_theme_constant_override("separation", 28)
+	stat_row.add_theme_constant_override("separation", 18 if uses_flat_normal_card else 28)
 	stat_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	copy.add_child(stat_row)
 
 	var xp_label = _action_stat_label("") as Label
-	var xp_box = _action_stat_box(xp_label, true, skill_id, action_id, "xp") as Control
-	stat_row.add_child(xp_box)
 	var stamina_label = _action_stat_label("") as Label
-	var stamina_box = _action_stat_box(stamina_label, true, skill_id, action_id, "stamina") as Control
-	stat_row.add_child(stamina_box)
 	var time_label = _action_stat_label("") as Label
-	var time_box = _action_stat_box(time_label, true, skill_id, action_id, "time") as Control
-	stat_row.add_child(time_box)
 	var success_label = _action_stat_label("") as Label
-	var success_box = _action_stat_box(success_label, true, skill_id, action_id, "success") as Control
-	stat_row.add_child(success_box)
+	var xp_box: Control = null
+	var stamina_box: Control = null
+	var time_box: Control = null
+	var success_box: Control = null
+	var normal_stat_top: Label = null
+	var normal_stat_bottom: Label = null
+	if uses_flat_normal_card:
+		var stat_panel := _normal_activity_stat_panel(Vector2(900, 262))
+		var stat_items := GridContainer.new()
+		stat_items.columns = 2
+		stat_items.add_theme_constant_override("h_separation", 10)
+		stat_items.add_theme_constant_override("v_separation", 2)
+		stat_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		xp_box = _normal_activity_stat_icon_item(xp_label, "xp", true, skill_id, action_id)
+		stamina_box = _normal_activity_stat_icon_item(stamina_label, "stamina", true, skill_id, action_id)
+		time_box = _normal_activity_stat_icon_item(time_label, "time", true, skill_id, action_id)
+		success_box = _normal_activity_stat_icon_item(success_label, "success", true, skill_id, action_id)
+		stat_items.add_child(xp_box)
+		stat_items.add_child(stamina_box)
+		stat_items.add_child(time_box)
+		stat_items.add_child(success_box)
+		stat_panel.add_child(stat_items)
+		stat_row.add_child(stat_panel)
+	else:
+		xp_box = _action_stat_box(xp_label, true, skill_id, action_id, "xp") as Control
+		stat_row.add_child(xp_box)
+		stamina_box = _action_stat_box(stamina_label, true, skill_id, action_id, "stamina") as Control
+		stat_row.add_child(stamina_box)
+		time_box = _action_stat_box(time_label, true, skill_id, action_id, "time") as Control
+		stat_row.add_child(time_box)
+		success_box = _action_stat_box(success_label, true, skill_id, action_id, "success") as Control
+		stat_row.add_child(success_box)
 	host._material_collection_surface().call_deferred("sync_berry_prep_badges")
 
 	var initial_xp_parts = host._action_runtime()._action_xp_reward_parts_for_display(skill_id, action)
@@ -5844,6 +6102,15 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 	_sync_action_stat_chip_title(stamina_label, "STAM" if host._skill_swipe_activity_surface()._action_shows_stamina_stat(skill_id, action) else "")
 	_sync_action_stat_chip_title(time_label, "TIME")
 	_sync_action_stat_chip_title(success_label, "RATE")
+	if uses_flat_normal_card:
+		_sync_normal_activity_stat_text({
+			"normal_stat_top": normal_stat_top,
+			"normal_stat_bottom": normal_stat_bottom,
+			"xp": xp_label,
+			"stamina": stamina_label,
+			"time": time_label,
+			"success": success_label,
+		}, host._skill_swipe_activity_surface()._action_shows_stamina_stat(skill_id, action), "TIME")
 	if is_convergence_card:
 		stamina_box.visible = false
 		success_box.visible = false
@@ -5854,6 +6121,8 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 		"stamina": stamina_label,
 		"time": time_label,
 		"success": success_label,
+		"normal_stat_top": normal_stat_top,
+		"normal_stat_bottom": normal_stat_bottom,
 		"stat_boxes": {
 			"xp": xp_box,
 			"stamina": stamina_box,
@@ -5891,18 +6160,24 @@ func _detail_action_boss_line(copy: VBoxContainer, action: Dictionary) -> Label:
 func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill_id: String, action: Dictionary) -> Dictionary:
 	var medal: TextureRect = null
 	var mastery_progress: CleanProgressBar = null
+	var mastery_ring: Control = null
 	if MasteryState.action_has_mastery(host, action):
+		if not RecoveryModules.has_recovery(action):
+			mastery_ring = ActivityCardStyles.action_art_mastery_ring()
+			mastery_ring.z_index = 20
+			art_panel.add_child(mastery_ring)
 		medal = TextureRect.new()
 		medal.anchor_left = 0.0
 		medal.anchor_right = 0.0
 		medal.anchor_top = 0.0
 		medal.anchor_bottom = 0.0
-		medal.offset_left = -80
-		medal.offset_right = 110
+		medal.offset_left = -132
+		medal.offset_right = 168
 		medal.offset_top = -62
 		medal.offset_bottom = 128
 		medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		medal.texture = host._skill_swipe_activity_surface()._action_card_medal_texture_for_level(0)
 		medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		medal.z_index = 21
@@ -5913,7 +6188,7 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 		mastery_progress.easing_speed = 5.0
 		mastery_progress.z_index = 20
 		copy.add_child(mastery_progress)
-	return {"medal": medal, "mastery": mastery_progress}
+	return {"medal": medal, "mastery": mastery_progress, "mastery_ring": mastery_ring}
 
 
 func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skill_id: String, action: Dictionary, content_width: float, uses_blue_guy_chicken_brawl_stage: bool) -> Dictionary:
@@ -5937,15 +6212,25 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 		pop_card.add_child(convergence_progress)
 	elif not uses_blue_guy_chicken_brawl_stage and not host._fighting_runtime().action_uses_rooster_punch_out_stage(action):
 		progress = ActivityProgressRail.new()
+		progress.visible = true
 		ThemeStyles.apply_activity_progress_rail_action_theme(progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), ThemeStyles.combo_progress_segment_theme_colors(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE), host.COLOR_INK)
+		if not RecoveryModules.has_recovery(action):
+			progress.fill_color = Color("#e3323b")
+			progress.empty_color = Color("#5a1918")
+			progress.set_color_segments([], [])
 		progress.anchor_left = 0.0
 		progress.anchor_right = 1.0
 		progress.anchor_top = 1.0
 		progress.anchor_bottom = 1.0
-		progress.offset_left = 0.0 if RecoveryModules.has_recovery(action) else host.ACTION_PROGRESS_RAIL_INSET
-		progress.offset_right = 0.0 if RecoveryModules.has_recovery(action) else -host.ACTION_PROGRESS_RAIL_INSET
-		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT
-		progress.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET
+		progress.offset_left = 0.0 if RecoveryModules.has_recovery(action) else -4.0
+		progress.offset_right = 0.0 if RecoveryModules.has_recovery(action) else 4.0
+		var normal_progress_height := 96.0
+		var normal_progress_bottom_margin := 0.0
+		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin - normal_progress_height
+		progress.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin
+		progress.top_lip_height = 7.0 if RecoveryModules.has_recovery(action) else 0.0
+		if skill_id == host.running_skill_id and str(action.get("id", "")) == host.running_action_id:
+			progress.set_value(clampf(host.action_progress, 0.0, 1.0) * 100.0)
 		_apply_recovery_progress_rail_shape(progress, action)
 		progress.z_index = 232
 		progress.mouse_filter = Control.MOUSE_FILTER_IGNORE

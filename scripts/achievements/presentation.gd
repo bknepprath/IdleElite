@@ -1,4 +1,25 @@
-const MASTERY_MEDALS_TEXTURE := "res://assets/content/ui/mastery-medals-spritesheet.png"
+const MASTERY_MEDAL_TEXTURES := [
+	"res://assets/content/ui/mastery-medals/mastery-medal-01-bronze.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-02-silver.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-03-gold.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-04-platinum.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-05-sapphire.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-06-emerald.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-07-ruby.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-08-diamond.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-09-demonic.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-10-heavenly.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-11-elite-bronze.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-12-elite-silver.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-13-elite-gold.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-14-elite-platinum.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-15-elite-sapphire.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-16-elite-emerald.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-17-elite-ruby.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-18-elite-diamond.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-19-elite-demonic.png",
+	"res://assets/content/ui/mastery-medals/mastery-medal-20-elite-heavenly.png"
+]
 const TOTAL_LEVEL_ART := "res://assets/content/achievements/achievement-total-level.png"
 const CRIT_ART := "res://assets/content/achievements/achievement-crit.png"
 const CREDIT_ART := "res://assets/content/achievements/achievement-credit.png"
@@ -108,58 +129,26 @@ static func medal_cluster_positions(count: int) -> Array:
 	return [Vector2(24, 88), Vector2(44, 62), Vector2(68, 44), Vector2(94, 38), Vector2(120, 44), Vector2(144, 62), Vector2(164, 88), Vector2(58, 116), Vector2(94, 122), Vector2(130, 116)]
 
 
-static func mastery_medal_region(index: int, sheet_size: Vector2i) -> Rect2i:
-	var regions := [
-		Rect2i(0, 19, 278, 278),
-		Rect2i(267, 19, 278, 278),
-		Rect2i(536, 19, 278, 278),
-		Rect2i(804, 19, 278, 261),
-		Rect2i(1073, 18, 278, 278),
-		Rect2i(2, 296, 279, 279),
-		Rect2i(266, 296, 279, 279),
-		Rect2i(534, 296, 279, 279),
-		Rect2i(841, 280, 280, 280),
-		Rect2i(1121, 280, 280, 280),
-		Rect2i(0, 574, 282, 282),
-		Rect2i(267, 574, 282, 282),
-		Rect2i(536, 574, 282, 282),
-		Rect2i(804, 574, 282, 282),
-		Rect2i(1084, 578, 256, 256),
-		Rect2i(15, 842, 256, 256),
-		Rect2i(279, 842, 256, 256),
-		Rect2i(546, 842, 256, 256),
-		Rect2i(833, 842, 256, 256),
-		Rect2i(1068, 842, 297, 280)
-	]
-	if index >= 0 and index < regions.size():
-		var region := regions[index] as Rect2i
-		var max_position := Vector2i(maxi(0, sheet_size.x - region.size.x), maxi(0, sheet_size.y - region.size.y))
-		region.position.x = clampi(region.position.x, 0, max_position.x)
-		region.position.y = clampi(region.position.y, 0, max_position.y)
-		region.size.x = mini(region.size.x, sheet_size.x - region.position.x)
-		region.size.y = mini(region.size.y, sheet_size.y - region.position.y)
-		return region
-	var columns := 5
-	var rows := 4
-	var cell := Vector2i(int(floor(float(sheet_size.x) / float(columns))), int(floor(float(sheet_size.y) / float(rows))))
-	return Rect2i(Vector2i((index % columns) * cell.x, int(floor(float(index) / float(columns))) * cell.y), cell)
-
-
 static func mastery_medal_texture(level: int, max_level: int, texture_loader: Callable, visual_fallback: Callable) -> Texture2D:
-	if DisplayServer.get_name() == "headless":
-		return visual_fallback.call() as Texture2D
-	var sheet := texture_loader.call(MASTERY_MEDALS_TEXTURE) as Texture2D
-	if sheet == null:
-		return null
 	var index := clampi(maxi(level, 1) - 1, 0, max_level - 1)
 	if mastery_medal_textures.has(index):
 		return mastery_medal_textures[index]
-	var region := mastery_medal_region(index, Vector2i(sheet.get_width(), sheet.get_height()))
-	var atlas := AtlasTexture.new()
-	atlas.atlas = sheet
-	atlas.region = Rect2(Vector2(region.position), Vector2(region.size))
-	mastery_medal_textures[index] = atlas
-	return atlas
+	var source := texture_loader.call(str(MASTERY_MEDAL_TEXTURES[index])) as Texture2D
+	var texture := _cropped_texture(source)
+	if texture == null:
+		return visual_fallback.call() as Texture2D
+	mastery_medal_textures[index] = texture
+	return texture
+
+
+static func _cropped_texture(texture: Texture2D) -> Texture2D:
+	if texture == null:
+		return null
+	var image := texture.get_image()
+	var rect := image.get_used_rect()
+	if rect.size.x <= 0 or rect.size.y <= 0:
+		return texture
+	return ImageTexture.create_from_image(image.get_region(rect))
 
 
 static func mastery_medal_visual_texture(level: int, max_level: int, texture_loader: Callable, visual_fallback: Callable) -> Texture2D:

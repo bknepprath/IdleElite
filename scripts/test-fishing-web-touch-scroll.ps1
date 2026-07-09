@@ -13,20 +13,10 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $webRoot = Join-Path $projectRoot "builds\web"
 $tmpDir = Join-Path $projectRoot ".codex-tmp"
 $probeScript = Join-Path $tmpDir "fishing-web-touch-scroll-probe.mjs"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 if ([string]::IsNullOrWhiteSpace($NodePath)) {
     $bundledNode = Join-Path $env:USERPROFILE ".cache\codex-runtimes\codex-primary-runtime\dependencies\node\bin\node.exe"

@@ -1,25 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\woodcutting-firepit"
 $testScript = Join-Path $testDir "woodcutting_firepit_test.gd"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
 
 function Assert-NoUnexpectedGodotErrors {
     param(
@@ -251,7 +236,7 @@ func _check_lazy_layout_heights(scene: Node) -> void:
 	if firepit_root != null:
 		firepit_root.queue_free()
 	var idle_plan := scene.call("_skill_detail_surface").call("_build_detail_lazy_plan", "woodcutting") as Array
-	var firepit_entry := _plan_entry(idle_plan, "woodcutting-firepit")
+	var firepit_entry := _plan_entry(idle_plan, "firepit")
 	_expect(not firepit_entry.is_empty(), "lazy plan should include Firepit")
 	_expect(absf(float(firepit_entry.get("height", 0.0)) - firepit_height) <= 0.5, "Firepit lazy height should match its actual card height")
 	scene.set("running_skill_id", "woodcutting")
@@ -259,7 +244,7 @@ func _check_lazy_layout_heights(scene: Node) -> void:
 	var running_plan := scene.call("_skill_detail_surface").call("_build_detail_lazy_plan", "woodcutting") as Array
 	var gather_entry := _plan_entry(running_plan, "gather-fallen-branches")
 	_expect(not gather_entry.is_empty(), "lazy plan should include Gather Fallen Branches")
-	var expected_gather_height := ActivityCardStyles.root_height(false, 720.0, 1080.0, 34.0) + 870.0
+	var expected_gather_height := ActivityCardStyles.root_height(false, 720.0, 1080.0, 16.0) + 870.0
 	_expect(absf(float(gather_entry.get("height", 0.0)) - expected_gather_height) <= 0.5, "running material reward action should reserve its collection module height")
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
@@ -356,7 +341,8 @@ func _check_button_activation(scene: Node) -> void:
 	_expect((card.get("scrapwood_module") as Control) != null and not (card.get("scrapwood_module") as Control).visible, "inactive firepit should hide the Scrapwood dependency module")
 	_expect((card.get("scrapwood_connector") as Control) != null and not (card.get("scrapwood_connector") as Control).visible, "inactive firepit should hide the Scrapwood connector")
 	var starting_xp := int((scene.skills["woodcutting"] as Dictionary).get("xp", 0))
-	toggle.emit_signal("pressed")
+	var firepit_surface = scene.call("_passive_firepit_surface")
+	firepit_surface._on_firepit_toggle_pressed("woodcutting-firepit")
 	var ignition_state := scene.passive_modules.get("woodcutting-firepit", {}) as Dictionary
 	_expect(bool(ignition_state.get("igniting", false)), "Start Fire button signal should begin the ignition sequence")
 	_expect(not _firepit_active(scene), "firepit should not become active until Scrapwood reaches the fire")
@@ -364,18 +350,17 @@ func _check_button_activation(scene: Node) -> void:
 	_expect(_firepit_active(scene), "firepit should become active after the ignition Scrapwood lands")
 	_expect(absf(scene.material_runtime.amount("scrapwood") - 2.0) < 0.001, "ignition should consume one Scrapwood")
 	_expect(int((scene.skills["woodcutting"] as Dictionary).get("xp", 0)) == starting_xp + 2, "ignition should award Woodcutting XP for the burned Scrapwood")
-	toggle.emit_signal("pressed")
+	firepit_surface._on_firepit_toggle_pressed("woodcutting-firepit")
 	_expect(_firepit_active(scene), "tap should not put out an active firepit")
-	var firepit_surface = scene.call("_passive_firepit_surface")
-	toggle.emit_signal("button_down")
+	firepit_surface._on_firepit_button_down("woodcutting-firepit", toggle)
 	firepit_surface._process_firepit_stop_hold(0.20)
-	toggle.emit_signal("button_up")
+	firepit_surface._on_firepit_button_up("woodcutting-firepit")
 	_expect(_firepit_active(scene), "releasing the firepit before hold completion should keep the fire active")
-	toggle.emit_signal("button_down")
+	firepit_surface._on_firepit_button_down("woodcutting-firepit", toggle)
 	firepit_surface._process_firepit_stop_hold(0.20)
 	firepit_surface._process_firepit_stop_hold(0.90)
 	firepit_surface._process_firepit_stop_hold(0.25)
-	toggle.emit_signal("button_up")
+	firepit_surface._on_firepit_button_up("woodcutting-firepit")
 	_expect(not _firepit_active(scene), "completed firepit button hold should put out the active fire")
 	_expect(float(scene.call("_passive_modules_runtime").call("firepit_stamina_regen_bonus", "woodcutting", now)) > 0.0, "completed firepit button hold should leave a decaying Woodcutting regen bonus")
 	scene.call("_passive_modules_runtime").start_firepit(int(scene.call("_unix_now")))

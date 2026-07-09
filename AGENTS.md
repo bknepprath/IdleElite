@@ -1,5 +1,11 @@
 # Agent Instructions
 
+## Default GPT-5.6 Relay Workflow
+
+- The installed `gpt-5-6-relay` workflow is the default, always-on workflow for every user task in this project. Before acting, invoke/read/follow `C:\Users\bknep\.codex\skills\gpt-5-6-relay\SKILL.md` completely; that installed skill remains canonical for detailed routing, model, and effort rules.
+- Sol is the coordinator when the invoking thread is confirmed to be Sol at High effort or above. Otherwise, create a persistent Sol Extra High child Codex thread with `Relay role: coordinator`; that child coordinates the task and creates any needed phases.
+- Create Terra and Luna child phases only when a phase genuinely earns them. Use persistent Codex child threads, not hidden subagents, and keep only one writing thread active at a time unless the canonical skill explicitly permits a safe parallel route.
+
 ## Push Requests
 
 - When the user asks to push, prioritize publishing the current project state instead of starting new implementation work.
@@ -50,6 +56,7 @@ For visible game-only playtesting when explicitly requested:
   ```
   Stop only the headless process that clearly belongs to your wrapper-launched command and should have exited. Leave visible game/debug/editor/project-manager windows alone.
 - For player-visible UI/layout screenshots, capture the real game at the dimensions the user is judging whenever possible. Do not rely only on tall synthetic/mobile captures if the user is looking at the desktop launch window. For this project, the desktop launch style is the `2160x3840` design viewport displayed in the `627x1115` window override from `project.godot`; use capture tooling that preserves that viewport/window pairing when validating desktop-visible layout.
+- Pictures from the real game running through `.\run-godot-safe.ps1` are acceptable visual proof when the exact PNG is opened and inspected before presenting it.
 - Never present mockups, fallback images, generated approximations, or cropped helper renders as if they are real game screenshots. If a screenshot is not from the running Godot game through the safe wrapper/capture script, label it clearly or do not use it as visual proof.
 - For presentation/review screenshots, open and visually inspect the exact PNG after capture before updating HTML or saying it is ready. File existence, byte size, and decode checks are not enough. If the exact image was not visually inspected, label it unverified.
 - During visual inspection, reject screenshots with art, fills, textures, sprites, or custom draw colors spilling past rounded module corners or clipped play-area masks. Fix the clipping/drawing first, then recapture.
@@ -75,6 +82,7 @@ For visible game-only playtesting when explicitly requested:
 
 - Treat naming as architecture work, not cosmetic churn. Prefer human-readable, domain-accurate names that explain the game concept, UI role, state lifetime, or data contract.
 - Preserve established Godot/GDScript style: `snake_case` for variables/functions/signals, `PascalCase` for preloaded class constants, and clear prefixes for related systems such as `skill_swipe_*`, `detail_lazy_*`, `activity_*`, `fishing_*`, and `module_ui_*`.
+- For new asset filenames, prefer lowercase kebab-case grouped as `<feature>-<asset-type>-<variant>.png` when there are multiple related variants, for example `infochip-icon-xp.png`, `resource-icon-softwood.png`, or `navigation-icon-pin.png`.
 - Avoid generic names like `item`, `data`, `info`, `tmp`, `thing`, `obj`, or `value` when the value has a real role. Use names such as `lazy_entry`, `activity_def`, `area_def`, `action_id`, `track_id`, `cached_root`, or `render_record` when those roles are accurate.
 - Do not rename serialized save keys, public data IDs, asset paths, node names, signal names, input/action names, localization/user-facing strings, or externally referenced strings unless compatibility handling is added and validated.
 - Before committing a rename, inspect references with `rg`, update nearby regression assertions when useful, keep the commit scoped to one naming concept, and avoid mixing behavior changes into rename-only commits.

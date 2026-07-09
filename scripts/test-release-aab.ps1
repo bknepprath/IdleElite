@@ -27,6 +27,10 @@ if (-not (Test-Path -LiteralPath $exportPresetsPath)) {
     throw "Required file not found: $exportPresetsPath"
 }
 $exportPresets = Get-Content -Raw -LiteralPath $exportPresetsPath
+$expectedKeystorePath = 'release/idle-elite-upload.keystore'
+if ($exportPresets -notmatch ('(?m)^keystore/release="' + [regex]::Escape($expectedKeystorePath) + '"$')) {
+    throw "Android release preset must use the portable $expectedKeystorePath keystore path."
+}
 if ($exportPresets -notmatch '(?m)^version/name="([^"]+)"') {
     throw "Could not read Android version name from $exportPresetsPath"
 }

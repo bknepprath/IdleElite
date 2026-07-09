@@ -8,7 +8,7 @@ This guide is the source brief for image generation, slicing, review, and future
 
 Level 1 Fighting becomes **Push-Ups**.
 
-Runtime compatibility note: keep the existing action ID `shove-wobbly-hay-bale` until a save-data migration is intentionally designed and validated. The visible module name can change first; the ID is a saved/public data key.
+Runtime compatibility note: the Push-Ups action ID is now `push-ups`; old saves still route `shove-wobbly-hay-bale` through the action alias table.
 
 ## Non-Negotiable Style Lock
 
@@ -166,7 +166,7 @@ Avoid: realistic human anatomy, muscles, fingers, faces, facial expressions, clo
 
 Visible module name: **Push-Ups**  
 Skill: Fighting  
-Compatibility action ID: `shove-wobbly-hay-bale`  
+Compatibility action ID: `push-ups`
 Target feel: starter training, simple and readable, more playful than aggressive.
 Camera: slight bird's-eye three-quarter view, looking down at the blue guy's back. The head sits toward the bottom-left of each frame, and the legs point toward the top-right.
 Exercise source update: the exercise sprite sheet is the strongest inspiration/source-of-truth for push-up style, proportions, and pose language, but it should not be treated as a cutout sheet unless explicitly requested. Use it to generate new authored frames that feel like they belong to the sheet: compact side/three-quarter read, slim plank body, two visible short legs/toe pads, no pronounced ass, no belly mass, no fat underside divider, and feet that feel planted.

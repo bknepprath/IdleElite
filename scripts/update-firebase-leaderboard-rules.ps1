@@ -5,19 +5,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $activityDatabasePath = Join-Path $projectRoot "docs\activity-database.json"
 $rulesPath = Join-Path $projectRoot "firebase-realtime-database.rules.json"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function New-CategoryExpression {
     param([Parameter(Mandatory = $true)][string[]]$CategoryKeys)

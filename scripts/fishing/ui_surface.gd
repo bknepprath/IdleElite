@@ -207,7 +207,7 @@ func _fishing_fluid_kind_for_action(action: Dictionary) -> String:
 		return "deep_water"
 	if str(action.get("area", "")) == "stormy_sea":
 		return "storm"
-	if action_id in ["sewers-drain-gate", "sewers-tunnel-pool"]:
+	if action_id in ["drain-gate", "tunnel-pool"]:
 		return "sewer"
 	if action_id.contains("chum") or action_id.contains("leviathan") or action_id.contains("lobster"):
 		return "lava"
@@ -2396,29 +2396,29 @@ func _update_fishing_active_tool_initialization(area_card: Dictionary, art: Text
 func _fishing_method_short_label(action: Dictionary) -> String:
 	var action_id := str(action.get("id", ""))
 	var custom := {
-		"beach-shallows": "Shallows",
-		"beach-rocks": "Rocks",
+		"shallows": "Shallows",
+		"rocks": "Rocks",
 		"reef-pot": "Reef Pot",
-		"stormy-sea-ripple": "Storm Ripple",
-		"pier-dock-edge": "Dock Edge",
-		"pier-piling-line": "Piling Line",
+		"storm-ripple": "Storm Ripple",
+		"dock-edge": "Dock Edge",
+		"piling-line": "Piling Line",
 		"river-bend": "River Bend",
-		"river-rapids": "Rapids",
-		"sewers-drain-gate": "Drain Gate",
-		"sewers-tunnel-pool": "Tunnel Pool",
-		"winter-lake-ice-hole": "Ice Hole",
+		"rapids": "Rapids",
+		"drain-gate": "Drain Gate",
+		"tunnel-pool": "Tunnel Pool",
+		"ice-hole": "Ice Hole",
 		"reef-cage": "Reef Cage",
-		"reef-night-reef": "Night Reef",
-		"reef-pearl-bed": "Pearl Bed",
-		"sea-rowboat": "Rowboat",
-		"sea-open-water": "Open Water",
-		"sea-chum-line": "Chum Line",
-		"stormy-sea-storm-line": "Storm Line",
-		"deep-sea-wreck-drop": "Wreck Drop",
-		"deep-sea-abyss": "Abyss",
-		"deep-sea-trench": "Deep Trench",
-		"space-starlight": "Starlight",
-		"space-reflection": "Reflection",
+		"night-reef": "Night Reef",
+		"pearl-bed": "Pearl Bed",
+		"rowboat": "Rowboat",
+		"open-water": "Open Water",
+		"chum-line": "Chum Line",
+		"storm-line": "Storm Line",
+		"wreck-drop": "Wreck Drop",
+		"abyss": "Abyss",
+		"deep-trench": "Deep Trench",
+		"starlight": "Starlight",
+		"reflection": "Reflection",
 	}
 	if custom.has(action_id):
 		return str(custom[action_id])
@@ -2430,24 +2430,24 @@ func _fishing_area_focused_method_label(action: Dictionary) -> String:
 	var action_id := str(action.get("id", ""))
 	var custom := {
 		"river-bend": "River Bend",
-		"river-rapids": "Rapids",
-		"sewers-drain-gate": "Drain Gate",
-		"sewers-tunnel-pool": "Tunnel Pool",
-		"winter-lake-ice-hole": "Ice Hole",
+		"rapids": "Rapids",
+		"drain-gate": "Drain Gate",
+		"tunnel-pool": "Tunnel Pool",
+		"ice-hole": "Ice Hole",
 		"reef-cage": "Reef Cage",
-		"reef-night-reef": "Night Reef",
-		"reef-pearl-bed": "Pearl Bed",
-		"sea-rowboat": "Rowboat",
-		"sea-open-water": "Open Water",
-		"sea-chum-line": "Chum Line",
-		"stormy-sea-storm-line": "Storm Line",
-		"deep-sea-wreck-drop": "Wreck Drop",
-		"deep-sea-abyss": "Abyss",
-		"deep-sea-trench": "Deep Trench",
-		"space-starlight": "Starlight",
-		"space-reflection": "Reflection",
+		"night-reef": "Night Reef",
+		"pearl-bed": "Pearl Bed",
+		"rowboat": "Rowboat",
+		"open-water": "Open Water",
+		"chum-line": "Chum Line",
+		"storm-line": "Storm Line",
+		"wreck-drop": "Wreck Drop",
+		"abyss": "Abyss",
+		"deep-trench": "Deep Trench",
+		"starlight": "Starlight",
+		"reflection": "Reflection",
 		"reef-pot": "Reef Pot",
-		"stormy-sea-ripple": "Storm Ripple",
+		"storm-ripple": "Storm Ripple",
 	}
 	if custom.has(action_id):
 		return str(custom[action_id])

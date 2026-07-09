@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\tutorial-visible-flow"
 $testScript = Join-Path $testDir "tutorial_visible_flow_test.gd"
@@ -8,21 +9,6 @@ $startCapturePath = Join-Path $projectRoot ".codex-tmp\tutorial-visible-start.pn
 $afterClickCapturePath = Join-Path $projectRoot ".codex-tmp\tutorial-visible-after-click.png"
 $savePath = Join-Path $env:APPDATA "Godot\app_userdata\Idle Elite\idle_elite_save.json"
 $backupPath = Join-Path $testDir "idle_elite_save.backup.json"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 

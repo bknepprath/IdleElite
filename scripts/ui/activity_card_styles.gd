@@ -1,6 +1,9 @@
 extends RefCounted
 
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
+const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
+
+const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(36.0, 58.0)
 
 static var activity_shade_style_cache := {}
 static var action_art_style_cache: StyleBoxFlat
@@ -376,6 +379,149 @@ class PrismConnectorOverlay extends Control:
 			points.append(point)
 
 
+class NormalActivityCardBodyConnectors extends Control:
+	var fill_color := Color("#8b1d22")
+	var depth_offset := NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
+	var radius := 66.0
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		var face_size := Vector2(size.x, size.y - depth_offset.y)
+		if face_size.x <= 1.0 or face_size.y <= 1.0:
+			return
+		var travel := depth_offset
+		var attach := minf(radius, minf(face_size.x, face_size.y) * 0.25)
+		draw_polygon(PackedVector2Array([
+			Vector2(face_size.x, 0.0),
+			Vector2(face_size.x + travel.x, travel.y),
+			Vector2(face_size.x + travel.x, travel.y + attach),
+			Vector2(face_size.x, attach),
+		]), PackedColorArray([fill_color]))
+		draw_polygon(PackedVector2Array([
+			Vector2(0.0, face_size.y),
+			Vector2(travel.x, face_size.y + travel.y),
+			Vector2(travel.x + attach, face_size.y + travel.y),
+			Vector2(attach, face_size.y),
+		]), PackedColorArray([fill_color]))
+
+
+class ActionArtMasteryRing extends Control:
+	var ring_color := Color("#ffd02f")
+	var empty_color := Color("#8b1d22")
+	var ring_shadow_color := Color("#171615")
+	var stroke_width := 28.0
+	var shadow_width := 38.0
+	var radius := 76.0
+	var inset := -14.0
+	var gap_start_fraction := 0.035
+	var gap_finish_fraction := 0.875
+	var progress := 0.5
+
+	func set_progress(next_progress: float) -> void:
+		var clamped := clampf(next_progress, 0.0, 1.0)
+		if absf(progress - clamped) <= 0.001:
+			return
+		progress = clamped
+		queue_redraw()
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED:
+			queue_redraw()
+
+	func _draw() -> void:
+		if size.x <= 1.0 or size.y <= 1.0:
+			return
+		var points := _rounded_rect_points()
+		var start := gap_start_fraction
+		var finish := gap_finish_fraction
+		_draw_path_segment(points, ring_shadow_color, shadow_width, start, finish)
+		_draw_path_segment(points, empty_color, stroke_width, start, finish)
+		_draw_path_segment(points, ring_color, stroke_width, start, lerpf(start, finish, clampf(progress, 0.0, 1.0)))
+
+	func _rounded_rect_points() -> PackedVector2Array:
+		var half_width := shadow_width * 0.5
+		var left := inset + half_width
+		var top := inset + half_width
+		var right := size.x - inset - half_width
+		var bottom := size.y - inset - half_width
+		var r := minf(radius, minf((right - left), (bottom - top)) * 0.5)
+		var path := PackedVector2Array()
+		path.append(Vector2(left + r, top))
+		path.append(Vector2(right - r, top))
+		_append_arc_points(path, Vector2(right - r, top + r), r, -PI * 0.5, 0.0)
+		path.append(Vector2(right, bottom - r))
+		_append_arc_points(path, Vector2(right - r, bottom - r), r, 0.0, PI * 0.5)
+		path.append(Vector2(left + r, bottom))
+		_append_arc_points(path, Vector2(left + r, bottom - r), r, PI * 0.5, PI)
+		path.append(Vector2(left, top + r))
+		_append_arc_points(path, Vector2(left + r, top + r), r, PI, PI * 1.5)
+		path.append(Vector2(left + r, top))
+		return path
+
+	func _append_arc_points(path: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, end_angle: float) -> void:
+		for step in range(1, 13):
+			var t := float(step) / 12.0
+			var angle := lerpf(start_angle, end_angle, t)
+			path.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
+
+	func _draw_path(points: PackedVector2Array, color: Color, width: float, fraction: float) -> void:
+		if points.size() < 2 or fraction <= 0.0:
+			return
+		var target := _path_length(points) * fraction
+		var drawn := 0.0
+		for index in range(points.size() - 1):
+			var start := points[index]
+			var finish := points[index + 1]
+			var length := start.distance_to(finish)
+			if drawn + length > target:
+				finish = start.lerp(finish, (target - drawn) / length)
+				draw_line(start, finish, color, width, true)
+				return
+			draw_line(start, finish, color, width, true)
+			drawn += length
+
+	func _draw_path_segment(points: PackedVector2Array, color: Color, width: float, start_fraction: float, finish_fraction: float) -> void:
+		if points.size() < 2 or finish_fraction <= start_fraction:
+			return
+		var total := _path_length(points)
+		var start_distance := total * clampf(start_fraction, 0.0, 1.0)
+		var finish_distance := total * clampf(finish_fraction, 0.0, 1.0)
+		var drawn := 0.0
+		var first_point := Vector2.INF
+		var last_point := Vector2.INF
+		for index in range(points.size() - 1):
+			var segment_start := points[index]
+			var segment_finish := points[index + 1]
+			var length := segment_start.distance_to(segment_finish)
+			var next_drawn := drawn + length
+			if next_drawn <= start_distance:
+				drawn = next_drawn
+				continue
+			if drawn >= finish_distance:
+				break
+			var a := maxf(start_distance, drawn)
+			var b := minf(finish_distance, next_drawn)
+			var local_start := segment_start.lerp(segment_finish, (a - drawn) / length)
+			var local_finish := segment_start.lerp(segment_finish, (b - drawn) / length)
+			if first_point == Vector2.INF:
+				first_point = local_start
+			last_point = local_finish
+			draw_line(local_start, local_finish, color, width, true)
+			drawn = next_drawn
+		if first_point != Vector2.INF:
+			draw_circle(first_point, width * 0.5, color)
+			draw_circle(last_point, width * 0.5, color)
+
+	func _path_length(points: PackedVector2Array) -> float:
+		var total := 0.0
+		for index in range(points.size() - 1):
+			total += points[index].distance_to(points[index + 1])
+		return total
+
+
 static func cached_shade(alpha: float) -> StyleBoxFlat:
 	var key := int(round(alpha * 1000.0))
 	if activity_shade_style_cache.has(key):
@@ -494,13 +640,60 @@ static func action_card_background_edge_underlay(fill_color: Color, radius: floa
 	return underlay
 
 
+static func activity_card_face_skin(fill_color: Color, radius: float, cache: Dictionary, ink: Color, blue: Color, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
+	var style := PaperButtonStyles.chunky_activity_button_style(fill_color, int(round(radius)), 0, false, false, cache, ink, blue, can_create, create_texture, fallback_texture)
+	style.content_margin_left = 0
+	style.content_margin_right = 0
+	style.content_margin_top = 0
+	style.content_margin_bottom = 0
+	return style
+
+
+static func activity_card_face_outline_skin(radius: float, cache: Dictionary, ink: Color, blue: Color, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
+	return activity_card_face_skin(Color(0, 0, 0, 0), radius, cache, ink, blue, can_create, create_texture, fallback_texture)
+
+
+static func activity_card_art_outline_skin(radius: float, cache: Dictionary, ink: Color, can_create: Callable, create_texture: Callable, fallback_texture: Callable) -> StyleBoxTexture:
+	var key := "activity_art_outline:%s:%s" % [radius, ink.to_html(true)]
+	if cache.has(key):
+		return cache[key] as StyleBoxTexture
+	var style := StyleBoxTexture.new()
+	if can_create.call():
+		var final_size := Vector2i(160, 104)
+		var supersample := 4.0
+		var texture_size := Vector2i(int(final_size.x * supersample), int(final_size.y * supersample))
+		var border := 4.0 * supersample
+		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
+		var inner := outer.grow(-border)
+		var outer_radius := minf(radius * supersample, 44.0 * supersample)
+		var inner_radius := maxf(1.0, outer_radius - border)
+		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
+		image.fill(Color(0, 0, 0, 0))
+		for y in range(texture_size.y):
+			for x in range(texture_size.x):
+				var point := Vector2(float(x) + 0.5, float(y) + 0.5)
+				if PaperButtonStyles.contains(point, outer, outer_radius) and not PaperButtonStyles.contains(point, inner, inner_radius):
+					image.set_pixel(x, y, ink)
+		image.resize(final_size.x, final_size.y, Image.INTERPOLATE_LANCZOS)
+		style.texture = create_texture.call(image)
+	else:
+		style.texture = fallback_texture.call()
+	style.texture_margin_left = 28
+	style.texture_margin_right = 28
+	style.texture_margin_top = 28
+	style.texture_margin_bottom = 28
+	cache[key] = style
+	return style
+
+
 static func activity_card_depth_layer(theme_color: Color, depth_offset: Vector2, radius: float, gutter: float) -> ActivityCardDepth:
 	var depth := ActivityCardDepth.new()
 	depth.depth_offset = depth_offset
 	depth.radius = radius
-	depth.back_color = theme_color.darkened(0.36)
+	depth.back_color = theme_color.darkened(0.52)
 	depth.side_color = theme_color.darkened(0.48)
 	depth.bottom_color = theme_color.darkened(0.24)
+	depth.draw_lip_lines = false
 	depth.draw_back_plate_bottom_outline = true
 	var highlight := theme_color.lightened(0.42)
 	highlight.a = 0.24
@@ -519,6 +712,60 @@ static func activity_card_depth_layer(theme_color: Color, depth_offset: Vector2,
 	depth.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	depth.z_index = 0
 	return depth
+
+
+static func apply_normal_activity_card_depth(depth: ActivityCardDepth) -> void:
+	if depth == null:
+		return
+	depth.back_color = Color("#8b1d22")
+	depth.side_color = depth.back_color
+	depth.bottom_color = depth.back_color
+	depth.draw_lip_lines = false
+	depth.draw_back_plate_bottom_outline = false
+
+
+static func normal_activity_card_bottom_base(radius: float, ink: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#8b1d22")
+	style.border_color = ink
+	style.border_width_left = 4
+	style.border_width_top = 0
+	style.border_width_right = 4
+	style.border_width_bottom = 4
+	style.corner_radius_top_left = 0
+	style.corner_radius_top_right = 0
+	style.corner_radius_bottom_left = int(round(radius))
+	style.corner_radius_bottom_right = int(round(radius))
+	style.anti_aliasing = true
+	style.anti_aliasing_size = 1.25
+	return style
+
+
+static func normal_activity_card_body(radius: float) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#8b1d22")
+	style.set_border_width_all(0)
+	style.set_corner_radius_all(int(round(radius)))
+	style.anti_aliasing = true
+	style.anti_aliasing_size = 1.5
+	return style
+
+
+static func normal_activity_card_body_connectors(depth_offset: Vector2, radius: float) -> NormalActivityCardBodyConnectors:
+	var connectors := NormalActivityCardBodyConnectors.new()
+	connectors.depth_offset = depth_offset
+	connectors.radius = radius
+	connectors.fill_color = Color("#8b1d22")
+	connectors.set_anchors_preset(Control.PRESET_FULL_RECT)
+	connectors.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return connectors
+
+
+static func action_art_mastery_ring() -> ActionArtMasteryRing:
+	var ring := ActionArtMasteryRing.new()
+	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return ring
 
 
 static func page_switch_button_face() -> PageSwitchButtonFace:
@@ -616,7 +863,7 @@ static func ensure_activity_card_shade(card: Dictionary, alpha := 0.50) -> Panel
 
 static func action_art(surface_style: Callable) -> StyleBoxFlat:
 	var style := surface_style.call(Color.WHITE, 56, 16, true) as StyleBoxFlat
-	style.border_color = Color("#eee2ce")
+	style.border_color = Color("#171615")
 	style.set_border_width_all(5)
 	style.content_margin_left = 16
 	style.content_margin_right = 16

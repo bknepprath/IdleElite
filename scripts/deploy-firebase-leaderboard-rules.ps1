@@ -6,19 +6,9 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $firebaseJsonPath = Join-Path $projectRoot "firebase.json"
 $rulesPath = Join-Path $projectRoot "firebase-realtime-database.rules.json"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 $cleanProjectId = $ProjectId.Trim()
 Assert-True ($cleanProjectId -match '^[a-z][a-z0-9-]{4,29}$') "ProjectId should be the Firebase project id, for example idle-elite-leaderboard."

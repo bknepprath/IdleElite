@@ -1,21 +1,11 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $writerPath = Join-Path $projectRoot "scripts\write-firebase-leaderboard-config.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\firebase-config-validation"
 $validTestKey = "AIzaSyValidationOnlyNotARealFirebaseKey123456"
 $validGoogleWebClientId = "1234567890-validationonly.apps.googleusercontent.com"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Invoke-ExpectValidConfig {
     param(

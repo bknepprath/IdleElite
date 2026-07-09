@@ -291,7 +291,7 @@ Fix:
 - Keep the Godot fill/background/border as runtime badge shapes instead of baking them into the icon art.
 - Lock stable icon placements once approved, especially Fighting and Thieving.
 - Tune per-skill offsets/scales only from real rendered screenshots.
-- Use the existing approved Fishing winner art from `assets/content/icons/drafts/fishing-symbol-winner-v19.png`; strip only the magenta sheet background/fringe and preserve the full fish, line, rod, and reel.
+- Use the existing approved Fishing winner art from `docs/art-source/asset-sources/icon-drafts/fishing-symbol-winner-v19.png`; strip only the magenta sheet background/fringe and preserve the full fish, line, rod, and reel.
 - Rework `assets/content/icons/skill-symbols/fishing.png` itself without deleting the rod/reel: preserve the full fish-plus-rod symbol, add real transparent padding, and only tune scale/position from there so the whole icon remains available to the badge.
 - Use the direct per-skill capture helper for stubborn pages instead of relying on swipe/right-arrow navigation when checking a specific skill header.
 

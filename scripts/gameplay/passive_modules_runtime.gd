@@ -609,11 +609,11 @@ func upgrade_passive_module(module_id: String, stat_type: String, now: int) -> b
 	if passive_upgrade_maxed(module_id, stat_type, now):
 		return false
 	var cost := passive_upgrade_cost(module_id, stat_type, now)
-	if host.log_currency < cost:
+	if host.material_runtime.amount("softwood") < float(cost):
 		return false
 	var state := passive_module_state(module_id, now)
 	var old_value := passive_upgrade_value(module_id, stat_type, now)
-	host.log_currency -= cost
+	host.material_runtime.spend_amount("softwood", float(cost))
 	if stat_type == "time":
 		state["time_seconds"] = passive_next_upgrade_value(module_id, stat_type, now)
 	elif stat_type == "yield":

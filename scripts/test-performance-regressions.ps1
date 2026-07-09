@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $moduleUiRuntimePath = Join-Path $projectRoot "scripts\module_ui\runtime.gd"
 $skillDetailSurfacePath = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
@@ -92,17 +93,6 @@ $homeAchievementMedalClickPath = Join-Path $projectRoot "scripts\test-home-achie
 $pinnedPinVisualSmokePath = Join-Path $projectRoot "scripts\test-pinned-pin-visual-smoke.ps1"
 $actionCardMedalCeremonyCleanupPath = Join-Path $projectRoot "scripts\test-action-card-medal-ceremony-cleanup.ps1"
 $crashReportRecoveryPath = Join-Path $projectRoot "scripts\test-crash-report-recovery.ps1"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Get-FunctionBody {
     param(
@@ -349,8 +339,9 @@ Assert-True ($main -match 'const ACTION_CARD_FACE_BORDER_ENABLED := true') "Acti
 Assert-True ($main -match 'const ACTION_CARD_SIMPLE_BACKGROUND_ENABLED := false') "Normal action cards should keep rounded masked backgrounds; texture prewarm should carry the performance load."
 Assert-True ($main -match 'const ACTION_CARD_FACE_RADIUS := 66\.0') "Action card face, background, and depth corners should share one radius."
 Assert-True ($main -match 'const ACTION_CARD_FACE_BORDER_Z_INDEX := 244') "Action card face borders should draw above progress rails to preserve an uninterrupted stroke."
-Assert-True ($main -match 'const ACTION_CARD_3D_DEPTH_OFFSET := Vector2\(28\.0, 34\.0\)') "Action cards should keep a visible but modest 3D depth slab."
-Assert-True ($main -match 'const ACTION_CARD_3D_PRESS_OFFSET := Vector2\(28\.0, 34\.0\)') "Action card press feedback should seat the face fully onto the 3D depth slab."
+Assert-True ($main -match 'const ACTION_CARD_3D_DEPTH_OFFSET := Vector2\(14\.0, 16\.0\)') "Shared activity button shells should keep the compact default 3D depth."
+Assert-True ($activityCardStyles -match 'const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2\(36\.0, 58\.0\)') "Normal action cards should keep the thick reference-style 3D depth slab."
+Assert-True ($main -match 'const ACTION_CARD_3D_PRESS_OFFSET := Vector2\(28\.0, 34\.0\)') "Action card press feedback should visibly compress the 3D depth slab."
 Assert-True ($materialRuntime -match 'const SCRAPWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/scrapwood\.png"') "Scrapwood mats should use the selected Scrapwood resource icon."
 Assert-True ($materialRuntime -match 'const SOFTWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/softwood\.png"') "Softwood mats should use the selected single-log Softwood resource icon."
 Assert-True ($materialRuntime -match 'const HARDWOOD_MAT_ICON_TEXTURE := "res://assets/content/icons/resources/hardwood\.png"') "Hardwood mats should use the selected stacked-log Hardwood resource icon."
@@ -828,7 +819,8 @@ Assert-True ($collectCompletedDetailTexturePrewarmRequests -match 'DisplayServer
 $atlasTextureHelper = Get-FunctionBody -Text $visualTextureCache -Name "_atlas_texture"
 Assert-True ($atlasTextureHelper -match 'DisplayServer\.get_name\(\) == "headless"' -and $atlasTextureHelper -match '_visual_fallback_texture\(\)' -and $atlasTextureHelper.IndexOf('DisplayServer.get_name() == "headless"') -lt $atlasTextureHelper.IndexOf('AtlasTexture.new()')) "Atlas texture helper should return a fallback before creating atlas resources in headless validation."
 $masteryMedalTexture = Get-FunctionBody -Text $achievementPresentation -Name "mastery_medal_texture"
-Assert-True ($masteryMedalTexture.IndexOf('DisplayServer.get_name() == "headless"') -lt $masteryMedalTexture.IndexOf('AtlasTexture.new()')) "Mastery medal atlas creation should be bypassed in headless validation."
+$masteryMedalAtlasIndex = $masteryMedalTexture.IndexOf('AtlasTexture.new()')
+Assert-True ($masteryMedalAtlasIndex -lt 0 -or $masteryMedalTexture.IndexOf('DisplayServer.get_name() == "headless"') -lt $masteryMedalAtlasIndex) "Mastery medal atlas creation should be bypassed in headless validation."
 $profileAvatarTexture = Get-FunctionBody -Text $profileChatOverlaySurface -Name "_profile_avatar_texture"
 Assert-True ($profileAvatarTexture.IndexOf('DisplayServer.get_name() == "headless"') -lt $profileAvatarTexture.IndexOf('AtlasTexture.new()')) "Profile avatar atlas creation should be bypassed in headless validation."
 $collapsedHostSqueeze = Get-FunctionBody -Text $skillDetailSurface -Name "_play_collapsed_host_squeeze_if_needed"
@@ -1135,7 +1127,7 @@ $ironwoodHardwood = @((@($woodcuttingSkill.actions | Where-Object { $_.id -eq "h
 Assert-True ([double]$ironwoodHardwood.min -ge 3.0 -and [double]$ironwoodHardwood.max -ge 6.0) "Late Harvest Ironwood should provide a larger Hardwood reward range."
 $thievingSkill = @($activityDatabase.skills | Where-Object { $_.id -eq "thieving" })[0]
 Assert-True ($null -ne $thievingSkill) "Activity database should include Thieving."
-$lootBeehive = @($thievingSkill.actions | Where-Object { $_.id -eq "lift-honey-from-beehive" })[0]
+$lootBeehive = @($thievingSkill.actions | Where-Object { $_.id -eq "loot-beehive" })[0]
 Assert-True ($null -ne $lootBeehive -and @($lootBeehive.mat_rewards).Count -eq 1 -and $lootBeehive.mat_rewards[0].id -eq "honey" -and [int]$lootBeehive.mat_rewards[0].amount -eq 1 -and [bool]$lootBeehive.mat_rewards[0].whole) "Loot Beehive should produce whole Honey mat rewards."
 Assert-True ($fishingStateSavePayload -match '"fish_currency": maxf\(0\.0, fish_currency\)') "Save payload should serialize clamped fishing currency."
 Assert-True ($fishingStateSavePayload -match '"equipped_fishing_tool_id": equipped_tool_id_for_save\(is_unlocked\)') "FishingState save payload should serialize normalized equipped fishing tool ids."
@@ -2814,7 +2806,7 @@ foreach ($helperName in @("_detail_action_card_shell", "_detail_action_card_body
 	}
 }
 Assert-True ($actionCardAssembly -match '(?:host\.)?_action_card_background\(skill_id, action\)') "Normal action cards should use the cheap shared background factory."
-Assert-True ($actionCardAssembly -match 'card_root\.custom_minimum_size = Vector2\(content_width, ActivityCardStyles\.root_height_for_action\(action, false, host\._fighting_runtime\(\)\.action_uses_diamond_combat_arena\(action\), host\.ACTION_CARD_HEIGHT, host\.ACTION_CARD_EXPANDED_HEIGHT, host\.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, host\.ACTION_CARD_3D_DEPTH_OFFSET\.y\)\)') "Normal action cards should keep a fixed base-card height separate from optional mats row space."
+Assert-True ($actionCardAssembly -match 'card_root\.custom_minimum_size = Vector2\(content_width, ActivityCardStyles\.root_height_for_action\(action, false, uses_diamond_arena, host\.ACTION_CARD_HEIGHT, host\.ACTION_CARD_EXPANDED_HEIGHT, host\.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, card_depth_offset\.y\)\)') "Normal action cards should keep a fixed base-card height separate from optional mats row space."
 Assert-True ($actionCardAssembly -match 'pop_card\.anchor_bottom = 1\.0[\s\S]*pop_card\.offset_bottom = ActivityCardStyles\.activity_card_pop_base_bottom_offset\(pop_card\)') "Normal action card faces should keep the shared full-height module layout."
 Assert-True ($actionCardAssembly -notmatch 'depth\.anchor_bottom = 0\.0[\s\S]*depth\.offset_bottom = action_card_base_height') "Normal action card depth slabs should not be forced into a mats-specific fixed-size layout."
 Assert-True ($actionCardAssembly -notmatch "custom_minimum_size\.y \+= (?:host\.)?$matCollectionAreaHeightName") "Mat-producing action cards should not reserve expanded height while idle."
@@ -2882,7 +2874,7 @@ Assert-True ($actionCardAssembly -match '(?:host\.)?ACTION_CARD_TITLE_OUTLINE_SI
 Assert-True ($actionCardAssembly -match 'var border: ActivityCardBorder = null') "Fresh normal action cards should not always allocate a face border node."
 Assert-True ($actionCardAssembly -match 'if [^\r\n]*(?:host\.)?ACTION_CARD_FACE_BORDER_ENABLED[^\r\n]*:\s*\r?\n\s*border = ActivityCardBorder\.new\(\)') "Normal action card face borders should stay behind the performance flag."
 Assert-True ($actionCardAssembly -match 'border\.z_index = (?:host\.)?ACTION_CARD_FACE_BORDER_Z_INDEX') "Normal action card face borders should draw over progress rails."
-Assert-True ($actionCardAssembly -match 'ActivityCardStyles\.activity_card_depth_layer\(ThemeStyles\.skill_theme_color\(skill_id, host\.COLOR_BLUE\), host\.ACTION_CARD_3D_DEPTH_OFFSET, host\.ACTION_CARD_FACE_RADIUS, host\.ACTION_CARD_POP_GUTTER\)') "Normal action cards should use the restored fast 3D depth layer."
+Assert-True ($actionCardAssembly -match 'ActivityCardStyles\.activity_card_depth_layer\(ThemeStyles\.skill_theme_color\(skill_id, host\.COLOR_BLUE\), card_depth_offset, host\.ACTION_CARD_FACE_RADIUS, host\.ACTION_CARD_POP_GUTTER\)') "Normal action cards should use the restored fast 3D depth layer."
 Assert-True ($actionCardAssembly -match 'activity_card_depth_node_id') "Normal action cards should keep depth-node metadata for press feedback."
 Assert-True ($actionCardAssembly -match 'card_root\.add_child\(depth\)') "Normal action cards should attach the restored depth node behind the face."
 Assert-True ($actionCardAssembly -match 'outline_size", (?:host\.)?(?:host\.)?ACTION_CARD_TITLE_OUTLINE_SIZE') "Normal action card titles should use the restored outline constant."
@@ -2909,9 +2901,9 @@ Assert-True ($actionPreviewBuilder -match 'host\._skill_detail_surface\(\)\._act
 Assert-True ($actionPreviewBuilder -notmatch 'RoundedTextureRect\.new\(\)') "Swipe preview action card builders must not directly allocate full-card rounded shader backgrounds."
 Assert-True ($actionPreviewBuilder -match '(?:host\.)?ACTION_CARD_TITLE_OUTLINE_SIZE') "Swipe preview action card titles should use the capped outline constant."
 Assert-True ($actionPreviewBuilder -match 'var border: ActivityCardBorder = null') "Swipe preview action cards should not always allocate a face border node."
-Assert-True ($actionPreviewBuilder -match 'if (?:host\.)?ACTION_CARD_FACE_BORDER_ENABLED:\s*\r?\n\s*border = ActivityCardBorder\.new\(\)') "Swipe preview action card face borders should stay behind the performance flag."
+Assert-True ($actionPreviewBuilder -match 'if [^\r\n]*(?:host\.)?ACTION_CARD_FACE_BORDER_ENABLED[^\r\n]*:\s*\r?\n\s*border = ActivityCardBorder\.new\(\)') "Swipe preview action card face borders should stay behind the performance flag."
 Assert-True ($actionPreviewBuilder -match 'border\.z_index = (?:host\.)?ACTION_CARD_FACE_BORDER_Z_INDEX') "Swipe preview action card face borders should draw over progress rails."
-Assert-True ($actionPreviewBuilder -match 'ActivityCardStyles\.activity_card_depth_layer\(ThemeStyles\.skill_theme_color\(skill_id, host\.COLOR_BLUE\), host\.ACTION_CARD_3D_DEPTH_OFFSET, host\.ACTION_CARD_FACE_RADIUS, host\.ACTION_CARD_POP_GUTTER\)') "Swipe preview action cards should use the restored fast 3D depth layer."
+Assert-True ($actionPreviewBuilder -match 'ActivityCardStyles\.activity_card_depth_layer\(ThemeStyles\.skill_theme_color\(skill_id, host\.COLOR_BLUE\), card_depth_offset, host\.ACTION_CARD_FACE_RADIUS, host\.ACTION_CARD_POP_GUTTER\)') "Swipe preview action cards should use the restored fast 3D depth layer."
 Assert-True ($actionPreviewBuilder -match 'activity_card_depth_node_id') "Swipe preview action cards should keep depth-node metadata for press feedback."
 Assert-True ($actionPreviewBuilder -match 'card_root\.add_child\(depth\)') "Swipe preview action cards should attach the restored depth node behind the face."
 Assert-True ($actionPreviewBuilder -match 'outline_size", (?:host\.)?(?:host\.)?ACTION_CARD_TITLE_OUTLINE_SIZE') "Swipe preview action card titles should use the restored outline constant."

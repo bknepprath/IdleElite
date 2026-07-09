@@ -254,7 +254,7 @@ class _ModuleUtilityRowBuilder:
 		icon.set_meta("source_texture_path", res_path.call(icon_path) if res_path.is_valid() else icon_path)
 		icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		icon.anchor_left = 0.0
 		icon.anchor_right = 1.0
 		icon.anchor_top = 0.0
@@ -1554,95 +1554,6 @@ func _bottom_nav_open_close_returns_to_skill(target_screen: String, source_butto
 	return false
 
 
-func _capture_page_state() -> Dictionary:
-	return {
-		"skill_cards": host.skill_cards,
-		"action_cards": host.action_cards,
-		"action_card_keys": host.action_card_keys,
-		"content_scroll": host.content_scroll,
-		"detail_xp_label": host._skill_detail_surface().detail_xp_label,
-		"detail_xp_bar": host._skill_detail_surface().detail_xp_bar,
-		"detail_regen_circle": host._skill_detail_surface().detail_regen_circle,
-		"detail_fish_circle": host._skill_detail_surface().detail_fish_circle,
-		"detail_blue_guy_health_gauge": host._skill_detail_surface().detail_blue_guy_health_gauge,
-		"detail_auto_eat_fish_button": host._skill_detail_surface().detail_auto_eat_fish_button,
-		"detail_stamina_bar": host._skill_detail_surface().detail_stamina_bar,
-		"detail_header_body": host._skill_detail_surface().detail_header_body,
-		"detail_header_left_block": host._skill_detail_surface().detail_header_left_block,
-		"detail_actions_scroll": host._skill_detail_surface().detail_actions_scroll,
-		"detail_actions_top_spacer": host._skill_detail_surface().detail_actions_top_spacer,
-		"detail_unlock_scroll_spacer": host._skill_detail_surface().detail_unlock_scroll_spacer,
-		"detail_shelf_shadow_overlay": host._skill_detail_surface().detail_shelf_shadow_overlay,
-		"detail_back_state": host._skill_detail_surface()._navigation_detail_back_state(),
-		"detail_jump_top_button": host.detail_jump_top_button,
-		"detail_jump_bottom_button": host.detail_jump_bottom_button,
-		"detail_jump_top_hold": host.detail_jump_top_hold,
-		"detail_jump_bottom_hold": host.detail_jump_bottom_hold,
-		"detail_jump_top_hovered": host.detail_jump_top_hovered,
-		"detail_jump_bottom_hovered": host.detail_jump_bottom_hovered,
-		"chain_audio_scroll_direction": host._audio_director().chain_audio_scroll_direction,
-		"chain_audio_scroll_focus_seconds": host._audio_director().chain_audio_scroll_focus_seconds,
-		"detail_action_card_nodes": host._skill_detail_surface().detail_action_card_nodes,
-		"detail_rendered_action_ids": host._skill_detail_surface().detail_rendered_action_ids,
-		"detail_lazy_plan": host._skill_detail_surface().detail_lazy_plan,
-		"detail_lazy_stack": host._skill_detail_surface().detail_lazy_stack,
-		"detail_lazy_last_scroll": host._skill_detail_surface().detail_lazy_last_scroll,
-		"skill_swipe_frame": host._skill_swipe_activity_surface().skill_swipe_frame,
-		"skill_swipe_page": host._skill_swipe_activity_surface().skill_swipe_page,
-		"skill_swipe_animating": host._skill_swipe_activity_surface().skill_swipe_animating,
-		"skill_strip_ids": host._skill_swipe_activity_surface().skill_strip_ids.duplicate(),
-		"skill_strip_index": host._skill_swipe_activity_surface().skill_strip_index,
-		"skill_strip_refs": host._skill_swipe_activity_surface().skill_strip_refs.duplicate(),
-		"skill_swipe_preview_state": host._skill_swipe_activity_surface()._navigation_state(),
-		"settings_surface_state": host._settings_surface()._navigation_state(),
-		"god_mode_controls": host.god_mode_controls,
-	}
-
-
-func _apply_page_state(state: Dictionary) -> void:
-	host.skill_cards = state.get("skill_cards", {}) as Dictionary
-	host.action_cards = state.get("action_cards", {}) as Dictionary
-	host.action_card_keys = state.get("action_card_keys", []) as Array
-	host._skill_detail_surface()._prune_invalid_action_cards()
-	host.content_scroll = host._app_lifecycle_runtime().state_object_ref(state.get("content_scroll"))
-	host._skill_detail_surface().detail_xp_label = host._app_lifecycle_runtime().state_object_ref(state.get("detail_xp_label"))
-	host._skill_detail_surface().detail_xp_bar = host._app_lifecycle_runtime().state_object_ref(state.get("detail_xp_bar"))
-	host._skill_detail_surface().detail_regen_circle = host._app_lifecycle_runtime().state_object_ref(state.get("detail_regen_circle"))
-	host._skill_detail_surface().detail_fish_circle = host._app_lifecycle_runtime().state_object_ref(state.get("detail_fish_circle"))
-	host._skill_detail_surface().detail_blue_guy_health_gauge = host._app_lifecycle_runtime().state_object_ref(state.get("detail_blue_guy_health_gauge"))
-	host._skill_detail_surface().detail_auto_eat_fish_button = host._app_lifecycle_runtime().state_object_ref(state.get("detail_auto_eat_fish_button"))
-	host._skill_detail_surface().detail_stamina_bar = host._app_lifecycle_runtime().state_object_ref(state.get("detail_stamina_bar"))
-	host._skill_detail_surface().detail_header_body = host._app_lifecycle_runtime().state_object_ref(state.get("detail_header_body"))
-	host._skill_detail_surface().detail_header_left_block = host._app_lifecycle_runtime().state_object_ref(state.get("detail_header_left_block"))
-	host._skill_detail_surface().detail_actions_scroll = host._app_lifecycle_runtime().state_object_ref(state.get("detail_actions_scroll"))
-	host._skill_detail_surface().detail_actions_top_spacer = host._app_lifecycle_runtime().state_object_ref(state.get("detail_actions_top_spacer"))
-	host._skill_detail_surface().detail_unlock_scroll_spacer = host._app_lifecycle_runtime().state_object_ref(state.get("detail_unlock_scroll_spacer"))
-	host._skill_detail_surface().detail_shelf_shadow_overlay = host._app_lifecycle_runtime().state_object_ref(state.get("detail_shelf_shadow_overlay"))
-	host._skill_detail_surface()._apply_navigation_detail_back_state(state.get("detail_back_state", {}) as Dictionary)
-	host.detail_jump_top_button = host._app_lifecycle_runtime().state_object_ref(state.get("detail_jump_top_button"))
-	host.detail_jump_bottom_button = host._app_lifecycle_runtime().state_object_ref(state.get("detail_jump_bottom_button"))
-	host.detail_jump_top_hold = float(state.get("detail_jump_top_hold", 0.0))
-	host.detail_jump_bottom_hold = float(state.get("detail_jump_bottom_hold", 0.0))
-	host.detail_jump_top_hovered = bool(state.get("detail_jump_top_hovered", false))
-	host.detail_jump_bottom_hovered = bool(state.get("detail_jump_bottom_hovered", false))
-	host._audio_director().chain_audio_scroll_direction = int(state.get("chain_audio_scroll_direction", 0))
-	host._audio_director().chain_audio_scroll_focus_seconds = float(state.get("chain_audio_scroll_focus_seconds", 0.0))
-	host._skill_detail_surface().detail_action_card_nodes = state.get("detail_action_card_nodes", {}) as Dictionary
-	host._skill_detail_surface().detail_rendered_action_ids = state.get("detail_rendered_action_ids", []) as Array
-	host._skill_detail_surface().detail_lazy_plan = state.get("detail_lazy_plan", []) as Array
-	host._skill_detail_surface().detail_lazy_stack = host._app_lifecycle_runtime().state_object_ref(state.get("detail_lazy_stack"))
-	host._skill_detail_surface().detail_lazy_last_scroll = float(state.get("detail_lazy_last_scroll", -1.0))
-	host._skill_swipe_activity_surface().skill_swipe_frame = host._app_lifecycle_runtime().state_object_ref(state.get("skill_swipe_frame"))
-	host._skill_swipe_activity_surface().skill_swipe_page = host._app_lifecycle_runtime().state_object_ref(state.get("skill_swipe_page"))
-	host._skill_swipe_activity_surface().skill_swipe_animating = bool(state.get("skill_swipe_animating", false))
-	host._skill_swipe_activity_surface().skill_strip_ids = state.get("skill_strip_ids", []) as Array
-	host._skill_swipe_activity_surface().skill_strip_index = int(state.get("skill_strip_index", 0))
-	host._skill_swipe_activity_surface().skill_strip_refs = state.get("skill_strip_refs", {}) as Dictionary
-	host._skill_swipe_activity_surface()._apply_navigation_state(state.get("skill_swipe_preview_state", {}) as Dictionary)
-	host._settings_surface()._apply_navigation_state(state.get("settings_surface_state", {}) as Dictionary)
-	host.god_mode_controls = state.get("god_mode_controls", []) as Array
-
-
 func _reset_page_control_refs() -> void:
 	host.skill_cards.clear()
 	skill_menu_active_drawers.clear()
@@ -2927,7 +2838,7 @@ func _page_switch_skill_symbol(skill_id: String, diagonal_side: String) -> Contr
 	symbol.position = SkillIconBadge.symbol_position(skill_id, PAGE_SWITCH_SKILL_ICON_STAGE_SIZE, symbol_size, host.SKILL_MENU_ICON_BADGE_SIZE) + _page_switch_skill_symbol_focus_offset(skill_id, diagonal_side)
 	symbol.pivot_offset = symbol_size * 0.5
 	symbol.rotation = SkillIconBadge.symbol_rotation(skill_id)
-	symbol.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	symbol.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	symbol.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(symbol)
 	return stage

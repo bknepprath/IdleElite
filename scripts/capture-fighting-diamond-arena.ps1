@@ -10,28 +10,13 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $captureDir = Join-Path $projectRoot ".codex-tmp\fighting-diamond"
 $captureState = if ($Inactive) { "inactive" } else { "active" }
 $capturePath = Join-Path $captureDir "fighting-chickens-diamond-arena-$captureState-desktop-${WindowWidth}x${WindowHeight}.png"
 $captureTempPath = Join-Path $captureDir "fighting-chickens-diamond-arena-$captureState-desktop-${WindowWidth}x${WindowHeight}.tmp.png"
 $scriptPath = Join-Path $captureDir "capture_fighting_diamond_arena.gd"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 New-Item -ItemType Directory -Path $captureDir -Force | Out-Null

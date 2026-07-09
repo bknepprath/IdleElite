@@ -31,6 +31,8 @@ func _create_image_texture(image: Image) -> Texture2D:
 		return null
 	if DisplayServer.get_name() == "headless":
 		return _placeholder_texture(Vector2i(image.get_width(), image.get_height()))
+	if not image.has_mipmaps() and image.get_width() > 1 and image.get_height() > 1:
+		image.generate_mipmaps()
 	return ImageTexture.create_from_image(image)
 
 
@@ -75,7 +77,7 @@ func _image(path: String, minimum_size: Vector2, fishing_ablation_enabled := Cal
 	image.custom_minimum_size = minimum_size
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	image.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	image.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return image
 
@@ -156,7 +158,7 @@ func _image_from_texture(texture: Texture2D, minimum_size: Vector2, texture_path
 	image.custom_minimum_size = minimum_size
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	image.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	image.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return image
 

@@ -1,25 +1,10 @@
-﻿$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\save-normalization"
 $testScript = Join-Path $testDir "save_normalization_test.gd"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
 
 function Assert-NoUnexpectedGodotErrors {
     param(
@@ -121,6 +106,7 @@ func _run() -> void:
 	_check_active_skill_identity_save(game)
 	_check_running_action_save(game)
 	_check_action_progress_save_restore(game)
+	_check_historical_activity_aliases(game)
 	_check_action_key_save(game)
 	_check_manual_activity_unlock_save_restore(game)
 	_check_fishing_method_unlock_routing(game)
@@ -175,32 +161,32 @@ func _action_runtime(game: Node) -> Object:
 func _check_mastery_restore(game: Node) -> void:
 	game.set("mastery", MasteryState.restored_from_save({
 		"fishing:dip-a-tidepool-minnow": {"xp": 12},
-		"fishing:beach-shallows": {"xp": 31},
+		"fishing:shallows": {"xp": 31},
 		"woodcutting:stack-logs-1": {"xp": 99},
 		"fight:not-a-real-action": {"xp": 77},
 		"malformed-key": {"xp": 66},
-		"fight:shove-wobbly-hay-bale": "bad-entry",
+		"fight:push-ups": "bad-entry",
 	}, Callable(_save_runtime(game), "_canonical_action_key"), game.MASTERY_MAX_LEVEL))
 	var restored := game.get("mastery") as Dictionary
-	_expect(restored.has("fishing:beach-shallows"), "Mastery restore should canonicalize fishing action aliases.")
-	_expect(_entry_xp(restored, "fishing:beach-shallows") == 31, "Mastery restore should keep the highest XP for duplicate canonical keys.")
+	_expect(restored.has("fishing:shallows"), "Mastery restore should canonicalize fishing action aliases.")
+	_expect(_entry_xp(restored, "fishing:shallows") == 31, "Mastery restore should keep the highest XP for duplicate canonical keys.")
 	_expect(not restored.has("woodcutting:stack-logs-1"), "Mastery restore should drop passive action keys.")
 	_expect(not restored.has("fight:not-a-real-action"), "Mastery restore should drop unknown action keys.")
 	_expect(not restored.has("malformed-key"), "Mastery restore should drop malformed action keys.")
-	_expect(not restored.has("fight:shove-wobbly-hay-bale"), "Mastery restore should drop malformed mastery entries.")
+	_expect(not restored.has("fight:push-ups"), "Mastery restore should drop malformed mastery entries.")
 
 
 func _check_mastery_save(game: Node) -> void:
 	game.set("mastery", {
 		"fishing:dip-a-tidepool-minnow": {"xp": 18},
-		"fishing:beach-shallows": {"xp": 42},
+		"fishing:shallows": {"xp": 42},
 		"woodcutting:stack-logs-1": {"xp": 99},
 		"fight:not-a-real-action": {"xp": 77},
 		"malformed-key": {"xp": 66},
 	})
 	var saved := MasteryState.for_save(game.mastery, Callable(_save_runtime(game), "_canonical_action_key"), game.MASTERY_MAX_LEVEL)
-	_expect(saved.has("fishing:beach-shallows"), "Mastery save should canonicalize fishing action aliases.")
-	_expect(_entry_xp(saved, "fishing:beach-shallows") == 42, "Mastery save should keep the highest XP for duplicate canonical keys.")
+	_expect(saved.has("fishing:shallows"), "Mastery save should canonicalize fishing action aliases.")
+	_expect(_entry_xp(saved, "fishing:shallows") == 42, "Mastery save should keep the highest XP for duplicate canonical keys.")
 	_expect(not saved.has("woodcutting:stack-logs-1"), "Mastery save should drop passive action keys.")
 	_expect(not saved.has("fight:not-a-real-action"), "Mastery save should drop unknown action keys.")
 	_expect(not saved.has("malformed-key"), "Mastery save should drop malformed action keys.")
@@ -367,25 +353,25 @@ func _check_fishing_net_collection_save_restore(game: Node) -> void:
 func _check_thieving_jail_save(game: Node) -> void:
 	var now := int(game.call("_unix_now"))
 	var thieving_state: Object = game.get("thieving_state") as Object
-	var penny_action := game.call("_action_data", "thieving", "pocket-a-penny-nobody-wanted") as Dictionary
+	var penny_action := game.call("_action_data", "thieving", "borrow-cookie-permanently") as Dictionary
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", penny_action, 1)) == 7, "Level 1 thieving jail seconds should use base time plus level-one module scaling.")
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", penny_action, 2)) == 6, "Level 1 thieving jail seconds should shrink with one overlevel.")
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", penny_action, 3)) == 0, "Level 1 thieving jail seconds should become no jail once below the minimum punishable timer.")
-	var cookie_action := game.call("_action_data", "thieving", "borrow-a-cookie-permanently") as Dictionary
+	var cookie_action := game.call("_action_data", "thieving", "sneak-past-tip-jar") as Dictionary
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 2)) == 9, "Thieving jail seconds should start at base time plus module unlock level times two.")
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 4)) == 7, "Thieving jail seconds should shrink as current level rises above the action unlock level.")
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 5)) == 6, "Thieving jail seconds should keep the minimum punishable jail timer.")
 	_expect(int(game.call("_thieving_surface").call("_thieving_action_jail_seconds", cookie_action, 6)) == 0, "Thieving jail seconds below the minimum punishable timer should become no jail.")
 	thieving_state.action_jails = {
-		"borrow-a-cookie-permanently": {"cooldown_until_unix": now + 60, "resume_when_free": true},
+		"sneak-past-tip-jar": {"cooldown_until_unix": now + 60, "resume_when_free": true},
 		"pocket-a-penny-nobody-wanted": {"cooldown_until_unix": now + 60, "resume_when_free": true, "show_bars": false},
 		"not-a-real-action": {"cooldown_until_unix": now + 60, "resume_when_free": true},
 		"sneak-past-tip-jar-eye-contact": "bad-entry",
 	}
 	var saved := thieving_state.call("action_jails_for_save", now, func(skill_id: String, action_id: String) -> String: return ModuleUiRuntime.canonical_action_id(skill_id, action_id, game.get("FISHING_ACTION_ID_ALIASES")), Callable(game, "_action_data")) as Dictionary
 	_expect(saved.size() == 1, "Thieving jail save should only keep active valid punishable jail entries.")
-	_expect(saved.has("borrow-a-cookie-permanently"), "Thieving jail save should preserve the valid active jail.")
-	var jail := saved.get("borrow-a-cookie-permanently", {}) as Dictionary
+	_expect(saved.has("sneak-past-tip-jar"), "Thieving jail save should preserve the valid active jail.")
+	var jail := saved.get("sneak-past-tip-jar", {}) as Dictionary
 	_expect(_truthy(jail.get("resume_when_free", false)), "Thieving jail save should preserve the resume flag.")
 	_expect(not jail.has("show_bars"), "Thieving jail save should not write no-bars jail state.")
 
@@ -393,23 +379,23 @@ func _check_thieving_jail_save(game: Node) -> void:
 func _check_thieving_jail_restore(game: Node) -> void:
 	var now := int(game.call("_unix_now"))
 	var thieving_state: Object = game.get("thieving_state") as Object
-	thieving_state.action_jails = {"borrow-a-cookie-permanently": {"cooldown_until_unix": now + 60, "resume_when_free": true}}
+	thieving_state.action_jails = {"sneak-past-tip-jar": {"cooldown_until_unix": now + 60, "resume_when_free": true}}
 	thieving_state.call("restore_action_jails", "bad-entry", now, func(skill_id: String, action_id: String) -> String: return ModuleUiRuntime.canonical_action_id(skill_id, action_id, game.get("FISHING_ACTION_ID_ALIASES")), Callable(game, "_action_data"))
 	var restored: Dictionary = thieving_state.action_jails
 	_expect(restored.is_empty(), "Thieving jail restore should clear malformed saved jail data.")
 	thieving_state.call("restore_action_jails", {
-		"borrow-a-cookie-permanently": {"cooldown_until_unix": now + 60, "resume_when_free": true},
+		"sneak-past-tip-jar": {"cooldown_until_unix": now + 60, "resume_when_free": true},
 		"pocket-a-penny-nobody-wanted": now + 120,
 		"sneak-past-tip-jar-eye-contact": {"cooldown_until_unix": now + 60, "resume_when_free": true, "show_bars": false},
 		"not-a-real-action": {"cooldown_until_unix": now + 60, "resume_when_free": true},
 	}, now, func(skill_id: String, action_id: String) -> String: return ModuleUiRuntime.canonical_action_id(skill_id, action_id, game.get("FISHING_ACTION_ID_ALIASES")), Callable(game, "_action_data"))
 	restored = thieving_state.action_jails
 	_expect(restored.size() == 2, "Thieving jail restore should keep active valid dictionary and legacy scalar entries.")
-	_expect(restored.has("borrow-a-cookie-permanently"), "Thieving jail restore should preserve valid dictionary entries.")
-	_expect(restored.has("pocket-a-penny-nobody-wanted"), "Thieving jail restore should preserve legacy scalar cooldown entries.")
+	_expect(restored.has("sneak-past-tip-jar"), "Thieving jail restore should preserve valid dictionary entries.")
+	_expect(restored.has("borrow-cookie-permanently"), "Thieving jail restore should preserve legacy scalar cooldown entries.")
 	_expect(not restored.has("sneak-past-tip-jar-eye-contact"), "Thieving jail restore should drop saved no-bars entries as no jail punishment.")
-	var dictionary_jail := restored.get("borrow-a-cookie-permanently", {}) as Dictionary
-	var legacy_jail := restored.get("pocket-a-penny-nobody-wanted", {}) as Dictionary
+	var dictionary_jail := restored.get("sneak-past-tip-jar", {}) as Dictionary
+	var legacy_jail := restored.get("borrow-cookie-permanently", {}) as Dictionary
 	_expect(_truthy(dictionary_jail.get("resume_when_free", false)), "Thieving jail restore should preserve dictionary resume flags.")
 	_expect(not dictionary_jail.has("show_bars"), "Thieving jail restore should not preserve dictionary no-bars state.")
 	_expect(not legacy_jail.has("show_bars"), "Thieving jail restore should not add no-bars state to legacy scalar entries.")
@@ -494,8 +480,8 @@ func _check_temporary_event_save_restore(game: Node) -> void:
 		high_skills_by_id[skill_id] = skill_state
 	game.set("skills", high_skills_by_id)
 	var raw_events := {
-		"covered-wagon-ambush-drill": {
-			"id": "covered-wagon-ambush-drill",
+		"ambush-log-wagon": {
+			"id": "ambush-log-wagon",
 			"page": "fake-page",
 			"spawned_unix": -25,
 			"expires_unix": 10,
@@ -511,7 +497,7 @@ func _check_temporary_event_save_restore(game: Node) -> void:
 	}
 	game.call("_temporary_event_runtime").set("temporary_event_active", raw_events)
 	game.call("_temporary_event_runtime").set("temporary_event_cooldowns", {
-		"covered-wagon-ambush-drill": 99,
+		"ambush-log-wagon": 99,
 		"not-a-real-event": 123,
 		"suspicious-picnic-basket": -20,
 	})
@@ -519,20 +505,20 @@ func _check_temporary_event_save_restore(game: Node) -> void:
 	var saved := runtime.call("_temporary_events_for_save") as Dictionary
 	var saved_active := saved.get("active", {}) as Dictionary
 	var saved_cooldowns := saved.get("cooldowns", {}) as Dictionary
-	_expect(saved_active.size() == 1 and saved_active.has("covered-wagon-ambush-drill"), "Temporary event save should keep only known active event ids.")
-	var saved_wagon := saved_active.get("covered-wagon-ambush-drill", {}) as Dictionary
+	_expect(saved_active.size() == 1 and saved_active.has("ambush-log-wagon"), "Temporary event save should keep only known active event ids.")
+	var saved_wagon := saved_active.get("ambush-log-wagon", {}) as Dictionary
 	_expect(str(saved_wagon.get("page", "")) == "fight", "Temporary event save should derive page from the event definition.")
 	_expect(int(saved_wagon.get("spawn_level", -1)) == 25, "Temporary event save should default legacy entries to the event definition level, found %s." % int(saved_wagon.get("spawn_level", -1)))
 	_expect(int(saved_wagon.get("spawned_unix", -1)) == 0, "Temporary event save should clamp negative spawn timestamps.")
 	_expect(int(saved_wagon.get("expires_unix", -1)) == 10, "Temporary event save should preserve expiry timestamps after spawn.")
 	_expect(_truthy(saved_wagon.get("completed", false)), "Temporary event save should preserve completion state.")
 	_expect(int(saved_wagon.get("completed_unix", -1)) == 0, "Temporary event save should clamp negative completion timestamps.")
-	_expect(saved_cooldowns.size() == 2 and saved_cooldowns.has("covered-wagon-ambush-drill") and saved_cooldowns.has("suspicious-picnic-basket"), "Temporary event save should keep only known cooldown ids.")
+	_expect(saved_cooldowns.size() == 2 and saved_cooldowns.has("ambush-log-wagon") and saved_cooldowns.has("suspicious-picnic-basket"), "Temporary event save should keep only known cooldown ids.")
 	_expect(int(saved_cooldowns.get("suspicious-picnic-basket", -1)) == 0, "Temporary event save should clamp negative cooldown timestamps.")
 	_expect(int(saved.get("next_roll_unix", -1)) == 0, "Temporary event save should clamp negative next-roll timestamps.")
 
-	game.call("_temporary_event_runtime").set("temporary_event_active", {"covered-wagon-ambush-drill": {"id": "covered-wagon-ambush-drill"}})
-	game.call("_temporary_event_runtime").set("temporary_event_cooldowns", {"covered-wagon-ambush-drill": 77})
+	game.call("_temporary_event_runtime").set("temporary_event_active", {"ambush-log-wagon": {"id": "ambush-log-wagon"}})
+	game.call("_temporary_event_runtime").set("temporary_event_cooldowns", {"ambush-log-wagon": 77})
 	game.call("_temporary_event_runtime").set("temporary_event_next_roll_unix", 88)
 	runtime.call("_restore_temporary_events_from_save", "bad-entry")
 	_expect((game.call("_temporary_event_runtime").get("temporary_event_active") as Dictionary).is_empty(), "Temporary event restore should clear malformed active state.")
@@ -541,7 +527,7 @@ func _check_temporary_event_save_restore(game: Node) -> void:
 	runtime.call("_restore_temporary_events_from_save", {
 		"active": raw_events,
 		"cooldowns": {
-			"covered-wagon-ambush-drill": 99,
+			"ambush-log-wagon": 99,
 			"not-a-real-event": 123,
 			"suspicious-picnic-basket": -20,
 		},
@@ -549,17 +535,17 @@ func _check_temporary_event_save_restore(game: Node) -> void:
 	})
 	var restored_active := game.call("_temporary_event_runtime").get("temporary_event_active") as Dictionary
 	var restored_cooldowns := game.call("_temporary_event_runtime").get("temporary_event_cooldowns") as Dictionary
-	_expect(restored_active.size() == 1 and restored_active.has("covered-wagon-ambush-drill"), "Temporary event restore should keep known active event ids.")
-	var restored_wagon := restored_active.get("covered-wagon-ambush-drill", {}) as Dictionary
+	_expect(restored_active.size() == 1 and restored_active.has("ambush-log-wagon"), "Temporary event restore should keep known active event ids.")
+	var restored_wagon := restored_active.get("ambush-log-wagon", {}) as Dictionary
 	_expect(int(restored_wagon.get("spawn_level", -1)) == 25, "Temporary event restore should default legacy active entries to the event definition level, found %s." % int(restored_wagon.get("spawn_level", -1)))
-	_expect(restored_cooldowns.size() == 2 and restored_cooldowns.has("covered-wagon-ambush-drill") and restored_cooldowns.has("suspicious-picnic-basket"), "Temporary event restore should keep known cooldown ids.")
+	_expect(restored_cooldowns.size() == 2 and restored_cooldowns.has("ambush-log-wagon") and restored_cooldowns.has("suspicious-picnic-basket"), "Temporary event restore should keep known cooldown ids.")
 	_expect(int(game.call("_temporary_event_runtime").get("temporary_event_next_roll_unix")) == 44, "Temporary event restore should preserve next-roll timestamps.")
 
 	_prime_core_skill_state(game)
 	runtime.call("_restore_temporary_events_from_save", {
 		"active": {
-			"covered-wagon-ambush-drill": {
-				"id": "covered-wagon-ambush-drill",
+			"ambush-log-wagon": {
+				"id": "ambush-log-wagon",
 				"spawned_unix": 10,
 				"expires_unix": 999
 			}
@@ -793,8 +779,8 @@ func _check_temporary_event_page_insertion(game: Node) -> void:
 	_unlock_all_normal_actions_for_test(game, "fight")
 	var forced_low_event_now := int(game.call("_unix_now"))
 	game.call("_temporary_event_runtime").set("temporary_event_active", {
-		"covered-wagon-ambush-drill": {
-			"id": "covered-wagon-ambush-drill",
+		"ambush-log-wagon": {
+			"id": "ambush-log-wagon",
 			"page": "fight",
 			"spawn_level": 25,
 			"spawned_unix": forced_low_event_now,
@@ -804,8 +790,8 @@ func _check_temporary_event_page_insertion(game: Node) -> void:
 		}
 	})
 	_expect((runtime.call("_active_event_actions_for_skill", "fight") as Array).is_empty(), "Forced active temporary events should not render before the owning skill reaches level 12.")
-	_expect((game.call("_action_data", "fight", "covered-wagon-ambush-drill") as Dictionary).is_empty(), "Forced active temporary events should not resolve as action data before the owning skill reaches level 12.")
-	_expect(_entry_index_for_action_id(game.call("_skill_detail_surface").call("_visible_detail_entries_for_skill", "fight") as Array, "covered-wagon-ambush-drill") < 0, "Forced active temporary events should not appear in low-level skill detail entries.")
+	_expect((game.call("_action_data", "fight", "ambush-log-wagon") as Dictionary).is_empty(), "Forced active temporary events should not resolve as action data before the owning skill reaches level 12.")
+	_expect(_entry_index_for_action_id(game.call("_skill_detail_surface").call("_visible_detail_entries_for_skill", "fight") as Array, "ambush-log-wagon") < 0, "Forced active temporary events should not appear in low-level skill detail entries.")
 
 	_prime_core_skill_state(game)
 	var high_level_xp := SkillState.xp_for_level(80)
@@ -821,8 +807,8 @@ func _check_temporary_event_page_insertion(game: Node) -> void:
 	_unlock_all_normal_actions_for_test(game, "fishing")
 	var now := int(game.call("_unix_now"))
 	game.call("_temporary_event_runtime").set("temporary_event_active", {
-		"covered-wagon-ambush-drill": {
-			"id": "covered-wagon-ambush-drill",
+		"ambush-log-wagon": {
+			"id": "ambush-log-wagon",
 			"page": "fight",
 			"spawn_level": 20,
 			"spawned_unix": now,
@@ -842,7 +828,7 @@ func _check_temporary_event_page_insertion(game: Node) -> void:
 	})
 	game.call("_temporary_event_runtime").set("temporary_event_cooldowns", {})
 
-	var fight_event := game.call("_action_data", "fight", "covered-wagon-ambush-drill") as Dictionary
+	var fight_event := game.call("_action_data", "fight", "ambush-log-wagon") as Dictionary
 	_expect(not fight_event.is_empty(), "Active temporary events should resolve through action data lookup.")
 	_expect(str(fight_event.get("name", "")) == "Ambush Log Wagon", "Covered wagon event should use the Ambush Log Wagon display name.")
 	_expect(game.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", fight_event) == true, "Active eligible temporary events should be playable without permanent manual unlocks.")
@@ -857,12 +843,12 @@ func _check_temporary_event_page_insertion(game: Node) -> void:
 	var expected_log_range := _expected_temporary_event_log_range(fight_event)
 	_expect(int(log_range.get("logs_min", -1)) == int(expected_log_range.get("logs_min", -2)) and int(log_range.get("logs_max", -1)) == int(expected_log_range.get("logs_max", -2)), "Ambush Log Wagon log rewards should scale from the 30-50 base range by spawn level.")
 	_expect(absf(float(fight_event.get("success", -1.0)) - 30.0) <= 0.001, "Active temporary events should start from a 30% base completion rate.")
-	_expect(float(MasteryState.reward_for_action(game, "fight", "covered-wagon-ambush-drill", fight_event)) == 0.0, "Active temporary events should not grant mastery rewards.")
+	_expect(float(MasteryState.reward_for_action(game, "fight", "ambush-log-wagon", fight_event)) == 0.0, "Active temporary events should not grant mastery rewards.")
 	var fight_medal_actions := AchievementState.playable_actions_for_medal_buffs_including_event(game, "fight", fight_event)
 	var fight_event_medal_index := -1
 	for i in range(fight_medal_actions.size()):
 		var medal_action := fight_medal_actions[i] as Dictionary
-		if str(medal_action.get("id", "")) == "covered-wagon-ambush-drill":
+		if str(medal_action.get("id", "")) == "ambush-log-wagon":
 			fight_event_medal_index = i
 			break
 	_expect(fight_event_medal_index >= 0 and fight_event_medal_index < fight_medal_actions.size() - 1, "Active temporary events should be inserted among normal modules for medal-neighbor bonuses.")
@@ -876,7 +862,7 @@ func _check_temporary_event_page_insertion(game: Node) -> void:
 		_expect(AchievementState.activity_medal_accuracy_bonus(game, "fight", fight_event) > 0.0, "Temporary event completion rate should include surrounding medal accuracy bonuses.")
 		_expect(float(game.call("_action_runtime").call("_success_chance", "fight", fight_event)) > 30.0, "Temporary event success chance should rise above the 30% base when surrounding medal bonuses apply.")
 	var fight_entries := game.call("_skill_detail_surface").call("_visible_detail_entries_for_skill", "fight") as Array
-	var fight_event_index := _entry_index_for_action_id(fight_entries, "covered-wagon-ambush-drill")
+	var fight_event_index := _entry_index_for_action_id(fight_entries, "ambush-log-wagon")
 	_expect(fight_event_index >= 0, "Active temporary events should appear in the owning page detail entries.")
 	if fight_event_index > 0:
 		var previous_action := (fight_entries[fight_event_index - 1] as Dictionary).get("action", {}) as Dictionary
@@ -898,8 +884,8 @@ func _check_temporary_event_page_insertion(game: Node) -> void:
 	_expect(fishing_event_index >= 0, "Fishing lazy plan should include an active temporary event card.")
 
 	game.call("_temporary_event_runtime").set("temporary_event_active", {
-		"covered-wagon-ambush-drill": {
-			"id": "covered-wagon-ambush-drill",
+		"ambush-log-wagon": {
+			"id": "ambush-log-wagon",
 			"page": "fight",
 			"spawned_unix": now - 7200,
 			"expires_unix": now - 1,
@@ -915,8 +901,8 @@ func _check_temporary_event_complete_despawn(game: Node) -> void:
 	_prime_core_skill_state(game)
 	var now := int(game.call("_unix_now"))
 	game.call("_temporary_event_runtime").set("temporary_event_active", {
-		"covered-wagon-ambush-drill": {
-			"id": "covered-wagon-ambush-drill",
+		"ambush-log-wagon": {
+			"id": "ambush-log-wagon",
 			"page": "fight",
 			"spawned_unix": now,
 			"expires_unix": now + 3600,
@@ -926,17 +912,17 @@ func _check_temporary_event_complete_despawn(game: Node) -> void:
 	})
 	game.call("_temporary_event_runtime").set("temporary_event_cooldowns", {})
 	_save_runtime(game).set("save_dirty", false)
-	var event_def := runtime.call("_event_module_def", "covered-wagon-ambush-drill") as Dictionary
+	var event_def := runtime.call("_event_module_def", "ambush-log-wagon") as Dictionary
 	var event_meta := event_def.get("event", {}) as Dictionary
-	var changed: bool = runtime.call("_complete_temporary_event_action_state", "covered-wagon-ambush-drill", now + 12) == true
+	var changed: bool = runtime.call("_complete_temporary_event_action_state", "ambush-log-wagon", now + 12) == true
 	var active := game.call("_temporary_event_runtime").get("temporary_event_active") as Dictionary
 	var cooldowns := game.call("_temporary_event_runtime").get("temporary_event_cooldowns") as Dictionary
 	_expect(changed, "Temporary event completion should report changed state.")
 	_expect(active.is_empty(), "Temporary event completion should remove the active event.")
-	_expect(cooldowns.has("covered-wagon-ambush-drill"), "Temporary event completion should set a respawn cooldown.")
-	_expect(int(cooldowns.get("covered-wagon-ambush-drill", 0)) == now + 12 + int(event_meta.get("respawn_cooldown_seconds", 0)), "Temporary event completion cooldown should start from completion time.")
+	_expect(cooldowns.has("ambush-log-wagon"), "Temporary event completion should set a respawn cooldown.")
+	_expect(int(cooldowns.get("ambush-log-wagon", 0)) == now + 12 + int(event_meta.get("respawn_cooldown_seconds", 0)), "Temporary event completion cooldown should start from completion time.")
 	_expect(_save_runtime(game).get("save_dirty") == true, "Temporary event completion should mark save state dirty.")
-	_expect((game.call("_action_data", "fight", "covered-wagon-ambush-drill") as Dictionary).is_empty(), "Completed temporary events should no longer resolve as active action data.")
+	_expect((game.call("_action_data", "fight", "ambush-log-wagon") as Dictionary).is_empty(), "Completed temporary events should no longer resolve as active action data.")
 
 
 func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> void:
@@ -955,8 +941,8 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	game.set("current_screen", "home")
 	game.set("selected_skill_id", "fight")
 	game.call("_temporary_event_runtime").set("temporary_event_active", {
-		"covered-wagon-ambush-drill": {
-			"id": "covered-wagon-ambush-drill",
+		"ambush-log-wagon": {
+			"id": "ambush-log-wagon",
 			"page": "fight",
 			"spawn_level": 20,
 			"spawned_unix": now,
@@ -966,7 +952,7 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	})
 	game.call("_temporary_event_runtime").set("temporary_event_cooldowns", {})
 	_save_runtime(game).set("save_dirty", false)
-	var event_action := game.call("_action_data", "fight", "covered-wagon-ambush-drill") as Dictionary
+	var event_action := game.call("_action_data", "fight", "ambush-log-wagon") as Dictionary
 	_expect(not event_action.is_empty(), "Temporary event tap test should resolve the active event action.")
 	event_action["success"] = 100.0
 	var reward_map := _action_runtime(game).call("_completion_xp_reward_map", event_action, "fight", false, false, false, false) as Dictionary
@@ -1001,7 +987,7 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	var softwood_before: float = game.material_runtime.amount("softwood")
 	var hardwood_before: float = game.material_runtime.amount("hardwood")
 	game.set("running_skill_id", "fight")
-	game.set("running_action_id", "covered-wagon-ambush-drill")
+	game.set("running_action_id", "ambush-log-wagon")
 	game.set("action_progress", 1.0)
 	var cost := float(game.call("_action_runtime").call("_effective_stamina", "fight", event_action))
 	var spent := SkillState.spend_action_stamina(game.stamina, game.stamina_bank, "fight", cost, Callable(SkillState, "host_max_stamina").bind(game))
@@ -1009,9 +995,9 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	runtime.call(
 		"_complete_temporary_event_action_attempt",
 		"fight",
-		"covered-wagon-ambush-drill",
+		"ambush-log-wagon",
 		event_action,
-		game.call("_action_key", "fight", "covered-wagon-ambush-drill"),
+		game.call("_action_key", "fight", "ambush-log-wagon"),
 		cost,
 		{},
 		true
@@ -1025,7 +1011,7 @@ func _check_temporary_event_tap_awards_rewards_before_despawn(game: Node) -> voi
 	var hardwood_after: float = game.material_runtime.amount("hardwood")
 	var hardwood_delta := hardwood_after - hardwood_before
 	_expect(active.is_empty(), "Successful temporary event completion should despawn the event.")
-	_expect(cooldowns.has("covered-wagon-ambush-drill"), "Successful temporary event completion should set a respawn cooldown.")
+	_expect(cooldowns.has("ambush-log-wagon"), "Successful temporary event completion should set a respawn cooldown.")
 	_expect(int(fight_state.get("xp", 0)) - fight_xp_before == expected_fight_xp, "Successful temporary event completion should grant owner-skill XP before despawning.")
 	_expect(int(thieving_state.get("xp", 0)) - thieving_xp_before == expected_thieving_xp, "Successful temporary event completion should grant secondary event XP before despawning.")
 	_expect(absf(softwood_after - softwood_before) <= 0.0001, "Covered wagon should not award Softwood once Hardwood logs are unlocked.")
@@ -1183,7 +1169,7 @@ func _check_hub_mission_save_restore(game: Node) -> void:
 		"not-a-real-skill": {"xp": 9999, "level": 99},
 	})
 	var raw_missions := [
-		{"skill_id": "fight", "action_id": "shove-wobbly-hay-bale", "target": 3, "remaining": 99, "assigned_unix": -5},
+		{"skill_id": "fight", "action_id": "push-ups", "target": 3, "remaining": 99, "assigned_unix": -5},
 		{"skill_id": "fight", "action_id": "not-a-real-action", "target": 3, "remaining": 2},
 		{"skill_id": "woodcutting", "action_id": "stack-logs-1", "target": 3, "remaining": 2},
 		"bad-entry",
@@ -1193,12 +1179,12 @@ func _check_hub_mission_save_restore(game: Node) -> void:
 	_expect(saved.size() == 1, "Hub mission save should only keep valid unlocked non-passive missions.")
 	var saved_mission := saved[0] as Dictionary
 	_expect(str(saved_mission.get("skill_id", "")) == "fight", "Hub mission save should preserve the mission skill.")
-	_expect(str(saved_mission.get("action_id", "")) == "shove-wobbly-hay-bale", "Hub mission save should preserve the canonical mission action.")
+	_expect(str(saved_mission.get("action_id", "")) == "push-ups", "Hub mission save should preserve the canonical mission action.")
 	_expect(int(saved_mission.get("target", 0)) == 3, "Hub mission save should preserve the target count.")
 	_expect(int(saved_mission.get("remaining", 0)) == 3, "Hub mission save should clamp remaining count to the target.")
 	_expect(int(saved_mission.get("assigned_unix", -1)) == 0, "Hub mission save should clamp negative assignment timestamps.")
 
-	hub_runtime.set("hub_missions", [{"skill_id": "fight", "action_id": "shove-wobbly-hay-bale", "target": 1, "remaining": 1}])
+	hub_runtime.set("hub_missions", [{"skill_id": "fight", "action_id": "push-ups", "target": 1, "remaining": 1}])
 	hub_runtime.call("restore_missions", "bad-entry")
 	var restored := hub_runtime.get("hub_missions") as Array
 	_expect(restored.is_empty(), "Hub mission restore should clear malformed saved mission data.")
@@ -1206,7 +1192,7 @@ func _check_hub_mission_save_restore(game: Node) -> void:
 	restored = hub_runtime.get("hub_missions") as Array
 	_expect(restored.size() == 1, "Hub mission restore should only keep valid unlocked non-passive missions.")
 	var restored_mission := restored[0] as Dictionary
-	_expect(str(restored_mission.get("action_id", "")) == "shove-wobbly-hay-bale", "Hub mission restore should preserve the canonical mission action.")
+	_expect(str(restored_mission.get("action_id", "")) == "push-ups", "Hub mission restore should preserve the canonical mission action.")
 	_expect(int(restored_mission.get("remaining", 0)) == 3, "Hub mission restore should clamp remaining count to the target.")
 
 
@@ -1720,7 +1706,7 @@ func _check_active_skill_identity_save(game: Node) -> void:
 	game.set("running_action_id", "not-a-real-action")
 	_expect(str(save_runtime.call("_running_skill_id_for_save")).is_empty(), "Running skill save should clear a skill with no valid running action.")
 	game.set("running_skill_id", "not-a-real-skill")
-	game.set("running_action_id", "shove-wobbly-hay-bale")
+	game.set("running_action_id", "push-ups")
 	_expect(str(save_runtime.call("_running_skill_id_for_save")).is_empty(), "Running skill save should clear unknown skill ids.")
 
 
@@ -1728,7 +1714,7 @@ func _check_running_action_save(game: Node) -> void:
 	var save_runtime = game.call("_save_runtime")
 	game.set("running_skill_id", "fishing")
 	game.set("running_action_id", "dip-a-tidepool-minnow")
-	_expect(str(save_runtime.call("_running_action_id_for_save")) == "beach-shallows", "Running action save should canonicalize fishing aliases.")
+	_expect(str(save_runtime.call("_running_action_id_for_save")) == "shallows", "Running action save should canonicalize fishing aliases.")
 	game.set("running_skill_id", "fight")
 	game.set("running_action_id", "not-a-real-action")
 	_expect(str(save_runtime.call("_running_action_id_for_save")).is_empty(), "Running action save should drop unknown actions.")
@@ -1745,7 +1731,7 @@ func _check_action_progress_save_restore(game: Node) -> void:
 	game.call("_save_runtime").call("_load_game_core", {
 		"selected_skill_id": "fight",
 		"running_skill_id": "fight",
-		"running_action_id": "shove-wobbly-hay-bale",
+		"running_action_id": "push-ups",
 		"action_progress": 1.5,
 		"skills": {},
 		"stamina": {},
@@ -1758,7 +1744,7 @@ func _check_action_progress_save_restore(game: Node) -> void:
 	game.call("_save_runtime").call("_load_game_core", {
 		"selected_skill_id": "fight",
 		"running_skill_id": "fight",
-		"running_action_id": "shove-wobbly-hay-bale",
+		"running_action_id": "push-ups",
 		"action_progress": -0.25,
 		"skills": {},
 		"stamina": {},
@@ -1770,7 +1756,7 @@ func _check_action_progress_save_restore(game: Node) -> void:
 
 func _check_action_key_save(game: Node) -> void:
 	var save_runtime = game.call("_save_runtime")
-	_expect(str(save_runtime.call("_action_key_for_save", "fishing:dip-a-tidepool-minnow")) == "fishing:beach-shallows", "Action-key save should canonicalize fishing aliases.")
+	_expect(str(save_runtime.call("_action_key_for_save", "fishing:dip-a-tidepool-minnow")) == "fishing:shallows", "Action-key save should canonicalize fishing aliases.")
 	_expect(str(save_runtime.call("_action_key_for_save", "woodcutting:stack-logs-1")).is_empty(), "Action-key save should drop passive action keys.")
 	_expect(str(save_runtime.call("_action_key_for_save", "malformed-key")).is_empty(), "Action-key save should drop malformed keys.")
 	_expect(str(save_runtime.call("_action_key_for_save", "fight:not-a-real-action")).is_empty(), "Action-key save should drop unknown action keys.")
@@ -1784,9 +1770,39 @@ func _check_action_key_save(game: Node) -> void:
 	_expect(_truthy(onboarding_runtime.get("lock_click_tip_seen")), "Tip metadata restore should preserve lock-click tip state.")
 	_expect(_truthy(onboarding_runtime.get("passive_module_tip_seen")), "Tip metadata restore should preserve passive-module tip state.")
 	_expect(_truthy(onboarding_runtime.get("silver_opportunity_tip_seen")), "Tip metadata restore should preserve silver-opportunity tip state.")
-	_expect(str(onboarding_runtime.get("silver_opportunity_tip_action_key")) == "fishing:beach-shallows", "Tip metadata restore should canonicalize silver-opportunity action keys.")
+	_expect(str(onboarding_runtime.get("silver_opportunity_tip_action_key")) == "fishing:shallows", "Tip metadata restore should canonicalize silver-opportunity action keys.")
 	save_runtime.call("_restore_tip_metadata_from_save", {"silver_opportunity_tip_action_key": "malformed-key"})
 	_expect(str(onboarding_runtime.get("silver_opportunity_tip_action_key")).is_empty(), "Tip metadata restore should clear malformed silver-opportunity action keys.")
+
+
+func _check_historical_activity_aliases(game: Node) -> void:
+	var historical_aliases := [
+		{"legacy": "thieving:pocket-a-penny-nobody-wanted", "canonical": "thieving:borrow-cookie-permanently"},
+		{"legacy": "thieving:borrow-a-cookie-permanently", "canonical": "thieving:sneak-past-tip-jar"},
+		{"legacy": "thieving:burgle-the-dream-of-a-sleeping-wizard", "canonical": "thieving:burgle-wizard-dream"},
+		{"legacy": "build:construct-suspiciously-tall-silo", "canonical": "build:build-tall-silo"},
+		{"legacy": "build:build-the-building-that-builds-you", "canonical": "build:build-builder-building"},
+		{"legacy": "fishing:space-starlight", "canonical": "fishing:starlight"},
+		{"legacy": "fishing:space-reflection", "canonical": "fishing:reflection"},
+	]
+	for alias_case in historical_aliases:
+		var legacy_key := str(alias_case.get("legacy", ""))
+		var canonical_key := str(alias_case.get("canonical", ""))
+		var key_parts := legacy_key.split(":", false, 1)
+		_expect(key_parts.size() == 2, "Historical alias test input must be a qualified action key: %s." % legacy_key)
+		if key_parts.size() != 2:
+			continue
+		var skill_id := str(key_parts[0])
+		var action_id := str(key_parts[1])
+		var resolved_key := str(game.call("_action_key", skill_id, action_id))
+		_expect(resolved_key == canonical_key, "Historical action key %s should canonicalize to %s, got %s." % [legacy_key, canonical_key, resolved_key])
+		var action := game.call("_action_data", skill_id, action_id) as Dictionary
+		_expect(not action.is_empty(), "Historical action key %s should resolve to real action data." % legacy_key)
+		if not action.is_empty():
+			_expect("%s:%s" % [skill_id, str(action.get("id", ""))] == canonical_key, "Historical action key %s should resolve to canonical action data %s." % [legacy_key, canonical_key])
+	var level_one_key := str(game.call("_action_key", "thieving", "pocket-a-penny-nobody-wanted"))
+	var level_two_key := str(game.call("_action_key", "thieving", "borrow-a-cookie-permanently"))
+	_expect(level_one_key != level_two_key, "Historical level-1 and level-2 thieving IDs must remain distinct.")
 
 
 func _check_manual_activity_unlock_save_restore(game: Node) -> void:
@@ -1849,12 +1865,12 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 	var method_card := {
 		"is_fishing_method": true,
 		"skill_id": "fishing",
-		"action_id": "beach-rocks",
+		"action_id": "rocks",
 	}
-	_expect(game.call("_skill_detail_surface").call("_should_route_activity_unlock_to_fishing_method", method_card, "fishing", "beach-rocks") == true, "Fishing method cards should use the small fishing padlock ceremony.")
+	_expect(game.call("_skill_detail_surface").call("_should_route_activity_unlock_to_fishing_method", method_card, "fishing", "rocks") == true, "Fishing method cards should use the small fishing padlock ceremony.")
 	_expect(game.call("_skill_detail_surface").call("_should_route_activity_unlock_to_fishing_method", method_card, "fight", "kick-mud-off-boot") != true, "Non-fishing actions should not use the fishing padlock ceremony.")
-	game.set("action_cards", {str(game.call("_action_key", "fishing", "beach-rocks")): method_card})
-	_expect(game.call("_skill_detail_surface").call("_should_route_activity_unlock_to_fishing_method", {}, "fishing", "beach-rocks") == true, "Registered fishing methods should be recovered before generic unlock routing.")
+	game.set("action_cards", {str(game.call("_action_key", "fishing", "rocks")): method_card})
+	_expect(game.call("_skill_detail_surface").call("_should_route_activity_unlock_to_fishing_method", {}, "fishing", "rocks") == true, "Registered fishing methods should be recovered before generic unlock routing.")
 
 	var skills := game.get("skills") as Dictionary
 	var fishing := (skills.get("fishing", {}) as Dictionary).duplicate(true)
@@ -1863,13 +1879,13 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 	skills["fishing"] = fishing
 	game.set("skills", skills)
 	var manual_unlocks := game.get("manual_activity_unlocks") as Dictionary
-	manual_unlocks.erase(str(game.call("_action_key", "fishing", "beach-rocks")))
+	manual_unlocks.erase(str(game.call("_action_key", "fishing", "rocks")))
 	game.set("manual_activity_unlocks", manual_unlocks)
 	game.call("_activity_unlock_runtime").call("_invalidate_manual_activity_unlock_trust")
-	_expect(game.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fishing", "beach-rocks", "fishing method unlock") == true, "Fishing method lock click persistence should accept level-ready Rocks.")
+	_expect(game.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fishing", "rocks", "fishing method unlock") == true, "Fishing method lock click persistence should accept level-ready Rocks.")
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
-	_expect(_truthy(manual_unlocks.get("fishing:beach-rocks", false)), "Fishing method lock clicks should persist the unlock immediately before page/tool refresh can discard the ceremony node.")
-	var rocks_action := game.call("_action_data", "fishing", "beach-rocks") as Dictionary
+	_expect(_truthy(manual_unlocks.get("fishing:rocks", false)), "Fishing method lock clicks should persist the unlock immediately before page/tool refresh can discard the ceremony node.")
+	var rocks_action := game.call("_action_data", "fishing", "rocks") as Dictionary
 	_expect(game.call("_activity_unlock_runtime").call("_is_action_unlocked", "fishing", rocks_action) == true, "Immediately persisted fishing method unlocks should render as unlocked on rebuilt fishing location tiles.")
 	var live_panel := Panel.new()
 	var live_button := Button.new()
@@ -1886,7 +1902,7 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 	var live_method_card := {
 		"is_fishing_method": true,
 		"skill_id": "fishing",
-		"action_id": "beach-rocks",
+		"action_id": "rocks",
 		"fishing_area_key": "fishing:area-beach",
 		"method_button": live_button,
 		"art_panel": live_panel,
@@ -1898,7 +1914,7 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_panel.mouse_filter == Control.MOUSE_FILTER_STOP, "Live fishing method cards should become tappable immediately after their lock is accepted through the manual fishing hit route.")
 	_expect(not _truthy(live_method_card.get("unlock_ready_pending", true)) and not _truthy(live_method_card.get("unlock_ceremony_pending", true)), "Live fishing method unlock sync should clear stale locked-card flags before a page rebuild.")
 	_expect(live_lock.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_padlock_hit.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Live fishing method unlock sync should stop the old padlock from stealing the next tap.")
-	_expect(str(game.call("_onboarding_runtime").call("_tutorial_preview_after_manual_unlock", "fishing", "beach-rocks")) == "pier-dock-edge", "Unlocking Rocks should target Pier Dock Edge as the next fishing module preview.")
+	_expect(str(game.call("_onboarding_runtime").call("_tutorial_preview_after_manual_unlock", "fishing", "rocks")) == "dock-edge", "Unlocking Rocks should target Pier Dock Edge as the next fishing module preview.")
 	_expect(str(game.fishing_runtime.global_teaser_location_key(game, "fishing", FishingState.FISHING_LOCATION_DEFS, FishingState.FISHING_TOOL_LOCATION_ACTIONS)) == "pier.dock-cup", "After Rocks is unlocked, the fishing teaser should move to the Pier Dock Edge location tile.")
 	var render_area_ids := []
 	for raw_area_def in game.call("_fishing_ui_surface").render_area_modules("fishing") as Array:
@@ -1912,7 +1928,7 @@ func _check_module_ui_preferences_save_restore(game: Node) -> void:
 	var skills := game.get("skills") as Dictionary
 	skills["fight"] = {"xp": SkillState.xp_for_level(2), "level": 2}
 	game.set("skills", skills)
-	var unlocked_action := game.call("_action_data", "fight", "shove-wobbly-hay-bale") as Dictionary
+	var unlocked_action := game.call("_action_data", "fight", "push-ups") as Dictionary
 	var unlocked_key := str(ModuleUiRuntime.action_for_record("fight", unlocked_action, game.get("FISHING_ACTION_ID_ALIASES")))
 	var locked_key := ""
 	var actions_by_skill := game.get("actions_by_skill") as Dictionary
@@ -2074,9 +2090,9 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 	fishing["level"] = 4
 	skills["fishing"] = fishing
 	game.set("skills", skills)
-	game.call("_activity_unlock_runtime").call("_queue_activity_unlock_readiness", "fishing", 1, 4, {"fishing": ["beach-rocks"]})
+	game.call("_activity_unlock_runtime").call("_queue_activity_unlock_readiness", "fishing", 1, 4, {"fishing": ["rocks"]})
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
-	_expect(manual_unlocks.get("fishing:beach-rocks", false) == true, "Auto-unlock lockpads should immediately mark non-visible ready fishing methods unlocked.")
+	_expect(manual_unlocks.get("fishing:rocks", false) == true, "Auto-unlock lockpads should immediately mark non-visible ready fishing methods unlocked.")
 	_expect((game.call("_activity_unlock_runtime").get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Auto-unlock lockpads should not leave non-visible fishing methods pending.")
 
 	_prime_core_skill_state(game)
@@ -2116,7 +2132,7 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 	game.set("skills", skills)
 	game.call("_activity_unlock_runtime").call("_run_startup_auto_unlock_lockpads")
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
-	_expect(manual_unlocks.get("fishing:beach-rocks", false) == true, "Startup with auto-unlock on should drain retroactive ready fishing method lockpads.")
+	_expect(manual_unlocks.get("fishing:rocks", false) == true, "Startup with auto-unlock on should drain retroactive ready fishing method lockpads.")
 	_expect((game.call("_activity_unlock_runtime").get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Startup with auto-unlock on should not leave ready fishing method lockpads pending.")
 
 	_prime_core_skill_state(game)
@@ -2163,7 +2179,7 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 		"pages": {
 			"fishing": {
 				"skill_id": "fishing",
-				"ready": ["beach-rocks"],
+				"ready": ["rocks"],
 				"applied": true
 			}
 		}
@@ -2176,7 +2192,7 @@ func _check_auto_unlock_lockpads(game: Node) -> void:
 	game.set("skills", skills)
 	game.call("_settings_surface").call("toggle_auto_unlock_lockpads_enabled")
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
-	_expect(manual_unlocks.get("fishing:beach-rocks", false) == true, "Toggling auto-unlock on should clear ready non-visible fishing method lockpads.")
+	_expect(manual_unlocks.get("fishing:rocks", false) == true, "Toggling auto-unlock on should clear ready non-visible fishing method lockpads.")
 	_expect((game.call("_activity_unlock_runtime").get("pending_activity_unlock_ceremony") as Dictionary).is_empty(), "Toggling auto-unlock on should drain pending fishing method lockpads.")
 	game.set("startup_initialized", previous_startup)
 	game.set("current_screen", previous_screen)
@@ -2542,7 +2558,7 @@ func _check_save_payload(game: Node) -> void:
 	var save_runtime: Object = game.call("_save_runtime")
 	game.set("mastery", {
 		"fishing:dip-a-tidepool-minnow": {"xp": 18},
-		"fishing:beach-shallows": {"xp": 42},
+		"fishing:shallows": {"xp": 42},
 		"fight:not-a-real-action": {"xp": 77},
 	})
 	game.fishing_runtime.selected_locations = {
@@ -2555,7 +2571,7 @@ func _check_save_payload(game: Node) -> void:
 		"bad-module": "bad-state",
 	})
 	game.thieving_state.action_jails = {
-		"borrow-a-cookie-permanently": {"cooldown_until_unix": now + 60, "resume_when_free": true},
+		"sneak-past-tip-jar": {"cooldown_until_unix": now + 60, "resume_when_free": true},
 		"not-a-real-action": {"cooldown_until_unix": now + 60, "resume_when_free": true},
 	}
 	game.thieving_state.trophies = {
@@ -2569,11 +2585,11 @@ func _check_save_payload(game: Node) -> void:
 		"bad-entry": "bad-state",
 	})
 	game.call("_temporary_event_runtime").set("temporary_event_active", {
-		"covered-wagon-ambush-drill": {"id": "covered-wagon-ambush-drill", "spawned_unix": -25, "expires_unix": 10, "completed": true},
+		"ambush-log-wagon": {"id": "ambush-log-wagon", "spawned_unix": -25, "expires_unix": 10, "completed": true},
 		"not-a-real-event": {"id": "not-a-real-event", "spawned_unix": 1, "expires_unix": 2},
 	})
 	game.call("_temporary_event_runtime").set("temporary_event_cooldowns", {
-		"covered-wagon-ambush-drill": 99,
+		"ambush-log-wagon": 99,
 		"not-a-real-event": 123,
 	})
 	game.call("_temporary_event_runtime").set("temporary_event_next_roll_unix", -50)
@@ -2616,7 +2632,7 @@ func _check_save_payload(game: Node) -> void:
 		"not-a-real-skill": 12.0,
 	})
 	hub_runtime.set("hub_missions", [
-		{"skill_id": "fight", "action_id": "shove-wobbly-hay-bale", "target": 3, "remaining": 99, "assigned_unix": -5},
+		{"skill_id": "fight", "action_id": "push-ups", "target": 3, "remaining": 99, "assigned_unix": -5},
 		{"skill_id": "fight", "action_id": "not-a-real-action", "target": 3, "remaining": 2},
 		{"skill_id": "woodcutting", "action_id": "stack-logs-1", "target": 3, "remaining": 2},
 		"bad-entry",
@@ -2694,7 +2710,7 @@ func _check_save_payload(game: Node) -> void:
 	var payload := _save_payload(game, now)
 	_expect(int(payload.get("save_reset_generation", -1)) == int(_save_runtime(game).get("save_reset_generation")), "Save payload should include the current hard-reset generation.")
 	var payload_mastery := payload.get("mastery", {}) as Dictionary
-	_expect(payload_mastery.has("fishing:beach-shallows"), "Save payload should include canonical mastery keys.")
+	_expect(payload_mastery.has("fishing:shallows"), "Save payload should include canonical mastery keys.")
 	_expect(not payload_mastery.has("fishing:dip-a-tidepool-minnow"), "Save payload should not include alias mastery keys.")
 	_expect(not payload_mastery.has("fight:not-a-real-action"), "Save payload should not include unknown mastery keys.")
 	var payload_skills := payload.get("skills", {}) as Dictionary
@@ -2745,7 +2761,7 @@ func _check_save_payload(game: Node) -> void:
 	_expect(int(payload_passive_state.get("yield", -1)) == 18, "Save payload should clamp passive yield values.")
 	_expect(int(payload_passive_state.get("capacity", -1)) == 1000, "Save payload should clamp passive capacity values.")
 	var payload_jails := payload.get("thieving_action_jails", {}) as Dictionary
-	_expect(payload_jails.size() == 1 and payload_jails.has("borrow-a-cookie-permanently"), "Save payload should include only valid active thieving jails.")
+	_expect(payload_jails.size() == 1 and payload_jails.has("sneak-past-tip-jar"), "Save payload should include only valid active thieving jails.")
 	var payload_trophies := payload.get("thieving_trophies", {}) as Dictionary
 	_expect(payload_trophies.size() == 1 and payload_trophies.has("complimentary_spoon"), "Save payload should include only valid thieving trophy entries.")
 	var payload_convergence := payload.get("convergence_modules", {}) as Dictionary
@@ -2756,8 +2772,8 @@ func _check_save_payload(game: Node) -> void:
 	var payload_events := payload.get("temporary_events", {}) as Dictionary
 	var payload_active_events := payload_events.get("active", {}) as Dictionary
 	var payload_event_cooldowns := payload_events.get("cooldowns", {}) as Dictionary
-	_expect(payload_active_events.size() == 1 and payload_active_events.has("covered-wagon-ambush-drill"), "Save payload should include only valid active temporary events.")
-	_expect(payload_event_cooldowns.size() == 1 and payload_event_cooldowns.has("covered-wagon-ambush-drill"), "Save payload should include only valid temporary event cooldowns.")
+	_expect(payload_active_events.size() == 1 and payload_active_events.has("ambush-log-wagon"), "Save payload should include only valid active temporary events.")
+	_expect(payload_event_cooldowns.size() == 1 and payload_event_cooldowns.has("ambush-log-wagon"), "Save payload should include only valid temporary event cooldowns.")
 	_expect(int(payload_events.get("next_roll_unix", -1)) == 0, "Save payload should clamp temporary event next-roll timestamps.")
 	var payload_hub_modules := payload.get("hub_modules", {}) as Dictionary
 	_expect(payload_hub_modules.size() == 2 and payload_hub_modules.has("barn") and payload_hub_modules.has("pond"), "Save payload should include only valid hub module entries.")
@@ -2777,7 +2793,7 @@ func _check_save_payload(game: Node) -> void:
 	var payload_missions := payload.get("hub_missions", []) as Array
 	_expect(payload_missions.size() == 1, "Save payload should include only valid hub missions.")
 	var payload_mission := payload_missions[0] as Dictionary
-	_expect(str(payload_mission.get("action_id", "")) == "shove-wobbly-hay-bale", "Save payload should preserve canonical hub mission actions.")
+	_expect(str(payload_mission.get("action_id", "")) == "push-ups", "Save payload should preserve canonical hub mission actions.")
 	_expect(int(payload_mission.get("remaining", 0)) == 3, "Save payload should clamp hub mission remaining counts.")
 	var payload_scores := payload.get("leaderboard_last_submitted_scores_by_category", {}) as Dictionary
 	_expect(payload_scores.has("skill_xp:fight") and payload_scores.has("total_level") and not payload_scores.has("unknown-category"), "Save payload should include only canonical leaderboard category score keys.")
@@ -2804,9 +2820,9 @@ func _check_save_payload(game: Node) -> void:
 	_expect(str(payload.get("chat_last_opened_message_id", "")).length() == 64, "Save payload should truncate chat opened message ids.")
 	_expect(str(payload.get("selected_skill_id", "")) == "fight", "Save payload should replace unknown selected skill ids with the default skill.")
 	_expect(str(payload.get("running_skill_id", "")) == "fishing", "Save payload should preserve valid running skill ids.")
-	_expect(str(payload.get("running_action_id", "")) == "beach-shallows", "Save payload should canonicalize the running action id.")
+	_expect(str(payload.get("running_action_id", "")) == "shallows", "Save payload should canonicalize the running action id.")
 	_expect(float(payload.get("action_progress", -1.0)) == 0.999, "Save payload should cap action progress below completion.")
-	_expect(str(payload.get("silver_opportunity_tip_action_key", "")) == "fishing:beach-shallows", "Save payload should canonicalize saved action-key fields.")
+	_expect(str(payload.get("silver_opportunity_tip_action_key", "")) == "fishing:shallows", "Save payload should canonicalize saved action-key fields.")
 	var payload_seen := payload.get("achievement_toast_seen_ids", {}) as Dictionary
 	_expect(payload_seen.size() == 1 and _truthy(payload_seen.get("total-level-25", false)), "Save payload should include only normalized achievement toast seen ids.")
 	_expect(str(payload.get("hub_selected_module_id", "")) == "pond", "Save payload should mirror restore behavior for derived hub selections.")

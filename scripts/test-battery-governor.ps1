@@ -7,17 +7,6 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\battery-governor"
 $testScript = Join-Path $testDir "battery_governor_test.gd"
 
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
 function Assert-NoUnexpectedGodotErrors {
     param(
         [Parameter(Mandatory = $true)][AllowNull()]$Output,

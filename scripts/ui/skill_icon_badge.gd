@@ -90,7 +90,7 @@ static func icon_badge(host, skill_id: String, theme_color: Color, badge_size: V
 	symbol.position = symbol_position(skill_id, badge_size, icon_symbol_size, host.SKILL_MENU_ICON_BADGE_SIZE)
 	symbol.pivot_offset = icon_symbol_size * 0.5
 	symbol.rotation = symbol_rotation(skill_id)
-	symbol.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	symbol.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	symbol.material = symbol_clip_material(badge_size, icon_symbol_size, symbol.position, symbol.rotation)
 	symbol.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mask.add_child(symbol)

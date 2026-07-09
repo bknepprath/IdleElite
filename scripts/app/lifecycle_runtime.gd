@@ -275,7 +275,8 @@ func _prepare_for_shutdown() -> void:
 	host.startup_initialized = false
 	host.deferred_skill_validation_pending = false
 	host._boot_warmup_runtime().reset_for_shutdown()
-	host._online_runtime()._chat_stream_disconnect(false)
+	if host.online_runtime != null and is_instance_valid(host.online_runtime):
+		host.online_runtime._chat_stream_disconnect(false)
 	_kill_transient_tweens_in_subtree(host)
 	_kill_shutdown_global_tweens()
 	_kill_action_card_shutdown_tweens()
@@ -289,7 +290,9 @@ func _prepare_for_shutdown() -> void:
 	host._save_runtime().pending_save_restore_data = {}
 	host._save_runtime().pending_save_has_achievement_toast_seen_ids = false
 	host._save_runtime().save_repaired_this_boot = false
-	host._online_runtime().leaderboard_http_built = false
+	if host.online_runtime != null and is_instance_valid(host.online_runtime):
+		host.online_runtime.chat_stream_poll_timer = null
+		host.online_runtime.leaderboard_http_built = false
 	host.online_runtime = null
 	if host.audio_director != null and is_instance_valid(host.audio_director):
 		host.audio_director.reset_runtime_caches()
@@ -305,7 +308,6 @@ func _prepare_for_shutdown() -> void:
 	host.tutorial_overlay = null
 	host._performance_runtime().clear_monitor_reference()
 	host.performance_runtime = null
-	host._online_runtime().chat_stream_poll_timer = null
 	host._profile_chat_overlay_surface().reset_chat_overlay_refs()
 	host._profile_chat_overlay_surface()._reset_profile_overlay_refs()
 	host._fishing_ui_surface().clear_fishing_collection_canvas_cache()
@@ -345,7 +347,7 @@ func _app_lifecycle_uses_focus_resume() -> bool:
 
 
 func _save_for_app_suspend() -> void:
-	host._navigation_shell()._clear_page_switch_input_state(true)
+	host._clear_page_transient_input_state(true)
 	host._audio_director()._pause_music_for_app_suspend()
 	if _runtime_save_is_safe():
 		host.save_game()

@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $sourceFileExtensions = @(
     ".cfg",
     ".gd",
@@ -18,17 +19,6 @@ $ignoredSourcePathPrefixes = @(
     "play-store",
     "release"
 )
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Convert-ResourcePathToProjectPath {
     param([Parameter(Mandatory = $true)][string]$ResourcePath)

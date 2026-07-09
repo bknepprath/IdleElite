@@ -17,6 +17,7 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $captureDir = Join-Path $projectRoot ".codex-tmp\woodcutting-firepit"
 $desktopSuffix = if ($WindowWidth -gt 0 -and $WindowHeight -gt 0) { "-desktop-${WindowWidth}x${WindowHeight}" } else { "" }
@@ -24,22 +25,6 @@ $darkModeSuffix = if ($DarkMode) { "-dark" } else { "" }
 $captureFileName = if ($NeedScrapwood) { "woodcutting-firepit-need-scrapwood$desktopSuffix$darkModeSuffix.png" } elseif ($Cooling) { "woodcutting-firepit-cooling$desktopSuffix$darkModeSuffix.png" } elseif ($Ignition) { "woodcutting-firepit-ignition$desktopSuffix$darkModeSuffix.png" } elseif ($XpPopup) { "woodcutting-firepit-xp-popup$desktopSuffix$darkModeSuffix.png" } elseif ($Header -and $EmptyStamina) { "woodcutting-firepit-header-empty-stamina$desktopSuffix$darkModeSuffix.png" } elseif ($Header) { "woodcutting-firepit-header$desktopSuffix$darkModeSuffix.png" } elseif ($Locked) { "woodcutting-firepit-card-locked$desktopSuffix$darkModeSuffix.png" } elseif ($Inactive) { "woodcutting-firepit-card-inactive$desktopSuffix$darkModeSuffix.png" } else { "woodcutting-firepit-card$desktopSuffix$darkModeSuffix.png" }
 $capturePath = Join-Path $captureDir $captureFileName
 $scriptPath = Join-Path $captureDir "capture_woodcutting_firepit.gd"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 

@@ -5,17 +5,6 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 
 $skillsPagePerformanceTest = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
 function Assert-NoUnexpectedGodotErrors {
     param(
         [Parameter(Mandatory = $true)][AllowNull()]$Output,

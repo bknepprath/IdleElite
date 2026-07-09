@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $navigationShellPath = Join-Path $projectRoot "scripts\ui\navigation_shell.gd"
 $skillSwipeActivitySurfacePath = Join-Path $projectRoot "scripts\ui\skill_swipe_activity_surface.gd"
@@ -10,17 +11,6 @@ $onlineRuntimePath = Join-Path $projectRoot "scripts\online\online_runtime.gd"
 $leaderboardPresentationPath = Join-Path $projectRoot "scripts\leaderboard\presentation.gd"
 $leaderboardStatePath = Join-Path $projectRoot "scripts\leaderboard\state.gd"
 $boundaryMapPath = Join-Path $projectRoot "docs\ui-runtime-boundary-map.md"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Assert-FunctionExists {
     param(

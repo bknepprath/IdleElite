@@ -3,14 +3,10 @@ param()
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\tutorial-swipe-navigation"
 $testScript = Join-Path $testDir "tutorial_swipe_navigation_test.gd"
-
-function Assert-True {
-    param([bool]$Condition, [string]$Message)
-    if (-not $Condition) { throw $Message }
-}
 
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 

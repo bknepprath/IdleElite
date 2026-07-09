@@ -99,7 +99,7 @@ const FISHING_REWORK_ENABLED := true
 const ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS := 0.26
 const PASSIVE_MODULE_CARD_HEIGHT := 940
 const ACTION_CARD_POP_GUTTER := 44
-const ACTION_CARD_3D_DEPTH_OFFSET := Vector2(28.0, 34.0)
+const ACTION_CARD_3D_DEPTH_OFFSET := Vector2(14.0, 16.0)
 const ACTION_CARD_3D_PRESS_OFFSET := Vector2(28.0, 34.0)
 const ACTION_CARD_3D_PRESS_SECONDS := 0.098
 const ACTION_CARD_3D_RELEASE_SECONDS := 0.14
@@ -177,7 +177,7 @@ const TUTORIAL_TIP_FADE_SECONDS := 0.28
 const TUTORIAL_TIP_FADE_OUT_SECONDS := 1.2
 const ACTIVITY_START_TIP_FADE_SECONDS := 0.62
 const TUTORIAL_STARTER_SKILL_ID := "fight"
-const TUTORIAL_STARTER_ACTION_ID := "shove-wobbly-hay-bale"
+const TUTORIAL_STARTER_ACTION_ID := "push-ups"
 const TUTORIAL_LEVEL_TWO_ACTION_ID := "kick-mud-off-boot"
 const TUTORIAL_GATE_LATCH_ACTION_ID := "wrestle-stuck-gate-latch"
 const TUTORIAL_DEFERRED_AFTER_GATE_ACTION_ID := "box-suspicious-feed-sack"
@@ -311,34 +311,105 @@ var manual_activity_requirement_unlocks:
 	set(value): _activity_unlock_runtime().manual_activity_requirement_unlocks = value
 
 const FISHING_ACTION_ID_ALIASES := {
-	"dip-a-tidepool-minnow": "beach-shallows",
-	"drag-net-through-creek": "beach-rocks",
-	"scoop-pond-minnows": "pier-dock-edge",
-	"dangle-string-from-dock": "pier-piling-line",
-	"cast-bamboo-rod": "river-bend",
-	"fly-fish-at-river-bend": "river-rapids",
-	"hand-grab-muddy-catfish": "sewers-drain-gate",
-	"spear-fish-in-shallows": "sewers-tunnel-pool",
-	"set-tiny-crab-pot": "reef-pot",
-	"ice-fish-through-nervous-hole": "winter-lake-ice-hole",
-	"cast-from-rowboat": "sea-rowboat",
-	"drop-lobster-cage": "reef-cage",
-	"trawl-from-tiny-boat": "sea-open-water",
-	"night-fish-with-lantern": "reef-night-reef",
-	"harpoon-suspicious-ripple": "stormy-sea-ripple",
-	"chum-open-water": "sea-chum-line",
-	"dive-for-pearl-oysters": "reef-pearl-bed",
-	"cast-storm-kite-line": "stormy-sea-storm-line",
-	"fish-with-magnetic-hook": "deep-sea-wreck-drop",
-	"bait-a-tiny-leviathan": "deep-sea-abyss",
-	"open-deep-sea-mailbox-trap": "deep-sea-trench",
-	"dredge-wreck-with-magnet": "deep-sea-wreck-drop",
-	"bait-the-abyss": "deep-sea-abyss",
-	"drop-deep-trench-trap": "deep-sea-trench",
-	"skim-a-starlight-minnow": "space-starlight",
-	"net-the-reflection-of-a-fish": "space-reflection",
-	"beach-crab-pot": "reef-pot",
-	"beach-ripple": "stormy-sea-ripple",
+	"build:add-roof-to-something-roofless": "roof-the-roofless",
+	"fishing:anchor-the-tiny-boat-dock": "anchor-tiny-boat-dock",
+	"build:assemble-windmill-that-judges-you": "assemble-windmill",
+	"woodcutting:axe-the-world-trees-paperwork": "axe-world-tree-forms",
+	"fishing:beach-crab-pot": "reef-pot",
+	"fishing:beach-ripple": "storm-ripple",
+	"fishing:beach-rocks": "rocks",
+	"fishing:beach-shallows": "shallows",
+	"fight:body-slam-the-root-cellar-door": "unstuck-root-cellar-door",
+	"fight:brawl-with-kicking-milk-pail": "brawl-with-milk-pail",
+	"fishing:cast-from-rowboat": "rowboat",
+	"fishing:cast-bamboo-rod": "river-bend",
+	"fishing:cast-storm-kite-line": "storm-line",
+	"fight:chicken-sparring-pit": "fight-chickens",
+	"fishing:chum-open-water": "chum-line",
+	"woodcutting:clear-the-forests-legal-department": "clear-forest-legal",
+	"fight:covered-wagon-ambush-drill": "ambush-log-wagon",
+	"thieving:crack-the-breakroom-snack-safe": "crack-snack-safe",
+	"thieving:crack-the-vault-between-dimensions": "crack-dimensional-vault",
+	"fishing:deep-sea-abyss": "abyss",
+	"fishing:deep-sea-trench": "deep-trench",
+	"fishing:deep-sea-wreck-drop": "wreck-drop",
+	"fight:defeat-the-tractor-that-would-not-start": "defeat-stubborn-tractor",
+	"fishing:dip-a-tidepool-minnow": "shallows",
+	"thieving:distract-fruit-stand-with-jazz-hands": "jazz-hands-diversion",
+	"fishing:dive-for-pearl-oysters": "pearl-bed",
+	"fight:dodge-the-irrigation-betrayal": "flow-like-water",
+	"fishing:drag-net-through-creek": "rocks",
+	"fishing:drop-deep-trench-trap": "deep-trench",
+	"fishing:drop-lobster-cage": "reef-cage",
+	"fishing:dredge-wreck-with-magnet": "wreck-drop",
+	"fight:duel-leaning-fence-post": "duel-fence-post",
+	"woodcutting:fell-the-wooden-concept-of-height": "chop-super-tall-tree",
+	"fishing:fly-fish-at-river-bend": "river-rapids",
+	"fight:fight-rouses": "fight-r.o.u.s.es",
+	"fight:fight-the-barn-door-at-midnight": "fight-barn-door",
+	"fishing:fish-with-magnetic-hook": "wreck-drop",
+	"fight:grapple-overfull-compost-bin": "grapple-compost-bin",
+	"build:hammer-one-suspicious-nail": "hammer-nails",
+	"fishing:hand-grab-muddy-catfish": "drain-gate",
+	"fishing:harpoon-suspicious-ripple": "storm-ripple",
+	"woodcutting:harvest-the-first-trees-apology": "harvest-tree-apology",
+	"fight:hold-the-line-at-the-pumpkin-patch": "hold-pumpkin-line",
+	"thieving:hotwire-a-parked-alien-spaceship": "hotwire-alien-ship",
+	"fishing:ice-fish-through-nervous-hole": "ice-hole",
+	"build:install-elevator-in-the-shack": "install-elevator",
+	"thieving:lift-honey-from-beehive": "loot-beehive",
+	"thieving:lift-loose-coins-from-couch-cushions": "steal-a-penny",
+	"thieving:lift-the-mayors-ceremonial-purse": "skip-taxes",
+	"fishing:net-the-reflection-of-a-fish": "reflection",
+	"fishing:night-fish-with-lantern": "night-reef",
+	"fishing:open-deep-sea-mailbox-trap": "deep-trench",
+	"fight:parry-windmill-shadow": "conquer-windmill-fear",
+	"build:patch-fence-with-confidence": "patch-fence",
+	"thieving:pick-the-worlds-friendliest-lock": "pick-friendly-lock",
+	"thieving:pickpocket-an-interdimensional-god": "pickpocket-dimensional-god",
+	"thieving:pickpocket-the-security-camera": "pickpocket-camera",
+	"fishing:pier-dock-edge": "dock-edge",
+	"fishing:pier-piling-line": "piling-line",
+	"thieving:pocket-a-penny-nobody-wanted": "borrow-cookie-permanently",
+	"thieving:borrow-a-cookie-permanently": "sneak-past-tip-jar",
+	"thieving:burgle-the-dream-of-a-sleeping-wizard": "burgle-wizard-dream",
+	"build:construct-suspiciously-tall-silo": "build-tall-silo",
+	"build:build-the-building-that-builds-you": "build-builder-building",
+	"fishing:space-starlight": "starlight",
+	"fishing:space-reflection": "reflection",
+	"build:permit-the-impossible-megastructure": "permit-mega-structure",
+	"fight:punch-through-corn-maze-panic": "escape-corn-maze",
+	"fishing:reef-night-reef": "night-reef",
+	"fishing:reef-pearl-bed": "pearl-bed",
+	"fight:rematch-the-same-hay-bale-somehow-stronger": "rematch-buff-hay-bale",
+	"fishing:river-rapids": "rapids",
+	"thieving:rob-the-bank-during-a-robbery-drill": "remove-competition",
+	"fishing:scoop-pond-minnows": "dock-edge",
+	"fishing:sea-chum-line": "chum-line",
+	"fishing:sea-open-water": "open-water",
+	"fishing:sea-rowboat": "rowboat",
+	"fishing:sewers-drain-gate": "drain-gate",
+	"fishing:sewers-tunnel-pool": "tunnel-pool",
+	"thieving:shoplift-from-the-concept-of-money": "shoplift-from-money",
+	"fight:shove-wobbly-hay-bale": "push-ups",
+	"fishing:skim-a-starlight-minnow": "starlight",
+	"thieving:sneak-past-tip-jar-eye-contact": "pocket-couch-coins",
+	"fishing:spear-fish-in-shallows": "tunnel-pool",
+	"fight:square-up-with-rake-in-grass": "square-up-with-rake",
+	"thieving:steal-a-password-from-a-fortune-cookie": "steal-fortune-password",
+	"thieving:steal-a-wallet-from-a-mannequin": "steal-mannequin-wallet",
+	"thieving:steal-the-alibi-you-used-to-do-it": "steal-your-alibi",
+	"thieving:steal-the-fishermans-lucky-hook": "steal-fishermans-lucky-hook",
+	"fishing:stormy-sea-ripple": "storm-ripple",
+	"fishing:stormy-sea-storm-line": "storm-line",
+	"thieving:swap-price-tags-at-the-broom-store": "swap-broom-price-tags",
+	"thieving:swipe-the-banks-practice-vault": "practice-cracking-vault",
+	"fight:tackle-runaway-water-trough": "tackle-water-trough",
+	"fight:trade-blows-with-the-weather-vane": "parry-weather-vane",
+	"fishing:trawl-from-tiny-boat": "open-water",
+	"fishing:winter-lake-ice-hole": "ice-hole",
+	"fight:win-the-great-barn-rafters-melee": "win-barn-rafter-melee",
+	"woodcutting:woodcutting-firepit": "firepit",
 }
 var plank_boost_enabled := false
 var last_passive_process_unix := 0
@@ -719,9 +790,6 @@ func _build_skills_page() -> void:
 	skills_content.offset_bottom = 0
 	skills_page.add_child(skills_content)
 
-func _reset_navigation_render_state() -> void:
-	_navigation_shell().reset_navigation_render_state()
-
 func _skill_content_width() -> float:
 	return BASE_CANVAS.x - PAGE_PAD * 2.0
 
@@ -919,26 +987,11 @@ func _restore_fishing_state_from_save(data: Dictionary) -> void:
 		Callable(fishing_runtime, "location_id_valid").bind(FishingState.FISHING_LOCATION_DEFS)
 	)
 
-func _mastery_xp_reward(action: Dictionary) -> float:
-	return MasteryState.xp_reward(action)
-
-func _mastery_reward_for_action(skill_id: String, action_id: String, action: Dictionary) -> float:
-	return MasteryState.reward_for_action(self, skill_id, action_id, action)
-
-func _add_mastery_xp(skill_id: String, action_id: String, amount: float) -> void:
-	MasteryState.add_host_xp(self, skill_id, action_id, amount)
-
-func _recalculate_mastery(key: String) -> void:
-	MasteryState.recalculate_host(self, key)
-
 func _is_event_action(action: Dictionary) -> bool:
 	if str(action.get("kind", "")) == "event_activity":
 		return true
 	var active_event = action.get("active_event", {})
 	return typeof(active_event) == TYPE_DICTIONARY and not (active_event as Dictionary).is_empty()
-
-func _action_has_mastery(action: Dictionary) -> bool:
-	return MasteryState.action_has_mastery(self, action)
 
 func _action_data(skill_id: String, action_id: String) -> Dictionary:
 	var cached = actions_by_key.get(_action_key(skill_id, action_id), null)
@@ -1165,10 +1218,10 @@ func _skill_swipe_activity_surface() -> SkillSwipeActivitySurface:
 func _clear(node: Node) -> void:
 	_app_lifecycle_runtime()._clear_children(node)
 
-func _clear_page_transient_input_state() -> void:
+func _clear_page_transient_input_state(clear_transition := false) -> void:
 	button_press_runtime.release_all_depressed_buttons()
 	_skill_swipe_activity_surface().release_all_depressed_activity_shell_buttons()
-	_navigation_shell()._clear_page_switch_input_state(false)
+	_navigation_shell()._clear_page_switch_input_state(clear_transition)
 	_hub_surface()._clear_hub_hotspot_hold()
 	_settings_surface()._clear_active_audio_slider()
 	_passive_firepit_surface()._clear_passive_button_press()

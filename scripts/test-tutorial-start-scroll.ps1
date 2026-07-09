@@ -1,26 +1,11 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\tutorial-start-scroll"
 $testScript = Join-Path $testDir "tutorial_start_scroll_test.gd"
 $capturePath = Join-Path $projectRoot ".codex-tmp\tutorial-intro-hidden-controls.png"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
 
 function Assert-NoUnexpectedGodotErrors {
     param(
@@ -202,7 +187,7 @@ func _run() -> void:
 		_fail("tutorial starter skill page should render only one activity module, got %s: %s" % [str(_tutorial_module_count(scene)), _summary(scene)])
 		return
 	if not _only_starter_activity_rendered(scene):
-		_fail("tutorial starter skill page should render only Shove Wobbly Hay Bale, got %s: %s" % [str(_rendered_action_ids(scene)), _summary(scene)])
+		_fail("tutorial starter skill page should render only Push Ups, got %s: %s" % [str(_rendered_action_ids(scene)), _summary(scene)])
 		return
 	if not _tutorial_blocks_info_chip_expansion(scene):
 		return
@@ -232,7 +217,7 @@ func _tutorial_module_count(scene: Node) -> int:
 
 func _only_starter_activity_rendered(scene: Node) -> bool:
 	var ids := _rendered_action_ids(scene)
-	return ids.size() == 1 and ids[0] == "shove-wobbly-hay-bale"
+	return ids.size() == 1 and ids[0] == "push-ups"
 
 
 func _tutorial_blocks_info_chip_expansion(scene: Node) -> bool:
@@ -240,7 +225,7 @@ func _tutorial_blocks_info_chip_expansion(scene: Node) -> bool:
 	if cards == null:
 		_fail("tutorial info-chip block smoke could not read action cards: %s" % _summary(scene))
 		return false
-	var card := cards.get("fight:shove-wobbly-hay-bale", {}) as Dictionary
+	var card := cards.get("fight:push-ups", {}) as Dictionary
 	if card.is_empty():
 		_fail("tutorial info-chip block smoke could not find starter card: %s" % _summary(scene))
 		return false
@@ -254,7 +239,7 @@ func _tutorial_blocks_info_chip_expansion(scene: Node) -> bool:
 	if not str(skill_detail_surface.call("_activity_stat_kind_at_position", card, stat_center)).is_empty():
 		_fail("tutorial info-chip hit test should ignore hidden starter stat chips: %s" % _summary(scene))
 		return false
-	skill_detail_surface.call("_toggle_activity_stat_popup_for_card", card, "fight", "shove-wobbly-hay-bale", "xp")
+	skill_detail_surface.call("_toggle_activity_stat_popup_for_card", card, "fight", "push-ups", "xp")
 	scene.call("_update_ui", 0.0, true)
 	if str(skill_detail_surface.get("expanded_activity_stat_key")) != "" or str(skill_detail_surface.get("expanded_activity_stat_kind")) != "":
 		_fail("tutorial info-chip tap expanded the starter module: key=%s kind=%s %s" % [

@@ -9,23 +9,13 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $webBuildDir = Join-Path $projectRoot "builds\web"
 $itchBuildDir = Join-Path $projectRoot "builds\itch"
 $latestZipPath = Join-Path $itchBuildDir "idle-elite-itch-web-latest.zip"
 $webTouchScrollTest = Join-Path $projectRoot "scripts\test-fishing-web-touch-scroll.ps1"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool] $Condition,
-        [Parameter(Mandatory = $true)][string] $Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Get-RelativeZipEntryNames {
     param([Parameter(Mandatory = $true)][string] $ZipPath)

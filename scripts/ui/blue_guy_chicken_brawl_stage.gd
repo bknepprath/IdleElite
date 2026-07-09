@@ -196,7 +196,7 @@ func draw_round_outline(rect: Rect2, radius: float, color: Color, width: float) 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
-	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	clip_contents = true
 	arena_floor = load_png_texture(ARENA_FLOOR_PATH)
 	idle_chicken = load_png_texture(CHICKEN_IDLE_PATH)

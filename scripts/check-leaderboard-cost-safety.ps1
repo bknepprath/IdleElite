@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $profileChatOverlaySurfacePath = Join-Path $projectRoot "scripts\ui\profile_chat_overlay_surface.gd"
 $saveRuntimePath = Join-Path $projectRoot "scripts\save_state\save_runtime.gd"
@@ -24,17 +25,6 @@ $rulesDeployPath = Join-Path $projectRoot "scripts\deploy-firebase-leaderboard-r
 $chatReadToolPath = Join-Path $projectRoot "scripts\read-firebase-chat-messages.ps1"
 $chatDeleteToolPath = Join-Path $projectRoot "scripts\remove-firebase-chat-message.ps1"
 $chatPruneToolPath = Join-Path $projectRoot "scripts\prune-firebase-chat-messages.ps1"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 function Get-JsonProp {
     param(

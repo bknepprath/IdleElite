@@ -22,7 +22,7 @@ class ActionArtTextureRect:
 	func _init() -> void:
 		expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 
 	func _ready() -> void:
 		if use_mask_material:
@@ -544,7 +544,7 @@ static func corner_badge(icon_path: String, align_right: bool, index: int, textu
 	stroke.texture = texture_or_fallback.call(icon_path)
 	stroke.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	stroke.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	stroke.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	stroke.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	stroke.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stroke.size = ACTION_ART_CORNER_ICON_SIZE + Vector2(ACTION_ART_CORNER_ICON_STROKE_PIXELS, ACTION_ART_CORNER_ICON_STROKE_PIXELS)
 	stroke.position = Vector2(-ACTION_ART_CORNER_ICON_STROKE_PIXELS, -ACTION_ART_CORNER_ICON_STROKE_PIXELS) * 0.5
@@ -556,7 +556,7 @@ static func corner_badge(icon_path: String, align_right: bool, index: int, textu
 	icon.texture = texture_or_fallback.call(icon_path)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	icon.custom_minimum_size = ACTION_ART_CORNER_ICON_SIZE
 	icon.size = ACTION_ART_CORNER_ICON_SIZE

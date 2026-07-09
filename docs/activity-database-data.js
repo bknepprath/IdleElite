@@ -115,7 +115,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "active_duration_seconds": "How long the event remains active if not completed.",
       "respawn_cooldown_seconds": "Minimum cooldown after completion or expiry before this event can spawn again.",
       "example": {
-        "id": "covered-wagon-ambush-drill",
+        "id": "ambush-log-wagon",
         "page": "fight",
         "target_level": 25,
         "minimum_level": 12,
@@ -145,7 +145,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
   },
   "event_modules": [
     {
-      "id": "covered-wagon-ambush-drill",
+      "id": "ambush-log-wagon",
       "page": "fight",
       "kind": "event_activity",
       "name": "Ambush Log Wagon",
@@ -378,7 +378,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "icon": "assets/content/icons/fight.png",
       "actions": [
         {
-          "id": "shove-wobbly-hay-bale",
+          "id": "push-ups",
           "tier": 1,
           "name": "Push-Ups",
           "unlock": 1,
@@ -497,7 +497,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/01-early.png"
         },
         {
-          "id": "chicken-sparring-pit",
+          "id": "fight-chickens",
           "tier": 1,
           "name": "Fight Chickens",
           "unlock": 5,
@@ -535,7 +535,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/01-early.png"
         },
         {
-          "id": "duel-leaning-fence-post",
+          "id": "duel-fence-post",
           "tier": 5,
           "name": "Duel Fence Post",
           "unlock": 6,
@@ -643,7 +643,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "sort_unlock": 9
         },
         {
-          "id": "brawl-with-kicking-milk-pail",
+          "id": "brawl-with-milk-pail",
           "tier": 7,
           "name": "Brawl With Milk Pail",
           "unlock": 10,
@@ -661,7 +661,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
-          "id": "square-up-with-rake-in-grass",
+          "id": "square-up-with-rake",
           "tier": 8,
           "name": "Square Up With Rake",
           "unlock": 13,
@@ -753,7 +753,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
-          "id": "grapple-overfull-compost-bin",
+          "id": "grapple-compost-bin",
           "tier": 9,
           "name": "Grapple Compost Bin",
           "unlock": 17,
@@ -798,7 +798,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
-          "id": "parry-windmill-shadow",
+          "id": "conquer-windmill-fear",
           "tier": 10,
           "name": "Conquer Windmill Fear",
           "unlock": 19,
@@ -816,7 +816,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
-          "id": "tackle-runaway-water-trough",
+          "id": "tackle-water-trough",
           "tier": 11,
           "name": "Tackle Water Trough",
           "unlock": 23,
@@ -834,7 +834,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
-          "id": "fight-rouses",
+          "id": "fight-r.o.u.s.es",
           "tier": 12,
           "name": "Fight R.O.U.S.es",
           "unlock": 24,
@@ -867,7 +867,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
-          "id": "fight-the-barn-door-at-midnight",
+          "id": "fight-barn-door",
           "tier": 12,
           "name": "Fight Barn Door",
           "unlock": 27,
@@ -980,7 +980,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
-          "id": "punch-through-corn-maze-panic",
+          "id": "escape-corn-maze",
           "tier": 15,
           "name": "Escape Corn Maze",
           "unlock": 41,
@@ -1020,7 +1020,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
-          "id": "body-slam-the-root-cellar-door",
+          "id": "unstuck-root-cellar-door",
           "tier": 16,
           "name": "Unstuck Root Cellar Door",
           "unlock": 46,
@@ -1093,7 +1093,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
-          "id": "trade-blows-with-the-weather-vane",
+          "id": "parry-weather-vane",
           "tier": 17,
           "name": "Parry Weather Vane",
           "unlock": 52,
@@ -1137,7 +1137,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
-          "id": "dodge-the-irrigation-betrayal",
+          "id": "flow-like-water",
           "tier": 18,
           "name": "Flow Like Water",
           "unlock": 58,
@@ -1206,7 +1206,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
-          "id": "defeat-the-tractor-that-would-not-start",
+          "id": "defeat-stubborn-tractor",
           "tier": 20,
           "name": "Defeat Stubborn Tractor",
           "unlock": 69,
@@ -1224,7 +1224,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
-          "id": "hold-the-line-at-the-pumpkin-patch",
+          "id": "hold-pumpkin-line",
           "tier": 21,
           "name": "Hold Pumpkin Line",
           "unlock": 73,
@@ -1319,7 +1319,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/05-finale.png"
         },
         {
-          "id": "win-the-great-barn-rafters-melee",
+          "id": "win-barn-rafter-melee",
           "tier": 23,
           "name": "Win Barn Rafter Melee",
           "unlock": 78,
@@ -1355,7 +1355,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/fight/backgrounds/05-finale.png"
         },
         {
-          "id": "rematch-the-same-hay-bale-somehow-stronger",
+          "id": "rematch-buff-hay-bale",
           "tier": 25,
           "name": "Rematch Buff Hay Bale",
           "unlock": 80,
@@ -1457,7 +1457,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "icon": "assets/content/icons/thieving.png",
       "actions": [
         {
-          "id": "pocket-a-penny-nobody-wanted",
+          "id": "borrow-cookie-permanently",
           "tier": 1,
           "name": "Borrow A Cookie Permanently",
           "unlock": 1,
@@ -1475,7 +1475,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
-          "id": "borrow-a-cookie-permanently",
+          "id": "sneak-past-tip-jar",
           "tier": 2,
           "name": "Sneak Past Tip Jar",
           "unlock": 2,
@@ -1493,7 +1493,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
-          "id": "sneak-past-tip-jar-eye-contact",
+          "id": "pocket-couch-coins",
           "tier": 3,
           "name": "Pocket Couch Coins",
           "unlock": 3,
@@ -1556,7 +1556,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
-          "id": "lift-loose-coins-from-couch-cushions",
+          "id": "steal-a-penny",
           "tier": 5,
           "name": "Steal A Penny",
           "unlock": 5,
@@ -1600,7 +1600,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
-          "id": "distract-fruit-stand-with-jazz-hands",
+          "id": "jazz-hands-diversion",
           "tier": 6,
           "name": "Jazz Hands Diversion",
           "unlock": 7,
@@ -1618,7 +1618,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
-          "id": "pick-the-worlds-friendliest-lock",
+          "id": "pick-friendly-lock",
           "tier": 7,
           "name": "Pick Friendly Lock",
           "unlock": 9,
@@ -1636,7 +1636,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
-          "id": "lift-honey-from-beehive",
+          "id": "loot-beehive",
           "tier": 7,
           "name": "Loot Beehive",
           "unlock": 12,
@@ -1684,7 +1684,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/combo/thieving/backgrounds/lift-honey-from-beehive.png"
         },
         {
-          "id": "swap-price-tags-at-the-broom-store",
+          "id": "swap-broom-price-tags",
           "tier": 8,
           "name": "Swap Broom Price Tags",
           "unlock": 12,
@@ -1702,7 +1702,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
-          "id": "steal-a-wallet-from-a-mannequin",
+          "id": "steal-mannequin-wallet",
           "tier": 9,
           "name": "Steal Mannequin Wallet",
           "unlock": 15,
@@ -1764,7 +1764,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
-          "id": "crack-the-breakroom-snack-safe",
+          "id": "crack-snack-safe",
           "tier": 11,
           "name": "Crack Snack Safe",
           "unlock": 22,
@@ -1782,7 +1782,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
-          "id": "lift-the-mayors-ceremonial-purse",
+          "id": "skip-taxes",
           "tier": 12,
           "name": "Skip Taxes",
           "unlock": 26,
@@ -1859,7 +1859,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/combo/thieving/backgrounds/scope-out-a-heist.png"
         },
         {
-          "id": "swipe-the-banks-practice-vault",
+          "id": "practice-cracking-vault",
           "tier": 14,
           "name": "Practice Cracking Vault",
           "unlock": 35,
@@ -1903,7 +1903,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
-          "id": "rob-the-bank-during-a-robbery-drill",
+          "id": "remove-competition",
           "tier": 14,
           "name": "Remove Competition",
           "unlock": 40,
@@ -1943,7 +1943,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
-          "id": "steal-the-fishermans-lucky-hook",
+          "id": "steal-fishermans-lucky-hook",
           "tier": 14,
           "name": "Steal Fisherman's Lucky Hook",
           "unlock": 42,
@@ -2048,7 +2048,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/combo/fishing/backgrounds/loot-a-pirate-ship.png"
         },
         {
-          "id": "steal-a-password-from-a-fortune-cookie",
+          "id": "steal-fortune-password",
           "tier": 16,
           "name": "Steal Fortune Password",
           "unlock": 51,
@@ -2092,7 +2092,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
-          "id": "pickpocket-the-security-camera",
+          "id": "pickpocket-camera",
           "tier": 17,
           "name": "Pickpocket Camera",
           "unlock": 57,
@@ -2110,7 +2110,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
-          "id": "hotwire-a-parked-alien-spaceship",
+          "id": "hotwire-alien-ship",
           "tier": 18,
           "name": "Hotwire Alien Ship",
           "unlock": 62,
@@ -2164,7 +2164,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
-          "id": "burgle-the-dream-of-a-sleeping-wizard",
+          "id": "burgle-wizard-dream",
           "tier": 21,
           "name": "Burgle Wizard Dream",
           "unlock": 74,
@@ -2208,7 +2208,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
-          "id": "shoplift-from-the-concept-of-money",
+          "id": "shoplift-from-money",
           "tier": 22,
           "name": "Shoplift From Money",
           "unlock": 76,
@@ -2226,7 +2226,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
-          "id": "crack-the-vault-between-dimensions",
+          "id": "crack-dimensional-vault",
           "tier": 23,
           "name": "Crack Dimensional Vault",
           "unlock": 78,
@@ -2244,7 +2244,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
-          "id": "pickpocket-an-interdimensional-god",
+          "id": "pickpocket-dimensional-god",
           "tier": 24,
           "name": "Pickpocket Dimensional God",
           "unlock": 79,
@@ -2262,7 +2262,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
-          "id": "steal-the-alibi-you-used-to-do-it",
+          "id": "steal-your-alibi",
           "tier": 25,
           "name": "Steal Your Alibi",
           "unlock": 80,
@@ -2316,7 +2316,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
-          "id": "hammer-one-suspicious-nail",
+          "id": "hammer-nails",
           "tier": 2,
           "name": "Hammer Nails",
           "unlock": 2,
@@ -2334,7 +2334,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
-          "id": "patch-fence-with-confidence",
+          "id": "patch-fence",
           "tier": 2,
           "name": "Patch Fence",
           "unlock": 3,
@@ -2514,7 +2514,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
-          "id": "add-roof-to-something-roofless",
+          "id": "roof-the-roofless",
           "tier": 7,
           "name": "Roof The Roofless",
           "unlock": 14,
@@ -2800,7 +2800,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
-          "id": "assemble-windmill-that-judges-you",
+          "id": "assemble-windmill",
           "tier": 14,
           "name": "Assemble Windmill",
           "unlock": 39,
@@ -2898,7 +2898,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
-          "id": "construct-suspiciously-tall-silo",
+          "id": "build-tall-silo",
           "tier": 18,
           "name": "Build Tall Silo",
           "unlock": 60,
@@ -2916,7 +2916,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
-          "id": "install-elevator-in-the-shack",
+          "id": "install-elevator",
           "tier": 19,
           "name": "Install Elevator",
           "unlock": 65,
@@ -3050,7 +3050,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/05-finale.png"
         },
         {
-          "id": "permit-the-impossible-megastructure",
+          "id": "permit-mega-structure",
           "tier": 25,
           "name": "Permit Mega Structure",
           "unlock": 79,
@@ -3068,7 +3068,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/build/backgrounds/05-finale.png"
         },
         {
-          "id": "build-the-building-that-builds-you",
+          "id": "build-builder-building",
           "tier": 26,
           "name": "Build Builder Building",
           "unlock": 80,
@@ -3130,7 +3130,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           ]
         },
         {
-          "id": "woodcutting-firepit",
+          "id": "firepit",
           "tier": 2,
           "kind": "passive_item_collect",
           "name": "Firepit",
@@ -3598,7 +3598,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           ]
         },
         {
-          "id": "harvest-the-first-trees-apology",
+          "id": "harvest-tree-apology",
           "tier": 17,
           "name": "Harvest Tree Apology",
           "unlock": 54,
@@ -3818,7 +3818,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
-          "id": "clear-the-forests-legal-department",
+          "id": "clear-forest-legal",
           "tier": 21,
           "name": "Clear Forest Legal",
           "unlock": 73,
@@ -3886,7 +3886,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
-          "id": "axe-the-world-trees-paperwork",
+          "id": "axe-world-tree-forms",
           "tier": 22,
           "name": "Axe World Tree Forms",
           "unlock": 75,
@@ -3922,7 +3922,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {
-          "id": "fell-the-wooden-concept-of-height",
+          "id": "chop-super-tall-tree",
           "tier": 24,
           "name": "Chop Super Tall Tree",
           "unlock": 78,
@@ -4027,7 +4027,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
       "icon": "assets/content/icons/fishing.png",
       "actions": [
         {
-          "id": "beach-shallows",
+          "id": "shallows",
           "tier": 1,
           "name": "Shallows",
           "unlock": 1,
@@ -4049,7 +4049,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "archetype": "novice"
         },
         {
-          "id": "beach-rocks",
+          "id": "rocks",
           "tier": 4,
           "name": "Rocks",
           "unlock": 4,
@@ -4070,7 +4070,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "beach"
         },
         {
-          "id": "pier-dock-edge",
+          "id": "dock-edge",
           "tier": 1,
           "name": "Dock Edge",
           "unlock": 7,
@@ -4091,7 +4091,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "pier"
         },
         {
-          "id": "pier-piling-line",
+          "id": "piling-line",
           "tier": 2,
           "name": "Piling Line",
           "unlock": 11,
@@ -4133,7 +4133,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "river"
         },
         {
-          "id": "river-rapids",
+          "id": "rapids",
           "tier": 6,
           "name": "Rapids",
           "unlock": 18,
@@ -4154,7 +4154,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "river"
         },
         {
-          "id": "sewers-drain-gate",
+          "id": "drain-gate",
           "tier": 7,
           "name": "Drain Gate",
           "unlock": 22,
@@ -4220,7 +4220,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "sewers"
         },
         {
-          "id": "sewers-tunnel-pool",
+          "id": "tunnel-pool",
           "tier": 9,
           "name": "Tunnel Pool",
           "unlock": 26,
@@ -4262,7 +4262,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "reef"
         },
         {
-          "id": "anchor-the-tiny-boat-dock",
+          "id": "anchor-tiny-boat-dock",
           "tier": 7,
           "name": "Anchor Tiny Boat Dock",
           "unlock": 32,
@@ -4306,7 +4306,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "pier"
         },
         {
-          "id": "winter-lake-ice-hole",
+          "id": "ice-hole",
           "tier": 8,
           "name": "Ice Hole",
           "unlock": 34,
@@ -4392,7 +4392,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "reef"
         },
         {
-          "id": "sea-rowboat",
+          "id": "rowboat",
           "tier": 11,
           "name": "Rowboat",
           "unlock": 50,
@@ -4413,7 +4413,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "sea"
         },
         {
-          "id": "sea-open-water",
+          "id": "open-water",
           "tier": 12,
           "name": "Open Water",
           "unlock": 52,
@@ -4478,7 +4478,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "sea"
         },
         {
-          "id": "reef-night-reef",
+          "id": "night-reef",
           "tier": 13,
           "name": "Night Reef",
           "unlock": 58,
@@ -4543,7 +4543,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "sea"
         },
         {
-          "id": "stormy-sea-ripple",
+          "id": "storm-ripple",
           "tier": 14,
           "name": "Storm Ripple",
           "unlock": 64,
@@ -4564,7 +4564,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "stormy_sea"
         },
         {
-          "id": "sea-chum-line",
+          "id": "chum-line",
           "tier": 16,
           "name": "Chum Line",
           "unlock": 70,
@@ -4585,7 +4585,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "sea"
         },
         {
-          "id": "reef-pearl-bed",
+          "id": "pearl-bed",
           "tier": 18,
           "name": "Pearl Bed",
           "unlock": 74,
@@ -4606,7 +4606,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "reef"
         },
         {
-          "id": "stormy-sea-storm-line",
+          "id": "storm-line",
           "tier": 17,
           "name": "Storm Line",
           "unlock": 78,
@@ -4627,7 +4627,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "stormy_sea"
         },
         {
-          "id": "deep-sea-wreck-drop",
+          "id": "wreck-drop",
           "tier": 19,
           "name": "Wreck Drop",
           "unlock": 82,
@@ -4648,7 +4648,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "deep_sea"
         },
         {
-          "id": "deep-sea-abyss",
+          "id": "abyss",
           "tier": 20,
           "name": "Abyss",
           "unlock": 86,
@@ -4669,7 +4669,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "deep_sea"
         },
         {
-          "id": "deep-sea-trench",
+          "id": "deep-trench",
           "tier": 21,
           "name": "Deep Trench",
           "unlock": 88,
@@ -4690,7 +4690,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "area": "deep_sea"
         },
         {
-          "id": "space-starlight",
+          "id": "starlight",
           "tier": 22,
           "name": "Starlight",
           "unlock": 90,
@@ -4712,7 +4712,7 @@ globalThis.IDLE_ELITE_ACTIVITY_DATABASE = {
           "archetype": "steady"
         },
         {
-          "id": "space-reflection",
+          "id": "reflection",
           "tier": 23,
           "name": "Reflection",
           "unlock": 95,

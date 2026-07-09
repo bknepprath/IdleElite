@@ -15,6 +15,16 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 func _draw() -> void:
+	if bottom_shape != "wide_u":
+		var style := StyleBoxFlat.new()
+		style.bg_color = Color.TRANSPARENT
+		style.border_color = border_color
+		style.set_border_width_all(int(round(border_width)))
+		style.set_corner_radius_all(int(round(radius)))
+		style.anti_aliasing = true
+		style.anti_aliasing_size = 1.5
+		draw_style_box(style, Rect2(Vector2.ZERO, size))
+		return
 	var stroke_width := border_width
 	var half := stroke_width * 0.5
 	var left := half

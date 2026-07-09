@@ -176,8 +176,7 @@ void fragment() {
 				top_fade = mix(1.0, smoothstep(art_top, min(art_top + feather_px, art_bottom), p.y), top_feather_weight);
 				bottom_fade = 1.0 - smoothstep(max(art_top, art_bottom - feather_px), art_bottom, p.y);
 			}
-			float art_mix = in_bounds ? (art_sample.a * top_fade * bottom_fade) : 0.0;
-			color = mix(fill_color, vec4(art_sample.rgb, 1.0), art_mix);
+			color = vec4(art_sample.rgb, 1.0);
 		}
 	}
 	color.a = alpha;

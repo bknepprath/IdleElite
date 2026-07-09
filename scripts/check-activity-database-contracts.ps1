@@ -1,6 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $jsonPath = Join-Path $projectRoot "docs\activity-database.json"
 $jsPath = Join-Path $projectRoot "docs\activity-database-data.js"
 $syncScriptPath = Join-Path $projectRoot "scripts\sync-activity-database-js.py"
@@ -9,17 +10,6 @@ $contractDocPath = Join-Path $projectRoot "docs\activity-database-contract.md"
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $catalogPath = Join-Path $projectRoot "scripts\activity_data\catalog.gd"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 foreach ($path in @($jsonPath, $jsPath, $syncScriptPath, $auditScriptPath, $contractDocPath, $mainPath, $catalogPath, $exportPresetsPath)) {
     Assert-True (Test-Path -LiteralPath $path) "Missing activity database contract file: $path"

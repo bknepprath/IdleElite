@@ -1,20 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $gitignorePath = Join-Path $projectRoot ".gitignore"
 $hygieneDocPath = Join-Path $projectRoot "docs\generated-file-hygiene.md"
 $assetAuditPath = Join-Path $projectRoot "docs\asset-file-structure-audit.md"
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 Assert-True (Test-Path -LiteralPath $gitignorePath) "Missing .gitignore."
 Assert-True (Test-Path -LiteralPath $hygieneDocPath) "Missing docs\generated-file-hygiene.md."

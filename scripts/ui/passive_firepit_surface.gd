@@ -313,7 +313,7 @@ void fragment() {
 		flame_rect.set_anchors_preset(Control.PRESET_FULL_RECT)
 		flame_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		flame_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		flame_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		flame_rect.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 		flame_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		flame_rect.z_index = 1
 		_build_flame_material()
@@ -388,7 +388,7 @@ void fragment() {
 			puff.texture = smoke_textures[index % smoke_textures.size()]
 			puff.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			puff.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			puff.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+			puff.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 			puff.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			puff.z_index = 2
 			add_child(puff)
@@ -1539,7 +1539,7 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 	var resource_controls = _passive_module_resource_controls(pop_card, module_id, interactive)
 	var stat_controls = _passive_module_stat_upgrade_controls(pop_card, module_id, interactive)
 	var chrome = _passive_module_loot_and_chrome(pop_card, skill_id, content_width, passive_bar_height, passive_face_bottom_trim)
-	var lock_overlay = host._skill_detail_surface()._activity_lock_overlay(pop_card, int(action.get("unlock", host.WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL)), skill_id, host._skill_detail_surface()._lock_requirements_for_overlay(skill_id, action))
+	var lock_overlay = host._skill_detail_surface()._activity_lock_overlay(pop_card, int(action.get("unlock", PassiveModulesRuntime.WOODCUTTING_LOG_MODULE_UNLOCK_LEVEL)), skill_id, host._skill_detail_surface()._lock_requirements_for_overlay(skill_id, action))
 	host._skill_detail_surface()._connect_activity_lock_handler(lock_overlay, skill_id, module_id)
 	var card = {
 		"passive": true,

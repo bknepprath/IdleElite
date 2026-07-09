@@ -8,21 +8,11 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $configPath = if ([string]::IsNullOrWhiteSpace($OutputPath)) {
     Join-Path $projectRoot "firebase-leaderboard-config.json"
 } else {
     $OutputPath
-}
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
 }
 
 $cleanUrl = $DatabaseUrl.Trim().TrimEnd("/")

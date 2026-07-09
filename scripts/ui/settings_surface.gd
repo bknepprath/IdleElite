@@ -1048,29 +1048,6 @@ func _navigation_state() -> Dictionary:
 	}
 
 
-func _empty_navigation_state() -> Dictionary:
-	return {
-		"music_volume_sliders": [],
-		"music_volume_labels": [],
-		"music_mute_toggles": [],
-		"music_mute_labels": [],
-		"sfx_volume_sliders": [],
-		"sfx_volume_labels": [],
-		"sfx_mute_toggles": [],
-		"sfx_mute_labels": [],
-		"offline_progress_toggles": [],
-		"auto_unlock_lockpad_toggles": [],
-		"stamina_decimal_toggles": [],
-		"offline_progress_cap_notification_toggles": [],
-		"dark_mode_toggles": [],
-		"audio_controls_sync_key": "",
-		"reset_data_buttons": [],
-		"reset_data_confirm_until": 0.0,
-		"reset_data_confirm_armed_at": 0.0,
-		"reset_data_confirm_button": null,
-	}
-
-
 func _apply_navigation_state(state: Dictionary) -> void:
 	music_volume_sliders = state.get("music_volume_sliders", []) as Array
 	music_volume_labels = state.get("music_volume_labels", []) as Array

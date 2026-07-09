@@ -2,6 +2,7 @@ extends RefCounted
 
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
+const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
 const TEMPORARY_EVENT_SCHEDULER_CHECK_SECONDS := 5.0
@@ -246,7 +247,12 @@ func _event_module_def(event_id: String) -> Dictionary:
 		if typeof(raw_event) != TYPE_DICTIONARY:
 			continue
 		var event_def := raw_event as Dictionary
-		if str(event_def.get("id", "")) == event_id:
+		var canonical_id := ModuleUiRuntime.canonical_action_id(
+			str(event_def.get("page", "")),
+			event_id,
+			host.FISHING_ACTION_ID_ALIASES
+		)
+		if str(event_def.get("id", "")) == canonical_id:
 			return event_def
 	return {}
 
@@ -537,9 +543,10 @@ func _active_event_actions_for_skill(skill_id: String) -> Array:
 func _active_event_action_data(skill_id: String, action_id: String) -> Dictionary:
 	if skill_id.is_empty() or action_id.is_empty():
 		return {}
+	var canonical_action_id := ModuleUiRuntime.canonical_action_id(skill_id, action_id, host.FISHING_ACTION_ID_ALIASES)
 	for raw_action in _active_event_actions_for_skill(skill_id):
 		var action := raw_action as Dictionary
-		if str(action.get("id", "")) == action_id:
+		if str(action.get("id", "")) == canonical_action_id:
 			return action
 	return {}
 

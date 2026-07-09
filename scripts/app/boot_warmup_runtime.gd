@@ -691,7 +691,8 @@ func _boot_shared_texture_paths() -> Array:
 	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
 	_add_boot_warmup_texture_path(paths, ShopSurface.REWARDED_AD_ICON_TEXTURE)
 	_add_boot_warmup_texture_path(paths, SettingsSurface.DISCORD_LOGO_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, host.MASTERY_MEDALS_TEXTURE)
+	for medal_path in AchievementPresentation.MASTERY_MEDAL_TEXTURES:
+		_add_boot_warmup_texture_path(paths, str(medal_path))
 	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_LOCK_CHAINS_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_CHAIN_LINK_TEXTURE)
 	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_CHAIN_LEFT_TEXTURE)

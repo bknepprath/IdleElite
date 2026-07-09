@@ -101,79 +101,79 @@ const FISHING_LOCATION_DEFS := {
 }
 const FISHING_TOOL_LOCATION_ACTIONS := {
 	"hands": {
-		"beach.shallows": "beach-shallows",
-		"beach.rocky": "beach-rocks",
-		"pier.dock-cup": "pier-dock-edge",
-		"pier.piling-line": "pier-piling-line",
+		"beach.shallows": "shallows",
+		"beach.rocky": "rocks",
+		"pier.dock-cup": "dock-edge",
+		"pier.piling-line": "piling-line",
 		"river.bend": "river-bend",
-		"river.rapids": "river-rapids",
-		"sewers.drain-gate": "sewers-drain-gate",
-		"sewers.tunnel-pool": "sewers-tunnel-pool",
-		"winter_lake.ice-hole": "winter-lake-ice-hole",
+		"river.rapids": "rapids",
+		"sewers.drain-gate": "drain-gate",
+		"sewers.tunnel-pool": "tunnel-pool",
+		"winter_lake.ice-hole": "ice-hole",
 		"reef.pot": "reef-pot",
 		"reef.cage": "reef-cage",
-		"reef.night-reef": "reef-night-reef",
-		"reef.pearl-bed": "reef-pearl-bed",
-		"sea.rowboat": "sea-rowboat",
-		"sea.open-water": "sea-open-water",
-		"sea.chum-line": "sea-chum-line",
-		"stormy_sea.ripple": "stormy-sea-ripple",
-		"stormy_sea.storm-line": "stormy-sea-storm-line",
-		"deep_sea.wreck-drop": "deep-sea-wreck-drop",
-		"deep_sea.abyss": "deep-sea-abyss",
-		"deep_sea.trench": "deep-sea-trench",
-		"space.starlight": "space-starlight",
-		"space.reflection": "space-reflection",
+		"reef.night-reef": "night-reef",
+		"reef.pearl-bed": "pearl-bed",
+		"sea.rowboat": "rowboat",
+		"sea.open-water": "open-water",
+		"sea.chum-line": "chum-line",
+		"stormy_sea.ripple": "storm-ripple",
+		"stormy_sea.storm-line": "storm-line",
+		"deep_sea.wreck-drop": "wreck-drop",
+		"deep_sea.abyss": "abyss",
+		"deep_sea.trench": "deep-trench",
+		"space.starlight": "starlight",
+		"space.reflection": "reflection",
 	},
 	"net": {
-		"beach.shallows": "beach-shallows",
-		"beach.rocky": "beach-rocks",
-		"pier.dock-cup": "pier-dock-edge",
-		"pier.piling-line": "pier-piling-line",
+		"beach.shallows": "shallows",
+		"beach.rocky": "rocks",
+		"pier.dock-cup": "dock-edge",
+		"pier.piling-line": "piling-line",
 		"river.bend": "river-bend",
-		"river.rapids": "river-rapids",
-		"sewers.drain-gate": "sewers-drain-gate",
-		"sewers.tunnel-pool": "sewers-tunnel-pool",
-		"winter_lake.ice-hole": "winter-lake-ice-hole",
+		"river.rapids": "rapids",
+		"sewers.drain-gate": "drain-gate",
+		"sewers.tunnel-pool": "tunnel-pool",
+		"winter_lake.ice-hole": "ice-hole",
 		"reef.pot": "reef-pot",
 		"reef.cage": "reef-cage",
-		"reef.night-reef": "reef-night-reef",
-		"reef.pearl-bed": "reef-pearl-bed",
-		"sea.rowboat": "sea-rowboat",
-		"sea.open-water": "sea-open-water",
-		"sea.chum-line": "sea-chum-line",
-		"stormy_sea.ripple": "stormy-sea-ripple",
-		"stormy_sea.storm-line": "stormy-sea-storm-line",
-		"deep_sea.wreck-drop": "deep-sea-wreck-drop",
-		"deep_sea.abyss": "deep-sea-abyss",
-		"deep_sea.trench": "deep-sea-trench",
-		"space.starlight": "space-starlight",
-		"space.reflection": "space-reflection",
+		"reef.night-reef": "night-reef",
+		"reef.pearl-bed": "pearl-bed",
+		"sea.rowboat": "rowboat",
+		"sea.open-water": "open-water",
+		"sea.chum-line": "chum-line",
+		"stormy_sea.ripple": "storm-ripple",
+		"stormy_sea.storm-line": "storm-line",
+		"deep_sea.wreck-drop": "wreck-drop",
+		"deep_sea.abyss": "abyss",
+		"deep_sea.trench": "deep-trench",
+		"space.starlight": "starlight",
+		"space.reflection": "reflection",
 	},
 	"line": {
-		"beach.shallows": "beach-shallows",
-		"beach.rocky": "beach-rocks",
-		"pier.dock-cup": "pier-dock-edge",
-		"pier.piling-line": "pier-piling-line",
+		"beach.shallows": "shallows",
+		"beach.rocky": "rocks",
+		"pier.dock-cup": "dock-edge",
+		"pier.piling-line": "piling-line",
 		"river.bend": "river-bend",
-		"river.rapids": "river-rapids",
-		"sewers.drain-gate": "sewers-drain-gate",
-		"sewers.tunnel-pool": "sewers-tunnel-pool",
-		"winter_lake.ice-hole": "winter-lake-ice-hole",
+		"river.rapids": "rapids",
+		"sewers.drain-gate": "drain-gate",
+		"sewers.tunnel-pool": "tunnel-pool",
+		"winter_lake.ice-hole": "ice-hole",
 		"reef.pot": "reef-pot",
 		"reef.cage": "reef-cage",
-		"reef.night-reef": "reef-night-reef",
-		"reef.pearl-bed": "reef-pearl-bed",
-		"sea.rowboat": "sea-rowboat",
-		"sea.open-water": "sea-open-water",
-		"sea.chum-line": "sea-chum-line",
-		"stormy_sea.ripple": "stormy-sea-ripple",
-		"stormy_sea.storm-line": "stormy-sea-storm-line",
-		"deep_sea.wreck-drop": "deep-sea-wreck-drop",
-		"deep_sea.abyss": "deep-sea-abyss",
-		"deep_sea.trench": "deep-sea-trench",
-		"space.starlight": "space-starlight",
-		"space.reflection": "space-reflection",
+		"reef.night-reef": "night-reef",
+		"reef.pearl-bed": "pearl-bed",
+		"sea.rowboat": "rowboat",
+		"sea.open-water": "open-water",
+		"sea.chum-line": "chum-line",
+		"stormy_sea.ripple": "storm-ripple",
+		"stormy_sea.storm-line": "storm-line",
+		"deep_sea.wreck-drop": "wreck-drop",
+		"deep_sea.abyss": "abyss",
+		"deep_sea.trench": "deep-trench",
+		"space.starlight": "starlight",
+		"space.reflection": "reflection",
 	},
 }
 const FISHING_BOAT_FILL_MIN := 1
@@ -187,38 +187,38 @@ const FISHING_REINFORCED_ROD_XP_MULT := 2.5
 const FISHING_STAR_ROD_XP_MULT := 3.0
 const FISHING_REFLECT_NET_XP_MULT := 4.0
 const FISHING_ACTION_CATCH_TEXTURE_PATHS := {
-	"beach-shallows": "res://assets/content/fishing/catch-icons/00-minnow-cutout.png",
-	"beach-rocks": "res://assets/content/fishing/catch-icons/02-crab-cutout.png",
+	"shallows": "res://assets/content/fishing/catch-icons/00-minnow-cutout.png",
+	"rocks": "res://assets/content/fishing/catch-icons/02-crab-cutout.png",
 	"reef-pot": "res://assets/content/fishing/catch-icons/02-crab-cutout.png",
-	"stormy-sea-ripple": "res://assets/content/fishing/catch-icons/14-shark-cutout.png",
+	"storm-ripple": "res://assets/content/fishing/catch-icons/14-shark-cutout.png",
 	"river-bend": "res://assets/content/fishing/catch-icons/03-trout-cutout.png",
-	"river-rapids": "res://assets/content/fishing/catch-icons/05-salmon-cutout.png",
-	"sewers-drain-gate": "res://assets/content/fishing/catch-icons/06-eel-cutout.png",
-	"sewers-tunnel-pool": "res://assets/content/fishing/catch-icons/06-eel-cutout.png",
-	"winter-lake-ice-hole": "res://assets/content/fishing/catch-icons/08-snowfish-cutout.png",
+	"rapids": "res://assets/content/fishing/catch-icons/05-salmon-cutout.png",
+	"drain-gate": "res://assets/content/fishing/catch-icons/06-eel-cutout.png",
+	"tunnel-pool": "res://assets/content/fishing/catch-icons/06-eel-cutout.png",
+	"ice-hole": "res://assets/content/fishing/catch-icons/08-snowfish-cutout.png",
 	"reef-cage": "res://assets/content/fishing/catch-icons/07-lobster-cutout.png",
-	"reef-night-reef": "res://assets/content/fishing/catch-icons/10-reef-fish-cutout.png",
-	"reef-pearl-bed": "res://assets/content/fishing/catch-icons/09-pearl-oyster-cutout.png",
-	"sea-rowboat": "res://assets/content/fishing/catch-icons/04-bass-cutout.png",
-	"sea-open-water": "res://assets/content/fishing/catch-icons/12-tuna-cutout.png",
-	"sea-chum-line": "res://assets/content/fishing/catch-icons/10-reef-fish-cutout.png",
-	"stormy-sea-storm-line": "res://assets/content/fishing/catch-icons/19-storm-ray-cutout.png",
-	"deep-sea-wreck-drop": "res://assets/content/fishing/catch-icons/11-octopus-cutout.png",
-	"deep-sea-abyss": "res://assets/content/fishing/catch-icons/14-shark-cutout.png",
-	"deep-sea-trench": "res://assets/content/fishing/catch-icons/11-octopus-cutout.png",
-	"space-reflection": "res://assets/content/fishing/catch-icons/23-cosmic-starfish-cutout.png",
-	"space-starlight": "res://assets/content/fishing/catch-icons/23-cosmic-starfish-cutout.png",
+	"night-reef": "res://assets/content/fishing/catch-icons/10-reef-fish-cutout.png",
+	"pearl-bed": "res://assets/content/fishing/catch-icons/09-pearl-oyster-cutout.png",
+	"rowboat": "res://assets/content/fishing/catch-icons/04-bass-cutout.png",
+	"open-water": "res://assets/content/fishing/catch-icons/12-tuna-cutout.png",
+	"chum-line": "res://assets/content/fishing/catch-icons/10-reef-fish-cutout.png",
+	"storm-line": "res://assets/content/fishing/catch-icons/19-storm-ray-cutout.png",
+	"wreck-drop": "res://assets/content/fishing/catch-icons/11-octopus-cutout.png",
+	"abyss": "res://assets/content/fishing/catch-icons/14-shark-cutout.png",
+	"deep-trench": "res://assets/content/fishing/catch-icons/11-octopus-cutout.png",
+	"reflection": "res://assets/content/fishing/catch-icons/23-cosmic-starfish-cutout.png",
+	"starlight": "res://assets/content/fishing/catch-icons/23-cosmic-starfish-cutout.png",
 }
 const FISHING_ACTION_FOOD_VALUES := {
-	"beach-shallows": 0.3,
-	"beach-rocks": 1.0,
+	"shallows": 0.3,
+	"rocks": 1.0,
 	"reef-cage": 1.25,
-	"sea-open-water": 1.5,
-	"stormy-sea-storm-line": 2.0,
-	"deep-sea-abyss": 2.5,
-	"deep-sea-trench": 2.0,
-	"space-starlight": 1.0,
-	"space-reflection": 1.0,
+	"open-water": 1.5,
+	"storm-line": 2.0,
+	"abyss": 2.5,
+	"deep-trench": 2.0,
+	"starlight": 1.0,
+	"reflection": 1.0,
 }
 const FISHING_CATCH_TEXTURE_PATHS := [
 	"res://assets/content/fishing/catch-icons/00-minnow-cutout.png",
@@ -1309,7 +1309,7 @@ static func tool_is_bad_for_action(tool_id: String, action_id: String) -> bool:
 	if tool_catches_nothing_for_action(tool_id, action_id):
 		return true
 	match action_id:
-		"beach-rocks":
+		"rocks":
 			return is_rod(tool_id) or tool_id == "boat"
 	return false
 
@@ -1433,13 +1433,13 @@ static func method_archetype(host, action_id: String) -> String:
 		if not from_data.is_empty():
 			return from_data
 	match action_id:
-		"beach-rocks", "sea-open-water", "space-reflection":
+		"rocks", "open-water", "reflection":
 			return "volume"
-		"sewers-drain-gate":
+		"drain-gate":
 			return "chaos"
-		"sea-chum-line":
+		"chum-line":
 			return "risk"
-		"stormy-sea-ripple", "sewers-tunnel-pool", "deep-sea-abyss", "stormy-sea-storm-line", "reef-pearl-bed":
+		"storm-ripple", "tunnel-pool", "abyss", "storm-line", "pearl-bed":
 			return "commit"
 		_:
 			return "steady"
@@ -1557,23 +1557,23 @@ static func net_mastery_reward(host, skill_id: String, action_id: String, harves
 
 static func hands_success_chance(action_id: String) -> float:
 	match action_id:
-		"beach-shallows":
+		"shallows":
 			return 82.0
-		"beach-rocks":
+		"rocks":
 			return 74.0
-		"pier-dock-edge":
+		"dock-edge":
 			return 60.0
-		"pier-piling-line":
+		"piling-line":
 			return 42.0
-		"sewers-drain-gate":
+		"drain-gate":
 			return 52.0
 		"river-bend":
 			return 15.0
-		"river-rapids":
+		"rapids":
 			return 8.0
-		"winter-lake-ice-hole":
+		"ice-hole":
 			return 4.0
-		"sewers-tunnel-pool":
+		"tunnel-pool":
 			return 20.0
 	return 6.0
 

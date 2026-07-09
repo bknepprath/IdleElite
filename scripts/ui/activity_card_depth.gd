@@ -14,6 +14,7 @@ var lip_color := Color("#171615")
 var highlight_color := Color(1.0, 0.73, 0.36, 0.22)
 var shadow_color := Color(0.06, 0.045, 0.03, 0.32)
 var segment_theme_colors: Array[Color] = []
+var draw_lip_lines := true
 var draw_back_plate_bottom_outline := false
 var bottom_shape := "round"
 var wide_u_bottom_rise := 58.0
@@ -69,6 +70,9 @@ func _draw() -> void:
 	_draw_extruded_outline(perimeter, front, back, face_size)
 
 func _draw_fast_depth(face_size: Vector2, front: Vector2, back: Vector2) -> void:
+	if not draw_lip_lines:
+		_draw_clean_prism_faces(face_size, front, back)
+		return
 	_draw_fast_back_plate(face_size, back)
 	if bottom_shape != "wide_u":
 		_draw_depth_corner_connectors(face_size, front, back)
@@ -79,6 +83,19 @@ func _draw_fast_depth(face_size: Vector2, front: Vector2, back: Vector2) -> void
 		_draw_wide_u_back_outline(Rect2(back, face_size), lip_color, 8.0)
 	else:
 		_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 8.0, draw_back_plate_bottom_outline)
+
+func _draw_clean_prism_faces(face_size: Vector2, front: Vector2, back: Vector2) -> void:
+	var travel := back - front
+	if travel.length_squared() <= 0.25:
+		return
+	var lift := travel.y
+	var body_style := StyleBoxFlat.new()
+	body_style.bg_color = back_color
+	body_style.set_border_width_all(0)
+	body_style.set_corner_radius_all(int(round(radius)))
+	body_style.anti_aliasing = true
+	body_style.anti_aliasing_size = 1.5
+	draw_style_box(body_style, Rect2(Vector2(back.x, back.y - lift), face_size))
 
 func _draw_depth_corner_connectors(face_size: Vector2, front: Vector2, back: Vector2) -> void:
 	var width := 10.0

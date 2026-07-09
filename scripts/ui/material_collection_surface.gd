@@ -500,7 +500,7 @@ func _mat_collection_module(mat_id: String, skill_id := "", action_id := "") -> 
 	background.art_height = MAT_COLLECTION_MODULE_SIZE.y
 	background.feather_height = 0.0
 	background.fallback_color = Color.WHITE
-	background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	background.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	background.set_anchors_preset(Control.PRESET_FULL_RECT)
 	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	background.z_index = 0

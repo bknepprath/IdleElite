@@ -8,17 +8,6 @@ $testDir = Join-Path $projectRoot ".codex-tmp\honey-stamina-regen"
 $testScript = Join-Path $testDir "honey_stamina_regen_test.gd"
 $capturePath = Join-Path $testDir "honey-stamina-gauge.png"
 
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
-
 function Assert-NoUnexpectedGodotErrors {
     param(
         [Parameter(Mandatory = $true)][AllowNull()]$Output,

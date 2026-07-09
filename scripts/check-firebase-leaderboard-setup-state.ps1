@@ -1,22 +1,12 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $configPath = Join-Path $projectRoot "firebase-leaderboard-config.json"
 $firebaseJsonPath = Join-Path $projectRoot "firebase.json"
 $rulesPath = Join-Path $projectRoot "firebase-realtime-database.rules.json"
 $gitignorePath = Join-Path $projectRoot ".gitignore"
 $firebaseDatabaseUrlPattern = '^https://([a-z0-9-]+\.firebaseio\.com|[a-z0-9-]+\.[a-z0-9-]+\.firebasedatabase\.app)$'
-
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
-    }
-}
 
 Assert-True (Test-Path -LiteralPath $firebaseJsonPath) "Missing firebase.json."
 Assert-True (Test-Path -LiteralPath $rulesPath) "Missing firebase-realtime-database.rules.json."
