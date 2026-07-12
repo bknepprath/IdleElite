@@ -40,14 +40,15 @@ try {
     Assert-True ($result.status -eq "ok") "Fishing cold render probe status was $($result.status)."
     Assert-True ([double]$result.render_msec -le $MaxRenderMsec) "Fishing cold render took $($result.render_msec)ms, expected at most ${MaxRenderMsec}ms."
     Assert-True ([int]$result.immediate_mounted -le $MaxImmediateMounted) "Fishing cold render mounted $($result.immediate_mounted) modules immediately, expected at most $MaxImmediateMounted."
-    Assert-True ([int]$result.warmed_mounted -eq [int]$result.plan) "Fishing warm mount should reach every module without player scroll: $($result.warmed_mounted) / $($result.plan)."
+    Assert-True ([int]$result.warmed_mounted -lt [int]$result.plan) "Fishing warm mount should retain offscreen modules as placeholders: $($result.warmed_mounted) / $($result.plan)."
+    Assert-True ([int]$result.action_cards -le 12) "Fishing cold render mounted $($result.action_cards) action cards, expected at most 12."
     Assert-True ([int]$result.warm_frames -le $MaxWarmFrames) "Fishing warm mount took $($result.warm_frames) frames, expected at most $MaxWarmFrames."
     Assert-True ([double]$result.max_warm_frame_msec -le $MaxWarmFrameMsec) "Fishing warm mount frame took $($result.max_warm_frame_msec)ms, expected at most ${MaxWarmFrameMsec}ms."
     Assert-True ([int]$result.warm_over_50 -eq 0) "Fishing warm mount had $($result.warm_over_50) frame(s) over 50ms."
     Assert-True (-not [bool]$result.visible_placeholders) "Fishing cold render left visible lazy placeholders in the viewport."
     Assert-True (-not [bool]$result.warmed_visible_placeholders) "Fishing warm mount left visible lazy placeholders in the viewport."
 
-    "fishing-cold-render-ok render_ms=$($result.render_msec) immediate=$($result.immediate_mounted) warmed=$($result.warmed_mounted)/$($result.plan) warm_frames=$($result.warm_frames) max_warm_ms=$($result.max_warm_frame_msec) result=$resultPath"
+    "fishing-cold-render-ok render_ms=$($result.render_msec) immediate=$($result.immediate_mounted) warmed=$($result.warmed_mounted)/$($result.plan) cards=$($result.action_cards) warm_frames=$($result.warm_frames) max_warm_ms=$($result.max_warm_frame_msec) result=$resultPath"
 }
 finally {
     Remove-Item Env:IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue

@@ -53,7 +53,7 @@ static func detail_icon(host, skill_id: String) -> Control:
 	holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var detail_symbol_base_size: Vector2 = host.SKILL_MENU_ICON_SYMBOL_SIZE * (host.SKILL_DETAIL_ICON_SIZE.x / maxf(1.0, host.SKILL_MENU_ICON_BADGE_SIZE.x))
-	var icon := icon_badge(host, skill_id, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.SKILL_DETAIL_ICON_SIZE, symbol_size(skill_id, detail_symbol_base_size))
+	var icon := icon_badge(host, skill_id, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.SKILL_DETAIL_ICON_SIZE, symbol_size(skill_id, detail_symbol_base_size), host.SKILL_DETAIL_ICON_BORDER_WIDTH)
 	icon.position.y = host.SKILL_DETAIL_ICON_Y_OFFSET
 	holder.add_child(icon)
 	return holder
@@ -71,7 +71,7 @@ static func symbol_control(host, skill_id: String) -> Control:
 	return texture_symbol
 
 
-static func icon_badge(host, skill_id: String, theme_color: Color, badge_size: Vector2, icon_symbol_size: Vector2) -> Control:
+static func icon_badge(host, skill_id: String, theme_color: Color, badge_size: Vector2, icon_symbol_size: Vector2, border_width := 12.0) -> Control:
 	var badge := Control.new()
 	badge.custom_minimum_size = badge_size
 	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -97,7 +97,7 @@ static func icon_badge(host, skill_id: String, theme_color: Color, badge_size: V
 
 	var border := Panel.new()
 	border.set_anchors_preset(Control.PRESET_FULL_RECT)
-	border.add_theme_stylebox_override("panel", border_style(host, badge_size))
+	border.add_theme_stylebox_override("panel", border_style(host, badge_size, border_width))
 	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.add_child(border)
 	return badge
@@ -116,11 +116,11 @@ static func fill_style(theme_color: Color, badge_size: Vector2) -> StyleBoxFlat:
 	return style
 
 
-static func border_style(host, badge_size: Vector2) -> StyleBoxFlat:
+static func border_style(host, badge_size: Vector2, border_width := 12.0) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color.TRANSPARENT
 	style.border_color = host.COLOR_INK
-	style.set_border_width_all(10)
+	style.set_border_width_all(int(round(border_width)))
 	style.set_corner_radius_all(int(round(minf(badge_size.x, badge_size.y) * 0.16)))
 	style.content_margin_left = 0
 	style.content_margin_right = 0

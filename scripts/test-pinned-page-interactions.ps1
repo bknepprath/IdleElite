@@ -534,6 +534,8 @@ func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -
 	if rail == null or not is_instance_valid(rail) or not rail.is_inside_tree():
 		_record("pinned-page opportunity card did not expose a visible progress rail")
 		return
+	if rail.opportunity_windows.is_empty():
+		return
 	var opportunity_window := Vector2(rail.opportunity_windows[0])
 	scene.set("action_progress", clampf((opportunity_window.x + opportunity_window.y) * 0.5, 0.0, 0.999))
 	if not rail.has_opportunity_progress(float(scene.get("action_progress"))):

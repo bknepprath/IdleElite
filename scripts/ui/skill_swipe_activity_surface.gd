@@ -77,6 +77,10 @@ class _MedalShineSlash:
 
 const RECOVERY_WIDE_U_BOTTOM_RISE := 19.333
 const MASTERY_BAR_EASE_SECONDS := 0.16
+const ACTION_PROGRESS_TURNOVER_DRAIN_SECONDS := 0.20
+const ACTION_PROGRESS_TURNOVER_EMPTY_SECONDS := 0.02
+const ACTION_PROGRESS_TURNOVER_RECOVER_SECONDS := 0.18
+const ACTION_PROGRESS_TURNOVER_SECONDS := ACTION_PROGRESS_TURNOVER_DRAIN_SECONDS + ACTION_PROGRESS_TURNOVER_EMPTY_SECONDS + ACTION_PROGRESS_TURNOVER_RECOVER_SECONDS
 const ACTION_CARD_MEDAL_TAP_SPARKLE_COUNTS := [
 	0, # Bronze
 	1, # Silver
@@ -3211,10 +3215,6 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 	if progress_rail != null:
 		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(progress_rail, true)
 		ThemeStyles.sync_action_card_progress_rail_theme(card, progress_rail, skill_id, action_for_card, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE, host.COLOR_INK)
-		if not RecoveryModules.has_recovery(action_for_card):
-			progress_rail.fill_color = Color("#e3323b")
-			progress_rail.empty_color = Color("#5a1918")
-			progress_rail.set_color_segments([], [])
 		var action_id := str(card.get("action_id", ""))
 		var opportunity_windows: Array[Vector2] = []
 		var opportunity_active := false
@@ -3225,14 +3225,54 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 			opportunity_visible = true
 		progress_rail.set_opportunity_windows(opportunity_windows, opportunity_active, opportunity_visible, host._action_runtime().action_opportunity_missed)
 		var canceled_progress: float = 0.0 if running else host._action_runtime()._canceled_action_progress(skill_id, action_id)
-		var progress_target: float = card_progress * 100.0 if not RecoveryModules.has_recovery(action_for_card) else (card_progress if running else canceled_progress) * 100.0
+		var progress_target: float = (card_progress if running else canceled_progress) * 100.0
 		var progress_instant := instant
+		var previous_progress := float(card.get("last_running_progress", card_progress))
+		var progress_speed := float(card.get("last_running_progress_speed", 0.0))
+		if running and not instant and card_progress + 0.001 < previous_progress:
+			card["progress_turnover_elapsed"] = 0.0
+			card["progress_turnover_start"] = progress_rail.value
+		if running:
+			if delta > 0.0 and card_progress >= previous_progress:
+				progress_speed = (card_progress - previous_progress) * 100.0 / delta
+				card["last_running_progress_speed"] = progress_speed
+			card["last_running_progress"] = card_progress
+		else:
+			card.erase("last_running_progress")
+			card.erase("last_running_progress_speed")
+			card.erase("progress_turnover_elapsed")
+			card.erase("progress_turnover_start")
 		if not running and canceled_progress > 0.0:
 			progress_instant = true
-		if running and progress_target + 6.0 < progress_rail.value:
-			progress_instant = true
-		ThemeStyles.set_progress_bar_value(progress_rail, progress_target, delta, progress_instant)
+		if card.has("progress_turnover_elapsed"):
+			var turnover_elapsed := float(card["progress_turnover_elapsed"]) + maxf(0.0, delta)
+			var step_delta := minf(maxf(0.0, delta), 0.1)
+			var follower_weight := 1.0 - exp(-progress_rail.easing_speed * step_delta)
+			var handoff_lag := progress_speed * step_delta / follower_weight if follower_weight > 0.0001 else 0.0
+			card["progress_turnover_elapsed"] = turnover_elapsed
+			progress_rail.set_value(_action_progress_turnover_value(turnover_elapsed, progress_target, float(card.get("progress_turnover_start", progress_rail.value)), progress_speed, handoff_lag))
+			if turnover_elapsed >= ACTION_PROGRESS_TURNOVER_SECONDS:
+				card.erase("progress_turnover_elapsed")
+				card.erase("progress_turnover_start")
+		else:
+			ThemeStyles.set_progress_bar_value(progress_rail, progress_target, delta, progress_instant)
 		host._material_collection_surface()._sync_mat_collection_card(card, running, instant)
+
+
+func _action_progress_turnover_value(elapsed: float, live_target: float, start_value: float, live_speed: float, handoff_lag: float) -> float:
+	var empty_start := ACTION_PROGRESS_TURNOVER_DRAIN_SECONDS
+	var recover_start := empty_start + ACTION_PROGRESS_TURNOVER_EMPTY_SECONDS
+	if elapsed < empty_start:
+		var drain_progress := clampf(elapsed / ACTION_PROGRESS_TURNOVER_DRAIN_SECONDS, 0.0, 1.0)
+		return lerpf(start_value, 0.0, smoothstep(0.0, 1.0, drain_progress))
+	if elapsed < recover_start:
+		return 0.0
+	var recover_progress := clampf((elapsed - recover_start) / ACTION_PROGRESS_TURNOVER_RECOVER_SECONDS, 0.0, 1.0)
+	var recover_progress_squared := recover_progress * recover_progress
+	var recover_progress_cubed := recover_progress_squared * recover_progress
+	var handoff_value := maxf(0.0, live_target - handoff_lag)
+	var handoff_tangent := live_speed * ACTION_PROGRESS_TURNOVER_RECOVER_SECONDS
+	return clampf((-2.0 * recover_progress_cubed + 3.0 * recover_progress_squared) * handoff_value + (recover_progress_cubed - recover_progress_squared) * handoff_tangent, 0.0, live_target)
 
 func _set_action_card_medal(card: Dictionary, medal: TextureRect, mastery_level: int, instant: bool) -> void:
 	if medal == null or not is_instance_valid(medal):
@@ -4414,7 +4454,7 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 	ActivityCardStyles.sync_activity_card_title_layer(card, unlocked, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
 	var shade = card.get("shade") as Panel
 	if shade == null and ((not unlocked) or ceremony_active):
-		shade = ActivityCardStyles.ensure_activity_card_shade(card, 0.50)
+		shade = ActivityCardStyles.ensure_activity_card_shade(card, 0.20)
 	if shade != null:
 		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(shade, (not unlocked) or ceremony_active)
 		if not unlocked:
@@ -4438,7 +4478,7 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		if str(card.get("passive_border_state", "")) != "default":
 			card["passive_border_state"] = "default"
 			border.border_color = host.COLOR_INK
-			border.border_width = 8.0
+			border.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 			border.queue_redraw()
 	card["last_unlocked"] = unlocked
 	if host._convergence_runtime()._is_convergence_action(action):
@@ -5610,8 +5650,8 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 		if border.get("border_color") != host.COLOR_INK:
 			border.set("border_color", host.COLOR_INK)
 			border_dirty = true
-		if absf(float(border.get("border_width")) - 8.0) > 0.001:
-			border.set("border_width", 8.0)
+		if absf(float(border.get("border_width")) - ActivityCardStyles.ACTION_CARD_STROKE_WIDTH) > 0.001:
+			border.set("border_width", ActivityCardStyles.ACTION_CARD_STROKE_WIDTH)
 			border_dirty = true
 		if border_dirty:
 			border.queue_redraw()
@@ -5734,8 +5774,8 @@ func _update_firepit_card_static_state(card: Dictionary, skill_id: String, actio
 		if border.get("border_color") != next_color:
 			border.set("border_color", next_color)
 			border_dirty = true
-		if absf(float(border.get("border_width")) - (10.0 if active else 8.0)) > 0.001:
-			border.set("border_width", 10.0 if active else 8.0)
+		if absf(float(border.get("border_width")) - ActivityCardStyles.ACTION_CARD_STROKE_WIDTH) > 0.001:
+			border.set("border_width", ActivityCardStyles.ACTION_CARD_STROKE_WIDTH)
 			border_dirty = true
 		if border_dirty:
 			border.queue_redraw()
@@ -5806,6 +5846,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var pop_card = Control.new()
+	pop_card.name = "ActivityCardFace"
 	pop_card.anchor_left = 0.0
 	pop_card.anchor_right = 1.0
 	pop_card.anchor_top = 0.0
@@ -5815,6 +5856,10 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	pop_card.offset_top = 0.0
 	pop_card.set_meta("activity_card_depth_bottom_inset", card_depth_offset.y)
 	pop_card.offset_bottom = ActivityCardStyles.activity_card_pop_base_bottom_offset(pop_card)
+	pop_card.set_meta("activity_card_base_offset_left", pop_card.offset_left)
+	pop_card.set_meta("activity_card_base_offset_right", pop_card.offset_right)
+	if uses_flat_normal_card:
+		pop_card.set_meta("activity_card_press_offset", ActivityCardStyles.NORMAL_ACTIVITY_CARD_PRESS_OFFSET)
 	pop_card.clip_contents = false
 	pop_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.z_index = 1
@@ -5823,8 +5868,8 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	_apply_recovery_card_depth_shape(depth, action)
 	depth.visible = true
 	if uses_flat_normal_card:
-		ActivityCardStyles.apply_normal_activity_card_depth(depth)
-		depth.visible = false
+		ActivityCardStyles.apply_normal_activity_card_depth(depth, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+	depth.visible = false
 	card_root.add_child(depth)
 	pop_card.set_meta("activity_card_depth_node_id", depth.get_instance_id())
 	card_root.add_child(pop_card)
@@ -5838,28 +5883,36 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	pop_card.add_child(background_underlay)
 	if uses_flat_normal_card:
 		var body_plate := Panel.new()
+		body_plate.name = "NormalActivityCardBackFace"
 		body_plate.set_anchors_preset(Control.PRESET_FULL_RECT)
-		body_plate.offset_left = card_depth_offset.x
-		body_plate.offset_right = card_depth_offset.x
+		body_plate.offset_left = pop_card.offset_left
+		body_plate.offset_right = pop_card.offset_right
 		body_plate.offset_top = card_depth_offset.y
 		body_plate.offset_bottom = 0.0
 		body_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		body_plate.z_index = 145
-		body_plate.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_body(host.ACTION_CARD_FACE_RADIUS))
-		pop_card.add_child(body_plate)
-		var body_connectors := ActivityCardStyles.normal_activity_card_body_connectors(card_depth_offset, host.ACTION_CARD_FACE_RADIUS)
+		body_plate.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_body(host.ACTION_CARD_FACE_RADIUS, host.COLOR_INK, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)))
+		card_root.add_child(body_plate)
+		var body_connectors := ActivityCardStyles.prism_connector_overlay(card_depth_offset, host.ACTION_CARD_FACE_RADIUS, "", ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, host.COLOR_INK)
+		body_connectors.name = "NormalActivityCardPrismConnectors"
+		body_connectors.offset_left = pop_card.offset_left
+		body_connectors.offset_right = pop_card.offset_right
+		body_connectors.face_bottom_inset = card_depth_offset.y
+		var normal_card_base_color := ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE).darkened(0.42)
+		body_connectors.side_fill_color = normal_card_base_color
+		body_connectors.bottom_fill_color = normal_card_base_color
 		body_connectors.z_index = 146
-		pop_card.add_child(body_connectors)
+		card_root.add_child(body_connectors)
+		pop_card.set_meta("activity_card_connector_node_id", body_connectors.get_instance_id())
 	var bg = host._skill_detail_surface()._action_card_background(skill_id, action)
 	_apply_recovery_card_background_shape(bg, action)
 	if uses_flat_normal_card:
-		var face_art_inset := 0.0
-		bg.offset_left = face_art_inset
-		bg.offset_right = -face_art_inset
-		bg.offset_top = face_art_inset
-		bg.offset_bottom = -card_depth_offset.y - face_art_inset
+		bg.offset_left = 0.0
+		bg.offset_right = 0.0
+		bg.offset_top = 0.0
+		bg.offset_bottom = -card_depth_offset.y
 		if bg is RoundedTextureRect:
-			(bg as RoundedTextureRect).radius = maxf(1.0, host.ACTION_CARD_FACE_RADIUS - face_art_inset)
+			(bg as RoundedTextureRect).radius = host.ACTION_CARD_FACE_RADIUS
 	pop_card.add_child(bg)
 	if uses_flat_normal_card:
 		var face_outline := ActivityCardBorder.new()
@@ -5868,7 +5921,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		face_outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		face_outline.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
 		face_outline.radius = host.ACTION_CARD_FACE_RADIUS
-		face_outline.border_width = 16.0
+		face_outline.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 		face_outline.border_color = Color("#171615")
 		pop_card.add_child(face_outline)
 	var blue_guy_chicken_stage: Control = null
@@ -5882,7 +5935,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 
 	var shade: Panel = null
 	if not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
-		shade = ActivityCardStyles.activity_card_shade_layer(pop_card, 0.50)
+		shade = ActivityCardStyles.activity_card_shade_layer(pop_card, 0.20)
 
 	var margin = MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -5907,16 +5960,23 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var art_panel_size := Vector2(382, 382) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
 	art_panel.custom_minimum_size = art_panel_size
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	art_panel.add_theme_stylebox_override("panel", ActivityCardStyles.cached_action_art(Callable(host, "_surface_style")))
+	var art_panel_style := ActivityCardStyles.cached_action_art(Callable(host, "_surface_style"))
+	art_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if uses_flat_normal_card else art_panel_style)
 	art_panel.modulate = Color.WHITE
 	art_panel.clip_contents = false
 	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_slot.add_child(art_panel)
+	if uses_flat_normal_card:
+		var art_face := ActionArtUi.border_overlay(art_panel_style)
+		art_face.name = "ActionArtRaisedFace"
+		art_face.z_index = 1
+		art_panel.add_child(art_face)
 	var art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
 	if uses_flat_normal_card:
 		art.custom_minimum_size = Vector2(398, 398)
 		art.size = Vector2(398, 398)
 		art.position = Vector2(-8, -8)
+		art.z_index = 2
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
 		art.visible = false
@@ -5926,7 +5986,8 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		ActionArtUi.special_type_icon_path(action, Callable(host, "_is_event_action")),
 		Callable(host.visual_texture_cache, "_texture_or_visual_fallback")
 	)
-	art_panel.add_child(ActionArtUi.border_overlay(ActivityCardStyles.cached_action_art_border(Callable(host, "_surface_style"))))
+	var art_border := ActionArtUi.border_overlay(ActivityCardStyles.cached_action_art_border(Callable(host, "_surface_style")))
+	art_panel.add_child(art_border)
 
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -5935,7 +5996,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	row.add_child(copy)
 	row.add_child(art_slot)
 
-	var action_name_label = host._label(str(action["name"]), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	if uses_flat_normal_card:
 		action_name_label.add_theme_font_size_override("font_size", 112)
 	action_name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
@@ -5963,19 +6024,19 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var normal_stat_top: Label = null
 	var normal_stat_bottom: Label = null
 	if uses_flat_normal_card:
-		var normal_stat_panel: PanelContainer = skill_detail_surface._normal_activity_stat_panel(Vector2(900, 262))
+		var normal_stat_panel: PanelContainer = skill_detail_surface._normal_activity_stat_panel(Vector2(880, 300))
 		var normal_stat_items := GridContainer.new()
 		normal_stat_items.columns = 2
-		normal_stat_items.add_theme_constant_override("h_separation", 10)
-		normal_stat_items.add_theme_constant_override("v_separation", 2)
+		normal_stat_items.add_theme_constant_override("h_separation", 20)
+		normal_stat_items.add_theme_constant_override("v_separation", 8)
 		normal_stat_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		xp_box = skill_detail_surface._normal_activity_stat_icon_item(xp_label, "xp")
 		stamina_box = skill_detail_surface._normal_activity_stat_icon_item(stamina_label, "stamina")
 		time_box = skill_detail_surface._normal_activity_stat_icon_item(time_label, "time")
 		success_box = skill_detail_surface._normal_activity_stat_icon_item(success_label, "success")
 		normal_stat_items.add_child(xp_box)
-		normal_stat_items.add_child(stamina_box)
 		normal_stat_items.add_child(time_box)
+		normal_stat_items.add_child(stamina_box)
 		normal_stat_items.add_child(success_box)
 		normal_stat_panel.add_child(normal_stat_items)
 		stat_row.add_child(normal_stat_panel)
@@ -5994,8 +6055,8 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var mastery_ring: Control = null
 	if MasteryState.action_has_mastery(host, action):
 		if not RecoveryModules.has_recovery(action):
-			mastery_ring = ActivityCardStyles.action_art_mastery_ring()
-			mastery_ring.z_index = 20
+			mastery_ring = ActivityCardStyles.action_art_mastery_ring(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+			mastery_ring.z_index = 0
 			art_panel.add_child(mastery_ring)
 		medal = TextureRect.new()
 		medal.anchor_left = 0.0
@@ -6040,21 +6101,20 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		progress = ActivityProgressRail.new()
 		progress.visible = true
 		ThemeStyles.apply_activity_progress_rail_action_theme(progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), ThemeStyles.combo_progress_segment_theme_colors(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE), host.COLOR_INK)
-		if not RecoveryModules.has_recovery(action):
-			progress.fill_color = Color("#e3323b")
-			progress.empty_color = Color("#5a1918")
-			progress.set_color_segments([], [])
 		progress.anchor_left = 0.0
 		progress.anchor_right = 1.0
 		progress.anchor_top = 1.0
 		progress.anchor_bottom = 1.0
-		progress.offset_left = 0.0 if RecoveryModules.has_recovery(action) else -4.0
-		progress.offset_right = 0.0 if RecoveryModules.has_recovery(action) else 4.0
-		var normal_progress_height := 96.0
+		progress.offset_left = 0.0
+		progress.offset_right = 0.0
+		var normal_progress_height := 112.0
 		var normal_progress_bottom_margin := 0.0
 		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin - normal_progress_height
 		progress.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin
-		progress.top_lip_height = 7.0 if RecoveryModules.has_recovery(action) else 0.0
+		progress.top_lip_height = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
+		progress.edge_inset = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
+		if not RecoveryModules.has_recovery(action):
+			progress.bottom_radius = host.ACTION_CARD_FACE_RADIUS
 		if skill_id == host.running_skill_id and str(action.get("id", "")) == host.running_action_id:
 			progress.set_value(clampf(host.action_progress, 0.0, 1.0) * 100.0)
 		_apply_recovery_progress_rail_shape(progress, action)
@@ -6527,15 +6587,18 @@ func _set_activity_button_pop_depth_offset_bound(offset: Vector2, pop_id: int) -
 func _activity_card_pop_depth_offset(pop: Control) -> Vector2:
 	if pop == null or not is_instance_valid(pop):
 		return Vector2.ZERO
-	return Vector2(pop.offset_left - host.ACTION_CARD_POP_GUTTER, pop.offset_top)
+	var base_left := float(pop.get_meta("activity_card_base_offset_left", host.ACTION_CARD_POP_GUTTER))
+	return Vector2(pop.offset_left - base_left, pop.offset_top)
 
 
 func _set_activity_card_pop_depth_offset_bound(offset: Vector2, pop_id: int) -> void:
 	var pop: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(pop_id))
 	if pop == null:
 		return
-	pop.offset_left = host.ACTION_CARD_POP_GUTTER + offset.x
-	pop.offset_right = -host.ACTION_CARD_POP_GUTTER + offset.x
+	var base_left := float(pop.get_meta("activity_card_base_offset_left", host.ACTION_CARD_POP_GUTTER))
+	var base_right := float(pop.get_meta("activity_card_base_offset_right", -host.ACTION_CARD_POP_GUTTER))
+	pop.offset_left = base_left + offset.x
+	pop.offset_right = base_right + offset.x
 	pop.offset_top = offset.y
 	pop.offset_bottom = ActivityCardStyles.activity_card_pop_base_bottom_offset(pop) + offset.y
 	ActivityCardStyles.set_activity_card_depth_face_offset_from_pop(pop, offset, host.ACTION_CARD_POP_GUTTER, host.ACTION_CARD_3D_DEPTH_OFFSET.y)
@@ -6547,6 +6610,13 @@ func _action_card_supports_3d_press(card: Dictionary) -> bool:
 	var pop: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("pop"))
 	var depth: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("depth"))
 	return pop != null and depth != null
+
+
+func _action_card_press_offset(card: Dictionary) -> Vector2:
+	var pop: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("pop"))
+	if pop != null and pop.has_meta("activity_card_press_offset"):
+		return pop.get_meta("activity_card_press_offset") as Vector2
+	return host.ACTION_CARD_3D_PRESS_OFFSET
 
 
 func _queue_action_card_3d_press(action_key: String) -> void:
@@ -6585,7 +6655,7 @@ func _press_action_card_3d(action_key: String) -> void:
 	if not _action_card_supports_3d_press(card):
 		return
 	card["card_3d_pressed"] = true
-	_animate_action_card_depth_to(card, host.ACTION_CARD_3D_PRESS_OFFSET, host.ACTION_CARD_3D_PRESS_SECONDS, Tween.TRANS_QUAD, Tween.EASE_OUT)
+	_animate_action_card_depth_to(card, _action_card_press_offset(card), host.ACTION_CARD_3D_PRESS_SECONDS, Tween.TRANS_QUAD, Tween.EASE_OUT)
 
 
 func _release_action_card_3d_press(action_key: String) -> void:
@@ -6612,16 +6682,15 @@ func _animate_action_card_3d_click(action_key: String) -> void:
 		host._skill_detail_surface()._discard_action_card_key(action_key)
 		return
 	var current := _activity_card_pop_depth_offset(pop)
-	if current.length_squared() > 0.25:
-		_release_action_card_3d_press(action_key)
-		return
 	host._app_lifecycle_runtime()._kill_card_tween(card, "depth_press_tween")
 	var pop_id := pop.get_instance_id()
 	var tween: Tween = host.create_tween()
 	card["depth_press_tween"] = tween
 	var setter := Callable(self, "_set_activity_card_pop_depth_offset_bound").bind(pop_id)
-	tween.tween_method(setter, current, host.ACTION_CARD_3D_PRESS_OFFSET, host.ACTION_CARD_3D_PRESS_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
-	tween.tween_method(setter, host.ACTION_CARD_3D_PRESS_OFFSET, Vector2.ZERO, host.ACTION_CARD_3D_RELEASE_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var press_offset := _action_card_press_offset(card)
+	tween.tween_method(setter, current, press_offset, host.ACTION_CARD_3D_PRESS_SECONDS).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+	tween.tween_interval(host.ACTION_CARD_3D_PRESS_HOLD_SECONDS)
+	tween.tween_method(setter, press_offset, Vector2.ZERO, host.ACTION_CARD_3D_RELEASE_SECONDS).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.finished.connect(_finish_action_card_3d_click.bind(action_key, pop_id))
 
 

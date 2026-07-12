@@ -576,7 +576,7 @@ const DETAIL_PULL_TIP_TRIGGER_OFFSET := 92.0
 const DETAIL_PULL_TIP_FULL_OFFSET := 210.0
 const DETAIL_LAZY_TIP_HEIGHT := 174.0
 const DETAIL_LAZY_VIEWPORT_BUFFER_PX := 120.0
-const FISHING_DETAIL_LAZY_VIEWPORT_BUFFER_PX := 1800.0
+const FISHING_DETAIL_LAZY_VIEWPORT_BUFFER_PX := 120.0
 const DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX := 240.0
 const DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := 2
 const FISHING_DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := 4
@@ -585,7 +585,7 @@ const BOOT_DETAIL_COMPLETE_BUDGET_PER_FRAME := 3
 const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 1
 const DETAIL_LAZY_UNMOUNT_ENABLED := true
 const DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
-const FISHING_DETAIL_LAZY_UNMOUNT_BUFFER_PX := 2800.0
+const FISHING_DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
 const DETAIL_LAZY_UNMOUNT_BUDGET_PER_FRAME := 2
 const DETAIL_LAZY_SETTLE_WARM_MOUNT_ENABLED := true
 const DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME := 1
@@ -2108,7 +2108,7 @@ func _sync_action_stat_chip_title(value_label: Label, title_text: String) -> voi
 		value_label.set_meta("stat_title_text", title_text)
 		host._app_lifecycle_runtime().set_label_text_if_changed(title_label, title_text)
 	if bool(value_label.get_meta("normal_activity_stat_text", false)):
-		title_label.visible = not title_text.is_empty()
+		title_label.visible = not bool(value_label.get_meta("normal_activity_stat_title_hidden", false)) and not title_text.is_empty()
 		return
 	if int(title_label.get_meta("stat_title_outline_size", -1)) != 0:
 		title_label.set_meta("stat_title_outline_size", 0)
@@ -2357,10 +2357,10 @@ func _compact_action_stat_box(box: Control, value_label: Label) -> void:
 
 
 func _normal_activity_stat_icon_item(value_label: Label, stat_kind: String, interactive := false, skill_id := "", action_id := "") -> Control:
-	var icon_size := 104.0
-	var value_width := 216.0 if stat_kind == "success" else 158.0
+	var icon_size := 144.0
+	var value_width := 248.0
 	var item := Panel.new()
-	item.custom_minimum_size = Vector2(410, 118)
+	item.custom_minimum_size = Vector2(430, 144)
 	item.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	item.mouse_filter = Control.MOUSE_FILTER_STOP if interactive and not stat_kind.is_empty() else Control.MOUSE_FILTER_IGNORE
 	item.set_meta("action_stat_box", true)
@@ -2369,23 +2369,23 @@ func _normal_activity_stat_icon_item(value_label: Label, stat_kind: String, inte
 	if interactive and not stat_kind.is_empty():
 		item.gui_input.connect(_on_action_stat_box_gui_input.bind(skill_id, action_id, stat_kind))
 	_apply_action_stat_box_style(item, false)
-	value_label.add_theme_font_size_override("font_size", 72)
+	value_label.add_theme_font_size_override("font_size", 96)
 	value_label.add_theme_color_override("font_color", Color.WHITE)
 	value_label.add_theme_color_override("font_outline_color", COLOR_INK)
-	value_label.add_theme_constant_override("outline_size", 18)
+	value_label.add_theme_constant_override("outline_size", 30)
 	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	value_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	value_label.custom_minimum_size = Vector2(value_width, 88)
-	var content_width := icon_size + 14.0 + value_width
-	var content_x := floorf((item.custom_minimum_size.x - content_width) * 0.5)
-	value_label.position = Vector2(content_x + icon_size + 14.0, 15.0)
+	value_label.custom_minimum_size = Vector2(value_width, 144)
+	var content_x := 10.0
+	value_label.position = Vector2(content_x + icon_size + 28.0, 0.0)
 	value_label.size = value_label.custom_minimum_size
 	value_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	value_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	value_label.set_meta("normal_activity_stat_text", true)
 	var icon := _normal_activity_stat_icon(_normal_activity_stat_icon_path(stat_kind), icon_size)
-	icon.position = Vector2(content_x, 7.0)
+	icon.position = Vector2(content_x, 0.0)
 	icon.size = icon.custom_minimum_size
 	item.add_child(icon)
 	item.add_child(value_label)
@@ -2395,16 +2395,26 @@ func _normal_activity_stat_icon_item(value_label: Label, stat_kind: String, inte
 func _normal_activity_stat_icon(texture_path: String, icon_size: float) -> Control:
 	var slot := Control.new()
 	slot.custom_minimum_size = Vector2(icon_size, icon_size)
+	slot.clip_contents = false
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var texture: Texture2D = host.visual_texture_cache._texture_or_visual_fallback(texture_path)
-	for offset in [Vector2(-4, 0), Vector2(4, 0), Vector2(0, -4), Vector2(0, 4)]:
+	if texture_path.ends_with("infochip-icon-time.png"):
+		var hourglass_texture := AtlasTexture.new()
+		hourglass_texture.atlas = texture
+		hourglass_texture.region = Rect2(10, 0, 502, 512)
+		texture = hourglass_texture
+	for offset in [
+		Vector2(-10, 0), Vector2(10, 0), Vector2(0, -10), Vector2(0, 10),
+		Vector2(-7, -7), Vector2(7, -7), Vector2(-7, 7), Vector2(7, 7),
+	]:
 		var outline := TextureRect.new()
 		outline.set_anchors_preset(Control.PRESET_FULL_RECT)
 		outline.position = offset
 		outline.texture = texture
-		outline.modulate = COLOR_INK
 		outline.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		outline.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		outline.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		outline.modulate = COLOR_INK
 		outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		slot.add_child(outline)
 	var icon := TextureRect.new()
@@ -2430,7 +2440,7 @@ func _normal_activity_stat_icon_path(stat_kind: String) -> String:
 func _normal_activity_stat_row_label() -> Label:
 	var label := host._label("", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
-	label.add_theme_constant_override("outline_size", 10)
+	label.add_theme_constant_override("outline_size", 24)
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2444,25 +2454,18 @@ func _normal_activity_stat_panel(minimum_size := Vector2(920, 92)) -> PanelConta
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	panel.z_index = 20
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.02, 0.03, 0.02, 0.52)
-	style.set_border_width_all(0)
-	style.set_corner_radius_all(24)
-	style.content_margin_left = 22
-	style.content_margin_right = 22
-	style.content_margin_top = 0
-	style.content_margin_bottom = 2
-	style.anti_aliasing = true
-	panel.add_theme_stylebox_override("panel", style)
+	panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	return panel
 
 
 func _sync_normal_activity_stat_text(card: Dictionary, show_stamina_stat: bool, time_title: String) -> void:
+	var xp_label := card.get("xp") as Label
+	if xp_label != null and xp_label.text.begins_with("+"):
+		host._app_lifecycle_runtime().set_label_text_if_changed(xp_label, xp_label.text.trim_prefix("+"))
 	var top_label := card.get("normal_stat_top") as Label
 	var bottom_label := card.get("normal_stat_bottom") as Label
 	if top_label == null or bottom_label == null:
 		return
-	var xp_label := card.get("xp") as Label
 	var stamina_label := card.get("stamina") as Label
 	var time_label := card.get("time") as Label
 	var success_label := card.get("success") as Label
@@ -2507,11 +2510,11 @@ func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color:
 	if bool(label.get_meta("normal_activity_stat_text", false)):
 		label.add_theme_color_override("font_color", Color.WHITE)
 		label.add_theme_color_override("font_outline_color", COLOR_INK)
-		label.add_theme_constant_override("outline_size", 10)
+		label.add_theme_constant_override("outline_size", 30)
 		if title_label != null:
 			title_label.add_theme_color_override("font_color", Color.WHITE)
 			title_label.add_theme_color_override("font_outline_color", COLOR_INK)
-			title_label.add_theme_constant_override("outline_size", 8)
+			title_label.add_theme_constant_override("outline_size", 20)
 		return
 	if buffed:
 		label.add_theme_color_override("font_color", Color.WHITE)
@@ -2579,10 +2582,10 @@ func _stat_box_style_for_box(box: Control, active := false, pressed := false) ->
 
 func _normal_activity_stat_box_style(pressed := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#8f9694") if pressed else Color("#aeb5b3")
-	style.border_color = COLOR_INK
-	style.set_border_width_all(8)
-	style.set_corner_radius_all(22)
+	style.bg_color = Color.TRANSPARENT
+	style.border_color = Color.TRANSPARENT
+	style.set_border_width_all(0)
+	style.set_corner_radius_all(0)
 	style.content_margin_left = 0
 	style.content_margin_right = 0
 	style.content_margin_top = 0
@@ -2593,7 +2596,7 @@ func _normal_activity_stat_box_style(pressed := false) -> StyleBoxFlat:
 
 func _stat_box_style(active := false, pressed := false, fill := Color.WHITE) -> StyleBoxTexture:
 	var outline: Color = host.COLOR_BLUE if active else COLOR_INK
-	return PaperButtonStyles.paper_button_style_with_shape(fill, 38, 18, pressed, false, outline, 5.5, host.paper_button_style_textures, host.dark_mode_enabled, host.PAPER_BUTTON_OUTLINE_WIDTH, Callable(host, "_theme_surface_color"), Callable(host, "_theme_outline_color"), Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture"))
+	return PaperButtonStyles.paper_button_style_with_shape(fill, 38, 18, pressed, false, outline, 5.5, host.paper_button_style_textures, host.dark_mode_enabled, ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, Callable(host, "_theme_surface_color"), Callable(host, "_theme_outline_color"), Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture"))
 
 
 func _thieving_skill_info_button() -> Button:
@@ -5792,6 +5795,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	card_root.clip_contents = false
 
 	var pop_card := Control.new()
+	pop_card.name = "ActivityCardFace"
 	pop_card.anchor_left = 0.0
 	pop_card.anchor_right = 1.0
 	pop_card.anchor_top = 0.0
@@ -5801,6 +5805,10 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	pop_card.offset_top = 0.0
 	pop_card.set_meta("activity_card_depth_bottom_inset", card_depth_offset.y)
 	pop_card.offset_bottom = ActivityCardStyles.activity_card_pop_base_bottom_offset(pop_card)
+	pop_card.set_meta("activity_card_base_offset_left", pop_card.offset_left)
+	pop_card.set_meta("activity_card_base_offset_right", pop_card.offset_right)
+	if uses_flat_normal_card:
+		pop_card.set_meta("activity_card_press_offset", ActivityCardStyles.NORMAL_ACTIVITY_CARD_PRESS_OFFSET)
 	pop_card.clip_contents = false
 	pop_card.mouse_filter = Control.MOUSE_FILTER_PASS
 	pop_card.z_index = 1
@@ -5814,7 +5822,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		ThemeStyles.apply_activity_card_depth_action_theme(depth, skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE)
 		_apply_recovery_card_depth_shape(depth, action)
 		if uses_flat_normal_card:
-			ActivityCardStyles.apply_normal_activity_card_depth(depth)
+			ActivityCardStyles.apply_normal_activity_card_depth(depth, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 			depth.visible = false
 		if BuildableModules.is_buildable(action) and not BuildableModules.is_built(host.built_modules, skill_id, action, Callable(host, "_action_key")):
 			depth.back_color = Color("#14758e")
@@ -5835,28 +5843,36 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	pop_card.add_child(background_underlay)
 	if uses_flat_normal_card:
 		var body_plate := Panel.new()
+		body_plate.name = "NormalActivityCardBackFace"
 		body_plate.set_anchors_preset(Control.PRESET_FULL_RECT)
-		body_plate.offset_left = card_depth_offset.x
-		body_plate.offset_right = card_depth_offset.x
+		body_plate.offset_left = pop_card.offset_left
+		body_plate.offset_right = pop_card.offset_right
 		body_plate.offset_top = card_depth_offset.y
 		body_plate.offset_bottom = 0.0
 		body_plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		body_plate.z_index = 145
-		body_plate.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_body(host.ACTION_CARD_FACE_RADIUS))
-		pop_card.add_child(body_plate)
-		var body_connectors := ActivityCardStyles.normal_activity_card_body_connectors(card_depth_offset, host.ACTION_CARD_FACE_RADIUS)
+		body_plate.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_body(host.ACTION_CARD_FACE_RADIUS, host.COLOR_INK, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)))
+		card_root.add_child(body_plate)
+		var body_connectors := ActivityCardStyles.prism_connector_overlay(card_depth_offset, host.ACTION_CARD_FACE_RADIUS, "", ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, host.COLOR_INK)
+		body_connectors.name = "NormalActivityCardPrismConnectors"
+		body_connectors.offset_left = pop_card.offset_left
+		body_connectors.offset_right = pop_card.offset_right
+		body_connectors.face_bottom_inset = card_depth_offset.y
+		var normal_card_base_color := ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE).darkened(0.42)
+		body_connectors.side_fill_color = normal_card_base_color
+		body_connectors.bottom_fill_color = normal_card_base_color
 		body_connectors.z_index = 146
-		pop_card.add_child(body_connectors)
+		card_root.add_child(body_connectors)
+		pop_card.set_meta("activity_card_connector_node_id", body_connectors.get_instance_id())
 	var bg = _action_card_background(skill_id, action)
 	_apply_recovery_card_background_shape(bg, action)
 	if uses_flat_normal_card:
-		var face_art_inset := 0.0
-		bg.offset_left = face_art_inset
-		bg.offset_right = -face_art_inset
-		bg.offset_top = face_art_inset
-		bg.offset_bottom = -card_depth_offset.y - face_art_inset
+		bg.offset_left = 0.0
+		bg.offset_right = 0.0
+		bg.offset_top = 0.0
+		bg.offset_bottom = -card_depth_offset.y
 		if bg is RoundedTextureRect:
-			(bg as RoundedTextureRect).radius = maxf(1.0, host.ACTION_CARD_FACE_RADIUS - face_art_inset)
+			(bg as RoundedTextureRect).radius = host.ACTION_CARD_FACE_RADIUS
 	bg.visible = not uses_diamond_arena
 	pop_card.add_child(bg)
 	if uses_flat_normal_card:
@@ -5866,7 +5882,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		face_outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		face_outline.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
 		face_outline.radius = host.ACTION_CARD_FACE_RADIUS
-		face_outline.border_width = 16.0
+		face_outline.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 		face_outline.border_color = Color("#171615")
 		pop_card.add_child(face_outline)
 
@@ -5904,7 +5920,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 
 	var shade: Panel = null
 	if not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
-		shade = ActivityCardStyles.activity_card_shade_layer(pop_card, 0.50)
+		shade = ActivityCardStyles.activity_card_shade_layer(pop_card, 0.20)
 
 	return {
 		"card_root": card_root,
@@ -5925,7 +5941,7 @@ func _attach_diamond_combat_arena_frame(pop_card: Control) -> _DiamondArenaFrame
 	frame.fill_color = Color("#a01419")
 	frame.border_color = COLOR_INK
 	frame.accent_color = Color("#ff0b42")
-	frame.border_width = 14.0
+	frame.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 	frame.accent_width = 6.0
 	frame.inset = 26.0
 	pop_card.add_child(frame)
@@ -5958,15 +5974,22 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	var art_panel_size := Vector2(400, 400) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
 	art_panel.custom_minimum_size = art_panel_size
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	art_panel.add_theme_stylebox_override("panel", ActivityCardStyles.cached_action_art(Callable(host, "_surface_style")))
+	var art_panel_style := ActivityCardStyles.cached_action_art(Callable(host, "_surface_style"))
+	art_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if uses_flat_normal_card else art_panel_style)
 	art_panel.clip_contents = false
 	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_slot.add_child(art_panel)
+	if uses_flat_normal_card:
+		var art_face := ActionArtUi.border_overlay(art_panel_style)
+		art_face.name = "ActionArtRaisedFace"
+		art_face.z_index = 1
+		art_panel.add_child(art_face)
 	var art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
 	if uses_flat_normal_card:
 		art.custom_minimum_size = Vector2(416, 416)
 		art.size = Vector2(416, 416)
 		art.position = Vector2(-8, -8)
+		art.z_index = 2
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
 		art.visible = false
@@ -5981,7 +6004,8 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		ActionArtUi.special_type_icon_path(action, Callable(host, "_is_event_action")),
 		Callable(host.visual_texture_cache, "_texture_or_visual_fallback")
 	)
-	art_panel.add_child(ActionArtUi.border_overlay(ActivityCardStyles.cached_action_art_border(Callable(host, "_surface_style"))))
+	var art_border := ActionArtUi.border_overlay(ActivityCardStyles.cached_action_art_border(Callable(host, "_surface_style")))
+	art_panel.add_child(art_border)
 
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -6003,7 +6027,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		title_row.z_as_relative = false
 		copy.add_child(title_row)
 
-	var action_name_label = host._label(str(action["name"]), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	if uses_flat_normal_card:
 		action_name_label.add_theme_font_size_override("font_size", 112)
 	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -6066,19 +6090,19 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 	var normal_stat_top: Label = null
 	var normal_stat_bottom: Label = null
 	if uses_flat_normal_card:
-		var stat_panel := _normal_activity_stat_panel(Vector2(900, 262))
+		var stat_panel := _normal_activity_stat_panel(Vector2(880, 300))
 		var stat_items := GridContainer.new()
 		stat_items.columns = 2
-		stat_items.add_theme_constant_override("h_separation", 10)
-		stat_items.add_theme_constant_override("v_separation", 2)
+		stat_items.add_theme_constant_override("h_separation", 20)
+		stat_items.add_theme_constant_override("v_separation", 8)
 		stat_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		xp_box = _normal_activity_stat_icon_item(xp_label, "xp", true, skill_id, action_id)
 		stamina_box = _normal_activity_stat_icon_item(stamina_label, "stamina", true, skill_id, action_id)
 		time_box = _normal_activity_stat_icon_item(time_label, "time", true, skill_id, action_id)
 		success_box = _normal_activity_stat_icon_item(success_label, "success", true, skill_id, action_id)
 		stat_items.add_child(xp_box)
-		stat_items.add_child(stamina_box)
 		stat_items.add_child(time_box)
+		stat_items.add_child(stamina_box)
 		stat_items.add_child(success_box)
 		stat_panel.add_child(stat_items)
 		stat_row.add_child(stat_panel)
@@ -6163,8 +6187,8 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 	var mastery_ring: Control = null
 	if MasteryState.action_has_mastery(host, action):
 		if not RecoveryModules.has_recovery(action):
-			mastery_ring = ActivityCardStyles.action_art_mastery_ring()
-			mastery_ring.z_index = 20
+			mastery_ring = ActivityCardStyles.action_art_mastery_ring(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+			mastery_ring.z_index = 0
 			art_panel.add_child(mastery_ring)
 		medal = TextureRect.new()
 		medal.anchor_left = 0.0
@@ -6184,6 +6208,7 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 		art_panel.add_child(medal)
 		mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
 		mastery_progress.border_color = COLOR_INK
+		mastery_progress.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 		ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
 		mastery_progress.easing_speed = 5.0
 		mastery_progress.z_index = 20
@@ -6214,21 +6239,20 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 		progress = ActivityProgressRail.new()
 		progress.visible = true
 		ThemeStyles.apply_activity_progress_rail_action_theme(progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), ThemeStyles.combo_progress_segment_theme_colors(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE), host.COLOR_INK)
-		if not RecoveryModules.has_recovery(action):
-			progress.fill_color = Color("#e3323b")
-			progress.empty_color = Color("#5a1918")
-			progress.set_color_segments([], [])
 		progress.anchor_left = 0.0
 		progress.anchor_right = 1.0
 		progress.anchor_top = 1.0
 		progress.anchor_bottom = 1.0
-		progress.offset_left = 0.0 if RecoveryModules.has_recovery(action) else -4.0
-		progress.offset_right = 0.0 if RecoveryModules.has_recovery(action) else 4.0
-		var normal_progress_height := 96.0
+		progress.offset_left = 0.0
+		progress.offset_right = 0.0
+		var normal_progress_height := 112.0
 		var normal_progress_bottom_margin := 0.0
 		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin - normal_progress_height
 		progress.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin
-		progress.top_lip_height = 7.0 if RecoveryModules.has_recovery(action) else 0.0
+		progress.top_lip_height = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
+		progress.edge_inset = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
+		if not RecoveryModules.has_recovery(action):
+			progress.bottom_radius = host.ACTION_CARD_FACE_RADIUS
 		if skill_id == host.running_skill_id and str(action.get("id", "")) == host.running_action_id:
 			progress.set_value(clampf(host.action_progress, 0.0, 1.0) * 100.0)
 		_apply_recovery_progress_rail_shape(progress, action)
@@ -6736,6 +6760,7 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 		bool(card.get("unlock_ceremony_pending", false))
 		or bool(card.get("unlock_ceremony_active", false))
 	)
+	_set_activity_card_locked_visual(card, (not unlocked) or ceremony_active)
 	var skill_id = str(card.get("skill_id", host.selected_skill_id))
 	var action_id = str(action.get("id", card.get("action_id", "")))
 	var ready_pending = bool(card.get("unlock_ready_pending", false)) or host._activity_unlock_runtime()._action_has_pending_unlock_readiness(action_id)
@@ -6791,6 +6816,15 @@ func _sync_activity_lock_overlay(card: Dictionary, action: Dictionary, unlocked:
 			rig.call("set_requirement_states", host._activity_unlock_runtime()._action_requirement_states(skill_id, action))
 		else:
 			rig.call("set_lock_state", _activity_lock_visual_state(skill_id, action, unlocked, ceremony_active, lock_visible))
+
+
+func _set_activity_card_locked_visual(card: Dictionary, locked: bool) -> void:
+	var next_shade: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("shade")) as Control
+	if next_shade == null and locked:
+		next_shade = ActivityCardStyles.ensure_activity_card_shade(card, 0.20)
+	if next_shade != null:
+		next_shade.visible = locked
+		next_shade.modulate = Color.WHITE
 
 
 func _activity_lock_requirement_sync_key(skill_id: String, action: Dictionary) -> String:
@@ -6907,7 +6941,7 @@ func _sync_activity_stat_popup(card: Dictionary, skill_id: String, action: Dicti
 		var border = card.get("border") as ActivityCardBorder
 		if border != null:
 			border.border_color = host.COLOR_INK
-			border.border_width = 8.0
+			border.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 			border.queue_redraw()
 		_sync_activity_stat_box_styles(card, stat_kind)
 	if expanded:
@@ -9245,8 +9279,6 @@ func _detail_lazy_can_unmount_entry(lazy_entry: Dictionary, pinned: Dictionary) 
 		return false
 	var kind = _detail_lazy_entry_kind(lazy_entry)
 	if not _detail_lazy_kind_is_module(kind):
-		return false
-	if host._fishing_rework_active_for_skill(selected_skill_id) and _detail_lazy_kind_is_fishing_module(kind):
 		return false
 	var track_id = str(lazy_entry.get("track_id", ""))
 	if track_id.is_empty() or _detail_lazy_entry_is_pinned(lazy_entry, pinned):

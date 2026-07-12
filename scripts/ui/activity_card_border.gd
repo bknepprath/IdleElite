@@ -4,7 +4,7 @@ extends Control
 const FAST_ARC_SEGMENTS := 8
 
 var border_color := Color("#171615")
-var border_width := 8.0
+var border_width := 12.0
 var radius := 66.0
 var bottom_shape := "round"
 var bottom_cutout_color := Color("#f8f1e5")

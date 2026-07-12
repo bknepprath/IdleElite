@@ -80,9 +80,9 @@ func _draw_fast_depth(face_size: Vector2, front: Vector2, back: Vector2) -> void
 		_draw_top_right_depth_connector(face_size, front, back)
 		_draw_wide_u_bottom_connector(face_size, front, back)
 	if bottom_shape == "wide_u":
-		_draw_wide_u_back_outline(Rect2(back, face_size), lip_color, 8.0)
+		_draw_wide_u_back_outline(Rect2(back, face_size), lip_color, 12.0)
 	else:
-		_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 8.0, draw_back_plate_bottom_outline)
+		_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 12.0, draw_back_plate_bottom_outline)
 
 func _draw_clean_prism_faces(face_size: Vector2, front: Vector2, back: Vector2) -> void:
 	var travel := back - front
@@ -296,7 +296,7 @@ func _draw_wide_u_bottom_connector(face_size: Vector2, front: Vector2, back: Vec
 	for index in range(front_curve.size() - 1):
 		var quad := PackedVector2Array([front_curve[index], front_curve[index + 1], back_curve[index + 1], back_curve[index]])
 		draw_polygon(quad, PackedColorArray([side_color.lerp(bottom_color, 0.35)]))
-	draw_polyline(back_curve, lip_color, 8.0, true)
+	draw_polyline(back_curve, lip_color, 12.0, true)
 
 func _draw_wide_u_back_outline(rect: Rect2, color: Color, width: float) -> void:
 	var half := width * 0.5
@@ -316,7 +316,7 @@ func _draw_back_plate(face_size: Vector2, back: Vector2) -> void:
 	draw_style_box(style, Rect2(back, face_size))
 
 func _draw_back_plate_outline(face_size: Vector2, back: Vector2) -> void:
-	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 7.0)
+	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 12.0)
 
 func _draw_extruded_faces(perimeter: PackedVector2Array, front: Vector2, back: Vector2, face_size: Vector2) -> void:
 	var travel := back - front
@@ -368,7 +368,7 @@ func _draw_extruded_outline(perimeter: PackedVector2Array, front: Vector2, back:
 func _draw_visible_outline_path(path: PackedVector2Array) -> void:
 	if path.size() < 2:
 		return
-	draw_polyline(path, lip_color, 7.0, true)
+	draw_polyline(path, lip_color, 12.0, true)
 
 func _edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
 	var edge := p1 - p0

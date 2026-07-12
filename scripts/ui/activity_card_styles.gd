@@ -3,11 +3,57 @@ extends RefCounted
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
 const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
 
-const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(36.0, 58.0)
+const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
+const NORMAL_ACTIVITY_CARD_PRESS_OFFSET := NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
+const ACTION_CARD_STROKE_WIDTH := 12.0
 
 static var activity_shade_style_cache := {}
 static var action_art_style_cache: StyleBoxFlat
 static var action_art_border_style_cache: StyleBoxFlat
+
+class LockedModuleShade extends Panel:
+	var shade_material: ShaderMaterial
+
+	func _init() -> void:
+		var shader := Shader.new()
+		shader.code = """
+shader_type canvas_item;
+uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
+uniform vec2 control_size = vec2(1.0);
+uniform float corner_radius = 54.0;
+uniform float wash_alpha = 0.20;
+
+void fragment() {
+	vec2 point = UV * control_size;
+	vec2 half_size = control_size * 0.5;
+	vec2 corner = max(half_size - vec2(corner_radius), vec2(0.0));
+	vec2 delta = abs(point - half_size) - corner;
+	float distance_to_corner = length(max(delta, vec2(0.0))) + min(max(delta.x, delta.y), 0.0) - corner_radius;
+	float mask = 1.0 - smoothstep(-1.0, 1.0, distance_to_corner);
+	vec4 color = textureLod(screen_texture, SCREEN_UV, 0.0);
+	float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
+	color.rgb = mix(color.rgb, vec3(gray), 0.98);
+	color.rgb = mix(color.rgb, vec3(0.5), wash_alpha);
+	COLOR = vec4(color.rgb, mask);
+}
+"""
+		shade_material = ShaderMaterial.new()
+		shade_material.shader = shader
+		material = shade_material
+		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		mouse_filter = Control.MOUSE_FILTER_IGNORE
+
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_RESIZED and shade_material != null:
+			shade_material.set_shader_parameter("control_size", size)
+
+	func set_wash_alpha(next_alpha: float) -> void:
+		if shade_material != null:
+			shade_material.set_shader_parameter("wash_alpha", clampf(next_alpha, 0.0, 1.0))
+
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color.WHITE)
+
 
 class PageSwitchButtonFace extends Control:
 	var side := ""
@@ -143,7 +189,7 @@ class PrismConnectorOverlay extends Control:
 	var ink_color := Color("#171615")
 	var side_fill_color := Color("#8f521f")
 	var bottom_fill_color := Color("#c8792c")
-	var stroke_width := 7.0
+	var stroke_width := ACTION_CARD_STROKE_WIDTH
 	var radius := 66.0
 	var diagonal_radius := 32.0
 	var diagonal_width := 96.0
@@ -181,11 +227,17 @@ class PrismConnectorOverlay extends Control:
 		if points.size() != 2:
 			return
 		if draw_fill:
-			_draw_side_faces(travel)
+			if side.is_empty():
+				_draw_rounded_prism_fill(travel)
+			else:
+				_draw_side_faces(travel)
 		if draw_strokes:
-			_draw_side_face_outlines(travel)
-			_draw_connector_stroke(points[0], travel)
-			_draw_connector_stroke(points[1], travel)
+			if side.is_empty():
+				_draw_rounded_prism_outline(points, travel)
+			else:
+				_draw_side_face_outlines(travel)
+				_draw_connector_stroke(points[0], travel)
+				_draw_connector_stroke(points[1], travel)
 
 	func _connector_points() -> PackedVector2Array:
 		if side.is_empty():
@@ -205,8 +257,48 @@ class PrismConnectorOverlay extends Control:
 		])
 
 	func _draw_connector_stroke(start: Vector2, travel: Vector2) -> void:
-		var direction := travel.normalized() if travel.length_squared() > 0.01 else Vector2.ZERO
-		draw_line(start - direction * 1.5, start + travel + direction * 2.0, ink_color, stroke_width, true)
+		var cap_inset := travel.normalized() * stroke_width * 0.5
+		draw_line(start + cap_inset, start + travel - cap_inset, ink_color, stroke_width, true)
+
+	func _draw_rounded_prism_outline(connectors: PackedVector2Array, travel: Vector2) -> void:
+		var half := stroke_width * 0.5
+		var direction := travel.normalized()
+		var back_perimeter := _rounded_visible_perimeter(_connector_face_origin() + travel, _connector_face_size(), half, travel)
+		var path := PackedVector2Array([connectors[0] + direction * half, back_perimeter[0]])
+		for index in range(1, back_perimeter.size()):
+			path.append(back_perimeter[index])
+		path.append(connectors[1] + direction * half)
+		draw_polyline(path, ink_color, stroke_width, false)
+
+	func _draw_rounded_prism_fill(travel: Vector2) -> void:
+		var fill_inset := stroke_width / 3.0
+		var front_perimeter := _rounded_visible_perimeter(_connector_face_origin(), _connector_face_size(), fill_inset, travel)
+		var back_perimeter := _rounded_visible_perimeter(_connector_face_origin() + travel, _connector_face_size(), fill_inset, travel)
+		var polygon := PackedVector2Array(front_perimeter)
+		for index in range(back_perimeter.size() - 1, -1, -1):
+			polygon.append(back_perimeter[index])
+		draw_polygon(polygon, PackedColorArray([side_fill_color]))
+
+	func _rounded_visible_perimeter(origin: Vector2, face_size: Vector2, inset: float, travel: Vector2) -> PackedVector2Array:
+		var corner_radius := maxf(0.0, minf(radius, minf(face_size.x, face_size.y) * 0.5 - inset))
+		var tangent_normal := Vector2(travel.y, -travel.x).normalized()
+		var top_right_center := origin + Vector2(face_size.x - inset - corner_radius, inset + corner_radius)
+		var bottom_right_center := origin + Vector2(face_size.x - inset - corner_radius, face_size.y - inset - corner_radius)
+		var bottom_left_center := origin + Vector2(inset + corner_radius, face_size.y - inset - corner_radius)
+		var start_angle := atan2(tangent_normal.y, tangent_normal.x)
+		var finish_angle := atan2(-tangent_normal.y, -tangent_normal.x)
+		var perimeter := PackedVector2Array([top_right_center + tangent_normal * corner_radius])
+		_append_prism_arc(perimeter, top_right_center, corner_radius, start_angle, 0.0)
+		perimeter.append(bottom_right_center + Vector2(corner_radius, 0.0))
+		_append_prism_arc(perimeter, bottom_right_center, corner_radius, 0.0, PI * 0.5)
+		perimeter.append(bottom_left_center + Vector2(0.0, corner_radius))
+		_append_prism_arc(perimeter, bottom_left_center, corner_radius, PI * 0.5, finish_angle)
+		return perimeter
+
+	func _append_prism_arc(path: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, finish_angle: float) -> void:
+		for step in range(1, 9):
+			var angle := lerpf(start_angle, finish_angle, float(step) / 8.0)
+			path.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
 
 	func _diagonal_corner_inset(current: Vector2, previous: Vector2, next: Vector2) -> float:
 		var incoming := previous - current
@@ -222,9 +314,13 @@ class PrismConnectorOverlay extends Control:
 		if face_size.x <= stroke_width or face_size.y <= stroke_width:
 			return PackedVector2Array()
 		var half := stroke_width * 0.5
-		var corner_bias := maxf(half, minf(radius * 0.18, minf(face_size.x, face_size.y) * 0.08))
-		var top_right := origin + Vector2(face_size.x - corner_bias, corner_bias)
-		var bottom_left := origin + Vector2(corner_bias, face_size.y - corner_bias)
+		var corner_radius := maxf(0.0, minf(radius, minf(face_size.x, face_size.y) * 0.5 - half))
+		var travel := depth_offset - face_offset
+		var tangent_normal := Vector2(travel.y, -travel.x).normalized()
+		var top_right_center := Vector2(face_size.x - half - corner_radius, half + corner_radius)
+		var bottom_left_center := Vector2(half + corner_radius, face_size.y - half - corner_radius)
+		var top_right := origin + top_right_center + tangent_normal * corner_radius
+		var bottom_left := origin + bottom_left_center - tangent_normal * corner_radius
 		return PackedVector2Array([top_right, bottom_left])
 
 	func _diagonal_shape_points() -> PackedVector2Array:
@@ -379,43 +475,14 @@ class PrismConnectorOverlay extends Control:
 			points.append(point)
 
 
-class NormalActivityCardBodyConnectors extends Control:
-	var fill_color := Color("#8b1d22")
-	var depth_offset := NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
-	var radius := 66.0
-
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED:
-			queue_redraw()
-
-	func _draw() -> void:
-		var face_size := Vector2(size.x, size.y - depth_offset.y)
-		if face_size.x <= 1.0 or face_size.y <= 1.0:
-			return
-		var travel := depth_offset
-		var attach := minf(radius, minf(face_size.x, face_size.y) * 0.25)
-		draw_polygon(PackedVector2Array([
-			Vector2(face_size.x, 0.0),
-			Vector2(face_size.x + travel.x, travel.y),
-			Vector2(face_size.x + travel.x, travel.y + attach),
-			Vector2(face_size.x, attach),
-		]), PackedColorArray([fill_color]))
-		draw_polygon(PackedVector2Array([
-			Vector2(0.0, face_size.y),
-			Vector2(travel.x, face_size.y + travel.y),
-			Vector2(travel.x + attach, face_size.y + travel.y),
-			Vector2(attach, face_size.y),
-		]), PackedColorArray([fill_color]))
-
-
 class ActionArtMasteryRing extends Control:
 	var ring_color := Color("#ffd02f")
-	var empty_color := Color("#8b1d22")
+	var empty_color := Color("#862d2d")
 	var ring_shadow_color := Color("#171615")
-	var stroke_width := 28.0
-	var shadow_width := 38.0
-	var radius := 76.0
-	var inset := -14.0
+	var stroke_width := 40.0
+	var shadow_width := 64.0
+	var radius := 58.0
+	var inset := 2.0
 	var gap_start_fraction := 0.035
 	var gap_finish_fraction := 0.875
 	var progress := 0.5
@@ -462,26 +529,10 @@ class ActionArtMasteryRing extends Control:
 		return path
 
 	func _append_arc_points(path: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, end_angle: float) -> void:
-		for step in range(1, 13):
-			var t := float(step) / 12.0
+		for step in range(1, 25):
+			var t := float(step) / 24.0
 			var angle := lerpf(start_angle, end_angle, t)
 			path.append(center + Vector2(cos(angle), sin(angle)) * arc_radius)
-
-	func _draw_path(points: PackedVector2Array, color: Color, width: float, fraction: float) -> void:
-		if points.size() < 2 or fraction <= 0.0:
-			return
-		var target := _path_length(points) * fraction
-		var drawn := 0.0
-		for index in range(points.size() - 1):
-			var start := points[index]
-			var finish := points[index + 1]
-			var length := start.distance_to(finish)
-			if drawn + length > target:
-				finish = start.lerp(finish, (target - drawn) / length)
-				draw_line(start, finish, color, width, true)
-				return
-			draw_line(start, finish, color, width, true)
-			drawn += length
 
 	func _draw_path_segment(points: PackedVector2Array, color: Color, width: float, start_fraction: float, finish_fraction: float) -> void:
 		if points.size() < 2 or finish_fraction <= start_fraction:
@@ -490,8 +541,7 @@ class ActionArtMasteryRing extends Control:
 		var start_distance := total * clampf(start_fraction, 0.0, 1.0)
 		var finish_distance := total * clampf(finish_fraction, 0.0, 1.0)
 		var drawn := 0.0
-		var first_point := Vector2.INF
-		var last_point := Vector2.INF
+		var visible_path := PackedVector2Array()
 		for index in range(points.size() - 1):
 			var segment_start := points[index]
 			var segment_finish := points[index + 1]
@@ -506,14 +556,16 @@ class ActionArtMasteryRing extends Control:
 			var b := minf(finish_distance, next_drawn)
 			var local_start := segment_start.lerp(segment_finish, (a - drawn) / length)
 			var local_finish := segment_start.lerp(segment_finish, (b - drawn) / length)
-			if first_point == Vector2.INF:
-				first_point = local_start
-			last_point = local_finish
-			draw_line(local_start, local_finish, color, width, true)
+			if visible_path.is_empty():
+				visible_path.append(local_start)
+			elif visible_path[visible_path.size() - 1].distance_squared_to(local_start) > 0.01:
+				visible_path.append(local_start)
+			visible_path.append(local_finish)
 			drawn = next_drawn
-		if first_point != Vector2.INF:
-			draw_circle(first_point, width * 0.5, color)
-			draw_circle(last_point, width * 0.5, color)
+		if visible_path.size() >= 2:
+			draw_polyline(visible_path, color, width, true)
+			draw_circle(visible_path[0], width * 0.5, color)
+			draw_circle(visible_path[visible_path.size() - 1], width * 0.5, color)
 
 	func _path_length(points: PackedVector2Array) -> float:
 		var total := 0.0
@@ -565,7 +617,7 @@ static func featured_art(surface_style: Callable, line_color: Color) -> StyleBox
 static func shade(alpha: float) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.5, 0.5, 0.5, alpha)
-	style.set_corner_radius_all(66)
+	style.set_corner_radius_all(54)
 	return style
 
 
@@ -575,6 +627,10 @@ static func activity_card_title_z_index(unlocked: bool, title: CanvasItem = null
 	if title != null and is_instance_valid(title) and title.has_meta("activity_card_locked_title_z_index"):
 		return int(title.get_meta("activity_card_locked_title_z_index"))
 	return 0
+
+
+static func activity_card_title_text(raw_title: String) -> String:
+	return raw_title.replace("\u2009", "").replace(" - ", "-").replace("-", "\u2009–\u2009")
 
 
 static func sync_activity_card_title_layer(card: Dictionary, unlocked: bool, module_title_over_pin_z_index := 0) -> void:
@@ -714,19 +770,19 @@ static func activity_card_depth_layer(theme_color: Color, depth_offset: Vector2,
 	return depth
 
 
-static func apply_normal_activity_card_depth(depth: ActivityCardDepth) -> void:
+static func apply_normal_activity_card_depth(depth: ActivityCardDepth, theme_color := Color("#e84d4d")) -> void:
 	if depth == null:
 		return
-	depth.back_color = Color("#8b1d22")
+	depth.back_color = theme_color.darkened(0.42)
 	depth.side_color = depth.back_color
 	depth.bottom_color = depth.back_color
 	depth.draw_lip_lines = false
 	depth.draw_back_plate_bottom_outline = false
 
 
-static func normal_activity_card_bottom_base(radius: float, ink: Color) -> StyleBoxFlat:
+static func normal_activity_card_bottom_base(radius: float, ink: Color, theme_color := Color("#e84d4d")) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#8b1d22")
+	style.bg_color = theme_color.darkened(0.42)
 	style.border_color = ink
 	style.border_width_left = 4
 	style.border_width_top = 0
@@ -741,29 +797,28 @@ static func normal_activity_card_bottom_base(radius: float, ink: Color) -> Style
 	return style
 
 
-static func normal_activity_card_body(radius: float) -> StyleBoxFlat:
+static func normal_activity_card_body(radius: float, ink: Color, theme_color := Color("#e84d4d")) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#8b1d22")
-	style.set_border_width_all(0)
+	style.bg_color = theme_color.darkened(0.42)
+	style.border_color = ink
+	style.set_border_width_all(int(ACTION_CARD_STROKE_WIDTH))
 	style.set_corner_radius_all(int(round(radius)))
+	style.shadow_color = Color("#21040852")
+	style.shadow_size = 28
+	style.shadow_offset = Vector2(0, 12)
 	style.anti_aliasing = true
 	style.anti_aliasing_size = 1.5
 	return style
 
 
-static func normal_activity_card_body_connectors(depth_offset: Vector2, radius: float) -> NormalActivityCardBodyConnectors:
-	var connectors := NormalActivityCardBodyConnectors.new()
-	connectors.depth_offset = depth_offset
-	connectors.radius = radius
-	connectors.fill_color = Color("#8b1d22")
-	connectors.set_anchors_preset(Control.PRESET_FULL_RECT)
-	connectors.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return connectors
-
-
-static func action_art_mastery_ring() -> ActionArtMasteryRing:
+static func action_art_mastery_ring(theme_color := Color("#e84d4d")) -> ActionArtMasteryRing:
 	var ring := ActionArtMasteryRing.new()
+	ring.empty_color = theme_color.darkened(0.42)
 	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
+	ring.offset_left = -36.0
+	ring.offset_top = -36.0
+	ring.offset_right = 36.0
+	ring.offset_bottom = 36.0
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return ring
 
@@ -836,20 +891,24 @@ static func set_activity_card_depth_face_offset_from_pop(pop: Control, offset: V
 			outline_control.offset_bottom = -bottom_inset + offset.y
 
 
-static func activity_card_shade_layer(pop_card: Control, alpha := 0.50) -> Panel:
+static func activity_card_shade_layer(pop_card: Control, alpha := 0.20) -> Panel:
 	if pop_card == null:
 		return null
-	var shade_panel := Panel.new()
-	shade_panel.add_theme_stylebox_override("panel", cached_shade(alpha))
+	var shade_panel := LockedModuleShade.new()
+	shade_panel.set_wash_alpha(alpha)
 	shade_panel.set_anchors_preset(Control.PRESET_FULL_RECT)
 	shade_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shade_panel.visible = false
-	shade_panel.z_index = 224
+	shade_panel.z_index = 279
+	shade_panel.offset_left = ACTION_CARD_STROKE_WIDTH
+	shade_panel.offset_right = -ACTION_CARD_STROKE_WIDTH
+	shade_panel.offset_top = ACTION_CARD_STROKE_WIDTH
+	shade_panel.offset_bottom = float(pop_card.get_meta("activity_card_depth_bottom_inset", 0.0)) - ACTION_CARD_STROKE_WIDTH
 	pop_card.add_child(shade_panel)
 	return shade_panel
 
 
-static func ensure_activity_card_shade(card: Dictionary, alpha := 0.50) -> Panel:
+static func ensure_activity_card_shade(card: Dictionary, alpha := 0.20) -> Panel:
 	var existing_panel := card.get("shade") as Panel
 	if existing_panel != null and is_instance_valid(existing_panel):
 		return existing_panel
@@ -864,7 +923,10 @@ static func ensure_activity_card_shade(card: Dictionary, alpha := 0.50) -> Panel
 static func action_art(surface_style: Callable) -> StyleBoxFlat:
 	var style := surface_style.call(Color.WHITE, 56, 16, true) as StyleBoxFlat
 	style.border_color = Color("#171615")
-	style.set_border_width_all(5)
+	style.set_border_width_all(12)
+	style.shadow_color = Color.TRANSPARENT
+	style.shadow_size = 0
+	style.shadow_offset = Vector2.ZERO
 	style.content_margin_left = 16
 	style.content_margin_right = 16
 	style.content_margin_top = 14

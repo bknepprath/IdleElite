@@ -147,7 +147,7 @@ func _stage_scenario(scenario: Dictionary) -> bool:
 	scene.set("current_screen", screen)
 	if not skill.is_empty():
 		scene.set("selected_skill_id", skill)
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _i in range(12):

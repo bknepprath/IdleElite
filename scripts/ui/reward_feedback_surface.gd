@@ -592,10 +592,9 @@ func _play_action_feedback(key: String, success: bool, xp_amount: int, mastery_a
 		return
 	art_panel.pivot_offset = art_panel.size * 0.5
 	if success:
-		_flash_art_glow(art_panel, Color("#35d86d"))
 		if xp_crit:
 			_play_activity_crit_feedback(key, card, mega_crit)
-		art_panel.modulate = Color("#93ff9e")
+		art_panel.modulate = Color.WHITE
 		art_panel.scale = Vector2.ONE
 		var pop = host.create_tween()
 		pop.set_parallel(true)

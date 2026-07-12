@@ -62,7 +62,7 @@ static func chunky_activity_button_style(color: Color, radius: int, margin: int,
 			int(final_texture_size.x * supersample),
 			int(final_texture_size.y * supersample)
 		)
-		var border := 9.0 * supersample
+		var border := 12.0 * supersample
 		var bottom_lip := (34.0 if not pressed else 20.0) * supersample
 		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
 		var inner := outer.grow(-border)

@@ -32,7 +32,7 @@ func _run() -> void:
 	var immediate_mounted := _mounted_count(main)
 	var detail_surface = main.call("_skill_detail_surface")
 	var plan_count := (detail_surface.detail_lazy_plan as Array).size()
-	var visible_placeholders := bool(main.call("_skill_detail_has_visible_lazy_placeholders"))
+	var visible_placeholders := bool(main.call("_skill_swipe_activity_surface").call("_skill_detail_has_visible_lazy_placeholders"))
 	var warm_frames := 0
 	var max_warm_frame_msec := 0.0
 	var warm_over_50 := 0
@@ -45,7 +45,7 @@ func _run() -> void:
 		if warm_frame_msec > 50.0:
 			warm_over_50 += 1
 	var warmed_mounted := _mounted_count(main)
-	var warmed_visible_placeholders := bool(main.call("_skill_detail_has_visible_lazy_placeholders"))
+	var warmed_visible_placeholders := bool(main.call("_skill_swipe_activity_surface").call("_skill_detail_has_visible_lazy_placeholders"))
 	_write_json({
 		"status": "ok",
 		"render_msec": render_msec,
@@ -59,6 +59,7 @@ func _run() -> void:
 		"lazy_all_mounted": bool(detail_surface.call("_detail_lazy_all_mounted")),
 		"visible_placeholders": visible_placeholders,
 		"warmed_visible_placeholders": warmed_visible_placeholders,
+		"action_cards": (main.get("action_cards") as Dictionary).size(),
 		"unmounted_entries": _unmounted_entries(main)
 	})
 	root.remove_child(main)

@@ -623,7 +623,7 @@ func _publish_web_fishing_perf_probe_state(force := false) -> void:
 		return
 	var visible_placeholders := false
 	if host.current_screen == "skill" and (not web_fishing_perf_probe_ready or mounted_count < host._skill_detail_surface().detail_lazy_plan.size()):
-		visible_placeholders = host._skill_detail_has_visible_lazy_placeholders()
+		visible_placeholders = host._skill_swipe_activity_surface()._skill_detail_has_visible_lazy_placeholders()
 	var active_scroll_perf := {}
 	if fishing_scroll_perf_active:
 		active_scroll_perf = {

@@ -145,6 +145,8 @@ static func _cropped_texture(texture: Texture2D) -> Texture2D:
 	if texture == null:
 		return null
 	var image := texture.get_image()
+	if image == null or image.is_empty():
+		return texture
 	var rect := image.get_used_rect()
 	if rect.size.x <= 0 or rect.size.y <= 0:
 		return texture

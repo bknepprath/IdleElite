@@ -166,7 +166,7 @@ static func skill_detail_xp_bar(skill_id: String, value := 0.0, fallback_color :
 	var bar := progress_bar(theme_color, height, value)
 	bar.custom_minimum_size.x = width
 	bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	bar.border_width = 7.0
+	bar.border_width = 12.0
 	apply_xp_progress_bar_theme(bar, theme_color, color_ink)
 	return bar
 
@@ -296,26 +296,17 @@ static func apply_xp_progress_bar_theme(bar: CleanProgressBar, theme_color: Colo
 		return
 	var fill := progress_fill_color(theme_color)
 	var track := progress_empty_color(theme_color, color_ink)
-	var depth_back := theme_color.darkened(0.50).lerp(color_ink, 0.03)
-	var shadow := theme_color.darkened(0.76)
-	shadow.a = 0.20
 	if (
 		bar.fill_color == fill
 		and bar.track_color == track
 		and bar.border_color == color_ink
-		and bar.depth_enabled
-		and bar.depth_back_color == depth_back
-		and bar.depth_outline_color == color_ink
-		and bar.depth_shadow_color == shadow
+		and not bar.depth_enabled
 	):
 		return
 	bar.fill_color = fill
 	bar.track_color = track
 	bar.border_color = color_ink
-	bar.depth_enabled = true
-	bar.depth_back_color = depth_back
-	bar.depth_outline_color = color_ink
-	bar.depth_shadow_color = shadow
+	bar.depth_enabled = false
 	bar.queue_redraw()
 
 

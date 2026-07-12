@@ -334,7 +334,7 @@ Assert-True ($configurePerformanceMode -match '_apply_performance_cap\(_screen_c
 $batteryGovernor = Get-FunctionBody $performanceRuntime "_process_battery_governor"
 Assert-True ($batteryGovernor -match '_mobile_idle_frame_rate\(\) if idle else _mobile_active_frame_rate\(\)') "Battery governor should switch between idle and active mobile frame caps."
 Assert-True ($main -match 'const DETAIL_HEADER_GAUGE_REFRESH_SECONDS := 0\.05') "Skill detail header gauges should accept new targets at a capped cadence."
-Assert-True ($main -match 'const (?:host\.)?ACTION_CARD_TITLE_OUTLINE_SIZE := 34') "Action card titles should retain the original readable outline while perf work happens elsewhere."
+Assert-True ($main -match 'const (?:host\.)?ACTION_CARD_TITLE_OUTLINE_SIZE := 34') "Action card titles should keep the heavier text-specific outline needed at mobile scale."
 Assert-True ($main -match 'const ACTION_CARD_FACE_BORDER_ENABLED := true') "Action cards should keep their clean face outline above the restored depth slab."
 Assert-True ($main -match 'const ACTION_CARD_SIMPLE_BACKGROUND_ENABLED := false') "Normal action cards should keep rounded masked backgrounds; texture prewarm should carry the performance load."
 Assert-True ($main -match 'const ACTION_CARD_FACE_RADIUS := 66\.0') "Action card face, background, and depth corners should share one radius."
@@ -389,6 +389,7 @@ Assert-True ($fishingScrollTailWork -notmatch '_detail_lazy_all_mounted\(\)') "F
 Assert-True ($fishingScrollTailWork -match 'host\._skill_detail_surface\(\)\._detail_jump_arrows_need_processing\(\)[\s\S]*return false') "Fishing scroll tail-work deferral should keep active jump arrows processing while they fade or accept input."
 $publishWebFishingPerfProbeState = Get-FunctionBody -Text $fishingUiSurface -Name "_publish_web_fishing_perf_probe_state"
 Assert-True ($publishWebFishingPerfProbeState -match 'web_fishing_perf_probe_last_publish_msec < 80') "Fishing web perf probe should throttle non-forced JS publishes during scroll measurement."
+Assert-True ($publishWebFishingPerfProbeState -match 'host\._skill_swipe_activity_surface\(\)\._skill_detail_has_visible_lazy_placeholders\(\)' -and $publishWebFishingPerfProbeState -notmatch 'host\._skill_detail_has_visible_lazy_placeholders\(\)') "Fishing web perf probe should use the current swipe-surface placeholder owner."
 Assert-True (
     $publishWebFishingPerfProbeState -match 'publish_culling_detail: bool = force or not fishing_scroll_perf_active' -and
     $publishWebFishingPerfProbeState -match 'render_cull_state: Dictionary = _fishing_detail_render_cull_counts\(\) if publish_culling_detail else \{\}' -and

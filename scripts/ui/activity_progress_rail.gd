@@ -62,15 +62,9 @@ class ActivityProgressOpportunityOverlay:
 		var t := clampf(elapsed / maxf(0.001, duration), 0.0, 1.0)
 		var feedback_alpha := 1.0
 		var offset := Vector2.ZERO
-		var stroke := Color("#47f06c") if feedback_mode == "success" else Color("#ff4040")
-		if feedback_mode == "success":
-			var shake_wave := sin(t * PI * 7.0) * (1.0 - t) * direction
-			offset = Vector2(shake_wave * 10.0, absf(shake_wave) * 3.0)
-			stroke = Color("#47f06c").lerp(Color("#ffd84a"), smoothstep(0.45, 1.0, t))
-		else:
-			var shake_wave := sin(t * PI * 8.0) * (1.0 - t) * direction
-			offset = Vector2(shake_wave * 11.0, absf(shake_wave) * 2.0)
-			stroke = Color("#ff4040").lerp(Color("#8b8982"), smoothstep(0.32, 1.0, t))
+		var shake_wave := sin(t * PI * 8.0) * (1.0 - t) * direction
+		offset = Vector2(shake_wave * 11.0, absf(shake_wave) * 2.0)
+		var stroke := Color("#ff4040").lerp(Color("#8b8982"), smoothstep(0.32, 1.0, t))
 		var outline := Color("#15120b")
 		outline.a = 0.96 * feedback_alpha
 		stroke.a = feedback_alpha
@@ -308,6 +302,8 @@ func _opportunity_windows_equal(next_windows: Array[Vector2]) -> bool:
 	return true
 
 func play_opportunity_feedback(success: bool, windows: Array[Vector2], live_window := false) -> void:
+	if success:
+		return
 	opportunity_feedback_windows = windows.duplicate()
 	if live_window and not windows.is_empty():
 		opportunity_windows = windows.duplicate()
@@ -361,7 +357,10 @@ func _draw() -> void:
 	if bottom_shape == "wide_u":
 		_draw_wide_u_progress()
 		return
-	draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, top_lip_height)), top_lip_color)
+	if top_lip_height > 0.5 and bottom_radius > 0.5:
+		_draw_bottom_round_style(Rect2(Vector2.ZERO, size), top_lip_color, bottom_radius)
+	else:
+		draw_rect(Rect2(Vector2.ZERO, Vector2(size.x, top_lip_height)), top_lip_color)
 	var track_rect := _activity_progress_track_rect()
 	if top_lip_height <= 0.5:
 		var radius := minf(track_rect.size.y * 0.5, bottom_radius)
@@ -379,14 +378,27 @@ func _draw() -> void:
 			_draw_round_fill(fill_rect, fill_color, 1.0)
 		return
 	if empty_segments.is_empty():
-		_draw_bottom_round_fill(track_rect, empty_color, 1.0)
+		_draw_bottom_round_style(track_rect, empty_color, maxf(0.0, bottom_radius - edge_inset))
 	else:
 		_draw_bottom_round_segments(track_rect, empty_segments, 1.0)
 	var fill_pct := value / 100.0
 	if fill_segments.is_empty():
-		_draw_bottom_round_fill(track_rect, fill_color, fill_pct)
+		if fill_pct >= 0.999:
+			_draw_bottom_round_style(track_rect, fill_color, maxf(0.0, bottom_radius - edge_inset))
+		else:
+			_draw_bottom_round_fill(track_rect, fill_color, fill_pct)
 	else:
 		_draw_bottom_round_segments(track_rect, fill_segments, fill_pct)
+
+
+func _draw_bottom_round_style(rect: Rect2, color: Color, radius: float) -> void:
+	var style := StyleBoxFlat.new()
+	style.bg_color = color
+	style.corner_radius_bottom_left = int(round(radius))
+	style.corner_radius_bottom_right = int(round(radius))
+	style.anti_aliasing = true
+	style.anti_aliasing_size = 1.5
+	draw_style_box(style, rect)
 
 func _activity_progress_track_rect() -> Rect2:
 	var inset := minf(edge_inset, minf(size.x, size.y) * 0.25)
