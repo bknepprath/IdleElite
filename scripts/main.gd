@@ -749,7 +749,6 @@ func _build_ui_boot_async():
 	await boot_warmup._boot_progress_step("Loading navigation...", 0.50)
 	_navigation_shell()._build_nav_bar()
 	_navigation_shell()._build_module_utility_row()
-	_navigation_shell()._prebuild_skill_menu_page_cache()
 	await boot_warmup._boot_progress_step("Preparing popups...", 0.56)
 	_achievement_toast_surface().ensure_built()
 	if _onboarding_runtime().tutorial_active:

@@ -1398,9 +1398,6 @@ func _show_skills(use_page_cover := false) -> void:
 
 
 func _complete_show_skills() -> void:
-	if _activate_skill_menu_page_cache():
-		_fade_clear_page_switch_scroll_cover()
-		return
 	host.current_screen = "menu"
 	await _render_screen()
 	_fade_clear_page_switch_scroll_cover()
