@@ -1485,6 +1485,8 @@ func _select_skill_with_initial_scroll(skill_id: String, scroll_latest_activity:
 		return
 	if host.current_screen == "settings":
 		host._settings_surface()._disarm_reset_data_confirmation()
+	if host.current_screen == "skill" and skill_id != host.selected_skill_id:
+		host._onboarding_runtime()._complete_silver_opportunity_tip_page_visit(host.selected_skill_id)
 	if skill_id != host.selected_skill_id and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
 		host._onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
 	if host.current_screen != "skill":
@@ -3146,6 +3148,8 @@ func _start_select_skill_under_page_switch_cover(skill_id: String, scroll_latest
 		return
 	if host.current_screen == "settings":
 		host._settings_surface()._disarm_reset_data_confirmation()
+	if host.current_screen == "skill" and skill_id != host.selected_skill_id:
+		host._onboarding_runtime()._complete_silver_opportunity_tip_page_visit(host.selected_skill_id)
 	if skill_id != host.selected_skill_id and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID:
 		host._onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
 	host.selected_skill_id = skill_id

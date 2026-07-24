@@ -571,6 +571,8 @@ func _clear_silver_opportunity_tip_overlay() -> void:
 
 func _tutorial_target_control() -> Control:
 	if blocking_tip_active:
+		if blocking_tip_group == "silver_opportunity_tip_notes":
+			return _silver_opportunity_tip_target()
 		if blocking_tip_target != null and is_instance_valid(blocking_tip_target) and blocking_tip_target.is_visible_in_tree():
 			return blocking_tip_target
 		return _blocking_tip_default_target()
@@ -615,9 +617,17 @@ func _tutorial_target_control() -> Control:
 	return null
 
 
-func show_blocking_tip(text: String, group_name: String, target: Control = null) -> void:
+func show_blocking_tip(text: String, group_name: String, target: Control = null, expected_skill_id := "", expected_render_token := -1) -> void:
 	if host._onboarding_runtime().tutorial_active or text.strip_edges().is_empty() or bool(blocking_tip_shown_groups.get(group_name, false)):
 		return
+	if group_name == "silver_opportunity_tip_notes":
+		if not expected_skill_id.is_empty() and host.selected_skill_id != expected_skill_id:
+			return
+		if expected_render_token >= 0 and host._skill_detail_surface().detail_lazy_refresh_token != expected_render_token:
+			return
+		target = _silver_opportunity_tip_target()
+		if target == null:
+			return
 	ensure_built()
 	blocking_tip_shown_groups[group_name] = true
 	blocking_tip_active = true
@@ -641,6 +651,8 @@ func _dismiss_blocking_tip() -> void:
 
 
 func _blocking_tip_default_target() -> Control:
+	if blocking_tip_group == "silver_opportunity_tip_notes":
+		return _silver_opportunity_tip_target()
 	if blocking_tip_group == "lock_click_tip_notes":
 		for raw_card in host.action_cards.values():
 			var lock_card := raw_card as Dictionary
@@ -652,12 +664,6 @@ func _blocking_tip_default_target() -> Control:
 			var lock_target := node as Control
 			if lock_target != null and lock_target.has_method("handle_pointer_event") and lock_target.is_visible_in_tree() and _blocking_tip_padlock(lock_target) != null:
 				return lock_target
-	if blocking_tip_group == "silver_opportunity_tip_notes":
-		var action_key: String = host._onboarding_runtime().silver_opportunity_tip_action_key
-		var card := host.action_cards.get(action_key, {}) as Dictionary
-		var progress: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("progress"))
-		if progress != null:
-			return progress
 	if blocking_tip_group == "passive_module_tip_notes":
 		var firepit_key: String = host._action_key("woodcutting", PassiveModulesRuntime.WOODCUTTING_FIREPIT_MODULE_ID)
 		var firepit_card := host.action_cards.get(firepit_key, {}) as Dictionary
@@ -683,6 +689,20 @@ func _blocking_tip_default_target() -> Control:
 		if button != null and button.is_visible_in_tree():
 			return button
 	return null
+
+
+func _silver_opportunity_tip_target() -> Control:
+	if host._onboarding_runtime().silver_opportunity_tip_seen or host.current_screen != "skill":
+		return null
+	var action_key: String = host._onboarding_runtime().silver_opportunity_tip_action_key
+	var separator := action_key.find(":")
+	if separator <= 0 or host.selected_skill_id != action_key.substr(0, separator):
+		return null
+	var card := host.action_cards.get(action_key, {}) as Dictionary
+	var progress: Control = host._app_lifecycle_runtime().valid_control_ref(card.get("progress"))
+	if progress == null or not progress.is_visible_in_tree():
+		return null
+	return progress
 
 
 func _tutorial_target_skill_id() -> String:
@@ -1567,7 +1587,7 @@ func _bottom_tutorial_tip_note(content_width: float, text: String, group_name: S
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_to_group(group_name)
 	root.visible = false
-	call_deferred("show_blocking_tip", text, group_name, target)
+	call_deferred("show_blocking_tip", text, group_name, target, host.selected_skill_id, host._skill_detail_surface().detail_lazy_refresh_token)
 	return root
 
 

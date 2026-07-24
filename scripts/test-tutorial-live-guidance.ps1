@@ -152,6 +152,13 @@ func _run() -> void:
 	_assert_guidance("silver", "Tap the boost zone at the right moment.")
 	if capture:
 		await _capture("silver-opportunity")
+	if not await _silver_switch_away_dismisses():
+		_fail("silver guidance survived navigation or retargeted to an unrelated card")
+		return
+	if not await _prepare_silver_state():
+		_fail("silver state did not recover after switch-away regression: %s" % _summary())
+		return
+	_assert_guidance("silver", "Tap the boost zone at the right moment.")
 	var progress_before_click := float(scene.get("action_progress"))
 	if not _tap_overlay_target():
 		_fail("silver first intended tap was not routed")
@@ -355,6 +362,30 @@ func _prepare_firepit_state() -> bool:
 	_add_test_tip_note("passive_module_tip_notes")
 	await _settle_overlay()
 	return _overlay_group() == "passive_module_tip_notes" and firepit_overlay.call("_tutorial_target_control") == target
+
+
+func _silver_switch_away_dismisses() -> bool:
+	var overlay := scene.call("_tutorial_overlay_surface") as Object
+	var old_render_token := int(scene.call("_skill_detail_surface").detail_lazy_refresh_token)
+	scene.call("_navigation_shell").call("_select_skill_with_initial_scroll", "woodcutting", false, -1, false)
+	for _i in range(180):
+		await process_frame
+		if str(scene.get("selected_skill_id")) == "woodcutting" and not bool(scene.call("_navigation_shell").screen_render_in_progress):
+			break
+	if str(scene.get("selected_skill_id")) != "woodcutting" or not bool(scene.call("_onboarding_runtime").silver_opportunity_tip_seen):
+		return false
+	overlay.blocking_tip_shown_groups.erase("silver_opportunity_tip_notes")
+	overlay.call("show_blocking_tip", "Tap the boost zone at the right moment.", "silver_opportunity_tip_notes", null, "fight", old_render_token)
+	for _i in range(4):
+		await process_frame
+	var arrow := overlay.tutorial_arrow as Control
+	var tutorial_overlay := overlay.tutorial_overlay as Control
+	return (
+		not bool(overlay.blocking_tip_active)
+		and overlay.call("_tutorial_target_control") == null
+		and (arrow == null or not arrow.is_visible_in_tree())
+		and (tutorial_overlay == null or not tutorial_overlay.is_visible_in_tree())
+	)
 
 
 func _add_test_tip_note(group_name: String) -> void:

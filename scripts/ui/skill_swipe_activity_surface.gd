@@ -1587,8 +1587,9 @@ func _commit_skill_swipe(offset: int) -> void:
 		_fishing_ui_surface()._clear_fishing_tool_circle_menu()
 	if offset != 0 and outgoing_skill_id == TUTORIAL_STARTER_SKILL_ID:
 		_onboarding_runtime()._clear_tutorial_gate_latch_only_after_skill_swipe(false)
-	_complete_passive_module_tip_page_visit(outgoing_skill_id)
-	_onboarding_runtime()._complete_silver_opportunity_tip_page_visit(outgoing_skill_id)
+	if offset != 0:
+		_complete_passive_module_tip_page_visit(outgoing_skill_id)
+		_onboarding_runtime()._complete_silver_opportunity_tip_page_visit(outgoing_skill_id)
 	if offset != 0 and _onboarding_runtime()._onboarding_path_active():
 		if onboarding_explore_tip_seen:
 			_onboarding_runtime()._graduate_onboarding_tutorial()
