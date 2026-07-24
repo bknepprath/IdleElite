@@ -24,17 +24,12 @@ const FALLBACK_PLUGIN_VERSION := "v4.0.0"
 
 const PLUGIN_CONFIG_PATH := "res://addons/admob/plugin.cfg"
 const ANDROID_PACKAGE_PATH := "res://addons/admob/android/bin/package.gd"
-const IOS_PACKAGE_PATH := "res://ios/plugins/package.gd"
 
 static var _cached_version := ""
 
 static var is_android_installed: bool:
 	get:
 		return FileAccess.file_exists(ANDROID_PACKAGE_PATH)
-
-static var is_ios_installed: bool:
-	get:
-		return FileAccess.file_exists(IOS_PACKAGE_PATH)
 
 static var current: String:
 	get:

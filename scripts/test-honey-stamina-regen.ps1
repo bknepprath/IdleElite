@@ -8,30 +8,6 @@ $testDir = Join-Path $projectRoot ".codex-tmp\honey-stamina-regen"
 $testScript = Join-Path $testDir "honey_stamina_regen_test.gd"
 $capturePath = Join-Path $testDir "honey-stamina-gauge.png"
 
-function Assert-NoUnexpectedGodotErrors {
-    param(
-        [Parameter(Mandatory = $true)][AllowNull()]$Output,
-        [Parameter(Mandatory = $true)][string]$Context
-    )
-
-    if ($null -eq $Output) {
-        return
-    }
-
-    foreach ($line in @($Output)) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
-            continue
-        }
-        $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
-        }
-    }
-}
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 if (Test-Path -LiteralPath $testDir) {

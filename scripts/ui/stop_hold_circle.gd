@@ -10,13 +10,17 @@ const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
 var progress := 0.0
 var unload_progress := 0.0
 var unloading := false
+var show_question := false
 var theme_color := Color("#3aa0ff")
 var host
+var action_stop_hold_kind := ""
 var action_stop_hold_active := false
 var action_stop_hold_armed := false
 var action_stop_hold_unloading := false
 var action_stop_hold_skill_id := ""
 var action_stop_hold_action_id := ""
+var action_stop_hold_stat_kind := ""
+var action_stop_hold_card_key := ""
 var action_stop_hold_elapsed := 0.0
 var action_stop_hold_unload_elapsed := 0.0
 var action_stop_hold_pointer_id := -1
@@ -38,11 +42,19 @@ func active() -> bool:
 
 
 func begin_action(skill_id: String, action_id: String, pointer_position: Vector2, pointer_id: int) -> void:
+	begin_info(skill_id, action_id, "", host._action_key(skill_id, action_id), pointer_position, pointer_id)
+	action_stop_hold_kind = "action"
+
+
+func begin_info(skill_id: String, action_id: String, stat_kind: String, card_key: String, pointer_position: Vector2, pointer_id: int) -> void:
+	action_stop_hold_kind = "info"
 	action_stop_hold_active = true
 	action_stop_hold_armed = false
 	action_stop_hold_unloading = false
 	action_stop_hold_skill_id = skill_id
 	action_stop_hold_action_id = action_id
+	action_stop_hold_stat_kind = stat_kind
+	action_stop_hold_card_key = card_key
 	action_stop_hold_elapsed = 0.0
 	action_stop_hold_unload_elapsed = 0.0
 	action_stop_hold_pointer_id = pointer_id
@@ -77,7 +89,7 @@ func route_input(event: InputEvent) -> bool:
 		return true
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and action_stop_hold_pointer_id < 0:
 		if not event.pressed and action_stop_hold_active:
-			if not action_stop_hold_armed:
+			if action_stop_hold_kind == "action" and not action_stop_hold_armed:
 				_finish_pending_click(event.global_position)
 			cancel_action()
 		return true
@@ -93,7 +105,7 @@ func route_input(event: InputEvent) -> bool:
 		return true
 	if event is InputEventScreenTouch and event.index == action_stop_hold_pointer_id:
 		if not event.pressed and action_stop_hold_active:
-			if not action_stop_hold_armed:
+			if action_stop_hold_kind == "action" and not action_stop_hold_armed:
 				_finish_pending_click(event.position)
 			cancel_action()
 		return true
@@ -103,11 +115,12 @@ func route_input(event: InputEvent) -> bool:
 func process_action(delta: float) -> void:
 	if not action_stop_hold_active and not action_stop_hold_unloading:
 		return
-	if (
-		host.running_skill_id != action_stop_hold_skill_id
-		or host.running_action_id != action_stop_hold_action_id
-		or host.running_action_id.is_empty()
-	):
+	var card := host.action_cards.get(action_stop_hold_card_key, {}) as Dictionary
+	if action_stop_hold_kind == "action":
+		if host.running_skill_id != action_stop_hold_skill_id or host.running_action_id != action_stop_hold_action_id or host.running_action_id.is_empty():
+			cancel_action()
+			return
+	elif card.is_empty() or host._action_data(action_stop_hold_skill_id, action_stop_hold_action_id).is_empty():
 		cancel_action()
 		return
 	if action_stop_hold_unloading:
@@ -117,11 +130,17 @@ func process_action(delta: float) -> void:
 		if unload >= 1.0:
 			var skill_id := action_stop_hold_skill_id
 			var action_id := action_stop_hold_action_id
-			var action_key: String = host._action_key(skill_id, action_id)
+			var stat_kind := action_stop_hold_stat_kind
+			var card_key := action_stop_hold_card_key
+			var hold_kind := action_stop_hold_kind
 			hide_ring()
-			host._skill_swipe_activity_surface()._release_action_card_3d_press(action_key)
+			if hold_kind == "action":
+				host._skill_swipe_activity_surface()._release_action_card_3d_press(card_key)
 			clear_state()
-			host._action_runtime()._stop_running_action(skill_id, action_id)
+			if hold_kind == "action":
+				host._action_runtime()._stop_running_action(skill_id, action_id)
+			else:
+				host._skill_detail_surface()._toggle_activity_stat_popup_for_card(card, skill_id, action_id, stat_kind)
 		return
 	if not action_stop_hold_armed:
 		if action_stop_hold_pointer_id < 0 and not Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
@@ -135,8 +154,12 @@ func process_action(delta: float) -> void:
 		host._skill_swipe_activity_surface().skill_swipe_tracking = false
 		host._skill_swipe_activity_surface().skill_swipe_horizontal = false
 		host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
-		host._skill_swipe_activity_surface()._press_action_card_3d(host._action_key(action_stop_hold_skill_id, action_stop_hold_action_id))
-		show_ring(ThemeStyles.skill_theme_color(action_stop_hold_skill_id, host.COLOR_BLUE), action_stop_hold_position)
+		if action_stop_hold_kind == "action":
+			host._skill_swipe_activity_surface()._press_action_card_3d(action_stop_hold_card_key)
+			show_ring(ThemeStyles.skill_theme_color(action_stop_hold_skill_id, host.COLOR_BLUE), action_stop_hold_position)
+		else:
+			host._skill_swipe_activity_surface()._press_activity_stat_box(action_stop_hold_card_key, action_stop_hold_stat_kind)
+			show_ring(ThemeStyles.skill_theme_color(action_stop_hold_skill_id, host.COLOR_BLUE), action_stop_hold_position, true)
 		return
 	action_stop_hold_elapsed += delta
 	var progress_value := clampf(action_stop_hold_elapsed / ACTION_STOP_HOLD_SECONDS, 0.0, 1.0)
@@ -149,18 +172,23 @@ func process_action(delta: float) -> void:
 
 
 func cancel_action() -> void:
-	var action_key: String = host._action_key(action_stop_hold_skill_id, action_stop_hold_action_id) if not action_stop_hold_skill_id.is_empty() and not action_stop_hold_action_id.is_empty() else ""
+	var hold_kind := action_stop_hold_kind
+	var card_key := action_stop_hold_card_key
 	hide_ring()
-	host._skill_swipe_activity_surface()._release_action_card_3d_press(action_key)
+	if hold_kind == "action":
+		host._skill_swipe_activity_surface()._release_action_card_3d_press(card_key)
 	clear_state()
 
 
 func clear_state() -> void:
+	action_stop_hold_kind = ""
 	action_stop_hold_active = false
 	action_stop_hold_armed = false
 	action_stop_hold_unloading = false
 	action_stop_hold_skill_id = ""
 	action_stop_hold_action_id = ""
+	action_stop_hold_stat_kind = ""
+	action_stop_hold_card_key = ""
 	action_stop_hold_elapsed = 0.0
 	action_stop_hold_unload_elapsed = 0.0
 	action_stop_hold_pointer_id = -1
@@ -188,8 +216,9 @@ func cancel_if_scroll_drag_event(event: InputEvent) -> bool:
 	return true
 
 
-func show_ring(color: Color, ring_position: Vector2) -> void:
+func show_ring(color: Color, ring_position: Vector2, question := false) -> void:
 	theme_color = color
+	show_question = question
 	size = ACTION_STOP_HOLD_RING_SIZE
 	_update_position(ring_position)
 	if modulate != Color.WHITE:
@@ -208,6 +237,7 @@ func sync_ring(ring_position: Vector2, next_progress: float, next_unload: float,
 func hide_ring() -> void:
 	if not is_queued_for_deletion():
 		visible = false
+		show_question = false
 		set_progress(0.0, 0.0, false)
 
 func set_progress(next_progress: float, next_unload := 0.0, is_unloading := false) -> void:
@@ -267,3 +297,6 @@ func _draw() -> void:
 	var visible_progress := clampf(progress - unload_progress, 0.0, 1.0)
 	if visible_progress > 0.001:
 		draw_arc(center, radius, -PI * 0.5, -PI * 0.5 + TAU * visible_progress, 40, fill, width, true)
+	if show_question:
+		fill.a *= 1.0 - unload_progress
+		draw_string(ThemeDB.fallback_font, Vector2(center.x - radius, center.y + 36.0), "?", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, 112, fill)

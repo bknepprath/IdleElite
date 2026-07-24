@@ -7,30 +7,6 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\activity-card-geometry"
 $testScript = Join-Path $testDir "activity_card_geometry_probe.gd"
 
-function Assert-NoUnexpectedGodotErrors {
-    param(
-        [Parameter(Mandatory = $true)][AllowNull()]$Output,
-        [Parameter(Mandatory = $true)][string]$Context
-    )
-
-    if ($null -eq $Output) {
-        return
-    }
-
-    foreach ($line in @($Output)) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
-            continue
-        }
-        $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
-        }
-    }
-}
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 $baselineHeadlessProcessIds = @{}
@@ -119,7 +95,10 @@ func _run() -> void:
 	mastery_ring.free()
 	var normal_body := MainScript.ActivityCardStyles.normal_activity_card_body(66.0, Color("#171615"))
 	_expect(normal_body.border_width_bottom == 12, "Normal activity-card back plate should match the shared 12px outline.")
-	_expect(normal_body.shadow_size == 28 and normal_body.shadow_offset.is_equal_approx(Vector2(0.0, 12.0)), "Normal activity-card back slab should retain its centered shadow.")
+	_expect(normal_body.shadow_size == 0 and normal_body.shadow_offset.is_equal_approx(Vector2.ZERO), "Normal activity-card back slab should not add a second edge shadow.")
+	var normal_bottom_base := MainScript.ActivityCardStyles.normal_activity_card_bottom_base(66.0, Color("#171615"))
+	_expect(normal_bottom_base.border_width_left == 12 and normal_bottom_base.border_width_right == 12 and normal_bottom_base.border_width_bottom == 12, "Normal activity-card depth edge should match the shared 12px outline.")
+	_expect(normal_bottom_base.corner_radius_top_left == 66 and normal_bottom_base.corner_radius_top_right == 66, "Pressed activity-card depth should stay inside the rounded front corners.")
 	_expect(MainScript.ACTION_CARD_3D_DEPTH_OFFSET.is_equal_approx(Vector2(14.0, 16.0)), "Shared activity button shells should keep the compact default depth.")
 	_expect(MainScript.ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.is_equal_approx(Vector2(0.0, 36.0)), "Normal activity cards should use shallow straight-down top-view depth.")
 	_expect(MainScript.ActivityCardStyles.NORMAL_ACTIVITY_CARD_PRESS_OFFSET.is_equal_approx(Vector2(0.0, 36.0)), "Normal activity cards should depress fully flush with their base.")
@@ -196,7 +175,7 @@ func _run() -> void:
 	if bg is RoundedTextureRectClass:
 		var rounded_bg := bg as RoundedTextureRectClass
 		_expect(_near(rounded_bg.radius, 66.0), "Activity-card background radius should match the front border radius.")
-		_expect(_near(rounded_bg.mask_inset, 0.0), "Activity-card background mask should not shrink inside the border.")
+		_expect(_near(rounded_bg.mask_inset, 6.0), "Activity-card background mask should sit under the 12px face border.")
 		_expect(rounded_bg.corner_mask_mode == 1, "Activity-card background mask should align the full-radius corner curve.")
 	if bg != null:
 		bg.free()

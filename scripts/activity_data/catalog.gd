@@ -125,6 +125,7 @@ static func _action_for_load(source: Dictionary, owner_skill_id: String, databas
 		"tier": int(source.get("tier", 1)),
 		"seconds": float(source.get("seconds", 1.0)),
 		"xp": xp_value,
+		"rewards": {"xp": xp_value},
 		"stamina": int(source.get("stamina", source.get("costs", {}).get("stamina", 1))),
 		"success": float(source.get("success", 90.0)),
 		"art": _res_path(str(source.get("art", ""))),
@@ -220,11 +221,17 @@ static func _combat_contract_for_load(value: Variant) -> Dictionary:
 		"enemy_id": enemy_id,
 		"arena_shape": arena_shape,
 		"enemy_kind": str(source.get("enemy_kind", "swarm")).strip_edges(),
-		"art_ref": str(source.get("art_ref", "")).strip_edges()
+		"art_ref": str(source.get("art_ref", "")).strip_edges(),
+		"signature": str(source.get("signature", "")).strip_edges(),
+		"population_curve": source.get("population_curve", []),
+		"population_cap": maxi(1, int(source.get("population_cap", 1))),
+		"final_population": maxi(1, int(source.get("final_population", 1)))
 	}
-	for numeric_key in ["speed", "health", "spawn_rhythm", "contact_damage", "reward_xp"]:
+	for numeric_key in ["speed", "health", "unlock_health_scale", "spawn_rhythm", "contact_damage", "reward_xp", "par_reward_xp"]:
 		if source.has(numeric_key):
 			combat[numeric_key] = maxf(0.0, float(source.get(numeric_key, 0.0)))
+	if source.has("kill_reward_share"):
+		combat["kill_reward_share"] = clampf(float(source.get("kill_reward_share", 0.0)), 0.0, 1.0)
 	return combat
 
 

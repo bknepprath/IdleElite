@@ -121,8 +121,8 @@ func _run() -> void:
 	fishing_button.visible = true
 	root.add_child(fishing_button)
 	var fishing_medal := TextureRect.new()
-	fishing_medal.position = Vector2(390, 38)
-	fishing_medal.size = Vector2(150, 150)
+	fishing_medal.position = Vector2.ZERO
+	fishing_medal.size = Vector2(190, 190)
 	fishing_medal.visible = true
 	root.add_child(fishing_medal)
 	var fishing_action_id := "test-fishing-medal"
@@ -131,12 +131,16 @@ func _run() -> void:
 	scene.set("mastery", fishing_mastery_state)
 	var fishing_method_card := {
 		"is_fishing_method": true,
+		"fixed_layout": true,
 		"skill_id": "fishing",
 		"action_id": fishing_action_id,
 		"medal": fishing_medal,
 		"method_button": fishing_button,
 		"method_hit_control": fishing_button,
 	}
+	scene.call("_skill_swipe_activity_surface").call("_place_action_card_medal", fishing_method_card, fishing_medal, 20)
+	if not (fishing_medal.position + fishing_medal.size * 0.5).is_equal_approx(Vector2(24, 18)):
+		_record("Fishing medal did not use the normal action-card corner alignment")
 	var action_cards := {}
 	action_cards[scene.call("_action_key", "fishing", fishing_action_id)] = fishing_method_card
 	scene.set("action_cards", action_cards)

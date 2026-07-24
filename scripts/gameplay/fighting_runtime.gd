@@ -143,8 +143,10 @@ func action_is_free_fighting_proto(skill_id: String, action_id: String) -> bool:
 	if skill_id != "fight":
 		return false
 	match action_id:
+		"fight-chickens", \
 		"chicken-sparring-pit", \
 		"fight-goblins", \
+		"fight-r.o.u.s.es", \
 		"fight-rouses", \
 		"fight-guys", \
 		"fight-werewolves", \
@@ -242,10 +244,12 @@ func on_rooster_punch_out_stamina_damage(amount: int, stage: Control) -> void:
 	host.save_game()
 
 
-func on_blue_guy_chicken_brawl_punch_landed() -> void:
+func on_blue_guy_chicken_brawl_punch_landed(shield_dropped: bool) -> void:
 	if host == null:
 		return
 	host._audio_director()._play_fight_punch_sfx()
+	if shield_dropped:
+		host._audio_director()._play_goblin_shield_drop_sfx()
 	if randf() <= FIGHT_PUNCH_STAMINA_COST_CHANCE:
 		SkillState.spend_action_stamina(host.stamina, host.stamina_bank, "fight", 1.0, Callable(SkillState, "host_max_stamina").bind(host))
 		host._update_ui(0.0, false)
@@ -266,9 +270,13 @@ func on_blue_guy_chicken_brawl_chicken_killed(xp_amount: int, stage: Control) ->
 	if host == null:
 		return
 	var amount := maxi(0, xp_amount)
+	host._audio_director()._play_chicken_death_sfx()
 	if amount <= 0:
 		return
-	host._audio_director()._play_chicken_death_sfx()
+	_award_fighting_xp(amount, stage)
+
+
+func _award_fighting_xp(amount: int, stage: Control) -> void:
 	if not host.skills.has("fight"):
 		host.skills["fight"] = {"xp": 0, "level": 1}
 	host.skills["fight"]["xp"] = int(host.skills["fight"].get("xp", 0)) + amount

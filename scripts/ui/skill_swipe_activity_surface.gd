@@ -21,6 +21,14 @@ const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
 const PassiveModulesRuntime = preload("res://scripts/gameplay/passive_modules_runtime.gd")
 const ProfileChatOverlaySurface = preload("res://scripts/ui/profile_chat_overlay_surface.gd")
 const MasteryState = preload("res://scripts/progression/mastery_state.gd")
+const ACTION_CARD_MEDAL_STANDARD_SIZE := Vector2(114, 114)
+const ACTION_CARD_MEDAL_CORNER_INSET := Vector2(24, 18)
+const ACTION_CARD_MEDAL_WINGED_SIZES := {
+	9: Vector2(204, 114),
+	10: Vector2(179.4, 114),
+	19: Vector2(202.2, 141),
+	20: Vector2(201.6, 141),
+}
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 const RoundedCornerCropOverlay = preload("res://scripts/ui/rounded_corner_crop_overlay.gd")
 const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
@@ -75,7 +83,8 @@ class _MedalShineSlash:
 				draw_line(Vector2(left, y), Vector2(right, y), color, row_height + 0.75, false)
 			y += row_height
 
-const RECOVERY_WIDE_U_BOTTOM_RISE := 19.333
+const RECOVERY_WIDE_U_BOTTOM_RISE := ActivityCardStyles.RECOVERY_WIDE_U_BOTTOM_RISE
+const RECOVERY_WIDE_U_SHOULDER_RATIO := ActivityCardStyles.RECOVERY_WIDE_U_SHOULDER_RATIO
 const MASTERY_BAR_EASE_SECONDS := 0.16
 const ACTION_PROGRESS_TURNOVER_DRAIN_SECONDS := 0.20
 const ACTION_PROGRESS_TURNOVER_EMPTY_SECONDS := 0.02
@@ -170,9 +179,6 @@ var preview_pages = {}
 var preview_states = {}
 var preview_offset = 0
 var preview_module_reveal_token = 0
-var preview_prewarm_token = 0
-var preview_prewarm_pending = false
-var real_card_prewarm_token = 0
 var light_preview_card_style_cache = {}
 var queue_selection_banner: Control
 var action_pop_tweens := {}
@@ -610,7 +616,6 @@ func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) ->
 			return
 	_skill_detail_surface()._cancel_detail_lazy_settle_warm_mount()
 	if not _skill_swipe_animation_blocks_input():
-		_cancel_preview_prewarm()
 		_interrupt_skill_swipe_animation_for_input()
 		_park_skill_swipe_preview()
 	skill_swipe_tracking = true
@@ -1484,7 +1489,6 @@ func _cancel_skill_swipe_feedback(animated := true) -> void:
 		_navigation_shell()._fade_skill_page_switch_modules(true, SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS)
 		_navigation_shell()._fade_skill_swipe_module_utility_row(true, SKILL_SWIPE_MODULE_UTILITY_FADE_IN_SECONDS)
 		_skill_swipe_activity_surface()._fade_skill_shelf_backgrounds(true)
-		_skill_swipe_activity_surface()._queue_skill_swipe_preview_prewarm()
 
 
 func _finish_skill_swipe(end_position: Vector2) -> void:
@@ -1642,8 +1646,6 @@ func _finish_skill_swipe_cancel_tween() -> void:
 	_apply_skill_swipe_drag_offset(0.0)
 	_sync_skill_strip_page_visibility(false)
 	_skill_swipe_activity_surface()._park_skill_swipe_preview()
-	if not _consume_queued_skill_swipe_navigation():
-		_skill_swipe_activity_surface()._queue_skill_swipe_preview_prewarm()
 
 
 func _finish_skill_swipe_commit_tween(offset: int, target_x: float) -> void:
@@ -1676,7 +1678,6 @@ func _consume_queued_skill_swipe_navigation() -> bool:
 		return false
 	offset = offset % skill_count
 	if offset == 0:
-		_skill_swipe_activity_surface()._queue_skill_swipe_preview_prewarm()
 		return false
 	if not _onboarding_runtime()._swipe_offset_accessible(offset):
 		return false
@@ -2371,10 +2372,6 @@ func _complete_skill_swipe_navigation() -> void:
 		else:
 			_fade_clear_skill_swipe_cover(SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS)
 	_sync_skill_strip_page_visibility(false)
-	if skill_swipe_pending_full_finalize:
-		_skill_swipe_activity_surface()._queue_skill_swipe_preview_prewarm()
-	elif not _consume_queued_skill_swipe_navigation():
-		_skill_swipe_activity_surface()._queue_skill_swipe_preview_prewarm()
 	if current_screen == "skill":
 		_navigation_shell()._fade_skill_page_switch_modules(true, SKILL_SWIPE_PAGE_SWITCH_FADE_IN_SECONDS)
 		_navigation_shell()._fade_skill_swipe_module_utility_row(true, SKILL_SWIPE_MODULE_UTILITY_FADE_IN_SECONDS)
@@ -2909,14 +2906,7 @@ func _sync_skill_strip_page_crossfade(drag_x: float) -> void:
 		_set_skill_swipe_control_alpha(page, alpha)
 
 func _hold_skill_swipe_paper_fade_for_commit() -> void:
-	if not skill_strip_ids.is_empty():
-		_hide_skill_swipe_paper_fade()
-		return
-	if not host.SKILL_SWIPE_PAPER_FADE_ENABLED:
-		_hide_skill_swipe_paper_fade()
-		return
-	skill_swipe_paper_fade_hold_alpha = 1.0
-	_sync_skill_swipe_paper_fade(skill_swipe_drag_offset_x)
+	_hide_skill_swipe_paper_fade()
 
 func _sync_skill_swipe_drag_frame_fade(drag_x: float) -> void:
 	if not skill_strip_ids.is_empty():
@@ -2925,14 +2915,7 @@ func _sync_skill_swipe_drag_frame_fade(drag_x: float) -> void:
 	if skill_swipe_animation_mode == "entry":
 		_hide_skill_swipe_paper_fade()
 		return
-	if not host.SKILL_SWIPE_DRAG_FRAME_FADE_ENABLED:
-		if host.SKILL_SWIPE_PAPER_FADE_ENABLED:
-			_sync_skill_swipe_paper_fade(drag_x)
-		else:
-			_hide_skill_swipe_paper_fade()
-		return
-	var _legacy_overlay := ColorRect.new()
-	_legacy_overlay.queue_free()
+	_hide_skill_swipe_paper_fade()
 
 func _sync_skill_swipe_live_page_fade(drag_x: float) -> void:
 	if skill_swipe_page == null or not is_instance_valid(skill_swipe_page):
@@ -2945,23 +2928,19 @@ func _sync_skill_swipe_preview_page_fade(current_x: float) -> void:
 	var active_preview_page := _active_preview_page()
 	if active_preview_page == null:
 		return
-	if not host.SKILL_SWIPE_SHOW_INCOMING_PREVIEW_DURING_DRAG:
-		active_preview_page.visible = false
-		_set_skill_swipe_control_alpha(active_preview_page, 1.0)
-		return
-	active_preview_page.visible = true
-	var progress := _skill_swipe_preview_fade_progress(absf(current_x))
-	var alpha := lerpf(host.SKILL_SWIPE_PREVIEW_FADE_MIN_ALPHA, 1.0, progress)
+	active_preview_page.visible = false
+	var alpha := 1.0
 	_set_skill_swipe_control_alpha(active_preview_page, alpha)
 
 func _apply_recovery_progress_rail_shape(bar: ActivityProgressRail, action: Dictionary) -> void:
 	if bar == null or not RecoveryModules.has_recovery(action):
 		return
-	bar.offset_top = -142.0
+	bar.offset_top = -ActivityCardStyles.RECOVERY_WIDE_U_RAIL_HEIGHT
 	bar.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET
-	bar.bottom_radius = host.ACTION_PROGRESS_RAIL_HEIGHT
+	bar.bottom_radius = host.ACTION_CARD_FACE_RADIUS
 	bar.bottom_shape = "wide_u"
 	bar.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+	bar.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
 	bar.queue_redraw()
 	bar._queue_opportunity_overlay_redraw()
 
@@ -2972,6 +2951,7 @@ func _apply_recovery_card_depth_shape(depth: ActivityCardDepth, action: Dictiona
 	depth.bottom_shape = "wide_u"
 	depth.draw_lip_lines = true
 	depth.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+	depth.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
 	depth.queue_redraw()
 
 
@@ -2983,6 +2963,7 @@ func _apply_recovery_card_background_shape(bg: Control, action: Dictionary) -> v
 		return
 	rounded_bg.bottom_shape = "wide_u"
 	rounded_bg.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+	rounded_bg.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
 	rounded_bg.queue_redraw()
 
 
@@ -3053,8 +3034,8 @@ func _set_active_preview(page: Control, offset: int) -> void:
 	preview_offset = offset
 
 func _cancel_preview_prewarm() -> void:
-	preview_prewarm_token += 1
-	preview_prewarm_pending = false
+	return
+
 
 func _clear_light_preview_style_cache() -> void:
 	light_preview_card_style_cache.clear()
@@ -3219,7 +3200,7 @@ func _update_action_card_run_feedback(card: Dictionary, skill_id: String, runnin
 		var opportunity_windows: Array[Vector2] = []
 		var opportunity_active := false
 		var opportunity_visible := false
-		if running and not action_id.is_empty() and RecoveryModules.has_recovery(action_for_card):
+		if running and not action_id.is_empty():
 			opportunity_windows = host._action_runtime()._action_opportunity_pattern_windows(skill_id, action_id)
 			opportunity_active = host._action_runtime()._action_opportunity_active(skill_id, action_id)
 			opportunity_visible = true
@@ -3295,12 +3276,24 @@ func _action_card_medal_texture_for_level(mastery_level: int) -> Texture2D:
 	return AchievementPresentation.mastery_medal_visual_texture(mastery_level, host.MASTERY_MAX_LEVEL, Callable(host.visual_texture_cache, "_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")) if mastery_level > 0 else host.visual_texture_cache._visual_fallback_texture()
 
 
+func _action_card_medal_size(mastery_level: int) -> Vector2:
+	return ACTION_CARD_MEDAL_WINGED_SIZES.get(mastery_level, ACTION_CARD_MEDAL_STANDARD_SIZE) as Vector2
+
+
+func _apply_action_card_medal_layout(card: Dictionary, medal: TextureRect, mastery_level: int) -> Vector2:
+	var size := _action_card_medal_size(mastery_level)
+	medal.size = size
+	var destination := -size * 0.5 + ACTION_CARD_MEDAL_CORNER_INSET
+	card["medal_destination"] = destination
+	return destination
+
+
 func _update_action_card_mastery_bar(card: Dictionary, skill_id: String, action_id: String, _delta: float, instant: bool) -> void:
 	var mastery_bar := card.get("mastery") as Control
 	if mastery_bar == null or not is_instance_valid(mastery_bar):
 		return
 	var action: Dictionary = host._action_data(skill_id, action_id)
-	if not RecoveryModules.has_recovery(action):
+	if not bool(card.get("mastery_bar_instant_updates", false)):
 		var mastery_ring := card.get("mastery_ring") as Control
 		var normal_mastery_action_id := str(card.get("mastery_action_id", action_id))
 		var normal_mastery_level: int = MasteryState.level(host.mastery, host._action_key(skill_id, normal_mastery_action_id))
@@ -3400,7 +3393,7 @@ func _clear_mastery_bar_tween(mastery_bar: Control) -> void:
 
 
 func _place_action_card_medal(card: Dictionary, medal: TextureRect, mastery_level: int) -> void:
-	var destination := _action_card_medal_destination(card, medal)
+	var destination := _apply_action_card_medal_layout(card, medal, mastery_level)
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(medal, mastery_level > 0)
 	medal.texture = _action_card_medal_texture_for_level(mastery_level)
 	if mastery_level > 0 and medal.texture == null:
@@ -3605,7 +3598,7 @@ func _clear_action_card_medal_tap_ceremony(card: Dictionary) -> void:
 
 
 func _play_new_medal_ceremony(card: Dictionary, medal: TextureRect, old_texture: Texture2D, replacing: bool, mastery_level: int) -> void:
-	var destination := _action_card_medal_destination(card, medal)
+	var destination := _apply_action_card_medal_layout(card, medal, mastery_level)
 	medal.texture = _action_card_medal_texture_for_level(mastery_level)
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(medal, true)
 	medal.position = destination + Vector2(92, -148)
@@ -4280,14 +4273,6 @@ func _sync_xp_reward_chips(xp_box: Control, xp_label: Label, skill_id: String, a
 
 
 func _action_stat_chip_buffed(skill_id: String, action: Dictionary, stat_kind: String) -> bool:
-	var action_id := str(action.get("id", ""))
-	if stat_kind != "xp" and not action_id.is_empty():
-		var temporary_events = host._temporary_event_runtime()
-		if (
-			(host.running_skill_id == skill_id and host.running_action_id == action_id)
-			or (temporary_events.event_running_skill_id == skill_id and temporary_events.event_running_action_id == action_id)
-		):
-			return true
 	match stat_kind:
 		"xp":
 			var base_rewards: Dictionary = host._action_runtime()._base_xp_reward_map(action, skill_id)
@@ -4412,6 +4397,18 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 		return
 	if not static_refresh_key.is_empty():
 		card["action_card_static_refresh_key"] = static_refresh_key
+	var previous_stat_texts := {
+		"xp": str(card.get("last_xp_text", "")),
+		"stamina": str(card.get("last_stamina_text", "")),
+		"time": str(card.get("last_time_text", "")),
+		"success": str(card.get("last_success_text", "")),
+	}
+	var had_previous_stat_text := card.has("last_xp_text")
+	var stat_boxes = card.get("stat_boxes", {}) as Dictionary
+	var previous_buff_states := {}
+	for stat_kind in ["xp", "stamina", "time", "success"]:
+		var previous_box := stat_boxes.get(stat_kind) as Control
+		previous_buff_states[stat_kind] = previous_box != null and bool(previous_box.get_meta("stat_box_buffed", false))
 	host._app_lifecycle_runtime().set_label_text_if_changed(xp_label, xp_text)
 	card["last_xp_text"] = xp_text
 	host._app_lifecycle_runtime().set_label_text_if_changed(stamina_label, stamina_text)
@@ -4425,13 +4422,25 @@ func _update_action_card_static_state(card: Dictionary, skill_id: String, action
 	host._skill_detail_surface()._sync_action_stat_chip_title(time_value_label, time_label)
 	host._skill_detail_surface()._sync_action_stat_chip_title(success_label, "" if host._convergence_runtime()._is_convergence_action(action) else "RATE")
 	var stat_theme_color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
-	var stat_boxes = card.get("stat_boxes", {}) as Dictionary
+	var current_buff_states := {
+		"xp": _action_stat_chip_buffed(skill_id, action, "xp"),
+		"stamina": _action_stat_chip_buffed(skill_id, action, "stamina"),
+		"time": _action_stat_chip_buffed(skill_id, action, "time"),
+		"success": _action_stat_chip_buffed(skill_id, action, "success"),
+	}
 	_sync_xp_reward_chips(stat_boxes.get("xp") as Control, xp_label, skill_id, action)
 	host._skill_detail_surface()._sync_normal_activity_stat_text(card, show_stamina_stat, time_label)
-	host._skill_detail_surface()._sync_action_stat_chip_label_style(xp_label, _action_stat_chip_buffed(skill_id, action, "xp"), stat_theme_color, stat_boxes.get("xp") as Control)
-	host._skill_detail_surface()._sync_action_stat_chip_label_style(stamina_label, _action_stat_chip_buffed(skill_id, action, "stamina"), stat_theme_color, stat_boxes.get("stamina") as Control)
-	host._skill_detail_surface()._sync_action_stat_chip_label_style(time_value_label, _action_stat_chip_buffed(skill_id, action, "time"), stat_theme_color, stat_boxes.get("time") as Control)
-	host._skill_detail_surface()._sync_action_stat_chip_label_style(success_label, _action_stat_chip_buffed(skill_id, action, "success"), stat_theme_color, stat_boxes.get("success") as Control)
+	host._skill_detail_surface()._sync_action_stat_chip_label_style(xp_label, bool(current_buff_states["xp"]), stat_theme_color, stat_boxes.get("xp") as Control)
+	host._skill_detail_surface()._sync_action_stat_chip_label_style(stamina_label, bool(current_buff_states["stamina"]), stat_theme_color, stat_boxes.get("stamina") as Control)
+	host._skill_detail_surface()._sync_action_stat_chip_label_style(time_value_label, bool(current_buff_states["time"]), stat_theme_color, stat_boxes.get("time") as Control)
+	host._skill_detail_surface()._sync_action_stat_chip_label_style(success_label, bool(current_buff_states["success"]), stat_theme_color, stat_boxes.get("success") as Control)
+	if had_previous_stat_text:
+		var current_stat_texts := {"xp": xp_text, "stamina": stamina_text, "time": time_text, "success": success_text}
+		for stat_kind in ["xp", "stamina", "time", "success"]:
+			var was_buffed := bool(previous_buff_states[stat_kind])
+			var is_buffed := bool(current_buff_states[stat_kind])
+			if (was_buffed or is_buffed) and str(previous_stat_texts[stat_kind]) != str(current_stat_texts[stat_kind]):
+				host._skill_detail_surface()._wiggle_normal_activity_stat_symbol(stat_boxes.get(stat_kind) as Control)
 	var stamina_box = stat_boxes.get("stamina") as Control
 	if host._convergence_runtime()._is_convergence_action(action):
 		if stamina_box != null:
@@ -4512,7 +4521,11 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 			var stat_kind = host._skill_detail_surface()._activity_stat_kind_from_positions(card, event_positions)
 			if stat_kind.is_empty() and _action_card_medal_hit_from_positions(card, event_positions):
 				stat_kind = host.ACTION_CARD_MEDAL_PRESS_KIND
-			if not stat_kind.is_empty():
+			if not stat_kind.is_empty() and stat_kind != host.ACTION_CARD_MEDAL_PRESS_KIND:
+				host._skill_detail_surface()._begin_activity_stat_hold(card, skill_id, action_id, stat_kind, host._input_routing_shell()._first_event_position(event_positions), -1)
+				host.get_viewport().set_input_as_handled()
+				return
+			if stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
 				_route_skill_swipe_button_input(event, source)
 				host._skill_detail_surface().action_card_press_key = key
 				host._skill_detail_surface().action_card_press_position = host._input_routing_shell()._first_event_position(event_positions)
@@ -4541,8 +4554,6 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 					_cancel_skill_swipe_feedback(false)
 				elif stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
 					_play_action_card_medal_tap_ceremony(card)
-				elif not stat_kind.is_empty():
-					host._skill_detail_surface()._toggle_activity_stat_popup_for_card(card, skill_id, action_id, stat_kind)
 				else:
 					host._action_runtime()._start_action_from_card_tap(skill_id, action_id, key)
 					_cancel_skill_swipe_feedback(false)
@@ -4573,7 +4584,11 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 			var stat_kind = host._skill_detail_surface()._activity_stat_kind_from_positions(card, event_positions)
 			if stat_kind.is_empty() and _action_card_medal_hit_from_positions(card, event_positions):
 				stat_kind = host.ACTION_CARD_MEDAL_PRESS_KIND
-			if not stat_kind.is_empty():
+			if not stat_kind.is_empty() and stat_kind != host.ACTION_CARD_MEDAL_PRESS_KIND:
+				host._skill_detail_surface()._begin_activity_stat_hold(card, skill_id, action_id, stat_kind, host._input_routing_shell()._first_event_position(event_positions), event.index)
+				host.get_viewport().set_input_as_handled()
+				return
+			if stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
 				_route_skill_swipe_button_input(event, source)
 				host._skill_detail_surface().action_card_press_key = key
 				host._skill_detail_surface().action_card_press_position = host._input_routing_shell()._first_event_position(event_positions)
@@ -4602,8 +4617,6 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 					_cancel_skill_swipe_feedback(false)
 				elif stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
 					_play_action_card_medal_tap_ceremony(card)
-				elif not stat_kind.is_empty():
-					host._skill_detail_surface()._toggle_activity_stat_popup_for_card(card, skill_id, action_id, stat_kind)
 				else:
 					host._action_runtime()._start_action_from_card_tap(skill_id, action_id, key)
 					_cancel_skill_swipe_feedback(false)
@@ -4829,6 +4842,11 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 				preview_entry_y += entry_height + host._skill_detail_surface().DETAIL_LAZY_STACK_SEPARATION
 				preview_index += 1
 				continue
+			if str(entry_data.get("kind", "")) == "beta_notice":
+				preview_stack.add_child(host._skill_detail_surface()._build_beta_notice_board(content_width))
+				preview_entry_y += entry_height + host._skill_detail_surface().DETAIL_LAZY_STACK_SEPARATION
+				preview_index += 1
+				continue
 			var action = entry_data.get("action", {}) as Dictionary
 			var card_result = host._passive_firepit_surface()._build_passive_module_card(skill_id, action, content_width, false) if host._passive_modules_runtime().is_passive_action(action) else _skill_swipe_preview_action_card(skill_id, action, content_width)
 			(card_result["card"] as Dictionary)["preview_only"] = true
@@ -4849,7 +4867,6 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 	return page
 
 func _clear_skill_swipe_preview() -> void:
-	_cancel_preview_prewarm()
 	preview_module_reveal_token += 1
 	var active_was_cached = false
 	var active_preview = _preview_control(preview_page)
@@ -4897,18 +4914,14 @@ func _park_skill_swipe_preview() -> void:
 	var parked_page = _preview_control(preview_page)
 	var parked_offset = preview_offset
 	if parked_page != null and parked_offset != 0:
-		if host.SKILL_SWIPE_PREVIEW_CACHE_PARKED_PAGES:
-			parked_page.position.x = _skill_swipe_preview_rest_x(parked_offset)
-			parked_page.visible = false
-		else:
-			for raw_offset in preview_pages.keys():
-				if _preview_control(preview_pages[raw_offset]) == parked_page:
-					preview_pages.erase(raw_offset)
-					break
-			if preview_states.has(parked_offset):
-				_free_swipe_preview_real_card_cache(preview_states[parked_offset] as Dictionary)
-				preview_states.erase(parked_offset)
-			parked_page.queue_free()
+		for raw_offset in preview_pages.keys():
+			if _preview_control(preview_pages[raw_offset]) == parked_page:
+				preview_pages.erase(raw_offset)
+				break
+		if preview_states.has(parked_offset):
+			_free_swipe_preview_real_card_cache(preview_states[parked_offset] as Dictionary)
+			preview_states.erase(parked_offset)
+		parked_page.queue_free()
 	preview_page = null
 	preview_offset = 0
 
@@ -4951,60 +4964,6 @@ func _extract_incoming_swipe_preview(offset: int) -> Dictionary:
 		"page": incoming_page,
 		"state": state if state != null else {}
 	}
-
-func _queue_skill_swipe_preview_prewarm() -> void:
-	if not host.SKILL_SWIPE_IDLE_PREWARM_ENABLED:
-		preview_prewarm_pending = false
-		return
-	if not skill_strip_ids.is_empty():
-		return
-	if DisplayServer.get_name() == "headless":
-		return
-	if host.current_screen != "skill" or skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
-		return
-	if skill_swipe_tracking or skill_swipe_animating:
-		return
-	if host._skill_detail_surface().detail_actions_scroll != null and is_instance_valid(host._skill_detail_surface().detail_actions_scroll) and host._skill_detail_surface().detail_actions_scroll.is_child_click_suppressed():
-		return
-	if preview_prewarm_pending:
-		return
-	preview_prewarm_token += 1
-	preview_prewarm_pending = true
-	call_deferred("_prewarm_skill_swipe_neighbor_previews", host.selected_skill_id, preview_prewarm_token)
-
-func _prewarm_skill_swipe_neighbor_previews(skill_id: String, token: int) -> void:
-	if not _skill_swipe_prewarm_can_continue(skill_id, token):
-		_finish_skill_swipe_preview_prewarm(token)
-		return
-	await host.get_tree().process_frame
-	await _prewarm_global_swipe_real_card_cache_for_neighbors(skill_id, token)
-	for offset in [-1, 1]:
-		if not host._onboarding_runtime()._swipe_offset_accessible(offset):
-			continue
-		if not _skill_swipe_prewarm_can_continue(skill_id, token):
-			_finish_skill_swipe_preview_prewarm(token)
-			return
-		var page = _ensure_skill_swipe_preview_page_cached(offset)
-		if page == null or not is_instance_valid(page):
-			continue
-		page.position.x = _skill_swipe_preview_rest_x(offset)
-		var state = preview_states.get(offset, {}) as Dictionary
-		if state == null:
-			continue
-		state["prewarmed"] = false
-		_update_skill_swipe_preview_state(state, 0.0, true)
-		await host.get_tree().process_frame
-		if not _skill_swipe_prewarm_can_continue(skill_id, token):
-			_finish_skill_swipe_preview_prewarm(token)
-			return
-		_update_skill_swipe_preview_state(state, 0.0, true)
-		state["prewarmed"] = true
-		var modules_root = state.get("modules_root") as Control
-		if modules_root != null and is_instance_valid(modules_root):
-			modules_root.visible = true
-			modules_root.modulate.a = 1.0
-		await _prewarm_swipe_preview_real_card_cache(state, str(state.get("skill_id", "")), token)
-	_finish_skill_swipe_preview_prewarm(token)
 
 func _free_swipe_preview_real_card_cache(preview_state: Dictionary) -> void:
 	if preview_state.is_empty():
@@ -5150,7 +5109,6 @@ func _free_swipe_real_card_cache_dictionary(cache: Dictionary) -> void:
 	cache.clear()
 
 func _free_global_swipe_real_card_cache() -> void:
-	real_card_prewarm_token += 1
 	for raw_cache in real_card_cache_by_skill.values():
 		_free_swipe_real_card_cache_dictionary(raw_cache as Dictionary)
 	real_card_cache_by_skill.clear()
@@ -5165,28 +5123,10 @@ func _prune_global_swipe_real_card_cache_for_skills(allowed_skill_ids: Dictionar
 		real_card_cache_by_skill.erase(skill_id)
 
 func _skill_swipe_real_card_prewarm_can_continue(source_skill_id: String, token: int) -> bool:
-	return (
-		host.SKILL_SWIPE_REAL_CARD_IDLE_PREWARM_ENABLED
-		and token == real_card_prewarm_token
-		and host.current_screen == "skill"
-		and host.selected_skill_id == source_skill_id
-		and not skill_swipe_tracking
-		and not skill_swipe_animating
-		and not skill_swipe_pending_full_finalize
-		and not _skill_swipe_handoff_cover_is_cream_transition()
-	)
+	return false
 
 func _queue_skill_swipe_real_card_cache_prewarm(source_skill_id: String) -> void:
-	if not host.SKILL_SWIPE_REAL_CARD_IDLE_PREWARM_ENABLED:
-		return
-	if source_skill_id.is_empty() or host.current_screen != "skill" or host.selected_skill_id != source_skill_id:
-		return
-	if skill_swipe_tracking or skill_swipe_animating or skill_swipe_pending_full_finalize:
-		return
-	if _skill_swipe_handoff_cover_is_cream_transition():
-		return
-	real_card_prewarm_token += 1
-	call_deferred("_prewarm_global_swipe_real_card_cache_for_neighbors_idle", source_skill_id, real_card_prewarm_token)
+	return
 
 func _prewarm_global_swipe_real_card_cache_for_skill_idle(skill_id: String, source_skill_id: String, token: int) -> void:
 	if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
@@ -5327,20 +5267,10 @@ func _apply_swipe_preview_real_card_cache_to_lazy_plan(preview_state: Dictionary
 	preview_state.erase("real_card_cache")
 
 func _skill_swipe_prewarm_can_continue(skill_id: String, token: int) -> bool:
-	return (
-		token == preview_prewarm_token
-		and host.current_screen == "skill"
-		and host.selected_skill_id == skill_id
-		and not skill_swipe_tracking
-		and not skill_swipe_animating
-		and skill_swipe_frame != null
-		and is_instance_valid(skill_swipe_frame)
-	)
+	return false
 
 func _finish_skill_swipe_preview_prewarm(token: int) -> void:
-	if token == preview_prewarm_token:
-		preview_prewarm_pending = false
-		_hide_parked_skill_swipe_preview_pages(preview_page)
+	return
 
 func _ensure_skill_swipe_preview_page_cached(offset: int) -> Control:
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
@@ -5380,12 +5310,14 @@ func _skill_page_neighbor_ids(skill_id: String) -> Dictionary:
 	}
 
 func _skill_swipe_preview_entry_height(entry_data: Dictionary) -> float:
+	if str(entry_data.get("kind", "")) == "beta_notice":
+		return host._skill_detail_surface().BETA_NOTICE_HEIGHT
 	if str(entry_data.get("kind", "")) == "thieving_heist":
 		return host._thieving_surface().card_height()
 	var action = entry_data.get("action", {}) as Dictionary
 	if host._passive_modules_runtime().is_passive_action(action):
 		return float(host.PASSIVE_MODULE_CARD_HEIGHT)
-	return ActivityCardStyles.root_height(false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.ACTION_CARD_3D_DEPTH_OFFSET.y)
+	return ActivityCardStyles.root_height_for_action(action, false, false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y)
 
 func _skill_swipe_preview_scroll_y() -> float:
 	if host._skill_detail_surface().detail_actions_scroll != null and is_instance_valid(host._skill_detail_surface().detail_actions_scroll):
@@ -5451,6 +5383,8 @@ func _skill_swipe_light_preview_card_style(skill_id: String) -> StyleBoxFlat:
 	return style
 
 func _skill_swipe_light_preview_card(skill_id: String, entry_data: Dictionary, content_width: float) -> Dictionary:
+	if str(entry_data.get("kind", "")) == "beta_notice":
+		return {"root": host._skill_detail_surface()._build_beta_notice_board(content_width), "card": {}}
 	var height = _skill_swipe_preview_entry_height(entry_data)
 	var root = _skill_swipe_light_preview_simple_card(skill_id, entry_data, content_width, height)
 	var card = {}
@@ -5565,7 +5499,7 @@ func _render_light_skill_swipe_preview_entries(stack: VBoxContainer, skill_id: S
 	var preview_entry_y = 0.0
 	var preview_index = 0
 	var built_count = 0
-	var max_preview_cards = host.SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS if host.SKILL_SWIPE_SHOW_INCOMING_PREVIEW_DURING_DRAG else host.SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS
+	var max_preview_cards = host.SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS
 	var pending_placeholder_height = 0.0
 	for entry in entries:
 		var entry_data = entry as Dictionary
@@ -5838,9 +5772,9 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var uses_blue_guy_chicken_brawl_stage = host._fighting_runtime().action_uses_blue_guy_chicken_brawl_stage(action)
 	var uses_recovery_card := RecoveryModules.has_recovery(action)
 	var uses_flat_normal_card := not uses_recovery_card
-	var card_depth_offset: Vector2 = ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET if uses_flat_normal_card else host.ACTION_CARD_3D_DEPTH_OFFSET
+	var card_depth_offset := ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET if uses_recovery_card else ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
 	var card_root = Control.new()
-	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height(false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, card_depth_offset.y))
+	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height_for_action(action, false, false, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, card_depth_offset.y))
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card_root.clip_contents = false
 	card_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5940,7 +5874,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var margin = MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 54)
-	margin.add_theme_constant_override("margin_right", 260 if uses_flat_normal_card else 54)
+	margin.add_theme_constant_override("margin_right", 122)
 	margin.add_theme_constant_override("margin_top", 46)
 	margin.add_theme_constant_override("margin_bottom", 126)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5954,29 +5888,27 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	margin.add_child(row)
 
 	var art_slot = MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 18 if uses_flat_normal_card else 42)
+	art_slot.add_theme_constant_override("margin_top", 18)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel = Panel.new()
-	var art_panel_size := Vector2(382, 382) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
+	var art_panel_size := Vector2(382, 382)
 	art_panel.custom_minimum_size = art_panel_size
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var art_panel_style := ActivityCardStyles.cached_action_art(Callable(host, "_surface_style"))
-	art_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if uses_flat_normal_card else art_panel_style)
+	art_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	art_panel.modulate = Color.WHITE
 	art_panel.clip_contents = false
 	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_slot.add_child(art_panel)
-	if uses_flat_normal_card:
-		var art_face := ActionArtUi.border_overlay(art_panel_style)
-		art_face.name = "ActionArtRaisedFace"
-		art_face.z_index = 1
-		art_panel.add_child(art_face)
+	var art_face := ActionArtUi.border_overlay(art_panel_style)
+	art_face.name = "ActionArtRaisedFace"
+	art_face.z_index = 1
+	art_panel.add_child(art_face)
 	var art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
-	if uses_flat_normal_card:
-		art.custom_minimum_size = Vector2(398, 398)
-		art.size = Vector2(398, 398)
-		art.position = Vector2(-8, -8)
-		art.z_index = 2
+	art.custom_minimum_size = Vector2(398, 398)
+	art.size = Vector2(398, 398)
+	art.position = Vector2(-8, -8)
+	art.z_index = 2
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
 		art.visible = false
@@ -5991,14 +5923,13 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 38)
+	copy.add_theme_constant_override("separation", 18)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
 	row.add_child(art_slot)
 
 	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-	if uses_flat_normal_card:
-		action_name_label.add_theme_font_size_override("font_size", 112)
+	action_name_label.add_theme_font_size_override("font_size", 82)
 	action_name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
@@ -6009,7 +5940,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	copy.add_child(action_name_label)
 
 	var stat_row = HBoxContainer.new()
-	stat_row.add_theme_constant_override("separation", 18 if uses_flat_normal_card else 28)
+	stat_row.add_theme_constant_override("separation", 18)
 	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(stat_row)
 	var skill_detail_surface = host._skill_detail_surface()
@@ -6023,17 +5954,17 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var success_box: Control = null
 	var normal_stat_top: Label = null
 	var normal_stat_bottom: Label = null
-	if uses_flat_normal_card:
-		var normal_stat_panel: PanelContainer = skill_detail_surface._normal_activity_stat_panel(Vector2(880, 300))
+	if uses_flat_normal_card or uses_recovery_card:
+		var normal_stat_panel: PanelContainer = skill_detail_surface._normal_activity_stat_panel(Vector2(880, 272), ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 		var normal_stat_items := GridContainer.new()
 		normal_stat_items.columns = 2
-		normal_stat_items.add_theme_constant_override("h_separation", 20)
-		normal_stat_items.add_theme_constant_override("v_separation", 8)
+		normal_stat_items.add_theme_constant_override("h_separation", 0)
+		normal_stat_items.add_theme_constant_override("v_separation", 0)
 		normal_stat_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		xp_box = skill_detail_surface._normal_activity_stat_icon_item(xp_label, "xp")
-		stamina_box = skill_detail_surface._normal_activity_stat_icon_item(stamina_label, "stamina")
-		time_box = skill_detail_surface._normal_activity_stat_icon_item(time_label, "time")
-		success_box = skill_detail_surface._normal_activity_stat_icon_item(success_label, "success")
+		xp_box = skill_detail_surface._normal_activity_stat_item(xp_label, "xp")
+		stamina_box = skill_detail_surface._normal_activity_stat_item(stamina_label, "stamina")
+		time_box = skill_detail_surface._normal_activity_stat_item(time_label, "time")
+		success_box = skill_detail_surface._normal_activity_stat_item(success_label, "success")
 		normal_stat_items.add_child(xp_box)
 		normal_stat_items.add_child(time_box)
 		normal_stat_items.add_child(stamina_box)
@@ -6054,24 +5985,25 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var mastery_progress: CleanProgressBar = null
 	var mastery_ring: Control = null
 	if MasteryState.action_has_mastery(host, action):
-		if not RecoveryModules.has_recovery(action):
-			mastery_ring = ActivityCardStyles.action_art_mastery_ring(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
-			mastery_ring.z_index = 0
-			art_panel.add_child(mastery_ring)
+		mastery_ring = ActivityCardStyles.action_art_mastery_ring(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+		mastery_ring.z_index = 0
+		art_panel.add_child(mastery_ring)
 		medal = TextureRect.new()
 		medal.anchor_left = 0.0
 		medal.anchor_right = 0.0
 		medal.anchor_top = 0.0
 		medal.anchor_bottom = 0.0
-		medal.offset_left = -132
-		medal.offset_right = 168
-		medal.offset_top = -62
-		medal.offset_bottom = 128
+		medal.offset_left = 0
+		medal.offset_right = 190
+		medal.offset_top = 0
+		medal.offset_bottom = 190
+		medal.size = Vector2(190, 190)
 		medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+		medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+		medal.texture = _action_card_medal_texture_for_level(0)
 		medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		medal.z_index = 21
+		medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 		art_panel.add_child(medal)
 		mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
 		mastery_progress.border_color = host.COLOR_INK
@@ -6079,19 +6011,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		mastery_progress.easing_speed = 5.0
 		mastery_progress.z_index = 20
 		copy.add_child(mastery_progress)
-		if not RecoveryModules.has_recovery(action):
-			mastery_progress.visible = false
-		if RecoveryModules.has_recovery(action):
-			copy.remove_child(mastery_progress)
-			pop_card.add_child(mastery_progress)
-			mastery_progress.anchor_left = 0.0
-			mastery_progress.anchor_right = 1.0
-			mastery_progress.anchor_top = 1.0
-			mastery_progress.anchor_bottom = 1.0
-			mastery_progress.offset_left = 0.0
-			mastery_progress.offset_right = 0.0
-			mastery_progress.offset_top = -144.0
-			mastery_progress.offset_bottom = -88.0
+		mastery_progress.visible = false
 
 	var progress: ActivityProgressRail = null
 	var fluid_strip: Control = null
@@ -6130,6 +6050,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		border.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
 		border.bottom_shape = "wide_u"
 		border.wide_u_bottom_rise = RECOVERY_WIDE_U_BOTTOM_RISE
+		border.wide_u_shoulder_ratio = RECOVERY_WIDE_U_SHOULDER_RATIO
 		pop_card.add_child(border)
 	var action_id = str(action.get("id", ""))
 	var lock_overlay = host._skill_detail_surface()._activity_lock_overlay(pop_card, int(action.get("unlock", 1)), skill_id, host._skill_detail_surface()._lock_requirements_for_overlay(skill_id, action)) if not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action) else {}
@@ -6317,32 +6238,23 @@ func _install_activity_button_shell(button: Button, fill: Color, radius: float, 
 
 	var depth: Control
 	if diagonal_side.is_empty():
-		var activity_depth = ActivityCardStyles.activity_card_depth_layer(fill, host.ACTION_CARD_3D_DEPTH_OFFSET, host.ACTION_CARD_FACE_RADIUS, host.ACTION_CARD_POP_GUTTER)
-		activity_depth.name = "ActivityButtonDepth"
-		activity_depth.radius = radius
-		activity_depth.depth_offset = depth_offset
-		activity_depth.draw_back_plate_bottom_outline = true
-		depth = activity_depth
+		var normal_depth := Panel.new()
+		normal_depth.name = "ActivityButtonDepth"
+		normal_depth.set_anchors_preset(Control.PRESET_FULL_RECT)
+		normal_depth.offset_left = gutter
+		normal_depth.offset_right = -gutter
+		normal_depth.offset_top = depth_offset.y
+		normal_depth.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		normal_depth.z_index = 0
+		normal_depth.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_bottom_base(radius, host.COLOR_INK, fill))
+		depth = normal_depth
 	else:
-		var shaped_depth = ActivityCardStyles.page_switch_button_face()
+		var shaped_depth = ActivityCardStyles.prism_connector_overlay(depth_offset, radius, diagonal_side, 12.0, host.COLOR_INK)
 		shaped_depth.name = "ActivityButtonDepth"
-		shaped_depth.side = diagonal_side
-		shaped_depth.fill_color = fill.darkened(0.34)
-		shaped_depth.ink_color = host.COLOR_INK
-		shaped_depth.radius = radius
-		shaped_depth.diagonal_radius = 32.0
-		shaped_depth.stroke_width = 12.0
-		shaped_depth.draw_stroke = false
-		shaped_depth.depth_offset = depth_offset
-		shaped_depth.anchor_left = 0.0
-		shaped_depth.anchor_right = 1.0
-		shaped_depth.anchor_top = 0.0
-		shaped_depth.anchor_bottom = 1.0
-		shaped_depth.offset_left = gutter + depth_offset.x
-		shaped_depth.offset_right = -gutter + depth_offset.x
-		shaped_depth.offset_top = depth_offset.y
-		shaped_depth.offset_bottom = 0.0
-		shaped_depth.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shaped_depth.face_gutter = gutter
+		shaped_depth.face_bottom_inset = depth_offset.y
+		shaped_depth.side_fill_color = fill.darkened(0.42)
+		shaped_depth.bottom_fill_color = shaped_depth.side_fill_color
 		shaped_depth.z_index = 0
 		depth = shaped_depth
 	button.add_child(depth)
@@ -6377,7 +6289,7 @@ func _install_activity_button_shell(button: Button, fill: Color, radius: float, 
 		shaped_face.ink_color = host.COLOR_INK
 		shaped_face.radius = radius
 		shaped_face.stroke_width = 12.0
-		shaped_face.draw_stroke = false
+		shaped_face.draw_stroke = absf(depth_offset.x) <= 0.01
 		face = shaped_face
 	face.name = "ActivityButtonFaceFill"
 	face.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -6392,34 +6304,16 @@ func _install_activity_button_shell(button: Button, fill: Color, radius: float, 
 		activity_border.set_anchors_preset(Control.PRESET_FULL_RECT)
 		activity_border.radius = radius
 		activity_border.border_color = host.COLOR_INK
+		activity_border.anti_aliasing = false
 		activity_border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		activity_border.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
 		pop.add_child(activity_border)
 		border = activity_border
-	if not diagonal_side.is_empty():
-		var prism_fill = ActivityCardStyles.prism_connector_overlay(depth_offset, radius, diagonal_side, 12.0, host.COLOR_INK)
-		prism_fill.name = "ActivityButtonPrismFill"
-		prism_fill.face_gutter = gutter
-		prism_fill.face_bottom_inset = depth_offset.y
-		prism_fill.side_fill_color = fill.darkened(0.48)
-		prism_fill.bottom_fill_color = fill.darkened(0.24)
-		prism_fill.draw_strokes = false
-		prism_fill.z_index = 140
-		button.add_child(prism_fill)
-		var prism_connector = ActivityCardStyles.prism_connector_overlay(depth_offset, radius, diagonal_side, 12.0, host.COLOR_INK)
-		prism_connector.name = "ActivityButtonPrismConnector"
-		prism_connector.face_gutter = gutter
-		prism_connector.face_bottom_inset = depth_offset.y
-		prism_connector.draw_fill = false
-		prism_connector.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 20
-		button.add_child(prism_connector)
-		pop.set_meta("activity_card_connector_node_id", prism_connector.get_instance_id())
-		pop.set_meta("activity_card_fill_node_id", prism_fill.get_instance_id())
-
 	button.set_meta("activity_button_pop_id", pop.get_instance_id())
 	button.set_meta("activity_button_depth_id", depth.get_instance_id())
 	button.set_meta("activity_button_face_id", face.get_instance_id())
 	button.set_meta("activity_button_border_id", border.get_instance_id() if border != null else 0)
+	button.set_meta("activity_button_radius", radius)
 	button.set_meta("activity_button_diagonal_side", diagonal_side)
 	button.set_meta("activity_button_depth_offset", depth_offset)
 	_set_activity_button_shell_theme(button, fill, false)
@@ -6466,21 +6360,26 @@ func _set_activity_button_shell_theme(button: Button, fill: Color, active := fal
 	var depth_control: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(button.get_meta("activity_button_depth_id", 0))))
 	var depth = depth_control as ActivityCardDepth
 	if depth != null:
-		depth.back_color = fill.darkened(0.36)
-		depth.side_color = fill.darkened(0.48)
-		depth.bottom_color = fill.darkened(0.24)
-		var highlight = fill.lightened(0.42)
-		highlight.a = 0.24
-		depth.highlight_color = highlight
-		var themed_shadow = fill.darkened(0.72)
-		themed_shadow.a = 0.28
-		depth.shadow_color = themed_shadow
+		depth.back_color = fill.darkened(0.42)
+		depth.side_color = depth.back_color
+		depth.bottom_color = depth.back_color
+		depth.draw_back_plate_bottom_outline = false
 		depth.queue_redraw()
+	elif depth_control is Panel:
+		var normal_depth := depth_control as Panel
+		var depth_radius := float(button.get_meta("activity_button_radius", host.ACTION_CARD_FACE_RADIUS))
+		normal_depth.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_bottom_base(depth_radius, host.COLOR_INK, fill))
 	elif ActivityCardStyles.is_page_switch_button_face(depth_control):
 		var shaped_depth = depth_control
-		shaped_depth.fill_color = fill.darkened(0.34)
+		shaped_depth.fill_color = fill.darkened(0.42)
 		shaped_depth.ink_color = host.COLOR_INK
 		shaped_depth.queue_redraw()
+	elif ActivityCardStyles.is_prism_connector_overlay(depth_control):
+		var prism_depth = depth_control
+		prism_depth.side_fill_color = fill.darkened(0.42)
+		prism_depth.bottom_fill_color = prism_depth.side_fill_color
+		prism_depth.ink_color = host.COLOR_INK
+		prism_depth.queue_redraw()
 	var face: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(button.get_meta("activity_button_face_id", 0))))
 	if face != null:
 		var radius: float = host.ACTION_CARD_FACE_RADIUS
@@ -6581,7 +6480,7 @@ func _set_activity_button_pop_depth_offset_bound(offset: Vector2, pop_id: int) -
 	pop.offset_right = -gutter + offset.x
 	pop.offset_top = offset.y
 	pop.offset_bottom = -bottom_inset + offset.y
-	ActivityCardStyles.set_activity_card_depth_face_offset_from_pop(pop, offset, host.ACTION_CARD_POP_GUTTER, host.ACTION_CARD_3D_DEPTH_OFFSET.y)
+	ActivityCardStyles.set_activity_card_depth_face_offset_from_pop(pop, offset, host.ACTION_CARD_POP_GUTTER, bottom_inset)
 
 
 func _activity_card_pop_depth_offset(pop: Control) -> Vector2:

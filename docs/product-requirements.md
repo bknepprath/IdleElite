@@ -340,7 +340,7 @@ Requirements:
 - Keep screenshots aligned with the actual current UI and resource loop.
 - Decide tired-training rules and make the UI explain them.
 - Use simulator output to tune the first five minutes toward at least three natural job switches.
-- Keep `docs/activity-database.json` and generated/shareable views in sync.
+- Keep `docs/activity-database.json` aligned with the runtime loader and the HTTP-served activity docs.
 
 ### P1: Deepen Existing Loops
 

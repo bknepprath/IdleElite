@@ -1,1 +1,0 @@
-Source-locked v2 from the exercise source sheet push-up topology. Frames are ordered 0%, 15%, 85%, 100%; preview uses top hold timing: 340, 90, 90, 115, 80, 80 ms for ping-pong playback. Shared 256x256 crop; no per-frame centering. Diagnostic floor line and dots are code-authored overlays at y=184 and therefore do not bounce.

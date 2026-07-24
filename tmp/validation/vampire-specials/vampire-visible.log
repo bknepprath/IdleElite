@@ -1,0 +1,14 @@
+Godot Engine v4.5.1.stable.official.f62fdbde1 - https://godotengine.org
+Vulkan 1.4.325 - Forward Mobile - Using Device #0: NVIDIA - NVIDIA GeForce RTX 3090
+
+ERROR: Chicken playtest: fight-vampires could not start
+   at: push_error (core/variant/variant_utility.cpp:1024)
+   GDScript backtrace (most recent call first):
+       [0] _fail (res://scripts/dev/chicken_playtest.gd:1321)
+       [1] _prepare_isolated_fight (res://scripts/dev/chicken_playtest.gd:194)
+       [2] _run (res://scripts/dev/chicken_playtest.gd:51)
+       [3] _wait_for_boot_ready (res://scripts/dev/chicken_playtest.gd:300)
+WARNING: ObjectDB instances leaked at exit (run with --verbose for details).
+   at: cleanup (core/object/object.cpp:2514)
+ERROR: 3 resources still in use at exit (run with --verbose for details).
+   at: clear (core/io/resource.cpp:795)

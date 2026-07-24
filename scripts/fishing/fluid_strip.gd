@@ -200,10 +200,6 @@ func set_attempt_progress(progress: float) -> void:
 		_set_phase(Phase.BITE)
 
 
-func play_reveal(_success: bool) -> void:
-	pass
-
-
 func is_animating_visible() -> bool:
 	return _running or _reveal_active or _current_height > STRIP_VISIBLE_HEIGHT or _target_height > STRIP_VISIBLE_HEIGHT
 

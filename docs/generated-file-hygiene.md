@@ -4,7 +4,7 @@ Use this page before staging generated files, Godot metadata, local outputs, or 
 
 ## Tracked Source And Metadata
 
-- `docs/activity-database.json` is source. `docs/activity-database-data.js` is generated from it but tracked because the game loads it at runtime and Android export includes it. Regenerate it with `python scripts\sync-activity-database-js.py` after JSON edits, then run `.\scripts\audit-activity-database.ps1` and `.\scripts\check-activity-database-contracts.ps1`.
+- `docs/activity-database.json` is the tracked source for activity data. The Godot runtime and HTTP-served activity docs read it directly; run `.\scripts\check-activity-database-contracts.ps1` and `.\scripts\audit-activity-database.ps1` after JSON or loader changes.
 - Runtime `.png.import` files are tracked when the matching runtime image is tracked. Move or delete the asset and its `.import` file together, and search for the exact path plus the `res://` path first.
 - Existing tracked addon or vendor `.uid` and `.import` files are part of that imported package. Do not delete them as generic cleanup.
 - Some Godot-generated files can be intentionally tracked when they are the durable metadata for committed runtime assets. The package that accepts them should also validate the matching runtime path.
@@ -34,7 +34,7 @@ These are local machine, build, cache, or validation outputs. Do not stage them 
 ## Import Metadata Rules
 
 - Commit `.import` files beside accepted runtime assets, especially under `assets/content/**`, `assets/loading/**`, and `assets/android/**`.
-- Do not commit docs-side `.import` files under `docs/art-source/**`. That tree is a source/provenance archive under `.gdignore`, and the old Godot metadata there was removed as stale archive noise.
+- Keep the source/provenance archive outside the project at the sibling `../Idle Slop 1-art-source-archive/`; do not recreate `docs/art-source/` or commit archive files into the runtime repository.
 - If Godot creates an untracked `.import` file for a dirty asset, leave it unstaged until the paired asset is intentionally accepted.
 - Do not add a broad `*.import` ignore rule. Runtime assets need their import metadata.
 
@@ -47,7 +47,6 @@ These are local machine, build, cache, or validation outputs. Do not stage them 
 ## Never Hand Edit
 
 - `.godot/`, `.firebase/`, and Android build cache contents.
-- `docs/activity-database-data.js` except through `scripts\sync-activity-database-js.py`.
 - Local secrets or signing material.
 - Export outputs in `builds/`, `release/`, `export/`, or Android build output folders unless the work package is a release/build package.
 

@@ -13,7 +13,7 @@ const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 const StopHoldCircle = preload("res://scripts/ui/stop_hold_circle.gd")
 
 const WOODCUTTING_LOG_MODULE_INFO := "Legacy collector kept only for save compatibility."
-const WOODCUTTING_LOG_MODULE_TIP_TEXT := "Legacy passive collector removed."
+const WOODCUTTING_FIREPIT_TIP_TEXT := "Tap Firepit to start."
 const WOODCUTTING_FIREPIT_TEXTURE := "res://assets/content/woodcutting/modules/woodcutting-firepit.png"
 const WOODCUTTING_FIREPIT_BACKGROUND_TEXTURE := "res://assets/content/woodcutting/modules/woodcutting-firepit-bg.png"
 const WOODCUTTING_FIREPIT_INFO := "Tap firepit to start. Burning Scrapwood rewards XP and increases your Woodcutting stamina regeneration rate."

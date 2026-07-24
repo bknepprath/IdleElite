@@ -25,6 +25,16 @@ func _init() -> void:
 	var main_script = load("res://scripts/main.gd")
 	var game = main_script.new()
 	var online = game._online_runtime()
+	var total_rows := [
+		{"name": "Lower Level", "score": 494, "total_xp": 999999999},
+		{"name": "Less XP", "score": 495, "total_xp": 100},
+		{"name": "More XP", "score": 495, "total_xp": 200}
+	]
+	online.call("_leaderboard_store_fetch_rows", LeaderboardState.CATEGORY_TOTAL_LEVEL, total_rows)
+	var sorted_total_rows: Array = game.leaderboard_state.rows_by_category[LeaderboardState.CATEGORY_TOTAL_LEVEL]
+	_expect(str(sorted_total_rows[0].get("name", "")) == "More XP", "Total leaderboard level ties should rank higher total XP first.")
+	_expect(str(sorted_total_rows[1].get("name", "")) == "Less XP", "Total leaderboard should keep lower XP behind higher XP at the same level.")
+	_expect(str(sorted_total_rows[2].get("name", "")) == "Lower Level", "Total leaderboard level should remain the primary ranking value.")
 	_expect(online.call("_leaderboard_database_url_allowed", "https://idle-elite-default-rtdb.firebaseio.com"), "US Realtime Database URL should be accepted.")
 	_expect(online.call("_leaderboard_database_url_allowed", "https://idle-elite-default-rtdb.europe-west1.firebasedatabase.app"), "Regional Realtime Database URL should be accepted.")
 	_expect(not online.call("_leaderboard_database_url_allowed", "http://idle-elite-default-rtdb.firebaseio.com"), "HTTP database URL should be rejected.")

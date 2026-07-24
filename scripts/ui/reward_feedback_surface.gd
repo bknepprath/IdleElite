@@ -513,7 +513,10 @@ func _emphasize_action_stat_bonus(card: Dictionary, stat_kind: String, text: Str
 	var box := boxes.get(stat_kind) as Control
 	if not _is_bonus_emphasis_anchor_visible(box):
 		return
-	_flash_bonus_control(box)
+	if box.has_meta("normal_activity_stat_symbol"):
+		host._skill_detail_surface()._wiggle_normal_activity_stat_symbol(box)
+	else:
+		_flash_bonus_control(box)
 	_float_reward(host, box, text, 70, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -58), Vector2(0, -154), 0.0)
 	host._audio_director()._play_info_chip_upgrade_sfx(sequence_index)
 
@@ -775,12 +778,16 @@ func _play_activity_crit_feedback(key: String, card: Dictionary, mega_crit = fal
 	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	highlight.z_index = 560
 	highlight.set_meta("activity_crit_highlight_bleed", highlight_bleed)
-	highlight.add_theme_stylebox_override("panel", ActivityCardStyles.crit_glow(mega_crit))
+	var action := card.get("action", {}) as Dictionary
+	var is_diamond_fight_card := str((action.get("combat", {}) as Dictionary).get("arena_shape", "")) == "diamond"
+	highlight.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if is_diamond_fight_card else ActivityCardStyles.crit_glow(mega_crit))
 	highlight.add_to_group(ACTIVITY_CRIT_OVERLAY_GROUP)
 	host.add_child(highlight)
 	pop_card.set_meta("activity_crit_highlight_node", highlight)
 	highlight.modulate = Color(1, 1, 1, 1.0)
-	var art_burst = _activity_crit_art_burst(card, pop_card, mega_crit)
+	var art_burst: TextureRect = null
+	if not is_diamond_fight_card:
+		art_burst = _activity_crit_art_burst(card, pop_card, mega_crit)
 	_activity_crit_text_burst(pop_card, mega_crit)
 	var tween = host.create_tween()
 	action_crit_tweens[key] = tween
@@ -1036,13 +1043,8 @@ func _skill_id_from_action_key(key: String) -> String:
 		return str(parts[0])
 	return host.selected_skill_id
 
-func _float_mastery_bar(parent: Control, anchor: Control, mastery_amount: float, progress_pct = -1.0) -> void:
-	if mastery_amount <= 0:
-		return
-	if not host._onboarding_runtime()._onboarding_mastery_feedback_allowed(anchor):
-		return
-	var amount_text = str(int(round(mastery_amount))) if absf(mastery_amount - round(mastery_amount)) <= 0.001 else GameFormatting.significant_digits(mastery_amount)
-	_float_reward(parent, anchor, "+%s" % amount_text, 70, Color("#ffd95a"), Vector2(0, -84), Vector2(0, -88), 0.08, false, _mastery_bar_fill_anchor_x(anchor, progress_pct), SKILL_REWARD_FLOAT_GROUP)
+func _float_mastery_bar(_parent: Control, _anchor: Control, _mastery_amount: float, _progress_pct = -1.0) -> void:
+	pass
 
 func _card_mastery_progress_percent(card: Dictionary) -> float:
 	var skill_id = str(card.get("skill_id", ""))
@@ -1050,14 +1052,6 @@ func _card_mastery_progress_percent(card: Dictionary) -> float:
 	if skill_id.is_empty() or action_id.is_empty():
 		return -1.0
 	return MasteryState.progress_pct(host.mastery, host._action_key(skill_id, action_id), host.MASTERY_MAX_LEVEL)
-
-func _mastery_bar_fill_anchor_x(anchor: Control, progress_pct = -1.0) -> float:
-	if anchor is CleanProgressBar:
-		var bar = anchor as CleanProgressBar
-		var pct = clampf(progress_pct / 100.0, 0.0, 1.0) if progress_pct >= 0.0 else clampf(bar.value / 100.0, 0.0, 1.0)
-		var inner_width = maxf(0.0, bar.size.x - bar.border_width * 2.0)
-		return bar.border_width + inner_width * pct
-	return -1.0
 
 func _float_tired_activity_feedback(action_key: String) -> void:
 	_float_action_card_warning_feedback(action_key, TIRED_ACTIVITY_FLOAT_TEXT, TIRED_ACTIVITY_FLOAT_COLOR)

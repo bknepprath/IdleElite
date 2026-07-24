@@ -24,6 +24,8 @@ extends SceneTree
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
+const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
+const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ActivityProgressRail = preload("res://scripts/ui/activity_progress_rail.gd")
 
 var test_failed := false
@@ -60,11 +62,43 @@ func _run() -> void:
 	_expect(int(action.get("xp", 0)) == 1, "recovery action should be very low XP")
 	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
 	var card := built.get("card", {}) as Dictionary
+	var recovery_root := built.get("card_root") as Control
+	var normal_action := scene.call("_action_data", "fight", "push-ups") as Dictionary
+	var normal_built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", normal_action, 1080.0, 1080.0) as Dictionary
+	var normal_root := normal_built.get("card_root") as Control
+	_expect(recovery_root != null and normal_root != null and is_equal_approx(recovery_root.custom_minimum_size.y - ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET.y, normal_root.custom_minimum_size.y - ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y), "recovery cards should keep the same front-face height as normal activity cards")
+	var depth := card.get("depth") as ActivityCardDepth
+	_expect(depth != null and depth.depth_offset.is_equal_approx(ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET), "recovery cards should expose the same front-face height as normal activity cards")
+	var pop := card.get("pop") as Control
+	_expect(pop != null and (pop.get_meta("activity_card_press_offset", Vector2.ZERO) as Vector2).is_equal_approx(ActivityCardStyles.NORMAL_ACTIVITY_CARD_PRESS_OFFSET), "recovery cards should press straight down without breaking their depth outline")
+	if depth != null:
+		var outline_points := depth.call("_wide_u_back_outline_points", Rect2(Vector2.ZERO, Vector2(1080.0, 720.0)), 12.0) as PackedVector2Array
+		_expect(outline_points.size() > 60 and outline_points[0].is_equal_approx(outline_points[outline_points.size() - 1]), "recovery depth outline should be one closed stroke")
+		_expect(outline_points.has(Vector2(1074.0, 576.0)) and outline_points.has(Vector2(1008.0, 642.0)), "recovery depth outline should round its outer bottom corners")
 	var stamina_label := card.get("stamina") as Label
 	_expect(stamina_label != null, "recovery card should render a stamina stat chip")
 	_expect(stamina_label == null or stamina_label.text == "+3", "recovery card should display the stamina refund as +3")
+	var stamina_box := (card.get("stat_boxes", {}) as Dictionary).get("stamina") as Control
+	_expect(stamina_box != null and bool(stamina_box.get_meta("normal_activity_stat_box", false)), "recovery cards should use normal activity stat chips")
+	_expect(card.get("mastery_ring") as Control != null, "recovery cards should use the normal action-art mastery ring")
 	var progress := card.get("progress") as ActivityProgressRail
-	_expect(progress != null and progress.bottom_radius >= 88.0 and progress.offset_top < -100.0 and progress.bottom_shape == "wide_u", "recovery card should use the wide U recovery progress rail shape")
+	_expect(progress != null and progress.bottom_radius >= 64.0 and progress.offset_top < -100.0 and progress.bottom_shape == "wide_u", "recovery card should use the wide U recovery progress rail shape")
+	if progress != null:
+		var rail_probe := ActivityProgressRail.new()
+		rail_probe.size = Vector2(1080.0, 142.0)
+		rail_probe.edge_inset = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
+		rail_probe.wide_u_bottom_rise = progress.wide_u_bottom_rise
+		rail_probe.wide_u_shoulder_ratio = progress.wide_u_shoulder_ratio
+		var outer_start := rail_probe.call("_wide_u_progress_point", 0.0, 100.0) as Vector2
+		var inner_start := rail_probe.call("_wide_u_progress_point", 0.0, 88.0) as Vector2
+		_expect(outer_start.is_equal_approx(inner_start) and is_zero_approx(outer_start.x), "recovery rail should meet the module edges without pill caps")
+		var corner_bounds := rail_probe.call("_wide_u_progress_band_bounds", 0.0, 100.0) as Vector2
+		var shoulder_bounds := rail_probe.call("_wide_u_progress_band_bounds", ActivityCardStyles.RECOVERY_WIDE_U_SHOULDER_RATIO, 100.0) as Vector2
+		var center_bounds := rail_probe.call("_wide_u_progress_band_bounds", 0.5, 100.0) as Vector2
+		_expect(is_equal_approx(corner_bounds.x, shoulder_bounds.x), "recovery rail top should stay flat through its outer corners")
+		_expect(corner_bounds.y < shoulder_bounds.y, "recovery rail should round only its lower outer corners")
+		_expect(center_bounds.x > shoulder_bounds.x and center_bounds.y > shoulder_bounds.y, "recovery rail should dip through the center after its straight shoulder")
+		rail_probe.free()
 	var recovery_label := card.get("recovery_label") as Label
 	_expect(recovery_label == null, "recovery card should not show the extra recovery face-plate message")
 	var starting_xp := int((scene.skills["fight"] as Dictionary).get("xp", 0))

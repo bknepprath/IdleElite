@@ -3,34 +3,10 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 
-$runner = Join-Path $projectRoot "run-godot-safe.ps1"
+$runner = Join-Path $projectRoot "scripts\run-godot-test.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\performance-monitor"
-$testScript = Join-Path $testDir "performance_monitor_test.gd"
+$testScript = "res://scripts/tests/performance_monitor.gd"
 
-function Assert-NoUnexpectedGodotErrors {
-    param(
-        [Parameter(Mandatory = $true)][AllowNull()]$Output,
-        [Parameter(Mandatory = $true)][string]$Context
-    )
-
-    if ($null -eq $Output) {
-        return
-    }
-
-    foreach ($line in @($Output)) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
-            continue
-        }
-        $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
-        }
-    }
-}
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 $baselineHeadlessProcessIds = @{}
@@ -44,64 +20,6 @@ if (Test-Path -LiteralPath $testDir) {
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 try {
-    @'
-extends SceneTree
-
-var failures: Array[String] = []
-
-
-func _init() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
-	var runtime_script = load("res://scripts/app/performance_runtime.gd")
-	_expect(runtime_script != null, "Performance runtime script should load.")
-	if runtime_script == null:
-		_finish()
-		return
-
-	var monitor = runtime_script._PerfMonitor.new()
-	root.add_child(monitor)
-	monitor.set_process(false)
-	monitor.set_overlay_visible(true)
-	await process_frame
-
-	for i in range(60):
-		monitor.record_frame(1.0 / 60.0)
-	for i in range(5):
-		monitor.record_frame(0.050)
-
-	var report: Dictionary = monitor.current_report()
-	_expect(monitor.has_overlay(), "Overlay nodes should be created when enabled.")
-	_expect(monitor.is_overlay_visible(), "Overlay should report visible after being enabled.")
-	_expect(int(report.get("sample_frames", 0)) == 65, "Report should include every sampled frame.")
-	_expect(int(report.get("jank_frames", 0)) == 5, "Report should count frames slower than the jank threshold.")
-	_expect(float(report.get("measured_fps", 0.0)) > 0.0, "Report should calculate measured FPS.")
-	_expect(float(report.get("max_ms", 0.0)) >= 50.0, "Report should expose max frame time in milliseconds.")
-	_expect(str(monitor.report_text()).contains("PERF REPORT"), "Overlay text should include a screenshot-friendly heading.")
-	_expect(str(monitor.report_text()).contains("FPS"), "Overlay text should include FPS.")
-
-	monitor.set_overlay_visible(false)
-	_expect(not monitor.is_overlay_visible(), "Overlay should report hidden after being disabled.")
-	monitor.free()
-	_finish()
-
-
-func _expect(condition: bool, message: String) -> void:
-	if not condition:
-		failures.append(message)
-
-
-func _finish() -> void:
-	if failures.is_empty():
-		print("performance-monitor-ok")
-		quit(0)
-	else:
-		for failure in failures:
-			push_error(failure)
-		quit(1)
-'@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
     $output | Out-Host

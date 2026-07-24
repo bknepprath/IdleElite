@@ -154,7 +154,7 @@ func _run() -> void:
 	if capture_empty_stamina:
 		scene.stamina["woodcutting"] = 0.0
 		scene.stamina_bank["woodcutting"] = 0.0
-	var render_result = scene.call("_render_screen", false, -1, false)
+	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
 	for _frame in range(30):
@@ -361,36 +361,18 @@ func _set_scroll_vertical(scroll: ScrollContainer, target_scroll: int) -> void:
 	var clamped := maxi(0, target_scroll)
 	if max_scroll > 0:
 		clamped = mini(clamped, max_scroll)
+	scroll.scroll_horizontal = 0
 	scroll.scroll_vertical = clamped
 	scroll.set("drag_scroll_position", float(clamped))
 
 
 func _find_firepit_card_control(scene: Node) -> Control:
-	var cards := scene.get("action_cards") as Dictionary
-	for raw_key in cards.keys():
-		var key := str(raw_key)
-		if key != "action:woodcutting:woodcutting-firepit":
-			continue
-		var card := cards.get(raw_key, {}) as Dictionary
-		var root := card.get("root") as Control
-		if root != null and is_instance_valid(root) and root.is_visible_in_tree():
-			return root
-	var nodes := scene.get("detail_action_card_nodes") as Dictionary
-	var node := nodes.get("woodcutting-firepit") as Control
-	if node != null and is_instance_valid(node) and node.is_visible_in_tree():
-		var named_card := node.find_child("FirepitCardRoot", true, false) as Control
-		if named_card != null and is_instance_valid(named_card) and named_card.is_visible_in_tree():
-			return named_card
-		for child in node.get_children():
-			var child_control := child as Control
-			if child_control != null and is_instance_valid(child_control) and child_control.is_visible_in_tree():
-				var child_height := maxf(child_control.custom_minimum_size.y, child_control.size.y)
-				if child_height >= 820.0 and child_height <= 1120.0:
-					return child_control
-		return node
-	if node != null and is_instance_valid(node) and node.is_visible_in_tree():
-		return node
-	return null
+	var detail_surface = scene.call("_skill_detail_surface")
+	if detail_surface == null:
+		return null
+	var entry := detail_surface.call("_detail_stack_child_for_action", "firepit") as Control
+	var card := entry.find_child("FirepitCardRoot", true, false) as Control if entry != null else null
+	return card if card != null else entry
 
 
 func _fail(message: String) -> void:

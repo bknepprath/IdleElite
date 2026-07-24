@@ -70,7 +70,7 @@ const ActivityDocs = (() => {
   function renderError(target, error) {
     target.innerHTML = '<section class="panel"><strong>Activity data did not load.</strong><p>' +
       String(error.message || error) +
-      '</p><p>Serve the docs from the project root or include activity-database-data.js before activity-docs.js.</p></section>';
+      '</p><p>Serve the docs from the project root over HTTP, for example with <code>python -m http.server</code>.</p></section>';
   }
 
   return {

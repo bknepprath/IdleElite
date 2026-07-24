@@ -55,7 +55,7 @@ func _mark_god_mode_save_tainted(reason := "god mode") -> void:
 
 
 func _god_mode_available() -> bool:
-	return false
+	return OS.is_debug_build()
 
 
 func _god_mode_active() -> bool:

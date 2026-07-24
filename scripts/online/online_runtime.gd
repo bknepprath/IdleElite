@@ -1030,6 +1030,20 @@ func _leaderboard_finalize_fetch_rows(category_id: String, rows: Array) -> void:
 
 func _leaderboard_store_fetch_rows(category_id: String, rows: Array) -> void:
 	var leaderboard_state = app.leaderboard_state
+	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
+		var score_a = int(a.get("score", 0))
+		var score_b = int(b.get("score", 0))
+		if score_a != score_b:
+			return score_a > score_b
+		if category_id == LeaderboardState.CATEGORY_TOTAL_LEVEL:
+			var total_xp_a = int(a.get("total_xp", 0))
+			var total_xp_b = int(b.get("total_xp", 0))
+			if total_xp_a != total_xp_b:
+				return total_xp_a > total_xp_b
+		return str(a.get("name", "")) < str(b.get("name", ""))
+	)
+	if rows.size() > LeaderboardState.TOP_COUNT:
+		rows = rows.slice(0, LeaderboardState.TOP_COUNT)
 	leaderboard_state.rows_by_category[category_id] = rows
 	leaderboard_state.fetch_unix_by_category[category_id] = app._unix_now()
 	var had_retry_cooldown = leaderboard_state.fetch_retry_unix_by_category.has(category_id)
@@ -1189,15 +1203,6 @@ func _on_leaderboard_fetch_completed(result: int, response_code: int, _headers: 
 				"avatar_index": LeaderboardProfile.valid_avatar_index(int(row.get("avatar_index", 0)), ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT),
 				"is_player": player_id == app.leaderboard_profile.player_id
 			})
-	rows.sort_custom(func(a: Dictionary, b: Dictionary) -> bool:
-		var score_a = int(a.get("score", 0))
-		var score_b = int(b.get("score", 0))
-		if score_a == score_b:
-			return str(a.get("name", "")) < str(b.get("name", ""))
-		return score_a > score_b
-	)
-	if rows.size() > LeaderboardState.TOP_COUNT:
-		rows = rows.slice(0, LeaderboardState.TOP_COUNT)
 	_leaderboard_finalize_fetch_rows(category_id, rows)
 
 

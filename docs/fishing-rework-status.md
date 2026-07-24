@@ -79,7 +79,6 @@ Player unlocks **tools**, **regions**, and **locations** within each region modu
 ```powershell
 python scripts\fix-fishing-action-order.py
 python scripts\reorganize-fishing-areas.py
-python scripts\sync-activity-database-js.py
 .\scripts\audit-activity-database.ps1
 .\scripts\check-project.ps1
 ```

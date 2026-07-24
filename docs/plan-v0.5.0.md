@@ -293,8 +293,8 @@ Required checks:
 
 Data checks:
 
-- If fishing data is touched, sync and audit:
-  - `python scripts\sync-activity-database-js.py`
+- If fishing data is touched, run the contract check and audit:
+  - `.\scripts\check-activity-database-contracts.ps1`
   - `.\scripts\audit-activity-database.ps1`
 - For new activity data, audit IDs, unlock levels, requirements, and rewards before wiring UI.
 

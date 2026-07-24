@@ -1857,7 +1857,7 @@ func _start_action(skill_id: String, action_id: String, select_page = true, resp
 		host._update_ui(0.0, true)
 		return false
 	if host.running_skill_id == skill_id and host.running_action_id == action_id:
-		host._reward_feedback_surface()._set_result("Hold %s to stop." % action["name"])
+		host._reward_feedback_surface()._set_result("Tap %s to stop." % action["name"])
 		host._skill_swipe_activity_surface()._pop_activity_button(host._action_key(skill_id, action_id))
 		return false
 	if not host.running_skill_id.is_empty() and not host.running_action_id.is_empty():
@@ -1952,6 +1952,10 @@ func _start_action_from_card_tap(skill_id: String, action_id: String, visual_car
 	var now = Time.get_ticks_msec()
 	if host._skill_detail_surface().last_action_card_tap_key == key and now - host._skill_detail_surface().last_action_card_tap_msec < host.ACTION_CARD_DUPLICATE_TAP_MSEC:
 		return false
+	if host.running_skill_id == skill_id and host.running_action_id == action_id:
+		host._skill_detail_surface().last_action_card_tap_key = key
+		host._skill_detail_surface().last_action_card_tap_msec = now
+		return _stop_running_action(skill_id, action_id)
 	host._tutorial_overlay_surface()._on_activity_start_tutorial_card_tapped(skill_id, action_id)
 	if _start_action(skill_id, action_id, true, false):
 		host._skill_detail_surface().last_action_card_tap_key = key

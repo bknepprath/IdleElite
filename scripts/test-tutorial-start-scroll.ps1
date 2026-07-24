@@ -32,6 +32,7 @@ function Assert-NoUnexpectedGodotErrors {
     }
 }
 
+
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 if (Test-Path -LiteralPath $testDir) {
@@ -162,6 +163,36 @@ func _run() -> void:
 	if tutorial_instruction_label.text != "Tap Push-Ups to start training.":
 		_fail("tutorial starter skill page instruction text changed unexpectedly: %s %s" % [tutorial_instruction_label.text, _summary(scene)])
 		return
+	var tutorial_arrow := tutorial_surface.tutorial_arrow as TextureRect
+	var tutorial_target := tutorial_surface.call("_tutorial_target_control") as Control
+	if tutorial_arrow == null or tutorial_target == null or not tutorial_arrow.is_visible_in_tree():
+		_fail("tutorial starter skill page should show its arrow and target: %s" % _summary(scene))
+		return
+	var arrow_tip_offset := Vector2(0.47, 0.02) if tutorial_arrow.flip_v else Vector2(0.47, 0.98)
+	var arrow_tip := tutorial_arrow.get_global_transform() * (tutorial_arrow.size * arrow_tip_offset)
+	if tutorial_arrow.size.distance_to(Vector2(260, 420)) > 1.0:
+		_fail("tutorial arrow should use the phone-sized 260x420 treatment: size=%s %s" % [str(tutorial_arrow.size), _summary(scene)])
+		return
+	var target_rect := tutorial_target.get_global_rect()
+	var expected_tip := target_rect.position + target_rect.size * Vector2(0.50, -0.07)
+	if arrow_tip.distance_to(expected_tip) > 15.0:
+		_fail("tutorial arrow should point at the activity card top edge: tip=%s expected=%s %s" % [str(arrow_tip), str(expected_tip), _summary(scene)])
+		return
+	var expected_rotation := deg_to_rad(18.0) if tutorial_arrow.flip_v else deg_to_rad(-18.0)
+	if not is_equal_approx(tutorial_arrow.rotation, expected_rotation):
+		_fail("tutorial starter skill page should angle toward the activity card: rotation=%s expected=%s %s" % [str(tutorial_arrow.rotation), str(expected_rotation), _summary(scene)])
+		return
+	var viewport_rect := scene.get_viewport().get_visible_rect()
+	var arrow_bounds := tutorial_arrow.get_global_transform() * Rect2(Vector2.ZERO, tutorial_arrow.size)
+	if arrow_bounds.position.x < viewport_rect.position.x - 1.0 or arrow_bounds.position.y < viewport_rect.position.y - 1.0 or arrow_bounds.end.x > viewport_rect.end.x + 1.0 or arrow_bounds.end.y > viewport_rect.end.y + 1.0:
+		_fail("tutorial arrow should remain inside the portrait viewport: bounds=%s viewport=%s %s" % [str(arrow_bounds), str(viewport_rect), _summary(scene)])
+		return
+	if arrow_bounds.intersects(target_rect):
+		_fail("tutorial arrow should not obscure the starter activity target: arrow=%s target=%s %s" % [str(arrow_bounds), str(target_rect), _summary(scene)])
+		return
+	if tutorial_instruction_label.get_global_rect().intersects(target_rect):
+		_fail("tutorial instruction should not obscure the starter activity target: label=%s target=%s %s" % [str(tutorial_instruction_label.get_global_rect()), str(target_rect), _summary(scene)])
+		return
 	if detail_header_left_block != null and _effective_canvas_alpha(detail_header_left_block) > 0.01:
 		_fail("tutorial starter skill page should hide the fighting icon and title: alpha=%.3f %s" % [_effective_canvas_alpha(detail_header_left_block), _summary(scene)])
 		return
@@ -195,6 +226,23 @@ func _run() -> void:
 		_fail("tutorial starter skill page should hide page-switch controls: %s" % _summary(scene))
 		return
 	await _capture_if_requested()
+	var tutorial_press := InputEventMouseButton.new()
+	tutorial_press.button_index = MOUSE_BUTTON_LEFT
+	tutorial_press.pressed = true
+	tutorial_press.position = tutorial_target.get_global_rect().get_center()
+	tutorial_press.global_position = tutorial_press.position
+	var navigation_shell: Object = scene._navigation_shell()
+	navigation_shell.screen_render_in_progress = true
+	if not bool(tutorial_surface.call("_route_tutorial_panel_input", tutorial_press)):
+		navigation_shell.screen_render_in_progress = false
+		_fail("tutorial starter click was not routed while the screen render was finishing: %s" % _summary(scene))
+		return
+	navigation_shell.screen_render_in_progress = false
+	for _i in range(4):
+		await _wait_test_frame()
+	if str(scene.get("running_skill_id")) != "fight" or str(scene.get("running_action_id")) != "push-ups":
+		_fail("tutorial starter click did not start Push-Ups after the screen render finished: %s" % _summary(scene))
+		return
 	print("tutorial-start-scroll-ok scroll=%s drag=%.3f shadow_visible=%s shadow_alpha=%.4f modules=%s %s" % [str(scroll_y), drag_y, str(shadow_visible), shadow_alpha, str(_tutorial_module_count(scene)), _summary(scene)])
 	quit(0)
 

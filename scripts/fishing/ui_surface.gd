@@ -1508,6 +1508,8 @@ func _fishing_detail_render_signature() -> Array:
 	while inserted_index < inserted_actions.size():
 		signature.append(str((inserted_actions[inserted_index] as Dictionary).get("id", "")))
 		inserted_index += 1
+	if host._skill_detail_surface()._beta_notice_unlocked():
+		signature.append("beta_notice")
 	return signature
 
 
@@ -1604,13 +1606,30 @@ func _build_fishing_detail_lazy_plan(skill_id: String) -> Array:
 		y = _append_fishing_offer_lazy_entry(plan, y, "star_rod")
 	if _fishing_mirror_offer_available() and not mirror_offer_rendered:
 		y = _append_fishing_offer_lazy_entry(plan, y, "mirror")
-	return host.module_ui_runtime.sort_fishing_lazy_plan(
+	plan = host.module_ui_runtime.sort_fishing_lazy_plan(
 		plan,
 		skill_id,
 		host._skill_detail_surface().DETAIL_LAZY_STACK_SEPARATION,
 		Callable(host._skill_detail_surface(), "_detail_entry_level_sort_value"),
 		Callable(host._activity_unlock_runtime(), "_action_unlock_requirements")
 	)
+	if host._skill_detail_surface()._beta_notice_unlocked():
+		var notice_y := 0.0
+		if not plan.is_empty():
+			var last_entry := plan[-1] as Dictionary
+			notice_y = float(last_entry.get("y", 0.0)) + float(last_entry.get("height", 0.0)) + host._skill_detail_surface().DETAIL_LAZY_STACK_SEPARATION
+		plan.append({
+			"kind": "beta_notice",
+			"entry": {"kind": "beta_notice"},
+			"track_id": "beta_notice",
+			"y": notice_y,
+			"height": host._skill_detail_surface().BETA_NOTICE_HEIGHT,
+			"mounted": false,
+			"stack_host": null,
+			"placeholder": null,
+			"direct_stack_child": false
+		})
+	return plan
 
 
 func render_area_modules_into_stack(stack: VBoxContainer, content_width: float) -> void:
@@ -1817,14 +1836,14 @@ func _build_fishing_location_tile(
 	medal.anchor_right = 0.0
 	medal.anchor_top = 0.0
 	medal.anchor_bottom = 0.0
-	medal.offset_left = 314
-	medal.offset_right = 464
-	medal.offset_top = -42.0
-	medal.offset_bottom = 108.0
+	medal.offset_left = 0
+	medal.offset_right = 190
+	medal.offset_top = 0
+	medal.offset_bottom = 190
 	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	medal.z_index = 21
+	medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 	tile_motion_root.add_child(medal)
 
 	var mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
@@ -1881,7 +1900,7 @@ func _build_fishing_location_tile(
 		"active_camera_pan": FISHING_LOCATION_ACTIVE_CAMERA_PAN,
 		"medal": medal,
 		"attempt_bar": null,
-		"host.mastery": mastery_progress,
+		"mastery": mastery_progress,
 		"mastery_bar_instant_updates": true,
 		"method_button": method_button,
 		"method_hit_control": method_column,
@@ -2529,14 +2548,14 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	medal.anchor_right = 0.0
 	medal.anchor_top = 0.0
 	medal.anchor_bottom = 0.0
-	medal.offset_left = 314
-	medal.offset_right = 464
-	medal.offset_top = -42.0
-	medal.offset_bottom = 108.0
+	medal.offset_left = 0
+	medal.offset_right = 190
+	medal.offset_top = 0
+	medal.offset_bottom = 190
 	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	medal.z_index = 21
+	medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 	tile_motion_root.add_child(medal)
 
 	var mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
@@ -2588,7 +2607,7 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 		"active_camera_pan": FISHING_LOCATION_ACTIVE_CAMERA_PAN,
 		"medal": medal,
 		"attempt_bar": null,
-		"host.mastery": mastery_progress,
+		"mastery": mastery_progress,
 		"mastery_bar_instant_updates": true,
 		"method_button": method_button,
 		"method_hit_control": method_column,
@@ -3946,10 +3965,6 @@ func _play_fishing_attempt_reveal(skill_id: String, action_id: String, success: 
 		return
 	var area_id := FishingState.area_id_for_action(host, action_id)
 	var area_card := _fishing_area_card_for_action(skill_id, action_id) if not area_id.is_empty() else {}
-	if not area_card.is_empty():
-		var fluid_strip := area_card.get("fluid_strip") as Control
-		if fluid_strip != null and fluid_strip.has_method("play_reveal"):
-			fluid_strip.call("play_reveal", success)
 	var method_card := _fishing_method_card_for_action(skill_id, action_id)
 	if not method_card.is_empty():
 		method_card["attempt_reveal_kind"] = "success" if success else "fail"
@@ -4290,28 +4305,6 @@ func _on_fishing_method_button_input(
 			return false
 		var method_card_for_press = _fishing_method_card_for_action(skill_id, action_id)
 		var press_kind = host.ACTION_CARD_MEDAL_PRESS_KIND if host._skill_swipe_activity_surface()._action_card_medal_hit_at_position(method_card_for_press, event_position) else ""
-		if host.running_skill_id == skill_id and host.running_action_id == action_id:
-			if press_kind.is_empty() and host._action_runtime()._try_action_opportunity_click(skill_id, action_id, event_position):
-				host.action_card_press_consumed = true
-				host._action_stop_hold().cancel_action()
-				host._skill_swipe_activity_surface().skill_swipe_tracking = false
-				host._skill_swipe_activity_surface().skill_swipe_horizontal = false
-				host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
-				host.get_viewport().set_input_as_handled()
-				return true
-			if press_kind.is_empty() and host._action_runtime()._miss_action_opportunity_click(skill_id, action_id, event_position):
-				host.action_card_press_consumed = true
-				host._action_stop_hold().cancel_action()
-				host._skill_swipe_activity_surface().skill_swipe_tracking = false
-				host._skill_swipe_activity_surface().skill_swipe_horizontal = false
-				host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
-				host.get_viewport().set_input_as_handled()
-				return true
-			if press_kind.is_empty():
-				var pointer_id = (event as InputEventScreenTouch).index if event is InputEventScreenTouch else -1
-				host._action_stop_hold().begin_action(skill_id, action_id, event_position, pointer_id)
-				host.get_viewport().set_input_as_handled()
-				return true
 		_prepare_fishing_control_tap()
 		_clear_active_fishing_method_button_press()
 		fishing_method_button_press_active = true

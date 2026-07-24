@@ -109,4 +109,4 @@ for action in fishing["actions"]:
 fishing["areas"] = AREAS
 JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 print(f"Updated {JSON_PATH} — {len(AREAS)} fishing areas, {len(ACTION_AREA)} actions tagged")
-print("Run: python scripts/fix-fishing-action-order.py && python scripts/sync-activity-database-js.py")
+print("Run: python scripts/fix-fishing-action-order.py && .\\scripts\\check-activity-database-contracts.ps1")

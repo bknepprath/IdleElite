@@ -1339,10 +1339,6 @@ func tool_warning_text(action_id: String) -> String:
 	return ""
 
 
-func tool_yield_bonus() -> int:
-	return 0
-
-
 func yield_label(host, action: Dictionary, tool_id := "", net_haul_threshold := 10) -> String:
 	var active_tool_id := equipped_tool_id if tool_id.is_empty() else tool_id
 	var action_id := str(action.get("id", ""))
@@ -1386,17 +1382,15 @@ func yield_range(action: Dictionary, tool_id := "") -> Dictionary:
 			return {"min": FISHING_NET_FILL_MIN, "max": FISHING_NET_FILL_MAX}
 		if active_tool_id == "boat":
 			return {"min": FISHING_BOAT_FILL_MIN, "max": FISHING_BOAT_FILL_MAX}
-		var bonus := tool_yield_bonus() if active_tool_id == equipped_tool_id else 0
-		return {"min": fish_min + bonus, "max": fish_max + bonus}
+		return {"min": fish_min, "max": fish_max}
 	var tier := int(action.get("tier", 1))
 	if active_tool_id == "net":
 		return {"min": FISHING_NET_FILL_MIN, "max": FISHING_NET_FILL_MAX}
 	if active_tool_id == "boat":
 		return {"min": FISHING_BOAT_FILL_MIN, "max": FISHING_BOAT_FILL_MAX}
-	var fallback_bonus := tool_yield_bonus() if active_tool_id == equipped_tool_id else 0
 	return {
-		"min": maxi(1, tier - 1) + fallback_bonus,
-		"max": maxi(maxi(1, tier - 1) + 1, tier + 1) + fallback_bonus,
+		"min": maxi(1, tier - 1),
+		"max": maxi(maxi(1, tier - 1) + 1, tier + 1),
 	}
 
 

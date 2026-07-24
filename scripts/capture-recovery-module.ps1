@@ -66,13 +66,13 @@ func _run() -> void:
 	scene.call("_sync_stamina_bank", "fight")
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "fight")
-	scene.call("_render_screen", false, -1, false)
+	scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	for _frame in range(6):
 		await process_frame
 	scene.call("_skill_detail_surface").call("_ensure_detail_lazy_entry_mounted", "wrap-hands")
 	for _frame in range(12):
 		await process_frame
-	var scroll_target := int(scene.call("_detail_actions_scroll_target_for_action", "wrap-hands", true))
+	var scroll_target := int(scene.call("_skill_detail_surface").call("_detail_actions_scroll_target_for_action", "wrap-hands", true))
 	if scroll_target < 0:
 		_fail("Wrap Hands card did not mount for capture")
 		return
@@ -82,6 +82,12 @@ func _run() -> void:
 	if abs(scene.detail_actions_scroll.scroll_vertical - scroll_target) > 12:
 		_fail("Wrap Hands card scroll target was not applied")
 		return
+	var card := scene.action_cards.get("fight:wrap-hands", {}) as Dictionary
+	var progress := card.get("progress") as Control
+	if progress == null:
+		_fail("Wrap Hands progress rail did not mount")
+		return
+	progress.call("set_value", 55.0)
 	_hide_capture_overlays(scene)
 	await RenderingServer.frame_post_draw
 	var texture := root.get_texture()

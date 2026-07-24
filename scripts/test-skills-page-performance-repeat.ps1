@@ -5,30 +5,6 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 
 $skillsPagePerformanceTest = Join-Path $projectRoot "scripts\test-skills-page-performance.ps1"
 
-function Assert-NoUnexpectedGodotErrors {
-    param(
-        [Parameter(Mandatory = $true)][AllowNull()]$Output,
-        [Parameter(Mandatory = $true)][string]$Context
-    )
-
-    if ($null -eq $Output) {
-        return
-    }
-
-    foreach ($line in @($Output)) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
-            continue
-        }
-        $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
-        }
-    }
-}
 
 Assert-True (Test-Path -LiteralPath $skillsPagePerformanceTest) "Missing scripts\test-skills-page-performance.ps1."
 

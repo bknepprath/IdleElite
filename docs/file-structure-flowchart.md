@@ -32,7 +32,6 @@ flowchart LR
   assets --> ui_assets["icons/fonts/loading/android<br/>UI, launch, and mobile assets"]
 
   platform --> android["android<br/>native/export support"]
-  platform --> ios["ios<br/>native/export support"]
   platform --> store["play-store<br/>listing assets, screenshots, release notes"]
   platform --> release["release/builds<br/>packaged outputs"]
 

@@ -46,6 +46,7 @@ func _run() -> void:
 			warm_over_50 += 1
 	var warmed_mounted := _mounted_count(main)
 	var warmed_visible_placeholders := bool(main.call("_skill_swipe_activity_surface").call("_skill_detail_has_visible_lazy_placeholders"))
+	var mastery_bars := _fishing_mastery_bar_counts(main)
 	_write_json({
 		"status": "ok",
 		"render_msec": render_msec,
@@ -60,6 +61,7 @@ func _run() -> void:
 		"visible_placeholders": visible_placeholders,
 		"warmed_visible_placeholders": warmed_visible_placeholders,
 		"action_cards": (main.get("action_cards") as Dictionary).size(),
+		"mastery_bars": mastery_bars,
 		"unmounted_entries": _unmounted_entries(main)
 	})
 	root.remove_child(main)
@@ -134,6 +136,19 @@ func _unmounted_entries(main: Node) -> Array:
 			"height": float(lazy_entry.get("height", 0.0))
 		})
 	return entries
+
+
+func _fishing_mastery_bar_counts(main: Node) -> Dictionary:
+	var total := 0
+	var visible := 0
+	for raw_card in (main.get("action_cards") as Dictionary).values():
+		if typeof(raw_card) != TYPE_DICTIONARY or not bool((raw_card as Dictionary).get("is_fishing_method", false)):
+			continue
+		total += 1
+		var bar := (raw_card as Dictionary).get("mastery") as Control
+		if bar != null and is_instance_valid(bar) and bar.visible and bar.is_visible_in_tree():
+			visible += 1
+	return {"total": total, "visible": visible}
 
 
 

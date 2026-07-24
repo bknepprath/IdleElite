@@ -525,7 +525,7 @@ func card(achievement: Dictionary) -> Control:
 	var title_label: Label = host._label(_achievement_done_text(achievement), 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title_label.custom_minimum_size = Vector2(0, 88)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_force_toast_ink(title_label)
@@ -536,7 +536,7 @@ func card(achievement: Dictionary) -> Control:
 	var reward_label: Label = host._label(_reward_text(achievement), 50, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	reward_label.custom_minimum_size = Vector2(0, 60)
 	reward_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	reward_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	reward_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	reward_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_force_toast_ink(reward_label)

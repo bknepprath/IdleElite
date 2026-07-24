@@ -6,30 +6,6 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\save-normalization"
 $testScript = Join-Path $testDir "save_normalization_test.gd"
 
-function Assert-NoUnexpectedGodotErrors {
-    param(
-        [Parameter(Mandatory = $true)][AllowNull()]$Output,
-        [Parameter(Mandatory = $true)][string]$Context
-    )
-
-    if ($null -eq $Output) {
-        return
-    }
-
-    foreach ($line in @($Output)) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
-            continue
-        }
-        $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
-        }
-    }
-}
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
@@ -1543,14 +1519,14 @@ func _check_audio_settings_restore(game: Node) -> void:
 
 func _check_god_mode_save(game: Node) -> void:
 	game.set("god_mode_enabled", true)
-	_expect(not _truthy(_save_payload_value(game, "god_mode_enabled")), "God mode enabled save should be gated by availability.")
+	_expect(_truthy(_save_payload_value(game, "god_mode_enabled")), "Debug saves should preserve enabled God Mode.")
 
 
 func _check_test_profile_save_repair(game: Node) -> void:
 	var save_runtime = game.call("_save_runtime")
 	var tainted_save := {"god_mode_save_tainted": true, "god_mode_enabled": true}
-	_expect(_truthy(save_runtime.call("_repair_save_for_regular_play", tainted_save)), "Regular builds should repair God Mode flags without rejecting the save.")
-	_expect(not _truthy(tainted_save.get("god_mode_save_tainted", true)) and not _truthy(tainted_save.get("god_mode_enabled", true)), "God Mode flag repair should clear test-only save markers.")
+	_expect(not _truthy(save_runtime.call("_repair_save_for_regular_play", tainted_save)), "Debug builds should not repair an explicit God Mode test save.")
+	_expect(_truthy(tainted_save.get("god_mode_save_tainted", false)) and _truthy(tainted_save.get("god_mode_enabled", false)), "Debug builds should preserve test-only save markers.")
 	var maxed_skills := {}
 	var played_maxed_skills := {}
 	var level_99_xp := SkillState.xp_for_level(99)
@@ -2735,7 +2711,7 @@ func _check_save_payload(game: Node) -> void:
 	_expect(float(payload.get("music_volume", -1.0)) == 1.0, "Save payload should cap music volume.")
 	_expect(float(payload.get("sfx_volume", -1.0)) == 0.0, "Save payload should clamp SFX volume.")
 	_expect(not payload.has("is_muted"), "Save payload should not include obsolete global mute state.")
-	_expect(not _truthy(payload.get("god_mode_enabled", true)), "Save payload should gate god mode enabled by availability.")
+	_expect(_truthy(payload.get("god_mode_enabled", false)), "Debug save payload should preserve enabled God Mode.")
 	_expect(_truthy(payload.get("god_mode_save_tainted", false)), "Save payload should preserve god mode taint state.")
 	_expect(not payload.has("offline_clock_guard_tainted"), "Save payload should stop preserving obsolete offline clock guard taint state.")
 	_expect(not payload.has("offline_clock_guard_last_rejected_unix"), "Save payload should stop preserving obsolete offline clock guard rejection timestamps.")

@@ -59,8 +59,7 @@ func _on_request_completed(_result: int, response_code: int, _headers: PackedStr
 		print_rich("[color=GREEN]Downloaded[/color] at: [color=CORNFLOWER_BLUE][url]" + download_path + "[/url][/color]")
 	else:
 		var platform_str := _platform if not _platform.is_empty() else "Android/iOS"
-		printerr("ERR_002: It is not possible to download the %s plugin. \n" % platform_str +
-				"Read more about on: res://addons/admob/docs/errors/ERR_002.md")
+		printerr("ERR_002: It is not possible to download the %s plugin." % platform_str)
 	
 	download_completed.emit(is_success)
 

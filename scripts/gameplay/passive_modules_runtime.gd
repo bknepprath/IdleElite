@@ -34,7 +34,7 @@ func is_passive_action(action: Dictionary) -> bool:
 
 
 func is_firepit_module(module_id: String) -> bool:
-	return module_id == WOODCUTTING_FIREPIT_MODULE_ID
+	return module_id in [WOODCUTTING_FIREPIT_MODULE_ID, "firepit"]
 
 
 func save_state_normalizer_limits() -> Dictionary:

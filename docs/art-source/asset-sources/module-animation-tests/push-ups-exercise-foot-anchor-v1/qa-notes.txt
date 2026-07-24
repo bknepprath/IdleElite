@@ -1,1 +1,0 @@
-Foot/world anchor: (55, 184). Frame 2 is a 10% near-high rotation around anchor. Frame 3 is a 90% near-low rotation around anchor. Diagnostic red dot/line are fixed by code and should not vertically bounce.

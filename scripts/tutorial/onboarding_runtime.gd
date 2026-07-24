@@ -3,7 +3,7 @@ extends RefCounted
 const ActionRuntime = preload("res://scripts/gameplay/action_runtime.gd")
 const MasteryState = preload("res://scripts/progression/mastery_state.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
-const SILVER_OPPORTUNITY_TIP_TEXT := "Silver medals unlock boosters.\nTap while the progress bar is inside it."
+const SILVER_OPPORTUNITY_TIP_TEXT := "Tap the boost zone at the right moment."
 
 var host
 
@@ -70,9 +70,6 @@ func _start_tutorial() -> void:
 	if host._profile_chat_overlay_surface().chat_overlay_visible():
 		host._profile_chat_overlay_surface()._close_chat_overlay(false)
 	activity_start_tip_seen = false
-	stamina_gauge_tip_seen = false
-	skill_swipe_tip_seen = false
-	onboarding_explore_tip_seen = false
 	host._tutorial_overlay_surface()._fade_tip_group("activity_start_tip_notes")
 	host._tutorial_overlay_surface()._fade_tip_group("stamina_cost_tip_notes")
 	host._tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
@@ -80,6 +77,9 @@ func _start_tutorial() -> void:
 	if host.stamina_gauge_tip_root != null and is_instance_valid(host.stamina_gauge_tip_root):
 		host.stamina_gauge_tip_root.queue_free()
 	host.stamina_gauge_tip_root = null
+	stamina_gauge_tip_seen = false
+	skill_swipe_tip_seen = false
+	onboarding_explore_tip_seen = false
 	onboarding_fight_summary_revealed = false
 	onboarding_fight_auto_run_message_shown = false
 	onboarding_fight_stamina_revealed = false
@@ -119,7 +119,7 @@ func _skip_tutorial() -> void:
 
 func _activate_tutorial_target() -> void:
 	if host._navigation_shell().screen_render_in_progress:
-		host.call_deferred("_activate_tutorial_target")
+		call_deferred("_activate_tutorial_target")
 		return
 	match tutorial_step:
 		0:
@@ -204,10 +204,7 @@ func _graduate_onboarding_tutorial() -> void:
 	if onboarding_tutorial_complete:
 		return
 	onboarding_tutorial_complete = true
-	onboarding_explore_tip_seen = true
 	host._navigation_shell().module_utility_collapsed = true
-	host._tutorial_overlay_surface()._fade_tip_group("onboarding_explore_tip_notes", false, true)
-	host._tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
 	host.save_game()
 	host._navigation_shell()._sync_bottom_nav_visibility()
 	host._navigation_shell()._sync_module_utility_row_visibility()
@@ -617,17 +614,11 @@ func _record_activity_start_for_tips() -> void:
 		if host._tutorial_overlay_surface().activity_start_highlight_pending:
 			host._tutorial_overlay_surface().activity_start_highlight_pending = false
 			host._tutorial_overlay_surface().activity_start_highlight_token += 1
-	if _onboarding_path_active() and not tutorial_active and onboarding_explore_tip_seen:
-		_graduate_onboarding_tutorial()
 	host.save_game()
 
 
 func _onboarding_mastery_rewards_allowed(skill_id: String) -> bool:
-	if skill_id != host.TUTORIAL_STARTER_SKILL_ID:
-		return true
-	if not _onboarding_path_active():
-		return true
-	return onboarding_fight_action_stats_revealed
+	return true
 
 
 func _onboarding_mastery_feedback_allowed(anchor: Control) -> bool:
@@ -643,44 +634,19 @@ func _onboarding_path_active() -> bool:
 
 
 func _activity_crits_allowed() -> bool:
-	return not _onboarding_path_active()
+	return true
 
 
 func _onboarding_skill_accessible(skill_id: String) -> bool:
-	if not _onboarding_path_active():
-		return true
-	if skill_id == host.TUTORIAL_STARTER_SKILL_ID:
-		return true
-	return onboarding_swipe_navigation_unlocked
+	return true
 
 
 func _onboarding_swipe_to_other_skills_allowed() -> bool:
-	return (
-		_onboarding_path_active()
-		and onboarding_swipe_navigation_unlocked
-		and (
-			skill_swipe_tip_seen
-			or host._tutorial_overlay_surface()._skill_swipe_tip_present()
-		)
-	)
+	return true
 
 
 func _onboarding_blocks_skill_swipe() -> bool:
-	if not _onboarding_path_active():
-		return false
-	if (
-		host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID
-		and not skill_swipe_tip_seen
-		and _onboarding_swipe_intro_complete()
-		and (
-			onboarding_swipe_navigation_unlocked
-			or onboarding_swipe_tip_eligible
-			or _onboarding_fight_stamina_depleted()
-		)
-		and not host._tutorial_overlay_surface()._skill_swipe_tip_present()
-	):
-		return true
-	return not _onboarding_swipe_to_other_skills_allowed()
+	return false
 
 
 func _swipe_offset_accessible(offset: int) -> bool:
@@ -690,8 +656,6 @@ func _swipe_offset_accessible(offset: int) -> bool:
 	if target_skill_id.is_empty():
 		return false
 	if not _onboarding_skill_accessible(target_skill_id):
-		return false
-	if _onboarding_path_active() and not _onboarding_swipe_to_other_skills_allowed():
 		return false
 	return true
 
@@ -938,7 +902,7 @@ func _tutorial_should_defer_action_until_skill_swipe(skill_id: String, action: D
 
 
 func _tutorial_gate_latch_sequence_active() -> bool:
-	return tutorial_active or _onboarding_path_active()
+	return tutorial_active
 
 
 func _tutorial_preview_after_manual_unlock(skill_id: String, action_id: String) -> String:

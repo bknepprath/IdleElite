@@ -790,6 +790,11 @@ func _check_empty_pinned_page_decor_pins(scene: Node) -> void:
 			_record("empty pinned page decor badge should use the settled module pin crop. index=%s expected=%s actual=%s" % [index, expected_position, badge.position])
 		if absf(badge.rotation_degrees) > 0.01 or not badge.scale.is_equal_approx(Vector2.ONE):
 			_record("empty pinned page decor badge should not randomize angle or scale. index=%s rotation=%s scale=%s" % [index, badge.rotation_degrees, badge.scale])
+		var seam := _find_named_descendant(host, "ModulePinEntrySeam") as Line2D
+		if seam == null:
+			_record("empty pinned page decor badge is missing its card-entry seam. index=%s" % index)
+		elif not seam.visible or seam.width < 7.0 or not seam.default_color.is_equal_approx(Color.BLACK):
+			_record("empty pinned page decor seam should be a visible thick black line. index=%s" % index)
 	var varied_positions := false
 	if positions.size() > 1:
 		var first_position := positions[0]
@@ -803,12 +808,15 @@ func _check_empty_pinned_page_decor_pins(scene: Node) -> void:
 	var first_hit_zone := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPinHit_0") as Control
 	var first_badge := _find_named_descendant(content_scroll, "PinnedActivitiesEmptyDecorPinBadge_0") as TextureButton
 	if first_host != null and first_hit_zone != null and first_badge != null:
+		var first_seam := _find_named_descendant(first_host, "ModulePinEntrySeam") as Line2D
 		var pinned_before := _module_ui_pinned_order(scene).duplicate()
 		first_hit_zone.emit_signal("gui_input", _mouse_button_event(Vector2(16, 16), true))
 		for _i in range(3):
 			await process_frame
 		if not first_badge.has_meta("module_pin_tween"):
 			_record("empty pinned page decor pin click did not start the exit animation")
+		if first_seam != null and first_seam.visible:
+			_record("empty pinned page decor seam should disappear as soon as the pin pulls out")
 		if _module_ui_pinned_order(scene) != pinned_before:
 			_record("empty pinned page decor pin click should not mutate pinned activities")
 		for _i in range(40):

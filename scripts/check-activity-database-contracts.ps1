@@ -3,48 +3,37 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $jsonPath = Join-Path $projectRoot "docs\activity-database.json"
-$jsPath = Join-Path $projectRoot "docs\activity-database-data.js"
-$syncScriptPath = Join-Path $projectRoot "scripts\sync-activity-database-js.py"
 $auditScriptPath = Join-Path $projectRoot "scripts\audit-activity-database.ps1"
 $contractDocPath = Join-Path $projectRoot "docs\activity-database-contract.md"
-$mainPath = Join-Path $projectRoot "scripts\main.gd"
 $catalogPath = Join-Path $projectRoot "scripts\activity_data\catalog.gd"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
+$docsHtmlPath = Join-Path $projectRoot "docs\activity-database.html"
+$docsScriptPath = Join-Path $projectRoot "docs\activity-docs.js"
 
-foreach ($path in @($jsonPath, $jsPath, $syncScriptPath, $auditScriptPath, $contractDocPath, $mainPath, $catalogPath, $exportPresetsPath)) {
+foreach ($path in @($jsonPath, $auditScriptPath, $contractDocPath, $catalogPath, $exportPresetsPath, $docsHtmlPath, $docsScriptPath)) {
     Assert-True (Test-Path -LiteralPath $path) "Missing activity database contract file: $path"
 }
 
 $jsonRaw = Get-Content -LiteralPath $jsonPath -Raw
-$jsRaw = Get-Content -LiteralPath $jsPath -Raw
-$syncScript = Get-Content -LiteralPath $syncScriptPath -Raw
 $contractDoc = Get-Content -LiteralPath $contractDocPath -Raw
-$main = Get-Content -LiteralPath $mainPath -Raw
 $catalog = Get-Content -LiteralPath $catalogPath -Raw
 $exportPresets = Get-Content -LiteralPath $exportPresetsPath -Raw
+$docsHtml = Get-Content -LiteralPath $docsHtmlPath -Raw
+$docsScript = Get-Content -LiteralPath $docsScriptPath -Raw
 
-Assert-True ($jsRaw.StartsWith("// Generated from activity-database.json for file:// HTML previews.")) "Generated activity database JS must keep its source warning header."
-Assert-True ($syncScript -match 'JSON_PATH = ROOT / "docs" / "activity-database\.json"') "Sync script must read docs/activity-database.json."
-Assert-True ($syncScript -match 'JS_PATH = ROOT / "docs" / "activity-database-data\.js"') "Sync script must write docs/activity-database-data.js."
 Assert-True ($contractDoc -match 'docs/activity-database\.json.*source of truth') "Contract doc must state that JSON is the source of truth."
-Assert-True ($contractDoc -match 'python scripts\\sync-activity-database-js\.py') "Contract doc must include the sync command."
 Assert-True ($contractDoc -match '\.\\scripts\\audit-activity-database\.ps1') "Contract doc must include the audit command."
 Assert-True ($catalog -match 'const ACTIVITY_DATABASE_PATH := "res://docs/activity-database\.json"') "Runtime catalog must load the source activity database JSON."
 Assert-True ($catalog -match 'push_error\("Failed to load required activity database: %s" % ACTIVITY_DATABASE_PATH\)') "Runtime catalog should report the catalog-owned database path."
 Assert-True ($exportPresets -match 'include_filter="[^"]*docs/activity-database\.json') "Android export must include docs/activity-database.json."
-
-$prefix = "globalThis.IDLE_ELITE_ACTIVITY_DATABASE = "
-$payloadStart = $jsRaw.IndexOf($prefix)
-Assert-True ($payloadStart -ge 0) "Generated activity database JS must assign globalThis.IDLE_ELITE_ACTIVITY_DATABASE."
-$jsPayload = $jsRaw.Substring($payloadStart + $prefix.Length).Trim()
-if ($jsPayload.EndsWith(";")) {
-    $jsPayload = $jsPayload.Substring(0, $jsPayload.Length - 1)
+try {
+    $null = $jsonRaw | ConvertFrom-Json
+} catch {
+    throw "docs/activity-database.json must be valid JSON. $($_.Exception.Message)"
 }
-
-$jsonObject = $jsonRaw | ConvertFrom-Json
-$jsObject = $jsPayload | ConvertFrom-Json
-$jsonCanonical = $jsonObject | ConvertTo-Json -Depth 100
-$jsCanonical = $jsObject | ConvertTo-Json -Depth 100
-Assert-True ($jsonCanonical -eq $jsCanonical) "docs/activity-database-data.js must match docs/activity-database.json. Run python scripts\sync-activity-database-js.py."
+Assert-True ($docsHtml -match '<script src="activity-docs\.js"></script>') "Activity database HTML must load the docs fetch script."
+Assert-True ($docsHtml -notmatch 'IDLE_ELITE_ACTIVITY_DATABASE') "Activity database HTML must not embed a second activity database."
+Assert-True ($docsScript -match 'const databasePath = "activity-database\.json"') "Activity docs must use the relative JSON database path."
+Assert-True ($docsScript -match 'fetch\(databasePath\)') "Activity docs must fetch the source JSON over HTTP."
 
 Write-Output "activity-database-contracts-ok"

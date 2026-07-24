@@ -922,7 +922,10 @@ func _repair_save_for_regular_play(data: Dictionary) -> bool:
 		repaired = true
 	if _repair_impossible_thieving_trophies(data):
 		repaired = true
-	if bool(data.get("god_mode_save_tainted", false)) or bool(data.get("god_mode_enabled", false)):
+	var test_save := bool(data.get("god_mode_save_tainted", false)) or bool(data.get("god_mode_enabled", false))
+	if test_save and host._test_state_runtime()._god_mode_available():
+		return repaired
+	if test_save:
 		data["god_mode_enabled"] = false
 		data["god_mode_save_tainted"] = false
 		repaired = true

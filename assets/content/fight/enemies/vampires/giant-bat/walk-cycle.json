@@ -1,0 +1,15 @@
+{
+  "direction": "right",
+  "fps": 10,
+  "debug_cuffs": true,
+  "frames": [
+    {"file": "frame-00.png", "phase": "left-contact", "left_foot": [659, 1399], "right_foot": [277, 1397]},
+    {"file": "frame-01.png", "phase": "left-down", "left_foot": [727, 1400], "right_foot": [381, 1219]},
+    {"file": "frame-02.png", "phase": "left-passing", "left_foot": [513, 1400], "right_foot": [560, 1228]},
+    {"file": "frame-03.png", "phase": "left-high", "left_foot": [479, 1400], "right_foot": [760, 1245]},
+    {"file": "frame-04.png", "phase": "right-contact", "left_foot": [164, 1400], "right_foot": [725, 1387]},
+    {"file": "frame-05.png", "phase": "right-down", "left_foot": [412, 1220], "right_foot": [694, 1399]},
+    {"file": "frame-06.png", "phase": "right-passing", "left_foot": [397, 1167], "right_foot": [719, 1400]},
+    {"file": "frame-07.png", "phase": "right-high", "left_foot": [650, 1257], "right_foot": [451, 1399]}
+  ]
+}

@@ -231,6 +231,7 @@ var bottom_inset := 0.0
 var corner_guard := 0.0
 var bottom_shape := "round"
 var wide_u_bottom_rise := 58.0
+var wide_u_shoulder_ratio := 0.285
 var opportunity_overlay: ActivityProgressOpportunityOverlay
 
 func _ready() -> void:
@@ -548,7 +549,7 @@ func _draw_bottom_round_segment(rect: Rect2, color: Color, start_pct: float, fin
 func _draw_wide_u_progress() -> void:
 	var fill_pct := clampf(value / 100.0, 0.0, 1.0)
 	var width := maxf(72.0, minf(size.y * 0.90, 88.0))
-	var outline_width := width + 12.0
+	var outline_width := width + edge_inset * 2.0
 	_draw_wide_u_progress_segment(top_lip_color, 0.0, 1.0, outline_width)
 	_draw_wide_u_progress_segment(empty_color, 0.0, 1.0, width)
 	if fill_pct > 0.0:
@@ -559,21 +560,47 @@ func _draw_wide_u_progress_segment(color: Color, start_pct: float, finish_pct: f
 	var finish := clampf(finish_pct, 0.0, 1.0)
 	if finish <= start:
 		return
-	var points := PackedVector2Array()
-	var steps := maxi(8, int(ceil((finish - start) * 34.0)))
+	var top_points := PackedVector2Array()
+	var bottom_points := PackedVector2Array()
+	var steps := maxi(8, int(ceil((finish - start) * 96.0)))
 	for index in range(steps + 1):
 		var pct := lerpf(start, finish, float(index) / float(steps))
-		points.append(_wide_u_progress_point(pct, stroke_width))
-	if points.size() >= 2:
-		draw_polyline(points, color, stroke_width, false)
+		var bounds := _wide_u_progress_band_bounds(pct, stroke_width)
+		var x := lerpf(0.0, size.x, pct)
+		top_points.append(Vector2(x, bounds.x))
+		bottom_points.append(Vector2(x, bounds.y))
+	var polygon := PackedVector2Array(top_points)
+	for index in range(bottom_points.size() - 1, -1, -1):
+		polygon.append(bottom_points[index])
+	if polygon.size() >= 3:
+		draw_colored_polygon(polygon, color)
+		polygon.append(polygon[0])
+		draw_polyline(polygon, color, 2.0, true)
+
+func _wide_u_progress_band_bounds(pct: float, stroke_width: float) -> Vector2:
+	var outer_width := maxf(72.0, minf(size.y * 0.90, 88.0)) + edge_inset * 2.0
+	var layer_inset := maxf(0.0, (outer_width - stroke_width) * 0.5)
+	var progress := clampf(pct, 0.0, 1.0)
+	var x := lerpf(0.0, size.x, progress)
+	var side_bottom := maxf(outer_width, size.y - wide_u_bottom_rise)
+	var shoulder := clampf(wide_u_shoulder_ratio, 0.0, 0.49)
+	var curve_progress := clampf((progress - shoulder) / maxf(0.01, 1.0 - shoulder * 2.0), 0.0, 1.0)
+	var curve_weight := sin(curve_progress * PI)
+	var base_bottom := lerpf(side_bottom, size.y, curve_weight * curve_weight)
+	var rounded_bottom := base_bottom
+	var corner_radius := minf(bottom_radius, size.x * 0.5)
+	if x < corner_radius:
+		var corner_x := x - corner_radius
+		rounded_bottom = side_bottom - corner_radius + sqrt(maxf(0.0, corner_radius * corner_radius - corner_x * corner_x))
+	elif x > size.x - corner_radius:
+		var corner_x := x - (size.x - corner_radius)
+		rounded_bottom = side_bottom - corner_radius + sqrt(maxf(0.0, corner_radius * corner_radius - corner_x * corner_x))
+	return Vector2(base_bottom - outer_width + layer_inset, rounded_bottom - layer_inset)
+
 
 func _wide_u_progress_point(pct: float, stroke_width: float) -> Vector2:
-	var half_stroke := stroke_width * 0.5
-	var x := lerpf(0.0, size.x, clampf(pct, 0.0, 1.0))
-	var bottom_y := maxf(stroke_width * 0.52 + 8.0, size.y - stroke_width * 0.50)
-	var side_y := maxf(stroke_width * 0.52, bottom_y - wide_u_bottom_rise)
-	var y := lerpf(side_y, bottom_y, sin(clampf(pct, 0.0, 1.0) * PI))
-	return Vector2(x, y)
+	var bounds := _wide_u_progress_band_bounds(pct, stroke_width)
+	return Vector2(lerpf(0.0, size.x, clampf(pct, 0.0, 1.0)), (bounds.x + bounds.y) * 0.5)
 
 func _rounded_fill_row_count(rect: Rect2) -> int:
 	return maxi(6, mini(ROUNDED_FILL_ROWS, int(ceil(rect.size.y / 4.0))))

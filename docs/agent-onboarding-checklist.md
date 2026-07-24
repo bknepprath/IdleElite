@@ -17,7 +17,7 @@ Use this page when opening a fresh Idle Elite task. It is a quick operational ch
 
 ## Source Of Truth Rules
 
-- Activity data starts in `docs/activity-database.json`; regenerate `docs/activity-database-data.js` with `python scripts\sync-activity-database-js.py`.
+- Activity data starts in `docs/activity-database.json`; run `.\scripts\check-activity-database-contracts.ps1` and `.\scripts\audit-activity-database.ps1` after data or loader changes.
 - Runtime assets live under `assets/`; source and provenance assets live under `docs/art-source/`.
 - Runtime asset `.import` files can be required metadata. Docs-side `.import` files under `docs/art-source/**` should stay out of git.
 - `scripts/main.gd` still owns most runtime behavior. Use the ownership map and keep changes to one boundary at a time.

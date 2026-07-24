@@ -7,8 +7,8 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 - `AGENTS.md` is the process guardrail. Follow its Godot process safety rules before running any validation.
 - `docs/agent-onboarding-checklist.md` is the quick first-ten-minutes checklist for new agent tasks.
 - `scripts/main.gd` is the main gameplay, UI, save/load, networking, and presentation script. Use `docs/main-gd-ownership-map.md` before editing it.
-- `docs/activity-database.json` is the activity database source of truth. `docs/activity-database-data.js` is generated from it.
-- `docs/activity-database-contract.md` explains how the source JSON, generated JS, runtime loading, export filter, and validation scripts relate.
+- `docs/activity-database.json` is the activity database source of truth for both the Godot runtime and the HTTP-served docs page.
+- `docs/activity-database-contract.md` explains how the source JSON, runtime loading, export filter, docs fetch path, and validation scripts relate.
 - `docs/generated-file-hygiene.md` explains which generated files, Godot metadata, local outputs, caches, build folders, and secrets can be tracked or must stay local.
 - `project.godot`, `export_presets.cfg`, and `assets/android/**` are externally referenced by Godot/Android export tooling. Treat paths there as compatibility-sensitive.
 - `docs/asset-file-structure-audit.md` records the current asset naming and ownership audit. Read it before moving or deleting assets.
@@ -25,7 +25,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 | Extracted UI drawing helpers | `scripts/ui/*.gd` | These are runtime scripts preloaded by `scripts/main.gd`. Many have `.gd.uid` metadata; do not rename either side casually. |
 | Shell UI boundaries | `docs/ui-runtime-boundary-map.md`, `scripts/check-ui-boundary-contracts.ps1` | Navigation, home, shop, chat, leaderboard, and profile still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
 | Activity UI boundaries | `docs/activity-ui-boundary-map.md`, `scripts/check-activity-ui-boundary-contracts.ps1` | Activity detail, action cards, mastery, unlocks, and offline summary still live in `scripts/main.gd`; use the map and contract check before refactoring those areas. |
-| Activity data | `docs/activity-database.json`, `docs/activity-database-data.js`, `docs/activity-database-contract.md`, `scripts/sync-activity-database-js.py`, `scripts/audit-activity-database.ps1`, `scripts/check-activity-database-contracts.ps1` | Edit JSON first, sync JS second, run the contract check and audit third. |
+| Activity data | `docs/activity-database.json`, `docs/activity-database.html`, `docs/activity-docs.js`, `docs/activity-database-contract.md`, `scripts/audit-activity-database.ps1`, `scripts/check-activity-database-contracts.ps1` | Edit JSON first, run the contract check and audit next; serve docs over HTTP for the HTML view. |
 | Runtime art/audio | `assets/content/**`, `assets/loading/**`, `assets/android/**`, `assets/fonts/**`, `assets/music/**`, `assets/sfx/**` | Runtime paths are usually referenced as `res://assets/...` from code, docs data, presets, tests, or project settings. The former `assets/ui` split has been merged into `assets/content/ui`. Use `docs/audio-structure-guide.md` before changing shipped sound or music. |
 | Art source/provenance | `docs/art-source/**` | Not runtime by default. This tree is under `.gdignore`; source PNGs and notes are tracked, while docs-side `.import` metadata should stay untracked unless future work proves it is needed provenance. |
 | Release docs and outputs | `play-store/docs/**`, `builds/**`, `android/**` | Release artifacts and export-generated files are not general refactor surfaces. |
@@ -36,7 +36,7 @@ This map is the first stop for future agents working in Idle Elite. It explains 
 - Runtime assets live under `assets/`; source and selection history lives under `docs/art-source/`.
 - Move tracked `.png` and matching `.png.import` files together. Search for the basename and full `res://` path before and after moves.
 - Do not move `assets/loading/**` or `assets/android/**` as part of broad cleanup. Loading and launcher/export assets have project-level references.
-- Do not hand-edit generated `docs/activity-database-data.js`; regenerate it from `docs/activity-database.json`.
+- Keep `docs/activity-database.json` authoritative for runtime and docs data; do not introduce a second generated copy.
 - Treat runtime `.gd.uid` and `.import` files as metadata-adjacent. They can be tracked and important even though Godot generates them. Docs-side `.import` files under `docs/art-source` are archive noise by default.
 - Local output folders such as `.codex-tmp/`, `.codex-tools/`, `.godot/`, `output/`, and `test-results/` are not source unless a checklist explicitly adopts them.
 - Do not add broad `*.import` or `*.uid` ignore rules; use `docs/generated-file-hygiene.md` and `.\scripts\check-generated-file-hygiene.ps1` before staging generated metadata.
@@ -49,8 +49,7 @@ Use PowerShell from the repo root.
 | --- | --- | --- |
 | Preferred full project gate | `.\scripts\check-project.ps1` | After meaningful runtime code, asset path, data, or validation-script changes. |
 | One-shot Godot smoke | `.\run-godot-safe.ps1 --path . --quit-after 1` | When a quick Godot parser/startup check is enough. |
-| Activity database sync | `python scripts\sync-activity-database-js.py` | After editing `docs/activity-database.json`. |
-| Activity database source/generated contract | `.\scripts\check-activity-database-contracts.ps1` | After changing activity data, generated JS, sync tooling, runtime database paths, or export filters. |
+| Activity database contract | `.\scripts\check-activity-database-contracts.ps1` | After changing activity data, docs fetch code, runtime database paths, or export filters. |
 | Activity database audit | `.\scripts\audit-activity-database.ps1` | After syncing activity data. |
 | Generated-file hygiene contract | `.\scripts\check-generated-file-hygiene.ps1` | After changing `.gitignore`, generated-file docs, build-output docs, local config rules, `.import` rules, or `.uid` rules. |
 | Save/load contracts | `.\scripts\test-save-normalization.ps1` | After save payload, restore, or serialized field changes. |
@@ -66,7 +65,7 @@ After every Godot command, check for leftover headless Godot processes. Only sto
 
 ## Risky Paths
 
-- `docs/activity-database.json` and `docs/activity-database-data.js`: source/generated pair.
+- `docs/activity-database.json`: shared source for the runtime loader and HTTP-served docs.
 - `project.godot`: boot splash, autoload/project settings, Android settings.
 - `export_presets.cfg`: package names, launcher paths, export filters, Android signing/export behavior.
 - `assets/loading/**`: boot and loading presentation.

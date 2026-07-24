@@ -223,4 +223,5 @@ static func _entry_for_xp(xp: float, max_level: int, clamp_to_zero: bool) -> Dic
 static func _refresh_host_after_level_change(host, result: Dictionary) -> void:
 	if bool(result.get("level_changed", false)):
 		SkillState.invalidate_stat_caches(host)
+		host.ui_static_refresh_elapsed = host.UI_STATIC_REFRESH_INTERVAL_SECONDS
 		host._navigation_shell()._refresh_shop_nav_unlock_state()

@@ -4,7 +4,11 @@ const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
 const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
 
 const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
+const RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 72.0)
 const NORMAL_ACTIVITY_CARD_PRESS_OFFSET := NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
+const RECOVERY_WIDE_U_BOTTOM_RISE := 72.0
+const RECOVERY_WIDE_U_SHOULDER_RATIO := 0.285
+const RECOVERY_WIDE_U_RAIL_HEIGHT := 220.0
 const ACTION_CARD_STROKE_WIDTH := 12.0
 
 static var activity_shade_style_cache := {}
@@ -91,14 +95,24 @@ class PageSwitchButtonFace extends Control:
 		var points := _shape_points()
 		if points.size() < 3:
 			return
-		if draw_fill:
+		if draw_fill and draw_stroke:
+			draw_polygon(points, PackedColorArray([ink_color]))
+			var inset_polygons := Geometry2D.offset_polygon(points, -stroke_width, Geometry2D.JOIN_ROUND)
+			if not inset_polygons.is_empty():
+				draw_polygon(inset_polygons[0], PackedColorArray([fill_color]))
+		elif draw_fill:
 			draw_polygon(points, PackedColorArray([fill_color]))
 		if draw_depth_connectors:
 			_draw_depth_connectors(points)
-		if draw_stroke:
-			var closed := PackedVector2Array(points)
-			closed.append(points[0])
+		if draw_stroke and not draw_fill:
+			var stroke_polygons := Geometry2D.offset_polygon(points, -stroke_width * 0.5, Geometry2D.JOIN_ROUND)
+			if stroke_polygons.is_empty():
+				return
+			var closed := PackedVector2Array(stroke_polygons[0])
+			closed.append(closed[0])
 			draw_polyline(closed, ink_color, stroke_width, true)
+			for point in stroke_polygons[0]:
+				draw_circle(point, stroke_width * 0.5, ink_color, true, -1.0, true)
 
 	func _draw_depth_connectors(points: PackedVector2Array) -> void:
 		var connector_offset := face_offset - depth_offset
@@ -235,9 +249,7 @@ class PrismConnectorOverlay extends Control:
 			if side.is_empty():
 				_draw_rounded_prism_outline(points, travel)
 			else:
-				_draw_side_face_outlines(travel)
-				_draw_connector_stroke(points[0], travel)
-				_draw_connector_stroke(points[1], travel)
+				_draw_side_face_outline(travel)
 
 	func _connector_points() -> PackedVector2Array:
 		if side.is_empty():
@@ -255,10 +267,6 @@ class PrismConnectorOverlay extends Control:
 			origin + top_right,
 			origin + bottom_left,
 		])
-
-	func _draw_connector_stroke(start: Vector2, travel: Vector2) -> void:
-		var cap_inset := travel.normalized() * stroke_width * 0.5
-		draw_line(start + cap_inset, start + travel - cap_inset, ink_color, stroke_width, true)
 
 	func _draw_rounded_prism_outline(connectors: PackedVector2Array, travel: Vector2) -> void:
 		var half := stroke_width * 0.5
@@ -362,28 +370,41 @@ class PrismConnectorOverlay extends Control:
 			])
 			draw_polygon(face, PackedColorArray([_side_face_color(normal)]))
 
-	func _draw_side_face_outlines(travel: Vector2) -> void:
+	func _draw_side_face_outline(travel: Vector2) -> void:
 		var points := _diagonal_shape_points() if not side.is_empty() else _rounded_rect_shape_points()
 		if points.size() < 3:
 			return
+		var inset_polygons := Geometry2D.offset_polygon(points, -stroke_width * 0.5, Geometry2D.JOIN_ROUND)
+		if inset_polygons.is_empty():
+			return
+		points = inset_polygons[0]
 		var origin := _connector_face_origin()
-		var outline := PackedVector2Array()
+		var visible := PackedByteArray()
 		for index in range(points.size()):
-			var p0 := points[index]
-			var p1 := points[(index + 1) % points.size()]
-			var normal := _edge_outward_normal(p0, p1)
-			if not _side_face_visible(normal, travel):
-				if outline.size() > 1:
-					draw_polyline(outline, ink_color, stroke_width, true)
-				outline = PackedVector2Array()
-				continue
-			var back_start := origin + p0 + travel
-			var back_finish := origin + p1 + travel
-			if outline.is_empty():
-				outline.append(back_start)
-			outline.append(back_finish)
-		if outline.size() > 1:
-			draw_polyline(outline, ink_color, stroke_width, true)
+			visible.append(1 if _side_face_visible(_edge_outward_normal(points[index], points[(index + 1) % points.size()]), travel) else 0)
+		var start_index := -1
+		for index in range(points.size()):
+			if visible[index] == 1 and visible[(index - 1 + points.size()) % points.size()] == 0:
+				start_index = index
+				break
+		if start_index < 0:
+			return
+		var direction := travel.normalized()
+		var outline := PackedVector2Array([
+			origin + points[start_index] + direction * stroke_width * 0.5,
+			origin + points[start_index] + travel,
+		])
+		var index := start_index
+		while visible[index] == 1:
+			outline.append(origin + points[(index + 1) % points.size()] + travel)
+			index = (index + 1) % points.size()
+			if index == start_index:
+				break
+		var back_end := outline[outline.size() - 1]
+		outline.append(back_end - travel + direction * stroke_width * 0.5)
+		draw_polyline(outline, ink_color, stroke_width, true)
+		for point in outline:
+			draw_circle(point, stroke_width * 0.5, ink_color, true, -1.0, true)
 
 	func _rounded_rect_shape_points() -> PackedVector2Array:
 		var face_size := _connector_face_size()
@@ -403,6 +424,8 @@ class PrismConnectorOverlay extends Control:
 	func _side_face_visible(normal: Vector2, travel: Vector2) -> bool:
 		if normal.length_squared() <= 0.001 or normal.dot(travel) <= 0.15:
 			return false
+		if absf(travel.x) <= 0.01:
+			return normal.y > 0.01
 		return normal.x > 0.08 or normal.y > 0.56
 
 	func _side_face_color(normal: Vector2) -> Color:
@@ -483,8 +506,8 @@ class ActionArtMasteryRing extends Control:
 	var shadow_width := 64.0
 	var radius := 58.0
 	var inset := 2.0
-	var gap_start_fraction := 0.035
-	var gap_finish_fraction := 0.875
+	var gap_start_fraction := 0.10
+	var gap_finish_fraction := 0.84
 	var progress := 0.5
 
 	func set_progress(next_progress: float) -> void:
@@ -784,12 +807,12 @@ static func normal_activity_card_bottom_base(radius: float, ink: Color, theme_co
 	var style := StyleBoxFlat.new()
 	style.bg_color = theme_color.darkened(0.42)
 	style.border_color = ink
-	style.border_width_left = 4
+	style.border_width_left = int(ACTION_CARD_STROKE_WIDTH)
 	style.border_width_top = 0
-	style.border_width_right = 4
-	style.border_width_bottom = 4
-	style.corner_radius_top_left = 0
-	style.corner_radius_top_right = 0
+	style.border_width_right = int(ACTION_CARD_STROKE_WIDTH)
+	style.border_width_bottom = int(ACTION_CARD_STROKE_WIDTH)
+	style.corner_radius_top_left = int(round(radius))
+	style.corner_radius_top_right = int(round(radius))
 	style.corner_radius_bottom_left = int(round(radius))
 	style.corner_radius_bottom_right = int(round(radius))
 	style.anti_aliasing = true
@@ -803,9 +826,6 @@ static func normal_activity_card_body(radius: float, ink: Color, theme_color := 
 	style.border_color = ink
 	style.set_border_width_all(int(ACTION_CARD_STROKE_WIDTH))
 	style.set_corner_radius_all(int(round(radius)))
-	style.shadow_color = Color("#21040852")
-	style.shadow_size = 28
-	style.shadow_offset = Vector2(0, 12)
 	style.anti_aliasing = true
 	style.anti_aliasing_size = 1.5
 	return style
@@ -868,6 +888,8 @@ static func set_activity_card_depth_face_offset_from_pop(pop: Control, offset: V
 		(depth as ActivityCardDepth).set_face_offset(offset)
 	elif depth is PageSwitchButtonFace:
 		(depth as PageSwitchButtonFace).set_face_offset(offset)
+	elif depth is PrismConnectorOverlay:
+		(depth as PrismConnectorOverlay).set_face_offset(offset)
 	if pop.has_meta("activity_card_connector_node_id"):
 		var connector_id := int(pop.get_meta("activity_card_connector_node_id"))
 		var connector := instance_from_id(connector_id) as PrismConnectorOverlay

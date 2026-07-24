@@ -11,30 +11,6 @@ $testDir = Join-Path $projectRoot ".codex-tmp\pinned-pin-visual-smoke"
 $testScript = Join-Path $testDir "pinned_pin_visual_smoke.gd"
 $capturePath = Join-Path $projectRoot ".codex-tmp\pinned-pin-visual-smoke.png"
 
-function Assert-NoUnexpectedGodotErrors {
-    param(
-        [Parameter(Mandatory = $true)][AllowNull()]$Output,
-        [Parameter(Mandatory = $true)][string]$Context
-    )
-
-    if ($null -eq $Output) {
-        return
-    }
-
-    foreach ($line in @($Output)) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
-            continue
-        }
-        $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
-        }
-    }
-}
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
@@ -241,6 +217,11 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 	if badge == null or not is_instance_valid(badge):
 		_record("pin visual smoke did not create the confirmed badge")
 		return
+	var entry_seam := _find_named_descendant(pop, "ModulePinEntrySeam") as Line2D
+	if entry_seam == null:
+		_record("pin visual smoke did not create the card-entry seam")
+	elif entry_seam.visible:
+		_record("card-entry seam should stay hidden until the pin is pressed in")
 	if not (module_runtime.get("pinned_order") as Array).has(module_key):
 		_record("pin visual smoke first tap did not pin the module")
 	if int((module_runtime.get("pin_preview_tokens") as Dictionary).get(module_key, 0)) > 0:
@@ -286,6 +267,16 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 		_record("pin visual smoke could not reacquire the settled pinned badge after refresh")
 		return
 	_check_badge_visual_state(scene, settled_pop, settled_badge, module_key, false)
+	var settled_seam := _find_named_descendant(settled_pop, "ModulePinEntrySeam") as Line2D
+	if settled_seam == null:
+		_record("settled pin is missing its card-entry seam")
+	else:
+		if not settled_seam.visible:
+			_record("card-entry seam should appear when the pin is pressed in")
+		if settled_seam.width < 7.0 or not settled_seam.default_color.is_equal_approx(Color.BLACK):
+			_record("card-entry seam should be a thick black line")
+		if settled_seam.begin_cap_mode != Line2D.LINE_CAP_ROUND or settled_seam.end_cap_mode != Line2D.LINE_CAP_ROUND:
+			_record("card-entry seam should have rounded ends")
 	await _capture_viewport_if_possible("settled")
 	var settled_zones := settled_card.get("module_action_zones", {}) as Dictionary
 	var settled_pin_zone := settled_zones.get("pin", null) as Control
@@ -301,6 +292,8 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 		_record("unpin should start the pull-out animation")
 	if not settled_badge.visible or settled_badge.modulate.a < 0.8:
 		_record("unpin should keep the pin visible while it first pulls free")
+	if settled_seam != null and settled_seam.visible:
+		_record("card-entry seam should disappear as soon as the pin pulls out")
 	for _i in range(10):
 		await process_frame
 	var pull_position := Vector2(236, 14)

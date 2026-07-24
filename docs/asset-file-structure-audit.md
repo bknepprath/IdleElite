@@ -44,14 +44,14 @@ Not all repeats are equally bad. Runtime paths like `assets/content/fight/action
 
 ## Risky Paths Not To Touch Without Compatibility
 
-- `assets/content/**` runtime art referenced by `docs/activity-database-data.js`, `docs/activity-database.json`, scripts, tests, export tooling, or generated data.
+- `assets/content/**` runtime art referenced by `docs/activity-database.json`, scripts, tests, export tooling, or runtime-loaded data.
 - `assets/loading/**` because boot/loading presentation is player-visible and project-level. The active Blue Guy warmup animation is now tracked, while rejected/source variants remain untracked unless Phase 3.1+ explicitly accepts them.
 - `assets/android/**` because export presets reference launcher icon paths directly.
 - `project.godot` boot splash path `res://assets/loading/idle-elite-player-hub-launch-loading-screen.png`.
 - `.import` files because Godot stores source/remap metadata in them; move/rename only with the paired asset and validate.
 - `.gd.uid` files because Godot generated script UIDs may be expected by the editor/project cache.
 - Public/export/store assets and build/release outputs unless the export scripts and presets are updated together.
-- `docs/activity-database-data.js` because it is generated from the activity database; prefer editing the source database and sync script outputs when necessary.
+- `docs/activity-database.json` because it is the source of truth for activity data and its asset paths.
 
 ## Generated, Import, Cache, And Output Files
 

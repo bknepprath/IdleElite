@@ -6,30 +6,6 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\woodcutting-firepit"
 $testScript = Join-Path $testDir "woodcutting_firepit_test.gd"
 
-function Assert-NoUnexpectedGodotErrors {
-    param(
-        [Parameter(Mandatory = $true)][AllowNull()]$Output,
-        [Parameter(Mandatory = $true)][string]$Context
-    )
-
-    if ($null -eq $Output) {
-        return
-    }
-
-    foreach ($line in @($Output)) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
-            continue
-        }
-        $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
-        }
-    }
-}
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
@@ -179,7 +155,7 @@ func _check_card_ui(scene: Node) -> void:
 		"shutdown_reason": ""
 	}
 	var action := scene.call("_action_data", "woodcutting", "woodcutting-firepit") as Dictionary
-	var result := scene.call("_passive_firepit_surface")._build_firepit_module_card("woodcutting", action, 1080.0, true) as Dictionary
+	var result := scene.call("_passive_firepit_surface")._build_passive_module_card("woodcutting", action, 1080.0, true) as Dictionary
 	var card := result.get("card", {}) as Dictionary
 	_expect(str((card.get("status") as Label).text).contains("Feels"), "card should show active Firepit comfort status")
 	_expect(not card.has("fuel"), "card should not show a boxed fuel line")

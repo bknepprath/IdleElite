@@ -82,8 +82,8 @@ func _run() -> void:
 	if not _bottom_nav_locked_controls_ok(scene):
 		_fail("visible starter screen should show all nav buttons with skills/settings bright and other nav locked: %s %s" % [_summary(scene), _chrome_summary(scene)])
 		return
-	if not _tutorial_start_actions_rendered(scene):
-		_fail("visible starter screen should render the starter and level 2 modules: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
+	if not _only_starter_activity_rendered(scene):
+		_fail("visible starter screen should render only Push-Ups: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
 		return
 	if not (await _click_settings_nav_via_viewport(scene)):
 		_fail("visible settings nav button did not open settings during tutorial: %s %s" % [_summary(scene), _chrome_summary(scene)])
@@ -108,7 +108,7 @@ func _run() -> void:
 	if not (await _wait_for_boot_overlay_hidden(scene)):
 		_fail("boot overlay did not hide after visible settings reset: %s" % _summary(scene))
 		return
-	if _starter_screen_has_stale_chrome(scene) or not _bottom_nav_locked_controls_ok(scene) or not _tutorial_start_actions_rendered(scene):
+	if _starter_screen_has_stale_chrome(scene) or not _bottom_nav_locked_controls_ok(scene) or not _only_starter_activity_rendered(scene):
 		_fail("visible starter screen was not clean after settings reset: %s %s actions=%s" % [_summary(scene), _chrome_summary(scene), str(_rendered_action_ids(scene))])
 		return
 	if not (await _click_settings_nav_via_nav_handler(scene)):
@@ -132,7 +132,7 @@ func _run() -> void:
 		return
 	for _i in range(CLICK_SETTLE_FRAMES):
 		await _wait_test_frame()
-	if str(scene.get("running_action_id")) != "shove-wobbly-hay-bale":
+	if str(scene.get("running_action_id")) != "push-ups":
 		_fail("visible click did not leave the starter activity running: %s" % _summary(scene))
 		return
 	var tutorial_panel := scene.get("tutorial_panel") as Control
@@ -176,7 +176,7 @@ func _click_tutorial_target_via_viewport(scene: Node) -> bool:
 	scene.get_viewport().push_input(release, false)
 	for _i in range(CLICK_SETTLE_FRAMES):
 		await _wait_test_frame()
-	if str(scene.get("running_action_id")) == "shove-wobbly-hay-bale":
+	if str(scene.get("running_action_id")) == "push-ups":
 		return true
 	var routed_press := InputEventMouseButton.new()
 	routed_press.button_index = MOUSE_BUTTON_LEFT
@@ -192,7 +192,7 @@ func _click_tutorial_target_via_viewport(scene: Node) -> bool:
 	tutorial_overlay_surface.call("_route_tutorial_panel_input", routed_release)
 	for _i in range(CLICK_SETTLE_FRAMES):
 		await _wait_test_frame()
-	return accepted and str(scene.get("running_action_id")) == "shove-wobbly-hay-bale"
+	return accepted and str(scene.get("running_action_id")) == "push-ups"
 
 
 func _click_settings_nav_via_viewport(scene: Node) -> bool:
@@ -476,17 +476,12 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 	var scroll := scene._skill_detail_surface().detail_actions_scroll as ScrollContainer
 	if scroll == null or not is_instance_valid(scroll):
 		return false
-	return _rendered_action_ids(scene).has("shove-wobbly-hay-bale")
+	return _rendered_action_ids(scene).has("push-ups")
 
 
 func _only_starter_activity_rendered(scene: Node) -> bool:
 	var ids := _rendered_action_ids(scene)
-	return ids.size() == 1 and ids[0] == "shove-wobbly-hay-bale"
-
-
-func _tutorial_start_actions_rendered(scene: Node) -> bool:
-	var ids := _rendered_action_ids(scene)
-	return ids.has("shove-wobbly-hay-bale") and ids.has("kick-mud-off-boot")
+	return ids.size() == 1 and ids[0] == "push-ups"
 
 
 func _rendered_action_ids(scene: Node) -> Array:

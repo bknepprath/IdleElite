@@ -6,30 +6,6 @@ $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\module-list-transitions"
 $testScript = Join-Path $testDir "module_list_transitions_smoke.gd"
 
-function Assert-NoUnexpectedGodotErrors {
-    param(
-        [Parameter(Mandatory = $true)][AllowNull()]$Output,
-        [Parameter(Mandatory = $true)][string]$Context
-    )
-
-    if ($null -eq $Output) {
-        return
-    }
-
-    foreach ($line in @($Output)) {
-        $text = [string]$line
-        if ($text -notmatch '(ERROR|SCRIPT ERROR|powershell\.exe : ERROR):') {
-            continue
-        }
-        $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
-            throw "Unexpected Godot error during ${Context}: $text"
-        }
-    }
-}
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
 if (Test-Path -LiteralPath $testDir) {
@@ -517,26 +493,16 @@ func _check_pin_refresh_transition(scene: Node, skill_id: String) -> void:
 						scene.set("action_progress", 0.0)
 						scene.set("action_opportunity_missed", true)
 						scene.set("action_opportunity_consumed", false)
+						scene.call("_skill_detail_surface").set("last_action_card_tap_msec", 0)
 						var shelf_stop_routed := bool(navigation_shell.call("_begin_pinned_shelf_action_card_press", shelf_card, tap_point, 11))
 						if not shelf_stop_routed:
-							_record("pinned shelf running action card did not start the stop-hold route")
+							_record("pinned shelf running action card did not capture a stop tap")
 						else:
-							for _i in range(10):
-								scene.call("_action_stop_hold").call("process_action", 0.18)
+							scene.call("_input", _screen_touch_event(tap_point, false, 11))
+							for _i in range(4):
 								await process_frame
 							if not str(scene.get("running_action_id")).is_empty() or not str(scene.get("running_skill_id")).is_empty():
-								_record("pinned shelf running action card stop hold did not stop the activity. active=%s armed=%s unloading=%s stop=%s:%s elapsed=%s unload_elapsed=%s running=%s:%s progress=%s" % [
-									str(scene.get("action_stop_hold_active")),
-									str(scene.get("action_stop_hold_armed")),
-									str(scene.get("action_stop_hold_unloading")),
-									str(scene.get("action_stop_hold_skill_id")),
-									str(scene.get("action_stop_hold_action_id")),
-									str(scene.get("action_stop_hold_elapsed")),
-									str(scene.get("action_stop_hold_unload_elapsed")),
-									str(scene.get("running_skill_id")),
-									str(scene.get("running_action_id")),
-									str(scene.get("action_progress"))
-								])
+								_record("pinned shelf running action card tap did not stop the activity")
 					var top_right_point := pop.get_global_rect().position + Vector2(pop.get_global_rect().size.x - 54.0, 54.0)
 					var action_hit := scene.call("_skill_detail_surface").call("_module_action_circle_at_position", top_right_point) as Dictionary
 					if not action_hit.is_empty() and str(action_hit.get("kind", "")) == "collapse":
@@ -1247,15 +1213,16 @@ func _check_pinned_page_action_card_registration(scene: Node, skill_id: String) 
 			str(scene.get("result_text")),
 		])
 	else:
+		scene.call("_skill_detail_surface").set("last_action_card_tap_msec", 0)
 		var stop_routed := bool(scene.call("_input_routing_shell").call("_route_action_card_press", card_body_point, 9))
 		if not stop_routed:
-			_record("pinned page running action card did not start the stop-hold route")
+			_record("pinned page running action card did not capture a stop tap")
 		else:
-			for _i in range(10):
-				scene.call("_action_stop_hold").call("process_action", 0.18)
+			scene.call("_input", _screen_touch_event(card_body_point, false, 9))
+			for _i in range(4):
 				await process_frame
 			if not str(scene.get("running_action_id")).is_empty() or not str(scene.get("running_skill_id")).is_empty():
-				_record("pinned page running action card stop hold did not stop the activity")
+				_record("pinned page running action card tap did not stop the activity")
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	scene.call("_input", _mouse_button_event(card_body_point, true))
@@ -3138,12 +3105,26 @@ func _assert_action_info_chips_fill(scene: Node, card: Dictionary, context: Stri
 			continue
 		var stat_center := stat_box.get_global_rect().get_center()
 		scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
-		scene.call("_input", _mouse_button_event(stat_center, true))
-		scene.call("_input", _mouse_button_event(stat_center, false))
-		for _i in range(6):
+		scene.call("_skill_detail_surface").call("_clear_activity_stat_popup")
+		scene.call("_input", _screen_touch_event(stat_center, true, 31))
+		scene.call("_input", _screen_touch_event(stat_center, false, 31))
+		for _i in range(2):
+			await process_frame
+		if not str(scene.call("_skill_detail_surface").get("expanded_activity_stat_kind")).is_empty():
+			_record("%s %s tap expanded info without a hold" % [context, stat_kind])
+		scene.call("_input", _screen_touch_event(stat_center, true, 31))
+		scene.call("_action_stop_hold").call("process_action", 0.18)
+		await process_frame
+		if not bool(scene.call("_action_stop_hold").get("show_question")):
+			_record("%s %s hold animation is missing its question mark" % [context, stat_kind])
+		for _i in range(4):
+			scene.call("_action_stop_hold").call("process_action", 0.18)
+			await process_frame
+		scene.call("_input", _screen_touch_event(stat_center, false, 31))
+		for _i in range(2):
 			await process_frame
 		if not str(scene.get("running_skill_id")).is_empty() or not str(scene.get("running_action_id")).is_empty():
-			_record("%s %s tap started the activity underneath" % [context, stat_kind])
+			_record("%s %s hold started the activity underneath" % [context, stat_kind])
 			scene.call("_test_state_runtime")._clear_running_activity_for_test_mode()
 		if not str(scene.call("_skill_detail_surface").get("action_card_press_key")).is_empty():
 			_record("%s %s tap left an action card press stuck: %s" % [context, stat_kind, str(scene.call("_skill_detail_surface").get("action_card_press_key"))])
@@ -3385,6 +3366,14 @@ func _mouse_button_event(global_position: Vector2, pressed: bool) -> InputEventM
 	event.button_mask = MOUSE_BUTTON_MASK_LEFT if pressed else 0
 	event.position = global_position
 	event.global_position = global_position
+	return event
+
+
+func _screen_touch_event(position: Vector2, pressed: bool, index: int) -> InputEventScreenTouch:
+	var event := InputEventScreenTouch.new()
+	event.position = position
+	event.pressed = pressed
+	event.index = index
 	return event
 
 

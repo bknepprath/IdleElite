@@ -25,7 +25,7 @@ Line numbers are approximate and should be refreshed with `rg -n "^func _name|^v
 
 | System | Main symbols/regions | Existing validation to consider |
 | --- | --- | --- |
-| Activity database loading | `ACTIVITY_DATABASE_PATH`, `skills`, `skill_defs`, `actions_by_skill`, fishing area definitions | `python scripts\sync-activity-database-js.py`, `.\scripts\audit-activity-database.ps1`, `.\scripts\check-project.ps1` |
+| Activity database loading | `ACTIVITY_DATABASE_PATH`, `skills`, `skill_defs`, `actions_by_skill`, fishing area definitions | `.\scripts\check-activity-database-contracts.ps1`, `.\scripts\audit-activity-database.ps1`, `.\scripts\check-project.ps1` |
 | Save/load | `SAVE_PATH`, `_save_payload`, `_load_game_core`, `_load_game_secondary_restore`, `_restore_*_from_save`, `*_for_save` | `.\scripts\test-save-normalization.ps1`, `.\scripts\test-performance-regressions.ps1`, `.\scripts\check-project.ps1` |
 | Navigation and top-level pages | `_build_ui_shell`, `_build_home_page`, `_build_skills_page`, `_build_nav_bar`, `_nav_button`, `_show_*` helpers | `.\scripts\test-performance-regressions.ps1`, `.\scripts\test-tutorial-start-scroll.ps1`, `.\scripts\check-project.ps1` |
 | Skill detail and swiping | `skill_swipe_*`, `_skill_detail_cache_*`, `_build_detail_*`, `_process_detail_lazy_window` | `.\scripts\test-skills-page-performance.ps1`, `.\scripts\test-skills-page-ablation.ps1`, `.\scripts\test-skill-detail-bottom-scroll-pad.ps1` |

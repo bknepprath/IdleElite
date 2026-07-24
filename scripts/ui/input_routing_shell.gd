@@ -1176,6 +1176,13 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 			host._skill_swipe_activity_surface()._queue_action_card_3d_press(host._skill_detail_surface().action_card_press_key)
 			return true
 		if host.running_skill_id == skill_id and host.running_action_id == action_id:
+			if _try_running_fight_stage_tap(card, routed_position):
+				host.action_card_press_consumed = true
+				host._action_stop_hold().cancel_action()
+				host._skill_swipe_activity_surface().skill_swipe_tracking = false
+				host._skill_swipe_activity_surface().skill_swipe_horizontal = false
+				host._skill_swipe_activity_surface().skill_swipe_touch_index = -1
+				return true
 			var card_key = str(card.get("card_key", host._action_key(skill_id, action_id)))
 			var pinned_duplicate_body_press = host.current_screen == "pinned" or card_key.begins_with("pinned_shelf:")
 			if pinned_duplicate_body_press:
@@ -1200,6 +1207,9 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 			host._skill_detail_surface().action_card_press_dragged = false
 			host._skill_swipe_activity_surface()._queue_action_card_3d_press(host._skill_detail_surface().action_card_press_key)
 			return true
+		if not stat_kind.is_empty() and stat_kind != host.ACTION_CARD_MEDAL_PRESS_KIND:
+			host._skill_detail_surface()._begin_activity_stat_hold(card, skill_id, action_id, stat_kind, routed_position, pointer_id)
+			return true
 		if stat_kind.is_empty() and host.running_skill_id == skill_id and host.running_action_id == action_id:
 			if host._action_runtime()._miss_action_opportunity_click(skill_id, action_id, routed_position):
 				host.action_card_press_consumed = true
@@ -1220,6 +1230,18 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 			host._skill_swipe_activity_surface()._queue_action_card_3d_press(host._skill_detail_surface().action_card_press_key)
 		return true
 	return false
+
+
+func _try_running_fight_stage_tap(card: Dictionary, global_position: Vector2) -> bool:
+	var stage := card.get("blue_guy_chicken_stage") as Control
+	if stage == null or not is_instance_valid(stage) or not stage.is_inside_tree() or not stage.is_visible_in_tree():
+		return false
+	if not stage.has_method("try_handle_primary_tap"):
+		return false
+	var local_position := stage.get_global_transform_with_canvas().affine_inverse() * global_position
+	if not Rect2(Vector2.ZERO, stage.size).has_point(local_position):
+		return false
+	return bool(stage.call("try_handle_primary_tap", local_position))
 
 
 func _route_fishing_detail_input(event: InputEvent) -> bool:
@@ -1603,8 +1625,6 @@ func _route_action_card_release(event: InputEvent) -> bool:
 	var unlocked = not action.is_empty() and host._activity_unlock_runtime()._is_action_unlocked(skill_id, action)
 	if stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
 		host._skill_swipe_activity_surface()._play_action_card_medal_tap_ceremony(card)
-	elif not stat_kind.is_empty():
-		host._skill_detail_surface()._toggle_activity_stat_popup_for_card(card, skill_id, action_id, stat_kind)
 	elif unlocked:
 		if host.current_screen == "queue":
 			var module_key = host._skill_swipe_activity_surface()._activity_queue_module_key_for_card(card)

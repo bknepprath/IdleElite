@@ -51,6 +51,8 @@ const FISHING_FAILURE_SFX_PATH := "res://assets/sfx/water_whoosh_subtle.wav"
 const FISHING_FAILURE_SFX_VOLUME_DB := -16.0
 const CHICKEN_DEATH_SFX_PATH := "res://assets/sfx/fight_chicken_death_squeak.wav"
 const CHICKEN_DEATH_SFX_VOLUME_DB := -18.0
+const GOBLIN_SHIELD_DROP_SFX_PATH := "res://assets/sfx/fight_goblin_shield_drop.wav"
+const GOBLIN_SHIELD_DROP_SFX_VOLUME_DB := -20.0
 const FIGHT_PUNCH_SFX_PATHS := [
 	"res://assets/sfx/fight_punch_soft_body_whump.wav",
 	"res://assets/sfx/fight_punch_soft_body_thump_alt.wav",
@@ -152,6 +154,7 @@ var crit_success_players: Array[AudioStreamPlayer] = []
 var failure_player: AudioStreamPlayer
 var fishing_failure_player: AudioStreamPlayer
 var chicken_death_player: AudioStreamPlayer
+var goblin_shield_drop_player: AudioStreamPlayer
 var fight_punch_players: Array[AudioStreamPlayer] = []
 var fight_punch_player_index := 0
 var opportunity_success_player: AudioStreamPlayer
@@ -383,6 +386,7 @@ func _build_extended_audio() -> void:
 	failure_player = _ensure_path_player(failure_player, "res://assets/sfx/warm_reject.wav", Callable(self, "_sfx"))
 	fishing_failure_player = _ensure_path_player(fishing_failure_player, FISHING_FAILURE_SFX_PATH, Callable(self, "_sfx"), FISHING_FAILURE_SFX_VOLUME_DB)
 	chicken_death_player = _ensure_path_player(chicken_death_player, CHICKEN_DEATH_SFX_PATH, Callable(self, "_sfx"), CHICKEN_DEATH_SFX_VOLUME_DB)
+	goblin_shield_drop_player = _ensure_path_player(goblin_shield_drop_player, GOBLIN_SHIELD_DROP_SFX_PATH, Callable(self, "_sfx"), GOBLIN_SHIELD_DROP_SFX_VOLUME_DB)
 	if fight_punch_players.size() != FIGHT_PUNCH_SFX_PATHS.size():
 		_dispose_players(fight_punch_players)
 		_append_path_players(fight_punch_players, FIGHT_PUNCH_SFX_PATHS, Callable(self, "_sfx"), FIGHT_PUNCH_SFX_VOLUME_DB)
@@ -443,6 +447,10 @@ func _warm_extended_audio_async() -> void:
 	if last_yield_msec < 0:
 		return
 	chicken_death_player = _ensure_path_player(chicken_death_player, CHICKEN_DEATH_SFX_PATH, Callable(self, "_sfx"), CHICKEN_DEATH_SFX_VOLUME_DB)
+	last_yield_msec = await _audio_warm_next(last_yield_msec)
+	if last_yield_msec < 0:
+		return
+	goblin_shield_drop_player = _ensure_path_player(goblin_shield_drop_player, GOBLIN_SHIELD_DROP_SFX_PATH, Callable(self, "_sfx"), GOBLIN_SHIELD_DROP_SFX_VOLUME_DB)
 	last_yield_msec = await _audio_warm_next(last_yield_msec)
 	if last_yield_msec < 0:
 		return
@@ -905,6 +913,11 @@ func _play_chicken_death_sfx() -> void:
 	chicken_death_player.pitch_scale = randf_range(0.96, 1.03)
 	chicken_death_player.volume_db = CHICKEN_DEATH_SFX_VOLUME_DB
 	chicken_death_player.play()
+
+
+func _play_goblin_shield_drop_sfx() -> void:
+	_ensure_extended_audio()
+	_play_sfx_with_pitch_and_volume(goblin_shield_drop_player, randf_range(0.96, 1.04), GOBLIN_SHIELD_DROP_SFX_VOLUME_DB)
 
 
 func _play_fight_punch_sfx() -> void:

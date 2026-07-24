@@ -6,9 +6,11 @@ const FAST_ARC_SEGMENTS := 8
 var border_color := Color("#171615")
 var border_width := 12.0
 var radius := 66.0
+var anti_aliasing := true
 var bottom_shape := "round"
 var bottom_cutout_color := Color("#f8f1e5")
 var wide_u_bottom_rise := 58.0
+var wide_u_shoulder_ratio := 0.285
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
@@ -21,7 +23,7 @@ func _draw() -> void:
 		style.border_color = border_color
 		style.set_border_width_all(int(round(border_width)))
 		style.set_corner_radius_all(int(round(radius)))
-		style.anti_aliasing = true
+		style.anti_aliasing = anti_aliasing
 		style.anti_aliasing_size = 1.5
 		draw_style_box(style, Rect2(Vector2.ZERO, size))
 		return
@@ -38,18 +40,22 @@ func _draw() -> void:
 	_append_arc_points(points, Vector2(right - r, top + r), r, -PI * 0.5, 0.0)
 	if bottom_shape == "wide_u":
 		var side_y := maxf(top + r, bottom - wide_u_bottom_rise)
-		var u_corner_r := minf(r * 0.72, size.x * 0.16)
-		points.append(Vector2(right, side_y - u_corner_r))
-		_append_arc_points(points, Vector2(right - u_corner_r, side_y - u_corner_r), u_corner_r, 0.0, PI * 0.5)
+		var shoulder := clampf(wide_u_shoulder_ratio, 0.0, 0.49)
+		var curve_left := lerpf(left, right, shoulder)
+		var curve_right := lerpf(left, right, 1.0 - shoulder)
+		points.append(Vector2(right, side_y - r))
+		_append_arc_points(points, Vector2(right - r, side_y - r), r, 0.0, PI * 0.5)
+		points.append(Vector2(curve_right, side_y))
 		var curve := PackedVector2Array()
-		curve.append(Vector2(right - u_corner_r, side_y))
 		for i in range(1, 34):
 			var t := float(i) / 34.0
-			curve.append(Vector2(lerpf(right - u_corner_r, left + u_corner_r, t), lerpf(side_y, bottom, sin(t * PI))))
-		curve.append(Vector2(left + u_corner_r, side_y))
+			var curve_weight := sin(t * PI)
+			curve.append(Vector2(lerpf(curve_right, curve_left, t), lerpf(side_y, bottom, curve_weight * curve_weight)))
+		curve.append(Vector2(curve_left, side_y))
 		for point in curve:
 			points.append(point)
-		_append_arc_points(points, Vector2(left + u_corner_r, side_y - u_corner_r), u_corner_r, PI * 0.5, PI)
+		points.append(Vector2(left + r, side_y))
+		_append_arc_points(points, Vector2(left + r, side_y - r), r, PI * 0.5, PI)
 	else:
 		points.append(Vector2(right, bottom - r))
 		_append_arc_points(points, Vector2(right - r, bottom - r), r, 0.0, PI * 0.5)

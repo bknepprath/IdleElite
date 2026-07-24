@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated": "2026-06-14",
+  "updated": "2026-07-23",
   "source_of_truth": "Edit this JSON first. The Godot game and HTML activity database both read this file.",
   "global_rules": {
     "base_max_stamina": 30,
@@ -123,6 +123,7 @@
       }
     },
     "xp_formula": "Hand-authored per activity in docs/activity-database.json. Early activity XP stays intentionally small through about level 15; later ladders use explicit organic plateaus and bumps instead of a stamina-based runtime XP multiplier.",
+    "combat_reward_contract": "For each diamond Fighting combat action, combat.reward_xp is the XP budget at unlock and combat.par_reward_xp is the XP budget reached eight Fighting levels later (or level 99 when sooner). The runtime uses a squared ramp between them, then holds the par budget while combat throughput grows naturally. combat.unlock_health_scale optionally lowers enemy health at unlock and fades to 1 over the same eight levels. combat.kill_reward_share is the fraction paid across planned kills; its floor is apportioned cumulatively by kill, and area clear pays the exact remainder. Fighting XP is awarded only for enemy kills and area clears.",
     "seconds_formula": "(1 + stamina * 0.75 + unlock * 0.06) * skill.time_scale",
     "success_formula": "max(20, skill.success_start - action_index_0_based * 2)",
     "skill_level_xp_formula": "skill_xp_required(level) = round(22 * pow(level - 1, 2.08) * (1 + 3 * pow(clamp((level - 10) / 89, 0, 1), 2))); levels 1-10 use the original curve; level starts at 1",
@@ -527,7 +528,13 @@
             "spawn_rhythm": 0.9,
             "contact_damage": 8,
             "reward_xp": 8,
+            "par_reward_xp": 2000,
+            "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/prototype/chicken-idle.png"
+            ,"population_curve": [4, 5, 6, 7, 8]
+            ,"population_cap": 8
+            ,"final_population": 12
+            ,"signature": "swarm_lunge"
           },
           "art": "assets/content/fight/actions/fight-chicken-sparring-pit.png",
           "background": "assets/content/fight/backgrounds/01-early.png"
@@ -741,8 +748,14 @@
             "spawn_rhythm": 0.84,
             "contact_damage": 14,
             "reward_xp": 22,
+            "par_reward_xp": 7400,
+            "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/goblins/goblins-states-source.png",
-            "arena_shape": "diamond"
+            "arena_shape": "diamond",
+            "population_curve": [2, 3, 3, 4, 5],
+            "population_cap": 3,
+            "final_population": 5,
+            "signature": "shielded_hold_ground"
           },
           "display_tags": [
             "Combat"
@@ -852,11 +865,18 @@
             "enemy_kind": "brute",
             "speed": 0.88,
             "health": 173,
+            "unlock_health_scale": 0.85,
             "spawn_rhythm": 1.05,
             "contact_damage": 20,
             "reward_xp": 36,
+            "par_reward_xp": 4500,
+            "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/rouses/rouses-states-source.png",
-            "arena_shape": "diamond"
+            "arena_shape": "diamond",
+            "population_curve": [1, 1, 2, 2, 3],
+            "population_cap": 2,
+            "final_population": 3,
+            "signature": "momentum_roll"
           },
           "display_tags": [
             "Combat"
@@ -919,13 +939,19 @@
           "combat": {
             "enemy_id": "guys",
             "enemy_kind": "duelist",
-            "speed": 1.05,
-            "health": 299,
-            "spawn_rhythm": 0.92,
-            "contact_damage": 26,
+            "speed": 1.40,
+            "health": 59,
+            "spawn_rhythm": 0.275,
+            "contact_damage": 6.0,
             "reward_xp": 58,
+            "par_reward_xp": 5650,
+            "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/guys/guys-states-source.png",
-            "arena_shape": "diamond"
+            "arena_shape": "diamond",
+            "population_curve": [16, 20, 24, 28, 32],
+            "population_cap": 24,
+            "final_population": 40,
+            "signature": "duelist_guard"
           },
           "display_tags": [
             "Combat"
@@ -1078,11 +1104,18 @@
             "enemy_kind": "charger",
             "speed": 1.28,
             "health": 743,
+            "unlock_health_scale": 0.6,
             "spawn_rhythm": 0.7,
             "contact_damage": 44,
             "reward_xp": 96,
+            "par_reward_xp": 157500,
+            "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/werewolves/werewolves-states-source.png",
-            "arena_shape": "diamond"
+            "arena_shape": "diamond",
+            "population_curve": [1, 1, 2, 2, 3],
+            "population_cap": 2,
+            "final_population": 3,
+            "signature": "howl_charge"
           },
           "display_tags": [
             "Combat"
@@ -1173,11 +1206,18 @@
             "enemy_kind": "heavy",
             "speed": 0.7,
             "health": 1211,
+            "unlock_health_scale": 0.6,
             "spawn_rhythm": 1.25,
             "contact_damage": 65,
             "reward_xp": 124,
+            "par_reward_xp": 200000,
+            "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/cave-trolls/cave-trolls-states-source.png",
-            "arena_shape": "diamond"
+            "arena_shape": "diamond",
+            "population_curve": [1, 1, 1, 2, 2],
+            "population_cap": 2,
+            "final_population": 2,
+            "signature": "alternating_club_swing_ground_pound"
           },
           "display_tags": [
             "Combat"
@@ -1260,16 +1300,23 @@
             "enemy_kind": "scaled_guy",
             "speed": 0.76,
             "health": 2123,
+            "unlock_health_scale": 0.6,
             "spawn_rhythm": 1.12,
             "contact_damage": 105,
             "reward_xp": 198,
-            "art_ref": "assets/content/fight/enemies/guys/guys-states-source.png",
-            "arena_shape": "diamond"
+            "par_reward_xp": 32650,
+            "kill_reward_share": 0.75,
+            "art_ref": "assets/content/fight/enemies/giants/giants-states-source.png",
+            "arena_shape": "diamond",
+            "population_curve": [1, 1.3, 1.6, 1.9, 2],
+            "population_cap": 2,
+            "final_population": 2,
+            "signature": "reach_grab_flip"
           },
           "display_tags": [
             "Combat"
           ],
-          "art": "assets/content/fight/enemies/guys/guys-idle.png",
+          "art": "assets/content/fight/enemies/giants/giants-states-source.png",
           "background": "assets/content/fight/backgrounds/05-finale.png"
         },
         {
@@ -1394,8 +1441,14 @@
             "spawn_rhythm": 0.62,
             "contact_damage": 120,
             "reward_xp": 330,
+            "par_reward_xp": 103000,
+            "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/vampires/vampires-states-source.png",
-            "arena_shape": "diamond"
+            "arena_shape": "diamond",
+            "population_curve": [1, 1, 1, 2, 2],
+            "population_cap": 2,
+            "final_population": 2,
+            "signature": "teleport_cape_bats_low_health_bite_drain"
           },
           "display_tags": [
             "Combat"
@@ -1423,12 +1476,18 @@
             "enemy_id": "dragons",
             "enemy_kind": "boss_wave",
             "speed": 0.95,
-            "health": 5754,
+            "health": 3000,
             "spawn_rhythm": 0.98,
             "contact_damage": 230,
             "reward_xp": 440,
+            "par_reward_xp": 38500,
+            "kill_reward_share": 0.75,
             "art_ref": "assets/content/fight/enemies/dragons/dragons-states-source.png",
-            "arena_shape": "diamond"
+            "arena_shape": "diamond",
+            "population_curve": [1, 1, 1, 1, 1],
+            "population_cap": 1,
+            "final_population": 1,
+            "signature": "breath_land"
           },
           "display_tags": [
             "Combat"

@@ -59,7 +59,6 @@ const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
 const ACTION_CARD_TITLE_OUTLINE_SIZE := 34
 const ACTION_CARD_FACE_BORDER_ENABLED := true
-const ACTION_CARD_SIMPLE_BACKGROUND_ENABLED := false
 const ACTION_CARD_FACE_RADIUS := 66.0
 const ACTION_CARD_FACE_BORDER_Z_INDEX := 244
 const PASSIVE_PROGRESS_BAR_Z_INDEX := ACTION_CARD_FACE_BORDER_Z_INDEX + 1
@@ -88,7 +87,7 @@ const PAGE_PAD := 96
 const CARD_RADIUS := 64
 const ACTION_CARD_HEIGHT := 720
 const COMBAT_DIAMOND_ARENA_CARD_HEIGHT := 1220
-const ACTION_CARD_EXPANDED_HEIGHT := 1080
+const ACTION_CARD_EXPANDED_HEIGHT := 1280
 const ACTION_CARD_INFO_EXPAND_SECONDS := 0.22
 const ACTION_CARD_INFO_FADE_IN_SECONDS := 0.08
 const ACTION_CARD_INFO_FADE_OUT_SECONDS := 0.12
@@ -142,10 +141,8 @@ const SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED := true
 const SKILL_SWIPE_GAP_READY_WAIT_FRAMES := 4
 const SKILL_SWIPE_SETTLE_SECONDS := 0.20
 const SKILL_SWIPE_CANCEL_SECONDS := 0.14
-const SKILL_SWIPE_DRAG_FRAME_FADE_ENABLED := false
 const SKILL_SWIPE_PREVIEW_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 1.25
 const SKILL_SWIPE_PREVIEW_FADE_MIN_ALPHA := 0.30
-const SKILL_SWIPE_PAPER_FADE_ENABLED := false
 const SKILL_SWIPE_PAPER_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
 const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.08
 const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.12
@@ -160,11 +157,9 @@ const PAGE_SWITCH_SCROLL_COVER_FADE_IN_SECONDS := 0.22
 const PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS := 0.34
 const PAGE_SWITCH_SCROLL_COVER_FADE_SECONDS := 0.18
 const SKILL_SWIPE_LIGHT_PREVIEW_ENABLED := true
-const SKILL_SWIPE_SHOW_INCOMING_PREVIEW_DURING_DRAG := false
 const SKILL_SWIPE_LIGHT_PREVIEW_HEADER_ENABLED := true
 const SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS := 1
-const SKILL_SWIPE_REAL_CARD_IDLE_PREWARM_ENABLED := false
 const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 4
 const SKILL_SWIPE_REAL_PREVIEW_TEXTURE_PREWARM_ENABLED := true
 const SKILL_SWIPE_FINALIZE_SETTLE_FRAMES := 1
@@ -229,9 +224,6 @@ const BOOT_WARMUP_LAYER := TUTORIAL_LAYER + 2
 const SKILL_NAV_COVER_CANVAS_LAYER := ProfileChatOverlaySurface.PROFILE_OVERLAY_CANVAS_LAYER + 1
 const PIN_TRANSITION_BLOCKER_MIN_SECONDS := 0.62
 const PIN_TRANSITION_BLOCKER_FADE_SECONDS := 0.18
-const BOOT_SWIPE_PREWARM_DELAY_SECONDS := 4.0
-const SKILL_SWIPE_IDLE_PREWARM_ENABLED := false
-const SKILL_SWIPE_PREVIEW_CACHE_PARKED_PAGES := false
 const FISHING_DETAIL_RENDER_REVEAL_BUFFER_PX := 2200.0
 const FISHING_DETAIL_RENDER_HIDE_BUFFER_PX := 3600.0
 const FISHING_DETAIL_RENDER_CULL_ACTIVE_STEP_PX := 180.0
@@ -602,13 +594,6 @@ func _finish_boot_skill_detail_extras() -> void:
 		return
 	_skill_detail_surface()._build_detail_jump_arrows(actions_clip)
 	_skill_detail_surface()._add_skill_detail_shadow_overlay(_skill_detail_surface()._skill_detail_shadow_top_y())
-	call_deferred("_deferred_boot_swipe_preview_prewarm")
-
-func _deferred_boot_swipe_preview_prewarm() -> void:
-	await get_tree().create_timer(BOOT_SWIPE_PREWARM_DELAY_SECONDS).timeout
-	if current_screen != "skill":
-		return
-	_skill_swipe_activity_surface()._queue_skill_swipe_preview_prewarm()
 
 func _skill_swipe_loading_transition_active() -> bool:
 	return (
@@ -729,9 +714,6 @@ func _process(delta: float) -> void:
 				str(_skill_swipe_activity_surface()._skill_detail_has_visible_lazy_placeholders() if current_screen == "skill" else false)
 			])
 
-func _unhandled_input(_event: InputEvent) -> void:
-	pass
-
 func _input(event: InputEvent) -> void:
 	_input_routing_shell().input(event)
 
@@ -767,6 +749,7 @@ func _build_ui_boot_async():
 	await boot_warmup._boot_progress_step("Loading navigation...", 0.50)
 	_navigation_shell()._build_nav_bar()
 	_navigation_shell()._build_module_utility_row()
+	_navigation_shell()._prebuild_skill_menu_page_cache()
 	await boot_warmup._boot_progress_step("Preparing popups...", 0.56)
 	_achievement_toast_surface().ensure_built()
 	if _onboarding_runtime().tutorial_active:
@@ -832,7 +815,6 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 	if direction < 0:
 		_skill_detail_surface()._release_detail_unlock_extra_scroll_space()
 	_skill_detail_surface()._reveal_detail_jump_arrow(direction)
-	_skill_swipe_activity_surface()._queue_skill_swipe_preview_prewarm()
 	_skill_detail_surface()._sync_detail_lazy_visible_cards(true, _skill_detail_surface().DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME)
 
 func _update_ui(delta: float, instant := false) -> void:

@@ -664,33 +664,14 @@ var stamina:
 func _action_data(skill_id: String, action_id: String) -> Dictionary:
 	return host._action_data(skill_id, action_id)
 
-func _control_global_point_to_local(control: Control, global_point: Vector2) -> Vector2:
-	return host._control_global_point_to_local(control, global_point)
-
-func _control_local_point_to_global(control: Control, local_point: Vector2) -> Vector2:
-	return host._control_local_point_to_global(control, local_point)
-
-func _current_canvas_size() -> Vector2:
-	return host._current_canvas_size()
-
-
 func _hub_runtime() -> HubRuntime:
 	return host._hub_runtime()
-
-func _hub_unlocked() -> bool:
-	return host._navigation_shell()._hub_unlocked()
 
 func _label(text: String, font_size: int, color: Color, align: HorizontalAlignment) -> Label:
 	return host._label(text, font_size, color, align)
 
 func _menu_button(text: String) -> Button:
 	return host._menu_button(text)
-
-func _meta_vector2(node: Object, meta_name, fallback: Vector2 = Vector2.ZERO) -> Vector2:
-	return host._app_lifecycle_runtime().meta_vector2(node, meta_name, fallback)
-
-func _scroll_to_activity_card(action_id: String, animated := true, centered := false):
-	return host._skill_detail_surface()._scroll_to_activity_card(action_id, animated, centered)
 
 func _set_label_text_if_changed(label: Label, next_text: String) -> void:
 	host._app_lifecycle_runtime().set_label_text_if_changed(label, next_text)
@@ -824,7 +805,7 @@ func _render_hub_page() -> void:
 	grass_bg.color = Color("#a7cb72")
 	grass_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hub_frame.add_child(grass_bg)
-	var hub_viewport_height := maxf(1.0, _current_canvas_size().y - float(BOTTOM_NAV_HEIGHT))
+	var hub_viewport_height := maxf(1.0, host._current_canvas_size().y - float(BOTTOM_NAV_HEIGHT))
 	var hub_render_size := Vector2(HUB_FIELD_SIZE.x, maxf(HUB_FIELD_SIZE.y, hub_viewport_height))
 	var field := Control.new()
 	field.position = Vector2.ZERO
@@ -892,7 +873,7 @@ func _on_hub_tutorial_info_pressed() -> void:
 	_show_hub_tutorial_tip(false)
 
 func _maybe_show_hub_tutorial_tip() -> void:
-	if current_screen != "hub" or not _hub_unlocked() or hub_tutorial_tip_seen:
+	if current_screen != "hub" or not host._navigation_shell()._hub_unlocked() or hub_tutorial_tip_seen:
 		return
 	_show_hub_tutorial_tip(true)
 
@@ -1302,17 +1283,17 @@ func _on_hub_module_gui_input(event: InputEvent, module_id: String) -> void:
 	elif event is InputEventScreenTouch:
 		var touch_event := event as InputEventScreenTouch
 		if touch_event.pressed:
-			_begin_hub_hotspot_hold(module_id, _control_local_point_to_global(button, touch_event.position), touch_event.index)
+			_begin_hub_hotspot_hold(module_id, host._control_local_point_to_global(button, touch_event.position), touch_event.index)
 		else:
-			_finish_hub_hotspot_press(module_id, _control_local_point_to_global(button, touch_event.position), touch_event.index)
+			_finish_hub_hotspot_press(module_id, host._control_local_point_to_global(button, touch_event.position), touch_event.index)
 		accept_event()
 	elif event is InputEventScreenDrag:
 		var drag_event := event as InputEventScreenDrag
 		if hub_hotspot_hold_module_id == module_id and hub_hotspot_hold_pointer_id == drag_event.index:
-			_update_hub_hotspot_hold_position(_control_local_point_to_global(button, drag_event.position))
+			_update_hub_hotspot_hold_position(host._control_local_point_to_global(button, drag_event.position))
 			accept_event()
 		elif hub_drag_module_id == module_id and hub_drag_pointer_id == drag_event.index:
-			_drag_hub_module_to(button, _control_local_point_to_global(button, drag_event.position))
+			_drag_hub_module_to(button, host._control_local_point_to_global(button, drag_event.position))
 			accept_event()
 
 func _route_hub_hotspot_hold_input(event: InputEvent) -> bool:
@@ -2218,7 +2199,7 @@ func _animate_hub_build_smoke(smoke: TextureRect, now_seconds: float, layer_inde
 	smoke.scale = Vector2(1.0 + stretch + breathe, 1.0 - stretch * 0.62 + breathe)
 	smoke.rotation = sin(phase * 0.48) * 0.025
 	if smoke.has_meta("hub_smoke_base_position"):
-		var base_position := _meta_vector2(smoke, "hub_smoke_base_position", smoke.position)
+		var base_position: Vector2 = host._app_lifecycle_runtime().meta_vector2(smoke, "hub_smoke_base_position", smoke.position)
 		smoke.position = base_position + Vector2(sin(phase * 0.42) * 8.0, sin(phase * 0.36 + 0.8) * 6.0)
 
 func _apply_hub_build_countdown_style(countdown: HubBuildProgressBar, rect: Rect2) -> void:
@@ -2590,7 +2571,7 @@ func _jump_to_hub_mission_task(mission_index := 0) -> void:
 	selected_skill_id = skill_id
 	current_screen = "skill"
 	host._navigation_shell()._render_screen(false, -1)
-	await _scroll_to_activity_card(action_id, true, true)
+	await host._skill_detail_surface()._scroll_to_activity_card(action_id, true, true)
 
 func _hub_mission_at_index(mission_index: int) -> Dictionary:
 	if _hub_runtime().sync_missions():
@@ -3140,7 +3121,7 @@ func _play_hub_module_build_spend_burst(module_id: String, spent_logs: int, spen
 	if not is_inside_tree():
 		return
 	var start_global = _hub_module_spend_burst_start_global(module_id)
-	var start_local := _control_global_point_to_local(host, start_global)
+	var start_local: Vector2 = host._control_global_point_to_local(host, start_global)
 	var burst_specs := []
 	if spent_logs > 0:
 		burst_specs.append({

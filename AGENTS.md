@@ -10,11 +10,19 @@ This project uses Godot and the machine can overheat if too many instances run a
 - After each Godot command, verify no agent-owned headless process remains. Only terminate headless/non-interactive processes launched by that validation command; leave user windows alone and report unclear ownership.
 - Preferred validation: `.\scripts\check-project.ps1`. For one-off commands, use `.\run-godot-safe.ps1 --path . --quit-after 1`.
 - For player-visible changes, capture and visually inspect the real game at the dimensions being judged before presenting it. When confirming via screenshot, embed the exact inspected PNG inline in the final thread response and include its absolute path as supporting detail. Do not present mockups or helper renders as game screenshots, and reject art that spills outside its visible mask.
+- For every player-visible change, the proof screenshot must show the exact changed control(s), tightly enough to judge the change. Do not use a broad or unrelated screen capture as proof. If the changed control is not visibly different or is not clearly present, keep iterating on the code and recapture until the screenshot provides definitive proof; embed that exact inspected PNG in the final response so the user can see it.
 - Before a headless import, record `git status --short`; afterward use `git status --porcelain=v1` and restore only tracked `.import` files dirtied by that import.
 
 ## Mobile UI Readability
 
 - Phone-visible text must be readable in a 1080px-wide portrait screenshot without zooming: body text at least 48px, help/status body text at least 52px, and titles at least 60px. If it does not fit, enlarge the container or shorten the copy; check wrapping and overlap in the rendered screenshot.
+
+## Animation Scale
+
+- Never calculate animation-frame scale from measured alpha bounds, used rectangles, content height, transparent padding, or other per-frame image measurements.
+- Give each character or animation one authored canonical draw box and ground anchor. Normalize source frames offline to that shared canvas and anchor.
+- If an animation state intentionally changes size, use one explicit reviewed state scale. Do not apply runtime per-frame corrective scaling.
+- Measured bounds may be used for grounding, positioning, cropping, masks, or hit testing, but never to determine visual scale.
 
 ## Activity Database
 
