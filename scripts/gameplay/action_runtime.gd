@@ -1968,7 +1968,11 @@ func _start_action_from_card_tap(skill_id: String, action_id: String, visual_car
 		host._skill_detail_surface().last_action_card_tap_msec = now
 		if not visual_card_key.is_empty() and visual_card_key != key:
 			host._skill_swipe_activity_surface()._pop_activity_button(visual_card_key)
-		if host._fighting_runtime().is_boss_fight_action(host._action_data(skill_id, action_id)):
+		var action: Dictionary = host._action_data(skill_id, action_id)
+		if host._fighting_runtime().is_boss_fight_action(action):
+			if host._fighting_runtime().action_uses_rooster_punch_out_stage(action):
+				var card_key: String = str(visual_card_key) if not str(visual_card_key).is_empty() else str(key)
+				host._fighting_runtime().sync_rooster_punch_out_stage_active(host.action_cards.get(card_key, {}), skill_id, action_id, true)
 			host._update_ui(0.0, false)
 		return true
 	return false

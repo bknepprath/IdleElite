@@ -561,6 +561,8 @@ func _is_action_unlocked(skill_id: String, action: Dictionary) -> bool:
 	var requirements := _action_unlock_requirements(skill_id, action)
 	if _action_requirements_max_level(requirements) <= 1:
 		return _action_requirements_met_from_requirements(requirements)
+	if host._fighting_runtime().action_uses_rooster_punch_out_stage(action):
+		return _action_requirements_met_from_requirements(requirements)
 	var action_id := str(action.get("id", ""))
 	if action_id.is_empty():
 		return false
