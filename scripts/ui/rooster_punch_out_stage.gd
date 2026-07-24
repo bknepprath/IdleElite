@@ -3,6 +3,7 @@ extends Control
 signal stamina_damage(amount: int)
 signal boss_defeated
 
+const GameFormatting = preload("res://scripts/core/formatting.gd")
 const INK := Color("#171615")
 const ROOSTER_IDLE_PATH := "res://assets/content/fight/boss/rooster-idle.png"
 const ROOSTER_HIT_PATH := "res://assets/content/fight/boss/rooster-hit.png"
@@ -44,6 +45,7 @@ var hand_punch_left: Texture2D
 var hand_punch_right: Texture2D
 var active_fight := false
 var boss_defeat_reported := false
+var required_stamina := 2.0
 
 
 func _ready() -> void:
@@ -63,6 +65,8 @@ func _ready() -> void:
 
 func set_active_fight(active: bool) -> void:
 	active_fight = active
+	if not active_fight and lost_fight:
+		cover_close_amount = 1.0
 	_sync_mouse_filter()
 	set_process(active_fight)
 	queue_redraw()
@@ -74,20 +78,31 @@ func _sync_mouse_filter() -> void:
 
 func setup_player_stamina(current_stamina: float) -> void:
 	player_stamina = maxf(0.0, current_stamina)
-	if player_stamina > 0.0 and lost_fight:
+	if player_stamina + 0.0001 >= required_stamina and lost_fight:
 		_reset_fight()
-	elif player_stamina <= 0.0:
-		close_after_stamina_loss()
+	elif player_stamina + 0.0001 < required_stamina:
+		_close_stage()
+
+
+func setup_required_stamina(cost: float) -> void:
+	required_stamina = maxf(0.0, cost)
+	if player_stamina + 0.0001 < required_stamina:
+		_close_stage()
+	queue_redraw()
 
 
 func close_after_stamina_loss() -> void:
-	if lost_fight:
-		return
-	lost_fight = true
 	player_stamina = 0.0
+	_close_stage()
+
+
+func _close_stage() -> void:
+	lost_fight = true
 	punch_timer = 0.0
 	attack_timer = 0.0
 	reset_timer = 0.0
+	if not active_fight:
+		cover_close_amount = 1.0
 
 
 func _process(delta: float) -> void:
@@ -204,24 +219,22 @@ func _draw() -> void:
 	var stage := Rect2(Vector2.ZERO, size)
 	var play_area := stage.grow(-18.0)
 	_draw_backdrop(stage)
-	_draw_boss_hp_bar(stage)
 	_draw_rooster_sprite(play_area)
-	_draw_hand_sprite(Vector2(size.x * 0.30, size.y * 0.92), hand_punch_left if punch_timer > 0.0 and punch_side == "left" else hand_guard_left, punch_timer > 0.0 and punch_side == "left")
-	_draw_hand_sprite(Vector2(size.x * 0.70, size.y * 0.92), hand_punch_right if punch_timer > 0.0 and punch_side == "right" else hand_guard_right, punch_timer > 0.0 and punch_side == "right")
+	_draw_hand_sprite(Vector2(size.x * 0.30, size.y * 0.82), hand_punch_left if punch_timer > 0.0 and punch_side == "left" else hand_guard_left, punch_timer > 0.0 and punch_side == "left")
+	_draw_hand_sprite(Vector2(size.x * 0.70, size.y * 0.82), hand_punch_right if punch_timer > 0.0 and punch_side == "right" else hand_guard_right, punch_timer > 0.0 and punch_side == "right")
 	_draw_floaters()
 	if player_hit_flash > 0.0:
 		_draw_rounded_rect(stage, 66.0, Color(1.0, 0.0, 0.0, 0.26 * player_hit_flash))
 	if cover_close_amount > 0.0:
 		_draw_defeat_cover(stage)
+	if _needs_stamina_feedback():
+		var notice := Rect2(Vector2(size.x * 0.17, size.y * 0.70), Vector2(size.x * 0.66, 142.0))
+		_draw_rounded_rect(notice, 28.0, Color("#4b070a"))
+		_draw_center_text("NEEDS %s STAMINA" % GameFormatting.info_chip_number(required_stamina), notice.get_center() + Vector2(0.0, 38.0), 104, Color.WHITE, INK)
 
 
-func _draw_boss_hp_bar(r: Rect2) -> void:
-	var bar_height := clampf(r.size.y * 0.135, 44.0, 54.0)
-	var rail := Rect2(r.position + Vector2(22.0, 32.0), Vector2(r.size.x - 44.0, bar_height))
-	var radius := rail.size.y * 0.5
-	_draw_rounded_rect(Rect2(rail.position + Vector2(0, 5), rail.size), radius, Color(0, 0, 0, 0.26))
-	_draw_rounded_rect(rail, radius, Color("#3b0708"))
-	_draw_rounded_rect(Rect2(rail.position, Vector2(rail.size.x * clampf(rooster_hp / ROOSTER_MAX_HP, 0.0, 1.0), rail.size.y)), radius, Color("#e3342e"))
+func _needs_stamina_feedback() -> bool:
+	return not active_fight and lost_fight and cover_close_amount >= 0.999 and player_stamina + 0.0001 < required_stamina
 
 
 func _draw_backdrop(r: Rect2) -> void:

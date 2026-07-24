@@ -558,6 +558,7 @@ class ConvergenceBuildOverlay:
 
 const RECOVERY_WIDE_U_BOTTOM_RISE := ActivityCardStyles.RECOVERY_WIDE_U_BOTTOM_RISE
 const RECOVERY_WIDE_U_SHOULDER_RATIO := ActivityCardStyles.RECOVERY_WIDE_U_SHOULDER_RATIO
+const NORMAL_ACTIVITY_PROGRESS_HEIGHT := 112.0
 const CONVERGENCE_BAR_HEIGHT := 156
 const CONVERGENCE_BUILD_OVERLAY_COLOR := Color(0.10, 0.08, 0.06, 0.58)
 const CONVERGENCE_UNBUILT_CARD_TINT := Color(0.78, 0.70, 0.58, 1.0)
@@ -3802,6 +3803,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var depth = shell.get("depth") as ActivityCardDepth
 	var bg = shell.get("bg") as Control
 	var shade = shell.get("shade") as Panel
+	var rooster_boss_stage = shell.get("rooster_boss_stage") as Control
 	var blue_guy_chicken_stage = shell.get("blue_guy_chicken_stage") as Control
 	var body = _detail_action_card_body(card_root, pop_card, skill_id, action, is_convergence_card, uses_blue_guy_chicken_brawl_stage)
 	var art_panel = body.get("art_panel") as Panel
@@ -3925,6 +3927,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"build_plank_layer": build_plank_layer,
 		"build_plank_nodes": build_plank_nodes,
 		"fluid_strip": fluid_strip,
+		"rooster_boss_stage": rooster_boss_stage,
 		"blue_guy_chicken_stage": blue_guy_chicken_stage,
 		"border": border,
 		"mission_badge_parent": pop_card,
@@ -5866,7 +5869,9 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	var uses_diamond_arena: bool = host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var uses_recovery_card := RecoveryModules.has_recovery(action)
 	var uses_flat_normal_card := not uses_recovery_card and not uses_diamond_arena
+	var uses_rooster_stage: bool = host._fighting_runtime().action_uses_rooster_punch_out_stage(action)
 	var card_depth_offset: Vector2 = host.ACTION_CARD_3D_DEPTH_OFFSET if uses_diamond_arena else (ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET if uses_recovery_card else ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET)
+	var face_bottom_inset: float = card_depth_offset.y + NORMAL_ACTIVITY_PROGRESS_HEIGHT if uses_rooster_stage else card_depth_offset.y
 	var layout_depth_offset_y: float = host.ACTION_CARD_3D_DEPTH_OFFSET.y if uses_diamond_arena else card_depth_offset.y
 	var card_root := Control.new()
 	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, layout_depth_offset_y))
@@ -5949,7 +5954,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		bg.offset_left = 0.0
 		bg.offset_right = 0.0
 		bg.offset_top = 0.0
-		bg.offset_bottom = -card_depth_offset.y
+		bg.offset_bottom = -face_bottom_inset
 		if bg is RoundedTextureRect:
 			(bg as RoundedTextureRect).radius = host.ACTION_CARD_FACE_RADIUS
 	bg.visible = not uses_diamond_arena
@@ -5957,7 +5962,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	if uses_flat_normal_card:
 		var face_outline := ActivityCardBorder.new()
 		face_outline.set_anchors_preset(Control.PRESET_FULL_RECT)
-		face_outline.offset_bottom = -card_depth_offset.y
+		face_outline.offset_bottom = -face_bottom_inset
 		face_outline.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		face_outline.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
 		face_outline.radius = host.ACTION_CARD_FACE_RADIUS
@@ -5966,10 +5971,11 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		pop_card.add_child(face_outline)
 
 	var rooster_boss_stage: Control = null
-	if host._fighting_runtime().action_uses_rooster_punch_out_stage(action):
+	if uses_rooster_stage:
 		pop_card.clip_contents = true
 		rooster_boss_stage = RoosterPunchOutStage.new()
 		rooster_boss_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
+		rooster_boss_stage.offset_bottom = -face_bottom_inset
 		rooster_boss_stage.z_index = 220
 		host._fighting_runtime().configure_rooster_punch_out_stage(rooster_boss_stage)
 		pop_card.add_child(rooster_boss_stage)
@@ -6320,7 +6326,7 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 		convergence_progress.z_index = 234
 		convergence_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(convergence_progress)
-	elif not uses_blue_guy_chicken_brawl_stage and not host._fighting_runtime().action_uses_rooster_punch_out_stage(action):
+	elif not uses_blue_guy_chicken_brawl_stage:
 		progress = ActivityProgressRail.new()
 		progress.visible = true
 		ThemeStyles.apply_activity_progress_rail_action_theme(progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), ThemeStyles.combo_progress_segment_theme_colors(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE), host.COLOR_INK)
@@ -6330,9 +6336,8 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 		progress.anchor_bottom = 1.0
 		progress.offset_left = 0.0
 		progress.offset_right = 0.0
-		var normal_progress_height := 112.0
 		var normal_progress_bottom_margin := 0.0
-		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin - normal_progress_height
+		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin - NORMAL_ACTIVITY_PROGRESS_HEIGHT
 		progress.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin
 		progress.top_lip_height = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 		progress.edge_inset = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH

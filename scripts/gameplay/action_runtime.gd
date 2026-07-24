@@ -1867,6 +1867,12 @@ func _start_action(skill_id: String, action_id: String, select_page = true, resp
 	var stamina_cost = _effective_stamina(skill_id, action)
 	if host._fighting_runtime().action_is_free_fighting_proto(skill_id, action_id):
 		stamina_cost = 0.0
+	var rooster_required_stamina = host._fighting_runtime().rooster_required_stamina(stamina_cost)
+	if host._fighting_runtime().action_uses_rooster_punch_out_stage(action) and SkillState.host_stamina_value(skill_id, host) + 0.0001 < rooster_required_stamina:
+		host._reward_feedback_surface()._set_result("%s requires %s stamina." % [action["name"], GameFormatting.stamina_cost_detail(rooster_required_stamina)])
+		host._reward_feedback_surface()._float_tired_activity_feedback(action_key)
+		host._update_ui(0.0, false)
+		return false
 	if host._is_event_action(action) and not _auto_eat_fish_for_action(skill_id, stamina_cost, host._skill_detail_surface().detail_regen_circle, true):
 		host._reward_feedback_surface()._set_result(host._temporary_event_runtime()._event_needs_stamina_text(skill_id, action))
 		host._reward_feedback_surface()._float_event_need_stamina_feedback(action_key, stamina_cost)

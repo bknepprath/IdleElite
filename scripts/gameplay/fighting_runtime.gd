@@ -7,6 +7,7 @@ const SkillState = preload("res://scripts/progression/skill_state.gd")
 const BLUE_GUY_HEALTH_MAX := 30
 const BLUE_GUY_HEALTH_REGEN_SECONDS := 2.0
 const FIGHT_PUNCH_STAMINA_COST_CHANCE := 0.05
+const ROOSTER_MIN_STAMINA := 10.0
 
 var host
 var completed_bosses := {}
@@ -135,6 +136,10 @@ func action_uses_rooster_punch_out_stage(action: Dictionary) -> bool:
 	return str(action.get("id", "")) == "face-the-rooster"
 
 
+func rooster_required_stamina(action_cost: float) -> float:
+	return maxf(ROOSTER_MIN_STAMINA, action_cost)
+
+
 func action_uses_diamond_combat_arena(action: Dictionary) -> bool:
 	return ActionRuntime.uses_diamond_arena(action)
 
@@ -186,6 +191,8 @@ func configure_rooster_punch_out_stage(stage: Control) -> void:
 		return
 	if stage.has_method("setup_player_stamina"):
 		stage.call("setup_player_stamina", SkillState.host_stamina_value("fight", host))
+	if stage.has_method("setup_required_stamina"):
+		stage.call("setup_required_stamina", rooster_required_stamina(host._action_runtime()._effective_stamina("fight", host._action_data("fight", "face-the-rooster"))))
 	if stage.has_method("set_active_fight"):
 		stage.call("set_active_fight", host.running_skill_id == "fight" and host.running_action_id == "face-the-rooster")
 	if stage.has_signal("boss_defeated"):
@@ -309,6 +316,8 @@ func sync_rooster_punch_out_stage_active(card: Dictionary, skill_id: String, act
 		return
 	if stage.has_method("setup_player_stamina"):
 		stage.call("setup_player_stamina", SkillState.host_stamina_value("fight", host))
+	if stage.has_method("setup_required_stamina"):
+		stage.call("setup_required_stamina", rooster_required_stamina(host._action_runtime()._effective_stamina("fight", host._action_data("fight", "face-the-rooster"))))
 	if stage.has_method("set_active_fight"):
 		var globally_running := bool(host.running_skill_id == skill_id and host.running_action_id == action_id)
 		stage.call("set_active_fight", (running or globally_running) and action_id == "face-the-rooster")
