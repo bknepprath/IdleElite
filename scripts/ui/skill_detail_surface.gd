@@ -3760,6 +3760,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 	var depth = shell.get("depth") as ActivityCardDepth
 	var bg = shell.get("bg") as Control
 	var shade = shell.get("shade") as Panel
+	var rooster_boss_stage = shell.get("rooster_boss_stage") as Control
 	var blue_guy_chicken_stage = shell.get("blue_guy_chicken_stage") as Control
 	var body = _detail_action_card_body(card_root, pop_card, skill_id, action, is_convergence_card, uses_blue_guy_chicken_brawl_stage)
 	var art_panel = body.get("art_panel") as Panel
@@ -3893,6 +3894,7 @@ func _build_detail_interactive_action_card(skill_id: String, action: Dictionary,
 		"build_plank_layer": build_plank_layer,
 		"build_plank_nodes": build_plank_nodes,
 		"fluid_strip": fluid_strip,
+		"rooster_boss_stage": rooster_boss_stage,
 		"blue_guy_chicken_stage": blue_guy_chicken_stage,
 		"border": border,
 		"mission_badge_parent": pop_card,

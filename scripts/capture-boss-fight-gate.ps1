@@ -51,41 +51,48 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
-	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	if not await _wait_for_boot_ready(scene):
-		_fail("main scene did not become capture-ready")
-		return
+	scene.get("activity_data_catalog").call("load_action_data", scene)
+	scene.call("_save_runtime").call("_init_state")
+	scene.startup_initialized = true
 	var fight := scene.skills["fight"] as Dictionary
 	fight["level"] = 8
 	fight["xp"] = maxi(int(fight.get("xp", 0)), SkillState.xp_for_level(8))
 	scene.skills["fight"] = fight
-	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "push-ups", "boss capture unlock")
-	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "kick-mud-off-boot", "boss capture unlock")
-	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "duel-leaning-fence-post", "boss capture unlock")
-	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "wrap-hands", "boss capture unlock")
 	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "face-the-rooster", "boss capture unlock")
-	scene.set("current_screen", "skill")
-	scene.set("selected_skill_id", "fight")
-	_hide_capture_overlays(scene)
 	var action := scene.call("_action_data", "fight", "face-the-rooster") as Dictionary
 	if action.is_empty():
 		_fail("boss action missing")
 		return
-	scene.call("_render_screen", false, -1, false)
-	for _frame in range(8):
+	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
+	var card := built.get("card", {}) as Dictionary
+	var card_root := built.get("card_root") as Control
+	if card_root == null:
+		_fail("boss card missing")
+		return
+	scene.visible = false
+	card_root.set_anchors_preset(Control.PRESET_FULL_RECT)
+	card_root.offset_left = 120.0
+	card_root.offset_right = -120.0
+	card_root.offset_top = 900.0
+	card_root.offset_bottom = -900.0
+	root.add_child(card_root)
+	var boss_key := str(scene.call("_action_key", "fight", "face-the-rooster"))
+	scene.call("_skill_detail_surface").call("_register_action_card", boss_key, card)
+	if not scene.call("_action_runtime").call("_start_action_from_card_tap", "fight", "face-the-rooster", boss_key):
+		_fail("boss action did not start")
+		return
+	for _frame in range(2):
 		await process_frame
-	await scene.call("_scroll_to_activity_card", "face-the-rooster", false, true)
-	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
-	if scroll != null:
-		var framed_scroll := maxi(0, scroll.scroll_vertical)
-		scroll.scroll_vertical = framed_scroll
-		scroll.set("drag_scroll_position", float(framed_scroll))
-	for _frame in range(24):
+	var boot_runtime = scene.call("_boot_warmup_runtime")
+	boot_runtime.call("_dismiss_boot_splash_for_play")
+	var boot_layer := boot_runtime.get("layer") as CanvasLayer
+	if boot_layer != null:
+		boot_layer.visible = false
+	for _frame in range(20):
 		await process_frame
-	_force_rooster_damage_flash(scene)
+	_force_rooster_damage_flash(card_root)
 	for _frame in range(3):
 		await process_frame
-	_hide_capture_overlays(scene)
 	await RenderingServer.frame_post_draw
 	if DisplayServer.get_name() == "headless":
 		print("boss-fight-capture skipped=headless")
@@ -98,24 +105,6 @@ func _run() -> void:
 	print("boss-fight-capture path=%s result=%s size=%sx%s display=%s" % [capture_path, str(result), str(image.get_width()), str(image.get_height()), DisplayServer.get_name()])
 	scene.queue_free()
 	quit(0)
-
-
-func _wait_for_boot_ready(scene: Node) -> bool:
-	for _i in range(240):
-		if bool(scene.get("startup_initialized")):
-			return true
-		await process_frame
-	return false
-
-
-func _hide_capture_overlays(scene: Node) -> void:
-	if scene.has_method("_boot_warmup_runtime"):
-		scene.call("_boot_warmup_runtime").call("_dismiss_boot_splash_for_play")
-	scene.set("boot_warmup_active", false)
-	for property_name in ["boot_splash_overlay", "boot_warmup_overlay", "offline_summary_overlay", "page_transition_cover"]:
-		var item := scene.get(property_name) as CanvasItem
-		if item != null:
-			item.visible = false
 
 
 func _force_rooster_damage_flash(root_node: Node) -> void:
