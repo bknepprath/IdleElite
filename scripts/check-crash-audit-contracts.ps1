@@ -85,7 +85,7 @@ $safeRunnerText = Get-Content -LiteralPath $safeRunnerPath -Raw
 
 Assert-True ($projectText -match 'run/main_scene="res://scenes/main\.tscn"') "project.godot should launch scenes/main.tscn."
 Assert-True ($projectText -match 'config/quit_on_go_back=false') "Android back button should not quit the game unexpectedly."
-Assert-True ($projectText -match 'window/stretch/mode="canvas_items"') "Project stretch mode should stay canvas_items for crisp phone UI."
+Assert-True ($projectText -match 'window/stretch/mode="viewport"') "Project stretch mode should stay viewport to prevent Android canvas scaling artifacts."
 Assert-True ($projectText -match 'window/stretch/aspect="expand"') "Project stretch aspect should stay expand for phone layout stability."
 foreach ($match in [regex]::Matches($projectText, '"(?<path>res://[^"]+)"')) {
     Assert-ResourcePathExists $match.Groups["path"].Value "project.godot"

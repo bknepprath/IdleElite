@@ -586,7 +586,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/fight/actions/02-kick-mud-off-boot.png",
+          "art": "assets/content/fight/actions/recovery-wrap-hands.png",
           "background": "assets/content/fight/backgrounds/01-early.png"
         },
         {
@@ -805,7 +805,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/fight/actions/08-square-up-with-rake-in-grass.png",
+          "art": "assets/content/fight/actions/recovery-catch-breath-between-rounds.png",
           "background": "assets/content/fight/backgrounds/02-rising.png"
         },
         {
@@ -982,7 +982,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/fight/actions/14-survive-the-hayloft-ambush.png",
+          "art": "assets/content/fight/actions/recovery-shake-out-the-gloves.png",
           "background": "assets/content/fight/backgrounds/03-mid.png"
         },
         {
@@ -1164,7 +1164,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/fight/actions/17-trade-blows-with-the-weather-vane.png",
+          "art": "assets/content/fight/actions/recovery-ice-the-bruises.png",
           "background": "assets/content/fight/backgrounds/04-late.png"
         },
         {
@@ -1342,7 +1342,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/fight/actions/21-hold-the-line-at-the-pumpkin-patch.png",
+          "art": "assets/content/fight/actions/recovery-slow-shadow-boxing.png",
           "background": "assets/content/fight/backgrounds/05-finale.png"
         },
         {
@@ -1653,7 +1653,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/thieving/actions/05-distract-fruit-stand-with-jazz-hands.png",
+          "art": "assets/content/thieving/actions/recovery-count-the-coins.png",
           "background": "assets/content/thieving/backgrounds/01-early.png"
         },
         {
@@ -1817,7 +1817,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/thieving/actions/09-rob-the-tiny-bank-desk.png",
+          "art": "assets/content/thieving/actions/recovery-hide-in-plain-sight.png",
           "background": "assets/content/thieving/backgrounds/02-rising.png"
         },
         {
@@ -1936,7 +1936,7 @@
         {
           "id": "case-the-quiet-corner",
           "tier": 17,
-          "name": "Case The Quiet Corner",
+          "name": "Case A Joint",
           "unlock": 33,
           "stamina": -5,
           "seconds": 14.4,
@@ -1956,7 +1956,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/thieving/actions/thieving-swipe-the-banks-practice-vault.png",
+          "art": "assets/content/thieving/actions/recovery-case-the-quiet-corner.png",
           "background": "assets/content/thieving/backgrounds/03-mid.png"
         },
         {
@@ -2145,7 +2145,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/thieving/actions/17-pickpocket-the-security-camera.png",
+          "art": "assets/content/thieving/actions/recovery-lay-low-until-morning.png",
           "background": "assets/content/thieving/backgrounds/04-late.png"
         },
         {
@@ -2261,7 +2261,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/thieving/actions/22-shoplift-from-the-concept-of-money.png",
+          "art": "assets/content/thieving/actions/recovery-nap-behind-the-market-stall.png",
           "background": "assets/content/thieving/backgrounds/05-finale.png"
         },
         {
@@ -2531,7 +2531,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/build/actions/03-study-blueprint.png",
+          "art": "assets/content/build/actions/recovery-sharpen-the-pencil.png",
           "background": "assets/content/build/backgrounds/01-early.png"
         },
         {
@@ -2670,7 +2670,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/build/actions/09-upgrade-training-yard.png",
+          "art": "assets/content/build/actions/recovery-sit-on-the-toolbox.png",
           "background": "assets/content/build/backgrounds/02-rising.png"
         },
         {
@@ -2853,7 +2853,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/build/actions/12-build-town-notice-board.png",
+          "art": "assets/content/build/actions/recovery-sweep-the-worksite.png",
           "background": "assets/content/build/backgrounds/03-mid.png"
         },
         {
@@ -2933,7 +2933,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/build/actions/15-raise-guild-hall.png",
+          "art": "assets/content/build/actions/recovery-inspect-the-blueprints-again.png",
           "background": "assets/content/build/backgrounds/04-late.png"
         },
         {
@@ -3029,7 +3029,7 @@
         {
           "id": "measure-twice-again",
           "tier": 28,
-          "name": "Measure Twice Again",
+          "name": "Measure Three Times",
           "unlock": 78,
           "stamina": -9,
           "seconds": 19.2,
@@ -3049,7 +3049,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/build/actions/21-construct-underground-town.png",
+          "art": "assets/content/build/actions/recovery-measure-twice-again.png",
           "background": "assets/content/build/backgrounds/05-finale.png"
         },
         {
@@ -3325,7 +3325,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/woodcutting/actions/04-chop-softwood-tree.png",
+          "art": "assets/content/woodcutting/actions/recovery-lean-on-the-axe.png",
           "background": "assets/content/woodcutting/backgrounds/01-early.png"
         },
         {
@@ -3458,7 +3458,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/woodcutting/actions/10-clear-dense-grove.png",
+          "art": "assets/content/woodcutting/actions/recovery-snack-on-trail-mix.png",
           "background": "assets/content/woodcutting/backgrounds/02-rising.png"
         },
         {
@@ -3580,7 +3580,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/woodcutting/actions/12-carve-through-fallen-giant.png",
+          "art": "assets/content/woodcutting/actions/recovery-oil-the-axe-handle.png",
           "background": "assets/content/woodcutting/backgrounds/03-mid.png"
         },
         {
@@ -3675,7 +3675,7 @@
         {
           "id": "stretch-the-splinters-out",
           "tier": 23,
-          "name": "Stretch The Splinters Out",
+          "name": "Stretch Break",
           "unlock": 55,
           "stamina": -7,
           "seconds": 16.8,
@@ -3695,7 +3695,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/woodcutting/actions/24-harvest-the-first-tree-s-apology.png",
+          "art": "assets/content/woodcutting/actions/recovery-stretch-the-splinters-out.png",
           "background": "assets/content/woodcutting/backgrounds/04-late.png"
         },
         {
@@ -3919,7 +3919,7 @@
         {
           "id": "rest-under-the-stump",
           "tier": 27,
-          "name": "Rest Under The Stump",
+          "name": "Take A Nature Rest",
           "unlock": 76,
           "stamina": -9,
           "seconds": 19.2,
@@ -3939,7 +3939,7 @@
           "display_tags": [
             "Recovery"
           ],
-          "art": "assets/content/woodcutting/actions/19-harvest-moonlit-silverwood.png",
+          "art": "assets/content/woodcutting/actions/recovery-rest-under-the-stump.png",
           "background": "assets/content/woodcutting/backgrounds/05-finale.png"
         },
         {

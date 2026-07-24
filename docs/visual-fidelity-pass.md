@@ -2,7 +2,7 @@
 
 ## First pass
 
-- Use `window/stretch/mode="canvas_items"` so Godot UI draws at the output resolution instead of drawing a full viewport and scaling the final frame.
+- Use `window/stretch/mode="viewport"` to avoid horizontal canvas-scaling corruption on Android devices.
 - Keep `window/stretch/aspect="expand"` for the existing portrait layout behavior.
 - Use mipmapped filtering for shared visual `TextureRect` helpers and generated `ImageTexture` UI chrome.
 - Treat the existing `PaperButtonStyles` `StyleBoxTexture` functions as the first reusable PNG/nine-slice chrome path.
