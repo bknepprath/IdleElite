@@ -1216,13 +1216,15 @@ func _check_pinned_page_action_card_registration(scene: Node, skill_id: String) 
 		scene.call("_skill_detail_surface").set("last_action_card_tap_msec", 0)
 		var stop_routed := bool(scene.call("_input_routing_shell").call("_route_action_card_press", card_body_point, 9))
 		if not stop_routed:
-			_record("pinned page running action card did not capture a stop tap")
+			_record("pinned page running action card did not capture a stop hold")
 		else:
+			for _i in range(60):
+				scene.call("_action_stop_hold").process_action(1.0 / 60.0)
 			scene.call("_input", _screen_touch_event(card_body_point, false, 9))
 			for _i in range(4):
 				await process_frame
 			if not str(scene.get("running_action_id")).is_empty() or not str(scene.get("running_skill_id")).is_empty():
-				_record("pinned page running action card tap did not stop the activity")
+				_record("pinned page running action card hold did not stop the activity")
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	scene.call("_input", _mouse_button_event(card_body_point, true))
@@ -2600,7 +2602,8 @@ func _check_pinned_page_return_restores_skill_scroll(scene: Node, skill_id: Stri
 		var active_fill := pinned_button.get_meta("activity_button_shell_fill", Color.TRANSPARENT) as Color
 		if not bool(pinned_button.get_meta("activity_button_shell_active", false)):
 			_record("pinned utility tab did not mark itself active on the pinned page")
-		if not active_fill.is_equal_approx(Color("#d8d8d8")):
+		var expected_active_fill := pinned_button.get_meta("module_utility_fill", Color.WHITE) as Color
+		if not active_fill.is_equal_approx(expected_active_fill):
 			_record("pinned utility tab active fill mismatch: %s" % active_fill)
 		var active_pop := instance_from_id(int(pinned_button.get_meta("activity_button_pop_id", 0))) as Control
 		if active_pop == null or not is_instance_valid(active_pop):

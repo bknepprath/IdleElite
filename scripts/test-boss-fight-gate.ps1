@@ -52,7 +52,19 @@ func _run() -> void:
 	fight["xp"] = maxi(int(fight.get("xp", 0)), SkillState.xp_for_level(8))
 	scene.skills["fight"] = fight
 	var boss_action := scene.call("_action_data", "fight", "face-the-rooster") as Dictionary
-	_expect(not boss_action.is_empty(), "Rooster boss action should load")
+	if boss_action.is_empty():
+		var blocked_action := scene.call("_action_data", "fight", "outmuscle-angry-wheelbarrow") as Dictionary
+		_expect(not blocked_action.is_empty(), "post-Rooster action should still load")
+		_expect((blocked_action.get("requires_bosses", []) as Array).is_empty(), "disabled Rooster should not block later Fighting progression")
+		_expect(not (scene.get("actions_by_key") as Dictionary).has("fight:face-the-rooster"), "disabled Rooster should have no direct player-facing lookup")
+		scene.queue_free()
+		if test_failed:
+			quit(1)
+			return
+		print("boss-fight-gate-ok")
+		quit(0)
+		return
+	_expect(not boss_action.is_empty(), "Rooster boss action should load when enabled")
 	var fighting_runtime = scene.call("_fighting_runtime")
 	_expect(fighting_runtime.call("is_boss_fight_action", boss_action), "Rooster action should be a boss fight")
 	_expect(str((boss_action.get("boss", {}) as Dictionary).get("id", "")) == "rooster", "Boss id should normalize")
@@ -69,10 +81,8 @@ func _run() -> void:
 	_expect(boss_label == null, "Rooster Punch-Out boss should not use a boss info chip")
 	var rooster_stage: Control = _rooster_stage(card.get("pop") as Control) as Control
 	_expect(rooster_stage != null, "Rooster boss card should render the Punch-Out stage")
-	_expect(is_equal_approx(rooster_stage.offset_bottom, -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - SkillDetailSurface.NORMAL_ACTIVITY_PROGRESS_HEIGHT), "Rooster artwork face should end above the full normal activity lower rung")
-	var rooster_rung := card.get("progress") as Control
-	_expect(rooster_rung != null and is_equal_approx(rooster_rung.offset_top, rooster_stage.offset_bottom), "Rooster should reuse the normal activity lower rung directly below its artwork")
-	_expect(rooster_rung.z_index > rooster_stage.z_index, "Rooster lower rung should keep the normal activity foreground order")
+	_expect(is_equal_approx(rooster_stage.offset_bottom, -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y), "Rooster artwork face should extend through the normal activity progress area")
+	_expect(card.get("progress") == null, "Rooster boss should not render a timed activity progress bar")
 	_expect(root_control.find_child("RoosterActivityCardDepthPlate", true, false) == null, "Rooster should reuse the normal activity depth instead of adding a custom plate")
 	_expect(rooster_stage.mouse_filter == Control.MOUSE_FILTER_IGNORE, "inactive Rooster stage should let card taps start the boss")
 	var inactive_hp := float(rooster_stage.get("rooster_hp"))

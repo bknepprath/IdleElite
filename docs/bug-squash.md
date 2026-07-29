@@ -336,7 +336,7 @@ Symptom: action art cutouts looked harsh and over-saturated in activity cards.
 
 Mistake: the first wrong assumption was that the source art needed a global visual retune, so a shared action-art shader was changed to desaturate/value-shift every action image. That hid the symptom, changed source art presentation globally, and did not address the user's actual suspicion that the image might be doubled or rendered through the wrong path.
 
-Root cause: normal transparent action cutout PNGs were all getting the custom `ActionArtTextureRect` `ShaderMaterial`, even though they did not need texture masking. The target cutouts were not doubled: `build:stack-bricks`, `fight:shove-wobbly-hay-bale`, and `fight:kick-mud-off-boot` each had exactly one visible `TextureRect`, with `modulate = Color.WHITE`.
+Root cause: normal transparent action cutout PNGs were all getting the custom `ActionArtTextureRect` `ShaderMaterial`, even though they did not need texture masking. The target cutouts were not doubled: `build:stack-bricks` and `fight:kick-mud-off-boot` each had exactly one visible `TextureRect`, with `modulate = Color.WHITE`.
 
 Fix:
 

@@ -58,7 +58,7 @@ const ActivityDocs = (() => {
       verb: skill.verb,
       identity: skill.identity,
       icon: docsAsset(skill.icon),
-      actions: skill.actions.map(action => ({
+      actions: skill.actions.filter(action => action.enabled !== false).map(action => ({
         ...action,
         art: docsAsset(action.art),
         background: docsAsset(action.background),

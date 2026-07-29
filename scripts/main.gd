@@ -614,6 +614,8 @@ func _skill_swipe_loading_transition_active() -> bool:
 func _process(delta: float) -> void:
 	if not startup_initialized:
 		return
+	if _app_lifecycle_runtime().recover_suspended_process():
+		return
 	if boot_detail_render_in_progress and not boot_lazy_background_mount_allowed:
 		return
 	var trace_process := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"

@@ -3,9 +3,12 @@ extends RefCounted
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
+const PROCESS_SUSPENSION_MIN_MSEC := 5000
 
 var host
 var lazy_overlays_built := {}
+var last_process_unix_time := 0
+var last_process_monotonic_msec := -1
 
 
 func _init(host_ref) -> void:
@@ -241,6 +244,27 @@ func process_background_maintenance_step(step_index: int, maintenance_delta: flo
 			host._online_runtime().process(maintenance_delta)
 
 
+static func process_suspension_seconds(previous_unix: int, now_unix: int, previous_msec: int, now_msec: int) -> int:
+	var wall_elapsed := maxi(0, now_unix - previous_unix)
+	if previous_unix <= 0 or previous_msec < 0:
+		return 0
+	if wall_elapsed < PROCESS_SUSPENSION_MIN_MSEC / 1000 and now_msec - previous_msec < PROCESS_SUSPENSION_MIN_MSEC:
+		return 0
+	return wall_elapsed
+
+
+func recover_suspended_process() -> bool:
+	var now_unix: int = host._unix_now()
+	var now_msec: int = Time.get_ticks_msec()
+	var offline_seconds: int = process_suspension_seconds(last_process_unix_time, now_unix, last_process_monotonic_msec, now_msec)
+	last_process_unix_time = now_unix
+	last_process_monotonic_msec = now_msec
+	if offline_seconds <= 0:
+		return false
+	_resume_from_app_suspend(now_unix - offline_seconds)
+	return true
+
+
 func handle_notification(what: int) -> void:
 	if what == host.NOTIFICATION_WM_GO_BACK_REQUEST:
 		host._input_routing_shell()._handle_system_back_request()
@@ -354,7 +378,9 @@ func _save_for_app_suspend() -> void:
 	host._crash_report_runtime().write_session_marker("clean")
 
 
-func _resume_from_app_suspend() -> void:
+func _resume_from_app_suspend(offline_from_unix := -1) -> void:
+	last_process_unix_time = host._unix_now()
+	last_process_monotonic_msec = Time.get_ticks_msec()
 	host._crash_report_runtime().write_session_marker("running")
 	host._performance_runtime()._record_battery_governor_activity()
 	host._navigation_shell()._clear_page_switch_input_state(true)
@@ -366,7 +392,8 @@ func _resume_from_app_suspend() -> void:
 		host._audio_director()._restart_music_after_app_resume()
 		return
 	var now: int = host._unix_now()
-	var offline_progressed: bool = host._save_runtime()._apply_offline_progress(host._save_runtime().last_save_unix_time) > 0
+	var saved_at: int = host._save_runtime().last_save_unix_time if offline_from_unix < 0 else offline_from_unix
+	var offline_progressed: bool = host._save_runtime()._apply_offline_progress(saved_at) > 0
 	if host.offline_progress_enabled:
 		host._passive_modules_runtime().apply_passive_module_production(now)
 		host._passive_modules_runtime().apply_firepit_fuel(now)

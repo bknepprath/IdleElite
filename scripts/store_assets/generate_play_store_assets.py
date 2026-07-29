@@ -374,9 +374,9 @@ def fight_activity_phone() -> Image.Image:
 
     cards = [
         (
-            "assets/content/fight/actions/01-shove-wobbly-hay-bale.png",
+            "assets/content/fight/animations/push-ups/fight-push-ups-01.png",
             "assets/content/fight/backgrounds/01-early.png",
-            "Shove Wobbly Hay Bale",
+            "Push-Ups",
             [("+1", "XP"), ("1", "Stam"), ("1.6s", "Time"), ("95%", "Rate")],
             0.74,
             0.46,
@@ -479,7 +479,7 @@ def make_vertical_small_tasks():
     draw_ad_frame(img, "TAP. LEVEL. REPEAT.", "Tiny jobs. Huge numbers.", GREEN)
 
     tiles = [
-        ("assets/content/fight/actions/01-shove-wobbly-hay-bale.png", "Fight", RED),
+        ("assets/content/fight/animations/push-ups/fight-push-ups-01.png", "Fight", RED),
         ("assets/content/fishing/actions/03-cast-bamboo-rod.png", "Fish", (39, 151, 168)),
         ("assets/content/woodcutting/actions/09-fell-oak-tree.png", "Chop", GREEN),
         ("assets/content/thieving/actions/06-pick-the-world-s-friendliest-lock.png", "Sneak", PURPLE),

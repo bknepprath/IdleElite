@@ -65,7 +65,7 @@ func _run() -> void:
 	await _wait_test_frame()
 
 	scene.set("running_skill_id", "fight")
-	scene.set("running_action_id", "shove-wobbly-hay-bale")
+	scene.set("running_action_id", "push-ups")
 	scene.set("action_progress", 0.0)
 	scene.set("ui_static_refresh_elapsed", 0.0)
 	scene.set("detail_header_gauge_refresh_elapsed", 0.0)

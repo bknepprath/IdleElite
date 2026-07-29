@@ -179,7 +179,7 @@ func _run() -> void:
 		_expect(rounded_bg.corner_mask_mode == 1, "Activity-card background mask should align the full-radius corner curve.")
 	if bg != null:
 		bg.free()
-	var probe_module_key := "action:fight:shove-wobbly-hay-bale"
+	var probe_module_key := "action:fight:push-ups"
 	var pin_zone := skill_detail_surface.call("_module_action_zone", "pin", probe_module_key, true) as Control
 	_expect(pin_zone != null, "Module pin action zone should be constructible.")
 	if pin_zone != null:

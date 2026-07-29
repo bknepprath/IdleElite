@@ -832,8 +832,9 @@ func _boot_save_dictionary() -> Dictionary:
 
 
 func _start_new_save_file() -> void:
-	host.selected_skill_id = "fight"
+	host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
 	host.current_screen = "skill"
+	host._onboarding_runtime().prepare_tutorial_state()
 	last_save_unix_time = host._unix_now()
 	host.save_game()
 

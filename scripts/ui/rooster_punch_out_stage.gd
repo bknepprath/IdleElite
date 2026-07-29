@@ -4,6 +4,7 @@ signal stamina_damage(amount: int)
 signal boss_defeated
 
 const GameFormatting = preload("res://scripts/core/formatting.gd")
+const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
 const INK := Color("#171615")
 const ROOSTER_IDLE_PATH := "res://assets/content/fight/boss/rooster-idle.png"
 const ROOSTER_HIT_PATH := "res://assets/content/fight/boss/rooster-hit.png"
@@ -46,9 +47,13 @@ var hand_punch_right: Texture2D
 var active_fight := false
 var boss_defeat_reported := false
 var required_stamina := 2.0
+var display_font: Font
 
 
 func _ready() -> void:
+	display_font = ThemeStyles.load_app_fonts("res://assets/fonts/Fredoka.ttf", 1.45).get("bold_font") as Font
+	if display_font == null:
+		display_font = ThemeDB.fallback_font
 	_sync_mouse_filter()
 	clip_contents = true
 	farm_background = _load_png_texture(FARM_BACKGROUND_PATH)
@@ -228,9 +233,11 @@ func _draw() -> void:
 	if cover_close_amount > 0.0:
 		_draw_defeat_cover(stage)
 	if _needs_stamina_feedback():
-		var notice := Rect2(Vector2(size.x * 0.17, size.y * 0.70), Vector2(size.x * 0.66, 142.0))
-		_draw_rounded_rect(notice, 28.0, Color("#4b070a"))
-		_draw_center_text("NEEDS %s STAMINA" % GameFormatting.info_chip_number(required_stamina), notice.get_center() + Vector2(0.0, 38.0), 104, Color.WHITE, INK)
+		var font_size := 120
+		var font := display_font
+		var center := stage.get_center()
+		center.y += (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
+		_draw_center_text("NEEDS %s STAMINA" % GameFormatting.info_chip_number(required_stamina), center, font_size, Color.WHITE, INK, 32, font)
 
 
 func _needs_stamina_feedback() -> bool:
@@ -317,11 +324,10 @@ func _draw_floaters() -> void:
 		_draw_center_text(str(floater.get("text", "")), pos, 54, color, Color("#171615"))
 
 
-func _draw_center_text(text: String, pos: Vector2, font_size: int, color: Color, outline: Color) -> void:
-	var font := ThemeDB.fallback_font
+func _draw_center_text(text: String, pos: Vector2, font_size: int, color: Color, outline: Color, outline_size := 4, font_override: Font = null) -> void:
+	var font := font_override if font_override != null else ThemeDB.fallback_font
 	var origin := pos - Vector2(font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size).x * 0.5, 0.0)
-	for offset in [Vector2(-4, 0), Vector2(4, 0), Vector2(0, -4), Vector2(0, 4), Vector2(-3, -3), Vector2(3, -3), Vector2(-3, 3), Vector2(3, 3)]:
-		draw_string(font, origin + offset, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, outline)
+	draw_string_outline(font, origin, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, outline_size, outline)
 	draw_string(font, origin, text, HORIZONTAL_ALIGNMENT_LEFT, -1.0, font_size, color)
 
 

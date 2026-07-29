@@ -5871,7 +5871,7 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 	var uses_flat_normal_card := not uses_recovery_card and not uses_diamond_arena
 	var uses_rooster_stage: bool = host._fighting_runtime().action_uses_rooster_punch_out_stage(action)
 	var card_depth_offset: Vector2 = host.ACTION_CARD_3D_DEPTH_OFFSET if uses_diamond_arena else (ActivityCardStyles.RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET if uses_recovery_card else ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET)
-	var face_bottom_inset: float = card_depth_offset.y + NORMAL_ACTIVITY_PROGRESS_HEIGHT if uses_rooster_stage else card_depth_offset.y
+	var face_bottom_inset: float = card_depth_offset.y
 	var layout_depth_offset_y: float = host.ACTION_CARD_3D_DEPTH_OFFSET.y if uses_diamond_arena else card_depth_offset.y
 	var card_root := Control.new()
 	card_root.custom_minimum_size = Vector2(content_width, ActivityCardStyles.root_height_for_action(action, false, uses_diamond_arena, host.ACTION_CARD_HEIGHT, host.ACTION_CARD_EXPANDED_HEIGHT, host.COMBAT_DIAMOND_ARENA_CARD_HEIGHT, layout_depth_offset_y))
@@ -6326,7 +6326,7 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 		convergence_progress.z_index = 234
 		convergence_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(convergence_progress)
-	elif not uses_blue_guy_chicken_brawl_stage:
+	elif not uses_blue_guy_chicken_brawl_stage and not host._fighting_runtime().action_uses_rooster_punch_out_stage(action):
 		progress = ActivityProgressRail.new()
 		progress.visible = true
 		ThemeStyles.apply_activity_progress_rail_action_theme(progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), ThemeStyles.combo_progress_segment_theme_colors(skill_id, action, Callable(host._activity_unlock_runtime(), "_action_unlock_requirements"), host.COLOR_BLUE), host.COLOR_INK)
@@ -7435,7 +7435,7 @@ func _tier_banner_key(skill_id: String, tier: int) -> String:
 
 
 func _tier_banner_height(tier_key: String) -> float:
-	return 1740.0 if expanded_tier_banner_key == tier_key else 560.0
+	return 1720.0 if expanded_tier_banner_key == tier_key else 560.0
 
 
 func _toggle_tier_banner(skill_id: String, tier: int) -> void:
@@ -7447,7 +7447,7 @@ func _toggle_tier_banner(skill_id: String, tier: int) -> void:
 	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 		restore_scroll = int(round(detail_actions_scroll.drag_scroll_position))
 		if opening:
-			restore_scroll += 700
+			restore_scroll += 620
 	call_deferred("_refresh_visible_skill_detail_action_list", restore_scroll, skill_id, false, true)
 
 
@@ -7547,7 +7547,7 @@ func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, 
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(margin)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 20)
+	stack.add_theme_constant_override("separation", 18)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	var header := HBoxContainer.new()
@@ -7561,31 +7561,17 @@ func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, 
 	var earned_medals := int(counts.get("earned", 0))
 	var possible_medals := int(counts.get("possible", 0))
 	var completion := 0.0 if possible_medals <= 0 else float(earned_medals) / float(possible_medals) * 100.0
-	var summary: Label = host._label("Tier %s completion: %s / %s medals (%s%%)" % [tier, earned_medals, possible_medals, GameFormatting.percent_points(completion)], 58, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var summary: Label = host._label("Tier %s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 62, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(summary)
 	header.add_child(_skill_header_info_button(
 		"Tier Medal Support",
-		"Medals earned in this tier power up Tier %s activities.\nBronze and Silver add total medal progress. Gold+ medals unlock stronger stamina and speed support." % (tier + 1)
+		"Earn Bronze, Silver, and Gold on every activity in this tier to unlock the listed Tier %s bonuses." % (tier + 1)
 	))
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 30)
-	columns.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stack.add_child(columns)
-	columns.add_child(_tier_banner_column_header("", 260))
-	columns.add_child(_tier_banner_column_header("", 720, Control.SIZE_EXPAND_FILL))
-	columns.add_child(_tier_banner_column_header("T%s Bonus" % (tier + 1), 560))
-	_add_tier_banner_expanded_content(stack, skill_id, tier, counts)
-
-
-func _tier_banner_column_header(text: String, width: float, horizontal_flags := Control.SIZE_SHRINK_BEGIN) -> Label:
-	var label: Label = host._label(text, 62, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	label.custom_minimum_size = Vector2(width, 68)
-	label.size_flags_horizontal = horizontal_flags
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	return label
+	stack.add_child(_tier_banner_progress_bar(earned_medals, possible_medals, Color("#dc8b32"), "%s%%" % GameFormatting.percent_points(completion), 78.0))
+	_add_tier_banner_expanded_content(stack, skill_id, tier)
 
 
 func _tier_banner_expanded_menu_style() -> StyleBoxFlat:
@@ -7605,75 +7591,154 @@ func _tier_banner_expanded_menu_style() -> StyleBoxFlat:
 	return style
 
 
-func _add_tier_banner_expanded_content(stack: VBoxContainer, skill_id: String, tier: int, counts: Dictionary) -> void:
-	var medal_tiers: Array = counts.get("tiers", [])
-	var action_count := maxi(1, int(counts.get("actions", 0)))
-	stack.add_child(_tier_banner_goal_row(1, int(medal_tiers[0]) if medal_tiers.size() > 0 else 0, action_count, "+5%% Tier %s accuracy" % (tier + 1), skill_id))
-	stack.add_child(_tier_banner_goal_row(2, int(medal_tiers[1]) if medal_tiers.size() > 1 else 0, action_count, "+15%% Tier %s accuracy" % (tier + 1), skill_id))
-	stack.add_child(_tier_banner_goal_row(3, int(counts.get("gold_plus", 0)), action_count, "-4%/+5% stamina / speed", skill_id))
+func _add_tier_banner_expanded_content(stack: VBoxContainer, skill_id: String, tier: int) -> void:
+	for raw_goal in AchievementState.tier_support_goals(host, skill_id, tier):
+		stack.add_child(_tier_banner_goal_card(raw_goal as Dictionary, tier))
 
 
-func _tier_banner_goal_row(medal_level: int, earned: int, possible: int, reward_text: String, skill_id: String) -> Control:
-	var root := Control.new()
-	root.custom_minimum_size = Vector2(0, 260)
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 30)
-	row.custom_minimum_size = Vector2(0, 260)
-	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
+	var medal_level := int(goal.get("medal_level", 1))
+	var earned := int(goal.get("earned", 0))
+	var possible := int(goal.get("possible", 0))
 	var completed := earned >= possible and possible > 0
-	if completed:
-		row.modulate = Color(0.62, 0.62, 0.62, 1.0)
-	root.add_child(row)
-	var medal: TextureRect = host.visual_texture_cache._image_from_texture(
-		AchievementPresentation.mastery_medal_visual_texture(medal_level, host.MASTERY_MAX_LEVEL, Callable(host.visual_texture_cache, "_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")),
-		Vector2(260, 260)
-	)
-	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(medal)
 	var medal_color := MasteryState.MEDAL_ACCENTS[clampi(medal_level, 1, MasteryState.MEDAL_ACCENTS.size()) - 1] as Color
-	var bar := ThemeStyles.progress_bar(medal_color.lightened(0.08), 72, clampf(float(earned) / float(maxi(1, possible)) * 100.0, 0.0, 100.0))
-	bar.custom_minimum_size = Vector2(720, 68)
-	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	bar.track_color = medal_color.darkened(0.58)
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, 260)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_theme_stylebox_override("panel", _tier_banner_goal_card_style(medal_color, completed))
+	var margin := MarginContainer.new()
+	margin.add_theme_constant_override("margin_left", 24)
+	margin.add_theme_constant_override("margin_right", 24)
+	margin.add_theme_constant_override("margin_top", 18)
+	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(margin)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 24)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(row)
+	var medal_stack := VBoxContainer.new()
+	medal_stack.custom_minimum_size = Vector2(230, 0)
+	medal_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	medal_stack.add_theme_constant_override("separation", -8)
+	medal_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(medal_stack)
+	var medal_source := load(str(AchievementPresentation.MASTERY_MEDAL_TEXTURES[clampi(medal_level - 1, 0, AchievementPresentation.MASTERY_MEDAL_TEXTURES.size() - 1)])) as Texture2D
+	var medal_texture := AtlasTexture.new()
+	medal_texture.atlas = medal_source
+	medal_texture.region = Rect2(168, 168, 432, 432)
+	var medal := TextureRect.new()
+	medal.texture = medal_texture
+	medal.custom_minimum_size = Vector2(168, 168)
+	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	medal.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	medal_stack.add_child(medal)
+	var medal_name: Label = host._label(str(goal.get("medal", "Medal")), 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	medal_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	medal_stack.add_child(medal_name)
+	var progress_stack := VBoxContainer.new()
+	progress_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	progress_stack.alignment = BoxContainer.ALIGNMENT_CENTER
+	progress_stack.add_theme_constant_override("separation", 14)
+	progress_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(progress_stack)
+	var requirement: Label = host._label("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	requirement.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	requirement.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	progress_stack.add_child(requirement)
+	var progress_text := "%s / %s  COMPLETE" % [earned, possible] if completed else "%s / %s" % [earned, possible]
+	progress_stack.add_child(_tier_banner_progress_bar(earned, possible, medal_color, progress_text, 104.0))
+	row.add_child(_tier_banner_reward_chip(str(goal.get("reward_text", "")), medal_color))
+	return card
+
+
+func _tier_banner_progress_bar(earned: int, possible: int, accent: Color, text: String, height: float) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(0, height)
+	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var pct := clampf(float(earned) / float(maxi(1, possible)) * 100.0, 0.0, 100.0)
+	var bar := ThemeStyles.progress_bar(accent.lightened(0.08), int(height), pct)
+	bar.set_anchors_preset(Control.PRESET_FULL_RECT)
+	bar.offset_left = 0
+	bar.offset_right = 0
+	bar.offset_top = 0
+	bar.offset_bottom = 0
+	bar.track_color = accent.darkened(0.55)
 	bar.border_color = COLOR_INK
-	bar.border_width = 10.0
-	row.add_child(bar)
-	row.add_child(_tier_banner_reward_text(reward_text))
-	if completed:
-		var stamp: Label = host._label("COMPLETED!", 64, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-		stamp.add_theme_color_override("font_outline_color", COLOR_INK)
-		stamp.add_theme_constant_override("outline_size", 18)
-		stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		stamp.rotation = -0.10
-		stamp.z_index = 20
-		stamp.offset_left = 300
-		stamp.offset_right = 1040
-		stamp.offset_top = 100
-		stamp.offset_bottom = 190
-		root.add_child(stamp)
-	return root
+	bar.border_width = 12.0
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(bar)
+	var label: Label = host._label(text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	label.set_anchors_preset(Control.PRESET_FULL_RECT)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.add_theme_color_override("font_outline_color", COLOR_INK)
+	label.add_theme_constant_override("outline_size", 16)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	label.z_index = 2
+	holder.add_child(label)
+	return holder
 
 
-func _tier_banner_reward_text(reward_text: String) -> Control:
+func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
+	var chip := PanelContainer.new()
+	chip.custom_minimum_size = Vector2(430, 210)
+	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = accent.darkened(0.10)
+	style.border_color = COLOR_INK
+	style.set_border_width_all(10)
+	style.set_corner_radius_all(42)
+	style.shadow_color = Color(0, 0, 0, 0.24)
+	style.shadow_size = 10
+	style.shadow_offset = Vector2(0, 8)
+	style.content_margin_left = 24
+	style.content_margin_right = 24
+	style.content_margin_top = 14
+	style.content_margin_bottom = 16
+	chip.add_theme_stylebox_override("panel", style)
 	var reward := VBoxContainer.new()
-	reward.custom_minimum_size = Vector2(560, 0)
-	reward.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	reward.alignment = BoxContainer.ALIGNMENT_CENTER
+	reward.add_theme_constant_override("separation", -4)
 	reward.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	chip.add_child(reward)
+	var reward_header: Label = host._label("REWARD", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	reward_header.add_theme_color_override("font_outline_color", COLOR_INK)
+	reward_header.add_theme_constant_override("outline_size", 12)
+	reward_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	reward.add_child(reward_header)
 	var parts := reward_text.split(" ", false, 1)
 	var main_text := str(parts[0]) if parts.size() > 0 else reward_text
 	var detail_text := str(parts[1]) if parts.size() > 1 else ""
-	var main: Label = host._label(main_text, 82, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var main: Label = host._label(main_text, 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	main.add_theme_color_override("font_outline_color", COLOR_INK)
+	main.add_theme_constant_override("outline_size", 16)
 	main.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward.add_child(main)
 	if not detail_text.is_empty():
-		var detail: Label = host._label(detail_text, 44, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
-		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		var detail: Label = host._label(detail_text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		detail.add_theme_color_override("font_outline_color", COLOR_INK)
+		detail.add_theme_constant_override("outline_size", 10)
 		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		reward.add_child(detail)
-	return reward
+	return chip
+
+
+func _tier_banner_goal_card_style(accent: Color, completed: bool) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color("#fff9ed").lerp(accent, 0.22 if completed else 0.13)
+	style.border_color = accent.darkened(0.24)
+	style.set_border_width_all(10)
+	style.set_corner_radius_all(48)
+	style.shadow_color = Color(0, 0, 0, 0.20)
+	style.shadow_size = 14
+	style.shadow_offset = Vector2(0, 10)
+	return style
 
 
 func _detail_stack_entry(child: Control, child_width: float, stack_width: float) -> Control:

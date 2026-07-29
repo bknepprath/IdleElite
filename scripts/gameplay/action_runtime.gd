@@ -1280,7 +1280,7 @@ func _success_chance(skill_id: String, action: Dictionary) -> float:
 		return float(action_stat_value_cache[cache_key])
 	var value := 100.0
 	if host._fishing_rework_active_for_skill(skill_id) and not host._is_event_action(action):
-		value = clampf(host.fishing_runtime.attempt_success_chance(host, str(action.get("id", ""))) + AchievementState.activity_medal_accuracy_bonus(host, skill_id, action), 5.0, 100.0)
+		value = clampf(host.fishing_runtime.attempt_success_chance(host, str(action.get("id", ""))) + AchievementState.activity_medal_accuracy_bonus(host, skill_id, action) + AchievementState.activity_tier_accuracy_bonus(host, skill_id, action), 5.0, 100.0)
 	else:
 		var base_success := float(action.get("success", 90.0))
 		var medal_success := AchievementState.global_reward_bonus(host, "success_bonus", skill_id) + AchievementState.activity_medal_rate_bonus(host, skill_id, action)

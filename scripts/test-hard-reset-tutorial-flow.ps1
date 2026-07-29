@@ -5,10 +5,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\hard-reset-tutorial-flow"
 $testScript = Join-Path $testDir "hard_reset_tutorial_flow_test.gd"
-$savePath = Join-Path $env:APPDATA "Godot\app_userdata\Idle Elite\idle_elite_save.json"
-$saveBackupPath = Join-Path $env:APPDATA "Godot\app_userdata\Idle Elite\idle_elite_save.backup.json"
-$backupPath = Join-Path $testDir "idle_elite_save.backup.json"
-$backupSaveBackupPath = Join-Path $testDir "idle_elite_save.backup.backup.json"
+$testUserDataDir = Join-Path $testDir "appdata"
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
@@ -17,23 +14,14 @@ if (Test-Path -LiteralPath $testDir) {
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
-$hadSave = Test-Path -LiteralPath $savePath
-if ($hadSave) {
-    Copy-Item -LiteralPath $savePath -Destination $backupPath -Force
-    Remove-Item -LiteralPath $savePath -Force
-}
-$hadSaveBackup = Test-Path -LiteralPath $saveBackupPath
-if ($hadSaveBackup) {
-    Copy-Item -LiteralPath $saveBackupPath -Destination $backupSaveBackupPath -Force
-    Remove-Item -LiteralPath $saveBackupPath -Force
-}
-
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $previousBootSmoke = $env:IDLE_ELITE_HEADLESS_BOOT_SMOKE
 $previousBootSmokeSeconds = $env:IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 $env:GODOT_RUN_TIMEOUT_SECONDS = "180"
 $env:IDLE_ELITE_HEADLESS_BOOT_SMOKE = "1"
 $env:IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS = "60"
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
 
 try {
     @'
@@ -59,6 +47,12 @@ func _run() -> void:
 	var scene := _instantiate_main(packed)
 	if not await _wait_for_boot_ready(scene):
 		_fail("boot did not become ready")
+		return
+	if not bool(scene._onboarding_runtime().tutorial_active):
+		_fail("fresh profile did not start tutorial: %s" % _summary(scene))
+		return
+	if bool(scene._onboarding_runtime().onboarding_tutorial_complete):
+		_fail("fresh profile started with tutorial complete: %s" % _summary(scene))
 		return
 
 	scene.call("_settings_surface").call("_show_settings")
@@ -99,7 +93,7 @@ func _run() -> void:
 		_fail("hard reset tutorial should not show a SKIP button: %s" % _summary(scene))
 		return
 	if not _only_starter_activity_rendered(scene):
-		_fail("hard reset tutorial should render only Shove Wobbly Hay Bale: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
+		_fail("hard reset tutorial should render only Push-Ups: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
 		return
 	print("hard-reset-tutorial-flow-stage starter-ready")
 
@@ -130,8 +124,6 @@ func _run() -> void:
 	if not bool(scene._onboarding_runtime().onboarding_tutorial_complete):
 		_fail("first successful activity should complete onboarding after following the instruction: %s" % _summary(scene))
 		return
-	print("hard-reset-tutorial-flow-ok %s" % _summary(scene))
-	quit(0)
 	var test_skills := scene.get("skills") as Dictionary
 	var fight_state := test_skills.get("fight", {}) as Dictionary
 	fight_state["xp"] = SkillState.xp_for_level(2)
@@ -143,27 +135,33 @@ func _run() -> void:
 		await lock_tip_refresh
 	for _i in range(360):
 		await _wait_test_frame()
-		scene.call("_onboarding_runtime").call("_tutorial_check_progress")
-		if _lock_click_tip_visible(scene):
+		var level_two_card := scene.action_cards.get("fight:kick-mud-off-boot", {}) as Dictionary
+		var level_two_root := level_two_card.get("root") as Control
+		if level_two_root != null and is_instance_valid(level_two_root) and level_two_root.is_visible_in_tree() and _effective_canvas_alpha(level_two_root) >= 0.98:
 			break
-	if not _lock_click_tip_visible(scene):
-		_fail("lock-pad click tutorial message did not appear when the next lock was ready: %s %s" % [_summary(scene), _onboarding_tip_summary(scene)])
-		return
-	if not _hover_level_two_lock_without_click(scene):
-		_fail("could not hover the level 2 lock while the click-lock tutorial message was visible: %s %s" % [_summary(scene), _onboarding_tip_summary(scene)])
-		return
-	for _i in range(24):
-		await _wait_test_frame()
-	if not _lock_click_tip_visible(scene) or bool(scene._onboarding_runtime().lock_click_tip_seen):
-		_fail("click-lock tutorial message disappeared before the lock was clicked: %s %s" % [_summary(scene), _onboarding_tip_summary(scene)])
+	var stable_level_two_card := scene.action_cards.get("fight:kick-mud-off-boot", {}) as Dictionary
+	var stable_level_two_root := stable_level_two_card.get("root") as Control
+	if stable_level_two_root == null or not is_instance_valid(stable_level_two_root) or not stable_level_two_root.is_visible_in_tree() or _effective_canvas_alpha(stable_level_two_root) < 0.98:
+		_fail("level 2 module did not become fully visible before unlock")
 		return
 	var unlock_ceremony_surface := scene.call("_activity_unlock_ceremony_surface") as Object
-	if not bool(unlock_ceremony_surface.call("_tutorial_level_two_unlock_should_use_fast_reveal", "fight", "kick-mud-off-boot")):
-		_fail("level 2 tutorial module unlock should use the smooth fast reveal path")
+	if not _tap_level_two_lock(scene):
+		_fail("level 2 tutorial lock tap was not accepted")
 		return
-	if bool(unlock_ceremony_surface.call("_tutorial_level_two_unlock_should_use_fast_reveal", "fight", "wrestle-stuck-gate-latch")):
-		_fail("only the level 2 tutorial module should use the fast reveal path")
+	var level_two_action := scene.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
+	for _i in range(360):
+		await _wait_test_frame()
+		var level_two_card := scene.action_cards.get("fight:kick-mud-off-boot", {}) as Dictionary
+		var level_two_root := level_two_card.get("root") as Control
+		if level_two_root == null or not is_instance_valid(level_two_root) or not level_two_root.is_visible_in_tree() or _effective_canvas_alpha(level_two_root) < 0.98:
+			_fail("level 2 tutorial module disappeared or refaded during unlock at frame %s" % _i)
+			return
+	if not bool(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", level_two_action)):
+		_fail("level 2 tutorial lock tap did not unlock Kick Mud Off Boot")
 		return
+	print("fresh-tutorial-level-two-stable-ok")
+	print("hard-reset-tutorial-flow-ok %s" % _summary(scene))
+	quit(0)
 	scene.call("_settings_surface").call("toggle_auto_unlock_lockpads_enabled")
 	for _i in range(240):
 		await _wait_test_frame()
@@ -171,7 +169,7 @@ func _run() -> void:
 	if not bool(scene.get("auto_unlock_lockpads_enabled")):
 		_fail("auto-unlock toggle did not turn on during onboarding: %s" % _summary(scene))
 		return
-	var level_two_action := scene.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
+	level_two_action = scene.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
 	if bool(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", level_two_action)):
 		_fail("auto-unlock should be paused during onboarding and must not unlock Kick Mud Off Boot: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
 		return
@@ -301,7 +299,7 @@ func _run() -> void:
 		_fail("fresh tutorial after completed reset should not show the legacy boxed tutorial panel: %s" % _summary(scene))
 		return
 	if not _only_starter_activity_rendered(scene):
-		_fail("fresh tutorial after completed reset should render only Shove Wobbly Hay Bale: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
+		_fail("fresh tutorial after completed reset should render only Push-Ups: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
 		return
 
 	print("hard-reset-tutorial-flow-ok %s" % _summary(scene))
@@ -574,12 +572,12 @@ func _tutorial_skill_page_ready(scene: Node) -> bool:
 
 func _only_starter_activity_rendered(scene: Node) -> bool:
 	var ids := _rendered_action_ids(scene)
-	return ids.size() == 1 and ids[0] == "shove-wobbly-hay-bale"
+	return ids.size() == 1 and ids[0] == "push-ups"
 
 
 func _tutorial_start_actions_rendered(scene: Node) -> bool:
 	var ids := _rendered_action_ids(scene)
-	return ids.has("shove-wobbly-hay-bale") and ids.has("kick-mud-off-boot")
+	return ids.has("push-ups") and ids.has("kick-mud-off-boot")
 
 
 func _mastery_tip_visible(scene: Node) -> bool:
@@ -601,6 +599,29 @@ func _hover_level_two_lock_without_click(scene: Node) -> bool:
 	scene.call("_input_routing_shell").call("_route_activity_lock_input", motion)
 	scene.get_viewport().push_input(motion, false)
 	return true
+
+
+func _tap_level_two_lock(scene: Node) -> bool:
+	var target := _lock_group_for_action(scene, "fight:kick-mud-off-boot")
+	if target == null:
+		return false
+	var padlock := scene.call("_tutorial_overlay_surface").call("_blocking_tip_padlock", target) as Control
+	if padlock == null or not is_instance_valid(padlock):
+		return false
+	var position := padlock.get_global_rect().get_center()
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = position
+	press.global_position = position
+	if not bool(scene.call("_input_routing_shell").call("_route_activity_lock_input", press)):
+		return false
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = position
+	release.global_position = position
+	return bool(scene.call("_input_routing_shell").call("_route_activity_lock_input", release))
 
 
 func _lock_group_for_action(scene: Node, action_key: String) -> Control:
@@ -654,7 +675,7 @@ func _floating_skip_button_visible(scene: Node) -> bool:
 func _onboarding_tip_summary(scene: Node) -> String:
 	return "starter_count=%s fight_level=%s fight_xp=%s mastery_tip=%s medal_tip=%s lock_tip=%s stats_revealed=%s stamina_seen=%s header=%s stamina=%s header_running=%s stamina_running=%s stats_running=%s rendered=%s" % [
 		str(scene._onboarding_runtime().onboarding_starter_action_completion_count),
-		str(scene.call("_skill_level", "fight")),
+		str(SkillState.host_skill_level(scene, "fight")),
 		str((scene.get("skills") as Dictionary).get("fight", {}).get("xp", "?")),
 		str(_mastery_tip_visible(scene)),
 		str(_group_has_visible_node(scene, "onboarding_medal_tip_notes")),
@@ -900,16 +921,6 @@ func _fail(message: String) -> void:
         throw "A headless Godot process is still running after the hard reset tutorial flow test."
     }
 } finally {
-    if ($hadSave) {
-        Copy-Item -LiteralPath $backupPath -Destination $savePath -Force -ErrorAction SilentlyContinue
-    } elseif (Test-Path -LiteralPath $savePath) {
-        Remove-Item -LiteralPath $savePath -Force -ErrorAction SilentlyContinue
-    }
-    if ($hadSaveBackup) {
-        Copy-Item -LiteralPath $backupSaveBackupPath -Destination $saveBackupPath -Force -ErrorAction SilentlyContinue
-    } elseif (Test-Path -LiteralPath $saveBackupPath) {
-        Remove-Item -LiteralPath $saveBackupPath -Force -ErrorAction SilentlyContinue
-    }
     if ($null -eq $previousTimeout) {
         Remove-Item Env:\GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
     } else {
@@ -924,6 +935,11 @@ func _fail(message: String) -> void:
         Remove-Item Env:\IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS -ErrorAction SilentlyContinue
     } else {
         $env:IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS = $previousBootSmokeSeconds
+    }
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
     }
     if (Test-Path -LiteralPath $testDir) {
         Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue

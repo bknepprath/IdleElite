@@ -1,6 +1,6 @@
 {
   "schema_version": 2,
-  "updated": "2026-07-23",
+  "updated": "2026-07-29",
   "source_of_truth": "Edit this JSON first. The Godot game and HTML activity database both read this file.",
   "global_rules": {
     "base_max_stamina": 30,
@@ -47,6 +47,29 @@
       88,
       90,
       95
+    ],
+    "tier_support_goals": [
+      {
+        "medal": "Bronze",
+        "medal_level": 1,
+        "target": "all_tier_activities",
+        "stat": "accuracy",
+        "amount": 5
+      },
+      {
+        "medal": "Silver",
+        "medal_level": 2,
+        "target": "all_tier_activities",
+        "stat": "stamina",
+        "amount": 0.04
+      },
+      {
+        "medal": "Gold",
+        "medal_level": 3,
+        "target": "all_tier_activities",
+        "stat": "time",
+        "amount": 0.05
+      }
     ],
     "requirements_schema": {
       "legacy_unlock": "Existing actions may keep unlock as the owning-skill level gate.",
@@ -591,6 +614,7 @@
         },
         {
           "id": "face-the-rooster",
+          "enabled": false,
           "tier": 6,
           "kind": "boss_fight",
           "name": "Face The Rooster",
@@ -769,14 +793,14 @@
           "name": "Grapple Compost Bin",
           "unlock": 17,
           "stamina": 2,
-          "seconds": 2.43,
-          "xp": 21,
-          "success": 87.1,
+          "seconds": 2.58,
+          "xp": 23,
+          "success": 86.7,
           "rewards": {
-            "xp": 21
+            "xp": 23
           },
           "costs": {
-            "stamina": 3
+            "stamina": 2
           },
           "art": "assets/content/fight/actions/09-grapple-overfull-compost-bin.png",
           "background": "assets/content/fight/backgrounds/02-rising.png",
@@ -1353,12 +1377,12 @@
           "stamina": 11,
           "seconds": 9.15,
           "xp": 214,
-          "success": 61.9,
+          "success": 61.4,
           "rewards": {
             "xp": 214
           },
           "costs": {
-            "stamina": 8
+            "stamina": 11
           },
           "art": "assets/content/fight/actions/22-storm-the-forbidden-tool-shed.png",
           "background": "assets/content/fight/backgrounds/05-finale.png"
@@ -1746,14 +1770,14 @@
           "name": "Swap Broom Price Tags",
           "unlock": 12,
           "stamina": 2,
-          "seconds": 1.91,
-          "xp": 14,
-          "success": 90,
+          "seconds": 2.02,
+          "xp": 17,
+          "success": 88.8,
           "rewards": {
-            "xp": 14
+            "xp": 17
           },
           "costs": {
-            "stamina": 3
+            "stamina": 2
           },
           "art": "assets/content/thieving/actions/07-swap-price-tags-at-the-broom-store.png",
           "background": "assets/content/thieving/backgrounds/02-rising.png"

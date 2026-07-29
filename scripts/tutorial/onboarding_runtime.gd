@@ -48,35 +48,11 @@ func _init(host_ref) -> void:
 	host = host_ref
 
 
-func _start_tutorial() -> void:
-	host._tutorial_overlay_surface().ensure_built()
-	host._settings_surface()._disarm_reset_data_confirmation()
-	host._navigation_shell()._clear_top_level_nav_lock()
-	host._navigation_shell().cancel_post_onboarding_bottom_chrome_fade()
-	host._navigation_shell().reset_navigation_render_state()
-	host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
-	host.current_screen = "skill"
-	host._boot_warmup_runtime().prepare_selected_skill_for_render(false)
+func prepare_tutorial_state() -> void:
 	onboarding_tutorial_complete = false
 	onboarding_swipe_tip_eligible = false
 	onboarding_swipe_navigation_unlocked = false
-	host._navigation_shell()._sync_bottom_nav_visibility()
-	host._navigation_shell()._sync_module_utility_row_visibility()
-	if host.settings_overlay != null:
-		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(host.settings_overlay, false)
-	host._profile_chat_overlay_surface()._hide_profile_overlay()
-	host._achievement_overlay_surface().hide_overlay_without_sfx()
-	host._achievement_overlay_surface().hide_offline_summary_immediate()
-	if host._profile_chat_overlay_surface().chat_overlay_visible():
-		host._profile_chat_overlay_surface()._close_chat_overlay(false)
 	activity_start_tip_seen = false
-	host._tutorial_overlay_surface()._fade_tip_group("activity_start_tip_notes")
-	host._tutorial_overlay_surface()._fade_tip_group("stamina_cost_tip_notes")
-	host._tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
-	host._tutorial_overlay_surface()._fade_tip_group("onboarding_explore_tip_notes", false, true)
-	if host.stamina_gauge_tip_root != null and is_instance_valid(host.stamina_gauge_tip_root):
-		host.stamina_gauge_tip_root.queue_free()
-	host.stamina_gauge_tip_root = null
 	stamina_gauge_tip_seen = false
 	skill_swipe_tip_seen = false
 	onboarding_explore_tip_seen = false
@@ -89,6 +65,34 @@ func _start_tutorial() -> void:
 	tutorial_completion_exit_running = false
 	tutorial_active = true
 	tutorial_step = 1
+
+
+func _start_tutorial() -> void:
+	host._tutorial_overlay_surface().ensure_built()
+	host._settings_surface()._disarm_reset_data_confirmation()
+	host._navigation_shell()._clear_top_level_nav_lock()
+	host._navigation_shell().cancel_post_onboarding_bottom_chrome_fade()
+	host._navigation_shell().reset_navigation_render_state()
+	host.selected_skill_id = host.TUTORIAL_STARTER_SKILL_ID
+	host.current_screen = "skill"
+	host._boot_warmup_runtime().prepare_selected_skill_for_render(false)
+	prepare_tutorial_state()
+	host._navigation_shell()._sync_bottom_nav_visibility()
+	host._navigation_shell()._sync_module_utility_row_visibility()
+	if host.settings_overlay != null:
+		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(host.settings_overlay, false)
+	host._profile_chat_overlay_surface()._hide_profile_overlay()
+	host._achievement_overlay_surface().hide_overlay_without_sfx()
+	host._achievement_overlay_surface().hide_offline_summary_immediate()
+	if host._profile_chat_overlay_surface().chat_overlay_visible():
+		host._profile_chat_overlay_surface()._close_chat_overlay(false)
+	host._tutorial_overlay_surface()._fade_tip_group("activity_start_tip_notes")
+	host._tutorial_overlay_surface()._fade_tip_group("stamina_cost_tip_notes")
+	host._tutorial_overlay_surface()._fade_tip_group("skill_swipe_tip_notes", false, true)
+	host._tutorial_overlay_surface()._fade_tip_group("onboarding_explore_tip_notes", false, true)
+	if host.stamina_gauge_tip_root != null and is_instance_valid(host.stamina_gauge_tip_root):
+		host.stamina_gauge_tip_root.queue_free()
+	host.stamina_gauge_tip_root = null
 	host._navigation_shell()._render_screen(false, 0)
 	host.button_press_runtime.play_default_button_sfx()
 	host._tutorial_overlay_surface()._update_tutorial_overlay()

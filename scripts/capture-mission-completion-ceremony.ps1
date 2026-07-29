@@ -66,7 +66,7 @@ func _run() -> void:
 	scene.skills["fight"] = fight
 	scene.hub_missions = [{
 		"skill_id": "fight",
-		"action_id": "shove-wobbly-hay-bale",
+		"action_id": "push-ups",
 		"target": 1,
 		"remaining": 1,
 		"assigned_unix": int(scene.call("_unix_now"))
@@ -76,10 +76,10 @@ func _run() -> void:
 	scene.call("_render_screen", false, -1, false)
 	for _frame in range(8):
 		await process_frame
-	await scene.call("_scroll_to_activity_card", "shove-wobbly-hay-bale", false, true)
+	await scene.call("_scroll_to_activity_card", "push-ups", false, true)
 	for _frame in range(8):
 		await process_frame
-	(scene.call("_hub_surface") as Object).call("_show_hub_mission_completion_ceremony", "fight", "shove-wobbly-hay-bale")
+	(scene.call("_hub_surface") as Object).call("_show_hub_mission_completion_ceremony", "fight", "push-ups")
 	for _frame in range(16):
 		await process_frame
 	await RenderingServer.frame_post_draw

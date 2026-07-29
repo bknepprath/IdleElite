@@ -8,23 +8,10 @@ const TOTAL_LEVEL_TARGETS := [25, 50, 100, 150, 250, 375, 495]
 const CUMULATIVE_TARGETS := [10, 25, 50, 100, 250, 500, 1000]
 const TIER_COUNT_STEP := 5
 const ACTIVITY_TIER_SIZE := 10
-const TIER_SUPPORT_TOTAL_MEDAL_THRESHOLDS := [
-	{"count": 5, "stat": "accuracy", "amount": 5.0},
-	{"count": 10, "stat": "accuracy", "amount": 15.0},
-	{"count": 20, "stat": "accuracy", "amount": 22.0}
-]
-const TIER_SUPPORT_GOLD_THRESHOLDS := [
-	{"count": 2, "stat": "stamina", "amount": 0.04},
-	{"count": 4, "stat": "time", "amount": 0.05},
-	{"count": 6, "stat": "stamina", "amount": 0.08}
-]
-const SAME_TIER_SUPPORT_TOTAL_MEDAL_THRESHOLDS := [
-	{"count": 10, "stat": "accuracy", "amount": 3.0},
-	{"count": 20, "stat": "accuracy", "amount": 5.0}
-]
-const SAME_TIER_SUPPORT_GOLD_THRESHOLDS := [
-	{"count": 3, "stat": "stamina", "amount": 0.03},
-	{"count": 5, "stat": "time", "amount": 0.03}
+const TIER_SUPPORT_GOALS := [
+	{"medal": "Bronze", "medal_level": 1, "stat": "accuracy", "amount": 5.0},
+	{"medal": "Silver", "medal_level": 2, "stat": "stamina", "amount": 0.04},
+	{"medal": "Gold", "medal_level": 3, "stat": "time", "amount": 0.05}
 ]
 
 const ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT := 0.01
@@ -686,80 +673,64 @@ static func _mastery_action_id_for_action(host: Node, skill_id: String, action: 
 static func tier_support_bonus(host: Node, skill_id: String, target_tier: int, stat: String) -> float:
 	if target_tier <= 1:
 		return 0.0
-	return _tier_bonus_from_counts(tier_medal_counts(host, skill_id, target_tier - 1), stat, TIER_SUPPORT_TOTAL_MEDAL_THRESHOLDS, TIER_SUPPORT_GOLD_THRESHOLDS)
-
-
-static func same_tier_support_bonus(host: Node, skill_id: String, target_tier: int, stat: String) -> float:
-	if target_tier <= 1:
-		return 0.0
-	return _tier_bonus_from_counts(tier_medal_counts(host, skill_id, target_tier), stat, SAME_TIER_SUPPORT_TOTAL_MEDAL_THRESHOLDS, SAME_TIER_SUPPORT_GOLD_THRESHOLDS)
-
-
-static func _tier_bonus_from_counts(counts: Dictionary, stat: String, total_thresholds: Array, gold_thresholds: Array) -> float:
 	var total := 0.0
-	for raw_threshold in total_thresholds:
-		var threshold := raw_threshold as Dictionary
-		if str(threshold.get("stat", "")) == stat and int(counts.get("earned", 0)) >= int(threshold.get("count", 0)):
-			total += float(threshold.get("amount", 0.0))
-	for raw_threshold in gold_thresholds:
-		var threshold := raw_threshold as Dictionary
-		if str(threshold.get("stat", "")) == stat and int(counts.get("gold_plus", 0)) >= int(threshold.get("count", 0)):
-			total += float(threshold.get("amount", 0.0))
+	for raw_goal in tier_support_goals(host, skill_id, target_tier - 1):
+		var goal := raw_goal as Dictionary
+		if bool(goal.get("completed", false)) and str(goal.get("stat", "")) == stat:
+			total += float(goal.get("amount", 0.0))
 	return total
+
+
+static func tier_support_goals(host: Node, skill_id: String, source_tier: int) -> Array:
+	return tier_support_goals_from_counts(tier_medal_counts(host, skill_id, source_tier), source_tier + 1)
+
+
+static func tier_support_goals_from_counts(counts: Dictionary, target_tier: int) -> Array:
+	var goals := []
+	var action_count := maxi(0, int(counts.get("actions", 0)))
+	var medal_tiers: Array = counts.get("tiers", [])
+	for raw_goal in TIER_SUPPORT_GOALS:
+		var goal := (raw_goal as Dictionary).duplicate()
+		var medal_level := int(goal.get("medal_level", 0))
+		var earned := int(medal_tiers[medal_level - 1]) if medal_level > 0 and medal_tiers.size() >= medal_level else 0
+		goal["earned"] = earned
+		goal["possible"] = action_count
+		goal["completed"] = action_count > 0 and earned >= action_count
+		goal["reward_text"] = _tier_threshold_bonus_text(goal, target_tier)
+		goals.append(goal)
+	return goals
 
 
 static func activity_tier_stamina_cost_reduction(host: Node, skill_id: String, action: Dictionary) -> float:
 	var tier := action_tier(host, action)
-	return clampf(tier_support_bonus(host, skill_id, tier, "stamina") + same_tier_support_bonus(host, skill_id, tier, "stamina"), 0.0, 0.30)
+	return clampf(tier_support_bonus(host, skill_id, tier, "stamina"), 0.0, 0.30)
 
 
 static func activity_tier_time_reduction(host: Node, skill_id: String, action: Dictionary) -> float:
 	var tier := action_tier(host, action)
-	return clampf(tier_support_bonus(host, skill_id, tier, "time") + same_tier_support_bonus(host, skill_id, tier, "time"), 0.0, 0.25)
+	return clampf(tier_support_bonus(host, skill_id, tier, "time"), 0.0, 0.25)
 
 
 static func activity_tier_accuracy_bonus(host: Node, skill_id: String, action: Dictionary) -> float:
 	var tier := action_tier(host, action)
-	return clampf(tier_support_bonus(host, skill_id, tier, "accuracy") + same_tier_support_bonus(host, skill_id, tier, "accuracy"), 0.0, 35.0)
+	return clampf(tier_support_bonus(host, skill_id, tier, "accuracy"), 0.0, 35.0)
 
 
 static func tier_support_lines(host: Node, skill_id: String, source_tier: int) -> Array:
 	var lines := []
-	var target_tier := source_tier + 1
-	var counts := tier_medal_counts(host, skill_id, source_tier)
-	for raw_threshold in TIER_SUPPORT_TOTAL_MEDAL_THRESHOLDS:
-		var threshold := raw_threshold as Dictionary
-		if int(counts.get("earned", 0)) < int(threshold.get("count", 0)):
-			continue
-		var stat := str(threshold.get("stat", ""))
-		var amount := float(threshold.get("amount", 0.0))
-		if stat == "accuracy":
-			lines.append("Tier %s accuracy: +%s%%" % [target_tier, GameFormatting.percent_points(amount)])
-	for raw_threshold in TIER_SUPPORT_GOLD_THRESHOLDS:
-		var threshold := raw_threshold as Dictionary
-		if int(counts.get("gold_plus", 0)) < int(threshold.get("count", 0)):
-			continue
-		var stat := str(threshold.get("stat", ""))
-		var amount := float(threshold.get("amount", 0.0))
-		if stat == "stamina":
-			lines.append("Tier %s stamina cost: -%s%%" % [target_tier, GameFormatting.percent_points(amount * 100.0)])
-		elif stat == "time":
-			lines.append("Tier %s speed: +%s%%" % [target_tier, GameFormatting.percent_points(amount * 100.0)])
+	for raw_goal in tier_support_goals(host, skill_id, source_tier):
+		var goal := raw_goal as Dictionary
+		if bool(goal.get("completed", false)):
+			lines.append(str(goal.get("reward_text", "")))
 	return lines
 
 
 static func next_tier_support_threshold_line(host: Node, skill_id: String, source_tier: int) -> String:
-	var counts := tier_medal_counts(host, skill_id, source_tier)
-	for raw_threshold in TIER_SUPPORT_TOTAL_MEDAL_THRESHOLDS:
-		var threshold := raw_threshold as Dictionary
-		var needed := int(threshold.get("count", 0)) - int(counts.get("earned", 0))
+	for raw_goal in tier_support_goals(host, skill_id, source_tier):
+		var goal := raw_goal as Dictionary
+		var needed := int(goal.get("possible", 0)) - int(goal.get("earned", 0))
 		if needed > 0:
-			return "%s more Tier %s medals: %s" % [needed, source_tier, _tier_threshold_bonus_text(threshold, source_tier + 1)]
-	for raw_threshold in TIER_SUPPORT_GOLD_THRESHOLDS:
-		var threshold := raw_threshold as Dictionary
-		var needed := int(threshold.get("count", 0)) - int(counts.get("gold_plus", 0))
-		if needed > 0:
-			return "%s more Gold+ medals: %s" % [needed, _tier_threshold_bonus_text(threshold, source_tier + 1)]
+			return "%s on %s more Tier %s activities: %s" % [str(goal.get("medal", "Medal")), needed, source_tier, str(goal.get("reward_text", ""))]
 	return "All Tier %s support bonuses active." % source_tier
 
 
@@ -769,7 +740,7 @@ static func _tier_threshold_bonus_text(threshold: Dictionary, target_tier: int) 
 	if stat == "accuracy":
 		return "+%s%% Tier %s accuracy" % [GameFormatting.percent_points(amount), target_tier]
 	if stat == "stamina":
-		return "-%s%% Tier %s stamina" % [GameFormatting.percent_points(amount * 100.0), target_tier]
+		return "-%s%% Tier %s stamina cost" % [GameFormatting.percent_points(amount * 100.0), target_tier]
 	if stat == "time":
 		return "+%s%% Tier %s speed" % [GameFormatting.percent_points(amount * 100.0), target_tier]
 	return "Tier %s support" % target_tier

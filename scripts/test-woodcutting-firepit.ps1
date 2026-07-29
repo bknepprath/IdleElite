@@ -220,8 +220,8 @@ func _check_lazy_layout_heights(scene: Node) -> void:
 	var running_plan := scene.call("_skill_detail_surface").call("_build_detail_lazy_plan", "woodcutting") as Array
 	var gather_entry := _plan_entry(running_plan, "gather-fallen-branches")
 	_expect(not gather_entry.is_empty(), "lazy plan should include Gather Fallen Branches")
-	var expected_gather_height := ActivityCardStyles.root_height(false, 720.0, 1080.0, 16.0) + 870.0
-	_expect(absf(float(gather_entry.get("height", 0.0)) - expected_gather_height) <= 0.5, "running material reward action should reserve its collection module height")
+	var expected_gather_height := ActivityCardStyles.root_height(false, 720.0, 1080.0, ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y) + 870.0
+	_expect(absf(float(gather_entry.get("height", 0.0)) - expected_gather_height) <= 0.5, "running material reward action should reserve its collection module height: expected=%.1f actual=%.1f" % [expected_gather_height, float(gather_entry.get("height", 0.0))])
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 

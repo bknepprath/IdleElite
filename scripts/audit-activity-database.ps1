@@ -3,6 +3,8 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $databasePath = Join-Path $projectRoot "docs\activity-database.json"
 $mainScriptPath = Join-Path $projectRoot "scripts\main.gd"
+$skillStateScriptPath = Join-Path $projectRoot "scripts\progression\skill_state.gd"
+$passiveRuntimeScriptPath = Join-Path $projectRoot "scripts\gameplay\passive_modules_runtime.gd"
 $hubSurfaceScriptPath = Join-Path $projectRoot "scripts\ui\hub_surface.gd"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 
@@ -14,6 +16,12 @@ $database = Get-Content -LiteralPath $databasePath -Raw | ConvertFrom-Json
 $mainScript = ""
 if (Test-Path -LiteralPath $mainScriptPath) {
     $mainScript = Get-Content -LiteralPath $mainScriptPath -Raw
+}
+$runtimeConstantScripts = @($mainScript)
+foreach ($runtimeScriptPath in @($skillStateScriptPath, $passiveRuntimeScriptPath)) {
+    if (Test-Path -LiteralPath $runtimeScriptPath) {
+        $runtimeConstantScripts += Get-Content -LiteralPath $runtimeScriptPath -Raw
+    }
 }
 $hubSurfaceScript = ""
 if (Test-Path -LiteralPath $hubSurfaceScriptPath) {
@@ -55,23 +63,22 @@ function Resolve-ProjectPath {
 function Read-GdConstNumber {
     param([string] $Name)
 
-    if ([string]::IsNullOrWhiteSpace($mainScript)) {
-        return $null
+    foreach ($runtimeScript in $runtimeConstantScripts) {
+        $match = [regex]::Match($runtimeScript, "const\s+$Name\s*:=\s*([0-9\s\.\+\-\*/]+)")
+        if (-not $match.Success) {
+            continue
+        }
+
+        $expression = $match.Groups[1].Value.Trim()
+        if ($expression -notmatch "^[0-9\s\.\+\-\*/]+$") {
+            continue
+        }
+
+        $table = New-Object System.Data.DataTable
+        return [double]$table.Compute($expression, "")
     }
 
-    $match = [regex]::Match($mainScript, "const\s+$Name\s*:=\s*([0-9\s\.\+\-\*/]+)")
-    if (-not $match.Success) {
-        return $null
-    }
-
-    $expression = $match.Groups[1].Value.Trim()
-    if ($expression -notmatch "^[0-9\s\.\+\-\*/]+$") {
-        return $null
-    }
-
-    $table = New-Object System.Data.DataTable
-    $value = $table.Compute($expression, "")
-    return [double]$value
+    return $null
 }
 
 function Has-ObjectProperty {
@@ -346,6 +353,7 @@ foreach ($skill in $skills) {
         if ([string]::IsNullOrWhiteSpace($kind)) {
             $kind = "activity"
         }
+        $isLinearAction = $kind -eq "activity" -and -not (Has-ObjectProperty $action "recovery") -and -not (Has-ObjectProperty $action "combat")
         if ($kind -eq "passive_item_collect") {
             $passiveCount++
             if ($null -eq $action.passive) {
@@ -374,21 +382,21 @@ foreach ($skill in $skills) {
             }
         }
 
-        if ($unlock -lt $lastUnlock) {
+        if ($isLinearAction -and $unlock -lt $lastUnlock) {
             Add-Finding $warnings "$label unlock level drops from $lastUnlock to $unlock."
         }
-        # Fishing methods unlock per-area, not as a single linear action list curve.
-        if ($skillId -ne "fishing") {
-            if ($kind -ne "passive_item_collect" -and $stamina -lt $lastStamina) {
+        # Recovery, combat, and fishing methods have their own reward and timing curves.
+        if ($skillId -ne "fishing" -and $isLinearAction) {
+            if ($stamina -lt $lastStamina) {
                 Add-Finding $warnings "$label stamina drops from $lastStamina to $stamina."
             }
-            if ($kind -ne "passive_item_collect" -and $xp -lt $lastXp) {
+            if ($xp -lt $lastXp) {
                 Add-Finding $warnings "$label XP drops from $lastXp to $xp."
             }
-            if ($kind -ne "passive_item_collect" -and $seconds -lt $lastSeconds) {
+            if ($seconds -lt $lastSeconds) {
                 Add-Finding $warnings "$label seconds drops from $lastSeconds to $seconds."
             }
-            if ($kind -ne "passive_item_collect" -and $success -gt $lastSuccess) {
+            if ($success -gt $lastSuccess) {
                 Add-Finding $warnings "$label success rises from $lastSuccess to $success."
             }
         }
@@ -410,8 +418,8 @@ foreach ($skill in $skills) {
             }
         }
 
-        $lastUnlock = $unlock
-        if ($kind -ne "passive_item_collect") {
+        if ($isLinearAction) {
+            $lastUnlock = $unlock
             $lastStamina = $stamina
             $lastXp = $xp
             $lastSeconds = $seconds
@@ -570,6 +578,33 @@ for ($i = 0; $i -lt $eventModules.Count; $i++) {
 
 $globalRules = $database.global_rules
 if ($null -ne $globalRules) {
+    $tierSupportGoals = Get-ArrayProperty $globalRules "tier_support_goals"
+    if ($tierSupportGoals.Count -ne 3) {
+        Add-Finding $errors "global_rules.tier_support_goals must define Bronze, Silver, and Gold."
+    }
+    $seenMedalLevels = @{}
+    $seenSupportStats = @{}
+    foreach ($goal in $tierSupportGoals) {
+        $medalLevel = [int]$goal.medal_level
+        $stat = [string]$goal.stat
+        if ($medalLevel -lt 1 -or $medalLevel -gt 3 -or $seenMedalLevels.ContainsKey($medalLevel)) {
+            Add-Finding $errors "Tier support medal levels must be unique values from 1 through 3."
+        } else {
+            $seenMedalLevels[$medalLevel] = $true
+        }
+        if ($stat -notin @("accuracy", "stamina", "time") -or $seenSupportStats.ContainsKey($stat)) {
+            Add-Finding $errors "Tier support stats must use accuracy, stamina, and time once each."
+        } else {
+            $seenSupportStats[$stat] = $true
+        }
+        if ([string]$goal.target -ne "all_tier_activities") {
+            Add-Finding $errors "Tier support goals must target all_tier_activities so every tier remains attainable."
+        }
+        if (-not (Test-PositiveNumber $goal.amount)) {
+            Add-Finding $errors "Tier support goal amounts must be positive."
+        }
+    }
+
     $constantChecks = @(
         @{ Json = "base_max_stamina"; Code = "BASE_MAX_STAMINA" },
         @{ Json = "stamina_regen_seconds"; Code = "STAMINA_REGEN_SECONDS" },
@@ -582,7 +617,7 @@ if ($null -ne $globalRules) {
         $jsonValue = [double]$globalRules.$jsonName
         $codeValue = Read-GdConstNumber $codeName
         if ($null -eq $codeValue) {
-            Add-Finding $warnings "Could not find $codeName in scripts/main.gd."
+            Add-Finding $warnings "Could not find $codeName in runtime progression scripts."
             continue
         }
         if ([math]::Abs($jsonValue - $codeValue) -gt 0.001) {

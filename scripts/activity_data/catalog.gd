@@ -66,11 +66,24 @@ func load_activity_database(host) -> bool:
 		var loaded_actions = skill.get("actions", [])
 		var actions := []
 		if typeof(loaded_actions) == TYPE_ARRAY:
+			var disabled_boss_ids := []
+			for raw_action in loaded_actions:
+				if typeof(raw_action) != TYPE_DICTIONARY or bool((raw_action as Dictionary).get("enabled", true)):
+					continue
+				var boss = (raw_action as Dictionary).get("boss", {})
+				if typeof(boss) == TYPE_DICTIONARY:
+					var boss_id := str((boss as Dictionary).get("id", "")).strip_edges()
+					if not boss_id.is_empty():
+						disabled_boss_ids.append(boss_id)
 			for raw_action in loaded_actions:
 				if typeof(raw_action) != TYPE_DICTIONARY:
 					continue
 				var action := raw_action as Dictionary
+				if not bool(action.get("enabled", true)):
+					continue
 				var action_data := _action_for_load(action, skill_id, actions.size(), host._action_runtime()._action_mat_reward_defs(action))
+				for disabled_boss_id in disabled_boss_ids:
+					(action_data.get("requires_bosses", []) as Array).erase(disabled_boss_id)
 				actions.append(action_data)
 		sort_activity_actions_for_page(skill_id, actions)
 		actions_by_skill[skill_id] = actions

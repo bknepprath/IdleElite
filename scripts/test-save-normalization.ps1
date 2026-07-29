@@ -34,6 +34,7 @@ const ChatState := preload("res://scripts/online/chat_state.gd")
 const ProfileChatOverlaySurface := preload("res://scripts/ui/profile_chat_overlay_surface.gd")
 const ActionArtUi := preload("res://scripts/ui/action_art_ui.gd")
 const ActionRuntime := preload("res://scripts/gameplay/action_runtime.gd")
+const AppLifecycleRuntime := preload("res://scripts/app/lifecycle_runtime.gd")
 
 var failures: Array[String] = []
 
@@ -2379,6 +2380,8 @@ func _check_scalar_progression_metadata_save(game: Node) -> void:
 func _check_offline_progress_trust(game: Node) -> void:
 	var save_runtime = game.call("_save_runtime")
 	var now := int(game.call("_unix_now"))
+	_expect(AppLifecycleRuntime.process_suspension_seconds(now - 60, now, 1000, 61_000) == 60, "A suspended browser process should recover its wall-clock gap.")
+	_expect(AppLifecycleRuntime.process_suspension_seconds(now, now, 1000, 1016) == 0, "A normal browser frame should not trigger offline progress.")
 	game.set("last_save_monotonic_msec", 0)
 	var trusted := int(save_runtime.call("_trusted_offline_seconds", now - 60, now))
 	_expect(trusted == 60, "Offline progress should trust short offline windows.")

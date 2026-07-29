@@ -12,7 +12,7 @@ Use this as the module design board. The cards should reflect the current game d
 Current baseline:
 
 ```text
-Fighting Lv 1: Shove Wobbly Hay Bale
+Fighting Lv 1: Push-Ups
 Survivalism Lv 1: Gather Fallen Branches
 Building Lv 1: Stack Bricks
 Hunting Lv 1: Shallows
