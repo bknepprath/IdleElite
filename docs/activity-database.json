@@ -445,7 +445,7 @@
         {
           "id": "kick-mud-off-boot",
           "tier": 2,
-          "name": "Kick Mud Off Boot",
+          "name": "Practice Kicking",
           "unlock": 2,
           "stamina": 1,
           "seconds": 1.55,

@@ -34,6 +34,21 @@ func _run() -> void:
 	scene.call("_save_runtime").call("_init_state")
 
 	var fight := (scene.skills.get("fight", {}) as Dictionary).duplicate(true)
+	var level_two_action := scene.call("_action_data", "fight", scene.TUTORIAL_LEVEL_TWO_ACTION_ID) as Dictionary
+	_expect(str(level_two_action.get("name", "")) == "Practice Kicking", "level 2 module display name did not update")
+	fight["level"] = 1
+	fight["xp"] = scene.call("_activity_unlock_runtime").LOCKED_ACTIVITY_PREVIEW_XP_THRESHOLD - 1
+	scene.skills["fight"] = fight
+	var level_one_visible_ids := []
+	for raw_action in scene.call("_activity_unlock_runtime").call("_visible_actions_for_skill", "fight") as Array:
+		level_one_visible_ids.append(str((raw_action as Dictionary).get("id", "")))
+	_expect(level_one_visible_ids.has(scene.TUTORIAL_LEVEL_TWO_ACTION_ID), "level 2 module should already be visible below the legacy preview threshold: %s" % str(level_one_visible_ids))
+	var unlock_ceremony_surface: Object = scene.call("_activity_unlock_ceremony_surface")
+	fight["xp"] = scene.call("_activity_unlock_runtime").LOCKED_ACTIVITY_PREVIEW_XP_THRESHOLD
+	scene.skills["fight"] = fight
+	unlock_ceremony_surface.call("queue_locked_preview_reveal_if_needed", false)
+	_expect(not bool(unlock_ceremony_surface.locked_preview_reveal_pending), "crossing the legacy preview threshold should not re-fade an already visible level 2 module")
+
 	fight["level"] = 2
 	fight["xp"] = SkillState.xp_for_level(2)
 	scene.skills["fight"] = fight

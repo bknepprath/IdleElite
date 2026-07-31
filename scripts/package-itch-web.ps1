@@ -47,6 +47,7 @@ New-Item -ItemType Directory -Path $itchBuildDir -Force | Out-Null
 if (-not $SkipValidation) {
     & (Join-Path $projectRoot "scripts\update-firebase-leaderboard-rules.ps1") -Check
     & (Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1")
+    & (Join-Path $projectRoot "scripts\check-runtime-asset-paths.ps1")
 }
 
 if (-not $SkipExport) {
@@ -76,6 +77,8 @@ $requiredFiles = @(
 foreach ($fileName in $requiredFiles) {
     Assert-True (Test-Path -LiteralPath (Join-Path $webBuildDir $fileName)) "Web export is missing $fileName in $webBuildDir"
 }
+$pck = Get-Item -LiteralPath (Join-Path $webBuildDir "index.pck")
+Assert-True ($pck.Length -le 200000000) ("Web index.pck is {0:N2} MB ({1:N2} MiB), exceeding itch.io's 200 MB single-file limit." -f ($pck.Length / 1000000), ($pck.Length / 1MB))
 
 if (-not $SkipValidation -and -not $SkipWebTouchScrollValidation) {
     Assert-True (Test-Path -LiteralPath $webTouchScrollTest) "Fishing web touch scroll test was not found at $webTouchScrollTest"

@@ -82,6 +82,36 @@ func _run() -> void:
 	if card.has("medal_tap_effects"):
 		_record("medal_tap_effects was not erased")
 
+	var medal_surface: RefCounted = scene.call("_skill_swipe_activity_surface")
+	if not (medal_surface.call("_action_card_medal_size", 1) as Vector2).is_equal_approx(Vector2(184.68, 184.68)):
+		_record("Standard action-card medal did not use its expected size")
+
+	var replacement_parent := Control.new()
+	root.add_child(replacement_parent)
+	var replacement_medal := TextureRect.new()
+	replacement_medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	replacement_medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	replacement_parent.add_child(replacement_medal)
+	var replacement_card := {"card_key": "test:replacement", "medal": replacement_medal}
+	medal_surface.call("_place_action_card_medal", replacement_card, replacement_medal, 8)
+	var outgoing_texture := GradientTexture2D.new()
+	outgoing_texture.width = 512
+	outgoing_texture.height = 512
+	replacement_medal.texture = outgoing_texture
+	var outgoing_origin := replacement_medal.position
+	var outgoing_size := replacement_medal.size
+	medal_surface.call("_play_new_medal_ceremony", replacement_card, replacement_medal, outgoing_texture, true, 9)
+	var outgoing := replacement_card.get("medal_outgoing") as TextureRect
+	if outgoing == null:
+		_record("Replacement ceremony did not create an outgoing medal")
+	else:
+		if not outgoing.position.is_equal_approx(outgoing_origin):
+			_record("Outgoing medal did not begin falling from its existing position")
+		if not outgoing.size.is_equal_approx(outgoing_size):
+			_record("Outgoing medal changed size before beginning its fall")
+	medal_surface.call("_clear_action_card_medal_ceremony", replacement_card)
+	replacement_parent.queue_free()
+
 	var medal := TextureRect.new()
 	medal.position = Vector2(180, 220)
 	medal.size = Vector2(190, 190)

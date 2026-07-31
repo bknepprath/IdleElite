@@ -157,7 +157,7 @@ func _run() -> void:
 			_fail("level 2 tutorial module disappeared or refaded during unlock at frame %s" % _i)
 			return
 	if not bool(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", level_two_action)):
-		_fail("level 2 tutorial lock tap did not unlock Kick Mud Off Boot")
+		_fail("level 2 tutorial lock tap did not unlock Practice Kicking")
 		return
 	print("fresh-tutorial-level-two-stable-ok")
 	print("hard-reset-tutorial-flow-ok %s" % _summary(scene))
@@ -171,7 +171,7 @@ func _run() -> void:
 		return
 	level_two_action = scene.call("_action_data", "fight", "kick-mud-off-boot") as Dictionary
 	if bool(scene.call("_activity_unlock_runtime").call("_is_action_unlocked", "fight", level_two_action)):
-		_fail("auto-unlock should be paused during onboarding and must not unlock Kick Mud Off Boot: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
+		_fail("auto-unlock should be paused during onboarding and must not unlock Practice Kicking: %s actions=%s" % [_summary(scene), str(_rendered_action_ids(scene))])
 		return
 	var rendered_after_auto_toggle := _rendered_action_ids(scene)
 	if rendered_after_auto_toggle.has("wrestle-stuck-gate-latch") or rendered_after_auto_toggle.has("box-suspicious-feed-sack"):

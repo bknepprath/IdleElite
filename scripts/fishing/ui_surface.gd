@@ -1865,6 +1865,7 @@ func _build_fishing_location_tile(
 	method_button.text = ""
 	method_button.focus_mode = Control.FOCUS_NONE
 	method_button.flat = true
+	method_button.disabled = not unlocked
 	method_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_button.set_anchors_preset(Control.PRESET_FULL_RECT)
 	method_button.add_theme_stylebox_override("normal", host.empty_style_cache)
@@ -2576,6 +2577,7 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	method_button.text = ""
 	method_button.focus_mode = Control.FOCUS_NONE
 	method_button.flat = true
+	method_button.disabled = not unlocked
 	method_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_button.set_anchors_preset(Control.PRESET_FULL_RECT)
 	method_button.add_theme_stylebox_override("normal", host.empty_style_cache)

@@ -15,9 +15,15 @@ $ignoredSourcePathPrefixes = @(
     ".codex-tools",
     ".git",
     "android/build",
+    "assets/test-results",
     "builds",
+    "output",
+    "outputs",
     "play-store",
-    "release"
+    "release",
+    "scripts/tests",
+    "test-results",
+    "tmp"
 )
 
 function Convert-ResourcePathToProjectPath {

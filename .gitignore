@@ -11,6 +11,7 @@ builds/
 release/
 output/
 test-results/
+tmp/spreadsheets/
 android/build/.gradle/
 android/build/build/
 android/build/assetPack*/

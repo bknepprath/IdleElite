@@ -21,13 +21,13 @@ const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
 const PassiveModulesRuntime = preload("res://scripts/gameplay/passive_modules_runtime.gd")
 const ProfileChatOverlaySurface = preload("res://scripts/ui/profile_chat_overlay_surface.gd")
 const MasteryState = preload("res://scripts/progression/mastery_state.gd")
-const ACTION_CARD_MEDAL_STANDARD_SIZE := Vector2(114, 114)
+const ACTION_CARD_MEDAL_STANDARD_SIZE := Vector2(184.68, 184.68)
 const ACTION_CARD_MEDAL_CORNER_INSET := Vector2(24, 18)
 const ACTION_CARD_MEDAL_WINGED_SIZES := {
-	9: Vector2(204, 114),
-	10: Vector2(179.4, 114),
-	19: Vector2(202.2, 141),
-	20: Vector2(201.6, 141),
+	9: Vector2(330.48, 184.68),
+	10: Vector2(290.628, 184.68),
+	19: Vector2(327.564, 228.42),
+	20: Vector2(326.592, 228.42),
 }
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 const RoundedCornerCropOverlay = preload("res://scripts/ui/rounded_corner_crop_overlay.gd")
@@ -3598,6 +3598,8 @@ func _clear_action_card_medal_tap_ceremony(card: Dictionary) -> void:
 
 
 func _play_new_medal_ceremony(card: Dictionary, medal: TextureRect, old_texture: Texture2D, replacing: bool, mastery_level: int) -> void:
+	if replacing:
+		_start_replaced_medal_fall(card, medal, old_texture)
 	var destination := _apply_action_card_medal_layout(card, medal, mastery_level)
 	medal.texture = _action_card_medal_texture_for_level(mastery_level)
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(medal, true)
@@ -3606,8 +3608,6 @@ func _play_new_medal_ceremony(card: Dictionary, medal: TextureRect, old_texture:
 	medal.rotation_degrees = -7.0
 	medal.pivot_offset = medal.size * 0.5
 	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(medal, Color(1, 1, 1, 0))
-	if replacing:
-		_start_replaced_medal_fall(card, medal, old_texture, destination)
 	var anticipation_position := destination + Vector2(122, -192)
 	var tween: Tween = host.create_tween()
 	card["medal_ceremony_tween"] = tween
@@ -3646,30 +3646,33 @@ func _play_earned_medal_tap_ceremony(card: Dictionary, medal: TextureRect) -> vo
 	_play_action_card_medal_tap_ceremony(card)
 
 
-func _start_replaced_medal_fall(card: Dictionary, medal: TextureRect, old_texture: Texture2D, destination: Vector2) -> void:
+func _start_replaced_medal_fall(card: Dictionary, medal: TextureRect, old_texture: Texture2D) -> void:
 	var parent := medal.get_parent() as Control
 	if parent == null or old_texture == null:
 		return
+	var origin := medal.position
 	var outgoing := TextureRect.new()
 	outgoing.texture = old_texture
 	outgoing.anchor_left = 0.0
 	outgoing.anchor_right = 0.0
 	outgoing.anchor_top = 0.0
 	outgoing.anchor_bottom = 0.0
-	outgoing.position = destination
-	outgoing.size = medal.size
 	outgoing.expand_mode = medal.expand_mode
 	outgoing.stretch_mode = medal.stretch_mode
+	outgoing.position = origin
+	outgoing.size = medal.size
 	outgoing.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	outgoing.z_index = medal.z_index + 1
 	outgoing.pivot_offset = outgoing.size * 0.5
-	outgoing.modulate = Color.WHITE
+	outgoing.scale = medal.scale
+	outgoing.rotation_degrees = medal.rotation_degrees
+	outgoing.modulate = medal.modulate
 	parent.add_child(outgoing)
 	card["medal_outgoing"] = outgoing
 	var tween: Tween = host.create_tween()
 	card["medal_outgoing_tween"] = tween
 	tween.set_parallel(true)
-	tween.tween_property(outgoing, "position", destination + Vector2(-62, 260), 0.60).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.tween_property(outgoing, "position", origin + Vector2(-62, 260), 0.60).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.tween_property(outgoing, "rotation_degrees", -46.0, 0.60).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.tween_property(outgoing, "scale", Vector2(0.76, 0.76), 0.54).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.tween_property(outgoing, "modulate:a", 0.0, 0.39).set_delay(0.17).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)

@@ -84,19 +84,8 @@ func clear_preview_reveal_guards() -> void:
 	locked_preview_played_action_keys.clear()
 
 
-func queue_locked_preview_reveal_if_needed(previously_available: bool) -> void:
-	if previously_available or not host._activity_unlock_runtime()._locked_activity_preview_available():
-		return
-	if host._activity_unlock_runtime().has_pending_readiness_for_skill(host.selected_skill_id) or ceremony_count > 0:
-		return
-	if (
-		host.current_screen == "skill"
-		and host.selected_skill_id == host.TUTORIAL_STARTER_SKILL_ID
-		and host._onboarding_runtime()._onboarding_path_active()
-		and not host._onboarding_runtime().onboarding_first_module_center_released
-	):
-		host._onboarding_runtime().onboarding_first_module_center_release_pending = true
-	queue_locked_preview_reveal()
+func queue_locked_preview_reveal_if_needed(_previously_available: bool) -> void:
+	pass
 
 
 func queue_locked_preview_reveal() -> void:
