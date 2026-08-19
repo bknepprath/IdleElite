@@ -4,7 +4,7 @@ const PassiveModulesRuntime = preload("res://scripts/gameplay/passive_modules_ru
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
 
-const PAPER_BUTTON_OUTLINE_WIDTH := 4.5
+const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const STAMINA_GAUGE_UNFILL_SECONDS := 0.34
 const STAMINA_GAUGE_POP_SCALE := Vector2(1.018, 1.018)
 const STAMINA_GAUGE_SETTLE_SCALE := Vector2(0.997, 0.997)
@@ -16,7 +16,7 @@ const BEVEL_ARC_SEGMENTS := 32
 const LIQUID_FILL_ROWS := 42
 const FULL_LIQUID_FILL_ROWS := 48
 const SURFACE_OVAL_ROWS := 14
-const CENTER_NUMBER_STROKE_SCALE := 18.0
+const CENTER_NUMBER_STROKE_SCALE := 36.0
 const CENTER_NUMBER_STROKE_MIN := 13
 const CENTER_DECIMAL_SUFFIX_SCALE := 0.5
 const CENTER_DECIMAL_SUFFIX_ALPHA := 0.6

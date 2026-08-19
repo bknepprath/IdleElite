@@ -168,7 +168,7 @@ func _sync_berry_prep_xp_chip(xp_box: Control) -> void:
 		badge.z_index = 1
 		xp_box.add_child(badge)
 		xp_box.set_meta("berry_prep_xp_badge_id", badge.get_instance_id())
-	var badge_target_size := 138.0
+	var badge_target_size := 69.0
 	if badge.texture != null:
 		var texture_size: Vector2 = badge.texture.get_size()
 		var texture_max: float = maxf(texture_size.x, texture_size.y)
@@ -178,7 +178,7 @@ func _sync_berry_prep_xp_chip(xp_box: Control) -> void:
 		badge.scale = Vector2.ONE * badge_scale
 		stroke.texture = badge.texture
 		stroke.scale = Vector2.ONE * badge_scale * 1.08
-	var badge_position := Vector2(xp_box.size.x - 12.0, 10.0)
+	var badge_position := Vector2(xp_box.size.x - 6.0, 5.0)
 	badge.position = badge_position
 	stroke.position = badge_position
 
@@ -258,10 +258,10 @@ func _add_berry_mode_border() -> void:
 	var texture: Texture2D = host.visual_texture_cache._texture_or_visual_fallback(BERRY_MODE_BORDER_TEXTURE)
 	if texture == null:
 		return
-	var slide_distance := 1920.0
+	var slide_distance := 960.0
 	var top_clip := _add_berry_mode_border_clip("BerryModeBorderTop", texture, 0.0, 0.5, 0.0, 2.0, -slide_distance)
 	var bottom_clip := _add_berry_mode_border_clip("BerryModeBorderBottom", texture, 0.5, 1.0, -1.0, 1.0, slide_distance)
-	top_clip.set_meta("berry_mode_target_y", -24.0)
+	top_clip.set_meta("berry_mode_target_y", -12.0)
 	bottom_clip.set_meta("berry_mode_target_y", 0.0)
 	var tween: Tween = host.create_tween()
 	tween.set_parallel(true)
@@ -358,7 +358,7 @@ func _berry_mode_title_plate_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#d21af2")
 	style.border_color = host.COLOR_INK
-	style.set_border_width_all(14)
+	style.set_border_width_all(7)
 	style.corner_radius_top_left = 17
 	style.corner_radius_top_right = 17
 	style.corner_radius_bottom_left = 17
@@ -374,7 +374,7 @@ func _berry_mode_title_label(text: String, min_width: float) -> Label:
 	title.custom_minimum_size = Vector2(min_width, 68.0)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	title.add_theme_constant_override("outline_size", 13)
+	title.add_theme_constant_override("outline_size", 26)
 	return title
 
 
@@ -421,7 +421,7 @@ func _berry_mode_leave_button_style(pressed := false) -> StyleBoxFlat:
 	style.corner_radius_bottom_right = 17
 	style.shadow_color = Color(0, 0, 0, 0.38)
 	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 12 if not pressed else 5)
+	style.shadow_offset = Vector2(0, 6 if not pressed else 2.5)
 	return style
 
 
@@ -451,7 +451,7 @@ func _build_mat_collection_row(skill_id: String, action: Dictionary, content_wid
 		var mat_id = str(reward.get("id", ""))
 		var module_x = start_x + float(index) * (MAT_COLLECTION_MODULE_SIZE.x + MAT_COLLECTION_MODULE_GAP)
 		var connector = _mat_collection_connector(host.material_runtime.color(mat_id).lerp(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), 0.28))
-		connector.position = Vector2(module_x + MAT_COLLECTION_MODULE_SIZE.x * 0.5 - 7.0, 0.0)
+		connector.position = Vector2(module_x + MAT_COLLECTION_MODULE_SIZE.x * 0.5 - 3.5, 0.0)
 		root.add_child(connector)
 		var module = _mat_collection_module(mat_id, skill_id, str(action.get("id", "")))
 		module.position = Vector2(module_x, MAT_COLLECTION_CONNECTOR_HEIGHT)
@@ -467,7 +467,7 @@ func _build_mat_collection_row(skill_id: String, action: Dictionary, content_wid
 
 func _mat_collection_connector(color: Color) -> Control:
 	var line = ColorRect.new()
-	line.custom_minimum_size = Vector2(14, MAT_COLLECTION_CONNECTOR_HEIGHT + 10.0)
+	line.custom_minimum_size = Vector2(7, MAT_COLLECTION_CONNECTOR_HEIGHT + 5.0)
 	line.size = line.custom_minimum_size
 	line.color = color.darkened(0.34)
 	line.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -494,7 +494,7 @@ func _mat_collection_module(mat_id: String, skill_id := "", action_id := "") -> 
 	panel.set_meta("mat_id", mat_id)
 	var background = RoundedTextureRect.new()
 	background.texture = host.visual_texture_cache._texture_or_visual_fallback(host.material_runtime.background_path(mat_id))
-	background.radius = 42.0
+	background.radius = 21.0
 	background.mask_inset = 0.0
 	background.corner_mask_mode = 1
 	background.art_height = MAT_COLLECTION_MODULE_SIZE.y
@@ -525,7 +525,7 @@ func _mat_collection_module(mat_id: String, skill_id := "", action_id := "") -> 
 	stack.add_theme_constant_override("separation", 11)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
-	var name_label = host._label(host.material_runtime.display_name(mat_id), 78, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var name_label = host._label(host.material_runtime.display_name(mat_id), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	name_label.add_theme_constant_override("outline_size", 9)
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -536,7 +536,7 @@ func _mat_collection_module(mat_id: String, skill_id := "", action_id := "") -> 
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(icon)
-	var amount_label = host._label(host.material_runtime.amount_text_for_host(mat_id, -1.0, host), 110, Color("#fff3b6"), HORIZONTAL_ALIGNMENT_CENTER)
+	var amount_label = host._label(host.material_runtime.amount_text_for_host(mat_id, -1.0, host), 55, Color("#fff3b6"), HORIZONTAL_ALIGNMENT_CENTER)
 	amount_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	amount_label.add_theme_constant_override("outline_size", 12)
 	amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -557,7 +557,7 @@ func _mat_honey_info_button() -> Button:
 	button.tooltip_text = ""
 	button.custom_minimum_size = Vector2(43, 43)
 	button.size = button.custom_minimum_size
-	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
+	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 56.0, 14.0)
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 32
@@ -600,10 +600,10 @@ func _mat_honey_info_popover() -> PanelContainer:
 	stack.add_theme_constant_override("separation", 4)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
-	var title = host._label("Honey Stamina", 64, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label("Honey Stamina", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
-	var body = host._label("Honey doubles stamina regen.\nEach honey consumed lasts 10 seconds.", 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var body = host._label("Honey doubles stamina regen.\nEach honey consumed lasts 10 seconds.", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(314, 155)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -617,7 +617,7 @@ func _mat_berry_info_button() -> Button:
 	button.tooltip_text = ""
 	button.custom_minimum_size = Vector2(43, 43)
 	button.size = button.custom_minimum_size
-	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
+	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 56.0, 14.0)
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 40
@@ -660,10 +660,10 @@ func _mat_berry_info_popover() -> PanelContainer:
 	stack.add_theme_constant_override("separation", 4)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
-	var title = host._label("Berry Mode", 64, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label("Berry Mode", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
-	var body = host._label("Tap Berries to enter Berry Mode.\nThen tap modules to mark or unmark them.\nMarked modules consume 1 Berries per completion, double XP, and double loot.", 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var body = host._label("Tap Berries to enter Berry Mode.\nThen tap modules to mark or unmark them.\nMarked modules consume 1 Berries per completion, double XP, and double loot.", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(314, 195)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -713,7 +713,7 @@ func _berry_prep_hover_style(pressed := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1.0, 0.25, 0.45, 0.14 if pressed else 0.07)
 	style.border_color = Color(1.0, 0.86, 0.50, 0.42 if pressed else 0.28)
-	style.set_border_width_all(8 if pressed else 0)
+	style.set_border_width_all(4 if pressed else 0)
 	style.corner_radius_top_left = 21
 	style.corner_radius_top_right = 21
 	style.corner_radius_bottom_left = 21
@@ -725,7 +725,7 @@ func _mat_collection_module_style(mat_id: String) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
 	style.bg_color = Color(1, 1, 1, 0.0)
 	style.border_color = host.COLOR_INK
-	style.set_border_width_all(10)
+	style.set_border_width_all(5)
 	style.corner_radius_top_left = 21
 	style.corner_radius_top_right = 21
 	style.corner_radius_bottom_left = 21
@@ -780,16 +780,16 @@ func _spawn_mat_collection_flyer(source: Control, target: Control, mat_id: Strin
 	flyer.pivot_offset = flyer.size * 0.5
 	var source_rect = source.get_global_rect()
 	var target_rect = target.get_global_rect()
-	var start = source_rect.get_center() - flyer.size * 0.5 + Vector2(randf_range(-34.0, 34.0), randf_range(-26.0, 18.0))
-	var end = target_rect.get_center() - flyer.size * 0.5 + Vector2(randf_range(-22.0, 22.0), randf_range(-18.0, 18.0))
+	var start = source_rect.get_center() - flyer.size * 0.5 + Vector2(randf_range(-17.0, 17.0), randf_range(-13.0, 9.0))
+	var end = target_rect.get_center() - flyer.size * 0.5 + Vector2(randf_range(-11.0, 11.0), randf_range(-9.0, 9.0))
 	var travel = end - start
 	var min_arc_x = minf(start.x, end.x)
 	var max_arc_x = maxf(start.x, end.x)
 	var midpoint = (start + end) * 0.5
 	var screen_center_x = host.get_viewport_rect().size.x * 0.5 - flyer.size.x * 0.5
 	var center_pull_x = lerpf(midpoint.x, screen_center_x, 0.36)
-	var arc_control_x = clampf(center_pull_x + randf_range(-42.0, 42.0), min_arc_x, max_arc_x)
-	var arc_lift = maxf(190.0, minf(360.0, travel.length() * randf_range(0.32, 0.48)))
+	var arc_control_x = clampf(center_pull_x + randf_range(-21.0, 21.0), min_arc_x, max_arc_x)
+	var arc_lift = maxf(95.0, minf(180.0, travel.length() * randf_range(0.32, 0.48)))
 	var arc_control = Vector2(arc_control_x, minf(start.y, end.y) - arc_lift)
 	flyer.position = start
 	flyer.scale = Vector2(0.62, 0.62)

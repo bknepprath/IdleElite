@@ -297,20 +297,41 @@ func _leaderboard_player_card() -> Control:
 	margin.add_theme_constant_override("margin_bottom", 14)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(margin)
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 17)
+	var row := Control.new()
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
-	row.add_child(host._profile_chat_overlay_surface().profile_avatar_frame(host.leaderboard_profile.avatar_index, Vector2(116, 116), true))
+	var avatar: Control = host._profile_chat_overlay_surface().profile_avatar_frame(host.leaderboard_profile.avatar_index, Vector2(116, 116), true)
+	avatar.anchor_left = 0.0
+	avatar.anchor_right = 0.0
+	avatar.anchor_top = 0.5
+	avatar.anchor_bottom = 0.5
+	avatar.offset_left = 0.0
+	avatar.offset_right = 116.0
+	avatar.offset_top = -58.0
+	avatar.offset_bottom = 58.0
+	row.add_child(avatar)
 	var copy := VBoxContainer.new()
-	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	copy.anchor_left = 0.0
+	copy.anchor_right = 1.0
+	copy.anchor_top = 0.5
+	copy.anchor_bottom = 0.5
+	copy.offset_left = 133.0
+	copy.offset_right = -337.0
+	copy.offset_top = -100.0
+	copy.offset_bottom = 100.0
+	copy.alignment = BoxContainer.ALIGNMENT_CENTER
 	copy.add_theme_constant_override("separation", 1)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
 	var eyebrow = host._label("Tap to edit profile", 48, Color("#22546c"), HORIZONTAL_ALIGNMENT_LEFT)
+	eyebrow.clip_text = true
+	eyebrow.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	copy.add_child(eyebrow)
 	var score = host._label(host.leaderboard_profile.display_name, 60, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	score.clip_text = true
 	score.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	score.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	score.add_theme_constant_override("outline_size", 5)
@@ -318,20 +339,30 @@ func _leaderboard_player_card() -> Control:
 	var rank_text = LeaderboardPresentation.player_rank_text(player_score, leaderboard_state.rows_for_category(category_id), leaderboard_state.TOP_COUNT)
 	var score_text = LeaderboardPresentation.format_score(leaderboard_state.valid_category_id(category_id), player_score, leaderboard_state.skill_level_for_category(category_id), leaderboard_state.total_xp_for_category(category_id), leaderboard_state.CATEGORY_TOTAL_LEVEL, leaderboard_state.CATEGORY_MEDALS, leaderboard_state.CATEGORY_ELITE_HEAVENLY, leaderboard_state.CATEGORY_SKILL_PREFIX, Callable(leaderboard_state, "skill_level_from_total_xp"))
 	var rank = host._label("%s  |  %s" % [score_text, rank_text if rank_text == "unranked" else "Rank %s" % rank_text], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
+	rank.clip_text = true
+	rank.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	copy.add_child(rank)
 	var status := VBoxContainer.new()
-	status.custom_minimum_size = Vector2(360, 0)
+	status.anchor_left = 1.0
+	status.anchor_right = 1.0
+	status.anchor_top = 0.5
+	status.anchor_bottom = 0.5
+	status.offset_left = -320.0
+	status.offset_right = 0.0
+	status.offset_top = -150.0
+	status.offset_bottom = 150.0
+	status.alignment = BoxContainer.ALIGNMENT_CENTER
 	status.add_theme_constant_override("separation", 4)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(status)
 	var status_title = host._label(LeaderboardPresentation.submit_status_title(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, leaderboard_state.last_submit_unix, leaderboard_state.submit_ready()), 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
 	status_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_title.custom_minimum_size = Vector2(360, 62)
+	status_title.custom_minimum_size = Vector2(320, 62)
 	status.add_child(status_title)
 	var simple_status = LeaderboardPresentation.simple_status_message(str(leaderboard_state.status_message))
 	var detail = host._label(LeaderboardPresentation.submit_status_detail(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_retry_wait_seconds(), host._online_runtime().leaderboard_auth_in_flight, host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, simple_status, leaderboard_state.last_submit_unix, leaderboard_state.queued_score(), leaderboard_state.has_pending_category_score(), leaderboard_state.submit_ready()), 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.custom_minimum_size = Vector2(360, 146)
+	detail.custom_minimum_size = Vector2(320, 146)
 	status.add_child(detail)
 	return card
 

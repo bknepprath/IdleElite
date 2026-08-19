@@ -87,7 +87,7 @@ Local implementation and validation completed on August 19, 2026.
 
 The strict skills performance test passed three consecutive runs. In the final full-project run, idle work averaged 0.84-0.90 ms per measured frame across the five skills, with p99 at 1.34-1.64 ms. Continuous scrolling remained below the test's 60 FPS p99 budget, and normal and rapid skill swipes completed with no visible placeholders or pending finalization. The isolated cold Fishing render completed in 94.741 ms; its visible cards were immediate and all 18 cards warmed within the bounded warm-up window.
 
-The final preview AAB is 167,728,344 bytes. The prior preview AAB was 200,937,011 bytes, so the migrated package is 33,208,667 bytes smaller, a 16.53% reduction.
+The final preview AAB is 167,729,295 bytes. The prior preview AAB was 200,937,011 bytes, so the migrated package is 33,207,716 bytes smaller, a 16.53% reduction.
 
 `scripts/check-project.ps1` passes with strict skills performance enabled, including native-1080 transition probes and a clean isolated user-data profile. The final preview AAB also exports successfully through `scripts/build-android-preview.ps1` while preserving `window/stretch/mode="viewport"`.
 

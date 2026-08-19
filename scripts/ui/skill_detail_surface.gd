@@ -9616,7 +9616,7 @@ func _detail_lazy_unmount_item(lazy_entry: Dictionary, skill_id: String, content
 	if DisplayServer.get_name() == "headless":
 		host.visual_texture_cache._fill_headless_null_textures(stack_host)
 	var cached_root: Control = null
-	var should_cache_unmounted_root = not host._fishing_rework_active_for_skill(skill_id)
+	var should_cache_unmounted_root = _detail_lazy_kind_is_module(kind)
 	if should_cache_unmounted_root and _detail_lazy_kind_is_module(kind):
 		for child in stack_host.get_children():
 			var child_control = child as Control

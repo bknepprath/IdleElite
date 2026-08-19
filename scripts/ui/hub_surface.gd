@@ -916,23 +916,23 @@ func _hub_tutorial_tip_control() -> Control:
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
 	stack.custom_minimum_size = Vector2(920, 0)
-	stack.add_theme_constant_override("separation", 23)
+	stack.add_theme_constant_override("separation", 15)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(stack)
 
-	var title := _label(HUB_TUTORIAL_TITLE, 126, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var title := _label(HUB_TUTORIAL_TITLE, 63, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_color_override("font_outline_color", COLOR_INK)
 	title.add_theme_constant_override("outline_size", 23)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
 
-	var body := _label(HUB_TUTORIAL_BODY, 82, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var body := _label(HUB_TUTORIAL_BODY, 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_theme_color_override("font_outline_color", COLOR_INK)
 	body.add_theme_constant_override("outline_size", 19)
-	body.add_theme_constant_override("line_spacing", 30)
+	body.add_theme_constant_override("line_spacing", 15)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return root
@@ -996,7 +996,7 @@ func _add_hub_decor(parent: Control) -> void:
 		var decor_type := str(entry.get("type", "decor"))
 		var index := int(entry.get("index", 0))
 		var decor_position := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
-		var display_size := Vector2(float(entry.get("w", 170.0)), float(entry.get("h", 170.0)))
+		var display_size := Vector2(float(entry.get("w", 85.0)), float(entry.get("h", 85.0)))
 		var item: TextureRect
 		if decor_type == "tree":
 			item = _hub_sheet_image("res://assets/content/hub/hub-tree-sheet.png", clampi(index, 0, 5), Vector2(512, 512), display_size)
@@ -1525,7 +1525,7 @@ func _update_hub_path_dots() -> void:
 	_update_hub_decor_visibility()
 
 func _hub_path_origin() -> Vector2:
-	return Vector2(HUB_FIELD_SIZE.x * 0.5, HUB_FIELD_SIZE.y + 220.0)
+	return Vector2(HUB_FIELD_SIZE.x * 0.5, HUB_FIELD_SIZE.y + 110.0)
 
 func _hub_route_seed(module_id: String) -> float:
 	var route_seed := 0.0
@@ -1536,7 +1536,7 @@ func _hub_route_seed(module_id: String) -> float:
 func _hub_path_blocker_rects() -> Array:
 	var rects := []
 	for raw_module_id in HUB_POSITION_ORDER:
-		rects.append(_hub_module_path_blocker_rect(str(raw_module_id), 8.0))
+		rects.append(_hub_module_path_blocker_rect(str(raw_module_id), 4.0))
 	return rects
 
 func _hub_path_target(module_id: String) -> Vector2:
@@ -1617,11 +1617,11 @@ func _hub_module_path_blocker_rect(module_id: String, padding: float) -> Rect2:
 	var target := _hub_path_target(module_id)
 	if module_id == "pond":
 		return _hub_module_collision_rect(module_id, padding)
-	var blocker_size := Vector2(maxf(visual_size.x * 0.52, 190.0), maxf(visual_size.y * 0.16, 92.0))
+	var blocker_size := Vector2(maxf(visual_size.x * 0.52, 95.0), maxf(visual_size.y * 0.16, 46.0))
 	return Rect2(target - blocker_size * 0.5 - Vector2(padding, padding), blocker_size + Vector2(padding * 2.0, padding * 2.0))
 
 func _hub_module_depth_z_index(module_id: String) -> int:
-	return 12 + int(clampf(_hub_module_center(module_id).y / 18.0, 0.0, 180.0))
+	return 12 + int(clampf(_hub_module_center(module_id).y / 9.0, 0.0, 180.0))
 
 func _hub_module_collision_rect(module_id: String, padding: float) -> Rect2:
 	return _hub_module_collision_rect_at(module_id, _hub_module_center(module_id), padding)
@@ -1629,7 +1629,7 @@ func _hub_module_collision_rect(module_id: String, padding: float) -> Rect2:
 func _hub_module_collision_rect_at(module_id: String, center: Vector2, padding: float) -> Rect2:
 	if module_id == "pond":
 		var visible_rect := _hub_module_visible_art_rect_at(module_id, center, _hub_detail_sprite_index(module_id))
-		var pond_size := Vector2(maxf(visible_rect.size.x * 0.62, 250.0), maxf(visible_rect.size.y * 0.18, 70.0))
+		var pond_size := Vector2(maxf(visible_rect.size.x * 0.62, 125.0), maxf(visible_rect.size.y * 0.18, 35.0))
 		var pond_center := visible_rect.position + Vector2(visible_rect.size.x * 0.5, visible_rect.size.y * 0.86)
 		return Rect2(pond_center - pond_size * 0.5 - Vector2(padding, padding), pond_size + Vector2(padding * 2.0, padding * 2.0))
 	var placement_size := _hub_module_placement_size(module_id)
@@ -1639,14 +1639,14 @@ func _hub_module_collision_rect_at(module_id: String, center: Vector2, padding: 
 func _hub_module_build_progress_rect(module_id: String) -> Rect2:
 	var smoke_rect := _hub_module_build_smoke_rect(module_id)
 	var countdown_size := Vector2(
-		clampf(smoke_rect.size.x * 0.54, 190.0, 260.0),
-		clampf(smoke_rect.size.y * 0.28, 96.0, 128.0)
+		clampf(smoke_rect.size.x * 0.54, 95.0, 130.0),
+		clampf(smoke_rect.size.y * 0.28, 48.0, 64.0)
 	)
 	return Rect2(smoke_rect.get_center() - countdown_size * 0.5, countdown_size)
 
 func _hub_module_build_smoke_rect(module_id: String) -> Rect2:
 	var visible_rect := _hub_module_visible_art_rect(module_id)
-	var smoke_size := clampf(visible_rect.size.x * 0.72, 350.0, 430.0)
+	var smoke_size := clampf(visible_rect.size.x * 0.72, 175.0, 215.0)
 	var center := visible_rect.get_center() + Vector2(0.0, -visible_rect.size.y * 0.08)
 	return Rect2(center - Vector2(smoke_size, smoke_size) * 0.5, Vector2(smoke_size, smoke_size))
 
@@ -1707,10 +1707,10 @@ func _refresh_hub_module_art(module_id: String) -> void:
 func _hub_module_placement_size(module_id: String) -> Vector2:
 	var visual_size := _hub_module_visual_size(module_id)
 	if module_id == "trophy":
-		return Vector2(maxf(visual_size.x * 0.58, 220.0), maxf(visual_size.y * 0.34, 96.0))
+		return Vector2(maxf(visual_size.x * 0.58, 110.0), maxf(visual_size.y * 0.34, 48.0))
 	if module_id == "pond":
-		return Vector2(maxf(visual_size.x * 0.30, 250.0), maxf(visual_size.y * 0.07, 70.0))
-	return Vector2(maxf(visual_size.x * 0.55, 250.0), maxf(visual_size.y * 0.22, 108.0))
+		return Vector2(maxf(visual_size.x * 0.30, 125.0), maxf(visual_size.y * 0.07, 35.0))
+	return Vector2(maxf(visual_size.x * 0.55, 125.0), maxf(visual_size.y * 0.22, 54.0))
 
 func _hub_module_placement_center(module_id: String, center: Vector2) -> Vector2:
 	var visual_size := _hub_module_visual_size(module_id)
@@ -1725,12 +1725,12 @@ func _hub_module_decor_clear_rect(module_id: String, padding: float) -> Rect2:
 	var center := _hub_module_center(module_id)
 	var clear_size := visual_size
 	if module_id == "trophy":
-		clear_size = Vector2(maxf(visual_size.x * 1.10, 450.0), maxf(visual_size.y * 0.92, 280.0))
+		clear_size = Vector2(maxf(visual_size.x * 1.10, 225.0), maxf(visual_size.y * 0.92, 140.0))
 	elif module_id == "pond":
 		var visible_rect := _hub_module_visible_art_rect(module_id)
-		return visible_rect.grow(padding + 80.0)
+		return visible_rect.grow(padding + 40.0)
 	else:
-		clear_size = Vector2(maxf(visual_size.x * 1.08, 590.0), maxf(visual_size.y * 0.90, 470.0))
+		clear_size = Vector2(maxf(visual_size.x * 1.08, 295.0), maxf(visual_size.y * 0.90, 235.0))
 	var clear_center := center + Vector2(0.0, visual_size.y * 0.11)
 	return Rect2(clear_center - clear_size * 0.5 - Vector2(padding, padding), clear_size + Vector2(padding * 2.0, padding * 2.0))
 
@@ -1744,7 +1744,7 @@ func _update_hub_decor_visibility() -> void:
 	if hub_path_dots != null and is_instance_valid(hub_path_dots):
 		eaten_rects.append_array(hub_path_dots.occupied_rects())
 	for raw_module_id in HUB_POSITION_ORDER:
-		eaten_rects.append(_hub_module_decor_clear_rect(str(raw_module_id), 64.0))
+		eaten_rects.append(_hub_module_decor_clear_rect(str(raw_module_id), 32.0))
 	var live_items := []
 	for item in hub_decor_items:
 		if typeof(item) != TYPE_DICTIONARY:
@@ -2170,9 +2170,12 @@ func _hub_bubble_style() -> StyleBoxFlat:
 func _hub_sheet_image(path: String, index: int, cell_size: Vector2, display_size: Vector2) -> TextureRect:
 	var image := TextureRect.new()
 	image.texture = _hub_sheet_or_visual_fallback(path, index, cell_size)
-	image.custom_minimum_size = display_size
-	image.size = display_size
 	image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	image.custom_minimum_size = display_size
+	# The 4K layout inherited the source atlas cell as a minimum render size
+	# because expand mode was applied after sizing. Preserve that authored
+	# appearance at half scale without keeping 4K screen-space geometry.
+	image.size = Vector2(maxf(display_size.x, cell_size.x * 0.5), maxf(display_size.y, cell_size.y * 0.5))
 	image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	image.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return image

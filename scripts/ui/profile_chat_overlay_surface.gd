@@ -453,8 +453,8 @@ func _build_chat_strip() -> void:
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 23)
 	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_top", 9)
-	margin.add_theme_constant_override("margin_bottom", 9)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 5)
 	chat_strip.add_child(margin)
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -486,21 +486,21 @@ func _build_chat_strip() -> void:
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
 	copy.add_theme_constant_override("separation", 2)
 	row.add_child(copy)
-	chat_strip_line_one = host._label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_one = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_strip_line_one.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
 	chat_strip_line_one.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_one.autowrap_mode = TextServer.AUTOWRAP_OFF
 	chat_strip_line_one.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_one.clip_text = true
-	chat_strip_line_one.custom_minimum_size = Vector2(0, 42)
+	chat_strip_line_one.custom_minimum_size = Vector2(0, 48)
 	copy.add_child(chat_strip_line_one)
-	chat_strip_line_two = host._label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_two = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_strip_line_two.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
 	chat_strip_line_two.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_two.autowrap_mode = TextServer.AUTOWRAP_OFF
 	chat_strip_line_two.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_two.clip_text = true
-	chat_strip_line_two.custom_minimum_size = Vector2(0, 42)
+	chat_strip_line_two.custom_minimum_size = Vector2(0, 48)
 	copy.add_child(chat_strip_line_two)
 	_update_chat_strip()
 

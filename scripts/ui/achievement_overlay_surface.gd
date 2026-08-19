@@ -1426,9 +1426,9 @@ func _apply_achievements_modal_tab_style(button: Button, active: bool) -> void:
 	var fill = Color("#959088") if active else host.COLOR_BLUE
 	var hover_fill = fill if active else fill.lightened(0.06)
 	var pressed = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 48))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(hover_fill, 48))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed, 48, 72, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 36))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(hover_fill, 24, 36))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed, 24, 36, true))
 
 func _set_achievements_modal_tab(tab: String) -> void:
 	achievements_modal_tab = tab
@@ -1632,9 +1632,9 @@ func _achievement_log_card(achievement: Dictionary, show_progress = true) -> Con
 	var completed = bool(achievement.get("completed", false))
 	var accent = Color(str(achievement.get("accent", "#f4bf35")))
 	var card = PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 326 if show_progress else 276)
+	card.custom_minimum_size = Vector2(0, 163 if show_progress else 138)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.add_theme_stylebox_override("panel", AchievementPresentation.card(Color("#fffdf8") if completed else Color("#fff6e1"), 34, 34, Callable(host, "_surface_style")))
+	card.add_theme_stylebox_override("panel", AchievementPresentation.card(Color("#fffdf8") if completed else Color("#fff6e1"), 17, 17, Callable(host, "_surface_style")))
 	card.modulate = Color.WHITE if completed else Color(1, 1, 1, 0.78)
 	var stack = VBoxContainer.new()
 	stack.add_theme_constant_override("separation", 11)
@@ -1648,16 +1648,16 @@ func _achievement_log_card(achievement: Dictionary, show_progress = true) -> Con
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 4)
 	row.add_child(copy)
-	var title_label = host._label(str(achievement.get("title", "")), 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title_label = host._label(str(achievement.get("title", "")), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(title_label)
-	var subtitle_label = host._label(str(achievement.get("subtitle", "")), 64, accent if completed else host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var subtitle_label = host._label(str(achievement.get("subtitle", "")), 48, accent if completed else host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(subtitle_label)
-	var reward_label = host._label(str(achievement.get("reward", "")), 60, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var reward_label = host._label(str(achievement.get("reward", "")), 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	reward_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(reward_label)
 	if show_progress:
-		stack.add_child(ThemeStyles.progress_bar(accent, 36, AchievementPresentation.progress_pct(achievement)))
+		stack.add_child(ThemeStyles.progress_bar(accent, 18, AchievementPresentation.progress_pct(achievement)))
 	return card
 

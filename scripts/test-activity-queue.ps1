@@ -386,6 +386,8 @@ func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -
 	_assert(absf(float(SkillState.host_stamina_value(skill_id, scene)) - (before_stamina + 1.0)) < 0.001, "queue active shelf Gage tap should eat one fish into stamina")
 	_assert(absf(_fish_currency(scene) - (before_fish - 1.0)) < 0.001, "queue active shelf Gage tap should spend one fish")
 	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
+	scene.call("_tutorial_overlay_surface").call("_dismiss_blocking_tip")
+	scene.call("_input_routing_shell").set("modal_background_input_block_until_msec", 0)
 
 
 func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
@@ -433,15 +435,17 @@ func _assert_queue_page_clear_button(scene: Node, first_key: String, second_key:
 
 
 func _assert_queue_page_card_can_start_queue(scene: Node, module_key: String) -> void:
+	for _i in range(4):
+		await process_frame
 	var card := _registered_card_for_module_key(scene, str(module_key))
 	_assert(not card.is_empty(), "queue page should register queued module card")
 	_assert(str(scene.call("_skill_swipe_activity_surface").call("_activity_queue_module_key_for_card", card)) == str(module_key), "queue page card should resolve to queued module key")
 	var pop := card.get("pop", null) as Control
 	_assert(pop != null and is_instance_valid(pop), "queue page card should have a visible pop control")
-	var press_position := pop.get_global_rect().get_center()
+	var press_position := _card_body_tap_point(pop)
 	_assert(_truthy(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", press_position)), "queue page card should be inside the action viewport")
 	scene.call("_input", _mouse_button_event(press_position, true))
-	var captured_press_key := str(scene.get("action_card_press_key"))
+	var captured_press_key := str(scene.call("_skill_detail_surface").get("action_card_press_key"))
 	_assert(not captured_press_key.is_empty(), "queue page card press should capture the normal action-card press key")
 	scene.call("_input", _mouse_button_event(press_position, false))
 	for _i in range(4):

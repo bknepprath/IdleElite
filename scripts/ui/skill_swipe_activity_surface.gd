@@ -3854,15 +3854,15 @@ func _activity_queue_list_button(content_width: float, node_name: String, label_
 	holder.name = "ActivityQueueListButtonRow"
 	holder.custom_minimum_size = Vector2(content_width, 210)
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	holder.add_theme_constant_override("margin_left", 55)
-	holder.add_theme_constant_override("margin_right", 55)
-	holder.add_theme_constant_override("margin_top", 10)
-	holder.add_theme_constant_override("margin_bottom", 10)
+	holder.add_theme_constant_override("margin_left", 110)
+	holder.add_theme_constant_override("margin_right", 110)
+	holder.add_theme_constant_override("margin_top", 19)
+	holder.add_theme_constant_override("margin_bottom", 19)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var button := Button.new()
 	button.name = node_name
 	button.text = label_text
-	button.custom_minimum_size = Vector2(0, 86)
+	button.custom_minimum_size = Vector2(0, 172)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	button.clip_contents = false
@@ -3894,10 +3894,10 @@ func _activity_queue_empty_description(content_width: float) -> Control:
 	holder.name = "ActivityQueueEmptyDescription"
 	holder.custom_minimum_size = Vector2(content_width, 235)
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	holder.add_theme_constant_override("margin_left", 40)
-	holder.add_theme_constant_override("margin_right", 40)
-	holder.add_theme_constant_override("margin_top", 5)
-	holder.add_theme_constant_override("margin_bottom", 9)
+	holder.add_theme_constant_override("margin_left", 80)
+	holder.add_theme_constant_override("margin_right", 80)
+	holder.add_theme_constant_override("margin_top", 9)
+	holder.add_theme_constant_override("margin_bottom", 18)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var label: Label = host._label(
 		"Tap Set Queue, then choose activities from the skills list. Start any queued activity here and your character will try the queue in order, moving down when stamina runs low.",
