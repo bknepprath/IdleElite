@@ -471,7 +471,7 @@ func _check_pinned_page_stop_leaves_blank_active_shelf(scene: Node) -> void:
 	if shelf == null or not is_instance_valid(shelf):
 		_record("pinned-page stop shelf smoke did not render shelf")
 		return
-	if shelf.custom_minimum_size.y < 650.0:
+	if shelf.custom_minimum_size.y < 325.0:
 		_record("pinned-page stop shelf smoke did not expand before stop. height=%s" % shelf.custom_minimum_size.y)
 	scene.call("_action_runtime").call("_stop_running_action", str(parts[0]), str(parts[1]))
 	for _i in range(24):
@@ -479,7 +479,7 @@ func _check_pinned_page_stop_leaves_blank_active_shelf(scene: Node) -> void:
 		await process_frame
 	var active_content := _find_named_descendant(scene, "PinnedActivitiesActiveShelfContent") as Control
 	var navigation_shell = scene.call("_navigation_shell")
-	if shelf.custom_minimum_size.y < 650.0:
+	if shelf.custom_minimum_size.y < 325.0:
 		_record("pinned-page stop did not preserve blank active shelf spacing. height=%s running=%s:%s shelf_skill=%s" % [
 			shelf.custom_minimum_size.y,
 			str(scene.get("running_skill_id")),
@@ -541,14 +541,24 @@ func _check_pinned_page_opportunity_feedback_targets_visible_card(scene: Node) -
 	if not rail.has_opportunity_progress(float(scene.get("action_progress"))):
 		_record("pinned-page opportunity rail did not expose a hittable opportunity window. windows=%s progress=%s" % [str(rail.opportunity_windows), str(scene.get("action_progress"))])
 		return
+	scene.call("_action_runtime").set("last_action_opportunity_tap_key", "")
+	scene.call("_action_runtime").set("last_action_opportunity_tap_msec", 0)
+	scene.call("_action_runtime").set("action_opportunity_consumed", false)
+	scene.call("_action_runtime").set("action_opportunity_missed", false)
 	var hit := bool(scene.call("_action_runtime").call("_try_action_opportunity_click", skill_id, action_id, rail.get_global_rect().get_center()))
+	if hit and str(rail.opportunity_feedback_mode) != "success":
+		var feedback_rail := scene.call("_reward_feedback_surface").call("_visible_action_opportunity_rail", skill_id, action_id) as Object
+		_record("pinned-page opportunity click did not start success feedback on visible rail. mode=%s rail=%s feedback_rail=%s card_key=%s" % [
+			str(rail.opportunity_feedback_mode),
+			str(rail.get_instance_id()),
+			str(feedback_rail.get_instance_id() if feedback_rail != null else -1),
+			card_key
+		])
 	for _i in range(3):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
 	if not hit:
 		_record("pinned-page opportunity click did not report a hit")
-	if str(rail.opportunity_feedback_mode) != "success":
-		_record("pinned-page opportunity click did not shake/play success feedback on visible rail. mode=%s" % str(rail.opportunity_feedback_mode))
 	if _find_text_descendant(scene, "nice!") == null:
 		_record("pinned-page opportunity click did not create visible opportunity text feedback")
 	var reward_float_count_before := _count_nodes_in_group(scene, "skill_reward_float")
@@ -683,7 +693,7 @@ func _check_pinned_page_thieving_jail_bars_reduce_time(scene: Node) -> void:
 	var shelf := _find_named_descendant(scene, "PinnedActivitiesActiveShelf") as Control
 	if shelf == null or not is_instance_valid(shelf):
 		_record("pinned-page jailed thieving state did not render active shelf")
-	elif shelf.custom_minimum_size.y < 650.0:
+	elif shelf.custom_minimum_size.y < 325.0:
 		_record("pinned-page jailed thieving state collapsed the active shelf. height=%s" % shelf.custom_minimum_size.y)
 	var active_content := _find_named_descendant(scene, "PinnedActivitiesActiveShelfContent") as Control
 	if active_content == null or not is_instance_valid(active_content):
@@ -793,7 +803,7 @@ func _check_empty_pinned_page_decor_pins(scene: Node) -> void:
 		var seam := _find_named_descendant(host, "ModulePinEntrySeam") as Line2D
 		if seam == null:
 			_record("empty pinned page decor badge is missing its card-entry seam. index=%s" % index)
-		elif not seam.visible or seam.width < 7.0 or not seam.default_color.is_equal_approx(Color.BLACK):
+		elif not seam.visible or seam.width < 3.5 or not seam.default_color.is_equal_approx(Color.BLACK):
 			_record("empty pinned page decor seam should be a visible thick black line. index=%s" % index)
 	var varied_positions := false
 	if positions.size() > 1:
@@ -884,7 +894,7 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 	var initial_shelf := _find_named_descendant(scene, "PinnedActivitiesActiveShelf") as Control
 	if initial_shelf == null or not is_instance_valid(initial_shelf):
 		_record("inactive pinned shelf did not render shelf control")
-	elif initial_shelf.custom_minimum_size.y < 650.0:
+	elif initial_shelf.custom_minimum_size.y < 325.0:
 		_record("inactive pinned shelf did not reserve active shelf spacing. height=%s" % initial_shelf.custom_minimum_size.y)
 	var initial_active_content := _find_named_descendant(scene, "PinnedActivitiesActiveShelfContent") as Control
 	if initial_active_content != null and is_instance_valid(initial_active_content) and initial_active_content.modulate.a > 0.1:
@@ -916,7 +926,7 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 	if shelf == null or not is_instance_valid(shelf):
 		_record("active pinned shelf did not render shelf control")
 		return
-	if shelf.custom_minimum_size.y < 650.0:
+	if shelf.custom_minimum_size.y < 325.0:
 		_record("active pinned shelf did not expand. height=%s" % shelf.custom_minimum_size.y)
 	var active_content := _find_named_descendant(scene, "PinnedActivitiesActiveShelfContent") as Control
 	if active_content == null or not is_instance_valid(active_content):
@@ -985,7 +995,7 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 		_record("active pinned shelf did not create the shared skill detail shadow")
 	elif not shelf_shadow.visible:
 		_record("active pinned shelf shadow did not become visible after scrolling")
-	elif absf(shelf_shadow.offset_top - (shelf.custom_minimum_size.y + 18.0)) > 2.0:
+	elif absf(shelf_shadow.offset_top - (shelf.custom_minimum_size.y + 9.0)) > 2.0:
 		_record("active pinned shelf shadow is not attached to the divider edge. shadow=%s shelf=%s" % [shelf_shadow.offset_top, shelf.custom_minimum_size.y])
 	var capture_path := OS.get_environment("IDLE_ELITE_PINNED_PAGE_INTERACTIONS_PNG")
 	if not capture_path.is_empty():

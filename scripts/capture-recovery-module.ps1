@@ -1,8 +1,8 @@
 param(
-    [int]$ViewportWidth = 2160,
-    [int]$ViewportHeight = 3840,
-    [int]$WindowWidth = 627,
-    [int]$WindowHeight = 1115
+    [int]$ViewportWidth = 1080,
+    [int]$ViewportHeight = 1920,
+    [int]$WindowWidth = 1080,
+    [int]$WindowHeight = 1920
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,7 +40,7 @@ func _run() -> void:
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "60")
 	var capture_size := Vector2i($ViewportWidth, $ViewportHeight)
 	var window_size := Vector2i($WindowWidth, $WindowHeight)
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	root.content_scale_size = capture_size
 	root.size = window_size

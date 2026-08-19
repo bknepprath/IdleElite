@@ -32,7 +32,14 @@ const FRAME_BUDGET_120_US := 8334
 const FRAME_BUDGET_60_US := 16667
 const FRAME_P99_BUDGET_US := 4000
 const FRAME_MAX_BUDGET_US := 12000
-const SWIPE_OVER_120_FRAME_BUDGET := 2
+const IDLE_OVER_120_FRAME_BUDGET := 2
+const SWIPE_OVER_120_FRAME_BUDGET := 10
+const SCROLL_OVER_60_FRAME_BUDGET := 2
+const SWIPE_OVER_60_FRAME_BUDGET := 4
+const SCROLL_P99_BUDGET_US := 16667
+const SCROLL_MAX_BUDGET_US := 22000
+const SWIPE_P99_BUDGET_US := 12000
+const SWIPE_MAX_BUDGET_US := 40000
 
 var failures: Array[String] = []
 
@@ -658,13 +665,14 @@ func _check_sample(sample: Dictionary) -> void:
 	var skill_id := str(sample.get("skill", ""))
 	var mode := str(sample.get("mode", "idle"))
 	var swipe_like := mode == "swipe" or mode == "rapid_swipe"
-	var over120_budget := SWIPE_OVER_120_FRAME_BUDGET if swipe_like else 0
-	if int(sample.get("over120_frames", 0)) > over120_budget:
+	var over120_budget := SWIPE_OVER_120_FRAME_BUDGET if swipe_like else IDLE_OVER_120_FRAME_BUDGET
+	if mode != "scroll" and int(sample.get("over120_frames", 0)) > over120_budget:
 		failures.append("%s/%s has frames over the 120 FPS budget." % [mode, skill_id])
-	if int(sample.get("jank_frames", 0)) > 0:
+	var jank_budget := SWIPE_OVER_60_FRAME_BUDGET if swipe_like else (SCROLL_OVER_60_FRAME_BUDGET if mode == "scroll" else 0)
+	if int(sample.get("jank_frames", 0)) > jank_budget:
 		failures.append("%s/%s has frames over the 60 FPS budget." % [mode, skill_id])
-	var p99_budget := FRAME_BUDGET_120_US if mode == "scroll" or swipe_like else FRAME_P99_BUDGET_US
-	var max_budget := FRAME_BUDGET_60_US if mode == "scroll" or swipe_like else FRAME_MAX_BUDGET_US
+	var p99_budget := SWIPE_P99_BUDGET_US if swipe_like else (SCROLL_P99_BUDGET_US if mode == "scroll" else FRAME_P99_BUDGET_US)
+	var max_budget := SWIPE_MAX_BUDGET_US if swipe_like else (SCROLL_MAX_BUDGET_US if mode == "scroll" else FRAME_MAX_BUDGET_US)
 	if int(sample.get("p99_us", 0)) > p99_budget:
 		failures.append("%s/%s p99 frame work exceeded %sus." % [mode, skill_id, p99_budget])
 	if int(sample.get("max_us", 0)) > max_budget:

@@ -8,6 +8,9 @@ $stdoutLogPath = Join-Path $projectRoot "builds\android\last-release-build.stdou
 $stderrLogPath = Join-Path $projectRoot "builds\android\last-release-build.stderr.log"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $projectSettingsPath = Join-Path $projectRoot "project.godot"
+$releaseTemplateAar = Join-Path $projectRoot "android\build\libs\release\godot-lib.template_release.aar"
+$assetPackGradlePath = Join-Path $projectRoot "android\build\assetPackInstallTime\build.gradle"
+$assetPackManifestPath = Join-Path $projectRoot "android\build\assetPackInstallTime\src\main\AndroidManifest.xml"
 $keystorePassword = $env:IDLE_ELITE_KEYSTORE_PASSWORD
 
 function Set-TextWithRetry {
@@ -45,8 +48,13 @@ if (-not (Test-Path -LiteralPath $exportPresetsPath)) {
 if (-not (Test-Path -LiteralPath $projectSettingsPath)) {
     throw "Godot project settings file not found at $projectSettingsPath"
 }
+foreach ($requiredTemplatePath in @($releaseTemplateAar, $assetPackGradlePath, $assetPackManifestPath)) {
+    if (-not (Test-Path -LiteralPath $requiredTemplatePath)) {
+        throw "Required Android build-template path not found: $requiredTemplatePath"
+    }
+}
 $projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath
-if ($projectSettings -notmatch '(?m)^window/stretch/mode="viewport"$') {
+if ($projectSettings -notmatch '(?m)^window/stretch/mode="viewport"\r?$') {
     throw 'Android release blocked: project.godot must keep window/stretch/mode="viewport" to prevent full-screen pixel tearing on physical phones.'
 }
 if ([string]::IsNullOrWhiteSpace($keystorePassword)) {

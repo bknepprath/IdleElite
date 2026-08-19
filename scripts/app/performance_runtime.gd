@@ -438,26 +438,26 @@ class _PerfMonitor extends Node:
 
 		_overlay_panel = PanelContainer.new()
 		_overlay_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		_overlay_panel.offset_left = 28
-		_overlay_panel.offset_top = 28
-		_overlay_panel.custom_minimum_size = Vector2(880, 430)
+		_overlay_panel.offset_left = 14
+		_overlay_panel.offset_top = 14
+		_overlay_panel.custom_minimum_size = Vector2(440, 215)
 		_overlay_panel.add_theme_stylebox_override("panel", _overlay_style())
 		_overlay_layer.add_child(_overlay_panel)
 
 		var margin := MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 28)
-		margin.add_theme_constant_override("margin_top", 22)
-		margin.add_theme_constant_override("margin_right", 28)
-		margin.add_theme_constant_override("margin_bottom", 22)
+		margin.add_theme_constant_override("margin_left", 14)
+		margin.add_theme_constant_override("margin_top", 11)
+		margin.add_theme_constant_override("margin_right", 14)
+		margin.add_theme_constant_override("margin_bottom", 11)
 		_overlay_panel.add_child(margin)
 
 		_overlay_label = Label.new()
 		_overlay_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-		_overlay_label.add_theme_font_size_override("font_size", 42)
+		_overlay_label.add_theme_font_size_override("font_size", 48)
 		_overlay_label.add_theme_color_override("font_color", Color.WHITE)
 		_overlay_label.add_theme_color_override("font_shadow_color", Color.BLACK)
-		_overlay_label.add_theme_constant_override("shadow_offset_x", 2)
-		_overlay_label.add_theme_constant_override("shadow_offset_y", 2)
+		_overlay_label.add_theme_constant_override("shadow_offset_x", 1)
+		_overlay_label.add_theme_constant_override("shadow_offset_y", 1)
 		margin.add_child(_overlay_label)
 
 
@@ -472,14 +472,14 @@ class _PerfMonitor extends Node:
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color(0.03, 0.03, 0.03, 0.84)
 		style.border_color = Color(1.0, 1.0, 1.0, 0.55)
-		style.border_width_left = 4
-		style.border_width_top = 4
-		style.border_width_right = 4
-		style.border_width_bottom = 4
-		style.corner_radius_top_left = 18
-		style.corner_radius_top_right = 18
-		style.corner_radius_bottom_left = 18
-		style.corner_radius_bottom_right = 18
+		style.border_width_left = 2
+		style.border_width_top = 2
+		style.border_width_right = 2
+		style.border_width_bottom = 2
+		style.corner_radius_top_left = 9
+		style.corner_radius_top_right = 9
+		style.corner_radius_bottom_left = 9
+		style.corner_radius_bottom_right = 9
 		return style
 
 

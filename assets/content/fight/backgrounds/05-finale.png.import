@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c77hdeclba6sx"
-path="res://.godot/imported/05-finale.png-dbb7cc632eee5347a63d3ae63f6d508f.ctex"
+path.bptc="res://.godot/imported/05-finale.png-dbb7cc632eee5347a63d3ae63f6d508f.bptc.ctex"
+path.astc="res://.godot/imported/05-finale.png-dbb7cc632eee5347a63d3ae63f6d508f.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/backgrounds/05-finale.png"
-dest_files=["res://.godot/imported/05-finale.png-dbb7cc632eee5347a63d3ae63f6d508f.ctex"]
+dest_files=["res://.godot/imported/05-finale.png-dbb7cc632eee5347a63d3ae63f6d508f.bptc.ctex", "res://.godot/imported/05-finale.png-dbb7cc632eee5347a63d3ae63f6d508f.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

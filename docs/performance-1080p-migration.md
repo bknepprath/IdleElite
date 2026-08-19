@@ -72,3 +72,23 @@ The half-resolution diagnostics were not accepted because runtime scaling and `c
 4. Capture and inspect the real game at 1080 x 1920 through the production main scene.
 5. Record cold PSS, graphics memory, native heap, and repeated-navigation PSS with `scripts/measure-android-memory.ps1` against `com.idleelite.game.preview`.
 6. Verify that no agent-owned headless Godot process remains.
+
+## Completed migration results
+
+Local implementation and validation completed on August 19, 2026.
+
+| Phase | Result |
+|---|---|
+| Phase 0 | Fresh-worktree validation, native-1080 migration contracts, Android viewport guards, and mobile text-size contracts pass. |
+| Phase 1 | The production viewport and authored UI are 1080 x 1920. Production captures cover the menu, settings, every skill page, Hub, pinned, queue, achievements, profile, leaderboard, shop, chat, Thieving heist, and Berry prep surfaces. |
+| Phase 2 | Runtime texture imports use Android VRAM compression where appropriate, non-scaled UI disables mipmaps, oversized source files are excluded from exports, and four reviewed runtime atlases were re-authored for 1080p. |
+| Phase 3 | Screen-scoped texture ownership, adjacent-swipe caching, bounded lazy mounting, inactive-tree teardown, and navigation-loop resource tests are implemented. Four resource-lifetime cycles remain exactly stable at 2,604 objects, 308 nodes, 8 textures, 0 atlases, and 4 root children. |
+| Phase 4 | Extended SFX load by category, music streams are released when song sets change, unused source audio is excluded, and idle warm-cache/static-refresh loops are bounded. |
+
+The strict skills performance test passed three consecutive runs. Across those runs, Fishing idle averaged 0.82-0.98 ms per measured frame with p99 at 1.48-1.68 ms. Continuous scrolling remained below the test's 60 FPS p99 budget, and normal and rapid skill swipes completed with no visible placeholders or pending finalization.
+
+The final preview AAB is 167,728,673 bytes. The prior preview AAB was 200,937,011 bytes, so the migrated package is 33,208,338 bytes smaller, a 16.53% reduction.
+
+`scripts/check-project.ps1` passes with strict skills performance enabled. The final preview AAB also exports successfully through `scripts/build-android-preview.ps1` while preserving `window/stretch/mode="viewport"`.
+
+Physical Android PSS, graphics-memory, native-heap, rendering, and touch-offset gates still require a connected phone. No Android device was attached during the final local validation, so the 400-450 MB physical-device target has not been claimed as measured.

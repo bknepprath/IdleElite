@@ -60,7 +60,6 @@ extends SceneTree
 
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 const CAPTURE_SIZE := Vector2i(1080, 1920)
-const DESIGN_SIZE := Vector2i(2160, 3840)
 
 var scene: Node
 var capture_dir := ""
@@ -76,9 +75,9 @@ func _run() -> void:
 	var capture := OS.get_environment("IDLE_ELITE_TUTORIAL_LIVE_GUIDANCE_CAPTURE") == "1"
 	capture_enabled = capture
 	if capture:
-		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
-		root.content_scale_size = DESIGN_SIZE
+		root.content_scale_size = CAPTURE_SIZE
 		root.size = CAPTURE_SIZE
 		DisplayServer.window_set_size(CAPTURE_SIZE)
 		capture_dir = OS.get_environment("IDLE_ELITE_TUTORIAL_LIVE_GUIDANCE_CAPTURE_DIR")
@@ -400,7 +399,7 @@ func _starter_card_ready() -> bool:
 		return false
 	if not pop.is_visible_in_tree() or not bg.is_visible_in_tree() or not art_panel.is_visible_in_tree() or not title.is_visible_in_tree():
 		return false
-	if pop.size.x < 1000.0 or pop.size.y < 500.0 or bg.size.x < 1000.0 or art.size.x < 200.0:
+	if pop.size.x < 500.0 or pop.size.y < 250.0 or bg.size.x < 500.0 or art.size.x < 100.0:
 		return false
 	if title.text.strip_edges().is_empty() or title.modulate.a <= 0.05 or title.self_modulate.a <= 0.05:
 		return false
@@ -509,7 +508,7 @@ func _assert_guidance(label: String, expected_text: String) -> void:
 	if arrow == null or not arrow.is_visible_in_tree():
 		_fail("%s arrow is not visible" % label)
 		return
-	if arrow.size.distance_to(Vector2(260, 420)) > 1.0:
+	if arrow.size.distance_to(Vector2(130, 210)) > 1.0:
 		_fail("%s arrow is not phone-sized: %s" % [label, str(arrow.size)])
 		return
 	if label == "starter" and not _starter_card_ready():
@@ -560,7 +559,7 @@ func _assert_guidance(label: String, expected_text: String) -> void:
 		var windows := target.get("opportunity_windows") as Array
 		var rail_rect := target.get_global_rect()
 		var first_window := windows[0] as Vector2 if not windows.is_empty() else Vector2(-1.0, -1.0)
-		var expected_window_rect := Rect2(Vector2(rail_rect.position.x + rail_rect.size.x * first_window.x, rail_rect.position.y - 18.0), Vector2(rail_rect.size.x * (first_window.y - first_window.x), rail_rect.size.y + 36.0))
+		var expected_window_rect := Rect2(Vector2(rail_rect.position.x + rail_rect.size.x * first_window.x, rail_rect.position.y - 9.0), Vector2(rail_rect.size.x * (first_window.y - first_window.x), rail_rect.size.y + 18.0))
 		if windows.is_empty() or target_rect.position.distance_to(expected_window_rect.position) > 1.0 or target_rect.size.distance_to(expected_window_rect.size) > 1.0:
 			_fail("silver arrow target does not equal first opportunity window")
 			return

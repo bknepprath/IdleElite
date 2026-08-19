@@ -1,6 +1,57 @@
 var texture_cache := {}
 var atlas_texture_cache := {}
 var fishing_ablation_enabled := Callable()
+var runtime_scope_generation := 0
+var texture_scope_generation := {}
+var atlas_scope_generation := {}
+
+
+func begin_runtime_scope() -> void:
+	runtime_scope_generation += 1
+
+
+func finish_runtime_scope() -> void:
+	if runtime_scope_generation <= 0:
+		return
+	for raw_key in texture_cache.keys().duplicate():
+		var key := str(raw_key)
+		if key.begins_with("__"):
+			continue
+		if int(texture_scope_generation.get(key, -1)) == runtime_scope_generation:
+			continue
+		texture_cache.erase(key)
+		texture_scope_generation.erase(key)
+	for raw_key in atlas_texture_cache.keys().duplicate():
+		var key := str(raw_key)
+		if int(atlas_scope_generation.get(key, -1)) == runtime_scope_generation:
+			continue
+		atlas_texture_cache.erase(key)
+		atlas_scope_generation.erase(key)
+
+
+func clear_runtime_cache() -> void:
+	texture_cache.clear()
+	atlas_texture_cache.clear()
+	texture_scope_generation.clear()
+	atlas_scope_generation.clear()
+	runtime_scope_generation = 0
+
+
+func runtime_cache_counts() -> Dictionary:
+	return {
+		"textures": texture_cache.size(),
+		"atlases": atlas_texture_cache.size(),
+	}
+
+
+func _touch_texture_scope(key: String) -> void:
+	if runtime_scope_generation > 0 and not key.begins_with("__"):
+		texture_scope_generation[key] = runtime_scope_generation
+
+
+func _touch_atlas_scope(key: String) -> void:
+	if runtime_scope_generation > 0:
+		atlas_scope_generation[key] = runtime_scope_generation
 
 
 func _res_path(path: String) -> String:
@@ -53,21 +104,25 @@ func _atlas_texture(path: String, region: Rect2, filter_clip := false, fishing_a
 		str(filter_clip)
 	]
 	if atlas_texture_cache.has(cache_key):
+		_touch_atlas_scope(cache_key)
 		return atlas_texture_cache[cache_key] as Texture2D
 	if DisplayServer.get_name() == "headless":
 		var headless_fallback := _visual_fallback_texture()
 		atlas_texture_cache[cache_key] = headless_fallback
+		_touch_atlas_scope(cache_key)
 		return headless_fallback
 	var source := _texture(normalized, fishing_ablation_enabled)
 	if source == null:
 		var fallback := _visual_fallback_texture()
 		atlas_texture_cache[cache_key] = fallback
+		_touch_atlas_scope(cache_key)
 		return fallback
 	var atlas := AtlasTexture.new()
 	atlas.atlas = source
 	atlas.region = region
 	atlas.filter_clip = filter_clip
 	atlas_texture_cache[cache_key] = atlas
+	_touch_atlas_scope(cache_key)
 	return atlas
 
 
@@ -167,6 +222,7 @@ func _texture(path: String, fishing_ablation_enabled := Callable()) -> Texture2D
 	if path.is_empty():
 		return null
 	var normalized := _res_path(path)
+	_touch_texture_scope(normalized)
 	var active_fishing_ablation_enabled := fishing_ablation_enabled if fishing_ablation_enabled.is_valid() else self.fishing_ablation_enabled
 	if active_fishing_ablation_enabled.is_valid() and bool(active_fishing_ablation_enabled.call("no_art")) and _path_is_fishing_visual(normalized):
 		var ablation_key := "__fishing_ablation_no_art__"

@@ -18,13 +18,13 @@ const HUB_BUILD_SMOKE_SHEET := "res://assets/content/hub/hub-build-cloud-solid-s
 const HUB_BUILD_SMOKE_FRAME_COUNT := 4
 const HUB_SPEND_BURST_MIN_ICONS := 7
 const HUB_SPEND_BURST_MAX_ICONS := 12
-const HUB_SPEND_BURST_ICON_SIZE := Vector2(92, 92)
-const HUB_FIELD_SIZE := Vector2(2160, 3060)
-const HUB_MODULE_BOTTOM_DRAG_MARGIN := 24.0
+const HUB_SPEND_BURST_ICON_SIZE := Vector2(46, 46)
+const HUB_FIELD_SIZE := Vector2(1080, 1530)
+const HUB_MODULE_BOTTOM_DRAG_MARGIN := 12.0
 const HUB_MISSION_BOARD_TEXTURE := "res://assets/content/hub/hub-mission-board-popup.png"
-const HUB_MISSION_BOARD_ART_SIZE := Vector2(2320, 2046)
-const HUB_MISSION_BOARD_SIZE := Vector2(2320, 2310)
-const HUB_MISSION_BOARD_BUTTON_Y := 2048.0
+const HUB_MISSION_BOARD_ART_SIZE := Vector2(1160, 1023)
+const HUB_MISSION_BOARD_SIZE := Vector2(1160, 1155)
+const HUB_MISSION_BOARD_BUTTON_Y := 1024.0
 const HUB_MISSION_BOARD_TARGET_Y := 0.0
 const HUB_MISSION_BOARD_OPEN_SECONDS := 0.34
 const HUB_MISSION_BOARD_CLOSE_SECONDS := 0.24
@@ -32,16 +32,16 @@ const HUB_HOTSPOT_DRAG_START_SLOP := 42.0
 const HUB_TUTORIAL_TITLE := "Player Hub"
 const HUB_TUTORIAL_BODY := "Upgrade buildings here for bonuses across the whole game.\nTap a building to upgrade it.\nDrag a building to move it."
 const HUB_TUTORIAL_TIP_FADE_SECONDS := 0.18
-const HUB_TROPHY_DEFAULT_CENTER := Vector2(1725, 1190)
+const HUB_TROPHY_DEFAULT_CENTER := Vector2(862.5, 595)
 const HUB_MISSION_PAPER_BADGE := "res://assets/content/hub/hub-mission-paper-badge-v3.png"
 const HUB_MISSION_BADGE_TITLE := "Mission Task"
 const HUB_MISSION_BADGE_INFO := "This action is on your Mission Board. Completing it advances the mission and grants the board's boosted task bonuses."
-const ACTION_CARD_TYPE_BADGE_OFFSET_LEFT := -197.0
-const ACTION_CARD_TYPE_BADGE_OFFSET_RIGHT := 34.0
-const ACTION_CARD_TYPE_BADGE_OFFSET_TOP := -68.0
-const ACTION_CARD_TYPE_BADGE_OFFSET_BOTTOM := 163.0
-const ACTION_CARD_TYPE_BADGE_POPOVER_SIZE := Vector2(860, 360)
-const ACTION_CARD_TYPE_BADGE_POPOVER_OFFSET := Vector2(-820, 172)
+const ACTION_CARD_TYPE_BADGE_OFFSET_LEFT := -98.5
+const ACTION_CARD_TYPE_BADGE_OFFSET_RIGHT := 17.0
+const ACTION_CARD_TYPE_BADGE_OFFSET_TOP := -34.0
+const ACTION_CARD_TYPE_BADGE_OFFSET_BOTTOM := 81.5
+const ACTION_CARD_TYPE_BADGE_POPOVER_SIZE := Vector2(430, 180)
+const ACTION_CARD_TYPE_BADGE_POPOVER_OFFSET := Vector2(-410, 86)
 
 class HubPathDots:
 	extends Control
@@ -51,8 +51,8 @@ class HubPathDots:
 	var obstacle_rects := []
 	var path_dots := []
 	var origin := Vector2.ZERO
-	var dot_radius := 68.0
-	var dot_step := 132.0
+	var dot_radius := 34.0
+	var dot_step := 66.0
 	var dot_height_scale := 0.34
 	var path_color := Color("#a97943")
 	var edge_color := Color("#6f4c2e")
@@ -467,7 +467,7 @@ class HubBuildProgressBar:
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 		add_theme_color_override("font_color", Color.BLACK)
 		add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.42))
-		add_theme_constant_override("outline_size", 8)
+		add_theme_constant_override("outline_size", 4)
 
 	func set_progress(next_value: float) -> void:
 		set_countdown(maxi(0, ceili((1.0 - clampf(next_value, 0.0, 1.0)) * total_seconds)))
@@ -496,7 +496,7 @@ class MissionCooldownRing:
 		var radius := minf(size.x, size.y) * 0.34
 		var width := maxf(13.0, radius * 0.24)
 		var outer_radius := radius + width * 0.72
-		draw_circle(center + Vector2(0, 4), outer_radius, Color(0.04, 0.035, 0.03, 0.36))
+		draw_circle(center + Vector2(0, 2), outer_radius, Color(0.04, 0.035, 0.03, 0.36))
 		draw_circle(center, outer_radius, Color.BLACK)
 		draw_circle(center, maxf(0.0, outer_radius - 9.0), Color("#6f6a5e"))
 		draw_arc(center, radius, -PI * 0.5, PI * 1.5, 48, Color("#2e2a24"), width + 8.0, true)
@@ -800,8 +800,8 @@ func _render_hub_page() -> void:
 	hub_tutorial_host = hub_frame
 	var grass_bg := ColorRect.new()
 	grass_bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	grass_bg.offset_top = -8
-	grass_bg.offset_bottom = 8
+	grass_bg.offset_top = -4
+	grass_bg.offset_bottom = 4
 	grass_bg.color = Color("#a7cb72")
 	grass_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hub_frame.add_child(grass_bg)
@@ -843,15 +843,15 @@ func _add_hub_tutorial_info_button(parent: Control) -> void:
 	button.anchor_right = 1.0
 	button.anchor_top = 0.0
 	button.anchor_bottom = 0.0
-	button.offset_left = -132
-	button.offset_right = -44
-	button.offset_top = 50
-	button.offset_bottom = 138
+	button.offset_left = -66
+	button.offset_right = -22
+	button.offset_top = 25
+	button.offset_bottom = 69
 	button.z_index = HUB_OVERLAY_Z + 70
 	button.z_as_relative = false
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
-	button.add_theme_font_size_override("font_size", 58)
+	button.add_theme_font_size_override("font_size", 48)
 	if app_bold_font != null:
 		button.add_theme_font_override("font", app_bold_font)
 	elif app_font != null:
@@ -860,7 +860,7 @@ func _add_hub_tutorial_info_button(parent: Control) -> void:
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
 	button.add_theme_color_override("font_outline_color", COLOR_INK)
-	button.add_theme_constant_override("outline_size", 8)
+	button.add_theme_constant_override("outline_size", 4)
 	button.add_theme_stylebox_override("normal", _hub_tutorial_info_button_style())
 	button.add_theme_stylebox_override("hover", _hub_tutorial_info_button_style(false, true))
 	button.add_theme_stylebox_override("pressed", _hub_tutorial_info_button_style(true))
@@ -915,15 +915,15 @@ func _hub_tutorial_tip_control() -> Control:
 
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.custom_minimum_size = Vector2(1840, 0)
-	stack.add_theme_constant_override("separation", 46)
+	stack.custom_minimum_size = Vector2(920, 0)
+	stack.add_theme_constant_override("separation", 23)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(stack)
 
 	var title := _label(HUB_TUTORIAL_TITLE, 126, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.add_theme_color_override("font_outline_color", COLOR_INK)
-	title.add_theme_constant_override("outline_size", 46)
+	title.add_theme_constant_override("outline_size", 23)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
 
@@ -931,7 +931,7 @@ func _hub_tutorial_tip_control() -> Control:
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	body.add_theme_color_override("font_outline_color", COLOR_INK)
-	body.add_theme_constant_override("outline_size", 38)
+	body.add_theme_constant_override("outline_size", 19)
 	body.add_theme_constant_override("line_spacing", 30)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
@@ -1018,17 +1018,17 @@ func _generate_hub_decor_layout() -> Array:
 	rng.seed = _hub_decor_seed()
 	var layout := []
 	for i in range(9):
-		var decor_size := rng.randf_range(230.0, 390.0)
+		var decor_size := rng.randf_range(115.0, 195.0)
 		var display_size := Vector2(decor_size, decor_size)
 		layout.append(_hub_decor_entry("tree", rng.randi_range(0, 5), _hub_find_decor_position(layout, "tree", display_size, rng, true), display_size))
 	var weighted_decor := [0, 0, 0, 1, 1, 2, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
 	for i in range(54):
 		var index := int(weighted_decor[rng.randi_range(0, weighted_decor.size() - 1)])
-		var decor_size := rng.randf_range(118.0, 190.0)
+		var decor_size := rng.randf_range(59.0, 95.0)
 		if index >= 4 and index <= 6:
-			decor_size = rng.randf_range(145.0, 220.0)
+			decor_size = rng.randf_range(72.5, 110.0)
 		elif index >= 12:
-			decor_size = rng.randf_range(160.0, 235.0)
+			decor_size = rng.randf_range(80.0, 117.5)
 		var display_size := Vector2(decor_size, decor_size)
 		layout.append(_hub_decor_entry("decor", index, _hub_find_decor_position(layout, "decor", display_size, rng, false), display_size))
 	return layout
@@ -1047,34 +1047,34 @@ func _hub_decor_entry_base_y(raw_entry: Variant) -> float:
 	if typeof(raw_entry) != TYPE_DICTIONARY:
 		return 0.0
 	var entry := raw_entry as Dictionary
-	return float(entry.get("y", 0.0)) + float(entry.get("h", 170.0)) * 0.86
+	return float(entry.get("y", 0.0)) + float(entry.get("h", 85.0)) * 0.86
 
 func _hub_decor_depth_z_index(decor_position: Vector2, display_size: Vector2) -> int:
 	var base_y := decor_position.y + display_size.y * 0.86
-	return 5 + int(clampf(base_y / 24.0, 0.0, 130.0))
+	return 5 + int(clampf(base_y / 12.0, 0.0, 130.0))
 
 func _hub_random_decor_position(rng: RandomNumberGenerator, display_size: Vector2, tree := false) -> Vector2:
-	var margin := 46.0 if tree else 24.0
+	var margin := 23.0 if tree else 12.0
 	var min_x := margin
 	var max_x := maxf(min_x, HUB_FIELD_SIZE.x - display_size.x - margin)
-	var min_y := 80.0
-	var max_y := maxf(min_y, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - display_size.y - (74.0 if tree else 40.0))
+	var min_y := 40.0
+	var max_y := maxf(min_y, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - display_size.y - (37.0 if tree else 20.0))
 	var x := rng.randf_range(min_x, max_x)
 	var y := rng.randf_range(min_y, max_y)
 	if tree and rng.randf() < 0.58:
 		if rng.randf() < 0.5:
-			x = rng.randf_range(min_x, minf(max_x, min_x + 230.0))
+			x = rng.randf_range(min_x, minf(max_x, min_x + 115.0))
 		else:
-			x = rng.randf_range(maxf(min_x, max_x - 230.0), max_x)
+			x = rng.randf_range(maxf(min_x, max_x - 115.0), max_x)
 	return Vector2(x, y)
 
 func _hub_clamp_decor_position(decor_type: String, decor_position: Vector2, display_size: Vector2) -> Vector2:
-	var margin := 46.0 if decor_type == "tree" else 24.0
+	var margin := 23.0 if decor_type == "tree" else 12.0
 	var max_x := maxf(margin, HUB_FIELD_SIZE.x - display_size.x - margin)
-	var max_y := maxf(80.0, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - display_size.y - (74.0 if decor_type == "tree" else 40.0))
+	var max_y := maxf(40.0, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - display_size.y - (37.0 if decor_type == "tree" else 20.0))
 	return Vector2(
 		clampf(decor_position.x, margin, max_x),
-		clampf(decor_position.y, 80.0, max_y)
+		clampf(decor_position.y, 40.0, max_y)
 	)
 
 func _hub_find_decor_position(existing_layout: Array, decor_type: String, display_size: Vector2, rng: RandomNumberGenerator, tree := false, preferred_position: Variant = null) -> Vector2:
@@ -1098,7 +1098,7 @@ func _hub_decor_position_clear(existing_layout: Array, decor_type: String, decor
 			continue
 		var entry := raw_entry as Dictionary
 		var other_type := str(entry.get("type", "decor"))
-		var other_size := Vector2(float(entry.get("w", 170.0)), float(entry.get("h", 170.0)))
+		var other_size := Vector2(float(entry.get("w", 85.0)), float(entry.get("h", 85.0)))
 		var other_position := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
 		var other_rect := _hub_decor_block_rect(other_type, other_position, other_size)
 		if rect.intersects(other_rect):
@@ -1111,7 +1111,7 @@ func _hub_decor_block_rect(decor_type: String, decor_position: Vector2, display_
 	if decor_type == "tree":
 		block_scale = Vector2(0.70, 0.74)
 		center_ratio = Vector2(0.50, 0.56)
-	var block_size := Vector2(maxf(display_size.x * block_scale.x, 82.0), maxf(display_size.y * block_scale.y, 72.0))
+	var block_size := Vector2(maxf(display_size.x * block_scale.x, 41.0), maxf(display_size.y * block_scale.y, 36.0))
 	var center := decor_position + display_size * center_ratio
 	return Rect2(center - block_size * 0.5, block_size)
 
@@ -1124,10 +1124,10 @@ func _hub_decor_seed() -> int:
 		decor_hash = int((decor_hash ^ basis.unicode_at(i)) * 16777619) & 0x7fffffff
 	return maxi(1, decor_hash)
 
-func _restore_hub_decor_layout(raw_layout: Variant) -> void:
-	hub_decor_layout = _normalized_hub_decor_layout(raw_layout)
+func _restore_hub_decor_layout(raw_layout: Variant, pre_migration_layout := false) -> void:
+	hub_decor_layout = _normalized_hub_decor_layout(raw_layout, pre_migration_layout)
 
-func _normalized_hub_decor_layout(raw_layout: Variant) -> Array:
+func _normalized_hub_decor_layout(raw_layout: Variant, pre_migration_layout := false) -> Array:
 	var normalized := []
 	if typeof(raw_layout) != TYPE_ARRAY:
 		return normalized
@@ -1141,11 +1141,12 @@ func _normalized_hub_decor_layout(raw_layout: Variant) -> Array:
 		if decor_type != "tree" and decor_type != "decor":
 			continue
 		var max_index := 5 if decor_type == "tree" else 15
+		var layout_scale := 0.5 if pre_migration_layout else 1.0
 		var display_size := Vector2(
-			clampf(float(entry.get("w", 170.0)), 80.0, 460.0),
-			clampf(float(entry.get("h", 170.0)), 80.0, 460.0)
+			clampf(float(entry.get("w", 85.0)) * layout_scale, 40.0, 230.0),
+			clampf(float(entry.get("h", 85.0)) * layout_scale, 40.0, 230.0)
 		)
-		var raw_position := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0)))
+		var raw_position := Vector2(float(entry.get("x", 0.0)), float(entry.get("y", 0.0))) * layout_scale
 		var decor_position := _hub_find_decor_position(normalized, decor_type, display_size, rng, decor_type == "tree", raw_position)
 		normalized.append({
 			"type": decor_type,
@@ -1166,7 +1167,7 @@ func _add_hub_trophy_display(parent: Control) -> void:
 	button.focus_mode = Control.FOCUS_NONE
 	button.flat = true
 	button.clip_contents = false
-	button.custom_minimum_size = Vector2(430, 300)
+	button.custom_minimum_size = Vector2(215, 150)
 	button.size = button.custom_minimum_size
 	button.position = _hub_module_center("trophy") - button.size * 0.5
 	button.z_index = _hub_module_depth_z_index("trophy")
@@ -1189,7 +1190,7 @@ func _add_hub_trophy_display(parent: Control) -> void:
 	if not trophy_def.is_empty():
 		var trophy := TextureRect.new()
 		trophy.texture = host.visual_texture_cache._spritesheet_or_visual_fallback(ThievingState.HEIST_TROPHY_SHEET, int(trophy_def.get("cell", 0)), ThievingState.HEIST_TROPHY_CELL)
-		trophy.custom_minimum_size = Vector2(315, 315)
+		trophy.custom_minimum_size = Vector2(157.5, 157.5)
 		trophy.size = trophy.custom_minimum_size
 		trophy.position = Vector2((button.size.x - trophy.size.x) * 0.5, -58.0)
 		trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1213,7 +1214,7 @@ func _add_hub_module(parent: Control, module_id: String) -> void:
 	button.focus_mode = Control.FOCUS_NONE
 	button.flat = true
 	button.clip_contents = false
-	button.custom_minimum_size = def.get("size", Vector2(500, 500))
+	button.custom_minimum_size = def.get("size", Vector2(250, 250))
 	button.size = button.custom_minimum_size
 	button.position = _hub_module_center(module_id) - button.size * 0.5
 	button.z_index = _hub_module_depth_z_index(module_id)
@@ -1481,8 +1482,8 @@ func _hub_default_module_center(module_id: String) -> Vector2:
 
 func _clamp_hub_module_center(module_position: Vector2) -> Vector2:
 	return Vector2(
-		clampf(module_position.x, 160.0, HUB_FIELD_SIZE.x - 160.0),
-		clampf(module_position.y, 180.0, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - HUB_MODULE_BOTTOM_DRAG_MARGIN)
+		clampf(module_position.x, 80.0, HUB_FIELD_SIZE.x - 80.0),
+		clampf(module_position.y, 90.0, HUB_FIELD_SIZE.y - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - HUB_MODULE_BOTTOM_DRAG_MARGIN)
 	)
 
 func _hub_module_position_valid(module_id: String, center: Vector2) -> bool:
@@ -1498,8 +1499,8 @@ func _hub_module_position_valid(module_id: String, center: Vector2) -> bool:
 func _hub_module_positions_for_save() -> Dictionary:
 	return _hub_runtime().module_positions_for_save()
 
-func _restore_hub_module_positions(raw_positions: Variant) -> void:
-	_hub_runtime().restore_module_positions(raw_positions)
+func _restore_hub_module_positions(raw_positions: Variant, pre_migration_layout := false) -> void:
+	_hub_runtime().restore_module_positions(raw_positions, pre_migration_layout)
 
 func _normalized_hub_module_positions(raw_positions: Variant) -> Dictionary:
 	return _hub_runtime().normalized_module_positions(raw_positions)
@@ -1549,15 +1550,15 @@ func _hub_current_module_visual_size(module_id: String) -> Vector2:
 
 func _hub_module_visual_size(module_id: String, sprite_index := -1) -> Vector2:
 	if module_id == "trophy":
-		return Vector2(430, 300)
+		return Vector2(215, 150)
 	if HUB_MODULE_DEFS.has(module_id):
 		var def := HUB_MODULE_DEFS[module_id] as Dictionary
 		if sprite_index >= 0 and def.has("visual_sizes"):
 			var visual_sizes := def.get("visual_sizes", []) as Array
 			if sprite_index < visual_sizes.size():
 				return visual_sizes[sprite_index] as Vector2
-		return def.get("visual_size", def.get("size", Vector2(500, 500))) as Vector2
-	return Vector2(430, 300)
+		return def.get("visual_size", def.get("size", Vector2(250, 250))) as Vector2
+	return Vector2(215, 150)
 
 func _hub_module_art_position(button_size: Vector2, module_id: String, sprite_index: int, visual_size: Vector2) -> Vector2:
 	var anchor := _hub_module_visual_anchor(module_id)
@@ -1576,7 +1577,7 @@ func _hub_module_visible_art_rect_at(module_id: String, center: Vector2, sprite_
 		var fallback_size := _hub_module_visual_size(module_id, sprite_index)
 		return Rect2(center - fallback_size * 0.5, fallback_size)
 	var def := HUB_MODULE_DEFS[module_id] as Dictionary
-	var button_size := def.get("size", Vector2(500, 500)) as Vector2
+	var button_size := def.get("size", Vector2(250, 250)) as Vector2
 	var visual_size := _hub_module_visual_size(module_id, sprite_index)
 	var art_position := center - button_size * 0.5 + _hub_module_art_position(button_size, module_id, sprite_index, visual_size)
 	var bounds := Rect2(Vector2.ZERO, Vector2(512, 512))
@@ -1813,8 +1814,8 @@ func _add_hub_detail_panel(parent: Control) -> void:
 		return
 	_add_hub_detail_dismiss_layer(parent)
 	var layout := _hub_detail_bubble_layout(_hub_runtime().hub_selected_module_id)
-	var panel_pos := layout.get("position", Vector2(590, 360)) as Vector2
-	var panel_size := layout.get("size", Vector2(980, 430)) as Vector2
+	var panel_pos := layout.get("position", Vector2(295, 180)) as Vector2
+	var panel_size := layout.get("size", Vector2(490, 215)) as Vector2
 	hub_detail_panel = PanelContainer.new()
 	hub_detail_panel.anchor_left = 0.0
 	hub_detail_panel.anchor_right = 0.0
@@ -1829,13 +1830,13 @@ func _add_hub_detail_panel(parent: Control) -> void:
 	hub_detail_panel.gui_input.connect(_on_hub_detail_panel_gui_input)
 	parent.add_child(hub_detail_panel)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 42)
-	margin.add_theme_constant_override("margin_right", 42)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_bottom", 30)
+	margin.add_theme_constant_override("margin_left", 21)
+	margin.add_theme_constant_override("margin_right", 21)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 15)
 	hub_detail_panel.add_child(margin)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 18)
+	stack.add_theme_constant_override("separation", 9)
 	margin.add_child(stack)
 	hub_detail_title = _label("", 74, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	stack.add_child(hub_detail_title)
@@ -1843,19 +1844,19 @@ func _add_hub_detail_panel(parent: Control) -> void:
 	hub_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(hub_detail_body)
 	hub_detail_missions_box = VBoxContainer.new()
-	hub_detail_missions_box.add_theme_constant_override("separation", 12)
+	hub_detail_missions_box.add_theme_constant_override("separation", 6)
 	hub_detail_missions_box.visible = false
 	stack.add_child(hub_detail_missions_box)
 	hub_detail_cost = _label("", 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	stack.add_child(hub_detail_cost)
 	hub_detail_button = _menu_button("")
-	hub_detail_button.custom_minimum_size = Vector2(0, 126)
-	hub_detail_button.add_theme_font_size_override("font_size", 58)
+	hub_detail_button.custom_minimum_size = Vector2(0, 63)
+	hub_detail_button.add_theme_font_size_override("font_size", 48)
 	hub_detail_button.pressed.connect(_upgrade_selected_hub_module)
 	stack.add_child(hub_detail_button)
 	hub_detail_secondary_button = _menu_button("")
-	hub_detail_secondary_button.custom_minimum_size = Vector2(0, 110)
-	hub_detail_secondary_button.add_theme_font_size_override("font_size", 52)
+	hub_detail_secondary_button.custom_minimum_size = Vector2(0, 55)
+	hub_detail_secondary_button.add_theme_font_size_override("font_size", 48)
 	hub_detail_secondary_button.pressed.connect(_jump_to_hub_mission_task)
 	hub_detail_secondary_button.visible = false
 	stack.add_child(hub_detail_secondary_button)
@@ -1891,37 +1892,37 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	margin.position = Vector2.ZERO
 	margin.size = HUB_MISSION_BOARD_ART_SIZE
 	margin.custom_minimum_size = HUB_MISSION_BOARD_ART_SIZE
-	margin.add_theme_constant_override("margin_left", 180)
-	margin.add_theme_constant_override("margin_right", 180)
-	margin.add_theme_constant_override("margin_top", 230)
-	margin.add_theme_constant_override("margin_bottom", 230)
+	margin.add_theme_constant_override("margin_left", 90)
+	margin.add_theme_constant_override("margin_right", 90)
+	margin.add_theme_constant_override("margin_top", 115)
+	margin.add_theme_constant_override("margin_bottom", 115)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	board.add_child(margin)
 
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 10)
+	stack.add_theme_constant_override("separation", 5)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	margin.add_child(stack)
 
 	hub_detail_title = _label("", 98, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	hub_detail_title.custom_minimum_size = Vector2(0, 122)
+	hub_detail_title.custom_minimum_size = Vector2(0, 61)
 	hub_detail_title.add_theme_color_override("font_outline_color", Color.BLACK)
-	hub_detail_title.add_theme_constant_override("outline_size", 28)
+	hub_detail_title.add_theme_constant_override("outline_size", 14)
 	hub_detail_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(hub_detail_title)
 
 	hub_detail_body = _label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	hub_detail_body.custom_minimum_size = Vector2(0, 104)
+	hub_detail_body.custom_minimum_size = Vector2(0, 52)
 	hub_detail_body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hub_detail_body.add_theme_color_override("font_outline_color", Color.BLACK)
-	hub_detail_body.add_theme_constant_override("outline_size", 20)
+	hub_detail_body.add_theme_constant_override("outline_size", 10)
 	hub_detail_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(hub_detail_body)
 
 	hub_detail_missions_box = VBoxContainer.new()
-	hub_detail_missions_box.add_theme_constant_override("separation", 14)
+	hub_detail_missions_box.add_theme_constant_override("separation", 7)
 	hub_detail_missions_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hub_detail_missions_box.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	hub_detail_missions_box.visible = false
@@ -1930,7 +1931,7 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 	hub_detail_cost = _label("", MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	hub_detail_cost.custom_minimum_size = Vector2(0, 0)
 	hub_detail_cost.add_theme_color_override("font_outline_color", Color.BLACK)
-	hub_detail_cost.add_theme_constant_override("outline_size", 11)
+	hub_detail_cost.add_theme_constant_override("outline_size", 5.5)
 	hub_detail_cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hub_detail_cost.visible = false
 	stack.add_child(hub_detail_cost)
@@ -1944,40 +1945,40 @@ func _add_hub_mission_board_panel(parent: Control) -> void:
 
 	hub_detail_button = _menu_button("")
 	hub_detail_button.text = ""
-	hub_detail_button.custom_minimum_size = Vector2(1450, 238)
+	hub_detail_button.custom_minimum_size = Vector2(725, 119)
 	hub_detail_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	hub_detail_button.add_theme_font_size_override("font_size", 64)
+	hub_detail_button.add_theme_font_size_override("font_size", 48)
 	hub_detail_button.add_theme_color_override("font_disabled_color", Color.WHITE)
 	hub_detail_button.add_theme_color_override("font_outline_color", Color.BLACK)
-	hub_detail_button.add_theme_constant_override("outline_size", 17)
+	hub_detail_button.add_theme_constant_override("outline_size", 8.5)
 	hub_detail_button.pressed.connect(_upgrade_selected_hub_module)
 	button_holder.add_child(hub_detail_button)
 
 	var button_copy_margin := MarginContainer.new()
 	button_copy_margin.name = "MissionUpgradeCopy"
 	button_copy_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	button_copy_margin.add_theme_constant_override("margin_left", 34)
-	button_copy_margin.add_theme_constant_override("margin_right", 34)
-	button_copy_margin.add_theme_constant_override("margin_top", 24)
-	button_copy_margin.add_theme_constant_override("margin_bottom", 26)
+	button_copy_margin.add_theme_constant_override("margin_left", 17)
+	button_copy_margin.add_theme_constant_override("margin_right", 17)
+	button_copy_margin.add_theme_constant_override("margin_top", 12)
+	button_copy_margin.add_theme_constant_override("margin_bottom", 13)
 	button_copy_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	hub_detail_button.add_child(button_copy_margin)
 	var button_copy := VBoxContainer.new()
 	button_copy.name = "Stack"
 	button_copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	button_copy.add_theme_constant_override("separation", 2)
+	button_copy.add_theme_constant_override("separation", 1)
 	button_copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button_copy_margin.add_child(button_copy)
 	var button_title := _label("", 76, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	button_title.name = "Title"
 	button_title.add_theme_color_override("font_outline_color", Color.BLACK)
-	button_title.add_theme_constant_override("outline_size", 20)
+	button_title.add_theme_constant_override("outline_size", 10)
 	button_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button_copy.add_child(button_title)
 	var button_cost := _label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	button_cost.name = "Cost"
 	button_cost.add_theme_color_override("font_outline_color", Color.BLACK)
-	button_cost.add_theme_constant_override("outline_size", 14)
+	button_cost.add_theme_constant_override("outline_size", 7)
 	button_cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button_copy.add_child(button_cost)
 
@@ -2079,23 +2080,23 @@ func _hub_mission_board_offscreen_position() -> Vector2:
 	return _hub_mission_board_target_position() + Vector2(0, -HUB_MISSION_BOARD_SIZE.y - 120.0)
 
 func _hub_detail_bubble_layout(module_id: String) -> Dictionary:
-	var panel_size := Vector2(1240, 650) if module_id == "mission" else Vector2(1120, 560)
+	var panel_size := Vector2(620, 325) if module_id == "mission" else Vector2(560, 280)
 	var target := _hub_detail_target(module_id)
-	var offset := Vector2(0, -680)
+	var offset := Vector2(0, -340)
 	if module_id == "trophy":
-		offset = Vector2(-1240, -720)
+		offset = Vector2(-620, -360)
 	elif HUB_MODULE_DEFS.has(module_id):
 		offset = (HUB_MODULE_DEFS[module_id] as Dictionary).get("bubble_offset", offset) as Vector2
 	var candidate_offsets := [
 		offset,
-		Vector2(0, -760),
-		Vector2(-1260, -760),
-		Vector2(520, -760),
-		Vector2(-1260, -120),
-		Vector2(520, -120),
-		Vector2(0, 360),
-		Vector2(-1260, 320),
-		Vector2(520, 320)
+		Vector2(0, -380),
+		Vector2(-630, -380),
+		Vector2(260, -380),
+		Vector2(-630, -60),
+		Vector2(260, -60),
+		Vector2(0, 180),
+		Vector2(-630, 160),
+		Vector2(260, 160)
 	]
 	var avoid_rect := _hub_detail_avoid_rect(module_id, 96.0)
 	var pos := _hub_clamped_bubble_position(target + offset, panel_size)
@@ -2128,7 +2129,7 @@ func _hub_clamped_bubble_position(pos: Vector2, panel_size: Vector2) -> Vector2:
 func _hub_detail_avoid_rect(module_id: String, padding: float) -> Rect2:
 	if not _hub_can_store_position(module_id):
 		var target := _hub_detail_target(module_id)
-		return Rect2(target - Vector2(160, 160), Vector2(320, 320)).grow(padding)
+		return Rect2(target - Vector2(80, 80), Vector2(160, 160)).grow(padding)
 	var center := _hub_module_center(module_id)
 	var visual_size := _hub_module_visual_size(module_id, _hub_detail_sprite_index(module_id))
 	var avoid_size := Vector2(maxf(visual_size.x * 0.82, 360.0), maxf(visual_size.y * 0.72, 280.0))
@@ -2154,13 +2155,13 @@ func _hub_bubble_style() -> StyleBoxFlat:
 	style.bg_color = _theme_surface_color(COLOR_PANEL)
 	style.border_color = _theme_outline_color(COLOR_INK, COLOR_PANEL)
 	style.set_border_width_all(9)
-	style.corner_radius_top_left = 34
-	style.corner_radius_top_right = 34
-	style.corner_radius_bottom_left = 34
-	style.corner_radius_bottom_right = 34
+	style.corner_radius_top_left = 17
+	style.corner_radius_top_right = 17
+	style.corner_radius_bottom_left = 17
+	style.corner_radius_bottom_right = 17
 	style.shadow_color = Color(0, 0, 0, 0.24)
-	style.shadow_size = 12
-	style.shadow_offset = Vector2(0, 8)
+	style.shadow_size = 6
+	style.shadow_offset = Vector2(0, 4)
 	return style
 
 func _hub_sheet_image(path: String, index: int, cell_size: Vector2, display_size: Vector2) -> TextureRect:
@@ -2187,7 +2188,7 @@ func _hub_sheet_or_visual_fallback(path: String, index: int, cell_size: Vector2)
 	var loaded_texture := _hub_sheet_texture(path, index, cell_size)
 	return loaded_texture if loaded_texture != null else host.visual_texture_cache._visual_fallback_texture()
 
-func _hub_build_smoke(frame_offset := 0, display_size := Vector2(380, 380)) -> TextureRect:
+func _hub_build_smoke(frame_offset := 0, display_size := Vector2(190, 190)) -> TextureRect:
 	var frame = (int(floor(float(Time.get_ticks_msec()) / 1000.0)) + frame_offset) % HUB_BUILD_SMOKE_FRAME_COUNT
 	var smoke := _hub_sheet_image(HUB_BUILD_SMOKE_SHEET, frame, Vector2(256, 256), display_size)
 	return smoke
@@ -2314,13 +2315,13 @@ func _hub_mission_badge() -> Dictionary:
 	root.add_child(paper)
 	var label := _label("", 70, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
-	label.offset_left = 24.0
-	label.offset_right = -24.0
-	label.offset_top = 48.0
-	label.offset_bottom = -34.0
+	label.offset_left = 12.0
+	label.offset_right = -12.0
+	label.offset_top = 24.0
+	label.offset_bottom = -17.0
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", Color.WHITE)
-	label.add_theme_constant_override("outline_size", 12)
+	label.add_theme_constant_override("outline_size", 6)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(label)
 	_add_action_card_type_badge_help(root, HUB_MISSION_BADGE_TITLE, HUB_MISSION_BADGE_INFO)
@@ -2369,14 +2370,14 @@ func _action_card_type_badge_popover(title_text: String, body_text: String) -> P
 	popover.add_to_group("action_card_type_badge_popovers")
 	popover.add_theme_stylebox_override("panel", _action_card_type_badge_popover_style())
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_top", 22)
-	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_top", 11)
+	margin.add_theme_constant_override("margin_bottom", 11)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popover.add_child(margin)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 10)
+	stack.add_theme_constant_override("separation", 5)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	var title := _label(title_text, MIN_MOBILE_INFO_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
@@ -2419,13 +2420,13 @@ func _hide_action_card_type_badge_popovers(except: Control = null) -> void:
 func _action_card_type_badge_popover_style() -> StyleBoxFlat:
 	var style := _surface_style(COLOR_PANEL, 22, 22, true)
 	style.border_color = COLOR_INK
-	style.border_width_left = 7
-	style.border_width_right = 7
-	style.border_width_top = 7
-	style.border_width_bottom = 7
+	style.border_width_left = 3.5
+	style.border_width_right = 3.5
+	style.border_width_top = 3.5
+	style.border_width_bottom = 3.5
 	style.shadow_color = Color(0, 0, 0, 0.28)
-	style.shadow_size = 10
-	style.shadow_offset = Vector2(0, 7)
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0, 3.5)
 	return style
 
 func _sync_hub_mission_badge(card: Dictionary, skill_id: String, action: Dictionary, unlocked: bool) -> void:
@@ -2514,7 +2515,7 @@ func _spawn_hub_mission_completion_sparkles(badge: Control) -> void:
 		var star := AchievementPresentation.MedalSparkleStar.new()
 		star.fill_color = Color("#ffe56b") if i % 2 == 0 else Color("#93ff9e")
 		star.outline_color = COLOR_INK
-		star.size = Vector2(58, 58)
+		star.size = Vector2(29, 29)
 		star.position = center - star.size * 0.5
 		star.z_index = mini(4090, badge.z_index + 6 + i)
 		star.modulate.a = 0.0
@@ -2627,18 +2628,18 @@ func _hub_mission_detail_wait_refresh_needed() -> bool:
 
 func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(0, 300)
+	panel.custom_minimum_size = Vector2(0, 150)
 	panel.add_theme_stylebox_override("panel", _hub_mission_wait_slab_style())
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 44)
-	margin.add_theme_constant_override("margin_right", 44)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_bottom", 28)
+	margin.add_theme_constant_override("margin_left", 22)
+	margin.add_theme_constant_override("margin_right", 22)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	panel.add_child(margin)
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 34)
+	row.add_theme_constant_override("separation", 17)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2647,7 +2648,7 @@ func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 	var wait := maxi(0, _hub_runtime().hub_mission_cooldown_until_unix - _unix_now())
 	if wait > 0:
 		var ring := MissionCooldownRing.new()
-		ring.custom_minimum_size = Vector2(190, 190)
+		ring.custom_minimum_size = Vector2(95, 95)
 		ring.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		ring.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2657,7 +2658,7 @@ func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 
 	var copy := VBoxContainer.new()
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	copy.add_theme_constant_override("separation", 8)
+	copy.add_theme_constant_override("separation", 4)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2667,7 +2668,7 @@ func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 		title_text = "Open mission slot"
 	var title := _label(title_text, 78, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_color_override("font_outline_color", Color.BLACK)
-	title.add_theme_constant_override("outline_size", 24)
+	title.add_theme_constant_override("outline_size", 12)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(title)
 	var body_text := "A fresh boosted task will appear here."
@@ -2675,7 +2676,7 @@ func _hub_mission_wait_slab(slot_index := 0) -> PanelContainer:
 		body_text = "Unlock more actions to get missions."
 	var body := _label(body_text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	body.add_theme_color_override("font_outline_color", Color.BLACK)
-	body.add_theme_constant_override("outline_size", 20)
+	body.add_theme_constant_override("outline_size", 10)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(body)
 	return panel
@@ -2685,7 +2686,7 @@ func _hub_mission_locked_slab(slot_index: int) -> Button:
 	var button := Button.new()
 	button.text = ""
 	button.disabled = true
-	button.custom_minimum_size = Vector2(0, 300)
+	button.custom_minimum_size = Vector2(0, 150)
 	button.clip_contents = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2697,16 +2698,16 @@ func _hub_mission_locked_slab(slot_index: int) -> Button:
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 44)
-	margin.add_theme_constant_override("margin_right", 44)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_bottom", 28)
+	margin.add_theme_constant_override("margin_left", 22)
+	margin.add_theme_constant_override("margin_right", 22)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(margin)
 
 	var copy := VBoxContainer.new()
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	copy.add_theme_constant_override("separation", 8)
+	copy.add_theme_constant_override("separation", 4)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -2716,7 +2717,7 @@ func _hub_mission_locked_slab(slot_index: int) -> Button:
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.add_theme_color_override("font_outline_color", Color.BLACK)
-	title.add_theme_constant_override("outline_size", 24)
+	title.add_theme_constant_override("outline_size", 12)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(title)
 
@@ -2724,7 +2725,7 @@ func _hub_mission_locked_slab(slot_index: int) -> Button:
 	detail.autowrap_mode = TextServer.AUTOWRAP_OFF
 	detail.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	detail.add_theme_color_override("font_outline_color", Color.BLACK)
-	detail.add_theme_constant_override("outline_size", 20)
+	detail.add_theme_constant_override("outline_size", 10)
 	detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(detail)
 	return button
@@ -2732,7 +2733,7 @@ func _hub_mission_locked_slab(slot_index: int) -> Button:
 func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: int) -> Button:
 	var button := Button.new()
 	button.text = ""
-	button.custom_minimum_size = Vector2(0, 300)
+	button.custom_minimum_size = Vector2(0, 150)
 	button.clip_contents = true
 	button.focus_mode = Control.FOCUS_NONE
 	button.add_theme_stylebox_override("normal", _hub_mission_slab_style(false))
@@ -2745,15 +2746,15 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 34)
-	margin.add_theme_constant_override("margin_right", 34)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_bottom", 24)
+	margin.add_theme_constant_override("margin_left", 17)
+	margin.add_theme_constant_override("margin_right", 17)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(margin)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 18)
+	row.add_theme_constant_override("separation", 9)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2761,7 +2762,7 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 	margin.add_child(row)
 
 	var art_panel := Panel.new()
-	art_panel.custom_minimum_size = Vector2(198, 198)
+	art_panel.custom_minimum_size = Vector2(99, 99)
 	art_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	art_panel.clip_contents = true
@@ -2785,9 +2786,9 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 
 	var copy := VBoxContainer.new()
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	copy.add_theme_constant_override("separation", 6)
+	copy.add_theme_constant_override("separation", 3)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	copy.custom_minimum_size = Vector2(700, 0)
+	copy.custom_minimum_size = Vector2(350, 0)
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	row.add_child(copy)
@@ -2795,24 +2796,24 @@ func _hub_mission_slab(mission: Dictionary, action: Dictionary, mission_index: i
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.add_theme_color_override("font_outline_color", Color.BLACK)
-	title.add_theme_constant_override("outline_size", 24)
+	title.add_theme_constant_override("outline_size", 12)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(title)
 	var meta := _label("%s task" % SkillState.skill_name(host.skill_defs, str(mission.get("skill_id", ""))), 54, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	meta.autowrap_mode = TextServer.AUTOWRAP_OFF
 	meta.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	meta.add_theme_color_override("font_outline_color", Color.BLACK)
-	meta.add_theme_constant_override("outline_size", 20)
+	meta.add_theme_constant_override("outline_size", 10)
 	meta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(meta)
 
 	var remaining_label := _label("%s left" % int(mission.get("remaining", 0)), 78, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	remaining_label.custom_minimum_size = Vector2(270, 0)
+	remaining_label.custom_minimum_size = Vector2(135, 0)
 	remaining_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	remaining_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	remaining_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	remaining_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	remaining_label.add_theme_constant_override("outline_size", 24)
+	remaining_label.add_theme_constant_override("outline_size", 12)
 	remaining_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(remaining_label)
 	return button
@@ -2826,17 +2827,17 @@ func _hub_mission_slab_style(pressed: bool, disabled := false) -> StyleBoxFlat:
 		style.bg_color = Color("#8f5b28") if not pressed else Color("#70431f")
 		style.border_color = Color.BLACK
 	style.set_border_width_all(12)
-	style.corner_radius_top_left = 20
-	style.corner_radius_top_right = 20
-	style.corner_radius_bottom_left = 20
-	style.corner_radius_bottom_right = 20
+	style.corner_radius_top_left = 10
+	style.corner_radius_top_right = 10
+	style.corner_radius_bottom_left = 10
+	style.corner_radius_bottom_right = 10
 	style.shadow_color = Color(0, 0, 0, 0.22)
-	style.shadow_size = 7
-	style.shadow_offset = Vector2(0, 5)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 14
-	style.content_margin_bottom = 14
+	style.shadow_size = 3.5
+	style.shadow_offset = Vector2(0, 2.5)
+	style.content_margin_left = 9
+	style.content_margin_right = 9
+	style.content_margin_top = 7
+	style.content_margin_bottom = 7
 	return style
 
 func _hub_mission_wait_slab_style() -> StyleBoxFlat:
@@ -3208,15 +3209,15 @@ func _hub_tutorial_info_button_style(pressed := false, hovered := false) -> Styl
 	style.bg_color = (Color("#5a96dd") if not hovered else Color("#68a8ef")).darkened(0.08 if pressed else 0.0)
 	style.border_color = COLOR_INK
 	style.set_border_width_all(7)
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.corner_radius_top_left = 499.5
+	style.corner_radius_top_right = 499.5
+	style.corner_radius_bottom_left = 499.5
+	style.corner_radius_bottom_right = 499.5
 	style.content_margin_left = 0
 	style.content_margin_right = 0
 	style.content_margin_top = 0
-	style.content_margin_bottom = 4 if not pressed else 0
+	style.content_margin_bottom = 2 if not pressed else 0
 	style.shadow_color = Color(0.0, 0.0, 0.0, 0.22)
-	style.shadow_size = 7 if not pressed else 3
+	style.shadow_size = 3.5 if not pressed else 3
 	style.shadow_offset = Vector2(0, 5 if not pressed else 2)
 	return style

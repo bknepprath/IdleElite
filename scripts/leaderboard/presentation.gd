@@ -5,9 +5,9 @@ const LeaderboardProfile = preload("res://scripts/leaderboard/profile.gd")
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
 
 const ICON := "res://assets/content/ui/leaderboard-podium-icon.png"
-const BOTTOM_SCROLL_PAD := 720
-const BASE_FRAME_WIDTH := 2160
-const PLAYER_OVERLAY_HEIGHT := 470
+const BOTTOM_SCROLL_PAD := 180
+const BASE_FRAME_WIDTH := 1080
+const PLAYER_OVERLAY_HEIGHT := 410
 
 var host
 
@@ -28,12 +28,12 @@ class OrganicLeaderboardBorder extends Control:
 		var paper_edge := PackedVector2Array(paper_shape)
 		if not paper_edge.is_empty():
 			paper_edge.append(paper_edge[0])
-			draw_polyline(paper_edge, paper_color, 86.0, true)
+			draw_polyline(paper_edge, paper_color, 43.0, true)
 
 	func _inner_paper_shape() -> PackedVector2Array:
 		var points := []
-		var left_top_side := Vector2(104.0, 520.0)
-		var top_left := Vector2(238.0, 270.0)
+		var left_top_side := Vector2(52.0, 260.0)
+		var top_left := Vector2(119.0, 135.0)
 		var top_mid := Vector2(size.x * 0.50, 246.0)
 		var top_right := Vector2(size.x - 214.0, 270.0)
 		var right_top_side := Vector2(size.x - 104.0, 520.0)
@@ -42,8 +42,8 @@ class OrganicLeaderboardBorder extends Control:
 		var left_bottom := Vector2(112.0, size.y + 180.0)
 		var left_mid := Vector2(104.0, size.y * 0.48)
 		points.append(left_top_side)
-		_append_leaderboard_curve(points, left_top_side, Vector2(108.0, 382.0), Vector2(126.0, 300.0), top_left, 96)
-		_append_leaderboard_curve(points, top_left, Vector2(344.0, 216.0), Vector2(size.x * 0.34, 244.0), top_mid, 112)
+		_append_leaderboard_curve(points, left_top_side, Vector2(54.0, 191.0), Vector2(63.0, 150.0), top_left, 96)
+		_append_leaderboard_curve(points, top_left, Vector2(172.0, 108.0), Vector2(size.x * 0.34, 244.0), top_mid, 112)
 		_append_leaderboard_curve(points, top_mid, Vector2(size.x * 0.66, 244.0), Vector2(size.x - 330.0, 216.0), top_right, 112)
 		_append_leaderboard_curve(points, top_right, Vector2(size.x - 118.0, 300.0), Vector2(size.x - 108.0, 382.0), right_top_side, 96)
 		_append_leaderboard_curve(points, right_top_side, Vector2(size.x - 78.0, size.y * 0.30), Vector2(size.x - 118.0, size.y * 0.36), right_mid, 128)
@@ -63,14 +63,14 @@ static func dropdown(color: Color, pressed := false, ink_color := Color.BLACK) -
 	var style := StyleBoxFlat.new()
 	style.bg_color = color.darkened(0.06 if pressed else 0.0)
 	style.border_color = ink_color
-	style.set_border_width_all(18)
-	style.set_corner_radius_all(46)
-	style.content_margin_left = 70
-	style.content_margin_right = 70
-	style.content_margin_top = 42 + (6 if pressed else 0)
-	style.content_margin_bottom = 42 - (4 if pressed else 0)
+	style.set_border_width_all(9)
+	style.set_corner_radius_all(23)
+	style.content_margin_left = 18
+	style.content_margin_right = 18
+	style.content_margin_top = 11 + (3 if pressed else 0)
+	style.content_margin_bottom = 11 - (2 if pressed else 0)
 	style.shadow_color = Color(0.08, 0.07, 0.06, 0.28 if not pressed else 0.14)
-	style.shadow_size = 10 if not pressed else 4
+	style.shadow_size = 5 if not pressed else 4
 	style.shadow_offset = Vector2(0, 8 if not pressed else 3)
 	return style
 
@@ -79,14 +79,14 @@ static func player_card(color: Color, pressed := false, ink_color := Color.BLACK
 	var style := StyleBoxFlat.new()
 	style.bg_color = color.darkened(0.06 if pressed else 0.0)
 	style.border_color = ink_color
-	style.set_border_width_all(16)
-	style.set_corner_radius_all(58)
-	style.content_margin_left = 48
-	style.content_margin_right = 48
-	style.content_margin_top = 40 + (6 if pressed else 0)
-	style.content_margin_bottom = 40 - (4 if pressed else 0)
+	style.set_border_width_all(8)
+	style.set_corner_radius_all(29)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 10 + (3 if pressed else 0)
+	style.content_margin_bottom = 10 - (2 if pressed else 0)
 	style.shadow_color = Color(0.08, 0.07, 0.06, 0.32 if not pressed else 0.16)
-	style.shadow_size = 12 if not pressed else 5
+	style.shadow_size = 6 if not pressed else 5
 	style.shadow_offset = Vector2(0, 9 if not pressed else 4)
 	return style
 
@@ -161,16 +161,16 @@ func _leaderboard_page_frame(rows: Array) -> Control:
 	frame.add_child(border)
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 190)
-	margin.add_theme_constant_override("margin_right", 190)
-	margin.add_theme_constant_override("margin_top", 330)
-	margin.add_theme_constant_override("margin_bottom", 400)
+	margin.add_theme_constant_override("margin_left", 95)
+	margin.add_theme_constant_override("margin_right", 95)
+	margin.add_theme_constant_override("margin_top", 165)
+	margin.add_theme_constant_override("margin_bottom", 200)
 	frame.add_child(margin)
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 40)
+	stack.add_theme_constant_override("separation", 20)
 	margin.add_child(stack)
-	var title = host._label("Leaderboard", 210, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var title = host._label("Leaderboard", 105, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_font_override("font", host.app_bold_font)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_child(title)
@@ -178,9 +178,9 @@ func _leaderboard_page_frame(rows: Array) -> Control:
 	stack.add_child(_leaderboard_category_dropdown())
 
 	var list_stack := VBoxContainer.new()
-	list_stack.custom_minimum_size = Vector2(1580, 0)
+	list_stack.custom_minimum_size = Vector2(790, 0)
 	list_stack.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	list_stack.add_theme_constant_override("separation", 20)
+	list_stack.add_theme_constant_override("separation", 10)
 	stack.add_child(list_stack)
 	if rows.is_empty():
 		list_stack.add_child(_leaderboard_empty_state())
@@ -198,7 +198,7 @@ func _leaderboard_frame_width() -> float:
 
 
 func _leaderboard_page_frame_height(row_count: int) -> float:
-	var content_height = 1040.0 + float(row_count) * 260.0 + float(BOTTOM_SCROLL_PAD) + PLAYER_OVERLAY_HEIGHT + 128.0
+	var content_height = 520.0 + float(row_count) * 130.0 + float(BOTTOM_SCROLL_PAD) + PLAYER_OVERLAY_HEIGHT + 64.0
 	return maxf(content_height, host._current_canvas_size().y)
 
 
@@ -212,27 +212,27 @@ func _leaderboard_player_overlay() -> Control:
 	overlay.offset_left = -content_width * 0.5
 	overlay.offset_right = content_width * 0.5
 	overlay.offset_top = -float(PLAYER_OVERLAY_HEIGHT)
-	overlay.offset_bottom = -34.0
+	overlay.offset_bottom = -17.0
 	overlay.z_index = 32
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var card := _leaderboard_player_card()
 	card.set_anchors_preset(Control.PRESET_FULL_RECT)
-	card.offset_left = 56
-	card.offset_right = -56
-	card.offset_top = 24
-	card.offset_bottom = -24
+	card.offset_left = 28
+	card.offset_right = -28
+	card.offset_top = 12
+	card.offset_bottom = -12
 	overlay.add_child(card)
 	return overlay
 
 
 func _leaderboard_category_dropdown() -> OptionButton:
 	var dropdown := OptionButton.new()
-	dropdown.custom_minimum_size = Vector2(1360, 280)
+	dropdown.custom_minimum_size = Vector2(680, 140)
 	dropdown.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	dropdown.focus_mode = Control.FOCUS_NONE
 	dropdown.fit_to_longest_item = false
 	dropdown.alignment = HORIZONTAL_ALIGNMENT_CENTER
-	dropdown.add_theme_font_size_override("font_size", 96)
+	dropdown.add_theme_font_size_override("font_size", 48)
 	if host.app_bold_font != null:
 		dropdown.add_theme_font_override("font", host.app_bold_font)
 	dropdown.add_theme_stylebox_override("normal", LeaderboardPresentation.dropdown(Color("#e8f6ff"), false, host.COLOR_INK))
@@ -250,8 +250,8 @@ func _leaderboard_category_dropdown() -> OptionButton:
 	dropdown.select(leaderboard_state.selected_category_index())
 	var popup := dropdown.get_popup()
 	if popup != null:
-		popup.add_theme_font_size_override("font_size", 90)
-		popup.add_theme_constant_override("v_separation", 26)
+		popup.add_theme_font_size_override("font_size", 48)
+		popup.add_theme_constant_override("v_separation", 13)
 		if host.app_bold_font != null:
 			popup.add_theme_font_override("font", host.app_bold_font)
 	dropdown.item_selected.connect(_leaderboard_category_selected)
@@ -291,91 +291,96 @@ func _leaderboard_player_card() -> Control:
 	host.button_press_runtime.attach_button_depress_animation(card, 0.986)
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 38)
-	margin.add_theme_constant_override("margin_right", 38)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_bottom", 28)
+	margin.add_theme_constant_override("margin_left", 19)
+	margin.add_theme_constant_override("margin_right", 19)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 14)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(margin)
+	var content := VBoxContainer.new()
+	content.add_theme_constant_override("separation", 4)
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margin.add_child(content)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 34)
+	row.add_theme_constant_override("separation", 17)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_child(row)
-	row.add_child(host._profile_chat_overlay_surface().profile_avatar_frame(host.leaderboard_profile.avatar_index, Vector2(232, 232), true))
+	content.add_child(row)
+	row.add_child(host._profile_chat_overlay_surface().profile_avatar_frame(host.leaderboard_profile.avatar_index, Vector2(100, 100), true))
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 2)
+	copy.add_theme_constant_override("separation", 1)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
 	var eyebrow = host._label("Tap to edit profile", 48, Color("#22546c"), HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(eyebrow)
-	var score = host._label(host.leaderboard_profile.display_name, 104, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var score = host._label(host.leaderboard_profile.display_name, 60, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	score.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	score.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	score.add_theme_constant_override("outline_size", 18)
+	score.add_theme_constant_override("outline_size", 5)
 	copy.add_child(score)
 	var rank_text = LeaderboardPresentation.player_rank_text(player_score, leaderboard_state.rows_for_category(category_id), leaderboard_state.TOP_COUNT)
 	var score_text = LeaderboardPresentation.format_score(leaderboard_state.valid_category_id(category_id), player_score, leaderboard_state.skill_level_for_category(category_id), leaderboard_state.total_xp_for_category(category_id), leaderboard_state.CATEGORY_TOTAL_LEVEL, leaderboard_state.CATEGORY_MEDALS, leaderboard_state.CATEGORY_ELITE_HEAVENLY, leaderboard_state.CATEGORY_SKILL_PREFIX, Callable(leaderboard_state, "skill_level_from_total_xp"))
 	var rank = host._label("%s  |  %s" % [score_text, rank_text if rank_text == "unranked" else "Rank %s" % rank_text], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(rank)
 	var status := VBoxContainer.new()
-	status.custom_minimum_size = Vector2(560, 0)
-	status.add_theme_constant_override("separation", 8)
+	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	status.add_theme_constant_override("separation", 2)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(status)
-	var status_title = host._label(LeaderboardPresentation.submit_status_title(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, leaderboard_state.last_submit_unix, leaderboard_state.submit_ready()), 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	content.add_child(status)
+	var status_title = host._label(LeaderboardPresentation.submit_status_title(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, leaderboard_state.last_submit_unix, leaderboard_state.submit_ready()), 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	status.add_child(status_title)
 	var simple_status = LeaderboardPresentation.simple_status_message(str(leaderboard_state.status_message))
-	var detail = host._label(LeaderboardPresentation.submit_status_detail(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_retry_wait_seconds(), host._online_runtime().leaderboard_auth_in_flight, host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, simple_status, leaderboard_state.last_submit_unix, leaderboard_state.queued_score(), leaderboard_state.has_pending_category_score(), leaderboard_state.submit_ready()), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	var detail = host._label(LeaderboardPresentation.submit_status_detail(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_retry_wait_seconds(), host._online_runtime().leaderboard_auth_in_flight, host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, simple_status, leaderboard_state.last_submit_unix, leaderboard_state.queued_score(), leaderboard_state.has_pending_category_score(), leaderboard_state.submit_ready()), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.custom_minimum_size = Vector2(560, 146)
+	detail.custom_minimum_size = Vector2(0, 58)
 	status.add_child(detail)
 	return card
 
 
 func _leaderboard_row(rank: int, row_data: Dictionary) -> Control:
 	var row := PanelContainer.new()
-	row.custom_minimum_size = Vector2(0, 244)
+	row.custom_minimum_size = Vector2(0, 122)
 	var fill := Color("#ececec")
 	if bool(row_data.get("is_player", false)):
 		fill = Color("#d8f5ff")
 	row.add_theme_stylebox_override("panel", host._surface_style(fill, 30, 22, false))
 	var h := HBoxContainer.new()
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
-	h.add_theme_constant_override("separation", 34)
+	h.add_theme_constant_override("separation", 17)
 	row.add_child(h)
 	h.add_child(_leaderboard_rank_badge(rank))
-	var avatar = host._profile_chat_overlay_surface().profile_avatar_frame(int(row_data.get("avatar_index", rank - 1)), Vector2(190, 190), bool(row_data.get("is_player", false)))
+	var avatar = host._profile_chat_overlay_surface().profile_avatar_frame(int(row_data.get("avatar_index", rank - 1)), Vector2(95, 95), bool(row_data.get("is_player", false)))
 	h.add_child(avatar)
-	var name_label = host._label(str(row_data.get("name", "Player")), 80, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var name_label = host._label(str(row_data.get("name", "Player")), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	name_label.add_theme_constant_override("outline_size", 30)
+	name_label.add_theme_constant_override("outline_size", 8)
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 0)
 	h.add_child(copy)
-	name_label.custom_minimum_size = Vector2(0, 108)
+	name_label.custom_minimum_size = Vector2(0, 54)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_child(name_label)
-	var score_label = host._label(str(row_data.get("score_text", GameFormatting.compact_number(float(row_data.get("score", 0)), 4))), 76, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_RIGHT)
-	score_label.custom_minimum_size = Vector2(0, 98)
+	var score_label = host._label(str(row_data.get("score_text", GameFormatting.compact_number(float(row_data.get("score", 0)), 4))), 52, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_RIGHT)
+	score_label.custom_minimum_size = Vector2(0, 49)
 	score_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	score_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	score_label.add_theme_constant_override("outline_size", 28)
+	score_label.add_theme_constant_override("outline_size", 7)
 	copy.add_child(score_label)
 	return row
 
 
 func _leaderboard_rank_badge(rank: int) -> Control:
 	var badge := PanelContainer.new()
-	badge.custom_minimum_size = Vector2(198, 154)
+	badge.custom_minimum_size = Vector2(99, 77)
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	badge.add_theme_stylebox_override("panel", LeaderboardPresentation.rank_badge())
-	var label = host._label(str(rank), 102, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var label = host._label(str(rank), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", 22)
+	label.add_theme_constant_override("outline_size", 6)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.add_child(label)
 	return badge
@@ -383,18 +388,18 @@ func _leaderboard_rank_badge(rank: int) -> Control:
 
 func _leaderboard_empty_state() -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 420)
+	card.custom_minimum_size = Vector2(0, 210)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6e1"), 38, 30, false))
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 54)
-	margin.add_theme_constant_override("margin_right", 54)
-	margin.add_theme_constant_override("margin_top", 46)
-	margin.add_theme_constant_override("margin_bottom", 46)
+	margin.add_theme_constant_override("margin_left", 27)
+	margin.add_theme_constant_override("margin_right", 27)
+	margin.add_theme_constant_override("margin_top", 23)
+	margin.add_theme_constant_override("margin_bottom", 23)
 	card.add_child(margin)
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 22)
+	stack.add_theme_constant_override("separation", 11)
 	margin.add_child(stack)
 	var leaderboard_state = host.leaderboard_state
 	var title_text := "Loading leaderboard..."
@@ -405,7 +410,7 @@ func _leaderboard_empty_state() -> Control:
 	elif not leaderboard_state.fetch_in_flight:
 		title_text = "No scores yet"
 		detail_text = LeaderboardPresentation.empty_state_detail_text(str(leaderboard_state.status_message))
-	var title = host._label(title_text, 84, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var title = host._label(title_text, 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(title)
 	var detail = host._label(detail_text, 56, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)

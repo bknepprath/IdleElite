@@ -36,7 +36,7 @@ const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
 const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
-const BETA_NOTICE_HEIGHT := 710.0
+const BETA_NOTICE_HEIGHT := 355.0
 
 class _GradientShelf extends Control:
 	var top_color := Color("#f6cfd0")
@@ -208,10 +208,10 @@ class BuildableModuleOverlay:
 			plank_layer.anchor_right = 1.0
 			plank_layer.anchor_top = 0.5
 			plank_layer.anchor_bottom = 0.5
-			plank_layer.offset_left = 20
-			plank_layer.offset_right = -20
-			plank_layer.offset_top = -124
-			plank_layer.offset_bottom = 314
+			plank_layer.offset_left = 10
+			plank_layer.offset_right = -10
+			plank_layer.offset_top = -62
+			plank_layer.offset_bottom = 157
 			plank_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			plank_layer.z_index = 700
 			plank_layer.z_as_relative = false
@@ -240,13 +240,13 @@ class BuildableModuleOverlay:
 				shadow.offset_bottom = top + height + 36.0
 				var shadow_style := StyleBoxFlat.new()
 				shadow_style.bg_color = Color(0, 0, 0, 0.01)
-				shadow_style.corner_radius_top_left = 86
-				shadow_style.corner_radius_top_right = 86
-				shadow_style.corner_radius_bottom_left = 86
-				shadow_style.corner_radius_bottom_right = 86
+				shadow_style.corner_radius_top_left = 43
+				shadow_style.corner_radius_top_right = 43
+				shadow_style.corner_radius_bottom_left = 43
+				shadow_style.corner_radius_bottom_right = 43
 				shadow_style.shadow_color = Color(0, 0, 0, 0.24)
-				shadow_style.shadow_size = 22
-				shadow_style.shadow_offset = Vector2(0, 10)
+				shadow_style.shadow_size = 11
+				shadow_style.shadow_offset = Vector2(0, 5)
 				shadow.add_theme_stylebox_override("panel", shadow_style)
 				shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				shadow.z_index = index * 2
@@ -269,15 +269,15 @@ class BuildableModuleOverlay:
 				plank_nodes.append(plank)
 
 		var cta := PanelContainer.new()
-		cta.custom_minimum_size = Vector2(1040, 300)
+		cta.custom_minimum_size = Vector2(520, 150)
 		cta.anchor_left = 0.5
 		cta.anchor_right = 0.5
 		cta.anchor_top = 0.5
 		cta.anchor_bottom = 0.5
-		cta.offset_left = -520
-		cta.offset_right = 520
-		cta.offset_top = -64
-		cta.offset_bottom = 190
+		cta.offset_left = -260
+		cta.offset_right = 260
+		cta.offset_top = -32
+		cta.offset_bottom = 95
 		cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cta.z_index = 730
 		cta.z_as_relative = false
@@ -285,23 +285,23 @@ class BuildableModuleOverlay:
 		parent.add_child(cta)
 
 		var margin := MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 28)
-		margin.add_theme_constant_override("margin_right", 28)
-		margin.add_theme_constant_override("margin_top", 18)
-		margin.add_theme_constant_override("margin_bottom", 18)
+		margin.add_theme_constant_override("margin_left", 14)
+		margin.add_theme_constant_override("margin_right", 14)
+		margin.add_theme_constant_override("margin_top", 9)
+		margin.add_theme_constant_override("margin_bottom", 9)
 		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cta.add_child(margin)
 
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 24)
+		row.add_theme_constant_override("separation", 12)
 		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margin.add_child(row)
 
 		var text_stack := VBoxContainer.new()
 		text_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-		text_stack.add_theme_constant_override("separation", 2)
-		text_stack.custom_minimum_size = Vector2(560, 204)
+		text_stack.add_theme_constant_override("separation", 1)
+		text_stack.custom_minimum_size = Vector2(280, 102)
 		text_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		row.add_child(text_stack)
@@ -312,7 +312,7 @@ class BuildableModuleOverlay:
 		if cost.is_empty():
 			meta = label(meta_text, maxi(body_font_size, 82), Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 			meta.add_theme_color_override("font_outline_color", ink_color)
-			meta.add_theme_constant_override("outline_size", 30)
+			meta.add_theme_constant_override("outline_size", 15)
 			meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			text_stack.add_child(meta)
 		else:
@@ -322,7 +322,7 @@ class BuildableModuleOverlay:
 			text_stack.add_child(cost_heading)
 			var underline := ColorRect.new()
 			underline.color = Color.BLACK
-			underline.custom_minimum_size = Vector2(300, 14)
+			underline.custom_minimum_size = Vector2(150, 7)
 			underline.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 			underline.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			text_stack.add_child(underline)
@@ -333,7 +333,7 @@ class BuildableModuleOverlay:
 					continue
 				var cost_row := HBoxContainer.new()
 				cost_row.alignment = BoxContainer.ALIGNMENT_CENTER
-				cost_row.add_theme_constant_override("separation", 28)
+				cost_row.add_theme_constant_override("separation", 14)
 				cost_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 				text_stack.add_child(cost_row)
 				var icon_path := str(cost_icon_paths.get(mat_id, ""))
@@ -341,11 +341,11 @@ class BuildableModuleOverlay:
 					var icon := TextureRect.new()
 					icon.name = "BuildCostIcon_%s" % mat_id
 					icon.texture = load(icon_path) as Texture2D
-					icon.custom_minimum_size = Vector2(134, 134)
+					icon.custom_minimum_size = Vector2(67, 67)
 					icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 					icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 					icon.mouse_filter = Control.MOUSE_FILTER_STOP
-					icon.pivot_offset = Vector2(67, 67)
+					icon.pivot_offset = Vector2(33.5, 33.5)
 					_wire_cost_icon_feedback(parent, icon, mat_id, bold_font, regular_font)
 					cost_row.add_child(icon)
 				var amount_text := "%d" % int(round(amount)) if is_equal_approx(amount, round(amount)) else str(amount)
@@ -412,18 +412,18 @@ class BuildableModuleOverlay:
 
 		var popup := label(text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 		popup.add_theme_color_override("font_outline_color", Color.BLACK)
-		popup.add_theme_constant_override("outline_size", 12)
+		popup.add_theme_constant_override("outline_size", 6)
 		popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		popup.z_index = 900
 		popup.z_as_relative = false
-		popup.size = Vector2(360, 80)
+		popup.size = Vector2(180, 40)
 		var root_to_canvas := root.get_global_transform_with_canvas().affine_inverse()
 		var icon_center := icon.get_global_transform_with_canvas() * (icon.size * 0.5)
-		popup.position = root_to_canvas * icon_center - Vector2(180, 116)
+		popup.position = root_to_canvas * icon_center - Vector2(90, 58)
 		root.add_child(popup)
 		var start := popup.position
 		var float_tween := popup.create_tween()
-		float_tween.tween_property(popup, "position", start + Vector2(0, -84), 0.62).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		float_tween.tween_property(popup, "position", start + Vector2(0, -42), 0.62).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		float_tween.parallel().tween_property(popup, "modulate:a", 0.0, 0.62).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 		float_tween.finished.connect(Callable(BuildableModuleOverlay, "_finish_cost_icon_popup").bind(popup))
 
@@ -450,13 +450,13 @@ class BuildableModuleOverlay:
 		style.bg_color = Color("#2f8f58") if can_afford else Color("#9a6330")
 		style.border_color = ink_color
 		style.set_border_width_all(12)
-		style.corner_radius_top_left = 34
-		style.corner_radius_top_right = 34
-		style.corner_radius_bottom_left = 34
-		style.corner_radius_bottom_right = 34
+		style.corner_radius_top_left = 17
+		style.corner_radius_top_right = 17
+		style.corner_radius_bottom_left = 17
+		style.corner_radius_bottom_right = 17
 		style.shadow_color = Color(0, 0, 0, 0.34)
-		style.shadow_size = 10
-		style.shadow_offset = Vector2(0, 8)
+		style.shadow_size = 5
+		style.shadow_offset = Vector2(0, 4)
 		if art_backed:
 			style.bg_color = Color("#f2c33d") if can_afford else Color("#c08c2f")
 		return style
@@ -475,49 +475,49 @@ class ConvergenceBuildOverlay:
 
 		var overlay_label := label("", 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 		overlay_label.add_theme_color_override("font_outline_color", ink_color)
-		overlay_label.add_theme_constant_override("outline_size", 26)
+		overlay_label.add_theme_constant_override("outline_size", 13)
 		overlay_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 		overlay_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		overlay_label.z_index = 232
 		parent.add_child(overlay_label)
 
 		var cta := PanelContainer.new()
-		cta.custom_minimum_size = Vector2(620, 210)
+		cta.custom_minimum_size = Vector2(310, 105)
 		cta.anchor_left = 0.5
 		cta.anchor_right = 0.5
 		cta.anchor_top = 0.5
 		cta.anchor_bottom = 0.5
-		cta.offset_left = -310
-		cta.offset_right = 310
-		cta.offset_top = -105
-		cta.offset_bottom = 105
+		cta.offset_left = -155
+		cta.offset_right = 155
+		cta.offset_top = -52.5
+		cta.offset_bottom = 52.5
 		cta.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cta.z_index = 233
 		cta.add_theme_stylebox_override("panel", cta_style(ink_color))
 		parent.add_child(cta)
 
 		var margin := MarginContainer.new()
-		margin.add_theme_constant_override("margin_left", 34)
-		margin.add_theme_constant_override("margin_right", 34)
-		margin.add_theme_constant_override("margin_top", 24)
-		margin.add_theme_constant_override("margin_bottom", 24)
+		margin.add_theme_constant_override("margin_left", 17)
+		margin.add_theme_constant_override("margin_right", 17)
+		margin.add_theme_constant_override("margin_top", 12)
+		margin.add_theme_constant_override("margin_bottom", 12)
 		margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		cta.add_child(margin)
 
 		var stack := VBoxContainer.new()
 		stack.alignment = BoxContainer.ALIGNMENT_CENTER
-		stack.add_theme_constant_override("separation", 8)
+		stack.add_theme_constant_override("separation", 4)
 		stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margin.add_child(stack)
 
 		var title := label("BUILD SHRINE", 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 		title.add_theme_color_override("font_outline_color", ink_color)
-		title.add_theme_constant_override("outline_size", 18)
+		title.add_theme_constant_override("outline_size", 9)
 		stack.add_child(title)
 
 		var meta := label("", body_font_size, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 		meta.add_theme_color_override("font_outline_color", ink_color)
-		meta.add_theme_constant_override("outline_size", 12)
+		meta.add_theme_constant_override("outline_size", 6)
 		stack.add_child(meta)
 
 		return {
@@ -547,38 +547,38 @@ class ConvergenceBuildOverlay:
 		style.bg_color = Color("#2f8f58")
 		style.border_color = ink_color
 		style.set_border_width_all(8)
-		style.corner_radius_top_left = 34
-		style.corner_radius_top_right = 34
-		style.corner_radius_bottom_left = 34
-		style.corner_radius_bottom_right = 34
+		style.corner_radius_top_left = 17
+		style.corner_radius_top_right = 17
+		style.corner_radius_bottom_left = 17
+		style.corner_radius_bottom_right = 17
 		style.shadow_color = Color(0, 0, 0, 0.34)
-		style.shadow_size = 10
-		style.shadow_offset = Vector2(0, 8)
+		style.shadow_size = 5
+		style.shadow_offset = Vector2(0, 4)
 		return style
 
 const RECOVERY_WIDE_U_BOTTOM_RISE := ActivityCardStyles.RECOVERY_WIDE_U_BOTTOM_RISE
 const RECOVERY_WIDE_U_SHOULDER_RATIO := ActivityCardStyles.RECOVERY_WIDE_U_SHOULDER_RATIO
-const NORMAL_ACTIVITY_PROGRESS_HEIGHT := 112.0
-const CONVERGENCE_BAR_HEIGHT := 156
+const NORMAL_ACTIVITY_PROGRESS_HEIGHT := 56.0
+const CONVERGENCE_BAR_HEIGHT := 78
 const CONVERGENCE_BUILD_OVERLAY_COLOR := Color(0.10, 0.08, 0.06, 0.58)
 const CONVERGENCE_UNBUILT_CARD_TINT := Color(0.78, 0.70, 0.58, 1.0)
-const MODULE_ACTION_ZONE_SIZE := Vector2(170, 170)
-const MODULE_ACTION_ZONE_TOP_OFFSET := -52.0
-const MODULE_ACTION_ZONE_OUTER_OFFSET := -42.0
-const MODULE_COLLAPSE_ACTION_ZONE_SIZE := Vector2(174, 174)
-const MODULE_COLLAPSE_ACTION_ZONE_TOP_OFFSET := -30.0
-const MODULE_COLLAPSE_ACTION_ZONE_OUTER_OFFSET := -48.0
+const MODULE_ACTION_ZONE_SIZE := Vector2(85, 85)
+const MODULE_ACTION_ZONE_TOP_OFFSET := -26.0
+const MODULE_ACTION_ZONE_OUTER_OFFSET := -21.0
+const MODULE_COLLAPSE_ACTION_ZONE_SIZE := Vector2(87, 87)
+const MODULE_COLLAPSE_ACTION_ZONE_TOP_OFFSET := -15.0
+const MODULE_COLLAPSE_ACTION_ZONE_OUTER_OFFSET := -24.0
 const MODULE_ACTION_ZONE_Z_INDEX := 920
-const MODULE_COLLAPSE_BADGE_SIZE := Vector2(112, 112)
-const MODULE_COLLAPSE_BADGE_POSITION := Vector2(-78, -58)
-const MODULE_COLLAPSED_ROW_HEIGHT := 176.0
+const MODULE_COLLAPSE_BADGE_SIZE := Vector2(56, 56)
+const MODULE_COLLAPSE_BADGE_POSITION := Vector2(-39, -29)
+const MODULE_COLLAPSED_ROW_HEIGHT := 88.0
 const MODULE_COLLAPSE_SQUEEZE_SECONDS := 0.34
-const MODULE_COLLAPSED_TITLE_LIFT_Y := -24.0
-const DETAIL_PULL_TIP_FONT_SIZE := 62
-const DETAIL_PULL_TIP_HEIGHT := 188.0
-const DETAIL_PULL_TIP_TRIGGER_OFFSET := 92.0
-const DETAIL_PULL_TIP_FULL_OFFSET := 210.0
-const DETAIL_LAZY_TIP_HEIGHT := 174.0
+const MODULE_COLLAPSED_TITLE_LIFT_Y := -12.0
+const DETAIL_PULL_TIP_FONT_SIZE := 52
+const DETAIL_PULL_TIP_HEIGHT := 94.0
+const DETAIL_PULL_TIP_TRIGGER_OFFSET := 46.0
+const DETAIL_PULL_TIP_FULL_OFFSET := 105.0
+const DETAIL_LAZY_TIP_HEIGHT := 87.0
 const DETAIL_LAZY_VIEWPORT_BUFFER_PX := 120.0
 const FISHING_DETAIL_LAZY_VIEWPORT_BUFFER_PX := 120.0
 const DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX := 240.0
@@ -592,19 +592,21 @@ const DETAIL_LAZY_UNMOUNT_ENABLED := true
 const DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
 const FISHING_DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
 const DETAIL_LAZY_UNMOUNT_BUDGET_PER_FRAME := 2
-const DETAIL_LAZY_SETTLE_WARM_MOUNT_ENABLED := false
+const DETAIL_LAZY_SETTLE_WARM_MOUNT_ENABLED := true
 const DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME := 1
 const FISHING_DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME := 1
+const DETAIL_LAZY_ADJACENT_PREWARM_BUFFER_PX := 1300.0
+const DETAIL_LAZY_CACHED_ROOT_LIMIT := 4
 const DETAIL_LAZY_FADE_IN_SECONDS := 0.28
-const DETAIL_LAZY_SLIDE_IN_OFFSET_Y := 24.0
+const DETAIL_LAZY_SLIDE_IN_OFFSET_Y := 12.0
 const DETAIL_LAZY_SCALE_IN_AMOUNT := 0.985
-const DETAIL_LAZY_STACK_SEPARATION := 56.0
-const DETAIL_LAZY_WINDOW_SYNC_INTERVAL_SECONDS := 0.035
+const DETAIL_LAZY_STACK_SEPARATION := 28.0
+const DETAIL_LAZY_WINDOW_SYNC_INTERVAL_SECONDS := 0.25
 const ACTIVITY_JUMP_TOP_TEXTURE := "res://assets/content/ui/activity-jump-top-circle.png"
 const ACTIVITY_JUMP_BOTTOM_TEXTURE := "res://assets/content/ui/activity-jump-bottom-circle.png"
-const ACTIVITY_JUMP_ARROW_SIZE := Vector2(296, 296)
-const ACTIVITY_JUMP_ARROW_EDGE_INSET := 28.0
-const ACTIVITY_JUMP_ARROW_BOTTOM_EDGE_INSET := 690.0
+const ACTIVITY_JUMP_ARROW_SIZE := Vector2(148, 148)
+const ACTIVITY_JUMP_ARROW_EDGE_INSET := 14.0
+const ACTIVITY_JUMP_ARROW_BOTTOM_EDGE_INSET := 345.0
 const ACTIVITY_JUMP_ARROW_LINGER_SECONDS := 1.2
 const ACTIVITY_JUMP_ARROW_FADE_IN_SECONDS := 0.10
 const ACTIVITY_JUMP_ARROW_FADE_OUT_SECONDS := 0.22
@@ -612,8 +614,8 @@ const ACTIVITY_JUMP_ARROW_EDGE_EPSILON := 6
 const ACTIVITY_JUMP_ARROW_MIN_MODULES := 4
 const ACTIVITY_JUMP_ARROW_LANDING_PREFILL_BUFFER_PX := 420.0
 const ACTIVITY_BACK_TEXTURE := "res://assets/content/ui/activity-back-arrow.png"
-const ACTIVITY_BACK_BUTTON_SIZE := Vector2(460, 140)
-const ACTIVITY_BACK_ARROW_SIZE := Vector2(250, 74)
+const ACTIVITY_BACK_BUTTON_SIZE := Vector2(230, 70)
+const ACTIVITY_BACK_ARROW_SIZE := Vector2(125, 37)
 const DETAIL_PULL_TIP_TEXTS := [
 	"tip: tap the top right corner of an activity to collapse it.",
 	"tip: tap the top left corner of an activity to pin it into the Pins page.",
@@ -663,12 +665,11 @@ var detail_lazy_last_scroll := -1.0
 var detail_lazy_window_sync_elapsed := 0.0
 var detail_lazy_stack: VBoxContainer = null
 var detail_lazy_mounted_this_frame := false
-var detail_lazy_all_mounted_cache_frame := -1
-var detail_lazy_all_mounted_cache_value := false
 var detail_lazy_render_cull_last_scroll := -999999.0
 var detail_lazy_render_cull_last_msec := 0
 var detail_lazy_mount_trace_context := ""
 var detail_lazy_settle_warm_mount_skill_id := ""
+var detail_lazy_settle_warm_mount_exhausted := false
 var detail_lazy_refresh_token := 0
 var detail_lazy_cache_bin: Control = null
 var detail_lazy_blank_repair_next_msec := 0
@@ -881,7 +882,7 @@ func _build_detail_pull_tip_overlay(parent: Control) -> void:
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	_position_detail_pull_tip_label(true, DETAIL_PULL_TIP_FULL_OFFSET)
 	label.add_theme_color_override("font_outline_color", Color("#fff4ce"))
-	label.add_theme_constant_override("outline_size", 10)
+	label.add_theme_constant_override("outline_size", 5)
 	label.add_theme_constant_override("line_spacing", -8)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(label)
@@ -1177,6 +1178,7 @@ func _render_detail_eager_card_list_async(stack: VBoxContainer, content_width: f
 
 func _begin_detail_lazy_card_list_render(skill_id: String) -> void:
 	_clear_detail_lazy_cache_bin()
+	detail_lazy_settle_warm_mount_exhausted = false
 	detail_rendered_action_ids.clear()
 	detail_lazy_plan = _build_detail_lazy_plan(skill_id)
 	host._skill_swipe_activity_surface()._apply_global_swipe_real_card_cache_to_lazy_plan(skill_id)
@@ -1231,6 +1233,8 @@ func _process_detail_lazy_runtime(delta: float, detail_scroll_visual_work: bool)
 	var mounted_count := 0
 	if detail_lazy_plan.size() > 0:
 		mounted_count = _process_detail_lazy_window(delta)
+		if mounted_count == 0 and detail_scroll_visual_work:
+			_process_detail_lazy_adjacent_prewarm()
 	_maybe_resume_fishing_detail_idle_warm_mount()
 	_process_detail_lazy_settle_warm_mount(detail_scroll_visual_work)
 	return mounted_count
@@ -1284,6 +1288,8 @@ func _detail_lazy_window_scan_due() -> bool:
 func _queue_detail_lazy_settle_warm_mount(skill_id: String) -> void:
 	if not DETAIL_LAZY_SETTLE_WARM_MOUNT_ENABLED:
 		return
+	if detail_lazy_settle_warm_mount_exhausted:
+		return
 	if current_screen != "skill" or skill_id.is_empty() or selected_skill_id != skill_id:
 		return
 	if host._skill_swipe_loading_transition_active() or host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition():
@@ -1300,6 +1306,8 @@ func _cancel_detail_lazy_settle_warm_mount() -> void:
 
 func _maybe_resume_fishing_detail_idle_warm_mount() -> void:
 	if current_screen != "skill" or not host._fishing_rework_active_for_skill(selected_skill_id):
+		return
+	if detail_lazy_settle_warm_mount_exhausted:
 		return
 	if detail_lazy_settle_warm_mount_skill_id == selected_skill_id:
 		return
@@ -1360,24 +1368,17 @@ func _process_detail_lazy_settle_warm_mount(detail_scroll_visual_work: bool) -> 
 			reached_warm_mount_limit = true
 			break
 		if lazy_entry.has("cached_root"):
-			if host._fishing_rework_active_for_skill(skill_id):
-				if _detail_lazy_mount_item(lazy_entry, skill_id, content_width, actions_width, false):
-					cached_count += 1
-			continue
-		if host._fishing_rework_active_for_skill(skill_id):
-			if _detail_lazy_mount_item(lazy_entry, skill_id, content_width, actions_width, false):
-				cached_count += 1
 			continue
 		if _detail_lazy_build_cached_entry(lazy_entry, skill_id, content_width, actions_width):
 			cached_count += 1
 	detail_lazy_mount_trace_context = previous_mount_context
 	if reached_warm_mount_limit:
+		detail_lazy_settle_warm_mount_exhausted = true
 		_finish_detail_lazy_settle_warm_mount(skill_id, detail_scroll_visual_work)
 		return
 	if cached_count > 0:
 		return
-	if host._fishing_rework_active_for_skill(skill_id) and not _detail_lazy_all_mounted():
-		return
+	detail_lazy_settle_warm_mount_exhausted = true
 	_finish_detail_lazy_settle_warm_mount(skill_id, detail_scroll_visual_work)
 
 
@@ -1651,7 +1652,7 @@ func _skill_detail_shelf_style(skill_id: String, draw_bottom_border := true) -> 
 	var border: Color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE).lerp(host._theme_paper_color(), 0.58)
 	border.a = 0.82
 	style.border_color = border
-	style.border_width_bottom = 5 if draw_bottom_border else 0
+	style.border_width_bottom = 2.5 if draw_bottom_border else 0
 	style.content_margin_left = 0
 	style.content_margin_right = 0
 	style.content_margin_top = 0
@@ -2326,7 +2327,7 @@ func _action_stat_label(text: String) -> Label:
 
 func _action_stat_box(label: Label, interactive := false, skill_id := "", action_id := "", stat_kind := "") -> Control:
 	var box: Control = PanelContainer.new()
-	box.custom_minimum_size = Vector2(300, 222)
+	box.custom_minimum_size = Vector2(150, 111)
 	box.mouse_filter = Control.MOUSE_FILTER_STOP if interactive and not stat_kind.is_empty() else Control.MOUSE_FILTER_IGNORE
 	box.set_meta("action_stat_box", true)
 	box.set_meta("action_stat_box_interactive", interactive and not stat_kind.is_empty())
@@ -2349,7 +2350,7 @@ func _action_stat_box(label: Label, interactive := false, skill_id := "", action
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.z_index = 2
 	box.add_child(stack)
-	label.add_theme_font_size_override("font_size", 66)
+	label.add_theme_font_size_override("font_size", 48)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -2373,16 +2374,16 @@ func _action_stat_box(label: Label, interactive := false, skill_id := "", action
 func _compact_action_stat_box(box: Control, value_label: Label) -> void:
 	if box == null or value_label == null:
 		return
-	box.custom_minimum_size = Vector2(214, 142)
-	value_label.add_theme_font_size_override("font_size", 52)
+	box.custom_minimum_size = Vector2(107, 71)
+	value_label.add_theme_font_size_override("font_size", 48)
 	var title_label := (value_label.get_meta("stat_title_label") as Label) if value_label.has_meta("stat_title_label") else null
 	if title_label != null:
-		title_label.add_theme_font_size_override("font_size", 36)
+		title_label.add_theme_font_size_override("font_size", 48)
 
 
 func _normal_activity_stat_item(value_label: Label, stat_kind: String, interactive := false, skill_id := "", action_id := "") -> Control:
 	var item := PanelContainer.new()
-	item.custom_minimum_size = Vector2(0, 160)
+	item.custom_minimum_size = Vector2(0, 80)
 	item.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	item.mouse_filter = Control.MOUSE_FILTER_STOP if interactive and not stat_kind.is_empty() else Control.MOUSE_FILTER_IGNORE
 	item.set_meta("action_stat_box", true)
@@ -2404,7 +2405,7 @@ func _normal_activity_stat_item(value_label: Label, stat_kind: String, interacti
 		"success": "res://assets/content/ui/infochip-symbol-rate-outlined.png",
 	}.get(stat_kind, ""))
 	var symbol := TextureRect.new()
-	symbol.custom_minimum_size = Vector2(160, 160)
+	symbol.custom_minimum_size = Vector2(80, 80)
 	symbol.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	symbol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	symbol.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -2415,15 +2416,15 @@ func _normal_activity_stat_item(value_label: Label, stat_kind: String, interacti
 	row.add_child(symbol)
 	item.set_meta("normal_activity_stat_symbol", symbol)
 	item.set_meta("normal_activity_stat_value_label", value_label)
-	value_label.add_theme_font_size_override("font_size", 86)
+	value_label.add_theme_font_size_override("font_size", 48)
 	value_label.add_theme_color_override("font_color", Color.WHITE)
 	value_label.add_theme_color_override("font_outline_color", COLOR_INK)
-	value_label.add_theme_constant_override("outline_size", 32)
+	value_label.add_theme_constant_override("outline_size", 16)
 	value_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	value_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	value_label.custom_minimum_size.y = 160
+	value_label.custom_minimum_size.y = 80
 	value_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	value_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	value_label.set_meta("normal_activity_stat_text", true)
@@ -2473,7 +2474,7 @@ func _finish_normal_activity_stat_symbol_wiggle(symbol_id: int, value_label_id: 
 func _normal_activity_stat_row_label() -> Label:
 	var label := host._label("", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
-	label.add_theme_constant_override("outline_size", 24)
+	label.add_theme_constant_override("outline_size", 12)
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2492,10 +2493,10 @@ func _normal_activity_stat_panel(minimum_size: Vector2, outline_color: Color) ->
 	style.border_color = COLOR_INK
 	style.set_border_width_all(14)
 	style.set_corner_radius_all(32)
-	style.content_margin_left = 32
-	style.content_margin_right = 32
-	style.content_margin_top = 28
-	style.content_margin_bottom = 14
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 14
+	style.content_margin_bottom = 7
 	style.anti_aliasing = true
 	panel.add_theme_stylebox_override("panel", style)
 	return panel
@@ -2553,11 +2554,11 @@ func _sync_action_stat_chip_label_style(label: Label, buffed: bool, theme_color:
 	if bool(label.get_meta("normal_activity_stat_text", false)):
 		label.add_theme_color_override("font_color", Color.WHITE)
 		label.add_theme_color_override("font_outline_color", Color.BLACK)
-		label.add_theme_constant_override("outline_size", 32)
+		label.add_theme_constant_override("outline_size", 16)
 		if title_label != null:
 			title_label.add_theme_color_override("font_color", Color("#ffd54a"))
 			title_label.add_theme_color_override("font_outline_color", COLOR_INK)
-			title_label.add_theme_constant_override("outline_size", 32)
+			title_label.add_theme_constant_override("outline_size", 16)
 		return
 	if buffed:
 		label.add_theme_color_override("font_color", Color.WHITE)
@@ -2660,7 +2661,7 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 	var button := Button.new()
 	button.text = "i"
 	button.tooltip_text = ""
-	button.custom_minimum_size = Vector2(78, 78)
+	button.custom_minimum_size = Vector2(39, 39)
 	button.size = button.custom_minimum_size
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
@@ -2733,8 +2734,8 @@ func _hide_skill_header_info_on_outside_press(event: InputEvent) -> void:
 
 func _skill_header_info_popover(title_text: String, body_text: String) -> PanelContainer:
 	var popover := PanelContainer.new()
-	popover.position = Vector2(-520, 90)
-	popover.custom_minimum_size = Vector2(980, 350)
+	popover.position = Vector2(-260, 45)
+	popover.custom_minimum_size = Vector2(490, 175)
 	popover.size = popover.custom_minimum_size
 	popover.visible = false
 	popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2743,14 +2744,14 @@ func _skill_header_info_popover(title_text: String, body_text: String) -> PanelC
 	popover.add_to_group("skill_header_info_popovers")
 	popover.add_theme_stylebox_override("panel", PassiveModuleStyles.popup(host.COLOR_PANEL, COLOR_INK, Callable(host, "_surface_style")))
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 30)
-	margin.add_theme_constant_override("margin_right", 30)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_bottom", 24)
+	margin.add_theme_constant_override("margin_left", 15)
+	margin.add_theme_constant_override("margin_right", 15)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popover.add_child(margin)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 10)
+	stack.add_theme_constant_override("separation", 5)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	var title: Label = host._label(title_text, host.MIN_MOBILE_INFO_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
@@ -2758,7 +2759,7 @@ func _skill_header_info_popover(title_text: String, body_text: String) -> PanelC
 	stack.add_child(title)
 	var body: Label = host._label(body_text, host.MIN_MOBILE_BODY_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(920, 220)
+	body.custom_minimum_size = Vector2(460, 110)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover
@@ -3382,7 +3383,7 @@ func _scroll_detail_actions_to_bottom_after_layout() -> void:
 		host._navigation_shell()._fade_clear_page_switch_scroll_cover()
 	elif host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition():
 		host._skill_swipe_activity_surface()._force_skill_detail_reveal_mount_under_cover()
-		host._fade_clear_skill_swipe_rebuild_cover()
+		host._skill_swipe_activity_surface()._fade_clear_skill_swipe_rebuild_cover()
 	else:
 		host._skill_swipe_activity_surface()._clear_skill_swipe_handoff_cover()
 
@@ -3437,13 +3438,13 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	_add_skill_detail_shelf_background(header_body, selected_skill_id, content_width)
 	var header_margin = MarginContainer.new()
 	header_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	header_margin.add_theme_constant_override("margin_left", 66)
-	header_margin.add_theme_constant_override("margin_right", 46)
-	header_margin.add_theme_constant_override("margin_top", 88)
+	header_margin.add_theme_constant_override("margin_left", 33)
+	header_margin.add_theme_constant_override("margin_right", 23)
+	header_margin.add_theme_constant_override("margin_top", 44)
 	header_margin.add_theme_constant_override("margin_bottom", SKILL_DETAIL_HEADER_MARGIN_BOTTOM)
 	header_body.add_child(header_margin)
 	var header_row = HBoxContainer.new()
-	header_row.add_theme_constant_override("separation", 66)
+	header_row.add_theme_constant_override("separation", 33)
 	header_margin.add_child(header_row)
 
 	var left_block = HBoxContainer.new()
@@ -3466,7 +3467,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	if selected_skill_id in ["thieving", "fishing"]:
 		var title_line = HBoxContainer.new()
 		title_line.alignment = BoxContainer.ALIGNMENT_BEGIN
-		title_line.add_theme_constant_override("separation", 22)
+		title_line.add_theme_constant_override("separation", 11)
 		title_line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		title_stack.add_child(title_line)
 		title_line.add_child(title)
@@ -3494,7 +3495,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		detail_blue_guy_health_gauge = null
 		detail_auto_eat_fish_button = null
 		detail_fish_circle = FishCircle.new()
-		detail_fish_circle.custom_minimum_size = Vector2(552, 552)
+		detail_fish_circle.custom_minimum_size = Vector2(276, 276)
 		detail_fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		detail_fish_circle.mouse_filter = Control.MOUSE_FILTER_PASS
 		detail_fish_circle.z_index = 3000
@@ -3506,12 +3507,12 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		detail_fish_circle = null
 		detail_blue_guy_health_gauge = null
 		detail_regen_circle_host = Control.new()
-		detail_regen_circle_host.custom_minimum_size = Vector2(552, 552)
+		detail_regen_circle_host.custom_minimum_size = Vector2(276, 276)
 		detail_regen_circle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		detail_regen_circle_host.clip_contents = false
 		detail_regen_circle_fade_group = CanvasGroup.new()
 		detail_regen_circle = RegenCircle.new()
-		detail_regen_circle.custom_minimum_size = Vector2(552, 552)
+		detail_regen_circle.custom_minimum_size = Vector2(276, 276)
 		detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
 		detail_regen_circle.modulate = Color.WHITE
@@ -3575,7 +3576,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	var stack = VBoxContainer.new()
 	stack.custom_minimum_size.x = actions_width
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.add_theme_constant_override("separation", 56)
+	stack.add_theme_constant_override("separation", 28)
 	actions_scroll.add_child(stack)
 	var scroll_top_spacer = Control.new()
 	scroll_top_spacer.name = "DetailActionsTopSpacer"
@@ -3964,7 +3965,7 @@ func _build_beta_notice_board(content_width: float) -> Control:
 	for x in [84.0, board_width - 124.0]:
 		var support := Panel.new()
 		support.position = Vector2(host.ACTION_CARD_POP_GUTTER + x, 12)
-		support.size = Vector2(40, 686)
+		support.size = Vector2(20, 343)
 		support.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		support.add_theme_stylebox_override("panel", _beta_notice_wood_style(Color("#704420"), 8))
 		root.add_child(support)
@@ -4005,8 +4006,8 @@ func _beta_notice_wood_style(color: Color, radius: int) -> StyleBoxFlat:
 	style.set_border_width_all(8)
 	style.set_corner_radius_all(radius)
 	style.shadow_color = Color(0.12, 0.07, 0.03, 0.35)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 8)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(0, 4)
 	return style
 
 
@@ -4020,7 +4021,7 @@ func _module_action_zone(kind: String, module_key: String, left_side: bool) -> C
 	var outer_offset: float = MODULE_COLLAPSE_ACTION_ZONE_OUTER_OFFSET if kind == "collapse" else MODULE_ACTION_ZONE_OUTER_OFFSET
 	var offset_left: float = outer_offset if left_side else -zone_size.x - outer_offset
 	if module_key.begins_with("fishing_area:"):
-		zone_size = Vector2(96.0, 96.0)
+		zone_size = Vector2(48.0, 48.0)
 		top_offset = -22.0
 		offset_left = -18.0 if left_side else 18.0 - zone_size.x
 	zone.anchor_left = 0.0 if left_side else 1.0
@@ -4260,6 +4261,38 @@ func _module_pin_badge_clip_host(badge: TextureButton) -> Control:
 	return parent
 
 
+func _module_pin_entry_seam(badge: TextureButton) -> Line2D:
+	var owner_host := _module_pin_badge_owner_host(badge)
+	if owner_host == null:
+		return null
+	return owner_host.get_node_or_null("ModulePinEntrySeam") as Line2D
+
+
+func _ensure_module_pin_entry_seam(card_host: Control) -> Line2D:
+	if card_host == null or not is_instance_valid(card_host):
+		return null
+	var existing := card_host.get_node_or_null("ModulePinEntrySeam") as Line2D
+	if existing != null:
+		return existing
+	var seam := Line2D.new()
+	seam.name = "ModulePinEntrySeam"
+	seam.points = PackedVector2Array(ModuleUiRuntime.MODULE_PIN_ENTRY_SEAM_POINTS)
+	seam.width = ModuleUiRuntime.MODULE_PIN_ENTRY_SEAM_WIDTH
+	seam.default_color = Color.BLACK
+	seam.begin_cap_mode = Line2D.LINE_CAP_ROUND
+	seam.end_cap_mode = Line2D.LINE_CAP_ROUND
+	seam.z_index = ModuleUiRuntime.MODULE_PIN_BADGE_Z_INDEX + 1
+	seam.visible = false
+	card_host.add_child(seam)
+	return seam
+
+
+func _set_module_pin_entry_seam_visible(badge: TextureButton, visible: bool) -> void:
+	var seam := _module_pin_entry_seam(badge)
+	if seam != null:
+		seam.visible = visible
+
+
 func _set_module_pin_badge_clip_enabled(raw_badge: Object, enabled: bool) -> void:
 	var badge := raw_badge as TextureButton
 	if badge == null:
@@ -4282,6 +4315,7 @@ func _set_module_pin_badge_clip_enabled_by_id(badge_id: int, enabled: bool) -> v
 func _ensure_module_pin_badge(card_host: Control, module_key: String) -> TextureButton:
 	var existing := _module_pin_badge(card_host)
 	if existing != null and is_instance_valid(existing) and not existing.is_queued_for_deletion():
+		_ensure_module_pin_entry_seam(card_host)
 		existing.set_meta("module_pin_module_key", ModuleUiRuntime.normalize(module_key))
 		existing.material = null
 		host.module_ui_runtime.apply_pin_badge_texture(existing, module_key, ModuleUiRuntime.MODULE_PIN_COLOR_TEXTURES, ModuleUiRuntime.MODULE_PIN_ICON_TEXTURE, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"))
@@ -4302,6 +4336,7 @@ func _ensure_module_pin_badge(card_host: Control, module_key: String) -> Texture
 	clip_host.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip_host.z_index = ModuleUiRuntime.MODULE_PIN_BADGE_Z_INDEX
 	card_host.add_child(clip_host)
+	_ensure_module_pin_entry_seam(card_host)
 	var badge := TextureButton.new()
 	badge.name = "ModulePinConfirmBadge"
 	host.module_ui_runtime.apply_pin_badge_texture(badge, module_key, ModuleUiRuntime.MODULE_PIN_COLOR_TEXTURES, ModuleUiRuntime.MODULE_PIN_ICON_TEXTURE, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"))
@@ -4339,6 +4374,7 @@ func _sync_module_pin_badge(card_host: Control, module_key: String) -> void:
 	if pinned:
 		_place_module_pin_badge_settled(badge)
 	else:
+		_set_module_pin_entry_seam_visible(badge, false)
 		_set_module_pin_badge_clip_enabled(badge, true)
 		badge.visible = false
 		badge.disabled = true
@@ -4365,6 +4401,7 @@ func _place_module_pin_badge_settled(badge: TextureButton) -> void:
 	badge.visible = true
 	badge.disabled = false
 	host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(badge, 1.0)
+	_set_module_pin_entry_seam_visible(badge, true)
 
 
 func _play_module_pin_confirm_animation(badge: TextureButton, card_host: Control, module_key: String) -> void:
@@ -4374,6 +4411,7 @@ func _play_module_pin_confirm_animation(badge: TextureButton, card_host: Control
 		host._app_lifecycle_runtime()._kill_meta_tween(badge, "module_pin_tween")
 	if badge.has_meta("module_pin_preview_tween"):
 		host._app_lifecycle_runtime()._kill_meta_tween(badge, "module_pin_preview_tween")
+	_set_module_pin_entry_seam_visible(badge, false)
 	_set_module_pin_badge_clip_enabled(badge, false)
 	badge.visible = true
 	badge.disabled = true
@@ -4428,6 +4466,7 @@ func _play_module_pin_unpin_animation(badge: TextureButton, card_host: Control, 
 		host._app_lifecycle_runtime()._kill_meta_tween(badge, "module_pin_tween")
 	if badge.has_meta("module_pin_preview_tween"):
 		host._app_lifecycle_runtime()._kill_meta_tween(badge, "module_pin_preview_tween")
+	_set_module_pin_entry_seam_visible(badge, false)
 	_set_module_pin_badge_clip_enabled(badge, true)
 	badge.visible = true
 	badge.disabled = true
@@ -5780,10 +5819,10 @@ func _ensure_module_collapse_badge(card_host: Control, module_key: String) -> Bu
 	var glyph := ModuleCollapseMinusGlyph.new()
 	glyph.name = "ModuleCollapseMinusGlyph"
 	glyph.set_anchors_preset(Control.PRESET_FULL_RECT)
-	glyph.offset_left = 8.0
-	glyph.offset_right = -8.0
-	glyph.offset_top = 8.0
-	glyph.offset_bottom = -8.0
+	glyph.offset_left = 4.0
+	glyph.offset_right = -4.0
+	glyph.offset_top = 4.0
+	glyph.offset_bottom = -4.0
 	glyph.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	glyph.z_index = 3
 	badge.add_child(glyph)
@@ -5810,17 +5849,17 @@ func _module_collapse_badge_style(pressed := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = COLOR_GOLD.darkened(0.08) if pressed else COLOR_GOLD
 	style.border_color = COLOR_INK
-	style.border_width_left = 8
-	style.border_width_top = 8
-	style.border_width_right = 8
-	style.border_width_bottom = 10
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.border_width_left = 4
+	style.border_width_top = 4
+	style.border_width_right = 4
+	style.border_width_bottom = 5
+	style.corner_radius_top_left = 499.5
+	style.corner_radius_top_right = 499.5
+	style.corner_radius_bottom_left = 499.5
+	style.corner_radius_bottom_right = 499.5
 	style.shadow_color = Color(0, 0, 0, 0.30)
-	style.shadow_size = 9
-	style.shadow_offset = Vector2(4, 8)
+	style.shadow_size = 4.5
+	style.shadow_offset = Vector2(2, 4)
 	return style
 
 
@@ -5998,8 +6037,8 @@ func _detail_action_card_shell(skill_id: String, action: Dictionary, content_wid
 		if uses_diamond_arena:
 			blue_guy_chicken_stage.z_index = host.MODULE_TITLE_OVER_PIN_Z_INDEX + 1
 			blue_guy_chicken_stage.set("arena_shape", "diamond")
-			blue_guy_chicken_stage.offset_top = -40.0
-			blue_guy_chicken_stage.offset_bottom = -140.0
+			blue_guy_chicken_stage.offset_top = -20.0
+			blue_guy_chicken_stage.offset_bottom = -70.0
 		pop_card.add_child(blue_guy_chicken_stage)
 		if blue_guy_chicken_stage.has_method("setup_action"):
 			blue_guy_chicken_stage.call("setup_action", action)
@@ -6053,7 +6092,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	margin.add_theme_constant_override("margin_left", 68 if uses_flat_normal_card else 54)
 	margin.add_theme_constant_override("margin_right", 82 if uses_flat_normal_card else 54)
 	margin.add_theme_constant_override("margin_top", 38 if uses_flat_normal_card else 46)
-	margin.add_theme_constant_override("margin_bottom", 126)
+	margin.add_theme_constant_override("margin_bottom", 63)
 	margin.mouse_filter = Control.MOUSE_FILTER_PASS
 	margin.z_index = 200
 	margin.visible = not uses_blue_guy_chicken_brawl_stage and not uses_rooster_boss_stage
@@ -6068,7 +6107,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	art_slot.add_theme_constant_override("margin_top", 48 if uses_flat_normal_card else 42)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel := Panel.new()
-	var art_panel_size := Vector2(400, 400) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
+	var art_panel_size := Vector2(200, 200) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
 	art_panel.custom_minimum_size = art_panel_size
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var art_panel_style := ActivityCardStyles.cached_action_art(Callable(host, "_surface_style"))
@@ -6083,9 +6122,9 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		art_panel.add_child(art_face)
 	var art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
 	if uses_flat_normal_card:
-		art.custom_minimum_size = Vector2(416, 416)
-		art.size = Vector2(416, 416)
-		art.position = Vector2(-8, -8)
+		art.custom_minimum_size = Vector2(208, 208)
+		art.size = Vector2(208, 208)
+		art.position = Vector2(-4, -4)
 		art.z_index = 2
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
@@ -6113,7 +6152,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	if BuildableModules.is_buildable(action) and not BuildableModules.is_built(host.built_modules, skill_id, action, Callable(host, "_action_key")):
 		title_row = HBoxContainer.new()
 		title_row.alignment = BoxContainer.ALIGNMENT_BEGIN
-		title_row.add_theme_constant_override("separation", 18)
+		title_row.add_theme_constant_override("separation", 9)
 		title_row.mouse_filter = Control.MOUSE_FILTER_PASS
 		title_row.z_index = 735
 		title_row.z_as_relative = false
@@ -6121,7 +6160,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 
 	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	if uses_flat_normal_card:
-		action_name_label.add_theme_font_size_override("font_size", 82)
+		action_name_label.add_theme_font_size_override("font_size", 48)
 	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
@@ -6132,12 +6171,12 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	action_name_label.z_index = ActivityCardStyles.activity_card_title_z_index(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action), action_name_label, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
 	if title_row != null:
 		action_name_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		action_name_label.custom_minimum_size = Vector2(640, 120)
+		action_name_label.custom_minimum_size = Vector2(320, 60)
 		action_name_label.z_index = 0
 		action_name_label.z_as_relative = true
 		title_row.add_child(action_name_label)
 		build_title_button_panel = PanelContainer.new()
-		build_title_button_panel.custom_minimum_size = Vector2(352, 134)
+		build_title_button_panel.custom_minimum_size = Vector2(176, 67)
 		build_title_button_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		build_title_button_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		build_title_button_panel.add_theme_stylebox_override("panel", BuildableModuleOverlay.cta_style(BuildableModules.can_pay(action, Callable(host.material_runtime, "amount")), COLOR_INK, true))
@@ -6145,7 +6184,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		build_title_button_label = BuildableModuleOverlay.label(BuildableModules.label(action).to_upper(), 84, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, host.app_bold_font, host.app_font)
 		build_title_button_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 		build_title_button_label.add_theme_color_override("font_outline_color", COLOR_INK)
-		build_title_button_label.add_theme_constant_override("outline_size", 24)
+		build_title_button_label.add_theme_constant_override("outline_size", 12)
 		build_title_button_panel.add_child(build_title_button_label)
 	else:
 		copy.add_child(action_name_label)
@@ -6182,11 +6221,11 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 	var normal_stat_top: Label = null
 	var normal_stat_bottom: Label = null
 	if uses_flat_normal_card:
-		var stat_panel := _normal_activity_stat_panel(Vector2(0, 272), ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+		var stat_panel := _normal_activity_stat_panel(Vector2(0, 136), ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 		var stat_items := GridContainer.new()
 		stat_items.columns = 2
-		stat_items.add_theme_constant_override("h_separation", 20)
-		stat_items.add_theme_constant_override("v_separation", -24)
+		stat_items.add_theme_constant_override("h_separation", 10)
+		stat_items.add_theme_constant_override("v_separation", -12)
 		stat_items.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		xp_box = _normal_activity_stat_item(xp_label, "xp", true, skill_id, action_id)
 		stamina_box = _normal_activity_stat_item(stamina_label, "stamina", true, skill_id, action_id)
@@ -6266,7 +6305,7 @@ func _detail_action_boss_line(copy: VBoxContainer, action: Dictionary) -> Label:
 	node.add_theme_font_size_override("font_size", host.MIN_MOBILE_INFO_TITLE_FONT_SIZE)
 	node.add_theme_color_override("font_color", Color("#ffe56b"))
 	node.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	node.add_theme_constant_override("outline_size", 18)
+	node.add_theme_constant_override("outline_size", 9)
 	if host.app_bold_font != null:
 		node.add_theme_font_override("font", host.app_bold_font)
 	elif host.app_font != null:
@@ -6289,10 +6328,10 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 		medal.anchor_top = 0.0
 		medal.anchor_bottom = 0.0
 		medal.offset_left = 0
-		medal.offset_right = 190
+		medal.offset_right = 95
 		medal.offset_top = 0
-		medal.offset_bottom = 190
-		medal.size = Vector2(190, 190)
+		medal.offset_bottom = 95
+		medal.size = Vector2(95, 95)
 		medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
@@ -6325,7 +6364,7 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 		convergence_progress.offset_left = host.ACTION_PROGRESS_RAIL_INSET + 18
 		convergence_progress.offset_right = -host.ACTION_PROGRESS_RAIL_INSET - 18
 		convergence_progress.offset_top = -CONVERGENCE_BAR_HEIGHT + 34
-		convergence_progress.offset_bottom = 34
+		convergence_progress.offset_bottom = 17
 		convergence_progress.z_index = 234
 		convergence_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pop_card.add_child(convergence_progress)
@@ -6459,7 +6498,7 @@ func _play_buildable_module_built_animation(skill_id: String, action: Dictionary
 				continue
 			plank.pivot_offset = plank.size * 0.5
 			tween.tween_property(plank, "scale", Vector2(1.10, 0.72), 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
-			tween.tween_property(plank, "position", plank.position + Vector2(0.0, -180.0), 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+			tween.tween_property(plank, "position", plank.position + Vector2(0.0, -90.0), 0.28).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.finished.connect(_finish_buildable_module_built_animation.bind(refresh_scroll))
 	return true
 
@@ -7375,15 +7414,15 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 
 func _activity_stat_bonus_panel() -> Dictionary:
 	var root = HBoxContainer.new()
-	root.custom_minimum_size = Vector2(0, 520)
+	root.custom_minimum_size = Vector2(0, 260)
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	root.add_theme_constant_override("separation", 40)
+	root.add_theme_constant_override("separation", 20)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.modulate.a = 0.0
 	root.visible = false
 	var values = VBoxContainer.new()
-	values.custom_minimum_size = Vector2(820, 0)
-	values.add_theme_constant_override("separation", 8)
+	values.custom_minimum_size = Vector2(410, 0)
+	values.add_theme_constant_override("separation", 4)
 	values.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(values)
 	var title = _activity_bonus_label("", 120)
@@ -7394,7 +7433,7 @@ func _activity_stat_bonus_panel() -> Dictionary:
 	values.add_child(current)
 	var bonus_column = VBoxContainer.new()
 	bonus_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bonus_column.add_theme_constant_override("separation", 8)
+	bonus_column.add_theme_constant_override("separation", 4)
 	bonus_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bonus_column)
 	var bonuses = _activity_bonus_label("", 104)
@@ -7474,7 +7513,7 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	plaque.offset_left = 0.0
 	plaque.offset_right = 0.0
 	plaque.offset_top = 0.0
-	plaque.offset_bottom = 560.0
+	plaque.offset_bottom = 280.0
 	plaque.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(plaque)
 	var margin := MarginContainer.new()
@@ -7482,26 +7521,26 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	margin.offset_left = 0.0
 	margin.offset_right = 0.0
 	margin.offset_top = 0.0
-	margin.offset_bottom = 560.0
-	margin.add_theme_constant_override("margin_left", 180)
-	margin.add_theme_constant_override("margin_right", 180)
-	margin.add_theme_constant_override("margin_top", 190)
-	margin.add_theme_constant_override("margin_bottom", 30)
+	margin.offset_bottom = 280.0
+	margin.add_theme_constant_override("margin_left", 90)
+	margin.add_theme_constant_override("margin_right", 90)
+	margin.add_theme_constant_override("margin_top", 95)
+	margin.add_theme_constant_override("margin_bottom", 15)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(margin)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 16)
+	stack.add_theme_constant_override("separation", 8)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 18)
+	header.add_theme_constant_override("separation", 9)
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(header)
 	var title: Label = host._label("TIER %s" % tier, 162 + mini(tier, 4) * 4, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.add_theme_color_override("font_outline_color", COLOR_INK)
-	title.add_theme_constant_override("outline_size", 44)
+	title.add_theme_constant_override("outline_size", 22)
 	if host.app_bold_font != null:
 		title.add_theme_font_override("font", host.app_bold_font)
 	header.add_child(title)
@@ -7565,36 +7604,36 @@ func _tier_banner_hit_button(position: Vector2, hit_size: Vector2, callback: Cal
 
 
 func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, counts: Dictionary) -> void:
-	var panel_position := Vector2(86.0, 560.0)
+	var panel_position := Vector2(43.0, 280.0)
 	var panel_size := Vector2(maxf(1.0, root.custom_minimum_size.x - 172.0), _tier_banner_height(_tier_banner_key(skill_id, tier)) - 560.0)
 	root.add_child(_tier_banner_hit_button(panel_position, panel_size, Callable(self, "_toggle_tier_banner").bind(skill_id, tier), "tier_banner_panel_hit"))
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	panel.offset_left = 86.0
-	panel.offset_right = -86.0
-	panel.offset_top = 560.0
+	panel.offset_left = 43.0
+	panel.offset_right = -43.0
+	panel.offset_top = 280.0
 	panel.offset_bottom = _tier_banner_height(_tier_banner_key(skill_id, tier))
 	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.z_index = 10
 	panel.add_theme_stylebox_override("panel", _tier_banner_expanded_menu_style())
 	root.add_child(panel)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 50)
-	margin.add_theme_constant_override("margin_right", 50)
-	margin.add_theme_constant_override("margin_top", 40)
-	margin.add_theme_constant_override("margin_bottom", 40)
+	margin.add_theme_constant_override("margin_left", 25)
+	margin.add_theme_constant_override("margin_right", 25)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(margin)
 	var stack := VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 18)
+	stack.add_theme_constant_override("separation", 9)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	var header := HBoxContainer.new()
-	header.add_theme_constant_override("separation", 18)
+	header.add_theme_constant_override("separation", 9)
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(header)
 	var left_spacer := Control.new()
-	left_spacer.custom_minimum_size = Vector2(78, 78)
+	left_spacer.custom_minimum_size = Vector2(39, 39)
 	left_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	header.add_child(left_spacer)
 	var earned_medals := int(counts.get("earned", 0))
@@ -7621,10 +7660,10 @@ func _tier_banner_expanded_menu_style() -> StyleBoxFlat:
 	style.border_width_right = 0
 	style.border_width_top = 0
 	style.border_width_bottom = 0
-	style.corner_radius_top_left = 18
-	style.corner_radius_top_right = 18
-	style.corner_radius_bottom_left = 26
-	style.corner_radius_bottom_right = 26
+	style.corner_radius_top_left = 9
+	style.corner_radius_top_right = 9
+	style.corner_radius_bottom_left = 13
+	style.corner_radius_bottom_right = 13
 	style.shadow_color = Color.TRANSPARENT
 	style.shadow_size = 0
 	return style
@@ -7642,25 +7681,25 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	var completed := earned >= possible and possible > 0
 	var medal_color := MasteryState.MEDAL_ACCENTS[clampi(medal_level, 1, MasteryState.MEDAL_ACCENTS.size()) - 1] as Color
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 260)
+	card.custom_minimum_size = Vector2(0, 130)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_theme_stylebox_override("panel", _tier_banner_goal_card_style(medal_color, completed))
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 24)
-	margin.add_theme_constant_override("margin_right", 24)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.add_theme_constant_override("margin_left", 12)
+	margin.add_theme_constant_override("margin_right", 12)
+	margin.add_theme_constant_override("margin_top", 9)
+	margin.add_theme_constant_override("margin_bottom", 11)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(margin)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 24)
+	row.add_theme_constant_override("separation", 12)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
 	var medal_stack := VBoxContainer.new()
-	medal_stack.custom_minimum_size = Vector2(230, 0)
+	medal_stack.custom_minimum_size = Vector2(115, 0)
 	medal_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	medal_stack.add_theme_constant_override("separation", -8)
+	medal_stack.add_theme_constant_override("separation", -4)
 	medal_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(medal_stack)
 	var medal_source := load(str(AchievementPresentation.MASTERY_MEDAL_TEXTURES[clampi(medal_level - 1, 0, AchievementPresentation.MASTERY_MEDAL_TEXTURES.size() - 1)])) as Texture2D
@@ -7669,7 +7708,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	medal_texture.region = Rect2(168, 168, 432, 432)
 	var medal := TextureRect.new()
 	medal.texture = medal_texture
-	medal.custom_minimum_size = Vector2(168, 168)
+	medal.custom_minimum_size = Vector2(84, 84)
 	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
@@ -7682,7 +7721,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	var progress_stack := VBoxContainer.new()
 	progress_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	progress_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	progress_stack.add_theme_constant_override("separation", 14)
+	progress_stack.add_theme_constant_override("separation", 7)
 	progress_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(progress_stack)
 	var requirement: Label = host._label("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
@@ -7716,7 +7755,7 @@ func _tier_banner_progress_bar(earned: int, possible: int, accent: Color, text: 
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
-	label.add_theme_constant_override("outline_size", 16)
+	label.add_theme_constant_override("outline_size", 8)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.z_index = 2
 	holder.add_child(label)
@@ -7725,7 +7764,7 @@ func _tier_banner_progress_bar(earned: int, possible: int, accent: Color, text: 
 
 func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	var chip := PanelContainer.new()
-	chip.custom_minimum_size = Vector2(430, 210)
+	chip.custom_minimum_size = Vector2(215, 105)
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
@@ -7734,21 +7773,21 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	style.set_border_width_all(10)
 	style.set_corner_radius_all(42)
 	style.shadow_color = Color(0, 0, 0, 0.24)
-	style.shadow_size = 10
-	style.shadow_offset = Vector2(0, 8)
-	style.content_margin_left = 24
-	style.content_margin_right = 24
-	style.content_margin_top = 14
-	style.content_margin_bottom = 16
+	style.shadow_size = 5
+	style.shadow_offset = Vector2(0, 4)
+	style.content_margin_left = 12
+	style.content_margin_right = 12
+	style.content_margin_top = 7
+	style.content_margin_bottom = 8
 	chip.add_theme_stylebox_override("panel", style)
 	var reward := VBoxContainer.new()
 	reward.alignment = BoxContainer.ALIGNMENT_CENTER
-	reward.add_theme_constant_override("separation", -4)
+	reward.add_theme_constant_override("separation", -2)
 	reward.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(reward)
 	var reward_header: Label = host._label("REWARD", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	reward_header.add_theme_color_override("font_outline_color", COLOR_INK)
-	reward_header.add_theme_constant_override("outline_size", 12)
+	reward_header.add_theme_constant_override("outline_size", 6)
 	reward_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward.add_child(reward_header)
 	var parts := reward_text.split(" ", false, 1)
@@ -7756,13 +7795,13 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	var detail_text := str(parts[1]) if parts.size() > 1 else ""
 	var main: Label = host._label(main_text, 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	main.add_theme_color_override("font_outline_color", COLOR_INK)
-	main.add_theme_constant_override("outline_size", 16)
+	main.add_theme_constant_override("outline_size", 8)
 	main.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward.add_child(main)
 	if not detail_text.is_empty():
 		var detail: Label = host._label(detail_text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 		detail.add_theme_color_override("font_outline_color", COLOR_INK)
-		detail.add_theme_constant_override("outline_size", 10)
+		detail.add_theme_constant_override("outline_size", 5)
 		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		reward.add_child(detail)
 	return chip
@@ -7775,8 +7814,8 @@ func _tier_banner_goal_card_style(accent: Color, completed: bool) -> StyleBoxFla
 	style.set_border_width_all(10)
 	style.set_corner_radius_all(48)
 	style.shadow_color = Color(0, 0, 0, 0.20)
-	style.shadow_size = 14
-	style.shadow_offset = Vector2(0, 10)
+	style.shadow_size = 7
+	style.shadow_offset = Vector2(0, 5)
 	return style
 
 
@@ -8231,6 +8270,7 @@ func _clear_detail_lazy_cached_roots() -> void:
 				cached_root.free()
 		lazy_entry.erase("cached_root")
 		lazy_entry.erase("cached_card")
+		lazy_entry.erase("cached_built")
 
 
 func _park_detail_lazy_cached_root(root: Control) -> void:
@@ -8253,6 +8293,7 @@ func _discard_detail_lazy_cached_root(lazy_entry: Dictionary) -> void:
 			cached_root.free()
 	lazy_entry.erase("cached_root")
 	lazy_entry.erase("cached_card")
+	lazy_entry.erase("cached_built")
 
 
 func _detail_lazy_build_cached_entry(
@@ -8662,19 +8703,86 @@ func _detail_lazy_initial_force_mount_count_for_skill(skill_id: String) -> int:
 
 
 func _detail_lazy_idle_warm_mount_can_mount(skill_id: String, lazy_entry: Dictionary) -> bool:
-	if not host._fishing_rework_active_for_skill(skill_id):
-		return true
-	if host.web_fishing_perf_probe_enabled:
-		return true
-	if host.FISHING_DETAIL_IDLE_WARM_MOUNT_MAX_ACTION_CARDS <= 0:
-		return true
-	var kind = str(lazy_entry.get("kind", ""))
-	var card_cost = 0
-	if kind == "fishing_area":
-		card_cost = 1 + (lazy_entry.get("method_ids", []) as Array).size()
-	elif kind in ["action", "passive", "heist"]:
-		card_cost = 1
-	return action_cards.size() + card_cost <= host.FISHING_DETAIL_IDLE_WARM_MOUNT_MAX_ACTION_CARDS
+	if skill_id != selected_skill_id or _detail_lazy_cached_root_count() >= DETAIL_LAZY_CACHED_ROOT_LIMIT:
+		return false
+	return _detail_lazy_entry_within_adjacent_prewarm_window(lazy_entry)
+
+
+func _detail_lazy_cached_root_count() -> int:
+	var count := 0
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
+		if bool(lazy_entry.get("mounted", false)):
+			continue
+		var cached_root: Control = host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("cached_root"))
+		if cached_root != null and not cached_root.is_queued_for_deletion():
+			count += 1
+	return count
+
+
+func _detail_lazy_entry_distance_from_viewport(lazy_entry: Dictionary) -> float:
+	var rect := _detail_lazy_entry_rect_for_viewport(lazy_entry)
+	var view_top := _detail_lazy_scroll_y()
+	var view_bottom := view_top + _detail_lazy_viewport_height()
+	if rect.end.y < view_top:
+		return view_top - rect.end.y
+	if rect.position.y > view_bottom:
+		return rect.position.y - view_bottom
+	return 0.0
+
+
+func _detail_lazy_entry_within_adjacent_prewarm_window(lazy_entry: Dictionary) -> bool:
+	var rect := _detail_lazy_entry_rect_for_viewport(lazy_entry)
+	if rect.size.y <= 1.0:
+		return false
+	return _detail_lazy_entry_distance_from_viewport(lazy_entry) <= DETAIL_LAZY_ADJACENT_PREWARM_BUFFER_PX
+
+
+func _process_detail_lazy_adjacent_prewarm() -> bool:
+	if current_screen != "skill" or detail_lazy_plan.is_empty():
+		return false
+	_prune_detail_lazy_cached_roots(DETAIL_LAZY_CACHED_ROOT_LIMIT)
+	if _detail_lazy_cached_root_count() >= DETAIL_LAZY_CACHED_ROOT_LIMIT:
+		return false
+	var closest_entry := {}
+	var closest_distance := INF
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
+		if bool(lazy_entry.get("mounted", false)) or lazy_entry.has("cached_root"):
+			continue
+		if not _detail_lazy_kind_is_module(str(lazy_entry.get("kind", ""))):
+			continue
+		if not _detail_lazy_entry_within_adjacent_prewarm_window(lazy_entry):
+			continue
+		var distance := _detail_lazy_entry_distance_from_viewport(lazy_entry)
+		if distance < closest_distance:
+			closest_entry = lazy_entry
+			closest_distance = distance
+	if closest_entry.is_empty():
+		return false
+	var content_width: float = host._skill_content_width()
+	return _detail_lazy_build_cached_entry(closest_entry, selected_skill_id, content_width, content_width)
+
+
+func _prune_detail_lazy_cached_roots(limit: int) -> void:
+	var safe_limit := maxi(0, limit)
+	while _detail_lazy_cached_root_count() > safe_limit:
+		var farthest_entry := {}
+		var farthest_distance := -1.0
+		for raw_lazy_entry in detail_lazy_plan:
+			var lazy_entry := raw_lazy_entry as Dictionary
+			if bool(lazy_entry.get("mounted", false)):
+				continue
+			var cached_root: Control = host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("cached_root"))
+			if cached_root == null or cached_root.is_queued_for_deletion():
+				continue
+			var distance := _detail_lazy_entry_distance_from_viewport(lazy_entry)
+			if distance > farthest_distance:
+				farthest_entry = lazy_entry
+				farthest_distance = distance
+		if farthest_entry.is_empty():
+			return
+		_discard_detail_lazy_cached_root(farthest_entry)
 
 
 func _repair_blank_detail_lazy_stack() -> bool:
@@ -9114,6 +9222,7 @@ func _detail_lazy_mount_cached_item(
 	var track_id = str(lazy_entry.get("track_id", ""))
 	if track_id.is_empty():
 		return false
+	detail_lazy_settle_warm_mount_exhausted = false
 	var kind = _detail_lazy_entry_kind(lazy_entry)
 	var cached_card = lazy_entry.get("cached_card", {}) as Dictionary
 	if kind == "heist":
@@ -9508,7 +9617,7 @@ func _detail_lazy_unmount_item(lazy_entry: Dictionary, skill_id: String, content
 		host.visual_texture_cache._fill_headless_null_textures(stack_host)
 	var cached_root: Control = null
 	var should_cache_unmounted_root = not host._fishing_rework_active_for_skill(skill_id)
-	if should_cache_unmounted_root and _detail_lazy_kind_is_fishing_module(kind):
+	if should_cache_unmounted_root and _detail_lazy_kind_is_module(kind):
 		for child in stack_host.get_children():
 			var child_control = child as Control
 			if child_control == null or bool(child_control.get_meta("detail_lazy_placeholder", false)):
@@ -9568,6 +9677,7 @@ func _detail_lazy_unmount_item(lazy_entry: Dictionary, skill_id: String, content
 		var card_key = host._thieving_surface()._thieving_heist_card_key(track_id.substr("heist:".length())) if track_id.begins_with("heist:") else host._action_key(skill_id, track_id)
 		_discard_action_card_key(card_key)
 	lazy_entry.erase("card")
+	_prune_detail_lazy_cached_roots(DETAIL_LAZY_CACHED_ROOT_LIMIT)
 	return true
 
 func _prune_detail_lazy_far_cards(max_unmounts: int = 2) -> int:
@@ -9621,17 +9731,11 @@ func _detail_lazy_mount_thieving_heists_sync(instant := true) -> int:
 	return mounted_count
 
 func _detail_lazy_all_mounted() -> bool:
-	var current_frame := Engine.get_process_frames()
-	if detail_lazy_all_mounted_cache_frame == current_frame:
-		return detail_lazy_all_mounted_cache_value
-	detail_lazy_all_mounted_cache_frame = current_frame
-	detail_lazy_all_mounted_cache_value = true
 	for raw_lazy_entry in detail_lazy_plan:
 		var lazy_entry := raw_lazy_entry as Dictionary
 		if not bool(lazy_entry.get("mounted", false)):
-			detail_lazy_all_mounted_cache_value = false
-			break
-	return detail_lazy_all_mounted_cache_value
+			return false
+	return true
 
 func _detail_lazy_mount_initial_window_sync(instant := true, mount_count: int = 2) -> int:
 	var target = mini(mount_count, detail_lazy_plan.size())
@@ -9656,7 +9760,7 @@ func _new_detail_lazy_stack(actions_width: float) -> VBoxContainer:
 	var stack := VBoxContainer.new()
 	stack.custom_minimum_size.x = actions_width
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.add_theme_constant_override("separation", 56)
+	stack.add_theme_constant_override("separation", 28)
 	return stack
 
 
@@ -9710,12 +9814,12 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 			host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(host._skill_swipe_activity_surface().skill_swipe_handoff_cover, true)
 			host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(host._skill_swipe_activity_surface().skill_swipe_handoff_cover, Color.WHITE)
 			host._skill_swipe_activity_surface().skill_swipe_outgoing_cover_active = true
-		if host._consume_queued_skill_swipe_navigation():
+		if host._skill_swipe_activity_surface()._consume_queued_skill_swipe_navigation():
 			skill_swipe_finalized_lazy_mount_pending = false
 			return
 	if detail_lazy_plan.is_empty() or detail_lazy_stack == null or not is_instance_valid(detail_lazy_stack):
-		if host._ensure_finalized_skill_detail_presentable(target_skill_id):
-			host._fade_clear_skill_swipe_rebuild_cover()
+		if host._skill_swipe_activity_surface()._ensure_finalized_skill_detail_presentable(target_skill_id):
+			host._skill_swipe_activity_surface()._fade_clear_skill_swipe_rebuild_cover()
 		else:
 			var missing_restore_scroll := -1
 			if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
@@ -9739,14 +9843,14 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 		if cover != null and is_instance_valid(cover) and host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition():
 			cover.set_meta("swipe_cover_last_lazy_mount_process_frame", process_frame)
 	var next_total := mounted_total + mounted
-	if mounted <= 0 and not host._skill_detail_stack_is_presentable(detail_lazy_stack):
-		if host._ensure_finalized_skill_detail_presentable(target_skill_id):
+	if mounted <= 0 and not host._skill_swipe_activity_surface()._skill_detail_stack_is_presentable(detail_lazy_stack):
+		if host._skill_swipe_activity_surface()._ensure_finalized_skill_detail_presentable(target_skill_id):
 			Callable(self, "_sync_detail_actions_scroll_limit_deferred").call_deferred()
-			if host._consume_queued_skill_swipe_navigation():
+			if host._skill_swipe_activity_surface()._consume_queued_skill_swipe_navigation():
 				skill_swipe_finalized_lazy_mount_pending = false
 				return
 			skill_swipe_finalized_lazy_mount_pending = false
-			host._fade_clear_skill_swipe_rebuild_cover()
+			host._skill_swipe_activity_surface()._fade_clear_skill_swipe_rebuild_cover()
 		else:
 			var blank_restore_scroll := -1
 			if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
@@ -9764,7 +9868,7 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 		_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		return
 	Callable(self, "_sync_detail_actions_scroll_limit_deferred").call_deferred()
-	if not host._ensure_finalized_skill_detail_presentable(target_skill_id):
+	if not host._skill_swipe_activity_surface()._ensure_finalized_skill_detail_presentable(target_skill_id):
 		if next_total < SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT:
 			_schedule_mount_swipe_finalized_lazy_cards(target_skill_id, token, next_total)
 		else:
@@ -9774,11 +9878,11 @@ func _mount_swipe_finalized_lazy_cards(target_skill_id: String, token: int, moun
 			host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(restore_scroll)
 			skill_swipe_finalized_lazy_mount_pending = false
 		return
-	if host._consume_queued_skill_swipe_navigation():
+	if host._skill_swipe_activity_surface()._consume_queued_skill_swipe_navigation():
 		skill_swipe_finalized_lazy_mount_pending = false
 		return
 	skill_swipe_finalized_lazy_mount_pending = false
-	host._fade_clear_skill_swipe_rebuild_cover()
+	host._skill_swipe_activity_surface()._fade_clear_skill_swipe_rebuild_cover()
 
 
 func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_scroll: int, target_skill_id: String, token: int) -> void:
@@ -9795,14 +9899,14 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 	var preview_page = skill_swipe_page
 	var preview_scroll = preview_state.get("actions_scroll") as MobileScrollContainer
 	if preview_scroll == null or not is_instance_valid(preview_scroll):
-		preview_scroll = host._find_skill_preview_actions_scroll(preview_page) as MobileScrollContainer
+		preview_scroll = host._skill_swipe_activity_surface()._find_skill_preview_actions_scroll(preview_page) as MobileScrollContainer
 	if preview_scroll == null or not is_instance_valid(preview_scroll):
 		if trace_finalize:
 			print("SWIPE_FINALIZE_TRACE fallback=missing_scroll us=%s" % str(Time.get_ticks_usec() - trace_start))
 		skill_swipe_pending_full_finalize = false
 		host._skill_swipe_activity_surface()._rebuild_skill_detail_after_preview(0 if selected_skill_id == "thieving" else maxi(0, preserve_scroll))
 		return
-	var stack = host._find_skill_preview_stack(preview_page) as VBoxContainer
+	var stack = host._skill_swipe_activity_surface()._find_skill_preview_stack(preview_page) as VBoxContainer
 	if stack == null or not is_instance_valid(stack):
 		if trace_finalize:
 			print("SWIPE_FINALIZE_TRACE fallback=missing_stack us=%s" % str(Time.get_ticks_usec() - trace_start))
@@ -9875,8 +9979,8 @@ func _finalize_swipe_preview_to_lazy_detail(preview_state: Dictionary, preserve_
 		detail_lazy_plan = host._fishing_ui_surface()._build_fishing_detail_lazy_plan(selected_skill_id)
 	else:
 		detail_lazy_plan = _build_detail_lazy_plan(selected_skill_id)
-	host._skill_swipe_activity_surface()._apply_swipe_preview_real_card_cacoe_to_lazy_plan(preview_state)
-	host._skill_swipe_activity_surface()._apply_global_swipe_real_card_cacoe_to_lazy_plan(selected_skill_id)
+	host._skill_swipe_activity_surface()._apply_swipe_preview_real_card_cache_to_lazy_plan(preview_state)
+	host._skill_swipe_activity_surface()._apply_global_swipe_real_card_cache_to_lazy_plan(selected_skill_id)
 	var slots_created = await _detail_lazy_create_slots_batched(
 		stack,
 		selected_skill_id,
@@ -10143,8 +10247,8 @@ func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
 	arrow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	arrow.modulate = back_tint
-	arrow.offset_left = 34
-	arrow.offset_top = 28
+	arrow.offset_left = 17
+	arrow.offset_top = 14
 	arrow.offset_right = arrow.offset_left + ACTIVITY_BACK_ARROW_SIZE.x
 	arrow.offset_bottom = arrow.offset_top + ACTIVITY_BACK_ARROW_SIZE.y
 	back_button.add_child(arrow)
@@ -10152,13 +10256,13 @@ func _add_activity_back_arrow(parent: Control, interactive := true) -> Button:
 	skills_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	if host.app_bold_font != null:
 		skills_label.add_theme_font_override("font", host.app_bold_font)
-	skills_label.offset_left = 270
-	skills_label.offset_top = 24
-	skills_label.offset_right = 442
-	skills_label.offset_bottom = 108
+	skills_label.offset_left = 135
+	skills_label.offset_top = 12
+	skills_label.offset_right = 221
+	skills_label.offset_bottom = 54
 	back_button.add_child(skills_label)
-	back_button.offset_left = 24
-	back_button.offset_top = 26
+	back_button.offset_left = 12
+	back_button.offset_top = 13
 	back_button.offset_right = back_button.offset_left + ACTIVITY_BACK_BUTTON_SIZE.x
 	back_button.offset_bottom = back_button.offset_top + ACTIVITY_BACK_BUTTON_SIZE.y
 	back_button.z_index = 80
@@ -10439,7 +10543,6 @@ func _sync_detail_lazy_cards_for_scroll_window(target_scroll_y: float, viewport_
 	detail_lazy_mount_trace_context = previous_mount_context
 	if mounted_count > 0:
 		detail_lazy_mounted_this_frame = true
-		detail_lazy_all_mounted_cache_frame = -1
 	return mounted_count
 
 

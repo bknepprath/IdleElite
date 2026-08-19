@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://brixce0r2rkqu"
-path="res://.godot/imported/werewolves-idle.png-1f5d814f408b95e0761eb7f75022d2cf.ctex"
+path.bptc="res://.godot/imported/werewolves-idle.png-1f5d814f408b95e0761eb7f75022d2cf.bptc.ctex"
+path.astc="res://.godot/imported/werewolves-idle.png-1f5d814f408b95e0761eb7f75022d2cf.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/enemies/werewolves/werewolves-idle.png"
-dest_files=["res://.godot/imported/werewolves-idle.png-1f5d814f408b95e0761eb7f75022d2cf.ctex"]
+dest_files=["res://.godot/imported/werewolves-idle.png-1f5d814f408b95e0761eb7f75022d2cf.bptc.ctex", "res://.godot/imported/werewolves-idle.png-1f5d814f408b95e0761eb7f75022d2cf.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

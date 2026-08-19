@@ -478,13 +478,13 @@ class ActionArtAnimationRect:
 			draw_circle(splash_center + offset, maxf(2.0, size.x * (0.012 - float(index) * 0.0015)), splash_color)
 
 const EVENT_HOURGLASS_BADGE := "res://assets/content/ui/event-hourglass-badge.png"
-const ACTION_ART_PANEL_SIZE := Vector2(410, 410)
-const ACTION_ART_SIZE := Vector2(427.2, 427.2)
-const ACTION_ART_OFFSET := Vector2(-8.6, -8.6)
-const ACTION_ART_CORNER_ICON_SIZE := Vector2(172, 172)
+const ACTION_ART_PANEL_SIZE := Vector2(205, 205)
+const ACTION_ART_SIZE := Vector2(213.6, 213.6)
+const ACTION_ART_OFFSET := Vector2(-4.3, -4.3)
+const ACTION_ART_CORNER_ICON_SIZE := Vector2(86, 86)
 const ACTION_ART_CORNER_ICON_EDGE_OVERLAP := 60.0
 const ACTION_ART_CORNER_ICON_LIST_STEP := 104.0
-const ACTION_ART_CORNER_ICON_STROKE_PIXELS := 14.0
+const ACTION_ART_CORNER_ICON_STROKE_PIXELS := 7.0
 
 static func image(action: Dictionary, texture_or_fallback: Callable, visual_fallback: Callable, headless: bool) -> ActionArtTextureRect:
 	var path := str(action.get("art", ""))

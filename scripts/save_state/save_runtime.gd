@@ -19,7 +19,7 @@ const ActionRuntime = preload("res://scripts/gameplay/action_runtime.gd")
 const SAVE_PATH := "user://idle_elite_save.json"
 const SAVE_TEMP_PATH := "user://idle_elite_save.tmp.json"
 const SAVE_BACKUP_PATH := "user://idle_elite_save.backup.json"
-const SAVE_SCHEMA_VERSION := 1
+const SAVE_SCHEMA_VERSION := 2
 const AUTOSAVE_INTERVAL_SECONDS := 15.0
 
 var host
@@ -711,8 +711,9 @@ func _load_game_secondary_restore() -> void:
 		host._convergence_runtime()._restore_convergence_modules_from_save(restored_save)
 	host._hub_runtime().restore_modules(restored_save.get("hub_modules", {}))
 	host._hub_runtime().restore_selected_module_id(restored_save)
-	host._hub_surface()._restore_hub_module_positions(restored_save.get("hub_module_positions", {}))
-	host._hub_surface()._restore_hub_decor_layout(restored_save.get("hub_decor_layout", []))
+	var pre_migration_layout := int(restored_save.get("save_schema_version", 0)) < SAVE_SCHEMA_VERSION
+	host._hub_surface()._restore_hub_module_positions(restored_save.get("hub_module_positions", {}), pre_migration_layout)
+	host._hub_surface()._restore_hub_decor_layout(restored_save.get("hub_decor_layout", []), pre_migration_layout)
 	host._hub_runtime().restore_missions(restored_save.get("hub_missions", []))
 	host._hub_runtime().restore_mission_cooldown(restored_save)
 	_restore_boot_visible_tip_flags_from_save(restored_save)

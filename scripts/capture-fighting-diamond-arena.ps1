@@ -5,8 +5,8 @@ param(
     [string]$CaptureCue = "auto",
     [int]$ViewportWidth = 1080,
     [int]$ViewportHeight = 1920,
-    [int]$WindowWidth = 627,
-    [int]$WindowHeight = 1115,
+    [int]$WindowWidth = 1080,
+    [int]$WindowHeight = 1920,
     [string]$CaptureLabel = "",
     [string]$ValidatePath = "",
     [switch]$StatsTucked,
@@ -174,11 +174,10 @@ func _run() -> void:
 	OS.set_environment("IDLE_ELITE_DISABLE_SAVE_WRITES", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "60")
-	var logical_size := Vector2i(2160, 3840)
 	var window_size := Vector2i($ViewportWidth, $ViewportHeight)
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
-	root.content_scale_size = logical_size
+	root.content_scale_size = window_size
 	root.size = window_size
 	DisplayServer.window_set_size(window_size)
 	var packed := load("res://scenes/main.tscn") as PackedScene

@@ -732,7 +732,7 @@ func _check_immediate_pin_input_flow(scene: Node, skill_id: String) -> void:
 			_record("pin badge is missing the approved pin texture")
 		if not pin_badge.size.is_equal_approx(expected_size):
 			_record("pin badge size mismatch. expected=%s actual=%s" % [expected_size, pin_badge.size])
-		if expected_size.x < 300.0 or expected_size.y < 300.0:
+		if expected_size.x < 150.0 or expected_size.y < 150.0:
 			_record("pin badge should stay large enough for the current oversized visual treatment: %s" % expected_size)
 		if pin_badge.stretch_mode != TextureButton.STRETCH_KEEP_ASPECT:
 			_record("pin badge art should scale up to the oversized badge bounds")
@@ -2440,9 +2440,9 @@ func _check_pinned_page_chrome(scene: Node) -> void:
 		elif active_shelf != null and is_instance_valid(active_shelf):
 			var label_center_y := empty_label.get_global_rect().get_center().y
 			var active_bottom_y := active_shelf.get_global_rect().end.y
-			var bottom_limit_y := 3840.0 - 420.0 - 260.0 - 344.0 - 28.0
+			var bottom_limit_y := 1920.0 - 210.0 - 130.0 - 172.0 - 14.0
 			var expected_center_y := active_bottom_y + (bottom_limit_y - active_bottom_y) * 0.5
-			if absf(label_center_y - expected_center_y) > 130.0:
+			if absf(label_center_y - expected_center_y) > 65.0:
 				_record("pinned page empty state advice is not centered in the usable frame. expected_y=%s actual_y=%s" % [expected_center_y, label_center_y])
 			if empty_state.custom_minimum_size.y < 860.0:
 				_record("pinned page empty state host is too short to center the advice. height=%s" % empty_state.custom_minimum_size.y)

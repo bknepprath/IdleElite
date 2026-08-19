@@ -343,8 +343,7 @@ func _prepare_for_shutdown() -> void:
 	if host.achievement_overlay_surface != null:
 		host.achievement_overlay_surface.reset_home_scroll_ref()
 	host.skills_content = null
-	host.visual_texture_cache.texture_cache.clear()
-	host.visual_texture_cache.atlas_texture_cache.clear()
+	host.visual_texture_cache.clear_runtime_cache()
 	AchievementPresentation.clear_cache()
 	host.paper_button_style_textures.clear()
 	ActivityCardStyles.clear_cache()
@@ -423,10 +422,10 @@ func _repair_after_app_resume():
 		await host._navigation_shell()._render_screen(false, -1, false)
 	elif host.current_screen == "skill":
 		var stack := host._detail_actions_stack() as Control
-		if stack == null or not host._skill_detail_stack_is_presentable(stack):
+		if stack == null or not host._skill_swipe_activity_surface()._skill_detail_stack_is_presentable(stack):
 			host._skill_swipe_activity_surface()._force_skill_detail_reveal_mount_under_cover()
 			stack = host._detail_actions_stack() as Control
-			if stack == null or not host._skill_detail_stack_is_presentable(stack):
+			if stack == null or not host._skill_swipe_activity_surface()._skill_detail_stack_is_presentable(stack):
 				await host._skill_detail_surface()._refresh_visible_skill_detail_action_list(-1, host.selected_skill_id, true, true)
 	host._navigation_shell()._update_page_visibility()
 	host._update_ui(0.0, true)

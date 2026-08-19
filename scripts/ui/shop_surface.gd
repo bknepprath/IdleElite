@@ -107,13 +107,13 @@ func render_page() -> void:
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	stack.alignment = BoxContainer.ALIGNMENT_BEGIN
-	stack.add_theme_constant_override("separation", 24)
+	stack.add_theme_constant_override("separation", 12)
 	host.content_scroll.add_child(stack)
 	var top_spacer := Control.new()
-	top_spacer.custom_minimum_size = Vector2(0, 340)
+	top_spacer.custom_minimum_size = Vector2(0, 170)
 	stack.add_child(top_spacer)
 	var offer_stage := Control.new()
-	offer_stage.custom_minimum_size = Vector2(host._skill_content_width(), 620)
+	offer_stage.custom_minimum_size = Vector2(host._skill_content_width(), 310)
 	offer_stage.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.add_child(offer_stage)
 	var offer: Button = ad_offer_button()
@@ -126,50 +126,50 @@ func render_page() -> void:
 	stack_meter.position = Vector2(offer.position.x + offer.size.x + 24.0, (offer_stage.custom_minimum_size.y - stack_meter.size.y) * 0.5)
 	offer_stage.add_child(stack_meter)
 
-	bonus_label = host._label("", 64, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-	bonus_label.custom_minimum_size = Vector2(1260, 82)
+	bonus_label = host._label("", 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	bonus_label.custom_minimum_size = Vector2(630, 41)
 	bonus_label.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	bonus_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bonus_label.text = host._ad_bonus_runtime().shop_label_text()
 	stack.add_child(bonus_label)
 	var message_spacer := Control.new()
-	message_spacer.custom_minimum_size = Vector2(0, 118)
+	message_spacer.custom_minimum_size = Vector2(0, 59)
 	stack.add_child(message_spacer)
-	var message: Label = host._label("Hi! Thanks for playing my game :)\nThere are no microtransactions here. Just an optional ad to speed things up if you'd like to use it. Thanks!", 66, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	message.custom_minimum_size = Vector2(1420, 220)
+	var message: Label = host._label("Hi! Thanks for playing my game :)\nThere are no microtransactions here. Just an optional ad to speed things up if you'd like to use it. Thanks!", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	message.custom_minimum_size = Vector2(710, 110)
 	message.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(message)
 	if not rate_prompt_dismissed:
 		var review_spacer := Control.new()
-		review_spacer.custom_minimum_size = Vector2(0, 42)
+		review_spacer.custom_minimum_size = Vector2(0, 21)
 		stack.add_child(review_spacer)
 		var review_stars := HBoxContainer.new()
 		review_stars.alignment = BoxContainer.ALIGNMENT_CENTER
 		review_stars.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		review_stars.add_theme_constant_override("separation", 10)
+		review_stars.add_theme_constant_override("separation", 5)
 		var star_texture: Texture2D = host.visual_texture_cache._texture(host.PROGRESS_STAR_ICON_TEXTURE)
 		for i in range(5):
-			var star: TextureRect = host.visual_texture_cache._image_from_texture(star_texture, Vector2(48, 48))
+			var star: TextureRect = host.visual_texture_cache._image_from_texture(star_texture, Vector2(24, 24))
 			star.modulate = host.COLOR_MUTED.lightened(0.12)
 			review_stars.add_child(star)
 		stack.add_child(review_stars)
-		var review: Label = host._label("Please rate Idle Elite on the store page to help me continue developing this game!", 60, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-		review.custom_minimum_size = Vector2(1420, 150)
+		var review: Label = host._label("Please rate Idle Elite on the store page to help me continue developing this game!", 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		review.custom_minimum_size = Vector2(710, 75)
 		review.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		review.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		stack.add_child(review)
 		var rate_button: Button = host._menu_button("Rate on Play Store")
-		rate_button.custom_minimum_size = Vector2(840, 142)
+		rate_button.custom_minimum_size = Vector2(420, 71)
 		rate_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-		rate_button.add_theme_font_size_override("font_size", 60)
+		rate_button.add_theme_font_size_override("font_size", 48)
 		rate_button.add_theme_stylebox_override("normal", host._paper_button_style(Color("#48dd6c"), 42))
 		rate_button.add_theme_stylebox_override("hover", host._paper_button_style(Color("#5eed7c"), 42))
 		rate_button.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#38c45a"), 42, 64, true))
 		rate_button.pressed.connect(rate_pressed)
 		stack.add_child(rate_button)
 	var bottom_spacer := Control.new()
-	bottom_spacer.custom_minimum_size = Vector2(0, 96)
+	bottom_spacer.custom_minimum_size = Vector2(0, 48)
 	stack.add_child(bottom_spacer)
 
 func rate_pressed() -> void:
@@ -198,52 +198,52 @@ func emphasize_bonus_award() -> void:
 	host._reward_feedback_surface()._flash_bonus_control(bonus_label)
 	if shop_ad_stack_meter_panel != null and is_instance_valid(shop_ad_stack_meter_panel) and shop_ad_stack_meter_panel.is_visible_in_tree():
 		host._reward_feedback_surface()._flash_bonus_control(shop_ad_stack_meter_panel, 0.06)
-	host._reward_feedback_surface()._float_reward(host, bonus_label, "+10% XP", 66, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -136), 0.0)
-	host._reward_feedback_surface()._float_reward(host, bonus_label, "-10% TIME", 66, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -10), Vector2(0, -136), 0.14)
+	host._reward_feedback_surface()._float_reward(host, bonus_label, "+10% XP", 66, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -22), Vector2(0, -68), 0.0)
+	host._reward_feedback_surface()._float_reward(host, bonus_label, "-10% TIME", 66, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -5), Vector2(0, -68), 0.14)
 
 func ad_offer_button() -> Button:
 	var button: Button = host._menu_button("")
-	button.custom_minimum_size = Vector2(1200, 540)
+	button.custom_minimum_size = Vector2(600, 270)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	button.add_theme_stylebox_override("normal", host._paper_button_style(host.COLOR_BLUE, 54))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(host.COLOR_BLUE, 54))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(host.COLOR_BLUE.darkened(0.10), 54, 72, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(host.COLOR_BLUE, 27))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(host.COLOR_BLUE, 27))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(host.COLOR_BLUE.darkened(0.10), 27, 36, true))
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_theme_constant_override("margin_left", 42)
-	margin.add_theme_constant_override("margin_right", 42)
-	margin.add_theme_constant_override("margin_top", 40)
-	margin.add_theme_constant_override("margin_bottom", 40)
+	margin.add_theme_constant_override("margin_left", 21)
+	margin.add_theme_constant_override("margin_right", 21)
+	margin.add_theme_constant_override("margin_top", 20)
+	margin.add_theme_constant_override("margin_bottom", 20)
 	button.add_child(margin)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 26)
+	row.add_theme_constant_override("separation", 13)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
-	row.add_child(host.visual_texture_cache._image(REWARDED_AD_ICON_TEXTURE, Vector2(340, 340)))
+	row.add_child(host.visual_texture_cache._image(REWARDED_AD_ICON_TEXTURE, Vector2(170, 170)))
 	var copy := VBoxContainer.new()
-	copy.custom_minimum_size = Vector2(730, 0)
+	copy.custom_minimum_size = Vector2(365, 0)
 	copy.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
-	var details_text := "+10% XP\n+10% speed\n2 hours (stackable)"
-	var details: Label = host._label(details_text, 74, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var details_text := "+10% XP\n+10% speed\n2 hours\nstackable"
+	var details: Label = host._label(details_text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	details.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	details.add_theme_constant_override("outline_size", host.DEFAULT_BUTTON_TEXT_OUTLINE_SIZE)
 	details.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	details.autowrap_mode = TextServer.AUTOWRAP_OFF
+	details.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	details.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(details)
 	return button
 
 func ad_stack_meter() -> Control:
 	var meter := VBoxContainer.new()
-	meter.custom_minimum_size = Vector2(112, 336)
+	meter.custom_minimum_size = Vector2(56, 168)
 	meter.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	meter.alignment = BoxContainer.ALIGNMENT_CENTER
-	meter.add_theme_constant_override("separation", 18)
+	meter.add_theme_constant_override("separation", 9)
 	meter.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shop_ad_stack_meter_panel = meter
 	var lights := VBoxContainer.new()
@@ -254,7 +254,7 @@ func ad_stack_meter() -> Control:
 	var max_count := AdBonus.stack_max_count(float(AdBonus.AD_BONUS_MAX_SECONDS), float(AdBonus.AD_BONUS_SECONDS))
 	for i in range(max_count):
 		var light := ShopAdStackLight.new()
-		light.custom_minimum_size = Vector2(112, 112)
+		light.custom_minimum_size = Vector2(56, 56)
 		light.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		light.set_meta("shop_ad_stack_index", max_count - i - 1)
 		lights.add_child(light)

@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bytvfgldckxtm"
-path="res://.godot/imported/cooked-chicken-drop.png-8d7e152d082085f7c5180f5bdf707a23.ctex"
+path.bptc="res://.godot/imported/cooked-chicken-drop.png-8d7e152d082085f7c5180f5bdf707a23.bptc.ctex"
+path.astc="res://.godot/imported/cooked-chicken-drop.png-8d7e152d082085f7c5180f5bdf707a23.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/prototype/cooked-chicken-drop.png"
-dest_files=["res://.godot/imported/cooked-chicken-drop.png-8d7e152d082085f7c5180f5bdf707a23.ctex"]
+dest_files=["res://.godot/imported/cooked-chicken-drop.png-8d7e152d082085f7c5180f5bdf707a23.bptc.ctex", "res://.godot/imported/cooked-chicken-drop.png-8d7e152d082085f7c5180f5bdf707a23.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

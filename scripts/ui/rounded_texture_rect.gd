@@ -317,7 +317,7 @@ static func _fallback_texture() -> Texture2D:
 		return shared_fallback_texture
 	if DisplayServer.get_name() == "headless":
 		var placeholder := PlaceholderTexture2D.new()
-		placeholder.size = Vector2(8, 8)
+		placeholder.size = Vector2(4, 4)
 		shared_fallback_texture = placeholder
 		return shared_fallback_texture
 	var image := Image.create(8, 8, false, Image.FORMAT_RGBA8)

@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cnahd3ufp0vaa"
-path="res://.godot/imported/stormy-sea-storm-line.png-5b4750a3f8d921a0f1aac253d10d4ac2.ctex"
+path.bptc="res://.godot/imported/stormy-sea-storm-line.png-5b4750a3f8d921a0f1aac253d10d4ac2.bptc.ctex"
+path.astc="res://.godot/imported/stormy-sea-storm-line.png-5b4750a3f8d921a0f1aac253d10d4ac2.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/locations/stormy-sea-storm-line.png"
-dest_files=["res://.godot/imported/stormy-sea-storm-line.png-5b4750a3f8d921a0f1aac253d10d4ac2.ctex"]
+dest_files=["res://.godot/imported/stormy-sea-storm-line.png-5b4750a3f8d921a0f1aac253d10d4ac2.bptc.ctex", "res://.godot/imported/stormy-sea-storm-line.png-5b4750a3f8d921a0f1aac253d10d4ac2.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

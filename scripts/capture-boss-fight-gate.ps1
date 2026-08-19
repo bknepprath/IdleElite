@@ -1,8 +1,8 @@
 param(
-    [int]$ViewportWidth = 2160,
-    [int]$ViewportHeight = 3840,
-    [int]$WindowWidth = 627,
-    [int]$WindowHeight = 1115
+    [int]$ViewportWidth = 1080,
+    [int]$ViewportHeight = 1920,
+    [int]$WindowWidth = 1080,
+    [int]$WindowHeight = 1920
 )
 
 $ErrorActionPreference = "Stop"
@@ -40,7 +40,7 @@ func _run() -> void:
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "60")
 	var capture_size := Vector2i($ViewportWidth, $ViewportHeight)
 	var window_size := Vector2i($WindowWidth, $WindowHeight)
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	root.content_scale_size = capture_size
 	root.size = window_size
@@ -71,10 +71,10 @@ func _run() -> void:
 		return
 	scene.visible = false
 	card_root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	card_root.offset_left = 120.0
-	card_root.offset_right = -120.0
-	card_root.offset_top = 900.0
-	card_root.offset_bottom = -900.0
+	card_root.offset_left = 60.0
+	card_root.offset_right = -60.0
+	card_root.offset_top = 450.0
+	card_root.offset_bottom = -450.0
 	root.add_child(card_root)
 	var boss_key := str(scene.call("_action_key", "fight", "face-the-rooster"))
 	scene.call("_skill_detail_surface").call("_register_action_card", boss_key, card)

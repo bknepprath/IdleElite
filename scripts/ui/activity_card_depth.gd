@@ -1,10 +1,10 @@
 extends Control
 
-const DEFAULT_RADIUS := 66.0
+const DEFAULT_RADIUS := 33.0
 const FAST_DEPTH_SHAPE_ENABLED := true
 const OUTLINE_ARC_SEGMENTS := 20
 
-var depth_offset := Vector2(36.0, 40.0)
+var depth_offset := Vector2(18.0, 20.0)
 var face_offset := Vector2.ZERO
 var radius := DEFAULT_RADIUS
 var back_color := Color("#a45f25")

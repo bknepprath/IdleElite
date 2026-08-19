@@ -183,15 +183,15 @@ static func symbol_position(skill_id: String, badge_size: Vector2, icon_symbol_s
 	var offset_scale := badge_size.x / maxf(1.0, menu_badge_size.x)
 	match skill_id:
 		"woodcutting":
-			icon_position += Vector2(-49, 88) * offset_scale
+			icon_position += Vector2(-24.5, 44) * offset_scale
 		"fishing":
-			icon_position += Vector2(24, -34) * offset_scale
+			icon_position += Vector2(12, -17) * offset_scale
 		"build":
-			icon_position += Vector2(10, 64) * offset_scale
+			icon_position += Vector2(5, 32) * offset_scale
 		"thieving":
-			icon_position += Vector2(8, 0) * offset_scale
+			icon_position += Vector2(4, 0) * offset_scale
 		"fight":
-			icon_position += Vector2(26, 40) * offset_scale
+			icon_position += Vector2(13, 20) * offset_scale
 	return icon_position
 
 

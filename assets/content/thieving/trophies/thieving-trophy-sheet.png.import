@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://dmql86s5ke5w8"
-path="res://.godot/imported/thieving-trophy-sheet.png-51ddab48f0b931790038a6afeff5d51d.ctex"
+path.bptc="res://.godot/imported/thieving-trophy-sheet.png-51ddab48f0b931790038a6afeff5d51d.bptc.ctex"
+path.astc="res://.godot/imported/thieving-trophy-sheet.png-51ddab48f0b931790038a6afeff5d51d.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/thieving/trophies/thieving-trophy-sheet.png"
-dest_files=["res://.godot/imported/thieving-trophy-sheet.png-51ddab48f0b931790038a6afeff5d51d.ctex"]
+dest_files=["res://.godot/imported/thieving-trophy-sheet.png-51ddab48f0b931790038a6afeff5d51d.bptc.ctex", "res://.godot/imported/thieving-trophy-sheet.png-51ddab48f0b931790038a6afeff5d51d.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

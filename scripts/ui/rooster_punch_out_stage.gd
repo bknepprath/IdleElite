@@ -263,9 +263,9 @@ func _draw_rooster_sprite(r: Rect2) -> void:
 		return
 	var center := r.position + Vector2(r.size.x * 0.5, r.size.y * 0.58)
 	if state == "hit":
-		center += Vector2(40.0, -18.0)
+		center += Vector2(20.0, -9.0)
 	elif state == "attack":
-		center += Vector2(0.0, 12.0)
+		center += Vector2(0.0, 6.0)
 	elif dodge_timer > 0.0:
 		center += Vector2(sin(elapsed * 28.0) * 42.0, -10.0)
 	var draw_size := Vector2(r.size.x * 0.88, r.size.y * 1.22)

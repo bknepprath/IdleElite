@@ -6,11 +6,11 @@ const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
 const RewardFeedbackSurface = preload("res://scripts/ui/reward_feedback_surface.gd")
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 
-const BERRY_MODE_BORDER_TEXTURE := "res://assets/content/ui/berry-mode-borders-source.png"
-const MAT_COLLECTION_MODULE_SIZE := Vector2(754, 754)
-const MAT_COLLECTION_MODULE_GAP := 28.0
-const MAT_COLLECTION_AREA_HEIGHT := 870.0
-const MAT_COLLECTION_CONNECTOR_HEIGHT := 74.0
+const BERRY_MODE_BORDER_TEXTURE := "res://assets/content/ui/berry-mode-borders-1080p.png"
+const MAT_COLLECTION_MODULE_SIZE := Vector2(377, 377)
+const MAT_COLLECTION_MODULE_GAP := 14.0
+const MAT_COLLECTION_AREA_HEIGHT := 435.0
+const MAT_COLLECTION_CONNECTOR_HEIGHT := 37.0
 const MAT_COLLECTION_CONNECTOR_TOP_OVERLAP := 3.0
 const MAT_COLLECTION_APPEAR_SECONDS := 0.28
 const MAT_COLLECTION_FLYER_ARC_SECONDS := 0.68
@@ -293,10 +293,10 @@ func _add_berry_mode_border_clip(name: String, texture: Texture2D, anchor_top: f
 	border.anchor_right = 1.0
 	border.anchor_top = texture_anchor_top
 	border.anchor_bottom = texture_anchor_bottom
-	border.offset_left = -42.0
-	border.offset_top = -24.0
-	border.offset_right = 42.0
-	border.offset_bottom = 24.0
+	border.offset_left = -21.0
+	border.offset_top = -12.0
+	border.offset_right = 21.0
+	border.offset_bottom = 12.0
 	border.stretch_mode = TextureRect.STRETCH_SCALE
 	border.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	clip.add_child(border)
@@ -310,7 +310,7 @@ func _add_berry_mode_input_blockers() -> void:
 	top_blocker.anchor_right = 1.0
 	top_blocker.anchor_top = 0.0
 	top_blocker.anchor_bottom = 0.0
-	top_blocker.offset_bottom = 620.0
+	top_blocker.offset_bottom = 310.0
 	top_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 	berry_mode_overlay.add_child(top_blocker)
 	var bottom_blocker := Control.new()
@@ -319,7 +319,7 @@ func _add_berry_mode_input_blockers() -> void:
 	bottom_blocker.anchor_right = 1.0
 	bottom_blocker.anchor_top = 1.0
 	bottom_blocker.anchor_bottom = 1.0
-	bottom_blocker.offset_top = -1100.0
+	bottom_blocker.offset_top = -550.0
 	bottom_blocker.mouse_filter = Control.MOUSE_FILTER_STOP
 	berry_mode_overlay.add_child(bottom_blocker)
 
@@ -331,23 +331,23 @@ func _add_berry_mode_title() -> void:
 	plate.anchor_right = 0.5
 	plate.anchor_top = 0.0
 	plate.anchor_bottom = 0.0
-	plate.offset_left = -800.0
-	plate.offset_right = 800.0
-	plate.offset_top = 284.0
-	plate.offset_bottom = 610.0
+	plate.offset_left = -400.0
+	plate.offset_right = 400.0
+	plate.offset_top = 142.0
+	plate.offset_bottom = 305.0
 	plate.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plate.z_index = 2
 	plate.add_theme_stylebox_override("panel", _berry_mode_title_plate_style())
 	berry_mode_overlay.add_child(plate)
 	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 58)
-	margin.add_theme_constant_override("margin_right", 58)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_bottom", 32)
+	margin.add_theme_constant_override("margin_left", 29)
+	margin.add_theme_constant_override("margin_right", 29)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 16)
 	plate.add_child(margin)
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", -12)
+	stack.add_theme_constant_override("separation", -3)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	stack.add_child(_berry_mode_title_label("Select activities", 0.0))
@@ -359,22 +359,22 @@ func _berry_mode_title_plate_style() -> StyleBoxFlat:
 	style.bg_color = Color("#d21af2")
 	style.border_color = host.COLOR_INK
 	style.set_border_width_all(14)
-	style.corner_radius_top_left = 34
-	style.corner_radius_top_right = 34
-	style.corner_radius_bottom_left = 34
-	style.corner_radius_bottom_right = 34
+	style.corner_radius_top_left = 17
+	style.corner_radius_top_right = 17
+	style.corner_radius_bottom_left = 17
+	style.corner_radius_bottom_right = 17
 	style.shadow_color = Color(0, 0, 0, 0.35)
-	style.shadow_size = 14
-	style.shadow_offset = Vector2(0, 8)
+	style.shadow_size = 7
+	style.shadow_offset = Vector2(0, 4)
 	return style
 
 
 func _berry_mode_title_label(text: String, min_width: float) -> Label:
-	var title := host._label(text, 128, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER) as Label
-	title.custom_minimum_size = Vector2(min_width, 136.0)
+	var title := host._label(text, 64, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER) as Label
+	title.custom_minimum_size = Vector2(min_width, 68.0)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	title.add_theme_constant_override("outline_size", 52)
+	title.add_theme_constant_override("outline_size", 13)
 	return title
 
 
@@ -383,19 +383,19 @@ func _add_berry_mode_leave_button() -> void:
 	button.name = "BerryModeLeaveButton"
 	button.text = "LEAVE MODE"
 	button.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	button.offset_left = 250.0
-	button.offset_right = -250.0
-	button.offset_top = -780.0
-	button.offset_bottom = -475.0
+	button.offset_left = 125.0
+	button.offset_right = -125.0
+	button.offset_top = -390.0
+	button.offset_bottom = -237.5
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 4
-	button.add_theme_font_size_override("font_size", 140)
+	button.add_theme_font_size_override("font_size", 70)
 	button.add_theme_color_override("font_color", Color.WHITE)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
 	button.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	button.add_theme_constant_override("outline_size", 46)
+	button.add_theme_constant_override("outline_size", 23)
 	if host.app_bold_font != null:
 		button.add_theme_font_override("font", host.app_bold_font)
 	button.add_theme_stylebox_override("normal", _berry_mode_leave_button_style(false))
@@ -411,16 +411,16 @@ func _berry_mode_leave_button_style(pressed := false) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#f2b544").darkened(0.14 if pressed else 0.0)
 	style.border_color = host.COLOR_INK
-	style.border_width_left = 12
-	style.border_width_top = 12
-	style.border_width_right = 12
-	style.border_width_bottom = 28 if not pressed else 14
-	style.corner_radius_top_left = 34
-	style.corner_radius_top_right = 34
-	style.corner_radius_bottom_left = 34
-	style.corner_radius_bottom_right = 34
+	style.border_width_left = 6
+	style.border_width_top = 6
+	style.border_width_right = 6
+	style.border_width_bottom = 14 if not pressed else 14
+	style.corner_radius_top_left = 17
+	style.corner_radius_top_right = 17
+	style.corner_radius_bottom_left = 17
+	style.corner_radius_bottom_right = 17
 	style.shadow_color = Color(0, 0, 0, 0.38)
-	style.shadow_size = 16
+	style.shadow_size = 8
 	style.shadow_offset = Vector2(0, 12 if not pressed else 5)
 	return style
 
@@ -513,32 +513,32 @@ func _mat_collection_module(mat_id: String, skill_id := "", action_id := "") -> 
 	panel.add_child(chrome)
 	var margin = MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 46)
-	margin.add_theme_constant_override("margin_right", 46)
-	margin.add_theme_constant_override("margin_top", 42)
-	margin.add_theme_constant_override("margin_bottom", 42)
+	margin.add_theme_constant_override("margin_left", 23)
+	margin.add_theme_constant_override("margin_right", 23)
+	margin.add_theme_constant_override("margin_top", 21)
+	margin.add_theme_constant_override("margin_bottom", 21)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.z_index = 3
 	panel.add_child(margin)
 	var stack = VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 22)
+	stack.add_theme_constant_override("separation", 11)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	var name_label = host._label(host.material_runtime.display_name(mat_id), 78, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	name_label.add_theme_constant_override("outline_size", 18)
+	name_label.add_theme_constant_override("outline_size", 9)
 	name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(name_label)
-	var icon = host.visual_texture_cache._image(host.material_runtime.icon_path(mat_id), Vector2(360, 360))
+	var icon = host.visual_texture_cache._image(host.material_runtime.icon_path(mat_id), Vector2(180, 180))
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(icon)
 	var amount_label = host._label(host.material_runtime.amount_text_for_host(mat_id, -1.0, host), 110, Color("#fff3b6"), HORIZONTAL_ALIGNMENT_CENTER)
 	amount_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	amount_label.add_theme_constant_override("outline_size", 24)
+	amount_label.add_theme_constant_override("outline_size", 12)
 	amount_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(amount_label)
 	if mat_id == "honey":
@@ -555,7 +555,7 @@ func _mat_honey_info_button() -> Button:
 	var button = Button.new()
 	button.text = "i"
 	button.tooltip_text = ""
-	button.custom_minimum_size = Vector2(86, 86)
+	button.custom_minimum_size = Vector2(43, 43)
 	button.size = button.custom_minimum_size
 	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
 	button.focus_mode = Control.FOCUS_NONE
@@ -580,8 +580,8 @@ func _mat_honey_info_button() -> Button:
 
 func _mat_honey_info_popover() -> PanelContainer:
 	var popover = PanelContainer.new()
-	popover.position = Vector2(-610, 100)
-	popover.custom_minimum_size = Vector2(690, 440)
+	popover.position = Vector2(-305, 50)
+	popover.custom_minimum_size = Vector2(345, 220)
 	popover.size = popover.custom_minimum_size
 	popover.visible = false
 	popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -590,14 +590,14 @@ func _mat_honey_info_popover() -> PanelContainer:
 	popover.add_to_group("skill_header_info_popovers")
 	popover.add_theme_stylebox_override("panel", PassiveModuleStyles.popup(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style")))
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_top", 22)
-	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_top", 11)
+	margin.add_theme_constant_override("margin_bottom", 11)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popover.add_child(margin)
 	var stack = VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 8)
+	stack.add_theme_constant_override("separation", 4)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	var title = host._label("Honey Stamina", 64, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
@@ -605,7 +605,7 @@ func _mat_honey_info_popover() -> PanelContainer:
 	stack.add_child(title)
 	var body = host._label("Honey doubles stamina regen.\nEach honey consumed lasts 10 seconds.", 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(628, 310)
+	body.custom_minimum_size = Vector2(314, 155)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover
@@ -615,7 +615,7 @@ func _mat_berry_info_button() -> Button:
 	var button = Button.new()
 	button.text = "i"
 	button.tooltip_text = ""
-	button.custom_minimum_size = Vector2(86, 86)
+	button.custom_minimum_size = Vector2(43, 43)
 	button.size = button.custom_minimum_size
 	button.position = Vector2(MAT_COLLECTION_MODULE_SIZE.x - 112.0, 28.0)
 	button.focus_mode = Control.FOCUS_NONE
@@ -640,8 +640,8 @@ func _mat_berry_info_button() -> Button:
 
 func _mat_berry_info_popover() -> PanelContainer:
 	var popover = PanelContainer.new()
-	popover.position = Vector2(-610, 100)
-	popover.custom_minimum_size = Vector2(690, 520)
+	popover.position = Vector2(-305, 50)
+	popover.custom_minimum_size = Vector2(345, 260)
 	popover.size = popover.custom_minimum_size
 	popover.visible = false
 	popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -650,14 +650,14 @@ func _mat_berry_info_popover() -> PanelContainer:
 	popover.add_to_group("skill_header_info_popovers")
 	popover.add_theme_stylebox_override("panel", PassiveModuleStyles.popup(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style")))
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 28)
-	margin.add_theme_constant_override("margin_right", 28)
-	margin.add_theme_constant_override("margin_top", 22)
-	margin.add_theme_constant_override("margin_bottom", 22)
+	margin.add_theme_constant_override("margin_left", 14)
+	margin.add_theme_constant_override("margin_right", 14)
+	margin.add_theme_constant_override("margin_top", 11)
+	margin.add_theme_constant_override("margin_bottom", 11)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popover.add_child(margin)
 	var stack = VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 8)
+	stack.add_theme_constant_override("separation", 4)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(stack)
 	var title = host._label("Berry Mode", 64, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
@@ -665,7 +665,7 @@ func _mat_berry_info_popover() -> PanelContainer:
 	stack.add_child(title)
 	var body = host._label("Tap Berries to enter Berry Mode.\nThen tap modules to mark or unmark them.\nMarked modules consume 1 Berries per completion, double XP, and double loot.", 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(628, 390)
+	body.custom_minimum_size = Vector2(314, 195)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover
@@ -699,12 +699,12 @@ func _mat_berry_prep_button(skill_id: String, action_id: String) -> Button:
 func _berry_prep_hint_label(_prepped: bool) -> Label:
 	var node := host._label("", 54, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER) as Label
 	node.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	node.offset_left = 44.0
-	node.offset_right = -44.0
-	node.offset_top = -126.0
-	node.offset_bottom = -42.0
+	node.offset_left = 22.0
+	node.offset_right = -22.0
+	node.offset_top = -63.0
+	node.offset_bottom = -21.0
 	node.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	node.add_theme_constant_override("outline_size", 16)
+	node.add_theme_constant_override("outline_size", 8)
 	node.z_index = 35
 	return node
 
@@ -714,10 +714,10 @@ func _berry_prep_hover_style(pressed := false) -> StyleBoxFlat:
 	style.bg_color = Color(1.0, 0.25, 0.45, 0.14 if pressed else 0.07)
 	style.border_color = Color(1.0, 0.86, 0.50, 0.42 if pressed else 0.28)
 	style.set_border_width_all(8 if pressed else 0)
-	style.corner_radius_top_left = 42
-	style.corner_radius_top_right = 42
-	style.corner_radius_bottom_left = 42
-	style.corner_radius_bottom_right = 42
+	style.corner_radius_top_left = 21
+	style.corner_radius_top_right = 21
+	style.corner_radius_bottom_left = 21
+	style.corner_radius_bottom_right = 21
 	return style
 
 
@@ -726,13 +726,13 @@ func _mat_collection_module_style(mat_id: String) -> StyleBoxFlat:
 	style.bg_color = Color(1, 1, 1, 0.0)
 	style.border_color = host.COLOR_INK
 	style.set_border_width_all(10)
-	style.corner_radius_top_left = 42
-	style.corner_radius_top_right = 42
-	style.corner_radius_bottom_left = 42
-	style.corner_radius_bottom_right = 42
+	style.corner_radius_top_left = 21
+	style.corner_radius_top_right = 21
+	style.corner_radius_bottom_left = 21
+	style.corner_radius_bottom_right = 21
 	style.shadow_color = Color(0, 0, 0, 0.28)
-	style.shadow_size = 16
-	style.shadow_offset = Vector2(0, 10)
+	style.shadow_size = 8
+	style.shadow_offset = Vector2(0, 5)
 	return style
 
 
@@ -776,7 +776,7 @@ func _spawn_mat_collection_flyer(source: Control, target: Control, mat_id: Strin
 	flyer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flyer.z_index = RewardFeedbackSurface.REWARD_FLOAT_Z + 16
 	flyer.z_as_relative = false
-	flyer.size = Vector2(360, 360)
+	flyer.size = Vector2(180, 180)
 	flyer.pivot_offset = flyer.size * 0.5
 	var source_rect = source.get_global_rect()
 	var target_rect = target.get_global_rect()

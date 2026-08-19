@@ -81,9 +81,9 @@ static func text_color(color: Color, dark_mode_enabled: bool, color_ink: Color, 
 static func menu_button(text: String, app_font: Font, app_bold_font: Font, color_ink: Color, color_blue: Color, disabled_fill: Color, outline_size: int, paper_style: Callable, press_attach: Callable) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size = Vector2(0, 220)
+	button.custom_minimum_size = Vector2(0, 110)
 	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 72)
+	button.add_theme_font_size_override("font_size", 48)
 	if app_bold_font != null:
 		button.add_theme_font_override("font", app_bold_font)
 	elif app_font != null:
@@ -324,8 +324,8 @@ static func surface_style(color: Color, radius: int, margin := 28, elevated := f
 	style.corner_radius_bottom_right = radius
 	if elevated:
 		style.shadow_color = Color(0.0, 0.0, 0.0, 0.34 if dark_mode_enabled else 0.16)
-		style.shadow_size = 12
-		style.shadow_offset = Vector2(0, 8)
+		style.shadow_size = 6
+		style.shadow_offset = Vector2(0, 4)
 	style.content_margin_left = margin
 	style.content_margin_right = margin
 	style.content_margin_top = margin

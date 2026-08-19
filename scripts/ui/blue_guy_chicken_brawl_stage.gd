@@ -330,6 +330,7 @@ var planned_kill_count := 0
 var kill_count_awarded := 0
 var kill_xp_already_awarded := 0
 var area_clear_xp_awarded := false
+var runtime_assets_loaded := false
 
 
 func load_png_texture(path: String) -> Texture2D:
@@ -377,21 +378,14 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	clip_contents = arena_shape != "diamond"
-	blue_guy_punch = load_png_texture(BLUE_GUY_PUNCH_PATH)
 	blue_guy_guard = load_png_texture(BLUE_GUY_GUARD_PATH)
-	blue_guy_ko = load_png_texture(BLUE_GUY_KO_PATH)
-	for frame_path in BLUE_GUY_KO_FRAME_PATHS:
-		var ko_frame := load_png_texture(frame_path)
-		if ko_frame != null:
-			blue_guy_ko_frames.append(ko_frame)
-	blue_guy_uppercut = load_png_texture(BLUE_GUY_UPPERCUT_PATH)
-	cooked_chicken_drop = load_png_texture(COOKED_CHICKEN_DROP_PATH)
 	_ensure_labels()
 	if active:
+		_ensure_runtime_assets_loaded()
 		_seed_fight()
 	else:
 		_seed_inactive_state()
-	set_process(true)
+	set_process(active)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -437,6 +431,7 @@ func setup_blue_guy_health(current_hp: int, maximum_hp: int, regen_fraction: flo
 
 
 func setup_action(action: Dictionary) -> void:
+	runtime_assets_loaded = false
 	stage_title = str(action.get("name", stage_title))
 	enemy_unlock_level = maxi(1, int(action.get("unlock", HERO_STAT_BASELINE_LEVEL)))
 	if title_label != null:
@@ -466,18 +461,37 @@ func setup_action(action: Dictionary) -> void:
 		enemy_sprite_scale = _enemy_sprite_scale_for_id(enemy_id)
 		enemy_art_faces_right = true if INCLUDED_SCREEN_RIGHT.has(enemy_id) else not (enemy_id in ["chicken-swarm", "dragons"])
 	arena_floor = load_png_texture(_arena_floor_path_for_enemy(enemy_id))
+	enemy_idle_art_path = str(action.get("art", ""))
+	if active:
+		_ensure_runtime_assets_loaded()
+		_seed_fight()
+	else:
+		_apply_enemy_preview_art_path(enemy_idle_art_path)
+		_seed_inactive_state()
+	queue_redraw()
+
+
+func _ensure_runtime_assets_loaded() -> void:
+	if runtime_assets_loaded:
+		return
+	blue_guy_punch = load_png_texture(BLUE_GUY_PUNCH_PATH)
+	if blue_guy_guard == null:
+		blue_guy_guard = load_png_texture(BLUE_GUY_GUARD_PATH)
+	blue_guy_ko = load_png_texture(BLUE_GUY_KO_PATH)
+	blue_guy_ko_frames.clear()
+	for frame_path in BLUE_GUY_KO_FRAME_PATHS:
+		var ko_frame := load_png_texture(frame_path)
+		if ko_frame != null:
+			blue_guy_ko_frames.append(ko_frame)
+	blue_guy_uppercut = load_png_texture(BLUE_GUY_UPPERCUT_PATH)
+	cooked_chicken_drop = load_png_texture(COOKED_CHICKEN_DROP_PATH)
 	_load_chicken_state_textures()
 	_load_enemy_special_textures()
 	_load_monster_movement_frames()
 	_load_effect_frames()
 	_load_enemy_attack_frames()
-	enemy_idle_art_path = str(action.get("art", ""))
 	_apply_enemy_art_path(enemy_idle_art_path)
-	if active:
-		_seed_fight()
-	else:
-		_seed_inactive_state()
-	queue_redraw()
+	runtime_assets_loaded = true
 
 
 func _refresh_combat_reward_xp() -> void:
@@ -573,6 +587,22 @@ func _apply_enemy_art_path(idle_art_path: String) -> void:
 	black_hit_chicken = null
 	black_dizzy_chicken = null
 	black_defeated_chicken = null
+
+
+func _apply_enemy_preview_art_path(idle_art_path: String) -> void:
+	if idle_art_path.is_empty():
+		return
+	var idle_res := _asset_to_res_path(idle_art_path)
+	if idle_res.ends_with("-states-source.png") and enemy_id == "giants":
+		var source := load_png_texture(idle_res)
+		if source != null:
+			var frame_width := float(source.get_width()) / 4.0
+			idle_chicken = _atlas_texture(source, Rect2(0.0, 0.0, frame_width, source.get_height()))
+			cover_clean_chicken = idle_chicken
+		return
+	if idle_res.ends_with("-idle.png"):
+		idle_chicken = load_png_texture(idle_res)
+		cover_clean_chicken = idle_chicken
 
 
 func _load_chicken_state_textures() -> void:
@@ -824,6 +854,8 @@ func _asset_to_res_path(path: String) -> String:
 
 
 func set_active_fight(active_fight: bool) -> void:
+	if active_fight:
+		_ensure_runtime_assets_loaded()
 	if active == active_fight:
 		return
 	active = active_fight
@@ -831,6 +863,8 @@ func set_active_fight(active_fight: bool) -> void:
 		_seed_fight()
 	else:
 		_seed_inactive_state()
+	set_process(active)
+	queue_redraw()
 
 
 func _process(delta: float) -> void:
@@ -4213,6 +4247,8 @@ func _texture_content_rect(texture: Texture2D, target_size: Vector2) -> Rect2:
 		used_rect = texture_used_rect_cache[texture] as Rect2i
 	else:
 		var image := texture.get_image()
+		if image != null and image.is_compressed() and image.decompress() != OK:
+			image = null
 		used_rect = image.get_used_rect() if image != null else Rect2i(Vector2i.ZERO, Vector2i(source_size))
 		texture_used_rect_cache[texture] = used_rect
 	var fit_scale := minf(target_size.x / source_size.x, target_size.y / source_size.y)

@@ -15,6 +15,8 @@ $activityUiBoundaryContractTest = Join-Path $projectRoot "scripts\check-activity
 $leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
 $crashAuditContractsTest = Join-Path $projectRoot "scripts\check-crash-audit-contracts.ps1"
 $performance1080pMigrationContractsTest = Join-Path $projectRoot "scripts\check-1080p-migration-contracts.ps1"
+$performanceResourceContractsTest = Join-Path $projectRoot "scripts\check-performance-resource-contracts.ps1"
+$performanceResourceLifetimeTest = Join-Path $projectRoot "scripts\test-performance-resource-lifetime.ps1"
 $activityCardGeometryTest = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
 $homeAchievementMedalClickTest = Join-Path $projectRoot "scripts\test-home-achievement-medal-click.ps1"
 $actionCardMedalCeremonyCleanupTest = Join-Path $projectRoot "scripts\test-action-card-medal-ceremony-cleanup.ps1"
@@ -61,7 +63,8 @@ function Assert-NoUnexpectedGodotErrors {
         }
         $knownShutdownNoise = (
             $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
+            $text -match 'ERROR: Failed to read the root certificate store\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"
@@ -91,7 +94,8 @@ function Assert-NoCrashLikeGodotErrors {
         )
         $knownShutdownNoise = (
             $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
+            $text -match 'ERROR: Failed to read the root certificate store\.'
         )
         if (-not ($knownPerformanceFailure -or $knownShutdownNoise)) {
             throw "Crash-like Godot error during ${Context}: $text"
@@ -324,6 +328,20 @@ $performance1080pMigrationContractsOutput | Out-Host
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
+
+if (-not (Test-Path -LiteralPath $performanceResourceContractsTest)) {
+    throw "Performance resource contracts test was not found at $performanceResourceContractsTest"
+}
+$performanceResourceContractsOutput = & $performanceResourceContractsTest 2>&1
+$performanceResourceContractsOutput | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
+
+Invoke-ProjectValidationScript `
+    -Path $performanceResourceLifetimeTest `
+    -MissingMessage "Performance resource lifetime test was not found at $performanceResourceLifetimeTest" `
+    -Context "performance resource lifetime validation"
 
 if (-not (Test-Path -LiteralPath $activityCardGeometryTest)) {
     throw "Activity card geometry test was not found at $activityCardGeometryTest"

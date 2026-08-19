@@ -170,8 +170,8 @@ func _run() -> void:
 		return
 	var arrow_tip_offset := Vector2(0.47, 0.02) if tutorial_arrow.flip_v else Vector2(0.47, 0.98)
 	var arrow_tip := tutorial_arrow.get_global_transform() * (tutorial_arrow.size * arrow_tip_offset)
-	if tutorial_arrow.size.distance_to(Vector2(260, 420)) > 1.0:
-		_fail("tutorial arrow should use the phone-sized 260x420 treatment: size=%s %s" % [str(tutorial_arrow.size), _summary(scene)])
+	if tutorial_arrow.size.distance_to(Vector2(130, 210)) > 1.0:
+		_fail("tutorial arrow should use the native 1080p 130x210 treatment: size=%s %s" % [str(tutorial_arrow.size), _summary(scene)])
 		return
 	var target_rect := tutorial_target.get_global_rect()
 	var expected_tip := target_rect.position + target_rect.size * Vector2(0.50, -0.07)

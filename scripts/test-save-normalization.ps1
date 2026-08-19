@@ -1083,8 +1083,8 @@ func _check_hub_module_position_save_restore(game: Node) -> void:
 	_expect(saved.has("barn") and saved.has("trophy"), "Hub position save should preserve valid stored module ids.")
 	var barn := saved.get("barn", {}) as Dictionary
 	var trophy := saved.get("trophy", {}) as Dictionary
-	_expect(float(barn.get("x", 0.0)) == 160.0 and float(barn.get("y", 0.0)) == 180.0, "Hub position save should clamp low coordinates.")
-	_expect(float(trophy.get("x", 0.0)) == 2000.0, "Hub position save should clamp high x coordinates.")
+	_expect(float(barn.get("x", 0.0)) == 80.0 and float(barn.get("y", 0.0)) == 90.0, "Hub position save should clamp low coordinates at native 1080p scale.")
+	_expect(float(trophy.get("x", 0.0)) == 1000.0, "Hub position save should clamp high x coordinates at native 1080p scale.")
 
 	hub_surface.set("hub_module_positions", {"barn": Vector2(300, 300)})
 	hub_surface.call("_restore_hub_module_positions", "bad-entry")
@@ -1101,8 +1101,11 @@ func _check_hub_module_position_save_restore(game: Node) -> void:
 	_expect(restored.has("barn") and restored.has("mission") and restored.has("trophy"), "Hub position restore should preserve valid saved module ids.")
 	var restored_barn := restored.get("barn", Vector2.ZERO) as Vector2
 	var restored_mission := restored.get("mission", Vector2.ZERO) as Vector2
-	_expect(restored_barn == Vector2(160, 180), "Hub position restore should clamp low coordinates.")
+	_expect(restored_barn == Vector2(80, 90), "Hub position restore should clamp low coordinates at native 1080p scale.")
 	_expect(restored_mission == Vector2(500, 600), "Hub position restore should preserve in-bounds coordinates.")
+	hub_surface.call("_restore_hub_module_positions", {"barn": {"x": 600, "y": 700}}, true)
+	restored = hub_surface.get("hub_module_positions") as Dictionary
+	_expect(restored.get("barn", Vector2.ZERO) == Vector2(300, 350), "Pre-migration hub positions should convert once to native 1080p coordinates.")
 
 
 func _check_hub_decor_layout_save_restore(game: Node) -> void:
@@ -1121,11 +1124,11 @@ func _check_hub_decor_layout_save_restore(game: Node) -> void:
 	var decor := saved[1] as Dictionary
 	_expect(str(tree.get("type", "")) == "tree", "Hub decor save should preserve tree entries.")
 	_expect(int(tree.get("index", -1)) == 5, "Hub decor save should clamp tree sprite indexes.")
-	_expect(float(tree.get("w", 0.0)) == 80.0 and float(tree.get("h", 0.0)) == 80.0, "Hub decor save should clamp tiny decor sizes.")
-	_expect(float(tree.get("x", 0.0)) >= 46.0 and float(tree.get("y", 0.0)) >= 80.0, "Hub decor save should clamp tree positions into the field.")
+	_expect(float(tree.get("w", 0.0)) == 40.0 and float(tree.get("h", 0.0)) == 40.0, "Hub decor save should clamp tiny decor sizes at native 1080p scale.")
+	_expect(float(tree.get("x", 0.0)) >= 23.0 and float(tree.get("y", 0.0)) >= 40.0, "Hub decor save should clamp tree positions into the native field.")
 	_expect(str(decor.get("type", "")) == "decor", "Hub decor save should preserve decor entries.")
 	_expect(int(decor.get("index", -1)) == 15, "Hub decor save should clamp decor sprite indexes.")
-	_expect(float(decor.get("w", 0.0)) == 460.0 and float(decor.get("h", 0.0)) == 460.0, "Hub decor save should clamp oversized decor sizes.")
+	_expect(float(decor.get("w", 0.0)) == 230.0 and float(decor.get("h", 0.0)) == 230.0, "Hub decor save should clamp oversized decor sizes at native 1080p scale.")
 
 	hub_surface.set("hub_decor_layout", [{"type": "tree", "index": 1, "x": 100, "y": 100, "w": 120, "h": 120}])
 	hub_surface.call("_restore_hub_decor_layout", "bad-entry")
@@ -1136,7 +1139,12 @@ func _check_hub_decor_layout_save_restore(game: Node) -> void:
 	_expect(restored.size() == 2, "Hub decor restore should only keep valid decor entry types.")
 	tree = restored[0] as Dictionary
 	_expect(int(tree.get("index", -1)) == 5, "Hub decor restore should clamp tree sprite indexes.")
-	_expect(float(tree.get("x", 0.0)) >= 46.0 and float(tree.get("y", 0.0)) >= 80.0, "Hub decor restore should clamp tree positions into the field.")
+	_expect(float(tree.get("x", 0.0)) >= 23.0 and float(tree.get("y", 0.0)) >= 40.0, "Hub decor restore should clamp tree positions into the native field.")
+	hub_surface.call("_restore_hub_decor_layout", [{"type": "tree", "index": 1, "x": 400, "y": 500, "w": 240, "h": 240}], true)
+	restored = hub_surface.get("hub_decor_layout") as Array
+	var converted_tree := restored[0] as Dictionary
+	_expect(float(converted_tree.get("x", 0.0)) == 200.0 and float(converted_tree.get("y", 0.0)) == 250.0, "Pre-migration hub decor positions should convert once to native 1080p coordinates.")
+	_expect(float(converted_tree.get("w", 0.0)) == 120.0 and float(converted_tree.get("h", 0.0)) == 120.0, "Pre-migration hub decor sizes should convert once to native 1080p coordinates.")
 
 
 func _check_hub_mission_save_restore(game: Node) -> void:
@@ -2775,12 +2783,12 @@ func _check_save_payload(game: Node) -> void:
 	var payload_positions := payload.get("hub_module_positions", {}) as Dictionary
 	_expect(payload_positions.size() == 2 and payload_positions.has("barn") and payload_positions.has("trophy"), "Save payload should include only storable hub module positions.")
 	var payload_barn_position := payload_positions.get("barn", {}) as Dictionary
-	_expect(float(payload_barn_position.get("x", 0.0)) == 160.0 and float(payload_barn_position.get("y", 0.0)) == 180.0, "Save payload should clamp hub module positions.")
+	_expect(float(payload_barn_position.get("x", 0.0)) == 80.0 and float(payload_barn_position.get("y", 0.0)) == 90.0, "Save payload should clamp hub module positions at native 1080p scale.")
 	var payload_decor := payload.get("hub_decor_layout", []) as Array
 	_expect(payload_decor.size() == 2, "Save payload should include only valid hub decor entries.")
 	var payload_tree := payload_decor[0] as Dictionary
 	_expect(int(payload_tree.get("index", -1)) == 5, "Save payload should clamp hub tree decor indexes.")
-	_expect(float(payload_tree.get("w", 0.0)) == 80.0 and float(payload_tree.get("h", 0.0)) == 80.0, "Save payload should clamp hub decor sizes.")
+	_expect(float(payload_tree.get("w", 0.0)) == 40.0 and float(payload_tree.get("h", 0.0)) == 40.0, "Save payload should clamp hub decor sizes at native 1080p scale.")
 	var payload_missions := payload.get("hub_missions", []) as Array
 	_expect(payload_missions.size() == 1, "Save payload should include only valid hub missions.")
 	var payload_mission := payload_missions[0] as Dictionary

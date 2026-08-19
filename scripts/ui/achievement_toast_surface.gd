@@ -4,14 +4,14 @@ const AchievementState = preload("res://scripts/achievements/state.gd")
 const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
 const CANVAS_LAYER := 128
-const SIZE := Vector2(1500, 300)
-const GAP := 28.0
-const VIEWPORT_MARGIN := Vector2(36, 36)
+const SIZE := Vector2(750, 150)
+const GAP := 14.0
+const VIEWPORT_MARGIN := Vector2(18, 18)
 const EXIT_DELAY := 6.0
 const AUTO_EXIT_SECONDS := 0.64
 const TAP_EXIT_SECONDS := 0.12
 const TAP_SWAP_SECONDS := 0.045
-const QUEUE_BADGE_SIZE := Vector2(190, 118)
+const QUEUE_BADGE_SIZE := Vector2(95, 59)
 const QUEUE_BADGE_TOP_OVERHANG := 66.0
 
 var host
@@ -201,7 +201,7 @@ func _achievement_toast_queue_badge() -> PanelContainer:
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", 8)
+	label.add_theme_constant_override("outline_size", 4)
 	center.add_child(label)
 	badge.set_meta("achievement_toast_queue_badge_label_id", label.get_instance_id())
 	return badge
@@ -304,7 +304,7 @@ func _route_achievement_toast_input(event: InputEvent) -> bool:
 		if not _achievement_toast_accepts_dismiss_event(event, toast):
 			continue
 		host._input_routing_shell()._block_background_input_briefly()
-		_dismiss_achievement_toast(toast, host._app_lifecycle_runtime().meta_vector2(toast, "achievement_exit_offset", Vector2(0, 110.0)), false)
+		_dismiss_achievement_toast(toast, host._app_lifecycle_runtime().meta_vector2(toast, "achievement_exit_offset", Vector2(0, 55.0)), false)
 		return true
 	return false
 
@@ -507,10 +507,10 @@ func card(achievement: Dictionary) -> Control:
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_theme_constant_override("margin_left", 18)
-	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", 6)
-	margin.add_theme_constant_override("margin_bottom", 6)
+	margin.add_theme_constant_override("margin_left", 9)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 3)
+	margin.add_theme_constant_override("margin_bottom", 3)
 	card.add_child(margin)
 
 	var copy := VBoxContainer.new()
@@ -518,12 +518,12 @@ func card(achievement: Dictionary) -> Control:
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	copy.add_theme_constant_override("separation", 8)
+	copy.add_theme_constant_override("separation", 4)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(copy)
 
 	var title_label: Label = host._label(_achievement_done_text(achievement), 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	title_label.custom_minimum_size = Vector2(0, 88)
+	title_label.custom_minimum_size = Vector2(0, 44)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -534,7 +534,7 @@ func card(achievement: Dictionary) -> Control:
 	copy.add_child(title_label)
 
 	var reward_label: Label = host._label(_reward_text(achievement), 50, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	reward_label.custom_minimum_size = Vector2(0, 60)
+	reward_label.custom_minimum_size = Vector2(0, 30)
 	reward_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	reward_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS

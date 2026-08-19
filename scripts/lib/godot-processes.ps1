@@ -51,7 +51,8 @@ function Assert-NoUnexpectedGodotErrors {
         }
         $knownShutdownNoise = (
             $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
+            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.' -or
+            $text -match 'ERROR: Failed to read the root certificate store\.'
         )
         if (-not $knownShutdownNoise) {
             throw "Unexpected Godot error during ${Context}: $text"

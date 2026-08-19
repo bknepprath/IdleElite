@@ -3,27 +3,29 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://ct7ah6babn5xv"
-path="res://.godot/imported/scrapwood.png-9667484ac1249a3de588004fe74bc35e.ctex"
+path.bptc="res://.godot/imported/scrapwood.png-9667484ac1249a3de588004fe74bc35e.bptc.ctex"
+path.astc="res://.godot/imported/scrapwood.png-9667484ac1249a3de588004fe74bc35e.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/icons/resources/scrapwood.png"
-dest_files=["res://.godot/imported/scrapwood.png-9667484ac1249a3de588004fe74bc35e.ctex"]
+dest_files=["res://.godot/imported/scrapwood.png-9667484ac1249a3de588004fe74bc35e.bptc.ctex", "res://.godot/imported/scrapwood.png-9667484ac1249a3de588004fe74bc35e.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

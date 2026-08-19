@@ -152,7 +152,7 @@ Assert-True ($rulesGenerator -match "\^\[a-z0-9_-\]\+\$") "Rules generator must 
 Assert-True ($rulesGenerator -match '\$duplicateCategoryKeys\s*=\s*@\(\$categoryKeys \| Group-Object') "Rules generator must reject duplicate category keys before emitting rules."
 Assert-True ($leaderboardState -match 'const SUBMIT_INTERVAL_SECONDS := 15 \* 60') "Client write interval must stay at 15 minutes."
 Assert-True ($leaderboardState -match 'const TOP_COUNT := 50') "Leaderboard top count must stay capped at 50."
-Assert-True ($leaderboardPresentation -match 'const BASE_FRAME_WIDTH := 2160') "Leaderboard base frame width must stay equivalent to BASE_CANVAS.x."
+Assert-True ($leaderboardPresentation -match 'const BASE_FRAME_WIDTH := 1080') "Leaderboard base frame width must stay equivalent to BASE_CANVAS.x."
 Assert-True ($leaderboardState -match 'func has_pending_category_score\(\) -> bool:') "Submit readiness must be owned by LeaderboardState."
 Assert-True ($leaderboardState -match 'func has_pending_category_score\(\) -> bool:') "Submit readiness must detect pending category score improvements in LeaderboardState."
 Assert-True ($leaderboardState -match 'return LeaderboardProfile\.profile_claim_valid\(host, host\.PROFILE_GUEST_NAME_PREFIX, host\.PROFILE_DISPLAY_NAME_MAX_CHARS, host\.PROFILE_NAME_KEY_MAX_CHARS\) and \(has_pending_category_score\(\) or repair_publish_due\(\)\) and next_submit_seconds\(\) <= 0') "Submit readiness must require a claimed unique name, pending category score or one-time repair, and the 15-minute submit gate."

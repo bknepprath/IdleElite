@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://b5ix87q5erd0o"
-path="res://.godot/imported/hub-build-cloud-solid-sheet.png-43aaca965790ba55e580ae0dba21cafb.ctex"
+path.bptc="res://.godot/imported/hub-build-cloud-solid-sheet.png-43aaca965790ba55e580ae0dba21cafb.bptc.ctex"
+path.astc="res://.godot/imported/hub-build-cloud-solid-sheet.png-43aaca965790ba55e580ae0dba21cafb.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/hub/hub-build-cloud-solid-sheet.png"
-dest_files=["res://.godot/imported/hub-build-cloud-solid-sheet.png-43aaca965790ba55e580ae0dba21cafb.ctex"]
+dest_files=["res://.godot/imported/hub-build-cloud-solid-sheet.png-43aaca965790ba55e580ae0dba21cafb.bptc.ctex", "res://.godot/imported/hub-build-cloud-solid-sheet.png-43aaca965790ba55e580ae0dba21cafb.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

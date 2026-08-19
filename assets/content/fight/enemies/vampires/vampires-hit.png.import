@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cw55ku5y7lvr6"
-path="res://.godot/imported/vampires-hit.png-5b1955f3fa052c0556d577818b564898.ctex"
+path.bptc="res://.godot/imported/vampires-hit.png-5b1955f3fa052c0556d577818b564898.bptc.ctex"
+path.astc="res://.godot/imported/vampires-hit.png-5b1955f3fa052c0556d577818b564898.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/enemies/vampires/vampires-hit.png"
-dest_files=["res://.godot/imported/vampires-hit.png-5b1955f3fa052c0556d577818b564898.ctex"]
+dest_files=["res://.godot/imported/vampires-hit.png-5b1955f3fa052c0556d577818b564898.bptc.ctex", "res://.godot/imported/vampires-hit.png-5b1955f3fa052c0556d577818b564898.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

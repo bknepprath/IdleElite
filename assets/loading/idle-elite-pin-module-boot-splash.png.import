@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://biv2m5w5qpi7x"
-path="res://.godot/imported/idle-elite-pin-module-boot-splash.png-73e0c8cdb42e1f4cd6c973f573d8c4de.ctex"
+path.bptc="res://.godot/imported/idle-elite-pin-module-boot-splash.png-73e0c8cdb42e1f4cd6c973f573d8c4de.bptc.ctex"
+path.astc="res://.godot/imported/idle-elite-pin-module-boot-splash.png-73e0c8cdb42e1f4cd6c973f573d8c4de.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/loading/idle-elite-pin-module-boot-splash.png"
-dest_files=["res://.godot/imported/idle-elite-pin-module-boot-splash.png-73e0c8cdb42e1f4cd6c973f573d8c4de.ctex"]
+dest_files=["res://.godot/imported/idle-elite-pin-module-boot-splash.png-73e0c8cdb42e1f4cd6c973f573d8c4de.bptc.ctex", "res://.godot/imported/idle-elite-pin-module-boot-splash.png-73e0c8cdb42e1f4cd6c973f573d8c4de.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

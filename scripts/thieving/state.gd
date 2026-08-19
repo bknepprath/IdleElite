@@ -1,9 +1,9 @@
 extends RefCounted
 
-const HEIST_BACKGROUND_SHEET := "res://assets/content/thieving/heists/thieving-trophy-heist-backgrounds-wide.png"
+const HEIST_BACKGROUND_SHEET := "res://assets/content/thieving/heists/thieving-trophy-heist-backgrounds-1080p.png"
 const HEIST_TROPHY_SHEET := "res://assets/content/thieving/trophies/thieving-trophy-sheet.png"
 const HEIST_JAIL_BARS_TEXTURE := "res://assets/content/thieving/heists/thieving-jail-bars-overlay.png"
-const HEIST_BACKGROUND_CELL := Vector2(1536, 880)
+const HEIST_BACKGROUND_CELL := Vector2(1080, 619)
 const HEIST_TROPHY_CELL := Vector2(256, 256)
 const HEIST_LEVEL_SUCCESS_BONUS := 0.75
 const HEIST_MAX_SUCCESS := 95.0

@@ -73,18 +73,26 @@ $projectPath = Join-Path $projectRoot "project.godot"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $safeRunnerPath = Join-Path $projectRoot "run-godot-safe.ps1"
 $releaseBuildPath = Join-Path $projectRoot "scripts\build-android-release.ps1"
+$previewBuildPath = Join-Path $projectRoot "scripts\build-android-preview.ps1"
+$assetPackGradlePath = Join-Path $projectRoot "android\build\assetPackInstallTime\build.gradle"
+$assetPackManifestPath = Join-Path $projectRoot "android\build\assetPackInstallTime\src\main\AndroidManifest.xml"
 $mainScenePath = Join-Path $projectRoot "scenes\main.tscn"
 
 Assert-True (Test-Path -LiteralPath $projectPath) "Missing project.godot."
 Assert-True (Test-Path -LiteralPath $exportPresetsPath) "Missing export_presets.cfg."
 Assert-True (Test-Path -LiteralPath $safeRunnerPath) "Missing run-godot-safe.ps1."
 Assert-True (Test-Path -LiteralPath $releaseBuildPath) "Missing scripts\build-android-release.ps1."
+Assert-True (Test-Path -LiteralPath $previewBuildPath) "Missing scripts\build-android-preview.ps1."
+Assert-True (Test-Path -LiteralPath $assetPackGradlePath) "Missing install-time Android asset-pack Gradle configuration."
+Assert-True (Test-Path -LiteralPath $assetPackManifestPath) "Missing install-time Android asset-pack manifest."
 Assert-True (Test-Path -LiteralPath $mainScenePath) "Missing scenes\main.tscn."
 
 $projectText = Get-Content -LiteralPath $projectPath -Raw
 $exportText = Get-Content -LiteralPath $exportPresetsPath -Raw
 $safeRunnerText = Get-Content -LiteralPath $safeRunnerPath -Raw
 $releaseBuildText = Get-Content -LiteralPath $releaseBuildPath -Raw
+$previewBuildText = Get-Content -LiteralPath $previewBuildPath -Raw
+$assetPackGradleText = Get-Content -LiteralPath $assetPackGradlePath -Raw
 
 Assert-True ($projectText -match 'run/main_scene="res://scenes/main\.tscn"') "project.godot should launch scenes/main.tscn."
 Assert-True ($projectText -match 'config/quit_on_go_back=false') "Android back button should not quit the game unexpectedly."
@@ -99,6 +107,11 @@ Assert-True ($safeRunnerText -match '--headless') "The safe runner should defaul
 Assert-True ($safeRunnerText -match '--visible-game') "The safe runner should explicitly gate visible game launches."
 Assert-True ($releaseBuildText -match 'window/stretch/mode=\"viewport\"') "The Android release builder must guard the viewport stretch mode."
 Assert-True ($releaseBuildText -match 'Android release blocked:') "The Android release builder must fail clearly when the viewport guard is violated."
+Assert-True ($releaseBuildText -match 'godot-lib\.template_release\.aar') "The Android release builder must verify its custom build-template AAR."
+Assert-True ($previewBuildText -match 'window/stretch/mode=\"viewport\"') "The Android preview builder must guard the viewport stretch mode."
+Assert-True ($previewBuildText -match 'godot-lib\.template_debug\.aar') "The Android preview builder must verify its custom build-template AAR."
+Assert-True ($assetPackGradleText -match 'com\.android\.asset-pack') "The install-time Android asset pack must apply the asset-pack plugin."
+Assert-True ($assetPackGradleText -match 'deliveryType\s*=\s*"install-time"') "The Android asset pack must use install-time delivery."
 
 $directGodotLaunches = New-Object System.Collections.Generic.List[string]
 foreach ($sourceFile in Get-RuntimeSourceFiles) {

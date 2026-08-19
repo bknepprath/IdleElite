@@ -11,13 +11,13 @@ const HUB_MODULE_DEFS := {
 		"name": "Barn",
 		"sheet": "res://assets/content/hub/hub-barn-tiers.png",
 		"cell_count": 5,
-		"position": Vector2(470, 1100),
-		"size": Vector2(560, 560),
-		"visual_size": Vector2(560, 560),
-		"visual_sizes": [Vector2(560, 560), Vector2(560, 560), Vector2(650, 650), Vector2(720, 720), Vector2(780, 780)],
-		"visual_anchor": Vector2(0, 206),
+		"position": Vector2(235, 550),
+		"size": Vector2(280, 280),
+		"visual_size": Vector2(280, 280),
+		"visual_sizes": [Vector2(280, 280), Vector2(280, 280), Vector2(325, 325), Vector2(360, 360), Vector2(390, 390)],
+		"visual_anchor": Vector2(0, 103),
 		"cell_bottom_offsets": [Vector2(-2.5, 196), Vector2(0, 180), Vector2(0, 183), Vector2(0, 195), Vector2(0, 211)],
-		"bubble_offset": Vector2(520, -760),
+		"bubble_offset": Vector2(260, -380),
 		"currency": "softwood",
 		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
 		"costs": [60, 360, 90, 260],
@@ -28,12 +28,12 @@ const HUB_MODULE_DEFS := {
 		"name": "Garden",
 		"sheet": "res://assets/content/hub/hub-garden-tiers.png",
 		"cell_count": 5,
-		"position": Vector2(560, 1660),
-		"size": Vector2(560, 560),
-		"visual_size": Vector2(560, 560),
-		"visual_anchor": Vector2(0, 194),
+		"position": Vector2(280, 830),
+		"size": Vector2(280, 280),
+		"visual_size": Vector2(280, 280),
+		"visual_anchor": Vector2(0, 97),
 		"cell_bottom_offsets": [Vector2(-1, 192), Vector2(0, 176), Vector2(0, 182), Vector2(-1, 186), Vector2(-1.5, 201)],
-		"bubble_offset": Vector2(520, -760),
+		"bubble_offset": Vector2(260, -380),
 		"currency": "mixed",
 		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
 		"costs": [45, 280, 80, 220],
@@ -45,11 +45,11 @@ const HUB_MODULE_DEFS := {
 		"name": "Fish Pond",
 		"sheet": "res://assets/content/hub/hub-fish-pond-tiers.png",
 		"cell_count": 5,
-		"position": Vector2(1580, 1840),
-		"size": Vector2(560, 560),
-		"visual_size": Vector2(560, 560),
-		"visual_sizes": [Vector2(1280, 1280), Vector2(820, 820), Vector2(850, 850), Vector2(880, 880), Vector2(920, 920)],
-		"visual_anchor": Vector2(0, 178),
+		"position": Vector2(790, 920),
+		"size": Vector2(280, 280),
+		"visual_size": Vector2(280, 280),
+		"visual_sizes": [Vector2(640, 640), Vector2(410, 410), Vector2(425, 425), Vector2(440, 440), Vector2(460, 460)],
+		"visual_anchor": Vector2(0, 89),
 		"cell_bottom_offsets": [Vector2(6.5, -10), Vector2(-0.5, 127), Vector2(0.5, 141), Vector2(-1, 169), Vector2(0, 200)],
 		"visible_bounds": [
 			Rect2(Vector2(173, 140), Vector2(179, 106)),
@@ -58,7 +58,7 @@ const HUB_MODULE_DEFS := {
 			Rect2(Vector2(69, 105), Vector2(372, 320)),
 			Rect2(Vector2(19, 38), Vector2(474, 418))
 		],
-		"bubble_offset": Vector2(-1260, -760),
+		"bubble_offset": Vector2(-630, -380),
 		"currency": "fish",
 		"costs": [8, 320, 1400, 12000],
 		"unlock_levels": [5, 15, 33, 58],
@@ -68,12 +68,12 @@ const HUB_MODULE_DEFS := {
 		"name": "Mission Sign",
 		"sheet": "res://assets/content/hub/hub-mission-sign-tiers.png",
 		"cell_count": 5,
-		"position": Vector2(520, 2350),
-		"size": Vector2(560, 560),
-		"visual_size": Vector2(560, 560),
-		"visual_anchor": Vector2(0, 194),
+		"position": Vector2(260, 1175),
+		"size": Vector2(280, 280),
+		"visual_size": Vector2(280, 280),
+		"visual_anchor": Vector2(0, 97),
 		"cell_bottom_offsets": [Vector2(1, 176), Vector2(0, 179), Vector2(1, 185), Vector2(-0.5, 195), Vector2(-0.5, 202)],
-		"bubble_offset": Vector2(520, -760),
+		"bubble_offset": Vector2(260, -380),
 		"currency": "softwood",
 		"cost_currencies": ["softwood", "softwood", "hardwood", "hardwood"],
 		"costs": [35, 250, 70, 190],
@@ -520,11 +520,11 @@ func module_positions_for_save() -> Dictionary:
 	return saved
 
 
-func restore_module_positions(raw_positions: Variant) -> void:
-	host._hub_surface().hub_module_positions = normalized_module_positions(raw_positions)
+func restore_module_positions(raw_positions: Variant, pre_migration_layout := false) -> void:
+	host._hub_surface().hub_module_positions = normalized_module_positions(raw_positions, pre_migration_layout)
 
 
-func normalized_module_positions(raw_positions: Variant) -> Dictionary:
+func normalized_module_positions(raw_positions: Variant, pre_migration_layout := false) -> Dictionary:
 	var normalized := {}
 	if typeof(raw_positions) != TYPE_DICTIONARY:
 		return normalized
@@ -540,6 +540,8 @@ func normalized_module_positions(raw_positions: Variant) -> Dictionary:
 		elif typeof(raw_position) == TYPE_DICTIONARY:
 			var raw_dict := raw_position as Dictionary
 			module_position = Vector2(float(raw_dict.get("x", fallback.x)), float(raw_dict.get("y", fallback.y)))
+		if pre_migration_layout:
+			module_position *= 0.5
 		normalized[module_id] = host._hub_surface()._clamp_hub_module_center(module_position)
 	return normalized
 

@@ -6,7 +6,7 @@ static func paper_button_style_with_shape(color: Color, radius: int, margin: int
 		return cache[key] as StyleBoxTexture
 	var style := StyleBoxTexture.new()
 	if can_create.call():
-		var texture_size := Vector2i(128, 92)
+		var texture_size := Vector2i(64, 46)
 		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
 		var inner := outer.grow(-outline_width)
 		var inner_radius := 14.0
@@ -56,7 +56,7 @@ static func chunky_activity_button_style(color: Color, radius: int, margin: int,
 		return cache[key] as StyleBoxTexture
 	var style := StyleBoxTexture.new()
 	if can_create.call():
-		var final_texture_size := Vector2i(192, 132)
+		var final_texture_size := Vector2i(96, 66)
 		var supersample := 4.0
 		var texture_size := Vector2i(
 			int(final_texture_size.x * supersample),

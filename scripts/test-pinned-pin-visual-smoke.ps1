@@ -230,7 +230,7 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 		_record("first pin tap should start the poke-in animation before the page refresh")
 	if not badge.disabled:
 		_record("first pin tap badge should be disabled while its poke-in animation plays")
-	var entry_settled_position := Vector2(198, 128)
+	var entry_settled_position := Vector2(99, 64)
 	if badge.position.is_equal_approx(entry_settled_position):
 		_record("first pin tap badge should move through an in-between animation pose before settling. position=%s" % badge.position)
 	for _i in range(2):
@@ -273,7 +273,7 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 	else:
 		if not settled_seam.visible:
 			_record("card-entry seam should appear when the pin is pressed in")
-		if settled_seam.width < 7.0 or not settled_seam.default_color.is_equal_approx(Color.BLACK):
+		if settled_seam.width < 3.5 or not settled_seam.default_color.is_equal_approx(Color.BLACK):
 			_record("card-entry seam should be a thick black line")
 		if settled_seam.begin_cap_mode != Line2D.LINE_CAP_ROUND or settled_seam.end_cap_mode != Line2D.LINE_CAP_ROUND:
 			_record("card-entry seam should have rounded ends")
@@ -296,8 +296,8 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 		_record("card-entry seam should disappear as soon as the pin pulls out")
 	for _i in range(10):
 		await process_frame
-	var pull_position := Vector2(236, 14)
-	var exit_settled_position := Vector2(198, 128)
+	var pull_position := Vector2(118, 7)
+	var exit_settled_position := Vector2(99, 64)
 	if not (settled_badge.position.x > exit_settled_position.x and settled_badge.position.y < exit_settled_position.y):
 		_record("unpin should pull the pin up/right from the settled spot. settled=%s actual=%s pull=%s" % [exit_settled_position, settled_badge.position, pull_position])
 	await _capture_viewport_if_possible("exit")
@@ -314,9 +314,9 @@ func _check_pin_visuals(scene: Node, skill_id: String) -> void:
 
 
 func _check_badge_visual_state(scene: Node, pop: Control, badge: TextureButton, module_key: String, armed: bool) -> void:
-	var expected_size := Vector2(320, 320)
-	var armed_position := Vector2(224, 50)
-	var settled_position := Vector2(198, 128)
+	var expected_size := Vector2(160, 160)
+	var armed_position := Vector2(112, 25)
+	var settled_position := Vector2(99, 64)
 	var spawn_position := armed_position
 	var expected_position := armed_position if armed else settled_position
 	if not badge.visible:
@@ -331,7 +331,7 @@ func _check_badge_visual_state(scene: Node, pop: Control, badge: TextureButton, 
 			_record("pin badge texture should use a prepared pin texture, got %s" % texture_path)
 		if not armed and not EXPECTED_PIN_COLOR_TEXTURES.has(texture_path):
 			_record("settled pin badge should use a randomized color pin texture, got %s" % texture_path)
-	if expected_size.x < 300.0 or expected_size.y < 300.0 or badge.size.x < 300.0 or badge.size.y < 300.0 or not badge.size.is_equal_approx(expected_size):
+	if expected_size.x < 150.0 or expected_size.y < 150.0 or badge.size.x < 150.0 or badge.size.y < 150.0 or not badge.size.is_equal_approx(expected_size):
 		_record("pin badge is not using the oversized placement size. expected=%s actual=%s" % [expected_size, badge.size])
 	if badge.stretch_mode != TextureButton.STRETCH_KEEP_ASPECT:
 		_record("pin badge art should scale to the oversized bounds")
@@ -353,12 +353,12 @@ func _check_badge_visual_state(scene: Node, pop: Control, badge: TextureButton, 
 		_record("settled pin badge should overhang the card top-left while still poking into it")
 	var tip_point := badge.get_global_transform() * (expected_size * Vector2(0.235, 0.82))
 	if armed:
-		var clip_origin := Vector2(-220, -330)
+		var clip_origin := Vector2(-110, -165)
 		var settled_tip_point := pop.get_global_transform() * (clip_origin + settled_position + expected_size * Vector2(0.235, 0.82))
-		if not (tip_point.x > settled_tip_point.x + 45.0 and tip_point.y < settled_tip_point.y - 45.0):
+		if not (tip_point.x > settled_tip_point.x + 22.5 and tip_point.y < settled_tip_point.y - 22.5):
 			_record("armed pin tip should sit clearly up/right from the settled target")
 	else:
-		var buried_area := Rect2(pop_rect.position + Vector2(-45, 20), Vector2(110, 92))
+		var buried_area := Rect2(pop_rect.position + Vector2(-22.5, 10), Vector2(55, 46))
 		if not buried_area.has_point(tip_point):
 			_record("settled pin tip should be buried inside the top-left card face. tip=%s area=%s" % [tip_point, buried_area])
 		var title_rect := _top_title_label_rect(pop)

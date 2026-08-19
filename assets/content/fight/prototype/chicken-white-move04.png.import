@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cp835cabfb7ya"
-path="res://.godot/imported/chicken-white-move04.png-8b6da4016fae1aea9929bbf60856b17c.ctex"
+path.bptc="res://.godot/imported/chicken-white-move04.png-8b6da4016fae1aea9929bbf60856b17c.bptc.ctex"
+path.astc="res://.godot/imported/chicken-white-move04.png-8b6da4016fae1aea9929bbf60856b17c.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/prototype/chicken-white-move04.png"
-dest_files=["res://.godot/imported/chicken-white-move04.png-8b6da4016fae1aea9929bbf60856b17c.ctex"]
+dest_files=["res://.godot/imported/chicken-white-move04.png-8b6da4016fae1aea9929bbf60856b17c.bptc.ctex", "res://.godot/imported/chicken-white-move04.png-8b6da4016fae1aea9929bbf60856b17c.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

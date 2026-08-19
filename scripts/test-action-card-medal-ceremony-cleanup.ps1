@@ -83,7 +83,7 @@ func _run() -> void:
 		_record("medal_tap_effects was not erased")
 
 	var medal_surface: RefCounted = scene.call("_skill_swipe_activity_surface")
-	if not (medal_surface.call("_action_card_medal_size", 1) as Vector2).is_equal_approx(Vector2(184.68, 184.68)):
+	if not (medal_surface.call("_action_card_medal_size", 1) as Vector2).is_equal_approx(Vector2(92.34, 92.34)):
 		_record("Standard action-card medal did not use its expected size")
 
 	var replacement_parent := Control.new()
@@ -169,7 +169,7 @@ func _run() -> void:
 		"method_hit_control": fishing_button,
 	}
 	scene.call("_skill_swipe_activity_surface").call("_place_action_card_medal", fishing_method_card, fishing_medal, 20)
-	if not (fishing_medal.position + fishing_medal.size * 0.5).is_equal_approx(Vector2(24, 18)):
+	if not (fishing_medal.position + fishing_medal.size * 0.5).is_equal_approx(Vector2(12, 9)):
 		_record("Fishing medal did not use the normal action-card corner alignment")
 	var action_cards := {}
 	action_cards[scene.call("_action_key", "fishing", fishing_action_id)] = fishing_method_card

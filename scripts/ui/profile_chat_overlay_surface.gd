@@ -8,26 +8,26 @@ const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
 const PROFILE_AVATAR_SHEETS := [
-	"res://assets/content/ui/profile-avatar-game-objects-spritesheet.png",
-	"res://assets/content/ui/profile-avatar-blue-guy-spritesheet.png"
+	"res://assets/content/ui/profile-avatar-game-objects-spritesheet-1080p.png",
+	"res://assets/content/ui/profile-avatar-blue-guy-spritesheet-1080p.png"
 ]
 const PROFILE_AVATAR_COUNT := 20
 const PROFILE_AVATAR_SHEET_CELL_COUNT := 10
 const PROFILE_AVATAR_COLUMNS := 5
-const PROFILE_AVATAR_CELL_SIZE := 512
-const PROFILE_AVATAR_ATLAS_INSET := 16
-const PROFILE_AVATAR_COLORED_ATLAS_INSET := 60
-const PROFILE_AVATAR_FRAME_BORDER := 16
-const CHAT_KEYBOARD_PREVIEW_HEIGHT := 178
-const CHAT_STRIP_HEIGHT := 260
+const PROFILE_AVATAR_CELL_SIZE := 256
+const PROFILE_AVATAR_ATLAS_INSET := 8
+const PROFILE_AVATAR_COLORED_ATLAS_INSET := 30
+const PROFILE_AVATAR_FRAME_BORDER := 8
+const CHAT_KEYBOARD_PREVIEW_HEIGHT := 89
+const CHAT_STRIP_HEIGHT := 160
 const CHAT_UI_Z := 3500
 const CHAT_OVERLAY_CANVAS_LAYER := 132
 const PROFILE_OVERLAY_CANVAS_LAYER := CHAT_OVERLAY_CANVAS_LAYER + 1
 const CHAT_STRIP_EMPTY_GRACE_MSEC := 2200
 const CHAT_STRIP_HIDE_GRACE_MSEC := 800
 const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble.png"
-const CHAT_UNREAD_DOT_DIAMETER := 44.0
-const CHAT_UNREAD_DOT_EDGE_INSET := 32.0
+const CHAT_UNREAD_DOT_DIAMETER := 22.0
+const CHAT_UNREAD_DOT_EDGE_INSET := 16.0
 var host
 var profile_overlay: Control
 var profile_overlay_layer: CanvasLayer
@@ -90,14 +90,14 @@ static func _chat_world_tab_style(ink_color: Color) -> StyleBoxFlat:
 	style.bg_color = Color("#3f5068")
 	style.border_color = ink_color
 	style.set_border_width_all(10)
-	style.corner_radius_top_left = 24
-	style.corner_radius_top_right = 24
-	style.corner_radius_bottom_left = 24
-	style.corner_radius_bottom_right = 24
-	style.content_margin_left = 26
-	style.content_margin_right = 26
-	style.content_margin_top = 24
-	style.content_margin_bottom = 24
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	style.content_margin_left = 13
+	style.content_margin_right = 13
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
 	return style
 
 static func chat_unread_dot_style() -> StyleBoxFlat:
@@ -105,10 +105,10 @@ static func chat_unread_dot_style() -> StyleBoxFlat:
 	style.bg_color = Color("#ef2f2f")
 	style.border_color = Color("#111111")
 	style.set_border_width_all(6)
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.corner_radius_top_left = 499.5
+	style.corner_radius_top_right = 499.5
+	style.corner_radius_bottom_left = 499.5
+	style.corner_radius_bottom_right = 499.5
 	return style
 
 static func _chat_expanded_message_style(deleted := false, is_self := false) -> StyleBoxFlat:
@@ -116,14 +116,14 @@ static func _chat_expanded_message_style(deleted := false, is_self := false) -> 
 	style.bg_color = Color("#e7f5ff") if is_self and not deleted else Color("#e8e8e8") if not deleted else Color("#ddd7cf")
 	style.border_color = Color(0, 0, 0, 0)
 	style.set_border_width_all(0)
-	style.corner_radius_top_left = 18
-	style.corner_radius_top_right = 18
-	style.corner_radius_bottom_left = 18
-	style.corner_radius_bottom_right = 10 if is_self and not deleted else 18
-	style.content_margin_left = 32
-	style.content_margin_right = 32
-	style.content_margin_top = 20
-	style.content_margin_bottom = 20
+	style.corner_radius_top_left = 9
+	style.corner_radius_top_right = 9
+	style.corner_radius_bottom_left = 9
+	style.corner_radius_bottom_right = 5 if is_self and not deleted else 18
+	style.content_margin_left = 16
+	style.content_margin_right = 16
+	style.content_margin_top = 10
+	style.content_margin_bottom = 10
 	return style
 
 static func _chat_back_button_style(pressed := false, ink_color := Color.BLACK) -> StyleBoxFlat:
@@ -131,14 +131,14 @@ static func _chat_back_button_style(pressed := false, ink_color := Color.BLACK) 
 	style.bg_color = Color("#ef3f55").darkened(0.08 if pressed else 0.0)
 	style.border_color = ink_color
 	style.set_border_width_all(8)
-	style.corner_radius_top_left = 16
-	style.corner_radius_top_right = 16
-	style.corner_radius_bottom_left = 16
-	style.corner_radius_bottom_right = 16
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 10 + (5 if pressed else 0)
-	style.content_margin_bottom = 10 - (3 if pressed else 0)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	style.content_margin_left = 9
+	style.content_margin_right = 9
+	style.content_margin_top = 5 + (5 if pressed else 0)
+	style.content_margin_bottom = 5 - (3 if pressed else 0)
 	return style
 
 static func _chat_input_style(focused := false, ink_color := Color.BLACK, focus_color := Color.BLUE) -> StyleBoxFlat:
@@ -146,14 +146,14 @@ static func _chat_input_style(focused := false, ink_color := Color.BLACK, focus_
 	style.bg_color = Color.WHITE
 	style.border_color = focus_color if focused else ink_color
 	style.set_border_width_all(7)
-	style.corner_radius_top_left = 18
-	style.corner_radius_top_right = 18
-	style.corner_radius_bottom_left = 18
-	style.corner_radius_bottom_right = 18
-	style.content_margin_left = 46
-	style.content_margin_right = 46
-	style.content_margin_top = 24
-	style.content_margin_bottom = 24
+	style.corner_radius_top_left = 9
+	style.corner_radius_top_right = 9
+	style.corner_radius_bottom_left = 9
+	style.corner_radius_bottom_right = 9
+	style.content_margin_left = 23
+	style.content_margin_right = 23
+	style.content_margin_top = 12
+	style.content_margin_bottom = 12
 	return style
 
 static func _chat_keyboard_preview_style(focus_color: Color) -> StyleBoxFlat:
@@ -161,17 +161,17 @@ static func _chat_keyboard_preview_style(focus_color: Color) -> StyleBoxFlat:
 	style.bg_color = Color.WHITE
 	style.border_color = focus_color
 	style.set_border_width_all(8)
-	style.corner_radius_top_left = 22
-	style.corner_radius_top_right = 22
-	style.corner_radius_bottom_left = 22
-	style.corner_radius_bottom_right = 22
-	style.content_margin_left = 44
-	style.content_margin_right = 44
-	style.content_margin_top = 16
-	style.content_margin_bottom = 16
+	style.corner_radius_top_left = 11
+	style.corner_radius_top_right = 11
+	style.corner_radius_bottom_left = 11
+	style.corner_radius_bottom_right = 11
+	style.content_margin_left = 22
+	style.content_margin_right = 22
+	style.content_margin_top = 8
+	style.content_margin_bottom = 8
 	style.shadow_color = Color(0, 0, 0, 0.24)
-	style.shadow_size = 18
-	style.shadow_offset = Vector2(0, 8)
+	style.shadow_size = 9
+	style.shadow_offset = Vector2(0, 4)
 	return style
 
 static func _chat_strip_style() -> StyleBoxFlat:
@@ -358,16 +358,16 @@ func _ensure_chat_overlay_shell() -> void:
 	var list_margin = MarginContainer.new()
 	var viewport_width = host.get_viewport_rect().size.x
 	list_margin.custom_minimum_size = Vector2(viewport_width, 0)
-	list_margin.add_theme_constant_override("margin_left", 64)
-	list_margin.add_theme_constant_override("margin_right", 48)
-	list_margin.add_theme_constant_override("margin_top", 58)
-	list_margin.add_theme_constant_override("margin_bottom", 34)
+	list_margin.add_theme_constant_override("margin_left", 32)
+	list_margin.add_theme_constant_override("margin_right", 24)
+	list_margin.add_theme_constant_override("margin_top", 29)
+	list_margin.add_theme_constant_override("margin_bottom", 17)
 	scroll.add_child(list_margin)
 	var list = VBoxContainer.new()
 	chat_overlay_list = list
 	list.custom_minimum_size = Vector2(maxf(1.0, viewport_width - 112.0), 0)
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 36)
+	list.add_theme_constant_override("separation", 18)
 	list_margin.add_child(list)
 	chat_overlay_body.add_child(_chat_expanded_composer())
 	chat_overlay_shell_ready = true
@@ -451,21 +451,21 @@ func _build_chat_strip() -> void:
 	host.add_child(chat_strip)
 
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 46)
-	margin.add_theme_constant_override("margin_right", 44)
-	margin.add_theme_constant_override("margin_top", 18)
-	margin.add_theme_constant_override("margin_bottom", 18)
+	margin.add_theme_constant_override("margin_left", 23)
+	margin.add_theme_constant_override("margin_right", 22)
+	margin.add_theme_constant_override("margin_top", 9)
+	margin.add_theme_constant_override("margin_bottom", 9)
 	chat_strip.add_child(margin)
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 28)
+	row.add_theme_constant_override("separation", 14)
 	margin.add_child(row)
 	var icon_holder = Control.new()
-	icon_holder.custom_minimum_size = Vector2(213, 213)
+	icon_holder.custom_minimum_size = Vector2(106.5, 106.5)
 	icon_holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon_holder)
-	var icon = host.visual_texture_cache._image(CHAT_STRIP_ICON, Vector2(213, 213))
+	var icon = host.visual_texture_cache._image(CHAT_STRIP_ICON, Vector2(106.5, 106.5))
 	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon_holder.add_child(icon)
 	chat_unread_dot = PanelContainer.new()
@@ -484,23 +484,23 @@ func _build_chat_strip() -> void:
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	copy.add_theme_constant_override("separation", 4)
+	copy.add_theme_constant_override("separation", 2)
 	row.add_child(copy)
 	chat_strip_line_one = host._label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_strip_line_one.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
-	chat_strip_line_one.add_theme_constant_override("outline_size", 5)
+	chat_strip_line_one.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_one.autowrap_mode = TextServer.AUTOWRAP_OFF
 	chat_strip_line_one.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_one.clip_text = true
-	chat_strip_line_one.custom_minimum_size = Vector2(0, 84)
+	chat_strip_line_one.custom_minimum_size = Vector2(0, 42)
 	copy.add_child(chat_strip_line_one)
 	chat_strip_line_two = host._label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_strip_line_two.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
-	chat_strip_line_two.add_theme_constant_override("outline_size", 5)
+	chat_strip_line_two.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_two.autowrap_mode = TextServer.AUTOWRAP_OFF
 	chat_strip_line_two.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_two.clip_text = true
-	chat_strip_line_two.custom_minimum_size = Vector2(0, 84)
+	chat_strip_line_two.custom_minimum_size = Vector2(0, 42)
 	copy.add_child(chat_strip_line_two)
 	_update_chat_strip()
 
@@ -536,8 +536,8 @@ func _build_chat_overlay() -> void:
 	chat_keyboard_preview.anchor_right = 1.0
 	chat_keyboard_preview.anchor_top = 1.0
 	chat_keyboard_preview.anchor_bottom = 1.0
-	chat_keyboard_preview.offset_left = 46.0
-	chat_keyboard_preview.offset_right = -46.0
+	chat_keyboard_preview.offset_left = 23.0
+	chat_keyboard_preview.offset_right = -23.0
 	chat_keyboard_preview.offset_top = -CHAT_KEYBOARD_PREVIEW_HEIGHT
 	chat_keyboard_preview.offset_bottom = 0.0
 	chat_keyboard_preview.z_index = host.MODAL_OVERLAY_Z
@@ -626,7 +626,7 @@ func _close_chat_overlay(play_sfx := true) -> void:
 
 func _chat_expanded_header() -> Control:
 	var header = Control.new()
-	header.custom_minimum_size = Vector2(0, 330)
+	header.custom_minimum_size = Vector2(0, 165)
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var shelf = ColorRect.new()
 	shelf.color = host._theme_paper_color()
@@ -635,23 +635,23 @@ func _chat_expanded_header() -> Control:
 	header.add_child(shelf)
 	var top = MarginContainer.new()
 	top.set_anchors_preset(Control.PRESET_FULL_RECT)
-	top.add_theme_constant_override("margin_left", 64)
-	top.add_theme_constant_override("margin_right", 64)
-	top.add_theme_constant_override("margin_top", 56)
-	top.add_theme_constant_override("margin_bottom", 64)
+	top.add_theme_constant_override("margin_left", 32)
+	top.add_theme_constant_override("margin_right", 32)
+	top.add_theme_constant_override("margin_top", 28)
+	top.add_theme_constant_override("margin_bottom", 32)
 	header.add_child(top)
 	var tabs = HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	tabs.add_theme_constant_override("separation", 46)
+	tabs.add_theme_constant_override("separation", 23)
 	top.add_child(tabs)
 	tabs.add_child(_chat_profile_button())
 	var world = PanelContainer.new()
-	world.custom_minimum_size = Vector2(780, 136)
+	world.custom_minimum_size = Vector2(380, 68)
 	world.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	world.add_theme_stylebox_override("panel", _chat_world_tab_style(host.COLOR_INK))
 	tabs.add_child(world)
-	var world_label = host._label("Global Chat", 66, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var world_label = host._label("Global Chat", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	world_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	world.add_child(world_label)
 	host._skill_detail_surface()._add_skill_detail_shadow_overlay_to(header, 330.0, 1.0, 422.0, "ChatExpandedHeaderShelfShadow", 0)
@@ -669,17 +669,17 @@ func _chat_expanded_notice() -> Control:
 	panel.add_theme_stylebox_override("panel", host._surface_style(Color("#e8f6ff"), 30, 28, false))
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 26)
+	row.add_theme_constant_override("separation", 13)
 	panel.add_child(row)
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 8)
+	copy.add_theme_constant_override("separation", 4)
 	row.add_child(copy)
 	var title = host._label(_chat_status_title(), 58, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(title)
 	var detail = host._label(_chat_status_detail(), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.custom_minimum_size = Vector2(0, 96)
+	detail.custom_minimum_size = Vector2(0, 48)
 	copy.add_child(detail)
 	_track_chat_status_labels(title, detail)
 	return panel
@@ -688,15 +688,15 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	var deleted = bool(row_data.get("deleted", false))
 	var is_self = str(row_data.get("sender_id", "")) == host.leaderboard_profile.player_id
 	var row = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 28)
-	row.custom_minimum_size = Vector2(0, 260)
-	row.add_child(profile_avatar_frame(int(row_data.get("avatar_index", 0)), Vector2(188, 188), is_self))
+	row.add_theme_constant_override("separation", 14)
+	row.custom_minimum_size = Vector2(0, 130)
+	row.add_child(profile_avatar_frame(int(row_data.get("avatar_index", 0)), Vector2(94, 94), is_self))
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 10)
+	copy.add_theme_constant_override("separation", 5)
 	row.add_child(copy)
 	var meta = HBoxContainer.new()
-	meta.add_theme_constant_override("separation", 12)
+	meta.add_theme_constant_override("separation", 6)
 	copy.add_child(meta)
 	var name_text = _chat_sender_label(row_data)
 	var name_color = Color("#57b8ff") if is_self else Color("#ffc94a")
@@ -714,13 +714,13 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	player_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var name_margin = MarginContainer.new()
 	name_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_margin.add_theme_constant_override("margin_left", 34)
-	name_margin.add_theme_constant_override("margin_top", 6)
-	name_margin.add_theme_constant_override("margin_bottom", 6)
+	name_margin.add_theme_constant_override("margin_left", 17)
+	name_margin.add_theme_constant_override("margin_top", 3)
+	name_margin.add_theme_constant_override("margin_bottom", 3)
 	name_margin.add_child(player_name_label)
 	meta.add_child(name_margin)
 	var time = host._label(_chat_time_text(row_data), 58, Color("#a7a7a7"), HORIZONTAL_ALIGNMENT_RIGHT)
-	time.custom_minimum_size = Vector2(210, 0)
+	time.custom_minimum_size = Vector2(105, 0)
 	meta.add_child(time)
 	var bubble = PanelContainer.new()
 	bubble.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -729,7 +729,7 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	var body_text = "Message removed by moderator." if deleted else str(row_data.get("text", ""))
 	var body = host._label(body_text, 70, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(0, 112)
+	body.custom_minimum_size = Vector2(0, 56)
 	bubble.add_child(body)
 	return row
 
@@ -787,22 +787,22 @@ func _chat_expanded_composer() -> Control:
 	bar.add_theme_stylebox_override("panel", _chat_strip_style())
 	stack.add_child(bar)
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 44)
-	margin.add_theme_constant_override("margin_right", 56)
-	margin.add_theme_constant_override("margin_top", 24)
-	margin.add_theme_constant_override("margin_bottom", 24)
+	margin.add_theme_constant_override("margin_left", 22)
+	margin.add_theme_constant_override("margin_right", 28)
+	margin.add_theme_constant_override("margin_top", 12)
+	margin.add_theme_constant_override("margin_bottom", 12)
 	bar.add_child(margin)
 	var column = VBoxContainer.new()
 	column.alignment = BoxContainer.ALIGNMENT_CENTER
-	column.add_theme_constant_override("separation", 8)
+	column.add_theme_constant_override("separation", 4)
 	margin.add_child(column)
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 34)
+	row.add_theme_constant_override("separation", 17)
 	column.add_child(row)
 	var back = host._menu_button("<")
-	back.custom_minimum_size = Vector2(154, 154)
-	back.add_theme_font_size_override("font_size", 84)
+	back.custom_minimum_size = Vector2(77, 77)
+	back.add_theme_font_size_override("font_size", 48)
 	back.add_theme_stylebox_override("normal", _chat_back_button_style(false, host.COLOR_INK))
 	back.add_theme_stylebox_override("hover", _chat_back_button_style(false, host.COLOR_INK))
 	back.add_theme_stylebox_override("pressed", _chat_back_button_style(true, host.COLOR_INK))
@@ -811,10 +811,10 @@ func _chat_expanded_composer() -> Control:
 	chat_message_edit = LineEdit.new()
 	chat_message_edit.placeholder_text = "Send a message..."
 	chat_message_edit.max_length = host.CHAT_MESSAGE_MAX_CHARS
-	chat_message_edit.custom_minimum_size = Vector2(0, 154)
+	chat_message_edit.custom_minimum_size = Vector2(0, 77)
 	chat_message_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chat_message_edit.focus_mode = Control.FOCUS_ALL
-	chat_message_edit.add_theme_font_size_override("font_size", 68)
+	chat_message_edit.add_theme_font_size_override("font_size", 48)
 	if host.app_bold_font != null:
 		chat_message_edit.add_theme_font_override("font", host.app_bold_font)
 	elif host.app_font != null:
@@ -849,20 +849,20 @@ func _chat_expanded_composer() -> Control:
 	ribbon_frame.add_child(ribbon)
 	var ribbon_row = HBoxContainer.new()
 	ribbon_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	ribbon_row.add_theme_constant_override("separation", 120)
+	ribbon_row.add_theme_constant_override("separation", 60)
 	ribbon_row.clip_contents = true
 	ribbon_row.custom_minimum_size = Vector2(0, NavigationShell.BOTTOM_NAV_HEIGHT - NavigationShell.BOTTOM_NAV_SAFE_PAD)
 	ribbon.add_child(ribbon_row)
 	navigation_shell.chat_home_tab = navigation_shell._nav_button(host.PROGRESS_STAR_ICON_TEXTURE)
-	navigation_shell.chat_home_tab.custom_minimum_size = Vector2(318, 318)
-	navigation_shell.chat_home_tab.add_theme_constant_override("icon_max_width", 244)
+	navigation_shell.chat_home_tab.custom_minimum_size = Vector2(159, 159)
+	navigation_shell.chat_home_tab.add_theme_constant_override("icon_max_width", 122)
 	navigation_shell._register_nav_new_symbol_dot(navigation_shell.chat_home_tab, "hero")
 	navigation_shell.chat_home_tab.modulate = Color.WHITE if host._navigation_shell()._hero_unlocked() else NavigationShell.HUB_NAV_LOCKED_MODULATE
 	navigation_shell.chat_home_tab.tooltip_text = ""
 	navigation_shell.chat_home_tab.pressed.connect(_on_chat_home_nav_pressed)
 	ribbon_row.add_child(navigation_shell.chat_home_tab)
 	navigation_shell.chat_hub_tab = navigation_shell._nav_button("res://assets/content/hub/hub-nav-barn.png")
-	navigation_shell.chat_hub_tab.add_theme_constant_override("icon_max_width", 220)
+	navigation_shell.chat_hub_tab.add_theme_constant_override("icon_max_width", 110)
 	navigation_shell._register_nav_new_symbol_dot(navigation_shell.chat_hub_tab, "hub")
 	navigation_shell.chat_hub_tab.modulate = Color.WHITE if host._navigation_shell()._hub_unlocked() else NavigationShell.HUB_NAV_LOCKED_MODULATE
 	navigation_shell.chat_hub_tab.tooltip_text = ""
@@ -875,7 +875,7 @@ func _chat_expanded_composer() -> Control:
 	chat_settings.pressed.connect(_on_chat_settings_nav_pressed)
 	ribbon_row.add_child(chat_settings)
 	navigation_shell.chat_shop_tab = navigation_shell._nav_button(host.SHOP_ICON_TEXTURE)
-	navigation_shell.chat_shop_tab.add_theme_constant_override("icon_max_width", 232)
+	navigation_shell.chat_shop_tab.add_theme_constant_override("icon_max_width", 116)
 	navigation_shell._register_nav_new_symbol_dot(navigation_shell.chat_shop_tab, "shop")
 	navigation_shell.chat_shop_tab.modulate = Color.WHITE if host._navigation_shell()._shop_unlocked() else NavigationShell.HUB_NAV_LOCKED_MODULATE
 	navigation_shell.chat_shop_tab.tooltip_text = ""
@@ -1016,9 +1016,9 @@ func _chat_profile_button_text() -> String:
 func _chat_profile_button() -> Button:
 	var button: Button = host._menu_button(_chat_profile_button_text())
 	chat_profile_button = button
-	button.custom_minimum_size = Vector2(720, 136)
+	button.custom_minimum_size = Vector2(480, 68)
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	button.add_theme_font_size_override("font_size", 50)
+	button.add_theme_font_size_override("font_size", 48)
 	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	button.pressed.connect(open_profile_overlay)
 	return button
@@ -1351,7 +1351,7 @@ func _chat_send_pressed(text: String) -> void:
 
 func _chat_send_button() -> Button:
 	var button: Button = host._menu_button("Send")
-	button.custom_minimum_size = Vector2(220, 150)
+	button.custom_minimum_size = Vector2(110, 75)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.tooltip_text = ""
@@ -1469,50 +1469,50 @@ func _build_profile_overlay() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	profile_overlay.add_child(center)
 	profile_panel = PanelContainer.new()
-	profile_panel.custom_minimum_size = Vector2(1540, 2020)
-	profile_panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 72, true))
+	profile_panel.custom_minimum_size = Vector2(770, 1010)
+	profile_panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 36, true))
 	center.add_child(profile_panel)
 	profile_content_stack = VBoxContainer.new()
-	profile_content_stack.add_theme_constant_override("separation", 34)
+	profile_content_stack.add_theme_constant_override("separation", 17)
 	profile_panel.add_child(profile_content_stack)
 
 func _rebuild_profile_overlay() -> void:
 	if profile_content_stack == null:
 		return
 	if profile_panel != null:
-		profile_panel.custom_minimum_size = Vector2(1540, 2020 if profile_avatar_picker_open else 1280)
+		profile_panel.custom_minimum_size = Vector2(770, 1010 if profile_avatar_picker_open else 640)
 	for child in profile_content_stack.get_children():
 		child.queue_free()
 	profile_avatar_buttons.clear()
 	var header = HBoxContainer.new()
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
-	header.add_theme_constant_override("separation", 24)
+	header.add_theme_constant_override("separation", 12)
 	profile_content_stack.add_child(header)
-	var title = host._label("Profile", 124, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label("Profile", 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title)
 	var close = host._menu_button("Done")
-	close.custom_minimum_size = Vector2(300, 154)
+	close.custom_minimum_size = Vector2(150, 77)
 	close.pressed.connect(_save_profile_and_close)
 	header.add_child(close)
 
 	var identity_row = HBoxContainer.new()
 	identity_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	identity_row.add_theme_constant_override("separation", 42)
+	identity_row.add_theme_constant_override("separation", 21)
 	profile_content_stack.add_child(identity_row)
 	identity_row.add_child(_profile_avatar_change_button())
 	var name_stack = VBoxContainer.new()
 	name_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	name_stack.add_theme_constant_override("separation", 18)
+	name_stack.add_theme_constant_override("separation", 9)
 	identity_row.add_child(name_stack)
 	profile_name_edit = LineEdit.new()
 	profile_name_edit.text = host.leaderboard_profile.display_name
 	profile_name_edit.placeholder_text = "Username"
 	profile_name_edit.max_length = host.PROFILE_DISPLAY_NAME_MAX_CHARS
-	profile_name_edit.custom_minimum_size = Vector2(0, 150)
+	profile_name_edit.custom_minimum_size = Vector2(0, 75)
 	profile_name_edit.focus_mode = Control.FOCUS_ALL
 	profile_name_edit.editable = not host.leaderboard_profile.profile_claimed
-	profile_name_edit.add_theme_font_size_override("font_size", 66)
+	profile_name_edit.add_theme_font_size_override("font_size", 48)
 	if host.app_bold_font != null:
 		profile_name_edit.add_theme_font_override("font", host.app_bold_font)
 	elif host.app_font != null:
@@ -1528,18 +1528,18 @@ func _rebuild_profile_overlay() -> void:
 	name_stack.add_child(profile_name_edit)
 	profile_status_label = host._label(_profile_status_text(), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	profile_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	profile_status_label.custom_minimum_size = Vector2(0, 112)
+	profile_status_label.custom_minimum_size = Vector2(0, 56)
 	name_stack.add_child(profile_status_label)
 	var cloud_status = host._label(host._online_runtime().cloud_save_status_text(), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	cloud_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	cloud_status.custom_minimum_size = Vector2(0, 136)
+	cloud_status.custom_minimum_size = Vector2(0, 68)
 	name_stack.add_child(cloud_status)
 	if (
 		host._online_runtime().leaderboard_auth_provider != "google"
 		and LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS)
 	):
 		var google_button = host._menu_button("Connect Google")
-		google_button.custom_minimum_size = Vector2(0, 132)
+		google_button.custom_minimum_size = Vector2(0, 66)
 		google_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		google_button.disabled = host._online_runtime().google_auth_in_flight or host._online_runtime().leaderboard_auth_in_flight
 		if host._online_runtime().google_auth_in_flight or host._online_runtime().leaderboard_auth_in_flight:
@@ -1549,7 +1549,7 @@ func _rebuild_profile_overlay() -> void:
 
 	if not host.leaderboard_profile.profile_claimed:
 		var account_button = host._menu_button("Save Username")
-		account_button.custom_minimum_size = Vector2(0, 154)
+		account_button.custom_minimum_size = Vector2(0, 77)
 		account_button.disabled = host._online_runtime().leaderboard_name_claim_in_flight
 		if host._online_runtime().leaderboard_name_claim_in_flight:
 			account_button.text = "Checking..."
@@ -1559,8 +1559,8 @@ func _rebuild_profile_overlay() -> void:
 	if profile_avatar_picker_open:
 		var grid = GridContainer.new()
 		grid.columns = PROFILE_AVATAR_COLUMNS
-		grid.add_theme_constant_override("h_separation", 24)
-		grid.add_theme_constant_override("v_separation", 24)
+		grid.add_theme_constant_override("h_separation", 12)
+		grid.add_theme_constant_override("v_separation", 12)
 		grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		profile_content_stack.add_child(grid)
 		for i in range(PROFILE_AVATAR_COUNT):
@@ -1571,7 +1571,7 @@ func _rebuild_profile_overlay() -> void:
 func _profile_avatar_change_button() -> Button:
 	var button = Button.new()
 	button.text = ""
-	button.custom_minimum_size = Vector2(310, 310)
+	button.custom_minimum_size = Vector2(155, 155)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
@@ -1582,7 +1582,7 @@ func _profile_avatar_change_button() -> Button:
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	host.button_press_runtime.attach_button_depress_animation(button, 0.94)
 	button.pressed.connect(_toggle_profile_avatar_picker)
-	var art = host.visual_texture_cache._image_from_texture(_profile_avatar_texture(host.leaderboard_profile.avatar_index), Vector2(310, 310))
+	var art = host.visual_texture_cache._image_from_texture(_profile_avatar_texture(host.leaderboard_profile.avatar_index), Vector2(155, 155))
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	button.add_child(art)
@@ -1593,7 +1593,7 @@ func _profile_avatar_picker_button(index: int) -> Button:
 	var selected = LeaderboardProfile.valid_avatar_index(index, PROFILE_AVATAR_COUNT) == host.leaderboard_profile.avatar_index
 	var button = Button.new()
 	button.text = ""
-	button.custom_minimum_size = Vector2(250, 250)
+	button.custom_minimum_size = Vector2(125, 125)
 	button.focus_mode = Control.FOCUS_NONE
 	button.clip_contents = true
 	button.add_theme_stylebox_override("normal", _profile_avatar_button_style(selected, false))
@@ -1602,7 +1602,7 @@ func _profile_avatar_picker_button(index: int) -> Button:
 	button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	host.button_press_runtime.attach_button_depress_animation(button, 0.94)
 	button.pressed.connect(_select_profile_avatar.bind(index))
-	var art = host.visual_texture_cache._image_from_texture(_profile_avatar_texture(index), Vector2(250, 250))
+	var art = host.visual_texture_cache._image_from_texture(_profile_avatar_texture(index), Vector2(125, 125))
 	art.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
 	button.add_child(art)
@@ -1674,8 +1674,8 @@ static func avatar_frame_background(selected := false, theme_surface_color := Ca
 	style.set_corner_radius_all(24)
 	if selected:
 		style.shadow_color = Color(0.09, 0.08, 0.07, 0.22)
-		style.shadow_size = 10
-		style.shadow_offset = Vector2(0, 8)
+		style.shadow_size = 5
+		style.shadow_offset = Vector2(0, 4)
 	return style
 
 
@@ -1696,7 +1696,7 @@ static func avatar_button(selected := false, pressed := false, hovered := false,
 		fill = fill.lightened(0.04)
 	style.bg_color = fill.darkened(0.08 if pressed else 0.0)
 	if pressed:
-		style.shadow_size = 4
+		style.shadow_size = 2
 		style.shadow_offset = Vector2(0, 3)
 	return style
 
@@ -1713,10 +1713,10 @@ static func name_field(
 	style.border_color = focus_color if focused else theme_outline_color.call(ink_color, Color("#fffaf0"))
 	style.set_border_width_all(9)
 	style.set_corner_radius_all(36)
-	style.content_margin_left = 34
-	style.content_margin_right = 34
-	style.content_margin_top = 18
-	style.content_margin_bottom = 18
+	style.content_margin_left = 17
+	style.content_margin_right = 17
+	style.content_margin_top = 9
+	style.content_margin_bottom = 9
 	return style
 
 

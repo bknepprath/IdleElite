@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://i75ad36u8tsl"
-path="res://.godot/imported/chicken-gray-attack-02.png-259fa1adc32f976a01e59064ab9ee999.ctex"
+path.bptc="res://.godot/imported/chicken-gray-attack-02.png-259fa1adc32f976a01e59064ab9ee999.bptc.ctex"
+path.astc="res://.godot/imported/chicken-gray-attack-02.png-259fa1adc32f976a01e59064ab9ee999.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fight/prototype/chicken-gray-attack-02.png"
-dest_files=["res://.godot/imported/chicken-gray-attack-02.png-259fa1adc32f976a01e59064ab9ee999.ctex"]
+dest_files=["res://.godot/imported/chicken-gray-attack-02.png-259fa1adc32f976a01e59064ab9ee999.bptc.ctex", "res://.godot/imported/chicken-gray-attack-02.png-259fa1adc32f976a01e59064ab9ee999.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

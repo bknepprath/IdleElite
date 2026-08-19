@@ -1,8 +1,8 @@
 param(
-    [int]$ViewportWidth = 2160,
-    [int]$ViewportHeight = 3840,
-    [int]$WindowWidth = 627,
-    [int]$WindowHeight = 1115
+    [int]$ViewportWidth = 1080,
+    [int]$ViewportHeight = 1920,
+    [int]$WindowWidth = 1080,
+    [int]$WindowHeight = 1920
 )
 
 $ErrorActionPreference = "Stop"
@@ -53,7 +53,7 @@ func _run() -> void:
 	var window_height := OS.get_environment("IDLE_ELITE_BUILDABLE_CAPTURE_WINDOW_HEIGHT").to_int()
 	var capture_size := Vector2i(viewport_width, viewport_height)
 	var window_size := Vector2i(window_width, window_height)
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	root.content_scale_size = capture_size
 	root.size = window_size
@@ -91,12 +91,12 @@ func _run() -> void:
 	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
 	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(backdrop)
-	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1900.0, 1900.0) as Dictionary
+	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 950.0, 950.0) as Dictionary
 	var card := built.get("card_root") as Control
 	if card == null:
 		_fail("duel fence post card missing")
 		return
-	card.position = Vector2(130.0, 1260.0)
+	card.position = Vector2(65.0, 630.0)
 	stage.add_child(card)
 	scene.visible = false
 	for _frame in range(12):

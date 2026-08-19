@@ -4,10 +4,10 @@ class ActivityProgressOpportunityOverlay:
 	extends Control
 
 	const WINDOW_VERTICAL_OUTSET := 22.0
-	const WINDOW_RADIUS := 18.0
-	const WINDOW_OUTLINE_GROW := 3.0
-	const WINDOW_STROKE_INSET := 5.0
-	const WINDOW_STROKE_WIDTH := 12.0
+	const WINDOW_RADIUS := 9.0
+	const WINDOW_OUTLINE_GROW := 1.5
+	const WINDOW_STROKE_INSET := 2.5
+	const WINDOW_STROKE_WIDTH := 6.0
 	const WINDOW_HOLE_INSET := WINDOW_STROKE_INSET + WINDOW_STROKE_WIDTH
 
 	var progress_rail: Control
@@ -303,8 +303,6 @@ func _opportunity_windows_equal(next_windows: Array[Vector2]) -> bool:
 	return true
 
 func play_opportunity_feedback(success: bool, windows: Array[Vector2], live_window := false) -> void:
-	if success:
-		return
 	opportunity_feedback_windows = windows.duplicate()
 	if live_window and not windows.is_empty():
 		opportunity_windows = windows.duplicate()

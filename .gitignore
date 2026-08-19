@@ -15,6 +15,14 @@ tmp/spreadsheets/
 android/build/.gradle/
 android/build/build/
 android/build/assetPack*/
+!android/build/assetPackInstallTime/
+android/build/assetPackInstallTime/*
+!android/build/assetPackInstallTime/build.gradle
+!android/build/assetPackInstallTime/src/
+android/build/assetPackInstallTime/src/*
+!android/build/assetPackInstallTime/src/main/
+android/build/assetPackInstallTime/src/main/*
+!android/build/assetPackInstallTime/src/main/AndroidManifest.xml
 android/build/libs/debug/
 android/build/libs/release/
 google key downloads/

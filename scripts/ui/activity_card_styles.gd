@@ -3,13 +3,13 @@ extends RefCounted
 const ActivityCardDepth = preload("res://scripts/ui/activity_card_depth.gd")
 const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
 
-const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
-const RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 72.0)
+const NORMAL_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 18.0)
+const RECOVERY_ACTIVITY_CARD_DEPTH_OFFSET := Vector2(0.0, 36.0)
 const NORMAL_ACTIVITY_CARD_PRESS_OFFSET := NORMAL_ACTIVITY_CARD_DEPTH_OFFSET
-const RECOVERY_WIDE_U_BOTTOM_RISE := 72.0
+const RECOVERY_WIDE_U_BOTTOM_RISE := 36.0
 const RECOVERY_WIDE_U_SHOULDER_RATIO := 0.285
-const RECOVERY_WIDE_U_RAIL_HEIGHT := 220.0
-const ACTION_CARD_STROKE_WIDTH := 12.0
+const RECOVERY_WIDE_U_RAIL_HEIGHT := 110.0
+const ACTION_CARD_STROKE_WIDTH := 6.0
 
 static var activity_shade_style_cache := {}
 static var action_art_style_cache: StyleBoxFlat
@@ -472,10 +472,10 @@ class ActionArtMasteryRing extends Control:
 	var ring_color := Color("#ffd02f")
 	var empty_color := Color("#862d2d")
 	var ring_shadow_color := Color("#171615")
-	var stroke_width := 40.0
-	var shadow_width := 64.0
-	var radius := 58.0
-	var inset := 2.0
+	var stroke_width := 20.0
+	var shadow_width := 32.0
+	var radius := 29.0
+	var inset := 1.0
 	var gap_start_fraction := 0.10
 	var gap_finish_fraction := 0.84
 	var progress := 0.5
@@ -600,10 +600,10 @@ static func featured_art(surface_style: Callable, line_color: Color) -> StyleBox
 	var style := surface_style.call(Color("#fffaf0"), 24, 8, true) as StyleBoxFlat
 	style.border_color = line_color
 	style.set_border_width_all(4)
-	style.content_margin_left = 8
-	style.content_margin_right = 8
-	style.content_margin_top = 8
-	style.content_margin_bottom = 8
+	style.content_margin_left = 4
+	style.content_margin_right = 4
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
 	return style
 
 
@@ -673,10 +673,10 @@ static func action_card_background_edge_underlay(fill_color: Color, radius: floa
 	underlay.anchor_right = 1.0
 	underlay.anchor_top = 0.0
 	underlay.anchor_bottom = 1.0
-	underlay.offset_left = -3.0
-	underlay.offset_right = 3.0
-	underlay.offset_top = -3.0
-	underlay.offset_bottom = 3.0
+	underlay.offset_left = -1.5
+	underlay.offset_right = 1.5
+	underlay.offset_top = -1.5
+	underlay.offset_bottom = 1.5
 	underlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	underlay.z_index = 149
 	var style := StyleBoxFlat.new()
@@ -708,7 +708,7 @@ static func activity_card_art_outline_skin(radius: float, cache: Dictionary, ink
 		return cache[key] as StyleBoxTexture
 	var style := StyleBoxTexture.new()
 	if can_create.call():
-		var final_size := Vector2i(160, 104)
+		var final_size := Vector2i(80, 52)
 		var supersample := 4.0
 		var texture_size := Vector2i(int(final_size.x * supersample), int(final_size.y * supersample))
 		var border := 4.0 * supersample
@@ -805,10 +805,10 @@ static func action_art_mastery_ring(theme_color := Color("#e84d4d")) -> ActionAr
 	var ring := ActionArtMasteryRing.new()
 	ring.empty_color = theme_color.darkened(0.42)
 	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ring.offset_left = -36.0
-	ring.offset_top = -36.0
-	ring.offset_right = 36.0
-	ring.offset_bottom = 36.0
+	ring.offset_left = -18.0
+	ring.offset_top = -18.0
+	ring.offset_right = 18.0
+	ring.offset_bottom = 18.0
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return ring
 
@@ -919,10 +919,10 @@ static func action_art(surface_style: Callable) -> StyleBoxFlat:
 	style.shadow_color = Color.TRANSPARENT
 	style.shadow_size = 0
 	style.shadow_offset = Vector2.ZERO
-	style.content_margin_left = 16
-	style.content_margin_right = 16
-	style.content_margin_top = 14
-	style.content_margin_bottom = 14
+	style.content_margin_left = 8
+	style.content_margin_right = 8
+	style.content_margin_top = 7
+	style.content_margin_bottom = 7
 	return style
 
 
@@ -948,7 +948,7 @@ static func bonus_emphasis(flash_color: Color) -> StyleBoxFlat:
 	style.set_border_width_all(18)
 	style.set_corner_radius_all(38)
 	style.shadow_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.42)
-	style.shadow_size = 18
+	style.shadow_size = 9
 	style.shadow_offset = Vector2.ZERO
 	return style
 
@@ -960,7 +960,7 @@ static func bonus_bottom_highlight(flash_color: Color) -> StyleBoxFlat:
 	style.set_border_width_all(14)
 	style.set_corner_radius_all(999)
 	style.shadow_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.34)
-	style.shadow_size = 16
+	style.shadow_size = 8
 	style.shadow_offset = Vector2.ZERO
 	return style
 
@@ -973,8 +973,8 @@ static func tutorial_target_ring() -> StyleBoxFlat:
 	style.set_border_width_all(12)
 	style.set_corner_radius_all(54)
 	style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
-	style.shadow_size = 18
-	style.shadow_offset = Vector2(0, 8)
+	style.shadow_size = 9
+	style.shadow_offset = Vector2(0, 4)
 	return style
 
 
@@ -987,7 +987,7 @@ static func crit_glow(mega_crit := false) -> StyleBoxFlat:
 	style.border_color = Color(border.r, border.g, border.b, 1.0 if mega_crit else 0.96)
 	style.set_border_width_all(68 if mega_crit else 46)
 	style.shadow_color = Color(1.0, 0.70, 0.0, 0.82) if mega_crit else Color(0.10, 0.58, 1.0, 0.62)
-	style.shadow_size = 68 if mega_crit else 42
+	style.shadow_size = 34 if mega_crit else 42
 	style.shadow_offset = Vector2.ZERO
 	style.set_corner_radius_all(82 if mega_crit else 66)
 	return style

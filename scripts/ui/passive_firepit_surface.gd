@@ -17,18 +17,18 @@ const WOODCUTTING_FIREPIT_TIP_TEXT := "Tap Firepit to start."
 const WOODCUTTING_FIREPIT_TEXTURE := "res://assets/content/woodcutting/modules/woodcutting-firepit.png"
 const WOODCUTTING_FIREPIT_BACKGROUND_TEXTURE := "res://assets/content/woodcutting/modules/woodcutting-firepit-bg.png"
 const WOODCUTTING_FIREPIT_INFO := "Tap firepit to start. Burning Scrapwood rewards XP and increases your Woodcutting stamina regeneration rate."
-const WOODCUTTING_FIREPIT_CARD_HEIGHT := 940.0
-const WOODCUTTING_FIREPIT_DEPENDENCY_GAP := 34.0
-const WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT := 788.0
+const WOODCUTTING_FIREPIT_CARD_HEIGHT := 470.0
+const WOODCUTTING_FIREPIT_DEPENDENCY_GAP := 17.0
+const WOODCUTTING_FIREPIT_DEPENDENCY_HEIGHT := 394.0
 const FIREPIT_STOP_HOLD_SECONDS := 0.8
 const PASSIVE_LOG_TEXTURE_VISIBLE_MIN := Vector2(0.146, 0.246)
 const PASSIVE_LOG_TEXTURE_VISIBLE_MAX := Vector2(0.856, 0.755)
 const PASSIVE_LOG_PILE_MEDIUM_THRESHOLD := 25
 const PASSIVE_LOG_PILE_LARGE_THRESHOLD := 100
 const PASSIVE_LOG_PILE_CLICK_PROMPT := "tap!"
-const PASSIVE_LOG_PILE_CLICK_PROMPT_FONT_SIZE := 82
-const PASSIVE_LOG_PILE_CLICK_PROMPT_SIZE := Vector2(340, 118)
-const PASSIVE_LOG_PILE_CLICK_PROMPT_OFFSET := Vector2(-58, -46)
+const PASSIVE_LOG_PILE_CLICK_PROMPT_FONT_SIZE := 48
+const PASSIVE_LOG_PILE_CLICK_PROMPT_SIZE := Vector2(170, 59)
+const PASSIVE_LOG_PILE_CLICK_PROMPT_OFFSET := Vector2(-29, -23)
 const PASSIVE_INFO_CLICK_AWAY_SECONDS := 2.0
 const INFO_POPOVER_PREWARM_FRAMES := 2
 
@@ -129,7 +129,7 @@ class _FirepitFuelRing:
 		var sweep := deg_to_rad(330.0)
 		var fill_pct := clampf(value / 100.0, 0.0, 1.0)
 		var inner_fill_pct := clampf(inner_value / 100.0, 0.0, 1.0)
-		_draw_round_arc(center + Vector2(0.0, 5.0), radius, start_angle, sweep, shadow_color, outline_width + 4.0)
+		_draw_round_arc(center + Vector2(0.0, 2.5), radius, start_angle, sweep, shadow_color, outline_width + 4.0)
 		_draw_round_arc(center, radius, start_angle, sweep, outline_color, outline_width)
 		_draw_round_arc(center, radius, start_angle, sweep, empty_color, tube_width)
 		if fill_pct > 0.001:
@@ -524,7 +524,7 @@ class PassiveIconSprite:
 	extends Control
 
 	var texture: Texture2D
-	var draw_size := Vector2(48, 48)
+	var draw_size := Vector2(24, 24)
 	var draw_offset := Vector2.ZERO
 	var shadow_offset := Vector2.ZERO
 	var shadow_alpha := 0.0
@@ -566,7 +566,7 @@ class PassiveLogPileSprite:
 	extends Control
 
 	var texture: Texture2D
-	var icon_size := Vector2(48, 48)
+	var icon_size := Vector2(24, 24)
 	var log_slots: Array = []
 	var log_rotations: Array = []
 	var visible_logs := 0
@@ -1174,12 +1174,12 @@ func _passive_collect_button(pop_card: Control, module_id: String, interactive: 
 
 
 func _passive_module_title(card_root: Control, pop_card: Control, skill_id: String, action: Dictionary, default_name: String, title_width: float) -> Label:
-	var title = host._label(str(action.get("name", default_name)), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label(str(action.get("name", default_name)), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	title.add_theme_constant_override("outline_size", 34)
+	title.add_theme_constant_override("outline_size", 17)
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	title.position = Vector2(74, 48)
+	title.position = Vector2(37, 24)
 	title.size = Vector2(title_width, 106)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.set_meta("module_ui_title_label", true)
@@ -1210,7 +1210,7 @@ func _passive_info_controls(pop_card: Control, module_id: String, info_text: Str
 
 	var info_button = Button.new()
 	info_button.text = "i"
-	info_button.custom_minimum_size = Vector2(86, 86)
+	info_button.custom_minimum_size = Vector2(43, 43)
 	info_button.size = info_button.custom_minimum_size
 	info_button.position = button_position
 	info_button.focus_mode = Control.FOCUS_NONE
@@ -1336,13 +1336,13 @@ func _passive_module_resource_controls(pop_card: Control, module_id: String, int
 	plank_button.icon = host.visual_texture_cache._texture_or_visual_fallback(MaterialRuntime.PLANK_ICON_TEXTURE)
 	plank_button.expand_icon = true
 	plank_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	plank_button.custom_minimum_size = Vector2(192, 168)
+	plank_button.custom_minimum_size = Vector2(96, 84)
 	plank_button.anchor_left = 1.0
 	plank_button.anchor_right = 1.0
-	plank_button.offset_left = -762
-	plank_button.offset_right = -570
-	plank_button.offset_top = 48
-	plank_button.offset_bottom = 216
+	plank_button.offset_left = -381
+	plank_button.offset_right = -285
+	plank_button.offset_top = 24
+	plank_button.offset_bottom = 108
 	plank_button.focus_mode = Control.FOCUS_NONE
 	plank_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	plank_button.z_index = 220
@@ -1357,11 +1357,11 @@ func _passive_module_resource_controls(pop_card: Control, module_id: String, int
 	var plank_light = Panel.new()
 	plank_light.anchor_left = 1.0
 	plank_light.anchor_right = 1.0
-	plank_light.offset_left = -812
-	plank_light.offset_right = -778
-	plank_light.offset_top = 111
-	plank_light.offset_bottom = 145
-	plank_light.size = Vector2(34, 34)
+	plank_light.offset_left = -406
+	plank_light.offset_right = -389
+	plank_light.offset_top = 55.5
+	plank_light.offset_bottom = 72.5
+	plank_light.size = Vector2(17, 17)
 	plank_light.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	plank_light.z_index = 221
 	plank_light.add_theme_stylebox_override("panel", PassiveModuleStyles.plank_light(false, host.COLOR_INK))
@@ -1370,25 +1370,25 @@ func _passive_module_resource_controls(pop_card: Control, module_id: String, int
 	var currency_panel = PanelContainer.new()
 	currency_panel.anchor_left = 1.0
 	currency_panel.anchor_right = 1.0
-	currency_panel.offset_left = -540
-	currency_panel.offset_right = -96
-	currency_panel.offset_top = 48
-	currency_panel.offset_bottom = 216
-	currency_panel.custom_minimum_size = Vector2(440, 168)
+	currency_panel.offset_left = -270
+	currency_panel.offset_right = -48
+	currency_panel.offset_top = 24
+	currency_panel.offset_bottom = 108
+	currency_panel.custom_minimum_size = Vector2(220, 84)
 	currency_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	currency_panel.z_index = 219
 	currency_panel.add_theme_stylebox_override("panel", PassiveModuleStyles.currency(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style")))
 	pop_card.add_child(currency_panel)
 	var currency_row = HBoxContainer.new()
 	currency_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	currency_row.add_theme_constant_override("separation", 8)
+	currency_row.add_theme_constant_override("separation", 4)
 	currency_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	currency_panel.add_child(currency_row)
-	var currency_label = host._label("", 82, host.COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
-	currency_label.custom_minimum_size = Vector2(270, 134)
+	var currency_label = host._label("", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	currency_label.custom_minimum_size = Vector2(135, 67)
 	currency_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	currency_row.add_child(currency_label)
-	var currency_icon = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(112, 112))
+	var currency_icon = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(56, 56))
 	currency_row.add_child(currency_icon)
 	return {
 		"plank": plank_button,
@@ -1410,30 +1410,30 @@ func _passive_module_stat_upgrade_controls(pop_card: Control, module_id: String,
 		var stat_type = str(stat_types[i])
 		var stat_panel = Panel.new()
 		stat_panel.position = Vector2(74, stat_y + float(i) * stat_step)
-		stat_panel.custom_minimum_size = Vector2(430, 178)
+		stat_panel.custom_minimum_size = Vector2(215, 89)
 		stat_panel.size = stat_panel.custom_minimum_size
 		stat_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stat_panel.z_index = 200
 		stat_panel.add_theme_stylebox_override("panel", PassiveModuleStyles.stat(host.COLOR_INK, Callable(host, "_surface_style")))
 		pop_card.add_child(stat_panel)
 		var stat_name = host._label("Max" if stat_type == "capacity" else stat_type.capitalize(), 56, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
-		stat_name.position = Vector2(28, 20)
-		stat_name.size = Vector2(138, 138)
+		stat_name.position = Vector2(14, 10)
+		stat_name.size = Vector2(69, 69)
 		stat_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stat_panel.add_child(stat_name)
-		var stat_value = host._label("", 70, host.COLOR_GREEN, HORIZONTAL_ALIGNMENT_CENTER)
-		stat_value.position = Vector2(162, 18)
-		stat_value.size = Vector2(244, 142)
+		var stat_value = host._label("", 52, host.COLOR_GREEN, HORIZONTAL_ALIGNMENT_CENTER)
+		stat_value.position = Vector2(81, 9)
+		stat_value.size = Vector2(122, 71)
 		stat_value.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stat_value.add_theme_color_override("font_outline_color", host.COLOR_INK)
-		stat_value.add_theme_constant_override("outline_size", 24)
+		stat_value.add_theme_constant_override("outline_size", 12)
 		stat_panel.add_child(stat_value)
 		stats[stat_type] = stat_value
 		stat_panels[stat_type] = stat_panel
 
 		var upgrade = Button.new()
 		upgrade.text = ""
-		upgrade.custom_minimum_size = Vector2(350, 190)
+		upgrade.custom_minimum_size = Vector2(175, 95)
 		upgrade.size = upgrade.custom_minimum_size
 		upgrade.position = Vector2(512, stat_y + float(i) * stat_step - 6.0)
 		upgrade.focus_mode = Control.FOCUS_NONE
@@ -1447,19 +1447,19 @@ func _passive_module_stat_upgrade_controls(pop_card: Control, module_id: String,
 		host.button_press_runtime.attach_button_depress_animation(upgrade, 0.94)
 		var upgrade_visual = HBoxContainer.new()
 		upgrade_visual.alignment = BoxContainer.ALIGNMENT_BEGIN
-		upgrade_visual.add_theme_constant_override("separation", 8)
+		upgrade_visual.add_theme_constant_override("separation", 4)
 		upgrade_visual.set_anchors_preset(Control.PRESET_FULL_RECT)
 		upgrade_visual.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		upgrade.add_child(upgrade_visual)
-		var upgrade_arrow = _passive_upgrade_arrow_icon(Vector2(186, 186))
+		var upgrade_arrow = _passive_upgrade_arrow_icon(Vector2(93, 93))
 		upgrade_visual.add_child(upgrade_arrow)
-		var cost_label = host._label("", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+		var cost_label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
 		cost_label.add_theme_color_override("font_outline_color", Color.BLACK)
-		cost_label.add_theme_constant_override("outline_size", 20)
-		cost_label.custom_minimum_size = Vector2(70, 168)
+		cost_label.add_theme_constant_override("outline_size", 10)
+		cost_label.custom_minimum_size = Vector2(35, 84)
 		cost_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		upgrade_visual.add_child(cost_label)
-		var cost_icon = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(94, 94))
+		var cost_icon = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(47, 47))
 		cost_icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		cost_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		upgrade_visual.add_child(cost_icon)
@@ -1475,7 +1475,7 @@ func _passive_module_stat_upgrade_controls(pop_card: Control, module_id: String,
 func _passive_module_loot_and_chrome(pop_card: Control, skill_id: String, content_width: float, passive_bar_height: float, passive_face_bottom_trim: float) -> Dictionary:
 	var loot = Control.new()
 	loot.position = Vector2(content_width - host.ACTION_CARD_POP_GUTTER * 2.0 - 720, 288)
-	loot.custom_minimum_size = Vector2(660, 430)
+	loot.custom_minimum_size = Vector2(330, 215)
 	loot.size = loot.custom_minimum_size
 	loot.clip_contents = false
 	loot.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1530,10 +1530,10 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 		pop_card,
 		module_id,
 		WOODCUTTING_LOG_MODULE_INFO,
-		Vector2(520, 138),
-		Vector2(980, 260),
-		Vector2(920, 220),
-		Vector2(700, 58),
+		Vector2(260, 69),
+		Vector2(490, 130),
+		Vector2(460, 110),
+		Vector2(350, 29),
 		interactive
 	)
 	var resource_controls = _passive_module_resource_controls(pop_card, module_id, interactive)
@@ -1671,9 +1671,9 @@ func _firepit_background_layers(pop_card: Control, firepit_card_height: float, p
 
 func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_bottom_trim: float) -> Dictionary:
 	var face_width = content_width - host.ACTION_CARD_POP_GUTTER * 2.0
-	var firepit_art_size = Vector2(540, 540)
-	var firepit_ring_size = Vector2(820, 820)
-	var art_root_size = Vector2(960, 900)
+	var firepit_art_size = Vector2(270, 270)
+	var firepit_ring_size = Vector2(410, 410)
+	var art_root_size = Vector2(480, 450)
 	var module_center_x = face_width * 0.5
 	var firepit_layout_shift_x = -130.0
 
@@ -1726,7 +1726,7 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 
 	var flame_fx = FirepitFlameFx.new()
 	flame_fx.position = Vector2((art_root_size.x - 620.0) * 0.5, 58)
-	flame_fx.size = Vector2(620, 620)
+	flame_fx.size = Vector2(310, 310)
 	flame_fx.custom_minimum_size = flame_fx.size
 	flame_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	flame_fx.z_index = 4
@@ -1736,35 +1736,35 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 
 func _firepit_status_controls(pop_card: Control) -> Dictionary:
 	var status_panel = Control.new()
-	status_panel.custom_minimum_size = Vector2(500, 360)
-	status_panel.position = Vector2(1220.0, 104)
+	status_panel.custom_minimum_size = Vector2(250, 180)
+	status_panel.position = Vector2(610.0, 52)
 	status_panel.size = status_panel.custom_minimum_size
 	status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.z_index = 242
 	pop_card.add_child(status_panel)
 
-	var status_label = host._label("", 74, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	var status_label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
 	status_label.position = Vector2(0, 0)
-	status_label.size = Vector2(490, 82)
+	status_label.size = Vector2(245, 41)
 	status_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	status_label.add_theme_constant_override("outline_size", 20)
+	status_label.add_theme_constant_override("outline_size", 10)
 	status_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(status_label)
 	var buff_label = host._label("", 52, Color("#ffe27a"), HORIZONTAL_ALIGNMENT_RIGHT)
-	buff_label.position = Vector2(0, 118)
-	buff_label.size = Vector2(490, 170)
+	buff_label.position = Vector2(0, 59)
+	buff_label.size = Vector2(245, 85)
 	buff_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	buff_label.add_theme_constant_override("outline_size", 14)
+	buff_label.add_theme_constant_override("outline_size", 7)
 	buff_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	buff_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	buff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(buff_label)
-	var timer_label = host._label("", 62, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
-	timer_label.position = Vector2(0, 294)
-	timer_label.size = Vector2(490, 70)
+	var timer_label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	timer_label.position = Vector2(0, 147)
+	timer_label.size = Vector2(245, 35)
 	timer_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	timer_label.add_theme_constant_override("outline_size", 14)
+	timer_label.add_theme_constant_override("outline_size", 7)
 	timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(timer_label)
 	return {"panel": status_panel, "status": status_label, "buff": buff_label, "timer": timer_label}
@@ -1843,10 +1843,10 @@ func _build_firepit_module_card(skill_id: String, action: Dictionary, content_wi
 		pop_card,
 		module_id,
 		WOODCUTTING_FIREPIT_INFO,
-		Vector2(74, 238),
-		Vector2(900, 360),
-		Vector2(840, 320),
-		Vector2(360, 58),
+		Vector2(37, 119),
+		Vector2(450, 180),
+		Vector2(420, 160),
+		Vector2(180, 29),
 		interactive
 	)
 	var art_bundle = _firepit_art_bundle(pop_card, content_width, passive_face_bottom_trim)
@@ -1965,7 +1965,7 @@ func _animate_firepit_scrapwood_to_fire(scrapwood_burned: int, pronounced := fal
 	var start_center: Vector2 = _control_local_point_to_global(source, source.size * 0.5)
 	var fire_center: Vector2 = _control_local_point_to_global(fire, fire.size * Vector2(0.5, 0.62))
 	for index in range(visible_count):
-		var flyer_size := Vector2(230, 230) if pronounced else Vector2(122, 122)
+		var flyer_size := Vector2(115, 115) if pronounced else Vector2(61, 61)
 		var flyer: TextureRect = host.visual_texture_cache._image(host.material_runtime.icon_path("scrapwood"), flyer_size)
 		flyer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		flyer.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -2035,8 +2035,8 @@ func _float_firepit_need_scrapwood() -> void:
 		"Need Scrapwood",
 		58,
 		Color("#ffd95a"),
-		Vector2(0, -54),
-		Vector2(0, -150),
+		Vector2(0, -27),
+		Vector2(0, -75),
 		0.0,
 		false,
 		-1.0,
@@ -2091,7 +2091,7 @@ func _render_passive_loot(card: Dictionary, module_id: String, unlocked: bool) -
 	click_prompt.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	click_prompt.z_index = 80
 	click_prompt.add_theme_color_override("font_outline_color", Color.BLACK)
-	click_prompt.add_theme_constant_override("outline_size", 22)
+	click_prompt.add_theme_constant_override("outline_size", 11)
 	loot.add_child(click_prompt)
 	_add_passive_log_collect_hotspot(loot, module_id, _passive_log_pile_visible_bounds(pile_slots, visible_logs, icon_size), click_prompt)
 	var tier_changed := previous_tier != "" and previous_tier != pile_tier
@@ -2146,7 +2146,7 @@ func _passive_log_pile_empty_label_rect() -> Rect2:
 		int(pile_config["visible"]),
 		pile_config["icon_size"] as Vector2
 	)
-	var label_size := Vector2(300, 96)
+	var label_size := Vector2(150, 48)
 	return Rect2(visible_bounds.position + visible_bounds.size * 0.5 - label_size * 0.5, label_size)
 
 
@@ -2170,7 +2170,7 @@ func _passive_log_pile_visible_bounds(pile_slots: Array, visible_logs: int, icon
 		max_pos.x = maxf(max_pos.x, slot.x + log_max.x)
 		max_pos.y = maxf(max_pos.y, slot.y + log_max.y)
 	if max_pos.x < min_pos.x or max_pos.y < min_pos.y:
-		return Rect2(Vector2(170, 390), Vector2(320, 120))
+		return Rect2(Vector2(85, 195), Vector2(160, 60))
 	return Rect2(min_pos, max_pos - min_pos)
 
 
@@ -2186,35 +2186,35 @@ func _passive_log_pile_config(tier: String, stored: int) -> Dictionary:
 	if tier == "large":
 		return {
 			"visible": 10,
-			"icon_size": Vector2(286, 286),
-			"count_position": Vector2(20, 72),
+			"icon_size": Vector2(143, 143),
+			"count_position": Vector2(10, 36),
 			"slots": [
-				Vector2(-112, 238), Vector2(-32, 246), Vector2(48, 238), Vector2(128, 246),
-				Vector2(-72, 184), Vector2(8, 174), Vector2(88, 184),
-				Vector2(-32, 130), Vector2(48, 120),
-				Vector2(8, 66)
+				Vector2(-56, 119), Vector2(-16, 123), Vector2(24, 119), Vector2(64, 123),
+				Vector2(-36, 92), Vector2(4, 87), Vector2(44, 92),
+				Vector2(-16, 65), Vector2(24, 60),
+				Vector2(4, 33)
 			],
 			"rotations": [-8.0, 5.0, -3.0, 0.0, -6.0, 4.0, 2.0, -7.0, 5.0, -3.0]
 		}
 	if tier == "medium":
 		return {
 			"visible": 7,
-			"icon_size": Vector2(302, 302),
-			"count_position": Vector2(18, 106),
+			"icon_size": Vector2(151, 151),
+			"count_position": Vector2(9, 53),
 			"slots": [
-				Vector2(-102, 236), Vector2(-16, 244), Vector2(70, 236),
-				Vector2(-60, 180), Vector2(26, 170), Vector2(112, 180),
-				Vector2(-18, 116)
+				Vector2(-51, 118), Vector2(-8, 122), Vector2(35, 118),
+				Vector2(-30, 90), Vector2(13, 85), Vector2(56, 90),
+				Vector2(-9, 58)
 			],
 			"rotations": [-8.0, 4.0, 0.0, -6.0, 5.0, 2.0, -4.0]
 		}
 	return {
 		"visible": mini(5, maxi(1, int(ceil(float(stored) / 2.0)))),
-		"icon_size": Vector2(314, 314),
-		"count_position": Vector2(18, 156),
+		"icon_size": Vector2(157, 157),
+		"count_position": Vector2(9, 78),
 		"slots": [
-			Vector2(-92, 236), Vector2(-2, 244), Vector2(88, 236),
-			Vector2(-48, 180), Vector2(42, 174)
+			Vector2(-46, 118), Vector2(-1, 122), Vector2(44, 118),
+			Vector2(-24, 90), Vector2(21, 87)
 		],
 		"rotations": [-8.0, 5.0, 0.0, -6.0, 4.0]
 	}
@@ -2269,7 +2269,7 @@ func _float_log_currency_feedback(module_id: String, amount: int) -> void:
 		_arc_passive_collection_logs(loot, panel, currency_icon, amount, module_id)
 	if panel != null and is_instance_valid(panel) and panel.is_inside_tree():
 		host._reward_feedback_surface()._flash_bonus_control(panel)
-		host._reward_feedback_surface()._float_reward(host, panel, "+%s Softwood" % amount, 58, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -146), 0.0)
+		host._reward_feedback_surface()._float_reward(host, panel, "+%s Softwood" % amount, 58, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -22), Vector2(0, -73), 0.0)
 
 
 func _play_build_log_spend_feedback(action_key: String) -> void:
@@ -2285,47 +2285,7 @@ func _float_log_spend(anchor: Control, cost: int) -> void:
 	if cost <= 0:
 		return
 	var text := "-%s" % cost
-	var reward_size := Vector2(300, 116)
-	var holder := Control.new()
-	holder.z_index = RewardFeedbackSurface.REWARD_FLOAT_Z
-	holder.z_as_relative = false
-	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.size = reward_size
-	host.add_child(holder)
-	var row := HBoxContainer.new()
-	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 4)
-	row.set_anchors_preset(Control.PRESET_FULL_RECT)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	holder.add_child(row)
-	var label: Label = host._label(text, 58, Color("#fff2a8"), HORIZONTAL_ALIGNMENT_RIGHT)
-	label.custom_minimum_size = Vector2(152, reward_size.y)
-	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", 14)
-	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	row.add_child(label)
-	var icon: TextureRect = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(74, 74))
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	row.add_child(icon)
-	var local_pos: Vector2 = anchor.global_position - host.global_position
-	holder.position = host._reward_feedback_surface()._clamp_reward_holder_position(
-		host,
-		local_pos + Vector2(anchor.size.x * 0.5 - reward_size.x * 0.5, -76),
-		reward_size
-	)
-	holder.modulate = Color(1, 1, 1, 0)
-	holder.scale = Vector2(0.82, 0.82)
-	var tween: Tween = host.create_tween()
-	tween.set_parallel(true)
-	tween.tween_property(holder, "position", holder.position + Vector2(0, -142), 1.05).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
-	tween.tween_property(holder, "modulate:a", 0.0, 0.70).set_delay(0.45)
-	tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(holder.get_instance_id()))
-
-
-func _float_build_log_spend(anchor: Control) -> void:
-	var reward_size := Vector2(220, 104)
+	var reward_size := Vector2(150, 58)
 	var holder := Control.new()
 	holder.z_index = RewardFeedbackSurface.REWARD_FLOAT_Z
 	holder.z_as_relative = false
@@ -2338,13 +2298,53 @@ func _float_build_log_spend(anchor: Control) -> void:
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(row)
-	var label: Label = host._label("-1", 64, Color("#fff2a8"), HORIZONTAL_ALIGNMENT_RIGHT)
-	label.custom_minimum_size = Vector2(92, reward_size.y)
+	var label: Label = host._label(text, 58, Color("#fff2a8"), HORIZONTAL_ALIGNMENT_RIGHT)
+	label.custom_minimum_size = Vector2(152, reward_size.y)
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", 16)
+	label.add_theme_constant_override("outline_size", 7)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(label)
-	var icon: TextureRect = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(82, 82))
+	var icon: TextureRect = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(37, 37))
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(icon)
+	var local_pos: Vector2 = anchor.global_position - host.global_position
+	holder.position = host._reward_feedback_surface()._clamp_reward_holder_position(
+		host,
+		local_pos + Vector2(anchor.size.x * 0.5 - reward_size.x * 0.5, -76),
+		reward_size
+	)
+	holder.modulate = Color(1, 1, 1, 0)
+	holder.scale = Vector2(0.82, 0.82)
+	var tween: Tween = host.create_tween()
+	tween.set_parallel(true)
+	tween.tween_property(holder, "position", holder.position + Vector2(0, -71), 1.05).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
+	tween.tween_property(holder, "modulate:a", 0.0, 0.70).set_delay(0.45)
+	tween.chain().tween_callback(host._app_lifecycle_runtime()._queue_free_instance_id.bind(holder.get_instance_id()))
+
+
+func _float_build_log_spend(anchor: Control) -> void:
+	var reward_size := Vector2(110, 52)
+	var holder := Control.new()
+	holder.z_index = RewardFeedbackSurface.REWARD_FLOAT_Z
+	holder.z_as_relative = false
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.size = reward_size
+	host.add_child(holder)
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 1)
+	row.set_anchors_preset(Control.PRESET_FULL_RECT)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(row)
+	var label: Label = host._label("-1", 52, Color("#fff2a8"), HORIZONTAL_ALIGNMENT_RIGHT)
+	label.custom_minimum_size = Vector2(92, reward_size.y)
+	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
+	label.add_theme_constant_override("outline_size", 8)
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(label)
+	var icon: TextureRect = host.visual_texture_cache._image(MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE, Vector2(41, 41))
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon)
@@ -2358,7 +2358,7 @@ func _float_build_log_spend(anchor: Control) -> void:
 	holder.scale = Vector2(0.76, 0.76)
 	var tween: Tween = host.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(holder, "position", holder.position + Vector2(0, -124), 1.05).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "position", holder.position + Vector2(0, -62), 1.05).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
 	tween.tween_property(holder, "modulate:a", 0.0, 0.62).set_delay(0.48)
@@ -2377,11 +2377,11 @@ func _float_passive_production_feedback(module_id: String, amount: int) -> void:
 	var yield_panel := stat_panels.get("yield") as Control
 	if yield_panel == null or not is_instance_valid(yield_panel) or not yield_panel.is_visible_in_tree():
 		host._reward_feedback_surface()._flash_bonus_control(loot)
-		host._reward_feedback_surface()._float_reward(host, loot, "+%s" % amount, 50, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -18), Vector2(0, -104), 0.0)
+		host._reward_feedback_surface()._float_reward(host, loot, "+%s" % amount, 50, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -9), Vector2(0, -52), 0.0)
 		return
 	host._reward_feedback_surface()._flash_bonus_control(yield_panel)
 	_pop_passive_control(yield_panel)
-	host._reward_feedback_surface()._float_reward(host, yield_panel, "+%s" % amount, 46, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -26), Vector2(0, -98), 0.0)
+	host._reward_feedback_surface()._float_reward(host, yield_panel, "+%s" % amount, 46, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -13), Vector2(0, -49), 0.0)
 	_arc_passive_yield_logs(yield_panel, loot, amount, module_id)
 
 
@@ -2507,13 +2507,13 @@ func _passive_storage_destination_points(target: Control, effect_parent: Control
 		if not meta_points.is_empty():
 			return meta_points
 	var local_points: Array[Vector2] = [
-		Vector2(334, 292),
-		Vector2(284, 304),
-		Vector2(386, 300),
-		Vector2(316, 250),
-		Vector2(370, 258),
-		Vector2(244, 268),
-		Vector2(424, 270)
+		Vector2(167, 146),
+		Vector2(142, 152),
+		Vector2(193, 150),
+		Vector2(158, 125),
+		Vector2(185, 129),
+		Vector2(122, 134),
+		Vector2(212, 135)
 	]
 	var points: Array[Vector2] = []
 	for point in local_points:
@@ -2568,7 +2568,7 @@ func _on_passive_log_landed(target: Control, currency_icon: Control, index: int)
 	host._audio_director()._play_passive_log_land_sfx(index)
 	var pop_anchor := currency_icon if currency_icon != null and is_instance_valid(currency_icon) and currency_icon.is_inside_tree() else target
 	_pop_passive_currency_icon(pop_anchor)
-	host._reward_feedback_surface()._float_reward(_passive_effect_parent(), pop_anchor, "+1", 46, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -28), Vector2(0, -86), 0.0)
+	host._reward_feedback_surface()._float_reward(_passive_effect_parent(), pop_anchor, "+1", 46, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -14), Vector2(0, -43), 0.0)
 
 
 func _pop_passive_currency_icon(anchor: Control) -> void:
@@ -2601,7 +2601,7 @@ func _float_passive_upgrade_feedback(module_id: String, stat_type: String, cost:
 	if gain_text.is_empty():
 		return
 	host._reward_feedback_surface()._flash_bonus_control(stat_anchor)
-	host._reward_feedback_surface()._float_reward(host, stat_anchor, gain_text, 54, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -44), Vector2(0, -138), 0.0)
+	host._reward_feedback_surface()._float_reward(host, stat_anchor, gain_text, 54, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -22), Vector2(0, -69), 0.0)
 
 
 func _passive_upgrade_gain_text(stat_type: String, old_value: int, new_value: int) -> String:

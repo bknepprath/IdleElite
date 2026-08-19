@@ -32,9 +32,9 @@ func _run() -> void:
 		selected_level = unlock_level
 	var capture_path := OS.get_environment("IDLE_ELITE_CHICKEN_PLAYTEST_CAPTURE_PATH")
 	if not capture_path.is_empty():
-		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+		root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 		root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
-		root.content_scale_size = Vector2i(2160, 3840)
+		root.content_scale_size = Vector2i(1080, 1920)
 		root.size = Vector2i(1080, 1920)
 		DisplayServer.window_set_size(root.size)
 

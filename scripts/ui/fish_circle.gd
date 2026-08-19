@@ -429,8 +429,8 @@ func _wallet_style(fill: Color, border: Color, border_width: float, radius: floa
 	style.corner_radius_bottom_left = corner
 	style.corner_radius_bottom_right = corner
 	style.shadow_color = Color(0, 0, 0, 0.18)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(3, 5)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(1.5, 2.5)
 	return style
 
 func _draw_wallet_menu(draw_scale: float) -> void:

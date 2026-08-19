@@ -6,8 +6,8 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $captureDir = Join-Path $projectRoot ".codex-tmp\fight-modules"
 $captureScript = Join-Path $captureDir "capture_fight_modules_layout.gd"
-$screenshot = Join-Path $captureDir "fight-modules-layout-real-builder-desktop-627x1115.png"
-$pressedScreenshot = Join-Path $captureDir "fight-modules-layout-top-down-pressed-627x1115.png"
+$screenshot = Join-Path $captureDir "fight-modules-layout-real-builder-1080x1920.png"
+$pressedScreenshot = Join-Path $captureDir "fight-modules-layout-top-down-pressed-1080x1920.png"
 
 New-Item -ItemType Directory -Path $captureDir -Force | Out-Null
 
@@ -16,8 +16,8 @@ extends SceneTree
 
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
-const OUT_PATH := "res://.codex-tmp/fight-modules/fight-modules-layout-real-builder-desktop-627x1115.png"
-const PRESSED_OUT_PATH := "res://.codex-tmp/fight-modules/fight-modules-layout-top-down-pressed-627x1115.png"
+const OUT_PATH := "res://.codex-tmp/fight-modules/fight-modules-layout-real-builder-1080x1920.png"
+const PRESSED_OUT_PATH := "res://.codex-tmp/fight-modules/fight-modules-layout-top-down-pressed-1080x1920.png"
 
 func _init() -> void:
 	call_deferred("_run")
@@ -26,9 +26,9 @@ func _run() -> void:
 	OS.set_environment("IDLE_ELITE_DISABLE_SAVE_WRITES", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "60")
-	var capture_size := Vector2i(2160, 3840)
-	var window_size := Vector2i(627, 1115)
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	var capture_size := Vector2i(1080, 1920)
+	var window_size := capture_size
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	root.content_scale_size = capture_size
 	root.size = window_size
@@ -60,8 +60,8 @@ func _run() -> void:
 	stage.add_child(bg)
 	var cards_clip := Control.new()
 	cards_clip.name = "FightModulesActualActionsClip"
-	cards_clip.position = Vector2(96, 0)
-	cards_clip.size = Vector2(1968, 3840)
+	cards_clip.position = Vector2(48, 0)
+	cards_clip.size = Vector2(984, 1920)
 	cards_clip.clip_contents = true
 	stage.add_child(cards_clip)
 	var ids := [
@@ -70,7 +70,7 @@ func _run() -> void:
 		"duel-leaning-fence-post",
 		"face-the-rooster"
 	]
-	var y := 120.0
+	var y := 60.0
 	var push_ups_card: Control = null
 	var push_ups_pop: Control = null
 	var push_ups_progress: Control = null
@@ -86,13 +86,13 @@ func _run() -> void:
 			scene.set("running_skill_id", "")
 			scene.set("running_action_id", "")
 			scene.set("action_progress", 0.0)
-		var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1968.0, 1968.0) as Dictionary
+		var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 984.0, 984.0) as Dictionary
 		var card_root := built.get("card_root") as Control
 		if card_root == null:
 			push_error("%s card root did not build" % action_id)
 			continue
 		card_root.position = Vector2(0, y)
-		card_root.size.x = 1968.0
+		card_root.size.x = 984.0
 		cards_clip.add_child(card_root)
 		if action_id == "push-ups":
 			push_ups_card = card_root
@@ -103,8 +103,8 @@ func _run() -> void:
 		await process_frame
 		var height := maxf(card_root.custom_minimum_size.y, card_root.size.y)
 		if height <= 0.0:
-			height = 760.0
-		y += height + 70.0
+			height = 380.0
+		y += height + 35.0
 	if not _validate_push_ups_card(push_ups_card, cards_clip):
 		quit(1)
 		return

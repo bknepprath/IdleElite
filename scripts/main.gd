@@ -55,11 +55,11 @@ const PaperButtonStyles = preload("res://scripts/ui/paper_button_styles.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
 
-const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
-const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 24
-const ACTION_CARD_TITLE_OUTLINE_SIZE := 34
+const PAPER_BUTTON_OUTLINE_WIDTH := 4.5
+const DEFAULT_BUTTON_TEXT_OUTLINE_SIZE := 12
+const ACTION_CARD_TITLE_OUTLINE_SIZE := 17
 const ACTION_CARD_FACE_BORDER_ENABLED := true
-const ACTION_CARD_FACE_RADIUS := 66.0
+const ACTION_CARD_FACE_RADIUS := 33.0
 const ACTION_CARD_FACE_BORDER_Z_INDEX := 244
 const PASSIVE_PROGRESS_BAR_Z_INDEX := ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 const UI_STATIC_REFRESH_INTERVAL_SECONDS := 0.50
@@ -80,14 +80,14 @@ const MIN_MOBILE_BODY_FONT_SIZE := 52
 const MIN_MOBILE_INFO_TITLE_FONT_SIZE := 60
 const MASTERY_MAX_LEVEL := 20
 const ACTION_CARD_MEDAL_PRESS_KIND := "__medal__"
-const BASE_CANVAS := Vector2(2160, 3840)
-const SKILL_DETAIL_BOTTOM_UI_CLEARANCE := 340
-const SKILLS_PAGE_TOP_PAD := 96
-const PAGE_PAD := 96
-const CARD_RADIUS := 64
-const ACTION_CARD_HEIGHT := 720
-const COMBAT_DIAMOND_ARENA_CARD_HEIGHT := 1220
-const ACTION_CARD_EXPANDED_HEIGHT := 1280
+const BASE_CANVAS := Vector2(1080, 1920)
+const SKILL_DETAIL_BOTTOM_UI_CLEARANCE := 170
+const SKILLS_PAGE_TOP_PAD := 48
+const PAGE_PAD := 48
+const CARD_RADIUS := 32
+const ACTION_CARD_HEIGHT := 360
+const COMBAT_DIAMOND_ARENA_CARD_HEIGHT := 610
+const ACTION_CARD_EXPANDED_HEIGHT := 640
 const ACTION_CARD_INFO_EXPAND_SECONDS := 0.22
 const ACTION_CARD_INFO_FADE_IN_SECONDS := 0.08
 const ACTION_CARD_INFO_FADE_OUT_SECONDS := 0.12
@@ -96,10 +96,10 @@ const FISHING_BACKGROUND_CROP_TOP := 0.06
 const FISHING_BACKGROUND_CROP_RIGHT := 0.015
 const FISHING_REWORK_ENABLED := true
 const ACTIVITY_PADLOCK_CLICK_SHAKE_SECONDS := 0.26
-const PASSIVE_MODULE_CARD_HEIGHT := 940
+const PASSIVE_MODULE_CARD_HEIGHT := 470
 const ACTION_CARD_POP_GUTTER := 44
-const ACTION_CARD_3D_DEPTH_OFFSET := Vector2(14.0, 16.0)
-const ACTION_CARD_3D_PRESS_OFFSET := Vector2(28.0, 34.0)
+const ACTION_CARD_3D_DEPTH_OFFSET := Vector2(7.0, 8.0)
+const ACTION_CARD_3D_PRESS_OFFSET := Vector2(14.0, 17.0)
 const ACTION_CARD_3D_PRESS_SECONDS := 0.098
 const ACTION_CARD_3D_PRESS_HOLD_SECONDS := 0.045
 const ACTION_CARD_3D_RELEASE_SECONDS := 0.14
@@ -111,32 +111,32 @@ const PASSIVE_BUTTON_TAP_RELEASE_SLOP := 52.0
 const ACTION_CARD_DUPLICATE_TAP_MSEC := 36
 const ACTION_PROGRESS_SPEED_EASE := 4.8
 const ACTION_CANCELED_PROGRESS_DECAY_PER_SECOND := 0.24
-const SKILL_MENU_ICON_BADGE_SIZE := Vector2(324, 324)
-const SKILL_MENU_ICON_SYMBOL_SIZE := Vector2(336, 336)
-const ACHIEVEMENT_SECTION_SKILL_ICON_SIZE := Vector2(178, 178)
-const SKILL_DETAIL_HEADER_HEIGHT := 704
-const SKILL_DETAIL_HEADER_MARGIN_BOTTOM := 34
-const SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT := 18
-const SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT := 8
-const PINNED_ACTIVITIES_STAMINA_GAUGE_SIZE := Vector2(452, 452)
+const SKILL_MENU_ICON_BADGE_SIZE := Vector2(162, 162)
+const SKILL_MENU_ICON_SYMBOL_SIZE := Vector2(168, 168)
+const ACHIEVEMENT_SECTION_SKILL_ICON_SIZE := Vector2(89, 89)
+const SKILL_DETAIL_HEADER_HEIGHT := 352
+const SKILL_DETAIL_HEADER_MARGIN_BOTTOM := 17
+const SKILL_DETAIL_ACTIONS_DIVIDER_HEIGHT := 9
+const SKILL_DETAIL_ACTIONS_TOP_SPACER_HEIGHT := 4
+const PINNED_ACTIVITIES_STAMINA_GAUGE_SIZE := Vector2(226, 226)
 const ONBOARDING_FIRST_MODULE_CENTER_RELEASE_SECONDS := 0.72
-const SKILL_DETAIL_BOTTOM_SCROLL_PAD := 48
-const THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD := 48
-const SKILL_DETAIL_TITLE_FONT_SIZE := 152
-const SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE := 128
-const SKILL_DETAIL_XP_FONT_SIZE := 62
-const SKILL_DETAIL_XP_BAR_HEIGHT := 96
+const SKILL_DETAIL_BOTTOM_SCROLL_PAD := 24
+const THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD := 24
+const SKILL_DETAIL_TITLE_FONT_SIZE := 76
+const SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE := 64
+const SKILL_DETAIL_XP_FONT_SIZE := 48
+const SKILL_DETAIL_XP_BAR_HEIGHT := 48
 const DETAIL_RESTORE_SCROLL_BOTTOM := -2
 const MODULE_TITLE_OVER_PIN_Z_INDEX := 390
-const SKILL_DETAIL_TEXT_SEPARATION := 25
-const SKILL_DETAIL_LEFT_SEPARATION := 67
-const SKILL_DETAIL_XP_BAR_WIDTH := 710
-const SKILL_DETAIL_ICON_SIZE := Vector2(400, 400)
-const SKILL_DETAIL_ICON_BORDER_WIDTH := 18.0
-const SKILL_DETAIL_ICON_Y_OFFSET := 16.0
+const SKILL_DETAIL_TEXT_SEPARATION := 12.5
+const SKILL_DETAIL_LEFT_SEPARATION := 33.5
+const SKILL_DETAIL_XP_BAR_WIDTH := 355
+const SKILL_DETAIL_ICON_SIZE := Vector2(200, 200)
+const SKILL_DETAIL_ICON_BORDER_WIDTH := 9.0
+const SKILL_DETAIL_ICON_Y_OFFSET := 8.0
 const SKILL_SWIPE_THRESHOLD := 230.0
 const SKILL_SWIPE_FEEDBACK_DEADZONE := 46.0
-const SKILL_SWIPE_PAGE_GAP := 960.0
+const SKILL_SWIPE_PAGE_GAP := 480.0
 const SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED := true
 const SKILL_SWIPE_GAP_READY_WAIT_FRAMES := 4
 const SKILL_SWIPE_SETTLE_SECONDS := 0.20
@@ -160,15 +160,15 @@ const SKILL_SWIPE_LIGHT_PREVIEW_ENABLED := true
 const SKILL_SWIPE_LIGHT_PREVIEW_HEADER_ENABLED := true
 const SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS := 1
-const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 4
+const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 2
 const SKILL_SWIPE_REAL_PREVIEW_TEXTURE_PREWARM_ENABLED := true
 const SKILL_SWIPE_FINALIZE_SETTLE_FRAMES := 1
 const SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT := 2
-const SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE := 1
+const SKILL_SWIPE_FINALIZE_SLOT_BATCH_SIZE := 4
 const SKILL_SWIPE_PREVIEW_FREE_BATCH_SIZE := 1
 const SKILL_SWIPE_PROXY_FULL_REFRESH_DELAY_FRAMES := 720
 const SKILL_SWIPE_BUTTON_SUPPRESS_MSEC := 320
-const SKILL_DETAIL_SHADOW_FADE_SCROLL := 72.0
+const SKILL_DETAIL_SHADOW_FADE_SCROLL := 36.0
 const SKILL_DETAIL_SHADOW_FADE_SPEED := 10.0
 const TUTORIAL_TIP_FADE_SECONDS := 0.28
 const TUTORIAL_TIP_FADE_OUT_SECONDS := 1.2
@@ -186,12 +186,12 @@ const ONBOARDING_AUTO_RUN_MESSAGE_LINGER_SECONDS := 3.0
 const ONBOARDING_STAMINA_GAUGE_DELAY_BEFORE_FADE_SECONDS := 2.0
 const ONBOARDING_STAMINA_GAUGE_FADE_SECONDS := 2.0
 const ONBOARDING_STAMINA_TIP_LINGER_SECONDS := 4.0
-const ONBOARDING_STAMINA_TIP_LABEL_WIDTH := 300.0
+const ONBOARDING_STAMINA_TIP_LABEL_WIDTH := 150.0
 const ONBOARDING_SWIPE_STAMINA_THRESHOLD := 5.0
 const ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS := 2.0
 const ONBOARDING_BOTTOM_TIP_FADE_SECONDS := 1.2
 const STAMINA_TIP_DISCOVERY_HOLD_SECONDS := 4.0
-const BOTTOM_TUTORIAL_TIP_FONT_SIZE := 64
+const BOTTOM_TUTORIAL_TIP_FONT_SIZE := 52
 const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
 const FIREBASE_DATABASE_URL := ""
 const FIREBASE_WEB_API_KEY := ""
@@ -234,14 +234,14 @@ const FISHING_DETAIL_VISIBLE_SETTLE_FILL_BUDGET := 1
 const FISHING_DETAIL_IDLE_WARM_MOUNT_MAX_ACTION_CARDS := 12
 const MODULE_LIST_TRANSITION_SECONDS := 0.42
 const MODULE_LIST_TRANSITION_NEW_SECONDS := 0.30
-const MODULE_LIST_TRANSITION_NEW_OFFSET_Y := 28.0
+const MODULE_LIST_TRANSITION_NEW_OFFSET_Y := 14.0
 const MODULE_LIST_TRANSITION_MIN_MOVE := 2.0
 const DETAIL_TEXTURE_PREWARM_REQUESTS_PER_FRAME := 2
 const BACKGROUND_MAINTENANCE_INTERVAL_SECONDS := 0.25
 const BACKGROUND_MAINTENANCE_STEP_COUNT := 7
 const EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC := 12
 const ACTION_PROGRESS_RAIL_INSET := 0
-const ACTION_PROGRESS_RAIL_HEIGHT := 88
+const ACTION_PROGRESS_RAIL_HEIGHT := 44
 const PASSIVE_BORDER := 0
 
 const COLOR_INK := Color("#171615")
@@ -820,8 +820,17 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 
 func _update_ui(delta: float, instant := false) -> void:
 	var static_refresh := _performance_runtime()._consume_ui_static_refresh(delta, instant)
-	_navigation_shell()._sync_bottom_nav_visibility()
-	_navigation_shell()._sync_module_utility_row_visibility()
+	var trace_static_refresh := static_refresh and OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
+	var trace_static_start := Time.get_ticks_usec() if trace_static_refresh else 0
+	var trace_static_last := trace_static_start
+	var trace_static_shell_us := 0
+	var trace_static_header_us := 0
+	var trace_static_cards_us := 0
+	if static_refresh or instant:
+		_navigation_shell()._sync_bottom_nav_visibility()
+		_navigation_shell()._sync_module_utility_row_visibility()
+	elif _navigation_shell().module_utility_buttons_motion_active:
+		_navigation_shell()._update_module_utility_buttons_row_motion()
 	if static_refresh and current_screen == "skill":
 		_skill_detail_surface()._refresh_mounted_tier_banners()
 	_skill_swipe_activity_surface()._sync_queue_selection_banner()
@@ -836,6 +845,10 @@ func _update_ui(delta: float, instant := false) -> void:
 	if static_refresh and _onboarding_runtime()._skill_detail_shows_tutorial_tips():
 		_tutorial_overlay_surface()._show_lock_click_tip_note_if_needed()
 		_onboarding_runtime()._resume_onboarding_stamina_mastery_sequence_if_needed()
+	if trace_static_refresh:
+		var trace_now := Time.get_ticks_usec()
+		trace_static_shell_us = trace_now - trace_static_last
+		trace_static_last = trace_now
 	if static_refresh and current_screen == "achievements":
 		_achievement_overlay_surface()._update_achievements_ui(delta, instant)
 	if current_screen == "menu":
@@ -862,8 +875,17 @@ func _update_ui(delta: float, instant := false) -> void:
 		_skill_detail_surface()._update_skill_detail_shadow(delta, instant)
 	if static_refresh or instant:
 		_skill_swipe_activity_surface()._sync_queue_overlays_for_visible_cards()
-	if not _skill_swipe_activity_surface()._refresh_visible_action_cards(delta, instant, static_refresh, skill_frame_refresh, passive_card_progress_refresh):
+	if trace_static_refresh:
+		var trace_now := Time.get_ticks_usec()
+		trace_static_header_us = trace_now - trace_static_last
+		trace_static_last = trace_now
+	var visible_cards_refreshed := _skill_swipe_activity_surface()._refresh_visible_action_cards(delta, instant, static_refresh, skill_frame_refresh, passive_card_progress_refresh)
+	if not visible_cards_refreshed:
 		return
+	if trace_static_refresh:
+		var trace_now := Time.get_ticks_usec()
+		trace_static_cards_us = trace_now - trace_static_last
+		trace_static_last = trace_now
 	if _activity_unlock_ceremony_surface().locked_preview_fade_play_pending:
 		_activity_unlock_ceremony_surface().play_pending_locked_activity_preview_reveals()
 	if static_refresh:
@@ -873,6 +895,19 @@ func _update_ui(delta: float, instant := false) -> void:
 	_settings_surface()._expire_reset_data_confirm_if_needed()
 	if static_refresh:
 		_tutorial_overlay_surface()._sync_tutorial_target_indicator()
+	if trace_static_refresh:
+		var trace_static_total := Time.get_ticks_usec() - trace_static_start
+		if trace_static_total >= 2000:
+			print("STATIC_UI_TRACE screen=%s skill=%s total=%s shell=%s header=%s cards=%s tail=%s action_cards=%s" % [
+				current_screen,
+				selected_skill_id,
+				str(trace_static_total),
+				str(trace_static_shell_us),
+				str(trace_static_header_us),
+				str(trace_static_cards_us),
+				str(trace_static_total - trace_static_shell_us - trace_static_header_us - trace_static_cards_us),
+				str(action_cards.size())
+			])
 
 func _stamina_gauge_event_hits_auto_eat_toggle(event: InputEvent) -> bool:
 	var event_position := Vector2.ZERO

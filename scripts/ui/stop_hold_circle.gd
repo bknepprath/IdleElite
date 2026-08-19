@@ -4,7 +4,7 @@ extends Control
 const ACTION_STOP_HOLD_ARM_DELAY_SECONDS := 0.16
 const ACTION_STOP_HOLD_SECONDS := 0.45
 const ACTION_STOP_HOLD_UNLOAD_SECONDS := 0.18
-const ACTION_STOP_HOLD_RING_SIZE := Vector2(380, 380)
+const ACTION_STOP_HOLD_RING_SIZE := Vector2(190, 190)
 const ThemeStyles = preload("res://scripts/ui/theme_styles.gd")
 
 var progress := 0.0

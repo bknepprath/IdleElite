@@ -5,10 +5,10 @@ signal padlock_clicked
 signal padlock_hovered
 
 const LINKS_PER_SIDE := 5
-const LINK_SIZE := Vector2(210, 130)
-const PADLOCK_SIZE := Vector2(540, 590)
+const LINK_SIZE := Vector2(105, 65)
+const PADLOCK_SIZE := Vector2(270, 295)
 const PADLOCK_SOURCE_CROP_RIGHT := 3.0
-const PADLOCK_SHADOW_OFFSET := Vector2(0, 16)
+const PADLOCK_SHADOW_OFFSET := Vector2(0, 8)
 const CONSTRAINT_PASSES := 14
 const LOCK_CHAIN_TAUT_RATIO := 1.16
 const LOCK_CHAIN_TAUT_SLACK_PIXELS := 18.0
@@ -17,7 +17,7 @@ const CHAIN_METAL_TINT := Color("#b9c0c3")
 const CHAIN_STROKE_TINT := Color(0.02, 0.018, 0.016, 0.82)
 const CHAIN_LINK_SHADE_TINT := Color(0.05, 0.052, 0.054, 0.18)
 const CHAIN_LINK_SHADE_START := 0.62
-const CHAIN_SHADOW_OFFSET := Vector2(0, 12)
+const CHAIN_SHADOW_OFFSET := Vector2(0, 6)
 const CHAIN_SLACK_SAG_PIXELS := 66.0
 const CHAIN_SLACK_PULL_RANGE_RATIO := 0.22
 const CHAIN_SLACK_GRAVITY_PIXELS := 620.0
@@ -26,7 +26,7 @@ const CHAIN_SLACK_REST_PULL_MAX := 0.52
 const CHAIN_EDGE_ANCHOR_INSET_RATIO := 0.30
 const LOCK_DRAG_DEADZONE := 14.0
 const CHAIN_SFX_COOLDOWN_MSEC := 170
-const CHAIN_SFX_MOVE_DISTANCE := 38.0
+const CHAIN_SFX_MOVE_DISTANCE := 19.0
 const LOCK_CLICK_SHAKE_SECONDS := 0.26
 const UNLOCK_DROP_SECONDS := 0.96
 const UNLOCK_POP_SECONDS := 0.30
@@ -41,7 +41,7 @@ const UNLOCK_LOCK_SHACKLE_OPEN_TEXTURE := "res://assets/content/ui/unlock-lock-s
 const UNLOCK_LOCK_TINT_MASK_TEXTURE := "res://assets/content/ui/unlock-lock-tint-mask.png"
 const UNLOCK_LOCK_PULSE_MASK_TEXTURE := "res://assets/content/ui/unlock-lock-pulse-mask.png"
 const READY_OPEN_CLINK_SECONDS := 0.30
-const READY_OPEN_SHACKLE_LIFT := 86.0
+const READY_OPEN_SHACKLE_LIFT := 43.0
 const READY_OPEN_HANG_DROP := 86.0
 const READY_OPEN_HANG_ROTATION := 0.16
 const DROP_CHAIN_CAPTURE_BLEND_END := 0.42
@@ -456,7 +456,7 @@ func _alpha_mask_texture(source: Texture2D) -> Texture2D:
 
 static func _placeholder_texture_for_source(source: Texture2D) -> Texture2D:
 	var placeholder := PlaceholderTexture2D.new()
-	var source_size := source.get_size() if source != null else Vector2(8, 8)
+	var source_size := source.get_size() if source != null else Vector2(4, 4)
 	placeholder.size = Vector2(maxf(1.0, source_size.x), maxf(1.0, source_size.y))
 	return placeholder
 
@@ -1090,9 +1090,9 @@ func _draw_chain_with_depth(render_links: Array) -> void:
 
 func _chain_shadow_layers() -> Array:
 	return [
-		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 7), "inflate": Vector2(20, 20), "tint": Color(0, 0, 0, 0.045)},
-		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 3), "inflate": Vector2(12, 12), "tint": Color(0, 0, 0, 0.075)},
-		{"offset": CHAIN_SHADOW_OFFSET, "inflate": Vector2(6, 6), "tint": Color(0, 0, 0, 0.09)},
+		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 3.5), "inflate": Vector2(10, 10), "tint": Color(0, 0, 0, 0.045)},
+		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 3), "inflate": Vector2(6, 6), "tint": Color(0, 0, 0, 0.075)},
+		{"offset": CHAIN_SHADOW_OFFSET, "inflate": Vector2(3, 3), "tint": Color(0, 0, 0, 0.09)},
 	]
 
 func _chain_stroke_offsets() -> Array:
@@ -1252,7 +1252,7 @@ func _place_padlock(offset: Vector2, next_lock_rotation: float) -> void:
 		padlock_tint.rotation = shared_rotation
 		padlock_tint.scale = Vector2.ONE * pop_scale
 	if level_label != null:
-		level_label.size = Vector2(240, 210)
+		level_label.size = Vector2(120, 105)
 		level_label.position = lock_position + Vector2(PADLOCK_SIZE.x * 0.5 - level_label.size.x * 0.5 - 15.0, PADLOCK_SIZE.y * 0.52)
 		level_label.pivot_offset = shared_pivot - (level_label.position - lock_position)
 		level_label.rotation = shared_rotation

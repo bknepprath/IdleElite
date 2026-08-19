@@ -52,9 +52,12 @@ func _run() -> void:
 	if not await _wait_for_ready(scene):
 		_fail("scene did not become ready")
 		return
+	print("activity-queue-test-ready")
 	_prepare_state(scene)
+	print("activity-queue-test-state-ready")
 	_assert_queue_utility_button(scene)
 	await _assert_queue_utility_button_opens_queue(scene)
+	print("activity-queue-test-utility-ok")
 
 	var build_key := _first_queueable_action_key(scene, "build")
 	var fight_key := _first_queueable_action_key(scene, "fight")
@@ -72,6 +75,7 @@ func _run() -> void:
 	_force_queue_page_render(scene)
 	_assert_queue_page(scene)
 	await _assert_queue_active_shelf_fish_controls(scene, build_key)
+	print("activity-queue-test-page-ok")
 	scene.set("running_skill_id", "")
 	scene.set("running_action_id", "")
 	_assert(_truthy(scene.call("_performance_runtime").call("_skill_detail_needs_high_frequency_ui_update")), "queue page should keep visible stamina gauges on frame refresh even while idle")
@@ -80,6 +84,7 @@ func _run() -> void:
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	await _assert_queue_page_card_can_start_queue(scene, build_key)
+	print("activity-queue-test-start-card-ok")
 	var mat_collection_key := _first_queueable_mat_collection_action_key(scene)
 	if mat_collection_key.is_empty():
 		_fail("could not find a queueable material collection action")
@@ -88,9 +93,11 @@ func _run() -> void:
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	await _assert_queue_page_mat_collection_expands(scene, mat_collection_key)
+	print("activity-queue-test-mat-collection-ok")
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	await _assert_add_to_queue_opens_skills_page(scene)
+	print("activity-queue-test-add-to-queue-ok")
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
@@ -103,8 +110,10 @@ func _run() -> void:
 	for _i in range(20):
 		await process_frame
 	_assert_queue_selection(scene)
+	print("activity-queue-test-selection-render-ok")
 	scene.call("_skill_swipe_activity_surface").call("_finish_queue_selection_mode")
 	await _assert_queue_selection_toggles_rendered_cards(scene, build_key)
+	print("activity-queue-test-selection-toggle-ok")
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	_assert(_truthy(scene.call("_activity_queue_runtime").call("remove_activity_from_queue", build_key)), "remove should succeed")
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [fight_key], "remove should renumber by list order")
@@ -184,8 +193,11 @@ func _run() -> void:
 
 	var fishing_area_key := _first_queueable_fishing_area_key(scene)
 	if not fishing_area_key.is_empty():
+		print("activity-queue-test-fishing-start")
 		await _assert_fishing_queue_overlay_uses_area_host(scene, fishing_area_key)
+		print("activity-queue-test-fishing-overlay-ok")
 		await _assert_fishing_area_tap_adds_queue_entry(scene, fishing_area_key)
+		print("activity-queue-test-fishing-tap-ok")
 		scene.call("_activity_queue_runtime").call("set_activity_queue", [fishing_area_key, build_key])
 		_set_skill_stamina(scene, "fishing", 0.0)
 		_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", fishing_area_key)), "fishing queue entry should start")
@@ -280,22 +292,28 @@ func _assert_queue_utility_button_opens_queue(scene: Node) -> void:
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
 	scene.call("_navigation_shell").call("_clear_top_level_nav_lock")
+	print("activity-queue-test-utility-render-start")
 	var render_result = scene.call("_navigation_shell").call("_render_screen", false, -1, false)
 	if render_result != null:
 		await render_result
+	print("activity-queue-test-utility-render-finished")
 	for _i in range(8):
 		await process_frame
+	print("activity-queue-test-utility-press-open")
 	queue_button.emit_signal("pressed")
 	for _i in range(20):
 		await process_frame
+	print("activity-queue-test-utility-open-settled")
 	_assert(str(scene.get("current_screen")) == "queue", "queue utility button should open the Queue page")
 	var module_utility_row := navigation_shell.get("module_utility_row") as Control
 	_assert(_truthy(scene.call("_profile_chat_overlay_surface").call("_chat_strip_visible_on_current_screen")), "queue page should reserve bottom chrome")
 	_assert(module_utility_row != null and is_instance_valid(module_utility_row) and module_utility_row.visible, "queue page should keep module utility buttons visible")
 	_assert(_truthy(queue_button.get_meta("activity_button_shell_active", false)), "queue utility button should show active state on Queue page")
+	print("activity-queue-test-utility-press-close")
 	queue_button.emit_signal("pressed")
 	for _i in range(20):
 		await process_frame
+	print("activity-queue-test-utility-close-settled")
 	_assert(str(scene.get("current_screen")) == "skill", "pressing Queue again on the Queue page should return to skill view")
 
 

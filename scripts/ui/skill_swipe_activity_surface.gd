@@ -21,13 +21,13 @@ const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
 const PassiveModulesRuntime = preload("res://scripts/gameplay/passive_modules_runtime.gd")
 const ProfileChatOverlaySurface = preload("res://scripts/ui/profile_chat_overlay_surface.gd")
 const MasteryState = preload("res://scripts/progression/mastery_state.gd")
-const ACTION_CARD_MEDAL_STANDARD_SIZE := Vector2(184.68, 184.68)
-const ACTION_CARD_MEDAL_CORNER_INSET := Vector2(24, 18)
+const ACTION_CARD_MEDAL_STANDARD_SIZE := Vector2(92.34, 92.34)
+const ACTION_CARD_MEDAL_CORNER_INSET := Vector2(12, 9)
 const ACTION_CARD_MEDAL_WINGED_SIZES := {
-	9: Vector2(330.48, 184.68),
-	10: Vector2(290.628, 184.68),
-	19: Vector2(327.564, 228.42),
-	20: Vector2(326.592, 228.42),
+	9: Vector2(165.24, 92.34),
+	10: Vector2(145.314, 92.34),
+	19: Vector2(163.782, 114.21),
+	20: Vector2(163.296, 114.21),
 }
 const RoundedTextureRect = preload("res://scripts/ui/rounded_texture_rect.gd")
 const RoundedCornerCropOverlay = preload("res://scripts/ui/rounded_corner_crop_overlay.gd")
@@ -174,6 +174,7 @@ var skill_swipe_finalize_ready_process_frame := -1
 var skill_swipe_finalize_target_skill_id := ""
 var skill_swipe_pending_resume_scroll_skill_id := ""
 var real_card_cache_by_skill = {}
+var skill_swipe_real_card_prewarm_token := 0
 var preview_page: Control
 var preview_pages = {}
 var preview_states = {}
@@ -1735,6 +1736,7 @@ func _mount_swipe_preview_as_skill_detail(preview_page: Control, preview_state: 
 		skill_swipe_pending_full_finalize = false
 		skill_swipe_pending_preview_state = {}
 		_skill_detail_surface()._schedule_proxy_skill_detail_full_refresh(skill_id)
+		_consume_queued_skill_swipe_navigation()
 		return
 	skill_swipe_pending_full_finalize = true
 	skill_swipe_pending_preview_state = preview_state
@@ -1769,7 +1771,7 @@ func _ensure_promoted_swipe_header_gauge(preview_page: Control, preview_state: D
 		detail_regen_circle_fade_group = null
 		detail_auto_eat_fish_button = null
 		var fish_circle := FishCircle.new()
-		fish_circle.custom_minimum_size = Vector2(552, 552)
+		fish_circle.custom_minimum_size = Vector2(276, 276)
 		fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 		fish_circle.mouse_filter = Control.MOUSE_FILTER_PASS
 		fish_circle.z_index = 3000
@@ -1791,12 +1793,12 @@ func _ensure_promoted_swipe_header_gauge(preview_page: Control, preview_state: D
 	_clear_swipe_preview_header_gauge_slot(gauge_parent)
 	detail_fish_circle = null
 	detail_regen_circle_host = Control.new()
-	detail_regen_circle_host.custom_minimum_size = Vector2(552, 552)
+	detail_regen_circle_host.custom_minimum_size = Vector2(276, 276)
 	detail_regen_circle_host.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	detail_regen_circle_host.clip_contents = false
 	detail_regen_circle_fade_group = CanvasGroup.new()
 	detail_regen_circle = RegenCircle.new()
-	detail_regen_circle.custom_minimum_size = Vector2(552, 552)
+	detail_regen_circle.custom_minimum_size = Vector2(276, 276)
 	detail_regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	detail_regen_circle.mouse_filter = Control.MOUSE_FILTER_STOP
 	detail_regen_circle.modulate = Color.WHITE
@@ -1810,7 +1812,7 @@ func _ensure_promoted_swipe_header_gauge(preview_page: Control, preview_state: D
 	preview_state["regen_circle_host"] = detail_regen_circle_host
 	preview_state["regen_circle_fade_group"] = detail_regen_circle_fade_group
 	preview_state["auto_eat_fish_button"] = detail_auto_eat_fish_button
-	detail_regen_circle.sync_for_skill(self, skill_id, true)
+	detail_regen_circle.sync_for_skill(host, skill_id, true)
 
 
 func _swipe_preview_header_gauge_parent(preview_state: Dictionary, preview_page: Control) -> Control:
@@ -2263,7 +2265,7 @@ func _discard_incoming_swipe_preview(incoming_preview: Dictionary) -> void:
 
 
 func _should_promote_incoming_swipe_preview(skill_id: String) -> bool:
-	return false
+	return not skill_id.is_empty()
 
 
 func _prepare_full_rendered_swipe_target_for_cover_clear(target_skill_id: String) -> void:
@@ -2380,6 +2382,7 @@ func _complete_skill_swipe_navigation() -> void:
 		_schedule_swipe_preview_finalize_after_navigation()
 		if not skill_swipe_pending_full_finalize:
 			call_deferred("_apply_pending_swipe_resume_scroll", selected_skill_id)
+			call_deferred("_consume_queued_skill_swipe_navigation")
 		if selected_skill_id == TUTORIAL_STARTER_SKILL_ID:
 			if _onboarding_runtime()._onboarding_swipe_tip_sequence_resumable() and not onboarding_swipe_tip_sequence_running:
 				_tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
@@ -3605,12 +3608,12 @@ func _play_new_medal_ceremony(card: Dictionary, medal: TextureRect, old_texture:
 	var destination := _apply_action_card_medal_layout(card, medal, mastery_level)
 	medal.texture = _action_card_medal_texture_for_level(mastery_level)
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(medal, true)
-	medal.position = destination + Vector2(92, -148)
+	medal.position = destination + Vector2(46, -74)
 	medal.scale = Vector2(1.34, 1.34)
 	medal.rotation_degrees = -7.0
 	medal.pivot_offset = medal.size * 0.5
 	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(medal, Color(1, 1, 1, 0))
-	var anticipation_position := destination + Vector2(122, -192)
+	var anticipation_position := destination + Vector2(61, -96)
 	var tween: Tween = host.create_tween()
 	card["medal_ceremony_tween"] = tween
 	tween.tween_property(medal, "position", anticipation_position, 0.15).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
@@ -3674,7 +3677,7 @@ func _start_replaced_medal_fall(card: Dictionary, medal: TextureRect, old_textur
 	var tween: Tween = host.create_tween()
 	card["medal_outgoing_tween"] = tween
 	tween.set_parallel(true)
-	tween.tween_property(outgoing, "position", origin + Vector2(-62, 260), 0.60).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	tween.tween_property(outgoing, "position", origin + Vector2(-31, 130), 0.60).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
 	tween.tween_property(outgoing, "rotation_degrees", -46.0, 0.60).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_IN)
 	tween.tween_property(outgoing, "scale", Vector2(0.76, 0.76), 0.54).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
 	tween.tween_property(outgoing, "modulate:a", 0.0, 0.39).set_delay(0.17).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
@@ -3811,7 +3814,7 @@ func _render_activity_queue_page() -> void:
 	shelf.name = "ActivityQueueShelf"
 	shelf.custom_minimum_size = Vector2(content_width, 0)
 	shelf.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	shelf.add_theme_constant_override("separation", 34)
+	shelf.add_theme_constant_override("separation", 17)
 	shelf.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var queue_index = 0
 	for raw_key in host._activity_queue_runtime().get_activity_queue():
@@ -3849,24 +3852,24 @@ func _render_activity_queue_page() -> void:
 func _activity_queue_list_button(content_width: float, node_name: String, label_text: String, fill: Color) -> Control:
 	var holder := MarginContainer.new()
 	holder.name = "ActivityQueueListButtonRow"
-	holder.custom_minimum_size = Vector2(content_width, 420)
+	holder.custom_minimum_size = Vector2(content_width, 210)
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	holder.add_theme_constant_override("margin_left", 220)
-	holder.add_theme_constant_override("margin_right", 220)
-	holder.add_theme_constant_override("margin_top", 38)
-	holder.add_theme_constant_override("margin_bottom", 38)
+	holder.add_theme_constant_override("margin_left", 55)
+	holder.add_theme_constant_override("margin_right", 55)
+	holder.add_theme_constant_override("margin_top", 10)
+	holder.add_theme_constant_override("margin_bottom", 10)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var button := Button.new()
 	button.name = node_name
 	button.text = label_text
-	button.custom_minimum_size = Vector2(0, 344)
+	button.custom_minimum_size = Vector2(0, 86)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	button.clip_contents = false
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.add_theme_font_override("font", host.app_bold_font)
-	button.add_theme_font_size_override("font_size", 88)
+	button.add_theme_font_size_override("font_size", 48)
 	button.add_theme_color_override("font_color", Color.WHITE)
 	button.add_theme_color_override("font_hover_color", Color.WHITE)
 	button.add_theme_color_override("font_pressed_color", Color.WHITE)
@@ -3883,22 +3886,22 @@ func _activity_queue_list_button(content_width: float, node_name: String, label_
 
 
 func _module_utility_button_style(fill: Color, pressed := false, active := false) -> StyleBox:
-	return PaperButtonStyles.chunky_activity_button_style(fill, 36, 18, pressed, active, host.paper_button_style_textures, host.COLOR_INK, host.COLOR_BLUE, Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture"))
+	return PaperButtonStyles.chunky_activity_button_style(fill, 18, 9, pressed, active, host.paper_button_style_textures, host.COLOR_INK, host.COLOR_BLUE, Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture"))
 
 
 func _activity_queue_empty_description(content_width: float) -> Control:
 	var holder := MarginContainer.new()
 	holder.name = "ActivityQueueEmptyDescription"
-	holder.custom_minimum_size = Vector2(content_width, 470)
+	holder.custom_minimum_size = Vector2(content_width, 235)
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	holder.add_theme_constant_override("margin_left", 160)
-	holder.add_theme_constant_override("margin_right", 160)
-	holder.add_theme_constant_override("margin_top", 18)
-	holder.add_theme_constant_override("margin_bottom", 36)
+	holder.add_theme_constant_override("margin_left", 40)
+	holder.add_theme_constant_override("margin_right", 40)
+	holder.add_theme_constant_override("margin_top", 5)
+	holder.add_theme_constant_override("margin_bottom", 9)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var label: Label = host._label(
 		"Tap Set Queue, then choose activities from the skills list. Start any queued activity here and your character will try the queue in order, moving down when stamina runs low.",
-		58,
+		52,
 		host.COLOR_INK,
 		HORIZONTAL_ALIGNMENT_CENTER
 	)
@@ -3908,8 +3911,8 @@ func _activity_queue_empty_description(content_width: float) -> Control:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	label.add_theme_color_override("font_outline_color", Color.WHITE)
-	label.add_theme_constant_override("outline_size", 8)
-	label.add_theme_constant_override("line_spacing", 8)
+	label.add_theme_constant_override("outline_size", 2)
+	label.add_theme_constant_override("line_spacing", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(label)
 	return holder
@@ -4005,10 +4008,10 @@ func _sync_queue_selection_banner() -> void:
 	var banner := PanelContainer.new()
 	banner.name = "QueueSelectionBanner"
 	banner.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	banner.offset_left = 22.0
-	banner.offset_right = -22.0
-	banner.offset_top = 22.0
-	banner.offset_bottom = 142.0
+	banner.offset_left = 11.0
+	banner.offset_right = -11.0
+	banner.offset_top = 11.0
+	banner.offset_bottom = 71.0
 	banner.z_index = ProfileChatOverlaySurface.CHAT_UI_Z + 120
 	banner.z_as_relative = false
 	banner.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -4019,7 +4022,7 @@ func _sync_queue_selection_banner() -> void:
 	var row := HBoxContainer.new()
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 42)
+	row.add_theme_constant_override("separation", 21)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner.add_child(row)
 	var title: Label = host._label("QUEUE SELECTION MODE", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
@@ -4044,10 +4047,10 @@ func _add_activity_queue_number_overlay(overlay_host: Control, number: int, modu
 	overlay.anchor_right = 0.5
 	overlay.anchor_top = 0.5
 	overlay.anchor_bottom = 0.5
-	overlay.offset_left = -88.0
-	overlay.offset_right = 88.0
-	overlay.offset_top = -88.0
-	overlay.offset_bottom = 88.0
+	overlay.offset_left = -44.0
+	overlay.offset_right = 44.0
+	overlay.offset_top = -44.0
+	overlay.offset_bottom = 44.0
 	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.z_index = 260
 	overlay.add_theme_stylebox_override("panel", _activity_queue_overlay_style())
@@ -4068,10 +4071,10 @@ func _activity_queue_overlay_style() -> StyleBoxFlat:
 	style.bg_color = Color.WHITE
 	style.border_color = host.COLOR_INK
 	style.set_border_width_all(10)
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.corner_radius_top_left = 499.5
+	style.corner_radius_top_right = 499.5
+	style.corner_radius_bottom_left = 499.5
+	style.corner_radius_bottom_right = 499.5
 	return style
 
 
@@ -4685,15 +4688,15 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 	if host.SKILL_SWIPE_LIGHT_PREVIEW_HEADER_ENABLED:
 		var light_margin = MarginContainer.new()
 		light_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-		light_margin.add_theme_constant_override("margin_left", 66)
-		light_margin.add_theme_constant_override("margin_right", 46)
-		light_margin.add_theme_constant_override("margin_top", 88)
+		light_margin.add_theme_constant_override("margin_left", 33)
+		light_margin.add_theme_constant_override("margin_right", 23)
+		light_margin.add_theme_constant_override("margin_top", 44)
 		light_margin.add_theme_constant_override("margin_bottom", host.SKILL_DETAIL_HEADER_MARGIN_BOTTOM)
 		light_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		header_body.add_child(light_margin)
 
 		var light_row = HBoxContainer.new()
-		light_row.add_theme_constant_override("separation", 66)
+		light_row.add_theme_constant_override("separation", 33)
 		light_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		light_margin.add_child(light_row)
 
@@ -4723,15 +4726,15 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 	else:
 		var header_margin = MarginContainer.new()
 		header_margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-		header_margin.add_theme_constant_override("margin_left", 66)
-		header_margin.add_theme_constant_override("margin_right", 46)
-		header_margin.add_theme_constant_override("margin_top", 88)
+		header_margin.add_theme_constant_override("margin_left", 33)
+		header_margin.add_theme_constant_override("margin_right", 23)
+		header_margin.add_theme_constant_override("margin_top", 44)
 		header_margin.add_theme_constant_override("margin_bottom", host.SKILL_DETAIL_HEADER_MARGIN_BOTTOM)
 		header_margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		header_body.add_child(header_margin)
 
 		var header_row = HBoxContainer.new()
-		header_row.add_theme_constant_override("separation", 66)
+		header_row.add_theme_constant_override("separation", 33)
 		header_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		header_margin.add_child(header_row)
 
@@ -4761,7 +4764,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 
 		if host._fishing_rework_active_for_skill(skill_id):
 			var fish_circle = FishCircle.new()
-			fish_circle.custom_minimum_size = Vector2(552, 552)
+			fish_circle.custom_minimum_size = Vector2(276, 276)
 			fish_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			fish_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			header_row.add_child(fish_circle)
@@ -4769,7 +4772,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 			host._fishing_ui_surface()._set_fish_circle_for_skill(fish_circle, skill_id, true)
 		else:
 			var regen_circle = RegenCircle.new()
-			regen_circle.custom_minimum_size = Vector2(552, 552)
+			regen_circle.custom_minimum_size = Vector2(276, 276)
 			regen_circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 			regen_circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			header_row.add_child(regen_circle)
@@ -4810,7 +4813,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 	preview_stack.custom_minimum_size.x = actions_width
 	preview_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_stack.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	preview_stack.add_theme_constant_override("separation", 56)
+	preview_stack.add_theme_constant_override("separation", 28)
 	preview_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	preview_scroll.add_child(preview_stack)
 
@@ -5130,10 +5133,23 @@ func _prune_global_swipe_real_card_cache_for_skills(allowed_skill_ids: Dictionar
 		real_card_cache_by_skill.erase(skill_id)
 
 func _skill_swipe_real_card_prewarm_can_continue(source_skill_id: String, token: int) -> bool:
-	return false
+	return (
+		token == skill_swipe_real_card_prewarm_token
+		and current_screen == "skill"
+		and selected_skill_id == source_skill_id
+		and not skill_swipe_tracking
+		and not skill_swipe_animating
+		and not skill_swipe_pending_full_finalize
+		and not skill_swipe_defer_initial_lazy_mount
+		and not _skill_swipe_handoff_cover_is_cream_transition()
+	)
 
 func _queue_skill_swipe_real_card_cache_prewarm(source_skill_id: String) -> void:
-	return
+	skill_swipe_real_card_prewarm_token += 1
+	if source_skill_id.is_empty() or current_screen != "skill" or selected_skill_id != source_skill_id:
+		return
+	var token := skill_swipe_real_card_prewarm_token
+	call_deferred("_prewarm_global_swipe_real_card_cache_for_neighbors_idle", source_skill_id, token)
 
 func _prewarm_global_swipe_real_card_cache_for_skill_idle(skill_id: String, source_skill_id: String, token: int) -> void:
 	if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
@@ -5382,10 +5398,10 @@ func _skill_swipe_light_preview_card_style(skill_id: String) -> StyleBoxFlat:
 	style.bg_color = theme.darkened(0.06)
 	style.border_color = Color(host.COLOR_INK.r, host.COLOR_INK.g, host.COLOR_INK.b, 0.72)
 	style.set_border_width_all(5)
-	style.corner_radius_top_left = 46
-	style.corner_radius_top_right = 46
-	style.corner_radius_bottom_left = 46
-	style.corner_radius_bottom_right = 46
+	style.corner_radius_top_left = 23
+	style.corner_radius_top_right = 23
+	style.corner_radius_bottom_left = 23
+	style.corner_radius_bottom_right = 23
 	light_preview_card_style_cache[key] = style
 	return style
 
@@ -5441,10 +5457,10 @@ func _skill_swipe_light_preview_simple_card(skill_id: String, entry_data: Dictio
 
 	var title = host._label(_skill_swipe_light_preview_card_title(skill_id, entry_data), 76, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	title.add_theme_constant_override("outline_size", 16)
+	title.add_theme_constant_override("outline_size", 8)
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	title.position = Vector2(54, 46)
+	title.position = Vector2(27, 23)
 	title.size = Vector2(maxf(1.0, content_width - host.ACTION_CARD_POP_GUTTER * 2.0 - 108.0), 104)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(title)
@@ -5459,36 +5475,36 @@ func _skill_swipe_light_preview_header_circle_style(skill_id: String) -> StyleBo
 	style.bg_color = theme.darkened(0.02)
 	style.border_color = host.COLOR_INK
 	style.set_border_width_all(12)
-	style.corner_radius_top_left = 220
-	style.corner_radius_top_right = 220
-	style.corner_radius_bottom_left = 220
-	style.corner_radius_bottom_right = 220
+	style.corner_radius_top_left = 110
+	style.corner_radius_top_right = 110
+	style.corner_radius_bottom_left = 110
+	style.corner_radius_bottom_right = 110
 	style.shadow_color = theme.darkened(0.48)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 10)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(0, 5)
 	light_preview_card_style_cache[key] = style
 	return style
 
 func _skill_swipe_light_preview_header_circle(skill_id: String) -> PanelContainer:
 	var circle = PanelContainer.new()
-	circle.custom_minimum_size = Vector2(430, 430)
+	circle.custom_minimum_size = Vector2(215, 215)
 	circle.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	circle.add_theme_stylebox_override("panel", _skill_swipe_light_preview_header_circle_style(skill_id))
 	var stack = VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", -8)
+	stack.add_theme_constant_override("separation", -4)
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	circle.add_child(stack)
 	var maximum = maxi(1, SkillState.max_stamina(host, skill_id))
 	var current_value = clampi(int(round(float(host.stamina.get(skill_id, maximum)))), 0, maximum)
 	var current_label = host._label(str(current_value), 124, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	current_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	current_label.add_theme_constant_override("outline_size", 16)
+	current_label.add_theme_constant_override("outline_size", 8)
 	current_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(current_label)
 	var divider = ColorRect.new()
-	divider.custom_minimum_size = Vector2(150, 8)
+	divider.custom_minimum_size = Vector2(75, 4)
 	divider.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	divider.color = host.COLOR_INK
@@ -5880,25 +5896,25 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 
 	var margin = MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 54)
-	margin.add_theme_constant_override("margin_right", 122)
-	margin.add_theme_constant_override("margin_top", 46)
-	margin.add_theme_constant_override("margin_bottom", 126)
+	margin.add_theme_constant_override("margin_left", 27)
+	margin.add_theme_constant_override("margin_right", 61)
+	margin.add_theme_constant_override("margin_top", 23)
+	margin.add_theme_constant_override("margin_bottom", 63)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.z_index = 200
 	margin.visible = not uses_blue_guy_chicken_brawl_stage
 	pop_card.add_child(margin)
 
 	var row = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 56)
+	row.add_theme_constant_override("separation", 28)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
 
 	var art_slot = MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 18)
+	art_slot.add_theme_constant_override("margin_top", 9)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel = Panel.new()
-	var art_panel_size := Vector2(382, 382)
+	var art_panel_size := Vector2(191, 191)
 	art_panel.custom_minimum_size = art_panel_size
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var art_panel_style := ActivityCardStyles.cached_action_art(Callable(host, "_surface_style"))
@@ -5912,9 +5928,9 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	art_face.z_index = 1
 	art_panel.add_child(art_face)
 	var art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
-	art.custom_minimum_size = Vector2(398, 398)
-	art.size = Vector2(398, 398)
-	art.position = Vector2(-8, -8)
+	art.custom_minimum_size = Vector2(199, 199)
+	art.size = Vector2(199, 199)
+	art.position = Vector2(-4, -4)
 	art.z_index = 2
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
@@ -5930,13 +5946,13 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 18)
+	copy.add_theme_constant_override("separation", 9)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(copy)
 	row.add_child(art_slot)
 
 	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-	action_name_label.add_theme_font_size_override("font_size", 82)
+	action_name_label.add_theme_font_size_override("font_size", 48)
 	action_name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
@@ -5947,7 +5963,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	copy.add_child(action_name_label)
 
 	var stat_row = HBoxContainer.new()
-	stat_row.add_theme_constant_override("separation", 18)
+	stat_row.add_theme_constant_override("separation", 9)
 	stat_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	copy.add_child(stat_row)
 	var skill_detail_surface = host._skill_detail_surface()
@@ -5962,7 +5978,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var normal_stat_top: Label = null
 	var normal_stat_bottom: Label = null
 	if uses_flat_normal_card or uses_recovery_card:
-		var normal_stat_panel: PanelContainer = skill_detail_surface._normal_activity_stat_panel(Vector2(880, 272), ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+		var normal_stat_panel: PanelContainer = skill_detail_surface._normal_activity_stat_panel(Vector2(440, 136), ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 		var normal_stat_items := GridContainer.new()
 		normal_stat_items.columns = 2
 		normal_stat_items.add_theme_constant_override("h_separation", 0)
@@ -6001,10 +6017,10 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		medal.anchor_top = 0.0
 		medal.anchor_bottom = 0.0
 		medal.offset_left = 0
-		medal.offset_right = 190
+		medal.offset_right = 95
 		medal.offset_top = 0
-		medal.offset_bottom = 190
-		medal.size = Vector2(190, 190)
+		medal.offset_bottom = 95
+		medal.size = Vector2(95, 95)
 		medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		medal.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR

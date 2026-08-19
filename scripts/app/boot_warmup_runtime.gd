@@ -137,9 +137,9 @@ class _BootFlexLoadingAnimation:
 		label.add_theme_color_override("font_color", COLOR_INK)
 		label.add_theme_color_override("font_outline_color", Color(1.0, 1.0, 1.0, 0.64))
 		label.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.10))
-		label.add_theme_constant_override("outline_size", 2)
+		label.add_theme_constant_override("outline_size", 1)
 		label.add_theme_constant_override("shadow_offset_x", 0)
-		label.add_theme_constant_override("shadow_offset_y", 2)
+		label.add_theme_constant_override("shadow_offset_y", 1)
 		if bubble_font != null:
 			label.add_theme_font_override("font", bubble_font)
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -161,8 +161,8 @@ class _BootFlexLoadingAnimation:
 	func _sync_layout() -> void:
 		if size.x <= 1.0 or size.y <= 1.0:
 			return
-		var sprite_size := clampf(minf(size.x, size.y) * 2.05, 1000.0, 1500.0)
-		var center := size * 0.5 + Vector2(0.0, 720.0)
+		var sprite_size := clampf(minf(size.x, size.y) * 2.05, 500.0, 750.0)
+		var center := size * 0.5 + Vector2(0.0, 360.0)
 		sprite_base_position = center - Vector2(sprite_size, sprite_size) * 0.5
 		sprite_base_position.y -= sprite_size * 0.22
 		if sprite_holder != null:
@@ -252,7 +252,7 @@ class _BootFlexLoadingAnimation:
 
 
 	func _float_reward(text: String, color: Color, center: Vector2) -> void:
-		var reward_size := Vector2(480, 128)
+		var reward_size := Vector2(240, 64)
 		var holder := Control.new()
 		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		holder.size = reward_size
@@ -264,10 +264,10 @@ class _BootFlexLoadingAnimation:
 		var shadow := Label.new()
 		shadow.text = text
 		shadow.size = reward_size
-		shadow.position = Vector2(3, 4)
+		shadow.position = Vector2(1.5, 2)
 		shadow.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		shadow.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		shadow.add_theme_font_size_override("font_size", 92)
+		shadow.add_theme_font_size_override("font_size", 48)
 		shadow.add_theme_color_override("font_color", COLOR_INK)
 		shadow.modulate = Color(1, 1, 1, 0.34)
 		holder.add_child(shadow)
@@ -277,15 +277,15 @@ class _BootFlexLoadingAnimation:
 		label.size = reward_size
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.add_theme_font_size_override("font_size", 92)
+		label.add_theme_font_size_override("font_size", 48)
 		label.add_theme_color_override("font_color", color)
 		label.add_theme_color_override("font_outline_color", COLOR_INK)
-		label.add_theme_constant_override("outline_size", 14)
+		label.add_theme_constant_override("outline_size", 7)
 		holder.add_child(label)
 
 		var tween := create_tween()
 		tween.set_parallel(true)
-		tween.tween_property(holder, "position", holder.position + Vector2(0, -132), 1.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tween.tween_property(holder, "position", holder.position + Vector2(0, -66), 1.25).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 		tween.tween_property(holder, "scale", Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tween.tween_property(holder, "modulate:a", 1.0, 0.08)
 		tween.tween_property(holder, "modulate:a", 0.0, 0.85).set_delay(0.55)
@@ -556,23 +556,23 @@ func build_overlay() -> void:
 	footer.anchor_right = 0.5
 	footer.anchor_top = 1.0
 	footer.anchor_bottom = 1.0
-	footer.offset_left = -620
-	footer.offset_right = 620
-	footer.offset_top = -430
-	footer.offset_bottom = -210
+	footer.offset_left = -310
+	footer.offset_right = 310
+	footer.offset_top = -215
+	footer.offset_bottom = -105
 	footer.alignment = BoxContainer.ALIGNMENT_CENTER
-	footer.add_theme_constant_override("separation", 34)
+	footer.add_theme_constant_override("separation", 17)
 	footer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	footer.visible = false
 	overlay.add_child(footer)
 
 	label = host._label("Warming up...", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", 18)
+	label.add_theme_constant_override("outline_size", 9)
 	footer.add_child(label)
 
 	progress_bar = ThemeStyles.progress_bar(host.COLOR_GREEN, 34, 0.0)
-	progress_bar.custom_minimum_size = Vector2(1180, 34)
+	progress_bar.custom_minimum_size = Vector2(590, 17)
 	progress_bar.border_color = host.COLOR_INK
 	footer.add_child(progress_bar)
 

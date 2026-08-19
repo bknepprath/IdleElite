@@ -8,14 +8,14 @@ const GameFormatting = preload("res://scripts/core/formatting.gd")
 const RewardFeedbackSurface = preload("res://scripts/ui/reward_feedback_surface.gd")
 const ThievingState = preload("res://scripts/thieving/state.gd")
 
-const THIEVING_HEIST_CARD_HEIGHT := 880.0
+const THIEVING_HEIST_CARD_HEIGHT := 440.0
 const THIEVING_HEIST_BACKGROUND_SHEET := ThievingState.HEIST_BACKGROUND_SHEET
 const THIEVING_HEIST_TROPHY_SHEET := ThievingState.HEIST_TROPHY_SHEET
 const THIEVING_HEIST_JAIL_BARS_TEXTURE := ThievingState.HEIST_JAIL_BARS_TEXTURE
 const THIEVING_HEIST_BACKGROUND_CELL := ThievingState.HEIST_BACKGROUND_CELL
 const THIEVING_HEIST_TROPHY_CELL := ThievingState.HEIST_TROPHY_CELL
 const THIEVING_HEIST_HORIZONTAL_BLEED := 0.0
-const THIEVING_HEIST_UI_SAFE_INSET := 228.0
+const THIEVING_HEIST_UI_SAFE_INSET := 114.0
 const THIEVING_HEIST_LEVEL_SUCCESS_BONUS := ThievingState.HEIST_LEVEL_SUCCESS_BONUS
 const THIEVING_HEIST_MAX_SUCCESS := ThievingState.HEIST_MAX_SUCCESS
 const THIEVING_ACTION_JAIL_BASE_SECONDS := ThievingState.ACTION_JAIL_BASE_SECONDS
@@ -104,7 +104,7 @@ func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview
 	card_root.custom_minimum_size = Vector2(0, THIEVING_HEIST_CARD_HEIGHT)
 	card_root.custom_minimum_size.x = content_width
 	card_root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card_root.clip_contents = false
+	card_root.clip_contents = true
 	detail_action_card_nodes["heist:%s" % heist_id] = card_root
 
 	var pop_card := Control.new()
@@ -116,7 +116,7 @@ func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview
 	pop_card.offset_right = THIEVING_HEIST_HORIZONTAL_BLEED
 	pop_card.offset_top = 0.0
 	pop_card.offset_bottom = 0.0
-	pop_card.clip_contents = false
+	pop_card.clip_contents = true
 	card_root.add_child(pop_card)
 
 	var bg := TextureRect.new()
@@ -139,42 +139,42 @@ func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", int(THIEVING_HEIST_UI_SAFE_INSET))
 	margin.add_theme_constant_override("margin_right", int(THIEVING_HEIST_UI_SAFE_INSET))
-	margin.add_theme_constant_override("margin_top", 118)
-	margin.add_theme_constant_override("margin_bottom", 118)
+	margin.add_theme_constant_override("margin_top", 59)
+	margin.add_theme_constant_override("margin_bottom", 59)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.z_index = 210
 	pop_card.add_child(margin)
 
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 28)
+	row.add_theme_constant_override("separation", 14)
 	margin.add_child(row)
 
 	var info_column := VBoxContainer.new()
-	info_column.custom_minimum_size = Vector2(360, 0)
+	info_column.custom_minimum_size = Vector2(180, 0)
 	info_column.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	info_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	info_column.alignment = BoxContainer.ALIGNMENT_CENTER
-	info_column.add_theme_constant_override("separation", 30)
+	info_column.add_theme_constant_override("separation", 15)
 	info_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(info_column)
 
-	var chance_label := _label("", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var chance_label := _label("", 56, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	chance_label.add_theme_color_override("font_outline_color", COLOR_INK)
-	chance_label.add_theme_constant_override("outline_size", 28)
-	chance_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	chance_label.custom_minimum_size = Vector2(0, 170)
+	chance_label.add_theme_constant_override("outline_size", 11)
+	chance_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	chance_label.custom_minimum_size = Vector2(180, 125)
 	info_column.add_child(chance_label)
 
-	var punishment_label := _label("Punishment\n%s jail" % GameFormatting.duration(float(heist.get("cooldown_seconds", 0))), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var punishment_label := _label("Jail\n%s" % GameFormatting.duration(float(heist.get("cooldown_seconds", 0))), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	punishment_label.add_theme_color_override("font_outline_color", COLOR_INK)
-	punishment_label.add_theme_constant_override("outline_size", 22)
-	punishment_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	punishment_label.custom_minimum_size = Vector2(0, 170)
+	punishment_label.add_theme_constant_override("outline_size", 11)
+	punishment_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	punishment_label.custom_minimum_size = Vector2(180, 105)
 	info_column.add_child(punishment_label)
 
 	var trophy_panel := Control.new()
-	trophy_panel.custom_minimum_size = Vector2(560, 640)
+	trophy_panel.custom_minimum_size = Vector2(280, 320)
 	trophy_panel.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	trophy_panel.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	trophy_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -183,10 +183,6 @@ func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview
 	var trophy := TextureRect.new()
 	trophy.texture = host.visual_texture_cache._spritesheet_or_visual_fallback(THIEVING_HEIST_TROPHY_SHEET, int(heist.get("cell", 0)), THIEVING_HEIST_TROPHY_CELL)
 	trophy.set_anchors_preset(Control.PRESET_FULL_RECT)
-	trophy.offset_left = -190
-	trophy.offset_right = 190
-	trophy.offset_top = -120
-	trophy.offset_bottom = 120
 	trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -199,10 +195,10 @@ func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview
 	var can_steal: bool = not stolen and cooldown_remaining <= 0
 
 	var button := _menu_button("STOLEN" if stolen else ("JAILED" if cooldown_remaining > 0 else "STEAL"))
-	button.custom_minimum_size = Vector2(360, 430)
+	button.custom_minimum_size = Vector2(180, 215)
 	button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	button.add_theme_font_size_override("font_size", 86)
+	button.add_theme_font_size_override("font_size", 48)
 	button.disabled = not can_steal
 	button.pressed.connect(_attempt_thieving_heist.bind(heist_id))
 	button.gui_input.connect(_on_thieving_heist_button_input.bind(heist_id, button))
@@ -410,7 +406,7 @@ func _stage_thieving_heist_preview_if_pending(card: Dictionary) -> void:
 	root.custom_minimum_size = collapsed_size
 	pop.anchor_top = 0.0
 	pop.anchor_bottom = 0.0
-	pop.offset_top = 42.0
+	pop.offset_top = 21.0
 	pop.offset_bottom = target_height + 42.0
 	_set_canvas_item_modulate_if_changed(pop, Color(1, 1, 1, 0))
 	call_deferred("_play_thieving_heist_preview_fade_in", heist_id)
@@ -521,7 +517,7 @@ func _thieving_heist_feather_band(top: bool) -> ColorRect:
 	band.offset_left = 0.0
 	band.offset_right = 0.0
 	band.offset_top = 0.0 if top else -170.0
-	band.offset_bottom = 170.0 if top else 0.0
+	band.offset_bottom = 85.0 if top else 0.0
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	band.z_index = 205
 	var shader_material := ShaderMaterial.new()
@@ -535,15 +531,15 @@ func _thieving_heist_feather_band(top: bool) -> ColorRect:
 func _add_thieving_heist_completed_stamp(parent: Control) -> void:
 	var stamp := _label("STOLEN", 68, COLOR_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 	stamp.add_theme_color_override("font_outline_color", COLOR_INK)
-	stamp.add_theme_constant_override("outline_size", 26)
+	stamp.add_theme_constant_override("outline_size", 13)
 	stamp.anchor_left = 1.0
 	stamp.anchor_right = 1.0
 	stamp.anchor_top = 0.0
 	stamp.anchor_bottom = 0.0
-	stamp.offset_left = -420
-	stamp.offset_right = -60
-	stamp.offset_top = 38
-	stamp.offset_bottom = 132
+	stamp.offset_left = -210
+	stamp.offset_right = -30
+	stamp.offset_top = 19
+	stamp.offset_bottom = 66
 	stamp.rotation_degrees = 4.0
 	stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stamp.z_index = 260
@@ -573,10 +569,10 @@ func _add_thieving_heist_jail_overlay(card: Dictionary, cooldown_remaining: int)
 
 	var bars_shake_body := Control.new()
 	bars_shake_body.set_anchors_preset(Control.PRESET_FULL_RECT)
-	bars_shake_body.offset_left = -54.0
-	bars_shake_body.offset_right = 54.0
-	bars_shake_body.offset_top = -28.0
-	bars_shake_body.offset_bottom = 28.0
+	bars_shake_body.offset_left = -27.0
+	bars_shake_body.offset_right = 27.0
+	bars_shake_body.offset_top = -14.0
+	bars_shake_body.offset_bottom = 14.0
 	bars_shake_body.clip_contents = false
 	bars_shake_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bars_shake_body.z_index = 2
@@ -592,7 +588,7 @@ func _add_thieving_heist_jail_overlay(card: Dictionary, cooldown_remaining: int)
 
 	var timer := _label(_thieving_heist_jail_text(cooldown_remaining), 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	timer.add_theme_color_override("font_outline_color", Color.BLACK)
-	timer.add_theme_constant_override("outline_size", 34)
+	timer.add_theme_constant_override("outline_size", 17)
 	timer.add_theme_constant_override("line_spacing", -8)
 	timer.anchor_left = 0.0
 	timer.anchor_right = 1.0
@@ -600,8 +596,8 @@ func _add_thieving_heist_jail_overlay(card: Dictionary, cooldown_remaining: int)
 	timer.anchor_bottom = 0.5
 	timer.offset_left = 0
 	timer.offset_right = 0
-	timer.offset_top = -105
-	timer.offset_bottom = 105
+	timer.offset_top = -52.5
+	timer.offset_bottom = 52.5
 	timer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	timer.z_index = 6
 	overlay.add_child(timer)
@@ -663,7 +659,7 @@ func _float_thieving_jail_timer_reduction(card: Dictionary) -> void:
 		return
 	if not overlay.is_inside_tree() or not timer.is_inside_tree():
 		return
-	var reward_size := Vector2(210, 92)
+	var reward_size := Vector2(105, 46)
 	var holder := Control.new()
 	holder.size = reward_size
 	holder.z_index = 320
@@ -673,7 +669,7 @@ func _float_thieving_jail_timer_reduction(card: Dictionary) -> void:
 
 	var shadow := _label("-1s", 58, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = reward_size
-	shadow.position = Vector2(5, 6)
+	shadow.position = Vector2(2.5, 3)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	shadow.modulate = Color(1, 1, 1, 0.58)
 	holder.add_child(shadow)
@@ -682,7 +678,7 @@ func _float_thieving_jail_timer_reduction(card: Dictionary) -> void:
 	label.size = reward_size
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
-	label.add_theme_constant_override("outline_size", 16)
+	label.add_theme_constant_override("outline_size", 8)
 	holder.add_child(label)
 
 	var timer_rect := timer.get_global_rect()
@@ -886,7 +882,7 @@ func _add_thieving_action_jail_overlay(card: Dictionary, action_id: String, cool
 	bars_shake_body.clip_contents = false
 	bars_shake_body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bars_shake_body.z_index = 2
-	bars_shake_body.position = Vector2(0, -220)
+	bars_shake_body.position = Vector2(0, -110)
 	bars_shake_body.scale = Vector2.ONE
 	bars_shake_body.pivot_offset = Vector2.ZERO
 	overlay.add_child(bars_shake_body)
@@ -901,7 +897,7 @@ func _add_thieving_action_jail_overlay(card: Dictionary, action_id: String, cool
 
 	var timer := _label(_thieving_heist_jail_text(cooldown_remaining), 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	timer.add_theme_color_override("font_outline_color", Color.BLACK)
-	timer.add_theme_constant_override("outline_size", 34)
+	timer.add_theme_constant_override("outline_size", 17)
 	timer.add_theme_constant_override("line_spacing", -8)
 	timer.anchor_left = 0.0
 	timer.anchor_right = 1.0
@@ -909,8 +905,8 @@ func _add_thieving_action_jail_overlay(card: Dictionary, action_id: String, cool
 	timer.anchor_bottom = 0.5
 	timer.offset_left = 0
 	timer.offset_right = 0
-	timer.offset_top = -105
-	timer.offset_bottom = 105
+	timer.offset_top = -52.5
+	timer.offset_bottom = 52.5
 	timer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	timer.z_index = 6
 	timer.modulate = Color(1, 1, 1, 0)
@@ -1090,7 +1086,7 @@ func _update_thieving_heist_card(card: Dictionary, _delta: float, _instant: bool
 		_set_base_button_disabled_if_changed(button, stolen or cooldown_remaining > 0)
 	var chance_label := card.get("chance_label") as Label
 	if chance_label != null and is_instance_valid(chance_label):
-		_set_label_text_if_changed(chance_label, "%s%% chance\nof success" % int(round(_thieving_heist_success_chance(heist))))
+		_set_label_text_if_changed(chance_label, "%s%%\nsuccess" % int(round(_thieving_heist_success_chance(heist))))
 	var jail_label := card.get("jail_label") as Label
 	if jail_label != null and is_instance_valid(jail_label):
 		_set_label_text_if_changed(jail_label, _thieving_heist_jail_text(cooldown_remaining))
@@ -1240,10 +1236,10 @@ func _play_thieving_trophy_hub_float(action_key: String, xp_amount: int) -> void
 	trophy.anchor_right = 1.0
 	trophy.anchor_top = 0.0
 	trophy.anchor_bottom = 1.0
-	trophy.offset_left = 34
-	trophy.offset_right = -34
-	trophy.offset_top = 72
-	trophy.offset_bottom = -6
+	trophy.offset_left = 17
+	trophy.offset_right = -17
+	trophy.offset_top = 36
+	trophy.offset_bottom = -3
 	trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1319,12 +1315,12 @@ func _finish_thieving_trophy_flight(holder_id: int, action_key: String) -> void:
 func _thieving_trophy_soft_glow_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1.0, 0.91, 0.42, 0.20)
-	style.corner_radius_top_left = 999
-	style.corner_radius_top_right = 999
-	style.corner_radius_bottom_left = 999
-	style.corner_radius_bottom_right = 999
+	style.corner_radius_top_left = 499.5
+	style.corner_radius_top_right = 499.5
+	style.corner_radius_bottom_left = 499.5
+	style.corner_radius_bottom_right = 499.5
 	style.shadow_color = Color(1.0, 0.84, 0.26, 0.46)
-	style.shadow_size = 34
+	style.shadow_size = 17
 	style.shadow_offset = Vector2.ZERO
 	return style
 
@@ -1333,7 +1329,7 @@ func _thieving_trophy_soft_glow_style() -> StyleBoxFlat:
 func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> void:
 	if xp_amount <= 0:
 		return
-	var reward_size := Vector2(460, 132)
+	var reward_size := Vector2(230, 66)
 	var canvas_size := _current_canvas_size()
 	var reward_center := start_center + Vector2(360.0 + randf_range(-18.0, 26.0), -110.0 + randf_range(-18.0, 16.0))
 	reward_center.x = clampf(reward_center.x, reward_size.x * 0.5 + 24.0, canvas_size.x - reward_size.x * 0.5 - 24.0)
@@ -1352,7 +1348,7 @@ func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> v
 
 	var shadow := _label("+%s XP!" % xp_amount, 82, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = reward_size
-	shadow.position = Vector2(6, 7)
+	shadow.position = Vector2(3, 3.5)
 	shadow.modulate = Color(1, 1, 1, 0.56)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(shadow)
@@ -1360,7 +1356,7 @@ func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> v
 	var label := _label("+%s XP!" % xp_amount, 82, Color("#2ff06d"), HORIZONTAL_ALIGNMENT_CENTER)
 	label.size = reward_size
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
-	label.add_theme_constant_override("outline_size", 22)
+	label.add_theme_constant_override("outline_size", 11)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(label)
 

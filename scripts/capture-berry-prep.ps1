@@ -1,8 +1,8 @@
 param(
-    [int]$ViewportWidth = 2160,
-    [int]$ViewportHeight = 3840,
-    [int]$WindowWidth = 627,
-    [int]$WindowHeight = 1115,
+    [int]$ViewportWidth = 1080,
+    [int]$ViewportHeight = 1920,
+    [int]$WindowWidth = 1080,
+    [int]$WindowHeight = 1920,
     [string]$Suffix = ""
 )
 
@@ -45,7 +45,7 @@ func _run() -> void:
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "60")
 	var capture_size := Vector2i($ViewportWidth, $ViewportHeight)
 	var window_size := Vector2i($WindowWidth, $WindowHeight)
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	root.content_scale_size = capture_size
 	root.size = window_size
@@ -68,8 +68,9 @@ func _run() -> void:
 	scene.material_runtime.set_amount("berries", 6.0)
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "woodcutting")
-	scene.call("_set_berry_mode_enabled", true)
-	scene.call("_toggle_berry_prep_for_action", "woodcutting", "prune-orchard-row")
+	var material_surface = scene.call("_material_collection_surface")
+	material_surface.call("set_berry_mode_enabled", true)
+	material_surface.call("toggle_berry_prep_for_action", "woodcutting", "prune-orchard-row")
 	scene.call("_action_runtime").call("_start_action", "woodcutting", "prune-orchard-row", true, false)
 	scene.material_runtime.set_amount("berries", 6.0)
 	scene.call("_render_screen", false, -1, false)

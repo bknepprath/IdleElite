@@ -23,18 +23,18 @@ const EVENT_NEED_STAMINA_FLOAT_TEXT := "Need\n%s STAM"
 const TIRED_ACTIVITY_FLOAT_COLOR := Color("#fff2a8")
 const ACTIVITY_CRIT_FEEDBACK_SECONDS := 1.68
 const ACTIVITY_CRIT_SHAKE_PIXELS := 17.0
-const ACTIVITY_CRIT_LIFT_PIXELS := 7.0
+const ACTIVITY_CRIT_LIFT_PIXELS := 3.5
 const ACTIVITY_CRIT_CARD_SCALE_PEAK := 1.035
 const ACTIVITY_CRIT_ART_BURST_SCALE := 1.52
 const ACTIVITY_CRIT_TEXT_COLOR := Color("#ffd95a")
-const ACTIVITY_CRIT_TEXT_SIZE := Vector2(760, 180)
+const ACTIVITY_CRIT_TEXT_SIZE := Vector2(380, 90)
 const ACTIVITY_MEGA_CRIT_FEEDBACK_SECONDS := 5.04
 const ACTIVITY_MEGA_CRIT_SHAKE_MULT := 0.28
 const ACTIVITY_MEGA_CRIT_LIFT_MULT := 2.0
 const ACTIVITY_MEGA_CRIT_CARD_SCALE_PEAK := 1.012
 const ACTIVITY_MEGA_CRIT_ART_BURST_SCALE := 2.05
 const ACTIVITY_MEGA_CRIT_TEXT_COLOR := Color("#fff052")
-const ACTIVITY_MEGA_CRIT_TEXT_SIZE := Vector2(940, 220)
+const ACTIVITY_MEGA_CRIT_TEXT_SIZE := Vector2(470, 110)
 const ACTIVITY_MEGA_CRIT_HIGHLIGHT_BLEED := 10.0
 const ACTIVITY_MEGA_CRIT_ART_DRIFT_PIXELS := 92.0
 const BONUS_EMPHASIS_FLOAT_COLOR := Color("#33f17a")
@@ -160,8 +160,8 @@ func _append_visible_stamina_bonus_entries(entries: Array, amount: int, skill_id
 				"anchor": _skill_menu_card_side_gauge(card),
 				"text": text,
 				"font_size": 66,
-				"start_offset": Vector2(0, -54),
-				"rise": Vector2(0, -150)
+				"start_offset": Vector2(0, -27),
+				"rise": Vector2(0, -75)
 			})
 	elif host.current_screen == "skill" and (skill_id.is_empty() or skill_id == host.selected_skill_id):
 		_append_bonus_emphasis_entry(entries, {
@@ -169,8 +169,8 @@ func _append_visible_stamina_bonus_entries(entries: Array, amount: int, skill_id
 			"anchor": host._skill_detail_surface().detail_regen_circle,
 			"text": text,
 			"font_size": 72,
-			"start_offset": Vector2(0, -70),
-			"rise": Vector2(0, -170)
+			"start_offset": Vector2(0, -35),
+			"rise": Vector2(0, -85)
 		})
 
 
@@ -491,7 +491,7 @@ func _play_bonus_emphasis_entry(entry: Dictionary, delay: float, sequence_index 
 	elif kind == "stamina":
 		var anchor := entry.get("anchor") as Control
 		_flash_bonus_control(anchor, delay)
-		_float_reward(host, anchor, str(entry.get("text", "")), int(entry.get("font_size", 66)), BONUS_EMPHASIS_FLOAT_COLOR, entry.get("start_offset", Vector2.ZERO), entry.get("rise", Vector2(0, -150)), delay)
+		_float_reward(host, anchor, str(entry.get("text", "")), int(entry.get("font_size", 66)), BONUS_EMPHASIS_FLOAT_COLOR, entry.get("start_offset", Vector2.ZERO), entry.get("rise", Vector2(0, -75)), delay)
 	elif kind == "global_buff":
 		_emphasize_global_buff_label(delay)
 
@@ -517,7 +517,7 @@ func _emphasize_action_stat_bonus(card: Dictionary, stat_kind: String, text: Str
 		host._skill_detail_surface()._wiggle_normal_activity_stat_symbol(box)
 	else:
 		_flash_bonus_control(box)
-	_float_reward(host, box, text, 70, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -58), Vector2(0, -154), 0.0)
+	_float_reward(host, box, text, 70, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -29), Vector2(0, -77), 0.0)
 	host._audio_director()._play_info_chip_upgrade_sfx(sequence_index)
 
 
@@ -546,7 +546,7 @@ func _emphasize_global_buff_label(delay := 0.0) -> void:
 	if buff_label == null or not is_instance_valid(buff_label) or not buff_label.is_visible_in_tree():
 		return
 	_flash_bonus_control(buff_label, delay)
-	_float_reward(host, buff_label, "BUFF UP", 66, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -46), Vector2(0, -138), delay)
+	_float_reward(host, buff_label, "BUFF UP", 66, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -23), Vector2(0, -69), delay)
 
 
 func _clear_action_crit_tweens() -> void:
@@ -1002,7 +1002,7 @@ func _flash_art_glow(anchor: Control, color: Color) -> void:
 func _float_xp(parent: Control, anchor: Control, xp_amount: int) -> void:
 	if xp_amount <= 0:
 		return
-	_float_reward(parent, anchor, "+%s XP" % xp_amount, 92, Color("#2ff06d"), Vector2(0, -86), Vector2(0, -230), 0.0, false, -1.0, SKILL_REWARD_FLOAT_GROUP)
+	_float_reward(parent, anchor, "+%s XP" % xp_amount, 92, Color("#2ff06d"), Vector2(0, -43), Vector2(0, -115), 0.0, false, -1.0, SKILL_REWARD_FLOAT_GROUP)
 
 func _float_xp_rewards(parent: Control, anchor: Control, reward_map: Dictionary, owner_skill_id = "") -> void:
 	if reward_map.is_empty():
@@ -1076,8 +1076,8 @@ func _float_stamina_gauge_feedback(source: Control, text: String, color: Color) 
 		text,
 		58,
 		color,
-		Vector2(0, -48),
-		Vector2(0, -150),
+		Vector2(0, -24),
+		Vector2(0, -75),
 		0.0,
 		false,
 		-1.0,
@@ -1146,7 +1146,7 @@ func _float_action_card_warning_feedback(action_key: String, text: String, color
 	var progress = host._app_lifecycle_runtime().valid_control_ref(card.get("progress"))
 	if progress == null or not progress.is_inside_tree():
 		return
-	var reward_size = Vector2(420, 168)
+	var reward_size = Vector2(210, 84)
 	var holder = Control.new()
 	holder.z_index = REWARD_FLOAT_Z
 	holder.z_as_relative = false
@@ -1155,7 +1155,7 @@ func _float_action_card_warning_feedback(action_key: String, text: String, color
 	host.add_child(holder)
 	var shadow = host._label(text, 58, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = reward_size
-	shadow.position = Vector2(6, 7)
+	shadow.position = Vector2(3, 3.5)
 	shadow.add_theme_constant_override("line_spacing", -6)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(shadow)
@@ -1175,7 +1175,7 @@ func _float_action_card_warning_feedback(action_key: String, text: String, color
 	holder.scale = Vector2(0.78, 0.78)
 	var tween = host.create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(holder, "position", holder.position + Vector2(0, -156), 1.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "position", holder.position + Vector2(0, -78), 1.16).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "scale", Vector2.ONE, 0.16).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "modulate:a", 1.0, 0.08)
 	tween.tween_property(holder, "modulate:a", 0.0, 0.72).set_delay(0.50)
@@ -1191,8 +1191,8 @@ func _show_visible_skill_level_up_float(skill_id: String) -> void:
 		tr("LEVEL UP!"),
 		62,
 		Color("#ffd238"),
-		Vector2(0, -42),
-		Vector2(0, -126),
+		Vector2(0, -21),
+		Vector2(0, -63),
 		0.0,
 		true,
 		-1.0,
@@ -1257,7 +1257,7 @@ func _float_action_opportunity_feedback(skill_id: String, action_id: String, tex
 	var rail = _visible_action_opportunity_rail(skill_id, action_id)
 	if rail == null or not is_instance_valid(rail) or rail.is_queued_for_deletion() or not rail.is_inside_tree():
 		return
-	var reward_size := Vector2(300, 92)
+	var reward_size := Vector2(150, 46)
 	var holder := Control.new()
 	holder.z_index = REWARD_FLOAT_Z
 	holder.z_as_relative = false
@@ -1267,16 +1267,16 @@ func _float_action_opportunity_feedback(skill_id: String, action_id: String, tex
 	var text_color: Color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE).lightened(0.32) if color == Color.TRANSPARENT else color
 	var shadow = host._label(text, 56, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = reward_size
-	shadow.position = Vector2(4, 5)
+	shadow.position = Vector2(2, 2.5)
 	shadow.modulate = Color(1, 1, 1, 0.52)
 	holder.add_child(shadow)
 	var label = host._label(text, 56, text_color, HORIZONTAL_ALIGNMENT_CENTER)
 	label.size = reward_size
 	holder.add_child(label)
 	var start_center: Vector2 = host.get_global_transform_with_canvas().affine_inverse() * rail.get_opportunity_feedback_global_position(host.action_progress)
-	start_center += Vector2(0, -58)
+	start_center += Vector2(0, -29)
 	holder.position = _clamp_reward_holder_position(host, start_center - reward_size * 0.5, reward_size)
-	_start_reward_float_tween(holder, Vector2(0, -132), 0.0)
+	_start_reward_float_tween(holder, Vector2(0, -66), 0.0)
 
 func _visible_action_opportunity_rail(skill_id: String, action_id: String) -> ActivityProgressRail:
 	var card := _visible_action_feedback_card(skill_id, action_id)
@@ -1294,7 +1294,7 @@ func _float_reward(parent: Control, anchor: Control, text: String, font_size: in
 		or anchor.is_queued_for_deletion()
 	):
 		return
-	var reward_size = Vector2(560, 130)
+	var reward_size = Vector2(280, 65)
 	var holder = Control.new()
 	holder.z_index = REWARD_FLOAT_Z
 	holder.z_as_relative = false
@@ -1306,7 +1306,7 @@ func _float_reward(parent: Control, anchor: Control, text: String, font_size: in
 	parent.add_child(holder)
 	var shadow = host._label(text, font_size, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = reward_size
-	shadow.position = Vector2(3, 4) if is_skill_reward_float else Vector2(6, 7)
+	shadow.position = Vector2(1.5, 2) if is_skill_reward_float else Vector2(3, 3.5)
 	shadow.modulate = Color(1, 1, 1, 0.34 if is_skill_reward_float else 0.58)
 	holder.add_child(shadow)
 	var label = host._label(text, font_size, color, HORIZONTAL_ALIGNMENT_CENTER)

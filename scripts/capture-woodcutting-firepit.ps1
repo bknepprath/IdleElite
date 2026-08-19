@@ -91,7 +91,7 @@ func _run() -> void:
 	var window_height := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_WINDOW_HEIGHT").to_int()
 	var capture_size := Vector2i(viewport_width, viewport_height) if viewport_width > 0 and viewport_height > 0 else default_capture_size
 	var window_size := Vector2i(window_width, window_height) if window_width > 0 and window_height > 0 else capture_size
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	root.content_scale_size = capture_size
 	root.size = window_size

@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://cd7g7vplvcu8d"
-path="res://.godot/imported/reef-night-reef.png-23fb3ba392e1984ae629c0cb2b6abe57.ctex"
+path.bptc="res://.godot/imported/reef-night-reef.png-23fb3ba392e1984ae629c0cb2b6abe57.bptc.ctex"
+path.astc="res://.godot/imported/reef-night-reef.png-23fb3ba392e1984ae629c0cb2b6abe57.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/fishing/locations/reef-night-reef.png"
-dest_files=["res://.godot/imported/reef-night-reef.png-23fb3ba392e1984ae629c0cb2b6abe57.ctex"]
+dest_files=["res://.godot/imported/reef-night-reef.png-23fb3ba392e1984ae629c0cb2b6abe57.bptc.ctex", "res://.godot/imported/reef-night-reef.png-23fb3ba392e1984ae629c0cb2b6abe57.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

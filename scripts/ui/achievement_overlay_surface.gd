@@ -11,31 +11,31 @@ const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.
 const PassiveModuleStyles = preload("res://scripts/ui/passive_module_styles.gd")
 const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
 const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
-const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(62, 62)
+const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(31, 31)
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
-const OFFLINE_SUMMARY_MODAL_WIDTH := 1680.0
-const OFFLINE_SUMMARY_MODAL_MIN_HEIGHT := 1240.0
-const OFFLINE_SUMMARY_MODAL_MAX_HEIGHT := 2180.0
-const OFFLINE_SUMMARY_MODAL_CHROME_HEIGHT := 1240.0
-const OFFLINE_SUMMARY_MODAL_MAX_PROGRESS_HEIGHT := 820.0
-const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(64, 80)
-const OFFLINE_SUMMARY_SECTION_HEIGHT := 88.0
-const OFFLINE_SUMMARY_ROW_HEIGHT := 214.0
-const OFFLINE_SUMMARY_ROW_GAP := 28.0
-const ACHIEVEMENTS_MODAL_SIZE := Vector2(1760, 3000)
-const ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN := Vector2(64, 80)
-const ACHIEVEMENTS_MODAL_SCROLL_HEIGHT := 2220.0
-const GLOBAL_BUFFS_MODAL_MIN_HEIGHT := 1440.0
-const GLOBAL_BUFFS_MODAL_BASE_HEIGHT := 1260.0
-const GLOBAL_BUFFS_MODAL_ROW_HEIGHT := 120.0
-const GLOBAL_BUFFS_MODAL_MAX_HEIGHT := 2740.0
+const OFFLINE_SUMMARY_MODAL_WIDTH := 840.0
+const OFFLINE_SUMMARY_MODAL_MIN_HEIGHT := 620.0
+const OFFLINE_SUMMARY_MODAL_MAX_HEIGHT := 1090.0
+const OFFLINE_SUMMARY_MODAL_CHROME_HEIGHT := 620.0
+const OFFLINE_SUMMARY_MODAL_MAX_PROGRESS_HEIGHT := 410.0
+const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(32, 40)
+const OFFLINE_SUMMARY_SECTION_HEIGHT := 44.0
+const OFFLINE_SUMMARY_ROW_HEIGHT := 107.0
+const OFFLINE_SUMMARY_ROW_GAP := 14.0
+const ACHIEVEMENTS_MODAL_SIZE := Vector2(880, 1500)
+const ACHIEVEMENTS_MODAL_VIEWPORT_MARGIN := Vector2(32, 40)
+const ACHIEVEMENTS_MODAL_SCROLL_HEIGHT := 1110.0
+const GLOBAL_BUFFS_MODAL_MIN_HEIGHT := 720.0
+const GLOBAL_BUFFS_MODAL_BASE_HEIGHT := 630.0
+const GLOBAL_BUFFS_MODAL_ROW_HEIGHT := 60.0
+const GLOBAL_BUFFS_MODAL_MAX_HEIGHT := 1370.0
 const GLOBAL_BUFFS_MODAL_SCROLL_CHROME := 760.0
 
 class AchievementMedalSlotStrip:
 	extends Control
 
 	var slot_count := 25
-	var slot_size := Vector2(58, 58)
+	var slot_size := Vector2(29, 29)
 	var row_overlap := 0.48
 	var max_single_row_count := 11
 	var medal_icons := []
@@ -88,7 +88,7 @@ class AchievementMedalSlotStrip:
 					shadow.position = center - shadow.size * 0.5
 					shadow.z_index = slot_z
 					if not outline:
-						shadow.position += Vector2(7, 9)
+						shadow.position += Vector2(3.5, 4.5)
 			icon.size = Vector2(visual_size, visual_size)
 			icon.position = center - icon.size * 0.5
 			icon.z_index = slot_z + 1
@@ -265,19 +265,19 @@ func build_home_page(home_page: Control) -> void:
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	margin.add_theme_constant_override("margin_left", host.PAGE_PAD)
 	margin.add_theme_constant_override("margin_right", host.PAGE_PAD)
-	margin.add_theme_constant_override("margin_top", 96)
+	margin.add_theme_constant_override("margin_top", 48)
 	margin.add_theme_constant_override("margin_bottom", NavigationShell.BOTTOM_NAV_SAFE_PAD + 190)
 	scroll.add_child(margin)
 
 	var stack := VBoxContainer.new()
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 52)
+	stack.add_theme_constant_override("separation", 26)
 	margin.add_child(stack)
 	var top_spacer := Control.new()
-	top_spacer.custom_minimum_size = Vector2(0, 74)
+	top_spacer.custom_minimum_size = Vector2(0, 37)
 	stack.add_child(top_spacer)
-	var logo: TextureRect = host.visual_texture_cache._image(IDLE_ELITE_LOGO_TEXTURE, Vector2(1684, 414))
+	var logo: TextureRect = host.visual_texture_cache._image(IDLE_ELITE_LOGO_TEXTURE, Vector2(842, 207))
 	logo.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stack.add_child(logo)
 	var achievement_page := PanelContainer.new()
@@ -330,14 +330,14 @@ func _build_offline_summary_overlay() -> void:
 	frame.add_child(panel)
 	offline_summary_panel = panel
 	var outer := MarginContainer.new()
-	outer.add_theme_constant_override("margin_left", 58)
-	outer.add_theme_constant_override("margin_right", 58)
-	outer.add_theme_constant_override("margin_top", 52)
-	outer.add_theme_constant_override("margin_bottom", 52)
+	outer.add_theme_constant_override("margin_left", 29)
+	outer.add_theme_constant_override("margin_right", 29)
+	outer.add_theme_constant_override("margin_top", 26)
+	outer.add_theme_constant_override("margin_bottom", 26)
 	panel.add_child(outer)
 	offline_summary_stack = VBoxContainer.new()
 	offline_summary_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	offline_summary_stack.add_theme_constant_override("separation", 32)
+	offline_summary_stack.add_theme_constant_override("separation", 16)
 	outer.add_child(offline_summary_stack)
 
 func _on_offline_summary_overlay_gui_input(event: InputEvent) -> void:
@@ -412,18 +412,18 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	_fit_offline_summary_modal(Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, modal_height))
 	var header := HBoxContainer.new()
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
-	header.add_theme_constant_override("separation", 24)
+	header.add_theme_constant_override("separation", 12)
 	offline_summary_stack.add_child(header)
 	var title_stack := VBoxContainer.new()
 	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_stack.add_theme_constant_override("separation", 2)
+	title_stack.add_theme_constant_override("separation", 1)
 	header.add_child(title_stack)
 	var title = host._label("Welcome Back", 124, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_stack.add_child(title)
 	var subtitle = host._label("Away for %s" % GameFormatting.duration(offline_seconds), 64, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	title_stack.add_child(subtitle)
 	var close = host._menu_button("X")
-	close.custom_minimum_size = Vector2(170, 158)
+	close.custom_minimum_size = Vector2(85, 79)
 	close.pressed.connect(_close_offline_summary_overlay)
 	header.add_child(close)
 
@@ -431,7 +431,7 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 
 	var stat_row := HBoxContainer.new()
 	stat_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stat_row.add_theme_constant_override("separation", 28)
+	stat_row.add_theme_constant_override("separation", 14)
 	offline_summary_stack.add_child(stat_row)
 	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), host.PROGRESS_STAR_ICON_TEXTURE))
 	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(ActionRuntime.OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), host.TOTAL_LEVEL_BARGRAPH_TEXTURE))
@@ -454,27 +454,27 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 		_populate_offline_summary_progress(list, active_result)
 
 	var done = host._menu_button("Nice")
-	done.custom_minimum_size = Vector2(0, 190)
+	done.custom_minimum_size = Vector2(0, 95)
 	done.pressed.connect(_close_offline_summary_overlay)
 	offline_summary_stack.add_child(done)
 
 func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 304)
+	card.custom_minimum_size = Vector2(0, 152)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_info_style())
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 38)
+	row.add_theme_constant_override("separation", 19)
 	card.add_child(row)
 	var art_frame := PanelContainer.new()
-	art_frame.custom_minimum_size = Vector2(278, 278)
+	art_frame.custom_minimum_size = Vector2(139, 139)
 	art_frame.add_theme_stylebox_override("panel", host.ActivityCardStyles.featured_art(Callable(host, "_surface_style"), host.COLOR_LINE))
 	row.add_child(art_frame)
-	art_frame.add_child(host.visual_texture_cache._image(str(active_result.get("action_art", "")), Vector2(240, 240)))
+	art_frame.add_child(host.visual_texture_cache._image(str(active_result.get("action_art", "")), Vector2(120, 120)))
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 10)
+	copy.add_theme_constant_override("separation", 5)
 	row.add_child(copy)
 	var eyebrow = host._label(str(active_result.get("skill_name", "Skill")), 58, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(eyebrow)
@@ -500,14 +500,14 @@ func _offline_summary_info_style() -> StyleBoxFlat:
 
 func _offline_summary_stat_card(title: String, value: String, accent: Color, icon_path: String) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 326)
+	card.custom_minimum_size = Vector2(0, 163)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_stat_style(accent))
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 8)
+	stack.add_theme_constant_override("separation", 4)
 	card.add_child(stack)
-	stack.add_child(host.visual_texture_cache._image(icon_path, Vector2(100, 100)))
+	stack.add_child(host.visual_texture_cache._image(icon_path, Vector2(50, 50)))
 	var value_label = host._label(value, 82, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(value_label)
@@ -519,10 +519,10 @@ func _offline_summary_stat_card(title: String, value: String, accent: Color, ico
 func _offline_summary_stat_style(accent: Color) -> StyleBoxFlat:
 	var style: StyleBoxFlat = host._surface_style(Color("#fffdf8"), 32, 22, false)
 	style.border_color = Color(accent.r, accent.g, accent.b, 0.34)
-	style.border_width_left = 8
-	style.border_width_right = 8
-	style.border_width_top = 8
-	style.border_width_bottom = 8
+	style.border_width_left = 4
+	style.border_width_right = 4
+	style.border_width_top = 4
+	style.border_width_bottom = 4
 	style.shadow_color = Color(0, 0, 0, 0)
 	style.shadow_size = 0
 	style.shadow_offset = Vector2.ZERO
@@ -532,7 +532,7 @@ func _offline_summary_medal_stack(old_level: int, new_level: int) -> Control:
 	var levels := []
 	for level in range(old_level + 1, new_level + 1):
 		levels.append(level)
-	var medal_size := Vector2(118, 118)
+	var medal_size := Vector2(59, 59)
 	var overlap_step := 58.0
 	var stack_width := medal_size.x + maxf(0.0, float(levels.size() - 1) * overlap_step)
 	var holder := Control.new()
@@ -642,22 +642,22 @@ func _mastery_medals_earned_subtitle(old_level: int, new_level: int) -> String:
 func _offline_summary_section_label(text: String) -> Label:
 	var label = host._label(text, 68, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	label.add_theme_color_override("font_outline_color", Color(1, 1, 1, 0.45))
-	label.add_theme_constant_override("outline_size", 10)
+	label.add_theme_constant_override("outline_size", 5)
 	return label
 
 func _offline_summary_row(icon_path: String, title: String, value: String, subtitle: String, accent: Color) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 214)
+	card.custom_minimum_size = Vector2(0, 107)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_info_style())
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 30)
+	row.add_theme_constant_override("separation", 15)
 	card.add_child(row)
-	row.add_child(host.visual_texture_cache._image(icon_path, Vector2(136, 136)))
+	row.add_child(host.visual_texture_cache._image(icon_path, Vector2(68, 68)))
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 4)
+	copy.add_theme_constant_override("separation", 2)
 	row.add_child(copy)
 	var title_label = host._label(title, 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -666,24 +666,24 @@ func _offline_summary_row(icon_path: String, title: String, value: String, subti
 	subtitle_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(subtitle_label)
 	var value_label = host._label(value, 68, accent, HORIZONTAL_ALIGNMENT_RIGHT)
-	value_label.custom_minimum_size = Vector2(430, 0)
+	value_label.custom_minimum_size = Vector2(215, 0)
 	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	row.add_child(value_label)
 	return card
 
 func _offline_summary_mastery_row(icon_path: String, old_level: int, new_level: int) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 214)
+	card.custom_minimum_size = Vector2(0, 107)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_info_style())
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 30)
+	row.add_theme_constant_override("separation", 15)
 	card.add_child(row)
-	row.add_child(host.visual_texture_cache._image(icon_path, Vector2(136, 136)))
+	row.add_child(host.visual_texture_cache._image(icon_path, Vector2(68, 68)))
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 4)
+	copy.add_theme_constant_override("separation", 2)
 	row.add_child(copy)
 	var title_label = host._label("Activity Mastery", 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -698,7 +698,7 @@ func _offline_summary_unlock_card(unlocked: Dictionary, skill_id: String) -> Con
 	var accent = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 	return _offline_summary_row(str(unlocked.get("art", "")), str(unlocked.get("name", "Activity")), "Lv %s" % int(unlocked.get("level", 1)), "New activity unlocked.", accent)
 
-func _legacy_home_link_button(text: String, icon_texture: Texture2D, minimum_size := Vector2(1680, 210), icon_size := Vector2(100, 100), font_size := 104) -> Button:
+func _legacy_home_link_button(text: String, icon_texture: Texture2D, minimum_size := Vector2(840, 105), icon_size := Vector2(50, 50), font_size := 104) -> Button:
 	var button := Button.new()
 	button.text = ""
 	button.custom_minimum_size = minimum_size
@@ -710,111 +710,111 @@ func _legacy_home_link_button(text: String, icon_texture: Texture2D, minimum_siz
 	host.button_press_runtime.attach_button_depress_animation(button, 0.982)
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 38)
-	margin.add_theme_constant_override("margin_right", 38)
-	margin.add_theme_constant_override("margin_top", 20)
-	margin.add_theme_constant_override("margin_bottom", 20)
+	margin.add_theme_constant_override("margin_left", 19)
+	margin.add_theme_constant_override("margin_right", 19)
+	margin.add_theme_constant_override("margin_top", 10)
+	margin.add_theme_constant_override("margin_bottom", 10)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	button.add_child(margin)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 28)
+	row.add_theme_constant_override("separation", 14)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(row)
 	row.add_child(host.visual_texture_cache._image_from_texture(icon_texture, icon_size))
 	var label: Label = host._label(text, font_size, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	label.add_theme_constant_override("outline_size", 20)
+	label.add_theme_constant_override("outline_size", 10)
 	row.add_child(label)
 	return button
 
 func _build_achievements(parent: PanelContainer) -> void:
 	var margin = MarginContainer.new()
 	margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	margin.add_theme_constant_override("margin_left", 22)
-	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_top", 34)
-	margin.add_theme_constant_override("margin_bottom", 120)
+	margin.add_theme_constant_override("margin_left", 11)
+	margin.add_theme_constant_override("margin_right", 11)
+	margin.add_theme_constant_override("margin_top", 17)
+	margin.add_theme_constant_override("margin_bottom", 60)
 	parent.add_child(margin)
 
 	var stack = VBoxContainer.new()
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.add_theme_constant_override("separation", 30)
+	stack.add_theme_constant_override("separation", 15)
 	margin.add_child(stack)
 
 	var link_row = HBoxContainer.new()
-	link_row.custom_minimum_size = Vector2(1680, 0)
+	link_row.custom_minimum_size = Vector2(840, 0)
 	link_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	link_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	link_row.add_theme_constant_override("separation", 34)
+	link_row.add_theme_constant_override("separation", 17)
 	stack.add_child(link_row)
 
-	var link_button_size = Vector2(823, 260)
-	var achievements_button = _legacy_home_link_button("Achievements", host.visual_texture_cache._texture(host.PROGRESS_STAR_ICON_TEXTURE), link_button_size, Vector2(112, 112), 86)
+	var link_button_size = Vector2(411.5, 130)
+	var achievements_button = _legacy_home_link_button("Achievements", host.visual_texture_cache._texture(host.PROGRESS_STAR_ICON_TEXTURE), link_button_size, Vector2(56, 56), 86)
 	achievements_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	achievements_button.pressed.connect(_open_achievements_overlay)
 	link_row.add_child(achievements_button)
-	var leaderboard_button = _legacy_home_link_button("Leaderboard", host.visual_texture_cache._texture(LeaderboardPresentation.ICON), link_button_size, Vector2(112, 112), 86)
+	var leaderboard_button = _legacy_home_link_button("Leaderboard", host.visual_texture_cache._texture(LeaderboardPresentation.ICON), link_button_size, Vector2(56, 56), 86)
 	leaderboard_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	leaderboard_button.pressed.connect(host.leaderboard_presentation._show_leaderboard)
 	link_row.add_child(leaderboard_button)
 
 	achievement_best_card = MarginContainer.new()
 	achievement_best_card.visible = false
-	achievement_best_card.custom_minimum_size = Vector2(1680, 292)
+	achievement_best_card.custom_minimum_size = Vector2(840, 146)
 	achievement_best_card.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stack.add_child(achievement_best_card)
 	var best_margin = MarginContainer.new()
-	best_margin.add_theme_constant_override("margin_left", 34)
-	best_margin.add_theme_constant_override("margin_right", 34)
-	best_margin.add_theme_constant_override("margin_top", 22)
-	best_margin.add_theme_constant_override("margin_bottom", 22)
+	best_margin.add_theme_constant_override("margin_left", 17)
+	best_margin.add_theme_constant_override("margin_right", 17)
+	best_margin.add_theme_constant_override("margin_top", 11)
+	best_margin.add_theme_constant_override("margin_bottom", 11)
 	achievement_best_card.add_child(best_margin)
 	var best_copy = VBoxContainer.new()
 	best_copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	best_copy.add_theme_constant_override("separation", 10)
+	best_copy.add_theme_constant_override("separation", 5)
 	best_margin.add_child(best_copy)
 	best_copy.add_child(host._label("Most impressive activity:", 60, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var best_row = HBoxContainer.new()
 	best_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	best_row.add_theme_constant_override("separation", 18)
+	best_row.add_theme_constant_override("separation", 9)
 	best_copy.add_child(best_row)
 	achievement_best_art_frame = PanelContainer.new()
-	achievement_best_art_frame.custom_minimum_size = Vector2(190, 190)
+	achievement_best_art_frame.custom_minimum_size = Vector2(95, 95)
 	achievement_best_art_frame.add_theme_stylebox_override("panel", host.ActivityCardStyles.featured_art(Callable(host, "_surface_style"), host.COLOR_LINE))
 	best_row.add_child(achievement_best_art_frame)
-	achievement_best_art = host.visual_texture_cache._image("", Vector2(160, 160))
+	achievement_best_art = host.visual_texture_cache._image("", Vector2(80, 80))
 	achievement_best_art_frame.add_child(achievement_best_art)
 	achievement_best_name_label = host._label("Earn a medal to feature an activity", 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	achievement_best_name_label.custom_minimum_size = Vector2(720, 0)
+	achievement_best_name_label.custom_minimum_size = Vector2(360, 0)
 	achievement_best_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	best_row.add_child(achievement_best_name_label)
-	achievement_best_medal = host.visual_texture_cache._image_from_texture(null, Vector2(152, 152))
+	achievement_best_medal = host.visual_texture_cache._image_from_texture(null, Vector2(76, 76))
 	best_row.add_child(achievement_best_medal)
 
 	var total_margin = MarginContainer.new()
 	total_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	total_margin.add_theme_constant_override("margin_top", 42)
+	total_margin.add_theme_constant_override("margin_top", 21)
 	stack.add_child(total_margin)
 	var total_section = HBoxContainer.new()
 	total_section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	total_section.alignment = BoxContainer.ALIGNMENT_CENTER
-	total_section.add_theme_constant_override("separation", 40)
+	total_section.add_theme_constant_override("separation", 20)
 	total_margin.add_child(total_section)
-	total_section.add_child(host.visual_texture_cache._image(host.TOTAL_LEVEL_BARGRAPH_TEXTURE, Vector2(210, 210)))
+	total_section.add_child(host.visual_texture_cache._image(host.TOTAL_LEVEL_BARGRAPH_TEXTURE, Vector2(105, 105)))
 	achievement_total_level_label = host._label("", 122, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	total_section.add_child(achievement_total_level_label)
 
 	var total_separator_margin = MarginContainer.new()
 	total_separator_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	total_separator_margin.add_theme_constant_override("margin_left", 210)
-	total_separator_margin.add_theme_constant_override("margin_right", 210)
-	total_separator_margin.add_theme_constant_override("margin_top", 12)
-	total_separator_margin.add_theme_constant_override("margin_bottom", 28)
+	total_separator_margin.add_theme_constant_override("margin_left", 105)
+	total_separator_margin.add_theme_constant_override("margin_right", 105)
+	total_separator_margin.add_theme_constant_override("margin_top", 6)
+	total_separator_margin.add_theme_constant_override("margin_bottom", 14)
 	stack.add_child(total_separator_margin)
 	var total_separator = ColorRect.new()
 	total_separator.color = Color.BLACK
-	total_separator.custom_minimum_size = Vector2(0, 18)
+	total_separator.custom_minimum_size = Vector2(0, 9)
 	total_separator.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	total_separator_margin.add_child(total_separator)
 
@@ -833,25 +833,25 @@ func _build_home_achievement_skill_sections(stack: VBoxContainer, token: int) ->
 		await host.get_tree().process_frame
 
 	var bottom_spacer = Control.new()
-	bottom_spacer.custom_minimum_size = Vector2(0, 70)
+	bottom_spacer.custom_minimum_size = Vector2(0, 35)
 	stack.add_child(bottom_spacer)
 	_queue_home_achievement_refresh()
 
 func _achievement_skill_section(skill_id: String) -> Control:
 	var card = PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 560)
+	card.custom_minimum_size = Vector2(0, 280)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", AchievementPresentation.skill_section())
 
 	var skill_stack = VBoxContainer.new()
 	skill_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	skill_stack.add_theme_constant_override("separation", 22)
+	skill_stack.add_theme_constant_override("separation", 11)
 	card.add_child(skill_stack)
 
 	var header = HBoxContainer.new()
 	header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
-	header.add_theme_constant_override("separation", 34)
+	header.add_theme_constant_override("separation", 17)
 	skill_stack.add_child(header)
 	var icon = SkillIconBadge.achievement_icon_badge(host, skill_id, host.ACHIEVEMENT_SECTION_SKILL_ICON_SIZE)
 	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -965,7 +965,7 @@ func _achievement_medal_slot_strip(skill_id: String, actions: Array) -> Dictiona
 	var medal_entries := _earned_achievement_medal_entries(skill_id, actions)
 	strip.slot_count = medal_entries.size()
 	strip.slot_size = ACHIEVEMENT_MEDAL_SLOT_SIZE * 3.55
-	strip.custom_minimum_size = Vector2(1680, 280)
+	strip.custom_minimum_size = Vector2(840, 140)
 	strip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	strip.mouse_filter = Control.MOUSE_FILTER_PASS
 	var medal_shadows := []
@@ -1181,38 +1181,38 @@ func _achievement_medal_popover_parent(strip: Control) -> Control:
 
 func _achievement_medal_popover(action_name: String, art_path: String, medal_level: int, skill_id: String) -> PanelContainer:
 	var popover := PanelContainer.new()
-	popover.custom_minimum_size = Vector2(560, 430)
+	popover.custom_minimum_size = Vector2(280, 215)
 	popover.size = popover.custom_minimum_size
 	popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	popover.z_index = 4095
 	popover.add_to_group("achievement_medal_popovers")
 	popover.add_theme_stylebox_override("panel", PassiveModuleStyles.popup(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style")))
 	var margin := MarginContainer.new()
-	margin.custom_minimum_size = Vector2(496, 370)
-	margin.add_theme_constant_override("margin_left", 32)
-	margin.add_theme_constant_override("margin_right", 32)
-	margin.add_theme_constant_override("margin_top", 28)
-	margin.add_theme_constant_override("margin_bottom", 30)
+	margin.custom_minimum_size = Vector2(248, 185)
+	margin.add_theme_constant_override("margin_left", 16)
+	margin.add_theme_constant_override("margin_right", 16)
+	margin.add_theme_constant_override("margin_top", 14)
+	margin.add_theme_constant_override("margin_bottom", 15)
 	popover.add_child(margin)
 	var stack := VBoxContainer.new()
-	stack.custom_minimum_size = Vector2(496, 370)
+	stack.custom_minimum_size = Vector2(248, 185)
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 16)
+	stack.add_theme_constant_override("separation", 8)
 	margin.add_child(stack)
-	var art: TextureRect = host.visual_texture_cache._image_from_texture(host.visual_texture_cache._texture_or_visual_fallback(art_path), Vector2(210, 210))
+	var art: TextureRect = host.visual_texture_cache._image_from_texture(host.visual_texture_cache._texture_or_visual_fallback(art_path), Vector2(105, 105))
 	art.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stack.add_child(art)
 	var title: Label = host._label(action_name if not action_name.is_empty() else SkillState.skill_name(host.skill_defs, skill_id), 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	title.custom_minimum_size = Vector2(496, 122)
+	title.custom_minimum_size = Vector2(248, 61)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(title)
 	var medal_name: String = MasteryState.medal_name(medal_level) if medal_level > 0 else "Medal"
 	var subtitle: Label = host._label("%s medal" % medal_name, 48, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), HORIZONTAL_ALIGNMENT_CENTER)
-	subtitle.custom_minimum_size = Vector2(496, 68)
+	subtitle.custom_minimum_size = Vector2(248, 34)
 	subtitle.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	subtitle.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	subtitle.add_theme_constant_override("outline_size", 12)
+	subtitle.add_theme_constant_override("outline_size", 6)
 	stack.add_child(subtitle)
 	return popover
 
@@ -1301,20 +1301,20 @@ func _build_achievements_overlay() -> void:
 	frame.add_child(panel)
 	achievements_panel = panel
 	var outer = MarginContainer.new()
-	outer.add_theme_constant_override("margin_left", 54)
-	outer.add_theme_constant_override("margin_right", 54)
-	outer.add_theme_constant_override("margin_top", 46)
-	outer.add_theme_constant_override("margin_bottom", 46)
+	outer.add_theme_constant_override("margin_left", 27)
+	outer.add_theme_constant_override("margin_right", 27)
+	outer.add_theme_constant_override("margin_top", 23)
+	outer.add_theme_constant_override("margin_bottom", 23)
 	panel.add_child(outer)
 	var stack = VBoxContainer.new()
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	stack.add_theme_constant_override("separation", 28)
+	stack.add_theme_constant_override("separation", 14)
 	outer.add_child(stack)
 
 	var tabs = HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	tabs.add_theme_constant_override("separation", 24)
+	tabs.add_theme_constant_override("separation", 12)
 	stack.add_child(tabs)
 	achievements_tab_buttons.clear()
 	var achievements_tab = host._menu_button("Achievements")
@@ -1329,7 +1329,7 @@ func _build_achievements_overlay() -> void:
 	achievements_hide_completed = CheckBox.new()
 	achievements_hide_completed.text = "Show completed achievements"
 	achievements_hide_completed.button_pressed = false
-	achievements_hide_completed.add_theme_font_size_override("font_size", 60)
+	achievements_hide_completed.add_theme_font_size_override("font_size", 48)
 	achievements_hide_completed.add_theme_color_override("font_color", host.COLOR_INK)
 	achievements_hide_completed.add_theme_color_override("font_hover_color", host.COLOR_INK)
 	achievements_hide_completed.add_theme_color_override("font_hover_pressed_color", host.COLOR_INK)
@@ -1354,7 +1354,7 @@ func _build_achievements_overlay() -> void:
 	achievements_scroll = scroll
 	achievements_list_stack = VBoxContainer.new()
 	achievements_list_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	achievements_list_stack.add_theme_constant_override("separation", 28)
+	achievements_list_stack.add_theme_constant_override("separation", 14)
 	scroll.add_child(achievements_list_stack)
 
 func _render_achievements_page() -> void:
@@ -1371,16 +1371,16 @@ func _render_achievements_page() -> void:
 	stack.custom_minimum_size.x = host._skill_content_width()
 	stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 36)
+	stack.add_theme_constant_override("separation", 18)
 	host.content_scroll.add_child(stack)
 	var top_spacer = Control.new()
-	top_spacer.custom_minimum_size = Vector2(0, 92)
+	top_spacer.custom_minimum_size = Vector2(0, 46)
 	stack.add_child(top_spacer)
 
 	var tabs = HBoxContainer.new()
 	tabs.alignment = BoxContainer.ALIGNMENT_CENTER
 	tabs.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	tabs.add_theme_constant_override("separation", 24)
+	tabs.add_theme_constant_override("separation", 12)
 	stack.add_child(tabs)
 	achievements_tab_buttons.clear()
 	var achievements_tab = host._menu_button("Achievements")
@@ -1396,7 +1396,7 @@ func _render_achievements_page() -> void:
 	achievements_hide_completed.text = "Show completed achievements"
 	achievements_hide_completed.button_pressed = false
 	achievements_hide_completed.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	achievements_hide_completed.add_theme_font_size_override("font_size", 66)
+	achievements_hide_completed.add_theme_font_size_override("font_size", 48)
 	achievements_hide_completed.add_theme_color_override("font_color", host.COLOR_INK)
 	achievements_hide_completed.add_theme_color_override("font_hover_color", host.COLOR_INK)
 	achievements_hide_completed.add_theme_color_override("font_hover_pressed_color", host.COLOR_INK)
@@ -1415,10 +1415,10 @@ func _render_achievements_page() -> void:
 	achievements_list_stack.custom_minimum_size.x = host._skill_content_width()
 	achievements_list_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	achievements_list_stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	achievements_list_stack.add_theme_constant_override("separation", 28)
+	achievements_list_stack.add_theme_constant_override("separation", 14)
 	stack.add_child(achievements_list_stack)
 	var bottom_spacer = Control.new()
-	bottom_spacer.custom_minimum_size = Vector2(0, 220)
+	bottom_spacer.custom_minimum_size = Vector2(0, 110)
 	stack.add_child(bottom_spacer)
 	call_deferred("_rebuild_achievements_overlay")
 
@@ -1565,10 +1565,10 @@ func _rebuild_global_buffs_tab_deferred(buffs: Array, token: int) -> void:
 func _global_buff_list_row(text: String) -> Control:
 	var row := MarginContainer.new()
 	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_theme_constant_override("margin_left", 40)
-	row.add_theme_constant_override("margin_right", 40)
-	row.add_theme_constant_override("margin_top", 8)
-	row.add_theme_constant_override("margin_bottom", 8)
+	row.add_theme_constant_override("margin_left", 20)
+	row.add_theme_constant_override("margin_right", 20)
+	row.add_theme_constant_override("margin_top", 4)
+	row.add_theme_constant_override("margin_bottom", 4)
 	var label: Label = host._label(text, 82, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1577,17 +1577,17 @@ func _global_buff_list_row(text: String) -> Control:
 
 func _achievement_art(achievement: Dictionary) -> Control:
 	var art = Control.new()
-	art.custom_minimum_size = Vector2(188, 152)
+	art.custom_minimum_size = Vector2(94, 76)
 	art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	match str(achievement.get("kind", "")):
 		"skill_level":
 			var skill_id = str(achievement.get("skill_id", ""))
-			_add_achievement_art_image(art, host.visual_texture_cache._texture(SkillIconBadge.icon_path(skill_id)), Vector2(6, -7), Vector2(166, 166), 1)
+			_add_achievement_art_image(art, host.visual_texture_cache._texture(SkillIconBadge.icon_path(skill_id)), Vector2(3, -3.5), Vector2(83, 83), 1)
 		"action_medal":
-			_add_achievement_art_image(art, host.visual_texture_cache._texture(str(achievement.get("art", ""))), Vector2(0, 6), Vector2(132, 132), 1)
-			_add_achievement_art_image(art, AchievementPresentation.mastery_medal_visual_texture(int(achievement.get("medal_level", 1)), host.MASTERY_MAX_LEVEL, Callable(host.visual_texture_cache, "_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")), Vector2(96, 58), Vector2(86, 86), 2)
+			_add_achievement_art_image(art, host.visual_texture_cache._texture(str(achievement.get("art", ""))), Vector2(0, 3), Vector2(66, 66), 1)
+			_add_achievement_art_image(art, AchievementPresentation.mastery_medal_visual_texture(int(achievement.get("medal_level", 1)), host.MASTERY_MAX_LEVEL, Callable(host.visual_texture_cache, "_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")), Vector2(48, 29), Vector2(43, 43), 2)
 		"total_level":
-			_add_achievement_art_image(art, host.visual_texture_cache._texture(AchievementPresentation.TOTAL_LEVEL_ART), Vector2(6, -7), Vector2(166, 166), 1)
+			_add_achievement_art_image(art, host.visual_texture_cache._texture(AchievementPresentation.TOTAL_LEVEL_ART), Vector2(3, -3.5), Vector2(83, 83), 1)
 		"tier_count":
 			var tier = int(achievement.get("tier", achievement.get("medal_level", 1)))
 			var levels = []
@@ -1595,13 +1595,13 @@ func _achievement_art(achievement: Dictionary) -> Control:
 				levels.append(tier)
 			_populate_achievement_medal_cluster(art, levels)
 		"cumulative_medals":
-			art.custom_minimum_size = Vector2(220, 172)
-			_add_achievement_art_image(art, host.visual_texture_cache._texture(AchievementPresentation.CUMULATIVE_MEDALS_ART), Vector2(0, -4), Vector2(172, 172), 1)
+			art.custom_minimum_size = Vector2(110, 86)
+			_add_achievement_art_image(art, host.visual_texture_cache._texture(AchievementPresentation.CUMULATIVE_MEDALS_ART), Vector2(0, -2), Vector2(86, 86), 1)
 		"activity_crit":
-			art.custom_minimum_size = Vector2(236, 180)
-			_add_achievement_art_image(art, host.visual_texture_cache._texture(AchievementPresentation.CRIT_ART), Vector2(0, 2), Vector2(236, 176), 1)
+			art.custom_minimum_size = Vector2(118, 90)
+			_add_achievement_art_image(art, host.visual_texture_cache._texture(AchievementPresentation.CRIT_ART), Vector2(0, 2), Vector2(118, 88), 1)
 		_:
-			_add_achievement_art_image(art, host.visual_texture_cache._texture(AchievementPresentation.CREDIT_ART), Vector2(12, 0), Vector2(154, 144), 1)
+			_add_achievement_art_image(art, host.visual_texture_cache._texture(AchievementPresentation.CREDIT_ART), Vector2(6, 0), Vector2(77, 72), 1)
 	return art
 
 func _add_achievement_art_image(parent: Control, texture: Texture2D, image_position: Vector2, image_size: Vector2, image_z_index: int) -> void:
@@ -1624,7 +1624,7 @@ func _populate_achievement_medal_cluster(parent: Control, levels: Array) -> void
 	elif count >= 3:
 		medal_size = 76.0
 	for i in range(count):
-		var center: Vector2 = positions[i] if i < positions.size() else Vector2(89, 72)
+		var center: Vector2 = positions[i] if i < positions.size() else Vector2(44.5, 36)
 		var icon_size = Vector2(medal_size, medal_size)
 		_add_achievement_art_image(parent, AchievementPresentation.mastery_medal_visual_texture(int(levels[i]), host.MASTERY_MAX_LEVEL, Callable(host.visual_texture_cache, "_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")), center - icon_size * 0.5, icon_size, i + 1)
 
@@ -1637,16 +1637,16 @@ func _achievement_log_card(achievement: Dictionary, show_progress = true) -> Con
 	card.add_theme_stylebox_override("panel", AchievementPresentation.card(Color("#fffdf8") if completed else Color("#fff6e1"), 34, 34, Callable(host, "_surface_style")))
 	card.modulate = Color.WHITE if completed else Color(1, 1, 1, 0.78)
 	var stack = VBoxContainer.new()
-	stack.add_theme_constant_override("separation", 22)
+	stack.add_theme_constant_override("separation", 11)
 	card.add_child(stack)
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 30)
+	row.add_theme_constant_override("separation", 15)
 	stack.add_child(row)
 	row.add_child(_achievement_art(achievement))
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 8)
+	copy.add_theme_constant_override("separation", 4)
 	row.add_child(copy)
 	var title_label = host._label(str(achievement.get("title", "")), 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

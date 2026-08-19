@@ -3,20 +3,22 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://bdc1ciyuxs0sv"
-path="res://.godot/imported/woodcutting-firepit.png-4930b1f10c3b9a8207909f054ba7679f.ctex"
+path.bptc="res://.godot/imported/woodcutting-firepit.png-4930b1f10c3b9a8207909f054ba7679f.bptc.ctex"
+path.astc="res://.godot/imported/woodcutting-firepit.png-4930b1f10c3b9a8207909f054ba7679f.astc.ctex"
 metadata={
-"vram_texture": false
+"imported_formats": ["s3tc_bptc", "etc2_astc"],
+"vram_texture": true
 }
 
 [deps]
 
 source_file="res://assets/content/woodcutting/modules/woodcutting-firepit.png"
-dest_files=["res://.godot/imported/woodcutting-firepit.png-4930b1f10c3b9a8207909f054ba7679f.ctex"]
+dest_files=["res://.godot/imported/woodcutting-firepit.png-4930b1f10c3b9a8207909f054ba7679f.bptc.ctex", "res://.godot/imported/woodcutting-firepit.png-4930b1f10c3b9a8207909f054ba7679f.astc.ctex"]
 
 [params]
 
-compress/mode=0
-compress/high_quality=false
+compress/mode=2
+compress/high_quality=true
 compress/lossy_quality=0.7
 compress/uastc_level=0
 compress/rdo_quality_loss=0.0

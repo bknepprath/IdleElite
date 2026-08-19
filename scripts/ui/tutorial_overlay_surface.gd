@@ -3,30 +3,30 @@ extends RefCounted
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const PassiveModulesRuntime = preload("res://scripts/gameplay/passive_modules_runtime.gd")
 const TUTORIAL_ARROW_TEXTURE = preload("res://assets/content/ui/tutorial-arrow-curved.png")
-const TUTORIAL_ARROW_SIZE := Vector2(260, 420)
-const TUTORIAL_ARROW_SAFE_MARGIN := 24.0
-const TUTORIAL_COPY_FONT_SIZE := 104
+const TUTORIAL_ARROW_SIZE := Vector2(130, 210)
+const TUTORIAL_ARROW_SAFE_MARGIN := 12.0
+const TUTORIAL_COPY_FONT_SIZE := 52
 const ACTIVITY_START_HIGHLIGHT_DELAY_SECONDS := 3.0
 const ACTIVITY_START_HIGHLIGHT_FADE_IN_SECONDS := 3.0
 const ACTIVITY_START_HIGHLIGHT_FADE_OUT_SECONDS := 0.42
-const ACTIVITY_START_HIGHLIGHT_GAP := 26.0
-const ACTIVITY_START_HIGHLIGHT_RING_THICKNESS := 18.0
+const ACTIVITY_START_HIGHLIGHT_GAP := 13.0
+const ACTIVITY_START_HIGHLIGHT_RING_THICKNESS := 9.0
 const ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD := 22.0
 const ACTIVITY_START_HIGHLIGHT_BLUR_LAYERS := 12
 const ACTIVITY_START_HIGHLIGHT_BORDER_COLOR := Color("#ffd84a")
-const ONBOARDING_MASTERY_OVERLAY_TIP_GAP := 47.0
-const ONBOARDING_MASTERY_TIP_ABOVE_CARD_GAP := 112.0
+const ONBOARDING_MASTERY_OVERLAY_TIP_GAP := 23.5
+const ONBOARDING_MASTERY_TIP_ABOVE_CARD_GAP := 56.0
 const ONBOARDING_MEDAL_TIP_LINGER_SECONDS := 3.0
 const ONBOARDING_LEVEL_UP_OVERLAY_TIP_GAP := 10.0
 
 class _StartHighlightRing:
 	extends Control
 
-	var corner_radius := 66.0
-	var outer_pad := 34.0
-	var gap := 26.0
-	var ring_thickness := 18.0
-	var blur_spread := 22.0
+	var corner_radius := 33.0
+	var outer_pad := 17.0
+	var gap := 13.0
+	var ring_thickness := 9.0
+	var blur_spread := 11.0
 	var blur_layers := 12
 
 	func _notification(what: int) -> void:
@@ -131,7 +131,7 @@ func build() -> void:
 
 	tutorial_target_label = host._label("", host.MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	tutorial_target_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
-	tutorial_target_label.add_theme_constant_override("outline_size", 14)
+	tutorial_target_label.add_theme_constant_override("outline_size", 7)
 	tutorial_target_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	tutorial_target_label.visible = false
 	host.tutorial_target_label = tutorial_target_label
@@ -162,10 +162,10 @@ func build() -> void:
 	panel.anchor_right = 0.5
 	panel.anchor_top = 0.5
 	panel.anchor_bottom = 0.5
-	panel.offset_left = -900
-	panel.offset_right = 900
-	panel.offset_top = -330
-	panel.offset_bottom = -120
+	panel.offset_left = -450
+	panel.offset_right = 450
+	panel.offset_top = -165
+	panel.offset_bottom = -60
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, 52, 46, true))
 	panel.z_index = 20
@@ -174,12 +174,12 @@ func build() -> void:
 
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
-	stack.add_theme_constant_override("separation", 20)
+	stack.add_theme_constant_override("separation", 10)
 	panel.add_child(stack)
 
 	var header := HBoxContainer.new()
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
-	header.add_theme_constant_override("separation", 24)
+	header.add_theme_constant_override("separation", 12)
 	header.visible = false
 	stack.add_child(header)
 
@@ -251,7 +251,7 @@ func _tutorial_target_press_advances(event_position: Vector2) -> bool:
 	var target := _tutorial_target_control()
 	if target == null or not is_instance_valid(target) or not target.is_visible_in_tree():
 		return false
-	return target.get_global_rect().grow(36.0).has_point(event_position)
+	return target.get_global_rect().grow(18.0).has_point(event_position)
 
 
 func _update_tutorial_overlay() -> void:
@@ -370,7 +370,7 @@ func _sync_tutorial_instruction_label(target: Control) -> void:
 	tutorial_instruction_label.add_theme_color_override("font_color", host.COLOR_INK)
 	tutorial_instruction_label.add_theme_constant_override("outline_size", 0)
 	tutorial_instruction_label.add_theme_font_size_override("font_size", TUTORIAL_COPY_FONT_SIZE)
-	tutorial_instruction_label.size = Vector2(2000, 150)
+	tutorial_instruction_label.size = Vector2(1000, 75)
 	var target_rect := _blocking_tip_target_rect(target)
 	var viewport_size: Vector2 = host.get_viewport().get_visible_rect().size
 	var label_y := 92.0
@@ -392,7 +392,7 @@ func _blocking_tip_target_rect(target: Control) -> Rect2:
 	var rect := target.get_global_rect()
 	var start_x := rect.position.x + rect.size.x * clampf(window.x, 0.0, 1.0)
 	var end_x := rect.position.x + rect.size.x * clampf(window.y, 0.0, 1.0)
-	return Rect2(Vector2(start_x, rect.position.y - 18.0), Vector2(maxf(1.0, end_x - start_x), rect.size.y + 36.0))
+	return Rect2(Vector2(start_x, rect.position.y - 9.0), Vector2(maxf(1.0, end_x - start_x), rect.size.y + 18.0))
 
 
 func _blocking_tip_padlock(target: Control) -> Control:
@@ -561,7 +561,7 @@ func _clear_silver_opportunity_tip_overlay() -> void:
 	_hide_tutorial_target_indicator()
 	if tutorial_arrow != null and is_instance_valid(tutorial_arrow):
 		tutorial_arrow.modulate.a = 0.0
-		tutorial_arrow.position = Vector2(-10000, -10000)
+		tutorial_arrow.position = Vector2(-5000, -5000)
 		tutorial_arrow.visible = false
 	if tutorial_instruction_label != null and is_instance_valid(tutorial_instruction_label):
 		tutorial_instruction_label.visible = false
@@ -1448,7 +1448,7 @@ func _attach_activity_start_highlight_border(card: Dictionary) -> void:
 	highlight.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	highlight.z_index = 280
 	highlight.z_as_relative = false
-	highlight.corner_radius = 66.0
+	highlight.corner_radius = 33.0
 	highlight.gap = ACTIVITY_START_HIGHLIGHT_GAP
 	highlight.ring_thickness = ACTIVITY_START_HIGHLIGHT_RING_THICKNESS
 	highlight.blur_spread = ACTIVITY_START_HIGHLIGHT_BLUR_SPREAD
@@ -1585,7 +1585,7 @@ func _stamina_gauge_tip_label_position() -> Vector2:
 		var local_x := circle_rect.position.x - body_rect.position.x - label_width - gap
 		var local_y := circle_rect.position.y - body_rect.position.y - 52.0
 		return Vector2(local_x, local_y)
-	return Vector2(620, 520)
+	return Vector2(310, 260)
 
 
 func _add_stamina_cost_tip(parent: Control, fade_in := false) -> void:

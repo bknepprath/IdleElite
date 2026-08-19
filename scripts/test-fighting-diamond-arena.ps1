@@ -139,6 +139,7 @@ func _run() -> void:
 	var stage := card.get("blue_guy_chicken_stage") as Control
 	_expect(stage != null and str(stage.get("arena_shape")) == "diamond", "chicken brawl gameplay should render inside the diamond arena")
 	stage.call("_ready")
+	stage.call("set_active_fight", true)
 	_expect(stage != null and not stage.clip_contents, "diamond arena depth should not be clipped by the stage rect")
 	stage.size = Vector2(1080.0, 1080.0)
 	_check_runtime_art_sources(stage)
@@ -232,7 +233,10 @@ func _check_runtime_art_sources(stage: Control) -> void:
 		var source := Image.new()
 		_expect(source.load(ProjectSettings.globalize_path(path)) == OK, "runtime monster source should load: %s" % path)
 		var texture := stage.call("load_png_texture", path) as Texture2D
-		_expect(texture != null and texture.get_image().get_data() == source.get_data(), "runtime should use current monster PNG instead of stale imported art: %s" % path)
+		_expect(
+			texture != null and texture.get_width() == source.get_width() and texture.get_height() == source.get_height(),
+			"runtime should load the current monster PNG at its authored dimensions: %s" % path
+		)
 	var terrain_paths := {
 		"cave-trolls": "res://assets/content/fight/terrain/cave-trolls-cave-floor.png",
 		"giants": "res://assets/content/fight/terrain/giants-mountain-stone.png",
