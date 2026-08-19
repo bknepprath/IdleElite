@@ -24,6 +24,15 @@ const TOTAL_LEVEL_ART := "res://assets/content/achievements/achievement-total-le
 const CRIT_ART := "res://assets/content/achievements/achievement-crit.png"
 const CREDIT_ART := "res://assets/content/achievements/achievement-credit.png"
 const CUMULATIVE_MEDALS_ART := "res://assets/content/achievements/achievement-cumulative-medals.png"
+const ELITE_MEDAL_FIRST_LEVEL := 11
+const ELITE_MEDAL_LAST_PLAIN_LEVEL := 18
+const ELITE_MEDAL_DISPLAY_SCALE := 1.22
+const WINGED_MEDAL_DISPLAY_SCALES := {
+	9: 1.79,
+	10: 1.57,
+	19: 1.77,
+	20: 1.77,
+}
 
 static var mastery_medal_textures := {}
 static var mastery_medal_silhouette_materials := {}
@@ -150,12 +159,20 @@ static func _cropped_texture(texture: Texture2D) -> Texture2D:
 	var rect := image.get_used_rect()
 	if rect.size.x <= 0 or rect.size.y <= 0:
 		return texture
-	return ImageTexture.create_from_image(image.get_region(rect))
+	var cropped_image := image.get_region(rect)
+	cropped_image.generate_mipmaps()
+	return ImageTexture.create_from_image(cropped_image)
 
 
 static func mastery_medal_visual_texture(level: int, max_level: int, texture_loader: Callable, visual_fallback: Callable) -> Texture2D:
 	var texture := mastery_medal_texture(level, max_level, texture_loader, visual_fallback)
 	return texture if texture != null else visual_fallback.call() as Texture2D
+
+
+static func mastery_medal_display_scale(level: int) -> float:
+	if WINGED_MEDAL_DISPLAY_SCALES.has(level):
+		return float(WINGED_MEDAL_DISPLAY_SCALES[level])
+	return ELITE_MEDAL_DISPLAY_SCALE if level >= ELITE_MEDAL_FIRST_LEVEL and level <= ELITE_MEDAL_LAST_PLAIN_LEVEL else 1.0
 
 
 static func mastery_medal_silhouette_material(color: Color) -> ShaderMaterial:

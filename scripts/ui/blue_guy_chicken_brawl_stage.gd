@@ -96,6 +96,7 @@ const CHICKEN_UPPERCUT_KNOCK_SECONDS := 0.46
 const CHICKEN_UPPERCUT_KNOCK_SPEED := 0.54
 const GUYS_PUNCH_FLEE_RADIUS := 0.33
 const GUYS_PUNCH_FLEE_SECONDS := 0.70
+const GUYS_ATTACK_RANGE := 0.22
 const GUYS_COUNTER_WINDUP := 0.18
 const GUYS_UNLOCK_LEVEL := 32
 const GUYS_LEVEL_ADVANTAGE_MULT := 1.018
@@ -332,15 +333,15 @@ var area_clear_xp_awarded := false
 
 
 func load_png_texture(path: String) -> Texture2D:
+	if ResourceLoader.exists(path):
+		var loaded = load(path)
+		if loaded is Texture2D:
+			return loaded as Texture2D
 	var source_path := ProjectSettings.globalize_path(path)
 	if FileAccess.file_exists(source_path):
 		var source_image := Image.new()
 		if source_image.load(source_path) == OK:
 			return ImageTexture.create_from_image(source_image)
-	if ResourceLoader.exists(path):
-		var loaded = load(path)
-		if loaded is Texture2D:
-			return loaded as Texture2D
 	var image := Image.new()
 	var result := image.load(source_path)
 	if result != OK:
@@ -376,23 +377,6 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	clip_contents = arena_shape != "diamond"
-	arena_floor = load_png_texture(_arena_floor_path_for_enemy(enemy_id))
-	idle_chicken = load_png_texture(CHICKEN_IDLE_PATH)
-	windup_chicken = load_png_texture(CHICKEN_WINDUP_PATH)
-	cover_clean_chicken = load_png_texture(CHICKEN_COVER_CLEAN_PATH)
-	hit_chicken = load_png_texture(CHICKEN_HIT_PATH)
-	dizzy_chicken = load_png_texture(CHICKEN_DIZZY_PATH)
-	defeated_chicken = load_png_texture(CHICKEN_DEFEATED_PATH)
-	gray_idle_chicken = load_png_texture(CHICKEN_GRAY_IDLE_PATH)
-	gray_windup_chicken = load_png_texture(CHICKEN_GRAY_WINDUP_PATH)
-	gray_hit_chicken = load_png_texture(CHICKEN_GRAY_HIT_PATH)
-	gray_dizzy_chicken = load_png_texture(CHICKEN_GRAY_DIZZY_PATH)
-	gray_defeated_chicken = load_png_texture(CHICKEN_GRAY_DEFEATED_PATH)
-	black_idle_chicken = load_png_texture(CHICKEN_BLACK_IDLE_PATH)
-	black_windup_chicken = load_png_texture(CHICKEN_BLACK_WINDUP_PATH)
-	black_hit_chicken = load_png_texture(CHICKEN_BLACK_HIT_PATH)
-	black_dizzy_chicken = load_png_texture(CHICKEN_BLACK_DIZZY_PATH)
-	black_defeated_chicken = load_png_texture(CHICKEN_BLACK_DEFEATED_PATH)
 	blue_guy_punch = load_png_texture(BLUE_GUY_PUNCH_PATH)
 	blue_guy_guard = load_png_texture(BLUE_GUY_GUARD_PATH)
 	blue_guy_ko = load_png_texture(BLUE_GUY_KO_PATH)
@@ -402,19 +386,6 @@ func _ready() -> void:
 			blue_guy_ko_frames.append(ko_frame)
 	blue_guy_uppercut = load_png_texture(BLUE_GUY_UPPERCUT_PATH)
 	cooked_chicken_drop = load_png_texture(COOKED_CHICKEN_DROP_PATH)
-	goblin_shield = load_png_texture(GOBLIN_SHIELD_PATH)
-	for boulder_path in GIANT_BOULDER_PATHS:
-		var boulder_texture := load_png_texture(boulder_path)
-		if boulder_texture != null:
-			giant_boulder_textures.append(boulder_texture)
-	for bat_path in VAMPIRE_BAT_PATHS:
-		var bat_texture := load_png_texture(bat_path)
-		if bat_texture != null:
-			vampire_bat_textures.append(bat_texture)
-	_load_monster_movement_frames()
-	_load_effect_frames()
-	_load_enemy_attack_frames()
-	_apply_enemy_art_path(enemy_idle_art_path)
 	_ensure_labels()
 	if active:
 		_seed_fight()
@@ -495,6 +466,10 @@ func setup_action(action: Dictionary) -> void:
 		enemy_sprite_scale = _enemy_sprite_scale_for_id(enemy_id)
 		enemy_art_faces_right = true if INCLUDED_SCREEN_RIGHT.has(enemy_id) else not (enemy_id in ["chicken-swarm", "dragons"])
 	arena_floor = load_png_texture(_arena_floor_path_for_enemy(enemy_id))
+	_load_chicken_state_textures()
+	_load_enemy_special_textures()
+	_load_monster_movement_frames()
+	_load_effect_frames()
 	_load_enemy_attack_frames()
 	enemy_idle_art_path = str(action.get("art", ""))
 	_apply_enemy_art_path(enemy_idle_art_path)
@@ -600,6 +575,61 @@ func _apply_enemy_art_path(idle_art_path: String) -> void:
 	black_defeated_chicken = null
 
 
+func _load_chicken_state_textures() -> void:
+	idle_chicken = null
+	windup_chicken = null
+	cover_clean_chicken = null
+	hit_chicken = null
+	dizzy_chicken = null
+	defeated_chicken = null
+	gray_idle_chicken = null
+	gray_windup_chicken = null
+	gray_hit_chicken = null
+	gray_dizzy_chicken = null
+	gray_defeated_chicken = null
+	black_idle_chicken = null
+	black_windup_chicken = null
+	black_hit_chicken = null
+	black_dizzy_chicken = null
+	black_defeated_chicken = null
+	if enemy_id != "chicken-swarm":
+		return
+	idle_chicken = load_png_texture(CHICKEN_IDLE_PATH)
+	windup_chicken = load_png_texture(CHICKEN_WINDUP_PATH)
+	cover_clean_chicken = load_png_texture(CHICKEN_COVER_CLEAN_PATH)
+	hit_chicken = load_png_texture(CHICKEN_HIT_PATH)
+	dizzy_chicken = load_png_texture(CHICKEN_DIZZY_PATH)
+	defeated_chicken = load_png_texture(CHICKEN_DEFEATED_PATH)
+	gray_idle_chicken = load_png_texture(CHICKEN_GRAY_IDLE_PATH)
+	gray_windup_chicken = load_png_texture(CHICKEN_GRAY_WINDUP_PATH)
+	gray_hit_chicken = load_png_texture(CHICKEN_GRAY_HIT_PATH)
+	gray_dizzy_chicken = load_png_texture(CHICKEN_GRAY_DIZZY_PATH)
+	gray_defeated_chicken = load_png_texture(CHICKEN_GRAY_DEFEATED_PATH)
+	black_idle_chicken = load_png_texture(CHICKEN_BLACK_IDLE_PATH)
+	black_windup_chicken = load_png_texture(CHICKEN_BLACK_WINDUP_PATH)
+	black_hit_chicken = load_png_texture(CHICKEN_BLACK_HIT_PATH)
+	black_dizzy_chicken = load_png_texture(CHICKEN_BLACK_DIZZY_PATH)
+	black_defeated_chicken = load_png_texture(CHICKEN_BLACK_DEFEATED_PATH)
+
+
+func _load_enemy_special_textures() -> void:
+	goblin_shield = null
+	giant_boulder_textures.clear()
+	vampire_bat_textures.clear()
+	if enemy_id == "goblins":
+		goblin_shield = load_png_texture(GOBLIN_SHIELD_PATH)
+	elif enemy_id == "giants":
+		for boulder_path in GIANT_BOULDER_PATHS:
+			var boulder_texture := load_png_texture(boulder_path)
+			if boulder_texture != null:
+				giant_boulder_textures.append(boulder_texture)
+	elif enemy_id == "vampires":
+		for bat_path in VAMPIRE_BAT_PATHS:
+			var bat_texture := load_png_texture(bat_path)
+			if bat_texture != null:
+				vampire_bat_textures.append(bat_texture)
+
+
 func _load_enemy_attack_frames() -> void:
 	var family := "chicken" if enemy_id == "chicken-swarm" else enemy_id
 	var prefixes := ["%s-attack" % family]
@@ -650,64 +680,80 @@ func _load_enemy_attack_frames() -> void:
 			giant_attack.append(load_png_texture("res://assets/content/fight/enemies/vampires/giant-bat/attack/frame-%02d.png" % frame))
 		enemy_attack_frames["vampire-giant-attack"] = giant_attack
 	chicken_attack_variant_frames.clear()
-	for variant in ["white", "gray", "black"]:
-		var prefix := "chicken-attack" if variant == "white" else "chicken-%s-attack" % variant
-		var frames: Array[Texture2D] = []
-		for frame in range(1, 5):
-			frames.append(load_png_texture("res://assets/content/fight/prototype/%s-%02d.png" % [prefix, frame]))
-		chicken_attack_variant_frames[variant] = frames
+	if enemy_id == "chicken-swarm":
+		for variant in ["white", "gray", "black"]:
+			var prefix := "chicken-attack" if variant == "white" else "chicken-%s-attack" % variant
+			var frames: Array[Texture2D] = []
+			for frame in range(1, 5):
+				frames.append(load_png_texture("res://assets/content/fight/prototype/%s-%02d.png" % [prefix, frame]))
+			chicken_attack_variant_frames[variant] = frames
 
 
 func _load_monster_movement_frames() -> void:
 	enemy_movement_frames.clear()
-	for family in ["goblins", "rouses", "werewolves", "cave-trolls", "giants", "vampires", "dragons"]:
+	if enemy_id == "chicken-swarm":
+		for variant in ["white", "gray", "black"]:
+			var chicken_frames: Array[Texture2D] = []
+			for frame in range(1, 5):
+				var name := "chicken-white-move-%02d.png" % frame if variant == "white" else "chicken-%s-move-%02d.png" % [variant, frame]
+				chicken_frames.append(load_png_texture("res://assets/content/fight/prototype/%s" % name))
+			enemy_movement_frames["chicken-swarm:%s" % variant] = chicken_frames
+		return
+	if enemy_id == "guys":
+		for motion in ["walk", "run"]:
+			var guy_frames: Array[Texture2D] = []
+			for frame in range(1, 5):
+				guy_frames.append(load_png_texture("res://assets/content/fight/enemies/guys/guys-%s-%02d.png" % [motion, frame]))
+			if motion == "run":
+				var walk_frames: Array = enemy_movement_frames.get("guys", []) as Array
+				guy_frames.insert(1, walk_frames[2])
+				guy_frames.insert(4, walk_frames[0])
+			enemy_movement_frames["guys" if motion == "walk" else "guys-run"] = guy_frames
+		return
+	if enemy_id in ["goblins", "rouses", "werewolves", "cave-trolls", "giants", "vampires", "dragons"]:
+		var family := enemy_id
 		var frames: Array[Texture2D] = []
 		var frame_count := 8 if family == "giants" else 4
 		var movement_prefix := "dragons-low-walk" if family == "dragons" else "%s-move" % family
 		for frame in range(1, frame_count + 1):
 			frames.append(load_png_texture("res://assets/content/fight/enemies/%s/%s-%02d.png" % [family, movement_prefix, frame]))
 		enemy_movement_frames[family] = frames
-	for motion in ["walk", "run"]:
-		var frames: Array[Texture2D] = []
-		for frame in range(1, 5):
-			frames.append(load_png_texture("res://assets/content/fight/enemies/guys/guys-%s-%02d.png" % [motion, frame]))
-		if motion == "run":
-			var walk_frames: Array = enemy_movement_frames.get("guys", []) as Array
-			frames.insert(1, walk_frames[2])
-			frames.insert(4, walk_frames[0])
-		enemy_movement_frames["guys" if motion == "walk" else "guys-run"] = frames
-	var werewolf_transform: Array[Texture2D] = []
-	for frame in range(1, 6):
-		werewolf_transform.append(load_png_texture("res://assets/content/fight/enemies/werewolves/werewolves-transform-%02d.png" % frame))
-	enemy_movement_frames["werewolves-transform"] = werewolf_transform
-	var giant_walk: Array[Texture2D] = []
-	for frame in range(8):
-		giant_walk.append(load_png_texture("res://assets/content/fight/enemies/vampires/giant-bat/walk/frame-%02d.png" % frame))
-	enemy_movement_frames["vampire-giant-walk"] = giant_walk
-	for animation in ["transform", "flight"]:
-		var giant_frames: Array[Texture2D] = []
-		var frame_count := 4 if animation == "transform" else 3
-		for frame in range(frame_count):
-			giant_frames.append(load_png_texture("res://assets/content/fight/enemies/vampires/giant-bat/%s/frame-%02d.png" % [animation, frame]))
-		enemy_movement_frames["vampire-giant-%s" % animation] = giant_frames
-	for variant in ["white", "gray", "black"]:
-		var frames: Array[Texture2D] = []
-		for frame in range(1, 5):
-			var name := "chicken-white-move-%02d.png" % frame if variant == "white" else "chicken-%s-move-%02d.png" % [variant, frame]
-			frames.append(load_png_texture("res://assets/content/fight/prototype/%s" % name))
-		enemy_movement_frames["chicken-swarm:%s" % variant] = frames
+	if enemy_id == "werewolves":
+		var werewolf_transform: Array[Texture2D] = []
+		for frame in range(1, 6):
+			werewolf_transform.append(load_png_texture("res://assets/content/fight/enemies/werewolves/werewolves-transform-%02d.png" % frame))
+		enemy_movement_frames["werewolves-transform"] = werewolf_transform
+	elif enemy_id == "vampires":
+		var giant_walk: Array[Texture2D] = []
+		for frame in range(8):
+			giant_walk.append(load_png_texture("res://assets/content/fight/enemies/vampires/giant-bat/walk/frame-%02d.png" % frame))
+		enemy_movement_frames["vampire-giant-walk"] = giant_walk
+		for animation in ["transform", "flight"]:
+			var giant_frames: Array[Texture2D] = []
+			var giant_frame_count := 4 if animation == "transform" else 3
+			for frame in range(giant_frame_count):
+				giant_frames.append(load_png_texture("res://assets/content/fight/enemies/vampires/giant-bat/%s/frame-%02d.png" % [animation, frame]))
+			enemy_movement_frames["vampire-giant-%s" % animation] = giant_frames
 
 
 func _load_effect_frames() -> void:
 	effect_frames.clear()
-	for effect in ["hit-impact-yellow", "dizzy-stars", "dragon-breath-flame", "cave-troll-slam", "wolf-claw-tear"]:
+	var effects := ["hit-impact-yellow", "dizzy-stars"]
+	if enemy_id == "dragons":
+		effects.append_array(["dragon-breath-flame", "cave-troll-slam"])
+	elif enemy_id == "cave-trolls":
+		effects.append("cave-troll-slam")
+	elif enemy_id == "werewolves":
+		effects.append("wolf-claw-tear")
+	for effect in effects:
 		var frames: Array[Texture2D] = []
 		for frame in range(1, 5):
 			frames.append(load_png_texture("%s%s-%02d.png" % [FIGHT_EFFECTS_PATH, effect, frame]))
 		effect_frames[effect] = frames
-	var fire_tuft := load_png_texture(FIGHT_EFFECTS_PATH + "dragon-breath-fire-tuft.png")
-	effect_frames["dragon-breath-fire-tuft"] = [fire_tuft, fire_tuft, fire_tuft, fire_tuft]
-	effect_frames["dragon-pounce-shockwave"] = effect_frames.get("cave-troll-slam", [])
+	if enemy_id == "dragons":
+		var fire_tuft := load_png_texture(FIGHT_EFFECTS_PATH + "dragon-breath-fire-tuft.png")
+		effect_frames["dragon-breath-fire-tuft"] = [fire_tuft, fire_tuft, fire_tuft, fire_tuft]
+		effect_frames["dragon-pounce-shockwave"] = effect_frames.get("cave-troll-slam", [])
 
 
 func _enemy_attack_texture(chicken: Dictionary) -> Texture2D:
@@ -2124,7 +2170,7 @@ func _step_enemy_strike(chicken: Dictionary, pos: Vector2, dir: Vector2, delta: 
 		"goblins":
 			chicken["pos"] = pos
 		"guys":
-			chicken["pos"] = pos + attack_dir * delta * 0.45
+			chicken["pos"] = pos
 		"rouses":
 			var roll_pos := pos + attack_dir * delta * 0.475
 			if roll_pos.x < 0.06 or roll_pos.x > 0.94 or roll_pos.y < 0.08 or roll_pos.y > 0.92:
@@ -2420,7 +2466,7 @@ func _enemy_attack_range(chicken: Dictionary = {}) -> float:
 	match enemy_id:
 		"goblins": return 0.17
 		"rouses", "werewolves": return 0.20
-		"guys": return 0.26
+		"guys": return GUYS_ATTACK_RANGE
 		"cave-trolls": return 0.22
 		"giants": return 0.28
 		"vampires": return 0.15 if str(chicken.get("vampire_attack_kind", "swipe")) == "bite" else 0.24
@@ -2432,7 +2478,7 @@ func _enemy_attack_range(chicken: Dictionary = {}) -> float:
 
 func _enemy_contact_range(chicken: Dictionary = {}) -> float:
 	if enemy_id == "guys":
-		return 0.22
+		return GUYS_ATTACK_RANGE
 	if enemy_id == "dragons" and str(chicken.get("dragon_attack_kind", "")) == "pounce":
 		return DRAGON_POUNCE_IMPACT_RANGE
 	return _enemy_attack_range(chicken) + (0.045 if enemy_id not in ["dragons", "cave-trolls"] else 0.07)
@@ -4129,6 +4175,8 @@ func _draw_chicken(chicken: Dictionary, s: float) -> void:
 		_draw_goblin_shield(chicken, center, s, scale, face_right, alpha)
 	var giant_uses_lift_frames := enemy_id == "giants" and str(chicken.get("giant_attack_kind", "toss")) in ["toss", "boulder"] and not attack_phase.is_empty()
 	var art_faces_right := false if giant_uses_lift_frames else enemy_art_faces_right
+	if enemy_id == "guys" and attack_texture != null:
+		art_faces_right = false
 	var sprite_size := _draw_character_texture(texture, center, target_size, sprite_rotation, alpha, face_right != art_faces_right)
 	if not shield_up:
 		_draw_goblin_shield(chicken, center, s, scale, face_right, alpha)

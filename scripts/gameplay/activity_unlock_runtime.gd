@@ -883,6 +883,7 @@ func _finalize_manual_activity_unlock(skill_id: String, action_id: String, save_
 			host._skill_detail_surface()._ensure_detail_lazy_entry_mounted(next_fishing_preview_id)
 	host._passive_modules_runtime().sync_passive_module_unlocks(host._unix_now())
 	host._mark_save_dirty(save_reason)
+	host.save_game()
 	return true
 
 

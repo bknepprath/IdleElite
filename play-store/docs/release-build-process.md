@@ -38,8 +38,11 @@ Do not commit or paste files from `release/` or generated artifacts from `builds
 
 Run from the repo root.
 
+Keep `project.godot` set to `window/stretch/mode="viewport"`. The release build is intentionally blocked if this changes because `canvas_items` has repeatedly produced severe full-screen pixel tearing on physical Samsung phones.
+
 ```powershell
 .\scripts\check-project.ps1
+.\scripts\check-crash-audit-contracts.ps1
 ```
 
 `check-project.ps1` calls `run-godot-safe.ps1` with headless Godot. After any Godot command, check for leftover Godot processes:
@@ -115,7 +118,7 @@ Confirm:
 - `android:versionCode` matches the requested code
 - `android:versionName` matches the requested version
 - `android:minSdkVersion="24"`
-- `android:targetSdkVersion="35"`
+- `android:targetSdkVersion="36"`
 - AdMob app ID is present: `ca-app-pub-3570919669688101~3616255490`
 
 Check that local release/build payloads were not packed into the AAB:
@@ -165,6 +168,7 @@ If a device is connected:
 Then launch and verify:
 
 - App installs and opens.
+- The real game remains visually stable during scrolling, page changes, overlays, and animations, with no pixel tearing across the screen.
 - Rewarded ad prompt loads through the closed-test track.
 - Closing or skipping the ad does not grant the boost.
 - Completing the ad grants the +10% XP boost.

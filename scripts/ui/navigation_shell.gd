@@ -1714,9 +1714,17 @@ func _ensure_skill_menu_cache_overlay() -> bool:
 	skill_menu_cache_overlay = Control.new()
 	skill_menu_cache_overlay.name = "SkillMenuCacheOverlay"
 	skill_menu_cache_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	skill_menu_cache_overlay.z_index = 1
+	skill_menu_cache_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
 	skill_menu_cache_overlay.visible = false
 	skill_menu_cache_overlay.process_mode = Node.PROCESS_MODE_DISABLED
 	host.skills_page.add_child(skill_menu_cache_overlay)
+	var backdrop := ColorRect.new()
+	backdrop.name = "SkillMenuCacheBackdrop"
+	backdrop.color = host._theme_paper_color()
+	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	skill_menu_cache_overlay.add_child(backdrop)
 	return true
 
 

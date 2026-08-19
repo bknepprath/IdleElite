@@ -585,13 +585,14 @@ const DETAIL_LAZY_BOOT_VIEWPORT_BUFFER_PX := 240.0
 const DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := 2
 const FISHING_DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := 4
 const DETAIL_LAZY_BOOT_EAGER_COUNT := 2
+const DETAIL_LAZY_BOOT_SLOT_BATCH_SIZE := 8
 const BOOT_DETAIL_COMPLETE_BUDGET_PER_FRAME := 3
 const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 1
 const DETAIL_LAZY_UNMOUNT_ENABLED := true
 const DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
 const FISHING_DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
 const DETAIL_LAZY_UNMOUNT_BUDGET_PER_FRAME := 2
-const DETAIL_LAZY_SETTLE_WARM_MOUNT_ENABLED := true
+const DETAIL_LAZY_SETTLE_WARM_MOUNT_ENABLED := false
 const DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME := 1
 const FISHING_DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME := 1
 const DETAIL_LAZY_FADE_IN_SECONDS := 0.28
@@ -1197,7 +1198,7 @@ func _finish_detail_lazy_card_list_render() -> void:
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
 	if host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_opaque_cream_transition():
 		host._skill_swipe_activity_surface().skill_swipe_handoff_cover.set_meta("swipe_cover_last_lazy_mount_process_frame", Engine.get_process_frames())
-	_queue_skill_detail_and_swipe_texture_prewarm(selected_skill_id)
+	_cancel_detail_card_texture_prewarm()
 	if not host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount and not host._skill_swipe_activity_surface()._skill_swipe_handoff_cover_is_cream_transition():
 		host._skill_swipe_activity_surface()._queue_skill_swipe_real_card_cache_prewarm(selected_skill_id)
 	_queue_detail_lazy_settle_warm_mount(selected_skill_id)
@@ -3595,7 +3596,14 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 			host._tutorial_overlay_surface().call_deferred("_run_onboarding_swipe_tip_sequence")
 	else:
 		if boot_detail_card_yield:
-			await _render_detail_eager_card_list_async(stack, content_width, actions_width, DETAIL_LAZY_BOOT_EAGER_COUNT)
+			var boot_lazy_slots_created = await _render_detail_lazy_card_list_batched(
+				stack,
+				content_width,
+				actions_width,
+				DETAIL_LAZY_BOOT_SLOT_BATCH_SIZE
+			)
+			if not boot_lazy_slots_created:
+				return
 		elif async_action_cards:
 			await _render_detail_eager_card_list_async(stack, content_width, actions_width)
 		else:
@@ -6082,11 +6090,6 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	art_panel.add_child(art)
 	if uses_blue_guy_chicken_brawl_stage:
 		art.visible = false
-		var chicken_stage := BlueGuyChickenBrawlStageClass.new()
-		chicken_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
-		chicken_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		chicken_stage.z_index = 2
-		art_panel.add_child(chicken_stage)
 	ActionArtUi.add_corner_badges(
 		art_panel,
 		ActionArtUi.resource_icon_paths(action, Callable(host._action_runtime(), "_action_mat_reward_defs"), Callable(host.material_runtime, "icon_path"), Callable(host._temporary_event_runtime(), "_temporary_event_log_reward_mat_id")),
@@ -6714,6 +6717,8 @@ func _play_activity_requirement_lock_dismissal(card: Dictionary, skill_id: Strin
 	card.erase("lock_overlay_sync_key")
 	host._activity_unlock_runtime()._mark_activity_requirement_manually_unlocked(skill_id, action, requirement_index)
 	host._mark_save_dirty("activity requirement unlock")
+	if not final_requirement_unlock:
+		host.save_game()
 	var overlay = card.get("lock_overlay", {}) as Dictionary
 	var overlay_root = host._app_lifecycle_runtime().valid_control_ref(overlay.get("root"))
 	var shade = host._app_lifecycle_runtime().valid_canvas_item_ref(ActivityCardStyles.ensure_activity_card_shade(card, 0.50))
@@ -7455,7 +7460,10 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	var key := _tier_banner_key(skill_id, tier)
 	var expanded := expanded_tier_banner_key == key
 	var counts := AchievementState.tier_medal_counts(host, skill_id, tier)
+	var counts_signature := "%s|%s|%s" % [int(counts.get("earned", 0)), int(counts.get("possible", 0)), str(counts.get("tiers", []))]
 	var root := Control.new()
+	root.set_meta("detail_lazy_tier_banner", true)
+	root.set_meta("tier_banner_counts_signature", counts_signature)
 	root.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.custom_minimum_size = Vector2(content_width, _tier_banner_height(key))
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -7501,6 +7509,37 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	if expanded:
 		_add_tier_banner_expanded_menu(root, skill_id, tier, counts)
 	return root
+
+
+func _refresh_mounted_tier_banners() -> void:
+	if host.current_screen != "skill" or expanded_tier_banner_key.is_empty():
+		return
+	var content_width: float = float(host._skill_content_width())
+	for raw_entry in detail_lazy_plan:
+		var lazy_entry := raw_entry as Dictionary
+		if str(lazy_entry.get("kind", "")) != "tier_banner" or not bool(lazy_entry.get("mounted", false)):
+			continue
+		var stack_host: Control = host._app_lifecycle_runtime().valid_control_ref(lazy_entry.get("stack_host"))
+		if stack_host == null:
+			continue
+		var old_banner: Control = null
+		for raw_child in stack_host.get_children():
+			var child := raw_child as Control
+			if child != null and bool(child.get_meta("detail_lazy_tier_banner", false)):
+				old_banner = child
+				break
+		if old_banner == null:
+			continue
+		var entry_data: Dictionary = lazy_entry.get("entry", {}) as Dictionary
+		var skill_id := str(entry_data.get("skill_id", selected_skill_id))
+		var tier := int(entry_data.get("tier", 1))
+		var counts := AchievementState.tier_medal_counts(host, skill_id, tier)
+		var counts_signature := "%s|%s|%s" % [int(counts.get("earned", 0)), int(counts.get("possible", 0)), str(counts.get("tiers", []))]
+		if str(old_banner.get_meta("tier_banner_counts_signature", "")) == counts_signature:
+			continue
+		stack_host.remove_child(old_banner)
+		old_banner.queue_free()
+		_detail_lazy_add_child_to_host(stack_host, _build_tier_banner(skill_id, tier, content_width), content_width, content_width)
 
 
 func _tier_banner_hit_button(position: Vector2, hit_size: Vector2, callback: Callable, meta_key: String) -> Button:
@@ -7961,6 +8000,8 @@ func _detail_lazy_mount_should_wait_for_scroll(lazy_entry: Dictionary) -> bool:
 	if not host._fishing_rework_active_for_skill(selected_skill_id):
 		return false
 	if lazy_entry.has("cached_root"):
+		return false
+	if _detail_lazy_entry_in_visible_viewport(lazy_entry):
 		return false
 	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 		var max_scroll = float(detail_actions_scroll.get_max_scroll_vertical())
@@ -9895,7 +9936,7 @@ func _skill_detail_shadow_top_y() -> float:
 
 
 func _add_skill_detail_shadow_overlay_to(parent: Control, top_y: float, initial_alpha := -1.0, bottom_y := -1.0, shadow_name := "SkillDetailFixedShelfShadow", shadow_z_index := 500) -> Control:
-	if parent == null or not is_instance_valid(parent):
+	if parent == null or not is_instance_valid(parent) or parent.is_queued_for_deletion():
 		return null
 	var shelf_shadow := _PageShelfShadow.new()
 	shelf_shadow.name = shadow_name

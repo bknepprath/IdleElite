@@ -86,6 +86,7 @@ func _run() -> void:
 	_check_historical_activity_aliases(game)
 	_check_action_key_save(game)
 	_check_manual_activity_unlock_save_restore(game)
+	_check_player_progress_persistence_edges(game)
 	_check_fishing_method_unlock_routing(game)
 	_check_module_ui_preferences_save_restore(game)
 	_check_auto_eat_fish_per_skill_save_restore(game)
@@ -1836,6 +1837,17 @@ func _check_manual_activity_unlock_save_restore(game: Node) -> void:
 	manual_unlocks = game.get("manual_activity_unlocks") as Dictionary
 	_expect(_truthy(manual_unlocks.get("fight:kick-mud-off-boot", false)), "Legacy saves without a manual unlock map should keep old level-unlocked mono actions playable.")
 	_expect(not _truthy(manual_unlocks.get("fight:wrestle-stuck-gate-latch", false)), "Legacy save migration should not silently grant combo actions without explicit manual unlock state.")
+
+
+func _check_player_progress_persistence_edges(game: Node) -> void:
+	_prime_core_skill_state(game)
+	var skills := game.get("skills") as Dictionary
+	skills["fight"] = {"xp": SkillState.xp_for_level(2), "level": 2}
+	game.set("skills", skills)
+	var save_runtime := _save_runtime(game)
+	save_runtime.save_dirty = false
+	_expect(game.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "kick-mud-off-boot") == true, "A ready activity lock should finalize successfully.")
+	_expect(not _truthy(save_runtime.save_dirty), "Finalizing an activity lock should persist immediately instead of waiting for autosave.")
 
 
 func _check_fishing_method_unlock_routing(game: Node) -> void:

@@ -30,6 +30,8 @@ try {
 extends SceneTree
 
 const BOOT_TIMEOUT_FRAMES := 720
+const AchievementPresentation := preload("res://scripts/achievements/presentation.gd")
+const MasteryState := preload("res://scripts/progression/mastery_state.gd")
 
 var failures: Array[String] = []
 var watchdog_frames := 0
@@ -48,6 +50,7 @@ func _watchdog() -> void:
 
 func _run() -> void:
 	print("home-achievement-medal-click-start")
+	OS.set_environment("IDLE_ELITE_DISABLE_SAVE_WRITES", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "14")
 	var packed := load("res://scenes/main.tscn") as PackedScene
@@ -77,6 +80,12 @@ func _run() -> void:
 	if icon == null:
 		_fail("no visible home medal icon found")
 		return
+	if not _check_elite_medal_geometry(icon):
+		return
+	var elite_platinum_state := {"test": {"xp": MasteryState.xp_for_level(14), "level": 14}}
+	if MasteryState.is_maxed(elite_platinum_state, "test", 20):
+		_fail("Elite Platinum must remain progressable below level 20")
+		return
 	var featured_icon := (scene.call("_achievement_overlay_surface") as Object).get("achievement_best_medal") as TextureRect
 	if (
 		featured_icon == null
@@ -103,7 +112,6 @@ func _run() -> void:
 		return
 	if not await _capture_if_possible():
 		print("home-achievement-medal-click-capture skipped")
-
 	if failures.is_empty():
 		print("home-achievement-medal-click-ok")
 		quit(0)
@@ -111,6 +119,31 @@ func _run() -> void:
 		for failure in failures:
 			push_error(failure)
 		quit(1)
+
+
+func _check_elite_medal_geometry(icon: TextureRect) -> bool:
+	var strip := icon.get_parent() as Control
+	if strip == null or not strip.has_method("_layout_icons"):
+		_fail("home medal icon was not attached to its production strip")
+		return false
+	var original_level := int(icon.get_meta("achievement_medal_level", 0))
+	icon.set_meta("achievement_medal_level", 8)
+	strip.call("_layout_icons")
+	var normal_size := icon.size.x
+	icon.set_meta("achievement_medal_level", 14)
+	strip.call("_layout_icons")
+	if not is_equal_approx(icon.size.x, normal_size * AchievementPresentation.ELITE_MEDAL_DISPLAY_SCALE):
+		_fail("plain elite medal did not use the shared display scale")
+		return false
+	for winged_level in [9, 10, 19, 20]:
+		icon.set_meta("achievement_medal_level", winged_level)
+		strip.call("_layout_icons")
+		if not is_equal_approx(icon.size.x, normal_size * AchievementPresentation.mastery_medal_display_scale(winged_level)):
+			_fail("winged medal %s did not size from its center body" % winged_level)
+			return false
+	icon.set_meta("achievement_medal_level", original_level)
+	strip.call("_layout_icons")
+	return true
 
 
 func _wait_for_boot_ready(scene: Node) -> bool:

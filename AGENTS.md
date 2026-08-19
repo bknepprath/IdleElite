@@ -22,6 +22,12 @@ This project uses Godot and the machine can overheat if too many instances run a
 
 - Phone-visible text must be readable in a 1080px-wide portrait screenshot without zooming: body text at least 48px, help/status body text at least 52px, and titles at least 60px. If it does not fit, enlarge the container or shorten the copy; check wrapping and overlap in the rendered screenshot.
 
+## Android Rendering Safety
+
+- Keep `project.godot` set to `window/stretch/mode="viewport"`. Do not change it to `canvas_items`; that setting has repeatedly caused severe full-screen pixel tearing in Play Store builds on physical Samsung phones.
+- Treat any proposed change to the stretch mode, viewport size, stretch aspect, renderer, or Android graphics settings as a release-critical device change. Run `\.\scripts\check-crash-audit-contracts.ps1`, install the preview package with `\.\scripts\install-android-phone-debug.ps1`, and inspect the real game on a physical phone before accepting it.
+- Every Android release must pass `\.\scripts\build-android-release.ps1`, which must refuse to export unless the stretch mode remains `viewport`. Do not bypass or remove that guard to make a build succeed.
+
 ## Animation Scale
 
 - Never calculate animation-frame scale from measured alpha bounds, used rectangles, content height, transparent padding, or other per-frame image measurements.

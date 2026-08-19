@@ -3277,7 +3277,9 @@ func _action_card_medal_texture_for_level(mastery_level: int) -> Texture2D:
 
 
 func _action_card_medal_size(mastery_level: int) -> Vector2:
-	return ACTION_CARD_MEDAL_WINGED_SIZES.get(mastery_level, ACTION_CARD_MEDAL_STANDARD_SIZE) as Vector2
+	if ACTION_CARD_MEDAL_WINGED_SIZES.has(mastery_level):
+		return ACTION_CARD_MEDAL_WINGED_SIZES[mastery_level] as Vector2
+	return ACTION_CARD_MEDAL_STANDARD_SIZE * AchievementPresentation.mastery_medal_display_scale(mastery_level)
 
 
 func _apply_action_card_medal_layout(card: Dictionary, medal: TextureRect, mastery_level: int) -> Vector2:
@@ -4241,6 +4243,8 @@ func _refresh_visible_action_cards(delta: float, instant: bool, static_refresh: 
 				var mastery_level := MasteryState.level(host.mastery, host._action_key(skill_id, action_id))
 				_set_action_card_medal(card, medal, mastery_level, instant)
 				_update_action_card_mastery_bar(card, skill_id, action_id, delta, instant)
+		elif running and MasteryState.action_has_mastery(host, action):
+			_update_action_card_mastery_bar(card, skill_id, action_id, delta, instant)
 		if skill_id == "thieving":
 			host._thieving_surface()._sync_thieving_action_jail_overlay(card, action_id)
 		_update_action_card_run_feedback(card, skill_id, running, delta, instant, running_progress)

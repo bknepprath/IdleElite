@@ -1477,6 +1477,8 @@ func _stop_running_action(skill_id: String, action_id: String) -> bool:
 	host._skill_swipe_activity_surface()._pop_activity_button(stop_action_key)
 	host._material_collection_surface()._sync_visible_mat_collection_for_action(skill_id, action_id, false)
 	host._update_ui(0.0, false)
+	host._mark_save_dirty("activity stopped")
+	host.save_game()
 	return true
 
 

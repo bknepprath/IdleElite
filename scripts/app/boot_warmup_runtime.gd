@@ -1,7 +1,5 @@
 extends RefCounted
 
-const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
-const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
 class _BootFlexLoadingAnimation:
 	extends Control
 
@@ -326,17 +324,6 @@ class _BootFlexLoadingAnimation:
 	func _headless_mode() -> bool:
 		return DisplayServer.get_name() == "headless"
 
-const FishCircle = preload("res://scripts/ui/fish_circle.gd")
-const FishingState = preload("res://scripts/fishing/state.gd")
-const MaterialRuntime = preload("res://scripts/materials/runtime.gd")
-const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
-const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
-const SettingsSurface = preload("res://scripts/ui/settings_surface.gd")
-const ShopSurface = preload("res://scripts/ui/shop_surface.gd")
-const SkillDetailSurface = preload("res://scripts/ui/skill_detail_surface.gd")
-const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
-
-const BOOT_WARMUP_FRAME_BUDGET_MSEC := 32
 const BOOT_WARMUP_MIN_VISIBLE_SECONDS := 1.65
 
 var host
@@ -396,7 +383,7 @@ func _finish_boot_render_async():
 		host._achievement_toast_surface().call_deferred("show_pending_completed_toasts")
 		host._save_runtime().call_deferred("_schedule_boot_post_load_simulation")
 		call_deferred("begin_background_boot_validation")
-		call_deferred("_boot_texture_warmup_background")
+		host._ad_bonus_runtime().call_deferred("_init_ads")
 
 
 func validate_state(priority_skill_ids: Array = []) -> void:
@@ -632,8 +619,22 @@ func _finish_overlay_hide() -> void:
 	if overlay != null and is_instance_valid(overlay):
 		if splash != null and is_instance_valid(splash) and splash.has_method("stop"):
 			splash.call("stop")
-		host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(overlay, false)
-		host._app_lifecycle_runtime().set_canvas_item_alpha_if_changed(overlay, 1.0)
+	if layer != null and is_instance_valid(layer):
+		layer.queue_free()
+	layer = null
+	overlay = null
+	background = null
+	splash = null
+	shade = null
+	footer = null
+	label = null
+	progress_bar = null
+
+
+func _add_boot_warmup_texture_path(paths: Array, path: String) -> void:
+	if path.is_empty() or paths.has(path):
+		return
+	paths.append(path)
 
 
 func _set_progress(text: String, progress: float) -> void:
@@ -678,109 +679,3 @@ func reset_for_shutdown() -> void:
 func apply_theme_background() -> void:
 	if background != null and is_instance_valid(background):
 		background.color = host._theme_paper_color()
-
-
-func _boot_shared_texture_paths() -> Array:
-	var paths := []
-	_add_boot_warmup_texture_path(paths, "res://assets/loading/blue-guy-flex-loading-spritesheet.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/loading/blue-guy-flex-speech-bubble-blank.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/logo/idle-elite-logo-cutout.png")
-	_add_boot_warmup_texture_path(paths, "res://assets/content/characters/stick-hero.png")
-	_add_boot_warmup_texture_path(paths, host.HERO_SPEECH_BUBBLE_TEXTURE)
-	_add_boot_warmup_texture_path(paths, host.TOTAL_LEVEL_BARGRAPH_TEXTURE)
-	_add_boot_warmup_texture_path(paths, "res://assets/content/icons/gear.png")
-	_add_boot_warmup_texture_path(paths, ShopSurface.REWARDED_AD_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, SettingsSurface.DISCORD_LOGO_ICON_TEXTURE)
-	for medal_path in AchievementPresentation.MASTERY_MEDAL_TEXTURES:
-		_add_boot_warmup_texture_path(paths, str(medal_path))
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_LOCK_CHAINS_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_CHAIN_LINK_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_CHAIN_LEFT_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_CHAIN_RIGHT_TEXTURE)
-	_add_boot_warmup_texture_path(paths, ActivityLockRig.UNLOCK_PADLOCK_TEXTURE)
-	_add_boot_warmup_texture_path(paths, SkillDetailSurface.ACTIVITY_JUMP_TOP_TEXTURE)
-	_add_boot_warmup_texture_path(paths, SkillDetailSurface.ACTIVITY_JUMP_BOTTOM_TEXTURE)
-	_add_boot_warmup_texture_path(paths, SkillDetailSurface.ACTIVITY_BACK_TEXTURE)
-	for raw_nav_path in [
-		host.PROGRESS_STAR_ICON_TEXTURE,
-		"res://assets/content/hub/hub-nav-barn.png",
-		NavigationShell.NAV_OPEN_CLOSE_ICON_TEXTURE,
-		host.SETTINGS_GEAR_ICON_TEXTURE,
-		host.SHOP_ICON_TEXTURE,
-		ModuleUiRuntime.MODULE_PIN_ICON_TEXTURE,
-		NavigationShell.MODULE_QUEUE_ICON_TEXTURE,
-		"res://assets/content/ui/navigation-controls/skills-overview.png",
-		"res://assets/content/ui/navigation-controls/sort-list.png"
-	]:
-		_add_boot_warmup_texture_path(paths, raw_nav_path)
-	return paths
-
-
-func _boot_warmup_texture_paths() -> Array:
-	var paths := _boot_shared_texture_paths()
-	_add_boot_warmup_texture_path(paths, AchievementPresentation.TOTAL_LEVEL_ART)
-	_add_boot_warmup_texture_path(paths, AchievementPresentation.CRIT_ART)
-	_add_boot_warmup_texture_path(paths, AchievementPresentation.CREDIT_ART)
-	_add_boot_warmup_texture_path(paths, AchievementPresentation.CUMULATIVE_MEDALS_ART)
-	_add_boot_warmup_texture_path(paths, MaterialRuntime.LOG_CURRENCY_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, MaterialRuntime.PLANK_ICON_TEXTURE)
-	_add_boot_warmup_texture_path(paths, MaterialRuntime.UPGRADE_ARROW_ICON_TEXTURE)
-	var warmup_skill_ids := _boot_warmup_skill_ids()
-	if warmup_skill_ids.has("fishing"):
-		_add_boot_warmup_texture_path(paths, FishCircle.FISH_CURRENCY_ICON_TEXTURE)
-		host._fishing_ui_surface()._add_fishing_boot_warmup_texture_paths(paths)
-	for skill_id in warmup_skill_ids:
-		_add_boot_warmup_texture_path(paths, SkillIconBadge.icon_path(skill_id))
-		if skill_id == "thieving":
-			for raw_path in host._thieving_surface().warmup_texture_paths():
-				_add_boot_warmup_texture_path(paths, str(raw_path))
-		for action in host._activity_unlock_runtime()._visible_actions_for_skill(skill_id):
-			var action_data := action as Dictionary
-			_add_boot_warmup_texture_path(paths, str(action_data.get("art", "")))
-			_add_boot_warmup_texture_path(paths, str(action_data.get("bg", "")))
-			if skill_id == "fishing":
-				var action_id := str(action_data.get("id", ""))
-				if FishingState.FISHING_ACTION_CATCH_TEXTURE_PATHS.has(action_id):
-					_add_boot_warmup_texture_path(paths, FishingState.FISHING_ACTION_CATCH_TEXTURE_PATHS[action_id])
-	return paths
-
-
-func _uncached_boot_warmup_texture_paths() -> Array:
-	return host.visual_texture_cache._uncached_texture_paths(_boot_warmup_texture_paths())
-
-
-func _boot_warmup_skill_ids() -> Array:
-	var ids := []
-	var current_index: int = host._skill_index(host.selected_skill_id)
-	if current_index < 0 or host.skill_defs.is_empty():
-		return ids
-	var skill_id := str(host.skill_defs[current_index].get("id", ""))
-	if not skill_id.is_empty():
-		ids.append(skill_id)
-	return ids
-
-
-func _add_boot_warmup_texture_path(paths: Array, path: String) -> void:
-	if path.is_empty() or paths.has(path):
-		return
-	paths.append(path)
-
-
-func _boot_texture_warmup_background() -> void:
-	if not host.is_inside_tree():
-		return
-	var paths: Array = _uncached_boot_warmup_texture_paths()
-	if paths.is_empty():
-		host._audio_director().call_deferred("_warm_extended_audio_async")
-		host._ad_bonus_runtime().call_deferred("_init_ads")
-		return
-	var last_yield_msec := Time.get_ticks_msec()
-	for raw_path in paths:
-		if not host.is_inside_tree():
-			return
-		host.visual_texture_cache._texture(str(raw_path))
-		if Time.get_ticks_msec() - last_yield_msec >= BOOT_WARMUP_FRAME_BUDGET_MSEC:
-			await host.get_tree().process_frame
-			last_yield_msec = Time.get_ticks_msec()
-	host._audio_director().call_deferred("_warm_extended_audio_async")
-	host._ad_bonus_runtime().call_deferred("_init_ads")

@@ -16,47 +16,17 @@ static var action_art_style_cache: StyleBoxFlat
 static var action_art_border_style_cache: StyleBoxFlat
 
 class LockedModuleShade extends Panel:
-	var shade_material: ShaderMaterial
+	var shade_style := StyleBoxFlat.new()
 
 	func _init() -> void:
-		var shader := Shader.new()
-		shader.code = """
-shader_type canvas_item;
-uniform sampler2D screen_texture : hint_screen_texture, filter_linear_mipmap;
-uniform vec2 control_size = vec2(1.0);
-uniform float corner_radius = 54.0;
-uniform float wash_alpha = 0.20;
-
-void fragment() {
-	vec2 point = UV * control_size;
-	vec2 half_size = control_size * 0.5;
-	vec2 corner = max(half_size - vec2(corner_radius), vec2(0.0));
-	vec2 delta = abs(point - half_size) - corner;
-	float distance_to_corner = length(max(delta, vec2(0.0))) + min(max(delta.x, delta.y), 0.0) - corner_radius;
-	float mask = 1.0 - smoothstep(-1.0, 1.0, distance_to_corner);
-	vec4 color = textureLod(screen_texture, SCREEN_UV, 0.0);
-	float gray = dot(color.rgb, vec3(0.299, 0.587, 0.114));
-	color.rgb = mix(color.rgb, vec3(gray), 0.98);
-	color.rgb = mix(color.rgb, vec3(0.5), wash_alpha);
-	COLOR = vec4(color.rgb, mask);
-}
-"""
-		shade_material = ShaderMaterial.new()
-		shade_material.shader = shader
-		material = shade_material
-		add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+		shade_style.bg_color = Color(0.50, 0.50, 0.50, 0.42)
+		shade_style.set_corner_radius_all(54)
+		shade_style.anti_aliasing = true
+		add_theme_stylebox_override("panel", shade_style)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-	func _notification(what: int) -> void:
-		if what == NOTIFICATION_RESIZED and shade_material != null:
-			shade_material.set_shader_parameter("control_size", size)
-
 	func set_wash_alpha(next_alpha: float) -> void:
-		if shade_material != null:
-			shade_material.set_shader_parameter("wash_alpha", clampf(next_alpha, 0.0, 1.0))
-
-	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color.WHITE)
+		shade_style.bg_color.a = clampf(0.30 + next_alpha * 0.60, 0.0, 0.72)
 
 
 class PageSwitchButtonFace extends Control:

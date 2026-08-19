@@ -794,7 +794,7 @@ func _apply_post_load_simulation() -> void:
 		return
 	var saved_at := pending_post_load_saved_at
 	pending_post_load_saved_at = -1
-	_apply_offline_progress(saved_at)
+	var offline_seconds := _apply_offline_progress(saved_at)
 	var now: int = host._unix_now()
 	host._passive_modules_runtime().sync_passive_module_unlocks(now)
 	if host.offline_progress_enabled:
@@ -812,6 +812,8 @@ func _apply_post_load_simulation() -> void:
 	host._audio_director()._maybe_start_music_cycle_on_launch()
 	SkillState.invalidate_stat_caches(host)
 	host._update_ui(0.0, true)
+	if offline_seconds > 0:
+		host.save_game()
 
 
 

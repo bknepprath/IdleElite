@@ -585,7 +585,6 @@ func _ready() -> void:
 		_test_state_runtime().call_deferred("_run_headless_boot_smoke")
 	if web_fishing_perf_probe_enabled:
 		_fishing_ui_surface().call_deferred("_run_web_fishing_perf_probe_setup")
-
 func _finish_boot_skill_detail_extras() -> void:
 	if _skill_detail_surface().detail_actions_scroll == null or not is_instance_valid(_skill_detail_surface().detail_actions_scroll):
 		return
@@ -823,6 +822,8 @@ func _update_ui(delta: float, instant := false) -> void:
 	var static_refresh := _performance_runtime()._consume_ui_static_refresh(delta, instant)
 	_navigation_shell()._sync_bottom_nav_visibility()
 	_navigation_shell()._sync_module_utility_row_visibility()
+	if static_refresh and current_screen == "skill":
+		_skill_detail_surface()._refresh_mounted_tier_banners()
 	_skill_swipe_activity_surface()._sync_queue_selection_banner()
 	var skill_frame_refresh := instant or static_refresh or _performance_runtime()._skill_detail_needs_high_frequency_ui_update()
 	var header_gauge_frame_refresh := skill_frame_refresh or _skill_detail_surface()._visible_detail_regen_gauge_needs_header_refresh()

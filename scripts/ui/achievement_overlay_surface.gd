@@ -74,20 +74,22 @@ class AchievementMedalSlotStrip:
 			var center := _slot_center(i, icon_size)
 			var row_z := _slot_row(i) * 1000
 			var slot_z := row_z + i * 2
+			var icon := medal_icons[i] as TextureRect
+			if icon == null:
+				continue
+			var base_visual_size := maxf(icon_size, icon.custom_minimum_size.x)
+			var visual_size := base_visual_size * AchievementPresentation.mastery_medal_display_scale(int(icon.get_meta("achievement_medal_level", 0)))
 			if i < medal_shadows.size():
 				var shadow := medal_shadows[i] as TextureRect
 				if shadow != null:
 					var outline := bool(shadow.get_meta("achievement_medal_outline", false))
-					var shadow_size := icon_size
+					var shadow_size := visual_size
 					shadow.size = Vector2(shadow_size, shadow_size)
 					shadow.position = center - shadow.size * 0.5
 					shadow.z_index = slot_z
 					if not outline:
 						shadow.position += Vector2(7, 9)
-			var icon := medal_icons[i] as TextureRect
-			if icon == null:
-				continue
-			icon.size = Vector2(icon_size, icon_size)
+			icon.size = Vector2(visual_size, visual_size)
 			icon.position = center - icon.size * 0.5
 			icon.z_index = slot_z + 1
 
@@ -977,8 +979,6 @@ func _update_achievement_medal_slots(skill_id: String, actions: Array) -> void:
 		return
 	var panel_rows: Array = achievement_medal_slot_panels.get(skill_id, [])
 	var icon_rows: Array = achievement_medal_slot_icons.get(skill_id, [])
-	if icon_rows.is_empty():
-		return
 	var medal_shadows: Array = panel_rows[0] if not panel_rows.is_empty() else []
 	var medal_icons: Array = icon_rows[0]
 	var medal_entries := _earned_achievement_medal_entries(skill_id, actions)
@@ -991,6 +991,7 @@ func _update_achievement_medal_slots(skill_id: String, actions: Array) -> void:
 		var icon := medal_icons[slot_index] as TextureRect
 		var shadow := medal_shadows[slot_index] as TextureRect if slot_index < medal_shadows.size() else null
 		_configure_achievement_medal_slot(icon, shadow, skill_id, medal_entries, slot_index)
+	strip._layout_icons()
 
 func _earned_achievement_medal_entries(skill_id: String, actions: Array) -> Array:
 	var medal_entries := []
@@ -1040,8 +1041,8 @@ func _rebuild_achievement_medal_strip_icons(strip: AchievementMedalSlotStrip, sk
 		icon.tooltip_text = ""
 		icon.mouse_filter = Control.MOUSE_FILTER_STOP
 		icon.gui_input.connect(_on_achievement_medal_slot_input.bind(strip.get_instance_id(), icon.get_instance_id(), skill_id))
-		strip.add_slot_icon(icon, shadow)
 		_configure_achievement_medal_slot(icon, shadow, skill_id, medal_entries, i)
+		strip.add_slot_icon(icon, shadow)
 		medal_shadows.append(shadow)
 		medal_icons.append(icon)
 

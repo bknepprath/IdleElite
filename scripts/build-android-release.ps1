@@ -7,6 +7,7 @@ $javaHome = "C:\Program Files\Android\Android Studio\jbr"
 $stdoutLogPath = Join-Path $projectRoot "builds\android\last-release-build.stdout.log"
 $stderrLogPath = Join-Path $projectRoot "builds\android\last-release-build.stderr.log"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
+$projectSettingsPath = Join-Path $projectRoot "project.godot"
 $keystorePassword = $env:IDLE_ELITE_KEYSTORE_PASSWORD
 
 function Set-TextWithRetry {
@@ -40,6 +41,13 @@ if (-not (Test-Path -LiteralPath $javaHome)) {
 }
 if (-not (Test-Path -LiteralPath $exportPresetsPath)) {
     throw "Export presets file not found at $exportPresetsPath"
+}
+if (-not (Test-Path -LiteralPath $projectSettingsPath)) {
+    throw "Godot project settings file not found at $projectSettingsPath"
+}
+$projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath
+if ($projectSettings -notmatch '(?m)^window/stretch/mode="viewport"$') {
+    throw 'Android release blocked: project.godot must keep window/stretch/mode="viewport" to prevent full-screen pixel tearing on physical phones.'
 }
 if ([string]::IsNullOrWhiteSpace($keystorePassword)) {
     throw "Set IDLE_ELITE_KEYSTORE_PASSWORD before running this script."

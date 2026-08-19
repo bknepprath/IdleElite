@@ -7,15 +7,18 @@ Use this for the current closed test release candidate.
 ## Before Rebuilding
 
 - Confirm the configured AdMob app ID and rewarded ad unit are the intended production IDs.
+- Confirm `project.godot` contains `window/stretch/mode="viewport"`; never release with `canvas_items` because it causes severe full-screen pixel tearing on physical phones.
 - Set `IDLE_ELITE_KEYSTORE_PASSWORD` in the shell that will run the release build if rebuilding.
 - Run `.\scripts\check-project.ps1`.
+- Run `.\scripts\check-crash-audit-contracts.ps1`.
 - Run `.\scripts\check-leaderboard-cost-safety.ps1` before any Firebase-enabled build.
 
 ## Build And Local Test
 
 - Run `.\scripts\build-android-release.ps1` if rebuilding.
-- Verify `builds/android/idle-elite-release-v0.4.66-code34.aab` exists.
-- Run `jarsigner -verify builds\android\idle-elite-release-v0.4.66-code34.aab`.
+- Verify `builds/android/idle-elite-release-v0.5.3-code38.aab` exists.
+- Run `jarsigner -verify builds\android\idle-elite-release-v0.5.3-code38.aab`.
+- Verify the generated APK passes `zipalign -c -P 16 -v 4` and every native library has at least `0x4000` ELF LOAD alignment.
 - Run `.\scripts\test-release-aab.ps1` with an emulator or phone connected, or add `-UninstallExisting` only when data loss is acceptable.
 - Launch the app and confirm the release build no longer says `Ad Not Configured`.
 - If Firebase is enabled, open chat on a phone and confirm it live-refreshes only while visible, sends at most once per 2 seconds, and renders moderator-deleted messages as removed.
@@ -23,6 +26,7 @@ Use this for the current closed test release candidate.
 ## Real Device Ad Test
 
 - Install on a physical Android phone through local bundletool testing or Play closed testing.
+- Scroll, change pages, open and close an overlay, and watch an animation; reject the build if any full-screen pixel tearing appears.
 - Open the rewarded ad prompt.
 - Confirm the ad loads.
 - Confirm backing out or closing the ad does not grant the boost.
@@ -34,7 +38,8 @@ Use this for the current closed test release candidate.
 - Create the app as `Idle Elite`.
 - Confirm package name is `com.idleelite.game`.
 - Enroll in Play App Signing.
-- Upload `builds/android/idle-elite-release-v0.4.66-code34.aab`.
+- Upload `builds/android/idle-elite-release-v0.5.3-code38.aab`.
+- Reuse the previous production release's cumulative feature notes. Do not replace the feature list with patch-only bug-fix notes.
 - Manually update the Play Store listing icon with the 512x512 PNG from `play-store/assets/app-icon-512.png`; uploading the AAB updates the installed launcher icon, but does not automatically replace the store listing graphic.
 - Add the feature graphic from `play-store/assets/feature-graphic-1024x500.png`.
 - Add phone screenshots from `play-store/assets/screenshot-*.png`.

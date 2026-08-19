@@ -191,7 +191,8 @@ func _texture(path: String, fishing_ablation_enabled := Callable()) -> Texture2D
 		var fallback := _visual_fallback_texture()
 		texture_cache[normalized] = fallback
 		return fallback
-	return _texture_from_image(normalized, image)
+	var texture := _texture_from_image(normalized, image)
+	return texture
 
 
 func _path_is_fishing_visual(normalized_path: String) -> bool:

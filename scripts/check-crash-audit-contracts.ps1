@@ -72,20 +72,23 @@ function Assert-ResourcePathExists {
 $projectPath = Join-Path $projectRoot "project.godot"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $safeRunnerPath = Join-Path $projectRoot "run-godot-safe.ps1"
+$releaseBuildPath = Join-Path $projectRoot "scripts\build-android-release.ps1"
 $mainScenePath = Join-Path $projectRoot "scenes\main.tscn"
 
 Assert-True (Test-Path -LiteralPath $projectPath) "Missing project.godot."
 Assert-True (Test-Path -LiteralPath $exportPresetsPath) "Missing export_presets.cfg."
 Assert-True (Test-Path -LiteralPath $safeRunnerPath) "Missing run-godot-safe.ps1."
+Assert-True (Test-Path -LiteralPath $releaseBuildPath) "Missing scripts\build-android-release.ps1."
 Assert-True (Test-Path -LiteralPath $mainScenePath) "Missing scenes\main.tscn."
 
 $projectText = Get-Content -LiteralPath $projectPath -Raw
 $exportText = Get-Content -LiteralPath $exportPresetsPath -Raw
 $safeRunnerText = Get-Content -LiteralPath $safeRunnerPath -Raw
+$releaseBuildText = Get-Content -LiteralPath $releaseBuildPath -Raw
 
 Assert-True ($projectText -match 'run/main_scene="res://scenes/main\.tscn"') "project.godot should launch scenes/main.tscn."
 Assert-True ($projectText -match 'config/quit_on_go_back=false') "Android back button should not quit the game unexpectedly."
-Assert-True ($projectText -match 'window/stretch/mode="canvas_items"') "Project stretch mode should stay canvas_items for crisp phone UI."
+Assert-True ($projectText -match 'window/stretch/mode="viewport"') "Project stretch mode should stay viewport to avoid Android canvas tearing."
 Assert-True ($projectText -match 'window/stretch/aspect="expand"') "Project stretch aspect should stay expand for phone layout stability."
 foreach ($match in [regex]::Matches($projectText, '"(?<path>res://[^"]+)"')) {
     Assert-ResourcePathExists $match.Groups["path"].Value "project.godot"
@@ -94,6 +97,8 @@ foreach ($match in [regex]::Matches($projectText, '"(?<path>res://[^"]+)"')) {
 Assert-True ($safeRunnerText -match 'Godot\.exe') "The safe runner should be the only script that names Godot.exe directly."
 Assert-True ($safeRunnerText -match '--headless') "The safe runner should default automated runs to headless mode."
 Assert-True ($safeRunnerText -match '--visible-game') "The safe runner should explicitly gate visible game launches."
+Assert-True ($releaseBuildText -match 'window/stretch/mode=\"viewport\"') "The Android release builder must guard the viewport stretch mode."
+Assert-True ($releaseBuildText -match 'Android release blocked:') "The Android release builder must fail clearly when the viewport guard is violated."
 
 $directGodotLaunches = New-Object System.Collections.Generic.List[string]
 foreach ($sourceFile in Get-RuntimeSourceFiles) {
