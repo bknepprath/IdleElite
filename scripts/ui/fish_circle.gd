@@ -2,16 +2,16 @@ extends Button
 
 signal wallet_pressed
 
-const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
-const FISH_CIRCLE_ICON_BASE_SIZE := Vector2(228, 228)
+const PAPER_BUTTON_OUTLINE_WIDTH := 4.5
+const FISH_CIRCLE_ICON_BASE_SIZE := Vector2(114, 114)
 const FISH_CURRENCY_ICON_TEXTURE := "res://assets/content/icons/resources/fish-currency-icon.png"
 const COLOR_MUTED := Color("#6e6658")
 const COLOR_GOLD := Color("#fff2a8")
 
 const RING_ARC_SEGMENTS := 40
 const BEVEL_ARC_SEGMENTS := 32
-const CENTER_NUMBER_STROKE_SCALE := 36.0
-const CENTER_NUMBER_STROKE_MIN := 26
+const CENTER_NUMBER_STROKE_SCALE := 18.0
+const CENTER_NUMBER_STROKE_MIN := 13
 const CENTER_DECIMAL_SUFFIX_SCALE := 0.5
 const CENTER_DECIMAL_SUFFIX_ALPHA := 0.6
 

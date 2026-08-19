@@ -173,6 +173,9 @@ func _god_mode_unlock_thieving_trophies_state() -> void:
 
 
 func _god_mode_unlock_onboarding_state() -> void:
+	host._onboarding_runtime().tutorial_active = false
+	host._onboarding_runtime().tutorial_target_activity_started = false
+	host._onboarding_runtime().tutorial_completion_exit_running = false
 	host._onboarding_runtime().activity_start_tip_seen = true
 	host._onboarding_runtime().stamina_gauge_tip_seen = true
 	host._onboarding_runtime().lock_click_tip_seen = true

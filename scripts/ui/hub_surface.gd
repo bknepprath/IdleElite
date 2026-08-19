@@ -28,7 +28,7 @@ const HUB_MISSION_BOARD_BUTTON_Y := 1024.0
 const HUB_MISSION_BOARD_TARGET_Y := 0.0
 const HUB_MISSION_BOARD_OPEN_SECONDS := 0.34
 const HUB_MISSION_BOARD_CLOSE_SECONDS := 0.24
-const HUB_HOTSPOT_DRAG_START_SLOP := 42.0
+const HUB_HOTSPOT_DRAG_START_SLOP := 21.0
 const HUB_TUTORIAL_TITLE := "Player Hub"
 const HUB_TUTORIAL_BODY := "Upgrade buildings here for bonuses across the whole game.\nTap a building to upgrade it.\nDrag a building to move it."
 const HUB_TUTORIAL_TIP_FADE_SECONDS := 0.18
@@ -112,8 +112,8 @@ class HubPathDots:
 		return top_y + dot_step * 0.38
 
 	func _central_trunk_join(destination: Vector2, trunk_top_y: float, route_seed: float) -> Vector2:
-		var destination_pull := clampf((destination.x - origin.x) * 0.16, -92.0, 92.0)
-		var x_jitter := lerpf(-28.0, 28.0, _unit(route_seed + 5.11))
+		var destination_pull := clampf((destination.x - origin.x) * 0.16, -46.0, 46.0)
+		var x_jitter := lerpf(-14.0, 14.0, _unit(route_seed + 5.11))
 		var join_y := clampf(destination.y + dot_step * lerpf(0.44, 1.02, _unit(route_seed + 8.37)), trunk_top_y, origin.y - dot_step * 0.75)
 		return Vector2(origin.x + destination_pull + x_jitter, join_y)
 
@@ -133,7 +133,7 @@ class HubPathDots:
 	func occupied_rects() -> Array:
 		var rects := []
 		for dot in path_dots:
-			rects.append(_dot_rect(dot as Dictionary, 16.0))
+			rects.append(_dot_rect(dot as Dictionary, 8.0))
 		return rects
 
 	func _collect_trunk_path(route_entries: Array, next_dots: Array) -> void:
@@ -166,11 +166,11 @@ class HubPathDots:
 
 	func _collect_trunk_segment(start: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
 		var vertical := destination.y - start.y
-		var control_a := start + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 1.0)), vertical * 0.42)
-		var control_b := destination + Vector2(lerpf(-18.0, 18.0, _unit(route_seed + 3.0)), -vertical * 0.30)
+		var control_a := start + Vector2(lerpf(-9.0, 9.0, _unit(route_seed + 1.0)), vertical * 0.42)
+		var control_b := destination + Vector2(lerpf(-9.0, 9.0, _unit(route_seed + 3.0)), -vertical * 0.30)
 		_collect_sampled_dotted_path(start, destination, route_seed, next_dots, func(t: float) -> Vector2:
 			var q := 1.0 - t
-			var wave := sin(t * PI) * lerpf(-22.0, 22.0, _unit(route_seed + 7.0))
+			var wave := sin(t * PI) * lerpf(-11.0, 11.0, _unit(route_seed + 7.0))
 			var point := q * q * q * start + 3.0 * q * q * t * control_a + 3.0 * q * t * t * control_b + t * t * t * destination
 			point.x += wave
 			return point
@@ -209,7 +209,7 @@ class HubPathDots:
 		var destination_ease := clampf(absf(vertical) * 0.34 + horizontal * 0.16, dot_step * 0.72, dot_step * 1.95)
 		var s_curve := _unit(route_seed + 97.0) > 0.48
 		var s_strength := dot_step * lerpf(0.32, 0.78, _unit(route_seed + 101.0))
-		var control_a := start + Vector2(side * horizontal * (0.08 if not s_curve else -0.24) + lerpf(-12.0, 12.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
+		var control_a := start + Vector2(side * horizontal * (0.08 if not s_curve else -0.24) + lerpf(-6.0, 6.0, _unit(route_seed + 19.0)), y_direction * trunk_launch)
 		var control_b := arrival + Vector2(-side * horizontal * (0.18 if not s_curve else 0.44), -y_direction * destination_ease)
 		_collect_sampled_dotted_path(start, arrival, route_seed, next_dots, func(t: float) -> Vector2:
 			var q := 1.0 - t
@@ -222,7 +222,7 @@ class HubPathDots:
 		)
 
 	func _collect_arrival_tail(start: Vector2, destination: Vector2, route_seed: float, next_dots: Array) -> void:
-		var control := start.lerp(destination, 0.68) + Vector2(lerpf(-14.0, 14.0, _unit(route_seed + 3.0)), dot_step * lerpf(-0.04, 0.12, _unit(route_seed + 5.0)))
+		var control := start.lerp(destination, 0.68) + Vector2(lerpf(-7.0, 7.0, _unit(route_seed + 3.0)), dot_step * lerpf(-0.04, 0.12, _unit(route_seed + 5.0)))
 		_collect_sampled_dotted_path(start, destination, route_seed, next_dots, func(t: float) -> Vector2:
 			var q := 1.0 - t
 			return q * q * start + 2.0 * q * t * control + t * t * destination
@@ -268,8 +268,8 @@ class HubPathDots:
 				var dot := previous + segment * ratio
 				var direction := segment.normalized()
 				var normal := Vector2(-direction.y, direction.x)
-				var scatter := normal * lerpf(-46.0, 46.0, _unit(route_seed + float(dot_index) * 13.71))
-				scatter += direction * lerpf(-24.0, 24.0, _unit(route_seed + float(dot_index) * 17.89))
+				var scatter := normal * lerpf(-23.0, 23.0, _unit(route_seed + float(dot_index) * 13.71))
+				scatter += direction * lerpf(-12.0, 12.0, _unit(route_seed + float(dot_index) * 17.89))
 				var radius := dot_radius * lerpf(0.90, 1.14, _unit(route_seed + float(dot_index) * 19.41))
 				var fill := _path_dot_color(route_seed, dot_index)
 				var dot_center := dot + scatter
@@ -351,7 +351,7 @@ class HubPathDots:
 				continue
 			var existing_center := existing.get("center", Vector2.ZERO) as Vector2
 			var existing_radius := float(existing.get("radius", dot_radius))
-			if not _dot_rect(dot, 10.0).intersects(_dot_rect(existing, 10.0)):
+			if not _dot_rect(dot, 5.0).intersects(_dot_rect(existing, 5.0)):
 				continue
 			if center.distance_to(existing_center) > maxf(radius, existing_radius) * 0.84:
 				continue
@@ -380,7 +380,7 @@ class HubPathDots:
 					if bool(a.get("keep_separate", false)) or bool(b.get("keep_separate", false)):
 						j += 1
 						continue
-					if _dot_rect(a, -6.0).intersects(_dot_rect(b, -6.0)):
+					if _dot_rect(a, -3.0).intersects(_dot_rect(b, -3.0)):
 						var a_radius := float(a.get("radius", dot_radius))
 						var b_radius := float(b.get("radius", dot_radius))
 						var a_weight := a_radius * a_radius
@@ -409,7 +409,7 @@ class HubPathDots:
 		_draw_irregular_oval(center, radius_x * 1.38, radius_y * 1.52, underpaint, noise_seed + 1.0, 0.22)
 		var glaze := color.lerp(Color("#c1935d"), 0.15)
 		glaze.a = 0.20
-		_draw_irregular_oval(center + Vector2(lerpf(-5.0, 5.0, _unit(noise_seed + 2.0)), lerpf(-1.4, 1.4, _unit(noise_seed + 3.0))), radius_x * 1.12, radius_y * 1.16, glaze, noise_seed + 5.0, 0.15)
+		_draw_irregular_oval(center + Vector2(lerpf(-2.5, 2.5, _unit(noise_seed + 2.0)), lerpf(-0.7, 0.7, _unit(noise_seed + 3.0))), radius_x * 1.12, radius_y * 1.16, glaze, noise_seed + 5.0, 0.15)
 		var body := color
 		body.a = 0.34
 		_draw_irregular_oval(center, radius_x * 0.96, radius_y * 0.92, body, noise_seed + 11.0, 0.11)
@@ -442,7 +442,7 @@ class HubPathDots:
 		return Rect2(center - half_size, half_size * 2.0)
 
 	func _dot_hits_obstacle_rect(center: Vector2, radius: float) -> bool:
-		var rect := Rect2(center - Vector2(radius + 12.0, radius * dot_height_scale + 12.0), Vector2((radius + 12.0) * 2.0, (radius * dot_height_scale + 12.0) * 2.0))
+		var rect := Rect2(center - Vector2(radius + 6.0, radius * dot_height_scale + 6.0), Vector2((radius + 6.0) * 2.0, (radius * dot_height_scale + 6.0) * 2.0))
 		for raw_obstacle_rect in obstacle_rects:
 			if raw_obstacle_rect is Rect2 and rect.intersects(raw_obstacle_rect as Rect2):
 				return true
@@ -1037,10 +1037,13 @@ func _hub_decor_entry(decor_type: String, index: int, decor_position: Vector2, d
 	return {
 		"type": decor_type,
 		"index": index,
-		"x": round(decor_position.x),
-		"y": round(decor_position.y),
-		"w": round(display_size.x),
-		"h": round(display_size.y)
+		# Keep legacy 4K integer quantization after the 0.5 layout migration.
+		# Rounding directly to native 1080 pixels changes collision outcomes and
+		# causes the seeded decoration generator to produce a different map.
+		"x": round(decor_position.x * 2.0) * 0.5,
+		"y": round(decor_position.y * 2.0) * 0.5,
+		"w": round(display_size.x * 2.0) * 0.5,
+		"h": round(display_size.y * 2.0) * 0.5
 	}
 
 func _hub_decor_entry_base_y(raw_entry: Variant) -> float:

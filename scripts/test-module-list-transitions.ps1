@@ -314,8 +314,9 @@ func _check_sort_menu_input_isolation(scene: Node, skill_id: String) -> void:
 	if covered_card.is_empty():
 		var scroll := scene.call("_skill_detail_surface").get("detail_actions_scroll") as ScrollContainer
 		if scroll != null:
-			scroll.set("drag_scroll_position", float(mini(420, scroll.get_max_scroll_vertical())))
-			scroll.set("scroll_vertical", mini(420, scroll.get_max_scroll_vertical()))
+			var scaled_overlap_scroll := mini(int(round(420.0 * float(scene.BASE_CANVAS.x) / 2160.0)), scroll.get_max_scroll_vertical())
+			scroll.set("drag_scroll_position", float(scaled_overlap_scroll))
+			scroll.set("scroll_vertical", scaled_overlap_scroll)
 			scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 			await process_frame
 			covered_card = scene.call("_input_routing_shell").call("_action_card_at_position", raw_tap_point) as Dictionary
@@ -827,7 +828,7 @@ func _check_pin_confirm_preserves_source_scroll(scene: Node, skill_id: String) -
 	if scroll == null or not is_instance_valid(scroll):
 		_record("pin no-bump smoke could not find detail scroll")
 		return
-	var target_scroll := mini(420, scroll.get_max_scroll_vertical())
+	var target_scroll := mini(int(round(420.0 * float(scene.BASE_CANVAS.x) / 2160.0)), scroll.get_max_scroll_vertical())
 	scroll.set("drag_scroll_position", float(target_scroll))
 	scroll.set("scroll_vertical", target_scroll)
 	for _i in range(2):

@@ -5,7 +5,7 @@ const LeaderboardProfile = preload("res://scripts/leaderboard/profile.gd")
 const MobileScrollContainer = preload("res://scripts/ui/mobile_scroll_container.gd")
 
 const ICON := "res://assets/content/ui/leaderboard-podium-icon.png"
-const BOTTOM_SCROLL_PAD := 180
+const BOTTOM_SCROLL_PAD := 360
 const BASE_FRAME_WIDTH := 1080
 const PLAYER_OVERLAY_HEIGHT := 410
 
@@ -34,23 +34,23 @@ class OrganicLeaderboardBorder extends Control:
 		var points := []
 		var left_top_side := Vector2(52.0, 260.0)
 		var top_left := Vector2(119.0, 135.0)
-		var top_mid := Vector2(size.x * 0.50, 246.0)
-		var top_right := Vector2(size.x - 214.0, 270.0)
-		var right_top_side := Vector2(size.x - 104.0, 520.0)
-		var right_mid := Vector2(size.x - 96.0, size.y * 0.48)
-		var right_bottom := Vector2(size.x - 112.0, size.y + 180.0)
-		var left_bottom := Vector2(112.0, size.y + 180.0)
-		var left_mid := Vector2(104.0, size.y * 0.48)
+		var top_mid := Vector2(size.x * 0.50, 123.0)
+		var top_right := Vector2(size.x - 107.0, 135.0)
+		var right_top_side := Vector2(size.x - 52.0, 260.0)
+		var right_mid := Vector2(size.x - 48.0, size.y * 0.48)
+		var right_bottom := Vector2(size.x - 56.0, size.y + 90.0)
+		var left_bottom := Vector2(56.0, size.y + 90.0)
+		var left_mid := Vector2(52.0, size.y * 0.48)
 		points.append(left_top_side)
 		_append_leaderboard_curve(points, left_top_side, Vector2(54.0, 191.0), Vector2(63.0, 150.0), top_left, 96)
-		_append_leaderboard_curve(points, top_left, Vector2(172.0, 108.0), Vector2(size.x * 0.34, 244.0), top_mid, 112)
-		_append_leaderboard_curve(points, top_mid, Vector2(size.x * 0.66, 244.0), Vector2(size.x - 330.0, 216.0), top_right, 112)
-		_append_leaderboard_curve(points, top_right, Vector2(size.x - 118.0, 300.0), Vector2(size.x - 108.0, 382.0), right_top_side, 96)
-		_append_leaderboard_curve(points, right_top_side, Vector2(size.x - 78.0, size.y * 0.30), Vector2(size.x - 118.0, size.y * 0.36), right_mid, 128)
-		_append_leaderboard_curve(points, right_mid, Vector2(size.x - 72.0, size.y * 0.64), Vector2(size.x - 112.0, size.y * 0.86), right_bottom, 128)
+		_append_leaderboard_curve(points, top_left, Vector2(172.0, 108.0), Vector2(size.x * 0.34, 122.0), top_mid, 112)
+		_append_leaderboard_curve(points, top_mid, Vector2(size.x * 0.66, 122.0), Vector2(size.x - 165.0, 108.0), top_right, 112)
+		_append_leaderboard_curve(points, top_right, Vector2(size.x - 59.0, 150.0), Vector2(size.x - 54.0, 191.0), right_top_side, 96)
+		_append_leaderboard_curve(points, right_top_side, Vector2(size.x - 39.0, size.y * 0.30), Vector2(size.x - 59.0, size.y * 0.36), right_mid, 128)
+		_append_leaderboard_curve(points, right_mid, Vector2(size.x - 36.0, size.y * 0.64), Vector2(size.x - 56.0, size.y * 0.86), right_bottom, 128)
 		points.append(left_bottom)
-		_append_leaderboard_curve(points, left_bottom, Vector2(112.0, size.y * 0.86), Vector2(72.0, size.y * 0.64), left_mid, 128)
-		_append_leaderboard_curve(points, left_mid, Vector2(118.0, size.y * 0.36), Vector2(78.0, size.y * 0.30), left_top_side, 128)
+		_append_leaderboard_curve(points, left_bottom, Vector2(56.0, size.y * 0.86), Vector2(36.0, size.y * 0.64), left_mid, 128)
+		_append_leaderboard_curve(points, left_mid, Vector2(59.0, size.y * 0.36), Vector2(39.0, size.y * 0.30), left_top_side, 128)
 		return PackedVector2Array(points)
 
 	func _append_leaderboard_curve(points: Array, p0: Vector2, c1: Vector2, c2: Vector2, p3: Vector2, steps: int) -> void:
@@ -65,13 +65,13 @@ static func dropdown(color: Color, pressed := false, ink_color := Color.BLACK) -
 	style.border_color = ink_color
 	style.set_border_width_all(9)
 	style.set_corner_radius_all(23)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 11 + (3 if pressed else 0)
-	style.content_margin_bottom = 11 - (2 if pressed else 0)
+	style.content_margin_left = 35
+	style.content_margin_right = 35
+	style.content_margin_top = 21 + (3 if pressed else 0)
+	style.content_margin_bottom = 21 - (2 if pressed else 0)
 	style.shadow_color = Color(0.08, 0.07, 0.06, 0.28 if not pressed else 0.14)
 	style.shadow_size = 5 if not pressed else 4
-	style.shadow_offset = Vector2(0, 8 if not pressed else 3)
+	style.shadow_offset = Vector2(0, 4 if not pressed else 2)
 	return style
 
 
@@ -81,13 +81,13 @@ static func player_card(color: Color, pressed := false, ink_color := Color.BLACK
 	style.border_color = ink_color
 	style.set_border_width_all(8)
 	style.set_corner_radius_all(29)
-	style.content_margin_left = 12
-	style.content_margin_right = 12
-	style.content_margin_top = 10 + (3 if pressed else 0)
-	style.content_margin_bottom = 10 - (2 if pressed else 0)
+	style.content_margin_left = 24
+	style.content_margin_right = 24
+	style.content_margin_top = 20 + (3 if pressed else 0)
+	style.content_margin_bottom = 20 - (2 if pressed else 0)
 	style.shadow_color = Color(0.08, 0.07, 0.06, 0.32 if not pressed else 0.16)
 	style.shadow_size = 6 if not pressed else 5
-	style.shadow_offset = Vector2(0, 9 if not pressed else 4)
+	style.shadow_offset = Vector2(0, 5 if not pressed else 2)
 	return style
 
 
@@ -297,16 +297,12 @@ func _leaderboard_player_card() -> Control:
 	margin.add_theme_constant_override("margin_bottom", 14)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(margin)
-	var content := VBoxContainer.new()
-	content.add_theme_constant_override("separation", 4)
-	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	margin.add_child(content)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 17)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(row)
-	row.add_child(host._profile_chat_overlay_surface().profile_avatar_frame(host.leaderboard_profile.avatar_index, Vector2(100, 100), true))
+	margin.add_child(row)
+	row.add_child(host._profile_chat_overlay_surface().profile_avatar_frame(host.leaderboard_profile.avatar_index, Vector2(116, 116), true))
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 1)
@@ -324,16 +320,18 @@ func _leaderboard_player_card() -> Control:
 	var rank = host._label("%s  |  %s" % [score_text, rank_text if rank_text == "unranked" else "Rank %s" % rank_text], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(rank)
 	var status := VBoxContainer.new()
-	status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status.add_theme_constant_override("separation", 2)
+	status.custom_minimum_size = Vector2(360, 0)
+	status.add_theme_constant_override("separation", 4)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(status)
-	var status_title = host._label(LeaderboardPresentation.submit_status_title(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, leaderboard_state.last_submit_unix, leaderboard_state.submit_ready()), 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	row.add_child(status)
+	var status_title = host._label(LeaderboardPresentation.submit_status_title(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, leaderboard_state.last_submit_unix, leaderboard_state.submit_ready()), 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
+	status_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_title.custom_minimum_size = Vector2(360, 62)
 	status.add_child(status_title)
 	var simple_status = LeaderboardPresentation.simple_status_message(str(leaderboard_state.status_message))
-	var detail = host._label(LeaderboardPresentation.submit_status_detail(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_retry_wait_seconds(), host._online_runtime().leaderboard_auth_in_flight, host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, simple_status, leaderboard_state.last_submit_unix, leaderboard_state.queued_score(), leaderboard_state.has_pending_category_score(), leaderboard_state.submit_ready()), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var detail = host._label(LeaderboardPresentation.submit_status_detail(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_retry_wait_seconds(), host._online_runtime().leaderboard_auth_in_flight, host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, simple_status, leaderboard_state.last_submit_unix, leaderboard_state.queued_score(), leaderboard_state.has_pending_category_score(), leaderboard_state.submit_ready()), 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.custom_minimum_size = Vector2(0, 58)
+	detail.custom_minimum_size = Vector2(360, 146)
 	status.add_child(detail)
 	return card
 

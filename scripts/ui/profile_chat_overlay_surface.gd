@@ -19,7 +19,7 @@ const PROFILE_AVATAR_ATLAS_INSET := 8
 const PROFILE_AVATAR_COLORED_ATLAS_INSET := 30
 const PROFILE_AVATAR_FRAME_BORDER := 8
 const CHAT_KEYBOARD_PREVIEW_HEIGHT := 89
-const CHAT_STRIP_HEIGHT := 160
+const CHAT_STRIP_HEIGHT := 130
 const CHAT_UI_Z := 3500
 const CHAT_OVERLAY_CANVAS_LAYER := 132
 const PROFILE_OVERLAY_CANVAS_LAYER := CHAT_OVERLAY_CANVAS_LAYER + 1
@@ -89,7 +89,7 @@ static func _chat_world_tab_style(ink_color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#3f5068")
 	style.border_color = ink_color
-	style.set_border_width_all(10)
+	style.set_border_width_all(5)
 	style.corner_radius_top_left = 12
 	style.corner_radius_top_right = 12
 	style.corner_radius_bottom_left = 12
@@ -104,7 +104,7 @@ static func chat_unread_dot_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#ef2f2f")
 	style.border_color = Color("#111111")
-	style.set_border_width_all(6)
+	style.set_border_width_all(3)
 	style.corner_radius_top_left = 499.5
 	style.corner_radius_top_right = 499.5
 	style.corner_radius_bottom_left = 499.5
@@ -119,7 +119,7 @@ static func _chat_expanded_message_style(deleted := false, is_self := false) -> 
 	style.corner_radius_top_left = 9
 	style.corner_radius_top_right = 9
 	style.corner_radius_bottom_left = 9
-	style.corner_radius_bottom_right = 5 if is_self and not deleted else 18
+	style.corner_radius_bottom_right = 5 if is_self and not deleted else 9
 	style.content_margin_left = 16
 	style.content_margin_right = 16
 	style.content_margin_top = 10
@@ -130,22 +130,22 @@ static func _chat_back_button_style(pressed := false, ink_color := Color.BLACK) 
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#ef3f55").darkened(0.08 if pressed else 0.0)
 	style.border_color = ink_color
-	style.set_border_width_all(8)
+	style.set_border_width_all(4)
 	style.corner_radius_top_left = 8
 	style.corner_radius_top_right = 8
 	style.corner_radius_bottom_left = 8
 	style.corner_radius_bottom_right = 8
 	style.content_margin_left = 9
 	style.content_margin_right = 9
-	style.content_margin_top = 5 + (5 if pressed else 0)
-	style.content_margin_bottom = 5 - (3 if pressed else 0)
+	style.content_margin_top = 5 + (2.5 if pressed else 0.0)
+	style.content_margin_bottom = 5 - (1.5 if pressed else 0.0)
 	return style
 
 static func _chat_input_style(focused := false, ink_color := Color.BLACK, focus_color := Color.BLUE) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color.WHITE
 	style.border_color = focus_color if focused else ink_color
-	style.set_border_width_all(7)
+	style.set_border_width_all(4)
 	style.corner_radius_top_left = 9
 	style.corner_radius_top_right = 9
 	style.corner_radius_bottom_left = 9
@@ -160,7 +160,7 @@ static func _chat_keyboard_preview_style(focus_color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color.WHITE
 	style.border_color = focus_color
-	style.set_border_width_all(8)
+	style.set_border_width_all(4)
 	style.corner_radius_top_left = 11
 	style.corner_radius_top_right = 11
 	style.corner_radius_bottom_left = 11
@@ -700,16 +700,16 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	copy.add_child(meta)
 	var name_text = _chat_sender_label(row_data)
 	var name_color = Color("#57b8ff") if is_self else Color("#ffc94a")
-	var player_name_label = host._label(name_text, 66, name_color, HORIZONTAL_ALIGNMENT_LEFT)
+	var player_name_label = host._label(name_text, 52, name_color, HORIZONTAL_ALIGNMENT_LEFT)
 	var name_settings = LabelSettings.new()
 	if host.app_bold_font != null:
 		name_settings.font = host.app_bold_font
 	elif host.app_font != null:
 		name_settings.font = host.app_font
-	name_settings.font_size = 66
+	name_settings.font_size = 52
 	name_settings.font_color = name_color
 	name_settings.outline_color = Color.BLACK
-	name_settings.outline_size = 30
+	name_settings.outline_size = 15
 	player_name_label.label_settings = name_settings
 	player_name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var name_margin = MarginContainer.new()
@@ -719,7 +719,7 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	name_margin.add_theme_constant_override("margin_bottom", 3)
 	name_margin.add_child(player_name_label)
 	meta.add_child(name_margin)
-	var time = host._label(_chat_time_text(row_data), 58, Color("#a7a7a7"), HORIZONTAL_ALIGNMENT_RIGHT)
+	var time = host._label(_chat_time_text(row_data), 52, Color("#a7a7a7"), HORIZONTAL_ALIGNMENT_RIGHT)
 	time.custom_minimum_size = Vector2(105, 0)
 	meta.add_child(time)
 	var bubble = PanelContainer.new()
@@ -727,7 +727,7 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	bubble.add_theme_stylebox_override("panel", _chat_expanded_message_style(deleted, is_self))
 	copy.add_child(bubble)
 	var body_text = "Message removed by moderator." if deleted else str(row_data.get("text", ""))
-	var body = host._label(body_text, 70, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
+	var body = host._label(body_text, 52, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(0, 56)
 	bubble.add_child(body)
@@ -1671,7 +1671,7 @@ static func avatar_frame_background(selected := false, theme_surface_color := Ca
 	style.bg_color = Color("#fff1b8") if selected else theme_surface_color.call(Color("#fffdf8"))
 	style.border_color = Color.TRANSPARENT
 	style.set_border_width_all(0)
-	style.set_corner_radius_all(24)
+	style.set_corner_radius_all(12)
 	if selected:
 		style.shadow_color = Color(0.09, 0.08, 0.07, 0.22)
 		style.shadow_size = 5
@@ -1685,7 +1685,7 @@ static func avatar_frame(_selected := false, ink_color := Color.BLACK, frame_bor
 	style.draw_center = false
 	style.border_color = ink_color
 	style.set_border_width_all(frame_border)
-	style.set_corner_radius_all(24)
+	style.set_corner_radius_all(12)
 	return style
 
 
@@ -1711,8 +1711,8 @@ static func name_field(
 	var style := StyleBoxFlat.new()
 	style.bg_color = theme_surface_color.call(Color("#fffaf0"))
 	style.border_color = focus_color if focused else theme_outline_color.call(ink_color, Color("#fffaf0"))
-	style.set_border_width_all(9)
-	style.set_corner_radius_all(36)
+	style.set_border_width_all(5)
+	style.set_corner_radius_all(18)
 	style.content_margin_left = 17
 	style.content_margin_right = 17
 	style.content_margin_top = 9

@@ -224,13 +224,13 @@ func render_page() -> void:
 	var audio_top_spacer := Control.new()
 	audio_top_spacer.custom_minimum_size = Vector2(0, 4)
 	stack.add_child(audio_top_spacer)
-	stack.add_child(audio_volume_control("Music", true, 900))
-	stack.add_child(audio_volume_control("SFX", false, 900))
-	stack.add_child(offline_progress_toggle_button(900, 90))
-	stack.add_child(auto_unlock_lockpad_toggle_button(900, 90))
-	stack.add_child(stamina_decimal_toggle_button(900, 90))
-	stack.add_child(offline_progress_cap_notification_toggle_button(900, 90))
-	stack.add_child(dark_mode_toggle_button(900, 90))
+	stack.add_child(audio_volume_control("Music", true, 700))
+	stack.add_child(audio_volume_control("SFX", false, 700))
+	stack.add_child(offline_progress_toggle_button(660, 66))
+	stack.add_child(auto_unlock_lockpad_toggle_button(660, 66))
+	stack.add_child(stamina_decimal_toggle_button(660, 66))
+	stack.add_child(offline_progress_cap_notification_toggle_button(660, 66))
+	stack.add_child(dark_mode_toggle_button(660, 66))
 	var fill_spacer := Control.new()
 	fill_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	fill_spacer.custom_minimum_size = Vector2(0, 6)
@@ -278,12 +278,12 @@ func audio_volume_control(title: String, music: bool, min_width := 560, bottom_p
 	var label_indent := Control.new()
 	label_indent.custom_minimum_size = Vector2(mute_size + control_gap, 1)
 	label_row.add_child(label_indent)
-	var name_label: Label = host._label(title, 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var name_label: Label = host._label(title, 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	if host.app_bold_font != null:
 		name_label.add_theme_font_override("font", host.app_bold_font)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label_row.add_child(name_label)
-	var value_label: Label = host._label("", 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+	var value_label: Label = host._label("", 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
 	value_label.custom_minimum_size = Vector2(105, 38)
 	label_row.add_child(value_label)
 	var control_padding := MarginContainer.new()
@@ -566,7 +566,7 @@ func settings_labeled_toggle_row(label_text: String, button_text: String, min_wi
 	row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 24)
-	var label: Label = host._label(label_text, 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var label: Label = host._label(label_text, 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	label.custom_minimum_size = Vector2(0, min_height)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

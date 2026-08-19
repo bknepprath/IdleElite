@@ -10,14 +10,20 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $projectPath = Join-Path $projectRoot "project.godot"
 $mainPath = Join-Path $projectRoot "scripts\main.gd"
 $leaderboardPresentationPath = Join-Path $projectRoot "scripts\leaderboard\presentation.gd"
+$profileChatSurfacePath = Join-Path $projectRoot "scripts\ui\profile_chat_overlay_surface.gd"
+$hubSurfacePath = Join-Path $projectRoot "scripts\ui\hub_surface.gd"
 
 Assert-True (Test-Path -LiteralPath $projectPath) "Missing project.godot."
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
 Assert-True (Test-Path -LiteralPath $leaderboardPresentationPath) "Missing leaderboard presentation script."
+Assert-True (Test-Path -LiteralPath $profileChatSurfacePath) "Missing profile/chat surface script."
+Assert-True (Test-Path -LiteralPath $hubSurfacePath) "Missing Hub surface script."
 
 $project = Get-Content -LiteralPath $projectPath -Raw
 $main = Get-Content -LiteralPath $mainPath -Raw
 $leaderboardPresentation = Get-Content -LiteralPath $leaderboardPresentationPath -Raw
+$profileChatSurface = Get-Content -LiteralPath $profileChatSurfacePath -Raw
+$hubSurface = Get-Content -LiteralPath $hubSurfacePath -Raw
 
 function Get-ProjectSettingValue {
     param(
@@ -113,6 +119,13 @@ $strictCutover = $RequireCutover -or $cutoverState
 if ($strictCutover) {
     Assert-True $cutoverState "1080p cutover requires project viewport and BASE_CANVAS to be 1080 x 1920."
     Assert-True ($leaderboardPresentation -match '(?m)^const BASE_FRAME_WIDTH := 1080\r?$') "Leaderboard frame width must be 1080 after cutover."
+    Assert-True ($main -match '(?m)^const ACTION_CARD_POP_GUTTER := 22\r?$') "Action-card pop gutter must retain exact half-scale 4K spacing."
+    Assert-True ($leaderboardPresentation -match '(?m)^const BOTTOM_SCROLL_PAD := 360\r?$') "Leaderboard bottom spacing must retain the half-scale 4K composition."
+    Assert-True ($leaderboardPresentation -match 'var top_mid := Vector2\(size\.x \* 0\.50, 123\.0\)') "Leaderboard paper contour must use native-1080 coordinates."
+    Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_HEIGHT := 130\r?$') "Chat strip height must retain exact half-scale 4K geometry."
+    Assert-True ($profileChatSurface -match 'style\.set_border_width_all\(5\)') "Chat/profile controls must not retain 4K border thickness."
+    Assert-True ($profileChatSurface -match 'style\.corner_radius_bottom_right = 5 if is_self and not deleted else 9') "Chat message corners must retain half-scale 4K geometry."
+    Assert-True ($hubSurface -match '"x": round\(decor_position\.x \* 2\.0\) \* 0\.5') "Hub decor must preserve deterministic half-pixel quantization from the 4K composition."
     Assert-True ($legacyCoordinateHits.Count -eq 0) "Exact 2160/3840 production literals remain after cutover: $($legacyCoordinateHits -join '; ')"
     Assert-True ($explicitSmallFontHits.Count -eq 0) "Explicit production font sizes below 48 px remain after cutover: $($explicitSmallFontHits -join '; ')"
 }
