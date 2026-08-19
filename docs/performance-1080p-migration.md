@@ -70,5 +70,5 @@ The half-resolution diagnostics were not accepted because runtime scaling and `c
 2. Run `scripts/check-project.ps1` before merging a completed phase.
 3. Install with `scripts/install-android-phone-debug.ps1`.
 4. Capture and inspect the real game at 1080 x 1920 through the production main scene.
-5. Record cold PSS, graphics memory, native heap, and repeated-navigation PSS.
+5. Record cold PSS, graphics memory, native heap, and repeated-navigation PSS with `scripts/measure-android-memory.ps1` against `com.idleelite.game.preview`.
 6. Verify that no agent-owned headless Godot process remains.
