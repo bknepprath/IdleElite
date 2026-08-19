@@ -143,7 +143,7 @@ Assert-True ($firebaseRuntime -match 'func _leaderboard_database_url_allowed\(ur
 Assert-True ($firebaseRuntime -match 'if not _leaderboard_database_url_allowed\(url\):\s*\r?\n\s*return ""') "Firebase base URL must be blanked when the configured database URL is not allowlisted."
 Assert-True ($firebaseRuntime -match 'host\.find\("your-project"\) >= 0 or host\.find\("your_project"\) >= 0') "Firebase runtime must reject placeholder Firebase database URLs."
 Assert-True ($firebaseRuntime -match 'if key\.length\(\) < 20 or key\.find\(" "\) >= 0 or key\.find\("\\t"\) >= 0 or key\.find\("\\n"\) >= 0 or key\.find\("\\r"\) >= 0:\s*\r?\n\s*return ""') "Firebase runtime must reject placeholder or whitespace-damaged Firebase Web API keys."
-Assert-True ($gitignore -match '(?m)^firebase-leaderboard-config\.json$') "Local Firebase config must be ignored by git."
+Assert-True ($gitignore -match '(?m)^firebase-leaderboard-config\.json\r?$') "Local Firebase config must be ignored by git."
 Assert-True ($exportPresets -match 'include_filter="[^"]*firebase-leaderboard-config\.json') "Android export must explicitly include the local Firebase config when present."
 Assert-True ($exportPresets -match 'include_filter="[^"]*docs/activity-database\.json') "Android export must explicitly include the activity database JSON."
 Assert-True ($exportPresetLines -contains 'permissions/internet=true') "Android export must include INTERNET permission for Firebase REST calls."

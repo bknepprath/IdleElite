@@ -14,6 +14,7 @@ $uiBoundaryContractTest = Join-Path $projectRoot "scripts\check-ui-boundary-cont
 $activityUiBoundaryContractTest = Join-Path $projectRoot "scripts\check-activity-ui-boundary-contracts.ps1"
 $leaderboardCostSafetyTest = Join-Path $projectRoot "scripts\check-leaderboard-cost-safety.ps1"
 $crashAuditContractsTest = Join-Path $projectRoot "scripts\check-crash-audit-contracts.ps1"
+$performance1080pMigrationContractsTest = Join-Path $projectRoot "scripts\check-1080p-migration-contracts.ps1"
 $activityCardGeometryTest = Join-Path $projectRoot "scripts\test-activity-card-geometry.ps1"
 $homeAchievementMedalClickTest = Join-Path $projectRoot "scripts\test-home-achievement-medal-click.ps1"
 $actionCardMedalCeremonyCleanupTest = Join-Path $projectRoot "scripts\test-action-card-medal-ceremony-cleanup.ps1"
@@ -313,6 +314,16 @@ if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
 Assert-NoUnexpectedGodotErrors $crashAuditContractsOutput "crash-audit contracts validation"
+
+if (-not (Test-Path -LiteralPath $performance1080pMigrationContractsTest)) {
+    throw "1080p migration contracts test was not found at $performance1080pMigrationContractsTest"
+}
+
+$performance1080pMigrationContractsOutput = & $performance1080pMigrationContractsTest 2>&1
+$performance1080pMigrationContractsOutput | Out-Host
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
 
 if (-not (Test-Path -LiteralPath $activityCardGeometryTest)) {
     throw "Activity card geometry test was not found at $activityCardGeometryTest"
