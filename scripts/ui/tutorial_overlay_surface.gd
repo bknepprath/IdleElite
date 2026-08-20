@@ -167,7 +167,7 @@ func build() -> void:
 	panel.offset_top = -165
 	panel.offset_bottom = -60
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, 52, 46, true))
+	panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, 26, 23, true))
 	panel.z_index = 20
 	panel.visible = false
 	tutorial_overlay.add_child(panel)

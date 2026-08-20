@@ -20,7 +20,7 @@ class LockedModuleShade extends Panel:
 
 	func _init() -> void:
 		shade_style.bg_color = Color(0.50, 0.50, 0.50, 0.42)
-		shade_style.set_corner_radius_all(54)
+		shade_style.set_corner_radius_all(27)
 		shade_style.anti_aliasing = true
 		add_theme_stylebox_override("panel", shade_style)
 		mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -33,12 +33,12 @@ class PageSwitchButtonFace extends Control:
 	var side := ""
 	var fill_color := Color("#32c5bd")
 	var ink_color := Color("#171615")
-	var stroke_width := 10.0
-	var radius := 66.0
-	var diagonal_radius := 32.0
-	var diagonal_width := 96.0
-	var arrow_edge_width := 76.0
-	var arrow_corner_radius := 26.0
+	var stroke_width := 5.0
+	var radius := 33.0
+	var diagonal_radius := 16.0
+	var diagonal_width := 48.0
+	var arrow_edge_width := 38.0
+	var arrow_corner_radius := 13.0
 	var draw_fill := true
 	var draw_stroke := true
 	var draw_depth_connectors := false
@@ -174,11 +174,11 @@ class PrismConnectorOverlay extends Control:
 	var side_fill_color := Color("#8f521f")
 	var bottom_fill_color := Color("#c8792c")
 	var stroke_width := ACTION_CARD_STROKE_WIDTH
-	var radius := 66.0
-	var diagonal_radius := 32.0
-	var diagonal_width := 96.0
-	var arrow_edge_width := 76.0
-	var arrow_corner_radius := 26.0
+	var radius := 33.0
+	var diagonal_radius := 16.0
+	var diagonal_width := 48.0
+	var arrow_edge_width := 38.0
+	var arrow_corner_radius := 13.0
 	var depth_offset := Vector2.ZERO
 	var face_offset := Vector2.ZERO
 	var face_gutter := 0.0
@@ -597,9 +597,9 @@ static func clear_cache() -> void:
 
 
 static func featured_art(surface_style: Callable, line_color: Color) -> StyleBoxFlat:
-	var style := surface_style.call(Color("#fffaf0"), 24, 8, true) as StyleBoxFlat
+	var style := surface_style.call(Color("#fffaf0"), 12, 4, true) as StyleBoxFlat
 	style.border_color = line_color
-	style.set_border_width_all(4)
+	style.set_border_width_all(2)
 	style.content_margin_left = 4
 	style.content_margin_right = 4
 	style.content_margin_top = 4
@@ -610,7 +610,7 @@ static func featured_art(surface_style: Callable, line_color: Color) -> StyleBox
 static func shade(alpha: float) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(0.5, 0.5, 0.5, alpha)
-	style.set_corner_radius_all(54)
+	style.set_corner_radius_all(27)
 	return style
 
 
@@ -826,7 +826,7 @@ static func prism_connector_overlay(depth_offset: Vector2, radius: float, side: 
 	connector.side = side
 	connector.depth_offset = depth_offset
 	connector.radius = radius
-	connector.diagonal_radius = 32.0
+	connector.diagonal_radius = 16.0
 	connector.stroke_width = stroke_width
 	connector.ink_color = ink_color
 	connector.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -913,9 +913,9 @@ static func ensure_activity_card_shade(card: Dictionary, alpha := 0.20) -> Panel
 
 
 static func action_art(surface_style: Callable) -> StyleBoxFlat:
-	var style := surface_style.call(Color.WHITE, 56, 16, true) as StyleBoxFlat
+	var style := surface_style.call(Color.WHITE, 28, 8, true) as StyleBoxFlat
 	style.border_color = Color("#171615")
-	style.set_border_width_all(12)
+	style.set_border_width_all(6)
 	style.shadow_color = Color.TRANSPARENT
 	style.shadow_size = 0
 	style.shadow_offset = Vector2.ZERO
@@ -936,8 +936,8 @@ static func art_glow(color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(color.r, color.g, color.b, 0.28)
 	style.border_color = Color(color.r, color.g, color.b, 0.95)
-	style.set_border_width_all(24)
-	style.set_corner_radius_all(56)
+	style.set_border_width_all(12)
+	style.set_corner_radius_all(28)
 	return style
 
 
@@ -945,8 +945,8 @@ static func bonus_emphasis(flash_color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.20)
 	style.border_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.88)
-	style.set_border_width_all(18)
-	style.set_corner_radius_all(38)
+	style.set_border_width_all(9)
+	style.set_corner_radius_all(19)
 	style.shadow_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.42)
 	style.shadow_size = 9
 	style.shadow_offset = Vector2.ZERO
@@ -970,8 +970,8 @@ static func tutorial_target_ring() -> StyleBoxFlat:
 	style.bg_color = Color(1.0, 0.89, 0.24, 0.0)
 	style.draw_center = false
 	style.border_color = Color("#ffd94d")
-	style.set_border_width_all(12)
-	style.set_corner_radius_all(54)
+	style.set_border_width_all(6)
+	style.set_corner_radius_all(27)
 	style.shadow_color = Color(0.0, 0.0, 0.0, 0.24)
 	style.shadow_size = 9
 	style.shadow_offset = Vector2(0, 4)
@@ -985,11 +985,11 @@ static func crit_glow(mega_crit := false) -> StyleBoxFlat:
 	style.draw_center = true
 	style.bg_color = Color(fill.r, fill.g, fill.b, 0.34 if mega_crit else 0.31)
 	style.border_color = Color(border.r, border.g, border.b, 1.0 if mega_crit else 0.96)
-	style.set_border_width_all(68 if mega_crit else 46)
+	style.set_border_width_all(34 if mega_crit else 23)
 	style.shadow_color = Color(1.0, 0.70, 0.0, 0.82) if mega_crit else Color(0.10, 0.58, 1.0, 0.62)
-	style.shadow_size = 34 if mega_crit else 42
+	style.shadow_size = 34 if mega_crit else 21
 	style.shadow_offset = Vector2.ZERO
-	style.set_corner_radius_all(82 if mega_crit else 66)
+	style.set_corner_radius_all(41 if mega_crit else 33)
 	return style
 
 

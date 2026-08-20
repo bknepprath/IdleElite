@@ -120,22 +120,22 @@ class _FirepitFuelRing:
 			return
 		var center := size * 0.5
 		var radius := minf(size.x, size.y) * 0.42
-		var tube_width := maxf(22.0, radius * 0.13)
-		var outline_width := tube_width + maxf(9.0, tube_width * 0.34)
+		var tube_width := maxf(11.0, radius * 0.13)
+		var outline_width := tube_width + maxf(4.5, tube_width * 0.34)
 		var inner_radius := radius - outline_width * 1.06
-		var inner_tube_width := maxf(20.0, tube_width * 0.70)
-		var inner_outline_width := inner_tube_width + maxf(7.0, inner_tube_width * 0.34)
+		var inner_tube_width := maxf(10.0, tube_width * 0.70)
+		var inner_outline_width := inner_tube_width + maxf(3.5, inner_tube_width * 0.34)
 		var start_angle := deg_to_rad(-75.0)
 		var sweep := deg_to_rad(330.0)
 		var fill_pct := clampf(value / 100.0, 0.0, 1.0)
 		var inner_fill_pct := clampf(inner_value / 100.0, 0.0, 1.0)
-		_draw_round_arc(center + Vector2(0.0, 2.5), radius, start_angle, sweep, shadow_color, outline_width + 4.0)
+		_draw_round_arc(center + Vector2(0.0, 2.5), radius, start_angle, sweep, shadow_color, outline_width + 2.0)
 		_draw_round_arc(center, radius, start_angle, sweep, outline_color, outline_width)
 		_draw_round_arc(center, radius, start_angle, sweep, empty_color, tube_width)
 		if fill_pct > 0.001:
 			_draw_heat_arc(center, radius, start_angle, sweep * fill_pct, sweep, tube_width)
 		if inner_radius > inner_outline_width:
-			_draw_round_arc(center + Vector2(0.0, 3.0), inner_radius, start_angle, sweep, shadow_color.darkened(0.2), inner_outline_width + 3.0)
+			_draw_round_arc(center + Vector2(0.0, 1.5), inner_radius, start_angle, sweep, shadow_color.darkened(0.2), inner_outline_width + 1.5)
 			_draw_round_arc(center, inner_radius, start_angle, sweep, outline_color, inner_outline_width)
 			_draw_round_arc(center, inner_radius, start_angle, sweep, inner_empty_color, inner_tube_width)
 			if inner_fill_pct > 0.001:
@@ -192,15 +192,15 @@ class _FirepitWarmthOverlay:
 	extends Control
 
 	var cutout_center := Vector2.ZERO
-	var base_radius := 520.0
-	var feather_radius := 260.0
-	var flicker_radius := 46.0
+	var base_radius := 260.0
+	var feather_radius := 130.0
+	var flicker_radius := 23.0
 	var darkness := 0.46
 	var unlit_darkness := 0.42
 	var glow_alpha := 0.16
 	var active := false
 	var cover_visible := false
-	var corner_radius := 66.0
+	var corner_radius := 33.0
 
 	var _time := 0.0
 
@@ -230,7 +230,7 @@ class _FirepitWarmthOverlay:
 			return
 		var flicker := sin(_time * 4.8) * 0.52 + sin(_time * 9.7 + 1.4) * 0.31 + sin(_time * 15.3 + 0.6) * 0.17
 		var radius := base_radius + flicker * flicker_radius
-		var feather := feather_radius + sin(_time * 3.3 + 0.8) * 24.0
+		var feather := feather_radius + sin(_time * 3.3 + 0.8) * 12.0
 		var outer_radius := radius + feather
 		var center := cutout_center
 		_draw_rounded_cover(Color(0.03, 0.022, 0.014, darkness))
@@ -431,11 +431,11 @@ void fragment() {
 			var cycle := fmod(t * (0.12 + float(index % 2) * 0.025) + phase, 1.0)
 			var fade := sin(cycle * PI)
 			var lane := float(index) - float(smoke_puffs.size() - 1) * 0.5
-			var side := lane * 52.0 + sin(t * 0.95 + float(index) * 1.7) * 28.0
-			var rise := cycle * (220.0 + float(index % 2) * 28.0)
-			var puff_size := 178.0 + cycle * 126.0 + float(index % 2) * 28.0
+			var side := lane * 26.0 + sin(t * 0.95 + float(index) * 1.7) * 14.0
+			var rise := cycle * (110.0 + float(index % 2) * 14.0)
+			var puff_size := 89.0 + cycle * 63.0 + float(index % 2) * 14.0
 			puff.size = Vector2(puff_size, puff_size)
-			puff.position = base + Vector2(side, -rise + 24.0) - puff.size * 0.5
+			puff.position = base + Vector2(side, -rise + 12.0) - puff.size * 0.5
 			puff.pivot_offset = puff.size * 0.5
 			puff.rotation = sin(t * 0.58 + float(index)) * 0.13
 			puff.scale = Vector2.ONE * (0.9 + cycle * 0.18)
@@ -445,10 +445,10 @@ void fragment() {
 class _ActivityCardInnerShadow:
 	extends Control
 
-	var radius := 66.0
-	var inset := 14.0
-	var shadow_height := 42.0
-	var side_lift := 10.0
+	var radius := 33.0
+	var inset := 7.0
+	var shadow_height := 21.0
+	var side_lift := 5.0
 	var shadow_color := Color(0.05, 0.04, 0.03, 0.24)
 
 	func _notification(what: int) -> void:
@@ -476,11 +476,11 @@ class _ActivityCardInnerShadow:
 				var dy := y - (size.y - radius)
 				var chord := sqrt(maxf(0.0, radius * radius - dy * dy))
 				var corner_inset := radius - chord
-				line_left = maxf(line_left, corner_inset + 18.0)
-				line_right = minf(line_right, size.x - corner_inset - 18.0)
+				line_left = maxf(line_left, corner_inset + 9.0)
+				line_right = minf(line_right, size.x - corner_inset - 9.0)
 			if line_right > line_left:
-				draw_line(Vector2(line_left, y), Vector2(line_right, y), Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha), step_y + 1.0, false)
-		draw_line(Vector2(left + radius * 0.35, bottom - shadow_height - side_lift * 0.44), Vector2(right - radius * 0.35, bottom - shadow_height - side_lift * 0.44), Color(1, 1, 1, 0.08), 4.0, true)
+				draw_line(Vector2(line_left, y), Vector2(line_right, y), Color(shadow_color.r, shadow_color.g, shadow_color.b, alpha), step_y + 0.5, false)
+		draw_line(Vector2(left + radius * 0.35, bottom - shadow_height - side_lift * 0.44), Vector2(right - radius * 0.35, bottom - shadow_height - side_lift * 0.44), Color(1, 1, 1, 0.08), 2.0, true)
 
 
 class _CardBorder:
@@ -489,8 +489,8 @@ class _CardBorder:
 	const FAST_ARC_SEGMENTS := 8
 
 	var border_color := Color("#171615")
-	var border_width := 8.0
-	var radius := 66.0
+	var border_width := 4.0
+	var radius := 33.0
 	var bottom_trim := 0.0
 
 	func _notification(what: int) -> void:
@@ -1131,7 +1131,7 @@ func _passive_module_shell(skill_id: String, action: Dictionary, content_width: 
 
 	var bg = RoundedTextureRect.new()
 	bg.texture = host.visual_texture_cache._texture_or_visual_fallback(str(action.get("bg", "res://assets/content/woodcutting/backgrounds/01-early.png")))
-	bg.radius = 66.0
+	bg.radius = 33.0
 	bg.art_height = host.PASSIVE_MODULE_CARD_HEIGHT
 	bg.fallback_color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
 	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1180,7 +1180,7 @@ func _passive_module_title(card_root: Control, pop_card: Control, skill_id: Stri
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.position = Vector2(37, 24)
-	title.size = Vector2(title_width, 106)
+	title.size = Vector2(title_width, 53)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.set_meta("module_ui_title_label", true)
 	title.set_meta("activity_card_locked_title_z_index", 200)
@@ -1347,7 +1347,7 @@ func _passive_module_resource_controls(pop_card: Control, module_id: String, int
 	plank_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	plank_button.z_index = 220
 	plank_button.tooltip_text = ""
-	plank_button.add_theme_constant_override("icon_max_width", 146)
+	plank_button.add_theme_constant_override("icon_max_width", 73)
 	host.button_press_runtime.attach_button_depress_animation(plank_button, 0.94)
 	if interactive:
 		plank_button.gui_input.connect(_on_passive_module_button_input.bind("plank", module_id, "", null, plank_button))
@@ -1403,13 +1403,13 @@ func _passive_module_stat_upgrade_controls(pop_card: Control, module_id: String,
 	var stats = {}
 	var stat_panels = {}
 	var upgrade_buttons = {}
-	var stat_y = 166.0
-	var stat_step = 206.0
+	var stat_y = 83.0
+	var stat_step = 103.0
 	var stat_types = ["time", "yield", "capacity"]
 	for i in range(3):
 		var stat_type = str(stat_types[i])
 		var stat_panel = Panel.new()
-		stat_panel.position = Vector2(74, stat_y + float(i) * stat_step)
+		stat_panel.position = Vector2(37, stat_y + float(i) * stat_step)
 		stat_panel.custom_minimum_size = Vector2(215, 89)
 		stat_panel.size = stat_panel.custom_minimum_size
 		stat_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1435,7 +1435,7 @@ func _passive_module_stat_upgrade_controls(pop_card: Control, module_id: String,
 		upgrade.text = ""
 		upgrade.custom_minimum_size = Vector2(175, 95)
 		upgrade.size = upgrade.custom_minimum_size
-		upgrade.position = Vector2(512, stat_y + float(i) * stat_step - 6.0)
+		upgrade.position = Vector2(256, stat_y + float(i) * stat_step - 3.0)
 		upgrade.focus_mode = Control.FOCUS_NONE
 		upgrade.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 		upgrade.z_index = 220
@@ -1474,7 +1474,7 @@ func _passive_module_stat_upgrade_controls(pop_card: Control, module_id: String,
 
 func _passive_module_loot_and_chrome(pop_card: Control, skill_id: String, content_width: float, passive_bar_height: float, passive_face_bottom_trim: float) -> Dictionary:
 	var loot = Control.new()
-	loot.position = Vector2(content_width - host.ACTION_CARD_POP_GUTTER * 2.0 - 720, 288)
+	loot.position = Vector2(content_width - host.ACTION_CARD_POP_GUTTER * 2.0 - 360, 144)
 	loot.custom_minimum_size = Vector2(330, 215)
 	loot.size = loot.custom_minimum_size
 	loot.clip_contents = false
@@ -1635,7 +1635,7 @@ func _firepit_background_layers(pop_card: Control, firepit_card_height: float, p
 	bg_underlay.offset_bottom = -passive_face_bottom_trim
 	bg_underlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bg_underlay.z_index = 149
-	var underlay_style = host._surface_style(Color("#8d5f3a"), 66, 0, false)
+	var underlay_style = host._surface_style(Color("#8d5f3a"), 33, 0, false)
 	underlay_style.border_width_left = 0
 	underlay_style.border_width_right = 0
 	underlay_style.border_width_top = 0
@@ -1645,7 +1645,7 @@ func _firepit_background_layers(pop_card: Control, firepit_card_height: float, p
 
 	var bg = RoundedTextureRect.new()
 	bg.texture = host.visual_texture_cache._texture_or_visual_fallback(WOODCUTTING_FIREPIT_BACKGROUND_TEXTURE)
-	bg.radius = 66.0
+	bg.radius = 33.0
 	bg.art_height = firepit_card_height
 	bg.feather_height = 0.0
 	bg.mask_inset = 0.0
@@ -1675,10 +1675,10 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 	var firepit_ring_size = Vector2(410, 410)
 	var art_root_size = Vector2(480, 450)
 	var module_center_x = face_width * 0.5
-	var firepit_layout_shift_x = -130.0
+	var firepit_layout_shift_x = -65.0
 
 	var art_root = Control.new()
-	art_root.position = Vector2(module_center_x - art_root_size.x * 0.5 + firepit_layout_shift_x, 40)
+	art_root.position = Vector2(module_center_x - art_root_size.x * 0.5 + firepit_layout_shift_x, 20)
 	art_root.custom_minimum_size = art_root_size
 	art_root.size = art_root.custom_minimum_size
 	art_root.clip_contents = false
@@ -1687,7 +1687,7 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 	pop_card.add_child(art_root)
 
 	var fuel_ring = _FirepitFuelRing.new()
-	var firepit_art_position = Vector2((art_root_size.x - firepit_art_size.x) * 0.5, 170)
+	var firepit_art_position = Vector2((art_root_size.x - firepit_art_size.x) * 0.5, 85)
 	var firepit_art_center = firepit_art_position + firepit_art_size * 0.5
 	fuel_ring.position = firepit_art_center - firepit_ring_size * 0.5
 	fuel_ring.size = firepit_ring_size
@@ -1713,10 +1713,10 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 	active_dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	active_dim.offset_bottom = -passive_face_bottom_trim
 	active_dim.cutout_center = art_root.position + firepit_art.position + firepit_art.size * Vector2(0.5, 0.54)
-	active_dim.base_radius = 360.0
-	active_dim.feather_radius = 360.0
-	active_dim.flicker_radius = 42.0
-	active_dim.corner_radius = 66.0
+	active_dim.base_radius = 180.0
+	active_dim.feather_radius = 180.0
+	active_dim.flicker_radius = 21.0
+	active_dim.corner_radius = 33.0
 	active_dim.darkness = 0.58
 	active_dim.unlit_darkness = 0.46
 	active_dim.glow_alpha = 0.18
@@ -1725,7 +1725,7 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 	pop_card.add_child(active_dim)
 
 	var flame_fx = FirepitFlameFx.new()
-	flame_fx.position = Vector2((art_root_size.x - 620.0) * 0.5, 58)
+	flame_fx.position = Vector2((art_root_size.x - 310.0) * 0.5, 29)
 	flame_fx.size = Vector2(310, 310)
 	flame_fx.custom_minimum_size = flame_fx.size
 	flame_fx.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1736,8 +1736,10 @@ func _firepit_art_bundle(pop_card: Control, content_width: float, passive_face_b
 
 func _firepit_status_controls(pop_card: Control) -> Dictionary:
 	var status_panel = Control.new()
-	status_panel.custom_minimum_size = Vector2(250, 180)
-	status_panel.position = Vector2(610.0, 52)
+	# Status copy stays at the 52 px phone-readable floor, so its three-line
+	# bonus needs more vertical room than the literal half-scale 4K box.
+	status_panel.custom_minimum_size = Vector2(340, 270)
+	status_panel.position = Vector2(590.0, 52)
 	status_panel.size = status_panel.custom_minimum_size
 	status_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.z_index = 242
@@ -1745,15 +1747,17 @@ func _firepit_status_controls(pop_card: Control) -> Dictionary:
 
 	var status_label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
 	status_label.position = Vector2(0, 0)
-	status_label.size = Vector2(245, 41)
+	status_label.size = Vector2(335, 62)
+	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	status_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	status_label.add_theme_constant_override("outline_size", 10)
 	status_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	status_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(status_label)
 	var buff_label = host._label("", 52, Color("#ffe27a"), HORIZONTAL_ALIGNMENT_RIGHT)
-	buff_label.position = Vector2(0, 59)
-	buff_label.size = Vector2(245, 85)
+	buff_label.position = Vector2(0, 65)
+	buff_label.size = Vector2(335, 130)
+	buff_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	buff_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	buff_label.add_theme_constant_override("outline_size", 7)
 	buff_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1761,8 +1765,9 @@ func _firepit_status_controls(pop_card: Control) -> Dictionary:
 	buff_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	status_panel.add_child(buff_label)
 	var timer_label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
-	timer_label.position = Vector2(0, 147)
-	timer_label.size = Vector2(245, 35)
+	timer_label.position = Vector2(0, 205)
+	timer_label.size = Vector2(335, 62)
+	timer_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	timer_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	timer_label.add_theme_constant_override("outline_size", 7)
 	timer_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2100,9 +2105,9 @@ func _render_passive_loot(card: Dictionary, module_id: String, unlocked: bool) -
 
 
 func _add_passive_log_collect_hotspot(loot: Control, module_id: String, visible_bounds: Rect2, click_prompt: Label) -> void:
-	var hotspot_rect := visible_bounds.grow(30.0)
+	var hotspot_rect := visible_bounds.grow(15.0)
 	if click_prompt != null and is_instance_valid(click_prompt):
-		hotspot_rect = hotspot_rect.merge(Rect2(click_prompt.position, click_prompt.size).grow(14.0))
+		hotspot_rect = hotspot_rect.merge(Rect2(click_prompt.position, click_prompt.size).grow(7.0))
 	hotspot_rect = hotspot_rect.intersection(Rect2(Vector2.ZERO, loot.size))
 	if hotspot_rect.size.x <= 1.0 or hotspot_rect.size.y <= 1.0:
 		return
@@ -2129,10 +2134,10 @@ func _add_passive_log_collect_hotspot(loot: Control, module_id: String, visible_
 
 func _passive_log_pile_shadow_rect(pile_slots: Array, visible_logs: int, icon_size: Vector2) -> Rect2:
 	var visible_bounds := _passive_log_pile_visible_bounds(pile_slots, visible_logs, icon_size)
-	var shadow_height := clampf(visible_bounds.size.y * 0.17, 34.0, 48.0)
-	var shadow_width := clampf(visible_bounds.size.x * 0.74, 240.0, 320.0)
+	var shadow_height := clampf(visible_bounds.size.y * 0.17, 17.0, 24.0)
+	var shadow_width := clampf(visible_bounds.size.x * 0.74, 120.0, 160.0)
 	var shadow_center_x := visible_bounds.position.x + visible_bounds.size.x * 0.52
-	var shadow_bottom := visible_bounds.end.y + 12.0
+	var shadow_bottom := visible_bounds.end.y + 6.0
 	return Rect2(
 		Vector2(shadow_center_x - shadow_width * 0.5, shadow_bottom - shadow_height),
 		Vector2(shadow_width, shadow_height)
@@ -2252,7 +2257,7 @@ func _passive_upgrade_arrow_icon(icon_size: Vector2) -> Control:
 	var sprite := PassiveIconSprite.new()
 	sprite.configure(host.visual_texture_cache._texture(MaterialRuntime.UPGRADE_ARROW_ICON_TEXTURE), icon_size)
 	sprite.stroke_color = host.COLOR_INK
-	sprite.stroke_width = 8.0
+	sprite.stroke_width = 4.0
 	sprite.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return sprite
 

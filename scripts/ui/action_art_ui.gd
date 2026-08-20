@@ -482,8 +482,8 @@ const ACTION_ART_PANEL_SIZE := Vector2(205, 205)
 const ACTION_ART_SIZE := Vector2(213.6, 213.6)
 const ACTION_ART_OFFSET := Vector2(-4.3, -4.3)
 const ACTION_ART_CORNER_ICON_SIZE := Vector2(86, 86)
-const ACTION_ART_CORNER_ICON_EDGE_OVERLAP := 60.0
-const ACTION_ART_CORNER_ICON_LIST_STEP := 104.0
+const ACTION_ART_CORNER_ICON_EDGE_OVERLAP := 30.0
+const ACTION_ART_CORNER_ICON_LIST_STEP := 52.0
 const ACTION_ART_CORNER_ICON_STROKE_PIXELS := 7.0
 
 static func image(action: Dictionary, texture_or_fallback: Callable, visual_fallback: Callable, headless: bool) -> ActionArtTextureRect:

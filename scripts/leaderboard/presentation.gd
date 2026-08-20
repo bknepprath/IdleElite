@@ -163,8 +163,12 @@ func _leaderboard_page_frame(rows: Array) -> Control:
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 95)
 	margin.add_theme_constant_override("margin_right", 95)
-	margin.add_theme_constant_override("margin_top", 165)
-	margin.add_theme_constant_override("margin_bottom", 200)
+	# The 52 px readable empty-state copy makes this stack 70 px taller than the
+	# literal half-scale reference. Bias the equal-height content region down by
+	# half that difference so the title and category control retain their 4K
+	# screen coordinates.
+	margin.add_theme_constant_override("margin_top", 200)
+	margin.add_theme_constant_override("margin_bottom", 165)
 	frame.add_child(margin)
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -319,7 +323,7 @@ func _leaderboard_player_card() -> Control:
 	copy.anchor_top = 0.5
 	copy.anchor_bottom = 0.5
 	copy.offset_left = 133.0
-	copy.offset_right = -337.0
+	copy.offset_right = -357.0
 	copy.offset_top = -100.0
 	copy.offset_bottom = 100.0
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -347,22 +351,22 @@ func _leaderboard_player_card() -> Control:
 	status.anchor_right = 1.0
 	status.anchor_top = 0.5
 	status.anchor_bottom = 0.5
-	status.offset_left = -320.0
+	status.offset_left = -340.0
 	status.offset_right = 0.0
-	status.offset_top = -150.0
-	status.offset_bottom = 150.0
+	status.offset_top = -170.0
+	status.offset_bottom = 170.0
 	status.alignment = BoxContainer.ALIGNMENT_CENTER
 	status.add_theme_constant_override("separation", 4)
 	status.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(status)
 	var status_title = host._label(LeaderboardPresentation.submit_status_title(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, leaderboard_state.last_submit_unix, leaderboard_state.submit_ready()), 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_RIGHT)
 	status_title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_title.custom_minimum_size = Vector2(320, 62)
+	status_title.custom_minimum_size = Vector2(340, 104)
 	status.add_child(status_title)
 	var simple_status = LeaderboardPresentation.simple_status_message(str(leaderboard_state.status_message))
 	var detail = host._label(LeaderboardPresentation.submit_status_detail(host.god_mode_save_tainted, host._online_runtime()._leaderboard_firebase_enabled(), LeaderboardProfile.profile_claim_valid(host, host.PROFILE_GUEST_NAME_PREFIX, host.PROFILE_DISPLAY_NAME_MAX_CHARS, host.PROFILE_NAME_KEY_MAX_CHARS), host._online_runtime()._leaderboard_auth_retry_wait_seconds(), host._online_runtime().leaderboard_auth_in_flight, host._online_runtime()._leaderboard_auth_ready(), host._online_runtime().leaderboard_submit_in_flight, simple_status, leaderboard_state.last_submit_unix, leaderboard_state.queued_score(), leaderboard_state.has_pending_category_score(), leaderboard_state.submit_ready()), 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.custom_minimum_size = Vector2(320, 146)
+	detail.custom_minimum_size = Vector2(340, 208)
 	status.add_child(detail)
 	return card
 
@@ -373,7 +377,7 @@ func _leaderboard_row(rank: int, row_data: Dictionary) -> Control:
 	var fill := Color("#ececec")
 	if bool(row_data.get("is_player", false)):
 		fill = Color("#d8f5ff")
-	row.add_theme_stylebox_override("panel", host._surface_style(fill, 30, 22, false))
+	row.add_theme_stylebox_override("panel", host._surface_style(fill, 15, 11, false))
 	var h := HBoxContainer.new()
 	h.alignment = BoxContainer.ALIGNMENT_CENTER
 	h.add_theme_constant_override("separation", 17)
@@ -419,7 +423,7 @@ func _leaderboard_empty_state() -> Control:
 	var card := PanelContainer.new()
 	card.custom_minimum_size = Vector2(0, 210)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	card.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6e1"), 38, 30, false))
+	card.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6e1"), 19, 15, false))
 	var margin := MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 27)
 	margin.add_theme_constant_override("margin_right", 27)

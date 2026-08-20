@@ -449,7 +449,7 @@ class BuildableModuleOverlay:
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color("#2f8f58") if can_afford else Color("#9a6330")
 		style.border_color = ink_color
-		style.set_border_width_all(12)
+		style.set_border_width_all(6)
 		style.corner_radius_top_left = 17
 		style.corner_radius_top_right = 17
 		style.corner_radius_bottom_left = 17
@@ -546,7 +546,7 @@ class ConvergenceBuildOverlay:
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color("#2f8f58")
 		style.border_color = ink_color
-		style.set_border_width_all(8)
+		style.set_border_width_all(4)
 		style.corner_radius_top_left = 17
 		style.corner_radius_top_right = 17
 		style.corner_radius_bottom_left = 17
@@ -591,12 +591,14 @@ const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 1
 const DETAIL_LAZY_UNMOUNT_ENABLED := true
 const DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
 const FISHING_DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
-const DETAIL_LAZY_UNMOUNT_BUDGET_PER_FRAME := 2
+const DETAIL_LAZY_UNMOUNT_BUDGET_PER_FRAME := 1
 const DETAIL_LAZY_SETTLE_WARM_MOUNT_ENABLED := true
 const DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME := 1
 const FISHING_DETAIL_LAZY_SETTLE_WARM_MOUNT_BUDGET_PER_FRAME := 1
-const DETAIL_LAZY_ADJACENT_PREWARM_BUFFER_PX := 1300.0
-const DETAIL_LAZY_CACHED_ROOT_LIMIT := 4
+const DETAIL_LAZY_ADJACENT_PREWARM_BUFFER_PX := 3200.0
+const DETAIL_LAZY_CACHED_ROOT_LIMIT := 8
+const DETAIL_LAZY_IDLE_PREMOUNT_LIMIT := 8
+const DETAIL_LAZY_FIGHT_IDLE_PREMOUNT_LIMIT := 1
 const DETAIL_LAZY_FADE_IN_SECONDS := 0.28
 const DETAIL_LAZY_SLIDE_IN_OFFSET_Y := 12.0
 const DETAIL_LAZY_SCALE_IN_AMOUNT := 0.985
@@ -1233,7 +1235,7 @@ func _process_detail_lazy_runtime(delta: float, detail_scroll_visual_work: bool)
 	var mounted_count := 0
 	if detail_lazy_plan.size() > 0:
 		mounted_count = _process_detail_lazy_window(delta)
-		if mounted_count == 0 and detail_scroll_visual_work:
+		if mounted_count == 0 and detail_scroll_visual_work and not detail_lazy_mounted_this_frame:
 			_process_detail_lazy_adjacent_prewarm()
 	_maybe_resume_fishing_detail_idle_warm_mount()
 	_process_detail_lazy_settle_warm_mount(detail_scroll_visual_work)
@@ -1367,6 +1369,11 @@ func _process_detail_lazy_settle_warm_mount(detail_scroll_visual_work: bool) -> 
 		if not _detail_lazy_idle_warm_mount_can_mount(skill_id, lazy_entry):
 			reached_warm_mount_limit = true
 			break
+		if lazy_entry.has("cached_root") and _detail_lazy_should_idle_premount_cached_root(skill_id):
+			if _detail_lazy_mount_item(lazy_entry, skill_id, content_width, actions_width, false):
+				lazy_entry["idle_prewarmed"] = true
+				cached_count += 1
+			continue
 		if lazy_entry.has("cached_root"):
 			continue
 		if _detail_lazy_build_cached_entry(lazy_entry, skill_id, content_width, actions_width):
@@ -2395,7 +2402,7 @@ func _normal_activity_stat_item(value_label: Label, stat_kind: String, interacti
 	var row := HBoxContainer.new()
 	row.set_anchors_preset(Control.PRESET_FULL_RECT)
 	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	row.add_theme_constant_override("separation", -8 if stat_kind == "time" or stat_kind == "success" else 12)
+	row.add_theme_constant_override("separation", -4 if stat_kind == "time" or stat_kind == "success" else 6)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	item.add_child(row)
 	var symbol_path: String = str({
@@ -2491,8 +2498,8 @@ func _normal_activity_stat_panel(minimum_size: Vector2, outline_color: Color) ->
 	var style := StyleBoxFlat.new()
 	style.bg_color = outline_color
 	style.border_color = COLOR_INK
-	style.set_border_width_all(14)
-	style.set_corner_radius_all(32)
+	style.set_border_width_all(7)
+	style.set_corner_radius_all(16)
 	style.content_margin_left = 16
 	style.content_margin_right = 16
 	style.content_margin_top = 14
@@ -2640,7 +2647,7 @@ func _normal_activity_stat_box_style(pressed := false) -> StyleBoxFlat:
 
 func _stat_box_style(active := false, pressed := false, fill := Color.WHITE) -> StyleBoxTexture:
 	var outline: Color = host.COLOR_BLUE if active else COLOR_INK
-	return PaperButtonStyles.paper_button_style_with_shape(fill, 38, 18, pressed, false, outline, 5.5, host.paper_button_style_textures, host.dark_mode_enabled, ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, Callable(host, "_theme_surface_color"), Callable(host, "_theme_outline_color"), Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture"))
+	return PaperButtonStyles.paper_button_style_with_shape(fill, 19, 9, pressed, false, outline, 2.75, host.paper_button_style_textures, host.dark_mode_enabled, ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, Callable(host, "_theme_surface_color"), Callable(host, "_theme_outline_color"), Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture"))
 
 
 func _thieving_skill_info_button() -> Button:
@@ -3562,6 +3569,7 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	detail_action_card_nodes.clear()
 	detail_rendered_action_ids.clear()
 	actions_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	actions_scroll.offset_top = 0.0 if host._fishing_rework_active_for_skill(selected_skill_id) else -9.0
 	actions_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	actions_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	actions_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -6089,9 +6097,9 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	var uses_flat_normal_card: bool = not host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
-	margin.add_theme_constant_override("margin_left", 68 if uses_flat_normal_card else 54)
-	margin.add_theme_constant_override("margin_right", 82 if uses_flat_normal_card else 54)
-	margin.add_theme_constant_override("margin_top", 38 if uses_flat_normal_card else 46)
+	margin.add_theme_constant_override("margin_left", 34 if uses_flat_normal_card else 27)
+	margin.add_theme_constant_override("margin_right", 41 if uses_flat_normal_card else 27)
+	margin.add_theme_constant_override("margin_top", 19 if uses_flat_normal_card else 23)
 	margin.add_theme_constant_override("margin_bottom", 63)
 	margin.mouse_filter = Control.MOUSE_FILTER_PASS
 	margin.z_index = 200
@@ -6099,12 +6107,12 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	pop_card.add_child(margin)
 
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 48 if uses_flat_normal_card else 56)
+	row.add_theme_constant_override("separation", 24 if uses_flat_normal_card else 28)
 	row.mouse_filter = Control.MOUSE_FILTER_PASS
 	margin.add_child(row)
 
 	var art_slot := MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 48 if uses_flat_normal_card else 42)
+	art_slot.add_theme_constant_override("margin_top", 24 if uses_flat_normal_card else 21)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel := Panel.new()
 	var art_panel_size := Vector2(200, 200) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
@@ -6140,7 +6148,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 18 if uses_flat_normal_card else 38)
+	copy.add_theme_constant_override("separation", 1 if uses_flat_normal_card else 19)
 	copy.mouse_filter = Control.MOUSE_FILTER_PASS
 	row.add_child(copy)
 	if not is_convergence_card and not uses_blue_guy_chicken_brawl_stage:
@@ -6206,7 +6214,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: Dictionary, action_id: String, is_convergence_card: bool) -> Dictionary:
 	var uses_flat_normal_card: bool = not host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var stat_row := HBoxContainer.new()
-	stat_row.add_theme_constant_override("separation", 18 if uses_flat_normal_card else 28)
+	stat_row.add_theme_constant_override("separation", 9 if uses_flat_normal_card else 14)
 	stat_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	copy.add_child(stat_row)
 
@@ -6339,7 +6347,7 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 		medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 		art_panel.add_child(medal)
-		mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
+		mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 28)
 		mastery_progress.border_color = COLOR_INK
 		mastery_progress.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 		ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
@@ -7748,7 +7756,7 @@ func _tier_banner_progress_bar(earned: int, possible: int, accent: Color, text: 
 	bar.offset_bottom = 0
 	bar.track_color = accent.darkened(0.55)
 	bar.border_color = COLOR_INK
-	bar.border_width = 12.0
+	bar.border_width = 6.0
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(bar)
 	var label: Label = host._label(text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
@@ -8703,9 +8711,27 @@ func _detail_lazy_initial_force_mount_count_for_skill(skill_id: String) -> int:
 
 
 func _detail_lazy_idle_warm_mount_can_mount(skill_id: String, lazy_entry: Dictionary) -> bool:
-	if skill_id != selected_skill_id or _detail_lazy_cached_root_count() >= DETAIL_LAZY_CACHED_ROOT_LIMIT:
+	if (
+		skill_id != selected_skill_id
+		or _detail_lazy_idle_prewarmed_count() + _detail_lazy_cached_root_count() >= DETAIL_LAZY_IDLE_PREMOUNT_LIMIT
+	):
 		return false
 	return _detail_lazy_entry_within_adjacent_prewarm_window(lazy_entry)
+
+
+func _detail_lazy_idle_prewarmed_count() -> int:
+	var count := 0
+	for raw_lazy_entry in detail_lazy_plan:
+		var lazy_entry := raw_lazy_entry as Dictionary
+		if bool(lazy_entry.get("mounted", false)) and bool(lazy_entry.get("idle_prewarmed", false)):
+			count += 1
+	return count
+
+
+func _detail_lazy_should_idle_premount_cached_root(skill_id: String) -> bool:
+	if host._fishing_rework_active_for_skill(skill_id):
+		return true
+	return skill_id == "fight" and _detail_lazy_idle_prewarmed_count() < DETAIL_LAZY_FIGHT_IDLE_PREMOUNT_LIMIT
 
 
 func _detail_lazy_cached_root_count() -> int:
@@ -9347,6 +9373,14 @@ func _detail_lazy_mount_item(lazy_entry: Dictionary, skill_id: String, content_w
 					detail_lazy_mount_trace_context
 				])
 		return true
+	if (
+		detail_scroll_visual_work_this_frame
+		and skill_id == "fight"
+		and kind in ["action", "passive"]
+		and _detail_lazy_build_cached_entry(lazy_entry, skill_id, content_width, actions_width)
+	):
+		detail_lazy_mounted_this_frame = true
+		return false
 	match kind:
 		"beta_notice":
 			var notice := _build_beta_notice_board(content_width)
@@ -9540,6 +9574,8 @@ func _sync_detail_lazy_visible_cards(instant: bool, max_mounts: int = -1) -> int
 		if _detail_lazy_mount_item(lazy_entry, selected_skill_id, content_width, actions_width, fade_in):
 			if not (cached_visible_fishing_entry and had_cached_root):
 				mounted_count += 1
+		elif detail_lazy_mounted_this_frame:
+			break
 	detail_lazy_mount_trace_context = previous_mount_context
 	detail_lazy_last_scroll = _detail_lazy_scroll_y()
 	return mounted_count
@@ -9594,6 +9630,8 @@ func _detail_lazy_entry_far_from_viewport(lazy_entry: Dictionary) -> bool:
 
 func _detail_lazy_can_unmount_entry(lazy_entry: Dictionary, pinned: Dictionary) -> bool:
 	if not bool(lazy_entry.get("mounted", false)):
+		return false
+	if bool(lazy_entry.get("idle_prewarmed", false)):
 		return false
 	var kind = _detail_lazy_entry_kind(lazy_entry)
 	if not _detail_lazy_kind_is_module(kind):

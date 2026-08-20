@@ -666,7 +666,7 @@ func _chat_status_actionable() -> bool:
 func _chat_expanded_notice() -> Control:
 	var panel = PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", host._surface_style(Color("#e8f6ff"), 30, 28, false))
+	panel.add_theme_stylebox_override("panel", host._surface_style(Color("#e8f6ff"), 15, 14, false))
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 13)
@@ -1470,7 +1470,7 @@ func _build_profile_overlay() -> void:
 	profile_overlay.add_child(center)
 	profile_panel = PanelContainer.new()
 	profile_panel.custom_minimum_size = Vector2(770, 1010)
-	profile_panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 36, true))
+	profile_panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 18, true))
 	center.add_child(profile_panel)
 	profile_content_stack = VBoxContainer.new()
 	profile_content_stack.add_theme_constant_override("separation", 17)

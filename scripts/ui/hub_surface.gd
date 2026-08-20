@@ -2157,7 +2157,7 @@ func _hub_bubble_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = _theme_surface_color(COLOR_PANEL)
 	style.border_color = _theme_outline_color(COLOR_INK, COLOR_PANEL)
-	style.set_border_width_all(9)
+	style.set_border_width_all(4.5)
 	style.corner_radius_top_left = 17
 	style.corner_radius_top_right = 17
 	style.corner_radius_bottom_left = 17
@@ -2424,7 +2424,7 @@ func _hide_action_card_type_badge_popovers(except: Control = null) -> void:
 			popover.visible = false
 
 func _action_card_type_badge_popover_style() -> StyleBoxFlat:
-	var style := _surface_style(COLOR_PANEL, 22, 22, true)
+	var style := _surface_style(COLOR_PANEL, 11, 11, true)
 	style.border_color = COLOR_INK
 	style.border_width_left = 3.5
 	style.border_width_right = 3.5
@@ -2832,7 +2832,7 @@ func _hub_mission_slab_style(pressed: bool, disabled := false) -> StyleBoxFlat:
 	else:
 		style.bg_color = Color("#8f5b28") if not pressed else Color("#70431f")
 		style.border_color = Color.BLACK
-	style.set_border_width_all(12)
+	style.set_border_width_all(6)
 	style.corner_radius_top_left = 10
 	style.corner_radius_top_right = 10
 	style.corner_radius_bottom_left = 10
@@ -3214,7 +3214,7 @@ func _hub_tutorial_info_button_style(pressed := false, hovered := false) -> Styl
 	var style := StyleBoxFlat.new()
 	style.bg_color = (Color("#5a96dd") if not hovered else Color("#68a8ef")).darkened(0.08 if pressed else 0.0)
 	style.border_color = COLOR_INK
-	style.set_border_width_all(7)
+	style.set_border_width_all(3.5)
 	style.corner_radius_top_left = 499.5
 	style.corner_radius_top_right = 499.5
 	style.corner_radius_bottom_left = 499.5

@@ -188,17 +188,13 @@ static func mastery_actions_for_skill(host: Node, skill_id: String) -> Array:
 
 
 static func milestones(host: Node, include_log_only := true) -> Array:
-	return _build_all_milestones(milestone_context(host), include_log_only)
+	return _build_all_milestones(milestone_context(host, include_log_only), include_log_only)
 
 
 static func milestone_context(host: Node, include_action_records := true) -> Dictionary:
-	return {
-		"total_counts": all_medal_counts(host),
+	var context := {
 		"total_level": SkillState.global_level(host.skills),
 		"max_total_level": host.skill_defs.size() * 99,
-		"action_medal_records": action_medal_records(host) if include_action_records else [],
-		"tier_counts": all_medal_tier_counts(host),
-		"total_activity_count": total_activity_count(host),
 		"activity_crit_seen": host.activity_crit_seen,
 		"activity_mega_crit_seen": host.activity_mega_crit_seen,
 		"crit_reward_text": "Reward: +%s%% crit chance" % GameFormatting.percent_points(ACTIVITY_CRIT_ACHIEVEMENT_CHANCE_MULT * 100.0),
@@ -207,6 +203,21 @@ static func milestone_context(host: Node, include_action_records := true) -> Dic
 		"medal_names": MasteryState.MEDAL_NAMES,
 		"medal_accents": medal_accent_hexes()
 	}
+	if include_action_records:
+		context["total_counts"] = all_medal_counts(host)
+		context["action_medal_records"] = action_medal_records(host)
+		context["tier_counts"] = all_medal_tier_counts(host)
+		context["total_activity_count"] = total_activity_count(host)
+	else:
+		var medal_summary: Dictionary = all_medal_summary(host)
+		context["total_counts"] = {
+			"earned": int(medal_summary["earned"]),
+			"possible": int(medal_summary["possible"])
+		}
+		context["action_medal_records"] = []
+		context["tier_counts"] = medal_summary["tiers"]
+		context["total_activity_count"] = int(medal_summary["activity_count"])
+	return context
 
 
 static func action_medal_records(host: Node) -> Array:
@@ -249,13 +260,6 @@ static func visible_host_milestones(host: Node, hide_completed: bool) -> Array:
 
 static func visible_host_milestones_fast(host: Node) -> Array:
 	var context := milestone_context(host, false)
-	var medal_summary: Dictionary = all_medal_summary(host)
-	context["total_counts"] = {
-		"earned": int(medal_summary["earned"]),
-		"possible": int(medal_summary["possible"])
-	}
-	context["tier_counts"] = medal_summary["tiers"]
-	context["total_activity_count"] = int(medal_summary["activity_count"])
 	return _build_visible_fast_milestones(context)
 
 
@@ -520,6 +524,44 @@ static func completed_ids(milestones: Array) -> Dictionary:
 			continue
 		completed[id] = true
 	return completed
+
+
+static func completed_public_ids_fast(host: Node) -> Dictionary:
+	var completed := {}
+	var total_level := SkillState.global_level(host.skills)
+	for target in TOTAL_LEVEL_TARGETS:
+		var target_int := int(target)
+		if total_level >= target_int:
+			completed["total-level-%s" % target_int] = true
+	var medal_summary: Dictionary = all_medal_summary(host)
+	var tier_counts: Array = medal_summary.get("tiers", []) as Array
+	for tier_index in range(mini(host.MASTERY_MAX_LEVEL, tier_counts.size())):
+		var tier := tier_index + 1
+		var target := _tier_count_target(tier)
+		if int(tier_counts[tier_index]) >= target:
+			completed["tier-count-%s-%s" % [tier, target]] = true
+	var cumulative := int(medal_summary.get("earned", 0))
+	for target in CUMULATIVE_TARGETS:
+		var target_int := int(target)
+		if cumulative >= target_int:
+			completed["cumulative-%s" % target_int] = true
+	if host.activity_crit_seen:
+		completed["activity-crit"] = true
+	if host.activity_mega_crit_seen:
+		completed["activity-mega-crit"] = true
+	return completed
+
+
+static func newly_completed_fast(host: Node, before: Dictionary) -> Array:
+	var after := completed_public_ids_fast(host)
+	var has_new_completion := false
+	for raw_id in after.keys():
+		if not bool(before.get(raw_id, false)):
+			has_new_completion = true
+			break
+	if not has_new_completion:
+		return []
+	return newly_completed(milestones(host, false), before)
 
 
 static func newly_completed(milestones: Array, before: Dictionary) -> Array:

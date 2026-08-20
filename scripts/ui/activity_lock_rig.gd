@@ -7,7 +7,7 @@ signal padlock_hovered
 const LINKS_PER_SIDE := 5
 const LINK_SIZE := Vector2(105, 65)
 const PADLOCK_SIZE := Vector2(270, 295)
-const PADLOCK_SOURCE_CROP_RIGHT := 3.0
+const PADLOCK_SOURCE_CROP_RIGHT := 1.5
 const PADLOCK_SHADOW_OFFSET := Vector2(0, 8)
 const CONSTRAINT_PASSES := 14
 const LOCK_CHAIN_TAUT_RATIO := 1.16
@@ -42,7 +42,7 @@ const UNLOCK_LOCK_TINT_MASK_TEXTURE := "res://assets/content/ui/unlock-lock-tint
 const UNLOCK_LOCK_PULSE_MASK_TEXTURE := "res://assets/content/ui/unlock-lock-pulse-mask.png"
 const READY_OPEN_CLINK_SECONDS := 0.30
 const READY_OPEN_SHACKLE_LIFT := 43.0
-const READY_OPEN_HANG_DROP := 86.0
+const READY_OPEN_HANG_DROP := 43.0
 const READY_OPEN_HANG_ROTATION := 0.16
 const DROP_CHAIN_CAPTURE_BLEND_END := 0.42
 const UNLOCK_SUCCESS_GREEN := Color("#45f08a")
@@ -55,8 +55,8 @@ const LOCK_STATE_GONE := "gone"
 class _ActivityLockNumber extends Control:
 	var text := "1"
 	var font: Font
-	var font_size := 250
-	var outline_size := 46
+	var font_size := 125
+	var outline_size := 23
 	var fill_color := Color.WHITE
 
 	func set_text(next_text: String) -> void:
@@ -71,13 +71,13 @@ class _ActivityLockNumber extends Control:
 		var active_font := font if font != null else ThemeDB.fallback_font
 		var fitted := font_size
 		var max_width := size.x * 0.86
-		while fitted > 72 and active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
-			fitted -= 4
+		while fitted > 36 and active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
+			fitted -= 2
 		var text_size := active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted)
 		var baseline := size.y * 0.5 + (active_font.get_ascent(fitted) - active_font.get_descent(fitted)) * 0.5
 		var text_position := Vector2((size.x - text_size.x) * 0.5, baseline)
-		for x in range(-outline_size, outline_size + 1, 3):
-			for y in range(-outline_size, outline_size + 1, 3):
+		for x in range(-outline_size, outline_size + 1, 2):
+			for y in range(-outline_size, outline_size + 1, 2):
 				if x == 0 and y == 0:
 					continue
 				var offset := Vector2(x, y)
@@ -303,8 +303,8 @@ func _build(font: Font, fallback_font: Font) -> void:
 		add_child(padlock_tint)
 	level_label = _ActivityLockNumber.new()
 	level_label.set_text(str(level))
-	level_label.font_size = 206
-	level_label.outline_size = 24
+	level_label.font_size = 103
+	level_label.outline_size = 12
 	level_label.set_fill_color(_lock_number_fill_color())
 	if font != null:
 		level_label.font = font
@@ -568,7 +568,7 @@ func _process_padlock_hover() -> void:
 func _layout_base() -> void:
 	if size.x <= 1.0 or size.y <= 1.0:
 		return
-	base_lock_position = Vector2(size.x * 0.5 - PADLOCK_SIZE.x * 0.5 + base_lock_x_shift, 48.0)
+	base_lock_position = Vector2(size.x * 0.5 - PADLOCK_SIZE.x * 0.5 + base_lock_x_shift, 24.0)
 	_reset_chain_points(not _drop_motion_should_be_preserved())
 	_place_padlock(lock_offset, lock_rotation)
 	queue_redraw()
@@ -1253,7 +1253,7 @@ func _place_padlock(offset: Vector2, next_lock_rotation: float) -> void:
 		padlock_tint.scale = Vector2.ONE * pop_scale
 	if level_label != null:
 		level_label.size = Vector2(120, 105)
-		level_label.position = lock_position + Vector2(PADLOCK_SIZE.x * 0.5 - level_label.size.x * 0.5 - 15.0, PADLOCK_SIZE.y * 0.52)
+		level_label.position = lock_position + Vector2(PADLOCK_SIZE.x * 0.5 - level_label.size.x * 0.5 - 7.5, PADLOCK_SIZE.y * 0.52)
 		level_label.pivot_offset = shared_pivot - (level_label.position - lock_position)
 		level_label.rotation = shared_rotation
 		level_label.scale = Vector2.ONE * pop_scale

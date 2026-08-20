@@ -816,7 +816,7 @@ func _clear_running_temporary_event_action(skill_id: String, action_id: String) 
 func _complete_temporary_event_action_attempt(skill_id: String, action_id: String, action: Dictionary, reward_key: String, cost: float, bonus_snapshot_before: Dictionary, clear_running_action_on_success := true) -> void:
 	if skill_id.is_empty() or action_id.is_empty() or action.is_empty():
 		return
-	var completed_achievements_before = AchievementState.completed_ids(AchievementState.milestones(host, false))
+	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	var old_reward_skill_levels = host._action_runtime()._skill_levels_for_reward_map(skill_id, host._action_runtime()._base_xp_reward_map(action, skill_id))
 	var success = host._action_runtime()._roll_action_success(skill_id, action)
 	if success:
@@ -837,7 +837,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		if log_reward > 0:
 			host.last_result += " +%s %s." % [host.material_runtime.amount_text_for_host(log_reward_mat_id, log_reward_amount, host), host.material_runtime.display_name(log_reward_mat_id)]
 		host._reward_feedback_surface()._play_action_feedback(reward_key, true, xp_reward, 0.0, false, false, xp_reward_map)
-		for achievement in AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before):
+		for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_activity_success_sound(1, false, false, false, false, 0)
 		host._audio_director()._record_music_flow_action(true, 1, false, false, any_reward_skill_level_up, cost)
@@ -851,7 +851,7 @@ func _complete_temporary_event_action_attempt(skill_id: String, action_id: Strin
 		host._action_runtime().reset_activity_completion_streak()
 		host.last_result = "Event failed: %s will try again." % str(action.get("name", "Event"))
 		host._reward_feedback_surface()._play_action_feedback(reward_key, false, 0, 0.0)
-		for achievement in AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before):
+		for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_failure_sfx()
 		host._audio_director()._record_music_flow_action(false, 0, false, false, false, cost)

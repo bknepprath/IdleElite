@@ -249,6 +249,20 @@ func _wait_for_boot_ready(scene: Node) -> bool:
 func _hide_boot_overlay_for_capture(scene: Node) -> void:
 	scene.set("boot_warmup_active", false)
 	scene.set("boot_splash_dismissed_early", true)
+	var boot_runtime = scene.call("_boot_warmup_runtime") if scene.has_method("_boot_warmup_runtime") else null
+	if boot_runtime != null:
+		boot_runtime.set("active", false)
+		var runtime_overlay := boot_runtime.get("overlay") as Control
+		if runtime_overlay != null and is_instance_valid(runtime_overlay):
+			runtime_overlay.visible = false
+			runtime_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			runtime_overlay.modulate.a = 0.0
+		var runtime_layer := boot_runtime.get("layer") as CanvasLayer
+		if runtime_layer != null and is_instance_valid(runtime_layer):
+			runtime_layer.visible = false
+		var runtime_splash := boot_runtime.get("splash") as Control
+		if runtime_splash != null and is_instance_valid(runtime_splash) and runtime_splash.has_method("stop"):
+			runtime_splash.call("stop")
 	var overlay := scene.get("boot_warmup_overlay") as Control
 	if overlay != null and is_instance_valid(overlay):
 		overlay.visible = false
@@ -261,6 +275,17 @@ func _hide_boot_overlay_for_capture(scene: Node) -> void:
 	if offline_overlay != null and is_instance_valid(offline_overlay):
 		offline_overlay.visible = false
 		offline_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tutorial_overlay := scene.get("tutorial_overlay") as Control
+	if tutorial_overlay != null and is_instance_valid(tutorial_overlay):
+		tutorial_overlay.visible = false
+		tutorial_overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tutorial_surface = scene.call("_tutorial_overlay_surface") if scene.has_method("_tutorial_overlay_surface") else null
+	if tutorial_surface != null:
+		for tutorial_property in ["tutorial_arrow", "tutorial_target_ring", "tutorial_target_label", "tutorial_instruction_label"]:
+			var tutorial_control := tutorial_surface.get(tutorial_property) as Control
+			if tutorial_control != null and is_instance_valid(tutorial_control):
+				tutorial_control.visible = false
+				tutorial_control.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for property_name in ["chat_strip", "module_utility_row", "nav_bar"]:
 		var chrome := scene.get(property_name) as Control
 		if chrome != null and is_instance_valid(chrome):

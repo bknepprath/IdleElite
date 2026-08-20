@@ -182,7 +182,7 @@ func _complete_convergence_cycle(module_id: String) -> int:
 	if action.is_empty():
 		return 0
 	var old_levels := {}
-	var completed_achievements_before: Dictionary = AchievementState.completed_ids(AchievementState.milestones(host, false))
+	var completed_achievements_before: Dictionary = AchievementState.completed_public_ids_fast(host)
 	for raw_skill_id in _convergence_skill_order(action):
 		old_levels[str(raw_skill_id)] = SkillState.host_skill_level(host, str(raw_skill_id))
 	var xp_reward := _convergence_current_xp(module_id)
@@ -197,7 +197,7 @@ func _complete_convergence_cycle(module_id: String) -> int:
 	convergence_modules[module_id] = state
 	host._passive_modules_runtime().sync_passive_module_unlocks(host._unix_now())
 	host.last_result = "%s complete: +%s XP to every skill." % [str(action.get("name", "Shrine")), xp_reward]
-	for achievement in AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before):
+	for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 		host._achievement_toast_surface().show_unlocked(achievement)
 	var leveled := false
 	for raw_skill_id in _convergence_skill_order(action):

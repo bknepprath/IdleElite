@@ -33,6 +33,28 @@ const WINGED_MEDAL_DISPLAY_SCALES := {
 	19: 1.77,
 	20: 1.77,
 }
+const MASTERY_MEDAL_ATLAS_REGIONS := [
+	Rect2(212, 204, 344, 360),
+	Rect2(212, 204, 344, 360),
+	Rect2(212, 204, 343, 360),
+	Rect2(214, 204, 339, 360),
+	Rect2(209, 204, 349, 360),
+	Rect2(208, 204, 351, 360),
+	Rect2(211, 204, 346, 360),
+	Rect2(211, 204, 346, 360),
+	Rect2(61, 204, 645, 360),
+	Rect2(100, 204, 567, 360),
+	Rect2(240, 200, 288, 368),
+	Rect2(241, 200, 285, 368),
+	Rect2(241, 200, 286, 368),
+	Rect2(242, 200, 284, 368),
+	Rect2(236, 200, 295, 368),
+	Rect2(239, 200, 290, 368),
+	Rect2(237, 200, 293, 368),
+	Rect2(238, 200, 292, 368),
+	Rect2(120, 200, 527, 368),
+	Rect2(121, 200, 526, 368),
+]
 
 static var mastery_medal_textures := {}
 static var mastery_medal_silhouette_materials := {}
@@ -126,16 +148,16 @@ static func same_tier_medal_count(target: int) -> int:
 
 static func medal_cluster_positions(count: int) -> Array:
 	if count <= 1:
-		return [Vector2(89, 72)]
+		return [Vector2(44.5, 36)]
 	if count <= 3:
-		return [Vector2(48, 88), Vector2(94, 48), Vector2(140, 88)]
+		return [Vector2(24, 44), Vector2(47, 24), Vector2(70, 44)]
 	if count <= 5:
-		return [Vector2(42, 88), Vector2(70, 50), Vector2(112, 50), Vector2(140, 88), Vector2(91, 112)]
+		return [Vector2(21, 44), Vector2(35, 25), Vector2(56, 25), Vector2(70, 44), Vector2(45.5, 56)]
 	if count <= 7:
-		return [Vector2(34, 88), Vector2(58, 56), Vector2(92, 42), Vector2(126, 56), Vector2(150, 88), Vector2(68, 116), Vector2(116, 116)]
+		return [Vector2(17, 44), Vector2(29, 28), Vector2(46, 21), Vector2(63, 28), Vector2(75, 44), Vector2(34, 58), Vector2(58, 58)]
 	if count <= 8:
-		return [Vector2(28, 88), Vector2(50, 58), Vector2(78, 42), Vector2(110, 42), Vector2(138, 58), Vector2(160, 88), Vector2(68, 116), Vector2(120, 116)]
-	return [Vector2(24, 88), Vector2(44, 62), Vector2(68, 44), Vector2(94, 38), Vector2(120, 44), Vector2(144, 62), Vector2(164, 88), Vector2(58, 116), Vector2(94, 122), Vector2(130, 116)]
+		return [Vector2(14, 44), Vector2(25, 29), Vector2(39, 21), Vector2(55, 21), Vector2(69, 29), Vector2(80, 44), Vector2(34, 58), Vector2(60, 58)]
+	return [Vector2(12, 44), Vector2(22, 31), Vector2(34, 22), Vector2(47, 19), Vector2(60, 22), Vector2(72, 31), Vector2(82, 44), Vector2(29, 58), Vector2(47, 61), Vector2(65, 58)]
 
 
 static func mastery_medal_texture(level: int, max_level: int, texture_loader: Callable, visual_fallback: Callable) -> Texture2D:
@@ -143,25 +165,26 @@ static func mastery_medal_texture(level: int, max_level: int, texture_loader: Ca
 	if mastery_medal_textures.has(index):
 		return mastery_medal_textures[index]
 	var source := texture_loader.call(str(MASTERY_MEDAL_TEXTURES[index])) as Texture2D
-	var texture := _cropped_texture(source)
+	var texture := _cropped_texture(source, index)
 	if texture == null:
 		return visual_fallback.call() as Texture2D
 	mastery_medal_textures[index] = texture
 	return texture
 
 
-static func _cropped_texture(texture: Texture2D) -> Texture2D:
+static func _cropped_texture(texture: Texture2D, index: int) -> Texture2D:
 	if texture == null:
 		return null
-	var image := texture.get_image()
-	if image == null or image.is_empty():
+	if index < 0 or index >= MASTERY_MEDAL_ATLAS_REGIONS.size():
 		return texture
-	var rect := image.get_used_rect()
-	if rect.size.x <= 0 or rect.size.y <= 0:
+	var region: Rect2 = MASTERY_MEDAL_ATLAS_REGIONS[index]
+	if region.size.x <= 0.0 or region.size.y <= 0.0:
 		return texture
-	var cropped_image := image.get_region(rect)
-	cropped_image.generate_mipmaps()
-	return ImageTexture.create_from_image(cropped_image)
+	var atlas := AtlasTexture.new()
+	atlas.atlas = texture
+	atlas.region = region
+	atlas.filter_clip = true
+	return atlas
 
 
 static func mastery_medal_visual_texture(level: int, max_level: int, texture_loader: Callable, visual_fallback: Callable) -> Texture2D:

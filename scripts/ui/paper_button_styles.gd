@@ -9,8 +9,8 @@ static func paper_button_style_with_shape(color: Color, radius: int, margin: int
 		var texture_size := Vector2i(64, 46)
 		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
 		var inner := outer.grow(-outline_width)
-		var inner_radius := 14.0
-		var bevel_height := 22.0
+		var inner_radius := 7.0
+		var bevel_height := 11.0
 		var bevel_strength := 0.40 if not disabled else 0.22
 		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
 		image.fill(Color(0, 0, 0, 0))
@@ -20,31 +20,31 @@ static func paper_button_style_with_shape(color: Color, radius: int, margin: int
 		for y in range(texture_size.y):
 			for x in range(texture_size.x):
 				var point := Vector2(float(x) + 0.5, float(y) + 0.5)
-				if not contains(point, outer, 22.0):
+				if not contains(point, outer, 11.0):
 					continue
 				var pixel := themed_outline
 				if contains(point, inner, inner_radius):
 					pixel = fill
 					var horizontal := absf((point.x - (inner.position.x + inner.size.x * 0.5)) / maxf(1.0, inner.size.x * 0.5))
 					var side_curve := pow(clampf(horizontal, 0.0, 1.0), 2.15)
-					var bevel_top := inner.end.y - bevel_height - bevel_side_lift * side_curve + (4.0 if pressed else 0.0)
+					var bevel_top := inner.end.y - bevel_height - bevel_side_lift * side_curve + (2.0 if pressed else 0.0)
 					if point.y >= bevel_top:
 						var shade_t := clampf((point.y - bevel_top) / bevel_height, 0.0, 1.0)
 						pixel = fill.lerp(fill.darkened(bevel_strength), 0.38 + shade_t * 0.58)
-					elif point.y <= inner.position.y + 5.0 and not pressed:
+					elif point.y <= inner.position.y + 2.5 and not pressed:
 						pixel = fill.lightened(0.12)
 				image.set_pixel(x, y, pixel)
 		style.texture = create_texture.call(image)
 	else:
 		style.texture = fallback_texture.call()
-	style.texture_margin_left = 30
-	style.texture_margin_right = 30
-	style.texture_margin_top = 30
-	style.texture_margin_bottom = 34
+	style.texture_margin_left = 15
+	style.texture_margin_right = 15
+	style.texture_margin_top = 15
+	style.texture_margin_bottom = 17
 	style.content_margin_left = margin
 	style.content_margin_right = margin
-	style.content_margin_top = max(18, margin - 18 + (6 if pressed else 0))
-	style.content_margin_bottom = max(18, margin - 8 - (4 if pressed else 0))
+	style.content_margin_top = max(9, margin - 9 + (3 if pressed else 0))
+	style.content_margin_bottom = max(9, margin - 4 - (2 if pressed else 0))
 	cache[key] = style
 	return style
 
@@ -62,12 +62,12 @@ static func chunky_activity_button_style(color: Color, radius: int, margin: int,
 			int(final_texture_size.x * supersample),
 			int(final_texture_size.y * supersample)
 		)
-		var border := 12.0 * supersample
-		var bottom_lip := (34.0 if not pressed else 20.0) * supersample
+		var border := 6.0 * supersample
+		var bottom_lip := (17.0 if not pressed else 10.0) * supersample
 		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
 		var inner := outer.grow(-border)
-		var outer_radius := minf(float(radius) * supersample, 54.0 * supersample)
-		var inner_radius := maxf(8.0, outer_radius - border)
+		var outer_radius := minf(float(radius) * supersample, 27.0 * supersample)
+		var inner_radius := maxf(4.0, outer_radius - border)
 		var fill := color.darkened(0.07 if pressed else 0.0)
 		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
 		image.fill(Color(0, 0, 0, 0))
@@ -80,28 +80,28 @@ static func chunky_activity_button_style(color: Color, radius: int, margin: int,
 				if contains(point, inner, inner_radius):
 					var horizontal := absf((point.x - inner.get_center().x) / maxf(1.0, inner.size.x * 0.5))
 					var side_curve := pow(clampf(horizontal, 0.0, 1.0), 1.75)
-					var bevel_top := inner.end.y - bottom_lip - 9.0 * supersample * side_curve + ((7.0 * supersample) if pressed else 0.0)
+					var bevel_top := inner.end.y - bottom_lip - 4.5 * supersample * side_curve + ((3.5 * supersample) if pressed else 0.0)
 					pixel = fill
 					if point.y >= bevel_top:
 						var shade_t := clampf((point.y - bevel_top) / maxf(1.0, inner.end.y - bevel_top), 0.0, 1.0)
 						pixel = fill.lerp(fill.darkened(0.58), 0.48 + shade_t * 0.46)
-					elif point.y <= inner.position.y + 7.0 * supersample and not pressed:
+					elif point.y <= inner.position.y + 3.5 * supersample and not pressed:
 						pixel = fill.lightened(0.12)
-					elif point.y <= inner.position.y + 18.0 * supersample and not pressed:
+					elif point.y <= inner.position.y + 9.0 * supersample and not pressed:
 						pixel = fill.lightened(0.05)
 				image.set_pixel(x, y, pixel)
 		image.resize(final_texture_size.x, final_texture_size.y, Image.INTERPOLATE_LANCZOS)
 		style.texture = create_texture.call(image)
 	else:
 		style.texture = fallback_texture.call()
-	style.texture_margin_left = 42
-	style.texture_margin_right = 42
-	style.texture_margin_top = 36
-	style.texture_margin_bottom = 52
+	style.texture_margin_left = 21
+	style.texture_margin_right = 21
+	style.texture_margin_top = 18
+	style.texture_margin_bottom = 26
 	style.content_margin_left = margin
 	style.content_margin_right = margin
-	style.content_margin_top = max(14, margin - 10 + (8 if pressed else 0))
-	style.content_margin_bottom = max(14, margin - 16 - (5 if pressed else 0))
+	style.content_margin_top = max(7, margin - 5 + (4 if pressed else 0))
+	style.content_margin_bottom = max(7, margin - 8 - (2.5 if pressed else 0.0))
 	cache[key] = style
 	return style
 

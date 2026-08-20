@@ -52,8 +52,8 @@ const SKILL_MENU_DARK_PANEL_MIX := 0.10
 const PAGE_SWITCH_MODULE_HEIGHT := 170
 const PAGE_SWITCH_SKILL_ICON_STAGE_SIZE := Vector2(215, 215)
 const PAGE_SWITCH_SKILL_ICON_SYMBOL_BASE_SIZE := Vector2(223, 223)
-const PAGE_SWITCH_SKILL_ICON_EDGE_CROP := 54.0
-const PAGE_SWITCH_SKILL_ICON_VERTICAL_SHIFT := -4.0
+const PAGE_SWITCH_SKILL_ICON_EDGE_CROP := 27.0
+const PAGE_SWITCH_SKILL_ICON_VERTICAL_SHIFT := -2.0
 
 class _ModuleSortMenuBuilder:
 	static func build(z_index: int, level_toggle: Callable, priority_toggle: Callable, depress: Callable, app_font: Font, bold_font: Font, ink: Color) -> Dictionary:
@@ -151,7 +151,7 @@ class _ModuleSortMenuBuilder:
 		if pressed:
 			style.bg_color = style.bg_color.darkened(0.06)
 		style.border_color = ink
-		style.set_border_width_all(10)
+		style.set_border_width_all(5)
 		style.set_corner_radius_all(999)
 		style.content_margin_left = 22
 		style.content_margin_right = 22
@@ -166,7 +166,7 @@ class _UtilityCollapseArrow:
 
 	var direction := -1
 	var ink_color := Color("#8a6f4e")
-	var stroke_width := 13.0
+	var stroke_width := 6.5
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
@@ -301,7 +301,7 @@ class _ModuleUtilityRowBuilder:
 		var style := StyleBoxFlat.new()
 		style.bg_color = Color("#eadfca") if pressed else Color("#fff4dd")
 		style.border_color = Color("#8a6f4e")
-		style.set_border_width_all(10)
+		style.set_border_width_all(5)
 		style.set_corner_radius_all(999)
 		style.content_margin_left = 0
 		style.content_margin_right = 0
@@ -316,8 +316,8 @@ class PageSwitchChevronIcon:
 	var ink_color := Color("#171615")
 	var fill_color := Color.WHITE
 	var shadow_color := Color(0.0, 0.0, 0.0, 0.18)
-	var stroke_width := 50.0
-	var fill_width := 31.0
+	var stroke_width := 25.0
+	var fill_width := 15.5
 
 	func _notification(what: int) -> void:
 		if what == NOTIFICATION_RESIZED:
@@ -3300,7 +3300,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		copy.add_child(title)
 		var meta: Label = host._label("", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		copy.add_child(meta)
-		var xp_bar: Control = ThemeStyles.progress_bar(theme_color, 62)
+		var xp_bar: Control = ThemeStyles.progress_bar(theme_color, 31)
 		ThemeStyles.apply_xp_progress_bar_theme(xp_bar, theme_color, host.COLOR_INK)
 		xp_bar.custom_minimum_size.x = 380
 		xp_bar.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN

@@ -487,7 +487,7 @@ func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	return card
 
 func _offline_summary_info_style() -> StyleBoxFlat:
-	var style: StyleBoxFlat = host._surface_style(Color("#fffdf8"), 28, 18, false)
+	var style: StyleBoxFlat = host._surface_style(Color("#fffdf8"), 14, 9, false)
 	style.border_color = Color(0, 0, 0, 0)
 	style.border_width_left = 0
 	style.border_width_right = 0
@@ -517,7 +517,7 @@ func _offline_summary_stat_card(title: String, value: String, accent: Color, ico
 	return card
 
 func _offline_summary_stat_style(accent: Color) -> StyleBoxFlat:
-	var style: StyleBoxFlat = host._surface_style(Color("#fffdf8"), 32, 22, false)
+	var style: StyleBoxFlat = host._surface_style(Color("#fffdf8"), 16, 11, false)
 	style.border_color = Color(accent.r, accent.g, accent.b, 0.34)
 	style.border_width_left = 4
 	style.border_width_right = 4
@@ -1614,15 +1614,15 @@ func _add_achievement_art_image(parent: Control, texture: Texture2D, image_posit
 func _populate_achievement_medal_cluster(parent: Control, levels: Array) -> void:
 	var count = levels.size()
 	var positions = AchievementPresentation.medal_cluster_positions(count)
-	var medal_size = 144.0
+	var medal_size = 72.0
 	if count >= 9:
-		medal_size = 56.0
+		medal_size = 28.0
 	elif count >= 7:
-		medal_size = 62.0
+		medal_size = 31.0
 	elif count >= 5:
-		medal_size = 70.0
+		medal_size = 35.0
 	elif count >= 3:
-		medal_size = 76.0
+		medal_size = 38.0
 	for i in range(count):
 		var center: Vector2 = positions[i] if i < positions.size() else Vector2(44.5, 36)
 		var icon_size = Vector2(medal_size, medal_size)

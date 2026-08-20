@@ -3287,6 +3287,8 @@ func _action_card_medal_size(mastery_level: int) -> Vector2:
 
 func _apply_action_card_medal_layout(card: Dictionary, medal: TextureRect, mastery_level: int) -> Vector2:
 	var size := _action_card_medal_size(mastery_level)
+	medal.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	medal.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	medal.size = size
 	var destination := -size * 0.5 + ACTION_CARD_MEDAL_CORNER_INSET
 	card["medal_destination"] = destination
@@ -4070,7 +4072,7 @@ func _activity_queue_overlay_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color.WHITE
 	style.border_color = host.COLOR_INK
-	style.set_border_width_all(10)
+	style.set_border_width_all(5)
 	style.corner_radius_top_left = 499.5
 	style.corner_radius_top_right = 499.5
 	style.corner_radius_bottom_left = 499.5
@@ -4656,7 +4658,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 		"action_cards": [],
 		"fishing_built_modules": [],
 		"prewarmed": false,
-		"proxy_oandoff": host.SKILL_SWIPE_LIGHT_PREVIEW_ENABLED,
+		"proxy_handoff": host.SKILL_SWIPE_LIGHT_PREVIEW_ENABLED,
 	}
 	var page = VBoxContainer.new()
 	state["page"] = page
@@ -4800,6 +4802,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 	preview_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	preview_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	preview_scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	preview_scroll.offset_top = 0.0 if host._fishing_rework_active_for_skill(skill_id) else -9.0
 	preview_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	preview_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
 	preview_scroll.clip_contents = true
@@ -5397,7 +5400,7 @@ func _skill_swipe_light_preview_card_style(skill_id: String) -> StyleBoxFlat:
 	var style = StyleBoxFlat.new()
 	style.bg_color = theme.darkened(0.06)
 	style.border_color = Color(host.COLOR_INK.r, host.COLOR_INK.g, host.COLOR_INK.b, 0.72)
-	style.set_border_width_all(5)
+	style.set_border_width_all(2.5)
 	style.corner_radius_top_left = 23
 	style.corner_radius_top_right = 23
 	style.corner_radius_bottom_left = 23
@@ -5474,7 +5477,7 @@ func _skill_swipe_light_preview_header_circle_style(skill_id: String) -> StyleBo
 	var style = StyleBoxFlat.new()
 	style.bg_color = theme.darkened(0.02)
 	style.border_color = host.COLOR_INK
-	style.set_border_width_all(12)
+	style.set_border_width_all(6)
 	style.corner_radius_top_left = 110
 	style.corner_radius_top_right = 110
 	style.corner_radius_bottom_left = 110
@@ -6028,7 +6031,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 		art_panel.add_child(medal)
-		mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
+		mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 28)
 		mastery_progress.border_color = host.COLOR_INK
 		ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
 		mastery_progress.easing_speed = 5.0
@@ -6050,7 +6053,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 		progress.anchor_bottom = 1.0
 		progress.offset_left = 0.0
 		progress.offset_right = 0.0
-		var normal_progress_height := 112.0
+		var normal_progress_height := 56.0
 		var normal_progress_bottom_margin := 0.0
 		progress.offset_top = -host.ACTION_PROGRESS_RAIL_HEIGHT if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin - normal_progress_height
 		progress.offset_bottom = -host.ACTION_PROGRESS_RAIL_INSET if RecoveryModules.has_recovery(action) else -ActivityCardStyles.NORMAL_ACTIVITY_CARD_DEPTH_OFFSET.y - normal_progress_bottom_margin
@@ -6272,7 +6275,7 @@ func _install_activity_button_shell(button: Button, fill: Color, radius: float, 
 		normal_depth.add_theme_stylebox_override("panel", ActivityCardStyles.normal_activity_card_bottom_base(radius, host.COLOR_INK, fill))
 		depth = normal_depth
 	else:
-		var shaped_depth = ActivityCardStyles.prism_connector_overlay(depth_offset, radius, diagonal_side, 12.0, host.COLOR_INK)
+		var shaped_depth = ActivityCardStyles.prism_connector_overlay(depth_offset, radius, diagonal_side, ActivityCardStyles.ACTION_CARD_STROKE_WIDTH, host.COLOR_INK)
 		shaped_depth.name = "ActivityButtonDepth"
 		shaped_depth.face_gutter = gutter
 		shaped_depth.face_bottom_inset = depth_offset.y
@@ -6311,7 +6314,7 @@ func _install_activity_button_shell(button: Button, fill: Color, radius: float, 
 		shaped_face.fill_color = fill
 		shaped_face.ink_color = host.COLOR_INK
 		shaped_face.radius = radius
-		shaped_face.stroke_width = 12.0
+		shaped_face.stroke_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
 		shaped_face.draw_stroke = absf(depth_offset.x) <= 0.01
 		face = shaped_face
 	face.name = "ActivityButtonFaceFill"

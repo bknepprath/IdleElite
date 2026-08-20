@@ -61,9 +61,9 @@ class SerpentineProgressBar:
 		var points := _serpentine_points()
 		if points.size() < 2:
 			return
-		var base_width := minf(62.0, maxf(52.0, size.y * 0.39))
-		var outline_width := base_width + maxf(11.0, size.y * 0.10)
-		_draw_path(points, shadow_color, outline_width + 5.0, 1.0, Vector2(0, 2))
+		var base_width := minf(31.0, maxf(26.0, size.y * 0.39))
+		var outline_width := base_width + maxf(5.5, size.y * 0.10)
+		_draw_path(points, shadow_color, outline_width + 2.5, 1.0, Vector2(0, 2))
 		_draw_path(points, outline_color, outline_width, 1.0)
 		_draw_path(points, empty_color, base_width, 1.0)
 		var fill_pct := clampf(value / 100.0, 0.0, 1.0)
@@ -72,18 +72,18 @@ class SerpentineProgressBar:
 
 	func _serpentine_points() -> Array[Vector2]:
 		var points: Array[Vector2] = []
-		var inset := 7.0
+		var inset := 3.5
 		var width := maxf(1.0, size.x - inset * 2.0)
-		var amplitude := maxf(24.0, minf(size.y * 0.20, 34.0))
-		var base_width := minf(62.0, maxf(52.0, size.y * 0.39))
-		var outline_width := base_width + maxf(11.0, size.y * 0.10)
-		var center_y := size.y - amplitude - outline_width * 0.5 - 12.0
+		var amplitude := maxf(12.0, minf(size.y * 0.20, 17.0))
+		var base_width := minf(31.0, maxf(26.0, size.y * 0.39))
+		var outline_width := base_width + maxf(5.5, size.y * 0.10)
+		var center_y := size.y - amplitude - outline_width * 0.5 - 6.0
 		var straight_pct := 0.08
 		var wave_start := straight_pct
 		var wave_finish := 1.0 - straight_pct
 		var transition_pct := 0.12
 		var cycles := 4.0
-		var sample_count := maxi(48, int(size.x / 8.0))
+		var sample_count := maxi(48, int(size.x / 4.0))
 		for i in range(sample_count + 1):
 			var t := float(i) / float(sample_count)
 			var x := inset + width * t
@@ -181,7 +181,7 @@ class SerpentineProgressBar:
 
 
 static func currency(panel_color: Color, ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
-	var style := surface_style.call(panel_color, 28, 14, true) as StyleBoxFlat
+	var style := surface_style.call(panel_color, 14, 7, true) as StyleBoxFlat
 	style.border_color = ink_color
 	style.border_width_left = 6
 	style.border_width_right = 6
@@ -195,7 +195,7 @@ static func currency(panel_color: Color, ink_color: Color, surface_style: Callab
 
 
 static func stat(ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
-	var style := surface_style.call(Color.WHITE, 22, 18, true) as StyleBoxFlat
+	var style := surface_style.call(Color.WHITE, 11, 9, true) as StyleBoxFlat
 	style.border_color = ink_color
 	style.border_width_left = 5
 	style.border_width_right = 5
@@ -209,7 +209,7 @@ static func stat(ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
 
 
 static func popup(panel_color: Color, ink_color: Color, surface_style: Callable) -> StyleBoxFlat:
-	var style := surface_style.call(panel_color, 22, 20, true) as StyleBoxFlat
+	var style := surface_style.call(panel_color, 11, 10, true) as StyleBoxFlat
 	style.border_color = ink_color
 	style.border_width_left = 4
 	style.border_width_right = 4
@@ -222,9 +222,9 @@ static func icon_button(active := false, hovered := false, ink_color := Color.BL
 	var fill := Color("#bff4c9") if active else Color("#f3eee0")
 	if hovered:
 		fill = Color("#d3ffd9") if active else gold_color
-	var style := surface_style.call(fill, 24, 8, true) as StyleBoxFlat
+	var style := surface_style.call(fill, 12, 4, true) as StyleBoxFlat
 	style.border_color = Color("#178b38") if active else ink_color
-	var border_width := 14 if active else 10
+	var border_width := 7 if active else 5
 	style.border_width_left = border_width
 	style.border_width_right = border_width
 	style.border_width_top = border_width

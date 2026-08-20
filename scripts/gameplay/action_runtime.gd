@@ -1660,7 +1660,7 @@ func _process_action(delta: float) -> void:
 	var tiers_unlocked_before = {}
 	for tier in range(1, host.MASTERY_MAX_LEVEL + 1):
 		tiers_unlocked_before[tier] = AchievementState.global_medal_tier_unlocked(host, tier)
-	var completed_achievements_before = AchievementState.completed_ids(AchievementState.milestones(host, false))
+	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	var old_skill_level = SkillState.host_skill_level(host, host.running_skill_id)
 	var locked_preview_available_before = host._activity_unlock_runtime()._locked_activity_preview_available()
 	var success = _roll_action_success(host.running_skill_id, action)
@@ -1737,7 +1737,7 @@ func _process_action(delta: float) -> void:
 		host._material_collection_surface()._play_mat_collection_feedback(reward_key, awarded_mats)
 		if plank_bonus_used:
 			host._passive_firepit_surface()._play_build_log_spend_feedback(reward_key)
-		for achievement in AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before):
+		for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_activity_success_sound(streak_step, new_mastery_level > old_mastery_level, streak_bonus, xp_crit, mega_crit, consecutive_activity_crit_count)
 		host._audio_director()._record_music_flow_action(true, streak_step, streak_bonus, new_mastery_level > old_mastery_level, any_reward_skill_level_up or new_skill_level > old_skill_level, cost)
@@ -1761,7 +1761,7 @@ func _process_action(delta: float) -> void:
 		if not failure_global_buffs.is_empty():
 			host.last_result += " " + " ".join(failure_global_buffs)
 		host._reward_feedback_surface()._play_action_feedback(reward_key, false, 0, failure_mastery_reward)
-		for achievement in AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before):
+		for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 			host._achievement_toast_surface().show_unlocked(achievement)
 		host._audio_director()._play_failure_sfx()
 		host._audio_director()._record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, cost)
@@ -1999,7 +1999,7 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 	var old_skill_level = SkillState.host_skill_level(host, skill_id)
 	var old_global_level = SkillState.global_level(host.skills)
 	var old_mastery_level = MasteryState.level(host.mastery, host._action_key(skill_id, mastery_action_id))
-	var completed_achievements_before = AchievementState.completed_ids(AchievementState.milestones(host, false))
+	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	var remaining = offline_seconds
 	var completions = 0
 	var successes = 0
@@ -2087,7 +2087,7 @@ func _apply_offline_active_action(offline_seconds: float) -> Dictionary:
 		"old_mastery_level": old_mastery_level,
 		"new_mastery_level": new_mastery_level,
 		"unlocked_actions": _offline_unlocked_actions(skill_id, old_skill_level, new_skill_level),
-		"achievements": AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before)
+		"achievements": AchievementState.newly_completed_fast(host, completed_achievements_before)
 	}
 
 
@@ -2141,7 +2141,7 @@ func _apply_offline_convergence_action(offline_seconds: float, module_id: String
 		host.action_progress = 0.0
 		return {"handled": false}
 	var old_levels = {}
-	var completed_achievements_before = AchievementState.completed_ids(AchievementState.milestones(host, false))
+	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	for raw_skill_id in host._convergence_runtime()._convergence_skill_order(action):
 		old_levels[str(raw_skill_id)] = SkillState.host_skill_level(host, str(raw_skill_id))
 	var cycle_seconds = host._convergence_runtime()._convergence_total_cycle_seconds(action)
@@ -2181,7 +2181,7 @@ func _apply_offline_convergence_action(offline_seconds: float, module_id: String
 		host.convergence_modules[module_id] = state
 		completions += 1
 		xp_total += xp_reward * host._convergence_runtime()._convergence_skill_order(action).size()
-	var completed_achievements = AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before)
+	var completed_achievements = AchievementState.newly_completed_fast(host, completed_achievements_before)
 	return {
 		"handled": true,
 		"skill_id": "build",

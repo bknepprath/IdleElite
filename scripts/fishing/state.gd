@@ -1034,7 +1034,7 @@ func complete_action_attempt(host, action: Dictionary, active_key: String, bonus
 	var tiers_unlocked_before = {}
 	for tier in range(1, host.MASTERY_MAX_LEVEL + 1):
 		tiers_unlocked_before[tier] = AchievementState.global_medal_tier_unlocked(host, tier)
-	var completed_achievements_before = AchievementState.completed_ids(AchievementState.milestones(host, false))
+	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	var old_skill_level = SkillState.host_skill_level(host, skill_id)
 	var locked_preview_available_before = host._activity_unlock_runtime()._locked_activity_preview_available()
 	var direct_fish_currency_reward = has_direct_fish_currency_reward(action)
@@ -1147,7 +1147,7 @@ func complete_action_attempt(host, action: Dictionary, active_key: String, bonus
 			host._reward_feedback_surface()._play_action_feedback(reward_key, false, 0, 0.0, false, false)
 			host._audio_director()._play_fishing_failure_sfx()
 		host._audio_director()._record_music_flow_action(false, 0, false, failure_mastery_level > old_mastery_level, false, 0.0)
-	for achievement in AchievementState.newly_completed(AchievementState.milestones(host, false), completed_achievements_before):
+	for achievement in AchievementState.newly_completed_fast(host, completed_achievements_before):
 		host._achievement_toast_surface().show_unlocked(achievement)
 	host._onboarding_runtime()._record_activity_completion_for_tips(skill_id, action_id)
 	host._update_ui(0.0, false)

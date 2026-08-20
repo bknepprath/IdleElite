@@ -407,10 +407,10 @@ func offline_progress_toggle_text() -> String:
 func apply_offline_progress_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.offline_progress_enabled else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 36, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 36, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 
 func _toggle_offline_progress_enabled() -> void:
@@ -436,10 +436,10 @@ func auto_unlock_lockpad_toggle_text() -> String:
 func apply_auto_unlock_lockpad_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.auto_unlock_lockpads_enabled else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 36, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 36, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 func toggle_auto_unlock_lockpads_enabled() -> void:
 	host.auto_unlock_lockpads_enabled = not host.auto_unlock_lockpads_enabled
@@ -463,10 +463,10 @@ func stamina_decimal_toggle_text() -> String:
 func apply_stamina_decimal_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.show_stamina_decimal else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 36, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 36, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 func _toggle_stamina_decimal_enabled() -> void:
 	host.show_stamina_decimal = not host.show_stamina_decimal
@@ -489,10 +489,10 @@ func offline_progress_cap_notification_toggle_text() -> String:
 func apply_offline_progress_cap_notification_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.offline_progress_cap_notifications_enabled else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 36, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 36, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 func _toggle_offline_progress_cap_notifications_enabled() -> void:
 	host.offline_progress_cap_notifications_enabled = not host.offline_progress_cap_notifications_enabled
@@ -524,10 +524,10 @@ func dark_mode_toggle_text() -> String:
 func apply_dark_mode_toggle_style(button: Button) -> void:
 	var fill = Color("#48dd6c") if host.dark_mode_enabled else host.COLOR_BLUE
 	var pressed_fill = fill.darkened(0.10)
-	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24))
-	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 36, true))
-	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 36, true))
+	button.add_theme_stylebox_override("normal", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("hover", host._paper_button_style(fill, 24, 24))
+	button.add_theme_stylebox_override("pressed", host._paper_button_style(pressed_fill, 24, 24, true))
+	button.add_theme_stylebox_override("hover_pressed", host._paper_button_style(pressed_fill, 24, 24, true))
 
 func toggle_dark_mode_enabled() -> void:
 	host.dark_mode_enabled = not host.dark_mode_enabled
@@ -965,7 +965,7 @@ func _show_notification_settings_notice() -> void:
 	card.custom_minimum_size = base_size
 	card.size = base_size
 	card.scale = Vector2(fitted_scale, fitted_scale)
-	card.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6d8"), 42, 52, true))
+	card.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6d8"), 21, 26, true))
 	banner.add_child(card)
 
 	var body: Label = host._label("Turn on notifications in your phone settings if they are not already on.", 56, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)

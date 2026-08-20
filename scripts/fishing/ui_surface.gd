@@ -62,7 +62,7 @@ const FISHING_METHOD_PADLOCK_SIZE := Vector2(168, 184)
 const FISHING_METHOD_PADLOCK_LEVEL_SIZE := Vector2(75, 65)
 const FISHING_METHOD_PADLOCK_LEVEL_FONT := 64
 const FISHING_METHOD_PADLOCK_LEVEL_OUTLINE := 7
-const FISHING_METHOD_TITLE_OUTLINE := 10
+const FISHING_METHOD_TITLE_OUTLINE := 5
 const FISHING_MODULE_TITLE_FONT_SIZE := 60
 const FISHING_MODULE_TITLE_OUTLINE := 17
 const FISHING_MODULE_TITLE_TOP := 9
@@ -1799,15 +1799,23 @@ func _build_fishing_location_tile(
 	method_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_row.add_child(method_column)
 
+	var method_title_slot := Control.new()
+	method_title_slot.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 29)
+	method_title_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	method_column.add_child(method_title_slot)
 	var method_title = host._label(str(location.get("name", location_id.capitalize())), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
 	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	method_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	method_title.custom_minimum_size.x = FISHING_LOCATION_TILE_SIZE.x
-	method_title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	method_title.set_anchors_preset(Control.PRESET_FULL_RECT)
+	method_title.offset_top = -9
+	method_title.offset_bottom = -9
+	method_title.pivot_offset = Vector2(FISHING_LOCATION_TILE_SIZE.x * 0.5, 14.5)
+	method_title.scale = Vector2(0.62, 1.0)
 	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	method_column.add_child(method_title)
+	method_title_slot.add_child(method_title)
 
 	var art_panel = Panel.new()
 	art_panel.custom_minimum_size = FISHING_LOCATION_TILE_SIZE
@@ -1848,8 +1856,8 @@ func _build_fishing_location_tile(
 	else:
 		var rounded_location_art = RoundedTextureRect.new()
 		rounded_location_art.texture = _fishing_location_thumbnail_texture(area_id, location_id)
-		rounded_location_art.radius = 30.0
-		rounded_location_art.mask_inset = 10.0
+		rounded_location_art.radius = 15.0
+		rounded_location_art.mask_inset = 5.0
 		rounded_location_art.aspect_mode = 2
 		rounded_location_art.fallback_color = Color("#224d45")
 		location_art = rounded_location_art
@@ -1882,11 +1890,11 @@ func _build_fishing_location_tile(
 	medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 	tile_motion_root.add_child(medal)
 
-	var mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
+	var mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 28)
 	mastery_progress.border_color = host.COLOR_INK
 	ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
 	mastery_progress.easing_speed = 24.0
-	mastery_progress.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 56.0)
+	mastery_progress.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 28.0)
 	mastery_progress.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	mastery_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mastery_progress.z_index = 24
@@ -2520,15 +2528,23 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	method_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_row.add_child(method_column)
 
+	var method_title_slot := Control.new()
+	method_title_slot.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 29)
+	method_title_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	method_column.add_child(method_title_slot)
 	var method_title = host._label(_fishing_area_focused_method_label(action), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
 	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	method_title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	method_title.custom_minimum_size.x = FISHING_LOCATION_TILE_SIZE.x
-	method_title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	method_title.set_anchors_preset(Control.PRESET_FULL_RECT)
+	method_title.offset_top = -9
+	method_title.offset_bottom = -9
+	method_title.pivot_offset = Vector2(FISHING_LOCATION_TILE_SIZE.x * 0.5, 14.5)
+	method_title.scale = Vector2(0.62, 1.0)
 	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	method_column.add_child(method_title)
+	method_title_slot.add_child(method_title)
 
 	var art_panel = Panel.new()
 	art_panel.custom_minimum_size = FISHING_LOCATION_TILE_SIZE
@@ -2563,8 +2579,8 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	var art = RoundedTextureRect.new()
 	art.texture = host.visual_texture_cache._texture_or_visual_fallback(str(action.get("background", area_bg_path)))
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	art.radius = 30.0
-	art.mask_inset = 10.0
+	art.radius = 15.0
+	art.mask_inset = 5.0
 	art.aspect_mode = 2
 	art.fallback_color = Color("#224d45")
 	art.modulate = Color.WHITE if unlocked else Color(0.72, 0.72, 0.72, 0.82)
@@ -2595,11 +2611,11 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 	tile_motion_root.add_child(medal)
 
-	var mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 56)
+	var mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 28)
 	mastery_progress.border_color = host.COLOR_INK
 	ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
 	mastery_progress.easing_speed = 24.0
-	mastery_progress.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 56.0)
+	mastery_progress.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 28.0)
 	mastery_progress.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	mastery_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mastery_progress.z_index = 24
@@ -2678,8 +2694,8 @@ func _attach_fishing_method_padlock(art_panel: Panel, skill_id: String, action_i
 	lock_root.anchor_bottom = 0.5
 	lock_root.offset_left = -padlock_size.x * 0.5
 	lock_root.offset_right = padlock_size.x * 0.5
-	lock_root.offset_top = -padlock_size.y * 0.5 - 12.0
-	lock_root.offset_bottom = padlock_size.y * 0.5 - 12.0
+	lock_root.offset_top = -padlock_size.y * 0.5 - 6.0
+	lock_root.offset_bottom = padlock_size.y * 0.5 - 6.0
 	lock_root.z_index = 900
 	lock_root.z_as_relative = false
 	art_panel.add_child(lock_root)
@@ -2742,7 +2758,7 @@ func _attach_fishing_method_padlock(art_panel: Panel, skill_id: String, action_i
 	level_label.outline_size = FISHING_METHOD_PADLOCK_LEVEL_OUTLINE
 	level_label.size = FISHING_METHOD_PADLOCK_LEVEL_SIZE
 	level_label.position = Vector2(
-		padlock_size.x * 0.5 - FISHING_METHOD_PADLOCK_LEVEL_SIZE.x * 0.5 - 15.0,
+		padlock_size.x * 0.5 - FISHING_METHOD_PADLOCK_LEVEL_SIZE.x * 0.5 - 7.5,
 		padlock_size.y * 0.52
 	)
 	level_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -3028,7 +3044,7 @@ func _fishing_location_tile_style(available: bool) -> StyleBoxFlat:
 
 func _add_fishing_area_module_corner_crop(parent: Control) -> RoundedCornerCropOverlay:
 	var corner_crop := RoundedCornerCropOverlay.new()
-	corner_crop.radius = 66.0
+	corner_crop.radius = 33.0
 	corner_crop.cover_color = host._theme_paper_color()
 	corner_crop.set_anchors_preset(Control.PRESET_FULL_RECT)
 	corner_crop.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -3076,7 +3092,7 @@ func _fishing_area_module_shell(skill_id: String, area_def: Dictionary, area_id:
 	else:
 		var rounded_bg := RoundedTextureRect.new()
 		rounded_bg.texture = host.visual_texture_cache._texture_or_visual_fallback(area_bg_path)
-		rounded_bg.radius = 66.0
+		rounded_bg.radius = 33.0
 		rounded_bg.art_height = host.ACTION_CARD_HEIGHT
 		rounded_bg.feather_height = 0.0
 		rounded_bg.fallback_color = ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE).darkened(0.12)

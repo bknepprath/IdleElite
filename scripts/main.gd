@@ -160,7 +160,7 @@ const SKILL_SWIPE_LIGHT_PREVIEW_ENABLED := true
 const SKILL_SWIPE_LIGHT_PREVIEW_HEADER_ENABLED := true
 const SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS := 1
-const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 2
+const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 4
 const SKILL_SWIPE_REAL_PREVIEW_TEXTURE_PREWARM_ENABLED := true
 const SKILL_SWIPE_FINALIZE_SETTLE_FRAMES := 1
 const SKILL_SWIPE_FINALIZE_VISIBLE_MOUNT_LIMIT := 2
@@ -618,6 +618,7 @@ func _process(delta: float) -> void:
 	if boot_detail_render_in_progress and not boot_lazy_background_mount_allowed:
 		return
 	var trace_process := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
+	var trace_process_threshold_us := 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
 	var trace_process_skill := OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SKILL")
 	if trace_process and not trace_process_skill.is_empty() and selected_skill_id != trace_process_skill:
 		trace_process = false
@@ -697,7 +698,7 @@ func _process(delta: float) -> void:
 	_fishing_ui_surface()._publish_web_fishing_perf_probe_state()
 	if trace_process:
 		var trace_total_us := Time.get_ticks_usec() - trace_start_usec
-		if trace_total_us >= 2000:
+		if trace_total_us >= trace_process_threshold_us:
 			print("PROCESS_TRACE frame=%s screen=%s skill=%s total=%s prewarm=%s lazy=%s background=%s action=%s ui=%s rest=%s mounted=%s plan=%s cards=%s placeholders=%s" % [
 				str(main_process_frame_index),
 				current_screen,
@@ -821,6 +822,7 @@ func _on_detail_actions_user_scroll_direction(direction: int) -> void:
 func _update_ui(delta: float, instant := false) -> void:
 	var static_refresh := _performance_runtime()._consume_ui_static_refresh(delta, instant)
 	var trace_static_refresh := static_refresh and OS.get_environment("IDLE_ELITE_TRACE_PROCESS_SLOW") == "1"
+	var trace_static_threshold_us := 12000 if OS.get_environment("IDLE_ELITE_TRACE_PROCESS_VERY_SLOW") == "1" else 2000
 	var trace_static_start := Time.get_ticks_usec() if trace_static_refresh else 0
 	var trace_static_last := trace_static_start
 	var trace_static_shell_us := 0
@@ -897,7 +899,7 @@ func _update_ui(delta: float, instant := false) -> void:
 		_tutorial_overlay_surface()._sync_tutorial_target_indicator()
 	if trace_static_refresh:
 		var trace_static_total := Time.get_ticks_usec() - trace_static_start
-		if trace_static_total >= 2000:
+		if trace_static_total >= trace_static_threshold_us:
 			print("STATIC_UI_TRACE screen=%s skill=%s total=%s shell=%s header=%s cards=%s tail=%s action_cards=%s" % [
 				current_screen,
 				selected_skill_id,
@@ -1047,8 +1049,8 @@ func _theme_outline_color(outline_color: Color, fill_color: Color) -> Color:
 func _menu_button(text: String) -> Button:
 	return ThemeStyles.menu_button(text, app_font, app_bold_font, COLOR_INK, COLOR_BLUE, Color("#b9b3a8"), DEFAULT_BUTTON_TEXT_OUTLINE_SIZE, Callable(self, "_paper_button_style"), Callable(button_press_runtime, "attach_button_depress_animation"))
 
-func _paper_button_style(color: Color, radius: int, margin := 72, pressed := false, disabled := false) -> StyleBoxTexture:
-	return PaperButtonStyles.paper_button_style_with_shape(color, radius, margin, pressed, disabled, COLOR_INK, 5.5, paper_button_style_textures, dark_mode_enabled, PAPER_BUTTON_OUTLINE_WIDTH, Callable(self, "_theme_surface_color"), Callable(self, "_theme_outline_color"), Callable(visual_texture_cache, "_can_create_image_textures"), Callable(visual_texture_cache, "_create_image_texture"), Callable(visual_texture_cache, "_visual_fallback_texture"))
+func _paper_button_style(color: Color, radius: int, margin := 36, pressed := false, disabled := false) -> StyleBoxTexture:
+	return PaperButtonStyles.paper_button_style_with_shape(color, radius, margin, pressed, disabled, COLOR_INK, 2.75, paper_button_style_textures, dark_mode_enabled, PAPER_BUTTON_OUTLINE_WIDTH, Callable(self, "_theme_surface_color"), Callable(self, "_theme_outline_color"), Callable(visual_texture_cache, "_can_create_image_textures"), Callable(visual_texture_cache, "_create_image_texture"), Callable(visual_texture_cache, "_visual_fallback_texture"))
 
 func _surface_style(color: Color, radius: int, margin := 28, elevated := false) -> StyleBoxFlat:
 	return ThemeStyles.surface_style(color, radius, margin, elevated, dark_mode_enabled, PASSIVE_BORDER, COLOR_PAPER, COLOR_DARK_PAPER, COLOR_PANEL, COLOR_DARK_PANEL, COLOR_LINE, COLOR_DARK_LINE, COLOR_DARK_PANEL_ALT)
