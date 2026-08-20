@@ -62,7 +62,8 @@ const FISHING_METHOD_PADLOCK_SIZE := Vector2(168, 184)
 const FISHING_METHOD_PADLOCK_LEVEL_SIZE := Vector2(75, 65)
 const FISHING_METHOD_PADLOCK_LEVEL_FONT := 64
 const FISHING_METHOD_PADLOCK_LEVEL_OUTLINE := 7
-const FISHING_METHOD_TITLE_OUTLINE := 5
+const FISHING_METHOD_TITLE_OUTLINE := 8
+const FISHING_METHOD_TITLE_WIDTH_SCALE := 0.72
 const FISHING_MODULE_TITLE_FONT_SIZE := 60
 const FISHING_MODULE_TITLE_OUTLINE := 17
 const FISHING_MODULE_TITLE_TOP := 9
@@ -97,6 +98,7 @@ const FISHING_OFFER_UNAVAILABLE_ART_MODULATE := Color(1, 1, 1, 0.52)
 
 var host
 var fishing_collection_canvas: CanvasLayer
+var fishing_method_title_font: Font
 var fishing_tool_wallet_open := false
 var fishing_tool_wallet_canvas: CanvasLayer
 var fishing_tool_wallet_popup: Control
@@ -1804,6 +1806,7 @@ func _build_fishing_location_tile(
 	method_title_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_column.add_child(method_title_slot)
 	var method_title = host._label(str(location.get("name", location_id.capitalize())), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	method_title.add_theme_font_override("font", _fishing_method_title_font())
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
 	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -1958,6 +1961,19 @@ func _build_fishing_location_tile(
 	}
 	method_button.set_meta("fishing_method_card", method_card)
 	return method_card
+
+
+func _fishing_method_title_font() -> Font:
+	if fishing_method_title_font != null:
+		return fishing_method_title_font
+	var base_font: Font = host.app_bold_font if host.app_bold_font != null else host.app_font
+	if base_font == null:
+		return ThemeDB.fallback_font
+	var condensed := FontVariation.new()
+	condensed.base_font = base_font
+	condensed.variation_transform = Transform2D(Vector2(FISHING_METHOD_TITLE_WIDTH_SCALE, 0.0), Vector2(0.0, 1.0), Vector2.ZERO)
+	fishing_method_title_font = condensed
+	return fishing_method_title_font
 
 
 func _fishing_active_tool_hit_at_position(area_card: Dictionary, event_position: Vector2) -> bool:
@@ -2530,6 +2546,7 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	method_title_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_column.add_child(method_title_slot)
 	var method_title = host._label(_fishing_area_focused_method_label(action), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	method_title.add_theme_font_override("font", _fishing_method_title_font())
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
 	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF

@@ -26,6 +26,7 @@ const PROFILE_OVERLAY_CANVAS_LAYER := CHAT_OVERLAY_CANVAS_LAYER + 1
 const CHAT_STRIP_EMPTY_GRACE_MSEC := 2200
 const CHAT_STRIP_HIDE_GRACE_MSEC := 800
 const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble.png"
+const CHAT_STRIP_FONT_WIDTH_SCALE := 0.58
 const CHAT_UNREAD_DOT_DIAMETER := 22.0
 const CHAT_UNREAD_DOT_EDGE_INSET := 16.0
 var host
@@ -43,6 +44,7 @@ var chat_strip: PanelContainer
 var chat_unread_dot: PanelContainer
 var chat_strip_line_one: Label
 var chat_strip_line_two: Label
+var chat_strip_condensed_font: Font
 var chat_strip_last_visible := false
 var chat_strip_last_line_one := ""
 var chat_strip_last_line_two := ""
@@ -487,6 +489,7 @@ func _build_chat_strip() -> void:
 	copy.add_theme_constant_override("separation", 2)
 	row.add_child(copy)
 	chat_strip_line_one = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_one.add_theme_font_override("font", _chat_strip_font())
 	chat_strip_line_one.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
 	chat_strip_line_one.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_one.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -495,6 +498,7 @@ func _build_chat_strip() -> void:
 	chat_strip_line_one.custom_minimum_size = Vector2(0, 48)
 	copy.add_child(chat_strip_line_one)
 	chat_strip_line_two = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_two.add_theme_font_override("font", _chat_strip_font())
 	chat_strip_line_two.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
 	chat_strip_line_two.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_two.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -503,6 +507,18 @@ func _build_chat_strip() -> void:
 	chat_strip_line_two.custom_minimum_size = Vector2(0, 48)
 	copy.add_child(chat_strip_line_two)
 	_update_chat_strip()
+
+func _chat_strip_font() -> Font:
+	if chat_strip_condensed_font != null:
+		return chat_strip_condensed_font
+	var base_font: Font = host.app_bold_font if host.app_bold_font != null else host.app_font
+	if base_font == null:
+		return ThemeDB.fallback_font
+	var condensed := FontVariation.new()
+	condensed.base_font = base_font
+	condensed.variation_transform = Transform2D(Vector2(CHAT_STRIP_FONT_WIDTH_SCALE, 0.0), Vector2(0.0, 1.0), Vector2.ZERO)
+	chat_strip_condensed_font = condensed
+	return chat_strip_condensed_font
 
 func _build_chat_overlay() -> void:
 	chat_overlay_layer = CanvasLayer.new()
