@@ -3902,7 +3902,7 @@ func _activity_queue_empty_description(content_width: float) -> Control:
 	holder.add_theme_constant_override("margin_bottom", 18)
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var label: Label = host._label(
-		"Tap Set Queue, then choose activities from the skills list. Start any queued activity here and your character will try the queue in order, moving down when stamina runs low.",
+		"Tap Set Queue, then pick activities.\nStart any queued activity to begin.\nThe next starts when stamina is low.",
 		52,
 		host.COLOR_INK,
 		HORIZONTAL_ALIGNMENT_CENTER
@@ -3913,7 +3913,7 @@ func _activity_queue_empty_description(content_width: float) -> Control:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	label.add_theme_color_override("font_outline_color", Color.WHITE)
-	label.add_theme_constant_override("outline_size", 2)
+	label.add_theme_constant_override("outline_size", 4)
 	label.add_theme_constant_override("line_spacing", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(label)
@@ -4057,7 +4057,7 @@ func _add_activity_queue_number_overlay(overlay_host: Control, number: int, modu
 	overlay.z_index = 260
 	overlay.add_theme_stylebox_override("panel", _activity_queue_overlay_style())
 	overlay_host.add_child(overlay)
-	var label: Label = host._label(str(number), 108, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var label: Label = host._label(str(number), 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", Color.WHITE)
@@ -5458,13 +5458,13 @@ func _skill_swipe_light_preview_simple_card(skill_id: String, entry_data: Dictio
 	panel.add_theme_stylebox_override("panel", _skill_swipe_light_preview_card_style(skill_id))
 	root.add_child(panel)
 
-	var title = host._label(_skill_swipe_light_preview_card_title(skill_id, entry_data), 76, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label(_skill_swipe_light_preview_card_title(skill_id, entry_data), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	title.add_theme_constant_override("outline_size", 8)
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.position = Vector2(27, 23)
-	title.size = Vector2(maxf(1.0, content_width - host.ACTION_CARD_POP_GUTTER * 2.0 - 108.0), 104)
+	title.size = Vector2(maxf(1.0, content_width - host.ACTION_CARD_POP_GUTTER * 2.0 - 54.0), 60)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel.add_child(title)
 	return root
@@ -5501,7 +5501,7 @@ func _skill_swipe_light_preview_header_circle(skill_id: String) -> PanelContaine
 	circle.add_child(stack)
 	var maximum = maxi(1, SkillState.max_stamina(host, skill_id))
 	var current_value = clampi(int(round(float(host.stamina.get(skill_id, maximum)))), 0, maximum)
-	var current_label = host._label(str(current_value), 124, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var current_label = host._label(str(current_value), 62, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	current_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	current_label.add_theme_constant_override("outline_size", 8)
 	current_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5619,7 +5619,7 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 	if currency_label != null:
 		var log_currency: float = host.material_runtime.amount("softwood")
 		var currency_text = str(int(floor(log_currency + 0.0001))) if log_currency < 1000 else GameFormatting.compact_number(log_currency)
-		var currency_font_size = 82 if currency_text.length() <= 6 else 74
+		var currency_font_size = 48
 		if currency_label.get_theme_font_size("font_size") != currency_font_size:
 			currency_label.add_theme_font_size_override("font_size", currency_font_size)
 		host._app_lifecycle_runtime().set_label_text_if_changed(currency_label, currency_text)

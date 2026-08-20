@@ -208,7 +208,7 @@ func _draw_center_content(center: Vector2, draw_scale: float, min_size: float) -
 	var number_parts := _split_decimal_text(display_text)
 	var main_text := str(number_parts.get("main", display_text))
 	var suffix_text := str(number_parts.get("suffix", ""))
-	var font_size := _fit_font_size(font, main_text, maxi(64, int(min_size * 0.34)), 42, max_text_width)
+	var font_size := _fit_font_size(font, main_text, maxi(64, int(min_size * 0.34)), 48, max_text_width)
 	var stroke_size := maxi(CENTER_NUMBER_STROKE_MIN, int(round(CENTER_NUMBER_STROKE_SCALE * draw_scale)))
 	var text_center := center
 	_draw_currency_minnow_cluster(font, main_text, text_center, font_size, draw_scale)
@@ -294,7 +294,7 @@ func _draw_stroked_number_with_decimal_suffix(font: Font, main_text: String, suf
 	draw_string(font, main_position, main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
 	if suffix_text.is_empty():
 		return
-	var suffix_size := maxi(24, int(round(float(font_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
+	var suffix_size := maxi(48, int(round(float(font_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
 	var suffix_stroke := maxi(6, int(round(float(stroke_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
 	var suffix_gap := maxf(4.0, float(font_size) * 0.075)
 	var suffix_baseline := center.y + (font.get_ascent(suffix_size) - font.get_descent(suffix_size)) * 0.5

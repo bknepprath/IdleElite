@@ -73,24 +73,24 @@ The half-resolution diagnostics were not accepted because runtime scaling and `c
 5. Record cold PSS, graphics memory, native heap, and repeated-navigation PSS with `scripts/measure-android-memory.ps1` against `com.idleelite.game.preview`.
 6. Verify that no agent-owned headless Godot process remains.
 
-## Completed migration results
+## Migration validation status
 
-Local implementation and validation completed on August 19, 2026.
+Local implementation and validation status recorded on August 19, 2026.
 
 | Phase | Result |
 |---|---|
 | Phase 0 | Fresh-worktree validation, native-1080 migration contracts, Android viewport guards, and mobile text-size contracts pass. |
 | Phase 1 | The production viewport and authored UI are 1080 x 1920. Raw production captures were compared with the matching 2160 x 3840 screens, and shared and screen-specific geometry was corrected to preserve the 4K layout and art direction. Coverage includes the menu, settings, every skill page, Hub, pinned, queue, achievements, profile, leaderboard, shop, chat, Thieving heist, and Berry prep surfaces. |
-| Phase 2 | Runtime texture imports use Android VRAM compression where appropriate, non-scaled UI disables mipmaps, oversized source files are excluded from exports, and four reviewed runtime atlases were re-authored for 1080p. |
-| Phase 3 | Screen-scoped texture ownership, adjacent-swipe caching, bounded lazy mounting, inactive-tree teardown, and navigation-loop resource tests are implemented. Across four full navigation cycles, the live node count remains fixed at 308, texture and atlas counts remain fixed at 8 and 0, and the dynamic page root remains fixed at 4 children. Object count rises from 2,622 to 2,664 and remains inside the regression gate. |
+| Phase 2 | The preview AAB contains all 653 images selected by the Android preset and none of the 1,763 excluded images. It contains 387 ASTC and 266 default texture payloads. The complete [texture inventory](performance-1080p-texture-inventory.md) records explicit decisions for every included image: 96 are downsampled at import, 16 retain reviewed fixed-cell animation canvases, four are reviewed 1080p derivatives, and 537 are already bounded by the native viewport. All 47 pending UI/icon/loading mipmap reviews were resolved by disabling those mipmaps. |
+| Phase 3 | Screen-scoped texture ownership, adjacent-swipe caching, bounded lazy mounting, inactive-tree teardown, and navigation-loop resource tests are implemented. Across four full navigation cycles, the live node count remains fixed at 446, texture residency settles from 13 to 10 after the first cycle, atlas count remains 0, and the dynamic page root remains fixed at 4 children. Object count rises from 3,088 to 3,154 and remains inside the regression gate. |
 | Phase 4 | Extended SFX load by category, music streams are released when song sets change, unused source audio is excluded, and idle warm-cache/static-refresh loops are bounded. |
 
 The strict skills performance test passed three consecutive runs. In the final strict repetition, idle work averaged 0.85-0.94 ms per measured frame across the five skills. Fight scrolling completed at 4.57 ms average, 9.80 ms p99, and 12.05 ms maximum with no jank frames; Fishing scrolling completed at 3.74 ms average, 14.35 ms p99, and 15.93 ms maximum with no jank frames. Normal and rapid skill swipes completed with no pending finalization and stayed inside their bounded placeholder and jank gates.
 
 Fresh raw 1080 x 1920 production captures were compared to Lanczos-downsampled 2160 x 3840 references after the final performance changes. Mean absolute pixel error was 6.59 for Fighting, 6.51 for Building, 7.11 for Woodcutting, 4.72 for Fishing, and 7.36 for Thieving. The activity-card shell, card depth, locked-state rig, and 28 px mastery rail align within one pixel of the reference geometry. Text that would have fallen below the 1080-wide mobile readability contract remains at its required minimum size.
 
-The final preview AAB is 167,732,819 bytes. The prior preview AAB was 200,937,011 bytes, so the migrated package is 33,204,192 bytes smaller, a 16.52% reduction.
+The final preview AAB is 154,737,747 bytes. The prior preview AAB was 200,937,011 bytes, so the migrated package is 46,199,264 bytes smaller, a 22.99% reduction.
 
-`scripts/check-project.ps1` passes, including native-1080 transition probes, activity and medal behavior, resource lifetime, swipe behavior, save normalization, and a clean isolated user-data profile. The strict skills gate also passes independently for three consecutive runs. The final preview AAB exports successfully through `scripts/build-android-preview.ps1` with an empty stderr log while preserving `window/stretch/mode="viewport"`.
+`scripts/check-project.ps1` passes, including native-1080 transition probes, activity and medal behavior, resource lifetime, swipe behavior, save normalization, and a clean isolated user-data profile. The strict skills gate also passes independently for three consecutive runs. The final preview AAB exports successfully with Godot 4.7.1 through `scripts/build-android-preview.ps1`, with an empty stderr log, while preserving `window/stretch/mode="viewport"`.
 
 Physical Android PSS, graphics-memory, native-heap, rendering, and touch-offset gates still require a connected phone. No Android device was attached during the final local validation, so the 400-450 MB physical-device target has not been claimed as measured. The release-signing gate also requires `IDLE_ELITE_KEYSTORE_PASSWORD`; that secret was not available in the validation environment, so only the preview AAB was exported.

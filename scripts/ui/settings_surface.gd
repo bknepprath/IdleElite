@@ -940,7 +940,7 @@ func _show_notification_settings_notice() -> void:
 		notification_permission_notice.queue_free()
 
 	var canvas_size: Vector2 = host._current_canvas_size()
-	var base_size := Vector2(590, 125)
+	var base_size := Vector2(920, 260)
 	var fitted_scale: float = host._fit_scale_to_canvas(base_size, Vector2(24, 24))
 	var notice_size: Vector2 = base_size * fitted_scale
 	var target_position := Vector2(
@@ -968,7 +968,7 @@ func _show_notification_settings_notice() -> void:
 	card.add_theme_stylebox_override("panel", host._surface_style(Color("#fff6d8"), 21, 26, true))
 	banner.add_child(card)
 
-	var body: Label = host._label("Turn on notifications in your phone settings if they are not already on.", 56, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var body: Label = host._label("Turn on notifications in your phone settings if they are not already on.", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1240,7 +1240,7 @@ func _play_reset_data_wiped_feedback(feedback_button: Button = null) -> void:
 		var button := raw_button as Button
 		if button == null or not is_instance_valid(button) or not button.is_visible_in_tree():
 			continue
-		host._reward_feedback_surface()._float_reward(host, button, "data wiped!", 72, Color("#ff6b6b"), Vector2(0, -36), Vector2(0, -95), 0.0)
+		host._reward_feedback_surface()._float_reward(host, button, "data wiped!", 52, Color("#ff6b6b"), Vector2(0, -36), Vector2(0, -95), 0.0)
 
 
 func _kill_reset_data_feedback_tween(button: Button) -> void:
@@ -1283,7 +1283,7 @@ func settings_page_button(text: String, icon_path := "", min_width := 450, icon_
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		icon_holder.add_child(icon)
-		var label: Label = host._label(text, 52, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+		var label: Label = host._label(text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 		label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 		label.add_theme_constant_override("outline_size", host.DEFAULT_BUTTON_TEXT_OUTLINE_SIZE)
 		label.mouse_filter = Control.MOUSE_FILTER_IGNORE

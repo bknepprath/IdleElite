@@ -222,22 +222,22 @@ func _draw() -> void:
 	if size.x < 4.0 or size.y < 4.0:
 		return
 	var stage := Rect2(Vector2.ZERO, size)
-	var play_area := stage.grow(-18.0)
+	var play_area := stage.grow(-9.0)
 	_draw_backdrop(stage)
 	_draw_rooster_sprite(play_area)
 	_draw_hand_sprite(Vector2(size.x * 0.30, size.y * 0.82), hand_punch_left if punch_timer > 0.0 and punch_side == "left" else hand_guard_left, punch_timer > 0.0 and punch_side == "left")
 	_draw_hand_sprite(Vector2(size.x * 0.70, size.y * 0.82), hand_punch_right if punch_timer > 0.0 and punch_side == "right" else hand_guard_right, punch_timer > 0.0 and punch_side == "right")
 	_draw_floaters()
 	if player_hit_flash > 0.0:
-		_draw_rounded_rect(stage, 66.0, Color(1.0, 0.0, 0.0, 0.26 * player_hit_flash))
+		_draw_rounded_rect(stage, 33.0, Color(1.0, 0.0, 0.0, 0.26 * player_hit_flash))
 	if cover_close_amount > 0.0:
 		_draw_defeat_cover(stage)
 	if _needs_stamina_feedback():
-		var font_size := 120
+		var font_size := 60
 		var font := display_font
 		var center := stage.get_center()
 		center.y += (font.get_ascent(font_size) - font.get_descent(font_size)) * 0.5
-		_draw_center_text("NEEDS %s STAMINA" % GameFormatting.info_chip_number(required_stamina), center, font_size, Color.WHITE, INK, 32, font)
+		_draw_center_text("NEEDS %s STAMINA" % GameFormatting.info_chip_number(required_stamina), center, font_size, Color.WHITE, INK, 16, font)
 
 
 func _needs_stamina_feedback() -> bool:
@@ -246,9 +246,9 @@ func _needs_stamina_feedback() -> bool:
 
 func _draw_backdrop(r: Rect2) -> void:
 	if farm_background != null:
-		_draw_rounded_texture_cover(farm_background, r, 66.0)
+		_draw_rounded_texture_cover(farm_background, r, 33.0)
 	else:
-		_draw_rounded_rect(r, 66.0, Color("#7bc55d"))
+		_draw_rounded_rect(r, 33.0, Color("#7bc55d"))
 
 
 func _draw_rooster_sprite(r: Rect2) -> void:
@@ -267,7 +267,7 @@ func _draw_rooster_sprite(r: Rect2) -> void:
 	elif state == "attack":
 		center += Vector2(0.0, 6.0)
 	elif dodge_timer > 0.0:
-		center += Vector2(sin(elapsed * 28.0) * 42.0, -10.0)
+		center += Vector2(sin(elapsed * 28.0) * 21.0, -5.0)
 	var draw_size := Vector2(r.size.x * 0.88, r.size.y * 1.22)
 	if state == "attack":
 		draw_size = Vector2(r.size.x * 0.92, r.size.y * 1.18)
@@ -290,12 +290,12 @@ func _draw_hand_sprite(base: Vector2, texture: Texture2D, punching: bool) -> voi
 func _draw_defeat_cover(r: Rect2) -> void:
 	var t := clampf(cover_close_amount, 0.0, 1.0)
 	var panel_height := r.size.y * 0.56
-	var top := Rect2(r.position + Vector2(0.0, -panel_height + panel_height * t), Vector2(r.size.x, panel_height + 12.0))
-	var bottom := Rect2(r.position + Vector2(0.0, r.size.y - panel_height * t), Vector2(r.size.x, panel_height + 12.0))
-	_draw_rounded_rect(top, 60.0, Color("#7f1118"))
-	_draw_rounded_rect(Rect2(top.position + Vector2(0.0, top.size.y - 24.0), Vector2(top.size.x, 24.0)), 0.0, Color("#4b070a"))
-	_draw_rounded_rect(bottom, 60.0, Color("#6e0d14"))
-	_draw_rounded_rect(Rect2(bottom.position, Vector2(bottom.size.x, 24.0)), 0.0, Color("#b91c25"))
+	var top := Rect2(r.position + Vector2(0.0, -panel_height + panel_height * t), Vector2(r.size.x, panel_height + 6.0))
+	var bottom := Rect2(r.position + Vector2(0.0, r.size.y - panel_height * t), Vector2(r.size.x, panel_height + 6.0))
+	_draw_rounded_rect(top, 30.0, Color("#7f1118"))
+	_draw_rounded_rect(Rect2(top.position + Vector2(0.0, top.size.y - 12.0), Vector2(top.size.x, 12.0)), 0.0, Color("#4b070a"))
+	_draw_rounded_rect(bottom, 30.0, Color("#6e0d14"))
+	_draw_rounded_rect(Rect2(bottom.position, Vector2(bottom.size.x, 12.0)), 0.0, Color("#b91c25"))
 
 
 func _add_floater(text: String, position: Vector2, color: Color, lifetime: float) -> void:
@@ -318,10 +318,10 @@ func _draw_floaters() -> void:
 		var max_life := maxf(0.01, float(floater.get("max", 0.5)))
 		var t := 1.0 - life / max_life
 		var pos := floater.get("pos", Vector2.ZERO) as Vector2
-		pos += Vector2(0.0, -58.0 * t)
+		pos += Vector2(0.0, -29.0 * t)
 		var color := floater.get("color", Color.WHITE) as Color
 		color.a = clampf(1.0 - t * 0.75, 0.0, 1.0)
-		_draw_center_text(str(floater.get("text", "")), pos, 54, color, Color("#171615"))
+		_draw_center_text(str(floater.get("text", "")), pos, 48, color, Color("#171615"))
 
 
 func _draw_center_text(text: String, pos: Vector2, font_size: int, color: Color, outline: Color, outline_size := 4, font_override: Font = null) -> void:

@@ -2,6 +2,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $importCheck = Join-Path $PSScriptRoot "configure-performance-imports.ps1"
+$exportedImageAudit = Join-Path $PSScriptRoot "audit-exported-image-assets.ps1"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $audioDirectorPath = Join-Path $projectRoot "scripts/audio/audio_director.gd"
 $textureCachePath = Join-Path $projectRoot "scripts/core/visual_texture_cache.gd"
@@ -15,6 +16,10 @@ $projectSettingsPath = Join-Path $projectRoot "project.godot"
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }
+& $exportedImageAudit -CheckSnapshot
+if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+}
 
 $projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath
 if ($projectSettings -notmatch '(?m)^textures/vram_compression/import_etc2_astc=true\r?$') {
@@ -22,6 +27,7 @@ if ($projectSettings -notmatch '(?m)^textures/vram_compression/import_etc2_astc=
 }
 
 $requiredExcludes = @(
+    ".playwright-cli/*",
     "assets/content/ui/berry-mode-borders-source.png",
     "assets/content/ui/profile-avatar-game-objects-spritesheet.png",
     "assets/content/ui/profile-avatar-blue-guy-spritesheet.png",

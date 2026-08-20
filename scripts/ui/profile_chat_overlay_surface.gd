@@ -122,8 +122,8 @@ static func _chat_expanded_message_style(deleted := false, is_self := false) -> 
 	style.corner_radius_bottom_right = 5 if is_self and not deleted else 9
 	style.content_margin_left = 16
 	style.content_margin_right = 16
-	style.content_margin_top = 10
-	style.content_margin_bottom = 10
+	style.content_margin_top = 4
+	style.content_margin_bottom = 4
 	return style
 
 static func _chat_back_button_style(pressed := false, ink_color := Color.BLACK) -> StyleBoxFlat:
@@ -545,7 +545,7 @@ func _build_chat_overlay() -> void:
 	chat_keyboard_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chat_keyboard_preview.add_theme_stylebox_override("panel", _chat_keyboard_preview_style(host.COLOR_BLUE))
 	chat_overlay.add_child(chat_keyboard_preview)
-	chat_keyboard_preview_label = host._label("", 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_keyboard_preview_label = host._label("", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_keyboard_preview_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	chat_keyboard_preview_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	chat_keyboard_preview_label.clip_text = true
@@ -647,14 +647,14 @@ func _chat_expanded_header() -> Control:
 	top.add_child(tabs)
 	tabs.add_child(_chat_profile_button())
 	var world = PanelContainer.new()
-	world.custom_minimum_size = Vector2(380, 68)
+	world.custom_minimum_size = Vector2(390, 68)
 	world.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	world.add_theme_stylebox_override("panel", _chat_world_tab_style(host.COLOR_INK))
 	tabs.add_child(world)
 	var world_label = host._label("Global Chat", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	world_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	world.add_child(world_label)
-	host._skill_detail_surface()._add_skill_detail_shadow_overlay_to(header, 330.0, 1.0, 422.0, "ChatExpandedHeaderShelfShadow", 0)
+	host._skill_detail_surface()._add_skill_detail_shadow_overlay_to(header, 165.0, 1.0, 211.0, "ChatExpandedHeaderShelfShadow", 0)
 	return header
 
 func _chat_expanded_notice_visible() -> bool:
@@ -675,9 +675,9 @@ func _chat_expanded_notice() -> Control:
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 4)
 	row.add_child(copy)
-	var title = host._label(_chat_status_title(), 58, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label(_chat_status_title(), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(title)
-	var detail = host._label(_chat_status_detail(), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var detail = host._label(_chat_status_detail(), host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	detail.custom_minimum_size = Vector2(0, 48)
 	copy.add_child(detail)
@@ -693,20 +693,20 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	row.add_child(profile_avatar_frame(int(row_data.get("avatar_index", 0)), Vector2(94, 94), is_self))
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	copy.add_theme_constant_override("separation", 5)
+	copy.add_theme_constant_override("separation", 2)
 	row.add_child(copy)
 	var meta = HBoxContainer.new()
 	meta.add_theme_constant_override("separation", 6)
 	copy.add_child(meta)
 	var name_text = _chat_sender_label(row_data)
 	var name_color = Color("#57b8ff") if is_self else Color("#ffc94a")
-	var player_name_label = host._label(name_text, 52, name_color, HORIZONTAL_ALIGNMENT_LEFT)
+	var player_name_label = host._label(name_text, 48, name_color, HORIZONTAL_ALIGNMENT_LEFT)
 	var name_settings = LabelSettings.new()
 	if host.app_bold_font != null:
 		name_settings.font = host.app_bold_font
 	elif host.app_font != null:
 		name_settings.font = host.app_font
-	name_settings.font_size = 52
+	name_settings.font_size = 48
 	name_settings.font_color = name_color
 	name_settings.outline_color = Color.BLACK
 	name_settings.outline_size = 15
@@ -715,11 +715,11 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	var name_margin = MarginContainer.new()
 	name_margin.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	name_margin.add_theme_constant_override("margin_left", 17)
-	name_margin.add_theme_constant_override("margin_top", 3)
-	name_margin.add_theme_constant_override("margin_bottom", 3)
+	name_margin.add_theme_constant_override("margin_top", 0)
+	name_margin.add_theme_constant_override("margin_bottom", 0)
 	name_margin.add_child(player_name_label)
 	meta.add_child(name_margin)
-	var time = host._label(_chat_time_text(row_data), 52, Color("#a7a7a7"), HORIZONTAL_ALIGNMENT_RIGHT)
+	var time = host._label(_chat_time_text(row_data), 48, Color("#a7a7a7"), HORIZONTAL_ALIGNMENT_RIGHT)
 	time.custom_minimum_size = Vector2(105, 0)
 	meta.add_child(time)
 	var bubble = PanelContainer.new()
@@ -727,7 +727,7 @@ func _chat_expanded_row(row_data: Dictionary) -> Control:
 	bubble.add_theme_stylebox_override("panel", _chat_expanded_message_style(deleted, is_self))
 	copy.add_child(bubble)
 	var body_text = "Message removed by moderator." if deleted else str(row_data.get("text", ""))
-	var body = host._label(body_text, 52, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
+	var body = host._label(body_text, 48, Color("#080808") if not deleted else Color("#6c625a"), HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	body.custom_minimum_size = Vector2(0, 56)
 	bubble.add_child(body)
@@ -1016,7 +1016,7 @@ func _chat_profile_button_text() -> String:
 func _chat_profile_button() -> Button:
 	var button: Button = host._menu_button(_chat_profile_button_text())
 	chat_profile_button = button
-	button.custom_minimum_size = Vector2(480, 68)
+	button.custom_minimum_size = Vector2(360, 68)
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.add_theme_font_size_override("font_size", 48)
 	button.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -1470,7 +1470,10 @@ func _build_profile_overlay() -> void:
 	profile_overlay.add_child(center)
 	profile_panel = PanelContainer.new()
 	profile_panel.custom_minimum_size = Vector2(770, 1010)
-	profile_panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 18, true))
+	var profile_style: StyleBoxFlat = host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 36, true)
+	profile_style.content_margin_top = 18
+	profile_style.content_margin_bottom = 18
+	profile_panel.add_theme_stylebox_override("panel", profile_style)
 	center.add_child(profile_panel)
 	profile_content_stack = VBoxContainer.new()
 	profile_content_stack.add_theme_constant_override("separation", 17)
@@ -1526,11 +1529,11 @@ func _rebuild_profile_overlay() -> void:
 	profile_name_edit.add_theme_stylebox_override("read_only", _profile_name_field_style(false))
 	profile_name_edit.text_submitted.connect(_on_profile_name_submitted)
 	name_stack.add_child(profile_name_edit)
-	profile_status_label = host._label(_profile_status_text(), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	profile_status_label = host._label(_profile_status_text(), host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	profile_status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	profile_status_label.custom_minimum_size = Vector2(0, 56)
 	name_stack.add_child(profile_status_label)
-	var cloud_status = host._label(host._online_runtime().cloud_save_status_text(), host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var cloud_status = host._label(host._online_runtime().cloud_save_status_text(), host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	cloud_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	cloud_status.custom_minimum_size = Vector2(0, 68)
 	name_stack.add_child(cloud_status)

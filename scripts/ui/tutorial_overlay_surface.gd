@@ -129,7 +129,7 @@ func build() -> void:
 	host.tutorial_target_ring = tutorial_target_ring
 	tutorial_overlay.add_child(tutorial_target_ring)
 
-	tutorial_target_label = host._label("", host.MIN_MOBILE_BODY_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	tutorial_target_label = host._label("", host.MIN_MOBILE_HELP_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	tutorial_target_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	tutorial_target_label.add_theme_constant_override("outline_size", 7)
 	tutorial_target_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -189,14 +189,14 @@ func build() -> void:
 	host.tutorial_step_label = tutorial_step_label
 	header.add_child(tutorial_step_label)
 
-	tutorial_title_label = host._label("", 88, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	tutorial_title_label = host._label("", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	tutorial_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	if host.app_bold_font != null:
 		tutorial_title_label.add_theme_font_override("font", host.app_bold_font)
 	host.tutorial_title_label = tutorial_title_label
 	stack.add_child(tutorial_title_label)
 
-	tutorial_body_label = host._label("", 58, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	tutorial_body_label = host._label("", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	tutorial_body_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	tutorial_body_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tutorial_body_label.visible = false

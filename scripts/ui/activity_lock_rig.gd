@@ -71,7 +71,7 @@ class _ActivityLockNumber extends Control:
 		var active_font := font if font != null else ThemeDB.fallback_font
 		var fitted := font_size
 		var max_width := size.x * 0.86
-		while fitted > 36 and active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
+		while fitted > 60 and active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted).x > max_width:
 			fitted -= 2
 		var text_size := active_font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fitted)
 		var baseline := size.y * 0.5 + (active_font.get_ascent(fitted) - active_font.get_descent(fitted)) * 0.5
@@ -255,7 +255,7 @@ func play_unlock_drop_animation() -> void:
 	set_lock_state(LOCK_STATE_DROPPING)
 	unlock_drop_active = true
 	click_shake_direction = -1.0 if rng.randf() < 0.5 else 1.0
-	_pull_chains_from_lock(Vector2(0.0, -1.0), 36.0)
+	_pull_chains_from_lock(Vector2(0.0, -1.0), 18.0)
 	_wake_motion_process()
 	unlock_drop_tween = create_tween()
 	unlock_drop_tween.tween_method(_set_unlock_drop_progress, 0.0, 1.0, UNLOCK_DROP_SECONDS).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
@@ -269,7 +269,7 @@ func _set_unlock_drop_progress(progress: float) -> void:
 	var fallover := smoothstep(0.18, 1.0, fall_progress)
 	var settling_wobble := sin(fall_progress * PI * 1.75) * 0.045 * (1.0 - fall_progress)
 	var pop_wiggle := _unlock_pop_wiggle()
-	lock_offset = Vector2(click_shake_direction * 14.0 * fall_progress + pop_wiggle * 6.0, size.y * 0.46 * gravity - absf(pop_wiggle) * 2.0)
+	lock_offset = Vector2(click_shake_direction * 7.0 * fall_progress + pop_wiggle * 3.0, size.y * 0.46 * gravity - absf(pop_wiggle))
 	lock_rotation = (0.78 * click_shake_direction * fallover) + settling_wobble + pop_wiggle * 0.10
 	_set_padlock_pop_scale(_unlock_pop_scale())
 	_place_padlock(lock_offset, lock_rotation)
@@ -375,7 +375,7 @@ func _play_ready_open_animation() -> void:
 		return
 	_stop_ready_open_animation(false)
 	ready_open_progress = 0.0
-	_pull_chains_from_lock(Vector2(0.0, -1.0), 20.0)
+	_pull_chains_from_lock(Vector2(0.0, -1.0), 10.0)
 	chain_moved.emit("ready_open", 0.32)
 	_wake_motion_process()
 	ready_open_tween = create_tween()
@@ -536,7 +536,7 @@ func _process(delta: float) -> void:
 		var next_offset := _limit_lock_offset(lock_offset + lock_velocity * delta)
 		lock_velocity = (next_offset - lock_offset) / maxf(delta, 0.001)
 		lock_offset = next_offset
-		if lock_offset.length() <= 0.35 and lock_velocity.length() <= 3.0 and _chains_settled() and click_shake_remaining <= 0.0:
+		if lock_offset.length() <= 0.175 and lock_velocity.length() <= 1.5 and _chains_settled() and click_shake_remaining <= 0.0:
 			lock_offset = Vector2.ZERO
 			lock_velocity = Vector2.ZERO
 			lock_rotation = 0.0
@@ -546,10 +546,10 @@ func _process(delta: float) -> void:
 		click_shake_remaining = maxf(0.0, click_shake_remaining - delta)
 	if physics_active:
 		_simulate_chains(delta)
-		lock_rotation = clampf(lock_velocity.x * 0.00055, -0.10, 0.10)
+		lock_rotation = clampf(lock_velocity.x * 0.0011, -0.10, 0.10)
 		var shake_pct := click_shake_remaining / LOCK_CLICK_SHAKE_SECONDS
 		var shake_wave := sin((1.0 - shake_pct) * PI * 7.0) * shake_pct * click_shake_direction
-		var visual_offset := lock_offset + Vector2(shake_wave * 10.0, absf(shake_wave) * 3.0)
+		var visual_offset := lock_offset + Vector2(shake_wave * 5.0, absf(shake_wave) * 1.5)
 		var visual_rotation := lock_rotation + shake_wave * 0.085
 		_place_padlock(visual_offset, visual_rotation)
 		queue_redraw()
@@ -748,7 +748,7 @@ func _chains_settled() -> bool:
 		var points := chain_points[side] as Array
 		var base_points := chain_base_points[side] as Array
 		for i in range(points.size()):
-			if ((points[i] as Vector2) - (base_points[i] as Vector2)).length() > 1.4:
+			if ((points[i] as Vector2) - (base_points[i] as Vector2)).length() > 0.7:
 				return false
 	return true
 
@@ -827,14 +827,14 @@ func _emit_chain_moved_if_ready(force := false, kind := "drag") -> void:
 		return
 	last_chain_sound_msec = now
 	last_chain_sound_offset = lock_offset
-	var intensity := clampf(lock_velocity.length() / 620.0, 0.25, 1.0)
+	var intensity := clampf(lock_velocity.length() / 310.0, 0.25, 1.0)
 	chain_moved.emit(kind, intensity)
 
 func _click_rattle_lock() -> void:
 	click_shake_remaining = LOCK_CLICK_SHAKE_SECONDS
 	click_shake_direction = -1.0 if rng.randf() < 0.5 else 1.0
-	lock_velocity += Vector2(220.0 * click_shake_direction, rng.randf_range(-60.0, 70.0))
-	_pull_chains_from_lock(Vector2(1.0 * click_shake_direction, 0.18), 44.0)
+	lock_velocity += Vector2(110.0 * click_shake_direction, rng.randf_range(-30.0, 35.0))
+	_pull_chains_from_lock(Vector2(1.0 * click_shake_direction, 0.18), 22.0)
 	_emit_chain_moved_if_ready(true, "click")
 	physics_active = true
 	_wake_motion_process()
@@ -853,7 +853,7 @@ func _pull_chains_from_lock(direction: Vector2, force: float) -> void:
 		for i in range(1, points.size()):
 			var t := float(i) / float(points.size() - 1)
 			var weight := t * t
-			var local_pull := pull * force * weight + Vector2(float(side) * 12.0, rng.randf_range(-8.0, 8.0)) * weight
+			var local_pull := pull * force * weight + Vector2(float(side) * 6.0, rng.randf_range(-4.0, 4.0)) * weight
 			previous[i] = (previous[i] as Vector2) - local_pull
 		chain_prev_points[side] = previous
 
@@ -882,12 +882,12 @@ func _padlock_contains_local_point(point: Vector2) -> bool:
 	return padlock_hit_image.get_pixel(sample_x, sample_y).a >= PADLOCK_HIT_ALPHA_THRESHOLD
 
 func _rattle_lock() -> void:
-	lock_velocity += Vector2(rng.randf_range(-260.0, 260.0), rng.randf_range(-70.0, 110.0))
+	lock_velocity += Vector2(rng.randf_range(-130.0, 130.0), rng.randf_range(-35.0, 55.0))
 	for side in [-1, 1]:
 		var points := chain_points[side] as Array
 		var previous := chain_prev_points[side] as Array
 		for i in range(1, points.size()):
-			var impulse := Vector2(rng.randf_range(-18.0, 18.0), rng.randf_range(-8.0, 12.0)) * float(i)
+			var impulse := Vector2(rng.randf_range(-9.0, 9.0), rng.randf_range(-4.0, 6.0)) * float(i)
 			previous[i] = (previous[i] as Vector2) - impulse
 		chain_prev_points[side] = previous
 	physics_active = true
@@ -918,12 +918,12 @@ func _draw_success_pulse() -> void:
 		return
 	var alpha := pow(1.0 - pulse_progress, 1.35)
 	var center := base_lock_position + lock_offset + PADLOCK_SIZE * 0.5
-	var base_grow := lerpf(10.0, 72.0, pulse_progress)
+	var base_grow := lerpf(5.0, 36.0, pulse_progress)
 	var tint := UNLOCK_SUCCESS_GREEN
 	var layers := [
-		{"grow": base_grow + 34.0, "alpha": 0.08},
-		{"grow": base_grow + 22.0, "alpha": 0.13},
-		{"grow": base_grow + 11.0, "alpha": 0.20},
+		{"grow": base_grow + 17.0, "alpha": 0.08},
+		{"grow": base_grow + 11.0, "alpha": 0.13},
+		{"grow": base_grow + 5.5, "alpha": 0.20},
 		{"grow": base_grow, "alpha": 0.30},
 	]
 	for layer in layers:
@@ -1014,7 +1014,7 @@ func _dropped_chain_path_points(side: int) -> Array:
 		var point := outer_anchor.lerp(inner_anchor, t)
 		point.y += sin(t * PI) * (size.y * 0.07 + drop * size.y * 0.16)
 		if t > 0.38:
-			var laid_y := ground_y - sin((1.0 - t) * PI) * 22.0
+			var laid_y := ground_y - sin((1.0 - t) * PI) * 11.0
 			point.y = lerpf(point.y, laid_y, rest)
 		points.append(point)
 	var start_points := drop_chain_start_points.get(side, []) as Array
@@ -1091,12 +1091,12 @@ func _draw_chain_with_depth(render_links: Array) -> void:
 func _chain_shadow_layers() -> Array:
 	return [
 		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 3.5), "inflate": Vector2(10, 10), "tint": Color(0, 0, 0, 0.045)},
-		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 3), "inflate": Vector2(6, 6), "tint": Color(0, 0, 0, 0.075)},
+		{"offset": CHAIN_SHADOW_OFFSET + Vector2(0, 1.5), "inflate": Vector2(6, 6), "tint": Color(0, 0, 0, 0.075)},
 		{"offset": CHAIN_SHADOW_OFFSET, "inflate": Vector2(3, 3), "tint": Color(0, 0, 0, 0.09)},
 	]
 
 func _chain_stroke_offsets() -> Array:
-	var stroke := 8.0
+	var stroke := 4.0
 	return [
 		Vector2(-stroke, 0),
 		Vector2(stroke, 0),
@@ -1220,7 +1220,7 @@ func _place_padlock(offset: Vector2, next_lock_rotation: float) -> void:
 	var open_amount := _lock_band_open_amount()
 	var ready_pop := sin(ready_open_progress * PI)
 	var ready_settle := sin(ready_open_progress * TAU * 1.6) * (1.0 - ready_open_progress)
-	var shackle_slide := Vector2(0.0, -open_amount * READY_OPEN_SHACKLE_LIFT - ready_pop * 4.0)
+	var shackle_slide := Vector2(0.0, -open_amount * READY_OPEN_SHACKLE_LIFT - ready_pop * 2.0)
 	var shared_rotation := next_lock_rotation + open_amount * READY_OPEN_HANG_ROTATION + ready_settle * 0.012
 	var shared_pivot := PADLOCK_SIZE * 0.5
 	if open_amount > 0.0:

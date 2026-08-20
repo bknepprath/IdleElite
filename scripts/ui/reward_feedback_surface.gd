@@ -15,8 +15,8 @@ const ACTIVITY_CRIT_OVERLAY_GROUP := "activity_crit_overlay"
 const REWARD_FLOAT_Z := 3460
 const SKILL_REWARD_FLOAT_GROUP := "skill_reward_float"
 const SKILL_REWARD_FLOAT_MULTI_DELAY_SECONDS := 0.20
-const SKILL_REWARD_FLOAT_MULTI_SPACING_X := 76.0
-const SKILL_REWARD_FLOAT_MULTI_STACK_Y := 30.0
+const SKILL_REWARD_FLOAT_MULTI_SPACING_X := 38.0
+const SKILL_REWARD_FLOAT_MULTI_STACK_Y := 15.0
 const STAMINA_NEED_FISH_FLOAT_GROUP := "stamina_need_fish_float"
 const TIRED_ACTIVITY_FLOAT_TEXT := "Tired!\n20% speed"
 const EVENT_NEED_STAMINA_FLOAT_TEXT := "Need\n%s STAM"
@@ -159,7 +159,7 @@ func _append_visible_stamina_bonus_entries(entries: Array, amount: int, skill_id
 				"kind": "stamina",
 				"anchor": _skill_menu_card_side_gauge(card),
 				"text": text,
-				"font_size": 66,
+				"font_size": 48,
 				"start_offset": Vector2(0, -27),
 				"rise": Vector2(0, -75)
 			})
@@ -168,7 +168,7 @@ func _append_visible_stamina_bonus_entries(entries: Array, amount: int, skill_id
 			"kind": "stamina",
 			"anchor": host._skill_detail_surface().detail_regen_circle,
 			"text": text,
-			"font_size": 72,
+			"font_size": 48,
 			"start_offset": Vector2(0, -35),
 			"rise": Vector2(0, -85)
 		})
@@ -517,7 +517,7 @@ func _emphasize_action_stat_bonus(card: Dictionary, stat_kind: String, text: Str
 		host._skill_detail_surface()._wiggle_normal_activity_stat_symbol(box)
 	else:
 		_flash_bonus_control(box)
-	_float_reward(host, box, text, 70, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -29), Vector2(0, -77), 0.0)
+	_float_reward(host, box, text, 48, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -29), Vector2(0, -77), 0.0)
 	host._audio_director()._play_info_chip_upgrade_sfx(sequence_index)
 
 
@@ -546,7 +546,7 @@ func _emphasize_global_buff_label(delay := 0.0) -> void:
 	if buff_label == null or not is_instance_valid(buff_label) or not buff_label.is_visible_in_tree():
 		return
 	_flash_bonus_control(buff_label, delay)
-	_float_reward(host, buff_label, "BUFF UP", 66, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -23), Vector2(0, -69), delay)
+	_float_reward(host, buff_label, "BUFF UP", 48, BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -23), Vector2(0, -69), delay)
 
 
 func _clear_action_crit_tweens() -> void:
@@ -854,7 +854,7 @@ func _activity_crit_text_burst(pop_card: Control, mega_crit = false) -> Control:
 	var text_size = ACTIVITY_MEGA_CRIT_TEXT_SIZE if mega_crit else ACTIVITY_CRIT_TEXT_SIZE
 	holder.size = text_size
 	holder.pivot_offset = text_size * 0.5
-	var spawn_jitter = Vector2(randf_range(-34.0, 34.0), randf_range(-18.0, 18.0)) if mega_crit else Vector2(randf_range(-16.0, 16.0), randf_range(-8.0, 8.0))
+	var spawn_jitter = Vector2(randf_range(-17.0, 17.0), randf_range(-9.0, 9.0)) if mega_crit else Vector2(randf_range(-8.0, 8.0), randf_range(-4.0, 4.0))
 	var start_position = pop_card.global_position + Vector2((pop_card.size.x - text_size.x) * 0.5, -text_size.y * 0.42) + spawn_jitter
 	start_position = _clamp_reward_holder_position(host, start_position, text_size)
 	holder.position = start_position
@@ -865,20 +865,20 @@ func _activity_crit_text_burst(pop_card: Control, mega_crit = false) -> Control:
 	host.add_child(holder)
 	pop_card.set_meta("activity_crit_text_node", holder)
 	var label_text = "MEGA CRIT!!!!" if mega_crit else "CRIT!!"
-	var label_size = 104 if mega_crit else 128
+	var label_size = 52 if mega_crit else 64
 	var label_color = ACTIVITY_MEGA_CRIT_TEXT_COLOR if mega_crit else ACTIVITY_CRIT_TEXT_COLOR
 	var label = host._label(label_text, label_size, label_color, HORIZONTAL_ALIGNMENT_CENTER)
 	label.size = text_size
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", Color("#3b2300") if mega_crit else Color("#171615"))
-	label.add_theme_constant_override("outline_size", 34 if mega_crit else 26)
+	label.add_theme_constant_override("outline_size", 17 if mega_crit else 13)
 	if host.app_bold_font != null:
 		label.add_theme_font_override("font", host.app_bold_font)
 	holder.add_child(label)
 	var tween = host.create_tween()
 	holder.set_meta("activity_crit_text_tween", tween)
 	tween.set_parallel(true)
-	var float_pixels = 310.0 if mega_crit else 230.0
+	var float_pixels = 155.0 if mega_crit else 115.0
 	var float_seconds = 6.15 if mega_crit else 2.05
 	var pop_seconds = 0.54 if mega_crit else 0.18
 	var fade_in_seconds = 0.12 if mega_crit else 0.08
@@ -1002,7 +1002,7 @@ func _flash_art_glow(anchor: Control, color: Color) -> void:
 func _float_xp(parent: Control, anchor: Control, xp_amount: int) -> void:
 	if xp_amount <= 0:
 		return
-	_float_reward(parent, anchor, "+%s XP" % xp_amount, 92, Color("#2ff06d"), Vector2(0, -43), Vector2(0, -115), 0.0, false, -1.0, SKILL_REWARD_FLOAT_GROUP)
+	_float_reward(parent, anchor, "+%s XP" % xp_amount, 48, Color("#2ff06d"), Vector2(0, -43), Vector2(0, -115), 0.0, false, -1.0, SKILL_REWARD_FLOAT_GROUP)
 
 func _float_xp_rewards(parent: Control, anchor: Control, reward_map: Dictionary, owner_skill_id = "") -> void:
 	if reward_map.is_empty():
@@ -1032,9 +1032,9 @@ func _float_xp_rewards(parent: Control, anchor: Control, reward_map: Dictionary,
 			side_offset = centered_index * SKILL_REWARD_FLOAT_MULTI_SPACING_X
 			lane_y = float(visible_index) * SKILL_REWARD_FLOAT_MULTI_STACK_Y
 			delay = float(visible_index) * SKILL_REWARD_FLOAT_MULTI_DELAY_SECONDS
-		var start_offset = Vector2(side_offset, -86.0 - lane_y)
-		var rise_offset = Vector2(side_offset * 0.16, -230.0 - lane_y * 0.9)
-		_float_reward(parent, anchor, text, 72 if multi_reward else 92, color, start_offset, rise_offset, delay, false, -1.0, SKILL_REWARD_FLOAT_GROUP)
+		var start_offset = Vector2(side_offset, -43.0 - lane_y)
+		var rise_offset = Vector2(side_offset * 0.16, -115.0 - lane_y * 0.9)
+		_float_reward(parent, anchor, text, 48, color, start_offset, rise_offset, delay, false, -1.0, SKILL_REWARD_FLOAT_GROUP)
 		visible_index += 1
 
 func _skill_id_from_action_key(key: String) -> String:
@@ -1189,7 +1189,7 @@ func _show_visible_skill_level_up_float(skill_id: String) -> void:
 		host,
 		xp_bar,
 		tr("LEVEL UP!"),
-		62,
+		60,
 		Color("#ffd238"),
 		Vector2(0, -21),
 		Vector2(0, -63),

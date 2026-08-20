@@ -324,8 +324,8 @@ func _leaderboard_player_card() -> Control:
 	copy.anchor_bottom = 0.5
 	copy.offset_left = 133.0
 	copy.offset_right = -357.0
-	copy.offset_top = -100.0
-	copy.offset_bottom = 100.0
+	copy.offset_top = -150.0
+	copy.offset_bottom = 150.0
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
 	copy.add_theme_constant_override("separation", 1)
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -343,8 +343,8 @@ func _leaderboard_player_card() -> Control:
 	var rank_text = LeaderboardPresentation.player_rank_text(player_score, leaderboard_state.rows_for_category(category_id), leaderboard_state.TOP_COUNT)
 	var score_text = LeaderboardPresentation.format_score(leaderboard_state.valid_category_id(category_id), player_score, leaderboard_state.skill_level_for_category(category_id), leaderboard_state.total_xp_for_category(category_id), leaderboard_state.CATEGORY_TOTAL_LEVEL, leaderboard_state.CATEGORY_MEDALS, leaderboard_state.CATEGORY_ELITE_HEAVENLY, leaderboard_state.CATEGORY_SKILL_PREFIX, Callable(leaderboard_state, "skill_level_from_total_xp"))
 	var rank = host._label("%s  |  %s" % [score_text, rank_text if rank_text == "unranked" else "Rank %s" % rank_text], 52, Color("#4b3828"), HORIZONTAL_ALIGNMENT_LEFT)
-	rank.clip_text = true
-	rank.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	rank.custom_minimum_size = Vector2(0, 112)
+	rank.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(rank)
 	var status := VBoxContainer.new()
 	status.anchor_left = 1.0
@@ -385,7 +385,7 @@ func _leaderboard_row(rank: int, row_data: Dictionary) -> Control:
 	h.add_child(_leaderboard_rank_badge(rank))
 	var avatar = host._profile_chat_overlay_surface().profile_avatar_frame(int(row_data.get("avatar_index", rank - 1)), Vector2(95, 95), bool(row_data.get("is_player", false)))
 	h.add_child(avatar)
-	var name_label = host._label(str(row_data.get("name", "Player")), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var name_label = host._label(str(row_data.get("name", "Player")), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	name_label.add_theme_constant_override("outline_size", 8)
 	var copy := VBoxContainer.new()
@@ -395,7 +395,7 @@ func _leaderboard_row(rank: int, row_data: Dictionary) -> Control:
 	name_label.custom_minimum_size = Vector2(0, 54)
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_child(name_label)
-	var score_label = host._label(str(row_data.get("score_text", GameFormatting.compact_number(float(row_data.get("score", 0)), 4))), 52, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_RIGHT)
+	var score_label = host._label(str(row_data.get("score_text", GameFormatting.compact_number(float(row_data.get("score", 0)), 4))), 48, Color("#ffbf35"), HORIZONTAL_ALIGNMENT_RIGHT)
 	score_label.custom_minimum_size = Vector2(0, 49)
 	score_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	score_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
@@ -410,7 +410,7 @@ func _leaderboard_rank_badge(rank: int) -> Control:
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	badge.add_theme_stylebox_override("panel", LeaderboardPresentation.rank_badge())
-	var label = host._label(str(rank), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var label = host._label(str(rank), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	label.add_theme_constant_override("outline_size", 6)
@@ -446,7 +446,7 @@ func _leaderboard_empty_state() -> Control:
 	var title = host._label(title_text, 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(title)
-	var detail = host._label(detail_text, 56, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var detail = host._label(detail_text, 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(detail)
 	return card

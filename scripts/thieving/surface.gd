@@ -516,7 +516,7 @@ func _thieving_heist_feather_band(top: bool) -> ColorRect:
 	band.anchor_bottom = 0.0 if top else 1.0
 	band.offset_left = 0.0
 	band.offset_right = 0.0
-	band.offset_top = 0.0 if top else -170.0
+	band.offset_top = 0.0 if top else -85.0
 	band.offset_bottom = 85.0 if top else 0.0
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	band.z_index = 205
@@ -529,7 +529,7 @@ func _thieving_heist_feather_band(top: bool) -> ColorRect:
 
 
 func _add_thieving_heist_completed_stamp(parent: Control) -> void:
-	var stamp := _label("STOLEN", 68, COLOR_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	var stamp := _label("STOLEN", 48, COLOR_GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 	stamp.add_theme_color_override("font_outline_color", COLOR_INK)
 	stamp.add_theme_constant_override("outline_size", 13)
 	stamp.anchor_left = 1.0
@@ -586,7 +586,7 @@ func _add_thieving_heist_jail_overlay(card: Dictionary, cooldown_remaining: int)
 	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bars_shake_body.add_child(bars)
 
-	var timer := _label(_thieving_heist_jail_text(cooldown_remaining), 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var timer := _label(_thieving_heist_jail_text(cooldown_remaining), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	timer.add_theme_color_override("font_outline_color", Color.BLACK)
 	timer.add_theme_constant_override("outline_size", 17)
 	timer.add_theme_constant_override("line_spacing", -8)
@@ -895,7 +895,7 @@ func _add_thieving_action_jail_overlay(card: Dictionary, action_id: String, cool
 	bars.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	bars_shake_body.add_child(bars)
 
-	var timer := _label(_thieving_heist_jail_text(cooldown_remaining), 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var timer := _label(_thieving_heist_jail_text(cooldown_remaining), 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	timer.add_theme_color_override("font_outline_color", Color.BLACK)
 	timer.add_theme_constant_override("outline_size", 17)
 	timer.add_theme_constant_override("line_spacing", -8)
@@ -1331,9 +1331,9 @@ func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> v
 		return
 	var reward_size := Vector2(230, 66)
 	var canvas_size := _current_canvas_size()
-	var reward_center := start_center + Vector2(360.0 + randf_range(-18.0, 26.0), -110.0 + randf_range(-18.0, 16.0))
-	reward_center.x = clampf(reward_center.x, reward_size.x * 0.5 + 24.0, canvas_size.x - reward_size.x * 0.5 - 24.0)
-	reward_center.y = minf(reward_center.y, canvas_size.y - host._reward_feedback_surface()._reward_float_reserved_bottom() - reward_size.y * 0.5 - 24.0)
+	var reward_center := start_center + Vector2(180.0 + randf_range(-9.0, 13.0), -55.0 + randf_range(-9.0, 8.0))
+	reward_center.x = clampf(reward_center.x, reward_size.x * 0.5 + 12.0, canvas_size.x - reward_size.x * 0.5 - 12.0)
+	reward_center.y = minf(reward_center.y, canvas_size.y - host._reward_feedback_surface()._reward_float_reserved_bottom() - reward_size.y * 0.5 - 12.0)
 	var holder := Control.new()
 	holder.size = reward_size
 	holder.position = reward_center - reward_size * 0.5
@@ -1346,14 +1346,14 @@ func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> v
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	host._fishing_ui_surface()._fishing_collection_canvas().add_child(holder)
 
-	var shadow := _label("+%s XP!" % xp_amount, 82, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER)
+	var shadow := _label("+%s XP!" % xp_amount, 48, Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = reward_size
 	shadow.position = Vector2(3, 3.5)
 	shadow.modulate = Color(1, 1, 1, 0.56)
 	shadow.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(shadow)
 
-	var label := _label("+%s XP!" % xp_amount, 82, Color("#2ff06d"), HORIZONTAL_ALIGNMENT_CENTER)
+	var label := _label("+%s XP!" % xp_amount, 48, Color("#2ff06d"), HORIZONTAL_ALIGNMENT_CENTER)
 	label.size = reward_size
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
 	label.add_theme_constant_override("outline_size", 11)
@@ -1362,7 +1362,7 @@ func _float_thieving_heist_xp_reward(start_center: Vector2, xp_amount: int) -> v
 
 	var tween := create_tween()
 	tween.set_parallel(true)
-	tween.tween_property(holder, "position", holder.position + Vector2(randf_range(18.0, 58.0), -250.0), 1.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(holder, "position", holder.position + Vector2(randf_range(9.0, 29.0), -125.0), 1.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "scale", Vector2.ONE, 0.20).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "rotation", holder.rotation + randf_range(-0.06, 0.06), 1.0).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tween.tween_property(holder, "modulate:a", 1.0, 0.10)

@@ -192,7 +192,7 @@ class BuildableModuleOverlay:
 	static func build(parent: Control, title_text: String, meta_text: String, button_text: String, can_afford: bool, ink_color: Color, bold_font: Font, regular_font: Font, body_font_size: int, plank_textures: Array = [], cost: Dictionary = {}, cost_icon_paths: Dictionary = {}) -> Dictionary:
 		if parent == null:
 			return {}
-		var overlay := rounded_panel(Color("#1d6f82", 0.88), 66, 66, 66, 66)
+		var overlay := rounded_panel(Color("#1d6f82", 0.88), 33, 33, 33, 33)
 		overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
 		overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		overlay.z_index = 239
@@ -218,10 +218,10 @@ class BuildableModuleOverlay:
 			parent.add_child(plank_layer)
 
 			var single_plank := plank_textures.size() == 1
-			var layouts := [{"top": -26.0, "height": 490.0, "left": -18.0, "right": 18.0}] if single_plank else [
-				{"top": 28.0, "height": 126.0, "left": 92.0, "right": -92.0},
-				{"top": 156.0, "height": 168.0, "left": 54.0, "right": -54.0},
-				{"top": 326.0, "height": 120.0, "left": 112.0, "right": -112.0}
+			var layouts := [{"top": -13.0, "height": 245.0, "left": -9.0, "right": 9.0}] if single_plank else [
+				{"top": 14.0, "height": 63.0, "left": 46.0, "right": -46.0},
+				{"top": 78.0, "height": 84.0, "left": 27.0, "right": -27.0},
+				{"top": 163.0, "height": 60.0, "left": 56.0, "right": -56.0}
 			]
 			for index in range(mini(plank_textures.size(), layouts.size())):
 				var texture := plank_textures[index] as Texture2D
@@ -229,15 +229,15 @@ class BuildableModuleOverlay:
 					continue
 				var layout := layouts[index] as Dictionary
 				var top := float(layout.get("top", 0.0))
-				var height := float(layout.get("height", 120.0))
+				var height := float(layout.get("height", 60.0))
 				var shadow := Panel.new()
 				shadow.name = "BuildRequiredBoardShadow%02d" % [index + 1]
 				shadow.anchor_left = 0.0
 				shadow.anchor_right = 1.0
-				shadow.offset_left = float(layout.get("left", 0.0)) + 24.0
-				shadow.offset_right = float(layout.get("right", 0.0)) - 24.0
-				shadow.offset_top = top + 28.0
-				shadow.offset_bottom = top + height + 36.0
+				shadow.offset_left = float(layout.get("left", 0.0)) + 12.0
+				shadow.offset_right = float(layout.get("right", 0.0)) - 12.0
+				shadow.offset_top = top + 14.0
+				shadow.offset_bottom = top + height + 18.0
 				var shadow_style := StyleBoxFlat.new()
 				shadow_style.bg_color = Color(0, 0, 0, 0.01)
 				shadow_style.corner_radius_top_left = 43
@@ -310,15 +310,15 @@ class BuildableModuleOverlay:
 		var cost_heading: Label = null
 		var cost_rows := []
 		if cost.is_empty():
-			meta = label(meta_text, maxi(body_font_size, 82), Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+			meta = label(meta_text, maxi(body_font_size, 48), Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 			meta.add_theme_color_override("font_outline_color", ink_color)
 			meta.add_theme_constant_override("outline_size", 15)
 			meta.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 			text_stack.add_child(meta)
 		else:
-			cost_heading = label("COST", maxi(body_font_size, 96), Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+			cost_heading = label("COST", maxi(body_font_size, 60), Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 			cost_heading.add_theme_constant_override("outline_size", 0)
-			cost_heading.add_theme_font_size_override("font_size", maxi(body_font_size, 96))
+			cost_heading.add_theme_font_size_override("font_size", maxi(body_font_size, 60))
 			text_stack.add_child(cost_heading)
 			var underline := ColorRect.new()
 			underline.color = Color.BLACK
@@ -349,7 +349,7 @@ class BuildableModuleOverlay:
 					_wire_cost_icon_feedback(parent, icon, mat_id, bold_font, regular_font)
 					cost_row.add_child(icon)
 				var amount_text := "%d" % int(round(amount)) if is_equal_approx(amount, round(amount)) else str(amount)
-				var amount_label := label(amount_text, maxi(body_font_size, 118), Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+				var amount_label := label(amount_text, maxi(body_font_size, 59), Color.BLACK, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 				amount_label.add_theme_constant_override("outline_size", 0)
 				cost_row.add_child(amount_label)
 				cost_rows.append(cost_row)
@@ -473,7 +473,7 @@ class ConvergenceBuildOverlay:
 		overlay.z_index = 231
 		parent.add_child(overlay)
 
-		var overlay_label := label("", 86, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+		var overlay_label := label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 		overlay_label.add_theme_color_override("font_outline_color", ink_color)
 		overlay_label.add_theme_constant_override("outline_size", 13)
 		overlay_label.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -510,7 +510,7 @@ class ConvergenceBuildOverlay:
 		stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		margin.add_child(stack)
 
-		var title := label("BUILD SHRINE", 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
+		var title := label("BUILD SHRINE", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, bold_font, regular_font)
 		title.add_theme_color_override("font_outline_color", ink_color)
 		title.add_theme_constant_override("outline_size", 9)
 		stack.add_child(title)
@@ -2479,7 +2479,7 @@ func _finish_normal_activity_stat_symbol_wiggle(symbol_id: int, value_label_id: 
 
 
 func _normal_activity_stat_row_label() -> Label:
-	var label := host._label("", 68, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	var label := host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
 	label.add_theme_constant_override("outline_size", 12)
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -2668,14 +2668,14 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 	var button := Button.new()
 	button.text = "i"
 	button.tooltip_text = ""
-	button.custom_minimum_size = Vector2(39, 39)
+	button.custom_minimum_size = Vector2(44, 44)
 	button.size = button.custom_minimum_size
 	button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	button.focus_mode = Control.FOCUS_NONE
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 12
 	button.add_to_group("skill_header_info_buttons")
-	button.add_theme_font_size_override("font_size", host.MIN_MOBILE_BODY_FONT_SIZE)
+	button.add_theme_font_size_override("font_size", 29)
 	_apply_info_symbol_button_text_color(button)
 	button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL.lightened(0.06), COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
@@ -2687,8 +2687,21 @@ func _skill_header_info_button(title_text: String, body_text: String) -> Button:
 	var popover := _skill_header_info_popover(title_text, body_text)
 	button.add_child(popover)
 	host._passive_firepit_surface()._prewarm_passive_info_popover(popover)
-	button.pressed.connect(Callable(host._passive_firepit_surface(), "_toggle_passive_info_popover").bind(popover))
+	button.pressed.connect(Callable(self, "_toggle_skill_header_info_popover").bind(button, popover))
 	return button
+
+
+func _toggle_skill_header_info_popover(button: Button, popover: PanelContainer) -> void:
+	if button == null or not is_instance_valid(button) or popover == null or not is_instance_valid(popover):
+		return
+	var base_position := Vector2(-570, 45)
+	popover.position = base_position
+	var viewport_width: float = float(host._current_canvas_size().x)
+	var popover_width := maxf(popover.size.x, popover.custom_minimum_size.x)
+	var global_x := button.get_global_rect().position.x + base_position.x
+	var clamped_x := clampf(global_x, 24.0, maxf(24.0, viewport_width - popover_width - 24.0))
+	popover.position.x += clamped_x - global_x
+	host._passive_firepit_surface()._toggle_passive_info_popover(popover)
 
 
 func _apply_info_symbol_button_text_color(button: Button) -> void:
@@ -2741,8 +2754,8 @@ func _hide_skill_header_info_on_outside_press(event: InputEvent) -> void:
 
 func _skill_header_info_popover(title_text: String, body_text: String) -> PanelContainer:
 	var popover := PanelContainer.new()
-	popover.position = Vector2(-260, 45)
-	popover.custom_minimum_size = Vector2(490, 175)
+	popover.position = Vector2(-570, 45)
+	popover.custom_minimum_size = Vector2(800, 460)
 	popover.size = popover.custom_minimum_size
 	popover.visible = false
 	popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2764,9 +2777,9 @@ func _skill_header_info_popover(title_text: String, body_text: String) -> PanelC
 	var title: Label = host._label(title_text, host.MIN_MOBILE_INFO_TITLE_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(title)
-	var body: Label = host._label(body_text, host.MIN_MOBILE_BODY_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var body: Label = host._label(body_text, host.MIN_MOBILE_HELP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(460, 110)
+	body.custom_minimum_size = Vector2(770, 355)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover
@@ -3486,6 +3499,10 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 		title_stack.add_child(title)
 	var xp = SkillState.xp_progress(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id))
 	detail_xp_label = host._label(SkillState.level_xp_text(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id)), SKILL_DETAIL_XP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	detail_xp_label.custom_minimum_size.x = host.SKILL_DETAIL_XP_BAR_WIDTH
+	detail_xp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	detail_xp_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail_xp_label.max_lines_visible = 2
 	detail_xp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_stack.add_child(detail_xp_label)
 	detail_xp_bar = ThemeStyles.skill_detail_xp_bar(selected_skill_id, float(xp["pct"]), host.COLOR_BLUE, host.COLOR_INK, host.SKILL_DETAIL_XP_BAR_HEIGHT, host.SKILL_DETAIL_XP_BAR_WIDTH)
@@ -3970,37 +3987,37 @@ func _build_beta_notice_board(content_width: float) -> Control:
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var board_width: float = content_width - float(host.ACTION_CARD_POP_GUTTER) * 2.0
-	for x in [84.0, board_width - 124.0]:
+	for x in [42.0, board_width - 62.0]:
 		var support := Panel.new()
-		support.position = Vector2(host.ACTION_CARD_POP_GUTTER + x, 12)
+		support.position = Vector2(host.ACTION_CARD_POP_GUTTER + x, 6)
 		support.size = Vector2(20, 343)
 		support.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		support.add_theme_stylebox_override("panel", _beta_notice_wood_style(Color("#704420"), 8))
+		support.add_theme_stylebox_override("panel", _beta_notice_wood_style(Color("#704420"), 4))
 		root.add_child(support)
 
 	for plank_index in range(4):
 		var plank := Panel.new()
-		plank.position = Vector2(host.ACTION_CARD_POP_GUTTER, 34 + plank_index * 162)
-		plank.size = Vector2(board_width, 170)
+		plank.position = Vector2(host.ACTION_CARD_POP_GUTTER, 17 + plank_index * 81)
+		plank.size = Vector2(board_width, 85)
 		plank.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		plank.add_theme_stylebox_override("panel", _beta_notice_wood_style(Color("#a96d35") if plank_index != 1 else Color("#b87a3d"), 18))
+		plank.add_theme_stylebox_override("panel", _beta_notice_wood_style(Color("#a96d35") if plank_index != 1 else Color("#b87a3d"), 9))
 		root.add_child(plank)
 
-	var title: Label = host._label("THIS GAME IS IN BETA", 120, Color("#24170d"), HORIZONTAL_ALIGNMENT_CENTER)
-	title.position = Vector2(host.ACTION_CARD_POP_GUTTER + 60, 52)
-	title.size = Vector2(board_width - 120, 135)
+	var title: Label = host._label("THIS GAME IS IN BETA", 60, Color("#24170d"), HORIZONTAL_ALIGNMENT_CENTER)
+	title.position = Vector2(host.ACTION_CARD_POP_GUTTER + 30, 26)
+	title.size = Vector2(board_width - 60, 67.5)
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(title)
 
 	for line_data in [
-		["There are no more activities to", 214.0],
-		["unlock in this skill yet.", 376.0],
-		["More coming soon.", 538.0],
+		["There are no more activities to", 107.0],
+		["unlock in this skill yet.", 188.0],
+		["More coming soon.", 269.0],
 	]:
-		var line: Label = host._label(str(line_data[0]), 104, Color("#24170d"), HORIZONTAL_ALIGNMENT_CENTER)
-		line.position = Vector2(host.ACTION_CARD_POP_GUTTER + 60, float(line_data[1]))
-		line.size = Vector2(board_width - 120, 135)
+		var line: Label = host._label(str(line_data[0]), 52, Color("#24170d"), HORIZONTAL_ALIGNMENT_CENTER)
+		line.position = Vector2(host.ACTION_CARD_POP_GUTTER + 30, float(line_data[1]))
+		line.size = Vector2(board_width - 60, 67.5)
 		line.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		root.add_child(line)
@@ -4011,7 +4028,7 @@ func _beta_notice_wood_style(color: Color, radius: int) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = color
 	style.border_color = Color("#3b2614")
-	style.set_border_width_all(8)
+	style.set_border_width_all(4)
 	style.set_corner_radius_all(radius)
 	style.shadow_color = Color(0.12, 0.07, 0.03, 0.35)
 	style.shadow_size = 4
@@ -6166,7 +6183,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		title_row.z_as_relative = false
 		copy.add_child(title_row)
 
-	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	if uses_flat_normal_card:
 		action_name_label.add_theme_font_size_override("font_size", 48)
 	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -6189,7 +6206,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		build_title_button_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		build_title_button_panel.add_theme_stylebox_override("panel", BuildableModuleOverlay.cta_style(BuildableModules.can_pay(action, Callable(host.material_runtime, "amount")), COLOR_INK, true))
 		title_row.add_child(build_title_button_panel)
-		build_title_button_label = BuildableModuleOverlay.label(BuildableModules.label(action).to_upper(), 84, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, host.app_bold_font, host.app_font)
+		build_title_button_label = BuildableModuleOverlay.label(BuildableModules.label(action).to_upper(), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER, host.app_bold_font, host.app_font)
 		build_title_button_label.set_anchors_preset(Control.PRESET_FULL_RECT)
 		build_title_button_label.add_theme_color_override("font_outline_color", COLOR_INK)
 		build_title_button_label.add_theme_constant_override("outline_size", 12)
@@ -6369,9 +6386,9 @@ func _detail_action_progress_widgets(card_root: Control, pop_card: Control, skil
 		convergence_progress.anchor_right = 1.0
 		convergence_progress.anchor_top = 1.0
 		convergence_progress.anchor_bottom = 1.0
-		convergence_progress.offset_left = host.ACTION_PROGRESS_RAIL_INSET + 18
-		convergence_progress.offset_right = -host.ACTION_PROGRESS_RAIL_INSET - 18
-		convergence_progress.offset_top = -CONVERGENCE_BAR_HEIGHT + 34
+		convergence_progress.offset_left = host.ACTION_PROGRESS_RAIL_INSET + 9
+		convergence_progress.offset_right = -host.ACTION_PROGRESS_RAIL_INSET - 9
+		convergence_progress.offset_top = -CONVERGENCE_BAR_HEIGHT + 17
 		convergence_progress.offset_bottom = 17
 		convergence_progress.z_index = 234
 		convergence_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -7433,18 +7450,18 @@ func _activity_stat_bonus_panel() -> Dictionary:
 	values.add_theme_constant_override("separation", 4)
 	values.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(values)
-	var title = _activity_bonus_label("", 120)
+	var title = _activity_bonus_label("", 60)
 	values.add_child(title)
-	var original = _activity_bonus_label("", 104)
+	var original = _activity_bonus_label("", 52)
 	values.add_child(original)
-	var current = _activity_bonus_label("", 104)
+	var current = _activity_bonus_label("", 52)
 	values.add_child(current)
 	var bonus_column = VBoxContainer.new()
 	bonus_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bonus_column.add_theme_constant_override("separation", 4)
 	bonus_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(bonus_column)
-	var bonuses = _activity_bonus_label("", 104)
+	var bonuses = _activity_bonus_label("", 52)
 	bonuses.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bonuses.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	bonuses.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -7487,7 +7504,7 @@ func _tier_banner_key(skill_id: String, tier: int) -> String:
 
 
 func _tier_banner_height(tier_key: String) -> float:
-	return 1720.0 if expanded_tier_banner_key == tier_key else 560.0
+	return 1260.0 if expanded_tier_banner_key == tier_key else 280.0
 
 
 func _toggle_tier_banner(skill_id: String, tier: int) -> void:
@@ -7499,7 +7516,7 @@ func _toggle_tier_banner(skill_id: String, tier: int) -> void:
 	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
 		restore_scroll = int(round(detail_actions_scroll.drag_scroll_position))
 		if opening:
-			restore_scroll += 620
+			restore_scroll += 460
 	call_deferred("_refresh_visible_skill_detail_action_list", restore_scroll, skill_id, false, true)
 
 
@@ -7516,7 +7533,7 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var plaque := TierPlaque.new()
 	plaque.tier = tier
-	plaque.custom_minimum_size = Vector2(content_width, 560.0)
+	plaque.custom_minimum_size = Vector2(content_width, 280.0)
 	plaque.set_anchors_preset(Control.PRESET_TOP_WIDE)
 	plaque.offset_left = 0.0
 	plaque.offset_right = 0.0
@@ -7544,7 +7561,7 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	header.add_theme_constant_override("separation", 9)
 	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(header)
-	var title: Label = host._label("TIER %s" % tier, 162 + mini(tier, 4) * 4, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var title: Label = host._label("TIER %s" % tier, 81 + mini(tier, 4) * 2, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -7552,7 +7569,7 @@ func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Co
 	if host.app_bold_font != null:
 		title.add_theme_font_override("font", host.app_bold_font)
 	header.add_child(title)
-	root.add_child(_tier_banner_hit_button(Vector2(0.0, 0.0), Vector2(content_width, 560.0), Callable(self, "_toggle_tier_banner").bind(skill_id, tier), "tier_banner_plaque_hit"))
+	root.add_child(_tier_banner_hit_button(Vector2(0.0, 0.0), Vector2(content_width, 280.0), Callable(self, "_toggle_tier_banner").bind(skill_id, tier), "tier_banner_plaque_hit"))
 	if expanded:
 		_add_tier_banner_expanded_menu(root, skill_id, tier, counts)
 	return root
@@ -7613,7 +7630,7 @@ func _tier_banner_hit_button(position: Vector2, hit_size: Vector2, callback: Cal
 
 func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, counts: Dictionary) -> void:
 	var panel_position := Vector2(43.0, 280.0)
-	var panel_size := Vector2(maxf(1.0, root.custom_minimum_size.x - 172.0), _tier_banner_height(_tier_banner_key(skill_id, tier)) - 560.0)
+	var panel_size := Vector2(maxf(1.0, root.custom_minimum_size.x - 86.0), _tier_banner_height(_tier_banner_key(skill_id, tier)) - 280.0)
 	root.add_child(_tier_banner_hit_button(panel_position, panel_size, Callable(self, "_toggle_tier_banner").bind(skill_id, tier), "tier_banner_panel_hit"))
 	var panel := PanelContainer.new()
 	panel.set_anchors_preset(Control.PRESET_TOP_WIDE)
@@ -7647,7 +7664,7 @@ func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, 
 	var earned_medals := int(counts.get("earned", 0))
 	var possible_medals := int(counts.get("possible", 0))
 	var completion := 0.0 if possible_medals <= 0 else float(earned_medals) / float(possible_medals) * 100.0
-	var summary: Label = host._label("Tier %s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 62, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var summary: Label = host._label("Tier %s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -7656,7 +7673,7 @@ func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, 
 		"Tier Medal Support",
 		"Earn Bronze, Silver, and Gold on every activity in this tier to unlock the listed Tier %s bonuses." % (tier + 1)
 	))
-	stack.add_child(_tier_banner_progress_bar(earned_medals, possible_medals, Color("#dc8b32"), "%s%%" % GameFormatting.percent_points(completion), 78.0))
+	stack.add_child(_tier_banner_progress_bar(earned_medals, possible_medals, Color("#dc8b32"), "%s%%" % GameFormatting.percent_points(completion), 70.0))
 	_add_tier_banner_expanded_content(stack, skill_id, tier)
 
 
@@ -7689,7 +7706,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	var completed := earned >= possible and possible > 0
 	var medal_color := MasteryState.MEDAL_ACCENTS[clampi(medal_level, 1, MasteryState.MEDAL_ACCENTS.size()) - 1] as Color
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 130)
+	card.custom_minimum_size = Vector2(0, 250)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_theme_stylebox_override("panel", _tier_banner_goal_card_style(medal_color, completed))
@@ -7727,6 +7744,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	medal_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	medal_stack.add_child(medal_name)
 	var progress_stack := VBoxContainer.new()
+	progress_stack.custom_minimum_size.x = 280
 	progress_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	progress_stack.alignment = BoxContainer.ALIGNMENT_CENTER
 	progress_stack.add_theme_constant_override("separation", 7)
@@ -7737,7 +7755,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	requirement.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	progress_stack.add_child(requirement)
 	var progress_text := "%s / %s  COMPLETE" % [earned, possible] if completed else "%s / %s" % [earned, possible]
-	progress_stack.add_child(_tier_banner_progress_bar(earned, possible, medal_color, progress_text, 104.0))
+	progress_stack.add_child(_tier_banner_progress_bar(earned, possible, medal_color, progress_text, 70.0))
 	row.add_child(_tier_banner_reward_chip(str(goal.get("reward_text", "")), medal_color))
 	return card
 
@@ -7759,7 +7777,7 @@ func _tier_banner_progress_bar(earned: int, possible: int, accent: Color, text: 
 	bar.border_width = 6.0
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(bar)
-	var label: Label = host._label(text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var label: Label = host._label(text, 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -7772,7 +7790,7 @@ func _tier_banner_progress_bar(earned: int, possible: int, accent: Color, text: 
 
 func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	var chip := PanelContainer.new()
-	chip.custom_minimum_size = Vector2(215, 105)
+	chip.custom_minimum_size = Vector2(260, 230)
 	chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var style := StyleBoxFlat.new()
@@ -7790,7 +7808,7 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	chip.add_theme_stylebox_override("panel", style)
 	var reward := VBoxContainer.new()
 	reward.alignment = BoxContainer.ALIGNMENT_CENTER
-	reward.add_theme_constant_override("separation", -2)
+	reward.add_theme_constant_override("separation", -8)
 	reward.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(reward)
 	var reward_header: Label = host._label("REWARD", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
@@ -7801,13 +7819,17 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	var parts := reward_text.split(" ", false, 1)
 	var main_text := str(parts[0]) if parts.size() > 0 else reward_text
 	var detail_text := str(parts[1]) if parts.size() > 1 else ""
-	var main: Label = host._label(main_text, 72, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var main: Label = host._label(main_text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	main.add_theme_color_override("font_outline_color", COLOR_INK)
 	main.add_theme_constant_override("outline_size", 8)
 	main.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward.add_child(main)
 	if not detail_text.is_empty():
 		var detail: Label = host._label(detail_text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		detail.custom_minimum_size.y = 100
+		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		detail.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		detail.add_theme_color_override("font_outline_color", COLOR_INK)
 		detail.add_theme_constant_override("outline_size", 5)
 		detail.mouse_filter = Control.MOUSE_FILTER_IGNORE

@@ -3,7 +3,7 @@ extends Control
 class ActivityProgressOpportunityOverlay:
 	extends Control
 
-	const WINDOW_VERTICAL_OUTSET := 22.0
+	const WINDOW_VERTICAL_OUTSET := 11.0
 	const WINDOW_RADIUS := 9.0
 	const WINDOW_OUTLINE_GROW := 1.5
 	const WINDOW_STROKE_INSET := 2.5
@@ -63,7 +63,7 @@ class ActivityProgressOpportunityOverlay:
 		var feedback_alpha := 1.0
 		var offset := Vector2.ZERO
 		var shake_wave := sin(t * PI * 8.0) * (1.0 - t) * direction
-		offset = Vector2(shake_wave * 11.0, absf(shake_wave) * 2.0)
+		offset = Vector2(shake_wave * 5.5, absf(shake_wave))
 		var stroke := Color("#ff4040").lerp(Color("#8b8982"), smoothstep(0.32, 1.0, t))
 		var outline := Color("#15120b")
 		outline.a = 0.96 * feedback_alpha
@@ -77,7 +77,7 @@ class ActivityProgressOpportunityOverlay:
 			_draw_opportunity_window_strokes(rect, start, finish, outline, stroke, offset)
 
 	func _draw_opportunity_window_strokes(rect: Rect2, start: float, finish: float, outline: Color, stroke: Color, offset: Vector2) -> void:
-		var min_marker_pct := 2.0 / maxf(1.0, rect.size.x)
+		var min_marker_pct := 1.0 / maxf(1.0, rect.size.x)
 		var marker_width_pct := maxf(min_marker_pct, finish - start)
 		var marker_start := start
 		var marker_finish := start + marker_width_pct
@@ -200,7 +200,7 @@ class ActivityProgressOpportunityOverlay:
 				false
 			)
 
-const OPPORTUNITY_WINDOW_VERTICAL_OUTSET := 22.0
+const OPPORTUNITY_WINDOW_VERTICAL_OUTSET := 11.0
 const OPPORTUNITY_WINDOW_OVERLAY_Z := 80
 const ROUNDED_FILL_ROWS := 18
 var value := 0.0
@@ -224,13 +224,13 @@ var empty_segments: Array[Color] = []
 var opportunity_color := Color("#fff2a8")
 var opportunity_active_color := Color("#ffffff")
 var top_lip_color := Color("#171615")
-var top_lip_height := 7.0
-var bottom_radius := 66.0
-var edge_inset := 6.0
+var top_lip_height := 3.5
+var bottom_radius := 33.0
+var edge_inset := 3.0
 var bottom_inset := 0.0
 var corner_guard := 0.0
 var bottom_shape := "round"
-var wide_u_bottom_rise := 58.0
+var wide_u_bottom_rise := 29.0
 var wide_u_shoulder_ratio := 0.285
 var opportunity_overlay: ActivityProgressOpportunityOverlay
 
@@ -546,7 +546,7 @@ func _draw_bottom_round_segment(rect: Rect2, color: Color, start_pct: float, fin
 
 func _draw_wide_u_progress() -> void:
 	var fill_pct := clampf(value / 100.0, 0.0, 1.0)
-	var width := maxf(72.0, minf(size.y * 0.90, 88.0))
+	var width := maxf(36.0, minf(size.y * 0.90, 44.0))
 	var outline_width := width + edge_inset * 2.0
 	_draw_wide_u_progress_segment(top_lip_color, 0.0, 1.0, outline_width)
 	_draw_wide_u_progress_segment(empty_color, 0.0, 1.0, width)
@@ -573,10 +573,10 @@ func _draw_wide_u_progress_segment(color: Color, start_pct: float, finish_pct: f
 	if polygon.size() >= 3:
 		draw_colored_polygon(polygon, color)
 		polygon.append(polygon[0])
-		draw_polyline(polygon, color, 2.0, true)
+		draw_polyline(polygon, color, 1.0, true)
 
 func _wide_u_progress_band_bounds(pct: float, stroke_width: float) -> Vector2:
-	var outer_width := maxf(72.0, minf(size.y * 0.90, 88.0)) + edge_inset * 2.0
+	var outer_width := maxf(36.0, minf(size.y * 0.90, 44.0)) + edge_inset * 2.0
 	var layer_inset := maxf(0.0, (outer_width - stroke_width) * 0.5)
 	var progress := clampf(pct, 0.0, 1.0)
 	var x := lerpf(0.0, size.x, progress)

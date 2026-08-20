@@ -123,7 +123,7 @@ func render_page() -> void:
 	offer_stage.add_child(offer)
 	var stack_meter: Control = ad_stack_meter()
 	stack_meter.size = stack_meter.custom_minimum_size
-	stack_meter.position = Vector2(offer.position.x + offer.size.x + 24.0, (offer_stage.custom_minimum_size.y - stack_meter.size.y) * 0.5)
+	stack_meter.position = Vector2(offer.position.x + offer.size.x + 12.0, (offer_stage.custom_minimum_size.y - stack_meter.size.y) * 0.5)
 	offer_stage.add_child(stack_meter)
 
 	bonus_label = host._label("", 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
@@ -133,16 +133,17 @@ func render_page() -> void:
 	bonus_label.text = host._ad_bonus_runtime().shop_label_text()
 	stack.add_child(bonus_label)
 	var message_spacer := Control.new()
-	message_spacer.custom_minimum_size = Vector2(0, 59)
+	message_spacer.custom_minimum_size = Vector2(0, 37)
 	stack.add_child(message_spacer)
-	var message: Label = host._label("Hi! Thanks for playing my game :)\nThere are no microtransactions here. Just an optional ad to speed things up if you'd like to use it. Thanks!", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
-	message.custom_minimum_size = Vector2(710, 110)
+	var message: Label = host._label("Hi! Thanks for playing my game :)\nThere are no microtransactions here. Just an optional ad to speed things up if you'd like to use it. Thanks!", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	message.custom_minimum_size = Vector2(960, 110)
 	message.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	message.add_theme_constant_override("line_spacing", -18)
 	stack.add_child(message)
 	if not rate_prompt_dismissed:
 		var review_spacer := Control.new()
-		review_spacer.custom_minimum_size = Vector2(0, 21)
+		review_spacer.custom_minimum_size = Vector2(0, 0)
 		stack.add_child(review_spacer)
 		var review_stars := HBoxContainer.new()
 		review_stars.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -154,18 +155,19 @@ func render_page() -> void:
 			star.modulate = host.COLOR_MUTED.lightened(0.12)
 			review_stars.add_child(star)
 		stack.add_child(review_stars)
-		var review: Label = host._label("Please rate Idle Elite on the store page to help me continue developing this game!", 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-		review.custom_minimum_size = Vector2(710, 75)
+		var review: Label = host._label("Please rate Idle Elite on the store page to help me continue developing this game!", 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		review.custom_minimum_size = Vector2(960, 75)
 		review.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		review.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		review.add_theme_constant_override("line_spacing", -18)
 		stack.add_child(review)
 		var rate_button: Button = host._menu_button("Rate on Play Store")
 		rate_button.custom_minimum_size = Vector2(420, 71)
 		rate_button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		rate_button.add_theme_font_size_override("font_size", 48)
-		rate_button.add_theme_stylebox_override("normal", host._paper_button_style(Color("#48dd6c"), 42))
-		rate_button.add_theme_stylebox_override("hover", host._paper_button_style(Color("#5eed7c"), 42))
-		rate_button.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#38c45a"), 42, 64, true))
+		rate_button.add_theme_stylebox_override("normal", host._paper_button_style(Color("#48dd6c"), 21))
+		rate_button.add_theme_stylebox_override("hover", host._paper_button_style(Color("#5eed7c"), 21))
+		rate_button.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#38c45a"), 21, 32, true))
 		rate_button.pressed.connect(rate_pressed)
 		stack.add_child(rate_button)
 	var bottom_spacer := Control.new()
@@ -198,8 +200,8 @@ func emphasize_bonus_award() -> void:
 	host._reward_feedback_surface()._flash_bonus_control(bonus_label)
 	if shop_ad_stack_meter_panel != null and is_instance_valid(shop_ad_stack_meter_panel) and shop_ad_stack_meter_panel.is_visible_in_tree():
 		host._reward_feedback_surface()._flash_bonus_control(shop_ad_stack_meter_panel, 0.06)
-	host._reward_feedback_surface()._float_reward(host, bonus_label, "+10% XP", 66, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -22), Vector2(0, -68), 0.0)
-	host._reward_feedback_surface()._float_reward(host, bonus_label, "-10% TIME", 66, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -5), Vector2(0, -68), 0.14)
+	host._reward_feedback_surface()._float_reward(host, bonus_label, "+10% XP", 60, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -22), Vector2(0, -68), 0.0)
+	host._reward_feedback_surface()._float_reward(host, bonus_label, "-10% TIME", 60, RewardFeedbackSurface.BONUS_EMPHASIS_FLOAT_COLOR, Vector2(0, -5), Vector2(0, -68), 0.14)
 
 func ad_offer_button() -> Button:
 	var button: Button = host._menu_button("")

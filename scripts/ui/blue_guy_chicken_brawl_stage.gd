@@ -899,7 +899,7 @@ func _notification(what: int) -> void:
 func _ensure_labels() -> void:
 	if title_label != null:
 		return
-	title_label = _stage_label(stage_title, 58, HORIZONTAL_ALIGNMENT_LEFT, 22)
+	title_label = _stage_label(stage_title, 60, HORIZONTAL_ALIGNMENT_LEFT, 22)
 	add_child(title_label)
 	ko_label = _stage_label("", 84, HORIZONTAL_ALIGNMENT_CENTER, 28)
 	add_child(ko_label)
@@ -4436,7 +4436,7 @@ func _draw_diamond_inactive_cover(s: float) -> void:
 func _layout_title_label(s: float) -> void:
 	var top_rect := _cover_top_rect(s)
 	title_label.position = top_rect.position + Vector2(30.0, 12.0) * s
-	title_label.size = Vector2(maxf(0.0, top_rect.size.x - 60.0 * s), 108.0 * s)
+	title_label.size = Vector2(maxf(0.0, top_rect.size.x - 60.0 * s), maxf(60.0, 108.0 * s))
 	title_label.visible = cover_open_amount < 0.995
 	title_label.modulate.a = clampf(1.0 - _ease_garage_door(cover_open_amount) * 1.8, 0.0, 1.0)
 

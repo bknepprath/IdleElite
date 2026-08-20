@@ -197,7 +197,7 @@ func _achievement_toast_queue_badge() -> PanelContainer:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	center.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	badge.add_child(center)
-	var label: Label = host._label("", 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var label: Label = host._label("", 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.add_theme_color_override("font_outline_color", host.COLOR_INK)
@@ -261,11 +261,11 @@ func _present_achievement_toast(achievement: Dictionary) -> void:
 		VIEWPORT_MARGIN.y,
 		maxf(VIEWPORT_MARGIN.y, canvas_size.y - presentation_size.y - VIEWPORT_MARGIN.y)
 	)
-	banner.position = target_position + Vector2(0, 90.0 * fitted_scale)
+	banner.position = target_position + Vector2(0, 45.0 * fitted_scale)
 	host._app_lifecycle_runtime().set_canvas_item_modulate_if_changed(banner, Color(1, 1, 1, 0))
 	banner.scale = Vector2(0.92, 0.92)
 	banner.pivot_offset = presentation_size * 0.5
-	var exit_offset := Vector2(0, 110.0 * fitted_scale)
+	var exit_offset := Vector2(0, 55.0 * fitted_scale)
 	banner.set_meta("achievement_exit_offset", exit_offset)
 	var banner_id := banner.get_instance_id()
 	banner.gui_input.connect(_on_achievement_toast_gui_input_bound.bind(banner_id, exit_offset))
@@ -502,7 +502,7 @@ func card(achievement: Dictionary) -> Control:
 	var card := PanelContainer.new()
 	card.clip_contents = true
 	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	card.add_theme_stylebox_override("panel", AchievementPresentation.card(Color("#fffdf8") if completed else Color("#fff6e1"), 34, 10, Callable(host, "_surface_style")))
+	card.add_theme_stylebox_override("panel", AchievementPresentation.card(Color("#fffdf8") if completed else Color("#fff6e1"), 17, 5, Callable(host, "_surface_style")))
 
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -514,7 +514,7 @@ func card(achievement: Dictionary) -> Control:
 	card.add_child(margin)
 
 	var copy := VBoxContainer.new()
-	copy.custom_minimum_size = Vector2(SIZE.x - 38, 0)
+	copy.custom_minimum_size = Vector2(SIZE.x - 19, 0)
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -522,7 +522,7 @@ func card(achievement: Dictionary) -> Control:
 	copy.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	margin.add_child(copy)
 
-	var title_label: Label = host._label(_achievement_done_text(achievement), 74, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var title_label: Label = host._label(_achievement_done_text(achievement), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title_label.custom_minimum_size = Vector2(0, 44)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -533,7 +533,7 @@ func card(achievement: Dictionary) -> Control:
 		title_label.add_theme_font_override("font", host.app_bold_font)
 	copy.add_child(title_label)
 
-	var reward_label: Label = host._label(_reward_text(achievement), 50, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var reward_label: Label = host._label(_reward_text(achievement), 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	reward_label.custom_minimum_size = Vector2(0, 30)
 	reward_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	reward_label.autowrap_mode = TextServer.AUTOWRAP_OFF

@@ -683,7 +683,7 @@ static func action_card_background_edge_underlay(fill_color: Color, radius: floa
 	style.bg_color = fill_color
 	style.border_color = Color.TRANSPARENT
 	style.set_border_width_all(0)
-	style.set_corner_radius_all(int(round(radius + 3.0)))
+	style.set_corner_radius_all(int(round(radius + 1.5)))
 	style.anti_aliasing = true
 	underlay.add_theme_stylebox_override("panel", style)
 	return underlay
@@ -711,10 +711,10 @@ static func activity_card_art_outline_skin(radius: float, cache: Dictionary, ink
 		var final_size := Vector2i(80, 52)
 		var supersample := 4.0
 		var texture_size := Vector2i(int(final_size.x * supersample), int(final_size.y * supersample))
-		var border := 4.0 * supersample
+		var border := 2.0 * supersample
 		var outer := Rect2(Vector2.ZERO, Vector2(float(texture_size.x), float(texture_size.y)))
 		var inner := outer.grow(-border)
-		var outer_radius := minf(radius * supersample, 44.0 * supersample)
+		var outer_radius := minf(radius * supersample, 22.0 * supersample)
 		var inner_radius := maxf(1.0, outer_radius - border)
 		var image := Image.create(texture_size.x, texture_size.y, false, Image.FORMAT_RGBA8)
 		image.fill(Color(0, 0, 0, 0))
@@ -727,10 +727,10 @@ static func activity_card_art_outline_skin(radius: float, cache: Dictionary, ink
 		style.texture = create_texture.call(image)
 	else:
 		style.texture = fallback_texture.call()
-	style.texture_margin_left = 28
-	style.texture_margin_right = 28
-	style.texture_margin_top = 28
-	style.texture_margin_bottom = 28
+	style.texture_margin_left = 14
+	style.texture_margin_right = 14
+	style.texture_margin_top = 14
+	style.texture_margin_bottom = 14
 	cache[key] = style
 	return style
 
@@ -957,7 +957,7 @@ static func bonus_bottom_highlight(flash_color: Color) -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.28)
 	style.border_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.95)
-	style.set_border_width_all(14)
+	style.set_border_width_all(7)
 	style.set_corner_radius_all(999)
 	style.shadow_color = Color(flash_color.r, flash_color.g, flash_color.b, 0.34)
 	style.shadow_size = 8

@@ -169,9 +169,9 @@ class _BootFlexLoadingAnimation:
 			sprite_holder.size = Vector2(sprite_size, sprite_size)
 			sprite_holder.position = sprite_base_position
 
-		var bubble_width := clampf(size.x * 0.78, 1240.0, 1760.0)
+		var bubble_width := clampf(size.x * 0.78, 620.0, 880.0)
 		var bubble_height := bubble_width * 0.43
-		var bubble_y := maxf(56.0, sprite_base_position.y - bubble_height + 166.0)
+		var bubble_y := maxf(28.0, sprite_base_position.y - bubble_height + 83.0)
 		if bubble != null:
 			bubble.size = Vector2(bubble_width, bubble_height)
 			bubble.position = Vector2((size.x - bubble_width) * 0.5, bubble_y)
@@ -186,8 +186,8 @@ class _BootFlexLoadingAnimation:
 			return
 		var top_height := bubble_text.size.y * 0.30
 		var big_height := bubble_text.size.y * 0.70
-		var small_font := int(clampf(bubble_text.size.x * 0.064, 48.0, 94.0))
-		var big_font := int(clampf(bubble_text.size.x * 0.136, 122.0, 210.0))
+		var small_font := 48
+		var big_font := int(clampf(bubble_text.size.x * 0.136, 61.0, 105.0))
 		if bubble_line_top != null:
 			bubble_line_top.size = Vector2(bubble_text.size.x, top_height)
 			bubble_line_top.position = Vector2.ZERO
@@ -221,20 +221,20 @@ class _BootFlexLoadingAnimation:
 		if phase < 0.22 or phase >= 0.31:
 			return 0.0
 		if phase < 0.232:
-			return -12.0
+			return -6.0
 		if phase < 0.244:
-			return 12.0
+			return 6.0
 		if phase < 0.256:
-			return -12.0
+			return -6.0
 		if phase < 0.268:
-			return 12.0
+			return 6.0
 		if phase < 0.280:
-			return -7.0
+			return -3.5
 		if phase < 0.292:
-			return 7.0
+			return 3.5
 		if phase < 0.302:
-			return -3.0
-		return 3.0
+			return -1.5
+		return 1.5
 
 
 	func _spawn_xp_drop() -> void:

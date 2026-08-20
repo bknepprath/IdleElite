@@ -99,13 +99,68 @@ $legacyCoordinateHits = @(
 )
 
 $explicitFontPattern = 'add_theme_font_size_override\(\s*"font_size"\s*,\s*(\d+)\s*\)'
+
+function Test-IsInfoIconFontOverride {
+    param(
+        [Parameter(Mandatory = $true)][AllowEmptyString()][string[]]$Lines,
+        [Parameter(Mandatory = $true)][int]$LineIndex
+    )
+
+    $overrideMatch = [regex]::Match(
+        $Lines[$LineIndex],
+        '^\s*(?<receiver>[A-Za-z_][A-Za-z0-9_]*)\.add_theme_font_size_override\(\s*"font_size"\s*,\s*29\s*\)\s*$'
+    )
+    if (-not $overrideMatch.Success) {
+        return $false
+    }
+
+    $receiver = $overrideMatch.Groups["receiver"].Value
+    $escapedReceiver = [regex]::Escape($receiver)
+    $constructsButton = $false
+    $setsInfoGlyph = $false
+    for ($index = $LineIndex - 1; $index -ge 0; $index--) {
+        $candidate = $Lines[$index]
+        if ($candidate -match '^\s*func\s+') {
+            break
+        }
+        if ($candidate -match "^\s*var\s+$escapedReceiver(?:\s*:\s*Button)?\s*(?::=|=)\s*Button\.new\(\)\s*$") {
+            $constructsButton = $true
+        }
+        if ($candidate -match "^\s*$escapedReceiver\.text\s*=\s*`"i`"\s*$") {
+            $setsInfoGlyph = $true
+        }
+    }
+
+    return $constructsButton -and $setsInfoGlyph
+}
+
+$infoIconFixture = @(
+    'func _fixture() -> void:',
+    '    var button := Button.new()',
+    '    button.text = "i"',
+    '    button.add_theme_font_size_override("font_size", 29)'
+)
+$bodyTextFixture = @(
+    'func _fixture() -> void:',
+    '    var button := Button.new()',
+    '    button.text = "Info"',
+    '    button.add_theme_font_size_override("font_size", 29)'
+)
+Assert-True (Test-IsInfoIconFontOverride -Lines $infoIconFixture -LineIndex 3) "The mobile font contract must recognize the reviewed info-icon glyph override."
+Assert-True (-not (Test-IsInfoIconFontOverride -Lines $bodyTextFixture -LineIndex 3)) "The mobile font contract must not exempt sub-48 button text."
+
 $explicitSmallFontHits = @()
 foreach ($script in $productionScripts) {
-    $lineNumber = 0
-    foreach ($line in Get-Content -LiteralPath $script.FullName) {
-        $lineNumber++
+    $scriptLines = @(Get-Content -LiteralPath $script.FullName)
+    for ($lineIndex = 0; $lineIndex -lt $scriptLines.Count; $lineIndex++) {
+        $line = $scriptLines[$lineIndex]
         $fontMatch = [regex]::Match($line, $explicitFontPattern)
-        if ($fontMatch.Success -and [int]$fontMatch.Groups[1].Value -lt 48) {
+        if (
+            $fontMatch.Success -and
+            [int]$fontMatch.Groups[1].Value -lt 48 -and
+            -not (Test-IsInfoIconFontOverride -Lines $scriptLines -LineIndex $lineIndex)
+        ) {
+            $lineNumber = $lineIndex + 1
             $explicitSmallFontHits += "$($script.FullName):${lineNumber}:$($line.Trim())"
         }
     }

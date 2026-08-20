@@ -11,7 +11,7 @@ const MAT_COLLECTION_MODULE_SIZE := Vector2(377, 377)
 const MAT_COLLECTION_MODULE_GAP := 14.0
 const MAT_COLLECTION_AREA_HEIGHT := 435.0
 const MAT_COLLECTION_CONNECTOR_HEIGHT := 37.0
-const MAT_COLLECTION_CONNECTOR_TOP_OVERLAP := 3.0
+const MAT_COLLECTION_CONNECTOR_TOP_OVERLAP := 1.5
 const MAT_COLLECTION_APPEAR_SECONDS := 0.28
 const MAT_COLLECTION_FLYER_ARC_SECONDS := 0.68
 
@@ -562,7 +562,7 @@ func _mat_honey_info_button() -> Button:
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 32
 	button.add_to_group("skill_header_info_buttons")
-	button.add_theme_font_size_override("font_size", host.MIN_MOBILE_BODY_FONT_SIZE)
+	button.add_theme_font_size_override("font_size", 29)
 	host._skill_detail_surface()._apply_info_symbol_button_text_color(button)
 	button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL.lightened(0.06), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
@@ -580,8 +580,8 @@ func _mat_honey_info_button() -> Button:
 
 func _mat_honey_info_popover() -> PanelContainer:
 	var popover = PanelContainer.new()
-	popover.position = Vector2(-305, 50)
-	popover.custom_minimum_size = Vector2(345, 220)
+	popover.position = Vector2(-580, 50)
+	popover.custom_minimum_size = Vector2(620, 360)
 	popover.size = popover.custom_minimum_size
 	popover.visible = false
 	popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -605,7 +605,7 @@ func _mat_honey_info_popover() -> PanelContainer:
 	stack.add_child(title)
 	var body = host._label("Honey doubles stamina regen.\nEach honey consumed lasts 10 seconds.", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(314, 155)
+	body.custom_minimum_size = Vector2(592, 270)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover
@@ -622,7 +622,7 @@ func _mat_berry_info_button() -> Button:
 	button.mouse_filter = Control.MOUSE_FILTER_STOP
 	button.z_index = 40
 	button.add_to_group("skill_header_info_buttons")
-	button.add_theme_font_size_override("font_size", host.MIN_MOBILE_BODY_FONT_SIZE)
+	button.add_theme_font_size_override("font_size", 29)
 	host._skill_detail_surface()._apply_info_symbol_button_text_color(button)
 	button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL.lightened(0.06), host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
@@ -640,8 +640,8 @@ func _mat_berry_info_button() -> Button:
 
 func _mat_berry_info_popover() -> PanelContainer:
 	var popover = PanelContainer.new()
-	popover.position = Vector2(-305, 50)
-	popover.custom_minimum_size = Vector2(345, 260)
+	popover.position = Vector2(-650, 50)
+	popover.custom_minimum_size = Vector2(760, 580)
 	popover.size = popover.custom_minimum_size
 	popover.visible = false
 	popover.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -665,7 +665,7 @@ func _mat_berry_info_popover() -> PanelContainer:
 	stack.add_child(title)
 	var body = host._label("Tap Berries to enter Berry Mode.\nThen tap modules to mark or unmark them.\nMarked modules consume 1 Berries per completion, double XP, and double loot.", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	body.custom_minimum_size = Vector2(314, 195)
+	body.custom_minimum_size = Vector2(732, 480)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(body)
 	return popover

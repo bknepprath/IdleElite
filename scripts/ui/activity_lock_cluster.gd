@@ -585,7 +585,7 @@ func _shared_motion_source_can_settle() -> bool:
 		return false
 	if not _rig_can_share_motion(shared_motion_source):
 		return false
-	return shared_motion_source.physics_active or shared_motion_source.lock_offset.length() > 0.75 or shared_motion_source.lock_velocity.length() > 4.0
+	return shared_motion_source.physics_active or shared_motion_source.lock_offset.length() > 0.375 or shared_motion_source.lock_velocity.length() > 2.0
 
 
 func _chain_carried_lock_offset(source: ActivityLockRig, target: ActivityLockRig) -> Vector2:

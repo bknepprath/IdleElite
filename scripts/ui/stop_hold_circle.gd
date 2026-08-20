@@ -299,4 +299,4 @@ func _draw() -> void:
 		draw_arc(center, radius, -PI * 0.5, -PI * 0.5 + TAU * visible_progress, 40, fill, width, true)
 	if show_question:
 		fill.a *= 1.0 - unload_progress
-		draw_string(ThemeDB.fallback_font, Vector2(center.x - radius, center.y + 36.0), "?", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, 112, fill)
+		draw_string(ThemeDB.fallback_font, Vector2(center.x - radius, center.y + 18.0), "?", HORIZONTAL_ALIGNMENT_CENTER, radius * 2.0, 56, fill)

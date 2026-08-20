@@ -11,15 +11,12 @@ if ($env:GODOT_SLOT_WAIT_SECONDS) {
     $waitSeconds = [int]$env:GODOT_SLOT_WAIT_SECONDS
 }
 
-$candidatePaths = @()
+$candidatePaths = @(
+    "C:\Users\bknep\Documents\New project 4\.codex-godot-r471\godot.exe"
+)
 if ($env:GODOT_BIN) {
     $candidatePaths += $env:GODOT_BIN
 }
-$candidatePaths += @(
-    "C:\Program Files\Godot\Godot.exe",
-    (Join-Path $env:TEMP "godot-console-run\Godot_v4.5.1-stable_win64_console.exe"),
-    "C:\Program Files\Godot\Godot_v4.5.1-stable_win64_console.exe"
-)
 
 $godotPath = $candidatePaths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
 if (-not $godotPath) {
@@ -211,8 +208,35 @@ $newUnattributedIds = @(
         ForEach-Object { [int]$_.Id } |
         Sort-Object -Unique
 )
-if ($newUnattributedIds.Count -gt 0) {
-    [Console]::Error.WriteLine("New Godot process(es) appeared during this command but were not confirmed as children of this run: $($newUnattributedIds -join ', '). They were not terminated.")
+$unmatchedNewIds = @()
+foreach ($processId in $newUnattributedIds) {
+    $detail = $afterSnapshot.Details[[int]$processId]
+    $commandLine = if ($null -ne $detail) { [string]$detail.CommandLine } else { "" }
+    $executablePath = if ($null -ne $detail) { [string]$detail.ExecutablePath } else { "" }
+    $matchesInvocation = -not $visibleGame -and -not [string]::IsNullOrWhiteSpace($commandLine)
+    if ($matchesInvocation -and -not [string]::IsNullOrWhiteSpace($executablePath)) {
+        $matchesInvocation = [IO.Path]::GetFullPath($executablePath) -eq [IO.Path]::GetFullPath($godotPath)
+    }
+    if ($matchesInvocation) {
+        foreach ($argument in $godotArgs) {
+            if ($argument -eq "--headless" -or [string]::IsNullOrWhiteSpace([string]$argument)) {
+                continue
+            }
+            if ($commandLine.IndexOf([string]$argument, [System.StringComparison]::OrdinalIgnoreCase) -lt 0) {
+                $matchesInvocation = $false
+                break
+            }
+        }
+    }
+    if (-not $matchesInvocation) {
+        $unmatchedNewIds += $processId
+        continue
+    }
+    Stop-Process -Id $processId -Force -ErrorAction SilentlyContinue
+    [Console]::Error.WriteLine("Terminated detached headless Godot process matched to this command: PID $processId")
+}
+if ($unmatchedNewIds.Count -gt 0) {
+    [Console]::Error.WriteLine("New Godot process(es) appeared during this command but were not confirmed as children of this run: $($unmatchedNewIds -join ', '). They were not terminated.")
 }
 
 if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {

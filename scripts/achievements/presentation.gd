@@ -85,7 +85,7 @@ class MedalSparkleStar:
 		draw_polygon(points, PackedColorArray([outline_color]))
 		var inner_points := PackedVector2Array()
 		for i in range(8):
-			var radius := (outer - 3.5) if i % 2 == 0 else maxf(1.0, inner - 2.0)
+			var radius := (outer - 1.75) if i % 2 == 0 else maxf(0.5, inner - 1.0)
 			var angle := -PI * 0.5 + float(i) * PI * 0.25
 			inner_points.append(center + Vector2(cos(angle), sin(angle)) * radius)
 		draw_polygon(inner_points, PackedColorArray([fill_color]))
@@ -104,15 +104,15 @@ static func toast_queue_badge() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color("#2f2a21")
 	style.border_color = Color("#fff2c4")
-	style.set_border_width_all(7)
+	style.set_border_width_all(4)
 	style.set_corner_radius_all(999)
-	style.content_margin_left = 18
-	style.content_margin_right = 18
-	style.content_margin_top = 8
-	style.content_margin_bottom = 10
+	style.content_margin_left = 9
+	style.content_margin_right = 9
+	style.content_margin_top = 4
+	style.content_margin_bottom = 5
 	style.shadow_color = Color(0.0, 0.0, 0.0, 0.28)
-	style.shadow_size = 8
-	style.shadow_offset = Vector2(0, 5)
+	style.shadow_size = 4
+	style.shadow_offset = Vector2(0, 2.5)
 	return style
 
 
@@ -120,10 +120,10 @@ static func skill_section() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
 	style.bg_color = Color(1, 1, 1, 0)
 	style.draw_center = false
-	style.content_margin_left = 38
-	style.content_margin_right = 38
-	style.content_margin_top = 22
-	style.content_margin_bottom = 30
+	style.content_margin_left = 19
+	style.content_margin_right = 19
+	style.content_margin_top = 11
+	style.content_margin_bottom = 15
 	return style
 
 

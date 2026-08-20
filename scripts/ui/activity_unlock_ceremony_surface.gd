@@ -729,7 +729,7 @@ func stage_preview_enter(card: Dictionary, collapse_height = true) -> void:
 	root.clip_contents = true if collapse_height else original_clip
 	var pop = card.get("pop") as Control
 	if pop != null:
-		set_preview_pop_vertical_offset(pop, NEXT_PREVIEW_SETTLE_OFFSET if bool(card.get("unlock_next_preview_smooth", false)) and not collapse_height else 34.0)
+		set_preview_pop_vertical_offset(pop, NEXT_PREVIEW_SETTLE_OFFSET if bool(card.get("unlock_next_preview_smooth", false)) and not collapse_height else 17.0)
 
 
 func sync_locked_preview_presence(card: Dictionary, skill_id: String, action: Dictionary) -> void:

@@ -2430,7 +2430,7 @@ func _check_pinned_page_chrome(scene: Node) -> void:
 	if empty_label == null or not is_instance_valid(empty_label):
 		_record("pinned page empty state did not render")
 	else:
-		var expected := "Press the top left of any activity to pin it.\nPinned activities from every skill page will appear here."
+		var expected := "Tap the top-left of an activity to pin it.\nPinned activities appear here."
 		if empty_label.text != expected:
 			_record("pinned page empty state text mismatch")
 		if empty_label.horizontal_alignment != HORIZONTAL_ALIGNMENT_CENTER or empty_label.vertical_alignment != VERTICAL_ALIGNMENT_CENTER:

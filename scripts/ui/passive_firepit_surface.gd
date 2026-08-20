@@ -1216,7 +1216,7 @@ func _passive_info_controls(pop_card: Control, module_id: String, info_text: Str
 	info_button.focus_mode = Control.FOCUS_NONE
 	info_button.mouse_filter = Control.MOUSE_FILTER_STOP if interactive else Control.MOUSE_FILTER_IGNORE
 	info_button.z_index = 221
-	info_button.add_theme_font_size_override("font_size", host.MIN_MOBILE_BODY_FONT_SIZE)
+	info_button.add_theme_font_size_override("font_size", 29)
 	host._skill_detail_surface()._apply_info_symbol_button_text_color(info_button)
 	info_button.add_theme_stylebox_override("normal", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
 	info_button.add_theme_stylebox_override("hover", PassiveModuleStyles.round_button(host.COLOR_PANEL, host.COLOR_INK, Callable(host, "_surface_style"), Callable(host, "_theme_outline_color")))
@@ -1530,9 +1530,9 @@ func _build_passive_module_card(skill_id: String, action: Dictionary, content_wi
 		pop_card,
 		module_id,
 		WOODCUTTING_LOG_MODULE_INFO,
-		Vector2(260, 69),
-		Vector2(490, 130),
-		Vector2(460, 110),
+		Vector2(70, 69),
+		Vector2(680, 180),
+		Vector2(650, 160),
 		Vector2(350, 29),
 		interactive
 	)
@@ -1849,8 +1849,8 @@ func _build_firepit_module_card(skill_id: String, action: Dictionary, content_wi
 		module_id,
 		WOODCUTTING_FIREPIT_INFO,
 		Vector2(37, 119),
-		Vector2(450, 180),
-		Vector2(420, 160),
+		Vector2(760, 400),
+		Vector2(730, 380),
 		Vector2(180, 29),
 		interactive
 	)
@@ -1935,15 +1935,15 @@ func _float_firepit_xp_reward_from_fire(index := 0) -> void:
 	if anchor == null or not is_instance_valid(anchor) or not anchor.is_visible_in_tree():
 		return
 	var per_scrapwood_xp: int = PassiveModulesRuntime.FIREPIT_WOODCUTTING_XP_PER_SCRAPWOOD
-	var lane_x := float((index % 3) - 1) * 42.0
+	var lane_x := float((index % 3) - 1) * 21.0
 	host._reward_feedback_surface()._float_reward(
 		host,
 		anchor,
 		"+%s XP" % per_scrapwood_xp,
-		66,
+		48,
 		ThemeStyles.skill_theme_color("woodcutting", host.COLOR_BLUE).lerp(Color("#ffb347"), 0.35),
-		Vector2(lane_x, -60.0 - float(index % 2) * 16.0),
-		Vector2(lane_x * 0.35, -176.0 - float(index % 2) * 18.0),
+		Vector2(lane_x, -30.0 - float(index % 2) * 8.0),
+		Vector2(lane_x * 0.35, -88.0 - float(index % 2) * 9.0),
 		0.0,
 		false,
 		-1.0,

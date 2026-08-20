@@ -1084,20 +1084,20 @@ func _render_fishing_tool_popup_menu() -> void:
 	if row_count <= 0:
 		return
 	var circle_rect = host._skill_detail_surface().detail_fish_circle.get_global_rect()
-	var gear_button_size = clampf(minf(circle_rect.size.x, circle_rect.size.y) * 0.60, 240.0, 336.0)
+	var gear_button_size = clampf(minf(circle_rect.size.x, circle_rect.size.y) * 0.60, 120.0, 168.0)
 	if gear_button_size <= 0.0:
-		gear_button_size = 296.0
+		gear_button_size = 148.0
 	var column_count = mini(3, row_count)
 	var grid_rows = int(ceil(float(row_count) / float(column_count)))
-	var gear_gap = maxf(24.0, gear_button_size * 0.08)
-	var panel_padding = maxf(30.0, gear_button_size * 0.10)
+	var gear_gap = maxf(12.0, gear_button_size * 0.08)
+	var panel_padding = maxf(15.0, gear_button_size * 0.10)
 	var panel_width = panel_padding * 2.0 + float(column_count) * gear_button_size + float(maxi(0, column_count - 1)) * gear_gap
 	var panel_height = panel_padding * 2.0 + float(grid_rows) * gear_button_size + float(maxi(0, grid_rows - 1)) * gear_gap
 	var viewport_size = host.get_viewport_rect().size
-	var panel_left = clampf(circle_rect.get_center().x - panel_width * 0.5, 12.0, maxf(12.0, viewport_size.x - panel_width - 12.0))
-	var panel_top = circle_rect.end.y + maxf(14.0, gear_button_size * 0.08)
-	if panel_top + panel_height > viewport_size.y - 12.0:
-		panel_top = maxf(12.0, viewport_size.y - panel_height - 12.0)
+	var panel_left = clampf(circle_rect.get_center().x - panel_width * 0.5, 6.0, maxf(6.0, viewport_size.x - panel_width - 6.0))
+	var panel_top = circle_rect.end.y + maxf(7.0, gear_button_size * 0.08)
+	if panel_top + panel_height > viewport_size.y - 6.0:
+		panel_top = maxf(6.0, viewport_size.y - panel_height - 6.0)
 	var canvas = CanvasLayer.new()
 	canvas.name = "FishingToolWalletCanvas"
 	canvas.layer = 120
@@ -2894,18 +2894,18 @@ func _float_eaten_fish_icon(skill_id: String, target: Control) -> void:
 	canvas.add_child(root)
 
 	var minus_size := Vector2(48, 63)
-	var minus_shadow = host._label("-", 116, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
+	var minus_shadow = host._label("-", 58, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
 	minus_shadow.size = minus_size
 	minus_shadow.position = Vector2(9.5, 26.5)
 	minus_shadow.modulate = Color(1, 1, 1, 0.46)
-	minus_shadow.add_theme_constant_override("outline_size", 8)
+	minus_shadow.add_theme_constant_override("outline_size", 4)
 	minus_shadow.add_theme_color_override("font_outline_color", Color(0.09, 0.08, 0.07, 0.75))
 	root.add_child(minus_shadow)
 
-	var minus = host._label("-", 116, Color("#fff0a8"), HORIZONTAL_ALIGNMENT_CENTER)
+	var minus = host._label("-", 58, Color("#fff0a8"), HORIZONTAL_ALIGNMENT_CENTER)
 	minus.size = minus_size
 	minus.position = Vector2(7, 24)
-	minus.add_theme_constant_override("outline_size", 7)
+	minus.add_theme_constant_override("outline_size", 4)
 	minus.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	root.add_child(minus)
 
@@ -3212,7 +3212,7 @@ func _fishing_area_runtime_layers(pop_card: Control, area_def: Dictionary, selec
 		border.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX
 		pop_card.add_child(border)
 
-	var status: Label = host._label("", host.MIN_MOBILE_BODY_FONT_SIZE, host.COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
+	var status: Label = host._label("", host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
 	status.visible = false
 	return {
 		"active_tool": active_tool,
@@ -4883,7 +4883,7 @@ func _configure_fishing_equipment_offer_title(title: Label, font_size: int, outl
 	title.offset_bottom = 79
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
-func _fishing_offer_shell(content_width: float, offer_height: float, texture: Texture2D, shade_alpha: float, clip_contents := false, fallback_color := Color.TRANSPARENT, feather_height := 120.0) -> Dictionary:
+func _fishing_offer_shell(content_width: float, offer_height: float, texture: Texture2D, shade_alpha: float, clip_contents := false, fallback_color := Color.TRANSPARENT, feather_height := 60.0) -> Dictionary:
 	var root := Control.new()
 	root.custom_minimum_size = Vector2(content_width, offer_height)
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -4900,7 +4900,7 @@ func _fishing_offer_shell(content_width: float, offer_height: float, texture: Te
 
 	var bg := RoundedTextureRect.new()
 	bg.texture = texture
-	bg.radius = 64.0
+	bg.radius = 32.0
 	bg.art_height = offer_height
 	bg.feather_height = feather_height
 	if fallback_color.a > 0.0:
@@ -4957,8 +4957,8 @@ func _fishing_full_offer_button(pop_card: Control, root: Control, offer_id: Stri
 	_register_fishing_offer_button(button, root, pop_card, offer_id, connect_gui_input)
 	return button
 
-func _fishing_offer_hint(pop_card: Control, hint_text: String, available: bool, outline_size := 20, offset_top := -156.0, offset_bottom := -34.0, vertical_alignment := VERTICAL_ALIGNMENT_TOP) -> Label:
-	var hint: Label = host._label(hint_text, 68, Color.WHITE if available else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
+func _fishing_offer_hint(pop_card: Control, hint_text: String, available: bool, outline_size := 10, offset_top := -78.0, offset_bottom := -17.0, vertical_alignment := VERTICAL_ALIGNMENT_TOP) -> Label:
+	var hint: Label = host._label(hint_text, 52, Color.WHITE if available else Color("#ffd95a"), HORIZONTAL_ALIGNMENT_CENTER)
 	hint.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	hint.add_theme_constant_override("outline_size", outline_size)
 	hint.anchor_left = 0.0
@@ -4982,7 +4982,7 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	var root := shell.get("root") as Control
 	var pop_card := shell.get("pop") as Control
 
-	var title: Label = host._label("You find an old net on the beach", 62, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var title: Label = host._label("You find an old net on the beach", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	title.add_theme_constant_override("outline_size", 12)
 	title.anchor_left = 0.0
@@ -5028,7 +5028,7 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	net_motion_root.add_child(net_art)
 	_start_fishing_net_offer_idle_motion(net_motion_root)
 	net_button.set_meta("fishing_net_art_id", net_motion_root.get_instance_id())
-	_fishing_offer_hint(pop_card, "Tap the net", true, 14, -132.0, -48.0, VERTICAL_ALIGNMENT_CENTER)
+	_fishing_offer_hint(pop_card, "Tap the net", true, 7, -66.0, -24.0, VERTICAL_ALIGNMENT_CENTER)
 
 	return root
 
@@ -5040,8 +5040,8 @@ func _build_fishing_rod_offer_module(content_width: float) -> Control:
 	var root := shell.get("root") as Control
 	var pop_card := shell.get("pop") as Control
 
-	var title: Label = host._label("Bamboo rod", 94, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_configure_fishing_equipment_offer_title(title, 88, 24)
+	var title: Label = host._label("Bamboo rod", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_configure_fishing_equipment_offer_title(title, 60, 12)
 	pop_card.add_child(title)
 
 	var rod_button := _fishing_equipment_offer_button(pop_card, root, "rod", true)
@@ -5064,8 +5064,8 @@ func _build_fishing_mirror_offer_module(content_width: float) -> Control:
 	var root := shell.get("root") as Control
 	var pop_card := shell.get("pop") as Control
 
-	var title: Label = host._label("Reflection mirror", 88, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_configure_fishing_equipment_offer_title(title, 80, 23)
+	var title: Label = host._label("Reflection mirror", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_configure_fishing_equipment_offer_title(title, 60, 12)
 	pop_card.add_child(title)
 
 	var mirror_button := _fishing_equipment_offer_button(pop_card, root, "mirror")
@@ -5094,8 +5094,8 @@ func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: Stri
 	var root := shell.get("root") as Control
 	var pop_card := shell.get("pop") as Control
 
-	var title: Label = host._label(_fishing_rod_upgrade_title(tool_id), 88, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_configure_fishing_equipment_offer_title(title, 78 if tool_id == "reinforced_rod" else 84, 23)
+	var title: Label = host._label(_fishing_rod_upgrade_title(tool_id), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_configure_fishing_equipment_offer_title(title, 60, 12)
 	pop_card.add_child(title)
 
 	var upgrade_button := _fishing_equipment_offer_button(pop_card, root, tool_id)
@@ -5119,8 +5119,8 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	var root := shell.get("root") as Control
 	var pop_card := shell.get("pop") as Control
 
-	var title: Label = host._label("Build boat", 94, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	_configure_fishing_equipment_offer_title(title, 88, 24)
+	var title: Label = host._label("Build boat", 60, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	_configure_fishing_equipment_offer_title(title, 60, 12)
 	pop_card.add_child(title)
 
 	var boat_button := _fishing_equipment_offer_button(pop_card, root, "boat")

@@ -116,7 +116,7 @@ class _ModuleSortMenuBuilder:
 		button.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
-		_apply_text(button, label_text, 60, app_font, bold_font, ink)
+		_apply_text(button, label_text, 48, app_font, bold_font, ink)
 		if callback.is_valid():
 			button.pressed.connect(callback)
 		if depress.is_valid():
@@ -1230,19 +1230,19 @@ func _float_nav_locked_message(anchor: Control, text: String) -> void:
 		or not anchor.is_visible_in_tree()
 	):
 		return
-	var holder_size := Vector2(215, 56)
+	var holder_size := Vector2(640, 72)
 	var holder := Control.new()
 	holder.z_index = ProfileChatOverlaySurface.CHAT_UI_Z + 20
 	holder.z_as_relative = false
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size = holder_size
 	host.add_child(holder)
-	var shadow: Label = host._label(text, 58, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
+	var shadow: Label = host._label(text, 52, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
 	shadow.size = holder_size
 	shadow.position = Vector2(2, 2.5)
 	shadow.modulate = Color(1, 1, 1, 0.58)
 	holder.add_child(shadow)
-	var label: Label = host._label(text, 58, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var label: Label = host._label(text, 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.size = holder_size
 	holder.add_child(label)
 	var local_pos: Vector2 = anchor.global_position - host.global_position
@@ -3298,7 +3298,7 @@ func _render_skill_menu(stack: VBoxContainer) -> void:
 		row.add_child(copy)
 		var title: Label = host._label("", 66, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		copy.add_child(title)
-		var meta: Label = host._label("", 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+		var meta: Label = host._label("", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		copy.add_child(meta)
 		var xp_bar: Control = ThemeStyles.progress_bar(theme_color, 31)
 		ThemeStyles.apply_xp_progress_bar_theme(xp_bar, theme_color, host.COLOR_INK)
@@ -3763,7 +3763,7 @@ func _pinned_activities_empty_state(content_width: float) -> Control:
 	empty.clip_contents = true
 	_add_pinned_activities_empty_decor_pins(empty, content_width)
 	var label: Label = host._label(
-		"Press the top left of any activity to pin it.\nPinned activities from every skill page will appear here.",
+		"Tap the top-left of an activity to pin it.\nPinned activities appear here.",
 		52,
 		host.COLOR_INK,
 		HORIZONTAL_ALIGNMENT_CENTER
@@ -3777,7 +3777,7 @@ func _pinned_activities_empty_state(content_width: float) -> Control:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", Color.WHITE)
-	label.add_theme_constant_override("outline_size", 2)
+	label.add_theme_constant_override("outline_size", 4)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.z_index = 20
 	empty.add_child(label)
@@ -3795,8 +3795,8 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 	var badge_visible_height: float = ModuleUiRuntime.MODULE_PIN_BADGE_CLIP_SIZE.y - ModuleUiRuntime.MODULE_PIN_BADGE_SETTLED_POSITION.y
 	var hit_zone_size: Vector2 = ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MAX - ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MIN
 	hit_zone_size.y = minf(hit_zone_size.y, badge_visible_height - ModuleUiRuntime.MODULE_PIN_BADGE_HIT_MIN.y)
-	var horizontal_margin := 30.0
-	var vertical_margin := 26.0
+	var horizontal_margin := 15.0
+	var vertical_margin := 13.0
 	var occupied_rects: Array[Rect2] = []
 	for index in range(PINNED_ACTIVITIES_EMPTY_DECOR_PIN_COUNT):
 		var badge_position := _pinned_activities_empty_decor_pin_position(
@@ -3811,7 +3811,7 @@ func _add_pinned_activities_empty_decor_pins(empty: Control, content_width: floa
 		)
 		var badge_left := badge_position.x
 		var badge_top := badge_position.y
-		occupied_rects.append(Rect2(badge_position, Vector2(ModuleUiRuntime.MODULE_PIN_BADGE_SIZE.x, badge_visible_height)).grow(18.0))
+		occupied_rects.append(Rect2(badge_position, Vector2(ModuleUiRuntime.MODULE_PIN_BADGE_SIZE.x, badge_visible_height)).grow(9.0))
 		var decor_host := Control.new()
 		decor_host.name = "PinnedActivitiesEmptyDecorPin_%s" % index
 		decor_host.anchor_left = 0.0
@@ -4096,8 +4096,8 @@ func _pinned_activities_static_title() -> Label:
 	title.anchor_bottom = 0.0
 	title.offset_left = 0.0
 	title.offset_right = 0.0
-	title.offset_top = 19.5
-	title.offset_bottom = 56.0
+	title.offset_top = 10.0
+	title.offset_bottom = 90.0
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.z_index = 50
@@ -4187,7 +4187,7 @@ func _build_pinned_active_shelf_stamina_strip() -> Control:
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 20)
 	margin.add_theme_constant_override("margin_right", 20)
-	margin.add_theme_constant_override("margin_top", host.SKILLS_PAGE_TOP_PAD + 76)
+	margin.add_theme_constant_override("margin_top", host.SKILLS_PAGE_TOP_PAD + 38)
 	margin.add_theme_constant_override("margin_bottom", 37)
 	margin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	strip.add_child(margin)
@@ -4661,7 +4661,7 @@ func _build_module_utility_row() -> void:
 		"height": MODULE_UTILITY_ROW_HEIGHT,
 		"z_index": ProfileChatOverlaySurface.CHAT_UI_Z + 1,
 		"button_size": MODULE_UTILITY_BUTTON_SIZE,
-		"radius": 36.0,
+		"radius": 18.0,
 		"gutter": host.ACTION_CARD_POP_GUTTER,
 		"depth_offset": NAV_BUTTON_DEPTH_OFFSET,
 		"diagonal_side": "",
@@ -5036,14 +5036,14 @@ func _layout_module_sort_menu() -> void:
 	var menu_size: Vector2 = module_sort_menu.custom_minimum_size
 	module_sort_menu.size = menu_size
 	var center_x: float = host.size.x * 0.5
-	var top_y: float = host.size.y - BOTTOM_NAV_HEIGHT - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP - MODULE_UTILITY_ROW_HEIGHT - menu_size.y - 22.0
+	var top_y: float = host.size.y - BOTTOM_NAV_HEIGHT - ProfileChatOverlaySurface.CHAT_STRIP_HEIGHT - MODULE_UTILITY_ROW_GAP - MODULE_UTILITY_ROW_HEIGHT - menu_size.y - 11.0
 	if sort_utility_tab != null and is_instance_valid(sort_utility_tab):
 		var sort_rect: Rect2 = host._skill_swipe_activity_surface()._activity_button_target_face_global_rect(sort_utility_tab, true)
 		center_x = sort_rect.position.x + sort_rect.size.x * 0.5
-		top_y = sort_rect.position.y - menu_size.y - 22.0
+		top_y = sort_rect.position.y - menu_size.y - 11.0
 	module_sort_menu.position = Vector2(
-		clampf(center_x - menu_size.x * 0.5, 18.0, maxf(18.0, host.size.x - menu_size.x - 18.0)),
-		maxf(18.0, top_y)
+		clampf(center_x - menu_size.x * 0.5, 9.0, maxf(9.0, host.size.x - menu_size.x - 9.0)),
+		maxf(9.0, top_y)
 	)
 
 func _sync_module_sort_menu_buttons() -> void:
@@ -5223,8 +5223,8 @@ func _layout_module_utility_collapse_toggle() -> void:
 	if arrow != null and arrow.has_method("set_direction"):
 		arrow.set_direction(1 if module_utility_collapsed else -1)
 	module_utility_collapse_toggle.size = MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE
-	var expanded_x := 46.0
-	var collapsed_x := 46.0
+	var expanded_x := 23.0
+	var collapsed_x := 23.0
 	module_utility_collapse_toggle.position = Vector2(
 		collapsed_x if module_utility_collapsed else expanded_x,
 		(MODULE_UTILITY_ROW_HEIGHT - MODULE_UTILITY_COLLAPSE_TOGGLE_SIZE.y) * 0.5

@@ -131,7 +131,7 @@ func play_fail_shake() -> void:
 func _apply_stamina_fail_shake_frame(progress: float, base_position: Vector2, base_rotation: float, direction: float) -> void:
 	var remaining := 1.0 - progress
 	var wave := sin(progress * PI * 7.0) * remaining * direction
-	position = base_position + Vector2(wave * 14.0, absf(wave) * 3.0)
+	position = base_position + Vector2(wave * 7.0, absf(wave) * 1.5)
 	rotation = base_rotation + wave * 0.035
 
 func _finish_stamina_fail_shake(base_position: Vector2, base_rotation: float, tween_meta_key: String, rest_position_meta_key: String, rest_rotation_meta_key: String) -> void:
@@ -672,9 +672,9 @@ func _draw_center_text(center: Vector2) -> void:
 	var number_parts := _stamina_display_number_parts()
 	var current_text := str(number_parts.get("main", str(clampi(current, 0, maximum))))
 	var decimal_text := str(number_parts.get("suffix", ""))
-	var large := _fit_font_size(font, current_text, maxi(64, int(min_size * 0.34)), 42, max_text_width)
+	var large := _fit_font_size(font, current_text, maxi(64, int(min_size * 0.34)), 48, max_text_width)
 	var small_text := str(maximum)
-	var small := _fit_font_size(font, small_text, maxi(42, int(min_size * 0.13)), 38, max_text_width)
+	var small := _fit_font_size(font, small_text, maxi(48, int(min_size * 0.13)), 48, max_text_width)
 	var current_center_y := center.y - 22.0 * draw_scale
 	var divider_y := center.y + 91.0 * draw_scale
 	var max_center_y := center.y + 128.0 * draw_scale
@@ -740,7 +740,7 @@ func _draw_stroked_number_with_decimal_suffix(font: Font, main_text: String, suf
 	draw_string(font, main_position, main_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, fill_color)
 	if suffix_text.is_empty():
 		return
-	var suffix_size := maxi(24, int(round(float(font_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
+	var suffix_size := maxi(48, int(round(float(font_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
 	var suffix_stroke := maxi(6, int(round(float(stroke_size) * CENTER_DECIMAL_SUFFIX_SCALE)))
 	var suffix_gap := maxf(4.0, float(font_size) * 0.075)
 	var suffix_baseline := center.y + (font.get_ascent(suffix_size) - font.get_descent(suffix_size)) * 0.5

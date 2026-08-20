@@ -17,7 +17,7 @@ var segment_theme_colors: Array[Color] = []
 var draw_lip_lines := true
 var draw_back_plate_bottom_outline := false
 var bottom_shape := "round"
-var wide_u_bottom_rise := 58.0
+var wide_u_bottom_rise := 29.0
 var wide_u_shoulder_ratio := 0.285
 
 func set_face_offset(next_offset: Vector2) -> void:
@@ -76,10 +76,10 @@ func _draw_fast_depth(face_size: Vector2, front: Vector2, back: Vector2) -> void
 		return
 	_draw_fast_back_plate(face_size, back)
 	if bottom_shape == "wide_u":
-		_draw_wide_u_back_outline(Rect2(back, face_size), lip_color, 12.0)
+		_draw_wide_u_back_outline(Rect2(back, face_size), lip_color, 6.0)
 		return
 	_draw_depth_corner_connectors(face_size, front, back)
-	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 12.0, draw_back_plate_bottom_outline)
+	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 6.0, draw_back_plate_bottom_outline)
 
 func _draw_clean_prism_faces(face_size: Vector2, front: Vector2, back: Vector2) -> void:
 	var travel := back - front
@@ -95,16 +95,16 @@ func _draw_clean_prism_faces(face_size: Vector2, front: Vector2, back: Vector2) 
 	draw_style_box(body_style, Rect2(Vector2(back.x, back.y - lift), face_size))
 
 func _draw_depth_corner_connectors(face_size: Vector2, front: Vector2, back: Vector2) -> void:
-	var width := 10.0
+	var width := 5.0
 	var points := _depth_corner_connector_points(face_size, front, back, width)
 	if points.size() != 4:
 		return
 	var travel := back - front
 	var direction := travel.normalized() if travel.length_squared() > 0.01 else Vector2.ZERO
-	points[0] -= direction * 4.0
-	points[1] += direction * 4.0
-	points[2] -= direction * 4.0
-	points[3] += direction * 4.0
+	points[0] -= direction * 2.0
+	points[1] += direction * 2.0
+	points[2] -= direction * 2.0
+	points[3] += direction * 2.0
 	draw_line(points[0], points[1], lip_color, width, true)
 	draw_line(points[2], points[3], lip_color, width, true)
 	var cap_radius := width * 0.46
@@ -293,13 +293,13 @@ func _draw_back_plate(face_size: Vector2, back: Vector2) -> void:
 	draw_style_box(style, Rect2(back, face_size))
 
 func _draw_back_plate_outline(face_size: Vector2, back: Vector2) -> void:
-	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 12.0)
+	_draw_rounded_rect_outline(Rect2(back, face_size), lip_color, 6.0)
 
 func _draw_extruded_faces(perimeter: PackedVector2Array, front: Vector2, back: Vector2, face_size: Vector2) -> void:
 	var travel := back - front
 	if travel.length_squared() <= 1.0 or perimeter.size() < 2:
 		return
-	var front_overlap := minf(2.0, maxf(0.0, travel.length() * 0.04))
+	var front_overlap := minf(1.0, maxf(0.0, travel.length() * 0.04))
 	for i in range(perimeter.size()):
 		var p0 := perimeter[i]
 		var p1 := perimeter[(i + 1) % perimeter.size()]
@@ -345,7 +345,7 @@ func _draw_extruded_outline(perimeter: PackedVector2Array, front: Vector2, back:
 func _draw_visible_outline_path(path: PackedVector2Array) -> void:
 	if path.size() < 2:
 		return
-	draw_polyline(path, lip_color, 12.0, true)
+	draw_polyline(path, lip_color, 6.0, true)
 
 func _edge_outward_normal(p0: Vector2, p1: Vector2) -> Vector2:
 	var edge := p1 - p0
