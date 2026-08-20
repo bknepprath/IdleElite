@@ -26,7 +26,6 @@ const PROFILE_OVERLAY_CANVAS_LAYER := CHAT_OVERLAY_CANVAS_LAYER + 1
 const CHAT_STRIP_EMPTY_GRACE_MSEC := 2200
 const CHAT_STRIP_HIDE_GRACE_MSEC := 800
 const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble.png"
-const CHAT_STRIP_ICON_SIZE := 86.0
 const CHAT_UNREAD_DOT_DIAMETER := 22.0
 const CHAT_UNREAD_DOT_EDGE_INSET := 16.0
 var host
@@ -177,7 +176,7 @@ static func _chat_keyboard_preview_style(focus_color: Color) -> StyleBoxFlat:
 
 static func _chat_strip_style() -> StyleBoxFlat:
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color("#d6d6d6")
+	style.bg_color = Color(0.725, 0.725, 0.725, 1.0)
 	style.draw_center = true
 	style.border_color = Color.TRANSPARENT
 	style.set_border_width_all(0)
@@ -454,19 +453,19 @@ func _build_chat_strip() -> void:
 	var margin = MarginContainer.new()
 	margin.add_theme_constant_override("margin_left", 23)
 	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_top", 4)
-	margin.add_theme_constant_override("margin_bottom", 4)
+	margin.add_theme_constant_override("margin_top", 5)
+	margin.add_theme_constant_override("margin_bottom", 5)
 	chat_strip.add_child(margin)
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 14)
 	margin.add_child(row)
 	var icon_holder = Control.new()
-	icon_holder.custom_minimum_size = Vector2(CHAT_STRIP_ICON_SIZE, CHAT_STRIP_ICON_SIZE)
+	icon_holder.custom_minimum_size = Vector2(106.5, 106.5)
 	icon_holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon_holder)
-	var icon = host.visual_texture_cache._image(CHAT_STRIP_ICON, Vector2(CHAT_STRIP_ICON_SIZE, CHAT_STRIP_ICON_SIZE))
+	var icon = host.visual_texture_cache._image(CHAT_STRIP_ICON, Vector2(106.5, 106.5))
 	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon_holder.add_child(icon)
 	chat_unread_dot = PanelContainer.new()
@@ -485,19 +484,23 @@ func _build_chat_strip() -> void:
 	var copy = VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
-	copy.add_theme_constant_override("separation", 0)
+	copy.add_theme_constant_override("separation", 2)
 	row.add_child(copy)
-	chat_strip_line_one = host._label("", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_one = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_one.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
+	chat_strip_line_one.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_one.autowrap_mode = TextServer.AUTOWRAP_OFF
 	chat_strip_line_one.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_one.clip_text = true
-	chat_strip_line_one.custom_minimum_size = Vector2(0, 56)
+	chat_strip_line_one.custom_minimum_size = Vector2(0, 48)
 	copy.add_child(chat_strip_line_one)
-	chat_strip_line_two = host._label("", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_two = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_two.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
+	chat_strip_line_two.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_two.autowrap_mode = TextServer.AUTOWRAP_OFF
 	chat_strip_line_two.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_two.clip_text = true
-	chat_strip_line_two.custom_minimum_size = Vector2(0, 56)
+	chat_strip_line_two.custom_minimum_size = Vector2(0, 48)
 	copy.add_child(chat_strip_line_two)
 	_update_chat_strip()
 
