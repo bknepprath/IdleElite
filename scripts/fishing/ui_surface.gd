@@ -4673,9 +4673,13 @@ func _fishing_method_button_hit_candidates() -> Array:
 			continue
 		var card := raw_card as Dictionary
 		if bool(card.get("is_fishing_method", false)):
-			var button := card.get("method_button", null) as Button
-			var hit_control := card.get("method_hit_control", button) as Control
-			if button != null and is_instance_valid(button) and not seen_buttons.has(button.get_instance_id()):
+			var raw_button = card.get("method_button", null)
+			if raw_button == null or not is_instance_valid(raw_button) or not raw_button is Button:
+				continue
+			var button := raw_button as Button
+			var raw_hit_control = card.get("method_hit_control", button)
+			var hit_control := raw_hit_control as Control if raw_hit_control != null and is_instance_valid(raw_hit_control) and raw_hit_control is Control else button
+			if not seen_buttons.has(button.get_instance_id()):
 				seen_buttons[button.get_instance_id()] = true
 				hits.append({"method_card": card, "button": button, "hit_control": hit_control, "owner_area_card": {}})
 			continue
@@ -4687,9 +4691,13 @@ func _fishing_method_button_hit_candidates() -> Array:
 			var method_card := raw_method_card as Dictionary
 			if not bool(method_card.get("is_fishing_method", false)):
 				continue
-			var method_button := method_card.get("method_button", null) as Button
-			var hit_control := method_card.get("method_hit_control", method_button) as Control
-			if method_button != null and is_instance_valid(method_button) and not seen_buttons.has(method_button.get_instance_id()):
+			var raw_method_button = method_card.get("method_button", null)
+			if raw_method_button == null or not is_instance_valid(raw_method_button) or not raw_method_button is Button:
+				continue
+			var method_button := raw_method_button as Button
+			var raw_hit_control = method_card.get("method_hit_control", method_button)
+			var hit_control := raw_hit_control as Control if raw_hit_control != null and is_instance_valid(raw_hit_control) and raw_hit_control is Control else method_button
+			if not seen_buttons.has(method_button.get_instance_id()):
 				seen_buttons[method_button.get_instance_id()] = true
 				hits.append({"method_card": method_card, "button": method_button, "hit_control": hit_control, "owner_area_card": card})
 	for raw_lazy_entry in host._skill_detail_surface().detail_lazy_plan:
@@ -4707,9 +4715,13 @@ func _fishing_method_button_hit_candidates() -> Array:
 			var lazy_method_card := raw_lazy_method_card as Dictionary
 			if not bool(lazy_method_card.get("is_fishing_method", false)):
 				continue
-			var lazy_method_button := lazy_method_card.get("method_button", null) as Button
-			var lazy_hit_control := lazy_method_card.get("method_hit_control", lazy_method_button) as Control
-			if lazy_method_button != null and is_instance_valid(lazy_method_button) and not seen_buttons.has(lazy_method_button.get_instance_id()):
+			var raw_lazy_method_button = lazy_method_card.get("method_button", null)
+			if raw_lazy_method_button == null or not is_instance_valid(raw_lazy_method_button) or not raw_lazy_method_button is Button:
+				continue
+			var lazy_method_button := raw_lazy_method_button as Button
+			var raw_lazy_hit_control = lazy_method_card.get("method_hit_control", lazy_method_button)
+			var lazy_hit_control := raw_lazy_hit_control as Control if raw_lazy_hit_control != null and is_instance_valid(raw_lazy_hit_control) and raw_lazy_hit_control is Control else lazy_method_button
+			if not seen_buttons.has(lazy_method_button.get_instance_id()):
 				seen_buttons[lazy_method_button.get_instance_id()] = true
 				hits.append({"method_card": lazy_method_card, "button": lazy_method_button, "hit_control": lazy_hit_control, "owner_area_card": lazy_area_card})
 	var tree := host.get_tree() as SceneTree

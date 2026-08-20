@@ -13,6 +13,7 @@ $leaderboardPresentationPath = Join-Path $projectRoot "scripts\leaderboard\prese
 $profileChatSurfacePath = Join-Path $projectRoot "scripts\ui\profile_chat_overlay_surface.gd"
 $fishingSurfacePath = Join-Path $projectRoot "scripts\fishing\ui_surface.gd"
 $hubSurfacePath = Join-Path $projectRoot "scripts\ui\hub_surface.gd"
+$skillDetailSurfacePath = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
 
 Assert-True (Test-Path -LiteralPath $projectPath) "Missing project.godot."
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
@@ -20,6 +21,7 @@ Assert-True (Test-Path -LiteralPath $leaderboardPresentationPath) "Missing leade
 Assert-True (Test-Path -LiteralPath $profileChatSurfacePath) "Missing profile/chat surface script."
 Assert-True (Test-Path -LiteralPath $fishingSurfacePath) "Missing Fishing surface script."
 Assert-True (Test-Path -LiteralPath $hubSurfacePath) "Missing Hub surface script."
+Assert-True (Test-Path -LiteralPath $skillDetailSurfacePath) "Missing skill detail surface script."
 
 $project = Get-Content -LiteralPath $projectPath -Raw
 $main = Get-Content -LiteralPath $mainPath -Raw
@@ -27,6 +29,7 @@ $leaderboardPresentation = Get-Content -LiteralPath $leaderboardPresentationPath
 $profileChatSurface = Get-Content -LiteralPath $profileChatSurfacePath -Raw
 $fishingSurface = Get-Content -LiteralPath $fishingSurfacePath -Raw
 $hubSurface = Get-Content -LiteralPath $hubSurfacePath -Raw
+$skillDetailSurface = Get-Content -LiteralPath $skillDetailSurfacePath -Raw
 
 function Get-ProjectSettingValue {
     param(
@@ -187,6 +190,10 @@ if ($strictCutover) {
     Assert-True ($profileChatSurface -match 'style\.corner_radius_bottom_right = 5 if is_self and not deleted else 9') "Chat message corners must retain half-scale 4K geometry."
     Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_OUTLINE := 8\r?$') "Fishing area names must retain their heavy outline."
     Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_WIDTH_SCALE := 0\.72\r?$') "Fishing area names must remain compact without reducing their 48 px font size."
+    Assert-True ($skillDetailSurface -match '"original": _format_xp_reward_parts\(base_parts\)') "XP stat details must use compact skill codes at native 1080 width."
+    Assert-True ($skillDetailSurface -match 'bonus_column\.custom_minimum_size = Vector2\(200, 0\)') "Activity stat Boosts text must retain enough width to avoid single-character wrapping."
+    Assert-True ($skillDetailSurface -match '(?m)^const ACTIVITY_STAT_VALUE_FONT_WIDTH_SCALE := 0\.58\r?$') "Activity stat values must remain condensed enough to preserve the card artwork column."
+    Assert-True ($skillDetailSurface -match 'action_name_label\.clip_text = true') "Long activity titles must ellipsize without shifting card artwork outside the viewport."
     Assert-True ($hubSurface -match '"x": round\(decor_position\.x \* 2\.0\) \* 0\.5') "Hub decor must preserve deterministic half-pixel quantization from the 4K composition."
     Assert-True ($legacyCoordinateHits.Count -eq 0) "Exact 2160/3840 production literals remain after cutover: $($legacyCoordinateHits -join '; ')"
     Assert-True ($explicitSmallFontHits.Count -eq 0) "Explicit production font sizes below 48 px remain after cutover: $($explicitSmallFontHits -join '; ')"

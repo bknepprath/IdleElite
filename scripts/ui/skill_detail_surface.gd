@@ -37,6 +37,7 @@ const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
 const BETA_NOTICE_HEIGHT := 355.0
+const ACTIVITY_STAT_VALUE_FONT_WIDTH_SCALE := 0.58
 
 class _GradientShelf extends Control:
 	var top_color := Color("#f6cfd0")
@@ -641,6 +642,7 @@ const DETAIL_PULL_TIP_TEXTS := [
 ]
 
 var host
+var activity_stat_value_font: Font
 var skill_detail_layout_refresh_hold_until_msec := 0
 var detail_jump_top_button: TextureButton
 var detail_jump_bottom_button: TextureButton
@@ -6190,6 +6192,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
 	action_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	action_name_label.clip_text = true
 	action_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	action_name_label.set_meta("module_ui_title_label", true)
 	action_name_label.set_meta("activity_card_locked_title_z_index", 0)
@@ -7235,6 +7238,11 @@ func _update_activity_stat_bonus_panel(card: Dictionary, skill_id: String, actio
 	var current = bonus.get("current") as Label
 	var bonuses = bonus.get("bonuses") as Label
 	var details = _activity_stat_bonus_details(skill_id, action, stat_kind)
+	for value_label in [original, current]:
+		if stat_kind == "xp":
+			value_label.add_theme_font_override("font", _activity_stat_value_font())
+		else:
+			value_label.remove_theme_font_override("font")
 	host._app_lifecycle_runtime().set_label_text_if_changed(title, str(details.get("title", "")))
 	host._app_lifecycle_runtime().set_label_text_if_changed(original, "Base: %s" % str(details.get("original", "")))
 	host._app_lifecycle_runtime().set_label_text_if_changed(current, "Now: %s" % str(details.get("current", "")))
@@ -7332,8 +7340,8 @@ func _activity_stat_bonus_details(skill_id: String, action: Dictionary, stat_kin
 			var current_parts = host._action_runtime()._action_xp_reward_parts_for_display(skill_id, action)
 			return {
 				"title": "XP REWARDS" if current_parts.size() > 1 else "XP",
-				"original": _format_xp_reward_parts(base_parts, true),
-				"current": _format_xp_reward_parts(current_parts, true),
+				"original": _format_xp_reward_parts(base_parts),
+				"current": _format_xp_reward_parts(current_parts),
 				"bonuses": _activity_xp_bonus_lines_for_rewards(skill_id, action)
 			}
 		"stamina":
@@ -7457,6 +7465,7 @@ func _activity_stat_bonus_panel() -> Dictionary:
 	var current = _activity_bonus_label("", 52)
 	values.add_child(current)
 	var bonus_column = VBoxContainer.new()
+	bonus_column.custom_minimum_size = Vector2(200, 0)
 	bonus_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bonus_column.add_theme_constant_override("separation", 4)
 	bonus_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -7473,6 +7482,19 @@ func _activity_stat_bonus_panel() -> Dictionary:
 		"current": current,
 		"bonuses": bonuses
 	}
+
+
+func _activity_stat_value_font() -> Font:
+	if activity_stat_value_font != null:
+		return activity_stat_value_font
+	var base_font: Font = host.app_bold_font if host.app_bold_font != null else host.app_font
+	if base_font == null:
+		return ThemeDB.fallback_font
+	var condensed := FontVariation.new()
+	condensed.base_font = base_font
+	condensed.variation_transform = Transform2D(Vector2(ACTIVITY_STAT_VALUE_FONT_WIDTH_SCALE, 0.0), Vector2(0.0, 1.0), Vector2.ZERO)
+	activity_stat_value_font = condensed
+	return activity_stat_value_font
 
 
 func _ensure_activity_stat_bonus_panel(card: Dictionary) -> Dictionary:

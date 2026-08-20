@@ -3,6 +3,7 @@ extends SceneTree
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 
 const DEFAULT_RESULT_PATH := "res://.codex-tmp/fishing-drag-spike/result.json"
+const AUDIT_VIEWPORT := Vector2i(1080, 1920)
 
 var samples: Array = []
 var active_probe_label := ""
@@ -14,6 +15,10 @@ func _init() -> void:
 
 func _run() -> void:
 	_write_json({"status": "started"})
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	root.content_scale_size = AUDIT_VIEWPORT
+	root.size = AUDIT_VIEWPORT
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "1")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "14")
 	OS.set_environment("IDLE_ELITE_HEADLESS_SIMPLE_ACTION_BG", "1")
@@ -183,7 +188,7 @@ func _first_visible_location_tile_center(main: Node, scroll: ScrollContainer) ->
 			continue
 		var card := raw_card as Dictionary
 		if bool(card.get("is_fishing_location", false)):
-			var direct_center := _visible_location_tile_center_for_card(card, scroll_rect)
+			var direct_center := _visible_location_tile_center_for_card(main, card, scroll_rect)
 			if direct_center != Vector2.INF:
 				return direct_center
 		for raw_method_card in (card.get("method_slots", {}) as Dictionary).values():
@@ -192,20 +197,32 @@ func _first_visible_location_tile_center(main: Node, scroll: ScrollContainer) ->
 			var method_card := raw_method_card as Dictionary
 			if not bool(method_card.get("is_fishing_location", false)):
 				continue
-			var nested_center := _visible_location_tile_center_for_card(method_card, scroll_rect)
+			var nested_center := _visible_location_tile_center_for_card(main, method_card, scroll_rect)
 			if nested_center != Vector2.INF:
 				return nested_center
 	return Vector2.INF
 
 
-func _visible_location_tile_center_for_card(card: Dictionary, scroll_rect: Rect2) -> Vector2:
-	var hit_control := card.get("method_image_hit_control", null) as Control
-	if hit_control == null or not is_instance_valid(hit_control) or not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
+func _visible_location_tile_center_for_card(main: Node, card: Dictionary, scroll_rect: Rect2) -> Vector2:
+	var raw_hit_control = card.get("method_image_hit_control", null)
+	if raw_hit_control == null or not is_instance_valid(raw_hit_control) or not raw_hit_control is Control:
+		return Vector2.INF
+	var hit_control := raw_hit_control as Control
+	if not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
 		return Vector2.INF
 	var hit_rect := hit_control.get_global_rect()
 	if not hit_rect.intersects(scroll_rect):
 		return Vector2.INF
-	return hit_rect.get_center()
+	var visible_rect := hit_rect.intersection(scroll_rect)
+	var x := visible_rect.get_center().x
+	for y in [visible_rect.get_center().y, visible_rect.position.y + 24.0, visible_rect.end.y - 24.0]:
+		var candidate := Vector2(x, clampf(y, visible_rect.position.y + 1.0, visible_rect.end.y - 1.0))
+		if (
+			main.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", candidate)
+			and not main.call("_input_routing_shell").call("_position_inside_bottom_interactive_ui", candidate)
+		):
+			return candidate
+	return Vector2.INF
 
 
 func _location_tile_diagnostics(main: Node, scroll: ScrollContainer) -> Dictionary:
@@ -231,9 +248,10 @@ func _location_tile_diagnostics(main: Node, scroll: ScrollContainer) -> Dictiona
 			if not bool(candidate.get("is_fishing_location", false)):
 				continue
 			location_cards += 1
-			var hit_control := candidate.get("method_image_hit_control", null) as Control
-			if hit_control == null or not is_instance_valid(hit_control):
+			var raw_hit_control = candidate.get("method_image_hit_control", null)
+			if raw_hit_control == null or not is_instance_valid(raw_hit_control) or not raw_hit_control is Control:
 				continue
+			var hit_control := raw_hit_control as Control
 			controls += 1
 			if hit_control.is_inside_tree():
 				inside_tree += 1

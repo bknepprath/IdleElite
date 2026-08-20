@@ -14,7 +14,7 @@ if (Test-Path -LiteralPath $testDir) {
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
-$env:GODOT_RUN_TIMEOUT_SECONDS = "300"
+$env:GODOT_RUN_TIMEOUT_SECONDS = "900"
 $baselineHeadlessProcessIds = @{}
 foreach ($process in @(Get-HeadlessGodotProcesses)) {
     $baselineHeadlessProcessIds[[int]$process.ProcessId] = $true

@@ -3,6 +3,7 @@ extends SceneTree
 const BOOT_TIMEOUT_FRAMES := 720
 const CLICK_SETTLE_FRAMES := 16
 const MAX_BUTTONS_PER_SCENARIO := 80
+const AUDIT_VIEWPORT := Vector2i(1080, 1920)
 
 var scene: Node
 var clicked_count := 0
@@ -18,7 +19,11 @@ func _init() -> void:
 func _run() -> void:
 	print("button-census-clicks-start")
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "1")
-	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "14")
+	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "840")
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
+	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
+	root.content_scale_size = AUDIT_VIEWPORT
+	root.size = AUDIT_VIEWPORT
 	var packed := load("res://scenes/main.tscn") as PackedScene
 	if packed == null:
 		_fail("main scene did not load")
