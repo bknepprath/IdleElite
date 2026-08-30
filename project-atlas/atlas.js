@@ -75,7 +75,6 @@
 
   function renderStorage() {
     renderTreemap('');
-    renderTreemapLegend();
   }
 
   let currentTreemapPath = '';
@@ -83,38 +82,48 @@
   let lastTreemapWidth = 0;
   let lastTreemapHeight = 0;
 
-  function getTreemapChildren(path) {
+  const treemapPalette = ['#d94761', '#e47b23', '#c99518', '#865bc5', '#3979c9', '#1e9f91', '#26955f', '#d34a92', '#64a83e', '#b0692d', '#467bd7', '#75828a', '#6c9bd2', '#ef6f91', '#6fbd8b', '#b184d6', '#d2aa4f', '#4eb7b0', '#de6d4c', '#7c8f3c', '#8d6e63', '#607d8b', '#ab47bc', '#26a69a'];
+
+  function getTreemapContents(path) {
     const prefix = path ? `${path}/` : '';
-    const groups = new Map();
+    const folderGroups = new Map();
+    const viewFiles = [];
     files.forEach((file) => {
       const filePath = file[fields.path];
       if (path && !filePath.startsWith(prefix)) return;
       const remainder = path ? filePath.slice(prefix.length) : filePath;
       if (!remainder) return;
+      viewFiles.push(file);
       const slash = remainder.indexOf('/');
-      const segment = slash >= 0 ? remainder.slice(0, slash) : remainder;
+      if (slash < 0) return;
+      const segment = remainder.slice(0, slash);
       const childPath = path ? `${path}/${segment}` : segment;
-      const type = slash >= 0 ? 'folder' : 'file';
-      if (!groups.has(childPath)) groups.set(childPath, { name: segment, path: childPath, type, bytes: 0, count: 0 });
-      const node = groups.get(childPath);
-      node.bytes += file[fields.bytes];
-      node.count += 1;
-      if (type === 'folder') node.type = 'folder';
-      if (type === 'file') node.file = file;
+      if (!folderGroups.has(childPath)) folderGroups.set(childPath, { name: segment, path: childPath, bytes: 0, count: 0 });
+      const folder = folderGroups.get(childPath);
+      folder.bytes += file[fields.bytes];
+      folder.count += 1;
     });
-    let nodes = [...groups.values()].sort((a, b) => b.bytes - a.bytes);
-    if (nodes.length > 150) {
-      const folders = nodes.filter((node) => node.type === 'folder');
-      const directFiles = nodes.filter((node) => node.type === 'file');
-      const room = Math.max(0, 149 - folders.length);
-      const visible = directFiles.slice(0, room);
-      const hidden = directFiles.slice(room);
-      if (hidden.length) {
-        visible.push({ name: `${formatNumber(hidden.length)} smaller files`, path: path ? `${path}/[smaller files]` : '[smaller files]', type: 'aggregate', bytes: hidden.reduce((sum, node) => sum + node.bytes, 0), count: hidden.length });
-      }
-      nodes = [...folders, ...visible].sort((a, b) => b.bytes - a.bytes);
-    }
-    return nodes;
+    const folders = [...folderGroups.values()].sort((a, b) => b.bytes - a.bytes || a.name.localeCompare(b.name));
+    const colors = new Map(folders.map((folder, index) => [folder.name, treemapPalette[index % treemapPalette.length]]));
+    colors.set('[direct]', '#98a29c');
+    const nodes = viewFiles.map((file) => {
+      const filePath = file[fields.path];
+      const remainder = path ? filePath.slice(prefix.length) : filePath;
+      const slash = remainder.indexOf('/');
+      const groupName = slash < 0 ? 'Files in this folder' : remainder.slice(0, slash);
+      const groupKey = slash < 0 ? '[direct]' : groupName;
+      return {
+        name: filePath.split('/').at(-1),
+        path: filePath,
+        type: 'file',
+        bytes: file[fields.bytes],
+        count: 1,
+        file,
+        groupName,
+        color: colors.get(groupKey)
+      };
+    }).sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path));
+    return { folders, nodes, colors };
   }
 
   function worstTreemapRatio(row, side) {
@@ -158,11 +167,13 @@
     const output = [];
     const rect = { x: 0, y: 0, w: width, h: height };
     let row = [];
-    while (items.length) {
-      const next = items[0];
+    let itemIndex = 0;
+    while (itemIndex < items.length) {
+      const next = items[itemIndex];
       const side = Math.max(1, Math.min(rect.w, rect.h));
       if (!row.length || worstTreemapRatio([...row, next], side) <= worstTreemapRatio(row, side)) {
-        row.push(items.shift());
+        row.push(next);
+        itemIndex += 1;
       } else {
         layoutTreemapRow(row, rect, output);
         row = [];
@@ -170,21 +181,6 @@
     }
     if (row.length) layoutTreemapRow(row, rect, output);
     return output;
-  }
-
-  function mixTreemapColor(hex, amount) {
-    const number = parseInt(hex.slice(1), 16);
-    const red = (number >> 16) & 255;
-    const green = (number >> 8) & 255;
-    const blue = number & 255;
-    const mix = (channel) => Math.round(channel + (255 - channel) * amount);
-    return `rgb(${mix(red)}, ${mix(green)}, ${mix(blue)})`;
-  }
-
-  function colorForTreemapNode(node, index) {
-    const definition = storageDefinitions.find((item) => item.id === storageKeyFromPath(node.path)) || storageDefinitions.at(-1);
-    const variation = ((index * 37) % 5) * 0.055;
-    return mixTreemapColor(definition.color, variation);
   }
 
   function positionTreemapTooltip(event) {
@@ -204,12 +200,11 @@
     const tooltip = el('treemap-tooltip');
     tooltip.replaceChildren();
     const title = document.createElement('strong');
-    const typeLabel = node.type === 'folder' ? 'Folder' : node.type === 'file' ? 'File' : 'Grouped files';
-    title.textContent = `${typeLabel} · ${node.name}`;
+    title.textContent = node.name;
     const path = document.createElement('span');
     path.textContent = node.path;
     const size = document.createElement('span');
-    size.textContent = `${formatBytes(node.bytes)} · ${formatNumber(node.count)} ${node.count === 1 ? 'file' : 'files'}`;
+    size.textContent = `${formatBytes(node.bytes)} · ${node.groupName}`;
     const share = document.createElement('span');
     share.textContent = `${((node.bytes / totalBytes) * 100).toFixed(2)}% of project · ${((node.bytes / Math.max(viewBytes, 1)) * 100).toFixed(1)}% of this view`;
     tooltip.append(title, path, size, share);
@@ -259,21 +254,44 @@
     el('treemap-back').disabled = !path;
   }
 
+  function renderTreemapFolders(folders, colors) {
+    const container = el('treemap-folders');
+    container.replaceChildren();
+    folders.forEach((folder) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'treemap-folder';
+      button.style.setProperty('--folder-color', colors.get(folder.name));
+      button.setAttribute('aria-label', `Open folder ${folder.name}, ${formatNumber(folder.count)} files, ${formatBytes(folder.bytes)}`);
+      const name = document.createElement('strong');
+      name.textContent = folder.name;
+      const metric = document.createElement('span');
+      metric.textContent = `${formatBytes(folder.bytes)} · ${formatNumber(folder.count)} files`;
+      button.append(name, metric);
+      button.addEventListener('click', () => renderTreemap(folder.path));
+      container.appendChild(button);
+    });
+    container.hidden = !folders.length;
+  }
+
   function renderTreemap(path = currentTreemapPath) {
     currentTreemapPath = path;
     const container = el('treemap');
     container.replaceChildren();
     el('treemap-detail').replaceChildren();
+    hideTreemapTooltip();
     renderTreemapBreadcrumbs(path);
-    const nodes = getTreemapChildren(path);
+    const { folders, nodes, colors } = getTreemapContents(path);
     const viewBytes = nodes.reduce((sum, node) => sum + node.bytes, 0);
+    el('treemap-summary').textContent = `${formatNumber(nodes.length)} files · ${formatBytes(viewBytes)}`;
+    renderTreemapFolders(folders, colors);
+    renderTreemapLegend(folders, colors, nodes.some((node) => node.groupName === 'Files in this folder'));
     const width = Math.max(container.clientWidth, 320);
     const height = container.clientHeight;
     lastTreemapWidth = width;
     lastTreemapHeight = height;
     const layout = squarifyTreemap(nodes, width, height);
-    layout.forEach((node, index) => {
-      if (node.w < 1 || node.h < 1) return;
+    layout.forEach((node) => {
       const tile = document.createElement('button');
       tile.type = 'button';
       tile.className = `treemap-tile ${node.type}`;
@@ -281,48 +299,40 @@
       tile.style.top = `${node.y}px`;
       tile.style.width = `${node.w}px`;
       tile.style.height = `${node.h}px`;
-      tile.style.backgroundColor = colorForTreemapNode(node, index);
-      const typeLabel = node.type === 'folder' ? 'Folder' : node.type === 'file' ? 'File' : 'Grouped files';
-      tile.setAttribute('aria-label', `${typeLabel} ${node.name}, ${formatBytes(node.bytes)}, ${formatNumber(node.count)} files`);
+      tile.style.backgroundColor = node.color || '#75828a';
+      tile.setAttribute('aria-label', `File ${node.name}, ${formatBytes(node.bytes)}, ${node.path}`);
       if (node.w > 78 && node.h > 38) {
         const label = document.createElement('span');
         label.className = 'treemap-label';
-        const type = document.createElement('span');
-        type.className = 'tile-type';
-        type.textContent = typeLabel;
         const name = document.createElement('strong');
         name.textContent = node.name;
         const size = document.createElement('span');
         size.textContent = formatBytes(node.bytes);
-        label.append(type, name, size);
+        label.append(name, size);
         tile.appendChild(label);
       }
       tile.addEventListener('mouseenter', (event) => showTreemapTooltip(node, event, viewBytes));
       tile.addEventListener('mousemove', positionTreemapTooltip);
       tile.addEventListener('mouseleave', hideTreemapTooltip);
-      tile.addEventListener('focus', () => {
-        if (node.type === 'file') showTreemapDetail(node);
-      });
-      tile.addEventListener('click', () => {
-        if (node.type === 'folder') renderTreemap(node.path);
-        else showTreemapDetail(node);
-      });
+      tile.addEventListener('focus', () => showTreemapDetail(node));
+      tile.addEventListener('click', () => showTreemapDetail(node));
       container.appendChild(tile);
     });
   }
 
-  function renderTreemapLegend() {
-    [
-      { name: 'Folder', className: 'legend-folder' },
-      { name: 'Direct file', className: 'legend-file' }
-    ].forEach((definition) => {
+  function renderTreemapLegend(folders, colors, hasDirectFiles) {
+    const container = el('treemap-legend');
+    container.replaceChildren();
+    const definitions = folders.map((folder) => ({ name: folder.name, color: colors.get(folder.name) }));
+    if (hasDirectFiles) definitions.push({ name: 'Files in this folder', color: colors.get('[direct]') });
+    definitions.forEach((definition) => {
       const item = document.createElement('span');
       item.className = 'legend-item';
       const swatch = document.createElement('span');
-      swatch.className = definition.className;
+      swatch.style.backgroundColor = definition.color;
       const label = document.createTextNode(definition.name);
       item.append(swatch, label);
-      el('treemap-legend').appendChild(item);
+      container.appendChild(item);
     });
   }
 

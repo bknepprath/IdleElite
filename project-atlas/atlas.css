@@ -54,17 +54,21 @@ main { padding-bottom: 64px; }
 .treemap-breadcrumbs { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 38px; }
 .treemap-crumb { border: 0; background: transparent; color: var(--accent); padding: 3px 2px; cursor: pointer; }
 .treemap-separator { color: var(--muted); }
+.treemap-summary { color: var(--muted); font-size: 12px; }
+.treemap-folders { display: flex; gap: 7px; overflow-x: auto; padding: 1px 1px 10px; }
+.treemap-folder { --folder-color: var(--accent); flex: 0 0 auto; min-width: 140px; border: 1px solid var(--line); border-left: 5px solid var(--folder-color); border-radius: 5px; background: var(--surface-alt); color: var(--text); padding: 8px 10px; text-align: left; cursor: pointer; transition: background 140ms ease, border-color 140ms ease; }
+.treemap-folder:hover, .treemap-folder:focus-visible { background: color-mix(in srgb, var(--folder-color) 10%, white); border-color: var(--folder-color); }
+.treemap-folder strong, .treemap-folder span { display: block; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.treemap-folder strong { font-size: 13px; }
+.treemap-folder span { margin-top: 2px; color: var(--muted); font-size: 11px; }
 .treemap { position: relative; width: 100%; height: 560px; overflow: hidden; background: #18231f; border-radius: 6px; }
 .treemap-tile { position: absolute; display: block; overflow: hidden; border: 1px solid rgba(255,255,255,.38); padding: 0; color: #fff; text-align: left; cursor: pointer; transition: transform 150ms ease, filter 150ms ease, box-shadow 150ms ease; }
-.treemap-tile.folder { border: 3px solid rgba(255,255,255,.82); }
 .treemap-tile.file { border: 1px solid rgba(255,255,255,.58); }
-.treemap-tile.aggregate { border: 1px dashed rgba(255,255,255,.78); opacity: .9; }
 .treemap-tile:hover, .treemap-tile:focus-visible { z-index: 4; filter: saturate(1.12) brightness(1.08); box-shadow: inset 0 0 0 3px #fff, 0 5px 16px rgba(0,0,0,.28); outline: none; }
 .treemap-label { position: absolute; inset: 7px; overflow: hidden; pointer-events: none; text-shadow: 0 1px 2px rgba(0,0,0,.48); }
 .treemap-label strong, .treemap-label span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .treemap-label strong { font-size: 13px; }
 .treemap-label span { margin-top: 2px; font-size: 11px; opacity: .9; }
-.treemap-label .tile-type { margin: 0 0 3px; font-size: 9px; font-weight: 700; letter-spacing: .08em; opacity: .78; }
 .treemap-detail { min-height: 44px; padding: 10px 0 12px; color: var(--muted); }
 .treemap-detail:empty { display: none; }
 .treemap-help { margin-top: 8px; color: var(--muted); font-size: 12px; }
@@ -73,8 +77,6 @@ main { padding-bottom: 64px; }
 .treemap-legend { display: flex; flex-wrap: wrap; gap: 8px 14px; padding-bottom: 18px; }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
 .legend-item span { width: 10px; height: 10px; border-radius: 2px; }
-.legend-item .legend-folder { border: 2px solid #fff; outline: 1px solid var(--line-dark); background: var(--accent); }
-.legend-item .legend-file { background-color: var(--blue); border: 1px solid var(--line-dark); }
 .treemap-tooltip { position: fixed; z-index: 100; pointer-events: none; min-width: 220px; max-width: min(360px, calc(100vw - 16px)); padding: 10px 12px; overflow: hidden; border-radius: 5px; color: #fff; background: rgba(23,32,28,.96); box-shadow: 0 10px 30px rgba(0,0,0,.25); font-size: 12px; }
 .treemap-tooltip strong { display: block; margin-bottom: 4px; font-size: 14px; overflow-wrap: anywhere; }
 .treemap-tooltip span { display: block; color: rgba(255,255,255,.78); overflow-wrap: anywhere; }

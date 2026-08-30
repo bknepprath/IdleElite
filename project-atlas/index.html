@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Idle Elite Project Atlas</title>
-  <link rel="stylesheet" href="atlas.css?v=13">
+  <link rel="stylesheet" href="atlas.css?v=14">
 </head>
 <body>
   <header class="page-header">
@@ -43,11 +43,15 @@
         <p>The total includes the game, every saved build, temporary working copies, generated images, downloaded tools, and caches. It is not the installed size of the game.</p>
       </div>
       <div class="treemap-toolbar">
-        <div id="treemap-breadcrumbs" class="treemap-breadcrumbs" aria-label="Current storage folder"></div>
+        <div>
+          <div id="treemap-breadcrumbs" class="treemap-breadcrumbs" aria-label="Current storage folder"></div>
+          <div id="treemap-summary" class="treemap-summary"></div>
+        </div>
         <button id="treemap-back" class="button" type="button">Back</button>
       </div>
+      <div id="treemap-folders" class="treemap-folders" aria-label="Folders in the current location"></div>
       <div id="treemap" class="treemap" role="group" aria-label="Project storage treemap"></div>
-      <p class="treemap-help">Every block shown currently exists. Thick borders are folders; thin borders are direct files. Hover for size and percentage. Click a folder to open it.</p>
+      <p class="treemap-help">Every rectangle is a file inside the current folder and its subfolders. Colors identify the first folder below the current location. Use the folder buttons or breadcrumbs to move through the project.</p>
       <div id="treemap-detail" class="treemap-detail" aria-live="polite"></div>
       <div id="treemap-legend" class="treemap-legend" aria-label="Storage category colors"></div>
       <div id="treemap-tooltip" class="treemap-tooltip" role="tooltip" hidden></div>
@@ -137,7 +141,7 @@
     </article>
   </template>
 
-  <script src="atlas-data.js?v=13"></script>
-  <script src="atlas.js?v=13"></script>
+  <script src="atlas-data.js?v=14"></script>
+  <script src="atlas.js?v=14"></script>
 </body>
 </html>
