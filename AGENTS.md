@@ -24,7 +24,9 @@ This project uses Godot and the machine can overheat if too many instances run a
 
 ## Android Rendering Safety
 
+- Permanent screen-tearing rule: any tearing, split-frame bands, full-screen pixel corruption, or unstable canvas rendering on a physical phone is a hard release blocker. Stop immediately; do not accept, mask, defer, or ship it. Revert the responsible display/rendering change, restore the last known-good viewport configuration, and repeat physical-device validation before release work continues.
 - Keep `project.godot` set to `window/stretch/mode="viewport"`. Do not change it to `canvas_items`; that setting has repeatedly caused severe full-screen pixel tearing in Play Store builds on physical Samsung phones.
+- Headless, desktop, emulator, and automated checks cannot clear this risk by themselves. Final rendering acceptance requires the real Android build running without tearing on a physical Samsung phone.
 - Treat any proposed change to the stretch mode, viewport size, stretch aspect, renderer, or Android graphics settings as a release-critical device change. Run `\.\scripts\check-crash-audit-contracts.ps1`, install the preview package with `\.\scripts\install-android-phone-debug.ps1`, and inspect the real game on a physical phone before accepting it.
 - Every Android release must pass `\.\scripts\build-android-release.ps1`, which must refuse to export unless the stretch mode remains `viewport`. Do not bypass or remove that guard to make a build succeed.
 
