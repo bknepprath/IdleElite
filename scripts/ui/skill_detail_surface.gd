@@ -6221,8 +6221,8 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		copy.add_child(title_spacer)
 		var title_band := MarginContainer.new()
 		title_band.set_anchors_preset(Control.PRESET_TOP_WIDE)
-		title_band.offset_left = 8
-		title_band.offset_right = -8
+		title_band.offset_left = ActivityCardStyles.ACTIVITY_CARD_TITLE_SIDE_INSET
+		title_band.offset_right = -ActivityCardStyles.ACTIVITY_CARD_TITLE_SIDE_INSET
 		title_band.offset_top = 16
 		title_band.offset_bottom = 86
 		title_band.clip_contents = true

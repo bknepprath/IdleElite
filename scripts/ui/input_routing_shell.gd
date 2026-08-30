@@ -1145,6 +1145,15 @@ func _route_action_card_press(press_position: Vector2, pointer_id := -1) -> bool
 		return false
 	if not _position_inside_detail_actions_viewport(press_position):
 		return false
+	# A committed page swipe suppresses the release that completed that gesture.
+	# A later physical touch is a new gesture and must be able to start the card
+	# on the newly selected page immediately.
+	if (
+		pointer_id >= 0
+		and not host._skill_swipe_activity_surface().skill_swipe_tracking
+		and not host._skill_swipe_activity_surface().skill_swipe_animating
+	):
+		host._skill_swipe_activity_surface()._clear_skill_swipe_button_suppression()
 	var press_positions: Array[Vector2] = []
 	press_positions.append(press_position)
 	for routed_position in press_positions:
