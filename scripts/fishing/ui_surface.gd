@@ -62,14 +62,15 @@ const FISHING_METHOD_PADLOCK_SIZE := Vector2(168, 184)
 const FISHING_METHOD_PADLOCK_LEVEL_SIZE := Vector2(75, 65)
 const FISHING_METHOD_PADLOCK_LEVEL_FONT := 64
 const FISHING_METHOD_PADLOCK_LEVEL_OUTLINE := 7
-const FISHING_METHOD_TITLE_FONT_SIZE := 24
+const FISHING_METHOD_TITLE_FONT_SIZE := 28
 const FISHING_METHOD_TITLE_OUTLINE := 5
+const FISHING_METHOD_TITLE_FADE_SECONDS := 0.18
 const FISHING_METHOD_TITLE_WIDTH_AXIS := 75
 const FISHING_METHOD_TITLE_WEIGHT_AXIS := 700
 const FISHING_METHOD_TITLE_EMBOLDEN := 1.2
 const FISHING_METHOD_TITLE_WIDTH := 260.0
-const FISHING_MODULE_TITLE_FONT_SIZE := 32
-const FISHING_MODULE_TITLE_OUTLINE := 7
+const FISHING_MODULE_TITLE_FONT_SIZE := 36
+const FISHING_MODULE_TITLE_OUTLINE := 8
 const FISHING_MODULE_TITLE_TOP := 6
 const FISHING_MODULE_TITLE_BAND_HEIGHT := 44
 const FISHING_MODULE_TITLE_LEFT_INSET := 27.0
@@ -1819,7 +1820,7 @@ func _build_fishing_location_tile(
 	art_panel.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
 	art_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	method_column.add_child(art_panel)
-	_attach_fishing_method_title(art_panel, str(location.get("name", location_id.capitalize())))
+	var method_title := _attach_fishing_method_title(art_panel, str(location.get("name", location_id.capitalize())))
 
 	var tile_motion_root = Control.new()
 	tile_motion_root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1943,6 +1944,7 @@ func _build_fishing_location_tile(
 		"mastery": mastery_progress,
 		"mastery_bar_instant_updates": true,
 		"method_button": method_button,
+		"method_title": method_title,
 		"method_hit_control": method_column,
 		"method_image_hit_control": art_panel,
 		"lock_root": lock_root,
@@ -1975,7 +1977,7 @@ func _fishing_method_title_font() -> Font:
 
 
 func _attach_fishing_method_title(art_panel: Control, title_text: String) -> Label:
-	var method_title: Label = host._label(title_text, FISHING_METHOD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	var method_title: Label = host._label(title_text, FISHING_METHOD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	art_panel.add_child(method_title)
 	method_title.add_theme_font_override("font", _fishing_method_title_font())
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
@@ -2570,7 +2572,7 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	art_panel.add_theme_stylebox_override("panel", _fishing_location_tile_style(unlocked))
 	art_panel.mouse_filter = Control.MOUSE_FILTER_PASS
 	method_column.add_child(art_panel)
-	_attach_fishing_method_title(art_panel, _fishing_area_focused_method_label(action))
+	var method_title := _attach_fishing_method_title(art_panel, _fishing_area_focused_method_label(action))
 
 	var tile_motion_root = Control.new()
 	tile_motion_root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -2680,6 +2682,7 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 		"mastery": mastery_progress,
 		"mastery_bar_instant_updates": true,
 		"method_button": method_button,
+		"method_title": method_title,
 		"method_hit_control": method_column,
 		"method_image_hit_control": art_panel,
 		"lock_root": lock_root,
@@ -3860,9 +3863,25 @@ func _update_fishing_area_method_slots(area_card: Dictionary, skill_id: String, 
 			)
 		if float(method_card.get("active_camera_zoom", 0.0)) > 1.0 and bool(method_card.get("active_camera_was_running", false)) and not method_running:
 			method_card["active_camera_returning"] = true
+		_update_fishing_method_title_visibility(method_card, method_running, delta, instant)
 		if host._skill_detail_surface().detail_scroll_visual_work_this_frame and not method_running and not bool(method_card.get("active_camera_returning", false)):
 			continue
 		_update_fishing_method_slot(method_card, skill_id, action_id, method_action, method_unlocked, method_running, delta, instant)
+
+
+func _update_fishing_method_title_visibility(card: Dictionary, running: bool, delta: float, instant: bool) -> void:
+	var method_title := card.get("method_title") as Label
+	if method_title == null or not is_instance_valid(method_title):
+		return
+	var target_alpha := 0.0 if running else 1.0
+	if instant:
+		method_title.modulate.a = target_alpha
+		return
+	method_title.modulate.a = move_toward(
+		method_title.modulate.a,
+		target_alpha,
+		delta / FISHING_METHOD_TITLE_FADE_SECONDS
+	)
 
 
 func _fishing_area_has_active_camera_return(area_card: Dictionary) -> bool:
