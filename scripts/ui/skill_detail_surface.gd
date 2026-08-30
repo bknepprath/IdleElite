@@ -7695,7 +7695,7 @@ func _add_tier_banner_expanded_menu(root: Control, skill_id: String, tier: int, 
 	var earned_medals := int(counts.get("earned", 0))
 	var possible_medals := int(counts.get("possible", 0))
 	var completion := 0.0 if possible_medals <= 0 else float(earned_medals) / float(possible_medals) * 100.0
-	var summary: Label = host._label("Tier %s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var summary: Label = host._label("Tier %s mastery: %s / %s medals" % [tier, earned_medals, possible_medals], 31, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	summary.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -7771,7 +7771,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	medal.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	medal.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	medal_stack.add_child(medal)
-	var medal_name: Label = host._label(str(goal.get("medal", "Medal")), 52, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var medal_name: Label = host._label(str(goal.get("medal", "Medal")), 26, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	medal_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	medal_stack.add_child(medal_name)
 	var progress_stack := VBoxContainer.new()
@@ -7781,7 +7781,7 @@ func _tier_banner_goal_card(goal: Dictionary, tier: int) -> Control:
 	progress_stack.add_theme_constant_override("separation", 7)
 	progress_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(progress_stack)
-	var requirement: Label = host._label("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 48, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var requirement: Label = host._label("%s on every Tier %s activity" % [str(goal.get("medal", "Medal")), tier], 24, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	requirement.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	requirement.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	progress_stack.add_child(requirement)
@@ -7808,7 +7808,7 @@ func _tier_banner_progress_bar(earned: int, possible: int, accent: Color, text: 
 	bar.border_width = 6.0
 	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.add_child(bar)
-	var label: Label = host._label(text, 52, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var label: Label = host._label(text, 29, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	label.set_anchors_preset(Control.PRESET_FULL_RECT)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.add_theme_color_override("font_outline_color", COLOR_INK)
@@ -7842,7 +7842,7 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	reward.add_theme_constant_override("separation", -8)
 	reward.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chip.add_child(reward)
-	var reward_header: Label = host._label("REWARD", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var reward_header: Label = host._label("REWARD", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	reward_header.add_theme_color_override("font_outline_color", COLOR_INK)
 	reward_header.add_theme_constant_override("outline_size", 6)
 	reward_header.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -7850,13 +7850,13 @@ func _tier_banner_reward_chip(reward_text: String, accent: Color) -> Control:
 	var parts := reward_text.split(" ", false, 1)
 	var main_text := str(parts[0]) if parts.size() > 0 else reward_text
 	var detail_text := str(parts[1]) if parts.size() > 1 else ""
-	var main: Label = host._label(main_text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var main: Label = host._label(main_text, 36, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	main.add_theme_color_override("font_outline_color", COLOR_INK)
 	main.add_theme_constant_override("outline_size", 8)
 	main.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	reward.add_child(main)
 	if not detail_text.is_empty():
-		var detail: Label = host._label(detail_text, 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		var detail: Label = host._label(detail_text, 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 		detail.custom_minimum_size.y = 100
 		detail.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
