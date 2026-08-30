@@ -63,9 +63,11 @@ const FISHING_METHOD_PADLOCK_SIZE := Vector2(168, 184)
 const FISHING_METHOD_PADLOCK_LEVEL_SIZE := Vector2(75, 65)
 const FISHING_METHOD_PADLOCK_LEVEL_FONT := 64
 const FISHING_METHOD_PADLOCK_LEVEL_OUTLINE := 7
-const FISHING_METHOD_TITLE_FONT_SIZE := 28
-const FISHING_METHOD_TITLE_OUTLINE := 5
+const FISHING_METHOD_TITLE_FONT_SIZE := 36
+const FISHING_METHOD_TITLE_OUTLINE := 6
 const FISHING_METHOD_TITLE_FADE_SECONDS := 0.18
+const FISHING_METHOD_TITLE_ROTATION := -0.055
+const FISHING_METHOD_TITLE_RECT := Rect2(15.0, 50.0, 175.0, 120.0)
 const FISHING_METHOD_TITLE_WIDTH_AXIS := 75
 const FISHING_METHOD_TITLE_WEIGHT_AXIS := 700
 const FISHING_METHOD_TITLE_EMBOLDEN := 1.2
@@ -1853,8 +1855,8 @@ func _build_fishing_location_tile(
 	else:
 		var rounded_location_art = RoundedTextureRect.new()
 		rounded_location_art.texture = _fishing_location_thumbnail_texture(area_id, location_id)
-		rounded_location_art.radius = 15.0
-		rounded_location_art.mask_inset = 5.0
+		rounded_location_art.radius = 28.0
+		rounded_location_art.mask_inset = 6.0
 		rounded_location_art.aspect_mode = 2
 		rounded_location_art.fallback_color = Color("#224d45")
 		location_art = rounded_location_art
@@ -1973,19 +1975,29 @@ func _fishing_method_title_font() -> Font:
 
 
 func _attach_fishing_method_title(art_panel: Control, title_text: String) -> Label:
-	var method_title: Label = host._label(title_text, FISHING_METHOD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var method_title: Label = host._label(_fishing_method_title_text(title_text), FISHING_METHOD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	art_panel.add_child(method_title)
 	method_title.add_theme_font_override("font", _fishing_method_title_font())
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
 	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	method_title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	method_title.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-	method_title.position = Vector2(5.0, 2.0)
-	method_title.size = Vector2(FISHING_LOCATION_TILE_SIZE.x - 10.0, 34.0)
+	method_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	method_title.position = FISHING_METHOD_TITLE_RECT.position
+	method_title.size = FISHING_METHOD_TITLE_RECT.size
+	method_title.pivot_offset = method_title.size * 0.5
+	method_title.rotation = FISHING_METHOD_TITLE_ROTATION
 	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_title.z_index = 30
 	return method_title
+
+
+func _fishing_method_title_text(title_text: String) -> String:
+	var words := title_text.strip_edges().split(" ", false)
+	if words.size() <= 1:
+		return title_text
+	var split_index := int(ceil(float(words.size()) * 0.5))
+	return "%s\n%s" % [" ".join(words.slice(0, split_index)), " ".join(words.slice(split_index))]
 
 
 func _build_fishing_method_mastery_widgets(method_column: VBoxContainer, art_panel: Control, skill_id: String) -> Dictionary:
@@ -2609,8 +2621,8 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	var art = RoundedTextureRect.new()
 	art.texture = host.visual_texture_cache._texture_or_visual_fallback(str(action.get("background", area_bg_path)))
 	art.set_anchors_preset(Control.PRESET_FULL_RECT)
-	art.radius = 15.0
-	art.mask_inset = 5.0
+	art.radius = 28.0
+	art.mask_inset = 6.0
 	art.aspect_mode = 2
 	art.fallback_color = Color("#224d45")
 	art.modulate = Color.WHITE if unlocked else Color(0.72, 0.72, 0.72, 0.82)
@@ -3052,23 +3064,8 @@ func _attach_fishing_area_module_title(pop_card: Control, title_text: String) ->
 	return area_title
 
 
-func _fishing_location_tile_style(available: bool) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color.TRANSPARENT
-	style.draw_center = false
-	style.border_color = Color.WHITE if available else Color("#d9cfbc")
-	style.border_width_left = 5
-	style.border_width_top = 5
-	style.border_width_right = 5
-	style.border_width_bottom = 5
-	style.corner_radius_top_left = 15
-	style.corner_radius_top_right = 15
-	style.corner_radius_bottom_left = 15
-	style.corner_radius_bottom_right = 15
-	style.shadow_color = Color.TRANSPARENT
-	style.shadow_size = 0
-	style.shadow_offset = Vector2.ZERO
-	return style
+func _fishing_location_tile_style(_available: bool) -> StyleBoxFlat:
+	return ActivityCardStyles.cached_action_art_border(Callable(host, "_surface_style")).duplicate() as StyleBoxFlat
 
 
 func _add_fishing_area_module_corner_crop(parent: Control) -> RoundedCornerCropOverlay:
