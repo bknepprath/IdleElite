@@ -98,8 +98,10 @@ func _live_session_context() -> Dictionary:
 		return {}
 	var save_runtime = host._save_runtime()
 	var online_runtime = host._online_runtime()
-	return {
+	var context := {
 		"startup_initialized": host.startup_initialized,
+		"loaded_save_this_boot": host.loaded_save_this_boot,
+		"save_restore_complete": host.save_restore_complete,
 		"warmup_active": host._boot_warmup_runtime().active,
 		"current_screen": host.current_screen,
 		"selected_skill_id": save_runtime._selected_skill_id_for_save(),
@@ -117,6 +119,34 @@ func _live_session_context() -> Dictionary:
 		"chat_keyboard_lift_pixels": host._profile_chat_overlay_surface().keyboard_lift_pixels(),
 		"last_result": host.last_result
 	}
+	context.merge(save_support_context(save_runtime), true)
+	if save_runtime.has_method("save_journal_events"):
+		context["save_journal"] = _tail_events(save_runtime.call("save_journal_events"), 8)
+	if online_runtime.has_method("auth_diagnostics_for_support"):
+		var auth_diagnostics = online_runtime.call("auth_diagnostics_for_support")
+		if typeof(auth_diagnostics) == TYPE_DICTIONARY:
+			var safe_auth_diagnostics := (auth_diagnostics as Dictionary).duplicate(true)
+			safe_auth_diagnostics["events"] = _tail_events(safe_auth_diagnostics.get("events", []), 8)
+			context["auth_diagnostics"] = safe_auth_diagnostics
+	return context
+
+
+static func save_support_context(save_runtime) -> Dictionary:
+	return {
+		"save_restore_pending": not save_runtime.pending_save_restore_data.is_empty(),
+		"save_writes_blocked": save_runtime.save_writes_blocked,
+		"save_writes_blocked_reason": _bounded_support_text(save_runtime.save_writes_blocked_reason, 120),
+		"save_dirty": save_runtime.save_dirty,
+		"save_dirty_reason": save_runtime.save_dirty_reason,
+	}
+
+
+static func _tail_events(value: Variant, maximum: int) -> Array:
+	if typeof(value) != TYPE_ARRAY or maximum <= 0:
+		return []
+	var source := value as Array
+	var start := maxi(0, source.size() - maximum)
+	return source.slice(start, source.size()).duplicate(true)
 
 
 func load_android_diagnostic_events() -> Array:
@@ -148,21 +178,43 @@ func synthesize_unclean_session_crash_report() -> void:
 	if typeof(parsed) != TYPE_DICTIONARY:
 		return
 	var marker := parsed as Dictionary
-	if str(marker.get("status", "")) == "clean":
-		return
+	var marker_status := str(marker.get("status", ""))
 	var android_events := load_android_diagnostic_events()
-	if previous_android_lifecycle_was_clean(android_events):
+	if not session_marker_requires_report(marker_status, previous_android_lifecycle_was_clean(android_events)):
 		return
 	var previous_lifecycle := previous_android_lifecycle_before_launch(android_events)
+	var report_metadata := previous_session_report_metadata(marker_status, previous_lifecycle)
 	pending_crash_report_text = JSON.stringify({
 		"timestamp_unix": _unix_now(),
-		"kind": "unclean_previous_session",
-		"reason": "previous_android_lifecycle:%s" % (previous_lifecycle if not previous_lifecycle.is_empty() else "unknown"),
-		"message": "Previous session did not mark a clean pause or close. This usually means a native crash, OS process kill, or engine-level exit before the Java crash handler could write a stack trace.",
+		"kind": str(report_metadata.get("kind", "unclean_previous_session")),
+		"reason": str(report_metadata.get("reason", "previous_android_lifecycle:unknown")),
+		"message": str(report_metadata.get("message", "")),
 		"previous_session": marker,
 		"android_diagnostic_events": android_events
 	}, "	")
 	store_pending_crash_report_text()
+
+
+static func session_marker_requires_report(marker_status: String, android_lifecycle_was_clean: bool) -> bool:
+	if marker_status.begins_with("clean"):
+		return false
+	if marker_status == "save_failed":
+		return true
+	return not android_lifecycle_was_clean
+
+
+static func previous_session_report_metadata(marker_status: String, previous_lifecycle: String) -> Dictionary:
+	if marker_status == "save_failed":
+		return {
+			"kind": "save_persistence_failure",
+			"reason": "local_save_write_failed",
+			"message": "The previous session could not persist the local save. Existing save files remained protected for recovery.",
+		}
+	return {
+		"kind": "unclean_previous_session",
+		"reason": "previous_android_lifecycle:%s" % (previous_lifecycle if not previous_lifecycle.is_empty() else "unknown"),
+		"message": "Previous session did not mark a clean pause or close. This usually means a native crash, OS process kill, or engine-level exit before the Java crash handler could write a stack trace.",
+	}
 
 
 func store_pending_crash_report_text() -> void:
@@ -211,7 +263,7 @@ static func clipboard_text(raw_report: String) -> String:
 		lines.append("time_unix: %s" % int(report.get("timestamp_unix", 0)))
 	elif report.has("timestamp"):
 		lines.append("time: %s" % str(report.get("timestamp", "")))
-	if kind == "unclean_previous_session" and typeof(report.get("previous_session", {})) == TYPE_DICTIONARY:
+	if kind in ["unclean_previous_session", "save_persistence_failure"] and typeof(report.get("previous_session", {})) == TYPE_DICTIONARY:
 		append_previous_session_summary(lines, report.get("previous_session", {}) as Dictionary, events, int(report.get("timestamp_unix", 0)))
 	elif report.has("exception"):
 		lines.append("exception: %s" % str(report.get("exception", "")))
@@ -237,6 +289,29 @@ static func append_previous_session_summary(lines: Array, previous: Dictionary, 
 		str(previous.get("current_screen", "")),
 		str(previous.get("selected_skill_id", ""))
 	])
+	lines.append("save: loaded=%s restored=%s pending=%s writes_blocked=%s blocked_reason=%s dirty=%s reason=%s" % [
+		str(previous.get("loaded_save_this_boot", false)),
+		str(previous.get("save_restore_complete", false)),
+		str(previous.get("save_restore_pending", false)),
+		str(previous.get("save_writes_blocked", false)),
+		_bounded_support_text(previous.get("save_writes_blocked_reason", ""), 120),
+		str(previous.get("save_dirty", false)),
+		str(previous.get("save_dirty_reason", ""))
+	])
+	var auth = previous.get("auth_diagnostics", {})
+	if typeof(auth) == TYPE_DICTIONARY and not (auth as Dictionary).is_empty():
+		lines.append("auth: provider=%s token=%s bound=%s uid=%s recovery=%s error=%s transition=%s" % [
+			str((auth as Dictionary).get("provider", "")),
+			str((auth as Dictionary).get("refresh_token_present", false)),
+			str((auth as Dictionary).get("bound_uid_present", false)),
+			str((auth as Dictionary).get("bound_uid_fingerprint", "")),
+			str((auth as Dictionary).get("recovery_required", false)),
+			str((auth as Dictionary).get("last_error_class", "")),
+			str((auth as Dictionary).get("last_uid_transition_outcome", ""))
+		])
+	append_save_journal_summary(lines, previous.get("save_journal", []), 8)
+	if typeof(auth) == TYPE_DICTIONARY:
+		append_auth_event_summary(lines, (auth as Dictionary).get("events", []), 8)
 	lines.append("running: %s/%s progress=%s" % [
 		str(previous.get("running_skill_id", "")),
 		str(previous.get("running_action_id", "")),
@@ -252,6 +327,69 @@ static func append_previous_session_summary(lines: Array, previous: Dictionary, 
 			previous_lifecycle,
 			"clean lifecycle exit" if lifecycle_clean else "unclean/native-or-OS-kill suspect"
 		])
+
+
+static func append_save_journal_summary(lines: Array, value: Variant, max_count: int) -> void:
+	var events := _tail_events(value, max_count)
+	var rendered := []
+	for raw_event in events:
+		if typeof(raw_event) != TYPE_DICTIONARY:
+			continue
+		var event := raw_event as Dictionary
+		var parts := []
+		if event.has("at"):
+			parts.append("at=%s" % int(event.get("at", 0)))
+		_append_support_field(parts, event, "event", 48)
+		for field in ["result", "source", "stage", "rotation", "trigger"]:
+			_append_support_field(parts, event, field, 96)
+		for field in ["schema", "revision", "migration_from", "migration_to"]:
+			if event.has(field):
+				parts.append("%s=%s" % [field, int(event.get(field, 0))])
+		if not parts.is_empty():
+			rendered.append("- %s" % " ".join(parts))
+	if rendered.is_empty():
+		return
+	lines.append("save_events:")
+	lines.append_array(rendered)
+
+
+static func append_auth_event_summary(lines: Array, value: Variant, max_count: int) -> void:
+	var events := _tail_events(value, max_count)
+	var rendered := []
+	for raw_event in events:
+		if typeof(raw_event) != TYPE_DICTIONARY:
+			continue
+		var event := raw_event as Dictionary
+		var parts := []
+		if event.has("at_unix"):
+			parts.append("at_unix=%s" % int(event.get("at_unix", 0)))
+		_append_support_field(parts, event, "event", 48)
+		_append_support_field(parts, event, "detail", 120)
+		_append_support_field(parts, event, "provider", 32)
+		for field in ["refresh_token_present", "bound_uid_present", "recovery_required"]:
+			if event.has(field):
+				parts.append("%s=%s" % [field, str(bool(event.get(field, false)))])
+		_append_support_field(parts, event, "bound_uid_fingerprint", 12)
+		if not parts.is_empty():
+			rendered.append("- %s" % " ".join(parts))
+	if rendered.is_empty():
+		return
+	lines.append("auth_events:")
+	lines.append_array(rendered)
+
+
+static func _append_support_field(parts: Array, event: Dictionary, field: String, max_length: int) -> void:
+	if not event.has(field):
+		return
+	var clean := _bounded_support_text(event.get(field, ""), max_length)
+	if not clean.is_empty():
+		parts.append("%s=%s" % [field, clean])
+
+
+static func _bounded_support_text(value: Variant, max_length: int) -> String:
+	if max_length <= 0:
+		return ""
+	return str(value).replace("\r", " ").replace("\n", " ").replace("\t", " ").strip_edges().substr(0, max_length)
 
 
 static func append_stack_summary(lines: Array, stack_trace: String) -> void:

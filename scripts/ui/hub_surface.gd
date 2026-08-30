@@ -33,6 +33,8 @@ const HUB_TUTORIAL_TITLE := "Player Hub"
 const HUB_TUTORIAL_BODY := "Upgrade buildings here for bonuses across the whole game.\nTap a building to upgrade it.\nDrag a building to move it."
 const HUB_TUTORIAL_TIP_FADE_SECONDS := 0.18
 const HUB_TROPHY_DEFAULT_CENTER := Vector2(1725, 1190)
+const HUB_TROPHY_ART_SIZE := Vector2(315, 315)
+const HUB_TROPHY_ART_OFFSET := Vector2(12, -82)
 const HUB_MISSION_PAPER_BADGE := "res://assets/content/hub/hub-mission-paper-badge-v3.png"
 const HUB_MISSION_BADGE_TITLE := "Mission Task"
 const HUB_MISSION_BADGE_INFO := "This action is on your Mission Board. Completing it advances the mission and grants the board's boosted task bonuses."
@@ -1189,9 +1191,9 @@ func _add_hub_trophy_display(parent: Control) -> void:
 	if not trophy_def.is_empty():
 		var trophy := TextureRect.new()
 		trophy.texture = host.visual_texture_cache._spritesheet_or_visual_fallback(ThievingState.HEIST_TROPHY_SHEET, int(trophy_def.get("cell", 0)), ThievingState.HEIST_TROPHY_CELL)
-		trophy.custom_minimum_size = Vector2(315, 315)
+		trophy.custom_minimum_size = HUB_TROPHY_ART_SIZE
 		trophy.size = trophy.custom_minimum_size
-		trophy.position = Vector2((button.size.x - trophy.size.x) * 0.5, -58.0)
+		trophy.position = Vector2((button.size.x - trophy.size.x) * 0.5, 0.0) + HUB_TROPHY_ART_OFFSET
 		trophy.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		trophy.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		trophy.mouse_filter = Control.MOUSE_FILTER_IGNORE

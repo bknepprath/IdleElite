@@ -137,10 +137,13 @@ static func metadata_for_save(display_name: String, raw_name_key: String, claime
 	var safe_name_key := sanitize_name_key(raw_name_key, key_max_chars)
 	if is_default_display_name(safe_display_name, display_max_chars) or is_guest_display_name(safe_display_name, guest_prefix, display_max_chars):
 		return {"name_key": "", "profile_claimed": false, "name_claim_verified": false}
-	if claimed and safe_name_key.is_empty():
+	if claimed and verified and safe_name_key.is_empty():
 		safe_name_key = make_name_key(safe_display_name, display_max_chars, key_max_chars)
 	if not claimed or not verified or safe_name_key.is_empty():
-		return {"name_key": "", "profile_claimed": false, "name_claim_verified": false}
+		var hint_key := safe_name_key
+		if hint_key != make_name_key(safe_display_name, display_max_chars, key_max_chars):
+			hint_key = ""
+		return {"name_key": hint_key, "profile_claimed": false, "name_claim_verified": false}
 	return {"name_key": safe_name_key, "profile_claimed": true, "name_claim_verified": true}
 
 
@@ -186,11 +189,16 @@ static func restored_metadata(data: Dictionary, current_display_name: String, cu
 		claimed = false
 		verified = false
 		safe_name_key = ""
-	if claimed and safe_name_key.is_empty():
+	if claimed and verified and safe_name_key.is_empty():
 		safe_name_key = make_name_key(display_name, display_max_chars, key_max_chars)
 	if claimed and not verified:
 		claimed = false
-		safe_name_key = ""
+	if not claimed:
+		verified = false
+		# Keep a syntactically valid name/key pair as an untrusted recovery hint. The
+		# false trust flags prevent publishing or reserving the key until auth recovery.
+		if safe_name_key != make_name_key(display_name, display_max_chars, key_max_chars):
+			safe_name_key = ""
 	return {
 		"display_name": display_name,
 		"name_key": safe_name_key,

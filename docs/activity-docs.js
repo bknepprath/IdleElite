@@ -12,59 +12,16 @@ const ActivityDocs = (() => {
     return clean;
   }
 
-  function formatSeconds(value) {
-    const seconds = Number(value);
-    return seconds.toFixed(seconds < 10 ? 1 : 0) + "s";
-  }
-
-  function formatPercent(value) {
-    return Number(value).toFixed(0) + "%";
-  }
-
-  function embeddedDatabase() {
-    const database = globalThis.IDLE_ELITE_ACTIVITY_DATABASE;
-    return database ? JSON.parse(JSON.stringify(database)) : null;
-  }
-
   async function loadDatabase() {
-    try {
-      const response = await fetch(databasePath);
-      if (!response.ok) {
-        throw new Error("Unable to load " + databasePath + ": " + response.status);
-      }
-      return response.json();
-    } catch (error) {
-      const database = embeddedDatabase();
-      if (database) return database;
-      throw error;
+    const response = await fetch(databasePath);
+    if (!response.ok) {
+      throw new Error("Unable to load " + databasePath + ": " + response.status);
     }
-  }
-
-  function createSkillState(skillData, freshSkillState) {
-    return Object.fromEntries(skillData.map(skill => [skill.id, freshSkillState()]));
-  }
-
-  function createMasteryState(skillData) {
-    return Object.fromEntries(skillData.flatMap(skill => skill.actions.map(action => [
-      skill.id + ":" + action.id,
-      { xp: 0, level: 0 }
-    ])));
-  }
-
-  function databaseSkillData(database) {
-    return database.skills.map(skill => ({
-      id: skill.id,
-      name: skill.name,
-      verb: skill.verb,
-      identity: skill.identity,
-      icon: docsAsset(skill.icon),
-      actions: skill.actions.filter(action => action.enabled !== false).map(action => ({
-        ...action,
-        art: docsAsset(action.art),
-        background: docsAsset(action.background),
-        bg: docsAsset(action.background)
-      }))
-    }));
+    const database = await response.json();
+    database.skills.forEach(skill => {
+      skill.actions = skill.actions.filter(action => action.enabled !== false);
+    });
+    return database;
   }
 
   function renderError(target, error) {
@@ -76,13 +33,7 @@ const ActivityDocs = (() => {
   return {
     databasePath,
     docsAsset,
-    formatSeconds,
-    formatPercent,
-    embeddedDatabase,
     loadDatabase,
-    createSkillState,
-    createMasteryState,
-    databaseSkillData,
     renderError
   };
 })();

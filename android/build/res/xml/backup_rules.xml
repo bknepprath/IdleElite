@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<full-backup-content>
+    <include domain="file" path="idle_elite_save.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="idle_elite_save.tmp.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="idle_elite_save.backup.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="idle_elite_save.backup-2.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="idle_elite_save.backup-3.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="idle_elite_save.recovery.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.tmp.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-2.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-3.json" requireFlags="clientSideEncryption" />
+    <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.recovery.json" requireFlags="clientSideEncryption" />
+</full-backup-content>

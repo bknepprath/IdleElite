@@ -16,8 +16,10 @@ New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
+$previousDisableOnlineRequests = $env:IDLE_ELITE_DISABLE_ONLINE_REQUESTS
 $env:GODOT_RUN_TIMEOUT_SECONDS = "120"
 $env:IDLE_ELITE_DISABLE_SAVE_WRITES = "1"
+$env:IDLE_ELITE_DISABLE_ONLINE_REQUESTS = "1"
 
 try {
     @'
@@ -789,5 +791,10 @@ finally {
         Remove-Item Env:\IDLE_ELITE_DISABLE_SAVE_WRITES -ErrorAction SilentlyContinue
     } else {
         $env:IDLE_ELITE_DISABLE_SAVE_WRITES = $previousDisableSaveWrites
+    }
+    if ($null -eq $previousDisableOnlineRequests) {
+        Remove-Item Env:\IDLE_ELITE_DISABLE_ONLINE_REQUESTS -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_DISABLE_ONLINE_REQUESTS = $previousDisableOnlineRequests
     }
 }

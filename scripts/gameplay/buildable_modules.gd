@@ -25,7 +25,7 @@ static func is_built(built_modules: Dictionary, skill_id: String, action: Dictio
 	return not module_key.is_empty() and bool(built_modules.get(module_key, false))
 
 
-static func normalized_for_save(built_modules: Dictionary, action_lookup: Callable) -> Dictionary:
+static func normalized_for_save(built_modules: Dictionary, action_lookup: Callable, action_key := Callable()) -> Dictionary:
 	var normalized := {}
 	for raw_key in built_modules.keys():
 		var module_key := str(raw_key)
@@ -34,11 +34,13 @@ static func normalized_for_save(built_modules: Dictionary, action_lookup: Callab
 		var action := action_from_key(module_key, action_lookup)
 		if action.is_empty() or not is_buildable(action):
 			continue
-		normalized[module_key] = true
+		var canonical_key := _canonical_key(module_key, action, action_key)
+		if not canonical_key.is_empty():
+			normalized[canonical_key] = true
 	return normalized
 
 
-static func restored_from_save(value: Variant, action_lookup: Callable) -> Dictionary:
+static func restored_from_save(value: Variant, action_lookup: Callable, action_key := Callable()) -> Dictionary:
 	var restored := {}
 	if typeof(value) != TYPE_DICTIONARY:
 		return restored
@@ -49,8 +51,23 @@ static func restored_from_save(value: Variant, action_lookup: Callable) -> Dicti
 		var action := action_from_key(module_key, action_lookup)
 		if action.is_empty() or not is_buildable(action):
 			continue
-		restored[module_key] = true
+		var canonical_key := _canonical_key(module_key, action, action_key)
+		if not canonical_key.is_empty():
+			restored[canonical_key] = true
 	return restored
+
+
+static func _canonical_key(saved_key: String, action: Dictionary, action_key: Callable) -> String:
+	if not action_key.is_valid():
+		return saved_key
+	var separator := saved_key.find(":")
+	if separator <= 0:
+		return ""
+	var skill_id := saved_key.substr(0, separator)
+	var action_id := str(action.get("id", ""))
+	if skill_id.is_empty() or action_id.is_empty():
+		return ""
+	return str(action_key.call(skill_id, action_id))
 
 
 static func cost(action: Dictionary) -> Dictionary:

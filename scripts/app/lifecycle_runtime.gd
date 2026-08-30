@@ -4,11 +4,15 @@ const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const AchievementPresentation = preload("res://scripts/achievements/presentation.gd")
 const NavigationShell = preload("res://scripts/ui/navigation_shell.gd")
 const PROCESS_SUSPENSION_MIN_MSEC := 5000
+const LIFECYCLE_SAVE_DEBOUNCE_MSEC := 1500
 
 var host
 var lazy_overlays_built := {}
 var last_process_unix_time := 0
 var last_process_monotonic_msec := -1
+var last_lifecycle_save_monotonic_msec := -1
+var last_lifecycle_save_succeeded := false
+var last_lifecycle_save_was_deferred := false
 
 
 func _init(host_ref) -> void:
@@ -128,7 +132,7 @@ func control_effectively_visible(control: Control, minimum_alpha := 0.05) -> boo
 	while current != null:
 		if current is CanvasItem:
 			var canvas_item := current as CanvasItem
-			alpha *= canvas_item.modulate.a
+			alpha *= canvas_item.modulate.a * canvas_item.self_modulate.a
 			if alpha <= minimum_alpha:
 				return false
 		current = current.get_parent()
@@ -136,12 +140,12 @@ func control_effectively_visible(control: Control, minimum_alpha := 0.05) -> boo
 
 
 func set_label_text_if_changed(label: Label, next_text: String) -> void:
-	if label != null and label.text != next_text:
+	if label != null and is_instance_valid(label) and not label.is_queued_for_deletion() and label.text != next_text:
 		label.text = next_text
 
 
 func set_button_text_if_changed(button: Button, next_text: String) -> void:
-	if button != null and button.text != next_text:
+	if button != null and is_instance_valid(button) and not button.is_queued_for_deletion() and button.text != next_text:
 		button.text = next_text
 
 
@@ -290,9 +294,7 @@ func _prepare_for_shutdown() -> void:
 	if host.shutdown_cleanup_started:
 		return
 	host.shutdown_cleanup_started = true
-	if _runtime_save_is_safe():
-		host.save_game()
-	host._crash_report_runtime().write_session_marker("clean")
+	_write_lifecycle_save_marker(_persist_for_lifecycle())
 	host._skill_detail_surface()._clear_detail_lazy_cached_roots()
 	host._skill_swipe_activity_surface()._free_global_swipe_real_card_cache()
 	host._navigation_shell().pending_skill_detail_refresh_request.clear()
@@ -359,7 +361,7 @@ func _prepare_for_shutdown() -> void:
 
 
 func _runtime_save_is_safe() -> bool:
-	return host.startup_initialized or host.loaded_save_this_boot
+	return host.save_restore_complete
 
 
 func _mobile_lifecycle_uses_focus_resume() -> bool:
@@ -371,16 +373,46 @@ func _app_lifecycle_uses_focus_resume() -> bool:
 
 
 func _save_for_app_suspend() -> void:
+	if host.shutdown_cleanup_started:
+		return
 	host._clear_page_transient_input_state(true)
 	host._audio_director()._pause_music_for_app_suspend()
-	if _runtime_save_is_safe():
-		host.save_game()
-	host._crash_report_runtime().write_session_marker("clean")
+	_write_lifecycle_save_marker(_persist_for_lifecycle())
+
+
+func _persist_for_lifecycle() -> int:
+	if host._save_runtime().save_writes_blocked:
+		last_lifecycle_save_was_deferred = false
+		last_lifecycle_save_succeeded = false
+		return -1
+	if not _runtime_save_is_safe():
+		last_lifecycle_save_was_deferred = true
+		last_lifecycle_save_succeeded = false
+		return 0
+	var now_msec := Time.get_ticks_msec()
+	if last_lifecycle_save_succeeded and last_lifecycle_save_monotonic_msec >= 0 and now_msec - last_lifecycle_save_monotonic_msec <= LIFECYCLE_SAVE_DEBOUNCE_MSEC:
+		return 1
+	last_lifecycle_save_monotonic_msec = now_msec
+	last_lifecycle_save_was_deferred = false
+	last_lifecycle_save_succeeded = host.save_game()
+	return 1 if last_lifecycle_save_succeeded else -1
+
+
+func _write_lifecycle_save_marker(outcome: int) -> void:
+	if outcome > 0:
+		host._crash_report_runtime().write_session_marker("clean")
+	elif outcome == 0:
+		host._crash_report_runtime().write_session_marker("clean_save_deferred")
+	else:
+		host._crash_report_runtime().write_session_marker("save_failed")
 
 
 func _resume_from_app_suspend(offline_from_unix := -1) -> void:
 	last_process_unix_time = host._unix_now()
 	last_process_monotonic_msec = Time.get_ticks_msec()
+	last_lifecycle_save_monotonic_msec = -1
+	last_lifecycle_save_succeeded = false
+	last_lifecycle_save_was_deferred = false
 	host._crash_report_runtime().write_session_marker("running")
 	host._performance_runtime()._record_battery_governor_activity()
 	host._navigation_shell()._clear_page_switch_input_state(true)
@@ -480,18 +512,14 @@ func _kill_shutdown_global_tweens() -> void:
 	host._reward_feedback_surface()._clear_stamina_gauge_pop_tween()
 	host._activity_unlock_ceremony_surface().clear_visual_scroll_tween()
 	host._skill_swipe_activity_surface()._kill_skill_swipe_tween()
-	if host._skill_detail_surface().detail_unlock_scroll_spacer_tween != null and host._skill_detail_surface().detail_unlock_scroll_spacer_tween.is_valid():
-		host._skill_detail_surface().detail_unlock_scroll_spacer_tween.kill()
+	_kill_tween_value(host._skill_detail_surface().detail_unlock_scroll_spacer_tween)
 	host._skill_detail_surface().detail_unlock_scroll_spacer_tween = null
 	var nav: NavigationShell = host._navigation_shell()
-	if nav.hero_nav_fade_tween != null and nav.hero_nav_fade_tween.is_valid():
-		nav.hero_nav_fade_tween.kill()
+	_kill_tween_value(nav.hero_nav_fade_tween)
 	nav.hero_nav_fade_tween = null
-	if nav.hub_nav_fade_tween != null and nav.hub_nav_fade_tween.is_valid():
-		nav.hub_nav_fade_tween.kill()
+	_kill_tween_value(nav.hub_nav_fade_tween)
 	nav.hub_nav_fade_tween = null
-	if nav.shop_nav_fade_tween != null and nav.shop_nav_fade_tween.is_valid():
-		nav.shop_nav_fade_tween.kill()
+	_kill_tween_value(nav.shop_nav_fade_tween)
 	nav.shop_nav_fade_tween = null
 	host._fishing_ui_surface().kill_wallet_pop_tween()
 	host.button_press_runtime.clear_all_nav_pop_tweens()

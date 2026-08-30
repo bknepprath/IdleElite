@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 $testDir = Join-Path $projectRoot ".codex-tmp\skill-swipe-release-no-snapback"
 $testScript = Join-Path $testDir "skill_swipe_release_no_snapback_test.gd"
+$testLog = Join-Path $testDir "godot.log"
 New-Item -ItemType Directory -Force -Path $testDir | Out-Null
 
 @'
@@ -33,10 +34,13 @@ func _run() -> void:
 	await _wait_frames(12)
 
 	scene.call("_skill_swipe_activity_surface").call("_begin_skill_swipe_tracking", Vector2(900, 1500), -1)
-	for i in range(1, 7):
-		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(260, 1500), float(i) / 6.0))
+	# A short, deliberate flick should commit even though it does not cross the
+	# full distance threshold. This is the common phone gesture that previously
+	# moved the page and then snapped it back on release.
+	for i in range(1, 4):
+		scene.call("_skill_swipe_activity_surface").call("_update_skill_swipe_feedback", Vector2(900, 1500).lerp(Vector2(720, 1500), float(i) / 3.0))
 		await _wait_frames(1)
-	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(260, 1500))
+	scene.call("_skill_swipe_activity_surface").call("_finish_skill_swipe", Vector2(720, 1500))
 	for frame in range(60):
 		await _wait_frames(1)
 		var cover := _valid_control(scene.call("_skill_swipe_activity_surface").get("skill_swipe_handoff_cover"))
@@ -76,7 +80,7 @@ func _fail(message: String) -> void:
 	quit(1)
 '@ | Set-Content -Path $testScript -Encoding UTF8
 
-$output = & "$projectRoot\run-godot-safe.ps1" --path "$projectRoot" --headless --script $testScript 2>&1
+$output = & "$projectRoot\run-godot-safe.ps1" --path "$projectRoot" --headless --log-file $testLog --script $testScript 2>&1
 $output | ForEach-Object { Write-Output $_ }
 
 if (($output -join "`n") -notmatch "skill-swipe-release-no-snapback-ok") {

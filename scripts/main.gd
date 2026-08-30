@@ -76,8 +76,9 @@ const PROGRESS_STAR_ICON_TEXTURE := "res://assets/content/ui/progress-star-icon.
 const BASE_MAX_STAMINA := SkillState.BASE_MAX_STAMINA
 const STAMINA_REGEN_SECONDS := SkillState.STAMINA_REGEN_SECONDS
 const MAX_OFFLINE_SECONDS := 8 * 60 * 60
-const MIN_MOBILE_BODY_FONT_SIZE := 52
-const MIN_MOBILE_INFO_TITLE_FONT_SIZE := 60
+const MIN_MOBILE_BODY_FONT_SIZE := 96
+const MIN_MOBILE_HELP_FONT_SIZE := 104
+const MIN_MOBILE_INFO_TITLE_FONT_SIZE := 120
 const MASTERY_MAX_LEVEL := 20
 const ACTION_CARD_MEDAL_PRESS_KIND := "__medal__"
 const BASE_CANVAS := Vector2(2160, 3840)
@@ -124,7 +125,7 @@ const SKILL_DETAIL_BOTTOM_SCROLL_PAD := 48
 const THIEVING_SKILL_DETAIL_BOTTOM_SCROLL_PAD := 48
 const SKILL_DETAIL_TITLE_FONT_SIZE := 152
 const SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE := 128
-const SKILL_DETAIL_XP_FONT_SIZE := 62
+const SKILL_DETAIL_XP_FONT_SIZE := 96
 const SKILL_DETAIL_XP_BAR_HEIGHT := 96
 const DETAIL_RESTORE_SCROLL_BOTTOM := -2
 const MODULE_TITLE_OVER_PIN_Z_INDEX := 390
@@ -191,7 +192,7 @@ const ONBOARDING_SWIPE_STAMINA_THRESHOLD := 5.0
 const ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS := 2.0
 const ONBOARDING_BOTTOM_TIP_FADE_SECONDS := 1.2
 const STAMINA_TIP_DISCOVERY_HOLD_SECONDS := 4.0
-const BOTTOM_TUTORIAL_TIP_FONT_SIZE := 64
+const BOTTOM_TUTORIAL_TIP_FONT_SIZE := 104
 const PASSIVE_BUTTON_TAP_CONFIRM_SECONDS := 0.08
 const FIREBASE_DATABASE_URL := ""
 const FIREBASE_WEB_API_KEY := ""
@@ -492,6 +493,7 @@ var playable_medal_buff_actions_cache := {}
 var playable_medal_buff_index_cache := {}
 var visual_texture_cache := VisualTextureCache.new()
 var loaded_save_this_boot := false
+var save_restore_complete := false
 var activity_queue_runtime: ActivityQueueRuntime
 var save_runtime: SaveRuntime
 var action_runtime: ActionRuntime
@@ -571,7 +573,9 @@ func _ready() -> void:
 	deferred_skill_validation_pending = true
 	deferred_selected_skill_mastery_pending = true
 	await _build_ui_boot_async()
-	await _boot_warmup_runtime()._finish_boot_render_async()
+	var boot_ready_for_play := await _boot_warmup_runtime()._finish_boot_render_async()
+	if not boot_ready_for_play:
+		return
 	var timer := Timer.new()
 	timer.wait_time = SaveRuntime.AUTOSAVE_INTERVAL_SECONDS
 	timer.autostart = true
@@ -957,8 +961,8 @@ func _fishing_rework_active_for_skill(skill_id: String) -> bool:
 func _mark_save_dirty(reason := "") -> void:
 	_save_runtime()._mark_save_dirty(reason)
 
-func save_game() -> void:
-	_save_runtime().save_game()
+func save_game() -> bool:
+	return _save_runtime().save_game()
 
 func _unix_now() -> int:
 	return int(floor(Time.get_unix_time_from_system()))

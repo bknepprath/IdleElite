@@ -676,7 +676,7 @@ func _draw_center_text(center: Vector2) -> void:
 	var small_text := str(maximum)
 	var small := _fit_font_size(font, small_text, maxi(42, int(min_size * 0.13)), 38, max_text_width)
 	var current_center_y := center.y - 22.0 * draw_scale
-	var divider_y := center.y + 91.0 * draw_scale
+	var divider_y := center.y + 80.0 * draw_scale
 	var max_center_y := center.y + 128.0 * draw_scale
 	var current_stroke := maxi(CENTER_NUMBER_STROKE_MIN, int(round(CENTER_NUMBER_STROKE_SCALE * draw_scale)))
 	_draw_stroked_number_with_decimal_suffix(font, current_text, decimal_text, Vector2(center.x, current_center_y), large, Color.WHITE, current_stroke)

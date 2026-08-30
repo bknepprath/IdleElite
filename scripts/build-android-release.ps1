@@ -8,6 +8,8 @@ $stdoutLogPath = Join-Path $projectRoot "builds\android\last-release-build.stdou
 $stderrLogPath = Join-Path $projectRoot "builds\android\last-release-build.stderr.log"
 $exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
 $projectSettingsPath = Join-Path $projectRoot "project.godot"
+$firebaseConfigPath = Join-Path $projectRoot "firebase-leaderboard-config.json"
+$firebaseMigrationReadinessCheck = Join-Path $projectRoot "scripts\check-firebase-migration-readiness.ps1"
 $keystorePassword = $env:IDLE_ELITE_KEYSTORE_PASSWORD
 
 function Set-TextWithRetry {
@@ -19,7 +21,7 @@ function Set-TextWithRetry {
     $lastError = $null
     for ($attempt = 1; $attempt -le 30; $attempt++) {
         try {
-            Set-Content -LiteralPath $Path -Value $Value -NoNewline
+            [System.IO.File]::WriteAllText($Path, $Value, [System.Text.UTF8Encoding]::new($false))
             return
         } catch {
             $lastError = $_
@@ -45,6 +47,20 @@ if (-not (Test-Path -LiteralPath $exportPresetsPath)) {
 if (-not (Test-Path -LiteralPath $projectSettingsPath)) {
     throw "Godot project settings file not found at $projectSettingsPath"
 }
+if (-not (Test-Path -LiteralPath $firebaseConfigPath)) {
+    throw "Android release blocked: firebase-leaderboard-config.json is required for account recovery and cloud save."
+}
+if (-not (Test-Path -LiteralPath $firebaseMigrationReadinessCheck)) {
+    throw "Android release blocked: the Firebase migration readiness check is missing."
+}
+$firebaseConfig = Get-Content -LiteralPath $firebaseConfigPath -Raw | ConvertFrom-Json
+$googleWebClientId = ([string]$firebaseConfig.google_web_client_id).Trim()
+if ($googleWebClientId -notmatch '^[0-9]+-[a-z0-9]+\.apps\.googleusercontent\.com$') {
+    throw "Android release blocked: firebase-leaderboard-config.json must contain a valid google_web_client_id."
+}
+& $firebaseMigrationReadinessCheck
+& (Join-Path $projectRoot "scripts\check-crash-audit-contracts.ps1")
+& (Join-Path $projectRoot "scripts\check-firebase-leaderboard-preflight.ps1") -SkipGodotSafeValidation
 $projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath
 if ($projectSettings -notmatch '(?m)^window/stretch/mode="viewport"$') {
     throw 'Android release blocked: project.godot must keep window/stretch/mode="viewport" to prevent full-screen pixel tearing on physical phones.'
@@ -80,7 +96,7 @@ if (Test-Path -LiteralPath $output) {
     Remove-Item -LiteralPath $output -Force
 }
 
-$escapedKeystorePassword = $keystorePassword.Replace("\", "\\").Replace('"', '\"')
+$escapedKeystorePassword = $keystorePassword.Replace("\", "\\").Replace('"', '\"').Replace('$', '$$')
 $patchedExportPresets = $originalExportPresets -replace '(?m)^keystore/release_password="[^"\r\n]*"', "keystore/release_password=`"$escapedKeystorePassword`""
 if ($patchedExportPresets -eq $originalExportPresets) {
     throw "Could not inject release keystore password into $exportPresetsPath"
@@ -107,16 +123,14 @@ try {
 }
 
 if ($godotExitCode -ne 0) {
-    if ($godotExitCode -eq 124 -and (Test-Path -LiteralPath $output)) {
-        Write-Warning "Godot export timed out after producing an AAB. Continuing with the generated artifact."
-    } else {
-        throw "Godot export failed with exit code $godotExitCode. See $stdoutLogPath and $stderrLogPath"
-    }
+    throw "Godot export failed with exit code $godotExitCode. See $stdoutLogPath and $stderrLogPath"
 }
 
 if (-not (Test-Path -LiteralPath $output)) {
     throw "Release AAB was not created at $output"
 }
+
+& (Join-Path $projectRoot "scripts\check-android-backup-artifact.ps1") -AabPath $output
 
 $artifact = Get-Item -LiteralPath $output
 Write-Output "Release AAB created: $($artifact.FullName)"

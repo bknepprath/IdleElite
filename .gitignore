@@ -25,6 +25,9 @@ google key downloads/
 local-release-notes.md
 firebase-leaderboard-config\.json
 firebase-leaderboard-config.json
+*firebase-auth-export*.json
+*firebase-rtdb-backup*.json
+firebase-debug*.log
 assets/loading/blue-guy-flex-loading-spritesheet*.png
 !assets/loading/blue-guy-flex-loading-spritesheet.png
 docs/loading-flex-preview.html

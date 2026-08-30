@@ -11,6 +11,7 @@ Assert-True (Test-Path -LiteralPath $hygieneDocPath) "Missing docs\generated-fil
 Assert-True (Test-Path -LiteralPath $assetAuditPath) "Missing docs\asset-file-structure-audit.md."
 
 $gitignore = Get-Content -LiteralPath $gitignorePath -Raw
+$gitignoreRules = @($gitignore -split '\r?\n' | ForEach-Object { $_.Trim() } | Where-Object { $_ -and -not $_.StartsWith("#") })
 $hygieneDoc = Get-Content -LiteralPath $hygieneDocPath -Raw
 $assetAudit = Get-Content -LiteralPath $assetAuditPath -Raw
 
@@ -34,7 +35,7 @@ foreach ($requiredIgnore in @(
     "assets/loading/blue-guy-flex-loading-spritesheet*.png",
     "!assets/loading/blue-guy-flex-loading-spritesheet.png"
 )) {
-    Assert-True ($gitignore.Contains($requiredIgnore)) ".gitignore is missing generated-file rule: $requiredIgnore"
+    Assert-True ($gitignoreRules -ccontains $requiredIgnore) ".gitignore is missing generated-file rule: $requiredIgnore"
 }
 
 Assert-True ($gitignore -notmatch '(?m)^\*\.import$') ".gitignore must not ignore every .import file; runtime import metadata can be required."
@@ -63,6 +64,7 @@ Assert-True ($assetAudit -match 'Existing dirty/untracked files include navigati
 Assert-True (-not (Test-Path -LiteralPath (Join-Path $projectRoot "docs\art-source"))) "docs/art-source should stay outside the runtime repository."
 
 $trackedOutputFiles = @(git -C $projectRoot ls-files -- output test-results)
+Assert-True ($LASTEXITCODE -eq 0) "Could not inspect tracked generated output files."
 Assert-True ($trackedOutputFiles.Count -eq 0) "output/ and test-results/ should not contain tracked files."
 
 Write-Output "generated-file-hygiene-ok"

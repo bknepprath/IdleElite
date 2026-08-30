@@ -3,35 +3,26 @@
     {
       label: "Core",
       links: [
-        { href: "planning-system.md", label: "Planning Board", description: "Current direction" },
-        { href: "module-type-dictionary.html", label: "Type Dictionary", description: "Module meanings" },
-        { href: "ui-navigation-controls-plan.html", label: "UI Controls", description: "Navigation dock plan" },
-        { href: "activity-database.html", label: "Activity Data", description: "Numbers and rewards" }
+        { href: "planning-system.md", label: "Planning Board" },
+        { href: "module-type-dictionary.html", label: "Type Dictionary" },
+        { href: "ui-navigation-controls-plan.html", label: "UI Controls" },
+        { href: "activity-database.html", label: "Activity Data" }
       ]
     },
     {
       label: "References",
       links: [
-        { href: "fishing-rework-brainstorm.html", label: "Fishing Status", description: "Live fishing setup" }
+        { href: "fishing-rework-brainstorm.html", label: "Fishing Status" }
       ]
     }
   ];
 
-  function currentKey() {
-    const path = (location.pathname || "").split("/").pop() || "";
-    const view = new URLSearchParams(location.search).get("view");
-    return path + (view ? "?" + view : "");
-  }
-
-  function linkKey(href) {
-    const url = new URL(href, location.href);
-    const path = url.pathname.split("/").pop() || "";
-    const view = url.searchParams.get("view");
-    return path + (view ? "?" + view : "");
+  function pageKey(href) {
+    return new URL(href, location.href).pathname.split("/").pop() || "";
   }
 
   function renderNav(container) {
-    const here = currentKey();
+    const here = pageKey(location.href);
     container.classList.add("docs-nav");
     container.setAttribute("aria-label", "Docs");
     container.replaceChildren();
@@ -56,13 +47,7 @@
         linkTitle.className = "docs-nav-link-title";
         linkTitle.textContent = item.label;
         a.appendChild(linkTitle);
-        if (item.description) {
-          const desc = document.createElement("span");
-          desc.className = "docs-nav-link-desc";
-          desc.textContent = item.description;
-          a.appendChild(desc);
-        }
-        if (linkKey(item.href) === here) {
+        if (pageKey(item.href) === here) {
           a.classList.add("is-current");
           a.setAttribute("aria-current", "page");
         }

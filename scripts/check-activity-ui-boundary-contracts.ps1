@@ -60,42 +60,25 @@ $passiveFirepitSurface = Get-Content -LiteralPath $passiveFirepitSurfacePath -Ra
 $thievingSurface = Get-Content -LiteralPath $thievingSurfacePath -Raw
 $boundaryMap = Get-Content -LiteralPath $boundaryMapPath -Raw
 
-$boundaries = @{
-    "skill detail shell" = @("_render_skill_detail", "_detail_stack_entry", "_build_detail_jump_arrows", "_add_activity_back_arrow")
-    "action cards" = @("_build_detail_interactive_action_card", "root_height", "root_height_for_action", "mat_collection_layout_height", "preview_root_height")
-    "passive and special modules" = @("_build_passive_module_card", "_build_thieving_heist_card", "_build_fishing_area_module", "_build_fishing_offer_module")
-    "mastery medals" = @("level", "progress_pct", "mastery_medal_texture", "mastery_medal_visual_texture", "for_save")
-    "unlocks and lockpads" = @("cropped_padlock_texture", "cropped_padlock_hit_image", "_action_has_pending_unlock_readiness", "_apply_pending_activity_unlock_readiness")
-}
-
-foreach ($boundary in ($boundaries.Keys | Sort-Object)) {
-    foreach ($functionName in $boundaries[$boundary]) {
-        if ($functionName -eq "_build_passive_module_card") {
-            Assert-FunctionExists $passiveFirepitSurface $functionName $boundary
-        } elseif ($functionName -eq "_build_detail_interactive_action_card" -or $functionName -eq "_render_skill_detail" -or $functionName -eq "_detail_stack_entry" -or $functionName -eq "_build_detail_jump_arrows" -or $functionName -eq "_add_activity_back_arrow") {
-            Assert-FunctionExists $skillDetailSurface $functionName $boundary
-        } elseif ($functionName -eq "root_height" -or $functionName -eq "root_height_for_action" -or $functionName -eq "mat_collection_layout_height" -or $functionName -eq "preview_root_height") {
-            Assert-FunctionExists $activityCardStyles $functionName $boundary
-        } elseif ($functionName -eq "_build_thieving_heist_card") {
-            Assert-FunctionExists $thievingSurface $functionName $boundary
-        } elseif ($functionName -eq "_build_fishing_area_module" -or $functionName -eq "_build_fishing_offer_module") {
-            Assert-FunctionExists $fishingUiSurface $functionName $boundary
-        } elseif ($functionName -eq "level" -or $functionName -eq "progress_pct" -or $functionName -eq "for_save") {
-            Assert-FunctionExists $masteryState $functionName $boundary
-        } elseif ($functionName -eq "mastery_medal_texture" -or $functionName -eq "mastery_medal_visual_texture") {
-            Assert-FunctionExists $achievementPresentation $functionName $boundary
-        } elseif ($functionName -eq "cropped_padlock_texture" -or $functionName -eq "cropped_padlock_hit_image") {
-            Assert-FunctionExists $activityLockRig $functionName $boundary
-        } elseif ($functionName -eq "_action_has_pending_unlock_readiness") {
-            Assert-FunctionExists $activityUnlockRuntime $functionName $boundary
-        } elseif ($functionName -eq "_apply_pending_activity_unlock_readiness") {
-            Assert-FunctionExists $activityUnlockCeremonySurface "apply_pending_readiness" $boundary
-        } else {
-            Assert-FunctionExists $main $functionName $boundary
-        }
+$boundaryChecks = @(
+    ,@($skillDetailSurface, "skill detail shell", "_render_skill_detail", "_detail_stack_entry", "_build_detail_jump_arrows", "_add_activity_back_arrow", "_build_detail_interactive_action_card")
+    ,@($activityCardStyles, "action cards", "root_height", "root_height_for_action", "mat_collection_layout_height", "preview_root_height")
+    ,@($passiveFirepitSurface, "passive and special modules", "_build_passive_module_card")
+    ,@($thievingSurface, "passive and special modules", "_build_thieving_heist_card")
+    ,@($fishingUiSurface, "passive and special modules", "_build_fishing_area_module", "_build_fishing_offer_module")
+    ,@($masteryState, "mastery medals", "level", "progress_pct", "for_save")
+    ,@($achievementPresentation, "mastery medals", "mastery_medal_texture", "mastery_medal_visual_texture")
+    ,@($activityLockRig, "unlocks and lockpads", "cropped_padlock_texture", "cropped_padlock_hit_image")
+    ,@($activityUnlockRuntime, "unlocks and lockpads", "_action_has_pending_unlock_readiness")
+)
+foreach ($check in $boundaryChecks) {
+    foreach ($functionName in $check[2..($check.Count - 1)]) {
+        Assert-FunctionExists $check[0] $functionName $check[1]
         Assert-True ($boundaryMap -match [regex]::Escape($functionName)) "Activity UI boundary map must mention $functionName."
     }
 }
+Assert-FunctionExists $activityUnlockCeremonySurface "apply_pending_readiness" "unlocks and lockpads"
+Assert-True ($boundaryMap -match [regex]::Escape("_apply_pending_activity_unlock_readiness")) "Activity UI boundary map must mention _apply_pending_activity_unlock_readiness."
 
 foreach ($functionName in @("action_card_background_edge_underlay", "activity_card_depth_layer", "prism_connector_overlay", "activity_card_shade_layer", "ensure_activity_card_shade")) {
     Assert-FunctionExists $activityCardStyles $functionName "action card chrome factory"

@@ -2317,7 +2317,7 @@ func _sync_action_stat_box_input_enabled(card: Dictionary, enabled: bool) -> voi
 
 
 func _action_stat_label(text: String) -> Label:
-	var label := host._label(text, 60, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER) as Label
+	var label := host._label(text, 120, COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER) as Label
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2349,7 +2349,7 @@ func _action_stat_box(label: Label, interactive := false, skill_id := "", action
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.z_index = 2
 	box.add_child(stack)
-	label.add_theme_font_size_override("font_size", 66)
+	label.add_theme_font_size_override("font_size", 96)
 	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	label.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -2357,7 +2357,7 @@ func _action_stat_box(label: Label, interactive := false, skill_id := "", action
 	label.z_index = 10
 	stack.add_child(label)
 	var title_label := _action_stat_label(str(stat_kind).to_upper())
-	title_label.add_theme_font_size_override("font_size", 48)
+	title_label.add_theme_font_size_override("font_size", 96)
 	title_label.add_theme_color_override("font_color", ThemeStyles.ink_color(host.dark_mode_enabled, host.COLOR_INK, host.COLOR_DARK_INK))
 	title_label.add_theme_constant_override("outline_size", 0)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -2374,10 +2374,10 @@ func _compact_action_stat_box(box: Control, value_label: Label) -> void:
 	if box == null or value_label == null:
 		return
 	box.custom_minimum_size = Vector2(214, 142)
-	value_label.add_theme_font_size_override("font_size", 52)
+	value_label.add_theme_font_size_override("font_size", 96)
 	var title_label := (value_label.get_meta("stat_title_label") as Label) if value_label.has_meta("stat_title_label") else null
 	if title_label != null:
-		title_label.add_theme_font_size_override("font_size", 36)
+		title_label.add_theme_font_size_override("font_size", 96)
 
 
 func _normal_activity_stat_item(value_label: Label, stat_kind: String, interactive := false, skill_id := "", action_id := "") -> Control:
@@ -2415,7 +2415,7 @@ func _normal_activity_stat_item(value_label: Label, stat_kind: String, interacti
 	row.add_child(symbol)
 	item.set_meta("normal_activity_stat_symbol", symbol)
 	item.set_meta("normal_activity_stat_value_label", value_label)
-	value_label.add_theme_font_size_override("font_size", 86)
+	value_label.add_theme_font_size_override("font_size", 96)
 	value_label.add_theme_color_override("font_color", Color.WHITE)
 	value_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	value_label.add_theme_constant_override("outline_size", 32)
@@ -6065,7 +6065,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	margin.add_child(row)
 
 	var art_slot := MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 48 if uses_flat_normal_card else 42)
+	art_slot.add_theme_constant_override("margin_top", 152 if uses_flat_normal_card else 146)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel := Panel.new()
 	var art_panel_size := Vector2(400, 400) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
@@ -6119,14 +6119,11 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		title_row.z_as_relative = false
 		copy.add_child(title_row)
 
-	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
-	if uses_flat_normal_card:
-		action_name_label.add_theme_font_size_override("font_size", 82)
+	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), ActivityCardStyles.ACTIVITY_CARD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	ActivityCardStyles.configure_activity_card_title(action_name_label)
 	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
-	action_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	action_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	action_name_label.set_meta("module_ui_title_label", true)
 	action_name_label.set_meta("activity_card_locked_title_z_index", 0)
 	action_name_label.z_index = ActivityCardStyles.activity_card_title_z_index(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action), action_name_label, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
@@ -6148,7 +6145,21 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		build_title_button_label.add_theme_constant_override("outline_size", 24)
 		build_title_button_panel.add_child(build_title_button_label)
 	else:
-		copy.add_child(action_name_label)
+		var title_spacer := Control.new()
+		title_spacer.custom_minimum_size = Vector2(0, 120)
+		title_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		copy.add_child(title_spacer)
+		var title_band := MarginContainer.new()
+		title_band.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		title_band.offset_left = 16
+		title_band.offset_right = -16
+		title_band.offset_top = 32
+		title_band.offset_bottom = 172
+		title_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		title_band.z_index = 200
+		title_band.visible = margin.visible
+		pop_card.add_child(title_band)
+		title_band.add_child(action_name_label)
 	card_root.set_meta("module_ui_title_label_id", action_name_label.get_instance_id())
 	pop_card.set_meta("module_ui_title_label_id", action_name_label.get_instance_id())
 

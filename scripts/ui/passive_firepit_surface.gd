@@ -1174,13 +1174,12 @@ func _passive_collect_button(pop_card: Control, module_id: String, interactive: 
 
 
 func _passive_module_title(card_root: Control, pop_card: Control, skill_id: String, action: Dictionary, default_name: String, title_width: float) -> Label:
-	var title = host._label(str(action.get("name", default_name)), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label(str(action.get("name", default_name)), ActivityCardStyles.ACTIVITY_CARD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	ActivityCardStyles.configure_activity_card_title(title)
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	title.add_theme_constant_override("outline_size", 34)
-	title.autowrap_mode = TextServer.AUTOWRAP_OFF
-	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.position = Vector2(74, 48)
-	title.size = Vector2(title_width, 106)
+	title.size = Vector2(title_width, 140)
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title.set_meta("module_ui_title_label", true)
 	title.set_meta("activity_card_locked_title_z_index", 200)

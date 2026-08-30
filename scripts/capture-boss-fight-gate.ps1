@@ -15,6 +15,7 @@ $capturePath = Join-Path $captureDir "boss-rooster-gate-desktop-${WindowWidth}x$
 $scriptPath = Join-Path $captureDir "capture_boss_fight_gate.gd"
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
+Assert-True ($ViewportWidth -gt 0 -and $ViewportHeight -gt 0 -and $WindowWidth -gt 0 -and $WindowHeight -gt 0) "Capture dimensions must be positive."
 New-Item -ItemType Directory -Path $captureDir -Force | Out-Null
 Remove-Item -LiteralPath $capturePath -Force -ErrorAction SilentlyContinue
 
@@ -51,33 +52,29 @@ func _run() -> void:
 		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
-	scene.get("activity_data_catalog").call("load_action_data", scene)
-	scene.call("_save_runtime").call("_init_state")
-	scene.startup_initialized = true
+	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
+	if not await _wait_for_boot_ready(scene):
+		_fail("main scene did not become capture-ready")
+		return
 	var fight := scene.skills["fight"] as Dictionary
 	fight["level"] = 8
 	fight["xp"] = maxi(int(fight.get("xp", 0)), SkillState.xp_for_level(8))
 	scene.skills["fight"] = fight
 	scene.call("_activity_unlock_runtime").call("_finalize_manual_activity_unlock", "fight", "face-the-rooster", "boss capture unlock")
-	var action := scene.call("_action_data", "fight", "face-the-rooster") as Dictionary
-	if action.is_empty():
-		_fail("boss action missing")
-		return
-	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
-	var card := built.get("card", {}) as Dictionary
-	var card_root := built.get("card_root") as Control
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "fight")
+	scene.call("_render_screen", false, -1, false)
+	for _frame in range(6):
+		await process_frame
+	await scene.call("_scroll_to_activity_card", "face-the-rooster", false, true)
+	for _frame in range(8):
+		await process_frame
+	var boss_key := str(scene.call("_action_key", "fight", "face-the-rooster"))
+	var card := scene.get("action_cards").get(boss_key, {}) as Dictionary
+	var card_root := card.get("card_root") as Control
 	if card_root == null:
 		_fail("boss card missing")
 		return
-	scene.visible = false
-	card_root.set_anchors_preset(Control.PRESET_FULL_RECT)
-	card_root.offset_left = 120.0
-	card_root.offset_right = -120.0
-	card_root.offset_top = 900.0
-	card_root.offset_bottom = -900.0
-	root.add_child(card_root)
-	var boss_key := str(scene.call("_action_key", "fight", "face-the-rooster"))
-	scene.call("_skill_detail_surface").call("_register_action_card", boss_key, card)
 	if not scene.call("_action_runtime").call("_start_action_from_card_tap", "fight", "face-the-rooster", boss_key):
 		_fail("boss action did not start")
 		return
@@ -99,12 +96,30 @@ func _run() -> void:
 		scene.queue_free()
 		quit(0)
 		return
-	var image := root.get_texture().get_image()
+	var texture := root.get_texture()
+	if texture == null:
+		_fail("capture texture missing")
+		return
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		_fail("capture image empty")
+		return
 	var capture_path := OS.get_environment("IDLE_ELITE_BOSS_CAPTURE_PATH")
 	var result := image.save_png(capture_path)
+	if result != OK:
+		_fail("capture save failed: %s" % str(result))
+		return
 	print("boss-fight-capture path=%s result=%s size=%sx%s display=%s" % [capture_path, str(result), str(image.get_width()), str(image.get_height()), DisplayServer.get_name()])
 	scene.queue_free()
 	quit(0)
+
+
+func _wait_for_boot_ready(scene: Node) -> bool:
+	for _i in range(240):
+		if bool(scene.get("startup_initialized")):
+			return true
+		await process_frame
+	return false
 
 
 func _force_rooster_damage_flash(root_node: Node) -> void:

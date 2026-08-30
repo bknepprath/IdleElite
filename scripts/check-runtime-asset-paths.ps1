@@ -76,10 +76,26 @@ function Test-IsIgnoredSourcePath {
     return $false
 }
 
+function Get-ProjectSourceFiles {
+    param([string]$Directory = $projectRoot)
+
+    foreach ($entry in Get-ChildItem -LiteralPath $Directory -Force) {
+        $relativePath = Convert-ToProjectRelativePath $entry.FullName
+        if (Test-IsIgnoredSourcePath $relativePath) {
+            continue
+        }
+        if ($entry.PSIsContainer) {
+            Get-ProjectSourceFiles -Directory $entry.FullName
+        } else {
+            $entry
+        }
+    }
+}
+
 $pathsByResourcePath = @{}
 $exportExcludeFilters = New-Object System.Collections.Generic.List[string]
 $sourceFiles = @(
-    Get-ChildItem -LiteralPath $projectRoot -File -Recurse |
+    Get-ProjectSourceFiles |
         Where-Object {
             $relativePath = Convert-ToProjectRelativePath $_.FullName
             ($sourceFileExtensions -contains $_.Extension) -and -not (Test-IsIgnoredSourcePath $relativePath)

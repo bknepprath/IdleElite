@@ -15,7 +15,6 @@ func _init(host_ref) -> void:
 
 
 func get_activity_queue() -> Array:
-	activity_queue = _activity_queue_unlocked_only(_normalized_queue(activity_queue))
 	return activity_queue.duplicate()
 
 
@@ -33,7 +32,6 @@ func add_activity_to_queue(entry) -> bool:
 	if activity_queue.has(key):
 		return false
 	activity_queue.append(key)
-	activity_queue = _activity_queue_unlocked_only(_normalized_queue(activity_queue))
 	host._mark_save_dirty("activity queued")
 	host.save_game()
 	host._skill_swipe_activity_surface()._refresh_activity_queue_visuals()
@@ -104,6 +102,10 @@ func _normalized_queue(value: Variant) -> Array:
 	var seen := {}
 	for raw_key in value:
 		var key := ModuleUiRuntime.normalize(raw_key)
+		if key.begins_with(ModuleUiRuntime.PREFIX_ACTION):
+			var parts := key.substr(ModuleUiRuntime.PREFIX_ACTION.length()).split(":", false, 2)
+			if parts.size() >= 2:
+				key = ModuleUiRuntime.action(str(parts[0]), str(parts[1]), host.FISHING_ACTION_ID_ALIASES)
 		if key.is_empty() or seen.has(key):
 			continue
 		seen[key] = true
@@ -120,18 +122,17 @@ func _next_index(current_index: int, queue_size: int) -> int:
 func _activity_queue_unlocked_only(keys: Array) -> Array:
 	var filtered: Array = []
 	for raw_key in keys:
-		var key: String = ModuleUiRuntime.normalize(raw_key)
+		var key := str(raw_key)
 		if not key.is_empty() and _activity_queue_key_is_queueable(key):
 			filtered.append(key)
 	return filtered
 
 
 func _activity_queue_key_is_queueable(module_key: String) -> bool:
-	var key: String = ModuleUiRuntime.normalize(module_key)
-	if key.is_empty():
+	if module_key.is_empty():
 		return false
-	if key.begins_with("action:"):
-		var action_parts: PackedStringArray = key.substr("action:".length()).split(":", false, 2)
+	if module_key.begins_with("action:"):
+		var action_parts: PackedStringArray = module_key.substr("action:".length()).split(":", false, 2)
 		if action_parts.size() < 2:
 			return false
 		var skill_id: String = str(action_parts[0])
@@ -142,8 +143,8 @@ func _activity_queue_key_is_queueable(module_key: String) -> bool:
 			and not host._passive_modules_runtime().is_passive_action(action)
 			and not host._is_event_action(action)
 		)
-	if key.begins_with("fishing_area:"):
-		return host._skill_detail_surface()._module_ui_fishing_area_is_unlocked(key)
+	if module_key.begins_with("fishing_area:"):
+		return host._skill_detail_surface()._module_ui_fishing_area_is_unlocked(module_key)
 	return false
 
 

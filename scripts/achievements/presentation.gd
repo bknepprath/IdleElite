@@ -106,10 +106,7 @@ static func skill_section() -> StyleBoxFlat:
 
 
 static func skill_level_targets() -> Array:
-	var targets := []
-	for level in range(2, 100):
-		targets.append(level)
-	return targets
+	return range(2, 100)
 
 
 static func same_tier_medal_count(target: int) -> int:

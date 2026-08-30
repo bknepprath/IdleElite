@@ -3,11 +3,11 @@ extends Control
 class ActivityProgressOpportunityOverlay:
 	extends Control
 
-	const WINDOW_VERTICAL_OUTSET := 22.0
-	const WINDOW_RADIUS := 18.0
-	const WINDOW_OUTLINE_GROW := 3.0
-	const WINDOW_STROKE_INSET := 5.0
-	const WINDOW_STROKE_WIDTH := 12.0
+	const WINDOW_VERTICAL_OUTSET := 24.0
+	const WINDOW_RADIUS := 20.0
+	const WINDOW_OUTLINE_GROW := 4.0
+	const WINDOW_STROKE_INSET := 6.0
+	const WINDOW_STROKE_WIDTH := 14.0
 	const WINDOW_HOLE_INSET := WINDOW_STROKE_INSET + WINDOW_STROKE_WIDTH
 
 	var progress_rail: Control
@@ -64,7 +64,8 @@ class ActivityProgressOpportunityOverlay:
 		var offset := Vector2.ZERO
 		var shake_wave := sin(t * PI * 8.0) * (1.0 - t) * direction
 		offset = Vector2(shake_wave * 11.0, absf(shake_wave) * 2.0)
-		var stroke := Color("#ff4040").lerp(Color("#8b8982"), smoothstep(0.32, 1.0, t))
+		var feedback_color := Color("#35d86d") if feedback_mode == "success" else Color("#ff4040")
+		var stroke := feedback_color.lerp(Color("#8b8982"), smoothstep(0.32, 1.0, t))
 		var outline := Color("#15120b")
 		outline.a = 0.96 * feedback_alpha
 		stroke.a = feedback_alpha
@@ -200,7 +201,7 @@ class ActivityProgressOpportunityOverlay:
 				false
 			)
 
-const OPPORTUNITY_WINDOW_VERTICAL_OUTSET := 22.0
+const OPPORTUNITY_WINDOW_VERTICAL_OUTSET := 24.0
 const OPPORTUNITY_WINDOW_OVERLAY_Z := 80
 const ROUNDED_FILL_ROWS := 18
 var value := 0.0
@@ -303,8 +304,6 @@ func _opportunity_windows_equal(next_windows: Array[Vector2]) -> bool:
 	return true
 
 func play_opportunity_feedback(success: bool, windows: Array[Vector2], live_window := false) -> void:
-	if success:
-		return
 	opportunity_feedback_windows = windows.duplicate()
 	if live_window and not windows.is_empty():
 		opportunity_windows = windows.duplicate()

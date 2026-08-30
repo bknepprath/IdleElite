@@ -69,8 +69,6 @@ const ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB := -18.0
 const ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB := -15.0
 const MODULE_PIN_ENTRY_SFX_PATH := "res://assets/sfx/pin-candidates/pin_exit_pull_04_bright_tick.wav"
 const MODULE_PIN_EXIT_SFX_PATH := "res://assets/sfx/pin-candidates/pin_entry_thwick_01_tight.wav"
-const ACTIVITY_START_SFX_PATH := DEFAULT_BUTTON_SFX_PATH
-const ACTIVITY_START_SFX_PLAYER_COUNT := 3
 const ACTIVITY_START_SFX_VOLUME_DB := -1.0
 const ACTIVITY_SUCCESS_SFX_VOLUME_DB := -7.0
 const ACTIVITY_SUCCESS_DUCKED_SFX_VOLUME_DB := -15.0
@@ -119,7 +117,6 @@ const DEFAULT_SFX_VOLUME := 0.65
 const AUDIO_SETTINGS_VERSION := 4
 const ACTIVITY_UNLOCK_CHAIN_FALL_SECONDS := 1.15
 const ACTIVITY_BONUS_JINGLE_DELAY := 0.08
-const EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC := 12
 
 var host: Node
 var music_volume := DEFAULT_MUSIC_VOLUME
@@ -146,9 +143,6 @@ var music_quiet_fade_start_gains := [0.0, 0.0, 0.0]
 var music_base_only_seconds := 0.0
 var last_default_button_sfx_msec := -100000
 var click_player: AudioStreamPlayer
-var activity_start_player: AudioStreamPlayer
-var activity_start_players: Array[AudioStreamPlayer] = []
-var activity_start_player_index := 0
 var success_players: Array[AudioStreamPlayer] = []
 var crit_success_players: Array[AudioStreamPlayer] = []
 var failure_player: AudioStreamPlayer
@@ -181,7 +175,6 @@ var passive_upgrade_player: AudioStreamPlayer
 var audio_stream_cache := {}
 var music_stream_cache := {}
 var extended_audio_ready := false
-var extended_audio_warming := false
 var chain_move_audio_ready := false
 var chain_audio_scroll_direction := 0
 var chain_audio_scroll_focus_seconds := 0.0
@@ -209,7 +202,6 @@ func reset_runtime_caches() -> void:
 	audio_stream_cache.clear()
 	music_stream_cache.clear()
 	extended_audio_ready = false
-	extended_audio_warming = false
 
 
 func _dispose_players(players) -> void:
@@ -341,41 +333,10 @@ func _ensure_audio_unlock_ping_player() -> void:
 	audio_unlock_ping_player.volume_db = -16.0
 
 
-func _ensure_activity_start_players() -> void:
-	if activity_start_players.size() >= ACTIVITY_START_SFX_PLAYER_COUNT:
-		var all_valid := true
-		for raw_player in activity_start_players:
-			var player := raw_player as AudioStreamPlayer
-			if player == null or not is_instance_valid(player) or player.stream != _load_sfx_stream(ACTIVITY_START_SFX_PATH):
-				all_valid = false
-				break
-		if all_valid:
-			return
-	for raw_player in activity_start_players:
-		var player := raw_player as AudioStreamPlayer
-		if player != null and is_instance_valid(player):
-			player.stop()
-			player.queue_free()
-	activity_start_players.clear()
-	activity_start_player_index = 0
-	_ensure_audio_buses()
-	var activity_start_stream := _load_sfx_stream(ACTIVITY_START_SFX_PATH)
-	for i in range(ACTIVITY_START_SFX_PLAYER_COUNT):
-		var player := AudioStreamPlayer.new()
-		player.stream = activity_start_stream
-		player.bus = SFX_BUS_NAME
-		player.volume_db = ACTIVITY_START_SFX_VOLUME_DB
-		add_child(player)
-		activity_start_players.append(player)
-	activity_start_player = activity_start_players[0] if not activity_start_players.is_empty() else null
-
-
 func _build_extended_audio() -> void:
 	if extended_audio_ready:
 		return
-	extended_audio_warming = false
 	_ensure_click_player()
-	Callable(self, "_ensure_activity_start_players").call()
 	if success_players.is_empty():
 		_append_path_players(success_players, ACTIVITY_SUCCESS_SFX_PATHS, Callable(self, "_sfx"), ACTIVITY_SUCCESS_SFX_VOLUME_DB)
 	if crit_success_players.is_empty():
@@ -403,144 +364,6 @@ func _build_extended_audio() -> void:
 	module_pin_entry_player = _ensure_path_player(module_pin_entry_player, MODULE_PIN_ENTRY_SFX_PATH, Callable(self, "_sfx"), MODULE_PIN_ENTRY_SFX_VOLUME_DB)
 	module_pin_exit_player = _ensure_path_player(module_pin_exit_player, MODULE_PIN_EXIT_SFX_PATH, Callable(self, "_sfx"), MODULE_PIN_EXIT_SFX_VOLUME_DB)
 	extended_audio_ready = true
-
-
-func _warm_extended_audio_async() -> void:
-	if extended_audio_ready or extended_audio_warming or not is_inside_tree():
-		return
-	extended_audio_warming = true
-	await get_tree().process_frame
-	if not is_inside_tree() or extended_audio_ready:
-		extended_audio_warming = false
-		return
-	var last_yield_msec := Time.get_ticks_msec()
-	_ensure_click_player()
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	Callable(self, "_ensure_activity_start_players").call()
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	if success_players.is_empty():
-		last_yield_msec = await _audio_warm_path_players(success_players, ACTIVITY_SUCCESS_SFX_PATHS, ACTIVITY_SUCCESS_SFX_VOLUME_DB, last_yield_msec)
-		if last_yield_msec < 0:
-			return
-	if crit_success_players.is_empty():
-		last_yield_msec = await _audio_warm_path_players(crit_success_players, ACTIVITY_CRIT_SFX_PATHS, ACTIVITY_CRIT_SFX_VOLUME_DB, last_yield_msec)
-		if last_yield_msec < 0:
-			return
-	padlock_cluster_player = _ensure_path_player(padlock_cluster_player, PADLOCK_CLUSTER_SFX_PATH, Callable(self, "_sfx"))
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	if info_chip_upgrade_players.is_empty():
-		last_yield_msec = await _audio_warm_repeated_path_players(info_chip_upgrade_players, "res://assets/sfx/xp_spark.wav", INFO_CHIP_UPGRADE_SFX_PLAYER_COUNT, INFO_CHIP_UPGRADE_SFX_VOLUME_DB, last_yield_msec)
-		if last_yield_msec < 0:
-			return
-	failure_player = _ensure_path_player(failure_player, "res://assets/sfx/warm_reject.wav", Callable(self, "_sfx"))
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	fishing_failure_player = _ensure_path_player(fishing_failure_player, FISHING_FAILURE_SFX_PATH, Callable(self, "_sfx"), FISHING_FAILURE_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	chicken_death_player = _ensure_path_player(chicken_death_player, CHICKEN_DEATH_SFX_PATH, Callable(self, "_sfx"), CHICKEN_DEATH_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	goblin_shield_drop_player = _ensure_path_player(goblin_shield_drop_player, GOBLIN_SHIELD_DROP_SFX_PATH, Callable(self, "_sfx"), GOBLIN_SHIELD_DROP_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	if fight_punch_players.size() != FIGHT_PUNCH_SFX_PATHS.size():
-		_dispose_players(fight_punch_players)
-		last_yield_msec = await _audio_warm_path_players(fight_punch_players, FIGHT_PUNCH_SFX_PATHS, FIGHT_PUNCH_SFX_VOLUME_DB, last_yield_msec)
-		if last_yield_msec < 0:
-			return
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	opportunity_success_player = _ensure_path_player(opportunity_success_player, "res://assets/sfx/xp_spark.wav", Callable(self, "_sfx"), ACTION_OPPORTUNITY_SUCCESS_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	opportunity_miss_player = _ensure_path_player(opportunity_miss_player, "res://assets/sfx/warm_reject.wav", Callable(self, "_sfx"), ACTION_OPPORTUNITY_MISS_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	level_player = _ensure_path_player(level_player, "res://assets/sfx/level_up_jingle.wav", Callable(self, "_sfx"), LEVEL_UP_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	medal_player = _ensure_path_player(medal_player, "res://assets/sfx/xp_spark.wav", Callable(self, "_sfx"), MEDAL_REWARD_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	bonus_jingle_player = _ensure_path_player(bonus_jingle_player, "res://assets/sfx/xp_spark.wav", Callable(self, "_sfx"), BONUS_JINGLE_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	bonus_jingle_echo_player = _ensure_path_player(bonus_jingle_echo_player, "res://assets/sfx/xp_spark.wav", Callable(self, "_sfx"), BONUS_JINGLE_ECHO_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	fish_eat_player = _ensure_path_player(fish_eat_player, "res://assets/sfx/xp_spark.wav", Callable(self, "_sfx"), -16.0)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	if passive_log_land_players.is_empty():
-		last_yield_msec = await _audio_warm_repeated_path_players(passive_log_land_players, "res://assets/sfx/click.wav", 4, -18.0, last_yield_msec, -1.5)
-		if last_yield_msec < 0:
-			return
-	passive_upgrade_player = _ensure_path_player(passive_upgrade_player, "res://assets/sfx/click.wav", Callable(self, "_sfx"), -15.0)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	module_pin_entry_player = _ensure_path_player(module_pin_entry_player, MODULE_PIN_ENTRY_SFX_PATH, Callable(self, "_sfx"), MODULE_PIN_ENTRY_SFX_VOLUME_DB)
-	last_yield_msec = await _audio_warm_next(last_yield_msec)
-	if last_yield_msec < 0:
-		return
-	module_pin_exit_player = _ensure_path_player(module_pin_exit_player, MODULE_PIN_EXIT_SFX_PATH, Callable(self, "_sfx"), MODULE_PIN_EXIT_SFX_VOLUME_DB)
-	extended_audio_ready = true
-	extended_audio_warming = false
-
-
-func _audio_warm_path_players(players, paths: Array, volume_db: float, last_yield_msec: int) -> int:
-	for raw_path in paths:
-		var player := _sfx(str(raw_path))
-		player.volume_db = volume_db
-		players.append(player)
-		last_yield_msec = await _audio_warm_next(last_yield_msec)
-		if last_yield_msec < 0:
-			return -1
-	return last_yield_msec
-
-
-func _audio_warm_repeated_path_players(players, path: String, count: int, base_volume_db: float, last_yield_msec: int, volume_step_db := 0.0) -> int:
-	for i in range(count):
-		var player := _sfx(path)
-		player.volume_db = base_volume_db + float(i) * volume_step_db
-		players.append(player)
-		last_yield_msec = await _audio_warm_next(last_yield_msec)
-		if last_yield_msec < 0:
-			return -1
-	return last_yield_msec
-
-
-func _audio_warm_next(last_yield_msec: int) -> int:
-	last_yield_msec = await _audio_warm_tick(last_yield_msec)
-	if not extended_audio_warming or extended_audio_ready:
-		return -1
-	return last_yield_msec
-
-
-func _audio_warm_tick(last_yield_msec: int) -> int:
-	if Time.get_ticks_msec() - last_yield_msec >= EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC:
-		await get_tree().process_frame
-		return Time.get_ticks_msec()
-	return last_yield_msec
 
 
 func _ensure_extended_audio() -> void:
@@ -827,6 +650,7 @@ func _play_level_up_sfx() -> void:
 
 
 func _play_click_sfx() -> void:
+	_ensure_click_player()
 	_play(click_player)
 
 
@@ -949,6 +773,7 @@ func _fight_punch_player_for_hit() -> AudioStreamPlayer:
 
 
 func _play_action_opportunity_sfx(success: bool) -> void:
+	_ensure_extended_audio()
 	var player := opportunity_success_player if success else opportunity_miss_player
 	if player == null or not player.is_inside_tree() or not _can_play_audio():
 		return
@@ -1099,12 +924,12 @@ func _play_chain_move_jingle_mix(kind := "drag", intensity := 0.55, source: Vari
 func _ensure_chain_move_audio() -> void:
 	if chain_move_audio_ready:
 		return
+	_dispose_players(chain_move_players)
+	_dispose_players(chain_jingle_players)
 	chain_move_audio_ready = true
-	chain_move_players.clear()
 	for path in CHAIN_MOVE_SFX_PATHS:
 		for i in range(CHAIN_MOVE_PLAYER_COPIES):
 			chain_move_players.append(_sfx(path))
-	chain_jingle_players.clear()
 	for i in range(3):
 		var player := _sfx(CHAIN_JINGLE_SFX_PATH)
 		player.volume_db = -8.0 - float(i) * 3.0
@@ -1206,6 +1031,7 @@ func _finish_capped_chain_jingle(player_id: int, volume_db: float) -> void:
 	var player := instance_from_id(player_id) as AudioStreamPlayer
 	if player == null or not is_instance_valid(player):
 		return
+	player.remove_meta("chain_jingle_fade_tween")
 	player.stop()
 	player.volume_db = volume_db
 
@@ -1236,6 +1062,7 @@ func _play_activity_crit_sound(streak_step: int, mega_crit := false, crit_chain_
 func _play_bonus_jingle() -> void:
 	if not _can_play_audio():
 		return
+	_ensure_extended_audio()
 	if not _play_reward_accent(bonus_jingle_player, 1.18, BONUS_JINGLE_SFX_VOLUME_DB, REWARD_SFX_PRIORITY_BONUS, "bonus", REWARD_SFX_BONUS_EXCLUSIVE_MSEC):
 		return
 	var tween := create_tween()
@@ -1268,9 +1095,10 @@ func _process_music_flow(delta: float) -> void:
 		music_ultimate_boost_seconds = maxf(0.0, music_ultimate_boost_seconds - delta)
 	if flow_failure_drag > 0.0:
 		flow_failure_drag = maxf(0.0, flow_failure_drag - delta * 0.22)
+	var action_running := not _host_running_action_id().is_empty()
 	if (
 		not music_cycle_active
-		and _host_running_action_id().is_empty()
+		and not action_running
 		and music_lockout_seconds <= 0.0
 		and music_start_fade_remaining <= 0.0
 		and music_ultimate_boost_seconds <= 0.0
@@ -1282,9 +1110,9 @@ func _process_music_flow(delta: float) -> void:
 		music_layer_target_gains = _music_targets_for_intensity(0)
 		return
 	flow_idle_seconds = minf(MUSIC_FLOW_DEAD_SECONDS, flow_idle_seconds + delta)
-	var heat_decay := 0.04 if not _host_running_action_id().is_empty() else 0.38
+	var heat_decay := 0.04 if action_running else 0.38
 	flow_heat = maxf(0.0, flow_heat - delta * heat_decay)
-	if not _host_running_action_id().is_empty():
+	if action_running:
 		flow_active_action_seconds += delta
 	if music_cycle_active:
 		_ensure_music_playing()
@@ -1304,7 +1132,7 @@ func _ensure_music_playing() -> void:
 		return
 	var started_count := 0
 	for player in music_players:
-		if player == null or not player.is_inside_tree():
+		if player == null or not is_instance_valid(player) or not player.is_inside_tree():
 			continue
 		player.stream_paused = false
 		player.volume_db = MUSIC_SILENCE_DB
@@ -1417,7 +1245,8 @@ func _saved_music_groove_floor() -> int:
 func _music_flow_target_intensity() -> int:
 	if not audio_unlocked_by_input or not music_cycle_active or music_lockout_seconds > 0.0:
 		return 0
-	if _host_running_action_id().is_empty() and flow_idle_seconds >= MUSIC_FLOW_DEAD_SECONDS:
+	var action_running := not _host_running_action_id().is_empty()
+	if not action_running and flow_idle_seconds >= MUSIC_FLOW_DEAD_SECONDS:
 		return 0
 	var effective_heat := flow_heat + float(_host_activity_streak_count()) * 0.72 - flow_failure_drag
 	var intensity := 1
@@ -1425,7 +1254,7 @@ func _music_flow_target_intensity() -> int:
 		intensity = 2
 	if music_ultimate_boost_seconds > 0.0 and effective_heat >= 11.0:
 		intensity = 3
-	if _host_running_action_id().is_empty() and flow_idle_seconds > MUSIC_FLOW_IDLE_FADE_SECONDS:
+	if not action_running and flow_idle_seconds > MUSIC_FLOW_IDLE_FADE_SECONDS:
 		intensity = mini(intensity, 1)
 	if flow_failure_drag >= 2.7:
 		intensity = maxi(0, intensity - 1)

@@ -1,30 +1,50 @@
 $ErrorActionPreference = "Stop"
 
-$maxGodots = 4
+if (-not ("GodotRunner.NativeErrorMode" -as [type])) {
+    Add-Type @"
+using System.Runtime.InteropServices;
+
+namespace GodotRunner {
+    public static class NativeErrorMode {
+        [DllImport("kernel32.dll")]
+        public static extern uint GetErrorMode();
+
+        [DllImport("kernel32.dll")]
+        public static extern uint SetErrorMode(uint mode);
+    }
+}
+"@
+}
+
+$maxGodots = 1
 $waitSeconds = 300
 $pollSeconds = 10
 
 if ($env:GODOT_MAX_PROCESSES) {
     $maxGodots = [int]$env:GODOT_MAX_PROCESSES
+    if ($maxGodots -lt 1 -or $maxGodots -gt 4) {
+        throw "GODOT_MAX_PROCESSES must be between 1 and 4."
+    }
 }
 if ($env:GODOT_SLOT_WAIT_SECONDS) {
     $waitSeconds = [int]$env:GODOT_SLOT_WAIT_SECONDS
+    if ($waitSeconds -lt 0) {
+        throw "GODOT_SLOT_WAIT_SECONDS cannot be negative."
+    }
 }
 
-$candidatePaths = @()
+$headlessCandidatePaths = @()
+$visibleCandidatePaths = @()
 if ($env:GODOT_BIN) {
-    $candidatePaths += $env:GODOT_BIN
+    $headlessCandidatePaths += $env:GODOT_BIN
+    $visibleCandidatePaths += $env:GODOT_BIN
 }
-$candidatePaths += @(
-    "C:\Program Files\Godot\Godot.exe",
-    (Join-Path $env:TEMP "godot-console-run\Godot_v4.5.1-stable_win64_console.exe"),
-    "C:\Program Files\Godot\Godot_v4.5.1-stable_win64_console.exe"
+$headlessCandidatePaths += @(
+    (Join-Path $env:TEMP "godot471\Godot_v4.7.1-stable_win64_console.exe")
 )
-
-$godotPath = $candidatePaths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
-if (-not $godotPath) {
-    throw "Godot was not found. Set GODOT_BIN to the Godot executable path."
-}
+$visibleCandidatePaths += @(
+    (Join-Path ([Environment]::GetFolderPath("MyDocuments")) "New project 4\.codex-godot-r471\godot.exe")
+)
 
 function Get-GodotProcessSnapshot {
     $godotProcesses = @(Get-Process godot* -ErrorAction SilentlyContinue)
@@ -62,15 +82,34 @@ if ($godotArgs -contains "--visible-game") {
     $visibleGame = $true
     $godotArgs = @($godotArgs | Where-Object { $_ -ne "--visible-game" })
 }
+if ($visibleGame -and $godotArgs -contains "--headless") {
+    throw "--visible-game cannot be combined with --headless."
+}
 if ($godotArgs -contains "--editor" -or $godotArgs -contains "-e" -or $godotArgs -contains "--project-manager") {
     throw "Refusing to launch the Godot editor or project manager."
 }
 if (-not $visibleGame -and $godotArgs -notcontains "--headless") {
     $godotArgs = @("--headless") + $godotArgs
 }
+$candidatePaths = if ($visibleGame) { $visibleCandidatePaths } else { $headlessCandidatePaths }
+$godotPath = $candidatePaths | Where-Object { $_ -and (Test-Path -LiteralPath $_) } | Select-Object -First 1
+if (-not $godotPath) {
+    $launchKind = if ($visibleGame) { "visible-game" } else { "headless console" }
+    throw "The Godot $launchKind executable was not found. Set GODOT_BIN to the matching Godot executable path."
+}
 $previousAppData = $env:APPDATA
-if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {
-    $testUserDataDir = (New-Item -ItemType Directory -Force -Path $env:IDLE_ELITE_TEST_USER_DATA_DIR).FullName
+$headlessUserDataDir = ""
+$removeHeadlessUserData = $false
+$isolatedUserDataActive = -not $visibleGame -or [bool]$env:IDLE_ELITE_TEST_USER_DATA_DIR
+if ($isolatedUserDataActive) {
+    $requestedUserDataDir = if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR
+    } else {
+        $removeHeadlessUserData = $true
+        Join-Path $env:TEMP ("idle-elite-godot-user-{0}" -f ([guid]::NewGuid()))
+    }
+    $headlessUserDataDir = (New-Item -ItemType Directory -Force -Path $requestedUserDataDir).FullName
+    $testUserDataDir = $headlessUserDataDir
     $env:APPDATA = $testUserDataDir
 }
 
@@ -81,7 +120,9 @@ function ConvertTo-ProcessArgument {
         return $Argument
     }
 
-    return '"' + ($Argument -replace '\\(?=")', '\\' -replace '"', '\"') + '"'
+    $escaped = $Argument -replace '(\\*)"', '$1$1\"'
+    $escaped = $escaped -replace '(\\*)$', '$1$1'
+    return '"' + $escaped + '"'
 }
 
 $stdoutPath = Join-Path $env:TEMP ("godot-safe-{0}.stdout.log" -f ([guid]::NewGuid()))
@@ -91,13 +132,15 @@ $deadline = (Get-Date).AddSeconds($waitSeconds)
 $process = $null
 $mutexHeld = $false
 $beforeSnapshot = Get-GodotProcessSnapshot
+$exitCode = $null
 
+try {
 try {
     while ($true) {
         $mutexHeld = $mutex.WaitOne([TimeSpan]::FromSeconds($pollSeconds))
         if (-not $mutexHeld) {
             if ((Get-Date) -ge $deadline) {
-                Write-Error "Timed out waiting for the Godot launch gate."
+                [Console]::Error.WriteLine("Timed out waiting for the Godot launch gate.")
                 exit 75
             }
             continue
@@ -106,20 +149,30 @@ try {
         $running = @(Get-Process godot* -ErrorAction SilentlyContinue)
         if ($running.Count -lt $maxGodots) {
             $argumentList = ($godotArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join " "
-            if ($visibleGame) {
-                $process = Start-Process `
-                    -FilePath $godotPath `
-                    -ArgumentList $argumentList `
-                    -PassThru `
-                    -WindowStyle Normal
-            } else {
-                $process = Start-Process `
-                    -FilePath $godotPath `
-                    -ArgumentList $argumentList `
-                    -PassThru `
-                    -WindowStyle Hidden `
-                    -RedirectStandardOutput $stdoutPath `
-                    -RedirectStandardError $stderrPath
+            $previousErrorMode = [GodotRunner.NativeErrorMode]::GetErrorMode()
+            $noCrashDialogMode = $previousErrorMode -bor 0x0001 -bor 0x0002
+            [void][GodotRunner.NativeErrorMode]::SetErrorMode($noCrashDialogMode)
+            try {
+                if ($visibleGame) {
+                    $process = Start-Process `
+                        -FilePath $godotPath `
+                        -ArgumentList $argumentList `
+                        -PassThru `
+                        -WindowStyle Normal `
+                        -RedirectStandardOutput $stdoutPath `
+                        -RedirectStandardError $stderrPath
+                } else {
+                    $process = Start-Process `
+                        -FilePath $godotPath `
+                        -ArgumentList $argumentList `
+                        -PassThru `
+                        -WindowStyle Hidden `
+                        -RedirectStandardOutput $stdoutPath `
+                        -RedirectStandardError $stderrPath
+                }
+            }
+            finally {
+                [void][GodotRunner.NativeErrorMode]::SetErrorMode($previousErrorMode)
             }
             break
         }
@@ -128,7 +181,7 @@ try {
         $mutexHeld = $false
 
         if ((Get-Date) -ge $deadline) {
-            Write-Error "There are already $($running.Count) Godot processes running. No slot opened within $waitSeconds seconds."
+            [Console]::Error.WriteLine("There are already $($running.Count) Godot processes running. No slot opened within $waitSeconds seconds.")
             exit 75
         }
 
@@ -148,22 +201,31 @@ if ($env:GODOT_RUN_TIMEOUT_SECONDS) {
     $runTimeoutSeconds = [int]$env:GODOT_RUN_TIMEOUT_SECONDS
 }
 
+$launchedProcessIds = @($process.Id)
+Start-Sleep -Milliseconds 100
+$launchedProcessIds += @(Get-ChildProcessIds -ParentProcessId $process.Id)
+$launchedProcessIds = @($launchedProcessIds | Sort-Object -Unique)
+
 if ($runTimeoutSeconds -gt 0) {
     $finished = $process.WaitForExit($runTimeoutSeconds * 1000)
     if (-not $finished) {
-        Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
-        Write-Error "Godot did not finish within $runTimeoutSeconds seconds and was stopped."
+        $launchedProcessIds += @(Get-ChildProcessIds -ParentProcessId $process.Id)
+        $launchedProcessIds = @($launchedProcessIds | Sort-Object -Unique)
+        foreach ($knownProcessId in @($launchedProcessIds | Sort-Object -Descending)) {
+            Stop-Process -Id $knownProcessId -Force -ErrorAction SilentlyContinue
+        }
+        [Console]::Error.WriteLine("Godot did not finish within $runTimeoutSeconds seconds and was stopped.")
         exit 124
     }
 } else {
     $process.WaitForExit()
 }
 
-if (-not $visibleGame -and (Test-Path -LiteralPath $stdoutPath)) {
+if (Test-Path -LiteralPath $stdoutPath) {
     Get-Content -LiteralPath $stdoutPath
 }
 $stderrLines = @()
-if (-not $visibleGame -and (Test-Path -LiteralPath $stderrPath)) {
+if (Test-Path -LiteralPath $stderrPath) {
     $stderrLines = @(Get-Content -LiteralPath $stderrPath)
     $stderrLines | ForEach-Object { [Console]::Error.WriteLine($_) }
 }
@@ -173,8 +235,12 @@ $exitCode = if ($null -eq $process.ExitCode) { 0 } else { $process.ExitCode }
 if ($exitCode -eq 0 -and ($stderrLines -match "Main executable .* not found")) {
     $exitCode = 1
 }
+if ($exitCode -eq 0 -and ($stderrLines -match "CrashHandlerException: Program crashed|Program crashed with signal")) {
+    $exitCode = 139
+}
 
-$launchedProcessIds = @($process.Id) + @(Get-ChildProcessIds -ParentProcessId $process.Id)
+$launchedProcessIds += @(Get-ChildProcessIds -ParentProcessId $process.Id)
+$launchedProcessIds = @($launchedProcessIds | Sort-Object -Unique)
 $afterSnapshot = Get-GodotProcessSnapshot
 $remainingLaunchedIds = @(
     $launchedProcessIds |
@@ -185,6 +251,13 @@ $remainingLaunchedIds = @(
 foreach ($processId in $remainingLaunchedIds) {
     $remainingProcess = Get-Process -Id $processId -ErrorAction SilentlyContinue
     if (-not $remainingProcess) {
+        continue
+    }
+    if ($visibleGame) {
+        [Console]::Error.WriteLine("Godot process from this visible command is still active and was not terminated: PID $processId")
+        if ($exitCode -eq 0) {
+            $exitCode = 125
+        }
         continue
     }
 
@@ -212,16 +285,41 @@ $newUnattributedIds = @(
         Sort-Object -Unique
 )
 if ($newUnattributedIds.Count -gt 0) {
-    [Console]::Error.WriteLine("New Godot process(es) appeared during this command but were not confirmed as children of this run: $($newUnattributedIds -join ', '). They were not terminated.")
-}
-
-if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {
-    if ($null -eq $previousAppData) {
-        Remove-Item Env:\APPDATA -ErrorAction SilentlyContinue
-    } else {
-        $env:APPDATA = $previousAppData
+    # Godot can briefly hand off to a second process after the original launcher
+    # exits. Wait for that process to close before another validation reuses the
+    # same user-data/log directory. Never terminate an unattributed process.
+    $unattributedStillRunning = @($newUnattributedIds)
+    for ($attempt = 1; $attempt -le 50 -and $unattributedStillRunning.Count -gt 0; $attempt++) {
+        Start-Sleep -Milliseconds 100
+        $unattributedStillRunning = @(
+            $unattributedStillRunning |
+                Where-Object { $null -ne (Get-Process -Id $_ -ErrorAction SilentlyContinue) }
+        )
+    }
+    if ($unattributedStillRunning.Count -gt 0) {
+        [Console]::Error.WriteLine("New Godot process(es) appeared during this command but were not confirmed as children of this run: $($unattributedStillRunning -join ', '). They were not terminated.")
+        if ($exitCode -eq 0) {
+            $exitCode = 125
+        }
     }
 }
 
-Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+}
+finally {
+    if ($isolatedUserDataActive) {
+        if ($null -eq $previousAppData) {
+            Remove-Item Env:\APPDATA -ErrorAction SilentlyContinue
+        } else {
+            $env:APPDATA = $previousAppData
+        }
+    }
+    Remove-Item -LiteralPath $stdoutPath, $stderrPath -Force -ErrorAction SilentlyContinue
+    if ($removeHeadlessUserData -and $exitCode -eq 0) {
+        $tempRoot = [IO.Path]::GetFullPath($env:TEMP).TrimEnd('\') + '\'
+        if ($headlessUserDataDir.StartsWith($tempRoot, [StringComparison]::OrdinalIgnoreCase)) {
+            Remove-Item -LiteralPath $headlessUserDataDir -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 exit $exitCode

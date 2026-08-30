@@ -41,20 +41,27 @@ $categoryExpression = New-CategoryExpression -CategoryKeys $categoryKeys
 
 $freshClientTimestampRule = "newData.isNumber() && newData.val() >= now - 10000 && newData.val() <= now + 60000"
 $freshGateTimestampExpr = "{0}.isNumber() && {0}.val() >= now - 10000 && {0}.val() <= now + 60000"
-$leaderboardWriterRule = "((auth != null && auth.uid == `$playerId) || auth == null)"
-$nameRecoveryTicketRule = "root.child('leaderboards').child('v1').child('name_recovery_tickets').child(`$nameKey).child('active').val() == true"
-$nameClaimWriterRule = "((auth != null && newData.child('uid').val() == auth.uid && (!data.exists() || data.child('uid').val() == auth.uid || ($nameRecoveryTicketRule))) || (auth == null && newData.child('uid').isString() && newData.child('uid').val().length >= 8 && newData.child('uid').val().length <= 48 && (!data.exists() || data.child('uid').val() == newData.child('uid').val())))"
-$leaderboardNameClaimRule = "root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == `$playerId"
+$leaderboardWriterRule = "auth != null && auth.uid == `$playerId"
+$nameRecoveryTicketRule = "root.child('leaderboards').child('v1').child('name_recovery_tickets').child(`$nameKey).child('active').val() == true && root.child('leaderboards').child('v1').child('name_recovery_tickets').child(`$nameKey).child('target_uid').val() == auth.uid && root.child('leaderboards').child('v1').child('name_recovery_tickets').child(`$nameKey).child('expires_at').isNumber() && root.child('leaderboards').child('v1').child('name_recovery_tickets').child(`$nameKey).child('expires_at').val() >= now"
+$nameRecoveryClaimGateRule = "newData.parent().parent().child('name_recovery_gates').child(auth.uid).child('name_key').val() == `$nameKey && newData.parent().parent().child('name_recovery_gates').child(auth.uid).child('target_uid').val() == auth.uid && newData.parent().parent().child('name_recovery_gates').child(auth.uid).child('old_uid').val() == data.child('uid').val()"
+$nameRecoveryUidGateRule = "newData.parent().parent().parent().child('name_recovery_gates').child(auth.uid).child('name_key').val() == `$nameKey && newData.parent().parent().parent().child('name_recovery_gates').child(auth.uid).child('target_uid').val() == auth.uid && newData.parent().parent().parent().child('name_recovery_gates').child(auth.uid).child('old_uid').val() == data.val()"
+$nameClaimWriterRule = "auth != null && newData.child('uid').val() == auth.uid && (!data.exists() || data.child('uid').val() == auth.uid || (($nameRecoveryTicketRule) && ($nameRecoveryClaimGateRule)))"
+$leaderboardNameClaimRule = "root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == `$playerId && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('name').val() == newData.child('name').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(`$playerId).child('uid').val() == `$playerId && root.child('leaderboards').child('v1').child('profiles_by_uid').child(`$playerId).child('display_name').val() == newData.child('name').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(`$playerId).child('name_key').val() == newData.child('name_key').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(`$playerId).child('avatar_index').val() == newData.child('avatar_index').val()"
+$profileNameClaimRule = "newData.parent().parent().child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid && newData.parent().parent().child('name_claims').child(newData.child('name_key').val()).child('name').val() == newData.child('display_name').val() && newData.parent().parent().child('name_claims').child(newData.child('name_key').val()).child('avatar_index').val() == newData.child('avatar_index').val()"
+$profileExistingNameRule = "!data.exists() || data.child('name_key').val() == newData.child('name_key').val()"
+$profileReadRule = "auth != null && auth.uid == `$uid && (!data.exists() || (root.child('leaderboards').child('v1').child('name_claims').child(data.child('name_key').val()).child('uid').val() == `$uid && root.child('leaderboards').child('v1').child('name_claims').child(data.child('name_key').val()).child('name').val() == data.child('display_name').val() && root.child('leaderboards').child('v1').child('name_claims').child(data.child('name_key').val()).child('avatar_index').val() == data.child('avatar_index').val()))"
+$legacyRecoveryGateTicketRule = "root.child('leaderboards').child('v1').child('name_recovery_tickets').child(newData.child('name_key').val()).child('active').val() == true && root.child('leaderboards').child('v1').child('name_recovery_tickets').child(newData.child('name_key').val()).child('target_uid').val() == auth.uid && root.child('leaderboards').child('v1').child('name_recovery_tickets').child(newData.child('name_key').val()).child('expires_at').isNumber() && root.child('leaderboards').child('v1').child('name_recovery_tickets').child(newData.child('name_key').val()).child('expires_at').val() >= now"
+$legacyRecoveryGateOldClaimRule = "root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('old_uid').val() || (root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == auth.uid && data.exists() && data.child('name_key').val() == newData.child('name_key').val() && data.child('old_uid').val() == newData.child('old_uid').val() && data.child('target_uid').val() == auth.uid)"
 $leaderboardFreshGateRule = "root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').isNumber() && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() >= now - 10000 && root.child('leaderboards').child('v1').child('player_write_gates').child(`$playerId).child('updated_at').val() <= now + 60000"
 $leaderboardLegacyRowCooldownRule = "newData.child('updated_at').isNumber() && newData.child('updated_at').val() >= now - 10000 && newData.child('updated_at').val() <= now + 60000 && (!data.exists() || now - data.child('updated_at').val() >= 900000)"
 $leaderboardLegacyTotalLevelScoreRule = "`$category == 'total_level' && data.exists() && data.child('score').isNumber() && data.child('score').val() > 999 && newData.parent().child('total_xp').isNumber() && newData.parent().child('total_xp').val() >= data.child('score').val()"
-$chatSenderRule = "newData.child('sender_id').isString() && newData.child('sender_id').val().length >= 8 && newData.child('sender_id').val().length <= 48 && (auth == null || newData.child('sender_id').val() == auth.uid)"
+$chatSenderRule = "newData.child('sender_id').isString() && newData.child('sender_id').val().length >= 8 && newData.child('sender_id').val().length <= 48 && auth != null && newData.child('sender_id').val() == auth.uid"
 $chatFreshGateRule = "newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').isNumber() && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() >= now - 10000 && newData.parent().parent().child('user_write_gates').child(newData.child('sender_id').val()).child('updated_at').val() <= now + 60000"
-$chatClaimedNameRule = "newData.child('name_key').isString()"
+$chatClaimedNameRule = "newData.child('name_key').isString() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('uid').val() == newData.child('sender_id').val() && root.child('leaderboards').child('v1').child('name_claims').child(newData.child('name_key').val()).child('name').val() == newData.child('name').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('uid').val() == newData.child('sender_id').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('display_name').val() == newData.child('name').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('name_key').val() == newData.child('name_key').val() && root.child('leaderboards').child('v1').child('profiles_by_uid').child(newData.child('sender_id').val()).child('avatar_index').val() == newData.child('avatar_index').val()"
 $chatGuestNameRule = "!newData.child('name_key').exists() && newData.child('name').isString() && newData.child('name').val().matches(/^guest[0-9]{4}$/)"
 $chatCreateRule = "newData.exists() && !data.exists() && $chatSenderRule && ($chatClaimedNameRule || $chatGuestNameRule) && `$messageId.length >= 8 && `$messageId.length <= 64 && $chatFreshGateRule"
-$chatOwnerRefreshRule = "data.exists() && newData.exists() && data.child('sender_id').val() == newData.child('sender_id').val() && (auth == null || data.child('sender_id').val() == auth.uid) && $chatClaimedNameRule && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == data.child('deleted').val() && newData.child('deleted_at').val() == data.child('deleted_at').val() && newData.child('deleted_by').val() == data.child('deleted_by').val()"
-$chatModerationRule = "data.exists() && newData.exists() && auth.token.moderator == true && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('name').val() == data.child('name').val() && newData.child('name_key').val() == data.child('name_key').val() && newData.child('total_level').val() == data.child('total_level').val() && newData.child('avatar_index').val() == data.child('avatar_index').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == true && newData.child('deleted_at').val() == now && newData.child('deleted_by').val() == auth.uid"
+$chatOwnerRefreshRule = "data.exists() && newData.exists() && data.child('sender_id').val() == newData.child('sender_id').val() && auth != null && data.child('sender_id').val() == auth.uid && $chatClaimedNameRule && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == data.child('deleted').val() && newData.child('deleted_at').val() == data.child('deleted_at').val() && newData.child('deleted_by').val() == data.child('deleted_by').val()"
+$chatModerationRule = "data.exists() && newData.exists() && auth != null && auth.token.moderator == true && newData.child('sender_id').val() == data.child('sender_id').val() && newData.child('name').val() == data.child('name').val() && newData.child('name_key').val() == data.child('name_key').val() && newData.child('total_level').val() == data.child('total_level').val() && newData.child('avatar_index').val() == data.child('avatar_index').val() && newData.child('text').val() == data.child('text').val() && newData.child('created_at').val() == data.child('created_at').val() && newData.child('created_at_unix').val() == data.child('created_at_unix').val() && newData.child('deleted').val() == true && newData.child('deleted_at').val() == now && newData.child('deleted_by').val() == auth.uid"
 
 $rulesObject = [ordered]@{
     rules = [ordered]@{
@@ -70,7 +77,7 @@ $rulesObject = [ordered]@{
                         ".write" = "newData.exists() && `$nameKey.length > 0 && `$nameKey.length <= 16 && newData.child('name_key').val() == `$nameKey && $nameClaimWriterRule"
                         ".validate" = "newData.hasChildren(['uid', 'name', 'name_key', 'avatar_index', 'created_at', 'updated_at', 'submitted_at_unix'])"
                         uid = [ordered]@{
-                            ".validate" = "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48 && (!data.exists() || newData.val() == data.val() || (auth != null && newData.val() == auth.uid && $nameRecoveryTicketRule))"
+                            ".validate" = "newData.isString() && newData.val().length >= 8 && newData.val().length <= 48 && (!data.exists() || newData.val() == data.val() || (auth != null && newData.val() == auth.uid && ($nameRecoveryTicketRule) && ($nameRecoveryUidGateRule)))"
                         }
                         name = [ordered]@{
                             ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
@@ -95,10 +102,69 @@ $rulesObject = [ordered]@{
                         }
                     }
                 }
+                profiles_by_uid = [ordered]@{
+                    '$uid' = [ordered]@{
+                        ".read" = $profileReadRule
+                        ".write" = "auth != null && auth.uid == `$uid && newData.exists() && newData.child('uid').val() == auth.uid && ($profileExistingNameRule) && $profileNameClaimRule"
+                        ".validate" = "newData.hasChildren(['uid', 'display_name', 'name_key', 'avatar_index', 'profile_claimed', 'name_claim_verified', 'auth_provider', 'updated_at', 'updated_at_unix'])"
+                        uid = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val() == auth.uid"
+                        }
+                        display_name = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 16"
+                        }
+                        name_key = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
+                        }
+                        avatar_index = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 19"
+                        }
+                        profile_claimed = [ordered]@{
+                            ".validate" = "newData.isBoolean() && newData.val() == true"
+                        }
+                        name_claim_verified = [ordered]@{
+                            ".validate" = "newData.isBoolean() && newData.val() == true"
+                        }
+                        auth_provider = [ordered]@{
+                            ".validate" = "newData.isString() && (newData.val() == 'anonymous' || newData.val() == 'google')"
+                        }
+                        updated_at = [ordered]@{
+                            ".validate" = $freshClientTimestampRule
+                        }
+                        updated_at_unix = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() > 0"
+                        }
+                        '$other' = [ordered]@{
+                            ".validate" = $false
+                        }
+                    }
+                }
                 name_recovery_tickets = [ordered]@{
                     '$nameKey' = [ordered]@{
                         ".read" = $false
                         ".write" = $false
+                    }
+                }
+                name_recovery_gates = [ordered]@{
+                    '$uid' = [ordered]@{
+                        ".read" = $false
+                        ".write" = "auth != null && auth.uid == `$uid && newData.exists() && newData.child('target_uid').val() == auth.uid && ($legacyRecoveryGateTicketRule) && ($legacyRecoveryGateOldClaimRule)"
+                        ".validate" = "newData.hasChildren(['name_key', 'old_uid', 'target_uid', 'updated_at'])"
+                        name_key = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val().matches(/^[a-z0-9_]{1,16}$/)"
+                        }
+                        old_uid = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val().matches(/^[A-Za-z0-9_-]{8,48}$/)"
+                        }
+                        target_uid = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val() == auth.uid"
+                        }
+                        updated_at = [ordered]@{
+                            ".validate" = $freshClientTimestampRule
+                        }
+                        '$other' = [ordered]@{
+                            ".validate" = $false
+                        }
                     }
                 }
                 scores = [ordered]@{
@@ -163,8 +229,8 @@ $rulesObject = [ordered]@{
                 users = [ordered]@{
                     '$uid' = [ordered]@{
                         ".read" = "auth != null && auth.uid == `$uid"
-                        ".write" = "auth != null && auth.uid == `$uid && newData.exists()"
-                        ".validate" = "newData.hasChildren(['uid', 'updated_at', 'updated_at_unix', 'save_schema_version', 'saved_at', 'total_skill_xp', 'total_level', 'payload_json'])"
+                        ".write" = "auth != null && auth.uid == `$uid && newData.exists() && (!data.child('revision').exists() || (newData.child('revision').isNumber() && newData.child('revision').val() == data.child('revision').val() + 1))"
+                        ".validate" = "newData.hasChildren(['uid', 'updated_at', 'updated_at_unix', 'save_schema_version', 'saved_at', 'total_skill_xp', 'total_level', 'payload_json']) && ((!newData.child('revision').exists() && !newData.child('payload_checksum').exists()) || newData.hasChildren(['revision', 'payload_checksum']))"
                         uid = [ordered]@{
                             ".validate" = "newData.isString() && newData.val() == auth.uid"
                         }
@@ -186,8 +252,61 @@ $rulesObject = [ordered]@{
                         total_level = [ordered]@{
                             ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
                         }
+                        revision = [ordered]@{
+                            ".validate" = "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000000000 && (!data.exists() || newData.val() == data.val() + 1)"
+                        }
+                        payload_checksum = [ordered]@{
+                            ".validate" = "newData.isString() && newData.val().matches(/^[a-f0-9]{64}$/)"
+                        }
                         payload_json = [ordered]@{
                             ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 950000"
+                        }
+                        '$other' = [ordered]@{
+                            ".validate" = $false
+                        }
+                    }
+                }
+                history = [ordered]@{
+                    '$uid' = [ordered]@{
+                        ".read" = "auth != null && auth.uid == `$uid"
+                        slots = [ordered]@{
+                            '$slot' = [ordered]@{
+                                ".write" = "auth != null && auth.uid == `$uid && (`$slot == '0' || `$slot == '1' || `$slot == '2' || `$slot == '3' || `$slot == '4') && newData.exists() && newData.child('uid').val() == auth.uid && (!data.exists() || newData.child('revision').val() > data.child('revision').val() || (newData.child('revision').val() == data.child('revision').val() && newData.child('payload_checksum').val() == data.child('payload_checksum').val() && newData.child('payload_json').val() == data.child('payload_json').val()))"
+                                ".validate" = "newData.hasChildren(['uid', 'updated_at', 'updated_at_unix', 'save_schema_version', 'saved_at', 'total_skill_xp', 'total_level', 'revision', 'payload_checksum', 'payload_json'])"
+                                uid = [ordered]@{
+                                    ".validate" = "newData.isString() && newData.val() == auth.uid"
+                                }
+                                updated_at = [ordered]@{
+                                    ".validate" = $freshClientTimestampRule
+                                }
+                                updated_at_unix = [ordered]@{
+                                    ".validate" = "newData.isNumber() && newData.val() > 0"
+                                }
+                                save_schema_version = [ordered]@{
+                                    ".validate" = "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000"
+                                }
+                                saved_at = [ordered]@{
+                                    ".validate" = "newData.isNumber() && newData.val() > 0"
+                                }
+                                total_skill_xp = [ordered]@{
+                                    ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000000000"
+                                }
+                                total_level = [ordered]@{
+                                    ".validate" = "newData.isNumber() && newData.val() >= 0 && newData.val() <= 1000000"
+                                }
+                                revision = [ordered]@{
+                                    ".validate" = "newData.isNumber() && newData.val() >= 1 && newData.val() <= 1000000000"
+                                }
+                                payload_checksum = [ordered]@{
+                                    ".validate" = "newData.isString() && newData.val().matches(/^[a-f0-9]{64}$/)"
+                                }
+                                payload_json = [ordered]@{
+                                    ".validate" = "newData.isString() && newData.val().length > 0 && newData.val().length <= 950000"
+                                }
+                                '$other' = [ordered]@{
+                                    ".validate" = $false
+                                }
+                            }
                         }
                         '$other' = [ordered]@{
                             ".validate" = $false
@@ -247,7 +366,7 @@ $rulesObject = [ordered]@{
                 user_write_gates = [ordered]@{
                     '$playerId' = [ordered]@{
                         ".read" = $false
-                        ".write" = "newData.exists() && ((auth != null && auth.uid == `$playerId) || auth == null) && `$playerId.length >= 8 && `$playerId.length <= 48 && (!data.exists() || now - data.child('updated_at').val() >= 2000)"
+                        ".write" = "newData.exists() && auth != null && auth.uid == `$playerId && `$playerId.length >= 8 && `$playerId.length <= 48 && (!data.exists() || now - data.child('updated_at').val() >= 2000)"
                         ".validate" = "newData.hasChildren(['updated_at', 'submitted_at_unix'])"
                         updated_at = [ordered]@{
                             ".validate" = $freshClientTimestampRule

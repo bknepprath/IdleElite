@@ -39,7 +39,7 @@ Line numbers move, so search symbols instead of trusting exact offsets.
 | Runtime state | `music_volume`, `sfx_volume`, `flow_heat`, `music_players`, `audio_stream_cache`, `music_stream_cache` | Persistent settings and transient audio state. |
 | Audio settings UI | `_audio_volume_control`, `_set_music_volume_from_slider`, `_set_sfx_muted_from_toggle` | Settings screen sliders and mute buttons. |
 | Save/load | `_save_payload`, `AudioDirector.apply_settings_from_save`, `AudioDirector.restore_music_flow_state` | Persisted audio settings and partial music-flow state. |
-| Audio build/warmup | `_build_extended_audio`, `_warm_extended_audio_async`, `_ensure_extended_audio`, `_ensure_audio_buses` | Player creation and deferred warmup. |
+| Audio build | `_build_extended_audio`, `_ensure_extended_audio`, `_ensure_audio_buses` | Player creation. |
 | Core helpers | `_sfx`, `_load_sfx_stream`, `_play`, `_play_with_pitch`, `_can_play_audio` | Shared player creation and playback gating. |
 | Music flow | `_process_music_flow`, `_record_music_flow_start`, `_record_music_flow_action`, `_start_music_cycle` | Layered adaptive music state machine. |
 | Gameplay SFX | `_play_activity_success_sound`, `_play_chain_move_jingle_mix`, `_play_fishing_attempt_reveal` | Actual gameplay sound entry points. |
@@ -99,9 +99,8 @@ There are three build levels:
 | Function | What it builds | Why |
 | --- | --- | --- |
 | `_build_extended_audio()` | Success, crit, failure, lock, chain-adjacent, passive, pin, bonus, fishing players | Full gameplay sound set. |
-| `_warm_extended_audio_async()` | Same extended set, but spread across frames using `EXTENDED_AUDIO_WARMUP_FRAME_BUDGET_MSEC` | Avoids a large frame hitch after boot. |
 
-Several helpers call `_ensure_extended_audio()` before playing. Do not manually instantiate duplicate players for one-off sounds unless there is a clear reason. Prefer adding to the existing build/warmup paths.
+Several helpers call `_ensure_extended_audio()` before playing. Do not manually instantiate duplicate players for one-off sounds unless there is a clear reason. Prefer adding to the existing build path.
 
 ## Default Button And Tap SFX
 
@@ -110,9 +109,7 @@ Constants:
 - `DEFAULT_BUTTON_SFX_PATH := "res://assets/sfx/Sample_0029 bowling ui snap.wav"`
 - `DEFAULT_BUTTON_SFX_VOLUME_DB := -4.0`
 - `DEFAULT_BUTTON_SFX_DEBOUNCE_MSEC := 180`
-- `ACTIVITY_START_SFX_PATH := DEFAULT_BUTTON_SFX_PATH`
 - `ACTIVITY_START_SFX_VOLUME_DB := -1.0`
-- `ACTIVITY_START_SFX_PLAYER_COUNT := 3`
 
 The same `Sample_0029 bowling ui snap.wav` asset is used for general button clicks and activity starts, but through different playback paths.
 
@@ -126,7 +123,6 @@ General buttons:
 Activity starts:
 
 - `_play_activity_tap_sfx()` uses `click_player`, but temporarily sets `volume_db = ACTIVITY_START_SFX_VOLUME_DB`.
-- There is also an `activity_start_players` pool created by `_ensure_activity_start_players()`, but current tap playback uses `click_player`.
 - Starting an activity calls `_unlock_audio_for_gameplay()` and then `_play_activity_tap_sfx()`.
 
 Common mistake: replacing the default button asset changes both ordinary UI clicks and activity-start taps. If only one should change, introduce a separate path and wire it deliberately.
@@ -435,13 +431,12 @@ Use this checklist.
 4. Put shipped assets under `assets/sfx/` or `assets/music/`, not a candidate folder.
 5. Add a named constant for the path if the sound is feature-owned.
 6. Add a player in `_build_extended_audio()` as appropriate, then make sure any needed bus/player setup still flows through `_ensure_extended_audio()`.
-7. Add the same player setup to `_warm_extended_audio_async()` if it belongs to extended audio.
-8. Route playback through `_play()` or `_play_with_pitch()` unless you need custom capped/faded behavior.
-9. Respect `_can_play_audio()`.
-10. Set `volume_db` conservatively.
-11. If sound can repeat or stack, test repeated taps, multiple completions, failures, and unlock sequences.
-12. If the change affects UI, visuals, layout, animation, scenes, or other player-visible behavior, capture/report a screenshot per `AGENTS.md`.
-13. Run validation through the safe Godot wrapper or preferred project script.
+7. Route playback through `_play()` or `_play_with_pitch()` unless you need custom capped/faded behavior.
+8. Respect `_can_play_audio()`.
+9. Set `volume_db` conservatively.
+10. If sound can repeat or stack, test repeated taps, multiple completions, failures, and unlock sequences.
+11. If the change affects UI, visuals, layout, animation, scenes, or other player-visible behavior, capture/report a screenshot per `AGENTS.md`.
+12. Run validation through the safe Godot wrapper or preferred project script.
 
 Good starting volume guesses:
 

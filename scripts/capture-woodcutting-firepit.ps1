@@ -32,11 +32,6 @@ if (Test-Path -LiteralPath $capturePath) {
     Remove-Item -LiteralPath $capturePath -Force
 }
 New-Item -ItemType Directory -Path $captureDir -Force | Out-Null
-$legacyVerificationPath = Join-Path $captureDir "woodcutting-firepit-card-verification.png"
-if (Test-Path -LiteralPath $legacyVerificationPath) {
-    Remove-Item -LiteralPath $legacyVerificationPath -Force
-}
-
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $previousCapturePath = $env:IDLE_ELITE_FIREPIT_CAPTURE_PATH
 $previousCaptureLocked = $env:IDLE_ELITE_FIREPIT_CAPTURE_LOCKED
@@ -91,7 +86,7 @@ func _run() -> void:
 	var window_height := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_WINDOW_HEIGHT").to_int()
 	var capture_size := Vector2i(viewport_width, viewport_height) if viewport_width > 0 and viewport_height > 0 else default_capture_size
 	var window_size := Vector2i(window_width, window_height) if window_width > 0 and window_height > 0 else capture_size
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	root.content_scale_size = capture_size
 	root.size = window_size
@@ -204,13 +199,11 @@ func _run() -> void:
 		return
 	var texture := root.get_texture()
 	if texture == null:
-		print("woodcutting-firepit-capture skipped=no-texture")
-		quit(0)
+		_fail("capture texture missing")
 		return
 	var image := texture.get_image()
 	if image == null or image.is_empty():
-		print("woodcutting-firepit-capture skipped=empty-image")
-		quit(0)
+		_fail("capture image empty")
 		return
 	var capture_path := OS.get_environment("IDLE_ELITE_FIREPIT_CAPTURE_PATH")
 	var result_code := image.save_png(capture_path)
@@ -278,37 +271,10 @@ func _scroll_real_screen_to_firepit(scene: Node) -> bool:
 	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
 	if scroll == null or not is_instance_valid(scroll):
 		return false
-	if scene.has_method("_scroll_to_activity_card"):
-		var native_scroll = scene.call("_scroll_to_activity_card", "woodcutting-firepit", false, true)
-		if native_scroll != null:
-			await native_scroll
-		for _native_settle in range(24):
-			_hide_boot_overlay_for_capture(scene)
-			_sync_detail_lazy_visible_cards(scene)
-			if scene.has_method("_update_ui"):
-				scene.call("_update_ui", 0.0, true)
-			await process_frame
-		var native_target := _find_firepit_card_control(scene)
-		if native_target != null and is_instance_valid(native_target) and _control_is_in_capture_view(scroll, native_target):
-			pass
-	if scene.has_method("_detail_actions_scroll_target_for_action"):
-		var raw_target = scene.call("_detail_actions_scroll_target_for_action", "woodcutting-firepit", true)
-		if int(raw_target) >= 0:
-			_set_scroll_vertical(scroll, int(raw_target))
-			for _target_settle in range(18):
-				_hide_boot_overlay_for_capture(scene)
-				_sync_detail_lazy_visible_cards(scene)
-				if scene.has_method("_update_ui"):
-					scene.call("_update_ui", 0.0, true)
-				await process_frame
-			var target_control := _find_firepit_card_control(scene)
-			if target_control != null and is_instance_valid(target_control) and _control_is_in_capture_view(scroll, target_control):
-				pass
 	for attempt in range(48):
 		_hide_boot_overlay_for_capture(scene)
 		_sync_detail_lazy_visible_cards(scene)
-		if scene.has_method("_update_ui"):
-			scene.call("_update_ui", 0.0, true)
+		scene.call("_update_ui", 0.0, true)
 		await process_frame
 		var target := _find_firepit_card_control(scene)
 		if target != null and is_instance_valid(target):
@@ -320,8 +286,7 @@ func _scroll_real_screen_to_firepit(scene: Node) -> bool:
 			for _settle in range(18):
 				_hide_boot_overlay_for_capture(scene)
 				_sync_detail_lazy_visible_cards(scene)
-				if scene.has_method("_update_ui"):
-					scene.call("_update_ui", 0.0, true)
+				scene.call("_update_ui", 0.0, true)
 				await process_frame
 			return _control_is_in_capture_view(scroll, target)
 		var max_scroll := int(scroll.get_max_scroll_vertical())
@@ -349,11 +314,7 @@ func _control_is_in_capture_view(scroll: ScrollContainer, control: Control) -> b
 
 
 func _sync_detail_lazy_visible_cards(scene: Node) -> void:
-	if not scene.has_method("_skill_detail_surface"):
-		return
-	var detail_surface = scene.call("_skill_detail_surface")
-	if detail_surface != null and detail_surface.has_method("_sync_detail_lazy_visible_cards"):
-		detail_surface.call("_sync_detail_lazy_visible_cards", true, -1)
+	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
 
 
 func _set_scroll_vertical(scroll: ScrollContainer, target_scroll: int) -> void:
@@ -388,89 +349,35 @@ func _fail(message: String) -> void:
     }
     if (-not (Test-Path -LiteralPath $capturePath)) {
         throw "Real Woodcutting Firepit game capture was not created. No fallback image was generated."
-    } else {
-        Write-Host "woodcutting-firepit-capture-file=$capturePath"
     }
-    Assert-True (Test-Path -LiteralPath $capturePath) "Woodcutting Firepit real game capture was not created."
+    Write-Host "woodcutting-firepit-capture-file=$capturePath"
 } finally {
-    if ($null -eq $previousTimeout) {
-        Remove-Item Env:\GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
-    } else {
-        $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
+    $previousEnvironment = @{
+        "GODOT_RUN_TIMEOUT_SECONDS" = $previousTimeout
+        "IDLE_ELITE_FIREPIT_CAPTURE_PATH" = $previousCapturePath
+        "IDLE_ELITE_FIREPIT_CAPTURE_LOCKED" = $previousCaptureLocked
+        "IDLE_ELITE_FIREPIT_CAPTURE_INACTIVE" = $previousCaptureInactive
+        "IDLE_ELITE_FIREPIT_CAPTURE_HEADER" = $previousCaptureHeader
+        "IDLE_ELITE_FIREPIT_CAPTURE_XP_POPUP" = $previousCaptureXpPopup
+        "IDLE_ELITE_FIREPIT_CAPTURE_IGNITION" = $previousCaptureIgnition
+        "IDLE_ELITE_FIREPIT_CAPTURE_COOLING" = $previousCaptureCooling
+        "IDLE_ELITE_FIREPIT_CAPTURE_NEED_SCRAPWOOD" = $previousCaptureNeedScrapwood
+        "IDLE_ELITE_FIREPIT_CAPTURE_EMPTY_STAMINA" = $previousCaptureEmptyStamina
+        "IDLE_ELITE_FIREPIT_CAPTURE_DARK_MODE" = $previousCaptureDarkMode
+        "IDLE_ELITE_FIREPIT_CAPTURE_VIEWPORT_WIDTH" = $previousCaptureViewportWidth
+        "IDLE_ELITE_FIREPIT_CAPTURE_VIEWPORT_HEIGHT" = $previousCaptureViewportHeight
+        "IDLE_ELITE_FIREPIT_CAPTURE_WINDOW_WIDTH" = $previousCaptureWindowWidth
+        "IDLE_ELITE_FIREPIT_CAPTURE_WINDOW_HEIGHT" = $previousCaptureWindowHeight
     }
-    if ($null -eq $previousCapturePath) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_PATH -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_PATH = $previousCapturePath
+    foreach ($entry in $previousEnvironment.GetEnumerator()) {
+        $envPath = "Env:\$($entry.Key)"
+        if ($null -eq $entry.Value) {
+            Remove-Item -LiteralPath $envPath -ErrorAction SilentlyContinue
+        } else {
+            Set-Item -LiteralPath $envPath -Value $entry.Value
+        }
     }
-    if ($null -eq $previousCaptureLocked) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_LOCKED -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_LOCKED = $previousCaptureLocked
-    }
-    if ($null -eq $previousCaptureInactive) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_INACTIVE -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_INACTIVE = $previousCaptureInactive
-    }
-    if ($null -eq $previousCaptureHeader) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_HEADER -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_HEADER = $previousCaptureHeader
-    }
-    if ($null -eq $previousCaptureXpPopup) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_XP_POPUP -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_XP_POPUP = $previousCaptureXpPopup
-    }
-    if ($null -eq $previousCaptureIgnition) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_IGNITION -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_IGNITION = $previousCaptureIgnition
-    }
-    if ($null -eq $previousCaptureCooling) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_COOLING -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_COOLING = $previousCaptureCooling
-    }
-    if ($null -eq $previousCaptureNeedScrapwood) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_NEED_SCRAPWOOD -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_NEED_SCRAPWOOD = $previousCaptureNeedScrapwood
-    }
-    if ($null -eq $previousCaptureEmptyStamina) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_EMPTY_STAMINA -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_EMPTY_STAMINA = $previousCaptureEmptyStamina
-    }
-    if ($null -eq $previousCaptureDarkMode) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_DARK_MODE -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_DARK_MODE = $previousCaptureDarkMode
-    }
-    if ($null -eq $previousCaptureViewportWidth) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_VIEWPORT_WIDTH -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_VIEWPORT_WIDTH = $previousCaptureViewportWidth
-    }
-    if ($null -eq $previousCaptureViewportHeight) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_VIEWPORT_HEIGHT -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_VIEWPORT_HEIGHT = $previousCaptureViewportHeight
-    }
-    if ($null -eq $previousCaptureWindowWidth) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_WINDOW_WIDTH -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_WINDOW_WIDTH = $previousCaptureWindowWidth
-    }
-    if ($null -eq $previousCaptureWindowHeight) {
-        Remove-Item Env:\IDLE_ELITE_FIREPIT_CAPTURE_WINDOW_HEIGHT -ErrorAction SilentlyContinue
-    } else {
-        $env:IDLE_ELITE_FIREPIT_CAPTURE_WINDOW_HEIGHT = $previousCaptureWindowHeight
-    }
-    if (Test-Path -LiteralPath $scriptPath) {
-        Remove-Item -LiteralPath $scriptPath -Force -ErrorAction SilentlyContinue
-    }
+    Remove-Item -LiteralPath $scriptPath -Force -ErrorAction SilentlyContinue
     $afterHeadless = @(Get-HeadlessGodotProcesses | Where-Object { $beforeProcesses -notcontains $_.ProcessId })
     if ($afterHeadless.Count -gt 0) {
         $afterHeadless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output

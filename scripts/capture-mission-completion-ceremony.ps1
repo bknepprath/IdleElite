@@ -15,6 +15,7 @@ $capturePath = Join-Path $captureDir "mission-complete-ceremony-desktop-${Window
 $scriptPath = Join-Path $captureDir "capture_mission_completion_ceremony.gd"
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
+Assert-True ($ViewportWidth -gt 0 -and $ViewportHeight -gt 0 -and $WindowWidth -gt 0 -and $WindowHeight -gt 0) "Capture dimensions must be positive."
 New-Item -ItemType Directory -Path $captureDir -Force | Out-Null
 Remove-Item -LiteralPath $capturePath -Force -ErrorAction SilentlyContinue
 
@@ -40,12 +41,15 @@ func _run() -> void:
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE_SECONDS", "60")
 	var capture_size := Vector2i($ViewportWidth, $ViewportHeight)
 	var window_size := Vector2i($WindowWidth, $WindowHeight)
-	root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
+	root.content_scale_mode = Window.CONTENT_SCALE_MODE_VIEWPORT
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
 	root.content_scale_size = capture_size
 	root.size = window_size
 	DisplayServer.window_set_size(window_size)
 	var packed := load("res://scenes/main.tscn") as PackedScene
+	if packed == null:
+		_fail("main scene did not load")
+		return
 	var scene := packed.instantiate()
 	root.add_child(scene)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
@@ -53,6 +57,9 @@ func _run() -> void:
 		if bool(scene.get("startup_initialized")):
 			break
 		await process_frame
+	if not bool(scene.get("startup_initialized")):
+		_fail("main scene did not become capture-ready")
+		return
 	if scene.has_method("_boot_warmup_runtime"):
 		scene.call("_boot_warmup_runtime").call("_dismiss_boot_splash_for_play")
 	scene.set("boot_warmup_active", false)
@@ -83,16 +90,32 @@ func _run() -> void:
 	for _frame in range(16):
 		await process_frame
 	await RenderingServer.frame_post_draw
-	var image := root.get_texture().get_image()
+	var texture := root.get_texture()
+	if texture == null:
+		_fail("capture texture missing")
+		return
+	var image := texture.get_image()
+	if image == null or image.is_empty():
+		_fail("capture image empty")
+		return
 	var capture_path := OS.get_environment("IDLE_ELITE_MISSION_CEREMONY_CAPTURE_PATH")
 	var result := image.save_png(capture_path)
+	if result != OK:
+		_fail("capture save failed: %s" % str(result))
+		return
 	print("mission-ceremony-capture path=%s result=%s size=%sx%s display=%s" % [capture_path, str(result), str(image.get_width()), str(image.get_height()), DisplayServer.get_name()])
 	scene.queue_free()
 	quit(0)
+
+
+func _fail(message: String) -> void:
+	push_error(message)
+	quit(1)
 "@ | Set-Content -LiteralPath $scriptPath -Encoding UTF8
 
     $output = & $runner --visible-game --path $projectRoot --script "res://.codex-tmp/mission-ceremony/capture_mission_completion_ceremony.gd" 2>&1
     $output | Write-Output
+    Assert-True ($LASTEXITCODE -eq 0) "Mission ceremony capture exited with code $LASTEXITCODE."
     Assert-True (Test-Path -LiteralPath $capturePath) "Mission ceremony capture was not created."
     Write-Host "mission-ceremony-capture-file=$capturePath"
 }

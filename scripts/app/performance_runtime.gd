@@ -254,8 +254,6 @@ class _PerfMonitor extends Node:
 	var _deltas: Array[float] = []
 	var _elapsed := 0.0
 	var _overlay_elapsed := 0.0
-	var _jank_count := 0
-	var _frame_count := 0
 	var _last_report := {}
 	var _overlay_layer: CanvasLayer
 	var _overlay_panel: PanelContainer
@@ -277,17 +275,11 @@ class _PerfMonitor extends Node:
 		if _deltas.size() > WINDOW_SIZE:
 			_deltas.pop_front()
 
-		_frame_count += 1
-		if delta > JANK_THRESHOLD:
-			_jank_count += 1
-
 		_elapsed += delta
 		_overlay_elapsed += delta
 		if _elapsed >= REPORT_INTERVAL:
 			_print_frame_report()
 			_elapsed = 0.0
-			_jank_count = 0
-			_frame_count = 0
 
 		if overlay_enabled and _overlay_elapsed >= OVERLAY_INTERVAL:
 			_overlay_elapsed = 0.0
@@ -395,8 +387,11 @@ class _PerfMonitor extends Node:
 		var sum := 0.0
 		var min_d := _deltas[0]
 		var max_d := _deltas[0]
+		var jank_count := 0
 		for d in _deltas:
 			sum += d
+			if d > JANK_THRESHOLD:
+				jank_count += 1
 			if d < min_d:
 				min_d = d
 			if d > max_d:
@@ -412,13 +407,13 @@ class _PerfMonitor extends Node:
 		var measured_fps := 1.0 / avg if avg > 0.0 else 0.0
 
 		return {
-			"sample_frames": _frame_count,
+			"sample_frames": _deltas.size(),
 			"measured_fps": measured_fps,
 			"avg_ms": avg * 1000.0,
 			"min_ms": min_d * 1000.0,
 			"max_ms": max_d * 1000.0,
 			"stddev_ms": stddev * 1000.0,
-			"jank_frames": _jank_count,
+			"jank_frames": jank_count,
 			"draw_calls": int(Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME)),
 			"objects": int(Performance.get_monitor(Performance.OBJECT_COUNT)),
 			"nodes": int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT)),

@@ -35,6 +35,12 @@ func _run() -> void:
 	_expect(str(monitor.report_text()).contains("PERF REPORT"), "Overlay text should include a screenshot-friendly heading.")
 	_expect(str(monitor.report_text()).contains("FPS"), "Overlay text should include FPS.")
 
+	for i in range(200):
+		monitor.record_frame(1.0 / 120.0)
+	report = monitor.current_report()
+	_expect(int(report.get("sample_frames", 0)) == 180, "Report sample count should match the rolling window.")
+	_expect(int(report.get("jank_frames", 0)) == 0, "Report jank count should match the rolling window.")
+
 	monitor.set_overlay_visible(false)
 	_expect(not monitor.is_overlay_visible(), "Overlay should report hidden after being disabled.")
 	monitor.free()

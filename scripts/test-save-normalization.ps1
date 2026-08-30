@@ -5,6 +5,8 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\save-normalization"
 $testScript = Join-Path $testDir "save_normalization_test.gd"
+$testUserData = Join-Path ([System.IO.Path]::GetTempPath()) ("idle-elite-save-normalization-" + $PID)
+$previousTestUserData = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
@@ -15,7 +17,8 @@ if (Test-Path -LiteralPath $testDir) {
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 try {
-    @'
+	$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserData
+	@'
 extends SceneTree
 
 const MasteryState := preload("res://scripts/progression/mastery_state.gd")
@@ -1298,7 +1301,7 @@ func _check_leaderboard_profile_auth_save_restore(game: Node) -> void:
 		"leaderboard_profile_claimed": true,
 		"leaderboard_name_claim_verified": false,
 	}, game.PROFILE_GUEST_NAME_PREFIX, game.PROFILE_DISPLAY_NAME_MAX_CHARS, game.PROFILE_NAME_KEY_MAX_CHARS, ProfileChatOverlaySurface.PROFILE_AVATAR_COUNT)
-	_expect(str(game.leaderboard_profile.name_key).is_empty(), "Leaderboard profile restore should clear unverified claim keys.")
+	_expect(str(game.leaderboard_profile.name_key) == "mira_stone", "Leaderboard profile restore should retain a matching unverified name key as a recovery hint.")
 	_expect(not _truthy(game.leaderboard_profile.profile_claimed), "Leaderboard profile restore should clear unverified profile claims.")
 	LeaderboardProfile.restore_profile_metadata_from_save(game, {
 		"leaderboard_player_id": "player_1234",
@@ -1377,11 +1380,14 @@ func _check_chat_metadata_save_restore(game: Node) -> void:
 	chat_runtime.set("chat_stream_next_connect_unix", -5)
 	chat_runtime.set("chat_last_opened_created_at", -20)
 	chat_runtime.set("chat_last_opened_message_id", long_id)
-	_expect(int(_save_payload_value(game, "chat_last_send_unix")) == 0, "Chat last-send save should clamp negative timestamps.")
-	_expect(int(_save_payload_value(game, "chat_stream_retry_unix")) == now + 30, "Chat retry save should cap future retry timestamps.")
-	_expect(int(_save_payload_value(game, "chat_stream_next_connect_unix")) == now + 30, "Chat next-connect save should stay at least the retry timestamp and cap future timestamps.")
-	_expect(int(_save_payload_value(game, "chat_last_opened_created_at")) == 0, "Chat opened cursor save should clamp negative timestamps.")
-	var saved_id := str(_save_payload_value(game, "chat_last_opened_message_id"))
+	# Use one payload with the captured clock value. Rebuilding it for every field can
+	# cross a wall-clock second and make the exact retry-boundary assertions flaky.
+	var saved_metadata := _save_payload(game, now)
+	_expect(int(saved_metadata.get("chat_last_send_unix", -1)) == 0, "Chat last-send save should clamp negative timestamps.")
+	_expect(int(saved_metadata.get("chat_stream_retry_unix", 0)) == now + 30, "Chat retry save should cap future retry timestamps.")
+	_expect(int(saved_metadata.get("chat_stream_next_connect_unix", 0)) == now + 30, "Chat next-connect save should stay at least the retry timestamp and cap future timestamps.")
+	_expect(int(saved_metadata.get("chat_last_opened_created_at", -1)) == 0, "Chat opened cursor save should clamp negative timestamps.")
+	var saved_id := str(saved_metadata.get("chat_last_opened_message_id", ""))
 	_expect(saved_id.length() == 64, "Chat opened message id save should truncate long ids.")
 	_expect(saved_id.begins_with("abcdefghij"), "Chat opened message id save should strip surrounding whitespace.")
 
@@ -1539,6 +1545,7 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		maxed_skills[skill_id] = {"xp": level_99_xp, "level": 99}
 		played_maxed_skills[skill_id] = {"xp": level_99_xp + 1234, "level": 99}
 	var maxed_save := {
+		"onboarding_tutorial_complete": true,
 		"skills": maxed_skills,
 		"activity_completion_count": 10,
 		"manual_activity_unlocks": {
@@ -1546,13 +1553,19 @@ func _check_test_profile_save_repair(game: Node) -> void:
 			"build:stack-bricks": true,
 		},
 	}
-	_expect(_truthy(save_runtime.call("_repair_save_for_regular_play", maxed_save)), "Regular builds should repair unmarked all-99 test saves with low play evidence.")
-	var repaired_skills := maxed_save.get("skills", {}) as Dictionary
+	var untouched_maxed_save := maxed_save.duplicate(true)
+	_expect(save_runtime.call("_repair_save_for_regular_play", maxed_save) != true, "Ordinary all-99 saves must not trigger a destructive heuristic repair.")
+	_expect(maxed_save == untouched_maxed_save, "Ordinary all-99 XP and unlocks must remain byte-for-byte equivalent in memory.")
+	var authorized_maxed_save := maxed_save.duplicate(true)
+	authorized_maxed_save[SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_KEY] = SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_MARKER
+	_expect(_truthy(save_runtime.call("_repair_save_for_regular_play", authorized_maxed_save)), "A support-authorized all-99 repair should still be available.")
+	var repaired_skills := authorized_maxed_save.get("skills", {}) as Dictionary
 	for raw_skill_id in repaired_skills.keys():
 		var repaired_skill := repaired_skills.get(raw_skill_id, {}) as Dictionary
-		_expect(int(repaired_skill.get("level", 99)) < 99, "All-99 repair should lower suspicious maxed skill levels without discarding the save.")
-		_expect(int(repaired_skill.get("xp", level_99_xp)) < level_99_xp, "All-99 repair should lower suspicious maxed skill XP without discarding the save.")
-	_expect(not maxed_save.has("manual_activity_unlocks"), "All-99 repair should drop generated manual unlock maps.")
+		_expect(int(repaired_skill.get("level", 99)) < 99, "Authorized all-99 repair should lower marked test skill levels.")
+		_expect(int(repaired_skill.get("xp", level_99_xp)) < level_99_xp, "Authorized all-99 repair should lower marked test skill XP.")
+	_expect(not authorized_maxed_save.has("manual_activity_unlocks"), "Authorized all-99 repair should drop generated manual unlock maps.")
+	_expect(not authorized_maxed_save.has(SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_KEY), "Destructive repair authorization must be one-shot.")
 	_expect(save_runtime.call("_repair_save_for_regular_play", {
 		"onboarding_tutorial_complete": true,
 		"skills": played_maxed_skills,
@@ -1563,6 +1576,7 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		"god_mode_enabled": false,
 	}) != true, "Regular builds should leave clean saves alone.")
 	var impossible_trophy_save := {
+		"onboarding_tutorial_complete": true,
 		"skills": {
 			"thieving": {"xp": SkillState.xp_for_level(2), "level": 2},
 		},
@@ -1571,8 +1585,13 @@ func _check_test_profile_save_repair(game: Node) -> void:
 			"crown_jewel_replica_replica": {"stolen": false, "cooldown_until_unix": 0},
 		},
 	}
-	_expect(save_runtime.call("_repair_save_for_regular_play", impossible_trophy_save) == true, "Regular builds should repair heist trophies stolen before their Thieving unlock level.")
-	var repaired_trophies := impossible_trophy_save.get("thieving_trophies", {}) as Dictionary
+	var untouched_trophy_save := impossible_trophy_save.duplicate(true)
+	_expect(save_runtime.call("_repair_save_for_regular_play", impossible_trophy_save) != true, "A trophy that conflicts with today's level table must not be erased automatically.")
+	_expect(impossible_trophy_save == untouched_trophy_save, "Unmarked trophy state must survive unchanged.")
+	var authorized_trophy_save := impossible_trophy_save.duplicate(true)
+	authorized_trophy_save[SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_KEY] = SaveRuntime.TRUSTED_DESTRUCTIVE_REPAIR_MARKER
+	_expect(save_runtime.call("_repair_save_for_regular_play", authorized_trophy_save) == true, "A support-authorized trophy repair should still run.")
+	var repaired_trophies := authorized_trophy_save.get("thieving_trophies", {}) as Dictionary
 	var repaired_spoon := repaired_trophies.get("complimentary_spoon", {}) as Dictionary
 	_expect(not _truthy(repaired_spoon.get("stolen", true)), "Impossible Thieving trophy repair should clear stolen state.")
 	_expect(int(repaired_spoon.get("cooldown_until_unix", -1)) == 0, "Impossible Thieving trophy repair should clear cooldown state.")
@@ -1636,14 +1655,18 @@ func _check_test_profile_save_repair(game: Node) -> void:
 		"activity_completion_count": 10,
 	}
 	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", {}, legacy_save) == true, "Missing current desktop saves should recover known legacy desktop progress.")
-	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", fresh_maxed_save, legacy_save) != true, "Suspicious current desktop saves should be repaired in place instead of recovering legacy desktop progress.")
+	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", fresh_maxed_save, legacy_save) != true, "Any progressed current desktop save should remain authoritative over a legacy candidate.")
 	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", legacy_save, legacy_save) != true, "Clean current desktop saves should not be replaced by legacy saves.")
-	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", {}, {"skills": fresh_maxed_skills}) != true, "Legacy all-99 saves should not be used for recovery.")
+	_expect(game.call("_save_runtime").call("_save_should_use_legacy_desktop_recovery", {}, {"skills": fresh_maxed_skills}) == true, "Progressed legacy all-99 saves must remain eligible for recovery.")
 	var old_curve_legacy := {"skills": {"fight": {"xp": level_99_xp, "level": 7}}}
 	game.call("_save_runtime").call("_normalize_legacy_desktop_skill_levels", old_curve_legacy)
 	var normalized_fight := (old_curve_legacy.get("skills", {}) as Dictionary).get("fight", {}) as Dictionary
 	_expect(int(normalized_fight.get("level", 0)) == 7, "Legacy desktop recovery should preserve the saved skill level.")
-	_expect(int(normalized_fight.get("xp", -1)) == SkillState.xp_for_level(7), "Legacy desktop recovery should remap old XP to the current level curve.")
+	_expect(int(normalized_fight.get("xp", -1)) == level_99_xp, "Legacy desktop recovery must preserve valid accumulated XP instead of rounding it down to a level floor.")
+	var level_only_legacy := {"skills": {"fight": {"level": 7}}}
+	game.call("_save_runtime").call("_normalize_legacy_desktop_skill_levels", level_only_legacy)
+	var synthesized_fight := (level_only_legacy.get("skills", {}) as Dictionary).get("fight", {}) as Dictionary
+	_expect(int(synthesized_fight.get("xp", -1)) == SkillState.xp_for_level(7), "Legacy recovery may synthesize XP only when the historical state has no valid XP value.")
 
 
 func _check_hard_reset_pending_restore_cancel(game: Node) -> void:
@@ -3007,10 +3030,14 @@ func _finish() -> void:
         throw "A headless Godot process is still running after the save normalization test."
     }
 } finally {
-    if ($null -eq $previousDisableSaveWrites) {
+	$env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserData
+	if ($null -eq $previousDisableSaveWrites) {
         Remove-Item Env:\IDLE_ELITE_DISABLE_SAVE_WRITES -ErrorAction SilentlyContinue
     } else {
         $env:IDLE_ELITE_DISABLE_SAVE_WRITES = $previousDisableSaveWrites
-    }
-    Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
+	}
+	Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
+	if (Test-Path -LiteralPath $testUserData) {
+		Remove-Item -LiteralPath $testUserData -Recurse -Force -ErrorAction SilentlyContinue
+	}
 }

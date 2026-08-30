@@ -10,6 +10,10 @@ const RECOVERY_WIDE_U_BOTTOM_RISE := 72.0
 const RECOVERY_WIDE_U_SHOULDER_RATIO := 0.285
 const RECOVERY_WIDE_U_RAIL_HEIGHT := 220.0
 const ACTION_CARD_STROKE_WIDTH := 12.0
+const ACTIVITY_CARD_TITLE_FONT_SIZE := 120
+const ACTIVITY_CARD_TITLE_WIDTH_AXIS := 75
+const ACTIVITY_CARD_TITLE_WEIGHT_AXIS := 700
+const ACTIVITY_CARD_TITLE_EMBOLDEN := 1.2
 
 static var activity_shade_style_cache := {}
 static var action_art_style_cache: StyleBoxFlat
@@ -469,6 +473,8 @@ class PrismConnectorOverlay extends Control:
 
 
 class ActionArtMasteryRing extends Control:
+	const FILL_TWEEN_SECONDS := 0.22
+
 	var ring_color := Color("#ffd02f")
 	var empty_color := Color("#862d2d")
 	var ring_shadow_color := Color("#171615")
@@ -478,13 +484,32 @@ class ActionArtMasteryRing extends Control:
 	var inset := 2.0
 	var gap_start_fraction := 0.10
 	var gap_finish_fraction := 0.84
-	var progress := 0.5
+	var progress := 0.0
+	var target_progress := 0.0
+	var progress_initialized := false
+	var progress_tween: Tween
 
 	func set_progress(next_progress: float) -> void:
 		var clamped := clampf(next_progress, 0.0, 1.0)
-		if absf(progress - clamped) <= 0.001:
+		if not progress_initialized:
+			progress_initialized = true
+			target_progress = clamped
+			_set_displayed_progress(clamped)
 			return
-		progress = clamped
+		if absf(target_progress - clamped) <= 0.001:
+			return
+		target_progress = clamped
+		if progress_tween != null and progress_tween.is_valid():
+			progress_tween.kill()
+		progress_tween = null
+		if clamped <= progress or not is_inside_tree():
+			_set_displayed_progress(clamped)
+			return
+		progress_tween = create_tween()
+		progress_tween.tween_method(_set_displayed_progress, progress, clamped, FILL_TWEEN_SECONDS).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+	func _set_displayed_progress(next_progress: float) -> void:
+		progress = clampf(next_progress, 0.0, 1.0)
 		queue_redraw()
 
 	func _notification(what: int) -> void:
@@ -624,6 +649,23 @@ static func activity_card_title_z_index(unlocked: bool, title: CanvasItem = null
 
 static func activity_card_title_text(raw_title: String) -> String:
 	return raw_title.replace("\u2009", "").replace(" - ", "-").replace("-", "\u2009–\u2009")
+
+
+static func configure_activity_card_title(title: Label) -> void:
+	if title == null:
+		return
+	title.add_theme_font_size_override("font_size", ACTIVITY_CARD_TITLE_FONT_SIZE)
+	var base_font := title.get_theme_font("font")
+	if base_font != null:
+		var compact_bold_font := FontVariation.new()
+		compact_bold_font.base_font = base_font
+		compact_bold_font.variation_opentype = {&"wdth": ACTIVITY_CARD_TITLE_WIDTH_AXIS, &"wght": ACTIVITY_CARD_TITLE_WEIGHT_AXIS}
+		compact_bold_font.variation_embolden = ACTIVITY_CARD_TITLE_EMBOLDEN
+		title.add_theme_font_override("font", compact_bold_font)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.max_lines_visible = 1
+	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	title.clip_text = false
 
 
 static func sync_activity_card_title_layer(card: Dictionary, unlocked: bool, module_title_over_pin_z_index := 0) -> void:

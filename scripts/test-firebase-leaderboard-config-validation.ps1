@@ -33,13 +33,28 @@ function Invoke-ExpectInvalidConfig {
     $outputPath = Join-Path $testDir "$Name.json"
     $failed = $false
     try {
-        & $writerPath -DatabaseUrl $DatabaseUrl -WebApiKey $WebApiKey -OutputPath $outputPath | Out-Null
+        & $writerPath -DatabaseUrl $DatabaseUrl -WebApiKey $WebApiKey -GoogleWebClientId $validGoogleWebClientId -OutputPath $outputPath | Out-Null
     } catch {
         $failed = $true
     }
 
     Assert-True $failed "Expected config writer to reject $Name."
     Assert-True (-not (Test-Path -LiteralPath $outputPath)) "Config writer should not create $Name after validation failure."
+}
+
+function Invoke-ExpectMissingGoogleClientConfig {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    $outputPath = Join-Path $testDir "$Name.json"
+    $failed = $false
+    try {
+        & $writerPath -DatabaseUrl "https://idle-elite-default-rtdb.firebaseio.com" -WebApiKey $validTestKey -GoogleWebClientId "" -OutputPath $outputPath | Out-Null
+    } catch {
+        $failed = $true
+    }
+
+    Assert-True $failed "Expected config writer to require a Google client id."
+    Assert-True (-not (Test-Path -LiteralPath $outputPath)) "Config writer should not create $Name without a Google client id."
 }
 
 function Invoke-ExpectInvalidGoogleClientConfig {
@@ -74,6 +89,7 @@ try {
     Invoke-ExpectInvalidConfig -Name "uppercase-host" -DatabaseUrl "https://Idle-Elite-default-rtdb.firebaseio.com"
     Invoke-ExpectInvalidConfig -Name "short-key" -DatabaseUrl "https://idle-elite-default-rtdb.firebaseio.com" -WebApiKey "too-short"
     Invoke-ExpectInvalidConfig -Name "spaced-key" -DatabaseUrl "https://idle-elite-default-rtdb.firebaseio.com" -WebApiKey "AIzaSy Validation Only Key"
+    Invoke-ExpectMissingGoogleClientConfig -Name "missing-google-client"
     Invoke-ExpectInvalidGoogleClientConfig -Name "bad-google-client" -GoogleWebClientId "not-a-client-id"
 } finally {
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue

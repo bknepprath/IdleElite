@@ -23,6 +23,9 @@ $staminaGaugeFailShakeTest = Join-Path $projectRoot "scripts\test-stamina-gauge-
 $skillDetailBottomScrollPadTest = Join-Path $projectRoot "scripts\test-skill-detail-bottom-scroll-pad.ps1"
 $skillDetailHiddenPreviewScrollGapTest = Join-Path $projectRoot "scripts\test-skill-detail-hidden-preview-scroll-gap.ps1"
 $saveNormalizationTest = Join-Path $projectRoot "scripts\test-save-normalization.ps1"
+$saveHardeningTest = Join-Path $projectRoot "scripts\test-save-hardening.ps1"
+$saveLifecycleGuardTest = Join-Path $projectRoot "scripts\test-save-lifecycle-guard.ps1"
+$onlineIdentitySafetyTest = Join-Path $projectRoot "scripts\test-online-identity-safety.ps1"
 $activityQueueTest = Join-Path $projectRoot "scripts\test-activity-queue.ps1"
 $moduleListTransitionsTest = Join-Path $projectRoot "scripts\test-module-list-transitions.ps1"
 $pinnedPinVisualSmokeTest = Join-Path $projectRoot "scripts\test-pinned-pin-visual-smoke.ps1"
@@ -59,10 +62,11 @@ function Assert-NoUnexpectedGodotErrors {
             continue
         }
         $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not $knownShutdownNoise) {
+			$text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+			$text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
+		)
+		$knownMachineCertificateNoise = $text -match '^ERROR: Failed to read the root certificate store\.$'
+		if (-not ($knownShutdownNoise -or $knownMachineCertificateNoise)) {
             throw "Unexpected Godot error during ${Context}: $text"
         }
     }
@@ -89,10 +93,11 @@ function Assert-NoCrashLikeGodotErrors {
             $text -match 'ERROR: Skills page performance test did not report success\.'
         )
         $knownShutdownNoise = (
-            $text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
-            $text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
-        )
-        if (-not ($knownPerformanceFailure -or $knownShutdownNoise)) {
+			$text -match 'ERROR: \d+ RID allocations of type .+ were leaked at exit\.' -or
+			$text -match 'ERROR: \d+ resources still in use at exit \(run with --verbose for details\)\.'
+		)
+		$knownMachineCertificateNoise = $text -match '^ERROR: Failed to read the root certificate store\.$'
+		if (-not ($knownPerformanceFailure -or $knownShutdownNoise -or $knownMachineCertificateNoise)) {
             throw "Crash-like Godot error during ${Context}: $text"
         }
     }
@@ -207,7 +212,14 @@ if (-not (Test-Path -LiteralPath $runner)) {
     throw "Godot runner was not found at $runner"
 }
 
-$smokeOutput = & $runner --headless --path $projectRoot --quit-after 1 2>&1
+$previousSmokeTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
+$env:GODOT_RUN_TIMEOUT_SECONDS = "60"
+try {
+    $smokeOutput = & $runner --headless --path $projectRoot 2>&1
+}
+finally {
+    $env:GODOT_RUN_TIMEOUT_SECONDS = $previousSmokeTimeout
+}
 $smokeOutput | Out-Host
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
@@ -398,6 +410,21 @@ if ($LASTEXITCODE -ne 0) {
 }
 Assert-NoUnexpectedGodotErrors $saveNormalizationOutput "save normalization validation"
 Assert-NoHeadlessGodotProcesses "save normalization validation"
+
+Invoke-ProjectValidationScript `
+    -Path $saveHardeningTest `
+    -MissingMessage "Save hardening test was not found at $saveHardeningTest" `
+    -Context "save migration and hardening validation"
+
+Invoke-ProjectValidationScript `
+    -Path $saveLifecycleGuardTest `
+    -MissingMessage "Save lifecycle guard test was not found at $saveLifecycleGuardTest" `
+    -Context "save lifecycle guard validation"
+
+Invoke-ProjectValidationScript `
+    -Path $onlineIdentitySafetyTest `
+    -MissingMessage "Online identity safety test was not found at $onlineIdentitySafetyTest" `
+    -Context "online identity safety validation"
 
 Invoke-ProjectValidationScript `
     -Path $activityQueueTest `

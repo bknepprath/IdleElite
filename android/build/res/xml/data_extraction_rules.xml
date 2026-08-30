@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <include domain="file" path="idle_elite_save.json" />
+        <include domain="file" path="idle_elite_save.tmp.json" />
+        <include domain="file" path="idle_elite_save.backup.json" />
+        <include domain="file" path="idle_elite_save.backup-2.json" />
+        <include domain="file" path="idle_elite_save.backup-3.json" />
+        <include domain="file" path="idle_elite_save.recovery.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.tmp.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-2.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-3.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.recovery.json" />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="file" path="idle_elite_save.json" />
+        <include domain="file" path="idle_elite_save.tmp.json" />
+        <include domain="file" path="idle_elite_save.backup.json" />
+        <include domain="file" path="idle_elite_save.backup-2.json" />
+        <include domain="file" path="idle_elite_save.backup-3.json" />
+        <include domain="file" path="idle_elite_save.recovery.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.tmp.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-2.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.backup-3.json" />
+        <include domain="file" path="app_userdata/Idle Elite/idle_elite_save.recovery.json" />
+    </device-transfer>
+</data-extraction-rules>

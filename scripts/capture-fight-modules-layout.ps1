@@ -47,68 +47,27 @@ func _run() -> void:
 		return
 	_hide_capture_overlays(scene)
 	_unlock_for_capture(scene)
-	var stage := Control.new()
-	stage.name = "FightModulesLayoutCaptureStage"
-	stage.set_anchors_preset(Control.PRESET_FULL_RECT)
-	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stage.z_index = 5000
-	stage.z_as_relative = false
-	root.add_child(stage)
-	var bg := ColorRect.new()
-	bg.color = Color("#f4ead8")
-	bg.set_anchors_preset(Control.PRESET_FULL_RECT)
-	stage.add_child(bg)
-	var cards_clip := Control.new()
-	cards_clip.name = "FightModulesActualActionsClip"
-	cards_clip.position = Vector2(96, 0)
-	cards_clip.size = Vector2(1968, 3840)
-	cards_clip.clip_contents = true
-	stage.add_child(cards_clip)
-	var ids := [
-		"push-ups",
-		"chicken-sparring-pit",
-		"duel-leaning-fence-post",
-		"face-the-rooster"
-	]
-	var y := 120.0
-	var push_ups_card: Control = null
-	var push_ups_pop: Control = null
-	var push_ups_progress: Control = null
-	for action_id in ids:
-		var action := scene.call("_action_data", "fight", action_id) as Dictionary
-		if action.is_empty():
-			continue
-		if action_id == "chicken-sparring-pit":
-			scene.set("running_skill_id", "fight")
-			scene.set("running_action_id", action_id)
-			scene.set("action_progress", 0.43)
-		else:
-			scene.set("running_skill_id", "")
-			scene.set("running_action_id", "")
-			scene.set("action_progress", 0.0)
-		var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1968.0, 1968.0) as Dictionary
-		var card_root := built.get("card_root") as Control
-		if card_root == null:
-			push_error("%s card root did not build" % action_id)
-			continue
-		card_root.position = Vector2(0, y)
-		card_root.size.x = 1968.0
-		cards_clip.add_child(card_root)
-		if action_id == "push-ups":
-			push_ups_card = card_root
-			push_ups_pop = card_root.find_child("ActivityCardFace", true, false) as Control
-			push_ups_progress = (built.get("card", {}) as Dictionary).get("progress") as Control
-			if push_ups_progress != null:
-				push_ups_progress.call("set_value", 100.0)
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "fight")
+	await scene.call("_navigation_shell").call("_render_screen", false, -1, false)
+	for _frame in range(20):
 		await process_frame
-		var height := maxf(card_root.custom_minimum_size.y, card_root.size.y)
-		if height <= 0.0:
-			height = 760.0
-		y += height + 70.0
+	await scene.call("_skill_detail_surface").call("_scroll_to_activity_card", "push-ups", false, true)
+	for _frame in range(12):
+		await process_frame
+	var push_ups_key := str(scene.call("_action_key", "fight", "push-ups"))
+	var push_ups_card_data := (scene.get("action_cards") as Dictionary).get(push_ups_key, {}) as Dictionary
+	var push_ups_card := push_ups_card_data.get("card_root") as Control
+	var push_ups_pop: Control = null
+	if push_ups_card != null:
+		push_ups_pop = push_ups_card.find_child("ActivityCardFace", true, false) as Control
+	var push_ups_progress := push_ups_card_data.get("progress") as Control
+	if push_ups_progress != null:
+		push_ups_progress.call("set_value", 100.0)
+	var cards_clip := scene.get("detail_actions_scroll") as Control
 	if not _validate_push_ups_card(push_ups_card, cards_clip):
 		quit(1)
 		return
-	scene.visible = false
 	for _frame in range(80):
 		_hide_capture_overlays(scene)
 		await process_frame
@@ -147,22 +106,18 @@ func _capture_pressed_push_ups(scene: Node, card_root: Control, pop: Control) ->
 		return false
 	var back_face := card_root.find_child("NormalActivityCardBackFace", true, false) as Control
 	var connectors := card_root.find_child("NormalActivityCardPrismConnectors", true, false) as Control
+	if back_face == null or connectors == null:
+		push_error("Push-Ups prism nodes were not rendered")
+		return false
 	var back_before := back_face.get_global_rect()
 	var face_before := pop.get_global_rect()
-	var depth_id := int(pop.get_meta("activity_card_depth_node_id", 0))
-	var depth := instance_from_id(depth_id) as Control
-	if depth == null:
-		push_error("Push-Ups pressed capture could not resolve the depth control")
-		return false
-	var activity_surface = scene.call("_skill_swipe_activity_surface")
-	var staged_key := "__capture_push_ups_press__"
-	var staged_card := {"pop": pop, "depth": depth, "card_key": staged_key}
-	var press_offset := activity_surface.call("_action_card_press_offset", staged_card) as Vector2
-	if not press_offset.is_equal_approx(Vector2(0.0, 36.0)):
-		push_error("Push-Ups press helper returned the wrong direction: %s" % press_offset)
-		return false
-	(scene.get("action_cards") as Dictionary)[staged_key] = staged_card
-	activity_surface.call("_animate_action_card_3d_click", staged_key)
+	var tap_position := pop.get_global_rect().get_center()
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = tap_position
+	press.global_position = tap_position
+	scene.call("_input", press)
 	await create_timer(0.12).timeout
 	for _frame in range(2):
 		await process_frame
@@ -181,14 +136,18 @@ func _capture_pressed_push_ups(scene: Node, card_root: Control, pop: Control) ->
 	if pressed_image == null or pressed_image.is_empty() or pressed_image.save_png(PRESSED_OUT_PATH) != OK:
 		push_error("failed to save pressed Push-Ups screenshot")
 		return false
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = tap_position
+	release.global_position = tap_position
+	scene.call("_input", release)
 	await create_timer(0.20).timeout
 	for _frame in range(2):
 		await process_frame
 	if not pop.get_global_rect().is_equal_approx(face_before) or not back_face.get_global_rect().is_equal_approx(back_before):
 		push_error("Push-Ups release did not return the face while keeping the base stationary")
 		return false
-	(scene.get("action_cards") as Dictionary).erase(staged_key)
-	await create_timer(0.1).timeout
 	print("push-ups-press-geometry-ok face_delta=%s remaining_depth=0.0 base_stationary=true quick_tap_completed=true release_returned=true" % face_delta)
 	return true
 
@@ -196,29 +155,34 @@ func _validate_push_ups_card(card_root: Control, cards_clip: Control) -> bool:
 	if card_root == null:
 		push_error("Push-Ups card was not captured")
 		return false
+	if cards_clip == null:
+		push_error("Fight actions clip was not rendered")
+		return false
 	var back_face := card_root.find_child("NormalActivityCardBackFace", true, false) as Panel
 	var connectors := card_root.find_child("NormalActivityCardPrismConnectors", true, false) as Control
 	if back_face == null or connectors == null:
 		push_error("Push-Ups prism nodes were not rendered")
 		return false
 	var style := back_face.get_theme_stylebox("panel") as StyleBoxFlat
+	if style == null:
+		push_error("Push-Ups card panel style was not rendered")
+		return false
 	var shadow_right := back_face.get_global_rect().end.x + style.shadow_size + maxf(0.0, style.shadow_offset.x)
 	var clip_right := cards_clip.get_global_rect().end.x
 	var points := connectors.call("_connector_points") as PackedVector2Array
 	var front_origin := connectors.call("_connector_face_origin") as Vector2
 	var front_size := connectors.call("_connector_face_size") as Vector2
 	var back_origin := front_origin + (connectors.get("depth_offset") as Vector2)
-	var back_size := front_size
 	if shadow_right >= clip_right:
 		push_error("Push-Ups shadow reaches the actions clip: %.1f >= %.1f" % [shadow_right, clip_right])
 		return false
 	if points.size() != 2:
 		push_error("Push-Ups card did not render both prism connectors")
 		return false
-	if back_origin.x > front_origin.x + 0.01 or back_origin.x + back_size.x < front_origin.x + front_size.x - 0.01:
+	if back_origin.x > front_origin.x + 0.01 or back_origin.x + front_size.x < front_origin.x + front_size.x - 0.01:
 		push_error("Push-Ups front plate overhangs its base")
 		return false
-	var right_perspective := back_origin.x + back_size.x - front_origin.x - front_size.x
+	var right_perspective := back_origin.x - front_origin.x
 	if absf(right_perspective) > 0.01:
 		push_error("Push-Ups top-view face and base widths do not match: %.1f" % right_perspective)
 		return false
@@ -277,7 +241,7 @@ function Test-CaptureCompleteness {
         }
         $columns = 48
         $rows = 84
-        $sampleCount = 0
+        $sampleCount = $columns * $rows
         $transparentCount = 0
         $nearBlackCount = 0
         for ($row = 0; $row -lt $rows; $row++) {
@@ -285,7 +249,6 @@ function Test-CaptureCompleteness {
             for ($column = 0; $column -lt $columns; $column++) {
                 $x = [int][Math]::Round(($bitmap.Width - 1) * $column / ($columns - 1))
                 $pixel = $bitmap.GetPixel($x, $y)
-                $sampleCount++
                 if ($pixel.A -lt 255) {
                     $transparentCount++
                 }
@@ -321,10 +284,10 @@ $output | Write-Output
 if ($LASTEXITCODE -ne 0) {
 	throw "Fight modules capture exited with code $LASTEXITCODE."
 }
-if ($output -notmatch "push-ups-card-geometry-ok") {
+if (($output -join "`n") -notmatch "push-ups-card-geometry-ok") {
 	throw "Capture did not verify the Push-Ups prism geometry."
 }
-if ($output -notmatch "push-ups-press-geometry-ok") {
+if (($output -join "`n") -notmatch "push-ups-press-geometry-ok") {
 	throw "Capture did not verify the Push-Ups downward press geometry."
 }
 if (-not (Test-Path -LiteralPath $screenshot)) {

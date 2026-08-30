@@ -1,6 +1,7 @@
 extends RefCounted
 
 const AchievementState = preload("res://scripts/achievements/state.gd")
+const ActivityDataCatalog = preload("res://scripts/activity_data/catalog.gd")
 const GameFormatting = preload("res://scripts/core/formatting.gd")
 const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
@@ -57,11 +58,11 @@ static func _event_module_for_load(source: Dictionary, definition_order: int) ->
 		return {}
 	var event_id := str(source.get("id", "")).strip_edges()
 	if event_id.is_empty():
-		event_id = _slug(str(source.get("name", "Event Module")))
+		event_id = ActivityDataCatalog._slug(str(source.get("name", "Event Module")))
 	var target_level := maxi(1, int(source.get("target_level", source.get("sort_unlock", source.get("unlock", 1)))))
 	var unlock_level := maxi(1, int(source.get("unlock", target_level)))
 	var xp_value := maxi(1, int(source.get("xp", source.get("rewards", {}).get("xp", 1))))
-	var requirements := _action_requirements_for_load(source, page, unlock_level)
+	var requirements := ActivityDataCatalog._action_requirements_for_load(source, page, unlock_level)
 	var event_def := {
 		"id": event_id,
 		"page": page,
@@ -75,13 +76,13 @@ static func _event_module_for_load(source: Dictionary, definition_order: int) ->
 		"xp": xp_value,
 		"stamina": int(source.get("stamina", source.get("costs", {}).get("stamina", 1))),
 		"success": float(source.get("success", 90.0)),
-		"art": _res_path(str(source.get("art", ""))),
-		"bg": _res_path(str(source.get("background", source.get("bg", "")))),
+		"art": ActivityDataCatalog._res_path(str(source.get("art", ""))),
+		"bg": ActivityDataCatalog._res_path(str(source.get("background", source.get("bg", "")))),
 		"requirements": requirements,
-		"xp_rewards": _action_xp_rewards_for_load(source, page, xp_value),
+		"xp_rewards": ActivityDataCatalog._action_xp_rewards_for_load(source, page, xp_value),
 		"resource_rewards": _event_resource_rewards_for_load(source),
-		"combo_tags": _string_array_for_load(source.get("combo_tags", ["event"])),
-		"display_tags": _string_array_for_load(source.get("display_tags", ["Event"])),
+		"combo_tags": ActivityDataCatalog._string_array_for_load(source.get("combo_tags", ["event"])),
+		"display_tags": ActivityDataCatalog._string_array_for_load(source.get("display_tags", ["Event"])),
 		"definition_order": definition_order
 	}
 	if source.has("area"):
@@ -89,7 +90,7 @@ static func _event_module_for_load(source: Dictionary, definition_order: int) ->
 	var xp_reward_cap := int(source.get("xp_reward_cap", 0))
 	if xp_reward_cap > 0:
 		event_def["xp_reward_cap"] = xp_reward_cap
-	var event_metadata := _event_metadata_for_load(source.get("event", {}))
+	var event_metadata := ActivityDataCatalog._event_metadata_for_load(source.get("event", {}))
 	event_metadata["target_level"] = target_level
 	event_metadata["minimum_level"] = maxi(1, int(source.get("minimum_level", event_metadata.get("minimum_level", target_level))))
 	event_metadata["spawn_weight"] = maxf(0.0, float(source.get("spawn_weight", event_metadata.get("spawn_weight", 1.0))))
@@ -98,30 +99,6 @@ static func _event_module_for_load(source: Dictionary, definition_order: int) ->
 	event_metadata["definition_order"] = definition_order
 	event_def["event"] = event_metadata
 	return event_def
-
-
-static func _action_requirements_for_load(action: Dictionary, owner_skill_id: String, legacy_unlock: int) -> Array:
-	var normalized := []
-	var raw_requirements = action.get("requirements", [])
-	if typeof(raw_requirements) == TYPE_ARRAY:
-		for raw_requirement in raw_requirements:
-			if typeof(raw_requirement) != TYPE_DICTIONARY:
-				continue
-			var requirement := raw_requirement as Dictionary
-			var requirement_skill := str(requirement.get("skill", requirement.get("skill_id", owner_skill_id))).strip_edges()
-			if requirement_skill.is_empty():
-				requirement_skill = owner_skill_id
-			var requirement_level := maxi(1, int(requirement.get("level", requirement.get("unlock", legacy_unlock))))
-			normalized.append({
-				"skill": requirement_skill,
-				"level": requirement_level
-			})
-	if normalized.is_empty():
-		normalized.append({
-			"skill": owner_skill_id,
-			"level": maxi(1, legacy_unlock)
-		})
-	return normalized
 
 
 static func _event_resource_rewards_for_load(action: Dictionary) -> Dictionary:
@@ -136,70 +113,6 @@ static func _event_resource_rewards_for_load(action: Dictionary) -> Dictionary:
 		normalized["logs_min"] = logs_min
 		normalized["logs_max"] = logs_max
 	return normalized
-
-
-static func _action_xp_rewards_for_load(action: Dictionary, owner_skill_id: String, primary_xp: int) -> Dictionary:
-	var normalized := {}
-	var raw_rewards = action.get("xp_rewards", action.get("xp_by_skill", {}))
-	if typeof(raw_rewards) == TYPE_DICTIONARY:
-		var rewards := raw_rewards as Dictionary
-		for raw_skill_id in rewards.keys():
-			var skill_id := str(raw_skill_id).strip_edges()
-			if skill_id.is_empty():
-				continue
-			var amount := maxi(0, int(rewards.get(raw_skill_id, 0)))
-			if amount > 0:
-				normalized[skill_id] = amount
-	elif typeof(raw_rewards) == TYPE_ARRAY:
-		for raw_reward in raw_rewards:
-			if typeof(raw_reward) != TYPE_DICTIONARY:
-				continue
-			var reward := raw_reward as Dictionary
-			var skill_id := str(reward.get("skill", reward.get("skill_id", owner_skill_id))).strip_edges()
-			if skill_id.is_empty():
-				continue
-			var amount := maxi(0, int(reward.get("xp", reward.get("amount", 0))))
-			if amount > 0:
-				normalized[skill_id] = amount
-	if normalized.is_empty():
-		normalized[owner_skill_id] = maxi(1, primary_xp)
-	return normalized
-
-
-static func _string_array_for_load(value: Variant) -> Array:
-	var normalized := []
-	if typeof(value) == TYPE_ARRAY:
-		for raw_item in value:
-			var normalized_item := str(raw_item).strip_edges()
-			if not normalized_item.is_empty() and not normalized.has(normalized_item):
-				normalized.append(normalized_item)
-	elif typeof(value) == TYPE_STRING:
-		var normalized_item := str(value).strip_edges()
-		if not normalized_item.is_empty():
-			normalized.append(normalized_item)
-	return normalized
-
-
-static func _event_metadata_for_load(value: Variant) -> Dictionary:
-	if typeof(value) != TYPE_DICTIONARY:
-		return {}
-	var normalized := {}
-	var source := value as Dictionary
-	for raw_key in source.keys():
-		var key := str(raw_key).strip_edges()
-		if not key.is_empty():
-			normalized[key] = source.get(raw_key)
-	return normalized
-
-
-static func _res_path(path: String) -> String:
-	if path.is_empty() or path.begins_with("res://"):
-		return path
-	return "res://%s" % path
-
-
-static func _slug(text: String) -> String:
-	return text.to_lower().replace("'", "").replace(",", "").replace(" ", "-")
 
 
 func _event_module_sort_less(left: Variant, right: Variant) -> bool:

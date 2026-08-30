@@ -38,6 +38,9 @@ const SkillState = preload("res://scripts/progression/skill_state.gd")
 
 const SKILL_SWIPE_SHELF_BACKGROUND_FADE_OUT_SECONDS := 0.18
 const SKILL_SWIPE_SHELF_BACKGROUND_FADE_IN_SECONDS := 0.24
+const SKILL_SWIPE_FLICK_MIN_DISTANCE := 72.0
+const SKILL_SWIPE_FLICK_MIN_VELOCITY := 650.0
+const SKILL_SWIPE_FLICK_MAX_RELEASE_DELAY_MSEC := 140
 
 class _MedalShineSlash:
 	extends Control
@@ -145,6 +148,8 @@ var skill_swipe_tracking := false
 var skill_swipe_horizontal := false
 var skill_swipe_start := Vector2.ZERO
 var skill_swipe_last := Vector2.ZERO
+var skill_swipe_last_motion_msec := 0
+var skill_swipe_velocity_x := 0.0
 var skill_swipe_touch_index := -1
 var skill_swipe_tween: Tween
 var skill_swipe_frame: Control
@@ -622,6 +627,8 @@ func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) ->
 	skill_swipe_horizontal = false
 	skill_swipe_start = pointer_position
 	skill_swipe_last = pointer_position
+	skill_swipe_last_motion_msec = Time.get_ticks_msec()
+	skill_swipe_velocity_x = 0.0
 	skill_swipe_drag_base_x = _current_skill_swipe_page_x()
 	skill_swipe_touch_index = touch_index
 	_set_skill_strip_committed_crossfade(false)
@@ -671,7 +678,13 @@ func _update_skill_swipe_feedback(pointer_position: Vector2) -> void:
 			skill_swipe_touch_index = -1
 			skill_swipe_horizontal = false
 			return
+	var motion_msec := Time.get_ticks_msec()
+	var motion_elapsed_msec := motion_msec - skill_swipe_last_motion_msec
+	if motion_elapsed_msec > 0 and motion_elapsed_msec <= 120:
+		var instant_velocity_x := (pointer_position.x - skill_swipe_last.x) * 1000.0 / float(motion_elapsed_msec)
+		skill_swipe_velocity_x = lerpf(skill_swipe_velocity_x, instant_velocity_x, 0.55)
 	skill_swipe_last = pointer_position
+	skill_swipe_last_motion_msec = motion_msec
 	var delta := pointer_position - skill_swipe_start
 	var abs_x := absf(delta.x)
 	var abs_y := absf(delta.y)
@@ -1502,10 +1515,23 @@ func _finish_skill_swipe(end_position: Vector2) -> void:
 				call_deferred("_clear_skill_swipe_action_click_suppression")
 			return
 	var delta: Vector2 = end_position - skill_swipe_start
+	var was_horizontal := skill_swipe_horizontal
+	var abs_x := absf(delta.x)
+	var release_msec := Time.get_ticks_msec()
+	var recent_motion := release_msec - skill_swipe_last_motion_msec <= SKILL_SWIPE_FLICK_MAX_RELEASE_DELAY_MSEC
+	var flick_direction_matches := signf(skill_swipe_velocity_x) == signf(delta.x)
+	var flick_commits := (
+		was_horizontal
+		and abs_x >= SKILL_SWIPE_FLICK_MIN_DISTANCE
+		and recent_motion
+		and flick_direction_matches
+		and absf(skill_swipe_velocity_x) >= SKILL_SWIPE_FLICK_MIN_VELOCITY
+	)
+	var direction_is_horizontal := was_horizontal or abs_x >= absf(delta.y) * 1.35
 	skill_swipe_tracking = false
 	skill_swipe_touch_index = -1
 	skill_swipe_drag_base_x = 0.0
-	if absf(delta.x) < SKILL_SWIPE_THRESHOLD or absf(delta.x) < absf(delta.y) * 1.35:
+	if (abs_x < SKILL_SWIPE_THRESHOLD and not flick_commits) or not direction_is_horizontal:
 		if _skill_swipe_animation_blocks_input():
 			if skill_swipe_child_click_suppressed:
 				call_deferred("_clear_skill_swipe_action_click_suppression")
@@ -4022,7 +4048,7 @@ func _sync_queue_selection_banner() -> void:
 	row.add_theme_constant_override("separation", 42)
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	banner.add_child(row)
-	var title: Label = host._label("QUEUE SELECTION MODE", 48, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	var title: Label = host._label("QUEUE SELECTION MODE", 96, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -5439,7 +5465,7 @@ func _skill_swipe_light_preview_simple_card(skill_id: String, entry_data: Dictio
 	panel.add_theme_stylebox_override("panel", _skill_swipe_light_preview_card_style(skill_id))
 	root.add_child(panel)
 
-	var title = host._label(_skill_swipe_light_preview_card_title(skill_id, entry_data), 76, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label(_skill_swipe_light_preview_card_title(skill_id, entry_data), 120, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	title.add_theme_constant_override("outline_size", 16)
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
@@ -5493,7 +5519,7 @@ func _skill_swipe_light_preview_header_circle(skill_id: String) -> PanelContaine
 	divider.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	divider.color = host.COLOR_INK
 	stack.add_child(divider)
-	var max_label = host._label(str(maximum), 58, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
+	var max_label = host._label(str(maximum), 116, Color("#171615"), HORIZONTAL_ALIGNMENT_CENTER)
 	max_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(max_label)
 	return circle
@@ -5600,7 +5626,7 @@ func _update_passive_card_static_state(card: Dictionary, _skill_id: String, acti
 	if currency_label != null:
 		var log_currency: float = host.material_runtime.amount("softwood")
 		var currency_text = str(int(floor(log_currency + 0.0001))) if log_currency < 1000 else GameFormatting.compact_number(log_currency)
-		var currency_font_size = 82 if currency_text.length() <= 6 else 74
+		var currency_font_size = 96
 		if currency_label.get_theme_font_size("font_size") != currency_font_size:
 			currency_label.add_theme_font_size_override("font_size", currency_font_size)
 		host._app_lifecycle_runtime().set_label_text_if_changed(currency_label, currency_text)
@@ -5895,7 +5921,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	margin.add_child(row)
 
 	var art_slot = MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 18)
+	art_slot.add_theme_constant_override("margin_top", 140)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel = Panel.new()
 	var art_panel_size := Vector2(382, 382)
@@ -5935,16 +5961,28 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	row.add_child(copy)
 	row.add_child(art_slot)
 
-	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-	action_name_label.add_theme_font_size_override("font_size", 82)
+	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), ActivityCardStyles.ACTIVITY_CARD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	ActivityCardStyles.configure_activity_card_title(action_name_label)
 	action_name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
-	action_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	action_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	action_name_label.set_meta("activity_card_locked_title_z_index", 0)
 	action_name_label.z_index = ActivityCardStyles.activity_card_title_z_index(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action), action_name_label, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
-	copy.add_child(action_name_label)
+	var title_spacer := Control.new()
+	title_spacer.custom_minimum_size = Vector2(0, 120)
+	title_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	copy.add_child(title_spacer)
+	var title_band := MarginContainer.new()
+	title_band.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	title_band.offset_left = 16
+	title_band.offset_right = -16
+	title_band.offset_top = 32
+	title_band.offset_bottom = 172
+	title_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_band.z_index = 200
+	title_band.visible = margin.visible
+	pop_card.add_child(title_band)
+	title_band.add_child(action_name_label)
 
 	var stat_row = HBoxContainer.new()
 	stat_row.add_theme_constant_override("separation", 18)

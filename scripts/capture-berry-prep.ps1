@@ -109,6 +109,9 @@ func _run() -> void:
 		return
 	var capture_path := OS.get_environment("IDLE_ELITE_BERRY_PREP_CAPTURE_PATH")
 	var result := image.save_png(capture_path)
+	if result != OK:
+		_fail("capture save failed: %s" % str(result))
+		return
 	print("berry-prep-capture path=%s result=%s size=%sx%s display=%s" % [capture_path, str(result), str(image.get_width()), str(image.get_height()), DisplayServer.get_name()])
 	scene.queue_free()
 	quit(0)

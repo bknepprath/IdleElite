@@ -79,26 +79,12 @@ func _run() -> void:
 	if action.is_empty():
 		_fail("duel fence post action missing")
 		return
-	var stage := Control.new()
-	stage.name = "BuildableModuleCaptureStage"
-	stage.set_anchors_preset(Control.PRESET_FULL_RECT)
-	stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stage.z_index = 0
-	stage.z_as_relative = false
-	root.add_child(stage)
-	var backdrop := ColorRect.new()
-	backdrop.color = Color("#f1e8d9")
-	backdrop.set_anchors_preset(Control.PRESET_FULL_RECT)
-	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stage.add_child(backdrop)
-	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1900.0, 1900.0) as Dictionary
-	var card := built.get("card_root") as Control
-	if card == null:
-		_fail("duel fence post card missing")
-		return
-	card.position = Vector2(130.0, 1260.0)
-	stage.add_child(card)
-	scene.visible = false
+	scene.set("current_screen", "skill")
+	scene.set("selected_skill_id", "fight")
+	scene.call("_render_screen", false, -1, false)
+	for _frame in range(6):
+		await process_frame
+	await scene.call("_scroll_to_activity_card", "duel-leaning-fence-post", false, true)
 	for _frame in range(12):
 		await process_frame
 	_hide_boot_overlay_for_capture(scene)
@@ -144,16 +130,6 @@ func _hide_boot_overlay_for_capture(scene: Node) -> void:
 		var toast_item := toast as CanvasItem
 		if toast_item != null:
 			toast_item.visible = false
-
-
-func _find_node_by_name(root_node: Node, target_name: String) -> Node:
-	if root_node.name == target_name:
-		return root_node
-	for child in root_node.get_children():
-		var found := _find_node_by_name(child, target_name)
-		if found != null:
-			return found
-	return null
 
 
 func _fail(message: String) -> void:

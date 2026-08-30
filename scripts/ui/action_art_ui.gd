@@ -213,7 +213,6 @@ class ActionArtAnimationRect:
 	var effect_elapsed := 0.0
 	var effect_colors: Array[Color] = []
 	var effect_scenario_palettes: Array[Array] = []
-	var effect_cycle_seconds := 1.15
 	var effect_paint_seconds := 0.70
 	var effect_hold_seconds := 0.55
 	var effect_splash_visible := false
@@ -266,7 +265,6 @@ class ActionArtAnimationRect:
 		effect_name = ""
 		effect_colors.clear()
 		effect_scenario_palettes.clear()
-		effect_cycle_seconds = 1.15
 		effect_paint_seconds = 0.70
 		effect_hold_seconds = 0.55
 		effect_splash_visible = false
@@ -278,7 +276,6 @@ class ActionArtAnimationRect:
 		effect_name = str(source.get("name", ""))
 		effect_splash_visible = bool(source.get("splash", source.get("brush", false)))
 		effect_random_scenario = bool(source.get("random_scenario", false))
-		effect_cycle_seconds = maxf(0.25, float(source.get("cycle_seconds", 1.15)))
 		effect_paint_seconds = maxf(0.08, float(source.get("paint_seconds", 0.70)))
 		effect_hold_seconds = maxf(0.08, float(source.get("hold_seconds", 0.55)))
 		for raw_color in source.get("colors", []):

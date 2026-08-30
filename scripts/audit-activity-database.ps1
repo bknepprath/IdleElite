@@ -146,10 +146,8 @@ function Test-PositiveInteger {
         return $false
     }
     $text = ([string]$Value).Trim()
-    if ($text -notmatch "^\d+$") {
-        return $false
-    }
-    return [int]$text -gt 0
+    $number = 0
+    return $text -match "^\d+$" -and [int]::TryParse($text, [ref]$number) -and $number -gt 0
 }
 
 function Validate-OptionalPositiveInteger {
@@ -343,7 +341,10 @@ foreach ($skill in $skills) {
         }
         if (-not [string]::IsNullOrWhiteSpace($actionId)) {
             if ($globalActionIds.ContainsKey($actionId)) {
-                Add-Finding $errors "Duplicate action id across modules: $actionId is used by $($globalActionIds[$actionId]) and $label."
+                $existingLabel = [string]$globalActionIds[$actionId]
+                if ($existingLabel -ne $label) {
+                    Add-Finding $errors "Duplicate action id across modules: $actionId is used by $existingLabel and $label."
+                }
             } else {
                 $globalActionIds[$actionId] = $label
             }
@@ -536,9 +537,13 @@ for ($i = 0; $i -lt $eventModules.Count; $i++) {
         }
     }
 
-    $eventSuccess = [double]$event.success
+    $eventSuccessValue = Get-ObjectProperty $event "success"
+    $eventSuccess = 0.0
+    if (Test-PositiveNumber $eventSuccessValue) {
+        $eventSuccess = [double]$eventSuccessValue
+    }
     if ($eventSuccess -lt 5 -or $eventSuccess -gt 100) {
-        Add-Finding $errors "$label success must be between 5 and 100, found $eventSuccess."
+        Add-Finding $errors "$label success must be between 5 and 100, found $eventSuccessValue."
     }
 
     $eventRequirementCount = Validate-RequirementList $event $label $eventPage $true
@@ -585,7 +590,7 @@ if ($null -ne $globalRules) {
     $seenMedalLevels = @{}
     $seenSupportStats = @{}
     foreach ($goal in $tierSupportGoals) {
-        $medalLevel = [int]$goal.medal_level
+        $medalLevel = if (Test-PositiveInteger $goal.medal_level) { [int]$goal.medal_level } else { 0 }
         $stat = [string]$goal.stat
         if ($medalLevel -lt 1 -or $medalLevel -gt 3 -or $seenMedalLevels.ContainsKey($medalLevel)) {
             Add-Finding $errors "Tier support medal levels must be unique values from 1 through 3."
@@ -614,6 +619,10 @@ if ($null -ne $globalRules) {
     foreach ($check in $constantChecks) {
         $jsonName = $check.Json
         $codeName = $check.Code
+        if (-not (Test-PositiveNumber $globalRules.$jsonName)) {
+            Add-Finding $errors "Global rule $jsonName must be a positive number."
+            continue
+        }
         $jsonValue = [double]$globalRules.$jsonName
         $codeValue = Read-GdConstNumber $codeName
         if ($null -eq $codeValue) {
@@ -733,39 +742,39 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         }
     }
     $hubSelectedRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*hub_selected_module_id = str\(data\.get\("hub_selected_module_id", hub_selected_module_id\)\)')
-    if ($hubSelectedRestoreMatches.Count -gt 1) {
+    if ($hubSelectedRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw hub_selected_module_id outside HubRuntime.restore_selected_module_id().'
     }
     $hubMissionCooldownRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*hub_mission_cooldown_until_unix = maxi\(0, int\(data\.get\("hub_mission_cooldown_until_unix", 0\)\)\)')
-    if ($hubMissionCooldownRestoreMatches.Count -gt 1) {
+    if ($hubMissionCooldownRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw hub_mission_cooldown_until_unix outside HubRuntime.restore_mission_cooldown().'
     }
     $plankBoostRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*plank_boost_enabled = bool\(data\.get\("plank_boost_enabled", false\)\)')
-    if ($plankBoostRestoreMatches.Count -gt 1) {
+    if ($plankBoostRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw plank_boost_enabled outside _restore_plank_boost_enabled_from_save().'
     }
     $adBonusRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*ad_bonus_seconds_remaining = clampf\(float\(data\.get\("ad_bonus_seconds_remaining", 0\.0\)\), 0\.0, float\(AdBonus\.AD_BONUS_MAX_SECONDS\)\)')
-    if ($adBonusRestoreMatches.Count -gt 1) {
+    if ($adBonusRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw ad_bonus_seconds_remaining outside AdBonus.restore_seconds_from_save().'
     }
     $activityStartRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*activity_start_count = maxi\(0, int\(data\.get\("activity_start_count", 0\)\)\)')
-    if ($activityStartRestoreMatches.Count -gt 1) {
+    if ($activityStartRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw activity progress counters outside _restore_activity_progress_counts_from_save().'
     }
     $guaranteedSuccessRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*guaranteed_success_action_completions = clampi\(')
-    if ($guaranteedSuccessRestoreMatches.Count -gt 1) {
+    if ($guaranteedSuccessRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw guaranteed-success completions outside _restore_activity_progress_counts_from_save().'
     }
     $staminaTipHoldRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*stamina_gauge_pre_tip_hold_seconds = clampf\(float\(data\.get\("stamina_gauge_pre_tip_hold_seconds", 0\.0\)\), 0\.0, STAMINA_TIP_DISCOVERY_HOLD_SECONDS\)')
-    if ($staminaTipHoldRestoreMatches.Count -gt 1) {
+    if ($staminaTipHoldRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw stamina_gauge_pre_tip_hold_seconds outside _restore_stamina_gauge_pre_tip_hold_seconds_from_save().'
     }
     $flowHeatRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*flow_heat = clampf\(float\(data\.get\("flow_heat", flow_heat\)\), 0\.0, 36\.0\)')
-    if ($flowHeatRestoreMatches.Count -gt 1) {
+    if ($flowHeatRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw music flow state outside AudioDirector.'
     }
     $flowActiveSecondsRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*flow_active_action_seconds = maxf\(0\.0, float\(data\.get\("flow_active_action_seconds", flow_active_action_seconds\)\)\)')
-    if ($flowActiveSecondsRestoreMatches.Count -gt 1) {
+    if ($flowActiveSecondsRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw music flow active seconds outside AudioDirector.'
     }
     if ($mainScript -match '(?m)^\s*"hub_decor_layout":\s*hub_decor_layout,') {
@@ -778,15 +787,15 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still saves raw achievement_toast_seen_ids instead of _achievement_toast_seen_ids_for_save().'
     }
     $activityCritRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*activity_crit_seen = bool\(data\.get\("activity_crit_seen", false\)\)')
-    if ($activityCritRestoreMatches.Count -gt 1) {
+    if ($activityCritRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw activity crit metadata outside _restore_activity_crit_metadata_from_save().'
     }
     $activityStartTipRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*activity_start_tip_seen = bool\(data\.get\("activity_start_tip_seen", false\)\)')
-    if ($activityStartTipRestoreMatches.Count -gt 1) {
+    if ($activityStartTipRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw boot-visible tip flags outside _restore_boot_visible_tip_flags_from_save().'
     }
     $hubTutorialTipRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*hub_tutorial_tip_seen = bool\(data\.get\("hub_tutorial_tip_seen", false\)\)')
-    if ($hubTutorialTipRestoreMatches.Count -gt 1) {
+    if ($hubTutorialTipRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw hub tutorial tip state outside _restore_boot_visible_tip_flags_from_save().'
     }
     if ($mainScript -match '(?m)^\s*"thieving_action_jails":\s*thieving_action_jails,') {
@@ -802,7 +811,7 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still saves raw leaderboard category scores instead of LeaderboardState serialization.'
     }
     $leaderboardScoreRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_last_submitted_score = maxi\(0, int\(data\.get\("leaderboard_last_submitted_score", 0\)\)\)')
-    if ($leaderboardScoreRestoreMatches.Count -gt 1) {
+    if ($leaderboardScoreRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard submission metadata outside LeaderboardState.'
     }
     if ($mainScript.Contains('var submitted_scores = data.get("leaderboard_last_submitted_scores_by_category", {})')) {
@@ -827,19 +836,19 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         }
     }
     $leaderboardProfileDisplayRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_display_name = _sanitize_leaderboard_display_name\(str\(data\.get\("leaderboard_display_name", leaderboard_display_name\)\)\)')
-    if ($leaderboardProfileDisplayRestoreMatches.Count -gt 1) {
+    if ($leaderboardProfileDisplayRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard profile metadata instead of LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     $leaderboardProfileClaimRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_profile_claimed = bool\(data\.get\("leaderboard_profile_claimed", false\)\)')
-    if ($leaderboardProfileClaimRestoreMatches.Count -gt 1) {
+    if ($leaderboardProfileClaimRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard profile claim state instead of LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     $leaderboardAvatarRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_avatar_index = _valid_profile_avatar_index\(int\(data\.get\("leaderboard_avatar_index", leaderboard_avatar_index\)\)\)')
-    if ($leaderboardAvatarRestoreMatches.Count -gt 1) {
+    if ($leaderboardAvatarRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard avatar indexes outside LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     $leaderboardPlayerIdRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_player_id = _sanitize_leaderboard_player_id\(str\(data\.get\("leaderboard_player_id", leaderboard_player_id\)\)\)')
-    if ($leaderboardPlayerIdRestoreMatches.Count -gt 1) {
+    if ($leaderboardPlayerIdRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard player ids outside LeaderboardProfile.restore_profile_metadata_from_save().'
     }
     if ($mainScript -match '(?m)^\s*"chat_stream_retry_unix":\s*chat_stream_retry_unix,') {
@@ -849,15 +858,15 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still saves raw chat_stream_next_connect_unix instead of ChatState.metadata_for_save().'
     }
     $chatLastSendRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_last_send_unix = maxi\(0, int\(data\.get\("chat_last_send_unix", 0\)\)\)')
-    if ($chatLastSendRestoreMatches.Count -gt 1) {
+    if ($chatLastSendRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw chat_last_send_unix outside ChatState.restore_metadata_to_host().'
     }
     $chatStreamRetryRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_stream_retry_unix = mini\(maxi\(0, int\(data\.get\("chat_stream_retry_unix", data\.get\("chat_fetch_retry_unix", 0\)\)\)\), max_chat_retry_unix\)')
-    if ($chatStreamRetryRestoreMatches.Count -gt 1) {
+    if ($chatStreamRetryRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_retry_unix outside ChatState.restore_metadata_to_host().'
     }
     $chatStreamNextConnectRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_stream_next_connect_unix = mini\(maxi\(chat_stream_retry_unix, int\(data\.get\("chat_stream_next_connect_unix", 0\)\)\), max_chat_retry_unix\)')
-    if ($chatStreamNextConnectRestoreMatches.Count -gt 1) {
+    if ($chatStreamNextConnectRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw chat_stream_next_connect_unix outside ChatState.restore_metadata_to_host().'
     }
     if ($mainScript -match '(?m)^\s*"chat_last_opened_created_at":\s*chat_last_opened_created_at,') {
@@ -867,7 +876,7 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still saves raw chat_last_opened_message_id instead of ChatState.metadata_for_save().'
     }
     $chatOpenedCreatedAtRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*chat_last_opened_created_at = maxi\(0, int\(data\.get\("chat_last_opened_created_at", 0\)\)\)')
-    if ($chatOpenedCreatedAtRestoreMatches.Count -gt 1) {
+    if ($chatOpenedCreatedAtRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw chat_last_opened_created_at outside ChatState.restore_metadata_to_host().'
     }
     if ($mainScript -match '(?m)^\s*chat_last_opened_message_id = str\(data\.get\("chat_last_opened_message_id", ""\)\)\.strip_edges\(\)') {
@@ -923,19 +932,19 @@ if (-not [string]::IsNullOrWhiteSpace($mainScript)) {
         Add-Finding $errors 'scripts/main.gd still saves raw silver_opportunity_tip_action_key instead of _action_key_for_save().'
     }
     $lockClickTipRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*lock_click_tip_seen = bool\(data\.get\("lock_click_tip_seen", false\)\)')
-    if ($lockClickTipRestoreMatches.Count -gt 1) {
+    if ($lockClickTipRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw tip metadata outside SaveRuntime tip metadata restore.'
     }
     $silverTipActionRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*silver_opportunity_tip_action_key = _action_key_for_save\(str\(data\.get\("silver_opportunity_tip_action_key", ""\)\)\)')
-    if ($silverTipActionRestoreMatches.Count -gt 1) {
+    if ($silverTipActionRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw silver opportunity action keys outside SaveRuntime tip metadata restore.'
     }
     $leaderboardAuthRefreshRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_auth_refresh_token = str\(data\.get\("leaderboard_auth_refresh_token", ""\)\)\.strip_edges\(\)')
-    if ($leaderboardAuthRefreshRestoreMatches.Count -gt 1) {
+    if ($leaderboardAuthRefreshRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard auth metadata instead of LeaderboardProfile.restore_auth_metadata_from_save().'
     }
     $leaderboardAuthRetryRestoreMatches = [regex]::Matches($mainScript, '(?m)^\s*leaderboard_auth_retry_after_unix = maxi\(0, int\(data\.get\("leaderboard_auth_retry_after_unix", 0\)\)\)')
-    if ($leaderboardAuthRetryRestoreMatches.Count -gt 1) {
+    if ($leaderboardAuthRetryRestoreMatches.Count -gt 0) {
         Add-Finding $errors 'scripts/main.gd still restores raw leaderboard auth retry state instead of LeaderboardProfile.restore_auth_metadata_from_save().'
     }
     foreach ($token in @('var loaded_mastery = data.get("mastery", {})')) {

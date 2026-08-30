@@ -191,9 +191,10 @@ static func _build_contract_for_load(value: Variant) -> Dictionary:
 	var cost := {}
 	var raw_cost = source.get("cost", {})
 	if typeof(raw_cost) == TYPE_DICTIONARY:
-		for raw_mat_id in (raw_cost as Dictionary).keys():
+		var raw_costs := raw_cost as Dictionary
+		for raw_mat_id in raw_costs.keys():
 			var mat_id := str(raw_mat_id).strip_edges()
-			var amount := maxf(0.0, float((raw_cost as Dictionary).get(raw_mat_id, 0.0)))
+			var amount := maxf(0.0, float(raw_costs.get(raw_mat_id, 0.0)))
 			if not mat_id.is_empty() and amount > 0.0:
 				cost[mat_id] = amount
 	if cost.is_empty():
@@ -235,11 +236,13 @@ static func _combat_contract_for_load(value: Variant) -> Dictionary:
 		"arena_shape": arena_shape,
 		"enemy_kind": str(source.get("enemy_kind", "swarm")).strip_edges(),
 		"art_ref": str(source.get("art_ref", "")).strip_edges(),
-		"signature": str(source.get("signature", "")).strip_edges(),
-		"population_curve": source.get("population_curve", []),
-		"population_cap": maxi(1, int(source.get("population_cap", 1))),
-		"final_population": maxi(1, int(source.get("final_population", 1)))
+		"signature": str(source.get("signature", "")).strip_edges()
 	}
+	if typeof(source.get("population_curve")) == TYPE_ARRAY:
+		combat["population_curve"] = source["population_curve"]
+	for population_key in ["population_cap", "final_population"]:
+		if source.has(population_key):
+			combat[population_key] = maxi(1, int(source[population_key]))
 	for numeric_key in ["speed", "health", "unlock_health_scale", "spawn_rhythm", "contact_damage", "reward_xp", "par_reward_xp"]:
 		if source.has(numeric_key):
 			combat[numeric_key] = maxf(0.0, float(source.get(numeric_key, 0.0)))
@@ -366,6 +369,7 @@ static func _action_art_animation_for_load(value: Variant) -> Dictionary:
 			durations.append(maxf(0.016, float(raw_duration)))
 	while durations.size() < sequence.size():
 		durations.append(0.1)
+	durations.resize(sequence.size())
 	if atlas_path.is_empty():
 		return {}
 	return {
@@ -408,7 +412,6 @@ static func _action_art_animation_effects_for_load(value: Variant) -> Dictionary
 		"name": effect_name,
 		"splash": bool(source.get("splash", source.get("brush", false))),
 		"random_scenario": bool(source.get("random_scenario", false)),
-		"cycle_seconds": maxf(0.25, float(source.get("cycle_seconds", 1.15))),
 		"paint_seconds": maxf(0.08, float(source.get("paint_seconds", 0.70))),
 		"hold_seconds": maxf(0.08, float(source.get("hold_seconds", 0.55))),
 		"colors": colors,

@@ -5,8 +5,6 @@ param(
     [string]$CaptureCue = "auto",
     [int]$ViewportWidth = 1080,
     [int]$ViewportHeight = 1920,
-    [int]$WindowWidth = 627,
-    [int]$WindowHeight = 1115,
     [string]$CaptureLabel = "",
     [string]$ValidatePath = "",
     [switch]$StatsTucked,
@@ -134,7 +132,8 @@ $captureDir = Join-Path $projectRoot ".codex-tmp\fighting-diamond-real"
 $captureState = if ($Inactive) { "inactive" } else { "active" }
 $captureSlug = $ActionId -replace '[^a-zA-Z0-9]+', '-'
 $captureNameCue = if ($CaptureCue -eq "close-brawl") { "close-brawl-strike" } elseif ($CaptureCue -eq "directional-breath") { "breath-strike" } else { $CaptureCue }
-$captureSuffix = if ([string]::IsNullOrWhiteSpace($CaptureLabel)) { "" } else { "-$CaptureLabel" }
+$captureLabelSlug = ($CaptureLabel -replace '[^a-zA-Z0-9]+', '-').Trim('-')
+$captureSuffix = if ($captureLabelSlug) { "-$captureLabelSlug" } else { "" }
 $capturePath = Join-Path $captureDir "$captureSlug-lv$FightLevel-$captureNameCue-real-card-$captureState$captureSuffix-${ViewportWidth}x${ViewportHeight}.png"
 $captureTempPath = Join-Path $captureDir "$captureSlug-lv$FightLevel-$captureNameCue-real-card-$captureState$captureSuffix-${ViewportWidth}x${ViewportHeight}.tmp.png"
 $captureLogPath = Join-Path $captureDir "$captureSlug-lv$FightLevel-$captureNameCue-real-card-$captureState$captureSuffix-${ViewportWidth}x${ViewportHeight}.natural.log"
@@ -213,9 +212,7 @@ func _run() -> void:
 	detail_surface.call("_ensure_detail_lazy_entry_mounted", "$actionIdLiteral")
 	var center_card := "$captureCueLiteral" not in ["rouses-crash", "cave-troll-slam", "giant-flip-denial", "vampire-flank-cross", "area-clear-xp"]
 	await detail_surface.call("_scroll_to_activity_card", "$actionIdLiteral", false, center_card)
-	for _frame in range(18):
-		await process_frame
-	for _frame in range(12):
+	for _frame in range(30):
 		await process_frame
 	var combat_stage := _find_production_diamond_stage(scene, expected_enemy_id)
 	if combat_stage == null:
@@ -229,7 +226,6 @@ func _run() -> void:
 		_fail("production diamond stage disappeared after capture framing cleanup")
 		return
 	var capture_scroll := scene.get("detail_actions_scroll") as ScrollContainer
-	var original_capture_scroll := capture_scroll.scroll_vertical if capture_scroll != null else -1
 	if capture_scroll != null:
 		var layout_delta := -70 if expected_enemy_id not in ["rouses", "cave-trolls", "giants", "vampires"] else 0
 		capture_scroll.scroll_vertical = maxi(0, capture_scroll.scroll_vertical + layout_delta)
@@ -252,7 +248,8 @@ func _run() -> void:
 	var strict_natural_giant := "$captureCueLiteral" == "giant-flip-denial" and expected_enemy_id == "giants"
 	var strict_natural_area_clear := "$captureCueLiteral" == "area-clear-xp" and expected_enemy_id == "giants"
 	var expected_area_clear_xp := int(action.get("xp", 0)) - int(floor(float((action.get("combat", {}) as Dictionary).get("reward_xp", 0.0)) * float((action.get("combat", {}) as Dictionary).get("kill_reward_share", 0.0))))
-	_log_capture("natural-area-clear-start action=%s enemy=%s reward_xp=%d kill_budget=%d planned=%d" % ["$actionIdLiteral", expected_enemy_id, int(action.get("xp", 0)), int(combat_stage.call("kill_xp_budget")), int(combat_stage.get("planned_kill_count"))])
+	if strict_natural_area_clear:
+		_log_capture("natural-area-clear-start action=%s enemy=%s reward_xp=%d kill_budget=%d planned=%d" % ["$actionIdLiteral", expected_enemy_id, int(action.get("xp", 0)), int(combat_stage.call("kill_xp_budget")), int(combat_stage.get("planned_kill_count"))])
 	var observation_frames := 12000 if "$captureCueLiteral" == "area-clear-xp" else 1800
 	for _frame in range(observation_frames):
 		if not strict_natural_vampire and not strict_natural_cave_troll and not strict_natural_giant and not strict_natural_area_clear:
@@ -350,21 +347,15 @@ func _run() -> void:
 		_fail("natural Giants area clear +%d XP was not reached" % expected_area_clear_xp)
 		return
 	# Capture the exact detected production state in its already-mounted composition. Reframing here can remount the lazy card.
-	var settle_frames := 24
-	var final_frames := 12
+	var settle_frames := 36
 	if "$captureCueLiteral" in ["goblins", "rouses-crash", "werewolf-transform", "cave-troll-slam", "directional-breath"]:
-		settle_frames = 1
-		final_frames = 1
+		settle_frames = 2
 	if expected_enemy_id == "dragons":
 		# Preserve the naturally detected brawl/strike cue; do not mutate the actor to hold it.
-		settle_frames = 2
-		final_frames = 1
+		settle_frames = 3
 	if "$captureCueLiteral" == "area-clear-xp":
-		settle_frames = 45
-		final_frames = 1
+		settle_frames = 46
 	for _frame in range(settle_frames):
-		await process_frame
-	for _frame in range(final_frames):
 		await process_frame
 	await RenderingServer.frame_post_draw
 	if DisplayServer.get_name() == "headless":
@@ -379,13 +370,9 @@ func _run() -> void:
 	if image == null or image.is_empty():
 		_fail("capture image empty")
 		return
-	var capture_path := OS.get_environment("IDLE_ELITE_FIGHTING_DIAMOND_CAPTURE_PATH")
 	var temp_path := OS.get_environment("IDLE_ELITE_FIGHTING_DIAMOND_CAPTURE_TEMP_PATH")
 	var result := image.save_png(temp_path)
 	print("fighting-diamond-capture-temp path=%s result=%s size=%sx%s display=%s" % [temp_path, str(result), str(image.get_width()), str(image.get_height()), DisplayServer.get_name()])
-	if capture_scroll != null and original_capture_scroll >= 0:
-		capture_scroll.scroll_vertical = original_capture_scroll
-		capture_scroll.set("drag_scroll_position", float(original_capture_scroll))
 	if result != OK:
 		_fail("diamond arena capture could not save the temporary PNG")
 		return
@@ -459,18 +446,6 @@ func _find_production_diamond_stage(node: Node, expected_enemy_id: String) -> Co
 		if found != null:
 			return found
 	return null
-
-
-func _frame_production_stage(scene: Node, combat_stage: Control) -> void:
-	var scroll := scene.get("detail_actions_scroll") as ScrollContainer
-	if scroll == null:
-		return
-	var scroll_rect := scroll.get_global_rect()
-	var stage_rect := combat_stage.get_global_rect()
-	# Focus the real dragon arena itself; preceding lazy cards are not proof content.
-	var target_scroll := float(scroll.scroll_vertical) + stage_rect.get_center().y - scroll_rect.get_center().y + 700.0
-	scroll.scroll_vertical = maxi(0, int(round(target_scroll)))
-	scroll.set("drag_scroll_position", float(scroll.scroll_vertical))
 
 
 func _force_diamond_stage_state(root_node: Node, active: bool, stats_tucked: bool) -> void:
@@ -572,21 +547,10 @@ func _has_natural_guys_guard_hit(root_node: Node) -> bool:
 	var actors = root_node.get("chickens")
 	if not actors is Array:
 		return false
-	var has_guarded_hit := false
 	for actor in actors:
 		var enemy := actor as Dictionary
 		if bool(enemy.get("guarding", false)) and float(enemy.get("hit_flash", 0.0)) > 0.0:
-			has_guarded_hit = true
-	if not has_guarded_hit:
-		return false
-	if float(root_node.get("hero_attack_timer")) <= 0.0:
-		return false
-	var labels = root_node.get("float_labels")
-	if not labels is Array:
-		return false
-	for label in labels:
-		if label is Label and (label as Label).visible and (label as Label).text == "GUARD!":
-			return true
+			return float(root_node.get("hero_attack_timer")) > 0.0 and _has_visible_float(root_node, "GUARD!")
 	return false
 
 
@@ -604,7 +568,6 @@ func _log_capture(message: String) -> void:
 func _fail(message: String) -> void:
 	_log_capture("capture-failed %s" % message)
 	push_error("fighting-diamond-capture-failed: %s" % message)
-	print("fighting-diamond-capture-failed: %s" % message)
 	quit(1)
 "@ | Set-Content -LiteralPath $scriptPath -Encoding UTF8
 

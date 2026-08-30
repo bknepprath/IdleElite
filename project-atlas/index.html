@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Idle Elite Project Atlas</title>
+  <link rel="stylesheet" href="atlas.css?v=11">
+</head>
+<body>
+  <header class="page-header">
+    <div>
+      <h1>Idle Elite Project Atlas</h1>
+      <p id="scope-line" class="scope-line"></p>
+    </div>
+    <nav aria-label="Atlas sections">
+      <a href="#storage">Storage</a>
+      <a href="#images">Images</a>
+      <a href="#planning">Planning HTML</a>
+      <a href="#builds">Build history</a>
+      <a href="#cleanup">Cleanup</a>
+      <a href="#find">Find</a>
+    </nav>
+  </header>
+
+  <main>
+    <section id="summary" class="summary-grid" aria-label="Project summary"></section>
+
+    <section id="cleanup" class="panel" aria-labelledby="cleanup-title">
+      <div class="section-heading heading-with-action">
+        <div>
+          <h2 id="cleanup-title">Five biggest cleanup wins</h2>
+          <p>These groups represent the largest removable or rebuildable areas. Selecting a group adds it to a review list and does not delete anything.</p>
+        </div>
+        <button id="export-review" class="button" type="button">Export review list</button>
+      </div>
+      <div id="cleanup-groups" class="cleanup-groups"></div>
+    </section>
+
+    <section id="storage" class="panel" aria-labelledby="storage-title">
+      <div class="section-heading">
+        <h2 id="storage-title">Why this project folder is large</h2>
+        <p>The total includes the game, every saved build, temporary working copies, generated images, downloaded tools, and caches. It is not the installed size of the game.</p>
+      </div>
+      <div class="treemap-toolbar">
+        <div id="treemap-breadcrumbs" class="treemap-breadcrumbs" aria-label="Current storage folder"></div>
+        <button id="treemap-back" class="button" type="button">Back</button>
+      </div>
+      <div id="treemap" class="treemap" role="group" aria-label="Project storage treemap"></div>
+      <p class="treemap-help">Hover for size and percentage. Click a folder to open it.</p>
+      <div id="treemap-detail" class="treemap-detail" aria-live="polite"></div>
+      <div id="treemap-legend" class="treemap-legend" aria-label="Storage category colors"></div>
+      <div id="treemap-tooltip" class="treemap-tooltip" role="tooltip" hidden></div>
+    </section>
+
+    <section id="images" class="panel" aria-labelledby="images-title">
+      <div class="section-heading">
+        <h2 id="images-title">Game image library</h2>
+        <p>This section covers the 784 source images under the game asset folder. Build copies, screenshots, temporary generations, and Godot's imported texture cache are excluded.</p>
+      </div>
+      <div id="image-categories" class="category-grid"></div>
+      <div class="image-browser">
+        <div>
+          <h3>Folders</h3>
+          <div id="image-tree" class="folder-tree"></div>
+        </div>
+        <div id="image-selection" class="selection-panel"></div>
+      </div>
+    </section>
+
+    <section id="planning" class="panel" aria-labelledby="planning-title">
+      <div class="section-heading heading-with-action">
+        <div>
+          <h2 id="planning-title">Planning HTML audit</h2>
+          <p>Open each planning page and mark it to keep, archive, or consider deleting. Review choices stay in this browser.</p>
+        </div>
+        <button id="export-planning-review" class="button" type="button">Export planning review</button>
+      </div>
+      <div id="planning-summary" class="planning-summary"></div>
+      <div class="planning-controls">
+        <div id="planning-filters" class="planning-filters" role="group" aria-label="Planning file groups"></div>
+        <label class="planning-search">
+          <span>Filter planning files</span>
+          <input id="planning-search" type="search" placeholder="Example: fishing, navigation, v0.5.0" autocomplete="off">
+        </label>
+      </div>
+      <p id="planning-count" class="muted"></p>
+      <div id="planning-files" class="planning-files"></div>
+    </section>
+
+    <section id="builds" class="panel" aria-labelledby="builds-title">
+      <div class="section-heading">
+        <h2 id="builds-title">Build and export history</h2>
+        <p>These are produced copies of the game. The source project does not need every old build to continue working.</p>
+      </div>
+      <div id="build-summary" class="build-summary"></div>
+      <div class="two-column">
+        <div>
+          <h3>By month</h3>
+          <div id="build-timeline" class="bars"></div>
+        </div>
+        <div>
+          <h3>Largest build files</h3>
+          <div id="largest-builds" class="file-list compact"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="play-store" class="panel" aria-labelledby="play-store-title">
+      <div class="section-heading">
+        <h2 id="play-store-title">Play Store folder</h2>
+        <p id="play-store-explanation"></p>
+      </div>
+      <div id="play-store-groups" class="small-groups"></div>
+      <div id="play-store-files" class="file-list"></div>
+    </section>
+
+    <section id="find" class="panel" aria-labelledby="find-title">
+      <div class="section-heading">
+        <h2 id="find-title">Find a file or folder</h2>
+        <p>Results appear only after you search. Use this when you already know part of a name.</p>
+      </div>
+      <label class="search-control">
+        <span>Search project paths</span>
+        <input id="search" type="search" placeholder="Example: vampire, texture, release, checklist" autocomplete="off">
+      </label>
+      <p id="search-count" class="muted"></p>
+      <div id="search-results" class="file-list"></div>
+    </section>
+  </main>
+
+  <template id="summary-card-template">
+    <article class="summary-card">
+      <div class="summary-value"></div>
+      <div class="summary-label"></div>
+      <div class="summary-detail"></div>
+    </article>
+  </template>
+
+  <script src="atlas-data.js?v=11"></script>
+  <script src="atlas.js?v=11"></script>
+</body>
+</html>

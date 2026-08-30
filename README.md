@@ -52,6 +52,7 @@ Run a one-shot headless launch through the shared Godot safety wrapper:
 - Every completed bar gives XP, cash, and optional resources.
 - Skill levels unlock better actions.
 - Save data is written to Godot's local `user://idle_elite_save.json`.
+- Android OS backup is limited to the local save and its recovery copies. Android 9 and newer require client-side encryption for cloud backup. Android 7 through 8.1 retain saves during in-place app updates but are intentionally excluded from OS backup because those versions cannot enforce that encryption requirement.
 
 ## Skill Direction
 
