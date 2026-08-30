@@ -7544,14 +7544,11 @@ func _tier_banner_height(tier_key: String) -> float:
 func _toggle_tier_banner(skill_id: String, tier: int) -> void:
 	var key := _tier_banner_key(skill_id, tier)
 	expanded_tier_banner_key = "" if expanded_tier_banner_key == key else key
-	var opening := expanded_tier_banner_key == key
 	_clear_activity_stat_popup()
 	var restore_scroll := -1
 	if detail_actions_scroll != null and is_instance_valid(detail_actions_scroll):
-		restore_scroll = int(round(detail_actions_scroll.drag_scroll_position))
-		if opening:
-			restore_scroll += 460
-	call_deferred("_refresh_visible_skill_detail_action_list", restore_scroll, skill_id, false, true)
+		restore_scroll = detail_actions_scroll.scroll_vertical
+	call_deferred("_refresh_visible_skill_detail_action_list", restore_scroll, skill_id, true, true)
 
 
 func _build_tier_banner(skill_id: String, tier: int, content_width: float) -> Control:
