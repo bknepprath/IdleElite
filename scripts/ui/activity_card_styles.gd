@@ -10,6 +10,7 @@ const RECOVERY_WIDE_U_BOTTOM_RISE := 36.0
 const RECOVERY_WIDE_U_SHOULDER_RATIO := 0.285
 const RECOVERY_WIDE_U_RAIL_HEIGHT := 110.0
 const ACTION_CARD_STROKE_WIDTH := 6.0
+const ACTIVITY_CARD_TITLE_FONT_SIZE := 41
 const ACTIVITY_CARD_TITLE_WIDTH_AXIS := 75
 const ACTIVITY_CARD_TITLE_WEIGHT_AXIS := 700
 const ACTIVITY_CARD_TITLE_EMBOLDEN := 0.6
@@ -632,7 +633,7 @@ static func activity_card_title_text(raw_title: String) -> String:
 static func configure_activity_card_title(title: Label) -> void:
 	if title == null:
 		return
-	title.add_theme_font_size_override("font_size", 60)
+	title.add_theme_font_size_override("font_size", ACTIVITY_CARD_TITLE_FONT_SIZE)
 	var base_font := title.get_theme_font("font")
 	if base_font != null:
 		var compact_bold_font := FontVariation.new()
@@ -643,7 +644,9 @@ static func configure_activity_card_title(title: Label) -> void:
 	title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	title.max_lines_visible = 1
 	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	title.clip_text = false
+	title.clip_text = true
+	title.custom_minimum_size.y = 60
+	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
 
 static func sync_activity_card_title_layer(card: Dictionary, unlocked: bool, module_title_over_pin_z_index := 0) -> void:

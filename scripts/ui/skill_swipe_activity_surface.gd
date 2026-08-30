@@ -5914,7 +5914,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	margin.add_child(row)
 
 	var art_slot = MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 70)
+	art_slot.add_theme_constant_override("margin_top", 9)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel = Panel.new()
 	var art_panel_size := Vector2(191, 191)
@@ -5954,7 +5954,7 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	row.add_child(copy)
 	row.add_child(art_slot)
 
-	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), ActivityCardStyles.ACTIVITY_CARD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	ActivityCardStyles.configure_activity_card_title(action_name_label)
 	action_name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)

@@ -1,5 +1,21 @@
 $ErrorActionPreference = "Stop"
 
+if (-not ("GodotRunner.NativeErrorMode" -as [type])) {
+    Add-Type @"
+using System.Runtime.InteropServices;
+
+namespace GodotRunner {
+    public static class NativeErrorMode {
+        [DllImport("kernel32.dll")]
+        public static extern uint GetErrorMode();
+
+        [DllImport("kernel32.dll")]
+        public static extern uint SetErrorMode(uint mode);
+    }
+}
+"@
+}
+
 $maxGodots = 4
 $waitSeconds = 300
 $pollSeconds = 10
@@ -103,20 +119,28 @@ try {
         $running = @(Get-Process godot* -ErrorAction SilentlyContinue)
         if ($running.Count -lt $maxGodots) {
             $argumentList = ($godotArgs | ForEach-Object { ConvertTo-ProcessArgument $_ }) -join " "
-            if ($visibleGame) {
-                $process = Start-Process `
-                    -FilePath $godotPath `
-                    -ArgumentList $argumentList `
-                    -PassThru `
-                    -WindowStyle Normal
-            } else {
-                $process = Start-Process `
-                    -FilePath $godotPath `
-                    -ArgumentList $argumentList `
-                    -PassThru `
-                    -WindowStyle Hidden `
-                    -RedirectStandardOutput $stdoutPath `
-                    -RedirectStandardError $stderrPath
+            $previousErrorMode = [GodotRunner.NativeErrorMode]::GetErrorMode()
+            $noCrashDialogMode = $previousErrorMode -bor 0x0001 -bor 0x0002
+            [void][GodotRunner.NativeErrorMode]::SetErrorMode($noCrashDialogMode)
+            try {
+                if ($visibleGame) {
+                    $process = Start-Process `
+                        -FilePath $godotPath `
+                        -ArgumentList $argumentList `
+                        -PassThru `
+                        -WindowStyle Normal
+                } else {
+                    $process = Start-Process `
+                        -FilePath $godotPath `
+                        -ArgumentList $argumentList `
+                        -PassThru `
+                        -WindowStyle Hidden `
+                        -RedirectStandardOutput $stdoutPath `
+                        -RedirectStandardError $stderrPath
+                }
+            }
+            finally {
+                [void][GodotRunner.NativeErrorMode]::SetErrorMode($previousErrorMode)
             }
             break
         }

@@ -29,9 +29,11 @@ const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble.png"
 const CHAT_STRIP_FONT_WIDTH_AXIS := 75
 const CHAT_STRIP_FONT_WEIGHT_AXIS := 700
 const CHAT_STRIP_FONT_EMBOLDEN := 0.45
-const CHAT_STRIP_ICON_SIZE := 58.0
-const CHAT_UNREAD_DOT_DIAMETER := 22.0
-const CHAT_UNREAD_DOT_EDGE_INSET := 16.0
+const CHAT_STRIP_TEXT_FONT_SIZE := 32
+const CHAT_STRIP_TEXT_LINE_HEIGHT := 36.0
+const CHAT_STRIP_ICON_SIZE := 70.0
+const CHAT_UNREAD_DOT_DIAMETER := 18.0
+const CHAT_UNREAD_DOT_EDGE_INSET := -3.0
 var host
 var profile_overlay: Control
 var profile_overlay_layer: CanvasLayer
@@ -484,6 +486,7 @@ func _build_chat_strip() -> void:
 	chat_unread_dot.offset_bottom = CHAT_UNREAD_DOT_EDGE_INSET + CHAT_UNREAD_DOT_DIAMETER
 	chat_unread_dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	chat_unread_dot.visible = false
+	chat_unread_dot.z_index = 3
 	chat_unread_dot.add_theme_stylebox_override("panel", chat_unread_dot_style())
 	icon_holder.add_child(chat_unread_dot)
 	var copy = VBoxContainer.new()
@@ -491,23 +494,23 @@ func _build_chat_strip() -> void:
 	copy.alignment = BoxContainer.ALIGNMENT_CENTER
 	copy.add_theme_constant_override("separation", 2)
 	row.add_child(copy)
-	chat_strip_line_one = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_one = host._label("", CHAT_STRIP_TEXT_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_strip_line_one.add_theme_font_override("font", _chat_strip_font())
 	chat_strip_line_one.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
 	chat_strip_line_one.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_one.autowrap_mode = TextServer.AUTOWRAP_OFF
 	chat_strip_line_one.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_one.clip_text = true
-	chat_strip_line_one.custom_minimum_size = Vector2(0, 48)
+	chat_strip_line_one.custom_minimum_size = Vector2(0, CHAT_STRIP_TEXT_LINE_HEIGHT)
 	copy.add_child(chat_strip_line_one)
-	chat_strip_line_two = host._label("", 48, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
+	chat_strip_line_two = host._label("", CHAT_STRIP_TEXT_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
 	chat_strip_line_two.add_theme_font_override("font", _chat_strip_font())
 	chat_strip_line_two.add_theme_color_override("font_outline_color", Color("#9d9d9d"))
 	chat_strip_line_two.add_theme_constant_override("outline_size", 2.5)
 	chat_strip_line_two.autowrap_mode = TextServer.AUTOWRAP_OFF
 	chat_strip_line_two.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	chat_strip_line_two.clip_text = true
-	chat_strip_line_two.custom_minimum_size = Vector2(0, 48)
+	chat_strip_line_two.custom_minimum_size = Vector2(0, CHAT_STRIP_TEXT_LINE_HEIGHT)
 	copy.add_child(chat_strip_line_two)
 	_update_chat_strip()
 

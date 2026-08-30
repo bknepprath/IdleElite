@@ -6133,7 +6133,9 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	margin.add_child(row)
 
 	var art_slot := MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 76 if uses_flat_normal_card else 73)
+	art_slot.add_theme_constant_override("margin_top", 24 if uses_flat_normal_card else 21)
+	art_slot.custom_minimum_size.y = 224 if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE.y + 21
+	art_slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel := Panel.new()
 	var art_panel_size := Vector2(200, 200) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
@@ -6187,7 +6189,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		title_row.z_as_relative = false
 		copy.add_child(title_row)
 
-	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), ActivityCardStyles.ACTIVITY_CARD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
 	ActivityCardStyles.configure_activity_card_title(action_name_label)
 	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
@@ -6223,6 +6225,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		title_band.offset_right = -8
 		title_band.offset_top = 16
 		title_band.offset_bottom = 86
+		title_band.clip_contents = true
 		title_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		title_band.z_index = 200
 		title_band.visible = margin.visible
@@ -6247,6 +6250,8 @@ func _detail_action_stat_widgets(copy: VBoxContainer, skill_id: String, action: 
 	var uses_flat_normal_card: bool = not host._fighting_runtime().action_uses_diamond_combat_arena(action)
 	var stat_row := HBoxContainer.new()
 	stat_row.add_theme_constant_override("separation", 9 if uses_flat_normal_card else 14)
+	stat_row.custom_minimum_size.y = 136 if uses_flat_normal_card else 0
+	stat_row.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	stat_row.mouse_filter = Control.MOUSE_FILTER_PASS
 	copy.add_child(stat_row)
 
