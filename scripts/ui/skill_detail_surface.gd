@@ -6133,7 +6133,7 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	margin.add_child(row)
 
 	var art_slot := MarginContainer.new()
-	art_slot.add_theme_constant_override("margin_top", 24 if uses_flat_normal_card else 21)
+	art_slot.add_theme_constant_override("margin_top", 76 if uses_flat_normal_card else 73)
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel := Panel.new()
 	var art_panel_size := Vector2(200, 200) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
@@ -6213,7 +6213,21 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		build_title_button_label.add_theme_constant_override("outline_size", 12)
 		build_title_button_panel.add_child(build_title_button_label)
 	else:
-		copy.add_child(action_name_label)
+		var title_spacer := Control.new()
+		title_spacer.custom_minimum_size = Vector2(0, 60)
+		title_spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		copy.add_child(title_spacer)
+		var title_band := MarginContainer.new()
+		title_band.set_anchors_preset(Control.PRESET_TOP_WIDE)
+		title_band.offset_left = 8
+		title_band.offset_right = -8
+		title_band.offset_top = 16
+		title_band.offset_bottom = 86
+		title_band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		title_band.z_index = 200
+		title_band.visible = margin.visible
+		pop_card.add_child(title_band)
+		title_band.add_child(action_name_label)
 	card_root.set_meta("module_ui_title_label_id", action_name_label.get_instance_id())
 	pop_card.set_meta("module_ui_title_label_id", action_name_label.get_instance_id())
 

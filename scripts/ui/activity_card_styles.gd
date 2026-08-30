@@ -10,6 +10,9 @@ const RECOVERY_WIDE_U_BOTTOM_RISE := 36.0
 const RECOVERY_WIDE_U_SHOULDER_RATIO := 0.285
 const RECOVERY_WIDE_U_RAIL_HEIGHT := 110.0
 const ACTION_CARD_STROKE_WIDTH := 6.0
+const ACTIVITY_CARD_TITLE_WIDTH_AXIS := 75
+const ACTIVITY_CARD_TITLE_WEIGHT_AXIS := 700
+const ACTIVITY_CARD_TITLE_EMBOLDEN := 0.6
 
 static var activity_shade_style_cache := {}
 static var action_art_style_cache: StyleBoxFlat
@@ -629,9 +632,16 @@ static func activity_card_title_text(raw_title: String) -> String:
 static func configure_activity_card_title(title: Label) -> void:
 	if title == null:
 		return
-	title.add_theme_font_size_override("font_size", 48)
-	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	title.max_lines_visible = 2
+	title.add_theme_font_size_override("font_size", 60)
+	var base_font := title.get_theme_font("font")
+	if base_font != null:
+		var compact_bold_font := FontVariation.new()
+		compact_bold_font.base_font = base_font
+		compact_bold_font.variation_opentype = {&"wdth": ACTIVITY_CARD_TITLE_WIDTH_AXIS, &"wght": ACTIVITY_CARD_TITLE_WEIGHT_AXIS}
+		compact_bold_font.variation_embolden = ACTIVITY_CARD_TITLE_EMBOLDEN
+		title.add_theme_font_override("font", compact_bold_font)
+	title.autowrap_mode = TextServer.AUTOWRAP_OFF
+	title.max_lines_visible = 1
 	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	title.clip_text = false
 

@@ -14,6 +14,7 @@ $profileChatSurfacePath = Join-Path $projectRoot "scripts\ui\profile_chat_overla
 $fishingSurfacePath = Join-Path $projectRoot "scripts\fishing\ui_surface.gd"
 $hubSurfacePath = Join-Path $projectRoot "scripts\ui\hub_surface.gd"
 $skillDetailSurfacePath = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
+$skillSwipeSurfacePath = Join-Path $projectRoot "scripts\ui\skill_swipe_activity_surface.gd"
 $activityCardStylesPath = Join-Path $projectRoot "scripts\ui\activity_card_styles.gd"
 $skillStatePath = Join-Path $projectRoot "scripts\progression\skill_state.gd"
 
@@ -24,6 +25,7 @@ Assert-True (Test-Path -LiteralPath $profileChatSurfacePath) "Missing profile/ch
 Assert-True (Test-Path -LiteralPath $fishingSurfacePath) "Missing Fishing surface script."
 Assert-True (Test-Path -LiteralPath $hubSurfacePath) "Missing Hub surface script."
 Assert-True (Test-Path -LiteralPath $skillDetailSurfacePath) "Missing skill detail surface script."
+Assert-True (Test-Path -LiteralPath $skillSwipeSurfacePath) "Missing skill swipe activity surface script."
 Assert-True (Test-Path -LiteralPath $activityCardStylesPath) "Missing activity card styles script."
 Assert-True (Test-Path -LiteralPath $skillStatePath) "Missing skill state script."
 
@@ -34,6 +36,7 @@ $profileChatSurface = Get-Content -LiteralPath $profileChatSurfacePath -Raw
 $fishingSurface = Get-Content -LiteralPath $fishingSurfacePath -Raw
 $hubSurface = Get-Content -LiteralPath $hubSurfacePath -Raw
 $skillDetailSurface = Get-Content -LiteralPath $skillDetailSurfacePath -Raw
+$skillSwipeSurface = Get-Content -LiteralPath $skillSwipeSurfacePath -Raw
 $activityCardStyles = Get-Content -LiteralPath $activityCardStylesPath -Raw
 $skillState = Get-Content -LiteralPath $skillStatePath -Raw
 
@@ -189,10 +192,11 @@ if ($strictCutover) {
     Assert-True ($main -match '(?m)^const ACTION_CARD_POP_GUTTER := 22\r?$') "Action-card pop gutter must retain exact half-scale 4K spacing."
     Assert-True ($leaderboardPresentation -match '(?m)^const BOTTOM_SCROLL_PAD := 360\r?$') "Leaderboard bottom spacing must retain the half-scale 4K composition."
     Assert-True ($leaderboardPresentation -match 'var top_mid := Vector2\(size\.x \* 0\.50, 123\.0\)') "Leaderboard paper contour must use native-1080 coordinates."
-    Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_HEIGHT := 130\r?$') "Chat strip height must retain exact half-scale 4K geometry."
+    Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_HEIGHT := 112\r?$') "Chat strip must retain its compact audited height."
     Assert-True ($profileChatSurface -match 'chat_strip_line_one = host\._label\("", 48, Color\.WHITE, HORIZONTAL_ALIGNMENT_LEFT\)') "Chat strip text must retain its 4K-reference color and readable native-1080 size."
 	Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_FONT_WIDTH_AXIS := 75\r?$') "Chat strip text must use the font's real width axis instead of an affine stretch."
-	Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_FONT_EMBOLDEN := 1\.2\r?$') "Chat strip text must retain its audited bold weight."
+	Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_FONT_EMBOLDEN := 0\.45\r?$') "Chat strip text must retain its compact bold weight."
+	Assert-True ($profileChatSurface -match '(?m)^const CHAT_STRIP_ICON_SIZE := 58\.0\r?$') "Chat strip icon must not consume message width."
 	Assert-True ($profileChatSurface -notmatch 'variation_transform') "Chat strip text must not use a distorting affine font transform."
     Assert-True ($profileChatSurface -match 'style\.set_border_width_all\(5\)') "Chat/profile controls must not retain 4K border thickness."
     Assert-True ($profileChatSurface -match 'style\.corner_radius_bottom_right = 5 if is_self and not deleted else 9') "Chat message corners must retain half-scale 4K geometry."
@@ -205,8 +209,15 @@ if ($strictCutover) {
     Assert-True ($skillDetailSurface -match 'bonus_column\.custom_minimum_size = Vector2\(200, 0\)') "Activity stat Boosts text must retain enough width to avoid single-character wrapping."
 	Assert-True ($skillDetailSurface -match '(?m)^const ACTIVITY_STAT_VALUE_FONT_WIDTH_AXIS := 75\r?$') "Activity stat values must use the font's real width axis instead of an affine stretch."
 	Assert-True ($skillDetailSurface -notmatch 'ACTIVITY_STAT_VALUE_FONT_WIDTH_SCALE') "Activity stat values must not restore the distorting affine width scale."
-	Assert-True ($activityCardStyles -match 'title\.max_lines_visible = 2') "Activity titles must have two readable lines available."
+	Assert-True ($activityCardStyles -match 'title\.add_theme_font_size_override\("font_size", 60\)') "Activity titles must retain the phone-readable title size."
+	Assert-True ($activityCardStyles -match '(?m)^const ACTIVITY_CARD_TITLE_WIDTH_AXIS := 75\r?$') "Activity titles must use the font's native condensed width axis."
+	Assert-True ($activityCardStyles -match '(?m)^const ACTIVITY_CARD_TITLE_WEIGHT_AXIS := 700\r?$') "Activity titles must retain a bold native weight."
+	Assert-True ($activityCardStyles -notmatch 'variation_transform') "Activity titles must not use a distorting affine font transform."
+	Assert-True ($activityCardStyles -match 'title\.autowrap_mode = TextServer::AUTOWRAP_OFF'.Replace('::', '.')) "Activity titles must never wrap."
+	Assert-True ($activityCardStyles -match 'title\.max_lines_visible = 1') "Activity titles must have a hard one-line limit."
 	Assert-True ($activityCardStyles -match 'title\.text_overrun_behavior = TextServer::OVERRUN_NO_TRIMMING'.Replace('::', '.')) "Activity titles must never be ellipsized."
+	Assert-True ($skillDetailSurface -match 'title_band\.offset_left = 8' -and $skillDetailSurface -match 'title_band\.offset_right = -8') "Detail activity titles must retain the audited full-width lane."
+	Assert-True ($skillSwipeSurface -match 'title_band\.offset_left = 8' -and $skillSwipeSurface -match 'title_band\.offset_right = -8') "Swipe activity titles must retain the audited full-width lane."
 	Assert-True ($skillDetailSurface -match 'detail_xp_label\.autowrap_mode = TextServer::AUTOWRAP_OFF'.Replace('::', '.')) "Skill level and XP text must remain on one line."
 	Assert-True ($main -match '(?m)^const SKILL_DETAIL_XP_BAR_WIDTH := 450\r?$') "Skill level and XP text must retain its audited one-line width."
 	Assert-True ($skillState -match 'return "Lv %s · %s/%s"') "Skill level and XP text must use the compact one-line format."

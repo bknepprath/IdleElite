@@ -19,7 +19,7 @@ const PROFILE_AVATAR_ATLAS_INSET := 8
 const PROFILE_AVATAR_COLORED_ATLAS_INSET := 30
 const PROFILE_AVATAR_FRAME_BORDER := 8
 const CHAT_KEYBOARD_PREVIEW_HEIGHT := 89
-const CHAT_STRIP_HEIGHT := 130
+const CHAT_STRIP_HEIGHT := 112
 const CHAT_UI_Z := 3500
 const CHAT_OVERLAY_CANVAS_LAYER := 132
 const PROFILE_OVERLAY_CANVAS_LAYER := CHAT_OVERLAY_CANVAS_LAYER + 1
@@ -28,7 +28,8 @@ const CHAT_STRIP_HIDE_GRACE_MSEC := 800
 const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble.png"
 const CHAT_STRIP_FONT_WIDTH_AXIS := 75
 const CHAT_STRIP_FONT_WEIGHT_AXIS := 700
-const CHAT_STRIP_FONT_EMBOLDEN := 1.2
+const CHAT_STRIP_FONT_EMBOLDEN := 0.45
+const CHAT_STRIP_ICON_SIZE := 58.0
 const CHAT_UNREAD_DOT_DIAMETER := 22.0
 const CHAT_UNREAD_DOT_EDGE_INSET := 16.0
 var host
@@ -455,21 +456,21 @@ func _build_chat_strip() -> void:
 	host.add_child(chat_strip)
 
 	var margin = MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 23)
-	margin.add_theme_constant_override("margin_right", 22)
-	margin.add_theme_constant_override("margin_top", 5)
-	margin.add_theme_constant_override("margin_bottom", 5)
+	margin.add_theme_constant_override("margin_left", 10)
+	margin.add_theme_constant_override("margin_right", 10)
+	margin.add_theme_constant_override("margin_top", 4)
+	margin.add_theme_constant_override("margin_bottom", 4)
 	chat_strip.add_child(margin)
 	var row = HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 14)
+	row.add_theme_constant_override("separation", 8)
 	margin.add_child(row)
 	var icon_holder = Control.new()
-	icon_holder.custom_minimum_size = Vector2(106.5, 106.5)
+	icon_holder.custom_minimum_size = Vector2(CHAT_STRIP_ICON_SIZE, CHAT_STRIP_ICON_SIZE)
 	icon_holder.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	icon_holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(icon_holder)
-	var icon = host.visual_texture_cache._image(CHAT_STRIP_ICON, Vector2(106.5, 106.5))
+	var icon = host.visual_texture_cache._image(CHAT_STRIP_ICON, Vector2(CHAT_STRIP_ICON_SIZE, CHAT_STRIP_ICON_SIZE))
 	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
 	icon_holder.add_child(icon)
 	chat_unread_dot = PanelContainer.new()
