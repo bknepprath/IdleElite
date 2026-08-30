@@ -162,13 +162,16 @@ if (-not $visibleGame -and (Test-Path -LiteralPath $stdoutPath)) {
 $stderrLines = @()
 if (-not $visibleGame -and (Test-Path -LiteralPath $stderrPath)) {
     $stderrLines = @(Get-Content -LiteralPath $stderrPath)
-    $stderrLines | ForEach-Object { [Console]::Error.WriteLine($_) }
+    $stderrLines | ForEach-Object { Write-Output $_ }
 }
 
 $process.Refresh()
 $exitCode = if ($null -eq $process.ExitCode) { 0 } else { $process.ExitCode }
 if ($exitCode -eq 0 -and ($stderrLines -match "Main executable .* not found")) {
     $exitCode = 1
+}
+if ($exitCode -eq 0 -and ($stderrLines -match "CrashHandlerException|Program crashed with signal|-- END OF C\+\+ BACKTRACE --")) {
+    $exitCode = 139
 }
 
 $launchedProcessIds = @($process.Id) + @(Get-ChildProcessIds -ParentProcessId $process.Id)
@@ -236,7 +239,20 @@ foreach ($processId in $newUnattributedIds) {
     [Console]::Error.WriteLine("Terminated detached headless Godot process matched to this command: PID $processId")
 }
 if ($unmatchedNewIds.Count -gt 0) {
-    [Console]::Error.WriteLine("New Godot process(es) appeared during this command but were not confirmed as children of this run: $($unmatchedNewIds -join ', '). They were not terminated.")
+    $unattributedStillRunning = @($unmatchedNewIds)
+    for ($attempt = 1; $attempt -le 50 -and $unattributedStillRunning.Count -gt 0; $attempt++) {
+        Start-Sleep -Milliseconds 100
+        $unattributedStillRunning = @(
+            $unattributedStillRunning |
+                Where-Object { $null -ne (Get-Process -Id $_ -ErrorAction SilentlyContinue) }
+        )
+    }
+    if ($unattributedStillRunning.Count -gt 0) {
+        Write-Error "New Godot process(es) appeared during this command but were not confirmed as children of this run: $($unattributedStillRunning -join ', '). They were not terminated." -ErrorAction Continue
+        if ($exitCode -eq 0) {
+            $exitCode = 125
+        }
+    }
 }
 
 if ($env:IDLE_ELITE_TEST_USER_DATA_DIR) {

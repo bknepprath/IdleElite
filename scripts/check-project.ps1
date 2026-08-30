@@ -212,7 +212,40 @@ if (-not (Test-Path -LiteralPath $runner)) {
     throw "Godot runner was not found at $runner"
 }
 
-$smokeOutput = & $runner --headless --path $projectRoot --quit-after 1 2>&1
+$suiteTestDir = Join-Path $projectRoot ".codex-tmp\check-project-suite"
+$suiteUserDataDir = Join-Path $suiteTestDir "user-data"
+if (Test-Path -LiteralPath $suiteTestDir) {
+    Remove-Item -LiteralPath $suiteTestDir -Recurse -Force
+}
+New-Item -ItemType Directory -Path $suiteUserDataDir -Force | Out-Null
+$previousSuiteUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $suiteUserDataDir
+try {
+$smokeTestDir = Join-Path $projectRoot ".codex-tmp\check-project-smoke"
+$smokeUserDataDir = Join-Path $smokeTestDir "user-data"
+if (Test-Path -LiteralPath $smokeTestDir) {
+    Remove-Item -LiteralPath $smokeTestDir -Recurse -Force
+}
+New-Item -ItemType Directory -Path $smokeUserDataDir -Force | Out-Null
+$previousSmokeTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
+$previousSmokeUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$env:GODOT_RUN_TIMEOUT_SECONDS = "60"
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $smokeUserDataDir
+try {
+    $smokeOutput = & $runner --headless --path $projectRoot 2>&1
+}
+finally {
+    if ($null -eq $previousSmokeTimeout) {
+        Remove-Item Env:GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
+    } else {
+        $env:GODOT_RUN_TIMEOUT_SECONDS = $previousSmokeTimeout
+    }
+    if ($null -eq $previousSmokeUserDataDir) {
+        Remove-Item Env:IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousSmokeUserDataDir
+    }
+}
 $smokeOutput | Out-Host
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
@@ -470,3 +503,12 @@ Invoke-SkillsPagePerformanceValidation `
     -MissingMessage "Skills page performance test was not found at $skillsPageValidationTest" `
     -Context $skillsPageValidationContext `
     -Strict $strictSkillsPerformance
+Write-Output "check-project-ok"
+}
+finally {
+    if ($null -eq $previousSuiteUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousSuiteUserDataDir
+    }
+}

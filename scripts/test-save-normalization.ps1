@@ -4,6 +4,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\save-normalization"
+$testUserDataDir = Join-Path $testDir "user-data"
 $testScript = Join-Path $testDir "save_normalization_test.gd"
 
 
@@ -14,6 +15,9 @@ if (Test-Path -LiteralPath $testDir) {
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
+$previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
 try {
     @'
 extends SceneTree
@@ -2996,7 +3000,6 @@ func _finish() -> void:
 		quit(1)
 '@ | Set-Content -LiteralPath $testScript -Encoding UTF8
 
-    $previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
     $env:IDLE_ELITE_DISABLE_SAVE_WRITES = "1"
     $beforeHeadless = @(Get-HeadlessGodotProcesses)
     $output = & $runner --headless --path $projectRoot --script $testScript 2>&1
@@ -3019,6 +3022,11 @@ func _finish() -> void:
         Remove-Item Env:\IDLE_ELITE_DISABLE_SAVE_WRITES -ErrorAction SilentlyContinue
     } else {
         $env:IDLE_ELITE_DISABLE_SAVE_WRITES = $previousDisableSaveWrites
+    }
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
     }
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
 }

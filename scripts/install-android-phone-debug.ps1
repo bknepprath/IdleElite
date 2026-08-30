@@ -4,17 +4,14 @@
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
-$runner = Join-Path $projectRoot "run-godot-safe.ps1"
-$exportPresetsPath = Join-Path $projectRoot "export_presets.cfg"
-$buildGradlePath = Join-Path $projectRoot "android\build\build.gradle"
+$buildScript = Join-Path $PSScriptRoot "build-android-preview.ps1"
 $adb = Join-Path $env:LOCALAPPDATA "Android\Sdk\platform-tools\adb.exe"
+$aapt2 = Join-Path $env:LOCALAPPDATA "Android\Sdk\build-tools\36.1.0\aapt2.exe"
 $java = Join-Path "C:\Program Files\Android\Android Studio\jbr\bin" "java.exe"
-$bundletool = Join-Path $projectRoot ".codex-tools\bundletool-all-1.18.3.jar"
 $ks = Join-Path $env:USERPROFILE ".android\debug.keystore"
 $aab = Join-Path $projectRoot "builds\android\idle-elite-preview-debug.aab"
 $apks = Join-Path $projectRoot "builds\android\idle-elite-preview-debug.apks"
 $packageName = "com.idleelite.game.preview"
-$presetName = "Android Release"
 
 function Assert-CommandSucceeded {
     param([string] $Action)
@@ -23,7 +20,22 @@ function Assert-CommandSucceeded {
     }
 }
 
-foreach ($path in @($runner, $exportPresetsPath, $buildGradlePath, $adb, $java, $bundletool, $ks)) {
+$gitCommonDir = (& git -C $projectRoot rev-parse --git-common-dir).Trim()
+Assert-CommandSucceeded "Resolve Git common directory"
+if (-not [System.IO.Path]::IsPathRooted($gitCommonDir)) {
+    $gitCommonDir = [System.IO.Path]::GetFullPath((Join-Path $projectRoot $gitCommonDir))
+}
+$sharedProjectRoot = Split-Path -Parent $gitCommonDir
+$bundletoolCandidates = @(
+    (Join-Path $projectRoot ".codex-tools\bundletool-all-1.18.3.jar"),
+    (Join-Path $sharedProjectRoot ".codex-tools\bundletool-all-1.18.3.jar")
+)
+$bundletool = $bundletoolCandidates | Where-Object { Test-Path -LiteralPath $_ } | Select-Object -First 1
+if (-not $bundletool) {
+    throw "Required bundletool file was not found. Checked: $($bundletoolCandidates -join ', ')"
+}
+
+foreach ($path in @($buildScript, $adb, $aapt2, $java, $bundletool, $ks)) {
     if (-not (Test-Path -LiteralPath $path)) {
         throw "Required file not found: $path"
     }
@@ -35,28 +47,7 @@ if ($devices.Count -eq 0) {
     throw "No authorized Android device found. Accept the USB debugging prompt and retry."
 }
 
-New-Item -ItemType Directory -Force -Path (Split-Path -Parent $aab) | Out-Null
-
-$originalExportPresets = Get-Content -Raw -LiteralPath $exportPresetsPath
-$originalBuildGradle = Get-Content -Raw -LiteralPath $buildGradlePath
-try {
-    $patched = $originalExportPresets `
-        -replace '(?m)^package/unique_name="com\.idleelite\.game"$', 'package/unique_name="com.idleelite.game.preview"' `
-        -replace '(?m)^package/name="Idle Elite"$', 'package/name="Idle Elite Preview"'
-    Set-Content -LiteralPath $exportPresetsPath -Value $patched -NoNewline
-    $patchedBuildGradle = $originalBuildGradle -replace 'applicationId getExportPackageName\(\)', 'applicationId "com.idleelite.game.preview"'
-    if ($patchedBuildGradle -eq $originalBuildGradle) {
-        throw "Could not patch Android applicationId for preview export."
-    }
-    Set-Content -LiteralPath $buildGradlePath -Value $patchedBuildGradle -NoNewline
-    Push-Location $projectRoot
-    & $runner --path . --export-debug $presetName $aab 2>&1 | Out-Host
-    Assert-CommandSucceeded "Godot export-debug"
-} finally {
-    Set-Content -LiteralPath $buildGradlePath -Value $originalBuildGradle -NoNewline
-    Set-Content -LiteralPath $exportPresetsPath -Value $originalExportPresets -NoNewline
-    Pop-Location
-}
+& $buildScript | Out-Host
 
 if (Test-Path -LiteralPath $apks) {
     Remove-Item -LiteralPath $apks -Force
@@ -69,7 +60,8 @@ if (Test-Path -LiteralPath $apks) {
     --ks=$ks `
     --ks-pass=pass:android `
     --ks-key-alias=androiddebugkey `
-    --key-pass=pass:android
+    --key-pass=pass:android `
+    --aapt2=$aapt2
 Assert-CommandSucceeded "bundletool build-apks"
 
 & $java -jar $bundletool install-apks --apks=$apks --adb=$adb

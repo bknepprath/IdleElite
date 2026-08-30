@@ -44,9 +44,13 @@ $env:ANDROID_HOME = $androidSdk
 $env:ANDROID_SDK_ROOT = $androidSdk
 $env:JAVA_HOME = $javaHome
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 $env:GODOT_RUN_TIMEOUT_SECONDS = "1200"
 $outputDir = Split-Path -Parent $output
+$buildUserDataDir = Join-Path $outputDir "preview-build-user-data"
 New-Item -ItemType Directory -Force -Path $outputDir | Out-Null
+New-Item -ItemType Directory -Force -Path $buildUserDataDir | Out-Null
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $buildUserDataDir
 foreach ($artifactPath in @($output, $stdoutLogPath, $stderrLogPath)) {
     if (Test-Path -LiteralPath $artifactPath) {
         Remove-Item -LiteralPath $artifactPath -Force
@@ -71,6 +75,11 @@ try {
         Remove-Item Env:\GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
     } else {
         $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
+    }
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
     }
 }
 

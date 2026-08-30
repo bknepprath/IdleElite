@@ -4,6 +4,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\crash-report-recovery"
+$testUserDataDir = Join-Path $testDir "user-data"
 $testScript = Join-Path $testDir "crash_report_recovery_test.gd"
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
@@ -13,6 +14,8 @@ if (Test-Path -LiteralPath $testDir) {
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
 try {
     @'
 extends SceneTree
@@ -161,5 +164,10 @@ func _expect(condition: bool, message: String) -> void:
         throw "A new headless Godot process is still running after the crash report recovery test."
     }
 } finally {
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
+    }
     Remove-Item -LiteralPath $testDir -Recurse -Force -ErrorAction SilentlyContinue
 }
