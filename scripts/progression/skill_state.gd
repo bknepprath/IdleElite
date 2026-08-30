@@ -87,9 +87,11 @@ static func skill_short_code(skill_defs: Array, skill_id: String) -> String:
 	return skill_display_name.substr(0, mini(3, skill_display_name.length())).to_upper()
 
 
-static func skill_detail_title_font_size(skill_id: String, default_size: int, woodcutting_size: int) -> int:
+static func skill_detail_title_font_size(skill_id: String, default_size: int, woodcutting_size: int, fishing_size: int = -1) -> int:
 	if skill_id == "woodcutting":
 		return woodcutting_size
+	if skill_id == "fishing" and fishing_size > 0:
+		return fishing_size
 	return default_size
 
 

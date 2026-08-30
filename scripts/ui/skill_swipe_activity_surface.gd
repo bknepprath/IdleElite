@@ -4717,7 +4717,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 		light_stack.add_theme_constant_override("separation", host.SKILL_DETAIL_TEXT_SEPARATION)
 		light_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		light_left.add_child(light_stack)
-		light_stack.add_child(host._label(SkillState.skill_name(host.skill_defs, skill_id), SkillState.skill_detail_title_font_size(skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT))
+		light_stack.add_child(host._label(SkillState.skill_name(host.skill_defs, skill_id), SkillState.skill_detail_title_font_size(skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE, host.SKILL_DETAIL_FISHING_TITLE_FONT_SIZE), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT))
 		var light_xp_label = host._label(SkillState.level_xp_text(host.skills, skill_id, SkillState.host_skill_level(host, skill_id)), host.SKILL_DETAIL_XP_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		light_stack.add_child(light_xp_label)
 		state["xp_label"] = light_xp_label
@@ -4756,7 +4756,7 @@ func _build_skill_swipe_preview_page(skill_id: String, offset = 0) -> Control:
 		title_stack.add_theme_constant_override("separation", host.SKILL_DETAIL_TEXT_SEPARATION)
 		title_stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		left_block.add_child(title_stack)
-		title_stack.add_child(host._label(SkillState.skill_name(host.skill_defs, skill_id), SkillState.skill_detail_title_font_size(skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT))
+		title_stack.add_child(host._label(SkillState.skill_name(host.skill_defs, skill_id), SkillState.skill_detail_title_font_size(skill_id, host.SKILL_DETAIL_TITLE_FONT_SIZE, host.SKILL_DETAIL_WOODCUTTING_TITLE_FONT_SIZE, host.SKILL_DETAIL_FISHING_TITLE_FONT_SIZE), host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT))
 		var xp_label = host._label(SkillState.level_xp_text(host.skills, skill_id, SkillState.host_skill_level(host, skill_id)), host.SKILL_DETAIL_XP_FONT_SIZE, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 		title_stack.add_child(xp_label)
 		state["xp_label"] = xp_label

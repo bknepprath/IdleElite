@@ -62,17 +62,18 @@ const FISHING_METHOD_PADLOCK_SIZE := Vector2(168, 184)
 const FISHING_METHOD_PADLOCK_LEVEL_SIZE := Vector2(75, 65)
 const FISHING_METHOD_PADLOCK_LEVEL_FONT := 64
 const FISHING_METHOD_PADLOCK_LEVEL_OUTLINE := 7
-const FISHING_METHOD_TITLE_OUTLINE := 10
+const FISHING_METHOD_TITLE_FONT_SIZE := 36
+const FISHING_METHOD_TITLE_OUTLINE := 7
 const FISHING_METHOD_TITLE_WIDTH_AXIS := 75
 const FISHING_METHOD_TITLE_WEIGHT_AXIS := 700
 const FISHING_METHOD_TITLE_EMBOLDEN := 1.2
 const FISHING_METHOD_TITLE_WIDTH := 260.0
-const FISHING_MODULE_TITLE_FONT_SIZE := 48
-const FISHING_MODULE_TITLE_OUTLINE := 12
-const FISHING_MODULE_TITLE_TOP := 2
-const FISHING_MODULE_TITLE_BAND_HEIGHT := 48
+const FISHING_MODULE_TITLE_FONT_SIZE := 40
+const FISHING_MODULE_TITLE_OUTLINE := 9
+const FISHING_MODULE_TITLE_TOP := 0
+const FISHING_MODULE_TITLE_BAND_HEIGHT := 44
 const FISHING_MODULE_TITLE_LEFT_INSET := 27.0
-const FISHING_MODULE_TITLE_RIGHT_INSET := 24.0
+const FISHING_MODULE_TITLE_RIGHT_INSET := 16.0
 const FISHING_EQUIPMENT_OFFER_TITLE_SIDE_INSET := 44.0
 const FISHING_AREA_MAX_BUTTONS_PER_MODULE := 2
 const FISHING_AREA_CONTENT_TOP_MARGIN := FISHING_MODULE_TITLE_TOP
@@ -1804,21 +1805,20 @@ func _build_fishing_location_tile(
 	method_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_row.add_child(method_column)
 
-	var method_title_slot := Control.new()
-	method_title_slot.custom_minimum_size = Vector2(FISHING_METHOD_TITLE_WIDTH, 58)
+	var method_title_slot := CenterContainer.new()
+	method_title_slot.custom_minimum_size = Vector2(FISHING_METHOD_TITLE_WIDTH, 44)
 	method_title_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_column.add_child(method_title_slot)
-	var method_title = host._label(str(location.get("name", location_id.capitalize())), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var method_title = host._label(str(location.get("name", location_id.capitalize())), FISHING_METHOD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	method_title.add_theme_font_override("font", _fishing_method_title_font())
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
 	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	method_title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	method_title.set_anchors_preset(Control.PRESET_FULL_RECT)
-	method_title.offset_top = -9
-	method_title.offset_bottom = -9
-	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	method_title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	method_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	method_title_slot.add_child(method_title)
+	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var art_panel = Panel.new()
 	art_panel.custom_minimum_size = FISHING_LOCATION_TILE_SIZE
@@ -2548,21 +2548,20 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	method_column.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_row.add_child(method_column)
 
-	var method_title_slot := Control.new()
-	method_title_slot.custom_minimum_size = Vector2(FISHING_METHOD_TITLE_WIDTH, 58)
+	var method_title_slot := CenterContainer.new()
+	method_title_slot.custom_minimum_size = Vector2(FISHING_METHOD_TITLE_WIDTH, 44)
 	method_title_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_column.add_child(method_title_slot)
-	var method_title = host._label(_fishing_area_focused_method_label(action), 48, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	var method_title = host._label(_fishing_area_focused_method_label(action), FISHING_METHOD_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	method_title.add_theme_font_override("font", _fishing_method_title_font())
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
 	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	method_title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	method_title.set_anchors_preset(Control.PRESET_FULL_RECT)
-	method_title.offset_top = -9
-	method_title.offset_bottom = -9
-	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	method_title.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	method_title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	method_title_slot.add_child(method_title)
+	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var art_panel = Panel.new()
 	art_panel.custom_minimum_size = FISHING_LOCATION_TILE_SIZE
@@ -3021,24 +3020,27 @@ func _float_fish_reward(parent: Control, anchor: Control, fish_amount: float) ->
 
 func _attach_fishing_area_module_title(pop_card: Control, title_text: String) -> Label:
 	var area_title: Label = host._label(title_text, FISHING_MODULE_TITLE_FONT_SIZE, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+	pop_card.add_child(area_title)
 	area_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	area_title.add_theme_constant_override("outline_size", FISHING_MODULE_TITLE_OUTLINE)
 	area_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	area_title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	area_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	area_title.anchor_left = 0.0
-	area_title.anchor_right = 1.0
+	area_title.anchor_right = 0.0
 	area_title.anchor_top = 0.0
 	area_title.anchor_bottom = 0.0
-	area_title.offset_left = FISHING_MODULE_TITLE_LEFT_INSET
-	area_title.offset_right = -FISHING_MODULE_TITLE_RIGHT_INSET
-	area_title.offset_top = FISHING_MODULE_TITLE_TOP
-	area_title.offset_bottom = FISHING_MODULE_TITLE_TOP + FISHING_MODULE_TITLE_BAND_HEIGHT
+	var card_root := pop_card.get_parent() as Control
+	var pop_card_width: float = float(card_root.custom_minimum_size.x) - float(host.ACTION_CARD_POP_GUTTER) * 2.0
+	area_title.position = Vector2(FISHING_MODULE_TITLE_LEFT_INSET, FISHING_MODULE_TITLE_TOP)
+	area_title.size = Vector2(
+		maxf(0.0, pop_card_width - FISHING_MODULE_TITLE_LEFT_INSET - FISHING_MODULE_TITLE_RIGHT_INSET),
+		maxf(FISHING_MODULE_TITLE_BAND_HEIGHT, area_title.get_combined_minimum_size().y)
+	)
 	area_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	area_title.z_index = FISHING_MODULE_TITLE_Z_INDEX
 	area_title.z_as_relative = true
 	area_title.visible = true
-	pop_card.add_child(area_title)
 	return area_title
 
 
