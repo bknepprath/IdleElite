@@ -2,7 +2,7 @@
 
 ## Objective
 
-Reduce Android launch and steady-state memory by re-authoring the game for a 1080 x 1920 base viewport while keeping `window/stretch/mode="viewport"` and the Mobile renderer. Do not use `canvas_items`, a root-scale workaround, a logical-canvas override, or a nested viewport as a substitute for migrating layout values.
+Reduce Android launch and steady-state memory by re-authoring the game for a 1080 x 1920 base viewport while keeping `window/stretch/mode="viewport"`. Do not use `canvas_items`, a root-scale workaround, a logical-canvas override, or a nested viewport as a substitute for migrating layout values.
 
 ## Measured baseline
 
@@ -20,7 +20,7 @@ The half-resolution diagnostics were not accepted because runtime scaling and `c
 
 - Keep `window/stretch/mode="viewport"`.
 - Keep `window/stretch/aspect="expand"` unless physical-device validation proves a reviewed replacement.
-- Keep the Mobile renderer unless the Android release-critical validation process approves a change.
+- Keep the Compatibility renderer selected for the 1080p Android build. The Mobile renderer produced repeatable horizontal framebuffer corruption on the physical Galaxy S24 Ultra after the 1080p cutover.
 - Preserve production package data. Install only `com.idleelite.game.preview` during device testing.
 - Keep phone-visible body text at least 48 px, help and status text at least 52 px, and titles at least 60 px at the 1080-wide base viewport.
 - Use the production `res://scenes/main.tscn` hierarchy for visual evidence.

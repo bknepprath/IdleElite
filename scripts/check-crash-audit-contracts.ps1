@@ -98,6 +98,8 @@ Assert-True ($projectText -match 'run/main_scene="res://scenes/main\.tscn"') "pr
 Assert-True ($projectText -match 'config/quit_on_go_back=false') "Android back button should not quit the game unexpectedly."
 Assert-True ($projectText -match 'window/stretch/mode="viewport"') "Project stretch mode should stay viewport to avoid Android canvas tearing."
 Assert-True ($projectText -match 'window/stretch/aspect="expand"') "Project stretch aspect should stay expand for phone layout stability."
+Assert-True ($projectText -match 'renderer/rendering_method="gl_compatibility"') "Project renderer should stay gl_compatibility to avoid native 1080p Vulkan framebuffer corruption."
+Assert-True ($projectText -match 'renderer/rendering_method\.mobile="gl_compatibility"') "Mobile renderer should stay gl_compatibility to avoid native 1080p Vulkan framebuffer corruption."
 foreach ($match in [regex]::Matches($projectText, '"(?<path>res://[^"]+)"')) {
     Assert-ResourcePathExists $match.Groups["path"].Value "project.godot"
 }
@@ -107,8 +109,10 @@ Assert-True ($safeRunnerText -match '--headless') "The safe runner should defaul
 Assert-True ($safeRunnerText -match '--visible-game') "The safe runner should explicitly gate visible game launches."
 Assert-True ($releaseBuildText -match 'window/stretch/mode=\"viewport\"') "The Android release builder must guard the viewport stretch mode."
 Assert-True ($releaseBuildText -match 'Android release blocked:') "The Android release builder must fail clearly when the viewport guard is violated."
+Assert-True ($releaseBuildText -match 'renderer/rendering_method\\\.mobile=.*gl_compatibility') "The Android release builder must guard the Compatibility renderer."
 Assert-True ($releaseBuildText -match 'godot-lib\.template_release\.aar') "The Android release builder must verify its custom build-template AAR."
 Assert-True ($previewBuildText -match 'window/stretch/mode=\"viewport\"') "The Android preview builder must guard the viewport stretch mode."
+Assert-True ($previewBuildText -match 'renderer/rendering_method\\\.mobile=.*gl_compatibility') "The Android preview builder must guard the Compatibility renderer."
 Assert-True ($previewBuildText -match 'godot-lib\.template_debug\.aar') "The Android preview builder must verify its custom build-template AAR."
 Assert-True ($assetPackGradleText -match 'com\.android\.asset-pack') "The install-time Android asset pack must apply the asset-pack plugin."
 Assert-True ($assetPackGradleText -match 'deliveryType\s*=\s*"install-time"') "The Android asset pack must use install-time delivery."

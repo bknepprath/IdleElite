@@ -62,7 +62,7 @@ $renderer = (Get-ProjectSettingValue -Source $project -Key "renderer/rendering_m
 
 Assert-True ($stretchMode -eq "viewport") "Android-safe stretch mode must remain viewport."
 Assert-True ($stretchAspect -eq "expand") "Migration baseline requires viewport stretch aspect expand."
-Assert-True ($renderer -eq "mobile") "Migration baseline requires the Mobile renderer."
+Assert-True ($renderer -eq "gl_compatibility") "Samsung-safe 1080p builds require the Compatibility renderer to prevent Vulkan framebuffer corruption."
 
 $baseCanvasMatch = [regex]::Match($main, '(?m)^const BASE_CANVAS := Vector2\(\s*(\d+)\s*,\s*(\d+)\s*\)\r?$')
 Assert-True $baseCanvasMatch.Success "Could not read BASE_CANVAS from scripts\main.gd."

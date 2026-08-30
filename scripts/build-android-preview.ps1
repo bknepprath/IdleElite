@@ -26,6 +26,10 @@ $projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath
 if ($projectSettings -notmatch '(?m)^window/stretch/mode="viewport"\r?$') {
     throw 'Android preview blocked: project.godot must keep window/stretch/mode="viewport" to prevent full-screen pixel tearing on physical phones.'
 }
+if ($projectSettings -notmatch '(?m)^renderer/rendering_method="gl_compatibility"\r?$' -or
+    $projectSettings -notmatch '(?m)^renderer/rendering_method\.mobile="gl_compatibility"\r?$') {
+    throw 'Android preview blocked: the native 1080p Samsung build must keep both rendering methods on gl_compatibility to prevent Vulkan framebuffer corruption.'
+}
 
 $originalExportPresets = Get-Content -Raw -LiteralPath $exportPresetsPath
 $originalBuildGradle = Get-Content -Raw -LiteralPath $buildGradlePath

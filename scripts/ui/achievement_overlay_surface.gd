@@ -13,11 +13,11 @@ const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
 const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
 const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(31, 31)
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
-const OFFLINE_SUMMARY_MODAL_WIDTH := 840.0
-const OFFLINE_SUMMARY_MODAL_MIN_HEIGHT := 760.0
-const OFFLINE_SUMMARY_MODAL_MAX_HEIGHT := 1500.0
-const OFFLINE_SUMMARY_MODAL_CHROME_HEIGHT := 760.0
-const OFFLINE_SUMMARY_MODAL_MAX_PROGRESS_HEIGHT := 650.0
+const OFFLINE_SUMMARY_MODAL_WIDTH := 760.0
+const OFFLINE_SUMMARY_MODAL_MIN_HEIGHT := 690.0
+const OFFLINE_SUMMARY_MODAL_MAX_HEIGHT := 1280.0
+const OFFLINE_SUMMARY_MODAL_CHROME_HEIGHT := 600.0
+const OFFLINE_SUMMARY_MODAL_MAX_PROGRESS_HEIGHT := 580.0
 const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(32, 40)
 const OFFLINE_SUMMARY_SECTION_HEIGHT := 72.0
 const OFFLINE_SUMMARY_ROW_HEIGHT := 170.0
@@ -337,8 +337,14 @@ func _build_offline_summary_overlay() -> void:
 	panel.add_child(outer)
 	offline_summary_stack = VBoxContainer.new()
 	offline_summary_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	offline_summary_stack.add_theme_constant_override("separation", 16)
-	outer.add_child(offline_summary_stack)
+	offline_summary_stack.add_theme_constant_override("separation", 12)
+	var scroll := MobileScrollContainer.new()
+	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	outer.add_child(scroll)
+	scroll.add_child(offline_summary_stack)
 
 func _on_offline_summary_overlay_gui_input(event: InputEvent) -> void:
 	var panel = offline_summary_panel if offline_summary_panel != null and is_instance_valid(offline_summary_panel) else offline_summary_panel_frame
@@ -418,12 +424,12 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	title_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title_stack.add_theme_constant_override("separation", 1)
 	header.add_child(title_stack)
-	var title = host._label("Welcome Back", 62, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var title = host._label("Welcome Back", 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	title_stack.add_child(title)
-	var subtitle = host._label("Away for %s" % GameFormatting.duration(offline_seconds), 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var subtitle = host._label("Away for %s" % GameFormatting.duration(offline_seconds), 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	title_stack.add_child(subtitle)
 	var close = host._menu_button("X")
-	close.custom_minimum_size = Vector2(85, 79)
+	close.custom_minimum_size = Vector2(78, 72)
 	close.pressed.connect(_close_offline_summary_overlay)
 	header.add_child(close)
 
@@ -440,48 +446,38 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 		var list := VBoxContainer.new()
 		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		list.add_theme_constant_override("separation", int(OFFLINE_SUMMARY_ROW_GAP))
-		if progress_content_height > progress_area_height + 1.0:
-			var scroll = MobileScrollContainer.new()
-			scroll.custom_minimum_size = Vector2(0, progress_area_height)
-			scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-			scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-			scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-			offline_summary_stack.add_child(scroll)
-			scroll.add_child(list)
-		else:
-			offline_summary_stack.add_child(list)
+		offline_summary_stack.add_child(list)
 		_populate_offline_summary_progress(list, active_result)
 
 	var done = host._menu_button("Nice")
-	done.custom_minimum_size = Vector2(0, 95)
+	done.custom_minimum_size = Vector2(0, 80)
 	done.pressed.connect(_close_offline_summary_overlay)
 	offline_summary_stack.add_child(done)
 
 func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 220)
+	card.custom_minimum_size = Vector2(0, 180)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_info_style())
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
-	row.add_theme_constant_override("separation", 19)
+	row.add_theme_constant_override("separation", 14)
 	card.add_child(row)
 	var art_frame := PanelContainer.new()
-	art_frame.custom_minimum_size = Vector2(139, 139)
+	art_frame.custom_minimum_size = Vector2(112, 112)
 	art_frame.add_theme_stylebox_override("panel", host.ActivityCardStyles.featured_art(Callable(host, "_surface_style"), host.COLOR_LINE))
 	row.add_child(art_frame)
-	art_frame.add_child(host.visual_texture_cache._image(str(active_result.get("action_art", "")), Vector2(120, 120)))
+	art_frame.add_child(host.visual_texture_cache._image(str(active_result.get("action_art", "")), Vector2(96, 96)))
 	var copy := VBoxContainer.new()
 	copy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	copy.add_theme_constant_override("separation", 5)
 	row.add_child(copy)
-	var eyebrow = host._label(str(active_result.get("skill_name", "Skill")), 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var eyebrow = host._label(str(active_result.get("skill_name", "Skill")), 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	copy.add_child(eyebrow)
-	var action_name_label = host._label(str(active_result.get("action_name", "Activity")), 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	var action_name_label = host._label(str(active_result.get("action_name", "Activity")), 52, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	action_name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(action_name_label)
-	var detail = host._label("%s successes from %s completed runs" % [int(active_result.get("successes", 0)), int(active_result.get("completions", 0))], 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	var detail = host._label("%s successes from %s completed runs" % [int(active_result.get("successes", 0)), int(active_result.get("completions", 0))], 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	copy.add_child(detail)
 	return card
@@ -500,18 +496,18 @@ func _offline_summary_info_style() -> StyleBoxFlat:
 
 func _offline_summary_stat_card(title: String, value: String, accent: Color, icon_path: String) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 215)
+	card.custom_minimum_size = Vector2(0, 180)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_stat_style(accent))
 	var stack := VBoxContainer.new()
 	stack.alignment = BoxContainer.ALIGNMENT_CENTER
 	stack.add_theme_constant_override("separation", 4)
 	card.add_child(stack)
-	stack.add_child(host.visual_texture_cache._image(icon_path, Vector2(50, 50)))
-	var value_label = host._label(value, 60, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
+	stack.add_child(host.visual_texture_cache._image(icon_path, Vector2(44, 44)))
+	var value_label = host._label(value, 54, host.COLOR_INK, HORIZONTAL_ALIGNMENT_CENTER)
 	value_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(value_label)
-	var title_label = host._label(title, 52, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var title_label = host._label(title, 48, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	title_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	stack.add_child(title_label)
 	return card

@@ -57,6 +57,10 @@ $projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath
 if ($projectSettings -notmatch '(?m)^window/stretch/mode="viewport"\r?$') {
     throw 'Android release blocked: project.godot must keep window/stretch/mode="viewport" to prevent full-screen pixel tearing on physical phones.'
 }
+if ($projectSettings -notmatch '(?m)^renderer/rendering_method="gl_compatibility"\r?$' -or
+    $projectSettings -notmatch '(?m)^renderer/rendering_method\.mobile="gl_compatibility"\r?$') {
+    throw 'Android release blocked: the native 1080p Samsung build must keep both rendering methods on gl_compatibility to prevent Vulkan framebuffer corruption.'
+}
 if ([string]::IsNullOrWhiteSpace($keystorePassword)) {
     throw "Set IDLE_ELITE_KEYSTORE_PASSWORD before running this script."
 }
