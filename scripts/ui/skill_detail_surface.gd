@@ -37,7 +37,8 @@ const SkillIconBadge = preload("res://scripts/ui/skill_icon_badge.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
 
 const BETA_NOTICE_HEIGHT := 355.0
-const ACTIVITY_STAT_VALUE_FONT_WIDTH_SCALE := 0.58
+const ACTIVITY_STAT_VALUE_FONT_WIDTH_AXIS := 75
+const ACTIVITY_STAT_VALUE_FONT_WEIGHT_AXIS := 700
 
 class _GradientShelf extends Control:
 	var top_color := Color("#f6cfd0")
@@ -3503,8 +3504,9 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	detail_xp_label = host._label(SkillState.level_xp_text(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id)), SKILL_DETAIL_XP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
 	detail_xp_label.custom_minimum_size.x = host.SKILL_DETAIL_XP_BAR_WIDTH
 	detail_xp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	detail_xp_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail_xp_label.max_lines_visible = 2
+	detail_xp_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	detail_xp_label.max_lines_visible = 1
+	detail_xp_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	detail_xp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	title_stack.add_child(detail_xp_label)
 	detail_xp_bar = ThemeStyles.skill_detail_xp_bar(selected_skill_id, float(xp["pct"]), host.COLOR_BLUE, host.COLOR_INK, host.SKILL_DETAIL_XP_BAR_HEIGHT, host.SKILL_DETAIL_XP_BAR_WIDTH)
@@ -6186,14 +6188,10 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 		copy.add_child(title_row)
 
 	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 60, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT) as Label
-	if uses_flat_normal_card:
-		action_name_label.add_theme_font_size_override("font_size", 48)
+	ActivityCardStyles.configure_activity_card_title(action_name_label)
 	action_name_label.add_theme_color_override("font_outline_color", COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
-	action_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	action_name_label.clip_text = true
-	action_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	action_name_label.set_meta("module_ui_title_label", true)
 	action_name_label.set_meta("activity_card_locked_title_z_index", 0)
 	action_name_label.z_index = ActivityCardStyles.activity_card_title_z_index(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action), action_name_label, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
@@ -7487,13 +7485,13 @@ func _activity_stat_bonus_panel() -> Dictionary:
 func _activity_stat_value_font() -> Font:
 	if activity_stat_value_font != null:
 		return activity_stat_value_font
-	var base_font: Font = host.app_bold_font if host.app_bold_font != null else host.app_font
+	var base_font: Font = host.app_font if host.app_font != null else host.app_bold_font
 	if base_font == null:
 		return ThemeDB.fallback_font
-	var condensed := FontVariation.new()
-	condensed.base_font = base_font
-	condensed.variation_transform = Transform2D(Vector2(ACTIVITY_STAT_VALUE_FONT_WIDTH_SCALE, 0.0), Vector2(0.0, 1.0), Vector2.ZERO)
-	activity_stat_value_font = condensed
+	var compact := FontVariation.new()
+	compact.base_font = base_font
+	compact.variation_opentype = {&"wdth": ACTIVITY_STAT_VALUE_FONT_WIDTH_AXIS, &"wght": ACTIVITY_STAT_VALUE_FONT_WEIGHT_AXIS}
+	activity_stat_value_font = compact
 	return activity_stat_value_font
 
 

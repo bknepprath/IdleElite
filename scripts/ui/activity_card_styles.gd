@@ -626,6 +626,16 @@ static func activity_card_title_text(raw_title: String) -> String:
 	return raw_title.replace("\u2009", "").replace(" - ", "-").replace("-", "\u2009–\u2009")
 
 
+static func configure_activity_card_title(title: Label) -> void:
+	if title == null:
+		return
+	title.add_theme_font_size_override("font_size", 48)
+	title.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	title.max_lines_visible = 2
+	title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
+	title.clip_text = false
+
+
 static func sync_activity_card_title_layer(card: Dictionary, unlocked: bool, module_title_over_pin_z_index := 0) -> void:
 	var title := _valid_canvas_item_ref(card.get("title"))
 	if title == null:

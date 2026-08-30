@@ -263,11 +263,11 @@ static func xp_progress(skills: Dictionary, skill_id: String, level: int) -> Dic
 static func level_xp_text(skills: Dictionary, skill_id: String, level: int) -> String:
 	var xp := xp_progress(skills, skill_id, level)
 	if level >= 99:
-		return "Lv %s (XP %s)" % [
+		return "Lv %s · %s XP" % [
 			level,
 			GameFormatting.compact_number(float(xp["current"]))
 		]
-	return "Lv %s (XP %s / %s)" % [
+	return "Lv %s · %s/%s" % [
 		level,
 		GameFormatting.compact_number(float(xp["current"])),
 		GameFormatting.compact_number(float(xp["needed"]))

@@ -5955,12 +5955,10 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	row.add_child(art_slot)
 
 	var action_name_label = host._label(ActivityCardStyles.activity_card_title_text(str(action["name"])), 82, Color.WHITE, HORIZONTAL_ALIGNMENT_LEFT)
-	action_name_label.add_theme_font_size_override("font_size", 48)
+	ActivityCardStyles.configure_activity_card_title(action_name_label)
 	action_name_label.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	action_name_label.add_theme_constant_override("outline_size", host.ACTION_CARD_TITLE_OUTLINE_SIZE)
 	action_name_label.self_modulate = Color.WHITE
-	action_name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
-	action_name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	action_name_label.set_meta("activity_card_locked_title_z_index", 0)
 	action_name_label.z_index = ActivityCardStyles.activity_card_title_z_index(host._activity_unlock_runtime()._is_action_unlocked(skill_id, action), action_name_label, host.MODULE_TITLE_OVER_PIN_Z_INDEX)
 	copy.add_child(action_name_label)
