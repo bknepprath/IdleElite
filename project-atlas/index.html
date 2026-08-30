@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
   <title>Idle Elite Project Atlas</title>
-  <link rel="stylesheet" href="atlas.css?v=15">
+  <link rel="stylesheet" href="atlas.css?v=16">
 </head>
 <body>
   <header class="page-header">
@@ -15,27 +15,14 @@
     </div>
     <nav aria-label="Atlas sections">
       <a href="#storage">Storage</a>
-      <a href="#images">Images</a>
       <a href="#planning">Planning HTML</a>
-      <a href="#builds">Build history</a>
-      <a href="#cleanup">Cleanup</a>
+      <a href="#images">Images</a>
       <a href="#find">Find</a>
     </nav>
   </header>
 
   <main>
     <section id="summary" class="summary-grid" aria-label="Project summary"></section>
-
-    <section id="cleanup" class="panel" aria-labelledby="cleanup-title">
-      <div class="section-heading heading-with-action">
-        <div>
-          <h2 id="cleanup-title">Cleanup status</h2>
-          <p>The large temporary and generated areas have been cleaned. The retained files are listed here.</p>
-        </div>
-        <button id="export-review" class="button" type="button">Export review list</button>
-      </div>
-      <div id="cleanup-groups" class="cleanup-groups"></div>
-    </section>
 
     <section id="storage" class="panel" aria-labelledby="storage-title">
       <div class="section-heading">
@@ -55,21 +42,6 @@
       <div id="treemap-detail" class="treemap-detail" aria-live="polite"></div>
       <div id="treemap-legend" class="treemap-legend" aria-label="Storage category colors"></div>
       <div id="treemap-tooltip" class="treemap-tooltip" role="tooltip" hidden></div>
-    </section>
-
-    <section id="images" class="panel" aria-labelledby="images-title">
-      <div class="section-heading">
-        <h2 id="images-title">Game image library</h2>
-        <p>This section covers the 784 source images under the game asset folder. Build copies, screenshots, temporary generations, and Godot's imported texture cache are excluded.</p>
-      </div>
-      <div id="image-categories" class="category-grid"></div>
-      <div class="image-browser">
-        <div>
-          <h3>Folders</h3>
-          <div id="image-tree" class="folder-tree"></div>
-        </div>
-        <div id="image-selection" class="selection-panel"></div>
-      </div>
     </section>
 
     <section id="planning" class="panel" aria-labelledby="planning-title">
@@ -92,31 +64,19 @@
       <div id="planning-files" class="planning-files"></div>
     </section>
 
-    <section id="builds" class="panel" aria-labelledby="builds-title">
+    <section id="images" class="panel" aria-labelledby="images-title">
       <div class="section-heading">
-        <h2 id="builds-title">Build and export history</h2>
-        <p>These are produced copies of the game. The source project does not need every old build to continue working.</p>
+        <h2 id="images-title">Game image library</h2>
+        <p>This section covers the 784 source images under the game asset folder. Build copies, screenshots, temporary generations, and Godot's imported texture cache are excluded.</p>
       </div>
-      <div id="build-summary" class="build-summary"></div>
-      <div class="two-column">
+      <div id="image-categories" class="category-grid"></div>
+      <div class="image-browser">
         <div>
-          <h3>By month</h3>
-          <div id="build-timeline" class="bars"></div>
+          <h3>Folders</h3>
+          <div id="image-tree" class="folder-tree"></div>
         </div>
-        <div>
-          <h3>Largest build files</h3>
-          <div id="largest-builds" class="file-list compact"></div>
-        </div>
+        <div id="image-selection" class="selection-panel"></div>
       </div>
-    </section>
-
-    <section id="play-store" class="panel" aria-labelledby="play-store-title">
-      <div class="section-heading">
-        <h2 id="play-store-title">Play Store folder</h2>
-        <p id="play-store-explanation"></p>
-      </div>
-      <div id="play-store-groups" class="small-groups"></div>
-      <div id="play-store-files" class="file-list"></div>
     </section>
 
     <section id="find" class="panel" aria-labelledby="find-title">
@@ -141,7 +101,7 @@
     </article>
   </template>
 
-  <script src="atlas-data.js?v=15"></script>
-  <script src="atlas.js?v=15"></script>
+  <script src="atlas-data.js?v=16"></script>
+  <script src="atlas.js?v=16"></script>
 </body>
 </html>

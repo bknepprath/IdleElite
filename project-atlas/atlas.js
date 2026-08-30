@@ -52,7 +52,6 @@
   const producedBytes = producedGroups.reduce((sum, group) => sum + group.bytes, 0);
   const producedFiles = producedGroups.reduce((sum, group) => sum + group.files, 0);
   const gameImages = files.filter((file) => file[fields.image_state] && file[fields.path].startsWith('assets/') && !file[fields.path].startsWith('assets/android/'));
-  const playStoreFiles = files.filter((file) => file[fields.path].startsWith('play-store/'));
 
   function addSummaryCard(value, label, detail) {
     const fragment = el('summary-card-template').content.cloneNode(true);
@@ -63,12 +62,11 @@
   }
 
   function renderSummary() {
-    const storeImages = playStoreFiles.filter((file) => ['.png', '.jpg', '.jpeg'].includes(file[fields.extension]));
     addSummaryCard(formatBytes(totalBytes), 'Entire project folder', `${formatNumber(files.length)} files, including all produced and temporary copies`);
     addSummaryCard(formatBytes(authoredGroup.bytes), 'Authored game source', `${formatNumber(authoredGroup.files)} scripts, scenes, add-ons, settings, and source assets`);
     addSummaryCard(formatBytes(producedBytes), 'Builds, temporary work, and caches', `${formatNumber(producedFiles)} files outside the authored game source`);
     addSummaryCard(formatNumber(gameImages.length), 'Game source images', `${formatBytes(sumBytes(gameImages))}; the full folder contains ${formatNumber(data.images.all.count)} images after copies and temporary work`);
-    addSummaryCard(formatNumber(playStoreFiles.length), 'Files in play-store', `${formatNumber(storeImages.length)} images and ${formatNumber(playStoreFiles.length - storeImages.length)} documents or support files`);
+    addSummaryCard(formatNumber(htmlFiles.length), 'HTML files to review', `${formatNumber(planningGroups.find((group) => group.id === 'current').files)} current planning pages in docs`);
     el('scope-line').textContent = `Snapshot ${data.generated_at}. Everything inside the Idle Elite project folder except Git's internal database.`;
     el('storage-title').textContent = `Why this project folder is ${formatBytes(totalBytes)}`;
   }
@@ -482,14 +480,29 @@
       panel.appendChild(bars);
     }
 
-    const list = document.createElement('div');
-    list.className = 'file-list';
-    selectedFiles.slice().sort((a, b) => b[fields.bytes] - a[fields.bytes]).slice(0, 60).forEach((file) => list.appendChild(createFileRow(file)));
-    panel.appendChild(list);
-    if (selectedFiles.length > 60) {
+    const previewFiles = selectedFiles.slice().sort((a, b) => b[fields.bytes] - a[fields.bytes]).slice(0, 12);
+    const preview = document.createElement('div');
+    preview.className = 'image-preview-grid';
+    previewFiles.forEach((file) => {
+      const link = document.createElement('a');
+      link.className = 'image-preview';
+      link.href = fileHref(file[fields.path]);
+      link.target = '_blank';
+      link.rel = 'noopener';
+      const image = document.createElement('img');
+      image.src = fileHref(file[fields.path]);
+      image.alt = file[fields.path].split('/').at(-1);
+      image.loading = 'lazy';
+      const name = document.createElement('span');
+      name.textContent = file[fields.path].split('/').at(-1);
+      link.append(image, name);
+      preview.appendChild(link);
+    });
+    panel.appendChild(preview);
+    if (selectedFiles.length > previewFiles.length) {
       const limit = document.createElement('p');
       limit.className = 'selection-notice';
-      limit.textContent = `Showing the 60 largest files in this selection. Use Find to locate a specific name.`;
+      limit.textContent = `Showing the ${formatNumber(previewFiles.length)} largest images. Select a smaller folder to narrow the selection.`;
       panel.appendChild(limit);
     }
   }
@@ -790,7 +803,6 @@
     matches.slice().sort((a, b) => b[fields.bytes] - a[fields.bytes]).slice(0, 100).forEach((file) => target.appendChild(createFileRow(file)));
   }
 
-  el('export-review').addEventListener('click', exportCleanupReview);
   el('export-planning-review').addEventListener('click', exportPlanningReview);
   el('planning-search').addEventListener('input', renderPlanningFiles);
   el('search').addEventListener('input', (event) => renderSearch(event.target.value));
@@ -812,7 +824,4 @@
   renderImages();
   renderPlanningSummary();
   renderPlanningFiles();
-  renderBuilds();
-  renderCleanup();
-  renderPlayStore();
 })();
