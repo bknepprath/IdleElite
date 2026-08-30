@@ -14,10 +14,7 @@ const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
 const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(31, 31)
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
 const OFFLINE_SUMMARY_MODAL_WIDTH := 840.0
-const OFFLINE_SUMMARY_MODAL_MIN_HEIGHT := 620.0
-const OFFLINE_SUMMARY_MODAL_MAX_HEIGHT := 1090.0
-const OFFLINE_SUMMARY_MODAL_CHROME_HEIGHT := 620.0
-const OFFLINE_SUMMARY_MODAL_MAX_PROGRESS_HEIGHT := 410.0
+const OFFLINE_SUMMARY_MODAL_HEIGHT := 720.0
 const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(32, 40)
 const OFFLINE_SUMMARY_SECTION_HEIGHT := 44.0
 const OFFLINE_SUMMARY_ROW_HEIGHT := 107.0
@@ -157,7 +154,6 @@ var offline_summary_overlay: Control
 var offline_summary_panel_frame: Control
 var offline_summary_panel: PanelContainer
 var offline_summary_stack: VBoxContainer
-var offline_summary_scroll: MobileScrollContainer
 var offline_summary_close_pending := false
 var achievements_overlay: Control
 var achievements_panel_frame: Control
@@ -321,12 +317,12 @@ func _build_offline_summary_overlay() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	offline_summary_overlay.add_child(center)
 	var frame := Control.new()
-	frame.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_MODAL_MIN_HEIGHT)
+	frame.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_MODAL_HEIGHT)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(frame)
 	offline_summary_panel_frame = frame
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_MODAL_MIN_HEIGHT)
+	panel.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_MODAL_HEIGHT)
 	panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 72, true))
 	frame.add_child(panel)
 	offline_summary_panel = panel
@@ -339,14 +335,7 @@ func _build_offline_summary_overlay() -> void:
 	offline_summary_stack = VBoxContainer.new()
 	offline_summary_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	offline_summary_stack.add_theme_constant_override("separation", 12)
-	var scroll := MobileScrollContainer.new()
-	offline_summary_scroll = scroll
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	outer.add_child(scroll)
-	scroll.add_child(offline_summary_stack)
+	outer.add_child(offline_summary_stack)
 
 func _on_offline_summary_overlay_gui_input(event: InputEvent) -> void:
 	var panel = offline_summary_panel if offline_summary_panel != null and is_instance_valid(offline_summary_panel) else offline_summary_panel_frame
@@ -410,14 +399,7 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	if offline_summary_stack == null:
 		return
 	host._clear(offline_summary_stack)
-	var progress_content_height := _offline_summary_progress_content_height(active_result)
-	var progress_area_height := minf(progress_content_height, OFFLINE_SUMMARY_MODAL_MAX_PROGRESS_HEIGHT)
-	var modal_height := clampf(
-		OFFLINE_SUMMARY_MODAL_CHROME_HEIGHT + progress_area_height,
-		OFFLINE_SUMMARY_MODAL_MIN_HEIGHT,
-		OFFLINE_SUMMARY_MODAL_MAX_HEIGHT
-	)
-	_fit_offline_summary_modal(Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, modal_height))
+	_fit_offline_summary_modal(Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_MODAL_HEIGHT))
 	var header := HBoxContainer.new()
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
 	header.add_theme_constant_override("separation", 12)
@@ -445,35 +427,11 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), host.PROGRESS_STAR_ICON_TEXTURE))
 	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(ActionRuntime.OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), host.TOTAL_LEVEL_BARGRAPH_TEXTURE))
 
-	if progress_content_height > 0.0:
-		var list := VBoxContainer.new()
-		list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		list.add_theme_constant_override("separation", int(OFFLINE_SUMMARY_ROW_GAP))
-		offline_summary_stack.add_child(list)
-		_populate_offline_summary_progress(list, active_result)
-
 	var done = host._menu_button("Nice")
 	done.custom_minimum_size = Vector2(0, 95)
 	done.focus_mode = Control.FOCUS_NONE
 	done.pressed.connect(_close_offline_summary_overlay)
 	offline_summary_stack.add_child(done)
-	_scroll_offline_summary_to_top_after_layout()
-
-
-func _scroll_offline_summary_to_top_after_layout() -> void:
-	if offline_summary_scroll == null or not is_instance_valid(offline_summary_scroll):
-		return
-	offline_summary_scroll.drag_scroll_position = 0.0
-	offline_summary_scroll.scroll_vertical = 0
-	call_deferred("_finish_scroll_offline_summary_to_top")
-
-
-func _finish_scroll_offline_summary_to_top() -> void:
-	await host.get_tree().process_frame
-	if offline_summary_scroll == null or not is_instance_valid(offline_summary_scroll):
-		return
-	offline_summary_scroll.drag_scroll_position = 0.0
-	offline_summary_scroll.scroll_vertical = 0
 
 func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	var card := PanelContainer.new()
