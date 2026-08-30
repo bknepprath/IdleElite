@@ -20,6 +20,7 @@ const CENTER_NUMBER_STROKE_SCALE := 36.0
 const CENTER_NUMBER_STROKE_MIN := 13
 const CENTER_DECIMAL_SUFFIX_SCALE := 0.5
 const CENTER_DECIMAL_SUFFIX_ALPHA := 0.6
+const CENTER_DENOMINATOR_Y_OFFSET := 150.0
 const LIQUID_EDGE_INSET_SCALE := 2.4
 const LIQUID_EDGE_SEAL_WIDTH_SCALE := 4.8
 const THEME_COLOR_EASE_SPEED := 7.5
@@ -677,7 +678,7 @@ func _draw_center_text(center: Vector2) -> void:
 	var small := _fit_font_size(font, small_text, maxi(48, int(min_size * 0.13)), 48, max_text_width)
 	var current_center_y := center.y - 22.0 * draw_scale
 	var divider_y := center.y + 91.0 * draw_scale
-	var max_center_y := center.y + 128.0 * draw_scale
+	var max_center_y := center.y + CENTER_DENOMINATOR_Y_OFFSET * draw_scale
 	var current_stroke := maxi(CENTER_NUMBER_STROKE_MIN, int(round(CENTER_NUMBER_STROKE_SCALE * draw_scale)))
 	_draw_stroked_number_with_decimal_suffix(font, current_text, decimal_text, Vector2(center.x, current_center_y), large, Color.WHITE, current_stroke)
 	_draw_center_divider(center, divider_y, 106.0 * draw_scale, draw_scale)

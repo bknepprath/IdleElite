@@ -16,6 +16,7 @@ $hubSurfacePath = Join-Path $projectRoot "scripts\ui\hub_surface.gd"
 $skillDetailSurfacePath = Join-Path $projectRoot "scripts\ui\skill_detail_surface.gd"
 $skillSwipeSurfacePath = Join-Path $projectRoot "scripts\ui\skill_swipe_activity_surface.gd"
 $activityCardStylesPath = Join-Path $projectRoot "scripts\ui\activity_card_styles.gd"
+$regenCirclePath = Join-Path $projectRoot "scripts\ui\regen_circle.gd"
 $skillStatePath = Join-Path $projectRoot "scripts\progression\skill_state.gd"
 
 Assert-True (Test-Path -LiteralPath $projectPath) "Missing project.godot."
@@ -27,6 +28,7 @@ Assert-True (Test-Path -LiteralPath $hubSurfacePath) "Missing Hub surface script
 Assert-True (Test-Path -LiteralPath $skillDetailSurfacePath) "Missing skill detail surface script."
 Assert-True (Test-Path -LiteralPath $skillSwipeSurfacePath) "Missing skill swipe activity surface script."
 Assert-True (Test-Path -LiteralPath $activityCardStylesPath) "Missing activity card styles script."
+Assert-True (Test-Path -LiteralPath $regenCirclePath) "Missing stamina gauge renderer."
 Assert-True (Test-Path -LiteralPath $skillStatePath) "Missing skill state script."
 
 $project = Get-Content -LiteralPath $projectPath -Raw
@@ -38,6 +40,7 @@ $hubSurface = Get-Content -LiteralPath $hubSurfacePath -Raw
 $skillDetailSurface = Get-Content -LiteralPath $skillDetailSurfacePath -Raw
 $skillSwipeSurface = Get-Content -LiteralPath $skillSwipeSurfacePath -Raw
 $activityCardStyles = Get-Content -LiteralPath $activityCardStylesPath -Raw
+$regenCircle = Get-Content -LiteralPath $regenCirclePath -Raw
 $skillState = Get-Content -LiteralPath $skillStatePath -Raw
 
 function Get-ProjectSettingValue {
@@ -218,6 +221,7 @@ if ($strictCutover) {
 	Assert-True ($activityCardStyles -match 'title\.text_overrun_behavior = TextServer::OVERRUN_NO_TRIMMING'.Replace('::', '.')) "Activity titles must never be ellipsized."
 	Assert-True ($skillDetailSurface -match 'title_band\.offset_left = 8' -and $skillDetailSurface -match 'title_band\.offset_right = -8') "Detail activity titles must retain the audited full-width lane."
 	Assert-True ($skillSwipeSurface -match 'title_band\.offset_left = 8' -and $skillSwipeSurface -match 'title_band\.offset_right = -8') "Swipe activity titles must retain the audited full-width lane."
+	Assert-True ($regenCircle -match '(?m)^const CENTER_DENOMINATOR_Y_OFFSET := 150\.0\r?$') "Stamina denominator must retain clearance below its divider."
 	Assert-True ($skillDetailSurface -match 'detail_xp_label\.autowrap_mode = TextServer::AUTOWRAP_OFF'.Replace('::', '.')) "Skill level and XP text must remain on one line."
 	Assert-True ($main -match '(?m)^const SKILL_DETAIL_XP_BAR_WIDTH := 450\r?$') "Skill level and XP text must retain its audited one-line width."
 	Assert-True ($skillState -match 'return "Lv %s · %s/%s"') "Skill level and XP text must use the compact one-line format."
