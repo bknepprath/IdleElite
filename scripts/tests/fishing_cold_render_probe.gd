@@ -46,7 +46,7 @@ func _run() -> void:
 			warm_over_50 += 1
 	var warmed_mounted := _mounted_count(main)
 	var warmed_visible_placeholders := bool(main.call("_skill_swipe_activity_surface").call("_skill_detail_has_visible_lazy_placeholders"))
-	var mastery_bars := _fishing_mastery_bar_counts(main)
+	var mastery_rings := _fishing_mastery_ring_counts(main)
 	_write_json({
 		"status": "ok",
 		"render_msec": render_msec,
@@ -61,7 +61,7 @@ func _run() -> void:
 		"visible_placeholders": visible_placeholders,
 		"warmed_visible_placeholders": warmed_visible_placeholders,
 		"action_cards": (main.get("action_cards") as Dictionary).size(),
-		"mastery_bars": mastery_bars,
+		"mastery_rings": mastery_rings,
 		"unmounted_entries": _unmounted_entries(main)
 	})
 	root.remove_child(main)
@@ -138,17 +138,34 @@ func _unmounted_entries(main: Node) -> Array:
 	return entries
 
 
-func _fishing_mastery_bar_counts(main: Node) -> Dictionary:
+func _fishing_mastery_ring_counts(main: Node) -> Dictionary:
 	var total := 0
 	var visible := 0
+	var legacy_bars_visible := 0
 	for raw_card in (main.get("action_cards") as Dictionary).values():
-		if typeof(raw_card) != TYPE_DICTIONARY or not bool((raw_card as Dictionary).get("is_fishing_method", false)):
+		if typeof(raw_card) != TYPE_DICTIONARY:
 			continue
-		total += 1
-		var bar := (raw_card as Dictionary).get("mastery") as Control
-		if bar != null and is_instance_valid(bar) and bar.visible and bar.is_visible_in_tree():
-			visible += 1
-	return {"total": total, "visible": visible}
+		var card := raw_card as Dictionary
+		var method_cards: Array = []
+		if bool(card.get("is_fishing_method", false)):
+			method_cards.append(card)
+		if bool(card.get("is_fishing_area", false)):
+			for raw_method_card in (card.get("method_slots", {}) as Dictionary).values():
+				if typeof(raw_method_card) == TYPE_DICTIONARY:
+					method_cards.append(raw_method_card as Dictionary)
+		for method_card in method_cards:
+			total += 1
+			var ring := (method_card as Dictionary).get("mastery_ring") as Control
+			if ring != null and is_instance_valid(ring) and ring.visible and ring.is_visible_in_tree():
+				visible += 1
+			var bar := (method_card as Dictionary).get("mastery") as Control
+			if bar != null and is_instance_valid(bar) and bar.visible and bar.is_visible_in_tree():
+				legacy_bars_visible += 1
+	return {
+		"total": total,
+		"visible": visible,
+		"legacy_bars_visible": legacy_bars_visible,
+	}
 
 
 

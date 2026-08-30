@@ -5,6 +5,7 @@ const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ActionArtUi = preload("res://scripts/ui/action_art_ui.gd")
 const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
+const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
 const FishCircle = preload("res://scripts/ui/fish_circle.gd")
 const FishingFluidStripClass = preload("res://scripts/fishing/fluid_strip.gd")
 const FishingState = preload("res://scripts/fishing/state.gd")
@@ -1886,15 +1887,9 @@ func _build_fishing_location_tile(
 	medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 	tile_motion_root.add_child(medal)
 
-	var mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 28)
-	mastery_progress.border_color = host.COLOR_INK
-	ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
-	mastery_progress.easing_speed = 24.0
-	mastery_progress.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 28.0)
-	mastery_progress.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	mastery_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mastery_progress.z_index = 24
-	method_column.add_child(mastery_progress)
+	var mastery_widgets := _build_fishing_method_mastery_widgets(method_column, art_panel, skill_id)
+	var mastery_progress := mastery_widgets.get("mastery") as CleanProgressBar
+	var mastery_ring := mastery_widgets.get("mastery_ring") as Control
 	var lock_root: Control = null
 	if not unlocked or unlock_ready_pending:
 		lock_root = _attach_fishing_method_padlock(
@@ -1942,7 +1937,8 @@ func _build_fishing_location_tile(
 		"medal": medal,
 		"attempt_bar": null,
 		"mastery": mastery_progress,
-		"mastery_bar_instant_updates": true,
+		"mastery_ring": mastery_ring,
+		"mastery_bar_instant_updates": false,
 		"method_button": method_button,
 		"method_title": method_title,
 		"method_hit_control": method_column,
@@ -1990,6 +1986,22 @@ func _attach_fishing_method_title(art_panel: Control, title_text: String) -> Lab
 	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_title.z_index = 30
 	return method_title
+
+
+func _build_fishing_method_mastery_widgets(method_column: VBoxContainer, art_panel: Control, skill_id: String) -> Dictionary:
+	var theme_color := ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
+	var mastery_ring := ActivityCardStyles.action_art_mastery_ring(theme_color)
+	mastery_ring.z_index = 0
+	art_panel.add_child(mastery_ring)
+	var mastery_progress := ThemeStyles.progress_bar(Color("#f4bf35"), 28)
+	mastery_progress.border_color = host.COLOR_INK
+	mastery_progress.border_width = ActivityCardStyles.ACTION_CARD_STROKE_WIDTH
+	ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, theme_color, host.COLOR_INK)
+	mastery_progress.easing_speed = 5.0
+	mastery_progress.visible = false
+	mastery_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	method_column.add_child(mastery_progress)
+	return {"mastery": mastery_progress, "mastery_ring": mastery_ring}
 
 
 func _fishing_active_tool_hit_at_position(area_card: Dictionary, event_position: Vector2) -> bool:
@@ -2629,15 +2641,9 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 	medal.z_index = host.ACTION_CARD_FACE_BORDER_Z_INDEX + 1
 	tile_motion_root.add_child(medal)
 
-	var mastery_progress = ThemeStyles.progress_bar(Color("#f4bf35"), 28)
-	mastery_progress.border_color = host.COLOR_INK
-	ThemeStyles.apply_mastery_progress_bar_theme(mastery_progress, ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), host.COLOR_INK)
-	mastery_progress.easing_speed = 24.0
-	mastery_progress.custom_minimum_size = Vector2(FISHING_LOCATION_TILE_SIZE.x, 28.0)
-	mastery_progress.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	mastery_progress.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	mastery_progress.z_index = 24
-	method_column.add_child(mastery_progress)
+	var mastery_widgets := _build_fishing_method_mastery_widgets(method_column, art_panel, skill_id)
+	var mastery_progress := mastery_widgets.get("mastery") as CleanProgressBar
+	var mastery_ring := mastery_widgets.get("mastery_ring") as Control
 
 	var lock_root: Control = null
 	if not unlocked or unlock_ready_pending:
@@ -2680,7 +2686,8 @@ func _build_fishing_area_action_method_tile(skill_id: String, area_key: String, 
 		"medal": medal,
 		"attempt_bar": null,
 		"mastery": mastery_progress,
-		"mastery_bar_instant_updates": true,
+		"mastery_ring": mastery_ring,
+		"mastery_bar_instant_updates": false,
 		"method_button": method_button,
 		"method_title": method_title,
 		"method_hit_control": method_column,

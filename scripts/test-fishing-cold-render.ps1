@@ -47,9 +47,9 @@ try {
     Assert-True ([int]$result.warmed_mounted -lt [int]$result.plan) "Fishing warm mount should retain offscreen modules as placeholders: $($result.warmed_mounted) / $($result.plan)."
     Assert-True ([int]$result.warmed_mounted -ge [int]$result.immediate_mounted) "Fishing warm mount discarded an initially visible module."
     Assert-True ([int]$result.action_cards -le 12) "Fishing cold render mounted $($result.action_cards) action cards, expected at most 12."
-    if ([int]$result.mastery_bars.total -gt 0) {
-        Assert-True ([int]$result.mastery_bars.visible -eq [int]$result.mastery_bars.total) "Fishing cold render hid $([int]$result.mastery_bars.total - [int]$result.mastery_bars.visible) of $($result.mastery_bars.total) mounted mastery bars."
-    }
+    Assert-True ([int]$result.mastery_rings.total -gt 0) "Fishing cold render mounted no fishing method mastery rings."
+    Assert-True ([int]$result.mastery_rings.visible -eq [int]$result.mastery_rings.total) "Fishing cold render hid $([int]$result.mastery_rings.total - [int]$result.mastery_rings.visible) of $($result.mastery_rings.total) mounted mastery rings."
+    Assert-True ([int]$result.mastery_rings.legacy_bars_visible -eq 0) "Fishing cold render showed $($result.mastery_rings.legacy_bars_visible) legacy mastery bars below method cards."
     Assert-True ([int]$result.warm_frames -le $MaxWarmFrames) "Fishing warm mount took $($result.warm_frames) frames, expected at most $MaxWarmFrames."
     Assert-True ([double]$result.max_warm_frame_msec -le $MaxWarmFrameMsec) "Fishing warm mount frame took $($result.max_warm_frame_msec)ms, expected at most ${MaxWarmFrameMsec}ms."
     Assert-True ([int]$result.warm_over_50 -eq 0) "Fishing warm mount had $($result.warm_over_50) frame(s) over 50ms."
