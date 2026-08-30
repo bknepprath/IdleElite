@@ -18,6 +18,7 @@ $skillSwipeSurfacePath = Join-Path $projectRoot "scripts\ui\skill_swipe_activity
 $activityCardStylesPath = Join-Path $projectRoot "scripts\ui\activity_card_styles.gd"
 $regenCirclePath = Join-Path $projectRoot "scripts\ui\regen_circle.gd"
 $skillStatePath = Join-Path $projectRoot "scripts\progression\skill_state.gd"
+$achievementSurfacePath = Join-Path $projectRoot "scripts\ui\achievement_overlay_surface.gd"
 
 Assert-True (Test-Path -LiteralPath $projectPath) "Missing project.godot."
 Assert-True (Test-Path -LiteralPath $mainPath) "Missing scripts\main.gd."
@@ -30,6 +31,7 @@ Assert-True (Test-Path -LiteralPath $skillSwipeSurfacePath) "Missing skill swipe
 Assert-True (Test-Path -LiteralPath $activityCardStylesPath) "Missing activity card styles script."
 Assert-True (Test-Path -LiteralPath $regenCirclePath) "Missing stamina gauge renderer."
 Assert-True (Test-Path -LiteralPath $skillStatePath) "Missing skill state script."
+Assert-True (Test-Path -LiteralPath $achievementSurfacePath) "Missing achievement/offline summary surface script."
 
 $project = Get-Content -LiteralPath $projectPath -Raw
 $main = Get-Content -LiteralPath $mainPath -Raw
@@ -42,6 +44,7 @@ $skillSwipeSurface = Get-Content -LiteralPath $skillSwipeSurfacePath -Raw
 $activityCardStyles = Get-Content -LiteralPath $activityCardStylesPath -Raw
 $regenCircle = Get-Content -LiteralPath $regenCirclePath -Raw
 $skillState = Get-Content -LiteralPath $skillStatePath -Raw
+$achievementSurface = Get-Content -LiteralPath $achievementSurfacePath -Raw
 
 function Get-ProjectSettingValue {
     param(
@@ -230,6 +233,12 @@ if ($strictCutover) {
 	Assert-True ($skillDetailSurface -match 'host\._label\("REWARD", 24, Color\.WHITE') "Tier reward headings must retain half-scale 4K typography."
 	Assert-True ($skillDetailSurface -match 'host\._label\(main_text, 36, Color\.WHITE') "Tier reward values must retain half-scale 4K typography."
 	Assert-True ($skillDetailSurface -match 'host\._label\(detail_text, 24, Color\.WHITE') "Tier reward details must retain half-scale 4K typography."
+	Assert-True ($achievementSurface -match '(?m)^const OFFLINE_SUMMARY_MODAL_WIDTH := 840\.0\r?$') "Welcome Back modal width must retain half-scale 4K geometry."
+	Assert-True ($achievementSurface -match '(?m)^const OFFLINE_SUMMARY_MODAL_MAX_HEIGHT := 1090\.0\r?$') "Welcome Back modal must fit the native-1080 viewport without full-panel scaling."
+	Assert-True ($achievementSurface -match 'host\._label\("Away for %s"[^\r\n]+, 32, host\.COLOR_MUTED') "Welcome Back subtitle must retain half-scale 4K typography."
+	Assert-True ($achievementSurface -match 'host\._label\(title, 31, host\.COLOR_INK') "Welcome Back progress-row titles must retain half-scale 4K typography."
+	Assert-True ($achievementSurface -match 'func _finish_scroll_offline_summary_to_top\(\)') "Welcome Back modal must restore its initial scroll position after layout."
+	Assert-True ($achievementSurface -match 'offline_summary_scroll\.scroll_vertical = 0') "Welcome Back modal must open at its header instead of its focused action button."
 	Assert-True ($skillDetailSurface -match 'detail_xp_label\.autowrap_mode = TextServer::AUTOWRAP_OFF'.Replace('::', '.')) "Skill level and XP text must remain on one line."
 	Assert-True ($main -match '(?m)^const SKILL_DETAIL_XP_BAR_WIDTH := 450\r?$') "Skill level and XP text must retain its audited one-line width."
 	Assert-True ($skillState -match 'return "Lv %s · %s/%s"') "Skill level and XP text must use the compact one-line format."
