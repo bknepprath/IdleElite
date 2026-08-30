@@ -123,7 +123,22 @@
         color: colors.get(groupKey)
       };
     }).sort((a, b) => b.bytes - a.bytes || a.path.localeCompare(b.path));
-    return { folders, nodes, colors };
+    const groupsByName = new Map();
+    folders.forEach((folder) => groupsByName.set(folder.name, { ...folder, color: colors.get(folder.name), nodes: [] }));
+    nodes.forEach((node) => {
+      const groupName = node.groupName;
+      if (!groupsByName.has(groupName)) {
+        groupsByName.set(groupName, { name: groupName, path, bytes: 0, count: 0, color: colors.get('[direct]'), nodes: [] });
+      }
+      const group = groupsByName.get(groupName);
+      group.nodes.push(node);
+      if (groupName === 'Files in this folder') {
+        group.bytes += node.bytes;
+        group.count += 1;
+      }
+    });
+    const groups = [...groupsByName.values()].filter((group) => group.nodes.length).sort((a, b) => b.bytes - a.bytes || a.name.localeCompare(b.name));
+    return { folders, nodes, groups, colors };
   }
 
   function worstTreemapRatio(row, side) {
@@ -281,7 +296,7 @@
     el('treemap-detail').replaceChildren();
     hideTreemapTooltip();
     renderTreemapBreadcrumbs(path);
-    const { folders, nodes, colors } = getTreemapContents(path);
+    const { folders, nodes, groups, colors } = getTreemapContents(path);
     const viewBytes = nodes.reduce((sum, node) => sum + node.bytes, 0);
     el('treemap-summary').textContent = `${formatNumber(nodes.length)} files · ${formatBytes(viewBytes)}`;
     renderTreemapFolders(folders, colors);
@@ -290,33 +305,49 @@
     const height = container.clientHeight;
     lastTreemapWidth = width;
     lastTreemapHeight = height;
-    const layout = squarifyTreemap(nodes, width, height);
-    layout.forEach((node) => {
-      const tile = document.createElement('button');
-      tile.type = 'button';
-      tile.className = `treemap-tile ${node.type}`;
-      tile.style.left = `${node.x}px`;
-      tile.style.top = `${node.y}px`;
-      tile.style.width = `${node.w}px`;
-      tile.style.height = `${node.h}px`;
-      tile.style.backgroundColor = node.color || '#75828a';
-      tile.setAttribute('aria-label', `File ${node.name}, ${formatBytes(node.bytes)}, ${node.path}`);
-      if (node.w > 78 && node.h > 38) {
-        const label = document.createElement('span');
-        label.className = 'treemap-label';
-        const name = document.createElement('strong');
-        name.textContent = node.name;
-        const size = document.createElement('span');
-        size.textContent = formatBytes(node.bytes);
-        label.append(name, size);
-        tile.appendChild(label);
+    const groupLayout = squarifyTreemap(groups, width, height);
+    groupLayout.forEach((group) => {
+      const gap = groups.length > 1 ? 3 : 0;
+      const innerWidth = Math.max(0, group.w - gap * 2);
+      const innerHeight = Math.max(0, group.h - gap * 2);
+      const fileLayout = squarifyTreemap(group.nodes, innerWidth, innerHeight);
+      fileLayout.forEach((node) => {
+        const tile = document.createElement('button');
+        tile.type = 'button';
+        tile.className = `treemap-tile ${node.type}`;
+        tile.style.left = `${group.x + gap + node.x}px`;
+        tile.style.top = `${group.y + gap + node.y}px`;
+        tile.style.width = `${node.w}px`;
+        tile.style.height = `${node.h}px`;
+        tile.style.backgroundColor = group.color || '#75828a';
+        tile.setAttribute('aria-label', `File ${node.name}, ${formatBytes(node.bytes)}, ${node.path}`);
+        if (node.w > 78 && node.h > 38) {
+          const label = document.createElement('span');
+          label.className = 'treemap-label';
+          const name = document.createElement('strong');
+          name.textContent = node.name;
+          const size = document.createElement('span');
+          size.textContent = formatBytes(node.bytes);
+          label.append(name, size);
+          tile.appendChild(label);
+        }
+        tile.addEventListener('mouseenter', (event) => showTreemapTooltip(node, event, viewBytes));
+        tile.addEventListener('mousemove', positionTreemapTooltip);
+        tile.addEventListener('mouseleave', hideTreemapTooltip);
+        tile.addEventListener('focus', () => showTreemapDetail(node));
+        tile.addEventListener('click', () => showTreemapDetail(node));
+        container.appendChild(tile);
+      });
+      if (groups.length > 1 && group.w > 7 && group.h > 7) {
+        const boundary = document.createElement('div');
+        boundary.className = 'treemap-region';
+        boundary.style.left = `${group.x}px`;
+        boundary.style.top = `${group.y}px`;
+        boundary.style.width = `${group.w}px`;
+        boundary.style.height = `${group.h}px`;
+        boundary.setAttribute('aria-hidden', 'true');
+        container.appendChild(boundary);
       }
-      tile.addEventListener('mouseenter', (event) => showTreemapTooltip(node, event, viewBytes));
-      tile.addEventListener('mousemove', positionTreemapTooltip);
-      tile.addEventListener('mouseleave', hideTreemapTooltip);
-      tile.addEventListener('focus', () => showTreemapDetail(node));
-      tile.addEventListener('click', () => showTreemapDetail(node));
-      container.appendChild(tile);
     });
   }
 
