@@ -14,7 +14,10 @@ const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
 const ACHIEVEMENT_MEDAL_SLOT_SIZE := Vector2(31, 31)
 const IDLE_ELITE_LOGO_TEXTURE := "res://assets/content/logo/idle-elite-logo-cutout.png"
 const OFFLINE_SUMMARY_MODAL_WIDTH := 840.0
-const OFFLINE_SUMMARY_MODAL_HEIGHT := 720.0
+const OFFLINE_SUMMARY_BASE_HEIGHT := 540.0
+const OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT := 42.0
+const OFFLINE_SUMMARY_HIGHLIGHT_ROW_HEIGHT := 72.0
+const OFFLINE_SUMMARY_MAX_HIGHLIGHTS := 4
 const OFFLINE_SUMMARY_MODAL_VIEWPORT_MARGIN := Vector2(32, 40)
 const OFFLINE_SUMMARY_SECTION_HEIGHT := 44.0
 const OFFLINE_SUMMARY_ROW_HEIGHT := 107.0
@@ -154,6 +157,7 @@ var offline_summary_overlay: Control
 var offline_summary_panel_frame: Control
 var offline_summary_panel: PanelContainer
 var offline_summary_stack: VBoxContainer
+var offline_summary_close_button: Button
 var offline_summary_close_pending := false
 var achievements_overlay: Control
 var achievements_panel_frame: Control
@@ -317,24 +321,34 @@ func _build_offline_summary_overlay() -> void:
 	center.set_anchors_preset(Control.PRESET_FULL_RECT)
 	offline_summary_overlay.add_child(center)
 	var frame := Control.new()
-	frame.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_MODAL_HEIGHT)
+	frame.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_BASE_HEIGHT)
 	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	center.add_child(frame)
 	offline_summary_panel_frame = frame
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_MODAL_HEIGHT)
-	panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 72, true))
+	panel.custom_minimum_size = Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_BASE_HEIGHT)
+	panel.add_theme_stylebox_override("panel", host._surface_style(host.COLOR_PANEL, host.CARD_RADIUS, 18, true))
 	frame.add_child(panel)
 	offline_summary_panel = panel
+	offline_summary_close_button = host._menu_button("X")
+	offline_summary_close_button.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	offline_summary_close_button.offset_left = -97
+	offline_summary_close_button.offset_right = -12
+	offline_summary_close_button.offset_top = 12
+	offline_summary_close_button.offset_bottom = 91
+	offline_summary_close_button.focus_mode = Control.FOCUS_NONE
+	offline_summary_close_button.z_index = 20
+	offline_summary_close_button.pressed.connect(_close_offline_summary_overlay)
+	frame.add_child(offline_summary_close_button)
 	var outer := MarginContainer.new()
-	outer.add_theme_constant_override("margin_left", 29)
-	outer.add_theme_constant_override("margin_right", 29)
-	outer.add_theme_constant_override("margin_top", 26)
-	outer.add_theme_constant_override("margin_bottom", 26)
+	outer.add_theme_constant_override("margin_left", 18)
+	outer.add_theme_constant_override("margin_right", 18)
+	outer.add_theme_constant_override("margin_top", 18)
+	outer.add_theme_constant_override("margin_bottom", 18)
 	panel.add_child(outer)
 	offline_summary_stack = VBoxContainer.new()
 	offline_summary_stack.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	offline_summary_stack.add_theme_constant_override("separation", 12)
+	offline_summary_stack.add_theme_constant_override("separation", 8)
 	outer.add_child(offline_summary_stack)
 
 func _on_offline_summary_overlay_gui_input(event: InputEvent) -> void:
@@ -399,7 +413,12 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	if offline_summary_stack == null:
 		return
 	host._clear(offline_summary_stack)
-	_fit_offline_summary_modal(Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, OFFLINE_SUMMARY_MODAL_HEIGHT))
+	var highlights := _offline_summary_highlights(active_result)
+	var highlights_height := 0.0
+	if not highlights.is_empty():
+		highlights_height = OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT + float(highlights.size()) * (OFFLINE_SUMMARY_HIGHLIGHT_ROW_HEIGHT + 8.0)
+	var modal_height := OFFLINE_SUMMARY_BASE_HEIGHT + highlights_height
+	_fit_offline_summary_modal(Vector2(OFFLINE_SUMMARY_MODAL_WIDTH, modal_height))
 	var header := HBoxContainer.new()
 	header.alignment = BoxContainer.ALIGNMENT_CENTER
 	header.add_theme_constant_override("separation", 12)
@@ -412,11 +431,9 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	title_stack.add_child(title)
 	var subtitle = host._label("Away for %s" % GameFormatting.duration(offline_seconds), 32, host.COLOR_MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 	title_stack.add_child(subtitle)
-	var close = host._menu_button("X")
-	close.custom_minimum_size = Vector2(85, 79)
-	close.focus_mode = Control.FOCUS_NONE
-	close.pressed.connect(_close_offline_summary_overlay)
-	header.add_child(close)
+	var close_space := Control.new()
+	close_space.custom_minimum_size = Vector2(92, 0)
+	header.add_child(close_space)
 
 	offline_summary_stack.add_child(_offline_summary_activity_card(active_result))
 
@@ -426,16 +443,88 @@ func _rebuild_offline_summary_overlay(offline_seconds: float, active_result: Dic
 	offline_summary_stack.add_child(stat_row)
 	stat_row.add_child(_offline_summary_stat_card("XP Earned", "+%s" % int(active_result.get("xp", 0)), Color("#35d86d"), host.PROGRESS_STAR_ICON_TEXTURE))
 	stat_row.add_child(_offline_summary_stat_card("Offline Rate", "%s%% speed" % int(round(ActionRuntime.OFFLINE_XP_MULT * 100.0)), Color("#f4bf35"), host.TOTAL_LEVEL_BARGRAPH_TEXTURE))
+	if not highlights.is_empty():
+		var highlights_label: Label = host._label("Highlights", 34, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT) as Label
+		highlights_label.custom_minimum_size.y = OFFLINE_SUMMARY_HIGHLIGHTS_HEADER_HEIGHT
+		offline_summary_stack.add_child(highlights_label)
+		for highlight in highlights:
+			offline_summary_stack.add_child(_offline_summary_highlight_row(highlight as Dictionary))
 
 	var done = host._menu_button("Nice")
-	done.custom_minimum_size = Vector2(0, 95)
+	done.custom_minimum_size = Vector2(0, 80)
 	done.focus_mode = Control.FOCUS_NONE
 	done.pressed.connect(_close_offline_summary_overlay)
 	offline_summary_stack.add_child(done)
 
+
+func _offline_summary_highlights(active_result: Dictionary) -> Array:
+	var highlights: Array = []
+	var skill_id := str(active_result.get("skill_id", ""))
+	var accent := ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE)
+	var old_skill_level := int(active_result.get("old_skill_level", 1))
+	var new_skill_level := int(active_result.get("new_skill_level", old_skill_level))
+	if new_skill_level > old_skill_level:
+		highlights.append({
+			"icon": SkillIconBadge.icon_path(skill_id),
+			"title": "%s Level" % str(active_result.get("skill_name", "Skill")),
+			"value": "Lv %s -> %s" % [old_skill_level, new_skill_level],
+			"accent": accent,
+		})
+	var old_global_level := int(active_result.get("old_global_level", 1))
+	var new_global_level := int(active_result.get("new_global_level", old_global_level))
+	if new_global_level > old_global_level:
+		highlights.append({
+			"icon": host.TOTAL_LEVEL_BARGRAPH_TEXTURE,
+			"title": "Total Level",
+			"value": "Lv %s -> %s" % [old_global_level, new_global_level],
+			"accent": Color("#f4bf35"),
+		})
+	var old_mastery_level := int(active_result.get("old_mastery_level", 0))
+	var new_mastery_level := int(active_result.get("new_mastery_level", old_mastery_level))
+	if new_mastery_level > old_mastery_level:
+		highlights.append({
+			"icon": str(active_result.get("action_art", "")),
+			"title": "Activity Mastery",
+			"value": "+%s medals" % (new_mastery_level - old_mastery_level),
+			"accent": accent,
+		})
+	var unlocked_actions := active_result.get("unlocked_actions", []) as Array
+	if not unlocked_actions.is_empty():
+		var first_unlock := unlocked_actions[0] as Dictionary
+		highlights.append({
+			"icon": str(first_unlock.get("art", "")),
+			"title": "Activities Unlocked",
+			"value": "%s new" % unlocked_actions.size(),
+			"accent": accent,
+		})
+	if highlights.size() > OFFLINE_SUMMARY_MAX_HIGHLIGHTS:
+		highlights.resize(OFFLINE_SUMMARY_MAX_HIGHLIGHTS)
+	return highlights
+
+
+func _offline_summary_highlight_row(highlight: Dictionary) -> Control:
+	var card := PanelContainer.new()
+	card.custom_minimum_size = Vector2(0, OFFLINE_SUMMARY_HIGHLIGHT_ROW_HEIGHT)
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.add_theme_stylebox_override("panel", _offline_summary_info_style())
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 12)
+	card.add_child(row)
+	row.add_child(host.visual_texture_cache._image(str(highlight.get("icon", "")), Vector2(50, 50)))
+	var title_label: Label = host._label(str(highlight.get("title", "")), 31, host.COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT) as Label
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	row.add_child(title_label)
+	var value_label: Label = host._label(str(highlight.get("value", "")), 31, highlight.get("accent", host.COLOR_BLUE) as Color, HORIZONTAL_ALIGNMENT_RIGHT) as Label
+	value_label.custom_minimum_size.x = 220
+	value_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	row.add_child(value_label)
+	return card
+
 func _offline_summary_activity_card(active_result: Dictionary) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 152)
+	card.custom_minimum_size = Vector2(0, 140)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_info_style())
 	var row := HBoxContainer.new()
@@ -475,7 +564,7 @@ func _offline_summary_info_style() -> StyleBoxFlat:
 
 func _offline_summary_stat_card(title: String, value: String, accent: Color, icon_path: String) -> Control:
 	var card := PanelContainer.new()
-	card.custom_minimum_size = Vector2(0, 163)
+	card.custom_minimum_size = Vector2(0, 145)
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	card.add_theme_stylebox_override("panel", _offline_summary_stat_style(accent))
 	var stack := VBoxContainer.new()
