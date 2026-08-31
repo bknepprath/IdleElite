@@ -64,9 +64,9 @@ const FISHING_METHOD_PADLOCK_LEVEL_SIZE := Vector2(75, 65)
 const FISHING_METHOD_PADLOCK_LEVEL_FONT := 64
 const FISHING_METHOD_PADLOCK_LEVEL_OUTLINE := 7
 const FISHING_METHOD_TITLE_FONT_SIZE := 36
-const FISHING_METHOD_TITLE_OUTLINE := 6
+const FISHING_METHOD_TITLE_OUTLINE := 10
+const FISHING_METHOD_TITLE_LINE_SPACING := -10
 const FISHING_METHOD_TITLE_FADE_SECONDS := 0.18
-const FISHING_METHOD_TITLE_ROTATION := -0.055
 const FISHING_METHOD_TITLE_RECT := Rect2(15.0, 50.0, 175.0, 120.0)
 const FISHING_METHOD_TITLE_WIDTH_AXIS := 75
 const FISHING_METHOD_TITLE_WEIGHT_AXIS := 700
@@ -83,6 +83,9 @@ const FISHING_AREA_MAX_BUTTONS_PER_MODULE := 2
 const FISHING_AREA_CONTENT_TOP_MARGIN := FISHING_MODULE_TITLE_TOP
 const FISHING_AREA_WATER_BOTTOM_MARGIN := 35
 const FISHING_AREA_STAT_COLUMN_TOP_MARGIN := FISHING_MODULE_TITLE_TOP + FISHING_MODULE_TITLE_BAND_HEIGHT
+const FISHING_AREA_STAT_COLUMN_SEPARATION := 10
+const FISHING_AREA_STAT_BOX_SIZE := Vector2(132, 96)
+const FISHING_AREA_STAT_FONT_SIZE := 38
 const FISHING_AREA_METHOD_TOP_MARGIN := 0
 const FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH := 175.0
 const FISHING_ACTIVE_TOOL_LAYER_SIZE := Vector2(410, 215)
@@ -1980,13 +1983,12 @@ func _attach_fishing_method_title(art_panel: Control, title_text: String) -> Lab
 	method_title.add_theme_font_override("font", _fishing_method_title_font())
 	method_title.add_theme_color_override("font_outline_color", host.COLOR_INK)
 	method_title.add_theme_constant_override("outline_size", FISHING_METHOD_TITLE_OUTLINE)
+	method_title.add_theme_constant_override("line_spacing", FISHING_METHOD_TITLE_LINE_SPACING)
 	method_title.autowrap_mode = TextServer.AUTOWRAP_OFF
 	method_title.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	method_title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	method_title.position = FISHING_METHOD_TITLE_RECT.position
 	method_title.size = FISHING_METHOD_TITLE_RECT.size
-	method_title.pivot_offset = method_title.size * 0.5
-	method_title.rotation = FISHING_METHOD_TITLE_ROTATION
 	method_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	method_title.z_index = 30
 	return method_title
@@ -3184,7 +3186,7 @@ func _fishing_area_module_layout(pop_card: Control, skill_id: String) -> Diction
 	top_row.add_child(stat_slot)
 
 	var stat_column := VBoxContainer.new()
-	stat_column.add_theme_constant_override("separation", 14)
+	stat_column.add_theme_constant_override("separation", FISHING_AREA_STAT_COLUMN_SEPARATION)
 	stat_column.size_flags_horizontal = Control.SIZE_SHRINK_END
 	stat_column.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	stat_column.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -3193,12 +3195,25 @@ func _fishing_area_module_layout(pop_card: Control, skill_id: String) -> Diction
 	var skill_detail_surface = host._skill_detail_surface()
 	var xp_side = skill_detail_surface._action_stat_label("")
 	var xp_box = skill_detail_surface._action_stat_box(xp_side, false, skill_id, "", "xp")
+	_configure_fishing_area_stat_box(xp_box, xp_side)
 	stat_column.add_child(xp_box)
 	var yield_side = skill_detail_surface._action_stat_label("")
 	var yield_box = skill_detail_surface._action_stat_box(yield_side, false, skill_id, "", "yield")
+	_configure_fishing_area_stat_box(yield_box, yield_side)
 	stat_column.add_child(yield_box)
 	stat_column.modulate.a = 0.0
 	return {"method_slot": method_slot, "method_row": method_row, "stat_column": stat_column, "area_xp": xp_side, "area_yield": yield_side, "stat_boxes": {"xp": xp_box, "yield": yield_box}}
+
+
+func _configure_fishing_area_stat_box(box: Control, value_label: Label) -> void:
+	box.custom_minimum_size = FISHING_AREA_STAT_BOX_SIZE
+	value_label.add_theme_font_size_override("font_size", FISHING_AREA_STAT_FONT_SIZE)
+	var title_label := value_label.get_meta("stat_title_label") as Label
+	if title_label != null:
+		title_label.add_theme_font_size_override("font_size", FISHING_AREA_STAT_FONT_SIZE)
+	var stack := value_label.get_parent() as VBoxContainer
+	if stack != null:
+		stack.add_theme_constant_override("separation", -6)
 
 
 func _fishing_area_runtime_layers(pop_card: Control, area_def: Dictionary, selected_id: String) -> Dictionary:
@@ -3716,10 +3731,10 @@ func _finish_fishing_area_stats_visible(card_key: String, should_show: bool) -> 
 func _fishing_area_stat_hit_buttons(pop_card: Control, _skill_id: String, _area_key: String, _method_count: int) -> Dictionary:
 	var hit_buttons := {}
 	var kinds := ["xp", "yield"]
-	var button_size := Vector2(150, 111)
+	var button_size := FISHING_AREA_STAT_BOX_SIZE
 	var right_inset := 54.0
 	var stack_top: float = FISHING_AREA_STAT_COLUMN_TOP_MARGIN
-	var stack_step := button_size.y + 28.0
+	var stack_step := button_size.y + FISHING_AREA_STAT_COLUMN_SEPARATION
 	for i in range(kinds.size()):
 		var kind := str(kinds[i])
 		var button := Button.new()
