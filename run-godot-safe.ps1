@@ -277,9 +277,10 @@ if ($unmatchedNewIds.Count -gt 0) {
     $unattributedStillRunning = @($unmatchedNewIds)
     for ($attempt = 1; $attempt -le 50 -and $unattributedStillRunning.Count -gt 0; $attempt++) {
         Start-Sleep -Milliseconds 100
+        $currentGodotSnapshot = Get-GodotProcessSnapshot
         $unattributedStillRunning = @(
             $unattributedStillRunning |
-                Where-Object { $null -ne (Get-Process -Id $_ -ErrorAction SilentlyContinue) }
+                Where-Object { $currentGodotSnapshot.Details.ContainsKey([int]$_) }
         )
     }
     if ($unattributedStillRunning.Count -gt 0) {

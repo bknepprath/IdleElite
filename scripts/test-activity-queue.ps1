@@ -16,8 +16,10 @@ New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
 $env:GODOT_RUN_TIMEOUT_SECONDS = "120"
 $env:IDLE_ELITE_DISABLE_SAVE_WRITES = "1"
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = Join-Path $testDir "user-data"
 
 try {
     @'
@@ -802,5 +804,10 @@ finally {
         Remove-Item Env:\IDLE_ELITE_DISABLE_SAVE_WRITES -ErrorAction SilentlyContinue
     } else {
         $env:IDLE_ELITE_DISABLE_SAVE_WRITES = $previousDisableSaveWrites
+    }
+    if ($null -eq $previousTestUserDataDir) {
+        Remove-Item Env:\IDLE_ELITE_TEST_USER_DATA_DIR -ErrorAction SilentlyContinue
+    } else {
+        $env:IDLE_ELITE_TEST_USER_DATA_DIR = $previousTestUserDataDir
     }
 }
