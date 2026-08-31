@@ -232,13 +232,12 @@ static func apply_activity_progress_rail_action_theme(bar: ActivityProgressRail,
 		apply_activity_progress_rail_theme(bar, theme_color, color_ink)
 		return
 	var fill_colors: Array[Color] = []
-	var empty_colors: Array[Color] = []
 	for segment_color in segment_theme_colors:
 		fill_colors.append(progress_fill_color(segment_color))
-		empty_colors.append(progress_empty_color(segment_color, color_ink))
+	var empty := progress_empty_color(theme_color, color_ink)
 	bar.fill_color = fill_colors[0]
-	bar.empty_color = empty_colors[0]
-	bar.set_color_segments(fill_colors, empty_colors)
+	bar.empty_color = empty
+	bar.set_color_segments(fill_colors)
 
 
 static func sync_action_card_progress_rail_theme(card: Dictionary, bar: ActivityProgressRail, skill_id: String, action: Dictionary, requirements_callable: Callable, fallback_color: Color, color_ink: Color) -> void:

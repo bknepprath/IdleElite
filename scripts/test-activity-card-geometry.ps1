@@ -63,6 +63,13 @@ func _run() -> void:
 	rail.edge_inset = 16.0
 	var flat_track_rect := rail.call("_activity_progress_track_rect") as Rect2
 	_expect(flat_track_rect.is_equal_approx(Rect2(16.0, 16.0, 1124.0, 80.0)), "Action fill should span wall-to-wall inside its 16px frame.")
+	var primary_theme := Color("#249b9e")
+	var secondary_theme := Color("#c74444")
+	var ink := Color("#171615")
+	MainScript.ThemeStyles.apply_activity_progress_rail_action_theme(rail, primary_theme, [primary_theme, secondary_theme], ink)
+	_expect(rail.fill_segments.size() == 2, "Combo action progress should retain one fill segment per contributing skill.")
+	_expect(rail.empty_segments.is_empty(), "Idle combo action progress should use one continuous empty track instead of looking partially filled.")
+	_expect(rail.empty_color.is_equal_approx(MainScript.ThemeStyles.progress_empty_color(primary_theme, ink)), "Idle combo action progress should use the primary skill's empty-track color.")
 
 	for i in range(row_count):
 		var y := rail_rect.position.y + (float(i) + 0.5) * row_height
