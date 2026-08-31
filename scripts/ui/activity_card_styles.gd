@@ -481,8 +481,8 @@ class ActionArtMasteryRing extends Control:
 	var shadow_width := 32.0
 	var radius := 29.0
 	var inset := 1.0
-	var gap_start_fraction := 0.10
-	var gap_finish_fraction := 0.84
+	var gap_start_fraction := 0.0
+	var gap_finish_fraction := 1.0
 	var progress := 0.5
 
 	func set_progress(next_progress: float) -> void:
@@ -514,16 +514,12 @@ class ActionArtMasteryRing extends Control:
 		var bottom := size.y - inset - half_width
 		var r := minf(radius, minf((right - left), (bottom - top)) * 0.5)
 		var path := PackedVector2Array()
-		path.append(Vector2(left + r, top))
-		path.append(Vector2(right - r, top))
-		_append_arc_points(path, Vector2(right - r, top + r), r, -PI * 0.5, 0.0)
+		path.append(Vector2(right, top + r))
 		path.append(Vector2(right, bottom - r))
 		_append_arc_points(path, Vector2(right - r, bottom - r), r, 0.0, PI * 0.5)
 		path.append(Vector2(left + r, bottom))
 		_append_arc_points(path, Vector2(left + r, bottom - r), r, PI * 0.5, PI)
 		path.append(Vector2(left, top + r))
-		_append_arc_points(path, Vector2(left + r, top + r), r, PI, PI * 1.5)
-		path.append(Vector2(left + r, top))
 		return path
 
 	func _append_arc_points(path: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, end_angle: float) -> void:

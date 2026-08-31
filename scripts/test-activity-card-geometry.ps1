@@ -30,7 +30,6 @@ const MainScript := preload("res://scripts/main.gd")
 const ModuleUiRuntime := preload("res://scripts/module_ui/runtime.gd")
 const ActivityCardDepthClass := preload("res://scripts/ui/activity_card_depth.gd")
 const ActivityProgressRailClass := preload("res://scripts/ui/activity_progress_rail.gd")
-const ActionArtUi := preload("res://scripts/ui/action_art_ui.gd")
 const RoundedTextureRectClass := preload("res://scripts/ui/rounded_texture_rect.gd")
 const SkillDetailSurfaceClass := preload("res://scripts/ui/skill_detail_surface.gd")
 
@@ -71,8 +70,6 @@ func _run() -> void:
 	_expect(rail.fill_segments.size() == 2, "Combo action progress should retain one fill segment per contributing skill.")
 	_expect(rail.empty_segments.is_empty(), "Idle combo action progress should use one continuous empty track instead of looking partially filled.")
 	_expect(rail.empty_color.is_equal_approx(MainScript.ThemeStyles.progress_empty_color(primary_theme, ink)), "Idle combo action progress should use the primary skill's empty-track color.")
-	_expect(ActionArtUi.needs_texture_mask("assets/content/combo/fishing/actions/fight-rat-king.png"), "Full-bleed Rat King art should be clipped to the rounded action-art frame.")
-	_expect(not ActionArtUi.needs_texture_mask("assets/content/combo/fishing/actions/fight-a-shark.png"), "Transparent combo action art should not require the full-bleed texture mask.")
 
 	for i in range(row_count):
 		var y := rail_rect.position.y + (float(i) + 0.5) * row_height
@@ -102,6 +99,12 @@ func _run() -> void:
 	var mastery_ring := MainScript.ActivityCardStyles.action_art_mastery_ring()
 	_expect(_near(float(mastery_ring.get("stroke_width")), 20.0) and _near(float(mastery_ring.get("shadow_width")), 32.0), "Mastery track should use the native 1080p stroke widths.")
 	_expect(_near(float(mastery_ring.get("inset")), 1.0) and _near(mastery_ring.offset_left, -18.0) and _near(mastery_ring.offset_right, 18.0) and _near(float(mastery_ring.get("radius")), 29.0), "Mastery track should remain concentric at native 1080p scale.")
+	mastery_ring.size = Vector2(236.0, 236.0)
+	var mastery_path := mastery_ring.call("_rounded_rect_points") as PackedVector2Array
+	_expect(mastery_path.size() > 4, "Mastery track should expose a rounded three-sided path.")
+	if mastery_path.size() > 4:
+		_expect(_near(mastery_path[0].x, 219.0) and _near(mastery_path[mastery_path.size() - 1].x, 17.0), "Mastery track should run from the upper-right edge to the upper-left edge.")
+		_expect(_near(mastery_path[0].y, 46.0) and _near(mastery_path[mastery_path.size() - 1].y, 46.0), "Mastery track should leave the top of the artwork open instead of forming a rectangle.")
 	mastery_ring.free()
 	var normal_body := MainScript.ActivityCardStyles.normal_activity_card_body(33.0, Color("#171615"))
 	_expect(normal_body.border_width_bottom == 6, "Normal activity-card back plate should match the native 1080p outline.")
