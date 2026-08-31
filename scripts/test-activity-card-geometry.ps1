@@ -30,6 +30,7 @@ const MainScript := preload("res://scripts/main.gd")
 const ModuleUiRuntime := preload("res://scripts/module_ui/runtime.gd")
 const ActivityCardDepthClass := preload("res://scripts/ui/activity_card_depth.gd")
 const ActivityProgressRailClass := preload("res://scripts/ui/activity_progress_rail.gd")
+const ActionArtUi := preload("res://scripts/ui/action_art_ui.gd")
 const RoundedTextureRectClass := preload("res://scripts/ui/rounded_texture_rect.gd")
 const SkillDetailSurfaceClass := preload("res://scripts/ui/skill_detail_surface.gd")
 
@@ -70,6 +71,8 @@ func _run() -> void:
 	_expect(rail.fill_segments.size() == 2, "Combo action progress should retain one fill segment per contributing skill.")
 	_expect(rail.empty_segments.is_empty(), "Idle combo action progress should use one continuous empty track instead of looking partially filled.")
 	_expect(rail.empty_color.is_equal_approx(MainScript.ThemeStyles.progress_empty_color(primary_theme, ink)), "Idle combo action progress should use the primary skill's empty-track color.")
+	_expect(ActionArtUi.needs_texture_mask("assets/content/combo/fishing/actions/fight-rat-king.png"), "Full-bleed Rat King art should be clipped to the rounded action-art frame.")
+	_expect(not ActionArtUi.needs_texture_mask("assets/content/combo/fishing/actions/fight-a-shark.png"), "Transparent combo action art should not require the full-bleed texture mask.")
 
 	for i in range(row_count):
 		var y := rail_rect.position.y + (float(i) + 0.5) * row_height

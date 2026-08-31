@@ -608,4 +608,5 @@ static func border_overlay(style: StyleBox) -> Panel:
 
 
 static func needs_texture_mask(path: String) -> bool:
-	return path.to_lower().contains("/backgrounds/")
+	var normalized_path := path.replace("\\", "/").to_lower()
+	return normalized_path.contains("/backgrounds/") or normalized_path.ends_with("/fight-rat-king.png")
