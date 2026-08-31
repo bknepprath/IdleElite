@@ -236,6 +236,7 @@ foreach ($validation in @(
     @("scripts\check-activity-ui-boundary-contracts.ps1", "Activity UI boundary contract", "activity UI boundary contract"),
     @("scripts\check-leaderboard-cost-safety.ps1", "Leaderboard cost-safety", "leaderboard cost-safety"),
     @("scripts\check-crash-audit-contracts.ps1", "Crash-audit contracts", "crash-audit contracts"),
+    @("scripts\check-test-harness-contracts.ps1", "Test-harness contracts", "test-harness contracts"),
     @("scripts\check-1080p-migration-contracts.ps1", "1080p migration contracts", "1080p migration contracts"),
     @("scripts\check-performance-resource-contracts.ps1", "Performance resource contracts", "performance resource contracts"),
     @("scripts\test-performance-resource-lifetime.ps1", "Performance resource lifetime", "performance resource lifetime"),

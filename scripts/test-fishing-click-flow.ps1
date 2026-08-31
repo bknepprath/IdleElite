@@ -5,36 +5,40 @@ param(
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+. (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\fishing-click-flow"
 $testScript = Join-Path $testDir "fishing_click_flow.gd"
 $captureDir = Join-Path $testDir "capture"
 $testUserDataDir = Join-Path $testDir "user-data"
 
-function Assert-True {
-    param(
-        [Parameter(Mandatory = $true)][bool]$Condition,
-        [Parameter(Mandatory = $true)][string]$Message
-    )
-
-    if (-not $Condition) {
-        throw $Message
+function Restore-EnvironmentValue {
+    param([string]$Name, [AllowNull()][string]$Value)
+    if ($null -eq $Value) {
+        Remove-Item -LiteralPath "Env:$Name" -ErrorAction SilentlyContinue
+    } else {
+        Set-Item -LiteralPath "Env:$Name" -Value $Value
     }
 }
 
-function Get-HeadlessGodotProcesses {
-    $processes = @(Get-CimInstance Win32_Process -Filter "name like 'Godot%'" -ErrorAction SilentlyContinue)
-    @($processes | Where-Object { $_.CommandLine -match '--headless' })
-}
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
+$sourceText = Get-Content -LiteralPath $PSCommandPath -Raw
+$generatedScriptMatch = [regex]::Match($sourceText, "(?s)@'\r?\n(?<gd>.*)\r?\n'@ \| Set-Content")
+Assert-True $generatedScriptMatch.Success "Fishing click flow generated script could not be located for preflight."
+$corruptionPattern = 'procecc|ccene|falce|fiching|rec://|run-godot-cafe|ic_inctance|\.cet\(|\.cize\(|\.valuec\(|\.keyc\(|%c|\bac\b|ctr\('
+Assert-True (-not [regex]::IsMatch($generatedScriptMatch.Groups["gd"].Value, $corruptionPattern)) "Fishing click flow contains a known historical corruption signature."
 
 if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 New-Item -ItemType Directory -Path $testUserDataDir -Force | Out-Null
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
+$previousCaptureDir = $env:IDLE_ELITE_FISHING_CLICK_FLOW_CAPTURE_DIR
+$previousVisibleAutoOnly = $env:IDLE_ELITE_FISHING_CLICK_FLOW_VISIBLE_AUTO_ONLY
 $env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
+$env:IDLE_ELITE_DISABLE_SAVE_WRITES = "1"
 if ($VisibleGame) {
     New-Item -ItemType Directory -Path $captureDir -Force | Out-Null
     $env:IDLE_ELITE_FISHING_CLICK_FLOW_CAPTURE_DIR = $captureDir
@@ -1625,6 +1629,10 @@ func _run() -> void:
     }
 }
 finally {
+    Restore-EnvironmentValue "IDLE_ELITE_TEST_USER_DATA_DIR" $previousTestUserDataDir
+    Restore-EnvironmentValue "IDLE_ELITE_DISABLE_SAVE_WRITES" $previousDisableSaveWrites
+    Restore-EnvironmentValue "IDLE_ELITE_FISHING_CLICK_FLOW_CAPTURE_DIR" $previousCaptureDir
+    Restore-EnvironmentValue "IDLE_ELITE_FISHING_CLICK_FLOW_VISIBLE_AUTO_ONLY" $previousVisibleAutoOnly
     $headless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
     if ($headless.Count -gt 0) {
         $headless | Format-Table ProcessId, Name, CommandLine -AutoSize | Out-String | Write-Output

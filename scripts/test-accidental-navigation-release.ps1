@@ -4,6 +4,16 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\accidental-navigation-release"
 $testScript = Join-Path $testDir "accidental_navigation_release.gd"
+$testUserDataDir = Join-Path $testDir "user-data"
+
+function Restore-EnvironmentValue {
+    param([string]$Name, [AllowNull()][string]$Value)
+    if ($null -eq $Value) {
+        Remove-Item -LiteralPath "Env:$Name" -ErrorAction SilentlyContinue
+    } else {
+        Set-Item -LiteralPath "Env:$Name" -Value $Value
+    }
+}
 
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
 
@@ -11,9 +21,14 @@ if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
+New-Item -ItemType Directory -Path $testUserDataDir -Force | Out-Null
 
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
+$previousTestUserDataDir = $env:IDLE_ELITE_TEST_USER_DATA_DIR
+$previousDisableSaveWrites = $env:IDLE_ELITE_DISABLE_SAVE_WRITES
 $env:GODOT_RUN_TIMEOUT_SECONDS = "300"
+$env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
+$env:IDLE_ELITE_DISABLE_SAVE_WRITES = "1"
 $baselineHeadlessProcessIds = @{}
 foreach ($process in @(Get-HeadlessGodotProcesses)) {
     $baselineHeadlessProcessIds[[int]$process.ProcessId] = $true
@@ -395,11 +410,9 @@ func _fail(message: String) -> void:
     }
 }
 finally {
-    if ($null -eq $previousTimeout) {
-        Remove-Item Env:\GODOT_RUN_TIMEOUT_SECONDS -ErrorAction SilentlyContinue
-    } else {
-        $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
-    }
+    Restore-EnvironmentValue "GODOT_RUN_TIMEOUT_SECONDS" $previousTimeout
+    Restore-EnvironmentValue "IDLE_ELITE_TEST_USER_DATA_DIR" $previousTestUserDataDir
+    Restore-EnvironmentValue "IDLE_ELITE_DISABLE_SAVE_WRITES" $previousDisableSaveWrites
     $leftBehind = @()
     foreach ($process in @(Get-HeadlessGodotProcesses)) {
         if (-not $baselineHeadlessProcessIds.ContainsKey([int]$process.ProcessId)) {
