@@ -481,8 +481,8 @@ class ActionArtMasteryRing extends Control:
 	var shadow_width := 32.0
 	var radius := 29.0
 	var inset := 1.0
-	var gap_start_fraction := 0.0
-	var gap_finish_fraction := 1.0
+	var gap_start_fraction := 0.10
+	var gap_finish_fraction := 0.84
 	var progress := 0.5
 
 	func set_progress(next_progress: float) -> void:
@@ -514,12 +514,16 @@ class ActionArtMasteryRing extends Control:
 		var bottom := size.y - inset - half_width
 		var r := minf(radius, minf((right - left), (bottom - top)) * 0.5)
 		var path := PackedVector2Array()
-		path.append(Vector2(right, top + r))
+		path.append(Vector2(left + r, top))
+		path.append(Vector2(right - r, top))
+		_append_arc_points(path, Vector2(right - r, top + r), r, -PI * 0.5, 0.0)
 		path.append(Vector2(right, bottom - r))
 		_append_arc_points(path, Vector2(right - r, bottom - r), r, 0.0, PI * 0.5)
 		path.append(Vector2(left + r, bottom))
 		_append_arc_points(path, Vector2(left + r, bottom - r), r, PI * 0.5, PI)
 		path.append(Vector2(left, top + r))
+		_append_arc_points(path, Vector2(left + r, top + r), r, PI, PI * 1.5)
+		path.append(Vector2(left + r, top))
 		return path
 
 	func _append_arc_points(path: PackedVector2Array, center: Vector2, arc_radius: float, start_angle: float, end_angle: float) -> void:
@@ -821,14 +825,17 @@ static func normal_activity_card_body(radius: float, ink: Color, theme_color := 
 	return style
 
 
-static func action_art_mastery_ring(theme_color := Color("#e84d4d")) -> ActionArtMasteryRing:
+static func action_art_mastery_ring(theme_color := Color("#e84d4d"), clear_opaque_art_bounds := false) -> ActionArtMasteryRing:
 	var ring := ActionArtMasteryRing.new()
 	ring.empty_color = theme_color.darkened(0.42)
 	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
-	ring.offset_left = -18.0
-	ring.offset_top = -18.0
-	ring.offset_right = 18.0
-	ring.offset_bottom = 18.0
+	var outward_offset := 31.0 if clear_opaque_art_bounds else 18.0
+	ring.offset_left = -outward_offset
+	ring.offset_top = -outward_offset
+	ring.offset_right = outward_offset
+	ring.offset_bottom = outward_offset
+	if clear_opaque_art_bounds:
+		ring.radius = 42.0
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return ring
 

@@ -6364,7 +6364,9 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 	var mastery_progress: CleanProgressBar = null
 	var mastery_ring: Control = null
 	if MasteryState.action_has_mastery(host, action):
-		mastery_ring = ActivityCardStyles.action_art_mastery_ring(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
+		var art_path := str(action.get("art", "")).replace("\\", "/").to_lower()
+		var clear_opaque_art_bounds := art_path.ends_with("/fight-rat-king.png")
+		mastery_ring = ActivityCardStyles.action_art_mastery_ring(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), clear_opaque_art_bounds)
 		mastery_ring.z_index = 0
 		art_panel.add_child(mastery_ring)
 		medal = TextureRect.new()

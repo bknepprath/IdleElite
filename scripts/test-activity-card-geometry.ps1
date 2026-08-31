@@ -99,12 +99,11 @@ func _run() -> void:
 	var mastery_ring := MainScript.ActivityCardStyles.action_art_mastery_ring()
 	_expect(_near(float(mastery_ring.get("stroke_width")), 20.0) and _near(float(mastery_ring.get("shadow_width")), 32.0), "Mastery track should use the native 1080p stroke widths.")
 	_expect(_near(float(mastery_ring.get("inset")), 1.0) and _near(mastery_ring.offset_left, -18.0) and _near(mastery_ring.offset_right, 18.0) and _near(float(mastery_ring.get("radius")), 29.0), "Mastery track should remain concentric at native 1080p scale.")
-	mastery_ring.size = Vector2(236.0, 236.0)
-	var mastery_path := mastery_ring.call("_rounded_rect_points") as PackedVector2Array
-	_expect(mastery_path.size() > 4, "Mastery track should expose a rounded three-sided path.")
-	if mastery_path.size() > 4:
-		_expect(_near(mastery_path[0].x, 219.0) and _near(mastery_path[mastery_path.size() - 1].x, 17.0), "Mastery track should run from the upper-right edge to the upper-left edge.")
-		_expect(_near(mastery_path[0].y, 46.0) and _near(mastery_path[mastery_path.size() - 1].y, 46.0), "Mastery track should leave the top of the artwork open instead of forming a rectangle.")
+	_expect(_near(float(mastery_ring.get("gap_start_fraction")), 0.10) and _near(float(mastery_ring.get("gap_finish_fraction")), 0.84), "Fishing mastery tracks should begin on the top edge and finish on the left edge.")
+	var opaque_art_mastery_ring := MainScript.ActivityCardStyles.action_art_mastery_ring(Color("#249b9e"), true)
+	_expect(_near(opaque_art_mastery_ring.offset_left, -31.0) and _near(opaque_art_mastery_ring.offset_right, 31.0), "Opaque Rat King art should move its mastery track fully beyond the artwork bounds.")
+	_expect(_near(float(opaque_art_mastery_ring.get("radius")), 42.0), "The expanded Rat King mastery track should remain concentric with the artwork corners.")
+	opaque_art_mastery_ring.free()
 	mastery_ring.free()
 	var normal_body := MainScript.ActivityCardStyles.normal_activity_card_body(33.0, Color("#171615"))
 	_expect(normal_body.border_width_bottom == 6, "Normal activity-card back plate should match the native 1080p outline.")
