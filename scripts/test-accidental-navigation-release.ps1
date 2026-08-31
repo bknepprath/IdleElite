@@ -1,5 +1,4 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
@@ -93,7 +92,7 @@ func _assert_release_on_page_switch_does_not_change_skill() -> void:
 	await _stage_skill("woodcutting")
 	var before_skill := str(scene.get("selected_skill_id"))
 	var button := _first_page_switch_button(before_skill)
-	if button == null:
+	if button == null or not is_instance_valid(button):
 		_fail("missing page switch button")
 		return
 	var press_position := _content_safe_position()
@@ -151,7 +150,7 @@ func _assert_clean_page_switch_tap_still_changes_skill() -> void:
 	await _stage_skill("woodcutting")
 	var before_skill := str(scene.get("selected_skill_id"))
 	var button := _first_page_switch_button(before_skill)
-	if button == null:
+	if button == null or not is_instance_valid(button):
 		_fail("missing page switch button for clean tap")
 		return
 	var target_skill := str(button.get_meta("page_switch_target_skill_id", ""))
@@ -171,7 +170,7 @@ func _assert_fishing_page_switch_press_feedback_for_both_buttons() -> void:
 	for target_skill in ["woodcutting", "fight"]:
 		await _stage_skill("fishing")
 		var button := _page_switch_button_for_target(target_skill)
-		if button == null:
+		if button == null or not is_instance_valid(button):
 			_fail("missing fishing-to-%s page switch button" % target_skill)
 			continue
 		var position := button.get_global_rect().get_center()
@@ -213,24 +212,14 @@ func _assert_fishing_page_switch_press_feedback_for_both_buttons() -> void:
 func _assert_action_tap_after_page_switch_stays_on_target_skill() -> void:
 	await _stage_skill("fishing")
 	var nav_button := _page_switch_button_for_target("woodcutting")
-	if nav_button == null:
+	if nav_button == null or not is_instance_valid(nav_button):
 		_fail("missing fishing-to-woodcutting page switch button")
 		return
 	var nav_position := nav_button.get_global_rect().get_center()
 	scene.call("_input", _mouse_event(nav_position, true))
 	await process_frame
 	scene.call("_input", _mouse_event(nav_position, false))
-	for _i in range(160):
-		scene.call("_update_ui", 0.016, false)
-		await process_frame
-		if (
-			str(scene.get("current_screen")) == "skill"
-			and str(scene.get("selected_skill_id")) == "woodcutting"
-			and not bool(scene.call("_navigation_shell").call("_page_switch_scroll_cover_active"))
-			and int(scene.call("_navigation_shell").get("page_switch_transition_button_id")) == 0
-			and not bool(scene.get("screen_render_in_progress"))
-		):
-			break
+	await _wait_for_page_switch_target("woodcutting", 160)
 	if str(scene.get("selected_skill_id")) != "woodcutting":
 		_fail("fishing page switch did not navigate to woodcutting; selected=%s screen=%s" % [str(scene.get("selected_skill_id")), str(scene.get("current_screen"))])
 		return
@@ -241,13 +230,9 @@ func _assert_action_tap_after_page_switch_stays_on_target_skill() -> void:
 	if detail_scroll != null and is_instance_valid(detail_scroll):
 		detail_scroll.scroll_vertical = 0
 		detail_scroll.set("drag_scroll_position", 0.0)
-	for _i in range(12):
-		scene.call("_update_ui", 0.016, false)
-		await process_frame
+	await _settle_after_input(12)
 	scene.call("_skill_detail_surface").call("_sync_detail_lazy_visible_cards", true, -1)
-	for _i in range(12):
-		scene.call("_update_ui", 0.016, false)
-		await process_frame
+	await _settle_after_input(12)
 	var action_card := _first_visible_action_card("woodcutting")
 	if action_card.is_empty():
 		_fail("missing visible woodcutting action card after fishing-to-woodcutting navigation")
@@ -286,7 +271,7 @@ func _wait_for_page_switch_target(target_skill_id: String, max_frames := 600) ->
 			and str(scene.get("selected_skill_id")) == target_skill_id
 			and not bool(scene.call("_navigation_shell").call("_page_switch_scroll_cover_active"))
 			and int(scene.call("_navigation_shell").get("page_switch_transition_button_id")) == 0
-			and not bool(scene.get("screen_render_in_progress"))
+			and not bool(scene.call("_navigation_shell").get("screen_render_in_progress"))
 		):
 			return Time.get_ticks_msec() - started_msec
 	return Time.get_ticks_msec() - started_msec
@@ -384,7 +369,7 @@ func _wait_for_boot_ready() -> bool:
 				scene.get("startup_initialized") == true
 				and scene.get("boot_detail_render_in_progress") != true
 				and scene.get("boot_detail_scroll_locked") != true
-				and scene.get("screen_render_in_progress") != true
+				and not bool(scene.call("_navigation_shell").get("screen_render_in_progress"))
 				and (queue == null or queue.is_empty())
 			):
 				return true
@@ -415,7 +400,6 @@ finally {
     } else {
         $env:GODOT_RUN_TIMEOUT_SECONDS = $previousTimeout
     }
-
     $leftBehind = @()
     foreach ($process in @(Get-HeadlessGodotProcesses)) {
         if (-not $baselineHeadlessProcessIds.ContainsKey([int]$process.ProcessId)) {

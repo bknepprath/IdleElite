@@ -13,10 +13,6 @@ TARGET_LADDERS = {
     "woodcutting": [1, 3, 4, 6, 8, 10, 13, 16, 20, 24, 28, 33, 38, 43, 49, 54, 60, 66, 70, 73, 75, 77, 78, 79, 80],
 }
 
-def rounded(value):
-    return int(round(value))
-
-
 def success_for(skill_id, unlock, index):
     pressure = unlock * 0.38
     step_drop = (index // 6) * 1.6
@@ -39,7 +35,7 @@ def stamina_for(skill_id, unlock, index):
     return max(1, min(12, 1 + unlock // 10 + unlock // 35 + skill_bonus + rhythm))
 
 
-def retune_action(skill_id, action, index, count, unlock):
+def retune_action(skill_id, action, index, unlock):
     action["unlock"] = unlock
     if "requirements" in action:
         action["requirements"] = [{"skill": skill_id, "level": unlock}]
@@ -69,7 +65,7 @@ def retune_database(data):
         last_success = 100.0
         for index, (action, unlock) in enumerate(zip(actions, ladder)):
             before = {key: action.get(key) for key in ("unlock", "xp", "stamina", "seconds", "success")}
-            retune_action(skill_id, action, index, len(actions), unlock)
+            retune_action(skill_id, action, index, unlock)
             action["stamina"] = max(int(action["stamina"]), last_stamina)
             action["seconds"] = round(max(float(action["seconds"]), last_seconds), 2)
             action["success"] = round(min(float(action["success"]), last_success), 1)

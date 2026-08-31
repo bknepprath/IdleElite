@@ -1693,9 +1693,8 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 		)
 		var active_release_button = navigation_shell._active_page_switch_button()
 		if active_release_button != null:
-			navigation_shell._clear_page_switch_button_press_state(active_release_button, valid_tap)
-			if not valid_tap:
-				navigation_shell._release_page_switch_button_shell(active_release_button)
+			navigation_shell._clear_page_switch_button_press_state(active_release_button)
+			navigation_shell._release_page_switch_button_shell(active_release_button)
 			navigation_shell._suppress_page_switch_pressed_signal(active_release_button)
 		navigation_shell._clear_page_switch_press_state()
 		if valid_tap:

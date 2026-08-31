@@ -82,12 +82,12 @@ static func sanitize_name_key(raw_key: String, max_chars: int) -> String:
 
 static func is_default_display_name(display_name: String, max_chars: int) -> bool:
 	var clean := sanitize_display_name(display_name, max_chars)
-	return clean.is_empty() or clean == "You"
+	return clean.is_empty() or clean.to_lower() == "you"
 
 
 static func is_guest_display_name(display_name: String, prefix: String, max_chars: int) -> bool:
 	var clean := sanitize_display_name(display_name, max_chars)
-	if clean.is_empty() or clean == "You":
+	if is_default_display_name(clean, max_chars):
 		return true
 	if not clean.begins_with(prefix):
 		return false
@@ -98,14 +98,10 @@ static func is_guest_display_name(display_name: String, prefix: String, max_char
 		if code < 48 or code > 57:
 			return false
 	return true
-
-
 static func make_guest_display_name(prefix: String) -> String:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
 	return "%s%04d" % [prefix, rng.randi_range(0, 9999)]
-
-
 static func make_player_id() -> String:
 	var rng := RandomNumberGenerator.new()
 	rng.randomize()
@@ -114,8 +110,6 @@ static func make_player_id() -> String:
 	for _i in range(32):
 		token += alphabet.substr(rng.randi_range(0, alphabet.length() - 1), 1)
 	return "p%s" % token
-
-
 static func sanitize_player_id(raw_id: String) -> String:
 	var clean := raw_id.strip_edges()
 	if clean.length() < 8 or clean.length() > 48:
@@ -130,8 +124,6 @@ static func sanitize_player_id(raw_id: String) -> String:
 		if not (is_digit or is_lower or is_upper or is_dash or is_underscore):
 			return ""
 	return clean
-
-
 static func metadata_for_save(display_name: String, raw_name_key: String, claimed: bool, verified: bool, guest_prefix: String, display_max_chars: int, key_max_chars: int) -> Dictionary:
 	var safe_display_name := sanitize_display_name(display_name, display_max_chars)
 	var safe_name_key := sanitize_name_key(raw_name_key, key_max_chars)
@@ -142,12 +134,8 @@ static func metadata_for_save(display_name: String, raw_name_key: String, claime
 	if not claimed or not verified or safe_name_key.is_empty():
 		return {"name_key": "", "profile_claimed": false, "name_claim_verified": false}
 	return {"name_key": safe_name_key, "profile_claimed": true, "name_claim_verified": true}
-
-
 static func display_name_for_save(host, display_max_chars: int) -> String:
 	return sanitize_display_name(str(host.leaderboard_profile.display_name), display_max_chars)
-
-
 static func profile_metadata_for_save(host, guest_prefix: String, display_max_chars: int, key_max_chars: int) -> Dictionary:
 	return metadata_for_save(
 		str(host.leaderboard_profile.display_name),
@@ -158,20 +146,12 @@ static func profile_metadata_for_save(host, guest_prefix: String, display_max_ch
 		display_max_chars,
 		key_max_chars
 	)
-
-
 static func name_key_for_save(host, guest_prefix: String, display_max_chars: int, key_max_chars: int) -> String:
 	return str(profile_metadata_for_save(host, guest_prefix, display_max_chars, key_max_chars).get("name_key", ""))
-
-
 static func profile_claimed_for_save(host, guest_prefix: String, display_max_chars: int, key_max_chars: int) -> bool:
 	return bool(profile_metadata_for_save(host, guest_prefix, display_max_chars, key_max_chars).get("profile_claimed", false))
-
-
 static func name_claim_verified_for_save(host, guest_prefix: String, display_max_chars: int, key_max_chars: int) -> bool:
 	return bool(profile_metadata_for_save(host, guest_prefix, display_max_chars, key_max_chars).get("name_claim_verified", false))
-
-
 static func restored_metadata(data: Dictionary, current_display_name: String, current_name_key: String, current_avatar_index: int, current_player_id: String, guest_prefix: String, display_max_chars: int, key_max_chars: int, avatar_count: int) -> Dictionary:
 	var display_name := sanitize_display_name(str(data.get("leaderboard_display_name", current_display_name)), display_max_chars)
 	var safe_name_key := sanitize_name_key(str(data.get("leaderboard_name_key", current_name_key)), key_max_chars)
@@ -199,8 +179,6 @@ static func restored_metadata(data: Dictionary, current_display_name: String, cu
 		"avatar_index": valid_avatar_index(int(data.get("leaderboard_avatar_index", current_avatar_index)), avatar_count),
 		"player_id": sanitize_player_id(str(data.get("leaderboard_player_id", current_player_id)))
 	}
-
-
 static func restore_profile_metadata_from_save(host, data: Dictionary, guest_prefix: String, display_max_chars: int, key_max_chars: int, avatar_count: int) -> void:
 	var metadata := restored_metadata(
 		data,

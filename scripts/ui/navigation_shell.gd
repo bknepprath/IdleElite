@@ -2736,7 +2736,7 @@ func _recover_stale_page_switch_input_lock() -> void:
 	_recover_stale_page_switch_transition()
 
 
-func _clear_page_switch_button_press_state(button: Button, keep_nav_hold := false) -> void:
+func _clear_page_switch_button_press_state(button: Button) -> void:
 	if button == null or not is_instance_valid(button):
 		return
 	if button.has_meta("page_switch_press_active"):
@@ -2745,8 +2745,6 @@ func _clear_page_switch_button_press_state(button: Button, keep_nav_hold := fals
 		button.remove_meta("page_switch_press_position")
 	if button.has_meta("page_switch_press_dragged"):
 		button.remove_meta("page_switch_press_dragged")
-	if keep_nav_hold:
-		return
 	if button.has_meta("activity_button_hold_nav_press"):
 		button.remove_meta("activity_button_hold_nav_press")
 	if button.has_meta("activity_button_hold_nav_target_active"):
@@ -2850,7 +2848,8 @@ func _on_page_switch_button_gui_input(event: InputEvent, skill_id: String, butto
 			button.remove_meta("activity_button_hold_nav_target_active")
 		_release_page_switch_button_shell(button)
 		return
-	_clear_page_switch_button_press_state(button, true)
+	_clear_page_switch_button_press_state(button)
+	_release_page_switch_button_shell(button)
 	_suppress_page_switch_pressed_signal(button)
 	_select_skill_from_page_switch(skill_id, button)
 
@@ -2879,9 +2878,6 @@ func _hold_page_switch_transition_button(button: Button, target_skill_id: String
 	page_switch_transition_button_id = button.get_instance_id()
 	page_switch_transition_target_skill_id = target_skill_id
 	button.set_meta("page_switch_transition_hold", true)
-	button.set_meta("activity_button_hold_nav_press", true)
-	button.set_meta("activity_button_hold_nav_target_active", true)
-	_press_page_switch_button_shell(button)
 
 
 func _release_page_switch_transition_button() -> void:
@@ -2916,7 +2912,7 @@ func _release_page_switch_transition_button_visual_hold() -> void:
 			button.remove_meta("activity_button_hold_nav_press")
 		if button.has_meta("activity_button_hold_nav_target_active"):
 			button.remove_meta("activity_button_hold_nav_target_active")
-		_clear_page_switch_button_press_state(button, false)
+		_clear_page_switch_button_press_state(button)
 		host.button_press_runtime.force_button_unpressed(button)
 		host._skill_swipe_activity_surface()._release_activity_button_shell_bound(button_id, true)
 		return
@@ -2924,7 +2920,7 @@ func _release_page_switch_transition_button_visual_hold() -> void:
 		button.remove_meta("activity_button_hold_nav_press")
 	if button.has_meta("activity_button_hold_nav_target_active"):
 		button.remove_meta("activity_button_hold_nav_target_active")
-	_clear_page_switch_button_press_state(button, false)
+	_clear_page_switch_button_press_state(button)
 	host.button_press_runtime.force_button_unpressed(button)
 	host._skill_swipe_activity_surface().forget_depressed_activity_shell_button(button_id)
 	var pop := host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(button.get_meta("activity_button_pop_id", 0)))) as Control

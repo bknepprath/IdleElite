@@ -12,10 +12,7 @@ $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $captureDir = Join-Path $projectRoot ".codex-tmp\berry-prep"
-$captureName = "berry-prep-popover-desktop-${WindowWidth}x${WindowHeight}.png"
-if (-not [string]::IsNullOrWhiteSpace($Suffix)) {
-    $captureName = "berry-prep-popover-${Suffix}-${WindowWidth}x${WindowHeight}.png"
-}
+$captureName = if ([string]::IsNullOrWhiteSpace($Suffix)) { "berry-prep-popover-desktop-${WindowWidth}x${WindowHeight}.png" } else { "berry-prep-popover-${Suffix}-${WindowWidth}x${WindowHeight}.png" }
 $capturePath = Join-Path $captureDir $captureName
 $scriptPath = Join-Path $captureDir "capture_berry_prep.gd"
 
@@ -107,6 +104,9 @@ func _run() -> void:
 	var image := texture.get_image()
 	if image == null or image.is_empty():
 		_fail("capture image empty")
+		return
+	if image.get_width() != capture_size.x or image.get_height() != capture_size.y:
+		_fail("capture image size mismatch: %sx%s" % [image.get_width(), image.get_height()])
 		return
 	var capture_path := OS.get_environment("IDLE_ELITE_BERRY_PREP_CAPTURE_PATH")
 	var result := image.save_png(capture_path)

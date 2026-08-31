@@ -1,38 +1,28 @@
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\boss-fight\tests"
 $testScript = Join-Path $testDir "boss_fight_gate_test.gd"
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
-
 if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-
 $previousTimeout = $env:GODOT_RUN_TIMEOUT_SECONDS
 $beforeProcesses = @(Get-HeadlessGodotProcesses | Select-Object -ExpandProperty ProcessId)
 $env:GODOT_RUN_TIMEOUT_SECONDS = "180"
-
 try {
     @'
 extends SceneTree
-
 const SkillState := preload("res://scripts/progression/skill_state.gd")
 const ActivityCardStyles := preload("res://scripts/ui/activity_card_styles.gd")
 const SkillDetailSurface := preload("res://scripts/ui/skill_detail_surface.gd")
-
 const RoosterPunchOutStageClass = preload("res://scripts/ui/rooster_punch_out_stage.gd")
-
 var test_failed := false
 
 func _init() -> void:
 	call_deferred("_run")
-
-
 func _run() -> void:
 	print("boss-fight-gate-start")
 	OS.set_environment("IDLE_ELITE_DISABLE_SAVE_WRITES", "1")
@@ -166,6 +156,9 @@ func _fail(message: String) -> void:
 
     $output = & $runner --path $projectRoot --script "res://.codex-tmp/boss-fight/tests/boss_fight_gate_test.gd" 2>&1
     $output | Write-Output
+    if ($LASTEXITCODE -ne 0) {
+        throw "Boss fight gate test failed with exit code $LASTEXITCODE."
+    }
     Assert-True (($output | Out-String) -match "boss-fight-gate-ok") "Boss fight gate test did not report success."
 }
 finally {

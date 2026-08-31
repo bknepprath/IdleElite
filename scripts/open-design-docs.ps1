@@ -8,7 +8,9 @@ if ($args.Count -gt 0 -and -not [string]::IsNullOrWhiteSpace($args[0])) {
     $page = $args[0]
 }
 
-$target = Join-Path $docsDir $page
+$docsRoot = [IO.Path]::GetFullPath($docsDir) + [IO.Path]::DirectorySeparatorChar
+$target = [IO.Path]::GetFullPath((Join-Path $docsDir $page))
+if (-not $target.StartsWith($docsRoot, [StringComparison]::OrdinalIgnoreCase)) { throw "Doc must be inside $docsDir" }
 if (-not (Test-Path -LiteralPath $target)) {
     throw "Doc not found: $target"
 }

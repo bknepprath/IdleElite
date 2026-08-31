@@ -3,7 +3,7 @@ $ErrorActionPreference = "Stop"
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $writerPath = Join-Path $projectRoot "scripts\write-firebase-leaderboard-config.ps1"
-$testDir = Join-Path $projectRoot ".codex-tmp\firebase-config-validation"
+$testDir = Join-Path $projectRoot ".codex-tmp\firebase-config-validation-$([guid]::NewGuid().ToString('N'))"
 $validTestKey = "AIzaSyValidationOnlyNotARealFirebaseKey123456"
 $validGoogleWebClientId = "1234567890-validationonly.apps.googleusercontent.com"
 
@@ -60,9 +60,6 @@ function Invoke-ExpectInvalidGoogleClientConfig {
     Assert-True (-not (Test-Path -LiteralPath $outputPath)) "Config writer should not create $Name after Google client validation failure."
 }
 
-if (Test-Path -LiteralPath $testDir) {
-    Remove-Item -LiteralPath $testDir -Recurse -Force
-}
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
 
 try {

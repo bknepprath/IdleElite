@@ -7,28 +7,22 @@ param(
     [int]$MaxImmediateMounted = 6,
     [int]$MaxWarmFrames = 180
 )
-
 $ErrorActionPreference = "Stop"
-
 $projectRoot = Split-Path -Parent $PSScriptRoot
 . (Join-Path $PSScriptRoot "lib\godot-processes.ps1")
 $runner = Join-Path $projectRoot "run-godot-safe.ps1"
 $testDir = Join-Path $projectRoot ".codex-tmp\fishing-cold-render-probe"
 $resultPath = Join-Path $testDir "result.json"
 $testUserDataDir = Join-Path $testDir "user-data"
-
 Assert-True (Test-Path -LiteralPath $runner) "Missing run-godot-safe.ps1."
-
 if (Test-Path -LiteralPath $testDir) {
     Remove-Item -LiteralPath $testDir -Recurse -Force
 }
 New-Item -ItemType Directory -Path $testDir -Force | Out-Null
-
 $baselineHeadlessProcessIds = @{}
 foreach ($process in @(Get-HeadlessGodotProcesses)) {
     $baselineHeadlessProcessIds[[int]$process.ProcessId] = $true
 }
-
 $env:IDLE_ELITE_TEST_USER_DATA_DIR = $testUserDataDir
 
 try {
@@ -37,7 +31,6 @@ try {
     if ($LASTEXITCODE -ne 0) {
         exit $LASTEXITCODE
     }
-
     Assert-True (Test-Path -LiteralPath $resultPath) "Fishing cold render probe did not write a result file."
     $result = Get-Content -LiteralPath $resultPath -Raw | ConvertFrom-Json
     Assert-True ($result.status -eq "ok") "Fishing cold render probe status was $($result.status)."
@@ -55,7 +48,6 @@ try {
     Assert-True ([int]$result.warm_over_50 -eq 0) "Fishing warm mount had $($result.warm_over_50) frame(s) over 50ms."
     Assert-True (-not [bool]$result.visible_placeholders) "Fishing cold render left visible lazy placeholders in the viewport."
     Assert-True (-not [bool]$result.warmed_visible_placeholders) "Fishing warm mount left visible lazy placeholders in the viewport."
-
     "fishing-cold-render-ok render_ms=$($result.render_msec) immediate=$($result.immediate_mounted) warmed=$($result.warmed_mounted)/$($result.plan) cards=$($result.action_cards) warm_frames=$($result.warm_frames) max_warm_ms=$($result.max_warm_frame_msec) result=$resultPath"
 }
 finally {

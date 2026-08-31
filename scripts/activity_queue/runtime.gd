@@ -9,22 +9,18 @@ var activity_queue_running := false
 var activity_queue_index := -1
 var activity_queue_attempt_key := ""
 
-
 func _init(host_ref) -> void:
 	host = host_ref
-
 
 func get_activity_queue() -> Array:
 	activity_queue = _activity_queue_unlocked_only(_normalized_queue(activity_queue))
 	return activity_queue.duplicate()
-
 
 func set_activity_queue(entries) -> void:
 	activity_queue = _activity_queue_unlocked_only(_normalized_queue(entries))
 	host._mark_save_dirty("activity queue changed")
 	host.save_game()
 	host._skill_swipe_activity_surface()._refresh_activity_queue_visuals()
-
 
 func add_activity_to_queue(entry) -> bool:
 	var key: String = ModuleUiRuntime.normalize(entry)
@@ -38,7 +34,6 @@ func add_activity_to_queue(entry) -> bool:
 	host.save_game()
 	host._skill_swipe_activity_surface()._refresh_activity_queue_visuals()
 	return true
-
 
 func remove_activity_from_queue(entry) -> bool:
 	var key: String = ModuleUiRuntime.normalize(entry)
@@ -56,11 +51,9 @@ func remove_activity_from_queue(entry) -> bool:
 	host._skill_swipe_activity_surface()._refresh_activity_queue_visuals()
 	return true
 
-
 func is_activity_queued(entry) -> bool:
 	var key: String = ModuleUiRuntime.normalize(entry)
 	return not key.is_empty() and activity_queue.has(key)
-
 
 func get_queue_index(entry) -> int:
 	var key: String = ModuleUiRuntime.normalize(entry)
@@ -68,12 +61,10 @@ func get_queue_index(entry) -> int:
 		return -1
 	return activity_queue.find(key)
 
-
 func _activity_queue_active_shelf_skill_id() -> String:
 	if activity_queue_running and not host.running_skill_id.is_empty() and not host.running_action_id.is_empty():
 		return host.running_skill_id
 	return ""
-
 
 func clear_activity_queue() -> void:
 	if activity_queue.is_empty():
@@ -84,10 +75,8 @@ func clear_activity_queue() -> void:
 	host.save_game()
 	host._skill_swipe_activity_surface()._refresh_activity_queue_visuals()
 
-
 func _activity_queue_for_save() -> Array:
 	return _activity_queue_unlocked_only(_normalized_queue(activity_queue))
-
 
 func _restore_activity_queue_from_save(data: Dictionary) -> void:
 	activity_queue = _activity_queue_unlocked_only(_normalized_queue(data.get("activity_queue", [])))
@@ -110,12 +99,10 @@ func _normalized_queue(value: Variant) -> Array:
 		queue.append(key)
 	return queue
 
-
 func _next_index(current_index: int, queue_size: int) -> int:
 	if queue_size <= 0:
 		return -1
 	return (current_index + 1) % queue_size
-
 
 func _activity_queue_unlocked_only(keys: Array) -> Array:
 	var filtered: Array = []
@@ -124,7 +111,6 @@ func _activity_queue_unlocked_only(keys: Array) -> Array:
 		if not key.is_empty() and _activity_queue_key_is_queueable(key):
 			filtered.append(key)
 	return filtered
-
 
 func _activity_queue_key_is_queueable(module_key: String) -> bool:
 	var key: String = ModuleUiRuntime.normalize(module_key)
@@ -146,7 +132,6 @@ func _activity_queue_key_is_queueable(module_key: String) -> bool:
 		return host._skill_detail_surface()._module_ui_fishing_area_is_unlocked(key)
 	return false
 
-
 func _start_activity_queue_from_key(module_key: String) -> bool:
 	var normalized_key: String = ModuleUiRuntime.normalize(module_key)
 	if normalized_key.is_empty():
@@ -160,7 +145,6 @@ func _start_activity_queue_from_key(module_key: String) -> bool:
 	activity_queue_attempt_key = ""
 	return _advance_activity_queue_to_runnable()
 
-
 func _stop_activity_queue_runtime(clear_running_action := false) -> void:
 	activity_queue_running = false
 	activity_queue_index = -1
@@ -171,7 +155,6 @@ func _stop_activity_queue_runtime(clear_running_action := false) -> void:
 		host.action_progress = 0.0
 		host._action_runtime()._reset_action_opportunity_state()
 
-
 func _process_activity_queue_runtime() -> void:
 	if not activity_queue_running:
 		return
@@ -179,8 +162,7 @@ func _process_activity_queue_runtime() -> void:
 	if queue.is_empty() or activity_queue_index < 0:
 		_stop_activity_queue_runtime()
 		return
-	if activity_queue_index >= queue.size():
-		activity_queue_index = 0
+	activity_queue_index %= queue.size()
 	if host.running_skill_id.is_empty() or host.running_action_id.is_empty():
 		_advance_activity_queue_to_runnable()
 		return
@@ -198,7 +180,6 @@ func _process_activity_queue_runtime() -> void:
 	if _activity_queue_should_advance_for_action(host.running_skill_id, action):
 		activity_queue_index = _next_index(activity_queue_index, queue.size())
 		_advance_activity_queue_to_runnable()
-
 
 func _advance_activity_queue_to_runnable() -> bool:
 	var queue := get_activity_queue()
@@ -244,13 +225,11 @@ func _advance_activity_queue_to_runnable() -> bool:
 	host._update_ui(0.0, true)
 	return false
 
-
 func _activity_queue_should_advance_for_action(skill_id: String, action: Dictionary) -> bool:
 	if RecoveryModules.has_recovery(action):
 		return RecoveryModules.recovery_target_is_full(skill_id, action, host.skill_defs, host.stamina, Callable(SkillState, "host_stamina_value").bind(host), Callable(SkillState, "host_max_stamina").bind(host))
 	var cost: float = host._action_runtime()._effective_stamina(skill_id, action)
 	return SkillState.host_stamina_value(skill_id, host) + 0.0001 < cost
-
 
 func _activity_queue_target_for_key(module_key: String) -> Dictionary:
 	var normalized_key: String = ModuleUiRuntime.normalize(module_key)
@@ -272,7 +251,6 @@ func _activity_queue_target_for_key(module_key: String) -> Dictionary:
 			return {"skill_id": "fishing", "action_id": selected_id}
 	return {}
 
-
 func _activity_queue_selected_fishing_action_for_area(area_def: Dictionary) -> String:
 	var area_key: String = host.fishing_runtime.area_module_key("fishing", area_def)
 	for raw_card in host.action_cards.values():
@@ -292,7 +270,6 @@ func _activity_queue_selected_fishing_action_for_area(area_def: Dictionary) -> S
 		if not action.is_empty() and host._activity_unlock_runtime()._is_action_unlocked("fishing", action):
 			return action_id
 	return ""
-
 
 func _activity_queue_key_for_running_action(skill_id: String, action_id: String) -> String:
 	var action_key: String = ModuleUiRuntime.action(skill_id, action_id, host.FISHING_ACTION_ID_ALIASES)

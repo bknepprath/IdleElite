@@ -22,7 +22,8 @@ func _is_convergence_action(action: Dictionary) -> bool:
 
 
 func _convergence_config(action: Dictionary) -> Dictionary:
-	return action.get("convergence", {}) as Dictionary
+	var config: Variant = action.get("convergence", {})
+	return config as Dictionary if typeof(config) == TYPE_DICTIONARY else {}
 
 
 func _convergence_requires_build(action: Dictionary) -> bool:
@@ -98,12 +99,8 @@ func _convergence_build_remaining(module_id: String) -> int:
 
 func _convergence_is_built(module_id: String) -> bool:
 	return bool(_ensure_convergence_state(module_id).get("built", false))
-
-
 func _convergence_is_building(module_id: String) -> bool:
 	return bool(_ensure_convergence_state(module_id).get("building", false))
-
-
 func _start_convergence_build(module_id: String) -> bool:
 	var action: Dictionary = host._action_data("build", module_id)
 	if action.is_empty() or not host._activity_unlock_runtime()._is_action_unlocked("build", action):
@@ -124,7 +121,8 @@ func _start_convergence_build(module_id: String) -> bool:
 	if host.material_runtime.amount("softwood") < float(cost):
 		host._reward_feedback_surface()._set_result("%s needs %s Softwood." % [str(action.get("name", "Shrine")), cost])
 		return false
-	host.material_runtime.spend_amount("softwood", float(cost))
+	if not bool(host.material_runtime.spend_amount("softwood", float(cost))):
+		return false
 	state["building"] = true
 	state["built"] = false
 	state["build_started_unix"] = host._unix_now()
@@ -132,16 +130,12 @@ func _start_convergence_build(module_id: String) -> bool:
 	host._reward_feedback_surface()._set_result("%s construction started. %s left." % [str(action.get("name", "Shrine")), GameFormatting.countdown(_convergence_build_seconds(action))])
 	host.save_game()
 	return false
-
-
 func _convergence_skill_order(action: Dictionary) -> Array:
 	var config := _convergence_config(action)
 	var order = config.get("skill_order", CONVERGENCE_SKILL_ORDER)
 	if typeof(order) == TYPE_ARRAY and (order as Array).size() >= 5:
 		return (order as Array).slice(0, 5)
 	return CONVERGENCE_SKILL_ORDER.duplicate()
-
-
 func _convergence_segment_progress(action: Dictionary, progress: float) -> Array:
 	var values := []
 	var remaining := clampf(progress, 0.0, 1.0) * _convergence_total_cycle_seconds(action)
@@ -150,22 +144,16 @@ func _convergence_segment_progress(action: Dictionary, progress: float) -> Array
 		values.append(clampf(remaining / segment_seconds, 0.0, 1.0))
 		remaining -= segment_seconds
 	return values
-
-
 func _convergence_total_cycle_seconds(action: Dictionary) -> float:
 	var total := 0.0
 	for raw_skill_id in _convergence_skill_order(action):
 		total += _convergence_segment_seconds(str(raw_skill_id), action)
 	return maxf(1.0, total)
-
-
 func _convergence_segment_seconds(skill_id: String, action: Dictionary) -> float:
 	var config := _convergence_config(action)
 	var level_10_seconds := maxf(1.0, float(config.get("segment_level_10_seconds", 20.0)))
 	var level := maxf(1.0, float(SkillState.host_skill_level(host, skill_id)))
 	return maxf(3.0, level_10_seconds * 10.0 / level)
-
-
 func _convergence_current_xp(module_id: String) -> int:
 	var action: Dictionary = host._action_data("build", module_id)
 	var config := _convergence_config(action)
@@ -175,8 +163,6 @@ func _convergence_current_xp(module_id: String) -> int:
 	var completions := int(_ensure_convergence_state(module_id).get("completions", 0))
 	var reward := float(max_xp) - float(max_xp - min_xp) * exp(-curve * float(completions))
 	return clampi(int(round(reward)), min_xp, max_xp)
-
-
 func _complete_convergence_cycle(module_id: String) -> int:
 	var action: Dictionary = host._action_data("build", module_id)
 	if action.is_empty():
@@ -210,8 +196,6 @@ func _complete_convergence_cycle(module_id: String) -> int:
 	host._audio_director()._record_music_flow_action(true, 1, false, false, leveled, 0.0)
 	host.save_game()
 	return xp_reward
-
-
 func _restore_convergence_modules_from_save(data: Dictionary) -> void:
 	convergence_modules = _normalized_convergence_modules(data.get("convergence_modules", {}))
 

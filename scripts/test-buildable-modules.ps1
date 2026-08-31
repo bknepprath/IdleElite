@@ -55,7 +55,7 @@ func _run() -> void:
 	_expect(not BuildableModules.is_built(scene.built_modules, "fight", action, Callable(scene, "_action_key")), "prototype action should begin unbuilt")
 	var built := scene.call("_skill_detail_surface").call("_build_detail_interactive_action_card", "fight", action, 1080.0, 1080.0) as Dictionary
 	var card := built.get("card", {}) as Dictionary
-	scene.call("_register_action_card", scene.call("_action_key", "fight", "duel-leaning-fence-post"), card)
+	scene.call("_skill_detail_surface").call("_register_action_card", scene.call("_action_key", "fight", "duel-leaning-fence-post"), card)
 	_expect((card.get("build_overlay") as Control) != null, "unbuilt card should show blueprint overlay")
 	var plank_nodes = card.get("build_plank_nodes", [])
 	_expect(plank_nodes is Array and plank_nodes.size() == 1, "build cover should use one full-width generated plank")
@@ -80,7 +80,7 @@ func _run() -> void:
 	_expect(int((scene.skills["build"] as Dictionary).get("xp", 0)) == starting_build_xp + 60, "build should grant material-based Building XP")
 	_expect(str(scene.running_action_id).is_empty(), "build tap should not start the module in the same tap")
 	var payload := scene.call("_save_runtime").call("_save_payload", int(scene.call("_unix_now"))) as Dictionary
-	_expect(bool((payload.get("built_modules", {}) as Dictionary).get("fight:duel-leaning-fence-post", false)), "built module should be present in save payload")
+	_expect(bool((payload.get("built_modules", {}) as Dictionary).get(scene.call("_action_key", "fight", "duel-leaning-fence-post"), false)), "built module should be present in save payload")
 	for _frame in range(24):
 		await process_frame
 	fight = scene.skills["fight"] as Dictionary
@@ -100,9 +100,8 @@ func _run() -> void:
 
 
 func _expect(condition: bool, message: String) -> void:
-	if condition:
-		return
-	_fail(message)
+	if not condition:
+		_fail(message)
 
 
 func _fail(message: String) -> void:
@@ -113,7 +112,9 @@ func _fail(message: String) -> void:
 
     $output = & $runner --path $projectRoot --script "res://.codex-tmp/buildable-modules/tests/buildable_modules_test.gd" 2>&1
     $output | Write-Output
+    if ($LASTEXITCODE -ne 0) { throw "Buildable modules test failed with exit code $LASTEXITCODE." }
     Assert-True (($output | Out-String) -match "buildable-modules-ok") "Buildable modules test did not report success."
+    Assert-NoUnexpectedGodotErrors $output "buildable modules validation"
 }
 finally {
     if ($null -eq $previousTimeout) {

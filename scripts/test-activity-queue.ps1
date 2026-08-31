@@ -137,12 +137,12 @@ func _run() -> void:
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [build_key, fight_key])
 	_set_skill_stamina(scene, "build", 0.0)
 	_set_skill_stamina(scene, "fight", float(SkillState.max_stamina(scene, "fight")))
-	_set_fish_currency(scene, 5.0)
+	scene.get("fishing_runtime").set("fish_currency", 5.0)
 	scene.get("fishing_runtime").call("set_auto_eat_fish_enabled_for_skill", scene, "build", true)
 	_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", build_key)), "queue should start from first runnable entry")
 	_assert(str(scene.get("running_skill_id")) == "fight", "queue should skip low-stamina first entry")
 	_assert(str(scene.call("_activity_queue_runtime").get("activity_queue_attempt_key")) == fight_key, "queue attempt key should be skipped-to entry")
-	_assert(absf(_fish_currency(scene) - 5.0) < 0.001, "queue should not auto-eat fish while skipping low-stamina entries")
+	_assert(absf(float(scene.get("fishing_runtime").get("fish_currency")) - 5.0) < 0.001, "queue should not auto-eat fish while skipping low-stamina entries")
 	_set_skill_stamina(scene, "build", float(SkillState.max_stamina(scene, "build")))
 	_set_skill_stamina(scene, "fight", 0.0)
 	scene.call("_activity_queue_runtime").call("_process_activity_queue_runtime")
@@ -269,9 +269,11 @@ func _navigation_shell(scene: Node) -> Object:
 
 func _assert_queue_utility_button(scene: Node) -> void:
 	var navigation_shell := _navigation_shell(scene)
-	_assert(navigation_shell != null, "navigation shell should exist")
+	if not _assert(navigation_shell != null, "navigation shell should exist"):
+		return
 	var queue_button := navigation_shell.get("queue_utility_tab") as Button
-	_assert(queue_button != null and is_instance_valid(queue_button), "queue utility button should exist")
+	if not _assert(queue_button != null and is_instance_valid(queue_button), "queue utility button should exist"):
+		return
 	_assert(_truthy(queue_button.get_meta("module_utility_nav_button", false)), "queue utility button should use nav button styling")
 	var row := navigation_shell.get("module_utility_buttons_row") as HBoxContainer
 	_assert(row != null and is_instance_valid(row), "module utility button row should exist")
@@ -286,9 +288,11 @@ func _assert_queue_utility_button(scene: Node) -> void:
 
 func _assert_queue_utility_button_opens_queue(scene: Node) -> void:
 	var navigation_shell := _navigation_shell(scene)
-	_assert(navigation_shell != null, "navigation shell should exist before queue press")
+	if not _assert(navigation_shell != null, "navigation shell should exist before queue press"):
+		return
 	var queue_button := navigation_shell.get("queue_utility_tab") as Button
-	_assert(queue_button != null and is_instance_valid(queue_button), "queue utility button should exist before press")
+	if not _assert(queue_button != null and is_instance_valid(queue_button), "queue utility button should exist before press"):
+		return
 	scene.set("current_screen", "skill")
 	scene.set("selected_skill_id", "build")
 	scene.call("_navigation_shell").call("_clear_top_level_nav_lock")
@@ -342,7 +346,7 @@ func _assert_queue_page(scene: Node) -> void:
 	_assert(_find_named(scene, "ActivityQueueEmptyDescription") == null, "queue page should not render empty description when populated")
 	var bottom_spacer := _find_named(scene, "ActivityQueueBottomSpacer") as Control
 	_assert(bottom_spacer != null and is_instance_valid(bottom_spacer), "queue page should render a bottom scroll spacer")
-	if bottom_spacer != null:
+	if bottom_spacer != null and is_instance_valid(bottom_spacer):
 		var expected_pad := float(scene.call("_navigation_shell").call("_skills_content_bottom_inset_for_screen")) + 180.0
 		_assert(bottom_spacer.custom_minimum_size.y >= expected_pad, "queue page bottom spacer should leave room above bottom chrome")
 
@@ -356,18 +360,22 @@ func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -
 	_assert(_truthy(scene.call("_activity_queue_runtime").call("_start_activity_queue_from_key", module_key)), "queue active shelf fish control test should start the queued action")
 	_assert(str(scene.get("running_skill_id")) == skill_id and str(scene.get("running_action_id")) == action_id, "queue active shelf fish control test should run the expected action")
 	scene.get("fishing_runtime").set("fish_currency_ever_earned", true)
-	_set_fish_currency(scene, 2.0)
+	scene.get("fishing_runtime").set("fish_currency", 2.0)
 	scene.set("current_screen", "queue")
 	_force_queue_page_render(scene)
 	for _i in range(8):
 		scene.call("_update_ui", 0.016, false)
 		await process_frame
 	var navigation_shell = scene.call("_navigation_shell")
+	if navigation_shell == null:
+		_assert(false, "queue active shelf should have a navigation shell")
+		scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
+		return
 	var gauge := navigation_shell.get("pinned_active_shelf_regen_circle") as Control
 	_assert(gauge != null and is_instance_valid(gauge) and gauge.is_visible_in_tree(), "queue active shelf should render an interactive stamina Gage")
 	var toggle := _find_named(scene, "AutoEatFishToggle") as TextureButton
 	_assert(toggle != null and is_instance_valid(toggle) and toggle.is_visible_in_tree(), "queue active shelf should render the Auto Fish Eat toggle")
-	if gauge == null or toggle == null:
+	if gauge == null or not is_instance_valid(gauge) or toggle == null or not is_instance_valid(toggle):
 		scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 		return
 	_assert(str(toggle.get_meta("auto_eat_skill_id", "")) == skill_id, "queue Auto Fish Eat toggle should target the active queue skill")
@@ -377,14 +385,14 @@ func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -
 	var max_stamina := float(SkillState.max_stamina(scene, skill_id))
 	_set_skill_stamina(scene, skill_id, maxf(0.0, max_stamina - 2.0))
 	var before_stamina := float(SkillState.host_stamina_value(skill_id, scene))
-	var before_fish := _fish_currency(scene)
+	var before_fish := float(scene.get("fishing_runtime").get("fish_currency"))
 	var tap_position := gauge.get_global_rect().get_center()
 	scene.call("_action_runtime").call("_on_stamina_gauge_input", _mouse_button_event(tap_position, true), skill_id, gauge)
 	scene.call("_action_runtime").call("_on_stamina_gauge_input", _mouse_button_event(tap_position, false), skill_id, gauge)
 	for _i in range(4):
 		await process_frame
 	_assert(absf(float(SkillState.host_stamina_value(skill_id, scene)) - (before_stamina + 1.0)) < 0.001, "queue active shelf Gage tap should eat one fish into stamina")
-	_assert(absf(_fish_currency(scene) - (before_fish - 1.0)) < 0.001, "queue active shelf Gage tap should spend one fish")
+	_assert(absf(float(scene.get("fishing_runtime").get("fish_currency")) - (before_fish - 1.0)) < 0.001, "queue active shelf Gage tap should spend one fish")
 	scene.call("_activity_queue_runtime").call("_stop_activity_queue_runtime", true)
 	scene.call("_tutorial_overlay_surface").call("_dismiss_blocking_tip")
 	scene.call("_input_routing_shell").set("modal_background_input_block_until_msec", 0)
@@ -392,7 +400,8 @@ func _assert_queue_active_shelf_fish_controls(scene: Node, module_key: String) -
 
 func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
 	var set_button := _find_named(scene, "ActivityQueueSetQueueButton") as Button
-	_assert(set_button != null and is_instance_valid(set_button), "queue page should render Set Queue button")
+	if not _assert(set_button != null and is_instance_valid(set_button), "queue page should render Set Queue button"):
+		return
 	_assert(set_button.get_signal_connection_list("pressed").size() > 0, "Set Queue button should be connected")
 	set_button.emit_signal("pressed")
 	for _i in range(20):
@@ -402,9 +411,11 @@ func _assert_add_to_queue_opens_skills_page(scene: Node) -> void:
 	_assert(_find_named(scene, "QueueSelectionBanner") != null, "Set Queue should keep queue selection banner visible")
 	_assert(_find_button_with_text(scene, "FINISH QUEUE") == null, "queue selection banner should not render a Finish Queue button")
 	var navigation_shell := _navigation_shell(scene)
-	_assert(navigation_shell != null, "navigation shell should exist during queue selection")
+	if not _assert(navigation_shell != null, "navigation shell should exist during queue selection"):
+		return
 	var queue_button := navigation_shell.get("queue_utility_tab") as Button
-	_assert(queue_button != null and is_instance_valid(queue_button), "Queue utility button should exist during queue selection")
+	if not _assert(queue_button != null and is_instance_valid(queue_button), "Queue utility button should exist during queue selection"):
+		return
 	queue_button.emit_signal("pressed")
 	for _i in range(20):
 		await process_frame
@@ -419,7 +430,7 @@ func _assert_queue_page_clear_button(scene: Node, first_key: String, second_key:
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array).size() == 2, "clear button test should still have queued items before render lookup")
 	var clear_button := _find_named(scene, "ActivityQueueClearQueueButton") as Button
 	_assert(clear_button != null and is_instance_valid(clear_button), "Clear Queue should appear when queue has items")
-	if clear_button == null:
+	if clear_button == null or not is_instance_valid(clear_button):
 		return
 	_assert(clear_button.get_signal_connection_list("pressed").size() > 0, "Clear Queue button should be connected")
 	scene.call("_activity_queue_runtime").call("set_activity_queue", [])
@@ -438,10 +449,12 @@ func _assert_queue_page_card_can_start_queue(scene: Node, module_key: String) ->
 	for _i in range(4):
 		await process_frame
 	var card := _registered_card_for_module_key(scene, str(module_key))
-	_assert(not card.is_empty(), "queue page should register queued module card")
+	if not _assert(not card.is_empty(), "queue page should register queued module card"):
+		return
 	_assert(str(scene.call("_skill_swipe_activity_surface").call("_activity_queue_module_key_for_card", card)) == str(module_key), "queue page card should resolve to queued module key")
 	var pop := card.get("pop", null) as Control
-	_assert(pop != null and is_instance_valid(pop), "queue page card should have a visible pop control")
+	if not _assert(pop != null and is_instance_valid(pop), "queue page card should have a visible pop control"):
+		return
 	var press_position := _card_body_tap_point(pop)
 	_assert(_truthy(scene.call("_input_routing_shell").call("_position_inside_detail_actions_viewport", press_position)), "queue page card should be inside the action viewport")
 	scene.call("_input", _mouse_button_event(press_position, true))
@@ -459,14 +472,18 @@ func _assert_queue_page_mat_collection_expands(scene: Node, module_key: String) 
 	var card := _registered_card_for_module_key(scene, str(module_key))
 	_assert(not card.is_empty(), "queue page should register material collection card")
 	var collection := card.get("mat_collection", {}) as Dictionary
-	_assert(not collection.is_empty(), "queue page material collection card should include a material drawer")
+	if not _assert(not collection.is_empty(), "queue page material collection card should include a material drawer"):
+		return
 	var root := collection.get("root", null) as Control
 	_assert(root != null and is_instance_valid(root), "queue page material drawer should have a live root")
 	var entry := card.get("entry", null) as Control
 	_assert(entry != null and is_instance_valid(entry), "queue page material collection card should have an entry root")
+	if root == null or not is_instance_valid(root) or entry == null or not is_instance_valid(entry):
+		return
 	var initial_height := entry.custom_minimum_size.y
 	var pop := card.get("pop", null) as Control
-	_assert(pop != null and is_instance_valid(pop), "queue page material collection card should have a pop control")
+	if not _assert(pop != null and is_instance_valid(pop), "queue page material collection card should have a pop control"):
+		return
 	var press_position := _card_body_tap_point(pop)
 	scene.call("_input", _mouse_button_event(press_position, true))
 	scene.call("_input", _mouse_button_event(press_position, false))
@@ -595,8 +612,6 @@ func _assert_fishing_area_tap_adds_queue_entry(scene: Node, fishing_area_key: St
 		await process_frame
 	_assert((scene.call("_activity_queue_runtime").call("get_activity_queue") as Array) == [fishing_area_key], "tapping a fishing area in queue selection should add that area to the queue")
 	scene.call("_skill_swipe_activity_surface").call("_finish_queue_selection_mode")
-
-
 func _find_named(root_node: Node, node_name: String) -> Node:
 	if root_node.is_queued_for_deletion():
 		return null
@@ -607,8 +622,6 @@ func _find_named(root_node: Node, node_name: String) -> Node:
 		if found != null:
 			return found
 	return null
-
-
 func _find_button_with_text(root_node: Node, button_text: String) -> Button:
 	if root_node.is_queued_for_deletion():
 		return null
@@ -620,15 +633,11 @@ func _find_button_with_text(root_node: Node, button_text: String) -> Button:
 		if found != null:
 			return found
 	return null
-
-
 func _count_named(root_node: Node, node_name: String) -> int:
 	var count := 1 if root_node.name == node_name else 0
 	for child in root_node.get_children():
 		count += _count_named(child, node_name)
 	return count
-
-
 func _direct_child_count_named(root_node: Node, node_name: String) -> int:
 	if root_node == null:
 		return 0
@@ -637,8 +646,6 @@ func _direct_child_count_named(root_node: Node, node_name: String) -> int:
 		if child.name == node_name:
 			count += 1
 	return count
-
-
 func _mouse_release(global_position: Vector2) -> InputEventMouseButton:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
@@ -646,8 +653,6 @@ func _mouse_release(global_position: Vector2) -> InputEventMouseButton:
 	event.position = global_position
 	event.global_position = global_position
 	return event
-
-
 func _mouse_button_event(global_position: Vector2, pressed: bool) -> InputEventMouseButton:
 	var event := InputEventMouseButton.new()
 	event.button_index = MOUSE_BUTTON_LEFT
@@ -655,13 +660,9 @@ func _mouse_button_event(global_position: Vector2, pressed: bool) -> InputEventM
 	event.position = global_position
 	event.global_position = global_position
 	return event
-
-
 func _card_body_tap_point(pop: Control) -> Vector2:
 	var rect := pop.get_global_rect()
 	return rect.position + Vector2(rect.size.x * 0.58, rect.size.y * 0.72)
-
-
 func _first_queueable_action_key(scene: Node, skill_id: String) -> String:
 	var actions_by_skill := scene.get("actions_by_skill") as Dictionary
 	for raw_action in actions_by_skill.get(skill_id, []):
@@ -673,8 +674,6 @@ func _first_queueable_action_key(scene: Node, skill_id: String) -> String:
 		if _truthy(scene.call("_activity_queue_runtime").call("_activity_queue_key_is_queueable", key)):
 			return key
 	return ""
-
-
 func _first_queueable_mat_collection_action_key(scene: Node) -> String:
 	var actions_by_skill := scene.get("actions_by_skill") as Dictionary
 	for raw_skill_id in actions_by_skill.keys():
@@ -732,14 +731,6 @@ func _set_skill_stamina(scene: Node, skill_id: String, amount: float) -> void:
 		SkillState.host_sync_stamina_bank(skill_id, scene)
 
 
-func _fish_currency(scene: Node) -> float:
-	return float(scene.get("fishing_runtime").get("fish_currency"))
-
-
-func _set_fish_currency(scene: Node, amount: float) -> void:
-	scene.get("fishing_runtime").set("fish_currency", amount)
-
-
 func _set_all_stamina_full(scene: Node) -> void:
 	for raw_skill_id in (scene.get("skills") as Dictionary).keys():
 		var skill_id := str(raw_skill_id)
@@ -765,10 +756,10 @@ func _recovery_target_skill_id(scene: Node, owner_skill_id: String, action: Dict
 	return target if (scene.get("stamina") as Dictionary).has(target) else owner_skill_id
 
 
-func _assert(condition: bool, message: String) -> void:
-	if condition:
-		return
-	_fail(message)
+func _assert(condition: bool, message: String) -> bool:
+	if not condition:
+		_fail(message)
+	return condition
 
 
 func _truthy(value: Variant) -> bool:
@@ -798,8 +789,8 @@ func _fail(message: String) -> void:
     }
     Assert-True ([bool]($output -match "activity-queue-test-ok")) "Activity queue test did not report success."
     Assert-NoUnexpectedGodotErrors $output "activity queue validation"
-    $headless = @(Get-HeadlessGodotProcesses)
-    Assert-True ($headless.Count -eq 0) "A headless Godot process is still running after activity queue validation."
+    $headless = @(Get-HeadlessGodotProcesses | Where-Object { -not $baselineHeadlessProcessIds.ContainsKey([int]$_.ProcessId) })
+    Assert-True ($headless.Count -eq 0) "A new headless Godot process is still running after activity queue validation."
 }
 finally {
     if ($null -eq $previousTimeout) {

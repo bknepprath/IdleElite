@@ -106,7 +106,6 @@ function Invoke-TestCase {
     Write-Host ""
     Write-Host "[$Index/$Total] $($TestCase.Aspect): $($TestCase.Name)"
     Write-Host "script=$($TestCase.Script) timeout=$($TestCase.Timeout)s"
-
     $scriptArguments = @($TestCase.Arguments)
     $arguments = @(
         "-NoProfile",
@@ -148,13 +147,11 @@ function Invoke-TestCase {
     $stdout = @(Get-Content -LiteralPath $stdoutPath -ErrorAction SilentlyContinue)
     $stderr = @(Get-Content -LiteralPath $stderrPath -ErrorAction SilentlyContinue)
     $combined = @($stdout + $stderr)
-
     if ($combined.Count -gt 0) {
         $combined | Select-Object -Last 40 | ForEach-Object { Write-Host $_ }
     }
 
     Assert-NoHeadlessGodotProcesses $TestCase.Name
-
     if ($exitCode -ne 0) {
         throw "$($TestCase.Name) failed with exit code $exitCode after $([math]::Round($elapsed.Elapsed.TotalSeconds, 1))s. Logs: $stdoutPath $stderrPath"
     }
@@ -168,31 +165,25 @@ function Invoke-TestCase {
 
     Write-Host "ok elapsed=$([math]::Round($elapsed.Elapsed.TotalSeconds, 1))s"
 }
-
 $tests = @(
     New-TestCase "core" "release gate" "scripts\check-project.ps1" @("smoke", "full", "release") 2400 -DelegatesFailureOutput
-
     New-TestCase "data" "activity database audit" "scripts\audit-activity-database.ps1" @("full", "release") 120
     New-TestCase "assets" "image asset audit" "scripts\audit-image-assets.ps1" @("full", "release") 180
-
     New-TestCase "firebase" "leaderboard config validation" "scripts\test-firebase-leaderboard-config-validation.ps1" @("full", "release") 120
     New-TestCase "firebase" "leaderboard runtime guard" "scripts\test-firebase-leaderboard-runtime-guard.ps1" @("full", "release") 180
     New-TestCase "firebase" "leaderboard preflight" "scripts\check-firebase-leaderboard-preflight.ps1" @("release") 180 -Arguments @("-SkipGodotSafeValidation")
     New-TestCase "firebase" "leaderboard setup state" "scripts\check-firebase-leaderboard-setup-state.ps1" @("release") 180
     New-TestCase "firebase" "leaderboard live read" "scripts\test-firebase-leaderboard-live-read.ps1" @("release") 180 -External
-
     New-TestCase "gameplay" "first five minutes simulation" "scripts\simulate-first-five-minutes.ps1" @("full", "release") 900
     New-TestCase "gameplay" "hard reset tutorial flow" "scripts\test-hard-reset-tutorial-flow.ps1" @("full", "release") 600
     New-TestCase "gameplay" "tutorial visible flow" "scripts\test-tutorial-visible-flow.ps1" @("full", "release") 600
     New-TestCase "gameplay" "honey stamina regen" "scripts\test-honey-stamina-regen.ps1" @("full", "release") 360
     New-TestCase "gameplay" "battery governor" "scripts\test-battery-governor.ps1" @("full", "release") 240
-
     New-TestCase "fishing" "fishing click flow" "scripts\test-fishing-click-flow.ps1" @("full", "release") 900
     New-TestCase "fishing" "fishing net offer click" "scripts\test-fishing-net-offer-click.ps1" @("full", "release") 600
     New-TestCase "fishing" "fishing drag spike" "scripts\test-fishing-drag-spike.ps1" @("full", "release") 240
 
     New-TestCase "thieving" "thieving heist click flow" "scripts\test-thieving-heist-click-flow.ps1" @("full", "release") 600
-
     New-TestCase "ui" "button census clicks" "scripts\test-button-census-clicks.ps1" @("full", "release") 420
     New-TestCase "ui" "page switch cover visual" "scripts\test-page-switch-cover-visual.ps1" @("full", "release") 600
     New-TestCase "ui" "stamina gauge offpage smooth" "scripts\test-stamina-gauge-offpage-smooth.ps1" @("full", "release") 360
@@ -233,25 +224,24 @@ Write-Host "logs=$runRoot"
 Write-Host "selected=$($selectedTests.Count)"
 
 $overall = [Diagnostics.Stopwatch]::StartNew()
-$failures = New-Object System.Collections.Generic.List[string]
+$failure = $null
 
 for ($index = 0; $index -lt $selectedTests.Count; $index++) {
     $testCase = $selectedTests[$index]
     try {
         Invoke-TestCase $testCase ($index + 1) $selectedTests.Count
     } catch {
-        $failures.Add($_.Exception.Message)
-        Write-Error $_.Exception.Message
+        $failure = $_.Exception.Message
         break
     }
 }
 
 $overall.Stop()
 
-if ($failures.Count -gt 0) {
+if ($null -ne $failure) {
     Write-Host ""
     Write-Host "test-everything-failed elapsed=$([math]::Round($overall.Elapsed.TotalMinutes, 1))m"
-    $failures | ForEach-Object { Write-Host "failure: $_" }
+    Write-Host "failure: $failure"
     exit 1
 }
 

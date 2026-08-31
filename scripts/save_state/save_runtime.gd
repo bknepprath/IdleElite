@@ -61,6 +61,7 @@ static func load_dictionary(path: String) -> Dictionary:
 	if file == null:
 		return {}
 	var raw := file.get_buffer(file.get_length()).get_string_from_utf8()
+	file.close()
 	var json := JSON.new()
 	if json.parse(raw) != OK:
 		return {}
@@ -199,7 +200,6 @@ func _init_state() -> void:
 	host._onboarding_runtime().silver_opportunity_tip_action_key = ""
 	host.stamina_gauge_pre_tip_hold_seconds = 0.0
 	host.show_stamina_decimal = false
-	host.offline_progress_cap_notifications_enabled = false
 	host.stamina_gauge_tip_root = null
 	host._onboarding_runtime().onboarding_fight_summary_revealed = true
 	host._onboarding_runtime().onboarding_fight_auto_run_message_shown = true
@@ -273,6 +273,7 @@ func reset_data(feedback_button: Button = null) -> void:
 	allow_next_save_progress_regression = true
 	host._onboarding_runtime()._start_tutorial()
 	host._update_ui(0.0, true)
+	save_game()
 	var feedback_button_id := feedback_button.get_instance_id() if feedback_button != null and is_instance_valid(feedback_button) else 0
 	host._settings_surface().call_deferred("_play_reset_data_wiped_feedback_by_id", feedback_button_id)
 
@@ -300,8 +301,6 @@ func save_game() -> void:
 			"Idle Elite blocked a save that would reduce progress at %s" % ProjectSettings.globalize_path(SAVE_PATH)
 		)
 		return
-	if allow_next_save_progress_regression:
-		allow_next_save_progress_regression = false
 	if not _write_save_payload_atomically(payload):
 		save_dirty = true
 		save_dirty_reason = "save file write failed"
@@ -333,9 +332,7 @@ func _save_payload_can_replace_existing_save(next_payload: Dictionary) -> bool:
 	if allow_next_save_progress_regression:
 		return true
 	var existing = best_dictionary_from_paths([SAVE_PATH, SAVE_TEMP_PATH, SAVE_BACKUP_PATH], host.skill_defs)
-	if _save_reset_generation(next_payload) > _save_reset_generation(existing):
-		return true
-	return not _save_payload_regresses_progress(existing, next_payload)
+	return _save_reset_generation(next_payload) > _save_reset_generation(existing) or not _save_payload_regresses_progress(existing, next_payload)
 
 
 
@@ -595,6 +592,8 @@ func _autosave_has_live_state_changes() -> bool:
 		return true
 	if host.offline_progress_enabled:
 		for raw_action in host.actions_by_skill.get("woodcutting", []):
+			if typeof(raw_action) != TYPE_DICTIONARY:
+				continue
 			var action = raw_action as Dictionary
 			if not host._passive_modules_runtime().is_passive_action(action):
 				continue
@@ -602,17 +601,9 @@ func _autosave_has_live_state_changes() -> bool:
 			if host._passive_modules_runtime().is_passive_module_unlocked(module_id):
 				return true
 	return false
-
-
-
 func _trusted_offline_seconds(saved_at_unix_time: int, now_unix_time: int) -> int:
 	var wall_elapsed = now_unix_time - saved_at_unix_time
-	if wall_elapsed <= 0:
-		return 0
-	return int(clamp(wall_elapsed, 0, host._hub_surface()._hub_offline_cap_seconds()))
-
-
-
+	return 0 if wall_elapsed <= 0 else int(clamp(wall_elapsed, 0, host._hub_surface()._hub_offline_cap_seconds()))
 func _apply_offline_progress(saved_at_unix_time: int) -> int:
 	var now = host._unix_now()
 	last_save_unix_time = now
@@ -630,8 +621,6 @@ func _apply_offline_progress(saved_at_unix_time: int) -> int:
 	_set_offline_result_text(float(offline), active_result)
 	host._achievement_overlay_surface()._maybe_show_offline_summary(float(offline), active_result)
 	return offline
-
-
 func _set_offline_result_text(offline_seconds: float, active_result: Dictionary) -> void:
 	if not bool(active_result.get("handled", false)):
 		return
@@ -640,9 +629,7 @@ func _set_offline_result_text(offline_seconds: float, active_result: Dictionary)
 	if completions <= 0:
 		host.last_result = "Away %s: %s waited for stamina." % [GameFormatting.duration(offline_seconds), action_name]
 		return
-	var parts := [
-		"Away %s: %s x%s" % [GameFormatting.duration(offline_seconds), action_name, completions]
-	]
+	var parts := ["Away %s: %s x%s" % [GameFormatting.duration(offline_seconds), action_name, completions]]
 	var xp_total := int(active_result.get("xp", 0))
 	if xp_total > 0:
 		parts.append("+%s XP" % xp_total)
@@ -660,9 +647,6 @@ func _set_offline_result_text(offline_seconds: float, active_result: Dictionary)
 	else:
 		parts.append("offline XP and mastery at %s%%" % int(round(ActionRuntime.OFFLINE_XP_MULT * 100.0)))
 	host.last_result = ", ".join(parts) + "."
-
-
-
 func load_game() -> void:
 	host.loaded_save_this_boot = false
 	pending_save_restore_data = {}
@@ -682,16 +666,12 @@ func load_game() -> void:
 	_restore_boot_render_save_fields(save_data)
 	if not host._onboarding_runtime()._onboarding_path_active() and not host.running_skill_id.is_empty() and host.skills.has(host.running_skill_id) and not host._action_data(host.running_skill_id, host.running_action_id).is_empty():
 		host.selected_skill_id = host.running_skill_id
-
-
 func _clear_pending_save_restore_work() -> void:
 	pending_save_restore_data = {}
 	pending_save_has_achievement_toast_seen_ids = false
 	pending_post_load_saved_at = -1
 	boot_post_load_simulation_scheduled = false
 	save_repaired_this_boot = false
-
-
 func _load_game_secondary_restore() -> void:
 	if pending_save_restore_data.is_empty():
 		return
@@ -807,7 +787,6 @@ func _apply_post_load_simulation() -> void:
 	host._hub_runtime().sync_trophy_level_from_thieving()
 	host._hub_surface()._validate_hub_module_positions()
 	host._hub_runtime().sync_missions()
-	host._hub_runtime().sync_trophy_level_from_thieving()
 	if not host._audio_director().music_start_chance_unlocked and host._audio_director()._saved_music_groove_floor() >= host._audio_director().MUSIC_BASE_ACTION_THRESHOLD:
 		host._audio_director().music_start_chance_unlocked = true
 	host._audio_director()._maybe_start_music_cycle_on_launch()
@@ -819,16 +798,17 @@ func _apply_post_load_simulation() -> void:
 
 
 func _boot_save_dictionary() -> Dictionary:
+	var recovery_data = _recovery_save_dictionary()
 	if FileAccess.file_exists(SAVE_PATH):
 		var save_data = load_dictionary(SAVE_PATH)
-		var recovery_data = _recovery_save_dictionary()
 		if should_replace_best_save(save_data, recovery_data, host.skill_defs):
+			push_warning("Idle Elite recovered save progress from backup storage.")
 			return {"data": recovery_data, "recovered": true}
 		if not save_data.is_empty():
 			return {"data": save_data, "recovered": false}
-	var recovered_save = _recovery_save_dictionary()
-	if not recovered_save.is_empty():
-		return {"data": recovered_save, "recovered": true}
+	if not recovery_data.is_empty():
+		push_warning("Idle Elite recovered save progress from backup storage.")
+		return {"data": recovery_data, "recovered": true}
 	var legacy_save = _legacy_desktop_save_for_recovery({})
 	return {"data": legacy_save, "recovered": not legacy_save.is_empty()}
 
@@ -844,10 +824,7 @@ func _start_new_save_file() -> void:
 
 
 func _recovery_save_dictionary() -> Dictionary:
-	var best_save = best_dictionary_from_paths([SAVE_TEMP_PATH, SAVE_BACKUP_PATH], host.skill_defs)
-	if not best_save.is_empty():
-		push_warning("Idle Elite recovered save progress from backup storage.")
-	return best_save
+	return best_dictionary_from_paths([SAVE_TEMP_PATH, SAVE_BACKUP_PATH], host.skill_defs)
 
 
 
@@ -940,8 +917,6 @@ func _repair_save_for_regular_play(data: Dictionary) -> bool:
 		repaired = true
 	return repaired
 
-
-
 func _repair_impossible_thieving_trophies(data: Dictionary) -> bool:
 	var loaded_trophies = data.get("thieving_trophies", {})
 	if typeof(loaded_trophies) != TYPE_DICTIONARY:
@@ -950,6 +925,8 @@ func _repair_impossible_thieving_trophies(data: Dictionary) -> bool:
 	var thieving_level = _saved_skill_level_for_repair(data, "thieving")
 	var repaired = false
 	for raw_heist in host.thieving_state.HEIST_DEFS:
+		if typeof(raw_heist) != TYPE_DICTIONARY:
+			continue
 		var heist = raw_heist as Dictionary
 		var heist_id = str(heist.get("id", ""))
 		if heist_id.is_empty() or not trophies.has(heist_id):
@@ -974,8 +951,6 @@ func _repair_impossible_thieving_trophies(data: Dictionary) -> bool:
 		data["thieving_trophies"] = trophies
 	return repaired
 
-
-
 func _saved_skill_level_for_repair(data: Dictionary, skill_id: String) -> int:
 	var loaded_skills = data.get("skills", {})
 	if typeof(loaded_skills) != TYPE_DICTIONARY:
@@ -988,8 +963,6 @@ func _saved_skill_level_for_repair(data: Dictionary, skill_id: String) -> int:
 		return SkillState.skill_level_for_xp(maxi(0, int(state.get("xp", 0))))
 	return clampi(int(state.get("level", 1)), 1, host.GOD_MODE_TARGET_LEVEL)
 
-
-
 func _repair_onboarding_progress_mismatch(data: Dictionary) -> bool:
 	if bool(data.get("onboarding_tutorial_complete", false)):
 		return false
@@ -997,8 +970,6 @@ func _repair_onboarding_progress_mismatch(data: Dictionary) -> bool:
 		return false
 	SaveStateNormalizers.mark_onboarding_complete(data)
 	return true
-
-
 
 func _repair_manual_activity_unlock_corruption(data: Dictionary) -> bool:
 	var raw_manual = data.get("manual_activity_unlocks", {})
@@ -1011,7 +982,7 @@ func _repair_manual_activity_unlock_corruption(data: Dictionary) -> bool:
 	var impossible_count = 0
 	var manual_count = 0
 	for raw_key in manual.keys():
-		if not bool(manual.get(raw_key, false)):
+		if manual.get(raw_key, false) != true:
 			continue
 		var key = host._activity_unlock_runtime()._canonical_manual_activity_unlock_key(str(raw_key))
 		if key.is_empty():
@@ -1038,8 +1009,6 @@ func _repair_manual_activity_unlock_corruption(data: Dictionary) -> bool:
 	data["manual_activity_unlocks"] = valid
 	return true
 
-
-
 func _action_ref_from_key(key: String) -> Dictionary:
 	var parts = key.split(":", false, 2)
 	if parts.size() < 2:
@@ -1049,12 +1018,11 @@ func _action_ref_from_key(key: String) -> Dictionary:
 	if skill_id.is_empty() or action_id.is_empty():
 		return {}
 	for raw_action in host.actions_by_skill.get(skill_id, []):
+		if typeof(raw_action) != TYPE_DICTIONARY:
+			continue
 		var action = raw_action as Dictionary
 		if str(action.get("id", "")) == action_id:
-			return {
-				"skill_id": skill_id,
-				"action": action
-			}
+			return {"skill_id": skill_id, "action": action}
 	return {}
 
 
@@ -1093,6 +1061,8 @@ func _repair_maxed_skill_progression(data: Dictionary) -> void:
 	var source = loaded_skills as Dictionary
 	var target_xp = SkillState.xp_for_level(host.GOD_MODE_TARGET_LEVEL)
 	for raw_def in host.skill_defs:
+		if typeof(raw_def) != TYPE_DICTIONARY:
+			continue
 		var skill_def = raw_def as Dictionary
 		var skill_id = str(skill_def.get("id", ""))
 		if skill_id.is_empty() or not source.has(skill_id):
@@ -1169,10 +1139,7 @@ func _save_has_unmarked_maxed_skills(data: Dictionary) -> bool:
 
 
 func _save_activity_completion_evidence(data: Dictionary) -> int:
-	return maxi(
-		maxi(0, int(data.get("activity_completion_count", 0))),
-		maxi(0, int(data.get("onboarding_starter_action_completion_count", 0)))
-	)
+	return maxi(maxi(0, int(data.get("activity_completion_count", 0))), maxi(0, int(data.get("onboarding_starter_action_completion_count", 0))))
 
 
 
@@ -1221,9 +1188,6 @@ func _restore_tip_metadata_from_save(data: Dictionary) -> void:
 	host._onboarding_runtime().silver_opportunity_tip_seen = bool(tip_metadata.get("silver_opportunity_tip_seen", false))
 	host._onboarding_runtime().silver_opportunity_tip_action_key = str(tip_metadata.get("silver_opportunity_tip_action_key", ""))
 	host._skill_detail_surface().detail_pull_recent_tip_texts = tip_metadata.get("detail_pull_recent_tip_texts", []) as Array
-
-
-
 func _onboarding_restored_completion_seen() -> bool:
 	return (
 		host._onboarding_runtime().activity_start_tip_seen
@@ -1232,9 +1196,6 @@ func _onboarding_restored_completion_seen() -> bool:
 		or host._onboarding_runtime().onboarding_explore_tip_seen
 		or host._onboarding_runtime().onboarding_tutorial_complete
 	)
-
-
-
 func _apply_onboarding_restored_completion_implications() -> void:
 	if _onboarding_restored_completion_seen():
 		host._onboarding_runtime().onboarding_fight_summary_revealed = true
@@ -1244,9 +1205,6 @@ func _apply_onboarding_restored_completion_implications() -> void:
 	if host._onboarding_runtime().onboarding_tutorial_complete or host._onboarding_runtime().skill_swipe_tip_seen:
 		host._onboarding_runtime().onboarding_swipe_tip_eligible = true
 		host._onboarding_runtime().onboarding_swipe_navigation_unlocked = true
-
-
-
 func _restore_tutorial_state_from_save(data: Dictionary) -> void:
 	if host._onboarding_runtime().onboarding_tutorial_complete:
 		host._onboarding_runtime().tutorial_active = false
@@ -1268,14 +1226,8 @@ func _restore_tutorial_state_from_save(data: Dictionary) -> void:
 		host._onboarding_runtime().onboarding_fight_action_stats_revealed = false
 	else:
 		host._onboarding_runtime().tutorial_step = clampi(int(data.get("tutorial_step", 0)), 0, 4)
-
-
-
 func _restore_tutorial_gate_latch_from_save(data: Dictionary) -> void:
 	host._onboarding_runtime().tutorial_gate_latch_only_until_swipe = false
-
-
-
 func _restore_onboarding_progression_from_save(data: Dictionary) -> void:
 	SaveStateNormalizers.mark_onboarding_complete(data)
 	host._onboarding_runtime().onboarding_starter_action_completion_count = maxi(0, int(data.get("onboarding_starter_action_completion_count", 0)))
@@ -1326,9 +1278,6 @@ func _restore_onboarding_progression_from_save(data: Dictionary) -> void:
 			host._onboarding_runtime().onboarding_swipe_tip_eligible = true
 			host._onboarding_runtime().onboarding_swipe_navigation_unlocked = true
 	_restore_tutorial_gate_latch_from_save(data)
-
-
-
 func _load_game_core(data: Dictionary) -> void:
 	save_reset_generation = _save_reset_generation(data)
 	host.selected_skill_id = str(data.get("selected_skill_id", host.selected_skill_id))
@@ -1337,20 +1286,24 @@ func _load_game_core(data: Dictionary) -> void:
 	host.action_progress = _normalized_action_progress(data.get("action_progress", 0.0))
 	var temporary_events = host._temporary_event_runtime()
 	temporary_events.event_running_skill_id = str(data.get("event_running_skill_id", ""))
-	temporary_events.event_running_action_id = str(data.get("event_running_action_id", ""))
+	temporary_events.event_running_action_id = ModuleUiRuntime.canonical_action_id(temporary_events.event_running_skill_id, str(data.get("event_running_action_id", "")), host.FISHING_ACTION_ID_ALIASES)
 	temporary_events.event_action_progress = _normalized_action_progress(data.get("event_action_progress", 0.0))
 	var loaded_skills = data.get("skills", {})
 	if typeof(loaded_skills) == TYPE_DICTIONARY:
 		for skill_id in loaded_skills.keys():
 			if host.skills.has(skill_id) and typeof(loaded_skills[skill_id]) == TYPE_DICTIONARY:
-				host.skills[skill_id]["xp"] = int(loaded_skills[skill_id].get("xp", 0))
+				host.skills[skill_id]["xp"] = maxi(0, int(loaded_skills[skill_id].get("xp", 0)))
 	var has_manual_activity_unlocks = data.has("manual_activity_unlocks")
 	host._activity_unlock_runtime()._restore_manual_activity_unlocks(data.get("manual_activity_unlocks", {}))
 	host._activity_unlock_runtime()._restore_manual_activity_requirement_unlocks(data.get("manual_activity_requirement_unlocks", {}))
 	host.built_modules = BuildableModules.restored_from_save(data.get("built_modules", {}), Callable(host, "_action_data"))
 	host._temporary_event_runtime()._restore_temporary_events_from_save(data.get("temporary_events", {}))
 	var restored_running_action = host._action_data(host.running_skill_id, host.running_action_id)
-	if not restored_running_action.is_empty() and BuildableModules.is_buildable(restored_running_action) and not BuildableModules.is_built(host.built_modules, host.running_skill_id, restored_running_action, Callable(host, "_action_key")):
+	if restored_running_action.is_empty() and (not host.running_skill_id.is_empty() or not host.running_action_id.is_empty()):
+		host.running_skill_id = ""
+		host.running_action_id = ""
+		host.action_progress = 0.0
+	elif BuildableModules.is_buildable(restored_running_action) and not BuildableModules.is_built(host.built_modules, host.running_skill_id, restored_running_action, Callable(host, "_action_key")):
 		host.running_skill_id = ""
 		host.running_action_id = ""
 		host.action_progress = 0.0
@@ -1389,11 +1342,7 @@ func _load_game_core(data: Dictionary) -> void:
 			if host.stamina_bank.has(skill_id):
 				host.stamina_bank[skill_id] = float(loaded_bank[skill_id])
 				SkillState.host_sync_stamina_bank(str(skill_id), host)
-	host.honey_stamina_seconds_remaining = clampf(
-		float(data.get("honey_stamina_seconds_remaining", 0.0)),
-		0.0,
-		SkillState.HONEY_STAMINA_SECONDS_PER_CONSUMPTION
-	)
+	host.honey_stamina_seconds_remaining = clampf(float(data.get("honey_stamina_seconds_remaining", 0.0)), 0.0, SkillState.HONEY_STAMINA_SECONDS_PER_CONSUMPTION)
 	host._fighting_runtime().restore_blue_guy_health_from_save(data)
 	host.material_runtime.legacy_softwood_amount = maxi(0, int(data.get("log_currency", host.material_runtime.legacy_softwood_amount)))
 	host.material_runtime.restore_wallet(data)
@@ -1420,10 +1369,7 @@ func _load_game_core(data: Dictionary) -> void:
 	host._audio_director().music_muted = bool(data.get("music_muted", false))
 	host._audio_director().sfx_muted = bool(data.get("sfx_muted", false))
 	host.show_stamina_decimal = bool(data.get("show_stamina_decimal", false))
-	host.offline_progress_cap_notifications_enabled = bool(data.get(
-		"offline_progress_cap_notifications_enabled",
-		data.get("notifications_enabled", false)
-	))
+	host.offline_progress_cap_notifications_enabled = bool(data.get("offline_progress_cap_notifications_enabled", data.get("notifications_enabled", false)))
 	host.dark_mode_enabled = bool(data.get("dark_mode_enabled", false))
 	host.last_result = str(data.get("last_result", host.last_result))
 	host._audio_director()._apply_audio_bus_volumes()

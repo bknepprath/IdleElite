@@ -31,9 +31,17 @@ func _run() -> void:
 		quit(1)
 		return
 	var main := packed.instantiate()
+	if main == null:
+		_write_json({"status": "failed", "error": "main scene did not instantiate"})
+		quit(1)
+		return
 	root.add_child(main)
 	OS.set_environment("IDLE_ELITE_HEADLESS_BOOT_SMOKE", "0")
-	await _wait_for_startup(main)
+	if not await _wait_for_startup(main):
+		_write_json({"status": "failed", "error": "main scene startup timed out"})
+		main.queue_free()
+		quit(1)
+		return
 	_force_level_99_fishing_state(main)
 	await _render_fishing(main)
 	await _drag_probe(main, "cold-touch-up", true, -720.0)
@@ -50,12 +58,13 @@ func _run() -> void:
 	quit(0)
 
 
-func _wait_for_startup(main: Node) -> void:
+func _wait_for_startup(main: Node) -> bool:
 	for _i in range(720):
 		if bool(main.get("startup_initialized")) and not bool(main.get("boot_detail_render_in_progress")):
 			await process_frame
-			return
+			return true
 		await process_frame
+	return false
 
 
 func _force_level_99_fishing_state(main: Node) -> void:
@@ -330,17 +339,11 @@ func _run_drag_sequence(
 
 
 func _push_pointer_press(main: Node, scroll: ScrollContainer, position: Vector2, pressed: bool, use_touch: bool) -> Dictionary:
-	if use_touch:
-		return _push_screen_touch(main, scroll, position, pressed)
-	else:
-		return _push_mouse_button(main, scroll, position, pressed)
+	return _push_screen_touch(main, scroll, position, pressed) if use_touch else _push_mouse_button(main, scroll, position, pressed)
 
 
 func _push_pointer_motion(main: Node, scroll: ScrollContainer, position: Vector2, relative: Vector2, use_touch: bool) -> Dictionary:
-	if use_touch:
-		return _push_screen_drag(main, scroll, position, relative)
-	else:
-		return _push_mouse_motion(main, scroll, position, relative)
+	return _push_screen_drag(main, scroll, position, relative) if use_touch else _push_mouse_motion(main, scroll, position, relative)
 
 
 func _push_mouse_button(main: Node, scroll: ScrollContainer, position: Vector2, pressed: bool) -> Dictionary:

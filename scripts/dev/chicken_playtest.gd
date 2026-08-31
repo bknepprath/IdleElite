@@ -176,12 +176,7 @@ func _run() -> void:
 		_fail("capture texture was missing")
 		return
 	var image := texture.get_image()
-	if image == null or image.is_empty():
-		_fail("capture image was empty")
-		return
-	var result := image.save_png(capture_path)
-	if result != OK:
-		_fail("could not save playtest capture")
+	if not _save_capture_image(image, capture_path, "capture"):
 		return
 	if capture_state == "GiantBoulderBreak" and not _assert_giant_hold_stops_fight():
 		return
@@ -231,7 +226,33 @@ func _apply_level(level: int) -> void:
 func _chicken_stage() -> Control:
 	var key := str(scene.call("_action_key", "fight", action_id))
 	var card := (scene.get("action_cards") as Dictionary).get(key, {}) as Dictionary
-	return card.get("blue_guy_chicken_stage") as Control
+	var stage := card.get("blue_guy_chicken_stage") as Control
+	return stage if stage != null and is_instance_valid(stage) else null
+
+
+func _spawn_actors(stage: Control, count: int, label: String) -> Array:
+	var actors := stage.get("chickens") as Array
+	for _attempt in range(count):
+		if actors.size() >= count:
+			return actors
+		stage.call("_spawn_chicken", actors.size())
+		actors = stage.get("chickens") as Array
+	if actors.size() < count:
+		_fail("%s actors were missing" % label)
+	return actors
+
+
+func _save_capture_image(image: Image, path: String, label: String) -> bool:
+	if image == null or image.is_empty():
+		_fail("%s image was empty" % label)
+		return false
+	if image.get_width() != 1080 or image.get_height() != 1920:
+		_fail("%s image size mismatch: %sx%s" % [label, image.get_width(), image.get_height()])
+		return false
+	if image.save_png(path) != OK:
+		_fail("could not save %s image" % label)
+		return false
+	return true
 
 
 func _build_level_controls() -> void:
@@ -320,6 +341,7 @@ func _wait_for_attack_phase(phase: String) -> void:
 		for raw_actor in stage.get("chickens") as Array:
 			if str((raw_actor as Dictionary).get("attack_phase", "")) == phase:
 				return
+	_fail("attack phase was not reached: %s" % phase)
 
 
 func _wait_for_opening_single() -> void:
@@ -328,6 +350,7 @@ func _wait_for_opening_single() -> void:
 		var stage := _chicken_stage()
 		if stage != null and int(stage.get("wave_spawned_count")) == 1 and (stage.get("chickens") as Array).size() == 1:
 			return
+	_fail("single-chicken opening was not reached")
 
 
 func _wait_for_spawn_window_end() -> void:
@@ -371,6 +394,7 @@ func _wait_for_damaged_chicken() -> void:
 			var actor := raw_actor as Dictionary
 			if float(actor.get("hp", 0.0)) > 0.0 and float(actor.get("hp", 0.0)) < float(actor.get("max_hp", 0.0)):
 				return
+	_fail("damaged chicken state was not reached")
 
 
 func _wait_for_werewolf_transform() -> void:
@@ -393,10 +417,7 @@ func _show_werewolf_scratch() -> void:
 		_fail("Werewolf claw stage was missing")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	if actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Werewolf claw")
 	var actor := actors[0] as Dictionary
 	var hero_position := stage.get("hero_pos") as Vector2
 	actor["werewolf_transformed"] = true
@@ -448,10 +469,7 @@ func _show_goblin_hit() -> void:
 		_fail("Goblin-hit stage was missing")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	if actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Goblin-hit")
 	var actor := actors[0] as Dictionary
 	var hero_position := stage.get("hero_pos") as Vector2
 	actor["attack_phase"] = "strike"
@@ -489,10 +507,7 @@ func _show_defeated_variants(dead_timer := 0.01, knock_directions: Array = []) -
 		_fail("chicken stage was missing for defeated-state capture")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	while actors.size() < 3:
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 3, "Werewolf pack")
 	actors.resize(3)
 	var variants := ["white", "gray", "black"]
 	var positions := [Vector2(0.27, 0.36), Vector2(0.73, 0.36), Vector2(0.50, 0.72)]
@@ -523,10 +538,7 @@ func _show_crowded_chickens() -> void:
 		_fail("chicken stage was missing for crowd capture")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	while actors.size() < 7:
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 7, "Goblin swarm")
 	actors.resize(7)
 	for index in range(actors.size()):
 		var actor := actors[index] as Dictionary
@@ -553,10 +565,7 @@ func _show_goblin_shield_drop() -> void:
 		_fail("fight stage was missing for shield-drop capture")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Goblin shield-drop")
 	actors.resize(1)
 	var actor := actors[0] as Dictionary
 	actor["pos"] = Vector2(0.38, 0.58)
@@ -584,10 +593,7 @@ func _show_goblin_punch_stack() -> void:
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	stage.set("hero_uppercut_cd", 999.0)
-	var actors := stage.get("chickens") as Array
-	while actors.size() < 4:
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 4, "Goblin punch-stack")
 	actors.resize(4)
 	var positions := [Vector2(0.62, 0.52), Vector2(0.63, 0.60), Vector2(0.85, 0.30), Vector2(0.36, 0.55)]
 	for index in range(actors.size()):
@@ -616,10 +622,7 @@ func _show_attack_frame_three() -> void:
 		_fail("fight stage was missing for attack-frame capture")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Attack frame")
 	actors.resize(1)
 	var actor := actors[0] as Dictionary
 	actor["pos"] = Vector2(0.38, 0.58)
@@ -645,10 +648,7 @@ func _show_death_power_comparison() -> void:
 		_fail("chicken stage was missing for death-force comparison")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	while actors.size() < 2:
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 2, "Death comparison")
 	actors.resize(2)
 	for index in range(actors.size()):
 		var actor := actors[index] as Dictionary
@@ -675,10 +675,7 @@ func _show_variant_attack_frames() -> void:
 		_fail("chicken stage was missing for variant-attack capture")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	while actors.size() < 8:
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 8, "Variant attack")
 	actors.resize(8)
 	var positions := [
 		Vector2(0.20, 0.34), Vector2(0.60, 0.34), Vector2(0.20, 0.72), Vector2(0.60, 0.72),
@@ -715,10 +712,7 @@ func _show_variant_state_frames() -> void:
 		_fail("chicken stage was missing for variant-state capture")
 		return
 	stage.set_process(false)
-	var actors := stage.get("chickens") as Array
-	while actors.size() < 6:
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 6, "Variant state")
 	actors.resize(6)
 	var positions := [
 		Vector2(0.34, 0.36), Vector2(0.50, 0.36), Vector2(0.66, 0.36),
@@ -785,8 +779,7 @@ func _show_giant_walk() -> void:
 	stage.set("elapsed_seconds", 0.0)
 	stage.set("hero_pos", Vector2(0.50, 0.78))
 	stage.set("chickens", [])
-	stage.call("_spawn_chicken", 0)
-	var actors := stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Giant walk source")
 	var source := actors[0] as Dictionary
 	actors.clear()
 	var positions := [Vector2(0.28, 0.57), Vector2(0.50, 0.57), Vector2(0.72, 0.57)]
@@ -819,10 +812,7 @@ func _show_giant_toss() -> void:
 		return
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.50, 0.55))
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Giant toss")
 	var giant := actors[0] as Dictionary
 	giant["pos"] = Vector2(0.30, 0.55)
 	giant["attack_phase"] = "windup"
@@ -851,9 +841,7 @@ func _show_giant_pair() -> void:
 	var actors := stage.get("chickens") as Array
 	actors.clear()
 	stage.set("wave_index", 2)
-	while actors.size() < 2:
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	actors = _spawn_actors(stage, 2, "Giant pair")
 	actors.resize(2)
 	var positions := [Vector2(0.34, 0.55), Vector2(0.66, 0.55)]
 	for index in range(2):
@@ -877,10 +865,7 @@ func _show_giant_stomp() -> void:
 		return
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.52, 0.55))
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Giant stomp")
 	var giant := actors[0] as Dictionary
 	giant["pos"] = Vector2(0.32, 0.55)
 	giant["render_pos"] = giant["pos"]
@@ -909,10 +894,7 @@ func _show_giant_boulder() -> void:
 	stage.set("hero_pos", Vector2(0.50, 0.55))
 	stage.set("hero_attack_cd", 999.0)
 	stage.call("_reset_giant_boulders")
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Giant boulder")
 	var giant := actors[0] as Dictionary
 	giant["pos"] = Vector2(0.27, 0.55)
 	giant["render_pos"] = giant["pos"]
@@ -924,6 +906,9 @@ func _show_giant_boulder() -> void:
 	actors = [giant]
 	stage.set("chickens", actors)
 	var boulders := stage.get("giant_boulders") as Array
+	if boulders.is_empty():
+		_fail("Giant boulder was missing")
+		return
 	var boulder := boulders[0] as Dictionary
 	boulder["state"] = "held"
 	boulder["owner_id"] = int(giant.get("id", -1))
@@ -944,10 +929,7 @@ func _show_giant_boulder_break() -> void:
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.58, 0.70))
 	stage.call("_reset_giant_boulders")
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Giant boulder-break")
 	var giant := actors[0] as Dictionary
 	giant["pos"] = Vector2(0.34, 0.53)
 	giant["render_pos"] = giant["pos"]
@@ -959,6 +941,9 @@ func _show_giant_boulder_break() -> void:
 	giant["face_right"] = true
 	stage.set("chickens", [giant])
 	var boulders := stage.get("giant_boulders") as Array
+	if boulders.is_empty():
+		_fail("Giant boulder-break boulder was missing")
+		return
 	var boulder := boulders[0] as Dictionary
 	boulder["state"] = "held"
 	boulder["owner_id"] = int(giant.get("id", -1))
@@ -979,7 +964,11 @@ func _show_giant_boulder_break() -> void:
 	if str(scene.get("running_action_id")) != action_id:
 		_fail("Giant boulder tap stopped the active fight")
 		return
-	boulder = (stage.get("giant_boulders") as Array)[0] as Dictionary
+	var destroyed_boulders := stage.get("giant_boulders") as Array
+	if destroyed_boulders.is_empty():
+		_fail("Giant boulder disappeared after tap")
+		return
+	boulder = destroyed_boulders[0] as Dictionary
 	if str(boulder.get("state", "")) != "destroyed":
 		_fail("Giant boulder tap did not reach the fight stage")
 		return
@@ -1013,10 +1002,7 @@ func _show_giant_boulder_drop() -> void:
 	stage.set("hero_facing", -1)
 	stage.set("hero_attack_timer", 0.17)
 	stage.call("_reset_giant_boulders")
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Giant boulder-drop")
 	var giant := actors[0] as Dictionary
 	giant["pos"] = Vector2(0.38, 0.53)
 	giant["render_pos"] = giant["pos"]
@@ -1030,6 +1016,9 @@ func _show_giant_boulder_drop() -> void:
 	giant["uppercut_knock_timer"] = 0.28
 	stage.set("chickens", [giant])
 	var boulders := stage.get("giant_boulders") as Array
+	if boulders.is_empty():
+		_fail("Giant boulder-drop boulder was missing")
+		return
 	var boulder := boulders[0] as Dictionary
 	boulder["state"] = "held"
 	boulder["owner_id"] = int(giant.get("id", -1))
@@ -1075,10 +1064,7 @@ func _show_giant_layer() -> void:
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.50, 0.72))
 	stage.call("_reset_giant_boulders")
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Giant layer")
 	var giant := actors[0] as Dictionary
 	giant["pos"] = Vector2(0.50, 0.10)
 	giant["render_pos"] = giant["pos"]
@@ -1106,8 +1092,7 @@ func _show_vampire_specials() -> void:
 	stage.set("vampire_bats", [])
 	stage.set("smoke_puffs", [])
 	stage.set("chickens", [])
-	stage.call("_spawn_chicken", 0)
-	var actors := stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Vampire-specials")
 	var summoner := (actors[0] as Dictionary).duplicate(true)
 	summoner["pos"] = Vector2(0.37, 0.47)
 	summoner["render_pos"] = summoner["pos"]
@@ -1122,9 +1107,10 @@ func _show_vampire_specials() -> void:
 	stage.set("chickens", [summoner])
 	stage.call("_spawn_vampire_bats", summoner)
 	var bats := stage.get("vampire_bats") as Array
-	for i in range(bats.size()):
+	var bat_positions := [Vector2(0.40, 0.43), Vector2(0.43, 0.51), Vector2(0.76, 0.43), Vector2(0.80, 0.51)]
+	for i in range(mini(bats.size(), bat_positions.size())):
 		var bat := bats[i] as Dictionary
-		bat["pos"] = [Vector2(0.40, 0.43), Vector2(0.43, 0.51), Vector2(0.76, 0.43), Vector2(0.80, 0.51)][i]
+		bat["pos"] = bat_positions[i]
 		bats[i] = bat
 	stage.set("vampire_bats", bats)
 	stage.call("_spawn_vampire_shockwave", summoner)
@@ -1157,10 +1143,7 @@ func _show_vampire_giant() -> void:
 		return
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.70, 0.60))
-	var actors := stage.get("chickens") as Array
-	if actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Vampire-giant")
 	actors.resize(1)
 	var giant := actors[0] as Dictionary
 	giant["pos"] = Vector2(0.34, 0.55)
@@ -1189,10 +1172,7 @@ func _show_cave_troll_pound() -> void:
 		return
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.52, 0.55))
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Cave Troll Pound")
 	var troll := actors[0] as Dictionary
 	troll["pos"] = Vector2(0.32, 0.55)
 	troll["render_pos"] = troll["pos"]
@@ -1221,10 +1201,7 @@ func _show_dragon_breath() -> void:
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.78, 0.55))
 	stage.set("active_effects", [])
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Dragon Breath")
 	var dragon := actors[0] as Dictionary
 	dragon["pos"] = Vector2(0.30, 0.55)
 	dragon["render_pos"] = dragon["pos"]
@@ -1258,10 +1235,7 @@ func _show_dragon_pounce() -> void:
 	stage.set("hero_hp", float(stage.call("_hero_max_hp")))
 	stage.set("hero_hurt_cooldown", 0.0)
 	stage.set("active_effects", [])
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Dragon Pounce")
 	var dragon := actors[0] as Dictionary
 	dragon["pos"] = Vector2(0.35, 0.55)
 	dragon["render_pos"] = dragon["pos"]
@@ -1290,10 +1264,7 @@ func _show_dragon_melee_aim() -> void:
 		return
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.50, 0.55))
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Dragon melee-aim")
 	var dragon := actors[0] as Dictionary
 	dragon["pos"] = Vector2(0.50, 0.25)
 	dragon["render_pos"] = dragon["pos"]
@@ -1326,10 +1297,7 @@ func _show_dragon_boundary_escape() -> void:
 		return
 	stage.set_process(false)
 	stage.set("hero_pos", Vector2(0.45, 0.55))
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", 0)
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "Dragon boundary")
 	var dragon := actors[0] as Dictionary
 	var boundary_pos := stage.call("_clamp_norm_to_arena", Vector2(0.0, 0.25)) as Vector2
 	dragon["pos"] = boundary_pos
@@ -1379,12 +1347,7 @@ func _capture_hero_ko_sequence(capture_path: String) -> void:
 			_fail("Blue Guy KO sequence capture texture was missing")
 			return
 		var image := texture.get_image()
-		if image == null or image.is_empty():
-			_fail("Blue Guy KO sequence capture image was empty")
-			return
-		var frame_path := "%s-%02d.png" % [basename, index + 1]
-		if image.save_png(frame_path) != OK:
-			_fail("could not save Blue Guy KO sequence frame")
+		if not _save_capture_image(image, "%s-%02d.png" % [basename, index + 1], "Blue Guy KO sequence frame"):
 			return
 	print("chicken-playtest-ko-sequence-ok path=%s frames=%d" % [basename, elapsed_frames.size()])
 	quit(0)
@@ -1395,10 +1358,7 @@ func _capture_rouses_roll_sequence(capture_path: String) -> void:
 	if stage == null:
 		_fail("fight stage was missing for R.O.U.S.es roll capture")
 		return
-	var actors := stage.get("chickens") as Array
-	while actors.is_empty():
-		stage.call("_spawn_chicken", actors.size())
-		actors = stage.get("chickens") as Array
+	var actors := _spawn_actors(stage, 1, "R.O.U.S.es roll")
 	actors.resize(1)
 	var actor := actors[0] as Dictionary
 	var origin := Vector2(0.32, 0.55)
@@ -1434,8 +1394,7 @@ func _capture_rouses_roll_sequence(capture_path: String) -> void:
 			await RenderingServer.frame_post_draw
 			var texture := root.get_texture()
 			var image: Image = texture.get_image() if texture != null else null
-			if image == null or image.is_empty() or image.save_png("%s-%02d.png" % [basename, capture_index + 1]) != OK:
-				_fail("could not save R.O.U.S.es roll sequence frame")
+			if not _save_capture_image(image, "%s-%02d.png" % [basename, capture_index + 1], "R.O.U.S.es roll sequence frame"):
 				return
 			capture_index += 1
 			if capture_index >= capture_frames.size():
@@ -1453,6 +1412,7 @@ func _wait_for_knocked_out() -> void:
 			for _fall_frame in range(45):
 				await process_frame
 			return
+	_fail("fight did not reach the knocked-out state")
 
 
 func _show_ko_retreat() -> void:
@@ -1466,6 +1426,9 @@ func _show_ko_retreat() -> void:
 	for lane in range(3):
 		stage.call("_spawn_chicken", lane)
 	var positions := [Vector2(0.32, 0.42), Vector2(0.68, 0.42), Vector2(0.50, 0.70)]
+	if actors.size() < positions.size():
+		_fail("KO-retreat actors were missing")
+		return
 	for index in range(actors.size()):
 		var actor := actors[index] as Dictionary
 		actor["pos"] = positions[index]
@@ -1487,8 +1450,10 @@ func _show_ko_retreat() -> void:
 
 func _show_mega_crit_feedback() -> void:
 	var stage := _chicken_stage()
-	if stage != null:
-		stage.call("set_active_fight", false)
+	if stage == null:
+		_fail("fight stage was missing for mega-crit capture")
+		return
+	stage.call("set_active_fight", false)
 	scene.call("_reward_feedback_surface").call("_clear_action_crit_tweens")
 	for _frame in range(3):
 		await process_frame

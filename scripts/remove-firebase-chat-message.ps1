@@ -35,6 +35,7 @@ $databaseUrl = ([string]$config.database_url).Trim().TrimEnd("/")
 Assert-True ($databaseUrl -cmatch $firebaseDatabaseUrlPattern) "Invalid database_url in firebase-leaderboard-config.json."
 
 $payload = ConvertFrom-Base64UrlJson -Base64Url $cleanToken.Split('.')[1]
+Assert-True ([bool]$payload.moderator) "ModeratorIdToken does not contain the moderator claim."
 $moderatorUid = [string]$payload.user_id
 if ([string]::IsNullOrWhiteSpace($moderatorUid)) {
     $moderatorUid = [string]$payload.sub

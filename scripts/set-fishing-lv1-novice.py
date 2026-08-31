@@ -3,10 +3,8 @@
 
 import json
 from pathlib import Path
-
 ROOT = Path(__file__).resolve().parents[1]
 JSON_PATH = ROOT / "docs" / "activity-database.json"
-
 NOVICE_OPENER = {
     "id": "dip-a-tidepool-minnow",
     "tier": 1,
@@ -23,25 +21,25 @@ NOVICE_OPENER = {
     "area": "beach",
     "archetype": "novice",
 }
+def main() -> None:
+    data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
+    fishing = next(s for s in data["skills"] if s["id"] == "fishing")
+    actions = [a for a in fishing["actions"] if a["id"] != "dip-a-tidepool-minnow"]
+    for action in actions:
+        if action["id"] == "drag-net-through-creek":
+            action["unlock"] = 4
+            action["tier"] = 4
+        if action["id"] == "skim-a-starlight-minnow":
+            action["archetype"] = "steady"
+            xp_val = int(action.get("rewards", {}).get("xp", action.get("xp", 48)))
+            action["rewards"] = {"xp": xp_val}
 
-data = json.loads(JSON_PATH.read_text(encoding="utf-8"))
-fishing = next(s for s in data["skills"] if s["id"] == "fishing")
+    actions.insert(0, NOVICE_OPENER.copy())
+    fishing["actions"] = actions
+    fishing["actions"].sort(key=lambda a: (int(a.get("unlock", 0)), int(a.get("tier", 0)), a.get("id", "")))
+    JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    print("Lv1 opener: dip-a-tidepool-minnow on beach; drag-net -> unlock 4")
 
-actions = [a for a in fishing["actions"] if a["id"] != "dip-a-tidepool-minnow"]
-for action in actions:
-    if action["id"] == "drag-net-through-creek":
-        action["unlock"] = 4
-        action["tier"] = 4
-    if action["id"] == "skim-a-starlight-minnow":
-        action["archetype"] = "steady"
-        xp_val = int(action.get("rewards", {}).get("xp", action.get("xp", 48)))
-        action["rewards"] = {"xp": xp_val}
 
-actions.insert(0, NOVICE_OPENER.copy())
-fishing["actions"] = actions
-
-# Sort by unlock for clean audit
-fishing["actions"].sort(key=lambda a: (int(a.get("unlock", 0)), int(a.get("tier", 0)), a.get("id", "")))
-
-JSON_PATH.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-print("Lv1 opener: dip-a-tidepool-minnow on beach; drag-net -> unlock 4")
+if __name__ == "__main__":
+    main()

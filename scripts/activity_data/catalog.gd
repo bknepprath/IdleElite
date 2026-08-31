@@ -11,6 +11,7 @@ var convergence_action_ids := []
 func load_action_data(host) -> bool:
 	actions_by_skill.clear()
 	actions_by_key.clear()
+	convergence_action_ids.clear()
 	host.fishing_area_definitions.clear()
 	host._temporary_event_runtime().event_module_defs.clear()
 	skill_defs.clear()
