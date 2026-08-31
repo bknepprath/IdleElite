@@ -6116,6 +6116,8 @@ func _attach_diamond_combat_arena_frame(pop_card: Control) -> _DiamondArenaFrame
 func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: String, action: Dictionary, is_convergence_card: bool, uses_blue_guy_chicken_brawl_stage: bool) -> Dictionary:
 	var uses_rooster_boss_stage = host._fighting_runtime().action_uses_rooster_punch_out_stage(action)
 	var uses_flat_normal_card: bool = not host._fighting_runtime().action_uses_diamond_combat_arena(action)
+	var art_path := str(action.get("art", "")).replace("\\", "/").to_lower()
+	var uses_fishing_button_art := art_path.ends_with("/fight-rat-king.png")
 	var margin := MarginContainer.new()
 	margin.set_anchors_preset(Control.PRESET_FULL_RECT)
 	margin.add_theme_constant_override("margin_left", 34 if uses_flat_normal_card else 27)
@@ -6138,21 +6140,35 @@ func _detail_action_card_body(card_root: Control, pop_card: Control, skill_id: S
 	art_slot.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	art_slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var art_panel := Panel.new()
-	var art_panel_size := Vector2(200, 200) if uses_flat_normal_card else ActionArtUi.ACTION_ART_PANEL_SIZE
+	var art_panel_size := ActionArtUi.ACTION_ART_PANEL_SIZE if uses_fishing_button_art or not uses_flat_normal_card else Vector2(200, 200)
 	art_panel.custom_minimum_size = art_panel_size
+	art_panel.size = art_panel_size
 	art_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	var art_panel_style := ActivityCardStyles.cached_action_art(Callable(host, "_surface_style"))
-	art_panel.add_theme_stylebox_override("panel", StyleBoxEmpty.new() if uses_flat_normal_card else art_panel_style)
+	art_panel.add_theme_stylebox_override("panel", art_panel_style if uses_fishing_button_art or not uses_flat_normal_card else StyleBoxEmpty.new())
 	art_panel.clip_contents = false
 	art_panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	art_slot.add_child(art_panel)
-	if uses_flat_normal_card:
+	if uses_flat_normal_card and not uses_fishing_button_art:
 		var art_face := ActionArtUi.border_overlay(art_panel_style)
 		art_face.name = "ActionArtRaisedFace"
 		art_face.z_index = 1
 		art_panel.add_child(art_face)
-	var art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
-	if uses_flat_normal_card:
+	var art: Control = null
+	if uses_fishing_button_art:
+		var rounded_art := RoundedTextureRect.new()
+		rounded_art.texture = host.visual_texture_cache._texture_or_visual_fallback(str(action.get("art", "")))
+		rounded_art.radius = 28.0
+		rounded_art.mask_inset = 6.0
+		rounded_art.aspect_mode = 2
+		rounded_art.fallback_color = Color("#224d45")
+		rounded_art.set_anchors_preset(Control.PRESET_FULL_RECT)
+		rounded_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		rounded_art.z_index = 1
+		art = rounded_art
+	else:
+		art = ActionArtUi.image(action, Callable(host.visual_texture_cache, "_texture_or_visual_fallback"), Callable(host.visual_texture_cache, "_visual_fallback_texture"), DisplayServer.get_name() == "headless")
+	if uses_flat_normal_card and not uses_fishing_button_art:
 		art.custom_minimum_size = Vector2(208, 208)
 		art.size = Vector2(208, 208)
 		art.position = Vector2(-4, -4)
@@ -6364,9 +6380,7 @@ func _detail_action_mastery_widgets(copy: VBoxContainer, art_panel: Panel, skill
 	var mastery_progress: CleanProgressBar = null
 	var mastery_ring: Control = null
 	if MasteryState.action_has_mastery(host, action):
-		var art_path := str(action.get("art", "")).replace("\\", "/").to_lower()
-		var clear_opaque_art_bounds := art_path.ends_with("/fight-rat-king.png")
-		mastery_ring = ActivityCardStyles.action_art_mastery_ring(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE), clear_opaque_art_bounds)
+		mastery_ring = ActivityCardStyles.action_art_mastery_ring(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
 		mastery_ring.z_index = 0
 		art_panel.add_child(mastery_ring)
 		medal = TextureRect.new()

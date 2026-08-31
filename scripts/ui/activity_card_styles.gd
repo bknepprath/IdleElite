@@ -825,17 +825,14 @@ static func normal_activity_card_body(radius: float, ink: Color, theme_color := 
 	return style
 
 
-static func action_art_mastery_ring(theme_color := Color("#e84d4d"), clear_opaque_art_bounds := false) -> ActionArtMasteryRing:
+static func action_art_mastery_ring(theme_color := Color("#e84d4d")) -> ActionArtMasteryRing:
 	var ring := ActionArtMasteryRing.new()
 	ring.empty_color = theme_color.darkened(0.42)
 	ring.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var outward_offset := 31.0 if clear_opaque_art_bounds else 18.0
-	ring.offset_left = -outward_offset
-	ring.offset_top = -outward_offset
-	ring.offset_right = outward_offset
-	ring.offset_bottom = outward_offset
-	if clear_opaque_art_bounds:
-		ring.radius = 42.0
+	ring.offset_left = -18.0
+	ring.offset_top = -18.0
+	ring.offset_right = 18.0
+	ring.offset_bottom = 18.0
 	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return ring
 
