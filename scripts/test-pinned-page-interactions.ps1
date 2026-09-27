@@ -974,8 +974,10 @@ func _check_pinned_active_shelf_expands(scene: Node) -> void:
 			scene.call("_action_runtime").call("_on_stamina_gauge_input", _mouse_button_event(tap_position, false), skill_id, active_gauge)
 			for _i in range(4):
 				await process_frame
-			if absf(float(SkillState.host_stamina_value(skill_id, scene)) - (before_stamina + 1.0)) > 0.001:
-				_record("active pinned shelf Gage tap did not eat one fish into stamina")
+			# Passive regen can also tick during the wait frames, so allow up to one extra point.
+			var stamina_gain := float(SkillState.host_stamina_value(skill_id, scene)) - before_stamina
+			if stamina_gain < 0.999 or stamina_gain > 2.001:
+				_record("active pinned shelf Gage tap did not eat one fish into stamina. gain=%s before=%s bank=%s" % [stamina_gain, before_stamina, str((scene.get("stamina_bank") as Dictionary).get(skill_id, 0.0))])
 			if absf(float(scene.get("fishing_runtime").get("fish_currency")) - (before_fish - 1.0)) > 0.001:
 				_record("active pinned shelf Gage tap did not spend one fish")
 	var background := _find_named_descendant(scene, "PinnedActivitiesFullBleedShelfBackground") as CanvasItem

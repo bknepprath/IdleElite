@@ -589,6 +589,9 @@ const FISHING_DETAIL_LAZY_INITIAL_FORCE_MOUNT_COUNT := 4
 const DETAIL_LAZY_BOOT_SLOT_BATCH_SIZE := 8
 const BOOT_DETAIL_COMPLETE_BUDGET_PER_FRAME := 3
 const DETAIL_LAZY_MOUNT_BUDGET_PER_FRAME := 1
+const DETAIL_HEADER_XP_SYMBOL_PATH := "res://assets/content/ui/infochip-symbol-xp-outlined.png"
+# Kept small: the XP glyph is ~60% of its texture height, so this sits just under the 40px text.
+const DETAIL_HEADER_XP_SYMBOL_SIZE := 52.0
 const DETAIL_LAZY_UNMOUNT_ENABLED := true
 const DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
 const FISHING_DETAIL_LAZY_UNMOUNT_BUFFER_PX := 180.0
@@ -3223,7 +3226,7 @@ func _consume_passive_card_progress_refresh(delta: float, instant: bool, static_
 func _update_detail_header_gauges(static_refresh: bool, skill_frame_refresh: bool, detail_header_gauge_refresh: bool, delta: float, instant: bool) -> void:
 	var detail_xp := SkillState.xp_progress(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id))
 	if static_refresh and detail_xp_label != null:
-		host._app_lifecycle_runtime().set_label_text_if_changed(detail_xp_label, SkillState.level_xp_text(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id)))
+		host._app_lifecycle_runtime().set_label_text_if_changed(detail_xp_label, _detail_header_xp_text())
 	if skill_frame_refresh and detail_xp_bar != null:
 		if static_refresh:
 			ThemeStyles.apply_xp_progress_bar_theme(detail_xp_bar, ThemeStyles.skill_theme_color(selected_skill_id, host.COLOR_BLUE), host.COLOR_INK)
@@ -3408,14 +3411,29 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 	else:
 		title_stack.add_child(title)
 	var xp = SkillState.xp_progress(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id))
-	detail_xp_label = host._label(SkillState.level_xp_text(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id)), SKILL_DETAIL_XP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
-	detail_xp_label.custom_minimum_size.x = host.SKILL_DETAIL_XP_BAR_WIDTH
-	detail_xp_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# "Lv 5   120/400" followed by a small XP symbol so the fraction reads as XP.
+	var xp_row := HBoxContainer.new()
+	xp_row.custom_minimum_size.x = host.SKILL_DETAIL_XP_BAR_WIDTH
+	xp_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+	xp_row.add_theme_constant_override("separation", 4)
+	xp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	detail_xp_label = host._label(_detail_header_xp_text(), SKILL_DETAIL_XP_FONT_SIZE, COLOR_INK, HORIZONTAL_ALIGNMENT_LEFT)
+	detail_xp_label.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	detail_xp_label.autowrap_mode = TextServer.AUTOWRAP_OFF
 	detail_xp_label.max_lines_visible = 1
 	detail_xp_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	detail_xp_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	title_stack.add_child(detail_xp_label)
+	xp_row.add_child(detail_xp_label)
+	var xp_symbol := TextureRect.new()
+	xp_symbol.custom_minimum_size = Vector2(DETAIL_HEADER_XP_SYMBOL_SIZE, DETAIL_HEADER_XP_SYMBOL_SIZE)
+	xp_symbol.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	xp_symbol.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	xp_symbol.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	xp_symbol.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
+	xp_symbol.texture = host.visual_texture_cache._texture_or_visual_fallback(DETAIL_HEADER_XP_SYMBOL_PATH)
+	xp_symbol.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	xp_row.add_child(xp_symbol)
+	title_stack.add_child(xp_row)
 	detail_xp_bar = ThemeStyles.skill_detail_xp_bar(selected_skill_id, float(xp["pct"]), host.COLOR_BLUE, host.COLOR_INK, host.SKILL_DETAIL_XP_BAR_HEIGHT, host.SKILL_DETAIL_XP_BAR_WIDTH)
 	title_stack.add_child(detail_xp_bar)
 
@@ -3615,6 +3633,12 @@ func _render_skill_detail(scroll_latest_activity = false, restore_detail_scroll 
 
 ## Frame break inside a staged page render. A neighbour page rendered beside the
 ## current one hands the real current page back while it waits for the frame.
+func _detail_header_xp_text() -> String:
+	# The XP symbol next to the label replaces the trailing " XP" word shown at level 99;
+	# the tighter gap keeps "Lv 98  1.09M/1.22M" + symbol clear of the stamina circle.
+	return SkillState.level_xp_text(host.skills, selected_skill_id, SkillState.host_skill_level(host, selected_skill_id)).trim_suffix(" XP").replace("   ", "  ")
+
+
 func _render_frame_yield() -> void:
 	var adjacent_pages = host._skill_swipe_activity_surface()._adjacent_pages()
 	if adjacent_pages.neighbour_render_active:

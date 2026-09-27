@@ -21,6 +21,10 @@ const CENTER_NUMBER_STROKE_MIN := 13
 const CENTER_DECIMAL_SUFFIX_SCALE := 0.5
 const CENTER_DECIMAL_SUFFIX_ALPHA := 0.6
 const CENTER_DENOMINATOR_Y_OFFSET := 150.0
+const DENOMINATOR_SYMBOL_PATH := "res://assets/content/ui/infochip-symbol-stamina-outlined.png"
+# Symbol box height relative to the denominator font; the bolt fills ~80% of its box.
+const DENOMINATOR_SYMBOL_SCALE := 0.95
+const DENOMINATOR_SYMBOL_GAP := 2.0
 const LIQUID_EDGE_INSET_SCALE := 2.4
 const LIQUID_EDGE_SEAL_WIDTH_SCALE := 4.8
 const THEME_COLOR_EASE_SPEED := 7.5
@@ -50,6 +54,7 @@ var regen_unfill_from_max_pending := false
 var regen_unfill_start_value := 0.0
 var regen_unfill_elapsed := 0.0
 var readout_font: Font
+static var denominator_symbol: Texture2D
 var _glass_bowl_texture: ImageTexture
 var _glass_bowl_cached_size := Vector2.ZERO
 var _pop_tween: Tween
@@ -528,7 +533,21 @@ func _draw_center_text(center: Vector2) -> void:
 	var current_stroke := maxi(CENTER_NUMBER_STROKE_MIN, int(round(CENTER_NUMBER_STROKE_SCALE * draw_scale)))
 	_draw_stroked_number_with_decimal_suffix(font, current_text, decimal_text, Vector2(center.x, current_center_y), large, Color.WHITE, current_stroke)
 	_draw_center_divider(center, divider_y, 106.0 * draw_scale, draw_scale)
-	_draw_text_centered(font, small_text, Vector2(center.x, max_center_y), small, _readout_denominator_color())
+	_draw_denominator_with_symbol(font, small_text, Vector2(center.x, max_center_y), small, draw_scale)
+
+# Max stamina with a small bolt after it, centred together, so the fraction reads as stamina.
+func _draw_denominator_with_symbol(font: Font, text: String, center: Vector2, font_size: int, draw_scale: float) -> void:
+	if denominator_symbol == null and ResourceLoader.exists(DENOMINATOR_SYMBOL_PATH):
+		denominator_symbol = load(DENOMINATOR_SYMBOL_PATH) as Texture2D
+	if denominator_symbol == null:
+		_draw_text_centered(font, text, center, font_size, _readout_denominator_color())
+		return
+	var symbol_size := float(font_size) * DENOMINATOR_SYMBOL_SCALE
+	var gap := DENOMINATOR_SYMBOL_GAP * draw_scale
+	var text_width := font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x
+	var left := center.x - (text_width + gap + symbol_size) * 0.5
+	_draw_text_centered(font, text, Vector2(left + text_width * 0.5, center.y), font_size, _readout_denominator_color())
+	draw_texture_rect(denominator_symbol, Rect2(Vector2(left + text_width + gap, center.y - symbol_size * 0.5), Vector2(symbol_size, symbol_size)), false)
 
 func _readout_denominator_color() -> Color:
 	return Color.WHITE if dark_mode else Color(0, 0, 0, 0.8)
