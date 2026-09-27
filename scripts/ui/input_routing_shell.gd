@@ -53,21 +53,9 @@ func _passive_button_event_position(event: InputEvent, source: Control) -> Vecto
 
 
 func _activity_input_position_candidates(event_position: Vector2) -> Array[Vector2]:
-	var positions: Array[Vector2] = []
-	_add_unique_event_position(positions, event_position)
-	var window_size := Vector2.ZERO
-	if DisplayServer.get_name() != "headless":
-		window_size = Vector2(DisplayServer.window_get_size())
-	if window_size.x > 1.0 and window_size.y > 1.0:
-		_add_unique_event_position(positions, event_position * (host.BASE_CANVAS.x / window_size.x))
-		_add_unique_event_position(positions, event_position * (host.BASE_CANVAS.y / window_size.y))
-		_add_unique_event_position(positions, Vector2(event_position.x * host.BASE_CANVAS.x / window_size.x, event_position.y * host.BASE_CANVAS.y / window_size.y))
-	if host.is_inside_tree():
-		var visible_size: Vector2 = host.get_viewport_rect().size
-		if visible_size.x > 1.0 and visible_size.y > 1.0:
-			_add_unique_event_position(positions, event_position * (host.BASE_CANVAS.x / visible_size.x))
-			_add_unique_event_position(positions, event_position * (host.BASE_CANVAS.y / visible_size.y))
-	return positions
+	# _input events already use viewport coordinates, including viewport stretch.
+	# Guessing window-scaled alternatives makes unrelated controls steal taps.
+	return [event_position]
 
 
 func _action_card_event_positions(event: InputEvent, source: Control) -> Array[Vector2]:
@@ -256,6 +244,10 @@ static func event_is_outside_panel_press(event: InputEvent, panel: Control) -> b
 
 
 func input(event: InputEvent) -> void:
+	# Let Godot's GUI handle synthesized pointer events. Custom gesture routing
+	# must not treat the emulated copy as another player gesture.
+	if event.device == InputEvent.DEVICE_ID_EMULATION and _fishing_detail_input_context_active():
+		return
 	if host._material_collection_surface().route_berry_mode_leave_button_input(event):
 		host.get_viewport().set_input_as_handled()
 		return
@@ -303,8 +295,6 @@ func _fishing_detail_scroll_container_should_own_event(event: InputEvent) -> boo
 	if _position_inside_bottom_interactive_ui(event_position):
 		return false
 	if host._navigation_shell().page_switch_press_active or host.module_ui_runtime.pin_press_active() or host._action_stop_hold().active():
-		return false
-	if host._fishing_ui_surface().has_active_fishing_button_press():
 		return false
 	if host._skill_swipe_activity_surface().skill_swipe_tracking and host._skill_swipe_activity_surface().skill_swipe_horizontal:
 		return false
@@ -420,8 +410,6 @@ func _fishing_detail_primary_press_should_defer_tap_scan(event: InputEvent) -> b
 		return false
 	if host._navigation_shell().page_switch_press_active or host.module_ui_runtime.pin_press_active() or host._action_stop_hold().active():
 		return false
-	if host._fishing_ui_surface().has_active_fishing_button_press():
-		return false
 	if host._skill_swipe_activity_surface().skill_swipe_tracking or host._skill_swipe_activity_surface().skill_swipe_animating:
 		return false
 	var event_position := _fishing_detail_event_position(event)
@@ -493,17 +481,7 @@ func _route_fishing_detail_deferred_swipe_input(event: InputEvent) -> bool:
 		event_position = touch_event.position
 		is_release = not touch_event.pressed
 	if is_release:
-		var press_position := fishing_detail_swipe_press_position
-		var touch_index := fishing_detail_swipe_press_touch_index
 		_clear_fishing_detail_deferred_swipe()
-		if (
-			event_position != Vector2.INF
-			and event_position.distance_to(press_position) <= host.PASSIVE_BUTTON_TAP_RELEASE_SLOP
-			and _position_inside_detail_actions_viewport(event_position)
-			and not _position_inside_bottom_interactive_ui(event_position)
-			and not host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action()
-		):
-			return _route_fishing_detail_deferred_tap_release(event_position, touch_index)
 		return false
 	if not is_motion or event_position == Vector2.INF:
 		return false
@@ -525,47 +503,6 @@ func _route_fishing_detail_deferred_swipe_input(event: InputEvent) -> bool:
 	if host._skill_swipe_activity_surface().skill_swipe_tracking:
 		host._skill_swipe_activity_surface()._update_skill_swipe_feedback(event_position)
 	return true
-
-
-func _route_fishing_detail_deferred_tap_release(event_position: Vector2, touch_index := -1) -> bool:
-	if host.current_screen != "skill" or host.selected_skill_id != "fishing":
-		return false
-	if event_position == Vector2.INF:
-		return false
-	if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
-		return false
-	if _route_fishing_method_lock_tap_at_position(event_position):
-		return true
-	var offer_button: Button = host._fishing_ui_surface()._fishing_offer_button_hit(event_position, true)
-	if offer_button != null:
-		host._fishing_ui_surface()._activate_fishing_offer_button(str(offer_button.get_meta("fishing_offer_id", "")), offer_button)
-		return true
-	var method_hit: Dictionary = host._fishing_ui_surface()._fishing_method_button_hit(event_position, true)
-	if not method_hit.is_empty():
-		var method_card := method_hit.get("method_card", {}) as Dictionary
-		if method_card.is_empty():
-			return false
-		var skill_id := str(method_card.get("skill_id", "fishing"))
-		var action_id := str(method_card.get("action_id", ""))
-		var owner_area_card := method_hit.get("owner_area_card", {}) as Dictionary
-		var owner_pop := owner_area_card.get("pop", null) as Control
-		var owner_area_pop_instance_id := owner_pop.get_instance_id() if owner_pop != null and is_instance_valid(owner_pop) else 0
-		if owner_area_pop_instance_id == 0:
-			owner_area_pop_instance_id = int(method_hit.get("owner_pop_instance_id", 0))
-		if host.queue_selection_mode:
-			if owner_area_card.is_empty():
-				host._skill_swipe_activity_surface()._queue_selection_toggle_from_card(method_card)
-			else:
-				host._skill_swipe_activity_surface()._queue_selection_toggle_from_card(owner_area_card)
-			return true
-		if host.current_screen == "queue":
-			var module_key: String = host._skill_swipe_activity_surface()._activity_queue_module_key_for_card(owner_area_card if not owner_area_card.is_empty() else method_card)
-			if not module_key.is_empty():
-				host._activity_queue_runtime()._start_activity_queue_from_key(module_key)
-				return true
-		host._fishing_ui_surface()._on_fishing_method_pressed(skill_id, action_id, str(method_card.get("fishing_area_key", "")), owner_area_pop_instance_id)
-		return true
-	return false
 
 
 func _try_handoff_fishing_deferred_vertical_scroll(event: InputEvent, event_position: Vector2) -> bool:
@@ -606,12 +543,6 @@ func _route_input_fishing_preflight(event: InputEvent, fishing_input_trace: bool
 	host._audio_director().note_player_input(event)
 	host._fishing_ui_surface()._trace_fishing_input_duration("input_note_player", fishing_input_step_started_usec, event)
 	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
-	if host._fishing_ui_surface()._route_fishing_wallet_unhandled_input(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("input_fishing_wallet_early", fishing_input_step_started_usec, event)
-		host.get_viewport().set_input_as_handled()
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("input_fishing_wallet_early", fishing_input_step_started_usec, event)
-	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
 	_update_fishing_detail_primary_pointer_down(event)
 	host._fishing_ui_surface()._trace_fishing_input_duration("input_primary_pointer_down", fishing_input_step_started_usec, event)
 	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
@@ -633,12 +564,6 @@ func _route_input_fishing_preflight(event: InputEvent, fishing_input_trace: bool
 		return true
 	host._fishing_ui_surface()._trace_fishing_input_duration("input_detail_jump_arrow_early", fishing_input_step_started_usec, event)
 	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
-	if _route_active_fishing_control_drag_handoff(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("input_active_fishing_control_early", fishing_input_step_started_usec, event)
-		host.get_viewport().set_input_as_handled()
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("input_active_fishing_control_early", fishing_input_step_started_usec, event)
-	fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
 	if _route_fishing_detail_deferred_swipe_input(event):
 		host._fishing_ui_surface()._trace_fishing_input_duration("input_deferred_swipe_early", fishing_input_step_started_usec, event)
 		host.get_viewport().set_input_as_handled()
@@ -656,7 +581,6 @@ func _route_input_fishing_preflight(event: InputEvent, fishing_input_trace: bool
 		fishing_input_step_started_usec = Time.get_ticks_usec() if fishing_input_trace else 0
 		_begin_fishing_detail_deferred_swipe_if_press(event)
 		host._fishing_ui_surface()._trace_fishing_input_duration("input_defer_swipe_begin", fishing_input_step_started_usec, event)
-		host.get_viewport().set_input_as_handled()
 		host._fishing_ui_surface()._trace_fishing_input_duration("input_total_defer_return", fishing_input_total_started_usec, event)
 		return true
 	host._fishing_ui_surface()._trace_fishing_input_duration("input_defer_tap_check_false", fishing_input_step_started_usec, event)
@@ -676,9 +600,6 @@ func _input_primary_press_started_on_button(event: InputEvent) -> bool:
 
 func _route_input_top_level_controls(event: InputEvent, press_started_on_button: bool) -> bool:
 	if host.button_press_runtime._input_event_releases_primary_pointer(event):
-		if host._fishing_ui_surface().has_active_fishing_method_press() and host._fishing_ui_surface()._route_fishing_method_button_global_input(event):
-			host.get_viewport().set_input_as_handled()
-			return true
 		host.button_press_runtime.release_all_depressed_buttons()
 		host._skill_swipe_activity_surface().release_all_depressed_activity_shell_buttons()
 	elif event is InputEventMouseMotion or event is InputEventScreenDrag:
@@ -826,27 +747,19 @@ func _route_input_activity_surface(event: InputEvent, press_started_on_button: b
 		return true
 	if host._navigation_shell()._event_points_inside_bottom_nav(event):
 		host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
-		host._fishing_ui_surface()._clear_active_fishing_method_button_press()
 		host._skill_detail_surface().action_card_press_key = ""
 		return true
 	if _event_points_inside_bottom_interactive_ui(event):
 		host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
-		host._fishing_ui_surface()._clear_active_fishing_method_button_press()
 		host._skill_detail_surface().action_card_press_key = ""
 		return true
 	if host._action_stop_hold().route_input(event):
-		host.get_viewport().set_input_as_handled()
-		return true
-	if _route_fishing_method_lock_input(event):
 		host.get_viewport().set_input_as_handled()
 		return true
 	if _route_activity_lock_input(event):
 		host.get_viewport().set_input_as_handled()
 		return true
 	if host._skill_detail_surface()._route_detail_back_button_input(event):
-		host.get_viewport().set_input_as_handled()
-		return true
-	if host._fishing_ui_surface()._route_fishing_active_tool_input(event):
 		host.get_viewport().set_input_as_handled()
 		return true
 	host._skill_detail_surface()._hide_skill_header_info_on_outside_press(event)
@@ -974,78 +887,6 @@ func _modal_blocks_background_input() -> bool:
 
 func _block_background_input_briefly(duration_msec := 180) -> void:
 	modal_background_input_block_until_msec = maxi(modal_background_input_block_until_msec, Time.get_ticks_msec() + duration_msec)
-
-
-func _route_fishing_method_lock_input(event: InputEvent) -> bool:
-	if host.current_screen == "skill" and host.selected_skill_id != "fishing":
-		return false
-	if host.current_screen != "skill" and host.current_screen != "pinned":
-		return false
-	var event_position = Vector2.ZERO
-	var is_press = false
-	if event is InputEventMouseButton:
-		var mouse_event = event as InputEventMouseButton
-		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
-			return false
-		event_position = mouse_event.global_position
-		is_press = mouse_event.pressed
-	elif event is InputEventScreenTouch:
-		var touch_event = event as InputEventScreenTouch
-		event_position = touch_event.position
-		is_press = touch_event.pressed
-	else:
-		return false
-	if not is_press:
-		return false
-	if not _event_points_inside_detail_actions_viewport(event):
-		return false
-	return _route_fishing_method_lock_tap_at_position(event_position)
-
-
-func _route_fishing_method_lock_tap_at_position(event_position: Vector2) -> bool:
-	var method_cards: Array = []
-	for raw_card in host.action_cards.values():
-		if typeof(raw_card) != TYPE_DICTIONARY:
-			continue
-		var card = raw_card as Dictionary
-		if bool(card.get("is_fishing_method", false)):
-			method_cards.append(card)
-		if bool(card.get("is_fishing_area", false)):
-			for raw_method_card in (card.get("method_slots", {}) as Dictionary).values():
-				if typeof(raw_method_card) == TYPE_DICTIONARY:
-					method_cards.append(raw_method_card as Dictionary)
-	for raw_method_card in method_cards:
-		var card = raw_method_card as Dictionary
-		if card.is_empty() or not bool(card.get("is_fishing_method", false)):
-			continue
-		var action_id = str(card.get("action_id", ""))
-		var skill_id = str(card.get("skill_id", "fishing"))
-		var action = host._action_data(skill_id, action_id)
-		var locked_method = action.is_empty() or not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action) or bool(card.get("unlock_ready_pending", false))
-		if not locked_method:
-			continue
-		var lock_root = host._app_lifecycle_runtime().valid_control_ref(card.get("lock_root"))
-		var hit_control = lock_root
-		if hit_control == null:
-			hit_control = host._app_lifecycle_runtime().valid_control_ref(card.get("art_panel"))
-		if hit_control == null:
-			continue
-		if not hit_control.visible or not hit_control.is_visible_in_tree():
-			continue
-		var hit_rect = hit_control.get_global_rect().grow(28.0)
-		var padlock_hit_area = host._app_lifecycle_runtime().valid_control_ref(lock_root.get_meta("padlock_button")) if lock_root != null else null
-		if padlock_hit_area != null and padlock_hit_area.is_visible_in_tree():
-			hit_rect = padlock_hit_area.get_global_rect().grow(32.0)
-		if not hit_rect.has_point(event_position):
-			continue
-		host._skill_swipe_activity_surface()._cancel_skill_swipe_feedback(false)
-		host._skill_detail_surface().action_card_press_key = ""
-		host._skill_detail_surface().action_card_press_stat_kind = ""
-		host._skill_detail_surface().action_card_press_dragged = false
-		var shake_body = host._app_lifecycle_runtime().valid_control_ref(lock_root.get_meta("padlock_shake_body")) if lock_root != null else null
-		host._fishing_ui_surface()._on_fishing_method_lock_pressed(skill_id, action_id, shake_body)
-		return true
-	return false
 
 
 func _route_activity_lock_input(event: InputEvent) -> bool:
@@ -1280,11 +1121,6 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		return false
 	if host._skill_swipe_activity_surface().skill_swipe_tracking and host._skill_swipe_activity_surface().skill_swipe_horizontal:
 		return false
-	var active_control_drag_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if _route_active_fishing_control_drag_handoff(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_active_control_drag", active_control_drag_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_active_control_drag", active_control_drag_usec, event)
 	var deferred_handoff_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
 	if _try_handoff_fishing_deferred_vertical_scroll(event, event_position):
 		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_deferred_handoff", deferred_handoff_usec, event)
@@ -1305,20 +1141,6 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		return true
 	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_queue", route_step_usec, event)
 	route_step_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if host._fishing_ui_surface()._route_fishing_offer_button_global_input(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_offer", route_step_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_offer", route_step_usec, event)
-	route_step_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if host._fishing_ui_surface()._route_fishing_location_image_priority_press(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_location_priority", route_step_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_location_priority", route_step_usec, event)
-	route_step_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if host._fishing_ui_surface()._route_fishing_method_button_global_input(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_method", route_step_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_method", route_step_usec, event)
 	if page_switch_button != null:
 		return false
 	if host.current_screen == "pinned" or host.current_screen == "queue":
@@ -1326,11 +1148,6 @@ func _route_fishing_detail_input(event: InputEvent) -> bool:
 		if not action_hit.is_empty() and ModuleUiRuntime.belongs_to_skill(str(action_hit.get("module_key", "")), "fishing"):
 			if host._skill_detail_surface()._route_module_action_zone_input(event):
 				return true
-	route_step_usec = Time.get_ticks_usec() if host._fishing_ui_surface()._fishing_input_trace_enabled() else 0
-	if host._fishing_ui_surface()._route_fishing_active_tool_input(event):
-		host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_active_tool", route_step_usec, event)
-		return true
-	host._fishing_ui_surface()._trace_fishing_input_duration("fishing_route_active_tool", route_step_usec, event)
 	return false
 
 
@@ -1392,6 +1209,9 @@ func _route_fishing_area_queue_selection_input(event: InputEvent) -> bool:
 	else:
 		return false
 	if is_press:
+		# Method buttons own their clicks and remember the selected fishing location.
+		if not host._fishing_ui_surface()._fishing_method_button_hit(event_position).is_empty():
+			return false
 		if _position_inside_bottom_interactive_ui(event_position) or not _position_inside_detail_actions_viewport(event_position):
 			return false
 		var area_card := _fishing_area_card_at_position(event_position)
@@ -1423,16 +1243,6 @@ func _route_fishing_area_queue_selection_input(event: InputEvent) -> bool:
 	return false
 
 
-func _route_active_fishing_control_drag_handoff(event: InputEvent) -> bool:
-	if not (event is InputEventMouseMotion or event is InputEventScreenDrag):
-		return false
-	if host._fishing_ui_surface().has_active_fishing_method_press():
-		return host._fishing_ui_surface()._route_fishing_method_button_global_input(event)
-	if host._fishing_ui_surface().has_active_fishing_offer_press():
-		return host._fishing_ui_surface()._route_fishing_offer_button_global_input(event)
-	return false
-
-
 func _fishing_detail_plain_scroll_motion_can_skip_global_hit_tests(event: InputEvent, event_position: Vector2) -> bool:
 	if not (event is InputEventMouseMotion or event is InputEventScreenDrag):
 		return false
@@ -1442,8 +1252,6 @@ func _fishing_detail_plain_scroll_motion_can_skip_global_hit_tests(event: InputE
 		return false
 	if host._navigation_shell().page_switch_press_active or host.module_ui_runtime.pin_press_active() or host._action_stop_hold().active():
 		return false
-	if host._fishing_ui_surface().has_active_fishing_button_press():
-		return false
 	if host._skill_swipe_activity_surface().skill_swipe_tracking:
 		return false
 	return true
@@ -1452,8 +1260,6 @@ func _fishing_detail_plain_scroll_motion_can_skip_global_hit_tests(event: InputE
 func _pinned_fishing_detail_event_relevant(event_position: Vector2) -> bool:
 	if host.module_ui_runtime.pin_press_active():
 		return ModuleUiRuntime.belongs_to_skill(host.module_ui_runtime.pin_press_module_key(), "fishing")
-	if not host._fishing_ui_surface()._active_fishing_method_button_hit().is_empty() or host._fishing_ui_surface()._active_fishing_offer_button() != null:
-		return true
 	if event_position == Vector2.INF:
 		return false
 	if not host._skill_detail_surface()._fishing_area_pin_corner_hit(event_position).is_empty():
@@ -1461,9 +1267,7 @@ func _pinned_fishing_detail_event_relevant(event_position: Vector2) -> bool:
 	var action_hit = host._skill_detail_surface()._module_action_circle_at_direct_position(event_position)
 	if not action_hit.is_empty() and ModuleUiRuntime.belongs_to_skill(str(action_hit.get("module_key", "")), "fishing"):
 		return true
-	if not host._fishing_ui_surface()._fishing_method_button_hit(event_position, true).is_empty():
-		return true
-	if host._fishing_ui_surface()._fishing_offer_button_hit(event_position, true) != null:
+	if not host._fishing_ui_surface()._fishing_method_button_hit(event_position).is_empty():
 		return true
 	return false
 
@@ -1719,9 +1523,12 @@ func _route_page_switch_button_global_input(event: InputEvent) -> bool:
 
 
 func _page_switch_button_at_position(event_position: Vector2) -> Button:
+	var button := _page_switch_button_control_at_position(event_position)
+	if button == null:
+		return null
 	if not _action_card_at_position(event_position).is_empty():
 		return null
-	return _page_switch_button_control_at_position(event_position)
+	return button
 
 
 func _page_switch_button_control_at_position(event_position: Vector2) -> Button:

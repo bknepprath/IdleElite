@@ -461,7 +461,7 @@ func _repair_blank_detail_lazy_stack() -> bool:
 	return host._skill_detail_surface()._repair_blank_detail_lazy_stack()
 
 func _find_named_control_descendant(root: Node, control_name: String) -> Control:
-	return host._find_named_control_descendant(root, control_name)
+	return host._skill_detail_surface()._find_named_control_descendant(root, control_name)
 
 func _complete_passive_module_tip_page_visit(skill_id := selected_skill_id) -> void:
 	host._onboarding_runtime()._complete_passive_module_tip_page_visit(skill_id)
@@ -516,10 +516,8 @@ func _apply_skills_content_layout_for_screen() -> void:
 	host._navigation_shell()._apply_skills_content_layout_for_screen()
 
 func _request_swipe_resume_scroll() -> void:
-	# Swiping between skill detail pages should leave the incoming page at the
-	# viewport chosen by the gesture/finalize handoff. Direct navigation paths
-	# still opt into resume scrolling through _render_skill_detail.
-	skill_swipe_pending_resume_scroll_skill_id = ""
+	skill_swipe_pending_resume_scroll_skill_id = selected_skill_id
+
 
 func _apply_pending_swipe_resume_scroll(expected_skill_id: String = "") -> void:
 	var target_skill_id := expected_skill_id if not expected_skill_id.is_empty() else skill_swipe_pending_resume_scroll_skill_id
@@ -531,7 +529,7 @@ func _apply_pending_swipe_resume_scroll(expected_skill_id: String = "") -> void:
 		call_deferred("_apply_pending_swipe_resume_scroll", target_skill_id)
 		return
 	skill_swipe_pending_resume_scroll_skill_id = ""
-	await host._skill_detail_surface()._scroll_to_resume_activity(false)
+	await host._skill_detail_surface()._scroll_to_latest_unlocked_activity(false)
 
 func _reset_skill_swipe_entry_positions() -> void:
 	_restore_skill_strip_wrap_page()
@@ -626,7 +624,6 @@ func _begin_skill_swipe_tracking(pointer_position: Vector2, touch_index: int) ->
 	skill_swipe_drag_base_x = _current_skill_swipe_page_x()
 	skill_swipe_touch_index = touch_index
 	_set_skill_strip_committed_crossfade(false)
-	_skill_detail_surface()._queue_skill_detail_and_swipe_texture_prewarm(selected_skill_id)
 	_sync_skill_strip_page_visibility(true)
 
 
@@ -700,6 +697,7 @@ func _update_skill_swipe_feedback(pointer_position: Vector2) -> void:
 		if abs_x < abs_y * 1.25:
 			return
 		skill_swipe_horizontal = true
+		_skill_detail_surface()._queue_skill_detail_and_swipe_texture_prewarm(selected_skill_id)
 		return
 	if skill_swipe_horizontal:
 		_suppress_skill_swipe_action_click()
@@ -2349,8 +2347,13 @@ func _skill_swipe_install_target_page(target_key: String, incoming_preview: Dict
 	_navigation_shell()._reset_page_control_refs()
 	_clear_skills_content_orphans()
 	var defer_initial_mount := _skill_swipe_handoff_cover_is_opaque_cream_transition()
+	var target_skill_id := selected_skill_id
 	skill_swipe_defer_initial_lazy_mount = defer_initial_mount
 	await _skill_detail_surface()._render_skill_detail(false, -1)
+	if defer_initial_mount:
+		await get_tree().process_frame
+		if current_screen != "skill" or selected_skill_id != target_skill_id:
+			return
 	_normalize_skill_detail_page_layout()
 	if defer_initial_mount:
 		_force_skill_detail_reveal_mount_under_cover()
@@ -2525,6 +2528,9 @@ func _promote_heist_swipe_preview_card(card: Dictionary, heist_id: String) -> vo
 
 
 func _attach_swipe_preview_activity_button(card: Dictionary, skill_id: String, action_id: String, pop_card: Control) -> void:
+	# Passive modules own their controls; a full-card activity button intercepts them.
+	if bool(card.get("passive", false)):
+		return
 	if card.get("button") != null:
 		var existing := card.get("button") as Button
 		if existing != null and is_instance_valid(existing):
@@ -2566,6 +2572,9 @@ func _promote_passive_swipe_preview_card(card: Dictionary, skill_id: String) -> 
 	if loot != null and is_instance_valid(loot):
 		loot.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var collect_button := card.get("button") as Button
+	var firepit_toggle := card.get("toggle") as Button
+	if bool(card.get("firepit", false)) and firepit_toggle != null and is_instance_valid(firepit_toggle):
+		_passive_firepit_surface()._connect_firepit_toggle_button(firepit_toggle, module_id)
 	if collect_button != null and is_instance_valid(collect_button):
 		collect_button.mouse_filter = Control.MOUSE_FILTER_STOP
 		collect_button.gui_input.connect(_passive_firepit_surface()._on_passive_module_button_input.bind("collect", module_id, "", null, collect_button))
@@ -2632,10 +2641,10 @@ func _promote_fishing_swipe_preview(preview_state: Dictionary) -> void:
 func _enable_interactive_control_tree(root: Control) -> void:
 	if root == null or not is_instance_valid(root):
 		return
-	if root is Button:
-		root.mouse_filter = Control.MOUSE_FILTER_STOP
-	elif root.mouse_filter == Control.MOUSE_FILTER_IGNORE:
-		root.mouse_filter = Control.MOUSE_FILTER_PASS
+	# Restore authored input behavior; decorative layers must remain transparent to taps.
+	if root.has_meta("preview_original_mouse_filter"):
+		root.mouse_filter = int(root.get_meta("preview_original_mouse_filter"))
+		root.remove_meta("preview_original_mouse_filter")
 	for child in root.get_children():
 		var child_control := child as Control
 		if child_control != null:
@@ -2759,10 +2768,6 @@ func _navigate_skill_strip(offset: int, entry_x: float, animate_entry: bool, pla
 		skill_swipe_tween.finished.connect(_complete_skill_swipe_navigation)
 	else:
 		_complete_skill_swipe_navigation()
-
-func _skill_swipe_preview_fade_progress(abs_x: float) -> float:
-	var t := clampf(abs_x / maxf(1.0, host.SKILL_SWIPE_PREVIEW_FADE_DISTANCE), 0.0, 1.0)
-	return t * t * (3.0 - 2.0 * t)
 
 func _skill_swipe_paper_fade_progress(abs_x: float) -> float:
 	var t := clampf(abs_x / maxf(1.0, host.SKILL_SWIPE_PAPER_FADE_DISTANCE), 0.0, 1.0)
@@ -3035,10 +3040,6 @@ func _active_preview_offset() -> int:
 func _set_active_preview(page: Control, offset: int) -> void:
 	preview_page = page
 	preview_offset = offset
-
-func _cancel_preview_prewarm() -> void:
-	return
-
 
 func _clear_light_preview_style_cache() -> void:
 	light_preview_card_style_cache.clear()
@@ -3768,6 +3769,7 @@ func _render_activity_queue_page() -> void:
 	var page = VBoxContainer.new()
 	page.name = "ActivityQueuePage"
 	page.set_anchors_preset(Control.PRESET_FULL_RECT)
+	page.offset_bottom = -host._navigation_shell().MODULE_UTILITY_ROW_HEIGHT - host._navigation_shell().MODULE_UTILITY_ROW_GAP
 	page.custom_minimum_size.x = content_width
 	page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	page.add_theme_constant_override("separation", 0)
@@ -4032,6 +4034,13 @@ func _sync_queue_selection_banner() -> void:
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(title)
+	var done := Button.new()
+	done.name = "FinishQueueSelectionButton"
+	done.text = "Done"
+	done.custom_minimum_size = Vector2(200, 60)
+	done.add_theme_font_size_override("font_size", 52)
+	done.pressed.connect(_finish_queue_selection_mode)
+	row.add_child(done)
 
 
 func _refresh_activity_queue_visuals() -> void:
@@ -4520,7 +4529,8 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 	var unlocked = host._activity_unlock_runtime()._is_action_unlocked(skill_id, action)
 	if not unlocked or host._skill_detail_surface()._action_info_chips_blocked_by_lock(card):
 		return
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+	if event is InputEventScreenTouch or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT):
+		var pointer_index = event.index if event is InputEventScreenTouch else -1
 		var event_positions = host._input_routing_shell()._action_card_event_positions(event, source)
 		if not host._input_routing_shell()._positions_inside_detail_actions_viewport(event_positions):
 			if not event.pressed and host._skill_detail_surface().action_card_press_key == key:
@@ -4534,7 +4544,7 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 			if stat_kind.is_empty() and _action_card_medal_hit_from_positions(card, event_positions):
 				stat_kind = host.ACTION_CARD_MEDAL_PRESS_KIND
 			if not stat_kind.is_empty() and stat_kind != host.ACTION_CARD_MEDAL_PRESS_KIND:
-				host._skill_detail_surface()._begin_activity_stat_hold(card, skill_id, action_id, stat_kind, host._input_routing_shell()._first_event_position(event_positions), -1)
+				host._skill_detail_surface()._begin_activity_stat_hold(card, skill_id, action_id, stat_kind, host._input_routing_shell()._first_event_position(event_positions), pointer_index)
 				host.get_viewport().set_input_as_handled()
 				return
 			if stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
@@ -4579,74 +4589,10 @@ func _on_action_card_input(event: InputEvent, skill_id: String, action_id: Strin
 			if skill_swipe_tracking:
 				_route_skill_swipe_button_input(event, source)
 			host.get_viewport().set_input_as_handled()
-	elif event is InputEventMouseMotion:
+	elif event is InputEventMouseMotion or event is InputEventScreenDrag:
 		if skill_swipe_tracking:
 			_route_skill_swipe_button_input(event, source)
 			host.get_viewport().set_input_as_handled()
-	elif event is InputEventScreenTouch:
-		var event_positions = host._input_routing_shell()._action_card_event_positions(event, source)
-		if not host._input_routing_shell()._positions_inside_detail_actions_viewport(event_positions):
-			if not event.pressed and host._skill_detail_surface().action_card_press_key == key:
-				host._skill_detail_surface().action_card_press_key = ""
-				host._skill_detail_surface().action_card_press_stat_kind = ""
-				host._skill_detail_surface().action_card_press_dragged = false
-				_release_action_card_3d_press(key)
-			return
-		if event.pressed:
-			var stat_kind = host._skill_detail_surface()._activity_stat_kind_from_positions(card, event_positions)
-			if stat_kind.is_empty() and _action_card_medal_hit_from_positions(card, event_positions):
-				stat_kind = host.ACTION_CARD_MEDAL_PRESS_KIND
-			if not stat_kind.is_empty() and stat_kind != host.ACTION_CARD_MEDAL_PRESS_KIND:
-				host._skill_detail_surface()._begin_activity_stat_hold(card, skill_id, action_id, stat_kind, host._input_routing_shell()._first_event_position(event_positions), event.index)
-				host.get_viewport().set_input_as_handled()
-				return
-			if stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
-				_route_skill_swipe_button_input(event, source)
-				host._skill_detail_surface().action_card_press_key = key
-				host._skill_detail_surface().action_card_press_position = host._input_routing_shell()._first_event_position(event_positions)
-				host._skill_detail_surface().action_card_press_stat_kind = stat_kind
-				host._skill_detail_surface().action_card_press_dragged = false
-				host.get_viewport().set_input_as_handled()
-				return
-			host._skill_detail_surface().action_card_press_key = key
-			host._skill_detail_surface().action_card_press_position = host._input_routing_shell()._first_event_position(event_positions)
-			host._skill_detail_surface().action_card_press_stat_kind = ""
-			host._skill_detail_surface().action_card_press_dragged = false
-			_queue_action_card_3d_press(key)
-			_route_skill_swipe_button_input(event, source)
-			host.get_viewport().set_input_as_handled()
-		elif host._skill_detail_surface().action_card_press_key == key and not _skill_swipe_suppresses_button_action():
-			var stat_kind = host._skill_detail_surface().action_card_press_stat_kind
-			var close_to_press = host._input_routing_shell()._event_positions_close_to_press(event_positions)
-			if not stat_kind.is_empty():
-				close_to_press = host._skill_detail_surface()._event_positions_inside_activity_stat_box(card, stat_kind, event_positions)
-			host._skill_detail_surface().action_card_press_key = ""
-			host._skill_detail_surface().action_card_press_stat_kind = ""
-			_release_action_card_3d_press(key)
-			if close_to_press and not host._skill_detail_surface().action_card_press_dragged:
-				if BuildableModules.is_buildable(action) and not BuildableModules.is_built(host.built_modules, skill_id, action, Callable(host, "_action_key")):
-					host._action_runtime()._start_action_from_card_tap(skill_id, action_id, key)
-					_cancel_skill_swipe_feedback(false)
-				elif stat_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
-					_play_action_card_medal_tap_ceremony(card)
-				else:
-					host._action_runtime()._start_action_from_card_tap(skill_id, action_id, key)
-					_cancel_skill_swipe_feedback(false)
-			host._skill_detail_surface().action_card_press_dragged = false
-			host.get_viewport().set_input_as_handled()
-		elif host._skill_detail_surface().action_card_press_key == key:
-			host._skill_detail_surface().action_card_press_key = ""
-			host._skill_detail_surface().action_card_press_stat_kind = ""
-			host._skill_detail_surface().action_card_press_dragged = false
-			_release_action_card_3d_press(key)
-			if skill_swipe_tracking:
-				_route_skill_swipe_button_input(event, source)
-			host.get_viewport().set_input_as_handled()
-	elif event is InputEventScreenDrag:
-		if skill_swipe_tracking:
-			_route_skill_swipe_button_input(event, source)
-			host.get_viewport().set_input_as_handled()
-
 
 
 
@@ -4916,13 +4862,6 @@ func _set_skill_swipe_positions(offset: int, current_x: float) -> void:
 		active_page.position.x = _skill_swipe_preview_rest_x(offset)
 		_sync_skill_swipe_preview_page_fade(current_x)
 
-func _hide_parked_skill_swipe_preview_pages(active_page: Control = null) -> void:
-	for preview in preview_pages.values():
-		var page = _preview_control(preview)
-		if page == null or page == active_page:
-			continue
-		page.visible = false
-
 func _park_skill_swipe_preview() -> void:
 	var parked_page = _preview_control(preview_page)
 	var parked_offset = preview_offset
@@ -5074,39 +5013,6 @@ func _preview_detail_entries_for_skill(skill_id: String) -> Array:
 		entries.append(entry_data)
 	return entries
 
-func _prewarm_swipe_preview_real_card_cache(preview_state: Dictionary, skill_id: String, token: int) -> void:
-	if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
-		return
-	var cache = preview_state.get("real_card_cache", {}) as Dictionary
-	if cache == null:
-		cache = {}
-	preview_state["real_card_cache"] = cache
-	var content_width = host._skill_content_width()
-	var actions_width = content_width
-	var built_count = cache.size()
-	for entry in _preview_detail_entries_for_skill(skill_id):
-		if built_count >= host.SKILL_SWIPE_REAL_CARD_PREWARM_COUNT:
-			break
-		if not _skill_swipe_prewarm_can_continue(host.selected_skill_id, token):
-			_free_swipe_preview_real_card_cache(preview_state)
-			return
-		var entry_data = entry as Dictionary
-		if str(entry_data.get("kind", "")) == "thieving_heist":
-			continue
-		var action = entry_data.get("action", {}) as Dictionary
-		var action_id = str(action.get("id", ""))
-		if action_id.is_empty() or cache.has(action_id):
-			continue
-		await host.get_tree().process_frame
-		if not _skill_swipe_prewarm_can_continue(host.selected_skill_id, token):
-			_free_swipe_preview_real_card_cache(preview_state)
-			return
-		var cached = _build_swipe_preview_real_card_cache_entry(skill_id, entry_data, content_width, actions_width)
-		if cached.is_empty():
-			continue
-		cache[str(cached.get("track_id", action_id))] = cached
-		built_count += 1
-
 func _free_swipe_real_card_cache_dictionary(cache: Dictionary) -> void:
 	if cache == null or cache.is_empty():
 		return
@@ -5208,45 +5114,6 @@ func _prewarm_global_swipe_real_card_cache_for_neighbors_idle(source_skill_id: S
 			return
 		await _prewarm_global_swipe_real_card_cache_for_skill_idle(skill_id, source_skill_id, token)
 
-func _prewarm_global_swipe_real_card_cache_for_skill(skill_id: String, source_skill_id: String, token: int) -> void:
-	if skill_id.is_empty() or host._fishing_rework_active_for_skill(skill_id):
-		return
-	var cache = real_card_cache_by_skill.get(skill_id, {}) as Dictionary
-	if cache == null:
-		cache = {}
-	real_card_cache_by_skill[skill_id] = cache
-	var content_width = host._skill_content_width()
-	var actions_width = content_width
-	var built_count = cache.size()
-	for entry in _preview_detail_entries_for_skill(skill_id):
-		if built_count >= host.SKILL_SWIPE_REAL_CARD_PREWARM_COUNT:
-			break
-		if not _skill_swipe_prewarm_can_continue(source_skill_id, token):
-			return
-		var entry_data = entry as Dictionary
-		if str(entry_data.get("kind", "")) == "thieving_heist":
-			continue
-		var action = entry_data.get("action", {}) as Dictionary
-		var action_id = str(action.get("id", ""))
-		if action_id.is_empty() or cache.has(action_id):
-			continue
-		await host.get_tree().process_frame
-		if not _skill_swipe_prewarm_can_continue(source_skill_id, token):
-			return
-		var cached = _build_swipe_preview_real_card_cache_entry(skill_id, entry_data, content_width, actions_width)
-		if cached.is_empty():
-			continue
-		cache[str(cached.get("track_id", action_id))] = cached
-		built_count += 1
-
-func _prewarm_global_swipe_real_card_cache_for_neighbors(source_skill_id: String, token: int) -> void:
-	await _prewarm_global_swipe_real_card_cache_for_skill(source_skill_id, source_skill_id, token)
-	for offset in [-1, 1]:
-		var neighbor_skill_id = _skill_id_for_swipe_offset(offset)
-		if neighbor_skill_id.is_empty():
-			continue
-		await _prewarm_global_swipe_real_card_cache_for_skill(neighbor_skill_id, source_skill_id, token)
-
 func _apply_global_swipe_real_card_cache_to_lazy_plan(skill_id: String) -> void:
 	if skill_id.is_empty() or host._skill_detail_surface().detail_lazy_plan.is_empty():
 		return
@@ -5291,12 +5158,6 @@ func _apply_swipe_preview_real_card_cache_to_lazy_plan(preview_state: Dictionary
 		cache.erase(track_id)
 	_free_swipe_preview_real_card_cache({"real_card_cache": cache})
 	preview_state.erase("real_card_cache")
-
-func _skill_swipe_prewarm_can_continue(skill_id: String, token: int) -> bool:
-	return false
-
-func _finish_skill_swipe_preview_prewarm(token: int) -> void:
-	return
 
 func _ensure_skill_swipe_preview_page_cached(offset: int) -> Control:
 	if skill_swipe_frame == null or not is_instance_valid(skill_swipe_frame):
@@ -5556,21 +5417,6 @@ func _render_light_skill_swipe_preview_entries(stack: VBoxContainer, skill_id: S
 		preview_index += 1
 	pending_placeholder_height = _flush_skill_swipe_preview_placeholder(stack, actions_width, pending_placeholder_height)
 
-func _force_show_skill_swipe_preview_modules(offset: int) -> void:
-	if not preview_states.has(offset):
-		return
-	var state = preview_states[offset] as Dictionary
-	if state == null:
-		return
-	_cancel_skill_swipe_preview_modules_reveal(state)
-	if not bool(state.get("prewarmed", false)):
-		_update_skill_swipe_preview_state(state, 0.0, true)
-	var modules_root = state.get("modules_root") as Control
-	if modules_root != null and is_instance_valid(modules_root):
-		modules_root.visible = true
-		modules_root.modulate.a = 1.0
-
-
 func _cancel_skill_swipe_preview_modules_reveal(preview_state: Dictionary) -> void:
 	preview_module_reveal_token += 1
 	host._app_lifecycle_runtime()._kill_card_tween(preview_state, "reveal_tween")
@@ -5768,7 +5614,7 @@ func _update_firepit_card_static_state(card: Dictionary, skill_id: String, actio
 	var toggle_button = card.get("toggle") as Button
 	if toggle_button != null:
 		toggle_button.text = ""
-		toggle_button.disabled = (not unlocked) or ceremony_active or igniting or ((not active) and scrapwood < PassiveModulesRuntime.FIREPIT_START_SCRAPWOOD_COST)
+		toggle_button.disabled = (not unlocked) or ceremony_active or igniting
 		toggle_button.modulate = Color(1, 1, 1, 0.42) if toggle_button.disabled else Color.WHITE
 	var flame_fx = card.get("flame_fx") as Control
 	if flame_fx != null and flame_fx.has_method("set_active"):
@@ -5834,13 +5680,6 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	pop_card.set_meta("activity_card_depth_node_id", depth.get_instance_id())
 	card_root.add_child(pop_card)
 
-	var background_underlay_fill: Color = ThemeStyles.activity_card_fill_color(ThemeStyles.skill_theme_color(skill_id, host.COLOR_BLUE))
-	if uses_flat_normal_card:
-		background_underlay_fill = Color(0, 0, 0, 0)
-	var background_underlay: Panel = ActivityCardStyles.action_card_background_edge_underlay(background_underlay_fill, host.ACTION_CARD_FACE_RADIUS)
-	background_underlay.add_theme_stylebox_override("panel", ActivityCardStyles.activity_card_face_skin(background_underlay_fill, host.ACTION_CARD_FACE_RADIUS, host.paper_button_style_textures, host.COLOR_INK, host.COLOR_BLUE, Callable(host.visual_texture_cache, "_can_create_image_textures"), Callable(host.visual_texture_cache, "_create_image_texture"), Callable(host.visual_texture_cache, "_visual_fallback_texture")))
-	background_underlay.visible = false
-	pop_card.add_child(background_underlay)
 	if uses_flat_normal_card:
 		var body_plate := Panel.new()
 		body_plate.name = "NormalActivityCardBackFace"
@@ -5887,10 +5726,12 @@ func _skill_swipe_preview_action_card(skill_id: String, action: Dictionary, cont
 	var blue_guy_chicken_stage: Control = null
 	if uses_blue_guy_chicken_brawl_stage:
 		blue_guy_chicken_stage = BlueGuyChickenBrawlStageClass.new()
+		blue_guy_chicken_stage.setup_action(action)
 		blue_guy_chicken_stage.set_anchors_preset(Control.PRESET_FULL_RECT)
 		blue_guy_chicken_stage.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		blue_guy_chicken_stage.z_index = 220
 		host._fighting_runtime().configure_blue_guy_chicken_brawl_stage(blue_guy_chicken_stage)
+		blue_guy_chicken_stage.set_active_fight(false)
 		pop_card.add_child(blue_guy_chicken_stage)
 
 	var shade: Panel = null
@@ -6784,10 +6625,6 @@ func _release_activity_button_shell_bound(button_id: int, force_visual_release :
 
 func has_depressed_activity_shell_button(button_id: int) -> bool:
 	return depressed_activity_shell_buttons.has(button_id)
-
-
-func forget_depressed_activity_shell_button(button_id: int) -> void:
-	depressed_activity_shell_buttons.erase(button_id)
 
 
 func release_depressed_activity_shell_buttons_if_pointer_left(event: InputEvent) -> void:

@@ -72,10 +72,6 @@ func firepit_state_from_save(loaded_module: Dictionary, now: int) -> Dictionary:
 	return SaveStateNormalizers.firepit_state(loaded_module, now, save_state_normalizer_limits())
 
 
-func passive_module_state_from_save(loaded_module: Dictionary, now: int) -> Dictionary:
-	return SaveStateNormalizers.passive_module_state(loaded_module, now, save_state_normalizer_limits())
-
-
 func firepit_state(now: int) -> Dictionary:
 	return ensure_firepit_state(now)
 

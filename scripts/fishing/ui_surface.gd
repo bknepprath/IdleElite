@@ -4,7 +4,6 @@ const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
 const ActivityCardBorder = preload("res://scripts/ui/activity_card_border.gd")
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ActionArtUi = preload("res://scripts/ui/action_art_ui.gd")
-const ButtonPressState = preload("res://scripts/ui/button_press_state.gd")
 const CleanProgressBar = preload("res://scripts/ui/clean_progress_bar.gd")
 const FishCircle = preload("res://scripts/ui/fish_circle.gd")
 const FishingFluidStripClass = preload("res://scripts/fishing/fluid_strip.gd")
@@ -89,10 +88,11 @@ const FISHING_AREA_STAT_FONT_SIZE := 38
 const FISHING_AREA_METHOD_TOP_MARGIN := 0
 const FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH := 175.0
 const FISHING_ACTIVE_TOOL_LAYER_SIZE := Vector2(410, 215)
-const FISHING_ACTIVE_TOOL_LAYER_RIGHT_OFFSET := -235.0
+const FISHING_ACTIVE_TOOL_LAYER_RIGHT_OFFSET := -171.0
 const FISHING_ACTIVE_TOOL_LAYER_TOP := 125.0
 const FISHING_ACTIVE_TOOL_ICON_SIZE := Vector2(159.5, 159.5)
 const FISHING_ACTIVE_NET_ICON_SIZE := Vector2(218.5, 218.5)
+const FISHING_ACTIVE_BOAT_DRAW_SCALE := 0.75
 const FISHING_ACTIVE_TOOL_FLOAT_Y := 13.0
 const FISHING_ACTIVE_TOOL_DIP_Y := 111.0
 const FISHING_ACTIVE_TOOL_HARVEST_Y := 83.0
@@ -125,9 +125,6 @@ var web_fishing_perf_probe_last_scroll := -999999
 var web_fishing_perf_probe_last_mounted := -1
 var web_fishing_perf_probe_last_publish_msec := 0
 var web_direct_wheel_callback: JavaScriptObject = null
-var fishing_method_button_press_active := false
-var fishing_method_button_press_source_id := 0
-var fishing_offer_button_press_active := false
 var fishing_unlock_visible_mount_ids: Array = []
 var fishing_unlock_preview_fade_marker_ids: Array = []
 var fishing_detail_render_cull_counts_cache := {"rendered": 0, "culled": 0}
@@ -164,18 +161,6 @@ func kill_wallet_pop_tween() -> void:
 	if fishing_tool_wallet_pop_tween != null and fishing_tool_wallet_pop_tween.is_valid():
 		fishing_tool_wallet_pop_tween.kill()
 	fishing_tool_wallet_pop_tween = null
-
-
-func has_active_fishing_method_press() -> bool:
-	return fishing_method_button_press_active
-
-
-func has_active_fishing_offer_press() -> bool:
-	return fishing_offer_button_press_active
-
-
-func has_active_fishing_button_press() -> bool:
-	return fishing_method_button_press_active or fishing_offer_button_press_active
 
 
 func _load_fishing_debug_env_flags() -> void:
@@ -404,7 +389,7 @@ func _attach_auto_eat_fish_toggle(parent: Control, skill_id: String) -> TextureB
 	button.set_meta("auto_eat_skill_id", skill_id)
 	_build_auto_eat_fish_toggle_visual(button)
 	button.add_to_group("auto_eat_fish_toggle")
-	button.pressed.connect(_on_auto_eat_fish_toggle_pressed.bind(skill_id))
+	_connect_fishing_button(button, _on_auto_eat_fish_toggle_pressed.bind(skill_id))
 	parent.add_child(button)
 	_sync_auto_eat_fish_toggle_button(button)
 	return button
@@ -677,13 +662,6 @@ func _publish_web_fishing_perf_probe_state(force := false) -> void:
 	web_fishing_perf_probe_last_mounted = mounted_count
 	JavaScriptBridge.eval("window.__idleEliteFishingPerf = %s;" % JSON.stringify(state), false)
 	web_fishing_perf_probe_last_publish_msec = Time.get_ticks_msec()
-
-
-func _add_fishing_boot_warmup_texture_paths(paths: Array) -> void:
-	var boot_warmup = host._boot_warmup_runtime()
-	for tool in FishingState.FISHING_TOOL_DEFS:
-		boot_warmup._add_boot_warmup_texture_path(paths, str((tool as Dictionary).get("art", "")))
-	_add_fishing_detail_visual_texture_paths(paths)
 
 
 func _add_fishing_detail_visual_texture_paths(paths: Array) -> void:
@@ -1153,7 +1131,7 @@ func _render_fishing_tool_popup_menu() -> void:
 		button.set_meta("wallet_target_y", target_y)
 		button.clip_contents = true
 		button.text = ""
-		button.disabled = not unlocked
+		button.disabled = false
 		button.focus_mode = Control.FOCUS_NONE
 		button.mouse_filter = Control.MOUSE_FILTER_STOP
 		button.modulate = Color(1, 1, 1, 0)
@@ -1162,7 +1140,7 @@ func _render_fishing_tool_popup_menu() -> void:
 		button.add_theme_stylebox_override("hover", _fishing_tool_circle_button_style(equipped, unlocked))
 		button.add_theme_stylebox_override("pressed", _fishing_tool_circle_button_style(equipped, unlocked, true))
 		button.add_theme_stylebox_override("disabled", _fishing_tool_circle_button_style(equipped, false))
-		button.pressed.connect(_on_fishing_tool_selected.bind(tool_id))
+		_connect_fishing_button(button, _on_native_fishing_tool_selected.bind(button, tool_id))
 		column.add_child(button)
 		var icon_size = Vector2(gear_button_size * 0.66, gear_button_size * 0.66)
 		var icon = host.visual_texture_cache._image_from_texture(_fishing_tool_icon_texture(tool_id), icon_size, str(tool.get("art", "")))
@@ -1198,10 +1176,6 @@ func _clear_fishing_tool_circle_menu() -> void:
 	fishing_tool_wallet_popup = null
 	if host._skill_detail_surface().detail_fish_circle != null and is_instance_valid(host._skill_detail_surface().detail_fish_circle):
 		host._skill_detail_surface().detail_fish_circle.set_wallet_open_visual(false)
-		host._skill_detail_surface().detail_fish_circle.wallet_button_rects.clear()
-		if host._skill_detail_surface().detail_fish_circle.wallet_visual_root != null and is_instance_valid(host._skill_detail_surface().detail_fish_circle.wallet_visual_root):
-			host._skill_detail_surface().detail_fish_circle.wallet_visual_root.queue_free()
-			host._skill_detail_surface().detail_fish_circle.wallet_visual_root = null
 
 
 func _set_fishing_tool_wallet_open(open: bool) -> void:
@@ -1256,18 +1230,18 @@ func _play_fishing_wallet_circle_pop(delay := 0.0) -> void:
 	fishing_tool_wallet_pop_tween.tween_property(host._skill_detail_surface().detail_fish_circle, "scale", Vector2.ONE, 0.12).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
-func _show_fishing_tool_not_unlocked_feedback(anchor: Control = null, global_point := Vector2.ZERO, use_global_point := false) -> void:
+func _show_fishing_tool_not_unlocked_feedback(anchor: Control = null) -> void:
 	var target := anchor
 	if target == null or not is_instance_valid(target) or not target.is_inside_tree():
 		target = host._skill_detail_surface().detail_fish_circle
 	if target == null or not is_instance_valid(target) or not target.is_inside_tree():
 		return
 	host._audio_director()._play_failure_sfx()
-	var anchor_x := -1.0
-	if use_global_point:
-		anchor_x = clampf(target.to_local(global_point).x, 0.0, target.size.x)
+	var feedback_parent: Control = host
+	if is_instance_valid(fishing_tool_wallet_popup) and fishing_tool_wallet_popup.is_ancestor_of(target):
+		feedback_parent = fishing_tool_wallet_popup
 	host._reward_feedback_surface()._float_reward(
-		host,
+		feedback_parent,
 		target,
 		"not unlocked",
 		54,
@@ -1276,64 +1250,8 @@ func _show_fishing_tool_not_unlocked_feedback(anchor: Control = null, global_poi
 		Vector2(0, -71),
 		0.0,
 		false,
-		anchor_x
+		-1.0
 	)
-
-
-func _fishing_wallet_event_point(event: InputEvent) -> Dictionary:
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			return {"pressed": true, "point": mouse_event.global_position}
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		if touch_event.pressed:
-			return {"pressed": true, "point": touch_event.position}
-	return {"pressed": false, "point": Vector2.ZERO}
-
-
-func _route_fishing_wallet_unhandled_input(event: InputEvent) -> bool:
-	if host.current_screen != "skill" or not host._fishing_rework_active_for_skill(host.selected_skill_id):
-		return false
-	if host._input_routing_shell()._any_modal_overlay_visible():
-		return false
-	var parsed := _fishing_wallet_event_point(event)
-	if not bool(parsed.get("pressed", false)):
-		return false
-	var point := parsed.get("point", Vector2.ZERO) as Vector2
-	if fishing_tool_wallet_open:
-		if fishing_tool_wallet_popup != null and is_instance_valid(fishing_tool_wallet_popup):
-			for child in fishing_tool_wallet_popup.find_children("FishingToolPopupButton*", "Button", true, false):
-				var button := child as Button
-				if button == null:
-					continue
-				if button.get_global_rect().has_point(point):
-					if bool(button.get_meta("tool_unlocked", false)):
-						_on_fishing_tool_selected(str(button.get_meta("tool_id", "")))
-					else:
-						_show_fishing_tool_not_unlocked_feedback(button)
-					return true
-			if fishing_tool_wallet_popup.get_global_rect().has_point(point):
-				return true
-		if host._skill_detail_surface().detail_fish_circle != null and is_instance_valid(host._skill_detail_surface().detail_fish_circle) and host._skill_detail_surface().detail_fish_circle.get_global_rect().grow(16.0).has_point(point):
-			var circle_tool_index: int = host._skill_detail_surface().detail_fish_circle.wallet_button_index_at(point)
-			if (
-				circle_tool_index >= 0
-				and circle_tool_index < host._skill_detail_surface().detail_fish_circle.wallet_tool_ids.size()
-				and circle_tool_index < host._skill_detail_surface().detail_fish_circle.wallet_unlocked_states.size()
-			):
-				if bool(host._skill_detail_surface().detail_fish_circle.wallet_unlocked_states[circle_tool_index]):
-					_on_fishing_tool_selected(str(host._skill_detail_surface().detail_fish_circle.wallet_tool_ids[circle_tool_index]))
-				else:
-					_show_fishing_tool_not_unlocked_feedback(host._skill_detail_surface().detail_fish_circle, point, true)
-				return true
-			_set_fishing_tool_wallet_open(false)
-			return true
-		return false
-	if host._skill_detail_surface().detail_fish_circle != null and is_instance_valid(host._skill_detail_surface().detail_fish_circle) and host._skill_detail_surface().detail_fish_circle.get_global_rect().grow(16.0).has_point(point):
-		_set_fishing_tool_wallet_open(true)
-		return true
-	return false
 
 
 func _on_fishing_tool_wallet_pressed() -> void:
@@ -1359,17 +1277,29 @@ func _set_fish_circle_for_skill(circle: FishCircle, skill_id: String, instant :=
 
 
 func _attach_fishing_fish_circle_button(circle: Control) -> void:
-	if circle == null:
-		return
-	var wallet_pressed_callable := Callable(self, "_on_fishing_tool_wallet_pressed")
-	circle.mouse_filter = Control.MOUSE_FILTER_STOP
 	if circle is BaseButton:
-		var button := circle as BaseButton
-		button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-		if not button.pressed.is_connected(wallet_pressed_callable):
-			button.pressed.connect(wallet_pressed_callable)
-	if circle.has_signal("wallet_pressed") and not circle.is_connected("wallet_pressed", wallet_pressed_callable):
-		circle.connect("wallet_pressed", wallet_pressed_callable)
+		_connect_fishing_button(circle as BaseButton, _on_fishing_tool_wallet_pressed)
+
+func _connect_fishing_button(button: BaseButton, action: Callable) -> void:
+	if button.has_meta("native_fishing_button"):
+		return
+	button.set_meta("native_fishing_button", true)
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	button.action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
+	button.button_down.connect(_prepare_fishing_control_tap)
+	button.pressed.connect(_on_native_fishing_button_pressed.bind(action))
+
+func _on_native_fishing_button_pressed(action: Callable) -> void:
+	if host._skill_detail_surface()._detail_actions_scroll_suppresses_child_click() or host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action():
+		return
+	if action.is_valid():
+		action.call()
+
+func _on_native_fishing_tool_selected(button: Button, tool_id: String) -> void:
+	if host.fishing_runtime.tool_is_unlocked(tool_id):
+		_on_fishing_tool_selected(tool_id)
+	else:
+		_show_fishing_tool_not_unlocked_feedback(button)
 
 
 func _refresh_fish_circle_currency_only() -> void:
@@ -1694,7 +1624,8 @@ func render_area_modules_into_stack(stack: VBoxContainer, content_width: float) 
 		host._skill_detail_surface()._sync_detail_actions_scroll_limit()
 		_restore_fishing_detail_render_culling()
 	else:
-		host._skill_detail_surface()._detail_lazy_mount_initial_window_sync(true, initial_force_count)
+		if not host._skill_swipe_activity_surface().skill_swipe_defer_initial_lazy_mount:
+			host._skill_detail_surface()._detail_lazy_mount_initial_window_sync(true, initial_force_count)
 		host._skill_detail_surface()._sync_detail_actions_scroll_limit()
 		_sync_fishing_detail_render_culling(true)
 		host._skill_detail_surface()._queue_detail_lazy_settle_warm_mount(skill_id)
@@ -2047,57 +1978,6 @@ func _on_fishing_active_tool_pressed(anchor: Control) -> void:
 	host._reward_feedback_surface()._float_reward(host, anchor, _fishing_tool_label(host.fishing_runtime.equipped_tool_id), 54, host.COLOR_INK, Vector2(0, -12), Vector2(0, -59), 0.0)
 
 
-func _route_fishing_active_tool_input(event: InputEvent) -> bool:
-	if host.selected_skill_id != "fishing":
-		return false
-	var event_position := Vector2.ZERO
-	var is_press := false
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
-			return false
-		event_position = mouse_event.global_position
-		is_press = mouse_event.pressed
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		event_position = touch_event.position
-		is_press = touch_event.pressed
-	else:
-		return false
-	if not is_press:
-		return false
-	for raw_card in host.action_cards.values():
-		if typeof(raw_card) != TYPE_DICTIONARY:
-			continue
-		var method_card := raw_card as Dictionary
-		if not bool(method_card.get("is_fishing_method", false)):
-			continue
-		var method_button := method_card.get("method_button") as Control
-		if method_button != null and is_instance_valid(method_button) and method_button.visible and method_button.is_visible_in_tree():
-			if method_button.get_global_rect().has_point(event_position):
-				return false
-	for raw_card in host.action_cards.values():
-		if typeof(raw_card) != TYPE_DICTIONARY:
-			continue
-		var area_card := raw_card as Dictionary
-		if not bool(area_card.get("is_fishing_area", false)):
-			continue
-		if not _fishing_area_card_owns_action(area_card, host.running_action_id):
-			continue
-		var layer := area_card.get("active_tool_layer") as Control
-		var art := area_card.get("active_tool_art") as TextureRect
-		if layer == null or art == null or not is_instance_valid(layer) or not is_instance_valid(art):
-			continue
-		if not layer.visible or not layer.is_visible_in_tree():
-			continue
-		var art_rect := art.get_global_rect().grow(18.0)
-		if not art_rect.has_point(event_position):
-			continue
-		host._reward_feedback_surface()._float_reward(host, art, _fishing_tool_label(host.fishing_runtime.equipped_tool_id), 54, host.COLOR_INK, Vector2(0, -12), Vector2(0, -59), 0.0)
-		return true
-	return false
-
-
 func _sync_fishing_active_tool_hit(area_card: Dictionary) -> void:
 	var layer := area_card.get("active_tool_layer") as Control
 	var art := area_card.get("active_tool_art") as TextureRect
@@ -2105,11 +1985,12 @@ func _sync_fishing_active_tool_hit(area_card: Dictionary) -> void:
 	if layer == null or art == null or hit == null or not is_instance_valid(layer) or not is_instance_valid(art) or not is_instance_valid(hit):
 		return
 	host._app_lifecycle_runtime().set_canvas_item_visible_if_changed(hit, layer.visible)
-	hit.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hit.mouse_filter = Control.MOUSE_FILTER_STOP
 	var hit_padding := Vector2(17.0, 17.0)
-	hit.position = art.position - hit_padding
-	hit.size = art.size + hit_padding * 2.0
-	hit.custom_minimum_size = hit.size
+	var tool_lane := Rect2(Vector2(FISHING_ACTIVE_TOOL_LAYER_SIZE.x - FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH - 24.0, 0), Vector2(FISHING_ACTIVE_TOOL_VISUAL_LANE_WIDTH + 24.0, FISHING_ACTIVE_TOOL_LAYER_SIZE.y))
+	var hit_rect := Rect2(art.position - hit_padding, art.size + hit_padding * 2.0).intersection(tool_lane)
+	hit.position = hit_rect.position
+	hit.size = hit_rect.size
 	hit.pivot_offset = art.pivot_offset
 	hit.rotation = 0.0
 	hit.scale = Vector2.ONE
@@ -2246,12 +2127,12 @@ func _build_fishing_active_tool_layer() -> Dictionary:
 	hit_button.text = ""
 	hit_button.flat = true
 	hit_button.focus_mode = Control.FOCUS_NONE
-	hit_button.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hit_button.mouse_filter = Control.MOUSE_FILTER_STOP
 	hit_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	hit_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	hit_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
 	hit_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	hit_button.pressed.connect(Callable(self, "_on_fishing_active_tool_pressed").bind(hit_button))
+	_connect_fishing_button(hit_button, _on_fishing_active_tool_pressed.bind(hit_button))
 	layer.add_child(hit_button)
 
 	return {
@@ -2361,7 +2242,7 @@ func _update_fishing_reflect_net_tool_animation(area_card: Dictionary, art: Text
 
 
 func _update_fishing_boat_tool_animation(area_card: Dictionary, art: TextureRect, progress: float, delta: float, instant: bool) -> void:
-	var center_x = _fishing_active_tool_base_x(FISHING_ACTIVE_TOOL_ICON_SIZE.x) - 72.0
+	var center_x = _fishing_active_tool_base_x(FISHING_ACTIVE_TOOL_ICON_SIZE.x) - 16.0
 	var start_position := Vector2(center_x + 6.0, FISHING_ACTIVE_TOOL_FLOAT_Y - 42.0)
 	var water_position := Vector2(center_x + 4.0, FISHING_ACTIVE_TOOL_DIP_Y - 28.0)
 	var target_position = water_position
@@ -2389,6 +2270,7 @@ func _update_fishing_boat_tool_animation(area_card: Dictionary, art: TextureRect
 		var load_sag := clampf(float(host.fishing_runtime.boat_stored_fish) / float(FishingState.FISHING_BOAT_HAUL_THRESHOLD), 0.0, 1.0) * 5.0
 		target_position.y += load_sag
 		target_scale = Vector2.ONE * (1.54 + sin(bob_t * 0.5) * 0.018 + load_sag * 0.002)
+	target_scale *= FISHING_ACTIVE_BOAT_DRAW_SCALE
 	area_card["active_tool_underwater"] = true
 	if instant:
 		art.position = target_position
@@ -2468,13 +2350,13 @@ func _update_fishing_active_tool_initialization(area_card: Dictionary, art: Text
 			high_scale = Vector2.ONE * 1.02
 			water_scale = Vector2.ONE * 1.10
 		"boat":
-			base_x = _fishing_active_tool_base_x(FISHING_ACTIVE_TOOL_ICON_SIZE.x) - 72.0
+			base_x = _fishing_active_tool_base_x(FISHING_ACTIVE_TOOL_ICON_SIZE.x) - 16.0
 			high_position = Vector2(base_x + 6.0, FISHING_ACTIVE_TOOL_FLOAT_Y - 82.0)
 			water_position = Vector2(base_x + 4.0, FISHING_ACTIVE_TOOL_DIP_Y - 28.0)
 			high_rotation = -0.04
 			water_rotation = 0.02
-			high_scale = Vector2.ONE * 1.40
-			water_scale = Vector2.ONE * 1.54
+			high_scale = Vector2.ONE * 1.40 * FISHING_ACTIVE_BOAT_DRAW_SCALE
+			water_scale = Vector2.ONE * 1.54 * FISHING_ACTIVE_BOAT_DRAW_SCALE
 		_:
 			if FishingState.is_rod(tool_id):
 				high_position = Vector2(base_x - 8.0, FISHING_ACTIVE_TOOL_FLOAT_Y - 88.0)
@@ -2783,12 +2665,15 @@ func _attach_fishing_method_padlock(art_panel: Panel, skill_id: String, action_i
 		padlock_tint.z_index = 6
 		shake_body.add_child(padlock_tint)
 
-	var padlock_hit_area = Control.new()
+	var padlock_hit_area = Button.new()
+	padlock_hit_area.flat = true
+	padlock_hit_area.focus_mode = Control.FOCUS_NONE
+	host._apply_empty_button_style(padlock_hit_area)
 	padlock_hit_area.custom_minimum_size = padlock_size
 	padlock_hit_area.size = padlock_size
 	padlock_hit_area.mouse_filter = Control.MOUSE_FILTER_STOP
 	padlock_hit_area.z_index = 7
-	padlock_hit_area.gui_input.connect(_on_fishing_method_lock_hit_input.bind(skill_id, action_id, shake_body))
+	_connect_fishing_button(padlock_hit_area, _on_fishing_method_lock_pressed.bind(skill_id, action_id, shake_body))
 	shake_body.add_child(padlock_hit_area)
 	lock_root.set_meta("padlock_button", padlock_hit_area)
 
@@ -3255,6 +3140,7 @@ func _fishing_area_runtime_layers(pop_card: Control, area_def: Dictionary, selec
 
 	var status: Label = host._label("", host.MIN_MOBILE_HELP_FONT_SIZE, host.COLOR_RED, HORIZONTAL_ALIGNMENT_LEFT)
 	status.visible = false
+	pop_card.add_child(status)
 	return {
 		"active_tool": active_tool,
 		"active_tool_layer": active_tool_layer,
@@ -3356,26 +3242,51 @@ func _fishing_area_card_for_pop_instance_id(pop_instance_id: int) -> Dictionary:
 
 
 func _activate_fishing_method_button(method_card: Dictionary, owner_area_pop_instance_id := 0) -> void:
-	if method_card.is_empty():
+	var button := method_card.get("method_button") as Button
+	if button == null or not is_instance_valid(button) or button.is_queued_for_deletion():
 		return
-	var method_button := method_card.get("method_button") as Button
-	if method_button == null or not is_instance_valid(method_button) or method_button.is_queued_for_deletion():
+	button.disabled = false
+	button.mouse_filter = Control.MOUSE_FILTER_STOP
+	# Decorative children ignore input; the medal button stays above the activity button.
+	button.get_parent().move_child(button, 0)
+	button.set_meta("fishing_method_owner_pop_instance_id", owner_area_pop_instance_id)
+	if not button.has_meta("native_fishing_button"):
+		_connect_fishing_button(button, _on_native_fishing_method_pressed.bind(button))
+		host.button_press_runtime.attach_default_button_sfx(button)
+	var medal := method_card.get("medal") as Control
+	if medal != null and not medal.has_node("MedalButton"):
+		var medal_button := Button.new()
+		medal_button.name = "MedalButton"
+		medal_button.flat = true
+		medal_button.focus_mode = Control.FOCUS_NONE
+		medal.add_child(medal_button)
+		medal_button.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_connect_fishing_button(medal_button, _on_native_fishing_medal_pressed.bind(method_card))
+
+
+func _on_native_fishing_medal_pressed(card: Dictionary) -> void:
+	host._skill_swipe_activity_surface()._play_action_card_medal_tap_ceremony(card)
+
+func _on_native_fishing_method_pressed(button: Button) -> void:
+	var card := button.get_meta("fishing_method_card", {}) as Dictionary
+	if card.is_empty():
 		return
-	host._app_lifecycle_runtime().set_base_button_disabled_if_changed(method_button, false)
-	method_button.mouse_filter = Control.MOUSE_FILTER_STOP if host.current_screen == "pinned" else Control.MOUSE_FILTER_IGNORE
-	var skill_id := str(method_card.get("skill_id", ""))
-	var action_id := str(method_card.get("action_id", ""))
-	var area_key := str(method_card.get("fishing_area_key", ""))
-	if not bool(method_button.get_meta("fishing_method_pressed_connected", false)):
-		method_button.gui_input.connect(_on_fishing_method_button_input.bind(skill_id, action_id, area_key, owner_area_pop_instance_id, method_button))
-		host.button_press_runtime.attach_default_button_sfx(method_button)
-		method_button.set_meta("fishing_method_pressed_connected", true)
-	var art_panel := method_card.get("art_panel", null) as Control
-	if art_panel != null and is_instance_valid(art_panel) and not art_panel.is_queued_for_deletion():
-		art_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-		if not bool(art_panel.get_meta("fishing_method_art_pressed_connected", false)):
-			art_panel.gui_input.connect(_on_fishing_method_button_input.bind(skill_id, action_id, area_key, owner_area_pop_instance_id, method_button))
-			art_panel.set_meta("fishing_method_art_pressed_connected", true)
+	if host.queue_selection_mode or host.current_screen == "queue":
+		var area_id := str(card.get("area_id", ""))
+		var location_id := str(card.get("location_id", ""))
+		if not area_id.is_empty() and not location_id.is_empty():
+			host.fishing_runtime.selected_locations[area_id] = location_id
+			host._mark_save_dirty("queued fishing location changed")
+	var owner_id := int(button.get_meta("fishing_method_owner_pop_instance_id", 0))
+	var owner := _fishing_area_card_for_pop_instance_id(owner_id)
+	if host.queue_selection_mode:
+		host._skill_swipe_activity_surface()._queue_selection_toggle_from_card(owner if not owner.is_empty() else card)
+	elif host.current_screen == "queue":
+		var key: String = host._skill_swipe_activity_surface()._activity_queue_module_key_for_card(owner if not owner.is_empty() else card)
+		if not key.is_empty():
+			host._activity_queue_runtime()._start_activity_queue_from_key(key)
+	else:
+		_on_fishing_method_pressed(str(card.skill_id), str(card.action_id), str(card.fishing_area_key), owner_id)
 
 
 func _sync_fishing_method_card_unlocked_live(method_card: Dictionary, owner_area_pop_instance_id := 0) -> void:
@@ -3396,21 +3307,6 @@ func _sync_fishing_method_card_unlocked_live(method_card: Dictionary, owner_area
 			padlock_hit_area.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		lock_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_activate_fishing_method_button(method_card, owner_area_pop_instance_id)
-
-
-func _on_fishing_method_lock_hit_input(event: InputEvent, skill_id: String, action_id: String, shake_body: Control = null) -> void:
-	var pressed := false
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		pressed = mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed
-	elif event is InputEventScreenTouch:
-		pressed = (event as InputEventScreenTouch).pressed
-	if not pressed:
-		return
-	_on_fishing_method_lock_pressed(skill_id, action_id, shake_body)
-	var viewport: Viewport = host.get_viewport()
-	if viewport != null:
-		viewport.set_input_as_handled()
 
 
 func _queue_fishing_unlock_visible_mount(action_id: String) -> void:
@@ -3523,7 +3419,7 @@ func _finish_fishing_method_unlock_ceremony(method_card: Dictionary, refresh_det
 	host._activity_unlock_runtime().clear_pending_readiness_action(pending_skill_id, pending_action_id)
 	if not host._activity_unlock_runtime()._finalize_manual_activity_unlock_for_card(method_card, "fishing method unlock"):
 		host._activity_unlock_runtime()._finalize_manual_activity_unlock(pending_skill_id, pending_action_id, "fishing method unlock")
-	var method_button := method_card.get("method_button") as Button
+	var method_button := host._app_lifecycle_runtime().valid_control_ref(method_card.get("method_button")) as Button
 	if method_button != null and is_instance_valid(method_button):
 		_activate_fishing_method_button(method_card)
 	method_card["unlock_ceremony_active"] = false
@@ -3536,12 +3432,14 @@ func _finish_fishing_method_unlock_ceremony(method_card: Dictionary, refresh_det
 
 func _run_fishing_method_unlock_drop_motion(method_card: Dictionary) -> void:
 	await host.get_tree().create_timer(ActivityUnlockCeremonySurface.MOTION_START_DELAY).timeout
+	if not is_instance_valid(host) or host.is_queued_for_deletion():
+		return
 	if method_card.is_empty() or bool(method_card.get("unlock_ceremony_finalized", false)):
 		return
 	if host.current_screen != "skill":
 		_finish_fishing_method_unlock_ceremony(method_card, false)
 		return
-	var lock_root := method_card.get("lock_root") as Control
+	var lock_root: Control = host._app_lifecycle_runtime().valid_control_ref(method_card.get("lock_root"))
 	if lock_root == null or not is_instance_valid(lock_root) or lock_root.is_queued_for_deletion():
 		_finish_fishing_method_unlock_ceremony(method_card, true)
 		return
@@ -3597,7 +3495,7 @@ func _play_fishing_method_unlock_ceremony(method_card: Dictionary) -> void:
 	method_card["unlock_ceremony_active"] = true
 	method_card["unlock_ceremony_finalized"] = false
 	host._activity_unlock_ceremony_surface().ceremony_count += 1
-	var method_button := method_card.get("method_button") as Button
+	var method_button := host._app_lifecycle_runtime().valid_control_ref(method_card.get("method_button")) as Button
 	if method_button != null and is_instance_valid(method_button):
 		var skill_id := str(method_card.get("skill_id", "fishing"))
 		var action: Dictionary = host._action_data(skill_id, str(method_card.get("action_id", "")))
@@ -3621,6 +3519,7 @@ func _on_fishing_method_lock_pressed(skill_id: String, action_id: String, prefer
 	if not host._activity_unlock_runtime()._can_unlock_action(skill_id, action):
 		if shake_body != null and is_instance_valid(shake_body):
 			_play_padlock_click_shake(shake_body)
+		host._skill_detail_surface()._show_locked_activity_requirements(shake_body, skill_id, action)
 		host._reward_feedback_surface()._set_result("%s needs %s." % [str(action.get("name", "Method")), host._skill_detail_surface()._missing_action_requirements_text(skill_id, action)])
 		return
 	host._activity_unlock_ceremony_surface().detail_refresh_done = false
@@ -3690,10 +3589,6 @@ func _fishing_area_stat_fade_controls(area_card: Dictionary) -> Array:
 	var stat_column := area_card.get("stat_column") as Control
 	if stat_column != null and is_instance_valid(stat_column):
 		controls.append(stat_column)
-	for raw_button in (area_card.get("stat_hit_buttons", {}) as Dictionary).values():
-		var button := raw_button as Control
-		if button != null and is_instance_valid(button):
-			controls.append(button)
 	return controls
 
 
@@ -3726,54 +3621,6 @@ func _finish_fishing_area_stats_visible(card_key: String, should_show: bool) -> 
 		return
 	area_card.erase("stat_fade_tween")
 	area_card["stats_visible"] = should_show
-
-
-func _fishing_area_stat_hit_buttons(pop_card: Control, _skill_id: String, _area_key: String, _method_count: int) -> Dictionary:
-	var hit_buttons := {}
-	var kinds := ["xp", "yield"]
-	var button_size := FISHING_AREA_STAT_BOX_SIZE
-	var right_inset := 54.0
-	var stack_top: float = FISHING_AREA_STAT_COLUMN_TOP_MARGIN
-	var stack_step := button_size.y + FISHING_AREA_STAT_COLUMN_SEPARATION
-	for i in range(kinds.size()):
-		var kind := str(kinds[i])
-		var button := Button.new()
-		button.text = ""
-		button.focus_mode = Control.FOCUS_NONE
-		button.flat = true
-		button.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		button.anchor_left = 1.0
-		button.anchor_right = 1.0
-		button.anchor_top = 0.0
-		button.anchor_bottom = 0.0
-		button.offset_left = -(right_inset + button_size.x)
-		button.offset_right = -right_inset
-		button.offset_top = stack_top + float(i) * stack_step
-		button.offset_bottom = button.offset_top + button_size.y
-		button.z_index = 219
-		button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-		button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
-		button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-		button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-		pop_card.add_child(button)
-		button.modulate.a = 0.0
-		hit_buttons[kind] = button
-	return hit_buttons
-
-
-func _sync_fishing_area_stat_hit_buttons(area_card: Dictionary, running: bool) -> void:
-	var selected_id := str(area_card.get("selected_action_id", ""))
-	var enabled := false and running and not selected_id.is_empty()
-	for raw_button in (area_card.get("stat_hit_buttons", {}) as Dictionary).values():
-		var button := raw_button as Button
-		if button == null or not is_instance_valid(button):
-			continue
-		if bool(button.get_meta("fishing_area_stat_enabled", false)) == enabled:
-			continue
-		button.set_meta("fishing_area_stat_enabled", enabled)
-		host._app_lifecycle_runtime().set_base_button_disabled_if_changed(button, not enabled)
-		if button.mouse_filter != Control.MOUSE_FILTER_IGNORE:
-			button.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
 func _apply_fishing_area_selection(area_card: Dictionary, action_id: String, instant := false) -> void:
@@ -3856,7 +3703,6 @@ func _update_fishing_area_module(area_card: Dictionary, skill_id: String, runnin
 			if not show_id.is_empty():
 				_apply_fishing_area_selection(area_card, show_id, instant)
 		_set_fishing_area_stats_visible(area_card, stats_running, delta, instant)
-	_sync_fishing_area_stat_hit_buttons(area_card, stats_running)
 	if host._skill_detail_surface().detail_scroll_visual_work_this_frame and not running and not _fishing_area_has_active_camera_return(area_card):
 		return
 	_update_fishing_active_tool_animation(area_card, running, delta, instant)
@@ -3962,7 +3808,6 @@ func _finish_fishing_area_module_card(area_card: Dictionary, method_slots: Dicti
 			_activate_fishing_method_button(method_card, pop_card.get_instance_id())
 	_apply_fishing_area_selection(area_card, selected_id, true)
 	_set_fishing_area_stats_visible(area_card, false, 0.0, true)
-	_sync_fishing_area_stat_hit_buttons(area_card, false)
 
 
 func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_width: float) -> Dictionary:
@@ -3987,7 +3832,6 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 	var runtime_layers = _fishing_area_runtime_layers(pop_card, area_def, selected_id)
 	var active_tool := runtime_layers.get("active_tool") as Dictionary
 	var method_slots = _mount_fishing_area_method_cards(skill_id, area_id, area_key, area_def, area_bg_path, method_row, runtime_layers.get("status") as Label)
-	var stat_hit_buttons = _fishing_area_stat_hit_buttons(pop_card, skill_id, area_key, method_slots.size())
 	var queue_overlay_host = _fishing_area_queue_overlay_host(method_slots, selected_id)
 
 	var area_card := {
@@ -3995,7 +3839,7 @@ func _build_fishing_area_module(skill_id: String, area_def: Dictionary, content_
 		"root": card_root, "pop": pop_card, "bg": bg, "border": runtime_layers.get("border"), "fluid_strip": runtime_layers.get("fluid_strip"), "water_strip_host": runtime_layers.get("water_strip_host"),
 		"active_tool_layer": runtime_layers.get("active_tool_layer"), "active_tool_art": active_tool["art"], "active_tool_hit": active_tool["hit"], "active_tool_id": active_tool["tool_id"],
 		"uses_static_background_only": true, "catch_burst": runtime_layers.get("catch_burst"), "area_xp": xp_side, "area_yield": yield_side, "area_warning": null, "area_warning_box": null,
-		"stat_column": stat_column, "stat_boxes": stat_boxes, "stat_hit_buttons": stat_hit_buttons, "method_row": method_row, "method_slot": method_slot, "method_slots": method_slots,
+		"stat_column": stat_column, "stat_boxes": stat_boxes, "method_row": method_row, "method_slot": method_slot, "method_slots": method_slots,
 		"queue_overlay_host": queue_overlay_host, "selected_action_id": selected_id, "status": runtime_layers.get("status"),
 	}
 	_finish_fishing_area_module_card(area_card, method_slots, pop_card, skill_id, area_def, selected_id)
@@ -4065,6 +3909,8 @@ func _clear_fishing_catch_burst(catch_burst: Control) -> void:
 
 
 func _play_fishing_catch_burst_for_action(skill_id: String, action_id: String, fish_count: int) -> void:
+	if not is_instance_valid(host) or host.is_queued_for_deletion():
+		return
 	var burst_area_card := _fishing_area_card_for_action(skill_id, action_id)
 	if burst_area_card.is_empty():
 		return
@@ -4324,37 +4170,6 @@ func _update_fishing_location_active_camera(
 		card.erase("active_camera_return_start_scale")
 
 
-func _fishing_control_drag_is_vertical_scroll(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
-	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
-		return false
-	var press_position: Vector2 = host._app_lifecycle_runtime().meta_vector2(source, press_position_meta, event_position)
-	var drag_offset: Vector2 = event_position - press_position
-	return (
-		absf(drag_offset.y) >= host.ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE
-		and absf(drag_offset.y) > absf(drag_offset.x) * 1.15
-	)
-
-
-func _fishing_control_drag_is_horizontal_swipe(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
-	if host.current_screen != "skill" or host.selected_skill_id != "fishing":
-		return false
-	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
-		return false
-	var press_position: Vector2 = host._app_lifecycle_runtime().meta_vector2(source, press_position_meta, event_position)
-	var drag_offset: Vector2 = event_position - press_position
-	return (
-		absf(drag_offset.x) >= host.ACTION_CARD_SCROLL_DRAG_VISUAL_DEADZONE
-		and absf(drag_offset.x) > absf(drag_offset.y) * 1.15
-	)
-
-
-func _fishing_control_drag_exceeds_tap_slop(source: Control, event_position: Vector2, press_position_meta: String) -> bool:
-	if source == null or not is_instance_valid(source) or not source.has_meta(press_position_meta):
-		return false
-	var press_position: Vector2 = host._app_lifecycle_runtime().meta_vector2(source, press_position_meta, event_position)
-	return event_position.distance_to(press_position) > host.PASSIVE_BUTTON_TAP_RELEASE_SLOP
-
-
 func _prepare_fishing_control_tap() -> void:
 	var active_scroll: MobileScrollContainer = host._skill_detail_surface()._active_action_scroll_container()
 	if active_scroll != null and is_instance_valid(active_scroll):
@@ -4399,259 +4214,14 @@ func _on_fishing_method_pressed(skill_id: String, action_id: String, _area_key: 
 	host._action_runtime()._start_action_from_card_tap(skill_id, action_id)
 
 
-func _on_fishing_method_button_input(
-	event: InputEvent,
-	skill_id: String,
-	action_id: String,
-	area_key: String,
-	owner_area_pop_instance_id: int,
-	source: Button
-) -> bool:
-	if source == null or not is_instance_valid(source) or source.disabled:
-		return false
-	var event_position = host._input_routing_shell()._passive_button_event_position(event, source)
-	var event_kind = ButtonPressState.event_kind(event)
-	if event_kind == "press":
-		if host._input_routing_shell()._position_inside_bottom_interactive_ui(event_position) or not host._input_routing_shell()._position_inside_detail_actions_viewport(event_position):
-			return false
-		var method_card_for_press = _fishing_method_card_for_action(skill_id, action_id)
-		var press_kind = host.ACTION_CARD_MEDAL_PRESS_KIND if host._skill_swipe_activity_surface()._action_card_medal_hit_at_position(method_card_for_press, event_position) else ""
-		_prepare_fishing_control_tap()
-		_clear_active_fishing_method_button_press()
-		fishing_method_button_press_active = true
-		fishing_method_button_press_source_id = source.get_instance_id()
-		source.set_meta("fishing_method_owner_pop_instance_id", owner_area_pop_instance_id)
-		ButtonPressState.begin(source, "fishing_method", event_position)
-		source.set_meta("fishing_method_press_kind", press_kind)
-		host.get_viewport().set_input_as_handled()
-		return true
-	if event_kind == "drag":
-		if ButtonPressState.active(source, "fishing_method"):
-			if _fishing_control_drag_exceeds_tap_slop(source, event_position, "fishing_method_press_position"):
-				ButtonPressState.update_drag(source, "fishing_method", event_position, host.PASSIVE_BUTTON_TAP_RELEASE_SLOP)
-			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_method_press_position"):
-				var method_scroll_press_position = host._app_lifecycle_runtime().meta_vector2(source, "fishing_method_press_position", event_position)
-				_clear_active_fishing_method_button_press()
-				_handoff_fishing_vertical_scroll(method_scroll_press_position, event_position, _motion_event_touch_index(event))
-				return true
-			if _fishing_control_drag_is_horizontal_swipe(source, event_position, "fishing_method_press_position"):
-				var method_swipe_press_position = host._app_lifecycle_runtime().meta_vector2(source, "fishing_method_press_position", event_position)
-				var touch_index = (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
-				ButtonPressState.clear(source, "fishing_method", ["kind"])
-				fishing_method_button_press_active = false
-				fishing_method_button_press_source_id = 0
-				host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(method_swipe_press_position, touch_index)
-				if host._skill_swipe_activity_surface().skill_swipe_tracking:
-					host._skill_swipe_activity_surface()._update_skill_swipe_feedback(event_position)
-				host.get_viewport().set_input_as_handled()
-				return true
-			ButtonPressState.update_drag(source, "fishing_method", event_position, -1.0)
-			host.get_viewport().set_input_as_handled()
-			return true
-		return false
-	if event_kind == "release":
-		var was_active = ButtonPressState.active(source, "fishing_method")
-		var press_kind = str(source.get_meta("fishing_method_press_kind", ""))
-		var valid_tap = ButtonPressState.finish(source, "fishing_method", event_position, host.PASSIVE_BUTTON_TAP_RELEASE_SLOP, -1.0, ["kind"])
-		fishing_method_button_press_active = false
-		fishing_method_button_press_source_id = 0
-		if not was_active:
-			return false
-		if (
-			valid_tap
-			and host._input_routing_shell()._position_inside_detail_actions_viewport(event_position)
-			and not host._skill_detail_surface()._detail_actions_scroll_suppresses_child_click()
-			and not host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action()
-		):
-			var method_card = _fishing_method_card_for_action(skill_id, action_id)
-			if press_kind == host.ACTION_CARD_MEDAL_PRESS_KIND:
-				if host._skill_swipe_activity_surface()._action_card_medal_hit_at_position(method_card, event_position):
-					host._skill_swipe_activity_surface()._play_action_card_medal_tap_ceremony(method_card)
-			elif host.queue_selection_mode:
-				var owner_area_card = _fishing_area_card_for_pop_instance_id(owner_area_pop_instance_id)
-				if owner_area_card.is_empty():
-					host._skill_swipe_activity_surface()._queue_selection_toggle_from_card(method_card)
-				else:
-					host._skill_swipe_activity_surface()._queue_selection_toggle_from_card(owner_area_card)
-			elif host.current_screen == "queue":
-				var owner_area_card = _fishing_area_card_for_pop_instance_id(owner_area_pop_instance_id)
-				var module_key = host._skill_swipe_activity_surface()._activity_queue_module_key_for_card(owner_area_card if not owner_area_card.is_empty() else method_card)
-				if not module_key.is_empty():
-					host._activity_queue_runtime()._start_activity_queue_from_key(module_key)
-			else:
-				_on_fishing_method_pressed(skill_id, action_id, area_key, owner_area_pop_instance_id)
-		host.get_viewport().set_input_as_handled()
-		return true
-	return false
-
-
-func _route_fishing_method_button_global_input(event: InputEvent) -> bool:
-	if fishing_scroll_mouse_pick_suspended:
-		return false
-	if host.current_screen != "skill" and host.current_screen != "pinned" and host.current_screen != "queue":
-		return false
-	if host.current_screen == "skill" and host.selected_skill_id != "fishing":
-		return false
-	var event_position := Vector2.ZERO
-	var is_press := false
-	var is_release := false
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		var mouse_event := event as InputEventMouseButton
-		event_position = mouse_event.global_position
-		is_press = mouse_event.pressed
-		is_release = not mouse_event.pressed
-	elif event is InputEventMouseMotion:
-		event_position = (event as InputEventMouseMotion).global_position
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		event_position = touch_event.position
-		is_press = touch_event.pressed
-		is_release = not touch_event.pressed
-	elif event is InputEventScreenDrag:
-		event_position = (event as InputEventScreenDrag).position
-	else:
-		return false
-	if host._skill_swipe_activity_surface().skill_swipe_tracking and host._skill_swipe_activity_surface().skill_swipe_horizontal:
-		return false
-	if is_release and not fishing_method_button_press_active:
-		var active_scroll := host._skill_detail_surface()._active_action_scroll_container() as ScrollContainer
-		if active_scroll != null and is_instance_valid(active_scroll) and active_scroll.drag_tracking:
-			active_scroll._input(event)
-			return true
-	if not is_press and not fishing_method_button_press_active:
-		return false
-	var hit := _fishing_method_button_hit(event_position, true) if is_press else _active_fishing_method_button_hit()
-	if hit.is_empty():
-		return false
-	var method_card := hit.get("method_card", {}) as Dictionary
-	var source := hit.get("button", null) as Button
-	if method_card.is_empty() or source == null or not is_instance_valid(source):
-		return false
-	var owner_area_card := hit.get("owner_area_card", {}) as Dictionary
-	var owner_pop := owner_area_card.get("pop", null) as Control
-	var owner_area_pop_instance_id := owner_pop.get_instance_id() if owner_pop != null and is_instance_valid(owner_pop) else 0
-	if owner_area_pop_instance_id == 0:
-		owner_area_pop_instance_id = int(hit.get("owner_pop_instance_id", 0))
-	return _on_fishing_method_button_input(
-		event,
-		str(method_card.get("skill_id", "fishing")),
-		str(method_card.get("action_id", "")),
-		str(method_card.get("fishing_area_key", "")),
-		owner_area_pop_instance_id,
-		source
-	)
-
-
-func _route_fishing_location_image_priority_press(event: InputEvent) -> bool:
-	if fishing_scroll_mouse_pick_suspended:
-		return false
-	if host.current_screen != "skill" and host.current_screen != "pinned" and host.current_screen != "queue":
-		return false
-	if host.current_screen == "skill" and host.selected_skill_id != "fishing":
-		return false
-	var event_position := Vector2.ZERO
-	var is_press := false
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.button_index != MOUSE_BUTTON_LEFT:
-			return false
-		event_position = mouse_event.global_position
-		is_press = mouse_event.pressed
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		event_position = touch_event.position
-		is_press = touch_event.pressed
-	else:
-		return false
-	if not is_press:
-		return false
-	if host._input_routing_shell()._position_inside_bottom_interactive_ui(event_position) or not host._input_routing_shell()._position_inside_detail_actions_viewport(event_position):
-		return false
-	var hit := _fishing_method_button_hit(event_position, true)
-	if hit.is_empty():
-		return false
-	var method_card := hit.get("method_card", {}) as Dictionary
-	if method_card.is_empty() or not bool(method_card.get("is_fishing_location", false)):
-		return false
-	var skill_id := str(method_card.get("skill_id", "fishing"))
-	var action_id := str(method_card.get("action_id", ""))
-	var action: Dictionary = host._action_data(skill_id, action_id)
-	if action.is_empty() or not host._activity_unlock_runtime()._is_action_unlocked(skill_id, action):
-		return false
-	var owner_area_card := hit.get("owner_area_card", {}) as Dictionary
-	var owner_pop := owner_area_card.get("pop", null) as Control
-	var owner_area_pop_instance_id := owner_pop.get_instance_id() if owner_pop != null and is_instance_valid(owner_pop) else 0
-	if owner_area_pop_instance_id == 0:
-		owner_area_pop_instance_id = int(hit.get("owner_pop_instance_id", 0))
-	var source := hit.get("button", null) as Button
-	if source == null or not is_instance_valid(source):
-		return false
-	return _on_fishing_method_button_input(
-		event,
-		skill_id,
-		action_id,
-		str(method_card.get("fishing_area_key", "")),
-		owner_area_pop_instance_id,
-		source
-	)
-
-
-func _fishing_method_button_hit(event_position: Vector2, require_contains_point := true) -> Dictionary:
+func _fishing_method_button_hit(event_position: Vector2) -> Dictionary:
 	if fishing_scroll_mouse_pick_suspended:
 		return {}
-	var positions: Array = host._input_routing_shell()._activity_input_position_candidates(event_position)
-	var matched_hit := {}
-	var matched_rect_area := INF
-	var matched_rect_center_distance := INF
-	var trace_hit: bool = _fishing_input_trace_enabled() and require_contains_point
 	for hit in _fishing_method_button_hit_candidates():
-		var button := hit.get("button", null) as Button
-		if button == null or not is_instance_valid(button) or button.disabled:
-			continue
-		if not button.is_inside_tree() or not button.is_visible_in_tree():
-			continue
-		var method_card_for_hit := hit.get("method_card", {}) as Dictionary
-		var hit_control := hit.get("hit_control", button) as Control
-		if require_contains_point and bool(method_card_for_hit.get("is_fishing_location", false)):
-			var image_hit_control := method_card_for_hit.get("method_image_hit_control", null) as Control
-			if (
-				image_hit_control != null
-				and is_instance_valid(image_hit_control)
-				and host._input_routing_shell()._first_position_in_rect(positions, image_hit_control.get_global_rect()) != null
-			):
-				hit_control = image_hit_control
-		if hit_control == null or not is_instance_valid(hit_control) or not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
-			hit_control = button
-		var hit_rect := hit_control.get_global_rect()
-		if require_contains_point:
-			if host._input_routing_shell()._first_position_in_rect(positions, hit_rect) == null:
-				continue
-			var rect_area := hit_rect.size.x * hit_rect.size.y
-			if trace_hit:
-				var trace_card := hit.get("method_card", {}) as Dictionary
-				print("FISHING_METHOD_HIT_TRACE action=%s area=%s rect=%s rect_area=%.1f" % [
-					str(trace_card.get("action_id", "")),
-					str(trace_card.get("area_id", "")),
-					str(hit_rect),
-					rect_area
-				])
-			var rect_center_distance := hit_rect.get_center().distance_to(event_position)
-			if (
-				not matched_hit.is_empty()
-				and (
-					rect_area > matched_rect_area + 0.5
-					or (absf(rect_area - matched_rect_area) <= 0.5 and rect_center_distance >= matched_rect_center_distance)
-				)
-			):
-				continue
-			matched_rect_area = rect_area
-			matched_rect_center_distance = rect_center_distance
-		matched_hit = hit
-	if trace_hit and not matched_hit.is_empty():
-		var matched_card := matched_hit.get("method_card", {}) as Dictionary
-		print("FISHING_METHOD_HIT_TRACE matched=%s pos=%s" % [str(matched_card.get("action_id", "")), str(event_position)])
-	return matched_hit
-
+		var button := hit.button as Button
+		if not button.disabled and button.is_visible_in_tree() and button.get_global_rect().has_point(event_position):
+			return hit
+	return {}
 
 func _event_inside_fishing_location_image(event: InputEvent) -> bool:
 	var event_position := Vector2.ZERO
@@ -4667,127 +4237,18 @@ func _event_inside_fishing_location_image(event: InputEvent) -> bool:
 
 
 func _fishing_location_image_hit_at_position(event_position: Vector2) -> bool:
-	var positions: Array = host._input_routing_shell()._activity_input_position_candidates(event_position)
-	for hit in _fishing_method_button_hit_candidates():
-		var method_card := hit.get("method_card", {}) as Dictionary
-		if not bool(method_card.get("is_fishing_location", false)):
-			continue
-		var hit_control := method_card.get("method_image_hit_control", null) as Control
-		if hit_control == null or not is_instance_valid(hit_control) or not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
-			continue
-		if host._input_routing_shell()._first_position_in_rect(positions, hit_control.get_global_rect()) != null:
-			return true
-	return false
-
-
-func _active_fishing_method_button_hit() -> Dictionary:
-	if fishing_method_button_press_source_id != 0:
-		var active_button := instance_from_id(fishing_method_button_press_source_id) as Button
-		if ButtonPressState.active(active_button, "fishing_method"):
-			var method_card := active_button.get_meta("fishing_method_card", {}) as Dictionary
-			if not method_card.is_empty():
-				var hit_control := method_card.get("method_hit_control", active_button) as Control
-				return {
-					"method_card": method_card,
-					"button": active_button,
-					"hit_control": hit_control,
-					"owner_area_card": {},
-					"owner_pop_instance_id": int(active_button.get_meta("fishing_method_owner_pop_instance_id", 0))
-				}
-	for hit in _fishing_method_button_hit_candidates():
-		var button := hit.get("button", null) as Button
-		if ButtonPressState.active(button, "fishing_method"):
-			return hit
-	return {}
-
-
-func _clear_active_fishing_method_button_press() -> void:
-	fishing_method_button_press_active = false
-	fishing_method_button_press_source_id = 0
-	for hit in _fishing_method_button_hit_candidates():
-		var button := hit.get("button", null) as Button
-		if button == null or not is_instance_valid(button):
-			continue
-		ButtonPressState.clear(button, "fishing_method", ["kind"])
-
+	var hit := _fishing_method_button_hit(event_position)
+	return not hit.is_empty() and bool(hit.method_card.get("is_fishing_location", false))
 
 func _fishing_method_button_hit_candidates() -> Array:
 	var hits: Array = []
-	var seen_buttons := {}
-	for raw_card in host.action_cards.values():
-		if typeof(raw_card) != TYPE_DICTIONARY:
+	for node in host.get_tree().get_nodes_in_group("fishing_method_buttons"):
+		var button := node as Button
+		if button == null or button.is_queued_for_deletion():
 			continue
-		var card := raw_card as Dictionary
-		if bool(card.get("is_fishing_method", false)):
-			var raw_button = card.get("method_button", null)
-			if raw_button == null or not is_instance_valid(raw_button) or not raw_button is Button:
-				continue
-			var button := raw_button as Button
-			var raw_hit_control = card.get("method_hit_control", button)
-			var hit_control := raw_hit_control as Control if raw_hit_control != null and is_instance_valid(raw_hit_control) and raw_hit_control is Control else button
-			if not seen_buttons.has(button.get_instance_id()):
-				seen_buttons[button.get_instance_id()] = true
-				hits.append({"method_card": card, "button": button, "hit_control": hit_control, "owner_area_card": {}})
-			continue
-		if not bool(card.get("is_fishing_area", false)):
-			continue
-		for raw_method_card in (card.get("method_slots", {}) as Dictionary).values():
-			if typeof(raw_method_card) != TYPE_DICTIONARY:
-				continue
-			var method_card := raw_method_card as Dictionary
-			if not bool(method_card.get("is_fishing_method", false)):
-				continue
-			var raw_method_button = method_card.get("method_button", null)
-			if raw_method_button == null or not is_instance_valid(raw_method_button) or not raw_method_button is Button:
-				continue
-			var method_button := raw_method_button as Button
-			var raw_hit_control = method_card.get("method_hit_control", method_button)
-			var hit_control := raw_hit_control as Control if raw_hit_control != null and is_instance_valid(raw_hit_control) and raw_hit_control is Control else method_button
-			if not seen_buttons.has(method_button.get_instance_id()):
-				seen_buttons[method_button.get_instance_id()] = true
-				hits.append({"method_card": method_card, "button": method_button, "hit_control": hit_control, "owner_area_card": card})
-	for raw_lazy_entry in host._skill_detail_surface().detail_lazy_plan:
-		if typeof(raw_lazy_entry) != TYPE_DICTIONARY:
-			continue
-		var lazy_entry := raw_lazy_entry as Dictionary
-		if str(lazy_entry.get("kind", "")) != "fishing_area" or not bool(lazy_entry.get("mounted", false)):
-			continue
-		var lazy_area_card := lazy_entry.get("card", {}) as Dictionary
-		if lazy_area_card.is_empty():
-			continue
-		for raw_lazy_method_card in (lazy_area_card.get("method_slots", {}) as Dictionary).values():
-			if typeof(raw_lazy_method_card) != TYPE_DICTIONARY:
-				continue
-			var lazy_method_card := raw_lazy_method_card as Dictionary
-			if not bool(lazy_method_card.get("is_fishing_method", false)):
-				continue
-			var raw_lazy_method_button = lazy_method_card.get("method_button", null)
-			if raw_lazy_method_button == null or not is_instance_valid(raw_lazy_method_button) or not raw_lazy_method_button is Button:
-				continue
-			var lazy_method_button := raw_lazy_method_button as Button
-			var raw_lazy_hit_control = lazy_method_card.get("method_hit_control", lazy_method_button)
-			var lazy_hit_control := raw_lazy_hit_control as Control if raw_lazy_hit_control != null and is_instance_valid(raw_lazy_hit_control) and raw_lazy_hit_control is Control else lazy_method_button
-			if not seen_buttons.has(lazy_method_button.get_instance_id()):
-				seen_buttons[lazy_method_button.get_instance_id()] = true
-				hits.append({"method_card": lazy_method_card, "button": lazy_method_button, "hit_control": lazy_hit_control, "owner_area_card": lazy_area_card})
-	var tree := host.get_tree() as SceneTree
-	if tree != null:
-		for raw_button in tree.get_nodes_in_group("fishing_method_buttons"):
-			var grouped_button := raw_button as Button
-			if grouped_button == null or not is_instance_valid(grouped_button) or seen_buttons.has(grouped_button.get_instance_id()):
-				continue
-			var grouped_method_card := grouped_button.get_meta("fishing_method_card", {}) as Dictionary
-			if grouped_method_card.is_empty() or not bool(grouped_method_card.get("is_fishing_method", false)):
-				continue
-			var grouped_hit_control := grouped_method_card.get("method_hit_control", grouped_button) as Control
-			seen_buttons[grouped_button.get_instance_id()] = true
-			hits.append({
-				"method_card": grouped_method_card,
-				"button": grouped_button,
-				"hit_control": grouped_hit_control,
-				"owner_area_card": {},
-				"owner_pop_instance_id": int(grouped_button.get_meta("fishing_method_owner_pop_instance_id", 0))
-			})
+		var card := button.get_meta("fishing_method_card", {}) as Dictionary
+		if not card.is_empty():
+			hits.append({"method_card": card, "button": button})
 	return hits
 
 func _fishing_offer_height(offer_id: String) -> float:
@@ -4910,6 +4371,8 @@ func _discard_fishing_area_module_card_keys(area_key: String, area_card: Diction
 func _set_preview_controls_mouse_filter(root: Control) -> void:
 	if root == null:
 		return
+	if not root.has_meta("preview_original_mouse_filter"):
+		root.set_meta("preview_original_mouse_filter", root.mouse_filter)
 	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for child in root.get_children():
 		var child_control := child as Control
@@ -4996,34 +4459,18 @@ func _fishing_offer_base_button() -> Button:
 	host.button_press_runtime.attach_default_button_sfx(button)
 	return button
 
-func _register_fishing_offer_button(button: Button, root: Control, pop_card: Control, offer_id: String, connect_gui_input := false) -> void:
+func _register_fishing_offer_button(button: Button, root: Control, pop_card: Control, offer_id: String) -> void:
 	button.set_meta("fishing_offer_id", offer_id)
 	button.set_meta("fishing_offer_root_id", root.get_instance_id())
 	button.set_meta("fishing_offer_hit_id", pop_card.get_instance_id())
 	button.add_to_group("fishing_offer_buttons")
-	if connect_gui_input:
-		button.gui_input.connect(_on_fishing_offer_button_input.bind(offer_id, button))
+	_connect_fishing_button(button, _activate_fishing_offer_button.bind(offer_id, button))
 
-func _fishing_equipment_offer_button(pop_card: Control, root: Control, offer_id: String, connect_gui_input := false) -> Button:
+func _fishing_full_offer_button(pop_card: Control, root: Control, offer_id: String) -> Button:
 	var button := _fishing_offer_base_button()
-	button.anchor_left = 0.5
-	button.anchor_right = 0.5
-	button.anchor_top = 0.5
-	button.anchor_bottom = 0.5
-	button.offset_left = -140
-	button.offset_right = 140
-	button.offset_top = -85
-	button.offset_bottom = 110
-	pop_card.add_child(button)
-	_register_fishing_offer_button(button, root, pop_card, offer_id, connect_gui_input)
-	return button
-
-func _fishing_full_offer_button(pop_card: Control, root: Control, offer_id: String, connect_gui_input := false) -> Button:
-	var button := _fishing_offer_base_button()
-	button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
 	button.set_anchors_preset(Control.PRESET_FULL_RECT)
 	pop_card.add_child(button)
-	_register_fishing_offer_button(button, root, pop_card, offer_id, connect_gui_input)
+	_register_fishing_offer_button(button, root, pop_card, offer_id)
 	return button
 
 func _fishing_offer_hint(pop_card: Control, hint_text: String, available: bool, outline_size := 10, offset_top := -78.0, offset_bottom := -17.0, vertical_alignment := VERTICAL_ALIGNMENT_TOP) -> Label:
@@ -5069,7 +4516,7 @@ func _build_fishing_net_offer_module(content_width: float) -> Control:
 	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	pop_card.add_child(title)
 
-	var net_button := _fishing_full_offer_button(pop_card, root, "net", true)
+	var net_button := _fishing_full_offer_button(pop_card, root, "net")
 
 	var net_motion_root := Control.new()
 	net_motion_root.anchor_left = 0.5
@@ -5113,13 +4560,18 @@ func _build_fishing_rod_offer_module(content_width: float) -> Control:
 	_configure_fishing_equipment_offer_title(title, 60, 12)
 	pop_card.add_child(title)
 
-	var rod_button := _fishing_equipment_offer_button(pop_card, root, "rod", true)
+	var rod_button := _fishing_full_offer_button(pop_card, root, "rod")
 
 	var rod_art: TextureRect = host.visual_texture_cache._image("res://assets/content/fishing/tools/tool-bamboo-rod.png", Vector2(260, 180))
 	rod_art.position = Vector2(10, 5)
 	rod_art.modulate = _fishing_offer_art_modulate(host.fishing_runtime.fish_currency >= FishingState.FISHING_ROD_OFFER_COST)
 	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	rod_button.add_child(rod_art)
+	rod_art.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	rod_art.offset_left = -130
+	rod_art.offset_top = -80
+	rod_art.offset_right = 130
+	rod_art.offset_bottom = 100
 
 	var hint_text := "Buy for %s fish" % GameFormatting.compact_number(float(FishingState.FISHING_ROD_OFFER_COST), 3)
 	if host.fishing_runtime.fish_currency < FishingState.FISHING_ROD_OFFER_COST:
@@ -5137,13 +4589,18 @@ func _build_fishing_mirror_offer_module(content_width: float) -> Control:
 	_configure_fishing_equipment_offer_title(title, 60, 12)
 	pop_card.add_child(title)
 
-	var mirror_button := _fishing_equipment_offer_button(pop_card, root, "mirror")
+	var mirror_button := _fishing_full_offer_button(pop_card, root, "mirror")
 
 	var mirror_art: TextureRect = host.visual_texture_cache._image("res://assets/content/fishing/tools/reflection-net.png", Vector2(260, 180))
 	mirror_art.position = Vector2(10, 5)
 	mirror_art.modulate = _fishing_offer_art_modulate(host.fishing_runtime.fish_currency >= FishingState.FISHING_MIRROR_OFFER_COST)
 	mirror_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	mirror_button.add_child(mirror_art)
+	mirror_art.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	mirror_art.offset_left = -130
+	mirror_art.offset_top = -80
+	mirror_art.offset_right = 130
+	mirror_art.offset_bottom = 100
 
 	var hint_text := "Buy for %s fish" % GameFormatting.compact_number(float(FishingState.FISHING_MIRROR_OFFER_COST), 3)
 	if host.fishing_runtime.fish_currency < FishingState.FISHING_MIRROR_OFFER_COST:
@@ -5167,7 +4624,7 @@ func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: Stri
 	_configure_fishing_equipment_offer_title(title, 60, 12)
 	pop_card.add_child(title)
 
-	var upgrade_button := _fishing_equipment_offer_button(pop_card, root, tool_id)
+	var upgrade_button := _fishing_full_offer_button(pop_card, root, tool_id)
 
 	var cost := _fishing_rod_upgrade_cost(tool_id)
 	var rod_art: TextureRect = host.visual_texture_cache._image("res://assets/content/fishing/tools/tool-bamboo-rod.png", Vector2(260, 180))
@@ -5175,6 +4632,11 @@ func _build_fishing_rod_upgrade_offer_module(content_width: float, tool_id: Stri
 	rod_art.modulate = _fishing_offer_art_modulate(host.fishing_runtime.fish_currency >= cost, Color("#dcf7ff") if tool_id == "star_rod" else Color("#ffe8a8"))
 	rod_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	upgrade_button.add_child(rod_art)
+	rod_art.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	rod_art.offset_left = -130
+	rod_art.offset_top = -80
+	rod_art.offset_right = 130
+	rod_art.offset_bottom = 100
 
 	var hint_text := "Upgrade for %s fish" % GameFormatting.compact_number(float(cost), 3)
 	if host.fishing_runtime.fish_currency < cost:
@@ -5192,7 +4654,7 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	_configure_fishing_equipment_offer_title(title, 60, 12)
 	pop_card.add_child(title)
 
-	var boat_button := _fishing_equipment_offer_button(pop_card, root, "boat")
+	var boat_button := _fishing_full_offer_button(pop_card, root, "boat")
 
 	var boat_art: TextureRect = host.visual_texture_cache._image("res://assets/content/fishing/tools/tool-boat.png", Vector2(260, 180))
 	boat_art.position = Vector2(10, 5)
@@ -5200,6 +4662,11 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	boat_art.modulate = _fishing_offer_art_modulate(can_build)
 	boat_art.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	boat_button.add_child(boat_art)
+	boat_art.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+	boat_art.offset_left = -130
+	boat_art.offset_top = -80
+	boat_art.offset_right = 130
+	boat_art.offset_bottom = 100
 
 	var hint_text := "Build for %s Softwood" % GameFormatting.compact_number(float(FishingState.FISHING_BOAT_OFFER_COST), 3)
 	if SkillState.host_skill_level(host, "build") < FishingState.FISHING_BOAT_BUILD_REQUIRED_LEVEL:
@@ -5209,141 +4676,6 @@ func _build_fishing_boat_offer_module(content_width: float) -> Control:
 	_fishing_offer_hint(pop_card, hint_text, can_build)
 
 	return root
-
-func _on_fishing_offer_button_input(event: InputEvent, offer_id: String, source: Button) -> bool:
-	if source == null or not is_instance_valid(source) or source.disabled:
-		return false
-	var event_position: Vector2 = host._input_routing_shell()._passive_button_event_position(event, source)
-	var event_kind := ButtonPressState.event_kind(event)
-	if event_kind == "press":
-		if (
-			(host._input_routing_shell()._position_inside_bottom_interactive_ui(event_position) and not _fishing_offer_button_contains_point(source, event_position))
-			or not host._input_routing_shell()._position_inside_detail_actions_viewport(event_position)
-		):
-			return false
-		_prepare_fishing_control_tap()
-		fishing_offer_button_press_active = true
-		ButtonPressState.begin(source, "fishing_offer", event_position)
-		host.get_viewport().set_input_as_handled()
-		return true
-	if event_kind == "drag":
-		if ButtonPressState.active(source, "fishing_offer"):
-			if _fishing_control_drag_exceeds_tap_slop(source, event_position, "fishing_offer_press_position"):
-				ButtonPressState.update_drag(source, "fishing_offer", event_position, host.PASSIVE_BUTTON_TAP_RELEASE_SLOP)
-			if _fishing_control_drag_is_vertical_scroll(source, event_position, "fishing_offer_press_position"):
-				var offer_scroll_press_position: Vector2 = host._app_lifecycle_runtime().meta_vector2(source, "fishing_offer_press_position", event_position)
-				_clear_fishing_offer_button_press(source)
-				_handoff_fishing_vertical_scroll(offer_scroll_press_position, event_position, _motion_event_touch_index(event))
-				return false
-			if _fishing_control_drag_is_horizontal_swipe(source, event_position, "fishing_offer_press_position"):
-				var offer_swipe_press_position: Vector2 = host._app_lifecycle_runtime().meta_vector2(source, "fishing_offer_press_position", event_position)
-				var touch_index := (event as InputEventScreenDrag).index if event is InputEventScreenDrag else -1
-				_clear_fishing_offer_button_press(source)
-				host._skill_swipe_activity_surface()._begin_skill_swipe_tracking(offer_swipe_press_position, touch_index)
-				if host._skill_swipe_activity_surface().skill_swipe_tracking:
-					host._skill_swipe_activity_surface()._update_skill_swipe_feedback(event_position)
-				host.get_viewport().set_input_as_handled()
-				return true
-			ButtonPressState.update_drag(source, "fishing_offer", event_position, -1.0)
-			host.get_viewport().set_input_as_handled()
-			return true
-		return false
-	if event_kind == "release":
-		var was_active := ButtonPressState.active(source, "fishing_offer")
-		var valid_tap := ButtonPressState.finish(source, "fishing_offer", event_position, host.PASSIVE_BUTTON_TAP_RELEASE_SLOP)
-		fishing_offer_button_press_active = false
-		if not was_active:
-			return false
-		if (
-			valid_tap
-			and host._input_routing_shell()._position_inside_detail_actions_viewport(event_position)
-			and not host._skill_swipe_activity_surface()._skill_swipe_suppresses_button_action()
-		):
-			_activate_fishing_offer_button(offer_id, source)
-	host.get_viewport().set_input_as_handled()
-	return true
-	return false
-
-func _route_fishing_offer_button_global_input(event: InputEvent) -> bool:
-	if host.current_screen != "skill" or host.selected_skill_id != "fishing":
-		return false
-	var event_position := Vector2.ZERO
-	var is_press := false
-	var is_release := false
-	var is_motion := false
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
-		var mouse_event := event as InputEventMouseButton
-		event_position = mouse_event.global_position
-		is_press = mouse_event.pressed
-		is_release = not mouse_event.pressed
-	elif event is InputEventMouseMotion:
-		event_position = (event as InputEventMouseMotion).global_position
-		is_motion = true
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		event_position = touch_event.position
-		is_press = touch_event.pressed
-		is_release = not touch_event.pressed
-	elif event is InputEventScreenDrag:
-		event_position = (event as InputEventScreenDrag).position
-		is_motion = true
-	else:
-		return false
-	if fishing_scroll_mouse_pick_suspended:
-		if is_press:
-			_set_fishing_scroll_mode_active(false)
-		else:
-			return false
-	if not is_press and not fishing_offer_button_press_active:
-		return false
-	var source := _fishing_offer_button_hit(event_position, true) if is_press else _active_fishing_offer_button()
-	if host._input_routing_shell()._position_inside_bottom_interactive_ui(event_position):
-		if source == null:
-			_clear_fishing_offer_button_press(_active_fishing_offer_button())
-			return false
-	if source == null:
-		return false
-	return _on_fishing_offer_button_input(event, str(source.get_meta("fishing_offer_id", "")), source)
-
-func _fishing_offer_button_hit(event_position: Vector2, require_contains_point := true) -> Button:
-	if fishing_scroll_mouse_pick_suspended:
-		return null
-	for raw_button in host.get_tree().get_nodes_in_group("fishing_offer_buttons"):
-		var button := raw_button as Button
-		if button == null or not is_instance_valid(button) or button.disabled:
-			continue
-		if not button.is_inside_tree() or not button.is_visible_in_tree():
-			continue
-		if require_contains_point and not _fishing_offer_button_contains_point(button, event_position):
-			continue
-		return button
-	return null
-
-func _fishing_offer_button_contains_point(button: Button, event_position: Vector2) -> bool:
-	if button.get_global_rect().has_point(event_position):
-		return true
-	for meta_name in ["fishing_offer_hit_id", "fishing_offer_root_id"]:
-		if not button.has_meta(meta_name):
-			continue
-		var hit_control: Control = host._app_lifecycle_runtime().valid_control_ref(instance_from_id(int(button.get_meta(meta_name))))
-		if hit_control == null:
-			continue
-		if not hit_control.is_inside_tree() or not hit_control.is_visible_in_tree():
-			continue
-		if hit_control.get_global_rect().has_point(event_position):
-			return true
-	return false
-
-func _active_fishing_offer_button() -> Button:
-	for raw_button in host.get_tree().get_nodes_in_group("fishing_offer_buttons"):
-		var button := raw_button as Button
-		if ButtonPressState.active(button, "fishing_offer"):
-			return button
-	return null
-
-func _clear_fishing_offer_button_press(source: Button) -> void:
-	fishing_offer_button_press_active = false
-	ButtonPressState.clear(source, "fishing_offer")
 
 func _activate_fishing_offer_button(offer_id: String, source: Button) -> void:
 	if source == null or not is_instance_valid(source):

@@ -259,7 +259,12 @@ func render_page() -> void:
 	reset.add_theme_stylebox_override("pressed", host._paper_button_style(Color("#ef5656"), 24, 36, true))
 	_register_reset_button(reset, "Hard Reset")
 	action_stack.add_child(reset)
-	action_stack.add_child(discord)
+	var contact_gap := Control.new()
+	contact_gap.custom_minimum_size.y = 64
+	stack.add_child(contact_gap)
+	stack.move_child(contact_gap, fill_spacer.get_index())
+	stack.add_child(discord)
+	stack.move_child(discord, fill_spacer.get_index())
 	stack.add_child(action_stack)
 	var bottom_spacer := Control.new()
 	bottom_spacer.custom_minimum_size = Vector2(0, 6)

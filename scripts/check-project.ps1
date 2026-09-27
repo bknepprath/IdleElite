@@ -356,7 +356,7 @@ if (-not (Test-Path -LiteralPath $performance1080pMigrationContractsTest)) {
     throw "1080p migration contracts test was not found at $performance1080pMigrationContractsTest"
 }
 
-$performance1080pMigrationContractsOutput = & $performance1080pMigrationContractsTest 2>&1
+$performance1080pMigrationContractsOutput = & $performance1080pMigrationContractsTest -RequireCutover 2>&1
 $performance1080pMigrationContractsOutput | Out-Host
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE

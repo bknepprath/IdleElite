@@ -13,6 +13,42 @@ var host
 var completed_bosses := {}
 var blue_guy_health := float(BLUE_GUY_HEALTH_MAX)
 var blue_guy_health_bank := 0.0
+var parked_combat_stage: Control
+var parked_combat_action_id := ""
+
+
+func park_running_combat_stage() -> void:
+	if not action_is_free_fighting_proto(host.running_skill_id, host.running_action_id):
+		return
+	var card: Dictionary = host.action_cards.get(host._action_key("fight", host.running_action_id), {})
+	var stage := card.get("blue_guy_chicken_stage") as Control
+	if stage == null or not is_instance_valid(stage) or stage.is_queued_for_deletion() or not bool(stage.get("active")):
+		return
+	parked_combat_stage = stage
+	parked_combat_action_id = host.running_action_id
+	stage.reparent(host, false)
+	stage.visible = false
+
+
+func take_parked_combat_stage(action_id: String) -> Control:
+	if not is_instance_valid(parked_combat_stage) or parked_combat_action_id != action_id:
+		return null
+	var stage := parked_combat_stage
+	stage.get_parent().remove_child(stage)
+	stage.visible = true
+	parked_combat_stage = null
+	parked_combat_action_id = ""
+	return stage
+
+
+func sync_parked_combat_stage() -> void:
+	if not is_instance_valid(parked_combat_stage):
+		return
+	if host.running_skill_id == "fight" and host.running_action_id == parked_combat_action_id:
+		return
+	parked_combat_stage.queue_free()
+	parked_combat_stage = null
+	parked_combat_action_id = ""
 
 
 func _init(host_node = null) -> void:
@@ -171,7 +207,7 @@ func configure_blue_guy_chicken_brawl_stage(stage: Control) -> void:
 	if stage.has_method("setup_blue_guy_health"):
 		stage.call("setup_blue_guy_health", blue_guy_health_int(), BLUE_GUY_HEALTH_MAX, blue_guy_health_regen_fraction())
 	if stage.has_method("set_active_fight"):
-		stage.call("set_active_fight", action_is_free_fighting_proto(host.running_skill_id, host.running_action_id))
+		stage.call("set_active_fight", action_is_free_fighting_proto(host.running_skill_id, host.running_action_id) and str(stage.get_meta("combat_action_id", "")) == host.running_action_id)
 	if stage.has_signal("chicken_killed"):
 		var callback := Callable(self, "on_blue_guy_chicken_brawl_chicken_killed").bind(stage)
 		if not stage.is_connected("chicken_killed", callback):

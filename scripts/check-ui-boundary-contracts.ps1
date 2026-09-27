@@ -129,8 +129,8 @@ $incomingEntryMatch = [regex]::Match($skillSwipeActivitySurface, '(?s)func _begi
 Assert-True ($incomingEntryMatch.Success) "Missing _begin_skill_swipe_incoming_entry body for directional swipe entry contract."
 Assert-True ($incomingEntryMatch.Groups[1].Value -match 'tween_method\(\s*_apply_skill_swipe_drag_offset,\s*start_x,\s*0\.0,') "Incoming skill page must slide from the swipe direction into center."
 Assert-True ($skillSwipeActivitySurface -match '_begin_skill_swipe_incoming_entry\((?:gap_entry_x if use_gap_load_transition else )?float\(signi\(offset\)\) \* _skill_swipe_page_span\(\)\)') "Normal skill swipe navigation must use a directional incoming entry."
-$fishingOfferRouterMatch = [regex]::Match($fishingUiSurface, '(?s)func _route_fishing_offer_button_global_input\(event: InputEvent\) -> bool:(.*?)(?=^func |\z)', [System.Text.RegularExpressions.RegexOptions]::Multiline)
-Assert-True ($fishingOfferRouterMatch.Success) "Missing fishing offer global input router."
-Assert-True ($fishingOfferRouterMatch.Groups[1].Value -match '_position_inside_bottom_interactive_ui\(event_position\)') "Fishing offer global input must not consume module utility, chat, or nav taps."
+Assert-True ($fishingUiSurface -match 'func _connect_fishing_button\(') "Fishing controls must share native button handling."
+Assert-True ($fishingUiSurface -notmatch 'func _route_fishing_offer_button_global_input\(') "Fishing offers must not intercept global pointer input."
+Assert-True ($fishingUiSurface -match '_connect_fishing_button\(button, _activate_fishing_offer_button.bind') "Fishing offers must activate through their native button."
 
 Write-Output "ui-boundary-contracts-ok"

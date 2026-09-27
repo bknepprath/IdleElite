@@ -175,17 +175,9 @@ func _run() -> void:
 	var action_cards := {}
 	action_cards[scene.call("_action_key", "fishing", fishing_action_id)] = fishing_method_card
 	scene.set("action_cards", action_cards)
-	var fishing_medal_center := fishing_medal.get_global_rect().get_center()
-	var press_event := _mouse_button_event(fishing_medal_center, true)
-	if not bool(scene.call("_fishing_ui_surface")._on_fishing_method_button_input(press_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
-		_record("Fishing medal press was not handled")
-	if str(fishing_button.get_meta("fishing_method_press_kind", "")) != "__medal__":
-		_record("Fishing medal press did not store medal press kind")
-	var release_event := _mouse_button_event(fishing_medal_center, false)
-	if not bool(scene.call("_fishing_ui_surface")._on_fishing_method_button_input(release_event, "fishing", fishing_action_id, "test-area", 0, fishing_button)):
-		_record("Fishing medal release was not handled")
-	if fishing_button.has_meta("fishing_method_press_kind"):
-		_record("Fishing medal press kind was not cleared after release")
+	scene.call("_fishing_ui_surface")._activate_fishing_method_button(fishing_method_card)
+	var medal_button := fishing_medal.get_node("MedalButton") as Button
+	medal_button.pressed.emit()
 	if not fishing_method_card.has("medal_tap_tweens"):
 		_record("Fishing medal release did not start medal tap ceremony")
 	detail_scroll.queue_free()

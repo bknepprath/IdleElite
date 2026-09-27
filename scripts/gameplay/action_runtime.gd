@@ -2,6 +2,7 @@ extends RefCounted
 
 const BuildableModules = preload("res://scripts/gameplay/buildable_modules.gd")
 const RecoveryModules = preload("res://scripts/gameplay/recovery_modules.gd")
+const ModuleUiRuntime = preload("res://scripts/module_ui/runtime.gd")
 const AchievementState = preload("res://scripts/achievements/state.gd")
 const MasteryState = preload("res://scripts/progression/mastery_state.gd")
 const SkillState = preload("res://scripts/progression/skill_state.gd")
@@ -349,10 +350,6 @@ func record_activity_start() -> void:
 
 func record_activity_completion() -> void:
 	activity_completion_count += 1
-
-
-func guaranteed_success_limit() -> int:
-	return GUARANTEED_SUCCESS_ACTION_COMPLETIONS
 
 
 func record_successful_activity_completion(action_key: String) -> int:
@@ -1558,6 +1555,7 @@ func _mat_reward_result_text(awarded_mats: Array) -> String:
 
 
 func _process_action(delta: float) -> void:
+	host._fighting_runtime().sync_parked_combat_stage()
 	_process_canceled_action_progress(delta)
 	host._activity_queue_runtime()._process_activity_queue_runtime()
 	_process_temporary_event_action(delta)
@@ -1643,6 +1641,7 @@ func _process_action(delta: float) -> void:
 		return
 	if fishing_rework_attempt:
 		host.fishing_runtime.complete_action_attempt(host, action, active_key, bonus_snapshot_before)
+		host._activity_queue_runtime().fishing_cycle_completed()
 		return
 	if not host._activity_queue_runtime().activity_queue_running and SkillState.host_stamina_value(host.running_skill_id, host) + 0.0001 < cost:
 		_auto_eat_fish_for_action(host.running_skill_id, cost, host._skill_detail_surface().detail_regen_circle, false)
@@ -1662,7 +1661,6 @@ func _process_action(delta: float) -> void:
 		tiers_unlocked_before[tier] = AchievementState.global_medal_tier_unlocked(host, tier)
 	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	var old_skill_level = SkillState.host_skill_level(host, host.running_skill_id)
-	var locked_preview_available_before = host._activity_unlock_runtime()._locked_activity_preview_available()
 	var success = _roll_action_success(host.running_skill_id, action)
 	var completed_skill_id = host.running_skill_id
 	var completed_action_id = host.running_action_id
@@ -1695,7 +1693,6 @@ func _process_action(delta: float) -> void:
 		host._onboarding_runtime()._register_silver_opportunity_tip_anchor(host.running_skill_id, host.running_action_id, old_mastery_level, new_mastery_level)
 		for raw_reward_skill_id in affected_reward_skill_ids:
 			SkillState.recalculate_level(host, str(raw_reward_skill_id))
-		host._activity_unlock_ceremony_surface().queue_locked_preview_reveal_if_needed(locked_preview_available_before)
 		var new_skill_level = SkillState.host_skill_level(host, host.running_skill_id)
 		var any_reward_skill_level_up = _any_reward_skill_leveled_up(affected_reward_skill_ids, old_reward_skill_levels)
 		host._passive_modules_runtime().sync_passive_module_unlocks(host._unix_now())
@@ -1954,6 +1951,8 @@ func _attempt_buildable_action(skill_id: String, action: Dictionary) -> bool:
 
 
 func _start_action_from_card_tap(skill_id: String, action_id: String, visual_card_key = "") -> bool:
+	if host.current_screen == "queue" and not host.queue_selection_mode:
+		return host._activity_queue_runtime()._start_activity_queue_from_key(ModuleUiRuntime.action(skill_id, action_id, host.FISHING_ACTION_ID_ALIASES))
 	if host._material_collection_surface().berry_mode_card_tap_handled(skill_id, action_id):
 		return false
 	var key = host._action_key(skill_id, action_id)
@@ -2112,7 +2111,6 @@ func _grant_offline_action_completion_batch(skill_id: String, action_id: String,
 	var mastery_total = 0.0
 	var fish_total = 0.0
 	var logs_spent = 0
-	var locked_preview_available_before = host._activity_unlock_runtime()._locked_activity_preview_available()
 	for _i in range(count):
 		var completion = _grant_offline_action_completion(skill_id, action_id, action, true)
 		if bool(completion.get("success", false)):
@@ -2123,7 +2121,6 @@ func _grant_offline_action_completion_batch(skill_id: String, action_id: String,
 		logs_spent += int(completion.get("logs_spent", 0))
 	SkillState.recalculate_level(host, skill_id)
 	host._passive_modules_runtime().sync_passive_module_unlocks(host._unix_now())
-	host._activity_unlock_ceremony_surface().queue_locked_preview_reveal_if_needed(locked_preview_available_before)
 	return {
 		"completions": count,
 		"successes": successes,
@@ -2245,7 +2242,6 @@ func _grant_offline_action_completion(skill_id: String, action_id: String, actio
 	var logs_spent = 0
 	var old_skill_level = SkillState.host_skill_level(host, skill_id)
 	var old_mastery_level = MasteryState.level(host.mastery, host._action_key(skill_id, action_id))
-	var locked_preview_available_before = host._activity_unlock_runtime()._locked_activity_preview_available()
 	if success:
 		var plank_bonus_used = host._passive_modules_runtime().plank_bonus_applies(skill_id)
 		xp_reward = _offline_xp_reward(action, skill_id, plank_bonus_used)
@@ -2265,7 +2261,6 @@ func _grant_offline_action_completion(skill_id: String, action_id: String, actio
 		host._hub_runtime().record_mission_action_completion(skill_id, action_id)
 		if not defer_recalc:
 			SkillState.recalculate_level(host, skill_id)
-			host._activity_unlock_ceremony_surface().queue_locked_preview_reveal_if_needed(locked_preview_available_before)
 			host._passive_modules_runtime().sync_passive_module_unlocks(host._unix_now())
 	elif not host._fishing_rework_active_for_skill(skill_id):
 		var failure_mastery_reward = 0.0 if MasteryState.would_reward_level_up(host.mastery, host._action_key(skill_id, action_id), mastery_reward, host.MASTERY_MAX_LEVEL) else mastery_reward
@@ -2290,7 +2285,6 @@ func _grant_offline_fishing_action_completion(skill_id: String, action_id: Strin
 	var fish_gained = 0.0
 	var mastery_action_id = host.fishing_runtime.mastery_action_id(action_id, FishingState.FISHING_TOOL_LOCATION_ACTIONS, Callable(host, "_fishing_location_thumbnail_path"))
 	var old_skill_level = SkillState.host_skill_level(host, skill_id)
-	var locked_preview_available_before = host._activity_unlock_runtime()._locked_activity_preview_available()
 	var direct_fish_currency_reward = FishingState.has_direct_fish_currency_reward(action)
 	var netting = host.fishing_runtime.equipped_tool_id == "net" and not direct_fish_currency_reward
 	var boating = host.fishing_runtime.equipped_tool_id == "boat" and not direct_fish_currency_reward
@@ -2325,7 +2319,6 @@ func _grant_offline_fishing_action_completion(skill_id: String, action_id: Strin
 		host._hub_runtime().record_mission_action_completion(skill_id, action_id)
 		if not defer_recalc:
 			SkillState.recalculate_level(host, skill_id)
-			host._activity_unlock_ceremony_surface().queue_locked_preview_reveal_if_needed(locked_preview_available_before)
 			host._passive_modules_runtime().sync_passive_module_unlocks(host._unix_now())
 	else:
 		host.fishing_runtime.mark_missed(host.fishing_runtime.equipped_tool_id)

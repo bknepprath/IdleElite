@@ -26,9 +26,6 @@ const PROFILE_OVERLAY_CANVAS_LAYER := CHAT_OVERLAY_CANVAS_LAYER + 1
 const CHAT_STRIP_EMPTY_GRACE_MSEC := 2200
 const CHAT_STRIP_HIDE_GRACE_MSEC := 800
 const CHAT_STRIP_ICON := "res://assets/content/ui/chat-speech-bubble.png"
-const CHAT_STRIP_FONT_WIDTH_AXIS := 75
-const CHAT_STRIP_FONT_WEIGHT_AXIS := 700
-const CHAT_STRIP_FONT_EMBOLDEN := 0.45
 const CHAT_STRIP_TEXT_FONT_SIZE := 32
 const CHAT_STRIP_TEXT_LINE_HEIGHT := 36.0
 const CHAT_STRIP_ICON_SIZE := 70.0
@@ -49,7 +46,6 @@ var chat_strip: PanelContainer
 var chat_unread_dot: PanelContainer
 var chat_strip_line_one: Label
 var chat_strip_line_two: Label
-var chat_strip_compact_font: Font
 var chat_strip_last_visible := false
 var chat_strip_last_line_one := ""
 var chat_strip_last_line_two := ""
@@ -515,17 +511,9 @@ func _build_chat_strip() -> void:
 	_update_chat_strip()
 
 func _chat_strip_font() -> Font:
-	if chat_strip_compact_font != null:
-		return chat_strip_compact_font
-	var base_font: Font = host.app_font if host.app_font != null else host.app_bold_font
-	if base_font == null:
-		return ThemeDB.fallback_font
-	var compact := FontVariation.new()
-	compact.base_font = base_font
-	compact.variation_opentype = {&"wdth": CHAT_STRIP_FONT_WIDTH_AXIS, &"wght": CHAT_STRIP_FONT_WEIGHT_AXIS}
-	compact.variation_embolden = CHAT_STRIP_FONT_EMBOLDEN
-	chat_strip_compact_font = compact
-	return chat_strip_compact_font
+	if host.app_bold_font != null:
+		return host.app_bold_font
+	return host.app_font if host.app_font != null else ThemeDB.fallback_font
 
 func _build_chat_overlay() -> void:
 	chat_overlay_layer = CanvasLayer.new()

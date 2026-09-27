@@ -2253,9 +2253,6 @@ func _hub_module_level(module_id: String) -> int:
 func _hub_module_building(module_id: String) -> bool:
 	return _hub_runtime().module_building(module_id)
 
-func _hub_module_build_progress(module_id: String) -> float:
-	return _hub_runtime().module_build_progress(module_id)
-
 func _process_hub_modules(_delta: float) -> void:
 	var hub_ui_active = current_screen == "hub"
 	var hub_ui_refs_live = (

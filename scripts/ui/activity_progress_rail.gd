@@ -221,14 +221,11 @@ var fill_color := Color("#35d86d")
 var empty_color := Color("#fff1c8")
 var fill_segments: Array[Color] = []
 var empty_segments: Array[Color] = []
-var opportunity_color := Color("#fff2a8")
-var opportunity_active_color := Color("#ffffff")
 var top_lip_color := Color("#171615")
 var top_lip_height := 3.5
 var bottom_radius := 33.0
 var edge_inset := 3.0
 var bottom_inset := 0.0
-var corner_guard := 0.0
 var bottom_shape := "round"
 var wide_u_bottom_rise := 29.0
 var wide_u_shoulder_ratio := 0.285
@@ -468,19 +465,6 @@ func _draw_round_fill(rect: Rect2, color: Color, fill_pct: float) -> void:
 	if pct <= 0.0 or rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return
 	_draw_round_segment(rect, color, 0.0, pct)
-
-func _draw_round_segments(rect: Rect2, colors: Array[Color], fill_pct: float) -> void:
-	var pct := clampf(fill_pct, 0.0, 1.0)
-	if pct <= 0.0 or colors.is_empty() or rect.size.x <= 0.0 or rect.size.y <= 0.0:
-		return
-	var count := colors.size()
-	for index in range(count):
-		var start := float(index) / float(count)
-		var finish := float(index + 1) / float(count)
-		var visible_finish := minf(finish, pct)
-		if visible_finish <= start:
-			continue
-		_draw_round_segment(rect, colors[index] as Color, start, visible_finish)
 
 func _draw_round_segment(rect: Rect2, color: Color, start_pct: float, finish_pct: float) -> void:
 	var start := clampf(start_pct, 0.0, 1.0)

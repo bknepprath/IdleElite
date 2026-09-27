@@ -71,7 +71,6 @@ const UNMARKED_MAXED_SAVE_COMPLETION_LIMIT := 5000
 const TOTAL_LEVEL_BARGRAPH_TEXTURE := "res://assets/content/ui/total-level-bargraph.png"
 const SETTINGS_GEAR_ICON_TEXTURE := "res://assets/content/ui/settings-gear-icon.png"
 const SHOP_ICON_TEXTURE := "res://assets/content/ui/shop-icon.png"
-const HERO_SPEECH_BUBBLE_TEXTURE := "res://assets/content/ui/hero-speech-bubble-down.png"
 const PROGRESS_STAR_ICON_TEXTURE := "res://assets/content/ui/progress-star-icon.png"
 const BASE_MAX_STAMINA := SkillState.BASE_MAX_STAMINA
 const STAMINA_REGEN_SECONDS := SkillState.STAMINA_REGEN_SECONDS
@@ -132,7 +131,7 @@ const DETAIL_RESTORE_SCROLL_BOTTOM := -2
 const MODULE_TITLE_OVER_PIN_Z_INDEX := 390
 const SKILL_DETAIL_TEXT_SEPARATION := 12.5
 const SKILL_DETAIL_LEFT_SEPARATION := 33.5
-const SKILL_DETAIL_XP_BAR_WIDTH := 450
+const SKILL_DETAIL_XP_BAR_WIDTH := 360
 const SKILL_DETAIL_ICON_SIZE := Vector2(200, 200)
 const SKILL_DETAIL_ICON_BORDER_WIDTH := 9.0
 const SKILL_DETAIL_ICON_Y_OFFSET := 8.0
@@ -143,8 +142,6 @@ const SKILL_SWIPE_GAP_LOAD_TRANSITION_ENABLED := true
 const SKILL_SWIPE_GAP_READY_WAIT_FRAMES := 4
 const SKILL_SWIPE_SETTLE_SECONDS := 0.20
 const SKILL_SWIPE_CANCEL_SECONDS := 0.14
-const SKILL_SWIPE_PREVIEW_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 1.25
-const SKILL_SWIPE_PREVIEW_FADE_MIN_ALPHA := 0.30
 const SKILL_SWIPE_PAPER_FADE_DISTANCE := SKILL_SWIPE_THRESHOLD * 4.0
 const SKILL_SWIPE_CREAM_COVER_FADE_IN_SECONDS := 0.08
 const SKILL_SWIPE_REBUILD_COVER_FADE_SECONDS := 0.12
@@ -160,7 +157,6 @@ const PAGE_SWITCH_SCROLL_COVER_HOLD_SECONDS := 0.34
 const PAGE_SWITCH_SCROLL_COVER_FADE_SECONDS := 0.18
 const SKILL_SWIPE_LIGHT_PREVIEW_ENABLED := true
 const SKILL_SWIPE_LIGHT_PREVIEW_HEADER_ENABLED := true
-const SKILL_SWIPE_LIGHT_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_HIDDEN_PREVIEW_MAX_CARDS := 1
 const SKILL_SWIPE_REAL_CARD_PREWARM_COUNT := 4
 const SKILL_SWIPE_REAL_PREVIEW_TEXTURE_PREWARM_ENABLED := true
@@ -174,21 +170,13 @@ const SKILL_DETAIL_SHADOW_FADE_SCROLL := 36.0
 const SKILL_DETAIL_SHADOW_FADE_SPEED := 10.0
 const TUTORIAL_TIP_FADE_SECONDS := 0.28
 const TUTORIAL_TIP_FADE_OUT_SECONDS := 1.2
-const ACTIVITY_START_TIP_FADE_SECONDS := 0.62
 const TUTORIAL_STARTER_SKILL_ID := "fight"
 const TUTORIAL_STARTER_ACTION_ID := "push-ups"
 const TUTORIAL_LEVEL_TWO_ACTION_ID := "kick-mud-off-boot"
 const TUTORIAL_GATE_LATCH_ACTION_ID := "wrestle-stuck-gate-latch"
 const TUTORIAL_DEFERRED_AFTER_GATE_ACTION_ID := "box-suspicious-feed-sack"
-const ONBOARDING_HEADER_FADE_SECONDS := 0.62
-const ONBOARDING_SUMMARY_FADE_SECONDS := 2.0
 const ONBOARDING_AUTO_RUN_MESSAGE_COMPLETION_THRESHOLD := 1
 const ONBOARDING_HEADER_REVEAL_PROGRESS_FRACTION := 0.5
-const ONBOARDING_AUTO_RUN_MESSAGE_LINGER_SECONDS := 3.0
-const ONBOARDING_STAMINA_GAUGE_DELAY_BEFORE_FADE_SECONDS := 2.0
-const ONBOARDING_STAMINA_GAUGE_FADE_SECONDS := 2.0
-const ONBOARDING_STAMINA_TIP_LINGER_SECONDS := 4.0
-const ONBOARDING_STAMINA_TIP_LABEL_WIDTH := 150.0
 const ONBOARDING_SWIPE_STAMINA_THRESHOLD := 5.0
 const ONBOARDING_FIGHT_ACTION_STATS_FADE_SECONDS := 2.0
 const ONBOARDING_BOTTOM_TIP_FADE_SECONDS := 1.2
@@ -233,7 +221,6 @@ const FISHING_DETAIL_RENDER_CULL_ACTIVE_MIN_MSEC := 56
 const FISHING_DETAIL_USE_FLAT_ART := true
 const FISHING_SCROLL_MODE_SETTLE_MSEC := 160
 const FISHING_DETAIL_VISIBLE_SETTLE_FILL_BUDGET := 1
-const FISHING_DETAIL_IDLE_WARM_MOUNT_MAX_ACTION_CARDS := 12
 const MODULE_LIST_TRANSITION_SECONDS := 0.42
 const MODULE_LIST_TRANSITION_NEW_SECONDS := 0.30
 const MODULE_LIST_TRANSITION_NEW_OFFSET_Y := 14.0
@@ -416,7 +403,7 @@ var honey_stamina_seconds_remaining := 0.0
 var stamina_gauge_pre_tip_hold_seconds := 0.0
 var last_result := "Pick a skill and start training."
 var offline_progress_enabled := true
-var auto_unlock_lockpads_enabled := false
+var auto_unlock_lockpads_enabled := true
 var god_mode_enabled := false
 var god_mode_save_tainted := false
 var show_stamina_decimal := false
@@ -1252,9 +1239,10 @@ func _clear_page_transient_input_state(clear_transition := false) -> void:
 	_settings_surface()._clear_active_audio_slider()
 	_passive_firepit_surface()._clear_passive_button_press()
 	_skill_swipe_activity_surface()._clear_skill_swipe_button_suppression()
-	_fishing_ui_surface()._clear_active_fishing_method_button_press()
 	_skill_detail_surface()._release_current_action_card_press_state()
-	_action_stop_hold().cancel_action()
+	var stop_hold := get_node_or_null("ActionStopHoldLayer/ActionStopHoldCircle") as StopHoldCircle
+	if stop_hold != null:
+		stop_hold.cancel_action()
 	_skill_detail_surface()._clear_detail_back_button_input_state()
 	_skill_detail_surface()._clear_detail_jump_arrow_input_state()
 	_input_routing_shell()._clear_activity_lock_input_state()

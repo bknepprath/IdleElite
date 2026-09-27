@@ -5,8 +5,6 @@ signal wallet_pressed
 const PAPER_BUTTON_OUTLINE_WIDTH := 9.0
 const FISH_CIRCLE_ICON_BASE_SIZE := Vector2(228, 228)
 const FISH_CURRENCY_ICON_TEXTURE := "res://assets/content/icons/resources/fish-currency-icon.png"
-const COLOR_MUTED := Color("#6e6658")
-const COLOR_GOLD := Color("#fff2a8")
 
 const RING_ARC_SEGMENTS := 40
 const BEVEL_ARC_SEGMENTS := 32
@@ -23,15 +21,7 @@ var theme_color := Color("#2dc0b9")
 var readout_font: Font
 var currency_icon_texture: Texture2D
 var fish_icon: TextureRect
-var wallet_hit_button: Button
-var last_toggle_msec := 0
 var wallet_open := false
-var wallet_tool_ids: Array = []
-var wallet_tool_icons: Array = []
-var wallet_unlocked_states: Array = []
-var wallet_equipped_tool_id := ""
-var wallet_button_rects: Array = []
-var wallet_visual_root: Control
 var tool_icon_texture_resolver := Callable()
 
 func _ready() -> void:
@@ -39,7 +29,7 @@ func _ready() -> void:
 	flat = true
 	focus_mode = Control.FOCUS_NONE
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
+	action_mode = BaseButton.ACTION_MODE_BUTTON_RELEASE
 	add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
@@ -54,41 +44,7 @@ func _ready() -> void:
 	fish_icon.texture = _fish_circle_icon_texture()
 	fish_icon.z_index = 4
 	add_child(fish_icon)
-	wallet_hit_button = Button.new()
-	wallet_hit_button.name = "FishCircleWalletHitButton"
-	wallet_hit_button.text = ""
-	wallet_hit_button.flat = true
-	wallet_hit_button.focus_mode = Control.FOCUS_NONE
-	wallet_hit_button.mouse_filter = Control.MOUSE_FILTER_STOP
-	wallet_hit_button.action_mode = BaseButton.ACTION_MODE_BUTTON_PRESS
-	wallet_hit_button.set_anchors_preset(Control.PRESET_FULL_RECT)
-	wallet_hit_button.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
-	wallet_hit_button.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
-	wallet_hit_button.add_theme_stylebox_override("pressed", StyleBoxEmpty.new())
-	wallet_hit_button.add_theme_stylebox_override("disabled", StyleBoxEmpty.new())
-	wallet_hit_button.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-	wallet_hit_button.z_index = 1000
-	wallet_hit_button.pressed.connect(_trigger_circle_pressed)
-	add_child(wallet_hit_button)
 	_layout_fish_icon()
-
-func _on_circle_pressed() -> void:
-	wallet_pressed.emit()
-
-func _gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
-		var mouse_event := event as InputEventMouseButton
-		if mouse_event.button_index == MOUSE_BUTTON_LEFT and mouse_event.pressed:
-			wallet_pressed.emit()
-			accept_event()
-	elif event is InputEventScreenTouch:
-		var touch_event := event as InputEventScreenTouch
-		if touch_event.pressed:
-			wallet_pressed.emit()
-			accept_event()
-
-func _trigger_circle_pressed() -> void:
-	wallet_pressed.emit()
 
 func _fish_circle_icon_texture() -> Texture2D:
 	if tool_icon_texture_resolver.is_valid():
@@ -120,9 +76,6 @@ func _fallback_texture(texture_size: Vector2i) -> Texture2D:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_RESIZED:
 		_layout_fish_icon()
-		if wallet_open:
-			_build_wallet_rects()
-			_rebuild_wallet_visual_children()
 
 func _layout_fish_icon() -> void:
 	if fish_icon == null or not is_instance_valid(fish_icon):
@@ -304,182 +257,3 @@ func _draw_stroked_number_with_decimal_suffix(font: Font, main_text: String, suf
 	var suffix_outline := Color("#171615", CENTER_DECIMAL_SUFFIX_ALPHA)
 	draw_string_outline(font, suffix_position, suffix_text, HORIZONTAL_ALIGNMENT_LEFT, -1, suffix_size, suffix_stroke, suffix_outline)
 	draw_string(font, suffix_position, suffix_text, HORIZONTAL_ALIGNMENT_LEFT, -1, suffix_size, suffix_fill)
-
-func configure_wallet(open: bool, tool_ids: Array, tool_icons: Array, unlocked_states: Array, equipped_tool_id: String) -> void:
-	wallet_open = open
-	wallet_tool_ids = tool_ids
-	wallet_tool_icons = tool_icons
-	wallet_unlocked_states = unlocked_states
-	wallet_equipped_tool_id = equipped_tool_id
-	_build_wallet_rects()
-	_rebuild_wallet_visual_children()
-	queue_redraw()
-
-func wallet_button_index_at(global_point: Vector2) -> int:
-	if not wallet_open:
-		return -1
-	var local_point := get_global_transform_with_canvas().affine_inverse() * global_point
-	for index in range(wallet_button_rects.size()):
-		var rect := wallet_button_rects[index] as Rect2
-		if rect.has_point(local_point):
-			return index
-	return -1
-
-func wallet_button_center_global(index: int) -> Vector2:
-	if index < 0 or index >= wallet_button_rects.size():
-		return Vector2.ZERO
-	var rect := wallet_button_rects[index] as Rect2
-	return get_global_transform_with_canvas() * rect.get_center()
-
-func _build_wallet_rects() -> void:
-	wallet_button_rects.clear()
-	var count := wallet_tool_ids.size()
-	if count <= 0:
-		return
-	var min_size := minf(size.x, size.y)
-	if min_size <= 0.0:
-		min_size = 552.0
-	var draw_scale := min_size / 552.0
-	var button_size := 148.0 * draw_scale
-	var gap := 18.0 * draw_scale
-	var padding := 24.0 * draw_scale
-	var panel_width := button_size + padding * 2.0
-	var panel_left := size.x - panel_width - 8.0 * draw_scale
-	var panel_top := 12.0 * draw_scale
-	for index in range(count):
-		wallet_button_rects.append(Rect2(
-			Vector2(panel_left + padding, panel_top + padding + float(index) * (button_size + gap)),
-			Vector2(button_size, button_size)
-		))
-
-func _rebuild_wallet_visual_children() -> void:
-	if wallet_visual_root != null and is_instance_valid(wallet_visual_root):
-		wallet_visual_root.queue_free()
-		wallet_visual_root = null
-	if not wallet_open or wallet_button_rects.is_empty():
-		return
-	var root := Control.new()
-	root.name = "FishCircleVisibleWallet"
-	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	root.top_level = true
-	root.position = get_global_rect().position
-	root.size = size
-	root.clip_contents = false
-	root.z_index = 4090
-	root.z_as_relative = false
-	add_child(root)
-	wallet_visual_root = root
-	var min_size := minf(size.x, size.y)
-	if min_size <= 0.0:
-		min_size = 552.0
-	var draw_scale := min_size / 552.0
-	var padding := 24.0 * draw_scale
-	var first := wallet_button_rects[0] as Rect2
-	var last := wallet_button_rects[wallet_button_rects.size() - 1] as Rect2
-	var panel_rect := Rect2(
-		Vector2(first.position.x - padding, first.position.y - padding),
-		Vector2(first.size.x + padding * 2.0, last.end.y - first.position.y + padding * 2.0)
-	)
-	var panel := Panel.new()
-	panel.name = "FishCircleVisibleWalletPill"
-	panel.position = panel_rect.position
-	panel.size = panel_rect.size
-	panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	panel.add_theme_stylebox_override("panel", _wallet_style(Color("#e8fbf6", 0.94), Color("#168f83"), 6.0 * draw_scale, panel_rect.size.x * 0.5))
-	root.add_child(panel)
-	for index in range(wallet_button_rects.size()):
-		var rect := wallet_button_rects[index] as Rect2
-		var tool_id := str(wallet_tool_ids[index])
-		var unlocked := bool(wallet_unlocked_states[index])
-		var equipped := tool_id == wallet_equipped_tool_id
-		var fill := Color("#32c5bd") if equipped else (Color("#ffffff") if unlocked else Color("#cfcac0"))
-		var border := COLOR_GOLD if equipped else (Color("#171615") if unlocked else COLOR_MUTED)
-		var circle := Panel.new()
-		circle.name = "FishCircleVisibleWalletGear%s" % str(index)
-		circle.position = rect.position
-		circle.size = rect.size
-		circle.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		circle.add_theme_stylebox_override("panel", _wallet_style(fill, border, 8.0 * draw_scale if equipped else 5.0 * draw_scale, rect.size.x * 0.5))
-		root.add_child(circle)
-		var tool_icon := wallet_tool_icons[index] as Texture2D
-		if tool_icon != null:
-			var icon_rect := _fit_wallet_texture_rect(tool_icon, Rect2(Vector2.ZERO, rect.size).grow(-18.0 * draw_scale))
-			var texture_rect := TextureRect.new()
-			texture_rect.texture = tool_icon
-			texture_rect.position = icon_rect.position
-			texture_rect.size = icon_rect.size
-			texture_rect.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			texture_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-			texture_rect.modulate = Color.WHITE if unlocked else Color(1, 1, 1, 0.42)
-			texture_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			circle.add_child(texture_rect)
-
-func _wallet_style(fill: Color, border: Color, border_width: float, radius: float) -> StyleBoxFlat:
-	var style := StyleBoxFlat.new()
-	style.bg_color = fill
-	style.border_color = border
-	var border_int := maxi(1, int(round(border_width)))
-	style.border_width_left = border_int
-	style.border_width_top = border_int
-	style.border_width_right = border_int
-	style.border_width_bottom = border_int
-	var corner := maxi(1, int(round(radius)))
-	style.corner_radius_top_left = corner
-	style.corner_radius_top_right = corner
-	style.corner_radius_bottom_left = corner
-	style.corner_radius_bottom_right = corner
-	style.shadow_color = Color(0, 0, 0, 0.18)
-	style.shadow_size = 4
-	style.shadow_offset = Vector2(1.5, 2.5)
-	return style
-
-func _draw_wallet_menu(draw_scale: float) -> void:
-	_build_wallet_rects()
-	var count := wallet_button_rects.size()
-	if count <= 0:
-		return
-	var padding := 24.0 * draw_scale
-	var first := wallet_button_rects[0] as Rect2
-	var last := wallet_button_rects[count - 1] as Rect2
-	var panel_rect := Rect2(
-		Vector2(first.position.x - padding, first.position.y - padding),
-		Vector2(first.size.x + padding * 2.0, last.end.y - first.position.y + padding * 2.0)
-	)
-	_draw_wallet_pill(panel_rect, Color("#fff6df"), Color("#171615"), 10.0 * draw_scale)
-	for index in range(count):
-		var rect := wallet_button_rects[index] as Rect2
-		var tool_id := str(wallet_tool_ids[index])
-		var unlocked := bool(wallet_unlocked_states[index])
-		var equipped := tool_id == wallet_equipped_tool_id
-		var fill := Color("#32c5bd") if equipped else (Color("#ffffff") if unlocked else Color("#cfcac0"))
-		var border := COLOR_GOLD if equipped else (Color("#171615") if unlocked else COLOR_MUTED)
-		_draw_wallet_pill(rect, fill, border, (8.0 if equipped else 5.0) * draw_scale)
-		var tool_icon := wallet_tool_icons[index] as Texture2D
-		if tool_icon != null:
-			var icon_rect := _fit_wallet_texture_rect(tool_icon, rect.grow(-18.0 * draw_scale))
-			draw_texture_rect(tool_icon, icon_rect, false, Color.WHITE if unlocked else Color(1, 1, 1, 0.42))
-
-func _draw_wallet_pill(rect: Rect2, fill: Color, border: Color, border_width: float) -> void:
-	_draw_wallet_filled_pill(rect, border)
-	_draw_wallet_filled_pill(rect.grow(-border_width), fill)
-
-func _draw_wallet_filled_pill(rect: Rect2, color: Color) -> void:
-	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
-		return
-	var radius := minf(rect.size.x, rect.size.y) * 0.5
-	if rect.size.y >= rect.size.x:
-		draw_rect(Rect2(rect.position.x, rect.position.y + radius, rect.size.x, maxf(0.0, rect.size.y - radius * 2.0)), color)
-		draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
-		draw_circle(Vector2(rect.position.x + radius, rect.end.y - radius), radius, color)
-	else:
-		draw_rect(Rect2(rect.position.x + radius, rect.position.y, maxf(0.0, rect.size.x - radius * 2.0), rect.size.y), color)
-		draw_circle(Vector2(rect.position.x + radius, rect.position.y + radius), radius, color)
-		draw_circle(Vector2(rect.end.x - radius, rect.position.y + radius), radius, color)
-
-func _fit_wallet_texture_rect(texture: Texture2D, bounds: Rect2) -> Rect2:
-	var texture_size := texture.get_size()
-	if texture_size.x <= 0.0 or texture_size.y <= 0.0:
-		return bounds
-	var draw_scale := minf(bounds.size.x / texture_size.x, bounds.size.y / texture_size.y)
-	var draw_size := texture_size * draw_scale
-	return Rect2(bounds.position + (bounds.size - draw_size) * 0.5, draw_size)

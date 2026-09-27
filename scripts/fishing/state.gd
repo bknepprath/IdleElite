@@ -785,14 +785,6 @@ func location_is_unlocked(host, area_id: String, location: Dictionary, location_
 	return host._activity_unlock_runtime()._is_action_unlocked("fishing", action)
 
 
-func location_area_is_unlocked(host, area_id: String, location_defs: Dictionary, tool_location_actions: Dictionary) -> bool:
-	for raw_location in locations_for_area(area_id, location_defs):
-		var location := raw_location as Dictionary
-		if location_is_unlocked(host, area_id, location, location_defs, tool_location_actions):
-			return true
-	return false
-
-
 func next_locked_location_preview_key(host, location_defs: Dictionary, tool_location_actions: Dictionary) -> String:
 	return global_teaser_location_key(host, "fishing", location_defs, tool_location_actions)
 
@@ -1036,7 +1028,6 @@ func complete_action_attempt(host, action: Dictionary, active_key: String, bonus
 		tiers_unlocked_before[tier] = AchievementState.global_medal_tier_unlocked(host, tier)
 	var completed_achievements_before = AchievementState.completed_public_ids_fast(host)
 	var old_skill_level = SkillState.host_skill_level(host, skill_id)
-	var locked_preview_available_before = host._activity_unlock_runtime()._locked_activity_preview_available()
 	var direct_fish_currency_reward = has_direct_fish_currency_reward(action)
 	var netting = equipped_tool_id == "net" and not direct_fish_currency_reward
 	var boating = equipped_tool_id == "boat" and not direct_fish_currency_reward
@@ -1095,7 +1086,6 @@ func complete_action_attempt(host, action: Dictionary, active_key: String, bonus
 		host._onboarding_runtime()._register_silver_opportunity_tip_anchor(skill_id, mastery_action_id, old_mastery_level, new_mastery_level)
 		for raw_reward_skill_id in affected_reward_skill_ids:
 			SkillState.recalculate_level(host, str(raw_reward_skill_id))
-		host._activity_unlock_ceremony_surface().queue_locked_preview_reveal_if_needed(locked_preview_available_before)
 		var any_reward_skill_level_up = host._action_runtime()._any_reward_skill_leveled_up(affected_reward_skill_ids, old_reward_skill_levels)
 		host._passive_modules_runtime().sync_passive_module_unlocks(host._unix_now())
 		var new_global_buffs = AchievementState.new_global_medal_buff_messages(host, old_mastery_level, new_mastery_level, tiers_unlocked_before)

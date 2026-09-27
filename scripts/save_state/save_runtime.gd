@@ -148,7 +148,7 @@ func _init_state() -> void:
 	host._action_runtime().auto_eat_fish_after_spend_due_msec_by_skill.clear()
 	host.material_runtime.legacy_softwood_amount = 0
 	host.material_runtime.wallet.clear()
-	host.auto_unlock_lockpads_enabled = false
+	host.auto_unlock_lockpads_enabled = true
 	host._navigation_shell()._restore_nav_symbol_seen_ids({})
 	host.offline_progress_cap_notifications_enabled = false
 	host.module_ui_runtime.reset()
@@ -1400,7 +1400,7 @@ func _load_game_core(data: Dictionary) -> void:
 	if _save_needs_fishing_restore(data):
 		host._restore_fishing_state_from_save(data)
 	host.offline_progress_enabled = bool(data.get("offline_progress_enabled", true))
-	host.auto_unlock_lockpads_enabled = bool(data.get("auto_unlock_lockpads_enabled", false))
+	host.auto_unlock_lockpads_enabled = bool(data.get("auto_unlock_lockpads_enabled", true))
 	host._navigation_shell()._restore_nav_symbol_seen_ids(data.get("nav_symbol_seen_ids", {}))
 	if host.module_ui_runtime.restore_from_save(
 		data,

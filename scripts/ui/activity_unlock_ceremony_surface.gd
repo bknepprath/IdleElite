@@ -3,7 +3,6 @@ extends RefCounted
 const ActivityCardStyles = preload("res://scripts/ui/activity_card_styles.gd")
 const ActivityLockRig = preload("res://scripts/ui/activity_lock_rig.gd")
 
-const CHAIN_FALL_SECONDS = 1.15
 const CHAIN_FADE_SECONDS = 0.85
 const MOTION_START_DELAY = 0.48
 const NEXT_PREVIEW_FADE_DELAY = 0.68
@@ -82,22 +81,6 @@ func clear_preview_reveal_guards() -> void:
 	locked_preview_reveal_skill_ids.clear()
 	locked_preview_fade_play_pending = false
 	locked_preview_played_action_keys.clear()
-
-
-func queue_locked_preview_reveal_if_needed(_previously_available: bool) -> void:
-	pass
-
-
-func queue_locked_preview_reveal() -> void:
-	locked_preview_reveal_skill_ids.clear()
-	var first_locked_id = host._onboarding_runtime()._tutorial_current_locked_preview_action_id(host.selected_skill_id) if not host.selected_skill_id.is_empty() else ""
-	var preview_key = host._action_key(host.selected_skill_id, first_locked_id) if not first_locked_id.is_empty() else ""
-	if not preview_key.is_empty() and not bool(locked_preview_played_action_keys.get(preview_key, false)):
-		locked_preview_reveal_skill_ids[host.selected_skill_id] = true
-	locked_preview_reveal_pending = not locked_preview_reveal_skill_ids.is_empty()
-	if locked_preview_reveal_pending:
-		locked_preview_fade_play_pending = true
-		host._skill_swipe_activity_surface()._clear_skill_swipe_preview()
 
 
 func prestage_preview_card(action_id: String, delay = 0.12) -> void:

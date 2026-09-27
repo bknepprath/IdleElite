@@ -179,6 +179,11 @@ func _sync_berry_prep_xp_chip(xp_box: Control) -> void:
 		stroke.texture = badge.texture
 		stroke.scale = Vector2.ONE * badge_scale * 1.08
 	var badge_position := Vector2(xp_box.size.x - 6.0, 5.0)
+	if bool(xp_box.get_meta("normal_activity_stat_box", false)):
+		var stat_panel := xp_box.get_parent().get_parent() as Control
+		badge_position = xp_box.get_global_transform().affine_inverse() * (
+			stat_panel.global_position + Vector2(stat_panel.size.x + badge_target_size * 0.5 + 8.0, 48.0)
+		)
 	badge.position = badge_position
 	stroke.position = badge_position
 

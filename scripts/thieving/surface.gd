@@ -96,8 +96,6 @@ func clear_visual_caches() -> void:
 	thieving_heist_feather_shader = null
 	thieving_action_jail_material = null
 
-func _missing_host_call(method: String, args: Array = []):
-	return host.callv(method, args)
 func _build_thieving_heist_card(heist: Dictionary, content_width: float, preview_only := false, card_key_override := "") -> Control:
 	var heist_id := str(heist.get("id", ""))
 	var card_root := Control.new()
@@ -1533,12 +1531,6 @@ func _action_key(skill_id: String, action_id: String) -> String:
 
 func _action_card_key(skill_id: String, action_id: String, visual_card_key := "") -> String:
 	return host._action_card_key(skill_id, action_id, visual_card_key)
-
-func _valid_texture_progress_ref(value) -> TextureProgressBar:
-	var control: Control = host._app_lifecycle_runtime().valid_control_ref(value)
-	if control == null:
-		return null
-	return control as TextureProgressBar
 
 func _dim_action_card(card: Dictionary, dimmed: bool) -> void:
 	host._dim_action_card(card, dimmed)

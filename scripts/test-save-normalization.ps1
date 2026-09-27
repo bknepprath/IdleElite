@@ -1527,7 +1527,7 @@ func _check_audio_settings_restore(game: Node) -> void:
 		"stamina_bank": {},
 		"saved_at": int(game.call("_unix_now")),
 	})
-	_expect(not _truthy(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should default off for existing saves.")
+	_expect(_truthy(game.get("auto_unlock_lockpads_enabled")), "Auto-unlock lockpad setting should default on when absent from a save.")
 	_expect(not _truthy(game.get("show_stamina_decimal")), "Stamina decimal setting should default off for new saves.")
 
 
@@ -1912,7 +1912,7 @@ func _check_fishing_method_unlock_routing(game: Node) -> void:
 		"unlock_ceremony_pending": true,
 	}
 	game.get("fishing_ui_surface")._sync_fishing_method_card_unlocked_live(live_method_card)
-	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_panel.mouse_filter == Control.MOUSE_FILTER_STOP, "Live fishing method cards should become tappable immediately after their lock is accepted through the manual fishing hit route.")
+	_expect(not live_button.disabled and live_button.mouse_filter == Control.MOUSE_FILTER_STOP and live_button.pressed.get_connections().size() == 1, "Live fishing method cards should accept native button presses immediately after their lock is accepted.")
 	_expect(not _truthy(live_method_card.get("unlock_ready_pending", true)) and not _truthy(live_method_card.get("unlock_ceremony_pending", true)), "Live fishing method unlock sync should clear stale locked-card flags before a page rebuild.")
 	_expect(live_lock.mouse_filter == Control.MOUSE_FILTER_IGNORE and live_padlock_hit.mouse_filter == Control.MOUSE_FILTER_IGNORE, "Live fishing method unlock sync should stop the old padlock from stealing the next tap.")
 	_expect(str(game.call("_onboarding_runtime").call("_tutorial_preview_after_manual_unlock", "fishing", "rocks")) == "dock-edge", "Unlocking Rocks should target Pier Dock Edge as the next fishing module preview.")

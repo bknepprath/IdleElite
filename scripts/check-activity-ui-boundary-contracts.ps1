@@ -97,7 +97,7 @@ foreach ($boundary in ($boundaries.Keys | Sort-Object)) {
     }
 }
 
-foreach ($functionName in @("action_card_background_edge_underlay", "activity_card_depth_layer", "prism_connector_overlay", "activity_card_shade_layer", "ensure_activity_card_shade")) {
+foreach ($functionName in @("activity_card_depth_layer", "prism_connector_overlay", "activity_card_shade_layer", "ensure_activity_card_shade")) {
     Assert-FunctionExists $activityCardStyles $functionName "action card chrome factory"
     Assert-True ($boundaryMap -match [regex]::Escape($functionName)) "Activity UI boundary map must mention $functionName."
 }
@@ -132,7 +132,7 @@ foreach ($functionName in @("_activity_lock_overlay", "_on_activity_lock_clicked
 
 Assert-FunctionExists $fishingUiSurface "_build_fishing_offer_module" "fishing offer presentation"
 
-foreach ($functionName in @("_route_fishing_offer_button_global_input", "_fishing_offer_button_hit")) {
+foreach ($functionName in @("_connect_fishing_button", "_activate_fishing_offer_button")) {
     Assert-FunctionExists $fishingUiSurface $functionName "fishing offer presentation"
     Assert-True ($boundaryMap -match [regex]::Escape($functionName)) "Activity UI boundary map must mention $functionName."
 }

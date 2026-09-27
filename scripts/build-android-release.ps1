@@ -54,6 +54,10 @@ foreach ($requiredTemplatePath in @($releaseTemplateAar, $assetPackGradlePath, $
     }
 }
 $projectSettings = Get-Content -Raw -LiteralPath $projectSettingsPath
+if ($projectSettings -notmatch '(?m)^window/size/viewport_width=1080\r?$' -or
+    $projectSettings -notmatch '(?m)^window/size/viewport_height=1920\r?$') {
+    throw 'Android release blocked: project.godot must use the native 1080 x 1920 viewport. The archived 2160 x 3840 project must never be released.'
+}
 if ($projectSettings -notmatch '(?m)^window/stretch/mode="viewport"\r?$') {
     throw 'Android release blocked: project.godot must keep window/stretch/mode="viewport" to prevent full-screen pixel tearing on physical phones.'
 }

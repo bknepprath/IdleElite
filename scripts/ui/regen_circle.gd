@@ -53,7 +53,6 @@ var readout_font: Font
 var _glass_bowl_texture: ImageTexture
 var _glass_bowl_cached_size := Vector2.ZERO
 var _pop_tween: Tween
-static var _shared_glass_bowl_textures := {}
 
 func _ready() -> void:
 	_load_readout_font()
@@ -422,144 +421,6 @@ func _firepit_regen_ring_color(angle: float) -> Color:
 	var warmth := FIREPIT_WARMTH_COLOR.lerp(Color("#ffd27a"), 0.10 * (1.0 - lower_strength))
 	return regen_ring_color.lerp(warmth, clampf(lower_strength * visual_warmth, 0.0, 1.0))
 
-func _ensure_glass_bowl_texture() -> void:
-	if DisplayServer.get_name() == "headless":
-		return
-	var draw_size := size.floor()
-	if draw_size.x < 2.0 or draw_size.y < 2.0:
-		return
-	if _glass_bowl_texture != null and _glass_bowl_cached_size.is_equal_approx(draw_size):
-		return
-	var cache_key := "%sx%s" % [str(int(draw_size.x)), str(int(draw_size.y))]
-	if _shared_glass_bowl_textures.has(cache_key):
-		_glass_bowl_texture = _shared_glass_bowl_textures[cache_key] as ImageTexture
-		_glass_bowl_cached_size = draw_size
-		return
-	var center := draw_size * 0.5
-	var draw_scale := minf(draw_size.x, draw_size.y) / 552.0
-	var outer_radius := minf(draw_size.x, draw_size.y) * 0.5
-	var gauge_stroke := PAPER_BUTTON_OUTLINE_WIDTH * draw_scale
-	var ring_width := 30.0 * draw_scale
-	var ring_radius := outer_radius - ring_width * 0.5
-	var ring_inner_radius := ring_radius - ring_width * 0.5
-	var inner_radius := ring_inner_radius - gauge_stroke
-	var image := Image.create(int(draw_size.x), int(draw_size.y), false, Image.FORMAT_RGBA8)
-	image.fill(Color(0, 0, 0, 0))
-	_paint_glass_bowl_to_image(image, center, inner_radius, draw_scale)
-	if DisplayServer.get_name() == "headless" or image == null or image.is_empty():
-		return
-	_glass_bowl_texture = ImageTexture.create_from_image(image)
-	_glass_bowl_cached_size = draw_size
-	_shared_glass_bowl_textures[cache_key] = _glass_bowl_texture
-
-func _paint_glass_bowl_to_image(image: Image, center: Vector2, radius: float, draw_scale: float) -> void:
-	_image_paint_disc(image, center, radius, Color("#fffaf0"))
-	var step := maxf(1.0, radius / 74.0)
-	var y := center.y - radius
-	while y <= center.y + radius:
-		var dy := y - center.y
-		var chord := sqrt(maxf(0.0, radius * radius - dy * dy))
-		var vertical := clampf((dy / radius + 1.0) * 0.5, 0.0, 1.0)
-		var glass_tint := Color("#eef7ff", 0.18 * (1.0 - vertical) + 0.04)
-		_image_paint_thick_hline(
-			image,
-			int(round(center.x - chord)),
-			int(round(center.x + chord)),
-			int(round(y)),
-			glass_tint,
-			int(ceil(step + 1.0))
-		)
-		y += step
-	_image_paint_ellipse_arc(
-		image,
-		center + Vector2(-radius * 0.25, -radius * 0.39),
-		radius * 0.30,
-		radius * 0.11,
-		Color(1, 1, 1, 0.34),
-		maxf(1.0, 2.0 * draw_scale),
-		center,
-		radius
-	)
-	_image_paint_ellipse_arc(
-		image,
-		center + Vector2(radius * 0.26, radius * 0.27),
-		radius * 0.19,
-		radius * 0.07,
-		Color(1, 1, 1, 0.11),
-		maxf(1.0, 1.4 * draw_scale),
-		center,
-		radius
-	)
-
-func _image_paint_disc(image: Image, center: Vector2, radius: float, color: Color) -> void:
-	var pixel_radius := int(ceil(radius))
-	var center_x := int(round(center.x))
-	var center_y := int(round(center.y))
-	for y in range(center_y - pixel_radius, center_y + pixel_radius + 1):
-		if y < 0 or y >= image.get_height():
-			continue
-		for x in range(center_x - pixel_radius, center_x + pixel_radius + 1):
-			if x < 0 or x >= image.get_width():
-				continue
-			if Vector2(x + 0.5, y + 0.5).distance_to(center) <= radius + 0.5:
-				_image_blend_pixel(image, x, y, color)
-
-func _image_blend_pixel(image: Image, x: int, y: int, color: Color) -> void:
-	if x < 0 or y < 0 or x >= image.get_width() or y >= image.get_height():
-		return
-	var existing := image.get_pixel(x, y)
-	var alpha := clampf(color.a, 0.0, 1.0)
-	if alpha <= 0.0:
-		return
-	if alpha >= 0.999 and existing.a <= 0.001:
-		image.set_pixel(x, y, color)
-		return
-	var blended := existing.lerp(color, alpha)
-	blended.a = clampf(existing.a + alpha * (1.0 - existing.a), 0.0, 1.0)
-	image.set_pixel(x, y, blended)
-
-func _image_paint_thick_hline(image: Image, x0: int, x1: int, y: int, color: Color, thickness: int) -> void:
-	if thickness <= 0:
-		return
-	var left := mini(x0, x1)
-	var right := maxi(x0, x1)
-	var half := int(thickness / 2.0)
-	for row in range(y - half, y - half + thickness):
-		for x in range(left, right + 1):
-			_image_blend_pixel(image, x, row, color)
-
-func _image_paint_ellipse_arc(
-	image: Image,
-	ellipse_center: Vector2,
-	half_width: float,
-	half_height: float,
-	color: Color,
-	width: float,
-	clip_center: Vector2,
-	clip_radius: float
-) -> void:
-	var previous := Vector2.ZERO
-	var has_previous := false
-	for i in range(97):
-		var angle := lerpf(0.0, TAU, float(i) / 96.0)
-		var point := ellipse_center + Vector2(cos(angle) * half_width, sin(angle) * half_height)
-		var inside := point.distance_to(clip_center) <= clip_radius + width * 0.5
-		if inside and has_previous:
-			_image_paint_line(image, previous, point, color, width)
-		previous = point
-		has_previous = inside
-
-func _image_paint_line(image: Image, from: Vector2, to: Vector2, color: Color, width: float) -> void:
-	var length := maxf(1.0, from.distance_to(to))
-	var steps := maxi(1, int(ceil(length)))
-	var half_width := maxi(1, int(ceil(width * 0.5)))
-	for i in range(steps + 1):
-		var t := float(i) / float(steps)
-		var point := from.lerp(to, t)
-		for oy in range(-half_width, half_width + 1):
-			for ox in range(-half_width, half_width + 1):
-				_image_blend_pixel(image, int(round(point.x)) + ox, int(round(point.y)) + oy, color)
-
 func _draw_inner_fill(center: Vector2, radius: float, draw_scale: float) -> void:
 	var pct := clampf(displayed_current / float(maximum), 0.0, 1.0)
 	if current <= 0:
@@ -636,21 +497,6 @@ func _draw_liquid_surface_oval(center: Vector2, radius: float, y_center: float, 
 			var rim_t := clampf((-0.42 - normalized) / 0.58, 0.0, 1.0)
 			row_color = surface_color.lerp(rim_shadow, rim_t * 0.28)
 		draw_line(Vector2(oval_center.x - half, y), Vector2(oval_center.x + half, y), row_color, row_width, true)
-
-func _draw_ellipse_lines(ellipse_center: Vector2, half_width: float, half_height: float, color: Color, width: float, clip_center: Vector2, clip_radius: float) -> void:
-	_draw_ellipse_arc_lines(ellipse_center, half_width, half_height, 0.0, TAU, color, width, clip_center, clip_radius)
-
-func _draw_ellipse_arc_lines(ellipse_center: Vector2, half_width: float, half_height: float, start_angle: float, end_angle: float, color: Color, width: float, clip_center: Vector2, clip_radius: float) -> void:
-	var previous := Vector2.ZERO
-	var has_previous := false
-	for i in range(97):
-		var angle := lerpf(start_angle, end_angle, float(i) / 96.0)
-		var point := ellipse_center + Vector2(cos(angle) * half_width, sin(angle) * half_height)
-		var inside := point.distance_to(clip_center) <= clip_radius + width * 0.5
-		if inside and has_previous:
-			draw_line(previous, point, color, width, true)
-		previous = point
-		has_previous = inside
 
 func _draw_inner_bevel(center: Vector2, radius: float, draw_scale: float) -> void:
 	var bevel_radius := radius - 8.0 * draw_scale
