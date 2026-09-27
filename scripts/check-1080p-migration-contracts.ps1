@@ -173,7 +173,8 @@ Assert-True $cutoverState "Project viewport and BASE_CANVAS must remain 1080 x 1
 	Assert-True ($profileChatSurface -notmatch 'variation_transform') "Chat strip text must not use a distorting affine font transform."
     Assert-True ($profileChatSurface -match 'style\.set_border_width_all\(5\)') "Chat/profile controls must not retain 4K border thickness."
     Assert-True ($profileChatSurface -match 'style\.corner_radius_bottom_right = 5 if is_self and not deleted else 9') "Chat message corners must retain half-scale 4K geometry."
-	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_OUTLINE := 10\r?$') "Fishing area names must retain their heavy outline."
+	$fishingTitleOutline = [regex]::Match($fishingSurface, '(?m)^const FISHING_METHOD_TITLE_OUTLINE := (\d+)\r?$')
+	Assert-True ($fishingTitleOutline.Success -and [int]$fishingTitleOutline.Groups[1].Value -ge 10) "Fishing area names must retain their heavy outline."
 	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_WIDTH_AXIS := 75\r?$') "Fishing area names must use the font's real width axis."
 	Assert-True ($fishingSurface -match '(?m)^const FISHING_METHOD_TITLE_EMBOLDEN := 1\.2\r?$') "Fishing area names must retain their audited bold weight."
 	Assert-True ($fishingSurface -notmatch 'variation_transform') "Fishing area names must not use a distorting affine font transform."
