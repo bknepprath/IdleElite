@@ -248,6 +248,12 @@ func input(event: InputEvent) -> void:
 	# must not treat the emulated copy as another player gesture.
 	if event.device == InputEvent.DEVICE_ID_EMULATION and _fishing_detail_input_context_active():
 		return
+	# Once a finger is dragging the skill pages sideways it owns the motion;
+	# page-specific routers (fishing modules, scroll owners) must not eat it or
+	# the pages stop following the finger.
+	if _route_horizontal_skill_swipe_motion(event):
+		host.get_viewport().set_input_as_handled()
+		return
 	if host._material_collection_surface().route_berry_mode_leave_button_input(event):
 		host.get_viewport().set_input_as_handled()
 		return
@@ -809,6 +815,17 @@ func _route_input_activity_surface(event: InputEvent, press_started_on_button: b
 		host._skill_swipe_activity_surface()._update_skill_swipe_feedback(event.position)
 		return true
 	return false
+
+
+func _route_horizontal_skill_swipe_motion(event: InputEvent) -> bool:
+	if host.current_screen != "skill":
+		return false
+	var swipe = host._skill_swipe_activity_surface()
+	if not swipe.skill_swipe_tracking or not swipe.skill_swipe_horizontal:
+		return false
+	if not (event is InputEventScreenDrag or event is InputEventMouseMotion):
+		return false
+	return _route_active_skill_swipe_input(event)
 
 
 func _route_active_skill_swipe_input(event: InputEvent) -> bool:
